@@ -5,14 +5,15 @@ using System.Windows.Input;
 
 namespace Depot.Commands;
 
-public sealed class RelayCommand : ICommand
+public sealed class RelayCommand
+	: ICommand
 {
-	private readonly Action<object?> _execute;
-	private readonly Func<object?, bool>? _canExecute;
+	private readonly Action _execute;
+	private readonly Func<bool>? _canExecute;
 
 	public RelayCommand(
-		Action<object?> execute,
-		Func<object?, bool>? canExecute = null)
+		Action execute,
+		Func<bool>? canExecute = null)
 	{
 		_execute = execute;
 		_canExecute = canExecute;
@@ -20,12 +21,12 @@ public sealed class RelayCommand : ICommand
 
 	public bool CanExecute(object? parameter)
 	{
-		return _canExecute?.Invoke(parameter) ?? true;
+		return _canExecute?.Invoke() ?? true;
 	}
 
 	public void Execute(object? parameter)
 	{
-		_execute(parameter);
+		_execute();
 	}
 
 	public event EventHandler? CanExecuteChanged;
@@ -36,4 +37,5 @@ public sealed class RelayCommand : ICommand
 			this,
 			EventArgs.Empty);
 	}
+
 }

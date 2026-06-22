@@ -11,45 +11,145 @@
 			<RowDefinition Height="*" />
 		</Grid.RowDefinitions>
 
-		<TextBlock
-			Grid.Row="0"
-			Text="Items"
-			FontSize="22"
-			FontWeight="SemiBold" />
+		<Grid Grid.Row="0">
 
-		<DataGrid
-			Grid.Row="2"
-			ItemsSource="{Binding Items}"
-			AutoGenerateColumns="False"
-			IsReadOnly="True"
-			CanUserAddRows="False"
-			CanUserDeleteRows="False">
+			<Grid.ColumnDefinitions>
+				<ColumnDefinition Width="*" />
+				<ColumnDefinition Width="Auto" />
+			</Grid.ColumnDefinitions>
 
-			<DataGrid.Columns>
+			<TextBlock
+				Grid.Column="0"
+				Text="Items"
+				FontSize="22"
+				FontWeight="SemiBold" />
 
-				<DataGridTextColumn
-					Header="Part Number"
-					Binding="{Binding PartNumber}"
-					Width="180" />
+			<Button
+				Grid.Column="1"
+				Width="120"
+				Height="32"
+				Content="New Item"
+				Command="{Binding NewItemCommand}" />
 
-				<DataGridTextColumn
-					Header="Description"
-					Binding="{Binding Description}"
-					Width="*" />
+		</Grid>
 
-				<DataGridTextColumn
-					Header="Manufacturer"
-					Binding="{Binding Manufacturer}"
-					Width="180" />
+		<Grid Grid.Row="2">
 
-				<DataGridTextColumn
-					Header="Category"
-					Binding="{Binding Category}"
-					Width="180" />
+			<Grid.ColumnDefinitions>
+				<ColumnDefinition Width="2*" />
+				<ColumnDefinition Width="24" />
+				<ColumnDefinition Width="1*" />
+			</Grid.ColumnDefinitions>
 
-			</DataGrid.Columns>
+			<DataGrid
+				Grid.Column="0"
+				ItemsSource="{Binding Items}"
+				AutoGenerateColumns="False"
+				IsReadOnly="True"
+				CanUserAddRows="False"
+				CanUserDeleteRows="False">
 
-		</DataGrid>
+				<DataGrid.Columns>
+
+					<DataGridTextColumn
+						Header="Part Number"
+						Binding="{Binding PartNumber}"
+						Width="180" />
+
+					<DataGridTextColumn
+						Header="Description"
+						Binding="{Binding Description}"
+						Width="*" />
+
+					<DataGridTextColumn
+						Header="Manufacturer"
+						Binding="{Binding Manufacturer}"
+						Width="180" />
+
+					<DataGridTextColumn
+						Header="Category"
+						Binding="{Binding Category}"
+						Width="180" />
+
+				</DataGrid.Columns>
+
+			</DataGrid>
+
+			<Border
+				Grid.Column="2"
+				Padding="16"
+				BorderBrush="#DDDDDD"
+				BorderThickness="1">
+
+				<Grid>
+
+					<Grid.RowDefinitions>
+						<RowDefinition Height="Auto" />
+						<RowDefinition Height="16" />
+						<RowDefinition Height="Auto" />
+						<RowDefinition Height="8" />
+						<RowDefinition Height="Auto" />
+						<RowDefinition Height="8" />
+						<RowDefinition Height="Auto" />
+						<RowDefinition Height="8" />
+						<RowDefinition Height="Auto" />
+						<RowDefinition Height="16" />
+						<RowDefinition Height="Auto" />
+						<RowDefinition Height="*" />
+					</Grid.RowDefinitions>
+
+					<TextBlock
+						Grid.Row="0"
+						Text="Item Details"
+						FontSize="18"
+						FontWeight="SemiBold" />
+
+					<StackPanel Grid.Row="2">
+						<TextBlock Text="Part Number" />
+						<TextBox
+							Margin="0,4,0,0"
+							Text="{Binding Editor.PartNumber, UpdateSourceTrigger=PropertyChanged}" />
+					</StackPanel>
+
+					<StackPanel Grid.Row="4">
+						<TextBlock Text="Description" />
+						<TextBox
+							Margin="0,4,0,0"
+							Text="{Binding Editor.Description, UpdateSourceTrigger=PropertyChanged}" />
+					</StackPanel>
+
+					<StackPanel Grid.Row="6">
+						<TextBlock Text="Manufacturer" />
+						<TextBox
+							Margin="0,4,0,0"
+							Text="{Binding Editor.Manufacturer, UpdateSourceTrigger=PropertyChanged}" />
+					</StackPanel>
+
+					<StackPanel Grid.Row="8">
+						<TextBlock Text="Category" />
+						<TextBox
+							Margin="0,4,0,0"
+							Text="{Binding Editor.Category, UpdateSourceTrigger=PropertyChanged}" />
+					</StackPanel>
+
+					<StackPanel
+						Grid.Row="10"
+						Orientation="Horizontal"
+						HorizontalAlignment="Right">
+
+						<Button
+							Width="100"
+							Height="32"
+							Content="Save"
+							Command="{Binding SaveItemCommand}" />
+
+					</StackPanel>
+
+				</Grid>
+
+			</Border>
+
+		</Grid>
 
 	</Grid>
 

@@ -3,6 +3,7 @@
 
 using System.Collections.ObjectModel;
 
+using Depot.Commands;
 using Depot.Services;
 
 namespace Depot.ViewModels;
@@ -17,11 +18,27 @@ public sealed class ItemsViewModel
 	{
 		_inventoryService = inventoryService;
 
+		Editor = new ItemEditorViewModel();
+
+		NewItemCommand =
+			new RelayCommand(
+				NewItem);
+
+		SaveItemCommand =
+			new RelayCommand(
+				SaveItem);
+
 		LoadItems();
 	}
 
 	public ObservableCollection<ItemViewModel> Items { get; }
 		= new();
+
+	public ItemEditorViewModel Editor { get; }
+
+	public RelayCommand NewItemCommand { get; }
+
+	public RelayCommand SaveItemCommand { get; }
 
 	public void LoadItems()
 	{
@@ -32,5 +49,23 @@ public sealed class ItemsViewModel
 			Items.Add(
 				new ItemViewModel(item));
 		}
+	}
+
+	private void NewItem()
+	{
+		Editor.Clear();
+	}
+
+	private void SaveItem()
+	{
+		_inventoryService.CreateItem(
+			Editor.PartNumber,
+			Editor.Description,
+			Editor.Manufacturer,
+			Editor.Category);
+
+		LoadItems();
+
+		Editor.Clear();
 	}
 }
