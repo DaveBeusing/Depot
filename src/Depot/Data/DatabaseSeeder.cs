@@ -57,5 +57,11 @@ public sealed class DatabaseSeeder
 			0.50m,
 			"INV-1001",
 			"Second demo purchase");
+
+		_stockService.AddWithdrawal(
+			ssd1.Id,
+			10,
+			"LAB-001",
+			"Demo withdrawal");
 	}
 }

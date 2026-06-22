@@ -88,6 +88,76 @@ public sealed class StockService
 			movement);
 	}
 
+	public void AddWithdrawal(
+		long itemId,
+		int quantity,
+		string? reference,
+		string? notes)
+	{
+		if (itemId <= 0)
+		{
+			throw new ArgumentException(
+				"Item id is required.",
+				nameof(itemId));
+		}
+
+		if (quantity <= 0)
+		{
+			throw new ArgumentException(
+				"Quantity must be greater than zero.",
+				nameof(quantity));
+		}
+
+		var item =
+			_itemRepository.GetById(itemId);
+
+		if (item is null)
+		{
+			throw new InvalidOperationException(
+				$"Item with id '{itemId}' was not found.");
+		}
+
+		var currentStock =
+			GetCurrentStock(itemId);
+
+		if (currentStock < quantity)
+		{
+			throw new InvalidOperationException(
+				$"Insufficient stock. Current stock is {currentStock}.");
+		}
+
+		var movement =
+			new StockMovement
+			{
+				ItemId = itemId,
+
+				MovementType =
+					StockMovementType.Withdrawal,
+
+				TimestampUtc =
+					DateTime.UtcNow,
+
+				Quantity =
+					-quantity,
+
+				UnitPrice =
+					null,
+
+				Reference =
+					string.IsNullOrWhiteSpace(reference)
+						? null
+						: reference.Trim(),
+
+				Notes =
+					string.IsNullOrWhiteSpace(notes)
+						? null
+						: notes.Trim()
+			};
+
+		_stockMovementRepository.Create(
+			movement);
+	}
+
 	public int GetCurrentStock(
 		long itemId)
 	{
@@ -147,7 +217,7 @@ public sealed class StockService
 		return currentStock * averageCost;
 	}
 
-		public InventorySummary GetInventorySummary(
+	public InventorySummary GetInventorySummary(
 		long itemId)
 	{
 		var currentStock =
@@ -170,5 +240,4 @@ public sealed class StockService
 				currentStock * averageCost
 		};
 	}
-	
 }
