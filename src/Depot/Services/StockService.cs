@@ -240,4 +240,66 @@ public sealed class StockService
 				currentStock * averageCost
 		};
 	}
+
+	public void AddCorrection(
+		long itemId,
+		int quantityDelta,
+		string? reference,
+		string? notes)
+	{
+		if (itemId <= 0)
+		{
+			throw new ArgumentException(
+				"Item id is required.",
+				nameof(itemId));
+		}
+
+		if (quantityDelta == 0)
+		{
+			throw new ArgumentException(
+				"Correction quantity cannot be zero.",
+				nameof(quantityDelta));
+		}
+
+		var item =
+			_itemRepository.GetById(itemId);
+
+		if (item is null)
+		{
+			throw new InvalidOperationException(
+				$"Item with id '{itemId}' was not found.");
+		}
+
+		var movement =
+			new StockMovement
+			{
+				ItemId = itemId,
+
+				MovementType =
+					StockMovementType.Correction,
+
+				TimestampUtc =
+					DateTime.UtcNow,
+
+				Quantity =
+					quantityDelta,
+
+				UnitPrice =
+					null,
+
+				Reference =
+					string.IsNullOrWhiteSpace(reference)
+						? null
+						: reference.Trim(),
+
+				Notes =
+					string.IsNullOrWhiteSpace(notes)
+						? null
+						: notes.Trim()
+			};
+
+		_stockMovementRepository.Create(
+			movement);
+	}
+
 }

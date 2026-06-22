@@ -63,5 +63,11 @@ public sealed class DatabaseSeeder
 			10,
 			"LAB-001",
 			"Demo withdrawal");
+
+		_stockService.AddCorrection(
+			ssd1.Id,
+			-2,
+			"INV-COUNT",
+			"Inventory adjustment");
 	}
 }
