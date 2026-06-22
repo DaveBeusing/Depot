@@ -21,7 +21,10 @@ public partial class App : Application
 
 	public static InventoryService InventoryService { get; private set; } = null!;
 
+	public static DatabaseSeeder DatabaseSeeder { get; private set; } = null!;
+
 	public static MainViewModel MainViewModel { get; private set; } = null!;
+
 
 	protected override void OnStartup(StartupEventArgs e)
 	{
@@ -40,6 +43,11 @@ public partial class App : Application
 
 		InventoryService =
 			new InventoryService(ItemRepository);
+
+		DatabaseSeeder =
+			new DatabaseSeeder(InventoryService);
+
+		DatabaseSeeder.Seed();
 		
 		MainViewModel =
 			new MainViewModel(InventoryService);
