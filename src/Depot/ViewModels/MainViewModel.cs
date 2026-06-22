@@ -4,6 +4,7 @@
 using System.Collections.ObjectModel;
 
 using Depot.Services;
+using Depot.Repositories;
 
 namespace Depot.ViewModels;
 
@@ -15,7 +16,9 @@ public sealed class MainViewModel
 
 	public MainViewModel(
 		InventoryService inventoryService,
-		StockService stockService)
+		StockService stockService,
+		ItemRepository itemRepository,
+		StockMovementRepository stockMovementRepository)
 	{
 		InventoryViewModel =
 			new InventoryViewModel(
@@ -24,6 +27,11 @@ public sealed class MainViewModel
 		ItemsViewModel =
 			new ItemsViewModel(
 				inventoryService);
+
+		MovementsViewModel =
+			new MovementsViewModel(
+				itemRepository,
+				stockMovementRepository);
 
 		NavigationItems.Add(
 			new NavigationItem
@@ -66,6 +74,8 @@ public sealed class MainViewModel
 
 	public ItemsViewModel ItemsViewModel { get; }
 
+	public MovementsViewModel MovementsViewModel { get; }
+
 	public NavigationItem? SelectedNavigationItem
 	{
 		get => _selectedNavigationItem;
@@ -105,6 +115,7 @@ public sealed class MainViewModel
 			{
 				"Inventory" => InventoryViewModel,
 				"Items" => ItemsViewModel,
+				"Movements" => MovementsViewModel,
 				_ => InventoryViewModel
 			};
 	}
