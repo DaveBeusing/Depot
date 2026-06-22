@@ -3,6 +3,7 @@
 
 using Depot.Data;
 using Depot.Models;
+using Microsoft.Data.Sqlite;
 
 namespace Depot.Repositories;
 
@@ -47,25 +48,11 @@ public sealed class ItemRepository
 		SELECT last_insert_rowid();
 		""";
 
-		command.Parameters.AddWithValue(
-			"$PartNumber",
-			item.PartNumber);
-
-		command.Parameters.AddWithValue(
-			"$Description",
-			item.Description);
-
-		command.Parameters.AddWithValue(
-			"$Manufacturer",
-			(object?)item.Manufacturer ?? DBNull.Value);
-
-		command.Parameters.AddWithValue(
-			"$Category",
-			(object?)item.Category ?? DBNull.Value);
-
-		command.Parameters.AddWithValue(
-			"$IsActive",
-			item.IsActive ? 1 : 0);
+		command.Parameters.AddWithValue("$PartNumber", item.PartNumber);
+		command.Parameters.AddWithValue("$Description", item.Description);
+		command.Parameters.AddWithValue("$Manufacturer", (object?)item.Manufacturer ?? DBNull.Value);
+		command.Parameters.AddWithValue("$Category", (object?)item.Category ?? DBNull.Value);
+		command.Parameters.AddWithValue("$IsActive", item.IsActive ? 1 : 0);
 
 		return (long)command.ExecuteScalar()!;
 	}
@@ -90,25 +77,32 @@ public sealed class ItemRepository
 		WHERE Id = $Id;
 		""";
 
-		command.Parameters.AddWithValue(
-			"$Id",
-			item.Id);
+		command.Parameters.AddWithValue("$Id", item.Id);
+		command.Parameters.AddWithValue("$Description", item.Description);
+		command.Parameters.AddWithValue("$Manufacturer", (object?)item.Manufacturer ?? DBNull.Value);
+		command.Parameters.AddWithValue("$Category", (object?)item.Category ?? DBNull.Value);
+		command.Parameters.AddWithValue("$IsActive", item.IsActive ? 1 : 0);
 
-		command.Parameters.AddWithValue(
-			"$Description",
-			item.Description);
+		command.ExecuteNonQuery();
+	}
 
-		command.Parameters.AddWithValue(
-			"$Manufacturer",
-			(object?)item.Manufacturer ?? DBNull.Value);
+	public void Deactivate(
+		long id)
+	{
+		using var connection = _connectionFactory.CreateConnection();
 
-		command.Parameters.AddWithValue(
-			"$Category",
-			(object?)item.Category ?? DBNull.Value);
+		connection.Open();
 
-		command.Parameters.AddWithValue(
-			"$IsActive",
-			item.IsActive ? 1 : 0);
+		using var command = connection.CreateCommand();
+
+		command.CommandText =
+		"""
+		UPDATE Items
+		SET IsActive = 0
+		WHERE Id = $Id;
+		""";
+
+		command.Parameters.AddWithValue("$Id", id);
 
 		command.ExecuteNonQuery();
 	}
@@ -133,6 +127,7 @@ public sealed class ItemRepository
 			Category,
 			IsActive
 		FROM Items
+		WHERE IsActive = 1
 		ORDER BY PartNumber;
 		""";
 
@@ -169,9 +164,7 @@ public sealed class ItemRepository
 		WHERE Id = $Id;
 		""";
 
-		command.Parameters.AddWithValue(
-			"$Id",
-			id);
+		command.Parameters.AddWithValue("$Id", id);
 
 		using var reader = command.ExecuteReader();
 
@@ -205,9 +198,7 @@ public sealed class ItemRepository
 		WHERE PartNumber = $PartNumber;
 		""";
 
-		command.Parameters.AddWithValue(
-			"$PartNumber",
-			partNumber);
+		command.Parameters.AddWithValue("$PartNumber", partNumber);
 
 		using var reader = command.ExecuteReader();
 
@@ -220,19 +211,15 @@ public sealed class ItemRepository
 	}
 
 	private static Item ReadItem(
-		Microsoft.Data.Sqlite.SqliteDataReader reader)
+		SqliteDataReader reader)
 	{
 		return new Item
 		{
 			Id = reader.GetInt64(0),
 			PartNumber = reader.GetString(1),
 			Description = reader.GetString(2),
-			Manufacturer = reader.IsDBNull(3)
-				? null
-				: reader.GetString(3),
-			Category = reader.IsDBNull(4)
-				? null
-				: reader.GetString(4),
+			Manufacturer = reader.IsDBNull(3) ? null : reader.GetString(3),
+			Category = reader.IsDBNull(4) ? null : reader.GetString(4),
 			IsActive = reader.GetInt64(5) == 1
 		};
 	}

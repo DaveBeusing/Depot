@@ -29,34 +29,24 @@ public sealed class InventoryService
 	{
 		partNumber = partNumber.Trim();
 		description = description.Trim();
-		manufacturer = string.IsNullOrWhiteSpace(manufacturer)
-			? null
-			: manufacturer.Trim();
-		category = string.IsNullOrWhiteSpace(category)
-			? null
-			: category.Trim();
+		manufacturer = string.IsNullOrWhiteSpace(manufacturer) ? null : manufacturer.Trim();
+		category = string.IsNullOrWhiteSpace(category) ? null : category.Trim();
 
 		if (string.IsNullOrWhiteSpace(partNumber))
 		{
-			throw new ArgumentException(
-				"Part number is required.",
-				nameof(partNumber));
+			throw new ArgumentException("Part number is required.", nameof(partNumber));
 		}
 
 		if (string.IsNullOrWhiteSpace(description))
 		{
-			throw new ArgumentException(
-				"Description is required.",
-				nameof(description));
+			throw new ArgumentException("Description is required.", nameof(description));
 		}
 
-		var existingItem =
-			_itemRepository.GetByPartNumber(partNumber);
+		var existingItem = _itemRepository.GetByPartNumber(partNumber);
 
 		if (existingItem is not null)
 		{
-			throw new InvalidOperationException(
-				$"Item '{partNumber}' already exists.");
+			throw new InvalidOperationException($"Item '{partNumber}' already exists.");
 		}
 
 		var item = new Item
@@ -68,8 +58,7 @@ public sealed class InventoryService
 			IsActive = true
 		};
 
-		item.Id =
-			_itemRepository.Create(item);
+		item.Id = _itemRepository.Create(item);
 
 		return item;
 	}
@@ -81,34 +70,24 @@ public sealed class InventoryService
 		string? category)
 	{
 		description = description.Trim();
-		manufacturer = string.IsNullOrWhiteSpace(manufacturer)
-			? null
-			: manufacturer.Trim();
-		category = string.IsNullOrWhiteSpace(category)
-			? null
-			: category.Trim();
+		manufacturer = string.IsNullOrWhiteSpace(manufacturer) ? null : manufacturer.Trim();
+		category = string.IsNullOrWhiteSpace(category) ? null : category.Trim();
 
 		if (id <= 0)
 		{
-			throw new ArgumentException(
-				"Item id is required.",
-				nameof(id));
+			throw new ArgumentException("Item id is required.", nameof(id));
 		}
 
 		if (string.IsNullOrWhiteSpace(description))
 		{
-			throw new ArgumentException(
-				"Description is required.",
-				nameof(description));
+			throw new ArgumentException("Description is required.", nameof(description));
 		}
 
-		var item =
-			_itemRepository.GetById(id);
+		var item = _itemRepository.GetById(id);
 
 		if (item is null)
 		{
-			throw new InvalidOperationException(
-				$"Item with id '{id}' was not found.");
+			throw new InvalidOperationException($"Item with id '{id}' was not found.");
 		}
 
 		item.Description = description;
@@ -118,5 +97,23 @@ public sealed class InventoryService
 		_itemRepository.Update(item);
 
 		return item;
+	}
+
+	public void DeactivateItem(
+		long id)
+	{
+		if (id <= 0)
+		{
+			throw new ArgumentException("Item id is required.", nameof(id));
+		}
+
+		var item = _itemRepository.GetById(id);
+
+		if (item is null)
+		{
+			throw new InvalidOperationException($"Item with id '{id}' was not found.");
+		}
+
+		_itemRepository.Deactivate(id);
 	}
 }

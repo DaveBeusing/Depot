@@ -2,7 +2,6 @@
 // Licensed under the MIT License.
 
 using System.Collections.ObjectModel;
-using System.Windows;
 
 using Depot.Commands;
 using Depot.Services;
@@ -15,6 +14,7 @@ public sealed class ItemsViewModel
 	private readonly InventoryService _inventoryService;
 
 	private ItemViewModel? _selectedItem;
+	private string? _errorMessage;
 
 	public ItemsViewModel(
 		InventoryService inventoryService)
@@ -31,6 +31,11 @@ public sealed class ItemsViewModel
 			new RelayCommand(
 				SaveItem);
 
+		DeactivateItemCommand =
+			new RelayCommand(
+				DeactivateItem,
+				CanDeactivateItem);
+
 		LoadItems();
 	}
 
@@ -43,6 +48,8 @@ public sealed class ItemsViewModel
 
 	public RelayCommand SaveItemCommand { get; }
 
+	public RelayCommand DeactivateItemCommand { get; }
+
 	public ItemViewModel? SelectedItem
 	{
 		get => _selectedItem;
@@ -50,12 +57,28 @@ public sealed class ItemsViewModel
 		set
 		{
 			_selectedItem = value;
-
 			OnPropertyChanged();
 
 			LoadSelectedItem();
+
+			DeactivateItemCommand.RaiseCanExecuteChanged();
 		}
 	}
+
+	public string? ErrorMessage
+	{
+		get => _errorMessage;
+
+		private set
+		{
+			_errorMessage = value;
+			OnPropertyChanged();
+			OnPropertyChanged(nameof(HasErrorMessage));
+		}
+	}
+
+	public bool HasErrorMessage =>
+		!string.IsNullOrWhiteSpace(ErrorMessage);
 
 	public void LoadItems()
 	{
@@ -70,6 +93,8 @@ public sealed class ItemsViewModel
 
 	private void LoadSelectedItem()
 	{
+		ClearError();
+
 		if (SelectedItem is null)
 		{
 			return;
@@ -84,13 +109,19 @@ public sealed class ItemsViewModel
 
 	private void NewItem()
 	{
+		ClearError();
+
 		SelectedItem = null;
 
 		Editor.Clear();
+
+		DeactivateItemCommand.RaiseCanExecuteChanged();
 	}
 
 	private void SaveItem()
 	{
+		ClearError();
+
 		try
 		{
 			if (Editor.Id == 0)
@@ -113,14 +144,50 @@ public sealed class ItemsViewModel
 			LoadItems();
 
 			Editor.Clear();
+
+			SelectedItem = null;
 		}
 		catch (Exception ex)
 		{
-			MessageBox.Show(
-				ex.Message,
-				"Error",
-				MessageBoxButton.OK,
-				MessageBoxImage.Error);
+			ErrorMessage = ex.Message;
 		}
+	}
+
+	private bool CanDeactivateItem()
+	{
+		return Editor.IsExistingItem;
+	}
+
+	private void DeactivateItem()
+	{
+		ClearError();
+
+		if (!Editor.IsExistingItem)
+		{
+			return;
+		}
+
+		try
+		{
+			_inventoryService.DeactivateItem(
+				Editor.Id);
+
+			LoadItems();
+
+			Editor.Clear();
+
+			SelectedItem = null;
+
+			DeactivateItemCommand.RaiseCanExecuteChanged();
+		}
+		catch (Exception ex)
+		{
+			ErrorMessage = ex.Message;
+		}
+	}
+
+	private void ClearError()
+	{
+		ErrorMessage = null;
 	}
 }

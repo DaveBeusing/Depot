@@ -23,6 +23,8 @@ public sealed class ItemEditorViewModel
 			OnPropertyChanged();
 			OnPropertyChanged(nameof(IsExistingItem));
 			OnPropertyChanged(nameof(CanEditPartNumber));
+			OnPropertyChanged(nameof(SaveButtonText));
+			OnPropertyChanged(nameof(EditorTitle));
 		}
 	}
 
@@ -31,6 +33,12 @@ public sealed class ItemEditorViewModel
 
 	public bool CanEditPartNumber =>
 		!IsExistingItem;
+
+	public string SaveButtonText =>
+		IsExistingItem ? "Update" : "Create";
+
+	public string EditorTitle =>
+		IsExistingItem ? "Edit Item" : "New Item";
 
 	public string PartNumber
 	{

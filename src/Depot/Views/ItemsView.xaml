@@ -88,6 +88,8 @@
 						<RowDefinition Height="Auto" />
 						<RowDefinition Height="16" />
 						<RowDefinition Height="Auto" />
+						<RowDefinition Height="16" />
+						<RowDefinition Height="Auto" />
 						<RowDefinition Height="8" />
 						<RowDefinition Height="Auto" />
 						<RowDefinition Height="8" />
@@ -101,11 +103,25 @@
 
 					<TextBlock
 						Grid.Row="0"
-						Text="Item Details"
+						Text="{Binding Editor.EditorTitle}"
 						FontSize="18"
 						FontWeight="SemiBold" />
 
-					<StackPanel Grid.Row="2">
+					<Border
+						Grid.Row="2"
+						Padding="8"
+						Background="#FFF3F3"
+						BorderBrush="#CC5555"
+						BorderThickness="1"
+						Visibility="{Binding HasErrorMessage, Converter={StaticResource BooleanToVisibilityConverter}}">
+
+						<TextBlock
+							Text="{Binding ErrorMessage}"
+							TextWrapping="Wrap" />
+
+					</Border>
+
+					<StackPanel Grid.Row="4">
 						<TextBlock Text="Part Number" />
 						<TextBox
 							Margin="0,4,0,0"
@@ -113,21 +129,21 @@
 							Text="{Binding Editor.PartNumber, UpdateSourceTrigger=PropertyChanged}" />
 					</StackPanel>
 
-					<StackPanel Grid.Row="4">
+					<StackPanel Grid.Row="6">
 						<TextBlock Text="Description" />
 						<TextBox
 							Margin="0,4,0,0"
 							Text="{Binding Editor.Description, UpdateSourceTrigger=PropertyChanged}" />
 					</StackPanel>
 
-					<StackPanel Grid.Row="6">
+					<StackPanel Grid.Row="8">
 						<TextBlock Text="Manufacturer" />
 						<TextBox
 							Margin="0,4,0,0"
 							Text="{Binding Editor.Manufacturer, UpdateSourceTrigger=PropertyChanged}" />
 					</StackPanel>
 
-					<StackPanel Grid.Row="8">
+					<StackPanel Grid.Row="10">
 						<TextBlock Text="Category" />
 						<TextBox
 							Margin="0,4,0,0"
@@ -135,14 +151,21 @@
 					</StackPanel>
 
 					<StackPanel
-						Grid.Row="10"
+						Grid.Row="12"
 						Orientation="Horizontal"
 						HorizontalAlignment="Right">
 
 						<Button
 							Width="100"
 							Height="32"
-							Content="Save"
+							Margin="0,0,8,0"
+							Content="Deactivate"
+							Command="{Binding DeactivateItemCommand}" />
+
+						<Button
+							Width="100"
+							Height="32"
+							Content="{Binding Editor.SaveButtonText}"
 							Command="{Binding SaveItemCommand}" />
 
 					</StackPanel>
