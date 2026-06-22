@@ -10,7 +10,8 @@ public sealed class InventoryService
 {
 	private readonly ItemRepository _itemRepository;
 
-	public InventoryService(ItemRepository itemRepository)
+	public InventoryService(
+		ItemRepository itemRepository)
 	{
 		_itemRepository = itemRepository;
 	}
@@ -28,6 +29,12 @@ public sealed class InventoryService
 	{
 		partNumber = partNumber.Trim();
 		description = description.Trim();
+		manufacturer = string.IsNullOrWhiteSpace(manufacturer)
+			? null
+			: manufacturer.Trim();
+		category = string.IsNullOrWhiteSpace(category)
+			? null
+			: category.Trim();
 
 		if (string.IsNullOrWhiteSpace(partNumber))
 		{
@@ -67,4 +74,49 @@ public sealed class InventoryService
 		return item;
 	}
 
+	public Item UpdateItem(
+		long id,
+		string description,
+		string? manufacturer,
+		string? category)
+	{
+		description = description.Trim();
+		manufacturer = string.IsNullOrWhiteSpace(manufacturer)
+			? null
+			: manufacturer.Trim();
+		category = string.IsNullOrWhiteSpace(category)
+			? null
+			: category.Trim();
+
+		if (id <= 0)
+		{
+			throw new ArgumentException(
+				"Item id is required.",
+				nameof(id));
+		}
+
+		if (string.IsNullOrWhiteSpace(description))
+		{
+			throw new ArgumentException(
+				"Description is required.",
+				nameof(description));
+		}
+
+		var item =
+			_itemRepository.GetById(id);
+
+		if (item is null)
+		{
+			throw new InvalidOperationException(
+				$"Item with id '{id}' was not found.");
+		}
+
+		item.Description = description;
+		item.Manufacturer = manufacturer;
+		item.Category = category;
+
+		_itemRepository.Update(item);
+
+		return item;
+	}
 }

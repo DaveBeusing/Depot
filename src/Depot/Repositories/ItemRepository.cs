@@ -10,12 +10,14 @@ public sealed class ItemRepository
 {
 	private readonly SqliteConnectionFactory _connectionFactory;
 
-	public ItemRepository(SqliteConnectionFactory connectionFactory)
+	public ItemRepository(
+		SqliteConnectionFactory connectionFactory)
 	{
 		_connectionFactory = connectionFactory;
 	}
 
-	public long Create(Item item)
+	public long Create(
+		Item item)
 	{
 		using var connection = _connectionFactory.CreateConnection();
 
@@ -68,6 +70,49 @@ public sealed class ItemRepository
 		return (long)command.ExecuteScalar()!;
 	}
 
+	public void Update(
+		Item item)
+	{
+		using var connection = _connectionFactory.CreateConnection();
+
+		connection.Open();
+
+		using var command = connection.CreateCommand();
+
+		command.CommandText =
+		"""
+		UPDATE Items
+		SET
+			Description = $Description,
+			Manufacturer = $Manufacturer,
+			Category = $Category,
+			IsActive = $IsActive
+		WHERE Id = $Id;
+		""";
+
+		command.Parameters.AddWithValue(
+			"$Id",
+			item.Id);
+
+		command.Parameters.AddWithValue(
+			"$Description",
+			item.Description);
+
+		command.Parameters.AddWithValue(
+			"$Manufacturer",
+			(object?)item.Manufacturer ?? DBNull.Value);
+
+		command.Parameters.AddWithValue(
+			"$Category",
+			(object?)item.Category ?? DBNull.Value);
+
+		command.Parameters.AddWithValue(
+			"$IsActive",
+			item.IsActive ? 1 : 0);
+
+		command.ExecuteNonQuery();
+	}
+
 	public IReadOnlyList<Item> GetAll()
 	{
 		var result = new List<Item>();
@@ -96,25 +141,50 @@ public sealed class ItemRepository
 		while (reader.Read())
 		{
 			result.Add(
-				new Item
-				{
-					Id = reader.GetInt64(0),
-					PartNumber = reader.GetString(1),
-					Description = reader.GetString(2),
-					Manufacturer = reader.IsDBNull(3)
-						? null
-						: reader.GetString(3),
-					Category = reader.IsDBNull(4)
-						? null
-						: reader.GetString(4),
-					IsActive = reader.GetInt64(5) == 1
-				});
+				ReadItem(reader));
 		}
 
 		return result;
 	}
 
-	public Item? GetByPartNumber(string partNumber)
+	public Item? GetById(
+		long id)
+	{
+		using var connection = _connectionFactory.CreateConnection();
+
+		connection.Open();
+
+		using var command = connection.CreateCommand();
+
+		command.CommandText =
+		"""
+		SELECT
+			Id,
+			PartNumber,
+			Description,
+			Manufacturer,
+			Category,
+			IsActive
+		FROM Items
+		WHERE Id = $Id;
+		""";
+
+		command.Parameters.AddWithValue(
+			"$Id",
+			id);
+
+		using var reader = command.ExecuteReader();
+
+		if (!reader.Read())
+		{
+			return null;
+		}
+
+		return ReadItem(reader);
+	}
+
+	public Item? GetByPartNumber(
+		string partNumber)
 	{
 		using var connection = _connectionFactory.CreateConnection();
 
@@ -146,6 +216,12 @@ public sealed class ItemRepository
 			return null;
 		}
 
+		return ReadItem(reader);
+	}
+
+	private static Item ReadItem(
+		Microsoft.Data.Sqlite.SqliteDataReader reader)
+	{
 		return new Item
 		{
 			Id = reader.GetInt64(0),
@@ -160,6 +236,4 @@ public sealed class ItemRepository
 			IsActive = reader.GetInt64(5) == 1
 		};
 	}
-
-
 }

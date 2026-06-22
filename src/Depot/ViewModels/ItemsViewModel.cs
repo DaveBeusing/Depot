@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 using System.Collections.ObjectModel;
+using System.Windows;
 
 using Depot.Commands;
 using Depot.Services;
@@ -90,14 +91,36 @@ public sealed class ItemsViewModel
 
 	private void SaveItem()
 	{
-		_inventoryService.CreateItem(
-			Editor.PartNumber,
-			Editor.Description,
-			Editor.Manufacturer,
-			Editor.Category);
+		try
+		{
+			if (Editor.Id == 0)
+			{
+				_inventoryService.CreateItem(
+					Editor.PartNumber,
+					Editor.Description,
+					Editor.Manufacturer,
+					Editor.Category);
+			}
+			else
+			{
+				_inventoryService.UpdateItem(
+					Editor.Id,
+					Editor.Description,
+					Editor.Manufacturer,
+					Editor.Category);
+			}
 
-		LoadItems();
+			LoadItems();
 
-		Editor.Clear();
+			Editor.Clear();
+		}
+		catch (Exception ex)
+		{
+			MessageBox.Show(
+				ex.Message,
+				"Error",
+				MessageBoxButton.OK,
+				MessageBoxImage.Error);
+		}
 	}
 }

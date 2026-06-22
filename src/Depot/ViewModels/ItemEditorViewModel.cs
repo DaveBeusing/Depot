@@ -9,7 +9,6 @@ public sealed class ItemEditorViewModel
 	: BaseViewModel
 {
 	private long _id;
-
 	private string _partNumber = string.Empty;
 	private string _description = string.Empty;
 	private string? _manufacturer;
@@ -22,8 +21,16 @@ public sealed class ItemEditorViewModel
 		{
 			_id = value;
 			OnPropertyChanged();
+			OnPropertyChanged(nameof(IsExistingItem));
+			OnPropertyChanged(nameof(CanEditPartNumber));
 		}
 	}
+
+	public bool IsExistingItem =>
+		Id > 0;
+
+	public bool CanEditPartNumber =>
+		!IsExistingItem;
 
 	public string PartNumber
 	{
@@ -65,7 +72,8 @@ public sealed class ItemEditorViewModel
 		}
 	}
 
-	public void Load(Item item)
+	public void Load(
+		Item item)
 	{
 		Id = item.Id;
 		PartNumber = item.PartNumber;

@@ -109,6 +109,7 @@
 						<TextBlock Text="Part Number" />
 						<TextBox
 							Margin="0,4,0,0"
+							IsEnabled="{Binding Editor.CanEditPartNumber}"
 							Text="{Binding Editor.PartNumber, UpdateSourceTrigger=PropertyChanged}" />
 					</StackPanel>
 
