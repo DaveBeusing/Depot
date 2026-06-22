@@ -12,16 +12,65 @@ public sealed class MainViewModel
 {
 	private readonly InventoryService _inventoryService;
 
+	private NavigationItem? _selectedNavigationItem;
+
 	public MainViewModel(
 		InventoryService inventoryService)
 	{
 		_inventoryService = inventoryService;
 
+		NavigationItems.Add(
+			new NavigationItem
+			{
+				Name = "Inventory"
+			});
+
+		NavigationItems.Add(
+			new NavigationItem
+			{
+				Name = "Items"
+			});
+
+		NavigationItems.Add(
+			new NavigationItem
+			{
+				Name = "Movements"
+			});
+
+		NavigationItems.Add(
+			new NavigationItem
+			{
+				Name = "Reports"
+			});
+
+		NavigationItems.Add(
+			new NavigationItem
+			{
+				Name = "Settings"
+			});
+
+		SelectedNavigationItem =
+			NavigationItems[0];
+
 		LoadItems();
 	}
 
+	public ObservableCollection<NavigationItem> NavigationItems { get; }
+		= new();
+
 	public ObservableCollection<ItemViewModel> Items { get; }
 		= new();
+
+	public NavigationItem? SelectedNavigationItem
+	{
+		get => _selectedNavigationItem;
+
+		set
+		{
+			_selectedNavigationItem = value;
+			OnPropertyChanged();
+		}
+	}
 
 	private void LoadItems()
 	{
@@ -33,5 +82,4 @@ public sealed class MainViewModel
 				new ItemViewModel(item));
 		}
 	}
-
 }

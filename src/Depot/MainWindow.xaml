@@ -6,59 +6,102 @@
 	xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
 	mc:Ignorable="d"
 	Title="Depot"
-	Width="1200"
-	Height="800"
-	MinWidth="1000"
-	MinHeight="600">
+	Width="1400"
+	Height="900"
+	MinWidth="1200"
+	MinHeight="700">
 
-	<Grid Margin="16">
+	<Grid>
 
-		<Grid.RowDefinitions>
-			<RowDefinition Height="Auto" />
-			<RowDefinition Height="16" />
-			<RowDefinition Height="*" />
-		</Grid.RowDefinitions>
+		<Grid.ColumnDefinitions>
+			<ColumnDefinition Width="220" />
+			<ColumnDefinition Width="*" />
+		</Grid.ColumnDefinitions>
 
-		<TextBlock
-			Grid.Row="0"
-			Text="Depot"
-			FontSize="24"
-			FontWeight="SemiBold" />
+		<Border
+			Grid.Column="0"
+			Background="#F4F4F4">
 
-		<DataGrid
-			Grid.Row="2"
-			ItemsSource="{Binding Items}"
-			AutoGenerateColumns="False"
-			IsReadOnly="True"
-			CanUserAddRows="False"
-			CanUserDeleteRows="False"
-			SelectionMode="Single">
+			<DockPanel>
 
-			<DataGrid.Columns>
+				<TextBlock
+					DockPanel.Dock="Top"
+					Margin="16"
+					Text="Depot"
+					FontSize="24"
+					FontWeight="SemiBold" />
 
-				<DataGridTextColumn
-					Header="Part Number"
-					Binding="{Binding PartNumber}"
-					Width="200" />
+				<ListBox
+					ItemsSource="{Binding NavigationItems}"
+					SelectedItem="{Binding SelectedNavigationItem}"
+					BorderThickness="0"
+					Background="Transparent">
 
-				<DataGridTextColumn
-					Header="Description"
-					Binding="{Binding Description}"
-					Width="*" />
+					<ListBox.ItemTemplate>
+						<DataTemplate>
+							<TextBlock
+								Margin="12"
+								Text="{Binding Name}" />
+						</DataTemplate>
+					</ListBox.ItemTemplate>
 
-				<DataGridTextColumn
-					Header="Manufacturer"
-					Binding="{Binding Manufacturer}"
-					Width="200" />
+				</ListBox>
 
-				<DataGridTextColumn
-					Header="Category"
-					Binding="{Binding Category}"
-					Width="200" />
+			</DockPanel>
 
-			</DataGrid.Columns>
+		</Border>
 
-		</DataGrid>
+		<Grid
+			Grid.Column="1"
+			Margin="16">
+
+			<Grid.RowDefinitions>
+				<RowDefinition Height="Auto" />
+				<RowDefinition Height="16" />
+				<RowDefinition Height="*" />
+			</Grid.RowDefinitions>
+
+			<TextBlock
+				Grid.Row="0"
+				Text="Items"
+				FontSize="22"
+				FontWeight="SemiBold" />
+
+			<DataGrid
+				Grid.Row="2"
+				ItemsSource="{Binding Items}"
+				AutoGenerateColumns="False"
+				IsReadOnly="True"
+				CanUserAddRows="False"
+				CanUserDeleteRows="False">
+
+				<DataGrid.Columns>
+
+					<DataGridTextColumn
+						Header="Part Number"
+						Binding="{Binding PartNumber}"
+						Width="180" />
+
+					<DataGridTextColumn
+						Header="Description"
+						Binding="{Binding Description}"
+						Width="*" />
+
+					<DataGridTextColumn
+						Header="Manufacturer"
+						Binding="{Binding Manufacturer}"
+						Width="180" />
+
+					<DataGridTextColumn
+						Header="Category"
+						Binding="{Binding Category}"
+						Width="180" />
+
+				</DataGrid.Columns>
+
+			</DataGrid>
+
+		</Grid>
 
 	</Grid>
 
