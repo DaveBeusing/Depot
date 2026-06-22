@@ -25,6 +25,8 @@ public partial class App : Application
 
 	public static MainViewModel MainViewModel { get; private set; } = null!;
 
+	public static StockMovementRepository StockMovementRepository { get; private set; } = null!;
+
 
 	protected override void OnStartup(StartupEventArgs e)
 	{
@@ -40,6 +42,9 @@ public partial class App : Application
 
 		ItemRepository =
 			new ItemRepository(ConnectionFactory);
+
+		StockMovementRepository =
+			new StockMovementRepository(ConnectionFactory);
 
 		InventoryService =
 			new InventoryService(ItemRepository);
