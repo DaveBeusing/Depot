@@ -146,4 +146,29 @@ public sealed class StockService
 
 		return currentStock * averageCost;
 	}
+
+		public InventorySummary GetInventorySummary(
+		long itemId)
+	{
+		var currentStock =
+			GetCurrentStock(itemId);
+
+		var averageCost =
+			GetAverageCost(itemId);
+
+		return new InventorySummary
+		{
+			ItemId = itemId,
+
+			CurrentStock =
+				currentStock,
+
+			AverageCost =
+				averageCost,
+
+			InventoryValue =
+				currentStock * averageCost
+		};
+	}
+	
 }
