@@ -114,4 +114,52 @@ public sealed class ItemRepository
 		return result;
 	}
 
+	public Item? GetByPartNumber(string partNumber)
+	{
+		using var connection = _connectionFactory.CreateConnection();
+
+		connection.Open();
+
+		using var command = connection.CreateCommand();
+
+		command.CommandText =
+		"""
+		SELECT
+			Id,
+			PartNumber,
+			Description,
+			Manufacturer,
+			Category,
+			IsActive
+		FROM Items
+		WHERE PartNumber = $PartNumber;
+		""";
+
+		command.Parameters.AddWithValue(
+			"$PartNumber",
+			partNumber);
+
+		using var reader = command.ExecuteReader();
+
+		if (!reader.Read())
+		{
+			return null;
+		}
+
+		return new Item
+		{
+			Id = reader.GetInt64(0),
+			PartNumber = reader.GetString(1),
+			Description = reader.GetString(2),
+			Manufacturer = reader.IsDBNull(3)
+				? null
+				: reader.GetString(3),
+			Category = reader.IsDBNull(4)
+				? null
+				: reader.GetString(4),
+			IsActive = reader.GetInt64(5) == 1
+		};
+	}
+
+
 }

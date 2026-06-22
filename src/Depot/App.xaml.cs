@@ -4,6 +4,7 @@
 using System.Windows;
 using Depot.Data;
 using Depot.Repositories;
+using Depot.Services;
 
 namespace Depot;
 
@@ -14,6 +15,8 @@ public partial class App : Application
 	public static DepotDatabase Database { get; private set; } = null!;
 
 	public static ItemRepository ItemRepository { get; private set; } = null!;
+
+	public static InventoryService InventoryService { get; private set; } = null!;
 
 	protected override void OnStartup(StartupEventArgs e)
 	{
@@ -29,6 +32,9 @@ public partial class App : Application
 
 		ItemRepository =
 			new ItemRepository(ConnectionFactory);
+
+		InventoryService =
+			new InventoryService(ItemRepository);
 	}
 
 }
