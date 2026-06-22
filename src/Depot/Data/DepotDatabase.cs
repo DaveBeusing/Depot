@@ -33,10 +33,9 @@ public sealed class DepotDatabase
 
 			SetDatabaseVersion(
 				connection,
-				DatabaseVersion.CurrentVersion);
+				1);
 
-			version =
-				DatabaseVersion.CurrentVersion;
+			version = 1;
 		}
 
 		ApplyMigrations(
@@ -143,6 +142,40 @@ public sealed class DepotDatabase
 		command.ExecuteNonQuery();
 	}
 
+	private static void MigrateToVersion2(
+		SqliteConnection connection)
+	{
+		using var command =
+			connection.CreateCommand();
+
+		command.CommandText =
+		"""
+		CREATE TABLE StockMovements
+		(
+			Id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+
+			ItemId              INTEGER NOT NULL,
+
+			MovementType        INTEGER NOT NULL,
+
+			TimestampUtc        TEXT NOT NULL,
+
+			Quantity            INTEGER NOT NULL,
+
+			UnitPrice           REAL NULL,
+
+			Reference           TEXT NULL,
+
+			Notes               TEXT NULL,
+
+			FOREIGN KEY(ItemId)
+				REFERENCES Items(Id)
+		);
+		""";
+
+		command.ExecuteNonQuery();
+	}
+
 	private static void ApplyMigrations(
 		SqliteConnection connection,
 		int version)
@@ -153,7 +186,15 @@ public sealed class DepotDatabase
 			{
 				case 1:
 				{
+					MigrateToVersion2(
+						connection);
+
+					SetDatabaseVersion(
+						connection,
+						2);
+
 					version = 2;
+
 					break;
 				}
 
