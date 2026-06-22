@@ -9,23 +9,123 @@ public sealed class DepotDatabase
 {
 	private readonly SqliteConnectionFactory _connectionFactory;
 
-	public DepotDatabase(SqliteConnectionFactory connectionFactory)
+	public DepotDatabase(
+		SqliteConnectionFactory connectionFactory)
 	{
 		_connectionFactory = connectionFactory;
 	}
 
 	public void Initialize()
 	{
-		using var connection = _connectionFactory.CreateConnection();
+		using var connection =
+			_connectionFactory.CreateConnection();
 
 		connection.Open();
 
-		CreateTables(connection);
+		CreateDatabaseInfoTable(connection);
+
+		var version =
+			GetDatabaseVersion(connection);
+
+		if (version == 0)
+		{
+			CreateVersion1Schema(connection);
+
+			SetDatabaseVersion(
+				connection,
+				DatabaseVersion.CurrentVersion);
+
+			version =
+				DatabaseVersion.CurrentVersion;
+		}
+
+		ApplyMigrations(
+			connection,
+			version);
 	}
 
-	private static void CreateTables(SqliteConnection connection)
+	private static void CreateDatabaseInfoTable(
+		SqliteConnection connection)
 	{
-		using var command = connection.CreateCommand();
+		using var command =
+			connection.CreateCommand();
+
+		command.CommandText =
+		"""
+		CREATE TABLE IF NOT EXISTS DatabaseInfo
+		(
+			Version INTEGER NOT NULL
+		);
+		""";
+
+		command.ExecuteNonQuery();
+	}
+
+	private static int GetDatabaseVersion(
+		SqliteConnection connection)
+	{
+		using var command =
+			connection.CreateCommand();
+
+		command.CommandText =
+		"""
+		SELECT Version
+		FROM DatabaseInfo
+		LIMIT 1;
+		""";
+
+		var result =
+			command.ExecuteScalar();
+
+		if (result is null)
+		{
+			return 0;
+		}
+
+		return Convert.ToInt32(result);
+	}
+
+	private static void SetDatabaseVersion(
+		SqliteConnection connection,
+		int version)
+	{
+		using var deleteCommand =
+			connection.CreateCommand();
+
+		deleteCommand.CommandText =
+		"""
+		DELETE FROM DatabaseInfo;
+		""";
+
+		deleteCommand.ExecuteNonQuery();
+
+		using var insertCommand =
+			connection.CreateCommand();
+
+		insertCommand.CommandText =
+		"""
+		INSERT INTO DatabaseInfo
+		(
+			Version
+		)
+		VALUES
+		(
+			$Version
+		);
+		""";
+
+		insertCommand.Parameters.AddWithValue(
+			"$Version",
+			version);
+
+		insertCommand.ExecuteNonQuery();
+	}
+
+	private static void CreateVersion1Schema(
+		SqliteConnection connection)
+	{
+		using var command =
+			connection.CreateCommand();
 
 		command.CommandText =
 		"""
@@ -38,25 +138,31 @@ public sealed class DepotDatabase
 			Category        TEXT,
 			IsActive        INTEGER NOT NULL DEFAULT 1
 		);
-
-		CREATE TABLE IF NOT EXISTS StockMovements
-		(
-			Id              INTEGER PRIMARY KEY AUTOINCREMENT,
-			ItemId          INTEGER NOT NULL,
-			MovementType    INTEGER NOT NULL,
-			MovementDate    TEXT NOT NULL,
-			Quantity        INTEGER NOT NULL,
-			UnitPrice       REAL,
-			Vendor          TEXT,
-			InvoiceNumber   TEXT,
-			Notes           TEXT,
-
-			FOREIGN KEY(ItemId)
-				REFERENCES Items(Id)
-		);
 		""";
 
 		command.ExecuteNonQuery();
 	}
 
+	private static void ApplyMigrations(
+		SqliteConnection connection,
+		int version)
+	{
+		while (version < DatabaseVersion.CurrentVersion)
+		{
+			switch (version)
+			{
+				case 1:
+				{
+					version = 2;
+					break;
+				}
+
+				default:
+				{
+					throw new InvalidOperationException(
+						$"Unknown database version '{version}'.");
+				}
+			}
+		}
+	}
 }
