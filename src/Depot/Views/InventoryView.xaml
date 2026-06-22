@@ -17,44 +17,234 @@
 			FontSize="22"
 			FontWeight="SemiBold" />
 
-		<DataGrid
-			Grid.Row="2"
-			ItemsSource="{Binding Items}"
-			AutoGenerateColumns="False"
-			IsReadOnly="True"
-			CanUserAddRows="False"
-			CanUserDeleteRows="False">
+		<Grid Grid.Row="2">
 
-			<DataGrid.Columns>
+			<Grid.ColumnDefinitions>
+				<ColumnDefinition Width="2*" />
+				<ColumnDefinition Width="24" />
+				<ColumnDefinition Width="1*" />
+			</Grid.ColumnDefinitions>
 
-				<DataGridTextColumn
-					Header="Part Number"
-					Binding="{Binding PartNumber}"
-					Width="180" />
+			<DataGrid
+				Grid.Column="0"
+				ItemsSource="{Binding Items}"
+				SelectedItem="{Binding SelectedItem}"
+				AutoGenerateColumns="False"
+				IsReadOnly="True"
+				CanUserAddRows="False"
+				CanUserDeleteRows="False">
 
-				<DataGridTextColumn
-					Header="Description"
-					Binding="{Binding Description}"
-					Width="*" />
+				<DataGrid.Columns>
 
-				<DataGridTextColumn
-					Header="Stock"
-					Binding="{Binding CurrentStock}"
-					Width="100" />
+					<DataGridTextColumn
+						Header="Part Number"
+						Binding="{Binding PartNumber}"
+						Width="180" />
 
-				<DataGridTextColumn
-					Header="Avg Cost"
-					Binding="{Binding AverageCost, StringFormat={}{0:N4}}"
-					Width="120" />
+					<DataGridTextColumn
+						Header="Description"
+						Binding="{Binding Description}"
+						Width="*" />
 
-				<DataGridTextColumn
-					Header="Value"
-					Binding="{Binding InventoryValue, StringFormat={}{0:N2}}"
-					Width="120" />
+					<DataGridTextColumn
+						Header="Stock"
+						Binding="{Binding CurrentStock}"
+						Width="100" />
 
-			</DataGrid.Columns>
+					<DataGridTextColumn
+						Header="Avg Cost"
+						Binding="{Binding AverageCost, StringFormat={}{0:N4}}"
+						Width="120" />
 
-		</DataGrid>
+					<DataGridTextColumn
+						Header="Value"
+						Binding="{Binding InventoryValue, StringFormat={}{0:N2}}"
+						Width="120" />
+
+				</DataGrid.Columns>
+
+			</DataGrid>
+
+			<Border
+				Grid.Column="2"
+				Padding="16"
+				BorderBrush="#DDDDDD"
+				BorderThickness="1">
+
+				<Grid>
+
+					<Grid.RowDefinitions>
+						<RowDefinition Height="Auto" />
+						<RowDefinition Height="16" />
+						<RowDefinition Height="Auto" />
+						<RowDefinition Height="16" />
+						<RowDefinition Height="Auto" />
+						<RowDefinition Height="16" />
+						<RowDefinition Height="Auto" />
+						<RowDefinition Height="8" />
+						<RowDefinition Height="*" />
+					</Grid.RowDefinitions>
+
+					<TextBlock
+						Grid.Row="0"
+						Text="Inventory Details"
+						FontSize="18"
+						FontWeight="SemiBold" />
+
+					<Grid Grid.Row="2">
+
+						<Grid.ColumnDefinitions>
+							<ColumnDefinition Width="120" />
+							<ColumnDefinition Width="*" />
+						</Grid.ColumnDefinitions>
+
+						<Grid.RowDefinitions>
+							<RowDefinition Height="Auto" />
+							<RowDefinition Height="8" />
+							<RowDefinition Height="Auto" />
+							<RowDefinition Height="8" />
+							<RowDefinition Height="Auto" />
+							<RowDefinition Height="8" />
+							<RowDefinition Height="Auto" />
+						</Grid.RowDefinitions>
+
+						<TextBlock
+							Grid.Row="0"
+							Grid.Column="0"
+							Text="Part Number"
+							FontWeight="SemiBold" />
+
+						<TextBlock
+							Grid.Row="0"
+							Grid.Column="1"
+							Text="{Binding Details.PartNumber}" />
+
+						<TextBlock
+							Grid.Row="2"
+							Grid.Column="0"
+							Text="Description"
+							FontWeight="SemiBold" />
+
+						<TextBlock
+							Grid.Row="2"
+							Grid.Column="1"
+							Text="{Binding Details.Description}"
+							TextWrapping="Wrap" />
+
+						<TextBlock
+							Grid.Row="4"
+							Grid.Column="0"
+							Text="Manufacturer"
+							FontWeight="SemiBold" />
+
+						<TextBlock
+							Grid.Row="4"
+							Grid.Column="1"
+							Text="{Binding Details.Manufacturer}" />
+
+						<TextBlock
+							Grid.Row="6"
+							Grid.Column="0"
+							Text="Category"
+							FontWeight="SemiBold" />
+
+						<TextBlock
+							Grid.Row="6"
+							Grid.Column="1"
+							Text="{Binding Details.Category}" />
+
+					</Grid>
+
+					<Grid Grid.Row="4">
+
+						<Grid.ColumnDefinitions>
+							<ColumnDefinition Width="120" />
+							<ColumnDefinition Width="*" />
+						</Grid.ColumnDefinitions>
+
+						<Grid.RowDefinitions>
+							<RowDefinition Height="Auto" />
+							<RowDefinition Height="8" />
+							<RowDefinition Height="Auto" />
+							<RowDefinition Height="8" />
+							<RowDefinition Height="Auto" />
+						</Grid.RowDefinitions>
+
+						<TextBlock
+							Grid.Row="0"
+							Grid.Column="0"
+							Text="Current Stock"
+							FontWeight="SemiBold" />
+
+						<TextBlock
+							Grid.Row="0"
+							Grid.Column="1"
+							Text="{Binding Details.CurrentStock}" />
+
+						<TextBlock
+							Grid.Row="2"
+							Grid.Column="0"
+							Text="Average Cost"
+							FontWeight="SemiBold" />
+
+						<TextBlock
+							Grid.Row="2"
+							Grid.Column="1"
+							Text="{Binding Details.AverageCost, StringFormat={}{0:N4}}" />
+
+						<TextBlock
+							Grid.Row="4"
+							Grid.Column="0"
+							Text="Inventory Value"
+							FontWeight="SemiBold" />
+
+						<TextBlock
+							Grid.Row="4"
+							Grid.Column="1"
+							Text="{Binding Details.InventoryValue, StringFormat={}{0:N2}}" />
+
+					</Grid>
+
+					<TextBlock
+						Grid.Row="6"
+						Text="Recent Movements"
+						FontSize="16"
+						FontWeight="SemiBold" />
+
+					<DataGrid
+						Grid.Row="8"
+						ItemsSource="{Binding Details.RecentMovements}"
+						AutoGenerateColumns="False"
+						IsReadOnly="True"
+						CanUserAddRows="False"
+						CanUserDeleteRows="False">
+
+						<DataGrid.Columns>
+
+							<DataGridTextColumn
+								Header="Date"
+								Binding="{Binding TimestampLocal}"
+								Width="140" />
+
+							<DataGridTextColumn
+								Header="Type"
+								Binding="{Binding MovementType}"
+								Width="100" />
+
+							<DataGridTextColumn
+								Header="Qty"
+								Binding="{Binding Quantity}"
+								Width="70" />
+
+						</DataGrid.Columns>
+
+					</DataGrid>
+
+				</Grid>
+
+			</Border>
+
+		</Grid>
 
 	</Grid>
 
