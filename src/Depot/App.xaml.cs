@@ -21,6 +21,8 @@ public partial class App : Application
 
 	public static InventoryService InventoryService { get; private set; } = null!;
 
+	public static StockService StockService { get; private set; } = null!;
+
 	public static DatabaseSeeder DatabaseSeeder { get; private set; } = null!;
 
 	public static MainViewModel MainViewModel { get; private set; } = null!;
@@ -45,6 +47,9 @@ public partial class App : Application
 
 		StockMovementRepository =
 			new StockMovementRepository(ConnectionFactory);
+		
+		StockService =
+			new StockService(ItemRepository, StockMovementRepository);
 
 		InventoryService =
 			new InventoryService(ItemRepository);
