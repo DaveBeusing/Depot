@@ -38,7 +38,7 @@ public sealed class MovementsViewModel
 				CreateMovement);
 
 		LoadItems();
-		LoadMovements();
+		Load();
 	}
 
 	public ObservableCollection<ItemLookupViewModel> AvailableItems { get; }
@@ -103,7 +103,7 @@ public sealed class MovementsViewModel
 		}
 	}
 
-	private void LoadMovements()
+	public void Load()
 	{
 		Items.Clear();
 
@@ -209,7 +209,7 @@ public sealed class MovementsViewModel
 
 			Editor.Clear();
 
-			LoadMovements();
+			Load();
 		}
 		catch (Exception ex)
 		{

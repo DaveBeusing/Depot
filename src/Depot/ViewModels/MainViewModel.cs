@@ -119,5 +119,15 @@ public sealed class MainViewModel
 				"Movements" => MovementsViewModel,
 				_ => InventoryViewModel
 			};
+
+		if (CurrentViewModel == InventoryViewModel)
+		{
+			InventoryViewModel.Load();
+		}
+
+		if (CurrentViewModel == MovementsViewModel)
+		{
+			MovementsViewModel.Load();
+		}
 	}
 }
