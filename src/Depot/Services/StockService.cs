@@ -19,6 +19,75 @@ public sealed class StockService
 		_stockMovementRepository = stockMovementRepository;
 	}
 
+	public void AddPurchase(
+		long itemId,
+		int quantity,
+		decimal unitPrice,
+		string? reference,
+		string? notes)
+	{
+		if (itemId <= 0)
+		{
+			throw new ArgumentException(
+				"Item id is required.",
+				nameof(itemId));
+		}
+
+		if (quantity <= 0)
+		{
+			throw new ArgumentException(
+				"Quantity must be greater than zero.",
+				nameof(quantity));
+		}
+
+		if (unitPrice <= 0)
+		{
+			throw new ArgumentException(
+				"Unit price must be greater than zero.",
+				nameof(unitPrice));
+		}
+
+		var item =
+			_itemRepository.GetById(itemId);
+
+		if (item is null)
+		{
+			throw new InvalidOperationException(
+				$"Item with id '{itemId}' was not found.");
+		}
+
+		var movement =
+			new StockMovement
+			{
+				ItemId = itemId,
+
+				MovementType =
+					StockMovementType.Purchase,
+
+				TimestampUtc =
+					DateTime.UtcNow,
+
+				Quantity =
+					quantity,
+
+				UnitPrice =
+					unitPrice,
+
+				Reference =
+					string.IsNullOrWhiteSpace(reference)
+						? null
+						: reference.Trim(),
+
+				Notes =
+					string.IsNullOrWhiteSpace(notes)
+						? null
+						: notes.Trim()
+			};
+
+		_stockMovementRepository.Create(
+			movement);
+	}
+
 	public int GetCurrentStock(
 		long itemId)
 	{

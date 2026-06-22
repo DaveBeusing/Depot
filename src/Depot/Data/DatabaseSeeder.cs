@@ -8,11 +8,14 @@ namespace Depot.Data;
 public sealed class DatabaseSeeder
 {
 	private readonly InventoryService _inventoryService;
+	private readonly StockService _stockService;
 
 	public DatabaseSeeder(
-		InventoryService inventoryService)
+		InventoryService inventoryService,
+		StockService stockService)
 	{
 		_inventoryService = inventoryService;
+		_stockService = stockService;
 	}
 
 	public void Seed()
@@ -22,11 +25,12 @@ public sealed class DatabaseSeeder
 			return;
 		}
 
-		_inventoryService.CreateItem(
-			"SSD-001",
-			"Samsung SSD 1TB",
-			"Samsung",
-			"Storage");
+		var ssd1 =
+			_inventoryService.CreateItem(
+				"SSD-001",
+				"Samsung SSD 1TB",
+				"Samsung",
+				"Storage");
 
 		_inventoryService.CreateItem(
 			"SSD-002",
@@ -39,5 +43,19 @@ public sealed class DatabaseSeeder
 			"HDMI Cable 3m",
 			"Generic",
 			"Cables");
+
+		_stockService.AddPurchase(
+			ssd1.Id,
+			100,
+			1.00m,
+			"INV-1000",
+			"Initial demo purchase");
+
+		_stockService.AddPurchase(
+			ssd1.Id,
+			50,
+			0.50m,
+			"INV-1001",
+			"Second demo purchase");
 	}
 }
