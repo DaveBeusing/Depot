@@ -29,5 +29,4 @@ public sealed class ItemViewModel
 	public string? Category { get; }
 
 	public bool IsActive { get; }
-
 }

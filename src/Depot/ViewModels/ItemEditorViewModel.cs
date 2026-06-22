@@ -1,15 +1,29 @@
 // Copyright (c) 2026 David Beusing
 // Licensed under the MIT License.
 
+using Depot.Models;
+
 namespace Depot.ViewModels;
 
 public sealed class ItemEditorViewModel
 	: BaseViewModel
 {
+	private long _id;
+
 	private string _partNumber = string.Empty;
 	private string _description = string.Empty;
 	private string? _manufacturer;
 	private string? _category;
+
+	public long Id
+	{
+		get => _id;
+		set
+		{
+			_id = value;
+			OnPropertyChanged();
+		}
+	}
 
 	public string PartNumber
 	{
@@ -51,12 +65,21 @@ public sealed class ItemEditorViewModel
 		}
 	}
 
+	public void Load(Item item)
+	{
+		Id = item.Id;
+		PartNumber = item.PartNumber;
+		Description = item.Description;
+		Manufacturer = item.Manufacturer;
+		Category = item.Category;
+	}
+
 	public void Clear()
 	{
+		Id = 0;
 		PartNumber = string.Empty;
 		Description = string.Empty;
 		Manufacturer = null;
 		Category = null;
 	}
-
 }

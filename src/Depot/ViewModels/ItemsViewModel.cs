@@ -13,6 +13,8 @@ public sealed class ItemsViewModel
 {
 	private readonly InventoryService _inventoryService;
 
+	private ItemViewModel? _selectedItem;
+
 	public ItemsViewModel(
 		InventoryService inventoryService)
 	{
@@ -40,6 +42,20 @@ public sealed class ItemsViewModel
 
 	public RelayCommand SaveItemCommand { get; }
 
+	public ItemViewModel? SelectedItem
+	{
+		get => _selectedItem;
+
+		set
+		{
+			_selectedItem = value;
+
+			OnPropertyChanged();
+
+			LoadSelectedItem();
+		}
+	}
+
 	public void LoadItems()
 	{
 		Items.Clear();
@@ -51,8 +67,24 @@ public sealed class ItemsViewModel
 		}
 	}
 
+	private void LoadSelectedItem()
+	{
+		if (SelectedItem is null)
+		{
+			return;
+		}
+
+		Editor.Id = SelectedItem.Id;
+		Editor.PartNumber = SelectedItem.PartNumber;
+		Editor.Description = SelectedItem.Description;
+		Editor.Manufacturer = SelectedItem.Manufacturer;
+		Editor.Category = SelectedItem.Category;
+	}
+
 	private void NewItem()
 	{
+		SelectedItem = null;
+
 		Editor.Clear();
 	}
 
