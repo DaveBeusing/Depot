@@ -12,16 +12,37 @@ public sealed class InventoryViewModel
 {
 	private readonly StockService _stockService;
 
+	private InventoryOverviewItemViewModel? _selectedItem;
+
 	public InventoryViewModel(
 		StockService stockService)
 	{
 		_stockService = stockService;
+
+		Details =
+			new InventoryDetailsViewModel();
 
 		Load();
 	}
 
 	public ObservableCollection<InventoryOverviewItemViewModel> Items { get; }
 		= new();
+
+	public InventoryDetailsViewModel Details { get; }
+
+	public InventoryOverviewItemViewModel? SelectedItem
+	{
+		get => _selectedItem;
+
+		set
+		{
+			_selectedItem = value;
+
+			OnPropertyChanged();
+
+			LoadSelectedDetails();
+		}
+	}
 
 	public void Load()
 	{
@@ -33,5 +54,31 @@ public sealed class InventoryViewModel
 				new InventoryOverviewItemViewModel(
 					item));
 		}
+
+		if (SelectedItem is not null)
+		{
+			var matchingItem =
+				Items.FirstOrDefault(
+					x => x.ItemId == SelectedItem.ItemId);
+
+			SelectedItem =
+				matchingItem;
+		}
+	}
+
+	private void LoadSelectedDetails()
+	{
+		if (SelectedItem is null)
+		{
+			Details.Clear();
+			return;
+		}
+
+		var details =
+			_stockService.GetInventoryDetails(
+				SelectedItem.ItemId);
+
+		Details.Load(
+			details);
 	}
 }
