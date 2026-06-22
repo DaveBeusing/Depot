@@ -10,19 +10,20 @@ namespace Depot.ViewModels;
 public sealed class MainViewModel
 	: BaseViewModel
 {
-	private readonly InventoryService _inventoryService;
-
 	private NavigationItem? _selectedNavigationItem;
 	private BaseViewModel? _currentViewModel;
 
 	public MainViewModel(
-		InventoryService inventoryService)
+		InventoryService inventoryService,
+		StockService stockService)
 	{
-		_inventoryService = inventoryService;
+		InventoryViewModel =
+			new InventoryViewModel(
+				stockService);
 
 		ItemsViewModel =
 			new ItemsViewModel(
-				_inventoryService);
+				inventoryService);
 
 		NavigationItems.Add(
 			new NavigationItem
@@ -55,11 +56,13 @@ public sealed class MainViewModel
 			});
 
 		SelectedNavigationItem =
-			NavigationItems[1];
+			NavigationItems[0];
 	}
 
 	public ObservableCollection<NavigationItem> NavigationItems { get; }
 		= new();
+
+	public InventoryViewModel InventoryViewModel { get; }
 
 	public ItemsViewModel ItemsViewModel { get; }
 
@@ -70,6 +73,7 @@ public sealed class MainViewModel
 		set
 		{
 			_selectedNavigationItem = value;
+
 			OnPropertyChanged();
 
 			UpdateCurrentViewModel();
@@ -83,6 +87,7 @@ public sealed class MainViewModel
 		private set
 		{
 			_currentViewModel = value;
+
 			OnPropertyChanged();
 		}
 	}
@@ -98,9 +103,9 @@ public sealed class MainViewModel
 		CurrentViewModel =
 			SelectedNavigationItem.Name switch
 			{
+				"Inventory" => InventoryViewModel,
 				"Items" => ItemsViewModel,
-				_ => ItemsViewModel
+				_ => InventoryViewModel
 			};
 	}
-
 }

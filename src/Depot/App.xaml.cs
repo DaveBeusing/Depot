@@ -69,6 +69,7 @@ public partial class App
 
 		MainViewModel =
 			new MainViewModel(
-				InventoryService);
+				InventoryService,
+				StockService);
 	}
 }

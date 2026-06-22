@@ -15,6 +15,10 @@
 
 	<Window.Resources>
 
+		<DataTemplate DataType="{x:Type viewModels:InventoryViewModel}">
+			<views:InventoryView />
+		</DataTemplate>
+		
 		<DataTemplate DataType="{x:Type viewModels:ItemsViewModel}">
 			<views:ItemsView />
 		</DataTemplate>
