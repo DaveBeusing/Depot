@@ -302,4 +302,35 @@ public sealed class StockService
 			movement);
 	}
 
+	public IReadOnlyList<InventoryOverviewItem> GetInventoryOverview()
+	{
+		var result =
+			new List<InventoryOverviewItem>();
+
+		var items =
+			_itemRepository.GetAll();
+
+		foreach (var item in items)
+		{
+			var summary =
+				GetInventorySummary(
+					item.Id);
+
+			result.Add(
+				new InventoryOverviewItem
+				{
+					ItemId = item.Id,
+					PartNumber = item.PartNumber,
+					Description = item.Description,
+					Manufacturer = item.Manufacturer,
+					Category = item.Category,
+					CurrentStock = summary.CurrentStock,
+					AverageCost = summary.AverageCost,
+					InventoryValue = summary.InventoryValue
+				});
+		}
+
+		return result;
+	}
+
 }
