@@ -3,6 +3,7 @@
 
 using System.Windows;
 using Depot.Data;
+using Depot.Repositories;
 
 namespace Depot;
 
@@ -11,6 +12,8 @@ public partial class App : Application
 	public static SqliteConnectionFactory ConnectionFactory { get; private set; } = null!;
 
 	public static DepotDatabase Database { get; private set; } = null!;
+
+	public static ItemRepository ItemRepository { get; private set; } = null!;
 
 	protected override void OnStartup(StartupEventArgs e)
 	{
@@ -23,6 +26,9 @@ public partial class App : Application
 			new DepotDatabase(ConnectionFactory);
 
 		Database.Initialize();
+
+		ItemRepository =
+			new ItemRepository(ConnectionFactory);
 	}
 
 }
