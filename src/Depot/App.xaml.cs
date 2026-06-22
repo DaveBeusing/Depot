@@ -2,9 +2,12 @@
 // Licensed under the MIT License.
 
 using System.Windows;
+
 using Depot.Data;
 using Depot.Repositories;
 using Depot.Services;
+using Depot.ViewModels;
+
 
 namespace Depot;
 
@@ -17,6 +20,8 @@ public partial class App : Application
 	public static ItemRepository ItemRepository { get; private set; } = null!;
 
 	public static InventoryService InventoryService { get; private set; } = null!;
+
+	public static MainViewModel MainViewModel { get; private set; } = null!;
 
 	protected override void OnStartup(StartupEventArgs e)
 	{
@@ -35,6 +40,9 @@ public partial class App : Application
 
 		InventoryService =
 			new InventoryService(ItemRepository);
+		
+		MainViewModel =
+			new MainViewModel(InventoryService);
 	}
 
 }
