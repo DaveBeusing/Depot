@@ -13,11 +13,16 @@ public sealed class MainViewModel
 	private readonly InventoryService _inventoryService;
 
 	private NavigationItem? _selectedNavigationItem;
+	private BaseViewModel? _currentViewModel;
 
 	public MainViewModel(
 		InventoryService inventoryService)
 	{
 		_inventoryService = inventoryService;
+
+		ItemsViewModel =
+			new ItemsViewModel(
+				_inventoryService);
 
 		NavigationItems.Add(
 			new NavigationItem
@@ -50,16 +55,13 @@ public sealed class MainViewModel
 			});
 
 		SelectedNavigationItem =
-			NavigationItems[0];
-
-		LoadItems();
+			NavigationItems[1];
 	}
 
 	public ObservableCollection<NavigationItem> NavigationItems { get; }
 		= new();
 
-	public ObservableCollection<ItemViewModel> Items { get; }
-		= new();
+	public ItemsViewModel ItemsViewModel { get; }
 
 	public NavigationItem? SelectedNavigationItem
 	{
@@ -69,17 +71,36 @@ public sealed class MainViewModel
 		{
 			_selectedNavigationItem = value;
 			OnPropertyChanged();
+
+			UpdateCurrentViewModel();
 		}
 	}
 
-	private void LoadItems()
+	public BaseViewModel? CurrentViewModel
 	{
-		Items.Clear();
+		get => _currentViewModel;
 
-		foreach (var item in _inventoryService.GetItems())
+		private set
 		{
-			Items.Add(
-				new ItemViewModel(item));
+			_currentViewModel = value;
+			OnPropertyChanged();
 		}
 	}
+
+	private void UpdateCurrentViewModel()
+	{
+		if (SelectedNavigationItem is null)
+		{
+			CurrentViewModel = null;
+			return;
+		}
+
+		CurrentViewModel =
+			SelectedNavigationItem.Name switch
+			{
+				"Items" => ItemsViewModel,
+				_ => ItemsViewModel
+			};
+	}
+
 }

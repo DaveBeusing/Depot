@@ -4,12 +4,22 @@
 	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
 	xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
 	xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+	xmlns:viewModels="clr-namespace:Depot.ViewModels"
+	xmlns:views="clr-namespace:Depot.Views"
 	mc:Ignorable="d"
 	Title="Depot"
 	Width="1400"
 	Height="900"
 	MinWidth="1200"
 	MinHeight="700">
+
+	<Window.Resources>
+
+		<DataTemplate DataType="{x:Type viewModels:ItemsViewModel}">
+			<views:ItemsView />
+		</DataTemplate>
+
+	</Window.Resources>
 
 	<Grid>
 
@@ -51,57 +61,10 @@
 
 		</Border>
 
-		<Grid
+		<ContentControl
 			Grid.Column="1"
-			Margin="16">
-
-			<Grid.RowDefinitions>
-				<RowDefinition Height="Auto" />
-				<RowDefinition Height="16" />
-				<RowDefinition Height="*" />
-			</Grid.RowDefinitions>
-
-			<TextBlock
-				Grid.Row="0"
-				Text="Items"
-				FontSize="22"
-				FontWeight="SemiBold" />
-
-			<DataGrid
-				Grid.Row="2"
-				ItemsSource="{Binding Items}"
-				AutoGenerateColumns="False"
-				IsReadOnly="True"
-				CanUserAddRows="False"
-				CanUserDeleteRows="False">
-
-				<DataGrid.Columns>
-
-					<DataGridTextColumn
-						Header="Part Number"
-						Binding="{Binding PartNumber}"
-						Width="180" />
-
-					<DataGridTextColumn
-						Header="Description"
-						Binding="{Binding Description}"
-						Width="*" />
-
-					<DataGridTextColumn
-						Header="Manufacturer"
-						Binding="{Binding Manufacturer}"
-						Width="180" />
-
-					<DataGridTextColumn
-						Header="Category"
-						Binding="{Binding Category}"
-						Width="180" />
-
-				</DataGrid.Columns>
-
-			</DataGrid>
-
-		</Grid>
+			Margin="16"
+			Content="{Binding CurrentViewModel}" />
 
 	</Grid>
 
