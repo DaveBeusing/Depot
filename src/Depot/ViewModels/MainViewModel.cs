@@ -31,7 +31,8 @@ public sealed class MainViewModel
 		MovementsViewModel =
 			new MovementsViewModel(
 				itemRepository,
-				stockMovementRepository);
+				stockMovementRepository,
+				stockService);
 
 		NavigationItems.Add(
 			new NavigationItem
