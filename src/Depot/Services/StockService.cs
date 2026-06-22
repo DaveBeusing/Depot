@@ -333,4 +333,57 @@ public sealed class StockService
 		return result;
 	}
 
+	public InventoryDetails GetInventoryDetails(long itemId)
+	{
+		var item =
+			_itemRepository.GetById(itemId);
+
+		if (item is null)
+		{
+			throw new InvalidOperationException(
+				$"Item with id '{itemId}' was not found.");
+		}
+
+		var summary =
+			GetInventorySummary(itemId);
+
+		var movements =
+			_stockMovementRepository
+				.GetByItemId(itemId)
+				.OrderByDescending(
+					x => x.TimestampUtc)
+				.Take(20)
+				.ToList();
+
+		return new InventoryDetails
+		{
+			ItemId =
+				item.Id,
+
+			PartNumber =
+				item.PartNumber,
+
+			Description =
+				item.Description,
+
+			Manufacturer =
+				item.Manufacturer,
+
+			Category =
+				item.Category,
+
+			CurrentStock =
+				summary.CurrentStock,
+
+			AverageCost =
+				summary.AverageCost,
+
+			InventoryValue =
+				summary.InventoryValue,
+
+			RecentMovements =
+				movements
+		};
+	}
+
 }
