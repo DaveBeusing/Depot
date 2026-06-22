@@ -168,4 +168,46 @@ public sealed class StockMovementRepository
 					: reader.GetString(7)
 		};
 	}
+
+	public IReadOnlyList<StockMovement> GetAll()
+	{
+		var result =
+			new List<StockMovement>();
+
+		using var connection =
+			_connectionFactory.CreateConnection();
+
+		connection.Open();
+
+		using var command =
+			connection.CreateCommand();
+
+		command.CommandText =
+		"""
+		SELECT
+			Id,
+			ItemId,
+			MovementType,
+			TimestampUtc,
+			Quantity,
+			UnitPrice,
+			Reference,
+			Notes
+		FROM StockMovements
+		ORDER BY TimestampUtc DESC;
+		""";
+
+		using var reader =
+			command.ExecuteReader();
+
+		while (reader.Read())
+		{
+			result.Add(
+				ReadMovement(reader));
+		}
+
+		return result;
+	}
+
+
 }
