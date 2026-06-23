@@ -18,4 +18,6 @@ public sealed class ImportPreviewItem
 	public decimal UnitPrice { get; init; }
 
 	public bool ItemAlreadyExists { get; init; }
+
+	public decimal TotalValue { get; init; }
 }

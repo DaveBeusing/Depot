@@ -67,7 +67,9 @@ public partial class App
 
 		ImportService =
 			new ImportService(
-				ItemRepository);
+				ItemRepository,
+				InventoryService,
+				StockService);
 
 		DatabaseSeeder =
 			new DatabaseSeeder(

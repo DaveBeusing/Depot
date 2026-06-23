@@ -22,6 +22,9 @@ public sealed class ImportViewModel
 	private int _existingItems;
 	private int _warnings;
 
+	public ObservableCollection<ImportWarningViewModel> WarningItems { get; }
+	= new();
+
 	public ImportViewModel(
 		ImportService importService)
 	{
@@ -131,6 +134,15 @@ public sealed class ImportViewModel
 			Items.Add(
 				new ImportPreviewItemViewModel(
 					item));
+		}
+
+		WarningItems.Clear();
+
+		foreach (var warning in preview.Warnings)
+		{
+			WarningItems.Add(
+				new ImportWarningViewModel(
+					warning));
 		}
 	}
 }

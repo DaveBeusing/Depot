@@ -45,6 +45,8 @@
 			<Grid.RowDefinitions>
 				<RowDefinition Height="Auto" />
 				<RowDefinition Height="16" />
+				<RowDefinition Height="2*" />
+				<RowDefinition Height="16" />
 				<RowDefinition Height="*" />
 			</Grid.RowDefinitions>
 
@@ -104,13 +106,42 @@
 
 					<DataGridTextColumn
 						Header="Unit Price"
-						Binding="{Binding UnitPrice}"
+						Binding="{Binding UnitPrice, StringFormat={}{0:N4}}"
 						Width="100" />
+
+					<DataGridTextColumn
+						Header="Total Value"
+						Binding="{Binding TotalValue, StringFormat={}{0:N2}}"
+						Width="120" />
 
 					<DataGridCheckBoxColumn
 						Header="Exists"
 						Binding="{Binding ItemAlreadyExists, Mode=OneWay}"
 						Width="80" />
+
+				</DataGrid.Columns>
+
+			</DataGrid>
+
+			<DataGrid
+				Grid.Row="4"
+				ItemsSource="{Binding WarningItems}"
+				AutoGenerateColumns="False"
+				IsReadOnly="True"
+				CanUserAddRows="False"
+				CanUserDeleteRows="False">
+
+				<DataGrid.Columns>
+
+					<DataGridTextColumn
+						Header="Row"
+						Binding="{Binding RowNumber}"
+						Width="80" />
+
+					<DataGridTextColumn
+						Header="Warning"
+						Binding="{Binding Message}"
+						Width="*" />
 
 				</DataGrid.Columns>
 

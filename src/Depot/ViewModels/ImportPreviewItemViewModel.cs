@@ -17,6 +17,7 @@ public sealed class ImportPreviewItemViewModel
 		Category = item.Category;
 		Quantity = item.Quantity;
 		UnitPrice = item.UnitPrice;
+		TotalValue = item.TotalValue;
 		ItemAlreadyExists = item.ItemAlreadyExists;
 	}
 
@@ -31,6 +32,8 @@ public sealed class ImportPreviewItemViewModel
 	public int Quantity { get; }
 
 	public decimal UnitPrice { get; }
+
+	public decimal TotalValue { get; }
 
 	public bool ItemAlreadyExists { get; }
 }

@@ -5,24 +5,32 @@ using ClosedXML.Excel;
 
 using Depot.Models;
 using Depot.Repositories;
+using Depot.Services;
 
 namespace Depot.Services.Import;
 
 public sealed class ImportService
 {
 	private readonly ItemRepository _itemRepository;
+	private readonly InventoryService _inventoryService;
+	private readonly StockService _stockService;
 
 	public ImportService(
-		ItemRepository itemRepository)
+		ItemRepository itemRepository,
+		InventoryService inventoryService,
+		StockService stockService)
 	{
 		_itemRepository = itemRepository;
+		_inventoryService = inventoryService;
+		_stockService = stockService;
 	}
 
 	public ImportPreview CreatePreview(
 		string filePath)
 	{
-		var items =
-			new List<ImportPreviewItem>();
+		var itemsByPartNumber =
+			new Dictionary<string, ImportPreviewAccumulator>(
+				StringComparer.OrdinalIgnoreCase);
 
 		var warnings =
 			new List<ImportWarning>();
@@ -52,6 +60,13 @@ public sealed class ImportService
 
 				if (string.IsNullOrWhiteSpace(partNumber))
 				{
+					warnings.Add(
+						new ImportWarning
+						{
+							RowNumber = row,
+							Message = "Part number is missing."
+						});
+
 					continue;
 				}
 
@@ -61,6 +76,18 @@ public sealed class ImportService
 						row,
 						columns,
 						"Item Description");
+
+				if (string.IsNullOrWhiteSpace(description))
+				{
+					warnings.Add(
+						new ImportWarning
+						{
+							RowNumber = row,
+							Message = $"Description is missing for '{partNumber}'."
+						});
+
+					continue;
+				}
 
 				var manufacturer =
 					GetString(
@@ -90,38 +117,30 @@ public sealed class ImportService
 						columns,
 						"Unit Price");
 
-				var existingItem =
-					_itemRepository.GetByPartNumber(
-						partNumber);
-
-				items.Add(
-					new ImportPreviewItem
-					{
-						PartNumber =
-							partNumber,
-
-						Description =
-							description,
-
-						Manufacturer =
-							string.IsNullOrWhiteSpace(manufacturer)
+				if (!itemsByPartNumber.TryGetValue(
+					partNumber,
+					out var accumulator))
+				{
+					accumulator =
+						new ImportPreviewAccumulator
+						{
+							PartNumber = partNumber,
+							Description = description,
+							Manufacturer = string.IsNullOrWhiteSpace(manufacturer)
 								? null
 								: manufacturer,
-
-						Category =
-							string.IsNullOrWhiteSpace(category)
+							Category = string.IsNullOrWhiteSpace(category)
 								? null
-								: category,
+								: category
+						};
 
-						Quantity =
-							quantity,
+					itemsByPartNumber.Add(
+						partNumber,
+						accumulator);
+				}
 
-						UnitPrice =
-							unitPrice,
-
-						ItemAlreadyExists =
-							existingItem is not null
-					});
+				accumulator.Quantity += quantity;
+				accumulator.TotalValue += quantity * unitPrice;
 			}
 			catch (Exception ex)
 			{
@@ -134,6 +153,37 @@ public sealed class ImportService
 			}
 		}
 
+		var items =
+			itemsByPartNumber
+				.Values
+				.Select(
+					x =>
+					{
+						var existingItem =
+							_itemRepository.GetByPartNumber(
+								x.PartNumber);
+
+						var unitPrice =
+							x.Quantity == 0
+								? 0m
+								: x.TotalValue / x.Quantity;
+
+						return new ImportPreviewItem
+						{
+							PartNumber = x.PartNumber,
+							Description = x.Description,
+							Manufacturer = x.Manufacturer,
+							Category = x.Category,
+							Quantity = x.Quantity,
+							UnitPrice = unitPrice,
+							TotalValue = x.TotalValue,
+							ItemAlreadyExists = existingItem is not null
+						};
+					})
+				.OrderBy(
+					x => x.PartNumber)
+				.ToList();
+
 		return new ImportPreview
 		{
 			Items = items,
@@ -144,7 +194,49 @@ public sealed class ImportService
 	public ImportResult ExecuteImport(
 		ImportPreview preview)
 	{
-		throw new NotImplementedException();
+		var importedItems = 0;
+		var importedMovements = 0;
+		var skippedItems = 0;
+
+		foreach (var previewItem in preview.Items)
+		{
+			var existingItem =
+				_itemRepository.GetByPartNumber(
+					previewItem.PartNumber);
+
+			if (existingItem is not null)
+			{
+				skippedItems++;
+				continue;
+			}
+
+			var item =
+				_inventoryService.CreateItem(
+					previewItem.PartNumber,
+					previewItem.Description,
+					previewItem.Manufacturer,
+					previewItem.Category);
+
+			importedItems++;
+
+			if (previewItem.Quantity > 0)
+			{
+				_stockService.AddOpeningBalance(
+					item.Id,
+					previewItem.Quantity,
+					previewItem.UnitPrice,
+					"Imported from Excel");
+
+				importedMovements++;
+			}
+		}
+
+		return new ImportResult
+		{
+			ImportedItems = importedItems,
+			ImportedMovements = importedMovements,
+			SkippedItems = skippedItems
+		};
 	}
 
 	private static Dictionary<string, int> ReadColumns(
@@ -288,5 +380,20 @@ public sealed class ImportService
 		return worksheet.Cell(
 			row,
 			column);
+	}
+
+	private sealed class ImportPreviewAccumulator
+	{
+		public string PartNumber { get; init; } = string.Empty;
+
+		public string Description { get; init; } = string.Empty;
+
+		public string? Manufacturer { get; init; }
+
+		public string? Category { get; init; }
+
+		public int Quantity { get; set; }
+
+		public decimal TotalValue { get; set; }
 	}
 }
