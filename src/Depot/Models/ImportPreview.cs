@@ -8,6 +8,9 @@ public sealed class ImportPreview
 	public IReadOnlyList<ImportPreviewItem> Items { get; init; }
 		= [];
 
+	public IReadOnlyList<ImportWarning> Warnings { get; init; }
+		= [];
+
 	public int TotalItems =>
 		Items.Count;
 

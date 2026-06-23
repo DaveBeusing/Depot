@@ -6,6 +6,7 @@ using Depot.Data;
 using Depot.Repositories;
 using Depot.Services;
 using Depot.ViewModels;
+using Depot.Services.Import;
 
 namespace Depot;
 
@@ -28,6 +29,8 @@ public partial class App
 
 	public static MainViewModel MainViewModel { get; private set; } = null!;
 
+	public static ImportService ImportService { get; private set; } = null!;
+
 	protected override void OnStartup(
 		StartupEventArgs e)
 	{
@@ -46,6 +49,12 @@ public partial class App
 		ItemRepository =
 			new ItemRepository(
 				ConnectionFactory);
+
+		ImportService =
+			new ImportService(
+				ItemRepository);
+		
+		//var preview = ImportService.CreatePreview(@"D:\Code\Depot\inventory.xlsx");
 
 		StockMovementRepository =
 			new StockMovementRepository(
