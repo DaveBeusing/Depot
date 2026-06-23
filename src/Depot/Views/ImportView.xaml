@@ -67,6 +67,13 @@
 				<TextBlock
 					Text="{Binding Warnings, StringFormat=Warnings: {0}, Mode=OneWay}" />
 
+				<TextBlock
+					Margin="24,0,24,0"
+					Text="{Binding TotalQuantity, StringFormat=Quantity: {0}, Mode=OneWay}" />
+
+				<TextBlock
+					Text="{Binding TotalValue, StringFormat=Value: {0:N2} EUR, Mode=OneWay}" />
+
 			</WrapPanel>
 
 			<DataGrid

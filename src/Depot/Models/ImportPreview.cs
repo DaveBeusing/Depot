@@ -21,4 +21,12 @@ public sealed class ImportPreview
 	public int ExistingItems =>
 		Items.Count(
 			x => x.ItemAlreadyExists);
+
+	public int TotalQuantity =>
+		Items.Sum(
+			x => x.Quantity);
+
+	public decimal TotalValue =>
+		Items.Sum(
+			x => x.TotalValue);
 }

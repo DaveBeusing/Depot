@@ -21,6 +21,8 @@ public sealed class ImportViewModel
 	private int _newItems;
 	private int _existingItems;
 	private int _warnings;
+	private int _totalQuantity;
+	private decimal _totalValue;
 
 	public ObservableCollection<ImportWarningViewModel> WarningItems { get; }
 	= new();
@@ -113,8 +115,7 @@ public sealed class ImportViewModel
 			dialog.FileName);
 	}
 
-	public void LoadPreview(
-		string filePath)
+	public void LoadPreview(string filePath)
 	{
 		var preview =
 			_importService.CreatePreview(
@@ -126,6 +127,8 @@ public sealed class ImportViewModel
 		NewItems = preview.NewItems;
 		ExistingItems = preview.ExistingItems;
 		Warnings = preview.Warnings.Count;
+		TotalQuantity = preview.TotalQuantity;
+		TotalValue = preview.TotalValue;
 
 		Items.Clear();
 
@@ -145,4 +148,28 @@ public sealed class ImportViewModel
 					warning));
 		}
 	}
+
+
+	public int TotalQuantity
+	{
+		get => _totalQuantity;
+
+		private set
+		{
+			_totalQuantity = value;
+			OnPropertyChanged();
+		}
+	}
+
+	public decimal TotalValue
+	{
+		get => _totalValue;
+
+		private set
+		{
+			_totalValue = value;
+			OnPropertyChanged();
+		}
+	}
+
 }
