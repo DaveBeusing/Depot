@@ -8,8 +8,8 @@
 	xmlns:views="clr-namespace:Depot.Views"
 	mc:Ignorable="d"
 	Title="Depot"
-	Width="1400"
-	Height="900"
+	Width="1600"
+	Height="950"
 	MinWidth="1200"
 	MinHeight="700">
 
@@ -18,7 +18,7 @@
 		<DataTemplate DataType="{x:Type viewModels:InventoryViewModel}">
 			<views:InventoryView />
 		</DataTemplate>
-		
+
 		<DataTemplate DataType="{x:Type viewModels:ItemsViewModel}">
 			<views:ItemsView />
 		</DataTemplate>
@@ -36,35 +36,103 @@
 	<Grid>
 
 		<Grid.ColumnDefinitions>
-			<ColumnDefinition Width="220" />
+			<ColumnDefinition Width="240" />
 			<ColumnDefinition Width="*" />
 		</Grid.ColumnDefinitions>
 
 		<Border
 			Grid.Column="0"
-			Background="#F4F4F4">
+			Background="{StaticResource SidebarBrush}">
 
 			<DockPanel>
 
 				<TextBlock
 					DockPanel.Dock="Top"
-					Margin="16"
+					Margin="24"
 					Text="Depot"
-					FontSize="24"
-					FontWeight="SemiBold" />
+					FontSize="28"
+					FontWeight="SemiBold"
+					Foreground="{StaticResource SidebarForegroundBrush}" />
 
 				<ListBox
 					ItemsSource="{Binding NavigationItems}"
 					SelectedItem="{Binding SelectedNavigationItem}"
+					Background="Transparent"
 					BorderThickness="0"
-					Background="Transparent">
+					Foreground="{StaticResource SidebarForegroundBrush}">
+
+					<ListBox.ItemContainerStyle>
+
+						<Style TargetType="ListBoxItem">
+
+							<Setter Property="Margin"
+									Value="8,2" />
+
+							<Setter Property="Padding"
+									Value="8" />
+
+							<Setter Property="HorizontalContentAlignment"
+									Value="Stretch" />
+
+							<Setter Property="Template">
+
+								<Setter.Value>
+
+									<ControlTemplate TargetType="ListBoxItem">
+
+										<Border
+											x:Name="Border"
+											Background="Transparent"
+											CornerRadius="6"
+											Padding="8">
+
+											<ContentPresenter />
+
+										</Border>
+
+										<ControlTemplate.Triggers>
+
+											<Trigger Property="IsMouseOver"
+													Value="True">
+
+												<Setter TargetName="Border"
+														Property="Background"
+														Value="#374151" />
+
+											</Trigger>
+
+											<Trigger Property="IsSelected"
+													Value="True">
+
+												<Setter TargetName="Border"
+														Property="Background"
+														Value="{StaticResource AccentBrush}" />
+
+											</Trigger>
+
+										</ControlTemplate.Triggers>
+
+									</ControlTemplate>
+
+								</Setter.Value>
+
+							</Setter>
+
+						</Style>
+
+					</ListBox.ItemContainerStyle>
 
 					<ListBox.ItemTemplate>
+
 						<DataTemplate>
+
 							<TextBlock
-								Margin="12"
+								FontSize="14"
+								FontWeight="SemiBold"
 								Text="{Binding Name}" />
+
 						</DataTemplate>
+
 					</ListBox.ItemTemplate>
 
 				</ListBox>
@@ -73,10 +141,18 @@
 
 		</Border>
 
-		<ContentControl
+		<Border
 			Grid.Column="1"
 			Margin="16"
-			Content="{Binding CurrentViewModel}" />
+			Padding="16"
+			Background="White"
+			BorderBrush="#E5E7EB"
+			BorderThickness="1">
+
+			<ContentControl
+				Content="{Binding CurrentViewModel}" />
+
+		</Border>
 
 	</Grid>
 

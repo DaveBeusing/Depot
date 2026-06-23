@@ -32,14 +32,16 @@
 				AutoGenerateColumns="False"
 				IsReadOnly="True"
 				CanUserAddRows="False"
-				CanUserDeleteRows="False">
+				CanUserDeleteRows="False"
+				HeadersVisibility="Column"
+				RowHeaderWidth="0">
 
 				<DataGrid.Columns>
 
 					<DataGridTextColumn
 						Header="Part Number"
 						Binding="{Binding PartNumber}"
-						Width="180" />
+						Width="220" />
 
 					<DataGridTextColumn
 						Header="Description"
@@ -53,13 +55,13 @@
 
 					<DataGridTextColumn
 						Header="Avg Cost"
-						Binding="{Binding AverageCost, StringFormat={}{0:N4}}"
-						Width="120" />
+						Binding="{Binding AverageCost, StringFormat={}{0:N4} EUR}"
+						Width="140" />
 
 					<DataGridTextColumn
 						Header="Value"
-						Binding="{Binding InventoryValue, StringFormat={}{0:N2}}"
-						Width="120" />
+						Binding="{Binding InventoryValue, StringFormat={}{0:N2} EUR}"
+						Width="140" />
 
 				</DataGrid.Columns>
 
@@ -67,8 +69,9 @@
 
 			<Border
 				Grid.Column="2"
-				Padding="16"
-				BorderBrush="#DDDDDD"
+				Padding="20"
+				Background="White"
+				BorderBrush="#E5E7EB"
 				BorderThickness="1">
 
 				<Grid>
@@ -91,117 +94,161 @@
 						FontSize="18"
 						FontWeight="SemiBold" />
 
-					<Grid Grid.Row="2">
+					<Border
+						Grid.Row="2"
+						Padding="16"
+						Background="#F9FAFB"
+						BorderBrush="#E5E7EB"
+						BorderThickness="1">
 
-						<Grid.ColumnDefinitions>
-							<ColumnDefinition Width="120" />
-							<ColumnDefinition Width="*" />
-						</Grid.ColumnDefinitions>
+						<Grid>
 
-						<Grid.RowDefinitions>
-							<RowDefinition Height="Auto" />
-							<RowDefinition Height="8" />
-							<RowDefinition Height="Auto" />
-							<RowDefinition Height="8" />
-							<RowDefinition Height="Auto" />
-							<RowDefinition Height="8" />
-							<RowDefinition Height="Auto" />
-						</Grid.RowDefinitions>
+							<Grid.ColumnDefinitions>
+								<ColumnDefinition Width="120" />
+								<ColumnDefinition Width="*" />
+							</Grid.ColumnDefinitions>
 
-						<TextBlock
-							Grid.Row="0"
-							Grid.Column="0"
-							Text="Part Number"
-							FontWeight="SemiBold" />
+							<Grid.RowDefinitions>
+								<RowDefinition Height="Auto" />
+								<RowDefinition Height="8" />
+								<RowDefinition Height="Auto" />
+								<RowDefinition Height="8" />
+								<RowDefinition Height="Auto" />
+								<RowDefinition Height="8" />
+								<RowDefinition Height="Auto" />
+							</Grid.RowDefinitions>
 
-						<TextBlock
-							Grid.Row="0"
-							Grid.Column="1"
-							Text="{Binding Details.PartNumber}" />
+							<TextBlock
+								Grid.Row="0"
+								Grid.Column="0"
+								Text="Part Number"
+								Foreground="#6B7280" />
 
-						<TextBlock
-							Grid.Row="2"
-							Grid.Column="0"
-							Text="Description"
-							FontWeight="SemiBold" />
+							<TextBlock
+								Grid.Row="0"
+								Grid.Column="1"
+								Text="{Binding Details.PartNumber}"
+								FontWeight="SemiBold" />
 
-						<TextBlock
-							Grid.Row="2"
-							Grid.Column="1"
-							Text="{Binding Details.Description}"
-							TextWrapping="Wrap" />
+							<TextBlock
+								Grid.Row="2"
+								Grid.Column="0"
+								Text="Description"
+								Foreground="#6B7280" />
 
-						<TextBlock
-							Grid.Row="4"
-							Grid.Column="0"
-							Text="Manufacturer"
-							FontWeight="SemiBold" />
+							<TextBlock
+								Grid.Row="2"
+								Grid.Column="1"
+								Text="{Binding Details.Description}"
+								TextWrapping="Wrap" />
 
-						<TextBlock
-							Grid.Row="4"
-							Grid.Column="1"
-							Text="{Binding Details.Manufacturer}" />
+							<TextBlock
+								Grid.Row="4"
+								Grid.Column="0"
+								Text="Manufacturer"
+								Foreground="#6B7280" />
 
-						<TextBlock
-							Grid.Row="6"
-							Grid.Column="0"
-							Text="Category"
-							FontWeight="SemiBold" />
+							<TextBlock
+								Grid.Row="4"
+								Grid.Column="1"
+								Text="{Binding Details.Manufacturer}" />
 
-						<TextBlock
-							Grid.Row="6"
-							Grid.Column="1"
-							Text="{Binding Details.Category}" />
+							<TextBlock
+								Grid.Row="6"
+								Grid.Column="0"
+								Text="Category"
+								Foreground="#6B7280" />
 
-					</Grid>
+							<TextBlock
+								Grid.Row="6"
+								Grid.Column="1"
+								Text="{Binding Details.Category}" />
+
+						</Grid>
+
+					</Border>
 
 					<Grid Grid.Row="4">
 
 						<Grid.ColumnDefinitions>
-							<ColumnDefinition Width="120" />
+							<ColumnDefinition Width="*" />
+							<ColumnDefinition Width="12" />
+							<ColumnDefinition Width="*" />
+							<ColumnDefinition Width="12" />
 							<ColumnDefinition Width="*" />
 						</Grid.ColumnDefinitions>
 
-						<Grid.RowDefinitions>
-							<RowDefinition Height="Auto" />
-							<RowDefinition Height="8" />
-							<RowDefinition Height="Auto" />
-							<RowDefinition Height="8" />
-							<RowDefinition Height="Auto" />
-						</Grid.RowDefinitions>
-
-						<TextBlock
-							Grid.Row="0"
+						<Border
 							Grid.Column="0"
-							Text="Current Stock"
-							FontWeight="SemiBold" />
+							Padding="14"
+							Background="#EFF6FF"
+							BorderBrush="#DBEAFE"
+							BorderThickness="1">
 
-						<TextBlock
-							Grid.Row="0"
-							Grid.Column="1"
-							Text="{Binding Details.CurrentStock}" />
+							<StackPanel>
 
-						<TextBlock
-							Grid.Row="2"
-							Grid.Column="0"
-							Text="Average Cost"
-							FontWeight="SemiBold" />
+								<TextBlock
+									Text="Current Stock"
+									Foreground="#6B7280"
+									FontSize="12" />
 
-						<TextBlock
-							Grid.Row="2"
-							Grid.Column="1"
-							Text="{Binding Details.AverageCost, StringFormat={}{0:N4}}" />
+								<TextBlock
+									Margin="0,6,0,0"
+									Text="{Binding Details.CurrentStock}"
+									FontSize="22"
+									FontWeight="SemiBold" />
 
-						<TextBlock
-							Grid.Row="4"
-							Grid.Column="0"
-							Text="Inventory Value"
-							FontWeight="SemiBold" />
+							</StackPanel>
 
-						<TextBlock
-							Grid.Row="4"
-							Grid.Column="1"
-							Text="{Binding Details.InventoryValue, StringFormat={}{0:N2}}" />
+						</Border>
+
+						<Border
+							Grid.Column="2"
+							Padding="14"
+							Background="#F9FAFB"
+							BorderBrush="#E5E7EB"
+							BorderThickness="1">
+
+							<StackPanel>
+
+								<TextBlock
+									Text="Average Cost"
+									Foreground="#6B7280"
+									FontSize="12" />
+
+								<TextBlock
+									Margin="0,6,0,0"
+									Text="{Binding Details.AverageCost, StringFormat={}{0:N2}}"
+									FontSize="18"
+									FontWeight="SemiBold" />
+
+							</StackPanel>
+
+						</Border>
+
+						<Border
+							Grid.Column="4"
+							Padding="14"
+							Background="#F0FDF4"
+							BorderBrush="#DCFCE7"
+							BorderThickness="1">
+
+							<StackPanel>
+
+								<TextBlock
+									Text="Inventory Value"
+									Foreground="#6B7280"
+									FontSize="12" />
+
+								<TextBlock
+									Margin="0,6,0,0"
+									Text="{Binding Details.InventoryValue, StringFormat={}{0:N2}}"
+									FontSize="18"
+									FontWeight="SemiBold" />
+
+							</StackPanel>
+
+						</Border>
 
 					</Grid>
 
@@ -217,7 +264,9 @@
 						AutoGenerateColumns="False"
 						IsReadOnly="True"
 						CanUserAddRows="False"
-						CanUserDeleteRows="False">
+						CanUserDeleteRows="False"
+						HeadersVisibility="Column"
+						RowHeaderWidth="0">
 
 						<DataGrid.Columns>
 
