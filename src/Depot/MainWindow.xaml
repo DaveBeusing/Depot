@@ -7,7 +7,7 @@
 	xmlns:viewModels="clr-namespace:Depot.ViewModels"
 	xmlns:views="clr-namespace:Depot.Views"
 	mc:Ignorable="d"
-	Title="Depot"
+	Title="Depot - Local Inventory Management"
 	Width="1600"
 	Height="950"
 	MinWidth="1200"
@@ -49,7 +49,7 @@
 				<TextBlock
 					DockPanel.Dock="Top"
 					Margin="24"
-					Text="Depot"
+					Text="📦 Depot"
 					FontSize="28"
 					FontWeight="SemiBold"
 					Foreground="{StaticResource SidebarForegroundBrush}" />

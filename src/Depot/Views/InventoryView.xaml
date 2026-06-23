@@ -55,7 +55,7 @@
 
 					<DataGridTextColumn
 						Header="Avg Cost"
-						Binding="{Binding AverageCost, StringFormat={}{0:N4} EUR}"
+						Binding="{Binding AverageCost, StringFormat={}{0:N2} EUR}"
 						Width="140" />
 
 					<DataGridTextColumn
