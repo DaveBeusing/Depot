@@ -3,14 +3,20 @@
 	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
 	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-	<Grid>
+	<Grid Margin="16">
 
 		<Grid.RowDefinitions>
 			<RowDefinition Height="Auto" />
 			<RowDefinition Height="16" />
 			<RowDefinition Height="Auto" />
 			<RowDefinition Height="16" />
+			<RowDefinition Height="Auto" />
+			<RowDefinition Height="8" />
 			<RowDefinition Height="*" />
+			<RowDefinition Height="16" />
+			<RowDefinition Height="Auto" />
+			<RowDefinition Height="8" />
+			<RowDefinition Height="180" />
 		</Grid.RowDefinitions>
 
 		<TextBlock
@@ -25,6 +31,8 @@
 				<ColumnDefinition Width="*" />
 				<ColumnDefinition Width="16" />
 				<ColumnDefinition Width="Auto" />
+				<ColumnDefinition Width="8" />
+				<ColumnDefinition Width="Auto" />
 			</Grid.ColumnDefinitions>
 
 			<TextBox
@@ -35,126 +43,168 @@
 			<Button
 				Grid.Column="2"
 				Width="120"
+				Height="32"
 				Content="Browse..."
 				Command="{Binding BrowseCommand}" />
 
-		</Grid>
-
-		<Grid Grid.Row="4">
-
-			<Grid.RowDefinitions>
-				<RowDefinition Height="Auto" />
-				<RowDefinition Height="16" />
-				<RowDefinition Height="2*" />
-				<RowDefinition Height="16" />
-				<RowDefinition Height="*" />
-			</Grid.RowDefinitions>
-
-			<WrapPanel Grid.Row="0">
-
-				<TextBlock
-					Margin="0,0,24,0"
-					Text="{Binding TotalItems, StringFormat=Total: {0}, Mode=OneWay}" />
-
-				<TextBlock
-					Margin="0,0,24,0"
-					Text="{Binding NewItems, StringFormat=New: {0}, Mode=OneWay}" />
-
-				<TextBlock
-					Margin="0,0,24,0"
-					Text="{Binding ExistingItems, StringFormat=Existing: {0}, Mode=OneWay}" />
-
-				<TextBlock
-					Text="{Binding Warnings, StringFormat=Warnings: {0}, Mode=OneWay}" />
-
-				<TextBlock
-					Margin="24,0,24,0"
-					Text="{Binding TotalQuantity, StringFormat=Quantity: {0}, Mode=OneWay}" />
-
-				<TextBlock
-					Text="{Binding TotalValue, StringFormat=Value: {0:N2} EUR, Mode=OneWay}" />
-
-			</WrapPanel>
-
-			<DataGrid
-				Grid.Row="2"
-				ItemsSource="{Binding Items}"
-				AutoGenerateColumns="False"
-				IsReadOnly="True"
-				CanUserAddRows="False"
-				CanUserDeleteRows="False">
-
-				<DataGrid.Columns>
-
-					<DataGridTextColumn
-						Header="P/N"
-						Binding="{Binding PartNumber}"
-						Width="160" />
-
-					<DataGridTextColumn
-						Header="Description"
-						Binding="{Binding Description}"
-						Width="*" />
-
-					<DataGridTextColumn
-						Header="Manufacturer"
-						Binding="{Binding Manufacturer}"
-						Width="140" />
-
-					<DataGridTextColumn
-						Header="Category"
-						Binding="{Binding Category}"
-						Width="140" />
-
-					<DataGridTextColumn
-						Header="Quantity"
-						Binding="{Binding Quantity}"
-						Width="100" />
-
-					<DataGridTextColumn
-						Header="Unit Price"
-						Binding="{Binding UnitPrice, StringFormat={}{0:N4}}"
-						Width="100" />
-
-					<DataGridTextColumn
-						Header="Total Value"
-						Binding="{Binding TotalValue, StringFormat={}{0:N2}}"
-						Width="120" />
-
-					<DataGridCheckBoxColumn
-						Header="Exists"
-						Binding="{Binding ItemAlreadyExists, Mode=OneWay}"
-						Width="80" />
-
-				</DataGrid.Columns>
-
-			</DataGrid>
-
-			<DataGrid
-				Grid.Row="4"
-				ItemsSource="{Binding WarningItems}"
-				AutoGenerateColumns="False"
-				IsReadOnly="True"
-				CanUserAddRows="False"
-				CanUserDeleteRows="False">
-
-				<DataGrid.Columns>
-
-					<DataGridTextColumn
-						Header="Row"
-						Binding="{Binding RowNumber}"
-						Width="80" />
-
-					<DataGridTextColumn
-						Header="Warning"
-						Binding="{Binding Message}"
-						Width="*" />
-
-				</DataGrid.Columns>
-
-			</DataGrid>
+			<Button
+				Grid.Column="4"
+				Width="120"
+				Height="32"
+				Content="Import"
+				Command="{Binding ImportCommand}" />
 
 		</Grid>
+
+		<WrapPanel
+			Grid.Row="4"
+			HorizontalAlignment="Left">
+
+			<TextBlock
+				Margin="0,0,24,0"
+				Text="{Binding TotalItems, StringFormat=Total: {0}, Mode=OneWay}" />
+
+			<TextBlock
+				Margin="0,0,24,0"
+				Text="{Binding NewItems, StringFormat=New: {0}, Mode=OneWay}" />
+
+			<TextBlock
+				Margin="0,0,24,0"
+				Text="{Binding ExistingItems, StringFormat=Existing: {0}, Mode=OneWay}" />
+
+			<TextBlock
+				Margin="0,0,24,0"
+				Text="{Binding Warnings, StringFormat=Warnings: {0}, Mode=OneWay}" />
+
+			<TextBlock
+				Margin="0,0,24,0"
+				Text="{Binding TotalQuantity, StringFormat=Quantity: {0}, Mode=OneWay}" />
+
+			<TextBlock
+				Text="{Binding TotalValue, StringFormat=Value: {0:N2} EUR, Mode=OneWay}" />
+
+		</WrapPanel>
+
+		<WrapPanel
+			Grid.Row="6"
+			Margin="0,0,0,8"
+			HorizontalAlignment="Left"
+			VerticalAlignment="Top"
+			Visibility="{Binding Result.HasResult, Converter={StaticResource BooleanToVisibilityConverter}}">
+
+			<TextBlock
+				Margin="0,0,24,0"
+				Text="{Binding Result.ImportedItems, StringFormat=Imported Items: {0}, Mode=OneWay}" />
+
+			<TextBlock
+				Margin="0,0,24,0"
+				Text="{Binding Result.ImportedMovements, StringFormat=Imported Movements: {0}, Mode=OneWay}" />
+
+			<TextBlock
+				Text="{Binding Result.SkippedItems, StringFormat=Skipped Items: {0}, Mode=OneWay}" />
+
+		</WrapPanel>
+
+		<DataGrid
+			Grid.Row="6"
+			Margin="0,28,0,0"
+			HorizontalAlignment="Stretch"
+			VerticalAlignment="Stretch"
+			ItemsSource="{Binding Items}"
+			AutoGenerateColumns="False"
+			IsReadOnly="True"
+			CanUserAddRows="False"
+			CanUserDeleteRows="False"
+			ScrollViewer.VerticalScrollBarVisibility="Auto"
+			ScrollViewer.HorizontalScrollBarVisibility="Auto">
+
+			<DataGrid.Columns>
+
+				<DataGridTextColumn
+					Header="P/N"
+					Binding="{Binding PartNumber}"
+					Width="160" />
+
+				<DataGridTextColumn
+					Header="Description"
+					Binding="{Binding Description}"
+					Width="*" />
+
+				<DataGridTextColumn
+					Header="Manufacturer"
+					Binding="{Binding Manufacturer}"
+					Width="140" />
+
+				<DataGridTextColumn
+					Header="Category"
+					Binding="{Binding Category}"
+					Width="140" />
+
+				<DataGridTextColumn
+					Header="Quantity"
+					Binding="{Binding Quantity}"
+					Width="100" />
+
+				<DataGridTextColumn
+					Header="Unit Price"
+					Binding="{Binding UnitPrice, StringFormat={}{0:N4}}"
+					Width="120" />
+
+				<DataGridTextColumn
+					Header="Total Value"
+					Binding="{Binding TotalValue, StringFormat={}{0:N2}}"
+					Width="120" />
+
+				<DataGridCheckBoxColumn
+					Header="Exists"
+					Binding="{Binding ItemAlreadyExists, Mode=OneWay}"
+					Width="80" />
+
+			</DataGrid.Columns>
+
+		</DataGrid>
+
+		<TextBlock
+			Grid.Row="8"
+			Text="{Binding Warnings, StringFormat=Warnings ({0})}"
+			FontSize="16"
+			FontWeight="SemiBold"
+			Visibility="{Binding Warnings, Converter={StaticResource NonZeroToVisibilityConverter}}" />
+
+		<DataGrid
+			Grid.Row="10"
+			ItemsSource="{Binding WarningItems}"
+			AutoGenerateColumns="False"
+			IsReadOnly="True"
+			CanUserAddRows="False"
+			CanUserDeleteRows="False"
+			ScrollViewer.VerticalScrollBarVisibility="Auto"
+			ScrollViewer.HorizontalScrollBarVisibility="Auto"
+			Visibility="{Binding Warnings, Converter={StaticResource NonZeroToVisibilityConverter}}">
+
+			<DataGrid.RowStyle>
+				<Style TargetType="DataGridRow">
+					<Setter
+						Property="Background"
+						Value="#FFF8F8" />
+				</Style>
+			</DataGrid.RowStyle>
+
+			<DataGrid.Columns>
+
+				<DataGridTextColumn
+					Header="Row"
+					Binding="{Binding RowNumber}"
+					Width="80" />
+
+				<DataGridTextColumn
+					Header="Warning"
+					Binding="{Binding Message}"
+					Width="*" />
+
+			</DataGrid.Columns>
+
+		</DataGrid>
 
 	</Grid>
 
