@@ -36,9 +36,10 @@ public sealed class ImportService
 		var columns =
 			ReadColumns(worksheet);
 
-		var row = 2;
+		var lastRow =
+			worksheet.LastRowUsed()?.RowNumber() ?? 1;
 
-		while (!worksheet.Row(row).IsEmpty())
+		for (var row = 2; row <= lastRow; row++)
 		{
 			try
 			{
@@ -51,7 +52,6 @@ public sealed class ImportService
 
 				if (string.IsNullOrWhiteSpace(partNumber))
 				{
-					row++;
 					continue;
 				}
 
@@ -132,8 +132,6 @@ public sealed class ImportService
 						Message = ex.Message
 					});
 			}
-
-			row++;
 		}
 
 		return new ImportPreview
@@ -156,9 +154,10 @@ public sealed class ImportService
 			new Dictionary<string, int>(
 				StringComparer.OrdinalIgnoreCase);
 
-		var column = 1;
+		var lastColumn =
+			worksheet.LastColumnUsed()?.ColumnNumber() ?? 0;
 
-		while (!worksheet.Cell(1, column).IsEmpty())
+		for (var column = 1; column <= lastColumn; column++)
 		{
 			var header =
 				worksheet
@@ -170,8 +169,6 @@ public sealed class ImportService
 			{
 				result[header] = column;
 			}
-
-			column++;
 		}
 
 		return result;
@@ -183,15 +180,16 @@ public sealed class ImportService
 		IReadOnlyDictionary<string, int> columns,
 		string header)
 	{
-		if (!columns.TryGetValue(
-			header,
-			out var column))
-		{
-			throw new InvalidOperationException(
-				$"Column '{header}' was not found.");
-		}
+		var cell =
+			GetCell(
+				worksheet,
+				row,
+				columns,
+				header);
 
-		return worksheet.Cell(row, column).GetString().Trim();
+		return cell
+			.GetString()
+			.Trim();
 	}
 
 	private static int GetInt(
@@ -200,30 +198,80 @@ public sealed class ImportService
 		IReadOnlyDictionary<string, int> columns,
 		string header)
 	{
-		if (!columns.TryGetValue(
-			header,
-			out var column))
+		var cell =
+			GetCell(
+				worksheet,
+				row,
+				columns,
+				header);
+
+		if (cell.IsEmpty())
 		{
-			throw new InvalidOperationException(
-				$"Column '{header}' was not found.");
+			return 0;
 		}
 
-		var value =
-			worksheet
-				.Cell(row, column)
+		if (cell.TryGetValue<decimal>(
+			out var decimalValue))
+		{
+			return Convert.ToInt32(decimalValue);
+		}
+
+		var text =
+			cell
 				.GetString()
 				.Trim();
 
-		if (string.IsNullOrWhiteSpace(value))
+		if (string.IsNullOrWhiteSpace(text))
 		{
 			return 0;
 		}
 
 		return Convert.ToInt32(
-			decimal.Parse(value));
+			decimal.Parse(
+				text,
+				System.Globalization.CultureInfo.InvariantCulture));
 	}
 
 	private static decimal GetDecimal(
+		IXLWorksheet worksheet,
+		int row,
+		IReadOnlyDictionary<string, int> columns,
+		string header)
+	{
+		var cell =
+			GetCell(
+				worksheet,
+				row,
+				columns,
+				header);
+
+		if (cell.IsEmpty())
+		{
+			return 0m;
+		}
+
+		if (cell.TryGetValue<decimal>(
+			out var decimalValue))
+		{
+			return decimalValue;
+		}
+
+		var text =
+			cell
+				.GetString()
+				.Trim();
+
+		if (string.IsNullOrWhiteSpace(text))
+		{
+			return 0m;
+		}
+
+		return decimal.Parse(
+			text,
+			System.Globalization.CultureInfo.InvariantCulture);
+	}
+
+	private static IXLCell GetCell(
 		IXLWorksheet worksheet,
 		int row,
 		IReadOnlyDictionary<string, int> columns,
@@ -237,18 +285,8 @@ public sealed class ImportService
 				$"Column '{header}' was not found.");
 		}
 
-		var value =
-			worksheet
-				.Cell(row, column)
-				.GetString().Trim();
-
-		if (string.IsNullOrWhiteSpace(value))
-		{
-			return 0m;
-		}
-
-		return decimal.Parse(
-			value,
-			System.Globalization.CultureInfo.InvariantCulture);
+		return worksheet.Cell(
+			row,
+			column);
 	}
 }

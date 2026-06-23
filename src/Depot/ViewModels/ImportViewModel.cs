@@ -3,7 +3,10 @@
 
 using System.Collections.ObjectModel;
 
+using Depot.Commands;
 using Depot.Services.Import;
+
+using Microsoft.Win32;
 
 namespace Depot.ViewModels;
 
@@ -23,7 +26,13 @@ public sealed class ImportViewModel
 		ImportService importService)
 	{
 		_importService = importService;
+
+		BrowseCommand =
+			new RelayCommand(
+				Browse);
 	}
+
+	public RelayCommand BrowseCommand { get; }
 
 	public string FilePath
 	{
@@ -83,6 +92,24 @@ public sealed class ImportViewModel
 	public ObservableCollection<ImportPreviewItemViewModel> Items { get; }
 		= new();
 
+	private void Browse()
+	{
+		var dialog =
+			new OpenFileDialog
+			{
+				Filter =
+					"Excel Files (*.xlsx)|*.xlsx"
+			};
+
+		if (dialog.ShowDialog() != true)
+		{
+			return;
+		}
+
+		LoadPreview(
+			dialog.FileName);
+	}
+
 	public void LoadPreview(
 		string filePath)
 	{
@@ -92,17 +119,10 @@ public sealed class ImportViewModel
 
 		FilePath = filePath;
 
-		TotalItems =
-			preview.TotalItems;
-
-		NewItems =
-			preview.NewItems;
-
-		ExistingItems =
-			preview.ExistingItems;
-
-		Warnings =
-			preview.Warnings.Count;
+		TotalItems = preview.TotalItems;
+		NewItems = preview.NewItems;
+		ExistingItems = preview.ExistingItems;
+		Warnings = preview.Warnings.Count;
 
 		Items.Clear();
 

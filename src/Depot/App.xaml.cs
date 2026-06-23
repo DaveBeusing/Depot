@@ -5,8 +5,8 @@ using System.Windows;
 using Depot.Data;
 using Depot.Repositories;
 using Depot.Services;
-using Depot.ViewModels;
 using Depot.Services.Import;
+using Depot.ViewModels;
 
 namespace Depot;
 
@@ -25,15 +25,17 @@ public partial class App
 
 	public static StockService StockService { get; private set; } = null!;
 
+	public static ImportService ImportService { get; private set; } = null!;
+
 	public static DatabaseSeeder DatabaseSeeder { get; private set; } = null!;
 
 	public static MainViewModel MainViewModel { get; private set; } = null!;
 
-	public static ImportService ImportService { get; private set; } = null!;
-
 	protected override void OnStartup(
 		StartupEventArgs e)
 	{
+		DispatcherUnhandledException += OnDispatcherUnhandledException;
+
 		base.OnStartup(e);
 
 		ConnectionFactory =
@@ -50,12 +52,6 @@ public partial class App
 			new ItemRepository(
 				ConnectionFactory);
 
-		ImportService =
-			new ImportService(
-				ItemRepository);
-		
-		//var preview = ImportService.CreatePreview(@"D:\Code\Depot\inventory.xlsx");
-
 		StockMovementRepository =
 			new StockMovementRepository(
 				ConnectionFactory);
@@ -69,6 +65,10 @@ public partial class App
 				ItemRepository,
 				StockMovementRepository);
 
+		ImportService =
+			new ImportService(
+				ItemRepository);
+
 		DatabaseSeeder =
 			new DatabaseSeeder(
 				InventoryService,
@@ -81,6 +81,20 @@ public partial class App
 				InventoryService,
 				StockService,
 				ItemRepository,
-				StockMovementRepository);
+				StockMovementRepository,
+				ImportService);
+	}
+
+	private static void OnDispatcherUnhandledException(
+		object sender,
+		System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
+	{
+		MessageBox.Show(
+			e.Exception.ToString(),
+			"Unhandled Error",
+			MessageBoxButton.OK,
+			MessageBoxImage.Error);
+
+		e.Handled = true;
 	}
 }
