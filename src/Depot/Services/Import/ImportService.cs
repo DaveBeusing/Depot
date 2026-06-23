@@ -24,69 +24,122 @@ public sealed class ImportService
 		var items =
 			new List<ImportPreviewItem>();
 
+		var warnings =
+			new List<ImportWarning>();
+
 		using var workbook =
 			new XLWorkbook(filePath);
 
 		var worksheet =
 			workbook.Worksheet(1);
 
+		var columns =
+			ReadColumns(worksheet);
+
 		var row = 2;
 
-		while (!worksheet.Cell(row, 5).IsEmpty())
+		while (!worksheet.Row(row).IsEmpty())
 		{
-			var partNumber =
-				worksheet.Cell(row, 5).GetString().Trim();
+			try
+			{
+				var partNumber =
+					GetString(
+						worksheet,
+						row,
+						columns,
+						"P/N");
 
-			var description =
-				worksheet.Cell(row, 6).GetString().Trim();
-
-			var manufacturer =
-				worksheet.Cell(row, 4).GetString().Trim();
-
-			var category =
-				worksheet.Cell(row, 3).GetString().Trim();
-
-			var quantity =
-				worksheet.Cell(row, 15).GetValue<int>();
-
-			var unitPrice =
-				worksheet.Cell(row, 11).GetValue<decimal>();
-
-			var existingItem =
-				_itemRepository.GetByPartNumber(
-					partNumber);
-
-			items.Add(
-				new ImportPreviewItem
+				if (string.IsNullOrWhiteSpace(partNumber))
 				{
-					PartNumber = partNumber,
+					row++;
+					continue;
+				}
 
-					Description = description,
+				var description =
+					GetString(
+						worksheet,
+						row,
+						columns,
+						"Item Description");
 
-					Manufacturer =
-						string.IsNullOrWhiteSpace(manufacturer)
-							? null
-							: manufacturer,
+				var manufacturer =
+					GetString(
+						worksheet,
+						row,
+						columns,
+						"Manufacturer");
 
-					Category =
-						string.IsNullOrWhiteSpace(category)
-							? null
-							: category,
+				var category =
+					GetString(
+						worksheet,
+						row,
+						columns,
+						"Item Category");
 
-					Quantity = quantity,
+				var quantity =
+					GetInt(
+						worksheet,
+						row,
+						columns,
+						"Current Inventory");
 
-					UnitPrice = unitPrice,
+				var unitPrice =
+					GetDecimal(
+						worksheet,
+						row,
+						columns,
+						"Unit Price");
 
-					ItemAlreadyExists =
-						existingItem is not null
-				});
+				var existingItem =
+					_itemRepository.GetByPartNumber(
+						partNumber);
+
+				items.Add(
+					new ImportPreviewItem
+					{
+						PartNumber =
+							partNumber,
+
+						Description =
+							description,
+
+						Manufacturer =
+							string.IsNullOrWhiteSpace(manufacturer)
+								? null
+								: manufacturer,
+
+						Category =
+							string.IsNullOrWhiteSpace(category)
+								? null
+								: category,
+
+						Quantity =
+							quantity,
+
+						UnitPrice =
+							unitPrice,
+
+						ItemAlreadyExists =
+							existingItem is not null
+					});
+			}
+			catch (Exception ex)
+			{
+				warnings.Add(
+					new ImportWarning
+					{
+						RowNumber = row,
+						Message = ex.Message
+					});
+			}
 
 			row++;
 		}
 
 		return new ImportPreview
 		{
-			Items = items
+			Items = items,
+			Warnings = warnings
 		};
 	}
 
@@ -94,5 +147,108 @@ public sealed class ImportService
 		ImportPreview preview)
 	{
 		throw new NotImplementedException();
+	}
+
+	private static Dictionary<string, int> ReadColumns(
+		IXLWorksheet worksheet)
+	{
+		var result =
+			new Dictionary<string, int>(
+				StringComparer.OrdinalIgnoreCase);
+
+		var column = 1;
+
+		while (!worksheet.Cell(1, column).IsEmpty())
+		{
+			var header =
+				worksheet
+					.Cell(1, column)
+					.GetString()
+					.Trim();
+
+			if (!string.IsNullOrWhiteSpace(header))
+			{
+				result[header] = column;
+			}
+
+			column++;
+		}
+
+		return result;
+	}
+
+	private static string GetString(
+		IXLWorksheet worksheet,
+		int row,
+		IReadOnlyDictionary<string, int> columns,
+		string header)
+	{
+		if (!columns.TryGetValue(
+			header,
+			out var column))
+		{
+			throw new InvalidOperationException(
+				$"Column '{header}' was not found.");
+		}
+
+		return worksheet.Cell(row, column).GetString().Trim();
+	}
+
+	private static int GetInt(
+		IXLWorksheet worksheet,
+		int row,
+		IReadOnlyDictionary<string, int> columns,
+		string header)
+	{
+		if (!columns.TryGetValue(
+			header,
+			out var column))
+		{
+			throw new InvalidOperationException(
+				$"Column '{header}' was not found.");
+		}
+
+		var value =
+			worksheet
+				.Cell(row, column)
+				.GetString()
+				.Trim();
+
+		if (string.IsNullOrWhiteSpace(value))
+		{
+			return 0;
+		}
+
+		return Convert.ToInt32(
+			decimal.Parse(value));
+	}
+
+	private static decimal GetDecimal(
+		IXLWorksheet worksheet,
+		int row,
+		IReadOnlyDictionary<string, int> columns,
+		string header)
+	{
+		if (!columns.TryGetValue(
+			header,
+			out var column))
+		{
+			throw new InvalidOperationException(
+				$"Column '{header}' was not found.");
+		}
+
+		var value =
+			worksheet
+				.Cell(row, column)
+				.GetString().Trim();
+
+		if (string.IsNullOrWhiteSpace(value))
+		{
+			return 0m;
+		}
+
+		return decimal.Parse(
+			value,
+			System.Globalization.CultureInfo.InvariantCulture);
 	}
 }
