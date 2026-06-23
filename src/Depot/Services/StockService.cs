@@ -386,4 +386,62 @@ public sealed class StockService
 		};
 	}
 
+	public void AddOpeningBalance(
+	long itemId,
+	int quantity,
+	decimal unitPrice,
+	string? notes)
+{
+	if (itemId <= 0)
+	{
+		throw new ArgumentException(
+			"Item id is required.",
+			nameof(itemId));
+	}
+
+	if (quantity <= 0)
+	{
+		throw new ArgumentException(
+			"Quantity must be greater than zero.",
+			nameof(quantity));
+	}
+
+	var item =
+		_itemRepository.GetById(
+			itemId);
+
+	if (item is null)
+	{
+		throw new InvalidOperationException(
+			$"Item with id '{itemId}' was not found.");
+	}
+
+	var movement =
+		new StockMovement
+		{
+			ItemId = itemId,
+
+			MovementType =
+				StockMovementType.OpeningBalance,
+
+			TimestampUtc =
+				DateTime.UtcNow,
+
+			Quantity =
+				quantity,
+
+			UnitPrice =
+				unitPrice,
+
+			Reference =
+				"IMPORT",
+
+			Notes =
+				notes
+		};
+
+	_stockMovementRepository.Create(
+		movement);
+}
+
 }
