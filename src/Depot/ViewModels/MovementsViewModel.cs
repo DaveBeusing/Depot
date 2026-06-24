@@ -18,8 +18,8 @@ public sealed class MovementsViewModel
 	private readonly StockService _stockService;
 
 	private ItemLookupViewModel? _selectedItem;
-
 	private string? _errorMessage;
+	private string _searchText = string.Empty;
 
 	public MovementsViewModel(
 		ItemRepository itemRepository,
@@ -50,6 +50,19 @@ public sealed class MovementsViewModel
 	public MovementEditorViewModel Editor { get; }
 
 	public RelayCommand CreateMovementCommand { get; }
+
+	public string SearchText
+	{
+		get => _searchText;
+
+		set
+		{
+			_searchText = value;
+			OnPropertyChanged();
+
+			Load();
+		}
+	}
 
 	public ItemLookupViewModel? SelectedItem
 	{
@@ -113,7 +126,7 @@ public sealed class MovementsViewModel
 				.ToDictionary(
 					x => x.Id);
 
-		foreach (var movement in _stockMovementRepository.GetAll())
+		foreach (var movement in _stockMovementRepository.Search(SearchText))
 		{
 			if (!items.TryGetValue(
 				movement.ItemId,

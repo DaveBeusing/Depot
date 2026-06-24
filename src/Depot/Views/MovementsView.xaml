@@ -8,6 +8,8 @@
 		<Grid.RowDefinitions>
 			<RowDefinition Height="Auto" />
 			<RowDefinition Height="16" />
+			<RowDefinition Height="Auto" />
+			<RowDefinition Height="16" />
 			<RowDefinition Height="*" />
 		</Grid.RowDefinitions>
 
@@ -17,7 +19,13 @@
 			FontSize="22"
 			FontWeight="SemiBold" />
 
-		<Grid Grid.Row="2">
+		<TextBox
+			Grid.Row="2"
+			Height="32"
+			Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+			ToolTip="Search by part number, description, reference or notes" />
+
+		<Grid Grid.Row="4">
 
 			<Grid.ColumnDefinitions>
 				<ColumnDefinition Width="2*" />
@@ -31,7 +39,9 @@
 				AutoGenerateColumns="False"
 				IsReadOnly="True"
 				CanUserAddRows="False"
-				CanUserDeleteRows="False">
+				CanUserDeleteRows="False"
+				HeadersVisibility="Column"
+				RowHeaderWidth="0">
 
 				<DataGrid.Columns>
 
@@ -43,7 +53,7 @@
 					<DataGridTextColumn
 						Header="Part Number"
 						Binding="{Binding PartNumber}"
-						Width="160" />
+						Width="180" />
 
 					<DataGridTextColumn
 						Header="Description"
@@ -62,8 +72,8 @@
 
 					<DataGridTextColumn
 						Header="Unit Price"
-						Binding="{Binding UnitPrice, StringFormat={}{0:N4}}"
-						Width="120" />
+						Binding="{Binding UnitPrice, StringFormat={}{0:N4} EUR}"
+						Width="140" />
 
 					<DataGridTextColumn
 						Header="Reference"
@@ -124,7 +134,6 @@
 					<StackPanel Grid.Row="4">
 						<TextBlock Text="Item" />
 						<ComboBox
-							Margin="0,4,0,0"
 							ItemsSource="{Binding AvailableItems}"
 							SelectedItem="{Binding SelectedItem}"
 							DisplayMemberPath="DisplayName" />
@@ -133,7 +142,6 @@
 					<StackPanel Grid.Row="6">
 						<TextBlock Text="Movement Type" />
 						<ComboBox
-							Margin="0,4,0,0"
 							SelectedValue="{Binding Editor.MovementType}">
 							<ComboBoxItem Content="Purchase" />
 							<ComboBoxItem Content="Withdrawal" />
@@ -144,14 +152,12 @@
 					<StackPanel Grid.Row="8">
 						<TextBlock Text="Quantity" />
 						<TextBox
-							Margin="0,4,0,0"
 							Text="{Binding Editor.Quantity, UpdateSourceTrigger=PropertyChanged}" />
 					</StackPanel>
 
 					<StackPanel Grid.Row="10">
 						<TextBlock Text="Unit Price" />
 						<TextBox
-							Margin="0,4,0,0"
 							IsEnabled="{Binding Editor.RequiresUnitPrice}"
 							Text="{Binding Editor.UnitPrice, UpdateSourceTrigger=PropertyChanged}" />
 					</StackPanel>
@@ -159,7 +165,6 @@
 					<StackPanel Grid.Row="12">
 						<TextBlock Text="Reference" />
 						<TextBox
-							Margin="0,4,0,0"
 							Text="{Binding Editor.Reference, UpdateSourceTrigger=PropertyChanged}" />
 					</StackPanel>
 

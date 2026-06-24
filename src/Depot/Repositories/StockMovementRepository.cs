@@ -85,6 +85,86 @@ public sealed class StockMovementRepository
 		return (long)command.ExecuteScalar()!;
 	}
 
+	public IReadOnlyList<StockMovement> GetAll()
+	{
+		return Search(
+			null);
+	}
+
+	public IReadOnlyList<StockMovement> Search(
+		string? searchText)
+	{
+		var result =
+			new List<StockMovement>();
+
+		using var connection =
+			_connectionFactory.CreateConnection();
+
+		connection.Open();
+
+		using var command =
+			connection.CreateCommand();
+
+		if (string.IsNullOrWhiteSpace(searchText))
+		{
+			command.CommandText =
+			"""
+			SELECT
+				sm.Id,
+				sm.ItemId,
+				sm.MovementType,
+				sm.TimestampUtc,
+				sm.Quantity,
+				sm.UnitPrice,
+				sm.Reference,
+				sm.Notes
+			FROM StockMovements sm
+			INNER JOIN Items i
+				ON i.Id = sm.ItemId
+			ORDER BY sm.TimestampUtc DESC;
+			""";
+		}
+		else
+		{
+			command.CommandText =
+			"""
+			SELECT
+				sm.Id,
+				sm.ItemId,
+				sm.MovementType,
+				sm.TimestampUtc,
+				sm.Quantity,
+				sm.UnitPrice,
+				sm.Reference,
+				sm.Notes
+			FROM StockMovements sm
+			INNER JOIN Items i
+				ON i.Id = sm.ItemId
+			WHERE
+				i.PartNumber LIKE $Search
+				OR i.Description LIKE $Search
+				OR sm.Reference LIKE $Search
+				OR sm.Notes LIKE $Search
+			ORDER BY sm.TimestampUtc DESC;
+			""";
+
+			command.Parameters.AddWithValue(
+				"$Search",
+				$"%{searchText.Trim()}%");
+		}
+
+		using var reader =
+			command.ExecuteReader();
+
+		while (reader.Read())
+		{
+			result.Add(
+				ReadMovement(reader));
+		}
+
+		return result;
+	}
+
 	public IReadOnlyList<StockMovement> GetByItemId(
 		long itemId)
 	{
@@ -168,46 +248,4 @@ public sealed class StockMovementRepository
 					: reader.GetString(7)
 		};
 	}
-
-	public IReadOnlyList<StockMovement> GetAll()
-	{
-		var result =
-			new List<StockMovement>();
-
-		using var connection =
-			_connectionFactory.CreateConnection();
-
-		connection.Open();
-
-		using var command =
-			connection.CreateCommand();
-
-		command.CommandText =
-		"""
-		SELECT
-			Id,
-			ItemId,
-			MovementType,
-			TimestampUtc,
-			Quantity,
-			UnitPrice,
-			Reference,
-			Notes
-		FROM StockMovements
-		ORDER BY TimestampUtc DESC;
-		""";
-
-		using var reader =
-			command.ExecuteReader();
-
-		while (reader.Read())
-		{
-			result.Add(
-				ReadMovement(reader));
-		}
-
-		return result;
-	}
-
-
 }
