@@ -1,0 +1,220 @@
+<UserControl
+	x:Class="Depot.Views.DashboardView"
+	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+	<Grid>
+
+		<Grid.RowDefinitions>
+			<RowDefinition Height="Auto" />
+			<RowDefinition Height="24" />
+			<RowDefinition Height="Auto" />
+			<RowDefinition Height="24" />
+			<RowDefinition Height="*" />
+		</Grid.RowDefinitions>
+
+		<TextBlock
+			Grid.Row="0"
+			Text="Dashboard"
+			FontSize="22"
+			FontWeight="SemiBold" />
+
+		<Grid Grid.Row="2">
+
+			<Grid.ColumnDefinitions>
+				<ColumnDefinition Width="*" />
+				<ColumnDefinition Width="16" />
+				<ColumnDefinition Width="*" />
+				<ColumnDefinition Width="16" />
+				<ColumnDefinition Width="*" />
+				<ColumnDefinition Width="16" />
+				<ColumnDefinition Width="*" />
+			</Grid.ColumnDefinitions>
+
+			<Border
+				Grid.Column="0"
+				Padding="20"
+				Background="#F9FAFB"
+				BorderBrush="#E5E7EB"
+				BorderThickness="1">
+
+				<StackPanel
+					HorizontalAlignment="Center"
+					VerticalAlignment="Center">
+
+					<TextBlock
+						Text="Total Items"
+						Foreground="#6B7280"
+						TextAlignment="Center"
+						HorizontalAlignment="Center" />
+
+					<TextBlock
+						Margin="0,8,0,0"
+						Text="{Binding TotalItems}"
+						FontSize="32"
+						FontWeight="SemiBold"
+						TextAlignment="Center"
+						HorizontalAlignment="Center" />
+
+				</StackPanel>
+
+			</Border>
+
+			<Border
+				Grid.Column="2"
+				Padding="20"
+				Background="#F9FAFB"
+				BorderBrush="#E5E7EB"
+				BorderThickness="1">
+
+				<StackPanel
+					HorizontalAlignment="Center"
+					VerticalAlignment="Center">
+
+					<TextBlock
+						Text="Total Stock"
+						Foreground="#6B7280"
+						TextAlignment="Center"
+						HorizontalAlignment="Center" />
+
+					<TextBlock
+						Margin="0,8,0,0"
+						Text="{Binding TotalStockQuantity}"
+						FontSize="32"
+						FontWeight="SemiBold"
+						TextAlignment="Center"
+						HorizontalAlignment="Center" />
+
+				</StackPanel>
+
+			</Border>
+
+			<Border
+				Grid.Column="4"
+				Padding="20"
+				Background="#F9FAFB"
+				BorderBrush="#E5E7EB"
+				BorderThickness="1">
+
+				<StackPanel
+					HorizontalAlignment="Center"
+					VerticalAlignment="Center">
+
+					<TextBlock
+						Text="Inventory Value"
+						Foreground="#6B7280"
+						TextAlignment="Center"
+						HorizontalAlignment="Center" />
+
+					<TextBlock
+						Margin="0,8,0,0"
+						Text="{Binding TotalInventoryValue, StringFormat={}{0:N2} EUR}"
+						FontSize="32"
+						FontWeight="SemiBold"
+						TextAlignment="Center"
+						HorizontalAlignment="Center" />
+
+				</StackPanel>
+
+			</Border>
+
+			<Border
+				Grid.Column="6"
+				Padding="20"
+				Background="#F9FAFB"
+				BorderBrush="#E5E7EB"
+				BorderThickness="1">
+
+				<StackPanel
+					HorizontalAlignment="Center"
+					VerticalAlignment="Center">
+
+					<TextBlock
+						Text="Movements"
+						Foreground="#6B7280"
+						TextAlignment="Center"
+						HorizontalAlignment="Center" />
+
+					<TextBlock
+						Margin="0,8,0,0"
+						Text="{Binding TotalMovements}"
+						FontSize="32"
+						FontWeight="SemiBold"
+						TextAlignment="Center"
+						HorizontalAlignment="Center" />
+
+				</StackPanel>
+
+			</Border>
+
+		</Grid>
+
+		<Border
+			Grid.Row="4"
+			Padding="16"
+			Background="White"
+			BorderBrush="#E5E7EB"
+			BorderThickness="1">
+
+			<Grid>
+
+				<Grid.RowDefinitions>
+					<RowDefinition Height="Auto" />
+					<RowDefinition Height="16" />
+					<RowDefinition Height="*" />
+				</Grid.RowDefinitions>
+
+				<TextBlock
+					Grid.Row="0"
+					Text="Recent Movements"
+					FontSize="18"
+					FontWeight="SemiBold" />
+
+				<DataGrid
+					Grid.Row="2"
+					ItemsSource="{Binding RecentMovements}"
+					AutoGenerateColumns="False"
+					IsReadOnly="True"
+					CanUserAddRows="False"
+					CanUserDeleteRows="False"
+					HeadersVisibility="Column"
+					RowHeaderWidth="0">
+
+					<DataGrid.Columns>
+
+						<DataGridTextColumn
+							Header="Date"
+							Binding="{Binding TimestampLocal}"
+							Width="180" />
+
+						<DataGridTextColumn
+							Header="Part Number"
+							Binding="{Binding PartNumber}"
+							Width="180" />
+
+						<DataGridTextColumn
+							Header="Description"
+							Binding="{Binding Description}"
+							Width="*" />
+
+						<DataGridTextColumn
+							Header="Type"
+							Binding="{Binding MovementType}"
+							Width="120" />
+
+						<DataGridTextColumn
+							Header="Quantity"
+							Binding="{Binding Quantity}"
+							Width="100" />
+
+					</DataGrid.Columns>
+
+				</DataGrid>
+
+			</Grid>
+
+		</Border>
+
+	</Grid>
+
+</UserControl>

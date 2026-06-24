@@ -22,6 +22,10 @@ public sealed class MainViewModel
 		StockMovementRepository stockMovementRepository,
 		ImportService importService)
 	{
+		DashboardViewModel =
+			new DashboardViewModel(
+				stockService);
+
 		InventoryViewModel =
 			new InventoryViewModel(
 				stockService);
@@ -39,6 +43,12 @@ public sealed class MainViewModel
 		ImportViewModel =
 			new ImportViewModel(
 				importService);
+
+		NavigationItems.Add(
+			new NavigationItem
+			{
+				Name = "Dashboard"
+			});
 
 		NavigationItems.Add(
 			new NavigationItem
@@ -82,6 +92,8 @@ public sealed class MainViewModel
 
 	public ObservableCollection<NavigationItem> NavigationItems { get; }
 		= new();
+
+	public DashboardViewModel DashboardViewModel { get; }
 
 	public InventoryViewModel InventoryViewModel { get; }
 
@@ -128,12 +140,18 @@ public sealed class MainViewModel
 		CurrentViewModel =
 			SelectedNavigationItem.Name switch
 			{
+				"Dashboard" => DashboardViewModel,
 				"Inventory" => InventoryViewModel,
 				"Items" => ItemsViewModel,
 				"Movements" => MovementsViewModel,
 				"Import" => ImportViewModel,
-				_ => InventoryViewModel
+				_ => DashboardViewModel
 			};
+
+		if (CurrentViewModel == DashboardViewModel)
+		{
+			DashboardViewModel.Load();
+		}
 
 		if (CurrentViewModel == InventoryViewModel)
 		{
