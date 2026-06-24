@@ -478,4 +478,82 @@ public sealed class StockService
 		return result;
 	}
 
+	public DashboardSummary GetDashboardSummary()
+	{
+		var inventory =
+			GetInventoryOverview();
+
+		var totalItems =
+			inventory.Count;
+
+		var totalStockQuantity =
+			inventory.Sum(
+				x => x.CurrentStock);
+
+		var totalInventoryValue =
+			inventory.Sum(
+				x => x.InventoryValue);
+
+		var totalMovements =
+			_stockMovementRepository
+				.GetAll().Count;
+
+		return new DashboardSummary
+		{
+			TotalItems =
+				totalItems,
+
+			TotalStockQuantity =
+				totalStockQuantity,
+
+			TotalInventoryValue =
+				totalInventoryValue,
+
+			TotalMovements =
+				totalMovements
+		};
+	}
+
+	public IReadOnlyList<DashboardRecentMovement> GetRecentMovements(int count = 10)
+	{
+		var items =
+			_itemRepository
+				.GetAll()
+				.ToDictionary(
+					x => x.Id);
+
+		return
+			_stockMovementRepository
+				.GetAll()
+				.Take(count)
+				.Where(
+					x => items.ContainsKey(
+						x.ItemId))
+				.Select(
+					x =>
+					{
+						var item =
+							items[x.ItemId];
+
+						return new DashboardRecentMovement
+						{
+							TimestampUtc =
+								x.TimestampUtc,
+
+							PartNumber =
+								item.PartNumber,
+
+							Description =
+								item.Description,
+
+							MovementType =
+								x.MovementType,
+
+							Quantity =
+								x.Quantity
+						};
+					})
+				.ToList();
+	}
+
 }
