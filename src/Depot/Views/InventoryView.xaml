@@ -8,6 +8,8 @@
 		<Grid.RowDefinitions>
 			<RowDefinition Height="Auto" />
 			<RowDefinition Height="16" />
+			<RowDefinition Height="Auto" />
+			<RowDefinition Height="16" />
 			<RowDefinition Height="*" />
 		</Grid.RowDefinitions>
 
@@ -17,7 +19,13 @@
 			FontSize="22"
 			FontWeight="SemiBold" />
 
-		<Grid Grid.Row="2">
+		<TextBox
+			Grid.Row="2"
+			Height="32"
+			Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+			ToolTip="Search by part number, description, manufacturer or category" />
+
+		<Grid Grid.Row="4">
 
 			<Grid.ColumnDefinitions>
 				<ColumnDefinition Width="2*" />
@@ -55,7 +63,7 @@
 
 					<DataGridTextColumn
 						Header="Avg Cost"
-						Binding="{Binding AverageCost, StringFormat={}{0:N2} EUR}"
+						Binding="{Binding AverageCost, StringFormat={}{0:N4} EUR}"
 						Width="140" />
 
 					<DataGridTextColumn
@@ -218,7 +226,7 @@
 
 								<TextBlock
 									Margin="0,6,0,0"
-									Text="{Binding Details.AverageCost, StringFormat={}{0:N2}}"
+									Text="{Binding Details.AverageCost, StringFormat={}{0:N4} EUR}"
 									FontSize="18"
 									FontWeight="SemiBold" />
 
@@ -242,7 +250,7 @@
 
 								<TextBlock
 									Margin="0,6,0,0"
-									Text="{Binding Details.InventoryValue, StringFormat={}{0:N2}}"
+									Text="{Binding Details.InventoryValue, StringFormat={}{0:N2} EUR}"
 									FontSize="18"
 									FontWeight="SemiBold" />
 

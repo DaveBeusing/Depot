@@ -387,61 +387,95 @@ public sealed class StockService
 	}
 
 	public void AddOpeningBalance(
-	long itemId,
-	int quantity,
-	decimal unitPrice,
-	string? notes)
-{
-	if (itemId <= 0)
+		long itemId,
+		int quantity,
+		decimal unitPrice,
+		string? notes)
 	{
-		throw new ArgumentException(
-			"Item id is required.",
-			nameof(itemId));
-	}
-
-	if (quantity <= 0)
-	{
-		throw new ArgumentException(
-			"Quantity must be greater than zero.",
-			nameof(quantity));
-	}
-
-	var item =
-		_itemRepository.GetById(
-			itemId);
-
-	if (item is null)
-	{
-		throw new InvalidOperationException(
-			$"Item with id '{itemId}' was not found.");
-	}
-
-	var movement =
-		new StockMovement
+		if (itemId <= 0)
 		{
-			ItemId = itemId,
+			throw new ArgumentException(
+				"Item id is required.",
+				nameof(itemId));
+		}
 
-			MovementType =
-				StockMovementType.OpeningBalance,
+		if (quantity <= 0)
+		{
+			throw new ArgumentException(
+				"Quantity must be greater than zero.",
+				nameof(quantity));
+		}
 
-			TimestampUtc =
-				DateTime.UtcNow,
+		var item =
+			_itemRepository.GetById(
+				itemId);
 
-			Quantity =
-				quantity,
+		if (item is null)
+		{
+			throw new InvalidOperationException(
+				$"Item with id '{itemId}' was not found.");
+		}
 
-			UnitPrice =
-				unitPrice,
+		var movement =
+			new StockMovement
+			{
+				ItemId = itemId,
 
-			Reference =
-				"IMPORT",
+				MovementType =
+					StockMovementType.OpeningBalance,
 
-			Notes =
-				notes
-		};
+				TimestampUtc =
+					DateTime.UtcNow,
 
-	_stockMovementRepository.Create(
-		movement);
-}
+				Quantity =
+					quantity,
+
+				UnitPrice =
+					unitPrice,
+
+				Reference =
+					"IMPORT",
+
+				Notes =
+					notes
+			};
+
+		_stockMovementRepository.Create(
+			movement);
+	}
+
+
+	public IReadOnlyList<InventoryOverviewItem> SearchInventoryOverview(
+		string? searchText)
+	{
+		var result =
+			new List<InventoryOverviewItem>();
+
+		var items =
+			_itemRepository.SearchActive(
+				searchText);
+
+		foreach (var item in items)
+		{
+			var summary =
+				GetInventorySummary(
+					item.Id);
+
+			result.Add(
+				new InventoryOverviewItem
+				{
+					ItemId = item.Id,
+					PartNumber = item.PartNumber,
+					Description = item.Description,
+					Manufacturer = item.Manufacturer,
+					Category = item.Category,
+					CurrentStock = summary.CurrentStock,
+					AverageCost = summary.AverageCost,
+					InventoryValue = summary.InventoryValue
+				});
+		}
+
+		return result;
+	}
 
 }

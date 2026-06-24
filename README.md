@@ -74,5 +74,5 @@ Depot is released under the MIT License.
 
 You are free to use, modify, distribute, and sublicense this software in accordance with the terms of the MIT License.
 
-See the [LICENSE](LICENSE) file for the full license text.
+See the [LICENSE](LICENSE.md) file for the full license text.
 

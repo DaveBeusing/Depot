@@ -13,6 +13,7 @@ public sealed class InventoryViewModel
 	private readonly StockService _stockService;
 
 	private InventoryOverviewItemViewModel? _selectedItem;
+	private string _searchText = string.Empty;
 
 	public InventoryViewModel(
 		StockService stockService)
@@ -30,6 +31,19 @@ public sealed class InventoryViewModel
 
 	public InventoryDetailsViewModel Details { get; }
 
+	public string SearchText
+	{
+		get => _searchText;
+
+		set
+		{
+			_searchText = value;
+			OnPropertyChanged();
+
+			Load();
+		}
+	}
+
 	public InventoryOverviewItemViewModel? SelectedItem
 	{
 		get => _selectedItem;
@@ -46,23 +60,28 @@ public sealed class InventoryViewModel
 
 	public void Load()
 	{
+		var selectedItemId =
+			SelectedItem?.ItemId;
+
 		Items.Clear();
 
-		foreach (var item in _stockService.GetInventoryOverview())
+		foreach (var item in _stockService.SearchInventoryOverview(SearchText))
 		{
 			Items.Add(
 				new InventoryOverviewItemViewModel(
 					item));
 		}
 
-		if (SelectedItem is not null)
+		if (selectedItemId is not null)
 		{
-			var matchingItem =
-				Items.FirstOrDefault(
-					x => x.ItemId == SelectedItem.ItemId);
-
 			SelectedItem =
-				matchingItem;
+				Items.FirstOrDefault(
+					x => x.ItemId == selectedItemId.Value);
+		}
+
+		if (SelectedItem is null)
+		{
+			Details.Clear();
 		}
 	}
 

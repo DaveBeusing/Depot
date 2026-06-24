@@ -109,6 +109,13 @@ public sealed class ItemRepository
 
 	public IReadOnlyList<Item> GetAll()
 	{
+		return SearchActive(
+			null);
+	}
+
+	public IReadOnlyList<Item> SearchActive(
+		string? searchText)
+	{
 		var result = new List<Item>();
 
 		using var connection = _connectionFactory.CreateConnection();
@@ -117,19 +124,50 @@ public sealed class ItemRepository
 
 		using var command = connection.CreateCommand();
 
-		command.CommandText =
-		"""
-		SELECT
-			Id,
-			PartNumber,
-			Description,
-			Manufacturer,
-			Category,
-			IsActive
-		FROM Items
-		WHERE IsActive = 1
-		ORDER BY PartNumber;
-		""";
+		if (string.IsNullOrWhiteSpace(searchText))
+		{
+			command.CommandText =
+			"""
+			SELECT
+				Id,
+				PartNumber,
+				Description,
+				Manufacturer,
+				Category,
+				IsActive
+			FROM Items
+			WHERE IsActive = 1
+			ORDER BY PartNumber;
+			""";
+		}
+		else
+		{
+			command.CommandText =
+			"""
+			SELECT
+				Id,
+				PartNumber,
+				Description,
+				Manufacturer,
+				Category,
+				IsActive
+			FROM Items
+			WHERE
+				IsActive = 1
+				AND
+				(
+					PartNumber LIKE $Search
+					OR Description LIKE $Search
+					OR Manufacturer LIKE $Search
+					OR Category LIKE $Search
+				)
+			ORDER BY PartNumber;
+			""";
+
+			command.Parameters.AddWithValue(
+				"$Search",
+				$"%{searchText.Trim()}%");
+		}
 
 		using var reader = command.ExecuteReader();
 
