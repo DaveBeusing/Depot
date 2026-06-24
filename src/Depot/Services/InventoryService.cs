@@ -21,6 +21,13 @@ public sealed class InventoryService
 		return _itemRepository.GetAll();
 	}
 
+	public IReadOnlyList<Item> SearchItems(
+		string? searchText)
+	{
+		return _itemRepository.SearchActive(
+			searchText);
+	}
+
 	public Item CreateItem(
 		string partNumber,
 		string description,

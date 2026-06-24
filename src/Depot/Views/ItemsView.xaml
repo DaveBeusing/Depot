@@ -8,6 +8,8 @@
 		<Grid.RowDefinitions>
 			<RowDefinition Height="Auto" />
 			<RowDefinition Height="16" />
+			<RowDefinition Height="Auto" />
+			<RowDefinition Height="16" />
 			<RowDefinition Height="*" />
 		</Grid.RowDefinitions>
 
@@ -33,7 +35,13 @@
 
 		</Grid>
 
-		<Grid Grid.Row="2">
+		<TextBox
+			Grid.Row="2"
+			Height="32"
+			Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+			ToolTip="Search by part number, description, manufacturer or category" />
+
+		<Grid Grid.Row="4">
 
 			<Grid.ColumnDefinitions>
 				<ColumnDefinition Width="2*" />
@@ -48,14 +56,16 @@
 				AutoGenerateColumns="False"
 				IsReadOnly="True"
 				CanUserAddRows="False"
-				CanUserDeleteRows="False">
+				CanUserDeleteRows="False"
+				HeadersVisibility="Column"
+				RowHeaderWidth="0">
 
 				<DataGrid.Columns>
 
 					<DataGridTextColumn
 						Header="Part Number"
 						Binding="{Binding PartNumber}"
-						Width="180" />
+						Width="220" />
 
 					<DataGridTextColumn
 						Header="Description"
@@ -124,7 +134,6 @@
 					<StackPanel Grid.Row="4">
 						<TextBlock Text="Part Number" />
 						<TextBox
-							Margin="0,4,0,0"
 							IsEnabled="{Binding Editor.CanEditPartNumber}"
 							Text="{Binding Editor.PartNumber, UpdateSourceTrigger=PropertyChanged}" />
 					</StackPanel>
@@ -132,21 +141,18 @@
 					<StackPanel Grid.Row="6">
 						<TextBlock Text="Description" />
 						<TextBox
-							Margin="0,4,0,0"
 							Text="{Binding Editor.Description, UpdateSourceTrigger=PropertyChanged}" />
 					</StackPanel>
 
 					<StackPanel Grid.Row="8">
 						<TextBlock Text="Manufacturer" />
 						<TextBox
-							Margin="0,4,0,0"
 							Text="{Binding Editor.Manufacturer, UpdateSourceTrigger=PropertyChanged}" />
 					</StackPanel>
 
 					<StackPanel Grid.Row="10">
 						<TextBlock Text="Category" />
 						<TextBox
-							Margin="0,4,0,0"
 							Text="{Binding Editor.Category, UpdateSourceTrigger=PropertyChanged}" />
 					</StackPanel>
 

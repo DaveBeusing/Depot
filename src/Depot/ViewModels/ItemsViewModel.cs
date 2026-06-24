@@ -15,6 +15,7 @@ public sealed class ItemsViewModel
 
 	private ItemViewModel? _selectedItem;
 	private string? _errorMessage;
+	private string _searchText = string.Empty;
 
 	public ItemsViewModel(
 		InventoryService inventoryService)
@@ -50,6 +51,19 @@ public sealed class ItemsViewModel
 
 	public RelayCommand DeactivateItemCommand { get; }
 
+	public string SearchText
+	{
+		get => _searchText;
+
+		set
+		{
+			_searchText = value;
+			OnPropertyChanged();
+
+			LoadItems();
+		}
+	}
+
 	public ItemViewModel? SelectedItem
 	{
 		get => _selectedItem;
@@ -82,12 +96,22 @@ public sealed class ItemsViewModel
 
 	public void LoadItems()
 	{
+		var selectedItemId =
+			SelectedItem?.Id;
+
 		Items.Clear();
 
-		foreach (var item in _inventoryService.GetItems())
+		foreach (var item in _inventoryService.SearchItems(SearchText))
 		{
 			Items.Add(
 				new ItemViewModel(item));
+		}
+
+		if (selectedItemId is not null)
+		{
+			SelectedItem =
+				Items.FirstOrDefault(
+					x => x.Id == selectedItemId.Value);
 		}
 	}
 
