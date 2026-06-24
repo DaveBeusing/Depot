@@ -2,34 +2,48 @@
 
 Depot is a desktop application for managing local inventory and assets.
 
-## Goals
+## Vision
 
-* Replace the current Excel-based inventory management process
-* Provide accurate and traceable inventory tracking
-* Support inventory movements and stock valuation
-* Use a local database with the option to migrate to a central server later
-* Support future multi-user operation
-* Keep external dependencies to a minimum
+The goal is to replace spreadsheet-based inventory tracking with a reliable system that provides:
+
+- Accurate stock management
+- Complete inventory movement history
+- Stock valuation
+- Multi-location support
+- Future multi-user operation
+- Migration path from local to server-based deployment
 
 ## Technology Stack
 
-* .NET 10
-* WPF
-* SQLite
-* MVVM Architecture
+![Platform](https://img.shields.io/badge/platform-Windows-blue)
+![Framework](https://img.shields.io/badge/.NET-10-purple)
+![UI](https://img.shields.io/badge/UI-WPF-512BD4)
+![Database](https://img.shields.io/badge/Database-SQLite-green)
+![Architecture](https://img.shields.io/badge/Architecture-MVVM-orange)
+![License](https://img.shields.io/badge/License-MIT-yellow)
 
 ## Architecture
 
 ```text
-Views
-  ↓
-ViewModels
-  ↓
-Services
-  ↓
-Repositories
-  ↓
-Database
+┌─────────────┐
+│    Views    │
+└──────┬──────┘
+       │
+┌──────▼──────┐
+│ ViewModels  │
+└──────┬──────┘
+       │
+┌──────▼──────┐
+│  Services   │
+└──────┬──────┘
+       │
+┌──────▼──────┐
+│Repositories │
+└──────┬──────┘
+       │
+┌──────▼──────┐
+│   SQLite    │
+└─────────────┘
 ```
 
 ## Planned Features
@@ -75,4 +89,6 @@ Depot is released under the MIT License.
 You are free to use, modify, distribute, and sublicense this software in accordance with the terms of the MIT License.
 
 See the [LICENSE](LICENSE.md) file for the full license text.
+
+Built with ❤️ using .NET, WPF and SQLite
 
