@@ -31,20 +31,15 @@ public partial class App
 
 	public static MainViewModel MainViewModel { get; private set; } = null!;
 
-	protected override void OnStartup(
-		StartupEventArgs e)
+	protected override void OnStartup(StartupEventArgs e)
 	{
 		DispatcherUnhandledException += OnDispatcherUnhandledException;
 
 		base.OnStartup(e);
 
-		ConnectionFactory =
-			new SqliteConnectionFactory(
-				"depot.db");
+		ConnectionFactory = new SqliteConnectionFactory("depot.db");
 
-		Database =
-			new DepotDatabase(
-				ConnectionFactory);
+		Database = new DepotDatabase(ConnectionFactory);
 
 		Database.Initialize();
 
@@ -71,12 +66,8 @@ public partial class App
 				InventoryService,
 				StockService);
 
-		DatabaseSeeder =
-			new DatabaseSeeder(
-				InventoryService,
-				StockService);
-
-		DatabaseSeeder.Seed();
+		//DatabaseSeeder = new DatabaseSeeder(InventoryService, StockService);
+		//DatabaseSeeder.Seed();
 
 		MainViewModel =
 			new MainViewModel(
