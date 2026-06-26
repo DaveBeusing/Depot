@@ -18,6 +18,7 @@ public sealed class MainViewModel
 	public MainViewModel(
 		ItemService itemService,
 		StockService stockService,
+		MovementService movementService,
 		ItemRepository itemRepository,
 		StockMovementRepository stockMovementRepository,
 		ImportService importService)
@@ -38,7 +39,7 @@ public sealed class MainViewModel
 			new MovementsViewModel(
 				itemRepository,
 				stockMovementRepository,
-				stockService);
+				movementService);
 
 		ImportViewModel =
 			new ImportViewModel(

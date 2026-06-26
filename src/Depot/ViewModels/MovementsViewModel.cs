@@ -15,7 +15,7 @@ public sealed class MovementsViewModel
 {
 	private readonly ItemRepository _itemRepository;
 	private readonly StockMovementRepository _stockMovementRepository;
-	private readonly StockService _stockService;
+	private readonly MovementService _movementService;
 
 	private ItemLookupViewModel? _selectedItem;
 	private string? _errorMessage;
@@ -24,11 +24,11 @@ public sealed class MovementsViewModel
 	public MovementsViewModel(
 		ItemRepository itemRepository,
 		StockMovementRepository stockMovementRepository,
-		StockService stockService)
+		MovementService movementService)
 	{
 		_itemRepository = itemRepository;
 		_stockMovementRepository = stockMovementRepository;
-		_stockService = stockService;
+		_movementService = movementService;
 
 		Editor =
 			new MovementEditorViewModel();
@@ -185,7 +185,7 @@ public sealed class MovementsViewModel
 			{
 				case StockMovementType.Purchase:
 
-					_stockService.AddPurchase(
+						_movementService.AddPurchase(
 						Editor.ItemId,
 						Editor.Quantity,
 						Editor.UnitPrice,
@@ -196,7 +196,7 @@ public sealed class MovementsViewModel
 
 				case StockMovementType.Withdrawal:
 
-					_stockService.AddWithdrawal(
+					_movementService.AddWithdrawal(
 						Editor.ItemId,
 						Editor.Quantity,
 						Editor.Reference,
@@ -206,7 +206,7 @@ public sealed class MovementsViewModel
 
 				case StockMovementType.Correction:
 
-					_stockService.AddCorrection(
+					_movementService.AddCorrection(
 						Editor.ItemId,
 						Editor.Quantity,
 						Editor.Reference,

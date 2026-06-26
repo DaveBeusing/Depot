@@ -13,16 +13,16 @@ public sealed class ImportService
 {
 	private readonly ItemRepository _itemRepository;
 	private readonly ItemService _itemService;
-	private readonly StockService _stockService;
+	private readonly MovementService _movementService;
 
 	public ImportService(
 		ItemRepository itemRepository,
 		ItemService itemService,
-		StockService stockService)
+		MovementService movementService)
 	{
 		_itemRepository = itemRepository;
 		_itemService = itemService;
-		_stockService = stockService;
+		_movementService = movementService;
 	}
 
 	public ImportPreview CreatePreview(
@@ -221,7 +221,7 @@ public sealed class ImportService
 
 			if (previewItem.Quantity > 0)
 			{
-				_stockService.AddOpeningBalance(
+				_movementService.AddOpeningBalance(
 					item.Id,
 					previewItem.Quantity,
 					previewItem.UnitPrice,
