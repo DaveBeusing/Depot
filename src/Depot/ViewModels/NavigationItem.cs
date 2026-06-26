@@ -5,5 +5,10 @@ namespace Depot.ViewModels;
 
 public sealed class NavigationItem
 {
-	public required string Name { get; init; }
+	public string Name { get; init; }
+		= string.Empty;
+
+	public string? Icon { get; init; }
+
+	public object? Tag { get; init; }
 }

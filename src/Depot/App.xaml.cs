@@ -25,7 +25,7 @@ public partial class App
 
 	public static StockMovementRepository StockMovementRepository { get; private set; } = null!;
 
-	public static InventoryService InventoryService { get; private set; } = null!;
+	public static ItemService ItemService { get; private set; } = null!;
 
 	public static StockService StockService { get; private set; } = null!;
 
@@ -63,8 +63,8 @@ public partial class App
 			new StockMovementRepository(
 				ConnectionFactory);
 
-		InventoryService =
-			new InventoryService(
+		ItemService =
+			new ItemService(
 				ItemRepository);
 
 		StockService =
@@ -75,15 +75,15 @@ public partial class App
 		ImportService =
 			new ImportService(
 				ItemRepository,
-				InventoryService,
+				ItemService,
 				StockService);
 
-		//DatabaseSeeder = new DatabaseSeeder(InventoryService, StockService);
+		//DatabaseSeeder = new DatabaseSeeder(ItemService, StockService);
 		//DatabaseSeeder.Seed();
 
 		MainViewModel =
 			new MainViewModel(
-				InventoryService,
+				ItemService,
 				StockService,
 				ItemRepository,
 				StockMovementRepository,

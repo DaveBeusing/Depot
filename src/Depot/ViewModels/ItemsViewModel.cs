@@ -11,16 +11,16 @@ namespace Depot.ViewModels;
 public sealed class ItemsViewModel
 	: BaseViewModel
 {
-	private readonly InventoryService _inventoryService;
+	private readonly ItemService _itemService;
 
 	private ItemViewModel? _selectedItem;
 	private string? _errorMessage;
 	private string _searchText = string.Empty;
 
 	public ItemsViewModel(
-		InventoryService inventoryService)
+		ItemService itemService)
 	{
-		_inventoryService = inventoryService;
+		_itemService = itemService;
 
 		Editor = new ItemEditorViewModel();
 
@@ -87,12 +87,14 @@ public sealed class ItemsViewModel
 		{
 			_errorMessage = value;
 			OnPropertyChanged();
-			OnPropertyChanged(nameof(HasErrorMessage));
+			OnPropertyChanged(
+				nameof(HasErrorMessage));
 		}
 	}
 
 	public bool HasErrorMessage =>
-		!string.IsNullOrWhiteSpace(ErrorMessage);
+		!string.IsNullOrWhiteSpace(
+			ErrorMessage);
 
 	public void LoadItems()
 	{
@@ -101,10 +103,11 @@ public sealed class ItemsViewModel
 
 		Items.Clear();
 
-		foreach (var item in _inventoryService.SearchItems(SearchText))
+		foreach (var item in _itemService.SearchItems(SearchText))
 		{
 			Items.Add(
-				new ItemViewModel(item));
+				new ItemViewModel(
+					item));
 		}
 
 		if (selectedItemId is not null)
@@ -150,7 +153,7 @@ public sealed class ItemsViewModel
 		{
 			if (Editor.Id == 0)
 			{
-				_inventoryService.CreateItem(
+				_itemService.CreateItem(
 					Editor.PartNumber,
 					Editor.Description,
 					Editor.Manufacturer,
@@ -158,7 +161,7 @@ public sealed class ItemsViewModel
 			}
 			else
 			{
-				_inventoryService.UpdateItem(
+				_itemService.UpdateItem(
 					Editor.Id,
 					Editor.Description,
 					Editor.Manufacturer,
@@ -193,7 +196,7 @@ public sealed class ItemsViewModel
 
 		try
 		{
-			_inventoryService.DeactivateItem(
+			_itemService.DeactivateItem(
 				Editor.Id);
 
 			LoadItems();

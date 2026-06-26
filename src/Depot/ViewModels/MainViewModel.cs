@@ -16,7 +16,7 @@ public sealed class MainViewModel
 	private BaseViewModel? _currentViewModel;
 
 	public MainViewModel(
-		InventoryService inventoryService,
+		ItemService itemService,
 		StockService stockService,
 		ItemRepository itemRepository,
 		StockMovementRepository stockMovementRepository,
@@ -32,7 +32,7 @@ public sealed class MainViewModel
 
 		ItemsViewModel =
 			new ItemsViewModel(
-				inventoryService);
+				itemService);
 
 		MovementsViewModel =
 			new MovementsViewModel(

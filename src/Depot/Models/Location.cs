@@ -3,15 +3,14 @@
 
 namespace Depot.Models;
 
-public sealed class Inventory
+public sealed class Location
 {
 	public long Id { get; set; }
 
-	public long ItemId { get; set; }
+	public string Name { get; set; }
+		= string.Empty;
 
-	public long PurposeId { get; set; }
-
-	public long? LocationId { get; set; }
+	public string? Description { get; set; }
 
 	public bool IsActive { get; set; }
 }

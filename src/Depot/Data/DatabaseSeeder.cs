@@ -7,38 +7,38 @@ namespace Depot.Data;
 
 public sealed class DatabaseSeeder
 {
-	private readonly InventoryService _inventoryService;
+	private readonly ItemService _itemService;
 	private readonly StockService _stockService;
 
 	public DatabaseSeeder(
-		InventoryService inventoryService,
+		ItemService itemService,
 		StockService stockService)
 	{
-		_inventoryService = inventoryService;
+		_itemService = itemService;
 		_stockService = stockService;
 	}
 
 	public void Seed()
 	{
-		if (_inventoryService.GetItems().Count > 0)
+		if (_itemService.GetItems().Count > 0)
 		{
 			return;
 		}
 
 		var ssd1 =
-			_inventoryService.CreateItem(
+			_itemService.CreateItem(
 				"SSD-001",
 				"Samsung SSD 1TB",
 				"Samsung",
 				"Storage");
 
-		_inventoryService.CreateItem(
+		_itemService.CreateItem(
 			"SSD-002",
 			"Crucial SSD 2TB",
 			"Crucial",
 			"Storage");
 
-		_inventoryService.CreateItem(
+		_itemService.CreateItem(
 			"CABLE-001",
 			"HDMI Cable 3m",
 			"Generic",

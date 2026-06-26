@@ -12,16 +12,16 @@ namespace Depot.Services.Import;
 public sealed class ImportService
 {
 	private readonly ItemRepository _itemRepository;
-	private readonly InventoryService _inventoryService;
+	private readonly ItemService _itemService;
 	private readonly StockService _stockService;
 
 	public ImportService(
 		ItemRepository itemRepository,
-		InventoryService inventoryService,
+		ItemService itemService,
 		StockService stockService)
 	{
 		_itemRepository = itemRepository;
-		_inventoryService = inventoryService;
+		_itemService = itemService;
 		_stockService = stockService;
 	}
 
@@ -211,7 +211,7 @@ public sealed class ImportService
 			}
 
 			var item =
-				_inventoryService.CreateItem(
+				_itemService.CreateItem(
 					previewItem.PartNumber,
 					previewItem.Description,
 					previewItem.Manufacturer,
