@@ -22,20 +22,23 @@ public sealed class DepotDatabase
 
 		connection.Open();
 
-		CreateDatabaseInfoTable(connection);
+		CreateDatabaseInfoTable(
+			connection);
 
 		var version =
-			GetDatabaseVersion(connection);
+			GetDatabaseVersion(
+				connection);
 
 		if (version == 0)
 		{
-			CreateVersion1Schema(connection);
+			CreateVersion3Schema(
+				connection);
 
 			SetDatabaseVersion(
 				connection,
-				1);
+				DatabaseVersion.CurrentVersion);
 
-			version = 1;
+			return;
 		}
 
 		ApplyMigrations(
@@ -81,7 +84,8 @@ public sealed class DepotDatabase
 			return 0;
 		}
 
-		return Convert.ToInt32(result);
+		return Convert.ToInt32(
+			result);
 	}
 
 	private static void SetDatabaseVersion(
@@ -120,7 +124,26 @@ public sealed class DepotDatabase
 		insertCommand.ExecuteNonQuery();
 	}
 
-	private static void CreateVersion1Schema(
+	private static void CreateVersion3Schema(
+		SqliteConnection connection)
+	{
+		CreateItemsTable(
+			connection);
+
+		CreatePurposesTable(
+			connection);
+
+		CreateInventoriesTable(
+			connection);
+
+		CreateStockMovementsTable(
+			connection);
+
+		CreateDefaultPurpose(
+			connection);
+	}
+
+	private static void CreateItemsTable(
 		SqliteConnection connection)
 	{
 		using var command =
@@ -142,7 +165,7 @@ public sealed class DepotDatabase
 		command.ExecuteNonQuery();
 	}
 
-	private static void MigrateToVersion2(
+	private static void CreatePurposesTable(
 		SqliteConnection connection)
 	{
 		using var command =
@@ -150,7 +173,55 @@ public sealed class DepotDatabase
 
 		command.CommandText =
 		"""
-		CREATE TABLE StockMovements
+		CREATE TABLE IF NOT EXISTS Purposes
+		(
+			Id              INTEGER PRIMARY KEY AUTOINCREMENT,
+			Name            TEXT NOT NULL UNIQUE,
+			Description     TEXT,
+			IsActive        INTEGER NOT NULL DEFAULT 1
+		);
+		""";
+
+		command.ExecuteNonQuery();
+	}
+
+	private static void CreateInventoriesTable(
+		SqliteConnection connection)
+	{
+		using var command =
+			connection.CreateCommand();
+
+		command.CommandText =
+		"""
+		CREATE TABLE IF NOT EXISTS Inventories
+		(
+			Id              INTEGER PRIMARY KEY AUTOINCREMENT,
+			ItemId          INTEGER NOT NULL,
+			PurposeId       INTEGER NOT NULL,
+			IsActive        INTEGER NOT NULL DEFAULT 1,
+
+			UNIQUE(ItemId, PurposeId),
+
+			FOREIGN KEY(ItemId)
+				REFERENCES Items(Id),
+
+			FOREIGN KEY(PurposeId)
+				REFERENCES Purposes(Id)
+		);
+		""";
+
+		command.ExecuteNonQuery();
+	}
+
+	private static void CreateStockMovementsTable(
+		SqliteConnection connection)
+	{
+		using var command =
+			connection.CreateCommand();
+
+		command.CommandText =
+		"""
+		CREATE TABLE IF NOT EXISTS StockMovements
 		(
 			Id                  INTEGER PRIMARY KEY AUTOINCREMENT,
 
@@ -176,34 +247,45 @@ public sealed class DepotDatabase
 		command.ExecuteNonQuery();
 	}
 
+	private static void CreateDefaultPurpose(
+		SqliteConnection connection)
+	{
+		using var command =
+			connection.CreateCommand();
+
+		command.CommandText =
+		"""
+		INSERT OR IGNORE INTO Purposes
+		(
+			Name,
+			Description,
+			IsActive
+		)
+		VALUES
+		(
+			'Stock',
+			'Default stock purpose',
+			1
+		);
+		""";
+
+		command.ExecuteNonQuery();
+	}
+
 	private static void ApplyMigrations(
 		SqliteConnection connection,
 		int version)
 	{
-		while (version < DatabaseVersion.CurrentVersion)
+		if (version < DatabaseVersion.CurrentVersion)
 		{
-			switch (version)
-			{
-				case 1:
-				{
-					MigrateToVersion2(
-						connection);
+			throw new InvalidOperationException(
+				$"Database version '{version}' is older than the current schema version '{DatabaseVersion.CurrentVersion}'. Delete depot.db and import the Excel file again.");
+		}
 
-					SetDatabaseVersion(
-						connection,
-						2);
-
-					version = 2;
-
-					break;
-				}
-
-				default:
-				{
-					throw new InvalidOperationException(
-						$"Unknown database version '{version}'.");
-				}
-			}
+		if (version > DatabaseVersion.CurrentVersion)
+		{
+			throw new InvalidOperationException(
+				$"Database version '{version}' is newer than the supported schema version '{DatabaseVersion.CurrentVersion}'.");
 		}
 	}
 }

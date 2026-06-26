@@ -19,6 +19,10 @@ public partial class App
 
 	public static ItemRepository ItemRepository { get; private set; } = null!;
 
+	public static PurposeRepository PurposeRepository { get; private set; } = null!;
+
+	public static InventoryRepository InventoryRepository { get; private set; } = null!;
+
 	public static StockMovementRepository StockMovementRepository { get; private set; } = null!;
 
 	public static InventoryService InventoryService { get; private set; } = null!;
@@ -45,6 +49,14 @@ public partial class App
 
 		ItemRepository =
 			new ItemRepository(
+				ConnectionFactory);
+
+		PurposeRepository =
+			new PurposeRepository(
+				ConnectionFactory);
+
+		InventoryRepository =
+			new InventoryRepository(
 				ConnectionFactory);
 
 		StockMovementRepository =
