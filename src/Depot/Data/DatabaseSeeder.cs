@@ -8,14 +8,14 @@ namespace Depot.Data;
 public sealed class DatabaseSeeder
 {
 	private readonly ItemService _itemService;
-	private readonly StockService _stockService;
+	private readonly MovementService _movementService;
 
 	public DatabaseSeeder(
 		ItemService itemService,
-		StockService stockService)
+		MovementService movementService)
 	{
 		_itemService = itemService;
-		_stockService = stockService;
+		_movementService = movementService;
 	}
 
 	public void Seed()
@@ -44,27 +44,27 @@ public sealed class DatabaseSeeder
 			"Generic",
 			"Cables");
 
-		_stockService.AddPurchase(
+		_movementService.AddPurchase(
 			ssd1.Id,
 			100,
 			1.00m,
 			"INV-1000",
 			"Initial demo purchase");
 
-		_stockService.AddPurchase(
+		_movementService.AddPurchase(
 			ssd1.Id,
 			50,
 			0.50m,
 			"INV-1001",
 			"Second demo purchase");
 
-		_stockService.AddWithdrawal(
+		_movementService.AddWithdrawal(
 			ssd1.Id,
 			10,
 			"LAB-001",
 			"Demo withdrawal");
 
-		_stockService.AddCorrection(
+		_movementService.AddCorrection(
 			ssd1.Id,
 			-2,
 			"INV-COUNT",
