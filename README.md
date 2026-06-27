@@ -1,26 +1,79 @@
 # 📦 Depot
 
-Depot is a desktop application for managing local inventory and assets.
+**Modern inventory management**
 
-## Vision
+Depot is a desktop inventory management application built with **.NET 10**, **WPF** and **SQLite**.
 
-The goal is to replace spreadsheet-based inventory tracking with a reliable system that provides:
+It was originally created as a replacement for a large Excel-based inventory and is evolving into a modular inventory management system.
 
-- Accurate stock management
-- Complete inventory movement history
-- Stock valuation
-- Multi-location support
-- Future multi-user operation
-- Migration path from local to server-based deployment
+> ⚠️ **Development Status**
+>
+> Depot is currently under active development.
+> Database schema and domain model may change before version **1.0**.
 
-## Technology Stack
-
+---
 ![Platform](https://img.shields.io/badge/platform-Windows-blue)
 ![Framework](https://img.shields.io/badge/.NET-10-purple)
 ![UI](https://img.shields.io/badge/UI-WPF-512BD4)
 ![Database](https://img.shields.io/badge/Database-SQLite-green)
 ![Architecture](https://img.shields.io/badge/Architecture-MVVM-orange)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
+---
+
+# Features
+
+## Dashboard
+
+* Inventory overview
+* Current inventory value
+* Total stock quantity
+* Recent stock movements
+
+## Inventory
+
+* Current stock
+* Average cost calculation
+* Inventory valuation
+* Inventory details
+* Recent movements
+
+## Item Management
+
+* Create items
+* Edit items
+* Deactivate items
+* SQL-based search
+
+## Stock Movements
+
+* Purchase
+* Withdrawal
+* Correction
+* Opening Balance
+* SQL-based search
+
+## Excel Import
+
+* Import preview
+* Duplicate detection
+* Validation
+* Summary statistics
+* Import execution
+
+---
+
+# Planned Features
+
+* Administration
+* Master Data
+* Purposes
+* Locations
+* Inventory model
+* Barcode support
+* Reports
+* Backup & Restore
+* User management
+
 
 ## Architecture
 
@@ -46,41 +99,33 @@ The goal is to replace spreadsheet-based inventory tracking with a reliable syst
 └─────────────┘
 ```
 
-## Planned Features
+# Documentation
 
-### Version 1
+Further documentation can be found in the **docs** directory.
 
-* Item Management
-* Goods Receipts
-* Stock Withdrawals
-* Inventory Overview
-* Stock Valuation
+* [Architecture](docs/Architecture.md)
+* [Coding Standard](docs/CodingStandard.md)
+* [Roadmap](docs/Roadmap.md)
 
-### Version 2
+# Getting Started
 
-* Locations
-* Inventory Counting
-* Projects
-* Reservations
-* Barcode / QR Code Support
+Clone the repository.
 
-### Version 3
+```powershell
+git clone https://github.com/DaveBeusing/Depot.git
+```
 
-* Server Database
-* Multi-User Support
-* Roles and Permissions
+Open the solution.
 
-## Inventory Principles
+```powershell
+Depot.slnx
+```
 
-### Inventory Tracking
+Run the application.
 
-Inventory quantities are never edited directly.
-
-Current stock levels are always derived from inventory movements.
-
-## Project Status
-
-Under Development
+```powershell
+dotnet run --project src/Depot/Depot.csproj
+```
 
 ## License
 
@@ -90,5 +135,5 @@ You are free to use, modify, distribute, and sublicense this software in accorda
 
 See the [LICENSE](LICENSE.md) file for the full license text.
 
-Built with ❤️ using .NET, WPF and SQLite
 
+Built with ❤️ using .NET, WPF and SQLite
