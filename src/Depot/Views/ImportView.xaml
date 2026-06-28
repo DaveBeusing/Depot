@@ -22,8 +22,7 @@
 		<TextBlock
 			Grid.Row="0"
 			Text="Import"
-			FontSize="22"
-			FontWeight="SemiBold" />
+			Style="{StaticResource PageTitleStyle}" />
 
 		<Grid Grid.Row="2">
 
@@ -167,8 +166,7 @@
 		<TextBlock
 			Grid.Row="8"
 			Text="{Binding Warnings, StringFormat=Warnings ({0})}"
-			FontSize="16"
-			FontWeight="SemiBold"
+			Style="{StaticResource SectionTitleStyle}"
 			Visibility="{Binding Warnings, Converter={StaticResource NonZeroToVisibilityConverter}}" />
 
 		<DataGrid

@@ -16,8 +16,7 @@
 		<TextBlock
 			Grid.Row="0"
 			Text="Inventory"
-			FontSize="22"
-			FontWeight="SemiBold" />
+			Style="{StaticResource PageTitleStyle}" />
 
 		<TextBox
 			Grid.Row="2"
@@ -99,8 +98,7 @@
 					<TextBlock
 						Grid.Row="0"
 						Text="Inventory Details"
-						FontSize="18"
-						FontWeight="SemiBold" />
+						Style="{StaticResource SectionTitleStyle}" />
 
 					<Border
 						Grid.Row="2"
@@ -263,8 +261,7 @@
 					<TextBlock
 						Grid.Row="6"
 						Text="Recent Movements"
-						FontSize="16"
-						FontWeight="SemiBold" />
+						Style="{StaticResource SectionTitleStyle}" />
 
 					<DataGrid
 						Grid.Row="8"
