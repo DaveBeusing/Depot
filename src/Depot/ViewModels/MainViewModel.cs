@@ -6,6 +6,7 @@ using System.Collections.ObjectModel;
 using Depot.Repositories;
 using Depot.Services;
 using Depot.Services.Import;
+using Depot.ViewModels.Administration;
 
 namespace Depot.ViewModels;
 
@@ -45,46 +46,48 @@ public sealed class MainViewModel
 			new ImportViewModel(
 				importService);
 
+		AdministrationViewModel =
+			new AdministrationViewModel(
+				ImportViewModel);
+
 		NavigationItems.Add(
 			new NavigationItem
 			{
-				Name = "Dashboard"
+				Name = "Dashboard",
+				Icon = "📊",
+				Section = ShellSection.Dashboard
 			});
 
 		NavigationItems.Add(
 			new NavigationItem
 			{
-				Name = "Inventory"
+				Name = "Inventory",
+				Icon = "📦",
+				Section = ShellSection.Inventory
 			});
 
 		NavigationItems.Add(
 			new NavigationItem
 			{
-				Name = "Items"
+				Name = "Items",
+				Icon = "📋",
+				Section = ShellSection.Items
 			});
 
 		NavigationItems.Add(
 			new NavigationItem
 			{
-				Name = "Movements"
+				Name = "Movements",
+				Icon = "🔄",
+				Section = ShellSection.Movements
 			});
 
 		NavigationItems.Add(
 			new NavigationItem
 			{
-				Name = "Import"
-			});
-
-		NavigationItems.Add(
-			new NavigationItem
-			{
-				Name = "Reports"
-			});
-
-		NavigationItems.Add(
-			new NavigationItem
-			{
-				Name = "Settings"
+				Name = "Administration",
+				Icon = "⚙",
+				Section = ShellSection.Administration
 			});
 
 		SelectedNavigationItem =
@@ -103,6 +106,8 @@ public sealed class MainViewModel
 	public MovementsViewModel MovementsViewModel { get; }
 
 	public ImportViewModel ImportViewModel { get; }
+
+	public AdministrationViewModel AdministrationViewModel { get; }
 
 	public NavigationItem? SelectedNavigationItem
 	{
@@ -139,13 +144,13 @@ public sealed class MainViewModel
 		}
 
 		CurrentViewModel =
-			SelectedNavigationItem.Name switch
+			(ShellSection)SelectedNavigationItem.Section switch
 			{
-				"Dashboard" => DashboardViewModel,
-				"Inventory" => InventoryViewModel,
-				"Items" => ItemsViewModel,
-				"Movements" => MovementsViewModel,
-				"Import" => ImportViewModel,
+				ShellSection.Dashboard => DashboardViewModel,
+				ShellSection.Inventory => InventoryViewModel,
+				ShellSection.Items => ItemsViewModel,
+				ShellSection.Movements => MovementsViewModel,
+				ShellSection.Administration => AdministrationViewModel,
 				_ => DashboardViewModel
 			};
 

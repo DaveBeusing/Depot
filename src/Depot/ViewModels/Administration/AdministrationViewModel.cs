@@ -3,16 +3,26 @@
 
 using System.Collections.ObjectModel;
 
+using Depot.ViewModels.Shared;
+
 namespace Depot.ViewModels.Administration;
 
+/// <summary>
+/// Provides navigation and content selection for the administration area.
+/// </summary>
 public sealed class AdministrationViewModel
 	: BaseViewModel
 {
+	private readonly ImportViewModel _importViewModel;
+
 	private NavigationItem? _selectedNavigationItem;
 	private BaseViewModel? _currentViewModel;
 
-	public AdministrationViewModel()
+	public AdministrationViewModel(
+		ImportViewModel importViewModel)
 	{
+		_importViewModel = importViewModel;
+
 		NavigationItems.Add(
 			new NavigationItem
 			{
@@ -83,6 +93,42 @@ public sealed class AdministrationViewModel
 
 	private void UpdateCurrentViewModel()
 	{
-		CurrentViewModel = null;
+		if (SelectedNavigationItem is null)
+		{
+			CurrentViewModel = null;
+			return;
+		}
+
+		CurrentViewModel =
+			(AdministrationSection)SelectedNavigationItem.Section switch
+			{
+				AdministrationSection.Import =>
+					_importViewModel,
+
+				AdministrationSection.MasterData =>
+					new PlaceholderViewModel(
+						"Master Data",
+						"Master data management will be available in a future release."),
+
+				AdministrationSection.Users =>
+					new PlaceholderViewModel(
+						"Users",
+						"User management will be available in a future release."),
+
+				AdministrationSection.Database =>
+					new PlaceholderViewModel(
+						"Database",
+						"Database management will be available in a future release."),
+
+				AdministrationSection.Settings =>
+					new PlaceholderViewModel(
+						"Settings",
+						"Application settings will be available in a future release."),
+
+				_ =>
+					new PlaceholderViewModel(
+						"Administration",
+						"This administration section is currently under development.")
+			};
 	}
 }
