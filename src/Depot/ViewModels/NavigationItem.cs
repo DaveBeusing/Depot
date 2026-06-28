@@ -10,5 +10,5 @@ public sealed class NavigationItem
 
 	public string? Icon { get; init; }
 
-	public object? Tag { get; init; }
+	public Enum Section { get; init; } = null!;
 }
