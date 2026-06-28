@@ -1,0 +1,77 @@
+<ResourceDictionary
+	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+	<!-- Base -->
+
+	<SolidColorBrush
+		x:Key="BackgroundBrush"
+		Color="#F7F8FA" />
+
+	<SolidColorBrush
+		x:Key="SurfaceBrush"
+		Color="#FFFFFF" />
+
+	<SolidColorBrush
+		x:Key="SurfaceAltBrush"
+		Color="#F9FAFB" />
+
+	<!-- Primary -->
+
+	<SolidColorBrush
+		x:Key="PrimaryBrush"
+		Color="#2563EB" />
+
+	<SolidColorBrush
+		x:Key="PrimaryForegroundBrush"
+		Color="#FFFFFF" />
+
+	<!-- Text -->
+
+	<SolidColorBrush
+		x:Key="PrimaryTextBrush"
+		Color="#111827" />
+
+	<SolidColorBrush
+		x:Key="SecondaryTextBrush"
+		Color="#6B7280" />
+
+	<!-- Borders -->
+
+	<SolidColorBrush
+		x:Key="BorderBrush"
+		Color="#E5E7EB" />
+
+	<!-- Navigation -->
+
+	<SolidColorBrush
+		x:Key="NavigationBackgroundBrush"
+		Color="#1F2937" />
+
+	<SolidColorBrush
+		x:Key="NavigationForegroundBrush"
+		Color="#E5E7EB" />
+
+	<SolidColorBrush
+		x:Key="NavigationHoverBrush"
+		Color="#374151" />
+
+	<SolidColorBrush
+		x:Key="NavigationSelectedBrush"
+		Color="#2563EB" />
+
+	<!-- Status -->
+
+	<SolidColorBrush
+		x:Key="SuccessBrush"
+		Color="#DCFCE7" />
+
+	<SolidColorBrush
+		x:Key="WarningBrush"
+		Color="#FEF3C7" />
+
+	<SolidColorBrush
+		x:Key="ErrorBrush"
+		Color="#FEE2E2" />
+
+</ResourceDictionary>

@@ -7,146 +7,21 @@
 
 	<Application.Resources>
 
-		<BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+		<ResourceDictionary>
 
-		<converters:NonZeroToVisibilityConverter x:Key="NonZeroToVisibilityConverter" />
+			<ResourceDictionary.MergedDictionaries>
 
-		<SolidColorBrush x:Key="BackgroundBrush"
-						 Color="#F7F8FA" />
+				<ResourceDictionary Source="Resources/Colors.xaml" />
 
-		<SolidColorBrush x:Key="SidebarBrush"
-						 Color="#1F2937" />
+				<ResourceDictionary Source="Resources/Styles.xaml" />
 
-		<SolidColorBrush x:Key="SidebarForegroundBrush"
-						 Color="#E5E7EB" />
+			</ResourceDictionary.MergedDictionaries>
 
-		<SolidColorBrush x:Key="AccentBrush"
-						 Color="#2563EB" />
+			<BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
 
-		<SolidColorBrush x:Key="BorderBrush"
-						 Color="#E5E7EB" />
+			<converters:NonZeroToVisibilityConverter x:Key="NonZeroToVisibilityConverter" />
 
-		<Style TargetType="Window">
-
-			<Setter Property="Background"
-					Value="{StaticResource BackgroundBrush}" />
-
-			<Setter Property="FontSize"
-					Value="13" />
-
-		</Style>
-
-		<Style TargetType="Button">
-
-			<Setter Property="Height"
-					Value="32" />
-
-			<Setter Property="Padding"
-					Value="16,4" />
-
-			<Setter Property="Background"
-					Value="{StaticResource AccentBrush}" />
-
-			<Setter Property="Foreground"
-					Value="White" />
-
-			<Setter Property="BorderThickness"
-					Value="0" />
-
-			<Setter Property="Cursor"
-					Value="Hand" />
-
-		</Style>
-
-		<Style TargetType="TextBox">
-
-			<Setter Property="Padding"
-					Value="8,4" />
-
-			<Setter Property="Margin"
-					Value="0,4,0,0" />
-
-		</Style>
-
-		<Style TargetType="ComboBox">
-
-			<Setter Property="Padding"
-					Value="8,4" />
-
-			<Setter Property="Margin"
-					Value="0,4,0,0" />
-
-		</Style>
-
-		<Style TargetType="DataGrid">
-
-			<Setter Property="BorderBrush"
-					Value="{StaticResource BorderBrush}" />
-
-			<Setter Property="BorderThickness"
-					Value="1" />
-
-			<Setter Property="RowHeaderWidth"
-					Value="0" />
-
-			<Setter Property="HeadersVisibility"
-					Value="Column" />
-
-			<Setter Property="GridLinesVisibility"
-					Value="Horizontal" />
-
-			<Setter Property="AlternatingRowBackground"
-					Value="#FAFAFA" />
-
-			<Setter Property="HorizontalGridLinesBrush"
-					Value="#E5E7EB" />
-
-			<Setter Property="VerticalGridLinesBrush"
-					Value="Transparent" />
-
-			<Setter Property="Background"
-					Value="White" />
-
-		</Style>
-
-		<Style TargetType="DataGridColumnHeader">
-
-			<Setter Property="Background"
-					Value="#F3F4F6" />
-
-			<Setter Property="Foreground"
-					Value="#111827" />
-
-			<Setter Property="FontWeight"
-					Value="SemiBold" />
-
-			<Setter Property="Padding"
-					Value="12,8" />
-
-			<Setter Property="BorderBrush"
-					Value="#E5E7EB" />
-
-			<Setter Property="BorderThickness"
-					Value="0,0,0,1" />
-
-		</Style>
-
-		<Style TargetType="DataGridRow">
-
-			<Setter Property="MinHeight"
-					Value="32" />
-
-		</Style>
-
-		<Style TargetType="DataGridCell">
-
-			<Setter Property="Padding"
-					Value="8,4" />
-
-			<Setter Property="BorderThickness"
-					Value="0" />
-
-		</Style>
+		</ResourceDictionary>
 
 	</Application.Resources>
 
