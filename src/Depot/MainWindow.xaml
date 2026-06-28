@@ -5,9 +5,13 @@
 	xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
 	xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
 	xmlns:viewModels="clr-namespace:Depot.ViewModels"
+	xmlns:administrationViewModels="clr-namespace:Depot.ViewModels.Administration"
+	xmlns:sharedViewModels="clr-namespace:Depot.ViewModels.Shared"
 	xmlns:views="clr-namespace:Depot.Views"
+	xmlns:administrationViews="clr-namespace:Depot.Views.Administration"
+	xmlns:sharedViews="clr-namespace:Depot.Views.Shared"
 	mc:Ignorable="d"
-	Title="Depot - Local Inventory Management"
+	Title="Depot"
 	Width="1600"
 	Height="950"
 	MinWidth="1200"
@@ -15,25 +19,37 @@
 
 	<Window.Resources>
 
-		<DataTemplate DataType="{x:Type viewModels:DashboardViewModel}">
-			<views:DashboardView />
-		</DataTemplate>
+		<ResourceDictionary>
+			
+			<DataTemplate DataType="{x:Type viewModels:DashboardViewModel}">
+				<views:DashboardView />
+			</DataTemplate>
 
-		<DataTemplate DataType="{x:Type viewModels:InventoryViewModel}">
-			<views:InventoryView />
-		</DataTemplate>
+			<DataTemplate DataType="{x:Type viewModels:InventoryViewModel}">
+				<views:InventoryView />
+			</DataTemplate>
 
-		<DataTemplate DataType="{x:Type viewModels:ItemsViewModel}">
-			<views:ItemsView />
-		</DataTemplate>
+			<DataTemplate DataType="{x:Type viewModels:ItemsViewModel}">
+				<views:ItemsView />
+			</DataTemplate>
 
-		<DataTemplate DataType="{x:Type viewModels:MovementsViewModel}">
-			<views:MovementsView />
-		</DataTemplate>
+			<DataTemplate DataType="{x:Type viewModels:MovementsViewModel}">
+				<views:MovementsView />
+			</DataTemplate>
 
-		<DataTemplate DataType="{x:Type viewModels:ImportViewModel}">
-			<views:ImportView />
-		</DataTemplate>
+			<DataTemplate DataType="{x:Type viewModels:ImportViewModel}">
+				<views:ImportView />
+			</DataTemplate>
+
+			<DataTemplate DataType="{x:Type administrationViewModels:AdministrationViewModel}">
+				<administrationViews:AdministrationView />
+			</DataTemplate>
+
+			<DataTemplate DataType="{x:Type sharedViewModels:PlaceholderViewModel}">
+				<sharedViews:PlaceholderView />
+			</DataTemplate>
+
+		</ResourceDictionary>
 
 	</Window.Resources>
 
@@ -46,7 +62,7 @@
 
 		<Border
 			Grid.Column="0"
-			Background="{StaticResource SidebarBrush}">
+			Background="{StaticResource NavigationBackgroundBrush}">
 
 			<DockPanel>
 
@@ -54,29 +70,24 @@
 					DockPanel.Dock="Top"
 					Margin="24"
 					Text="📦 Depot"
-					FontSize="28"
+					FontSize="24"
 					FontWeight="SemiBold"
-					Foreground="{StaticResource SidebarForegroundBrush}" />
+					Foreground="{StaticResource NavigationForegroundBrush}" />
 
 				<ListBox
 					ItemsSource="{Binding NavigationItems}"
 					SelectedItem="{Binding SelectedNavigationItem}"
 					Background="Transparent"
 					BorderThickness="0"
-					Foreground="{StaticResource SidebarForegroundBrush}">
+					Foreground="{StaticResource NavigationForegroundBrush}">
 
 					<ListBox.ItemContainerStyle>
 
 						<Style TargetType="ListBoxItem">
 
-							<Setter Property="Margin"
-									Value="8,2" />
-
-							<Setter Property="Padding"
-									Value="8" />
-
-							<Setter Property="HorizontalContentAlignment"
-									Value="Stretch" />
+							<Setter Property="Margin" Value="8,2" />
+							<Setter Property="Padding" Value="8" />
+							<Setter Property="HorizontalContentAlignment" Value="Stretch" />
 
 							<Setter Property="Template">
 
@@ -96,21 +107,21 @@
 
 										<ControlTemplate.Triggers>
 
-											<Trigger Property="IsMouseOver"
-													Value="True">
+											<Trigger Property="IsMouseOver" Value="True">
 
-												<Setter TargetName="Border"
-														Property="Background"
-														Value="#374151" />
+												<Setter
+													TargetName="Border"
+													Property="Background"
+													Value="{StaticResource NavigationHoverBrush}" />
 
 											</Trigger>
 
-											<Trigger Property="IsSelected"
-													Value="True">
+											<Trigger Property="IsSelected" Value="True">
 
-												<Setter TargetName="Border"
-														Property="Background"
-														Value="{StaticResource AccentBrush}" />
+												<Setter
+													TargetName="Border"
+													Property="Background"
+													Value="{StaticResource NavigationSelectedBrush}" />
 
 											</Trigger>
 
@@ -122,6 +133,18 @@
 
 							</Setter>
 
+							<Style.Triggers>
+
+								<DataTrigger
+									Binding="{Binding Section}"
+									Value="{x:Static viewModels:ShellSection.Administration}">
+
+									<Setter Property="Margin" Value="8,24,8,2" />
+
+								</DataTrigger>
+
+							</Style.Triggers>
+
 						</Style>
 
 					</ListBox.ItemContainerStyle>
@@ -130,10 +153,18 @@
 
 						<DataTemplate>
 
-							<TextBlock
-								FontSize="14"
-								FontWeight="SemiBold"
-								Text="{Binding Name}" />
+							<StackPanel Orientation="Horizontal">
+
+								<TextBlock
+									Width="24"
+									Text="{Binding Icon}" />
+
+								<TextBlock
+									FontSize="14"
+									FontWeight="SemiBold"
+									Text="{Binding Name}" />
+
+							</StackPanel>
 
 						</DataTemplate>
 
@@ -149,8 +180,8 @@
 			Grid.Column="1"
 			Margin="16"
 			Padding="16"
-			Background="White"
-			BorderBrush="#E5E7EB"
+			Background="{StaticResource SurfaceBrush}"
+			BorderBrush="{StaticResource BorderBrush}"
 			BorderThickness="1">
 
 			<ContentControl

@@ -2,7 +2,9 @@
 // Licensed under the MIT License.
 
 using System.Windows;
+
 using Depot.Data;
+using Depot.Diagnostics;
 using Depot.Repositories;
 using Depot.Services;
 using Depot.Services.Import;
@@ -28,7 +30,10 @@ public partial class App
 	public static ItemService ItemService { get; private set; } = null!;
 
 	public static StockService StockService { get; private set; } = null!;
+
 	public static MovementService MovementService { get; private set; } = null!;
+
+	public static InventoryManagementService InventoryManagementService { get; private set; } = null!;
 
 	public static ImportService ImportService { get; private set; } = null!;
 
@@ -36,75 +41,134 @@ public partial class App
 
 	public static MainViewModel MainViewModel { get; private set; } = null!;
 
-	protected override void OnStartup(StartupEventArgs e)
+	protected override void OnStartup(
+		StartupEventArgs e)
 	{
-		DispatcherUnhandledException += OnDispatcherUnhandledException;
+		DispatcherUnhandledException +=
+			OnDispatcherUnhandledException;
 
-		base.OnStartup(e);
+		try
+		{
+			base.OnStartup(e);
 
-		ConnectionFactory = new SqliteConnectionFactory("depot.db");
+			StartupDiagnostics.Log(
+				"Application startup.");
 
-		Database = new DepotDatabase(ConnectionFactory);
+			ConnectionFactory =
+				new SqliteConnectionFactory(
+					"depot.db");
 
-		Database.Initialize();
+			Database =
+				new DepotDatabase(
+					ConnectionFactory);
 
-		ItemRepository =
-			new ItemRepository(
-				ConnectionFactory);
+			Database.Initialize();
 
-		PurposeRepository =
-			new PurposeRepository(
-				ConnectionFactory);
+			StartupDiagnostics.Log(
+				"Database initialized.");
 
-		InventoryRepository =
-			new InventoryRepository(
-				ConnectionFactory);
+			ItemRepository =
+				new ItemRepository(
+					ConnectionFactory);
 
-		StockMovementRepository =
-			new StockMovementRepository(
-				ConnectionFactory);
+			PurposeRepository =
+				new PurposeRepository(
+					ConnectionFactory);
 
-		ItemService =
-			new ItemService(
-				ItemRepository);
+			InventoryRepository =
+				new InventoryRepository(
+					ConnectionFactory);
 
-		StockService =
-			new StockService(
-				ItemRepository,
-				StockMovementRepository);
-		MovementService =
-			new MovementService(
-				ItemRepository,
-				StockMovementRepository);
+			StockMovementRepository =
+				new StockMovementRepository(
+					ConnectionFactory);
 
-		ImportService =
-			new ImportService(
-				ItemRepository,
-				ItemService,
-				MovementService);
+			StartupDiagnostics.Log(
+				"Repositories created.");
 
-		//DatabaseSeeder = new DatabaseSeeder(ItemService, MovementService);
-		//DatabaseSeeder.Seed();
+			ItemService =
+				new ItemService(
+					ItemRepository);
 
-		MainViewModel =
-			new MainViewModel(
-				ItemService,
-				StockService,
-				MovementService,
-				ItemRepository,
-				StockMovementRepository,
-				ImportService);
+			MovementService =
+				new MovementService(
+					ItemRepository,
+					StockMovementRepository);
+
+			StockService =
+				new StockService(
+					ItemRepository,
+					StockMovementRepository);
+
+			InventoryManagementService =
+				new InventoryManagementService(
+					InventoryRepository,
+					PurposeRepository);
+
+			ImportService =
+				new ImportService(
+					ItemRepository,
+					ItemService,
+					MovementService);
+
+			StartupDiagnostics.Log(
+				"Services created.");
+
+			// DatabaseSeeder =
+			//	new DatabaseSeeder(
+			//		ItemService,
+			//		MovementService);
+			//
+			// DatabaseSeeder.Seed();
+
+			MainViewModel =
+				new MainViewModel(
+					ItemService,
+					StockService,
+					MovementService,
+					ItemRepository,
+					StockMovementRepository,
+					ImportService);
+
+			StartupDiagnostics.Log(
+				"MainViewModel created.");
+
+			var mainWindow =
+				new MainWindow
+				{
+					DataContext =
+						MainViewModel
+				};
+
+			StartupDiagnostics.Log(
+				"MainWindow created.");
+
+			mainWindow.Show();
+
+			StartupDiagnostics.Log(
+				"Application started.");
+		}
+		catch (Exception ex)
+		{
+			StartupDiagnostics.LogException(
+				ex);
+
+			StartupDiagnostics.ShowStartupError(
+				ex);
+
+			Shutdown();
+		}
 	}
 
 	private static void OnDispatcherUnhandledException(
 		object sender,
 		System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
 	{
-		MessageBox.Show(
-			e.Exception.ToString(),
-			"Unhandled Error",
-			MessageBoxButton.OK,
-			MessageBoxImage.Error);
+		StartupDiagnostics.LogException(
+			e.Exception);
+
+		StartupDiagnostics.ShowRuntimeError(
+			e.Exception);
 
 		e.Handled = true;
 	}
