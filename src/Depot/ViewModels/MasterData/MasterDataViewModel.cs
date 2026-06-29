@@ -4,6 +4,8 @@
 using System.Collections.ObjectModel;
 
 using Depot.ViewModels.Shared;
+using Depot.ViewModels.Purposes;
+using Depot.Services;
 
 namespace Depot.ViewModels.MasterData;
 
@@ -15,9 +17,12 @@ public sealed class MasterDataViewModel
 {
 	private NavigationItem? _selectedNavigationItem;
 	private BaseViewModel? _currentViewModel;
+	private readonly PurposeViewModel _purposeViewModel;
 
-	public MasterDataViewModel()
+	public MasterDataViewModel(PurposeService purposeService)
 	{
+		_purposeViewModel = new PurposeViewModel(purposeService);
+
 		NavigationItems.Add(
 			new NavigationItem
 			{
@@ -85,9 +90,7 @@ public sealed class MasterDataViewModel
 			section switch
 			{
 				MasterDataSection.Purposes =>
-					new PlaceholderViewModel(
-						"Purposes",
-						"Manage inventory purposes."),
+					_purposeViewModel,
 
 				MasterDataSection.Locations =>
 					new PlaceholderViewModel(

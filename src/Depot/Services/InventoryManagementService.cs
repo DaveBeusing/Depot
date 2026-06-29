@@ -23,10 +23,22 @@ public sealed class InventoryManagementService
 		long itemId)
 	{
 		var purpose =
-			_purposeRepository.GetOrCreate(
-				"Stock",
-				"Default stock purpose");
+			_purposeRepository.GetByName(
+				"Stock");
 
+		if (purpose is null)
+		{
+			purpose = new Purpose
+			{
+				Name = "Stock",
+				Description = "Default stock purpose",
+				IsActive = true
+			};
+
+			purpose.Id =
+				_purposeRepository.Create(
+					purpose);
+		}
 		return _inventoryRepository.GetOrCreate(
 			itemId,
 			purpose.Id);

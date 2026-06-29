@@ -3,10 +3,14 @@
 
 using Depot.Data;
 using Depot.Models;
+
 using Microsoft.Data.Sqlite;
 
 namespace Depot.Repositories;
 
+/// <summary>
+/// Provides persistence for purposes.
+/// </summary>
 public sealed class PurposeRepository
 {
 	private readonly SqliteConnectionFactory _connectionFactory;
@@ -17,18 +21,10 @@ public sealed class PurposeRepository
 		_connectionFactory = connectionFactory;
 	}
 
-	public Purpose GetOrCreate(
-		string name,
-		string? description)
+	public IReadOnlyList<Purpose> GetAll()
 	{
-		var existingPurpose =
-			GetByName(
-				name);
-
-		if (existingPurpose is not null)
-		{
-			return existingPurpose;
-		}
+		var purposes =
+			new List<Purpose>();
 
 		using var connection =
 			_connectionFactory.CreateConnection();
@@ -40,40 +36,60 @@ public sealed class PurposeRepository
 
 		command.CommandText =
 		"""
-		INSERT INTO Purposes
-		(
+		SELECT
+			Id,
 			Name,
 			Description,
 			IsActive
-		)
-		VALUES
-		(
-			$Name,
-			$Description,
-			1
-		);
+		FROM Purposes
+		WHERE IsActive = 1
+		ORDER BY Name;
+		""";
 
-		SELECT last_insert_rowid();
+		using var reader =
+			command.ExecuteReader();
+
+		while (reader.Read())
+		{
+			purposes.Add(
+				ReadPurpose(reader));
+		}
+
+		return purposes;
+	}
+
+	public Purpose? GetById(
+		long id)
+	{
+		using var connection =
+			_connectionFactory.CreateConnection();
+
+		connection.Open();
+
+		using var command =
+			connection.CreateCommand();
+
+		command.CommandText =
+		"""
+		SELECT
+			Id,
+			Name,
+			Description,
+			IsActive
+		FROM Purposes
+		WHERE Id = $Id;
 		""";
 
 		command.Parameters.AddWithValue(
-			"$Name",
-			name);
+			"$Id",
+			id);
 
-		command.Parameters.AddWithValue(
-			"$Description",
-			(object?)description ?? DBNull.Value);
+		using var reader =
+			command.ExecuteReader();
 
-		var id =
-			(long)command.ExecuteScalar()!;
-
-		return new Purpose
-		{
-			Id = id,
-			Name = name,
-			Description = description,
-			IsActive = true
-		};
+		return reader.Read()
+			? ReadPurpose(reader)
+			: null;
 	}
 
 	public Purpose? GetByName(
@@ -105,13 +121,113 @@ public sealed class PurposeRepository
 		using var reader =
 			command.ExecuteReader();
 
-		if (!reader.Read())
-		{
-			return null;
-		}
+		return reader.Read()
+			? ReadPurpose(reader)
+			: null;
+	}
 
-		return ReadPurpose(
-			reader);
+	public long Create(
+		Purpose purpose)
+	{
+		using var connection =
+			_connectionFactory.CreateConnection();
+
+		connection.Open();
+
+		using var command =
+			connection.CreateCommand();
+
+		command.CommandText =
+		"""
+		INSERT INTO Purposes
+		(
+			Name,
+			Description,
+			IsActive
+		)
+		VALUES
+		(
+			$Name,
+			$Description,
+			$IsActive
+		);
+
+		SELECT last_insert_rowid();
+		""";
+
+		command.Parameters.AddWithValue(
+			"$Name",
+			purpose.Name);
+
+		command.Parameters.AddWithValue(
+			"$Description",
+			(object?)purpose.Description ?? DBNull.Value);
+
+		command.Parameters.AddWithValue(
+			"$IsActive",
+			purpose.IsActive);
+
+		return (long)command.ExecuteScalar()!;
+	}
+
+	public void Update(
+		Purpose purpose)
+	{
+		using var connection =
+			_connectionFactory.CreateConnection();
+
+		connection.Open();
+
+		using var command =
+			connection.CreateCommand();
+
+		command.CommandText =
+		"""
+		UPDATE Purposes
+		SET
+			Name = $Name,
+			Description = $Description
+		WHERE Id = $Id;
+		""";
+
+		command.Parameters.AddWithValue(
+			"$Id",
+			purpose.Id);
+
+		command.Parameters.AddWithValue(
+			"$Name",
+			purpose.Name);
+
+		command.Parameters.AddWithValue(
+			"$Description",
+			(object?)purpose.Description ?? DBNull.Value);
+
+		command.ExecuteNonQuery();
+	}
+
+	public void Deactivate(
+		long id)
+	{
+		using var connection =
+			_connectionFactory.CreateConnection();
+
+		connection.Open();
+
+		using var command =
+			connection.CreateCommand();
+
+		command.CommandText =
+		"""
+		UPDATE Purposes
+		SET IsActive = 0
+		WHERE Id = $Id;
+		""";
+
+		command.Parameters.AddWithValue(
+			"$Id",
+			id);
+
+		command.ExecuteNonQuery();
 	}
 
 	private static Purpose ReadPurpose(
@@ -119,10 +235,19 @@ public sealed class PurposeRepository
 	{
 		return new Purpose
 		{
-			Id = reader.GetInt64(0),
-			Name = reader.GetString(1),
-			Description = reader.IsDBNull(2) ? null : reader.GetString(2),
-			IsActive = reader.GetInt64(3) == 1
+			Id =
+				reader.GetInt64(0),
+
+			Name =
+				reader.GetString(1),
+
+			Description =
+				reader.IsDBNull(2)
+					? null
+					: reader.GetString(2),
+
+			IsActive =
+				reader.GetInt64(3) == 1
 		};
 	}
 }

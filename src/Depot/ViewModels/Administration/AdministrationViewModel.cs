@@ -5,6 +5,7 @@ using System.Collections.ObjectModel;
 
 using Depot.ViewModels.Shared;
 using Depot.ViewModels.MasterData;
+using Depot.Services;
 
 
 namespace Depot.ViewModels.Administration;
@@ -22,10 +23,11 @@ public sealed class AdministrationViewModel
 	private BaseViewModel? _currentViewModel;
 
 	public AdministrationViewModel(
-		ImportViewModel importViewModel)
+		ImportViewModel importViewModel,
+		PurposeService purposeService)
 	{
 		_importViewModel = importViewModel;
-		_masterDataViewModel = new MasterDataViewModel();
+		_masterDataViewModel = new MasterDataViewModel(purposeService);
 
 		NavigationItems.Add(
 			new NavigationItem

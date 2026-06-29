@@ -20,10 +20,11 @@ public sealed class MainViewModel
 		ItemService itemService,
 		StockService stockService,
 		MovementService movementService,
+		PurposeService purposeService,
 		ItemRepository itemRepository,
 		StockMovementRepository stockMovementRepository,
 		ImportService importService)
-	{
+		{
 		DashboardViewModel =
 			new DashboardViewModel(
 				stockService);
@@ -48,7 +49,8 @@ public sealed class MainViewModel
 
 		AdministrationViewModel =
 			new AdministrationViewModel(
-				ImportViewModel);
+				ImportViewModel, 
+				purposeService);
 
 		NavigationItems.Add(
 			new NavigationItem

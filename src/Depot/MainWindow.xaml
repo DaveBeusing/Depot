@@ -12,6 +12,8 @@
 	xmlns:sharedViews="clr-namespace:Depot.Views.Shared"
 	xmlns:masterDataViewModels="clr-namespace:Depot.ViewModels.MasterData"
 	xmlns:masterDataViews="clr-namespace:Depot.Views.MasterData"
+	xmlns:purposeViewModels="clr-namespace:Depot.ViewModels.Purposes"
+	xmlns:purposeViews="clr-namespace:Depot.Views.Purposes"
 	mc:Ignorable="d"
 	Title="Depot"
 	Width="1600"
@@ -53,6 +55,10 @@
 
 			<DataTemplate DataType="{x:Type masterDataViewModels:MasterDataViewModel}">
 				<masterDataViews:MasterDataView />
+			</DataTemplate>
+
+			<DataTemplate DataType="{x:Type purposeViewModels:PurposeViewModel}">
+				<purposeViews:PurposesView />
 			</DataTemplate>
 
 		</ResourceDictionary>

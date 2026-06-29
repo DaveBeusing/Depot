@@ -37,6 +37,8 @@ public partial class App
 
 	public static ImportService ImportService { get; private set; } = null!;
 
+	public static PurposeService PurposeService { get; private set; } = null!;
+
 	public static DatabaseSeeder DatabaseSeeder { get; private set; } = null!;
 
 	public static MainViewModel MainViewModel { get; private set; } = null!;
@@ -105,6 +107,10 @@ public partial class App
 					InventoryRepository,
 					PurposeRepository);
 
+			PurposeService =
+				new PurposeService(
+					PurposeRepository);
+
 			ImportService =
 				new ImportService(
 					ItemRepository,
@@ -126,6 +132,7 @@ public partial class App
 					ItemService,
 					StockService,
 					MovementService,
+					PurposeService,
 					ItemRepository,
 					StockMovementRepository,
 					ImportService);

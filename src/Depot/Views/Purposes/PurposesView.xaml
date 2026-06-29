@@ -1,0 +1,135 @@
+<UserControl
+	x:Class="Depot.Views.Purposes.PurposesView"
+	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+	<Grid>
+
+		<Grid.RowDefinitions>
+			<RowDefinition Height="Auto" />
+			<RowDefinition Height="16" />
+			<RowDefinition Height="*" />
+		</Grid.RowDefinitions>
+
+		<TextBlock
+			Grid.Row="0"
+			Text="Purposes"
+			Style="{StaticResource PageTitleStyle}" />
+
+		<Grid Grid.Row="2">
+
+			<Grid.ColumnDefinitions>
+				<ColumnDefinition Width="2*" />
+				<ColumnDefinition Width="16" />
+				<ColumnDefinition Width="*" />
+			</Grid.ColumnDefinitions>
+
+			<Grid Grid.Column="0">
+
+				<Grid.RowDefinitions>
+					<RowDefinition Height="Auto" />
+					<RowDefinition Height="8" />
+					<RowDefinition Height="*" />
+				</Grid.RowDefinitions>
+
+				<TextBox
+					Grid.Row="0"
+					Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
+
+				<DataGrid
+					Grid.Row="2"
+					ItemsSource="{Binding Purposes}"
+					SelectedItem="{Binding SelectedPurpose}"
+					Style="{StaticResource AppDataGridStyle}">
+
+					<DataGrid.Columns>
+
+						<DataGridTextColumn
+							Header="Name"
+							Binding="{Binding Name}"
+							Width="220" />
+
+						<DataGridTextColumn
+							Header="Description"
+							Binding="{Binding Description}"
+							Width="*" />
+
+					</DataGrid.Columns>
+
+				</DataGrid>
+
+			</Grid>
+
+			<Border
+				Grid.Column="2"
+				Style="{StaticResource CardStyle}">
+
+				<Grid>
+
+					<Grid.RowDefinitions>
+						<RowDefinition Height="Auto" />
+						<RowDefinition Height="16" />
+						<RowDefinition Height="Auto" />
+						<RowDefinition Height="8" />
+						<RowDefinition Height="Auto" />
+						<RowDefinition Height="8" />
+						<RowDefinition Height="Auto" />
+						<RowDefinition Height="16" />
+						<RowDefinition Height="Auto" />
+						<RowDefinition Height="*" />
+					</Grid.RowDefinitions>
+
+					<TextBlock
+						Grid.Row="0"
+						Text="{Binding Editor.EditorTitle}"
+						Style="{StaticResource SectionTitleStyle}" />
+
+					<TextBlock
+						Grid.Row="2"
+						Text="Name" />
+
+					<TextBox
+						Grid.Row="4"
+						Text="{Binding Editor.Name, UpdateSourceTrigger=PropertyChanged}" />
+
+					<TextBlock
+						Grid.Row="6"
+						Text="Description" />
+
+					<TextBox
+						Grid.Row="8"
+						AcceptsReturn="True"
+						MinHeight="80"
+						Text="{Binding Editor.Description, UpdateSourceTrigger=PropertyChanged}" />
+
+					<StackPanel
+						Grid.Row="9"
+						Orientation="Horizontal"
+						HorizontalAlignment="Right"
+						VerticalAlignment="Bottom">
+
+						<Button
+							Content="New"
+							Command="{Binding NewPurposeCommand}" />
+
+						<Button
+							Margin="8,0,0,0"
+							Content="Save"
+							Command="{Binding SavePurposeCommand}" />
+
+						<Button
+							Margin="8,0,0,0"
+							Content="Deactivate"
+							Command="{Binding DeactivatePurposeCommand}" />
+
+					</StackPanel>
+
+				</Grid>
+
+			</Border>
+
+		</Grid>
+
+	</Grid>
+
+</UserControl>
