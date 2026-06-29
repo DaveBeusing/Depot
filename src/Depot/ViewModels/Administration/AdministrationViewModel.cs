@@ -24,10 +24,11 @@ public sealed class AdministrationViewModel
 
 	public AdministrationViewModel(
 		ImportViewModel importViewModel,
-		PurposeService purposeService)
+		PurposeService purposeService,
+		LocationService locationService)
 	{
 		_importViewModel = importViewModel;
-		_masterDataViewModel = new MasterDataViewModel(purposeService);
+		_masterDataViewModel = new MasterDataViewModel(purposeService, locationService);
 
 		NavigationItems.Add(
 			new NavigationItem

@@ -25,6 +25,8 @@ public partial class App
 
 	public static InventoryRepository InventoryRepository { get; private set; } = null!;
 
+	public static LocationRepository LocationRepository { get; private set; } = null!;
+
 	public static StockMovementRepository StockMovementRepository { get; private set; } = null!;
 
 	public static ItemService ItemService { get; private set; } = null!;
@@ -39,22 +41,20 @@ public partial class App
 
 	public static PurposeService PurposeService { get; private set; } = null!;
 
+	public static LocationService LocationService { get; private set; } = null!;
+
 	public static DatabaseSeeder DatabaseSeeder { get; private set; } = null!;
 
 	public static MainViewModel MainViewModel { get; private set; } = null!;
 
-	protected override void OnStartup(
-		StartupEventArgs e)
+	protected override void OnStartup(StartupEventArgs e)
 	{
-		DispatcherUnhandledException +=
-			OnDispatcherUnhandledException;
-
+		DispatcherUnhandledException += OnDispatcherUnhandledException;
 		try
 		{
 			base.OnStartup(e);
 
-			StartupDiagnostics.Log(
-				"Application startup.");
+			StartupDiagnostics.Log("Application startup.");
 
 			ConnectionFactory =
 				new SqliteConnectionFactory(
@@ -66,8 +66,7 @@ public partial class App
 
 			Database.Initialize();
 
-			StartupDiagnostics.Log(
-				"Database initialized.");
+			StartupDiagnostics.Log("Database initialized.");
 
 			ItemRepository =
 				new ItemRepository(
@@ -81,12 +80,15 @@ public partial class App
 				new InventoryRepository(
 					ConnectionFactory);
 
+			LocationRepository =
+				new LocationRepository(
+					ConnectionFactory);
+
 			StockMovementRepository =
 				new StockMovementRepository(
 					ConnectionFactory);
 
-			StartupDiagnostics.Log(
-				"Repositories created.");
+			StartupDiagnostics.Log("Repositories created.");
 
 			ItemService =
 				new ItemService(
@@ -117,8 +119,11 @@ public partial class App
 					ItemService,
 					MovementService);
 
-			StartupDiagnostics.Log(
-				"Services created.");
+			LocationService =
+				new LocationService(
+					LocationRepository);
+
+			StartupDiagnostics.Log("Services created.");
 
 			// DatabaseSeeder =
 			//	new DatabaseSeeder(
@@ -135,10 +140,10 @@ public partial class App
 					PurposeService,
 					ItemRepository,
 					StockMovementRepository,
+					LocationService,
 					ImportService);
 
-			StartupDiagnostics.Log(
-				"MainViewModel created.");
+			StartupDiagnostics.Log("MainViewModel created.");
 
 			var mainWindow =
 				new MainWindow
@@ -147,22 +152,16 @@ public partial class App
 						MainViewModel
 				};
 
-			StartupDiagnostics.Log(
-				"MainWindow created.");
+			StartupDiagnostics.Log("MainWindow created.");
 
 			mainWindow.Show();
 
-			StartupDiagnostics.Log(
-				"Application started.");
+			StartupDiagnostics.Log("Application started.");
 		}
 		catch (Exception ex)
 		{
-			StartupDiagnostics.LogException(
-				ex);
-
-			StartupDiagnostics.ShowStartupError(
-				ex);
-
+			StartupDiagnostics.LogException(ex);
+			StartupDiagnostics.ShowStartupError(ex);
 			Shutdown();
 		}
 	}

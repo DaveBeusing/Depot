@@ -133,6 +133,9 @@ public sealed class DepotDatabase
 		CreatePurposesTable(
 			connection);
 
+		CreateLocationsTable(
+			connection);
+
 		CreateInventoriesTable(
 			connection);
 
@@ -140,6 +143,9 @@ public sealed class DepotDatabase
 			connection);
 
 		CreateDefaultPurpose(
+			connection);
+
+		CreateDefaultLocation(
 			connection);
 	}
 
@@ -207,6 +213,52 @@ public sealed class DepotDatabase
 
 			FOREIGN KEY(PurposeId)
 				REFERENCES Purposes(Id)
+		);
+		""";
+
+		command.ExecuteNonQuery();
+	}
+
+
+	private static void CreateLocationsTable(
+		SqliteConnection connection)
+	{
+		using var command =
+			connection.CreateCommand();
+
+		command.CommandText =
+		"""
+		CREATE TABLE IF NOT EXISTS Locations
+		(
+			Id              INTEGER PRIMARY KEY AUTOINCREMENT,
+			Name            TEXT NOT NULL UNIQUE,
+			Description     TEXT,
+			IsActive        INTEGER NOT NULL DEFAULT 1
+		);
+		""";
+
+		command.ExecuteNonQuery();
+	}
+
+	private static void CreateDefaultLocation(
+		SqliteConnection connection)
+	{
+		using var command =
+			connection.CreateCommand();
+
+		command.CommandText =
+		"""
+		INSERT OR IGNORE INTO Locations
+		(
+			Name,
+			Description,
+			IsActive
+		)
+		VALUES
+		(
+			'Warehouse',
+			'Default warehouse location',
+			1
 		);
 		""";
 
