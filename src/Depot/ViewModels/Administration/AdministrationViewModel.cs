@@ -4,6 +4,8 @@
 using System.Collections.ObjectModel;
 
 using Depot.ViewModels.Shared;
+using Depot.ViewModels.MasterData;
+
 
 namespace Depot.ViewModels.Administration;
 
@@ -14,6 +16,7 @@ public sealed class AdministrationViewModel
 	: BaseViewModel
 {
 	private readonly ImportViewModel _importViewModel;
+	private readonly MasterDataViewModel _masterDataViewModel;
 
 	private NavigationItem? _selectedNavigationItem;
 	private BaseViewModel? _currentViewModel;
@@ -22,6 +25,7 @@ public sealed class AdministrationViewModel
 		ImportViewModel importViewModel)
 	{
 		_importViewModel = importViewModel;
+		_masterDataViewModel = new MasterDataViewModel();
 
 		NavigationItems.Add(
 			new NavigationItem
@@ -68,13 +72,10 @@ public sealed class AdministrationViewModel
 	public NavigationItem? SelectedNavigationItem
 	{
 		get => _selectedNavigationItem;
-
 		set
 		{
 			_selectedNavigationItem = value;
-
 			OnPropertyChanged();
-
 			UpdateCurrentViewModel();
 		}
 	}
@@ -82,11 +83,9 @@ public sealed class AdministrationViewModel
 	public BaseViewModel? CurrentViewModel
 	{
 		get => _currentViewModel;
-
 		private set
 		{
 			_currentViewModel = value;
-
 			OnPropertyChanged();
 		}
 	}
@@ -106,9 +105,7 @@ public sealed class AdministrationViewModel
 					_importViewModel,
 
 				AdministrationSection.MasterData =>
-					new PlaceholderViewModel(
-						"Master Data",
-						"Master data management will be available in a future release."),
+					_masterDataViewModel,
 
 				AdministrationSection.Users =>
 					new PlaceholderViewModel(
