@@ -33,6 +33,7 @@ public sealed class StockMovementRepository
 		INSERT INTO StockMovements
 		(
 			ItemId,
+			InventoryId,
 			MovementType,
 			TimestampUtc,
 			Quantity,
@@ -43,6 +44,7 @@ public sealed class StockMovementRepository
 		VALUES
 		(
 			$ItemId,
+			$InventoryId,
 			$MovementType,
 			$TimestampUtc,
 			$Quantity,
@@ -57,6 +59,10 @@ public sealed class StockMovementRepository
 		command.Parameters.AddWithValue(
 			"$ItemId",
 			movement.ItemId);
+
+		command.Parameters.AddWithValue(
+			"$InventoryId",
+			(object?)movement.InventoryId ?? DBNull.Value);
 
 		command.Parameters.AddWithValue(
 			"$MovementType",
@@ -112,6 +118,7 @@ public sealed class StockMovementRepository
 			SELECT
 				sm.Id,
 				sm.ItemId,
+				sm.InventoryId,
 				sm.MovementType,
 				sm.TimestampUtc,
 				sm.Quantity,
@@ -131,6 +138,7 @@ public sealed class StockMovementRepository
 			SELECT
 				sm.Id,
 				sm.ItemId,
+				sm.InventoryId,
 				sm.MovementType,
 				sm.TimestampUtc,
 				sm.Quantity,
@@ -184,6 +192,7 @@ public sealed class StockMovementRepository
 		SELECT
 			Id,
 			ItemId,
+			InventoryId,
 			MovementType,
 			TimestampUtc,
 			Quantity,
@@ -216,36 +225,45 @@ public sealed class StockMovementRepository
 	{
 		return new StockMovement
 		{
-			Id = reader.GetInt64(0),
+			Id =
+				reader.GetInt64(0),
 
-			ItemId = reader.GetInt64(1),
+			ItemId =
+				reader.GetInt64(1),
+
+			InventoryId =
+				reader.IsDBNull(2)
+					? null
+					: reader.GetInt64(2),
 
 			MovementType =
-				(StockMovementType)reader.GetInt32(2),
+				(StockMovementType)reader.GetInt32(3),
 
 			TimestampUtc =
 				DateTime.Parse(
-					reader.GetString(3),
+					reader.GetString(4),
 					null,
 					System.Globalization.DateTimeStyles.RoundtripKind),
 
 			Quantity =
-				reader.GetInt32(4),
+				reader.GetInt32(5),
 
 			UnitPrice =
-				reader.IsDBNull(5)
-					? null
-					: reader.GetDecimal(5),
-
-			Reference =
 				reader.IsDBNull(6)
 					? null
-					: reader.GetString(6),
+					: reader.GetDecimal(6),
 
-			Notes =
+			Reference =
 				reader.IsDBNull(7)
 					? null
-					: reader.GetString(7)
+					: reader.GetString(7),
+
+			Notes =
+				reader.IsDBNull(8)
+					? null
+					: reader.GetString(8)
 		};
 	}
+	
+
 }

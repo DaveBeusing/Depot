@@ -9,6 +9,8 @@ public sealed class StockMovement
 
 	public long ItemId { get; set; }
 
+	public long? InventoryId { get; set; }
+
 	public StockMovementType MovementType { get; set; }
 
 	public DateTime TimestampUtc { get; set; }

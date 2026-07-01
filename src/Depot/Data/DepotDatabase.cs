@@ -291,6 +291,8 @@ public sealed class DepotDatabase
 
 			ItemId              INTEGER NOT NULL,
 
+			InventoryId     	INTEGER,
+
 			MovementType        INTEGER NOT NULL,
 
 			TimestampUtc        TEXT NOT NULL,
