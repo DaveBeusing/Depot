@@ -152,3 +152,17 @@ Business logic belongs into services.
 Repositories are only responsible for persistence.
 
 ViewModels prepare data for the UI only.
+
+
+
+
+```
+Master Data
+Item         CRUD
+Purpose      CRUD
+Location     CRUD
+
+Operational Data
+Inventory       Create + Deactivate
+StockMovement   Create only
+```
