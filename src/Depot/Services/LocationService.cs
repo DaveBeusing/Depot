@@ -146,4 +146,32 @@ public sealed class LocationService
 		_locationRepository.Deactivate(
 			id);
 	}
+
+	public Location GetOrCreateLocation(
+		string name)
+	{
+		name = name.Trim();
+
+		if (string.IsNullOrWhiteSpace(name))
+		{
+			throw new ArgumentException(
+				"Location name is required.",
+				nameof(name));
+		}
+
+		var existingLocation =
+			_locationRepository.GetByName(
+				name);
+
+		if (existingLocation is not null)
+		{
+			return existingLocation;
+		}
+
+		return CreateLocation(
+			name,
+			null);
+	}
+
+
 }

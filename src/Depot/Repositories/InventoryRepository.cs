@@ -3,10 +3,14 @@
 
 using Depot.Data;
 using Depot.Models;
+
 using Microsoft.Data.Sqlite;
 
 namespace Depot.Repositories;
 
+/// <summary>
+/// Provides persistence for inventories.
+/// </summary>
 public sealed class InventoryRepository
 {
 	private readonly SqliteConnectionFactory _connectionFactory;
@@ -17,19 +21,10 @@ public sealed class InventoryRepository
 		_connectionFactory = connectionFactory;
 	}
 
-	public Inventory GetOrCreate(
-		long itemId,
-		long purposeId)
+	public IReadOnlyList<Inventory> GetAll()
 	{
-		var existingInventory =
-			GetByItemAndPurpose(
-				itemId,
-				purposeId);
-
-		if (existingInventory is not null)
-		{
-			return existingInventory;
-		}
+		var inventories =
+			new List<Inventory>();
 
 		using var connection =
 			_connectionFactory.CreateConnection();
@@ -41,40 +36,73 @@ public sealed class InventoryRepository
 
 		command.CommandText =
 		"""
-		INSERT INTO Inventories
-		(
+		SELECT
+			Id,
 			ItemId,
 			PurposeId,
+			LocationId,
 			IsActive
-		)
-		VALUES
-		(
-			$ItemId,
-			$PurposeId,
-			1
-		);
+		FROM Inventories
+		WHERE IsActive = 1
+		ORDER BY ItemId;
+		""";
 
-		SELECT last_insert_rowid();
+		using var reader =
+			command.ExecuteReader();
+
+		while (reader.Read())
+		{
+			inventories.Add(
+				ReadInventory(reader));
+		}
+
+		return inventories;
+	}
+
+	public IReadOnlyList<Inventory> GetByItem(
+		long itemId)
+	{
+		var inventories =
+			new List<Inventory>();
+
+		using var connection =
+			_connectionFactory.CreateConnection();
+
+		connection.Open();
+
+		using var command =
+			connection.CreateCommand();
+
+		command.CommandText =
+		"""
+		SELECT
+			Id,
+			ItemId,
+			PurposeId,
+			LocationId,
+			IsActive
+		FROM Inventories
+		WHERE
+			ItemId = $ItemId
+			AND IsActive = 1
+		ORDER BY PurposeId,
+				 LocationId;
 		""";
 
 		command.Parameters.AddWithValue(
 			"$ItemId",
 			itemId);
 
-		command.Parameters.AddWithValue(
-			"$PurposeId",
-			purposeId);
+		using var reader =
+			command.ExecuteReader();
 
-		var id =
-			(long)command.ExecuteScalar()!;
-
-		return new Inventory
+		while (reader.Read())
 		{
-			Id = id,
-			ItemId = itemId,
-			PurposeId = purposeId,
-			IsActive = true
-		};
+			inventories.Add(
+				ReadInventory(reader));
+		}
+
+		return inventories;
 	}
 
 	public Inventory? GetById(
@@ -94,6 +122,7 @@ public sealed class InventoryRepository
 			Id,
 			ItemId,
 			PurposeId,
+			LocationId,
 			IsActive
 		FROM Inventories
 		WHERE Id = $Id;
@@ -106,56 +135,15 @@ public sealed class InventoryRepository
 		using var reader =
 			command.ExecuteReader();
 
-		if (!reader.Read())
-		{
-			return null;
-		}
-
-		return ReadInventory(
-			reader);
+		return reader.Read()
+			? ReadInventory(reader)
+			: null;
 	}
 
-	public IReadOnlyList<Inventory> GetAll()
-	{
-		var result =
-			new List<Inventory>();
-
-		using var connection =
-			_connectionFactory.CreateConnection();
-
-		connection.Open();
-
-		using var command =
-			connection.CreateCommand();
-
-		command.CommandText =
-		"""
-		SELECT
-			Id,
-			ItemId,
-			PurposeId,
-			IsActive
-		FROM Inventories
-		WHERE IsActive = 1
-		ORDER BY Id;
-		""";
-
-		using var reader =
-			command.ExecuteReader();
-
-		while (reader.Read())
-		{
-			result.Add(
-				ReadInventory(
-					reader));
-		}
-
-		return result;
-	}
-
-	private Inventory? GetByItemAndPurpose(
+	public Inventory? GetByItemPurposeLocation(
 		long itemId,
-		long purposeId)
+		long purposeId,
+		long locationId)
 	{
 		using var connection =
 			_connectionFactory.CreateConnection();
@@ -171,11 +159,13 @@ public sealed class InventoryRepository
 			Id,
 			ItemId,
 			PurposeId,
+			LocationId,
 			IsActive
 		FROM Inventories
 		WHERE
 			ItemId = $ItemId
-			AND PurposeId = $PurposeId;
+			AND PurposeId = $PurposeId
+			AND LocationId = $LocationId;
 		""";
 
 		command.Parameters.AddWithValue(
@@ -186,16 +176,91 @@ public sealed class InventoryRepository
 			"$PurposeId",
 			purposeId);
 
+		command.Parameters.AddWithValue(
+			"$LocationId",
+			locationId);
+
 		using var reader =
 			command.ExecuteReader();
 
-		if (!reader.Read())
-		{
-			return null;
-		}
+		return reader.Read()
+			? ReadInventory(reader)
+			: null;
+	}
 
-		return ReadInventory(
-			reader);
+	public long Create(
+		Inventory inventory)
+	{
+		using var connection =
+			_connectionFactory.CreateConnection();
+
+		connection.Open();
+
+		using var command =
+			connection.CreateCommand();
+
+		command.CommandText =
+		"""
+		INSERT INTO Inventories
+		(
+			ItemId,
+			PurposeId,
+			LocationId,
+			IsActive
+		)
+		VALUES
+		(
+			$ItemId,
+			$PurposeId,
+			$LocationId,
+			$IsActive
+		);
+
+		SELECT last_insert_rowid();
+		""";
+
+		command.Parameters.AddWithValue(
+			"$ItemId",
+			inventory.ItemId);
+
+		command.Parameters.AddWithValue(
+			"$PurposeId",
+			inventory.PurposeId);
+
+		command.Parameters.AddWithValue(
+			"$LocationId",
+			inventory.LocationId);
+
+		command.Parameters.AddWithValue(
+			"$IsActive",
+			inventory.IsActive);
+
+		return (long)command.ExecuteScalar()!;
+	}
+
+	public void Deactivate(
+		long id)
+	{
+		using var connection =
+			_connectionFactory.CreateConnection();
+
+		connection.Open();
+
+		using var command =
+			connection.CreateCommand();
+
+		command.CommandText =
+		"""
+		UPDATE Inventories
+		SET IsActive = 0
+		WHERE Id = $Id;
+		""";
+
+		command.Parameters.AddWithValue(
+			"$Id",
+			id);
+
+		command.ExecuteNonQuery();
 	}
 
 	private static Inventory ReadInventory(
@@ -206,7 +271,8 @@ public sealed class InventoryRepository
 			Id = reader.GetInt64(0),
 			ItemId = reader.GetInt64(1),
 			PurposeId = reader.GetInt64(2),
-			IsActive = reader.GetInt64(3) == 1
+			LocationId = reader.GetInt64(3),
+			IsActive = reader.GetInt64(4) == 1
 		};
 	}
 }

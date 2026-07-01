@@ -6,41 +6,69 @@ using Depot.Repositories;
 
 namespace Depot.Services;
 
+/// <summary>
+/// Provides business logic for inventory management.
+/// </summary>
 public sealed class InventoryManagementService
 {
 	private readonly InventoryRepository _inventoryRepository;
-	private readonly PurposeRepository _purposeRepository;
 
 	public InventoryManagementService(
-		InventoryRepository inventoryRepository,
-		PurposeRepository purposeRepository)
+		InventoryRepository inventoryRepository)
 	{
 		_inventoryRepository = inventoryRepository;
-		_purposeRepository = purposeRepository;
 	}
 
-	public Inventory GetOrCreateDefaultInventory(
-		long itemId)
+	public Inventory GetOrCreateInventory(
+		long itemId,
+		long purposeId,
+		long locationId)
 	{
-		var purpose =
-			_purposeRepository.GetByName(
-				"Stock");
-
-		if (purpose is null)
+		if (itemId <= 0)
 		{
-			purpose = new Purpose
+			throw new ArgumentException(
+				"Item id is required.",
+				nameof(itemId));
+		}
+
+		if (purposeId <= 0)
+		{
+			throw new ArgumentException(
+				"Purpose id is required.",
+				nameof(purposeId));
+		}
+
+		if (locationId <= 0)
+		{
+			throw new ArgumentException(
+				"Location id is required.",
+				nameof(locationId));
+		}
+
+		var inventory =
+			_inventoryRepository.GetByItemPurposeLocation(
+				itemId,
+				purposeId,
+				locationId);
+
+		if (inventory is not null)
+		{
+			return inventory;
+		}
+
+		inventory =
+			new Inventory
 			{
-				Name = "Stock",
-				Description = "Default stock purpose",
+				ItemId = itemId,
+				PurposeId = purposeId,
+				LocationId = locationId,
 				IsActive = true
 			};
 
-			purpose.Id =
-				_purposeRepository.Create(
-					purpose);
-		}
-		return _inventoryRepository.GetOrCreate(
-			itemId,
-			purpose.Id);
+		inventory.Id =
+			_inventoryRepository.Create(
+				inventory);
+
+		return inventory;
 	}
 }

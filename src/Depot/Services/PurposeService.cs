@@ -156,4 +156,31 @@ public sealed class PurposeService
 		_purposeRepository.Deactivate(
 			id);
 	}
+
+	public Purpose GetOrCreatePurpose(
+		string name)
+	{
+		name = name.Trim();
+
+		if (string.IsNullOrWhiteSpace(name))
+		{
+			throw new ArgumentException(
+				"Purpose name is required.",
+				nameof(name));
+		}
+
+		var existingPurpose =
+			_purposeRepository.GetByName(
+				name);
+
+		if (existingPurpose is not null)
+		{
+			return existingPurpose;
+		}
+
+		return CreatePurpose(
+			name,
+			null);
+	}
+
 }

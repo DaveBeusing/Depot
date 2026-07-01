@@ -106,8 +106,7 @@ public partial class App
 
 			InventoryManagementService =
 				new InventoryManagementService(
-					InventoryRepository,
-					PurposeRepository);
+					InventoryRepository);
 
 			PurposeService =
 				new PurposeService(
@@ -117,6 +116,9 @@ public partial class App
 				new ImportService(
 					ItemRepository,
 					ItemService,
+					PurposeService,
+					LocationService,
+					InventoryManagementService,
 					MovementService);
 
 			LocationService =

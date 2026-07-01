@@ -13,11 +13,15 @@ public sealed class ImportPreviewItem
 
 	public string? Category { get; init; }
 
+	public string Purpose { get; init; } = string.Empty;
+
+	public string Location { get; init; } = string.Empty;
+
 	public int Quantity { get; init; }
 
 	public decimal UnitPrice { get; init; }
 
-	public bool ItemAlreadyExists { get; init; }
-
 	public decimal TotalValue { get; init; }
+
+	public bool ItemAlreadyExists { get; init; }
 }
