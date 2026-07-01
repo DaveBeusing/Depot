@@ -191,8 +191,7 @@ public sealed class DepotDatabase
 		command.ExecuteNonQuery();
 	}
 
-	private static void CreateInventoriesTable(
-		SqliteConnection connection)
+	private static void CreateInventoriesTable(SqliteConnection connection)
 	{
 		using var command =
 			connection.CreateCommand();
@@ -202,17 +201,30 @@ public sealed class DepotDatabase
 		CREATE TABLE IF NOT EXISTS Inventories
 		(
 			Id              INTEGER PRIMARY KEY AUTOINCREMENT,
+
 			ItemId          INTEGER NOT NULL,
+
 			PurposeId       INTEGER NOT NULL,
+
+			LocationId      INTEGER NOT NULL,
+
 			IsActive        INTEGER NOT NULL DEFAULT 1,
 
-			UNIQUE(ItemId, PurposeId),
+			UNIQUE
+			(
+				ItemId,
+				PurposeId,
+				LocationId
+			),
 
 			FOREIGN KEY(ItemId)
 				REFERENCES Items(Id),
 
 			FOREIGN KEY(PurposeId)
-				REFERENCES Purposes(Id)
+				REFERENCES Purposes(Id),
+
+			FOREIGN KEY(LocationId)
+				REFERENCES Locations(Id)
 		);
 		""";
 
