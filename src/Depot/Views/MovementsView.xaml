@@ -130,10 +130,10 @@
 					</Border>
 
 					<StackPanel Grid.Row="4">
-						<TextBlock Text="Item" />
+						<TextBlock Text="Inventory" />
 						<ComboBox
-							ItemsSource="{Binding AvailableItems}"
-							SelectedItem="{Binding SelectedItem}"
+							ItemsSource="{Binding AvailableInventories}"
+							SelectedItem="{Binding SelectedInventory}"
 							DisplayMemberPath="DisplayName" />
 					</StackPanel>
 

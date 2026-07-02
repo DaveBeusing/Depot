@@ -10,32 +10,164 @@ public sealed class MovementService
 {
 	private readonly ItemRepository _itemRepository;
 	private readonly InventoryRepository _inventoryRepository;
+	private readonly PurposeRepository _purposeRepository;
+	private readonly LocationRepository _locationRepository;
 	private readonly StockMovementRepository _stockMovementRepository;
 
 	public MovementService(
 		ItemRepository itemRepository,
 		InventoryRepository inventoryRepository,
+		PurposeRepository purposeRepository,
+		LocationRepository locationRepository,
 		StockMovementRepository stockMovementRepository)
 	{
 		_itemRepository = itemRepository;
 		_inventoryRepository = inventoryRepository;
+		_purposeRepository = purposeRepository;
+		_locationRepository = locationRepository;
 		_stockMovementRepository = stockMovementRepository;
 	}
 
+	public IReadOnlyList<InventoryLookupItem> GetAvailableInventories()
+	{
+		var result =
+			new List<InventoryLookupItem>();
+
+		var items =
+			_itemRepository
+				.GetAll()
+				.ToDictionary(
+					x => x.Id);
+
+		var purposes =
+			_purposeRepository
+				.GetAll()
+				.ToDictionary(
+					x => x.Id);
+
+		var locations =
+			_locationRepository
+				.GetAll()
+				.ToDictionary(
+					x => x.Id);
+
+		foreach (var inventory in _inventoryRepository.GetAll())
+		{
+			if (!items.TryGetValue(
+				inventory.ItemId,
+				out var item))
+			{
+				continue;
+			}
+
+			purposes.TryGetValue(
+				inventory.PurposeId,
+				out var purpose);
+
+			var locationName =
+				"Unknown location";
+
+			if (inventory.LocationId is not null &&
+				locations.TryGetValue(
+					inventory.LocationId.Value,
+					out var location))
+			{
+				locationName =
+					location.Name;
+			}
+
+			result.Add(
+				new InventoryLookupItem
+				{
+					Id =
+						inventory.Id,
+
+					ItemId =
+						item.Id,
+
+					PartNumber =
+						item.PartNumber,
+
+					Description =
+						item.Description,
+
+					PurposeName =
+						purpose?.Name ?? "Unknown purpose",
+
+					LocationName =
+						locationName
+				});
+		}
+
+		return result;
+	}
+
+	public IReadOnlyList<MovementOverviewItem> Search(
+		string? searchText)
+	{
+		var result =
+			new List<MovementOverviewItem>();
+
+		var items =
+			_itemRepository
+				.GetAll()
+				.ToDictionary(
+					x => x.Id);
+
+		foreach (var movement in _stockMovementRepository.Search(searchText))
+		{
+			if (!items.TryGetValue(
+				movement.ItemId,
+				out var item))
+			{
+				continue;
+			}
+
+			result.Add(
+				new MovementOverviewItem
+				{
+					MovementId =
+						movement.Id,
+
+					TimestampUtc =
+						movement.TimestampUtc,
+
+					ItemId =
+						item.Id,
+
+					PartNumber =
+						item.PartNumber,
+
+					Description =
+						item.Description,
+
+					MovementType =
+						movement.MovementType,
+
+					Quantity =
+						movement.Quantity,
+
+					UnitPrice =
+						movement.UnitPrice,
+
+					Reference =
+						movement.Reference,
+
+					Notes =
+						movement.Notes
+				});
+		}
+
+		return result;
+	}
+
 	public void AddPurchase(
-		long itemId,
+		long inventoryId,
 		int quantity,
 		decimal unitPrice,
 		string? reference,
 		string? notes)
 	{
-		if (itemId <= 0)
-		{
-			throw new ArgumentException(
-				"Item id is required.",
-				nameof(itemId));
-		}
-
 		if (quantity <= 0)
 		{
 			throw new ArgumentException(
@@ -50,61 +182,21 @@ public sealed class MovementService
 				nameof(unitPrice));
 		}
 
-		var item =
-			_itemRepository.GetById(
-				itemId);
-
-		if (item is null)
-		{
-			throw new InvalidOperationException(
-				$"Item with id '{itemId}' was not found.");
-		}
-
-		var movement =
-			new StockMovement
-			{
-				ItemId = itemId,
-
-				MovementType =
-					StockMovementType.Purchase,
-
-				TimestampUtc =
-					DateTime.UtcNow,
-
-				Quantity =
-					quantity,
-
-				UnitPrice =
-					unitPrice,
-
-				Reference =
-					string.IsNullOrWhiteSpace(reference)
-						? null
-						: reference.Trim(),
-
-				Notes =
-					string.IsNullOrWhiteSpace(notes)
-						? null
-						: notes.Trim()
-			};
-
-		_stockMovementRepository.Create(
-			movement);
+		Create(
+			inventoryId,
+			StockMovementType.Purchase,
+			quantity,
+			unitPrice,
+			reference,
+			notes);
 	}
 
 	public void AddWithdrawal(
-		long itemId,
+		long inventoryId,
 		int quantity,
 		string? reference,
 		string? notes)
 	{
-		if (itemId <= 0)
-		{
-			throw new ArgumentException(
-				"Item id is required.",
-				nameof(itemId));
-		}
-
 		if (quantity <= 0)
 		{
 			throw new ArgumentException(
@@ -112,62 +204,21 @@ public sealed class MovementService
 				nameof(quantity));
 		}
 
-		var item =
-			_itemRepository.GetById(
-				itemId);
-
-		if (item is null)
-		{
-			throw new InvalidOperationException(
-				$"Item with id '{itemId}' was not found.");
-		}
-
-		var movement =
-			new StockMovement
-			{
-				ItemId =
-					itemId,
-
-				MovementType =
-					StockMovementType.Withdrawal,
-
-				TimestampUtc =
-					DateTime.UtcNow,
-
-				Quantity =
-					-quantity,
-
-				UnitPrice =
-					null,
-
-				Reference =
-					string.IsNullOrWhiteSpace(reference)
-						? null
-						: reference.Trim(),
-
-				Notes =
-					string.IsNullOrWhiteSpace(notes)
-						? null
-						: notes.Trim()
-			};
-
-		_stockMovementRepository.Create(
-			movement);
+		Create(
+			inventoryId,
+			StockMovementType.Withdrawal,
+			-quantity,
+			null,
+			reference,
+			notes);
 	}
 
 	public void AddCorrection(
-		long itemId,
+		long inventoryId,
 		int quantityDelta,
 		string? reference,
 		string? notes)
 	{
-		if (itemId <= 0)
-		{
-			throw new ArgumentException(
-				"Item id is required.",
-				nameof(itemId));
-		}
-
 		if (quantityDelta == 0)
 		{
 			throw new ArgumentException(
@@ -175,47 +226,13 @@ public sealed class MovementService
 				nameof(quantityDelta));
 		}
 
-		var item =
-			_itemRepository.GetById(
-				itemId);
-
-		if (item is null)
-		{
-			throw new InvalidOperationException(
-				$"Item with id '{itemId}' was not found.");
-		}
-
-		var movement =
-			new StockMovement
-			{
-				ItemId =
-					itemId,
-
-				MovementType =
-					StockMovementType.Correction,
-
-				TimestampUtc =
-					DateTime.UtcNow,
-
-				Quantity =
-					quantityDelta,
-
-				UnitPrice =
-					null,
-
-				Reference =
-					string.IsNullOrWhiteSpace(reference)
-						? null
-						: reference.Trim(),
-
-				Notes =
-					string.IsNullOrWhiteSpace(notes)
-						? null
-						: notes.Trim()
-			};
-
-		_stockMovementRepository.Create(
-			movement);
+		Create(
+			inventoryId,
+			StockMovementType.Correction,
+			quantityDelta,
+			null,
+			reference,
+			notes);
 	}
 
 	public void AddOpeningBalance(
@@ -224,18 +241,35 @@ public sealed class MovementService
 		decimal unitPrice,
 		string? notes)
 	{
-		if (inventoryId <= 0)
-		{
-			throw new ArgumentException(
-				"Inventory id is required.",
-				nameof(inventoryId));
-		}
-
 		if (quantity <= 0)
 		{
 			throw new ArgumentException(
 				"Quantity must be greater than zero.",
 				nameof(quantity));
+		}
+
+		Create(
+			inventoryId,
+			StockMovementType.OpeningBalance,
+			quantity,
+			unitPrice,
+			"IMPORT",
+			notes);
+	}
+
+	private void Create(
+		long inventoryId,
+		StockMovementType movementType,
+		int quantity,
+		decimal? unitPrice,
+		string? reference,
+		string? notes)
+	{
+		if (inventoryId <= 0)
+		{
+			throw new ArgumentException(
+				"Inventory id is required.",
+				nameof(inventoryId));
 		}
 
 		var inventory =
@@ -268,7 +302,7 @@ public sealed class MovementService
 					inventory.Id,
 
 				MovementType =
-					StockMovementType.OpeningBalance,
+					movementType,
 
 				TimestampUtc =
 					DateTime.UtcNow,
@@ -280,10 +314,14 @@ public sealed class MovementService
 					unitPrice,
 
 				Reference =
-					"IMPORT",
+					string.IsNullOrWhiteSpace(reference)
+						? null
+						: reference.Trim(),
 
 				Notes =
-					notes
+					string.IsNullOrWhiteSpace(notes)
+						? null
+						: notes.Trim()
 			};
 
 		_stockMovementRepository.Create(

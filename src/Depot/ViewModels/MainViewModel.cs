@@ -3,7 +3,6 @@
 
 using System.Collections.ObjectModel;
 
-using Depot.Repositories;
 using Depot.Services;
 using Depot.Services.Import;
 using Depot.ViewModels.Administration;
@@ -21,8 +20,6 @@ public sealed class MainViewModel
 		StockService stockService,
 		MovementService movementService,
 		PurposeService purposeService,
-		ItemRepository itemRepository,
-		StockMovementRepository stockMovementRepository,
 		LocationService locationService,
 		ImportService importService)
 		{
@@ -40,8 +37,6 @@ public sealed class MainViewModel
 
 		MovementsViewModel =
 			new MovementsViewModel(
-				itemRepository,
-				stockMovementRepository,
 				movementService);
 
 		ImportViewModel =

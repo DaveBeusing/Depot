@@ -8,7 +8,7 @@ namespace Depot.ViewModels;
 public sealed class MovementEditorViewModel
 	: BaseViewModel
 {
-	private long _itemId;
+	private long _inventoryId;
 
 	private StockMovementType _movementType =
 		StockMovementType.Purchase;
@@ -21,13 +21,13 @@ public sealed class MovementEditorViewModel
 
 	private string? _notes;
 
-	public long ItemId
+	public long InventoryId
 	{
-		get => _itemId;
+		get => _inventoryId;
 
 		set
 		{
-			_itemId = value;
+			_inventoryId = value;
 
 			OnPropertyChanged();
 		}
@@ -102,7 +102,7 @@ public sealed class MovementEditorViewModel
 
 	public void Clear()
 	{
-		ItemId = 0;
+		InventoryId = 0;
 
 		MovementType =
 			StockMovementType.Purchase;

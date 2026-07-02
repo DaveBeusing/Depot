@@ -5,7 +5,6 @@ using System.Collections.ObjectModel;
 
 using Depot.Commands;
 using Depot.Models;
-using Depot.Repositories;
 using Depot.Services;
 
 namespace Depot.ViewModels;
@@ -13,21 +12,15 @@ namespace Depot.ViewModels;
 public sealed class MovementsViewModel
 	: BaseViewModel
 {
-	private readonly ItemRepository _itemRepository;
-	private readonly StockMovementRepository _stockMovementRepository;
 	private readonly MovementService _movementService;
 
-	private ItemLookupViewModel? _selectedItem;
+	private InventoryLookupViewModel? _selectedInventory;
 	private string? _errorMessage;
 	private string _searchText = string.Empty;
 
 	public MovementsViewModel(
-		ItemRepository itemRepository,
-		StockMovementRepository stockMovementRepository,
 		MovementService movementService)
 	{
-		_itemRepository = itemRepository;
-		_stockMovementRepository = stockMovementRepository;
 		_movementService = movementService;
 
 		Editor =
@@ -37,11 +30,10 @@ public sealed class MovementsViewModel
 			new RelayCommand(
 				CreateMovement);
 
-		LoadItems();
 		Load();
 	}
 
-	public ObservableCollection<ItemLookupViewModel> AvailableItems { get; }
+	public ObservableCollection<InventoryLookupViewModel> AvailableInventories { get; }
 		= new();
 
 	public ObservableCollection<MovementOverviewItemViewModel> Items { get; }
@@ -64,20 +56,24 @@ public sealed class MovementsViewModel
 		}
 	}
 
-	public ItemLookupViewModel? SelectedItem
+	public InventoryLookupViewModel? SelectedInventory
 	{
-		get => _selectedItem;
+		get => _selectedInventory;
 
 		set
 		{
-			_selectedItem = value;
+			_selectedInventory = value;
 
 			OnPropertyChanged();
 
 			if (value is not null)
 			{
-				Editor.ItemId =
+				Editor.InventoryId =
 					value.Id;
+			}
+			else
+			{
+				Editor.InventoryId = 0;
 			}
 		}
 	}
@@ -100,78 +96,47 @@ public sealed class MovementsViewModel
 		!string.IsNullOrWhiteSpace(
 			ErrorMessage);
 
-	private void LoadItems()
+	private void LoadInventories()
 	{
-		AvailableItems.Clear();
+		AvailableInventories.Clear();
 
-		foreach (var item in _itemRepository.GetAll())
+		foreach (var inventory in _movementService.GetAvailableInventories())
 		{
-			AvailableItems.Add(
-				new ItemLookupViewModel
+			AvailableInventories.Add(
+				new InventoryLookupViewModel
 				{
-					Id = item.Id,
-					PartNumber = item.PartNumber,
-					Description = item.Description
+					Id =
+						inventory.Id,
+
+					ItemId =
+						inventory.ItemId,
+
+					PartNumber =
+						inventory.PartNumber,
+
+					Description =
+						inventory.Description,
+
+					PurposeName =
+						inventory.PurposeName,
+
+					LocationName =
+						inventory.LocationName
 				});
 		}
 	}
 
 	public void Load()
 	{
+		LoadInventories();
+
 		Items.Clear();
 
-		var items =
-			_itemRepository
-				.GetAll()
-				.ToDictionary(
-					x => x.Id);
-
-		foreach (var movement in _stockMovementRepository.Search(SearchText))
+		foreach (var movement in _movementService.Search(SearchText))
 		{
-			if (!items.TryGetValue(
-				movement.ItemId,
-				out var item))
-			{
-				continue;
-			}
-
-			var overview =
-				new MovementOverviewItem
-				{
-					MovementId =
-						movement.Id,
-
-					TimestampUtc =
-						movement.TimestampUtc,
-
-					ItemId =
-						item.Id,
-
-					PartNumber =
-						item.PartNumber,
-
-					Description =
-						item.Description,
-
-					MovementType =
-						movement.MovementType,
-
-					Quantity =
-						movement.Quantity,
-
-					UnitPrice =
-						movement.UnitPrice,
-
-					Reference =
-						movement.Reference,
-
-					Notes =
-						movement.Notes
-				};
-
 			Items.Add(
 				new MovementOverviewItemViewModel(
-					overview));
+					movement));
 		}
 	}
 
@@ -186,7 +151,7 @@ public sealed class MovementsViewModel
 				case StockMovementType.Purchase:
 
 						_movementService.AddPurchase(
-						Editor.ItemId,
+						Editor.InventoryId,
 						Editor.Quantity,
 						Editor.UnitPrice,
 						Editor.Reference,
@@ -197,7 +162,7 @@ public sealed class MovementsViewModel
 				case StockMovementType.Withdrawal:
 
 					_movementService.AddWithdrawal(
-						Editor.ItemId,
+						Editor.InventoryId,
 						Editor.Quantity,
 						Editor.Reference,
 						Editor.Notes);
@@ -207,7 +172,7 @@ public sealed class MovementsViewModel
 				case StockMovementType.Correction:
 
 					_movementService.AddCorrection(
-						Editor.ItemId,
+						Editor.InventoryId,
 						Editor.Quantity,
 						Editor.Reference,
 						Editor.Notes);
@@ -221,6 +186,7 @@ public sealed class MovementsViewModel
 			}
 
 			Editor.Clear();
+			SelectedInventory = null;
 
 			Load();
 		}

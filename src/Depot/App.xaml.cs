@@ -106,6 +106,8 @@ public partial class App
 				new MovementService(
 					ItemRepository,
 					InventoryRepository,
+					PurposeRepository,
+					LocationRepository,
 					StockMovementRepository);
 
 			StockService =
@@ -131,6 +133,9 @@ public partial class App
 			// DatabaseSeeder =
 			//	new DatabaseSeeder(
 			//		ItemService,
+			//		PurposeService,
+			//		LocationService,
+			//		InventoryManagementService,
 			//		MovementService);
 			//
 			// DatabaseSeeder.Seed();
@@ -141,8 +146,6 @@ public partial class App
 					StockService,
 					MovementService,
 					PurposeService,
-					ItemRepository,
-					StockMovementRepository,
 					LocationService,
 					ImportService);
 
