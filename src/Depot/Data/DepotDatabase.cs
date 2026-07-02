@@ -31,7 +31,7 @@ public sealed class DepotDatabase
 
 		if (version == 0)
 		{
-			CreateVersion3Schema(
+			CreateVersion4Schema(
 				connection);
 
 			SetDatabaseVersion(
@@ -124,7 +124,7 @@ public sealed class DepotDatabase
 		insertCommand.ExecuteNonQuery();
 	}
 
-	private static void CreateVersion3Schema(
+	private static void CreateVersion4Schema(
 		SqliteConnection connection)
 	{
 		CreateItemsTable(
@@ -289,9 +289,7 @@ public sealed class DepotDatabase
 		(
 			Id                  INTEGER PRIMARY KEY AUTOINCREMENT,
 
-			ItemId              INTEGER NOT NULL,
-
-			InventoryId     	INTEGER,
+			InventoryId         INTEGER NOT NULL,
 
 			MovementType        INTEGER NOT NULL,
 
@@ -305,8 +303,8 @@ public sealed class DepotDatabase
 
 			Notes               TEXT NULL,
 
-			FOREIGN KEY(ItemId)
-				REFERENCES Items(Id)
+			FOREIGN KEY(InventoryId)
+				REFERENCES Inventories(Id)
 		);
 		""";
 

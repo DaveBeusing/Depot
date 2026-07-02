@@ -382,14 +382,6 @@ public sealed class StockService
 				.ToDictionary(
 					x => x.Id);
 
-		var inventoriesByItem =
-			inventories
-				.GroupBy(
-					x => x.ItemId)
-				.ToDictionary(
-					x => x.Key,
-					x => x.ToList());
-
 		var purposes =
 			_purposeRepository
 				.GetAll()
@@ -409,7 +401,6 @@ public sealed class StockService
 					movement,
 					items,
 					inventoriesById,
-					inventoriesByItem,
 					purposes,
 					locations);
 
@@ -524,25 +515,9 @@ public sealed class StockService
 	private IReadOnlyList<StockMovement> GetMovementsForInventory(
 		Inventory inventory)
 	{
-		var inventoriesForItem =
-			_inventoryRepository.GetByItem(
-				inventory.ItemId);
-
-		var canAssignLegacyMovements =
-			inventoriesForItem.Count == 1 &&
-			inventoriesForItem[0].Id == inventory.Id;
-
 		return _stockMovementRepository
-			.GetByItemId(
-				inventory.ItemId)
-			.Where(
-				x =>
-					x.InventoryId == inventory.Id ||
-					(
-						x.InventoryId is null &&
-						canAssignLegacyMovements
-					))
-			.ToList();
+			.GetByInventoryId(
+				inventory.Id);
 	}
 
 	private static decimal CalculateAverageCost(
@@ -615,90 +590,23 @@ public sealed class StockService
 		StockMovement movement,
 		IReadOnlyDictionary<long, Item> items,
 		IReadOnlyDictionary<long, Inventory> inventoriesById,
-		IReadOnlyDictionary<long, List<Inventory>> inventoriesByItem,
 		IReadOnlyDictionary<long, Purpose> purposes,
 		IReadOnlyDictionary<long, Location> locations)
 	{
-		if (movement.InventoryId is not null &&
-			inventoriesById.TryGetValue(
-				movement.InventoryId.Value,
-				out var inventory) &&
-			items.TryGetValue(
+		if (!inventoriesById.TryGetValue(
+				movement.InventoryId,
+				out var inventory) ||
+			!items.TryGetValue(
 				inventory.ItemId,
-				out var inventoryItem))
-		{
-			return new MovementContext
-			{
-				InventoryId =
-					inventory.Id,
-
-				ItemId =
-					inventoryItem.Id,
-
-				PartNumber =
-					inventoryItem.PartNumber,
-
-				Description =
-					inventoryItem.Description,
-
-				PurposeName =
-					GetPurposeName(
-						purposes,
-						inventory.PurposeId),
-
-				LocationName =
-					GetLocationName(
-						locations,
-						inventory.LocationId)
-			};
-		}
-
-		if (!items.TryGetValue(
-			movement.ItemId,
-			out var item))
+				out var item))
 		{
 			return null;
-		}
-
-		if (movement.InventoryId is null &&
-			inventoriesByItem.TryGetValue(
-				item.Id,
-				out var itemInventories) &&
-			itemInventories.Count == 1)
-		{
-			var legacyInventory =
-				itemInventories[0];
-
-			return new MovementContext
-			{
-				InventoryId =
-					legacyInventory.Id,
-
-				ItemId =
-					item.Id,
-
-				PartNumber =
-					item.PartNumber,
-
-				Description =
-					item.Description,
-
-				PurposeName =
-					GetPurposeName(
-						purposes,
-						legacyInventory.PurposeId),
-
-				LocationName =
-					GetLocationName(
-						locations,
-						legacyInventory.LocationId)
-			};
 		}
 
 		return new MovementContext
 		{
 			InventoryId =
-				movement.InventoryId,
+				inventory.Id,
 
 			ItemId =
 				item.Id,
@@ -710,16 +618,20 @@ public sealed class StockService
 				item.Description,
 
 			PurposeName =
-				"Unassigned",
+				GetPurposeName(
+					purposes,
+					inventory.PurposeId),
 
 			LocationName =
-				"Unassigned"
+				GetLocationName(
+					locations,
+					inventory.LocationId)
 		};
 	}
 
 	private sealed class MovementContext
 	{
-		public long? InventoryId { get; init; }
+		public long InventoryId { get; init; }
 
 		public long ItemId { get; init; }
 

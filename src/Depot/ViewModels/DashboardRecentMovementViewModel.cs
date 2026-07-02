@@ -26,7 +26,7 @@ public sealed class DashboardRecentMovementViewModel
 	public DateTime TimestampLocal =>
 		TimestampUtc.ToLocalTime();
 
-	public long? InventoryId { get; }
+	public long InventoryId { get; }
 
 	public string PartNumber { get; }
 

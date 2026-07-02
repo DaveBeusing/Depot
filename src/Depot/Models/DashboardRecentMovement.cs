@@ -7,7 +7,7 @@ public sealed class DashboardRecentMovement
 {
 	public DateTime TimestampUtc { get; init; }
 
-	public long? InventoryId { get; init; }
+	public long InventoryId { get; init; }
 
 	public string PartNumber { get; init; } = string.Empty;
 

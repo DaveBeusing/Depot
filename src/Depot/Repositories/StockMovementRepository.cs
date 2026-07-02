@@ -32,7 +32,6 @@ public sealed class StockMovementRepository
 		"""
 		INSERT INTO StockMovements
 		(
-			ItemId,
 			InventoryId,
 			MovementType,
 			TimestampUtc,
@@ -43,7 +42,6 @@ public sealed class StockMovementRepository
 		)
 		VALUES
 		(
-			$ItemId,
 			$InventoryId,
 			$MovementType,
 			$TimestampUtc,
@@ -57,12 +55,8 @@ public sealed class StockMovementRepository
 		""";
 
 		command.Parameters.AddWithValue(
-			"$ItemId",
-			movement.ItemId);
-
-		command.Parameters.AddWithValue(
 			"$InventoryId",
-			(object?)movement.InventoryId ?? DBNull.Value);
+			movement.InventoryId);
 
 		command.Parameters.AddWithValue(
 			"$MovementType",
@@ -117,7 +111,6 @@ public sealed class StockMovementRepository
 			"""
 			SELECT
 				sm.Id,
-				sm.ItemId,
 				sm.InventoryId,
 				sm.MovementType,
 				sm.TimestampUtc,
@@ -126,10 +119,10 @@ public sealed class StockMovementRepository
 				sm.Reference,
 				sm.Notes
 			FROM StockMovements sm
-			LEFT JOIN Inventories inv
+			INNER JOIN Inventories inv
 				ON inv.Id = sm.InventoryId
 			INNER JOIN Items i
-				ON i.Id = COALESCE(inv.ItemId, sm.ItemId)
+				ON i.Id = inv.ItemId
 			ORDER BY sm.TimestampUtc DESC;
 			""";
 		}
@@ -139,7 +132,6 @@ public sealed class StockMovementRepository
 			"""
 			SELECT
 				sm.Id,
-				sm.ItemId,
 				sm.InventoryId,
 				sm.MovementType,
 				sm.TimestampUtc,
@@ -148,10 +140,10 @@ public sealed class StockMovementRepository
 				sm.Reference,
 				sm.Notes
 			FROM StockMovements sm
-			LEFT JOIN Inventories inv
+			INNER JOIN Inventories inv
 				ON inv.Id = sm.InventoryId
 			INNER JOIN Items i
-				ON i.Id = COALESCE(inv.ItemId, sm.ItemId)
+				ON i.Id = inv.ItemId
 			LEFT JOIN Purposes p
 				ON p.Id = inv.PurposeId
 			LEFT JOIN Locations l
@@ -183,8 +175,8 @@ public sealed class StockMovementRepository
 		return result;
 	}
 
-	public IReadOnlyList<StockMovement> GetByItemId(
-		long itemId)
+	public IReadOnlyList<StockMovement> GetByInventoryId(
+		long inventoryId)
 	{
 		var result =
 			new List<StockMovement>();
@@ -201,7 +193,6 @@ public sealed class StockMovementRepository
 		"""
 		SELECT
 			Id,
-			ItemId,
 			InventoryId,
 			MovementType,
 			TimestampUtc,
@@ -210,13 +201,13 @@ public sealed class StockMovementRepository
 			Reference,
 			Notes
 		FROM StockMovements
-		WHERE ItemId = $ItemId
+		WHERE InventoryId = $InventoryId
 		ORDER BY TimestampUtc;
 		""";
 
 		command.Parameters.AddWithValue(
-			"$ItemId",
-			itemId);
+			"$InventoryId",
+			inventoryId);
 
 		using var reader =
 			command.ExecuteReader();
@@ -238,40 +229,35 @@ public sealed class StockMovementRepository
 			Id =
 				reader.GetInt64(0),
 
-			ItemId =
+			InventoryId =
 				reader.GetInt64(1),
 
-			InventoryId =
-				reader.IsDBNull(2)
-					? null
-					: reader.GetInt64(2),
-
 			MovementType =
-				(StockMovementType)reader.GetInt32(3),
+				(StockMovementType)reader.GetInt32(2),
 
 			TimestampUtc =
 				DateTime.Parse(
-					reader.GetString(4),
+					reader.GetString(3),
 					null,
 					System.Globalization.DateTimeStyles.RoundtripKind),
 
 			Quantity =
-				reader.GetInt32(5),
+				reader.GetInt32(4),
 
 			UnitPrice =
-				reader.IsDBNull(6)
+				reader.IsDBNull(5)
 					? null
-					: reader.GetDecimal(6),
+					: reader.GetDecimal(5),
 
 			Reference =
-				reader.IsDBNull(7)
+				reader.IsDBNull(6)
 					? null
-					: reader.GetString(7),
+					: reader.GetString(6),
 
 			Notes =
-				reader.IsDBNull(8)
+				reader.IsDBNull(7)
 					? null
-					: reader.GetString(8)
+					: reader.GetString(7)
 		};
 	}
 	

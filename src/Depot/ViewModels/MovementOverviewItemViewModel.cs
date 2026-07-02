@@ -33,7 +33,7 @@ public sealed class MovementOverviewItemViewModel
 	public DateTime TimestampLocal =>
 		TimestampUtc.ToLocalTime();
 
-	public long? InventoryId { get; }
+	public long InventoryId { get; }
 
 	public long ItemId { get; }
 

@@ -7,9 +7,7 @@ public sealed class StockMovement
 {
 	public long Id { get; set; }
 
-	public long ItemId { get; set; }
-
-	public long? InventoryId { get; set; }
+	public long InventoryId { get; set; }
 
 	public StockMovementType MovementType { get; set; }
 

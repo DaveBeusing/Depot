@@ -9,7 +9,7 @@ public sealed class MovementOverviewItem
 
 	public DateTime TimestampUtc { get; init; }
 
-	public long? InventoryId { get; init; }
+	public long InventoryId { get; init; }
 
 	public long ItemId { get; init; }
 
