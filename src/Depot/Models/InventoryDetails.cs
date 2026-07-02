@@ -5,6 +5,8 @@ namespace Depot.Models;
 
 public sealed class InventoryDetails
 {
+	public long InventoryId { get; init; }
+
 	public long ItemId { get; init; }
 
 	public string PartNumber { get; init; } = string.Empty;
@@ -14,6 +16,10 @@ public sealed class InventoryDetails
 	public string? Manufacturer { get; init; }
 
 	public string? Category { get; init; }
+
+	public string PurposeName { get; init; } = string.Empty;
+
+	public string LocationName { get; init; } = string.Empty;
 
 	public int CurrentStock { get; init; }
 

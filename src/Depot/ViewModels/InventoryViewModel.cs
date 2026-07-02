@@ -60,8 +60,8 @@ public sealed class InventoryViewModel
 
 	public void Load()
 	{
-		var selectedItemId =
-			SelectedItem?.ItemId;
+		var selectedInventoryId =
+			SelectedItem?.InventoryId;
 
 		Items.Clear();
 
@@ -72,11 +72,11 @@ public sealed class InventoryViewModel
 					item));
 		}
 
-		if (selectedItemId is not null)
+		if (selectedInventoryId is not null)
 		{
 			SelectedItem =
 				Items.FirstOrDefault(
-					x => x.ItemId == selectedItemId.Value);
+					x => x.InventoryId == selectedInventoryId.Value);
 		}
 
 		if (SelectedItem is null)
@@ -95,7 +95,7 @@ public sealed class InventoryViewModel
 
 		var details =
 			_stockService.GetInventoryDetails(
-				SelectedItem.ItemId);
+				SelectedItem.InventoryId);
 
 		Details.Load(
 			details);

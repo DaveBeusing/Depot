@@ -22,7 +22,7 @@
 			Grid.Row="2"
 			Height="32"
 			Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-			ToolTip="Search by part number, description, manufacturer or category" />
+			ToolTip="Search by part number, description, manufacturer, category, purpose or location" />
 
 		<Grid Grid.Row="4">
 
@@ -54,6 +54,16 @@
 						Header="Description"
 						Binding="{Binding Description}"
 						Width="*" />
+
+					<DataGridTextColumn
+						Header="Purpose"
+						Binding="{Binding PurposeName}"
+						Width="140" />
+
+					<DataGridTextColumn
+						Header="Location"
+						Binding="{Binding LocationName}"
+						Width="140" />
 
 					<DataGridTextColumn
 						Header="Stock"
@@ -122,6 +132,10 @@
 								<RowDefinition Height="Auto" />
 								<RowDefinition Height="8" />
 								<RowDefinition Height="Auto" />
+								<RowDefinition Height="8" />
+								<RowDefinition Height="Auto" />
+								<RowDefinition Height="8" />
+								<RowDefinition Height="Auto" />
 							</Grid.RowDefinitions>
 
 							<TextBlock
@@ -151,22 +165,44 @@
 							<TextBlock
 								Grid.Row="4"
 								Grid.Column="0"
-								Text="Manufacturer"
+								Text="Purpose"
 								Foreground="#6B7280" />
 
 							<TextBlock
 								Grid.Row="4"
 								Grid.Column="1"
-								Text="{Binding Details.Manufacturer}" />
+								Text="{Binding Details.PurposeName}" />
 
 							<TextBlock
 								Grid.Row="6"
+								Grid.Column="0"
+								Text="Location"
+								Foreground="#6B7280" />
+
+							<TextBlock
+								Grid.Row="6"
+								Grid.Column="1"
+								Text="{Binding Details.LocationName}" />
+
+							<TextBlock
+								Grid.Row="8"
+								Grid.Column="0"
+								Text="Manufacturer"
+								Foreground="#6B7280" />
+
+							<TextBlock
+								Grid.Row="8"
+								Grid.Column="1"
+								Text="{Binding Details.Manufacturer}" />
+
+							<TextBlock
+								Grid.Row="10"
 								Grid.Column="0"
 								Text="Category"
 								Foreground="#6B7280" />
 
 							<TextBlock
-								Grid.Row="6"
+								Grid.Row="10"
 								Grid.Column="1"
 								Text="{Binding Details.Category}" />
 

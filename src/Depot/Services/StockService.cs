@@ -9,36 +9,48 @@ namespace Depot.Services;
 public sealed class StockService
 {
 	private readonly ItemRepository _itemRepository;
+	private readonly InventoryRepository _inventoryRepository;
+	private readonly PurposeRepository _purposeRepository;
+	private readonly LocationRepository _locationRepository;
 	private readonly StockMovementRepository _stockMovementRepository;
 
 	public StockService(
 		ItemRepository itemRepository,
+		InventoryRepository inventoryRepository,
+		PurposeRepository purposeRepository,
+		LocationRepository locationRepository,
 		StockMovementRepository stockMovementRepository)
 	{
 		_itemRepository = itemRepository;
+		_inventoryRepository = inventoryRepository;
+		_purposeRepository = purposeRepository;
+		_locationRepository = locationRepository;
 		_stockMovementRepository = stockMovementRepository;
 	}
 
 	public int GetCurrentStock(
-		long itemId)
+		long inventoryId)
 	{
-		var movements =
-			_stockMovementRepository.GetByItemId(
-				itemId);
+		var inventory =
+			GetInventory(
+				inventoryId);
 
-		return movements.Sum(
-			x => x.Quantity);
+		return GetMovementsForInventory(
+				inventory)
+			.Sum(
+				x => x.Quantity);
 	}
 
 	public decimal GetAverageCost(
-		long itemId)
+		long inventoryId)
 	{
-		var movements =
-			_stockMovementRepository.GetByItemId(
-				itemId);
+		var inventory =
+			GetInventory(
+				inventoryId);
 
 		var purchases =
-			movements
+			GetMovementsForInventory(
+					inventory)
 				.Where(
 					x =>
 						x.Quantity > 0 &&
@@ -71,15 +83,15 @@ public sealed class StockService
 	}
 
 	public decimal GetInventoryValue(
-		long itemId)
+		long inventoryId)
 	{
 		var currentStock =
 			GetCurrentStock(
-				itemId);
+				inventoryId);
 
 		var averageCost =
 			GetAverageCost(
-				itemId);
+				inventoryId);
 
 		return
 			currentStock *
@@ -87,31 +99,14 @@ public sealed class StockService
 	}
 
 	public InventorySummary GetInventorySummary(
-		long itemId)
+		long inventoryId)
 	{
-		var currentStock =
-			GetCurrentStock(
-				itemId);
+		var inventory =
+			GetInventory(
+				inventoryId);
 
-		var averageCost =
-			GetAverageCost(
-				itemId);
-
-		return new InventorySummary
-		{
-			ItemId =
-				itemId,
-
-			CurrentStock =
-				currentStock,
-
-			AverageCost =
-				averageCost,
-
-			InventoryValue =
-				currentStock *
-				averageCost
-		};
+		return GetInventorySummary(
+			inventory);
 	}
 
 	public IReadOnlyList<InventoryOverviewItem> GetInventoryOverview()
@@ -120,17 +115,42 @@ public sealed class StockService
 			new List<InventoryOverviewItem>();
 
 		var items =
-			_itemRepository.GetAll();
+			_itemRepository
+				.GetAll()
+				.ToDictionary(
+					x => x.Id);
 
-		foreach (var item in items)
+		var purposes =
+			_purposeRepository
+				.GetAll()
+				.ToDictionary(
+					x => x.Id);
+
+		var locations =
+			_locationRepository
+				.GetAll()
+				.ToDictionary(
+					x => x.Id);
+
+		foreach (var inventory in _inventoryRepository.GetAll())
 		{
+			if (!items.TryGetValue(
+				inventory.ItemId,
+				out var item))
+			{
+				continue;
+			}
+
 			var summary =
 				GetInventorySummary(
-					item.Id);
+					inventory);
 
 			result.Add(
 				new InventoryOverviewItem
 				{
+					InventoryId =
+						inventory.Id,
+
 					ItemId =
 						item.Id,
 
@@ -146,6 +166,16 @@ public sealed class StockService
 					Category =
 						item.Category,
 
+					PurposeName =
+						GetPurposeName(
+							purposes,
+							inventory.PurposeId),
+
+					LocationName =
+						GetLocationName(
+							locations,
+							inventory.LocationId),
+
 					CurrentStock =
 						summary.CurrentStock,
 
@@ -157,78 +187,90 @@ public sealed class StockService
 				});
 		}
 
-		return result;
+		return result
+			.OrderBy(
+				x => x.PartNumber)
+			.ThenBy(
+				x => x.PurposeName)
+			.ThenBy(
+				x => x.LocationName)
+			.ToList();
 	}
 
 	public IReadOnlyList<InventoryOverviewItem> SearchInventoryOverview(
 		string? searchText)
 	{
-		var result =
-			new List<InventoryOverviewItem>();
+		var inventory =
+			GetInventoryOverview();
 
-		var items =
-			_itemRepository.SearchActive(
-				searchText);
-
-		foreach (var item in items)
+		if (string.IsNullOrWhiteSpace(searchText))
 		{
-			var summary =
-				GetInventorySummary(
-					item.Id);
-
-			result.Add(
-				new InventoryOverviewItem
-				{
-					ItemId =
-						item.Id,
-
-					PartNumber =
-						item.PartNumber,
-
-					Description =
-						item.Description,
-
-					Manufacturer =
-						item.Manufacturer,
-
-					Category =
-						item.Category,
-
-					CurrentStock =
-						summary.CurrentStock,
-
-					AverageCost =
-						summary.AverageCost,
-
-					InventoryValue =
-						summary.InventoryValue
-				});
+			return inventory;
 		}
 
-		return result;
+		var search =
+			searchText.Trim();
+
+		return inventory
+			.Where(
+				x =>
+					Contains(
+						x.PartNumber,
+						search) ||
+					Contains(
+						x.Description,
+						search) ||
+					Contains(
+						x.Manufacturer,
+						search) ||
+					Contains(
+						x.Category,
+						search) ||
+					Contains(
+						x.PurposeName,
+						search) ||
+					Contains(
+						x.LocationName,
+						search))
+			.ToList();
 	}
 
 	public InventoryDetails GetInventoryDetails(
-		long itemId)
+		long inventoryId)
 	{
+		var inventory =
+			GetInventory(
+				inventoryId);
+
 		var item =
 			_itemRepository.GetById(
-				itemId);
+				inventory.ItemId);
 
 		if (item is null)
 		{
 			throw new InvalidOperationException(
-				$"Item with id '{itemId}' was not found.");
+				$"Item with id '{inventory.ItemId}' was not found.");
 		}
+
+		var purposes =
+			_purposeRepository
+				.GetAll()
+				.ToDictionary(
+					x => x.Id);
+
+		var locations =
+			_locationRepository
+				.GetAll()
+				.ToDictionary(
+					x => x.Id);
 
 		var summary =
 			GetInventorySummary(
-				itemId);
+				inventory);
 
 		var movements =
-			_stockMovementRepository
-				.GetByItemId(
-					itemId)
+			GetMovementsForInventory(
+					inventory)
 				.OrderByDescending(
 					x => x.TimestampUtc)
 				.Take(
@@ -237,6 +279,9 @@ public sealed class StockService
 
 		return new InventoryDetails
 		{
+			InventoryId =
+				inventory.Id,
+
 			ItemId =
 				item.Id,
 
@@ -251,6 +296,16 @@ public sealed class StockService
 
 			Category =
 				item.Category,
+
+			PurposeName =
+				GetPurposeName(
+					purposes,
+					inventory.PurposeId),
+
+			LocationName =
+				GetLocationName(
+					locations,
+					inventory.LocationId),
 
 			CurrentStock =
 				summary.CurrentStock,
@@ -272,7 +327,11 @@ public sealed class StockService
 			GetInventoryOverview();
 
 		var totalItems =
-			inventory.Count;
+			inventory
+				.Select(
+					x => x.ItemId)
+				.Distinct()
+				.Count();
 
 		var totalStockQuantity =
 			inventory.Sum(
@@ -346,5 +405,161 @@ public sealed class StockService
 						};
 					})
 				.ToList();
+	}
+
+	private InventorySummary GetInventorySummary(
+		Inventory inventory)
+	{
+		var movements =
+			GetMovementsForInventory(
+				inventory);
+
+		var currentStock =
+			movements.Sum(
+				x => x.Quantity);
+
+		var purchases =
+			movements
+				.Where(
+					x =>
+						x.Quantity > 0 &&
+						x.UnitPrice.HasValue)
+				.ToList();
+
+		var averageCost =
+			CalculateAverageCost(
+				purchases);
+
+		return new InventorySummary
+		{
+			InventoryId =
+				inventory.Id,
+
+			ItemId =
+				inventory.ItemId,
+
+			CurrentStock =
+				currentStock,
+
+			AverageCost =
+				averageCost,
+
+			InventoryValue =
+				currentStock *
+				averageCost
+		};
+	}
+
+	private Inventory GetInventory(
+		long inventoryId)
+	{
+		if (inventoryId <= 0)
+		{
+			throw new ArgumentException(
+				"Inventory id is required.",
+				nameof(inventoryId));
+		}
+
+		var inventory =
+			_inventoryRepository.GetById(
+				inventoryId);
+
+		if (inventory is null)
+		{
+			throw new InvalidOperationException(
+				$"Inventory with id '{inventoryId}' was not found.");
+		}
+
+		return inventory;
+	}
+
+	private IReadOnlyList<StockMovement> GetMovementsForInventory(
+		Inventory inventory)
+	{
+		var inventoriesForItem =
+			_inventoryRepository.GetByItem(
+				inventory.ItemId);
+
+		var canAssignLegacyMovements =
+			inventoriesForItem.Count == 1 &&
+			inventoriesForItem[0].Id == inventory.Id;
+
+		return _stockMovementRepository
+			.GetByItemId(
+				inventory.ItemId)
+			.Where(
+				x =>
+					x.InventoryId == inventory.Id ||
+					(
+						x.InventoryId is null &&
+						canAssignLegacyMovements
+					))
+			.ToList();
+	}
+
+	private static decimal CalculateAverageCost(
+		IReadOnlyList<StockMovement> purchases)
+	{
+		if (purchases.Count == 0)
+		{
+			return 0m;
+		}
+
+		var totalQuantity =
+			purchases.Sum(
+				x => x.Quantity);
+
+		if (totalQuantity == 0)
+		{
+			return 0m;
+		}
+
+		var totalValue =
+			purchases.Sum(
+				x =>
+					x.Quantity *
+					x.UnitPrice!.Value);
+
+		return
+			totalValue /
+			totalQuantity;
+	}
+
+	private static string GetPurposeName(
+		IReadOnlyDictionary<long, Purpose> purposes,
+		long purposeId)
+	{
+		return purposes.TryGetValue(
+			purposeId,
+			out var purpose)
+			? purpose.Name
+			: "Unknown purpose";
+	}
+
+	private static string GetLocationName(
+		IReadOnlyDictionary<long, Location> locations,
+		long? locationId)
+	{
+		if (locationId is null)
+		{
+			return "Unknown location";
+		}
+
+		return locations.TryGetValue(
+			locationId.Value,
+			out var location)
+			? location.Name
+			: "Unknown location";
+	}
+
+	private static bool Contains(
+		string? value,
+		string searchText)
+	{
+		return
+			!string.IsNullOrWhiteSpace(value) &&
+			value.Contains(
+				searchText,
+				StringComparison.OrdinalIgnoreCase);
 	}
 }

@@ -5,6 +5,8 @@ namespace Depot.Models;
 
 public sealed class InventorySummary
 {
+	public long InventoryId { get; init; }
+
 	public long ItemId { get; init; }
 
 	public int CurrentStock { get; init; }

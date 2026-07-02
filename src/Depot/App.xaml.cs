@@ -113,6 +113,9 @@ public partial class App
 			StockService =
 				new StockService(
 					ItemRepository,
+					InventoryRepository,
+					PurposeRepository,
+					LocationRepository,
 					StockMovementRepository);
 
 			InventoryManagementService =

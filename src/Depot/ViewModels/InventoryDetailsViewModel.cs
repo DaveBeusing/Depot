@@ -10,14 +10,27 @@ namespace Depot.ViewModels;
 public sealed class InventoryDetailsViewModel
 	: BaseViewModel
 {
+	private long _inventoryId;
 	private long _itemId;
 	private string _partNumber = string.Empty;
 	private string _description = string.Empty;
 	private string? _manufacturer;
 	private string? _category;
+	private string _purposeName = string.Empty;
+	private string _locationName = string.Empty;
 	private int _currentStock;
 	private decimal _averageCost;
 	private decimal _inventoryValue;
+
+	public long InventoryId
+	{
+		get => _inventoryId;
+		private set
+		{
+			_inventoryId = value;
+			OnPropertyChanged();
+		}
+	}
 
 	public long ItemId
 	{
@@ -69,6 +82,26 @@ public sealed class InventoryDetailsViewModel
 		}
 	}
 
+	public string PurposeName
+	{
+		get => _purposeName;
+		private set
+		{
+			_purposeName = value;
+			OnPropertyChanged();
+		}
+	}
+
+	public string LocationName
+	{
+		get => _locationName;
+		private set
+		{
+			_locationName = value;
+			OnPropertyChanged();
+		}
+	}
+
 	public int CurrentStock
 	{
 		get => _currentStock;
@@ -105,11 +138,14 @@ public sealed class InventoryDetailsViewModel
 	public void Load(
 		InventoryDetails details)
 	{
+		InventoryId = details.InventoryId;
 		ItemId = details.ItemId;
 		PartNumber = details.PartNumber;
 		Description = details.Description;
 		Manufacturer = details.Manufacturer;
 		Category = details.Category;
+		PurposeName = details.PurposeName;
+		LocationName = details.LocationName;
 		CurrentStock = details.CurrentStock;
 		AverageCost = details.AverageCost;
 		InventoryValue = details.InventoryValue;
@@ -126,11 +162,14 @@ public sealed class InventoryDetailsViewModel
 
 	public void Clear()
 	{
+		InventoryId = 0;
 		ItemId = 0;
 		PartNumber = string.Empty;
 		Description = string.Empty;
 		Manufacturer = null;
 		Category = null;
+		PurposeName = string.Empty;
+		LocationName = string.Empty;
 		CurrentStock = 0;
 		AverageCost = 0m;
 		InventoryValue = 0m;
