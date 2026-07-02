@@ -13,9 +13,12 @@ public sealed class MovementOverviewItemViewModel
 	{
 		MovementId = item.MovementId;
 		TimestampUtc = item.TimestampUtc;
+		InventoryId = item.InventoryId;
 		ItemId = item.ItemId;
 		PartNumber = item.PartNumber;
 		Description = item.Description;
+		PurposeName = item.PurposeName;
+		LocationName = item.LocationName;
 		MovementType = item.MovementType;
 		Quantity = item.Quantity;
 		UnitPrice = item.UnitPrice;
@@ -30,11 +33,17 @@ public sealed class MovementOverviewItemViewModel
 	public DateTime TimestampLocal =>
 		TimestampUtc.ToLocalTime();
 
+	public long? InventoryId { get; }
+
 	public long ItemId { get; }
 
 	public string PartNumber { get; }
 
 	public string Description { get; }
+
+	public string PurposeName { get; }
+
+	public string LocationName { get; }
 
 	public StockMovementType MovementType { get; }
 

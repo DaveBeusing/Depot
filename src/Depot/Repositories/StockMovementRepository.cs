@@ -126,8 +126,10 @@ public sealed class StockMovementRepository
 				sm.Reference,
 				sm.Notes
 			FROM StockMovements sm
+			LEFT JOIN Inventories inv
+				ON inv.Id = sm.InventoryId
 			INNER JOIN Items i
-				ON i.Id = sm.ItemId
+				ON i.Id = COALESCE(inv.ItemId, sm.ItemId)
 			ORDER BY sm.TimestampUtc DESC;
 			""";
 		}
@@ -146,11 +148,19 @@ public sealed class StockMovementRepository
 				sm.Reference,
 				sm.Notes
 			FROM StockMovements sm
+			LEFT JOIN Inventories inv
+				ON inv.Id = sm.InventoryId
 			INNER JOIN Items i
-				ON i.Id = sm.ItemId
+				ON i.Id = COALESCE(inv.ItemId, sm.ItemId)
+			LEFT JOIN Purposes p
+				ON p.Id = inv.PurposeId
+			LEFT JOIN Locations l
+				ON l.Id = inv.LocationId
 			WHERE
 				i.PartNumber LIKE $Search
 				OR i.Description LIKE $Search
+				OR p.Name LIKE $Search
+				OR l.Name LIKE $Search
 				OR sm.Reference LIKE $Search
 				OR sm.Notes LIKE $Search
 			ORDER BY sm.TimestampUtc DESC;

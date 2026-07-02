@@ -22,7 +22,7 @@
 			Grid.Row="2"
 			Height="32"
 			Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-			ToolTip="Search by part number, description, reference or notes" />
+			ToolTip="Search by part number, description, purpose, location, reference or notes" />
 
 		<Grid Grid.Row="4">
 
@@ -58,6 +58,16 @@
 						Header="Description"
 						Binding="{Binding Description}"
 						Width="*" />
+
+					<DataGridTextColumn
+						Header="Purpose"
+						Binding="{Binding PurposeName}"
+						Width="130" />
+
+					<DataGridTextColumn
+						Header="Location"
+						Binding="{Binding LocationName}"
+						Width="130" />
 
 					<DataGridTextColumn
 						Header="Type"

@@ -12,8 +12,11 @@ public sealed class DashboardRecentMovementViewModel
 		DashboardRecentMovement movement)
 	{
 		TimestampUtc = movement.TimestampUtc;
+		InventoryId = movement.InventoryId;
 		PartNumber = movement.PartNumber;
 		Description = movement.Description;
+		PurposeName = movement.PurposeName;
+		LocationName = movement.LocationName;
 		MovementType = movement.MovementType;
 		Quantity = movement.Quantity;
 	}
@@ -23,9 +26,15 @@ public sealed class DashboardRecentMovementViewModel
 	public DateTime TimestampLocal =>
 		TimestampUtc.ToLocalTime();
 
+	public long? InventoryId { get; }
+
 	public string PartNumber { get; }
 
 	public string Description { get; }
+
+	public string PurposeName { get; }
+
+	public string LocationName { get; }
 
 	public StockMovementType MovementType { get; }
 

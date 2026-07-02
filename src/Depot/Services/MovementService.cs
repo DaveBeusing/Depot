@@ -114,11 +114,46 @@ public sealed class MovementService
 				.ToDictionary(
 					x => x.Id);
 
+		var inventories =
+			_inventoryRepository.GetAll();
+
+		var inventoriesById =
+			inventories
+				.ToDictionary(
+					x => x.Id);
+
+		var inventoriesByItem =
+			inventories
+				.GroupBy(
+					x => x.ItemId)
+				.ToDictionary(
+					x => x.Key,
+					x => x.ToList());
+
+		var purposes =
+			_purposeRepository
+				.GetAll()
+				.ToDictionary(
+					x => x.Id);
+
+		var locations =
+			_locationRepository
+				.GetAll()
+				.ToDictionary(
+					x => x.Id);
+
 		foreach (var movement in _stockMovementRepository.Search(searchText))
 		{
-			if (!items.TryGetValue(
-				movement.ItemId,
-				out var item))
+			var context =
+				ResolveMovementContext(
+					movement,
+					items,
+					inventoriesById,
+					inventoriesByItem,
+					purposes,
+					locations);
+
+			if (context is null)
 			{
 				continue;
 			}
@@ -132,14 +167,23 @@ public sealed class MovementService
 					TimestampUtc =
 						movement.TimestampUtc,
 
+					InventoryId =
+						context.InventoryId,
+
 					ItemId =
-						item.Id,
+						context.ItemId,
 
 					PartNumber =
-						item.PartNumber,
+						context.PartNumber,
 
 					Description =
-						item.Description,
+						context.Description,
+
+					PurposeName =
+						context.PurposeName,
+
+					LocationName =
+						context.LocationName,
 
 					MovementType =
 						movement.MovementType,
@@ -326,5 +370,153 @@ public sealed class MovementService
 
 		_stockMovementRepository.Create(
 			movement);
+	}
+
+	private static MovementContext? ResolveMovementContext(
+		StockMovement movement,
+		IReadOnlyDictionary<long, Item> items,
+		IReadOnlyDictionary<long, Inventory> inventoriesById,
+		IReadOnlyDictionary<long, List<Inventory>> inventoriesByItem,
+		IReadOnlyDictionary<long, Purpose> purposes,
+		IReadOnlyDictionary<long, Location> locations)
+	{
+		if (movement.InventoryId is not null &&
+			inventoriesById.TryGetValue(
+				movement.InventoryId.Value,
+				out var inventory) &&
+			items.TryGetValue(
+				inventory.ItemId,
+				out var inventoryItem))
+		{
+			return new MovementContext
+			{
+				InventoryId =
+					inventory.Id,
+
+				ItemId =
+					inventoryItem.Id,
+
+				PartNumber =
+					inventoryItem.PartNumber,
+
+				Description =
+					inventoryItem.Description,
+
+				PurposeName =
+					GetPurposeName(
+						purposes,
+						inventory.PurposeId),
+
+				LocationName =
+					GetLocationName(
+						locations,
+						inventory.LocationId)
+			};
+		}
+
+		if (!items.TryGetValue(
+			movement.ItemId,
+			out var item))
+		{
+			return null;
+		}
+
+		if (movement.InventoryId is null &&
+			inventoriesByItem.TryGetValue(
+				item.Id,
+				out var itemInventories) &&
+			itemInventories.Count == 1)
+		{
+			var legacyInventory =
+				itemInventories[0];
+
+			return new MovementContext
+			{
+				InventoryId =
+					legacyInventory.Id,
+
+				ItemId =
+					item.Id,
+
+				PartNumber =
+					item.PartNumber,
+
+				Description =
+					item.Description,
+
+				PurposeName =
+					GetPurposeName(
+						purposes,
+						legacyInventory.PurposeId),
+
+				LocationName =
+					GetLocationName(
+						locations,
+						legacyInventory.LocationId)
+			};
+		}
+
+		return new MovementContext
+		{
+			InventoryId =
+				movement.InventoryId,
+
+			ItemId =
+				item.Id,
+
+			PartNumber =
+				item.PartNumber,
+
+			Description =
+				item.Description,
+
+			PurposeName =
+				"Unassigned",
+
+			LocationName =
+				"Unassigned"
+		};
+	}
+
+	private static string GetPurposeName(
+		IReadOnlyDictionary<long, Purpose> purposes,
+		long purposeId)
+	{
+		return purposes.TryGetValue(
+			purposeId,
+			out var purpose)
+			? purpose.Name
+			: "Unknown purpose";
+	}
+
+	private static string GetLocationName(
+		IReadOnlyDictionary<long, Location> locations,
+		long? locationId)
+	{
+		if (locationId is null)
+		{
+			return "Unknown location";
+		}
+
+		return locations.TryGetValue(
+			locationId.Value,
+			out var location)
+			? location.Name
+			: "Unknown location";
+	}
+
+	private sealed class MovementContext
+	{
+		public long? InventoryId { get; init; }
+
+		public long ItemId { get; init; }
+
+		public string PartNumber { get; init; } = string.Empty;
+
+		public string Description { get; init; } = string.Empty;
+
+		public string PurposeName { get; init; } = string.Empty;
+
+		public string LocationName { get; init; } = string.Empty;
 	}
 }

@@ -196,6 +196,16 @@
 							Width="*" />
 
 						<DataGridTextColumn
+							Header="Purpose"
+							Binding="{Binding PurposeName}"
+							Width="140" />
+
+						<DataGridTextColumn
+							Header="Location"
+							Binding="{Binding LocationName}"
+							Width="140" />
+
+						<DataGridTextColumn
 							Header="Type"
 							Binding="{Binding MovementType}"
 							Width="120" />
