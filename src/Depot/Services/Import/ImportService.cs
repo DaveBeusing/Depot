@@ -282,10 +282,11 @@ public sealed class ImportService
 				_locationService.GetOrCreateLocation(
 					previewItem.Location);
 
-			_inventoryManagementService.GetOrCreateInventory(
-				item.Id,
-				purpose.Id,
-				location.Id);
+			var inventory =
+				_inventoryManagementService.GetOrCreateInventory(
+					item.Id,
+					purpose.Id,
+					location.Id);
 
 			if (previewItem.Quantity <= 0)
 			{
@@ -294,7 +295,7 @@ public sealed class ImportService
 			}
 
 			_movementService.AddOpeningBalance(
-				item.Id,
+				inventory.Id,
 				previewItem.Quantity,
 				previewItem.UnitPrice,
 				"Imported from Excel");

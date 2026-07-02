@@ -94,9 +94,18 @@ public partial class App
 				new ItemService(
 					ItemRepository);
 
+			PurposeService =
+				new PurposeService(
+					PurposeRepository);
+
+			LocationService =
+				new LocationService(
+					LocationRepository);
+
 			MovementService =
 				new MovementService(
 					ItemRepository,
+					InventoryRepository,
 					StockMovementRepository);
 
 			StockService =
@@ -108,10 +117,6 @@ public partial class App
 				new InventoryManagementService(
 					InventoryRepository);
 
-			PurposeService =
-				new PurposeService(
-					PurposeRepository);
-
 			ImportService =
 				new ImportService(
 					ItemRepository,
@@ -120,10 +125,6 @@ public partial class App
 					LocationService,
 					InventoryManagementService,
 					MovementService);
-
-			LocationService =
-				new LocationService(
-					LocationRepository);
 
 			StartupDiagnostics.Log("Services created.");
 

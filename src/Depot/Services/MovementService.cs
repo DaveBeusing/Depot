@@ -9,13 +9,16 @@ namespace Depot.Services;
 public sealed class MovementService
 {
 	private readonly ItemRepository _itemRepository;
+	private readonly InventoryRepository _inventoryRepository;
 	private readonly StockMovementRepository _stockMovementRepository;
 
 	public MovementService(
 		ItemRepository itemRepository,
+		InventoryRepository inventoryRepository,
 		StockMovementRepository stockMovementRepository)
 	{
 		_itemRepository = itemRepository;
+		_inventoryRepository = inventoryRepository;
 		_stockMovementRepository = stockMovementRepository;
 	}
 
@@ -216,16 +219,16 @@ public sealed class MovementService
 	}
 
 	public void AddOpeningBalance(
-		long itemId,
+		long inventoryId,
 		int quantity,
 		decimal unitPrice,
 		string? notes)
 	{
-		if (itemId <= 0)
+		if (inventoryId <= 0)
 		{
 			throw new ArgumentException(
-				"Item id is required.",
-				nameof(itemId));
+				"Inventory id is required.",
+				nameof(inventoryId));
 		}
 
 		if (quantity <= 0)
@@ -235,21 +238,34 @@ public sealed class MovementService
 				nameof(quantity));
 		}
 
+		var inventory =
+			_inventoryRepository.GetById(
+				inventoryId);
+
+		if (inventory is null)
+		{
+			throw new InvalidOperationException(
+				$"Inventory with id '{inventoryId}' was not found.");
+		}
+
 		var item =
 			_itemRepository.GetById(
-				itemId);
+				inventory.ItemId);
 
 		if (item is null)
 		{
 			throw new InvalidOperationException(
-				$"Item with id '{itemId}' was not found.");
+				$"Item with id '{inventory.ItemId}' was not found.");
 		}
 
 		var movement =
 			new StockMovement
 			{
 				ItemId =
-					itemId,
+					inventory.ItemId,
+
+				InventoryId =
+					inventory.Id,
 
 				MovementType =
 					StockMovementType.OpeningBalance,
