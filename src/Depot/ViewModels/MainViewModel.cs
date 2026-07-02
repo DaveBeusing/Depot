@@ -19,6 +19,7 @@ public sealed class MainViewModel
 		ItemService itemService,
 		StockService stockService,
 		MovementService movementService,
+		ReportService reportService,
 		PurposeService purposeService,
 		LocationService locationService,
 		ImportService importService)
@@ -38,6 +39,10 @@ public sealed class MainViewModel
 		MovementsViewModel =
 			new MovementsViewModel(
 				movementService);
+
+		ReportsViewModel =
+			new ReportsViewModel(
+				reportService);
 
 		ImportViewModel =
 			new ImportViewModel(
@@ -84,6 +89,14 @@ public sealed class MainViewModel
 		NavigationItems.Add(
 			new NavigationItem
 			{
+				Name = "Reports",
+				Icon = "R",
+				Section = ShellSection.Reports
+			});
+
+		NavigationItems.Add(
+			new NavigationItem
+			{
 				Name = "Administration",
 				Icon = "⚙",
 				Section = ShellSection.Administration
@@ -103,6 +116,8 @@ public sealed class MainViewModel
 	public ItemsViewModel ItemsViewModel { get; }
 
 	public MovementsViewModel MovementsViewModel { get; }
+
+	public ReportsViewModel ReportsViewModel { get; }
 
 	public ImportViewModel ImportViewModel { get; }
 
@@ -149,6 +164,7 @@ public sealed class MainViewModel
 				ShellSection.Inventory => InventoryViewModel,
 				ShellSection.Items => ItemsViewModel,
 				ShellSection.Movements => MovementsViewModel,
+				ShellSection.Reports => ReportsViewModel,
 				ShellSection.Administration => AdministrationViewModel,
 				_ => DashboardViewModel
 			};
@@ -166,6 +182,11 @@ public sealed class MainViewModel
 		if (CurrentViewModel == MovementsViewModel)
 		{
 			MovementsViewModel.Load();
+		}
+
+		if (CurrentViewModel == ReportsViewModel)
+		{
+			ReportsViewModel.Load();
 		}
 	}
 }

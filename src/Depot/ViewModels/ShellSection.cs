@@ -9,5 +9,6 @@ public enum ShellSection
 	Inventory,
 	Items,
 	Movements,
+	Reports,
 	Administration
 }

@@ -43,6 +43,10 @@
 				<views:MovementsView />
 			</DataTemplate>
 
+			<DataTemplate DataType="{x:Type viewModels:ReportsViewModel}">
+				<views:ReportsView />
+			</DataTemplate>
+
 			<DataTemplate DataType="{x:Type viewModels:ImportViewModel}">
 				<views:ImportView />
 			</DataTemplate>

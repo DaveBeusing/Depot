@@ -35,6 +35,8 @@ public partial class App
 
 	public static MovementService MovementService { get; private set; } = null!;
 
+	public static ReportService ReportService { get; private set; } = null!;
+
 	public static InventoryManagementService InventoryManagementService { get; private set; } = null!;
 
 	public static ImportService ImportService { get; private set; } = null!;
@@ -118,6 +120,10 @@ public partial class App
 					LocationRepository,
 					StockMovementRepository);
 
+			ReportService =
+				new ReportService(
+					StockService);
+
 			InventoryManagementService =
 				new InventoryManagementService(
 					InventoryRepository);
@@ -148,6 +154,7 @@ public partial class App
 					ItemService,
 					StockService,
 					MovementService,
+					ReportService,
 					PurposeService,
 					LocationService,
 					ImportService);
