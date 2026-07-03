@@ -31,7 +31,7 @@ public sealed class DepotDatabase
 
 		if (version == 0)
 		{
-			CreateVersion4Schema(
+			CreateVersion5Schema(
 				connection);
 
 			SetDatabaseVersion(
@@ -124,7 +124,7 @@ public sealed class DepotDatabase
 		insertCommand.ExecuteNonQuery();
 	}
 
-	private static void CreateVersion4Schema(
+	private static void CreateVersion5Schema(
 		SqliteConnection connection)
 	{
 		CreateItemsTable(
@@ -142,10 +142,16 @@ public sealed class DepotDatabase
 		CreateStockMovementsTable(
 			connection);
 
+		CreateUsersTable(
+			connection);
+
 		CreateDefaultPurpose(
 			connection);
 
 		CreateDefaultLocation(
+			connection);
+
+		CreateDefaultAdministrator(
 			connection);
 	}
 
@@ -311,6 +317,28 @@ public sealed class DepotDatabase
 		command.ExecuteNonQuery();
 	}
 
+	private static void CreateUsersTable(
+		SqliteConnection connection)
+	{
+		using var command =
+			connection.CreateCommand();
+
+		command.CommandText =
+		"""
+		CREATE TABLE IF NOT EXISTS Users
+		(
+			Id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+			UserName            TEXT NOT NULL UNIQUE,
+			DisplayName         TEXT NOT NULL,
+			IsAdministrator     INTEGER NOT NULL DEFAULT 0,
+			IsActive            INTEGER NOT NULL DEFAULT 1,
+			CreatedUtc          TEXT NOT NULL
+		);
+		""";
+
+		command.ExecuteNonQuery();
+	}
+
 	private static void CreateDefaultPurpose(
 		SqliteConnection connection)
 	{
@@ -336,17 +364,71 @@ public sealed class DepotDatabase
 		command.ExecuteNonQuery();
 	}
 
+	private static void CreateDefaultAdministrator(
+		SqliteConnection connection)
+	{
+		using var command =
+			connection.CreateCommand();
+
+		command.CommandText =
+		"""
+		INSERT OR IGNORE INTO Users
+		(
+			UserName,
+			DisplayName,
+			IsAdministrator,
+			IsActive,
+			CreatedUtc
+		)
+		VALUES
+		(
+			'admin',
+			'Administrator',
+			1,
+			1,
+			strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+		);
+		""";
+
+		command.ExecuteNonQuery();
+	}
+
 	private static void ApplyMigrations(
 		SqliteConnection connection,
 		int version)
 	{
-		if (version < DatabaseVersion.CurrentVersion)
+		var migratedVersion =
+			version;
+
+		if (migratedVersion < 4)
 		{
 			throw new InvalidOperationException(
-				$"Database version '{version}' is older than the current schema version '{DatabaseVersion.CurrentVersion}'. Delete depot.db and import the Excel file again.");
+				$"Database version '{version}' is older than the supported migration baseline '4'. Delete depot.db and import the Excel file again.");
 		}
 
-		if (version > DatabaseVersion.CurrentVersion)
+		if (migratedVersion == 4)
+		{
+			CreateUsersTable(
+				connection);
+
+			CreateDefaultAdministrator(
+				connection);
+
+			SetDatabaseVersion(
+				connection,
+				5);
+
+			migratedVersion =
+				5;
+		}
+
+		if (migratedVersion < DatabaseVersion.CurrentVersion)
+		{
+			throw new InvalidOperationException(
+				$"Database version '{migratedVersion}' is older than the current schema version '{DatabaseVersion.CurrentVersion}'. Delete depot.db and import the Excel file again.");
+		}
+
+		if (migratedVersion > DatabaseVersion.CurrentVersion)
 		{
 			throw new InvalidOperationException(
 				$"Database version '{version}' is newer than the supported schema version '{DatabaseVersion.CurrentVersion}'.");

@@ -16,6 +16,8 @@
 	xmlns:purposeViews="clr-namespace:Depot.Views.Purposes"
 	xmlns:locationViewModels="clr-namespace:Depot.ViewModels.Locations"
 	xmlns:locationViews="clr-namespace:Depot.Views.Locations"
+	xmlns:userViewModels="clr-namespace:Depot.ViewModels.Users"
+	xmlns:userViews="clr-namespace:Depot.Views.Users"
 	mc:Ignorable="d"
 	Title="Depot"
 	Width="1600"
@@ -69,6 +71,10 @@
 
 			<DataTemplate DataType="{x:Type locationViewModels:LocationViewModel}">
 				<locationViews:LocationsView />
+			</DataTemplate>
+
+			<DataTemplate DataType="{x:Type userViewModels:UserViewModel}">
+				<userViews:UsersView />
 			</DataTemplate>
 
 		</ResourceDictionary>

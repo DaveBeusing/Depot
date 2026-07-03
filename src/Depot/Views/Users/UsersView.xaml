@@ -1,0 +1,65 @@
+<UserControl
+	x:Class="Depot.Views.Users.UsersView"
+	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+	<Grid>
+
+		<Grid.RowDefinitions>
+			<RowDefinition Height="Auto" />
+			<RowDefinition Height="16" />
+			<RowDefinition Height="Auto" />
+			<RowDefinition Height="8" />
+			<RowDefinition Height="*" />
+		</Grid.RowDefinitions>
+
+		<TextBlock
+			Grid.Row="0"
+			Text="Users"
+			Style="{StaticResource PageTitleStyle}" />
+
+		<TextBox
+			Grid.Row="2"
+			Height="32"
+			Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+			ToolTip="Search users" />
+
+		<DataGrid
+			Grid.Row="4"
+			ItemsSource="{Binding Users}"
+			Style="{StaticResource AppDataGridStyle}">
+
+			<DataGrid.Columns>
+
+				<DataGridTextColumn
+					Header="User Name"
+					Binding="{Binding UserName}"
+					Width="180" />
+
+				<DataGridTextColumn
+					Header="Display Name"
+					Binding="{Binding DisplayName}"
+					Width="*" />
+
+				<DataGridTextColumn
+					Header="Role"
+					Binding="{Binding Role}"
+					Width="160" />
+
+				<DataGridTextColumn
+					Header="Status"
+					Binding="{Binding Status}"
+					Width="120" />
+
+				<DataGridTextColumn
+					Header="Created"
+					Binding="{Binding CreatedUtc, StringFormat={}{0:g}}"
+					Width="160" />
+
+			</DataGrid.Columns>
+
+		</DataGrid>
+
+	</Grid>
+
+</UserControl>

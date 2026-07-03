@@ -29,6 +29,8 @@ public partial class App
 
 	public static StockMovementRepository StockMovementRepository { get; private set; } = null!;
 
+	public static UserRepository UserRepository { get; private set; } = null!;
+
 	public static ItemService ItemService { get; private set; } = null!;
 
 	public static StockService StockService { get; private set; } = null!;
@@ -44,6 +46,8 @@ public partial class App
 	public static PurposeService PurposeService { get; private set; } = null!;
 
 	public static LocationService LocationService { get; private set; } = null!;
+
+	public static UserService UserService { get; private set; } = null!;
 
 	public static DatabaseSeeder DatabaseSeeder { get; private set; } = null!;
 
@@ -90,6 +94,10 @@ public partial class App
 				new StockMovementRepository(
 					ConnectionFactory);
 
+			UserRepository =
+				new UserRepository(
+					ConnectionFactory);
+
 			StartupDiagnostics.Log("Repositories created.");
 
 			ItemService =
@@ -103,6 +111,10 @@ public partial class App
 			LocationService =
 				new LocationService(
 					LocationRepository);
+
+			UserService =
+				new UserService(
+					UserRepository);
 
 			MovementService =
 				new MovementService(
@@ -157,6 +169,7 @@ public partial class App
 					ReportService,
 					PurposeService,
 					LocationService,
+					UserService,
 					ImportService);
 
 			StartupDiagnostics.Log("MainViewModel created.");

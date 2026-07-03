@@ -22,6 +22,7 @@ public sealed class MainViewModel
 		ReportService reportService,
 		PurposeService purposeService,
 		LocationService locationService,
+		UserService userService,
 		ImportService importService)
 		{
 		DashboardViewModel =
@@ -52,7 +53,8 @@ public sealed class MainViewModel
 			new AdministrationViewModel(
 				ImportViewModel, 
 				purposeService,
-				locationService);
+				locationService,
+				userService);
 
 		NavigationItems.Add(
 			new NavigationItem

@@ -4,6 +4,7 @@
 using System.Collections.ObjectModel;
 
 using Depot.ViewModels.Shared;
+using Depot.ViewModels.Users;
 using Depot.ViewModels.MasterData;
 using Depot.Services;
 
@@ -18,6 +19,7 @@ public sealed class AdministrationViewModel
 {
 	private readonly ImportViewModel _importViewModel;
 	private readonly MasterDataViewModel _masterDataViewModel;
+	private readonly UserViewModel _userViewModel;
 
 	private NavigationItem? _selectedNavigationItem;
 	private BaseViewModel? _currentViewModel;
@@ -25,10 +27,14 @@ public sealed class AdministrationViewModel
 	public AdministrationViewModel(
 		ImportViewModel importViewModel,
 		PurposeService purposeService,
-		LocationService locationService)
+		LocationService locationService,
+		UserService userService)
 	{
 		_importViewModel = importViewModel;
 		_masterDataViewModel = new MasterDataViewModel(purposeService, locationService);
+		_userViewModel =
+			new UserViewModel(
+				userService);
 
 		NavigationItems.Add(
 			new NavigationItem
@@ -111,9 +117,7 @@ public sealed class AdministrationViewModel
 					_masterDataViewModel,
 
 				AdministrationSection.Users =>
-					new PlaceholderViewModel(
-						"Users",
-						"User management will be available in a future release."),
+					_userViewModel,
 
 				AdministrationSection.Database =>
 					new PlaceholderViewModel(
