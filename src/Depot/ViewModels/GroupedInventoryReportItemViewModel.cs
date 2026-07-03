@@ -1,33 +1,35 @@
 // Copyright (c) 2026 David Beusing
 // Licensed under the MIT License.
 
-using Depot.Models;
-
 namespace Depot.ViewModels;
 
-public sealed class ManufacturerInventoryReportItemViewModel
+public sealed class GroupedInventoryReportItemViewModel
 	: BaseViewModel
 {
-	public ManufacturerInventoryReportItemViewModel(
-		ManufacturerInventoryReportItem item)
+	public GroupedInventoryReportItemViewModel(
+		string groupName,
+		int inventoryRows,
+		int totalItems,
+		int totalStockQuantity,
+		decimal inventoryValue)
 	{
-		ManufacturerName =
-			item.ManufacturerName;
+		GroupName =
+			groupName;
 
 		InventoryRows =
-			item.InventoryRows;
+			inventoryRows;
 
 		TotalItems =
-			item.TotalItems;
+			totalItems;
 
 		TotalStockQuantity =
-			item.TotalStockQuantity;
+			totalStockQuantity;
 
 		InventoryValue =
-			item.InventoryValue;
+			inventoryValue;
 	}
 
-	public string ManufacturerName { get; }
+	public string GroupName { get; }
 
 	public int InventoryRows { get; }
 

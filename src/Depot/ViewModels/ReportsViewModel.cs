@@ -57,16 +57,7 @@ public sealed class ReportsViewModel
 	public ObservableCollection<InventoryValueReportItemViewModel> InventoryValueItems { get; }
 		= new();
 
-	public ObservableCollection<LocationInventoryReportItemViewModel> LocationItems { get; }
-		= new();
-
-	public ObservableCollection<PurposeInventoryReportItemViewModel> PurposeItems { get; }
-		= new();
-
-	public ObservableCollection<CategoryInventoryReportItemViewModel> CategoryItems { get; }
-		= new();
-
-	public ObservableCollection<ManufacturerInventoryReportItemViewModel> ManufacturerItems { get; }
+	public ObservableCollection<GroupedInventoryReportItemViewModel> GroupedItems { get; }
 		= new();
 
 	public string SelectedReport
@@ -93,13 +84,7 @@ public sealed class ReportsViewModel
 			OnPropertyChanged(
 				nameof(IsInventoryValueReportSelected));
 			OnPropertyChanged(
-				nameof(IsStockByLocationReportSelected));
-			OnPropertyChanged(
-				nameof(IsStockByPurposeReportSelected));
-			OnPropertyChanged(
-				nameof(IsStockByCategoryReportSelected));
-			OnPropertyChanged(
-				nameof(IsStockByManufacturerReportSelected));
+				nameof(IsGroupedReportSelected));
 
 			Load();
 		}
@@ -116,16 +101,19 @@ public sealed class ReportsViewModel
 	public bool IsInventoryValueReportSelected =>
 		SelectedReport == InventoryValueReportName;
 
-	public bool IsStockByLocationReportSelected =>
+	public bool IsGroupedReportSelected =>
+		!IsInventoryValueReportSelected;
+
+	private bool IsStockByLocationReportSelected =>
 		SelectedReport == StockByLocationReportName;
 
-	public bool IsStockByPurposeReportSelected =>
+	private bool IsStockByPurposeReportSelected =>
 		SelectedReport == StockByPurposeReportName;
 
-	public bool IsStockByCategoryReportSelected =>
+	private bool IsStockByCategoryReportSelected =>
 		SelectedReport == StockByCategoryReportName;
 
-	public bool IsStockByManufacturerReportSelected =>
+	private bool IsStockByManufacturerReportSelected =>
 		SelectedReport == StockByManufacturerReportName;
 
 	public string SearchText
@@ -239,10 +227,7 @@ public sealed class ReportsViewModel
 			report.TotalInventoryValue);
 
 		InventoryValueItems.Clear();
-		LocationItems.Clear();
-		PurposeItems.Clear();
-		CategoryItems.Clear();
-		ManufacturerItems.Clear();
+		GroupedItems.Clear();
 
 		foreach (var item in report.Items)
 		{
@@ -264,18 +249,16 @@ public sealed class ReportsViewModel
 			report.TotalStockQuantity,
 			report.TotalInventoryValue);
 
-		InventoryValueItems.Clear();
-		LocationItems.Clear();
-		PurposeItems.Clear();
-		CategoryItems.Clear();
-		ManufacturerItems.Clear();
-
-		foreach (var item in report.Items)
-		{
-			LocationItems.Add(
-				new LocationInventoryReportItemViewModel(
-					item));
-		}
+		LoadGroupedItems(
+			report.Items
+				.Select(
+					x =>
+						new GroupedInventoryReportItemViewModel(
+							x.LocationName,
+							x.InventoryRows,
+							x.TotalItems,
+							x.TotalStockQuantity,
+							x.InventoryValue)));
 	}
 
 	private void LoadPurposeInventoryReport()
@@ -290,18 +273,16 @@ public sealed class ReportsViewModel
 			report.TotalStockQuantity,
 			report.TotalInventoryValue);
 
-		InventoryValueItems.Clear();
-		LocationItems.Clear();
-		PurposeItems.Clear();
-		CategoryItems.Clear();
-		ManufacturerItems.Clear();
-
-		foreach (var item in report.Items)
-		{
-			PurposeItems.Add(
-				new PurposeInventoryReportItemViewModel(
-					item));
-		}
+		LoadGroupedItems(
+			report.Items
+				.Select(
+					x =>
+						new GroupedInventoryReportItemViewModel(
+							x.PurposeName,
+							x.InventoryRows,
+							x.TotalItems,
+							x.TotalStockQuantity,
+							x.InventoryValue)));
 	}
 
 	private void LoadCategoryInventoryReport()
@@ -316,18 +297,16 @@ public sealed class ReportsViewModel
 			report.TotalStockQuantity,
 			report.TotalInventoryValue);
 
-		InventoryValueItems.Clear();
-		LocationItems.Clear();
-		PurposeItems.Clear();
-		CategoryItems.Clear();
-		ManufacturerItems.Clear();
-
-		foreach (var item in report.Items)
-		{
-			CategoryItems.Add(
-				new CategoryInventoryReportItemViewModel(
-					item));
-		}
+		LoadGroupedItems(
+			report.Items
+				.Select(
+					x =>
+						new GroupedInventoryReportItemViewModel(
+							x.CategoryName,
+							x.InventoryRows,
+							x.TotalItems,
+							x.TotalStockQuantity,
+							x.InventoryValue)));
 	}
 
 	private void LoadManufacturerInventoryReport()
@@ -342,17 +321,28 @@ public sealed class ReportsViewModel
 			report.TotalStockQuantity,
 			report.TotalInventoryValue);
 
-		InventoryValueItems.Clear();
-		LocationItems.Clear();
-		PurposeItems.Clear();
-		CategoryItems.Clear();
-		ManufacturerItems.Clear();
+		LoadGroupedItems(
+			report.Items
+				.Select(
+					x =>
+						new GroupedInventoryReportItemViewModel(
+							x.ManufacturerName,
+							x.InventoryRows,
+							x.TotalItems,
+							x.TotalStockQuantity,
+							x.InventoryValue)));
+	}
 
-		foreach (var item in report.Items)
+	private void LoadGroupedItems(
+		IEnumerable<GroupedInventoryReportItemViewModel> items)
+	{
+		InventoryValueItems.Clear();
+		GroupedItems.Clear();
+
+		foreach (var item in items)
 		{
-			ManufacturerItems.Add(
-				new ManufacturerInventoryReportItemViewModel(
-					item));
+			GroupedItems.Add(
+				item);
 		}
 	}
 
@@ -377,23 +367,8 @@ public sealed class ReportsViewModel
 
 	private bool CanExport()
 	{
-		if (IsStockByManufacturerReportSelected)
-		{
-			return ManufacturerItems.Count > 0;
-		}
-
-		if (IsStockByCategoryReportSelected)
-		{
-			return CategoryItems.Count > 0;
-		}
-
-		if (IsStockByPurposeReportSelected)
-		{
-			return PurposeItems.Count > 0;
-		}
-
-		return IsStockByLocationReportSelected
-			? LocationItems.Count > 0
+		return IsGroupedReportSelected
+			? GroupedItems.Count > 0
 			: InventoryValueItems.Count > 0;
 	}
 

@@ -263,146 +263,20 @@
 
 				<DataGrid
 					Grid.Row="2"
-					ItemsSource="{Binding LocationItems}"
+					ItemsSource="{Binding GroupedItems}"
 					AutoGenerateColumns="False"
 					IsReadOnly="True"
 					CanUserAddRows="False"
 					CanUserDeleteRows="False"
 					HeadersVisibility="Column"
 					RowHeaderWidth="0"
-					Visibility="{Binding IsStockByLocationReportSelected, Converter={StaticResource BooleanToVisibilityConverter}}">
+					Visibility="{Binding IsGroupedReportSelected, Converter={StaticResource BooleanToVisibilityConverter}}">
 
 					<DataGrid.Columns>
 
 						<DataGridTextColumn
-							Header="Location"
-							Binding="{Binding LocationName}"
-							Width="*" />
-
-						<DataGridTextColumn
-							Header="Inventory Rows"
-							Binding="{Binding InventoryRows}"
-							Width="140" />
-
-						<DataGridTextColumn
-							Header="Items"
-							Binding="{Binding TotalItems}"
-							Width="100" />
-
-						<DataGridTextColumn
-							Header="Total Stock"
-							Binding="{Binding TotalStockQuantity}"
-							Width="120" />
-
-						<DataGridTextColumn
-							Header="Inventory Value"
-							Binding="{Binding InventoryValue, StringFormat={}{0:N2} EUR}"
-							Width="160" />
-
-					</DataGrid.Columns>
-
-				</DataGrid>
-
-				<DataGrid
-					Grid.Row="2"
-					ItemsSource="{Binding PurposeItems}"
-					AutoGenerateColumns="False"
-					IsReadOnly="True"
-					CanUserAddRows="False"
-					CanUserDeleteRows="False"
-					HeadersVisibility="Column"
-					RowHeaderWidth="0"
-					Visibility="{Binding IsStockByPurposeReportSelected, Converter={StaticResource BooleanToVisibilityConverter}}">
-
-					<DataGrid.Columns>
-
-						<DataGridTextColumn
-							Header="Purpose"
-							Binding="{Binding PurposeName}"
-							Width="*" />
-
-						<DataGridTextColumn
-							Header="Inventory Rows"
-							Binding="{Binding InventoryRows}"
-							Width="140" />
-
-						<DataGridTextColumn
-							Header="Items"
-							Binding="{Binding TotalItems}"
-							Width="100" />
-
-						<DataGridTextColumn
-							Header="Total Stock"
-							Binding="{Binding TotalStockQuantity}"
-							Width="120" />
-
-						<DataGridTextColumn
-							Header="Inventory Value"
-							Binding="{Binding InventoryValue, StringFormat={}{0:N2} EUR}"
-							Width="160" />
-
-					</DataGrid.Columns>
-
-				</DataGrid>
-
-				<DataGrid
-					Grid.Row="2"
-					ItemsSource="{Binding CategoryItems}"
-					AutoGenerateColumns="False"
-					IsReadOnly="True"
-					CanUserAddRows="False"
-					CanUserDeleteRows="False"
-					HeadersVisibility="Column"
-					RowHeaderWidth="0"
-					Visibility="{Binding IsStockByCategoryReportSelected, Converter={StaticResource BooleanToVisibilityConverter}}">
-
-					<DataGrid.Columns>
-
-						<DataGridTextColumn
-							Header="Category"
-							Binding="{Binding CategoryName}"
-							Width="*" />
-
-						<DataGridTextColumn
-							Header="Inventory Rows"
-							Binding="{Binding InventoryRows}"
-							Width="140" />
-
-						<DataGridTextColumn
-							Header="Items"
-							Binding="{Binding TotalItems}"
-							Width="100" />
-
-						<DataGridTextColumn
-							Header="Total Stock"
-							Binding="{Binding TotalStockQuantity}"
-							Width="120" />
-
-						<DataGridTextColumn
-							Header="Inventory Value"
-							Binding="{Binding InventoryValue, StringFormat={}{0:N2} EUR}"
-							Width="160" />
-
-					</DataGrid.Columns>
-
-				</DataGrid>
-
-				<DataGrid
-					Grid.Row="2"
-					ItemsSource="{Binding ManufacturerItems}"
-					AutoGenerateColumns="False"
-					IsReadOnly="True"
-					CanUserAddRows="False"
-					CanUserDeleteRows="False"
-					HeadersVisibility="Column"
-					RowHeaderWidth="0"
-					Visibility="{Binding IsStockByManufacturerReportSelected, Converter={StaticResource BooleanToVisibilityConverter}}">
-
-					<DataGrid.Columns>
-
-						<DataGridTextColumn
-							Header="Manufacturer"
-							Binding="{Binding ManufacturerName}"
+							Header="Group"
+							Binding="{Binding GroupName}"
 							Width="*" />
 
 						<DataGridTextColumn
