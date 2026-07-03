@@ -365,93 +365,34 @@ public sealed class ReportService
 			GetLocationInventoryReport(
 				searchText);
 
-		using var workbook =
-			new XLWorkbook();
+		ExportGroupedInventoryReport(
+			"Stock by Location",
+			"Location",
+			report.Items
+				.Select(
+					x =>
+						new GroupedInventoryExportItem
+						{
+							GroupName =
+								x.LocationName,
 
-		var worksheet =
-			workbook.Worksheets.Add(
-				"Stock by Location");
+							InventoryRows =
+								x.InventoryRows,
 
-		worksheet.Cell(
-			1,
-			1)
-			.Value =
-				"Stock by Location";
+							TotalItems =
+								x.TotalItems,
 
-		worksheet.Range(
-			1,
-			1,
-			1,
-			5)
-			.Merge();
+							TotalStockQuantity =
+								x.TotalStockQuantity,
 
-		worksheet.Cell(
-			1,
-			1)
-			.Style.Font.Bold =
-				true;
-
-		worksheet.Cell(
-			1,
-			1)
-			.Style.Font.FontSize =
-				16;
-
-		WriteLocationInventorySummary(
-			worksheet,
-			report);
-
-		var headerRow =
-			6;
-
-		WriteLocationInventoryHeaders(
-			worksheet,
-			headerRow);
-
-		var row =
-			headerRow + 1;
-
-		foreach (var item in report.Items)
-		{
-			worksheet.Cell(
-				row,
-				1)
-				.Value =
-					item.LocationName;
-
-			worksheet.Cell(
-				row,
-				2)
-				.Value =
-					item.InventoryRows;
-
-			worksheet.Cell(
-				row,
-				3)
-				.Value =
-					item.TotalItems;
-
-			worksheet.Cell(
-				row,
-				4)
-				.Value =
-					item.TotalStockQuantity;
-
-			worksheet.Cell(
-				row,
-				5)
-				.Value =
-					item.InventoryValue;
-
-			row++;
-		}
-
-		FormatLocationInventoryWorksheet(
-			worksheet,
-			headerRow,
-			row - 1);
-
-		workbook.SaveAs(
+							InventoryValue =
+								x.InventoryValue
+						})
+				.ToList(),
+			report.TotalInventoryRows,
+			report.TotalItems,
+			report.TotalStockQuantity,
+			report.TotalInventoryValue,
 			filePath);
 	}
 
@@ -463,93 +404,34 @@ public sealed class ReportService
 			GetPurposeInventoryReport(
 				searchText);
 
-		using var workbook =
-			new XLWorkbook();
+		ExportGroupedInventoryReport(
+			"Stock by Purpose",
+			"Purpose",
+			report.Items
+				.Select(
+					x =>
+						new GroupedInventoryExportItem
+						{
+							GroupName =
+								x.PurposeName,
 
-		var worksheet =
-			workbook.Worksheets.Add(
-				"Stock by Purpose");
+							InventoryRows =
+								x.InventoryRows,
 
-		worksheet.Cell(
-			1,
-			1)
-			.Value =
-				"Stock by Purpose";
+							TotalItems =
+								x.TotalItems,
 
-		worksheet.Range(
-			1,
-			1,
-			1,
-			5)
-			.Merge();
+							TotalStockQuantity =
+								x.TotalStockQuantity,
 
-		worksheet.Cell(
-			1,
-			1)
-			.Style.Font.Bold =
-				true;
-
-		worksheet.Cell(
-			1,
-			1)
-			.Style.Font.FontSize =
-				16;
-
-		WritePurposeInventorySummary(
-			worksheet,
-			report);
-
-		var headerRow =
-			6;
-
-		WritePurposeInventoryHeaders(
-			worksheet,
-			headerRow);
-
-		var row =
-			headerRow + 1;
-
-		foreach (var item in report.Items)
-		{
-			worksheet.Cell(
-				row,
-				1)
-				.Value =
-					item.PurposeName;
-
-			worksheet.Cell(
-				row,
-				2)
-				.Value =
-					item.InventoryRows;
-
-			worksheet.Cell(
-				row,
-				3)
-				.Value =
-					item.TotalItems;
-
-			worksheet.Cell(
-				row,
-				4)
-				.Value =
-					item.TotalStockQuantity;
-
-			worksheet.Cell(
-				row,
-				5)
-				.Value =
-					item.InventoryValue;
-
-			row++;
-		}
-
-		FormatPurposeInventoryWorksheet(
-			worksheet,
-			headerRow,
-			row - 1);
-
-		workbook.SaveAs(
+							InventoryValue =
+								x.InventoryValue
+						})
+				.ToList(),
+			report.TotalInventoryRows,
+			report.TotalItems,
+			report.TotalStockQuantity,
+			report.TotalInventoryValue,
 			filePath);
 	}
 
@@ -784,9 +666,116 @@ public sealed class ReportService
 			.AdjustToContents();
 	}
 
-	private static void WriteLocationInventorySummary(
+	private static void ExportGroupedInventoryReport(
+		string title,
+		string groupHeader,
+		IReadOnlyList<GroupedInventoryExportItem> items,
+		int totalInventoryRows,
+		int totalItems,
+		int totalStockQuantity,
+		decimal totalInventoryValue,
+		string filePath)
+	{
+		using var workbook =
+			new XLWorkbook();
+
+		var worksheet =
+			workbook.Worksheets.Add(
+				title);
+
+		worksheet.Cell(
+			1,
+			1)
+			.Value =
+				title;
+
+		worksheet.Range(
+			1,
+			1,
+			1,
+			5)
+			.Merge();
+
+		worksheet.Cell(
+			1,
+			1)
+			.Style.Font.Bold =
+				true;
+
+		worksheet.Cell(
+			1,
+			1)
+			.Style.Font.FontSize =
+				16;
+
+		WriteGroupedInventorySummary(
+			worksheet,
+			totalInventoryRows,
+			totalItems,
+			totalStockQuantity,
+			totalInventoryValue);
+
+		var headerRow =
+			6;
+
+		WriteGroupedInventoryHeaders(
+			worksheet,
+			headerRow,
+			groupHeader);
+
+		var row =
+			headerRow + 1;
+
+		foreach (var item in items)
+		{
+			worksheet.Cell(
+				row,
+				1)
+				.Value =
+					item.GroupName;
+
+			worksheet.Cell(
+				row,
+				2)
+				.Value =
+					item.InventoryRows;
+
+			worksheet.Cell(
+				row,
+				3)
+				.Value =
+					item.TotalItems;
+
+			worksheet.Cell(
+				row,
+				4)
+				.Value =
+					item.TotalStockQuantity;
+
+			worksheet.Cell(
+				row,
+				5)
+				.Value =
+					item.InventoryValue;
+
+			row++;
+		}
+
+		FormatGroupedInventoryWorksheet(
+			worksheet,
+			headerRow,
+			row - 1);
+
+		workbook.SaveAs(
+			filePath);
+	}
+
+	private static void WriteGroupedInventorySummary(
 		IXLWorksheet worksheet,
-		LocationInventoryReport report)
+		int totalInventoryRows,
+		int totalItems,
+		int totalStockQuantity,
+		decimal totalInventoryValue)
 	{
 		worksheet.Cell(
 			3,
@@ -798,7 +787,7 @@ public sealed class ReportService
 			3,
 			2)
 			.Value =
-				report.TotalInventoryRows;
+				totalInventoryRows;
 
 		worksheet.Cell(
 			3,
@@ -810,7 +799,7 @@ public sealed class ReportService
 			3,
 			5)
 			.Value =
-				report.TotalItems;
+				totalItems;
 
 		worksheet.Cell(
 			4,
@@ -822,7 +811,7 @@ public sealed class ReportService
 			4,
 			2)
 			.Value =
-				report.TotalStockQuantity;
+				totalStockQuantity;
 
 		worksheet.Cell(
 			4,
@@ -834,18 +823,19 @@ public sealed class ReportService
 			4,
 			5)
 			.Value =
-				report.TotalInventoryValue;
+				totalInventoryValue;
 	}
 
-	private static void WriteLocationInventoryHeaders(
+	private static void WriteGroupedInventoryHeaders(
 		IXLWorksheet worksheet,
-		int row)
+		int row,
+		string groupHeader)
 	{
 		worksheet.Cell(
 			row,
 			1)
 			.Value =
-				"Location";
+				groupHeader;
 
 		worksheet.Cell(
 			row,
@@ -872,7 +862,7 @@ public sealed class ReportService
 				"Inventory Value";
 	}
 
-	private static void FormatLocationInventoryWorksheet(
+	private static void FormatGroupedInventoryWorksheet(
 		IXLWorksheet worksheet,
 		int headerRow,
 		int lastDataRow)
@@ -937,156 +927,16 @@ public sealed class ReportService
 			.AdjustToContents();
 	}
 
-	private static void WritePurposeInventorySummary(
-		IXLWorksheet worksheet,
-		PurposeInventoryReport report)
+	private sealed class GroupedInventoryExportItem
 	{
-		worksheet.Cell(
-			3,
-			1)
-			.Value =
-				"Inventory Rows";
+		public string GroupName { get; init; } = string.Empty;
 
-		worksheet.Cell(
-			3,
-			2)
-			.Value =
-				report.TotalInventoryRows;
+		public int InventoryRows { get; init; }
 
-		worksheet.Cell(
-			3,
-			4)
-			.Value =
-				"Items";
+		public int TotalItems { get; init; }
 
-		worksheet.Cell(
-			3,
-			5)
-			.Value =
-				report.TotalItems;
+		public int TotalStockQuantity { get; init; }
 
-		worksheet.Cell(
-			4,
-			1)
-			.Value =
-				"Total Stock";
-
-		worksheet.Cell(
-			4,
-			2)
-			.Value =
-				report.TotalStockQuantity;
-
-		worksheet.Cell(
-			4,
-			4)
-			.Value =
-				"Inventory Value";
-
-		worksheet.Cell(
-			4,
-			5)
-			.Value =
-				report.TotalInventoryValue;
-	}
-
-	private static void WritePurposeInventoryHeaders(
-		IXLWorksheet worksheet,
-		int row)
-	{
-		worksheet.Cell(
-			row,
-			1)
-			.Value =
-				"Purpose";
-
-		worksheet.Cell(
-			row,
-			2)
-			.Value =
-				"Inventory Rows";
-
-		worksheet.Cell(
-			row,
-			3)
-			.Value =
-				"Items";
-
-		worksheet.Cell(
-			row,
-			4)
-			.Value =
-				"Total Stock";
-
-		worksheet.Cell(
-			row,
-			5)
-			.Value =
-				"Inventory Value";
-	}
-
-	private static void FormatPurposeInventoryWorksheet(
-		IXLWorksheet worksheet,
-		int headerRow,
-		int lastDataRow)
-	{
-		var summaryLabelRange =
-			worksheet.Range(
-				3,
-				1,
-				4,
-				4);
-
-		summaryLabelRange.Style.Font.Bold =
-			true;
-
-		worksheet.Cell(
-			4,
-			5)
-			.Style.NumberFormat.Format =
-				"#,##0.00";
-
-		var headerRange =
-			worksheet.Range(
-				headerRow,
-				1,
-				headerRow,
-				5);
-
-		headerRange.Style.Font.Bold =
-			true;
-
-		headerRange.Style.Fill.BackgroundColor =
-			XLColor.FromHtml(
-				"#E5E7EB");
-
-		var usedLastRow =
-			Math.Max(
-				headerRow,
-				lastDataRow);
-
-		worksheet.Range(
-			headerRow,
-			1,
-			usedLastRow,
-			5)
-			.SetAutoFilter();
-
-		if (lastDataRow > headerRow)
-		{
-			worksheet.Range(
-				headerRow + 1,
-				5,
-				lastDataRow,
-				5)
-				.Style.NumberFormat.Format =
-					"#,##0.00";
-		}
-
-		worksheet.SheetView.FreezeRows(
-			headerRow);
-
-		worksheet.Columns()
-			.AdjustToContents();
+		public decimal InventoryValue { get; init; }
 	}
 }
