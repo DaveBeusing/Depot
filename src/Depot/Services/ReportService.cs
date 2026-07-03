@@ -187,6 +187,56 @@ public sealed class ReportService
 		};
 	}
 
+	public CategoryInventoryReport GetCategoryInventoryReport(
+		string? searchText)
+	{
+		var report =
+			GetGroupedInventoryReport(
+				searchText,
+				x => string.IsNullOrWhiteSpace(
+					x.Category)
+					? "Uncategorized"
+					: x.Category);
+
+		return new CategoryInventoryReport
+		{
+			Items =
+				report.Items
+				.Select(
+					x =>
+						new CategoryInventoryReportItem
+						{
+							CategoryName =
+								x.GroupName,
+
+							InventoryRows =
+								x.InventoryRows,
+
+							TotalItems =
+								x.TotalItems,
+
+							TotalStockQuantity =
+								x.TotalStockQuantity,
+
+							InventoryValue =
+								x.InventoryValue
+						})
+				.ToList(),
+
+			TotalInventoryRows =
+				report.TotalInventoryRows,
+
+			TotalItems =
+				report.TotalItems,
+
+			TotalStockQuantity =
+				report.TotalStockQuantity,
+
+			TotalInventoryValue =
+				report.TotalInventoryValue
+		};
+	}
+
 	public void ExportInventoryValueReport(
 		string? searchText,
 		string filePath)
@@ -366,6 +416,45 @@ public sealed class ReportService
 						{
 							GroupName =
 								x.PurposeName,
+
+							InventoryRows =
+								x.InventoryRows,
+
+							TotalItems =
+								x.TotalItems,
+
+							TotalStockQuantity =
+								x.TotalStockQuantity,
+
+							InventoryValue =
+								x.InventoryValue
+						})
+				.ToList(),
+			report.TotalInventoryRows,
+			report.TotalItems,
+			report.TotalStockQuantity,
+			report.TotalInventoryValue,
+			filePath);
+	}
+
+	public void ExportCategoryInventoryReport(
+		string? searchText,
+		string filePath)
+	{
+		var report =
+			GetCategoryInventoryReport(
+				searchText);
+
+		ExportGroupedInventoryReport(
+			"Stock by Category",
+			"Category",
+			report.Items
+				.Select(
+					x =>
+						new GroupedInventoryExportItem
+						{
+							GroupName =
+								x.CategoryName,
 
 							InventoryRows =
 								x.InventoryRows,
