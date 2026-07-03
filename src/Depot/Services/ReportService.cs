@@ -96,142 +96,94 @@ public sealed class ReportService
 	public LocationInventoryReport GetLocationInventoryReport(
 		string? searchText)
 	{
-		var inventoryRows =
-			_stockService
-				.GetInventoryOverview()
-				.Where(
-					x =>
-						MatchesSearch(
-							x,
-							searchText))
-				.ToList();
+		var report =
+			GetGroupedInventoryReport(
+				searchText,
+				x => x.LocationName);
 
-		var rows =
-			inventoryRows
-				.GroupBy(
-					x => x.LocationName)
+		return new LocationInventoryReport
+		{
+			Items =
+				report.Items
 				.Select(
 					x =>
 						new LocationInventoryReportItem
 						{
 							LocationName =
-								x.Key,
+								x.GroupName,
 
 							InventoryRows =
-								x.Count(),
+								x.InventoryRows,
 
 							TotalItems =
-								x
-									.Select(
-										y => y.ItemId)
-									.Distinct()
-									.Count(),
+								x.TotalItems,
 
 							TotalStockQuantity =
-								x.Sum(
-									y => y.CurrentStock),
+								x.TotalStockQuantity,
 
 							InventoryValue =
-								x.Sum(
-									y => y.InventoryValue)
+								x.InventoryValue
 						})
-				.OrderBy(
-					x => x.LocationName)
-				.ToList();
-
-		return new LocationInventoryReport
-		{
-			Items =
-				rows,
+				.ToList(),
 
 			TotalInventoryRows =
-				inventoryRows.Count,
+				report.TotalInventoryRows,
 
 			TotalItems =
-				inventoryRows
-					.Select(
-						x => x.ItemId)
-					.Distinct()
-					.Count(),
+				report.TotalItems,
 
 			TotalStockQuantity =
-				inventoryRows.Sum(
-					x => x.CurrentStock),
+				report.TotalStockQuantity,
 
 			TotalInventoryValue =
-				inventoryRows.Sum(
-					x => x.InventoryValue)
+				report.TotalInventoryValue
 		};
 	}
 
 	public PurposeInventoryReport GetPurposeInventoryReport(
 		string? searchText)
 	{
-		var inventoryRows =
-			_stockService
-				.GetInventoryOverview()
-				.Where(
-					x =>
-						MatchesSearch(
-							x,
-							searchText))
-				.ToList();
+		var report =
+			GetGroupedInventoryReport(
+				searchText,
+				x => x.PurposeName);
 
-		var rows =
-			inventoryRows
-				.GroupBy(
-					x => x.PurposeName)
+		return new PurposeInventoryReport
+		{
+			Items =
+				report.Items
 				.Select(
 					x =>
 						new PurposeInventoryReportItem
 						{
 							PurposeName =
-								x.Key,
+								x.GroupName,
 
 							InventoryRows =
-								x.Count(),
+								x.InventoryRows,
 
 							TotalItems =
-								x
-									.Select(
-										y => y.ItemId)
-									.Distinct()
-									.Count(),
+								x.TotalItems,
 
 							TotalStockQuantity =
-								x.Sum(
-									y => y.CurrentStock),
+								x.TotalStockQuantity,
 
 							InventoryValue =
-								x.Sum(
-									y => y.InventoryValue)
+								x.InventoryValue
 						})
-				.OrderBy(
-					x => x.PurposeName)
-				.ToList();
-
-		return new PurposeInventoryReport
-		{
-			Items =
-				rows,
+				.ToList(),
 
 			TotalInventoryRows =
-				inventoryRows.Count,
+				report.TotalInventoryRows,
 
 			TotalItems =
-				inventoryRows
-					.Select(
-						x => x.ItemId)
-					.Distinct()
-					.Count(),
+				report.TotalItems,
 
 			TotalStockQuantity =
-				inventoryRows.Sum(
-					x => x.CurrentStock),
+				report.TotalStockQuantity,
 
 			TotalInventoryValue =
-				inventoryRows.Sum(
-					x => x.InventoryValue)
+				report.TotalInventoryValue
 		};
 	}
 
@@ -433,6 +385,78 @@ public sealed class ReportService
 			report.TotalStockQuantity,
 			report.TotalInventoryValue,
 			filePath);
+	}
+
+	private GroupedInventoryReport GetGroupedInventoryReport(
+		string? searchText,
+		Func<InventoryOverviewItem, string> groupSelector)
+	{
+		var inventoryRows =
+			_stockService
+				.GetInventoryOverview()
+				.Where(
+					x =>
+						MatchesSearch(
+							x,
+							searchText))
+				.ToList();
+
+		var rows =
+			inventoryRows
+				.GroupBy(
+					groupSelector)
+				.Select(
+					x =>
+						new GroupedInventoryReportItem
+						{
+							GroupName =
+								x.Key,
+
+							InventoryRows =
+								x.Count(),
+
+							TotalItems =
+								x
+									.Select(
+										y => y.ItemId)
+									.Distinct()
+									.Count(),
+
+							TotalStockQuantity =
+								x.Sum(
+									y => y.CurrentStock),
+
+							InventoryValue =
+								x.Sum(
+									y => y.InventoryValue)
+						})
+				.OrderBy(
+					x => x.GroupName)
+				.ToList();
+
+		return new GroupedInventoryReport
+		{
+			Items =
+				rows,
+
+			TotalInventoryRows =
+				inventoryRows.Count,
+
+			TotalItems =
+				inventoryRows
+					.Select(
+						x => x.ItemId)
+					.Distinct()
+					.Count(),
+
+			TotalStockQuantity =
+				inventoryRows.Sum(
+					x => x.CurrentStock),
+
+			TotalInventoryValue =
+				inventoryRows.Sum(
+					x => x.InventoryValue)
+		};
 	}
 
 	private static bool MatchesSearch(
@@ -928,6 +952,33 @@ public sealed class ReportService
 	}
 
 	private sealed class GroupedInventoryExportItem
+	{
+		public string GroupName { get; init; } = string.Empty;
+
+		public int InventoryRows { get; init; }
+
+		public int TotalItems { get; init; }
+
+		public int TotalStockQuantity { get; init; }
+
+		public decimal InventoryValue { get; init; }
+	}
+
+	private sealed class GroupedInventoryReport
+	{
+		public IReadOnlyList<GroupedInventoryReportItem> Items { get; init; }
+			= Array.Empty<GroupedInventoryReportItem>();
+
+		public int TotalInventoryRows { get; init; }
+
+		public int TotalItems { get; init; }
+
+		public int TotalStockQuantity { get; init; }
+
+		public decimal TotalInventoryValue { get; init; }
+	}
+
+	private sealed class GroupedInventoryReportItem
 	{
 		public string GroupName { get; init; } = string.Empty;
 
