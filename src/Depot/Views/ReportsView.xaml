@@ -20,6 +20,8 @@
 			<Grid.ColumnDefinitions>
 				<ColumnDefinition Width="*" />
 				<ColumnDefinition Width="Auto" />
+				<ColumnDefinition Width="16" />
+				<ColumnDefinition Width="Auto" />
 			</Grid.ColumnDefinitions>
 
 			<TextBlock
@@ -27,8 +29,18 @@
 				Text="Reports"
 				Style="{StaticResource PageTitleStyle}" />
 
-			<Button
+			<TextBlock
 				Grid.Column="1"
+				MaxWidth="520"
+				VerticalAlignment="Center"
+				Foreground="#6B7280"
+				Text="{Binding ExportStatusText}"
+				TextTrimming="CharacterEllipsis"
+				ToolTip="{Binding ExportStatusText}"
+				Visibility="{Binding HasExportStatus, Converter={StaticResource BooleanToVisibilityConverter}}" />
+
+			<Button
+				Grid.Column="3"
 				Width="120"
 				Height="32"
 				Content="Export"

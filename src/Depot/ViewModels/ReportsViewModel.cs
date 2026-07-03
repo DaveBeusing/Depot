@@ -25,6 +25,7 @@ public sealed class ReportsViewModel
 
 	private string _selectedReport = InventoryValueReportName;
 	private string _searchText = string.Empty;
+	private string _exportStatusText = string.Empty;
 	private int _totalInventoryRows;
 	private int _totalItems;
 	private int _totalStockQuantity;
@@ -97,6 +98,8 @@ public sealed class ReportsViewModel
 			OnPropertyChanged(
 				nameof(IsGroupedReportSelected));
 
+			ClearExportStatus();
+
 			Load();
 		}
 	}
@@ -134,9 +137,35 @@ public sealed class ReportsViewModel
 
 			OnPropertyChanged();
 
+			ClearExportStatus();
+
 			Load();
 		}
 	}
+
+	public string ExportStatusText
+	{
+		get => _exportStatusText;
+
+		private set
+		{
+			if (_exportStatusText == value)
+			{
+				return;
+			}
+
+			_exportStatusText =
+				value;
+
+			OnPropertyChanged();
+			OnPropertyChanged(
+				nameof(HasExportStatus));
+		}
+	}
+
+	public bool HasExportStatus =>
+		!string.IsNullOrWhiteSpace(
+			ExportStatusText);
 
 	public int TotalInventoryRows
 	{
@@ -311,11 +340,20 @@ public sealed class ReportsViewModel
 		SelectedReportDefinition.Export(
 			SearchText,
 			dialog.FileName);
+
+		ExportStatusText =
+			$"Exported to {dialog.FileName}";
 	}
 
 	private string GetDefaultExportFileName()
 	{
 		return SelectedReportDefinition.DefaultExportFileName;
+	}
+
+	private void ClearExportStatus()
+	{
+		ExportStatusText =
+			string.Empty;
 	}
 
 	private IReadOnlyList<ReportDefinition> CreateReportDefinitions()
