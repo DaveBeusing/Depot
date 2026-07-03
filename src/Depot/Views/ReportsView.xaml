@@ -15,10 +15,26 @@
 			<RowDefinition Height="*" />
 		</Grid.RowDefinitions>
 
-		<TextBlock
-			Grid.Row="0"
-			Text="Reports"
-			Style="{StaticResource PageTitleStyle}" />
+		<Grid Grid.Row="0">
+
+			<Grid.ColumnDefinitions>
+				<ColumnDefinition Width="*" />
+				<ColumnDefinition Width="Auto" />
+			</Grid.ColumnDefinitions>
+
+			<TextBlock
+				Grid.Column="0"
+				Text="Reports"
+				Style="{StaticResource PageTitleStyle}" />
+
+			<Button
+				Grid.Column="1"
+				Width="120"
+				Height="32"
+				Content="Export"
+				Command="{Binding ExportCommand}" />
+
+		</Grid>
 
 		<TextBox
 			Grid.Row="2"

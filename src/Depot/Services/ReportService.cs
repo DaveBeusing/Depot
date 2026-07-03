@@ -1,6 +1,8 @@
 // Copyright (c) 2026 David Beusing
 // Licensed under the MIT License.
 
+using ClosedXML.Excel;
+
 using Depot.Models;
 
 namespace Depot.Services;
@@ -91,6 +93,128 @@ public sealed class ReportService
 		};
 	}
 
+	public void ExportInventoryValueReport(
+		string? searchText,
+		string filePath)
+	{
+		var report =
+			GetInventoryValueReport(
+				searchText);
+
+		using var workbook =
+			new XLWorkbook();
+
+		var worksheet =
+			workbook.Worksheets.Add(
+				"Inventory Value");
+
+		worksheet.Cell(
+			1,
+			1)
+			.Value =
+				"Inventory Value";
+
+		worksheet.Range(
+			1,
+			1,
+			1,
+			9)
+			.Merge();
+
+		worksheet.Cell(
+			1,
+			1)
+			.Style.Font.Bold =
+				true;
+
+		worksheet.Cell(
+			1,
+			1)
+			.Style.Font.FontSize =
+				16;
+
+		WriteSummary(
+			worksheet,
+			report);
+
+		var headerRow =
+			6;
+
+		WriteHeaders(
+			worksheet,
+			headerRow);
+
+		var row =
+			headerRow + 1;
+
+		foreach (var item in report.Items)
+		{
+			worksheet.Cell(
+				row,
+				1)
+				.Value =
+					item.PartNumber;
+
+			worksheet.Cell(
+				row,
+				2)
+				.Value =
+					item.Description;
+
+			worksheet.Cell(
+				row,
+				3)
+				.Value =
+					item.Manufacturer ?? string.Empty;
+
+			worksheet.Cell(
+				row,
+				4)
+				.Value =
+					item.Category ?? string.Empty;
+
+			worksheet.Cell(
+				row,
+				5)
+				.Value =
+					item.PurposeName;
+
+			worksheet.Cell(
+				row,
+				6)
+				.Value =
+					item.LocationName;
+
+			worksheet.Cell(
+				row,
+				7)
+				.Value =
+					item.CurrentStock;
+
+			worksheet.Cell(
+				row,
+				8)
+				.Value =
+					item.AverageCost;
+
+			worksheet.Cell(
+				row,
+				9)
+				.Value =
+					item.InventoryValue;
+
+			row++;
+		}
+
+		FormatWorksheet(
+			worksheet,
+			headerRow,
+			row - 1);
+
+		workbook.SaveAs(
+			filePath);
+	}
+
 	private static bool MatchesSearch(
 		InventoryOverviewItem item,
 		string? searchText)
@@ -135,5 +259,190 @@ public sealed class ReportService
 			value.Contains(
 				searchText,
 				StringComparison.OrdinalIgnoreCase);
+	}
+
+	private static void WriteSummary(
+		IXLWorksheet worksheet,
+		InventoryValueReport report)
+	{
+		worksheet.Cell(
+			3,
+			1)
+			.Value =
+				"Inventory Rows";
+
+		worksheet.Cell(
+			3,
+			2)
+			.Value =
+				report.TotalInventoryRows;
+
+		worksheet.Cell(
+			3,
+			4)
+			.Value =
+				"Items";
+
+		worksheet.Cell(
+			3,
+			5)
+			.Value =
+				report.TotalItems;
+
+		worksheet.Cell(
+			4,
+			1)
+			.Value =
+				"Total Stock";
+
+		worksheet.Cell(
+			4,
+			2)
+			.Value =
+				report.TotalStockQuantity;
+
+		worksheet.Cell(
+			4,
+			4)
+			.Value =
+				"Inventory Value";
+
+		worksheet.Cell(
+			4,
+			5)
+			.Value =
+				report.TotalInventoryValue;
+	}
+
+	private static void WriteHeaders(
+		IXLWorksheet worksheet,
+		int row)
+	{
+		worksheet.Cell(
+			row,
+			1)
+			.Value =
+				"Part Number";
+
+		worksheet.Cell(
+			row,
+			2)
+			.Value =
+				"Description";
+
+		worksheet.Cell(
+			row,
+			3)
+			.Value =
+				"Manufacturer";
+
+		worksheet.Cell(
+			row,
+			4)
+			.Value =
+				"Category";
+
+		worksheet.Cell(
+			row,
+			5)
+			.Value =
+				"Purpose";
+
+		worksheet.Cell(
+			row,
+			6)
+			.Value =
+				"Location";
+
+		worksheet.Cell(
+			row,
+			7)
+			.Value =
+				"Stock";
+
+		worksheet.Cell(
+			row,
+			8)
+			.Value =
+				"Average Cost";
+
+		worksheet.Cell(
+			row,
+			9)
+			.Value =
+				"Value";
+	}
+
+	private static void FormatWorksheet(
+		IXLWorksheet worksheet,
+		int headerRow,
+		int lastDataRow)
+	{
+		var summaryLabelRange =
+			worksheet.Range(
+				3,
+				1,
+				4,
+				4);
+
+		summaryLabelRange.Style.Font.Bold =
+			true;
+
+		worksheet.Cell(
+			4,
+			5)
+			.Style.NumberFormat.Format =
+				"#,##0.00";
+
+		var headerRange =
+			worksheet.Range(
+				headerRow,
+				1,
+				headerRow,
+				9);
+
+		headerRange.Style.Font.Bold =
+			true;
+
+		headerRange.Style.Fill.BackgroundColor =
+			XLColor.FromHtml(
+				"#E5E7EB");
+
+		var usedLastRow =
+			Math.Max(
+				headerRow,
+				lastDataRow);
+
+		worksheet.Range(
+			headerRow,
+			1,
+			usedLastRow,
+			9)
+			.SetAutoFilter();
+
+		if (lastDataRow > headerRow)
+		{
+			worksheet.Range(
+				headerRow + 1,
+				8,
+				lastDataRow,
+				8)
+				.Style.NumberFormat.Format =
+					"#,##0.0000";
+
+			worksheet.Range(
+				headerRow + 1,
+				9,
+				lastDataRow,
+				9)
+				.Style.NumberFormat.Format =
+					"#,##0.00";
+		}
+
+		worksheet.SheetView.FreezeRows(
+			headerRow);
+
+		worksheet.Columns()
+			.AdjustToContents();
 	}
 }

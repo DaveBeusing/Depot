@@ -3,7 +3,10 @@
 
 using System.Collections.ObjectModel;
 
+using Depot.Commands;
 using Depot.Services;
+
+using Microsoft.Win32;
 
 namespace Depot.ViewModels;
 
@@ -24,8 +27,15 @@ public sealed class ReportsViewModel
 		_reportService =
 			reportService;
 
+		ExportCommand =
+			new RelayCommand(
+				Export,
+				CanExport);
+
 		Load();
 	}
+
+	public RelayCommand ExportCommand { get; }
 
 	public ObservableCollection<InventoryValueReportItemViewModel> Items { get; }
 		= new();
@@ -123,5 +133,40 @@ public sealed class ReportsViewModel
 				new InventoryValueReportItemViewModel(
 					item));
 		}
+
+		ExportCommand.RaiseCanExecuteChanged();
+	}
+
+	private bool CanExport()
+	{
+		return Items.Count > 0;
+	}
+
+	private void Export()
+	{
+		var dialog =
+			new SaveFileDialog
+			{
+				DefaultExt =
+					".xlsx",
+
+				FileName =
+					"Inventory Value Report.xlsx",
+
+				Filter =
+					"Excel Files (*.xlsx)|*.xlsx",
+
+				OverwritePrompt =
+					true
+			};
+
+		if (dialog.ShowDialog() != true)
+		{
+			return;
+		}
+
+		_reportService.ExportInventoryValueReport(
+			SearchText,
+			dialog.FileName);
 	}
 }
