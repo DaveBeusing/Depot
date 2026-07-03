@@ -33,11 +33,24 @@
 				Grid.Column="1"
 				MaxWidth="520"
 				VerticalAlignment="Center"
-				Foreground="#6B7280"
 				Text="{Binding ExportStatusText}"
 				TextTrimming="CharacterEllipsis"
 				ToolTip="{Binding ExportStatusText}"
-				Visibility="{Binding HasExportStatus, Converter={StaticResource BooleanToVisibilityConverter}}" />
+				Visibility="{Binding HasExportStatus, Converter={StaticResource BooleanToVisibilityConverter}}">
+
+				<TextBlock.Style>
+					<Style TargetType="TextBlock">
+						<Setter Property="Foreground" Value="#6B7280" />
+
+						<Style.Triggers>
+							<DataTrigger Binding="{Binding IsExportStatusError}" Value="True">
+								<Setter Property="Foreground" Value="#B91C1C" />
+							</DataTrigger>
+						</Style.Triggers>
+					</Style>
+				</TextBlock.Style>
+
+			</TextBlock>
 
 			<Button
 				Grid.Column="3"

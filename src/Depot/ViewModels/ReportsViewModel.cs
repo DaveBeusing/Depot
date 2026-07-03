@@ -26,6 +26,7 @@ public sealed class ReportsViewModel
 	private string _selectedReport = InventoryValueReportName;
 	private string _searchText = string.Empty;
 	private string _exportStatusText = string.Empty;
+	private bool _isExportStatusError;
 	private int _totalInventoryRows;
 	private int _totalItems;
 	private int _totalStockQuantity;
@@ -166,6 +167,24 @@ public sealed class ReportsViewModel
 	public bool HasExportStatus =>
 		!string.IsNullOrWhiteSpace(
 			ExportStatusText);
+
+	public bool IsExportStatusError
+	{
+		get => _isExportStatusError;
+
+		private set
+		{
+			if (_isExportStatusError == value)
+			{
+				return;
+			}
+
+			_isExportStatusError =
+				value;
+
+			OnPropertyChanged();
+		}
+	}
 
 	public bool HasReportRows =>
 		IsGroupedReportSelected
@@ -359,12 +378,22 @@ public sealed class ReportsViewModel
 			return;
 		}
 
-		SelectedReportDefinition.Export(
-			SearchText,
-			dialog.FileName);
+		try
+		{
+			SelectedReportDefinition.Export(
+				SearchText,
+				dialog.FileName);
 
-		ExportStatusText =
-			$"Exported to {dialog.FileName}";
+			SetExportStatus(
+				$"Exported to {dialog.FileName}",
+				isError: false);
+		}
+		catch (Exception ex)
+		{
+			SetExportStatus(
+				$"Export failed: {ex.Message}",
+				isError: true);
+		}
 	}
 
 	private string GetDefaultExportFileName()
@@ -374,8 +403,20 @@ public sealed class ReportsViewModel
 
 	private void ClearExportStatus()
 	{
+		SetExportStatus(
+			string.Empty,
+			isError: false);
+	}
+
+	private void SetExportStatus(
+		string message,
+		bool isError)
+	{
+		IsExportStatusError =
+			isError;
+
 		ExportStatusText =
-			string.Empty;
+			message;
 	}
 
 	private void RaiseReportRowsChanged()
