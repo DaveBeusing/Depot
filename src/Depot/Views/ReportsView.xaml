@@ -230,7 +230,7 @@
 					CanUserDeleteRows="False"
 					HeadersVisibility="Column"
 					RowHeaderWidth="0"
-					Visibility="{Binding IsInventoryValueReportSelected, Converter={StaticResource BooleanToVisibilityConverter}}">
+					Visibility="{Binding ShowInventoryValueRows, Converter={StaticResource BooleanToVisibilityConverter}}">
 
 					<DataGrid.Columns>
 
@@ -282,7 +282,7 @@
 					CanUserDeleteRows="False"
 					HeadersVisibility="Column"
 					RowHeaderWidth="0"
-					Visibility="{Binding IsGroupedReportSelected, Converter={StaticResource BooleanToVisibilityConverter}}">
+					Visibility="{Binding ShowGroupedRows, Converter={StaticResource BooleanToVisibilityConverter}}">
 
 					<DataGrid.Columns>
 
@@ -314,6 +314,15 @@
 					</DataGrid.Columns>
 
 				</DataGrid>
+
+				<TextBlock
+					Grid.Row="2"
+					HorizontalAlignment="Center"
+					VerticalAlignment="Center"
+					Foreground="#6B7280"
+					Text="{Binding EmptyReportMessage}"
+					TextAlignment="Center"
+					Visibility="{Binding HasNoReportRows, Converter={StaticResource BooleanToVisibilityConverter}}" />
 
 			</Grid>
 

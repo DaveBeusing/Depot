@@ -167,6 +167,28 @@ public sealed class ReportsViewModel
 		!string.IsNullOrWhiteSpace(
 			ExportStatusText);
 
+	public bool HasReportRows =>
+		IsGroupedReportSelected
+			? GroupedItems.Count > 0
+			: InventoryValueItems.Count > 0;
+
+	public bool HasNoReportRows =>
+		!HasReportRows;
+
+	public bool ShowInventoryValueRows =>
+		IsInventoryValueReportSelected &&
+		HasReportRows;
+
+	public bool ShowGroupedRows =>
+		IsGroupedReportSelected &&
+		HasReportRows;
+
+	public string EmptyReportMessage =>
+		string.IsNullOrWhiteSpace(
+			SearchText)
+			? "No report data available."
+			: "No rows match the current filter.";
+
 	public int TotalInventoryRows
 	{
 		get => _totalInventoryRows;
@@ -222,6 +244,8 @@ public sealed class ReportsViewModel
 	public void Load()
 	{
 		SelectedReportDefinition.Load();
+
+		RaiseReportRowsChanged();
 
 		ExportCommand.RaiseCanExecuteChanged();
 	}
@@ -309,9 +333,7 @@ public sealed class ReportsViewModel
 
 	private bool CanExport()
 	{
-		return IsGroupedReportSelected
-			? GroupedItems.Count > 0
-			: InventoryValueItems.Count > 0;
+		return HasReportRows;
 	}
 
 	private void Export()
@@ -354,6 +376,20 @@ public sealed class ReportsViewModel
 	{
 		ExportStatusText =
 			string.Empty;
+	}
+
+	private void RaiseReportRowsChanged()
+	{
+		OnPropertyChanged(
+			nameof(HasReportRows));
+		OnPropertyChanged(
+			nameof(HasNoReportRows));
+		OnPropertyChanged(
+			nameof(ShowInventoryValueRows));
+		OnPropertyChanged(
+			nameof(ShowGroupedRows));
+		OnPropertyChanged(
+			nameof(EmptyReportMessage));
 	}
 
 	private IReadOnlyList<ReportDefinition> CreateReportDefinitions()
