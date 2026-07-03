@@ -20,6 +20,7 @@ public sealed class ReportsViewModel
 	private const string StockByManufacturerReportName = "Stock by Manufacturer";
 
 	private readonly ReportService _reportService;
+	private readonly IReadOnlyDictionary<string, ReportDefinition> _reportDefinitions;
 
 	private string _selectedReport = InventoryValueReportName;
 	private string _searchText = string.Empty;
@@ -34,6 +35,21 @@ public sealed class ReportsViewModel
 		_reportService =
 			reportService;
 
+		var reportDefinitions =
+			CreateReportDefinitions();
+
+		_reportDefinitions =
+			reportDefinitions.ToDictionary(
+				x => x.Name);
+
+		ReportOptions =
+			new ObservableCollection<string>(
+				reportDefinitions.Select(
+					x => x.Name));
+
+		_selectedReport =
+			reportDefinitions[0].Name;
+
 		ExportCommand =
 			new RelayCommand(
 				Export,
@@ -45,14 +61,6 @@ public sealed class ReportsViewModel
 	public RelayCommand ExportCommand { get; }
 
 	public ObservableCollection<string> ReportOptions { get; }
-		= new()
-		{
-			InventoryValueReportName,
-			StockByLocationReportName,
-			StockByPurposeReportName,
-			StockByCategoryReportName,
-			StockByManufacturerReportName
-		};
 
 	public ObservableCollection<InventoryValueReportItemViewModel> InventoryValueItems { get; }
 		= new();
@@ -66,7 +74,9 @@ public sealed class ReportsViewModel
 
 		set
 		{
-			if (!ReportOptions.Contains(
+			if (string.IsNullOrWhiteSpace(
+					value) ||
+				!_reportDefinitions.ContainsKey(
 					value) ||
 				_selectedReport == value)
 			{
@@ -91,7 +101,7 @@ public sealed class ReportsViewModel
 	}
 
 	public string ReportTitle =>
-		SelectedReport;
+		SelectedReportDefinition.Name;
 
 	public string SearchToolTip =>
 		IsInventoryValueReportSelected
@@ -99,22 +109,13 @@ public sealed class ReportsViewModel
 			: "Search grouped stock report";
 
 	public bool IsInventoryValueReportSelected =>
-		SelectedReport == InventoryValueReportName;
+		SelectedReportDefinition.IsInventoryValueReport;
 
 	public bool IsGroupedReportSelected =>
 		!IsInventoryValueReportSelected;
 
-	private bool IsStockByLocationReportSelected =>
-		SelectedReport == StockByLocationReportName;
-
-	private bool IsStockByPurposeReportSelected =>
-		SelectedReport == StockByPurposeReportName;
-
-	private bool IsStockByCategoryReportSelected =>
-		SelectedReport == StockByCategoryReportName;
-
-	private bool IsStockByManufacturerReportSelected =>
-		SelectedReport == StockByManufacturerReportName;
+	private ReportDefinition SelectedReportDefinition =>
+		_reportDefinitions[SelectedReport];
 
 	public string SearchText
 	{
@@ -190,26 +191,7 @@ public sealed class ReportsViewModel
 
 	public void Load()
 	{
-		if (IsStockByManufacturerReportSelected)
-		{
-			LoadManufacturerInventoryReport();
-		}
-		else if (IsStockByCategoryReportSelected)
-		{
-			LoadCategoryInventoryReport();
-		}
-		else if (IsStockByPurposeReportSelected)
-		{
-			LoadPurposeInventoryReport();
-		}
-		else if (IsStockByLocationReportSelected)
-		{
-			LoadLocationInventoryReport();
-		}
-		else
-		{
-			LoadInventoryValueReport();
-		}
+		SelectedReportDefinition.Load();
 
 		ExportCommand.RaiseCanExecuteChanged();
 	}
@@ -395,57 +377,90 @@ public sealed class ReportsViewModel
 			return;
 		}
 
-		if (IsStockByManufacturerReportSelected)
-		{
-			_reportService.ExportManufacturerInventoryReport(
-				SearchText,
-				dialog.FileName);
-		}
-		else if (IsStockByCategoryReportSelected)
-		{
-			_reportService.ExportCategoryInventoryReport(
-				SearchText,
-				dialog.FileName);
-		}
-		else if (IsStockByPurposeReportSelected)
-		{
-			_reportService.ExportPurposeInventoryReport(
-				SearchText,
-				dialog.FileName);
-		}
-		else if (IsStockByLocationReportSelected)
-		{
-			_reportService.ExportLocationInventoryReport(
-				SearchText,
-				dialog.FileName);
-		}
-		else
-		{
-			_reportService.ExportInventoryValueReport(
-				SearchText,
-				dialog.FileName);
-		}
+		SelectedReportDefinition.Export(
+			SearchText,
+			dialog.FileName);
 	}
 
 	private string GetDefaultExportFileName()
 	{
-		if (IsStockByManufacturerReportSelected)
+		return SelectedReportDefinition.DefaultExportFileName;
+	}
+
+	private IReadOnlyList<ReportDefinition> CreateReportDefinitions()
+	{
+		return new[]
 		{
-			return "Stock by Manufacturer Report.xlsx";
+			new ReportDefinition(
+				InventoryValueReportName,
+				"Inventory Value Report.xlsx",
+				isInventoryValueReport: true,
+				LoadInventoryValueReport,
+				_reportService.ExportInventoryValueReport),
+
+			new ReportDefinition(
+				StockByLocationReportName,
+				"Stock by Location Report.xlsx",
+				isInventoryValueReport: false,
+				LoadLocationInventoryReport,
+				_reportService.ExportLocationInventoryReport),
+
+			new ReportDefinition(
+				StockByPurposeReportName,
+				"Stock by Purpose Report.xlsx",
+				isInventoryValueReport: false,
+				LoadPurposeInventoryReport,
+				_reportService.ExportPurposeInventoryReport),
+
+			new ReportDefinition(
+				StockByCategoryReportName,
+				"Stock by Category Report.xlsx",
+				isInventoryValueReport: false,
+				LoadCategoryInventoryReport,
+				_reportService.ExportCategoryInventoryReport),
+
+			new ReportDefinition(
+				StockByManufacturerReportName,
+				"Stock by Manufacturer Report.xlsx",
+				isInventoryValueReport: false,
+				LoadManufacturerInventoryReport,
+				_reportService.ExportManufacturerInventoryReport)
+		};
+	}
+
+	private sealed class ReportDefinition
+	{
+		public ReportDefinition(
+			string name,
+			string defaultExportFileName,
+			bool isInventoryValueReport,
+			Action load,
+			Action<string?, string> export)
+		{
+			Name =
+				name;
+
+			DefaultExportFileName =
+				defaultExportFileName;
+
+			IsInventoryValueReport =
+				isInventoryValueReport;
+
+			Load =
+				load;
+
+			Export =
+				export;
 		}
 
-		if (IsStockByCategoryReportSelected)
-		{
-			return "Stock by Category Report.xlsx";
-		}
+		public string Name { get; }
 
-		if (IsStockByPurposeReportSelected)
-		{
-			return "Stock by Purpose Report.xlsx";
-		}
+		public string DefaultExportFileName { get; }
 
-		return IsStockByLocationReportSelected
-			? "Stock by Location Report.xlsx"
-			: "Inventory Value Report.xlsx";
+		public bool IsInventoryValueReport { get; }
+
+		public Action Load { get; }
+
+		public Action<string?, string> Export { get; }
 	}
 }
