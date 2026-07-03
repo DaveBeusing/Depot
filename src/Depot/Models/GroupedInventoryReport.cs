@@ -3,10 +3,10 @@
 
 namespace Depot.Models;
 
-public sealed class PurposeInventoryReport
+public sealed class GroupedInventoryReport
 {
-	public IReadOnlyList<PurposeInventoryReportItem> Items { get; init; }
-		= Array.Empty<PurposeInventoryReportItem>();
+	public IReadOnlyList<GroupedInventoryReportItem> Items { get; init; }
+		= Array.Empty<GroupedInventoryReportItem>();
 
 	public int TotalInventoryRows { get; init; }
 

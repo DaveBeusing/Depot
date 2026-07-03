@@ -3,9 +3,9 @@
 
 namespace Depot.Models;
 
-public sealed class PurposeInventoryReportItem
+public sealed class GroupedInventoryReportItem
 {
-	public string PurposeName { get; init; } = string.Empty;
+	public string GroupName { get; init; } = string.Empty;
 
 	public int InventoryRows { get; init; }
 

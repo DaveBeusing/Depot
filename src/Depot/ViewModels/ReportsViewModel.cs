@@ -4,6 +4,7 @@
 using System.Collections.ObjectModel;
 
 using Depot.Commands;
+using Depot.Models;
 using Depot.Services;
 
 using Microsoft.Win32;
@@ -219,11 +220,13 @@ public sealed class ReportsViewModel
 		}
 	}
 
-	private void LoadLocationInventoryReport()
+	private void LoadGroupedInventoryReport(
+		GroupedInventoryReportType reportType)
 	{
 		var report =
-			_reportService.GetLocationInventoryReport(
-				SearchText);
+			_reportService.GetGroupedInventoryReport(
+				SearchText,
+				reportType);
 
 		ApplyTotals(
 			report.TotalInventoryRows,
@@ -236,79 +239,7 @@ public sealed class ReportsViewModel
 				.Select(
 					x =>
 						new GroupedInventoryReportItemViewModel(
-							x.LocationName,
-							x.InventoryRows,
-							x.TotalItems,
-							x.TotalStockQuantity,
-							x.InventoryValue)));
-	}
-
-	private void LoadPurposeInventoryReport()
-	{
-		var report =
-			_reportService.GetPurposeInventoryReport(
-				SearchText);
-
-		ApplyTotals(
-			report.TotalInventoryRows,
-			report.TotalItems,
-			report.TotalStockQuantity,
-			report.TotalInventoryValue);
-
-		LoadGroupedItems(
-			report.Items
-				.Select(
-					x =>
-						new GroupedInventoryReportItemViewModel(
-							x.PurposeName,
-							x.InventoryRows,
-							x.TotalItems,
-							x.TotalStockQuantity,
-							x.InventoryValue)));
-	}
-
-	private void LoadCategoryInventoryReport()
-	{
-		var report =
-			_reportService.GetCategoryInventoryReport(
-				SearchText);
-
-		ApplyTotals(
-			report.TotalInventoryRows,
-			report.TotalItems,
-			report.TotalStockQuantity,
-			report.TotalInventoryValue);
-
-		LoadGroupedItems(
-			report.Items
-				.Select(
-					x =>
-						new GroupedInventoryReportItemViewModel(
-							x.CategoryName,
-							x.InventoryRows,
-							x.TotalItems,
-							x.TotalStockQuantity,
-							x.InventoryValue)));
-	}
-
-	private void LoadManufacturerInventoryReport()
-	{
-		var report =
-			_reportService.GetManufacturerInventoryReport(
-				SearchText);
-
-		ApplyTotals(
-			report.TotalInventoryRows,
-			report.TotalItems,
-			report.TotalStockQuantity,
-			report.TotalInventoryValue);
-
-		LoadGroupedItems(
-			report.Items
-				.Select(
-					x =>
-						new GroupedInventoryReportItemViewModel(
-							x.ManufacturerName,
+							x.GroupName,
 							x.InventoryRows,
 							x.TotalItems,
 							x.TotalStockQuantity,
@@ -402,29 +333,53 @@ public sealed class ReportsViewModel
 				StockByLocationReportName,
 				"Stock by Location Report.xlsx",
 				isInventoryValueReport: false,
-				LoadLocationInventoryReport,
-				_reportService.ExportLocationInventoryReport),
+				() =>
+					LoadGroupedInventoryReport(
+						GroupedInventoryReportType.Location),
+				(searchText, filePath) =>
+					_reportService.ExportGroupedInventoryReport(
+						searchText,
+						GroupedInventoryReportType.Location,
+						filePath)),
 
 			new ReportDefinition(
 				StockByPurposeReportName,
 				"Stock by Purpose Report.xlsx",
 				isInventoryValueReport: false,
-				LoadPurposeInventoryReport,
-				_reportService.ExportPurposeInventoryReport),
+				() =>
+					LoadGroupedInventoryReport(
+						GroupedInventoryReportType.Purpose),
+				(searchText, filePath) =>
+					_reportService.ExportGroupedInventoryReport(
+						searchText,
+						GroupedInventoryReportType.Purpose,
+						filePath)),
 
 			new ReportDefinition(
 				StockByCategoryReportName,
 				"Stock by Category Report.xlsx",
 				isInventoryValueReport: false,
-				LoadCategoryInventoryReport,
-				_reportService.ExportCategoryInventoryReport),
+				() =>
+					LoadGroupedInventoryReport(
+						GroupedInventoryReportType.Category),
+				(searchText, filePath) =>
+					_reportService.ExportGroupedInventoryReport(
+						searchText,
+						GroupedInventoryReportType.Category,
+						filePath)),
 
 			new ReportDefinition(
 				StockByManufacturerReportName,
 				"Stock by Manufacturer Report.xlsx",
 				isInventoryValueReport: false,
-				LoadManufacturerInventoryReport,
-				_reportService.ExportManufacturerInventoryReport)
+				() =>
+					LoadGroupedInventoryReport(
+						GroupedInventoryReportType.Manufacturer),
+				(searchText, filePath) =>
+					_reportService.ExportGroupedInventoryReport(
+						searchText,
+						GroupedInventoryReportType.Manufacturer,
+						filePath))
 		};
 	}
 

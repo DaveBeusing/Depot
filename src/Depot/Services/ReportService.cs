@@ -93,198 +93,17 @@ public sealed class ReportService
 		};
 	}
 
-	public LocationInventoryReport GetLocationInventoryReport(
-		string? searchText)
+	public GroupedInventoryReport GetGroupedInventoryReport(
+		string? searchText,
+		GroupedInventoryReportType reportType)
 	{
-		var report =
-			GetGroupedInventoryReport(
-				searchText,
-				x => x.LocationName);
+		var definition =
+			GetGroupedInventoryReportDefinition(
+				reportType);
 
-		return new LocationInventoryReport
-		{
-			Items =
-				report.Items
-				.Select(
-					x =>
-						new LocationInventoryReportItem
-						{
-							LocationName =
-								x.GroupName,
-
-							InventoryRows =
-								x.InventoryRows,
-
-							TotalItems =
-								x.TotalItems,
-
-							TotalStockQuantity =
-								x.TotalStockQuantity,
-
-							InventoryValue =
-								x.InventoryValue
-						})
-				.ToList(),
-
-			TotalInventoryRows =
-				report.TotalInventoryRows,
-
-			TotalItems =
-				report.TotalItems,
-
-			TotalStockQuantity =
-				report.TotalStockQuantity,
-
-			TotalInventoryValue =
-				report.TotalInventoryValue
-		};
-	}
-
-	public PurposeInventoryReport GetPurposeInventoryReport(
-		string? searchText)
-	{
-		var report =
-			GetGroupedInventoryReport(
-				searchText,
-				x => x.PurposeName);
-
-		return new PurposeInventoryReport
-		{
-			Items =
-				report.Items
-				.Select(
-					x =>
-						new PurposeInventoryReportItem
-						{
-							PurposeName =
-								x.GroupName,
-
-							InventoryRows =
-								x.InventoryRows,
-
-							TotalItems =
-								x.TotalItems,
-
-							TotalStockQuantity =
-								x.TotalStockQuantity,
-
-							InventoryValue =
-								x.InventoryValue
-						})
-				.ToList(),
-
-			TotalInventoryRows =
-				report.TotalInventoryRows,
-
-			TotalItems =
-				report.TotalItems,
-
-			TotalStockQuantity =
-				report.TotalStockQuantity,
-
-			TotalInventoryValue =
-				report.TotalInventoryValue
-		};
-	}
-
-	public CategoryInventoryReport GetCategoryInventoryReport(
-		string? searchText)
-	{
-		var report =
-			GetGroupedInventoryReport(
-				searchText,
-				x => string.IsNullOrWhiteSpace(
-					x.Category)
-					? "Uncategorized"
-					: x.Category);
-
-		return new CategoryInventoryReport
-		{
-			Items =
-				report.Items
-				.Select(
-					x =>
-						new CategoryInventoryReportItem
-						{
-							CategoryName =
-								x.GroupName,
-
-							InventoryRows =
-								x.InventoryRows,
-
-							TotalItems =
-								x.TotalItems,
-
-							TotalStockQuantity =
-								x.TotalStockQuantity,
-
-							InventoryValue =
-								x.InventoryValue
-						})
-				.ToList(),
-
-			TotalInventoryRows =
-				report.TotalInventoryRows,
-
-			TotalItems =
-				report.TotalItems,
-
-			TotalStockQuantity =
-				report.TotalStockQuantity,
-
-			TotalInventoryValue =
-				report.TotalInventoryValue
-		};
-	}
-
-	public ManufacturerInventoryReport GetManufacturerInventoryReport(
-		string? searchText)
-	{
-		var report =
-			GetGroupedInventoryReport(
-				searchText,
-				x => string.IsNullOrWhiteSpace(
-					x.Manufacturer)
-					? "Unspecified Manufacturer"
-					: x.Manufacturer);
-
-		return new ManufacturerInventoryReport
-		{
-			Items =
-				report.Items
-				.Select(
-					x =>
-						new ManufacturerInventoryReportItem
-						{
-							ManufacturerName =
-								x.GroupName,
-
-							InventoryRows =
-								x.InventoryRows,
-
-							TotalItems =
-								x.TotalItems,
-
-							TotalStockQuantity =
-								x.TotalStockQuantity,
-
-							InventoryValue =
-								x.InventoryValue
-						})
-				.ToList(),
-
-			TotalInventoryRows =
-				report.TotalInventoryRows,
-
-			TotalItems =
-				report.TotalItems,
-
-			TotalStockQuantity =
-				report.TotalStockQuantity,
-
-			TotalInventoryValue =
-				report.TotalInventoryValue
-		};
+		return BuildGroupedInventoryReport(
+			searchText,
+			definition.GroupSelector);
 	}
 
 	public void ExportInventoryValueReport(
@@ -409,38 +228,24 @@ public sealed class ReportService
 			filePath);
 	}
 
-	public void ExportLocationInventoryReport(
+	public void ExportGroupedInventoryReport(
 		string? searchText,
+		GroupedInventoryReportType reportType,
 		string filePath)
 	{
+		var definition =
+			GetGroupedInventoryReportDefinition(
+				reportType);
+
 		var report =
-			GetLocationInventoryReport(
-				searchText);
+			BuildGroupedInventoryReport(
+				searchText,
+				definition.GroupSelector);
 
-		ExportGroupedInventoryReport(
-			"Stock by Location",
-			"Location",
-			report.Items
-				.Select(
-					x =>
-						new GroupedInventoryExportItem
-						{
-							GroupName =
-								x.LocationName,
-
-							InventoryRows =
-								x.InventoryRows,
-
-							TotalItems =
-								x.TotalItems,
-
-							TotalStockQuantity =
-								x.TotalStockQuantity,
-
-							InventoryValue =
-								x.InventoryValue
-						})
-				.ToList(),
+		ExportGroupedInventoryWorkbook(
+			definition.Title,
+			definition.GroupHeader,
+			report.Items,
 			report.TotalInventoryRows,
 			report.TotalItems,
 			report.TotalStockQuantity,
@@ -448,124 +253,7 @@ public sealed class ReportService
 			filePath);
 	}
 
-	public void ExportPurposeInventoryReport(
-		string? searchText,
-		string filePath)
-	{
-		var report =
-			GetPurposeInventoryReport(
-				searchText);
-
-		ExportGroupedInventoryReport(
-			"Stock by Purpose",
-			"Purpose",
-			report.Items
-				.Select(
-					x =>
-						new GroupedInventoryExportItem
-						{
-							GroupName =
-								x.PurposeName,
-
-							InventoryRows =
-								x.InventoryRows,
-
-							TotalItems =
-								x.TotalItems,
-
-							TotalStockQuantity =
-								x.TotalStockQuantity,
-
-							InventoryValue =
-								x.InventoryValue
-						})
-				.ToList(),
-			report.TotalInventoryRows,
-			report.TotalItems,
-			report.TotalStockQuantity,
-			report.TotalInventoryValue,
-			filePath);
-	}
-
-	public void ExportCategoryInventoryReport(
-		string? searchText,
-		string filePath)
-	{
-		var report =
-			GetCategoryInventoryReport(
-				searchText);
-
-		ExportGroupedInventoryReport(
-			"Stock by Category",
-			"Category",
-			report.Items
-				.Select(
-					x =>
-						new GroupedInventoryExportItem
-						{
-							GroupName =
-								x.CategoryName,
-
-							InventoryRows =
-								x.InventoryRows,
-
-							TotalItems =
-								x.TotalItems,
-
-							TotalStockQuantity =
-								x.TotalStockQuantity,
-
-							InventoryValue =
-								x.InventoryValue
-						})
-				.ToList(),
-			report.TotalInventoryRows,
-			report.TotalItems,
-			report.TotalStockQuantity,
-			report.TotalInventoryValue,
-			filePath);
-	}
-
-	public void ExportManufacturerInventoryReport(
-		string? searchText,
-		string filePath)
-	{
-		var report =
-			GetManufacturerInventoryReport(
-				searchText);
-
-		ExportGroupedInventoryReport(
-			"Stock by Manufacturer",
-			"Manufacturer",
-			report.Items
-				.Select(
-					x =>
-						new GroupedInventoryExportItem
-						{
-							GroupName =
-								x.ManufacturerName,
-
-							InventoryRows =
-								x.InventoryRows,
-
-							TotalItems =
-								x.TotalItems,
-
-							TotalStockQuantity =
-								x.TotalStockQuantity,
-
-							InventoryValue =
-								x.InventoryValue
-						})
-				.ToList(),
-			report.TotalInventoryRows,
-			report.TotalItems,
-			report.TotalStockQuantity,
-			report.TotalInventoryValue,
-			filePath);
-	}
-
-	private GroupedInventoryReport GetGroupedInventoryReport(
+	private GroupedInventoryReport BuildGroupedInventoryReport(
 		string? searchText,
 		Func<InventoryOverviewItem, string> groupSelector)
 	{
@@ -634,6 +322,49 @@ public sealed class ReportService
 			TotalInventoryValue =
 				inventoryRows.Sum(
 					x => x.InventoryValue)
+		};
+	}
+
+	private static GroupedInventoryReportDefinition GetGroupedInventoryReportDefinition(
+		GroupedInventoryReportType reportType)
+	{
+		return reportType switch
+		{
+			GroupedInventoryReportType.Location =>
+				new GroupedInventoryReportDefinition(
+					"Stock by Location",
+					"Location",
+					x => x.LocationName),
+
+			GroupedInventoryReportType.Purpose =>
+				new GroupedInventoryReportDefinition(
+					"Stock by Purpose",
+					"Purpose",
+					x => x.PurposeName),
+
+			GroupedInventoryReportType.Category =>
+				new GroupedInventoryReportDefinition(
+					"Stock by Category",
+					"Category",
+					x => string.IsNullOrWhiteSpace(
+						x.Category)
+						? "Uncategorized"
+						: x.Category),
+
+			GroupedInventoryReportType.Manufacturer =>
+				new GroupedInventoryReportDefinition(
+					"Stock by Manufacturer",
+					"Manufacturer",
+					x => string.IsNullOrWhiteSpace(
+						x.Manufacturer)
+						? "Unspecified Manufacturer"
+						: x.Manufacturer),
+
+			_ =>
+				throw new ArgumentOutOfRangeException(
+					nameof(reportType),
+					reportType,
+					"Unknown grouped inventory report type.")
 		};
 	}
 
@@ -868,10 +599,10 @@ public sealed class ReportService
 			.AdjustToContents();
 	}
 
-	private static void ExportGroupedInventoryReport(
+	private static void ExportGroupedInventoryWorkbook(
 		string title,
 		string groupHeader,
-		IReadOnlyList<GroupedInventoryExportItem> items,
+		IReadOnlyList<GroupedInventoryReportItem> items,
 		int totalInventoryRows,
 		int totalItems,
 		int totalStockQuantity,
@@ -1129,43 +860,27 @@ public sealed class ReportService
 			.AdjustToContents();
 	}
 
-	private sealed class GroupedInventoryExportItem
+	private sealed class GroupedInventoryReportDefinition
 	{
-		public string GroupName { get; init; } = string.Empty;
+		public GroupedInventoryReportDefinition(
+			string title,
+			string groupHeader,
+			Func<InventoryOverviewItem, string> groupSelector)
+		{
+			Title =
+				title;
 
-		public int InventoryRows { get; init; }
+			GroupHeader =
+				groupHeader;
 
-		public int TotalItems { get; init; }
+			GroupSelector =
+				groupSelector;
+		}
 
-		public int TotalStockQuantity { get; init; }
+		public string Title { get; }
 
-		public decimal InventoryValue { get; init; }
-	}
+		public string GroupHeader { get; }
 
-	private sealed class GroupedInventoryReport
-	{
-		public IReadOnlyList<GroupedInventoryReportItem> Items { get; init; }
-			= Array.Empty<GroupedInventoryReportItem>();
-
-		public int TotalInventoryRows { get; init; }
-
-		public int TotalItems { get; init; }
-
-		public int TotalStockQuantity { get; init; }
-
-		public decimal TotalInventoryValue { get; init; }
-	}
-
-	private sealed class GroupedInventoryReportItem
-	{
-		public string GroupName { get; init; } = string.Empty;
-
-		public int InventoryRows { get; init; }
-
-		public int TotalItems { get; init; }
-
-		public int TotalStockQuantity { get; init; }
-
-		public decimal InventoryValue { get; init; }
+		public Func<InventoryOverviewItem, string> GroupSelector { get; }
 	}
 }
