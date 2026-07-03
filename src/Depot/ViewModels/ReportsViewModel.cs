@@ -13,8 +13,12 @@ namespace Depot.ViewModels;
 public sealed class ReportsViewModel
 	: BaseViewModel
 {
+	private const string InventoryValueReportName = "Inventory Value";
+	private const string StockByLocationReportName = "Stock by Location";
+
 	private readonly ReportService _reportService;
 
+	private string _selectedReport = InventoryValueReportName;
 	private string _searchText = string.Empty;
 	private int _totalInventoryRows;
 	private int _totalItems;
@@ -37,8 +41,62 @@ public sealed class ReportsViewModel
 
 	public RelayCommand ExportCommand { get; }
 
-	public ObservableCollection<InventoryValueReportItemViewModel> Items { get; }
+	public ObservableCollection<string> ReportOptions { get; }
+		= new()
+		{
+			InventoryValueReportName,
+			StockByLocationReportName
+		};
+
+	public ObservableCollection<InventoryValueReportItemViewModel> InventoryValueItems { get; }
 		= new();
+
+	public ObservableCollection<LocationInventoryReportItemViewModel> LocationItems { get; }
+		= new();
+
+	public string SelectedReport
+	{
+		get => _selectedReport;
+
+		set
+		{
+			if (!ReportOptions.Contains(
+					value) ||
+				_selectedReport == value)
+			{
+				return;
+			}
+
+			_selectedReport =
+				value;
+
+			OnPropertyChanged();
+			OnPropertyChanged(
+				nameof(ReportTitle));
+			OnPropertyChanged(
+				nameof(SearchToolTip));
+			OnPropertyChanged(
+				nameof(IsInventoryValueReportSelected));
+			OnPropertyChanged(
+				nameof(IsStockByLocationReportSelected));
+
+			Load();
+		}
+	}
+
+	public string ReportTitle =>
+		SelectedReport;
+
+	public string SearchToolTip =>
+		IsInventoryValueReportSelected
+			? "Search inventory value report"
+			: "Search stock by location report";
+
+	public bool IsInventoryValueReportSelected =>
+		SelectedReport == InventoryValueReportName;
+
+	public bool IsStockByLocationReportSelected =>
+		SelectedReport == StockByLocationReportName;
 
 	public string SearchText
 	{
@@ -46,6 +104,11 @@ public sealed class ReportsViewModel
 
 		set
 		{
+			if (_searchText == value)
+			{
+				return;
+			}
+
 			_searchText =
 				value;
 
@@ -109,37 +172,88 @@ public sealed class ReportsViewModel
 
 	public void Load()
 	{
-		var report =
-			_reportService.GetInventoryValueReport(
-				SearchText);
-
-		TotalInventoryRows =
-			report.TotalInventoryRows;
-
-		TotalItems =
-			report.TotalItems;
-
-		TotalStockQuantity =
-			report.TotalStockQuantity;
-
-		TotalInventoryValue =
-			report.TotalInventoryValue;
-
-		Items.Clear();
-
-		foreach (var item in report.Items)
+		if (IsStockByLocationReportSelected)
 		{
-			Items.Add(
-				new InventoryValueReportItemViewModel(
-					item));
+			LoadLocationInventoryReport();
+		}
+		else
+		{
+			LoadInventoryValueReport();
 		}
 
 		ExportCommand.RaiseCanExecuteChanged();
 	}
 
+	private void LoadInventoryValueReport()
+	{
+		var report =
+			_reportService.GetInventoryValueReport(
+				SearchText);
+
+		ApplyTotals(
+			report.TotalInventoryRows,
+			report.TotalItems,
+			report.TotalStockQuantity,
+			report.TotalInventoryValue);
+
+		InventoryValueItems.Clear();
+		LocationItems.Clear();
+
+		foreach (var item in report.Items)
+		{
+			InventoryValueItems.Add(
+				new InventoryValueReportItemViewModel(
+					item));
+		}
+	}
+
+	private void LoadLocationInventoryReport()
+	{
+		var report =
+			_reportService.GetLocationInventoryReport(
+				SearchText);
+
+		ApplyTotals(
+			report.TotalInventoryRows,
+			report.TotalItems,
+			report.TotalStockQuantity,
+			report.TotalInventoryValue);
+
+		InventoryValueItems.Clear();
+		LocationItems.Clear();
+
+		foreach (var item in report.Items)
+		{
+			LocationItems.Add(
+				new LocationInventoryReportItemViewModel(
+					item));
+		}
+	}
+
+	private void ApplyTotals(
+		int totalInventoryRows,
+		int totalItems,
+		int totalStockQuantity,
+		decimal totalInventoryValue)
+	{
+		TotalInventoryRows =
+			totalInventoryRows;
+
+		TotalItems =
+			totalItems;
+
+		TotalStockQuantity =
+			totalStockQuantity;
+
+		TotalInventoryValue =
+			totalInventoryValue;
+	}
+
 	private bool CanExport()
 	{
-		return Items.Count > 0;
+		return IsStockByLocationReportSelected
+			? LocationItems.Count > 0
+			: InventoryValueItems.Count > 0;
 	}
 
 	private void Export()
@@ -151,7 +265,7 @@ public sealed class ReportsViewModel
 					".xlsx",
 
 				FileName =
-					"Inventory Value Report.xlsx",
+					GetDefaultExportFileName(),
 
 				Filter =
 					"Excel Files (*.xlsx)|*.xlsx",
@@ -165,8 +279,24 @@ public sealed class ReportsViewModel
 			return;
 		}
 
-		_reportService.ExportInventoryValueReport(
-			SearchText,
-			dialog.FileName);
+		if (IsStockByLocationReportSelected)
+		{
+			_reportService.ExportLocationInventoryReport(
+				SearchText,
+				dialog.FileName);
+		}
+		else
+		{
+			_reportService.ExportInventoryValueReport(
+				SearchText,
+				dialog.FileName);
+		}
+	}
+
+	private string GetDefaultExportFileName()
+	{
+		return IsStockByLocationReportSelected
+			? "Stock by Location Report.xlsx"
+			: "Inventory Value Report.xlsx";
 	}
 }
