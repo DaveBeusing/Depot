@@ -164,6 +164,77 @@ public sealed class ReportService
 		};
 	}
 
+	public PurposeInventoryReport GetPurposeInventoryReport(
+		string? searchText)
+	{
+		var inventoryRows =
+			_stockService
+				.GetInventoryOverview()
+				.Where(
+					x =>
+						MatchesSearch(
+							x,
+							searchText))
+				.ToList();
+
+		var rows =
+			inventoryRows
+				.GroupBy(
+					x => x.PurposeName)
+				.Select(
+					x =>
+						new PurposeInventoryReportItem
+						{
+							PurposeName =
+								x.Key,
+
+							InventoryRows =
+								x.Count(),
+
+							TotalItems =
+								x
+									.Select(
+										y => y.ItemId)
+									.Distinct()
+									.Count(),
+
+							TotalStockQuantity =
+								x.Sum(
+									y => y.CurrentStock),
+
+							InventoryValue =
+								x.Sum(
+									y => y.InventoryValue)
+						})
+				.OrderBy(
+					x => x.PurposeName)
+				.ToList();
+
+		return new PurposeInventoryReport
+		{
+			Items =
+				rows,
+
+			TotalInventoryRows =
+				inventoryRows.Count,
+
+			TotalItems =
+				inventoryRows
+					.Select(
+						x => x.ItemId)
+					.Distinct()
+					.Count(),
+
+			TotalStockQuantity =
+				inventoryRows.Sum(
+					x => x.CurrentStock),
+
+			TotalInventoryValue =
+				inventoryRows.Sum(
+					x => x.InventoryValue)
+		};
+	}
+
 	public void ExportInventoryValueReport(
 		string? searchText,
 		string filePath)
@@ -376,6 +447,104 @@ public sealed class ReportService
 		}
 
 		FormatLocationInventoryWorksheet(
+			worksheet,
+			headerRow,
+			row - 1);
+
+		workbook.SaveAs(
+			filePath);
+	}
+
+	public void ExportPurposeInventoryReport(
+		string? searchText,
+		string filePath)
+	{
+		var report =
+			GetPurposeInventoryReport(
+				searchText);
+
+		using var workbook =
+			new XLWorkbook();
+
+		var worksheet =
+			workbook.Worksheets.Add(
+				"Stock by Purpose");
+
+		worksheet.Cell(
+			1,
+			1)
+			.Value =
+				"Stock by Purpose";
+
+		worksheet.Range(
+			1,
+			1,
+			1,
+			5)
+			.Merge();
+
+		worksheet.Cell(
+			1,
+			1)
+			.Style.Font.Bold =
+				true;
+
+		worksheet.Cell(
+			1,
+			1)
+			.Style.Font.FontSize =
+				16;
+
+		WritePurposeInventorySummary(
+			worksheet,
+			report);
+
+		var headerRow =
+			6;
+
+		WritePurposeInventoryHeaders(
+			worksheet,
+			headerRow);
+
+		var row =
+			headerRow + 1;
+
+		foreach (var item in report.Items)
+		{
+			worksheet.Cell(
+				row,
+				1)
+				.Value =
+					item.PurposeName;
+
+			worksheet.Cell(
+				row,
+				2)
+				.Value =
+					item.InventoryRows;
+
+			worksheet.Cell(
+				row,
+				3)
+				.Value =
+					item.TotalItems;
+
+			worksheet.Cell(
+				row,
+				4)
+				.Value =
+					item.TotalStockQuantity;
+
+			worksheet.Cell(
+				row,
+				5)
+				.Value =
+					item.InventoryValue;
+
+			row++;
+		}
+
+		FormatPurposeInventoryWorksheet(
 			worksheet,
 			headerRow,
 			row - 1);
@@ -704,6 +873,159 @@ public sealed class ReportService
 	}
 
 	private static void FormatLocationInventoryWorksheet(
+		IXLWorksheet worksheet,
+		int headerRow,
+		int lastDataRow)
+	{
+		var summaryLabelRange =
+			worksheet.Range(
+				3,
+				1,
+				4,
+				4);
+
+		summaryLabelRange.Style.Font.Bold =
+			true;
+
+		worksheet.Cell(
+			4,
+			5)
+			.Style.NumberFormat.Format =
+				"#,##0.00";
+
+		var headerRange =
+			worksheet.Range(
+				headerRow,
+				1,
+				headerRow,
+				5);
+
+		headerRange.Style.Font.Bold =
+			true;
+
+		headerRange.Style.Fill.BackgroundColor =
+			XLColor.FromHtml(
+				"#E5E7EB");
+
+		var usedLastRow =
+			Math.Max(
+				headerRow,
+				lastDataRow);
+
+		worksheet.Range(
+			headerRow,
+			1,
+			usedLastRow,
+			5)
+			.SetAutoFilter();
+
+		if (lastDataRow > headerRow)
+		{
+			worksheet.Range(
+				headerRow + 1,
+				5,
+				lastDataRow,
+				5)
+				.Style.NumberFormat.Format =
+					"#,##0.00";
+		}
+
+		worksheet.SheetView.FreezeRows(
+			headerRow);
+
+		worksheet.Columns()
+			.AdjustToContents();
+	}
+
+	private static void WritePurposeInventorySummary(
+		IXLWorksheet worksheet,
+		PurposeInventoryReport report)
+	{
+		worksheet.Cell(
+			3,
+			1)
+			.Value =
+				"Inventory Rows";
+
+		worksheet.Cell(
+			3,
+			2)
+			.Value =
+				report.TotalInventoryRows;
+
+		worksheet.Cell(
+			3,
+			4)
+			.Value =
+				"Items";
+
+		worksheet.Cell(
+			3,
+			5)
+			.Value =
+				report.TotalItems;
+
+		worksheet.Cell(
+			4,
+			1)
+			.Value =
+				"Total Stock";
+
+		worksheet.Cell(
+			4,
+			2)
+			.Value =
+				report.TotalStockQuantity;
+
+		worksheet.Cell(
+			4,
+			4)
+			.Value =
+				"Inventory Value";
+
+		worksheet.Cell(
+			4,
+			5)
+			.Value =
+				report.TotalInventoryValue;
+	}
+
+	private static void WritePurposeInventoryHeaders(
+		IXLWorksheet worksheet,
+		int row)
+	{
+		worksheet.Cell(
+			row,
+			1)
+			.Value =
+				"Purpose";
+
+		worksheet.Cell(
+			row,
+			2)
+			.Value =
+				"Inventory Rows";
+
+		worksheet.Cell(
+			row,
+			3)
+			.Value =
+				"Items";
+
+		worksheet.Cell(
+			row,
+			4)
+			.Value =
+				"Total Stock";
+
+		worksheet.Cell(
+			row,
+			5)
+			.Value =
+				"Inventory Value";
+	}
+
+	private static void FormatPurposeInventoryWorksheet(
 		IXLWorksheet worksheet,
 		int headerRow,
 		int lastDataRow)

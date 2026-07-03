@@ -15,6 +15,7 @@ public sealed class ReportsViewModel
 {
 	private const string InventoryValueReportName = "Inventory Value";
 	private const string StockByLocationReportName = "Stock by Location";
+	private const string StockByPurposeReportName = "Stock by Purpose";
 
 	private readonly ReportService _reportService;
 
@@ -45,13 +46,17 @@ public sealed class ReportsViewModel
 		= new()
 		{
 			InventoryValueReportName,
-			StockByLocationReportName
+			StockByLocationReportName,
+			StockByPurposeReportName
 		};
 
 	public ObservableCollection<InventoryValueReportItemViewModel> InventoryValueItems { get; }
 		= new();
 
 	public ObservableCollection<LocationInventoryReportItemViewModel> LocationItems { get; }
+		= new();
+
+	public ObservableCollection<PurposeInventoryReportItemViewModel> PurposeItems { get; }
 		= new();
 
 	public string SelectedReport
@@ -79,6 +84,8 @@ public sealed class ReportsViewModel
 				nameof(IsInventoryValueReportSelected));
 			OnPropertyChanged(
 				nameof(IsStockByLocationReportSelected));
+			OnPropertyChanged(
+				nameof(IsStockByPurposeReportSelected));
 
 			Load();
 		}
@@ -90,13 +97,16 @@ public sealed class ReportsViewModel
 	public string SearchToolTip =>
 		IsInventoryValueReportSelected
 			? "Search inventory value report"
-			: "Search stock by location report";
+			: "Search grouped stock report";
 
 	public bool IsInventoryValueReportSelected =>
 		SelectedReport == InventoryValueReportName;
 
 	public bool IsStockByLocationReportSelected =>
 		SelectedReport == StockByLocationReportName;
+
+	public bool IsStockByPurposeReportSelected =>
+		SelectedReport == StockByPurposeReportName;
 
 	public string SearchText
 	{
@@ -172,7 +182,11 @@ public sealed class ReportsViewModel
 
 	public void Load()
 	{
-		if (IsStockByLocationReportSelected)
+		if (IsStockByPurposeReportSelected)
+		{
+			LoadPurposeInventoryReport();
+		}
+		else if (IsStockByLocationReportSelected)
 		{
 			LoadLocationInventoryReport();
 		}
@@ -198,6 +212,7 @@ public sealed class ReportsViewModel
 
 		InventoryValueItems.Clear();
 		LocationItems.Clear();
+		PurposeItems.Clear();
 
 		foreach (var item in report.Items)
 		{
@@ -221,11 +236,36 @@ public sealed class ReportsViewModel
 
 		InventoryValueItems.Clear();
 		LocationItems.Clear();
+		PurposeItems.Clear();
 
 		foreach (var item in report.Items)
 		{
 			LocationItems.Add(
 				new LocationInventoryReportItemViewModel(
+					item));
+		}
+	}
+
+	private void LoadPurposeInventoryReport()
+	{
+		var report =
+			_reportService.GetPurposeInventoryReport(
+				SearchText);
+
+		ApplyTotals(
+			report.TotalInventoryRows,
+			report.TotalItems,
+			report.TotalStockQuantity,
+			report.TotalInventoryValue);
+
+		InventoryValueItems.Clear();
+		LocationItems.Clear();
+		PurposeItems.Clear();
+
+		foreach (var item in report.Items)
+		{
+			PurposeItems.Add(
+				new PurposeInventoryReportItemViewModel(
 					item));
 		}
 	}
@@ -251,6 +291,11 @@ public sealed class ReportsViewModel
 
 	private bool CanExport()
 	{
+		if (IsStockByPurposeReportSelected)
+		{
+			return PurposeItems.Count > 0;
+		}
+
 		return IsStockByLocationReportSelected
 			? LocationItems.Count > 0
 			: InventoryValueItems.Count > 0;
@@ -279,7 +324,13 @@ public sealed class ReportsViewModel
 			return;
 		}
 
-		if (IsStockByLocationReportSelected)
+		if (IsStockByPurposeReportSelected)
+		{
+			_reportService.ExportPurposeInventoryReport(
+				SearchText,
+				dialog.FileName);
+		}
+		else if (IsStockByLocationReportSelected)
 		{
 			_reportService.ExportLocationInventoryReport(
 				SearchText,
@@ -295,6 +346,11 @@ public sealed class ReportsViewModel
 
 	private string GetDefaultExportFileName()
 	{
+		if (IsStockByPurposeReportSelected)
+		{
+			return "Stock by Purpose Report.xlsx";
+		}
+
 		return IsStockByLocationReportSelected
 			? "Stock by Location Report.xlsx"
 			: "Inventory Value Report.xlsx";
