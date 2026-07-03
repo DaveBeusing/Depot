@@ -387,6 +387,48 @@
 
 				</DataGrid>
 
+				<DataGrid
+					Grid.Row="2"
+					ItemsSource="{Binding ManufacturerItems}"
+					AutoGenerateColumns="False"
+					IsReadOnly="True"
+					CanUserAddRows="False"
+					CanUserDeleteRows="False"
+					HeadersVisibility="Column"
+					RowHeaderWidth="0"
+					Visibility="{Binding IsStockByManufacturerReportSelected, Converter={StaticResource BooleanToVisibilityConverter}}">
+
+					<DataGrid.Columns>
+
+						<DataGridTextColumn
+							Header="Manufacturer"
+							Binding="{Binding ManufacturerName}"
+							Width="*" />
+
+						<DataGridTextColumn
+							Header="Inventory Rows"
+							Binding="{Binding InventoryRows}"
+							Width="140" />
+
+						<DataGridTextColumn
+							Header="Items"
+							Binding="{Binding TotalItems}"
+							Width="100" />
+
+						<DataGridTextColumn
+							Header="Total Stock"
+							Binding="{Binding TotalStockQuantity}"
+							Width="120" />
+
+						<DataGridTextColumn
+							Header="Inventory Value"
+							Binding="{Binding InventoryValue, StringFormat={}{0:N2} EUR}"
+							Width="160" />
+
+					</DataGrid.Columns>
+
+				</DataGrid>
+
 			</Grid>
 
 		</Border>

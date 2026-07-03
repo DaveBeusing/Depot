@@ -237,6 +237,56 @@ public sealed class ReportService
 		};
 	}
 
+	public ManufacturerInventoryReport GetManufacturerInventoryReport(
+		string? searchText)
+	{
+		var report =
+			GetGroupedInventoryReport(
+				searchText,
+				x => string.IsNullOrWhiteSpace(
+					x.Manufacturer)
+					? "Unspecified Manufacturer"
+					: x.Manufacturer);
+
+		return new ManufacturerInventoryReport
+		{
+			Items =
+				report.Items
+				.Select(
+					x =>
+						new ManufacturerInventoryReportItem
+						{
+							ManufacturerName =
+								x.GroupName,
+
+							InventoryRows =
+								x.InventoryRows,
+
+							TotalItems =
+								x.TotalItems,
+
+							TotalStockQuantity =
+								x.TotalStockQuantity,
+
+							InventoryValue =
+								x.InventoryValue
+						})
+				.ToList(),
+
+			TotalInventoryRows =
+				report.TotalInventoryRows,
+
+			TotalItems =
+				report.TotalItems,
+
+			TotalStockQuantity =
+				report.TotalStockQuantity,
+
+			TotalInventoryValue =
+				report.TotalInventoryValue
+		};
+	}
+
 	public void ExportInventoryValueReport(
 		string? searchText,
 		string filePath)
@@ -455,6 +505,45 @@ public sealed class ReportService
 						{
 							GroupName =
 								x.CategoryName,
+
+							InventoryRows =
+								x.InventoryRows,
+
+							TotalItems =
+								x.TotalItems,
+
+							TotalStockQuantity =
+								x.TotalStockQuantity,
+
+							InventoryValue =
+								x.InventoryValue
+						})
+				.ToList(),
+			report.TotalInventoryRows,
+			report.TotalItems,
+			report.TotalStockQuantity,
+			report.TotalInventoryValue,
+			filePath);
+	}
+
+	public void ExportManufacturerInventoryReport(
+		string? searchText,
+		string filePath)
+	{
+		var report =
+			GetManufacturerInventoryReport(
+				searchText);
+
+		ExportGroupedInventoryReport(
+			"Stock by Manufacturer",
+			"Manufacturer",
+			report.Items
+				.Select(
+					x =>
+						new GroupedInventoryExportItem
+						{
+							GroupName =
+								x.ManufacturerName,
 
 							InventoryRows =
 								x.InventoryRows,

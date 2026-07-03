@@ -17,6 +17,7 @@ public sealed class ReportsViewModel
 	private const string StockByLocationReportName = "Stock by Location";
 	private const string StockByPurposeReportName = "Stock by Purpose";
 	private const string StockByCategoryReportName = "Stock by Category";
+	private const string StockByManufacturerReportName = "Stock by Manufacturer";
 
 	private readonly ReportService _reportService;
 
@@ -49,7 +50,8 @@ public sealed class ReportsViewModel
 			InventoryValueReportName,
 			StockByLocationReportName,
 			StockByPurposeReportName,
-			StockByCategoryReportName
+			StockByCategoryReportName,
+			StockByManufacturerReportName
 		};
 
 	public ObservableCollection<InventoryValueReportItemViewModel> InventoryValueItems { get; }
@@ -62,6 +64,9 @@ public sealed class ReportsViewModel
 		= new();
 
 	public ObservableCollection<CategoryInventoryReportItemViewModel> CategoryItems { get; }
+		= new();
+
+	public ObservableCollection<ManufacturerInventoryReportItemViewModel> ManufacturerItems { get; }
 		= new();
 
 	public string SelectedReport
@@ -93,6 +98,8 @@ public sealed class ReportsViewModel
 				nameof(IsStockByPurposeReportSelected));
 			OnPropertyChanged(
 				nameof(IsStockByCategoryReportSelected));
+			OnPropertyChanged(
+				nameof(IsStockByManufacturerReportSelected));
 
 			Load();
 		}
@@ -117,6 +124,9 @@ public sealed class ReportsViewModel
 
 	public bool IsStockByCategoryReportSelected =>
 		SelectedReport == StockByCategoryReportName;
+
+	public bool IsStockByManufacturerReportSelected =>
+		SelectedReport == StockByManufacturerReportName;
 
 	public string SearchText
 	{
@@ -192,7 +202,11 @@ public sealed class ReportsViewModel
 
 	public void Load()
 	{
-		if (IsStockByCategoryReportSelected)
+		if (IsStockByManufacturerReportSelected)
+		{
+			LoadManufacturerInventoryReport();
+		}
+		else if (IsStockByCategoryReportSelected)
 		{
 			LoadCategoryInventoryReport();
 		}
@@ -228,6 +242,7 @@ public sealed class ReportsViewModel
 		LocationItems.Clear();
 		PurposeItems.Clear();
 		CategoryItems.Clear();
+		ManufacturerItems.Clear();
 
 		foreach (var item in report.Items)
 		{
@@ -253,6 +268,7 @@ public sealed class ReportsViewModel
 		LocationItems.Clear();
 		PurposeItems.Clear();
 		CategoryItems.Clear();
+		ManufacturerItems.Clear();
 
 		foreach (var item in report.Items)
 		{
@@ -278,6 +294,7 @@ public sealed class ReportsViewModel
 		LocationItems.Clear();
 		PurposeItems.Clear();
 		CategoryItems.Clear();
+		ManufacturerItems.Clear();
 
 		foreach (var item in report.Items)
 		{
@@ -303,11 +320,38 @@ public sealed class ReportsViewModel
 		LocationItems.Clear();
 		PurposeItems.Clear();
 		CategoryItems.Clear();
+		ManufacturerItems.Clear();
 
 		foreach (var item in report.Items)
 		{
 			CategoryItems.Add(
 				new CategoryInventoryReportItemViewModel(
+					item));
+		}
+	}
+
+	private void LoadManufacturerInventoryReport()
+	{
+		var report =
+			_reportService.GetManufacturerInventoryReport(
+				SearchText);
+
+		ApplyTotals(
+			report.TotalInventoryRows,
+			report.TotalItems,
+			report.TotalStockQuantity,
+			report.TotalInventoryValue);
+
+		InventoryValueItems.Clear();
+		LocationItems.Clear();
+		PurposeItems.Clear();
+		CategoryItems.Clear();
+		ManufacturerItems.Clear();
+
+		foreach (var item in report.Items)
+		{
+			ManufacturerItems.Add(
+				new ManufacturerInventoryReportItemViewModel(
 					item));
 		}
 	}
@@ -333,6 +377,11 @@ public sealed class ReportsViewModel
 
 	private bool CanExport()
 	{
+		if (IsStockByManufacturerReportSelected)
+		{
+			return ManufacturerItems.Count > 0;
+		}
+
 		if (IsStockByCategoryReportSelected)
 		{
 			return CategoryItems.Count > 0;
@@ -371,7 +420,13 @@ public sealed class ReportsViewModel
 			return;
 		}
 
-		if (IsStockByCategoryReportSelected)
+		if (IsStockByManufacturerReportSelected)
+		{
+			_reportService.ExportManufacturerInventoryReport(
+				SearchText,
+				dialog.FileName);
+		}
+		else if (IsStockByCategoryReportSelected)
 		{
 			_reportService.ExportCategoryInventoryReport(
 				SearchText,
@@ -399,6 +454,11 @@ public sealed class ReportsViewModel
 
 	private string GetDefaultExportFileName()
 	{
+		if (IsStockByManufacturerReportSelected)
+		{
+			return "Stock by Manufacturer Report.xlsx";
+		}
+
 		if (IsStockByCategoryReportSelected)
 		{
 			return "Stock by Category Report.xlsx";
