@@ -15,15 +15,12 @@ public sealed class SessionService
 		_authorizationService = authorizationService;
 	}
 
-	public event EventHandler? LogoutRequested;
-
     public bool LogoutRequestedByUser { get; private set; }
 
 	public void Logout()
 	{
         LogoutRequestedByUser = true;
 		_authorizationService.SignOut();
-		LogoutRequested?.Invoke(this, EventArgs.Empty);
 	}
 
     public void Reset()

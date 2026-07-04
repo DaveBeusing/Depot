@@ -46,21 +46,9 @@ public partial class App : Application
 		try
 		{
 			base.OnStartup(e);
-
 			StartupDiagnostics.Log("Application startup.");
-
 			InitializeInfrastructure();
-
-			if(!ShowLogin())
-			{
-				Shutdown();
-				return;
-			}
-
-			ShowMainWindow();
-
-			StartupDiagnostics.Log("Application started.");
-
+			RunApplication();
 		}
 		catch (Exception ex)
 		{
@@ -72,18 +60,11 @@ public partial class App : Application
 
 	private static void InitializeInfrastructure()
 	{
-		ConnectionFactory =
-			new SqliteConnectionFactory(
-				"depot.db");
-
-		Database =
-			new DepotDatabase(
-				ConnectionFactory);
-
+		ConnectionFactory = new SqliteConnectionFactory("depot.db");
+		Database = new DepotDatabase(ConnectionFactory);
 		Database.Initialize();
 
-		StartupDiagnostics.Log(
-			"Database initialized.");
+		StartupDiagnostics.Log("Database initialized.");
 
 		ItemRepository =
 			new ItemRepository(
@@ -182,6 +163,26 @@ public partial class App : Application
 		// DatabaseSeeder.Seed();
 	}
 
+	private void RunApplication()
+	{
+		while (true)
+		{
+			SessionService.Reset();
+			if (!ShowLogin())
+			{
+				Shutdown();
+				return;
+			}
+			ShowMainWindow();
+			if (!SessionService.LogoutRequestedByUser)
+			{
+				Shutdown();
+				return;
+			}
+			StartupDiagnostics.Log("Restarting session.");
+		}
+	}
+
 	private static bool ShowLogin()
 	{
 		var loginViewModel = new LoginViewModel(UserService, AuthorizationService);
@@ -213,32 +214,10 @@ public partial class App : Application
 				DataContext = MainViewModel
 			};
 
-		SessionService.LogoutRequested += OnLogoutRequested;
 		MainWindow = mainWindow;
-		ShutdownMode = ShutdownMode.OnMainWindowClose;
 		StartupDiagnostics.Log("MainWindow created.");
-		mainWindow.Show();
-	}
-
-	private void OnLogoutRequested(object? sender, EventArgs e)
-	{
-		SessionService.LogoutRequested -= OnLogoutRequested;
-
-		if (MainWindow is not null)
-		{
-			MainWindow.Close();
-		}
-
-		ShutdownMode = ShutdownMode.OnExplicitShutdown;
-
-		if (!ShowLogin())
-		{
-			Shutdown();
-			return;
-		}
-
-		ShowMainWindow();
-		StartupDiagnostics.Log("User logged in again.");
+		mainWindow.ShowDialog();
+		StartupDiagnostics.Log("MainWindow closed.");
 	}
 
 	private static void OnDispatcherUnhandledException(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
