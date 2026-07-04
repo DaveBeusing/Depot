@@ -14,29 +14,17 @@ public static class Program
 	{
 		try
 		{
-			StartupDiagnostics.Log(
-				"Program.Main entered.");
-
-			var app =
-				new App();
-
-			StartupDiagnostics.Log(
-				"App instance created.");
-
+			StartupDiagnostics.Log("Program.Main entered.");
+			var app = new App();
+			StartupDiagnostics.Log("App instance created.");
 			app.InitializeComponent();
-
-			StartupDiagnostics.Log(
-				"App resources initialized.");
-
+			StartupDiagnostics.Log("App resources initialized.");
 			app.Run();
 		}
 		catch (Exception ex)
 		{
-			StartupDiagnostics.LogException(
-				ex);
-
-			StartupDiagnostics.ShowStartupError(
-				ex);
+			StartupDiagnostics.LogException(ex);
+			StartupDiagnostics.ShowStartupError(ex);
 		}
 	}
 }

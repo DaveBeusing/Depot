@@ -9,6 +9,8 @@ using Depot.Repositories;
 using Depot.Services;
 using Depot.Services.Import;
 using Depot.ViewModels;
+using Depot.ViewModels.Login;
+using Depot.Views.Login;
 
 namespace Depot;
 
@@ -30,6 +32,8 @@ public partial class App
 	public static StockMovementRepository StockMovementRepository { get; private set; } = null!;
 
 	public static UserRepository UserRepository { get; private set; } = null!;
+
+	public static AuthorizationService AuthorizationService { get; private set; } = null!;
 
 	public static ItemService ItemService { get; private set; } = null!;
 
@@ -55,6 +59,7 @@ public partial class App
 
 	protected override void OnStartup(StartupEventArgs e)
 	{
+		ShutdownMode = ShutdownMode.OnExplicitShutdown;
 		DispatcherUnhandledException += OnDispatcherUnhandledException;
 		try
 		{
@@ -99,6 +104,8 @@ public partial class App
 					ConnectionFactory);
 
 			StartupDiagnostics.Log("Repositories created.");
+
+			AuthorizationService = new AuthorizationService();
 
 			ItemService =
 				new ItemService(
@@ -174,15 +181,34 @@ public partial class App
 
 			StartupDiagnostics.Log("MainViewModel created.");
 
+			var loginViewModel =
+				new LoginViewModel(
+					UserService,
+					AuthorizationService);
+
+			var loginWindow =
+				new LoginWindow(
+					loginViewModel);
+
+			var result = loginWindow.ShowDialog();
+			StartupDiagnostics.Log($"Login dialog returned: {result}");
+
+			if (result != true)
+			{
+				Shutdown();
+				return;
+			}
+
 			var mainWindow =
 				new MainWindow
 				{
-					DataContext =
-						MainViewModel
+					DataContext = MainViewModel
 				};
 
 			StartupDiagnostics.Log("MainWindow created.");
 
+			MainWindow = mainWindow;
+			ShutdownMode = ShutdownMode.OnMainWindowClose;
 			mainWindow.Show();
 
 			StartupDiagnostics.Log("Application started.");
@@ -195,16 +221,10 @@ public partial class App
 		}
 	}
 
-	private static void OnDispatcherUnhandledException(
-		object sender,
-		System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
+	private static void OnDispatcherUnhandledException(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
 	{
-		StartupDiagnostics.LogException(
-			e.Exception);
-
-		StartupDiagnostics.ShowRuntimeError(
-			e.Exception);
-
+		StartupDiagnostics.LogException(e.Exception);
+		StartupDiagnostics.ShowRuntimeError(e.Exception);
 		e.Handled = true;
 	}
 }

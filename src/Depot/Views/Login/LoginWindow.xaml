@@ -1,0 +1,79 @@
+<Window
+	x:Class="Depot.Views.Login.LoginWindow"
+	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	Title="Depot Login"
+	WindowStartupLocation="CenterScreen"
+	ResizeMode="NoResize"
+	SizeToContent="WidthAndHeight"
+	ShowInTaskbar="False">
+
+	<Border
+		Padding="32"
+		Background="{StaticResource SurfaceBrush}">
+
+		<Grid
+			Width="360">
+
+			<Grid.RowDefinitions>
+
+				<RowDefinition Height="Auto" />
+				<RowDefinition Height="12" />
+
+				<RowDefinition Height="Auto" />
+				<RowDefinition Height="24" />
+
+				<RowDefinition Height="Auto" />
+				<RowDefinition Height="8" />
+				<RowDefinition Height="Auto" />
+
+				<RowDefinition Height="24" />
+
+				<RowDefinition Height="Auto" />
+
+				<RowDefinition Height="24" />
+
+				<RowDefinition Height="Auto" />
+
+			</Grid.RowDefinitions>
+
+			<TextBlock
+				Grid.Row="0"
+				Text="📦 Depot"
+				HorizontalAlignment="Center"
+				Style="{StaticResource PageTitleStyle}" />
+
+			<TextBlock
+				Grid.Row="2"
+				Text="Inventory Management"
+				HorizontalAlignment="Center"
+				Foreground="{StaticResource SecondaryTextBrush}" />
+
+			<TextBlock
+				Grid.Row="4"
+				Text="User" />
+
+			<ComboBox
+				Grid.Row="6"
+				ItemsSource="{Binding Users}"
+				SelectedItem="{Binding SelectedUser}"
+				DisplayMemberPath="DisplayName" />
+
+			<Button
+				Grid.Row="8"
+				Content="Login"
+				Width="120"
+				HorizontalAlignment="Right"
+				Command="{Binding LoginCommand}" />
+
+			<TextBlock
+				Grid.Row="10"
+				HorizontalAlignment="Center"
+				Foreground="{StaticResource SecondaryTextBrush}"
+				Text="Version 1.0" />
+
+		</Grid>
+
+	</Border>
+
+</Window>
