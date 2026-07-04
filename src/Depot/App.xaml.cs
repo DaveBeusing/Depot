@@ -168,19 +168,6 @@ public partial class App
 			//
 			// DatabaseSeeder.Seed();
 
-			MainViewModel =
-				new MainViewModel(
-					ItemService,
-					StockService,
-					MovementService,
-					ReportService,
-					PurposeService,
-					LocationService,
-					UserService,
-					ImportService);
-
-			StartupDiagnostics.Log("MainViewModel created.");
-
 			var loginViewModel =
 				new LoginViewModel(
 					UserService,
@@ -198,6 +185,20 @@ public partial class App
 				Shutdown();
 				return;
 			}
+
+			MainViewModel =
+				new MainViewModel(
+					ItemService,
+					StockService,
+					MovementService,
+					ReportService,
+					PurposeService,
+					LocationService,
+					UserService,
+					AuthorizationService,
+					ImportService);
+
+			StartupDiagnostics.Log("MainViewModel created.");
 
 			var mainWindow =
 				new MainWindow

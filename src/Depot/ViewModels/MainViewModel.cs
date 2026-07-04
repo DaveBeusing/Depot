@@ -9,12 +9,11 @@ using Depot.ViewModels.Administration;
 
 namespace Depot.ViewModels;
 
-public sealed class MainViewModel
-	: BaseViewModel
+public sealed class MainViewModel : BaseViewModel
 {
 	private NavigationItem? _selectedNavigationItem;
 	private BaseViewModel? _currentViewModel;
-
+	private readonly AuthorizationService _authorizationService;
 	public MainViewModel(
 		ItemService itemService,
 		StockService stockService,
@@ -23,8 +22,12 @@ public sealed class MainViewModel
 		PurposeService purposeService,
 		LocationService locationService,
 		UserService userService,
+		AuthorizationService authorizationService,
 		ImportService importService)
 		{
+		
+		_authorizationService =	authorizationService;
+
 		DashboardViewModel =
 			new DashboardViewModel(
 				stockService);
@@ -92,20 +95,22 @@ public sealed class MainViewModel
 			new NavigationItem
 			{
 				Name = "Reports",
-				Icon = "R",
+				Icon = "📈",
 				Section = ShellSection.Reports
 			});
 
-		NavigationItems.Add(
-			new NavigationItem
-			{
-				Name = "Administration",
-				Icon = "⚙",
-				Section = ShellSection.Administration
-			});
+		if (_authorizationService.CanManageUsers())
+		{
+			NavigationItems.Add(
+				new NavigationItem
+				{
+					Name = "Administration",
+					Icon = "⚙",
+					Section = ShellSection.Administration
+				});
+		}
 
-		SelectedNavigationItem =
-			NavigationItems[0];
+		SelectedNavigationItem = NavigationItems[0];
 	}
 
 	public ObservableCollection<NavigationItem> NavigationItems { get; }
