@@ -14,48 +14,30 @@ using Depot.Views.Login;
 
 namespace Depot;
 
-public partial class App
-	: Application
+public partial class App : Application
 {
 	public static SqliteConnectionFactory ConnectionFactory { get; private set; } = null!;
-
 	public static DepotDatabase Database { get; private set; } = null!;
-
 	public static ItemRepository ItemRepository { get; private set; } = null!;
-
 	public static PurposeRepository PurposeRepository { get; private set; } = null!;
-
 	public static InventoryRepository InventoryRepository { get; private set; } = null!;
-
 	public static LocationRepository LocationRepository { get; private set; } = null!;
-
 	public static StockMovementRepository StockMovementRepository { get; private set; } = null!;
-
 	public static UserRepository UserRepository { get; private set; } = null!;
-
 	public static AuthorizationService AuthorizationService { get; private set; } = null!;
-
+	public static SessionService SessionService { get; private set; } = null!;
 	public static ItemService ItemService { get; private set; } = null!;
-
-	public static StockService StockService { get; private set; } = null!;
-
-	public static MovementService MovementService { get; private set; } = null!;
-
-	public static ReportService ReportService { get; private set; } = null!;
-
-	public static InventoryManagementService InventoryManagementService { get; private set; } = null!;
-
-	public static ImportService ImportService { get; private set; } = null!;
-
 	public static PurposeService PurposeService { get; private set; } = null!;
-
 	public static LocationService LocationService { get; private set; } = null!;
-
 	public static UserService UserService { get; private set; } = null!;
-
+	public static MovementService MovementService { get; private set; } = null!;
+	public static StockService StockService { get; private set; } = null!;
+	public static ReportService ReportService { get; private set; } = null!;
+	public static InventoryManagementService InventoryManagementService { get; private set; } = null!;
+	public static ImportService ImportService { get; private set; } = null!;
 	public static DatabaseSeeder DatabaseSeeder { get; private set; } = null!;
-
 	public static MainViewModel MainViewModel { get; private set; } = null!;
+
 
 	protected override void OnStartup(StartupEventArgs e)
 	{
@@ -67,152 +49,18 @@ public partial class App
 
 			StartupDiagnostics.Log("Application startup.");
 
-			ConnectionFactory =
-				new SqliteConnectionFactory(
-					"depot.db");
+			InitializeInfrastructure();
 
-			Database =
-				new DepotDatabase(
-					ConnectionFactory);
-
-			Database.Initialize();
-
-			StartupDiagnostics.Log("Database initialized.");
-
-			ItemRepository =
-				new ItemRepository(
-					ConnectionFactory);
-
-			PurposeRepository =
-				new PurposeRepository(
-					ConnectionFactory);
-
-			InventoryRepository =
-				new InventoryRepository(
-					ConnectionFactory);
-
-			LocationRepository =
-				new LocationRepository(
-					ConnectionFactory);
-
-			StockMovementRepository =
-				new StockMovementRepository(
-					ConnectionFactory);
-
-			UserRepository =
-				new UserRepository(
-					ConnectionFactory);
-
-			StartupDiagnostics.Log("Repositories created.");
-
-			AuthorizationService = new AuthorizationService();
-
-			ItemService =
-				new ItemService(
-					ItemRepository);
-
-			PurposeService =
-				new PurposeService(
-					PurposeRepository);
-
-			LocationService =
-				new LocationService(
-					LocationRepository);
-
-			UserService =
-				new UserService(
-					UserRepository);
-
-			MovementService =
-				new MovementService(
-					ItemRepository,
-					InventoryRepository,
-					PurposeRepository,
-					LocationRepository,
-					StockMovementRepository);
-
-			StockService =
-				new StockService(
-					ItemRepository,
-					InventoryRepository,
-					PurposeRepository,
-					LocationRepository,
-					StockMovementRepository);
-
-			ReportService =
-				new ReportService(
-					StockService);
-
-			InventoryManagementService =
-				new InventoryManagementService(
-					InventoryRepository);
-
-			ImportService =
-				new ImportService(
-					ItemRepository,
-					ItemService,
-					PurposeService,
-					LocationService,
-					InventoryManagementService,
-					MovementService);
-
-			StartupDiagnostics.Log("Services created.");
-
-			// DatabaseSeeder =
-			//	new DatabaseSeeder(
-			//		ItemService,
-			//		PurposeService,
-			//		LocationService,
-			//		InventoryManagementService,
-			//		MovementService);
-			//
-			// DatabaseSeeder.Seed();
-
-			var loginViewModel =
-				new LoginViewModel(
-					UserService,
-					AuthorizationService);
-
-			var loginWindow =
-				new LoginWindow(
-					loginViewModel);
-
-			var result = loginWindow.ShowDialog();
-			StartupDiagnostics.Log($"Login dialog returned: {result}");
-
-			if (result != true)
+			if(!ShowLogin())
 			{
 				Shutdown();
 				return;
 			}
 
-			MainViewModel =
-				new MainViewModel(
-					ItemService,
-					StockService,
-					MovementService,
-					ReportService,
-					PurposeService,
-					LocationService,
-					UserService,
-					AuthorizationService,
-					ImportService);
-
-			StartupDiagnostics.Log("MainViewModel created.");
-
-			var mainWindow =
-				new MainWindow
-				{
-					DataContext = MainViewModel
-				};
-
-			StartupDiagnostics.Log("MainWindow created.");
-
-			MainWindow = mainWindow;
-			ShutdownMode = ShutdownMode.OnMainWindowClose;
-			mainWindow.Show();
+			ShowMainWindow();
 
 			StartupDiagnostics.Log("Application started.");
+
 		}
 		catch (Exception ex)
 		{
@@ -220,6 +68,177 @@ public partial class App
 			StartupDiagnostics.ShowStartupError(ex);
 			Shutdown();
 		}
+	}
+
+	private static void InitializeInfrastructure()
+	{
+		ConnectionFactory =
+			new SqliteConnectionFactory(
+				"depot.db");
+
+		Database =
+			new DepotDatabase(
+				ConnectionFactory);
+
+		Database.Initialize();
+
+		StartupDiagnostics.Log(
+			"Database initialized.");
+
+		ItemRepository =
+			new ItemRepository(
+				ConnectionFactory);
+
+		PurposeRepository =
+			new PurposeRepository(
+				ConnectionFactory);
+
+		InventoryRepository =
+			new InventoryRepository(
+				ConnectionFactory);
+
+		LocationRepository =
+			new LocationRepository(
+				ConnectionFactory);
+
+		StockMovementRepository =
+			new StockMovementRepository(
+				ConnectionFactory);
+
+		UserRepository =
+			new UserRepository(
+				ConnectionFactory);
+
+		StartupDiagnostics.Log(
+			"Repositories created.");
+
+		AuthorizationService =
+			new AuthorizationService();
+
+		SessionService =
+			new SessionService(
+				AuthorizationService);
+
+		ItemService =
+			new ItemService(
+				ItemRepository);
+
+		PurposeService =
+			new PurposeService(
+				PurposeRepository);
+
+		LocationService =
+			new LocationService(
+				LocationRepository);
+
+		UserService =
+			new UserService(
+				UserRepository);
+
+		MovementService =
+			new MovementService(
+				ItemRepository,
+				InventoryRepository,
+				PurposeRepository,
+				LocationRepository,
+				StockMovementRepository);
+
+		StockService =
+			new StockService(
+				ItemRepository,
+				InventoryRepository,
+				PurposeRepository,
+				LocationRepository,
+				StockMovementRepository);
+
+		ReportService =
+			new ReportService(
+				StockService);
+
+		InventoryManagementService =
+			new InventoryManagementService(
+				InventoryRepository);
+
+		ImportService =
+			new ImportService(
+				ItemRepository,
+				ItemService,
+				PurposeService,
+				LocationService,
+				InventoryManagementService,
+				MovementService);
+
+		StartupDiagnostics.Log(
+			"Services created.");
+
+		// DatabaseSeeder =
+		//	new DatabaseSeeder(
+		//		ItemService,
+		//		PurposeService,
+		//		LocationService,
+		//		InventoryManagementService,
+		//		MovementService);
+		//
+		// DatabaseSeeder.Seed();
+	}
+
+	private static bool ShowLogin()
+	{
+		var loginViewModel = new LoginViewModel(UserService, AuthorizationService);
+		var loginWindow = new LoginWindow(loginViewModel);
+		var result = loginWindow.ShowDialog();
+		StartupDiagnostics.Log($"Login dialog returned: {result}");
+		return result == true;
+	}
+
+	private void ShowMainWindow()
+	{
+		MainViewModel =
+			new MainViewModel(
+				ItemService,
+				StockService,
+				MovementService,
+				ReportService,
+				PurposeService,
+				LocationService,
+				UserService,
+				AuthorizationService,
+				ImportService);
+
+		StartupDiagnostics.Log("MainViewModel created.");
+
+		var mainWindow =
+			new MainWindow
+			{
+				DataContext = MainViewModel
+			};
+
+		SessionService.LogoutRequested += OnLogoutRequested;
+		MainWindow = mainWindow;
+		ShutdownMode = ShutdownMode.OnMainWindowClose;
+		StartupDiagnostics.Log("MainWindow created.");
+		mainWindow.Show();
+	}
+
+	private void OnLogoutRequested(object? sender, EventArgs e)
+	{
+		SessionService.LogoutRequested -= OnLogoutRequested;
+
+		if (MainWindow is not null)
+		{
+			MainWindow.Close();
+		}
+
+		ShutdownMode = ShutdownMode.OnExplicitShutdown;
+
+		if (!ShowLogin())
+		{
+			Shutdown();
+			return;
+		}
+
+		ShowMainWindow();
+		StartupDiagnostics.Log("User logged in again.");
 	}
 
 	private static void OnDispatcherUnhandledException(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)

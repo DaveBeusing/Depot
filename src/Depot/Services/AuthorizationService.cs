@@ -26,18 +26,13 @@ public sealed class AuthorizationService
 		CurrentUser = null;
 	}
 
-	public bool CanManageUsers() =>
-		CurrentUser?.IsAdministrator == true;
+	public bool CanManageUsers() => CurrentUser?.IsAdministrator == true;
 
-	public bool CanImport() =>
-		CurrentUser?.IsAdministrator == true;
+	public bool CanImport() => CurrentUser?.IsAdministrator == true;
 
-	public bool CanManageMasterData() =>
-		CurrentUser?.IsAdministrator == true;
+	public bool CanManageMasterData() => CurrentUser?.IsAdministrator == true;
 
-	public bool CanManageDatabase() =>
-		CurrentUser?.IsAdministrator == true;
+	public bool CanManageDatabase() => CurrentUser?.IsAdministrator == true;
 
-	public bool CanOpenSettings() =>
-		CurrentUser?.IsAdministrator == true;
+	public bool CanOpenSettings() => CurrentUser?.IsAdministrator == true;
 }

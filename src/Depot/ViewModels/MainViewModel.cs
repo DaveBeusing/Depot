@@ -14,6 +14,7 @@ public sealed class MainViewModel : BaseViewModel
 	private NavigationItem? _selectedNavigationItem;
 	private BaseViewModel? _currentViewModel;
 	private readonly AuthorizationService _authorizationService;
+	
 	public MainViewModel(
 		ItemService itemService,
 		StockService stockService,
@@ -23,11 +24,11 @@ public sealed class MainViewModel : BaseViewModel
 		LocationService locationService,
 		UserService userService,
 		AuthorizationService authorizationService,
-		ImportService importService)
+			ImportService importService)
 		{
 		
 		_authorizationService =	authorizationService;
-
+	
 		DashboardViewModel =
 			new DashboardViewModel(
 				stockService);
@@ -99,6 +100,8 @@ public sealed class MainViewModel : BaseViewModel
 				Section = ShellSection.Reports
 			});
 
+		// Only show the Administration section if the user has permission to manage users
+		// CanManageUsers() represents the administrator role in version 1.0.
 		if (_authorizationService.CanManageUsers())
 		{
 			NavigationItems.Add(
@@ -133,13 +136,10 @@ public sealed class MainViewModel : BaseViewModel
 	public NavigationItem? SelectedNavigationItem
 	{
 		get => _selectedNavigationItem;
-
 		set
 		{
 			_selectedNavigationItem = value;
-
 			OnPropertyChanged();
-
 			UpdateCurrentViewModel();
 		}
 	}
@@ -147,11 +147,9 @@ public sealed class MainViewModel : BaseViewModel
 	public BaseViewModel? CurrentViewModel
 	{
 		get => _currentViewModel;
-
 		private set
 		{
 			_currentViewModel = value;
-
 			OnPropertyChanged();
 		}
 	}
@@ -164,17 +162,16 @@ public sealed class MainViewModel : BaseViewModel
 			return;
 		}
 
-		CurrentViewModel =
-			(ShellSection)SelectedNavigationItem.Section switch
-			{
-				ShellSection.Dashboard => DashboardViewModel,
-				ShellSection.Inventory => InventoryViewModel,
-				ShellSection.Items => ItemsViewModel,
-				ShellSection.Movements => MovementsViewModel,
-				ShellSection.Reports => ReportsViewModel,
-				ShellSection.Administration => AdministrationViewModel,
-				_ => DashboardViewModel
-			};
+		CurrentViewModel = (ShellSection)SelectedNavigationItem.Section switch
+		{
+			ShellSection.Dashboard => DashboardViewModel,
+			ShellSection.Inventory => InventoryViewModel,
+			ShellSection.Items => ItemsViewModel,
+			ShellSection.Movements => MovementsViewModel,
+			ShellSection.Reports => ReportsViewModel,
+			ShellSection.Administration => AdministrationViewModel,
+			_ => DashboardViewModel
+		};
 
 		if (CurrentViewModel == DashboardViewModel)
 		{
