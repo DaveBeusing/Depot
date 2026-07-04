@@ -102,6 +102,97 @@
 					FontWeight="SemiBold"
 					Foreground="{StaticResource NavigationForegroundBrush}" />
 
+				<Border
+					DockPanel.Dock="Bottom"
+					Padding="16"
+					BorderThickness="0,0,0,0"
+					BorderBrush="{StaticResource BorderBrush}">
+
+					<StackPanel>
+
+						<TextBlock
+							Margin="8,0,0,0"
+							Text="{Binding CurrentUserDisplayName}"
+							FontWeight="SemiBold"
+							Foreground="{StaticResource NavigationForegroundBrush}" />
+
+						<TextBlock
+							Margin="8,2,0,12"
+							Text="{Binding CurrentUserRole}"
+							Foreground="{StaticResource SecondaryTextBrush}" />
+
+
+						<Button
+							Click="OnLogoutClicked"
+							Background="Transparent"
+							BorderThickness="0"
+							HorizontalContentAlignment="Stretch"
+							Cursor="Hand">
+
+							<Button.Template>
+
+								<ControlTemplate TargetType="Button">
+
+									<Border
+										x:Name="Border"
+										Background="Transparent"
+										CornerRadius="6"
+										Padding="8">
+
+										<StackPanel Orientation="Horizontal">
+
+											<TextBlock
+												Width="24"
+												Text="🚪"
+												Foreground="{StaticResource NavigationForegroundBrush}" />
+
+											<TextBlock
+												Text="Log out"
+												FontWeight="SemiBold"
+												Foreground="{StaticResource NavigationForegroundBrush}" />
+
+										</StackPanel>
+
+									</Border>
+
+									<ControlTemplate.Triggers>
+
+										<Trigger Property="IsMouseOver" Value="True">
+
+											<Setter
+												TargetName="Border"
+												Property="Background"
+												Value="{StaticResource NavigationHoverBrush}" />
+
+										</Trigger>
+
+										<Trigger Property="IsPressed" Value="True">
+
+											<Setter
+												TargetName="Border"
+												Property="Background"
+												Value="{StaticResource NavigationSelectedBrush}" />
+
+										</Trigger>
+
+									</ControlTemplate.Triggers>
+
+								</ControlTemplate>
+
+							</Button.Template>
+
+						</Button>
+
+
+
+					</StackPanel>
+
+				</Border>
+
+
+				
+
+
 				<ListBox
 					ItemsSource="{Binding NavigationItems}"
 					SelectedItem="{Binding SelectedNavigationItem}"

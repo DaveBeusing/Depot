@@ -193,4 +193,8 @@ public sealed class MainViewModel : BaseViewModel
 			ReportsViewModel.Load();
 		}
 	}
+
+	public string CurrentUserDisplayName => _authorizationService.CurrentUser?.DisplayName ?? string.Empty;
+
+	public string CurrentUserRole => _authorizationService.CurrentUser?.IsAdministrator == true ? "Administrator" : "User";
 }
