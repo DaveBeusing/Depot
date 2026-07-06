@@ -10,11 +10,9 @@ public sealed class UserService
 {
 	private readonly UserRepository _userRepository;
 
-	public UserService(
-		UserRepository userRepository)
+	public UserService(UserRepository userRepository)
 	{
-		_userRepository =
-			userRepository;
+		_userRepository = userRepository;
 	}
 
 	public IReadOnlyList<User> GetUsers()
@@ -84,4 +82,69 @@ public sealed class UserService
 
 		return user;
 	}
+
+	public User UpdateUser(long id, string displayName, bool isAdministrator)
+	{
+		displayName = displayName.Trim();
+
+		if (id <= 0)
+		{
+			throw new ArgumentException(
+				"User id is required.",
+				nameof(id));
+		}
+
+		if (string.IsNullOrWhiteSpace(displayName))
+		{
+			throw new ArgumentException(
+				"Display name is required.",
+				nameof(displayName));
+		}
+
+		var user =
+			_userRepository.GetById(
+				id);
+
+		if (user is null)
+		{
+			throw new InvalidOperationException(
+				$"User with id '{id}' was not found.");
+		}
+
+		user.DisplayName =
+			displayName;
+
+		user.IsAdministrator =
+			isAdministrator;
+
+		_userRepository.Update(
+			user);
+
+		return user;
+	}
+
+	public void SetActive(long id, bool isActive)
+	{
+		if (id <= 0)
+		{
+			throw new ArgumentException("User id is required.", nameof(id));
+		}
+
+		var user = _userRepository.GetById(id);
+
+		if (user is null)
+		{
+			throw new InvalidOperationException($"User with id '{id}' was not found.");
+		}
+
+		var currentUser = App.AuthorizationService.CurrentUser;
+
+		if (!isActive && currentUser is not null && currentUser.Id == id)
+		{
+			throw new InvalidOperationException("The currently signed-in user cannot be deactivated.");
+		}
+
+		_userRepository.SetActive(id, isActive);
+	}
+
 }

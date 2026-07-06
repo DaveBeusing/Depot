@@ -6,11 +6,11 @@
 	<Grid>
 
 		<Grid.RowDefinitions>
-			<RowDefinition Height="Auto" />
-			<RowDefinition Height="16" />
-			<RowDefinition Height="Auto" />
-			<RowDefinition Height="8" />
-			<RowDefinition Height="*" />
+			<RowDefinition Height="Auto"/>
+			<RowDefinition Height="16"/>
+			<RowDefinition Height="Auto"/>
+			<RowDefinition Height="8"/>
+			<RowDefinition Height="*"/>
 		</Grid.RowDefinitions>
 
 		<TextBlock
@@ -20,45 +20,156 @@
 
 		<TextBox
 			Grid.Row="2"
-			Height="32"
-			Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-			ToolTip="Search users" />
+			Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
 
-		<DataGrid
-			Grid.Row="4"
-			ItemsSource="{Binding Users}"
-			Style="{StaticResource AppDataGridStyle}">
+		<Grid Grid.Row="4">
 
-			<DataGrid.Columns>
+			<Grid.ColumnDefinitions>
+				<ColumnDefinition Width="320"/>
+				<ColumnDefinition Width="16"/>
+				<ColumnDefinition Width="*"/>
+			</Grid.ColumnDefinitions>
 
-				<DataGridTextColumn
-					Header="User Name"
-					Binding="{Binding UserName}"
-					Width="180" />
+			<!-- User List -->
 
-				<DataGridTextColumn
-					Header="Display Name"
-					Binding="{Binding DisplayName}"
-					Width="*" />
+			<ListBox
+				Grid.Column="0"
+				ItemsSource="{Binding Users}"
+				SelectedItem="{Binding SelectedUser}"
+				BorderThickness="1"
+				BorderBrush="{StaticResource BorderBrush}">
 
-				<DataGridTextColumn
-					Header="Role"
-					Binding="{Binding Role}"
-					Width="160" />
+				<ListBox.ItemTemplate>
 
-				<DataGridTextColumn
-					Header="Status"
-					Binding="{Binding Status}"
-					Width="120" />
+					<DataTemplate>
 
-				<DataGridTextColumn
-					Header="Created"
-					Binding="{Binding CreatedUtc, StringFormat={}{0:g}}"
-					Width="160" />
+						<Border Padding="12">
 
-			</DataGrid.Columns>
+							<StackPanel>
 
-		</DataGrid>
+								<TextBlock
+									Text="{Binding DisplayName}"
+									FontWeight="SemiBold"/>
+
+								<TextBlock
+									Margin="0,2,0,0"
+									Text="{Binding Role}"
+									Foreground="{StaticResource SecondaryTextBrush}"/>
+
+							</StackPanel>
+
+						</Border>
+
+					</DataTemplate>
+
+				</ListBox.ItemTemplate>
+
+			</ListBox>
+
+			<!-- Editor -->
+
+			<Border
+				Grid.Column="2"
+				Style="{StaticResource CardStyle}">
+
+				<Grid>
+
+					<Grid.RowDefinitions>
+
+						<RowDefinition Height="Auto"/>
+						<RowDefinition Height="16"/>
+
+						<RowDefinition Height="Auto"/>
+						<RowDefinition Height="4"/>
+						<RowDefinition Height="Auto"/>
+
+						<RowDefinition Height="12"/>
+
+						<RowDefinition Height="Auto"/>
+						<RowDefinition Height="4"/>
+						<RowDefinition Height="Auto"/>
+
+						<RowDefinition Height="12"/>
+
+						<RowDefinition Height="Auto"/>
+
+						<RowDefinition Height="12"/>
+
+						<RowDefinition Height="Auto"/>
+
+						<RowDefinition Height="*"/>
+
+						<RowDefinition Height="Auto"/>
+
+					</Grid.RowDefinitions>
+
+					<TextBlock
+						Grid.Row="0"
+						Text="{Binding Editor.EditorTitle}"
+						Style="{StaticResource SectionTitleStyle}" />
+
+					<TextBlock
+						Grid.Row="2"
+						Text="User name"/>
+
+					<TextBox
+						Grid.Row="4"
+						Text="{Binding Editor.UserName}"
+						IsReadOnly="{Binding Editor.IsExistingUser}" />
+
+					<TextBlock
+						Grid.Row="6"
+						Text="Display name"/>
+
+					<TextBox
+						Grid.Row="8"
+						Text="{Binding Editor.DisplayName}" />
+
+					<CheckBox
+						Grid.Row="10"
+						Content="Administrator"
+						IsChecked="{Binding Editor.IsAdministrator}" />
+
+					<StackPanel Grid.Row="12">
+
+						<TextBlock
+							Text="Status" />
+
+						<TextBlock
+							Margin="0,4,0,0"
+							Text="{Binding Editor.Status}"
+							Foreground="{StaticResource SecondaryTextBrush}" />
+
+					</StackPanel>
+
+
+
+					<StackPanel
+						Grid.Row="14"
+						Orientation="Horizontal"
+						HorizontalAlignment="Right">
+
+						<Button
+							Content="New"
+							Command="{Binding NewUserCommand}" />
+
+						<Button
+							Margin="8,0,0,0"
+							Content="Save"
+							Command="{Binding SaveUserCommand}" />
+
+						<Button
+							Margin="8,0,0,0"
+							Content="{Binding Editor.ActivationButtonText}"
+							Command="{Binding ToggleActiveCommand}" />
+
+					</StackPanel>
+
+				</Grid>
+
+			</Border>
+
+		</Grid>
 
 	</Grid>
 
