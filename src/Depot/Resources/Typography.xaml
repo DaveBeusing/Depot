@@ -62,4 +62,110 @@
 
 	</Style>
 
+	<!-- Labels -->
+
+	<Style
+		x:Key="LabelStyle"
+		TargetType="TextBlock">
+
+		<Setter
+			Property="FontSize"
+			Value="13" />
+
+		<Setter
+			Property="FontWeight"
+			Value="SemiBold" />
+
+		<Setter
+			Property="Foreground"
+			Value="{StaticResource PrimaryTextBrush}" />
+
+	</Style>
+
+	<!-- Body text -->
+
+	<Style
+		x:Key="BodyStyle"
+		TargetType="TextBlock">
+
+		<Setter
+			Property="FontSize"
+			Value="13" />
+
+		<Setter
+			Property="Foreground"
+			Value="{StaticResource PrimaryTextBrush}" />
+
+	</Style>
+
+	<!-- Caption -->
+
+	<Style
+		x:Key="CaptionStyle"
+		TargetType="TextBlock">
+
+		<Setter
+			Property="FontSize"
+			Value="11" />
+
+		<Setter
+			Property="Foreground"
+			Value="{StaticResource SecondaryTextBrush}" />
+
+	</Style>
+
+	<!-- Navigation -->
+
+	<Style
+		x:Key="NavigationTextStyle"
+		TargetType="TextBlock">
+
+		<Setter
+			Property="FontSize"
+			Value="14" />
+
+		<Setter
+			Property="FontWeight"
+			Value="SemiBold" />
+
+		<Setter
+			Property="Foreground"
+			Value="{StaticResource NavigationForegroundBrush}" />
+
+	</Style>
+
+	<!-- Current user -->
+
+	<Style
+		x:Key="UserNameStyle"
+		TargetType="TextBlock">
+
+		<Setter
+			Property="FontSize"
+			Value="15" />
+
+		<Setter
+			Property="FontWeight"
+			Value="SemiBold" />
+
+		<Setter
+			Property="Foreground"
+			Value="{StaticResource NavigationForegroundBrush}" />
+
+	</Style>
+
+	<Style
+		x:Key="UserRoleStyle"
+		TargetType="TextBlock">
+
+		<Setter
+			Property="FontSize"
+			Value="11" />
+
+		<Setter
+			Property="Foreground"
+			Value="{StaticResource SecondaryTextBrush}" />
+
+	</Style>
+
 </ResourceDictionary>
