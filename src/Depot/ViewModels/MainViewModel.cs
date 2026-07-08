@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 using System.Collections.ObjectModel;
+using System.Windows;
 
 using Depot.Services;
 using Depot.Services.Import;
@@ -109,15 +110,15 @@ public sealed class MainViewModel : BaseViewModel
 				{
 					Name = "Administration",
 					Icon = "⚙",
-					Section = ShellSection.Administration
+					Section = ShellSection.Administration,
+					Margin = new Thickness(8, 24, 8, 4)
 				});
 		}
 
 		SelectedNavigationItem = NavigationItems[0];
 	}
 
-	public ObservableCollection<NavigationItem> NavigationItems { get; }
-		= new();
+	public ObservableCollection<NavigationItem> NavigationItems { get; } = new();
 
 	public DashboardViewModel DashboardViewModel { get; }
 
