@@ -18,7 +18,7 @@
 
 		<Setter
 			Property="Foreground"
-			Value="{StaticResource PrimaryTextBrush}" />
+			Value="{DynamicResource PrimaryTextBrush}" />
 
 	</Style>
 
@@ -38,7 +38,7 @@
 
 		<Setter
 			Property="Foreground"
-			Value="{StaticResource PrimaryTextBrush}" />
+			Value="{DynamicResource PrimaryTextBrush}" />
 
 	</Style>
 
@@ -58,7 +58,7 @@
 
 		<Setter
 			Property="Foreground"
-			Value="{StaticResource SecondaryTextBrush}" />
+			Value="{DynamicResource SecondaryTextBrush}" />
 
 	</Style>
 
@@ -78,7 +78,7 @@
 
 		<Setter
 			Property="Foreground"
-			Value="{StaticResource PrimaryTextBrush}" />
+			Value="{DynamicResource PrimaryTextBrush}" />
 
 	</Style>
 
@@ -94,7 +94,7 @@
 
 		<Setter
 			Property="Foreground"
-			Value="{StaticResource PrimaryTextBrush}" />
+			Value="{DynamicResource PrimaryTextBrush}" />
 
 	</Style>
 
@@ -110,7 +110,7 @@
 
 		<Setter
 			Property="Foreground"
-			Value="{StaticResource SecondaryTextBrush}" />
+			Value="{DynamicResource SecondaryTextBrush}" />
 
 	</Style>
 
@@ -130,7 +130,7 @@
 
 		<Setter
 			Property="Foreground"
-			Value="{StaticResource NavigationForegroundBrush}" />
+			Value="{DynamicResource NavigationForegroundBrush}" />
 
 	</Style>
 
@@ -150,7 +150,7 @@
 
 		<Setter
 			Property="Foreground"
-			Value="{StaticResource NavigationForegroundBrush}" />
+			Value="{DynamicResource NavigationForegroundBrush}" />
 
 	</Style>
 
@@ -164,7 +164,7 @@
 
 		<Setter
 			Property="Foreground"
-			Value="{StaticResource SecondaryTextBrush}" />
+			Value="{DynamicResource SecondaryTextBrush}" />
 
 	</Style>
 

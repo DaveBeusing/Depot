@@ -18,7 +18,7 @@
 
 		<Setter
 			Property="Foreground"
-			Value="{StaticResource NavigationForegroundBrush}" />
+			Value="{DynamicResource NavigationForegroundBrush}" />
 
 	</Style>
 
@@ -27,11 +27,7 @@
 	<Style
 		x:Key="NavigationListBoxItemStyle"
 		TargetType="ListBoxItem">
-
-		<Setter
-			Property="Margin"
-			Value="{Binding Margin}" />
-
+		
 		<Setter
 			Property="Padding"
 			Value="12" />
@@ -69,7 +65,7 @@
 							<Setter
 								TargetName="Border"
 								Property="Background"
-								Value="{StaticResource NavigationHoverBrush}" />
+								Value="{DynamicResource NavigationHoverBrush}" />
 
 						</Trigger>
 
@@ -80,7 +76,7 @@
 							<Setter
 								TargetName="Border"
 								Property="Background"
-								Value="{StaticResource NavigationSelectedBrush}" />
+								Value="{DynamicResource NavigationSelectedBrush}" />
 
 						</Trigger>
 
@@ -105,11 +101,11 @@
 			<TextBlock
 				Width="24"
 				Text="{Binding Icon}"
-				Style="{StaticResource NavigationTextStyle}" />
+				Style="{DynamicResource NavigationTextStyle}" />
 
 			<TextBlock
 				Text="{Binding Name}"
-				Style="{StaticResource NavigationTextStyle}" />
+				Style="{DynamicResource NavigationTextStyle}" />
 
 		</StackPanel>
 

@@ -6,8 +6,8 @@
 		x:Key="CardStyle"
 		TargetType="Border">
 
-		<Setter Property="Background" Value="{StaticResource SurfaceBrush}" />
-		<Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+		<Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+		<Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
 		<Setter Property="BorderThickness" Value="1" />
 		<Setter Property="Padding" Value="16" />
 

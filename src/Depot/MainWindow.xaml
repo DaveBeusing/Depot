@@ -19,7 +19,7 @@
 	xmlns:userViewModels="clr-namespace:Depot.ViewModels.Users"
 	xmlns:userViews="clr-namespace:Depot.Views.Users"
 	mc:Ignorable="d"
-	Title="Depot"
+	Title="Depot - Inventory Management"
 	Width="1600"
 	Height="950"
 	MinWidth="1200"
@@ -194,79 +194,12 @@
 
 
 				<ListBox
+					Style="{StaticResource NavigationListBoxStyle}"
+					ItemContainerStyle="{StaticResource NavigationListBoxItemStyle}"
 					ItemsSource="{Binding NavigationItems}"
-					SelectedItem="{Binding SelectedNavigationItem}"
-					Background="Transparent"
-					BorderThickness="0"
-					Foreground="{StaticResource NavigationForegroundBrush}">
+					SelectedItem="{Binding SelectedNavigationItem}">
 
-					<ListBox.ItemContainerStyle>
-
-						<Style TargetType="ListBoxItem">
-
-							<Setter Property="Margin" Value="8,2" />
-							<Setter Property="Padding" Value="8" />
-							<Setter Property="HorizontalContentAlignment" Value="Stretch" />
-
-							<Setter Property="Template">
-
-								<Setter.Value>
-
-									<ControlTemplate TargetType="ListBoxItem">
-
-										<Border
-											x:Name="Border"
-											Background="Transparent"
-											CornerRadius="6"
-											Padding="8">
-
-											<ContentPresenter />
-
-										</Border>
-
-										<ControlTemplate.Triggers>
-
-											<Trigger Property="IsMouseOver" Value="True">
-
-												<Setter
-													TargetName="Border"
-													Property="Background"
-													Value="{StaticResource NavigationHoverBrush}" />
-
-											</Trigger>
-
-											<Trigger Property="IsSelected" Value="True">
-
-												<Setter
-													TargetName="Border"
-													Property="Background"
-													Value="{StaticResource NavigationSelectedBrush}" />
-
-											</Trigger>
-
-										</ControlTemplate.Triggers>
-
-									</ControlTemplate>
-
-								</Setter.Value>
-
-							</Setter>
-
-							<Style.Triggers>
-
-								<DataTrigger
-									Binding="{Binding Section}"
-									Value="{x:Static viewModels:ShellSection.Administration}">
-
-									<Setter Property="Margin" Value="8,24,8,2" />
-
-								</DataTrigger>
-
-							</Style.Triggers>
-
-						</Style>
-
-					</ListBox.ItemContainerStyle>
+					
 
 					<ListBox.ItemTemplate>
 
