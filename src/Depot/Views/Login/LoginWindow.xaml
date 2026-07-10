@@ -37,12 +37,21 @@
 				<RowDefinition Height="Auto" />
 
 			</Grid.RowDefinitions>
+			<StackPanel
+				HorizontalAlignment="Center">
 
-			<TextBlock
-				Grid.Row="0"
-				Text="📦 Depot"
-				HorizontalAlignment="Center"
-				Style="{StaticResource PageTitleStyle}" />
+				<Image
+					Width="72"
+					Height="72"
+					Source="/Resources/Images/Depot.png"
+					Margin="0,0,0,16" />
+
+				<TextBlock
+					Text="Depot"
+					Style="{StaticResource PageTitleStyle}"
+					HorizontalAlignment="Center" />
+
+			</StackPanel>
 
 			<TextBlock
 				Grid.Row="2"

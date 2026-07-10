@@ -94,14 +94,22 @@
 			Background="{StaticResource NavigationBackgroundBrush}">
 
 			<DockPanel>
-
-				<TextBlock
+				<StackPanel
 					DockPanel.Dock="Top"
-					Margin="24"
-					Text="📦 Depot"
-					FontSize="24"
-					FontWeight="SemiBold"
-					Foreground="{StaticResource NavigationForegroundBrush}" />
+					Orientation="Horizontal"
+					Margin="{StaticResource Navigation.Logo.Margin}">
+
+					<Image
+						Width="40"
+						Height="40"
+						Source="/Resources/Images/Depot.png" />
+
+					<TextBlock
+						Margin="16,0,0,0"
+						Text="Depot"
+						Style="{StaticResource BrandTitleStyle}" />
+
+				</StackPanel>
 
 				<Border
 					DockPanel.Dock="Bottom"
