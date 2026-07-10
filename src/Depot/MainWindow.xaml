@@ -20,6 +20,7 @@
 	xmlns:userViews="clr-namespace:Depot.Views.Users"
 	mc:Ignorable="d"
 	Title="Depot - Inventory Management"
+	Icon="/Resources/Images/Depot.ico"
 	Width="1600"
 	Height="950"
 	MinWidth="1200"

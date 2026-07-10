@@ -8,11 +8,14 @@
     <UseWPF>true</UseWPF>
     <StartupObject>Depot.Program</StartupObject>
     <NuGetAudit>false</NuGetAudit>
+    <ApplicationIcon>Resources\Images\Depot.ico</ApplicationIcon>
   </PropertyGroup>
 
    <ItemGroup>
     <PackageReference Include="ClosedXML" Version="0.105.0" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.9" />
+    <Resource Include="Resources\Images\Depot.ico" />
+	  <Resource Include="Resources\Images\Depot.png" />
   </ItemGroup>
 
 </Project>
