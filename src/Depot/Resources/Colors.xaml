@@ -60,6 +60,23 @@
 		x:Key="NavigationSelectedBrush"
 		Color="#2563EB" />
 
+	<!-- Navigation Selection -->
+
+	<SolidColorBrush
+		x:Key="NavigationSelectedBackgroundBrush"
+		Color="#1A2563EB" />
+
+	<SolidColorBrush
+		x:Key="NavigationAccentBrush"
+		Color="#2563EB" />
+
+	<!-- Sidebar -->
+
+	<SolidColorBrush
+		x:Key="NavigationBorderBrush"
+		Color="#2E3948" />
+
+
 	<!-- Status -->
 
 	<SolidColorBrush

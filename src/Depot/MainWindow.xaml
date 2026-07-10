@@ -27,59 +27,44 @@
 	MinHeight="700">
 
 	<Window.Resources>
-
-		<ResourceDictionary>
-			
+		<ResourceDictionary>			
 			<DataTemplate DataType="{x:Type viewModels:DashboardViewModel}">
 				<views:DashboardView />
 			</DataTemplate>
-
 			<DataTemplate DataType="{x:Type viewModels:InventoryViewModel}">
 				<views:InventoryView />
 			</DataTemplate>
-
 			<DataTemplate DataType="{x:Type viewModels:ItemsViewModel}">
 				<views:ItemsView />
 			</DataTemplate>
-
 			<DataTemplate DataType="{x:Type viewModels:MovementsViewModel}">
 				<views:MovementsView />
 			</DataTemplate>
-
 			<DataTemplate DataType="{x:Type viewModels:ReportsViewModel}">
 				<views:ReportsView />
 			</DataTemplate>
-
 			<DataTemplate DataType="{x:Type viewModels:ImportViewModel}">
 				<views:ImportView />
 			</DataTemplate>
-
 			<DataTemplate DataType="{x:Type administrationViewModels:AdministrationViewModel}">
 				<administrationViews:AdministrationView />
 			</DataTemplate>
-
 			<DataTemplate DataType="{x:Type sharedViewModels:PlaceholderViewModel}">
 				<sharedViews:PlaceholderView />
 			</DataTemplate>
-
 			<DataTemplate DataType="{x:Type masterDataViewModels:MasterDataViewModel}">
 				<masterDataViews:MasterDataView />
 			</DataTemplate>
-
 			<DataTemplate DataType="{x:Type purposeViewModels:PurposeViewModel}">
 				<purposeViews:PurposesView />
 			</DataTemplate>
-
 			<DataTemplate DataType="{x:Type locationViewModels:LocationViewModel}">
 				<locationViews:LocationsView />
 			</DataTemplate>
-
 			<DataTemplate DataType="{x:Type userViewModels:UserViewModel}">
 				<userViews:UsersView />
 			</DataTemplate>
-
 		</ResourceDictionary>
-
 	</Window.Resources>
 
 	<Grid>
@@ -89,148 +74,70 @@
 			<ColumnDefinition Width="*" />
 		</Grid.ColumnDefinitions>
 
-		<Border
-			Grid.Column="0"
-			Background="{StaticResource NavigationBackgroundBrush}">
+		<Border Grid.Column="0" Background="{StaticResource NavigationBackgroundBrush}">
 
 			<DockPanel>
+
 				<StackPanel
 					DockPanel.Dock="Top"
 					Orientation="Horizontal"
 					Margin="{StaticResource Navigation.Logo.Margin}">
-
+					<!-- Brand Logo -->
 					<Image
-						Width="40"
-						Height="40"
+						Width="44"
+						Height="44"
 						Source="/Resources/Images/Depot.png" />
-
+					<!-- Brand Title -->
 					<TextBlock
 						Margin="16,0,0,0"
 						Text="Depot"
 						Style="{StaticResource BrandTitleStyle}" />
-
 				</StackPanel>
 
+				<!-- User Panel -->
 				<Border
 					DockPanel.Dock="Bottom"
-					Padding="16"
-					BorderThickness="0,0,0,0"
-					BorderBrush="{StaticResource BorderBrush}">
-
+					Padding="{StaticResource Navigation.UserPanel.Padding}"
+					BorderThickness="0">
 					<StackPanel>
-
+						<!-- User -->
 						<TextBlock
-							Margin="8,0,0,0"
+							Margin="{StaticResource Navigation.User.Margin}"
 							Text="{Binding CurrentUserDisplayName}"
-							FontWeight="SemiBold"
-							Foreground="{StaticResource NavigationForegroundBrush}" />
-
+							Style="{StaticResource UserNameStyle}" />
+						<!-- User Role -->
 						<TextBlock
-							Margin="8,2,0,12"
+							Margin="{StaticResource Navigation.UserRole.Margin}"
 							Text="{Binding CurrentUserRole}"
-							Foreground="{StaticResource SecondaryTextBrush}" />
-
-
+							Style="{StaticResource UserRoleStyle}" />
+						<!-- Logout -->
 						<Button
-							Click="OnLogoutClicked"
-							Background="Transparent"
-							BorderThickness="0"
-							HorizontalContentAlignment="Stretch"
-							Cursor="Hand">
-
-							<Button.Template>
-
-								<ControlTemplate TargetType="Button">
-
-									<Border
-										x:Name="Border"
-										Background="Transparent"
-										CornerRadius="6"
-										Padding="8">
-
-										<StackPanel Orientation="Horizontal">
-
-											<TextBlock
-												Width="24"
-												Text="🚪"
-												Foreground="{StaticResource NavigationForegroundBrush}" />
-
-											<TextBlock
-												Text="Log out"
-												FontWeight="SemiBold"
-												Foreground="{StaticResource NavigationForegroundBrush}" />
-
-										</StackPanel>
-
-									</Border>
-
-									<ControlTemplate.Triggers>
-
-										<Trigger Property="IsMouseOver" Value="True">
-
-											<Setter
-												TargetName="Border"
-												Property="Background"
-												Value="{StaticResource NavigationHoverBrush}" />
-
-										</Trigger>
-
-										<Trigger Property="IsPressed" Value="True">
-
-											<Setter
-												TargetName="Border"
-												Property="Background"
-												Value="{StaticResource NavigationSelectedBrush}" />
-
-										</Trigger>
-
-									</ControlTemplate.Triggers>
-
-								</ControlTemplate>
-
-							</Button.Template>
-
-						</Button>
-
-
-
+							Style="{StaticResource NavigationButtonStyle}"
+							Content="⏻ Log out"
+							Click="OnLogoutClicked"/>
 					</StackPanel>
-
 				</Border>
 
 
-				
-
-
+				<!-- Navigation Items -->
 				<ListBox
 					Style="{StaticResource NavigationListBoxStyle}"
 					ItemContainerStyle="{StaticResource NavigationListBoxItemStyle}"
 					ItemsSource="{Binding NavigationItems}"
 					SelectedItem="{Binding SelectedNavigationItem}">
-
-					
-
 					<ListBox.ItemTemplate>
-
 						<DataTemplate>
-
 							<StackPanel Orientation="Horizontal">
-
 								<TextBlock
 									Width="24"
 									Text="{Binding Icon}" />
-
 								<TextBlock
 									FontSize="14"
 									FontWeight="SemiBold"
 									Text="{Binding Name}" />
-
 							</StackPanel>
-
 						</DataTemplate>
-
 					</ListBox.ItemTemplate>
-
 				</ListBox>
 
 			</DockPanel>
@@ -244,10 +151,7 @@
 			Background="{StaticResource SurfaceBrush}"
 			BorderBrush="{StaticResource BorderBrush}"
 			BorderThickness="1">
-
-			<ContentControl
-				Content="{Binding CurrentViewModel}" />
-
+			<ContentControl Content="{Binding CurrentViewModel}" />
 		</Border>
 
 	</Grid>

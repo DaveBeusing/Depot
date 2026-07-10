@@ -8,96 +8,75 @@
 		x:Key="NavigationListBoxStyle"
 		TargetType="ListBox">
 
-		<Setter
-			Property="Background"
-			Value="Transparent" />
-
-		<Setter
-			Property="BorderThickness"
-			Value="0" />
-
-		<Setter
-			Property="Foreground"
-			Value="{DynamicResource NavigationForegroundBrush}" />
+		<Setter	Property="Background" Value="Transparent" />
+		<Setter	Property="BorderThickness" Value="0" />
+		<Setter Property="Foreground" Value="{DynamicResource NavigationForegroundBrush}" />
 
 	</Style>
 
 	<!-- Navigation Item -->
-
 	<Style
 		x:Key="NavigationListBoxItemStyle"
-		TargetType="ListBoxItem">
-		
-		<Setter
-			Property="Padding"
-			Value="12" />
-
-		<Setter
-			Property="HorizontalContentAlignment"
-			Value="Stretch" />
-
-		<Setter
-			Property="Template">
-
+		TargetType="ListBoxItem">		
+		<Setter	Property="Padding" Value="12" />
+		<Setter Property="HorizontalContentAlignment" Value="Stretch" />
+		<Setter Property="Template">
 			<Setter.Value>
+				<ControlTemplate TargetType="ListBoxItem">
+					<Grid>
+						<Grid.ColumnDefinitions>
+							<ColumnDefinition Width="4"/>
+							<ColumnDefinition Width="8"/>
+							<ColumnDefinition Width="*"/>
+						</Grid.ColumnDefinitions>
 
-				<ControlTemplate
-					TargetType="ListBoxItem">
+						<!-- Accent -->
+						<Border
+							x:Name="Accent"
+							Grid.Column="0"
+							Margin="0,2,0,2"
+							Background="{DynamicResource NavigationAccentBrush}"
+							CornerRadius="0,2,2,0"
+							Visibility="Collapsed"/>
 
-					<Border
-						x:Name="Border"
-						Background="Transparent"
-						CornerRadius="6"
-						Padding="{TemplateBinding Padding}">
-
-						<ContentPresenter
-							HorizontalAlignment="Stretch"
-							VerticalAlignment="Center" />
-
-					</Border>
+						<!-- Content -->
+						<Border
+							x:Name="Background"
+							Grid.Column="2"
+							Background="Transparent"
+							CornerRadius="6"
+							Padding="{TemplateBinding Padding}">
+							<ContentPresenter VerticalAlignment="Center"/>
+						</Border>
+					</Grid>
 
 					<ControlTemplate.Triggers>
-
-						<Trigger
-							Property="IsMouseOver"
-							Value="True">
-
-							<Setter
-								TargetName="Border"
-								Property="Background"
-								Value="{DynamicResource NavigationHoverBrush}" />
-
+						<!-- Hover -->
+						<Trigger Property="IsMouseOver" Value="True">
+							<Setter TargetName="Background" Property="Background" Value="{DynamicResource NavigationHoverBrush}" />
 						</Trigger>
 
-						<Trigger
-							Property="IsSelected"
-							Value="True">
-
+						<!-- Selected -->
+						<Trigger Property="IsSelected" Value="True">
 							<Setter
-								TargetName="Border"
+								TargetName="Accent"
+								Property="Visibility"
+								Value="Visible" />
+							<Setter
+								TargetName="Background"
 								Property="Background"
-								Value="{DynamicResource NavigationSelectedBrush}" />
-
+								Value="{DynamicResource NavigationSelectedBackgroundBrush}" />
 						</Trigger>
-
 					</ControlTemplate.Triggers>
 
 				</ControlTemplate>
-
 			</Setter.Value>
-
 		</Setter>
-
 	</Style>
 
 	<!-- Navigation Item Template -->
-
-	<DataTemplate
-		x:Key="NavigationItemTemplate">
-
-		<StackPanel
-			Orientation="Horizontal">
-
+	<DataTemplate x:Key="NavigationItemTemplate">
+		<StackPanel Orientation="Horizontal">
 			<TextBlock
 				Width="24"
 				Text="{Binding Icon}"
@@ -108,7 +87,6 @@
 				Style="{DynamicResource NavigationTextStyle}" />
 
 		</StackPanel>
-
 	</DataTemplate>
 
 </ResourceDictionary>
