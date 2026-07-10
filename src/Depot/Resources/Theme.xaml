@@ -9,6 +9,7 @@
         <ResourceDictionary Source="Styles.xaml"/>
         <ResourceDictionary Source="Buttons.xaml"/>
         <ResourceDictionary Source="Spacing.xaml"/>
+        <ResourceDictionary Source="Status.xaml" />
 
         <!-- später -->
 

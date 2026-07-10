@@ -66,9 +66,11 @@ public sealed class UserEditorViewModel : BaseViewModel
 			OnPropertyChanged();
             OnPropertyChanged(nameof(Status));
 	        OnPropertyChanged(nameof(ActivationButtonText));
+			OnPropertyChanged(nameof(IsInactive));
 		}
 	}
 
+	public bool IsInactive => !IsActive;
 	public bool IsExistingUser => Id != 0;
 	public bool CanEditUserName => !IsExistingUser;
 	public string EditorTitle => IsExistingUser ? "Edit User" : "New User";
