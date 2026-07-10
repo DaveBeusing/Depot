@@ -73,34 +73,22 @@
 				Style="{StaticResource CardStyle}">
 
 				<Grid>
-
 					<Grid.RowDefinitions>
-
 						<RowDefinition Height="Auto"/>
 						<RowDefinition Height="16"/>
-
 						<RowDefinition Height="Auto"/>
 						<RowDefinition Height="4"/>
 						<RowDefinition Height="Auto"/>
-
 						<RowDefinition Height="12"/>
-
 						<RowDefinition Height="Auto"/>
 						<RowDefinition Height="4"/>
 						<RowDefinition Height="Auto"/>
-
 						<RowDefinition Height="12"/>
-
 						<RowDefinition Height="Auto"/>
-
 						<RowDefinition Height="12"/>
-
 						<RowDefinition Height="Auto"/>
-
 						<RowDefinition Height="*"/>
-
 						<RowDefinition Height="Auto"/>
-
 					</Grid.RowDefinitions>
 
 					<TextBlock
@@ -151,17 +139,20 @@
 
 						<Button
 							Content="New"
-							Command="{Binding NewUserCommand}" />
+							Command="{Binding NewUserCommand}"
+							Style="{StaticResource PrimaryButtonStyle}" />
 
 						<Button
-							Margin="8,0,0,0"
 							Content="Save"
-							Command="{Binding SaveUserCommand}" />
+							Command="{Binding SaveUserCommand}"
+							Margin="{StaticResource Button.Margin}"
+							Style="{StaticResource PrimaryButtonStyle}" />
 
 						<Button
-							Margin="8,0,0,0"
 							Content="{Binding Editor.ActivationButtonText}"
-							Command="{Binding ToggleActiveCommand}" />
+							Command="{Binding ToggleActiveCommand}"
+							Margin="{StaticResource Button.Margin}"
+							Style="{StaticResource DangerButtonStyle}" />
 
 					</StackPanel>
 

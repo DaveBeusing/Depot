@@ -62,9 +62,9 @@
 			<Button
 				Grid.Row="8"
 				Content="Login"
-				Width="120"
 				HorizontalAlignment="Right"
-				Command="{Binding LoginCommand}" />
+				Command="{Binding LoginCommand}"
+				Style="{StaticResource PrimaryButtonStyle}" />
 
 			<TextBlock
 				Grid.Row="10"

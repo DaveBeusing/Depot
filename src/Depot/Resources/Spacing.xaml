@@ -1,0 +1,135 @@
+<ResourceDictionary
+	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+	<!--
+	===========================================================================
+	Page
+	===========================================================================
+	-->
+
+	<Thickness
+		x:Key="Page.Padding">
+		24
+	</Thickness>
+
+	<Thickness
+		x:Key="Page.Margin">
+		24
+	</Thickness>
+
+	<!--
+	===========================================================================
+	Cards
+	===========================================================================
+	-->
+
+	<Thickness
+		x:Key="Card.Padding">
+		16
+	</Thickness>
+
+	<Thickness
+		x:Key="Card.Margin">
+		16
+	</Thickness>
+
+	<!--
+	===========================================================================
+	Controls
+	===========================================================================
+	-->
+
+	<Thickness
+		x:Key="Control.Margin">
+		0,8,0,0
+	</Thickness>
+
+	<Thickness
+		x:Key="Control.Margin.Large">
+		0,16,0,0
+	</Thickness>
+
+	<Thickness
+		x:Key="Control.Padding">
+		12,8
+	</Thickness>
+
+	<!--
+	===========================================================================
+	Labels
+	===========================================================================
+	-->
+
+	<Thickness x:Key="Label.Margin">0,0,0,4</Thickness>
+
+	<!--
+	===========================================================================
+	Buttons
+	===========================================================================
+	-->
+
+	<Thickness x:Key="Button.Margin">8,0,0,0</Thickness>
+	<Thickness x:Key="Button.Padding">16,8</Thickness>
+
+	<!--
+	===========================================================================
+	Search
+	===========================================================================
+	-->
+
+	<Thickness x:Key="Search.Margin">0,16,0,16</Thickness>
+
+	<!--
+	===========================================================================
+	Navigation
+	===========================================================================
+	-->
+
+	<Thickness
+		x:Key="Navigation.Logo.Margin">
+		24
+	</Thickness>
+
+	<Thickness
+		x:Key="Navigation.Item.Margin">
+		8,4
+	</Thickness>
+
+	<Thickness
+		x:Key="Navigation.Admin.Margin">
+		8,24,8,4
+	</Thickness>
+
+	<Thickness
+		x:Key="Navigation.Item.Padding">
+		12
+	</Thickness>
+
+	<Thickness
+		x:Key="Navigation.User.Margin">
+		8,0,0,0
+	</Thickness>
+
+	<Thickness
+		x:Key="Navigation.UserRole.Margin">
+		8,2,0,12
+	</Thickness>
+
+	<Thickness
+		x:Key="Navigation.UserPanel.Padding">
+		16
+	</Thickness>
+
+	<!--
+	===========================================================================
+	Dialogs
+	===========================================================================
+	-->
+
+	<Thickness
+		x:Key="Dialog.Padding">
+		24
+	</Thickness>
+
+</ResourceDictionary>

@@ -3,19 +3,17 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <ResourceDictionary.MergedDictionaries>
-
         <ResourceDictionary Source="Colors.xaml"/>
-
         <ResourceDictionary Source="Typography.xaml"/>
-
         <ResourceDictionary Source="Navigation.xaml"/>
-
         <ResourceDictionary Source="Styles.xaml"/>
+        <ResourceDictionary Source="Buttons.xaml"/>
+        <ResourceDictionary Source="Spacing.xaml"/>
 
         <!-- später -->
 
         <!--
-        <ResourceDictionary Source="Buttons.xaml"/>
+        
         <ResourceDictionary Source="Inputs.xaml"/>
         <ResourceDictionary Source="Cards.xaml"/>
         -->

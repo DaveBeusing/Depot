@@ -110,17 +110,20 @@
 
 						<Button
 							Content="New"
-							Command="{Binding NewPurposeCommand}" />
+							Command="{Binding NewPurposeCommand}"
+							Style="{StaticResource PrimaryButtonStyle}" />
 
 						<Button
-							Margin="8,0,0,0"
 							Content="Save"
-							Command="{Binding SavePurposeCommand}" />
+							Command="{Binding SavePurposeCommand}"
+							Margin="{StaticResource Button.Margin}"
+							Style="{StaticResource PrimaryButtonStyle}" />
 
 						<Button
-							Margin="8,0,0,0"
 							Content="Deactivate"
-							Command="{Binding DeactivatePurposeCommand}" />
+							Command="{Binding DeactivatePurposeCommand}"
+							Margin="{StaticResource Button.Margin}"
+							Style="{StaticResource DangerButtonStyle}" />
 
 					</StackPanel>
 

@@ -110,17 +110,20 @@
 
 						<Button
 							Content="New"
-							Command="{Binding NewLocationCommand}" />
+							Command="{Binding NewLocationCommand}"
+							Style="{StaticResource PrimaryButtonStyle}" />
 
 						<Button
-							Margin="8,0,0,0"
 							Content="Save"
-							Command="{Binding SaveLocationCommand}" />
+							Command="{Binding SaveLocationCommand}"
+							Margin="{StaticResource Button.Margin}"
+							Style="{StaticResource PrimaryButtonStyle}" />
 
 						<Button
-							Margin="8,0,0,0"
 							Content="Deactivate"
-							Command="{Binding DeactivateLocationCommand}" />
+							Command="{Binding DeactivateLocationCommand}"
+							Margin="{StaticResource Button.Margin}"
+							Style="{StaticResource DangerButtonStyle}" />
 
 					</StackPanel>
 
