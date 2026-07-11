@@ -41,7 +41,6 @@
 				<TextBlock.Style>
 					<Style TargetType="TextBlock">
 						<Setter Property="Foreground" Value="#6B7280" />
-
 						<Style.Triggers>
 							<DataTrigger Binding="{Binding IsExportStatusError}" Value="True">
 								<Setter Property="Foreground" Value="#B91C1C" />
@@ -71,6 +70,7 @@
 			<ComboBox
 				Grid.Column="0"
 				Height="32"
+				Style="{StaticResource AppComboBoxStyle}"
 				ItemsSource="{Binding ReportOptions}"
 				SelectedItem="{Binding SelectedReport, Mode=TwoWay}"
 				ToolTip="Select report" />
@@ -78,6 +78,7 @@
 			<TextBox
 				Grid.Column="2"
 				Height="32"
+				Style="{StaticResource SearchTextBoxStyle}"
 				Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
 				ToolTip="{Binding SearchToolTip}" />
 

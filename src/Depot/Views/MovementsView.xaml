@@ -20,7 +20,7 @@
 
 		<TextBox
 			Grid.Row="2"
-			Height="32"
+			Style="{StaticResource SearchTextBoxStyle}"
 			Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
 			ToolTip="Search by part number, description, purpose, location, reference or notes" />
 
@@ -142,6 +142,7 @@
 					<StackPanel Grid.Row="4">
 						<TextBlock Text="Inventory" />
 						<ComboBox
+							Style="{StaticResource AppComboBoxStyle}"
 							ItemsSource="{Binding AvailableInventories}"
 							SelectedItem="{Binding SelectedInventory}"
 							DisplayMemberPath="DisplayName" />
@@ -150,6 +151,7 @@
 					<StackPanel Grid.Row="6">
 						<TextBlock Text="Movement Type" />
 						<ComboBox
+							Style="{StaticResource AppComboBoxStyle}"
 							SelectedValue="{Binding Editor.MovementType}">
 							<ComboBoxItem Content="Purchase" />
 							<ComboBoxItem Content="Withdrawal" />
@@ -160,12 +162,14 @@
 					<StackPanel Grid.Row="8">
 						<TextBlock Text="Quantity" />
 						<TextBox
+							Style="{StaticResource AppTextBoxStyle}"
 							Text="{Binding Editor.Quantity, UpdateSourceTrigger=PropertyChanged}" />
 					</StackPanel>
 
 					<StackPanel Grid.Row="10">
 						<TextBlock Text="Unit Price" />
 						<TextBox
+							Style="{StaticResource AppTextBoxStyle}"
 							IsEnabled="{Binding Editor.RequiresUnitPrice}"
 							Text="{Binding Editor.UnitPrice, UpdateSourceTrigger=PropertyChanged}" />
 					</StackPanel>
@@ -173,6 +177,7 @@
 					<StackPanel Grid.Row="12">
 						<TextBlock Text="Reference" />
 						<TextBox
+							Style="{StaticResource AppTextBoxStyle}"
 							Text="{Binding Editor.Reference, UpdateSourceTrigger=PropertyChanged}" />
 					</StackPanel>
 

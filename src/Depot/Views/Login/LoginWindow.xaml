@@ -7,7 +7,7 @@
 	WindowStartupLocation="CenterScreen"
 	ResizeMode="NoResize"
 	SizeToContent="WidthAndHeight"
-	ShowInTaskbar="False">
+	ShowInTaskbar="true">
 
 	<Border
 		Padding="32"

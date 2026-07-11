@@ -20,6 +20,8 @@
 
 		<TextBox
 			Grid.Row="2"
+			Margin="{StaticResource Search.Margin}"
+			Style="{StaticResource SearchTextBoxStyle}"
 			Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
 
 		<Grid Grid.Row="4">
@@ -54,6 +56,7 @@
 								<TextBlock
 									Margin="0,2,0,0"
 									Text="{Binding Role}"
+									
 									Foreground="{StaticResource SecondaryTextBrush}"/>
 
 							</StackPanel>
@@ -96,40 +99,25 @@
 						Text="{Binding Editor.EditorTitle}"
 						Style="{StaticResource SectionTitleStyle}" />
 
-					<TextBlock
-						Grid.Row="2"
-						Text="User name"/>
-
-					<TextBox
-						Grid.Row="4"
+					<TextBlock Grid.Row="2" Text="User name"/>
+					<TextBox Grid.Row="4"
 						Text="{Binding Editor.UserName}"
+						Style="{StaticResource AppTextBoxStyle}"
 						IsReadOnly="{Binding Editor.IsExistingUser}" />
 
-					<TextBlock
-						Grid.Row="6"
-						Text="Display name"/>
-
-					<TextBox
-						Grid.Row="8"
+					<TextBlock Grid.Row="6" Text="Display name"/>
+					<TextBox Grid.Row="8"
+						Style="{StaticResource AppTextBoxStyle}"
 						Text="{Binding Editor.DisplayName}" />
 
 					<CheckBox
 						Grid.Row="10"
 						Content="Administrator"
+						Style="{StaticResource AppCheckBoxStyle}"
 						IsChecked="{Binding Editor.IsAdministrator}" />
 
 					<StackPanel Grid.Row="12">
-<!--
-						<TextBlock
-							Text="Status" />
-
-						<TextBlock
-							Margin="0,4,0,0"
-							Text="{Binding Editor.Status}"
-							Foreground="{StaticResource SecondaryTextBrush}" />
--->
 						<Grid>
-
 							<Border
 								Style="{StaticResource ActiveStatusBadgeStyle}"
 								Visibility="{Binding Editor.IsActive, Converter={StaticResource BooleanToVisibilityConverter}}">
@@ -149,10 +137,7 @@
 									Style="{StaticResource StatusBadgeTextStyle}" />
 
 							</Border>
-
 						</Grid>
-
-
 					</StackPanel>
 
 

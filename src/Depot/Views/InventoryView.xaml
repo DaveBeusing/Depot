@@ -20,7 +20,7 @@
 
 		<TextBox
 			Grid.Row="2"
-			Height="32"
+			Style="{StaticResource SearchTextBoxStyle}"
 			Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
 			ToolTip="Search by part number, description, manufacturer, category, purpose or location" />
 
@@ -72,7 +72,7 @@
 
 					<DataGridTextColumn
 						Header="Avg Cost"
-						Binding="{Binding AverageCost, StringFormat={}{0:N4} EUR}"
+						Binding="{Binding AverageCost, StringFormat={}{0:N2} EUR}"
 						Width="140" />
 
 					<DataGridTextColumn
@@ -260,7 +260,7 @@
 
 								<TextBlock
 									Margin="0,6,0,0"
-									Text="{Binding Details.AverageCost, StringFormat={}{0:N4} EUR}"
+									Text="{Binding Details.AverageCost, StringFormat={}{0:N2} EUR}"
 									FontSize="18"
 									FontWeight="SemiBold" />
 

@@ -34,6 +34,7 @@
 
 				<TextBox
 					Grid.Row="0"
+					Style="{StaticResource SearchTextBoxStyle}"
 					Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
 
 				<DataGrid
@@ -90,6 +91,7 @@
 
 					<TextBox
 						Grid.Row="4"
+						Style="{StaticResource AppTextBoxStyle}"
 						Text="{Binding Editor.Name, UpdateSourceTrigger=PropertyChanged}" />
 
 					<TextBlock
@@ -99,7 +101,8 @@
 					<TextBox
 						Grid.Row="8"
 						AcceptsReturn="True"
-						MinHeight="80"
+						MinHeight="120"
+						Style="{StaticResource MultilineTextBoxStyle}"
 						Text="{Binding Editor.Description, UpdateSourceTrigger=PropertyChanged}" />
 
 					<StackPanel

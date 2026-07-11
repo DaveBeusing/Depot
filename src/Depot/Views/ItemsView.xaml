@@ -36,6 +36,7 @@
 		<TextBox
 			Grid.Row="2"
 			Height="32"
+			Style="{StaticResource SearchTextBoxStyle}"
 			Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
 			ToolTip="Search by part number, description, manufacturer or category" />
 
@@ -131,6 +132,7 @@
 					<StackPanel Grid.Row="4">
 						<TextBlock Text="Part Number" />
 						<TextBox
+							Style="{StaticResource AppTextBoxStyle}"
 							IsEnabled="{Binding Editor.CanEditPartNumber}"
 							Text="{Binding Editor.PartNumber, UpdateSourceTrigger=PropertyChanged}" />
 					</StackPanel>
@@ -138,18 +140,21 @@
 					<StackPanel Grid.Row="6">
 						<TextBlock Text="Description" />
 						<TextBox
+							Style="{StaticResource AppTextBoxStyle}"
 							Text="{Binding Editor.Description, UpdateSourceTrigger=PropertyChanged}" />
 					</StackPanel>
 
 					<StackPanel Grid.Row="8">
 						<TextBlock Text="Manufacturer" />
 						<TextBox
+							Style="{StaticResource AppTextBoxStyle}"
 							Text="{Binding Editor.Manufacturer, UpdateSourceTrigger=PropertyChanged}" />
 					</StackPanel>
 
 					<StackPanel Grid.Row="10">
 						<TextBlock Text="Category" />
 						<TextBox
+							Style="{StaticResource AppTextBoxStyle}"
 							Text="{Binding Editor.Category, UpdateSourceTrigger=PropertyChanged}" />
 					</StackPanel>
 

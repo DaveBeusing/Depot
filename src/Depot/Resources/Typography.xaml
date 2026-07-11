@@ -4,7 +4,6 @@
 
 	
 	<!-- Brand -->
-
 	<Style x:Key="BrandTitleStyle" TargetType="TextBlock">
 		<Setter	Property="FontSize" Value="28" />
 		<Setter Property="FontWeight" Value="Bold" />
@@ -97,7 +96,6 @@
 	</Style>
 
 	<!-- Body text -->
-
 	<Style
 		x:Key="BodyStyle"
 		TargetType="TextBlock">
@@ -149,7 +147,6 @@
 	</Style>
 
 	<!-- Current user -->
-
 	<Style
 		x:Key="UserNameStyle"
 		TargetType="TextBlock">
