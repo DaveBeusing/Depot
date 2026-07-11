@@ -84,7 +84,7 @@
 					Margin="{StaticResource Navigation.Logo.Margin}">
 					<!-- Brand Logo -->
 					<Image
-						Width="44"
+						Width="56"
 						Height="44"
 						Source="/Resources/Images/Depot.png" />
 					<!-- Brand Title -->

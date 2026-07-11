@@ -178,10 +178,8 @@
 
 					<StackPanel Grid.Row="14">
 						<Button
-							Width="120"
-							Height="32"
-							HorizontalAlignment="Right"
 							Content="Create"
+							Style="{StaticResource PrimaryButtonStyle}"
 							Command="{Binding CreateMovementCommand}" />
 					</StackPanel>
 

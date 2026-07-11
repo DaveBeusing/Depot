@@ -54,9 +54,8 @@
 
 			<Button
 				Grid.Column="3"
-				Width="120"
-				Height="32"
 				Content="Export"
+				Style="{StaticResource PrimaryButtonStyle}"
 				Command="{Binding ExportCommand}" />
 
 		</Grid>

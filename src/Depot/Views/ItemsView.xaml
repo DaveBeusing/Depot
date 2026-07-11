@@ -27,9 +27,8 @@
 
 			<Button
 				Grid.Column="1"
-				Width="120"
-				Height="32"
 				Content="New Item"
+				Style="{StaticResource PrimaryButtonStyle}"
 				Command="{Binding NewItemCommand}" />
 
 		</Grid>
@@ -160,16 +159,14 @@
 						HorizontalAlignment="Right">
 
 						<Button
-							Width="100"
-							Height="32"
-							Margin="0,0,8,0"
 							Content="Deactivate"
+							Style="{StaticResource DangerButtonStyle}"
 							Command="{Binding DeactivateItemCommand}" />
 
 						<Button
-							Width="100"
-							Height="32"
 							Content="{Binding Editor.SaveButtonText}"
+							Style="{StaticResource PrimaryButtonStyle}"
+							Margin="{StaticResource Button.Margin}"
 							Command="{Binding SaveItemCommand}" />
 
 					</StackPanel>

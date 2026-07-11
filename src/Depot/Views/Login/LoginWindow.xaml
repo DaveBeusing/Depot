@@ -41,7 +41,7 @@
 				HorizontalAlignment="Center">
 
 				<Image
-					Width="84"
+					Width="96"
 					Height="84"
 					Source="/Resources/Images/Depot.png"
 					Margin="0,0,0,16" />
