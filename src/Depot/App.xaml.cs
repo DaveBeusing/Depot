@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 using System.Windows;
+using System.Windows.Markup;
 
 using Depot.Data;
 using Depot.Diagnostics;
@@ -16,6 +17,14 @@ namespace Depot;
 
 public partial class App : Application
 {
+	static App()
+	{
+		FrameworkElement.LanguageProperty.OverrideMetadata(
+			typeof(FrameworkElement),
+			new FrameworkPropertyMetadata(
+				XmlLanguage.GetLanguage("de-DE")));
+	}
+
 	public static SqliteConnectionFactory ConnectionFactory { get; private set; } = null!;
 	public static DepotDatabase Database { get; private set; } = null!;
 	public static ItemRepository ItemRepository { get; private set; } = null!;

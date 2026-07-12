@@ -114,6 +114,7 @@
 									Margin="0,8,0,0"
 									Content="{TemplateBinding Value}"
 									ContentTemplate="{TemplateBinding ValueTemplate}"
+									ContentStringFormat="{TemplateBinding ValueStringFormat}"
 									TextElement.FontSize="32"
 									TextElement.FontWeight="SemiBold"
 									TextElement.Foreground="{TemplateBinding Foreground}" />

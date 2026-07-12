@@ -9,6 +9,8 @@ namespace Depot.Services;
 
 public sealed class ReportService
 {
+	private const string EuroCurrencyFormat = "#,##0.00 [$€-407]";
+
 	private readonly StockService _stockService;
 
 	public ReportService(
@@ -545,7 +547,7 @@ public sealed class ReportService
 			4,
 			5)
 			.Style.NumberFormat.Format =
-				"#,##0.00";
+				EuroCurrencyFormat;
 
 		var headerRange =
 			worksheet.Range(
@@ -581,7 +583,7 @@ public sealed class ReportService
 				lastDataRow,
 				8)
 				.Style.NumberFormat.Format =
-					"#,##0.0000";
+					EuroCurrencyFormat;
 
 			worksheet.Range(
 				headerRow + 1,
@@ -589,7 +591,7 @@ public sealed class ReportService
 				lastDataRow,
 				9)
 				.Style.NumberFormat.Format =
-					"#,##0.00";
+					EuroCurrencyFormat;
 		}
 
 		worksheet.SheetView.FreezeRows(
@@ -814,7 +816,7 @@ public sealed class ReportService
 			4,
 			5)
 			.Style.NumberFormat.Format =
-				"#,##0.00";
+				EuroCurrencyFormat;
 
 		var headerRange =
 			worksheet.Range(
@@ -850,7 +852,7 @@ public sealed class ReportService
 				lastDataRow,
 				5)
 				.Style.NumberFormat.Format =
-					"#,##0.00";
+					EuroCurrencyFormat;
 		}
 
 		worksheet.SheetView.FreezeRows(

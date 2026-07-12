@@ -49,7 +49,8 @@
 				Icon="M 18,10 A 8,8 0 1 1 2,10 A 8,8 0 1 1 18,10 M 12.5,6.5 C 11.8,5.8 8.5,5.5 8,7 C 7.4,8.8 12.8,8.5 12,11 C 11.5,12.5 8.2,12.2 7.5,11.5 M 10,4.5 L 10,15.5"
 				SupportingText="Current inventory valuation"
 				Title="Inventory Value"
-				Value="{Binding TotalInventoryValue, StringFormat={}{0:N2} EUR}" />
+				Value="{Binding TotalInventoryValue}"
+				ValueStringFormat="{}{0:C2}" />
 
 			<controls:MetricCard
 				Grid.Column="6"

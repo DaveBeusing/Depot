@@ -189,7 +189,7 @@
 
 					<TextBlock
 						Margin="0,8,0,0"
-						Text="{Binding TotalInventoryValue, StringFormat={}{0:N2} EUR}"
+						Text="{Binding TotalInventoryValue, StringFormat={}{0:C2}}"
 						FontSize="32"
 						FontWeight="SemiBold"
 						TextAlignment="Center"
@@ -256,12 +256,12 @@
 
 						<DataGridTextColumn
 							Header="Avg Cost"
-							Binding="{Binding AverageCost, StringFormat={}{0:N4} EUR}"
+							Binding="{Binding AverageCost, StringFormat={}{0:C2}}"
 							Width="140" />
 
 						<DataGridTextColumn
 							Header="Value"
-							Binding="{Binding InventoryValue, StringFormat={}{0:N2} EUR}"
+							Binding="{Binding InventoryValue, StringFormat={}{0:C2}}"
 							Width="140" />
 
 					</DataGrid.Columns>
@@ -298,7 +298,7 @@
 
 						<DataGridTextColumn
 							Header="Inventory Value"
-							Binding="{Binding InventoryValue, StringFormat={}{0:N2} EUR}"
+							Binding="{Binding InventoryValue, StringFormat={}{0:C2}}"
 							Width="160" />
 
 					</DataGrid.Columns>

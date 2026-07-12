@@ -21,6 +21,9 @@ public sealed class MetricCard : Control
     public static readonly DependencyProperty ValueTemplateProperty = DependencyProperty.Register(
         nameof(ValueTemplate), typeof(DataTemplate), typeof(MetricCard), new PropertyMetadata(null));
 
+    public static readonly DependencyProperty ValueStringFormatProperty = DependencyProperty.Register(
+        nameof(ValueStringFormat), typeof(string), typeof(MetricCard), new PropertyMetadata(null));
+
     static MetricCard()
     {
         DefaultStyleKeyProperty.OverrideMetadata(
@@ -56,5 +59,11 @@ public sealed class MetricCard : Control
     {
         get => (DataTemplate?)GetValue(ValueTemplateProperty);
         set => SetValue(ValueTemplateProperty, value);
+    }
+
+    public string? ValueStringFormat
+    {
+        get => (string?)GetValue(ValueStringFormatProperty);
+        set => SetValue(ValueStringFormatProperty, value);
     }
 }

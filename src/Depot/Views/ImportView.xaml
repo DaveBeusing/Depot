@@ -79,7 +79,7 @@
 				Text="{Binding TotalQuantity, StringFormat=Quantity: {0}, Mode=OneWay}" />
 
 			<TextBlock
-				Text="{Binding TotalValue, StringFormat=Value: {0:N2} EUR, Mode=OneWay}" />
+				Text="{Binding TotalValue, StringFormat=Value: {0:C2}, Mode=OneWay}" />
 
 		</WrapPanel>
 
@@ -140,12 +140,12 @@
 
 				<DataGridTextColumn
 					Header="Unit Price"
-					Binding="{Binding UnitPrice, StringFormat={}{0:N4}}"
+					Binding="{Binding UnitPrice, StringFormat={}{0:C2}}"
 					Width="120" />
 
 				<DataGridTextColumn
 					Header="Total Value"
-					Binding="{Binding TotalValue, StringFormat={}{0:N2}}"
+					Binding="{Binding TotalValue, StringFormat={}{0:C2}}"
 					Width="120" />
 
 				<DataGridCheckBoxColumn

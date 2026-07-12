@@ -76,7 +76,7 @@
 
 					<DataGridTextColumn
 						Header="Unit Price"
-						Binding="{Binding UnitPrice, StringFormat={}{0:N4} EUR}"
+						Binding="{Binding UnitPrice, StringFormat={}{0:C2}}"
 						Width="140" />
 
 					<DataGridTextColumn
