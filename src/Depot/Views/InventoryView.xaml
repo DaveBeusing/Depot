@@ -1,7 +1,8 @@
 <UserControl
 	x:Class="Depot.Views.InventoryView"
 	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:controls="clr-namespace:Depot.Controls">
 
 	<Grid>
 
@@ -18,9 +19,9 @@
 			Text="Inventory"
 			Style="{StaticResource PageTitleStyle}" />
 
-		<TextBox
+		<controls:SearchBox
 			Grid.Row="2"
-			Style="{StaticResource SearchTextBoxStyle}"
+			Placeholder="Search inventory"
 			Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
 			ToolTip="Search by part number, description, manufacturer, category, purpose or location" />
 

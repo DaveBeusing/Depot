@@ -1,7 +1,8 @@
 <UserControl
 	x:Class="Depot.Views.Users.UsersView"
 	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:controls="clr-namespace:Depot.Controls">
 
 	<Grid>
 
@@ -18,10 +19,10 @@
 			Text="Users"
 			Style="{StaticResource PageTitleStyle}" />
 
-		<TextBox
+		<controls:SearchBox
 			Grid.Row="2"
 			Margin="{StaticResource Search.Margin}"
-			Style="{StaticResource SearchTextBoxStyle}"
+			Placeholder="Search users"
 			Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
 
 		<Grid Grid.Row="4">

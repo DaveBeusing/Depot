@@ -1,7 +1,8 @@
 <UserControl
 	x:Class="Depot.Views.Locations.LocationsView"
 	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:controls="clr-namespace:Depot.Controls">
 
 	<Grid>
 
@@ -32,9 +33,9 @@
 					<RowDefinition Height="*" />
 				</Grid.RowDefinitions>
 
-				<TextBox
+				<controls:SearchBox
 					Grid.Row="0"
-					Style="{StaticResource SearchTextBoxStyle}"
+					Placeholder="Search locations"
 					Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
 
 				<DataGrid
