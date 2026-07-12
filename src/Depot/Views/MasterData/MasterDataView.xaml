@@ -1,13 +1,12 @@
 <UserControl
 	x:Class="Depot.Views.MasterData.MasterDataView"
 	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:controls="clr-namespace:Depot.Controls">
 
 	<Grid>
 
 		<Grid.RowDefinitions>
-			<RowDefinition Height="Auto" />
-			<RowDefinition Height="4" />
 			<RowDefinition Height="Auto" />
 			<RowDefinition Height="24" />
 			<RowDefinition Height="Auto" />
@@ -15,18 +14,13 @@
 			<RowDefinition Height="*" />
 		</Grid.RowDefinitions>
 
-		<TextBlock
+		<controls:PageHeader
 			Grid.Row="0"
-			Text="Master Data"
-			Style="{StaticResource PageTitleStyle}" />
-
-		<TextBlock
-			Grid.Row="2"
-			Text="Manage reusable business entities used throughout Depot."
-			Foreground="{StaticResource SecondaryTextBrush}" />
+			Title="Master Data"
+			Subtitle="Manage reusable business entities used throughout Depot." />
 
 		<ListBox
-			Grid.Row="4"
+			Grid.Row="2"
 			ItemsSource="{Binding NavigationItems}"
 			SelectedItem="{Binding SelectedNavigationItem}"
 			Background="Transparent"
@@ -119,7 +113,7 @@
 		</ListBox>
 
 		<Border
-			Grid.Row="6"
+			Grid.Row="4"
 			Style="{StaticResource CardStyle}">
 
 			<ContentControl

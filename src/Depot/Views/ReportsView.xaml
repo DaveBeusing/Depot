@@ -16,49 +16,36 @@
 			<RowDefinition Height="*" />
 		</Grid.RowDefinitions>
 
-		<Grid Grid.Row="0">
+		<controls:PageHeader Grid.Row="0" Title="Reports">
+			<controls:PageHeader.Actions>
+				<StackPanel Orientation="Horizontal">
+					<TextBlock
+						MaxWidth="520"
+						Margin="0,0,16,0"
+						VerticalAlignment="Center"
+						Text="{Binding ExportStatusText}"
+						TextTrimming="CharacterEllipsis"
+						ToolTip="{Binding ExportStatusText}"
+						Visibility="{Binding HasExportStatus, Converter={StaticResource BooleanToVisibilityConverter}}">
+						<TextBlock.Style>
+							<Style TargetType="TextBlock">
+								<Setter Property="Foreground" Value="#6B7280" />
+								<Style.Triggers>
+									<DataTrigger Binding="{Binding IsExportStatusError}" Value="True">
+										<Setter Property="Foreground" Value="#B91C1C" />
+									</DataTrigger>
+								</Style.Triggers>
+							</Style>
+						</TextBlock.Style>
+					</TextBlock>
 
-			<Grid.ColumnDefinitions>
-				<ColumnDefinition Width="*" />
-				<ColumnDefinition Width="Auto" />
-				<ColumnDefinition Width="16" />
-				<ColumnDefinition Width="Auto" />
-			</Grid.ColumnDefinitions>
-
-			<TextBlock
-				Grid.Column="0"
-				Text="Reports"
-				Style="{StaticResource PageTitleStyle}" />
-
-			<TextBlock
-				Grid.Column="1"
-				MaxWidth="520"
-				VerticalAlignment="Center"
-				Text="{Binding ExportStatusText}"
-				TextTrimming="CharacterEllipsis"
-				ToolTip="{Binding ExportStatusText}"
-				Visibility="{Binding HasExportStatus, Converter={StaticResource BooleanToVisibilityConverter}}">
-
-				<TextBlock.Style>
-					<Style TargetType="TextBlock">
-						<Setter Property="Foreground" Value="#6B7280" />
-						<Style.Triggers>
-							<DataTrigger Binding="{Binding IsExportStatusError}" Value="True">
-								<Setter Property="Foreground" Value="#B91C1C" />
-							</DataTrigger>
-						</Style.Triggers>
-					</Style>
-				</TextBlock.Style>
-
-			</TextBlock>
-
-			<Button
-				Grid.Column="3"
-				Content="Export"
-				Style="{StaticResource PrimaryButtonStyle}"
-				Command="{Binding ExportCommand}" />
-
-		</Grid>
+					<Button
+						Content="Export"
+						Style="{StaticResource PrimaryButtonStyle}"
+						Command="{Binding ExportCommand}" />
+				</StackPanel>
+			</controls:PageHeader.Actions>
+		</controls:PageHeader>
 
 		<Grid Grid.Row="2">
 

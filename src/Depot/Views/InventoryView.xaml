@@ -14,10 +14,9 @@
 			<RowDefinition Height="*" />
 		</Grid.RowDefinitions>
 
-		<TextBlock
+		<controls:PageHeader
 			Grid.Row="0"
-			Text="Inventory"
-			Style="{StaticResource PageTitleStyle}" />
+			Title="Inventory" />
 
 		<controls:SearchBox
 			Grid.Row="2"

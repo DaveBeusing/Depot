@@ -14,10 +14,9 @@
 			<RowDefinition Height="*" />
 		</Grid.RowDefinitions>
 
-		<TextBlock
+		<controls:PageHeader
 			Grid.Row="0"
-			Text="Movements"
-			Style="{StaticResource PageTitleStyle}" />
+			Title="Movements" />
 
 		<controls:SearchBox
 			Grid.Row="2"

@@ -14,25 +14,14 @@
 			<RowDefinition Height="*" />
 		</Grid.RowDefinitions>
 
-		<Grid Grid.Row="0">
-
-			<Grid.ColumnDefinitions>
-				<ColumnDefinition Width="*" />
-				<ColumnDefinition Width="Auto" />
-			</Grid.ColumnDefinitions>
-
-			<TextBlock
-				Grid.Column="0"
-				Text="Items"
-				Style="{StaticResource PageTitleStyle}" />
-
-			<Button
-				Grid.Column="1"
-				Content="New Item"
-				Style="{StaticResource PrimaryButtonStyle}"
-				Command="{Binding NewItemCommand}" />
-
-		</Grid>
+		<controls:PageHeader Grid.Row="0" Title="Items">
+			<controls:PageHeader.Actions>
+				<Button
+					Content="New Item"
+					Style="{StaticResource PrimaryButtonStyle}"
+					Command="{Binding NewItemCommand}" />
+			</controls:PageHeader.Actions>
+		</controls:PageHeader>
 
 		<controls:SearchBox
 			Grid.Row="2"

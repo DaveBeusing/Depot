@@ -12,10 +12,9 @@
 			<RowDefinition Height="*" />
 		</Grid.RowDefinitions>
 
-		<TextBlock
+		<controls:PageHeader
 			Grid.Row="0"
-			Text="Locations"
-			Style="{StaticResource PageTitleStyle}" />
+			Title="Locations" />
 
 		<Grid Grid.Row="2">
 

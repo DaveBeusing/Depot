@@ -1,7 +1,8 @@
 <UserControl
 	x:Class="Depot.Views.ImportView"
 	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:controls="clr-namespace:Depot.Controls">
 
 	<Grid Margin="16">
 
@@ -19,10 +20,9 @@
 			<RowDefinition Height="180" />
 		</Grid.RowDefinitions>
 
-		<TextBlock
+		<controls:PageHeader
 			Grid.Row="0"
-			Text="Import"
-			Style="{StaticResource PageTitleStyle}" />
+			Title="Import" />
 
 		<Grid Grid.Row="2">
 

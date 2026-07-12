@@ -14,10 +14,9 @@
 			<RowDefinition Height="*"/>
 		</Grid.RowDefinitions>
 
-		<TextBlock
+		<controls:PageHeader
 			Grid.Row="0"
-			Text="Users"
-			Style="{StaticResource PageTitleStyle}" />
+			Title="Users" />
 
 		<controls:SearchBox
 			Grid.Row="2"

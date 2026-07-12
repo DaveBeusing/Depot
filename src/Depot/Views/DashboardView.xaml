@@ -14,10 +14,9 @@
 			<RowDefinition Height="*" />
 		</Grid.RowDefinitions>
 
-		<TextBlock
+		<controls:PageHeader
 			Grid.Row="0"
-			Text="Dashboard"
-			Style="{StaticResource PageTitleStyle}" />
+			Title="Dashboard" />
 
 		<Grid Grid.Row="2">
 
