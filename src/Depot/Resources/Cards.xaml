@@ -3,6 +3,15 @@
 	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
 	xmlns:controls="clr-namespace:Depot.Controls">
 
+	<SolidColorBrush x:Key="MetricCard.IconBackgroundBrush" Color="#EFF6FF" />
+	<SolidColorBrush x:Key="MetricCard.IconBorderBrush" Color="#DBEAFE" />
+	<DropShadowEffect
+		x:Key="MetricCard.Shadow"
+		BlurRadius="12"
+		Direction="270"
+		Opacity="0.08"
+		ShadowDepth="2" />
+
 	<Style TargetType="{x:Type controls:Card}">
 		<Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
 		<Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}" />
@@ -81,12 +90,13 @@
 
 	<Style TargetType="{x:Type controls:MetricCard}">
 		<Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+		<Setter Property="MinHeight" Value="132" />
 		<Setter Property="HorizontalContentAlignment" Value="Stretch" />
 		<Setter Property="VerticalContentAlignment" Value="Stretch" />
 		<Setter Property="Template">
 			<Setter.Value>
 				<ControlTemplate TargetType="{x:Type controls:MetricCard}">
-					<controls:Card>
+					<controls:Card Effect="{StaticResource MetricCard.Shadow}">
 						<Grid>
 							<Grid.ColumnDefinitions>
 								<ColumnDefinition Width="*" />
@@ -116,15 +126,27 @@
 									TextElement.Foreground="{DynamicResource SecondaryTextBrush}" />
 							</StackPanel>
 
-							<ContentPresenter
+							<Border
 								x:Name="IconPresenter"
 								Grid.Column="1"
+								Width="40"
+								Height="40"
 								Margin="16,0,0,0"
 								VerticalAlignment="Top"
-								Content="{TemplateBinding Icon}"
-								ContentTemplate="{TemplateBinding IconTemplate}"
-								TextElement.FontSize="18"
-								TextElement.Foreground="{DynamicResource PrimaryBrush}" />
+								Background="{StaticResource MetricCard.IconBackgroundBrush}"
+								BorderBrush="{StaticResource MetricCard.IconBorderBrush}"
+								BorderThickness="1"
+								CornerRadius="8">
+								<Path
+									Width="18"
+									Height="18"
+									Data="{TemplateBinding Icon}"
+									Stroke="{DynamicResource PrimaryBrush}"
+									StrokeEndLineCap="Round"
+									StrokeLineJoin="Round"
+									StrokeThickness="1.6"
+									Stretch="Uniform" />
+							</Border>
 						</Grid>
 					</controls:Card>
 					<ControlTemplate.Triggers>

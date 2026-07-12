@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 
 namespace Depot.Controls;
 
@@ -15,13 +16,10 @@ public sealed class MetricCard : Control
         nameof(SupportingText), typeof(object), typeof(MetricCard), new PropertyMetadata(null));
 
     public static readonly DependencyProperty IconProperty = DependencyProperty.Register(
-        nameof(Icon), typeof(object), typeof(MetricCard), new PropertyMetadata(null));
+        nameof(Icon), typeof(Geometry), typeof(MetricCard), new PropertyMetadata(null));
 
     public static readonly DependencyProperty ValueTemplateProperty = DependencyProperty.Register(
         nameof(ValueTemplate), typeof(DataTemplate), typeof(MetricCard), new PropertyMetadata(null));
-
-    public static readonly DependencyProperty IconTemplateProperty = DependencyProperty.Register(
-        nameof(IconTemplate), typeof(DataTemplate), typeof(MetricCard), new PropertyMetadata(null));
 
     static MetricCard()
     {
@@ -48,9 +46,9 @@ public sealed class MetricCard : Control
         set => SetValue(SupportingTextProperty, value);
     }
 
-    public object? Icon
+    public Geometry? Icon
     {
-        get => GetValue(IconProperty);
+        get => (Geometry?)GetValue(IconProperty);
         set => SetValue(IconProperty, value);
     }
 
@@ -58,11 +56,5 @@ public sealed class MetricCard : Control
     {
         get => (DataTemplate?)GetValue(ValueTemplateProperty);
         set => SetValue(ValueTemplateProperty, value);
-    }
-
-    public DataTemplate? IconTemplate
-    {
-        get => (DataTemplate?)GetValue(IconTemplateProperty);
-        set => SetValue(IconTemplateProperty, value);
     }
 }
