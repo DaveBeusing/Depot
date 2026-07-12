@@ -2,7 +2,6 @@
 // Licensed under the MIT License.
 
 using System.Collections.ObjectModel;
-using System.Windows;
 
 using Depot.Commands;
 using Depot.Services;
@@ -73,7 +72,7 @@ public sealed class MainViewModel : BaseViewModel
 			new NavigationItem
 			{
 				Name = "Dashboard",
-				Icon = "📊",
+				IconData = "M 2,17 L 18,17 M 4,14 L 4,10 M 9,14 L 9,5 M 14,14 L 14,8",
 				Section = ShellSection.Dashboard
 			});
 
@@ -81,7 +80,7 @@ public sealed class MainViewModel : BaseViewModel
 			new NavigationItem
 			{
 				Name = "Inventory",
-				Icon = "📦",
+				IconData = "M 2,6 L 10,2 L 18,6 L 10,10 Z M 2,6 L 2,14 L 10,18 L 10,10 M 18,6 L 18,14 L 10,18",
 				Section = ShellSection.Inventory
 			});
 
@@ -89,7 +88,7 @@ public sealed class MainViewModel : BaseViewModel
 			new NavigationItem
 			{
 				Name = "Items",
-				Icon = "📋",
+				IconData = "M 5,3 L 15,3 L 17,5 L 17,18 L 3,18 L 3,5 Z M 7,3 L 7,1 L 13,1 L 13,3 M 7,8 L 13,8 M 7,12 L 13,12",
 				Section = ShellSection.Items
 			});
 
@@ -97,7 +96,7 @@ public sealed class MainViewModel : BaseViewModel
 			new NavigationItem
 			{
 				Name = "Movements",
-				Icon = "🔄",
+				IconData = "M 3,6 L 15,6 M 12,3 L 15,6 L 12,9 M 17,14 L 5,14 M 8,11 L 5,14 L 8,17",
 				Section = ShellSection.Movements
 			});
 
@@ -105,7 +104,7 @@ public sealed class MainViewModel : BaseViewModel
 			new NavigationItem
 			{
 				Name = "Reports",
-				Icon = "📈",
+				IconData = "M 2,17 L 18,17 M 4,14 L 8,10 L 11,12 L 16,5 M 13,5 L 16,5 L 16,8",
 				Section = ShellSection.Reports
 			});
 
@@ -117,9 +116,9 @@ public sealed class MainViewModel : BaseViewModel
 				new NavigationItem
 				{
 					Name = "Administration",
-					Icon = "⚙",
+					IconData = "M 4,5 L 16,5 M 7,2 L 7,8 M 4,15 L 16,15 M 13,12 L 13,18 M 4,10 L 16,10 M 10,7 L 10,13",
 					Section = ShellSection.Administration,
-					Margin = new Thickness(8, 24, 8, 4)
+					IsSeparated = true
 				});
 		}
 

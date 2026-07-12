@@ -106,22 +106,9 @@
 				<ListBox
 					Style="{StaticResource NavigationListBoxStyle}"
 					ItemContainerStyle="{StaticResource NavigationListBoxItemStyle}"
+					ItemTemplate="{StaticResource NavigationItemTemplate}"
 					ItemsSource="{Binding NavigationItems}"
-					SelectedItem="{Binding SelectedNavigationItem}">
-					<ListBox.ItemTemplate>
-						<DataTemplate>
-							<StackPanel Orientation="Horizontal">
-								<TextBlock
-									Width="24"
-									Text="{Binding Icon}" />
-								<TextBlock
-									FontSize="14"
-									FontWeight="SemiBold"
-									Text="{Binding Name}" />
-							</StackPanel>
-						</DataTemplate>
-					</ListBox.ItemTemplate>
-				</ListBox>
+					SelectedItem="{Binding SelectedNavigationItem}" />
 
 			</DockPanel>
 

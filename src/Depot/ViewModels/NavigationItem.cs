@@ -3,15 +3,13 @@
 
 namespace Depot.ViewModels;
 
-using System.Windows;
-
 public sealed class NavigationItem
 {
-	public string Name { get; init; } = string.Empty;
+	public required string Name { get; init; }
 
-	public string? Icon { get; init; }
+	public string IconData { get; init; } = string.Empty;
 
-	public Enum Section { get; init; } = null!;
+	public required Enum Section { get; init; }
 
-	public Thickness Margin { get; init; } = new Thickness(8, 4, 8, 4);
+	public bool IsSeparated { get; init; }
 }
