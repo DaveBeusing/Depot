@@ -79,4 +79,68 @@
 		</Setter>
 	</Style>
 
+	<Style TargetType="{x:Type controls:MetricCard}">
+		<Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+		<Setter Property="HorizontalContentAlignment" Value="Stretch" />
+		<Setter Property="VerticalContentAlignment" Value="Stretch" />
+		<Setter Property="Template">
+			<Setter.Value>
+				<ControlTemplate TargetType="{x:Type controls:MetricCard}">
+					<controls:Card>
+						<Grid>
+							<Grid.ColumnDefinitions>
+								<ColumnDefinition Width="*" />
+								<ColumnDefinition Width="Auto" />
+							</Grid.ColumnDefinitions>
+
+							<StackPanel VerticalAlignment="Center">
+								<ContentPresenter
+									Content="{TemplateBinding Title}"
+									TextElement.FontSize="14"
+									TextElement.FontWeight="SemiBold"
+									TextElement.Foreground="{DynamicResource SecondaryTextBrush}" />
+
+								<ContentPresenter
+									Margin="0,8,0,0"
+									Content="{TemplateBinding Value}"
+									ContentTemplate="{TemplateBinding ValueTemplate}"
+									TextElement.FontSize="32"
+									TextElement.FontWeight="SemiBold"
+									TextElement.Foreground="{TemplateBinding Foreground}" />
+
+								<ContentPresenter
+									x:Name="SupportingTextPresenter"
+									Margin="0,8,0,0"
+									Content="{TemplateBinding SupportingText}"
+									TextElement.FontSize="11"
+									TextElement.Foreground="{DynamicResource SecondaryTextBrush}" />
+							</StackPanel>
+
+							<ContentPresenter
+								x:Name="IconPresenter"
+								Grid.Column="1"
+								Margin="16,0,0,0"
+								VerticalAlignment="Top"
+								Content="{TemplateBinding Icon}"
+								ContentTemplate="{TemplateBinding IconTemplate}"
+								TextElement.FontSize="18"
+								TextElement.Foreground="{DynamicResource PrimaryBrush}" />
+						</Grid>
+					</controls:Card>
+					<ControlTemplate.Triggers>
+						<Trigger Property="SupportingText" Value="{x:Null}">
+							<Setter TargetName="SupportingTextPresenter" Property="Visibility" Value="Collapsed" />
+						</Trigger>
+						<Trigger Property="Icon" Value="{x:Null}">
+							<Setter TargetName="IconPresenter" Property="Visibility" Value="Collapsed" />
+						</Trigger>
+						<Trigger Property="IsEnabled" Value="False">
+							<Setter Property="Opacity" Value="0.6" />
+						</Trigger>
+					</ControlTemplate.Triggers>
+				</ControlTemplate>
+			</Setter.Value>
+		</Setter>
+	</Style>
+
 </ResourceDictionary>
