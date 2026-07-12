@@ -7,8 +7,6 @@ using Depot.Commands;
 using Depot.Models;
 using Depot.Services;
 
-using Microsoft.Win32;
-
 namespace Depot.ViewModels;
 
 public sealed class ReportsViewModel
@@ -21,6 +19,7 @@ public sealed class ReportsViewModel
 	private const string StockByManufacturerReportName = "Stock by Manufacturer";
 
 	private readonly ReportService _reportService;
+	private readonly IFileDialogService _fileDialogService;
 	private readonly IReadOnlyDictionary<string, ReportDefinition> _reportDefinitions;
 
 	private string _selectedReport = InventoryValueReportName;
@@ -33,10 +32,12 @@ public sealed class ReportsViewModel
 	private decimal _totalInventoryValue;
 
 	public ReportsViewModel(
-		ReportService reportService)
+		ReportService reportService,
+		IFileDialogService fileDialogService)
 	{
 		_reportService =
 			reportService;
+		_fileDialogService = fileDialogService;
 
 		var reportDefinitions =
 			CreateReportDefinitions();
@@ -357,23 +358,14 @@ public sealed class ReportsViewModel
 
 	private void Export()
 	{
-		var dialog =
-			new SaveFileDialog
-			{
-				DefaultExt =
-					".xlsx",
+		var filePath = _fileDialogService.ShowSaveFile(
+			new SaveFileDialogRequest(
+				"Export report",
+				"Excel Files (*.xlsx)|*.xlsx",
+				".xlsx",
+				GetDefaultExportFileName()));
 
-				FileName =
-					GetDefaultExportFileName(),
-
-				Filter =
-					"Excel Files (*.xlsx)|*.xlsx",
-
-				OverwritePrompt =
-					true
-			};
-
-		if (dialog.ShowDialog() != true)
+		if (filePath is null)
 		{
 			return;
 		}
@@ -382,10 +374,10 @@ public sealed class ReportsViewModel
 		{
 			SelectedReportDefinition.Export(
 				SearchText,
-				dialog.FileName);
+				filePath);
 
 			SetExportStatus(
-				$"Exported to {dialog.FileName}",
+				$"Exported to {filePath}",
 				isError: false);
 		}
 		catch (Exception ex)

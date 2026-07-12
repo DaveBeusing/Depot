@@ -35,6 +35,7 @@ public partial class App : Application
 	public static ReportService ReportService { get; private set; } = null!;
 	public static InventoryManagementService InventoryManagementService { get; private set; } = null!;
 	public static ImportService ImportService { get; private set; } = null!;
+	public static IFileDialogService FileDialogService { get; } = new FileDialogService();
 	public static DatabaseSeeder DatabaseSeeder { get; private set; } = null!;
 	public static MainViewModel MainViewModel { get; private set; } = null!;
 
@@ -204,7 +205,8 @@ public partial class App : Application
 				LocationService,
 				UserService,
 				AuthorizationService,
-				ImportService);
+				ImportService,
+				FileDialogService);
 
 		StartupDiagnostics.Log("MainViewModel created.");
 

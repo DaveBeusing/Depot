@@ -5,9 +5,8 @@ using System.Collections.ObjectModel;
 
 using Depot.Commands;
 using Depot.Models;
+using Depot.Services;
 using Depot.Services.Import;
-
-using Microsoft.Win32;
 
 namespace Depot.ViewModels;
 
@@ -15,6 +14,7 @@ public sealed class ImportViewModel
 	: BaseViewModel
 {
 	private readonly ImportService _importService;
+	private readonly IFileDialogService _fileDialogService;
 
 	private ImportPreview? _currentPreview;
 
@@ -28,9 +28,11 @@ public sealed class ImportViewModel
 	private decimal _totalValue;
 
 	public ImportViewModel(
-		ImportService importService)
+		ImportService importService,
+		IFileDialogService fileDialogService)
 	{
 		_importService = importService;
+		_fileDialogService = fileDialogService;
 
 		BrowseCommand =
 			new RelayCommand(
@@ -135,20 +137,17 @@ public sealed class ImportViewModel
 
 	private void Browse()
 	{
-		var dialog =
-			new OpenFileDialog
-			{
-				Filter =
-					"Excel Files (*.xlsx)|*.xlsx"
-			};
+		var filePath = _fileDialogService.ShowOpenFile(
+			new OpenFileDialogRequest(
+				"Select inventory workbook",
+				"Excel Files (*.xlsx)|*.xlsx"));
 
-		if (dialog.ShowDialog() != true)
+		if (filePath is null)
 		{
 			return;
 		}
 
-		LoadPreview(
-			dialog.FileName);
+		LoadPreview(filePath);
 	}
 
 	public void LoadPreview(

@@ -25,7 +25,8 @@ public sealed class MainViewModel : BaseViewModel
 		LocationService locationService,
 		UserService userService,
 		AuthorizationService authorizationService,
-			ImportService importService)
+		ImportService importService,
+		IFileDialogService fileDialogService)
 		{
 		
 		_authorizationService =	authorizationService;
@@ -48,11 +49,13 @@ public sealed class MainViewModel : BaseViewModel
 
 		ReportsViewModel =
 			new ReportsViewModel(
-				reportService);
+				reportService,
+				fileDialogService);
 
 		ImportViewModel =
 			new ImportViewModel(
-				importService);
+				importService,
+				fileDialogService);
 
 		AdministrationViewModel =
 			new AdministrationViewModel(

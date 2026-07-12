@@ -13,5 +13,6 @@
         <ResourceDictionary Source="Status.xaml" />
         <ResourceDictionary Source="Cards.xaml"/>
         <ResourceDictionary Source="PageHeaders.xaml"/>
+        <ResourceDictionary Source="Dialogs.xaml"/>
     </ResourceDictionary.MergedDictionaries>
 </ResourceDictionary>

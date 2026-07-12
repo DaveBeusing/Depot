@@ -4,13 +4,12 @@
 	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
 	Title="Depot Login"
 	Icon="/Resources/Images/Depot.ico"
+	Style="{StaticResource AppDialogWindowStyle}"
 	WindowStartupLocation="CenterScreen"
-	ResizeMode="NoResize"
-	SizeToContent="WidthAndHeight"
 	ShowInTaskbar="true">
 
 	<Border
-		Padding="32"
+		Padding="{StaticResource Dialog.Padding}"
 		Background="{StaticResource SurfaceBrush}">
 
 		<Grid
