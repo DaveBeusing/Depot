@@ -10,13 +10,5 @@ public partial class MainWindow : Window
 	public MainWindow()
 	{
 		InitializeComponent();
-		//DataContext = App.MainViewModel;
 	}
-
-	private void OnLogoutClicked(object sender, RoutedEventArgs e)
-	{
-		App.SessionService.Logout();
-		Close();
-	}
-
 }

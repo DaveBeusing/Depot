@@ -136,32 +136,6 @@
 
 	</Style>
 
-	<!-- Current user -->
-	<Style
-		x:Key="UserNameStyle"
-		TargetType="TextBlock">
-
-		<Setter
-			Property="FontSize"
-			Value="15" />
-
-		<Setter
-			Property="FontWeight"
-			Value="SemiBold" />
-
-		<Setter
-			Property="Foreground"
-			Value="{DynamicResource NavigationForegroundBrush}" />
-
-	</Style>
-
-	<Style x:Key="UserRoleStyle" TargetType="TextBlock">
-		<Setter Property="FontSize" Value="11" />
-		<Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}" />
-	</Style>
-
-
-
 	<!-- Form Label -->
 	<Style x:Key="FormLabelStyle" TargetType="TextBlock" BasedOn="{StaticResource LabelStyle}">
 		<Setter Property="Margin" Value="{DynamicResource Label.Margin}" />

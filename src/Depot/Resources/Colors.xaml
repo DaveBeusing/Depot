@@ -34,6 +34,9 @@
 
 	<!-- Sidebar -->
 	<SolidColorBrush x:Key="NavigationBorderBrush" Color="#2E3948" />
+	<SolidColorBrush x:Key="NavigationUserPanelBrush" Color="#263244" />
+	<SolidColorBrush x:Key="NavigationUserPanelBorderBrush" Color="#344155" />
+	<SolidColorBrush x:Key="NavigationMutedTextBrush" Color="#9CA9BA" />
 
 	<!-- Status -->
 	<SolidColorBrush x:Key="SuccessBrush" Color="#DCFCE7" />

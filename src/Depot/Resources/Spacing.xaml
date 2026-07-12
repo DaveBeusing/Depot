@@ -31,9 +31,6 @@
 	<Thickness x:Key="Navigation.Item.Margin">8,4</Thickness>
 	<Thickness x:Key="Navigation.Admin.Margin">8,24,8,4</Thickness>
 	<Thickness x:Key="Navigation.Item.Padding">12</Thickness>
-	<Thickness x:Key="Navigation.User.Margin">8,0,0,0</Thickness>
-	<Thickness x:Key="Navigation.UserRole.Margin">8,2,0,12</Thickness>
-	<Thickness x:Key="Navigation.UserPanel.Padding">16</Thickness>
 	<Thickness x:Key="Navigation.Header.Margin">24,24,24,32</Thickness>
 	<Thickness x:Key="Navigation.UserPanel.Margin">0,24,0,0</Thickness>
 	<Thickness x:Key="Navigation.Logout.Margin">0,12,0,0</Thickness>

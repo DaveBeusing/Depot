@@ -4,6 +4,7 @@
 using System.Collections.ObjectModel;
 using System.Windows;
 
+using Depot.Commands;
 using Depot.Services;
 using Depot.Services.Import;
 using Depot.ViewModels.Administration;
@@ -15,6 +16,7 @@ public sealed class MainViewModel : BaseViewModel
 	private NavigationItem? _selectedNavigationItem;
 	private BaseViewModel? _currentViewModel;
 	private readonly AuthorizationService _authorizationService;
+	private readonly SessionService _sessionService;
 	
 	public MainViewModel(
 		ItemService itemService,
@@ -25,11 +27,14 @@ public sealed class MainViewModel : BaseViewModel
 		LocationService locationService,
 		UserService userService,
 		AuthorizationService authorizationService,
+		SessionService sessionService,
 		ImportService importService,
 		IFileDialogService fileDialogService)
 		{
 		
 		_authorizationService =	authorizationService;
+		_sessionService = sessionService;
+		LogoutCommand = new RelayCommand(Logout);
 	
 		DashboardViewModel =
 			new DashboardViewModel(
@@ -123,6 +128,10 @@ public sealed class MainViewModel : BaseViewModel
 
 	public ObservableCollection<NavigationItem> NavigationItems { get; } = new();
 
+	public RelayCommand LogoutCommand { get; }
+
+	public event EventHandler? LogoutRequested;
+
 	public DashboardViewModel DashboardViewModel { get; }
 
 	public InventoryViewModel InventoryViewModel { get; }
@@ -201,4 +210,10 @@ public sealed class MainViewModel : BaseViewModel
 	public string CurrentUserDisplayName => _authorizationService.CurrentUser?.DisplayName ?? string.Empty;
 
 	public string CurrentUserRole => _authorizationService.CurrentUser?.IsAdministrator == true ? "Administrator" : "User";
+
+	private void Logout()
+	{
+		_sessionService.Logout();
+		LogoutRequested?.Invoke(this, EventArgs.Empty);
+	}
 }

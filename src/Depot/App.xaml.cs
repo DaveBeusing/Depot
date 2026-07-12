@@ -214,6 +214,7 @@ public partial class App : Application
 				LocationService,
 				UserService,
 				AuthorizationService,
+				SessionService,
 				ImportService,
 				FileDialogService);
 
@@ -227,8 +228,21 @@ public partial class App : Application
 
 		MainWindow = mainWindow;
 		StartupDiagnostics.Log("MainWindow created.");
-		mainWindow.ShowDialog();
+		MainViewModel.LogoutRequested += OnLogoutRequested;
+		try
+		{
+			mainWindow.ShowDialog();
+		}
+		finally
+		{
+			MainViewModel.LogoutRequested -= OnLogoutRequested;
+		}
 		StartupDiagnostics.Log("MainWindow closed.");
+
+		void OnLogoutRequested(object? sender, EventArgs e)
+		{
+			mainWindow.Close();
+		}
 	}
 
 	private static void OnDispatcherUnhandledException(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
