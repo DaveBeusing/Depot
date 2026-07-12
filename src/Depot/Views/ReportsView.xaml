@@ -305,13 +305,10 @@
 
 				</DataGrid>
 
-				<TextBlock
+				<controls:EmptyState
 					Grid.Row="2"
-					HorizontalAlignment="Center"
-					VerticalAlignment="Center"
-					Foreground="#6B7280"
-					Text="{Binding EmptyReportMessage}"
-					TextAlignment="Center"
+					Title="No report data"
+					Description="{Binding EmptyReportMessage}"
 					Visibility="{Binding HasNoReportRows, Converter={StaticResource BooleanToVisibilityConverter}}" />
 
 			</Grid>
