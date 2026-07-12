@@ -9,6 +9,7 @@
         <ResourceDictionary Source="Navigation.xaml"/>
         <ResourceDictionary Source="Buttons.xaml"/>
         <ResourceDictionary Source="Inputs.xaml"/>
+        <ResourceDictionary Source="DataGrid.xaml"/>
         <ResourceDictionary Source="Status.xaml" />
 
         <!--        

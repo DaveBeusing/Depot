@@ -65,6 +65,7 @@
 
 			<ComboBox
 				Grid.Row="6"
+				Style="{StaticResource AppComboBoxStyle}"
 				ItemsSource="{Binding Users}"
 				SelectedItem="{Binding SelectedUser}"
 				DisplayMemberPath="DisplayName" />

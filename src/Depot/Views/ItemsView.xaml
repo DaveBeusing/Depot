@@ -50,6 +50,7 @@
 
 			<DataGrid
 				Grid.Column="0"
+				Style="{StaticResource AppDataGridStyle}"
 				ItemsSource="{Binding Items}"
 				SelectedItem="{Binding SelectedItem}"
 				AutoGenerateColumns="False"

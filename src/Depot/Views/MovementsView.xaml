@@ -34,6 +34,7 @@
 
 			<DataGrid
 				Grid.Column="0"
+				Style="{StaticResource AppDataGridStyle}"
 				ItemsSource="{Binding Items}"
 				AutoGenerateColumns="False"
 				IsReadOnly="True"

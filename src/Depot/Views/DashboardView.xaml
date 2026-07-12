@@ -170,6 +170,7 @@
 
 				<DataGrid
 					Grid.Row="2"
+					Style="{StaticResource AppDataGridStyle}"
 					ItemsSource="{Binding RecentMovements}"
 					AutoGenerateColumns="False"
 					IsReadOnly="True"
