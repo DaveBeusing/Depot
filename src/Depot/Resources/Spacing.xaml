@@ -6,6 +6,10 @@
 	<Thickness x:Key="Page.Padding">24</Thickness>
 	<Thickness x:Key="Page.Margin">24</Thickness>
 
+	<!-- Shell -->
+	<Thickness x:Key="Shell.Content.Margin">18</Thickness>
+	<Thickness x:Key="Shell.Content.Padding">24</Thickness>
+
 	<!-- Cards -->
 	<Thickness x:Key="Card.Padding">16</Thickness>
 	<Thickness x:Key="Card.Margin">16</Thickness>

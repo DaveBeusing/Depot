@@ -11,8 +11,14 @@
 		Direction="270"
 		Opacity="0.08"
 		ShadowDepth="2" />
+	<DropShadowEffect
+		x:Key="Shell.ContentShadow"
+		BlurRadius="18"
+		Direction="270"
+		Opacity="0.09"
+		ShadowDepth="3" />
 
-	<Style TargetType="{x:Type controls:Card}">
+	<Style x:Key="CardBaseStyle" TargetType="{x:Type controls:Card}">
 		<Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
 		<Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}" />
 		<Setter Property="BorderThickness" Value="1" />
@@ -86,6 +92,20 @@
 				</ControlTemplate>
 			</Setter.Value>
 		</Setter>
+	</Style>
+
+	<Style
+		TargetType="{x:Type controls:Card}"
+		BasedOn="{StaticResource CardBaseStyle}" />
+
+	<Style
+		x:Key="ShellContentCardStyle"
+		TargetType="{x:Type controls:Card}"
+		BasedOn="{StaticResource CardBaseStyle}">
+		<Setter Property="Margin" Value="{DynamicResource Shell.Content.Margin}" />
+		<Setter Property="Padding" Value="{DynamicResource Shell.Content.Padding}" />
+		<Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}" />
+		<Setter Property="Effect" Value="{StaticResource Shell.ContentShadow}" />
 	</Style>
 
 	<Style TargetType="{x:Type controls:MetricCard}">

@@ -68,14 +68,18 @@
 		</ResourceDictionary>
 	</Window.Resources>
 
-	<Grid>
+	<Grid Background="{StaticResource BackgroundBrush}">
 
 		<Grid.ColumnDefinitions>
 			<ColumnDefinition Width="240" />
 			<ColumnDefinition Width="*" />
 		</Grid.ColumnDefinitions>
 
-		<Border Grid.Column="0" Background="{StaticResource NavigationBackgroundBrush}">
+		<Border
+			Grid.Column="0"
+			Background="{StaticResource NavigationBackgroundBrush}"
+			BorderBrush="{StaticResource NavigationBorderBrush}"
+			BorderThickness="0,0,1,0">
 
 			<DockPanel>
 
@@ -104,15 +108,11 @@
 
 		</Border>
 
-		<Border
+		<controls:Card
 			Grid.Column="1"
-			Margin="16"
-			Padding="16"
-			Background="{StaticResource SurfaceBrush}"
-			BorderBrush="{StaticResource BorderBrush}"
-			BorderThickness="1">
+			Style="{StaticResource ShellContentCardStyle}">
 			<ContentControl Content="{Binding CurrentViewModel}" />
-		</Border>
+		</controls:Card>
 
 	</Grid>
 
