@@ -354,4 +354,148 @@
         </Style.Triggers>
     </Style>
 
+
+
+
+    <Style x:Key="AppListBoxItemStyle"
+        TargetType="{x:Type ListBoxItem}">
+
+        <Setter Property="Height"
+                Value="48" />
+
+        <Setter Property="Padding"
+                Value="20,0" />
+
+        <Setter Property="HorizontalContentAlignment"
+                Value="Stretch" />
+
+        <Setter Property="VerticalContentAlignment"
+                Value="Center" />
+
+        <Setter Property="Background"
+                Value="Transparent" />
+
+        <Setter Property="Foreground"
+                Value="{DynamicResource PrimaryTextBrush}" />
+
+        <Setter Property="FocusVisualStyle"
+                Value="{x:Null}" />
+
+        <Setter Property="Template">
+
+            <Setter.Value>
+
+                <ControlTemplate TargetType="ListBoxItem">
+
+                    <Border
+                        x:Name="Border"
+                        Margin="6,3"
+                        Background="{TemplateBinding Background}"
+                        CornerRadius="8">
+
+                        <Grid>
+
+                            <Border
+                                x:Name="SelectionBar"
+                                Width="4"
+                                HorizontalAlignment="Left"
+                                Background="Transparent"
+                                CornerRadius="0,0,0,0"/>
+
+                            <ContentPresenter
+                                Margin="20,0,16,0"
+                                VerticalAlignment="Center"
+                                HorizontalAlignment="Stretch"/>
+
+                        </Grid>
+
+                    </Border>
+
+                    <ControlTemplate.Triggers>
+
+                        <Trigger Property="IsMouseOver"
+                                Value="True">
+
+                            <Setter TargetName="Border"
+                                    Property="Background"
+                                    Value="#F7FAFF"/>
+
+                        </Trigger>
+
+                        <Trigger Property="IsSelected"
+                                Value="True">
+
+                            <Setter TargetName="Border"
+                                    Property="Background"
+                                    Value="#EEF4FF" />
+
+                            <Setter TargetName="SelectionBar"
+                                    Property="Background"
+                                    Value="{DynamicResource PrimaryBrush}"/>
+
+                            <Setter Property="Foreground"
+                                    Value="{DynamicResource TextPrimaryBrush}"/>
+
+                        </Trigger>
+
+                        <Trigger Property="IsEnabled"
+                                Value="False">
+
+                            <Setter Property="Opacity"
+                                    Value="0.45"/>
+
+                        </Trigger>
+
+                    </ControlTemplate.Triggers>
+
+                </ControlTemplate>
+
+            </Setter.Value>
+
+        </Setter>
+
+    </Style>
+
+
+
+    <Style x:Key="AppListBoxStyle"
+        TargetType="{x:Type ListBox}">
+
+        <Setter Property="Background"
+                Value="{DynamicResource SurfaceBrush}" />
+
+        <Setter Property="BorderBrush"
+                Value="{DynamicResource BorderBrush}" />
+
+        <Setter Property="BorderThickness"
+                Value="1" />
+
+        <Setter Property="Padding"
+                Value="0" />
+
+        <Setter Property="Foreground"
+                Value="{DynamicResource PrimaryTextBrush}" />
+
+        <Setter Property="ItemContainerStyle"
+                Value="{StaticResource AppListBoxItemStyle}" />
+
+        <Setter Property="ScrollViewer.HorizontalScrollBarVisibility"
+                Value="Disabled" />
+
+        <Setter Property="ScrollViewer.VerticalScrollBarVisibility"
+                Value="Auto" />
+
+        <Setter Property="ScrollViewer.CanContentScroll"
+                Value="True" />
+
+        <Setter Property="VirtualizingPanel.IsVirtualizing"
+                Value="True" />
+
+        <Setter Property="VirtualizingPanel.VirtualizationMode"
+                Value="Recycling" />
+    </Style>
+
+    
+
+
 </ResourceDictionary>

@@ -35,6 +35,7 @@
 			<!-- User List -->
 			<ListBox
 				Grid.Column="0"
+				Style="{StaticResource AppListBoxStyle}"
 				ItemsSource="{Binding Users}"
 				SelectedItem="{Binding SelectedUser}"
 				BorderThickness="1"
