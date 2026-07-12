@@ -10,6 +10,10 @@
 	<!-- Primary -->
 	<SolidColorBrush x:Key="PrimaryBrush" Color="#2563EB" />
 	<SolidColorBrush x:Key="PrimaryForegroundBrush" Color="#FFFFFF" />
+	<SolidColorBrush x:Key="PrimaryHoverBrush" Color="#1D4ED8" />
+	<SolidColorBrush x:Key="PrimaryPressedBrush" Color="#1E40AF" />
+	<SolidColorBrush x:Key="HoverBrush" Color="#0D2563EB" />
+	<SolidColorBrush x:Key="CardBorderBrush" Color="#EEF2F7" />
 
 	<!-- Text -->
 	<SolidColorBrush x:Key="PrimaryTextBrush" Color="#111827" />
