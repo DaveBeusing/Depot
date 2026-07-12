@@ -35,13 +35,7 @@
 			<DataGrid
 				Grid.Column="0"
 				Style="{StaticResource AppDataGridStyle}"
-				ItemsSource="{Binding Items}"
-				AutoGenerateColumns="False"
-				IsReadOnly="True"
-				CanUserAddRows="False"
-				CanUserDeleteRows="False"
-				HeadersVisibility="Column"
-				RowHeaderWidth="0">
+				ItemsSource="{Binding Items}">
 
 				<DataGrid.Columns>
 

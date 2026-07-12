@@ -60,14 +60,8 @@
 			</controls:Card.Header>
 
 			<DataGrid
-					Style="{StaticResource AppDataGridStyle}"
-					ItemsSource="{Binding RecentMovements}"
-					AutoGenerateColumns="False"
-					IsReadOnly="True"
-					CanUserAddRows="False"
-					CanUserDeleteRows="False"
-					HeadersVisibility="Column"
-					RowHeaderWidth="0">
+				Style="{StaticResource AppDataGridStyle}"
+				ItemsSource="{Binding RecentMovements}">
 
 					<DataGrid.Columns>
 

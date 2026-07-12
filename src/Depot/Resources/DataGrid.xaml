@@ -16,6 +16,7 @@
     <SolidColorBrush x:Key="DataGrid.FocusBrush" Color="#8DBBFF" />
     <SolidColorBrush x:Key="DataGrid.ScrollThumbBrush" Color="#BEC6D0" />
     <SolidColorBrush x:Key="DataGrid.ScrollThumbHoverBrush" Color="#98A4B3" />
+	<CornerRadius x:Key="DataGrid.CornerRadius">8</CornerRadius>
 
     <Style x:Key="AppDataGridScrollBarThumbStyle" TargetType="Thumb">
         <Setter Property="Background" Value="{StaticResource DataGrid.ScrollThumbBrush}" />
@@ -330,7 +331,7 @@
                             <Setter Property="MinHeight" Value="42" />
                         </Trigger>
                         <Trigger Property="Validation.HasError" Value="True">
-                            <Setter TargetName="RowBorder" Property="BorderBrush" Value="#D92D20" />
+                            <Setter TargetName="RowBorder" Property="BorderBrush" Value="{DynamicResource ErrorForegroundBrush}" />
                             <Setter TargetName="RowBorder" Property="BorderThickness" Value="3,0,0,1" />
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
@@ -403,7 +404,7 @@
                         Background="{TemplateBinding Background}"
                         BorderBrush="{TemplateBinding BorderBrush}"
                         BorderThickness="{TemplateBinding BorderThickness}"
-                        CornerRadius="8"
+                        CornerRadius="{StaticResource DataGrid.CornerRadius}"
                         SnapsToDevicePixels="True">
                         <ScrollViewer
                             x:Name="DG_ScrollViewer"

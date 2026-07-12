@@ -36,13 +36,7 @@
 				Grid.Column="0"
 				Style="{StaticResource AppDataGridStyle}"
 				ItemsSource="{Binding Items}"
-				SelectedItem="{Binding SelectedItem}"
-				AutoGenerateColumns="False"
-				IsReadOnly="True"
-				CanUserAddRows="False"
-				CanUserDeleteRows="False"
-				HeadersVisibility="Column"
-				RowHeaderWidth="0">
+				SelectedItem="{Binding SelectedItem}">
 
 				<DataGrid.Columns>
 
@@ -303,13 +297,7 @@
 					<DataGrid
 						Grid.Row="8"
 						Style="{StaticResource AppDataGridStyle}"
-						ItemsSource="{Binding Details.RecentMovements}"
-						AutoGenerateColumns="False"
-						IsReadOnly="True"
-						CanUserAddRows="False"
-						CanUserDeleteRows="False"
-						HeadersVisibility="Column"
-						RowHeaderWidth="0">
+						ItemsSource="{Binding Details.RecentMovements}">
 
 						<DataGrid.Columns>
 

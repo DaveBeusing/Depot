@@ -225,12 +225,6 @@
 					Grid.Row="2"
 					Style="{StaticResource AppDataGridStyle}"
 					ItemsSource="{Binding InventoryValueItems}"
-					AutoGenerateColumns="False"
-					IsReadOnly="True"
-					CanUserAddRows="False"
-					CanUserDeleteRows="False"
-					HeadersVisibility="Column"
-					RowHeaderWidth="0"
 					Visibility="{Binding ShowInventoryValueRows, Converter={StaticResource BooleanToVisibilityConverter}}">
 
 					<DataGrid.Columns>
@@ -278,12 +272,6 @@
 					Grid.Row="2"
 					Style="{StaticResource AppDataGridStyle}"
 					ItemsSource="{Binding GroupedItems}"
-					AutoGenerateColumns="False"
-					IsReadOnly="True"
-					CanUserAddRows="False"
-					CanUserDeleteRows="False"
-					HeadersVisibility="Column"
-					RowHeaderWidth="0"
 					Visibility="{Binding ShowGroupedRows, Converter={StaticResource BooleanToVisibilityConverter}}">
 
 					<DataGrid.Columns>
