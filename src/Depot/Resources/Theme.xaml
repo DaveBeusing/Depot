@@ -12,9 +12,6 @@
         <ResourceDictionary Source="DataGrid.xaml"/>
         <ResourceDictionary Source="Status.xaml" />
 
-        <!--        
-        <ResourceDictionary Source="Controls.xaml"/>
         <ResourceDictionary Source="Cards.xaml"/>
-        -->
     </ResourceDictionary.MergedDictionaries>
 </ResourceDictionary>

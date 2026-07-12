@@ -9,6 +9,7 @@
 	<!-- Cards -->
 	<Thickness x:Key="Card.Padding">16</Thickness>
 	<Thickness x:Key="Card.Margin">16</Thickness>
+	<CornerRadius x:Key="Card.CornerRadius">12</CornerRadius>
 
 	<!-- Controls -->
 	<Thickness x:Key="Control.Margin">0,8,0,0</Thickness>
