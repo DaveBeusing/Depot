@@ -112,14 +112,12 @@
 
 		</ListBox>
 
-		<Border
-			Grid.Row="4"
-			Style="{StaticResource CardStyle}">
+		<controls:Card Grid.Row="4">
 
 			<ContentControl
 				Content="{Binding CurrentViewModel}" />
 
-		</Border>
+		</controls:Card>
 
 	</Grid>
 

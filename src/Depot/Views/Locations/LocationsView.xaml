@@ -61,9 +61,7 @@
 
 			</Grid>
 
-			<Border
-				Grid.Column="2"
-				Style="{StaticResource CardStyle}">
+			<controls:Card Grid.Column="2">
 
 				<Grid>
 
@@ -132,7 +130,7 @@
 
 				</Grid>
 
-			</Border>
+			</controls:Card>
 
 		</Grid>
 

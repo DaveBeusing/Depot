@@ -53,9 +53,7 @@
 			</ListBox>
 
 			<!-- Editor -->
-			<Border
-				Grid.Column="2"
-				Style="{StaticResource CardStyle}">
+			<controls:Card Grid.Column="2">
 				<Grid>
 					<Grid.RowDefinitions>
 						<RowDefinition Height="Auto"/>
@@ -138,7 +136,7 @@
 
 				</Grid>
 
-			</Border>
+			</controls:Card>
 
 		</Grid>
 
