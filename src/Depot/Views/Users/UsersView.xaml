@@ -98,25 +98,15 @@
 
 					<StackPanel Grid.Row="12">
 						<Grid>
-							<Border
-								Style="{StaticResource ActiveStatusBadgeStyle}"
-								Visibility="{Binding Editor.IsActive, Converter={StaticResource BooleanToVisibilityConverter}}">
+							<controls:StatusBadge
+								Content="Active"
+								Variant="Success"
+								Visibility="{Binding Editor.IsActive, Converter={StaticResource BooleanToVisibilityConverter}}" />
 
-								<TextBlock
-									Text="Active"
-									Style="{StaticResource StatusBadgeTextStyle}" />
-
-							</Border>
-
-							<Border
-								Style="{StaticResource InactiveStatusBadgeStyle}"
-								Visibility="{Binding Editor.IsInactive, Converter={StaticResource BooleanToVisibilityConverter}}">
-
-								<TextBlock
-									Text="Inactive"
-									Style="{StaticResource StatusBadgeTextStyle}" />
-
-							</Border>
+							<controls:StatusBadge
+								Content="Inactive"
+								Variant="Neutral"
+								Visibility="{Binding Editor.IsInactive, Converter={StaticResource BooleanToVisibilityConverter}}" />
 						</Grid>
 					</StackPanel>
 

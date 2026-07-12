@@ -37,7 +37,10 @@
 
 	<!-- Status -->
 	<SolidColorBrush x:Key="SuccessBrush" Color="#DCFCE7" />
+	<SolidColorBrush x:Key="SuccessForegroundBrush" Color="#166534" />
 	<SolidColorBrush x:Key="WarningBrush" Color="#FEF3C7" />
+	<SolidColorBrush x:Key="WarningForegroundBrush" Color="#92400E" />
 	<SolidColorBrush x:Key="ErrorBrush" Color="#FEE2E2" />
+	<SolidColorBrush x:Key="ErrorForegroundBrush" Color="#991B1B" />
 
 </ResourceDictionary>

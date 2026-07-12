@@ -1,75 +1,49 @@
 <ResourceDictionary
 	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:controls="clr-namespace:Depot.Controls">
 
-	<!-- Base status badge -->
-
-	<Style
-		x:Key="StatusBadgeStyle"
-		TargetType="Border">
-
-		<Setter
-			Property="CornerRadius"
-			Value="10" />
-
-		<Setter
-			Property="Padding"
-			Value="10,4" />
-
-		<Setter
-			Property="HorizontalAlignment"
-			Value="Left" />
-
-		<Setter
-			Property="VerticalAlignment"
-			Value="Center" />
-
-	</Style>
-
-	<!-- Active -->
-
-	<Style
-		x:Key="ActiveStatusBadgeStyle"
-		TargetType="Border"
-		BasedOn="{StaticResource StatusBadgeStyle}">
-
-		<Setter
-			Property="Background"
-			Value="{DynamicResource SuccessBrush}" />
-
-	</Style>
-
-	<!-- Inactive -->
-
-	<Style
-		x:Key="InactiveStatusBadgeStyle"
-		TargetType="Border"
-		BasedOn="{StaticResource StatusBadgeStyle}">
-
-		<Setter
-			Property="Background"
-			Value="{DynamicResource BorderBrush}" />
-
-	</Style>
-
-	<!-- Status text -->
-
-	<Style
-		x:Key="StatusBadgeTextStyle"
-		TargetType="TextBlock">
-
-		<Setter
-			Property="FontSize"
-			Value="11" />
-
-		<Setter
-			Property="FontWeight"
-			Value="SemiBold" />
-
-		<Setter
-			Property="Foreground"
-			Value="{DynamicResource PrimaryTextBrush}" />
-
+	<Style TargetType="{x:Type controls:StatusBadge}">
+		<Setter Property="Padding" Value="10,4" />
+		<Setter Property="HorizontalAlignment" Value="Left" />
+		<Setter Property="VerticalAlignment" Value="Center" />
+		<Setter Property="Background" Value="{DynamicResource SurfaceAltBrush}" />
+		<Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}" />
+		<Setter Property="FontSize" Value="11" />
+		<Setter Property="FontWeight" Value="SemiBold" />
+		<Setter Property="Template">
+			<Setter.Value>
+				<ControlTemplate TargetType="{x:Type controls:StatusBadge}">
+					<Border
+						Background="{TemplateBinding Background}"
+						CornerRadius="10"
+						Padding="{TemplateBinding Padding}"
+						SnapsToDevicePixels="True">
+						<ContentPresenter
+							HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+							VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+							RecognizesAccessKey="True" />
+					</Border>
+					<ControlTemplate.Triggers>
+						<Trigger Property="Variant" Value="Success">
+							<Setter Property="Background" Value="{DynamicResource SuccessBrush}" />
+							<Setter Property="Foreground" Value="{DynamicResource SuccessForegroundBrush}" />
+						</Trigger>
+						<Trigger Property="Variant" Value="Warning">
+							<Setter Property="Background" Value="{DynamicResource WarningBrush}" />
+							<Setter Property="Foreground" Value="{DynamicResource WarningForegroundBrush}" />
+						</Trigger>
+						<Trigger Property="Variant" Value="Error">
+							<Setter Property="Background" Value="{DynamicResource ErrorBrush}" />
+							<Setter Property="Foreground" Value="{DynamicResource ErrorForegroundBrush}" />
+						</Trigger>
+						<Trigger Property="IsEnabled" Value="False">
+							<Setter Property="Opacity" Value="0.5" />
+						</Trigger>
+					</ControlTemplate.Triggers>
+				</ControlTemplate>
+			</Setter.Value>
+		</Setter>
 	</Style>
 
 </ResourceDictionary>
