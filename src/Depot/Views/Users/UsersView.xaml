@@ -33,48 +33,28 @@
 			</Grid.ColumnDefinitions>
 
 			<!-- User List -->
-
 			<ListBox
 				Grid.Column="0"
 				ItemsSource="{Binding Users}"
 				SelectedItem="{Binding SelectedUser}"
 				BorderThickness="1"
 				BorderBrush="{StaticResource BorderBrush}">
-
 				<ListBox.ItemTemplate>
-
 					<DataTemplate>
-
 						<Border Padding="12">
-
 							<StackPanel>
-
-								<TextBlock
-									Text="{Binding DisplayName}"
-									FontWeight="SemiBold"/>
-
-								<TextBlock
-									Margin="0,2,0,0"
-									Text="{Binding Role}"
-									
-									Foreground="{StaticResource SecondaryTextBrush}"/>
-
+								<TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold"/>
+								<TextBlock Margin="0,2,0,0" Text="{Binding Role}" Foreground="{StaticResource SecondaryTextBrush}"/>
 							</StackPanel>
-
 						</Border>
-
 					</DataTemplate>
-
 				</ListBox.ItemTemplate>
-
 			</ListBox>
 
 			<!-- Editor -->
-
 			<Border
 				Grid.Column="2"
 				Style="{StaticResource CardStyle}">
-
 				<Grid>
 					<Grid.RowDefinitions>
 						<RowDefinition Height="Auto"/>
@@ -93,19 +73,18 @@
 						<RowDefinition Height="*"/>
 						<RowDefinition Height="Auto"/>
 					</Grid.RowDefinitions>
-
 					<TextBlock
 						Grid.Row="0"
 						Text="{Binding Editor.EditorTitle}"
 						Style="{StaticResource SectionTitleStyle}" />
 
-					<TextBlock Grid.Row="2" Text="User name"/>
+					<TextBlock Grid.Row="2" Text="User name" Style="{StaticResource FormLabelStyle}" />
 					<TextBox Grid.Row="4"
 						Text="{Binding Editor.UserName}"
 						Style="{StaticResource AppTextBoxStyle}"
 						IsReadOnly="{Binding Editor.IsExistingUser}" />
 
-					<TextBlock Grid.Row="6" Text="Display name"/>
+					<TextBlock Grid.Row="6" Text="Display name" Style="{StaticResource FormLabelStyle}"/>
 					<TextBox Grid.Row="8"
 						Style="{StaticResource AppTextBoxStyle}"
 						Text="{Binding Editor.DisplayName}" />
