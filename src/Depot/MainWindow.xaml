@@ -79,21 +79,11 @@
 
 			<DockPanel>
 
-				<StackPanel
+				<controls:SidebarBrand
 					DockPanel.Dock="Top"
-					Orientation="Horizontal"
-					Margin="{StaticResource Navigation.Logo.Margin}">
-					<!-- Brand Logo -->
-					<Image
-						Width="56"
-						Height="44"
-						Source="/Resources/Images/Depot.png" />
-					<!-- Brand Title -->
-					<TextBlock
-						Margin="16,0,0,0"
-						Text="Depot"
-						Style="{StaticResource BrandTitleStyle}" />
-				</StackPanel>
+					LogoSource="/Resources/Images/Depot.png"
+					Title="Depot"
+					Subtitle="Inventory Management" />
 
 				<controls:SidebarUserPanel
 					DockPanel.Dock="Bottom"

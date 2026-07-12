@@ -27,7 +27,6 @@
 	<Thickness x:Key="Search.Margin">0,16,0,16</Thickness>
 
 	<!-- Navigation -->
-	<Thickness x:Key="Navigation.Logo.Margin">24</Thickness>
 	<Thickness x:Key="Navigation.Item.Margin">8,4</Thickness>
 	<Thickness x:Key="Navigation.Admin.Margin">8,24,8,4</Thickness>
 	<Thickness x:Key="Navigation.Item.Padding">12</Thickness>

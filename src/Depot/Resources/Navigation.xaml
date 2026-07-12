@@ -317,6 +317,45 @@
 		</Grid>
 	</DataTemplate>
 
+	<Style TargetType="{x:Type controls:SidebarBrand}">
+		<Setter Property="Margin" Value="16,18,16,24" />
+		<Setter Property="Template">
+			<Setter.Value>
+				<ControlTemplate TargetType="{x:Type controls:SidebarBrand}">
+					<Grid>
+						<Grid.ColumnDefinitions>
+							<ColumnDefinition Width="48" />
+							<ColumnDefinition Width="12" />
+							<ColumnDefinition Width="*" />
+						</Grid.ColumnDefinitions>
+
+						<Image
+							Width="48"
+							Height="48"
+							Source="{TemplateBinding LogoSource}"
+							Stretch="Uniform" />
+
+						<StackPanel Grid.Column="2" VerticalAlignment="Center">
+							<TextBlock
+								Foreground="{DynamicResource NavigationForegroundBrush}"
+								FontSize="20"
+								FontWeight="SemiBold"
+								Text="{TemplateBinding Title}"
+								TextOptions.TextFormattingMode="Display"
+								TextOptions.TextRenderingMode="ClearType" />
+							<TextBlock
+								Margin="0,2,0,0"
+								Foreground="{DynamicResource NavigationMutedTextBrush}"
+								FontSize="10"
+								Text="{TemplateBinding Subtitle}"
+								TextTrimming="CharacterEllipsis" />
+						</StackPanel>
+					</Grid>
+				</ControlTemplate>
+			</Setter.Value>
+		</Setter>
+	</Style>
+
 	<Style x:Key="SidebarLogoutButtonStyle" TargetType="Button">
 		<Setter Property="Width" Value="30" />
 		<Setter Property="Height" Value="30" />
