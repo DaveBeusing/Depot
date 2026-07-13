@@ -20,6 +20,7 @@ public sealed class AdministrationViewModel
 	private readonly ImportViewModel _importViewModel;
 	private readonly MasterDataViewModel _masterDataViewModel;
 	private readonly UserViewModel _userViewModel;
+	private readonly DatabaseSettingsViewModel _databaseSettingsViewModel;
 
 	private NavigationItem? _selectedNavigationItem;
 	private BaseViewModel? _currentViewModel;
@@ -28,13 +29,19 @@ public sealed class AdministrationViewModel
 		ImportViewModel importViewModel,
 		PurposeService purposeService,
 		LocationService locationService,
-		UserService userService)
+		UserService userService,
+		SettingsService settingsService,
+		ConnectionStatusService connectionStatusService)
 	{
 		_importViewModel = importViewModel;
 		_masterDataViewModel = new MasterDataViewModel(purposeService, locationService);
 		_userViewModel =
 			new UserViewModel(
 				userService);
+		_databaseSettingsViewModel =
+			new DatabaseSettingsViewModel(
+				settingsService,
+				connectionStatusService);
 
 		NavigationItems.Add(
 			new NavigationItem
@@ -120,9 +127,7 @@ public sealed class AdministrationViewModel
 					_userViewModel,
 
 				AdministrationSection.Database =>
-					new PlaceholderViewModel(
-						"Database",
-						"Database management will be available in a future release."),
+					_databaseSettingsViewModel,
 
 				AdministrationSection.Settings =>
 					new PlaceholderViewModel(

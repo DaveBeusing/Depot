@@ -448,6 +448,12 @@
 									FontSize="11"
 									Text="{TemplateBinding Role}"
 									TextTrimming="CharacterEllipsis" />
+								<controls:ConnectionStatusIndicator
+									Margin="0,6,0,0"
+									Compact="True"
+									Foreground="{DynamicResource NavigationMutedTextBrush}"
+									State="{TemplateBinding ConnectionState}"
+									Status="{TemplateBinding ConnectionStatus}" />
 							</StackPanel>
 
 							<Button

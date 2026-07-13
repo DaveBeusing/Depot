@@ -39,6 +39,56 @@
 		</Style.Triggers>
 	</Style>
 
+	<Style TargetType="{x:Type controls:TextInput}">
+		<Setter Property="Height" Value="36" />
+		<Setter Property="HorizontalAlignment" Value="Stretch" />
+		<Setter Property="Padding" Value="{DynamicResource Control.Padding}" />
+		<Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+		<Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+		<Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+		<Setter Property="BorderThickness" Value="1" />
+		<Setter Property="Template">
+			<Setter.Value>
+				<ControlTemplate TargetType="{x:Type controls:TextInput}">
+					<Border
+						x:Name="InputBorder"
+						Background="{TemplateBinding Background}"
+						BorderBrush="{TemplateBinding BorderBrush}"
+						BorderThickness="{TemplateBinding BorderThickness}"
+						CornerRadius="6">
+						<TextBox
+							Padding="{TemplateBinding Padding}"
+							Background="Transparent"
+							BorderThickness="0"
+							CaretBrush="{DynamicResource PrimaryTextBrush}"
+							FontFamily="{TemplateBinding FontFamily}"
+							FontSize="{TemplateBinding FontSize}"
+							Foreground="{TemplateBinding Foreground}"
+							IsReadOnly="{TemplateBinding IsReadOnly}"
+							SelectionBrush="{DynamicResource PrimaryBrush}"
+							Text="{Binding Text, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+							VerticalContentAlignment="Center" />
+					</Border>
+					<ControlTemplate.Triggers>
+						<Trigger Property="IsMouseOver" Value="True">
+							<Setter TargetName="InputBorder" Property="BorderBrush" Value="{DynamicResource SecondaryTextBrush}" />
+						</Trigger>
+						<Trigger Property="IsKeyboardFocusWithin" Value="True">
+							<Setter TargetName="InputBorder" Property="BorderBrush" Value="{DynamicResource PrimaryBrush}" />
+						</Trigger>
+						<Trigger Property="IsReadOnly" Value="True">
+							<Setter TargetName="InputBorder" Property="Background" Value="{DynamicResource SurfaceAltBrush}" />
+							<Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}" />
+						</Trigger>
+						<Trigger Property="IsEnabled" Value="False">
+							<Setter TargetName="InputBorder" Property="Opacity" Value="0.5" />
+						</Trigger>
+					</ControlTemplate.Triggers>
+				</ControlTemplate>
+			</Setter.Value>
+		</Setter>
+	</Style>
+
 	<Style TargetType="{x:Type controls:PasswordInput}">
 		<Setter Property="MinHeight" Value="36" />
 		<Setter Property="Padding" Value="{DynamicResource Control.Padding}" />
@@ -79,6 +129,14 @@
 				</ControlTemplate>
 			</Setter.Value>
 		</Setter>
+	</Style>
+
+	<Style
+		x:Key="RoundedPasswordInputStyle"
+		TargetType="{x:Type controls:PasswordInput}"
+		BasedOn="{StaticResource {x:Type controls:PasswordInput}}">
+		<Setter Property="Height" Value="36" />
+		<Setter Property="HorizontalAlignment" Value="Stretch" />
 	</Style>
 
 	<Style TargetType="{x:Type controls:SearchBox}">
@@ -493,6 +551,23 @@
             </Trigger>
         </Style.Triggers>
     </Style>
+
+	<Style x:Key="OptionRadioButtonStyle" TargetType="RadioButton">
+		<Setter Property="MinHeight" Value="36" />
+		<Setter Property="Padding" Value="12,8" />
+		<Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+		<Setter Property="FontWeight" Value="SemiBold" />
+		<Setter Property="VerticalContentAlignment" Value="Center" />
+		<Setter Property="Cursor" Value="Hand" />
+		<Style.Triggers>
+			<Trigger Property="IsMouseOver" Value="True">
+				<Setter Property="Foreground" Value="{DynamicResource PrimaryBrush}" />
+			</Trigger>
+			<Trigger Property="IsEnabled" Value="False">
+				<Setter Property="Opacity" Value="0.5" />
+			</Trigger>
+		</Style.Triggers>
+	</Style>
 
 
 

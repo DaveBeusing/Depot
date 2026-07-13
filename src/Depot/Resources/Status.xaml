@@ -46,4 +46,59 @@
 		</Setter>
 	</Style>
 
+	<Style TargetType="{x:Type controls:ConnectionStatusIndicator}">
+		<Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+		<Setter Property="DetailForeground" Value="{DynamicResource SecondaryTextBrush}" />
+		<Setter Property="Template">
+			<Setter.Value>
+				<ControlTemplate TargetType="{x:Type controls:ConnectionStatusIndicator}">
+					<Grid>
+						<Grid.ColumnDefinitions>
+							<ColumnDefinition Width="Auto" />
+							<ColumnDefinition Width="8" />
+							<ColumnDefinition Width="*" />
+						</Grid.ColumnDefinitions>
+
+						<Ellipse
+							x:Name="StatusDot"
+							Width="8"
+							Height="8"
+							VerticalAlignment="Center"
+							Fill="{DynamicResource ErrorForegroundBrush}" />
+
+						<StackPanel Grid.Column="2">
+							<TextBlock
+								Foreground="{TemplateBinding Foreground}"
+								FontSize="11"
+								FontWeight="SemiBold"
+								Text="{TemplateBinding Status}"
+								TextTrimming="CharacterEllipsis" />
+							<TextBlock
+								x:Name="DetailText"
+								Margin="0,2,0,0"
+								Foreground="{TemplateBinding DetailForeground}"
+								FontSize="11"
+								Text="{TemplateBinding Detail}"
+								TextTrimming="CharacterEllipsis" />
+						</StackPanel>
+					</Grid>
+					<ControlTemplate.Triggers>
+						<Trigger Property="State" Value="Connected">
+							<Setter TargetName="StatusDot" Property="Fill" Value="{DynamicResource SuccessForegroundBrush}" />
+						</Trigger>
+						<Trigger Property="State" Value="Pending">
+							<Setter TargetName="StatusDot" Property="Fill" Value="{DynamicResource WarningForegroundBrush}" />
+						</Trigger>
+						<Trigger Property="Compact" Value="True">
+							<Setter TargetName="DetailText" Property="Visibility" Value="Collapsed" />
+						</Trigger>
+						<Trigger Property="Detail" Value="">
+							<Setter TargetName="DetailText" Property="Visibility" Value="Collapsed" />
+						</Trigger>
+					</ControlTemplate.Triggers>
+				</ControlTemplate>
+			</Setter.Value>
+		</Setter>
+	</Style>
+
 </ResourceDictionary>

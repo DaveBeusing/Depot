@@ -50,6 +50,9 @@
 			<DataTemplate DataType="{x:Type administrationViewModels:AdministrationViewModel}">
 				<administrationViews:AdministrationView />
 			</DataTemplate>
+			<DataTemplate DataType="{x:Type administrationViewModels:DatabaseSettingsViewModel}">
+				<administrationViews:DatabaseSettingsView />
+			</DataTemplate>
 			<DataTemplate DataType="{x:Type sharedViewModels:PlaceholderViewModel}">
 				<sharedViews:PlaceholderView />
 			</DataTemplate>
@@ -93,6 +96,8 @@
 					DockPanel.Dock="Bottom"
 					DisplayName="{Binding CurrentUserDisplayName}"
 					Role="{Binding CurrentUserRole}"
+					ConnectionState="{Binding ConnectionStatus.CompactState}"
+					ConnectionStatus="{Binding ConnectionStatus.CompactStatus}"
 					LogoutCommand="{Binding LogoutCommand}" />
 
 

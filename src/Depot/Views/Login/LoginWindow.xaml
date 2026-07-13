@@ -17,26 +17,29 @@
 				<Image
 					Width="72"
 					Height="64"
-					HorizontalAlignment="Left"
+					HorizontalAlignment="Center"
 					Margin="0,0,0,20"
 					Source="/Resources/Images/Depot.png" />
 
 				<TextBlock
+					HorizontalAlignment="Center"
 					Text="Sign in to Depot"
+					TextAlignment="Center"
 					Style="{StaticResource PageTitleStyle}" />
 
 				<TextBlock
 					Margin="0,6,0,24"
+					HorizontalAlignment="Center"
 					Foreground="{StaticResource SecondaryTextBrush}"
-					Text="Use your Depot account to continue." />
+					Text="Use your Depot account to continue."
+					TextAlignment="Center" />
 
 				<TextBlock
 					Text="Email"
 					Style="{StaticResource FormLabelStyle}" />
 
-				<TextBox
-					Text="{Binding Email, UpdateSourceTrigger=PropertyChanged}"
-					Style="{StaticResource AppTextBoxStyle}" />
+				<controls:TextInput
+					Text="{Binding Email, UpdateSourceTrigger=PropertyChanged}" />
 
 				<TextBlock
 					Margin="0,16,0,4"
@@ -44,7 +47,8 @@
 					Style="{StaticResource FormLabelStyle}" />
 
 				<controls:PasswordInput
-					PasswordValue="{Binding Password, UpdateSourceTrigger=PropertyChanged}" />
+					PasswordValue="{Binding Password, UpdateSourceTrigger=PropertyChanged}"
+					Style="{StaticResource RoundedPasswordInputStyle}" />
 
 				<Border
 					Margin="0,16,0,0"
@@ -66,11 +70,13 @@
 					IsDefault="True"
 					Style="{StaticResource PrimaryButtonStyle}" />
 
-				<TextBlock
+				<controls:ConnectionStatusIndicator
 					Margin="0,20,0,0"
 					HorizontalAlignment="Center"
-					Style="{StaticResource CaptionStyle}"
-					Text="Depot Inventory Management" />
+					Compact="True"
+					Foreground="{StaticResource SecondaryTextBrush}"
+					State="{Binding ConnectionStatus.CompactState}"
+					Status="{Binding ConnectionStatus.DatabaseStatus}" />
 			</StackPanel>
 		</controls:Card>
 	</Border>

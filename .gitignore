@@ -485,4 +485,6 @@ $RECYCLE.BIN/
 
 *.db
 *.xlsx
+/depot.settings
+/depot.settings.tmp
 cdx/

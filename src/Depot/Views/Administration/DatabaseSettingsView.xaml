@@ -1,0 +1,159 @@
+<UserControl
+	x:Class="Depot.Views.Administration.DatabaseSettingsView"
+	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:controls="clr-namespace:Depot.Controls">
+
+	<ScrollViewer VerticalScrollBarVisibility="Auto">
+		<StackPanel MaxWidth="760" HorizontalAlignment="Left">
+			<TextBlock
+				Text="Database connection"
+				Style="{StaticResource SectionTitleStyle}" />
+			<TextBlock
+				Margin="0,6,0,20"
+				Foreground="{StaticResource SecondaryTextBrush}"
+				Text="Choose the database target and securely store its connection settings."
+				TextWrapping="Wrap" />
+
+			<controls:ConnectionStatusIndicator
+				Margin="0,0,0,20"
+				State="{Binding ConnectionStatus.State}"
+				Status="{Binding ConnectionStatus.Status}"
+				Detail="{Binding ConnectionStatus.Detail}" />
+
+			<StackPanel Margin="0,0,0,16" Orientation="Horizontal">
+				<RadioButton
+					Content="Local database"
+					GroupName="DatabaseProvider"
+					IsChecked="{Binding UseLocalDatabase}"
+					Style="{StaticResource OptionRadioButtonStyle}" />
+				<RadioButton
+					Margin="16,0,0,0"
+					Content="SQL Server"
+					GroupName="DatabaseProvider"
+					IsChecked="{Binding UseSqlServer}"
+					Style="{StaticResource OptionRadioButtonStyle}" />
+			</StackPanel>
+
+			<Border
+				Padding="16"
+				Background="{StaticResource SurfaceAltBrush}"
+				BorderBrush="{StaticResource BorderBrush}"
+				BorderThickness="1"
+				CornerRadius="8">
+				<StackPanel>
+					<TextBlock Text="Local SQLite database" Style="{StaticResource CardTitleStyle}" />
+					<TextBlock
+						Margin="0,12,0,4"
+						Text="Database file"
+						Style="{StaticResource FormLabelStyle}" />
+					<TextBox
+						Style="{StaticResource AppTextBoxStyle}"
+						Text="{Binding LocalDatabasePath}" />
+					<TextBlock
+						Margin="0,6,0,0"
+						Style="{StaticResource HintStyle}"
+						Text="Used on first installation and as the current fallback database." />
+				</StackPanel>
+			</Border>
+
+			<Border
+				Margin="0,16,0,0"
+				Padding="16"
+				Background="{StaticResource SurfaceAltBrush}"
+				BorderBrush="{StaticResource BorderBrush}"
+				BorderThickness="1"
+				CornerRadius="8"
+				IsEnabled="{Binding IsSqlServerSelected}">
+				<Grid>
+					<Grid.ColumnDefinitions>
+						<ColumnDefinition Width="*" />
+						<ColumnDefinition Width="16" />
+						<ColumnDefinition Width="180" />
+					</Grid.ColumnDefinitions>
+					<Grid.RowDefinitions>
+						<RowDefinition Height="Auto" />
+						<RowDefinition Height="12" />
+						<RowDefinition Height="Auto" />
+						<RowDefinition Height="4" />
+						<RowDefinition Height="Auto" />
+						<RowDefinition Height="12" />
+						<RowDefinition Height="Auto" />
+						<RowDefinition Height="4" />
+						<RowDefinition Height="Auto" />
+						<RowDefinition Height="12" />
+						<RowDefinition Height="Auto" />
+						<RowDefinition Height="4" />
+						<RowDefinition Height="Auto" />
+						<RowDefinition Height="12" />
+						<RowDefinition Height="Auto" />
+					</Grid.RowDefinitions>
+
+					<TextBlock Grid.ColumnSpan="3" Text="SQL Server connection" Style="{StaticResource CardTitleStyle}" />
+					<TextBlock Grid.Row="2" Text="Server" Style="{StaticResource FormLabelStyle}" />
+					<TextBlock Grid.Row="2" Grid.Column="2" Text="Port" Style="{StaticResource FormLabelStyle}" />
+					<TextBox Grid.Row="4" Style="{StaticResource AppTextBoxStyle}" Text="{Binding SqlServerHost}" />
+					<TextBox Grid.Row="4" Grid.Column="2" Style="{StaticResource AppTextBoxStyle}" Text="{Binding SqlServerPort}" />
+
+					<TextBlock Grid.Row="6" Grid.ColumnSpan="3" Text="Database" Style="{StaticResource FormLabelStyle}" />
+					<TextBox Grid.Row="8" Grid.ColumnSpan="3" Style="{StaticResource AppTextBoxStyle}" Text="{Binding SqlServerDatabase}" />
+
+					<TextBlock Grid.Row="10" Text="User name" Style="{StaticResource FormLabelStyle}" />
+					<TextBlock Grid.Row="10" Grid.Column="2" Text="Password" Style="{StaticResource FormLabelStyle}" />
+					<TextBox Grid.Row="12" Style="{StaticResource AppTextBoxStyle}" Text="{Binding SqlServerUserName}" />
+					<controls:PasswordInput
+						Grid.Row="12"
+						Grid.Column="2"
+						PasswordValue="{Binding SqlServerPassword, UpdateSourceTrigger=PropertyChanged}" />
+
+					<StackPanel Grid.Row="14" Grid.ColumnSpan="3" Orientation="Horizontal">
+						<CheckBox
+							Content="Encrypt connection"
+							IsChecked="{Binding EncryptSqlServerConnection}"
+							Style="{StaticResource AppCheckBoxStyle}" />
+						<CheckBox
+							Margin="24,0,0,0"
+							Content="Trust server certificate"
+							IsChecked="{Binding TrustSqlServerCertificate}"
+							Style="{StaticResource AppCheckBoxStyle}" />
+					</StackPanel>
+				</Grid>
+			</Border>
+
+			<Border
+				Margin="0,16,0,0"
+				Padding="12"
+				Background="{StaticResource WarningBrush}"
+				CornerRadius="6">
+				<TextBlock
+					Foreground="{StaticResource WarningForegroundBrush}"
+					Text="SQL Server configuration is prepared for the future provider. Depot continues to use the local SQLite database until SQL Server repositories are available."
+					TextWrapping="Wrap" />
+			</Border>
+
+			<Grid Margin="0,16,0,0">
+				<Border
+					Padding="12"
+					Background="{StaticResource SuccessBrush}"
+					CornerRadius="6"
+					Visibility="{Binding HasSuccessMessage, Converter={StaticResource BooleanToVisibilityConverter}}">
+					<TextBlock Foreground="{StaticResource SuccessForegroundBrush}" Text="{Binding Message}" TextWrapping="Wrap" />
+				</Border>
+				<Border
+					Padding="12"
+					Background="{StaticResource ErrorBrush}"
+					CornerRadius="6"
+					Visibility="{Binding HasError, Converter={StaticResource BooleanToVisibilityConverter}}">
+					<TextBlock Foreground="{StaticResource ErrorForegroundBrush}" Text="{Binding Message}" TextWrapping="Wrap" />
+				</Border>
+			</Grid>
+
+			<Button
+				Margin="0,20,0,0"
+				HorizontalAlignment="Right"
+				Command="{Binding SaveCommand}"
+				Content="Save settings"
+				Style="{StaticResource PrimaryButtonStyle}" />
+		</StackPanel>
+	</ScrollViewer>
+</UserControl>

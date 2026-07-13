@@ -33,10 +33,13 @@ public partial class App : Application
 	public static LocationRepository LocationRepository { get; private set; } = null!;
 	public static StockMovementRepository StockMovementRepository { get; private set; } = null!;
 	public static UserRepository UserRepository { get; private set; } = null!;
+	public static SettingsRepository SettingsRepository { get; private set; } = null!;
 	public static AuthorizationService AuthorizationService { get; private set; } = null!;
 	public static PasswordHasher PasswordHasher { get; private set; } = null!;
 	public static AuthenticationService AuthenticationService { get; private set; } = null!;
 	public static SessionService SessionService { get; private set; } = null!;
+	public static SettingsService SettingsService { get; private set; } = null!;
+	public static ConnectionStatusService ConnectionStatusService { get; private set; } = null!;
 	public static ItemService ItemService { get; private set; } = null!;
 	public static PurposeService PurposeService { get; private set; } = null!;
 	public static LocationService LocationService { get; private set; } = null!;
@@ -72,9 +75,15 @@ public partial class App : Application
 
 	private static void InitializeInfrastructure()
 	{
-		ConnectionFactory = new SqliteConnectionFactory("depot.db");
+		SettingsRepository = new SettingsRepository("depot.settings");
+		SettingsService = new SettingsService(SettingsRepository);
+		ConnectionStatusService = new ConnectionStatusService();
+		var connectionSettings = SettingsService.LoadOrCreate();
+
+		ConnectionFactory = new SqliteConnectionFactory(connectionSettings.LocalDatabasePath);
 		Database = new DepotDatabase(ConnectionFactory);
 		Database.Initialize();
+		ConnectionStatusService.Apply(connectionSettings);
 
 		StartupDiagnostics.Log("Database initialized.");
 
@@ -208,7 +217,9 @@ public partial class App : Application
 
 	private static bool ShowLogin()
 	{
-		var loginViewModel = new LoginViewModel(AuthenticationService);
+		var loginViewModel = new LoginViewModel(
+			AuthenticationService,
+			ConnectionStatusService);
 		var loginWindow = new LoginWindow(loginViewModel);
 		StartupDiagnostics.Log("Showing login dialog.");
 		var result = loginWindow.ShowDialog();
@@ -230,7 +241,9 @@ public partial class App : Application
 				AuthorizationService,
 				SessionService,
 				ImportService,
-				FileDialogService);
+				FileDialogService,
+				SettingsService,
+				ConnectionStatusService);
 
 		StartupDiagnostics.Log("MainViewModel created.");
 

@@ -73,7 +73,9 @@ The project started as a replacement for an Excel-based inventory and is under a
 - Activate and deactivate users
 - Administrator role assignment
 - Excel import workspace
-- Database and Settings placeholders for future modules
+- Settings placeholder for future application preferences
+- Encrypted local and SQL Server connection configuration
+- Local SQLite fallback for prepared SQL Server installations
 
 ### Session and users
 
@@ -84,6 +86,7 @@ The project started as a replacement for an Excel-based inventory and is under a
 - Administration visibility based on permissions
 - Current user panel in the sidebar
 - Logout and session switching
+- Database connection status in the login window and sidebar
 
 ## UI design system
 
@@ -100,6 +103,7 @@ Current controls include:
 - `SidebarBrand`
 - `SidebarUserPanel`
 - `PasswordInput`
+- `ConnectionStatusIndicator`
 
 The resource dictionaries provide shared colors, typography, spacing, buttons, inputs, navigation, cards, DataGrid styling, dialogs, status presentation, and empty states.
 
@@ -163,6 +167,8 @@ dotnet run --project src/Depot/Depot.csproj
 ```
 
 The SQLite database is created and migrated automatically as `depot.db` in the working directory. The current schema version is 6.
+
+Database connection settings are stored in `depot.settings`. The file is a JSON envelope whose payload is encrypted with Windows DPAPI for the current Windows user. A first installation always starts with the local SQLite database. SQL Server server, database, user, password, encryption, and certificate settings can be prepared under Administration > Database; the local database remains active until the SQL Server repository provider is implemented.
 
 For a new database, sign in with `admin@depot.local` and the initial password `Depot123!`. Change the password in Administration > Users after the first sign-in. Existing version 5 users are migrated to an email ending in `@depot.local` and receive the same initial password.
 

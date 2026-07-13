@@ -17,9 +17,12 @@ public sealed class LoginViewModel : BaseViewModel
 	private string _password = string.Empty;
 	private string? _errorMessage;
 
-	public LoginViewModel(AuthenticationService authenticationService)
+	public LoginViewModel(
+		AuthenticationService authenticationService,
+		ConnectionStatusService connectionStatusService)
 	{
 		_authenticationService = authenticationService;
+		ConnectionStatus = connectionStatusService;
 		LoginCommand = new RelayCommand(Login, CanLogin);
 	}
 
@@ -71,6 +74,8 @@ public sealed class LoginViewModel : BaseViewModel
 	public bool HasErrorMessage => !string.IsNullOrWhiteSpace(ErrorMessage);
 
 	public RelayCommand LoginCommand { get; }
+
+	public ConnectionStatusService ConnectionStatus { get; }
 
 	public event EventHandler? LoginSucceeded;
 

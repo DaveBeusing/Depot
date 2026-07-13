@@ -28,11 +28,14 @@ public sealed class MainViewModel : BaseViewModel
 		AuthorizationService authorizationService,
 		SessionService sessionService,
 		ImportService importService,
-		IFileDialogService fileDialogService)
+		IFileDialogService fileDialogService,
+		SettingsService settingsService,
+		ConnectionStatusService connectionStatusService)
 		{
 		
 		_authorizationService =	authorizationService;
 		_sessionService = sessionService;
+		ConnectionStatus = connectionStatusService;
 		LogoutCommand = new RelayCommand(Logout);
 	
 		DashboardViewModel =
@@ -66,7 +69,9 @@ public sealed class MainViewModel : BaseViewModel
 				ImportViewModel, 
 				purposeService,
 				locationService,
-				userService);
+				userService,
+				settingsService,
+				connectionStatusService);
 
 		NavigationItems.Add(
 			new NavigationItem
@@ -128,6 +133,8 @@ public sealed class MainViewModel : BaseViewModel
 	public ObservableCollection<NavigationItem> NavigationItems { get; } = new();
 
 	public RelayCommand LogoutCommand { get; }
+
+	public ConnectionStatusService ConnectionStatus { get; }
 
 	public event EventHandler? LogoutRequested;
 
