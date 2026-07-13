@@ -10,7 +10,7 @@ public sealed class UserListItemViewModel : BaseViewModel
 	public UserListItemViewModel(User user)
 	{
 		Id = user.Id;
-		UserName = user.UserName;
+		Email = user.Email;
 		DisplayName = user.DisplayName;
 		Role = user.IsAdministrator ? "Administrator" : "User";
 		Status = user.IsActive ? "Active" : "Inactive";
@@ -20,7 +20,7 @@ public sealed class UserListItemViewModel : BaseViewModel
 	}
 
 	public long Id { get; }
-	public string UserName { get; }
+	public string Email { get; }
 	public string DisplayName { get; }
 	public string Role { get; } 
 	public string Status { get; }

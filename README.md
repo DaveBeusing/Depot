@@ -77,7 +77,9 @@ The project started as a replacement for an Excel-based inventory and is under a
 
 ### Session and users
 
-- Local user selection at startup
+- Email and password authentication at startup
+- PBKDF2-SHA256 password hashing with per-user salts
+- Editable user email addresses and administrator-managed password changes
 - Administrator and standard user roles
 - Administration visibility based on permissions
 - Current user panel in the sidebar
@@ -97,6 +99,7 @@ Current controls include:
 - `EmptyState`
 - `SidebarBrand`
 - `SidebarUserPanel`
+- `PasswordInput`
 
 The resource dictionaries provide shared colors, typography, spacing, buttons, inputs, navigation, cards, DataGrid styling, dialogs, status presentation, and empty states.
 
@@ -159,7 +162,9 @@ Run the application:
 dotnet run --project src/Depot/Depot.csproj
 ```
 
-The SQLite database is created and migrated automatically as `depot.db` in the working directory. The current schema version is 5.
+The SQLite database is created and migrated automatically as `depot.db` in the working directory. The current schema version is 6.
+
+For a new database, sign in with `admin@depot.local` and the initial password `Depot123!`. Change the password in Administration > Users after the first sign-in. Existing version 5 users are migrated to an email ending in `@depot.local` and receive the same initial password.
 
 The solution can also be opened through `Depot.slnx`.
 

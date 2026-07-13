@@ -9,8 +9,9 @@ namespace Depot.ViewModels.Users;
 public sealed class UserEditorViewModel : BaseViewModel
 {
 	private long _id;
-	private string _userName = string.Empty;
+	private string _email = string.Empty;
 	private string _displayName = string.Empty;
+	private string _password = string.Empty;
 	private bool _isAdministrator;
 	private bool _isActive = true;
 
@@ -23,16 +24,26 @@ public sealed class UserEditorViewModel : BaseViewModel
 			OnPropertyChanged();
 			OnPropertyChanged(nameof(IsExistingUser));
 			OnPropertyChanged(nameof(EditorTitle));
-			OnPropertyChanged(nameof(CanEditUserName));
+			OnPropertyChanged(nameof(PasswordHint));
 		}
 	}
 
-	public string UserName
+	public string Email
 	{
-		get => _userName;
+		get => _email;
 		set
 		{
-			_userName = value;
+			_email = value;
+			OnPropertyChanged();
+		}
+	}
+
+	public string Password
+	{
+		get => _password;
+		set
+		{
+			_password = value;
 			OnPropertyChanged();
 		}
 	}
@@ -72,16 +83,19 @@ public sealed class UserEditorViewModel : BaseViewModel
 
 	public bool IsInactive => !IsActive;
 	public bool IsExistingUser => Id != 0;
-	public bool CanEditUserName => !IsExistingUser;
 	public string EditorTitle => IsExistingUser ? "Edit User" : "New User";
+	public string PasswordHint => IsExistingUser
+		? "Leave blank to keep it; new passwords require 8+ characters, uppercase, lowercase, and a number."
+		: "8+ characters with uppercase, lowercase, and a number.";
     public string Status => IsActive ? "Active" : "Inactive";
     public string ActivationButtonText => IsActive ? "Deactivate" : "Activate";
 
 	public void Clear()
 	{
 		Id = 0;
-		UserName = string.Empty;
+		Email = string.Empty;
 		DisplayName = string.Empty;
+		Password = string.Empty;
 		IsAdministrator = false;
 		IsActive = true;
 	}

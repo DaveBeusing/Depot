@@ -62,7 +62,7 @@ public sealed class UserViewModel : BaseViewModel
 				users
 					.Where(
 						x =>
-							x.UserName.Contains(
+							x.Email.Contains(
 								SearchText,
 								StringComparison.OrdinalIgnoreCase) ||
 
@@ -104,8 +104,9 @@ public sealed class UserViewModel : BaseViewModel
 			return;
 		}
 		Editor.Id = SelectedUser.Id;
-		Editor.UserName = SelectedUser.UserName;
+		Editor.Email = SelectedUser.Email;
 		Editor.DisplayName = SelectedUser.DisplayName;
+		Editor.Password = string.Empty;
 		Editor.IsAdministrator = SelectedUser.IsAdministrator;
 		Editor.IsActive = SelectedUser.IsActive;
 	}
@@ -136,15 +137,18 @@ public sealed class UserViewModel : BaseViewModel
 			if (Editor.Id == 0)
 			{
 				_userService.CreateUser(
-					Editor.UserName,
+					Editor.Email,
 					Editor.DisplayName,
+					Editor.Password,
 					Editor.IsAdministrator);
 			}
 			else
 			{
 				_userService.UpdateUser(
 					Editor.Id,
+					Editor.Email,
 					Editor.DisplayName,
+					Editor.Password,
 					Editor.IsAdministrator);
 			}
 			LoadUsers();

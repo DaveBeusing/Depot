@@ -31,7 +31,7 @@ public sealed class DepotDatabase
 
 		if (version == 0)
 		{
-			CreateVersion5Schema(
+			CreateCurrentSchema(
 				connection);
 
 			SetDatabaseVersion(
@@ -124,7 +124,7 @@ public sealed class DepotDatabase
 		insertCommand.ExecuteNonQuery();
 	}
 
-	private static void CreateVersion5Schema(
+	private static void CreateCurrentSchema(
 		SqliteConnection connection)
 	{
 		CreateItemsTable(
@@ -328,8 +328,9 @@ public sealed class DepotDatabase
 		CREATE TABLE IF NOT EXISTS Users
 		(
 			Id                  INTEGER PRIMARY KEY AUTOINCREMENT,
-			UserName            TEXT NOT NULL UNIQUE,
+			Email               TEXT NOT NULL COLLATE NOCASE UNIQUE,
 			DisplayName         TEXT NOT NULL,
+			PasswordHash        TEXT NOT NULL,
 			IsAdministrator     INTEGER NOT NULL DEFAULT 0,
 			IsActive            INTEGER NOT NULL DEFAULT 1,
 			CreatedUtc          TEXT NOT NULL
@@ -374,16 +375,18 @@ public sealed class DepotDatabase
 		"""
 		INSERT OR IGNORE INTO Users
 		(
-			UserName,
+			Email,
 			DisplayName,
+			PasswordHash,
 			IsAdministrator,
 			IsActive,
 			CreatedUtc
 		)
 		VALUES
 		(
-			'admin',
+			'admin@depot.local',
 			'Administrator',
+			'pbkdf2-sha256$210000$9vL0kVt/HZBUCpsJYjPW6Q==$B1lZ+NRxxR/E8kwIE5PK0wXR2BPDmFTeLiKYyAEuhaE=',
 			1,
 			1,
 			strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
@@ -422,6 +425,18 @@ public sealed class DepotDatabase
 				5;
 		}
 
+		if (migratedVersion == 5)
+		{
+			MigrateUsersToEmailAuthentication(connection);
+
+			SetDatabaseVersion(
+				connection,
+				6);
+
+			migratedVersion =
+				6;
+		}
+
 		if (migratedVersion < DatabaseVersion.CurrentVersion)
 		{
 			throw new InvalidOperationException(
@@ -433,5 +448,54 @@ public sealed class DepotDatabase
 			throw new InvalidOperationException(
 				$"Database version '{version}' is newer than the supported schema version '{DatabaseVersion.CurrentVersion}'.");
 		}
+	}
+
+	private static void MigrateUsersToEmailAuthentication(SqliteConnection connection)
+	{
+		using var transaction = connection.BeginTransaction();
+		using var command = connection.CreateCommand();
+		command.Transaction = transaction;
+		command.CommandText =
+		"""
+		ALTER TABLE Users RENAME TO UsersLegacy;
+
+		CREATE TABLE Users
+		(
+			Id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+			Email               TEXT NOT NULL COLLATE NOCASE UNIQUE,
+			DisplayName         TEXT NOT NULL,
+			PasswordHash        TEXT NOT NULL,
+			IsAdministrator     INTEGER NOT NULL DEFAULT 0,
+			IsActive            INTEGER NOT NULL DEFAULT 1,
+			CreatedUtc          TEXT NOT NULL
+		);
+
+		INSERT INTO Users
+		(
+			Id,
+			Email,
+			DisplayName,
+			PasswordHash,
+			IsAdministrator,
+			IsActive,
+			CreatedUtc
+		)
+		SELECT
+			Id,
+			CASE
+				WHEN instr(UserName, '@') > 0 THEN lower(trim(UserName))
+				ELSE lower(trim(UserName)) || '@depot.local'
+			END,
+			DisplayName,
+			'pbkdf2-sha256$210000$9vL0kVt/HZBUCpsJYjPW6Q==$B1lZ+NRxxR/E8kwIE5PK0wXR2BPDmFTeLiKYyAEuhaE=',
+			IsAdministrator,
+			IsActive,
+			CreatedUtc
+		FROM UsersLegacy;
+
+		DROP TABLE UsersLegacy;
+		""";
+		command.ExecuteNonQuery();
+		transaction.Commit();
 	}
 }

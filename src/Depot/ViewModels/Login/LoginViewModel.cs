@@ -1,11 +1,8 @@
 // Copyright (c) 2026 David Beusing
 // Licensed under the MIT License.
 
-using System.Collections.ObjectModel;
-
-using Depot.Diagnostics;
 using Depot.Commands;
-using Depot.Models;
+using Depot.Diagnostics;
 using Depot.Services;
 
 namespace Depot.ViewModels.Login;
@@ -15,67 +12,93 @@ namespace Depot.ViewModels.Login;
 /// </summary>
 public sealed class LoginViewModel : BaseViewModel
 {
-	private readonly AuthorizationService _authorizationService;
+	private readonly AuthenticationService _authenticationService;
+	private string _email = string.Empty;
+	private string _password = string.Empty;
+	private string? _errorMessage;
 
-    private User? _selectedUser;
+	public LoginViewModel(AuthenticationService authenticationService)
+	{
+		_authenticationService = authenticationService;
+		LoginCommand = new RelayCommand(Login, CanLogin);
+	}
 
-    public LoginViewModel(UserService userService, AuthorizationService authorizationService)
-    {
-        _authorizationService = authorizationService;
-        StartupDiagnostics.Log("LoginViewModel: Begin");
-        LoginCommand =
-            new RelayCommand(
-                Login,
-                CanLogin);
+	public string Email
+	{
+		get => _email;
+		set
+		{
+			if (_email == value)
+			{
+				return;
+			}
 
-        StartupDiagnostics.Log("LoginViewModel: Command created");
-        foreach (var user in userService.GetUsers())
-        {
-            Users.Add(user);
-        }
-        StartupDiagnostics.Log($"LoginViewModel: Loaded {Users.Count} users");
-        SelectedUser = Users.FirstOrDefault();
-        StartupDiagnostics.Log("LoginViewModel: Selected user assigned");
-    }
+			_email = value;
+			OnPropertyChanged();
+			ClearError();
+			LoginCommand.RaiseCanExecuteChanged();
+		}
+	}
 
-    public ObservableCollection<User> Users { get; }
-        = new();
+	public string Password
+	{
+		get => _password;
+		set
+		{
+			if (_password == value)
+			{
+				return;
+			}
 
-    public User? SelectedUser
-    {
-        get => _selectedUser;
-        set
-        {
-            StartupDiagnostics.Log("SelectedUser: Setter entered");
-            _selectedUser = value;
-            StartupDiagnostics.Log("SelectedUser: Field assigned");
-            OnPropertyChanged();
-            StartupDiagnostics.Log("SelectedUser: PropertyChanged");
-            LoginCommand.RaiseCanExecuteChanged();
-            StartupDiagnostics.Log("SelectedUser: CanExecuteChanged");
-        }
-    }
+			_password = value;
+			OnPropertyChanged();
+			ClearError();
+			LoginCommand.RaiseCanExecuteChanged();
+		}
+	}
 
-    public RelayCommand LoginCommand { get; }
+	public string? ErrorMessage
+	{
+		get => _errorMessage;
+		private set
+		{
+			_errorMessage = value;
+			OnPropertyChanged();
+			OnPropertyChanged(nameof(HasErrorMessage));
+		}
+	}
 
-    public event EventHandler? LoginSucceeded;
+	public bool HasErrorMessage => !string.IsNullOrWhiteSpace(ErrorMessage);
 
-    private bool CanLogin()
-    {
-        return SelectedUser is not null;
-    }
+	public RelayCommand LoginCommand { get; }
 
-    private void Login()
-    {
-        StartupDiagnostics.Log("Login: begin");
-        var user = SelectedUser;
-        if (user is null)
-        {
-            return;
-        }
-    	_authorizationService.SignIn(user);
-        StartupDiagnostics.Log("Login: user signed in");
-        LoginSucceeded?.Invoke(this, EventArgs.Empty);
-        StartupDiagnostics.Log("Login: event raised");
-    }
+	public event EventHandler? LoginSucceeded;
+
+	private bool CanLogin() =>
+		!string.IsNullOrWhiteSpace(Email) &&
+		!string.IsNullOrEmpty(Password);
+
+	private void Login()
+	{
+		StartupDiagnostics.Log("Login: authentication started.");
+		if (!_authenticationService.SignIn(Email, Password))
+		{
+			Password = string.Empty;
+			ErrorMessage = "The email or password is incorrect, or the account is inactive.";
+			StartupDiagnostics.Log("Login: authentication failed.");
+			return;
+		}
+
+		Password = string.Empty;
+		StartupDiagnostics.Log("Login: authentication succeeded.");
+		LoginSucceeded?.Invoke(this, EventArgs.Empty);
+	}
+
+	private void ClearError()
+	{
+		if (ErrorMessage is not null)
+		{
+			ErrorMessage = null;
+		}
+	}
 }

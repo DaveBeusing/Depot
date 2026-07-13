@@ -5,13 +5,11 @@
 	xmlns:controls="clr-namespace:Depot.Controls">
 
 	<Grid>
-
 		<Grid.RowDefinitions>
-			<RowDefinition Height="Auto"/>
-			<RowDefinition Height="16"/>
-			<RowDefinition Height="Auto"/>
-			<RowDefinition Height="8"/>
-			<RowDefinition Height="*"/>
+			<RowDefinition Height="Auto" />
+			<RowDefinition Height="Auto" />
+			<RowDefinition Height="Auto" />
+			<RowDefinition Height="*" />
 		</Grid.RowDefinitions>
 
 		<controls:PageHeader
@@ -19,127 +17,147 @@
 			Title="Users" />
 
 		<controls:SearchBox
-			Grid.Row="2"
+			Grid.Row="1"
 			Margin="{StaticResource Search.Margin}"
-			Placeholder="Search users"
+			Placeholder="Search users by name or email"
 			Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
 
-		<Grid Grid.Row="4">
+		<Border
+			Grid.Row="2"
+			Margin="0,0,0,16"
+			Padding="12"
+			Background="{StaticResource ErrorBrush}"
+			CornerRadius="6"
+			Visibility="{Binding HasErrorMessage, Converter={StaticResource BooleanToVisibilityConverter}}">
+			<TextBlock
+				Foreground="{StaticResource ErrorForegroundBrush}"
+				Text="{Binding ErrorMessage}"
+				TextWrapping="Wrap" />
+		</Border>
 
+		<Grid Grid.Row="3">
 			<Grid.ColumnDefinitions>
-				<ColumnDefinition Width="320"/>
-				<ColumnDefinition Width="16"/>
-				<ColumnDefinition Width="*"/>
+				<ColumnDefinition Width="320" />
+				<ColumnDefinition Width="16" />
+				<ColumnDefinition Width="*" />
 			</Grid.ColumnDefinitions>
 
-			<!-- User List -->
 			<ListBox
 				Grid.Column="0"
-				Style="{StaticResource AppListBoxStyle}"
 				ItemsSource="{Binding Users}"
 				SelectedItem="{Binding SelectedUser}"
-				BorderThickness="1"
-				BorderBrush="{StaticResource BorderBrush}">
+				Style="{StaticResource AppListBoxStyle}">
 				<ListBox.ItemTemplate>
 					<DataTemplate>
-						<Border Padding="12">
-							<StackPanel>
-								<TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold"/>
-								<TextBlock Margin="0,2,0,0" Text="{Binding Role}" Foreground="{StaticResource SecondaryTextBrush}"/>
-							</StackPanel>
-						</Border>
+						<Grid Margin="0,6">
+							<Grid.RowDefinitions>
+								<RowDefinition Height="Auto" />
+								<RowDefinition Height="Auto" />
+							</Grid.RowDefinitions>
+							<TextBlock
+								FontWeight="SemiBold"
+								Text="{Binding DisplayName}" />
+							<TextBlock
+								Grid.Row="1"
+								Margin="0,2,0,0"
+								Foreground="{StaticResource SecondaryTextBrush}"
+								Text="{Binding Email}"
+								TextTrimming="CharacterEllipsis" />
+						</Grid>
 					</DataTemplate>
 				</ListBox.ItemTemplate>
 			</ListBox>
 
-			<!-- Editor -->
 			<controls:Card Grid.Column="2">
 				<Grid>
 					<Grid.RowDefinitions>
-						<RowDefinition Height="Auto"/>
-						<RowDefinition Height="16"/>
-						<RowDefinition Height="Auto"/>
-						<RowDefinition Height="4"/>
-						<RowDefinition Height="Auto"/>
-						<RowDefinition Height="12"/>
-						<RowDefinition Height="Auto"/>
-						<RowDefinition Height="4"/>
-						<RowDefinition Height="Auto"/>
-						<RowDefinition Height="12"/>
-						<RowDefinition Height="Auto"/>
-						<RowDefinition Height="12"/>
-						<RowDefinition Height="Auto"/>
-						<RowDefinition Height="*"/>
-						<RowDefinition Height="Auto"/>
+						<RowDefinition Height="Auto" />
+						<RowDefinition Height="16" />
+						<RowDefinition Height="Auto" />
+						<RowDefinition Height="4" />
+						<RowDefinition Height="Auto" />
+						<RowDefinition Height="12" />
+						<RowDefinition Height="Auto" />
+						<RowDefinition Height="4" />
+						<RowDefinition Height="Auto" />
+						<RowDefinition Height="12" />
+						<RowDefinition Height="Auto" />
+						<RowDefinition Height="4" />
+						<RowDefinition Height="Auto" />
+						<RowDefinition Height="4" />
+						<RowDefinition Height="Auto" />
+						<RowDefinition Height="16" />
+						<RowDefinition Height="Auto" />
+						<RowDefinition Height="12" />
+						<RowDefinition Height="Auto" />
+						<RowDefinition Height="*" />
+						<RowDefinition Height="Auto" />
 					</Grid.RowDefinitions>
+
 					<TextBlock
 						Grid.Row="0"
 						Text="{Binding Editor.EditorTitle}"
 						Style="{StaticResource SectionTitleStyle}" />
 
-					<TextBlock Grid.Row="2" Text="User name" Style="{StaticResource FormLabelStyle}" />
-					<TextBox Grid.Row="4"
-						Text="{Binding Editor.UserName}"
+					<TextBlock Grid.Row="2" Text="Email" Style="{StaticResource FormLabelStyle}" />
+					<TextBox
+						Grid.Row="4"
 						Style="{StaticResource AppTextBoxStyle}"
-						IsReadOnly="{Binding Editor.IsExistingUser}" />
+						Text="{Binding Editor.Email}" />
 
-					<TextBlock Grid.Row="6" Text="Display name" Style="{StaticResource FormLabelStyle}"/>
-					<TextBox Grid.Row="8"
+					<TextBlock Grid.Row="6" Text="Display name" Style="{StaticResource FormLabelStyle}" />
+					<TextBox
+						Grid.Row="8"
 						Style="{StaticResource AppTextBoxStyle}"
 						Text="{Binding Editor.DisplayName}" />
 
+					<TextBlock Grid.Row="10" Text="Password" Style="{StaticResource FormLabelStyle}" />
+					<controls:PasswordInput
+						Grid.Row="12"
+						PasswordValue="{Binding Editor.Password, UpdateSourceTrigger=PropertyChanged}" />
+					<TextBlock
+						Grid.Row="14"
+						Style="{StaticResource HintStyle}"
+						Text="{Binding Editor.PasswordHint}" />
+
 					<CheckBox
-						Grid.Row="10"
+						Grid.Row="16"
 						Content="Administrator"
-						Style="{StaticResource AppCheckBoxStyle}"
-						IsChecked="{Binding Editor.IsAdministrator}" />
+						IsChecked="{Binding Editor.IsAdministrator}"
+						Style="{StaticResource AppCheckBoxStyle}" />
 
-					<StackPanel Grid.Row="12">
-						<Grid>
-							<controls:StatusBadge
-								Content="Active"
-								Variant="Success"
-								Visibility="{Binding Editor.IsActive, Converter={StaticResource BooleanToVisibilityConverter}}" />
-
-							<controls:StatusBadge
-								Content="Inactive"
-								Variant="Neutral"
-								Visibility="{Binding Editor.IsInactive, Converter={StaticResource BooleanToVisibilityConverter}}" />
-						</Grid>
-					</StackPanel>
-
-
+					<Grid Grid.Row="18">
+						<controls:StatusBadge
+							Content="Active"
+							Variant="Success"
+							Visibility="{Binding Editor.IsActive, Converter={StaticResource BooleanToVisibilityConverter}}" />
+						<controls:StatusBadge
+							Content="Inactive"
+							Variant="Neutral"
+							Visibility="{Binding Editor.IsInactive, Converter={StaticResource BooleanToVisibilityConverter}}" />
+					</Grid>
 
 					<StackPanel
-						Grid.Row="14"
-						Orientation="Horizontal"
-						HorizontalAlignment="Right">
-
+						Grid.Row="20"
+						HorizontalAlignment="Right"
+						Orientation="Horizontal">
 						<Button
-							Content="New"
 							Command="{Binding NewUserCommand}"
+							Content="New"
 							Style="{StaticResource PrimaryButtonStyle}" />
-
 						<Button
-							Content="Save"
+							Margin="{StaticResource Button.Margin}"
 							Command="{Binding SaveUserCommand}"
-							Margin="{StaticResource Button.Margin}"
+							Content="Save"
 							Style="{StaticResource PrimaryButtonStyle}" />
-
 						<Button
-							Content="{Binding Editor.ActivationButtonText}"
-							Command="{Binding ToggleActiveCommand}"
 							Margin="{StaticResource Button.Margin}"
+							Command="{Binding ToggleActiveCommand}"
+							Content="{Binding Editor.ActivationButtonText}"
 							Style="{StaticResource DangerButtonStyle}" />
-
 					</StackPanel>
-
 				</Grid>
-
 			</controls:Card>
-
 		</Grid>
-
 	</Grid>
-
 </UserControl>

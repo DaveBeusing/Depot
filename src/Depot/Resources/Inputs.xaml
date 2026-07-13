@@ -39,6 +39,48 @@
 		</Style.Triggers>
 	</Style>
 
+	<Style TargetType="{x:Type controls:PasswordInput}">
+		<Setter Property="MinHeight" Value="36" />
+		<Setter Property="Padding" Value="{DynamicResource Control.Padding}" />
+		<Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+		<Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+		<Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+		<Setter Property="BorderThickness" Value="1" />
+		<Setter Property="Template">
+			<Setter.Value>
+				<ControlTemplate TargetType="{x:Type controls:PasswordInput}">
+					<Border
+						x:Name="InputBorder"
+						Background="{TemplateBinding Background}"
+						BorderBrush="{TemplateBinding BorderBrush}"
+						BorderThickness="{TemplateBinding BorderThickness}"
+						CornerRadius="6">
+						<PasswordBox
+							x:Name="PART_PasswordBox"
+							Padding="{TemplateBinding Padding}"
+							Background="Transparent"
+							BorderThickness="0"
+							FontFamily="{TemplateBinding FontFamily}"
+							FontSize="{TemplateBinding FontSize}"
+							Foreground="{TemplateBinding Foreground}"
+							VerticalContentAlignment="Center" />
+					</Border>
+					<ControlTemplate.Triggers>
+						<Trigger Property="IsMouseOver" Value="True">
+							<Setter TargetName="InputBorder" Property="BorderBrush" Value="{DynamicResource SecondaryTextBrush}" />
+						</Trigger>
+						<Trigger Property="IsKeyboardFocusWithin" Value="True">
+							<Setter TargetName="InputBorder" Property="BorderBrush" Value="{DynamicResource PrimaryBrush}" />
+						</Trigger>
+						<Trigger Property="IsEnabled" Value="False">
+							<Setter TargetName="InputBorder" Property="Opacity" Value="0.5" />
+						</Trigger>
+					</ControlTemplate.Triggers>
+				</ControlTemplate>
+			</Setter.Value>
+		</Setter>
+	</Style>
+
 	<Style TargetType="{x:Type controls:SearchBox}">
 		<Setter Property="MinWidth" Value="240" />
 		<Setter Property="MinHeight" Value="36" />

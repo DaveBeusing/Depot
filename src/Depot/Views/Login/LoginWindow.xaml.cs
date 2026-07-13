@@ -15,8 +15,13 @@ public partial class LoginWindow : Window
 {
 	public LoginWindow(LoginViewModel viewModel)
 	{
+		StartupDiagnostics.Log("LoginWindow: initialization started.");
 		InitializeComponent();
+		StartupDiagnostics.Log("LoginWindow: components initialized.");
 		DataContext = viewModel;
+		StartupDiagnostics.Log("LoginWindow: data context assigned.");
+		SourceInitialized += (_, _) => StartupDiagnostics.Log("LoginWindow: source initialized.");
+		Loaded += (_, _) => StartupDiagnostics.Log("LoginWindow: loaded.");
 		viewModel.LoginSucceeded += OnLoginSucceeded;
 	}
 

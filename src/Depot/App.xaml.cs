@@ -34,6 +34,8 @@ public partial class App : Application
 	public static StockMovementRepository StockMovementRepository { get; private set; } = null!;
 	public static UserRepository UserRepository { get; private set; } = null!;
 	public static AuthorizationService AuthorizationService { get; private set; } = null!;
+	public static PasswordHasher PasswordHasher { get; private set; } = null!;
+	public static AuthenticationService AuthenticationService { get; private set; } = null!;
 	public static SessionService SessionService { get; private set; } = null!;
 	public static ItemService ItemService { get; private set; } = null!;
 	public static PurposeService PurposeService { get; private set; } = null!;
@@ -106,6 +108,15 @@ public partial class App : Application
 		AuthorizationService =
 			new AuthorizationService();
 
+		PasswordHasher =
+			new PasswordHasher();
+
+		AuthenticationService =
+			new AuthenticationService(
+				UserRepository,
+				PasswordHasher,
+				AuthorizationService);
+
 		SessionService =
 			new SessionService(
 				AuthorizationService);
@@ -124,7 +135,9 @@ public partial class App : Application
 
 		UserService =
 			new UserService(
-				UserRepository);
+				UserRepository,
+				PasswordHasher,
+				AuthorizationService);
 
 		MovementService =
 			new MovementService(
@@ -195,8 +208,9 @@ public partial class App : Application
 
 	private static bool ShowLogin()
 	{
-		var loginViewModel = new LoginViewModel(UserService, AuthorizationService);
+		var loginViewModel = new LoginViewModel(AuthenticationService);
 		var loginWindow = new LoginWindow(loginViewModel);
+		StartupDiagnostics.Log("Showing login dialog.");
 		var result = loginWindow.ShowDialog();
 		StartupDiagnostics.Log($"Login dialog returned: {result}");
 		return result == true;
