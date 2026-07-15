@@ -29,6 +29,14 @@ public sealed class InventoryViewModel
 	public ObservableCollection<InventoryOverviewItemViewModel> Items { get; }
 		= new();
 
+	public bool HasItems => Items.Count > 0;
+
+	public bool HasNoItems => !HasItems;
+
+	public bool HasSelectedItem => SelectedItem is not null;
+
+	public bool HasNoSelectedItem => !HasSelectedItem;
+
 	public InventoryDetailsViewModel Details { get; }
 
 	public string SearchText
@@ -37,6 +45,11 @@ public sealed class InventoryViewModel
 
 		set
 		{
+			if (_searchText == value)
+			{
+				return;
+			}
+
 			_searchText = value;
 			OnPropertyChanged();
 
@@ -50,9 +63,16 @@ public sealed class InventoryViewModel
 
 		set
 		{
+			if (_selectedItem == value)
+			{
+				return;
+			}
+
 			_selectedItem = value;
 
 			OnPropertyChanged();
+			OnPropertyChanged(nameof(HasSelectedItem));
+			OnPropertyChanged(nameof(HasNoSelectedItem));
 
 			LoadSelectedDetails();
 		}
@@ -78,6 +98,9 @@ public sealed class InventoryViewModel
 				Items.FirstOrDefault(
 					x => x.InventoryId == selectedInventoryId.Value);
 		}
+
+		OnPropertyChanged(nameof(HasItems));
+		OnPropertyChanged(nameof(HasNoItems));
 
 		if (SelectedItem is null)
 		{

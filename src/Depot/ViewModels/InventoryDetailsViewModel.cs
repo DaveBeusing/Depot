@@ -135,6 +135,10 @@ public sealed class InventoryDetailsViewModel
 	public ObservableCollection<InventoryRecentMovementViewModel> RecentMovements { get; }
 		= new();
 
+	public bool HasRecentMovements => RecentMovements.Count > 0;
+
+	public bool HasNoRecentMovements => !HasRecentMovements;
+
 	public void Load(
 		InventoryDetails details)
 	{
@@ -158,6 +162,9 @@ public sealed class InventoryDetailsViewModel
 				new InventoryRecentMovementViewModel(
 					movement));
 		}
+
+		OnPropertyChanged(nameof(HasRecentMovements));
+		OnPropertyChanged(nameof(HasNoRecentMovements));
 	}
 
 	public void Clear()
@@ -174,5 +181,7 @@ public sealed class InventoryDetailsViewModel
 		AverageCost = 0m;
 		InventoryValue = 0m;
 		RecentMovements.Clear();
+		OnPropertyChanged(nameof(HasRecentMovements));
+		OnPropertyChanged(nameof(HasNoRecentMovements));
 	}
 }

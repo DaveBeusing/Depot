@@ -5,327 +5,171 @@
 	xmlns:controls="clr-namespace:Depot.Controls">
 
 	<Grid>
-
 		<Grid.RowDefinitions>
 			<RowDefinition Height="Auto" />
-			<RowDefinition Height="16" />
 			<RowDefinition Height="Auto" />
-			<RowDefinition Height="16" />
 			<RowDefinition Height="*" />
 		</Grid.RowDefinitions>
 
 		<controls:PageHeader
 			Grid.Row="0"
-			Title="Inventory" />
+			Title="Inventory"
+			Subtitle="Review stock levels, valuation, and recent activity across all inventory locations." />
 
 		<controls:SearchBox
-			Grid.Row="2"
+			Grid.Row="1"
+			Margin="{StaticResource Search.Margin}"
 			Placeholder="Search inventory"
 			Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-			ToolTip="Search by part number, description, manufacturer, category, purpose or location" />
+			ToolTip="Search by part number, description, manufacturer, category, purpose, or location" />
 
-		<Grid Grid.Row="4">
-
+		<Grid Grid.Row="2">
 			<Grid.ColumnDefinitions>
-				<ColumnDefinition Width="2*" />
+				<ColumnDefinition Width="3*" />
 				<ColumnDefinition Width="24" />
-				<ColumnDefinition Width="1*" />
+				<ColumnDefinition Width="2*" />
 			</Grid.ColumnDefinitions>
 
-			<DataGrid
-				Grid.Column="0"
-				Style="{StaticResource AppDataGridStyle}"
-				ItemsSource="{Binding Items}"
-				SelectedItem="{Binding SelectedItem}">
-
-				<DataGrid.Columns>
-
-					<DataGridTextColumn
-						Header="Part Number"
-						Binding="{Binding PartNumber}"
-						Width="220" />
-
-					<DataGridTextColumn
-						Header="Description"
-						Binding="{Binding Description}"
-						Width="*" />
-
-					<DataGridTextColumn
-						Header="Purpose"
-						Binding="{Binding PurposeName}"
-						Width="140" />
-
-					<DataGridTextColumn
-						Header="Location"
-						Binding="{Binding LocationName}"
-						Width="140" />
-
-					<DataGridTextColumn
-						Header="Stock"
-						Binding="{Binding CurrentStock}"
-						Width="100" />
-
-					<DataGridTextColumn
-						Header="Avg Cost"
-						Binding="{Binding AverageCost, StringFormat={}{0:C2}}"
-						Width="140" />
-
-					<DataGridTextColumn
-						Header="Value"
-						Binding="{Binding InventoryValue, StringFormat={}{0:C2}}"
-						Width="140" />
-
-				</DataGrid.Columns>
-
-			</DataGrid>
-
-			<Border
-				Grid.Column="2"
-				Padding="20"
-				Background="White"
-				BorderBrush="#E5E7EB"
-				BorderThickness="1">
+			<controls:Card Grid.Column="0">
+				<controls:Card.Header>
+					<TextBlock Text="Inventory Overview" Style="{StaticResource SectionTitleStyle}" />
+				</controls:Card.Header>
 
 				<Grid>
+					<DataGrid
+						ItemsSource="{Binding Items}"
+						SelectedItem="{Binding SelectedItem}"
+						Style="{StaticResource AppDataGridStyle}"
+						Visibility="{Binding HasItems, Converter={StaticResource BooleanToVisibilityConverter}}">
+						<DataGrid.Columns>
+							<DataGridTextColumn Header="Part Number" Binding="{Binding PartNumber}" Width="130" />
+							<DataGridTextColumn Header="Description" Binding="{Binding Description}" Width="*" />
+							<DataGridTextColumn Header="Purpose" Binding="{Binding PurposeName}" Width="100" />
+							<DataGridTextColumn Header="Location" Binding="{Binding LocationName}" Width="100" />
+							<DataGridTextColumn Header="Stock" Binding="{Binding CurrentStock}" Width="70" />
+							<DataGridTextColumn Header="Avg Cost" Binding="{Binding AverageCost, StringFormat={}{0:C2}}" Width="105" />
+							<DataGridTextColumn Header="Value" Binding="{Binding InventoryValue, StringFormat={}{0:C2}}" Width="105" />
+						</DataGrid.Columns>
+					</DataGrid>
 
-					<Grid.RowDefinitions>
-						<RowDefinition Height="Auto" />
-						<RowDefinition Height="16" />
-						<RowDefinition Height="Auto" />
-						<RowDefinition Height="16" />
-						<RowDefinition Height="Auto" />
-						<RowDefinition Height="16" />
-						<RowDefinition Height="Auto" />
-						<RowDefinition Height="8" />
-						<RowDefinition Height="*" />
-					</Grid.RowDefinitions>
+					<controls:EmptyState
+						Title="No inventory found"
+						Description="Adjust the search or create inventory through an opening balance."
+						Visibility="{Binding HasNoItems, Converter={StaticResource BooleanToVisibilityConverter}}" />
+				</Grid>
+			</controls:Card>
 
-					<TextBlock
-						Grid.Row="0"
-						Text="Inventory Details"
-						Style="{StaticResource SectionTitleStyle}" />
+			<controls:Card Grid.Column="2">
+				<controls:Card.Header>
+					<TextBlock Text="Inventory Details" Style="{StaticResource SectionTitleStyle}" />
+				</controls:Card.Header>
 
-					<Border
-						Grid.Row="2"
-						Padding="16"
-						Background="#F9FAFB"
-						BorderBrush="#E5E7EB"
-						BorderThickness="1">
+				<Grid>
+					<controls:EmptyState
+						Title="Select an inventory row"
+						Description="Item information, stock value, and recent movements will appear here."
+						Visibility="{Binding HasNoSelectedItem, Converter={StaticResource BooleanToVisibilityConverter}}" />
 
-						<Grid>
+					<Grid Visibility="{Binding HasSelectedItem, Converter={StaticResource BooleanToVisibilityConverter}}">
+						<Grid.RowDefinitions>
+							<RowDefinition Height="Auto" />
+							<RowDefinition Height="16" />
+							<RowDefinition Height="Auto" />
+							<RowDefinition Height="20" />
+							<RowDefinition Height="Auto" />
+							<RowDefinition Height="8" />
+							<RowDefinition Height="*" />
+						</Grid.RowDefinitions>
 
+						<controls:Card Grid.Row="0" Style="{StaticResource SubtleCardStyle}">
+							<Grid>
+								<Grid.ColumnDefinitions>
+									<ColumnDefinition Width="120" />
+									<ColumnDefinition Width="*" />
+								</Grid.ColumnDefinitions>
+								<Grid.RowDefinitions>
+									<RowDefinition Height="Auto" />
+									<RowDefinition Height="8" />
+									<RowDefinition Height="Auto" />
+									<RowDefinition Height="8" />
+									<RowDefinition Height="Auto" />
+									<RowDefinition Height="8" />
+									<RowDefinition Height="Auto" />
+									<RowDefinition Height="8" />
+									<RowDefinition Height="Auto" />
+									<RowDefinition Height="8" />
+									<RowDefinition Height="Auto" />
+								</Grid.RowDefinitions>
+
+								<TextBlock Grid.Row="0" Text="Part Number" Style="{StaticResource FormLabelStyle}" />
+								<TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Details.PartNumber}" FontWeight="SemiBold" />
+								<TextBlock Grid.Row="2" Text="Description" Style="{StaticResource FormLabelStyle}" />
+								<TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Details.Description}" TextWrapping="Wrap" />
+								<TextBlock Grid.Row="4" Text="Purpose" Style="{StaticResource FormLabelStyle}" />
+								<TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding Details.PurposeName}" />
+								<TextBlock Grid.Row="6" Text="Location" Style="{StaticResource FormLabelStyle}" />
+								<TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding Details.LocationName}" />
+								<TextBlock Grid.Row="8" Text="Manufacturer" Style="{StaticResource FormLabelStyle}" />
+								<TextBlock Grid.Row="8" Grid.Column="1" Text="{Binding Details.Manufacturer}" />
+								<TextBlock Grid.Row="10" Text="Category" Style="{StaticResource FormLabelStyle}" />
+								<TextBlock Grid.Row="10" Grid.Column="1" Text="{Binding Details.Category}" />
+							</Grid>
+						</controls:Card>
+
+						<Grid Grid.Row="2">
 							<Grid.ColumnDefinitions>
-								<ColumnDefinition Width="120" />
+								<ColumnDefinition Width="*" />
+								<ColumnDefinition Width="12" />
+								<ColumnDefinition Width="*" />
+								<ColumnDefinition Width="12" />
 								<ColumnDefinition Width="*" />
 							</Grid.ColumnDefinitions>
 
-							<Grid.RowDefinitions>
-								<RowDefinition Height="Auto" />
-								<RowDefinition Height="8" />
-								<RowDefinition Height="Auto" />
-								<RowDefinition Height="8" />
-								<RowDefinition Height="Auto" />
-								<RowDefinition Height="8" />
-								<RowDefinition Height="Auto" />
-								<RowDefinition Height="8" />
-								<RowDefinition Height="Auto" />
-								<RowDefinition Height="8" />
-								<RowDefinition Height="Auto" />
-							</Grid.RowDefinitions>
+							<controls:Card Grid.Column="0" Style="{StaticResource InfoCardStyle}">
+								<StackPanel>
+									<TextBlock Text="Current Stock" Style="{StaticResource CaptionStyle}" />
+									<TextBlock Margin="0,6,0,0" Text="{Binding Details.CurrentStock}" Style="{StaticResource PageTitleStyle}" />
+								</StackPanel>
+							</controls:Card>
 
-							<TextBlock
-								Grid.Row="0"
-								Grid.Column="0"
-								Text="Part Number"
-								Foreground="#6B7280" />
+							<controls:Card Grid.Column="2" Style="{StaticResource SubtleCardStyle}">
+								<StackPanel>
+									<TextBlock Text="Average Cost" Style="{StaticResource CaptionStyle}" />
+									<TextBlock Margin="0,6,0,0" Text="{Binding Details.AverageCost, StringFormat={}{0:C2}}" Style="{StaticResource SectionTitleStyle}" />
+								</StackPanel>
+							</controls:Card>
 
-							<TextBlock
-								Grid.Row="0"
-								Grid.Column="1"
-								Text="{Binding Details.PartNumber}"
-								FontWeight="SemiBold" />
-
-							<TextBlock
-								Grid.Row="2"
-								Grid.Column="0"
-								Text="Description"
-								Foreground="#6B7280" />
-
-							<TextBlock
-								Grid.Row="2"
-								Grid.Column="1"
-								Text="{Binding Details.Description}"
-								TextWrapping="Wrap" />
-
-							<TextBlock
-								Grid.Row="4"
-								Grid.Column="0"
-								Text="Purpose"
-								Foreground="#6B7280" />
-
-							<TextBlock
-								Grid.Row="4"
-								Grid.Column="1"
-								Text="{Binding Details.PurposeName}" />
-
-							<TextBlock
-								Grid.Row="6"
-								Grid.Column="0"
-								Text="Location"
-								Foreground="#6B7280" />
-
-							<TextBlock
-								Grid.Row="6"
-								Grid.Column="1"
-								Text="{Binding Details.LocationName}" />
-
-							<TextBlock
-								Grid.Row="8"
-								Grid.Column="0"
-								Text="Manufacturer"
-								Foreground="#6B7280" />
-
-							<TextBlock
-								Grid.Row="8"
-								Grid.Column="1"
-								Text="{Binding Details.Manufacturer}" />
-
-							<TextBlock
-								Grid.Row="10"
-								Grid.Column="0"
-								Text="Category"
-								Foreground="#6B7280" />
-
-							<TextBlock
-								Grid.Row="10"
-								Grid.Column="1"
-								Text="{Binding Details.Category}" />
-
+							<controls:Card Grid.Column="4" Style="{StaticResource SuccessCardStyle}">
+								<StackPanel>
+									<TextBlock Text="Inventory Value" Style="{StaticResource CaptionStyle}" />
+									<TextBlock Margin="0,6,0,0" Text="{Binding Details.InventoryValue, StringFormat={}{0:C2}}" Style="{StaticResource SectionTitleStyle}" />
+								</StackPanel>
+							</controls:Card>
 						</Grid>
 
-					</Border>
+						<TextBlock Grid.Row="4" Text="Recent Movements" Style="{StaticResource SectionTitleStyle}" />
 
-					<Grid Grid.Row="4">
+						<Grid Grid.Row="6">
+							<DataGrid
+								ItemsSource="{Binding Details.RecentMovements}"
+								Style="{StaticResource AppDataGridStyle}"
+								Visibility="{Binding Details.HasRecentMovements, Converter={StaticResource BooleanToVisibilityConverter}}">
+								<DataGrid.Columns>
+									<DataGridTextColumn Header="Date" Binding="{Binding TimestampLocal, StringFormat={}{0:g}}" Width="*" />
+									<DataGridTextColumn Header="Type" Binding="{Binding MovementType}" Width="110" />
+									<DataGridTextColumn Header="Qty" Binding="{Binding Quantity}" Width="70" />
+									<DataGridTextColumn Header="Unit Price" Binding="{Binding UnitPrice, StringFormat={}{0:C2}}" Width="110" />
+								</DataGrid.Columns>
+							</DataGrid>
 
-						<Grid.ColumnDefinitions>
-							<ColumnDefinition Width="*" />
-							<ColumnDefinition Width="12" />
-							<ColumnDefinition Width="*" />
-							<ColumnDefinition Width="12" />
-							<ColumnDefinition Width="*" />
-						</Grid.ColumnDefinitions>
-
-						<Border
-							Grid.Column="0"
-							Padding="14"
-							Background="#EFF6FF"
-							BorderBrush="#DBEAFE"
-							BorderThickness="1">
-
-							<StackPanel>
-
-								<TextBlock
-									Text="Current Stock"
-									Foreground="#6B7280"
-									FontSize="12" />
-
-								<TextBlock
-									Margin="0,6,0,0"
-									Text="{Binding Details.CurrentStock}"
-									FontSize="22"
-									FontWeight="SemiBold" />
-
-							</StackPanel>
-
-						</Border>
-
-						<Border
-							Grid.Column="2"
-							Padding="14"
-							Background="#F9FAFB"
-							BorderBrush="#E5E7EB"
-							BorderThickness="1">
-
-							<StackPanel>
-
-								<TextBlock
-									Text="Average Cost"
-									Foreground="#6B7280"
-									FontSize="12" />
-
-								<TextBlock
-									Margin="0,6,0,0"
-									Text="{Binding Details.AverageCost, StringFormat={}{0:C2}}"
-									FontSize="18"
-									FontWeight="SemiBold" />
-
-							</StackPanel>
-
-						</Border>
-
-						<Border
-							Grid.Column="4"
-							Padding="14"
-							Background="#F0FDF4"
-							BorderBrush="#DCFCE7"
-							BorderThickness="1">
-
-							<StackPanel>
-
-								<TextBlock
-									Text="Inventory Value"
-									Foreground="#6B7280"
-									FontSize="12" />
-
-								<TextBlock
-									Margin="0,6,0,0"
-									Text="{Binding Details.InventoryValue, StringFormat={}{0:C2}}"
-									FontSize="18"
-									FontWeight="SemiBold" />
-
-							</StackPanel>
-
-						</Border>
-
+							<controls:EmptyState
+								Title="No movements recorded"
+								Description="Recent stock activity for this inventory will appear here."
+								Visibility="{Binding Details.HasNoRecentMovements, Converter={StaticResource BooleanToVisibilityConverter}}" />
+						</Grid>
 					</Grid>
-
-					<TextBlock
-						Grid.Row="6"
-						Text="Recent Movements"
-						Style="{StaticResource SectionTitleStyle}" />
-
-					<DataGrid
-						Grid.Row="8"
-						Style="{StaticResource AppDataGridStyle}"
-						ItemsSource="{Binding Details.RecentMovements}">
-
-						<DataGrid.Columns>
-
-							<DataGridTextColumn
-								Header="Date"
-								Binding="{Binding TimestampLocal}"
-								Width="140" />
-
-							<DataGridTextColumn
-								Header="Type"
-								Binding="{Binding MovementType}"
-								Width="100" />
-
-							<DataGridTextColumn
-								Header="Qty"
-								Binding="{Binding Quantity}"
-								Width="70" />
-
-						</DataGrid.Columns>
-
-					</DataGrid>
-
 				</Grid>
-
-			</Border>
-
+			</controls:Card>
 		</Grid>
-
 	</Grid>
-
 </UserControl>

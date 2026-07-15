@@ -99,6 +99,30 @@
 		BasedOn="{StaticResource CardBaseStyle}" />
 
 	<Style
+		x:Key="SubtleCardStyle"
+		TargetType="{x:Type controls:Card}"
+		BasedOn="{StaticResource CardBaseStyle}">
+		<Setter Property="Background" Value="{DynamicResource SurfaceAltBrush}" />
+		<Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+	</Style>
+
+	<Style
+		x:Key="InfoCardStyle"
+		TargetType="{x:Type controls:Card}"
+		BasedOn="{StaticResource CardBaseStyle}">
+		<Setter Property="Background" Value="{StaticResource MetricCard.IconBackgroundBrush}" />
+		<Setter Property="BorderBrush" Value="{StaticResource MetricCard.IconBorderBrush}" />
+	</Style>
+
+	<Style
+		x:Key="SuccessCardStyle"
+		TargetType="{x:Type controls:Card}"
+		BasedOn="{StaticResource CardBaseStyle}">
+		<Setter Property="Background" Value="{DynamicResource SuccessBrush}" />
+		<Setter Property="BorderBrush" Value="{DynamicResource SuccessBrush}" />
+	</Style>
+
+	<Style
 		x:Key="ShellContentCardStyle"
 		TargetType="{x:Type controls:Card}"
 		BasedOn="{StaticResource CardBaseStyle}">
