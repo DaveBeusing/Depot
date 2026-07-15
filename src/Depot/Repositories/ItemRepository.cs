@@ -57,7 +57,7 @@ public sealed class ItemRepository
 		return (long)command.ExecuteScalar()!;
 	}
 
-	public void Update(
+	public bool Update(
 		Item item)
 	{
 		using var connection = _connectionFactory.CreateConnection();
@@ -73,8 +73,9 @@ public sealed class ItemRepository
 			Description = $Description,
 			Manufacturer = $Manufacturer,
 			Category = $Category,
-			IsActive = $IsActive
-		WHERE Id = $Id;
+			IsActive = $IsActive,
+			Version = Version + 1
+		WHERE Id = $Id AND Version = $Version;
 		""";
 
 		command.Parameters.AddWithValue("$Id", item.Id);
@@ -82,12 +83,14 @@ public sealed class ItemRepository
 		command.Parameters.AddWithValue("$Manufacturer", (object?)item.Manufacturer ?? DBNull.Value);
 		command.Parameters.AddWithValue("$Category", (object?)item.Category ?? DBNull.Value);
 		command.Parameters.AddWithValue("$IsActive", item.IsActive ? 1 : 0);
+		command.Parameters.AddWithValue("$Version", item.Version);
 
-		command.ExecuteNonQuery();
+		return command.ExecuteNonQuery() == 1;
 	}
 
-	public void Deactivate(
-		long id)
+	public bool Deactivate(
+		long id,
+		long version)
 	{
 		using var connection = _connectionFactory.CreateConnection();
 
@@ -98,13 +101,14 @@ public sealed class ItemRepository
 		command.CommandText =
 		"""
 		UPDATE Items
-		SET IsActive = 0
-		WHERE Id = $Id;
+		SET IsActive = 0, Version = Version + 1
+		WHERE Id = $Id AND Version = $Version;
 		""";
 
 		command.Parameters.AddWithValue("$Id", id);
+		command.Parameters.AddWithValue("$Version", version);
 
-		command.ExecuteNonQuery();
+		return command.ExecuteNonQuery() == 1;
 	}
 
 	public IReadOnlyList<Item> GetAll()
@@ -134,7 +138,8 @@ public sealed class ItemRepository
 				Description,
 				Manufacturer,
 				Category,
-				IsActive
+				IsActive,
+				Version
 			FROM Items
 			WHERE IsActive = 1
 			ORDER BY PartNumber;
@@ -150,7 +155,8 @@ public sealed class ItemRepository
 				Description,
 				Manufacturer,
 				Category,
-				IsActive
+				IsActive,
+				Version
 			FROM Items
 			WHERE
 				IsActive = 1
@@ -197,7 +203,8 @@ public sealed class ItemRepository
 			Description,
 			Manufacturer,
 			Category,
-			IsActive
+			IsActive,
+			Version
 		FROM Items
 		WHERE Id = $Id;
 		""";
@@ -231,7 +238,8 @@ public sealed class ItemRepository
 			Description,
 			Manufacturer,
 			Category,
-			IsActive
+			IsActive,
+			Version
 		FROM Items
 		WHERE PartNumber = $PartNumber;
 		""";
@@ -258,7 +266,8 @@ public sealed class ItemRepository
 			Description = reader.GetString(2),
 			Manufacturer = reader.IsDBNull(3) ? null : reader.GetString(3),
 			Category = reader.IsDBNull(4) ? null : reader.GetString(4),
-			IsActive = reader.GetInt64(5) == 1
+			IsActive = reader.GetInt64(5) == 1,
+			Version = reader.GetInt64(6)
 		};
 	}
 }

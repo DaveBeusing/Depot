@@ -109,6 +109,7 @@ public sealed class UserViewModel : BaseViewModel
 		Editor.Password = string.Empty;
 		Editor.IsAdministrator = SelectedUser.IsAdministrator;
 		Editor.IsActive = SelectedUser.IsActive;
+		Editor.Version = SelectedUser.Version;
 	}
 
 	private void NewUser()
@@ -146,6 +147,7 @@ public sealed class UserViewModel : BaseViewModel
 			{
 				_userService.UpdateUser(
 					Editor.Id,
+					Editor.Version,
 					Editor.Email,
 					Editor.DisplayName,
 					Editor.Password,
@@ -170,7 +172,7 @@ public sealed class UserViewModel : BaseViewModel
 		}
 		try
 		{
-			_userService.SetActive(Editor.Id, !Editor.IsActive);
+			_userService.SetActive(Editor.Id, !Editor.IsActive, Editor.Version);
 			LoadUsers();
 			Editor.Clear();
 			SelectedUser = null;

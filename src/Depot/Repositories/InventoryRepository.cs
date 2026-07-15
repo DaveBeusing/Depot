@@ -41,7 +41,8 @@ public sealed class InventoryRepository
 			ItemId,
 			PurposeId,
 			LocationId,
-			IsActive
+			IsActive,
+			Version
 		FROM Inventories
 		WHERE IsActive = 1
 		ORDER BY ItemId;
@@ -80,7 +81,8 @@ public sealed class InventoryRepository
 			ItemId,
 			PurposeId,
 			LocationId,
-			IsActive
+			IsActive,
+			Version
 		FROM Inventories
 		WHERE
 			ItemId = $ItemId
@@ -123,7 +125,8 @@ public sealed class InventoryRepository
 			ItemId,
 			PurposeId,
 			LocationId,
-			IsActive
+			IsActive,
+			Version
 		FROM Inventories
 		WHERE Id = $Id;
 		""";
@@ -160,7 +163,8 @@ public sealed class InventoryRepository
 			ItemId,
 			PurposeId,
 			LocationId,
-			IsActive
+			IsActive,
+			Version
 		FROM Inventories
 		WHERE
 			ItemId = $ItemId
@@ -238,8 +242,9 @@ public sealed class InventoryRepository
 		return (long)command.ExecuteScalar()!;
 	}
 
-	public void Deactivate(
-		long id)
+	public bool Deactivate(
+		long id,
+		long version)
 	{
 		using var connection =
 			_connectionFactory.CreateConnection();
@@ -252,15 +257,17 @@ public sealed class InventoryRepository
 		command.CommandText =
 		"""
 		UPDATE Inventories
-		SET IsActive = 0
-		WHERE Id = $Id;
+		SET IsActive = 0, Version = Version + 1
+		WHERE Id = $Id AND Version = $Version;
 		""";
 
 		command.Parameters.AddWithValue(
 			"$Id",
 			id);
 
-		command.ExecuteNonQuery();
+		command.Parameters.AddWithValue("$Version", version);
+
+		return command.ExecuteNonQuery() == 1;
 	}
 
 	private static Inventory ReadInventory(
@@ -272,7 +279,8 @@ public sealed class InventoryRepository
 			ItemId = reader.GetInt64(1),
 			PurposeId = reader.GetInt64(2),
 			LocationId = reader.GetInt64(3),
-			IsActive = reader.GetInt64(4) == 1
+			IsActive = reader.GetInt64(4) == 1,
+			Version = reader.GetInt64(5)
 		};
 	}
 }

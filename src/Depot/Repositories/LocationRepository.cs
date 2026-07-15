@@ -40,7 +40,8 @@ public sealed class LocationRepository
 			Id,
 			Name,
 			Description,
-			IsActive
+			IsActive,
+			Version
 		FROM Locations
 		WHERE IsActive = 1
 		ORDER BY Name;
@@ -76,7 +77,8 @@ public sealed class LocationRepository
 			Id,
 			Name,
 			Description,
-			IsActive
+			IsActive,
+			Version
 		FROM Locations
 		WHERE Id = $Id;
 		""";
@@ -110,7 +112,8 @@ public sealed class LocationRepository
 			Id,
 			Name,
 			Description,
-			IsActive
+			IsActive,
+			Version
 		FROM Locations
 		WHERE Name = $Name;
 		""";
@@ -171,7 +174,7 @@ public sealed class LocationRepository
 		return (long)command.ExecuteScalar()!;
 	}
 
-	public void Update(
+	public bool Update(
 		Location location)
 	{
 		using var connection =
@@ -187,8 +190,9 @@ public sealed class LocationRepository
 		UPDATE Locations
 		SET
 			Name = $Name,
-			Description = $Description
-		WHERE Id = $Id;
+			Description = $Description,
+			Version = Version + 1
+		WHERE Id = $Id AND Version = $Version;
 		""";
 
 		command.Parameters.AddWithValue(
@@ -203,11 +207,14 @@ public sealed class LocationRepository
 			"$Description",
 			(object?)location.Description ?? DBNull.Value);
 
-		command.ExecuteNonQuery();
+		command.Parameters.AddWithValue("$Version", location.Version);
+
+		return command.ExecuteNonQuery() == 1;
 	}
 
-	public void Deactivate(
-		long id)
+	public bool Deactivate(
+		long id,
+		long version)
 	{
 		using var connection =
 			_connectionFactory.CreateConnection();
@@ -220,15 +227,17 @@ public sealed class LocationRepository
 		command.CommandText =
 		"""
 		UPDATE Locations
-		SET IsActive = 0
-		WHERE Id = $Id;
+		SET IsActive = 0, Version = Version + 1
+		WHERE Id = $Id AND Version = $Version;
 		""";
 
 		command.Parameters.AddWithValue(
 			"$Id",
 			id);
 
-		command.ExecuteNonQuery();
+		command.Parameters.AddWithValue("$Version", version);
+
+		return command.ExecuteNonQuery() == 1;
 	}
 
 	private static Location ReadLocation(
@@ -248,7 +257,10 @@ public sealed class LocationRepository
 					: reader.GetString(2),
 
 			IsActive =
-				reader.GetInt64(3) == 1
+				reader.GetInt64(3) == 1,
+
+			Version =
+				reader.GetInt64(4)
 		};
 	}
 }

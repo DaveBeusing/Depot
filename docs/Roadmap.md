@@ -9,6 +9,8 @@
 * [x] Dashboard
 * [x] Search
 * [x] Excel Import
+* [x] Audit infrastructure
+* [x] Optimistic concurrency
 * [ ] Administration Shell
 * [x] Inventory Model
 

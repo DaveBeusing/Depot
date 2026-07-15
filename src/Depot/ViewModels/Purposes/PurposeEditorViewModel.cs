@@ -12,6 +12,13 @@ public sealed class PurposeEditorViewModel
 	private long _id;
 	private string _name = string.Empty;
 	private string? _description;
+	private long _version = 1;
+
+	public long Version
+	{
+		get => _version;
+		set => _version = value;
+	}
 
 	public long Id
 	{
@@ -64,5 +71,6 @@ public sealed class PurposeEditorViewModel
 		Id = 0;
 		Name = string.Empty;
 		Description = null;
+		Version = 1;
 	}
 }

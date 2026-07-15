@@ -12,11 +12,14 @@ namespace Depot.Services;
 public sealed class LocationService
 {
 	private readonly LocationRepository _locationRepository;
+	private readonly AuditService _auditService;
 
 	public LocationService(
-		LocationRepository locationRepository)
+		LocationRepository locationRepository,
+		AuditService auditService)
 	{
 		_locationRepository = locationRepository;
+		_auditService = auditService;
 	}
 
 	public IReadOnlyList<Location> GetLocations()
@@ -64,11 +67,14 @@ public sealed class LocationService
 			_locationRepository.Create(
 				location);
 
+		_auditService.RecordCreated(location.Id, location);
+
 		return location;
 	}
 
 	public Location UpdateLocation(
 		long id,
+		long expectedVersion,
 		string name,
 		string? description)
 	{
@@ -103,6 +109,13 @@ public sealed class LocationService
 				$"Location with id '{id}' was not found.");
 		}
 
+		if (location.Version != expectedVersion)
+		{
+			throw new ConcurrencyConflictException("location");
+		}
+
+		var before = Copy(location);
+
 		var existingLocation =
 			_locationRepository.GetByName(
 				name);
@@ -117,14 +130,20 @@ public sealed class LocationService
 		location.Name = name;
 		location.Description = description;
 
-		_locationRepository.Update(
-			location);
+		if (!_locationRepository.Update(location))
+		{
+			throw new ConcurrencyConflictException("location");
+		}
+
+		location.Version++;
+		_auditService.RecordUpdated(location.Id, before, location);
 
 		return location;
 	}
 
 	public void DeactivateLocation(
-		long id)
+		long id,
+		long expectedVersion)
 	{
 		if (id <= 0)
 		{
@@ -143,8 +162,16 @@ public sealed class LocationService
 				$"Location with id '{id}' was not found.");
 		}
 
-		_locationRepository.Deactivate(
-			id);
+		if (location.Version != expectedVersion ||
+			!_locationRepository.Deactivate(id, expectedVersion))
+		{
+			throw new ConcurrencyConflictException("location");
+		}
+
+		var before = Copy(location);
+		location.IsActive = false;
+		location.Version++;
+		_auditService.RecordDeactivated(location.Id, before, location);
 	}
 
 	public Location GetOrCreateLocation(
@@ -172,6 +199,16 @@ public sealed class LocationService
 			name,
 			null);
 	}
+
+	private static Location Copy(Location location) =>
+		new()
+		{
+			Id = location.Id,
+			Name = location.Name,
+			Description = location.Description,
+			IsActive = location.IsActive,
+			Version = location.Version
+		};
 
 
 }

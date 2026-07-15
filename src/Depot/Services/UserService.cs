@@ -13,15 +13,18 @@ public sealed class UserService
 	private readonly UserRepository _userRepository;
 	private readonly PasswordHasher _passwordHasher;
 	private readonly AuthorizationService _authorizationService;
+	private readonly AuditService _auditService;
 
 	public UserService(
 		UserRepository userRepository,
 		PasswordHasher passwordHasher,
-		AuthorizationService authorizationService)
+		AuthorizationService authorizationService,
+		AuditService auditService)
 	{
 		_userRepository = userRepository;
 		_passwordHasher = passwordHasher;
 		_authorizationService = authorizationService;
+		_auditService = auditService;
 	}
 
 	public IReadOnlyList<User> GetUsers() => _userRepository.GetAll();
@@ -51,11 +54,13 @@ public sealed class UserService
 		};
 
 		user.Id = _userRepository.Create(user, _passwordHasher.Hash(password));
+		_auditService.RecordCreated(user.Id, user);
 		return user;
 	}
 
 	public User UpdateUser(
 		long id,
+		long expectedVersion,
 		string email,
 		string displayName,
 		string password,
@@ -75,6 +80,12 @@ public sealed class UserService
 
 		var user = _userRepository.GetById(id)
 			?? throw new InvalidOperationException($"User with id '{id}' was not found.");
+		if (user.Version != expectedVersion)
+		{
+			throw new ConcurrencyConflictException("user");
+		}
+
+		var before = Copy(user);
 		var existingEmail = _userRepository.GetByEmail(email);
 		if (existingEmail is not null && existingEmail.Id != id)
 		{
@@ -84,9 +95,15 @@ public sealed class UserService
 		user.Email = email;
 		user.DisplayName = displayName;
 		user.IsAdministrator = isAdministrator;
-		_userRepository.Update(
+		if (!_userRepository.Update(
 			user,
-			string.IsNullOrEmpty(password) ? null : _passwordHasher.Hash(password));
+			string.IsNullOrEmpty(password) ? null : _passwordHasher.Hash(password)))
+		{
+			throw new ConcurrencyConflictException("user");
+		}
+
+		user.Version++;
+		_auditService.RecordUpdated(user.Id, before, user);
 
 		if (_authorizationService.CurrentUser?.Id == user.Id)
 		{
@@ -96,7 +113,7 @@ public sealed class UserService
 		return user;
 	}
 
-	public void SetActive(long id, bool isActive)
+	public void SetActive(long id, bool isActive, long expectedVersion)
 	{
 		if (id <= 0)
 		{
@@ -105,13 +122,32 @@ public sealed class UserService
 
 		var user = _userRepository.GetById(id)
 			?? throw new InvalidOperationException($"User with id '{id}' was not found.");
+		if (user.Version != expectedVersion)
+		{
+			throw new ConcurrencyConflictException("user");
+		}
 
 		if (!isActive && _authorizationService.CurrentUser?.Id == user.Id)
 		{
 			throw new InvalidOperationException("The currently signed-in user cannot be deactivated.");
 		}
 
-		_userRepository.SetActive(id, isActive);
+		if (!_userRepository.SetActive(id, isActive, expectedVersion))
+		{
+			throw new ConcurrencyConflictException("user");
+		}
+
+		var before = Copy(user);
+		user.IsActive = isActive;
+		user.Version++;
+		if (isActive)
+		{
+			_auditService.RecordUpdated(user.Id, before, user);
+		}
+		else
+		{
+			_auditService.RecordDeactivated(user.Id, before, user);
+		}
 	}
 
 	private static string NormalizeAndValidateEmail(string email)
@@ -149,4 +185,16 @@ public sealed class UserService
 				nameof(password));
 		}
 	}
+
+	private static User Copy(User user) =>
+		new()
+		{
+			Id = user.Id,
+			Email = user.Email,
+			DisplayName = user.DisplayName,
+			IsAdministrator = user.IsAdministrator,
+			IsActive = user.IsActive,
+			CreatedUtc = user.CreatedUtc,
+			Version = user.Version
+		};
 }

@@ -13,4 +13,6 @@ public sealed class Location
 	public string? Description { get; set; }
 
 	public bool IsActive { get; set; }
+
+	public long Version { get; set; } = 1;
 }

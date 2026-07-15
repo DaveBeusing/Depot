@@ -149,6 +149,7 @@ public sealed class ItemsViewModel
 		Editor.Description = SelectedItem.Description;
 		Editor.Manufacturer = SelectedItem.Manufacturer;
 		Editor.Category = SelectedItem.Category;
+		Editor.Version = SelectedItem.Version;
 	}
 
 	private void NewItem()
@@ -180,6 +181,7 @@ public sealed class ItemsViewModel
 			{
 				_itemService.UpdateItem(
 					Editor.Id,
+					Editor.Version,
 					Editor.Description,
 					Editor.Manufacturer,
 					Editor.Category);
@@ -214,7 +216,8 @@ public sealed class ItemsViewModel
 		try
 		{
 			_itemService.DeactivateItem(
-				Editor.Id);
+				Editor.Id,
+				Editor.Version);
 
 			LoadItems();
 

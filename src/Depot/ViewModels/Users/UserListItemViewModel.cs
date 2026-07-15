@@ -17,6 +17,7 @@ public sealed class UserListItemViewModel : BaseViewModel
 		CreatedUtc = user.CreatedUtc;
 		IsAdministrator = user.IsAdministrator;
 		IsActive = user.IsActive;
+		Version = user.Version;
 	}
 
 	public long Id { get; }
@@ -27,5 +28,6 @@ public sealed class UserListItemViewModel : BaseViewModel
 	public DateTime CreatedUtc { get; }
 	public bool IsAdministrator { get; }
 	public bool IsActive { get; }
+	public long Version { get; }
 
 }

@@ -12,11 +12,14 @@ namespace Depot.Services;
 public sealed class InventoryManagementService
 {
 	private readonly InventoryRepository _inventoryRepository;
+	private readonly AuditService _auditService;
 
 	public InventoryManagementService(
-		InventoryRepository inventoryRepository)
+		InventoryRepository inventoryRepository,
+		AuditService auditService)
 	{
 		_inventoryRepository = inventoryRepository;
+		_auditService = auditService;
 	}
 
 	public Inventory GetOrCreateInventory(
@@ -68,6 +71,8 @@ public sealed class InventoryManagementService
 		inventory.Id =
 			_inventoryRepository.Create(
 				inventory);
+
+		_auditService.RecordCreated(inventory.Id, inventory);
 
 		return inventory;
 	}

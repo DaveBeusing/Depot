@@ -13,19 +13,22 @@ public sealed class MovementService
 	private readonly PurposeRepository _purposeRepository;
 	private readonly LocationRepository _locationRepository;
 	private readonly StockMovementRepository _stockMovementRepository;
+	private readonly AuditService _auditService;
 
 	public MovementService(
 		ItemRepository itemRepository,
 		InventoryRepository inventoryRepository,
 		PurposeRepository purposeRepository,
 		LocationRepository locationRepository,
-		StockMovementRepository stockMovementRepository)
+		StockMovementRepository stockMovementRepository,
+		AuditService auditService)
 	{
 		_itemRepository = itemRepository;
 		_inventoryRepository = inventoryRepository;
 		_purposeRepository = purposeRepository;
 		_locationRepository = locationRepository;
 		_stockMovementRepository = stockMovementRepository;
+		_auditService = auditService;
 	}
 
 	public IReadOnlyList<InventoryLookupItem> GetAvailableInventories()
@@ -344,8 +347,10 @@ public sealed class MovementService
 						: notes.Trim()
 			};
 
-		_stockMovementRepository.Create(
+		movement.Id = _stockMovementRepository.Create(
 			movement);
+
+		_auditService.RecordCreated(movement.Id, movement);
 	}
 
 }

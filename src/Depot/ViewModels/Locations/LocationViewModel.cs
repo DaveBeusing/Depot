@@ -160,6 +160,9 @@ public sealed class LocationViewModel
 
 		Editor.Description =
 			SelectedLocation.Description;
+
+		Editor.Version =
+			SelectedLocation.Version;
 	}
 
 	private void NewLocation()
@@ -189,6 +192,7 @@ public sealed class LocationViewModel
 			{
 				_locationService.UpdateLocation(
 					Editor.Id,
+					Editor.Version,
 					Editor.Name,
 					Editor.Description);
 			}
@@ -223,7 +227,8 @@ public sealed class LocationViewModel
 		try
 		{
 			_locationService.DeactivateLocation(
-				Editor.Id);
+				Editor.Id,
+				Editor.Version);
 
 			LoadLocations();
 

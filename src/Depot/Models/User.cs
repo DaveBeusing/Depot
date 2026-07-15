@@ -18,4 +18,6 @@ public sealed class User
 	public bool IsActive { get; set; }
 
 	public DateTime CreatedUtc { get; set; }
+
+	public long Version { get; set; } = 1;
 }

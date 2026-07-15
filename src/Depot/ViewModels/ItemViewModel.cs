@@ -16,6 +16,7 @@ public sealed class ItemViewModel
 		Manufacturer = item.Manufacturer;
 		Category = item.Category;
 		IsActive = item.IsActive;
+		Version = item.Version;
 	}
 
 	public long Id { get; }
@@ -29,4 +30,6 @@ public sealed class ItemViewModel
 	public string? Category { get; }
 
 	public bool IsActive { get; }
+
+	public long Version { get; }
 }

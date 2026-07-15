@@ -17,4 +17,6 @@ public sealed class Item
 
 	public bool IsActive { get; set; } = true;
 
+	public long Version { get; set; } = 1;
+
 }

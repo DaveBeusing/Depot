@@ -33,6 +33,7 @@ public partial class App : Application
 	public static LocationRepository LocationRepository { get; private set; } = null!;
 	public static StockMovementRepository StockMovementRepository { get; private set; } = null!;
 	public static UserRepository UserRepository { get; private set; } = null!;
+	public static AuditRepository AuditRepository { get; private set; } = null!;
 	public static SettingsRepository SettingsRepository { get; private set; } = null!;
 	public static AuthorizationService AuthorizationService { get; private set; } = null!;
 	public static PasswordHasher PasswordHasher { get; private set; } = null!;
@@ -40,6 +41,7 @@ public partial class App : Application
 	public static SessionService SessionService { get; private set; } = null!;
 	public static SettingsService SettingsService { get; private set; } = null!;
 	public static ConnectionStatusService ConnectionStatusService { get; private set; } = null!;
+	public static AuditService AuditService { get; private set; } = null!;
 	public static ItemService ItemService { get; private set; } = null!;
 	public static PurposeService PurposeService { get; private set; } = null!;
 	public static LocationService LocationService { get; private set; } = null!;
@@ -111,11 +113,20 @@ public partial class App : Application
 			new UserRepository(
 				ConnectionFactory);
 
+		AuditRepository =
+			new AuditRepository(
+				ConnectionFactory);
+
 		StartupDiagnostics.Log(
 			"Repositories created.");
 
 		AuthorizationService =
 			new AuthorizationService();
+
+		AuditService =
+			new AuditService(
+				AuditRepository,
+				AuthorizationService);
 
 		PasswordHasher =
 			new PasswordHasher();
@@ -132,21 +143,25 @@ public partial class App : Application
 
 		ItemService =
 			new ItemService(
-				ItemRepository);
+				ItemRepository,
+				AuditService);
 
 		PurposeService =
 			new PurposeService(
-				PurposeRepository);
+				PurposeRepository,
+				AuditService);
 
 		LocationService =
 			new LocationService(
-				LocationRepository);
+				LocationRepository,
+				AuditService);
 
 		UserService =
 			new UserService(
 				UserRepository,
 				PasswordHasher,
-				AuthorizationService);
+				AuthorizationService,
+				AuditService);
 
 		MovementService =
 			new MovementService(
@@ -154,7 +169,8 @@ public partial class App : Application
 				InventoryRepository,
 				PurposeRepository,
 				LocationRepository,
-				StockMovementRepository);
+				StockMovementRepository,
+				AuditService);
 
 		StockService =
 			new StockService(
@@ -170,7 +186,8 @@ public partial class App : Application
 
 		InventoryManagementService =
 			new InventoryManagementService(
-				InventoryRepository);
+				InventoryRepository,
+				AuditService);
 
 		ImportService =
 			new ImportService(

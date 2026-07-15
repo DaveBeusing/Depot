@@ -14,4 +14,6 @@ public sealed class Inventory
 	public long? LocationId { get; set; }
 
 	public bool IsActive { get; set; }
+
+	public long Version { get; set; } = 1;
 }

@@ -13,6 +13,13 @@ public sealed class ItemEditorViewModel
 	private string _description = string.Empty;
 	private string? _manufacturer;
 	private string? _category;
+	private long _version = 1;
+
+	public long Version
+	{
+		get => _version;
+		set => _version = value;
+	}
 
 	public long Id
 	{
@@ -88,6 +95,7 @@ public sealed class ItemEditorViewModel
 		Description = item.Description;
 		Manufacturer = item.Manufacturer;
 		Category = item.Category;
+		Version = item.Version;
 	}
 
 	public void Clear()
@@ -97,5 +105,6 @@ public sealed class ItemEditorViewModel
 		Description = string.Empty;
 		Manufacturer = null;
 		Category = null;
+		Version = 1;
 	}
 }

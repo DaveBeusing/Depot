@@ -160,6 +160,9 @@ public sealed class PurposeViewModel
 
 		Editor.Description =
 			SelectedPurpose.Description;
+
+		Editor.Version =
+			SelectedPurpose.Version;
 	}
 
 	private void NewPurpose()
@@ -189,6 +192,7 @@ public sealed class PurposeViewModel
 			{
 				_purposeService.UpdatePurpose(
 					Editor.Id,
+					Editor.Version,
 					Editor.Name,
 					Editor.Description);
 			}
@@ -223,7 +227,8 @@ public sealed class PurposeViewModel
 		try
 		{
 			_purposeService.DeactivatePurpose(
-				Editor.Id);
+				Editor.Id,
+				Editor.Version);
 
 			LoadPurposes();
 

@@ -40,7 +40,8 @@ public sealed class PurposeRepository
 			Id,
 			Name,
 			Description,
-			IsActive
+			IsActive,
+			Version
 		FROM Purposes
 		WHERE IsActive = 1
 		ORDER BY Name;
@@ -75,7 +76,8 @@ public sealed class PurposeRepository
 			Id,
 			Name,
 			Description,
-			IsActive
+			IsActive,
+			Version
 		FROM Purposes
 		WHERE Id = $Id;
 		""";
@@ -109,7 +111,8 @@ public sealed class PurposeRepository
 			Id,
 			Name,
 			Description,
-			IsActive
+			IsActive,
+			Version
 		FROM Purposes
 		WHERE Name = $Name;
 		""";
@@ -170,7 +173,7 @@ public sealed class PurposeRepository
 		return (long)command.ExecuteScalar()!;
 	}
 
-	public void Update(
+	public bool Update(
 		Purpose purpose)
 	{
 		using var connection =
@@ -186,8 +189,9 @@ public sealed class PurposeRepository
 		UPDATE Purposes
 		SET
 			Name = $Name,
-			Description = $Description
-		WHERE Id = $Id;
+			Description = $Description,
+			Version = Version + 1
+		WHERE Id = $Id AND Version = $Version;
 		""";
 
 		command.Parameters.AddWithValue(
@@ -202,11 +206,14 @@ public sealed class PurposeRepository
 			"$Description",
 			(object?)purpose.Description ?? DBNull.Value);
 
-		command.ExecuteNonQuery();
+		command.Parameters.AddWithValue("$Version", purpose.Version);
+
+		return command.ExecuteNonQuery() == 1;
 	}
 
-	public void Deactivate(
-		long id)
+	public bool Deactivate(
+		long id,
+		long version)
 	{
 		using var connection =
 			_connectionFactory.CreateConnection();
@@ -219,15 +226,17 @@ public sealed class PurposeRepository
 		command.CommandText =
 		"""
 		UPDATE Purposes
-		SET IsActive = 0
-		WHERE Id = $Id;
+		SET IsActive = 0, Version = Version + 1
+		WHERE Id = $Id AND Version = $Version;
 		""";
 
 		command.Parameters.AddWithValue(
 			"$Id",
 			id);
 
-		command.ExecuteNonQuery();
+		command.Parameters.AddWithValue("$Version", version);
+
+		return command.ExecuteNonQuery() == 1;
 	}
 
 	private static Purpose ReadPurpose(
@@ -247,7 +256,10 @@ public sealed class PurposeRepository
 					: reader.GetString(2),
 
 			IsActive =
-				reader.GetInt64(3) == 1
+				reader.GetInt64(3) == 1,
+
+			Version =
+				reader.GetInt64(4)
 		};
 	}
 }

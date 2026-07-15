@@ -17,6 +17,7 @@ public sealed class LocationListItemViewModel
 		Id = location.Id;
 		Name = location.Name;
 		Description = location.Description;
+		Version = location.Version;
 	}
 
 	public long Id { get; }
@@ -24,4 +25,6 @@ public sealed class LocationListItemViewModel
 	public string Name { get; }
 
 	public string? Description { get; }
+
+	public long Version { get; }
 }

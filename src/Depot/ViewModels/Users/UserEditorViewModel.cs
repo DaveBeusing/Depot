@@ -14,6 +14,13 @@ public sealed class UserEditorViewModel : BaseViewModel
 	private string _password = string.Empty;
 	private bool _isAdministrator;
 	private bool _isActive = true;
+	private long _version = 1;
+
+	public long Version
+	{
+		get => _version;
+		set => _version = value;
+	}
 
 	public long Id
 	{
@@ -98,5 +105,6 @@ public sealed class UserEditorViewModel : BaseViewModel
 		Password = string.Empty;
 		IsAdministrator = false;
 		IsActive = true;
+		Version = 1;
 	}
 }

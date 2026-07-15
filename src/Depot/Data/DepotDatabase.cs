@@ -148,6 +148,9 @@ public sealed class DepotDatabase
 		CreateUsersTable(
 			connection);
 
+		CreateAuditEntriesTable(
+			connection);
+
 		CreateDefaultPurpose(
 			connection);
 
@@ -173,7 +176,8 @@ public sealed class DepotDatabase
 			Description     TEXT NOT NULL,
 			Manufacturer    TEXT,
 			Category        TEXT,
-			IsActive        INTEGER NOT NULL DEFAULT 1
+			IsActive        INTEGER NOT NULL DEFAULT 1,
+			Version         INTEGER NOT NULL DEFAULT 1
 		);
 		""";
 
@@ -193,7 +197,8 @@ public sealed class DepotDatabase
 			Id              INTEGER PRIMARY KEY AUTOINCREMENT,
 			Name            TEXT NOT NULL UNIQUE,
 			Description     TEXT,
-			IsActive        INTEGER NOT NULL DEFAULT 1
+			IsActive        INTEGER NOT NULL DEFAULT 1,
+			Version         INTEGER NOT NULL DEFAULT 1
 		);
 		""";
 
@@ -218,6 +223,7 @@ public sealed class DepotDatabase
 			LocationId      INTEGER NOT NULL,
 
 			IsActive        INTEGER NOT NULL DEFAULT 1,
+			Version         INTEGER NOT NULL DEFAULT 1,
 
 			UNIQUE
 			(
@@ -254,7 +260,8 @@ public sealed class DepotDatabase
 			Id              INTEGER PRIMARY KEY AUTOINCREMENT,
 			Name            TEXT NOT NULL UNIQUE,
 			Description     TEXT,
-			IsActive        INTEGER NOT NULL DEFAULT 1
+			IsActive        INTEGER NOT NULL DEFAULT 1,
+			Version         INTEGER NOT NULL DEFAULT 1
 		);
 		""";
 
@@ -355,10 +362,40 @@ public sealed class DepotDatabase
 			PasswordHash        TEXT NOT NULL,
 			IsAdministrator     INTEGER NOT NULL DEFAULT 0,
 			IsActive            INTEGER NOT NULL DEFAULT 1,
-			CreatedUtc          TEXT NOT NULL
+			CreatedUtc          TEXT NOT NULL,
+			Version             INTEGER NOT NULL DEFAULT 1
 		);
 		""";
 
+		command.ExecuteNonQuery();
+	}
+
+	private static void CreateAuditEntriesTable(
+		SqliteConnection connection)
+	{
+		using var command = connection.CreateCommand();
+		command.CommandText =
+		"""
+		CREATE TABLE IF NOT EXISTS AuditEntries
+		(
+			Id              INTEGER PRIMARY KEY AUTOINCREMENT,
+			TimestampUtc    TEXT NOT NULL,
+			UserId          INTEGER NULL,
+			UserEmail       TEXT NOT NULL,
+			EntityType      TEXT NOT NULL,
+			EntityId        INTEGER NOT NULL,
+			Action          TEXT NOT NULL,
+			BeforeJson      TEXT NULL,
+			AfterJson       TEXT NULL,
+			FOREIGN KEY(UserId) REFERENCES Users(Id) ON DELETE SET NULL
+		);
+
+		CREATE INDEX IF NOT EXISTS IX_AuditEntries_TimestampUtc
+			ON AuditEntries(TimestampUtc DESC);
+
+		CREATE INDEX IF NOT EXISTS IX_AuditEntries_Entity
+			ON AuditEntries(EntityType, EntityId, TimestampUtc DESC);
+		""";
 		command.ExecuteNonQuery();
 	}
 
@@ -468,6 +505,13 @@ public sealed class DepotDatabase
 				7;
 		}
 
+		if (migratedVersion == 7)
+		{
+			MigrateToAuditAndConcurrency(connection);
+			SetDatabaseVersion(connection, 8);
+			migratedVersion = 8;
+		}
+
 		if (migratedVersion < DatabaseVersion.CurrentVersion)
 		{
 			throw new InvalidOperationException(
@@ -558,6 +602,39 @@ public sealed class DepotDatabase
 
 		CreateStockMovementIndexes(
 			connection);
+	}
+
+	private static void MigrateToAuditAndConcurrency(
+		SqliteConnection connection)
+	{
+		var tables =
+			new[]
+			{
+				"Items",
+				"Purposes",
+				"Locations",
+				"Inventories",
+				"Users"
+			};
+
+		var tablesWithoutVersion =
+			tables
+				.Where(table => !TableHasColumn(connection, table, "Version"))
+				.ToList();
+
+		using var transaction = connection.BeginTransaction();
+
+		foreach (var table in tablesWithoutVersion)
+		{
+			using var command = connection.CreateCommand();
+			command.Transaction = transaction;
+			command.CommandText =
+				$"ALTER TABLE {table} ADD COLUMN Version INTEGER NOT NULL DEFAULT 1;";
+			command.ExecuteNonQuery();
+		}
+
+		transaction.Commit();
+		CreateAuditEntriesTable(connection);
 	}
 
 	private static bool TableHasColumn(

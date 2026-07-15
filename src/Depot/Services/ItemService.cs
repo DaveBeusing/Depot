@@ -9,11 +9,14 @@ namespace Depot.Services;
 public sealed class ItemService
 {
 	private readonly ItemRepository _itemRepository;
+	private readonly AuditService _auditService;
 
 	public ItemService(
-		ItemRepository itemRepository)
+		ItemRepository itemRepository,
+		AuditService auditService)
 	{
 		_itemRepository = itemRepository;
+		_auditService = auditService;
 	}
 
 	public IReadOnlyList<Item> GetItems()
@@ -81,11 +84,14 @@ public sealed class ItemService
 			_itemRepository.Create(
 				item);
 
+		_auditService.RecordCreated(item.Id, item);
+
 		return item;
 	}
 
 	public Item UpdateItem(
 		long id,
+		long expectedVersion,
 		string description,
 		string? manufacturer,
 		string? category)
@@ -122,18 +128,31 @@ public sealed class ItemService
 				$"Item with id '{id}' was not found.");
 		}
 
+		if (item.Version != expectedVersion)
+		{
+			throw new ConcurrencyConflictException("item");
+		}
+
+		var before = Copy(item);
+
 		item.Description = description;
 		item.Manufacturer = manufacturer;
 		item.Category = category;
 
-		_itemRepository.Update(
-			item);
+		if (!_itemRepository.Update(item))
+		{
+			throw new ConcurrencyConflictException("item");
+		}
+
+		item.Version++;
+		_auditService.RecordUpdated(item.Id, before, item);
 
 		return item;
 	}
 
 	public void DeactivateItem(
-		long id)
+		long id,
+		long expectedVersion)
 	{
 		if (id <= 0)
 		{
@@ -152,7 +171,27 @@ public sealed class ItemService
 				$"Item with id '{id}' was not found.");
 		}
 
-		_itemRepository.Deactivate(
-			id);
+		if (item.Version != expectedVersion ||
+			!_itemRepository.Deactivate(id, expectedVersion))
+		{
+			throw new ConcurrencyConflictException("item");
+		}
+
+		var before = Copy(item);
+		item.IsActive = false;
+		item.Version++;
+		_auditService.RecordDeactivated(item.Id, before, item);
 	}
+
+	private static Item Copy(Item item) =>
+		new()
+		{
+			Id = item.Id,
+			PartNumber = item.PartNumber,
+			Description = item.Description,
+			Manufacturer = item.Manufacturer,
+			Category = item.Category,
+			IsActive = item.IsActive,
+			Version = item.Version
+		};
 }

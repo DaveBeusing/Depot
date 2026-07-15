@@ -12,11 +12,14 @@ namespace Depot.Services;
 public sealed class PurposeService
 {
 	private readonly PurposeRepository _purposeRepository;
+	private readonly AuditService _auditService;
 
 	public PurposeService(
-		PurposeRepository purposeRepository)
+		PurposeRepository purposeRepository,
+		AuditService auditService)
 	{
 		_purposeRepository = purposeRepository;
+		_auditService = auditService;
 	}
 
 	public IReadOnlyList<Purpose> GetPurposes()
@@ -70,11 +73,14 @@ public sealed class PurposeService
 			_purposeRepository.Create(
 				purpose);
 
+		_auditService.RecordCreated(purpose.Id, purpose);
+
 		return purpose;
 	}
 
 	public Purpose UpdatePurpose(
 		long id,
+		long expectedVersion,
 		string name,
 		string? description)
 	{
@@ -110,6 +116,13 @@ public sealed class PurposeService
 				$"Purpose with id '{id}' was not found.");
 		}
 
+		if (purpose.Version != expectedVersion)
+		{
+			throw new ConcurrencyConflictException("purpose");
+		}
+
+		var before = Copy(purpose);
+
 		var existingPurpose =
 			_purposeRepository.GetByName(
 				name);
@@ -127,14 +140,20 @@ public sealed class PurposeService
 		purpose.Description =
 			description;
 
-		_purposeRepository.Update(
-			purpose);
+		if (!_purposeRepository.Update(purpose))
+		{
+			throw new ConcurrencyConflictException("purpose");
+		}
+
+		purpose.Version++;
+		_auditService.RecordUpdated(purpose.Id, before, purpose);
 
 		return purpose;
 	}
 
 	public void DeactivatePurpose(
-		long id)
+		long id,
+		long expectedVersion)
 	{
 		if (id <= 0)
 		{
@@ -153,8 +172,16 @@ public sealed class PurposeService
 				$"Purpose with id '{id}' was not found.");
 		}
 
-		_purposeRepository.Deactivate(
-			id);
+		if (purpose.Version != expectedVersion ||
+			!_purposeRepository.Deactivate(id, expectedVersion))
+		{
+			throw new ConcurrencyConflictException("purpose");
+		}
+
+		var before = Copy(purpose);
+		purpose.IsActive = false;
+		purpose.Version++;
+		_auditService.RecordDeactivated(purpose.Id, before, purpose);
 	}
 
 	public Purpose GetOrCreatePurpose(
@@ -182,5 +209,15 @@ public sealed class PurposeService
 			name,
 			null);
 	}
+
+	private static Purpose Copy(Purpose purpose) =>
+		new()
+		{
+			Id = purpose.Id,
+			Name = purpose.Name,
+			Description = purpose.Description,
+			IsActive = purpose.IsActive,
+			Version = purpose.Version
+		};
 
 }
