@@ -11,7 +11,15 @@ public sealed class SqliteConnectionFactory
 
 	public SqliteConnectionFactory(string databasePath)
 	{
-		_connectionString = $"Data Source={databasePath}";
+		var connectionStringBuilder =
+			new SqliteConnectionStringBuilder
+			{
+				DataSource = databasePath,
+				ForeignKeys = true
+			};
+
+		_connectionString =
+			connectionStringBuilder.ToString();
 	}
 
 	public SqliteConnection CreateConnection()

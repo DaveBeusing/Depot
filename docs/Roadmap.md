@@ -10,7 +10,7 @@
 * [x] Search
 * [x] Excel Import
 * [ ] Administration Shell
-* [ ] Inventory Model
+* [x] Inventory Model
 
 ---
 
@@ -26,10 +26,10 @@
 
 ## Inventory
 
-* [ ] Inventory entity
-* [ ] Inventory repository
-* [ ] Inventory management
-* [ ] Move StockMovement to Inventory
+* [x] Inventory entity
+* [x] Inventory repository
+* [x] Inventory management
+* [x] Move StockMovement to Inventory
 
 ---
 

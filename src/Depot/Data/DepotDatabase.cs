@@ -142,6 +142,9 @@ public sealed class DepotDatabase
 		CreateStockMovementsTable(
 			connection);
 
+		CreateStockMovementIndexes(
+			connection);
+
 		CreateUsersTable(
 			connection);
 
@@ -317,6 +320,25 @@ public sealed class DepotDatabase
 		command.ExecuteNonQuery();
 	}
 
+	private static void CreateStockMovementIndexes(
+		SqliteConnection connection)
+	{
+		using var command =
+			connection.CreateCommand();
+
+		command.CommandText =
+		"""
+		CREATE INDEX IF NOT EXISTS IX_StockMovements_InventoryId_TimestampUtc
+			ON StockMovements
+			(
+				InventoryId,
+				TimestampUtc
+			);
+		""";
+
+		command.ExecuteNonQuery();
+	}
+
 	private static void CreateUsersTable(
 		SqliteConnection connection)
 	{
@@ -403,31 +425,28 @@ public sealed class DepotDatabase
 		var migratedVersion =
 			version;
 
-		if (migratedVersion < 4)
+		if (migratedVersion < 3)
 		{
 			throw new InvalidOperationException(
-				$"Database version '{version}' is older than the supported migration baseline '4'. Delete depot.db and import the Excel file again.");
+				$"Database version '{version}' is older than the supported migration baseline '3'. Delete depot.db and import the Excel file again.");
 		}
 
-		if (migratedVersion == 4)
+		if (migratedVersion is 3 or 4 or 5)
 		{
 			CreateUsersTable(
 				connection);
 
+			if (TableHasColumn(
+				connection,
+				"Users",
+				"UserName"))
+			{
+				MigrateUsersToEmailAuthentication(
+					connection);
+			}
+
 			CreateDefaultAdministrator(
 				connection);
-
-			SetDatabaseVersion(
-				connection,
-				5);
-
-			migratedVersion =
-				5;
-		}
-
-		if (migratedVersion == 5)
-		{
-			MigrateUsersToEmailAuthentication(connection);
 
 			SetDatabaseVersion(
 				connection,
@@ -435,6 +454,18 @@ public sealed class DepotDatabase
 
 			migratedVersion =
 				6;
+		}
+
+		if (migratedVersion == 6)
+		{
+			MigrateStockMovementsToInventory(connection);
+
+			SetDatabaseVersion(
+				connection,
+				7);
+
+			migratedVersion =
+				7;
 		}
 
 		if (migratedVersion < DatabaseVersion.CurrentVersion)
@@ -497,5 +528,212 @@ public sealed class DepotDatabase
 		""";
 		command.ExecuteNonQuery();
 		transaction.Commit();
+	}
+
+	private static void MigrateStockMovementsToInventory(
+		SqliteConnection connection)
+	{
+		var hasLegacyItemId =
+			TableHasColumn(
+				connection,
+				"StockMovements",
+				"ItemId");
+
+		using var transaction =
+			connection.BeginTransaction();
+
+		using var command =
+			connection.CreateCommand();
+
+		command.Transaction =
+			transaction;
+
+		command.CommandText =
+			hasLegacyItemId
+				? GetLegacyStockMovementMigrationSql()
+				: GetCurrentStockMovementMigrationSql();
+
+		command.ExecuteNonQuery();
+		transaction.Commit();
+
+		CreateStockMovementIndexes(
+			connection);
+	}
+
+	private static bool TableHasColumn(
+		SqliteConnection connection,
+		string tableName,
+		string columnName)
+	{
+		using var command =
+			connection.CreateCommand();
+
+		command.CommandText =
+			$"PRAGMA table_info({tableName});";
+
+		using var reader =
+			command.ExecuteReader();
+
+		while (reader.Read())
+		{
+			if (string.Equals(
+				reader.GetString(1),
+				columnName,
+				StringComparison.OrdinalIgnoreCase))
+			{
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	private static string GetLegacyStockMovementMigrationSql()
+	{
+		return
+		"""
+		INSERT OR IGNORE INTO Purposes (Name, Description, IsActive)
+		VALUES ('Stock', 'Default stock purpose', 1);
+
+		INSERT OR IGNORE INTO Locations (Name, Description, IsActive)
+		VALUES ('Warehouse', 'Default warehouse location', 1);
+
+		INSERT OR IGNORE INTO Inventories
+		(
+			ItemId,
+			PurposeId,
+			LocationId,
+			IsActive
+		)
+		SELECT DISTINCT
+			sm.ItemId,
+			p.Id,
+			l.Id,
+			1
+		FROM StockMovements sm
+		INNER JOIN Purposes p
+			ON p.Name = 'Stock'
+		INNER JOIN Locations l
+			ON l.Name = 'Warehouse'
+		WHERE
+			sm.InventoryId IS NULL
+			AND NOT EXISTS
+			(
+				SELECT 1
+				FROM Inventories inv
+				WHERE inv.ItemId = sm.ItemId
+			);
+
+		ALTER TABLE StockMovements RENAME TO StockMovementsLegacy;
+
+		CREATE TABLE StockMovements
+		(
+			Id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+			InventoryId         INTEGER NOT NULL,
+			MovementType        INTEGER NOT NULL,
+			TimestampUtc        TEXT NOT NULL,
+			Quantity            INTEGER NOT NULL,
+			UnitPrice           REAL NULL,
+			Reference           TEXT NULL,
+			Notes               TEXT NULL,
+			FOREIGN KEY(InventoryId)
+				REFERENCES Inventories(Id)
+		);
+
+		INSERT INTO StockMovements
+		(
+			Id,
+			InventoryId,
+			MovementType,
+			TimestampUtc,
+			Quantity,
+			UnitPrice,
+			Reference,
+			Notes
+		)
+		SELECT
+			sm.Id,
+			COALESCE
+			(
+				(
+					SELECT inv.Id
+					FROM Inventories inv
+					WHERE
+						inv.Id = sm.InventoryId
+						AND inv.ItemId = sm.ItemId
+				),
+				(
+					SELECT inv.Id
+					FROM Inventories inv
+					LEFT JOIN Purposes p
+						ON p.Id = inv.PurposeId
+					LEFT JOIN Locations l
+						ON l.Id = inv.LocationId
+					WHERE inv.ItemId = sm.ItemId
+					ORDER BY
+						CASE
+							WHEN p.Name = 'Stock' AND l.Name = 'Warehouse' THEN 0
+							ELSE 1
+						END,
+						inv.Id
+					LIMIT 1
+				)
+			),
+			sm.MovementType,
+			sm.TimestampUtc,
+			sm.Quantity,
+			sm.UnitPrice,
+			sm.Reference,
+			sm.Notes
+		FROM StockMovementsLegacy sm;
+
+		DROP TABLE StockMovementsLegacy;
+		""";
+	}
+
+	private static string GetCurrentStockMovementMigrationSql()
+	{
+		return
+		"""
+		ALTER TABLE StockMovements RENAME TO StockMovementsLegacy;
+
+		CREATE TABLE StockMovements
+		(
+			Id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+			InventoryId         INTEGER NOT NULL,
+			MovementType        INTEGER NOT NULL,
+			TimestampUtc        TEXT NOT NULL,
+			Quantity            INTEGER NOT NULL,
+			UnitPrice           REAL NULL,
+			Reference           TEXT NULL,
+			Notes               TEXT NULL,
+			FOREIGN KEY(InventoryId)
+				REFERENCES Inventories(Id)
+		);
+
+		INSERT INTO StockMovements
+		(
+			Id,
+			InventoryId,
+			MovementType,
+			TimestampUtc,
+			Quantity,
+			UnitPrice,
+			Reference,
+			Notes
+		)
+		SELECT
+			Id,
+			InventoryId,
+			MovementType,
+			TimestampUtc,
+			Quantity,
+			UnitPrice,
+			Reference,
+			Notes
+		FROM StockMovementsLegacy;
+
+		DROP TABLE StockMovementsLegacy;
+		""";
 	}
 }
