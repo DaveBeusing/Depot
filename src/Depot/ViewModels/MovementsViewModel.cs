@@ -39,6 +39,17 @@ public sealed class MovementsViewModel
 	public ObservableCollection<MovementOverviewItemViewModel> Items { get; }
 		= new();
 
+	public IReadOnlyList<StockMovementType> MovementTypes { get; } =
+	[
+		StockMovementType.Purchase,
+		StockMovementType.Withdrawal,
+		StockMovementType.Correction
+	];
+
+	public bool HasItems => Items.Count > 0;
+
+	public bool HasNoItems => !HasItems;
+
 	public MovementEditorViewModel Editor { get; }
 
 	public RelayCommand CreateMovementCommand { get; }
@@ -49,10 +60,15 @@ public sealed class MovementsViewModel
 
 		set
 		{
+			if (_searchText == value)
+			{
+				return;
+			}
+
 			_searchText = value;
 			OnPropertyChanged();
 
-			Load();
+			LoadMovements();
 		}
 	}
 
@@ -62,6 +78,11 @@ public sealed class MovementsViewModel
 
 		set
 		{
+			if (_selectedInventory == value)
+			{
+				return;
+			}
+
 			_selectedInventory = value;
 
 			OnPropertyChanged();
@@ -129,6 +150,11 @@ public sealed class MovementsViewModel
 	public void Load()
 	{
 		LoadInventories();
+		LoadMovements();
+	}
+
+	private void LoadMovements()
+	{
 
 		Items.Clear();
 
@@ -138,6 +164,9 @@ public sealed class MovementsViewModel
 				new MovementOverviewItemViewModel(
 					movement));
 		}
+
+		OnPropertyChanged(nameof(HasItems));
+		OnPropertyChanged(nameof(HasNoItems));
 	}
 
 	private void CreateMovement()

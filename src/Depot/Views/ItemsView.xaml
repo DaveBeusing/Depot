@@ -5,167 +5,133 @@
 	xmlns:controls="clr-namespace:Depot.Controls">
 
 	<Grid>
-
 		<Grid.RowDefinitions>
 			<RowDefinition Height="Auto" />
-			<RowDefinition Height="16" />
 			<RowDefinition Height="Auto" />
-			<RowDefinition Height="16" />
 			<RowDefinition Height="*" />
 		</Grid.RowDefinitions>
 
-		<controls:PageHeader Grid.Row="0" Title="Items">
+		<controls:PageHeader
+			Grid.Row="0"
+			Title="Items"
+			Subtitle="Maintain item master data used throughout inventory and stock movements.">
 			<controls:PageHeader.Actions>
 				<Button
+					Command="{Binding NewItemCommand}"
 					Content="New Item"
-					Style="{StaticResource PrimaryButtonStyle}"
-					Command="{Binding NewItemCommand}" />
+					Style="{StaticResource PrimaryButtonStyle}" />
 			</controls:PageHeader.Actions>
 		</controls:PageHeader>
 
 		<controls:SearchBox
-			Grid.Row="2"
+			Grid.Row="1"
+			Margin="{StaticResource Search.Margin}"
 			Placeholder="Search items"
 			Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-			ToolTip="Search by part number, description, manufacturer or category" />
+			ToolTip="Search by part number, description, manufacturer, or category" />
 
-		<Grid Grid.Row="4">
-
+		<Grid Grid.Row="2">
 			<Grid.ColumnDefinitions>
-				<ColumnDefinition Width="2*" />
+				<ColumnDefinition Width="3*" />
 				<ColumnDefinition Width="24" />
-				<ColumnDefinition Width="1*" />
+				<ColumnDefinition Width="2*" />
 			</Grid.ColumnDefinitions>
 
-			<DataGrid
-				Grid.Column="0"
-				Style="{StaticResource AppDataGridStyle}"
-				ItemsSource="{Binding Items}"
-				SelectedItem="{Binding SelectedItem}">
+			<controls:Card Grid.Column="0">
+				<controls:Card.Header>
+					<TextBlock Text="Item Overview" Style="{StaticResource SectionTitleStyle}" />
+				</controls:Card.Header>
+				<Grid>
+					<DataGrid
+						ItemsSource="{Binding Items}"
+						SelectedItem="{Binding SelectedItem}"
+						Style="{StaticResource AppDataGridStyle}"
+						Visibility="{Binding HasItems, Converter={StaticResource BooleanToVisibilityConverter}}">
+						<DataGrid.Columns>
+							<DataGridTextColumn Header="Part Number" Binding="{Binding PartNumber}" Width="150" />
+							<DataGridTextColumn Header="Description" Binding="{Binding Description}" Width="*" />
+							<DataGridTextColumn Header="Manufacturer" Binding="{Binding Manufacturer}" Width="140" />
+							<DataGridTextColumn Header="Category" Binding="{Binding Category}" Width="130" />
+						</DataGrid.Columns>
+					</DataGrid>
 
-				<DataGrid.Columns>
+					<controls:EmptyState
+						Title="No items found"
+						Description="Adjust the search or create a new item."
+						Visibility="{Binding HasNoItems, Converter={StaticResource BooleanToVisibilityConverter}}" />
+				</Grid>
+			</controls:Card>
 
-					<DataGridTextColumn
-						Header="Part Number"
-						Binding="{Binding PartNumber}"
-						Width="220" />
-
-					<DataGridTextColumn
-						Header="Description"
-						Binding="{Binding Description}"
-						Width="*" />
-
-					<DataGridTextColumn
-						Header="Manufacturer"
-						Binding="{Binding Manufacturer}"
-						Width="180" />
-
-					<DataGridTextColumn
-						Header="Category"
-						Binding="{Binding Category}"
-						Width="180" />
-
-				</DataGrid.Columns>
-
-			</DataGrid>
-
-			<Border
-				Grid.Column="2"
-				Padding="16"
-				BorderBrush="#DDDDDD"
-				BorderThickness="1">
+			<controls:Card Grid.Column="2">
+				<controls:Card.Header>
+					<TextBlock Text="{Binding Editor.EditorTitle}" Style="{StaticResource SectionTitleStyle}" />
+				</controls:Card.Header>
 
 				<Grid>
-
 					<Grid.RowDefinitions>
 						<RowDefinition Height="Auto" />
 						<RowDefinition Height="16" />
 						<RowDefinition Height="Auto" />
 						<RowDefinition Height="16" />
 						<RowDefinition Height="Auto" />
-						<RowDefinition Height="8" />
-						<RowDefinition Height="Auto" />
-						<RowDefinition Height="8" />
-						<RowDefinition Height="Auto" />
-						<RowDefinition Height="8" />
+						<RowDefinition Height="16" />
 						<RowDefinition Height="Auto" />
 						<RowDefinition Height="16" />
 						<RowDefinition Height="Auto" />
 						<RowDefinition Height="*" />
+						<RowDefinition Height="Auto" />
 					</Grid.RowDefinitions>
 
-					<TextBlock
-						Grid.Row="0"
-						Text="{Binding Editor.EditorTitle}"
-						Style="{StaticResource SectionTitleStyle}" />
-
 					<Border
-						Grid.Row="2"
-						Padding="8"
-						Background="#FFF3F3"
-						BorderBrush="#CC5555"
-						BorderThickness="1"
+						Grid.Row="0"
+						Padding="12"
+						Background="{StaticResource ErrorBrush}"
+						CornerRadius="6"
 						Visibility="{Binding HasErrorMessage, Converter={StaticResource BooleanToVisibilityConverter}}">
-
 						<TextBlock
+							Foreground="{StaticResource ErrorForegroundBrush}"
 							Text="{Binding ErrorMessage}"
 							TextWrapping="Wrap" />
-
 					</Border>
 
-					<StackPanel Grid.Row="4">
-						<TextBlock Text="Part Number" />
-						<TextBox
-							Style="{StaticResource AppTextBoxStyle}"
+					<StackPanel Grid.Row="2">
+						<TextBlock Text="Part Number" Style="{StaticResource FormLabelStyle}" />
+						<controls:TextInput
 							IsEnabled="{Binding Editor.CanEditPartNumber}"
 							Text="{Binding Editor.PartNumber, UpdateSourceTrigger=PropertyChanged}" />
 					</StackPanel>
 
+					<StackPanel Grid.Row="4">
+						<TextBlock Text="Description" Style="{StaticResource FormLabelStyle}" />
+						<controls:TextInput Text="{Binding Editor.Description, UpdateSourceTrigger=PropertyChanged}" />
+					</StackPanel>
+
 					<StackPanel Grid.Row="6">
-						<TextBlock Text="Description" />
-						<TextBox
-							Style="{StaticResource AppTextBoxStyle}"
-							Text="{Binding Editor.Description, UpdateSourceTrigger=PropertyChanged}" />
+						<TextBlock Text="Manufacturer" Style="{StaticResource FormLabelStyle}" />
+						<controls:TextInput Text="{Binding Editor.Manufacturer, UpdateSourceTrigger=PropertyChanged}" />
 					</StackPanel>
 
 					<StackPanel Grid.Row="8">
-						<TextBlock Text="Manufacturer" />
-						<TextBox
-							Style="{StaticResource AppTextBoxStyle}"
-							Text="{Binding Editor.Manufacturer, UpdateSourceTrigger=PropertyChanged}" />
-					</StackPanel>
-
-					<StackPanel Grid.Row="10">
-						<TextBlock Text="Category" />
-						<TextBox
-							Style="{StaticResource AppTextBoxStyle}"
-							Text="{Binding Editor.Category, UpdateSourceTrigger=PropertyChanged}" />
+						<TextBlock Text="Category" Style="{StaticResource FormLabelStyle}" />
+						<controls:TextInput Text="{Binding Editor.Category, UpdateSourceTrigger=PropertyChanged}" />
 					</StackPanel>
 
 					<StackPanel
-						Grid.Row="12"
-						Orientation="Horizontal"
-						HorizontalAlignment="Right">
-
+						Grid.Row="10"
+						HorizontalAlignment="Right"
+						Orientation="Horizontal">
 						<Button
+							Command="{Binding DeactivateItemCommand}"
 							Content="Deactivate"
-							Style="{StaticResource DangerButtonStyle}"
-							Command="{Binding DeactivateItemCommand}" />
-
+							Style="{StaticResource DangerButtonStyle}" />
 						<Button
-							Content="{Binding Editor.SaveButtonText}"
-							Style="{StaticResource PrimaryButtonStyle}"
 							Margin="{StaticResource Button.Margin}"
-							Command="{Binding SaveItemCommand}" />
-
+							Command="{Binding SaveItemCommand}"
+							Content="{Binding Editor.SaveButtonText}"
+							Style="{StaticResource PrimaryButtonStyle}" />
 					</StackPanel>
-
 				</Grid>
-
-			</Border>
-
+			</controls:Card>
 		</Grid>
-
 	</Grid>
-
 </UserControl>

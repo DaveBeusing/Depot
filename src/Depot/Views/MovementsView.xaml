@@ -5,190 +5,119 @@
 	xmlns:controls="clr-namespace:Depot.Controls">
 
 	<Grid>
-
 		<Grid.RowDefinitions>
 			<RowDefinition Height="Auto" />
-			<RowDefinition Height="16" />
 			<RowDefinition Height="Auto" />
-			<RowDefinition Height="16" />
 			<RowDefinition Height="*" />
 		</Grid.RowDefinitions>
 
 		<controls:PageHeader
 			Grid.Row="0"
-			Title="Movements" />
+			Title="Movements"
+			Subtitle="Record purchases, withdrawals, and corrections while reviewing stock activity." />
 
 		<controls:SearchBox
-			Grid.Row="2"
+			Grid.Row="1"
+			Margin="{StaticResource Search.Margin}"
 			Placeholder="Search movements"
 			Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-			ToolTip="Search by part number, description, purpose, location, reference or notes" />
+			ToolTip="Search by part number, description, purpose, location, reference, or notes" />
 
-		<Grid Grid.Row="4">
-
+		<Grid Grid.Row="2">
 			<Grid.ColumnDefinitions>
-				<ColumnDefinition Width="2*" />
+				<ColumnDefinition Width="3*" />
 				<ColumnDefinition Width="24" />
-				<ColumnDefinition Width="1*" />
+				<ColumnDefinition Width="2*" />
 			</Grid.ColumnDefinitions>
 
-			<DataGrid
-				Grid.Column="0"
-				Style="{StaticResource AppDataGridStyle}"
-				ItemsSource="{Binding Items}">
-
-				<DataGrid.Columns>
-
-					<DataGridTextColumn
-						Header="Timestamp"
-						Binding="{Binding TimestampLocal}"
-						Width="180" />
-
-					<DataGridTextColumn
-						Header="Part Number"
-						Binding="{Binding PartNumber}"
-						Width="180" />
-
-					<DataGridTextColumn
-						Header="Description"
-						Binding="{Binding Description}"
-						Width="*" />
-
-					<DataGridTextColumn
-						Header="Purpose"
-						Binding="{Binding PurposeName}"
-						Width="130" />
-
-					<DataGridTextColumn
-						Header="Location"
-						Binding="{Binding LocationName}"
-						Width="130" />
-
-					<DataGridTextColumn
-						Header="Type"
-						Binding="{Binding MovementType}"
-						Width="120" />
-
-					<DataGridTextColumn
-						Header="Quantity"
-						Binding="{Binding Quantity}"
-						Width="100" />
-
-					<DataGridTextColumn
-						Header="Unit Price"
-						Binding="{Binding UnitPrice, StringFormat={}{0:C2}}"
-						Width="140" />
-
-					<DataGridTextColumn
-						Header="Reference"
-						Binding="{Binding Reference}"
-						Width="160" />
-
-				</DataGrid.Columns>
-
-			</DataGrid>
-
-			<Border
-				Grid.Column="2"
-				Padding="16"
-				BorderBrush="#DDDDDD"
-				BorderThickness="1">
-
+			<controls:Card Grid.Column="0">
+				<controls:Card.Header>
+					<TextBlock Text="Movement History" Style="{StaticResource SectionTitleStyle}" />
+				</controls:Card.Header>
 				<Grid>
+					<DataGrid
+						ItemsSource="{Binding Items}"
+						Style="{StaticResource AppDataGridStyle}"
+						Visibility="{Binding HasItems, Converter={StaticResource BooleanToVisibilityConverter}}">
+						<DataGrid.Columns>
+							<DataGridTextColumn Header="Timestamp" Binding="{Binding TimestampLocal, StringFormat={}{0:g}}" Width="130" />
+							<DataGridTextColumn Header="Part Number" Binding="{Binding PartNumber}" Width="120" />
+							<DataGridTextColumn Header="Description" Binding="{Binding Description}" Width="*" />
+							<DataGridTextColumn Header="Purpose" Binding="{Binding PurposeName}" Width="95" />
+							<DataGridTextColumn Header="Location" Binding="{Binding LocationName}" Width="95" />
+							<DataGridTextColumn Header="Type" Binding="{Binding MovementType}" Width="95" />
+							<DataGridTextColumn Header="Qty" Binding="{Binding Quantity}" Width="60" />
+							<DataGridTextColumn Header="Unit Price" Binding="{Binding UnitPrice, StringFormat={}{0:C2}}" Width="105" />
+							<DataGridTextColumn Header="Reference" Binding="{Binding Reference}" Width="120" />
+						</DataGrid.Columns>
+					</DataGrid>
 
-					<Grid.RowDefinitions>
-						<RowDefinition Height="Auto" />
-						<RowDefinition Height="16" />
-						<RowDefinition Height="Auto" />
-						<RowDefinition Height="16" />
-						<RowDefinition Height="Auto" />
-						<RowDefinition Height="8" />
-						<RowDefinition Height="Auto" />
-						<RowDefinition Height="8" />
-						<RowDefinition Height="Auto" />
-						<RowDefinition Height="8" />
-						<RowDefinition Height="Auto" />
-						<RowDefinition Height="8" />
-						<RowDefinition Height="Auto" />
-						<RowDefinition Height="16" />
-						<RowDefinition Height="Auto" />
-						<RowDefinition Height="*" />
-					</Grid.RowDefinitions>
+					<controls:EmptyState
+						Title="No movements found"
+						Description="Adjust the search or create a new stock movement."
+						Visibility="{Binding HasNoItems, Converter={StaticResource BooleanToVisibilityConverter}}" />
+				</Grid>
+			</controls:Card>
 
-					<TextBlock
-						Grid.Row="0"
-						Text="New Movement"
-						Style="{StaticResource SectionTitleStyle}" />
+			<controls:Card Grid.Column="2">
+				<controls:Card.Header>
+					<TextBlock Text="New Movement" Style="{StaticResource SectionTitleStyle}" />
+				</controls:Card.Header>
 
-					<Border
-						Grid.Row="2"
-						Padding="8"
-						Background="#FFF3F3"
-						BorderBrush="#CC5555"
-						BorderThickness="1"
-						Visibility="{Binding HasErrorMessage, Converter={StaticResource BooleanToVisibilityConverter}}">
+				<ScrollViewer VerticalScrollBarVisibility="Auto">
+					<StackPanel>
+						<Border
+							Padding="12"
+							Background="{StaticResource ErrorBrush}"
+							CornerRadius="6"
+							Visibility="{Binding HasErrorMessage, Converter={StaticResource BooleanToVisibilityConverter}}">
+							<TextBlock
+								Foreground="{StaticResource ErrorForegroundBrush}"
+								Text="{Binding ErrorMessage}"
+								TextWrapping="Wrap" />
+						</Border>
 
-						<TextBlock
-							Text="{Binding ErrorMessage}"
-							TextWrapping="Wrap" />
-
-					</Border>
-
-					<StackPanel Grid.Row="4">
-						<TextBlock Text="Inventory" />
+						<TextBlock Margin="0,16,0,4" Text="Inventory" Style="{StaticResource FormLabelStyle}" />
 						<ComboBox
-							Style="{StaticResource AppComboBoxStyle}"
+							DisplayMemberPath="DisplayName"
 							ItemsSource="{Binding AvailableInventories}"
 							SelectedItem="{Binding SelectedInventory}"
-							DisplayMemberPath="DisplayName" />
-					</StackPanel>
+							Style="{StaticResource AppComboBoxStyle}" />
 
-					<StackPanel Grid.Row="6">
-						<TextBlock Text="Movement Type" />
+						<TextBlock Margin="0,16,0,4" Text="Movement Type" Style="{StaticResource FormLabelStyle}" />
 						<ComboBox
-							Style="{StaticResource AppComboBoxStyle}"
-							SelectedValue="{Binding Editor.MovementType}">
-							<ComboBoxItem Content="Purchase" />
-							<ComboBoxItem Content="Withdrawal" />
-							<ComboBoxItem Content="Correction" />
-						</ComboBox>
-					</StackPanel>
+							ItemsSource="{Binding MovementTypes}"
+							SelectedItem="{Binding Editor.MovementType}"
+							Style="{StaticResource AppComboBoxStyle}" />
 
-					<StackPanel Grid.Row="8">
-						<TextBlock Text="Quantity" />
-						<TextBox
-							Style="{StaticResource AppTextBoxStyle}"
-							Text="{Binding Editor.Quantity, UpdateSourceTrigger=PropertyChanged}" />
-					</StackPanel>
+						<TextBlock Margin="0,16,0,4" Text="Quantity" Style="{StaticResource FormLabelStyle}" />
+						<controls:TextInput Text="{Binding Editor.Quantity, UpdateSourceTrigger=PropertyChanged}" />
 
-					<StackPanel Grid.Row="10">
-						<TextBlock Text="Unit Price" />
-						<TextBox
-							Style="{StaticResource AppTextBoxStyle}"
+						<TextBlock Margin="0,16,0,4" Text="Unit Price" Style="{StaticResource FormLabelStyle}" />
+						<controls:TextInput
 							IsEnabled="{Binding Editor.RequiresUnitPrice}"
 							Text="{Binding Editor.UnitPrice, UpdateSourceTrigger=PropertyChanged}" />
-					</StackPanel>
 
-					<StackPanel Grid.Row="12">
-						<TextBlock Text="Reference" />
+						<TextBlock Margin="0,16,0,4" Text="Reference" Style="{StaticResource FormLabelStyle}" />
+						<controls:TextInput Text="{Binding Editor.Reference, UpdateSourceTrigger=PropertyChanged}" />
+
+						<TextBlock Margin="0,16,0,4" Text="Notes" Style="{StaticResource FormLabelStyle}" />
 						<TextBox
+							Height="72"
+							AcceptsReturn="True"
 							Style="{StaticResource AppTextBoxStyle}"
-							Text="{Binding Editor.Reference, UpdateSourceTrigger=PropertyChanged}" />
-					</StackPanel>
+							Text="{Binding Editor.Notes, UpdateSourceTrigger=PropertyChanged}"
+							TextWrapping="Wrap" />
 
-					<StackPanel Grid.Row="14">
 						<Button
-							Content="Create"
-							Style="{StaticResource PrimaryButtonStyle}"
-							Command="{Binding CreateMovementCommand}" />
+							Margin="0,20,0,0"
+							HorizontalAlignment="Right"
+							Command="{Binding CreateMovementCommand}"
+							Content="Create Movement"
+							Style="{StaticResource PrimaryButtonStyle}" />
 					</StackPanel>
-
-				</Grid>
-
-			</Border>
-
+				</ScrollViewer>
+			</controls:Card>
 		</Grid>
-
 	</Grid>
-
 </UserControl>

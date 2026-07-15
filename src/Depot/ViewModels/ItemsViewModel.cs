@@ -43,6 +43,10 @@ public sealed class ItemsViewModel
 	public ObservableCollection<ItemViewModel> Items { get; }
 		= new();
 
+	public bool HasItems => Items.Count > 0;
+
+	public bool HasNoItems => !HasItems;
+
 	public ItemEditorViewModel Editor { get; }
 
 	public RelayCommand NewItemCommand { get; }
@@ -57,6 +61,11 @@ public sealed class ItemsViewModel
 
 		set
 		{
+			if (_searchText == value)
+			{
+				return;
+			}
+
 			_searchText = value;
 			OnPropertyChanged();
 
@@ -70,6 +79,11 @@ public sealed class ItemsViewModel
 
 		set
 		{
+			if (_selectedItem == value)
+			{
+				return;
+			}
+
 			_selectedItem = value;
 			OnPropertyChanged();
 
@@ -109,6 +123,9 @@ public sealed class ItemsViewModel
 				new ItemViewModel(
 					item));
 		}
+
+		OnPropertyChanged(nameof(HasItems));
+		OnPropertyChanged(nameof(HasNoItems));
 
 		if (selectedItemId is not null)
 		{

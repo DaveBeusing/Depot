@@ -162,12 +162,20 @@ public sealed class ReportsViewModel
 			OnPropertyChanged();
 			OnPropertyChanged(
 				nameof(HasExportStatus));
+			OnPropertyChanged(nameof(HasExportSuccessStatus));
+			OnPropertyChanged(nameof(HasExportErrorStatus));
 		}
 	}
 
 	public bool HasExportStatus =>
 		!string.IsNullOrWhiteSpace(
 			ExportStatusText);
+
+	public bool HasExportSuccessStatus =>
+		HasExportStatus && !IsExportStatusError;
+
+	public bool HasExportErrorStatus =>
+		HasExportStatus && IsExportStatusError;
 
 	public bool IsExportStatusError
 	{
@@ -184,6 +192,8 @@ public sealed class ReportsViewModel
 				value;
 
 			OnPropertyChanged();
+			OnPropertyChanged(nameof(HasExportSuccessStatus));
+			OnPropertyChanged(nameof(HasExportErrorStatus));
 		}
 	}
 
