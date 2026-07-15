@@ -3,6 +3,7 @@
 
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 
 namespace Depot.Controls;
 
@@ -53,6 +54,16 @@ public sealed class PasswordInput : Control
 
 		SynchronizePasswordBox(PasswordValue);
 		_passwordBox.PasswordChanged += OnPasswordChanged;
+	}
+
+	protected override void OnGotKeyboardFocus(KeyboardFocusChangedEventArgs e)
+	{
+		base.OnGotKeyboardFocus(e);
+
+		if (ReferenceEquals(e.NewFocus, this) && _passwordBox is not null)
+		{
+			_passwordBox.Focus();
+		}
 	}
 
 	private static void OnPasswordValueChanged(
