@@ -8,36 +8,29 @@ using Depot.Models;
 
 namespace Depot.Repositories;
 
-public sealed class AuditRepository
+public sealed class AuditRepository : DatabaseRepository
 {
-	private readonly IDatabaseConnectionFactory _connectionFactory;
-
-	public AuditRepository(IDatabaseConnectionFactory connectionFactory)
+	public AuditRepository(DatabaseAccess database)
+		: base(database)
 	{
-		_connectionFactory = connectionFactory;
 	}
 
 	public long Create(AuditEntry entry)
 	{
-		using var connection = _connectionFactory.CreateConnection();
-		connection.Open();
-		using var command = connection.CreateCommand();
-		command.CommandText =
+		return Database.Insert(
 		"""
 		INSERT INTO AuditEntries
 		(TimestampUtc, UserId, UserEmail, EntityType, EntityId, Action, BeforeJson, AfterJson)
 		VALUES
 		($TimestampUtc, $UserId, $UserEmail, $EntityType, $EntityId, $Action, $BeforeJson, $AfterJson);
-		SELECT last_insert_rowid();
-		""";
-		command.Parameters.AddWithValue("$TimestampUtc", entry.TimestampUtc.ToString("O", CultureInfo.InvariantCulture));
-		command.Parameters.AddWithValue("$UserId", (object?)entry.UserId ?? DBNull.Value);
-		command.Parameters.AddWithValue("$UserEmail", entry.UserEmail);
-		command.Parameters.AddWithValue("$EntityType", entry.EntityType);
-		command.Parameters.AddWithValue("$EntityId", entry.EntityId);
-		command.Parameters.AddWithValue("$Action", entry.Action);
-		command.Parameters.AddWithValue("$BeforeJson", (object?)entry.BeforeJson ?? DBNull.Value);
-		command.Parameters.AddWithValue("$AfterJson", (object?)entry.AfterJson ?? DBNull.Value);
-		return (long)command.ExecuteScalar()!;
+		""",
+		Parameter("$TimestampUtc", entry.TimestampUtc.ToString("O", CultureInfo.InvariantCulture)),
+		Parameter("$UserId", entry.UserId),
+		Parameter("$UserEmail", entry.UserEmail),
+		Parameter("$EntityType", entry.EntityType),
+		Parameter("$EntityId", entry.EntityId),
+		Parameter("$Action", entry.Action),
+		Parameter("$BeforeJson", entry.BeforeJson),
+		Parameter("$AfterJson", entry.AfterJson));
 	}
 }

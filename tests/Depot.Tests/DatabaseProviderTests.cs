@@ -3,6 +3,7 @@
 
 using Depot.Data;
 using Depot.Models;
+using Depot.Repositories;
 
 using Xunit;
 
@@ -100,5 +101,29 @@ public sealed class DatabaseProviderTests
 			"The local SQLite database file or its directory is unavailable.",
 			exception.Message);
 		Assert.DoesNotContain("Data Source", exception.Message, StringComparison.OrdinalIgnoreCase);
+	}
+
+	[Fact]
+	public void AllDatabaseRepositoriesUseTheSharedDataAccessLayer()
+	{
+		Type[] repositoryTypes =
+		[
+			typeof(AuditRepository),
+			typeof(InventoryRepository),
+			typeof(ItemRepository),
+			typeof(LocationRepository),
+			typeof(PurposeRepository),
+			typeof(StockMovementRepository),
+			typeof(UserRepository)
+		];
+
+		Assert.All(
+			repositoryTypes,
+			type =>
+			{
+				var constructor = Assert.Single(type.GetConstructors());
+				var parameter = Assert.Single(constructor.GetParameters());
+				Assert.Equal(typeof(DatabaseAccess), parameter.ParameterType);
+			});
 	}
 }

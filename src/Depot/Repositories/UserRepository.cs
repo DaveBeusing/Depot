@@ -1,190 +1,131 @@
 // Copyright (c) 2026 David Beusing
 // Licensed under the MIT License.
 
-using System.Globalization;
 using System.Data.Common;
+using System.Globalization;
 
 using Depot.Data;
 using Depot.Models;
 
 namespace Depot.Repositories;
 
-public sealed class UserRepository
+public sealed class UserRepository : DatabaseRepository
 {
-	private readonly IDatabaseConnectionFactory _connectionFactory;
+	private const string SelectColumns =
+		"Id, Email, DisplayName, IsAdministrator, IsActive, CreatedUtc, Version";
 
-	public UserRepository(IDatabaseConnectionFactory connectionFactory)
+	public UserRepository(DatabaseAccess database)
+		: base(database)
 	{
-		_connectionFactory = connectionFactory;
 	}
 
-	public IReadOnlyList<User> GetAll()
-	{
-		var users = new List<User>();
-		using var connection = _connectionFactory.CreateConnection();
-		connection.Open();
-		using var command = connection.CreateCommand();
-		command.CommandText =
-		"""
-		SELECT Id, Email, DisplayName, IsAdministrator, IsActive, CreatedUtc, Version
-		FROM Users
-		ORDER BY IsActive DESC, Email;
-		""";
-		using var reader = command.ExecuteReader();
-
-		while (reader.Read())
-		{
-			users.Add(ReadUser(reader));
-		}
-
-		return users;
-	}
+	public IReadOnlyList<User> GetAll() =>
+		Database.Query(
+			$"SELECT {SelectColumns} FROM Users ORDER BY IsActive DESC, Email;",
+			ReadUser);
 
 	public User? GetByEmail(string email)
 	{
-		using var connection = _connectionFactory.CreateConnection();
-		connection.Open();
-		using var command = connection.CreateCommand();
-		command.CommandText =
-		"""
-		SELECT Id, Email, DisplayName, IsAdministrator, IsActive, CreatedUtc, Version
-		FROM Users
-		WHERE Email = $Email COLLATE NOCASE;
-		""";
-		command.Parameters.AddWithValue("$Email", email);
-		using var reader = command.ExecuteReader();
-		return reader.Read() ? ReadUser(reader) : null;
+		var predicate = DatabaseAccess.CaseInsensitiveEquals("Email", "$Email");
+		return Database.QuerySingleOrDefault(
+			$"SELECT {SelectColumns} FROM Users WHERE {predicate};",
+			ReadUser,
+			Parameter("$Email", email));
 	}
 
 	public UserAuthentication? GetAuthenticationByEmail(string email)
 	{
-		using var connection = _connectionFactory.CreateConnection();
-		connection.Open();
-		using var command = connection.CreateCommand();
-		command.CommandText =
-		"""
-		SELECT Id, Email, DisplayName, IsAdministrator, IsActive, CreatedUtc, Version, PasswordHash
-		FROM Users
-		WHERE Email = $Email COLLATE NOCASE;
-		""";
-		command.Parameters.AddWithValue("$Email", email);
-		using var reader = command.ExecuteReader();
-
-		return reader.Read()
-			? new UserAuthentication
-			{
-				User = ReadUser(reader),
-				PasswordHash = reader.GetString(7)
-			}
-			: null;
+		var predicate = DatabaseAccess.CaseInsensitiveEquals("Email", "$Email");
+		return Database.QuerySingleOrDefault(
+			$"SELECT {SelectColumns}, PasswordHash FROM Users WHERE {predicate};",
+			ReadAuthentication,
+			Parameter("$Email", email));
 	}
 
-	public User? GetById(long id)
-	{
-		using var connection = _connectionFactory.CreateConnection();
-		connection.Open();
-		using var command = connection.CreateCommand();
-		command.CommandText =
-		"""
-		SELECT Id, Email, DisplayName, IsAdministrator, IsActive, CreatedUtc, Version
-		FROM Users
-		WHERE Id = $Id;
-		""";
-		command.Parameters.AddWithValue("$Id", id);
-		using var reader = command.ExecuteReader();
-		return reader.Read() ? ReadUser(reader) : null;
-	}
+	public User? GetById(long id) =>
+		Database.QuerySingleOrDefault(
+			$"SELECT {SelectColumns} FROM Users WHERE Id = $Id;",
+			ReadUser,
+			Parameter("$Id", id));
 
-	public long Create(User user, string passwordHash)
-	{
-		using var connection = _connectionFactory.CreateConnection();
-		connection.Open();
-		using var command = connection.CreateCommand();
-		command.CommandText =
-		"""
-		INSERT INTO Users
-		(
-			Email, DisplayName, PasswordHash, IsAdministrator, IsActive, CreatedUtc
-		)
-		VALUES
-		(
-			$Email, $DisplayName, $PasswordHash, $IsAdministrator, $IsActive, $CreatedUtc
-		);
-
-		SELECT last_insert_rowid();
-		""";
-		AddUserParameters(command, user);
-		command.Parameters.AddWithValue("$PasswordHash", passwordHash);
-		return Convert.ToInt64(command.ExecuteScalar(), CultureInfo.InvariantCulture);
-	}
+	public long Create(User user, string passwordHash) =>
+		Database.Insert(
+			"""
+			INSERT INTO Users
+			(Email, DisplayName, PasswordHash, IsAdministrator, IsActive, CreatedUtc)
+			VALUES
+			($Email, $DisplayName, $PasswordHash, $IsAdministrator, $IsActive, $CreatedUtc);
+			""",
+			Parameter("$Email", user.Email),
+			Parameter("$DisplayName", user.DisplayName),
+			Parameter("$PasswordHash", passwordHash),
+			Parameter("$IsAdministrator", user.IsAdministrator),
+			Parameter("$IsActive", user.IsActive),
+			Parameter("$CreatedUtc", user.CreatedUtc.ToString("O", CultureInfo.InvariantCulture)));
 
 	public bool Update(User user, string? passwordHash)
 	{
-		using var connection = _connectionFactory.CreateConnection();
-		connection.Open();
-		using var command = connection.CreateCommand();
-		command.CommandText = passwordHash is null
-			? """
-			  UPDATE Users
-			  SET Email = $Email, DisplayName = $DisplayName, IsAdministrator = $IsAdministrator,
-			      Version = Version + 1
-			  WHERE Id = $Id AND Version = $Version;
-			  """
-			: """
-			  UPDATE Users
-			  SET Email = $Email, DisplayName = $DisplayName, PasswordHash = $PasswordHash,
-			      IsAdministrator = $IsAdministrator, Version = Version + 1
-			  WHERE Id = $Id AND Version = $Version;
-			  """;
-		command.Parameters.AddWithValue("$Id", user.Id);
-		command.Parameters.AddWithValue("$Email", user.Email);
-		command.Parameters.AddWithValue("$DisplayName", user.DisplayName);
-		command.Parameters.AddWithValue("$IsAdministrator", user.IsAdministrator);
-		command.Parameters.AddWithValue("$Version", user.Version);
-		if (passwordHash is not null)
+		if (passwordHash is null)
 		{
-			command.Parameters.AddWithValue("$PasswordHash", passwordHash);
+			return Database.Execute(
+				"""
+				UPDATE Users
+				SET Email = $Email, DisplayName = $DisplayName, IsAdministrator = $IsAdministrator,
+				    Version = Version + 1
+				WHERE Id = $Id AND Version = $Version;
+				""",
+				Parameter("$Id", user.Id),
+				Parameter("$Email", user.Email),
+				Parameter("$DisplayName", user.DisplayName),
+				Parameter("$IsAdministrator", user.IsAdministrator),
+				Parameter("$Version", user.Version)) == 1;
 		}
-		return command.ExecuteNonQuery() == 1;
+
+		return Database.Execute(
+			"""
+			UPDATE Users
+			SET Email = $Email, DisplayName = $DisplayName, PasswordHash = $PasswordHash,
+			    IsAdministrator = $IsAdministrator, Version = Version + 1
+			WHERE Id = $Id AND Version = $Version;
+			""",
+			Parameter("$Id", user.Id),
+			Parameter("$Email", user.Email),
+			Parameter("$DisplayName", user.DisplayName),
+			Parameter("$PasswordHash", passwordHash),
+			Parameter("$IsAdministrator", user.IsAdministrator),
+			Parameter("$Version", user.Version)) == 1;
 	}
 
-	public bool SetActive(long id, bool isActive, long version)
-	{
-		using var connection = _connectionFactory.CreateConnection();
-		connection.Open();
-		using var command = connection.CreateCommand();
-		command.CommandText = "UPDATE Users SET IsActive = $IsActive, Version = Version + 1 WHERE Id = $Id AND Version = $Version;";
-		command.Parameters.AddWithValue("$Id", id);
-		command.Parameters.AddWithValue("$IsActive", isActive);
-		command.Parameters.AddWithValue("$Version", version);
-		return command.ExecuteNonQuery() == 1;
-	}
+	public bool SetActive(long id, bool isActive, long version) =>
+		Database.Execute(
+			"""
+			UPDATE Users
+			SET IsActive = $IsActive, Version = Version + 1
+			WHERE Id = $Id AND Version = $Version;
+			""",
+			Parameter("$Id", id),
+			Parameter("$IsActive", isActive),
+			Parameter("$Version", version)) == 1;
 
-	private static void AddUserParameters(DbCommand command, User user)
-	{
-		command.Parameters.AddWithValue("$Email", user.Email);
-		command.Parameters.AddWithValue("$DisplayName", user.DisplayName);
-		command.Parameters.AddWithValue("$IsAdministrator", user.IsAdministrator);
-		command.Parameters.AddWithValue("$IsActive", user.IsActive);
-		command.Parameters.AddWithValue(
-			"$CreatedUtc",
-			user.CreatedUtc.ToString("O", CultureInfo.InvariantCulture));
-	}
+	private static UserAuthentication ReadAuthentication(DbDataReader reader) =>
+		new()
+		{
+			User = ReadUser(reader),
+			PasswordHash = reader.GetString(7)
+		};
 
-	private static User ReadUser(DbDataReader reader)
-	{
-		return new User
+	private static User ReadUser(DbDataReader reader) =>
+		new()
 		{
 			Id = reader.GetInt64(0),
 			Email = reader.GetString(1),
 			DisplayName = reader.GetString(2),
-			IsAdministrator = reader.GetInt64(3) == 1,
-			IsActive = reader.GetInt64(4) == 1,
+			IsAdministrator = reader.GetBoolean(3),
+			IsActive = reader.GetBoolean(4),
 			CreatedUtc = DateTime.Parse(
 				reader.GetString(5),
 				CultureInfo.InvariantCulture,
 				DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal),
 			Version = reader.GetInt64(6)
 		};
-	}
 }

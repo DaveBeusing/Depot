@@ -27,14 +27,17 @@ public sealed class MultiUserInventoryTests : IDisposable
 	{
 		_factory = new SqliteConnectionFactory(_databasePath);
 		new DepotDatabase(_factory).Initialize();
-		_itemRepository = new ItemRepository(_factory);
-		_inventoryRepository = new InventoryRepository(_factory);
-		_movementRepository = new StockMovementRepository(_factory);
-		var purposeRepository = new PurposeRepository(_factory);
-		var locationRepository = new LocationRepository(_factory);
+		var database = new DatabaseAccess(_factory);
+		_itemRepository = new ItemRepository(database);
+		_inventoryRepository = new InventoryRepository(database);
+		_movementRepository = new StockMovementRepository(database);
+		var purposeRepository = new PurposeRepository(database);
+		var locationRepository = new LocationRepository(database);
 		var authorization = new AuthorizationService();
-		authorization.SignIn(new UserRepository(_factory).GetByEmail("admin@depot.local")!);
-		var audit = new AuditService(new AuditRepository(_factory), authorization);
+		var administrator = new UserRepository(database).GetByEmail("admin@depot.local")
+			?? throw new InvalidOperationException("The test administrator was not initialized.");
+		authorization.SignIn(administrator);
+		var audit = new AuditService(new AuditRepository(database), authorization);
 		_itemService = new ItemService(_itemRepository, audit);
 		_purposeService = new PurposeService(purposeRepository, audit);
 		_locationService = new LocationService(locationRepository, audit);

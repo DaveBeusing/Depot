@@ -1,286 +1,87 @@
 // Copyright (c) 2026 David Beusing
 // Licensed under the MIT License.
 
+using System.Data.Common;
+
 using Depot.Data;
 using Depot.Models;
 
-using System.Data.Common;
-
 namespace Depot.Repositories;
 
-/// <summary>
-/// Provides persistence for inventories.
-/// </summary>
-public sealed class InventoryRepository
+public sealed class InventoryRepository : DatabaseRepository
 {
-	private readonly IDatabaseConnectionFactory _connectionFactory;
+	private const string SelectColumns = "Id, ItemId, PurposeId, LocationId, IsActive, Version";
 
-	public InventoryRepository(
-		IDatabaseConnectionFactory connectionFactory)
+	public InventoryRepository(DatabaseAccess database)
+		: base(database)
 	{
-		_connectionFactory = connectionFactory;
 	}
 
-	public IReadOnlyList<Inventory> GetAll()
-	{
-		var inventories =
-			new List<Inventory>();
+	public IReadOnlyList<Inventory> GetAll() =>
+		Database.Query(
+			$"SELECT {SelectColumns} FROM Inventories WHERE IsActive = 1 ORDER BY ItemId;",
+			ReadInventory);
 
-		using var connection =
-			_connectionFactory.CreateConnection();
+	public IReadOnlyList<Inventory> GetByItem(long itemId) =>
+		Database.Query(
+			$"""
+			SELECT {SelectColumns}
+			FROM Inventories
+			WHERE ItemId = $ItemId AND IsActive = 1
+			ORDER BY PurposeId, LocationId;
+			""",
+			ReadInventory,
+			Parameter("$ItemId", itemId));
 
-		connection.Open();
+	public Inventory? GetById(long id) =>
+		Database.QuerySingleOrDefault(
+			$"SELECT {SelectColumns} FROM Inventories WHERE Id = $Id;",
+			ReadInventory,
+			Parameter("$Id", id));
 
-		using var command =
-			connection.CreateCommand();
+	public Inventory? GetByItemPurposeLocation(long itemId, long purposeId, long locationId) =>
+		Database.QuerySingleOrDefault(
+			$"""
+			SELECT {SelectColumns}
+			FROM Inventories
+			WHERE ItemId = $ItemId
+			  AND PurposeId = $PurposeId
+			  AND LocationId = $LocationId;
+			""",
+			ReadInventory,
+			Parameter("$ItemId", itemId),
+			Parameter("$PurposeId", purposeId),
+			Parameter("$LocationId", locationId));
 
-		command.CommandText =
-		"""
-		SELECT
-			Id,
-			ItemId,
-			PurposeId,
-			LocationId,
-			IsActive,
-			Version
-		FROM Inventories
-		WHERE IsActive = 1
-		ORDER BY ItemId;
-		""";
+	public long Create(Inventory inventory) =>
+		Database.Insert(
+			"""
+			INSERT INTO Inventories (ItemId, PurposeId, LocationId, IsActive)
+			VALUES ($ItemId, $PurposeId, $LocationId, $IsActive);
+			""",
+			Parameter("$ItemId", inventory.ItemId),
+			Parameter("$PurposeId", inventory.PurposeId),
+			Parameter("$LocationId", inventory.LocationId),
+			Parameter("$IsActive", inventory.IsActive));
 
-		using var reader =
-			command.ExecuteReader();
+	public bool Deactivate(long id, long version) =>
+		Database.Execute(
+			"""
+			UPDATE Inventories
+			SET IsActive = 0, Version = Version + 1
+			WHERE Id = $Id AND Version = $Version;
+			""",
+			Parameter("$Id", id),
+			Parameter("$Version", version)) == 1;
 
-		while (reader.Read())
-		{
-			inventories.Add(
-				ReadInventory(reader));
-		}
-
-		return inventories;
-	}
-
-	public IReadOnlyList<Inventory> GetByItem(
-		long itemId)
-	{
-		var inventories =
-			new List<Inventory>();
-
-		using var connection =
-			_connectionFactory.CreateConnection();
-
-		connection.Open();
-
-		using var command =
-			connection.CreateCommand();
-
-		command.CommandText =
-		"""
-		SELECT
-			Id,
-			ItemId,
-			PurposeId,
-			LocationId,
-			IsActive,
-			Version
-		FROM Inventories
-		WHERE
-			ItemId = $ItemId
-			AND IsActive = 1
-		ORDER BY PurposeId,
-				 LocationId;
-		""";
-
-		command.Parameters.AddWithValue(
-			"$ItemId",
-			itemId);
-
-		using var reader =
-			command.ExecuteReader();
-
-		while (reader.Read())
-		{
-			inventories.Add(
-				ReadInventory(reader));
-		}
-
-		return inventories;
-	}
-
-	public Inventory? GetById(
-		long id)
-	{
-		using var connection =
-			_connectionFactory.CreateConnection();
-
-		connection.Open();
-
-		using var command =
-			connection.CreateCommand();
-
-		command.CommandText =
-		"""
-		SELECT
-			Id,
-			ItemId,
-			PurposeId,
-			LocationId,
-			IsActive,
-			Version
-		FROM Inventories
-		WHERE Id = $Id;
-		""";
-
-		command.Parameters.AddWithValue(
-			"$Id",
-			id);
-
-		using var reader =
-			command.ExecuteReader();
-
-		return reader.Read()
-			? ReadInventory(reader)
-			: null;
-	}
-
-	public Inventory? GetByItemPurposeLocation(
-		long itemId,
-		long purposeId,
-		long locationId)
-	{
-		using var connection =
-			_connectionFactory.CreateConnection();
-
-		connection.Open();
-
-		using var command =
-			connection.CreateCommand();
-
-		command.CommandText =
-		"""
-		SELECT
-			Id,
-			ItemId,
-			PurposeId,
-			LocationId,
-			IsActive,
-			Version
-		FROM Inventories
-		WHERE
-			ItemId = $ItemId
-			AND PurposeId = $PurposeId
-			AND LocationId = $LocationId;
-		""";
-
-		command.Parameters.AddWithValue(
-			"$ItemId",
-			itemId);
-
-		command.Parameters.AddWithValue(
-			"$PurposeId",
-			purposeId);
-
-		command.Parameters.AddWithValue(
-			"$LocationId",
-			locationId);
-
-		using var reader =
-			command.ExecuteReader();
-
-		return reader.Read()
-			? ReadInventory(reader)
-			: null;
-	}
-
-	public long Create(
-		Inventory inventory)
-	{
-		using var connection =
-			_connectionFactory.CreateConnection();
-
-		connection.Open();
-
-		using var command =
-			connection.CreateCommand();
-
-		command.CommandText =
-		"""
-		INSERT INTO Inventories
-		(
-			ItemId,
-			PurposeId,
-			LocationId,
-			IsActive
-		)
-		VALUES
-		(
-			$ItemId,
-			$PurposeId,
-			$LocationId,
-			$IsActive
-		);
-
-		SELECT last_insert_rowid();
-		""";
-
-		command.Parameters.AddWithValue(
-			"$ItemId",
-			inventory.ItemId);
-
-		command.Parameters.AddWithValue(
-			"$PurposeId",
-			inventory.PurposeId);
-
-		command.Parameters.AddWithValue(
-			"$LocationId",
-			inventory.LocationId);
-
-		command.Parameters.AddWithValue(
-			"$IsActive",
-			inventory.IsActive);
-
-		return (long)command.ExecuteScalar()!;
-	}
-
-	public bool Deactivate(
-		long id,
-		long version)
-	{
-		using var connection =
-			_connectionFactory.CreateConnection();
-
-		connection.Open();
-
-		using var command =
-			connection.CreateCommand();
-
-		command.CommandText =
-		"""
-		UPDATE Inventories
-		SET IsActive = 0, Version = Version + 1
-		WHERE Id = $Id AND Version = $Version;
-		""";
-
-		command.Parameters.AddWithValue(
-			"$Id",
-			id);
-
-		command.Parameters.AddWithValue("$Version", version);
-
-		return command.ExecuteNonQuery() == 1;
-	}
-
-	private static Inventory ReadInventory(
-		DbDataReader reader)
-	{
-		return new Inventory
+	private static Inventory ReadInventory(DbDataReader reader) =>
+		new()
 		{
 			Id = reader.GetInt64(0),
 			ItemId = reader.GetInt64(1),
 			PurposeId = reader.GetInt64(2),
 			LocationId = reader.GetInt64(3),
-			IsActive = reader.GetInt64(4) == 1,
+			IsActive = reader.GetBoolean(4),
 			Version = reader.GetInt64(5)
 		};
-	}
 }

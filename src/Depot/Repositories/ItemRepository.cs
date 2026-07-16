@@ -1,273 +1,110 @@
 // Copyright (c) 2026 David Beusing
 // Licensed under the MIT License.
 
+using System.Data.Common;
+
 using Depot.Data;
 using Depot.Models;
-using System.Data.Common;
 
 namespace Depot.Repositories;
 
-public sealed class ItemRepository
+public sealed class ItemRepository : DatabaseRepository
 {
-	private readonly IDatabaseConnectionFactory _connectionFactory;
+	private const string SelectColumns =
+		"Id, PartNumber, Description, Manufacturer, Category, IsActive, Version";
 
-	public ItemRepository(
-		IDatabaseConnectionFactory connectionFactory)
+	public ItemRepository(DatabaseAccess database)
+		: base(database)
 	{
-		_connectionFactory = connectionFactory;
 	}
 
-	public long Create(
-		Item item)
+	public long Create(Item item) =>
+		Database.Insert(
+			"""
+			INSERT INTO Items (PartNumber, Description, Manufacturer, Category, IsActive)
+			VALUES ($PartNumber, $Description, $Manufacturer, $Category, $IsActive);
+			""",
+			Parameter("$PartNumber", item.PartNumber),
+			Parameter("$Description", item.Description),
+			Parameter("$Manufacturer", item.Manufacturer),
+			Parameter("$Category", item.Category),
+			Parameter("$IsActive", item.IsActive));
+
+	public bool Update(Item item) =>
+		Database.Execute(
+			"""
+			UPDATE Items
+			SET Description = $Description,
+			    Manufacturer = $Manufacturer,
+			    Category = $Category,
+			    IsActive = $IsActive,
+			    Version = Version + 1
+			WHERE Id = $Id AND Version = $Version;
+			""",
+			Parameter("$Id", item.Id),
+			Parameter("$Description", item.Description),
+			Parameter("$Manufacturer", item.Manufacturer),
+			Parameter("$Category", item.Category),
+			Parameter("$IsActive", item.IsActive),
+			Parameter("$Version", item.Version)) == 1;
+
+	public bool Deactivate(long id, long version) =>
+		Database.Execute(
+			"""
+			UPDATE Items
+			SET IsActive = 0, Version = Version + 1
+			WHERE Id = $Id AND Version = $Version;
+			""",
+			Parameter("$Id", id),
+			Parameter("$Version", version)) == 1;
+
+	public IReadOnlyList<Item> GetAll() => SearchActive(null);
+
+	public IReadOnlyList<Item> SearchActive(string? searchText)
 	{
-		using var connection = _connectionFactory.CreateConnection();
-
-		connection.Open();
-
-		using var command = connection.CreateCommand();
-
-		command.CommandText =
-		"""
-		INSERT INTO Items
-		(
-			PartNumber,
-			Description,
-			Manufacturer,
-			Category,
-			IsActive
-		)
-		VALUES
-		(
-			$PartNumber,
-			$Description,
-			$Manufacturer,
-			$Category,
-			$IsActive
-		);
-
-		SELECT last_insert_rowid();
-		""";
-
-		command.Parameters.AddWithValue("$PartNumber", item.PartNumber);
-		command.Parameters.AddWithValue("$Description", item.Description);
-		command.Parameters.AddWithValue("$Manufacturer", (object?)item.Manufacturer ?? DBNull.Value);
-		command.Parameters.AddWithValue("$Category", (object?)item.Category ?? DBNull.Value);
-		command.Parameters.AddWithValue("$IsActive", item.IsActive ? 1 : 0);
-
-		return (long)command.ExecuteScalar()!;
-	}
-
-	public bool Update(
-		Item item)
-	{
-		using var connection = _connectionFactory.CreateConnection();
-
-		connection.Open();
-
-		using var command = connection.CreateCommand();
-
-		command.CommandText =
-		"""
-		UPDATE Items
-		SET
-			Description = $Description,
-			Manufacturer = $Manufacturer,
-			Category = $Category,
-			IsActive = $IsActive,
-			Version = Version + 1
-		WHERE Id = $Id AND Version = $Version;
-		""";
-
-		command.Parameters.AddWithValue("$Id", item.Id);
-		command.Parameters.AddWithValue("$Description", item.Description);
-		command.Parameters.AddWithValue("$Manufacturer", (object?)item.Manufacturer ?? DBNull.Value);
-		command.Parameters.AddWithValue("$Category", (object?)item.Category ?? DBNull.Value);
-		command.Parameters.AddWithValue("$IsActive", item.IsActive ? 1 : 0);
-		command.Parameters.AddWithValue("$Version", item.Version);
-
-		return command.ExecuteNonQuery() == 1;
-	}
-
-	public bool Deactivate(
-		long id,
-		long version)
-	{
-		using var connection = _connectionFactory.CreateConnection();
-
-		connection.Open();
-
-		using var command = connection.CreateCommand();
-
-		command.CommandText =
-		"""
-		UPDATE Items
-		SET IsActive = 0, Version = Version + 1
-		WHERE Id = $Id AND Version = $Version;
-		""";
-
-		command.Parameters.AddWithValue("$Id", id);
-		command.Parameters.AddWithValue("$Version", version);
-
-		return command.ExecuteNonQuery() == 1;
-	}
-
-	public IReadOnlyList<Item> GetAll()
-	{
-		return SearchActive(
-			null);
-	}
-
-	public IReadOnlyList<Item> SearchActive(
-		string? searchText)
-	{
-		var result = new List<Item>();
-
-		using var connection = _connectionFactory.CreateConnection();
-
-		connection.Open();
-
-		using var command = connection.CreateCommand();
-
 		if (string.IsNullOrWhiteSpace(searchText))
 		{
-			command.CommandText =
-			"""
-			SELECT
-				Id,
-				PartNumber,
-				Description,
-				Manufacturer,
-				Category,
-				IsActive,
-				Version
+			return Database.Query(
+				$"SELECT {SelectColumns} FROM Items WHERE IsActive = 1 ORDER BY PartNumber;",
+				ReadItem);
+		}
+
+		return Database.Query(
+			$"""
+			SELECT {SelectColumns}
 			FROM Items
 			WHERE IsActive = 1
+			  AND (PartNumber LIKE $Search
+			       OR Description LIKE $Search
+			       OR Manufacturer LIKE $Search
+			       OR Category LIKE $Search)
 			ORDER BY PartNumber;
-			""";
-		}
-		else
-		{
-			command.CommandText =
-			"""
-			SELECT
-				Id,
-				PartNumber,
-				Description,
-				Manufacturer,
-				Category,
-				IsActive,
-				Version
-			FROM Items
-			WHERE
-				IsActive = 1
-				AND
-				(
-					PartNumber LIKE $Search
-					OR Description LIKE $Search
-					OR Manufacturer LIKE $Search
-					OR Category LIKE $Search
-				)
-			ORDER BY PartNumber;
-			""";
-
-			command.Parameters.AddWithValue(
-				"$Search",
-				$"%{searchText.Trim()}%");
-		}
-
-		using var reader = command.ExecuteReader();
-
-		while (reader.Read())
-		{
-			result.Add(
-				ReadItem(reader));
-		}
-
-		return result;
+			""",
+			ReadItem,
+			Parameter("$Search", $"%{searchText.Trim()}%"));
 	}
 
-	public Item? GetById(
-		long id)
-	{
-		using var connection = _connectionFactory.CreateConnection();
+	public Item? GetById(long id) =>
+		Database.QuerySingleOrDefault(
+			$"SELECT {SelectColumns} FROM Items WHERE Id = $Id;",
+			ReadItem,
+			Parameter("$Id", id));
 
-		connection.Open();
+	public Item? GetByPartNumber(string partNumber) =>
+		Database.QuerySingleOrDefault(
+			$"SELECT {SelectColumns} FROM Items WHERE PartNumber = $PartNumber;",
+			ReadItem,
+			Parameter("$PartNumber", partNumber));
 
-		using var command = connection.CreateCommand();
-
-		command.CommandText =
-		"""
-		SELECT
-			Id,
-			PartNumber,
-			Description,
-			Manufacturer,
-			Category,
-			IsActive,
-			Version
-		FROM Items
-		WHERE Id = $Id;
-		""";
-
-		command.Parameters.AddWithValue("$Id", id);
-
-		using var reader = command.ExecuteReader();
-
-		if (!reader.Read())
-		{
-			return null;
-		}
-
-		return ReadItem(reader);
-	}
-
-	public Item? GetByPartNumber(
-		string partNumber)
-	{
-		using var connection = _connectionFactory.CreateConnection();
-
-		connection.Open();
-
-		using var command = connection.CreateCommand();
-
-		command.CommandText =
-		"""
-		SELECT
-			Id,
-			PartNumber,
-			Description,
-			Manufacturer,
-			Category,
-			IsActive,
-			Version
-		FROM Items
-		WHERE PartNumber = $PartNumber;
-		""";
-
-		command.Parameters.AddWithValue("$PartNumber", partNumber);
-
-		using var reader = command.ExecuteReader();
-
-		if (!reader.Read())
-		{
-			return null;
-		}
-
-		return ReadItem(reader);
-	}
-
-	private static Item ReadItem(
-		DbDataReader reader)
-	{
-		return new Item
+	private static Item ReadItem(DbDataReader reader) =>
+		new()
 		{
 			Id = reader.GetInt64(0),
 			PartNumber = reader.GetString(1),
 			Description = reader.GetString(2),
 			Manufacturer = reader.IsDBNull(3) ? null : reader.GetString(3),
 			Category = reader.IsDBNull(4) ? null : reader.GetString(4),
-			IsActive = reader.GetInt64(5) == 1,
+			IsActive = reader.GetBoolean(5),
 			Version = reader.GetInt64(6)
 		};
-	}
 }

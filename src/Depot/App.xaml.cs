@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2026 David Beusing
+// Copyright (c) 2026 David Beusing
 // Licensed under the MIT License.
 
 using System.Windows;
@@ -26,6 +26,7 @@ public partial class App : Application
 	}
 
 	public static IDatabaseConnectionFactory ConnectionFactory { get; private set; } = null!;
+	public static DatabaseAccess DataAccess { get; private set; } = null!;
 	public static IDatabaseInitializer Database { get; private set; } = null!;
 	public static ItemRepository ItemRepository { get; private set; } = null!;
 	public static PurposeRepository PurposeRepository { get; private set; } = null!;
@@ -84,6 +85,7 @@ public partial class App : Application
 		var connectionSettings = SettingsService.LoadOrCreate();
 
 		ConnectionFactory = DatabaseProviderFactory.CreateConnectionFactory(connectionSettings);
+		DataAccess = new DatabaseAccess(ConnectionFactory);
 		Database = DatabaseProviderFactory.CreateInitializer(ConnectionFactory);
 		Database.Initialize();
 		ConnectionStatusService.SetConnected(connectionSettings);
@@ -93,31 +95,31 @@ public partial class App : Application
 
 		ItemRepository =
 			new ItemRepository(
-				ConnectionFactory);
+				DataAccess);
 
 		PurposeRepository =
 			new PurposeRepository(
-				ConnectionFactory);
+				DataAccess);
 
 		InventoryRepository =
 			new InventoryRepository(
-				ConnectionFactory);
+				DataAccess);
 
 		LocationRepository =
 			new LocationRepository(
-				ConnectionFactory);
+				DataAccess);
 
 		StockMovementRepository =
 			new StockMovementRepository(
-				ConnectionFactory);
+				DataAccess);
 
 		UserRepository =
 			new UserRepository(
-				ConnectionFactory);
+				DataAccess);
 
 		AuditRepository =
 			new AuditRepository(
-				ConnectionFactory);
+				DataAccess);
 
 		StartupDiagnostics.Log(
 			"Repositories created.");
