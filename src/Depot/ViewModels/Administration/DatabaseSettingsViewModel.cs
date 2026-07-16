@@ -11,6 +11,7 @@ public sealed class DatabaseSettingsViewModel : BaseViewModel
 {
 	private readonly SettingsService _settingsService;
 	private readonly ConnectionStatusService _connectionStatusService;
+	private readonly DatabaseConnectionTester _databaseConnectionTester;
 	private DatabaseProvider _provider;
 	private string _localDatabasePath = string.Empty;
 	private string _sqlServerHost = string.Empty;
@@ -25,11 +26,14 @@ public sealed class DatabaseSettingsViewModel : BaseViewModel
 
 	public DatabaseSettingsViewModel(
 		SettingsService settingsService,
-		ConnectionStatusService connectionStatusService)
+		ConnectionStatusService connectionStatusService,
+		DatabaseConnectionTester databaseConnectionTester)
 	{
 		_settingsService = settingsService;
 		_connectionStatusService = connectionStatusService;
+		_databaseConnectionTester = databaseConnectionTester;
 		SaveCommand = new RelayCommand(Save);
+		TestConnectionCommand = new RelayCommand(TestConnection);
 		Load(settingsService.CurrentSettings);
 	}
 
@@ -156,6 +160,7 @@ public sealed class DatabaseSettingsViewModel : BaseViewModel
 	public ConnectionStatusService ConnectionStatus => _connectionStatusService;
 
 	public RelayCommand SaveCommand { get; }
+	public RelayCommand TestConnectionCommand { get; }
 
 	private void Save()
 	{
@@ -163,24 +168,18 @@ public sealed class DatabaseSettingsViewModel : BaseViewModel
 
 		try
 		{
-			var settings = _settingsService.Save(new DatabaseConnectionSettings
+			var candidate = _settingsService.Validate(BuildSettings());
+			_databaseConnectionTester.Test(candidate);
+			var providerChanged = candidate.Provider != _settingsService.CurrentSettings.Provider;
+			var settings = _settingsService.Save(candidate);
+			if (!providerChanged)
 			{
-				Provider = Provider,
-				LocalDatabasePath = LocalDatabasePath,
-				SqlServerHost = SqlServerHost,
-				SqlServerPort = SqlServerPort,
-				SqlServerDatabase = SqlServerDatabase,
-				SqlServerUserName = SqlServerUserName,
-				SqlServerPassword = SqlServerPassword,
-				EncryptSqlServerConnection = EncryptSqlServerConnection,
-				TrustSqlServerCertificate = TrustSqlServerCertificate
-			});
-
-			_connectionStatusService.Apply(settings);
+				_connectionStatusService.SetConnected(settings);
+			}
 			Load(settings);
-			Message = settings.Provider == DatabaseProvider.Local
-				? "Local database settings saved."
-				: "SQL Server settings saved securely. The local fallback remains active until SQL Server support is enabled.";
+			Message = providerChanged
+				? "Connection verified and settings saved. Restart Depot to activate the selected provider."
+				: "Connection verified and settings saved.";
 		}
 		catch (Exception exception)
 		{
@@ -188,6 +187,35 @@ public sealed class DatabaseSettingsViewModel : BaseViewModel
 			Message = exception.Message;
 		}
 	}
+
+	private void TestConnection()
+	{
+		ClearMessage();
+		try
+		{
+			_databaseConnectionTester.Test(_settingsService.Validate(BuildSettings()));
+			Message = "Connection successful.";
+		}
+		catch (Exception exception)
+		{
+			HasError = true;
+			Message = exception.Message;
+		}
+	}
+
+	private DatabaseConnectionSettings BuildSettings() =>
+		new()
+		{
+			Provider = Provider,
+			LocalDatabasePath = LocalDatabasePath,
+			SqlServerHost = SqlServerHost,
+			SqlServerPort = SqlServerPort,
+			SqlServerDatabase = SqlServerDatabase,
+			SqlServerUserName = SqlServerUserName,
+			SqlServerPassword = SqlServerPassword,
+			EncryptSqlServerConnection = EncryptSqlServerConnection,
+			TrustSqlServerCertificate = TrustSqlServerCertificate
+		};
 
 	private void Load(DatabaseConnectionSettings settings)
 	{

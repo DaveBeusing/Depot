@@ -2,19 +2,18 @@
 // Licensed under the MIT License.
 
 using System.Globalization;
+using System.Data.Common;
 
 using Depot.Data;
 using Depot.Models;
-
-using Microsoft.Data.Sqlite;
 
 namespace Depot.Repositories;
 
 public sealed class UserRepository
 {
-	private readonly SqliteConnectionFactory _connectionFactory;
+	private readonly IDatabaseConnectionFactory _connectionFactory;
 
-	public UserRepository(SqliteConnectionFactory connectionFactory)
+	public UserRepository(IDatabaseConnectionFactory connectionFactory)
 	{
 		_connectionFactory = connectionFactory;
 	}
@@ -161,7 +160,7 @@ public sealed class UserRepository
 		return command.ExecuteNonQuery() == 1;
 	}
 
-	private static void AddUserParameters(SqliteCommand command, User user)
+	private static void AddUserParameters(DbCommand command, User user)
 	{
 		command.Parameters.AddWithValue("$Email", user.Email);
 		command.Parameters.AddWithValue("$DisplayName", user.DisplayName);
@@ -172,7 +171,7 @@ public sealed class UserRepository
 			user.CreatedUtc.ToString("O", CultureInfo.InvariantCulture));
 	}
 
-	private static User ReadUser(SqliteDataReader reader)
+	private static User ReadUser(DbDataReader reader)
 	{
 		return new User
 		{

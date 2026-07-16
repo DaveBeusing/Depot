@@ -30,7 +30,8 @@ public sealed class MainViewModel : BaseViewModel
 		ImportService importService,
 		IFileDialogService fileDialogService,
 		SettingsService settingsService,
-		ConnectionStatusService connectionStatusService)
+		ConnectionStatusService connectionStatusService,
+		DatabaseConnectionTester databaseConnectionTester)
 		{
 		
 		_authorizationService =	authorizationService;
@@ -71,7 +72,8 @@ public sealed class MainViewModel : BaseViewModel
 				locationService,
 				userService,
 				settingsService,
-				connectionStatusService);
+				connectionStatusService,
+				databaseConnectionTester);
 
 		NavigationItems.Add(
 			new NavigationItem

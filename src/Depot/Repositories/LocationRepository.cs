@@ -4,7 +4,7 @@
 using Depot.Data;
 using Depot.Models;
 
-using Microsoft.Data.Sqlite;
+using System.Data.Common;
 
 namespace Depot.Repositories;
 
@@ -13,10 +13,10 @@ namespace Depot.Repositories;
 /// </summary>
 public sealed class LocationRepository
 {
-	private readonly SqliteConnectionFactory _connectionFactory;
+	private readonly IDatabaseConnectionFactory _connectionFactory;
 
 	public LocationRepository(
-		SqliteConnectionFactory connectionFactory)
+		IDatabaseConnectionFactory connectionFactory)
 	{
 		_connectionFactory = connectionFactory;
 	}
@@ -241,7 +241,7 @@ public sealed class LocationRepository
 	}
 
 	private static Location ReadLocation(
-		SqliteDataReader reader)
+		DbDataReader reader)
 	{
 		return new Location
 		{

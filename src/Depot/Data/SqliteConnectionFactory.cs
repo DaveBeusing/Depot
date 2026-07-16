@@ -5,7 +5,7 @@ using Microsoft.Data.Sqlite;
 
 namespace Depot.Data;
 
-public sealed class SqliteConnectionFactory
+public sealed class SqliteConnectionFactory : IDatabaseConnectionFactory
 {
 	private readonly string _connectionString;
 
@@ -26,5 +26,17 @@ public sealed class SqliteConnectionFactory
 	{
 		return new SqliteConnection(_connectionString);
 	}
+
+	System.Data.Common.DbConnection IDatabaseConnectionFactory.CreateConnection() =>
+		CreateConnection();
+
+	public Models.DatabaseProvider Provider => Models.DatabaseProvider.Local;
+
+	public System.Data.Common.DbTransaction BeginWriteTransaction(
+		System.Data.Common.DbConnection connection) =>
+		((SqliteConnection)connection).BeginTransaction(deferred: false);
+
+	public string GetInventoryLockSql() =>
+		"SELECT Id FROM Inventories WHERE Id = $InventoryId;";
 
 }

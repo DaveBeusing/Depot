@@ -1,13 +1,13 @@
 # Depot
 
-Depot is a Windows desktop application for managing items, inventories, stock movements, master data, users, imports, and reports. It is built with .NET 10, WPF, MVVM, and SQLite.
+Depot is a Windows desktop application for managing items, inventories, stock movements, master data, users, imports, and reports. It is built with .NET 10, WPF, MVVM, SQLite, and SQL Server.
 
 The project started as a replacement for an Excel-based inventory and is under active development toward version 1.0. Database schema and domain model changes are still possible before the first stable release.
 
 ![Platform](https://img.shields.io/badge/platform-Windows-blue)
 ![Framework](https://img.shields.io/badge/.NET-10-512BD4)
 ![UI](https://img.shields.io/badge/UI-WPF-512BD4)
-![Database](https://img.shields.io/badge/database-SQLite-0F80CC)
+![Database](https://img.shields.io/badge/database-SQLite%20%7C%20SQL%20Server-0F80CC)
 ![Architecture](https://img.shields.io/badge/architecture-MVVM-orange)
 ![License](https://img.shields.io/badge/license-MIT-yellow)
 
@@ -120,13 +120,13 @@ Services
   |
 Repositories
   |
-SQLite
+SQLite / SQL Server
 ```
 
 - Views contain layout and bindings.
 - ViewModels contain presentation state and UI commands.
 - Services contain business logic and application workflows.
-- Repositories contain SQLite access and mapping.
+- Repositories contain provider-neutral ADO.NET access and mapping.
 - `App.xaml.cs` is the composition root.
 
 Native file dialogs are accessed through `IFileDialogService`, keeping WPF dialog creation outside the ViewModels.
@@ -136,6 +136,7 @@ Native file dialogs are accessed through `IFileDialogService`, keeping WPF dialo
 - .NET 10 for Windows
 - WPF
 - SQLite via `Microsoft.Data.Sqlite`
+- SQL Server via `Microsoft.Data.SqlClient`
 - ClosedXML for Excel import and export
 - Nullable reference types enabled
 
@@ -166,9 +167,9 @@ Run the application:
 dotnet run --project src/Depot/Depot.csproj
 ```
 
-The SQLite database is created and migrated automatically as `depot.db` in the working directory. The current schema version is 6.
+The selected database is created and initialized automatically. Local installations use `depot.db`; the current schema version is 8.
 
-Database connection settings are stored in `depot.settings`. The file is a JSON envelope whose payload is encrypted with Windows DPAPI for the current Windows user. A first installation always starts with the local SQLite database. SQL Server server, database, user, password, encryption, and certificate settings can be prepared under Administration > Database; the local database remains active until the SQL Server repository provider is implemented.
+Database connection settings are stored in `depot.settings`. The file is a JSON envelope whose payload is encrypted with Windows DPAPI for the current Windows user. A first installation starts with SQLite. Administration > Database can test and activate SQL Server; provider changes take effect after restarting Depot.
 
 For a new database, sign in with `admin@depot.local` and the initial password `Depot123!`. Change the password in Administration > Users after the first sign-in. Existing version 5 users are migrated to an email ending in `@depot.local` and receive the same initial password.
 
@@ -181,7 +182,7 @@ src/Depot/
   Controls/       Reusable WPF controls
   Data/           Database initialization and migrations
   Models/         Domain and report models
-  Repositories/   SQLite persistence
+  Repositories/   Provider-neutral persistence
   Resources/      Design system resource dictionaries
   Services/       Business logic and application services
   ViewModels/     Presentation logic and commands

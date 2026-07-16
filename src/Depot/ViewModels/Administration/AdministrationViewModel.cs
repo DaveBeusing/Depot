@@ -31,7 +31,8 @@ public sealed class AdministrationViewModel
 		LocationService locationService,
 		UserService userService,
 		SettingsService settingsService,
-		ConnectionStatusService connectionStatusService)
+		ConnectionStatusService connectionStatusService,
+		DatabaseConnectionTester databaseConnectionTester)
 	{
 		_importViewModel = importViewModel;
 		_masterDataViewModel = new MasterDataViewModel(purposeService, locationService);
@@ -41,7 +42,8 @@ public sealed class AdministrationViewModel
 		_databaseSettingsViewModel =
 			new DatabaseSettingsViewModel(
 				settingsService,
-				connectionStatusService);
+				connectionStatusService,
+				databaseConnectionTester);
 
 		NavigationItems.Add(
 			new NavigationItem

@@ -3,16 +3,16 @@
 
 using Depot.Data;
 using Depot.Models;
-using Microsoft.Data.Sqlite;
+using System.Data.Common;
 
 namespace Depot.Repositories;
 
 public sealed class ItemRepository
 {
-	private readonly SqliteConnectionFactory _connectionFactory;
+	private readonly IDatabaseConnectionFactory _connectionFactory;
 
 	public ItemRepository(
-		SqliteConnectionFactory connectionFactory)
+		IDatabaseConnectionFactory connectionFactory)
 	{
 		_connectionFactory = connectionFactory;
 	}
@@ -257,7 +257,7 @@ public sealed class ItemRepository
 	}
 
 	private static Item ReadItem(
-		SqliteDataReader reader)
+		DbDataReader reader)
 	{
 		return new Item
 		{

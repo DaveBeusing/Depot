@@ -61,7 +61,7 @@ public sealed class ConnectionStatusService : INotifyPropertyChanged
 
 	public event PropertyChangedEventHandler? PropertyChanged;
 
-	public void Apply(DatabaseConnectionSettings settings)
+	public void SetConnected(DatabaseConnectionSettings settings)
 	{
 		if (settings.Provider == DatabaseProvider.Local)
 		{
@@ -71,9 +71,9 @@ public sealed class ConnectionStatusService : INotifyPropertyChanged
 			return;
 		}
 
-		State = ConnectionState.Pending;
-		Status = "Local fallback active";
-		Detail = $"SQL Server prepared: {settings.SqlServerHost}:{settings.SqlServerPort}/{settings.SqlServerDatabase}";
+		State = ConnectionState.Connected;
+		Status = "SQL Server connected";
+		Detail = $"{settings.SqlServerHost}:{settings.SqlServerPort}/{settings.SqlServerDatabase}";
 	}
 
 	public void SetDisconnected(string detail)

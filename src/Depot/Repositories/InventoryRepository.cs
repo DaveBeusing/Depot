@@ -4,7 +4,7 @@
 using Depot.Data;
 using Depot.Models;
 
-using Microsoft.Data.Sqlite;
+using System.Data.Common;
 
 namespace Depot.Repositories;
 
@@ -13,10 +13,10 @@ namespace Depot.Repositories;
 /// </summary>
 public sealed class InventoryRepository
 {
-	private readonly SqliteConnectionFactory _connectionFactory;
+	private readonly IDatabaseConnectionFactory _connectionFactory;
 
 	public InventoryRepository(
-		SqliteConnectionFactory connectionFactory)
+		IDatabaseConnectionFactory connectionFactory)
 	{
 		_connectionFactory = connectionFactory;
 	}
@@ -271,7 +271,7 @@ public sealed class InventoryRepository
 	}
 
 	private static Inventory ReadInventory(
-		SqliteDataReader reader)
+		DbDataReader reader)
 	{
 		return new Inventory
 		{

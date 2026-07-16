@@ -347,10 +347,8 @@ public sealed class MovementService
 						: notes.Trim()
 			};
 
-		movement.Id = _stockMovementRepository.Create(
-			movement);
-
-		_auditService.RecordCreated(movement.Id, movement);
+		var auditEntry = _auditService.CreateCreatedEntry(0, movement);
+		movement.Id = _stockMovementRepository.CreateAtomic(movement, auditEntry);
 	}
 
 }

@@ -26,7 +26,7 @@ Repositories
 
 ↓
 
-SQLite
+SQLite / SQL Server
 ```
 
 Every layer has a single responsibility.

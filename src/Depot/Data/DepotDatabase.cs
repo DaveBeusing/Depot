@@ -5,7 +5,7 @@ using Microsoft.Data.Sqlite;
 
 namespace Depot.Data;
 
-public sealed class DepotDatabase
+public sealed class DepotDatabase : IDatabaseInitializer
 {
 	private readonly SqliteConnectionFactory _connectionFactory;
 

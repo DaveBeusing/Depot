@@ -127,7 +127,7 @@
 				CornerRadius="6">
 				<TextBlock
 					Foreground="{StaticResource WarningForegroundBrush}"
-					Text="SQL Server configuration is prepared for the future provider. Depot continues to use the local SQLite database until SQL Server repositories are available."
+					Text="Provider changes are verified before saving and become active after restarting Depot. SQL Server credentials remain encrypted in depot.settings."
 					TextWrapping="Wrap" />
 			</Border>
 
@@ -148,12 +148,17 @@
 				</Border>
 			</Grid>
 
-			<Button
-				Margin="0,20,0,0"
-				HorizontalAlignment="Right"
-				Command="{Binding SaveCommand}"
-				Content="Save settings"
-				Style="{StaticResource PrimaryButtonStyle}" />
+			<StackPanel Margin="0,20,0,0" HorizontalAlignment="Right" Orientation="Horizontal">
+				<Button
+					Command="{Binding TestConnectionCommand}"
+					Content="Test connection"
+					Style="{StaticResource SecondaryButtonStyle}" />
+				<Button
+					Margin="12,0,0,0"
+					Command="{Binding SaveCommand}"
+					Content="Save settings"
+					Style="{StaticResource PrimaryButtonStyle}" />
+			</StackPanel>
 		</StackPanel>
 	</ScrollViewer>
 </UserControl>

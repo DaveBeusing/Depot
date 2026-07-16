@@ -25,8 +25,8 @@ public partial class App : Application
 				XmlLanguage.GetLanguage("de-DE")));
 	}
 
-	public static SqliteConnectionFactory ConnectionFactory { get; private set; } = null!;
-	public static DepotDatabase Database { get; private set; } = null!;
+	public static IDatabaseConnectionFactory ConnectionFactory { get; private set; } = null!;
+	public static IDatabaseInitializer Database { get; private set; } = null!;
 	public static ItemRepository ItemRepository { get; private set; } = null!;
 	public static PurposeRepository PurposeRepository { get; private set; } = null!;
 	public static InventoryRepository InventoryRepository { get; private set; } = null!;
@@ -41,6 +41,7 @@ public partial class App : Application
 	public static SessionService SessionService { get; private set; } = null!;
 	public static SettingsService SettingsService { get; private set; } = null!;
 	public static ConnectionStatusService ConnectionStatusService { get; private set; } = null!;
+	public static DatabaseConnectionTester DatabaseConnectionTester { get; private set; } = null!;
 	public static AuditService AuditService { get; private set; } = null!;
 	public static ItemService ItemService { get; private set; } = null!;
 	public static PurposeService PurposeService { get; private set; } = null!;
@@ -82,10 +83,11 @@ public partial class App : Application
 		ConnectionStatusService = new ConnectionStatusService();
 		var connectionSettings = SettingsService.LoadOrCreate();
 
-		ConnectionFactory = new SqliteConnectionFactory(connectionSettings.LocalDatabasePath);
-		Database = new DepotDatabase(ConnectionFactory);
+		ConnectionFactory = DatabaseProviderFactory.CreateConnectionFactory(connectionSettings);
+		Database = DatabaseProviderFactory.CreateInitializer(ConnectionFactory);
 		Database.Initialize();
-		ConnectionStatusService.Apply(connectionSettings);
+		ConnectionStatusService.SetConnected(connectionSettings);
+		DatabaseConnectionTester = new DatabaseConnectionTester();
 
 		StartupDiagnostics.Log("Database initialized.");
 
@@ -260,7 +262,8 @@ public partial class App : Application
 				ImportService,
 				FileDialogService,
 				SettingsService,
-				ConnectionStatusService);
+				ConnectionStatusService,
+				DatabaseConnectionTester);
 
 		StartupDiagnostics.Log("MainViewModel created.");
 

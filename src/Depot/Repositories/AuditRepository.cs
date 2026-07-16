@@ -10,9 +10,9 @@ namespace Depot.Repositories;
 
 public sealed class AuditRepository
 {
-	private readonly SqliteConnectionFactory _connectionFactory;
+	private readonly IDatabaseConnectionFactory _connectionFactory;
 
-	public AuditRepository(SqliteConnectionFactory connectionFactory)
+	public AuditRepository(IDatabaseConnectionFactory connectionFactory)
 	{
 		_connectionFactory = connectionFactory;
 	}

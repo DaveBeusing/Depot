@@ -37,6 +37,9 @@ public sealed class SettingsService
 		return Clone(CurrentSettings);
 	}
 
+	public DatabaseConnectionSettings Validate(DatabaseConnectionSettings settings) =>
+		NormalizeAndValidate(settings);
+
 	private static DatabaseConnectionSettings NormalizeAndValidate(
 		DatabaseConnectionSettings settings)
 	{

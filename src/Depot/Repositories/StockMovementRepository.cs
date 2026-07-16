@@ -3,30 +3,83 @@
 
 using Depot.Data;
 using Depot.Models;
+using Depot.Services;
+using System.Data.Common;
+using System.Text.Json;
+
+using Microsoft.Data.SqlClient;
 using Microsoft.Data.Sqlite;
 
 namespace Depot.Repositories;
 
 public sealed class StockMovementRepository
 {
-	private readonly SqliteConnectionFactory _connectionFactory;
+	private readonly IDatabaseConnectionFactory _connectionFactory;
 
 	public StockMovementRepository(
-		SqliteConnectionFactory connectionFactory)
+		IDatabaseConnectionFactory connectionFactory)
 	{
 		_connectionFactory = connectionFactory;
 	}
 
-	public long Create(
-		StockMovement movement)
+	public long CreateAtomic(
+		StockMovement movement,
+		AuditEntry auditEntry)
+	{
+		for (var attempt = 1; ; attempt++)
+		{
+			try
+			{
+				return CreateAtomicCore(movement, auditEntry);
+			}
+			catch (SqlException exception) when (attempt < 3 && exception.Number is 1205 or 3960)
+			{
+				Thread.Sleep(50 * attempt);
+			}
+			catch (SqliteException exception) when (attempt < 3 && exception.SqliteErrorCode is 5 or 6)
+			{
+				Thread.Sleep(50 * attempt);
+			}
+		}
+	}
+
+	private long CreateAtomicCore(
+		StockMovement movement,
+		AuditEntry auditEntry)
 	{
 		using var connection =
 			_connectionFactory.CreateConnection();
 
 		connection.Open();
+		using var transaction = _connectionFactory.BeginWriteTransaction(connection);
+
+		using (var lockCommand = connection.CreateCommand())
+		{
+			lockCommand.Transaction = transaction;
+			lockCommand.CommandText = _connectionFactory.GetInventoryLockSql();
+			lockCommand.Parameters.AddWithValue("$InventoryId", movement.InventoryId);
+			if (lockCommand.ExecuteScalar() is null)
+			{
+				throw new InvalidOperationException($"Inventory with id '{movement.InventoryId}' was not found.");
+			}
+		}
+
+		using (var stockCommand = connection.CreateCommand())
+		{
+			stockCommand.Transaction = transaction;
+			stockCommand.CommandText =
+				"SELECT COALESCE(SUM(Quantity), 0) FROM StockMovements WHERE InventoryId = $InventoryId;";
+			stockCommand.Parameters.AddWithValue("$InventoryId", movement.InventoryId);
+			var currentStock = Convert.ToInt64(stockCommand.ExecuteScalar());
+			if (currentStock + movement.Quantity < 0)
+			{
+				throw new InsufficientStockException();
+			}
+		}
 
 		using var command =
 			connection.CreateCommand();
+		command.Transaction = transaction;
 
 		command.CommandText =
 		"""
@@ -82,7 +135,34 @@ public sealed class StockMovementRepository
 			"$Notes",
 			(object?)movement.Notes ?? DBNull.Value);
 
-		return (long)command.ExecuteScalar()!;
+		var movementId = Convert.ToInt64(command.ExecuteScalar());
+		movement.Id = movementId;
+		auditEntry.EntityId = movementId;
+		auditEntry.AfterJson = JsonSerializer.Serialize(
+			movement,
+			new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+
+		using var auditCommand = connection.CreateCommand();
+		auditCommand.Transaction = transaction;
+		auditCommand.CommandText =
+		"""
+		INSERT INTO AuditEntries
+		(TimestampUtc, UserId, UserEmail, EntityType, EntityId, Action, BeforeJson, AfterJson)
+		VALUES
+		($TimestampUtc, $UserId, $UserEmail, $EntityType, $EntityId, $Action, $BeforeJson, $AfterJson);
+		""";
+		auditCommand.Parameters.AddWithValue("$TimestampUtc", auditEntry.TimestampUtc.ToString("O"));
+		auditCommand.Parameters.AddWithValue("$UserId", (object?)auditEntry.UserId ?? DBNull.Value);
+		auditCommand.Parameters.AddWithValue("$UserEmail", auditEntry.UserEmail);
+		auditCommand.Parameters.AddWithValue("$EntityType", auditEntry.EntityType);
+		auditCommand.Parameters.AddWithValue("$EntityId", auditEntry.EntityId);
+		auditCommand.Parameters.AddWithValue("$Action", auditEntry.Action);
+		auditCommand.Parameters.AddWithValue("$BeforeJson", (object?)auditEntry.BeforeJson ?? DBNull.Value);
+		auditCommand.Parameters.AddWithValue("$AfterJson", (object?)auditEntry.AfterJson ?? DBNull.Value);
+		auditCommand.ExecuteNonQuery();
+
+		transaction.Commit();
+		return movementId;
 	}
 
 	public IReadOnlyList<StockMovement> GetAll()
@@ -222,7 +302,7 @@ public sealed class StockMovementRepository
 	}
 
 	private static StockMovement ReadMovement(
-		SqliteDataReader reader)
+		DbDataReader reader)
 	{
 		return new StockMovement
 		{

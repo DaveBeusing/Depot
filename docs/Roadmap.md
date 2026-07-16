@@ -4,6 +4,8 @@
 
 * [x] MVVM
 * [x] SQLite
+* [x] SQL Server provider
+* [x] Transactional stock movements
 * [x] Repository Pattern
 * [x] Service Layer
 * [x] Dashboard

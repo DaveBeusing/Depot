@@ -29,6 +29,9 @@ public sealed class AuditService
 	public void RecordCreated<T>(long entityId, T entity) where T : class =>
 		Record(typeof(T).Name, entityId, "Created", null, entity);
 
+	public AuditEntry CreateCreatedEntry<T>(long entityId, T entity) where T : class =>
+		CreateEntry(typeof(T).Name, entityId, "Created", null, entity);
+
 	public void RecordUpdated<T>(long entityId, T before, T after) where T : class =>
 		Record(typeof(T).Name, entityId, "Updated", before, after);
 
@@ -42,9 +45,18 @@ public sealed class AuditService
 		T? before,
 		T? after) where T : class
 	{
+		_auditRepository.Create(CreateEntry(entityType, entityId, action, before, after));
+	}
+
+	private AuditEntry CreateEntry<T>(
+		string entityType,
+		long entityId,
+		string action,
+		T? before,
+		T? after) where T : class
+	{
 		var user = _authorizationService.CurrentUser;
-		_auditRepository.Create(
-			new AuditEntry
+		return new AuditEntry
 			{
 				TimestampUtc = DateTime.UtcNow,
 				UserId = user?.Id,
@@ -54,7 +66,7 @@ public sealed class AuditService
 				Action = action,
 				BeforeJson = Serialize(before),
 				AfterJson = Serialize(after)
-			});
+			};
 	}
 
 	private static string? Serialize<T>(T? value) where T : class =>
