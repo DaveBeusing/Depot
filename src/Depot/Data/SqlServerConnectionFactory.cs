@@ -43,14 +43,28 @@ public sealed class SqlServerConnectionFactory : IDatabaseConnectionFactory
 	public DatabaseProvider Provider => DatabaseProvider.SqlServer;
 
 	public DbConnection CreateConnection() =>
-		new NormalizingSqlConnection(new SqlConnection(_connectionString));
+		new NormalizingSqlConnection(
+			new SqlConnection(_connectionString),
+			Provider,
+			$"{DatabaseName}@SQL Server",
+			NormalizeSql);
 
-	internal SqlConnection CreateMasterConnection() =>
-		new(_masterConnectionString);
+	internal DbConnection CreateMasterConnection() =>
+		new NormalizingSqlConnection(
+			new SqlConnection(_masterConnectionString),
+			Provider,
+			"master@SQL Server",
+			NormalizeSql);
 
 	public DbTransaction BeginWriteTransaction(DbConnection connection) =>
 		connection.BeginTransaction(IsolationLevel.Serializable);
 
 	public string GetInventoryLockSql() =>
 		"SELECT Id FROM Inventories WITH (UPDLOCK, HOLDLOCK) WHERE Id = $InventoryId;";
+
+	private static string NormalizeSql(string sql) =>
+		sql
+			.Replace("$", "@", StringComparison.Ordinal)
+			.Replace("SELECT last_insert_rowid();", "SELECT CAST(SCOPE_IDENTITY() AS bigint);", StringComparison.OrdinalIgnoreCase)
+			.Replace(" COLLATE NOCASE", string.Empty, StringComparison.OrdinalIgnoreCase);
 }

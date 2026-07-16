@@ -9,6 +9,7 @@ using System.Text.Json;
 
 using Microsoft.Data.SqlClient;
 using Microsoft.Data.Sqlite;
+using MySqlConnector;
 
 namespace Depot.Repositories;
 
@@ -37,6 +38,10 @@ public sealed class StockMovementRepository
 				Thread.Sleep(50 * attempt);
 			}
 			catch (SqliteException exception) when (attempt < 3 && exception.SqliteErrorCode is 5 or 6)
+			{
+				Thread.Sleep(50 * attempt);
+			}
+			catch (MySqlException exception) when (attempt < 3 && exception.Number is 1205 or 1213)
 			{
 				Thread.Sleep(50 * attempt);
 			}

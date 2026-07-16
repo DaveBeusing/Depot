@@ -22,4 +22,16 @@ public sealed class DatabaseConnectionSettings
 	public bool EncryptSqlServerConnection { get; set; } = true;
 
 	public bool TrustSqlServerCertificate { get; set; }
+
+	public string MySqlHost { get; set; } = string.Empty;
+
+	public int MySqlPort { get; set; } = 3306;
+
+	public string MySqlDatabase { get; set; } = string.Empty;
+
+	public string MySqlUserName { get; set; } = string.Empty;
+
+	public string MySqlPassword { get; set; } = string.Empty;
+
+	public bool UseMySqlTls { get; set; } = true;
 }

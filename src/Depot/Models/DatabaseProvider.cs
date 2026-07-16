@@ -6,5 +6,6 @@ namespace Depot.Models;
 public enum DatabaseProvider
 {
 	Local,
-	SqlServer
+	SqlServer,
+	MySql
 }

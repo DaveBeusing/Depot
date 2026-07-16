@@ -63,17 +63,25 @@ public sealed class ConnectionStatusService : INotifyPropertyChanged
 
 	public void SetConnected(DatabaseConnectionSettings settings)
 	{
-		if (settings.Provider == DatabaseProvider.Local)
+		switch (settings.Provider)
 		{
-			State = ConnectionState.Connected;
-			Status = "Local database connected";
-			Detail = settings.LocalDatabasePath;
-			return;
+			case DatabaseProvider.Local:
+				Status = "Local database connected";
+				Detail = settings.LocalDatabasePath;
+				break;
+			case DatabaseProvider.SqlServer:
+				Status = "SQL Server connected";
+				Detail = $"{settings.SqlServerHost}:{settings.SqlServerPort}/{settings.SqlServerDatabase}";
+				break;
+			case DatabaseProvider.MySql:
+				Status = "MySQL/MariaDB connected";
+				Detail = $"{settings.MySqlHost}:{settings.MySqlPort}/{settings.MySqlDatabase}";
+				break;
+			default:
+				throw new NotSupportedException($"Database provider '{settings.Provider}' is not supported.");
 		}
 
 		State = ConnectionState.Connected;
-		Status = "SQL Server connected";
-		Detail = $"{settings.SqlServerHost}:{settings.SqlServerPort}/{settings.SqlServerDatabase}";
 	}
 
 	public void SetDisconnected(string detail)

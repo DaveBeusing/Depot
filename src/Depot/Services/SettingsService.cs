@@ -47,10 +47,29 @@ public sealed class SettingsService
 		settings.SqlServerHost = settings.SqlServerHost.Trim();
 		settings.SqlServerDatabase = settings.SqlServerDatabase.Trim();
 		settings.SqlServerUserName = settings.SqlServerUserName.Trim();
+		settings.MySqlHost = settings.MySqlHost.Trim();
+		settings.MySqlDatabase = settings.MySqlDatabase.Trim();
+		settings.MySqlUserName = settings.MySqlUserName.Trim();
 
 		if (string.IsNullOrWhiteSpace(settings.LocalDatabasePath))
 		{
 			throw new ArgumentException("A local database path is required.");
+		}
+
+		if (settings.Provider == DatabaseProvider.MySql)
+		{
+			if (string.IsNullOrWhiteSpace(settings.MySqlHost) ||
+				string.IsNullOrWhiteSpace(settings.MySqlDatabase) ||
+				string.IsNullOrWhiteSpace(settings.MySqlUserName) ||
+				string.IsNullOrEmpty(settings.MySqlPassword))
+			{
+				throw new ArgumentException("Host, database, user name, and password are required for MySQL/MariaDB.");
+			}
+
+			if (settings.MySqlPort is < 1 or > 65535)
+			{
+				throw new ArgumentOutOfRangeException(nameof(settings.MySqlPort), "The MySQL/MariaDB port must be between 1 and 65535.");
+			}
 		}
 
 		if (settings.Provider == DatabaseProvider.SqlServer)
@@ -87,7 +106,13 @@ public sealed class SettingsService
 			SqlServerUserName = settings.SqlServerUserName,
 			SqlServerPassword = settings.SqlServerPassword,
 			EncryptSqlServerConnection = settings.EncryptSqlServerConnection,
-			TrustSqlServerCertificate = settings.TrustSqlServerCertificate
+			TrustSqlServerCertificate = settings.TrustSqlServerCertificate,
+			MySqlHost = settings.MySqlHost,
+			MySqlPort = settings.MySqlPort,
+			MySqlDatabase = settings.MySqlDatabase,
+			MySqlUserName = settings.MySqlUserName,
+			MySqlPassword = settings.MySqlPassword,
+			UseMySqlTls = settings.UseMySqlTls
 		};
 	}
 }

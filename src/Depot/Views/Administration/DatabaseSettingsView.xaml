@@ -33,6 +33,12 @@
 					GroupName="DatabaseProvider"
 					IsChecked="{Binding UseSqlServer}"
 					Style="{StaticResource OptionRadioButtonStyle}" />
+				<RadioButton
+					Margin="16,0,0,0"
+					Content="MySQL / MariaDB"
+					GroupName="DatabaseProvider"
+					IsChecked="{Binding UseMySql}"
+					Style="{StaticResource OptionRadioButtonStyle}" />
 			</StackPanel>
 
 			<Border
@@ -55,6 +61,64 @@
 						Style="{StaticResource HintStyle}"
 						Text="Used on first installation and as the current fallback database." />
 				</StackPanel>
+			</Border>
+
+			<Border
+				Margin="0,16,0,0"
+				Padding="16"
+				Background="{StaticResource SurfaceAltBrush}"
+				BorderBrush="{StaticResource BorderBrush}"
+				BorderThickness="1"
+				CornerRadius="8"
+				IsEnabled="{Binding IsMySqlSelected}">
+				<Grid>
+					<Grid.ColumnDefinitions>
+						<ColumnDefinition Width="*" />
+						<ColumnDefinition Width="16" />
+						<ColumnDefinition Width="180" />
+					</Grid.ColumnDefinitions>
+					<Grid.RowDefinitions>
+						<RowDefinition Height="Auto" />
+						<RowDefinition Height="12" />
+						<RowDefinition Height="Auto" />
+						<RowDefinition Height="4" />
+						<RowDefinition Height="Auto" />
+						<RowDefinition Height="12" />
+						<RowDefinition Height="Auto" />
+						<RowDefinition Height="4" />
+						<RowDefinition Height="Auto" />
+						<RowDefinition Height="12" />
+						<RowDefinition Height="Auto" />
+						<RowDefinition Height="4" />
+						<RowDefinition Height="Auto" />
+						<RowDefinition Height="12" />
+						<RowDefinition Height="Auto" />
+					</Grid.RowDefinitions>
+
+					<TextBlock Grid.ColumnSpan="3" Text="MySQL / MariaDB connection" Style="{StaticResource CardTitleStyle}" />
+					<TextBlock Grid.Row="2" Text="Server" Style="{StaticResource FormLabelStyle}" />
+					<TextBlock Grid.Row="2" Grid.Column="2" Text="Port" Style="{StaticResource FormLabelStyle}" />
+					<TextBox Grid.Row="4" Style="{StaticResource AppTextBoxStyle}" Text="{Binding MySqlHost}" />
+					<TextBox Grid.Row="4" Grid.Column="2" Style="{StaticResource AppTextBoxStyle}" Text="{Binding MySqlPort}" />
+
+					<TextBlock Grid.Row="6" Grid.ColumnSpan="3" Text="Database" Style="{StaticResource FormLabelStyle}" />
+					<TextBox Grid.Row="8" Grid.ColumnSpan="3" Style="{StaticResource AppTextBoxStyle}" Text="{Binding MySqlDatabase}" />
+
+					<TextBlock Grid.Row="10" Text="User name" Style="{StaticResource FormLabelStyle}" />
+					<TextBlock Grid.Row="10" Grid.Column="2" Text="Password" Style="{StaticResource FormLabelStyle}" />
+					<TextBox Grid.Row="12" Style="{StaticResource AppTextBoxStyle}" Text="{Binding MySqlUserName}" />
+					<controls:PasswordInput
+						Grid.Row="12"
+						Grid.Column="2"
+						PasswordValue="{Binding MySqlPassword, UpdateSourceTrigger=PropertyChanged}" />
+
+					<CheckBox
+						Grid.Row="14"
+						Grid.ColumnSpan="3"
+						Content="Require TLS encryption"
+						IsChecked="{Binding UseMySqlTls}"
+						Style="{StaticResource AppCheckBoxStyle}" />
+				</Grid>
 			</Border>
 
 			<Border
@@ -127,7 +191,7 @@
 				CornerRadius="6">
 				<TextBlock
 					Foreground="{StaticResource WarningForegroundBrush}"
-					Text="Provider changes are verified before saving and become active after restarting Depot. SQL Server credentials remain encrypted in depot.settings."
+					Text="Provider changes are verified before saving and become active after restarting Depot. Server credentials remain encrypted in depot.settings."
 					TextWrapping="Wrap" />
 			</Border>
 

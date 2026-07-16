@@ -4,6 +4,7 @@
 using System.Data.Common;
 
 using Microsoft.Data.SqlClient;
+using MySqlConnector;
 
 namespace Depot.Data;
 
@@ -16,13 +17,17 @@ public static class DbParameterCollectionExtensions
 	{
 		var normalizedName = parameters is SqlParameterCollection && parameterName.StartsWith('$')
 			? $"@{parameterName[1..]}"
-			: parameterName;
+			: parameters is MySqlParameterCollection && parameterName.StartsWith('$')
+				? $"@{parameterName[1..]}"
+				: parameterName;
 
 		DbParameter parameter = parameters is SqlParameterCollection
 			? new SqlParameter(normalizedName, value)
 			: parameters is Microsoft.Data.Sqlite.SqliteParameterCollection
 				? new Microsoft.Data.Sqlite.SqliteParameter(normalizedName, value)
-				: throw new NotSupportedException("Unsupported database parameter collection.");
+				: parameters is MySqlParameterCollection
+					? new MySqlParameter(normalizedName, value)
+					: throw new NotSupportedException("Unsupported database parameter collection.");
 
 		parameters.Add(parameter);
 	}

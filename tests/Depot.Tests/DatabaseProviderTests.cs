@@ -45,4 +45,60 @@ public sealed class DatabaseProviderTests
 
 		Assert.IsType<SqliteConnectionFactory>(factory);
 	}
+
+	[Fact]
+	public void MySqlCommandsNormalizePortableRepositorySql()
+	{
+		var factory = new MySqlConnectionFactory(
+			new DatabaseConnectionSettings
+			{
+				Provider = DatabaseProvider.MySql,
+				MySqlHost = "localhost",
+				MySqlDatabase = "DepotTest",
+				MySqlUserName = "test",
+				MySqlPassword = "secret"
+			});
+
+		using var connection = factory.CreateConnection();
+		using var command = connection.CreateCommand();
+		command.CommandText =
+			"SELECT last_insert_rowid(); SELECT * FROM Users WHERE Email = $Email COLLATE NOCASE;";
+
+		Assert.Contains("LAST_INSERT_ID", command.CommandText, StringComparison.Ordinal);
+		Assert.Contains("@Email", command.CommandText, StringComparison.Ordinal);
+		Assert.DoesNotContain("NOCASE", command.CommandText, StringComparison.Ordinal);
+	}
+
+	[Fact]
+	public void ProviderFactoryCreatesMySqlProviderAndInitializer()
+	{
+		var factory = DatabaseProviderFactory.CreateConnectionFactory(
+			new DatabaseConnectionSettings
+			{
+				Provider = DatabaseProvider.MySql,
+				MySqlHost = "localhost",
+				MySqlDatabase = "DepotTest",
+				MySqlUserName = "test",
+				MySqlPassword = "secret"
+			});
+
+		Assert.IsType<MySqlConnectionFactory>(factory);
+		Assert.IsType<MySqlDatabase>(DatabaseProviderFactory.CreateInitializer(factory));
+	}
+
+	[Fact]
+	public void ConnectionFailuresExposeAnExplicitSafeMessage()
+	{
+		var missingDirectory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+		IDatabaseConnectionFactory factory =
+			new SqliteConnectionFactory(Path.Combine(missingDirectory, "depot.db"));
+
+		using var connection = factory.CreateConnection();
+		var exception = Assert.Throws<DatabaseConnectionException>(() => connection.Open());
+
+		Assert.Equal(
+			"The local SQLite database file or its directory is unavailable.",
+			exception.Message);
+		Assert.DoesNotContain("Data Source", exception.Message, StringComparison.OrdinalIgnoreCase);
+	}
 }

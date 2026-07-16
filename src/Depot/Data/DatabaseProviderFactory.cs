@@ -13,6 +13,7 @@ public static class DatabaseProviderFactory
 		{
 			DatabaseProvider.Local => new SqliteConnectionFactory(settings.LocalDatabasePath),
 			DatabaseProvider.SqlServer => new SqlServerConnectionFactory(settings),
+			DatabaseProvider.MySql => new MySqlConnectionFactory(settings),
 			_ => throw new NotSupportedException($"Database provider '{settings.Provider}' is not supported.")
 		};
 
@@ -22,6 +23,7 @@ public static class DatabaseProviderFactory
 		{
 			SqliteConnectionFactory sqlite => new DepotDatabase(sqlite),
 			SqlServerConnectionFactory sqlServer => new SqlServerDatabase(sqlServer),
+			MySqlConnectionFactory mySql => new MySqlDatabase(mySql),
 			_ => throw new NotSupportedException("The database initializer is not available.")
 		};
 }

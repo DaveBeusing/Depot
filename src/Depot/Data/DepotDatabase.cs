@@ -2,6 +2,8 @@
 // Licensed under the MIT License.
 
 using Microsoft.Data.Sqlite;
+using Depot.Diagnostics;
+using Depot.Models;
 
 namespace Depot.Data;
 
@@ -20,7 +22,17 @@ public sealed class DepotDatabase : IDatabaseInitializer
 		using var connection =
 			_connectionFactory.CreateConnection();
 
-		connection.Open();
+		DatabaseDiagnostics.ConnectionOpening(DatabaseProvider.Local, "local SQLite schema");
+		try
+		{
+			connection.Open();
+			DatabaseDiagnostics.ConnectionOpened(DatabaseProvider.Local, "local SQLite schema");
+		}
+		catch (Exception exception)
+		{
+			DatabaseDiagnostics.ConnectionFailed(DatabaseProvider.Local, "local SQLite schema", exception);
+			throw;
+		}
 
 		CreateDatabaseInfoTable(
 			connection);

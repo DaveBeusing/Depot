@@ -28,13 +28,16 @@ public sealed class SqliteConnectionFactory : IDatabaseConnectionFactory
 	}
 
 	System.Data.Common.DbConnection IDatabaseConnectionFactory.CreateConnection() =>
-		CreateConnection();
+		new NormalizingSqlConnection(
+			CreateConnection(),
+			Provider,
+			"local SQLite");
 
 	public Models.DatabaseProvider Provider => Models.DatabaseProvider.Local;
 
 	public System.Data.Common.DbTransaction BeginWriteTransaction(
 		System.Data.Common.DbConnection connection) =>
-		((SqliteConnection)connection).BeginTransaction(deferred: false);
+		((NormalizingSqlConnection)connection).BeginImmediateTransaction();
 
 	public string GetInventoryLockSql() =>
 		"SELECT Id FROM Inventories WHERE Id = $InventoryId;";

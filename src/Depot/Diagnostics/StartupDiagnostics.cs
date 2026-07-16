@@ -46,6 +46,7 @@ public static class StartupDiagnostics
 	public static void ShowStartupError(
 		Exception exception)
 	{
+		var userMessage = DatabaseErrorMessages.GetUserMessage(exception);
 		MessageBox.Show(
 			$"""
 			Depot could not be started.
@@ -54,7 +55,7 @@ public static class StartupDiagnostics
 
 			{ErrorFilePath}
 
-			{exception}
+			{userMessage}
 			""",
 			"Startup Error",
 			MessageBoxButton.OK,
@@ -64,6 +65,7 @@ public static class StartupDiagnostics
 	public static void ShowRuntimeError(
 		Exception exception)
 	{
+		var userMessage = DatabaseErrorMessages.GetUserMessage(exception);
 		MessageBox.Show(
 			$"""
 			An unexpected error occurred.
@@ -72,7 +74,7 @@ public static class StartupDiagnostics
 
 			{ErrorFilePath}
 
-			{exception}
+			{userMessage}
 			""",
 			"Unexpected Error",
 			MessageBoxButton.OK,

@@ -5,42 +5,91 @@ using System.Data;
 using System.Data.Common;
 using System.Diagnostics.CodeAnalysis;
 
-using Microsoft.Data.SqlClient;
+using Depot.Diagnostics;
+using Depot.Models;
+
+using Microsoft.Data.Sqlite;
 
 namespace Depot.Data;
 
 internal sealed class NormalizingSqlConnection : DbConnection
 {
-	private readonly SqlConnection _inner;
+	private readonly DbConnection _inner;
+	private readonly DatabaseProvider _provider;
+	private readonly string _target;
+	private readonly Func<string, string> _normalize;
 
-	public NormalizingSqlConnection(SqlConnection inner) => _inner = inner;
+	public NormalizingSqlConnection(
+		DbConnection inner,
+		DatabaseProvider provider,
+		string target,
+		Func<string, string>? normalize = null)
+	{
+		_inner = inner;
+		_provider = provider;
+		_target = target;
+		_normalize = normalize ?? (sql => sql);
+	}
 
 	[AllowNull]
 	public override string ConnectionString { get => _inner.ConnectionString; set => _inner.ConnectionString = value; }
 	public override string Database => _inner.Database;
 	public override string DataSource => _inner.DataSource;
 	public override string ServerVersion => _inner.ServerVersion;
-	public override ConnectionState State => _inner.State;
+	public override System.Data.ConnectionState State => _inner.State;
 	public override int ConnectionTimeout => _inner.ConnectionTimeout;
 
 	public override void ChangeDatabase(string databaseName) => _inner.ChangeDatabase(databaseName);
 	public override void Close() => _inner.Close();
-	public override void Open() => _inner.Open();
-	public override Task OpenAsync(CancellationToken cancellationToken) => _inner.OpenAsync(cancellationToken);
+
+	public override void Open()
+	{
+		DatabaseDiagnostics.ConnectionOpening(_provider, _target);
+		try
+		{
+			_inner.Open();
+			DatabaseDiagnostics.ConnectionOpened(_provider, _target);
+		}
+		catch (Exception exception)
+		{
+			DatabaseDiagnostics.ConnectionFailed(_provider, _target, exception);
+			throw new DatabaseConnectionException(
+				DatabaseErrorMessages.GetUserMessage(exception),
+				exception);
+		}
+	}
+
+	public override async Task OpenAsync(CancellationToken cancellationToken)
+	{
+		DatabaseDiagnostics.ConnectionOpening(_provider, _target);
+		try
+		{
+			await _inner.OpenAsync(cancellationToken);
+			DatabaseDiagnostics.ConnectionOpened(_provider, _target);
+		}
+		catch (Exception exception)
+		{
+			DatabaseDiagnostics.ConnectionFailed(_provider, _target, exception);
+			throw new DatabaseConnectionException(
+				DatabaseErrorMessages.GetUserMessage(exception),
+				exception);
+		}
+	}
+
+	internal DbTransaction BeginImmediateTransaction() =>
+		new NormalizingSqlTransaction(
+			((SqliteConnection)_inner).BeginTransaction(deferred: false),
+			this);
 
 	protected override DbTransaction BeginDbTransaction(IsolationLevel isolationLevel) =>
 		new NormalizingSqlTransaction(_inner.BeginTransaction(isolationLevel), this);
 
 	protected override DbCommand CreateDbCommand() =>
-		new NormalizingSqlCommand(_inner.CreateCommand(), this);
+		new NormalizingSqlCommand(_inner.CreateCommand(), this, _normalize);
 
 	protected override void Dispose(bool disposing)
 	{
-		if (disposing)
-		{
-			_inner.Dispose();
-		}
-
+		if (disposing) _inner.Dispose();
 		base.Dispose(disposing);
 	}
 
@@ -53,16 +102,16 @@ internal sealed class NormalizingSqlConnection : DbConnection
 
 internal sealed class NormalizingSqlTransaction : DbTransaction
 {
-	private readonly SqlTransaction _inner;
+	private readonly DbTransaction _inner;
 	private readonly DbConnection _connection;
 
-	public NormalizingSqlTransaction(SqlTransaction inner, DbConnection connection)
+	public NormalizingSqlTransaction(DbTransaction inner, DbConnection connection)
 	{
 		_inner = inner;
 		_connection = connection;
 	}
 
-	internal SqlTransaction Inner => _inner;
+	internal DbTransaction Inner => _inner;
 	public override IsolationLevel IsolationLevel => _inner.IsolationLevel;
 	protected override DbConnection DbConnection => _connection;
 	public override void Commit() => _inner.Commit();
@@ -72,18 +121,20 @@ internal sealed class NormalizingSqlTransaction : DbTransaction
 
 internal sealed class NormalizingSqlCommand : DbCommand
 {
-	private readonly SqlCommand _inner;
+	private readonly DbCommand _inner;
 	private readonly DbConnection _connection;
+	private readonly Func<string, string> _normalize;
 	private DbTransaction? _transaction;
 
-	public NormalizingSqlCommand(SqlCommand inner, DbConnection connection)
+	public NormalizingSqlCommand(DbCommand inner, DbConnection connection, Func<string, string> normalize)
 	{
 		_inner = inner;
 		_connection = connection;
+		_normalize = normalize;
 	}
 
 	[AllowNull]
-	public override string CommandText { get => _inner.CommandText; set => _inner.CommandText = Normalize(value ?? string.Empty); }
+	public override string CommandText { get => _inner.CommandText; set => _inner.CommandText = _normalize(value ?? string.Empty); }
 	public override int CommandTimeout { get => _inner.CommandTimeout; set => _inner.CommandTimeout = value; }
 	public override CommandType CommandType { get => _inner.CommandType; set => _inner.CommandType = value; }
 	public override bool DesignTimeVisible { get => _inner.DesignTimeVisible; set => _inner.DesignTimeVisible = value; }
@@ -108,12 +159,6 @@ internal sealed class NormalizingSqlCommand : DbCommand
 	protected override DbParameter CreateDbParameter() => _inner.CreateParameter();
 	protected override DbDataReader ExecuteDbDataReader(CommandBehavior behavior) => _inner.ExecuteReader(behavior);
 	protected override Task<DbDataReader> ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken) =>
-		_inner.ExecuteReaderAsync(behavior, cancellationToken).ContinueWith<DbDataReader>(task => task.Result, cancellationToken);
+		_inner.ExecuteReaderAsync(behavior, cancellationToken);
 	protected override void Dispose(bool disposing) { if (disposing) _inner.Dispose(); base.Dispose(disposing); }
-
-	private static string Normalize(string sql) =>
-		sql
-			.Replace("$", "@", StringComparison.Ordinal)
-			.Replace("SELECT last_insert_rowid();", "SELECT CAST(SCOPE_IDENTITY() AS bigint);", StringComparison.OrdinalIgnoreCase)
-			.Replace(" COLLATE NOCASE", string.Empty, StringComparison.OrdinalIgnoreCase);
 }

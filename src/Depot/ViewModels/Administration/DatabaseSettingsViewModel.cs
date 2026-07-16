@@ -21,6 +21,12 @@ public sealed class DatabaseSettingsViewModel : BaseViewModel
 	private string _sqlServerPassword = string.Empty;
 	private bool _encryptSqlServerConnection = true;
 	private bool _trustSqlServerCertificate;
+	private string _mySqlHost = string.Empty;
+	private int _mySqlPort = 3306;
+	private string _mySqlDatabase = string.Empty;
+	private string _mySqlUserName = string.Empty;
+	private string _mySqlPassword = string.Empty;
+	private bool _useMySqlTls = true;
 	private string? _message;
 	private bool _hasError;
 
@@ -61,6 +67,18 @@ public sealed class DatabaseSettingsViewModel : BaseViewModel
 		}
 	}
 
+	public bool UseMySql
+	{
+		get => Provider == DatabaseProvider.MySql;
+		set
+		{
+			if (value)
+			{
+				Provider = DatabaseProvider.MySql;
+			}
+		}
+	}
+
 	public DatabaseProvider Provider
 	{
 		get => _provider;
@@ -75,12 +93,15 @@ public sealed class DatabaseSettingsViewModel : BaseViewModel
 			OnPropertyChanged();
 			OnPropertyChanged(nameof(UseLocalDatabase));
 			OnPropertyChanged(nameof(UseSqlServer));
+			OnPropertyChanged(nameof(UseMySql));
 			OnPropertyChanged(nameof(IsSqlServerSelected));
+			OnPropertyChanged(nameof(IsMySqlSelected));
 			ClearMessage();
 		}
 	}
 
 	public bool IsSqlServerSelected => Provider == DatabaseProvider.SqlServer;
+	public bool IsMySqlSelected => Provider == DatabaseProvider.MySql;
 
 	public string LocalDatabasePath
 	{
@@ -129,6 +150,13 @@ public sealed class DatabaseSettingsViewModel : BaseViewModel
 		get => _trustSqlServerCertificate;
 		set => SetField(ref _trustSqlServerCertificate, value);
 	}
+
+	public string MySqlHost { get => _mySqlHost; set => SetField(ref _mySqlHost, value); }
+	public int MySqlPort { get => _mySqlPort; set => SetField(ref _mySqlPort, value); }
+	public string MySqlDatabase { get => _mySqlDatabase; set => SetField(ref _mySqlDatabase, value); }
+	public string MySqlUserName { get => _mySqlUserName; set => SetField(ref _mySqlUserName, value); }
+	public string MySqlPassword { get => _mySqlPassword; set => SetField(ref _mySqlPassword, value); }
+	public bool UseMySqlTls { get => _useMySqlTls; set => SetField(ref _useMySqlTls, value); }
 
 	public string? Message
 	{
@@ -214,7 +242,13 @@ public sealed class DatabaseSettingsViewModel : BaseViewModel
 			SqlServerUserName = SqlServerUserName,
 			SqlServerPassword = SqlServerPassword,
 			EncryptSqlServerConnection = EncryptSqlServerConnection,
-			TrustSqlServerCertificate = TrustSqlServerCertificate
+			TrustSqlServerCertificate = TrustSqlServerCertificate,
+			MySqlHost = MySqlHost,
+			MySqlPort = MySqlPort,
+			MySqlDatabase = MySqlDatabase,
+			MySqlUserName = MySqlUserName,
+			MySqlPassword = MySqlPassword,
+			UseMySqlTls = UseMySqlTls
 		};
 
 	private void Load(DatabaseConnectionSettings settings)
@@ -228,6 +262,12 @@ public sealed class DatabaseSettingsViewModel : BaseViewModel
 		SqlServerPassword = settings.SqlServerPassword;
 		EncryptSqlServerConnection = settings.EncryptSqlServerConnection;
 		TrustSqlServerCertificate = settings.TrustSqlServerCertificate;
+		MySqlHost = settings.MySqlHost;
+		MySqlPort = settings.MySqlPort;
+		MySqlDatabase = settings.MySqlDatabase;
+		MySqlUserName = settings.MySqlUserName;
+		MySqlPassword = settings.MySqlPassword;
+		UseMySqlTls = settings.UseMySqlTls;
 	}
 
 	private void ClearMessage()
