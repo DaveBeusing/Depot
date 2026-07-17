@@ -17,6 +17,8 @@ public sealed class MovementEditorViewModel
 
 	private decimal _unitPrice;
 
+	private long? _reasonCodeId;
+
 	private string? _reference;
 
 	private string? _notes;
@@ -76,6 +78,16 @@ public sealed class MovementEditorViewModel
 		}
 	}
 
+	public long? ReasonCodeId
+	{
+		get => _reasonCodeId;
+		set
+		{
+			_reasonCodeId = value;
+			OnPropertyChanged();
+		}
+	}
+
 	public string? Reference
 	{
 		get => _reference;
@@ -110,6 +122,8 @@ public sealed class MovementEditorViewModel
 		Quantity = 0;
 
 		UnitPrice = 0m;
+
+		ReasonCodeId = null;
 
 		Reference = null;
 

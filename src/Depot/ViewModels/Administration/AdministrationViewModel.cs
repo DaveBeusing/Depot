@@ -29,6 +29,7 @@ public sealed class AdministrationViewModel
 	public AdministrationViewModel(
 		ImportViewModel importViewModel,
 		PurposeService purposeService,
+		ReasonCodeService reasonCodeService,
 		WarehouseService warehouseService,
 		StorageLocationService storageLocationService,
 		UserService userService,
@@ -40,7 +41,7 @@ public sealed class AdministrationViewModel
 		ApplicationInformationService applicationInformationService)
 	{
 		_importViewModel = importViewModel;
-		_masterDataViewModel = new MasterDataViewModel(purposeService, warehouseService, storageLocationService);
+		_masterDataViewModel = new MasterDataViewModel(purposeService, reasonCodeService, warehouseService, storageLocationService);
 		_userViewModel =
 			new UserViewModel(
 				userService);

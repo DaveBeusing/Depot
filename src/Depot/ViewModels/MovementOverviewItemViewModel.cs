@@ -20,6 +20,7 @@ public sealed class MovementOverviewItemViewModel
 		PurposeName = item.PurposeName;
 		WarehouseName = item.WarehouseName;
 		LocationName = item.LocationName;
+		ReasonCodeName = item.ReasonCodeName;
 		MovementType = item.MovementType;
 		Quantity = item.Quantity;
 		UnitPrice = item.UnitPrice;
@@ -47,6 +48,8 @@ public sealed class MovementOverviewItemViewModel
 	public string WarehouseName { get; }
 
 	public string LocationName { get; }
+
+	public string? ReasonCodeName { get; }
 
 	public StockMovementType MovementType { get; }
 

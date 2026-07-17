@@ -13,6 +13,7 @@ public sealed class InventoryRecentMovementViewModel
 	{
 		TimestampUtc = movement.TimestampUtc;
 		MovementType = movement.MovementType;
+		ReasonCodeName = movement.ReasonCodeName;
 		Quantity = movement.Quantity;
 		UnitPrice = movement.UnitPrice;
 		Reference = movement.Reference;
@@ -25,6 +26,8 @@ public sealed class InventoryRecentMovementViewModel
 		TimestampUtc.ToLocalTime();
 
 	public StockMovementType MovementType { get; }
+
+	public string? ReasonCodeName { get; }
 
 	public int Quantity { get; }
 

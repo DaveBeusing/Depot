@@ -42,7 +42,12 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 			if (version == 8)
 			{
 				MigrateToWarehouseStructure(command);
-				version = DatabaseVersion.CurrentVersion;
+				version = 9;
+			}
+			if (version == 9)
+			{
+				MigrateToReasonCodes(command);
+				version = 10;
 			}
 			if (version != DatabaseVersion.CurrentVersion)
 			{
@@ -56,6 +61,27 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 			releaseCommand.CommandText = "SELECT RELEASE_LOCK('Depot.SchemaMigration');";
 			releaseCommand.ExecuteScalar();
 		}
+	}
+
+	private static void MigrateToReasonCodes(System.Data.Common.DbCommand command)
+	{
+		if (!ColumnExists(command, "StockMovements", "ReasonCodeId"))
+		{
+			Execute(command, "ALTER TABLE StockMovements ADD COLUMN ReasonCodeId bigint NULL;");
+		}
+
+		EnsureIndex(command, "StockMovements", "IX_StockMovements_ReasonCodeId", "ReasonCodeId");
+		if (!ConstraintExists(command, "StockMovements", "FK_StockMovements_ReasonCodes"))
+		{
+			Execute(
+				command,
+				"""
+				ALTER TABLE StockMovements ADD CONSTRAINT FK_StockMovements_ReasonCodes
+					FOREIGN KEY (ReasonCodeId) REFERENCES ReasonCodes(Id);
+				""");
+		}
+
+		Execute(command, "UPDATE DatabaseInfo SET Version = 10 WHERE Id = 1;");
 	}
 
 	private static void MigrateToWarehouseStructure(System.Data.Common.DbCommand command)
@@ -317,6 +343,15 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 		Version bigint NOT NULL DEFAULT 1
 	) ENGINE=InnoDB;
 
+	CREATE TABLE IF NOT EXISTS ReasonCodes
+	(
+		Id bigint NOT NULL AUTO_INCREMENT PRIMARY KEY,
+		Name varchar(200) NOT NULL UNIQUE,
+		Description varchar(500) NULL,
+		IsActive boolean NOT NULL DEFAULT true,
+		Version bigint NOT NULL DEFAULT 1
+	) ENGINE=InnoDB;
+
 	CREATE TABLE IF NOT EXISTS StorageLocations
 	(
 		Id bigint NOT NULL AUTO_INCREMENT PRIMARY KEY,
@@ -363,6 +398,7 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 	(
 		Id bigint NOT NULL AUTO_INCREMENT PRIMARY KEY,
 		InventoryId bigint NOT NULL,
+		ReasonCodeId bigint NULL,
 		MovementType int NOT NULL,
 		TimestampUtc varchar(40) NOT NULL,
 		Quantity int NOT NULL,
@@ -370,7 +406,9 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 		Reference varchar(200) NULL,
 		Notes text NULL,
 		CONSTRAINT FK_StockMovements_Inventories FOREIGN KEY (InventoryId) REFERENCES Inventories(Id),
-		INDEX IX_StockMovements_InventoryId_TimestampUtc (InventoryId, TimestampUtc)
+		CONSTRAINT FK_StockMovements_ReasonCodes FOREIGN KEY (ReasonCodeId) REFERENCES ReasonCodes(Id),
+		INDEX IX_StockMovements_InventoryId_TimestampUtc (InventoryId, TimestampUtc),
+		INDEX IX_StockMovements_ReasonCodeId (ReasonCodeId)
 	) ENGINE=InnoDB;
 
 	CREATE TABLE IF NOT EXISTS AuditEntries
@@ -392,6 +430,17 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 	INSERT INTO Purposes (Name, Description, IsActive)
 	SELECT 'Stock', 'Default stock purpose', true
 	WHERE NOT EXISTS (SELECT 1 FROM Purposes WHERE Name = 'Stock');
+
+	INSERT INTO ReasonCodes (Name, IsActive)
+	SELECT defaults.Name, true
+	FROM
+	(
+		SELECT 'Goods Receipt' AS Name UNION ALL SELECT 'Goods Issue' UNION ALL
+		SELECT 'Inventory Correction' UNION ALL SELECT 'Damaged' UNION ALL SELECT 'Lost' UNION ALL
+		SELECT 'Returned' UNION ALL SELECT 'Consumed' UNION ALL SELECT 'Demo' UNION ALL
+		SELECT 'Repair' UNION ALL SELECT 'Transfer'
+	) defaults
+	WHERE NOT EXISTS (SELECT 1 FROM ReasonCodes existing WHERE existing.Name = defaults.Name);
 
 	INSERT INTO Warehouses (Name, Description, IsActive)
 	SELECT 'Main Warehouse', 'Default Depot warehouse', true

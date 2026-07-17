@@ -18,6 +18,7 @@ public sealed class DashboardRecentMovementViewModel
 		PurposeName = movement.PurposeName;
 		WarehouseName = movement.WarehouseName;
 		LocationName = movement.LocationName;
+		ReasonCodeName = movement.ReasonCodeName;
 		MovementType = movement.MovementType;
 		Quantity = movement.Quantity;
 	}
@@ -38,6 +39,8 @@ public sealed class DashboardRecentMovementViewModel
 	public string WarehouseName { get; }
 
 	public string LocationName { get; }
+
+	public string? ReasonCodeName { get; }
 
 	public StockMovementType MovementType { get; }
 

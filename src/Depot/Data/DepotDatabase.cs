@@ -154,6 +154,9 @@ public sealed class DepotDatabase : IDatabaseInitializer
 		CreateInventoriesTable(
 			connection);
 
+		CreateReasonCodesTable(
+			connection);
+
 		CreateStockMovementsTable(
 			connection);
 
@@ -170,6 +173,9 @@ public sealed class DepotDatabase : IDatabaseInitializer
 			connection);
 
 		CreateDefaultWarehouseStructure(
+			connection);
+
+		CreateDefaultReasonCodes(
 			connection);
 
 		CreateDefaultAdministrator(
@@ -322,6 +328,8 @@ public sealed class DepotDatabase : IDatabaseInitializer
 
 			InventoryId         INTEGER NOT NULL,
 
+			ReasonCodeId        INTEGER NULL,
+
 			MovementType        INTEGER NOT NULL,
 
 			TimestampUtc        TEXT NOT NULL,
@@ -335,10 +343,49 @@ public sealed class DepotDatabase : IDatabaseInitializer
 			Notes               TEXT NULL,
 
 			FOREIGN KEY(InventoryId)
-				REFERENCES Inventories(Id)
+				REFERENCES Inventories(Id),
+
+			FOREIGN KEY(ReasonCodeId)
+				REFERENCES ReasonCodes(Id)
 		);
 		""";
 
+		command.ExecuteNonQuery();
+	}
+
+	private static void CreateReasonCodesTable(SqliteConnection connection)
+	{
+		using var command = connection.CreateCommand();
+		command.CommandText =
+		"""
+		CREATE TABLE IF NOT EXISTS ReasonCodes
+		(
+			Id          INTEGER PRIMARY KEY AUTOINCREMENT,
+			Name        TEXT NOT NULL UNIQUE,
+			Description TEXT NULL,
+			IsActive    INTEGER NOT NULL DEFAULT 1,
+			Version     INTEGER NOT NULL DEFAULT 1
+		);
+		""";
+		command.ExecuteNonQuery();
+	}
+
+	private static void CreateDefaultReasonCodes(SqliteConnection connection)
+	{
+		using var command = connection.CreateCommand();
+		command.CommandText =
+		"""
+		INSERT OR IGNORE INTO ReasonCodes (Name, IsActive) VALUES ('Goods Receipt', 1);
+		INSERT OR IGNORE INTO ReasonCodes (Name, IsActive) VALUES ('Goods Issue', 1);
+		INSERT OR IGNORE INTO ReasonCodes (Name, IsActive) VALUES ('Inventory Correction', 1);
+		INSERT OR IGNORE INTO ReasonCodes (Name, IsActive) VALUES ('Damaged', 1);
+		INSERT OR IGNORE INTO ReasonCodes (Name, IsActive) VALUES ('Lost', 1);
+		INSERT OR IGNORE INTO ReasonCodes (Name, IsActive) VALUES ('Returned', 1);
+		INSERT OR IGNORE INTO ReasonCodes (Name, IsActive) VALUES ('Consumed', 1);
+		INSERT OR IGNORE INTO ReasonCodes (Name, IsActive) VALUES ('Demo', 1);
+		INSERT OR IGNORE INTO ReasonCodes (Name, IsActive) VALUES ('Repair', 1);
+		INSERT OR IGNORE INTO ReasonCodes (Name, IsActive) VALUES ('Transfer', 1);
+		""";
 		command.ExecuteNonQuery();
 	}
 
@@ -411,6 +458,9 @@ public sealed class DepotDatabase : IDatabaseInitializer
 				InventoryId,
 				TimestampUtc
 			);
+
+		CREATE INDEX IF NOT EXISTS IX_StockMovements_ReasonCodeId
+			ON StockMovements(ReasonCodeId);
 		""";
 
 		command.ExecuteNonQuery();
@@ -589,6 +639,13 @@ public sealed class DepotDatabase : IDatabaseInitializer
 			migratedVersion = 9;
 		}
 
+		if (migratedVersion == 9)
+		{
+			MigrateToReasonCodes(connection);
+			SetDatabaseVersion(connection, 10);
+			migratedVersion = 10;
+		}
+
 		if (migratedVersion < DatabaseVersion.CurrentVersion)
 		{
 			throw new InvalidOperationException(
@@ -600,6 +657,24 @@ public sealed class DepotDatabase : IDatabaseInitializer
 			throw new InvalidOperationException(
 				$"Database version '{version}' is newer than the supported schema version '{DatabaseVersion.CurrentVersion}'.");
 		}
+	}
+
+	private static void MigrateToReasonCodes(SqliteConnection connection)
+	{
+		CreateReasonCodesTable(connection);
+		CreateDefaultReasonCodes(connection);
+		using var transaction = connection.BeginTransaction();
+		using var command = connection.CreateCommand();
+		command.Transaction = transaction;
+		command.CommandText =
+		"""
+		ALTER TABLE StockMovements
+			ADD COLUMN ReasonCodeId INTEGER NULL REFERENCES ReasonCodes(Id);
+		CREATE INDEX IF NOT EXISTS IX_StockMovements_ReasonCodeId
+			ON StockMovements(ReasonCodeId);
+		""";
+		command.ExecuteNonQuery();
+		transaction.Commit();
 	}
 
 	private static void MigrateToWarehouseStructure(SqliteConnection connection)

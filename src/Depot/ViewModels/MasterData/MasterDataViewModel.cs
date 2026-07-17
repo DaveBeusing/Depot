@@ -5,6 +5,7 @@ using System.Collections.ObjectModel;
 
 using Depot.ViewModels.Shared;
 using Depot.ViewModels.Purposes;
+using Depot.ViewModels.ReasonCodes;
 using Depot.ViewModels.Warehouses;
 using Depot.Services;
 
@@ -19,15 +20,18 @@ public sealed class MasterDataViewModel
 	private NavigationItem? _selectedNavigationItem;
 	private BaseViewModel? _currentViewModel;
 	private readonly PurposeViewModel _purposeViewModel;
+	private readonly ReasonCodeViewModel _reasonCodeViewModel;
 	private readonly WarehouseStructureViewModel _warehouseStructureViewModel;
 	private bool _isInitialized;
 
 	public MasterDataViewModel(
 		PurposeService purposeService,
+		ReasonCodeService reasonCodeService,
 		WarehouseService warehouseService,
 		StorageLocationService storageLocationService)
 	{
 		_purposeViewModel = new PurposeViewModel(purposeService);
+		_reasonCodeViewModel = new ReasonCodeViewModel(reasonCodeService);
 		_warehouseStructureViewModel = new WarehouseStructureViewModel(warehouseService, storageLocationService);
 
 		NavigationItems.Add(
@@ -35,6 +39,13 @@ public sealed class MasterDataViewModel
 			{
 				Name = "Purposes",
 				Section = MasterDataSection.Purposes
+			});
+
+		NavigationItems.Add(
+			new NavigationItem
+			{
+				Name = "Reason Codes",
+				Section = MasterDataSection.ReasonCodes
 			});
 
 		NavigationItems.Add(
@@ -101,6 +112,9 @@ public sealed class MasterDataViewModel
 				MasterDataSection.Purposes =>
 					_purposeViewModel,
 
+				MasterDataSection.ReasonCodes =>
+					_reasonCodeViewModel,
+
 				MasterDataSection.WarehouseStructure =>
 					_warehouseStructureViewModel,
 
@@ -115,6 +129,7 @@ public sealed class MasterDataViewModel
 		CurrentViewModel switch
 		{
 			PurposeViewModel purpose => purpose.LoadPurposesAsync(cancellationToken),
+			ReasonCodeViewModel reasonCodes => reasonCodes.LoadAsync(cancellationToken),
 			WarehouseStructureViewModel warehouseStructure => warehouseStructure.LoadAsync(cancellationToken),
 			_ => Task.CompletedTask
 		};

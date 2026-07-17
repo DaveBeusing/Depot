@@ -24,6 +24,7 @@ public sealed class MainViewModel : BaseViewModel
 		MovementService movementService,
 		ReportService reportService,
 		PurposeService purposeService,
+		ReasonCodeService reasonCodeService,
 		WarehouseService warehouseService,
 		StorageLocationService storageLocationService,
 		UserService userService,
@@ -57,7 +58,8 @@ public sealed class MainViewModel : BaseViewModel
 
 		MovementsViewModel =
 			new MovementsViewModel(
-				movementService);
+				movementService,
+				reasonCodeService);
 
 		ReportsViewModel =
 			new ReportsViewModel(
@@ -73,6 +75,7 @@ public sealed class MainViewModel : BaseViewModel
 			new AdministrationViewModel(
 				ImportViewModel, 
 				purposeService,
+				reasonCodeService,
 				warehouseService,
 				storageLocationService,
 				userService,

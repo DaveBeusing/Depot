@@ -9,5 +9,6 @@ namespace Depot.ViewModels.MasterData;
 public enum MasterDataSection
 {
 	Purposes,
+	ReasonCodes,
 	WarehouseStructure
 }

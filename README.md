@@ -42,6 +42,8 @@ The project started as a replacement for an Excel-based inventory and is under a
 - Withdrawals
 - Corrections
 - Transfer support in the domain model
+- Optional reason-code classification for every stock movement
+- Standard reasons for receipts, issues, corrections, damage, loss, returns, consumption, demos, repairs, and transfers
 - Unit prices, references, and notes
 - Live search and stock validation
 
@@ -69,6 +71,7 @@ The project started as a replacement for an Excel-based inventory and is under a
 
 - Role-based Administration navigation
 - Purpose management
+- Reason-code management with search and activation status
 - Warehouse and storage-location management
 - User management
 - Activate and deactivate users

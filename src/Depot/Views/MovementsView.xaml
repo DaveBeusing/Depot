@@ -22,7 +22,7 @@
 			Margin="{StaticResource Search.Margin}"
 			Placeholder="Search movements"
 			Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-			ToolTip="Search by part number, description, purpose, location, reference, or notes" />
+			ToolTip="Search by part number, description, purpose, location, reason code, reference, or notes" />
 
 		<controls:OperationStatus
 			Grid.Row="2"
@@ -62,6 +62,7 @@
 							<DataGridTextColumn Header="Warehouse" Binding="{Binding WarehouseName}" Width="105" />
 							<DataGridTextColumn Header="Storage Location" Binding="{Binding LocationName}" Width="110" />
 							<DataGridTextColumn Header="Type" Binding="{Binding MovementType}" Width="95" />
+							<DataGridTextColumn Header="Reason" Binding="{Binding ReasonCodeName}" Width="120" />
 							<DataGridTextColumn Header="Qty" Binding="{Binding Quantity}" Width="60" />
 							<DataGridTextColumn Header="Unit Price" Binding="{Binding UnitPrice, StringFormat={}{0:C2}}" Width="105" />
 							<DataGridTextColumn Header="Reference" Binding="{Binding Reference}" Width="120" />
@@ -104,6 +105,14 @@
 						<ComboBox
 							ItemsSource="{Binding MovementTypes}"
 							SelectedItem="{Binding Editor.MovementType}"
+							Style="{StaticResource AppComboBoxStyle}" />
+
+						<TextBlock Margin="0,16,0,4" Text="Reason Code" Style="{StaticResource FormLabelStyle}" />
+						<ComboBox
+							DisplayMemberPath="Name"
+							ItemsSource="{Binding ReasonCodes}"
+							SelectedValue="{Binding Editor.ReasonCodeId}"
+							SelectedValuePath="Id"
 							Style="{StaticResource AppComboBoxStyle}" />
 
 						<TextBlock Margin="0,16,0,4" Text="Quantity" Style="{StaticResource FormLabelStyle}" />

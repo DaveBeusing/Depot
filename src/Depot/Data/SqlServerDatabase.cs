@@ -34,7 +34,12 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 		if (version == 8)
 		{
 			MigrateToWarehouseStructure(command);
-			version = DatabaseVersion.CurrentVersion;
+			version = 9;
+		}
+		if (version == 9)
+		{
+			MigrateToReasonCodes(command);
+			version = 10;
 		}
 		if (version != DatabaseVersion.CurrentVersion)
 		{
@@ -43,6 +48,26 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 		}
 
 		transaction.Commit();
+	}
+
+	private static void MigrateToReasonCodes(System.Data.Common.DbCommand command)
+	{
+		command.CommandText =
+		"""
+		IF COL_LENGTH(N'StockMovements', N'ReasonCodeId') IS NULL
+			ALTER TABLE StockMovements ADD ReasonCodeId bigint NULL;
+
+		IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_StockMovements_ReasonCodes')
+			ALTER TABLE StockMovements ADD CONSTRAINT FK_StockMovements_ReasonCodes
+				FOREIGN KEY (ReasonCodeId) REFERENCES ReasonCodes(Id);
+
+		IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_StockMovements_ReasonCodeId' AND object_id = OBJECT_ID(N'StockMovements'))
+			CREATE INDEX IX_StockMovements_ReasonCodeId ON StockMovements(ReasonCodeId);
+
+		UPDATE DatabaseInfo SET Version = 10 WHERE Id = 1;
+		""";
+		command.Parameters.Clear();
+		command.ExecuteNonQuery();
 	}
 
 	private static void MigrateToWarehouseStructure(System.Data.Common.DbCommand command)
@@ -138,6 +163,16 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 			Version bigint NOT NULL CONSTRAINT DF_Warehouses_Version DEFAULT 1
 		);
 
+	IF OBJECT_ID(N'ReasonCodes', N'U') IS NULL
+		CREATE TABLE ReasonCodes
+		(
+			Id bigint IDENTITY(1,1) NOT NULL CONSTRAINT PK_ReasonCodes PRIMARY KEY,
+			Name nvarchar(200) NOT NULL CONSTRAINT UQ_ReasonCodes_Name UNIQUE,
+			Description nvarchar(500) NULL,
+			IsActive bit NOT NULL CONSTRAINT DF_ReasonCodes_IsActive DEFAULT 1,
+			Version bigint NOT NULL CONSTRAINT DF_ReasonCodes_Version DEFAULT 1
+		);
+
 	IF OBJECT_ID(N'StorageLocations', N'U') IS NULL
 		CREATE TABLE StorageLocations
 		(
@@ -184,17 +219,22 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 		(
 			Id bigint IDENTITY(1,1) NOT NULL CONSTRAINT PK_StockMovements PRIMARY KEY,
 			InventoryId bigint NOT NULL,
+			ReasonCodeId bigint NULL,
 			MovementType int NOT NULL,
 			TimestampUtc nvarchar(40) NOT NULL,
 			Quantity int NOT NULL,
 			UnitPrice decimal(18,2) NULL,
 			Reference nvarchar(200) NULL,
 			Notes nvarchar(2000) NULL,
-			CONSTRAINT FK_StockMovements_Inventories FOREIGN KEY (InventoryId) REFERENCES Inventories(Id)
+			CONSTRAINT FK_StockMovements_Inventories FOREIGN KEY (InventoryId) REFERENCES Inventories(Id),
+			CONSTRAINT FK_StockMovements_ReasonCodes FOREIGN KEY (ReasonCodeId) REFERENCES ReasonCodes(Id)
 		);
 
 	IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_StockMovements_InventoryId_TimestampUtc')
 		CREATE INDEX IX_StockMovements_InventoryId_TimestampUtc ON StockMovements(InventoryId, TimestampUtc);
+
+	IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_StockMovements_ReasonCodeId')
+		CREATE INDEX IX_StockMovements_ReasonCodeId ON StockMovements(ReasonCodeId);
 
 	IF OBJECT_ID(N'AuditEntries', N'U') IS NULL
 		CREATE TABLE AuditEntries
@@ -219,6 +259,13 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 
 	IF NOT EXISTS (SELECT 1 FROM Purposes WHERE Name = N'Stock')
 		INSERT INTO Purposes (Name, Description, IsActive) VALUES (N'Stock', N'Default stock purpose', 1);
+
+	INSERT INTO ReasonCodes (Name, IsActive)
+	SELECT defaults.Name, 1
+	FROM (VALUES
+		(N'Goods Receipt'), (N'Goods Issue'), (N'Inventory Correction'), (N'Damaged'), (N'Lost'),
+		(N'Returned'), (N'Consumed'), (N'Demo'), (N'Repair'), (N'Transfer')) defaults(Name)
+	WHERE NOT EXISTS (SELECT 1 FROM ReasonCodes existing WHERE existing.Name = defaults.Name);
 
 	IF NOT EXISTS (SELECT 1 FROM Warehouses WHERE Name = N'Main Warehouse')
 		INSERT INTO Warehouses (Name, Description, IsActive) VALUES (N'Main Warehouse', N'Default Depot warehouse', 1);

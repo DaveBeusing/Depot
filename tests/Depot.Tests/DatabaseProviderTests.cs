@@ -114,6 +114,7 @@ public sealed class DatabaseProviderTests
 			typeof(WarehouseRepository),
 			typeof(StorageLocationRepository),
 			typeof(PurposeRepository),
+			typeof(ReasonCodeRepository),
 			typeof(StockMovementRepository),
 			typeof(UserRepository)
 		];

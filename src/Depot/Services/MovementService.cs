@@ -13,6 +13,7 @@ public sealed class MovementService
 	private readonly PurposeRepository _purposeRepository;
 	private readonly StorageLocationRepository _storageLocationRepository;
 	private readonly WarehouseRepository _warehouseRepository;
+	private readonly ReasonCodeRepository _reasonCodeRepository;
 	private readonly StockMovementRepository _stockMovementRepository;
 	private readonly AuditService _auditService;
 
@@ -22,6 +23,7 @@ public sealed class MovementService
 		PurposeRepository purposeRepository,
 		StorageLocationRepository storageLocationRepository,
 		WarehouseRepository warehouseRepository,
+		ReasonCodeRepository reasonCodeRepository,
 		StockMovementRepository stockMovementRepository,
 		AuditService auditService)
 	{
@@ -30,6 +32,7 @@ public sealed class MovementService
 		_purposeRepository = purposeRepository;
 		_storageLocationRepository = storageLocationRepository;
 		_warehouseRepository = warehouseRepository;
+		_reasonCodeRepository = reasonCodeRepository;
 		_stockMovementRepository = stockMovementRepository;
 		_auditService = auditService;
 	}
@@ -55,6 +58,7 @@ public sealed class MovementService
 		long inventoryId,
 		int quantity,
 		decimal unitPrice,
+		long? reasonCodeId,
 		string? reference,
 		string? notes,
 		CancellationToken cancellationToken)
@@ -66,6 +70,7 @@ public sealed class MovementService
 			StockMovementType.Purchase,
 			quantity,
 			unitPrice,
+			reasonCodeId,
 			reference,
 			notes,
 			cancellationToken);
@@ -74,6 +79,7 @@ public sealed class MovementService
 	public Task<MovementOverviewItem> AddWithdrawalAsync(
 		long inventoryId,
 		int quantity,
+		long? reasonCodeId,
 		string? reference,
 		string? notes,
 		CancellationToken cancellationToken)
@@ -84,6 +90,7 @@ public sealed class MovementService
 			StockMovementType.Withdrawal,
 			-quantity,
 			null,
+			reasonCodeId,
 			reference,
 			notes,
 			cancellationToken);
@@ -92,6 +99,7 @@ public sealed class MovementService
 	public Task<MovementOverviewItem> AddCorrectionAsync(
 		long inventoryId,
 		int quantityDelta,
+		long? reasonCodeId,
 		string? reference,
 		string? notes,
 		CancellationToken cancellationToken)
@@ -102,6 +110,7 @@ public sealed class MovementService
 			StockMovementType.Correction,
 			quantityDelta,
 			null,
+			reasonCodeId,
 			reference,
 			notes,
 			cancellationToken);
@@ -120,6 +129,7 @@ public sealed class MovementService
 			StockMovementType.OpeningBalance,
 			quantity,
 			unitPrice,
+			null,
 			"IMPORT",
 			notes,
 			cancellationToken);
@@ -226,6 +236,7 @@ public sealed class MovementService
 					x => x.Id);
 
 		var warehouses = _warehouseRepository.GetAll().ToDictionary(x => x.Id);
+		var reasonCodes = _reasonCodeRepository.GetAll().ToDictionary(x => x.Id);
 
 		foreach (var movement in _stockMovementRepository.Search(searchText))
 		{
@@ -272,6 +283,11 @@ public sealed class MovementService
 					LocationName =
 						context.LocationName,
 
+					ReasonCodeName = movement.ReasonCodeId is long reasonCodeId &&
+						reasonCodes.TryGetValue(reasonCodeId, out var reasonCode)
+							? reasonCode.Name
+							: null,
+
 					MovementType =
 						movement.MovementType,
 
@@ -296,6 +312,7 @@ public sealed class MovementService
 		long inventoryId,
 		int quantity,
 		decimal unitPrice,
+		long? reasonCodeId,
 		string? reference,
 		string? notes)
 	{
@@ -318,6 +335,7 @@ public sealed class MovementService
 			StockMovementType.Purchase,
 			quantity,
 			unitPrice,
+			reasonCodeId,
 			reference,
 			notes);
 	}
@@ -325,6 +343,7 @@ public sealed class MovementService
 	public void AddWithdrawal(
 		long inventoryId,
 		int quantity,
+		long? reasonCodeId,
 		string? reference,
 		string? notes)
 	{
@@ -340,6 +359,7 @@ public sealed class MovementService
 			StockMovementType.Withdrawal,
 			-quantity,
 			null,
+			reasonCodeId,
 			reference,
 			notes);
 	}
@@ -347,6 +367,7 @@ public sealed class MovementService
 	public void AddCorrection(
 		long inventoryId,
 		int quantityDelta,
+		long? reasonCodeId,
 		string? reference,
 		string? notes)
 	{
@@ -362,6 +383,7 @@ public sealed class MovementService
 			StockMovementType.Correction,
 			quantityDelta,
 			null,
+			reasonCodeId,
 			reference,
 			notes);
 	}
@@ -384,6 +406,7 @@ public sealed class MovementService
 			StockMovementType.OpeningBalance,
 			quantity,
 			unitPrice,
+			null,
 			"IMPORT",
 			notes);
 	}
@@ -393,6 +416,7 @@ public sealed class MovementService
 		StockMovementType movementType,
 		int quantity,
 		decimal? unitPrice,
+		long? reasonCodeId,
 		string? reference,
 		string? notes)
 	{
@@ -423,11 +447,15 @@ public sealed class MovementService
 				$"Item with id '{inventory.ItemId}' was not found.");
 		}
 
+		ValidateReasonCode(reasonCodeId);
+
 		var movement =
 			new StockMovement
 			{
 				InventoryId =
 					inventory.Id,
+
+				ReasonCodeId = reasonCodeId,
 
 				MovementType =
 					movementType,
@@ -461,6 +489,7 @@ public sealed class MovementService
 		StockMovementType movementType,
 		int quantity,
 		decimal? unitPrice,
+		long? reasonCodeId,
 		string? reference,
 		string? notes,
 		CancellationToken cancellationToken)
@@ -470,9 +499,11 @@ public sealed class MovementService
 			?? throw new InvalidOperationException($"Inventory with id '{inventoryId}' was not found.");
 		if (await _itemRepository.GetByIdAsync(inventory.ItemId, cancellationToken) is null)
 			throw new InvalidOperationException($"Item with id '{inventory.ItemId}' was not found.");
+		await ValidateReasonCodeAsync(reasonCodeId, cancellationToken);
 		var movement = new StockMovement
 		{
 			InventoryId = inventory.Id,
+			ReasonCodeId = reasonCodeId,
 			MovementType = movementType,
 			TimestampUtc = DateTime.UtcNow,
 			Quantity = quantity,
@@ -487,6 +518,22 @@ public sealed class MovementService
 			cancellationToken);
 		return await _stockMovementRepository.GetOverviewByIdAsync(movement.Id, cancellationToken)
 			?? throw new InvalidOperationException($"Movement with id '{movement.Id}' was not found.");
+	}
+
+	private void ValidateReasonCode(long? reasonCodeId)
+	{
+		if (reasonCodeId is null) return;
+		var reasonCode = _reasonCodeRepository.GetById(reasonCodeId.Value)
+			?? throw new InvalidOperationException($"Reason code with id '{reasonCodeId}' was not found.");
+		if (!reasonCode.IsActive) throw new InvalidOperationException("The selected reason code is inactive.");
+	}
+
+	private async Task ValidateReasonCodeAsync(long? reasonCodeId, CancellationToken cancellationToken)
+	{
+		if (reasonCodeId is null) return;
+		var reasonCode = await _reasonCodeRepository.GetByIdAsync(reasonCodeId.Value, cancellationToken)
+			?? throw new InvalidOperationException($"Reason code with id '{reasonCodeId}' was not found.");
+		if (!reasonCode.IsActive) throw new InvalidOperationException("The selected reason code is inactive.");
 	}
 
 }

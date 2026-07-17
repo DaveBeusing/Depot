@@ -120,6 +120,7 @@
 							Header="Quantity"
 							Binding="{Binding Quantity}"
 							Width="100" />
+						<DataGridTextColumn Header="Reason" Binding="{Binding ReasonCodeName}" Width="120" />
 
 					</DataGrid.Columns>
 

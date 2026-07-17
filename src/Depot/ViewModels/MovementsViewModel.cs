@@ -13,6 +13,7 @@ public sealed class MovementsViewModel : BaseViewModel, IDisposable
 {
 	private const int PageSize = 100;
 	private readonly MovementService _movementService;
+	private readonly ReasonCodeService _reasonCodeService;
 	private readonly AsyncDebouncer _searchDebouncer = new(TimeSpan.FromMilliseconds(300));
 	private InventoryLookupViewModel? _selectedInventory;
 	private string? _errorMessage;
@@ -20,9 +21,10 @@ public sealed class MovementsViewModel : BaseViewModel, IDisposable
 	private int _pageNumber = 1;
 	private long _totalCount;
 
-	public MovementsViewModel(MovementService movementService)
+	public MovementsViewModel(MovementService movementService, ReasonCodeService reasonCodeService)
 	{
 		_movementService = movementService;
+		_reasonCodeService = reasonCodeService;
 		Editor = new MovementEditorViewModel();
 		CreateMovementCommand = new AsyncRelayCommand(CreateMovementAsync);
 		PreviousPageCommand = new AsyncRelayCommand(PreviousPageAsync, () => PageNumber > 1);
@@ -31,6 +33,7 @@ public sealed class MovementsViewModel : BaseViewModel, IDisposable
 
 	public ObservableCollection<InventoryLookupViewModel> AvailableInventories { get; } = new();
 	public ObservableCollection<MovementOverviewItemViewModel> Items { get; } = new();
+	public ObservableCollection<ReasonCodeOptionViewModel> ReasonCodes { get; } = new();
 	public IReadOnlyList<StockMovementType> MovementTypes { get; } =
 	[
 		StockMovementType.Purchase,
@@ -116,8 +119,9 @@ public sealed class MovementsViewModel : BaseViewModel, IDisposable
 		try
 		{
 			var inventoriesTask = _movementService.SearchAvailableInventoriesAsync(null, 100, cancellationToken);
+			var reasonCodesTask = _reasonCodeService.GetActiveAsync(cancellationToken);
 			var movementsTask = LoadMovementPageAsync(cancellationToken);
-			await Task.WhenAll(inventoriesTask, movementsTask);
+			await Task.WhenAll(inventoriesTask, reasonCodesTask, movementsTask);
 			AvailableInventories.Clear();
 			foreach (var inventory in await inventoriesTask)
 			{
@@ -131,6 +135,12 @@ public sealed class MovementsViewModel : BaseViewModel, IDisposable
 					WarehouseName = inventory.WarehouseName,
 					LocationName = inventory.LocationName
 				});
+			}
+			ReasonCodes.Clear();
+			ReasonCodes.Add(new ReasonCodeOptionViewModel(null, "No reason specified"));
+			foreach (var reasonCode in await reasonCodesTask)
+			{
+				ReasonCodes.Add(new ReasonCodeOptionViewModel(reasonCode.Id, reasonCode.Name));
 			}
 			CompleteOperation(Items.Count == 0, $"{TotalCount:N0} movements");
 		}
@@ -187,11 +197,11 @@ public sealed class MovementsViewModel : BaseViewModel, IDisposable
 			var movement = Editor.MovementType switch
 			{
 				StockMovementType.Purchase => await _movementService.AddPurchaseAsync(
-					Editor.InventoryId, Editor.Quantity, Editor.UnitPrice, Editor.Reference, Editor.Notes, cancellationToken),
+					Editor.InventoryId, Editor.Quantity, Editor.UnitPrice, Editor.ReasonCodeId, Editor.Reference, Editor.Notes, cancellationToken),
 				StockMovementType.Withdrawal => await _movementService.AddWithdrawalAsync(
-					Editor.InventoryId, Editor.Quantity, Editor.Reference, Editor.Notes, cancellationToken),
+					Editor.InventoryId, Editor.Quantity, Editor.ReasonCodeId, Editor.Reference, Editor.Notes, cancellationToken),
 				StockMovementType.Correction => await _movementService.AddCorrectionAsync(
-					Editor.InventoryId, Editor.Quantity, Editor.Reference, Editor.Notes, cancellationToken),
+					Editor.InventoryId, Editor.Quantity, Editor.ReasonCodeId, Editor.Reference, Editor.Notes, cancellationToken),
 				_ => throw new InvalidOperationException($"Movement type '{Editor.MovementType}' is not supported.")
 			};
 			if (PageNumber == 1)

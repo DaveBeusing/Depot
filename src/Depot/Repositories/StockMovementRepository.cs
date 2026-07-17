@@ -14,7 +14,9 @@ namespace Depot.Repositories;
 public sealed class StockMovementRepository : DatabaseRepository
 {
 	private const string SelectColumns =
-		"Id, InventoryId, MovementType, TimestampUtc, Quantity, UnitPrice, Reference, Notes";
+		"Id, InventoryId, ReasonCodeId, MovementType, TimestampUtc, Quantity, UnitPrice, Reference, Notes";
+	private const string QualifiedSelectColumns =
+		"sm.Id, sm.InventoryId, sm.ReasonCodeId, sm.MovementType, sm.TimestampUtc, sm.Quantity, sm.UnitPrice, sm.Reference, sm.Notes";
 
 	public StockMovementRepository(DatabaseAccess database)
 		: base(database)
@@ -50,12 +52,13 @@ public sealed class StockMovementRepository : DatabaseRepository
 				var movementId = await session.InsertAsync(
 					"""
 					INSERT INTO StockMovements
-					(InventoryId, MovementType, TimestampUtc, Quantity, UnitPrice, Reference, Notes)
+					(InventoryId, ReasonCodeId, MovementType, TimestampUtc, Quantity, UnitPrice, Reference, Notes)
 					VALUES
-					($InventoryId, $MovementType, $TimestampUtc, $Quantity, $UnitPrice, $Reference, $Notes);
+					($InventoryId, $ReasonCodeId, $MovementType, $TimestampUtc, $Quantity, $UnitPrice, $Reference, $Notes);
 					""",
 					token,
 					Parameter("$InventoryId", movement.InventoryId),
+					Parameter("$ReasonCodeId", movement.ReasonCodeId),
 					Parameter("$MovementType", (int)movement.MovementType),
 					Parameter("$TimestampUtc", movement.TimestampUtc.ToString("O", CultureInfo.InvariantCulture)),
 					Parameter("$Quantity", movement.Quantity),
@@ -97,7 +100,7 @@ public sealed class StockMovementRepository : DatabaseRepository
 		var search = searchText?.Trim();
 		var hasSearch = !string.IsNullOrWhiteSpace(search);
 		var filter = hasSearch
-			? "WHERE i.PartNumber LIKE $Search OR i.Description LIKE $Search OR p.Name LIKE $Search OR w.Name LIKE $Search OR sl.Name LIKE $Search OR sm.Reference LIKE $Search OR sm.Notes LIKE $Search"
+			? "WHERE i.PartNumber LIKE $Search OR i.Description LIKE $Search OR p.Name LIKE $Search OR w.Name LIKE $Search OR sl.Name LIKE $Search OR rc.Name LIKE $Search OR sm.Reference LIKE $Search OR sm.Notes LIKE $Search"
 			: string.Empty;
 		var parameters = hasSearch
 			? new[] { Parameter("$Search", $"%{search}%") }
@@ -105,13 +108,14 @@ public sealed class StockMovementRepository : DatabaseRepository
 		return Database.QueryPageAsync(
 			$"""
 			SELECT sm.Id, sm.TimestampUtc, inv.Id, i.Id, i.PartNumber, i.Description,
-			       p.Name, w.Name, sl.Name, sm.MovementType, sm.Quantity, sm.UnitPrice, sm.Reference, sm.Notes
+			       p.Name, w.Name, sl.Name, rc.Name, sm.MovementType, sm.Quantity, sm.UnitPrice, sm.Reference, sm.Notes
 			FROM StockMovements sm
 			INNER JOIN Inventories inv ON inv.Id = sm.InventoryId
 			INNER JOIN Items i ON i.Id = inv.ItemId
 			INNER JOIN Purposes p ON p.Id = inv.PurposeId
 			INNER JOIN StorageLocations sl ON sl.Id = inv.StorageLocationId
 			INNER JOIN Warehouses w ON w.Id = sl.WarehouseId
+			LEFT JOIN ReasonCodes rc ON rc.Id = sm.ReasonCodeId
 			{filter}
 			ORDER BY sm.TimestampUtc DESC
 			""",
@@ -122,6 +126,7 @@ public sealed class StockMovementRepository : DatabaseRepository
 			INNER JOIN Purposes p ON p.Id = inv.PurposeId
 			INNER JOIN StorageLocations sl ON sl.Id = inv.StorageLocationId
 			INNER JOIN Warehouses w ON w.Id = sl.WarehouseId
+			LEFT JOIN ReasonCodes rc ON rc.Id = sm.ReasonCodeId
 			{filter};
 			""",
 			ReadOverview,
@@ -137,13 +142,14 @@ public sealed class StockMovementRepository : DatabaseRepository
 		Database.QuerySingleOrDefaultAsync(
 			"""
 			SELECT sm.Id, sm.TimestampUtc, inv.Id, i.Id, i.PartNumber, i.Description,
-			       p.Name, w.Name, sl.Name, sm.MovementType, sm.Quantity, sm.UnitPrice, sm.Reference, sm.Notes
+			       p.Name, w.Name, sl.Name, rc.Name, sm.MovementType, sm.Quantity, sm.UnitPrice, sm.Reference, sm.Notes
 			FROM StockMovements sm
 			INNER JOIN Inventories inv ON inv.Id = sm.InventoryId
 			INNER JOIN Items i ON i.Id = inv.ItemId
 			INNER JOIN Purposes p ON p.Id = inv.PurposeId
 			INNER JOIN StorageLocations sl ON sl.Id = inv.StorageLocationId
 			INNER JOIN Warehouses w ON w.Id = sl.WarehouseId
+			LEFT JOIN ReasonCodes rc ON rc.Id = sm.ReasonCodeId
 			WHERE sm.Id = $MovementId;
 			""",
 			ReadOverview,
@@ -155,8 +161,8 @@ public sealed class StockMovementRepository : DatabaseRepository
 		int count,
 		CancellationToken cancellationToken) =>
 		Database.QuerySliceAsync(
-			$"SELECT {SelectColumns} FROM StockMovements WHERE InventoryId = $InventoryId ORDER BY TimestampUtc DESC",
-			ReadMovement,
+			$"SELECT {QualifiedSelectColumns}, rc.Name FROM StockMovements sm LEFT JOIN ReasonCodes rc ON rc.Id = sm.ReasonCodeId WHERE sm.InventoryId = $InventoryId ORDER BY sm.TimestampUtc DESC",
+			ReadMovementWithReason,
 			0,
 			count,
 			cancellationToken,
@@ -168,13 +174,14 @@ public sealed class StockMovementRepository : DatabaseRepository
 		Database.QuerySliceAsync(
 			"""
 			SELECT sm.TimestampUtc, inv.Id, i.PartNumber, i.Description, p.Name, w.Name, sl.Name,
-			       sm.MovementType, sm.Quantity
+			       rc.Name, sm.MovementType, sm.Quantity
 			FROM StockMovements sm
 			INNER JOIN Inventories inv ON inv.Id = sm.InventoryId
 			INNER JOIN Items i ON i.Id = inv.ItemId
 			INNER JOIN Purposes p ON p.Id = inv.PurposeId
 			INNER JOIN StorageLocations sl ON sl.Id = inv.StorageLocationId
 			INNER JOIN Warehouses w ON w.Id = sl.WarehouseId
+			LEFT JOIN ReasonCodes rc ON rc.Id = sm.ReasonCodeId
 			ORDER BY sm.TimestampUtc DESC
 			""",
 			ReadDashboardMovement,
@@ -193,7 +200,7 @@ public sealed class StockMovementRepository : DatabaseRepository
 		{
 			return Database.Query(
 				"""
-				SELECT sm.Id, sm.InventoryId, sm.MovementType, sm.TimestampUtc,
+				SELECT sm.Id, sm.InventoryId, sm.ReasonCodeId, sm.MovementType, sm.TimestampUtc,
 				       sm.Quantity, sm.UnitPrice, sm.Reference, sm.Notes
 				FROM StockMovements sm
 				INNER JOIN Inventories inv ON inv.Id = sm.InventoryId
@@ -205,7 +212,7 @@ public sealed class StockMovementRepository : DatabaseRepository
 
 		return Database.Query(
 			"""
-			SELECT sm.Id, sm.InventoryId, sm.MovementType, sm.TimestampUtc,
+			SELECT sm.Id, sm.InventoryId, sm.ReasonCodeId, sm.MovementType, sm.TimestampUtc,
 			       sm.Quantity, sm.UnitPrice, sm.Reference, sm.Notes
 			FROM StockMovements sm
 			INNER JOIN Inventories inv ON inv.Id = sm.InventoryId
@@ -213,11 +220,13 @@ public sealed class StockMovementRepository : DatabaseRepository
 			LEFT JOIN Purposes p ON p.Id = inv.PurposeId
 			LEFT JOIN StorageLocations sl ON sl.Id = inv.StorageLocationId
 			LEFT JOIN Warehouses w ON w.Id = sl.WarehouseId
+			LEFT JOIN ReasonCodes rc ON rc.Id = sm.ReasonCodeId
 			WHERE i.PartNumber LIKE $Search
 			   OR i.Description LIKE $Search
 			   OR p.Name LIKE $Search
 			   OR w.Name LIKE $Search
 			   OR sl.Name LIKE $Search
+			   OR rc.Name LIKE $Search
 			   OR sm.Reference LIKE $Search
 			   OR sm.Notes LIKE $Search
 			ORDER BY sm.TimestampUtc DESC;
@@ -229,12 +238,13 @@ public sealed class StockMovementRepository : DatabaseRepository
 	public IReadOnlyList<StockMovement> GetByInventoryId(long inventoryId) =>
 		Database.Query(
 			$"""
-			SELECT {SelectColumns}
-			FROM StockMovements
-			WHERE InventoryId = $InventoryId
-			ORDER BY TimestampUtc;
+			SELECT {QualifiedSelectColumns}, rc.Name
+			FROM StockMovements sm
+			LEFT JOIN ReasonCodes rc ON rc.Id = sm.ReasonCodeId
+			WHERE sm.InventoryId = $InventoryId
+			ORDER BY sm.TimestampUtc;
 			""",
-			ReadMovement,
+			ReadMovementWithReason,
 			Parameter("$InventoryId", inventoryId));
 
 	private long CreateAtomicCore(StockMovement movement, AuditEntry auditEntry) =>
@@ -262,11 +272,12 @@ public sealed class StockMovementRepository : DatabaseRepository
 				var movementId = session.Insert(
 					"""
 					INSERT INTO StockMovements
-					(InventoryId, MovementType, TimestampUtc, Quantity, UnitPrice, Reference, Notes)
+					(InventoryId, ReasonCodeId, MovementType, TimestampUtc, Quantity, UnitPrice, Reference, Notes)
 					VALUES
-					($InventoryId, $MovementType, $TimestampUtc, $Quantity, $UnitPrice, $Reference, $Notes);
+					($InventoryId, $ReasonCodeId, $MovementType, $TimestampUtc, $Quantity, $UnitPrice, $Reference, $Notes);
 					""",
 					Parameter("$InventoryId", movement.InventoryId),
+					Parameter("$ReasonCodeId", movement.ReasonCodeId),
 					Parameter("$MovementType", (int)movement.MovementType),
 					Parameter("$TimestampUtc", movement.TimestampUtc.ToString("O", CultureInfo.InvariantCulture)),
 					Parameter("$Quantity", movement.Quantity),
@@ -304,15 +315,16 @@ public sealed class StockMovementRepository : DatabaseRepository
 		{
 			Id = reader.GetInt64(0),
 			InventoryId = reader.GetInt64(1),
-			MovementType = (StockMovementType)reader.GetInt32(2),
+			ReasonCodeId = reader.IsDBNull(2) ? null : reader.GetInt64(2),
+			MovementType = (StockMovementType)reader.GetInt32(3),
 			TimestampUtc = DateTime.Parse(
-				reader.GetString(3),
+				reader.GetString(4),
 				CultureInfo.InvariantCulture,
 				DateTimeStyles.RoundtripKind),
-			Quantity = reader.GetInt32(4),
-			UnitPrice = reader.IsDBNull(5) ? null : reader.GetDecimal(5),
-			Reference = reader.IsDBNull(6) ? null : reader.GetString(6),
-			Notes = reader.IsDBNull(7) ? null : reader.GetString(7)
+			Quantity = reader.GetInt32(5),
+			UnitPrice = reader.IsDBNull(6) ? null : reader.GetDecimal(6),
+			Reference = reader.IsDBNull(7) ? null : reader.GetString(7),
+			Notes = reader.IsDBNull(8) ? null : reader.GetString(8)
 		};
 
 	private static MovementOverviewItem ReadOverview(DbDataReader reader) =>
@@ -327,12 +339,20 @@ public sealed class StockMovementRepository : DatabaseRepository
 			PurposeName = reader.GetString(6),
 			WarehouseName = reader.GetString(7),
 			LocationName = reader.GetString(8),
-			MovementType = (StockMovementType)reader.GetInt32(9),
-			Quantity = reader.GetInt32(10),
-			UnitPrice = reader.IsDBNull(11) ? null : reader.GetDecimal(11),
-			Reference = reader.IsDBNull(12) ? null : reader.GetString(12),
-			Notes = reader.IsDBNull(13) ? null : reader.GetString(13)
+			ReasonCodeName = reader.IsDBNull(9) ? null : reader.GetString(9),
+			MovementType = (StockMovementType)reader.GetInt32(10),
+			Quantity = reader.GetInt32(11),
+			UnitPrice = reader.IsDBNull(12) ? null : reader.GetDecimal(12),
+			Reference = reader.IsDBNull(13) ? null : reader.GetString(13),
+			Notes = reader.IsDBNull(14) ? null : reader.GetString(14)
 		};
+
+	private static StockMovement ReadMovementWithReason(DbDataReader reader)
+	{
+		var movement = ReadMovement(reader);
+		movement.ReasonCodeName = reader.IsDBNull(9) ? null : reader.GetString(9);
+		return movement;
+	}
 
 	private static DashboardRecentMovement ReadDashboardMovement(DbDataReader reader) =>
 		new()
@@ -344,7 +364,8 @@ public sealed class StockMovementRepository : DatabaseRepository
 			PurposeName = reader.GetString(4),
 			WarehouseName = reader.GetString(5),
 			LocationName = reader.GetString(6),
-			MovementType = (StockMovementType)reader.GetInt32(7),
-			Quantity = reader.GetInt32(8)
+			ReasonCodeName = reader.IsDBNull(7) ? null : reader.GetString(7),
+			MovementType = (StockMovementType)reader.GetInt32(8),
+			Quantity = reader.GetInt32(9)
 		};
 }

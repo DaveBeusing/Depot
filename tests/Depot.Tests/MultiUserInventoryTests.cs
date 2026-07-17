@@ -17,12 +17,14 @@ public sealed class MultiUserInventoryTests : IDisposable
 	private readonly ItemRepository _itemRepository;
 	private readonly InventoryRepository _inventoryRepository;
 	private readonly StockMovementRepository _movementRepository;
+	private readonly ReasonCodeRepository _reasonCodeRepository;
 	private readonly ItemService _itemService;
 	private readonly PurposeService _purposeService;
 	private readonly WarehouseService _warehouseService;
 	private readonly StorageLocationService _storageLocationService;
 	private readonly InventoryManagementService _inventoryService;
 	private readonly MovementService _movementService;
+	private readonly ReasonCodeService _reasonCodeService;
 
 	public MultiUserInventoryTests()
 	{
@@ -35,6 +37,7 @@ public sealed class MultiUserInventoryTests : IDisposable
 		var purposeRepository = new PurposeRepository(database);
 		var warehouseRepository = new WarehouseRepository(database);
 		var storageLocationRepository = new StorageLocationRepository(database);
+		_reasonCodeRepository = new ReasonCodeRepository(database);
 		var authorization = new AuthorizationService();
 		var administrator = new UserRepository(database).GetByEmail("admin@depot.local")
 			?? throw new InvalidOperationException("The test administrator was not initialized.");
@@ -44,6 +47,7 @@ public sealed class MultiUserInventoryTests : IDisposable
 		_purposeService = new PurposeService(purposeRepository, audit);
 		_warehouseService = new WarehouseService(warehouseRepository, storageLocationRepository, audit);
 		_storageLocationService = new StorageLocationService(storageLocationRepository, warehouseRepository, audit);
+		_reasonCodeService = new ReasonCodeService(_reasonCodeRepository, audit);
 		_inventoryService = new InventoryManagementService(_inventoryRepository, audit);
 		_movementService = new MovementService(
 			_itemRepository,
@@ -51,6 +55,7 @@ public sealed class MultiUserInventoryTests : IDisposable
 			purposeRepository,
 			storageLocationRepository,
 			warehouseRepository,
+			_reasonCodeRepository,
 			_movementRepository,
 			audit);
 	}
@@ -59,7 +64,7 @@ public sealed class MultiUserInventoryTests : IDisposable
 	public async Task ConcurrentWithdrawalsCannotProduceNegativeStock()
 	{
 		var inventory = CreateInventory();
-		_movementService.AddPurchase(inventory.Id, 10, 1m, null, null);
+		_movementService.AddPurchase(inventory.Id, 10, 1m, null, null, null);
 
 		var attempts = new[]
 		{
@@ -86,7 +91,7 @@ public sealed class MultiUserInventoryTests : IDisposable
 	public void MovementAndAuditAreCommittedTogether()
 	{
 		var inventory = CreateInventory();
-		_movementService.AddPurchase(inventory.Id, 5, 2m, "TEST", null);
+		_movementService.AddPurchase(inventory.Id, 5, 2m, null, "TEST", null);
 
 		using var connection = _factory.CreateConnection();
 		connection.Open();
@@ -94,6 +99,39 @@ public sealed class MultiUserInventoryTests : IDisposable
 		command.CommandText =
 			"SELECT COUNT(*) FROM AuditEntries WHERE EntityType = 'StockMovement' AND EntityId IN (SELECT Id FROM StockMovements);";
 		Assert.Equal(1L, Convert.ToInt64(command.ExecuteScalar()));
+	}
+
+	[Fact]
+	public async Task ReasonCodeIsPersistedAndInactiveCodesCannotBeUsedForNewMovements()
+	{
+		var inventory = CreateInventory();
+		var defaultNames = _reasonCodeRepository.GetAll().Select(item => item.Name).OrderBy(name => name).ToArray();
+		Assert.Equal(
+			new[]
+			{
+				"Consumed", "Damaged", "Demo", "Goods Issue", "Goods Receipt", "Inventory Correction",
+				"Lost", "Repair", "Returned", "Transfer"
+			},
+			defaultNames);
+		var reasonCode = Assert.Single(
+			_reasonCodeRepository.GetAll(),
+			item => item.Name == "Goods Receipt");
+
+		_movementService.AddPurchase(inventory.Id, 5, 2m, reasonCode.Id, "REASON", null);
+
+		var movement = Assert.Single(_movementRepository.GetByInventoryId(inventory.Id));
+		Assert.Equal(reasonCode.Id, movement.ReasonCodeId);
+		var overview = await _movementService.SearchAsync("Goods Receipt", 1, 10, CancellationToken.None);
+		Assert.Contains(overview.Items, item => item.MovementId == movement.Id && item.ReasonCodeName == reasonCode.Name);
+
+		reasonCode = await _reasonCodeService.SetActiveAsync(
+			reasonCode.Id,
+			reasonCode.Version,
+			false);
+
+		Assert.False(reasonCode.IsActive);
+		Assert.Throws<InvalidOperationException>(
+			() => _movementService.AddPurchase(inventory.Id, 1, 2m, reasonCode.Id, null, null));
 	}
 
 	private Inventory CreateInventory()
@@ -110,7 +148,7 @@ public sealed class MultiUserInventoryTests : IDisposable
 	{
 		try
 		{
-			_movementService.AddWithdrawal(inventoryId, quantity, null, null);
+			_movementService.AddWithdrawal(inventoryId, quantity, null, null, null);
 			return true;
 		}
 		catch (InsufficientStockException)

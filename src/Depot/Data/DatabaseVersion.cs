@@ -5,5 +5,5 @@ namespace Depot.Data;
 
 public static class DatabaseVersion
 {
-	public const int CurrentVersion = 9;
+	public const int CurrentVersion = 10;
 }

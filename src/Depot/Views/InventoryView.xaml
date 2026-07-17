@@ -177,6 +177,7 @@
 								<DataGrid.Columns>
 									<DataGridTextColumn Header="Date" Binding="{Binding TimestampLocal, StringFormat={}{0:g}}" Width="*" />
 									<DataGridTextColumn Header="Type" Binding="{Binding MovementType}" Width="110" />
+									<DataGridTextColumn Header="Reason" Binding="{Binding ReasonCodeName}" Width="130" />
 									<DataGridTextColumn Header="Qty" Binding="{Binding Quantity}" Width="70" />
 									<DataGridTextColumn Header="Unit Price" Binding="{Binding UnitPrice, StringFormat={}{0:C2}}" Width="110" />
 								</DataGrid.Columns>

@@ -23,6 +23,8 @@ public sealed class MovementOverviewItem
 
 	public string LocationName { get; init; } = string.Empty;
 
+	public string? ReasonCodeName { get; init; }
+
 	public StockMovementType MovementType { get; init; }
 
 	public int Quantity { get; init; }

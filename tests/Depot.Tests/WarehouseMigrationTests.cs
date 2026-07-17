@@ -26,12 +26,14 @@ public sealed class WarehouseMigrationTests : IDisposable
 		using var connection = factory.CreateConnection();
 		connection.Open();
 
-		Assert.Equal(9L, ExecuteInt64(connection, "SELECT Version FROM DatabaseInfo;"));
+		Assert.Equal(10L, ExecuteInt64(connection, "SELECT Version FROM DatabaseInfo;"));
 		Assert.Equal("Main Warehouse", ExecuteString(connection, "SELECT Name FROM Warehouses;"));
 		Assert.Equal("A-01", ExecuteString(connection, "SELECT Name FROM StorageLocations WHERE Id = 1;"));
 		Assert.Equal(1L, ExecuteInt64(connection, "SELECT WarehouseId FROM StorageLocations WHERE Id = 1;"));
 		Assert.Equal(1L, ExecuteInt64(connection, "SELECT StorageLocationId FROM Inventories WHERE Id = 1;"));
 		Assert.Equal(1L, ExecuteInt64(connection, "SELECT InventoryId FROM StockMovements WHERE Id = 1;"));
+		Assert.Equal(10L, ExecuteInt64(connection, "SELECT COUNT(*) FROM ReasonCodes;"));
+		Assert.Equal(0L, ExecuteInt64(connection, "SELECT COUNT(*) FROM StockMovements WHERE ReasonCodeId IS NOT NULL;"));
 		Assert.Equal(0L, ExecuteInt64(connection, "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'Locations';"));
 		Assert.Equal("ok", ExecuteString(connection, "PRAGMA integrity_check;"));
 	}

@@ -20,11 +20,12 @@ public sealed class DatabaseManagementService
 	[
 		new("Items", ["Id", "PartNumber", "Description", "Manufacturer", "Category", "IsActive", "Version"]),
 		new("Purposes", ["Id", "Name", "Description", "IsActive", "Version"]),
+		new("ReasonCodes", ["Id", "Name", "Description", "IsActive", "Version"]),
 		new("Warehouses", ["Id", "Name", "Description", "IsActive", "Version"]),
 		new("StorageLocations", ["Id", "WarehouseId", "Name", "Description", "IsActive", "Version"]),
 		new("Users", ["Id", "Email", "DisplayName", "PasswordHash", "IsAdministrator", "IsActive", "CreatedUtc", "Version"]),
 		new("Inventories", ["Id", "ItemId", "PurposeId", "StorageLocationId", "IsActive", "Version"]),
-		new("StockMovements", ["Id", "InventoryId", "MovementType", "TimestampUtc", "Quantity", "UnitPrice", "Reference", "Notes"]),
+		new("StockMovements", ["Id", "InventoryId", "ReasonCodeId", "MovementType", "TimestampUtc", "Quantity", "UnitPrice", "Reference", "Notes"]),
 		new("AuditEntries", ["Id", "TimestampUtc", "UserId", "UserEmail", "EntityType", "EntityId", "Action", "BeforeJson", "AfterJson"])
 	];
 

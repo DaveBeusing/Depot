@@ -30,6 +30,7 @@ public partial class App : Application
 	public static IDatabaseInitializer Database { get; private set; } = null!;
 	public static ItemRepository ItemRepository { get; private set; } = null!;
 	public static PurposeRepository PurposeRepository { get; private set; } = null!;
+	public static ReasonCodeRepository ReasonCodeRepository { get; private set; } = null!;
 	public static InventoryRepository InventoryRepository { get; private set; } = null!;
 	public static WarehouseRepository WarehouseRepository { get; private set; } = null!;
 	public static StorageLocationRepository StorageLocationRepository { get; private set; } = null!;
@@ -49,6 +50,7 @@ public partial class App : Application
 	public static AuditService AuditService { get; private set; } = null!;
 	public static ItemService ItemService { get; private set; } = null!;
 	public static PurposeService PurposeService { get; private set; } = null!;
+	public static ReasonCodeService ReasonCodeService { get; private set; } = null!;
 	public static WarehouseService WarehouseService { get; private set; } = null!;
 	public static StorageLocationService StorageLocationService { get; private set; } = null!;
 	public static UserService UserService { get; private set; } = null!;
@@ -110,6 +112,10 @@ public partial class App : Application
 			new PurposeRepository(
 				DataAccess);
 
+		ReasonCodeRepository =
+			new ReasonCodeRepository(
+				DataAccess);
+
 		InventoryRepository =
 			new InventoryRepository(
 				DataAccess);
@@ -168,6 +174,11 @@ public partial class App : Application
 				PurposeRepository,
 				AuditService);
 
+		ReasonCodeService =
+			new ReasonCodeService(
+				ReasonCodeRepository,
+				AuditService);
+
 		WarehouseService =
 			new WarehouseService(
 				WarehouseRepository,
@@ -194,6 +205,7 @@ public partial class App : Application
 				PurposeRepository,
 				StorageLocationRepository,
 				WarehouseRepository,
+				ReasonCodeRepository,
 				StockMovementRepository,
 				AuditService);
 
@@ -271,6 +283,7 @@ public partial class App : Application
 				MovementService,
 				ReportService,
 				PurposeService,
+				ReasonCodeService,
 				WarehouseService,
 				StorageLocationService,
 				UserService,
