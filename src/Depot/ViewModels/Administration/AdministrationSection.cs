@@ -9,5 +9,6 @@ public enum AdministrationSection
 	MasterData,
 	Users,
 	Database,
-	Settings
+	Settings,
+	About
 }

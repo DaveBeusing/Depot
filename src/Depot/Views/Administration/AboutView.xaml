@@ -1,0 +1,155 @@
+<UserControl
+	x:Class="Depot.Views.Administration.AboutView"
+	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:controls="clr-namespace:Depot.Controls">
+
+	<ScrollViewer
+		HorizontalScrollBarVisibility="Disabled"
+		VerticalScrollBarVisibility="Auto">
+		<Grid Margin="0,0,8,0">
+			<Grid.RowDefinitions>
+				<RowDefinition Height="Auto" />
+				<RowDefinition Height="16" />
+				<RowDefinition Height="Auto" />
+				<RowDefinition Height="16" />
+				<RowDefinition Height="Auto" />
+				<RowDefinition Height="16" />
+				<RowDefinition Height="Auto" />
+			</Grid.RowDefinitions>
+
+			<controls:PageHeader
+				Title="About Depot"
+				Subtitle="Application, version, and runtime information." />
+
+			<controls:Card Grid.Row="2">
+				<Grid>
+					<Grid.ColumnDefinitions>
+						<ColumnDefinition Width="Auto" />
+						<ColumnDefinition Width="24" />
+						<ColumnDefinition Width="*" />
+					</Grid.ColumnDefinitions>
+
+					<Image
+						Width="72"
+						Height="72"
+						Source="/Resources/Images/Depot.png"
+						Stretch="Uniform" />
+
+					<StackPanel Grid.Column="2" VerticalAlignment="Center">
+						<TextBlock
+							Text="{Binding Information.ProductName}"
+							Style="{StaticResource PageTitleStyle}" />
+						<TextBlock
+							Margin="0,4,0,0"
+							Text="{Binding Information.Description}"
+							Style="{StaticResource BodyStyle}" />
+						<StackPanel Margin="0,12,0,0" Orientation="Horizontal">
+							<controls:StatusBadge Content="{Binding VersionBadgeText}" Variant="Success" />
+							<controls:StatusBadge Margin="8,0,0,0" Content="{Binding Information.ReleaseChannel}" Variant="Neutral" />
+							<controls:StatusBadge Margin="8,0,0,0" Content="{Binding DatabaseSchemaDisplay}" Variant="Neutral" />
+						</StackPanel>
+					</StackPanel>
+				</Grid>
+			</controls:Card>
+
+			<Grid Grid.Row="4">
+				<Grid.ColumnDefinitions>
+					<ColumnDefinition Width="*" />
+					<ColumnDefinition Width="16" />
+					<ColumnDefinition Width="*" />
+				</Grid.ColumnDefinitions>
+
+				<controls:Card>
+					<Grid>
+						<Grid.ColumnDefinitions>
+							<ColumnDefinition Width="160" />
+							<ColumnDefinition Width="*" />
+						</Grid.ColumnDefinitions>
+						<Grid.RowDefinitions>
+							<RowDefinition Height="Auto" />
+							<RowDefinition Height="16" />
+							<RowDefinition Height="Auto" />
+							<RowDefinition Height="12" />
+							<RowDefinition Height="Auto" />
+							<RowDefinition Height="12" />
+							<RowDefinition Height="Auto" />
+							<RowDefinition Height="12" />
+							<RowDefinition Height="Auto" />
+							<RowDefinition Height="12" />
+							<RowDefinition Height="Auto" />
+						</Grid.RowDefinitions>
+
+						<TextBlock Grid.ColumnSpan="2" Text="Version information" Style="{StaticResource SectionTitleStyle}" />
+						<TextBlock Grid.Row="2" Text="Application version" Style="{StaticResource CardTitleStyle}" />
+						<TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Information.Version}" Style="{StaticResource BodyStyle}" />
+						<TextBlock Grid.Row="4" Text="Release channel" Style="{StaticResource CardTitleStyle}" />
+						<TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding Information.ReleaseChannel}" Style="{StaticResource BodyStyle}" />
+						<TextBlock Grid.Row="6" Text="File version" Style="{StaticResource CardTitleStyle}" />
+						<TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding Information.FileVersion}" Style="{StaticResource BodyStyle}" />
+						<TextBlock Grid.Row="8" Text="Assembly version" Style="{StaticResource CardTitleStyle}" />
+						<TextBlock Grid.Row="8" Grid.Column="1" Text="{Binding Information.AssemblyVersion}" Style="{StaticResource BodyStyle}" />
+						<TextBlock Grid.Row="10" Text="Build metadata" Style="{StaticResource CardTitleStyle}" />
+						<TextBlock Grid.Row="10" Grid.Column="1" Text="{Binding Information.BuildMetadata}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Information.BuildMetadata}" Style="{StaticResource BodyStyle}" />
+					</Grid>
+				</controls:Card>
+
+				<controls:Card Grid.Column="2">
+					<Grid>
+						<Grid.ColumnDefinitions>
+							<ColumnDefinition Width="160" />
+							<ColumnDefinition Width="*" />
+						</Grid.ColumnDefinitions>
+						<Grid.RowDefinitions>
+							<RowDefinition Height="Auto" />
+							<RowDefinition Height="16" />
+							<RowDefinition Height="Auto" />
+							<RowDefinition Height="12" />
+							<RowDefinition Height="Auto" />
+							<RowDefinition Height="12" />
+							<RowDefinition Height="Auto" />
+							<RowDefinition Height="12" />
+							<RowDefinition Height="Auto" />
+						</Grid.RowDefinitions>
+
+						<TextBlock Grid.ColumnSpan="2" Text="System information" Style="{StaticResource SectionTitleStyle}" />
+						<TextBlock Grid.Row="2" Text="Runtime" Style="{StaticResource CardTitleStyle}" />
+						<TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Information.Runtime}" Style="{StaticResource BodyStyle}" />
+						<TextBlock Grid.Row="4" Text="Operating system" Style="{StaticResource CardTitleStyle}" />
+						<TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding Information.OperatingSystem}" TextWrapping="Wrap" Style="{StaticResource BodyStyle}" />
+						<TextBlock Grid.Row="6" Text="Architecture" Style="{StaticResource CardTitleStyle}" />
+						<TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding Information.ProcessArchitecture}" Style="{StaticResource BodyStyle}" />
+						<TextBlock Grid.Row="8" Text="Database schema" Style="{StaticResource CardTitleStyle}" />
+						<TextBlock Grid.Row="8" Grid.Column="1" Text="{Binding Information.DatabaseSchemaVersion}" Style="{StaticResource BodyStyle}" />
+					</Grid>
+				</controls:Card>
+			</Grid>
+
+			<controls:Card Grid.Row="6">
+				<Grid>
+					<Grid.ColumnDefinitions>
+						<ColumnDefinition Width="160" />
+						<ColumnDefinition Width="*" />
+					</Grid.ColumnDefinitions>
+					<Grid.RowDefinitions>
+						<RowDefinition Height="Auto" />
+						<RowDefinition Height="16" />
+						<RowDefinition Height="Auto" />
+						<RowDefinition Height="12" />
+						<RowDefinition Height="Auto" />
+						<RowDefinition Height="12" />
+						<RowDefinition Height="Auto" />
+					</Grid.RowDefinitions>
+
+					<TextBlock Grid.ColumnSpan="2" Text="Product and legal" Style="{StaticResource SectionTitleStyle}" />
+					<TextBlock Grid.Row="2" Text="License" Style="{StaticResource CardTitleStyle}" />
+					<TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Information.License}" Style="{StaticResource BodyStyle}" />
+					<TextBlock Grid.Row="4" Text="Repository" Style="{StaticResource CardTitleStyle}" />
+					<TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding Information.RepositoryUrl}" Style="{StaticResource BodyStyle}" />
+					<TextBlock Grid.Row="6" Text="Copyright" Style="{StaticResource CardTitleStyle}" />
+					<TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding Information.Copyright}" Style="{StaticResource BodyStyle}" />
+				</Grid>
+			</controls:Card>
+		</Grid>
+	</ScrollViewer>
+</UserControl>

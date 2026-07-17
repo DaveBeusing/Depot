@@ -21,6 +21,7 @@ public sealed class AdministrationViewModel
 	private readonly MasterDataViewModel _masterDataViewModel;
 	private readonly UserViewModel _userViewModel;
 	private readonly DatabaseSettingsViewModel _databaseSettingsViewModel;
+	private readonly AboutViewModel _aboutViewModel;
 
 	private NavigationItem? _selectedNavigationItem;
 	private BaseViewModel? _currentViewModel;
@@ -35,7 +36,8 @@ public sealed class AdministrationViewModel
 		ConnectionStatusService connectionStatusService,
 		DatabaseConnectionTester databaseConnectionTester,
 		DatabaseManagementService databaseManagementService,
-		IFileDialogService fileDialogService)
+		IFileDialogService fileDialogService,
+		ApplicationInformationService applicationInformationService)
 	{
 		_importViewModel = importViewModel;
 		_masterDataViewModel = new MasterDataViewModel(purposeService, warehouseService, storageLocationService);
@@ -49,6 +51,7 @@ public sealed class AdministrationViewModel
 				databaseConnectionTester,
 				databaseManagementService,
 				fileDialogService);
+		_aboutViewModel = new AboutViewModel(applicationInformationService);
 
 		NavigationItems.Add(
 			new NavigationItem
@@ -83,6 +86,13 @@ public sealed class AdministrationViewModel
 			{
 				Name = "Settings",
 				Section = AdministrationSection.Settings
+			});
+
+		NavigationItems.Add(
+			new NavigationItem
+			{
+				Name = "About",
+				Section = AdministrationSection.About
 			});
 
 		SelectedNavigationItem =
@@ -140,6 +150,9 @@ public sealed class AdministrationViewModel
 					new PlaceholderViewModel(
 						"Settings",
 						"Application settings will be available in a future release."),
+
+				AdministrationSection.About =>
+					_aboutViewModel,
 
 				_ =>
 					new PlaceholderViewModel(

@@ -53,6 +53,9 @@
 			<DataTemplate DataType="{x:Type administrationViewModels:DatabaseSettingsViewModel}">
 				<administrationViews:DatabaseSettingsView />
 			</DataTemplate>
+			<DataTemplate DataType="{x:Type administrationViewModels:AboutViewModel}">
+				<administrationViews:AboutView />
+			</DataTemplate>
 			<DataTemplate DataType="{x:Type sharedViewModels:PlaceholderViewModel}">
 				<sharedViews:PlaceholderView />
 			</DataTemplate>

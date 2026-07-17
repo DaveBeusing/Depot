@@ -57,6 +57,8 @@ public partial class App : Application
 	public static ReportService ReportService { get; private set; } = null!;
 	public static InventoryManagementService InventoryManagementService { get; private set; } = null!;
 	public static ImportService ImportService { get; private set; } = null!;
+	public static ApplicationInformationService ApplicationInformationService { get; } =
+		new(typeof(App).Assembly);
 	public static IFileDialogService FileDialogService { get; } = new FileDialogService();
 	public static MainViewModel MainViewModel { get; private set; } = null!;
 
@@ -68,7 +70,8 @@ public partial class App : Application
 		try
 		{
 			base.OnStartup(e);
-			StartupDiagnostics.Log("Application startup.");
+			StartupDiagnostics.Log(
+				$"Application startup. Version {ApplicationInformationService.GetVersionInfo().InformationalVersion}.");
 			InitializeInfrastructure();
 			RunApplication();
 		}
@@ -278,7 +281,8 @@ public partial class App : Application
 				SettingsService,
 				ConnectionStatusService,
 				DatabaseConnectionTester,
-				DatabaseManagementService);
+				DatabaseManagementService,
+				ApplicationInformationService);
 
 		StartupDiagnostics.Log("MainViewModel created.");
 

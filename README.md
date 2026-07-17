@@ -22,7 +22,7 @@ The project started as a replacement for an Excel-based inventory and is under a
 
 ### Inventory
 
-- Inventory overview by item, purpose, and location
+- Inventory overview by item, purpose, warehouse, and storage location
 - Current stock calculation
 - Weighted average cost and inventory valuation
 - Detailed inventory information and recent movements
@@ -50,14 +50,15 @@ The project started as a replacement for an Excel-based inventory and is under a
 - `.xlsx` file selection
 - Import preview and summary statistics
 - Duplicate detection and validation warnings
-- Purpose and location resolution
+- Purpose, warehouse, and storage-location resolution
 - Inventory creation and opening balance import
 - Import result summary
 
 ### Reports and export
 
 - Inventory Value
-- Stock by Location
+- Stock by Warehouse
+- Stock by Storage Location
 - Stock by Purpose
 - Stock by Category
 - Stock by Manufacturer
@@ -68,12 +69,13 @@ The project started as a replacement for an Excel-based inventory and is under a
 
 - Role-based Administration navigation
 - Purpose management
-- Location management
+- Warehouse and storage-location management
 - User management
 - Activate and deactivate users
 - Administrator role assignment
 - Excel import workspace
 - Settings placeholder for future application preferences
+- About page with application, build, runtime, and schema information
 - Encrypted local and SQL Server connection configuration
 - Provider abstraction for local SQLite, SQL Server, and MySQL/MariaDB installations
 
@@ -106,6 +108,12 @@ Current controls include:
 - `ConnectionStatusIndicator`
 
 The resource dictionaries provide shared colors, typography, spacing, buttons, inputs, navigation, cards, DataGrid styling, dialogs, status presentation, and empty states.
+
+## Versioning
+
+Depot uses Semantic Versioning with a single version source in `Directory.Build.props`. Assembly, file, and informational versions are generated consistently for local, CI, prerelease, and stable builds. The database schema version remains independent from the application release version.
+
+See [Depot versioning](docs/VERSIONING.md) for the version components and release procedure.
 
 ## Architecture
 
