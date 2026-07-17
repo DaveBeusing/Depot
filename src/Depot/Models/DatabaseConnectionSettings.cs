@@ -34,4 +34,12 @@ public sealed class DatabaseConnectionSettings
 	public string MySqlPassword { get; set; } = string.Empty;
 
 	public bool UseMySqlTls { get; set; } = true;
+
+	public bool AutomaticBackupsEnabled { get; set; }
+
+	public string BackupDirectory { get; set; } = "Backups";
+
+	public int BackupIntervalDays { get; set; } = 1;
+
+	public DateTime? LastSuccessfulBackupUtc { get; set; }
 }

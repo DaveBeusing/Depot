@@ -31,6 +31,16 @@ public sealed class FileDialogService : IFileDialogService
         return ShowDialog(dialog) ? dialog.FileName : null;
     }
 
+    public bool Confirm(ConfirmationDialogRequest request)
+    {
+        var owner = Application.Current?.MainWindow;
+        var image = request.IsDestructive ? MessageBoxImage.Warning : MessageBoxImage.Question;
+        var result = owner is null
+            ? MessageBox.Show(request.Message, request.Title, MessageBoxButton.YesNo, image, MessageBoxResult.No)
+            : MessageBox.Show(owner, request.Message, request.Title, MessageBoxButton.YesNo, image, MessageBoxResult.No);
+        return result == MessageBoxResult.Yes;
+    }
+
     private static bool ShowDialog(CommonDialog dialog)
     {
         var owner = Application.Current?.MainWindow;

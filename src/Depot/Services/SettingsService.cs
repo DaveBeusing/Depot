@@ -40,6 +40,13 @@ public sealed class SettingsService
 	public DatabaseConnectionSettings Validate(DatabaseConnectionSettings settings) =>
 		NormalizeAndValidate(settings);
 
+	public DatabaseConnectionSettings RecordSuccessfulBackup(DateTime completedUtc)
+	{
+		var settings = Clone(CurrentSettings);
+		settings.LastSuccessfulBackupUtc = completedUtc;
+		return Save(settings);
+	}
+
 	private static DatabaseConnectionSettings NormalizeAndValidate(
 		DatabaseConnectionSettings settings)
 	{
@@ -50,6 +57,19 @@ public sealed class SettingsService
 		settings.MySqlHost = settings.MySqlHost.Trim();
 		settings.MySqlDatabase = settings.MySqlDatabase.Trim();
 		settings.MySqlUserName = settings.MySqlUserName.Trim();
+		settings.BackupDirectory = settings.BackupDirectory.Trim();
+
+		if (string.IsNullOrWhiteSpace(settings.BackupDirectory))
+		{
+			throw new ArgumentException("A backup directory is required.");
+		}
+
+		if (settings.BackupIntervalDays is < 1 or > 365)
+		{
+			throw new ArgumentOutOfRangeException(
+				nameof(settings.BackupIntervalDays),
+				"The backup interval must be between 1 and 365 days.");
+		}
 
 		if (string.IsNullOrWhiteSpace(settings.LocalDatabasePath))
 		{
@@ -112,7 +132,11 @@ public sealed class SettingsService
 			MySqlDatabase = settings.MySqlDatabase,
 			MySqlUserName = settings.MySqlUserName,
 			MySqlPassword = settings.MySqlPassword,
-			UseMySqlTls = settings.UseMySqlTls
+			UseMySqlTls = settings.UseMySqlTls,
+			AutomaticBackupsEnabled = settings.AutomaticBackupsEnabled,
+			BackupDirectory = settings.BackupDirectory,
+			BackupIntervalDays = settings.BackupIntervalDays,
+			LastSuccessfulBackupUtc = settings.LastSuccessfulBackupUtc
 		};
 	}
 }

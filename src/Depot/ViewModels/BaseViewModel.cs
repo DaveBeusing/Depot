@@ -63,6 +63,11 @@ public abstract class BaseViewModel : INotifyPropertyChanged
 		State = ViewModelState.Loading;
 	}
 
+	protected void UpdateOperationStatus(string statusText)
+	{
+		StatusText = statusText;
+	}
+
 	protected void CompleteOperation(bool isEmpty = false, string statusText = "")
 	{
 		OperationError = null;

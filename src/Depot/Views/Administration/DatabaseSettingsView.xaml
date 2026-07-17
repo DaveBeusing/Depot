@@ -223,6 +223,139 @@
 					Content="Save settings"
 					Style="{StaticResource PrimaryButtonStyle}" />
 			</StackPanel>
+
+			<Separator Margin="0,32,0,28" />
+
+			<TextBlock Text="Database management" Style="{StaticResource SectionTitleStyle}" />
+			<TextBlock
+				Margin="0,6,0,20"
+				Foreground="{StaticResource SecondaryTextBrush}"
+				Text="Monitor, protect and maintain the active Depot database. Credentials are never displayed."
+				TextWrapping="Wrap" />
+
+			<controls:OperationStatus
+				ErrorText="{Binding OperationError}"
+				HasError="{Binding HasOperationError}"
+				IsBusy="{Binding IsBusy}"
+				StatusText="{Binding StatusText}" />
+			<ProgressBar
+				Height="4"
+				Margin="0,0,0,16"
+				Maximum="100"
+				Value="{Binding OperationProgress, Mode=OneWay}"
+				Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}" />
+
+			<controls:Card>
+				<Grid>
+					<Grid.ColumnDefinitions>
+						<ColumnDefinition Width="*" />
+						<ColumnDefinition Width="24" />
+						<ColumnDefinition Width="*" />
+					</Grid.ColumnDefinitions>
+					<Grid.RowDefinitions>
+						<RowDefinition Height="Auto" />
+						<RowDefinition Height="8" />
+						<RowDefinition Height="Auto" />
+						<RowDefinition Height="16" />
+						<RowDefinition Height="Auto" />
+						<RowDefinition Height="8" />
+						<RowDefinition Height="Auto" />
+						<RowDefinition Height="16" />
+						<RowDefinition Height="Auto" />
+						<RowDefinition Height="8" />
+						<RowDefinition Height="Auto" />
+					</Grid.RowDefinitions>
+					<TextBlock Text="Provider" Style="{StaticResource FormLabelStyle}" />
+					<TextBlock Grid.Column="2" Text="Schema version" Style="{StaticResource FormLabelStyle}" />
+					<TextBlock Grid.Row="2" Text="{Binding ProviderDisplay}" Style="{StaticResource CardTitleStyle}" />
+					<TextBlock Grid.Row="2" Grid.Column="2" Text="{Binding SchemaVersionDisplay}" Style="{StaticResource CardTitleStyle}" />
+					<TextBlock Grid.Row="4" Text="Active connection" Style="{StaticResource FormLabelStyle}" />
+					<TextBlock Grid.Row="4" Grid.Column="2" Text="Database size" Style="{StaticResource FormLabelStyle}" />
+					<TextBlock Grid.Row="6" Text="{Binding ConnectionDisplay}" TextTrimming="CharacterEllipsis" ToolTip="{Binding ConnectionDisplay}" />
+					<TextBlock Grid.Row="6" Grid.Column="2" Text="{Binding DatabaseSizeDisplay}" />
+					<TextBlock Grid.Row="8" Text="Last successful backup" Style="{StaticResource FormLabelStyle}" />
+					<TextBlock Grid.Row="8" Grid.Column="2" Text="Next scheduled backup" Style="{StaticResource FormLabelStyle}" />
+					<TextBlock Grid.Row="10" Text="{Binding LastBackupDisplay}" />
+					<TextBlock Grid.Row="10" Grid.Column="2" Text="{Binding NextBackupDisplay}" />
+				</Grid>
+			</controls:Card>
+
+			<controls:Card Margin="0,16,0,0">
+				<StackPanel>
+					<TextBlock Text="Automatic backups" Style="{StaticResource CardTitleStyle}" />
+					<CheckBox
+						Margin="0,16,0,0"
+						Content="Create backups automatically"
+						IsChecked="{Binding AutomaticBackupsEnabled}"
+						Style="{StaticResource AppCheckBoxStyle}" />
+					<Grid Margin="0,16,0,0">
+						<Grid.ColumnDefinitions>
+							<ColumnDefinition Width="*" />
+							<ColumnDefinition Width="16" />
+							<ColumnDefinition Width="160" />
+						</Grid.ColumnDefinitions>
+						<Grid.RowDefinitions>
+							<RowDefinition Height="Auto" />
+							<RowDefinition Height="4" />
+							<RowDefinition Height="Auto" />
+						</Grid.RowDefinitions>
+						<TextBlock Text="Backup directory" Style="{StaticResource FormLabelStyle}" />
+						<TextBlock Grid.Column="2" Text="Interval in days" Style="{StaticResource FormLabelStyle}" />
+						<TextBox Grid.Row="2" Style="{StaticResource AppTextBoxStyle}" Text="{Binding BackupDirectory}" />
+						<TextBox Grid.Row="2" Grid.Column="2" Style="{StaticResource AppTextBoxStyle}" Text="{Binding BackupIntervalDays}" />
+					</Grid>
+					<TextBlock
+						Margin="0,8,0,0"
+						Style="{StaticResource HintStyle}"
+						Text="The encrypted depot.settings file stores the schedule. Due backups resume automatically after a restart." />
+					<Button
+						Margin="0,16,0,0"
+						HorizontalAlignment="Right"
+						Command="{Binding SaveCommand}"
+						Content="Save backup schedule"
+						Style="{StaticResource PrimaryButtonStyle}" />
+				</StackPanel>
+			</controls:Card>
+
+			<controls:Card Margin="0,16,0,0">
+				<StackPanel>
+					<TextBlock Text="Maintenance actions" Style="{StaticResource CardTitleStyle}" />
+					<WrapPanel Margin="0,16,0,0">
+						<Button Command="{Binding CreateBackupCommand}" Content="Create backup" Style="{StaticResource PrimaryButtonStyle}" />
+						<Button Margin="8,0,0,0" Command="{Binding RestoreBackupCommand}" Content="Restore backup" Style="{StaticResource SecondaryButtonStyle}" />
+						<Button Margin="8,0,0,0" Command="{Binding ValidateBackupCommand}" Content="Validate backup" Style="{StaticResource SecondaryButtonStyle}" />
+						<Button Margin="8,0,0,0" Command="{Binding CheckIntegrityCommand}" Content="Check integrity" Style="{StaticResource SecondaryButtonStyle}" />
+						<Button Margin="8,0,0,0" Command="{Binding CompactCommand}" Content="Compact SQLite" Style="{StaticResource SecondaryButtonStyle}" />
+						<Button Margin="8,0,0,0" Command="{Binding RefreshCommand}" Content="Refresh" Style="{StaticResource SecondaryButtonStyle}" />
+					</WrapPanel>
+					<TextBlock
+						Margin="0,12,0,0"
+						Foreground="{StaticResource SecondaryTextBrush}"
+						Text="Restore validates the selected backup and creates a safety backup before replacing any records. Compact is available only for SQLite."
+						TextWrapping="Wrap" />
+				</StackPanel>
+			</controls:Card>
+
+			<TextBlock Margin="0,24,0,12" Text="Available backups" Style="{StaticResource SectionTitleStyle}" />
+			<DataGrid
+				MinHeight="220"
+				AutoGenerateColumns="False"
+				ItemsSource="{Binding Backups}"
+				SelectedItem="{Binding SelectedBackup}"
+				Style="{StaticResource AppDataGridStyle}">
+				<DataGrid.Columns>
+					<DataGridTextColumn Width="145" Binding="{Binding CreatedDisplay}" Header="Created" />
+					<DataGridTextColumn Width="90" Binding="{Binding SizeDisplay}" Header="Size" />
+					<DataGridTextColumn Width="90" Binding="{Binding Provider}" Header="Provider" />
+					<DataGridCheckBoxColumn Width="70" Binding="{Binding IsValid}" Header="Valid" IsReadOnly="True" />
+					<DataGridTextColumn Width="*" Binding="{Binding FilePath}" Header="Path" />
+				</DataGrid.Columns>
+			</DataGrid>
+			<TextBlock
+				Margin="0,8,0,24"
+				Foreground="{StaticResource SecondaryTextBrush}"
+				Text="{Binding SelectedBackup.ValidationMessage}"
+				TextWrapping="Wrap" />
 		</StackPanel>
 	</ScrollViewer>
 </UserControl>

@@ -32,7 +32,9 @@ public sealed class AdministrationViewModel
 		UserService userService,
 		SettingsService settingsService,
 		ConnectionStatusService connectionStatusService,
-		DatabaseConnectionTester databaseConnectionTester)
+		DatabaseConnectionTester databaseConnectionTester,
+		DatabaseManagementService databaseManagementService,
+		IFileDialogService fileDialogService)
 	{
 		_importViewModel = importViewModel;
 		_masterDataViewModel = new MasterDataViewModel(purposeService, locationService);
@@ -43,7 +45,9 @@ public sealed class AdministrationViewModel
 			new DatabaseSettingsViewModel(
 				settingsService,
 				connectionStatusService,
-				databaseConnectionTester);
+				databaseConnectionTester,
+				databaseManagementService,
+				fileDialogService);
 
 		NavigationItems.Add(
 			new NavigationItem
@@ -150,6 +154,7 @@ public sealed class AdministrationViewModel
 		{
 			MasterDataViewModel masterData => masterData.LoadAsync(),
 			UserViewModel users => users.LoadUsersAsync(),
+			DatabaseSettingsViewModel database => database.LoadAsync(),
 			_ => Task.CompletedTask
 		};
 }

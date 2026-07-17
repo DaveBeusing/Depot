@@ -5,6 +5,8 @@ public interface IFileDialogService
     string? ShowOpenFile(OpenFileDialogRequest request);
 
     string? ShowSaveFile(SaveFileDialogRequest request);
+
+    bool Confirm(ConfirmationDialogRequest request);
 }
 
 public sealed record OpenFileDialogRequest(
@@ -17,3 +19,8 @@ public sealed record SaveFileDialogRequest(
     string DefaultExtension,
     string SuggestedFileName,
     bool OverwritePrompt = true);
+
+public sealed record ConfirmationDialogRequest(
+    string Title,
+    string Message,
+    bool IsDestructive = false);

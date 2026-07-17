@@ -43,6 +43,8 @@ public partial class App : Application
 	public static SettingsService SettingsService { get; private set; } = null!;
 	public static ConnectionStatusService ConnectionStatusService { get; private set; } = null!;
 	public static DatabaseConnectionTester DatabaseConnectionTester { get; private set; } = null!;
+	public static DatabaseManagementService DatabaseManagementService { get; private set; } = null!;
+	public static DatabaseBackupScheduler DatabaseBackupScheduler { get; private set; } = null!;
 	public static AuditService AuditService { get; private set; } = null!;
 	public static ItemService ItemService { get; private set; } = null!;
 	public static PurposeService PurposeService { get; private set; } = null!;
@@ -90,6 +92,9 @@ public partial class App : Application
 		Database.Initialize();
 		ConnectionStatusService.SetConnected(connectionSettings);
 		DatabaseConnectionTester = new DatabaseConnectionTester();
+		DatabaseManagementService = new DatabaseManagementService(ConnectionFactory, SettingsService);
+		DatabaseBackupScheduler = new DatabaseBackupScheduler(DatabaseManagementService, SettingsService);
+		DatabaseBackupScheduler.Start();
 
 		StartupDiagnostics.Log("Database initialized.");
 
@@ -265,7 +270,8 @@ public partial class App : Application
 				FileDialogService,
 				SettingsService,
 				ConnectionStatusService,
-				DatabaseConnectionTester);
+				DatabaseConnectionTester,
+				DatabaseManagementService);
 
 		StartupDiagnostics.Log("MainViewModel created.");
 
@@ -299,5 +305,11 @@ public partial class App : Application
 		StartupDiagnostics.LogException(e.Exception);
 		StartupDiagnostics.ShowRuntimeError(e.Exception);
 		e.Handled = true;
+	}
+
+	protected override void OnExit(ExitEventArgs e)
+	{
+		DatabaseBackupScheduler?.Dispose();
+		base.OnExit(e);
 	}
 }
