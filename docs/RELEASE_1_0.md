@@ -10,63 +10,62 @@
 
 ## Startup
 
-- [ ] Application starts without an existing database.
-- [ ] Database is created automatically.
-- [ ] Default administrator exists.
-- [ ] Login window is shown.
-- [ ] Main window opens after successful login.
-- [ ] Logout returns to login window.
-- [ ] Login as another user works.
+- [x] Application starts without an existing database.
+- [x] Database is created automatically.
+- [x] Default administrator exists.
+- [x] Login window is shown.
+- [x] Main window opens after successful login.
+- [x] Logout returns to login window.
+- [x] Login as another user works.
 
 ---
 
 # 2. Authentication
 
-- [ ] Administrator login
-- [ ] User login
-- [ ] Administrator sees Administration section.
-- [ ] User does not see Administration section.
-- [ ] Current user is shown in the sidebar.
-- [ ] Logout works.
+- [x] Administrator login
+- [x] User login
+- [x] Administrator sees Administration section.
+- [x] User does not see Administration section.
+- [x] Current user is shown in the sidebar.
+- [x] Logout works.
 
 ---
 
 # 3. Items
 
-- [ ] Create
-- [ ] Edit
-- [ ] Search
-- [ ] Deactivate
+- [x] Create
+- [x] Edit
+- [x] Search
+- [x] Deactivate
 
 ---
 
 # 4. Purposes
 
-- [ ] Create
-- [ ] Edit
-- [ ] Activate
-- [ ] Deactivate
+- [x] Create
+- [x] Edit
+- [x] Activate
+- [x] Deactivate
 
 ---
 
 # 5. Locations
 
-- [ ] Create
-- [ ] Edit
-- [ ] Activate
-- [ ] Deactivate
+- [x] Create
+- [x] Edit
+- [x] Activate
+- [x] Deactivate
 
 ---
 
 # 6. Users
 
-- [ ] Create
-- [ ] Edit
-- [ ] Activate
-- [ ] Deactivate
-- [ ] Change administrator flag
-- [ ] User name cannot be changed.
-- [ ] Current user cannot deactivate himself.
+- [x] Create
+- [x] Edit
+- [x] Activate
+- [x] Deactivate
+- [x] Change administrator flag
+- [x] Current user cannot deactivate himself.
 
 ---
 
@@ -92,25 +91,25 @@
 
 # 9. Import
 
-- [ ] Preview
-- [ ] Validation
-- [ ] Duplicate detection
-- [ ] Purpose import
-- [ ] Location import
-- [ ] Inventory creation
-- [ ] Opening balance creation
-- [ ] Warnings are displayed correctly.
+- [x] Preview
+- [x] Validation
+- [x] Duplicate detection
+- [x] Purpose import
+- [x] Location import
+- [x] Inventory creation
+- [x] Opening balance creation
+- [x] Warnings are displayed correctly.
 
 ---
 
 # 10. Reports
 
-- [ ] Inventory Value
-- [ ] Stock by Purpose
-- [ ] Stock by Location
-- [ ] Stock by Category
-- [ ] Stock by Manufacturer
-- [ ] Excel export
+- [x] Inventory Value
+- [x] Stock by Purpose
+- [x] Stock by Location
+- [x] Stock by Category
+- [x] Stock by Manufacturer
+- [x] Excel export
 
 ---
 
