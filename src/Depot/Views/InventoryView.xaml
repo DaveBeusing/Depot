@@ -8,6 +8,7 @@
 		<Grid.RowDefinitions>
 			<RowDefinition Height="Auto" />
 			<RowDefinition Height="Auto" />
+			<RowDefinition Height="Auto" />
 			<RowDefinition Height="*" />
 		</Grid.RowDefinitions>
 
@@ -23,7 +24,14 @@
 			Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
 			ToolTip="Search by part number, description, manufacturer, category, purpose, or location" />
 
-		<Grid Grid.Row="2">
+		<controls:OperationStatus
+			Grid.Row="2"
+			IsBusy="{Binding IsBusy}"
+			HasError="{Binding HasOperationError}"
+			StatusText="{Binding StatusText}"
+			ErrorText="{Binding OperationError}" />
+
+		<Grid Grid.Row="3">
 			<Grid.ColumnDefinitions>
 				<ColumnDefinition Width="3*" />
 				<ColumnDefinition Width="24" />
@@ -32,7 +40,14 @@
 
 			<controls:Card Grid.Column="0">
 				<controls:Card.Header>
-					<TextBlock Text="Inventory Overview" Style="{StaticResource SectionTitleStyle}" />
+					<DockPanel>
+						<StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+							<Button Command="{Binding PreviousPageCommand}" Content="Previous" Style="{StaticResource SecondaryButtonStyle}" />
+							<TextBlock Margin="12,0" VerticalAlignment="Center" Text="{Binding PageNumber, StringFormat=Page {0}}" />
+							<Button Command="{Binding NextPageCommand}" Content="Next" Style="{StaticResource SecondaryButtonStyle}" />
+						</StackPanel>
+						<TextBlock Text="Inventory Overview" Style="{StaticResource SectionTitleStyle}" />
+					</DockPanel>
 				</controls:Card.Header>
 
 				<Grid>

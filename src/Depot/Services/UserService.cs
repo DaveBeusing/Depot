@@ -29,6 +29,97 @@ public sealed class UserService
 
 	public IReadOnlyList<User> GetUsers() => _userRepository.GetAll();
 
+	public Task<PageResult<User>> SearchUsersAsync(
+		string? searchText,
+		int pageNumber,
+		int pageSize,
+		CancellationToken cancellationToken) =>
+		_userRepository.SearchPageAsync(searchText, pageNumber, pageSize, cancellationToken);
+
+	public async Task<User> CreateUserAsync(
+		string email,
+		string displayName,
+		string password,
+		bool isAdministrator,
+		CancellationToken cancellationToken)
+	{
+		email = NormalizeAndValidateEmail(email);
+		displayName = ValidateDisplayName(displayName);
+		ValidatePassword(password);
+		if (await _userRepository.GetByEmailAsync(email, cancellationToken) is not null)
+			throw new InvalidOperationException($"A user with email '{email}' already exists.");
+		var user = new User
+		{
+			Email = email,
+			DisplayName = displayName,
+			IsAdministrator = isAdministrator,
+			IsActive = true,
+			CreatedUtc = DateTime.UtcNow
+		};
+		user.Id = await _userRepository.CreateAsync(
+			user,
+			_passwordHasher.Hash(password),
+			cancellationToken);
+		await _auditService.RecordCreatedAsync(user.Id, user, cancellationToken);
+		return user;
+	}
+
+	public async Task<User> UpdateUserAsync(
+		long id,
+		long expectedVersion,
+		string email,
+		string displayName,
+		string password,
+		bool isAdministrator,
+		CancellationToken cancellationToken)
+	{
+		if (id <= 0) throw new ArgumentException("User id is required.", nameof(id));
+		email = NormalizeAndValidateEmail(email);
+		displayName = ValidateDisplayName(displayName);
+		if (!string.IsNullOrEmpty(password)) ValidatePassword(password);
+		var user = await _userRepository.GetByIdAsync(id, cancellationToken)
+			?? throw new InvalidOperationException($"User with id '{id}' was not found.");
+		if (user.Version != expectedVersion) throw new ConcurrencyConflictException("user");
+		var duplicate = await _userRepository.GetByEmailAsync(email, cancellationToken);
+		if (duplicate is not null && duplicate.Id != id)
+			throw new InvalidOperationException($"A user with email '{email}' already exists.");
+		var before = Copy(user);
+		user.Email = email;
+		user.DisplayName = displayName;
+		user.IsAdministrator = isAdministrator;
+		var passwordHash = string.IsNullOrEmpty(password) ? null : _passwordHasher.Hash(password);
+		if (!await _userRepository.UpdateAsync(user, passwordHash, cancellationToken))
+			throw new ConcurrencyConflictException("user");
+		user.Version++;
+		await _auditService.RecordUpdatedAsync(user.Id, before, user, cancellationToken);
+		if (_authorizationService.CurrentUser?.Id == user.Id) _authorizationService.SignIn(user);
+		return user;
+	}
+
+	public async Task<User> SetActiveAsync(
+		long id,
+		bool isActive,
+		long expectedVersion,
+		CancellationToken cancellationToken)
+	{
+		if (id <= 0) throw new ArgumentException("User id is required.", nameof(id));
+		var user = await _userRepository.GetByIdAsync(id, cancellationToken)
+			?? throw new InvalidOperationException($"User with id '{id}' was not found.");
+		if (user.Version != expectedVersion) throw new ConcurrencyConflictException("user");
+		if (!isActive && _authorizationService.CurrentUser?.Id == user.Id)
+			throw new InvalidOperationException("The currently signed-in user cannot be deactivated.");
+		if (!await _userRepository.SetActiveAsync(id, isActive, expectedVersion, cancellationToken))
+			throw new ConcurrencyConflictException("user");
+		var before = Copy(user);
+		user.IsActive = isActive;
+		user.Version++;
+		if (isActive)
+			await _auditService.RecordUpdatedAsync(user.Id, before, user, cancellationToken);
+		else
+			await _auditService.RecordDeactivatedAsync(user.Id, before, user, cancellationToken);
+		return user;
+	}
+
 	public User CreateUser(
 		string email,
 		string displayName,

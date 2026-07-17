@@ -141,5 +141,15 @@ public sealed class AdministrationViewModel
 						"Administration",
 						"This administration section is currently under development.")
 			};
+
+		_ = LoadCurrentViewModelAsync();
 	}
+
+	private Task LoadCurrentViewModelAsync() =>
+		CurrentViewModel switch
+		{
+			MasterDataViewModel masterData => masterData.LoadAsync(),
+			UserViewModel users => users.LoadUsersAsync(),
+			_ => Task.CompletedTask
+		};
 }

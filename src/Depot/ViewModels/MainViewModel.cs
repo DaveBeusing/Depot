@@ -12,6 +12,7 @@ namespace Depot.ViewModels;
 
 public sealed class MainViewModel : BaseViewModel
 {
+	private CancellationTokenSource? _navigationLoadCancellation;
 	private NavigationItem? _selectedNavigationItem;
 	private BaseViewModel? _currentViewModel;
 	private readonly AuthorizationService _authorizationService;
@@ -193,25 +194,33 @@ public sealed class MainViewModel : BaseViewModel
 			ShellSection.Administration => AdministrationViewModel,
 			_ => DashboardViewModel
 		};
+		_navigationLoadCancellation?.Cancel();
+		_navigationLoadCancellation?.Dispose();
+		_navigationLoadCancellation = new CancellationTokenSource();
+		_ = LoadCurrentViewModelAsync(_navigationLoadCancellation.Token);
+	}
 
+	private async Task LoadCurrentViewModelAsync(CancellationToken cancellationToken)
+	{
 		if (CurrentViewModel == DashboardViewModel)
 		{
-			DashboardViewModel.Load();
+			await DashboardViewModel.LoadAsync(cancellationToken);
 		}
-
-		if (CurrentViewModel == InventoryViewModel)
+		else if (CurrentViewModel == InventoryViewModel)
 		{
-			InventoryViewModel.Load();
+			await InventoryViewModel.LoadAsync(cancellationToken);
 		}
-
-		if (CurrentViewModel == MovementsViewModel)
+		else if (CurrentViewModel == ItemsViewModel)
 		{
-			MovementsViewModel.Load();
+			await ItemsViewModel.LoadItemsAsync(cancellationToken);
 		}
-
-		if (CurrentViewModel == ReportsViewModel)
+		else if (CurrentViewModel == MovementsViewModel)
 		{
-			ReportsViewModel.Load();
+			await MovementsViewModel.LoadAsync(cancellationToken);
+		}
+		else if (CurrentViewModel == ReportsViewModel)
+		{
+			await ReportsViewModel.LoadAsync(cancellationToken);
 		}
 	}
 

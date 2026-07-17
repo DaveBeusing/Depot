@@ -29,14 +29,34 @@ public sealed class AuditService
 	public void RecordCreated<T>(long entityId, T entity) where T : class =>
 		Record(typeof(T).Name, entityId, "Created", null, entity);
 
+	public Task RecordCreatedAsync<T>(
+		long entityId,
+		T entity,
+		CancellationToken cancellationToken) where T : class =>
+		RecordAsync(typeof(T).Name, entityId, "Created", null, entity, cancellationToken);
+
 	public AuditEntry CreateCreatedEntry<T>(long entityId, T entity) where T : class =>
 		CreateEntry(typeof(T).Name, entityId, "Created", null, entity);
 
 	public void RecordUpdated<T>(long entityId, T before, T after) where T : class =>
 		Record(typeof(T).Name, entityId, "Updated", before, after);
 
+	public Task RecordUpdatedAsync<T>(
+		long entityId,
+		T before,
+		T after,
+		CancellationToken cancellationToken) where T : class =>
+		RecordAsync(typeof(T).Name, entityId, "Updated", before, after, cancellationToken);
+
 	public void RecordDeactivated<T>(long entityId, T before, T after) where T : class =>
 		Record(typeof(T).Name, entityId, "Deactivated", before, after);
+
+	public Task RecordDeactivatedAsync<T>(
+		long entityId,
+		T before,
+		T after,
+		CancellationToken cancellationToken) where T : class =>
+		RecordAsync(typeof(T).Name, entityId, "Deactivated", before, after, cancellationToken);
 
 	private void Record<T>(
 		string entityType,
@@ -46,6 +66,19 @@ public sealed class AuditService
 		T? after) where T : class
 	{
 		_auditRepository.Create(CreateEntry(entityType, entityId, action, before, after));
+	}
+
+	private async Task RecordAsync<T>(
+		string entityType,
+		long entityId,
+		string action,
+		T? before,
+		T? after,
+		CancellationToken cancellationToken) where T : class
+	{
+		await _auditRepository.CreateAsync(
+			CreateEntry(entityType, entityId, action, before, after),
+			cancellationToken);
 	}
 
 	private AuditEntry CreateEntry<T>(

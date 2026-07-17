@@ -62,6 +62,13 @@
 						TextWrapping="Wrap" />
 				</Border>
 
+				<controls:OperationStatus
+					Margin="0,16,0,0"
+					IsBusy="{Binding IsBusy}"
+					HasError="{Binding HasOperationError}"
+					StatusText="{Binding StatusText}"
+					ErrorText="{Binding OperationError}" />
+
 				<Button
 					Margin="0,24,0,0"
 					HorizontalAlignment="Stretch"

@@ -8,7 +8,7 @@
 
 		<Grid.RowDefinitions>
 			<RowDefinition Height="Auto" />
-			<RowDefinition Height="24" />
+			<RowDefinition Height="Auto" />
 			<RowDefinition Height="Auto" />
 			<RowDefinition Height="24" />
 			<RowDefinition Height="*" />
@@ -17,6 +17,13 @@
 		<controls:PageHeader
 			Grid.Row="0"
 			Title="Dashboard" />
+
+		<controls:OperationStatus
+			Grid.Row="1"
+			IsBusy="{Binding IsBusy}"
+			HasError="{Binding HasOperationError}"
+			StatusText="{Binding StatusText}"
+			ErrorText="{Binding OperationError}" />
 
 		<Grid Grid.Row="2">
 

@@ -4,91 +4,92 @@
 using System.Collections.ObjectModel;
 
 using Depot.Commands;
+using Depot.Models;
 using Depot.Services;
 
 namespace Depot.ViewModels;
 
-public sealed class ItemsViewModel
-	: BaseViewModel
+public sealed class ItemsViewModel : BaseViewModel, IDisposable
 {
+	private const int PageSize = 100;
 	private readonly ItemService _itemService;
-
+	private readonly AsyncDebouncer _searchDebouncer = new(TimeSpan.FromMilliseconds(300));
 	private ItemViewModel? _selectedItem;
 	private string? _errorMessage;
 	private string _searchText = string.Empty;
+	private int _pageNumber = 1;
+	private long _totalCount;
 
-	public ItemsViewModel(
-		ItemService itemService)
+	public ItemsViewModel(ItemService itemService)
 	{
 		_itemService = itemService;
-
 		Editor = new ItemEditorViewModel();
-
-		NewItemCommand =
-			new RelayCommand(
-				NewItem);
-
-		SaveItemCommand =
-			new RelayCommand(
-				SaveItem);
-
-		DeactivateItemCommand =
-			new RelayCommand(
-				DeactivateItem,
-				CanDeactivateItem);
-
-		LoadItems();
+		NewItemCommand = new RelayCommand(NewItem);
+		SaveItemCommand = new AsyncRelayCommand(SaveItemAsync);
+		DeactivateItemCommand = new AsyncRelayCommand(DeactivateItemAsync, CanDeactivateItem);
+		PreviousPageCommand = new AsyncRelayCommand(PreviousPageAsync, () => PageNumber > 1);
+		NextPageCommand = new AsyncRelayCommand(NextPageAsync, () => HasNextPage);
 	}
 
-	public ObservableCollection<ItemViewModel> Items { get; }
-		= new();
-
+	public ObservableCollection<ItemViewModel> Items { get; } = new();
 	public bool HasItems => Items.Count > 0;
-
 	public bool HasNoItems => !HasItems;
-
+	public bool HasNextPage => (long)PageNumber * PageSize < TotalCount;
 	public ItemEditorViewModel Editor { get; }
-
 	public RelayCommand NewItemCommand { get; }
+	public AsyncRelayCommand SaveItemCommand { get; }
+	public AsyncRelayCommand DeactivateItemCommand { get; }
+	public AsyncRelayCommand PreviousPageCommand { get; }
+	public AsyncRelayCommand NextPageCommand { get; }
 
-	public RelayCommand SaveItemCommand { get; }
+	public int PageNumber
+	{
+		get => _pageNumber;
+		private set
+		{
+			if (_pageNumber == value) return;
+			_pageNumber = value;
+			OnPropertyChanged();
+			OnPropertyChanged(nameof(HasNextPage));
+			RaisePagingCommands();
+		}
+	}
 
-	public RelayCommand DeactivateItemCommand { get; }
+	public long TotalCount
+	{
+		get => _totalCount;
+		private set
+		{
+			if (_totalCount == value) return;
+			_totalCount = value;
+			OnPropertyChanged();
+			OnPropertyChanged(nameof(HasNextPage));
+			RaisePagingCommands();
+		}
+	}
 
 	public string SearchText
 	{
 		get => _searchText;
-
 		set
 		{
-			if (_searchText == value)
-			{
-				return;
-			}
-
+			if (_searchText == value) return;
 			_searchText = value;
 			OnPropertyChanged();
-
-			LoadItems();
+			PageNumber = 1;
+			_ = _searchDebouncer.DebounceAsync(token => LoadItemsAsync(token));
 		}
 	}
 
 	public ItemViewModel? SelectedItem
 	{
 		get => _selectedItem;
-
 		set
 		{
-			if (_selectedItem == value)
-			{
-				return;
-			}
-
+			if (_selectedItem == value) return;
 			_selectedItem = value;
 			OnPropertyChanged();
-
 			LoadSelectedItem();
-
 			DeactivateItemCommand.RaiseCanExecuteChanged();
 		}
 	}
@@ -96,54 +97,50 @@ public sealed class ItemsViewModel
 	public string? ErrorMessage
 	{
 		get => _errorMessage;
-
 		private set
 		{
+			if (_errorMessage == value) return;
 			_errorMessage = value;
 			OnPropertyChanged();
-			OnPropertyChanged(
-				nameof(HasErrorMessage));
+			OnPropertyChanged(nameof(HasErrorMessage));
 		}
 	}
 
-	public bool HasErrorMessage =>
-		!string.IsNullOrWhiteSpace(
-			ErrorMessage);
+	public bool HasErrorMessage => !string.IsNullOrWhiteSpace(ErrorMessage);
 
-	public void LoadItems()
+	public async Task LoadItemsAsync(CancellationToken cancellationToken = default)
 	{
-		var selectedItemId =
-			SelectedItem?.Id;
-
-		Items.Clear();
-
-		foreach (var item in _itemService.SearchItems(SearchText))
+		BeginOperation("Loading items");
+		var selectedId = SelectedItem?.Id;
+		try
 		{
-			Items.Add(
-				new ItemViewModel(
-					item));
+			var page = await _itemService.SearchItemsAsync(
+				SearchText,
+				PageNumber,
+				PageSize,
+				cancellationToken);
+			Items.Clear();
+			foreach (var item in page.Items) Items.Add(new ItemViewModel(item));
+			TotalCount = page.TotalCount;
+			SelectedItem = selectedId is null ? null : Items.FirstOrDefault(x => x.Id == selectedId);
+			RaiseCollectionState();
+			CompleteOperation(Items.Count == 0, $"{page.TotalCount:N0} items");
 		}
-
-		OnPropertyChanged(nameof(HasItems));
-		OnPropertyChanged(nameof(HasNoItems));
-
-		if (selectedItemId is not null)
+		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
 		{
-			SelectedItem =
-				Items.FirstOrDefault(
-					x => x.Id == selectedItemId.Value);
+			CompleteOperation(Items.Count == 0);
+		}
+		catch (Exception exception)
+		{
+			ErrorMessage = exception.Message;
+			FailOperation(exception, "Items could not be loaded");
 		}
 	}
 
 	private void LoadSelectedItem()
 	{
 		ClearError();
-
-		if (SelectedItem is null)
-		{
-			return;
-		}
-
+		if (SelectedItem is null) return;
 		Editor.Id = SelectedItem.Id;
 		Editor.PartNumber = SelectedItem.PartNumber;
 		Editor.Description = SelectedItem.Description;
@@ -155,86 +152,129 @@ public sealed class ItemsViewModel
 	private void NewItem()
 	{
 		ClearError();
-
 		SelectedItem = null;
-
 		Editor.Clear();
-
 		DeactivateItemCommand.RaiseCanExecuteChanged();
 	}
 
-	private void SaveItem()
+	private async Task SaveItemAsync(CancellationToken cancellationToken)
 	{
 		ClearError();
-
+		BeginOperation("Saving item");
 		try
 		{
-			if (Editor.Id == 0)
-			{
-				_itemService.CreateItem(
+			var item = Editor.Id == 0
+				? await _itemService.CreateItemAsync(
 					Editor.PartNumber,
 					Editor.Description,
 					Editor.Manufacturer,
-					Editor.Category);
-			}
-			else
-			{
-				_itemService.UpdateItem(
+					Editor.Category,
+					cancellationToken)
+				: await _itemService.UpdateItemAsync(
 					Editor.Id,
 					Editor.Version,
 					Editor.Description,
 					Editor.Manufacturer,
-					Editor.Category);
-			}
-
-			LoadItems();
-
+					Editor.Category,
+					cancellationToken);
+			UpdateItem(item);
 			Editor.Clear();
-
 			SelectedItem = null;
+			CompleteOperation(Items.Count == 0, "Item saved");
 		}
-		catch (Exception ex)
+		catch (Exception exception) when (exception is not OperationCanceledException)
 		{
-			ErrorMessage = ex.Message;
+			ErrorMessage = exception.Message;
+			FailOperation(exception, "Item could not be saved");
 		}
 	}
 
-	private bool CanDeactivateItem()
-	{
-		return Editor.IsExistingItem;
-	}
+	private bool CanDeactivateItem() => Editor.IsExistingItem;
 
-	private void DeactivateItem()
+	private async Task DeactivateItemAsync(CancellationToken cancellationToken)
 	{
 		ClearError();
-
-		if (!Editor.IsExistingItem)
-		{
-			return;
-		}
-
+		if (!Editor.IsExistingItem) return;
+		BeginOperation("Deactivating item");
 		try
 		{
-			_itemService.DeactivateItem(
-				Editor.Id,
-				Editor.Version);
-
-			LoadItems();
-
+			var id = Editor.Id;
+			await _itemService.DeactivateItemAsync(id, Editor.Version, cancellationToken);
+			var existing = Items.FirstOrDefault(x => x.Id == id);
+			if (existing is not null) Items.Remove(existing);
+			TotalCount = Math.Max(0, TotalCount - 1);
 			Editor.Clear();
-
 			SelectedItem = null;
-
-			DeactivateItemCommand.RaiseCanExecuteChanged();
+			RaiseCollectionState();
+			CompleteOperation(Items.Count == 0, "Item deactivated");
 		}
-		catch (Exception ex)
+		catch (Exception exception) when (exception is not OperationCanceledException)
 		{
-			ErrorMessage = ex.Message;
+			ErrorMessage = exception.Message;
+			FailOperation(exception, "Item could not be deactivated");
 		}
 	}
 
-	private void ClearError()
+	private async Task PreviousPageAsync(CancellationToken cancellationToken)
 	{
-		ErrorMessage = null;
+		if (PageNumber <= 1) return;
+		PageNumber--;
+		await LoadItemsAsync(cancellationToken);
+	}
+
+	private async Task NextPageAsync(CancellationToken cancellationToken)
+	{
+		if (!HasNextPage) return;
+		PageNumber++;
+		await LoadItemsAsync(cancellationToken);
+	}
+
+	private void UpdateItem(Item item)
+	{
+		var existing = Items.FirstOrDefault(x => x.Id == item.Id);
+		if (existing is not null)
+		{
+			Items[Items.IndexOf(existing)] = new ItemViewModel(item);
+		}
+		else if (PageNumber == 1 && MatchesSearch(item))
+		{
+			Items.Insert(0, new ItemViewModel(item));
+			if (Items.Count > PageSize) Items.RemoveAt(Items.Count - 1);
+			TotalCount++;
+		}
+		RaiseCollectionState();
+	}
+
+	private bool MatchesSearch(Item item)
+	{
+		if (string.IsNullOrWhiteSpace(SearchText)) return true;
+		var search = SearchText.Trim();
+		return item.PartNumber.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+			item.Description.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+			(item.Manufacturer?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false) ||
+			(item.Category?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false);
+	}
+
+	private void RaiseCollectionState()
+	{
+		OnPropertyChanged(nameof(HasItems));
+		OnPropertyChanged(nameof(HasNoItems));
+	}
+
+	private void RaisePagingCommands()
+	{
+		PreviousPageCommand.RaiseCanExecuteChanged();
+		NextPageCommand.RaiseCanExecuteChanged();
+	}
+
+	private void ClearError() => ErrorMessage = null;
+
+	public void Dispose()
+	{
+		_searchDebouncer.Dispose();
+		SaveItemCommand.Dispose();
+		DeactivateItemCommand.Dispose();
+		PreviousPageCommand.Dispose();
+		NextPageCommand.Dispose();
 	}
 }

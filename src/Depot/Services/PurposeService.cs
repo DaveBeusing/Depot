@@ -13,6 +13,7 @@ public sealed class PurposeService
 {
 	private readonly PurposeRepository _purposeRepository;
 	private readonly AuditService _auditService;
+	private readonly AsyncCache<IReadOnlyList<Purpose>> _cache = new(TimeSpan.FromMinutes(5));
 
 	public PurposeService(
 		PurposeRepository purposeRepository,
@@ -210,6 +211,76 @@ public sealed class PurposeService
 			null);
 	}
 
+	public Task<IReadOnlyList<Purpose>> GetPurposesAsync(CancellationToken cancellationToken) =>
+		_cache.GetAsync(_purposeRepository.ListActiveAsync, cancellationToken);
+
+	public async Task<Purpose> CreatePurposeAsync(
+		string name,
+		string? description,
+		CancellationToken cancellationToken)
+	{
+		(name, description) = Normalize(name, description);
+		ValidateName(name);
+		if (await _purposeRepository.GetByNameAsync(name, cancellationToken) is not null)
+			throw new InvalidOperationException($"Purpose '{name}' already exists.");
+		var purpose = new Purpose { Name = name, Description = description, IsActive = true };
+		purpose.Id = await _purposeRepository.CreateAsync(purpose, cancellationToken);
+		await _auditService.RecordCreatedAsync(purpose.Id, purpose, cancellationToken);
+		_cache.Invalidate();
+		return purpose;
+	}
+
+	public async Task<Purpose> GetOrCreatePurposeAsync(
+		string name,
+		CancellationToken cancellationToken = default)
+	{
+		var (normalizedName, _) = Normalize(name, null);
+		ValidateName(normalizedName);
+		var existing = await _purposeRepository.GetByNameAsync(normalizedName, cancellationToken);
+		return existing ?? await CreatePurposeAsync(normalizedName, null, cancellationToken);
+	}
+
+	public async Task<Purpose> UpdatePurposeAsync(
+		long id,
+		long expectedVersion,
+		string name,
+		string? description,
+		CancellationToken cancellationToken)
+	{
+		(name, description) = Normalize(name, description);
+		if (id <= 0) throw new ArgumentException("Purpose id is required.", nameof(id));
+		ValidateName(name);
+		var purpose = await _purposeRepository.GetByIdAsync(id, cancellationToken)
+			?? throw new InvalidOperationException($"Purpose with id '{id}' was not found.");
+		if (purpose.Version != expectedVersion) throw new ConcurrencyConflictException("purpose");
+		var duplicate = await _purposeRepository.GetByNameAsync(name, cancellationToken);
+		if (duplicate is not null && duplicate.Id != id)
+			throw new InvalidOperationException($"Purpose '{name}' already exists.");
+		var before = Copy(purpose);
+		purpose.Name = name;
+		purpose.Description = description;
+		if (!await _purposeRepository.UpdateAsync(purpose, cancellationToken))
+			throw new ConcurrencyConflictException("purpose");
+		purpose.Version++;
+		await _auditService.RecordUpdatedAsync(purpose.Id, before, purpose, cancellationToken);
+		_cache.Invalidate();
+		return purpose;
+	}
+
+	public async Task DeactivatePurposeAsync(long id, long expectedVersion, CancellationToken cancellationToken)
+	{
+		var purpose = await _purposeRepository.GetByIdAsync(id, cancellationToken)
+			?? throw new InvalidOperationException($"Purpose with id '{id}' was not found.");
+		if (purpose.Version != expectedVersion ||
+			!await _purposeRepository.DeactivateAsync(id, expectedVersion, cancellationToken))
+			throw new ConcurrencyConflictException("purpose");
+		var before = Copy(purpose);
+		purpose.IsActive = false;
+		purpose.Version++;
+		await _auditService.RecordDeactivatedAsync(purpose.Id, before, purpose, cancellationToken);
+		_cache.Invalidate();
+	}
+
 	private static Purpose Copy(Purpose purpose) =>
 		new()
 		{
@@ -219,5 +290,14 @@ public sealed class PurposeService
 			IsActive = purpose.IsActive,
 			Version = purpose.Version
 		};
+
+	private static (string Name, string? Description) Normalize(string name, string? description) =>
+		(name.Trim(), string.IsNullOrWhiteSpace(description) ? null : description.Trim());
+
+	private static void ValidateName(string name)
+	{
+		if (string.IsNullOrWhiteSpace(name))
+			throw new ArgumentException("Purpose name is required.", nameof(name));
+	}
 
 }

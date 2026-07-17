@@ -17,6 +17,50 @@ public sealed class LocationRepository : DatabaseRepository
 	{
 	}
 
+	public Task<IReadOnlyList<Location>> ListActiveAsync(CancellationToken cancellationToken) =>
+		Database.QueryAsync(
+			$"SELECT {SelectColumns} FROM Locations WHERE IsActive = 1 ORDER BY Name;",
+			ReadLocation,
+			cancellationToken);
+
+	public Task<Location?> GetByIdAsync(long id, CancellationToken cancellationToken) =>
+		Database.QuerySingleOrDefaultAsync(
+			$"SELECT {SelectColumns} FROM Locations WHERE Id = $Id;",
+			ReadLocation,
+			cancellationToken,
+			Parameter("$Id", id));
+
+	public Task<Location?> GetByNameAsync(string name, CancellationToken cancellationToken) =>
+		Database.QuerySingleOrDefaultAsync(
+			$"SELECT {SelectColumns} FROM Locations WHERE Name = $Name;",
+			ReadLocation,
+			cancellationToken,
+			Parameter("$Name", name));
+
+	public Task<long> CreateAsync(Location location, CancellationToken cancellationToken) =>
+		Database.InsertAsync(
+			"INSERT INTO Locations (Name, Description, IsActive) VALUES ($Name, $Description, $IsActive);",
+			cancellationToken,
+			Parameter("$Name", location.Name),
+			Parameter("$Description", location.Description),
+			Parameter("$IsActive", location.IsActive));
+
+	public async Task<bool> UpdateAsync(Location location, CancellationToken cancellationToken) =>
+		await Database.ExecuteAsync(
+			"UPDATE Locations SET Name = $Name, Description = $Description, Version = Version + 1 WHERE Id = $Id AND Version = $Version;",
+			cancellationToken,
+			Parameter("$Id", location.Id),
+			Parameter("$Name", location.Name),
+			Parameter("$Description", location.Description),
+			Parameter("$Version", location.Version)) == 1;
+
+	public async Task<bool> DeactivateAsync(long id, long version, CancellationToken cancellationToken) =>
+		await Database.ExecuteAsync(
+			"UPDATE Locations SET IsActive = 0, Version = Version + 1 WHERE Id = $Id AND Version = $Version;",
+			cancellationToken,
+			Parameter("$Id", id),
+			Parameter("$Version", version)) == 1;
+
 	public IReadOnlyList<Location> GetAll() =>
 		Database.Query(
 			$"SELECT {SelectColumns} FROM Locations WHERE IsActive = 1 ORDER BY Name;",

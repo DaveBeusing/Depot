@@ -39,14 +39,14 @@ public sealed class ImportViewModel
 				Browse);
 
 		ImportCommand =
-			new RelayCommand(
-				ExecuteImport,
+			new AsyncRelayCommand(
+				ExecuteImportAsync,
 				CanExecuteImport);
 	}
 
 	public RelayCommand BrowseCommand { get; }
 
-	public RelayCommand ImportCommand { get; }
+	public AsyncRelayCommand ImportCommand { get; }
 
 	public ImportResultViewModel Result { get; }
 		= new();
@@ -147,18 +147,23 @@ public sealed class ImportViewModel
 			return;
 		}
 
-		LoadPreview(filePath);
+		_ = LoadPreviewAsync(filePath);
 	}
 
-	public void LoadPreview(
-		string filePath)
+	public async Task LoadPreviewAsync(
+		string filePath,
+		CancellationToken cancellationToken = default)
 	{
-		var preview =
-			_importService.CreatePreview(
-				filePath);
+		BeginOperation("Reading import file...");
 
-		_currentPreview =
-			preview;
+		try
+		{
+			var preview = await Task.Run(
+				() => _importService.CreatePreview(filePath, cancellationToken),
+				cancellationToken);
+
+			_currentPreview =
+				preview;
 
 		Result.Clear();
 
@@ -201,7 +206,17 @@ public sealed class ImportViewModel
 					warning));
 		}
 
-		ImportCommand.RaiseCanExecuteChanged();
+			ImportCommand.RaiseCanExecuteChanged();
+			CompleteOperation(Items.Count == 0, "Import preview ready.");
+		}
+		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+		{
+			return;
+		}
+		catch (Exception ex)
+		{
+			FailOperation(ex, "The import file could not be read.");
+		}
 	}
 
 	private bool CanExecuteImport()
@@ -212,20 +227,35 @@ public sealed class ImportViewModel
 			Items.Count > 0;
 	}
 
-	private void ExecuteImport()
+	private async Task ExecuteImportAsync(CancellationToken cancellationToken)
 	{
 		if (_currentPreview is null)
 		{
 			return;
 		}
 
-		var result =
-			_importService.ExecuteImport(
-				_currentPreview);
+		BeginOperation("Importing inventory...");
 
-		Result.Load(
-			result);
+		try
+		{
+			var preview = _currentPreview;
+			var result = await _importService.ExecuteImportAsync(
+				preview,
+				cancellationToken);
 
-		ImportCommand.RaiseCanExecuteChanged();
+			Result.Load(
+				result);
+
+			ImportCommand.RaiseCanExecuteChanged();
+			CompleteOperation(statusText: "Import completed.");
+		}
+		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+		{
+			return;
+		}
+		catch (Exception ex)
+		{
+			FailOperation(ex, "The import could not be completed.");
+		}
 	}
 }

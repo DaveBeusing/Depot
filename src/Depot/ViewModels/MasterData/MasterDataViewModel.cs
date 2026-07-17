@@ -20,6 +20,7 @@ public sealed class MasterDataViewModel
 	private BaseViewModel? _currentViewModel;
 	private readonly PurposeViewModel _purposeViewModel;
 	private readonly LocationViewModel _locationViewModel;
+	private bool _isInitialized;
 
 	public MasterDataViewModel(
 		PurposeService purposeService,
@@ -44,6 +45,7 @@ public sealed class MasterDataViewModel
 
 		SelectedNavigationItem =
 			NavigationItems[0];
+		_isInitialized = true;
 	}
 
 	public ObservableCollection<NavigationItem> NavigationItems { get; }
@@ -65,6 +67,7 @@ public sealed class MasterDataViewModel
 			OnPropertyChanged();
 
 			UpdateCurrentViewModel();
+			if (_isInitialized) _ = LoadAsync();
 		}
 	}
 
@@ -106,4 +109,12 @@ public sealed class MasterDataViewModel
 						"This module is currently under development.")
 			};
 	}
+
+	public Task LoadAsync(CancellationToken cancellationToken = default) =>
+		CurrentViewModel switch
+		{
+			PurposeViewModel purpose => purpose.LoadPurposesAsync(cancellationToken),
+			LocationViewModel location => location.LoadLocationsAsync(cancellationToken),
+			_ => Task.CompletedTask
+		};
 }

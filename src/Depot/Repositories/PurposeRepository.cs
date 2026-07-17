@@ -17,6 +17,50 @@ public sealed class PurposeRepository : DatabaseRepository
 	{
 	}
 
+	public Task<IReadOnlyList<Purpose>> ListActiveAsync(CancellationToken cancellationToken) =>
+		Database.QueryAsync(
+			$"SELECT {SelectColumns} FROM Purposes WHERE IsActive = 1 ORDER BY Name;",
+			ReadPurpose,
+			cancellationToken);
+
+	public Task<Purpose?> GetByIdAsync(long id, CancellationToken cancellationToken) =>
+		Database.QuerySingleOrDefaultAsync(
+			$"SELECT {SelectColumns} FROM Purposes WHERE Id = $Id;",
+			ReadPurpose,
+			cancellationToken,
+			Parameter("$Id", id));
+
+	public Task<Purpose?> GetByNameAsync(string name, CancellationToken cancellationToken) =>
+		Database.QuerySingleOrDefaultAsync(
+			$"SELECT {SelectColumns} FROM Purposes WHERE Name = $Name;",
+			ReadPurpose,
+			cancellationToken,
+			Parameter("$Name", name));
+
+	public Task<long> CreateAsync(Purpose purpose, CancellationToken cancellationToken) =>
+		Database.InsertAsync(
+			"INSERT INTO Purposes (Name, Description, IsActive) VALUES ($Name, $Description, $IsActive);",
+			cancellationToken,
+			Parameter("$Name", purpose.Name),
+			Parameter("$Description", purpose.Description),
+			Parameter("$IsActive", purpose.IsActive));
+
+	public async Task<bool> UpdateAsync(Purpose purpose, CancellationToken cancellationToken) =>
+		await Database.ExecuteAsync(
+			"UPDATE Purposes SET Name = $Name, Description = $Description, Version = Version + 1 WHERE Id = $Id AND Version = $Version;",
+			cancellationToken,
+			Parameter("$Id", purpose.Id),
+			Parameter("$Name", purpose.Name),
+			Parameter("$Description", purpose.Description),
+			Parameter("$Version", purpose.Version)) == 1;
+
+	public async Task<bool> DeactivateAsync(long id, long version, CancellationToken cancellationToken) =>
+		await Database.ExecuteAsync(
+			"UPDATE Purposes SET IsActive = 0, Version = Version + 1 WHERE Id = $Id AND Version = $Version;",
+			cancellationToken,
+			Parameter("$Id", id),
+			Parameter("$Version", version)) == 1;
+
 	public IReadOnlyList<Purpose> GetAll() =>
 		Database.Query(
 			$"SELECT {SelectColumns} FROM Purposes WHERE IsActive = 1 ORDER BY Name;",

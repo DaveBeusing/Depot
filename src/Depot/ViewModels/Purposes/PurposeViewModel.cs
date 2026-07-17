@@ -32,16 +32,9 @@ public sealed class PurposeViewModel
 			new RelayCommand(
 				NewPurpose);
 
-		SavePurposeCommand =
-			new RelayCommand(
-				SavePurpose);
+		SavePurposeCommand = new AsyncRelayCommand(SavePurposeAsync);
 
-		DeactivatePurposeCommand =
-			new RelayCommand(
-				DeactivatePurpose,
-				CanDeactivatePurpose);
-
-		LoadPurposes();
+		DeactivatePurposeCommand = new AsyncRelayCommand(DeactivatePurposeAsync, CanDeactivatePurpose);
 	}
 
 	public ObservableCollection<PurposeListItemViewModel> Purposes { get; }
@@ -51,9 +44,9 @@ public sealed class PurposeViewModel
 
 	public RelayCommand NewPurposeCommand { get; }
 
-	public RelayCommand SavePurposeCommand { get; }
+	public AsyncRelayCommand SavePurposeCommand { get; }
 
-	public RelayCommand DeactivatePurposeCommand { get; }
+	public AsyncRelayCommand DeactivatePurposeCommand { get; }
 
 	public string SearchText
 	{
@@ -65,7 +58,7 @@ public sealed class PurposeViewModel
 
 			OnPropertyChanged();
 
-			LoadPurposes();
+			_ = LoadPurposesAsync();
 		}
 	}
 
@@ -102,15 +95,17 @@ public sealed class PurposeViewModel
 		!string.IsNullOrWhiteSpace(
 			ErrorMessage);
 
-	public void LoadPurposes()
+	public async Task LoadPurposesAsync(CancellationToken cancellationToken = default)
 	{
+		BeginOperation("Loading purposes");
 		var selectedId =
 			SelectedPurpose?.Id;
 
 		Purposes.Clear();
 
-		var purposes =
-			_purposeService.GetPurposes();
+		try
+		{
+		var purposes = await _purposeService.GetPurposesAsync(cancellationToken);
 
 		if (!string.IsNullOrWhiteSpace(SearchText))
 		{
@@ -139,7 +134,15 @@ public sealed class PurposeViewModel
 		{
 			SelectedPurpose =
 				Purposes.FirstOrDefault(
-					x => x.Id == selectedId.Value);
+						x => x.Id == selectedId.Value);
+		}
+		CompleteOperation(Purposes.Count == 0, $"{Purposes.Count:N0} purposes");
+		}
+		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
+		catch (Exception exception)
+		{
+			ErrorMessage = exception.Message;
+			FailOperation(exception, "Purposes could not be loaded");
 		}
 	}
 
@@ -176,28 +179,26 @@ public sealed class PurposeViewModel
 		DeactivatePurposeCommand.RaiseCanExecuteChanged();
 	}
 
-	private void SavePurpose()
+	private async Task SavePurposeAsync(CancellationToken cancellationToken)
 	{
 		ClearError();
 
 		try
 		{
-			if (Editor.Id == 0)
-			{
-				_purposeService.CreatePurpose(
+			var purpose = Editor.Id == 0
+				? await _purposeService.CreatePurposeAsync(
 					Editor.Name,
-					Editor.Description);
-			}
-			else
-			{
-				_purposeService.UpdatePurpose(
+					Editor.Description,
+					cancellationToken)
+				: await _purposeService.UpdatePurposeAsync(
 					Editor.Id,
 					Editor.Version,
 					Editor.Name,
-					Editor.Description);
-			}
-
-			LoadPurposes();
+					Editor.Description,
+					cancellationToken);
+			var existing = Purposes.FirstOrDefault(x => x.Id == purpose.Id);
+			if (existing is null) Purposes.Add(new PurposeListItemViewModel(purpose));
+			else Purposes[Purposes.IndexOf(existing)] = new PurposeListItemViewModel(purpose);
 
 			Editor.Clear();
 
@@ -215,7 +216,7 @@ public sealed class PurposeViewModel
 		return Editor.IsExistingPurpose;
 	}
 
-	private void DeactivatePurpose()
+	private async Task DeactivatePurposeAsync(CancellationToken cancellationToken)
 	{
 		ClearError();
 
@@ -226,11 +227,12 @@ public sealed class PurposeViewModel
 
 		try
 		{
-			_purposeService.DeactivatePurpose(
+			await _purposeService.DeactivatePurposeAsync(
 				Editor.Id,
-				Editor.Version);
-
-			LoadPurposes();
+				Editor.Version,
+				cancellationToken);
+			var existing = Purposes.FirstOrDefault(x => x.Id == Editor.Id);
+			if (existing is not null) Purposes.Remove(existing);
 
 			Editor.Clear();
 

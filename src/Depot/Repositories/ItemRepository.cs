@@ -18,6 +18,80 @@ public sealed class ItemRepository : DatabaseRepository
 	{
 	}
 
+	public Task<long> CreateAsync(Item item, CancellationToken cancellationToken) =>
+		Database.InsertAsync(
+			"""
+			INSERT INTO Items (PartNumber, Description, Manufacturer, Category, IsActive)
+			VALUES ($PartNumber, $Description, $Manufacturer, $Category, $IsActive);
+			""",
+			cancellationToken,
+			Parameter("$PartNumber", item.PartNumber),
+			Parameter("$Description", item.Description),
+			Parameter("$Manufacturer", item.Manufacturer),
+			Parameter("$Category", item.Category),
+			Parameter("$IsActive", item.IsActive));
+
+	public async Task<bool> UpdateAsync(Item item, CancellationToken cancellationToken) =>
+		await Database.ExecuteAsync(
+			"""
+			UPDATE Items
+			SET Description = $Description, Manufacturer = $Manufacturer, Category = $Category,
+			    IsActive = $IsActive, Version = Version + 1
+			WHERE Id = $Id AND Version = $Version;
+			""",
+			cancellationToken,
+			Parameter("$Id", item.Id),
+			Parameter("$Description", item.Description),
+			Parameter("$Manufacturer", item.Manufacturer),
+			Parameter("$Category", item.Category),
+			Parameter("$IsActive", item.IsActive),
+			Parameter("$Version", item.Version)) == 1;
+
+	public async Task<bool> DeactivateAsync(long id, long version, CancellationToken cancellationToken) =>
+		await Database.ExecuteAsync(
+			"UPDATE Items SET IsActive = 0, Version = Version + 1 WHERE Id = $Id AND Version = $Version;",
+			cancellationToken,
+			Parameter("$Id", id),
+			Parameter("$Version", version)) == 1;
+
+	public Task<PageResult<Item>> SearchPageAsync(
+		string? searchText,
+		int pageNumber,
+		int pageSize,
+		CancellationToken cancellationToken)
+	{
+		var search = searchText?.Trim();
+		var hasSearch = !string.IsNullOrWhiteSpace(search);
+		var filter = hasSearch
+			? "IsActive = 1 AND (PartNumber LIKE $Search OR Description LIKE $Search OR Manufacturer LIKE $Search OR Category LIKE $Search)"
+			: "IsActive = 1";
+		var parameters = hasSearch
+			? new[] { Parameter("$Search", $"%{search}%") }
+			: [];
+		return Database.QueryPageAsync(
+			$"SELECT {SelectColumns} FROM Items WHERE {filter} ORDER BY PartNumber",
+			$"SELECT COUNT(*) FROM Items WHERE {filter};",
+			ReadItem,
+			pageNumber,
+			pageSize,
+			cancellationToken,
+			parameters);
+	}
+
+	public Task<Item?> GetByIdAsync(long id, CancellationToken cancellationToken) =>
+		Database.QuerySingleOrDefaultAsync(
+			$"SELECT {SelectColumns} FROM Items WHERE Id = $Id;",
+			ReadItem,
+			cancellationToken,
+			Parameter("$Id", id));
+
+	public Task<Item?> GetByPartNumberAsync(string partNumber, CancellationToken cancellationToken) =>
+		Database.QuerySingleOrDefaultAsync(
+			$"SELECT {SelectColumns} FROM Items WHERE PartNumber = $PartNumber;",
+			ReadItem,
+			cancellationToken,
+			Parameter("$PartNumber", partNumber));
+
 	public long Create(Item item) =>
 		Database.Insert(
 			"""

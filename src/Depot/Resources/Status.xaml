@@ -101,4 +101,51 @@
 		</Setter>
 	</Style>
 
+	<Style TargetType="{x:Type controls:OperationStatus}">
+		<Setter Property="Visibility" Value="Collapsed" />
+		<Setter Property="Margin" Value="0,0,0,12" />
+		<Setter Property="Template">
+			<Setter.Value>
+				<ControlTemplate TargetType="{x:Type controls:OperationStatus}">
+					<Border
+						x:Name="Container"
+						Padding="12,8"
+						Background="{DynamicResource SurfaceAltBrush}"
+						CornerRadius="6">
+						<Grid>
+							<Grid.ColumnDefinitions>
+								<ColumnDefinition Width="120" />
+								<ColumnDefinition Width="12" />
+								<ColumnDefinition Width="*" />
+							</Grid.ColumnDefinitions>
+							<ProgressBar
+								x:Name="Progress"
+								Height="3"
+								VerticalAlignment="Center"
+								IsIndeterminate="True" />
+							<TextBlock
+								x:Name="Message"
+								Grid.Column="2"
+								VerticalAlignment="Center"
+								Foreground="{DynamicResource SecondaryTextBrush}"
+								Text="{TemplateBinding StatusText}" />
+						</Grid>
+					</Border>
+					<ControlTemplate.Triggers>
+						<Trigger Property="IsBusy" Value="True">
+							<Setter Property="Visibility" Value="Visible" />
+						</Trigger>
+						<Trigger Property="HasError" Value="True">
+							<Setter Property="Visibility" Value="Visible" />
+							<Setter TargetName="Container" Property="Background" Value="{DynamicResource ErrorBrush}" />
+							<Setter TargetName="Message" Property="Foreground" Value="{DynamicResource ErrorForegroundBrush}" />
+							<Setter TargetName="Message" Property="Text" Value="{Binding ErrorText, RelativeSource={RelativeSource TemplatedParent}}" />
+							<Setter TargetName="Progress" Property="Visibility" Value="Collapsed" />
+						</Trigger>
+					</ControlTemplate.Triggers>
+				</ControlTemplate>
+			</Setter.Value>
+		</Setter>
+	</Style>
+
 </ResourceDictionary>

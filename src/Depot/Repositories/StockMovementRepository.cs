@@ -21,6 +21,163 @@ public sealed class StockMovementRepository : DatabaseRepository
 	{
 	}
 
+	public Task<long> CreateAtomicAsync(
+		StockMovement movement,
+		AuditEntry auditEntry,
+		CancellationToken cancellationToken) =>
+		Database.ExecuteInWriteTransactionAsync(
+			async (session, token) =>
+			{
+				if (await session.ExecuteScalarAsync(
+					Database.InventoryLockSql,
+					token,
+					Parameter("$InventoryId", movement.InventoryId)) is null)
+				{
+					throw new InvalidOperationException($"Inventory with id '{movement.InventoryId}' was not found.");
+				}
+
+				var currentStock = Convert.ToInt64(
+					await session.ExecuteScalarAsync(
+						"SELECT COALESCE(SUM(Quantity), 0) FROM StockMovements WHERE InventoryId = $InventoryId;",
+						token,
+						Parameter("$InventoryId", movement.InventoryId)),
+					CultureInfo.InvariantCulture);
+				if (currentStock + movement.Quantity < 0)
+				{
+					throw new InsufficientStockException();
+				}
+
+				var movementId = await session.InsertAsync(
+					"""
+					INSERT INTO StockMovements
+					(InventoryId, MovementType, TimestampUtc, Quantity, UnitPrice, Reference, Notes)
+					VALUES
+					($InventoryId, $MovementType, $TimestampUtc, $Quantity, $UnitPrice, $Reference, $Notes);
+					""",
+					token,
+					Parameter("$InventoryId", movement.InventoryId),
+					Parameter("$MovementType", (int)movement.MovementType),
+					Parameter("$TimestampUtc", movement.TimestampUtc.ToString("O", CultureInfo.InvariantCulture)),
+					Parameter("$Quantity", movement.Quantity),
+					Parameter("$UnitPrice", movement.UnitPrice),
+					Parameter("$Reference", movement.Reference),
+					Parameter("$Notes", movement.Notes));
+
+				movement.Id = movementId;
+				auditEntry.EntityId = movementId;
+				auditEntry.AfterJson = JsonSerializer.Serialize(
+					movement,
+					new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+				await session.ExecuteAsync(
+					"""
+					INSERT INTO AuditEntries
+					(TimestampUtc, UserId, UserEmail, EntityType, EntityId, Action, BeforeJson, AfterJson)
+					VALUES
+					($TimestampUtc, $UserId, $UserEmail, $EntityType, $EntityId, $Action, $BeforeJson, $AfterJson);
+					""",
+					token,
+					Parameter("$TimestampUtc", auditEntry.TimestampUtc.ToString("O", CultureInfo.InvariantCulture)),
+					Parameter("$UserId", auditEntry.UserId),
+					Parameter("$UserEmail", auditEntry.UserEmail),
+					Parameter("$EntityType", auditEntry.EntityType),
+					Parameter("$EntityId", auditEntry.EntityId),
+					Parameter("$Action", auditEntry.Action),
+					Parameter("$BeforeJson", auditEntry.BeforeJson),
+					Parameter("$AfterJson", auditEntry.AfterJson));
+				return movementId;
+			},
+			cancellationToken);
+
+	public Task<PageResult<MovementOverviewItem>> SearchOverviewPageAsync(
+		string? searchText,
+		int pageNumber,
+		int pageSize,
+		CancellationToken cancellationToken)
+	{
+		var search = searchText?.Trim();
+		var hasSearch = !string.IsNullOrWhiteSpace(search);
+		var filter = hasSearch
+			? "WHERE i.PartNumber LIKE $Search OR i.Description LIKE $Search OR p.Name LIKE $Search OR l.Name LIKE $Search OR sm.Reference LIKE $Search OR sm.Notes LIKE $Search"
+			: string.Empty;
+		var parameters = hasSearch
+			? new[] { Parameter("$Search", $"%{search}%") }
+			: [];
+		return Database.QueryPageAsync(
+			$"""
+			SELECT sm.Id, sm.TimestampUtc, inv.Id, i.Id, i.PartNumber, i.Description,
+			       p.Name, l.Name, sm.MovementType, sm.Quantity, sm.UnitPrice, sm.Reference, sm.Notes
+			FROM StockMovements sm
+			INNER JOIN Inventories inv ON inv.Id = sm.InventoryId
+			INNER JOIN Items i ON i.Id = inv.ItemId
+			INNER JOIN Purposes p ON p.Id = inv.PurposeId
+			INNER JOIN Locations l ON l.Id = inv.LocationId
+			{filter}
+			ORDER BY sm.TimestampUtc DESC
+			""",
+			$"""
+			SELECT COUNT(*) FROM StockMovements sm
+			INNER JOIN Inventories inv ON inv.Id = sm.InventoryId
+			INNER JOIN Items i ON i.Id = inv.ItemId
+			INNER JOIN Purposes p ON p.Id = inv.PurposeId
+			INNER JOIN Locations l ON l.Id = inv.LocationId
+			{filter};
+			""",
+			ReadOverview,
+			pageNumber,
+			pageSize,
+			cancellationToken,
+			parameters);
+	}
+
+	public Task<MovementOverviewItem?> GetOverviewByIdAsync(
+		long movementId,
+		CancellationToken cancellationToken) =>
+		Database.QuerySingleOrDefaultAsync(
+			"""
+			SELECT sm.Id, sm.TimestampUtc, inv.Id, i.Id, i.PartNumber, i.Description,
+			       p.Name, l.Name, sm.MovementType, sm.Quantity, sm.UnitPrice, sm.Reference, sm.Notes
+			FROM StockMovements sm
+			INNER JOIN Inventories inv ON inv.Id = sm.InventoryId
+			INNER JOIN Items i ON i.Id = inv.ItemId
+			INNER JOIN Purposes p ON p.Id = inv.PurposeId
+			INNER JOIN Locations l ON l.Id = inv.LocationId
+			WHERE sm.Id = $MovementId;
+			""",
+			ReadOverview,
+			cancellationToken,
+			Parameter("$MovementId", movementId));
+
+	public Task<IReadOnlyList<StockMovement>> ListRecentForInventoryAsync(
+		long inventoryId,
+		int count,
+		CancellationToken cancellationToken) =>
+		Database.QuerySliceAsync(
+			$"SELECT {SelectColumns} FROM StockMovements WHERE InventoryId = $InventoryId ORDER BY TimestampUtc DESC",
+			ReadMovement,
+			0,
+			count,
+			cancellationToken,
+			Parameter("$InventoryId", inventoryId));
+
+	public Task<IReadOnlyList<DashboardRecentMovement>> ListDashboardRecentAsync(
+		int count,
+		CancellationToken cancellationToken) =>
+		Database.QuerySliceAsync(
+			"""
+			SELECT sm.TimestampUtc, inv.Id, i.PartNumber, i.Description, p.Name, l.Name,
+			       sm.MovementType, sm.Quantity
+			FROM StockMovements sm
+			INNER JOIN Inventories inv ON inv.Id = sm.InventoryId
+			INNER JOIN Items i ON i.Id = inv.ItemId
+			INNER JOIN Purposes p ON p.Id = inv.PurposeId
+			INNER JOIN Locations l ON l.Id = inv.LocationId
+			ORDER BY sm.TimestampUtc DESC
+			""",
+			ReadDashboardMovement,
+			0,
+			count,
+			cancellationToken);
+
 	public long CreateAtomic(StockMovement movement, AuditEntry auditEntry)
 		=> CreateAtomicCore(movement, auditEntry);
 
@@ -150,5 +307,36 @@ public sealed class StockMovementRepository : DatabaseRepository
 			UnitPrice = reader.IsDBNull(5) ? null : reader.GetDecimal(5),
 			Reference = reader.IsDBNull(6) ? null : reader.GetString(6),
 			Notes = reader.IsDBNull(7) ? null : reader.GetString(7)
+		};
+
+	private static MovementOverviewItem ReadOverview(DbDataReader reader) =>
+		new()
+		{
+			MovementId = reader.GetInt64(0),
+			TimestampUtc = DateTime.Parse(reader.GetString(1), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind),
+			InventoryId = reader.GetInt64(2),
+			ItemId = reader.GetInt64(3),
+			PartNumber = reader.GetString(4),
+			Description = reader.GetString(5),
+			PurposeName = reader.GetString(6),
+			LocationName = reader.GetString(7),
+			MovementType = (StockMovementType)reader.GetInt32(8),
+			Quantity = reader.GetInt32(9),
+			UnitPrice = reader.IsDBNull(10) ? null : reader.GetDecimal(10),
+			Reference = reader.IsDBNull(11) ? null : reader.GetString(11),
+			Notes = reader.IsDBNull(12) ? null : reader.GetString(12)
+		};
+
+	private static DashboardRecentMovement ReadDashboardMovement(DbDataReader reader) =>
+		new()
+		{
+			TimestampUtc = DateTime.Parse(reader.GetString(0), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind),
+			InventoryId = reader.GetInt64(1),
+			PartNumber = reader.GetString(2),
+			Description = reader.GetString(3),
+			PurposeName = reader.GetString(4),
+			LocationName = reader.GetString(5),
+			MovementType = (StockMovementType)reader.GetInt32(6),
+			Quantity = reader.GetInt32(7)
 		};
 }

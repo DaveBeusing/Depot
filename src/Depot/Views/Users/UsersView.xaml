@@ -14,7 +14,15 @@
 
 		<controls:PageHeader
 			Grid.Row="0"
-			Title="Users" />
+			Title="Users">
+			<controls:PageHeader.Actions>
+				<controls:OperationStatus
+					ErrorText="{Binding OperationError}"
+					HasError="{Binding HasOperationError}"
+					IsBusy="{Binding IsBusy}"
+					StatusText="{Binding StatusText}" />
+			</controls:PageHeader.Actions>
+		</controls:PageHeader>
 
 		<controls:SearchBox
 			Grid.Row="1"
@@ -42,8 +50,19 @@
 				<ColumnDefinition Width="*" />
 			</Grid.ColumnDefinitions>
 
-			<ListBox
-				Grid.Column="0"
+			<Grid Grid.Column="0">
+				<Grid.RowDefinitions>
+					<RowDefinition Height="Auto" />
+					<RowDefinition Height="8" />
+					<RowDefinition Height="*" />
+				</Grid.RowDefinitions>
+				<StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
+					<Button Command="{Binding PreviousPageCommand}" Content="Previous" Style="{StaticResource SecondaryButtonStyle}" />
+					<TextBlock Margin="12,0" VerticalAlignment="Center" Text="{Binding PageNumber, StringFormat=Page {0}}" />
+					<Button Command="{Binding NextPageCommand}" Content="Next" Style="{StaticResource SecondaryButtonStyle}" />
+				</StackPanel>
+				<ListBox
+				Grid.Row="2"
 				ItemsSource="{Binding Users}"
 				SelectedItem="{Binding SelectedUser}"
 				Style="{StaticResource AppListBoxStyle}">
@@ -66,7 +85,8 @@
 						</Grid>
 					</DataTemplate>
 				</ListBox.ItemTemplate>
-			</ListBox>
+				</ListBox>
+			</Grid>
 
 			<controls:Card Grid.Column="2">
 				<Grid>

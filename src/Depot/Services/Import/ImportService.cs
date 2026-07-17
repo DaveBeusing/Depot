@@ -35,7 +35,8 @@ public sealed class ImportService
 	}
 
 	public ImportPreview CreatePreview(
-		string filePath)
+		string filePath,
+		CancellationToken cancellationToken = default)
 	{
 		var itemsByKey =
 			new Dictionary<string, ImportPreviewAccumulator>(
@@ -58,6 +59,7 @@ public sealed class ImportService
 
 		for (var row = 2; row <= lastRow; row++)
 		{
+			cancellationToken.ThrowIfCancellationRequested();
 			try
 			{
 				var partNumber =
@@ -300,6 +302,67 @@ public sealed class ImportService
 				previewItem.UnitPrice,
 				"Imported from Excel");
 
+			importedMovements++;
+		}
+
+		return new ImportResult
+		{
+			ImportedItems = importedItems,
+			ImportedMovements = importedMovements,
+			SkippedItems = skippedItems
+		};
+	}
+
+	public async Task<ImportResult> ExecuteImportAsync(
+		ImportPreview preview,
+		CancellationToken cancellationToken = default)
+	{
+		var importedItems = 0;
+		var importedMovements = 0;
+		var skippedItems = 0;
+
+		foreach (var previewItem in preview.Items)
+		{
+			cancellationToken.ThrowIfCancellationRequested();
+			var item = await _itemRepository.GetByPartNumberAsync(
+				previewItem.PartNumber,
+				cancellationToken);
+
+			if (item is null)
+			{
+				item = await _itemService.CreateItemAsync(
+					previewItem.PartNumber,
+					previewItem.Description,
+					previewItem.Manufacturer,
+					previewItem.Category,
+					cancellationToken);
+				importedItems++;
+			}
+
+			var purpose = await _purposeService.GetOrCreatePurposeAsync(
+				previewItem.Purpose,
+				cancellationToken);
+			var location = await _locationService.GetOrCreateLocationAsync(
+				previewItem.Location,
+				cancellationToken);
+			var inventory = await _inventoryManagementService.GetOrCreateInventoryAsync(
+				item.Id,
+				purpose.Id,
+				location.Id,
+				cancellationToken);
+
+			if (previewItem.Quantity <= 0)
+			{
+				skippedItems++;
+				continue;
+			}
+
+			await _movementService.AddOpeningBalanceAsync(
+				inventory.Id,
+				previewItem.Quantity,
+				previewItem.UnitPrice,
+				"Imported from Excel",
+				cancellationToken);
 			importedMovements++;
 		}
 

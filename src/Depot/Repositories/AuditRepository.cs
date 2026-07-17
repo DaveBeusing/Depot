@@ -15,6 +15,24 @@ public sealed class AuditRepository : DatabaseRepository
 	{
 	}
 
+	public Task<long> CreateAsync(AuditEntry entry, CancellationToken cancellationToken) =>
+		Database.InsertAsync(
+			"""
+			INSERT INTO AuditEntries
+			(TimestampUtc, UserId, UserEmail, EntityType, EntityId, Action, BeforeJson, AfterJson)
+			VALUES
+			($TimestampUtc, $UserId, $UserEmail, $EntityType, $EntityId, $Action, $BeforeJson, $AfterJson);
+			""",
+			cancellationToken,
+			Parameter("$TimestampUtc", entry.TimestampUtc.ToString("O", CultureInfo.InvariantCulture)),
+			Parameter("$UserId", entry.UserId),
+			Parameter("$UserEmail", entry.UserEmail),
+			Parameter("$EntityType", entry.EntityType),
+			Parameter("$EntityId", entry.EntityId),
+			Parameter("$Action", entry.Action),
+			Parameter("$BeforeJson", entry.BeforeJson),
+			Parameter("$AfterJson", entry.AfterJson));
+
 	public long Create(AuditEntry entry)
 	{
 		return Database.Insert(

@@ -67,6 +67,10 @@ internal sealed class NormalizingSqlConnection : DbConnection
 			await _inner.OpenAsync(cancellationToken);
 			DatabaseDiagnostics.ConnectionOpened(_provider, _target);
 		}
+		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+		{
+			throw;
+		}
 		catch (Exception exception)
 		{
 			DatabaseDiagnostics.ConnectionFailed(_provider, _target, exception);

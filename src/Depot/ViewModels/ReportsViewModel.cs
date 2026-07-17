@@ -10,7 +10,8 @@ using Depot.Services;
 namespace Depot.ViewModels;
 
 public sealed class ReportsViewModel
-	: BaseViewModel
+	: BaseViewModel,
+		IDisposable
 {
 	private const string InventoryValueReportName = "Inventory Value";
 	private const string StockByLocationReportName = "Stock by Location";
@@ -21,6 +22,7 @@ public sealed class ReportsViewModel
 	private readonly ReportService _reportService;
 	private readonly IFileDialogService _fileDialogService;
 	private readonly IReadOnlyDictionary<string, ReportDefinition> _reportDefinitions;
+	private readonly AsyncDebouncer _searchDebouncer = new(TimeSpan.FromMilliseconds(300));
 
 	private string _selectedReport = InventoryValueReportName;
 	private string _searchText = string.Empty;
@@ -55,14 +57,12 @@ public sealed class ReportsViewModel
 			reportDefinitions[0].Name;
 
 		ExportCommand =
-			new RelayCommand(
-				Export,
+			new AsyncRelayCommand(
+				ExportAsync,
 				CanExport);
-
-		Load();
 	}
 
-	public RelayCommand ExportCommand { get; }
+	public AsyncRelayCommand ExportCommand { get; }
 
 	public ObservableCollection<string> ReportOptions { get; }
 
@@ -102,7 +102,7 @@ public sealed class ReportsViewModel
 
 			ClearExportStatus();
 
-			Load();
+			_ = LoadAsync();
 		}
 	}
 
@@ -141,7 +141,7 @@ public sealed class ReportsViewModel
 
 			ClearExportStatus();
 
-			Load();
+			_ = _searchDebouncer.DebounceAsync(LoadAsync);
 		}
 	}
 
@@ -271,20 +271,35 @@ public sealed class ReportsViewModel
 		}
 	}
 
-	public void Load()
+	public async Task LoadAsync(CancellationToken cancellationToken = default)
 	{
-		SelectedReportDefinition.Load();
+		BeginOperation("Loading report...");
 
-		RaiseReportRowsChanged();
+		try
+		{
+			await SelectedReportDefinition.Load(cancellationToken);
+
+			RaiseReportRowsChanged();
+			CompleteOperation(!HasReportRows, "Report loaded.");
+		}
+		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+		{
+			return;
+		}
+		catch (Exception ex)
+		{
+			FailOperation(ex, "The report could not be loaded.");
+		}
 
 		ExportCommand.RaiseCanExecuteChanged();
 	}
 
-	private void LoadInventoryValueReport()
+	private async Task LoadInventoryValueReportAsync(CancellationToken cancellationToken)
 	{
 		var report =
-			_reportService.GetInventoryValueReport(
-				SearchText);
+			await _reportService.GetInventoryValueReportAsync(
+				SearchText,
+				cancellationToken);
 
 		ApplyTotals(
 			report.TotalInventoryRows,
@@ -303,13 +318,15 @@ public sealed class ReportsViewModel
 		}
 	}
 
-	private void LoadGroupedInventoryReport(
-		GroupedInventoryReportType reportType)
+	private async Task LoadGroupedInventoryReportAsync(
+		GroupedInventoryReportType reportType,
+		CancellationToken cancellationToken)
 	{
 		var report =
-			_reportService.GetGroupedInventoryReport(
+			await _reportService.GetGroupedInventoryReportAsync(
 				SearchText,
-				reportType);
+				reportType,
+				cancellationToken);
 
 		ApplyTotals(
 			report.TotalInventoryRows,
@@ -366,7 +383,7 @@ public sealed class ReportsViewModel
 		return HasReportRows;
 	}
 
-	private void Export()
+	private async Task ExportAsync(CancellationToken cancellationToken)
 	{
 		var filePath = _fileDialogService.ShowSaveFile(
 			new SaveFileDialogRequest(
@@ -382,19 +399,24 @@ public sealed class ReportsViewModel
 
 		try
 		{
-			SelectedReportDefinition.Export(
+			BeginOperation("Exporting report...");
+
+			await SelectedReportDefinition.Export(
 				SearchText,
-				filePath);
+				filePath,
+				cancellationToken);
 
 			SetExportStatus(
 				$"Exported to {filePath}",
 				isError: false);
+			CompleteOperation(statusText: "Report exported.");
 		}
 		catch (Exception ex)
 		{
 			SetExportStatus(
 				$"Export failed: {ex.Message}",
 				isError: true);
+			FailOperation(ex, "The report could not be exported.");
 		}
 	}
 
@@ -443,61 +465,70 @@ public sealed class ReportsViewModel
 				InventoryValueReportName,
 				"Inventory Value Report.xlsx",
 				isInventoryValueReport: true,
-				LoadInventoryValueReport,
-				_reportService.ExportInventoryValueReport),
+				LoadInventoryValueReportAsync,
+				(searchText, filePath, cancellationToken) =>
+					_reportService.ExportInventoryValueReportAsync(
+						searchText,
+						filePath,
+						cancellationToken)),
 
 			new ReportDefinition(
 				StockByLocationReportName,
 				"Stock by Location Report.xlsx",
 				isInventoryValueReport: false,
-				() =>
-					LoadGroupedInventoryReport(
-						GroupedInventoryReportType.Location),
-				(searchText, filePath) =>
-					_reportService.ExportGroupedInventoryReport(
-						searchText,
+				cancellationToken =>
+					LoadGroupedInventoryReportAsync(
 						GroupedInventoryReportType.Location,
-						filePath)),
+						cancellationToken),
+				CreateGroupedExport(GroupedInventoryReportType.Location)),
 
 			new ReportDefinition(
 				StockByPurposeReportName,
 				"Stock by Purpose Report.xlsx",
 				isInventoryValueReport: false,
-				() =>
-					LoadGroupedInventoryReport(
-						GroupedInventoryReportType.Purpose),
-				(searchText, filePath) =>
-					_reportService.ExportGroupedInventoryReport(
-						searchText,
+				cancellationToken =>
+					LoadGroupedInventoryReportAsync(
 						GroupedInventoryReportType.Purpose,
-						filePath)),
+						cancellationToken),
+				CreateGroupedExport(GroupedInventoryReportType.Purpose)),
 
 			new ReportDefinition(
 				StockByCategoryReportName,
 				"Stock by Category Report.xlsx",
 				isInventoryValueReport: false,
-				() =>
-					LoadGroupedInventoryReport(
-						GroupedInventoryReportType.Category),
-				(searchText, filePath) =>
-					_reportService.ExportGroupedInventoryReport(
-						searchText,
+				cancellationToken =>
+					LoadGroupedInventoryReportAsync(
 						GroupedInventoryReportType.Category,
-						filePath)),
+						cancellationToken),
+				CreateGroupedExport(GroupedInventoryReportType.Category)),
 
 			new ReportDefinition(
 				StockByManufacturerReportName,
 				"Stock by Manufacturer Report.xlsx",
 				isInventoryValueReport: false,
-				() =>
-					LoadGroupedInventoryReport(
-						GroupedInventoryReportType.Manufacturer),
-				(searchText, filePath) =>
-					_reportService.ExportGroupedInventoryReport(
-						searchText,
+				cancellationToken =>
+					LoadGroupedInventoryReportAsync(
 						GroupedInventoryReportType.Manufacturer,
-						filePath))
+						cancellationToken),
+				CreateGroupedExport(GroupedInventoryReportType.Manufacturer))
 		};
+	}
+
+	private Func<string?, string, CancellationToken, Task> CreateGroupedExport(
+		GroupedInventoryReportType reportType)
+	{
+		return (searchText, filePath, cancellationToken) =>
+			_reportService.ExportGroupedInventoryReportAsync(
+					searchText,
+					reportType,
+					filePath,
+					cancellationToken);
+	}
+
+	public void Dispose()
+	{
+		_searchDebouncer.Dispose();
+		ExportCommand.Dispose();
 	}
 
 	private sealed class ReportDefinition
@@ -506,8 +537,8 @@ public sealed class ReportsViewModel
 			string name,
 			string defaultExportFileName,
 			bool isInventoryValueReport,
-			Action load,
-			Action<string?, string> export)
+			Func<CancellationToken, Task> load,
+			Func<string?, string, CancellationToken, Task> export)
 		{
 			Name =
 				name;
@@ -531,8 +562,8 @@ public sealed class ReportsViewModel
 
 		public bool IsInventoryValueReport { get; }
 
-		public Action Load { get; }
+		public Func<CancellationToken, Task> Load { get; }
 
-		public Action<string?, string> Export { get; }
+		public Func<string?, string, CancellationToken, Task> Export { get; }
 	}
 }

@@ -28,6 +28,63 @@ public sealed class StockService
 		_stockMovementRepository = stockMovementRepository;
 	}
 
+	public Task<PageResult<InventoryOverviewItem>> SearchInventoryOverviewAsync(
+		string? searchText,
+		int pageNumber,
+		int pageSize,
+		CancellationToken cancellationToken) =>
+		_inventoryRepository.SearchOverviewPageAsync(
+			searchText,
+			pageNumber,
+			pageSize,
+			cancellationToken);
+
+	public IAsyncEnumerable<InventoryOverviewItem> StreamInventoryOverviewAsync(
+		string? searchText,
+		CancellationToken cancellationToken) =>
+		_inventoryRepository.StreamOverviewAsync(searchText, cancellationToken);
+
+	public async Task<InventoryDetails> GetInventoryDetailsAsync(
+		long inventoryId,
+		CancellationToken cancellationToken)
+	{
+		if (inventoryId <= 0)
+			throw new ArgumentException("Inventory id is required.", nameof(inventoryId));
+		var overviewTask = _inventoryRepository.GetOverviewByIdAsync(inventoryId, cancellationToken);
+		var movementsTask = _stockMovementRepository.ListRecentForInventoryAsync(
+			inventoryId,
+			20,
+			cancellationToken);
+		await Task.WhenAll(overviewTask, movementsTask);
+		var overview = await overviewTask
+			?? throw new InvalidOperationException($"Inventory with id '{inventoryId}' was not found.");
+		return new InventoryDetails
+		{
+			InventoryId = overview.InventoryId,
+			ItemId = overview.ItemId,
+			PartNumber = overview.PartNumber,
+			Description = overview.Description,
+			Manufacturer = overview.Manufacturer,
+			Category = overview.Category,
+			PurposeName = overview.PurposeName,
+			LocationName = overview.LocationName,
+			CurrentStock = overview.CurrentStock,
+			AverageCost = overview.AverageCost,
+			InventoryValue = overview.InventoryValue,
+			RecentMovements = await movementsTask
+		};
+	}
+
+	public async Task<DashboardData> GetDashboardDataAsync(CancellationToken cancellationToken)
+	{
+		var summaryTask = _inventoryRepository.GetDashboardSummaryAsync(cancellationToken);
+		var recentTask = _stockMovementRepository.ListDashboardRecentAsync(10, cancellationToken);
+		await Task.WhenAll(summaryTask, recentTask);
+		return new DashboardData(
+			await summaryTask ?? new DashboardSummary(),
+			await recentTask);
+	}
+
 	public int GetCurrentStock(
 		long inventoryId)
 	{
@@ -75,7 +132,7 @@ public sealed class StockService
 			purchases.Sum(
 				x =>
 					x.Quantity *
-					x.UnitPrice!.Value);
+					x.UnitPrice.GetValueOrDefault());
 
 		return
 			totalValue /
@@ -541,7 +598,7 @@ public sealed class StockService
 			purchases.Sum(
 				x =>
 					x.Quantity *
-					x.UnitPrice!.Value);
+					x.UnitPrice.GetValueOrDefault());
 
 		return
 			totalValue /

@@ -12,5 +12,10 @@ public interface IDatabaseConnectionFactory
 	DatabaseProvider Provider { get; }
 	DbConnection CreateConnection();
 	DbTransaction BeginWriteTransaction(DbConnection connection);
+	ValueTask<DbTransaction> BeginWriteTransactionAsync(
+		DbConnection connection,
+		CancellationToken cancellationToken) =>
+		ValueTask.FromResult(BeginWriteTransaction(connection));
 	string GetInventoryLockSql();
+	string GetPagingClause();
 }

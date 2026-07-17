@@ -76,4 +76,34 @@ public sealed class InventoryManagementService
 
 		return inventory;
 	}
+
+	public async Task<Inventory> GetOrCreateInventoryAsync(
+		long itemId,
+		long purposeId,
+		long locationId,
+		CancellationToken cancellationToken = default)
+	{
+		if (itemId <= 0) throw new ArgumentException("Item id is required.", nameof(itemId));
+		if (purposeId <= 0) throw new ArgumentException("Purpose id is required.", nameof(purposeId));
+		if (locationId <= 0) throw new ArgumentException("Location id is required.", nameof(locationId));
+
+		var inventory = await _inventoryRepository.GetByContextAsync(
+			itemId,
+			purposeId,
+			locationId,
+			cancellationToken);
+
+		if (inventory is not null) return inventory;
+
+		inventory = new Inventory
+		{
+			ItemId = itemId,
+			PurposeId = purposeId,
+			LocationId = locationId,
+			IsActive = true
+		};
+		inventory.Id = await _inventoryRepository.CreateAsync(inventory, cancellationToken);
+		await _auditService.RecordCreatedAsync(inventory.Id, inventory, cancellationToken);
+		return inventory;
+	}
 }

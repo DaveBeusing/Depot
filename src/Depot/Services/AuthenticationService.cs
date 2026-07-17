@@ -36,4 +36,23 @@ public sealed class AuthenticationService
 		_authorizationService.SignIn(authentication.User);
 		return true;
 	}
+
+	public async Task<bool> SignInAsync(
+		string email,
+		string password,
+		CancellationToken cancellationToken)
+	{
+		var normalizedEmail = email.Trim().ToLowerInvariant();
+		var authentication = await _userRepository.GetAuthenticationByEmailAsync(
+			normalizedEmail,
+			cancellationToken);
+		if (authentication is null ||
+			!authentication.User.IsActive ||
+			!_passwordHasher.Verify(password, authentication.PasswordHash))
+		{
+			return false;
+		}
+		_authorizationService.SignIn(authentication.User);
+		return true;
+	}
 }

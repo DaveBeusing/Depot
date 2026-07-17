@@ -22,7 +22,15 @@
 
 		<controls:PageHeader
 			Grid.Row="0"
-			Title="Import" />
+			Title="Import">
+			<controls:PageHeader.Actions>
+				<controls:OperationStatus
+					ErrorText="{Binding OperationError}"
+					HasError="{Binding HasOperationError}"
+					IsBusy="{Binding IsBusy}"
+					StatusText="{Binding StatusText}" />
+			</controls:PageHeader.Actions>
+		</controls:PageHeader>
 
 		<Grid Grid.Row="2">
 

@@ -31,6 +31,97 @@ public sealed class MovementService
 		_auditService = auditService;
 	}
 
+	public Task<IReadOnlyList<InventoryLookupItem>> SearchAvailableInventoriesAsync(
+		string? searchText,
+		int count,
+		CancellationToken cancellationToken) =>
+		_inventoryRepository.SearchLookupAsync(searchText, count, cancellationToken);
+
+	public Task<PageResult<MovementOverviewItem>> SearchAsync(
+		string? searchText,
+		int pageNumber,
+		int pageSize,
+		CancellationToken cancellationToken) =>
+		_stockMovementRepository.SearchOverviewPageAsync(
+			searchText,
+			pageNumber,
+			pageSize,
+			cancellationToken);
+
+	public Task<MovementOverviewItem> AddPurchaseAsync(
+		long inventoryId,
+		int quantity,
+		decimal unitPrice,
+		string? reference,
+		string? notes,
+		CancellationToken cancellationToken)
+	{
+		if (quantity <= 0) throw new ArgumentException("Quantity must be greater than zero.", nameof(quantity));
+		if (unitPrice <= 0) throw new ArgumentException("Unit price must be greater than zero.", nameof(unitPrice));
+		return CreateAsync(
+			inventoryId,
+			StockMovementType.Purchase,
+			quantity,
+			unitPrice,
+			reference,
+			notes,
+			cancellationToken);
+	}
+
+	public Task<MovementOverviewItem> AddWithdrawalAsync(
+		long inventoryId,
+		int quantity,
+		string? reference,
+		string? notes,
+		CancellationToken cancellationToken)
+	{
+		if (quantity <= 0) throw new ArgumentException("Quantity must be greater than zero.", nameof(quantity));
+		return CreateAsync(
+			inventoryId,
+			StockMovementType.Withdrawal,
+			-quantity,
+			null,
+			reference,
+			notes,
+			cancellationToken);
+	}
+
+	public Task<MovementOverviewItem> AddCorrectionAsync(
+		long inventoryId,
+		int quantityDelta,
+		string? reference,
+		string? notes,
+		CancellationToken cancellationToken)
+	{
+		if (quantityDelta == 0) throw new ArgumentException("Correction quantity cannot be zero.", nameof(quantityDelta));
+		return CreateAsync(
+			inventoryId,
+			StockMovementType.Correction,
+			quantityDelta,
+			null,
+			reference,
+			notes,
+			cancellationToken);
+	}
+
+	public Task<MovementOverviewItem> AddOpeningBalanceAsync(
+		long inventoryId,
+		int quantity,
+		decimal unitPrice,
+		string? notes,
+		CancellationToken cancellationToken)
+	{
+		if (quantity <= 0) throw new ArgumentException("Quantity must be greater than zero.", nameof(quantity));
+		return CreateAsync(
+			inventoryId,
+			StockMovementType.OpeningBalance,
+			quantity,
+			unitPrice,
+			"IMPORT",
+			notes,
+			cancellationToken);
+	}
+
 	public IReadOnlyList<InventoryLookupItem> GetAvailableInventories()
 	{
 		var result =
@@ -349,6 +440,39 @@ public sealed class MovementService
 
 		var auditEntry = _auditService.CreateCreatedEntry(0, movement);
 		movement.Id = _stockMovementRepository.CreateAtomic(movement, auditEntry);
+	}
+
+	private async Task<MovementOverviewItem> CreateAsync(
+		long inventoryId,
+		StockMovementType movementType,
+		int quantity,
+		decimal? unitPrice,
+		string? reference,
+		string? notes,
+		CancellationToken cancellationToken)
+	{
+		if (inventoryId <= 0) throw new ArgumentException("Inventory id is required.", nameof(inventoryId));
+		var inventory = await _inventoryRepository.GetByIdAsync(inventoryId, cancellationToken)
+			?? throw new InvalidOperationException($"Inventory with id '{inventoryId}' was not found.");
+		if (await _itemRepository.GetByIdAsync(inventory.ItemId, cancellationToken) is null)
+			throw new InvalidOperationException($"Item with id '{inventory.ItemId}' was not found.");
+		var movement = new StockMovement
+		{
+			InventoryId = inventory.Id,
+			MovementType = movementType,
+			TimestampUtc = DateTime.UtcNow,
+			Quantity = quantity,
+			UnitPrice = unitPrice,
+			Reference = string.IsNullOrWhiteSpace(reference) ? null : reference.Trim(),
+			Notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim()
+		};
+		var auditEntry = _auditService.CreateCreatedEntry(0, movement);
+		movement.Id = await _stockMovementRepository.CreateAtomicAsync(
+			movement,
+			auditEntry,
+			cancellationToken);
+		return await _stockMovementRepository.GetOverviewByIdAsync(movement.Id, cancellationToken)
+			?? throw new InvalidOperationException($"Movement with id '{movement.Id}' was not found.");
 	}
 
 }

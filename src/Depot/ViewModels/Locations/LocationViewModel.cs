@@ -32,16 +32,9 @@ public sealed class LocationViewModel
 			new RelayCommand(
 				NewLocation);
 
-		SaveLocationCommand =
-			new RelayCommand(
-				SaveLocation);
+		SaveLocationCommand = new AsyncRelayCommand(SaveLocationAsync);
 
-		DeactivateLocationCommand =
-			new RelayCommand(
-				DeactivateLocation,
-				CanDeactivateLocation);
-
-		LoadLocations();
+		DeactivateLocationCommand = new AsyncRelayCommand(DeactivateLocationAsync, CanDeactivateLocation);
 	}
 
 	public ObservableCollection<LocationListItemViewModel> Locations { get; }
@@ -51,9 +44,9 @@ public sealed class LocationViewModel
 
 	public RelayCommand NewLocationCommand { get; }
 
-	public RelayCommand SaveLocationCommand { get; }
+	public AsyncRelayCommand SaveLocationCommand { get; }
 
-	public RelayCommand DeactivateLocationCommand { get; }
+	public AsyncRelayCommand DeactivateLocationCommand { get; }
 
 	public string SearchText
 	{
@@ -65,7 +58,7 @@ public sealed class LocationViewModel
 
 			OnPropertyChanged();
 
-			LoadLocations();
+			_ = LoadLocationsAsync();
 		}
 	}
 
@@ -102,15 +95,17 @@ public sealed class LocationViewModel
 		!string.IsNullOrWhiteSpace(
 			ErrorMessage);
 
-	public void LoadLocations()
+	public async Task LoadLocationsAsync(CancellationToken cancellationToken = default)
 	{
+		BeginOperation("Loading locations");
 		var selectedId =
 			SelectedLocation?.Id;
 
 		Locations.Clear();
 
-		var locations =
-			_locationService.GetLocations();
+		try
+		{
+		var locations = await _locationService.GetLocationsAsync(cancellationToken);
 
 		if (!string.IsNullOrWhiteSpace(SearchText))
 		{
@@ -139,7 +134,15 @@ public sealed class LocationViewModel
 		{
 			SelectedLocation =
 				Locations.FirstOrDefault(
-					x => x.Id == selectedId.Value);
+						x => x.Id == selectedId.Value);
+		}
+		CompleteOperation(Locations.Count == 0, $"{Locations.Count:N0} locations");
+		}
+		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
+		catch (Exception exception)
+		{
+			ErrorMessage = exception.Message;
+			FailOperation(exception, "Locations could not be loaded");
 		}
 	}
 
@@ -176,28 +179,26 @@ public sealed class LocationViewModel
 		DeactivateLocationCommand.RaiseCanExecuteChanged();
 	}
 
-	private void SaveLocation()
+	private async Task SaveLocationAsync(CancellationToken cancellationToken)
 	{
 		ClearError();
 
 		try
 		{
-			if (Editor.Id == 0)
-			{
-				_locationService.CreateLocation(
+			var location = Editor.Id == 0
+				? await _locationService.CreateLocationAsync(
 					Editor.Name,
-					Editor.Description);
-			}
-			else
-			{
-				_locationService.UpdateLocation(
+					Editor.Description,
+					cancellationToken)
+				: await _locationService.UpdateLocationAsync(
 					Editor.Id,
 					Editor.Version,
 					Editor.Name,
-					Editor.Description);
-			}
-
-			LoadLocations();
+					Editor.Description,
+					cancellationToken);
+			var existing = Locations.FirstOrDefault(x => x.Id == location.Id);
+			if (existing is null) Locations.Add(new LocationListItemViewModel(location));
+			else Locations[Locations.IndexOf(existing)] = new LocationListItemViewModel(location);
 
 			Editor.Clear();
 
@@ -215,7 +216,7 @@ public sealed class LocationViewModel
 		return Editor.IsExistingLocation;
 	}
 
-	private void DeactivateLocation()
+	private async Task DeactivateLocationAsync(CancellationToken cancellationToken)
 	{
 		ClearError();
 
@@ -226,11 +227,12 @@ public sealed class LocationViewModel
 
 		try
 		{
-			_locationService.DeactivateLocation(
+			await _locationService.DeactivateLocationAsync(
 				Editor.Id,
-				Editor.Version);
-
-			LoadLocations();
+				Editor.Version,
+				cancellationToken);
+			var existing = Locations.FirstOrDefault(x => x.Id == Editor.Id);
+			if (existing is not null) Locations.Remove(existing);
 
 			Editor.Clear();
 

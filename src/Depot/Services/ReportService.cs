@@ -20,6 +20,44 @@ public sealed class ReportService
 			stockService;
 	}
 
+	public async Task<InventoryValueReport> GetInventoryValueReportAsync(
+		string? searchText,
+		CancellationToken cancellationToken)
+	{
+		var rows = new List<InventoryValueReportItem>();
+		var itemIds = new HashSet<long>();
+		var totalStock = 0;
+		var totalValue = 0m;
+		await foreach (var item in _stockService.StreamInventoryOverviewAsync(searchText, cancellationToken))
+		{
+			rows.Add(new InventoryValueReportItem
+			{
+				InventoryId = item.InventoryId,
+				ItemId = item.ItemId,
+				PartNumber = item.PartNumber,
+				Description = item.Description,
+				Manufacturer = item.Manufacturer,
+				Category = item.Category,
+				PurposeName = item.PurposeName,
+				LocationName = item.LocationName,
+				CurrentStock = item.CurrentStock,
+				AverageCost = item.AverageCost,
+				InventoryValue = item.InventoryValue
+			});
+			itemIds.Add(item.ItemId);
+			totalStock += item.CurrentStock;
+			totalValue += item.InventoryValue;
+		}
+		return new InventoryValueReport
+		{
+			Items = rows,
+			TotalInventoryRows = rows.Count,
+			TotalItems = itemIds.Count,
+			TotalStockQuantity = totalStock,
+			TotalInventoryValue = totalValue
+		};
+	}
+
 	public InventoryValueReport GetInventoryValueReport(
 		string? searchText)
 	{
@@ -108,6 +146,55 @@ public sealed class ReportService
 			definition.GroupSelector);
 	}
 
+	public async Task<GroupedInventoryReport> GetGroupedInventoryReportAsync(
+		string? searchText,
+		GroupedInventoryReportType reportType,
+		CancellationToken cancellationToken)
+	{
+		var definition = GetGroupedInventoryReportDefinition(reportType);
+		var groups = new Dictionary<string, GroupAccumulator>(StringComparer.OrdinalIgnoreCase);
+		var allItems = new HashSet<long>();
+		var totalRows = 0;
+		var totalStock = 0;
+		var totalValue = 0m;
+		await foreach (var item in _stockService.StreamInventoryOverviewAsync(searchText, cancellationToken))
+		{
+			var groupName = definition.GroupSelector(item);
+			if (!groups.TryGetValue(groupName, out var group))
+			{
+				group = new GroupAccumulator();
+				groups.Add(groupName, group);
+			}
+			group.InventoryRows++;
+			group.ItemIds.Add(item.ItemId);
+			group.TotalStockQuantity += item.CurrentStock;
+			group.InventoryValue += item.InventoryValue;
+			allItems.Add(item.ItemId);
+			totalRows++;
+			totalStock += item.CurrentStock;
+			totalValue += item.InventoryValue;
+		}
+
+		return new GroupedInventoryReport
+		{
+			Items = groups
+				.Select(pair => new GroupedInventoryReportItem
+				{
+					GroupName = pair.Key,
+					InventoryRows = pair.Value.InventoryRows,
+					TotalItems = pair.Value.ItemIds.Count,
+					TotalStockQuantity = pair.Value.TotalStockQuantity,
+					InventoryValue = pair.Value.InventoryValue
+				})
+				.OrderBy(item => item.GroupName)
+				.ToList(),
+			TotalInventoryRows = totalRows,
+			TotalItems = allItems.Count,
+			TotalStockQuantity = totalStock,
+			TotalInventoryValue = totalValue
+		};
+	}
+
 	public void ExportInventoryValueReport(
 		string? searchText,
 		string filePath)
@@ -115,6 +202,25 @@ public sealed class ReportService
 		var report =
 			GetInventoryValueReport(
 				searchText);
+
+		ExportInventoryValueWorkbook(report, filePath);
+	}
+
+	public async Task ExportInventoryValueReportAsync(
+		string? searchText,
+		string filePath,
+		CancellationToken cancellationToken = default)
+	{
+		var report = await GetInventoryValueReportAsync(searchText, cancellationToken);
+		await Task.Run(
+			() => ExportInventoryValueWorkbook(report, filePath),
+			cancellationToken);
+	}
+
+	private static void ExportInventoryValueWorkbook(
+		InventoryValueReport report,
+		string filePath)
+	{
 
 		using var workbook =
 			new XLWorkbook();
@@ -253,6 +359,31 @@ public sealed class ReportService
 			report.TotalStockQuantity,
 			report.TotalInventoryValue,
 			filePath);
+	}
+
+	public async Task ExportGroupedInventoryReportAsync(
+		string? searchText,
+		GroupedInventoryReportType reportType,
+		string filePath,
+		CancellationToken cancellationToken = default)
+	{
+		var definition = GetGroupedInventoryReportDefinition(reportType);
+		var report = await GetGroupedInventoryReportAsync(
+			searchText,
+			reportType,
+			cancellationToken);
+
+		await Task.Run(
+			() => ExportGroupedInventoryWorkbook(
+				definition.Title,
+				definition.GroupHeader,
+				report.Items,
+				report.TotalInventoryRows,
+				report.TotalItems,
+				report.TotalStockQuantity,
+				report.TotalInventoryValue,
+				filePath),
+			cancellationToken);
 	}
 
 	private GroupedInventoryReport BuildGroupedInventoryReport(
@@ -884,5 +1015,13 @@ public sealed class ReportService
 		public string GroupHeader { get; }
 
 		public Func<InventoryOverviewItem, string> GroupSelector { get; }
+	}
+
+	private sealed class GroupAccumulator
+	{
+		public int InventoryRows { get; set; }
+		public HashSet<long> ItemIds { get; } = new();
+		public int TotalStockQuantity { get; set; }
+		public decimal InventoryValue { get; set; }
 	}
 }

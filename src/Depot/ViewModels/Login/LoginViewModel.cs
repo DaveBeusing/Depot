@@ -23,7 +23,7 @@ public sealed class LoginViewModel : BaseViewModel
 	{
 		_authenticationService = authenticationService;
 		ConnectionStatus = connectionStatusService;
-		LoginCommand = new RelayCommand(Login, CanLogin);
+		LoginCommand = new AsyncRelayCommand(LoginAsync, CanLogin);
 	}
 
 	public string Email
@@ -73,7 +73,7 @@ public sealed class LoginViewModel : BaseViewModel
 
 	public bool HasErrorMessage => !string.IsNullOrWhiteSpace(ErrorMessage);
 
-	public RelayCommand LoginCommand { get; }
+	public AsyncRelayCommand LoginCommand { get; }
 
 	public ConnectionStatusService ConnectionStatus { get; }
 
@@ -83,19 +83,22 @@ public sealed class LoginViewModel : BaseViewModel
 		!string.IsNullOrWhiteSpace(Email) &&
 		!string.IsNullOrEmpty(Password);
 
-	private void Login()
+	private async Task LoginAsync(CancellationToken cancellationToken)
 	{
 		StartupDiagnostics.Log("Login: authentication started.");
-		if (!_authenticationService.SignIn(Email, Password))
+		BeginOperation("Signing in");
+		if (!await _authenticationService.SignInAsync(Email, Password, cancellationToken))
 		{
 			Password = string.Empty;
 			ErrorMessage = "The email or password is incorrect, or the account is inactive.";
 			StartupDiagnostics.Log("Login: authentication failed.");
+			FailOperation(new InvalidOperationException(ErrorMessage), "Sign in failed");
 			return;
 		}
 
 		Password = string.Empty;
 		StartupDiagnostics.Log("Login: authentication succeeded.");
+		CompleteOperation(statusText: "Signed in");
 		LoginSucceeded?.Invoke(this, EventArgs.Empty);
 	}
 

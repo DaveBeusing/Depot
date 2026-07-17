@@ -8,7 +8,7 @@
 		<Grid.RowDefinitions>
 			<RowDefinition Height="Auto" />
 			<RowDefinition Height="Auto" />
-			<RowDefinition Height="16" />
+			<RowDefinition Height="Auto" />
 			<RowDefinition Height="Auto" />
 			<RowDefinition Height="24" />
 			<RowDefinition Height="*" />
@@ -67,6 +67,14 @@
 				Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
 				ToolTip="{Binding SearchToolTip}" />
 		</Grid>
+
+		<controls:OperationStatus
+			Grid.Row="2"
+			Margin="0,0,0,16"
+			ErrorText="{Binding OperationError}"
+			HasError="{Binding HasOperationError}"
+			IsBusy="{Binding IsBusy}"
+			StatusText="{Binding StatusText}" />
 
 		<Grid Grid.Row="3">
 			<Grid.ColumnDefinitions>

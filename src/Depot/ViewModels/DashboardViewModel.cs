@@ -21,8 +21,6 @@ public sealed class DashboardViewModel
 		StockService stockService)
 	{
 		_stockService = stockService;
-
-		Load();
 	}
 
 	public int TotalItems
@@ -72,10 +70,13 @@ public sealed class DashboardViewModel
 	public ObservableCollection<DashboardRecentMovementViewModel> RecentMovements { get; }
 		= new();
 
-	public void Load()
+	public async Task LoadAsync(CancellationToken cancellationToken = default)
 	{
-		var summary =
-			_stockService.GetDashboardSummary();
+		BeginOperation("Loading dashboard");
+		try
+		{
+			var data = await _stockService.GetDashboardDataAsync(cancellationToken);
+			var summary = data.Summary;
 
 		TotalItems =
 			summary.TotalItems;
@@ -89,13 +90,21 @@ public sealed class DashboardViewModel
 		TotalMovements =
 			summary.TotalMovements;
 
-		RecentMovements.Clear();
+			RecentMovements.Clear();
 
-		foreach (var movement in _stockService.GetRecentMovements())
+			foreach (var movement in data.RecentMovements)
+			{
+				RecentMovements.Add(new DashboardRecentMovementViewModel(movement));
+			}
+			CompleteOperation(RecentMovements.Count == 0, "Dashboard loaded");
+		}
+		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
 		{
-			RecentMovements.Add(
-				new DashboardRecentMovementViewModel(
-					movement));
+			CompleteOperation(RecentMovements.Count == 0);
+		}
+		catch (Exception exception)
+		{
+			FailOperation(exception, "Dashboard could not be loaded");
 		}
 	}
 }
