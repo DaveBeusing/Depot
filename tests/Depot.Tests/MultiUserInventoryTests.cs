@@ -43,7 +43,16 @@ public sealed class MultiUserInventoryTests : IDisposable
 			?? throw new InvalidOperationException("The test administrator was not initialized.");
 		authorization.SignIn(administrator);
 		var audit = new AuditService(new AuditRepository(database), authorization);
-		_itemService = new ItemService(_itemRepository, audit);
+		var manufacturerService = new ManufacturerService(new ManufacturerRepository(database), audit);
+		var categoryService = new CategoryService(new CategoryRepository(database), audit);
+		_itemService = new ItemService(
+			_itemRepository,
+			audit,
+			manufacturerService,
+			categoryService,
+			new UnitOfMeasureService(new UnitOfMeasureRepository(database), audit),
+			new PackagingService(new PackagingRepository(database), audit),
+			new SupplierService(new SupplierRepository(database), audit));
 		_purposeService = new PurposeService(purposeRepository, audit);
 		_warehouseService = new WarehouseService(warehouseRepository, storageLocationRepository, audit);
 		_storageLocationService = new StorageLocationService(storageLocationRepository, warehouseRepository, audit);

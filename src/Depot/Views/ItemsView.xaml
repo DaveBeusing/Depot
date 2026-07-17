@@ -29,7 +29,7 @@
 			Margin="{StaticResource Search.Margin}"
 			Placeholder="Search items"
 			Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-			ToolTip="Search by part number, description, manufacturer, or category" />
+			ToolTip="Search by item data, manufacturer, category, unit, packaging, or supplier" />
 
 		<controls:OperationStatus
 			Grid.Row="2"
@@ -67,6 +67,9 @@
 							<DataGridTextColumn Header="Description" Binding="{Binding Description}" Width="*" />
 							<DataGridTextColumn Header="Manufacturer" Binding="{Binding Manufacturer}" Width="140" />
 							<DataGridTextColumn Header="Category" Binding="{Binding Category}" Width="130" />
+							<DataGridTextColumn Header="Unit" Binding="{Binding UnitOfMeasure}" Width="100" />
+							<DataGridTextColumn Header="Packaging" Binding="{Binding Packaging}" Width="120" />
+							<DataGridTextColumn Header="Supplier" Binding="{Binding Supplier}" Width="140" />
 						</DataGrid.Columns>
 					</DataGrid>
 
@@ -84,6 +87,12 @@
 
 				<Grid>
 					<Grid.RowDefinitions>
+						<RowDefinition Height="Auto" />
+						<RowDefinition Height="16" />
+						<RowDefinition Height="Auto" />
+						<RowDefinition Height="16" />
+						<RowDefinition Height="Auto" />
+						<RowDefinition Height="16" />
 						<RowDefinition Height="Auto" />
 						<RowDefinition Height="16" />
 						<RowDefinition Height="Auto" />
@@ -123,16 +132,31 @@
 
 					<StackPanel Grid.Row="6">
 						<TextBlock Text="Manufacturer" Style="{StaticResource FormLabelStyle}" />
-						<controls:TextInput Text="{Binding Editor.Manufacturer, UpdateSourceTrigger=PropertyChanged}" />
+						<ComboBox ItemsSource="{Binding Manufacturers}" SelectedItem="{Binding Editor.Manufacturer}" DisplayMemberPath="Name" Style="{StaticResource AppComboBoxStyle}" />
 					</StackPanel>
 
 					<StackPanel Grid.Row="8">
 						<TextBlock Text="Category" Style="{StaticResource FormLabelStyle}" />
-						<controls:TextInput Text="{Binding Editor.Category, UpdateSourceTrigger=PropertyChanged}" />
+						<ComboBox ItemsSource="{Binding Categories}" SelectedItem="{Binding Editor.Category}" DisplayMemberPath="Name" Style="{StaticResource AppComboBoxStyle}" />
+					</StackPanel>
+
+					<StackPanel Grid.Row="10">
+						<TextBlock Text="Unit of Measure" Style="{StaticResource FormLabelStyle}" />
+						<ComboBox ItemsSource="{Binding UnitsOfMeasure}" SelectedItem="{Binding Editor.UnitOfMeasure}" DisplayMemberPath="Name" Style="{StaticResource AppComboBoxStyle}" />
+					</StackPanel>
+
+					<StackPanel Grid.Row="12">
+						<TextBlock Text="Packaging" Style="{StaticResource FormLabelStyle}" />
+						<ComboBox ItemsSource="{Binding Packagings}" SelectedItem="{Binding Editor.Packaging}" DisplayMemberPath="Name" Style="{StaticResource AppComboBoxStyle}" />
+					</StackPanel>
+
+					<StackPanel Grid.Row="14">
+						<TextBlock Text="Supplier" Style="{StaticResource FormLabelStyle}" />
+						<ComboBox ItemsSource="{Binding Suppliers}" SelectedItem="{Binding Editor.Supplier}" DisplayMemberPath="Name" Style="{StaticResource AppComboBoxStyle}" />
 					</StackPanel>
 
 					<StackPanel
-						Grid.Row="10"
+						Grid.Row="16"
 						HorizontalAlignment="Right"
 						Orientation="Horizontal">
 						<Button

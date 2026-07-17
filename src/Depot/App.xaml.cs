@@ -31,6 +31,11 @@ public partial class App : Application
 	public static ItemRepository ItemRepository { get; private set; } = null!;
 	public static PurposeRepository PurposeRepository { get; private set; } = null!;
 	public static ReasonCodeRepository ReasonCodeRepository { get; private set; } = null!;
+	public static ManufacturerRepository ManufacturerRepository { get; private set; } = null!;
+	public static CategoryRepository CategoryRepository { get; private set; } = null!;
+	public static UnitOfMeasureRepository UnitOfMeasureRepository { get; private set; } = null!;
+	public static PackagingRepository PackagingRepository { get; private set; } = null!;
+	public static SupplierRepository SupplierRepository { get; private set; } = null!;
 	public static InventoryRepository InventoryRepository { get; private set; } = null!;
 	public static WarehouseRepository WarehouseRepository { get; private set; } = null!;
 	public static StorageLocationRepository StorageLocationRepository { get; private set; } = null!;
@@ -51,6 +56,11 @@ public partial class App : Application
 	public static ItemService ItemService { get; private set; } = null!;
 	public static PurposeService PurposeService { get; private set; } = null!;
 	public static ReasonCodeService ReasonCodeService { get; private set; } = null!;
+	public static ManufacturerService ManufacturerService { get; private set; } = null!;
+	public static CategoryService CategoryService { get; private set; } = null!;
+	public static UnitOfMeasureService UnitOfMeasureService { get; private set; } = null!;
+	public static PackagingService PackagingService { get; private set; } = null!;
+	public static SupplierService SupplierService { get; private set; } = null!;
 	public static WarehouseService WarehouseService { get; private set; } = null!;
 	public static StorageLocationService StorageLocationService { get; private set; } = null!;
 	public static UserService UserService { get; private set; } = null!;
@@ -115,6 +125,11 @@ public partial class App : Application
 		ReasonCodeRepository =
 			new ReasonCodeRepository(
 				DataAccess);
+		ManufacturerRepository = new ManufacturerRepository(DataAccess);
+		CategoryRepository = new CategoryRepository(DataAccess);
+		UnitOfMeasureRepository = new UnitOfMeasureRepository(DataAccess);
+		PackagingRepository = new PackagingRepository(DataAccess);
+		SupplierRepository = new SupplierRepository(DataAccess);
 
 		InventoryRepository =
 			new InventoryRepository(
@@ -164,10 +179,13 @@ public partial class App : Application
 			new SessionService(
 				AuthorizationService);
 
-		ItemService =
-			new ItemService(
-				ItemRepository,
-				AuditService);
+		ManufacturerService = new ManufacturerService(ManufacturerRepository, AuditService);
+		CategoryService = new CategoryService(CategoryRepository, AuditService);
+		UnitOfMeasureService = new UnitOfMeasureService(UnitOfMeasureRepository, AuditService);
+		PackagingService = new PackagingService(PackagingRepository, AuditService);
+		SupplierService = new SupplierService(SupplierRepository, AuditService);
+
+		ItemService = new ItemService(ItemRepository, AuditService, ManufacturerService, CategoryService, UnitOfMeasureService, PackagingService, SupplierService);
 
 		PurposeService =
 			new PurposeService(
@@ -284,6 +302,11 @@ public partial class App : Application
 				ReportService,
 				PurposeService,
 				ReasonCodeService,
+				ManufacturerService,
+				CategoryService,
+				UnitOfMeasureService,
+				PackagingService,
+				SupplierService,
 				WarehouseService,
 				StorageLocationService,
 				UserService,

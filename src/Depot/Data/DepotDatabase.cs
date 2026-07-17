@@ -139,8 +139,12 @@ public sealed class DepotDatabase : IDatabaseInitializer
 	private static void CreateCurrentSchema(
 		SqliteConnection connection)
 	{
+		CreateItemReferenceDataTables(connection);
+
 		CreateItemsTable(
 			connection);
+
+		CreateItemReferenceIndexes(connection);
 
 		CreatePurposesTable(
 			connection);
@@ -197,6 +201,11 @@ public sealed class DepotDatabase : IDatabaseInitializer
 			Description     TEXT NOT NULL,
 			Manufacturer    TEXT,
 			Category        TEXT,
+			ManufacturerId  INTEGER NULL REFERENCES Manufacturers(Id),
+			CategoryId      INTEGER NULL REFERENCES Categories(Id),
+			UnitOfMeasureId INTEGER NULL REFERENCES UnitsOfMeasure(Id),
+			PackagingId     INTEGER NULL REFERENCES Packagings(Id),
+			SupplierId      INTEGER NULL REFERENCES Suppliers(Id),
 			IsActive        INTEGER NOT NULL DEFAULT 1,
 			Version         INTEGER NOT NULL DEFAULT 1
 		);
@@ -350,6 +359,34 @@ public sealed class DepotDatabase : IDatabaseInitializer
 		);
 		""";
 
+		command.ExecuteNonQuery();
+	}
+
+	private static void CreateItemReferenceDataTables(SqliteConnection connection)
+	{
+		using var command = connection.CreateCommand();
+		command.CommandText =
+		"""
+		CREATE TABLE IF NOT EXISTS Manufacturers (Id INTEGER PRIMARY KEY AUTOINCREMENT, Name TEXT NOT NULL UNIQUE, Description TEXT, IsActive INTEGER NOT NULL DEFAULT 1, Version INTEGER NOT NULL DEFAULT 1);
+		CREATE TABLE IF NOT EXISTS Categories (Id INTEGER PRIMARY KEY AUTOINCREMENT, Name TEXT NOT NULL UNIQUE, Description TEXT, IsActive INTEGER NOT NULL DEFAULT 1, Version INTEGER NOT NULL DEFAULT 1);
+		CREATE TABLE IF NOT EXISTS UnitsOfMeasure (Id INTEGER PRIMARY KEY AUTOINCREMENT, Name TEXT NOT NULL UNIQUE, Description TEXT, IsActive INTEGER NOT NULL DEFAULT 1, Version INTEGER NOT NULL DEFAULT 1);
+		CREATE TABLE IF NOT EXISTS Packagings (Id INTEGER PRIMARY KEY AUTOINCREMENT, Name TEXT NOT NULL UNIQUE, Description TEXT, IsActive INTEGER NOT NULL DEFAULT 1, Version INTEGER NOT NULL DEFAULT 1);
+		CREATE TABLE IF NOT EXISTS Suppliers (Id INTEGER PRIMARY KEY AUTOINCREMENT, Name TEXT NOT NULL UNIQUE, Description TEXT, IsActive INTEGER NOT NULL DEFAULT 1, Version INTEGER NOT NULL DEFAULT 1);
+		""";
+		command.ExecuteNonQuery();
+	}
+
+	private static void CreateItemReferenceIndexes(SqliteConnection connection)
+	{
+		using var command = connection.CreateCommand();
+		command.CommandText =
+		"""
+		CREATE INDEX IF NOT EXISTS IX_Items_ManufacturerId ON Items(ManufacturerId);
+		CREATE INDEX IF NOT EXISTS IX_Items_CategoryId ON Items(CategoryId);
+		CREATE INDEX IF NOT EXISTS IX_Items_UnitOfMeasureId ON Items(UnitOfMeasureId);
+		CREATE INDEX IF NOT EXISTS IX_Items_PackagingId ON Items(PackagingId);
+		CREATE INDEX IF NOT EXISTS IX_Items_SupplierId ON Items(SupplierId);
+		""";
 		command.ExecuteNonQuery();
 	}
 
@@ -646,6 +683,13 @@ public sealed class DepotDatabase : IDatabaseInitializer
 			migratedVersion = 10;
 		}
 
+		if (migratedVersion == 10)
+		{
+			MigrateToNormalizedItemMasterData(connection);
+			SetDatabaseVersion(connection, 11);
+			migratedVersion = 11;
+		}
+
 		if (migratedVersion < DatabaseVersion.CurrentVersion)
 		{
 			throw new InvalidOperationException(
@@ -656,6 +700,42 @@ public sealed class DepotDatabase : IDatabaseInitializer
 		{
 			throw new InvalidOperationException(
 				$"Database version '{version}' is newer than the supported schema version '{DatabaseVersion.CurrentVersion}'.");
+		}
+	}
+
+	private static void MigrateToNormalizedItemMasterData(SqliteConnection connection)
+	{
+		CreateItemReferenceDataTables(connection);
+		using var transaction = connection.BeginTransaction();
+		AddColumnIfMissing("ManufacturerId", "Manufacturers");
+		AddColumnIfMissing("CategoryId", "Categories");
+		AddColumnIfMissing("UnitOfMeasureId", "UnitsOfMeasure");
+		AddColumnIfMissing("PackagingId", "Packagings");
+		AddColumnIfMissing("SupplierId", "Suppliers");
+		using var command = connection.CreateCommand();
+		command.Transaction = transaction;
+		command.CommandText =
+		"""
+		INSERT OR IGNORE INTO Manufacturers (Name) SELECT DISTINCT TRIM(Manufacturer) FROM Items WHERE Manufacturer IS NOT NULL AND TRIM(Manufacturer) <> '';
+		INSERT OR IGNORE INTO Categories (Name) SELECT DISTINCT TRIM(Category) FROM Items WHERE Category IS NOT NULL AND TRIM(Category) <> '';
+		UPDATE Items SET ManufacturerId = (SELECT Id FROM Manufacturers WHERE Name = TRIM(Items.Manufacturer)) WHERE Manufacturer IS NOT NULL AND TRIM(Manufacturer) <> '';
+		UPDATE Items SET CategoryId = (SELECT Id FROM Categories WHERE Name = TRIM(Items.Category)) WHERE Category IS NOT NULL AND TRIM(Category) <> '';
+		CREATE INDEX IF NOT EXISTS IX_Items_ManufacturerId ON Items(ManufacturerId);
+		CREATE INDEX IF NOT EXISTS IX_Items_CategoryId ON Items(CategoryId);
+		CREATE INDEX IF NOT EXISTS IX_Items_UnitOfMeasureId ON Items(UnitOfMeasureId);
+		CREATE INDEX IF NOT EXISTS IX_Items_PackagingId ON Items(PackagingId);
+		CREATE INDEX IF NOT EXISTS IX_Items_SupplierId ON Items(SupplierId);
+		""";
+		command.ExecuteNonQuery();
+		transaction.Commit();
+
+		void AddColumnIfMissing(string columnName, string referenceTable)
+		{
+			if (TableHasColumn(connection, "Items", columnName)) return;
+			using var alterCommand = connection.CreateCommand();
+			alterCommand.Transaction = transaction;
+			alterCommand.CommandText = $"ALTER TABLE Items ADD COLUMN {columnName} INTEGER NULL REFERENCES {referenceTable}(Id);";
+			alterCommand.ExecuteNonQuery();
 		}
 	}
 

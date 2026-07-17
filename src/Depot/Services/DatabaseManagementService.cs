@@ -18,7 +18,12 @@ public sealed class DatabaseManagementService
 	private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
 	private static readonly TableDefinition[] Tables =
 	[
-		new("Items", ["Id", "PartNumber", "Description", "Manufacturer", "Category", "IsActive", "Version"]),
+		new("Manufacturers", ["Id", "Name", "Description", "IsActive", "Version"]),
+		new("Categories", ["Id", "Name", "Description", "IsActive", "Version"]),
+		new("UnitsOfMeasure", ["Id", "Name", "Description", "IsActive", "Version"]),
+		new("Packagings", ["Id", "Name", "Description", "IsActive", "Version"]),
+		new("Suppliers", ["Id", "Name", "Description", "IsActive", "Version"]),
+		new("Items", ["Id", "PartNumber", "Description", "Manufacturer", "Category", "ManufacturerId", "CategoryId", "UnitOfMeasureId", "PackagingId", "SupplierId", "IsActive", "Version"]),
 		new("Purposes", ["Id", "Name", "Description", "IsActive", "Version"]),
 		new("ReasonCodes", ["Id", "Name", "Description", "IsActive", "Version"]),
 		new("Warehouses", ["Id", "Name", "Description", "IsActive", "Version"]),

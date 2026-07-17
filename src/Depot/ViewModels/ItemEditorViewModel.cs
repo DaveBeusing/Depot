@@ -11,8 +11,11 @@ public sealed class ItemEditorViewModel
 	private long _id;
 	private string _partNumber = string.Empty;
 	private string _description = string.Empty;
-	private string? _manufacturer;
-	private string? _category;
+	private ItemReferenceData? _manufacturer;
+	private ItemReferenceData? _category;
+	private ItemReferenceData? _unitOfMeasure;
+	private ItemReferenceData? _packaging;
+	private ItemReferenceData? _supplier;
 	private long _version = 1;
 
 	public long Version
@@ -67,7 +70,7 @@ public sealed class ItemEditorViewModel
 		}
 	}
 
-	public string? Manufacturer
+	public ItemReferenceData? Manufacturer
 	{
 		get => _manufacturer;
 		set
@@ -77,7 +80,7 @@ public sealed class ItemEditorViewModel
 		}
 	}
 
-	public string? Category
+	public ItemReferenceData? Category
 	{
 		get => _category;
 		set
@@ -87,14 +90,16 @@ public sealed class ItemEditorViewModel
 		}
 	}
 
+	public ItemReferenceData? UnitOfMeasure { get => _unitOfMeasure; set { if (_unitOfMeasure == value) return; _unitOfMeasure = value; OnPropertyChanged(); } }
+	public ItemReferenceData? Packaging { get => _packaging; set { if (_packaging == value) return; _packaging = value; OnPropertyChanged(); } }
+	public ItemReferenceData? Supplier { get => _supplier; set { if (_supplier == value) return; _supplier = value; OnPropertyChanged(); } }
+
 	public void Load(
 		Item item)
 	{
 		Id = item.Id;
 		PartNumber = item.PartNumber;
 		Description = item.Description;
-		Manufacturer = item.Manufacturer;
-		Category = item.Category;
 		Version = item.Version;
 	}
 
@@ -105,6 +110,9 @@ public sealed class ItemEditorViewModel
 		Description = string.Empty;
 		Manufacturer = null;
 		Category = null;
+		UnitOfMeasure = null;
+		Packaging = null;
+		Supplier = null;
 		Version = 1;
 	}
 }

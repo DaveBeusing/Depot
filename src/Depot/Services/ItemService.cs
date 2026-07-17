@@ -10,13 +10,28 @@ public sealed class ItemService
 {
 	private readonly ItemRepository _itemRepository;
 	private readonly AuditService _auditService;
+	private readonly IItemReferenceDataService _manufacturerService;
+	private readonly IItemReferenceDataService _categoryService;
+	private readonly IItemReferenceDataService _unitOfMeasureService;
+	private readonly IItemReferenceDataService _packagingService;
+	private readonly IItemReferenceDataService _supplierService;
 
 	public ItemService(
 		ItemRepository itemRepository,
-		AuditService auditService)
+		AuditService auditService,
+		ManufacturerService manufacturerService,
+		CategoryService categoryService,
+		UnitOfMeasureService unitOfMeasureService,
+		PackagingService packagingService,
+		SupplierService supplierService)
 	{
 		_itemRepository = itemRepository;
 		_auditService = auditService;
+		_manufacturerService = manufacturerService;
+		_categoryService = categoryService;
+		_unitOfMeasureService = unitOfMeasureService;
+		_packagingService = packagingService;
+		_supplierService = supplierService;
 	}
 
 	public IReadOnlyList<Item> GetItems()
@@ -75,8 +90,8 @@ public sealed class ItemService
 			{
 				PartNumber = partNumber,
 				Description = description,
-				Manufacturer = manufacturer,
-				Category = category,
+				ManufacturerId = ResolveSync(_manufacturerService, manufacturer),
+				CategoryId = ResolveSync(_categoryService, category),
 				IsActive = true
 			};
 
@@ -208,12 +223,14 @@ public sealed class ItemService
 			throw new InvalidOperationException($"Item '{partNumber}' already exists.");
 		}
 
+		var manufacturerValue = await _manufacturerService.GetOrCreateAsync(manufacturer, cancellationToken);
+		var categoryValue = await _categoryService.GetOrCreateAsync(category, cancellationToken);
 		var item = new Item
 		{
 			PartNumber = partNumber,
 			Description = description,
-			Manufacturer = manufacturer,
-			Category = category,
+			ManufacturerId = manufacturerValue?.Id,
+			CategoryId = categoryValue?.Id,
 			IsActive = true
 		};
 		item.Id = await _itemRepository.CreateAsync(item, cancellationToken);
@@ -244,8 +261,8 @@ public sealed class ItemService
 		if (item.Version != expectedVersion) throw new ConcurrencyConflictException("item");
 		var before = Copy(item);
 		item.Description = description;
-		item.Manufacturer = manufacturer;
-		item.Category = category;
+		item.ManufacturerId = (await _manufacturerService.GetOrCreateAsync(manufacturer, cancellationToken))?.Id;
+		item.CategoryId = (await _categoryService.GetOrCreateAsync(category, cancellationToken))?.Id;
 		if (!await _itemRepository.UpdateAsync(item, cancellationToken))
 		{
 			throw new ConcurrencyConflictException("item");
@@ -253,6 +270,69 @@ public sealed class ItemService
 		item.Version++;
 		await _auditService.RecordUpdatedAsync(item.Id, before, item, cancellationToken);
 		return item;
+	}
+
+	public async Task<Item> CreateItemWithReferencesAsync(
+		string partNumber,
+		string description,
+		long? manufacturerId,
+		long? categoryId,
+		long? unitOfMeasureId,
+		long? packagingId,
+		long? supplierId,
+		CancellationToken cancellationToken)
+	{
+		partNumber = partNumber.Trim();
+		description = description.Trim();
+		Validate(partNumber, description);
+		await ValidateReferencesAsync(manufacturerId, categoryId, unitOfMeasureId, packagingId, supplierId, cancellationToken);
+		if (await _itemRepository.GetByPartNumberAsync(partNumber, cancellationToken) is not null)
+			throw new InvalidOperationException($"Item '{partNumber}' already exists.");
+		var item = new Item
+		{
+			PartNumber = partNumber,
+			Description = description,
+			ManufacturerId = manufacturerId,
+			CategoryId = categoryId,
+			UnitOfMeasureId = unitOfMeasureId,
+			PackagingId = packagingId,
+			SupplierId = supplierId,
+			IsActive = true
+		};
+		item.Id = await _itemRepository.CreateAsync(item, cancellationToken);
+		await _auditService.RecordCreatedAsync(item.Id, item, cancellationToken);
+		return await _itemRepository.GetByIdAsync(item.Id, cancellationToken) ?? item;
+	}
+
+	public async Task<Item> UpdateItemWithReferencesAsync(
+		long id,
+		long expectedVersion,
+		string description,
+		long? manufacturerId,
+		long? categoryId,
+		long? unitOfMeasureId,
+		long? packagingId,
+		long? supplierId,
+		CancellationToken cancellationToken)
+	{
+		if (id <= 0) throw new ArgumentException("Item id is required.", nameof(id));
+		description = description.Trim();
+		if (string.IsNullOrWhiteSpace(description)) throw new ArgumentException("Description is required.", nameof(description));
+		await ValidateReferencesAsync(manufacturerId, categoryId, unitOfMeasureId, packagingId, supplierId, cancellationToken);
+		var item = await _itemRepository.GetByIdAsync(id, cancellationToken)
+			?? throw new InvalidOperationException($"Item with id '{id}' was not found.");
+		if (item.Version != expectedVersion) throw new ConcurrencyConflictException("item");
+		var before = Copy(item);
+		item.Description = description;
+		item.ManufacturerId = manufacturerId;
+		item.CategoryId = categoryId;
+		item.UnitOfMeasureId = unitOfMeasureId;
+		item.PackagingId = packagingId;
+		item.SupplierId = supplierId;
+		if (!await _itemRepository.UpdateAsync(item, cancellationToken)) throw new ConcurrencyConflictException("item");
+		item.Version++;
+		await _auditService.RecordUpdatedAsync(item.Id, before, item, cancellationToken);
+		return await _itemRepository.GetByIdAsync(item.Id, cancellationToken) ?? item;
 	}
 
 	public async Task DeactivateItemAsync(
@@ -282,6 +362,14 @@ public sealed class ItemService
 			Description = item.Description,
 			Manufacturer = item.Manufacturer,
 			Category = item.Category,
+			UnitOfMeasure = item.UnitOfMeasure,
+			Packaging = item.Packaging,
+			Supplier = item.Supplier,
+			ManufacturerId = item.ManufacturerId,
+			CategoryId = item.CategoryId,
+			UnitOfMeasureId = item.UnitOfMeasureId,
+			PackagingId = item.PackagingId,
+			SupplierId = item.SupplierId,
 			IsActive = item.IsActive,
 			Version = item.Version
 		};
@@ -304,5 +392,18 @@ public sealed class ItemService
 			throw new ArgumentException("Part number is required.", nameof(partNumber));
 		if (string.IsNullOrWhiteSpace(description))
 			throw new ArgumentException("Description is required.", nameof(description));
+	}
+
+	private static long? ResolveSync(IItemReferenceDataService service, string? name) =>
+		service.GetOrCreateAsync(name).GetAwaiter().GetResult()?.Id;
+
+	private async Task ValidateReferencesAsync(long? manufacturerId, long? categoryId, long? unitOfMeasureId, long? packagingId, long? supplierId, CancellationToken cancellationToken)
+	{
+		await Task.WhenAll(
+			_manufacturerService.ValidateSelectionAsync(manufacturerId, cancellationToken),
+			_categoryService.ValidateSelectionAsync(categoryId, cancellationToken),
+			_unitOfMeasureService.ValidateSelectionAsync(unitOfMeasureId, cancellationToken),
+			_packagingService.ValidateSelectionAsync(packagingId, cancellationToken),
+			_supplierService.ValidateSelectionAsync(supplierId, cancellationToken));
 	}
 }

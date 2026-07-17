@@ -41,6 +41,11 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 			MigrateToReasonCodes(command);
 			version = 10;
 		}
+		if (version == 10)
+		{
+			MigrateToNormalizedItemMasterData(command);
+			version = 11;
+		}
 		if (version != DatabaseVersion.CurrentVersion)
 		{
 			throw new InvalidOperationException(
@@ -48,6 +53,35 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 		}
 
 		transaction.Commit();
+	}
+
+	private static void MigrateToNormalizedItemMasterData(System.Data.Common.DbCommand command)
+	{
+		command.CommandText =
+		"""
+		INSERT INTO Manufacturers (Name) SELECT DISTINCT LTRIM(RTRIM(i.Manufacturer)) FROM Items i WHERE i.Manufacturer IS NOT NULL AND LTRIM(RTRIM(i.Manufacturer)) <> '' AND NOT EXISTS (SELECT 1 FROM Manufacturers m WHERE m.Name = LTRIM(RTRIM(i.Manufacturer)));
+		INSERT INTO Categories (Name) SELECT DISTINCT LTRIM(RTRIM(i.Category)) FROM Items i WHERE i.Category IS NOT NULL AND LTRIM(RTRIM(i.Category)) <> '' AND NOT EXISTS (SELECT 1 FROM Categories c WHERE c.Name = LTRIM(RTRIM(i.Category)));
+		IF COL_LENGTH(N'Items', N'ManufacturerId') IS NULL ALTER TABLE Items ADD ManufacturerId bigint NULL;
+		IF COL_LENGTH(N'Items', N'CategoryId') IS NULL ALTER TABLE Items ADD CategoryId bigint NULL;
+		IF COL_LENGTH(N'Items', N'UnitOfMeasureId') IS NULL ALTER TABLE Items ADD UnitOfMeasureId bigint NULL;
+		IF COL_LENGTH(N'Items', N'PackagingId') IS NULL ALTER TABLE Items ADD PackagingId bigint NULL;
+		IF COL_LENGTH(N'Items', N'SupplierId') IS NULL ALTER TABLE Items ADD SupplierId bigint NULL;
+		UPDATE i SET ManufacturerId = m.Id FROM Items i INNER JOIN Manufacturers m ON m.Name = LTRIM(RTRIM(i.Manufacturer));
+		UPDATE i SET CategoryId = c.Id FROM Items i INNER JOIN Categories c ON c.Name = LTRIM(RTRIM(i.Category));
+		IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_Items_Manufacturers') ALTER TABLE Items ADD CONSTRAINT FK_Items_Manufacturers FOREIGN KEY (ManufacturerId) REFERENCES Manufacturers(Id);
+		IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_Items_Categories') ALTER TABLE Items ADD CONSTRAINT FK_Items_Categories FOREIGN KEY (CategoryId) REFERENCES Categories(Id);
+		IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_Items_UnitsOfMeasure') ALTER TABLE Items ADD CONSTRAINT FK_Items_UnitsOfMeasure FOREIGN KEY (UnitOfMeasureId) REFERENCES UnitsOfMeasure(Id);
+		IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_Items_Packagings') ALTER TABLE Items ADD CONSTRAINT FK_Items_Packagings FOREIGN KEY (PackagingId) REFERENCES Packagings(Id);
+		IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_Items_Suppliers') ALTER TABLE Items ADD CONSTRAINT FK_Items_Suppliers FOREIGN KEY (SupplierId) REFERENCES Suppliers(Id);
+		IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Items_ManufacturerId' AND object_id = OBJECT_ID(N'Items')) CREATE INDEX IX_Items_ManufacturerId ON Items(ManufacturerId);
+		IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Items_CategoryId' AND object_id = OBJECT_ID(N'Items')) CREATE INDEX IX_Items_CategoryId ON Items(CategoryId);
+		IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Items_UnitOfMeasureId' AND object_id = OBJECT_ID(N'Items')) CREATE INDEX IX_Items_UnitOfMeasureId ON Items(UnitOfMeasureId);
+		IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Items_PackagingId' AND object_id = OBJECT_ID(N'Items')) CREATE INDEX IX_Items_PackagingId ON Items(PackagingId);
+		IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Items_SupplierId' AND object_id = OBJECT_ID(N'Items')) CREATE INDEX IX_Items_SupplierId ON Items(SupplierId);
+		UPDATE DatabaseInfo SET Version = 11 WHERE Id = 1;
+		""";
+		command.Parameters.Clear();
+		command.ExecuteNonQuery();
 	}
 
 	private static void MigrateToReasonCodes(System.Data.Common.DbCommand command)
@@ -131,7 +165,14 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 		INSERT INTO DatabaseInfo (Id, Version) VALUES (1, @CurrentVersion);
 	END;
 
+	IF OBJECT_ID(N'Manufacturers', N'U') IS NULL CREATE TABLE Manufacturers (Id bigint IDENTITY(1,1) NOT NULL PRIMARY KEY, Name nvarchar(200) NOT NULL UNIQUE, Description nvarchar(500) NULL, IsActive bit NOT NULL DEFAULT 1, Version bigint NOT NULL DEFAULT 1);
+	IF OBJECT_ID(N'Categories', N'U') IS NULL CREATE TABLE Categories (Id bigint IDENTITY(1,1) NOT NULL PRIMARY KEY, Name nvarchar(200) NOT NULL UNIQUE, Description nvarchar(500) NULL, IsActive bit NOT NULL DEFAULT 1, Version bigint NOT NULL DEFAULT 1);
+	IF OBJECT_ID(N'UnitsOfMeasure', N'U') IS NULL CREATE TABLE UnitsOfMeasure (Id bigint IDENTITY(1,1) NOT NULL PRIMARY KEY, Name nvarchar(200) NOT NULL UNIQUE, Description nvarchar(500) NULL, IsActive bit NOT NULL DEFAULT 1, Version bigint NOT NULL DEFAULT 1);
+	IF OBJECT_ID(N'Packagings', N'U') IS NULL CREATE TABLE Packagings (Id bigint IDENTITY(1,1) NOT NULL PRIMARY KEY, Name nvarchar(200) NOT NULL UNIQUE, Description nvarchar(500) NULL, IsActive bit NOT NULL DEFAULT 1, Version bigint NOT NULL DEFAULT 1);
+	IF OBJECT_ID(N'Suppliers', N'U') IS NULL CREATE TABLE Suppliers (Id bigint IDENTITY(1,1) NOT NULL PRIMARY KEY, Name nvarchar(200) NOT NULL UNIQUE, Description nvarchar(500) NULL, IsActive bit NOT NULL DEFAULT 1, Version bigint NOT NULL DEFAULT 1);
+
 	IF OBJECT_ID(N'Items', N'U') IS NULL
+	BEGIN
 		CREATE TABLE Items
 		(
 			Id bigint IDENTITY(1,1) NOT NULL CONSTRAINT PK_Items PRIMARY KEY,
@@ -139,9 +180,25 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 			Description nvarchar(500) NOT NULL,
 			Manufacturer nvarchar(200) NULL,
 			Category nvarchar(200) NULL,
+			ManufacturerId bigint NULL,
+			CategoryId bigint NULL,
+			UnitOfMeasureId bigint NULL,
+			PackagingId bigint NULL,
+			SupplierId bigint NULL,
 			IsActive bit NOT NULL CONSTRAINT DF_Items_IsActive DEFAULT 1,
-			Version bigint NOT NULL CONSTRAINT DF_Items_Version DEFAULT 1
+			Version bigint NOT NULL CONSTRAINT DF_Items_Version DEFAULT 1,
+			CONSTRAINT FK_Items_Manufacturers FOREIGN KEY (ManufacturerId) REFERENCES Manufacturers(Id),
+			CONSTRAINT FK_Items_Categories FOREIGN KEY (CategoryId) REFERENCES Categories(Id),
+			CONSTRAINT FK_Items_UnitsOfMeasure FOREIGN KEY (UnitOfMeasureId) REFERENCES UnitsOfMeasure(Id),
+			CONSTRAINT FK_Items_Packagings FOREIGN KEY (PackagingId) REFERENCES Packagings(Id),
+			CONSTRAINT FK_Items_Suppliers FOREIGN KEY (SupplierId) REFERENCES Suppliers(Id)
 		);
+		CREATE INDEX IX_Items_ManufacturerId ON Items(ManufacturerId);
+		CREATE INDEX IX_Items_CategoryId ON Items(CategoryId);
+		CREATE INDEX IX_Items_UnitOfMeasureId ON Items(UnitOfMeasureId);
+		CREATE INDEX IX_Items_PackagingId ON Items(PackagingId);
+		CREATE INDEX IX_Items_SupplierId ON Items(SupplierId);
+	END;
 
 	IF OBJECT_ID(N'Purposes', N'U') IS NULL
 		CREATE TABLE Purposes

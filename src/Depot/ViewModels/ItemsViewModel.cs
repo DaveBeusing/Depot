@@ -13,6 +13,7 @@ public sealed class ItemsViewModel : BaseViewModel, IDisposable
 {
 	private const int PageSize = 100;
 	private readonly ItemService _itemService;
+	private readonly IItemReferenceDataService[] _referenceServices;
 	private readonly AsyncDebouncer _searchDebouncer = new(TimeSpan.FromMilliseconds(300));
 	private ItemViewModel? _selectedItem;
 	private string? _errorMessage;
@@ -20,9 +21,16 @@ public sealed class ItemsViewModel : BaseViewModel, IDisposable
 	private int _pageNumber = 1;
 	private long _totalCount;
 
-	public ItemsViewModel(ItemService itemService)
+	public ItemsViewModel(
+		ItemService itemService,
+		ManufacturerService manufacturerService,
+		CategoryService categoryService,
+		UnitOfMeasureService unitOfMeasureService,
+		PackagingService packagingService,
+		SupplierService supplierService)
 	{
 		_itemService = itemService;
+		_referenceServices = [manufacturerService, categoryService, unitOfMeasureService, packagingService, supplierService];
 		Editor = new ItemEditorViewModel();
 		NewItemCommand = new RelayCommand(NewItem);
 		SaveItemCommand = new AsyncRelayCommand(SaveItemAsync);
@@ -32,6 +40,11 @@ public sealed class ItemsViewModel : BaseViewModel, IDisposable
 	}
 
 	public ObservableCollection<ItemViewModel> Items { get; } = new();
+	public ObservableCollection<ItemReferenceData> Manufacturers { get; } = new();
+	public ObservableCollection<ItemReferenceData> Categories { get; } = new();
+	public ObservableCollection<ItemReferenceData> UnitsOfMeasure { get; } = new();
+	public ObservableCollection<ItemReferenceData> Packagings { get; } = new();
+	public ObservableCollection<ItemReferenceData> Suppliers { get; } = new();
 	public bool HasItems => Items.Count > 0;
 	public bool HasNoItems => !HasItems;
 	public bool HasNextPage => (long)PageNumber * PageSize < TotalCount;
@@ -114,6 +127,11 @@ public sealed class ItemsViewModel : BaseViewModel, IDisposable
 		var selectedId = SelectedItem?.Id;
 		try
 		{
+			if (Manufacturers.Count == 0)
+			{
+				var values = await Task.WhenAll(_referenceServices.Select(service => service.GetActiveAsync(cancellationToken)));
+				Fill(Manufacturers, values[0]); Fill(Categories, values[1]); Fill(UnitsOfMeasure, values[2]); Fill(Packagings, values[3]); Fill(Suppliers, values[4]);
+			}
 			var page = await _itemService.SearchItemsAsync(
 				SearchText,
 				PageNumber,
@@ -144,8 +162,11 @@ public sealed class ItemsViewModel : BaseViewModel, IDisposable
 		Editor.Id = SelectedItem.Id;
 		Editor.PartNumber = SelectedItem.PartNumber;
 		Editor.Description = SelectedItem.Description;
-		Editor.Manufacturer = SelectedItem.Manufacturer;
-		Editor.Category = SelectedItem.Category;
+		Editor.Manufacturer = Manufacturers.FirstOrDefault(value => value.Id == SelectedItem.ManufacturerId);
+		Editor.Category = Categories.FirstOrDefault(value => value.Id == SelectedItem.CategoryId);
+		Editor.UnitOfMeasure = UnitsOfMeasure.FirstOrDefault(value => value.Id == SelectedItem.UnitOfMeasureId);
+		Editor.Packaging = Packagings.FirstOrDefault(value => value.Id == SelectedItem.PackagingId);
+		Editor.Supplier = Suppliers.FirstOrDefault(value => value.Id == SelectedItem.SupplierId);
 		Editor.Version = SelectedItem.Version;
 	}
 
@@ -164,18 +185,24 @@ public sealed class ItemsViewModel : BaseViewModel, IDisposable
 		try
 		{
 			var item = Editor.Id == 0
-				? await _itemService.CreateItemAsync(
+				? await _itemService.CreateItemWithReferencesAsync(
 					Editor.PartNumber,
 					Editor.Description,
-					Editor.Manufacturer,
-					Editor.Category,
+					Editor.Manufacturer?.Id,
+					Editor.Category?.Id,
+					Editor.UnitOfMeasure?.Id,
+					Editor.Packaging?.Id,
+					Editor.Supplier?.Id,
 					cancellationToken)
-				: await _itemService.UpdateItemAsync(
+				: await _itemService.UpdateItemWithReferencesAsync(
 					Editor.Id,
 					Editor.Version,
 					Editor.Description,
-					Editor.Manufacturer,
-					Editor.Category,
+					Editor.Manufacturer?.Id,
+					Editor.Category?.Id,
+					Editor.UnitOfMeasure?.Id,
+					Editor.Packaging?.Id,
+					Editor.Supplier?.Id,
 					cancellationToken);
 			UpdateItem(item);
 			Editor.Clear();
@@ -252,7 +279,10 @@ public sealed class ItemsViewModel : BaseViewModel, IDisposable
 		return item.PartNumber.Contains(search, StringComparison.OrdinalIgnoreCase) ||
 			item.Description.Contains(search, StringComparison.OrdinalIgnoreCase) ||
 			(item.Manufacturer?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false) ||
-			(item.Category?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false);
+			(item.Category?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false) ||
+			(item.UnitOfMeasure?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false) ||
+			(item.Packaging?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false) ||
+			(item.Supplier?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false);
 	}
 
 	private void RaiseCollectionState()
@@ -268,6 +298,12 @@ public sealed class ItemsViewModel : BaseViewModel, IDisposable
 	}
 
 	private void ClearError() => ErrorMessage = null;
+
+	private static void Fill(ObservableCollection<ItemReferenceData> target, IReadOnlyList<ItemReferenceData> values)
+	{
+		target.Clear();
+		foreach (var value in values) target.Add(value);
+	}
 
 	public void Dispose()
 	{

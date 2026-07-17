@@ -15,6 +15,22 @@ public sealed class Item
 
 	public string? Category { get; set; }
 
+	public string? UnitOfMeasure { get; set; }
+
+	public string? Packaging { get; set; }
+
+	public string? Supplier { get; set; }
+
+	public long? ManufacturerId { get; set; }
+
+	public long? CategoryId { get; set; }
+
+	public long? UnitOfMeasureId { get; set; }
+
+	public long? PackagingId { get; set; }
+
+	public long? SupplierId { get; set; }
+
 	public bool IsActive { get; set; } = true;
 
 	public long Version { get; set; } = 1;

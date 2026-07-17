@@ -10,5 +10,10 @@ public enum MasterDataSection
 {
 	Purposes,
 	ReasonCodes,
+	Manufacturers,
+	Categories,
+	UnitsOfMeasure,
+	Packaging,
+	Suppliers,
 	WarehouseStructure
 }

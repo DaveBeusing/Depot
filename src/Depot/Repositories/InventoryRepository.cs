@@ -62,14 +62,14 @@ public sealed class InventoryRepository : DatabaseRepository
 		var search = searchText?.Trim();
 		var hasSearch = !string.IsNullOrWhiteSpace(search);
 		var filter = hasSearch
-			? "AND (i.PartNumber LIKE $Search OR i.Description LIKE $Search OR i.Manufacturer LIKE $Search OR i.Category LIKE $Search OR p.Name LIKE $Search OR w.Name LIKE $Search OR sl.Name LIKE $Search)"
+			? "AND (i.PartNumber LIKE $Search OR i.Description LIKE $Search OR m.Name LIKE $Search OR c.Name LIKE $Search OR p.Name LIKE $Search OR w.Name LIKE $Search OR sl.Name LIKE $Search)"
 			: string.Empty;
 		var parameters = hasSearch
 			? new[] { Parameter("$Search", $"%{search}%") }
 			: [];
 		return Database.QueryPageAsync(
 			$"""
-			SELECT inv.Id, i.Id, i.PartNumber, i.Description, i.Manufacturer, i.Category,
+			SELECT inv.Id, i.Id, i.PartNumber, i.Description, m.Name, c.Name,
 			       p.Name, w.Name, sl.Name,
 			       COALESCE(SUM(sm.Quantity), 0) AS CurrentStock,
 			       COALESCE(
@@ -78,18 +78,22 @@ public sealed class InventoryRepository : DatabaseRepository
 			           0) AS AverageCost
 			FROM Inventories inv
 			INNER JOIN Items i ON i.Id = inv.ItemId
+			LEFT JOIN Manufacturers m ON m.Id = i.ManufacturerId
+			LEFT JOIN Categories c ON c.Id = i.CategoryId
 			INNER JOIN Purposes p ON p.Id = inv.PurposeId
 			INNER JOIN StorageLocations sl ON sl.Id = inv.StorageLocationId
 			INNER JOIN Warehouses w ON w.Id = sl.WarehouseId
 			LEFT JOIN StockMovements sm ON sm.InventoryId = inv.Id
 			WHERE inv.IsActive = 1 AND i.IsActive = 1 {filter}
-			GROUP BY inv.Id, i.Id, i.PartNumber, i.Description, i.Manufacturer, i.Category, p.Name, w.Name, sl.Name
+			GROUP BY inv.Id, i.Id, i.PartNumber, i.Description, m.Name, c.Name, p.Name, w.Name, sl.Name
 			ORDER BY i.PartNumber, p.Name, w.Name, sl.Name
 			""",
 			$"""
 			SELECT COUNT(*)
 			FROM Inventories inv
 			INNER JOIN Items i ON i.Id = inv.ItemId
+			LEFT JOIN Manufacturers m ON m.Id = i.ManufacturerId
+			LEFT JOIN Categories c ON c.Id = i.CategoryId
 			INNER JOIN Purposes p ON p.Id = inv.PurposeId
 			INNER JOIN StorageLocations sl ON sl.Id = inv.StorageLocationId
 			INNER JOIN Warehouses w ON w.Id = sl.WarehouseId
@@ -163,7 +167,7 @@ public sealed class InventoryRepository : DatabaseRepository
 		CancellationToken cancellationToken) =>
 		Database.QuerySingleOrDefaultAsync(
 			"""
-			SELECT inv.Id, i.Id, i.PartNumber, i.Description, i.Manufacturer, i.Category,
+			SELECT inv.Id, i.Id, i.PartNumber, i.Description, m.Name, c.Name,
 			       p.Name, w.Name, sl.Name,
 			       COALESCE(SUM(sm.Quantity), 0) AS CurrentStock,
 			       COALESCE(
@@ -172,12 +176,14 @@ public sealed class InventoryRepository : DatabaseRepository
 			           0) AS AverageCost
 			FROM Inventories inv
 			INNER JOIN Items i ON i.Id = inv.ItemId
+			LEFT JOIN Manufacturers m ON m.Id = i.ManufacturerId
+			LEFT JOIN Categories c ON c.Id = i.CategoryId
 			INNER JOIN Purposes p ON p.Id = inv.PurposeId
 			INNER JOIN StorageLocations sl ON sl.Id = inv.StorageLocationId
 			INNER JOIN Warehouses w ON w.Id = sl.WarehouseId
 			LEFT JOIN StockMovements sm ON sm.InventoryId = inv.Id
 			WHERE inv.Id = $InventoryId
-			GROUP BY inv.Id, i.Id, i.PartNumber, i.Description, i.Manufacturer, i.Category, p.Name, w.Name, sl.Name;
+			GROUP BY inv.Id, i.Id, i.PartNumber, i.Description, m.Name, c.Name, p.Name, w.Name, sl.Name;
 			""",
 			ReadOverview,
 			cancellationToken,
@@ -190,14 +196,14 @@ public sealed class InventoryRepository : DatabaseRepository
 		var search = searchText?.Trim();
 		var hasSearch = !string.IsNullOrWhiteSpace(search);
 		var filter = hasSearch
-			? "AND (i.PartNumber LIKE $Search OR i.Description LIKE $Search OR i.Manufacturer LIKE $Search OR i.Category LIKE $Search OR p.Name LIKE $Search OR w.Name LIKE $Search OR sl.Name LIKE $Search)"
+			? "AND (i.PartNumber LIKE $Search OR i.Description LIKE $Search OR m.Name LIKE $Search OR c.Name LIKE $Search OR p.Name LIKE $Search OR w.Name LIKE $Search OR sl.Name LIKE $Search)"
 			: string.Empty;
 		IReadOnlyList<DatabaseParameter> parameters = hasSearch
 			? [Parameter("$Search", $"%{search}%")]
 			: [];
 		return Database.StreamAsync(
 			$"""
-			SELECT inv.Id, i.Id, i.PartNumber, i.Description, i.Manufacturer, i.Category,
+			SELECT inv.Id, i.Id, i.PartNumber, i.Description, m.Name, c.Name,
 			       p.Name, w.Name, sl.Name,
 			       COALESCE(SUM(sm.Quantity), 0) AS CurrentStock,
 			       COALESCE(
@@ -206,12 +212,14 @@ public sealed class InventoryRepository : DatabaseRepository
 			           0) AS AverageCost
 			FROM Inventories inv
 			INNER JOIN Items i ON i.Id = inv.ItemId
+			LEFT JOIN Manufacturers m ON m.Id = i.ManufacturerId
+			LEFT JOIN Categories c ON c.Id = i.CategoryId
 			INNER JOIN Purposes p ON p.Id = inv.PurposeId
 			INNER JOIN StorageLocations sl ON sl.Id = inv.StorageLocationId
 			INNER JOIN Warehouses w ON w.Id = sl.WarehouseId
 			LEFT JOIN StockMovements sm ON sm.InventoryId = inv.Id
 			WHERE inv.IsActive = 1 AND i.IsActive = 1 {filter}
-			GROUP BY inv.Id, i.Id, i.PartNumber, i.Description, i.Manufacturer, i.Category, p.Name, w.Name, sl.Name
+			GROUP BY inv.Id, i.Id, i.PartNumber, i.Description, m.Name, c.Name, p.Name, w.Name, sl.Name
 			ORDER BY i.PartNumber, p.Name, w.Name, sl.Name;
 			""",
 			ReadOverview,

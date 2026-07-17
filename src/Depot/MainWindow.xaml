@@ -67,6 +67,9 @@
 			<DataTemplate DataType="{x:Type purposeViewModels:PurposeViewModel}">
 				<purposeViews:PurposesView />
 			</DataTemplate>
+			<DataTemplate DataType="{x:Type masterDataViewModels:ItemReferenceDataViewModel}">
+				<masterDataViews:ItemReferenceDataView />
+			</DataTemplate>
 			<DataTemplate DataType="{x:Type reasonCodeViewModels:ReasonCodeViewModel}">
 				<reasonCodeViews:ReasonCodesView />
 			</DataTemplate>

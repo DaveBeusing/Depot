@@ -49,6 +49,11 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 				MigrateToReasonCodes(command);
 				version = 10;
 			}
+			if (version == 10)
+			{
+				MigrateToNormalizedItemMasterData(command);
+				version = 11;
+			}
 			if (version != DatabaseVersion.CurrentVersion)
 			{
 				throw new InvalidOperationException(
@@ -60,6 +65,29 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 			using var releaseCommand = connection.CreateCommand();
 			releaseCommand.CommandText = "SELECT RELEASE_LOCK('Depot.SchemaMigration');";
 			releaseCommand.ExecuteScalar();
+		}
+	}
+
+	private static void MigrateToNormalizedItemMasterData(System.Data.Common.DbCommand command)
+	{
+		Execute(command, "INSERT IGNORE INTO Manufacturers (Name) SELECT DISTINCT TRIM(Manufacturer) FROM Items WHERE Manufacturer IS NOT NULL AND TRIM(Manufacturer) <> ''; ");
+		Execute(command, "INSERT IGNORE INTO Categories (Name) SELECT DISTINCT TRIM(Category) FROM Items WHERE Category IS NOT NULL AND TRIM(Category) <> ''; ");
+		AddColumn("ManufacturerId", "Manufacturers");
+		AddColumn("CategoryId", "Categories");
+		AddColumn("UnitOfMeasureId", "UnitsOfMeasure");
+		AddColumn("PackagingId", "Packagings");
+		AddColumn("SupplierId", "Suppliers");
+		Execute(command, "UPDATE Items i INNER JOIN Manufacturers m ON m.Name = TRIM(i.Manufacturer) SET i.ManufacturerId = m.Id;");
+		Execute(command, "UPDATE Items i INNER JOIN Categories c ON c.Name = TRIM(i.Category) SET i.CategoryId = c.Id;");
+		Execute(command, "UPDATE DatabaseInfo SET Version = 11 WHERE Id = 1;");
+
+		void AddColumn(string column, string table)
+		{
+			if (!ColumnExists(command, "Items", column)) Execute(command, $"ALTER TABLE Items ADD COLUMN {column} bigint NULL;");
+			EnsureIndex(command, "Items", $"IX_Items_{column}", column);
+			var constraint = $"FK_Items_{table}";
+			if (!ConstraintExists(command, "Items", constraint))
+				Execute(command, $"ALTER TABLE Items ADD CONSTRAINT {constraint} FOREIGN KEY ({column}) REFERENCES {table}(Id);");
 		}
 	}
 
@@ -314,6 +342,12 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 	INSERT INTO DatabaseInfo (Id, Version)
 	SELECT 1, @CurrentVersion WHERE NOT EXISTS (SELECT 1 FROM DatabaseInfo WHERE Id = 1);
 
+	CREATE TABLE IF NOT EXISTS Manufacturers (Id bigint NOT NULL AUTO_INCREMENT PRIMARY KEY, Name varchar(200) NOT NULL UNIQUE, Description varchar(500) NULL, IsActive boolean NOT NULL DEFAULT true, Version bigint NOT NULL DEFAULT 1) ENGINE=InnoDB;
+	CREATE TABLE IF NOT EXISTS Categories (Id bigint NOT NULL AUTO_INCREMENT PRIMARY KEY, Name varchar(200) NOT NULL UNIQUE, Description varchar(500) NULL, IsActive boolean NOT NULL DEFAULT true, Version bigint NOT NULL DEFAULT 1) ENGINE=InnoDB;
+	CREATE TABLE IF NOT EXISTS UnitsOfMeasure (Id bigint NOT NULL AUTO_INCREMENT PRIMARY KEY, Name varchar(200) NOT NULL UNIQUE, Description varchar(500) NULL, IsActive boolean NOT NULL DEFAULT true, Version bigint NOT NULL DEFAULT 1) ENGINE=InnoDB;
+	CREATE TABLE IF NOT EXISTS Packagings (Id bigint NOT NULL AUTO_INCREMENT PRIMARY KEY, Name varchar(200) NOT NULL UNIQUE, Description varchar(500) NULL, IsActive boolean NOT NULL DEFAULT true, Version bigint NOT NULL DEFAULT 1) ENGINE=InnoDB;
+	CREATE TABLE IF NOT EXISTS Suppliers (Id bigint NOT NULL AUTO_INCREMENT PRIMARY KEY, Name varchar(200) NOT NULL UNIQUE, Description varchar(500) NULL, IsActive boolean NOT NULL DEFAULT true, Version bigint NOT NULL DEFAULT 1) ENGINE=InnoDB;
+
 	CREATE TABLE IF NOT EXISTS Items
 	(
 		Id bigint NOT NULL AUTO_INCREMENT PRIMARY KEY,
@@ -321,8 +355,23 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 		Description varchar(500) NOT NULL,
 		Manufacturer varchar(200) NULL,
 		Category varchar(200) NULL,
+		ManufacturerId bigint NULL,
+		CategoryId bigint NULL,
+		UnitOfMeasureId bigint NULL,
+		PackagingId bigint NULL,
+		SupplierId bigint NULL,
 		IsActive boolean NOT NULL DEFAULT true,
-		Version bigint NOT NULL DEFAULT 1
+		Version bigint NOT NULL DEFAULT 1,
+		INDEX IX_Items_ManufacturerId (ManufacturerId),
+		INDEX IX_Items_CategoryId (CategoryId),
+		INDEX IX_Items_UnitOfMeasureId (UnitOfMeasureId),
+		INDEX IX_Items_PackagingId (PackagingId),
+		INDEX IX_Items_SupplierId (SupplierId),
+		CONSTRAINT FK_Items_Manufacturers FOREIGN KEY (ManufacturerId) REFERENCES Manufacturers(Id),
+		CONSTRAINT FK_Items_Categories FOREIGN KEY (CategoryId) REFERENCES Categories(Id),
+		CONSTRAINT FK_Items_UnitsOfMeasure FOREIGN KEY (UnitOfMeasureId) REFERENCES UnitsOfMeasure(Id),
+		CONSTRAINT FK_Items_Packagings FOREIGN KEY (PackagingId) REFERENCES Packagings(Id),
+		CONSTRAINT FK_Items_Suppliers FOREIGN KEY (SupplierId) REFERENCES Suppliers(Id)
 	) ENGINE=InnoDB;
 
 	CREATE TABLE IF NOT EXISTS Purposes

@@ -15,6 +15,14 @@ public sealed class ItemViewModel
 		Description = item.Description;
 		Manufacturer = item.Manufacturer;
 		Category = item.Category;
+		UnitOfMeasure = item.UnitOfMeasure;
+		Packaging = item.Packaging;
+		Supplier = item.Supplier;
+		ManufacturerId = item.ManufacturerId;
+		CategoryId = item.CategoryId;
+		UnitOfMeasureId = item.UnitOfMeasureId;
+		PackagingId = item.PackagingId;
+		SupplierId = item.SupplierId;
 		IsActive = item.IsActive;
 		Version = item.Version;
 	}
@@ -28,6 +36,14 @@ public sealed class ItemViewModel
 	public string? Manufacturer { get; }
 
 	public string? Category { get; }
+	public string? UnitOfMeasure { get; }
+	public string? Packaging { get; }
+	public string? Supplier { get; }
+	public long? ManufacturerId { get; }
+	public long? CategoryId { get; }
+	public long? UnitOfMeasureId { get; }
+	public long? PackagingId { get; }
+	public long? SupplierId { get; }
 
 	public bool IsActive { get; }
 
