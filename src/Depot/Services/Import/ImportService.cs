@@ -14,7 +14,8 @@ public sealed class ImportService
 	private readonly ItemRepository _itemRepository;
 	private readonly ItemService _itemService;
 	private readonly PurposeService _purposeService;
-	private readonly LocationService _locationService;
+	private readonly WarehouseService _warehouseService;
+	private readonly StorageLocationService _storageLocationService;
 	private readonly InventoryManagementService _inventoryManagementService;
 	private readonly MovementService _movementService;
 
@@ -22,14 +23,16 @@ public sealed class ImportService
 		ItemRepository itemRepository,
 		ItemService itemService,
 		PurposeService purposeService,
-		LocationService locationService,
+		WarehouseService warehouseService,
+		StorageLocationService storageLocationService,
 		InventoryManagementService inventoryManagementService,
 		MovementService movementService)
 	{
 		_itemRepository = itemRepository;
 		_itemService = itemService;
 		_purposeService = purposeService;
-		_locationService = locationService;
+		_warehouseService = warehouseService;
+		_storageLocationService = storageLocationService;
 		_inventoryManagementService = inventoryManagementService;
 		_movementService = movementService;
 	}
@@ -138,6 +141,14 @@ public sealed class ImportService
 					continue;
 				}
 
+				var warehouse =
+					GetOptionalString(
+						worksheet,
+						row,
+						columns,
+						"Warehouse",
+						"Main Warehouse");
+
 				var manufacturer =
 					GetString(
 						worksheet,
@@ -167,7 +178,7 @@ public sealed class ImportService
 						"Unit Price");
 
 				var key =
-					$"{partNumber}|{purpose}|{location}";
+					$"{partNumber}|{purpose}|{warehouse}|{location}";
 
 				if (!itemsByKey.TryGetValue(
 					key,
@@ -185,6 +196,7 @@ public sealed class ImportService
 								? null
 								: category,
 							Purpose = purpose,
+							Warehouse = warehouse,
 							Location = location
 						};
 
@@ -229,6 +241,7 @@ public sealed class ImportService
 							Manufacturer = x.Manufacturer,
 							Category = x.Category,
 							Purpose = x.Purpose,
+							Warehouse = x.Warehouse,
 							Location = x.Location,
 							Quantity = x.Quantity,
 							UnitPrice = unitPrice,
@@ -240,6 +253,8 @@ public sealed class ImportService
 					x => x.PartNumber)
 				.ThenBy(
 					x => x.Purpose)
+				.ThenBy(
+					x => x.Warehouse)
 				.ThenBy(
 					x => x.Location)
 				.ToList();
@@ -280,9 +295,8 @@ public sealed class ImportService
 				_purposeService.GetOrCreatePurpose(
 					previewItem.Purpose);
 
-			var location =
-				_locationService.GetOrCreateLocation(
-					previewItem.Location);
+			var warehouse = _warehouseService.GetOrCreateAsync(previewItem.Warehouse).GetAwaiter().GetResult();
+			var location = _storageLocationService.GetOrCreateAsync(warehouse.Id, previewItem.Location).GetAwaiter().GetResult();
 
 			var inventory =
 				_inventoryManagementService.GetOrCreateInventory(
@@ -342,7 +356,9 @@ public sealed class ImportService
 			var purpose = await _purposeService.GetOrCreatePurposeAsync(
 				previewItem.Purpose,
 				cancellationToken);
-			var location = await _locationService.GetOrCreateLocationAsync(
+			var warehouse = await _warehouseService.GetOrCreateAsync(previewItem.Warehouse, cancellationToken);
+			var location = await _storageLocationService.GetOrCreateAsync(
+				warehouse.Id,
 				previewItem.Location,
 				cancellationToken);
 			var inventory = await _inventoryManagementService.GetOrCreateInventoryAsync(
@@ -460,6 +476,22 @@ public sealed class ImportService
 				System.Globalization.CultureInfo.InvariantCulture));
 	}
 
+	private static string GetOptionalString(
+		IXLWorksheet worksheet,
+		int row,
+		IReadOnlyDictionary<string, int> columns,
+		string header,
+		string defaultValue)
+	{
+		if (!columns.TryGetValue(header, out var column))
+		{
+			return defaultValue;
+		}
+
+		var value = worksheet.Cell(row, column).GetString().Trim();
+		return string.IsNullOrWhiteSpace(value) ? defaultValue : value;
+	}
+
 	private static decimal GetDecimal(
 		IXLWorksheet worksheet,
 		int row,
@@ -529,6 +561,8 @@ public sealed class ImportService
 		public string? Category { get; init; }
 
 		public string Purpose { get; init; } = string.Empty;
+
+		public string Warehouse { get; init; } = string.Empty;
 
 		public string Location { get; init; } = string.Empty;
 

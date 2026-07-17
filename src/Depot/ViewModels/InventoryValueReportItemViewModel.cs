@@ -32,6 +32,9 @@ public sealed class InventoryValueReportItemViewModel
 		PurposeName =
 			item.PurposeName;
 
+		WarehouseName =
+			item.WarehouseName;
+
 		LocationName =
 			item.LocationName;
 
@@ -58,6 +61,8 @@ public sealed class InventoryValueReportItemViewModel
 	public string? Category { get; }
 
 	public string PurposeName { get; }
+
+	public string WarehouseName { get; }
 
 	public string LocationName { get; }
 

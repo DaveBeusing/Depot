@@ -16,6 +16,7 @@ public sealed class DashboardRecentMovementViewModel
 		PartNumber = movement.PartNumber;
 		Description = movement.Description;
 		PurposeName = movement.PurposeName;
+		WarehouseName = movement.WarehouseName;
 		LocationName = movement.LocationName;
 		MovementType = movement.MovementType;
 		Quantity = movement.Quantity;
@@ -33,6 +34,8 @@ public sealed class DashboardRecentMovementViewModel
 	public string Description { get; }
 
 	public string PurposeName { get; }
+
+	public string WarehouseName { get; }
 
 	public string LocationName { get; }
 

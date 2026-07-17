@@ -142,6 +142,16 @@
 					Width="140" />
 
 				<DataGridTextColumn
+					Header="Warehouse"
+					Binding="{Binding Warehouse}"
+					Width="140" />
+
+				<DataGridTextColumn
+					Header="Storage Location"
+					Binding="{Binding Location}"
+					Width="140" />
+
+				<DataGridTextColumn
 					Header="Quantity"
 					Binding="{Binding Quantity}"
 					Width="100" />

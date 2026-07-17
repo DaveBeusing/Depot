@@ -128,6 +128,7 @@ public sealed class MovementsViewModel : BaseViewModel, IDisposable
 					PartNumber = inventory.PartNumber,
 					Description = inventory.Description,
 					PurposeName = inventory.PurposeName,
+					WarehouseName = inventory.WarehouseName,
 					LocationName = inventory.LocationName
 				});
 			}

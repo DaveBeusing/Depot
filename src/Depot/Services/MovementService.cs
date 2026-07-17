@@ -11,7 +11,8 @@ public sealed class MovementService
 	private readonly ItemRepository _itemRepository;
 	private readonly InventoryRepository _inventoryRepository;
 	private readonly PurposeRepository _purposeRepository;
-	private readonly LocationRepository _locationRepository;
+	private readonly StorageLocationRepository _storageLocationRepository;
+	private readonly WarehouseRepository _warehouseRepository;
 	private readonly StockMovementRepository _stockMovementRepository;
 	private readonly AuditService _auditService;
 
@@ -19,14 +20,16 @@ public sealed class MovementService
 		ItemRepository itemRepository,
 		InventoryRepository inventoryRepository,
 		PurposeRepository purposeRepository,
-		LocationRepository locationRepository,
+		StorageLocationRepository storageLocationRepository,
+		WarehouseRepository warehouseRepository,
 		StockMovementRepository stockMovementRepository,
 		AuditService auditService)
 	{
 		_itemRepository = itemRepository;
 		_inventoryRepository = inventoryRepository;
 		_purposeRepository = purposeRepository;
-		_locationRepository = locationRepository;
+		_storageLocationRepository = storageLocationRepository;
+		_warehouseRepository = warehouseRepository;
 		_stockMovementRepository = stockMovementRepository;
 		_auditService = auditService;
 	}
@@ -140,10 +143,12 @@ public sealed class MovementService
 					x => x.Id);
 
 		var locations =
-			_locationRepository
+			_storageLocationRepository
 				.GetAll()
 				.ToDictionary(
 					x => x.Id);
+
+		var warehouses = _warehouseRepository.GetAll().ToDictionary(x => x.Id);
 
 		foreach (var inventory in _inventoryRepository.GetAll())
 		{
@@ -174,10 +179,14 @@ public sealed class MovementService
 							purposes,
 							inventory.PurposeId),
 
+					WarehouseName = locations.TryGetValue(inventory.StorageLocationId, out var storageLocation)
+						? InventoryContextResolver.GetWarehouseName(warehouses, storageLocation.WarehouseId)
+						: "Unknown warehouse",
+
 					LocationName =
 						InventoryContextResolver.GetLocationName(
 							locations,
-							inventory.LocationId)
+							inventory.StorageLocationId)
 				});
 		}
 
@@ -211,10 +220,12 @@ public sealed class MovementService
 					x => x.Id);
 
 		var locations =
-			_locationRepository
+			_storageLocationRepository
 				.GetAll()
 				.ToDictionary(
 					x => x.Id);
+
+		var warehouses = _warehouseRepository.GetAll().ToDictionary(x => x.Id);
 
 		foreach (var movement in _stockMovementRepository.Search(searchText))
 		{
@@ -224,7 +235,8 @@ public sealed class MovementService
 					items,
 					inventoriesById,
 					purposes,
-					locations);
+					locations,
+					warehouses);
 
 			if (context is null)
 			{
@@ -254,6 +266,8 @@ public sealed class MovementService
 
 					PurposeName =
 						context.PurposeName,
+
+					WarehouseName = context.WarehouseName,
 
 					LocationName =
 						context.LocationName,

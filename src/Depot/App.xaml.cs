@@ -31,7 +31,8 @@ public partial class App : Application
 	public static ItemRepository ItemRepository { get; private set; } = null!;
 	public static PurposeRepository PurposeRepository { get; private set; } = null!;
 	public static InventoryRepository InventoryRepository { get; private set; } = null!;
-	public static LocationRepository LocationRepository { get; private set; } = null!;
+	public static WarehouseRepository WarehouseRepository { get; private set; } = null!;
+	public static StorageLocationRepository StorageLocationRepository { get; private set; } = null!;
 	public static StockMovementRepository StockMovementRepository { get; private set; } = null!;
 	public static UserRepository UserRepository { get; private set; } = null!;
 	public static AuditRepository AuditRepository { get; private set; } = null!;
@@ -48,7 +49,8 @@ public partial class App : Application
 	public static AuditService AuditService { get; private set; } = null!;
 	public static ItemService ItemService { get; private set; } = null!;
 	public static PurposeService PurposeService { get; private set; } = null!;
-	public static LocationService LocationService { get; private set; } = null!;
+	public static WarehouseService WarehouseService { get; private set; } = null!;
+	public static StorageLocationService StorageLocationService { get; private set; } = null!;
 	public static UserService UserService { get; private set; } = null!;
 	public static MovementService MovementService { get; private set; } = null!;
 	public static StockService StockService { get; private set; } = null!;
@@ -56,7 +58,6 @@ public partial class App : Application
 	public static InventoryManagementService InventoryManagementService { get; private set; } = null!;
 	public static ImportService ImportService { get; private set; } = null!;
 	public static IFileDialogService FileDialogService { get; } = new FileDialogService();
-	public static DatabaseSeeder DatabaseSeeder { get; private set; } = null!;
 	public static MainViewModel MainViewModel { get; private set; } = null!;
 
 
@@ -110,8 +111,12 @@ public partial class App : Application
 			new InventoryRepository(
 				DataAccess);
 
-		LocationRepository =
-			new LocationRepository(
+		WarehouseRepository =
+			new WarehouseRepository(
+				DataAccess);
+
+		StorageLocationRepository =
+			new StorageLocationRepository(
 				DataAccess);
 
 		StockMovementRepository =
@@ -160,9 +165,16 @@ public partial class App : Application
 				PurposeRepository,
 				AuditService);
 
-		LocationService =
-			new LocationService(
-				LocationRepository,
+		WarehouseService =
+			new WarehouseService(
+				WarehouseRepository,
+				StorageLocationRepository,
+				AuditService);
+
+		StorageLocationService =
+			new StorageLocationService(
+				StorageLocationRepository,
+				WarehouseRepository,
 				AuditService);
 
 		UserService =
@@ -177,7 +189,8 @@ public partial class App : Application
 				ItemRepository,
 				InventoryRepository,
 				PurposeRepository,
-				LocationRepository,
+				StorageLocationRepository,
+				WarehouseRepository,
 				StockMovementRepository,
 				AuditService);
 
@@ -186,7 +199,8 @@ public partial class App : Application
 				ItemRepository,
 				InventoryRepository,
 				PurposeRepository,
-				LocationRepository,
+				StorageLocationRepository,
+				WarehouseRepository,
 				StockMovementRepository);
 
 		ReportService =
@@ -203,22 +217,14 @@ public partial class App : Application
 				ItemRepository,
 				ItemService,
 				PurposeService,
-				LocationService,
+				WarehouseService,
+				StorageLocationService,
 				InventoryManagementService,
 				MovementService);
 
 		StartupDiagnostics.Log(
 			"Services created.");
 
-		// DatabaseSeeder =
-		//	new DatabaseSeeder(
-		//		ItemService,
-		//		PurposeService,
-		//		LocationService,
-		//		InventoryManagementService,
-		//		MovementService);
-		//
-		// DatabaseSeeder.Seed();
 	}
 
 	private void RunApplication()
@@ -262,7 +268,8 @@ public partial class App : Application
 				MovementService,
 				ReportService,
 				PurposeService,
-				LocationService,
+				WarehouseService,
+				StorageLocationService,
 				UserService,
 				AuthorizationService,
 				SessionService,

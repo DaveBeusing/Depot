@@ -18,6 +18,7 @@ public sealed class MovementOverviewItemViewModel
 		PartNumber = item.PartNumber;
 		Description = item.Description;
 		PurposeName = item.PurposeName;
+		WarehouseName = item.WarehouseName;
 		LocationName = item.LocationName;
 		MovementType = item.MovementType;
 		Quantity = item.Quantity;
@@ -42,6 +43,8 @@ public sealed class MovementOverviewItemViewModel
 	public string Description { get; }
 
 	public string PurposeName { get; }
+
+	public string WarehouseName { get; }
 
 	public string LocationName { get; }
 

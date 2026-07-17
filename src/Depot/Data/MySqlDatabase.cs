@@ -39,6 +39,11 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 			command.CommandText = "SELECT Version FROM DatabaseInfo WHERE Id = 1;";
 			command.Parameters.Clear();
 			var version = Convert.ToInt32(command.ExecuteScalar(), CultureInfo.InvariantCulture);
+			if (version == 8)
+			{
+				MigrateToWarehouseStructure(command);
+				version = DatabaseVersion.CurrentVersion;
+			}
 			if (version != DatabaseVersion.CurrentVersion)
 			{
 				throw new InvalidOperationException(
@@ -51,6 +56,204 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 			releaseCommand.CommandText = "SELECT RELEASE_LOCK('Depot.SchemaMigration');";
 			releaseCommand.ExecuteScalar();
 		}
+	}
+
+	private static void MigrateToWarehouseStructure(System.Data.Common.DbCommand command)
+	{
+		command.Parameters.Clear();
+		var hasLocations = TableExists(command, "Locations");
+		var hasLegacyLocationId = ColumnExists(command, "Inventories", "LocationId");
+		var hasStorageLocationId = ColumnExists(command, "Inventories", "StorageLocationId");
+
+		if (hasLocations && !hasStorageLocationId)
+		{
+			Execute(
+				command,
+				"""
+				DELETE FROM StorageLocations;
+				INSERT INTO StorageLocations (Id, WarehouseId, Name, Description, IsActive, Version)
+				SELECT l.Id, w.Id, l.Name, l.Description, l.IsActive, l.Version
+				FROM Locations l
+				CROSS JOIN Warehouses w
+				WHERE w.Name = 'Main Warehouse';
+				""");
+		}
+		else if (hasLocations)
+		{
+			Execute(
+				command,
+				"""
+				DELETE sl
+				FROM StorageLocations sl
+				INNER JOIN Warehouses w ON w.Id = sl.WarehouseId
+				WHERE w.Name = 'Main Warehouse'
+				  AND sl.Name = 'Default'
+				  AND NOT EXISTS (SELECT 1 FROM Locations l WHERE l.Name = 'Default');
+
+				INSERT IGNORE INTO StorageLocations (Id, WarehouseId, Name, Description, IsActive, Version)
+				SELECT l.Id, w.Id, l.Name, l.Description, l.IsActive, l.Version
+				FROM Locations l
+				CROSS JOIN Warehouses w
+				WHERE w.Name = 'Main Warehouse';
+				""");
+		}
+
+		if (!hasStorageLocationId)
+		{
+			Execute(command, "ALTER TABLE Inventories ADD COLUMN StorageLocationId bigint NULL;");
+			hasStorageLocationId = true;
+		}
+
+		if (hasLegacyLocationId && hasStorageLocationId)
+		{
+			Execute(
+				command,
+				"UPDATE Inventories SET StorageLocationId = LocationId WHERE StorageLocationId IS NULL;");
+			Execute(command, "ALTER TABLE Inventories MODIFY StorageLocationId bigint NOT NULL;");
+
+			if (ConstraintExists(command, "Inventories", "FK_Inventories_Locations"))
+			{
+				Execute(command, "ALTER TABLE Inventories DROP FOREIGN KEY FK_Inventories_Locations;");
+			}
+
+			EnsureIndex(command, "Inventories", "IX_Inventories_ItemId", "ItemId");
+			EnsureIndex(command, "Inventories", "IX_Inventories_PurposeId", "PurposeId");
+
+			if (IndexExists(command, "Inventories", "UQ_Inventories_Context"))
+			{
+				Execute(command, "ALTER TABLE Inventories DROP INDEX UQ_Inventories_Context;");
+			}
+
+			Execute(command, "ALTER TABLE Inventories DROP COLUMN LocationId;");
+		}
+
+		if (!IndexExists(command, "Inventories", "UQ_Inventories_Context"))
+		{
+			Execute(
+				command,
+				"ALTER TABLE Inventories ADD CONSTRAINT UQ_Inventories_Context UNIQUE (ItemId, PurposeId, StorageLocationId);");
+		}
+
+		if (!ConstraintExists(command, "Inventories", "FK_Inventories_StorageLocations"))
+		{
+			EnsureIndex(
+				command,
+				"Inventories",
+				"IX_Inventories_StorageLocationId",
+				"StorageLocationId");
+			Execute(
+				command,
+				"""
+				ALTER TABLE Inventories ADD CONSTRAINT FK_Inventories_StorageLocations
+					FOREIGN KEY (StorageLocationId) REFERENCES StorageLocations(Id);
+				""");
+		}
+
+		if (hasLocations)
+		{
+			Execute(command, "DROP TABLE Locations;");
+		}
+
+		Execute(command, "UPDATE DatabaseInfo SET Version = 9 WHERE Id = 1;");
+	}
+
+	private static bool TableExists(System.Data.Common.DbCommand command, string tableName) =>
+		MetadataExists(
+			command,
+			"""
+			SELECT COUNT(*)
+			FROM information_schema.TABLES
+			WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = @Name;
+			""",
+			tableName);
+
+	private static bool ColumnExists(
+		System.Data.Common.DbCommand command,
+		string tableName,
+		string columnName) =>
+		MetadataExists(
+			command,
+			"""
+			SELECT COUNT(*)
+			FROM information_schema.COLUMNS
+			WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = @TableName AND COLUMN_NAME = @Name;
+			""",
+			columnName,
+			tableName);
+
+	private static bool ConstraintExists(
+		System.Data.Common.DbCommand command,
+		string tableName,
+		string constraintName) =>
+		MetadataExists(
+			command,
+			"""
+			SELECT COUNT(*)
+			FROM information_schema.TABLE_CONSTRAINTS
+			WHERE CONSTRAINT_SCHEMA = DATABASE() AND TABLE_NAME = @TableName AND CONSTRAINT_NAME = @Name;
+			""",
+			constraintName,
+			tableName);
+
+	private static bool IndexExists(
+		System.Data.Common.DbCommand command,
+		string tableName,
+		string indexName) =>
+		MetadataExists(
+			command,
+			"""
+			SELECT COUNT(*)
+			FROM information_schema.STATISTICS
+			WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = @TableName AND INDEX_NAME = @Name;
+			""",
+			indexName,
+			tableName);
+
+	private static void EnsureIndex(
+		System.Data.Common.DbCommand command,
+		string tableName,
+		string indexName,
+		string columnName)
+	{
+		if (!IndexExists(command, tableName, indexName))
+		{
+			Execute(command, $"ALTER TABLE {tableName} ADD INDEX {indexName} ({columnName});");
+		}
+	}
+
+	private static bool MetadataExists(
+		System.Data.Common.DbCommand command,
+		string commandText,
+		string name,
+		string? tableName = null)
+	{
+		command.CommandText = commandText;
+		command.Parameters.Clear();
+		command.Parameters.Add(CreateParameter(command, "@Name", name));
+		if (tableName is not null)
+		{
+			command.Parameters.Add(CreateParameter(command, "@TableName", tableName));
+		}
+
+		return Convert.ToInt64(command.ExecuteScalar(), CultureInfo.InvariantCulture) > 0;
+	}
+
+	private static System.Data.Common.DbParameter CreateParameter(
+		System.Data.Common.DbCommand command,
+		string name,
+		object value)
+	{
+		var parameter = command.CreateParameter();
+		parameter.ParameterName = name;
+		parameter.Value = value;
+		return parameter;
+	}
+
+	private static void Execute(System.Data.Common.DbCommand command, string commandText)
+	{
+		command.CommandText = commandText;
+		command.Parameters.Clear();
+		command.ExecuteNonQuery();
 	}
 
 	private void EnsureDatabaseExists()
@@ -105,7 +308,7 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 		Version bigint NOT NULL DEFAULT 1
 	) ENGINE=InnoDB;
 
-	CREATE TABLE IF NOT EXISTS Locations
+	CREATE TABLE IF NOT EXISTS Warehouses
 	(
 		Id bigint NOT NULL AUTO_INCREMENT PRIMARY KEY,
 		Name varchar(200) NOT NULL UNIQUE,
@@ -114,18 +317,34 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 		Version bigint NOT NULL DEFAULT 1
 	) ENGINE=InnoDB;
 
+	CREATE TABLE IF NOT EXISTS StorageLocations
+	(
+		Id bigint NOT NULL AUTO_INCREMENT PRIMARY KEY,
+		WarehouseId bigint NOT NULL,
+		Name varchar(200) NOT NULL,
+		Description varchar(500) NULL,
+		IsActive boolean NOT NULL DEFAULT true,
+		Version bigint NOT NULL DEFAULT 1,
+		CONSTRAINT UQ_StorageLocations_Warehouse_Name UNIQUE (WarehouseId, Name),
+		CONSTRAINT FK_StorageLocations_Warehouses FOREIGN KEY (WarehouseId) REFERENCES Warehouses(Id),
+		INDEX IX_StorageLocations_WarehouseId_Name (WarehouseId, Name)
+	) ENGINE=InnoDB;
+
 	CREATE TABLE IF NOT EXISTS Inventories
 	(
 		Id bigint NOT NULL AUTO_INCREMENT PRIMARY KEY,
 		ItemId bigint NOT NULL,
 		PurposeId bigint NOT NULL,
-		LocationId bigint NOT NULL,
+		StorageLocationId bigint NOT NULL,
 		IsActive boolean NOT NULL DEFAULT true,
 		Version bigint NOT NULL DEFAULT 1,
-		CONSTRAINT UQ_Inventories_Context UNIQUE (ItemId, PurposeId, LocationId),
+		CONSTRAINT UQ_Inventories_Context UNIQUE (ItemId, PurposeId, StorageLocationId),
+		INDEX IX_Inventories_ItemId (ItemId),
+		INDEX IX_Inventories_PurposeId (PurposeId),
+		INDEX IX_Inventories_StorageLocationId (StorageLocationId),
 		CONSTRAINT FK_Inventories_Items FOREIGN KEY (ItemId) REFERENCES Items(Id),
 		CONSTRAINT FK_Inventories_Purposes FOREIGN KEY (PurposeId) REFERENCES Purposes(Id),
-		CONSTRAINT FK_Inventories_Locations FOREIGN KEY (LocationId) REFERENCES Locations(Id)
+		CONSTRAINT FK_Inventories_StorageLocations FOREIGN KEY (StorageLocationId) REFERENCES StorageLocations(Id)
 	) ENGINE=InnoDB;
 
 	CREATE TABLE IF NOT EXISTS Users
@@ -174,9 +393,15 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 	SELECT 'Stock', 'Default stock purpose', true
 	WHERE NOT EXISTS (SELECT 1 FROM Purposes WHERE Name = 'Stock');
 
-	INSERT INTO Locations (Name, Description, IsActive)
-	SELECT 'Warehouse', 'Default warehouse location', true
-	WHERE NOT EXISTS (SELECT 1 FROM Locations WHERE Name = 'Warehouse');
+	INSERT INTO Warehouses (Name, Description, IsActive)
+	SELECT 'Main Warehouse', 'Default Depot warehouse', true
+	WHERE NOT EXISTS (SELECT 1 FROM Warehouses WHERE Name = 'Main Warehouse');
+
+	INSERT INTO StorageLocations (WarehouseId, Name, Description, IsActive)
+	SELECT Id, 'Default', 'Default storage location', true
+	FROM Warehouses w
+	WHERE w.Name = 'Main Warehouse'
+	  AND NOT EXISTS (SELECT 1 FROM StorageLocations sl WHERE sl.WarehouseId = w.Id AND sl.Name = 'Default');
 
 	INSERT INTO Users (Email, DisplayName, PasswordHash, IsAdministrator, IsActive, CreatedUtc)
 	SELECT 'admin@depot.local', 'Administrator', @DefaultPasswordHash, true, true,

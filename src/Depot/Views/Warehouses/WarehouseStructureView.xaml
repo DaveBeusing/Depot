@@ -1,0 +1,136 @@
+<UserControl
+	x:Class="Depot.Views.Warehouses.WarehouseStructureView"
+	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:controls="clr-namespace:Depot.Controls">
+
+	<Grid>
+		<Grid.RowDefinitions>
+			<RowDefinition Height="Auto" />
+			<RowDefinition Height="16" />
+			<RowDefinition Height="*" />
+		</Grid.RowDefinitions>
+
+		<controls:PageHeader
+			Title="Warehouse Structure"
+			Subtitle="Organize warehouses and their physical storage locations.">
+			<controls:PageHeader.Actions>
+				<controls:OperationStatus
+					ErrorText="{Binding OperationError}"
+					HasError="{Binding HasOperationError}"
+					IsBusy="{Binding IsBusy}"
+					StatusText="{Binding StatusText}" />
+			</controls:PageHeader.Actions>
+		</controls:PageHeader>
+
+		<Grid Grid.Row="2">
+			<Grid.ColumnDefinitions>
+				<ColumnDefinition Width="280" />
+				<ColumnDefinition Width="16" />
+				<ColumnDefinition Width="280" />
+				<ColumnDefinition Width="16" />
+				<ColumnDefinition Width="*" />
+			</Grid.ColumnDefinitions>
+
+			<controls:Card Grid.Column="0">
+				<Grid>
+					<Grid.RowDefinitions>
+						<RowDefinition Height="Auto" />
+						<RowDefinition Height="12" />
+						<RowDefinition Height="Auto" />
+						<RowDefinition Height="12" />
+						<RowDefinition Height="*" />
+					</Grid.RowDefinitions>
+					<Grid>
+						<Grid.ColumnDefinitions>
+							<ColumnDefinition Width="*" />
+							<ColumnDefinition Width="Auto" />
+						</Grid.ColumnDefinitions>
+						<TextBlock Text="Warehouses" Style="{StaticResource CardTitleStyle}" />
+						<Button Grid.Column="1" Command="{Binding NewWarehouseCommand}" Content="New" Style="{StaticResource SecondaryButtonStyle}" />
+					</Grid>
+					<controls:SearchBox Grid.Row="2" Placeholder="Search warehouses" Text="{Binding WarehouseSearchText, UpdateSourceTrigger=PropertyChanged}" />
+					<ListBox Grid.Row="4" ItemsSource="{Binding Warehouses}" SelectedItem="{Binding SelectedWarehouse}" Style="{StaticResource AppListBoxStyle}">
+						<ListBox.ItemTemplate>
+							<DataTemplate>
+								<StackPanel Margin="0,6">
+									<TextBlock FontWeight="SemiBold" Text="{Binding Name}" />
+									<TextBlock Margin="0,2,0,0" Foreground="{StaticResource SecondaryTextBrush}" Text="{Binding Description}" TextTrimming="CharacterEllipsis" />
+									<TextBlock Margin="0,2,0,0" FontSize="11" Foreground="{StaticResource SecondaryTextBrush}" Text="{Binding IsActive, StringFormat=Active: {0}}" />
+								</StackPanel>
+							</DataTemplate>
+						</ListBox.ItemTemplate>
+					</ListBox>
+				</Grid>
+			</controls:Card>
+
+			<controls:Card Grid.Column="2">
+				<Grid>
+					<Grid.RowDefinitions>
+						<RowDefinition Height="Auto" />
+						<RowDefinition Height="12" />
+						<RowDefinition Height="Auto" />
+						<RowDefinition Height="12" />
+						<RowDefinition Height="*" />
+					</Grid.RowDefinitions>
+					<Grid>
+						<Grid.ColumnDefinitions>
+							<ColumnDefinition Width="*" />
+							<ColumnDefinition Width="Auto" />
+						</Grid.ColumnDefinitions>
+						<TextBlock Text="Storage Locations" Style="{StaticResource CardTitleStyle}" />
+						<Button Grid.Column="1" Command="{Binding NewStorageLocationCommand}" Content="New" Style="{StaticResource SecondaryButtonStyle}" />
+					</Grid>
+					<controls:SearchBox Grid.Row="2" Placeholder="Search storage locations" Text="{Binding LocationSearchText, UpdateSourceTrigger=PropertyChanged}" />
+					<ListBox Grid.Row="4" ItemsSource="{Binding StorageLocations}" SelectedItem="{Binding SelectedStorageLocation}" Style="{StaticResource AppListBoxStyle}">
+						<ListBox.ItemTemplate>
+							<DataTemplate>
+								<StackPanel Margin="0,6">
+									<TextBlock FontWeight="SemiBold" Text="{Binding Name}" />
+									<TextBlock Margin="0,2,0,0" Foreground="{StaticResource SecondaryTextBrush}" Text="{Binding Description}" TextTrimming="CharacterEllipsis" />
+									<TextBlock Margin="0,2,0,0" FontSize="11" Foreground="{StaticResource SecondaryTextBrush}" Text="{Binding IsActive, StringFormat=Active: {0}}" />
+								</StackPanel>
+							</DataTemplate>
+						</ListBox.ItemTemplate>
+					</ListBox>
+				</Grid>
+			</controls:Card>
+
+			<ScrollViewer
+				Grid.Column="4"
+				HorizontalScrollBarVisibility="Disabled"
+				VerticalScrollBarVisibility="Auto">
+				<StackPanel Margin="0,0,8,0">
+					<controls:Card>
+					<StackPanel>
+						<TextBlock Text="Warehouse details" Style="{StaticResource CardTitleStyle}" />
+						<TextBlock Margin="0,16,0,4" Text="Name" Style="{StaticResource FormLabelStyle}" />
+						<TextBox Style="{StaticResource AppTextBoxStyle}" Text="{Binding WarehouseName, UpdateSourceTrigger=PropertyChanged}" />
+						<TextBlock Margin="0,12,0,4" Text="Description" Style="{StaticResource FormLabelStyle}" />
+						<TextBox Height="64" AcceptsReturn="True" Style="{StaticResource AppTextBoxStyle}" Text="{Binding WarehouseDescription, UpdateSourceTrigger=PropertyChanged}" TextWrapping="Wrap" />
+						<StackPanel Margin="0,16,0,0" HorizontalAlignment="Right" Orientation="Horizontal">
+							<Button Command="{Binding ToggleWarehouseCommand}" Content="{Binding WarehouseActionText}" Style="{StaticResource SecondaryButtonStyle}" />
+							<Button Margin="8,0,0,0" Command="{Binding SaveWarehouseCommand}" Content="Save warehouse" Style="{StaticResource PrimaryButtonStyle}" />
+						</StackPanel>
+					</StackPanel>
+					</controls:Card>
+
+					<controls:Card Margin="0,16,0,0">
+					<StackPanel>
+						<TextBlock Text="Storage location details" Style="{StaticResource CardTitleStyle}" />
+						<TextBlock Margin="0,6,0,0" Foreground="{StaticResource SecondaryTextBrush}" Text="{Binding SelectedWarehouse.Name, StringFormat=Warehouse: {0}}" />
+						<TextBlock Margin="0,16,0,4" Text="Name" Style="{StaticResource FormLabelStyle}" />
+						<TextBox Style="{StaticResource AppTextBoxStyle}" Text="{Binding LocationName, UpdateSourceTrigger=PropertyChanged}" />
+						<TextBlock Margin="0,12,0,4" Text="Description" Style="{StaticResource FormLabelStyle}" />
+						<TextBox Height="64" AcceptsReturn="True" Style="{StaticResource AppTextBoxStyle}" Text="{Binding LocationDescription, UpdateSourceTrigger=PropertyChanged}" TextWrapping="Wrap" />
+						<StackPanel Margin="0,16,0,0" HorizontalAlignment="Right" Orientation="Horizontal">
+							<Button Command="{Binding ToggleStorageLocationCommand}" Content="{Binding StorageLocationActionText}" Style="{StaticResource SecondaryButtonStyle}" />
+							<Button Margin="8,0,0,0" Command="{Binding SaveStorageLocationCommand}" Content="Save location" Style="{StaticResource PrimaryButtonStyle}" />
+						</StackPanel>
+					</StackPanel>
+					</controls:Card>
+				</StackPanel>
+			</ScrollViewer>
+		</Grid>
+	</Grid>
+</UserControl>

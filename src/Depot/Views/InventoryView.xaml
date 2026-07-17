@@ -60,7 +60,8 @@
 							<DataGridTextColumn Header="Part Number" Binding="{Binding PartNumber}" Width="130" />
 							<DataGridTextColumn Header="Description" Binding="{Binding Description}" Width="*" />
 							<DataGridTextColumn Header="Purpose" Binding="{Binding PurposeName}" Width="100" />
-							<DataGridTextColumn Header="Location" Binding="{Binding LocationName}" Width="100" />
+							<DataGridTextColumn Header="Warehouse" Binding="{Binding WarehouseName}" Width="110" />
+							<DataGridTextColumn Header="Storage Location" Binding="{Binding LocationName}" Width="120" />
 							<DataGridTextColumn Header="Stock" Binding="{Binding CurrentStock}" Width="70" />
 							<DataGridTextColumn Header="Avg Cost" Binding="{Binding AverageCost, StringFormat={}{0:C2}}" Width="105" />
 							<DataGridTextColumn Header="Value" Binding="{Binding InventoryValue, StringFormat={}{0:C2}}" Width="105" />
@@ -122,8 +123,12 @@
 								<TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Details.Description}" TextWrapping="Wrap" />
 								<TextBlock Grid.Row="4" Text="Purpose" Style="{StaticResource FormLabelStyle}" />
 								<TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding Details.PurposeName}" />
-								<TextBlock Grid.Row="6" Text="Location" Style="{StaticResource FormLabelStyle}" />
-								<TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding Details.LocationName}" />
+								<TextBlock Grid.Row="6" Text="Storage" Style="{StaticResource FormLabelStyle}" />
+								<StackPanel Grid.Row="6" Grid.Column="1" Orientation="Horizontal">
+									<TextBlock Text="{Binding Details.WarehouseName}" />
+									<TextBlock Margin="6,0" Foreground="{StaticResource SecondaryTextBrush}" Text="/" />
+									<TextBlock Text="{Binding Details.LocationName}" />
+								</StackPanel>
 								<TextBlock Grid.Row="8" Text="Manufacturer" Style="{StaticResource FormLabelStyle}" />
 								<TextBlock Grid.Row="8" Grid.Column="1" Text="{Binding Details.Manufacturer}" />
 								<TextBlock Grid.Row="10" Text="Category" Style="{StaticResource FormLabelStyle}" />

@@ -14,7 +14,8 @@ public sealed class ReportsViewModel
 		IDisposable
 {
 	private const string InventoryValueReportName = "Inventory Value";
-	private const string StockByLocationReportName = "Stock by Location";
+	private const string StockByLocationReportName = "Stock by Storage Location";
+	private const string StockByWarehouseReportName = "Stock by Warehouse";
 	private const string StockByPurposeReportName = "Stock by Purpose";
 	private const string StockByCategoryReportName = "Stock by Category";
 	private const string StockByManufacturerReportName = "Stock by Manufacturer";
@@ -474,13 +475,23 @@ public sealed class ReportsViewModel
 
 			new ReportDefinition(
 				StockByLocationReportName,
-				"Stock by Location Report.xlsx",
+				"Stock by Storage Location Report.xlsx",
 				isInventoryValueReport: false,
 				cancellationToken =>
 					LoadGroupedInventoryReportAsync(
 						GroupedInventoryReportType.Location,
 						cancellationToken),
 				CreateGroupedExport(GroupedInventoryReportType.Location)),
+
+			new ReportDefinition(
+				StockByWarehouseReportName,
+				"Stock by Warehouse Report.xlsx",
+				isInventoryValueReport: false,
+				cancellationToken =>
+					LoadGroupedInventoryReportAsync(
+						GroupedInventoryReportType.Warehouse,
+						cancellationToken),
+				CreateGroupedExport(GroupedInventoryReportType.Warehouse)),
 
 			new ReportDefinition(
 				StockByPurposeReportName,

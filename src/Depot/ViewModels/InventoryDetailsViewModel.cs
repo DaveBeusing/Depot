@@ -17,6 +17,7 @@ public sealed class InventoryDetailsViewModel
 	private string? _manufacturer;
 	private string? _category;
 	private string _purposeName = string.Empty;
+	private string _warehouseName = string.Empty;
 	private string _locationName = string.Empty;
 	private int _currentStock;
 	private decimal _averageCost;
@@ -102,6 +103,16 @@ public sealed class InventoryDetailsViewModel
 		}
 	}
 
+	public string WarehouseName
+	{
+		get => _warehouseName;
+		private set
+		{
+			_warehouseName = value;
+			OnPropertyChanged();
+		}
+	}
+
 	public int CurrentStock
 	{
 		get => _currentStock;
@@ -149,6 +160,7 @@ public sealed class InventoryDetailsViewModel
 		Manufacturer = details.Manufacturer;
 		Category = details.Category;
 		PurposeName = details.PurposeName;
+		WarehouseName = details.WarehouseName;
 		LocationName = details.LocationName;
 		CurrentStock = details.CurrentStock;
 		AverageCost = details.AverageCost;
@@ -176,6 +188,7 @@ public sealed class InventoryDetailsViewModel
 		Manufacturer = null;
 		Category = null;
 		PurposeName = string.Empty;
+		WarehouseName = string.Empty;
 		LocationName = string.Empty;
 		CurrentStock = 0;
 		AverageCost = 0m;

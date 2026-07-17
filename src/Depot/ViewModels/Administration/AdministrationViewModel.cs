@@ -28,7 +28,8 @@ public sealed class AdministrationViewModel
 	public AdministrationViewModel(
 		ImportViewModel importViewModel,
 		PurposeService purposeService,
-		LocationService locationService,
+		WarehouseService warehouseService,
+		StorageLocationService storageLocationService,
 		UserService userService,
 		SettingsService settingsService,
 		ConnectionStatusService connectionStatusService,
@@ -37,7 +38,7 @@ public sealed class AdministrationViewModel
 		IFileDialogService fileDialogService)
 	{
 		_importViewModel = importViewModel;
-		_masterDataViewModel = new MasterDataViewModel(purposeService, locationService);
+		_masterDataViewModel = new MasterDataViewModel(purposeService, warehouseService, storageLocationService);
 		_userViewModel =
 			new UserViewModel(
 				userService);

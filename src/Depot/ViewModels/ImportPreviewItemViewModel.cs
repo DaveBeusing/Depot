@@ -16,6 +16,7 @@ public sealed class ImportPreviewItemViewModel
 		Manufacturer = item.Manufacturer;
 		Category = item.Category;
 		Purpose = item.Purpose;
+		Warehouse = item.Warehouse;
 		Location = item.Location;
 		Quantity = item.Quantity;
 		UnitPrice = item.UnitPrice;
@@ -32,6 +33,8 @@ public sealed class ImportPreviewItemViewModel
 	public string? Category { get; }
 
 	public string Purpose { get; }
+
+	public string Warehouse { get; }
 
 	public string Location { get; }
 

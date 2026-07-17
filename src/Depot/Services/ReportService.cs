@@ -39,6 +39,7 @@ public sealed class ReportService
 				Manufacturer = item.Manufacturer,
 				Category = item.Category,
 				PurposeName = item.PurposeName,
+				WarehouseName = item.WarehouseName,
 				LocationName = item.LocationName,
 				CurrentStock = item.CurrentStock,
 				AverageCost = item.AverageCost,
@@ -93,6 +94,9 @@ public sealed class ReportService
 
 							PurposeName =
 								x.PurposeName,
+
+							WarehouseName =
+								x.WarehouseName,
 
 							LocationName =
 								x.LocationName,
@@ -239,7 +243,7 @@ public sealed class ReportService
 			1,
 			1,
 			1,
-			9)
+			10)
 			.Merge();
 
 		worksheet.Cell(
@@ -304,23 +308,29 @@ public sealed class ReportService
 				row,
 				6)
 				.Value =
-					item.LocationName;
+					item.WarehouseName;
 
 			worksheet.Cell(
 				row,
 				7)
 				.Value =
-					item.CurrentStock;
+					item.LocationName;
 
 			worksheet.Cell(
 				row,
 				8)
 				.Value =
-					item.AverageCost;
+					item.CurrentStock;
 
 			worksheet.Cell(
 				row,
 				9)
+				.Value =
+					item.AverageCost;
+
+			worksheet.Cell(
+				row,
+				10)
 				.Value =
 					item.InventoryValue;
 
@@ -465,9 +475,15 @@ public sealed class ReportService
 		{
 			GroupedInventoryReportType.Location =>
 				new GroupedInventoryReportDefinition(
-					"Stock by Location",
-					"Location",
+					"Stock by Storage Location",
+					"Storage Location",
 					x => x.LocationName),
+
+			GroupedInventoryReportType.Warehouse =>
+				new GroupedInventoryReportDefinition(
+					"Stock by Warehouse",
+					"Warehouse",
+					x => x.WarehouseName),
 
 			GroupedInventoryReportType.Purpose =>
 				new GroupedInventoryReportDefinition(
@@ -638,23 +654,29 @@ public sealed class ReportService
 			row,
 			6)
 			.Value =
-				"Location";
+				"Warehouse";
 
 		worksheet.Cell(
 			row,
 			7)
 			.Value =
-				"Stock";
+				"Storage Location";
 
 		worksheet.Cell(
 			row,
 			8)
 			.Value =
-				"Average Cost";
+				"Stock";
 
 		worksheet.Cell(
 			row,
 			9)
+			.Value =
+				"Average Cost";
+
+		worksheet.Cell(
+			row,
+			10)
 			.Value =
 				"Value";
 	}
@@ -685,7 +707,7 @@ public sealed class ReportService
 				headerRow,
 				1,
 				headerRow,
-				9);
+				10);
 
 		headerRange.Style.Font.Bold =
 			true;
@@ -703,24 +725,24 @@ public sealed class ReportService
 			headerRow,
 			1,
 			usedLastRow,
-			9)
+			10)
 			.SetAutoFilter();
 
 		if (lastDataRow > headerRow)
 		{
 			worksheet.Range(
 				headerRow + 1,
-				8,
+				9,
 				lastDataRow,
-				8)
+				9)
 				.Style.NumberFormat.Format =
 					EuroCurrencyFormat;
 
 			worksheet.Range(
 				headerRow + 1,
-				9,
+				10,
 				lastDataRow,
-				9)
+				10)
 				.Style.NumberFormat.Format =
 					EuroCurrencyFormat;
 		}

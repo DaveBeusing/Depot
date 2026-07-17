@@ -15,6 +15,8 @@ public sealed class DashboardRecentMovement
 
 	public string PurposeName { get; init; } = string.Empty;
 
+	public string WarehouseName { get; init; } = string.Empty;
+
 	public string LocationName { get; init; } = string.Empty;
 
 	public StockMovementType MovementType { get; init; }

@@ -131,7 +131,8 @@
 						<DataGridTextColumn Header="Part Number" Binding="{Binding PartNumber}" Width="150" />
 						<DataGridTextColumn Header="Description" Binding="{Binding Description}" Width="*" />
 						<DataGridTextColumn Header="Purpose" Binding="{Binding PurposeName}" Width="120" />
-						<DataGridTextColumn Header="Location" Binding="{Binding LocationName}" Width="120" />
+						<DataGridTextColumn Header="Warehouse" Binding="{Binding WarehouseName}" Width="120" />
+						<DataGridTextColumn Header="Storage Location" Binding="{Binding LocationName}" Width="120" />
 						<DataGridTextColumn Header="Stock" Binding="{Binding CurrentStock}" Width="80" />
 						<DataGridTextColumn Header="Avg Cost" Binding="{Binding AverageCost, StringFormat={}{0:C2}}" Width="120" />
 						<DataGridTextColumn Header="Value" Binding="{Binding InventoryValue, StringFormat={}{0:C2}}" Width="120" />

@@ -15,6 +15,8 @@ public sealed class ImportPreviewItem
 
 	public string Purpose { get; init; } = string.Empty;
 
+	public string Warehouse { get; init; } = string.Empty;
+
 	public string Location { get; init; } = string.Empty;
 
 	public int Quantity { get; init; }

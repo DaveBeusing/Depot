@@ -15,8 +15,10 @@ public sealed class InventoryLookupViewModel
 
 	public string PurposeName { get; init; } = string.Empty;
 
+	public string WarehouseName { get; init; } = string.Empty;
+
 	public string LocationName { get; init; } = string.Empty;
 
 	public string DisplayName =>
-		$"{PartNumber} - {Description} | {PurposeName} | {LocationName}";
+		$"{PartNumber} - {Description} | {PurposeName} | {WarehouseName} / {LocationName}";
 }

@@ -3,16 +3,11 @@
 
 namespace Depot.Models;
 
-public sealed class Location
+public sealed class Warehouse
 {
 	public long Id { get; set; }
-
-	public string Name { get; set; }
-		= string.Empty;
-
+	public string Name { get; set; } = string.Empty;
 	public string? Description { get; set; }
-
 	public bool IsActive { get; set; }
-
 	public long Version { get; set; } = 1;
 }

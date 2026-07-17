@@ -111,7 +111,8 @@ public sealed class DatabaseProviderTests
 			typeof(AuditRepository),
 			typeof(InventoryRepository),
 			typeof(ItemRepository),
-			typeof(LocationRepository),
+			typeof(WarehouseRepository),
+			typeof(StorageLocationRepository),
 			typeof(PurposeRepository),
 			typeof(StockMovementRepository),
 			typeof(UserRepository)

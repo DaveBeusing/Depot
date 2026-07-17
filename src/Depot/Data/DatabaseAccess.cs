@@ -105,6 +105,15 @@ public sealed class DatabaseAccess
 		return await session.ExecuteAsync(sql, cancellationToken, parameters);
 	}
 
+	public async Task<object?> ExecuteScalarAsync(
+		string sql,
+		CancellationToken cancellationToken,
+		params DatabaseParameter[] parameters)
+	{
+		await using var session = await OpenSessionAsync(cancellationToken);
+		return await session.ExecuteScalarAsync(sql, cancellationToken, parameters);
+	}
+
 	public long Insert(string sql, params DatabaseParameter[] parameters)
 	{
 		using var session = OpenSession();

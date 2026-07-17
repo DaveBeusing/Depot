@@ -25,7 +25,7 @@ public sealed class InventoryManagementService
 	public Inventory GetOrCreateInventory(
 		long itemId,
 		long purposeId,
-		long locationId)
+		long storageLocationId)
 	{
 		if (itemId <= 0)
 		{
@@ -41,18 +41,18 @@ public sealed class InventoryManagementService
 				nameof(purposeId));
 		}
 
-		if (locationId <= 0)
+		if (storageLocationId <= 0)
 		{
 			throw new ArgumentException(
-				"Location id is required.",
-				nameof(locationId));
+				"Storage location id is required.",
+				nameof(storageLocationId));
 		}
 
 		var inventory =
 			_inventoryRepository.GetByItemPurposeLocation(
 				itemId,
 				purposeId,
-				locationId);
+				storageLocationId);
 
 		if (inventory is not null)
 		{
@@ -64,7 +64,7 @@ public sealed class InventoryManagementService
 			{
 				ItemId = itemId,
 				PurposeId = purposeId,
-				LocationId = locationId,
+				StorageLocationId = storageLocationId,
 				IsActive = true
 			};
 
@@ -80,17 +80,17 @@ public sealed class InventoryManagementService
 	public async Task<Inventory> GetOrCreateInventoryAsync(
 		long itemId,
 		long purposeId,
-		long locationId,
+		long storageLocationId,
 		CancellationToken cancellationToken = default)
 	{
 		if (itemId <= 0) throw new ArgumentException("Item id is required.", nameof(itemId));
 		if (purposeId <= 0) throw new ArgumentException("Purpose id is required.", nameof(purposeId));
-		if (locationId <= 0) throw new ArgumentException("Location id is required.", nameof(locationId));
+		if (storageLocationId <= 0) throw new ArgumentException("Storage location id is required.", nameof(storageLocationId));
 
 		var inventory = await _inventoryRepository.GetByContextAsync(
 			itemId,
 			purposeId,
-			locationId,
+			storageLocationId,
 			cancellationToken);
 
 		if (inventory is not null) return inventory;
@@ -99,7 +99,7 @@ public sealed class InventoryManagementService
 		{
 			ItemId = itemId,
 			PurposeId = purposeId,
-			LocationId = locationId,
+			StorageLocationId = storageLocationId,
 			IsActive = true
 		};
 		inventory.Id = await _inventoryRepository.CreateAsync(inventory, cancellationToken);

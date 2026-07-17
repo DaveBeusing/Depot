@@ -145,7 +145,10 @@ public sealed class DepotDatabase : IDatabaseInitializer
 		CreatePurposesTable(
 			connection);
 
-		CreateLocationsTable(
+		CreateWarehousesTable(
+			connection);
+
+		CreateStorageLocationsTable(
 			connection);
 
 		CreateInventoriesTable(
@@ -166,7 +169,7 @@ public sealed class DepotDatabase : IDatabaseInitializer
 		CreateDefaultPurpose(
 			connection);
 
-		CreateDefaultLocation(
+		CreateDefaultWarehouseStructure(
 			connection);
 
 		CreateDefaultAdministrator(
@@ -232,7 +235,7 @@ public sealed class DepotDatabase : IDatabaseInitializer
 
 			PurposeId       INTEGER NOT NULL,
 
-			LocationId      INTEGER NOT NULL,
+			StorageLocationId INTEGER NOT NULL,
 
 			IsActive        INTEGER NOT NULL DEFAULT 1,
 			Version         INTEGER NOT NULL DEFAULT 1,
@@ -241,7 +244,7 @@ public sealed class DepotDatabase : IDatabaseInitializer
 			(
 				ItemId,
 				PurposeId,
-				LocationId
+				StorageLocationId
 			),
 
 			FOREIGN KEY(ItemId)
@@ -250,8 +253,8 @@ public sealed class DepotDatabase : IDatabaseInitializer
 			FOREIGN KEY(PurposeId)
 				REFERENCES Purposes(Id),
 
-			FOREIGN KEY(LocationId)
-				REFERENCES Locations(Id)
+			FOREIGN KEY(StorageLocationId)
+				REFERENCES StorageLocations(Id)
 		);
 		""";
 
@@ -336,6 +339,61 @@ public sealed class DepotDatabase : IDatabaseInitializer
 		);
 		""";
 
+		command.ExecuteNonQuery();
+	}
+
+	private static void CreateWarehousesTable(SqliteConnection connection)
+	{
+		using var command = connection.CreateCommand();
+		command.CommandText =
+		"""
+		CREATE TABLE IF NOT EXISTS Warehouses
+		(
+			Id          INTEGER PRIMARY KEY AUTOINCREMENT,
+			Name        TEXT NOT NULL UNIQUE,
+			Description TEXT NULL,
+			IsActive    INTEGER NOT NULL DEFAULT 1,
+			Version     INTEGER NOT NULL DEFAULT 1
+		);
+		""";
+		command.ExecuteNonQuery();
+	}
+
+	private static void CreateStorageLocationsTable(SqliteConnection connection)
+	{
+		using var command = connection.CreateCommand();
+		command.CommandText =
+		"""
+		CREATE TABLE IF NOT EXISTS StorageLocations
+		(
+			Id          INTEGER PRIMARY KEY AUTOINCREMENT,
+			WarehouseId INTEGER NOT NULL,
+			Name        TEXT NOT NULL,
+			Description TEXT NULL,
+			IsActive    INTEGER NOT NULL DEFAULT 1,
+			Version     INTEGER NOT NULL DEFAULT 1,
+			UNIQUE(WarehouseId, Name),
+			FOREIGN KEY(WarehouseId) REFERENCES Warehouses(Id)
+		);
+		CREATE INDEX IF NOT EXISTS IX_StorageLocations_WarehouseId_Name
+			ON StorageLocations(WarehouseId, Name);
+		""";
+		command.ExecuteNonQuery();
+	}
+
+	private static void CreateDefaultWarehouseStructure(SqliteConnection connection)
+	{
+		using var command = connection.CreateCommand();
+		command.CommandText =
+		"""
+		INSERT OR IGNORE INTO Warehouses (Name, Description, IsActive)
+		VALUES ('Main Warehouse', 'Default Depot warehouse', 1);
+
+		INSERT OR IGNORE INTO StorageLocations (WarehouseId, Name, Description, IsActive)
+		SELECT Id, 'Default', 'Default storage location', 1
+		FROM Warehouses
+		WHERE Name = 'Main Warehouse';
+		""";
 		command.ExecuteNonQuery();
 	}
 
@@ -524,6 +582,13 @@ public sealed class DepotDatabase : IDatabaseInitializer
 			migratedVersion = 8;
 		}
 
+		if (migratedVersion == 8)
+		{
+			MigrateToWarehouseStructure(connection);
+			SetDatabaseVersion(connection, 9);
+			migratedVersion = 9;
+		}
+
 		if (migratedVersion < DatabaseVersion.CurrentVersion)
 		{
 			throw new InvalidOperationException(
@@ -534,6 +599,110 @@ public sealed class DepotDatabase : IDatabaseInitializer
 		{
 			throw new InvalidOperationException(
 				$"Database version '{version}' is newer than the supported schema version '{DatabaseVersion.CurrentVersion}'.");
+		}
+	}
+
+	private static void MigrateToWarehouseStructure(SqliteConnection connection)
+	{
+		using (var disableForeignKeys = connection.CreateCommand())
+		{
+			disableForeignKeys.CommandText = "PRAGMA foreign_keys = OFF;";
+			disableForeignKeys.ExecuteNonQuery();
+		}
+
+		try
+		{
+			using var transaction = connection.BeginTransaction();
+			using var command = connection.CreateCommand();
+			command.Transaction = transaction;
+			command.CommandText =
+			"""
+			CREATE TABLE Warehouses
+			(
+				Id INTEGER PRIMARY KEY AUTOINCREMENT,
+				Name TEXT NOT NULL UNIQUE,
+				Description TEXT NULL,
+				IsActive INTEGER NOT NULL DEFAULT 1,
+				Version INTEGER NOT NULL DEFAULT 1
+			);
+
+			INSERT INTO Warehouses (Name, Description, IsActive)
+			VALUES ('Main Warehouse', 'Migrated default warehouse', 1);
+
+			CREATE TABLE StorageLocations
+			(
+				Id INTEGER PRIMARY KEY AUTOINCREMENT,
+				WarehouseId INTEGER NOT NULL,
+				Name TEXT NOT NULL,
+				Description TEXT NULL,
+				IsActive INTEGER NOT NULL DEFAULT 1,
+				Version INTEGER NOT NULL DEFAULT 1,
+				UNIQUE(WarehouseId, Name),
+				FOREIGN KEY(WarehouseId) REFERENCES Warehouses(Id)
+			);
+
+			INSERT INTO StorageLocations (Id, WarehouseId, Name, Description, IsActive, Version)
+			SELECT l.Id, w.Id, l.Name, l.Description, l.IsActive, l.Version
+			FROM Locations l
+			CROSS JOIN Warehouses w
+			WHERE w.Name = 'Main Warehouse';
+
+			ALTER TABLE StockMovements RENAME TO StockMovementsWarehouseMigration;
+			ALTER TABLE Inventories RENAME TO InventoriesWarehouseMigration;
+
+			CREATE TABLE Inventories
+			(
+				Id INTEGER PRIMARY KEY AUTOINCREMENT,
+				ItemId INTEGER NOT NULL,
+				PurposeId INTEGER NOT NULL,
+				StorageLocationId INTEGER NOT NULL,
+				IsActive INTEGER NOT NULL DEFAULT 1,
+				Version INTEGER NOT NULL DEFAULT 1,
+				UNIQUE(ItemId, PurposeId, StorageLocationId),
+				FOREIGN KEY(ItemId) REFERENCES Items(Id),
+				FOREIGN KEY(PurposeId) REFERENCES Purposes(Id),
+				FOREIGN KEY(StorageLocationId) REFERENCES StorageLocations(Id)
+			);
+
+			INSERT INTO Inventories (Id, ItemId, PurposeId, StorageLocationId, IsActive, Version)
+			SELECT Id, ItemId, PurposeId, LocationId, IsActive, Version
+			FROM InventoriesWarehouseMigration;
+
+			CREATE TABLE StockMovements
+			(
+				Id INTEGER PRIMARY KEY AUTOINCREMENT,
+				InventoryId INTEGER NOT NULL,
+				MovementType INTEGER NOT NULL,
+				TimestampUtc TEXT NOT NULL,
+				Quantity INTEGER NOT NULL,
+				UnitPrice REAL NULL,
+				Reference TEXT NULL,
+				Notes TEXT NULL,
+				FOREIGN KEY(InventoryId) REFERENCES Inventories(Id)
+			);
+
+			INSERT INTO StockMovements
+				(Id, InventoryId, MovementType, TimestampUtc, Quantity, UnitPrice, Reference, Notes)
+			SELECT Id, InventoryId, MovementType, TimestampUtc, Quantity, UnitPrice, Reference, Notes
+			FROM StockMovementsWarehouseMigration;
+
+			DROP TABLE StockMovementsWarehouseMigration;
+			DROP TABLE InventoriesWarehouseMigration;
+			DROP TABLE Locations;
+
+			CREATE INDEX IX_StorageLocations_WarehouseId_Name
+				ON StorageLocations(WarehouseId, Name);
+			CREATE INDEX IX_StockMovements_InventoryId_TimestampUtc
+				ON StockMovements(InventoryId, TimestampUtc);
+			""";
+			command.ExecuteNonQuery();
+			transaction.Commit();
+		}
+		finally
+		{
+			using var enableForeignKeys = connection.CreateCommand();
+			enableForeignKeys.CommandText = "PRAGMA foreign_keys = ON;";
+			enableForeignKeys.ExecuteNonQuery();
 		}
 	}
 

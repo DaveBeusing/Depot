@@ -59,7 +59,8 @@
 							<DataGridTextColumn Header="Part Number" Binding="{Binding PartNumber}" Width="120" />
 							<DataGridTextColumn Header="Description" Binding="{Binding Description}" Width="*" />
 							<DataGridTextColumn Header="Purpose" Binding="{Binding PurposeName}" Width="95" />
-							<DataGridTextColumn Header="Location" Binding="{Binding LocationName}" Width="95" />
+							<DataGridTextColumn Header="Warehouse" Binding="{Binding WarehouseName}" Width="105" />
+							<DataGridTextColumn Header="Storage Location" Binding="{Binding LocationName}" Width="110" />
 							<DataGridTextColumn Header="Type" Binding="{Binding MovementType}" Width="95" />
 							<DataGridTextColumn Header="Qty" Binding="{Binding Quantity}" Width="60" />
 							<DataGridTextColumn Header="Unit Price" Binding="{Binding UnitPrice, StringFormat={}{0:C2}}" Width="105" />

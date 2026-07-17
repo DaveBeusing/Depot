@@ -18,6 +18,7 @@ public sealed class InventoryOverviewItemViewModel
 		Manufacturer = item.Manufacturer;
 		Category = item.Category;
 		PurposeName = item.PurposeName;
+		WarehouseName = item.WarehouseName;
 		LocationName = item.LocationName;
 		CurrentStock = item.CurrentStock;
 		AverageCost = item.AverageCost;
@@ -37,6 +38,8 @@ public sealed class InventoryOverviewItemViewModel
 	public string? Category { get; }
 
 	public string PurposeName { get; }
+
+	public string WarehouseName { get; }
 
 	public string LocationName { get; }
 

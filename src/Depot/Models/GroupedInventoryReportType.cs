@@ -6,6 +6,7 @@ namespace Depot.Models;
 public enum GroupedInventoryReportType
 {
 	Location,
+	Warehouse,
 	Purpose,
 	Category,
 	Manufacturer

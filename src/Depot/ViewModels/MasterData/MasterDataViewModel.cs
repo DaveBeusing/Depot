@@ -5,7 +5,7 @@ using System.Collections.ObjectModel;
 
 using Depot.ViewModels.Shared;
 using Depot.ViewModels.Purposes;
-using Depot.ViewModels.Locations;
+using Depot.ViewModels.Warehouses;
 using Depot.Services;
 
 namespace Depot.ViewModels.MasterData;
@@ -19,15 +19,16 @@ public sealed class MasterDataViewModel
 	private NavigationItem? _selectedNavigationItem;
 	private BaseViewModel? _currentViewModel;
 	private readonly PurposeViewModel _purposeViewModel;
-	private readonly LocationViewModel _locationViewModel;
+	private readonly WarehouseStructureViewModel _warehouseStructureViewModel;
 	private bool _isInitialized;
 
 	public MasterDataViewModel(
 		PurposeService purposeService,
-		LocationService locationService)
+		WarehouseService warehouseService,
+		StorageLocationService storageLocationService)
 	{
 		_purposeViewModel = new PurposeViewModel(purposeService);
-		_locationViewModel = new LocationViewModel(locationService);
+		_warehouseStructureViewModel = new WarehouseStructureViewModel(warehouseService, storageLocationService);
 
 		NavigationItems.Add(
 			new NavigationItem
@@ -39,8 +40,8 @@ public sealed class MasterDataViewModel
 		NavigationItems.Add(
 			new NavigationItem
 			{
-				Name = "Locations",
-				Section = MasterDataSection.Locations
+				Name = "Warehouse Structure",
+				Section = MasterDataSection.WarehouseStructure
 			});
 
 		SelectedNavigationItem =
@@ -100,8 +101,8 @@ public sealed class MasterDataViewModel
 				MasterDataSection.Purposes =>
 					_purposeViewModel,
 
-				MasterDataSection.Locations =>
-					_locationViewModel,
+				MasterDataSection.WarehouseStructure =>
+					_warehouseStructureViewModel,
 
 				_ =>
 					new PlaceholderViewModel(
@@ -114,7 +115,7 @@ public sealed class MasterDataViewModel
 		CurrentViewModel switch
 		{
 			PurposeViewModel purpose => purpose.LoadPurposesAsync(cancellationToken),
-			LocationViewModel location => location.LoadLocationsAsync(cancellationToken),
+			WarehouseStructureViewModel warehouseStructure => warehouseStructure.LoadAsync(cancellationToken),
 			_ => Task.CompletedTask
 		};
 }

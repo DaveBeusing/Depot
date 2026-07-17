@@ -102,7 +102,12 @@
 							Width="140" />
 
 						<DataGridTextColumn
-							Header="Location"
+							Header="Warehouse"
+							Binding="{Binding WarehouseName}"
+							Width="140" />
+
+						<DataGridTextColumn
+							Header="Storage Location"
 							Binding="{Binding LocationName}"
 							Width="140" />
 

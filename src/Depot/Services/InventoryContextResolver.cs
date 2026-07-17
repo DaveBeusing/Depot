@@ -12,7 +12,8 @@ internal static class InventoryContextResolver
 		IReadOnlyDictionary<long, Item> items,
 		IReadOnlyDictionary<long, Inventory> inventoriesById,
 		IReadOnlyDictionary<long, Purpose> purposes,
-		IReadOnlyDictionary<long, Location> locations)
+		IReadOnlyDictionary<long, StorageLocation> storageLocations,
+		IReadOnlyDictionary<long, Warehouse> warehouses)
 	{
 		if (!inventoriesById.TryGetValue(
 				movement.InventoryId,
@@ -24,6 +25,7 @@ internal static class InventoryContextResolver
 			return null;
 		}
 
+		storageLocations.TryGetValue(inventory.StorageLocationId, out var storageLocation);
 		return new InventoryMovementContext
 		{
 			InventoryId =
@@ -43,10 +45,11 @@ internal static class InventoryContextResolver
 					purposes,
 					inventory.PurposeId),
 
-			LocationName =
-				GetLocationName(
-					locations,
-					inventory.LocationId)
+			WarehouseName = storageLocation is null
+				? "Unknown warehouse"
+				: GetWarehouseName(warehouses, storageLocation.WarehouseId),
+
+			LocationName = storageLocation?.Name ?? "Unknown storage location"
 		};
 	}
 
@@ -62,20 +65,22 @@ internal static class InventoryContextResolver
 	}
 
 	public static string GetLocationName(
-		IReadOnlyDictionary<long, Location> locations,
-		long? locationId)
+		IReadOnlyDictionary<long, StorageLocation> locations,
+		long locationId)
 	{
-		if (locationId is null)
-		{
-			return "Unknown location";
-		}
-
 		return locations.TryGetValue(
-			locationId.Value,
+			locationId,
 			out var location)
 			? location.Name
-			: "Unknown location";
+			: "Unknown storage location";
 	}
+
+	public static string GetWarehouseName(
+		IReadOnlyDictionary<long, Warehouse> warehouses,
+		long warehouseId) =>
+		warehouses.TryGetValue(warehouseId, out var warehouse)
+			? warehouse.Name
+			: "Unknown warehouse";
 }
 
 internal sealed class InventoryMovementContext
@@ -89,6 +94,8 @@ internal sealed class InventoryMovementContext
 	public string Description { get; init; } = string.Empty;
 
 	public string PurposeName { get; init; } = string.Empty;
+
+	public string WarehouseName { get; init; } = string.Empty;
 
 	public string LocationName { get; init; } = string.Empty;
 }

@@ -31,6 +31,11 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 
 		command.CommandText = "SELECT Version FROM DatabaseInfo WHERE Id = 1;";
 		var version = Convert.ToInt32(command.ExecuteScalar(), CultureInfo.InvariantCulture);
+		if (version == 8)
+		{
+			MigrateToWarehouseStructure(command);
+			version = DatabaseVersion.CurrentVersion;
+		}
 		if (version != DatabaseVersion.CurrentVersion)
 		{
 			throw new InvalidOperationException(
@@ -38,6 +43,35 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 		}
 
 		transaction.Commit();
+	}
+
+	private static void MigrateToWarehouseStructure(System.Data.Common.DbCommand command)
+	{
+		command.CommandText =
+		"""
+		DELETE FROM StorageLocations;
+		SET IDENTITY_INSERT StorageLocations ON;
+		INSERT INTO StorageLocations (Id, WarehouseId, Name, Description, IsActive, Version)
+		SELECT l.Id, w.Id, l.Name, l.Description, l.IsActive, l.Version
+		FROM Locations l
+		CROSS JOIN Warehouses w
+		WHERE w.Name = N'Main Warehouse';
+		SET IDENTITY_INSERT StorageLocations OFF;
+
+		ALTER TABLE Inventories ADD StorageLocationId bigint NULL;
+		UPDATE Inventories SET StorageLocationId = LocationId;
+		ALTER TABLE Inventories ALTER COLUMN StorageLocationId bigint NOT NULL;
+		ALTER TABLE Inventories DROP CONSTRAINT FK_Inventories_Locations;
+		ALTER TABLE Inventories DROP CONSTRAINT UQ_Inventories_Context;
+		ALTER TABLE Inventories DROP COLUMN LocationId;
+		ALTER TABLE Inventories ADD CONSTRAINT UQ_Inventories_Context UNIQUE (ItemId, PurposeId, StorageLocationId);
+		ALTER TABLE Inventories ADD CONSTRAINT FK_Inventories_StorageLocations
+			FOREIGN KEY (StorageLocationId) REFERENCES StorageLocations(Id);
+		DROP TABLE Locations;
+		UPDATE DatabaseInfo SET Version = 9 WHERE Id = 1;
+		""";
+		command.Parameters.Clear();
+		command.ExecuteNonQuery();
 	}
 
 	private void EnsureDatabaseExists()
@@ -94,14 +128,27 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 			Version bigint NOT NULL CONSTRAINT DF_Purposes_Version DEFAULT 1
 		);
 
-	IF OBJECT_ID(N'Locations', N'U') IS NULL
-		CREATE TABLE Locations
+	IF OBJECT_ID(N'Warehouses', N'U') IS NULL
+		CREATE TABLE Warehouses
 		(
-			Id bigint IDENTITY(1,1) NOT NULL CONSTRAINT PK_Locations PRIMARY KEY,
-			Name nvarchar(200) NOT NULL CONSTRAINT UQ_Locations_Name UNIQUE,
+			Id bigint IDENTITY(1,1) NOT NULL CONSTRAINT PK_Warehouses PRIMARY KEY,
+			Name nvarchar(200) NOT NULL CONSTRAINT UQ_Warehouses_Name UNIQUE,
 			Description nvarchar(500) NULL,
-			IsActive bit NOT NULL CONSTRAINT DF_Locations_IsActive DEFAULT 1,
-			Version bigint NOT NULL CONSTRAINT DF_Locations_Version DEFAULT 1
+			IsActive bit NOT NULL CONSTRAINT DF_Warehouses_IsActive DEFAULT 1,
+			Version bigint NOT NULL CONSTRAINT DF_Warehouses_Version DEFAULT 1
+		);
+
+	IF OBJECT_ID(N'StorageLocations', N'U') IS NULL
+		CREATE TABLE StorageLocations
+		(
+			Id bigint IDENTITY(1,1) NOT NULL CONSTRAINT PK_StorageLocations PRIMARY KEY,
+			WarehouseId bigint NOT NULL,
+			Name nvarchar(200) NOT NULL,
+			Description nvarchar(500) NULL,
+			IsActive bit NOT NULL CONSTRAINT DF_StorageLocations_IsActive DEFAULT 1,
+			Version bigint NOT NULL CONSTRAINT DF_StorageLocations_Version DEFAULT 1,
+			CONSTRAINT UQ_StorageLocations_Warehouse_Name UNIQUE (WarehouseId, Name),
+			CONSTRAINT FK_StorageLocations_Warehouses FOREIGN KEY (WarehouseId) REFERENCES Warehouses(Id)
 		);
 
 	IF OBJECT_ID(N'Inventories', N'U') IS NULL
@@ -110,13 +157,13 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 			Id bigint IDENTITY(1,1) NOT NULL CONSTRAINT PK_Inventories PRIMARY KEY,
 			ItemId bigint NOT NULL,
 			PurposeId bigint NOT NULL,
-			LocationId bigint NOT NULL,
+			StorageLocationId bigint NOT NULL,
 			IsActive bit NOT NULL CONSTRAINT DF_Inventories_IsActive DEFAULT 1,
 			Version bigint NOT NULL CONSTRAINT DF_Inventories_Version DEFAULT 1,
-			CONSTRAINT UQ_Inventories_Context UNIQUE (ItemId, PurposeId, LocationId),
+			CONSTRAINT UQ_Inventories_Context UNIQUE (ItemId, PurposeId, StorageLocationId),
 			CONSTRAINT FK_Inventories_Items FOREIGN KEY (ItemId) REFERENCES Items(Id),
 			CONSTRAINT FK_Inventories_Purposes FOREIGN KEY (PurposeId) REFERENCES Purposes(Id),
-			CONSTRAINT FK_Inventories_Locations FOREIGN KEY (LocationId) REFERENCES Locations(Id)
+			CONSTRAINT FK_Inventories_StorageLocations FOREIGN KEY (StorageLocationId) REFERENCES StorageLocations(Id)
 		);
 
 	IF OBJECT_ID(N'Users', N'U') IS NULL
@@ -173,8 +220,12 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 	IF NOT EXISTS (SELECT 1 FROM Purposes WHERE Name = N'Stock')
 		INSERT INTO Purposes (Name, Description, IsActive) VALUES (N'Stock', N'Default stock purpose', 1);
 
-	IF NOT EXISTS (SELECT 1 FROM Locations WHERE Name = N'Warehouse')
-		INSERT INTO Locations (Name, Description, IsActive) VALUES (N'Warehouse', N'Default warehouse location', 1);
+	IF NOT EXISTS (SELECT 1 FROM Warehouses WHERE Name = N'Main Warehouse')
+		INSERT INTO Warehouses (Name, Description, IsActive) VALUES (N'Main Warehouse', N'Default Depot warehouse', 1);
+
+	IF NOT EXISTS (SELECT 1 FROM StorageLocations sl INNER JOIN Warehouses w ON w.Id = sl.WarehouseId WHERE w.Name = N'Main Warehouse' AND sl.Name = N'Default')
+		INSERT INTO StorageLocations (WarehouseId, Name, Description, IsActive)
+		SELECT Id, N'Default', N'Default storage location', 1 FROM Warehouses WHERE Name = N'Main Warehouse';
 
 	IF NOT EXISTS (SELECT 1 FROM Users WHERE Email = N'admin@depot.local')
 		INSERT INTO Users (Email, DisplayName, PasswordHash, IsAdministrator, IsActive, CreatedUtc)

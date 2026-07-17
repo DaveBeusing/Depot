@@ -19,7 +19,8 @@ public sealed class MultiUserInventoryTests : IDisposable
 	private readonly StockMovementRepository _movementRepository;
 	private readonly ItemService _itemService;
 	private readonly PurposeService _purposeService;
-	private readonly LocationService _locationService;
+	private readonly WarehouseService _warehouseService;
+	private readonly StorageLocationService _storageLocationService;
 	private readonly InventoryManagementService _inventoryService;
 	private readonly MovementService _movementService;
 
@@ -32,7 +33,8 @@ public sealed class MultiUserInventoryTests : IDisposable
 		_inventoryRepository = new InventoryRepository(database);
 		_movementRepository = new StockMovementRepository(database);
 		var purposeRepository = new PurposeRepository(database);
-		var locationRepository = new LocationRepository(database);
+		var warehouseRepository = new WarehouseRepository(database);
+		var storageLocationRepository = new StorageLocationRepository(database);
 		var authorization = new AuthorizationService();
 		var administrator = new UserRepository(database).GetByEmail("admin@depot.local")
 			?? throw new InvalidOperationException("The test administrator was not initialized.");
@@ -40,13 +42,15 @@ public sealed class MultiUserInventoryTests : IDisposable
 		var audit = new AuditService(new AuditRepository(database), authorization);
 		_itemService = new ItemService(_itemRepository, audit);
 		_purposeService = new PurposeService(purposeRepository, audit);
-		_locationService = new LocationService(locationRepository, audit);
+		_warehouseService = new WarehouseService(warehouseRepository, storageLocationRepository, audit);
+		_storageLocationService = new StorageLocationService(storageLocationRepository, warehouseRepository, audit);
 		_inventoryService = new InventoryManagementService(_inventoryRepository, audit);
 		_movementService = new MovementService(
 			_itemRepository,
 			_inventoryRepository,
 			purposeRepository,
-			locationRepository,
+			storageLocationRepository,
+			warehouseRepository,
 			_movementRepository,
 			audit);
 	}
@@ -97,7 +101,8 @@ public sealed class MultiUserInventoryTests : IDisposable
 		var suffix = Guid.NewGuid().ToString("N")[..8];
 		var item = _itemService.CreateItem($"ITEM-{suffix}", "Test item", null, null);
 		var purpose = _purposeService.GetOrCreatePurpose($"Purpose-{suffix}");
-		var location = _locationService.GetOrCreateLocation($"Location-{suffix}");
+		var warehouse = _warehouseService.GetOrCreateAsync($"Warehouse-{suffix}").GetAwaiter().GetResult();
+		var location = _storageLocationService.GetOrCreateAsync(warehouse.Id, $"Location-{suffix}").GetAwaiter().GetResult();
 		return _inventoryService.GetOrCreateInventory(item.Id, purpose.Id, location.Id);
 	}
 
