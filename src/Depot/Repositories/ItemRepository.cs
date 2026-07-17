@@ -11,9 +11,9 @@ namespace Depot.Repositories;
 public sealed class ItemRepository : DatabaseRepository
 {
 	private const string SelectColumns =
-		"i.Id, i.PartNumber, i.Description, m.Name, c.Name, u.Name, pk.Name, s.Name, i.IsActive, i.Version, i.ManufacturerId, i.CategoryId, i.UnitOfMeasureId, i.PackagingId, i.SupplierId";
+		"i.Id, i.PartNumber, i.Description, m.Name, c.Name, u.Name, pk.Name, i.IsActive, i.Version, i.ManufacturerId, i.CategoryId, i.UnitOfMeasureId, i.PackagingId";
 	private const string SelectFrom =
-		"FROM Items i LEFT JOIN Manufacturers m ON m.Id = i.ManufacturerId LEFT JOIN Categories c ON c.Id = i.CategoryId LEFT JOIN UnitsOfMeasure u ON u.Id = i.UnitOfMeasureId LEFT JOIN Packagings pk ON pk.Id = i.PackagingId LEFT JOIN Suppliers s ON s.Id = i.SupplierId";
+		"FROM Items i LEFT JOIN Manufacturers m ON m.Id = i.ManufacturerId LEFT JOIN Categories c ON c.Id = i.CategoryId LEFT JOIN UnitsOfMeasure u ON u.Id = i.UnitOfMeasureId LEFT JOIN Packagings pk ON pk.Id = i.PackagingId";
 
 	public ItemRepository(DatabaseAccess database)
 		: base(database)
@@ -23,14 +23,14 @@ public sealed class ItemRepository : DatabaseRepository
 	public Task<long> CreateAsync(Item item, CancellationToken cancellationToken) =>
 		Database.InsertAsync(
 			"""
-			INSERT INTO Items (PartNumber, Description, ManufacturerId, CategoryId, UnitOfMeasureId, PackagingId, SupplierId, IsActive)
-			VALUES ($PartNumber, $Description, $ManufacturerId, $CategoryId, $UnitOfMeasureId, $PackagingId, $SupplierId, $IsActive);
+			INSERT INTO Items (PartNumber, Description, ManufacturerId, CategoryId, UnitOfMeasureId, PackagingId, IsActive)
+			VALUES ($PartNumber, $Description, $ManufacturerId, $CategoryId, $UnitOfMeasureId, $PackagingId, $IsActive);
 			""",
 			cancellationToken,
 			Parameter("$PartNumber", item.PartNumber),
 			Parameter("$Description", item.Description),
 			Parameter("$ManufacturerId", item.ManufacturerId), Parameter("$CategoryId", item.CategoryId),
-			Parameter("$UnitOfMeasureId", item.UnitOfMeasureId), Parameter("$PackagingId", item.PackagingId), Parameter("$SupplierId", item.SupplierId),
+			Parameter("$UnitOfMeasureId", item.UnitOfMeasureId), Parameter("$PackagingId", item.PackagingId),
 			Parameter("$IsActive", item.IsActive));
 
 	public async Task<bool> UpdateAsync(Item item, CancellationToken cancellationToken) =>
@@ -38,7 +38,7 @@ public sealed class ItemRepository : DatabaseRepository
 			"""
 			UPDATE Items
 			SET Description = $Description, ManufacturerId = $ManufacturerId, CategoryId = $CategoryId,
-			    UnitOfMeasureId = $UnitOfMeasureId, PackagingId = $PackagingId, SupplierId = $SupplierId,
+			    UnitOfMeasureId = $UnitOfMeasureId, PackagingId = $PackagingId,
 			    IsActive = $IsActive, Version = Version + 1
 			WHERE Id = $Id AND Version = $Version;
 			""",
@@ -46,7 +46,7 @@ public sealed class ItemRepository : DatabaseRepository
 			Parameter("$Id", item.Id),
 			Parameter("$Description", item.Description),
 			Parameter("$ManufacturerId", item.ManufacturerId), Parameter("$CategoryId", item.CategoryId),
-			Parameter("$UnitOfMeasureId", item.UnitOfMeasureId), Parameter("$PackagingId", item.PackagingId), Parameter("$SupplierId", item.SupplierId),
+			Parameter("$UnitOfMeasureId", item.UnitOfMeasureId), Parameter("$PackagingId", item.PackagingId),
 			Parameter("$IsActive", item.IsActive),
 			Parameter("$Version", item.Version)) == 1;
 
@@ -66,7 +66,7 @@ public sealed class ItemRepository : DatabaseRepository
 		var search = searchText?.Trim();
 		var hasSearch = !string.IsNullOrWhiteSpace(search);
 		var filter = hasSearch
-			? "i.IsActive = 1 AND (i.PartNumber LIKE $Search OR i.Description LIKE $Search OR m.Name LIKE $Search OR c.Name LIKE $Search OR u.Name LIKE $Search OR pk.Name LIKE $Search OR s.Name LIKE $Search)"
+			? "i.IsActive = 1 AND (i.PartNumber LIKE $Search OR i.Description LIKE $Search OR m.Name LIKE $Search OR c.Name LIKE $Search OR u.Name LIKE $Search OR pk.Name LIKE $Search OR EXISTS (SELECT 1 FROM SupplierItems si INNER JOIN Suppliers s ON s.Id = si.SupplierId WHERE si.ItemId = i.Id AND si.IsActive = 1 AND (s.Name LIKE $Search OR si.SupplierPartNumber LIKE $Search)))"
 			: "i.IsActive = 1";
 		var parameters = hasSearch
 			? new[] { Parameter("$Search", $"%{search}%") }
@@ -98,13 +98,13 @@ public sealed class ItemRepository : DatabaseRepository
 	public long Create(Item item) =>
 		Database.Insert(
 			"""
-			INSERT INTO Items (PartNumber, Description, ManufacturerId, CategoryId, UnitOfMeasureId, PackagingId, SupplierId, IsActive)
-			VALUES ($PartNumber, $Description, $ManufacturerId, $CategoryId, $UnitOfMeasureId, $PackagingId, $SupplierId, $IsActive);
+			INSERT INTO Items (PartNumber, Description, ManufacturerId, CategoryId, UnitOfMeasureId, PackagingId, IsActive)
+			VALUES ($PartNumber, $Description, $ManufacturerId, $CategoryId, $UnitOfMeasureId, $PackagingId, $IsActive);
 			""",
 			Parameter("$PartNumber", item.PartNumber),
 			Parameter("$Description", item.Description),
 			Parameter("$ManufacturerId", item.ManufacturerId), Parameter("$CategoryId", item.CategoryId),
-			Parameter("$UnitOfMeasureId", item.UnitOfMeasureId), Parameter("$PackagingId", item.PackagingId), Parameter("$SupplierId", item.SupplierId),
+			Parameter("$UnitOfMeasureId", item.UnitOfMeasureId), Parameter("$PackagingId", item.PackagingId),
 			Parameter("$IsActive", item.IsActive));
 
 	public bool Update(Item item) =>
@@ -116,7 +116,6 @@ public sealed class ItemRepository : DatabaseRepository
 			    CategoryId = $CategoryId,
 			    UnitOfMeasureId = $UnitOfMeasureId,
 			    PackagingId = $PackagingId,
-			    SupplierId = $SupplierId,
 			    IsActive = $IsActive,
 			    Version = Version + 1
 			WHERE Id = $Id AND Version = $Version;
@@ -124,7 +123,7 @@ public sealed class ItemRepository : DatabaseRepository
 			Parameter("$Id", item.Id),
 			Parameter("$Description", item.Description),
 			Parameter("$ManufacturerId", item.ManufacturerId), Parameter("$CategoryId", item.CategoryId),
-			Parameter("$UnitOfMeasureId", item.UnitOfMeasureId), Parameter("$PackagingId", item.PackagingId), Parameter("$SupplierId", item.SupplierId),
+			Parameter("$UnitOfMeasureId", item.UnitOfMeasureId), Parameter("$PackagingId", item.PackagingId),
 			Parameter("$IsActive", item.IsActive),
 			Parameter("$Version", item.Version)) == 1;
 
@@ -153,7 +152,7 @@ public sealed class ItemRepository : DatabaseRepository
 			$"""
 			SELECT {SelectColumns} {SelectFrom}
 			WHERE i.IsActive = 1
-			  AND (i.PartNumber LIKE $Search OR i.Description LIKE $Search OR m.Name LIKE $Search OR c.Name LIKE $Search OR u.Name LIKE $Search OR pk.Name LIKE $Search OR s.Name LIKE $Search)
+			  AND (i.PartNumber LIKE $Search OR i.Description LIKE $Search OR m.Name LIKE $Search OR c.Name LIKE $Search OR u.Name LIKE $Search OR pk.Name LIKE $Search OR EXISTS (SELECT 1 FROM SupplierItems si INNER JOIN Suppliers s ON s.Id = si.SupplierId WHERE si.ItemId = i.Id AND si.IsActive = 1 AND (s.Name LIKE $Search OR si.SupplierPartNumber LIKE $Search)))
 			ORDER BY i.PartNumber;
 			""",
 			ReadItem,
@@ -182,13 +181,11 @@ public sealed class ItemRepository : DatabaseRepository
 			Category = reader.IsDBNull(4) ? null : reader.GetString(4),
 			UnitOfMeasure = reader.IsDBNull(5) ? null : reader.GetString(5),
 			Packaging = reader.IsDBNull(6) ? null : reader.GetString(6),
-			Supplier = reader.IsDBNull(7) ? null : reader.GetString(7),
-			IsActive = reader.GetBoolean(8),
-			Version = reader.GetInt64(9),
-			ManufacturerId = reader.IsDBNull(10) ? null : reader.GetInt64(10),
-			CategoryId = reader.IsDBNull(11) ? null : reader.GetInt64(11),
-			UnitOfMeasureId = reader.IsDBNull(12) ? null : reader.GetInt64(12),
-			PackagingId = reader.IsDBNull(13) ? null : reader.GetInt64(13),
-			SupplierId = reader.IsDBNull(14) ? null : reader.GetInt64(14)
+			IsActive = reader.GetBoolean(7),
+			Version = reader.GetInt64(8),
+			ManufacturerId = reader.IsDBNull(9) ? null : reader.GetInt64(9),
+			CategoryId = reader.IsDBNull(10) ? null : reader.GetInt64(10),
+			UnitOfMeasureId = reader.IsDBNull(11) ? null : reader.GetInt64(11),
+			PackagingId = reader.IsDBNull(12) ? null : reader.GetInt64(12)
 		};
 }

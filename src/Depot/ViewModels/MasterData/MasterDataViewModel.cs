@@ -7,6 +7,7 @@ using Depot.ViewModels.Shared;
 using Depot.ViewModels.Purposes;
 using Depot.ViewModels.ReasonCodes;
 using Depot.ViewModels.Warehouses;
+using Depot.ViewModels.Suppliers;
 using Depot.Services;
 
 namespace Depot.ViewModels.MasterData;
@@ -23,6 +24,7 @@ public sealed class MasterDataViewModel
 	private readonly ReasonCodeViewModel _reasonCodeViewModel;
 	private readonly IReadOnlyDictionary<MasterDataSection, ItemReferenceDataViewModel> _itemReferenceViewModels;
 	private readonly WarehouseStructureViewModel _warehouseStructureViewModel;
+	private readonly SupplierViewModel _supplierViewModel;
 	private bool _isInitialized;
 
 	public MasterDataViewModel(
@@ -32,7 +34,10 @@ public sealed class MasterDataViewModel
 		CategoryService categoryService,
 		UnitOfMeasureService unitOfMeasureService,
 		PackagingService packagingService,
+		SupplierCategoryService supplierCategoryService,
 		SupplierService supplierService,
+		SupplierItemService supplierItemService,
+		ItemService itemService,
 		WarehouseService warehouseService,
 		StorageLocationService storageLocationService)
 	{
@@ -44,8 +49,9 @@ public sealed class MasterDataViewModel
 			[MasterDataSection.Categories] = new(categoryService),
 			[MasterDataSection.UnitsOfMeasure] = new(unitOfMeasureService),
 			[MasterDataSection.Packaging] = new(packagingService),
-			[MasterDataSection.Suppliers] = new(supplierService)
+			[MasterDataSection.SupplierCategories] = new(supplierCategoryService)
 		};
+		_supplierViewModel = new SupplierViewModel(supplierService, supplierItemService, supplierCategoryService, itemService);
 		_warehouseStructureViewModel = new WarehouseStructureViewModel(warehouseService, storageLocationService);
 
 		NavigationItems.Add(
@@ -59,6 +65,7 @@ public sealed class MasterDataViewModel
 		AddItemReferenceNavigation("Categories", MasterDataSection.Categories);
 		AddItemReferenceNavigation("Units of Measure", MasterDataSection.UnitsOfMeasure);
 		AddItemReferenceNavigation("Packaging", MasterDataSection.Packaging);
+		AddItemReferenceNavigation("Supplier Categories", MasterDataSection.SupplierCategories);
 		AddItemReferenceNavigation("Suppliers", MasterDataSection.Suppliers);
 
 		NavigationItems.Add(
@@ -138,6 +145,9 @@ public sealed class MasterDataViewModel
 				MasterDataSection.WarehouseStructure =>
 					_warehouseStructureViewModel,
 
+				MasterDataSection.Suppliers =>
+					_supplierViewModel,
+
 				_ when _itemReferenceViewModels.TryGetValue(section, out var referenceViewModel) =>
 					referenceViewModel,
 
@@ -154,6 +164,7 @@ public sealed class MasterDataViewModel
 			PurposeViewModel purpose => purpose.LoadPurposesAsync(cancellationToken),
 			ReasonCodeViewModel reasonCodes => reasonCodes.LoadAsync(cancellationToken),
 			WarehouseStructureViewModel warehouseStructure => warehouseStructure.LoadAsync(cancellationToken),
+			SupplierViewModel suppliers => suppliers.LoadAsync(cancellationToken),
 			ItemReferenceDataViewModel itemReference => itemReference.LoadAsync(cancellationToken),
 			_ => Task.CompletedTask
 		};

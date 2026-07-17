@@ -13,16 +13,19 @@ public abstract class ItemReferenceDataRepository<T> : DatabaseRepository
 {
 	private const string Columns = "Id, Name, Description, IsActive, Version";
 	private readonly string _tableName;
-	private readonly string _itemForeignKey;
+	private readonly string? _itemForeignKey;
+	private readonly string? _additionalReferenceQuery;
 
 	protected ItemReferenceDataRepository(
 		DatabaseAccess database,
 		string tableName,
-		string itemForeignKey)
+		string? itemForeignKey,
+		string? additionalReferenceQuery = null)
 		: base(database)
 	{
 		_tableName = tableName;
 		_itemForeignKey = itemForeignKey;
+		_additionalReferenceQuery = additionalReferenceQuery;
 	}
 
 	public Task<IReadOnlyList<T>> SearchAsync(string? searchText, CancellationToken cancellationToken)
@@ -88,11 +91,17 @@ public abstract class ItemReferenceDataRepository<T> : DatabaseRepository
 
 	public async Task<bool> IsReferencedAsync(long id, CancellationToken cancellationToken)
 	{
-		var result = await Database.ExecuteScalarAsync(
-			$"SELECT COUNT(*) FROM Items WHERE {_itemForeignKey} = $Id;",
-			cancellationToken,
-			Parameter("$Id", id));
-		return Convert.ToInt64(result) > 0;
+		if (_itemForeignKey is not null)
+		{
+			var result = await Database.ExecuteScalarAsync(
+				$"SELECT COUNT(*) FROM Items WHERE {_itemForeignKey} = $Id;",
+				cancellationToken,
+				Parameter("$Id", id));
+			if (Convert.ToInt64(result) > 0) return true;
+		}
+		if (_additionalReferenceQuery is null) return false;
+		var additional = await Database.ExecuteScalarAsync(_additionalReferenceQuery, cancellationToken, Parameter("$Id", id));
+		return Convert.ToInt64(additional) > 0;
 	}
 
 	private static T Read(DbDataReader reader) => new()
@@ -117,5 +126,5 @@ public sealed class UnitOfMeasureRepository(DatabaseAccess database)
 public sealed class PackagingRepository(DatabaseAccess database)
 	: ItemReferenceDataRepository<Packaging>(database, "Packagings", "PackagingId");
 
-public sealed class SupplierRepository(DatabaseAccess database)
-	: ItemReferenceDataRepository<Supplier>(database, "Suppliers", "SupplierId");
+public sealed class SupplierCategoryRepository(DatabaseAccess database)
+	: ItemReferenceDataRepository<SupplierCategory>(database, "SupplierCategories", null, "SELECT COUNT(*) FROM Suppliers WHERE SupplierCategoryId = $Id;");

@@ -26,11 +26,10 @@ public sealed class ItemsViewModel : BaseViewModel, IDisposable
 		ManufacturerService manufacturerService,
 		CategoryService categoryService,
 		UnitOfMeasureService unitOfMeasureService,
-		PackagingService packagingService,
-		SupplierService supplierService)
+		PackagingService packagingService)
 	{
 		_itemService = itemService;
-		_referenceServices = [manufacturerService, categoryService, unitOfMeasureService, packagingService, supplierService];
+		_referenceServices = [manufacturerService, categoryService, unitOfMeasureService, packagingService];
 		Editor = new ItemEditorViewModel();
 		NewItemCommand = new RelayCommand(NewItem);
 		SaveItemCommand = new AsyncRelayCommand(SaveItemAsync);
@@ -44,7 +43,6 @@ public sealed class ItemsViewModel : BaseViewModel, IDisposable
 	public ObservableCollection<ItemReferenceData> Categories { get; } = new();
 	public ObservableCollection<ItemReferenceData> UnitsOfMeasure { get; } = new();
 	public ObservableCollection<ItemReferenceData> Packagings { get; } = new();
-	public ObservableCollection<ItemReferenceData> Suppliers { get; } = new();
 	public bool HasItems => Items.Count > 0;
 	public bool HasNoItems => !HasItems;
 	public bool HasNextPage => (long)PageNumber * PageSize < TotalCount;
@@ -130,7 +128,7 @@ public sealed class ItemsViewModel : BaseViewModel, IDisposable
 			if (Manufacturers.Count == 0)
 			{
 				var values = await Task.WhenAll(_referenceServices.Select(service => service.GetActiveAsync(cancellationToken)));
-				Fill(Manufacturers, values[0]); Fill(Categories, values[1]); Fill(UnitsOfMeasure, values[2]); Fill(Packagings, values[3]); Fill(Suppliers, values[4]);
+				Fill(Manufacturers, values[0]); Fill(Categories, values[1]); Fill(UnitsOfMeasure, values[2]); Fill(Packagings, values[3]);
 			}
 			var page = await _itemService.SearchItemsAsync(
 				SearchText,
@@ -166,7 +164,6 @@ public sealed class ItemsViewModel : BaseViewModel, IDisposable
 		Editor.Category = Categories.FirstOrDefault(value => value.Id == SelectedItem.CategoryId);
 		Editor.UnitOfMeasure = UnitsOfMeasure.FirstOrDefault(value => value.Id == SelectedItem.UnitOfMeasureId);
 		Editor.Packaging = Packagings.FirstOrDefault(value => value.Id == SelectedItem.PackagingId);
-		Editor.Supplier = Suppliers.FirstOrDefault(value => value.Id == SelectedItem.SupplierId);
 		Editor.Version = SelectedItem.Version;
 	}
 
@@ -192,7 +189,6 @@ public sealed class ItemsViewModel : BaseViewModel, IDisposable
 					Editor.Category?.Id,
 					Editor.UnitOfMeasure?.Id,
 					Editor.Packaging?.Id,
-					Editor.Supplier?.Id,
 					cancellationToken)
 				: await _itemService.UpdateItemWithReferencesAsync(
 					Editor.Id,
@@ -202,7 +198,6 @@ public sealed class ItemsViewModel : BaseViewModel, IDisposable
 					Editor.Category?.Id,
 					Editor.UnitOfMeasure?.Id,
 					Editor.Packaging?.Id,
-					Editor.Supplier?.Id,
 					cancellationToken);
 			UpdateItem(item);
 			Editor.Clear();
@@ -281,8 +276,7 @@ public sealed class ItemsViewModel : BaseViewModel, IDisposable
 			(item.Manufacturer?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false) ||
 			(item.Category?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false) ||
 			(item.UnitOfMeasure?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false) ||
-			(item.Packaging?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false) ||
-			(item.Supplier?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false);
+			(item.Packaging?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false);
 	}
 
 	private void RaiseCollectionState()

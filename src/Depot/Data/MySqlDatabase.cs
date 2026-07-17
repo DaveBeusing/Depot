@@ -54,6 +54,21 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 				MigrateToNormalizedItemMasterData(command);
 				version = 11;
 			}
+			if (version == 11)
+			{
+				MigrateToSupplierManagement(command);
+				version = 12;
+			}
+			if (version == 12)
+			{
+				MigrateSupplierAccountFields(command);
+				version = 13;
+			}
+			if (version == 13)
+			{
+				MigrateSupplierClassification(command);
+				version = 14;
+			}
 			if (version != DatabaseVersion.CurrentVersion)
 			{
 				throw new InvalidOperationException(
@@ -66,6 +81,53 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 			releaseCommand.CommandText = "SELECT RELEASE_LOCK('Depot.SchemaMigration');";
 			releaseCommand.ExecuteScalar();
 		}
+	}
+
+	private static void MigrateSupplierClassification(System.Data.Common.DbCommand command)
+	{
+		Execute(command, "CREATE TABLE IF NOT EXISTS SupplierCategories (Id bigint NOT NULL AUTO_INCREMENT PRIMARY KEY, Name varchar(200) NOT NULL UNIQUE, Description varchar(500) NULL, IsActive boolean NOT NULL DEFAULT true, Version bigint NOT NULL DEFAULT 1) ENGINE=InnoDB;");
+		Execute(command, "INSERT IGNORE INTO SupplierCategories (Name) VALUES ('IT Hardware'), ('ProAV'), ('Licensing');");
+		if (!ColumnExists(command, "Suppliers", "AccountNumber")) Execute(command, "ALTER TABLE Suppliers ADD COLUMN AccountNumber bigint NULL;");
+		if (!ColumnExists(command, "Suppliers", "SupplierCategoryId")) Execute(command, "ALTER TABLE Suppliers ADD COLUMN SupplierCategoryId bigint NULL;");
+		if (!ColumnExists(command, "Suppliers", "SepaMandate")) Execute(command, "ALTER TABLE Suppliers ADD COLUMN SepaMandate varchar(200) NULL;");
+		if (!ColumnExists(command, "Suppliers", "Quality")) Execute(command, "ALTER TABLE Suppliers ADD COLUMN Quality int NOT NULL DEFAULT 100;");
+		Execute(command, "UPDATE Suppliers SET AccountNumber = Id WHERE AccountNumber IS NULL OR AccountNumber <= 0;");
+		if (!IndexExists(command, "Suppliers", "UX_Suppliers_AccountNumber")) Execute(command, "ALTER TABLE Suppliers ADD UNIQUE INDEX UX_Suppliers_AccountNumber (AccountNumber);");
+		if (ColumnExists(command, "Suppliers", "CategoryId"))
+		{
+			Execute(command, "INSERT IGNORE INTO SupplierCategories (Name, Description) SELECT DISTINCT c.Name, c.Description FROM Suppliers s INNER JOIN Categories c ON c.Id = s.CategoryId WHERE s.CategoryId IS NOT NULL;");
+			Execute(command, "UPDATE Suppliers s INNER JOIN Categories c ON c.Id = s.CategoryId INNER JOIN SupplierCategories sc ON sc.Name = c.Name SET s.SupplierCategoryId = sc.Id WHERE s.SupplierCategoryId IS NULL;");
+		}
+		if (!ConstraintExists(command, "Suppliers", "FK_Suppliers_SupplierCategories")) Execute(command, "ALTER TABLE Suppliers ADD CONSTRAINT FK_Suppliers_SupplierCategories FOREIGN KEY (SupplierCategoryId) REFERENCES SupplierCategories(Id);");
+		Execute(command, "UPDATE DatabaseInfo SET Version = 14 WHERE Id = 1;");
+	}
+
+	private static void MigrateSupplierAccountFields(System.Data.Common.DbCommand command)
+	{
+		var hadNumericLoyalty = ColumnExists(command, "Suppliers", "Loyalty");
+		if (!ColumnExists(command, "Suppliers", "CustomerNumber")) Execute(command, "ALTER TABLE Suppliers ADD COLUMN CustomerNumber varchar(100) NULL;");
+		if (!hadNumericLoyalty) Execute(command, "ALTER TABLE Suppliers ADD COLUMN Loyalty int NOT NULL DEFAULT 100;");
+		if (!hadNumericLoyalty && ColumnExists(command, "Suppliers", "IsLoyal")) Execute(command, "UPDATE Suppliers SET Loyalty = CASE WHEN IsLoyal = true THEN 100 ELSE 0 END;");
+		Execute(command, "UPDATE DatabaseInfo SET Version = 13 WHERE Id = 1;");
+	}
+
+	private static void MigrateToSupplierManagement(System.Data.Common.DbCommand command)
+	{
+		Add("SupplierNumber", "varchar(50) NULL"); Add("Contact", "varchar(200) NULL"); Add("Email", "varchar(320) NULL");
+		Add("Phone", "varchar(100) NULL"); Add("Address", "varchar(1000) NULL"); Add("RmaTerms", "text NULL");
+		Add("Url", "varchar(500) NULL"); Add("PaymentTerm", "varchar(200) NULL"); Add("Iban", "varchar(34) NULL");
+		Add("AccountName", "varchar(200) NULL"); Add("VatNumber", "varchar(50) NULL"); Add("CategoryId", "bigint NULL");
+		Add("IsLoyal", "boolean NOT NULL DEFAULT false"); Add("Notes", "text NULL");
+		Execute(command, "UPDATE Suppliers SET SupplierNumber = CONCAT('SUP-', Id) WHERE SupplierNumber IS NULL OR TRIM(SupplierNumber) = '';");
+		if (ColumnExists(command, "Suppliers", "Description")) Execute(command, "UPDATE Suppliers SET Notes = Description WHERE Notes IS NULL AND Description IS NOT NULL;");
+		Execute(command, "ALTER TABLE Suppliers MODIFY COLUMN SupplierNumber varchar(50) NOT NULL;");
+		if (!IndexExists(command, "Suppliers", "UX_Suppliers_SupplierNumber")) Execute(command, "ALTER TABLE Suppliers ADD UNIQUE INDEX UX_Suppliers_SupplierNumber (SupplierNumber);");
+		if (!ConstraintExists(command, "Suppliers", "FK_Suppliers_Categories")) Execute(command, "ALTER TABLE Suppliers ADD CONSTRAINT FK_Suppliers_Categories FOREIGN KEY (CategoryId) REFERENCES Categories(Id);");
+		Execute(command, "CREATE TABLE IF NOT EXISTS SupplierItems (Id bigint NOT NULL AUTO_INCREMENT PRIMARY KEY, SupplierId bigint NOT NULL, ItemId bigint NOT NULL, SupplierPartNumber varchar(200) NOT NULL, PurchasePrice decimal(18,2) NOT NULL DEFAULT 0, LeadTimeDays int NOT NULL DEFAULT 0, MinimumOrderQuantity decimal(18,3) NOT NULL DEFAULT 1, IsPreferredSupplier boolean NOT NULL DEFAULT false, IsActive boolean NOT NULL DEFAULT true, Version bigint NOT NULL DEFAULT 1, UNIQUE KEY UQ_SupplierItems_Context (SupplierId, ItemId), INDEX IX_SupplierItems_SupplierId (SupplierId), INDEX IX_SupplierItems_ItemId (ItemId), CONSTRAINT FK_SupplierItems_Suppliers FOREIGN KEY (SupplierId) REFERENCES Suppliers(Id), CONSTRAINT FK_SupplierItems_Items FOREIGN KEY (ItemId) REFERENCES Items(Id)) ENGINE=InnoDB;");
+		Execute(command, "INSERT IGNORE INTO SupplierItems (SupplierId, ItemId, SupplierPartNumber, PurchasePrice, LeadTimeDays, MinimumOrderQuantity, IsPreferredSupplier) SELECT SupplierId, Id, PartNumber, 0, 0, 1, true FROM Items WHERE SupplierId IS NOT NULL;");
+		Execute(command, "UPDATE DatabaseInfo SET Version = 12 WHERE Id = 1;");
+
+		void Add(string column, string definition) { if (!ColumnExists(command, "Suppliers", column)) Execute(command, $"ALTER TABLE Suppliers ADD COLUMN {column} {definition};"); }
 	}
 
 	private static void MigrateToNormalizedItemMasterData(System.Data.Common.DbCommand command)
@@ -346,7 +408,9 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 	CREATE TABLE IF NOT EXISTS Categories (Id bigint NOT NULL AUTO_INCREMENT PRIMARY KEY, Name varchar(200) NOT NULL UNIQUE, Description varchar(500) NULL, IsActive boolean NOT NULL DEFAULT true, Version bigint NOT NULL DEFAULT 1) ENGINE=InnoDB;
 	CREATE TABLE IF NOT EXISTS UnitsOfMeasure (Id bigint NOT NULL AUTO_INCREMENT PRIMARY KEY, Name varchar(200) NOT NULL UNIQUE, Description varchar(500) NULL, IsActive boolean NOT NULL DEFAULT true, Version bigint NOT NULL DEFAULT 1) ENGINE=InnoDB;
 	CREATE TABLE IF NOT EXISTS Packagings (Id bigint NOT NULL AUTO_INCREMENT PRIMARY KEY, Name varchar(200) NOT NULL UNIQUE, Description varchar(500) NULL, IsActive boolean NOT NULL DEFAULT true, Version bigint NOT NULL DEFAULT 1) ENGINE=InnoDB;
-	CREATE TABLE IF NOT EXISTS Suppliers (Id bigint NOT NULL AUTO_INCREMENT PRIMARY KEY, Name varchar(200) NOT NULL UNIQUE, Description varchar(500) NULL, IsActive boolean NOT NULL DEFAULT true, Version bigint NOT NULL DEFAULT 1) ENGINE=InnoDB;
+	CREATE TABLE IF NOT EXISTS SupplierCategories (Id bigint NOT NULL AUTO_INCREMENT PRIMARY KEY, Name varchar(200) NOT NULL UNIQUE, Description varchar(500) NULL, IsActive boolean NOT NULL DEFAULT true, Version bigint NOT NULL DEFAULT 1) ENGINE=InnoDB;
+	INSERT IGNORE INTO SupplierCategories (Name) VALUES ('IT Hardware'), ('ProAV'), ('Licensing');
+	CREATE TABLE IF NOT EXISTS Suppliers (Id bigint NOT NULL AUTO_INCREMENT PRIMARY KEY, SupplierNumber varchar(50) NOT NULL UNIQUE, AccountNumber bigint NOT NULL UNIQUE, CustomerNumber varchar(100) NULL, Name varchar(200) NOT NULL UNIQUE, Contact varchar(200) NULL, Email varchar(320) NULL, Phone varchar(100) NULL, Address varchar(1000) NULL, RmaTerms text NULL, Url varchar(500) NULL, PaymentTerm varchar(200) NULL, Iban varchar(34) NULL, AccountName varchar(200) NULL, SepaMandate varchar(200) NULL, VatNumber varchar(50) NULL, SupplierCategoryId bigint NULL, Loyalty int NOT NULL DEFAULT 100, Quality int NOT NULL DEFAULT 100, Notes text NULL, IsActive boolean NOT NULL DEFAULT true, Version bigint NOT NULL DEFAULT 1, CONSTRAINT FK_Suppliers_SupplierCategories FOREIGN KEY (SupplierCategoryId) REFERENCES SupplierCategories(Id)) ENGINE=InnoDB;
 
 	CREATE TABLE IF NOT EXISTS Items
 	(
@@ -373,6 +437,8 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 		CONSTRAINT FK_Items_Packagings FOREIGN KEY (PackagingId) REFERENCES Packagings(Id),
 		CONSTRAINT FK_Items_Suppliers FOREIGN KEY (SupplierId) REFERENCES Suppliers(Id)
 	) ENGINE=InnoDB;
+
+	CREATE TABLE IF NOT EXISTS SupplierItems (Id bigint NOT NULL AUTO_INCREMENT PRIMARY KEY, SupplierId bigint NOT NULL, ItemId bigint NOT NULL, SupplierPartNumber varchar(200) NOT NULL, PurchasePrice decimal(18,2) NOT NULL DEFAULT 0, LeadTimeDays int NOT NULL DEFAULT 0, MinimumOrderQuantity decimal(18,3) NOT NULL DEFAULT 1, IsPreferredSupplier boolean NOT NULL DEFAULT false, IsActive boolean NOT NULL DEFAULT true, Version bigint NOT NULL DEFAULT 1, UNIQUE KEY UQ_SupplierItems_Context (SupplierId, ItemId), INDEX IX_SupplierItems_SupplierId (SupplierId), INDEX IX_SupplierItems_ItemId (ItemId), CONSTRAINT FK_SupplierItems_Suppliers FOREIGN KEY (SupplierId) REFERENCES Suppliers(Id), CONSTRAINT FK_SupplierItems_Items FOREIGN KEY (ItemId) REFERENCES Items(Id)) ENGINE=InnoDB;
 
 	CREATE TABLE IF NOT EXISTS Purposes
 	(

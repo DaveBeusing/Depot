@@ -46,6 +46,21 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 			MigrateToNormalizedItemMasterData(command);
 			version = 11;
 		}
+		if (version == 11)
+		{
+			MigrateToSupplierManagement(command);
+			version = 12;
+		}
+		if (version == 12)
+		{
+			MigrateSupplierAccountFields(command);
+			version = 13;
+		}
+		if (version == 13)
+		{
+			MigrateSupplierClassification(command);
+			version = 14;
+		}
 		if (version != DatabaseVersion.CurrentVersion)
 		{
 			throw new InvalidOperationException(
@@ -53,6 +68,82 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 		}
 
 		transaction.Commit();
+	}
+
+	private static void MigrateSupplierClassification(System.Data.Common.DbCommand command)
+	{
+		command.CommandText =
+		"""
+		IF OBJECT_ID(N'SupplierCategories', N'U') IS NULL CREATE TABLE SupplierCategories (Id bigint IDENTITY(1,1) NOT NULL PRIMARY KEY, Name nvarchar(200) NOT NULL UNIQUE, Description nvarchar(500) NULL, IsActive bit NOT NULL DEFAULT 1, Version bigint NOT NULL DEFAULT 1);
+		IF NOT EXISTS (SELECT 1 FROM SupplierCategories WHERE Name = N'IT Hardware') INSERT INTO SupplierCategories (Name) VALUES (N'IT Hardware');
+		IF NOT EXISTS (SELECT 1 FROM SupplierCategories WHERE Name = N'ProAV') INSERT INTO SupplierCategories (Name) VALUES (N'ProAV');
+		IF NOT EXISTS (SELECT 1 FROM SupplierCategories WHERE Name = N'Licensing') INSERT INTO SupplierCategories (Name) VALUES (N'Licensing');
+		IF COL_LENGTH(N'Suppliers', N'AccountNumber') IS NULL ALTER TABLE Suppliers ADD AccountNumber bigint NULL;
+		IF COL_LENGTH(N'Suppliers', N'SupplierCategoryId') IS NULL ALTER TABLE Suppliers ADD SupplierCategoryId bigint NULL;
+		IF COL_LENGTH(N'Suppliers', N'SepaMandate') IS NULL ALTER TABLE Suppliers ADD SepaMandate nvarchar(200) NULL;
+		IF COL_LENGTH(N'Suppliers', N'Quality') IS NULL ALTER TABLE Suppliers ADD Quality int NOT NULL CONSTRAINT DF_Suppliers_Quality DEFAULT 100;
+		UPDATE Suppliers SET AccountNumber = Id WHERE AccountNumber IS NULL OR AccountNumber <= 0;
+		IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_Suppliers_AccountNumber' AND object_id = OBJECT_ID(N'Suppliers')) CREATE UNIQUE INDEX UX_Suppliers_AccountNumber ON Suppliers(AccountNumber);
+		IF COL_LENGTH(N'Suppliers', N'CategoryId') IS NOT NULL
+		BEGIN
+			EXEC(N'INSERT INTO SupplierCategories (Name, Description) SELECT DISTINCT c.Name, c.Description FROM Suppliers s INNER JOIN Categories c ON c.Id = s.CategoryId WHERE s.CategoryId IS NOT NULL AND NOT EXISTS (SELECT 1 FROM SupplierCategories sc WHERE sc.Name = c.Name);');
+			EXEC(N'UPDATE s SET SupplierCategoryId = sc.Id FROM Suppliers s INNER JOIN Categories c ON c.Id = s.CategoryId INNER JOIN SupplierCategories sc ON sc.Name = c.Name WHERE s.SupplierCategoryId IS NULL;');
+		END;
+		IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_Suppliers_SupplierCategories') ALTER TABLE Suppliers ADD CONSTRAINT FK_Suppliers_SupplierCategories FOREIGN KEY (SupplierCategoryId) REFERENCES SupplierCategories(Id);
+		UPDATE DatabaseInfo SET Version = 14 WHERE Id = 1;
+		""";
+		command.Parameters.Clear();
+		command.ExecuteNonQuery();
+	}
+
+	private static void MigrateSupplierAccountFields(System.Data.Common.DbCommand command)
+	{
+		command.CommandText =
+		"""
+		DECLARE @HadNumericLoyalty bit = CASE WHEN COL_LENGTH(N'Suppliers', N'Loyalty') IS NULL THEN 0 ELSE 1 END;
+		IF COL_LENGTH(N'Suppliers', N'CustomerNumber') IS NULL ALTER TABLE Suppliers ADD CustomerNumber nvarchar(100) NULL;
+		IF COL_LENGTH(N'Suppliers', N'Loyalty') IS NULL ALTER TABLE Suppliers ADD Loyalty int NOT NULL CONSTRAINT DF_Suppliers_Loyalty DEFAULT 100;
+		IF @HadNumericLoyalty = 0 AND COL_LENGTH(N'Suppliers', N'IsLoyal') IS NOT NULL EXEC(N'UPDATE Suppliers SET Loyalty = CASE WHEN IsLoyal = 1 THEN 100 ELSE 0 END;');
+		UPDATE DatabaseInfo SET Version = 13 WHERE Id = 1;
+		""";
+		command.Parameters.Clear();
+		command.ExecuteNonQuery();
+	}
+
+	private static void MigrateToSupplierManagement(System.Data.Common.DbCommand command)
+	{
+		command.CommandText =
+		"""
+		IF COL_LENGTH(N'Suppliers', N'SupplierNumber') IS NULL ALTER TABLE Suppliers ADD SupplierNumber nvarchar(50) NULL;
+		IF COL_LENGTH(N'Suppliers', N'Contact') IS NULL ALTER TABLE Suppliers ADD Contact nvarchar(200) NULL;
+		IF COL_LENGTH(N'Suppliers', N'Email') IS NULL ALTER TABLE Suppliers ADD Email nvarchar(320) NULL;
+		IF COL_LENGTH(N'Suppliers', N'Phone') IS NULL ALTER TABLE Suppliers ADD Phone nvarchar(100) NULL;
+		IF COL_LENGTH(N'Suppliers', N'Address') IS NULL ALTER TABLE Suppliers ADD Address nvarchar(1000) NULL;
+		IF COL_LENGTH(N'Suppliers', N'RmaTerms') IS NULL ALTER TABLE Suppliers ADD RmaTerms nvarchar(2000) NULL;
+		IF COL_LENGTH(N'Suppliers', N'Url') IS NULL ALTER TABLE Suppliers ADD Url nvarchar(500) NULL;
+		IF COL_LENGTH(N'Suppliers', N'PaymentTerm') IS NULL ALTER TABLE Suppliers ADD PaymentTerm nvarchar(200) NULL;
+		IF COL_LENGTH(N'Suppliers', N'Iban') IS NULL ALTER TABLE Suppliers ADD Iban nvarchar(34) NULL;
+		IF COL_LENGTH(N'Suppliers', N'AccountName') IS NULL ALTER TABLE Suppliers ADD AccountName nvarchar(200) NULL;
+		IF COL_LENGTH(N'Suppliers', N'VatNumber') IS NULL ALTER TABLE Suppliers ADD VatNumber nvarchar(50) NULL;
+		IF COL_LENGTH(N'Suppliers', N'CategoryId') IS NULL ALTER TABLE Suppliers ADD CategoryId bigint NULL;
+		IF COL_LENGTH(N'Suppliers', N'IsLoyal') IS NULL ALTER TABLE Suppliers ADD IsLoyal bit NOT NULL CONSTRAINT DF_Suppliers_IsLoyal DEFAULT 0;
+		IF COL_LENGTH(N'Suppliers', N'Notes') IS NULL ALTER TABLE Suppliers ADD Notes nvarchar(4000) NULL;
+		UPDATE Suppliers SET SupplierNumber = N'SUP-' + CONVERT(nvarchar(20), Id) WHERE SupplierNumber IS NULL OR LTRIM(RTRIM(SupplierNumber)) = N'';
+		IF COL_LENGTH(N'Suppliers', N'Description') IS NOT NULL EXEC(N'UPDATE Suppliers SET Notes = Description WHERE Notes IS NULL AND Description IS NOT NULL;');
+		ALTER TABLE Suppliers ALTER COLUMN SupplierNumber nvarchar(50) NOT NULL;
+		IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_Suppliers_SupplierNumber' AND object_id = OBJECT_ID(N'Suppliers')) CREATE UNIQUE INDEX UX_Suppliers_SupplierNumber ON Suppliers(SupplierNumber);
+		IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_Suppliers_Categories') ALTER TABLE Suppliers ADD CONSTRAINT FK_Suppliers_Categories FOREIGN KEY (CategoryId) REFERENCES Categories(Id);
+		IF OBJECT_ID(N'SupplierItems', N'U') IS NULL
+		BEGIN
+			CREATE TABLE SupplierItems (Id bigint IDENTITY(1,1) NOT NULL PRIMARY KEY, SupplierId bigint NOT NULL, ItemId bigint NOT NULL, SupplierPartNumber nvarchar(200) NOT NULL, PurchasePrice decimal(18,2) NOT NULL DEFAULT 0, LeadTimeDays int NOT NULL DEFAULT 0, MinimumOrderQuantity decimal(18,3) NOT NULL DEFAULT 1, IsPreferredSupplier bit NOT NULL DEFAULT 0, IsActive bit NOT NULL DEFAULT 1, Version bigint NOT NULL DEFAULT 1, CONSTRAINT UQ_SupplierItems_Context UNIQUE (SupplierId, ItemId), CONSTRAINT FK_SupplierItems_Suppliers FOREIGN KEY (SupplierId) REFERENCES Suppliers(Id), CONSTRAINT FK_SupplierItems_Items FOREIGN KEY (ItemId) REFERENCES Items(Id));
+			CREATE INDEX IX_SupplierItems_SupplierId ON SupplierItems(SupplierId); CREATE INDEX IX_SupplierItems_ItemId ON SupplierItems(ItemId);
+		END;
+		INSERT INTO SupplierItems (SupplierId, ItemId, SupplierPartNumber, PurchasePrice, LeadTimeDays, MinimumOrderQuantity, IsPreferredSupplier)
+		SELECT i.SupplierId, i.Id, i.PartNumber, 0, 0, 1, 1 FROM Items i WHERE i.SupplierId IS NOT NULL AND NOT EXISTS (SELECT 1 FROM SupplierItems si WHERE si.SupplierId = i.SupplierId AND si.ItemId = i.Id);
+		UPDATE DatabaseInfo SET Version = 12 WHERE Id = 1;
+		""";
+		command.Parameters.Clear();
+		command.ExecuteNonQuery();
 	}
 
 	private static void MigrateToNormalizedItemMasterData(System.Data.Common.DbCommand command)
@@ -169,7 +260,11 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 	IF OBJECT_ID(N'Categories', N'U') IS NULL CREATE TABLE Categories (Id bigint IDENTITY(1,1) NOT NULL PRIMARY KEY, Name nvarchar(200) NOT NULL UNIQUE, Description nvarchar(500) NULL, IsActive bit NOT NULL DEFAULT 1, Version bigint NOT NULL DEFAULT 1);
 	IF OBJECT_ID(N'UnitsOfMeasure', N'U') IS NULL CREATE TABLE UnitsOfMeasure (Id bigint IDENTITY(1,1) NOT NULL PRIMARY KEY, Name nvarchar(200) NOT NULL UNIQUE, Description nvarchar(500) NULL, IsActive bit NOT NULL DEFAULT 1, Version bigint NOT NULL DEFAULT 1);
 	IF OBJECT_ID(N'Packagings', N'U') IS NULL CREATE TABLE Packagings (Id bigint IDENTITY(1,1) NOT NULL PRIMARY KEY, Name nvarchar(200) NOT NULL UNIQUE, Description nvarchar(500) NULL, IsActive bit NOT NULL DEFAULT 1, Version bigint NOT NULL DEFAULT 1);
-	IF OBJECT_ID(N'Suppliers', N'U') IS NULL CREATE TABLE Suppliers (Id bigint IDENTITY(1,1) NOT NULL PRIMARY KEY, Name nvarchar(200) NOT NULL UNIQUE, Description nvarchar(500) NULL, IsActive bit NOT NULL DEFAULT 1, Version bigint NOT NULL DEFAULT 1);
+	IF OBJECT_ID(N'SupplierCategories', N'U') IS NULL CREATE TABLE SupplierCategories (Id bigint IDENTITY(1,1) NOT NULL PRIMARY KEY, Name nvarchar(200) NOT NULL UNIQUE, Description nvarchar(500) NULL, IsActive bit NOT NULL DEFAULT 1, Version bigint NOT NULL DEFAULT 1);
+	IF NOT EXISTS (SELECT 1 FROM SupplierCategories WHERE Name = N'IT Hardware') INSERT INTO SupplierCategories (Name) VALUES (N'IT Hardware');
+	IF NOT EXISTS (SELECT 1 FROM SupplierCategories WHERE Name = N'ProAV') INSERT INTO SupplierCategories (Name) VALUES (N'ProAV');
+	IF NOT EXISTS (SELECT 1 FROM SupplierCategories WHERE Name = N'Licensing') INSERT INTO SupplierCategories (Name) VALUES (N'Licensing');
+	IF OBJECT_ID(N'Suppliers', N'U') IS NULL CREATE TABLE Suppliers (Id bigint IDENTITY(1,1) NOT NULL PRIMARY KEY, SupplierNumber nvarchar(50) NOT NULL UNIQUE, AccountNumber bigint NOT NULL UNIQUE, CustomerNumber nvarchar(100) NULL, Name nvarchar(200) NOT NULL UNIQUE, Contact nvarchar(200) NULL, Email nvarchar(320) NULL, Phone nvarchar(100) NULL, Address nvarchar(1000) NULL, RmaTerms nvarchar(2000) NULL, Url nvarchar(500) NULL, PaymentTerm nvarchar(200) NULL, Iban nvarchar(34) NULL, AccountName nvarchar(200) NULL, SepaMandate nvarchar(200) NULL, VatNumber nvarchar(50) NULL, SupplierCategoryId bigint NULL, Loyalty int NOT NULL DEFAULT 100, Quality int NOT NULL DEFAULT 100, Notes nvarchar(4000) NULL, IsActive bit NOT NULL DEFAULT 1, Version bigint NOT NULL DEFAULT 1, CONSTRAINT FK_Suppliers_SupplierCategories FOREIGN KEY (SupplierCategoryId) REFERENCES SupplierCategories(Id));
 
 	IF OBJECT_ID(N'Items', N'U') IS NULL
 	BEGIN
@@ -198,6 +293,12 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 		CREATE INDEX IX_Items_UnitOfMeasureId ON Items(UnitOfMeasureId);
 		CREATE INDEX IX_Items_PackagingId ON Items(PackagingId);
 		CREATE INDEX IX_Items_SupplierId ON Items(SupplierId);
+	END;
+
+	IF OBJECT_ID(N'SupplierItems', N'U') IS NULL
+	BEGIN
+		CREATE TABLE SupplierItems (Id bigint IDENTITY(1,1) NOT NULL PRIMARY KEY, SupplierId bigint NOT NULL, ItemId bigint NOT NULL, SupplierPartNumber nvarchar(200) NOT NULL, PurchasePrice decimal(18,2) NOT NULL DEFAULT 0, LeadTimeDays int NOT NULL DEFAULT 0, MinimumOrderQuantity decimal(18,3) NOT NULL DEFAULT 1, IsPreferredSupplier bit NOT NULL DEFAULT 0, IsActive bit NOT NULL DEFAULT 1, Version bigint NOT NULL DEFAULT 1, CONSTRAINT UQ_SupplierItems_Context UNIQUE (SupplierId, ItemId), CONSTRAINT FK_SupplierItems_Suppliers FOREIGN KEY (SupplierId) REFERENCES Suppliers(Id), CONSTRAINT FK_SupplierItems_Items FOREIGN KEY (ItemId) REFERENCES Items(Id));
+		CREATE INDEX IX_SupplierItems_SupplierId ON SupplierItems(SupplierId); CREATE INDEX IX_SupplierItems_ItemId ON SupplierItems(ItemId);
 	END;
 
 	IF OBJECT_ID(N'Purposes', N'U') IS NULL

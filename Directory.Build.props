@@ -2,28 +2,24 @@
 	<PropertyGroup>
 		<DepotVersionMajor>0</DepotVersionMajor>
 		<DepotVersionMinor>9</DepotVersionMinor>
-		<DepotVersionPatch>0</DepotVersionPatch>
+		<DepotVersionPatch>1</DepotVersionPatch>
 		<DepotVersionBuild Condition="'$(DepotVersionBuild)' == ''">0</DepotVersionBuild>
-		<DepotVersionSuffix Condition="'$(DepotVersionSuffix)' == ''">preview.1</DepotVersionSuffix>
-
+		<DepotVersionSuffix Condition="'$(DepotVersionSuffix)' == ''">preview</DepotVersionSuffix>
 		<VersionPrefix>$(DepotVersionMajor).$(DepotVersionMinor).$(DepotVersionPatch)</VersionPrefix>
 		<VersionSuffix Condition="'$(DepotStableRelease)' != 'true'">$(DepotVersionSuffix)</VersionSuffix>
 		<AssemblyVersion>$(DepotVersionMajor).$(DepotVersionMinor).0.0</AssemblyVersion>
 		<FileVersion>$(DepotVersionMajor).$(DepotVersionMinor).$(DepotVersionPatch).$(DepotVersionBuild)</FileVersion>
-
 		<Product>Depot</Product>
-		<Company>Depot</Company>
+		<Company>*</Company>
 		<Authors>David Beusing</Authors>
 		<Description>Professional inventory management for Windows.</Description>
-		<Copyright>Copyright © 2026 David Beusing</Copyright>
+		<Copyright>Copyright © 2026 Dave Beusing</Copyright>
 		<RepositoryUrl>https://github.com/DaveBeusing/Depot</RepositoryUrl>
 		<PackageLicenseExpression>MIT</PackageLicenseExpression>
-
 		<Deterministic>true</Deterministic>
 		<IncludeSourceRevisionInInformationalVersion>true</IncludeSourceRevisionInInformationalVersion>
 		<ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
 	</PropertyGroup>
-
 	<ItemGroup>
 		<AssemblyMetadata Include="RepositoryUrl" Value="$(RepositoryUrl)" />
 		<AssemblyMetadata Include="License" Value="$(PackageLicenseExpression)" />

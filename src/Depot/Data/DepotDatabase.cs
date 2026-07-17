@@ -146,6 +146,8 @@ public sealed class DepotDatabase : IDatabaseInitializer
 
 		CreateItemReferenceIndexes(connection);
 
+		CreateSupplierItemsTable(connection);
+
 		CreatePurposesTable(
 			connection);
 
@@ -371,7 +373,33 @@ public sealed class DepotDatabase : IDatabaseInitializer
 		CREATE TABLE IF NOT EXISTS Categories (Id INTEGER PRIMARY KEY AUTOINCREMENT, Name TEXT NOT NULL UNIQUE, Description TEXT, IsActive INTEGER NOT NULL DEFAULT 1, Version INTEGER NOT NULL DEFAULT 1);
 		CREATE TABLE IF NOT EXISTS UnitsOfMeasure (Id INTEGER PRIMARY KEY AUTOINCREMENT, Name TEXT NOT NULL UNIQUE, Description TEXT, IsActive INTEGER NOT NULL DEFAULT 1, Version INTEGER NOT NULL DEFAULT 1);
 		CREATE TABLE IF NOT EXISTS Packagings (Id INTEGER PRIMARY KEY AUTOINCREMENT, Name TEXT NOT NULL UNIQUE, Description TEXT, IsActive INTEGER NOT NULL DEFAULT 1, Version INTEGER NOT NULL DEFAULT 1);
-		CREATE TABLE IF NOT EXISTS Suppliers (Id INTEGER PRIMARY KEY AUTOINCREMENT, Name TEXT NOT NULL UNIQUE, Description TEXT, IsActive INTEGER NOT NULL DEFAULT 1, Version INTEGER NOT NULL DEFAULT 1);
+		CREATE TABLE IF NOT EXISTS SupplierCategories (Id INTEGER PRIMARY KEY AUTOINCREMENT, Name TEXT NOT NULL UNIQUE, Description TEXT, IsActive INTEGER NOT NULL DEFAULT 1, Version INTEGER NOT NULL DEFAULT 1);
+		INSERT OR IGNORE INTO SupplierCategories (Name) VALUES ('IT Hardware'), ('ProAV'), ('Licensing');
+		CREATE TABLE IF NOT EXISTS Suppliers
+		(
+			Id INTEGER PRIMARY KEY AUTOINCREMENT, SupplierNumber TEXT NOT NULL UNIQUE, AccountNumber INTEGER NOT NULL UNIQUE, CustomerNumber TEXT, Name TEXT NOT NULL UNIQUE,
+			Contact TEXT, Email TEXT, Phone TEXT, Address TEXT, RmaTerms TEXT, Url TEXT, PaymentTerm TEXT,
+			Iban TEXT, AccountName TEXT, SepaMandate TEXT, VatNumber TEXT, SupplierCategoryId INTEGER NULL REFERENCES SupplierCategories(Id),
+			Loyalty INTEGER NOT NULL DEFAULT 100, Quality INTEGER NOT NULL DEFAULT 100, Notes TEXT, IsActive INTEGER NOT NULL DEFAULT 1, Version INTEGER NOT NULL DEFAULT 1
+		);
+		""";
+		command.ExecuteNonQuery();
+	}
+
+	private static void CreateSupplierItemsTable(SqliteConnection connection)
+	{
+		using var command = connection.CreateCommand();
+		command.CommandText =
+		"""
+		CREATE TABLE IF NOT EXISTS SupplierItems
+		(
+			Id INTEGER PRIMARY KEY AUTOINCREMENT, SupplierId INTEGER NOT NULL REFERENCES Suppliers(Id), ItemId INTEGER NOT NULL REFERENCES Items(Id),
+			SupplierPartNumber TEXT NOT NULL, PurchasePrice NUMERIC NOT NULL DEFAULT 0, LeadTimeDays INTEGER NOT NULL DEFAULT 0,
+			MinimumOrderQuantity NUMERIC NOT NULL DEFAULT 1, IsPreferredSupplier INTEGER NOT NULL DEFAULT 0,
+			IsActive INTEGER NOT NULL DEFAULT 1, Version INTEGER NOT NULL DEFAULT 1, UNIQUE (SupplierId, ItemId)
+		);
+		CREATE INDEX IF NOT EXISTS IX_SupplierItems_SupplierId ON SupplierItems(SupplierId);
+		CREATE INDEX IF NOT EXISTS IX_SupplierItems_ItemId ON SupplierItems(ItemId);
 		""";
 		command.ExecuteNonQuery();
 	}
@@ -690,6 +718,27 @@ public sealed class DepotDatabase : IDatabaseInitializer
 			migratedVersion = 11;
 		}
 
+		if (migratedVersion == 11)
+		{
+			MigrateToSupplierManagement(connection);
+			SetDatabaseVersion(connection, 12);
+			migratedVersion = 12;
+		}
+
+		if (migratedVersion == 12)
+		{
+			MigrateSupplierAccountFields(connection);
+			SetDatabaseVersion(connection, 13);
+			migratedVersion = 13;
+		}
+
+		if (migratedVersion == 13)
+		{
+			MigrateSupplierClassification(connection);
+			SetDatabaseVersion(connection, 14);
+			migratedVersion = 14;
+		}
+
 		if (migratedVersion < DatabaseVersion.CurrentVersion)
 		{
 			throw new InvalidOperationException(
@@ -700,6 +749,121 @@ public sealed class DepotDatabase : IDatabaseInitializer
 		{
 			throw new InvalidOperationException(
 				$"Database version '{version}' is newer than the supported schema version '{DatabaseVersion.CurrentVersion}'.");
+		}
+	}
+
+	private static void MigrateSupplierClassification(SqliteConnection connection)
+	{
+		using var transaction = connection.BeginTransaction();
+		using (var create = connection.CreateCommand())
+		{
+			create.Transaction = transaction;
+			create.CommandText = "CREATE TABLE IF NOT EXISTS SupplierCategories (Id INTEGER PRIMARY KEY AUTOINCREMENT, Name TEXT NOT NULL UNIQUE, Description TEXT, IsActive INTEGER NOT NULL DEFAULT 1, Version INTEGER NOT NULL DEFAULT 1); INSERT OR IGNORE INTO SupplierCategories (Name) VALUES ('IT Hardware'), ('ProAV'), ('Licensing');";
+			create.ExecuteNonQuery();
+		}
+		AddColumn("AccountNumber", "INTEGER");
+		AddColumn("SupplierCategoryId", "INTEGER NULL REFERENCES SupplierCategories(Id)");
+		AddColumn("SepaMandate", "TEXT");
+		AddColumn("Quality", "INTEGER NOT NULL DEFAULT 100");
+		using (var migrate = connection.CreateCommand())
+		{
+			migrate.Transaction = transaction;
+			migrate.CommandText =
+				"""
+				UPDATE Suppliers SET AccountNumber = Id WHERE AccountNumber IS NULL OR AccountNumber <= 0;
+				CREATE UNIQUE INDEX IF NOT EXISTS UX_Suppliers_AccountNumber ON Suppliers(AccountNumber);
+				""";
+			migrate.ExecuteNonQuery();
+		}
+		if (TableHasColumn(connection, "Suppliers", "CategoryId"))
+		{
+			using var categories = connection.CreateCommand();
+			categories.Transaction = transaction;
+			categories.CommandText =
+				"""
+				INSERT OR IGNORE INTO SupplierCategories (Name, Description)
+				SELECT DISTINCT c.Name, c.Description FROM Suppliers s INNER JOIN Categories c ON c.Id = s.CategoryId WHERE s.CategoryId IS NOT NULL;
+				UPDATE Suppliers SET SupplierCategoryId = (SELECT sc.Id FROM Categories c INNER JOIN SupplierCategories sc ON sc.Name = c.Name WHERE c.Id = Suppliers.CategoryId) WHERE CategoryId IS NOT NULL AND SupplierCategoryId IS NULL;
+				""";
+			categories.ExecuteNonQuery();
+		}
+		transaction.Commit();
+
+		void AddColumn(string name, string definition)
+		{
+			if (TableHasColumn(connection, "Suppliers", name)) return;
+			using var command = connection.CreateCommand();
+			command.Transaction = transaction;
+			command.CommandText = $"ALTER TABLE Suppliers ADD COLUMN {name} {definition};";
+			command.ExecuteNonQuery();
+		}
+	}
+
+	private static void MigrateSupplierAccountFields(SqliteConnection connection)
+	{
+		var hasLegacyLoyalty = TableHasColumn(connection, "Suppliers", "IsLoyal");
+		var hasNumericLoyalty = TableHasColumn(connection, "Suppliers", "Loyalty");
+		using var transaction = connection.BeginTransaction();
+		AddColumn("CustomerNumber", "TEXT");
+		AddColumn("Loyalty", "INTEGER NOT NULL DEFAULT 100");
+		if (hasLegacyLoyalty && !hasNumericLoyalty)
+		{
+			using var command = connection.CreateCommand();
+			command.Transaction = transaction;
+			command.CommandText = "UPDATE Suppliers SET Loyalty = CASE WHEN IsLoyal = 1 THEN 100 ELSE 0 END;";
+			command.ExecuteNonQuery();
+		}
+		transaction.Commit();
+
+		void AddColumn(string name, string definition)
+		{
+			if (TableHasColumn(connection, "Suppliers", name)) return;
+			using var command = connection.CreateCommand();
+			command.Transaction = transaction;
+			command.CommandText = $"ALTER TABLE Suppliers ADD COLUMN {name} {definition};";
+			command.ExecuteNonQuery();
+		}
+	}
+
+	private static void MigrateToSupplierManagement(SqliteConnection connection)
+	{
+		var hasLegacyDescription = TableHasColumn(connection, "Suppliers", "Description");
+		using var transaction = connection.BeginTransaction();
+		AddColumn("SupplierNumber", "TEXT"); AddColumn("Contact", "TEXT"); AddColumn("Email", "TEXT");
+		AddColumn("Phone", "TEXT"); AddColumn("Address", "TEXT"); AddColumn("RmaTerms", "TEXT");
+		AddColumn("Url", "TEXT"); AddColumn("PaymentTerm", "TEXT"); AddColumn("Iban", "TEXT");
+		AddColumn("AccountName", "TEXT"); AddColumn("VatNumber", "TEXT"); AddColumn("CategoryId", "INTEGER NULL REFERENCES Categories(Id)");
+		AddColumn("IsLoyal", "INTEGER NOT NULL DEFAULT 0"); AddColumn("Notes", "TEXT");
+		using (var command = connection.CreateCommand())
+		{
+			command.Transaction = transaction;
+			command.CommandText = "UPDATE Suppliers SET SupplierNumber = 'SUP-' || printf('%05d', Id) WHERE SupplierNumber IS NULL OR TRIM(SupplierNumber) = ''; CREATE UNIQUE INDEX IF NOT EXISTS UX_Suppliers_SupplierNumber ON Suppliers(SupplierNumber);";
+			command.ExecuteNonQuery();
+		}
+		if (hasLegacyDescription)
+		{
+			using var preserve = connection.CreateCommand();
+			preserve.Transaction = transaction;
+			preserve.CommandText = "UPDATE Suppliers SET Notes = Description WHERE Notes IS NULL AND Description IS NOT NULL;";
+			preserve.ExecuteNonQuery();
+		}
+		transaction.Commit();
+		CreateSupplierItemsTable(connection);
+		using var migration = connection.CreateCommand();
+		migration.CommandText =
+		"""
+		INSERT OR IGNORE INTO SupplierItems (SupplierId, ItemId, SupplierPartNumber, PurchasePrice, LeadTimeDays, MinimumOrderQuantity, IsPreferredSupplier)
+		SELECT SupplierId, Id, PartNumber, 0, 0, 1, 1 FROM Items WHERE SupplierId IS NOT NULL;
+		""";
+		migration.ExecuteNonQuery();
+
+		void AddColumn(string name, string definition)
+		{
+			if (TableHasColumn(connection, "Suppliers", name)) return;
+			using var command = connection.CreateCommand();
+			command.Transaction = transaction;
+			command.CommandText = $"ALTER TABLE Suppliers ADD COLUMN {name} {definition};";
+			command.ExecuteNonQuery();
 		}
 	}
 

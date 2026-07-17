@@ -98,7 +98,7 @@ public abstract class ItemReferenceDataService<T> : IItemReferenceDataService
 		var value = await _repository.GetByIdAsync(id, cancellationToken)
 			?? throw new InvalidOperationException($"{SingularName} with id '{id}' was not found.");
 		if (!isActive && await _repository.IsReferencedAsync(id, cancellationToken))
-			throw new InvalidOperationException($"{SingularName} '{value.Name}' is referenced by one or more items and cannot be deactivated.");
+			throw new InvalidOperationException($"{SingularName} '{value.Name}' is referenced and cannot be deactivated.");
 		if (value.Version != version || !await _repository.SetActiveAsync(id, version, isActive, cancellationToken))
 			throw new ConcurrencyConflictException(SingularName.ToLowerInvariant());
 		var before = Copy(value);
@@ -148,5 +148,5 @@ public sealed class UnitOfMeasureService(UnitOfMeasureRepository repository, Aud
 public sealed class PackagingService(PackagingRepository repository, AuditService auditService)
 	: ItemReferenceDataService<Packaging>(repository, auditService, "Packaging", "Packaging");
 
-public sealed class SupplierService(SupplierRepository repository, AuditService auditService)
-	: ItemReferenceDataService<Supplier>(repository, auditService, "Supplier", "Suppliers");
+public sealed class SupplierCategoryService(SupplierCategoryRepository repository, AuditService auditService)
+	: ItemReferenceDataService<SupplierCategory>(repository, auditService, "Supplier Category", "Supplier Categories");

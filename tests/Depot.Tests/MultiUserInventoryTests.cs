@@ -52,7 +52,7 @@ public sealed class MultiUserInventoryTests : IDisposable
 			categoryService,
 			new UnitOfMeasureService(new UnitOfMeasureRepository(database), audit),
 			new PackagingService(new PackagingRepository(database), audit),
-			new SupplierService(new SupplierRepository(database), audit));
+			new SupplierItemRepository(database));
 		_purposeService = new PurposeService(purposeRepository, audit);
 		_warehouseService = new WarehouseService(warehouseRepository, storageLocationRepository, audit);
 		_storageLocationService = new StorageLocationService(storageLocationRepository, warehouseRepository, audit);

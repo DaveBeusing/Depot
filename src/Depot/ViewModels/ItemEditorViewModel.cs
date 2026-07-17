@@ -15,7 +15,6 @@ public sealed class ItemEditorViewModel
 	private ItemReferenceData? _category;
 	private ItemReferenceData? _unitOfMeasure;
 	private ItemReferenceData? _packaging;
-	private ItemReferenceData? _supplier;
 	private long _version = 1;
 
 	public long Version
@@ -92,7 +91,6 @@ public sealed class ItemEditorViewModel
 
 	public ItemReferenceData? UnitOfMeasure { get => _unitOfMeasure; set { if (_unitOfMeasure == value) return; _unitOfMeasure = value; OnPropertyChanged(); } }
 	public ItemReferenceData? Packaging { get => _packaging; set { if (_packaging == value) return; _packaging = value; OnPropertyChanged(); } }
-	public ItemReferenceData? Supplier { get => _supplier; set { if (_supplier == value) return; _supplier = value; OnPropertyChanged(); } }
 
 	public void Load(
 		Item item)
@@ -112,7 +110,6 @@ public sealed class ItemEditorViewModel
 		Category = null;
 		UnitOfMeasure = null;
 		Packaging = null;
-		Supplier = null;
 		Version = 1;
 	}
 }

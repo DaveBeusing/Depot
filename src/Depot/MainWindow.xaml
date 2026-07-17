@@ -19,6 +19,8 @@
 	xmlns:reasonCodeViews="clr-namespace:Depot.Views.ReasonCodes"
 	xmlns:warehouseViewModels="clr-namespace:Depot.ViewModels.Warehouses"
 	xmlns:warehouseViews="clr-namespace:Depot.Views.Warehouses"
+	xmlns:supplierViewModels="clr-namespace:Depot.ViewModels.Suppliers"
+	xmlns:supplierViews="clr-namespace:Depot.Views.Suppliers"
 	xmlns:userViewModels="clr-namespace:Depot.ViewModels.Users"
 	xmlns:userViews="clr-namespace:Depot.Views.Users"
 	mc:Ignorable="d"
@@ -75,6 +77,9 @@
 			</DataTemplate>
 			<DataTemplate DataType="{x:Type warehouseViewModels:WarehouseStructureViewModel}">
 				<warehouseViews:WarehouseStructureView />
+			</DataTemplate>
+			<DataTemplate DataType="{x:Type supplierViewModels:SupplierViewModel}">
+				<supplierViews:SuppliersView />
 			</DataTemplate>
 			<DataTemplate DataType="{x:Type userViewModels:UserViewModel}">
 				<userViews:UsersView />

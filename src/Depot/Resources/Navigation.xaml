@@ -286,6 +286,30 @@
 		</Style.Triggers>
 	</Style>
 
+	<Style x:Key="MasterDataListBoxStyle" TargetType="ListBox">
+		<Setter Property="Background" Value="Transparent" />
+		<Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+		<Setter Property="BorderThickness" Value="1" />
+		<Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+		<Setter Property="HorizontalContentAlignment" Value="Stretch" />
+		<Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
+		<Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto" />
+		<Setter Property="VirtualizingPanel.IsVirtualizing" Value="True" />
+		<Setter Property="VirtualizingPanel.VirtualizationMode" Value="Recycling" />
+	</Style>
+
+	<Style x:Key="MasterDataListBoxItemStyle" TargetType="ListBoxItem">
+		<Setter Property="Margin" Value="4" />
+		<Setter Property="Padding" Value="{DynamicResource Control.Padding}" />
+		<Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+		<Setter Property="HorizontalContentAlignment" Value="Stretch" />
+		<Setter Property="FocusVisualStyle" Value="{x:Null}" />
+		<Style.Triggers>
+			<Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="{DynamicResource HoverBrush}" /></Trigger>
+			<Trigger Property="IsSelected" Value="True"><Setter Property="Background" Value="{DynamicResource NavigationSelectedBackgroundBrush}" /></Trigger>
+		</Style.Triggers>
+	</Style>
+
 	<!-- Navigation Item Content -->
 	<DataTemplate x:Key="NavigationItemTemplate">
 		<Grid VerticalAlignment="Center">

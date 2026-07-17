@@ -24,4 +24,4 @@ public sealed class UnitOfMeasure : ItemReferenceData;
 
 public sealed class Packaging : ItemReferenceData;
 
-public sealed class Supplier : ItemReferenceData;
+public sealed class SupplierCategory : ItemReferenceData;

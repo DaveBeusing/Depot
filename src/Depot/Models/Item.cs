@@ -19,8 +19,6 @@ public sealed class Item
 
 	public string? Packaging { get; set; }
 
-	public string? Supplier { get; set; }
-
 	public long? ManufacturerId { get; set; }
 
 	public long? CategoryId { get; set; }
@@ -28,8 +26,6 @@ public sealed class Item
 	public long? UnitOfMeasureId { get; set; }
 
 	public long? PackagingId { get; set; }
-
-	public long? SupplierId { get; set; }
 
 	public bool IsActive { get; set; } = true;
 

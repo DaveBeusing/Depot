@@ -69,7 +69,6 @@
 							<DataGridTextColumn Header="Category" Binding="{Binding Category}" Width="130" />
 							<DataGridTextColumn Header="Unit" Binding="{Binding UnitOfMeasure}" Width="100" />
 							<DataGridTextColumn Header="Packaging" Binding="{Binding Packaging}" Width="120" />
-							<DataGridTextColumn Header="Supplier" Binding="{Binding Supplier}" Width="140" />
 						</DataGrid.Columns>
 					</DataGrid>
 
@@ -87,8 +86,6 @@
 
 				<Grid>
 					<Grid.RowDefinitions>
-						<RowDefinition Height="Auto" />
-						<RowDefinition Height="16" />
 						<RowDefinition Height="Auto" />
 						<RowDefinition Height="16" />
 						<RowDefinition Height="Auto" />
@@ -150,13 +147,8 @@
 						<ComboBox ItemsSource="{Binding Packagings}" SelectedItem="{Binding Editor.Packaging}" DisplayMemberPath="Name" Style="{StaticResource AppComboBoxStyle}" />
 					</StackPanel>
 
-					<StackPanel Grid.Row="14">
-						<TextBlock Text="Supplier" Style="{StaticResource FormLabelStyle}" />
-						<ComboBox ItemsSource="{Binding Suppliers}" SelectedItem="{Binding Editor.Supplier}" DisplayMemberPath="Name" Style="{StaticResource AppComboBoxStyle}" />
-					</StackPanel>
-
 					<StackPanel
-						Grid.Row="16"
+						Grid.Row="14"
 						HorizontalAlignment="Right"
 						Orientation="Horizontal">
 						<Button

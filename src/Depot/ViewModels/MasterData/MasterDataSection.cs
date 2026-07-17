@@ -14,6 +14,7 @@ public enum MasterDataSection
 	Categories,
 	UnitsOfMeasure,
 	Packaging,
+	SupplierCategories,
 	Suppliers,
 	WarehouseStructure
 }

@@ -29,7 +29,7 @@ public sealed class ItemReferenceDataViewModel : BaseViewModel, IDisposable
 
 	public ObservableCollection<ItemReferenceData> Items { get; } = new();
 	public string Title => _service.PluralName;
-	public string Subtitle => $"Maintain reusable {Title.ToLowerInvariant()} assigned to items.";
+	public string Subtitle => $"Maintain reusable {Title.ToLowerInvariant()} used throughout Depot.";
 	public string SearchPlaceholder => $"Search {Title.ToLowerInvariant()}";
 	public RelayCommand NewCommand { get; }
 	public AsyncRelayCommand SaveCommand { get; }

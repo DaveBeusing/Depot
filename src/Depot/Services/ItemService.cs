@@ -14,7 +14,7 @@ public sealed class ItemService
 	private readonly IItemReferenceDataService _categoryService;
 	private readonly IItemReferenceDataService _unitOfMeasureService;
 	private readonly IItemReferenceDataService _packagingService;
-	private readonly IItemReferenceDataService _supplierService;
+	private readonly SupplierItemRepository _supplierItems;
 
 	public ItemService(
 		ItemRepository itemRepository,
@@ -23,7 +23,7 @@ public sealed class ItemService
 		CategoryService categoryService,
 		UnitOfMeasureService unitOfMeasureService,
 		PackagingService packagingService,
-		SupplierService supplierService)
+		SupplierItemRepository supplierItems)
 	{
 		_itemRepository = itemRepository;
 		_auditService = auditService;
@@ -31,7 +31,7 @@ public sealed class ItemService
 		_categoryService = categoryService;
 		_unitOfMeasureService = unitOfMeasureService;
 		_packagingService = packagingService;
-		_supplierService = supplierService;
+		_supplierItems = supplierItems;
 	}
 
 	public IReadOnlyList<Item> GetItems()
@@ -186,6 +186,11 @@ public sealed class ItemService
 				$"Item with id '{id}' was not found.");
 		}
 
+		if (_supplierItems.HasActiveForItem(id))
+		{
+			throw new InvalidOperationException($"Item '{item.PartNumber}' has active supplier assignments and cannot be deactivated.");
+		}
+
 		if (item.Version != expectedVersion ||
 			!_itemRepository.Deactivate(id, expectedVersion))
 		{
@@ -279,13 +284,12 @@ public sealed class ItemService
 		long? categoryId,
 		long? unitOfMeasureId,
 		long? packagingId,
-		long? supplierId,
 		CancellationToken cancellationToken)
 	{
 		partNumber = partNumber.Trim();
 		description = description.Trim();
 		Validate(partNumber, description);
-		await ValidateReferencesAsync(manufacturerId, categoryId, unitOfMeasureId, packagingId, supplierId, cancellationToken);
+		await ValidateReferencesAsync(manufacturerId, categoryId, unitOfMeasureId, packagingId, cancellationToken);
 		if (await _itemRepository.GetByPartNumberAsync(partNumber, cancellationToken) is not null)
 			throw new InvalidOperationException($"Item '{partNumber}' already exists.");
 		var item = new Item
@@ -296,7 +300,6 @@ public sealed class ItemService
 			CategoryId = categoryId,
 			UnitOfMeasureId = unitOfMeasureId,
 			PackagingId = packagingId,
-			SupplierId = supplierId,
 			IsActive = true
 		};
 		item.Id = await _itemRepository.CreateAsync(item, cancellationToken);
@@ -312,13 +315,12 @@ public sealed class ItemService
 		long? categoryId,
 		long? unitOfMeasureId,
 		long? packagingId,
-		long? supplierId,
 		CancellationToken cancellationToken)
 	{
 		if (id <= 0) throw new ArgumentException("Item id is required.", nameof(id));
 		description = description.Trim();
 		if (string.IsNullOrWhiteSpace(description)) throw new ArgumentException("Description is required.", nameof(description));
-		await ValidateReferencesAsync(manufacturerId, categoryId, unitOfMeasureId, packagingId, supplierId, cancellationToken);
+		await ValidateReferencesAsync(manufacturerId, categoryId, unitOfMeasureId, packagingId, cancellationToken);
 		var item = await _itemRepository.GetByIdAsync(id, cancellationToken)
 			?? throw new InvalidOperationException($"Item with id '{id}' was not found.");
 		if (item.Version != expectedVersion) throw new ConcurrencyConflictException("item");
@@ -328,7 +330,6 @@ public sealed class ItemService
 		item.CategoryId = categoryId;
 		item.UnitOfMeasureId = unitOfMeasureId;
 		item.PackagingId = packagingId;
-		item.SupplierId = supplierId;
 		if (!await _itemRepository.UpdateAsync(item, cancellationToken)) throw new ConcurrencyConflictException("item");
 		item.Version++;
 		await _auditService.RecordUpdatedAsync(item.Id, before, item, cancellationToken);
@@ -343,6 +344,8 @@ public sealed class ItemService
 		if (id <= 0) throw new ArgumentException("Item id is required.", nameof(id));
 		var item = await _itemRepository.GetByIdAsync(id, cancellationToken)
 			?? throw new InvalidOperationException($"Item with id '{id}' was not found.");
+		if (await _supplierItems.HasActiveForItemAsync(id, cancellationToken))
+			throw new InvalidOperationException($"Item '{item.PartNumber}' has active supplier assignments and cannot be deactivated.");
 		if (item.Version != expectedVersion ||
 			!await _itemRepository.DeactivateAsync(id, expectedVersion, cancellationToken))
 		{
@@ -364,12 +367,10 @@ public sealed class ItemService
 			Category = item.Category,
 			UnitOfMeasure = item.UnitOfMeasure,
 			Packaging = item.Packaging,
-			Supplier = item.Supplier,
 			ManufacturerId = item.ManufacturerId,
 			CategoryId = item.CategoryId,
 			UnitOfMeasureId = item.UnitOfMeasureId,
 			PackagingId = item.PackagingId,
-			SupplierId = item.SupplierId,
 			IsActive = item.IsActive,
 			Version = item.Version
 		};
@@ -397,13 +398,12 @@ public sealed class ItemService
 	private static long? ResolveSync(IItemReferenceDataService service, string? name) =>
 		service.GetOrCreateAsync(name).GetAwaiter().GetResult()?.Id;
 
-	private async Task ValidateReferencesAsync(long? manufacturerId, long? categoryId, long? unitOfMeasureId, long? packagingId, long? supplierId, CancellationToken cancellationToken)
+	private async Task ValidateReferencesAsync(long? manufacturerId, long? categoryId, long? unitOfMeasureId, long? packagingId, CancellationToken cancellationToken)
 	{
 		await Task.WhenAll(
 			_manufacturerService.ValidateSelectionAsync(manufacturerId, cancellationToken),
 			_categoryService.ValidateSelectionAsync(categoryId, cancellationToken),
 			_unitOfMeasureService.ValidateSelectionAsync(unitOfMeasureId, cancellationToken),
-			_packagingService.ValidateSelectionAsync(packagingId, cancellationToken),
-			_supplierService.ValidateSelectionAsync(supplierId, cancellationToken));
+			_packagingService.ValidateSelectionAsync(packagingId, cancellationToken));
 	}
 }

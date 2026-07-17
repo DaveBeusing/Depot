@@ -54,7 +54,6 @@ public sealed class ItemReferenceDataTests : IDisposable
 		var categoryService = new CategoryService(new CategoryRepository(database), audit);
 		var unitService = new UnitOfMeasureService(new UnitOfMeasureRepository(database), audit);
 		var packagingService = new PackagingService(new PackagingRepository(database), audit);
-		var supplierService = new SupplierService(new SupplierRepository(database), audit);
 		var itemService = new ItemService(
 			new ItemRepository(database),
 			audit,
@@ -62,14 +61,13 @@ public sealed class ItemReferenceDataTests : IDisposable
 			categoryService,
 			unitService,
 			packagingService,
-			supplierService);
+			new SupplierItemRepository(database));
 
 		var manufacturer = await manufacturerService.SaveAsync(0, 0, "Contoso", "Test manufacturer");
 		var item = await itemService.CreateItemWithReferencesAsync(
 			"REF-1",
 			"Reference test item",
 			manufacturer.Id,
-			null,
 			null,
 			null,
 			null,
@@ -84,7 +82,6 @@ public sealed class ItemReferenceDataTests : IDisposable
 			item.Id,
 			item.Version,
 			item.Description,
-			null,
 			null,
 			null,
 			null,

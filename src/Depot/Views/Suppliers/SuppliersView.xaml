@@ -1,0 +1,79 @@
+<UserControl
+	x:Class="Depot.Views.Suppliers.SuppliersView"
+	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:controls="clr-namespace:Depot.Controls">
+	<Grid>
+		<Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="16" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+		<controls:PageHeader Title="Suppliers" Subtitle="Maintain commercial supplier data and supplier-specific item conditions.">
+			<controls:PageHeader.Actions><controls:OperationStatus ErrorText="{Binding OperationError}" HasError="{Binding HasOperationError}" IsBusy="{Binding IsBusy}" StatusText="{Binding StatusText}" /></controls:PageHeader.Actions>
+		</controls:PageHeader>
+		<Grid Grid.Row="2">
+			<Grid.ColumnDefinitions><ColumnDefinition Width="320" /><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+			<Grid>
+				<Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="8" /><RowDefinition Height="*" /><RowDefinition Height="12" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+				<controls:SearchBox Placeholder="Search suppliers" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
+				<ListBox Grid.Row="2" ItemsSource="{Binding Suppliers}" SelectedItem="{Binding SelectedSupplier}" Style="{StaticResource MasterDataListBoxStyle}" ItemContainerStyle="{StaticResource MasterDataListBoxItemStyle}">
+					<ListBox.ItemTemplate><DataTemplate><Grid Margin="4"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><StackPanel><TextBlock Text="{Binding Name}" FontWeight="SemiBold" /><TextBlock Text="{Binding AccountNumber}" Style="{StaticResource CaptionStyle}" /></StackPanel><Ellipse Grid.Column="1" Width="8" Height="8" VerticalAlignment="Center"><Ellipse.Style><Style TargetType="Ellipse"><Setter Property="Fill" Value="{StaticResource SuccessForegroundBrush}" /><Style.Triggers><DataTrigger Binding="{Binding IsActive}" Value="False"><Setter Property="Fill" Value="{StaticResource SecondaryTextBrush}" /></DataTrigger></Style.Triggers></Style></Ellipse.Style></Ellipse></Grid></DataTemplate></ListBox.ItemTemplate>
+				</ListBox>
+				<Button Grid.Row="4" Command="{Binding NewSupplierCommand}" Content="New Supplier" Style="{StaticResource PrimaryButtonStyle}" />
+			</Grid>
+
+			<ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+				<StackPanel>
+					<controls:Card>
+						<controls:Card.Header><TextBlock Text="{Binding SupplierEditorTitle}" Style="{StaticResource SectionTitleStyle}" /></controls:Card.Header>
+						<StackPanel>
+							<Grid>
+								<Grid.ColumnDefinitions><ColumnDefinition Width="160" /><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+								<StackPanel><TextBlock Text="Account Number (Depot)" Style="{StaticResource FormLabelStyle}" /><controls:TextInput IsReadOnly="True" Text="{Binding AccountNumberText, Mode=OneWay}" /></StackPanel>
+								<StackPanel Grid.Column="2"><TextBlock Text="Name" Style="{StaticResource FormLabelStyle}" /><controls:TextInput Text="{Binding Draft.Name, UpdateSourceTrigger=PropertyChanged}" /></StackPanel>
+							</Grid>
+							<Grid Margin="0,12,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+								<StackPanel><TextBlock Text="Our Customer Number" Style="{StaticResource FormLabelStyle}" /><controls:TextInput Text="{Binding Draft.CustomerNumber, UpdateSourceTrigger=PropertyChanged}" /></StackPanel>
+								<StackPanel Grid.Column="2"><TextBlock Text="Loyalty" Style="{StaticResource FormLabelStyle}" /><controls:TextInput Text="{Binding Draft.Loyalty, UpdateSourceTrigger=PropertyChanged}" /></StackPanel>
+								<StackPanel Grid.Column="4"><TextBlock Text="Quality" Style="{StaticResource FormLabelStyle}" /><controls:TextInput Text="{Binding Draft.Quality, UpdateSourceTrigger=PropertyChanged}" /></StackPanel>
+							</Grid>
+							<Grid Margin="0,12,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+								<StackPanel><TextBlock Text="Contact" Style="{StaticResource FormLabelStyle}" /><controls:TextInput Text="{Binding Draft.Contact, UpdateSourceTrigger=PropertyChanged}" /></StackPanel>
+								<StackPanel Grid.Column="2"><TextBlock Text="Supplier Category" Style="{StaticResource FormLabelStyle}" /><ComboBox ItemsSource="{Binding Categories}" SelectedValue="{Binding Draft.SupplierCategoryId}" SelectedValuePath="Id" DisplayMemberPath="Name" Style="{StaticResource AppComboBoxStyle}" /></StackPanel>
+							</Grid>
+							<Grid Margin="0,12,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+								<StackPanel><TextBlock Text="Email" Style="{StaticResource FormLabelStyle}" /><controls:TextInput Text="{Binding Draft.Email, UpdateSourceTrigger=PropertyChanged}" /></StackPanel>
+								<StackPanel Grid.Column="2"><TextBlock Text="Phone" Style="{StaticResource FormLabelStyle}" /><controls:TextInput Text="{Binding Draft.Phone, UpdateSourceTrigger=PropertyChanged}" /></StackPanel>
+							</Grid>
+							<TextBlock Margin="0,12,0,0" Text="Address" Style="{StaticResource FormLabelStyle}" /><TextBox MinHeight="64" AcceptsReturn="True" TextWrapping="Wrap" Style="{StaticResource MultilineTextBoxStyle}" Text="{Binding Draft.Address, UpdateSourceTrigger=PropertyChanged}" />
+							<Grid Margin="0,12,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+								<StackPanel><TextBlock Text="URL" Style="{StaticResource FormLabelStyle}" /><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="8" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><controls:TextInput Text="{Binding Draft.Url, UpdateSourceTrigger=PropertyChanged}" /><Button Grid.Column="2" Command="{Binding OpenUrlCommand}" Content="Open" Style="{StaticResource SecondaryButtonStyle}" /></Grid></StackPanel>
+								<StackPanel Grid.Column="2"><TextBlock Text="VAT Number" Style="{StaticResource FormLabelStyle}" /><controls:TextInput Text="{Binding Draft.VatNumber, UpdateSourceTrigger=PropertyChanged}" /></StackPanel>
+							</Grid>
+							<Grid Margin="0,12,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+								<StackPanel><TextBlock Text="Payment Term" Style="{StaticResource FormLabelStyle}" /><controls:TextInput Text="{Binding Draft.PaymentTerm, UpdateSourceTrigger=PropertyChanged}" /></StackPanel>
+								<StackPanel Grid.Column="2"><TextBlock Text="Account Name" Style="{StaticResource FormLabelStyle}" /><controls:TextInput Text="{Binding Draft.AccountName, UpdateSourceTrigger=PropertyChanged}" /></StackPanel>
+							</Grid>
+							<Grid Margin="0,12,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+								<StackPanel><TextBlock Text="IBAN" Style="{StaticResource FormLabelStyle}" /><controls:TextInput Text="{Binding Draft.Iban, UpdateSourceTrigger=PropertyChanged}" /></StackPanel>
+								<StackPanel Grid.Column="2"><TextBlock Text="SEPA Mandate" Style="{StaticResource FormLabelStyle}" /><controls:TextInput Text="{Binding Draft.SepaMandate, UpdateSourceTrigger=PropertyChanged}" /></StackPanel>
+							</Grid>
+							<TextBlock Margin="0,12,0,0" Text="RMA Terms" Style="{StaticResource FormLabelStyle}" /><TextBox MinHeight="64" AcceptsReturn="True" TextWrapping="Wrap" Style="{StaticResource MultilineTextBoxStyle}" Text="{Binding Draft.RmaTerms, UpdateSourceTrigger=PropertyChanged}" />
+							<TextBlock Margin="0,12,0,0" Text="Notes" Style="{StaticResource FormLabelStyle}" /><TextBox MinHeight="64" AcceptsReturn="True" TextWrapping="Wrap" Style="{StaticResource MultilineTextBoxStyle}" Text="{Binding Draft.Notes, UpdateSourceTrigger=PropertyChanged}" />
+							<StackPanel Margin="0,16,0,0" HorizontalAlignment="Right" Orientation="Horizontal"><Button Command="{Binding ToggleSupplierCommand}" Content="{Binding SupplierActionText}" Style="{StaticResource SecondaryButtonStyle}" /><Button Margin="{StaticResource Button.Margin}" Command="{Binding SaveSupplierCommand}" Content="Save Supplier" Style="{StaticResource PrimaryButtonStyle}" /></StackPanel>
+						</StackPanel>
+					</controls:Card>
+
+					<controls:Card Margin="0,16,0,0" Visibility="{Binding HasSelectedSupplier, Converter={StaticResource BooleanToVisibilityConverter}}">
+						<controls:Card.Header><DockPanel><Button DockPanel.Dock="Right" Command="{Binding NewSupplierItemCommand}" Content="New Supplier Item" Style="{StaticResource SecondaryButtonStyle}" /><TextBlock Text="Supplier Items" Style="{StaticResource SectionTitleStyle}" /></DockPanel></controls:Card.Header>
+						<Grid><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="12" /><RowDefinition Height="220" /><RowDefinition Height="16" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+							<controls:SearchBox Placeholder="Search assigned items" Text="{Binding SupplierItemSearchText, UpdateSourceTrigger=PropertyChanged}" />
+							<DataGrid Grid.Row="2" ItemsSource="{Binding SupplierItems}" SelectedItem="{Binding SelectedSupplierItem}" Style="{StaticResource AppDataGridStyle}"><DataGrid.Columns><DataGridTextColumn Header="Item" Binding="{Binding ItemPartNumber}" Width="120" /><DataGridTextColumn Header="Supplier Part Number" Binding="{Binding SupplierPartNumber}" Width="160" /><DataGridTextColumn Header="Purchase Price" Binding="{Binding PurchasePrice, StringFormat={}{0:N2} €}" Width="120" /><DataGridTextColumn Header="Lead Time" Binding="{Binding LeadTimeDays, StringFormat={}{0} days}" Width="100" /><DataGridTextColumn Header="MOQ" Binding="{Binding MinimumOrderQuantity, StringFormat={}{0:N3}}" Width="90" /><DataGridCheckBoxColumn Header="Preferred" Binding="{Binding IsPreferredSupplier, Mode=OneWay}" Width="80" /><DataGridCheckBoxColumn Header="Active" Binding="{Binding IsActive, Mode=OneWay}" Width="70" /></DataGrid.Columns></DataGrid>
+							<Grid Grid.Row="4"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+								<StackPanel><TextBlock Text="Find Item" Style="{StaticResource FormLabelStyle}" /><controls:SearchBox Placeholder="Search item master" Text="{Binding ItemSearchText, UpdateSourceTrigger=PropertyChanged}" /><ComboBox Margin="0,8,0,0" ItemsSource="{Binding ItemOptions}" SelectedItem="{Binding SelectedItemOption}" Style="{StaticResource AppComboBoxStyle}"><ComboBox.ItemTemplate><DataTemplate><TextBlock><Run Text="{Binding PartNumber}" FontWeight="SemiBold" /><Run Text=" — " /><Run Text="{Binding Description}" /></TextBlock></DataTemplate></ComboBox.ItemTemplate></ComboBox><TextBlock Margin="0,12,0,0" Text="Supplier Part Number" Style="{StaticResource FormLabelStyle}" /><controls:TextInput Text="{Binding SupplierItemDraft.SupplierPartNumber, UpdateSourceTrigger=PropertyChanged}" /></StackPanel>
+								<StackPanel Grid.Column="2"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><StackPanel><TextBlock Text="Purchase Price" Style="{StaticResource FormLabelStyle}" /><controls:TextInput Text="{Binding SupplierItemDraft.PurchasePrice, UpdateSourceTrigger=PropertyChanged}" /></StackPanel><StackPanel Grid.Column="2"><TextBlock Text="Lead Time (days)" Style="{StaticResource FormLabelStyle}" /><controls:TextInput Text="{Binding SupplierItemDraft.LeadTimeDays, UpdateSourceTrigger=PropertyChanged}" /></StackPanel></Grid><TextBlock Margin="0,12,0,0" Text="Minimum Order Quantity" Style="{StaticResource FormLabelStyle}" /><controls:TextInput Text="{Binding SupplierItemDraft.MinimumOrderQuantity, UpdateSourceTrigger=PropertyChanged}" /><CheckBox Margin="0,12,0,0" Content="Preferred supplier for this item" IsChecked="{Binding SupplierItemDraft.IsPreferredSupplier}" /><StackPanel Margin="0,16,0,0" HorizontalAlignment="Right" Orientation="Horizontal"><Button Command="{Binding ToggleSupplierItemCommand}" Content="{Binding SupplierItemActionText}" Style="{StaticResource SecondaryButtonStyle}" /><Button Margin="{StaticResource Button.Margin}" Command="{Binding SaveSupplierItemCommand}" Content="Save Assignment" Style="{StaticResource PrimaryButtonStyle}" /></StackPanel></StackPanel>
+							</Grid>
+						</Grid>
+					</controls:Card>
+				</StackPanel>
+			</ScrollViewer>
+		</Grid>
+	</Grid>
+</UserControl>
