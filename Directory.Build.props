@@ -10,7 +10,7 @@
 		<AssemblyVersion>$(DepotVersionMajor).$(DepotVersionMinor).0.0</AssemblyVersion>
 		<FileVersion>$(DepotVersionMajor).$(DepotVersionMinor).$(DepotVersionPatch).$(DepotVersionBuild)</FileVersion>
 		<Product>Depot</Product>
-		<Company>*</Company>
+		<Company>Depot</Company>
 		<Authors>David Beusing</Authors>
 		<Description>Professional inventory management for Windows.</Description>
 		<Copyright>Copyright © 2026 Dave Beusing</Copyright>

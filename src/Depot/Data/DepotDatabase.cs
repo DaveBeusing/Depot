@@ -160,6 +160,8 @@ public sealed class DepotDatabase : IDatabaseInitializer
 		CreateInventoriesTable(
 			connection);
 
+		CreateProcurementTables(connection);
+
 		CreateReasonCodesTable(
 			connection);
 
@@ -361,6 +363,48 @@ public sealed class DepotDatabase : IDatabaseInitializer
 		);
 		""";
 
+		command.ExecuteNonQuery();
+	}
+
+	private static void CreateProcurementTables(SqliteConnection connection)
+	{
+		using var command = connection.CreateCommand();
+		command.CommandText =
+		"""
+		CREATE TABLE IF NOT EXISTS PurchaseOrders
+		(
+			Id INTEGER PRIMARY KEY AUTOINCREMENT, OrderNumber TEXT NOT NULL UNIQUE, SupplierId INTEGER NOT NULL,
+			OrderDate TEXT NOT NULL, ExpectedDeliveryDate TEXT, Notes TEXT, Status INTEGER NOT NULL DEFAULT 1,
+			Version INTEGER NOT NULL DEFAULT 1, FOREIGN KEY(SupplierId) REFERENCES Suppliers(Id)
+		);
+		CREATE INDEX IF NOT EXISTS IX_PurchaseOrders_SupplierId_Status ON PurchaseOrders(SupplierId, Status);
+		CREATE INDEX IF NOT EXISTS IX_PurchaseOrders_OrderDate ON PurchaseOrders(OrderDate);
+		CREATE TABLE IF NOT EXISTS PurchaseOrderLines
+		(
+			Id INTEGER PRIMARY KEY AUTOINCREMENT, PurchaseOrderId INTEGER NOT NULL, LineNumber INTEGER NOT NULL,
+			ItemId INTEGER NOT NULL, Quantity INTEGER NOT NULL, UnitPrice NUMERIC NOT NULL DEFAULT 0,
+			ReceivedQuantity INTEGER NOT NULL DEFAULT 0, Version INTEGER NOT NULL DEFAULT 1,
+			UNIQUE(PurchaseOrderId, LineNumber), UNIQUE(PurchaseOrderId, ItemId),
+			FOREIGN KEY(PurchaseOrderId) REFERENCES PurchaseOrders(Id), FOREIGN KEY(ItemId) REFERENCES Items(Id),
+			CHECK(Quantity > 0), CHECK(ReceivedQuantity >= 0 AND ReceivedQuantity <= Quantity)
+		);
+		CREATE INDEX IF NOT EXISTS IX_PurchaseOrderLines_ItemId ON PurchaseOrderLines(ItemId);
+		CREATE TABLE IF NOT EXISTS GoodsReceipts
+		(
+			Id INTEGER PRIMARY KEY AUTOINCREMENT, ReceiptNumber TEXT NOT NULL UNIQUE, PurchaseOrderId INTEGER NOT NULL,
+			ReceiptDate TEXT NOT NULL, InvoiceNumber TEXT NOT NULL, InvoiceDate TEXT NOT NULL,
+			InvoiceDocumentPath TEXT, Notes TEXT, FOREIGN KEY(PurchaseOrderId) REFERENCES PurchaseOrders(Id)
+		);
+		CREATE INDEX IF NOT EXISTS IX_GoodsReceipts_PurchaseOrderId ON GoodsReceipts(PurchaseOrderId);
+		CREATE TABLE IF NOT EXISTS GoodsReceiptLines
+		(
+			Id INTEGER PRIMARY KEY AUTOINCREMENT, GoodsReceiptId INTEGER NOT NULL, PurchaseOrderLineId INTEGER NOT NULL,
+			InventoryId INTEGER NOT NULL, Quantity INTEGER NOT NULL CHECK(Quantity > 0),
+			UNIQUE(GoodsReceiptId, PurchaseOrderLineId), FOREIGN KEY(GoodsReceiptId) REFERENCES GoodsReceipts(Id),
+			FOREIGN KEY(PurchaseOrderLineId) REFERENCES PurchaseOrderLines(Id), FOREIGN KEY(InventoryId) REFERENCES Inventories(Id)
+		);
+		CREATE INDEX IF NOT EXISTS IX_GoodsReceiptLines_InventoryId ON GoodsReceiptLines(InventoryId);
+		""";
 		command.ExecuteNonQuery();
 	}
 
@@ -737,6 +781,13 @@ public sealed class DepotDatabase : IDatabaseInitializer
 			MigrateSupplierClassification(connection);
 			SetDatabaseVersion(connection, 14);
 			migratedVersion = 14;
+		}
+
+		if (migratedVersion == 14)
+		{
+			CreateProcurementTables(connection);
+			SetDatabaseVersion(connection, 15);
+			migratedVersion = 15;
 		}
 
 		if (migratedVersion < DatabaseVersion.CurrentVersion)

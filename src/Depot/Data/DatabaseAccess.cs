@@ -24,6 +24,7 @@ public sealed class DatabaseAccess
 	}
 
 	public string InventoryLockSql => _connectionFactory.GetInventoryLockSql();
+	public string PurchaseOrderLockSql => _connectionFactory.GetPurchaseOrderLockSql();
 
 	public static string CaseInsensitiveEquals(string column, string parameter) =>
 		$"{column} = {parameter} COLLATE NOCASE";

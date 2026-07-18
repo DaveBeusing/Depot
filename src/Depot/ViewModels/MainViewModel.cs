@@ -32,6 +32,8 @@ public sealed class MainViewModel : BaseViewModel
 		SupplierCategoryService supplierCategoryService,
 		SupplierService supplierService,
 		SupplierItemService supplierItemService,
+		PurchaseOrderService purchaseOrderService,
+		GoodsReceiptService goodsReceiptService,
 		WarehouseService warehouseService,
 		StorageLocationService storageLocationService,
 		UserService userService,
@@ -67,6 +69,8 @@ public sealed class MainViewModel : BaseViewModel
 			new MovementsViewModel(
 				movementService,
 				reasonCodeService);
+
+		ProcurementViewModel = new ProcurementViewModel(purchaseOrderService, goodsReceiptService, supplierService, itemService, fileDialogService);
 
 		ReportsViewModel =
 			new ReportsViewModel(
@@ -136,6 +140,14 @@ public sealed class MainViewModel : BaseViewModel
 		NavigationItems.Add(
 			new NavigationItem
 			{
+				Name = "Procurement",
+				IconData = "M 3,4 L 17,4 L 16,17 L 4,17 Z M 7,4 L 7,2 L 13,2 L 13,4 M 7,8 L 13,8 M 7,12 L 13,12",
+				Section = ShellSection.Procurement
+			});
+
+		NavigationItems.Add(
+			new NavigationItem
+			{
 				Name = "Reports",
 				IconData = "M 2,17 L 18,17 M 4,14 L 8,10 L 11,12 L 16,5 M 13,5 L 16,5 L 16,8",
 				Section = ShellSection.Reports
@@ -173,6 +185,7 @@ public sealed class MainViewModel : BaseViewModel
 	public ItemsViewModel ItemsViewModel { get; }
 
 	public MovementsViewModel MovementsViewModel { get; }
+	public ProcurementViewModel ProcurementViewModel { get; }
 
 	public ReportsViewModel ReportsViewModel { get; }
 
@@ -215,6 +228,7 @@ public sealed class MainViewModel : BaseViewModel
 			ShellSection.Inventory => InventoryViewModel,
 			ShellSection.Items => ItemsViewModel,
 			ShellSection.Movements => MovementsViewModel,
+			ShellSection.Procurement => ProcurementViewModel,
 			ShellSection.Reports => ReportsViewModel,
 			ShellSection.Administration => AdministrationViewModel,
 			_ => DashboardViewModel
@@ -242,6 +256,10 @@ public sealed class MainViewModel : BaseViewModel
 		else if (CurrentViewModel == MovementsViewModel)
 		{
 			await MovementsViewModel.LoadAsync(cancellationToken);
+		}
+		else if (CurrentViewModel == ProcurementViewModel)
+		{
+			await ProcurementViewModel.LoadAsync(cancellationToken);
 		}
 		else if (CurrentViewModel == ReportsViewModel)
 		{

@@ -38,6 +38,8 @@ public partial class App : Application
 	public static SupplierCategoryRepository SupplierCategoryRepository { get; private set; } = null!;
 	public static SupplierRepository SupplierRepository { get; private set; } = null!;
 	public static SupplierItemRepository SupplierItemRepository { get; private set; } = null!;
+	public static PurchaseOrderRepository PurchaseOrderRepository { get; private set; } = null!;
+	public static GoodsReceiptRepository GoodsReceiptRepository { get; private set; } = null!;
 	public static InventoryRepository InventoryRepository { get; private set; } = null!;
 	public static WarehouseRepository WarehouseRepository { get; private set; } = null!;
 	public static StorageLocationRepository StorageLocationRepository { get; private set; } = null!;
@@ -65,6 +67,8 @@ public partial class App : Application
 	public static SupplierCategoryService SupplierCategoryService { get; private set; } = null!;
 	public static SupplierService SupplierService { get; private set; } = null!;
 	public static SupplierItemService SupplierItemService { get; private set; } = null!;
+	public static PurchaseOrderService PurchaseOrderService { get; private set; } = null!;
+	public static GoodsReceiptService GoodsReceiptService { get; private set; } = null!;
 	public static WarehouseService WarehouseService { get; private set; } = null!;
 	public static StorageLocationService StorageLocationService { get; private set; } = null!;
 	public static UserService UserService { get; private set; } = null!;
@@ -136,6 +140,8 @@ public partial class App : Application
 		SupplierCategoryRepository = new SupplierCategoryRepository(DataAccess);
 		SupplierRepository = new SupplierRepository(DataAccess);
 		SupplierItemRepository = new SupplierItemRepository(DataAccess);
+		PurchaseOrderRepository = new PurchaseOrderRepository(DataAccess);
+		GoodsReceiptRepository = new GoodsReceiptRepository(DataAccess);
 
 		InventoryRepository =
 			new InventoryRepository(
@@ -192,6 +198,8 @@ public partial class App : Application
 		SupplierCategoryService = new SupplierCategoryService(SupplierCategoryRepository, AuditService);
 		SupplierService = new SupplierService(SupplierRepository, SupplierItemRepository, SupplierCategoryRepository, AuditService);
 		SupplierItemService = new SupplierItemService(SupplierItemRepository, SupplierRepository, ItemRepository, AuditService);
+		PurchaseOrderService = new PurchaseOrderService(PurchaseOrderRepository, SupplierRepository, ItemRepository, AuditService);
+		GoodsReceiptService = new GoodsReceiptService(GoodsReceiptRepository, AuditService);
 
 		ItemService = new ItemService(ItemRepository, AuditService, ManufacturerService, CategoryService, UnitOfMeasureService, PackagingService, SupplierItemRepository);
 
@@ -317,6 +325,8 @@ public partial class App : Application
 				SupplierCategoryService,
 				SupplierService,
 				SupplierItemService,
+				PurchaseOrderService,
+				GoodsReceiptService,
 				WarehouseService,
 				StorageLocationService,
 				UserService,

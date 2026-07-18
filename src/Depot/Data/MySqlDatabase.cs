@@ -35,6 +35,9 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 				"@DefaultPasswordHash",
 				"pbkdf2-sha256$210000$9vL0kVt/HZBUCpsJYjPW6Q==$B1lZ+NRxxR/E8kwIE5PK0wXR2BPDmFTeLiKYyAEuhaE=");
 			command.ExecuteNonQuery();
+			command.CommandText = ProcurementSql;
+			command.Parameters.Clear();
+			command.ExecuteNonQuery();
 
 			command.CommandText = "SELECT Version FROM DatabaseInfo WHERE Id = 1;";
 			command.Parameters.Clear();
@@ -69,6 +72,11 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 				MigrateSupplierClassification(command);
 				version = 14;
 			}
+			if (version == 14)
+			{
+				MigrateToProcurement(command);
+				version = 15;
+			}
 			if (version != DatabaseVersion.CurrentVersion)
 			{
 				throw new InvalidOperationException(
@@ -81,6 +89,12 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 			releaseCommand.CommandText = "SELECT RELEASE_LOCK('Depot.SchemaMigration');";
 			releaseCommand.ExecuteScalar();
 		}
+	}
+
+	private static void MigrateToProcurement(System.Data.Common.DbCommand command)
+	{
+		Execute(command, ProcurementSql);
+		Execute(command, "UPDATE DatabaseInfo SET Version = 15 WHERE Id = 1;");
 	}
 
 	private static void MigrateSupplierClassification(System.Data.Common.DbCommand command)
@@ -391,6 +405,14 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 			$"CREATE DATABASE `{escapedName}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;";
 		createCommand.ExecuteNonQuery();
 	}
+
+	private const string ProcurementSql =
+	"""
+	CREATE TABLE IF NOT EXISTS PurchaseOrders (Id bigint NOT NULL AUTO_INCREMENT PRIMARY KEY, OrderNumber varchar(50) NOT NULL UNIQUE, SupplierId bigint NOT NULL, OrderDate varchar(10) NOT NULL, ExpectedDeliveryDate varchar(10) NULL, Notes text NULL, Status int NOT NULL DEFAULT 1, Version bigint NOT NULL DEFAULT 1, INDEX IX_PurchaseOrders_SupplierId_Status (SupplierId, Status), INDEX IX_PurchaseOrders_OrderDate (OrderDate), CONSTRAINT FK_PurchaseOrders_Suppliers FOREIGN KEY (SupplierId) REFERENCES Suppliers(Id)) ENGINE=InnoDB;
+	CREATE TABLE IF NOT EXISTS PurchaseOrderLines (Id bigint NOT NULL AUTO_INCREMENT PRIMARY KEY, PurchaseOrderId bigint NOT NULL, LineNumber int NOT NULL, ItemId bigint NOT NULL, Quantity int NOT NULL, UnitPrice decimal(18,2) NOT NULL DEFAULT 0, ReceivedQuantity int NOT NULL DEFAULT 0, Version bigint NOT NULL DEFAULT 1, UNIQUE KEY UQ_PurchaseOrderLines_Number (PurchaseOrderId, LineNumber), UNIQUE KEY UQ_PurchaseOrderLines_Item (PurchaseOrderId, ItemId), INDEX IX_PurchaseOrderLines_ItemId (ItemId), CONSTRAINT CK_PurchaseOrderLines_Quantity CHECK (Quantity > 0 AND ReceivedQuantity >= 0 AND ReceivedQuantity <= Quantity), CONSTRAINT FK_PurchaseOrderLines_Orders FOREIGN KEY (PurchaseOrderId) REFERENCES PurchaseOrders(Id), CONSTRAINT FK_PurchaseOrderLines_Items FOREIGN KEY (ItemId) REFERENCES Items(Id)) ENGINE=InnoDB;
+	CREATE TABLE IF NOT EXISTS GoodsReceipts (Id bigint NOT NULL AUTO_INCREMENT PRIMARY KEY, ReceiptNumber varchar(50) NOT NULL UNIQUE, PurchaseOrderId bigint NOT NULL, ReceiptDate varchar(10) NOT NULL, InvoiceNumber varchar(100) NOT NULL, InvoiceDate varchar(10) NOT NULL, InvoiceDocumentPath varchar(1000) NULL, Notes text NULL, INDEX IX_GoodsReceipts_PurchaseOrderId (PurchaseOrderId), CONSTRAINT FK_GoodsReceipts_Orders FOREIGN KEY (PurchaseOrderId) REFERENCES PurchaseOrders(Id)) ENGINE=InnoDB;
+	CREATE TABLE IF NOT EXISTS GoodsReceiptLines (Id bigint NOT NULL AUTO_INCREMENT PRIMARY KEY, GoodsReceiptId bigint NOT NULL, PurchaseOrderLineId bigint NOT NULL, InventoryId bigint NOT NULL, Quantity int NOT NULL, UNIQUE KEY UQ_GoodsReceiptLines_OrderLine (GoodsReceiptId, PurchaseOrderLineId), INDEX IX_GoodsReceiptLines_InventoryId (InventoryId), CONSTRAINT CK_GoodsReceiptLines_Quantity CHECK (Quantity > 0), CONSTRAINT FK_GoodsReceiptLines_Receipts FOREIGN KEY (GoodsReceiptId) REFERENCES GoodsReceipts(Id), CONSTRAINT FK_GoodsReceiptLines_OrderLines FOREIGN KEY (PurchaseOrderLineId) REFERENCES PurchaseOrderLines(Id), CONSTRAINT FK_GoodsReceiptLines_Inventories FOREIGN KEY (InventoryId) REFERENCES Inventories(Id)) ENGINE=InnoDB;
+	""";
 
 	private const string SchemaSql =
 	"""

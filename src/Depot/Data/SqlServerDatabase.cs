@@ -28,6 +28,9 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 			"pbkdf2-sha256$210000$9vL0kVt/HZBUCpsJYjPW6Q==$B1lZ+NRxxR/E8kwIE5PK0wXR2BPDmFTeLiKYyAEuhaE=");
 		command.Parameters.AddWithValue("@CurrentVersion", DatabaseVersion.CurrentVersion);
 		command.ExecuteNonQuery();
+		command.CommandText = ProcurementSql;
+		command.Parameters.Clear();
+		command.ExecuteNonQuery();
 
 		command.CommandText = "SELECT Version FROM DatabaseInfo WHERE Id = 1;";
 		var version = Convert.ToInt32(command.ExecuteScalar(), CultureInfo.InvariantCulture);
@@ -61,6 +64,11 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 			MigrateSupplierClassification(command);
 			version = 14;
 		}
+		if (version == 14)
+		{
+			MigrateToProcurement(command);
+			version = 15;
+		}
 		if (version != DatabaseVersion.CurrentVersion)
 		{
 			throw new InvalidOperationException(
@@ -68,6 +76,13 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 		}
 
 		transaction.Commit();
+	}
+
+	private static void MigrateToProcurement(System.Data.Common.DbCommand command)
+	{
+		command.CommandText = ProcurementSql + " UPDATE DatabaseInfo SET Version = 15 WHERE Id = 1;";
+		command.Parameters.Clear();
+		command.ExecuteNonQuery();
 	}
 
 	private static void MigrateSupplierClassification(System.Data.Common.DbCommand command)
@@ -242,6 +257,30 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 		createCommand.CommandText = $"CREATE DATABASE [{escapedName}];";
 		createCommand.ExecuteNonQuery();
 	}
+
+	private const string ProcurementSql =
+	"""
+	IF OBJECT_ID(N'PurchaseOrders', N'U') IS NULL
+	BEGIN
+		CREATE TABLE PurchaseOrders (Id bigint IDENTITY(1,1) NOT NULL PRIMARY KEY, OrderNumber nvarchar(50) NOT NULL UNIQUE, SupplierId bigint NOT NULL, OrderDate nvarchar(10) NOT NULL, ExpectedDeliveryDate nvarchar(10) NULL, Notes nvarchar(4000) NULL, Status int NOT NULL DEFAULT 1, Version bigint NOT NULL DEFAULT 1, CONSTRAINT FK_PurchaseOrders_Suppliers FOREIGN KEY (SupplierId) REFERENCES Suppliers(Id));
+		CREATE INDEX IX_PurchaseOrders_SupplierId_Status ON PurchaseOrders(SupplierId, Status); CREATE INDEX IX_PurchaseOrders_OrderDate ON PurchaseOrders(OrderDate);
+	END;
+	IF OBJECT_ID(N'PurchaseOrderLines', N'U') IS NULL
+	BEGIN
+		CREATE TABLE PurchaseOrderLines (Id bigint IDENTITY(1,1) NOT NULL PRIMARY KEY, PurchaseOrderId bigint NOT NULL, LineNumber int NOT NULL, ItemId bigint NOT NULL, Quantity int NOT NULL, UnitPrice decimal(18,2) NOT NULL DEFAULT 0, ReceivedQuantity int NOT NULL DEFAULT 0, Version bigint NOT NULL DEFAULT 1, CONSTRAINT UQ_PurchaseOrderLines_Number UNIQUE (PurchaseOrderId, LineNumber), CONSTRAINT UQ_PurchaseOrderLines_Item UNIQUE (PurchaseOrderId, ItemId), CONSTRAINT CK_PurchaseOrderLines_Quantity CHECK (Quantity > 0 AND ReceivedQuantity >= 0 AND ReceivedQuantity <= Quantity), CONSTRAINT FK_PurchaseOrderLines_Orders FOREIGN KEY (PurchaseOrderId) REFERENCES PurchaseOrders(Id), CONSTRAINT FK_PurchaseOrderLines_Items FOREIGN KEY (ItemId) REFERENCES Items(Id));
+		CREATE INDEX IX_PurchaseOrderLines_ItemId ON PurchaseOrderLines(ItemId);
+	END;
+	IF OBJECT_ID(N'GoodsReceipts', N'U') IS NULL
+	BEGIN
+		CREATE TABLE GoodsReceipts (Id bigint IDENTITY(1,1) NOT NULL PRIMARY KEY, ReceiptNumber nvarchar(50) NOT NULL UNIQUE, PurchaseOrderId bigint NOT NULL, ReceiptDate nvarchar(10) NOT NULL, InvoiceNumber nvarchar(100) NOT NULL, InvoiceDate nvarchar(10) NOT NULL, InvoiceDocumentPath nvarchar(1000) NULL, Notes nvarchar(4000) NULL, CONSTRAINT FK_GoodsReceipts_Orders FOREIGN KEY (PurchaseOrderId) REFERENCES PurchaseOrders(Id));
+		CREATE INDEX IX_GoodsReceipts_PurchaseOrderId ON GoodsReceipts(PurchaseOrderId);
+	END;
+	IF OBJECT_ID(N'GoodsReceiptLines', N'U') IS NULL
+	BEGIN
+		CREATE TABLE GoodsReceiptLines (Id bigint IDENTITY(1,1) NOT NULL PRIMARY KEY, GoodsReceiptId bigint NOT NULL, PurchaseOrderLineId bigint NOT NULL, InventoryId bigint NOT NULL, Quantity int NOT NULL, CONSTRAINT UQ_GoodsReceiptLines_OrderLine UNIQUE (GoodsReceiptId, PurchaseOrderLineId), CONSTRAINT CK_GoodsReceiptLines_Quantity CHECK (Quantity > 0), CONSTRAINT FK_GoodsReceiptLines_Receipts FOREIGN KEY (GoodsReceiptId) REFERENCES GoodsReceipts(Id), CONSTRAINT FK_GoodsReceiptLines_OrderLines FOREIGN KEY (PurchaseOrderLineId) REFERENCES PurchaseOrderLines(Id), CONSTRAINT FK_GoodsReceiptLines_Inventories FOREIGN KEY (InventoryId) REFERENCES Inventories(Id));
+		CREATE INDEX IX_GoodsReceiptLines_InventoryId ON GoodsReceiptLines(InventoryId);
+	END;
+	""";
 
 	private const string SchemaSql =
 	"""

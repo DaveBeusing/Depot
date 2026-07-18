@@ -26,7 +26,7 @@ public sealed class WarehouseMigrationTests : IDisposable
 		using var connection = factory.CreateConnection();
 		connection.Open();
 
-		Assert.Equal(14L, ExecuteInt64(connection, "SELECT Version FROM DatabaseInfo;"));
+		Assert.Equal(15L, ExecuteInt64(connection, "SELECT Version FROM DatabaseInfo;"));
 		Assert.Equal("Main Warehouse", ExecuteString(connection, "SELECT Name FROM Warehouses;"));
 		Assert.Equal("A-01", ExecuteString(connection, "SELECT Name FROM StorageLocations WHERE Id = 1;"));
 		Assert.Equal(1L, ExecuteInt64(connection, "SELECT WarehouseId FROM StorageLocations WHERE Id = 1;"));

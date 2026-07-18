@@ -45,6 +45,9 @@
 			<DataTemplate DataType="{x:Type viewModels:MovementsViewModel}">
 				<views:MovementsView />
 			</DataTemplate>
+			<DataTemplate DataType="{x:Type viewModels:ProcurementViewModel}">
+				<views:ProcurementView />
+			</DataTemplate>
 			<DataTemplate DataType="{x:Type viewModels:ReportsViewModel}">
 				<views:ReportsView />
 			</DataTemplate>

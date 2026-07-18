@@ -1,0 +1,62 @@
+<UserControl
+	x:Class="Depot.Views.ProcurementView"
+	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:controls="clr-namespace:Depot.Controls">
+	<Grid>
+		<Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="16" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+		<controls:PageHeader Title="Procurement" Subtitle="Create purchase orders and post invoice-backed goods receipts.">
+			<controls:PageHeader.Actions><controls:OperationStatus ErrorText="{Binding OperationError}" HasError="{Binding HasOperationError}" IsBusy="{Binding IsBusy}" StatusText="{Binding StatusText}" /></controls:PageHeader.Actions>
+		</controls:PageHeader>
+		<Grid Grid.Row="2">
+			<Grid.ColumnDefinitions><ColumnDefinition Width="360" /><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+			<Grid>
+				<Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="8" /><RowDefinition Height="Auto" /><RowDefinition Height="8" /><RowDefinition Height="*" /><RowDefinition Height="12" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+				<controls:SearchBox Placeholder="Search order number or supplier" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
+				<ComboBox Grid.Row="2" ItemsSource="{Binding StatusFilters}" SelectedItem="{Binding SelectedStatusFilter}" DisplayMemberPath="Name" Style="{StaticResource AppComboBoxStyle}" />
+				<ListBox Grid.Row="4" ItemsSource="{Binding Orders}" SelectedItem="{Binding SelectedOrder}" Style="{StaticResource MasterDataListBoxStyle}" ItemContainerStyle="{StaticResource MasterDataListBoxItemStyle}">
+					<ListBox.ItemTemplate><DataTemplate><Grid Margin="4"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><StackPanel><TextBlock Text="{Binding OrderNumber}" FontWeight="SemiBold" /><TextBlock Text="{Binding SupplierName}" Style="{StaticResource CaptionStyle}" /></StackPanel><StackPanel Grid.Column="1" HorizontalAlignment="Right"><TextBlock Text="{Binding StatusDisplayName}" /><TextBlock Text="{Binding OrderDate, StringFormat={}{0:d}}" Style="{StaticResource CaptionStyle}" /></StackPanel></Grid></DataTemplate></ListBox.ItemTemplate>
+				</ListBox>
+				<Button Grid.Row="6" Command="{Binding NewOrderCommand}" Content="New Purchase Order" Style="{StaticResource PrimaryButtonStyle}" />
+			</Grid>
+
+			<ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+				<StackPanel>
+					<controls:Card>
+						<controls:Card.Header><DockPanel><TextBlock Text="{Binding EditorTitle}" Style="{StaticResource SectionTitleStyle}" /></DockPanel></controls:Card.Header>
+						<StackPanel>
+							<Grid><Grid.ColumnDefinitions><ColumnDefinition Width="2*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+								<StackPanel><TextBlock Text="Supplier" Style="{StaticResource FormLabelStyle}" /><ComboBox IsEnabled="{Binding IsDraft}" ItemsSource="{Binding Suppliers}" SelectedValue="{Binding Draft.SupplierId}" SelectedValuePath="Id" DisplayMemberPath="Name" Style="{StaticResource AppComboBoxStyle}" /></StackPanel>
+								<StackPanel Grid.Column="2"><TextBlock Text="Order Date" Style="{StaticResource FormLabelStyle}" /><DatePicker IsEnabled="{Binding IsDraft}" SelectedDate="{Binding Draft.OrderDate}" Style="{StaticResource AppDatePickerStyle}" /></StackPanel>
+								<StackPanel Grid.Column="4"><TextBlock Text="Expected Delivery" Style="{StaticResource FormLabelStyle}" /><DatePicker IsEnabled="{Binding IsDraft}" SelectedDate="{Binding Draft.ExpectedDeliveryDate}" Style="{StaticResource AppDatePickerStyle}" /></StackPanel>
+							</Grid>
+							<TextBlock Margin="0,12,0,0" Text="Notes" Style="{StaticResource FormLabelStyle}" /><TextBox IsReadOnly="{Binding IsOrderReadOnly}" MinHeight="56" AcceptsReturn="True" TextWrapping="Wrap" Style="{StaticResource MultilineTextBoxStyle}" Text="{Binding Draft.Notes, UpdateSourceTrigger=PropertyChanged}" />
+							<DataGrid Margin="0,16,0,0" Height="210" ItemsSource="{Binding Lines}" SelectedItem="{Binding SelectedLine}" Style="{StaticResource AppDataGridStyle}"><DataGrid.Columns><DataGridTextColumn Header="#" Binding="{Binding LineNumber}" Width="45" /><DataGridTextColumn Header="Item" Binding="{Binding ItemPartNumber}" Width="120" /><DataGridTextColumn Header="Description" Binding="{Binding ItemDescription}" Width="*" /><DataGridTextColumn Header="Quantity" Binding="{Binding Quantity}" Width="85" /><DataGridTextColumn Header="Unit Price" Binding="{Binding UnitPrice, StringFormat={}{0:N2} €}" Width="110" /><DataGridTextColumn Header="Received" Binding="{Binding ReceivedQuantity}" Width="85" /></DataGrid.Columns></DataGrid>
+							<Grid Margin="0,12,0,0" IsEnabled="{Binding IsDraft}"><Grid.ColumnDefinitions><ColumnDefinition Width="2*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+								<StackPanel><TextBlock Text="Item" Style="{StaticResource FormLabelStyle}" /><ComboBox ItemsSource="{Binding Items}" SelectedItem="{Binding SelectedItem}" Style="{StaticResource AppComboBoxStyle}"><ComboBox.ItemTemplate><DataTemplate><TextBlock><Run Text="{Binding PartNumber}" FontWeight="SemiBold" /><Run Text=" — " /><Run Text="{Binding Description}" /></TextBlock></DataTemplate></ComboBox.ItemTemplate></ComboBox></StackPanel>
+								<StackPanel Grid.Column="2"><TextBlock Text="Quantity" Style="{StaticResource FormLabelStyle}" /><controls:TextInput Text="{Binding LineQuantity, UpdateSourceTrigger=PropertyChanged}" /></StackPanel>
+								<StackPanel Grid.Column="4"><TextBlock Text="Unit Price" Style="{StaticResource FormLabelStyle}" /><controls:TextInput Text="{Binding LineUnitPrice, UpdateSourceTrigger=PropertyChanged}" /></StackPanel>
+								<StackPanel Grid.Column="6" VerticalAlignment="Bottom" Orientation="Horizontal"><Button Command="{Binding RemoveLineCommand}" Content="Remove" Style="{StaticResource SecondaryButtonStyle}" /><Button Margin="{StaticResource Button.Margin}" Command="{Binding AddLineCommand}" Content="{Binding SaveLineText}" Style="{StaticResource SecondaryButtonStyle}" /></StackPanel>
+							</Grid>
+							<StackPanel Margin="0,16,0,0" HorizontalAlignment="Right" Orientation="Horizontal"><Button Command="{Binding CancelOrderCommand}" Content="Cancel Order" Style="{StaticResource SecondaryButtonStyle}" /><Button Margin="{StaticResource Button.Margin}" Command="{Binding SaveOrderCommand}" Content="Save Draft" Style="{StaticResource SecondaryButtonStyle}" /><Button Margin="{StaticResource Button.Margin}" Command="{Binding MarkOrderedCommand}" Content="Mark Ordered" Style="{StaticResource PrimaryButtonStyle}" /></StackPanel>
+						</StackPanel>
+					</controls:Card>
+
+					<controls:Card Margin="0,16,0,0" Visibility="{Binding CanReceive, Converter={StaticResource BooleanToVisibilityConverter}}">
+						<controls:Card.Header><TextBlock Text="Post Goods Receipt" Style="{StaticResource SectionTitleStyle}" /></controls:Card.Header>
+						<StackPanel>
+							<TextBlock Text="An invoice number and invoice date are mandatory. All receipt lines and stock movements are posted atomically." Style="{StaticResource BodyStyle}" TextWrapping="Wrap" />
+							<Grid Margin="0,12,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="2*" /></Grid.ColumnDefinitions>
+								<StackPanel><TextBlock Text="Invoice Number" Style="{StaticResource FormLabelStyle}" /><controls:TextInput Text="{Binding InvoiceNumber, UpdateSourceTrigger=PropertyChanged}" /></StackPanel>
+								<StackPanel Grid.Column="2"><TextBlock Text="Invoice Date" Style="{StaticResource FormLabelStyle}" /><DatePicker SelectedDate="{Binding InvoiceDate}" Style="{StaticResource AppDatePickerStyle}" /></StackPanel>
+								<StackPanel Grid.Column="4"><TextBlock Text="Invoice Document" Style="{StaticResource FormLabelStyle}" /><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="8" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><controls:TextInput IsReadOnly="True" Text="{Binding InvoiceDocumentPath, Mode=OneWay}" /><Button Grid.Column="2" Command="{Binding BrowseInvoiceCommand}" Content="Browse" Style="{StaticResource SecondaryButtonStyle}" /></Grid></StackPanel>
+							</Grid>
+							<DataGrid Margin="0,16,0,0" Height="220" IsReadOnly="False" ItemsSource="{Binding ReceiptLines}" Style="{StaticResource AppDataGridStyle}"><DataGrid.Columns><DataGridTextColumn Header="Item" Binding="{Binding ItemPartNumber}" IsReadOnly="True" Width="120" /><DataGridTextColumn Header="Description" Binding="{Binding ItemDescription}" IsReadOnly="True" Width="*" /><DataGridTextColumn Header="Open" Binding="{Binding OpenQuantity}" IsReadOnly="True" Width="70" /><DataGridTextColumn Header="Receive" Binding="{Binding Quantity, UpdateSourceTrigger=PropertyChanged}" Width="80" /><DataGridTemplateColumn Header="Destination Inventory" Width="280"><DataGridTemplateColumn.CellTemplate><DataTemplate><ComboBox ItemsSource="{Binding InventoryOptions}" SelectedItem="{Binding SelectedInventory}" DisplayMemberPath="DisplayName" Style="{StaticResource AppComboBoxStyle}" /></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn></DataGrid.Columns></DataGrid>
+							<Button Margin="0,16,0,0" HorizontalAlignment="Right" Command="{Binding PostReceiptCommand}" Content="Post Goods Receipt" Style="{StaticResource PrimaryButtonStyle}" />
+						</StackPanel>
+					</controls:Card>
+				</StackPanel>
+			</ScrollViewer>
+		</Grid>
+	</Grid>
+</UserControl>

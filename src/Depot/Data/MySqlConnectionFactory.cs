@@ -61,6 +61,9 @@ public sealed class MySqlConnectionFactory : IDatabaseConnectionFactory
 	public string GetInventoryLockSql() =>
 		"SELECT Id FROM Inventories WHERE Id = $InventoryId FOR UPDATE;";
 
+	public string GetPurchaseOrderLockSql() =>
+		"SELECT Id FROM PurchaseOrders WHERE Id = $PurchaseOrderId FOR UPDATE;";
+
 	public string GetPagingClause() => "LIMIT $PageSize OFFSET $Offset";
 
 	private static string NormalizeSql(string sql) =>

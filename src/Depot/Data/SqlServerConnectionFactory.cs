@@ -62,6 +62,9 @@ public sealed class SqlServerConnectionFactory : IDatabaseConnectionFactory
 	public string GetInventoryLockSql() =>
 		"SELECT Id FROM Inventories WITH (UPDLOCK, HOLDLOCK) WHERE Id = $InventoryId;";
 
+	public string GetPurchaseOrderLockSql() =>
+		"SELECT Id FROM PurchaseOrders WITH (UPDLOCK, HOLDLOCK) WHERE Id = $PurchaseOrderId;";
+
 	public string GetPagingClause() => "OFFSET $Offset ROWS FETCH NEXT $PageSize ROWS ONLY";
 
 	private static string NormalizeSql(string sql) =>
