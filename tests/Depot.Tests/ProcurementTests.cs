@@ -1,9 +1,13 @@
 // Copyright (c) 2026 David Beusing
 // Licensed under the MIT License.
 
+using System.Text.Json;
+
 using Depot.Data;
 using Depot.Models;
 using Depot.Services;
+
+using Microsoft.Data.Sqlite;
 
 using Xunit;
 
@@ -22,6 +26,81 @@ public sealed class ProcurementTests
 		Assert.Matches("^PO-[0-9]{6}$", saved.OrderNumber);
 		Assert.Equal(PurchaseOrderStatus.Draft, saved.Status);
 		Assert.Single(saved.Lines);
+	}
+
+	[Fact]
+	public async Task PurchaseOrderCreateEditOrderAndCancelCommitCorrectAuditStates()
+	{
+		await using var context = await ProcurementTestContext.CreateSqliteAsync();
+		var order = await context.Orders.SaveDraftAsync(context.NewOrder());
+		order.Notes = "Updated draft";
+		order = await context.Orders.SaveDraftAsync(order);
+		order = await context.Orders.MarkOrderedAsync(order.Id, order.Version);
+		order = await context.Orders.CancelAsync(order.Id, order.Version);
+
+		var auditStates = await context.Data.QueryAsync(
+			"SELECT BeforeJson, AfterJson FROM AuditEntries WHERE EntityType = 'PurchaseOrder' AND EntityId = $Id ORDER BY Id;",
+			reader => new AuditState(reader.IsDBNull(0) ? null : reader.GetString(0), reader.GetString(1)),
+			CancellationToken.None,
+			new DatabaseParameter("$Id", order.Id));
+
+		Assert.Equal(4, auditStates.Count);
+		Assert.Null(auditStates[0].BeforeJson);
+		Assert.Equal(order.Id, JsonInt64(auditStates[0].AfterJson, "id"));
+		Assert.Null(JsonString(auditStates[0].AfterJson, "notes"));
+		Assert.Null(JsonString(RequiredJson(auditStates[1].BeforeJson), "notes"));
+		Assert.Equal("Updated draft", JsonString(auditStates[1].AfterJson, "notes"));
+		Assert.Equal((int)PurchaseOrderStatus.Draft, JsonInt32(RequiredJson(auditStates[2].BeforeJson), "status"));
+		Assert.Equal((int)PurchaseOrderStatus.Ordered, JsonInt32(auditStates[2].AfterJson, "status"));
+		Assert.Equal((int)PurchaseOrderStatus.Ordered, JsonInt32(RequiredJson(auditStates[3].BeforeJson), "status"));
+		Assert.Equal((int)PurchaseOrderStatus.Cancelled, JsonInt32(auditStates[3].AfterJson, "status"));
+	}
+
+	[Fact]
+	public async Task AuditFailureRollsBackPurchaseOrderCreationAndLines()
+	{
+		await using var context = await ProcurementTestContext.CreateSqliteAsync();
+		UseInvalidAuditUser(context);
+
+		await Assert.ThrowsAsync<SqliteException>(() => context.Orders.SaveDraftAsync(context.NewOrder()));
+
+		Assert.Equal(0, await context.ScalarAsync("SELECT COUNT(*) FROM PurchaseOrders;"));
+		Assert.Equal(0, await context.ScalarAsync("SELECT COUNT(*) FROM PurchaseOrderLines;"));
+		Assert.Equal(0, await context.ScalarAsync("SELECT COUNT(*) FROM AuditEntries WHERE EntityType = 'PurchaseOrder';"));
+	}
+
+	[Fact]
+	public async Task AuditFailureRollsBackPurchaseOrderEditAndStatusChanges()
+	{
+		await using var context = await ProcurementTestContext.CreateSqliteAsync();
+		var administrator = context.Authorization.CurrentUser ?? throw new InvalidOperationException();
+		var order = await context.Orders.SaveDraftAsync(context.NewOrder());
+		var originalVersion = order.Version;
+		order.Notes = "Must be rolled back";
+		UseInvalidAuditUser(context);
+
+		await Assert.ThrowsAsync<SqliteException>(() => context.Orders.SaveDraftAsync(order));
+
+		var unchanged = await context.Orders.GetByIdAsync(order.Id) ?? throw new InvalidOperationException();
+		Assert.Null(unchanged.Notes);
+		Assert.Equal(originalVersion, unchanged.Version);
+		Assert.Equal(1, await context.ScalarAsync("SELECT COUNT(*) FROM AuditEntries WHERE EntityType = 'PurchaseOrder';"));
+
+		await Assert.ThrowsAsync<SqliteException>(() => context.Orders.MarkOrderedAsync(unchanged.Id, unchanged.Version));
+		unchanged = await context.Orders.GetByIdAsync(order.Id) ?? throw new InvalidOperationException();
+		Assert.Equal(PurchaseOrderStatus.Draft, unchanged.Status);
+		Assert.Equal(originalVersion, unchanged.Version);
+
+		context.Authorization.SignIn(administrator);
+		var ordered = await context.Orders.MarkOrderedAsync(unchanged.Id, unchanged.Version);
+		var orderedVersion = ordered.Version;
+		UseInvalidAuditUser(context);
+		await Assert.ThrowsAsync<SqliteException>(() => context.Orders.CancelAsync(ordered.Id, ordered.Version));
+
+		var stillOrdered = await context.Orders.GetByIdAsync(order.Id) ?? throw new InvalidOperationException();
+		Assert.Equal(PurchaseOrderStatus.Ordered, stillOrdered.Status);
+		Assert.Equal(orderedVersion, stillOrdered.Version);
+		Assert.Equal(2, await context.ScalarAsync("SELECT COUNT(*) FROM AuditEntries WHERE EntityType = 'PurchaseOrder';"));
 	}
 
 	[Fact]
@@ -148,8 +227,10 @@ public sealed class ProcurementTests
 		stale.Notes = "Second editor";
 
 		await context.Orders.SaveDraftAsync(current);
+		var auditCount = await context.ScalarAsync("SELECT COUNT(*) FROM AuditEntries WHERE EntityType = 'PurchaseOrder';");
 
 		await Assert.ThrowsAsync<ConcurrencyConflictException>(() => context.Orders.SaveDraftAsync(stale));
+		Assert.Equal(auditCount, await context.ScalarAsync("SELECT COUNT(*) FROM AuditEntries WHERE EntityType = 'PurchaseOrder';"));
 	}
 
 	[Fact]
@@ -371,4 +452,37 @@ public sealed class ProcurementTests
 		var order = await context.Orders.SaveDraftAsync(context.NewOrder(quantity));
 		return await context.Orders.MarkOrderedAsync(order.Id, order.Version);
 	}
+
+	private static void UseInvalidAuditUser(ProcurementTestContext context) =>
+		context.Authorization.SignIn(new User
+		{
+			Id = long.MaxValue,
+			Email = "missing-audit-user@depot.test",
+			DisplayName = "Missing audit user",
+			IsActive = true
+		});
+
+	private static long JsonInt64(string json, string propertyName)
+	{
+		using var document = JsonDocument.Parse(json);
+		return document.RootElement.GetProperty(propertyName).GetInt64();
+	}
+
+	private static int JsonInt32(string json, string propertyName)
+	{
+		using var document = JsonDocument.Parse(json);
+		return document.RootElement.GetProperty(propertyName).GetInt32();
+	}
+
+	private static string? JsonString(string json, string propertyName)
+	{
+		using var document = JsonDocument.Parse(json);
+		var property = document.RootElement.GetProperty(propertyName);
+		return property.ValueKind == JsonValueKind.Null ? null : property.GetString();
+	}
+
+	private static string RequiredJson(string? json) =>
+		json ?? throw new InvalidOperationException("The expected audit before-state is missing.");
+
+	private sealed record AuditState(string? BeforeJson, string AfterJson);
 }

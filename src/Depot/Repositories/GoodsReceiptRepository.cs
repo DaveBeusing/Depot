@@ -70,9 +70,7 @@ public sealed class GoodsReceiptRepository : DatabaseRepository
 			await session.ExecuteAsync("UPDATE PurchaseOrders SET Status = $Status, Version = Version + 1 WHERE Id = $PurchaseOrderId;", token, Parameter("$Status", (int)newStatus), Parameter("$PurchaseOrderId", receipt.PurchaseOrderId));
 			auditEntry.EntityId = receipt.Id;
 			auditEntry.AfterJson = JsonSerializer.Serialize(receipt, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-			await session.ExecuteAsync(
-				"INSERT INTO AuditEntries (TimestampUtc, UserId, UserEmail, EntityType, EntityId, Action, BeforeJson, AfterJson) VALUES ($TimestampUtc, $UserId, $UserEmail, $EntityType, $EntityId, $Action, $BeforeJson, $AfterJson);",
-				token, Parameter("$TimestampUtc", auditEntry.TimestampUtc.ToString("O", CultureInfo.InvariantCulture)), Parameter("$UserId", auditEntry.UserId), Parameter("$UserEmail", auditEntry.UserEmail), Parameter("$EntityType", auditEntry.EntityType), Parameter("$EntityId", auditEntry.EntityId), Parameter("$Action", auditEntry.Action), Parameter("$BeforeJson", auditEntry.BeforeJson), Parameter("$AfterJson", auditEntry.AfterJson));
+			await AuditRepository.CreateAsync(session, auditEntry, token);
 			return receipt;
 		}, cancellationToken);
 

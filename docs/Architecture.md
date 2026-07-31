@@ -123,15 +123,15 @@ Master data uses activation/deactivation rather than hard deletion. Services per
 - `GoodsReceipt` references exactly one purchase order and owns `GoodsReceiptLine` records.
 - A goods receipt requires invoice metadata and an existing invoice-document path.
 
-Goods-receipt posting is atomic: the receipt, receipt lines, purchase-order received quantities, stock movements, purchase-order status, and receipt audit entry commit in one transaction. Purchase-order locking prevents concurrent over-receipt.
+Purchase-order creation, draft editing, ordering, and cancellation commit their business change and before/after audit entry in one transaction. Goods-receipt posting remains atomic across the receipt, receipt lines, purchase-order received quantities, stock movements, purchase-order status, and receipt audit entry. Purchase-order locking prevents concurrent over-receipt.
 
 ## Audit and optimistic concurrency
 
 Mutable entities use `Version` columns where optimistic concurrency is required. Updates include the expected version and throw `ConcurrencyConflictException` when a stale write loses the race.
 
-Audit entries store timestamp, user identity, entity type, entity ID, action, and before/after JSON. Stock movements and goods-receipt audit data are committed with their corresponding transaction. An audit-log administration viewer has not yet been implemented.
+Audit entries store timestamp, user identity, entity type, entity ID, action, and before/after JSON. Stock movements, purchase-order changes, and goods-receipt audit data are committed with their corresponding transaction. An audit-log administration viewer has not yet been implemented.
 
-Automated SQLite tests cover stale item updates, concurrent withdrawals, movement/audit atomicity, concurrent goods receipts, over-receipt rollback, and supplier/master-data reference rules. Equivalent live-server scenarios remain to be verified before version 1.0.
+Automated SQLite tests cover stale item updates, concurrent withdrawals, movement/audit atomicity, purchase-order audit commit and rollback, concurrent goods receipts, over-receipt rollback, and supplier/master-data reference rules. Equivalent live-server scenarios remain to be verified before version 1.0.
 
 ## Database administration
 

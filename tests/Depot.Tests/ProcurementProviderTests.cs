@@ -51,6 +51,29 @@ public sealed class ProcurementProviderTests
 			"SELECT COUNT(*) FROM AuditEntries WHERE EntityType = 'GoodsReceipt' AND EntityId IN (SELECT Id FROM GoodsReceipts WHERE PurchaseOrderId = $PurchaseOrderId);",
 			new DatabaseParameter("$PurchaseOrderId", order.Id)));
 
+		var orderCountBeforeAuditFailure = await context.ScalarAsync(
+			"SELECT COUNT(*) FROM PurchaseOrders WHERE SupplierId = $SupplierId;",
+			new DatabaseParameter("$SupplierId", context.SupplierId));
+		var auditCountBeforeAuditFailure = await context.ScalarAsync(
+			"SELECT COUNT(*) FROM AuditEntries WHERE EntityType = 'PurchaseOrder' AND EntityId IN (SELECT Id FROM PurchaseOrders WHERE SupplierId = $SupplierId);",
+			new DatabaseParameter("$SupplierId", context.SupplierId));
+		context.Authorization.SignIn(new User
+		{
+			Id = long.MaxValue,
+			Email = "missing-provider-audit-user@depot.test",
+			DisplayName = "Missing provider audit user",
+			IsActive = true
+		});
+		var auditFailure = await Record.ExceptionAsync(() =>
+			context.Orders.SaveDraftAsync(context.NewOrder(quantity: 1)));
+		Assert.NotNull(auditFailure);
+		Assert.Equal(orderCountBeforeAuditFailure, await context.ScalarAsync(
+			"SELECT COUNT(*) FROM PurchaseOrders WHERE SupplierId = $SupplierId;",
+			new DatabaseParameter("$SupplierId", context.SupplierId)));
+		Assert.Equal(auditCountBeforeAuditFailure, await context.ScalarAsync(
+			"SELECT COUNT(*) FROM AuditEntries WHERE EntityType = 'PurchaseOrder' AND EntityId IN (SELECT Id FROM PurchaseOrders WHERE SupplierId = $SupplierId);",
+			new DatabaseParameter("$SupplierId", context.SupplierId)));
+
 		async Task<bool> AttemptAsync(string suffix)
 		{
 			try

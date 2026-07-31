@@ -45,10 +45,12 @@ public sealed class PurchaseOrderService
 		}
 		var isNew = draft.Id == 0;
 		var before = isNew ? null : await _orders.GetByIdAsync(draft.Id, cancellationToken);
-		var saved = await _orders.SaveDraftAsync(draft, cancellationToken);
-		if (isNew) await _audit.RecordCreatedAsync(saved.Id, saved, cancellationToken);
-		else if (before is not null) await _audit.RecordUpdatedAsync(saved.Id, before, saved, cancellationToken);
-		return await _orders.GetByIdAsync(saved.Id, cancellationToken) ?? saved;
+		return await _orders.SaveDraftAsync(
+			draft,
+			after => isNew
+				? _audit.CreateCreatedEntry(after.Id, after)
+				: _audit.CreateUpdatedEntry(after.Id, before ?? throw new InvalidOperationException("Purchase order was not found before saving."), after),
+			cancellationToken);
 	}
 
 	public async Task<PurchaseOrder> MarkOrderedAsync(long id, long version, CancellationToken cancellationToken = default) =>
@@ -64,10 +66,13 @@ public sealed class PurchaseOrderService
 	private async Task<PurchaseOrder> ChangeStatusAsync(long id, long version, PurchaseOrderStatus expected, PurchaseOrderStatus status, CancellationToken cancellationToken)
 	{
 		var before = await _orders.GetByIdAsync(id, cancellationToken) ?? throw new InvalidOperationException("Purchase order was not found.");
-		if (!await _orders.SetStatusAsync(id, version, expected, status, cancellationToken)) throw new ConcurrencyConflictException("purchase order");
-		var after = await _orders.GetByIdAsync(id, cancellationToken) ?? throw new InvalidOperationException("Purchase order was not found after the status update.");
-		await _audit.RecordUpdatedAsync(id, before, after, cancellationToken);
-		return after;
+		return await _orders.SetStatusAsync(
+			id,
+			version,
+			expected,
+			status,
+			after => _audit.CreateUpdatedEntry(id, before, after),
+			cancellationToken);
 	}
 
 	private static string? Normalize(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();

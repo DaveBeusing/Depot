@@ -10,6 +10,14 @@ namespace Depot.Repositories;
 
 public sealed class AuditRepository : DatabaseRepository
 {
+	private const string InsertSql =
+		"""
+		INSERT INTO AuditEntries
+		(TimestampUtc, UserId, UserEmail, EntityType, EntityId, Action, BeforeJson, AfterJson)
+		VALUES
+		($TimestampUtc, $UserId, $UserEmail, $EntityType, $EntityId, $Action, $BeforeJson, $AfterJson);
+		""";
+
 	public AuditRepository(DatabaseAccess database)
 		: base(database)
 	{
@@ -17,31 +25,25 @@ public sealed class AuditRepository : DatabaseRepository
 
 	public Task<long> CreateAsync(AuditEntry entry, CancellationToken cancellationToken) =>
 		Database.InsertAsync(
-			"""
-			INSERT INTO AuditEntries
-			(TimestampUtc, UserId, UserEmail, EntityType, EntityId, Action, BeforeJson, AfterJson)
-			VALUES
-			($TimestampUtc, $UserId, $UserEmail, $EntityType, $EntityId, $Action, $BeforeJson, $AfterJson);
-			""",
+			InsertSql,
 			cancellationToken,
-			Parameter("$TimestampUtc", entry.TimestampUtc.ToString("O", CultureInfo.InvariantCulture)),
-			Parameter("$UserId", entry.UserId),
-			Parameter("$UserEmail", entry.UserEmail),
-			Parameter("$EntityType", entry.EntityType),
-			Parameter("$EntityId", entry.EntityId),
-			Parameter("$Action", entry.Action),
-			Parameter("$BeforeJson", entry.BeforeJson),
-			Parameter("$AfterJson", entry.AfterJson));
+			Parameters(entry));
+
+	internal static Task<int> CreateAsync(
+		DatabaseSession session,
+		AuditEntry entry,
+		CancellationToken cancellationToken) =>
+		session.ExecuteAsync(InsertSql, cancellationToken, Parameters(entry));
 
 	public long Create(AuditEntry entry)
 	{
 		return Database.Insert(
-		"""
-		INSERT INTO AuditEntries
-		(TimestampUtc, UserId, UserEmail, EntityType, EntityId, Action, BeforeJson, AfterJson)
-		VALUES
-		($TimestampUtc, $UserId, $UserEmail, $EntityType, $EntityId, $Action, $BeforeJson, $AfterJson);
-		""",
+			InsertSql,
+			Parameters(entry));
+	}
+
+	private static DatabaseParameter[] Parameters(AuditEntry entry) =>
+	[
 		Parameter("$TimestampUtc", entry.TimestampUtc.ToString("O", CultureInfo.InvariantCulture)),
 		Parameter("$UserId", entry.UserId),
 		Parameter("$UserEmail", entry.UserEmail),
@@ -49,6 +51,6 @@ public sealed class AuditRepository : DatabaseRepository
 		Parameter("$EntityId", entry.EntityId),
 		Parameter("$Action", entry.Action),
 		Parameter("$BeforeJson", entry.BeforeJson),
-		Parameter("$AfterJson", entry.AfterJson));
-	}
+		Parameter("$AfterJson", entry.AfterJson)
+	];
 }

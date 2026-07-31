@@ -50,7 +50,10 @@ public sealed class PurchaseOrderRepository : DatabaseRepository
 			"SELECT pol.Id, pol.PurchaseOrderId, pol.LineNumber, pol.ItemId, i.PartNumber, i.Description, pol.Quantity, pol.UnitPrice, pol.ReceivedQuantity, pol.Version FROM PurchaseOrderLines pol INNER JOIN Items i ON i.Id = pol.ItemId WHERE pol.PurchaseOrderId = $PurchaseOrderId ORDER BY pol.LineNumber;",
 			ReadLine, cancellationToken, Parameter("$PurchaseOrderId", purchaseOrderId));
 
-	public Task<PurchaseOrder> SaveDraftAsync(PurchaseOrder order, CancellationToken cancellationToken) =>
+	public Task<PurchaseOrder> SaveDraftAsync(
+		PurchaseOrder order,
+		Func<PurchaseOrder, AuditEntry> createAuditEntry,
+		CancellationToken cancellationToken) =>
 		Database.ExecuteInWriteTransactionAsync(async (session, token) =>
 		{
 			if (order.Id == 0)
@@ -89,11 +92,53 @@ public sealed class PurchaseOrderRepository : DatabaseRepository
 					line.Version++;
 				}
 			}
-			return order;
+			var saved = await GetByIdAsync(session, order.Id, token)
+				?? throw new InvalidOperationException("Purchase order was not found after saving.");
+			await AuditRepository.CreateAsync(session, createAuditEntry(saved), token);
+			return saved;
 		}, cancellationToken);
 
-	public async Task<bool> SetStatusAsync(long id, long version, PurchaseOrderStatus expected, PurchaseOrderStatus status, CancellationToken cancellationToken) =>
-		await Database.ExecuteAsync("UPDATE PurchaseOrders SET Status = $Status, Version = Version + 1 WHERE Id = $Id AND Version = $Version AND Status = $Expected;", cancellationToken, Parameter("$Status", (int)status), Parameter("$Id", id), Parameter("$Version", version), Parameter("$Expected", (int)expected)) == 1;
+	public Task<PurchaseOrder> SetStatusAsync(
+		long id,
+		long version,
+		PurchaseOrderStatus expected,
+		PurchaseOrderStatus status,
+		Func<PurchaseOrder, AuditEntry> createAuditEntry,
+		CancellationToken cancellationToken) =>
+		Database.ExecuteInWriteTransactionAsync(async (session, token) =>
+		{
+			var updated = await session.ExecuteAsync(
+				"UPDATE PurchaseOrders SET Status = $Status, Version = Version + 1 WHERE Id = $Id AND Version = $Version AND Status = $Expected;",
+				token,
+				Parameter("$Status", (int)status),
+				Parameter("$Id", id),
+				Parameter("$Version", version),
+				Parameter("$Expected", (int)expected));
+			if (updated != 1) throw new ConcurrencyConflictException("purchase order");
+			var saved = await GetByIdAsync(session, id, token)
+				?? throw new InvalidOperationException("Purchase order was not found after the status update.");
+			await AuditRepository.CreateAsync(session, createAuditEntry(saved), token);
+			return saved;
+		}, cancellationToken);
+
+	private static async Task<PurchaseOrder?> GetByIdAsync(
+		DatabaseSession session,
+		long id,
+		CancellationToken cancellationToken)
+	{
+		var order = await session.QuerySingleOrDefaultAsync(
+			$"SELECT {Columns} {From} WHERE po.Id = $Id;",
+			ReadOrder,
+			cancellationToken,
+			Parameter("$Id", id));
+		if (order is null) return null;
+		order.Lines = await session.QueryAsync(
+			"SELECT pol.Id, pol.PurchaseOrderId, pol.LineNumber, pol.ItemId, i.PartNumber, i.Description, pol.Quantity, pol.UnitPrice, pol.ReceivedQuantity, pol.Version FROM PurchaseOrderLines pol INNER JOIN Items i ON i.Id = pol.ItemId WHERE pol.PurchaseOrderId = $PurchaseOrderId ORDER BY pol.LineNumber;",
+			ReadLine,
+			cancellationToken,
+			Parameter("$PurchaseOrderId", id));
+		return order;
+	}
 
 	private static PurchaseOrder ReadOrder(DbDataReader reader) => new()
 	{

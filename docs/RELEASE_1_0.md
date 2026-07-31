@@ -37,6 +37,7 @@ Depot is currently `0.9.1-preview` with database schema version **16**. Checked 
 - [x] Supplier create, edit, search, activate, and deactivate
 - [x] SupplierItem many-to-many assignments and preferred supplier
 - [x] Purchase-order drafts, lines, generated order numbers, status changes, search, and filters
+- [x] Atomic purchase-order create/edit/order/cancel and before/after audit writes
 - [x] Partial and final goods receipts
 - [x] Required invoice metadata and invoice-document validation
 - [x] Atomic receipt, received quantity, stock movement, order status, and receipt audit writes

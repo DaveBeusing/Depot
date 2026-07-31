@@ -16,6 +16,7 @@ internal sealed class ProcurementTestContext : IAsyncDisposable
 	private readonly bool _cleanDatabaseRows;
 	private PurchaseOrderService? _orders;
 	private GoodsReceiptService? _receipts;
+	private AuthorizationService? _authorization;
 
 	private ProcurementTestContext(
 		IDatabaseConnectionFactory connectionFactory,
@@ -32,6 +33,7 @@ internal sealed class ProcurementTestContext : IAsyncDisposable
 	public DatabaseAccess Data { get; }
 	public PurchaseOrderService Orders => _orders ?? throw new InvalidOperationException("The purchase order service was not initialized.");
 	public GoodsReceiptService Receipts => _receipts ?? throw new InvalidOperationException("The goods receipt service was not initialized.");
+	public AuthorizationService Authorization => _authorization ?? throw new InvalidOperationException("Authorization was not initialized.");
 	public long SupplierId { get; private set; }
 	public long InactiveSupplierId { get; private set; }
 	public long ItemId { get; private set; }
@@ -170,6 +172,7 @@ internal sealed class ProcurementTestContext : IAsyncDisposable
 		var administrator = await new UserRepository(context.Data).GetByEmailAsync("admin@depot.local", CancellationToken.None)
 			?? throw new InvalidOperationException("The default administrator was not initialized.");
 		authorization.SignIn(administrator);
+		context._authorization = authorization;
 		var audit = new AuditService(new AuditRepository(context.Data), authorization);
 		context._orders = new PurchaseOrderService(
 			new PurchaseOrderRepository(context.Data),
