@@ -22,7 +22,7 @@ The project is under active development on the `0.9.1-preview` line. Implemented
 - Normalized item master data: manufacturer, category, unit of measure, and packaging
 - Supplier categories, suppliers, and many-to-many `SupplierItem` assignments with supplier-specific commercial data
 - Purchase orders and lines with automatic `PO-xxxxxx` numbering, status workflow, search, and filtering
-- Invoice-backed goods receipts, including partial receipts and automatic purchase-order status updates
+- Delivery-note-based goods receipts with receipt date, receiving user, partial receipts, and automatic purchase-order status updates
 - Atomic goods-receipt posting across receipt records, received quantities, stock movements, and order status
 - Excel import, report search, grouped reports, and Excel export
 - Audit persistence for relevant create/update operations
@@ -63,7 +63,7 @@ SQL Server and MySQL/MariaDB support is implemented in code, but live-server mig
 - Multi-client concurrency and long-running load tests against server providers
 - Large-data acceptance tests with at least 100,000 records
 - Complete UI, accessibility, keyboard-navigation, localization, packaging, and upgrade testing
-- Security review of deployment defaults, credentials, invoice-document paths, logs, and backup retention
+- Security review of deployment defaults, credentials, retained legacy invoice-path data, logs, and backup retention
 
 ## Architecture
 
@@ -119,7 +119,7 @@ dotnet build Depot.slnx
 dotnet run --project src/Depot/Depot.csproj
 ```
 
-The first installation uses local SQLite and creates `depot.db`. The current database schema version is **16**.
+The first installation uses local SQLite and creates `depot.db`. The current database schema version is **17**.
 
 Connection and backup settings are stored in `depot.settings`. The file is a JSON envelope with a DPAPI-encrypted payload for the current Windows user. Administration > Database can configure, test, and activate SQLite, SQL Server, or MySQL/MariaDB connections. Provider changes take effect after restarting Depot. Connection attempts and failures are written to `depot.database.log` without connection strings or passwords.
 

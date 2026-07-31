@@ -38,8 +38,8 @@ public sealed class GoodsReceiptRepository : DatabaseRepository
 
 			var temporaryNumber = $"PENDING-{Guid.NewGuid():N}";
 			receipt.Id = await session.InsertAsync(
-				"INSERT INTO GoodsReceipts (ReceiptNumber, PurchaseOrderId, ReceiptDate, InvoiceNumber, InvoiceDate, InvoiceDocumentPath, Notes) VALUES ($ReceiptNumber, $PurchaseOrderId, $ReceiptDate, $InvoiceNumber, $InvoiceDate, $InvoiceDocumentPath, $Notes);",
-				token, Parameter("$ReceiptNumber", temporaryNumber), Parameter("$PurchaseOrderId", receipt.PurchaseOrderId), Parameter("$ReceiptDate", Date(receipt.ReceiptDate)), Parameter("$InvoiceNumber", receipt.InvoiceNumber), Parameter("$InvoiceDate", Date(receipt.InvoiceDate)), Parameter("$InvoiceDocumentPath", receipt.InvoiceDocumentPath), Parameter("$Notes", receipt.Notes));
+				"INSERT INTO GoodsReceipts (ReceiptNumber, PurchaseOrderId, ReceiptDate, SupplierDeliveryNoteNumber, ReceivedByUserId, Notes) VALUES ($ReceiptNumber, $PurchaseOrderId, $ReceiptDate, $SupplierDeliveryNoteNumber, $ReceivedByUserId, $Notes);",
+				token, Parameter("$ReceiptNumber", temporaryNumber), Parameter("$PurchaseOrderId", receipt.PurchaseOrderId), Parameter("$ReceiptDate", Date(receipt.ReceiptDate)), Parameter("$SupplierDeliveryNoteNumber", receipt.SupplierDeliveryNoteNumber), Parameter("$ReceivedByUserId", receipt.ReceivedByUserId), Parameter("$Notes", receipt.Notes));
 			receipt.ReceiptNumber = $"GR-{receipt.Id:000000}";
 			await session.ExecuteAsync("UPDATE GoodsReceipts SET ReceiptNumber = $ReceiptNumber WHERE Id = $Id;", token, Parameter("$ReceiptNumber", receipt.ReceiptNumber), Parameter("$Id", receipt.Id));
 
@@ -62,7 +62,7 @@ public sealed class GoodsReceiptRepository : DatabaseRepository
 				if (updated != 1) throw new ConcurrencyConflictException("purchase order line receipt");
 				await session.InsertAsync(
 					"INSERT INTO StockMovements (InventoryId, ReasonCodeId, MovementType, TimestampUtc, Quantity, UnitPrice, Reference, Notes) VALUES ($InventoryId, $ReasonCodeId, $MovementType, $TimestampUtc, $Quantity, $UnitPrice, $Reference, $Notes);",
-					token, Parameter("$InventoryId", line.InventoryId), Parameter("$ReasonCodeId", reasonCodeId), Parameter("$MovementType", (int)StockMovementType.Purchase), Parameter("$TimestampUtc", DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture)), Parameter("$Quantity", line.Quantity), Parameter("$UnitPrice", orderLine.UnitPrice), Parameter("$Reference", receipt.ReceiptNumber), Parameter("$Notes", $"Invoice {receipt.InvoiceNumber}"));
+					token, Parameter("$InventoryId", line.InventoryId), Parameter("$ReasonCodeId", reasonCodeId), Parameter("$MovementType", (int)StockMovementType.Purchase), Parameter("$TimestampUtc", DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture)), Parameter("$Quantity", line.Quantity), Parameter("$UnitPrice", orderLine.UnitPrice), Parameter("$Reference", receipt.ReceiptNumber), Parameter("$Notes", $"Delivery note {receipt.SupplierDeliveryNoteNumber}"));
 			}
 
 			var openLines = Convert.ToInt64(await session.ExecuteScalarAsync("SELECT COUNT(*) FROM PurchaseOrderLines WHERE PurchaseOrderId = $PurchaseOrderId AND ReceivedQuantity < Quantity;", token, Parameter("$PurchaseOrderId", receipt.PurchaseOrderId)), CultureInfo.InvariantCulture);

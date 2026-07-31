@@ -83,6 +83,11 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 				MigrateReasonCodesToTechnicalKeys(command);
 				version = 16;
 			}
+			if (version == 16)
+			{
+				MigrateGoodsReceiptsToDeliveryDocuments(command);
+				version = 17;
+			}
 			if (version != DatabaseVersion.CurrentVersion)
 			{
 				throw new InvalidOperationException(
@@ -95,6 +100,33 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 			releaseCommand.CommandText = "SELECT RELEASE_LOCK('Depot.SchemaMigration');";
 			releaseCommand.ExecuteScalar();
 		}
+	}
+
+	private static void MigrateGoodsReceiptsToDeliveryDocuments(System.Data.Common.DbCommand command)
+	{
+		if (!ColumnExists(command, "GoodsReceipts", "SupplierDeliveryNoteNumber"))
+			Execute(command, "ALTER TABLE GoodsReceipts ADD COLUMN SupplierDeliveryNoteNumber varchar(100) NULL;");
+		if (!ColumnExists(command, "GoodsReceipts", "ReceivedByUserId"))
+			Execute(command, "ALTER TABLE GoodsReceipts ADD COLUMN ReceivedByUserId bigint NULL;");
+		Execute(
+			command,
+			"""
+			UPDATE GoodsReceipts gr
+			SET gr.SupplierDeliveryNoteNumber = CONCAT('LEGACY-', gr.ReceiptNumber),
+				gr.ReceivedByUserId = COALESCE(
+					(SELECT ae.UserId FROM AuditEntries ae INNER JOIN Users auditUser ON auditUser.Id = ae.UserId WHERE ae.EntityType = 'GoodsReceipt' AND ae.EntityId = gr.Id AND ae.UserId IS NOT NULL ORDER BY ae.Id LIMIT 1),
+					(SELECT Id FROM Users WHERE Email = 'admin@depot.local' LIMIT 1),
+					(SELECT MIN(Id) FROM Users))
+			WHERE gr.SupplierDeliveryNoteNumber IS NULL OR gr.ReceivedByUserId IS NULL;
+			""");
+		Execute(command, "ALTER TABLE GoodsReceipts MODIFY COLUMN SupplierDeliveryNoteNumber varchar(100) NOT NULL;");
+		Execute(command, "ALTER TABLE GoodsReceipts MODIFY COLUMN ReceivedByUserId bigint NOT NULL;");
+		Execute(command, "ALTER TABLE GoodsReceipts MODIFY COLUMN InvoiceNumber varchar(100) NULL;");
+		Execute(command, "ALTER TABLE GoodsReceipts MODIFY COLUMN InvoiceDate varchar(10) NULL;");
+		EnsureIndex(command, "GoodsReceipts", "IX_GoodsReceipts_ReceivedByUserId", "ReceivedByUserId");
+		if (!ConstraintExists(command, "GoodsReceipts", "FK_GoodsReceipts_ReceivedByUsers"))
+			Execute(command, "ALTER TABLE GoodsReceipts ADD CONSTRAINT FK_GoodsReceipts_ReceivedByUsers FOREIGN KEY (ReceivedByUserId) REFERENCES Users(Id);");
+		Execute(command, "UPDATE DatabaseInfo SET Version = 17 WHERE Id = 1;");
 	}
 
 	private static void MigrateReasonCodesToTechnicalKeys(System.Data.Common.DbCommand command)
@@ -478,7 +510,7 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 	"""
 	CREATE TABLE IF NOT EXISTS PurchaseOrders (Id bigint NOT NULL AUTO_INCREMENT PRIMARY KEY, OrderNumber varchar(50) NOT NULL UNIQUE, SupplierId bigint NOT NULL, OrderDate varchar(10) NOT NULL, ExpectedDeliveryDate varchar(10) NULL, Notes text NULL, Status int NOT NULL DEFAULT 1, Version bigint NOT NULL DEFAULT 1, INDEX IX_PurchaseOrders_SupplierId_Status (SupplierId, Status), INDEX IX_PurchaseOrders_OrderDate (OrderDate), CONSTRAINT FK_PurchaseOrders_Suppliers FOREIGN KEY (SupplierId) REFERENCES Suppliers(Id)) ENGINE=InnoDB;
 	CREATE TABLE IF NOT EXISTS PurchaseOrderLines (Id bigint NOT NULL AUTO_INCREMENT PRIMARY KEY, PurchaseOrderId bigint NOT NULL, LineNumber int NOT NULL, ItemId bigint NOT NULL, Quantity int NOT NULL, UnitPrice decimal(18,2) NOT NULL DEFAULT 0, ReceivedQuantity int NOT NULL DEFAULT 0, Version bigint NOT NULL DEFAULT 1, UNIQUE KEY UQ_PurchaseOrderLines_Number (PurchaseOrderId, LineNumber), UNIQUE KEY UQ_PurchaseOrderLines_Item (PurchaseOrderId, ItemId), INDEX IX_PurchaseOrderLines_ItemId (ItemId), CONSTRAINT CK_PurchaseOrderLines_Quantity CHECK (Quantity > 0 AND ReceivedQuantity >= 0 AND ReceivedQuantity <= Quantity), CONSTRAINT FK_PurchaseOrderLines_Orders FOREIGN KEY (PurchaseOrderId) REFERENCES PurchaseOrders(Id), CONSTRAINT FK_PurchaseOrderLines_Items FOREIGN KEY (ItemId) REFERENCES Items(Id)) ENGINE=InnoDB;
-	CREATE TABLE IF NOT EXISTS GoodsReceipts (Id bigint NOT NULL AUTO_INCREMENT PRIMARY KEY, ReceiptNumber varchar(50) NOT NULL UNIQUE, PurchaseOrderId bigint NOT NULL, ReceiptDate varchar(10) NOT NULL, InvoiceNumber varchar(100) NOT NULL, InvoiceDate varchar(10) NOT NULL, InvoiceDocumentPath varchar(1000) NULL, Notes text NULL, INDEX IX_GoodsReceipts_PurchaseOrderId (PurchaseOrderId), CONSTRAINT FK_GoodsReceipts_Orders FOREIGN KEY (PurchaseOrderId) REFERENCES PurchaseOrders(Id)) ENGINE=InnoDB;
+	CREATE TABLE IF NOT EXISTS GoodsReceipts (Id bigint NOT NULL AUTO_INCREMENT PRIMARY KEY, ReceiptNumber varchar(50) NOT NULL UNIQUE, PurchaseOrderId bigint NOT NULL, ReceiptDate varchar(10) NOT NULL, SupplierDeliveryNoteNumber varchar(100) NOT NULL, ReceivedByUserId bigint NOT NULL, InvoiceNumber varchar(100) NULL, InvoiceDate varchar(10) NULL, InvoiceDocumentPath varchar(1000) NULL, Notes text NULL, INDEX IX_GoodsReceipts_PurchaseOrderId (PurchaseOrderId), INDEX IX_GoodsReceipts_ReceivedByUserId (ReceivedByUserId), CONSTRAINT FK_GoodsReceipts_Orders FOREIGN KEY (PurchaseOrderId) REFERENCES PurchaseOrders(Id), CONSTRAINT FK_GoodsReceipts_ReceivedByUsers FOREIGN KEY (ReceivedByUserId) REFERENCES Users(Id)) ENGINE=InnoDB;
 	CREATE TABLE IF NOT EXISTS GoodsReceiptLines (Id bigint NOT NULL AUTO_INCREMENT PRIMARY KEY, GoodsReceiptId bigint NOT NULL, PurchaseOrderLineId bigint NOT NULL, InventoryId bigint NOT NULL, Quantity int NOT NULL, UNIQUE KEY UQ_GoodsReceiptLines_OrderLine (GoodsReceiptId, PurchaseOrderLineId), INDEX IX_GoodsReceiptLines_InventoryId (InventoryId), CONSTRAINT CK_GoodsReceiptLines_Quantity CHECK (Quantity > 0), CONSTRAINT FK_GoodsReceiptLines_Receipts FOREIGN KEY (GoodsReceiptId) REFERENCES GoodsReceipts(Id), CONSTRAINT FK_GoodsReceiptLines_OrderLines FOREIGN KEY (PurchaseOrderLineId) REFERENCES PurchaseOrderLines(Id), CONSTRAINT FK_GoodsReceiptLines_Inventories FOREIGN KEY (InventoryId) REFERENCES Inventories(Id)) ENGINE=InnoDB;
 	""";
 

@@ -25,9 +25,9 @@ public sealed class ProcurementViewModel : BaseViewModel, IDisposable
 	private PurchaseOrderStatusFilter _selectedStatusFilter;
 	private int _lineQuantity = 1;
 	private decimal _lineUnitPrice;
-	private string _invoiceNumber = string.Empty;
-	private DateTime _invoiceDate = DateTime.Today;
-	private string? _invoiceDocumentPath;
+	private string _supplierDeliveryNoteNumber = string.Empty;
+	private DateTime _receiptDate = DateTime.Today;
+	private string? _receiptNotes;
 
 	public ProcurementViewModel(PurchaseOrderService orders, GoodsReceiptService receipts, SupplierService suppliers, ItemService items, IFileDialogService fileDialogs)
 	{
@@ -41,7 +41,6 @@ public sealed class ProcurementViewModel : BaseViewModel, IDisposable
 		AddLineCommand = new RelayCommand(AddOrUpdateLine, () => IsDraft && SelectedItem is not null);
 		RemoveLineCommand = new RelayCommand(RemoveLine, () => IsDraft && SelectedLine is not null);
 		PostReceiptCommand = new AsyncRelayCommand(PostReceiptAsync, () => CanReceive);
-		BrowseInvoiceCommand = new RelayCommand(BrowseInvoice);
 	}
 
 	public ObservableCollection<PurchaseOrder> Orders { get; } = new();
@@ -57,7 +56,6 @@ public sealed class ProcurementViewModel : BaseViewModel, IDisposable
 	public RelayCommand AddLineCommand { get; }
 	public RelayCommand RemoveLineCommand { get; }
 	public AsyncRelayCommand PostReceiptCommand { get; }
-	public RelayCommand BrowseInvoiceCommand { get; }
 
 	public PurchaseOrder Draft { get => _draft; private set { _draft = value; OnPropertyChanged(); OnPropertyChanged(nameof(IsDraft)); OnPropertyChanged(nameof(IsOrderReadOnly)); RaiseCommands(); } }
 	public bool IsDraft => Draft.Status == PurchaseOrderStatus.Draft;
@@ -86,9 +84,9 @@ public sealed class ProcurementViewModel : BaseViewModel, IDisposable
 	public Item? SelectedItem { get => _selectedItem; set { if (_selectedItem == value) return; _selectedItem = value; OnPropertyChanged(); AddLineCommand.RaiseCanExecuteChanged(); } }
 	public int LineQuantity { get => _lineQuantity; set { if (_lineQuantity == value) return; _lineQuantity = value; OnPropertyChanged(); } }
 	public decimal LineUnitPrice { get => _lineUnitPrice; set { if (_lineUnitPrice == value) return; _lineUnitPrice = value; OnPropertyChanged(); } }
-	public string InvoiceNumber { get => _invoiceNumber; set { if (_invoiceNumber == value) return; _invoiceNumber = value; OnPropertyChanged(); } }
-	public DateTime InvoiceDate { get => _invoiceDate; set { if (_invoiceDate == value) return; _invoiceDate = value; OnPropertyChanged(); } }
-	public string? InvoiceDocumentPath { get => _invoiceDocumentPath; set { if (_invoiceDocumentPath == value) return; _invoiceDocumentPath = value; OnPropertyChanged(); } }
+	public string SupplierDeliveryNoteNumber { get => _supplierDeliveryNoteNumber; set { if (_supplierDeliveryNoteNumber == value) return; _supplierDeliveryNoteNumber = value; OnPropertyChanged(); } }
+	public DateTime ReceiptDate { get => _receiptDate; set { if (_receiptDate == value) return; _receiptDate = value; OnPropertyChanged(); } }
+	public string? ReceiptNotes { get => _receiptNotes; set { if (_receiptNotes == value) return; _receiptNotes = value; OnPropertyChanged(); } }
 
 	public async Task LoadAsync(CancellationToken cancellationToken = default)
 	{
@@ -151,11 +149,6 @@ public sealed class ProcurementViewModel : BaseViewModel, IDisposable
 		if (!_fileDialogs.Confirm(new ConfirmationDialogRequest("Cancel Purchase Order", $"Cancel purchase order {Draft.OrderNumber}?", true))) return;
 		await ChangeStatusAsync(() => _orders.CancelAsync(Draft.Id, Draft.Version, cancellationToken), "Purchase order cancelled", cancellationToken);
 	}
-	private void BrowseInvoice()
-	{
-		var path = _fileDialogs.ShowOpenFile(new OpenFileDialogRequest("Select Invoice Document", "Invoice documents (*.pdf;*.xml)|*.pdf;*.xml|All files (*.*)|*.*"));
-		if (path is not null) InvoiceDocumentPath = path;
-	}
 	private async Task ChangeStatusAsync(Func<Task<PurchaseOrder>> action, string message, CancellationToken cancellationToken)
 	{
 		BeginOperation("Updating purchase order status");
@@ -165,7 +158,7 @@ public sealed class ProcurementViewModel : BaseViewModel, IDisposable
 
 	private async Task BuildReceiptLinesAsync(PurchaseOrder order)
 	{
-		ReceiptLines.Clear(); InvoiceNumber = string.Empty; InvoiceDate = DateTime.Today; InvoiceDocumentPath = null;
+		ReceiptLines.Clear(); SupplierDeliveryNoteNumber = string.Empty; ReceiptDate = DateTime.Today; ReceiptNotes = null;
 		if (order.Status is not (PurchaseOrderStatus.Ordered or PurchaseOrderStatus.PartiallyReceived)) return;
 		foreach (var line in order.Lines.Where(line => line.OpenQuantity > 0))
 		{
@@ -181,7 +174,7 @@ public sealed class ProcurementViewModel : BaseViewModel, IDisposable
 		try
 		{
 			var lines = ReceiptLines.Where(line => line.Quantity > 0).Select(line => new GoodsReceiptLine { PurchaseOrderLineId = line.PurchaseOrderLineId, InventoryId = line.SelectedInventory?.InventoryId ?? 0, Quantity = line.Quantity }).ToArray();
-			var receipt = new GoodsReceipt { PurchaseOrderId = SelectedOrder.Id, ReceiptDate = DateTime.Today, InvoiceNumber = InvoiceNumber, InvoiceDate = InvoiceDate, InvoiceDocumentPath = InvoiceDocumentPath, Lines = lines };
+			var receipt = new GoodsReceipt { PurchaseOrderId = SelectedOrder.Id, ReceiptDate = ReceiptDate, SupplierDeliveryNoteNumber = SupplierDeliveryNoteNumber, Notes = ReceiptNotes, Lines = lines };
 			await _receipts.PostAsync(receipt, cancellationToken); await LoadOrdersAsync(cancellationToken); SelectedOrder = Orders.FirstOrDefault(order => order.Id == receipt.PurchaseOrderId); CompleteOperation(false, $"Goods receipt {receipt.ReceiptNumber} posted");
 		}
 		catch (Exception exception) when (exception is not OperationCanceledException) { FailOperation(exception, "Goods receipt could not be posted"); }

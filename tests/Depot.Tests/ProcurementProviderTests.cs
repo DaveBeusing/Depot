@@ -79,7 +79,7 @@ public sealed class ProcurementProviderTests
 			try
 			{
 				var receipt = context.NewReceipt(order, 4);
-				receipt.InvoiceNumber = $"INV-{factory.Provider}-{suffix}-{Guid.NewGuid():N}";
+				receipt.SupplierDeliveryNoteNumber = $"DN-{factory.Provider}-{suffix}-{Guid.NewGuid():N}";
 				await context.Receipts.PostAsync(receipt);
 				return true;
 			}

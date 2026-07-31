@@ -23,7 +23,7 @@ public sealed class ReasonCodeMigrationTests : IDisposable
 
 		using var connection = new SqliteConnection($"Data Source={_databasePath};Foreign Keys=True");
 		connection.Open();
-		Assert.Equal(16L, Scalar(connection, "SELECT Version FROM DatabaseInfo;"));
+		Assert.Equal(DatabaseVersion.CurrentVersion, Scalar(connection, "SELECT Version FROM DatabaseInfo;"));
 		Assert.Equal(7L, Scalar(connection, "SELECT ReasonCodeId FROM StockMovements WHERE Id = 100;"));
 		Assert.Equal(8L, Scalar(connection, "SELECT ReasonCodeId FROM StockMovements WHERE Id = 101;"));
 		Assert.Equal(1L, Scalar(connection, "SELECT COUNT(*) FROM ReasonCodes WHERE Id = 7 AND Code = 'GOODS_RECEIPT' AND IsSystem = 1 AND IsActive = 1;"));

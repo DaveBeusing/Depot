@@ -244,6 +244,12 @@ public sealed class ProcurementTests
 		Assert.True(receipt.Id > 0);
 		Assert.Matches("^GR-[0-9]{6}$", receipt.ReceiptNumber);
 		Assert.Equal(order.Id, receipt.PurchaseOrderId);
+		Assert.Equal(context.Authorization.CurrentUser?.Id, receipt.ReceivedByUserId);
+		Assert.Equal(1, await context.ScalarAsync(
+			"SELECT COUNT(*) FROM GoodsReceipts WHERE Id = $Id AND SupplierDeliveryNoteNumber = $DeliveryNote AND ReceivedByUserId = $UserId AND InvoiceNumber IS NULL AND InvoiceDate IS NULL AND InvoiceDocumentPath IS NULL;",
+			new DatabaseParameter("$Id", receipt.Id),
+			new DatabaseParameter("$DeliveryNote", receipt.SupplierDeliveryNoteNumber),
+			new DatabaseParameter("$UserId", receipt.ReceivedByUserId)));
 	}
 
 	[Fact]
@@ -401,6 +407,16 @@ public sealed class ProcurementTests
 		Assert.Equal(1, await context.ScalarAsync(
 			"SELECT COUNT(*) FROM GoodsReceipts gr INNER JOIN GoodsReceiptLines grl ON grl.GoodsReceiptId = gr.Id INNER JOIN StockMovements sm ON sm.Reference = gr.ReceiptNumber WHERE gr.Id = $Id;",
 			new DatabaseParameter("$Id", receipt.Id)));
+		var auditJson = await context.Data.QuerySingleOrDefaultAsync(
+			"SELECT AfterJson FROM AuditEntries WHERE EntityType = 'GoodsReceipt' AND EntityId = $Id;",
+			reader => reader.GetString(0),
+			CancellationToken.None,
+			new DatabaseParameter("$Id", receipt.Id)) ?? throw new InvalidOperationException();
+		using var auditDocument = JsonDocument.Parse(auditJson);
+		var after = auditDocument.RootElement;
+		Assert.Equal(receipt.SupplierDeliveryNoteNumber, after.GetProperty("supplierDeliveryNoteNumber").GetString());
+		Assert.Equal(receipt.ReceivedByUserId, after.GetProperty("receivedByUserId").GetInt64());
+		Assert.False(after.TryGetProperty("invoiceNumber", out _));
 	}
 
 	[Fact]
@@ -421,7 +437,7 @@ public sealed class ProcurementTests
 			try
 			{
 				var receipt = context.NewReceipt(order, 4);
-				receipt.InvoiceNumber = $"INV-CONCURRENT-{suffix}";
+				receipt.SupplierDeliveryNoteNumber = $"DN-CONCURRENT-{suffix}";
 				await context.Receipts.PostAsync(receipt);
 				return true;
 			}
@@ -433,12 +449,25 @@ public sealed class ProcurementTests
 	}
 
 	[Fact]
-	public async Task GoodsReceiptRequiresInvoiceDocumentBeforeStartingTransaction()
+	public async Task GoodsReceiptRequiresSupplierDeliveryNoteBeforeStartingTransaction()
 	{
 		await using var context = await ProcurementTestContext.CreateSqliteAsync();
 		var order = await CreateOrderedOrderAsync(context, 2);
 		var receipt = context.NewReceipt(order, 1);
-		receipt.InvoiceDocumentPath = null;
+		receipt.SupplierDeliveryNoteNumber = string.Empty;
+
+		await Assert.ThrowsAsync<ArgumentException>(() => context.Receipts.PostAsync(receipt));
+
+		Assert.Equal(0, await context.ScalarAsync("SELECT COUNT(*) FROM GoodsReceipts;"));
+	}
+
+	[Fact]
+	public async Task GoodsReceiptDateCannotBeInTheFuture()
+	{
+		await using var context = await ProcurementTestContext.CreateSqliteAsync();
+		var order = await CreateOrderedOrderAsync(context, 2);
+		var receipt = context.NewReceipt(order, 1);
+		receipt.ReceiptDate = DateTime.Today.AddDays(1);
 
 		await Assert.ThrowsAsync<ArgumentException>(() => context.Receipts.PostAsync(receipt));
 

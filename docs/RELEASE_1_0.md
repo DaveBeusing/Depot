@@ -4,7 +4,7 @@
 
 - [ ] Ready for release
 
-Depot is currently `0.9.1-preview` with database schema version **16**. Checked implementation items below mean code exists on `master`; they do not replace the outstanding release verification.
+Depot is currently `0.9.1-preview` with database schema version **17**. Checked implementation items below mean code exists on `master`; they do not replace the outstanding release verification.
 
 ## Implemented and covered by automated tests
 
@@ -39,7 +39,7 @@ Depot is currently `0.9.1-preview` with database schema version **16**. Checked 
 - [x] Purchase-order drafts, lines, generated order numbers, status changes, search, and filters
 - [x] Atomic purchase-order create/edit/order/cancel and before/after audit writes
 - [x] Partial and final goods receipts
-- [x] Required invoice metadata and invoice-document validation
+- [x] Delivery-note number, receipt date, receiving user, notes, destination, and quantity validation
 - [x] Atomic receipt, received quantity, stock movement, order status, and receipt audit writes
 - [x] Over-receipt rollback
 - [x] Concurrent goods receipts cannot over-receive an order line
@@ -103,7 +103,7 @@ Depot is currently `0.9.1-preview` with database schema version **16**. Checked 
 - [ ] Warehouse/storage-location migration and editing verified
 - [ ] Stock receipts, issues, corrections, and opening balances verified
 - [ ] Purchase-order edit/cancel/status workflow verified
-- [ ] Partial receipts and invoice-document selection verified
+- [ ] Partial receipts and delivery-note entry verified
 - [ ] Import and all reports verified with representative customer data
 - [ ] Backup validation, restore, safety backup, and scheduled backup verified
 - [ ] Corrupted backup, unavailable path, locked file, and interrupted operation behavior verified
@@ -124,7 +124,7 @@ Depot is currently `0.9.1-preview` with database schema version **16**. Checked 
 - [ ] `depot.settings` encryption and Windows-user behavior reviewed
 - [ ] Logs reviewed for connection strings, passwords, invoice data, and personal data
 - [ ] Backup permissions, retention, and recovery procedure documented
-- [ ] Invoice-document path lifecycle and access permissions reviewed
+- [ ] Retained legacy invoice data and future SupplierInvoice migration strategy reviewed
 - [ ] Database least-privilege requirements documented for server providers
 
 ### Release engineering
@@ -133,6 +133,6 @@ Depot is currently `0.9.1-preview` with database schema version **16**. Checked 
 - [ ] All automated tests pass on the release commit
 - [ ] Supported Windows versions tested
 - [ ] Application version finalized in `Directory.Build.props`
-- [ ] Database schema remains version 16 or migration notes are updated
+- [ ] Database schema remains version 17 or migration notes are updated
 - [ ] Installer/package, signing, upgrade, rollback, and uninstall tested
 - [ ] Release notes and known limitations published

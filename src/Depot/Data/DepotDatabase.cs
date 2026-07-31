@@ -392,10 +392,12 @@ public sealed class DepotDatabase : IDatabaseInitializer
 		CREATE TABLE IF NOT EXISTS GoodsReceipts
 		(
 			Id INTEGER PRIMARY KEY AUTOINCREMENT, ReceiptNumber TEXT NOT NULL UNIQUE, PurchaseOrderId INTEGER NOT NULL,
-			ReceiptDate TEXT NOT NULL, InvoiceNumber TEXT NOT NULL, InvoiceDate TEXT NOT NULL,
-			InvoiceDocumentPath TEXT, Notes TEXT, FOREIGN KEY(PurchaseOrderId) REFERENCES PurchaseOrders(Id)
+			ReceiptDate TEXT NOT NULL, SupplierDeliveryNoteNumber TEXT NOT NULL, ReceivedByUserId INTEGER NOT NULL,
+			InvoiceNumber TEXT NULL, InvoiceDate TEXT NULL, InvoiceDocumentPath TEXT NULL, Notes TEXT NULL,
+			FOREIGN KEY(PurchaseOrderId) REFERENCES PurchaseOrders(Id), FOREIGN KEY(ReceivedByUserId) REFERENCES Users(Id)
 		);
 		CREATE INDEX IF NOT EXISTS IX_GoodsReceipts_PurchaseOrderId ON GoodsReceipts(PurchaseOrderId);
+		CREATE INDEX IF NOT EXISTS IX_GoodsReceipts_ReceivedByUserId ON GoodsReceipts(ReceivedByUserId);
 		CREATE TABLE IF NOT EXISTS GoodsReceiptLines
 		(
 			Id INTEGER PRIMARY KEY AUTOINCREMENT, GoodsReceiptId INTEGER NOT NULL, PurchaseOrderLineId INTEGER NOT NULL,
@@ -800,6 +802,13 @@ public sealed class DepotDatabase : IDatabaseInitializer
 			migratedVersion = 16;
 		}
 
+		if (migratedVersion == 16)
+		{
+			MigrateGoodsReceiptsToDeliveryDocuments(connection);
+			SetDatabaseVersion(connection, 17);
+			migratedVersion = 17;
+		}
+
 		if (migratedVersion < DatabaseVersion.CurrentVersion)
 		{
 			throw new InvalidOperationException(
@@ -811,6 +820,82 @@ public sealed class DepotDatabase : IDatabaseInitializer
 			throw new InvalidOperationException(
 				$"Database version '{version}' is newer than the supported schema version '{DatabaseVersion.CurrentVersion}'.");
 		}
+	}
+
+	private static void MigrateGoodsReceiptsToDeliveryDocuments(SqliteConnection connection)
+	{
+		if (!TableExists(connection, "GoodsReceipts"))
+		{
+			CreateProcurementTables(connection);
+			return;
+		}
+		if (TableHasColumn(connection, "GoodsReceipts", "SupplierDeliveryNoteNumber")) return;
+
+		using (var disableForeignKeys = connection.CreateCommand())
+		{
+			disableForeignKeys.CommandText = "PRAGMA foreign_keys = OFF;";
+			disableForeignKeys.ExecuteNonQuery();
+		}
+
+		try
+		{
+			using var transaction = connection.BeginTransaction();
+			using var command = connection.CreateCommand();
+			command.Transaction = transaction;
+			command.CommandText =
+				"""
+				ALTER TABLE GoodsReceiptLines RENAME TO GoodsReceiptLinesInvoiceMigration;
+				ALTER TABLE GoodsReceipts RENAME TO GoodsReceiptsInvoiceMigration;
+
+				CREATE TABLE GoodsReceipts
+				(
+					Id INTEGER PRIMARY KEY AUTOINCREMENT, ReceiptNumber TEXT NOT NULL UNIQUE, PurchaseOrderId INTEGER NOT NULL,
+					ReceiptDate TEXT NOT NULL, SupplierDeliveryNoteNumber TEXT NOT NULL, ReceivedByUserId INTEGER NOT NULL,
+					InvoiceNumber TEXT NULL, InvoiceDate TEXT NULL, InvoiceDocumentPath TEXT NULL, Notes TEXT NULL,
+					FOREIGN KEY(PurchaseOrderId) REFERENCES PurchaseOrders(Id), FOREIGN KEY(ReceivedByUserId) REFERENCES Users(Id)
+				);
+
+				INSERT INTO GoodsReceipts
+					(Id, ReceiptNumber, PurchaseOrderId, ReceiptDate, SupplierDeliveryNoteNumber, ReceivedByUserId, InvoiceNumber, InvoiceDate, InvoiceDocumentPath, Notes)
+				SELECT
+					gr.Id, gr.ReceiptNumber, gr.PurchaseOrderId, gr.ReceiptDate, 'LEGACY-' || gr.ReceiptNumber,
+					COALESCE(
+						(SELECT ae.UserId FROM AuditEntries ae INNER JOIN Users auditUser ON auditUser.Id = ae.UserId WHERE ae.EntityType = 'GoodsReceipt' AND ae.EntityId = gr.Id AND ae.UserId IS NOT NULL ORDER BY ae.Id LIMIT 1),
+						(SELECT Id FROM Users WHERE Email = 'admin@depot.local' LIMIT 1),
+						(SELECT MIN(Id) FROM Users)),
+					gr.InvoiceNumber, gr.InvoiceDate, gr.InvoiceDocumentPath, gr.Notes
+				FROM GoodsReceiptsInvoiceMigration gr;
+
+				CREATE TABLE GoodsReceiptLines
+				(
+					Id INTEGER PRIMARY KEY AUTOINCREMENT, GoodsReceiptId INTEGER NOT NULL, PurchaseOrderLineId INTEGER NOT NULL,
+					InventoryId INTEGER NOT NULL, Quantity INTEGER NOT NULL CHECK(Quantity > 0),
+					UNIQUE(GoodsReceiptId, PurchaseOrderLineId), FOREIGN KEY(GoodsReceiptId) REFERENCES GoodsReceipts(Id),
+					FOREIGN KEY(PurchaseOrderLineId) REFERENCES PurchaseOrderLines(Id), FOREIGN KEY(InventoryId) REFERENCES Inventories(Id)
+				);
+				INSERT INTO GoodsReceiptLines (Id, GoodsReceiptId, PurchaseOrderLineId, InventoryId, Quantity)
+				SELECT Id, GoodsReceiptId, PurchaseOrderLineId, InventoryId, Quantity FROM GoodsReceiptLinesInvoiceMigration;
+
+				DROP TABLE GoodsReceiptLinesInvoiceMigration;
+				DROP TABLE GoodsReceiptsInvoiceMigration;
+				CREATE INDEX IX_GoodsReceipts_PurchaseOrderId ON GoodsReceipts(PurchaseOrderId);
+				CREATE INDEX IX_GoodsReceipts_ReceivedByUserId ON GoodsReceipts(ReceivedByUserId);
+				CREATE INDEX IX_GoodsReceiptLines_InventoryId ON GoodsReceiptLines(InventoryId);
+				""";
+			command.ExecuteNonQuery();
+			transaction.Commit();
+		}
+		finally
+		{
+			using var enableForeignKeys = connection.CreateCommand();
+			enableForeignKeys.CommandText = "PRAGMA foreign_keys = ON;";
+			enableForeignKeys.ExecuteNonQuery();
+		}
+
+		using var integrityCommand = connection.CreateCommand();
+		integrityCommand.CommandText = "PRAGMA foreign_key_check;";
+		using var violations = integrityCommand.ExecuteReader();
+		if (violations.Read()) throw new InvalidOperationException("Goods receipt migration produced invalid foreign-key references.");
 	}
 
 	private static void MigrateReasonCodesToTechnicalKeys(SqliteConnection connection)
@@ -1270,6 +1355,14 @@ public sealed class DepotDatabase : IDatabaseInitializer
 		}
 
 		return false;
+	}
+
+	private static bool TableExists(SqliteConnection connection, string tableName)
+	{
+		using var command = connection.CreateCommand();
+		command.CommandText = "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = $Name;";
+		command.Parameters.AddWithValue("$Name", tableName);
+		return Convert.ToInt32(command.ExecuteScalar()) == 1;
 	}
 
 	private static string GetLegacyStockMovementMigrationSql()

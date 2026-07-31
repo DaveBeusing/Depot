@@ -45,7 +45,7 @@ Services own validation and application workflows, including:
 - inventory, stock calculation, movements, and valuation;
 - warehouse and storage-location management;
 - supplier and supplier-item management;
-- purchase-order lifecycle and invoice-backed goods receipts;
+- purchase-order lifecycle and delivery-note-based goods receipts;
 - authentication, authorization, sessions, and password hashing;
 - import, reporting, audit creation, settings, and database administration.
 
@@ -84,7 +84,7 @@ SQLite is covered by integration tests. SQL Server and MySQL/MariaDB have provid
 
 ## Schema and migrations
 
-The current database schema version is **16**. It is independent from the application SemVer version.
+The current database schema version is **17**. It is independent from the application SemVer version.
 
 All providers create the current schema and migrate supported older schemas forward. Migrations cover authentication, inventory-based movements, audit/concurrency, warehouse structure, reason codes, normalized item master data, suppliers, supplier categories, supplier items, purchase orders, and goods receipts.
 
@@ -121,7 +121,10 @@ Master data uses activation/deactivation rather than hard deletion. Services per
 - `PurchaseOrder` owns `PurchaseOrderLine` records.
 - Status values are Draft, Ordered, PartiallyReceived, Received, and Cancelled.
 - `GoodsReceipt` references exactly one purchase order and owns `GoodsReceiptLine` records.
-- A goods receipt requires invoice metadata and an existing invoice-document path.
+- A goods receipt is a warehouse document with a supplier delivery-note number, receipt date, receiving user, notes, and destination inventory per line.
+- Supplier invoices are intentionally not part of the goods-receipt domain. A separate `SupplierInvoice` entity can be introduced later without changing the receipt contract.
+
+Legacy `InvoiceNumber`, `InvoiceDate`, and `InvoiceDocumentPath` database columns remain nullable for transition and backup compatibility. They are not exposed by the current domain model or UI and are not populated by new receipts. Version-17 migration preserves their existing values, assigns `LEGACY-GR-…` delivery-note numbers, and derives the receiving user from the original receipt audit entry where possible.
 
 Purchase-order creation, draft editing, ordering, and cancellation commit their business change and before/after audit entry in one transaction. Goods-receipt posting remains atomic across the receipt, receipt lines, purchase-order received quantities, stock movements, purchase-order status, and receipt audit entry. Purchase-order locking prevents concurrent over-receipt.
 

@@ -11,7 +11,7 @@ The single application-version source is `Directory.Build.props` in the reposito
 ## Current versions
 
 - Application development line: **0.9.1-preview**
-- Database schema version: **16**
+- Database schema version: **17**
 
 The application version and database schema version are independent. A patch application release can retain the same schema, while a schema migration can occur during a prerelease line.
 
@@ -40,7 +40,7 @@ The About page reads the built assembly information and displays the application
 - Microsoft SQL Server: `SqlServerDatabase`
 - MySQL/MariaDB: `MySqlDatabase`
 
-Schema version 16 adds immutable unique technical keys and system-code metadata to reason codes. The migration preserves reason-code IDs and all existing stock-movement references, maps known defaults to their canonical system codes, and assigns deterministic `LEGACY_<id>` keys to other existing values. Schema version 15 introduced the current procurement and goods-receipt structures.
+Schema version 17 separates goods receipts from supplier invoices. It adds the supplier delivery-note number and receiving user, retains historical invoice columns as nullable legacy data, and preserves receipt-line references. Existing receipts receive deterministic `LEGACY-GR-…` delivery-note numbers and use the original audit user where available. Schema version 16 added immutable technical reason-code keys and system-code metadata.
 
 For every schema change:
 

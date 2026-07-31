@@ -41,6 +41,8 @@ public sealed class AuditService
 	public AuditEntry CreateUpdatedEntry<T>(long entityId, T before, T after) where T : class =>
 		CreateEntry(typeof(T).Name, entityId, "Updated", before, after);
 
+	public long? CurrentUserId => _authorizationService.CurrentUser?.Id;
+
 	public void RecordUpdated<T>(long entityId, T before, T after) where T : class =>
 		Record(typeof(T).Name, entityId, "Updated", before, after);
 

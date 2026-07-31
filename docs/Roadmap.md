@@ -51,7 +51,7 @@ This roadmap reflects the implementation on the current `master` branch. “Impl
 - [x] Current stock and weighted average cost calculations
 - [x] Purchase orders and purchase-order lines
 - [x] Draft, Ordered, PartiallyReceived, Received, and Cancelled statuses
-- [x] Invoice-backed goods receipts
+- [x] Delivery-note-based goods receipts separated from supplier invoices
 - [x] Partial receipts and automatic purchase-order status updates
 - [x] Atomic receipt, stock-movement, received-quantity, status, and audit writes
 - [x] Immutable technical reason-code keys and protected workflow system codes
@@ -97,6 +97,7 @@ This roadmap reflects the implementation on the current `master` branch. “Impl
 - [ ] Long-running import, report, and procurement tests
 - [ ] 100,000+ record performance and memory acceptance tests
 - [ ] Full keyboard, focus, accessibility, scaling, and localization pass
-- [ ] Security review of default credentials, encrypted settings, logs, backups, and invoice-document handling
+- [ ] Separate SupplierInvoice domain and invoice-verification workflow
+- [ ] Security review of default credentials, encrypted settings, logs, backups, and retained legacy invoice data
 - [ ] Release packaging, signing, upgrade, rollback, and uninstall verification
 - [ ] Complete manual regression test and release notes

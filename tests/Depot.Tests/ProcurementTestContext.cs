@@ -43,7 +43,6 @@ internal sealed class ProcurementTestContext : IAsyncDisposable
 	public long SecondInventoryId { get; private set; }
 	public long InactiveInventoryId { get; private set; }
 	public long TestStorageLocationId { get; private set; }
-	public string InvoicePath { get; private set; } = string.Empty;
 
 	public static async Task<ProcurementTestContext> CreateSqliteAsync()
 	{
@@ -90,9 +89,9 @@ internal sealed class ProcurementTestContext : IAsyncDisposable
 		new()
 		{
 			PurchaseOrderId = order.Id,
-			InvoiceNumber = $"INV-{Guid.NewGuid():N}",
-			InvoiceDate = DateTime.Today,
-			InvoiceDocumentPath = InvoicePath,
+			SupplierDeliveryNoteNumber = $"DN-{Guid.NewGuid():N}",
+			ReceiptDate = DateTime.Today,
+			Notes = "Procurement integration test receipt",
 			Lines =
 			[
 				new GoodsReceiptLine
@@ -117,7 +116,6 @@ internal sealed class ProcurementTestContext : IAsyncDisposable
 		}
 		finally
 		{
-			if (File.Exists(InvoicePath)) File.Delete(InvoicePath);
 			if (_databasePath is not null)
 			{
 				SqliteConnection.ClearAllPools();
@@ -180,8 +178,6 @@ internal sealed class ProcurementTestContext : IAsyncDisposable
 			new ItemRepository(context.Data),
 			audit);
 		context._receipts = new GoodsReceiptService(new GoodsReceiptRepository(context.Data), audit);
-		context.InvoicePath = Path.Combine(Path.GetTempPath(), $"depot-invoice-{suffix}.pdf");
-		await File.WriteAllTextAsync(context.InvoicePath, "Procurement integration test invoice");
 		return context;
 	}
 

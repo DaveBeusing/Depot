@@ -75,6 +75,11 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 			MigrateReasonCodesToTechnicalKeys(command);
 			version = 16;
 		}
+		if (version == 16)
+		{
+			MigrateGoodsReceiptsToDeliveryDocuments(command);
+			version = 17;
+		}
 		if (version != DatabaseVersion.CurrentVersion)
 		{
 			throw new InvalidOperationException(
@@ -82,6 +87,38 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 		}
 
 		transaction.Commit();
+	}
+
+	private static void MigrateGoodsReceiptsToDeliveryDocuments(System.Data.Common.DbCommand command)
+	{
+		command.CommandText =
+		"""
+		IF COL_LENGTH(N'GoodsReceipts', N'SupplierDeliveryNoteNumber') IS NULL
+			ALTER TABLE GoodsReceipts ADD SupplierDeliveryNoteNumber nvarchar(100) NULL;
+		IF COL_LENGTH(N'GoodsReceipts', N'ReceivedByUserId') IS NULL
+			ALTER TABLE GoodsReceipts ADD ReceivedByUserId bigint NULL;
+
+		UPDATE gr
+		SET SupplierDeliveryNoteNumber = N'LEGACY-' + gr.ReceiptNumber,
+			ReceivedByUserId = COALESCE(
+				(SELECT TOP (1) ae.UserId FROM AuditEntries ae INNER JOIN Users auditUser ON auditUser.Id = ae.UserId WHERE ae.EntityType = N'GoodsReceipt' AND ae.EntityId = gr.Id AND ae.UserId IS NOT NULL ORDER BY ae.Id),
+				(SELECT TOP (1) Id FROM Users WHERE Email = N'admin@depot.local'),
+				(SELECT MIN(Id) FROM Users))
+		FROM GoodsReceipts gr
+		WHERE gr.SupplierDeliveryNoteNumber IS NULL OR gr.ReceivedByUserId IS NULL;
+
+		ALTER TABLE GoodsReceipts ALTER COLUMN SupplierDeliveryNoteNumber nvarchar(100) NOT NULL;
+		ALTER TABLE GoodsReceipts ALTER COLUMN ReceivedByUserId bigint NOT NULL;
+		ALTER TABLE GoodsReceipts ALTER COLUMN InvoiceNumber nvarchar(100) NULL;
+		ALTER TABLE GoodsReceipts ALTER COLUMN InvoiceDate nvarchar(10) NULL;
+		IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_GoodsReceipts_ReceivedByUsers')
+			ALTER TABLE GoodsReceipts ADD CONSTRAINT FK_GoodsReceipts_ReceivedByUsers FOREIGN KEY (ReceivedByUserId) REFERENCES Users(Id);
+		IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_GoodsReceipts_ReceivedByUserId' AND object_id = OBJECT_ID(N'GoodsReceipts'))
+			CREATE INDEX IX_GoodsReceipts_ReceivedByUserId ON GoodsReceipts(ReceivedByUserId);
+		UPDATE DatabaseInfo SET Version = 17 WHERE Id = 1;
+		""";
+		command.Parameters.Clear();
+		command.ExecuteNonQuery();
 	}
 
 	private static void MigrateReasonCodesToTechnicalKeys(System.Data.Common.DbCommand command)
@@ -337,8 +374,9 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 	END;
 	IF OBJECT_ID(N'GoodsReceipts', N'U') IS NULL
 	BEGIN
-		CREATE TABLE GoodsReceipts (Id bigint IDENTITY(1,1) NOT NULL PRIMARY KEY, ReceiptNumber nvarchar(50) NOT NULL UNIQUE, PurchaseOrderId bigint NOT NULL, ReceiptDate nvarchar(10) NOT NULL, InvoiceNumber nvarchar(100) NOT NULL, InvoiceDate nvarchar(10) NOT NULL, InvoiceDocumentPath nvarchar(1000) NULL, Notes nvarchar(4000) NULL, CONSTRAINT FK_GoodsReceipts_Orders FOREIGN KEY (PurchaseOrderId) REFERENCES PurchaseOrders(Id));
+		CREATE TABLE GoodsReceipts (Id bigint IDENTITY(1,1) NOT NULL PRIMARY KEY, ReceiptNumber nvarchar(50) NOT NULL UNIQUE, PurchaseOrderId bigint NOT NULL, ReceiptDate nvarchar(10) NOT NULL, SupplierDeliveryNoteNumber nvarchar(100) NOT NULL, ReceivedByUserId bigint NOT NULL, InvoiceNumber nvarchar(100) NULL, InvoiceDate nvarchar(10) NULL, InvoiceDocumentPath nvarchar(1000) NULL, Notes nvarchar(4000) NULL, CONSTRAINT FK_GoodsReceipts_Orders FOREIGN KEY (PurchaseOrderId) REFERENCES PurchaseOrders(Id), CONSTRAINT FK_GoodsReceipts_ReceivedByUsers FOREIGN KEY (ReceivedByUserId) REFERENCES Users(Id));
 		CREATE INDEX IX_GoodsReceipts_PurchaseOrderId ON GoodsReceipts(PurchaseOrderId);
+		CREATE INDEX IX_GoodsReceipts_ReceivedByUserId ON GoodsReceipts(ReceivedByUserId);
 	END;
 	IF OBJECT_ID(N'GoodsReceiptLines', N'U') IS NULL
 	BEGIN
