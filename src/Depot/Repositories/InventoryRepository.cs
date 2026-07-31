@@ -206,6 +206,42 @@ public sealed class InventoryRepository : DatabaseRepository
 			parameters);
 	}
 
+	public Task<IReadOnlyList<StockTransferInventoryOption>> ListTransferOptionsAsync(
+		long warehouseId,
+		long? itemId,
+		CancellationToken cancellationToken)
+	{
+		var itemFilter = itemId is null ? string.Empty : "AND inv.ItemId = $ItemId";
+		var parameters = new List<DatabaseParameter> { Parameter("$WarehouseId", warehouseId) };
+		if (itemId is not null) parameters.Add(Parameter("$ItemId", itemId.Value));
+		return Database.QueryAsync(
+			$"""
+			SELECT inv.Id, inv.ItemId, i.PartNumber, i.Description, w.Name, sl.Name, p.Name,
+			       COALESCE((SELECT SUM(CAST(sm.Quantity AS BIGINT)) FROM StockMovements sm WHERE sm.InventoryId = inv.Id), 0)
+			FROM Inventories inv
+			INNER JOIN Items i ON i.Id = inv.ItemId
+			INNER JOIN Purposes p ON p.Id = inv.PurposeId
+			INNER JOIN StorageLocations sl ON sl.Id = inv.StorageLocationId
+			INNER JOIN Warehouses w ON w.Id = sl.WarehouseId
+			WHERE sl.WarehouseId = $WarehouseId {itemFilter}
+			  AND inv.IsActive = 1 AND i.IsActive = 1 AND sl.IsActive = 1 AND w.IsActive = 1
+			ORDER BY i.PartNumber, sl.Name, p.Name;
+			""",
+			reader => new StockTransferInventoryOption
+			{
+				InventoryId = reader.GetInt64(0),
+				ItemId = reader.GetInt64(1),
+				PartNumber = reader.GetString(2),
+				Description = reader.GetString(3),
+				WarehouseName = reader.GetString(4),
+				StorageLocationName = reader.GetString(5),
+				PurposeName = reader.GetString(6),
+				CurrentStock = Convert.ToInt64(reader.GetValue(7), System.Globalization.CultureInfo.InvariantCulture)
+			},
+			cancellationToken,
+			parameters.ToArray());
+	}
+
 	public Task<DashboardSummary?> GetDashboardSummaryAsync(CancellationToken cancellationToken) =>
 		Database.QuerySingleOrDefaultAsync(
 			"""

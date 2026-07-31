@@ -21,6 +21,47 @@ public sealed class StockTransferRepository : DatabaseRepository
 	{
 	}
 
+	public Task<PageResult<StockTransferOverviewItem>> SearchAsync(
+		string? searchText,
+		StockTransferStatus? status,
+		int pageNumber,
+		int pageSize,
+		CancellationToken cancellationToken)
+	{
+		var filters = new List<string>();
+		var parameters = new List<DatabaseParameter>();
+		if (!string.IsNullOrWhiteSpace(searchText))
+		{
+			filters.Add("(st.TransferNumber LIKE $Search OR sw.Name LIKE $Search OR dw.Name LIKE $Search OR st.Notes LIKE $Search)");
+			parameters.Add(Parameter("$Search", $"%{searchText.Trim()}%"));
+		}
+		if (status is not null)
+		{
+			filters.Add("st.Status = $Status");
+			parameters.Add(Parameter("$Status", (int)status.Value));
+		}
+
+		var where = filters.Count == 0 ? string.Empty : $"WHERE {string.Join(" AND ", filters)}";
+		const string from = "FROM StockTransfers st INNER JOIN Warehouses sw ON sw.Id = st.SourceWarehouseId INNER JOIN Warehouses dw ON dw.Id = st.DestinationWarehouseId INNER JOIN Users createdBy ON createdBy.Id = st.CreatedByUserId";
+		return Database.QueryPageAsync(
+			$"SELECT st.Id, st.TransferNumber, st.SourceWarehouseId, sw.Name, st.DestinationWarehouseId, dw.Name, st.TransferDate, st.Status, createdBy.DisplayName, (SELECT COUNT(*) FROM StockTransferLines lineCount WHERE lineCount.StockTransferId = st.Id), st.Notes, st.Version {from} {where} ORDER BY st.TransferDate DESC, st.Id DESC",
+			$"SELECT COUNT(*) {from} {where};",
+			ReadOverview,
+			pageNumber,
+			pageSize,
+			cancellationToken,
+			parameters.ToArray());
+	}
+
+	public Task<StockTransferOverviewItem?> GetOverviewByIdAsync(
+		long id,
+		CancellationToken cancellationToken) =>
+		Database.QuerySingleOrDefaultAsync(
+			"SELECT st.Id, st.TransferNumber, st.SourceWarehouseId, sw.Name, st.DestinationWarehouseId, dw.Name, st.TransferDate, st.Status, createdBy.DisplayName, (SELECT COUNT(*) FROM StockTransferLines lineCount WHERE lineCount.StockTransferId = st.Id), st.Notes, st.Version FROM StockTransfers st INNER JOIN Warehouses sw ON sw.Id = st.SourceWarehouseId INNER JOIN Warehouses dw ON dw.Id = st.DestinationWarehouseId INNER JOIN Users createdBy ON createdBy.Id = st.CreatedByUserId WHERE st.Id = $Id;",
+			ReadOverview,
+			cancellationToken,
+			Parameter("$Id", id));
+
 	public async Task<StockTransfer?> GetByIdAsync(long id, CancellationToken cancellationToken)
 	{
 		var transfer = await Database.QuerySingleOrDefaultAsync(
@@ -222,6 +263,22 @@ public sealed class StockTransferRepository : DatabaseRepository
 		DestinationInventoryId = reader.GetInt64(4),
 		Quantity = reader.GetInt32(5),
 		Version = reader.GetInt64(6)
+	};
+
+	private static StockTransferOverviewItem ReadOverview(DbDataReader reader) => new()
+	{
+		Id = reader.GetInt64(0),
+		TransferNumber = reader.GetString(1),
+		SourceWarehouseId = reader.GetInt64(2),
+		SourceWarehouseName = reader.GetString(3),
+		DestinationWarehouseId = reader.GetInt64(4),
+		DestinationWarehouseName = reader.GetString(5),
+		TransferDate = DateTime.Parse(reader.GetString(6), CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal),
+		Status = (StockTransferStatus)reader.GetInt32(7),
+		CreatedByUserName = reader.GetString(8),
+		LineCount = Convert.ToInt32(reader.GetValue(9), CultureInfo.InvariantCulture),
+		Notes = reader.IsDBNull(10) ? null : reader.GetString(10),
+		Version = reader.GetInt64(11)
 	};
 
 	private static string Date(DateTime value) =>

@@ -57,6 +57,40 @@ public sealed class StockTransferService
 		CancellationToken cancellationToken = default) =>
 		_transfers.GetByIdAsync(id, cancellationToken);
 
+	public Task<PageResult<StockTransferOverviewItem>> SearchAsync(
+		string? searchText,
+		StockTransferStatus? status,
+		int pageNumber,
+		int pageSize,
+		CancellationToken cancellationToken = default) =>
+		_transfers.SearchAsync(searchText, status, pageNumber, pageSize, cancellationToken);
+
+	public Task<StockTransferOverviewItem?> GetOverviewByIdAsync(
+		long id,
+		CancellationToken cancellationToken = default) =>
+		_transfers.GetOverviewByIdAsync(id, cancellationToken);
+
+	public Task<IReadOnlyList<StockTransferInventoryOption>> GetInventoryOptionsAsync(
+		long warehouseId,
+		long? itemId = null,
+		CancellationToken cancellationToken = default)
+	{
+		if (warehouseId <= 0) throw new ArgumentOutOfRangeException(nameof(warehouseId));
+		if (itemId is <= 0) throw new ArgumentOutOfRangeException(nameof(itemId));
+		return _inventories.ListTransferOptionsAsync(warehouseId, itemId, cancellationToken);
+	}
+
+	public async Task<IReadOnlyList<MovementOverviewItem>> GetMovementsAsync(
+		long stockTransferId,
+		CancellationToken cancellationToken = default)
+	{
+		var transfer = await _transfers.GetByIdAsync(stockTransferId, cancellationToken)
+			?? throw new InvalidOperationException("The stock transfer was not found.");
+		return await _stockMovements.ListByReferenceAsync(
+			$"Stock Transfer {transfer.TransferNumber}",
+			cancellationToken);
+	}
+
 	public async Task<StockTransfer> SaveDraftAsync(
 		StockTransfer transfer,
 		CancellationToken cancellationToken = default)

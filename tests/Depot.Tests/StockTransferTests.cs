@@ -5,6 +5,7 @@ using Depot.Data;
 using Depot.Models;
 using Depot.Repositories;
 using Depot.Services;
+using Depot.ViewModels;
 
 using Microsoft.Data.Sqlite;
 
@@ -34,6 +35,86 @@ public sealed class StockTransferTests
 		Assert.Equal(1, await context.ScalarAsync(
 			"SELECT COUNT(*) FROM AuditEntries WHERE EntityType = 'StockTransfer' AND EntityId = $Id AND Action = 'Created';",
 			new DatabaseParameter("$Id", saved.Id)));
+	}
+
+	[Fact]
+	public async Task TransferSearchUsesServerSideTextStatusAndPaging()
+	{
+		await using var context = await ProcurementTestContext.CreateSqliteAsync();
+		var fixture = await CreateFixtureAsync(context);
+		var first = NewTransfer(fixture);
+		first.Notes = "Project Alpine";
+		var saved = await fixture.Service.SaveDraftAsync(first);
+		var cancelledDraft = await fixture.Service.SaveDraftAsync(NewTransfer(fixture));
+		await fixture.Service.CancelAsync(cancelledDraft.Id, cancelledDraft.Version);
+
+		var searchPage = await fixture.Service.SearchAsync("Alpine", StockTransferStatus.Draft, 1, 1);
+		var cancelledPage = await fixture.Service.SearchAsync(null, StockTransferStatus.Cancelled, 1, 50);
+
+		Assert.Equal(1, searchPage.TotalCount);
+		Assert.Single(searchPage.Items);
+		Assert.Equal(saved.Id, searchPage.Items[0].Id);
+		Assert.Equal(1, searchPage.Items[0].LineCount);
+		Assert.Single(cancelledPage.Items);
+		Assert.Equal(cancelledDraft.Id, cancelledPage.Items[0].Id);
+	}
+
+	[Fact]
+	public async Task TransferInventoryOptionsAreWarehouseAndItemFilteredAndShowCurrentStock()
+	{
+		await using var context = await ProcurementTestContext.CreateSqliteAsync();
+		var fixture = await CreateFixtureAsync(context);
+		await AddStockAsync(context, fixture.SourceInventoryId, 12);
+
+		var sourceOptions = await fixture.Service.GetInventoryOptionsAsync(fixture.SourceWarehouseId);
+		var matchingDestinationOptions = await fixture.Service.GetInventoryOptionsAsync(
+			fixture.DestinationWarehouseId,
+			context.ItemId);
+
+		var source = Assert.Single(sourceOptions, option => option.InventoryId == fixture.SourceInventoryId);
+		Assert.Equal(12, source.CurrentStock);
+		Assert.Equal(2, matchingDestinationOptions.Count);
+		Assert.All(matchingDestinationOptions, option => Assert.Equal(context.ItemId, option.ItemId));
+		Assert.DoesNotContain(matchingDestinationOptions, option => option.InventoryId == fixture.OtherItemDestinationInventoryId);
+	}
+
+	[Fact]
+	public async Task PostedTransferExposesItsGeneratedMovementPair()
+	{
+		await using var context = await ProcurementTestContext.CreateSqliteAsync();
+		var fixture = await CreateFixtureAsync(context);
+		await AddStockAsync(context, fixture.SourceInventoryId, 10);
+		var draft = await fixture.Service.SaveDraftAsync(NewTransfer(fixture));
+		var posted = await fixture.Service.PostAsync(draft.Id, draft.Version);
+
+		var movements = await fixture.Service.GetMovementsAsync(posted.Id);
+
+		Assert.Equal(2, movements.Count);
+		Assert.Contains(movements, movement => movement.MovementType == StockMovementType.TransferOut && movement.Quantity == -3);
+		Assert.Contains(movements, movement => movement.MovementType == StockMovementType.TransferIn && movement.Quantity == 3);
+		Assert.All(movements, movement => Assert.Equal(Reference(posted), movement.Reference));
+	}
+
+	[Fact]
+	public async Task TransfersViewModelLoadsThePagedTransferList()
+	{
+		await using var context = await ProcurementTestContext.CreateSqliteAsync();
+		var fixture = await CreateFixtureAsync(context);
+		var saved = await fixture.Service.SaveDraftAsync(NewTransfer(fixture));
+		var audit = new AuditService(new AuditRepository(context.Data), context.Authorization);
+		var warehouses = new WarehouseService(
+			new WarehouseRepository(context.Data),
+			new StorageLocationRepository(context.Data),
+			audit);
+		using var viewModel = new StockTransfersViewModel(fixture.Service, warehouses, new ConfirmingFileDialogs());
+
+		await viewModel.LoadAsync();
+
+		Assert.Equal(1, viewModel.TotalCount);
+		Assert.Single(viewModel.Transfers);
+		Assert.Equal(saved.Id, viewModel.Transfers[0].Id);
+		Assert.False(viewModel.IsBusy);
+		Assert.False(viewModel.HasOperationError);
 	}
 
 	[Fact]
@@ -517,4 +598,11 @@ public sealed class StockTransferTests
 		long OtherItemSourceInventoryId,
 		long OtherItemDestinationInventoryId,
 		long AlternateDestinationInventoryId);
+
+	private sealed class ConfirmingFileDialogs : IFileDialogService
+	{
+		public string? ShowOpenFile(OpenFileDialogRequest request) => null;
+		public string? ShowSaveFile(SaveFileDialogRequest request) => null;
+		public bool Confirm(ConfirmationDialogRequest request) => true;
+	}
 }

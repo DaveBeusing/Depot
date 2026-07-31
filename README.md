@@ -24,6 +24,7 @@ The project is under active development on the `0.9.1-preview` line. Implemented
 - Purchase orders and lines with automatic `PO-xxxxxx` numbering, status workflow, search, and filtering
 - Delivery-note-based goods receipts with receipt date, receiving user, partial receipts, and automatic purchase-order status updates
 - Atomic goods-receipt posting across receipt records, received quantities, stock movements, and order status
+- Warehouse stock transfers with draft editing, server-side search, status filtering, paging, atomic posting, paired transfer movements, and concurrency-safe stock checks
 - Excel import, report search, grouped reports, and Excel export
 - Audit persistence for relevant create/update operations
 - Optimistic concurrency using version columns and explicit conflict errors

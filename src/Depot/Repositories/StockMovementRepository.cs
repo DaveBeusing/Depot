@@ -236,6 +236,27 @@ public sealed class StockMovementRepository : DatabaseRepository
 			count,
 			cancellationToken);
 
+	public Task<IReadOnlyList<MovementOverviewItem>> ListByReferenceAsync(
+		string reference,
+		CancellationToken cancellationToken) =>
+		Database.QueryAsync(
+			"""
+			SELECT sm.Id, sm.TimestampUtc, inv.Id, i.Id, i.PartNumber, i.Description,
+			       p.Name, w.Name, sl.Name, rc.Name, sm.MovementType, sm.Quantity, sm.UnitPrice, sm.Reference, sm.Notes
+			FROM StockMovements sm
+			INNER JOIN Inventories inv ON inv.Id = sm.InventoryId
+			INNER JOIN Items i ON i.Id = inv.ItemId
+			INNER JOIN Purposes p ON p.Id = inv.PurposeId
+			INNER JOIN StorageLocations sl ON sl.Id = inv.StorageLocationId
+			INNER JOIN Warehouses w ON w.Id = sl.WarehouseId
+			LEFT JOIN ReasonCodes rc ON rc.Id = sm.ReasonCodeId
+			WHERE sm.Reference = $Reference
+			ORDER BY sm.Id;
+			""",
+			ReadOverview,
+			cancellationToken,
+			Parameter("$Reference", reference));
+
 	public long CreateAtomic(StockMovement movement, AuditEntry auditEntry)
 		=> CreateAtomicCore(movement, auditEntry);
 

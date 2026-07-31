@@ -55,6 +55,8 @@ This roadmap reflects the implementation on the current `master` branch. “Impl
 - [x] Partial receipts and automatic purchase-order status updates
 - [x] Atomic receipt, stock-movement, received-quantity, status, and audit writes
 - [x] Immutable technical reason-code keys and protected workflow system codes
+- [x] Warehouse stock-transfer drafts, cancellation, and atomic TransferOut/TransferIn posting
+- [x] Transfers main page with server-side search, status filter, paging, inventory selection, availability, and movement details
 
 ### Administration and output
 
@@ -77,7 +79,7 @@ This roadmap reflects the implementation on the current `master` branch. “Impl
 - Large-data readiness: paging/search/streaming infrastructure exists, but some reports and compatibility services still materialize full tables.
 - User-facing paging: server-side paging is used, but not every screen exposes complete page navigation.
 - Audit tooling: audit records are written, but no audit viewer, filter, retention, or export UI exists.
-- Transfer workflow: the audited Draft/Cancelled workflow and atomic TransferOut/TransferIn posting exist; live-server verification and UI remain open.
+- Transfer workflow: application workflow and UI are implemented; live SQL Server and MySQL/MariaDB concurrency verification remains open.
 - General settings: database and backup settings are implemented; the general Settings page remains a placeholder.
 - Provider verification: SQL Server and MySQL/MariaDB implementations exist, but live-server integration coverage is incomplete.
 
