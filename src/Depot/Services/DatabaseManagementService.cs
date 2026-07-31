@@ -27,7 +27,7 @@ public sealed class DatabaseManagementService
 		new("Items", ["Id", "PartNumber", "Description", "Manufacturer", "Category", "ManufacturerId", "CategoryId", "UnitOfMeasureId", "PackagingId", "SupplierId", "IsActive", "Version"]),
 		new("SupplierItems", ["Id", "SupplierId", "ItemId", "SupplierPartNumber", "PurchasePrice", "LeadTimeDays", "MinimumOrderQuantity", "IsPreferredSupplier", "IsActive", "Version"]),
 		new("Purposes", ["Id", "Name", "Description", "IsActive", "Version"]),
-		new("ReasonCodes", ["Id", "Name", "Description", "IsActive", "Version"]),
+		new("ReasonCodes", ["Id", "Code", "Name", "Description", "IsSystem", "IsActive", "Version"]),
 		new("Warehouses", ["Id", "Name", "Description", "IsActive", "Version"]),
 		new("StorageLocations", ["Id", "WarehouseId", "Name", "Description", "IsActive", "Version"]),
 		new("Users", ["Id", "Email", "DisplayName", "PasswordHash", "IsAdministrator", "IsActive", "CreatedUtc", "Version"]),

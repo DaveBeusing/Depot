@@ -80,11 +80,11 @@ The application supports three provider implementations behind `IDatabaseConnect
 
 Repository SQL uses shared parameter conventions. Provider wrappers normalize parameter syntax, generated-ID queries, and case-insensitive comparison details. Connection failures are translated into explicit safe errors and logged without credentials.
 
-SQLite is covered by integration tests. SQL Server and MySQL/MariaDB have provider-factory and SQL-normalization tests, but the repository does not yet contain live-server integration suites. Live migration, maintenance, and concurrency verification remains a version 1.0 requirement.
+SQLite is covered by integration tests. SQL Server and MySQL/MariaDB have provider-factory and SQL-normalization tests plus optional environment-configured procurement concurrency contracts. Broader live migration, maintenance, and multi-client verification remains a version 1.0 requirement.
 
 ## Schema and migrations
 
-The current database schema version is **15**. It is independent from the application SemVer version.
+The current database schema version is **16**. It is independent from the application SemVer version.
 
 All providers create the current schema and migrate supported older schemas forward. Migrations cover authentication, inventory-based movements, audit/concurrency, warehouse structure, reason codes, normalized item master data, suppliers, supplier categories, supplier items, purchase orders, and goods receipts.
 
@@ -100,7 +100,7 @@ The application refuses unsupported newer schemas and reports provider-specific 
 - `UnitOfMeasure`
 - `Packaging`
 - `Purpose`
-- `ReasonCode`
+- `ReasonCode`, whose immutable unique `Code` is separate from its editable display `Name`; seeded system codes are protected when required by active workflows
 - `Warehouse`
 - `StorageLocation`
 - `SupplierCategory`
@@ -113,7 +113,7 @@ Master data uses activation/deactivation rather than hard deletion. Services per
 
 - `Inventory` represents an item, purpose, and storage-location context.
 - The warehouse is derived through the storage location.
-- `StockMovement` references `Inventory` and can reference an optional `ReasonCode`.
+- `StockMovement` references `Inventory` and can reference an optional `ReasonCode`; repositories resolve workflow reasons through the technical code rather than the display name.
 - Stock is derived from movements rather than stored as a mutable balance.
 
 ### Procurement

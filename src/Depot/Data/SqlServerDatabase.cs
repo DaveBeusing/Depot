@@ -28,6 +28,7 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 			"pbkdf2-sha256$210000$9vL0kVt/HZBUCpsJYjPW6Q==$B1lZ+NRxxR/E8kwIE5PK0wXR2BPDmFTeLiKYyAEuhaE=");
 		command.Parameters.AddWithValue("@CurrentVersion", DatabaseVersion.CurrentVersion);
 		command.ExecuteNonQuery();
+		EnsureReasonCodeTechnicalKeys(command);
 		command.CommandText = ProcurementSql;
 		command.Parameters.Clear();
 		command.ExecuteNonQuery();
@@ -69,6 +70,11 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 			MigrateToProcurement(command);
 			version = 15;
 		}
+		if (version == 15)
+		{
+			MigrateReasonCodesToTechnicalKeys(command);
+			version = 16;
+		}
 		if (version != DatabaseVersion.CurrentVersion)
 		{
 			throw new InvalidOperationException(
@@ -76,6 +82,65 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 		}
 
 		transaction.Commit();
+	}
+
+	private static void MigrateReasonCodesToTechnicalKeys(System.Data.Common.DbCommand command)
+	{
+		EnsureReasonCodeTechnicalKeys(command);
+		command.CommandText = "UPDATE DatabaseInfo SET Version = 16 WHERE Id = 1;";
+		command.Parameters.Clear();
+		command.ExecuteNonQuery();
+	}
+
+	private static void EnsureReasonCodeTechnicalKeys(System.Data.Common.DbCommand command)
+	{
+		command.CommandText =
+		"""
+		IF COL_LENGTH(N'ReasonCodes', N'Code') IS NULL
+			ALTER TABLE ReasonCodes ADD Code nvarchar(50) NULL;
+		IF COL_LENGTH(N'ReasonCodes', N'IsSystem') IS NULL
+			ALTER TABLE ReasonCodes ADD IsSystem bit NOT NULL CONSTRAINT DF_ReasonCodes_IsSystem DEFAULT 0;
+
+		UPDATE ReasonCodes
+		SET Code = CASE Name
+			WHEN N'Goods Receipt' THEN N'GOODS_RECEIPT'
+			WHEN N'Goods Issue' THEN N'GOODS_ISSUE'
+			WHEN N'Inventory Correction' THEN N'INVENTORY_CORRECTION'
+			WHEN N'Damaged' THEN N'DAMAGED'
+			WHEN N'Lost' THEN N'LOST'
+			WHEN N'Returned' THEN N'RETURNED'
+			WHEN N'Consumed' THEN N'CONSUMED'
+			WHEN N'Demo' THEN N'DEMO'
+			WHEN N'Repair' THEN N'REPAIR'
+			WHEN N'Transfer' THEN N'TRANSFER'
+			ELSE N'LEGACY_' + RIGHT(N'000000' + CONVERT(nvarchar(20), Id), 6)
+		END
+		WHERE Code IS NULL OR LTRIM(RTRIM(Code)) = N'';
+
+		UPDATE ReasonCodes SET IsSystem = 1
+		WHERE Code IN
+		(
+			N'GOODS_RECEIPT', N'GOODS_ISSUE', N'INVENTORY_CORRECTION', N'DAMAGED', N'LOST',
+			N'RETURNED', N'CONSUMED', N'DEMO', N'REPAIR', N'TRANSFER'
+		);
+		ALTER TABLE ReasonCodes ALTER COLUMN Code nvarchar(50) NOT NULL;
+		IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_ReasonCodes_Code' AND object_id = OBJECT_ID(N'ReasonCodes'))
+			CREATE UNIQUE INDEX UX_ReasonCodes_Code ON ReasonCodes(Code);
+
+		IF NOT EXISTS (SELECT 1 FROM ReasonCodes WHERE Code = N'GOODS_RECEIPT') INSERT INTO ReasonCodes (Code, Name, IsSystem, IsActive) VALUES (N'GOODS_RECEIPT', N'Goods Receipt', 1, 1);
+		IF NOT EXISTS (SELECT 1 FROM ReasonCodes WHERE Code = N'GOODS_ISSUE') INSERT INTO ReasonCodes (Code, Name, IsSystem, IsActive) VALUES (N'GOODS_ISSUE', N'Goods Issue', 1, 1);
+		IF NOT EXISTS (SELECT 1 FROM ReasonCodes WHERE Code = N'INVENTORY_CORRECTION') INSERT INTO ReasonCodes (Code, Name, IsSystem, IsActive) VALUES (N'INVENTORY_CORRECTION', N'Inventory Correction', 1, 1);
+		IF NOT EXISTS (SELECT 1 FROM ReasonCodes WHERE Code = N'DAMAGED') INSERT INTO ReasonCodes (Code, Name, IsSystem, IsActive) VALUES (N'DAMAGED', N'Damaged', 1, 1);
+		IF NOT EXISTS (SELECT 1 FROM ReasonCodes WHERE Code = N'LOST') INSERT INTO ReasonCodes (Code, Name, IsSystem, IsActive) VALUES (N'LOST', N'Lost', 1, 1);
+		IF NOT EXISTS (SELECT 1 FROM ReasonCodes WHERE Code = N'RETURNED') INSERT INTO ReasonCodes (Code, Name, IsSystem, IsActive) VALUES (N'RETURNED', N'Returned', 1, 1);
+		IF NOT EXISTS (SELECT 1 FROM ReasonCodes WHERE Code = N'CONSUMED') INSERT INTO ReasonCodes (Code, Name, IsSystem, IsActive) VALUES (N'CONSUMED', N'Consumed', 1, 1);
+		IF NOT EXISTS (SELECT 1 FROM ReasonCodes WHERE Code = N'DEMO') INSERT INTO ReasonCodes (Code, Name, IsSystem, IsActive) VALUES (N'DEMO', N'Demo', 1, 1);
+		IF NOT EXISTS (SELECT 1 FROM ReasonCodes WHERE Code = N'REPAIR') INSERT INTO ReasonCodes (Code, Name, IsSystem, IsActive) VALUES (N'REPAIR', N'Repair', 1, 1);
+		IF NOT EXISTS (SELECT 1 FROM ReasonCodes WHERE Code = N'TRANSFER') INSERT INTO ReasonCodes (Code, Name, IsSystem, IsActive) VALUES (N'TRANSFER', N'Transfer', 1, 1);
+		UPDATE ReasonCodes SET IsSystem = 1, IsActive = 1 WHERE Code = N'GOODS_RECEIPT';
+		""";
+		command.Parameters.Clear();
+		command.ExecuteNonQuery();
 	}
 
 	private static void MigrateToProcurement(System.Data.Common.DbCommand command)
@@ -364,8 +429,10 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 		CREATE TABLE ReasonCodes
 		(
 			Id bigint IDENTITY(1,1) NOT NULL CONSTRAINT PK_ReasonCodes PRIMARY KEY,
+			Code nvarchar(50) NULL,
 			Name nvarchar(200) NOT NULL CONSTRAINT UQ_ReasonCodes_Name UNIQUE,
 			Description nvarchar(500) NULL,
+			IsSystem bit NOT NULL CONSTRAINT DF_ReasonCodes_IsSystem DEFAULT 0,
 			IsActive bit NOT NULL CONSTRAINT DF_ReasonCodes_IsActive DEFAULT 1,
 			Version bigint NOT NULL CONSTRAINT DF_ReasonCodes_Version DEFAULT 1
 		);
@@ -456,13 +523,6 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 
 	IF NOT EXISTS (SELECT 1 FROM Purposes WHERE Name = N'Stock')
 		INSERT INTO Purposes (Name, Description, IsActive) VALUES (N'Stock', N'Default stock purpose', 1);
-
-	INSERT INTO ReasonCodes (Name, IsActive)
-	SELECT defaults.Name, 1
-	FROM (VALUES
-		(N'Goods Receipt'), (N'Goods Issue'), (N'Inventory Correction'), (N'Damaged'), (N'Lost'),
-		(N'Returned'), (N'Consumed'), (N'Demo'), (N'Repair'), (N'Transfer')) defaults(Name)
-	WHERE NOT EXISTS (SELECT 1 FROM ReasonCodes existing WHERE existing.Name = defaults.Name);
 
 	IF NOT EXISTS (SELECT 1 FROM Warehouses WHERE Name = N'Main Warehouse')
 		INSERT INTO Warehouses (Name, Description, IsActive) VALUES (N'Main Warehouse', N'Default Depot warehouse', 1);

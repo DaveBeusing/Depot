@@ -18,7 +18,7 @@ The project is under active development on the `0.9.1-preview` line. Implemented
 - Email/password authentication, PBKDF2-SHA256 password hashing, roles, session switching, and administrator-managed users
 - Dashboard metrics, recent movements, inventory valuation, and German Euro formatting
 - Item, inventory, purpose, warehouse, storage-location, and stock-movement workflows
-- Reason codes with standard seed data, search, activation, and movement references
+- Reason codes with immutable technical keys, editable display names, protected workflow system codes, search, activation, and movement references
 - Normalized item master data: manufacturer, category, unit of measure, and packaging
 - Supplier categories, suppliers, and many-to-many `SupplierItem` assignments with supplier-specific commercial data
 - Purchase orders and lines with automatic `PO-xxxxxx` numbering, status workflow, search, and filtering
@@ -119,7 +119,7 @@ dotnet build Depot.slnx
 dotnet run --project src/Depot/Depot.csproj
 ```
 
-The first installation uses local SQLite and creates `depot.db`. The current database schema version is **15**.
+The first installation uses local SQLite and creates `depot.db`. The current database schema version is **16**.
 
 Connection and backup settings are stored in `depot.settings`. The file is a JSON envelope with a DPAPI-encrypted payload for the current Windows user. Administration > Database can configure, test, and activate SQLite, SQL Server, or MySQL/MariaDB connections. Provider changes take effect after restarting Depot. Connection attempts and failures are written to `depot.database.log` without connection strings or passwords.
 

@@ -7,9 +7,15 @@ public sealed class ReasonCode
 {
 	public long Id { get; set; }
 
+	public string Code { get; init; } = string.Empty;
+
 	public string Name { get; set; } = string.Empty;
 
+	public string DisplayName => Name;
+
 	public string? Description { get; set; }
+
+	public bool IsSystem { get; init; }
 
 	public bool IsActive { get; set; } = true;
 

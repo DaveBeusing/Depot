@@ -4,7 +4,7 @@
 
 - [ ] Ready for release
 
-Depot is currently `0.9.1-preview` with database schema version **15**. Checked implementation items below mean code exists on `master`; they do not replace the outstanding release verification.
+Depot is currently `0.9.1-preview` with database schema version **16**. Checked implementation items below mean code exists on `master`; they do not replace the outstanding release verification.
 
 ## Implemented and covered by automated tests
 
@@ -25,7 +25,7 @@ Depot is currently `0.9.1-preview` with database schema version **15**. Checked 
 - [x] Warehouse and storage-location hierarchy
 - [x] Multiple inventory contexts per item
 - [x] Inventory-based stock movements
-- [x] Reason-code persistence and inactive-code validation
+- [x] Reason-code persistence, immutable technical keys, protected workflow system codes, and inactive-code validation
 - [x] Current-stock and average-cost calculations
 - [x] Concurrent withdrawals cannot create negative stock
 - [x] Stale version updates are rejected
@@ -132,6 +132,6 @@ Depot is currently `0.9.1-preview` with database schema version **15**. Checked 
 - [ ] All automated tests pass on the release commit
 - [ ] Supported Windows versions tested
 - [ ] Application version finalized in `Directory.Build.props`
-- [ ] Database schema remains version 15 or migration notes are updated
+- [ ] Database schema remains version 16 or migration notes are updated
 - [ ] Installer/package, signing, upgrade, rollback, and uninstall tested
 - [ ] Release notes and known limitations published

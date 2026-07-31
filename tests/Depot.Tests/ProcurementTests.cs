@@ -246,6 +246,24 @@ public sealed class ProcurementTests
 	}
 
 	[Fact]
+	public async Task GoodsReceiptUsesTechnicalReasonCodeAfterDisplayNameChanges()
+	{
+		await using var context = await ProcurementTestContext.CreateSqliteAsync();
+		var order = await CreateOrderedOrderAsync(context, 2);
+		await context.Data.ExecuteAsync(
+			"UPDATE ReasonCodes SET Name = 'Localized inbound delivery' WHERE Code = $Code;",
+			CancellationToken.None,
+			new DatabaseParameter("$Code", ReasonCodeSystemCodes.GoodsReceipt));
+
+		var receipt = await context.Receipts.PostAsync(context.NewReceipt(order, 1));
+
+		Assert.Equal(1, await context.ScalarAsync(
+			"SELECT COUNT(*) FROM StockMovements sm INNER JOIN ReasonCodes rc ON rc.Id = sm.ReasonCodeId WHERE sm.Reference = $Reference AND rc.Code = $Code;",
+			new DatabaseParameter("$Reference", receipt.ReceiptNumber),
+			new DatabaseParameter("$Code", ReasonCodeSystemCodes.GoodsReceipt)));
+	}
+
+	[Fact]
 	public async Task GoodsReceiptUpdatesReceivedQuantity()
 	{
 		await using var context = await ProcurementTestContext.CreateSqliteAsync();

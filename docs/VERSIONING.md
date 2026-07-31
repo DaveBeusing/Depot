@@ -11,7 +11,7 @@ The single application-version source is `Directory.Build.props` in the reposito
 ## Current versions
 
 - Application development line: **0.9.1-preview**
-- Database schema version: **15**
+- Database schema version: **16**
 
 The application version and database schema version are independent. A patch application release can retain the same schema, while a schema migration can occur during a prerelease line.
 
@@ -40,7 +40,7 @@ The About page reads the built assembly information and displays the application
 - Microsoft SQL Server: `SqlServerDatabase`
 - MySQL/MariaDB: `MySqlDatabase`
 
-Schema version 15 includes the current warehouse, reason-code, normalized item master-data, supplier, procurement, and goods-receipt structures.
+Schema version 16 adds immutable unique technical keys and system-code metadata to reason codes. The migration preserves reason-code IDs and all existing stock-movement references, maps known defaults to their canonical system codes, and assigns deterministic `LEGACY_<id>` keys to other existing values. Schema version 15 introduced the current procurement and goods-receipt structures.
 
 For every schema change:
 

@@ -35,8 +35,10 @@
 				<controls:SearchBox Placeholder="Search reason codes" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
 				<DataGrid Grid.Row="2" ItemsSource="{Binding ReasonCodes}" SelectedItem="{Binding SelectedReasonCode}" Style="{StaticResource AppDataGridStyle}">
 					<DataGrid.Columns>
+						<DataGridTextColumn Header="Code" Binding="{Binding Code}" Width="170" />
 						<DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="220" />
 						<DataGridTextColumn Header="Description" Binding="{Binding Description}" Width="*" />
+						<DataGridCheckBoxColumn Header="System" Binding="{Binding IsSystem, Mode=OneWay}" Width="80" />
 						<DataGridCheckBoxColumn Header="Active" Binding="{Binding IsActive, Mode=OneWay}" Width="80" />
 					</DataGrid.Columns>
 				</DataGrid>
@@ -45,7 +47,9 @@
 			<controls:Card Grid.Column="2">
 				<StackPanel>
 					<TextBlock Text="{Binding EditorTitle}" Style="{StaticResource SectionTitleStyle}" />
-					<TextBlock Margin="0,16,0,4" Text="Name" Style="{StaticResource FormLabelStyle}" />
+					<TextBlock Margin="0,16,0,4" Text="Technical code" Style="{StaticResource FormLabelStyle}" />
+					<TextBox IsReadOnly="{Binding IsCodeReadOnly}" Style="{StaticResource AppTextBoxStyle}" Text="{Binding Code, UpdateSourceTrigger=PropertyChanged}" />
+					<TextBlock Margin="0,12,0,4" Text="Display name" Style="{StaticResource FormLabelStyle}" />
 					<TextBox Style="{StaticResource AppTextBoxStyle}" Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" />
 					<TextBlock Margin="0,12,0,4" Text="Description" Style="{StaticResource FormLabelStyle}" />
 					<TextBox MinHeight="80" AcceptsReturn="True" Style="{StaticResource MultilineTextBoxStyle}" Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}" TextWrapping="Wrap" />

@@ -111,20 +111,22 @@ public sealed class MultiUserInventoryTests : IDisposable
 	}
 
 	[Fact]
-	public async Task ReasonCodeIsPersistedAndInactiveCodesCannotBeUsedForNewMovements()
+	public async Task ReasonCodeTechnicalKeysAreStableAndInactiveCustomCodesCannotBeUsedForNewMovements()
 	{
 		var inventory = CreateInventory();
-		var defaultNames = _reasonCodeRepository.GetAll().Select(item => item.Name).OrderBy(name => name).ToArray();
+		var defaults = _reasonCodeRepository.GetAll();
+		var defaultCodes = defaults.Select(item => item.Code).OrderBy(code => code).ToArray();
 		Assert.Equal(
 			new[]
 			{
-				"Consumed", "Damaged", "Demo", "Goods Issue", "Goods Receipt", "Inventory Correction",
-				"Lost", "Repair", "Returned", "Transfer"
+				"CONSUMED", "DAMAGED", "DEMO", "GOODS_ISSUE", "GOODS_RECEIPT", "INVENTORY_CORRECTION",
+				"LOST", "REPAIR", "RETURNED", "TRANSFER"
 			},
-			defaultNames);
+			defaultCodes);
 		var reasonCode = Assert.Single(
-			_reasonCodeRepository.GetAll(),
-			item => item.Name == "Goods Receipt");
+			defaults,
+			item => item.Code == ReasonCodeSystemCodes.GoodsReceipt);
+		Assert.True(reasonCode.IsSystem);
 
 		_movementService.AddPurchase(inventory.Id, 5, 2m, reasonCode.Id, "REASON", null);
 
@@ -133,14 +135,33 @@ public sealed class MultiUserInventoryTests : IDisposable
 		var overview = await _movementService.SearchAsync("Goods Receipt", 1, 10, CancellationToken.None);
 		Assert.Contains(overview.Items, item => item.MovementId == movement.Id && item.ReasonCodeName == reasonCode.Name);
 
-		reasonCode = await _reasonCodeService.SetActiveAsync(
+		await Assert.ThrowsAsync<InvalidOperationException>(() => _reasonCodeService.SetActiveAsync(
 			reasonCode.Id,
 			reasonCode.Version,
-			false);
+			false));
 
-		Assert.False(reasonCode.IsActive);
+		var renamed = await _reasonCodeService.SaveAsync(
+			reasonCode.Id,
+			reasonCode.Version,
+			reasonCode.Code,
+			"Inbound delivery",
+			reasonCode.Description);
+		Assert.Equal(reasonCode.Code, renamed.Code);
+		Assert.Equal("Inbound delivery", renamed.Name);
+		await Assert.ThrowsAsync<InvalidOperationException>(() => _reasonCodeService.SaveAsync(
+			renamed.Id,
+			renamed.Version,
+			"RENAMED_TECHNICAL_CODE",
+			renamed.Name,
+			renamed.Description));
+
+		var custom = await _reasonCodeService.SaveAsync(0, 0, "CUSTOM_TEST", "Custom test", null);
+		await Assert.ThrowsAsync<InvalidOperationException>(() =>
+			_reasonCodeService.SaveAsync(0, 0, "custom_test", "Duplicate technical key", null));
+		custom = await _reasonCodeService.SetActiveAsync(custom.Id, custom.Version, false);
+		Assert.False(custom.IsActive);
 		Assert.Throws<InvalidOperationException>(
-			() => _movementService.AddPurchase(inventory.Id, 1, 2m, reasonCode.Id, null, null));
+			() => _movementService.AddPurchase(inventory.Id, 1, 2m, custom.Id, null, null));
 	}
 
 	private Inventory CreateInventory()

@@ -10,7 +10,7 @@ namespace Depot.Repositories;
 
 public sealed class ReasonCodeRepository : DatabaseRepository
 {
-	private const string Columns = "Id, Name, Description, IsActive, Version";
+	private const string Columns = "Id, Code, Name, Description, IsSystem, IsActive, Version";
 
 	public ReasonCodeRepository(DatabaseAccess database) : base(database)
 	{
@@ -23,12 +23,12 @@ public sealed class ReasonCodeRepository : DatabaseRepository
 		var search = searchText?.Trim();
 		var filter = string.IsNullOrWhiteSpace(search)
 			? string.Empty
-			: "WHERE Name LIKE $Search OR Description LIKE $Search";
+			: "WHERE Code LIKE $Search OR Name LIKE $Search OR Description LIKE $Search";
 		var parameters = string.IsNullOrWhiteSpace(search)
 			? []
 			: new[] { Parameter("$Search", $"%{search}%") };
 		return Database.QueryAsync(
-			$"SELECT {Columns} FROM ReasonCodes {filter} ORDER BY IsActive DESC, Name;",
+			$"SELECT {Columns} FROM ReasonCodes {filter} ORDER BY IsActive DESC, Name, Code;",
 			Read,
 			cancellationToken,
 			parameters);
@@ -36,12 +36,12 @@ public sealed class ReasonCodeRepository : DatabaseRepository
 
 	public Task<IReadOnlyList<ReasonCode>> ListActiveAsync(CancellationToken cancellationToken) =>
 		Database.QueryAsync(
-			$"SELECT {Columns} FROM ReasonCodes WHERE IsActive = 1 ORDER BY Name;",
+			$"SELECT {Columns} FROM ReasonCodes WHERE IsActive = 1 ORDER BY Name, Code;",
 			Read,
 			cancellationToken);
 
 	public IReadOnlyList<ReasonCode> GetAll() =>
-		Database.Query($"SELECT {Columns} FROM ReasonCodes ORDER BY Name;", Read);
+		Database.Query($"SELECT {Columns} FROM ReasonCodes ORDER BY Name, Code;", Read);
 
 	public Task<ReasonCode?> GetByIdAsync(long id, CancellationToken cancellationToken) =>
 		Database.QuerySingleOrDefaultAsync(
@@ -56,19 +56,21 @@ public sealed class ReasonCodeRepository : DatabaseRepository
 			Read,
 			Parameter("$Id", id));
 
-	public Task<ReasonCode?> GetByNameAsync(string name, CancellationToken cancellationToken) =>
+	public Task<ReasonCode?> GetByCodeAsync(string code, CancellationToken cancellationToken) =>
 		Database.QuerySingleOrDefaultAsync(
-			$"SELECT {Columns} FROM ReasonCodes WHERE Name = $Name;",
+			$"SELECT {Columns} FROM ReasonCodes WHERE Code = $Code;",
 			Read,
 			cancellationToken,
-			Parameter("$Name", name));
+			Parameter("$Code", code));
 
 	public Task<long> CreateAsync(ReasonCode reasonCode, CancellationToken cancellationToken) =>
 		Database.InsertAsync(
-			"INSERT INTO ReasonCodes (Name, Description, IsActive) VALUES ($Name, $Description, $IsActive);",
+			"INSERT INTO ReasonCodes (Code, Name, Description, IsSystem, IsActive) VALUES ($Code, $Name, $Description, $IsSystem, $IsActive);",
 			cancellationToken,
+			Parameter("$Code", reasonCode.Code),
 			Parameter("$Name", reasonCode.Name),
 			Parameter("$Description", reasonCode.Description),
+			Parameter("$IsSystem", reasonCode.IsSystem),
 			Parameter("$IsActive", reasonCode.IsActive));
 
 	public async Task<bool> UpdateAsync(ReasonCode reasonCode, CancellationToken cancellationToken) =>
@@ -95,9 +97,11 @@ public sealed class ReasonCodeRepository : DatabaseRepository
 	private static ReasonCode Read(DbDataReader reader) => new()
 	{
 		Id = reader.GetInt64(0),
-		Name = reader.GetString(1),
-		Description = reader.IsDBNull(2) ? null : reader.GetString(2),
-		IsActive = reader.GetBoolean(3),
-		Version = reader.GetInt64(4)
+		Code = reader.GetString(1),
+		Name = reader.GetString(2),
+		Description = reader.IsDBNull(3) ? null : reader.GetString(3),
+		IsSystem = reader.GetBoolean(4),
+		IsActive = reader.GetBoolean(5),
+		Version = reader.GetInt64(6)
 	};
 }

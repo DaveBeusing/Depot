@@ -15,6 +15,7 @@ public sealed class ReasonCodeViewModel : BaseViewModel, IDisposable
 	private readonly AsyncDebouncer _searchDebouncer = new(TimeSpan.FromMilliseconds(300));
 	private ReasonCode? _selectedReasonCode;
 	private string _searchText = string.Empty;
+	private string _code = string.Empty;
 	private string _name = string.Empty;
 	private string? _description;
 	private long _editorVersion;
@@ -24,7 +25,7 @@ public sealed class ReasonCodeViewModel : BaseViewModel, IDisposable
 		_service = service;
 		NewCommand = new RelayCommand(New);
 		SaveCommand = new AsyncRelayCommand(SaveAsync);
-		ToggleActiveCommand = new AsyncRelayCommand(ToggleActiveAsync, () => SelectedReasonCode is not null);
+		ToggleActiveCommand = new AsyncRelayCommand(ToggleActiveAsync, () => SelectedReasonCode is not null && CanChangeActiveState);
 	}
 
 	public ObservableCollection<ReasonCode> ReasonCodes { get; } = new();
@@ -52,12 +53,26 @@ public sealed class ReasonCodeViewModel : BaseViewModel, IDisposable
 			if (_selectedReasonCode == value) return;
 			_selectedReasonCode = value;
 			OnPropertyChanged();
+			Code = value?.Code ?? string.Empty;
 			Name = value?.Name ?? string.Empty;
 			Description = value?.Description;
 			_editorVersion = value?.Version ?? 0;
 			OnPropertyChanged(nameof(EditorTitle));
 			OnPropertyChanged(nameof(ActionText));
+			OnPropertyChanged(nameof(IsCodeReadOnly));
+			OnPropertyChanged(nameof(CanChangeActiveState));
 			ToggleActiveCommand.RaiseCanExecuteChanged();
+		}
+	}
+
+	public string Code
+	{
+		get => _code;
+		set
+		{
+			if (_code == value) return;
+			_code = value;
+			OnPropertyChanged();
 		}
 	}
 
@@ -84,6 +99,9 @@ public sealed class ReasonCodeViewModel : BaseViewModel, IDisposable
 	}
 	public string EditorTitle => SelectedReasonCode is null ? "New Reason Code" : "Edit Reason Code";
 	public string ActionText => SelectedReasonCode?.IsActive == true ? "Deactivate" : "Activate";
+	public bool IsCodeReadOnly => SelectedReasonCode is not null;
+	public bool CanChangeActiveState => SelectedReasonCode is not { IsSystem: true, IsActive: true } reasonCode ||
+		!ReasonCodeSystemCodes.IsRequiredByActiveWorkflow(reasonCode.Code);
 
 	public async Task LoadAsync(CancellationToken cancellationToken = default)
 	{
@@ -110,6 +128,7 @@ public sealed class ReasonCodeViewModel : BaseViewModel, IDisposable
 	private void New()
 	{
 		SelectedReasonCode = null;
+		Code = string.Empty;
 		Name = string.Empty;
 		Description = null;
 		_editorVersion = 0;
@@ -123,6 +142,7 @@ public sealed class ReasonCodeViewModel : BaseViewModel, IDisposable
 			var saved = await _service.SaveAsync(
 				SelectedReasonCode?.Id ?? 0,
 				_editorVersion,
+				Code,
 				Name,
 				Description,
 				cancellationToken);

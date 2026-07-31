@@ -470,8 +470,10 @@ public sealed class DepotDatabase : IDatabaseInitializer
 		CREATE TABLE IF NOT EXISTS ReasonCodes
 		(
 			Id          INTEGER PRIMARY KEY AUTOINCREMENT,
+			Code        TEXT NOT NULL UNIQUE,
 			Name        TEXT NOT NULL UNIQUE,
 			Description TEXT NULL,
+			IsSystem    INTEGER NOT NULL DEFAULT 0,
 			IsActive    INTEGER NOT NULL DEFAULT 1,
 			Version     INTEGER NOT NULL DEFAULT 1
 		);
@@ -484,16 +486,17 @@ public sealed class DepotDatabase : IDatabaseInitializer
 		using var command = connection.CreateCommand();
 		command.CommandText =
 		"""
-		INSERT OR IGNORE INTO ReasonCodes (Name, IsActive) VALUES ('Goods Receipt', 1);
-		INSERT OR IGNORE INTO ReasonCodes (Name, IsActive) VALUES ('Goods Issue', 1);
-		INSERT OR IGNORE INTO ReasonCodes (Name, IsActive) VALUES ('Inventory Correction', 1);
-		INSERT OR IGNORE INTO ReasonCodes (Name, IsActive) VALUES ('Damaged', 1);
-		INSERT OR IGNORE INTO ReasonCodes (Name, IsActive) VALUES ('Lost', 1);
-		INSERT OR IGNORE INTO ReasonCodes (Name, IsActive) VALUES ('Returned', 1);
-		INSERT OR IGNORE INTO ReasonCodes (Name, IsActive) VALUES ('Consumed', 1);
-		INSERT OR IGNORE INTO ReasonCodes (Name, IsActive) VALUES ('Demo', 1);
-		INSERT OR IGNORE INTO ReasonCodes (Name, IsActive) VALUES ('Repair', 1);
-		INSERT OR IGNORE INTO ReasonCodes (Name, IsActive) VALUES ('Transfer', 1);
+		INSERT OR IGNORE INTO ReasonCodes (Code, Name, IsSystem, IsActive) VALUES ('GOODS_RECEIPT', 'Goods Receipt', 1, 1);
+		INSERT OR IGNORE INTO ReasonCodes (Code, Name, IsSystem, IsActive) VALUES ('GOODS_ISSUE', 'Goods Issue', 1, 1);
+		INSERT OR IGNORE INTO ReasonCodes (Code, Name, IsSystem, IsActive) VALUES ('INVENTORY_CORRECTION', 'Inventory Correction', 1, 1);
+		INSERT OR IGNORE INTO ReasonCodes (Code, Name, IsSystem, IsActive) VALUES ('DAMAGED', 'Damaged', 1, 1);
+		INSERT OR IGNORE INTO ReasonCodes (Code, Name, IsSystem, IsActive) VALUES ('LOST', 'Lost', 1, 1);
+		INSERT OR IGNORE INTO ReasonCodes (Code, Name, IsSystem, IsActive) VALUES ('RETURNED', 'Returned', 1, 1);
+		INSERT OR IGNORE INTO ReasonCodes (Code, Name, IsSystem, IsActive) VALUES ('CONSUMED', 'Consumed', 1, 1);
+		INSERT OR IGNORE INTO ReasonCodes (Code, Name, IsSystem, IsActive) VALUES ('DEMO', 'Demo', 1, 1);
+		INSERT OR IGNORE INTO ReasonCodes (Code, Name, IsSystem, IsActive) VALUES ('REPAIR', 'Repair', 1, 1);
+		INSERT OR IGNORE INTO ReasonCodes (Code, Name, IsSystem, IsActive) VALUES ('TRANSFER', 'Transfer', 1, 1);
+		UPDATE ReasonCodes SET IsSystem = 1, IsActive = 1 WHERE Code = 'GOODS_RECEIPT';
 		""";
 		command.ExecuteNonQuery();
 	}
@@ -790,6 +793,13 @@ public sealed class DepotDatabase : IDatabaseInitializer
 			migratedVersion = 15;
 		}
 
+		if (migratedVersion == 15)
+		{
+			MigrateReasonCodesToTechnicalKeys(connection);
+			SetDatabaseVersion(connection, 16);
+			migratedVersion = 16;
+		}
+
 		if (migratedVersion < DatabaseVersion.CurrentVersion)
 		{
 			throw new InvalidOperationException(
@@ -801,6 +811,52 @@ public sealed class DepotDatabase : IDatabaseInitializer
 			throw new InvalidOperationException(
 				$"Database version '{version}' is newer than the supported schema version '{DatabaseVersion.CurrentVersion}'.");
 		}
+	}
+
+	private static void MigrateReasonCodesToTechnicalKeys(SqliteConnection connection)
+	{
+		var hasCode = TableHasColumn(connection, "ReasonCodes", "Code");
+		var hasIsSystem = TableHasColumn(connection, "ReasonCodes", "IsSystem");
+		using var transaction = connection.BeginTransaction();
+		using var command = connection.CreateCommand();
+		command.Transaction = transaction;
+		if (!hasCode)
+		{
+			command.CommandText = "ALTER TABLE ReasonCodes ADD COLUMN Code TEXT NOT NULL DEFAULT '';";
+			command.ExecuteNonQuery();
+		}
+		if (!hasIsSystem)
+		{
+			command.CommandText = "ALTER TABLE ReasonCodes ADD COLUMN IsSystem INTEGER NOT NULL DEFAULT 0;";
+			command.ExecuteNonQuery();
+		}
+		command.CommandText =
+			"""
+			UPDATE ReasonCodes
+			SET Code = CASE Name
+				WHEN 'Goods Receipt' THEN 'GOODS_RECEIPT'
+				WHEN 'Goods Issue' THEN 'GOODS_ISSUE'
+				WHEN 'Inventory Correction' THEN 'INVENTORY_CORRECTION'
+				WHEN 'Damaged' THEN 'DAMAGED'
+				WHEN 'Lost' THEN 'LOST'
+				WHEN 'Returned' THEN 'RETURNED'
+				WHEN 'Consumed' THEN 'CONSUMED'
+				WHEN 'Demo' THEN 'DEMO'
+				WHEN 'Repair' THEN 'REPAIR'
+				WHEN 'Transfer' THEN 'TRANSFER'
+				ELSE 'LEGACY_' || printf('%06d', Id)
+			END,
+			IsSystem = CASE WHEN Name IN
+			(
+				'Goods Receipt', 'Goods Issue', 'Inventory Correction', 'Damaged', 'Lost',
+				'Returned', 'Consumed', 'Demo', 'Repair', 'Transfer'
+			) THEN 1 ELSE IsSystem END
+			WHERE Code = '';
+			CREATE UNIQUE INDEX UX_ReasonCodes_Code ON ReasonCodes(Code);
+			""";
+		command.ExecuteNonQuery();
+		transaction.Commit();
+		CreateDefaultReasonCodes(connection);
 	}
 
 	private static void MigrateSupplierClassification(SqliteConnection connection)

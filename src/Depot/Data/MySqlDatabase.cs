@@ -35,6 +35,7 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 				"@DefaultPasswordHash",
 				"pbkdf2-sha256$210000$9vL0kVt/HZBUCpsJYjPW6Q==$B1lZ+NRxxR/E8kwIE5PK0wXR2BPDmFTeLiKYyAEuhaE=");
 			command.ExecuteNonQuery();
+			EnsureReasonCodeTechnicalKeys(command);
 			command.CommandText = ProcurementSql;
 			command.Parameters.Clear();
 			command.ExecuteNonQuery();
@@ -77,6 +78,11 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 				MigrateToProcurement(command);
 				version = 15;
 			}
+			if (version == 15)
+			{
+				MigrateReasonCodesToTechnicalKeys(command);
+				version = 16;
+			}
 			if (version != DatabaseVersion.CurrentVersion)
 			{
 				throw new InvalidOperationException(
@@ -89,6 +95,68 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 			releaseCommand.CommandText = "SELECT RELEASE_LOCK('Depot.SchemaMigration');";
 			releaseCommand.ExecuteScalar();
 		}
+	}
+
+	private static void MigrateReasonCodesToTechnicalKeys(System.Data.Common.DbCommand command)
+	{
+		EnsureReasonCodeTechnicalKeys(command);
+		Execute(command, "UPDATE DatabaseInfo SET Version = 16 WHERE Id = 1;");
+	}
+
+	private static void EnsureReasonCodeTechnicalKeys(System.Data.Common.DbCommand command)
+	{
+		if (!ColumnExists(command, "ReasonCodes", "Code"))
+			Execute(command, "ALTER TABLE ReasonCodes ADD COLUMN Code varchar(50) NULL;");
+		if (!ColumnExists(command, "ReasonCodes", "IsSystem"))
+			Execute(command, "ALTER TABLE ReasonCodes ADD COLUMN IsSystem boolean NOT NULL DEFAULT false;");
+		Execute(
+			command,
+			"""
+			UPDATE ReasonCodes
+			SET Code = CASE Name
+				WHEN 'Goods Receipt' THEN 'GOODS_RECEIPT'
+				WHEN 'Goods Issue' THEN 'GOODS_ISSUE'
+				WHEN 'Inventory Correction' THEN 'INVENTORY_CORRECTION'
+				WHEN 'Damaged' THEN 'DAMAGED'
+				WHEN 'Lost' THEN 'LOST'
+				WHEN 'Returned' THEN 'RETURNED'
+				WHEN 'Consumed' THEN 'CONSUMED'
+				WHEN 'Demo' THEN 'DEMO'
+				WHEN 'Repair' THEN 'REPAIR'
+				WHEN 'Transfer' THEN 'TRANSFER'
+				ELSE CONCAT('LEGACY_', LPAD(Id, 6, '0'))
+			END
+			WHERE Code IS NULL OR TRIM(Code) = '';
+			""");
+		Execute(
+			command,
+			"""
+			UPDATE ReasonCodes SET IsSystem = true
+			WHERE Code IN
+			(
+				'GOODS_RECEIPT', 'GOODS_ISSUE', 'INVENTORY_CORRECTION', 'DAMAGED', 'LOST',
+				'RETURNED', 'CONSUMED', 'DEMO', 'REPAIR', 'TRANSFER'
+			);
+			""");
+		Execute(command, "ALTER TABLE ReasonCodes MODIFY COLUMN Code varchar(50) NOT NULL;");
+		if (!IndexExists(command, "ReasonCodes", "UX_ReasonCodes_Code"))
+			Execute(command, "ALTER TABLE ReasonCodes ADD UNIQUE INDEX UX_ReasonCodes_Code (Code);");
+		Execute(
+			command,
+			"""
+			INSERT IGNORE INTO ReasonCodes (Code, Name, IsSystem, IsActive) VALUES
+				('GOODS_RECEIPT', 'Goods Receipt', true, true),
+				('GOODS_ISSUE', 'Goods Issue', true, true),
+				('INVENTORY_CORRECTION', 'Inventory Correction', true, true),
+				('DAMAGED', 'Damaged', true, true),
+				('LOST', 'Lost', true, true),
+				('RETURNED', 'Returned', true, true),
+				('CONSUMED', 'Consumed', true, true),
+				('DEMO', 'Demo', true, true),
+				('REPAIR', 'Repair', true, true),
+				('TRANSFER', 'Transfer', true, true);
+			UPDATE ReasonCodes SET IsSystem = true, IsActive = true WHERE Code = 'GOODS_RECEIPT';
+			""");
 	}
 
 	private static void MigrateToProcurement(System.Data.Common.DbCommand command)
@@ -483,8 +551,10 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 	CREATE TABLE IF NOT EXISTS ReasonCodes
 	(
 		Id bigint NOT NULL AUTO_INCREMENT PRIMARY KEY,
+		Code varchar(50) NULL,
 		Name varchar(200) NOT NULL UNIQUE,
 		Description varchar(500) NULL,
+		IsSystem boolean NOT NULL DEFAULT false,
 		IsActive boolean NOT NULL DEFAULT true,
 		Version bigint NOT NULL DEFAULT 1
 	) ENGINE=InnoDB;
@@ -567,17 +637,6 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 	INSERT INTO Purposes (Name, Description, IsActive)
 	SELECT 'Stock', 'Default stock purpose', true
 	WHERE NOT EXISTS (SELECT 1 FROM Purposes WHERE Name = 'Stock');
-
-	INSERT INTO ReasonCodes (Name, IsActive)
-	SELECT defaults.Name, true
-	FROM
-	(
-		SELECT 'Goods Receipt' AS Name UNION ALL SELECT 'Goods Issue' UNION ALL
-		SELECT 'Inventory Correction' UNION ALL SELECT 'Damaged' UNION ALL SELECT 'Lost' UNION ALL
-		SELECT 'Returned' UNION ALL SELECT 'Consumed' UNION ALL SELECT 'Demo' UNION ALL
-		SELECT 'Repair' UNION ALL SELECT 'Transfer'
-	) defaults
-	WHERE NOT EXISTS (SELECT 1 FROM ReasonCodes existing WHERE existing.Name = defaults.Name);
 
 	INSERT INTO Warehouses (Name, Description, IsActive)
 	SELECT 'Main Warehouse', 'Default Depot warehouse', true

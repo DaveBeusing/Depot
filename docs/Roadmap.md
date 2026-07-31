@@ -54,6 +54,7 @@ This roadmap reflects the implementation on the current `master` branch. “Impl
 - [x] Invoice-backed goods receipts
 - [x] Partial receipts and automatic purchase-order status updates
 - [x] Atomic receipt, stock-movement, received-quantity, status, and audit writes
+- [x] Immutable technical reason-code keys and protected workflow system codes
 
 ### Administration and output
 
