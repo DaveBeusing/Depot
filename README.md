@@ -1,8 +1,8 @@
 # Depot
 
-Depot is a Windows desktop application for managing items, inventories, stock movements, master data, users, imports, and reports. It is built with .NET 10, WPF, MVVM, SQLite, SQL Server, and MySQL/MariaDB.
+Depot is a Windows desktop application for inventory, warehouse, supplier, procurement, user, import, and reporting workflows. It is built with .NET 10, WPF, strict MVVM, and a provider-neutral ADO.NET persistence layer.
 
-The project started as a replacement for an Excel-based inventory and is under active development toward version 1.0. Database schema and domain model changes are still possible before the first stable release.
+The project is under active development on the `0.9.1-preview` line. Implemented workflows are not described as production-ready until the version 1.0 verification checklist has been completed.
 
 ![Platform](https://img.shields.io/badge/platform-Windows-blue)
 ![Framework](https://img.shields.io/badge/.NET-10-512BD4)
@@ -11,116 +11,61 @@ The project started as a replacement for an Excel-based inventory and is under a
 ![Architecture](https://img.shields.io/badge/architecture-MVVM-orange)
 ![License](https://img.shields.io/badge/license-MIT-yellow)
 
-## Current features
+## Current implementation status
 
-### Dashboard
+### Fully implemented in the application
 
-- Total item count, stock quantity, inventory value, and movement count
-- German Euro formatting
-- Recent stock movements
-- Reusable metric cards and responsive dashboard layout
+- Email/password authentication, PBKDF2-SHA256 password hashing, roles, session switching, and administrator-managed users
+- Dashboard metrics, recent movements, inventory valuation, and German Euro formatting
+- Item, inventory, purpose, warehouse, storage-location, and stock-movement workflows
+- Reason codes with standard seed data, search, activation, and movement references
+- Normalized item master data: manufacturer, category, unit of measure, and packaging
+- Supplier categories, suppliers, and many-to-many `SupplierItem` assignments with supplier-specific commercial data
+- Purchase orders and lines with automatic `PO-xxxxxx` numbering, status workflow, search, and filtering
+- Invoice-backed goods receipts, including partial receipts and automatic purchase-order status updates
+- Atomic goods-receipt posting across receipt records, received quantities, stock movements, and order status
+- Excel import, report search, grouped reports, and Excel export
+- Audit persistence for relevant create/update operations
+- Optimistic concurrency using version columns and explicit conflict errors
+- Database administration: overview, provider/schema/connection display, backup validation, backup, restore with safety backup, scheduled backups, integrity checks, and SQLite compaction
+- Encrypted `depot.settings` storage using Windows DPAPI
+- Connection testing, connection-state UI, safe provider-specific errors, and database logging without exposed credentials
 
-### Inventory
+### Database providers
 
-- Inventory overview by item, purpose, warehouse, and storage location
-- Current stock calculation
-- Weighted average cost and inventory valuation
-- Detailed inventory information and recent movements
-- Live search across inventory data
+- SQLite is the default first-installation provider and is covered by automated integration tests.
+- Microsoft SQL Server has a dedicated connection factory, database initializer, schema migrations, locking SQL, connection tests, and error normalization.
+- MySQL/MariaDB has a dedicated connection factory, database initializer, schema migrations, locking SQL, connection tests, and error normalization.
 
-### Items
+SQL Server and MySQL/MariaDB support is implemented in code, but live-server migration, backup/restore, concurrency, and long-running acceptance tests are still required before version 1.0. Provider support must therefore not yet be interpreted as a production certification.
 
-- Create and edit items
-- Deactivate items
-- Part number, description, manufacturer, and category data
-- Live search
+### Partially implemented
 
-### Stock movements
+- Most interactive list loading is asynchronous and cancellable.
+- Items, inventory, movements, users, and purchase-order searches use server-side paging infrastructure.
+- Search debounce is used across the main large-data and master-data screens.
+- Some legacy service/report paths still call synchronous `GetAll()` methods or materialize complete data sets.
+- The purchase-order screen currently loads a bounded server-side page without full user-facing page navigation.
+- Audit records are persisted, but there is no administration UI for browsing or exporting the audit trail.
+- General application preferences remain a placeholder; database and backup settings are implemented separately.
 
-- Opening balances
-- Purchases
-- Withdrawals
-- Corrections
-- Transfer support in the domain model
-- Optional reason-code classification for every stock movement
-- Standard reasons for receipts, issues, corrections, damage, loss, returns, consumption, demos, repairs, and transfers
-- Unit prices, references, and notes
-- Live search and stock validation
+### Not started
 
-### Excel import
+- Barcode scanning and barcode generation
+- Label design and printing
+- Dedicated audit-log viewer/export
+- General application-preferences module
 
-- `.xlsx` file selection
-- Import preview and summary statistics
-- Duplicate detection and validation warnings
-- Purpose, warehouse, and storage-location resolution
-- Inventory creation and opening balance import
-- Import result summary
+### To verify before version 1.0
 
-### Reports and export
-
-- Inventory Value
-- Stock by Warehouse
-- Stock by Storage Location
-- Stock by Purpose
-- Stock by Category
-- Stock by Manufacturer
-- Search and filtering
-- Excel export with German Euro number formats
-
-### Administration
-
-- Role-based Administration navigation
-- Purpose management
-- Reason-code management with search and activation status
-- Warehouse and storage-location management
-- User management
-- Activate and deactivate users
-- Administrator role assignment
-- Excel import workspace
-- Settings placeholder for future application preferences
-- About page with application, build, runtime, and schema information
-- Encrypted local and SQL Server connection configuration
-- Provider abstraction for local SQLite, SQL Server, and MySQL/MariaDB installations
-
-### Session and users
-
-- Email and password authentication at startup
-- PBKDF2-SHA256 password hashing with per-user salts
-- Editable user email addresses and administrator-managed password changes
-- Administrator and standard user roles
-- Administration visibility based on permissions
-- Current user panel in the sidebar
-- Logout and session switching
-- Database connection status in the login window and sidebar
-
-## UI design system
-
-Depot includes a reusable WPF design system under `src/Depot/Resources` and `src/Depot/Controls`.
-
-Current controls include:
-
-- `Card`
-- `MetricCard`
-- `SearchBox`
-- `PageHeader`
-- `StatusBadge`
-- `EmptyState`
-- `SidebarBrand`
-- `SidebarUserPanel`
-- `PasswordInput`
-- `ConnectionStatusIndicator`
-
-The resource dictionaries provide shared colors, typography, spacing, buttons, inputs, navigation, cards, DataGrid styling, dialogs, status presentation, and empty states.
-
-## Versioning
-
-Depot uses Semantic Versioning with a single version source in `Directory.Build.props`. Assembly, file, and informational versions are generated consistently for local, CI, prerelease, and stable builds. The database schema version remains independent from the application release version.
-
-See [Depot versioning](docs/VERSIONING.md) for the version components and release procedure.
+- Live SQL Server and MySQL/MariaDB installation and migration matrices
+- Live server backup/restore and failure-recovery drills
+- Multi-client concurrency and long-running load tests against server providers
+- Large-data acceptance tests with at least 100,000 records
+- Complete UI, accessibility, keyboard-navigation, localization, packaging, and upgrade testing
+- Security review of deployment defaults, credentials, invoice-document paths, logs, and backup retention
 
 ## Architecture
-
-Depot follows a layered MVVM architecture:
 
 ```text
 Views
@@ -131,96 +76,81 @@ Services
   |
 Repositories
   |
-SQLite / SQL Server / MySQL or MariaDB
+DatabaseAccess
+  |
+SQLite / Microsoft SQL Server / MySQL or MariaDB
 ```
 
 - Views contain layout and bindings.
-- ViewModels contain presentation state and UI commands.
-- Services contain business logic and application workflows.
-- Repositories contain provider-neutral ADO.NET access and mapping.
+- ViewModels contain presentation state, loading state, and UI commands.
+- Services contain validation and business workflows.
+- Repositories contain persistence SQL and mapping.
+- `DatabaseAccess` provides shared asynchronous queries, paging, transactions, streaming, and provider normalization.
 - `App.xaml.cs` is the composition root.
 
-Native file dialogs are accessed through `IFileDialogService`, keeping WPF dialog creation outside the ViewModels.
+See [Architecture](docs/Architecture.md) for details.
+
+## UI design system
+
+Shared resources live under `src/Depot/Resources`; reusable controls live under `src/Depot/Controls`. The UI kit includes colors, typography, spacing, buttons, inputs, navigation, cards, DataGrid styles, dialogs, status presentation, loading feedback, and reusable controls such as `Card`, `MetricCard`, `SearchBox`, `PageHeader`, `StatusBadge`, and `EmptyState`.
 
 ## Technology
 
 - .NET 10 for Windows
-- WPF
+- WPF and MVVM
 - SQLite via `Microsoft.Data.Sqlite`
 - SQL Server via `Microsoft.Data.SqlClient`
-- MySQL and MariaDB via `MySqlConnector`
+- MySQL/MariaDB via `MySqlConnector`
 - ClosedXML for Excel import and export
 - Nullable reference types enabled
 
-## Requirements
+## Getting started
+
+Requirements:
 
 - Windows 10 or Windows 11
 - [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
 - Visual Studio, JetBrains Rider, or the .NET CLI
 
-## Getting started
-
-Clone the repository:
-
 ```powershell
 git clone https://github.com/DaveBeusing/Depot.git
 cd Depot
-```
-
-Build the application:
-
-```powershell
-dotnet build src/Depot/Depot.csproj
-```
-
-Run the application:
-
-```powershell
+dotnet build Depot.slnx
 dotnet run --project src/Depot/Depot.csproj
 ```
 
-The selected database is created and initialized automatically. Local installations use `depot.db`; the current schema version is 8.
+The first installation uses local SQLite and creates `depot.db`. The current database schema version is **15**.
 
-Database connection settings are stored in `depot.settings`. The file is a JSON envelope whose payload is encrypted with Windows DPAPI for the current Windows user. A first installation starts with SQLite. Administration > Database can test and activate SQL Server or MySQL/MariaDB; provider changes take effect after restarting Depot. Connection attempts and failures are written to `depot.database.log` without connection strings or credentials.
+Connection and backup settings are stored in `depot.settings`. The file is a JSON envelope with a DPAPI-encrypted payload for the current Windows user. Administration > Database can configure, test, and activate SQLite, SQL Server, or MySQL/MariaDB connections. Provider changes take effect after restarting Depot. Connection attempts and failures are written to `depot.database.log` without connection strings or passwords.
 
-For a new database, sign in with `admin@depot.local` and the initial password `Depot123!`. Change the password in Administration > Users after the first sign-in. Existing version 5 users are migrated to an email ending in `@depot.local` and receive the same initial password.
-
-The solution can also be opened through `Depot.slnx`.
+For a new database, sign in with `admin@depot.local` and `Depot123!`, then change the password in Administration > Users.
 
 ## Project structure
 
 ```text
 src/Depot/
   Controls/       Reusable WPF controls
-  Data/           Database initialization and migrations
-  Models/         Domain and report models
+  Data/           Provider factories, initialization, and migrations
+  Models/         Domain, status, and report models
   Repositories/   Provider-neutral persistence
   Resources/      Design system resource dictionaries
-  Services/       Business logic and application services
+  Services/       Business and application workflows
   ViewModels/     Presentation logic and commands
   Views/          WPF views and windows
+tests/Depot.Tests/
+  Automated unit and SQLite integration tests
 ```
 
-## Development status
+## Versioning and documentation
 
-Implemented workflows are usable, but Depot remains in active development. The release checklist has not yet been completed.
-
-Planned work includes:
-
-- Database maintenance, backup, and restore
-- Application settings
-- Manufacturer, category, and packaging master data
-- Barcode and label support
-- Audit logging
-- Release hardening and automated tests
-
-See the project documentation for additional context:
+Depot uses Semantic Versioning from `Directory.Build.props`. Application release versions and database schema versions are independent. See:
 
 - [Architecture](docs/Architecture.md)
 - [Coding Standard](docs/CodingStandard.md)
 - [Roadmap](docs/Roadmap.md)
 - [Version 1.0 release checklist](docs/RELEASE_1_0.md)
+- [Versioning](docs/VERSIONING.md)
 
 ## License
 
-Depot is released under the MIT License. See [LICENSE.md](LICENSE.md) for details.
+Depot is released under the MIT License. See [LICENSE.md](LICENSE.md).

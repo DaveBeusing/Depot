@@ -1,4 +1,4 @@
-# Depot versioning
+# Depot Versioning
 
 Depot uses [Semantic Versioning](https://semver.org/) for application releases:
 
@@ -6,31 +6,67 @@ Depot uses [Semantic Versioning](https://semver.org/) for application releases:
 MAJOR.MINOR.PATCH[-PRERELEASE][+BUILD]
 ```
 
-The single version source is `Directory.Build.props` in the repository root.
+The single application-version source is `Directory.Build.props` in the repository root.
 
-## Version components
+## Current versions
 
-- `MAJOR` changes for incompatible public releases.
-- `MINOR` changes for backward-compatible features. Before 1.0, it may also mark significant product changes.
+- Application development line: **0.9.1-preview**
+- Database schema version: **15**
+
+The application version and database schema version are independent. A patch application release can retain the same schema, while a schema migration can occur during a prerelease line.
+
+## Application version components
+
+- `MAJOR` changes for incompatible stable releases.
+- `MINOR` changes for backward-compatible features. Before 1.0 it may also mark a significant preview milestone.
 - `PATCH` changes for backward-compatible fixes.
-- `PRERELEASE` identifies development builds such as `preview.1`, `beta.1`, or `rc.1`.
-- `BUILD` is generated from source revision metadata and does not affect version precedence.
+- `PRERELEASE` identifies preview, beta, or release-candidate builds.
+- `BUILD` contributes revision metadata and does not change SemVer precedence.
 
-The current development line is `0.9.0-preview.1`.
+The MSBuild properties produce:
 
-## .NET versions
+- `Version` and `InformationalVersion` from the SemVer components;
+- stable `AssemblyVersion` within a major/minor line;
+- numeric `FileVersion` in `MAJOR.MINOR.PATCH.BUILD` form;
+- source revision metadata in deterministic CI informational versions.
 
-- `Version` and `InformationalVersion` carry the SemVer application version.
-- `AssemblyVersion` remains stable for a major/minor release line to avoid unnecessary binary-binding changes.
-- `FileVersion` is numeric and uses `MAJOR.MINOR.PATCH.BUILD` for Windows file properties.
-- The database schema version is independent from the application version and remains managed by `DatabaseVersion`.
+The About page reads the built assembly information and displays the application, file, informational, runtime, and database-schema versions.
 
-## Creating releases
+## Database schema versioning
 
-Update the Depot version components in `Directory.Build.props` in the release commit. For a stable build, publish with:
+`src/Depot/Data/DatabaseVersion.cs` is the schema-version source. All providers must use the same current version:
+
+- SQLite: `DepotDatabase`
+- Microsoft SQL Server: `SqlServerDatabase`
+- MySQL/MariaDB: `MySqlDatabase`
+
+Schema version 15 includes the current warehouse, reason-code, normalized item master-data, supplier, procurement, and goods-receipt structures.
+
+For every schema change:
+
+1. Add equivalent current-schema definitions for all three providers.
+2. Add a forward migration from the previous supported version for all three providers.
+3. Increment `DatabaseVersion.CurrentVersion` once.
+4. Update database-backup table definitions when persisted data changes.
+5. Add or update migration and core-workflow tests.
+6. Update README, Architecture, Roadmap, and release documentation.
+
+SQLite migrations are exercised by the automated integration suite. SQL Server and MySQL/MariaDB migration scripts must also be tested against live supported server versions before a stable release.
+
+## Creating a release
+
+1. Complete `docs/RELEASE_1_0.md` for the target release.
+2. Ensure the working tree contains the intended release changes only.
+3. Run the full build and automated test suite.
+4. Set the required version components in `Directory.Build.props`.
+5. For a stable build, publish with:
 
 ```powershell
 dotnet publish src\Depot\Depot.csproj -c Release -p:DepotStableRelease=true -p:DepotVersionBuild=1
 ```
 
-Prerelease builds retain `DepotVersionSuffix`. CI builds are deterministic and include the source revision in the informational version.
+Prerelease builds retain `DepotVersionSuffix`. Stable releases set `DepotStableRelease=true` so the suffix is omitted.
+
+## Release documentation rule
+
+Do not call a provider or workflow production-ready solely because its implementation compiles. Stable-release documentation requires automated coverage where practical and recorded manual acceptance for environment-dependent behavior such as server migrations, recovery, deployment, and multi-client operation.
