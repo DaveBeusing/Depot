@@ -133,6 +133,6 @@ Depot is currently `0.9.1-preview` with database schema version **18**. Checked 
 - [ ] All automated tests pass on the release commit
 - [ ] Supported Windows versions tested
 - [ ] Application version finalized in `Directory.Build.props`
-- [ ] Database schema remains version 18 or migration notes are updated
+- [ ] Database schema remains version 19 or migration notes are updated
 - [ ] Installer/package, signing, upgrade, rollback, and uninstall tested
 - [ ] Release notes and known limitations published

@@ -53,6 +53,14 @@ internal sealed class ServiceComposition
 			repositories.ReasonCodes,
 			repositories.Audit,
 			audit);
+		InventoryCounts = new InventoryCountService(
+			database.TransactionRunner,
+			repositories.InventoryCounts,
+			repositories.Inventories,
+			repositories.StockMovements,
+			repositories.Warehouses,
+			repositories.Audit,
+			audit);
 		Items = new ItemService(
 			repositories.Items,
 			audit,
@@ -116,6 +124,7 @@ internal sealed class ServiceComposition
 	public PurchaseOrderService PurchaseOrders { get; }
 	public GoodsReceiptService GoodsReceipts { get; }
 	public StockTransferService StockTransfers { get; }
+	public InventoryCountService InventoryCounts { get; }
 	public WarehouseService Warehouses { get; }
 	public StorageLocationService StorageLocations { get; }
 	public UserService Users { get; }

@@ -34,6 +34,8 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 		command.ExecuteNonQuery();
 		command.CommandText = StockTransferSql;
 		command.ExecuteNonQuery();
+		command.CommandText = InventoryCountSql;
+		command.ExecuteNonQuery();
 
 		command.CommandText = "SELECT Version FROM DatabaseInfo WHERE Id = 1;";
 		var version = Convert.ToInt32(command.ExecuteScalar(), CultureInfo.InvariantCulture);
@@ -87,6 +89,11 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 			MigrateToStockTransfers(command);
 			version = 18;
 		}
+		if (version == 18)
+		{
+			MigrateToInventoryCounts(command);
+			version = 19;
+		}
 		if (version != DatabaseVersion.CurrentVersion)
 		{
 			throw new InvalidOperationException(
@@ -99,6 +106,13 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 	private static void MigrateToStockTransfers(System.Data.Common.DbCommand command)
 	{
 		command.CommandText = StockTransferSql + " UPDATE DatabaseInfo SET Version = 18 WHERE Id = 1;";
+		command.Parameters.Clear();
+		command.ExecuteNonQuery();
+	}
+
+	private static void MigrateToInventoryCounts(System.Data.Common.DbCommand command)
+	{
+		command.CommandText = InventoryCountSql + " UPDATE DatabaseInfo SET Version = 19 WHERE Id = 1;";
 		command.Parameters.Clear();
 		command.ExecuteNonQuery();
 	}
@@ -447,6 +461,53 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 		);
 		CREATE INDEX IX_StockTransferLines_SourceInventoryId ON StockTransferLines(SourceInventoryId);
 		CREATE INDEX IX_StockTransferLines_DestinationInventoryId ON StockTransferLines(DestinationInventoryId);
+	END;
+	""";
+
+	private const string InventoryCountSql =
+	"""
+	IF OBJECT_ID(N'InventoryCounts', N'U') IS NULL
+	BEGIN
+		CREATE TABLE InventoryCounts
+		(
+			Id bigint IDENTITY(1,1) NOT NULL PRIMARY KEY,
+			CountNumber nvarchar(50) NOT NULL UNIQUE,
+			WarehouseId bigint NOT NULL,
+			Status int NOT NULL DEFAULT 1,
+			CreatedAtUtc nvarchar(40) NOT NULL,
+			StartedAtUtc nvarchar(40) NULL,
+			CompletedAtUtc nvarchar(40) NULL,
+			CreatedByUserId bigint NOT NULL,
+			PostedByUserId bigint NULL,
+			Notes nvarchar(4000) NULL,
+			Version bigint NOT NULL DEFAULT 1,
+			CONSTRAINT CK_InventoryCounts_Status CHECK (Status IN (1, 2, 3, 4, 5)),
+			CONSTRAINT FK_InventoryCounts_Warehouses FOREIGN KEY (WarehouseId) REFERENCES Warehouses(Id),
+			CONSTRAINT FK_InventoryCounts_CreatedByUsers FOREIGN KEY (CreatedByUserId) REFERENCES Users(Id),
+			CONSTRAINT FK_InventoryCounts_PostedByUsers FOREIGN KEY (PostedByUserId) REFERENCES Users(Id)
+		);
+		CREATE INDEX IX_InventoryCounts_WarehouseId_Status ON InventoryCounts(WarehouseId, Status);
+		CREATE INDEX IX_InventoryCounts_CreatedAtUtc ON InventoryCounts(CreatedAtUtc);
+	END;
+	IF OBJECT_ID(N'InventoryCountLines', N'U') IS NULL
+	BEGIN
+		CREATE TABLE InventoryCountLines
+		(
+			Id bigint IDENTITY(1,1) NOT NULL PRIMARY KEY,
+			InventoryCountId bigint NOT NULL,
+			InventoryId bigint NOT NULL,
+			ExpectedQuantity bigint NOT NULL,
+			CountedQuantity bigint NULL,
+			CountedByUserId bigint NULL,
+			CountedAtUtc nvarchar(40) NULL,
+			Version bigint NOT NULL DEFAULT 1,
+			CONSTRAINT UQ_InventoryCountLines_Inventory UNIQUE (InventoryCountId, InventoryId),
+			CONSTRAINT CK_InventoryCountLines_CountedQuantity CHECK (CountedQuantity IS NULL OR CountedQuantity >= 0),
+			CONSTRAINT FK_InventoryCountLines_Counts FOREIGN KEY (InventoryCountId) REFERENCES InventoryCounts(Id),
+			CONSTRAINT FK_InventoryCountLines_Inventories FOREIGN KEY (InventoryId) REFERENCES Inventories(Id),
+			CONSTRAINT FK_InventoryCountLines_CountedByUsers FOREIGN KEY (CountedByUserId) REFERENCES Users(Id)
+		);
+		CREATE INDEX IX_InventoryCountLines_InventoryId ON InventoryCountLines(InventoryId);
 	END;
 	""";
 

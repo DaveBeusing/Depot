@@ -9,12 +9,12 @@ using Xunit;
 
 namespace Depot.Tests;
 
-public sealed class StockTransferMigrationTests : IDisposable
+public sealed class InventoryCountMigrationTests : IDisposable
 {
-	private readonly string _databasePath = Path.Combine(Path.GetTempPath(), $"depot-transfer-migration-{Guid.NewGuid():N}.db");
+	private readonly string _databasePath = Path.Combine(Path.GetTempPath(), $"depot-count-migration-{Guid.NewGuid():N}.db");
 
 	[Fact]
-	public void VersionSeventeenMigratesToStockTransferSchema()
+	public void VersionEighteenMigratesToInventoryCountSchema()
 	{
 		using (var connection = new SqliteConnection($"Data Source={_databasePath}"))
 		{
@@ -24,7 +24,7 @@ public sealed class StockTransferMigrationTests : IDisposable
 				"""
 				PRAGMA foreign_keys = ON;
 				CREATE TABLE DatabaseInfo (Version INTEGER NOT NULL);
-				INSERT INTO DatabaseInfo (Version) VALUES (17);
+				INSERT INTO DatabaseInfo (Version) VALUES (18);
 				CREATE TABLE Warehouses (Id INTEGER PRIMARY KEY);
 				CREATE TABLE Users (Id INTEGER PRIMARY KEY);
 				CREATE TABLE Inventories (Id INTEGER PRIMARY KEY);
@@ -37,10 +37,10 @@ public sealed class StockTransferMigrationTests : IDisposable
 		using var migrated = new SqliteConnection($"Data Source={_databasePath}");
 		migrated.Open();
 		Assert.Equal(19L, Scalar(migrated, "SELECT Version FROM DatabaseInfo;"));
-		Assert.Equal(1L, Scalar(migrated, "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'StockTransfers';"));
-		Assert.Equal(1L, Scalar(migrated, "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'StockTransferLines';"));
-		Assert.Equal(1L, Scalar(migrated, "SELECT COUNT(*) FROM sqlite_master WHERE type = 'index' AND name = 'IX_StockTransferLines_SourceInventoryId';"));
 		Assert.Equal(1L, Scalar(migrated, "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'InventoryCounts';"));
+		Assert.Equal(1L, Scalar(migrated, "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'InventoryCountLines';"));
+		Assert.Equal(1L, Scalar(migrated, "SELECT COUNT(*) FROM sqlite_master WHERE type = 'index' AND name = 'IX_InventoryCounts_WarehouseId_Status';"));
+		Assert.Equal(1L, Scalar(migrated, "SELECT COUNT(*) FROM sqlite_master WHERE type = 'index' AND name = 'IX_InventoryCountLines_InventoryId';"));
 	}
 
 	public void Dispose()

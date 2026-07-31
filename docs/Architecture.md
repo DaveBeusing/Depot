@@ -84,7 +84,7 @@ SQLite is covered by integration tests. SQL Server and MySQL/MariaDB have provid
 
 ## Schema and migrations
 
-The current database schema version is **18**. It is independent from the application SemVer version.
+The current database schema version is **19**. It is independent from the application SemVer version.
 
 All providers create the current schema and migrate supported older schemas forward. Migrations cover authentication, inventory-based movements, audit/concurrency, warehouse structure, reason codes, normalized item master data, suppliers, supplier categories, supplier items, purchase orders, and goods receipts.
 
@@ -135,6 +135,12 @@ Schema version 18 introduces `StockTransfer` and `StockTransferLine` for warehou
 Posting locks the transfer and all source/destination inventories in a stable order, validates aggregate source availability, resolves the immutable `TRANSFER` reason code, and creates a paired `TransferOut` and `TransferIn` movement for every line. Movements, Posted status, posting user, and audit entry share one provider-neutral transaction. The service prevents concurrent transfers from overdrawing a shared source.
 
 The Transfers main page exposes a server-paged and server-searched transfer list, status filtering, draft editing, warehouse-filtered inventory selection, item-matched destination selection, stock availability, confirmed posting, cancellation, and the generated movement pair. ViewModels own presentation state and targeted list updates; all validation and posting rules remain in `StockTransferService`.
+
+### Inventory counts
+
+Schema version 19 introduces `InventoryCount` and `InventoryCountLine`. An audited draft belongs to one active warehouse and can be edited or cancelled with optimistic concurrency. Starting a count locks the draft and all active warehouse inventories, snapshots their current movement-derived quantities, creates one unique line per inventory, changes the status to Counting, and writes the audit entry in one provider-neutral transaction.
+
+Counting updates use line-level optimistic concurrency and preserve `ExpectedQuantity`. A count can move to Review only after every line has a counted quantity. Review and future Posted counts cannot change the snapshot through the service. Difference posting and the complete inventory-count UI are intentionally not part of this schema increment.
 
 ### Procurement database roundtrips
 

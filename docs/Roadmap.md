@@ -80,6 +80,7 @@ This roadmap reflects the implementation on the current `master` branch. “Impl
 - User-facing paging: server-side paging is used, but not every screen exposes complete page navigation.
 - Audit tooling: audit records are written, but no audit viewer, filter, retention, or export UI exists.
 - Transfer workflow: application workflow and UI are implemented; live SQL Server and MySQL/MariaDB concurrency verification remains open.
+- Inventory-count workflow: audited drafts, atomic warehouse snapshots, counting, review, cancellation, and concurrency controls exist; difference posting and the complete UI remain open.
 - General settings: database and backup settings are implemented; the general Settings page remains a placeholder.
 - Provider verification: SQL Server and MySQL/MariaDB implementations exist, but live-server integration coverage is incomplete.
 

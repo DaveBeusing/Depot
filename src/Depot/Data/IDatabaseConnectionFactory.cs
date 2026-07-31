@@ -20,6 +20,8 @@ public interface IDatabaseConnectionFactory
 	string GetInventoryBatchLockSql(string parameterList);
 	string GetPurchaseOrderLockSql();
 	string GetStockTransferLockSql();
+	string GetInventoryCountLockSql();
+	string GetInventoryCountInventoryLockSql();
 	string GetPagingClause();
 	string CastToInt64(string expression);
 }

@@ -1,8 +1,8 @@
 <Project>
 	<PropertyGroup>
 		<DepotVersionMajor>0</DepotVersionMajor>
-		<DepotVersionMinor>9</DepotVersionMinor>
-		<DepotVersionPatch>1</DepotVersionPatch>
+		<DepotVersionMinor>10</DepotVersionMinor>
+		<DepotVersionPatch>0</DepotVersionPatch>
 		<DepotVersionBuild Condition="'$(DepotVersionBuild)' == ''">0</DepotVersionBuild>
 		<DepotVersionSuffix Condition="'$(DepotVersionSuffix)' == ''">preview</DepotVersionSuffix>
 		<VersionPrefix>$(DepotVersionMajor).$(DepotVersionMinor).$(DepotVersionPatch)</VersionPrefix>

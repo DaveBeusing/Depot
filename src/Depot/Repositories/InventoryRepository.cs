@@ -243,6 +243,16 @@ public sealed class InventoryRepository : DatabaseRepository
 			parameters.ToArray());
 	}
 
+	public async Task<IReadOnlyList<long>> GetActiveIdsByWarehouseForUpdateAsync(
+		DatabaseTransactionContext transaction,
+		long warehouseId,
+		CancellationToken cancellationToken)
+		=> await transaction.Session.QueryAsync(
+			Database.InventoryCountInventoryLockSql,
+			reader => reader.GetInt64(0),
+			cancellationToken,
+			Parameter("$WarehouseId", warehouseId));
+
 	public Task<DashboardSummary?> GetDashboardSummaryAsync(CancellationToken cancellationToken) =>
 		Database.QuerySingleOrDefaultAsync(
 			"""

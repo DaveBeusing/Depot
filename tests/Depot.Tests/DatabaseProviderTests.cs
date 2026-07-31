@@ -32,6 +32,7 @@ public sealed class DatabaseProviderTests
 		Assert.Contains("SCOPE_IDENTITY", command.CommandText, StringComparison.Ordinal);
 		Assert.Contains("@Email", command.CommandText, StringComparison.Ordinal);
 		Assert.DoesNotContain("NOCASE", command.CommandText, StringComparison.Ordinal);
+		Assert.Contains("UPDLOCK", factory.GetInventoryCountInventoryLockSql(), StringComparison.Ordinal);
 	}
 
 	[Fact]
@@ -69,6 +70,7 @@ public sealed class DatabaseProviderTests
 		Assert.Contains("@Email", command.CommandText, StringComparison.Ordinal);
 		Assert.DoesNotContain("NOCASE", command.CommandText, StringComparison.Ordinal);
 		Assert.Equal("CAST(sm.Quantity AS SIGNED)", factory.CastToInt64("sm.Quantity"));
+		Assert.EndsWith("FOR UPDATE;", factory.GetInventoryCountInventoryLockSql(), StringComparison.Ordinal);
 	}
 
 	[Fact]
@@ -128,6 +130,7 @@ public sealed class DatabaseProviderTests
 		[
 			typeof(AuditRepository),
 			typeof(InventoryRepository),
+			typeof(InventoryCountRepository),
 			typeof(ItemRepository),
 			typeof(WarehouseRepository),
 			typeof(StorageLocationRepository),

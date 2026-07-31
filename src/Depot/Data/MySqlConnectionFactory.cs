@@ -70,6 +70,12 @@ public sealed class MySqlConnectionFactory : IDatabaseConnectionFactory
 	public string GetStockTransferLockSql() =>
 		"SELECT Id FROM StockTransfers WHERE Id = $StockTransferId FOR UPDATE;";
 
+	public string GetInventoryCountLockSql() =>
+		"SELECT Id FROM InventoryCounts WHERE Id = $InventoryCountId FOR UPDATE;";
+
+	public string GetInventoryCountInventoryLockSql() =>
+		"SELECT inv.Id FROM Inventories inv INNER JOIN StorageLocations sl ON sl.Id = inv.StorageLocationId WHERE sl.WarehouseId = $WarehouseId AND inv.IsActive = 1 ORDER BY inv.Id FOR UPDATE;";
+
 	public string GetPagingClause() => "LIMIT $PageSize OFFSET $Offset";
 	public string CastToInt64(string expression) => $"CAST({expression} AS SIGNED)";
 

@@ -176,6 +176,8 @@ public sealed class DepotDatabase : IDatabaseInitializer
 
 		CreateStockTransferTables(connection);
 
+		CreateInventoryCountTables(connection);
+
 		CreateAuditEntriesTable(
 			connection);
 
@@ -459,6 +461,53 @@ public sealed class DepotDatabase : IDatabaseInitializer
 		);
 		CREATE INDEX IF NOT EXISTS IX_StockTransferLines_SourceInventoryId ON StockTransferLines(SourceInventoryId);
 		CREATE INDEX IF NOT EXISTS IX_StockTransferLines_DestinationInventoryId ON StockTransferLines(DestinationInventoryId);
+		""";
+		command.ExecuteNonQuery();
+	}
+
+	private static void CreateInventoryCountTables(SqliteConnection connection)
+	{
+		using var command = connection.CreateCommand();
+		command.CommandText =
+		"""
+		CREATE TABLE IF NOT EXISTS InventoryCounts
+		(
+			Id INTEGER PRIMARY KEY AUTOINCREMENT,
+			CountNumber TEXT NOT NULL UNIQUE,
+			WarehouseId INTEGER NOT NULL,
+			Status INTEGER NOT NULL DEFAULT 1,
+			CreatedAtUtc TEXT NOT NULL,
+			StartedAtUtc TEXT NULL,
+			CompletedAtUtc TEXT NULL,
+			CreatedByUserId INTEGER NOT NULL,
+			PostedByUserId INTEGER NULL,
+			Notes TEXT NULL,
+			Version INTEGER NOT NULL DEFAULT 1,
+			FOREIGN KEY(WarehouseId) REFERENCES Warehouses(Id),
+			FOREIGN KEY(CreatedByUserId) REFERENCES Users(Id),
+			FOREIGN KEY(PostedByUserId) REFERENCES Users(Id),
+			CHECK(Status IN (1, 2, 3, 4, 5))
+		);
+		CREATE INDEX IF NOT EXISTS IX_InventoryCounts_WarehouseId_Status ON InventoryCounts(WarehouseId, Status);
+		CREATE INDEX IF NOT EXISTS IX_InventoryCounts_CreatedAtUtc ON InventoryCounts(CreatedAtUtc);
+
+		CREATE TABLE IF NOT EXISTS InventoryCountLines
+		(
+			Id INTEGER PRIMARY KEY AUTOINCREMENT,
+			InventoryCountId INTEGER NOT NULL,
+			InventoryId INTEGER NOT NULL,
+			ExpectedQuantity INTEGER NOT NULL,
+			CountedQuantity INTEGER NULL,
+			CountedByUserId INTEGER NULL,
+			CountedAtUtc TEXT NULL,
+			Version INTEGER NOT NULL DEFAULT 1,
+			UNIQUE(InventoryCountId, InventoryId),
+			FOREIGN KEY(InventoryCountId) REFERENCES InventoryCounts(Id),
+			FOREIGN KEY(InventoryId) REFERENCES Inventories(Id),
+			FOREIGN KEY(CountedByUserId) REFERENCES Users(Id),
+			CHECK(CountedQuantity IS NULL OR CountedQuantity >= 0)
+		);
+		CREATE INDEX IF NOT EXISTS IX_InventoryCountLines_InventoryId ON InventoryCountLines(InventoryId);
 		""";
 		command.ExecuteNonQuery();
 	}
@@ -867,6 +916,13 @@ public sealed class DepotDatabase : IDatabaseInitializer
 			CreateStockTransferTables(connection);
 			SetDatabaseVersion(connection, 18);
 			migratedVersion = 18;
+		}
+
+		if (migratedVersion == 18)
+		{
+			CreateInventoryCountTables(connection);
+			SetDatabaseVersion(connection, 19);
+			migratedVersion = 19;
 		}
 
 		if (migratedVersion < DatabaseVersion.CurrentVersion)

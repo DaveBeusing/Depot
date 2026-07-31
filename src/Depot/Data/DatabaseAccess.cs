@@ -28,6 +28,8 @@ public sealed class DatabaseAccess
 		_connectionFactory.GetInventoryBatchLockSql(parameterList);
 	public string PurchaseOrderLockSql => _connectionFactory.GetPurchaseOrderLockSql();
 	public string StockTransferLockSql => _connectionFactory.GetStockTransferLockSql();
+	public string InventoryCountLockSql => _connectionFactory.GetInventoryCountLockSql();
+	public string InventoryCountInventoryLockSql => _connectionFactory.GetInventoryCountInventoryLockSql();
 	public string CastToInt64(string expression) => _connectionFactory.CastToInt64(expression);
 
 	public static string CaseInsensitiveEquals(string column, string parameter) =>

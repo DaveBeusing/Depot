@@ -41,6 +41,8 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 			command.ExecuteNonQuery();
 			command.CommandText = StockTransferSql;
 			command.ExecuteNonQuery();
+			command.CommandText = InventoryCountSql;
+			command.ExecuteNonQuery();
 
 			command.CommandText = "SELECT Version FROM DatabaseInfo WHERE Id = 1;";
 			command.Parameters.Clear();
@@ -95,6 +97,11 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 				MigrateToStockTransfers(command);
 				version = 18;
 			}
+			if (version == 18)
+			{
+				MigrateToInventoryCounts(command);
+				version = 19;
+			}
 			if (version != DatabaseVersion.CurrentVersion)
 			{
 				throw new InvalidOperationException(
@@ -112,6 +119,13 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 	private static void MigrateToStockTransfers(System.Data.Common.DbCommand command)
 	{
 		command.CommandText = StockTransferSql + " UPDATE DatabaseInfo SET Version = 18 WHERE Id = 1;";
+		command.Parameters.Clear();
+		command.ExecuteNonQuery();
+	}
+
+	private static void MigrateToInventoryCounts(System.Data.Common.DbCommand command)
+	{
+		command.CommandText = InventoryCountSql + " UPDATE DatabaseInfo SET Version = 19 WHERE Id = 1;";
 		command.Parameters.Clear();
 		command.ExecuteNonQuery();
 	}
@@ -570,6 +584,47 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 		CONSTRAINT FK_StockTransferLines_Transfers FOREIGN KEY (StockTransferId) REFERENCES StockTransfers(Id),
 		CONSTRAINT FK_StockTransferLines_SourceInventories FOREIGN KEY (SourceInventoryId) REFERENCES Inventories(Id),
 		CONSTRAINT FK_StockTransferLines_DestinationInventories FOREIGN KEY (DestinationInventoryId) REFERENCES Inventories(Id)
+	) ENGINE=InnoDB;
+	""";
+
+	private const string InventoryCountSql =
+	"""
+	CREATE TABLE IF NOT EXISTS InventoryCounts
+	(
+		Id bigint NOT NULL AUTO_INCREMENT PRIMARY KEY,
+		CountNumber varchar(50) NOT NULL UNIQUE,
+		WarehouseId bigint NOT NULL,
+		Status int NOT NULL DEFAULT 1,
+		CreatedAtUtc varchar(40) NOT NULL,
+		StartedAtUtc varchar(40) NULL,
+		CompletedAtUtc varchar(40) NULL,
+		CreatedByUserId bigint NOT NULL,
+		PostedByUserId bigint NULL,
+		Notes text NULL,
+		Version bigint NOT NULL DEFAULT 1,
+		INDEX IX_InventoryCounts_WarehouseId_Status (WarehouseId, Status),
+		INDEX IX_InventoryCounts_CreatedAtUtc (CreatedAtUtc),
+		CONSTRAINT CK_InventoryCounts_Status CHECK (Status IN (1, 2, 3, 4, 5)),
+		CONSTRAINT FK_InventoryCounts_Warehouses FOREIGN KEY (WarehouseId) REFERENCES Warehouses(Id),
+		CONSTRAINT FK_InventoryCounts_CreatedByUsers FOREIGN KEY (CreatedByUserId) REFERENCES Users(Id),
+		CONSTRAINT FK_InventoryCounts_PostedByUsers FOREIGN KEY (PostedByUserId) REFERENCES Users(Id)
+	) ENGINE=InnoDB;
+	CREATE TABLE IF NOT EXISTS InventoryCountLines
+	(
+		Id bigint NOT NULL AUTO_INCREMENT PRIMARY KEY,
+		InventoryCountId bigint NOT NULL,
+		InventoryId bigint NOT NULL,
+		ExpectedQuantity bigint NOT NULL,
+		CountedQuantity bigint NULL,
+		CountedByUserId bigint NULL,
+		CountedAtUtc varchar(40) NULL,
+		Version bigint NOT NULL DEFAULT 1,
+		UNIQUE KEY UQ_InventoryCountLines_Inventory (InventoryCountId, InventoryId),
+		INDEX IX_InventoryCountLines_InventoryId (InventoryId),
+		CONSTRAINT CK_InventoryCountLines_CountedQuantity CHECK (CountedQuantity IS NULL OR CountedQuantity >= 0),
+		CONSTRAINT FK_InventoryCountLines_Counts FOREIGN KEY (InventoryCountId) REFERENCES InventoryCounts(Id),
+		CONSTRAINT FK_InventoryCountLines_Inventories FOREIGN KEY (InventoryId) REFERENCES Inventories(Id),
+		CONSTRAINT FK_InventoryCountLines_CountedByUsers FOREIGN KEY (CountedByUserId) REFERENCES Users(Id)
 	) ENGINE=InnoDB;
 	""";
 

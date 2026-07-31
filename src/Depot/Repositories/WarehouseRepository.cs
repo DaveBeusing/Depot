@@ -36,6 +36,16 @@ public sealed class WarehouseRepository : DatabaseRepository
 			cancellationToken,
 			Parameter("$Id", id));
 
+	public Task<Warehouse?> GetByIdAsync(
+		DatabaseTransactionContext transaction,
+		long id,
+		CancellationToken cancellationToken) =>
+		transaction.Session.QuerySingleOrDefaultAsync(
+			$"SELECT {Columns} FROM Warehouses WHERE Id = $Id;",
+			Read,
+			cancellationToken,
+			Parameter("$Id", id));
+
 	public Task<Warehouse?> GetByNameAsync(string name, CancellationToken cancellationToken) =>
 		Database.QuerySingleOrDefaultAsync(
 			$"SELECT {Columns} FROM Warehouses WHERE Name = $Name;",
