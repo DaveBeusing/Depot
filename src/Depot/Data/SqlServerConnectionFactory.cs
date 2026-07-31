@@ -72,6 +72,7 @@ public sealed class SqlServerConnectionFactory : IDatabaseConnectionFactory
 		"SELECT Id FROM StockTransfers WITH (UPDLOCK, HOLDLOCK) WHERE Id = $StockTransferId;";
 
 	public string GetPagingClause() => "OFFSET $Offset ROWS FETCH NEXT $PageSize ROWS ONLY";
+	public string CastToInt64(string expression) => $"CAST({expression} AS BIGINT)";
 
 	private static string NormalizeSql(string sql) =>
 		sql

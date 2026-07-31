@@ -68,6 +68,24 @@ public sealed class DatabaseProviderTests
 		Assert.Contains("LAST_INSERT_ID", command.CommandText, StringComparison.Ordinal);
 		Assert.Contains("@Email", command.CommandText, StringComparison.Ordinal);
 		Assert.DoesNotContain("NOCASE", command.CommandText, StringComparison.Ordinal);
+		Assert.Equal("CAST(sm.Quantity AS SIGNED)", factory.CastToInt64("sm.Quantity"));
+	}
+
+	[Fact]
+	public void ProvidersUseTheirNativeInt64CastSyntax()
+	{
+		var sqlite = new SqliteConnectionFactory("depot-test.db");
+		var sqlServer = new SqlServerConnectionFactory(
+			new DatabaseConnectionSettings
+			{
+				SqlServerHost = "localhost",
+				SqlServerDatabase = "DepotTest",
+				SqlServerUserName = "test",
+				SqlServerPassword = "secret"
+			});
+
+		Assert.Equal("CAST(Quantity AS INTEGER)", sqlite.CastToInt64("Quantity"));
+		Assert.Equal("CAST(Quantity AS BIGINT)", sqlServer.CastToInt64("Quantity"));
 	}
 
 	[Fact]

@@ -214,10 +214,11 @@ public sealed class InventoryRepository : DatabaseRepository
 		var itemFilter = itemId is null ? string.Empty : "AND inv.ItemId = $ItemId";
 		var parameters = new List<DatabaseParameter> { Parameter("$WarehouseId", warehouseId) };
 		if (itemId is not null) parameters.Add(Parameter("$ItemId", itemId.Value));
+		var quantity = Database.CastToInt64("sm.Quantity");
 		return Database.QueryAsync(
 			$"""
 			SELECT inv.Id, inv.ItemId, i.PartNumber, i.Description, w.Name, sl.Name, p.Name,
-			       COALESCE((SELECT SUM(CAST(sm.Quantity AS BIGINT)) FROM StockMovements sm WHERE sm.InventoryId = inv.Id), 0)
+			       COALESCE((SELECT SUM({quantity}) FROM StockMovements sm WHERE sm.InventoryId = inv.Id), 0)
 			FROM Inventories inv
 			INNER JOIN Items i ON i.Id = inv.ItemId
 			INNER JOIN Purposes p ON p.Id = inv.PurposeId

@@ -28,6 +28,7 @@ public sealed class DatabaseAccess
 		_connectionFactory.GetInventoryBatchLockSql(parameterList);
 	public string PurchaseOrderLockSql => _connectionFactory.GetPurchaseOrderLockSql();
 	public string StockTransferLockSql => _connectionFactory.GetStockTransferLockSql();
+	public string CastToInt64(string expression) => _connectionFactory.CastToInt64(expression);
 
 	public static string CaseInsensitiveEquals(string column, string parameter) =>
 		$"{column} = {parameter} COLLATE NOCASE";

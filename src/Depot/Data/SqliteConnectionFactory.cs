@@ -52,5 +52,6 @@ public sealed class SqliteConnectionFactory : IDatabaseConnectionFactory
 		"SELECT Id FROM StockTransfers WHERE Id = $StockTransferId;";
 
 	public string GetPagingClause() => "LIMIT $PageSize OFFSET $Offset";
+	public string CastToInt64(string expression) => $"CAST({expression} AS INTEGER)";
 
 }

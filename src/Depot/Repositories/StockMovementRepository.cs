@@ -59,8 +59,9 @@ public sealed class StockMovementRepository : DatabaseRepository
 			.Select((id, index) => Parameter($"$InventoryId{index}", id))
 			.ToArray();
 		var parameterList = string.Join(", ", parameters.Select(parameter => parameter.Name));
+		var quantity = Database.CastToInt64("Quantity");
 		return transaction.Session.QueryAsync(
-			$"SELECT InventoryId, COALESCE(SUM(CAST(Quantity AS BIGINT)), 0) FROM StockMovements WHERE InventoryId IN ({parameterList}) GROUP BY InventoryId ORDER BY InventoryId;",
+			$"SELECT InventoryId, COALESCE(SUM({quantity}), 0) FROM StockMovements WHERE InventoryId IN ({parameterList}) GROUP BY InventoryId ORDER BY InventoryId;",
 			reader => new InventoryStockQuantity
 			{
 				InventoryId = reader.GetInt64(0),

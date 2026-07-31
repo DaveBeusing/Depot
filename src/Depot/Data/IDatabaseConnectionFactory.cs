@@ -21,4 +21,5 @@ public interface IDatabaseConnectionFactory
 	string GetPurchaseOrderLockSql();
 	string GetStockTransferLockSql();
 	string GetPagingClause();
+	string CastToInt64(string expression);
 }

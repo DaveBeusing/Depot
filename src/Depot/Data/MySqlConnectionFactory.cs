@@ -71,6 +71,7 @@ public sealed class MySqlConnectionFactory : IDatabaseConnectionFactory
 		"SELECT Id FROM StockTransfers WHERE Id = $StockTransferId FOR UPDATE;";
 
 	public string GetPagingClause() => "LIMIT $PageSize OFFSET $Offset";
+	public string CastToInt64(string expression) => $"CAST({expression} AS SIGNED)";
 
 	private static string NormalizeSql(string sql) =>
 		sql
