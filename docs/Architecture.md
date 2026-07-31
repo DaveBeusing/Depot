@@ -128,6 +128,19 @@ Legacy `InvoiceNumber`, `InvoiceDate`, and `InvoiceDocumentPath` database column
 
 Purchase-order creation, draft editing, ordering, and cancellation commit their business change and before/after audit entry in one transaction. Goods-receipt posting remains atomic across the receipt, receipt lines, purchase-order received quantities, stock movements, purchase-order status, and receipt audit entry. Purchase-order locking prevents concurrent over-receipt.
 
+### Procurement database roundtrips
+
+The remote-database paths use bounded batch reads without introducing an application cache. Item validation for purchase-order lines is performed by one `GetByIdsAsync` query. Goods-receipt order lines are loaded together, while destination inventories are locked by one provider-specific, ID-sorted batch statement and then loaded by one batch query. The deterministic ID order avoids provider lock-order inversions. Paging and server-side search paths are unchanged.
+
+The following command counts are the expected SQL roundtrips for successful 20-line workflows. Transaction begin and commit protocol messages are excluded; each insert with provider-specific identity retrieval counts as one command.
+
+| Workflow | Before | After | Reduction |
+| --- | ---: | ---: | ---: |
+| Save a new draft purchase order with 20 lines | 47 | 26 | 45% |
+| Post a goods receipt with 20 lines and 20 destination inventories | 108 | 69 | 36% |
+
+The purchase-order reduction removes 19 item lookup commands and the two-command post-save reload. The goods-receipt reduction replaces 20 individual inventory locks plus 20 individual inventory reads with one sorted batch lock and one batch read, and combines the order header and its lines after locking. Per-line inserts and optimistic updates remain individual commands because their generated IDs and row-version checks are part of the existing behavioral contract.
+
 ## Audit and optimistic concurrency
 
 Mutable entities use `Version` columns where optimistic concurrency is required. Updates include the expected version and throw `ConcurrencyConflictException` when a stale write loses the race.

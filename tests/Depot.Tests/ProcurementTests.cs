@@ -500,6 +500,71 @@ public sealed class ProcurementTests
 		Assert.Equal(0, await context.ScalarAsync("SELECT COUNT(*) FROM GoodsReceipts;"));
 	}
 
+	[Fact]
+	public async Task TwentyLineOrderAndReceiptPreserveProcurementBehavior()
+	{
+		await using var context = await ProcurementTestContext.CreateSqliteAsync();
+		var purposeId = await context.ScalarAsync(
+			"SELECT PurposeId FROM Inventories WHERE Id = $Id;",
+			new DatabaseParameter("$Id", context.InventoryId));
+		var storageLocationId = await context.ScalarAsync(
+			"SELECT StorageLocationId FROM Inventories WHERE Id = $Id;",
+			new DatabaseParameter("$Id", context.InventoryId));
+		var inventoryByItem = new Dictionary<long, long>();
+		var lines = new List<PurchaseOrderLine>();
+		for (var index = 1; index <= 20; index++)
+		{
+			var itemId = await context.Data.InsertAsync(
+				"INSERT INTO Items (PartNumber, Description, IsActive) VALUES ($PartNumber, $Description, 1);",
+				CancellationToken.None,
+				new DatabaseParameter("$PartNumber", $"BATCH-{Guid.NewGuid():N}-{index:00}"),
+				new DatabaseParameter("$Description", $"Batch item {index:00}"));
+			var inventoryId = await context.Data.InsertAsync(
+				"INSERT INTO Inventories (ItemId, PurposeId, StorageLocationId, IsActive) VALUES ($ItemId, $PurposeId, $StorageLocationId, 1);",
+				CancellationToken.None,
+				new DatabaseParameter("$ItemId", itemId),
+				new DatabaseParameter("$PurposeId", purposeId),
+				new DatabaseParameter("$StorageLocationId", storageLocationId));
+			inventoryByItem.Add(itemId, inventoryId);
+			lines.Add(new PurchaseOrderLine { ItemId = itemId, Quantity = 2, UnitPrice = index });
+		}
+
+		var draft = context.NewOrder();
+		draft.Lines = lines;
+		var order = await context.Orders.SaveDraftAsync(draft);
+
+		Assert.Equal(20, order.Lines.Count);
+		Assert.All(order.Lines, line =>
+		{
+			Assert.NotEqual(0, line.Id);
+			Assert.NotEmpty(line.ItemPartNumber);
+			Assert.NotEmpty(line.ItemDescription);
+		});
+		order = await context.Orders.MarkOrderedAsync(order.Id, order.Version);
+		var receipt = new GoodsReceipt
+		{
+			PurchaseOrderId = order.Id,
+			SupplierDeliveryNoteNumber = $"DN-BATCH-{Guid.NewGuid():N}",
+			ReceiptDate = DateTime.Today,
+			Lines = order.Lines.Select(line => new GoodsReceiptLine
+			{
+				PurchaseOrderLineId = line.Id,
+				InventoryId = inventoryByItem[line.ItemId],
+				Quantity = 2
+			}).ToArray()
+		};
+
+		var posted = await context.Receipts.PostAsync(receipt);
+
+		Assert.Equal(20, posted.Lines.Count);
+		Assert.Equal(20, await context.ScalarAsync(
+			"SELECT COUNT(*) FROM StockMovements WHERE Reference = $Reference;",
+			new DatabaseParameter("$Reference", posted.ReceiptNumber)));
+		Assert.Equal((long)PurchaseOrderStatus.Received, await context.ScalarAsync(
+			"SELECT Status FROM PurchaseOrders WHERE Id = $Id;",
+			new DatabaseParameter("$Id", order.Id)));
+	}
+
 	private static async Task<PurchaseOrder> CreateOrderedOrderAsync(
 		ProcurementTestContext context,
 		int quantity)

@@ -17,6 +17,7 @@ public interface IDatabaseConnectionFactory
 		CancellationToken cancellationToken) =>
 		ValueTask.FromResult(BeginWriteTransaction(connection));
 	string GetInventoryLockSql();
+	string GetInventoryBatchLockSql(string parameterList);
 	string GetPurchaseOrderLockSql();
 	string GetPagingClause();
 }

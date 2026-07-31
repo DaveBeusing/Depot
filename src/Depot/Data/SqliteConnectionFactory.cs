@@ -42,6 +42,9 @@ public sealed class SqliteConnectionFactory : IDatabaseConnectionFactory
 	public string GetInventoryLockSql() =>
 		"SELECT Id FROM Inventories WHERE Id = $InventoryId;";
 
+	public string GetInventoryBatchLockSql(string parameterList) =>
+		$"SELECT Id FROM Inventories WHERE Id IN ({parameterList}) ORDER BY Id;";
+
 	public string GetPurchaseOrderLockSql() =>
 		"SELECT Id FROM PurchaseOrders WHERE Id = $PurchaseOrderId;";
 

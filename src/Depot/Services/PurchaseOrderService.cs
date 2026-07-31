@@ -36,13 +36,19 @@ public sealed class PurchaseOrderService
 		if (draft.Notes?.Length > 4000) throw new ArgumentException("Notes must not exceed 4000 characters.");
 		if (draft.Lines.Count == 0) throw new InvalidOperationException("A purchase order requires at least one line.");
 		if (draft.Lines.Select(line => line.ItemId).Distinct().Count() != draft.Lines.Count) throw new InvalidOperationException("An item can only occur once per purchase order.");
+		var items = (await _items.GetByIdsAsync(
+			draft.Lines.Select(line => line.ItemId),
+			cancellationToken)).ToDictionary(item => item.Id);
 		foreach (var line in draft.Lines)
 		{
 			if (line.Quantity <= 0) throw new ArgumentOutOfRangeException(nameof(line.Quantity), "Quantity must be greater than zero.");
 			if (line.UnitPrice < 0) throw new ArgumentOutOfRangeException(nameof(line.UnitPrice), "Unit price cannot be negative.");
-			var item = await _items.GetByIdAsync(line.ItemId, cancellationToken) ?? throw new InvalidOperationException("An ordered item was not found.");
+			if (!items.TryGetValue(line.ItemId, out var item)) throw new InvalidOperationException("An ordered item was not found.");
 			if (!item.IsActive) throw new InvalidOperationException($"Item '{item.PartNumber}' is inactive.");
+			line.ItemPartNumber = item.PartNumber;
+			line.ItemDescription = item.Description;
 		}
+		draft.SupplierName = supplier.Name;
 		var isNew = draft.Id == 0;
 		var before = isNew ? null : await _orders.GetByIdAsync(draft.Id, cancellationToken);
 		return await _orders.SaveDraftAsync(
@@ -60,18 +66,42 @@ public sealed class PurchaseOrderService
 	{
 		var order = await _orders.GetByIdAsync(id, cancellationToken) ?? throw new InvalidOperationException("Purchase order was not found.");
 		if (order.Status is not (PurchaseOrderStatus.Draft or PurchaseOrderStatus.Ordered)) throw new InvalidOperationException("This purchase order can no longer be cancelled.");
-		return await ChangeStatusAsync(id, version, order.Status, PurchaseOrderStatus.Cancelled, cancellationToken);
+		return await ChangeStatusAsync(order, version, order.Status, PurchaseOrderStatus.Cancelled, cancellationToken);
 	}
 
 	private async Task<PurchaseOrder> ChangeStatusAsync(long id, long version, PurchaseOrderStatus expected, PurchaseOrderStatus status, CancellationToken cancellationToken)
 	{
 		var before = await _orders.GetByIdAsync(id, cancellationToken) ?? throw new InvalidOperationException("Purchase order was not found.");
+		return await ChangeStatusAsync(before, version, expected, status, cancellationToken);
+	}
+
+	private async Task<PurchaseOrder> ChangeStatusAsync(
+		PurchaseOrder before,
+		long version,
+		PurchaseOrderStatus expected,
+		PurchaseOrderStatus status,
+		CancellationToken cancellationToken)
+	{
+		var after = new PurchaseOrder
+		{
+			Id = before.Id,
+			OrderNumber = before.OrderNumber,
+			SupplierId = before.SupplierId,
+			SupplierName = before.SupplierName,
+			OrderDate = before.OrderDate,
+			ExpectedDeliveryDate = before.ExpectedDeliveryDate,
+			Notes = before.Notes,
+			Status = status,
+			Version = version + 1,
+			Lines = before.Lines
+		};
 		return await _orders.SetStatusAsync(
-			id,
+			before.Id,
 			version,
 			expected,
 			status,
-			after => _audit.CreateUpdatedEntry(id, before, after),
+			after,
+			_audit.CreateUpdatedEntry(before.Id, before, after),
 			cancellationToken);
 	}
 

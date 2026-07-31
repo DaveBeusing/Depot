@@ -88,6 +88,27 @@ public sealed class ItemRepository : DatabaseRepository
 			cancellationToken,
 			Parameter("$Id", id));
 
+	public Task<IReadOnlyList<Item>> GetByIdsAsync(
+		IEnumerable<long> ids,
+		CancellationToken cancellationToken)
+	{
+		var itemIds = ids.Distinct().OrderBy(id => id).ToArray();
+		if (itemIds.Length == 0)
+		{
+			return Task.FromResult<IReadOnlyList<Item>>([]);
+		}
+
+		var parameters = itemIds
+			.Select((id, index) => Parameter($"$ItemId{index}", id))
+			.ToArray();
+		var parameterList = string.Join(", ", parameters.Select(parameter => parameter.Name));
+		return Database.QueryAsync(
+			$"SELECT {SelectColumns} {SelectFrom} WHERE i.Id IN ({parameterList}) ORDER BY i.Id;",
+			ReadItem,
+			cancellationToken,
+			parameters);
+	}
+
 	public Task<Item?> GetByPartNumberAsync(string partNumber, CancellationToken cancellationToken) =>
 		Database.QuerySingleOrDefaultAsync(
 			$"SELECT {SelectColumns} {SelectFrom} WHERE i.PartNumber = $PartNumber;",

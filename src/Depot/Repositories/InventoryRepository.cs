@@ -24,24 +24,31 @@ public sealed class InventoryRepository : DatabaseRepository
 			cancellationToken,
 			Parameter("$Id", id));
 
-	public async Task<Inventory?> GetForUpdateAsync(
+	public async Task<IReadOnlyList<Inventory>> GetByIdsForUpdateAsync(
 		DatabaseTransactionContext transaction,
-		long id,
+		IEnumerable<long> ids,
 		CancellationToken cancellationToken)
 	{
-		if (await transaction.Session.ExecuteScalarAsync(
-			Database.InventoryLockSql,
-			cancellationToken,
-			Parameter("$InventoryId", id)) is null)
+		var inventoryIds = ids.Distinct().OrderBy(id => id).ToArray();
+		if (inventoryIds.Length == 0)
 		{
-			return null;
+			return [];
 		}
 
-		return await transaction.Session.QuerySingleOrDefaultAsync(
-			$"SELECT {SelectColumns} FROM Inventories WHERE Id = $Id;",
+		var parameters = inventoryIds
+			.Select((id, index) => Parameter($"$InventoryId{index}", id))
+			.ToArray();
+		var parameterList = string.Join(", ", parameters.Select(parameter => parameter.Name));
+		await transaction.Session.QueryAsync(
+			Database.GetInventoryBatchLockSql(parameterList),
+			reader => reader.GetInt64(0),
+			cancellationToken,
+			parameters);
+		return await transaction.Session.QueryAsync(
+			$"SELECT {SelectColumns} FROM Inventories WHERE Id IN ({parameterList}) ORDER BY Id;",
 			ReadInventory,
 			cancellationToken,
-			Parameter("$Id", id));
+			parameters);
 	}
 
 	public Task<Inventory?> GetByContextAsync(

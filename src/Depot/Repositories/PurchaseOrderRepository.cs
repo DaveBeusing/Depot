@@ -14,6 +14,7 @@ public sealed class PurchaseOrderRepository : DatabaseRepository
 {
 	private const string Columns = "po.Id, po.OrderNumber, po.SupplierId, s.Name, po.OrderDate, po.ExpectedDeliveryDate, po.Notes, po.Status, po.Version";
 	private const string From = "FROM PurchaseOrders po INNER JOIN Suppliers s ON s.Id = po.SupplierId";
+	private const string LineColumns = "pol.Id, pol.PurchaseOrderId, pol.LineNumber, pol.ItemId, i.PartNumber, i.Description, pol.Quantity, pol.UnitPrice, pol.ReceivedQuantity, pol.Version";
 
 	public PurchaseOrderRepository(DatabaseAccess database) : base(database) { }
 
@@ -47,7 +48,7 @@ public sealed class PurchaseOrderRepository : DatabaseRepository
 
 	public Task<IReadOnlyList<PurchaseOrderLine>> ListLinesAsync(long purchaseOrderId, CancellationToken cancellationToken) =>
 		Database.QueryAsync(
-			"SELECT pol.Id, pol.PurchaseOrderId, pol.LineNumber, pol.ItemId, i.PartNumber, i.Description, pol.Quantity, pol.UnitPrice, pol.ReceivedQuantity, pol.Version FROM PurchaseOrderLines pol INNER JOIN Items i ON i.Id = pol.ItemId WHERE pol.PurchaseOrderId = $PurchaseOrderId ORDER BY pol.LineNumber;",
+			$"SELECT {LineColumns} FROM PurchaseOrderLines pol INNER JOIN Items i ON i.Id = pol.ItemId WHERE pol.PurchaseOrderId = $PurchaseOrderId ORDER BY pol.LineNumber;",
 			ReadLine, cancellationToken, Parameter("$PurchaseOrderId", purchaseOrderId));
 
 	public async Task<PurchaseOrder?> GetForReceiptUpdateAsync(
@@ -63,7 +64,19 @@ public sealed class PurchaseOrderRepository : DatabaseRepository
 			return null;
 		}
 
-		return await GetByIdAsync(transaction.Session, id, cancellationToken);
+		var rows = await transaction.Session.QueryAsync(
+			$"SELECT {Columns}, {LineColumns} {From} INNER JOIN PurchaseOrderLines pol ON pol.PurchaseOrderId = po.Id INNER JOIN Items i ON i.Id = pol.ItemId WHERE po.Id = $Id ORDER BY pol.LineNumber;",
+			reader => new ReceiptOrderRow(ReadOrder(reader), ReadLine(reader, 9)),
+			cancellationToken,
+			Parameter("$Id", id));
+		if (rows.Count == 0)
+		{
+			return null;
+		}
+
+		var order = rows[0].Order;
+		order.Lines = rows.Select(row => row.Line).ToArray();
+		return order;
 	}
 
 	public async Task<bool> UpdateReceivedQuantityAsync(
@@ -117,8 +130,16 @@ public sealed class PurchaseOrderRepository : DatabaseRepository
 			}
 
 			var existingIds = await session.QueryAsync("SELECT Id FROM PurchaseOrderLines WHERE PurchaseOrderId = $PurchaseOrderId;", reader => reader.GetInt64(0), token, Parameter("$PurchaseOrderId", order.Id));
-			foreach (var id in existingIds.Where(id => order.Lines.All(line => line.Id != id)))
-				await session.ExecuteAsync("DELETE FROM PurchaseOrderLines WHERE Id = $Id AND ReceivedQuantity = 0;", token, Parameter("$Id", id));
+			var removedIds = existingIds.Where(id => order.Lines.All(line => line.Id != id)).OrderBy(id => id).ToArray();
+			if (removedIds.Length > 0)
+			{
+				var deleteParameters = removedIds.Select((id, index) => Parameter($"$RemovedId{index}", id)).ToArray();
+				var parameterList = string.Join(", ", deleteParameters.Select(parameter => parameter.Name));
+				await session.ExecuteAsync(
+					$"DELETE FROM PurchaseOrderLines WHERE PurchaseOrderId = $PurchaseOrderId AND Id IN ({parameterList}) AND ReceivedQuantity = 0;",
+					token,
+					[.. deleteParameters, Parameter("$PurchaseOrderId", order.Id)]);
+			}
 
 			var lineNumber = 1;
 			foreach (var line in order.Lines)
@@ -134,10 +155,8 @@ public sealed class PurchaseOrderRepository : DatabaseRepository
 					line.Version++;
 				}
 			}
-			var saved = await GetByIdAsync(session, order.Id, token)
-				?? throw new InvalidOperationException("Purchase order was not found after saving.");
-			await AuditRepository.CreateAsync(session, createAuditEntry(saved), token);
-			return saved;
+			await AuditRepository.CreateAsync(session, createAuditEntry(order), token);
+			return order;
 		}, cancellationToken);
 
 	public Task<PurchaseOrder> SetStatusAsync(
@@ -145,7 +164,8 @@ public sealed class PurchaseOrderRepository : DatabaseRepository
 		long version,
 		PurchaseOrderStatus expected,
 		PurchaseOrderStatus status,
-		Func<PurchaseOrder, AuditEntry> createAuditEntry,
+		PurchaseOrder result,
+		AuditEntry auditEntry,
 		CancellationToken cancellationToken) =>
 		Database.ExecuteInWriteTransactionAsync(async (session, token) =>
 		{
@@ -157,10 +177,8 @@ public sealed class PurchaseOrderRepository : DatabaseRepository
 				Parameter("$Version", version),
 				Parameter("$Expected", (int)expected));
 			if (updated != 1) throw new ConcurrencyConflictException("purchase order");
-			var saved = await GetByIdAsync(session, id, token)
-				?? throw new InvalidOperationException("Purchase order was not found after the status update.");
-			await AuditRepository.CreateAsync(session, createAuditEntry(saved), token);
-			return saved;
+			await AuditRepository.CreateAsync(session, auditEntry, token);
+			return result;
 		}, cancellationToken);
 
 	private static async Task<PurchaseOrder?> GetByIdAsync(
@@ -195,8 +213,15 @@ public sealed class PurchaseOrderRepository : DatabaseRepository
 		Quantity = reader.GetInt32(6), UnitPrice = reader.GetDecimal(7), ReceivedQuantity = reader.GetInt32(8), Version = reader.GetInt64(9)
 	};
 
+	private static PurchaseOrderLine ReadLine(DbDataReader reader, int offset) => new()
+	{
+		Id = reader.GetInt64(offset), PurchaseOrderId = reader.GetInt64(offset + 1), LineNumber = reader.GetInt32(offset + 2), ItemId = reader.GetInt64(offset + 3), ItemPartNumber = reader.GetString(offset + 4), ItemDescription = reader.GetString(offset + 5),
+		Quantity = reader.GetInt32(offset + 6), UnitPrice = reader.GetDecimal(offset + 7), ReceivedQuantity = reader.GetInt32(offset + 8), Version = reader.GetInt64(offset + 9)
+	};
+
 	private static DatabaseParameter[] LineParameters(PurchaseOrderLine line) => [Parameter("$PurchaseOrderId", line.PurchaseOrderId), Parameter("$LineNumber", line.LineNumber), Parameter("$ItemId", line.ItemId), Parameter("$Quantity", line.Quantity), Parameter("$UnitPrice", line.UnitPrice)];
 	private static string Date(DateTime value) => value.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
 	private static object? NullableDate(DateTime? value) => value is null ? null : Date(value.Value);
 	private static DateTime ParseDate(string value) => DateTime.Parse(value, CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal);
+	private sealed record ReceiptOrderRow(PurchaseOrder Order, PurchaseOrderLine Line);
 }

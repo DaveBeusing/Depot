@@ -61,6 +61,9 @@ public sealed class MySqlConnectionFactory : IDatabaseConnectionFactory
 	public string GetInventoryLockSql() =>
 		"SELECT Id FROM Inventories WHERE Id = $InventoryId FOR UPDATE;";
 
+	public string GetInventoryBatchLockSql(string parameterList) =>
+		$"SELECT Id FROM Inventories WHERE Id IN ({parameterList}) ORDER BY Id FOR UPDATE;";
+
 	public string GetPurchaseOrderLockSql() =>
 		"SELECT Id FROM PurchaseOrders WHERE Id = $PurchaseOrderId FOR UPDATE;";
 

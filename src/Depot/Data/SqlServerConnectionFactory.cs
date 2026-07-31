@@ -62,6 +62,9 @@ public sealed class SqlServerConnectionFactory : IDatabaseConnectionFactory
 	public string GetInventoryLockSql() =>
 		"SELECT Id FROM Inventories WITH (UPDLOCK, HOLDLOCK) WHERE Id = $InventoryId;";
 
+	public string GetInventoryBatchLockSql(string parameterList) =>
+		$"SELECT Id FROM Inventories WITH (UPDLOCK, HOLDLOCK) WHERE Id IN ({parameterList}) ORDER BY Id;";
+
 	public string GetPurchaseOrderLockSql() =>
 		"SELECT Id FROM PurchaseOrders WITH (UPDLOCK, HOLDLOCK) WHERE Id = $PurchaseOrderId;";
 

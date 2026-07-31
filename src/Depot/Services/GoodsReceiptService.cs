@@ -84,6 +84,11 @@ public sealed class GoodsReceiptService
 
 		var orderLines = order.Lines.ToDictionary(line => line.Id);
 		ValidateReceiptLines(receipt, orderLines);
+		var inventories = (await _inventories.GetByIdsForUpdateAsync(
+			transaction,
+			receipt.Lines.Select(line => line.InventoryId),
+			cancellationToken)).ToDictionary(inventory => inventory.Id);
+		ValidateInventories(receipt, orderLines, inventories);
 
 		receipt.ReceiptNumber = $"PENDING-{Guid.NewGuid():N}";
 		receipt.Id = await _receipts.CreateAsync(transaction, receipt, cancellationToken);
@@ -100,21 +105,6 @@ public sealed class GoodsReceiptService
 		foreach (var line in receipt.Lines)
 		{
 			var orderLine = orderLines[line.PurchaseOrderLineId];
-			var inventory = await _inventories.GetForUpdateAsync(
-				transaction,
-				line.InventoryId,
-				cancellationToken)
-				?? throw new InvalidOperationException("The destination inventory was not found.");
-			if (!inventory.IsActive)
-			{
-				throw new InvalidOperationException("The destination inventory is inactive.");
-			}
-			if (inventory.ItemId != orderLine.ItemId)
-			{
-				throw new InvalidOperationException(
-					"The destination inventory does not belong to the ordered item.");
-			}
-
 			line.GoodsReceiptId = receipt.Id;
 			line.Id = await _receipts.CreateLineAsync(transaction, line, cancellationToken);
 			var receivedQuantity = orderLine.ReceivedQuantity + line.Quantity;
@@ -195,6 +185,29 @@ public sealed class GoodsReceiptService
 			{
 				throw new InvalidOperationException(
 					"Receipt quantity exceeds the open purchase order quantity.");
+			}
+		}
+	}
+
+	private static void ValidateInventories(
+		GoodsReceipt receipt,
+		IReadOnlyDictionary<long, PurchaseOrderLine> orderLines,
+		IReadOnlyDictionary<long, Inventory> inventories)
+	{
+		foreach (var receiptLine in receipt.Lines)
+		{
+			if (!inventories.TryGetValue(receiptLine.InventoryId, out var inventory))
+			{
+				throw new InvalidOperationException("The destination inventory was not found.");
+			}
+			if (!inventory.IsActive)
+			{
+				throw new InvalidOperationException("The destination inventory is inactive.");
+			}
+			if (inventory.ItemId != orderLines[receiptLine.PurchaseOrderLineId].ItemId)
+			{
+				throw new InvalidOperationException(
+					"The destination inventory does not belong to the ordered item.");
 			}
 		}
 	}
