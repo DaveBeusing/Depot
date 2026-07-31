@@ -140,7 +140,9 @@ The Transfers main page exposes a server-paged and server-searched transfer list
 
 Schema version 19 introduces `InventoryCount` and `InventoryCountLine`. An audited draft belongs to one active warehouse and can be edited or cancelled with optimistic concurrency. Starting a count locks the draft and all active warehouse inventories, snapshots their current movement-derived quantities, creates one unique line per inventory, changes the status to Counting, and writes the audit entry in one provider-neutral transaction.
 
-Counting updates use line-level optimistic concurrency and preserve `ExpectedQuantity`. A count can move to Review only after every line has a counted quantity. Review and future Posted counts cannot change the snapshot through the service. Difference posting and the complete inventory-count UI are intentionally not part of this schema increment.
+Counting updates use line-level optimistic concurrency and preserve `ExpectedQuantity`. A count can move to Review only after every line has a counted quantity and can return to Counting until it is posted. Review and future Posted counts cannot change the snapshot through the service. Difference posting is intentionally not part of this schema increment.
+
+The Inventory Counts main page uses server-side search, warehouse/status filters, separate paging for count headers and positions, quick keyboard quantity entry, uncounted/difference filters, and targeted row updates. Recording a quantity loads only the locked count header and affected line; Review completeness is checked with a server-side aggregate rather than loading the complete snapshot.
 
 ### Procurement database roundtrips
 

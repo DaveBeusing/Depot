@@ -47,6 +47,7 @@ internal sealed class ViewModelFactory
 			_services.PurchaseOrders,
 			_services.GoodsReceipts,
 			_services.StockTransfers,
+			_services.InventoryCounts,
 			_services.Warehouses,
 			_services.StorageLocations,
 			_services.Users,

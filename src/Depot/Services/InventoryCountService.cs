@@ -40,6 +40,50 @@ public sealed class InventoryCountService
 		CancellationToken cancellationToken = default) =>
 		_counts.GetByIdAsync(id, cancellationToken);
 
+	public Task<InventoryCount?> GetHeaderByIdAsync(
+		long id,
+		CancellationToken cancellationToken = default) =>
+		_counts.GetHeaderByIdAsync(id, cancellationToken);
+
+	public Task<PageResult<InventoryCountOverviewItem>> SearchAsync(
+		string? searchText,
+		InventoryCountStatus? status,
+		long? warehouseId,
+		int pageNumber,
+		int pageSize,
+		CancellationToken cancellationToken = default) =>
+		_counts.SearchAsync(searchText, status, warehouseId, pageNumber, pageSize, cancellationToken);
+
+	public Task<InventoryCountOverviewItem?> GetOverviewByIdAsync(
+		long id,
+		CancellationToken cancellationToken = default) =>
+		_counts.GetOverviewByIdAsync(id, cancellationToken);
+
+	public Task<PageResult<InventoryCountLineDetails>> SearchLinesAsync(
+		long inventoryCountId,
+		string? searchText,
+		bool uncountedOnly,
+		bool differencesOnly,
+		int pageNumber,
+		int pageSize,
+		CancellationToken cancellationToken = default)
+	{
+		ValidateId(inventoryCountId);
+		return _counts.SearchLineDetailsAsync(
+			inventoryCountId,
+			searchText,
+			uncountedOnly,
+			differencesOnly,
+			pageNumber,
+			pageSize,
+			cancellationToken);
+	}
+
+	public Task<InventoryCountLineDetails?> GetLineDetailsByIdAsync(
+		long lineId,
+		CancellationToken cancellationToken = default) =>
+		_counts.GetLineDetailsByIdAsync(lineId, cancellationToken);
+
 	public async Task<InventoryCount> SaveDraftAsync(
 		InventoryCount count,
 		CancellationToken cancellationToken = default)
@@ -124,7 +168,7 @@ public sealed class InventoryCountService
 		long inventoryCountId,
 		long lineId,
 		long lineVersion,
-		long countedQuantity,
+		long? countedQuantity,
 		CancellationToken cancellationToken = default)
 	{
 		ValidateId(inventoryCountId);
@@ -136,14 +180,14 @@ public sealed class InventoryCountService
 		return await _transactions.ExecuteAsync(
 			async (transaction, token) =>
 			{
-				var count = await _counts.GetByIdForUpdateAsync(transaction, inventoryCountId, token)
+				var count = await _counts.GetHeaderByIdForUpdateAsync(transaction, inventoryCountId, token)
 					?? throw new InvalidOperationException("The inventory count was not found.");
 				if (count.Status != InventoryCountStatus.Counting)
 				{
 					throw new InvalidOperationException("Quantities can only be recorded while an inventory count is in Counting status.");
 				}
 
-				var before = count.Lines.FirstOrDefault(line => line.Id == lineId)
+				var before = await _counts.GetLineByIdAsync(transaction, inventoryCountId, lineId, token)
 					?? throw new InvalidOperationException("The inventory-count line was not found.");
 				if (before.Version != lineVersion)
 				{
@@ -152,8 +196,8 @@ public sealed class InventoryCountService
 
 				var after = Copy(before);
 				after.CountedQuantity = countedQuantity;
-				after.CountedByUserId = userId;
-				after.CountedAtUtc = DateTime.UtcNow;
+				after.CountedByUserId = countedQuantity is null ? null : userId;
+				after.CountedAtUtc = countedQuantity is null ? null : DateTime.UtcNow;
 				if (!await _counts.UpdateCountedQuantityAsync(transaction, after, token))
 				{
 					throw new ConcurrencyConflictException("inventory-count line");
@@ -168,35 +212,74 @@ public sealed class InventoryCountService
 			cancellationToken);
 	}
 
-	public Task<InventoryCount> MoveToReviewAsync(
+	public async Task<InventoryCount> MoveToReviewAsync(
 		long id,
 		long version,
-		CancellationToken cancellationToken = default) =>
-		ChangeStatusAsync(
-			id,
-			version,
-			InventoryCountStatus.Counting,
-			InventoryCountStatus.Review,
-			count =>
+		CancellationToken cancellationToken = default)
+	{
+		ValidateId(id);
+		EnsureSignedInForStatusChange();
+		return await _transactions.ExecuteAsync(
+			async (transaction, token) =>
 			{
-				if (count.Lines.Any(line => line.CountedQuantity is null))
+				var before = await GetForStatusChangeAsync(
+					transaction,
+					id,
+					version,
+					InventoryCountStatus.Counting,
+					token);
+				if (await _counts.HasUncountedLinesAsync(transaction, id, token))
 				{
 					throw new InvalidOperationException("Every inventory-count line must be counted before review.");
 				}
+				return await SetStatusAsync(
+					transaction,
+					before,
+					InventoryCountStatus.Review,
+					token);
 			},
 			cancellationToken);
+	}
 
-	public Task<InventoryCount> CancelAsync(
+	public Task<InventoryCount> ReturnToCountingAsync(
 		long id,
 		long version,
 		CancellationToken cancellationToken = default) =>
 		ChangeStatusAsync(
 			id,
 			version,
-			InventoryCountStatus.Draft,
-			InventoryCountStatus.Cancelled,
-			_ => { },
+			InventoryCountStatus.Review,
+			InventoryCountStatus.Counting,
 			cancellationToken);
+
+	public async Task<InventoryCount> CancelAsync(
+		long id,
+		long version,
+		CancellationToken cancellationToken = default)
+	{
+		ValidateId(id);
+		EnsureSignedInForStatusChange();
+		return await _transactions.ExecuteAsync(
+			async (transaction, token) =>
+			{
+				var before = await _counts.GetHeaderByIdForUpdateAsync(transaction, id, token)
+					?? throw new InvalidOperationException("The inventory count was not found.");
+				if (before.Version != version)
+				{
+					throw new ConcurrencyConflictException("inventory count");
+				}
+				if (before.Status is InventoryCountStatus.Posted or InventoryCountStatus.Cancelled)
+				{
+					throw new InvalidOperationException("A posted or cancelled inventory count cannot be cancelled.");
+				}
+				return await SetStatusAsync(
+					transaction,
+					before,
+					InventoryCountStatus.Cancelled,
+					token);
+			},
+			cancellationToken);
+	}
 
 	private async Task<InventoryCount> SaveDraftAsync(
 		DatabaseTransactionContext transaction,
@@ -263,43 +346,16 @@ public sealed class InventoryCountService
 		long version,
 		InventoryCountStatus expectedStatus,
 		InventoryCountStatus status,
-		Action<InventoryCount> validate,
 		CancellationToken cancellationToken)
 	{
 		ValidateId(id);
-		if (_audit.CurrentUserId is null)
-		{
-			throw new InvalidOperationException("A signed-in user is required to change an inventory-count status.");
-		}
+		EnsureSignedInForStatusChange();
 
 		return await _transactions.ExecuteAsync(
 			async (transaction, token) =>
 			{
-				var before = await _counts.GetByIdForUpdateAsync(transaction, id, token)
-					?? throw new InvalidOperationException("The inventory count was not found.");
-				if (before.Version != version)
-				{
-					throw new ConcurrencyConflictException("inventory count");
-				}
-				if (before.Status != expectedStatus)
-				{
-					throw new InvalidOperationException(
-						$"Only an inventory count in {expectedStatus} status can be changed to {status}.");
-				}
-				validate(before);
-				if (!await _counts.SetStatusAsync(transaction, id, version, expectedStatus, status, token))
-				{
-					throw new ConcurrencyConflictException("inventory count");
-				}
-
-				var after = Copy(before);
-				after.Status = status;
-				after.Version++;
-				await _auditEntries.CreateAsync(
-					transaction,
-					_audit.CreateUpdatedEntry(id, before, after),
-					token);
-				return after;
+				var before = await GetForStatusChangeAsync(transaction, id, version, expectedStatus, token);
+				return await SetStatusAsync(transaction, before, status, token);
 			},
 			cancellationToken);
 	}
@@ -310,7 +366,7 @@ public sealed class InventoryCountService
 		long version,
 		CancellationToken cancellationToken)
 	{
-		var count = await _counts.GetByIdForUpdateAsync(transaction, id, cancellationToken)
+		var count = await _counts.GetHeaderByIdForUpdateAsync(transaction, id, cancellationToken)
 			?? throw new InvalidOperationException("The inventory count was not found.");
 		if (count.Version != version)
 		{
@@ -321,6 +377,62 @@ public sealed class InventoryCountService
 			throw new InvalidOperationException("Only draft inventory counts can be edited, started, or cancelled.");
 		}
 		return count;
+	}
+
+	private async Task<InventoryCount> GetForStatusChangeAsync(
+		DatabaseTransactionContext transaction,
+		long id,
+		long version,
+		InventoryCountStatus expectedStatus,
+		CancellationToken cancellationToken)
+	{
+		var count = await _counts.GetHeaderByIdForUpdateAsync(transaction, id, cancellationToken)
+			?? throw new InvalidOperationException("The inventory count was not found.");
+		if (count.Version != version)
+		{
+			throw new ConcurrencyConflictException("inventory count");
+		}
+		if (count.Status != expectedStatus)
+		{
+			throw new InvalidOperationException(
+				$"Only an inventory count in {expectedStatus} status can be changed.");
+		}
+		return count;
+	}
+
+	private async Task<InventoryCount> SetStatusAsync(
+		DatabaseTransactionContext transaction,
+		InventoryCount before,
+		InventoryCountStatus status,
+		CancellationToken cancellationToken)
+	{
+		if (!await _counts.SetStatusAsync(
+			transaction,
+			before.Id,
+			before.Version,
+			before.Status,
+			status,
+			cancellationToken))
+		{
+			throw new ConcurrencyConflictException("inventory count");
+		}
+
+		var after = Copy(before);
+		after.Status = status;
+		after.Version++;
+		await _auditEntries.CreateAsync(
+			transaction,
+			_audit.CreateUpdatedEntry(before.Id, before, after),
+			cancellationToken);
+		return after;
+	}
+
+	private void EnsureSignedInForStatusChange()
+	{
+		if (_audit.CurrentUserId is null)
+		{
+			throw new InvalidOperationException("A signed-in user is required to change an inventory-count status.");
+		}
 	}
 
 	private static void NormalizeAndValidateDraft(InventoryCount count)

@@ -42,7 +42,7 @@ SQL Server and MySQL/MariaDB support is implemented in code, but live-server mig
 
 ### Partially implemented
 
-- Inventory counts provide audited drafts, warehouse-wide start snapshots, quantity recording, review transition, cancellation, and optimistic concurrency; difference posting and the full UI are not implemented yet.
+- Inventory counts provide audited drafts, warehouse-wide start snapshots, paged quantity recording, difference and uncounted filters, review/return transitions, cancellation, and optimistic concurrency; difference posting is not implemented yet.
 - Most interactive list loading is asynchronous and cancellable.
 - Items, inventory, movements, users, and purchase-order searches use server-side paging infrastructure.
 - Search debounce is used across the main large-data and master-data screens.

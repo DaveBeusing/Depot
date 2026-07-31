@@ -35,6 +35,7 @@ public sealed class MainViewModel : BaseViewModel
 		PurchaseOrderService purchaseOrderService,
 		GoodsReceiptService goodsReceiptService,
 		StockTransferService stockTransferService,
+		InventoryCountService inventoryCountService,
 		WarehouseService warehouseService,
 		StorageLocationService storageLocationService,
 		UserService userService,
@@ -72,6 +73,7 @@ public sealed class MainViewModel : BaseViewModel
 				reasonCodeService);
 
 		StockTransfersViewModel = new StockTransfersViewModel(stockTransferService, warehouseService, fileDialogService);
+		InventoryCountsViewModel = new InventoryCountsViewModel(inventoryCountService, warehouseService, fileDialogService);
 
 		ProcurementViewModel = new ProcurementViewModel(purchaseOrderService, goodsReceiptService, supplierService, itemService, fileDialogService);
 
@@ -151,6 +153,14 @@ public sealed class MainViewModel : BaseViewModel
 		NavigationItems.Add(
 			new NavigationItem
 			{
+				Name = "Inventory Counts",
+				IconData = "M 4,3 L 16,3 L 16,18 L 4,18 Z M 7,7 L 9,9 L 13,5 M 7,13 L 9,15 L 13,11",
+				Section = ShellSection.InventoryCounts
+			});
+
+		NavigationItems.Add(
+			new NavigationItem
+			{
 				Name = "Procurement",
 				IconData = "M 3,4 L 17,4 L 16,17 L 4,17 Z M 7,4 L 7,2 L 13,2 L 13,4 M 7,8 L 13,8 M 7,12 L 13,12",
 				Section = ShellSection.Procurement
@@ -199,6 +209,8 @@ public sealed class MainViewModel : BaseViewModel
 
 	public StockTransfersViewModel StockTransfersViewModel { get; }
 
+	public InventoryCountsViewModel InventoryCountsViewModel { get; }
+
 	public ProcurementViewModel ProcurementViewModel { get; }
 
 	public ReportsViewModel ReportsViewModel { get; }
@@ -243,6 +255,7 @@ public sealed class MainViewModel : BaseViewModel
 			ShellSection.Items => ItemsViewModel,
 			ShellSection.Movements => MovementsViewModel,
 			ShellSection.Transfers => StockTransfersViewModel,
+			ShellSection.InventoryCounts => InventoryCountsViewModel,
 			ShellSection.Procurement => ProcurementViewModel,
 			ShellSection.Reports => ReportsViewModel,
 			ShellSection.Administration => AdministrationViewModel,
@@ -275,6 +288,10 @@ public sealed class MainViewModel : BaseViewModel
 		else if (CurrentViewModel == StockTransfersViewModel)
 		{
 			await StockTransfersViewModel.LoadAsync(cancellationToken);
+		}
+		else if (CurrentViewModel == InventoryCountsViewModel)
+		{
+			await InventoryCountsViewModel.LoadAsync(cancellationToken);
 		}
 		else if (CurrentViewModel == ProcurementViewModel)
 		{

@@ -21,6 +21,92 @@ public sealed class InventoryCountRepository : DatabaseRepository
 	{
 	}
 
+	public Task<PageResult<InventoryCountOverviewItem>> SearchAsync(
+		string? searchText,
+		InventoryCountStatus? status,
+		long? warehouseId,
+		int pageNumber,
+		int pageSize,
+		CancellationToken cancellationToken)
+	{
+		var filters = new List<string>();
+		var parameters = new List<DatabaseParameter>();
+		if (!string.IsNullOrWhiteSpace(searchText))
+		{
+			filters.Add("(ic.CountNumber LIKE $Search OR w.Name LIKE $Search OR ic.Notes LIKE $Search)");
+			parameters.Add(Parameter("$Search", $"%{searchText.Trim()}%"));
+		}
+		if (status is not null)
+		{
+			filters.Add("ic.Status = $Status");
+			parameters.Add(Parameter("$Status", (int)status.Value));
+		}
+		if (warehouseId is not null)
+		{
+			filters.Add("ic.WarehouseId = $WarehouseId");
+			parameters.Add(Parameter("$WarehouseId", warehouseId.Value));
+		}
+
+		var where = filters.Count == 0 ? string.Empty : $"WHERE {string.Join(" AND ", filters)}";
+		const string from = "FROM InventoryCounts ic INNER JOIN Warehouses w ON w.Id = ic.WarehouseId INNER JOIN Users createdBy ON createdBy.Id = ic.CreatedByUserId";
+		return Database.QueryPageAsync(
+			$"SELECT ic.Id, ic.CountNumber, ic.WarehouseId, w.Name, ic.Status, ic.CreatedAtUtc, ic.StartedAtUtc, createdBy.DisplayName, (SELECT COUNT(*) FROM InventoryCountLines totalLines WHERE totalLines.InventoryCountId = ic.Id), (SELECT COUNT(*) FROM InventoryCountLines countedLines WHERE countedLines.InventoryCountId = ic.Id AND countedLines.CountedQuantity IS NOT NULL), (SELECT COUNT(*) FROM InventoryCountLines differenceLines WHERE differenceLines.InventoryCountId = ic.Id AND differenceLines.CountedQuantity IS NOT NULL AND differenceLines.CountedQuantity <> differenceLines.ExpectedQuantity), ic.Notes, ic.Version {from} {where} ORDER BY ic.CreatedAtUtc DESC, ic.Id DESC",
+			$"SELECT COUNT(*) {from} {where};",
+			ReadOverview,
+			pageNumber,
+			pageSize,
+			cancellationToken,
+			parameters.ToArray());
+	}
+
+	public Task<InventoryCountOverviewItem?> GetOverviewByIdAsync(
+		long id,
+		CancellationToken cancellationToken) =>
+		Database.QuerySingleOrDefaultAsync(
+			"SELECT ic.Id, ic.CountNumber, ic.WarehouseId, w.Name, ic.Status, ic.CreatedAtUtc, ic.StartedAtUtc, createdBy.DisplayName, (SELECT COUNT(*) FROM InventoryCountLines totalLines WHERE totalLines.InventoryCountId = ic.Id), (SELECT COUNT(*) FROM InventoryCountLines countedLines WHERE countedLines.InventoryCountId = ic.Id AND countedLines.CountedQuantity IS NOT NULL), (SELECT COUNT(*) FROM InventoryCountLines differenceLines WHERE differenceLines.InventoryCountId = ic.Id AND differenceLines.CountedQuantity IS NOT NULL AND differenceLines.CountedQuantity <> differenceLines.ExpectedQuantity), ic.Notes, ic.Version FROM InventoryCounts ic INNER JOIN Warehouses w ON w.Id = ic.WarehouseId INNER JOIN Users createdBy ON createdBy.Id = ic.CreatedByUserId WHERE ic.Id = $Id;",
+			ReadOverview,
+			cancellationToken,
+			Parameter("$Id", id));
+
+	public Task<PageResult<InventoryCountLineDetails>> SearchLineDetailsAsync(
+		long inventoryCountId,
+		string? searchText,
+		bool uncountedOnly,
+		bool differencesOnly,
+		int pageNumber,
+		int pageSize,
+		CancellationToken cancellationToken)
+	{
+		var filters = new List<string> { "icl.InventoryCountId = $InventoryCountId" };
+		var parameters = new List<DatabaseParameter> { Parameter("$InventoryCountId", inventoryCountId) };
+		if (!string.IsNullOrWhiteSpace(searchText))
+		{
+			filters.Add("(i.PartNumber LIKE $Search OR i.Description LIKE $Search OR sl.Name LIKE $Search OR p.Name LIKE $Search)");
+			parameters.Add(Parameter("$Search", $"%{searchText.Trim()}%"));
+		}
+		if (uncountedOnly) filters.Add("icl.CountedQuantity IS NULL");
+		if (differencesOnly) filters.Add("icl.CountedQuantity IS NOT NULL AND icl.CountedQuantity <> icl.ExpectedQuantity");
+		var where = $"WHERE {string.Join(" AND ", filters)}";
+		const string from = "FROM InventoryCountLines icl INNER JOIN Inventories inv ON inv.Id = icl.InventoryId INNER JOIN Items i ON i.Id = inv.ItemId INNER JOIN Purposes p ON p.Id = inv.PurposeId INNER JOIN StorageLocations sl ON sl.Id = inv.StorageLocationId LEFT JOIN Users countedBy ON countedBy.Id = icl.CountedByUserId";
+		return Database.QueryPageAsync(
+			$"SELECT icl.Id, icl.InventoryCountId, icl.InventoryId, i.PartNumber, i.Description, sl.Name, p.Name, icl.ExpectedQuantity, icl.CountedQuantity, icl.CountedByUserId, countedBy.DisplayName, icl.CountedAtUtc, icl.Version {from} {where} ORDER BY sl.Name, i.PartNumber, p.Name, icl.Id",
+			$"SELECT COUNT(*) {from} {where};",
+			ReadLineDetails,
+			pageNumber,
+			pageSize,
+			cancellationToken,
+			parameters.ToArray());
+	}
+
+	public Task<InventoryCountLineDetails?> GetLineDetailsByIdAsync(
+		long lineId,
+		CancellationToken cancellationToken) =>
+		Database.QuerySingleOrDefaultAsync(
+			"SELECT icl.Id, icl.InventoryCountId, icl.InventoryId, i.PartNumber, i.Description, sl.Name, p.Name, icl.ExpectedQuantity, icl.CountedQuantity, icl.CountedByUserId, countedBy.DisplayName, icl.CountedAtUtc, icl.Version FROM InventoryCountLines icl INNER JOIN Inventories inv ON inv.Id = icl.InventoryId INNER JOIN Items i ON i.Id = inv.ItemId INNER JOIN Purposes p ON p.Id = inv.PurposeId INNER JOIN StorageLocations sl ON sl.Id = inv.StorageLocationId LEFT JOIN Users countedBy ON countedBy.Id = icl.CountedByUserId WHERE icl.Id = $Id;",
+			ReadLineDetails,
+			cancellationToken,
+			Parameter("$Id", lineId));
+
 	public async Task<InventoryCount?> GetByIdAsync(long id, CancellationToken cancellationToken)
 	{
 		var count = await Database.QuerySingleOrDefaultAsync(
@@ -33,7 +119,14 @@ public sealed class InventoryCountRepository : DatabaseRepository
 		return count;
 	}
 
-	public async Task<InventoryCount?> GetByIdForUpdateAsync(
+	public Task<InventoryCount?> GetHeaderByIdAsync(long id, CancellationToken cancellationToken) =>
+		Database.QuerySingleOrDefaultAsync(
+			$"SELECT {CountColumns} FROM InventoryCounts WHERE Id = $Id;",
+			ReadCount,
+			cancellationToken,
+			Parameter("$Id", id));
+
+	public async Task<InventoryCount?> GetHeaderByIdForUpdateAsync(
 		DatabaseTransactionContext transaction,
 		long id,
 		CancellationToken cancellationToken)
@@ -46,19 +139,35 @@ public sealed class InventoryCountRepository : DatabaseRepository
 			return null;
 		}
 
-		var count = await transaction.Session.QuerySingleOrDefaultAsync(
+		return await transaction.Session.QuerySingleOrDefaultAsync(
 			$"SELECT {CountColumns} FROM InventoryCounts WHERE Id = $Id;",
 			ReadCount,
 			cancellationToken,
 			Parameter("$Id", id));
-		if (count is null) return null;
-		count.Lines = await transaction.Session.QueryAsync(
-			$"SELECT {LineColumns} FROM InventoryCountLines WHERE InventoryCountId = $InventoryCountId ORDER BY InventoryId;",
+	}
+
+	public Task<InventoryCountLine?> GetLineByIdAsync(
+		DatabaseTransactionContext transaction,
+		long inventoryCountId,
+		long lineId,
+		CancellationToken cancellationToken) =>
+		transaction.Session.QuerySingleOrDefaultAsync(
+			$"SELECT {LineColumns} FROM InventoryCountLines WHERE Id = $Id AND InventoryCountId = $InventoryCountId;",
 			ReadLine,
 			cancellationToken,
-			Parameter("$InventoryCountId", id));
-		return count;
-	}
+			Parameter("$Id", lineId),
+			Parameter("$InventoryCountId", inventoryCountId));
+
+	public async Task<bool> HasUncountedLinesAsync(
+		DatabaseTransactionContext transaction,
+		long inventoryCountId,
+		CancellationToken cancellationToken) =>
+		Convert.ToInt64(
+			await transaction.Session.ExecuteScalarAsync(
+				"SELECT COUNT(*) FROM InventoryCountLines WHERE InventoryCountId = $InventoryCountId AND CountedQuantity IS NULL;",
+				cancellationToken,
+				Parameter("$InventoryCountId", inventoryCountId)),
+			CultureInfo.InvariantCulture) > 0;
 
 	public Task<IReadOnlyList<InventoryCountLine>> ListLinesAsync(
 		long inventoryCountId,
@@ -203,6 +312,40 @@ public sealed class InventoryCountRepository : DatabaseRepository
 		CountedByUserId = reader.IsDBNull(5) ? null : reader.GetInt64(5),
 		CountedAtUtc = reader.IsDBNull(6) ? null : ParseDateTime(reader.GetString(6)),
 		Version = reader.GetInt64(7)
+	};
+
+	private static InventoryCountOverviewItem ReadOverview(DbDataReader reader) => new()
+	{
+		Id = reader.GetInt64(0),
+		CountNumber = reader.GetString(1),
+		WarehouseId = reader.GetInt64(2),
+		WarehouseName = reader.GetString(3),
+		Status = (InventoryCountStatus)reader.GetInt32(4),
+		CreatedAtUtc = ParseDateTime(reader.GetString(5)),
+		StartedAtUtc = reader.IsDBNull(6) ? null : ParseDateTime(reader.GetString(6)),
+		CreatedByUserName = reader.GetString(7),
+		TotalLineCount = Convert.ToInt32(reader.GetValue(8), CultureInfo.InvariantCulture),
+		CountedLineCount = Convert.ToInt32(reader.GetValue(9), CultureInfo.InvariantCulture),
+		DifferenceLineCount = Convert.ToInt32(reader.GetValue(10), CultureInfo.InvariantCulture),
+		Notes = reader.IsDBNull(11) ? null : reader.GetString(11),
+		Version = reader.GetInt64(12)
+	};
+
+	private static InventoryCountLineDetails ReadLineDetails(DbDataReader reader) => new()
+	{
+		Id = reader.GetInt64(0),
+		InventoryCountId = reader.GetInt64(1),
+		InventoryId = reader.GetInt64(2),
+		PartNumber = reader.GetString(3),
+		Description = reader.GetString(4),
+		StorageLocationName = reader.GetString(5),
+		PurposeName = reader.GetString(6),
+		ExpectedQuantity = Convert.ToInt64(reader.GetValue(7), CultureInfo.InvariantCulture),
+		CountedQuantity = reader.IsDBNull(8) ? null : Convert.ToInt64(reader.GetValue(8), CultureInfo.InvariantCulture),
+		CountedByUserId = reader.IsDBNull(9) ? null : reader.GetInt64(9),
+		CountedByUserName = reader.IsDBNull(10) ? null : reader.GetString(10),
+		CountedAtUtc = reader.IsDBNull(11) ? null : ParseDateTime(reader.GetString(11)),
+		Version = reader.GetInt64(12)
 	};
 
 	private static string DateTimeValue(DateTime value) =>

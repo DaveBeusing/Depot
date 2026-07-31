@@ -5,6 +5,7 @@ using Depot.Data;
 using Depot.Models;
 using Depot.Repositories;
 using Depot.Services;
+using Depot.ViewModels;
 
 using Microsoft.Data.Sqlite;
 
@@ -135,6 +136,7 @@ public sealed class InventoryCountTests
 	{
 		await using var context = await ProcurementTestContext.CreateSqliteAsync();
 		var service = CreateService(context);
+		var movementCount = await context.ScalarAsync("SELECT COUNT(*) FROM StockMovements;");
 		var draft = await NewDraftAsync(context, service);
 		var started = await service.StartAsync(draft.Id, draft.Version);
 		var first = started.Lines[0];
@@ -157,7 +159,97 @@ public sealed class InventoryCountTests
 		Assert.Equal(3, review.Version);
 		await Assert.ThrowsAsync<InvalidOperationException>(() =>
 			service.RecordCountAsync(review.Id, countedFirst.Id, countedFirst.Version, 4));
-		await Assert.ThrowsAsync<InvalidOperationException>(() => service.CancelAsync(review.Id, review.Version));
+
+		var countingAgain = await service.ReturnToCountingAsync(review.Id, review.Version);
+		Assert.Equal(InventoryCountStatus.Counting, countingAgain.Status);
+		Assert.Equal(4, countingAgain.Version);
+		var corrected = await service.RecordCountAsync(
+			countingAgain.Id,
+			countedFirst.Id,
+			countedFirst.Version,
+			null);
+		Assert.Null(corrected.CountedQuantity);
+		Assert.Null(corrected.CountedByUserId);
+		Assert.Null(corrected.CountedAtUtc);
+		await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
+			service.RecordCountAsync(countingAgain.Id, corrected.Id, corrected.Version, -1));
+		Assert.Equal(3, await AuditCountAsync(context, started.Id, "Updated"));
+		Assert.Equal(2, await context.ScalarAsync(
+			"SELECT COUNT(*) FROM AuditEntries WHERE EntityType = 'InventoryCountLine' AND EntityId = $Id AND Action = 'Updated';",
+			new DatabaseParameter("$Id", countedFirst.Id)));
+		Assert.Equal(movementCount, await context.ScalarAsync("SELECT COUNT(*) FROM StockMovements;"));
+	}
+
+	[Fact]
+	public async Task ReviewCanBeCancelledButPostedCountCannotBeCancelled()
+	{
+		await using var context = await ProcurementTestContext.CreateSqliteAsync();
+		var service = CreateService(context);
+		var firstDraft = await NewDraftAsync(context, service);
+		var firstStarted = await service.StartAsync(firstDraft.Id, firstDraft.Version);
+		foreach (var line in firstStarted.Lines)
+		{
+			await service.RecordCountAsync(firstStarted.Id, line.Id, line.Version, line.ExpectedQuantity);
+		}
+		var review = await service.MoveToReviewAsync(firstStarted.Id, firstStarted.Version);
+		var cancelled = await service.CancelAsync(review.Id, review.Version);
+		Assert.Equal(InventoryCountStatus.Cancelled, cancelled.Status);
+
+		var postedDraft = await NewDraftAsync(context, service);
+		await context.Data.ExecuteAsync(
+			"UPDATE InventoryCounts SET Status = $Status WHERE Id = $Id;",
+			CancellationToken.None,
+			new DatabaseParameter("$Status", (int)InventoryCountStatus.Posted),
+			new DatabaseParameter("$Id", postedDraft.Id));
+		await Assert.ThrowsAsync<InvalidOperationException>(() =>
+			service.CancelAsync(postedDraft.Id, postedDraft.Version));
+	}
+
+	[Fact]
+	public async Task ServerSideCountAndLineFiltersReturnPagedDifferencesAndUncountedLines()
+	{
+		await using var context = await ProcurementTestContext.CreateSqliteAsync();
+		var service = CreateService(context);
+		await AddStockAsync(context, context.InventoryId, 5);
+		var draft = await NewDraftAsync(context, service);
+		var started = await service.StartAsync(draft.Id, draft.Version);
+		var first = Assert.Single(started.Lines, line => line.InventoryId == context.InventoryId);
+		await service.RecordCountAsync(started.Id, first.Id, first.Version, 3);
+
+		var countPage = await service.SearchAsync("IC-", InventoryCountStatus.Counting, draft.WarehouseId, 1, 1);
+		var differencePage = await service.SearchLinesAsync(started.Id, null, false, true, 1, 100);
+		var uncountedPage = await service.SearchLinesAsync(started.Id, null, true, false, 1, 100);
+
+		Assert.Equal(1, countPage.TotalCount);
+		Assert.Equal(2, countPage.Items[0].TotalLineCount);
+		Assert.Equal(1, countPage.Items[0].CountedLineCount);
+		Assert.Equal(1, countPage.Items[0].DifferenceLineCount);
+		Assert.Single(differencePage.Items);
+		Assert.Equal(-2, differencePage.Items[0].Difference);
+		Assert.Single(uncountedPage.Items);
+		Assert.Null(uncountedPage.Items[0].CountedQuantity);
+	}
+
+	[Fact]
+	public async Task InventoryCountsViewModelLoadsServerPagedOverview()
+	{
+		await using var context = await ProcurementTestContext.CreateSqliteAsync();
+		var service = CreateService(context);
+		var draft = await NewDraftAsync(context, service);
+		var audit = new AuditService(new AuditRepository(context.Data), context.Authorization);
+		var warehouses = new WarehouseService(
+			new WarehouseRepository(context.Data),
+			new StorageLocationRepository(context.Data),
+			audit);
+		using var viewModel = new InventoryCountsViewModel(service, warehouses, new ConfirmingFileDialogs());
+
+		await viewModel.LoadAsync();
+
+		Assert.Equal(1, viewModel.TotalCount);
+		Assert.Single(viewModel.InventoryCounts);
+		Assert.Equal(draft.Id, viewModel.InventoryCounts[0].Id);
+		Assert.False(viewModel.IsBusy);
+		Assert.False(viewModel.HasOperationError);
 	}
 
 	[Fact]
@@ -256,4 +348,11 @@ public sealed class InventoryCountTests
 		Version = source.Version,
 		Lines = source.Lines
 	};
+
+	private sealed class ConfirmingFileDialogs : IFileDialogService
+	{
+		public string? ShowOpenFile(OpenFileDialogRequest request) => null;
+		public string? ShowSaveFile(SaveFileDialogRequest request) => null;
+		public bool Confirm(ConfirmationDialogRequest request) => true;
+	}
 }
