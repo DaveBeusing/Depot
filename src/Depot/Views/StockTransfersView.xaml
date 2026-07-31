@@ -202,8 +202,8 @@
 								<Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
 								<TextBlock Style="{StaticResource CaptionStyle}" Text="Destination inventories are restricted to the selected source item." />
 								<TextBlock Grid.Column="1" Style="{StaticResource CaptionStyle}">
-									<Run Text="Available: " /><Run FontWeight="SemiBold" Text="{Binding SelectedSourceInventory.CurrentStock, StringFormat={}{0:N0}}" />
-									<Run Text="   Remaining: " /><Run FontWeight="SemiBold" Text="{Binding SelectedSourceRemainingStock, StringFormat={}{0:N0}}" />
+									<Run Text="Available: " /><Run FontWeight="SemiBold" Text="{Binding SelectedSourceInventory.CurrentStock, Mode=OneWay, StringFormat={}{0:N0}}" />
+									<Run Text="   Remaining: " /><Run FontWeight="SemiBold" Text="{Binding SelectedSourceRemainingStock, Mode=OneWay, StringFormat={}{0:N0}}" />
 								</TextBlock>
 							</Grid>
 
