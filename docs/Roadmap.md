@@ -57,6 +57,8 @@ This roadmap reflects the implementation on the current `master` branch. “Impl
 - [x] Immutable technical reason-code keys and protected workflow system codes
 - [x] Warehouse stock-transfer drafts, cancellation, and atomic TransferOut/TransferIn posting
 - [x] Transfers main page with server-side search, status filter, paging, inventory selection, availability, and movement details
+- [x] Inventory-count drafts, atomic snapshots, paged counting/review UI, cancellation, and return to Counting
+- [x] Atomic inventory-count posting against current stock through audited correction movements
 
 ### Administration and output
 
@@ -80,7 +82,6 @@ This roadmap reflects the implementation on the current `master` branch. “Impl
 - User-facing paging: server-side paging is used, but not every screen exposes complete page navigation.
 - Audit tooling: audit records are written, but no audit viewer, filter, retention, or export UI exists.
 - Transfer workflow: application workflow and UI are implemented; live SQL Server and MySQL/MariaDB concurrency verification remains open.
-- Inventory-count workflow: audited drafts, atomic warehouse snapshots, paged counting UI, difference review, return to Counting, cancellation, and concurrency controls exist; difference posting remains open.
 - General settings: database and backup settings are implemented; the general Settings page remains a placeholder.
 - Provider verification: SQL Server and MySQL/MariaDB implementations exist, but live-server integration coverage is incomplete.
 

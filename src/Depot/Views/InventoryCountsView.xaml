@@ -122,6 +122,7 @@
 								<Button Margin="{StaticResource Button.Margin}" Command="{Binding SaveDraftCommand}" Content="Save Draft" Style="{StaticResource SecondaryButtonStyle}" Visibility="{Binding IsDraft, Converter={StaticResource BooleanToVisibilityConverter}}" />
 								<Button Margin="{StaticResource Button.Margin}" Command="{Binding StartCommand}" Content="Start Count" Style="{StaticResource PrimaryButtonStyle}" Visibility="{Binding IsDraft, Converter={StaticResource BooleanToVisibilityConverter}}" />
 								<Button Margin="{StaticResource Button.Margin}" Command="{Binding ReturnToCountingCommand}" Content="Return to Counting" Style="{StaticResource SecondaryButtonStyle}" Visibility="{Binding IsReview, Converter={StaticResource BooleanToVisibilityConverter}}" />
+								<Button Margin="{StaticResource Button.Margin}" Command="{Binding PostCommand}" Content="Post Count" Style="{StaticResource PrimaryButtonStyle}" Visibility="{Binding IsReview, Converter={StaticResource BooleanToVisibilityConverter}}" />
 								<Button Margin="{StaticResource Button.Margin}" Command="{Binding MoveToReviewCommand}" Content="Move to Review" Style="{StaticResource PrimaryButtonStyle}" Visibility="{Binding IsCounting, Converter={StaticResource BooleanToVisibilityConverter}}" />
 							</StackPanel>
 						</StackPanel>

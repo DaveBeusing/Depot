@@ -13,6 +13,7 @@ public sealed class InventoryCountService
 	private readonly InventoryCountRepository _counts;
 	private readonly InventoryRepository _inventories;
 	private readonly StockMovementRepository _stockMovements;
+	private readonly ReasonCodeRepository _reasonCodes;
 	private readonly WarehouseRepository _warehouses;
 	private readonly AuditRepository _auditEntries;
 	private readonly AuditService _audit;
@@ -22,6 +23,7 @@ public sealed class InventoryCountService
 		InventoryCountRepository counts,
 		InventoryRepository inventories,
 		StockMovementRepository stockMovements,
+		ReasonCodeRepository reasonCodes,
 		WarehouseRepository warehouses,
 		AuditRepository auditEntries,
 		AuditService audit)
@@ -30,6 +32,7 @@ public sealed class InventoryCountService
 		_counts = counts;
 		_inventories = inventories;
 		_stockMovements = stockMovements;
+		_reasonCodes = reasonCodes;
 		_warehouses = warehouses;
 		_auditEntries = auditEntries;
 		_audit = audit;
@@ -241,6 +244,20 @@ public sealed class InventoryCountService
 			cancellationToken);
 	}
 
+	public async Task<InventoryCount> PostAsync(
+		long id,
+		long version,
+		CancellationToken cancellationToken = default)
+	{
+		ValidateId(id);
+		var userId = _audit.CurrentUserId
+			?? throw new InvalidOperationException("A signed-in user is required to post an inventory count.");
+
+		return await _transactions.ExecuteAsync(
+			(transaction, token) => PostAsync(transaction, id, version, userId, token),
+			cancellationToken);
+	}
+
 	public Task<InventoryCount> ReturnToCountingAsync(
 		long id,
 		long version,
@@ -339,6 +356,98 @@ public sealed class InventoryCountService
 				: _audit.CreateUpdatedEntry(count.Id, before, count),
 			cancellationToken);
 		return count;
+	}
+
+	private async Task<InventoryCount> PostAsync(
+		DatabaseTransactionContext transaction,
+		long id,
+		long version,
+		long userId,
+		CancellationToken cancellationToken)
+	{
+		var before = await GetForStatusChangeAsync(
+			transaction,
+			id,
+			version,
+			InventoryCountStatus.Review,
+			cancellationToken);
+		var lines = await _counts.ListLinesAsync(transaction, id, cancellationToken);
+		if (lines.Count == 0)
+		{
+			throw new InvalidOperationException("An inventory count without positions cannot be posted.");
+		}
+		if (lines.Any(line => line.CountedQuantity is null))
+		{
+			throw new InvalidOperationException("Every inventory-count line must be counted before posting.");
+		}
+		before.Lines = lines;
+
+		var inventoryIds = lines.Select(line => line.InventoryId).Distinct().OrderBy(inventoryId => inventoryId).ToArray();
+		var inventories = await _inventories.GetByIdsForUpdateAsync(
+			transaction,
+			inventoryIds,
+			cancellationToken);
+		if (inventories.Count != inventoryIds.Length)
+		{
+			throw new InvalidOperationException("An inventory-count inventory was not found.");
+		}
+
+		var currentQuantities = (await _stockMovements.GetCurrentQuantitiesAsync(
+			transaction,
+			inventoryIds,
+			cancellationToken)).ToDictionary(quantity => quantity.InventoryId, quantity => quantity.Quantity);
+		var reasonCode = await _reasonCodes.GetByCodeAsync(
+			transaction,
+			ReasonCodeSystemCodes.InventoryCorrection,
+			cancellationToken);
+		if (reasonCode is null || !reasonCode.IsActive)
+		{
+			throw new InvalidOperationException(
+				$"Required system reason code '{ReasonCodeSystemCodes.InventoryCorrection}' is unavailable.");
+		}
+
+		var completedAtUtc = DateTime.UtcNow;
+		foreach (var line in lines.OrderBy(line => line.InventoryId))
+		{
+			var currentQuantity = currentQuantities.GetValueOrDefault(line.InventoryId);
+			var countedQuantity = line.CountedQuantity.GetValueOrDefault();
+			var correction = countedQuantity - currentQuantity;
+			if (correction == 0) continue;
+
+			var movement = new StockMovement
+			{
+				InventoryId = line.InventoryId,
+				ReasonCodeId = reasonCode.Id,
+				MovementType = StockMovementType.Correction,
+				TimestampUtc = completedAtUtc,
+				Quantity = checked((int)correction),
+				Reference = before.CountNumber,
+				Notes = $"Inventory count correction; snapshot {line.ExpectedQuantity}; current {currentQuantity}; counted {countedQuantity}"
+			};
+			movement.Id = await _stockMovements.CreateAsync(transaction, movement, cancellationToken);
+		}
+
+		if (!await _counts.PostAsync(
+			transaction,
+			id,
+			version,
+			userId,
+			completedAtUtc,
+			cancellationToken))
+		{
+			throw new ConcurrencyConflictException("inventory count");
+		}
+
+		var after = Copy(before);
+		after.Status = InventoryCountStatus.Posted;
+		after.PostedByUserId = userId;
+		after.CompletedAtUtc = completedAtUtc;
+		after.Version++;
+		await _auditEntries.CreateAsync(
+			transaction,
+			_audit.CreateUpdatedEntry(id, before, after),
+			cancellationToken);
+		return after;
 	}
 
 	private async Task<InventoryCount> ChangeStatusAsync(

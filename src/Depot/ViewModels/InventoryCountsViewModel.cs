@@ -57,6 +57,7 @@ public sealed class InventoryCountsViewModel : BaseViewModel, IDisposable
 		CancelCommand = new AsyncRelayCommand(CancelAsync, () => CanCancel);
 		MoveToReviewCommand = new AsyncRelayCommand(MoveToReviewAsync, () => IsCounting && UncountedLineCount == 0);
 		ReturnToCountingCommand = new AsyncRelayCommand(ReturnToCountingAsync, () => IsReview);
+		PostCommand = new AsyncRelayCommand(PostAsync, () => IsReview);
 		SaveQuantityCommand = new AsyncRelayCommand(SaveQuantityAsync, () => IsCounting && SelectedLine is not null);
 		PreviousPageCommand = new AsyncRelayCommand(PreviousPageAsync, () => PageNumber > 1);
 		NextPageCommand = new AsyncRelayCommand(NextPageAsync, () => HasNextPage);
@@ -76,6 +77,7 @@ public sealed class InventoryCountsViewModel : BaseViewModel, IDisposable
 	public AsyncRelayCommand CancelCommand { get; }
 	public AsyncRelayCommand MoveToReviewCommand { get; }
 	public AsyncRelayCommand ReturnToCountingCommand { get; }
+	public AsyncRelayCommand PostCommand { get; }
 	public AsyncRelayCommand SaveQuantityCommand { get; }
 	public AsyncRelayCommand PreviousPageCommand { get; }
 	public AsyncRelayCommand NextPageCommand { get; }
@@ -556,6 +558,14 @@ public sealed class InventoryCountsViewModel : BaseViewModel, IDisposable
 			(token => _counts.ReturnToCountingAsync(Editor.Id, Editor.Version, token)),
 			cancellationToken);
 
+	private async Task PostAsync(CancellationToken cancellationToken) =>
+		await ChangeStatusAsync(
+			"Inventur wird gebucht",
+			"Post Inventory Count",
+			$"Post {Editor.CountNumber}? Corrections will be calculated against the current stock and cannot be undone.",
+			(token => _counts.PostAsync(Editor.Id, Editor.Version, token)),
+			cancellationToken);
+
 	private async Task CancelAsync(CancellationToken cancellationToken) =>
 		await ChangeStatusAsync(
 			"Inventur wird storniert",
@@ -729,6 +739,7 @@ public sealed class InventoryCountsViewModel : BaseViewModel, IDisposable
 		CancelCommand.RaiseCanExecuteChanged();
 		MoveToReviewCommand.RaiseCanExecuteChanged();
 		ReturnToCountingCommand.RaiseCanExecuteChanged();
+		PostCommand.RaiseCanExecuteChanged();
 		SaveQuantityCommand.RaiseCanExecuteChanged();
 	}
 
@@ -774,6 +785,7 @@ public sealed class InventoryCountsViewModel : BaseViewModel, IDisposable
 		CancelCommand.Dispose();
 		MoveToReviewCommand.Dispose();
 		ReturnToCountingCommand.Dispose();
+		PostCommand.Dispose();
 		SaveQuantityCommand.Dispose();
 		PreviousPageCommand.Dispose();
 		NextPageCommand.Dispose();

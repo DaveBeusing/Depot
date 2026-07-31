@@ -178,6 +178,16 @@ public sealed class InventoryCountRepository : DatabaseRepository
 			cancellationToken,
 			Parameter("$InventoryCountId", inventoryCountId));
 
+	public Task<IReadOnlyList<InventoryCountLine>> ListLinesAsync(
+		DatabaseTransactionContext transaction,
+		long inventoryCountId,
+		CancellationToken cancellationToken) =>
+		transaction.Session.QueryAsync(
+			$"SELECT {LineColumns} FROM InventoryCountLines WHERE InventoryCountId = $InventoryCountId ORDER BY InventoryId;",
+			ReadLine,
+			cancellationToken,
+			Parameter("$InventoryCountId", inventoryCountId));
+
 	public Task<long> CreateAsync(
 		DatabaseTransactionContext transaction,
 		InventoryCount count,
@@ -249,6 +259,23 @@ public sealed class InventoryCountRepository : DatabaseRepository
 			Parameter("$Id", id),
 			Parameter("$Version", version),
 			Parameter("$ExpectedStatus", (int)expectedStatus)) == 1;
+
+	public async Task<bool> PostAsync(
+		DatabaseTransactionContext transaction,
+		long id,
+		long version,
+		long postedByUserId,
+		DateTime completedAtUtc,
+		CancellationToken cancellationToken) =>
+		await transaction.Session.ExecuteAsync(
+			"UPDATE InventoryCounts SET Status = $PostedStatus, PostedByUserId = $PostedByUserId, CompletedAtUtc = $CompletedAtUtc, Version = Version + 1 WHERE Id = $Id AND Version = $Version AND Status = $ReviewStatus;",
+			cancellationToken,
+			Parameter("$PostedStatus", (int)InventoryCountStatus.Posted),
+			Parameter("$PostedByUserId", postedByUserId),
+			Parameter("$CompletedAtUtc", DateTimeValue(completedAtUtc)),
+			Parameter("$Id", id),
+			Parameter("$Version", version),
+			Parameter("$ReviewStatus", (int)InventoryCountStatus.Review)) == 1;
 
 	public async Task<bool> UpdateCountedQuantityAsync(
 		DatabaseTransactionContext transaction,

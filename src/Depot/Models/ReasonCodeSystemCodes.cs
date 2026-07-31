@@ -18,5 +18,6 @@ public static class ReasonCodeSystemCodes
 
 	public static bool IsRequiredByActiveWorkflow(string code) =>
 		string.Equals(code, GoodsReceipt, StringComparison.Ordinal) ||
+		string.Equals(code, InventoryCorrection, StringComparison.Ordinal) ||
 		string.Equals(code, Transfer, StringComparison.Ordinal);
 }

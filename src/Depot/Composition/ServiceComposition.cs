@@ -58,6 +58,7 @@ internal sealed class ServiceComposition
 			repositories.InventoryCounts,
 			repositories.Inventories,
 			repositories.StockMovements,
+			repositories.ReasonCodes,
 			repositories.Warehouses,
 			repositories.Audit,
 			audit);

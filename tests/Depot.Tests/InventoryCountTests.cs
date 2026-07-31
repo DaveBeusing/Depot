@@ -231,6 +231,164 @@ public sealed class InventoryCountTests
 	}
 
 	[Fact]
+	public async Task PostingWithoutDifferenceCreatesNoCorrectionMovement()
+	{
+		await using var context = await ProcurementTestContext.CreateSqliteAsync();
+		var service = CreateService(context);
+		await AddStockAsync(context, context.InventoryId, 5);
+		var review = await PrepareReviewAsync(context, service, line => line.ExpectedQuantity);
+
+		var posted = await service.PostAsync(review.Id, review.Version);
+
+		Assert.Equal(InventoryCountStatus.Posted, posted.Status);
+		Assert.NotNull(posted.CompletedAtUtc);
+		Assert.NotNull(posted.PostedByUserId);
+		Assert.Equal(0, await CorrectionCountAsync(context, posted.CountNumber));
+		Assert.Equal(5, await CurrentStockAsync(context, context.InventoryId));
+	}
+
+	[Fact]
+	public async Task PostingCreatesPositiveAndNegativeCorrectionsAgainstCurrentStock()
+	{
+		await using var context = await ProcurementTestContext.CreateSqliteAsync();
+		var service = CreateService(context);
+		await AddStockAsync(context, context.InventoryId, 5);
+		await AddStockAsync(context, context.SecondInventoryId, 2);
+		var review = await PrepareReviewAsync(
+			context,
+			service,
+			line => line.InventoryId == context.InventoryId ? 2 : 6);
+
+		var posted = await service.PostAsync(review.Id, review.Version);
+
+		Assert.Equal(2, await CurrentStockAsync(context, context.InventoryId));
+		Assert.Equal(6, await CurrentStockAsync(context, context.SecondInventoryId));
+		Assert.Equal(2, await CorrectionCountAsync(context, posted.CountNumber));
+		Assert.Equal(-3, await CorrectionQuantityAsync(context, posted.CountNumber, context.InventoryId));
+		Assert.Equal(4, await CorrectionQuantityAsync(context, posted.CountNumber, context.SecondInventoryId));
+	}
+
+	[Fact]
+	public async Task PostingUsesCurrentStockWhileKeepingExpectedQuantityAsSnapshot()
+	{
+		await using var context = await ProcurementTestContext.CreateSqliteAsync();
+		var service = CreateService(context);
+		await AddStockAsync(context, context.InventoryId, 5);
+		var review = await PrepareReviewAsync(
+			context,
+			service,
+			line => line.InventoryId == context.InventoryId ? 6 : line.ExpectedQuantity);
+		await AddStockAsync(context, context.InventoryId, 2);
+
+		var posted = await service.PostAsync(review.Id, review.Version);
+		var reloaded = await service.GetByIdAsync(posted.Id) ?? throw new InvalidOperationException();
+
+		Assert.Equal(5, Assert.Single(reloaded.Lines, line => line.InventoryId == context.InventoryId).ExpectedQuantity);
+		Assert.Equal(-1, await CorrectionQuantityAsync(context, posted.CountNumber, context.InventoryId));
+		Assert.Equal(6, await CurrentStockAsync(context, context.InventoryId));
+	}
+
+	[Fact]
+	public async Task AuditFailureRollsBackPostingStatusAndEveryCorrection()
+	{
+		await using var context = await ProcurementTestContext.CreateSqliteAsync();
+		var service = CreateService(context);
+		await AddStockAsync(context, context.InventoryId, 5);
+		var review = await PrepareReviewAsync(
+			context,
+			service,
+			line => line.InventoryId == context.InventoryId ? 8 : line.ExpectedQuantity);
+		await context.Data.ExecuteAsync(
+			"""
+			CREATE TRIGGER FailInventoryCountPostAudit
+			BEFORE INSERT ON AuditEntries
+			WHEN NEW.EntityType = 'InventoryCount' AND NEW.Action = 'Updated'
+			BEGIN
+				SELECT RAISE(ABORT, 'forced inventory-count post audit failure');
+			END;
+			""",
+			CancellationToken.None);
+
+		await Assert.ThrowsAsync<SqliteException>(() => service.PostAsync(review.Id, review.Version));
+
+		var stored = await service.GetByIdAsync(review.Id) ?? throw new InvalidOperationException();
+		Assert.Equal(InventoryCountStatus.Review, stored.Status);
+		Assert.Null(stored.CompletedAtUtc);
+		Assert.Null(stored.PostedByUserId);
+		Assert.Equal(0, await CorrectionCountAsync(context, review.CountNumber));
+		Assert.Equal(5, await CurrentStockAsync(context, context.InventoryId));
+	}
+
+	[Fact]
+	public async Task ParallelAndRepeatedPostingCanCommitOnlyOnce()
+	{
+		await using var context = await ProcurementTestContext.CreateSqliteAsync();
+		var service = CreateService(context);
+		await AddStockAsync(context, context.InventoryId, 3);
+		var review = await PrepareReviewAsync(
+			context,
+			service,
+			line => line.InventoryId == context.InventoryId ? 4 : line.ExpectedQuantity);
+
+		var results = await Task.WhenAll(TryPostAsync(), TryPostAsync());
+
+		Assert.Single(results, result => result);
+		Assert.Equal(1, await CorrectionCountAsync(context, review.CountNumber));
+		Assert.Equal(4, await CurrentStockAsync(context, context.InventoryId));
+		await Assert.ThrowsAnyAsync<InvalidOperationException>(() => service.PostAsync(review.Id, review.Version));
+
+		async Task<bool> TryPostAsync()
+		{
+			try
+			{
+				await service.PostAsync(review.Id, review.Version);
+				return true;
+			}
+			catch (InvalidOperationException)
+			{
+				return false;
+			}
+		}
+	}
+
+	[Fact]
+	public async Task PostingRejectsAStaleVersionBeforeCreatingMovements()
+	{
+		await using var context = await ProcurementTestContext.CreateSqliteAsync();
+		var service = CreateService(context);
+		var review = await PrepareReviewAsync(
+			context,
+			service,
+			line => line.InventoryId == context.InventoryId ? 1 : line.ExpectedQuantity);
+
+		var exception = await Assert.ThrowsAsync<ConcurrencyConflictException>(() =>
+			service.PostAsync(review.Id, review.Version + 1));
+
+		Assert.Contains("changed by another session", exception.Message, StringComparison.Ordinal);
+		Assert.Equal(0, await CorrectionCountAsync(context, review.CountNumber));
+		Assert.Equal(InventoryCountStatus.Review, (await service.GetByIdAsync(review.Id))?.Status);
+	}
+
+	[Fact]
+	public async Task PostingUsesInventoryCorrectionSystemCodeAndWritesAtomicAudit()
+	{
+		await using var context = await ProcurementTestContext.CreateSqliteAsync();
+		var service = CreateService(context);
+		var review = await PrepareReviewAsync(
+			context,
+			service,
+			line => line.InventoryId == context.InventoryId ? 1 : line.ExpectedQuantity);
+
+		var posted = await service.PostAsync(review.Id, review.Version);
+
+		Assert.Equal(1, await context.ScalarAsync(
+			"SELECT COUNT(*) FROM StockMovements sm INNER JOIN ReasonCodes rc ON rc.Id = sm.ReasonCodeId WHERE sm.Reference = $Reference AND rc.Code = $Code;",
+			new DatabaseParameter("$Reference", posted.CountNumber),
+			new DatabaseParameter("$Code", ReasonCodeSystemCodes.InventoryCorrection)));
+		Assert.Equal(3, await AuditCountAsync(context, posted.Id, "Updated"));
+	}
+
+	[Fact]
 	public async Task InventoryCountsViewModelLoadsServerPagedOverview()
 	{
 		await using var context = await ProcurementTestContext.CreateSqliteAsync();
@@ -290,6 +448,7 @@ public sealed class InventoryCountTests
 			new InventoryCountRepository(context.Data),
 			new InventoryRepository(context.Data),
 			new StockMovementRepository(context.Data),
+			new ReasonCodeRepository(context.Data),
 			new WarehouseRepository(context.Data),
 			auditRepository,
 			audit);
@@ -303,6 +462,24 @@ public sealed class InventoryCountTests
 			WarehouseId = await WarehouseIdAsync(context),
 			Notes = "Inventory count integration test"
 		});
+
+	private static async Task<InventoryCount> PrepareReviewAsync(
+		ProcurementTestContext context,
+		InventoryCountService service,
+		Func<InventoryCountLine, long> countedQuantity)
+	{
+		var draft = await NewDraftAsync(context, service);
+		var started = await service.StartAsync(draft.Id, draft.Version);
+		foreach (var line in started.Lines)
+		{
+			await service.RecordCountAsync(
+				started.Id,
+				line.Id,
+				line.Version,
+				countedQuantity(line));
+		}
+		return await service.MoveToReviewAsync(started.Id, started.Version);
+	}
 
 	private static async Task<long> WarehouseIdAsync(ProcurementTestContext context) =>
 		await context.ScalarAsync(
@@ -323,6 +500,24 @@ public sealed class InventoryCountTests
 		await context.ScalarAsync(
 			"SELECT COALESCE(SUM(Quantity), 0) FROM StockMovements WHERE InventoryId = $InventoryId;",
 			new DatabaseParameter("$InventoryId", inventoryId));
+
+	private static async Task<long> CorrectionCountAsync(
+		ProcurementTestContext context,
+		string countNumber) =>
+		await context.ScalarAsync(
+			"SELECT COUNT(*) FROM StockMovements WHERE Reference = $Reference AND MovementType = $MovementType;",
+			new DatabaseParameter("$Reference", countNumber),
+			new DatabaseParameter("$MovementType", (int)StockMovementType.Correction));
+
+	private static async Task<long> CorrectionQuantityAsync(
+		ProcurementTestContext context,
+		string countNumber,
+		long inventoryId) =>
+		await context.ScalarAsync(
+			"SELECT COALESCE(SUM(Quantity), 0) FROM StockMovements WHERE Reference = $Reference AND InventoryId = $InventoryId AND MovementType = $MovementType;",
+			new DatabaseParameter("$Reference", countNumber),
+			new DatabaseParameter("$InventoryId", inventoryId),
+			new DatabaseParameter("$MovementType", (int)StockMovementType.Correction));
 
 	private static async Task<long> AuditCountAsync(
 		ProcurementTestContext context,

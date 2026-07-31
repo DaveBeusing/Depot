@@ -25,6 +25,7 @@ The project is under active development on the `0.9.1-preview` line. Implemented
 - Delivery-note-based goods receipts with receipt date, receiving user, partial receipts, and automatic purchase-order status updates
 - Atomic goods-receipt posting across receipt records, received quantities, stock movements, and order status
 - Warehouse stock transfers with draft editing, server-side search, status filtering, paging, atomic posting, paired transfer movements, and concurrency-safe stock checks
+- Inventory counts with atomic warehouse snapshots, paged counting and review, optimistic concurrency, and atomic correction posting through stock movements
 - Excel import, report search, grouped reports, and Excel export
 - Audit persistence for relevant create/update operations
 - Optimistic concurrency using version columns and explicit conflict errors
@@ -42,7 +43,6 @@ SQL Server and MySQL/MariaDB support is implemented in code, but live-server mig
 
 ### Partially implemented
 
-- Inventory counts provide audited drafts, warehouse-wide start snapshots, paged quantity recording, difference and uncounted filters, review/return transitions, cancellation, and optimistic concurrency; difference posting is not implemented yet.
 - Most interactive list loading is asynchronous and cancellable.
 - Items, inventory, movements, users, and purchase-order searches use server-side paging infrastructure.
 - Search debounce is used across the main large-data and master-data screens.
