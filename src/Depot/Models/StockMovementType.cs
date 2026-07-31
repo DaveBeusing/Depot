@@ -11,5 +11,6 @@ public enum StockMovementType
 	Correction = 4,
 	Transfer = 5,
 	TransferOut = 6,
-	TransferIn = 7
+	TransferIn = 7,
+	Reversal = 8
 }

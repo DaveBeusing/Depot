@@ -66,7 +66,14 @@ public sealed class MultiUserInventoryTests : IDisposable
 			warehouseRepository,
 			_reasonCodeRepository,
 			_movementRepository,
-			audit);
+			audit,
+			new StockMovementReversalService(
+				new DatabaseTransactionRunner(database),
+				_inventoryRepository,
+				_movementRepository,
+				_reasonCodeRepository,
+				new AuditRepository(database),
+				audit));
 	}
 
 	[Fact]

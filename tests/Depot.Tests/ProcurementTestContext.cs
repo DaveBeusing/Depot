@@ -185,7 +185,14 @@ internal sealed class ProcurementTestContext : IAsyncDisposable
 			new StockMovementRepository(context.Data),
 			new ReasonCodeRepository(context.Data),
 			new AuditRepository(context.Data),
-			audit);
+			audit,
+			new StockMovementReversalService(
+				new DatabaseTransactionRunner(context.Data),
+				new InventoryRepository(context.Data),
+				new StockMovementRepository(context.Data),
+				new ReasonCodeRepository(context.Data),
+				new AuditRepository(context.Data),
+				audit));
 		return context;
 	}
 

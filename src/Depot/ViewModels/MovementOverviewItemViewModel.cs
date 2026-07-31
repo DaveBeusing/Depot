@@ -8,6 +8,7 @@ namespace Depot.ViewModels;
 public sealed class MovementOverviewItemViewModel
 	: BaseViewModel
 {
+	private bool _isReversed;
 	public MovementOverviewItemViewModel(
 		MovementOverviewItem item)
 	{
@@ -26,6 +27,8 @@ public sealed class MovementOverviewItemViewModel
 		UnitPrice = item.UnitPrice;
 		Reference = item.Reference;
 		Notes = item.Notes;
+		ReversalOfMovementId = item.ReversalOfMovementId;
+		_isReversed = item.IsReversed;
 	}
 
 	public long MovementId { get; }
@@ -60,4 +63,22 @@ public sealed class MovementOverviewItemViewModel
 	public string? Reference { get; }
 
 	public string? Notes { get; }
+
+	public long? ReversalOfMovementId { get; }
+
+	public bool IsReversed
+	{
+		get => _isReversed;
+		private set
+		{
+			if (_isReversed == value) return;
+			_isReversed = value;
+			OnPropertyChanged();
+			OnPropertyChanged(nameof(CanReverse));
+		}
+	}
+
+	public bool CanReverse => MovementType == StockMovementType.Withdrawal && ReversalOfMovementId is null && !IsReversed;
+
+	public void MarkReversed() => IsReversed = true;
 }

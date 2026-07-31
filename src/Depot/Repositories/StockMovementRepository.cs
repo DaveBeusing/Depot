@@ -14,9 +14,9 @@ namespace Depot.Repositories;
 public sealed class StockMovementRepository : DatabaseRepository
 {
 	private const string SelectColumns =
-		"Id, InventoryId, ReasonCodeId, MovementType, TimestampUtc, Quantity, UnitPrice, Reference, Notes";
+		"Id, InventoryId, ReasonCodeId, MovementType, TimestampUtc, Quantity, UnitPrice, Reference, Notes, ReversalOfMovementId, ReversalReason, ReversedAtUtc, ReversedByUserId";
 	private const string QualifiedSelectColumns =
-		"sm.Id, sm.InventoryId, sm.ReasonCodeId, sm.MovementType, sm.TimestampUtc, sm.Quantity, sm.UnitPrice, sm.Reference, sm.Notes";
+		"sm.Id, sm.InventoryId, sm.ReasonCodeId, sm.MovementType, sm.TimestampUtc, sm.Quantity, sm.UnitPrice, sm.Reference, sm.Notes, sm.ReversalOfMovementId, sm.ReversalReason, sm.ReversedAtUtc, sm.ReversedByUserId";
 
 	public StockMovementRepository(DatabaseAccess database)
 		: base(database)
@@ -30,9 +30,9 @@ public sealed class StockMovementRepository : DatabaseRepository
 		transaction.Session.InsertAsync(
 			"""
 			INSERT INTO StockMovements
-			(InventoryId, ReasonCodeId, MovementType, TimestampUtc, Quantity, UnitPrice, Reference, Notes)
+			(InventoryId, ReasonCodeId, MovementType, TimestampUtc, Quantity, UnitPrice, Reference, Notes, ReversalOfMovementId, ReversalReason, ReversedAtUtc, ReversedByUserId)
 			VALUES
-			($InventoryId, $ReasonCodeId, $MovementType, $TimestampUtc, $Quantity, $UnitPrice, $Reference, $Notes);
+			($InventoryId, $ReasonCodeId, $MovementType, $TimestampUtc, $Quantity, $UnitPrice, $Reference, $Notes, $ReversalOfMovementId, $ReversalReason, $ReversedAtUtc, $ReversedByUserId);
 			""",
 			cancellationToken,
 			Parameter("$InventoryId", movement.InventoryId),
@@ -42,7 +42,47 @@ public sealed class StockMovementRepository : DatabaseRepository
 			Parameter("$Quantity", movement.Quantity),
 			Parameter("$UnitPrice", movement.UnitPrice),
 			Parameter("$Reference", movement.Reference),
-			Parameter("$Notes", movement.Notes));
+			Parameter("$Notes", movement.Notes),
+			Parameter("$ReversalOfMovementId", movement.ReversalOfMovementId),
+			Parameter("$ReversalReason", movement.ReversalReason),
+			Parameter("$ReversedAtUtc", movement.ReversedAtUtc is null ? null : DateTimeValue(movement.ReversedAtUtc.Value)),
+			Parameter("$ReversedByUserId", movement.ReversedByUserId));
+
+	public Task<StockMovement?> GetByIdAsync(
+		DatabaseTransactionContext transaction,
+		long movementId,
+		CancellationToken cancellationToken) =>
+		transaction.Session.QuerySingleOrDefaultAsync(
+			$"SELECT {SelectColumns} FROM StockMovements WHERE Id = $MovementId;",
+			ReadMovement,
+			cancellationToken,
+			Parameter("$MovementId", movementId));
+
+	public Task<IReadOnlyList<StockMovement>> ListOriginalsByReferenceAsync(
+		DatabaseTransactionContext transaction,
+		string reference,
+		CancellationToken cancellationToken) =>
+		transaction.Session.QueryAsync(
+			$"SELECT {SelectColumns} FROM StockMovements WHERE Reference = $Reference AND ReversalOfMovementId IS NULL ORDER BY Id;",
+			ReadMovement,
+			cancellationToken,
+			Parameter("$Reference", reference));
+
+	public Task<IReadOnlyList<long>> ListReversedOriginalIdsAsync(
+		DatabaseTransactionContext transaction,
+		IEnumerable<long> movementIds,
+		CancellationToken cancellationToken)
+	{
+		var ids = movementIds.Distinct().OrderBy(id => id).ToArray();
+		if (ids.Length == 0) return Task.FromResult<IReadOnlyList<long>>([]);
+		var parameters = ids.Select((id, index) => Parameter($"$MovementId{index}", id)).ToArray();
+		var parameterList = string.Join(", ", parameters.Select(parameter => parameter.Name));
+		return transaction.Session.QueryAsync(
+			$"SELECT ReversalOfMovementId FROM StockMovements WHERE ReversalOfMovementId IN ({parameterList}) ORDER BY ReversalOfMovementId;",
+			reader => reader.GetInt64(0),
+			cancellationToken,
+			parameters);
+	}
 
 	public Task<IReadOnlyList<InventoryStockQuantity>> GetCurrentQuantitiesAsync(
 		DatabaseTransactionContext transaction,
@@ -100,9 +140,9 @@ public sealed class StockMovementRepository : DatabaseRepository
 				var movementId = await session.InsertAsync(
 					"""
 					INSERT INTO StockMovements
-					(InventoryId, ReasonCodeId, MovementType, TimestampUtc, Quantity, UnitPrice, Reference, Notes)
+					(InventoryId, ReasonCodeId, MovementType, TimestampUtc, Quantity, UnitPrice, Reference, Notes, ReversalOfMovementId, ReversalReason, ReversedAtUtc, ReversedByUserId)
 					VALUES
-					($InventoryId, $ReasonCodeId, $MovementType, $TimestampUtc, $Quantity, $UnitPrice, $Reference, $Notes);
+					($InventoryId, $ReasonCodeId, $MovementType, $TimestampUtc, $Quantity, $UnitPrice, $Reference, $Notes, $ReversalOfMovementId, $ReversalReason, $ReversedAtUtc, $ReversedByUserId);
 					""",
 					token,
 					Parameter("$InventoryId", movement.InventoryId),
@@ -112,7 +152,11 @@ public sealed class StockMovementRepository : DatabaseRepository
 					Parameter("$Quantity", movement.Quantity),
 					Parameter("$UnitPrice", movement.UnitPrice),
 					Parameter("$Reference", movement.Reference),
-					Parameter("$Notes", movement.Notes));
+					Parameter("$Notes", movement.Notes),
+					Parameter("$ReversalOfMovementId", movement.ReversalOfMovementId),
+					Parameter("$ReversalReason", movement.ReversalReason),
+					Parameter("$ReversedAtUtc", movement.ReversedAtUtc is null ? null : DateTimeValue(movement.ReversedAtUtc.Value)),
+					Parameter("$ReversedByUserId", movement.ReversedByUserId));
 
 				movement.Id = movementId;
 				auditEntry.EntityId = movementId;
@@ -156,7 +200,8 @@ public sealed class StockMovementRepository : DatabaseRepository
 		return Database.QueryPageAsync(
 			$"""
 			SELECT sm.Id, sm.TimestampUtc, inv.Id, i.Id, i.PartNumber, i.Description,
-			       p.Name, w.Name, sl.Name, rc.Name, sm.MovementType, sm.Quantity, sm.UnitPrice, sm.Reference, sm.Notes
+			       p.Name, w.Name, sl.Name, rc.Name, sm.MovementType, sm.Quantity, sm.UnitPrice, sm.Reference, sm.Notes,
+			       sm.ReversalOfMovementId, CASE WHEN EXISTS (SELECT 1 FROM StockMovements reversal WHERE reversal.ReversalOfMovementId = sm.Id) THEN 1 ELSE 0 END
 			FROM StockMovements sm
 			INNER JOIN Inventories inv ON inv.Id = sm.InventoryId
 			INNER JOIN Items i ON i.Id = inv.ItemId
@@ -190,7 +235,8 @@ public sealed class StockMovementRepository : DatabaseRepository
 		Database.QuerySingleOrDefaultAsync(
 			"""
 			SELECT sm.Id, sm.TimestampUtc, inv.Id, i.Id, i.PartNumber, i.Description,
-			       p.Name, w.Name, sl.Name, rc.Name, sm.MovementType, sm.Quantity, sm.UnitPrice, sm.Reference, sm.Notes
+			       p.Name, w.Name, sl.Name, rc.Name, sm.MovementType, sm.Quantity, sm.UnitPrice, sm.Reference, sm.Notes,
+			       sm.ReversalOfMovementId, CASE WHEN EXISTS (SELECT 1 FROM StockMovements reversal WHERE reversal.ReversalOfMovementId = sm.Id) THEN 1 ELSE 0 END
 			FROM StockMovements sm
 			INNER JOIN Inventories inv ON inv.Id = sm.InventoryId
 			INNER JOIN Items i ON i.Id = inv.ItemId
@@ -243,7 +289,8 @@ public sealed class StockMovementRepository : DatabaseRepository
 		Database.QueryAsync(
 			"""
 			SELECT sm.Id, sm.TimestampUtc, inv.Id, i.Id, i.PartNumber, i.Description,
-			       p.Name, w.Name, sl.Name, rc.Name, sm.MovementType, sm.Quantity, sm.UnitPrice, sm.Reference, sm.Notes
+			       p.Name, w.Name, sl.Name, rc.Name, sm.MovementType, sm.Quantity, sm.UnitPrice, sm.Reference, sm.Notes,
+			       sm.ReversalOfMovementId, CASE WHEN EXISTS (SELECT 1 FROM StockMovements reversal WHERE reversal.ReversalOfMovementId = sm.Id) THEN 1 ELSE 0 END
 			FROM StockMovements sm
 			INNER JOIN Inventories inv ON inv.Id = sm.InventoryId
 			INNER JOIN Items i ON i.Id = inv.ItemId
@@ -270,7 +317,7 @@ public sealed class StockMovementRepository : DatabaseRepository
 			return Database.Query(
 				"""
 				SELECT sm.Id, sm.InventoryId, sm.ReasonCodeId, sm.MovementType, sm.TimestampUtc,
-				       sm.Quantity, sm.UnitPrice, sm.Reference, sm.Notes
+				       sm.Quantity, sm.UnitPrice, sm.Reference, sm.Notes, sm.ReversalOfMovementId, sm.ReversalReason, sm.ReversedAtUtc, sm.ReversedByUserId
 				FROM StockMovements sm
 				INNER JOIN Inventories inv ON inv.Id = sm.InventoryId
 				INNER JOIN Items i ON i.Id = inv.ItemId
@@ -282,7 +329,7 @@ public sealed class StockMovementRepository : DatabaseRepository
 		return Database.Query(
 			"""
 			SELECT sm.Id, sm.InventoryId, sm.ReasonCodeId, sm.MovementType, sm.TimestampUtc,
-			       sm.Quantity, sm.UnitPrice, sm.Reference, sm.Notes
+			       sm.Quantity, sm.UnitPrice, sm.Reference, sm.Notes, sm.ReversalOfMovementId, sm.ReversalReason, sm.ReversedAtUtc, sm.ReversedByUserId
 			FROM StockMovements sm
 			INNER JOIN Inventories inv ON inv.Id = sm.InventoryId
 			INNER JOIN Items i ON i.Id = inv.ItemId
@@ -341,9 +388,9 @@ public sealed class StockMovementRepository : DatabaseRepository
 				var movementId = session.Insert(
 					"""
 					INSERT INTO StockMovements
-					(InventoryId, ReasonCodeId, MovementType, TimestampUtc, Quantity, UnitPrice, Reference, Notes)
+					(InventoryId, ReasonCodeId, MovementType, TimestampUtc, Quantity, UnitPrice, Reference, Notes, ReversalOfMovementId, ReversalReason, ReversedAtUtc, ReversedByUserId)
 					VALUES
-					($InventoryId, $ReasonCodeId, $MovementType, $TimestampUtc, $Quantity, $UnitPrice, $Reference, $Notes);
+					($InventoryId, $ReasonCodeId, $MovementType, $TimestampUtc, $Quantity, $UnitPrice, $Reference, $Notes, $ReversalOfMovementId, $ReversalReason, $ReversedAtUtc, $ReversedByUserId);
 					""",
 					Parameter("$InventoryId", movement.InventoryId),
 					Parameter("$ReasonCodeId", movement.ReasonCodeId),
@@ -352,7 +399,11 @@ public sealed class StockMovementRepository : DatabaseRepository
 					Parameter("$Quantity", movement.Quantity),
 					Parameter("$UnitPrice", movement.UnitPrice),
 					Parameter("$Reference", movement.Reference),
-					Parameter("$Notes", movement.Notes));
+					Parameter("$Notes", movement.Notes),
+					Parameter("$ReversalOfMovementId", movement.ReversalOfMovementId),
+					Parameter("$ReversalReason", movement.ReversalReason),
+					Parameter("$ReversedAtUtc", movement.ReversedAtUtc is null ? null : DateTimeValue(movement.ReversedAtUtc.Value)),
+					Parameter("$ReversedByUserId", movement.ReversedByUserId));
 
 				movement.Id = movementId;
 				auditEntry.EntityId = movementId;
@@ -393,7 +444,11 @@ public sealed class StockMovementRepository : DatabaseRepository
 			Quantity = reader.GetInt32(5),
 			UnitPrice = reader.IsDBNull(6) ? null : reader.GetDecimal(6),
 			Reference = reader.IsDBNull(7) ? null : reader.GetString(7),
-			Notes = reader.IsDBNull(8) ? null : reader.GetString(8)
+			Notes = reader.IsDBNull(8) ? null : reader.GetString(8),
+			ReversalOfMovementId = reader.IsDBNull(9) ? null : reader.GetInt64(9),
+			ReversalReason = reader.IsDBNull(10) ? null : reader.GetString(10),
+			ReversedAtUtc = reader.IsDBNull(11) ? null : ParseDateTime(reader.GetString(11)),
+			ReversedByUserId = reader.IsDBNull(12) ? null : reader.GetInt64(12)
 		};
 
 	private static MovementOverviewItem ReadOverview(DbDataReader reader) =>
@@ -413,15 +468,23 @@ public sealed class StockMovementRepository : DatabaseRepository
 			Quantity = reader.GetInt32(11),
 			UnitPrice = reader.IsDBNull(12) ? null : reader.GetDecimal(12),
 			Reference = reader.IsDBNull(13) ? null : reader.GetString(13),
-			Notes = reader.IsDBNull(14) ? null : reader.GetString(14)
+			Notes = reader.IsDBNull(14) ? null : reader.GetString(14),
+			ReversalOfMovementId = reader.IsDBNull(15) ? null : reader.GetInt64(15),
+			IsReversed = reader.GetBoolean(16)
 		};
 
 	private static StockMovement ReadMovementWithReason(DbDataReader reader)
 	{
 		var movement = ReadMovement(reader);
-		movement.ReasonCodeName = reader.IsDBNull(9) ? null : reader.GetString(9);
+		movement.ReasonCodeName = reader.IsDBNull(13) ? null : reader.GetString(13);
 		return movement;
 	}
+
+	private static string DateTimeValue(DateTime value) =>
+		value.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture);
+
+	private static DateTime ParseDateTime(string value) =>
+		DateTime.Parse(value, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind).ToUniversalTime();
 
 	private static DashboardRecentMovement ReadDashboardMovement(DbDataReader reader) =>
 		new()

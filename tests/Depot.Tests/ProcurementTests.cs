@@ -16,6 +16,69 @@ namespace Depot.Tests;
 public sealed class ProcurementTests
 {
 	[Fact]
+	public async Task GoodsReceiptReversalRestoresStockReceivedQuantityAndOrderStatusAtomically()
+	{
+		await using var context = await ProcurementTestContext.CreateSqliteAsync();
+		var order = await context.Orders.SaveDraftAsync(context.NewOrder(5));
+		order = await context.Orders.MarkOrderedAsync(order.Id, order.Version);
+		var receipt = await context.Receipts.PostAsync(context.NewReceipt(order, 5));
+		var reasonCodeId = await context.ScalarAsync("SELECT Id FROM ReasonCodes WHERE Code = $Code;", new DatabaseParameter("$Code", ReasonCodeSystemCodes.Returned));
+
+		var reversed = await context.Receipts.ReverseAsync(receipt.Id, receipt.Version, reasonCodeId, "Supplier delivery rejected");
+		var storedOrder = await context.Orders.GetByIdAsync(order.Id) ?? throw new InvalidOperationException();
+
+		Assert.True(reversed.IsReversed);
+		Assert.Equal(PurchaseOrderStatus.Ordered, storedOrder.Status);
+		Assert.Equal(0, storedOrder.Lines[0].ReceivedQuantity);
+		Assert.Equal(0, await context.ScalarAsync("SELECT COALESCE(SUM(Quantity), 0) FROM StockMovements WHERE InventoryId = $InventoryId;", new DatabaseParameter("$InventoryId", context.InventoryId)));
+		Assert.Equal(1, await context.ScalarAsync("SELECT COUNT(*) FROM StockMovements reversal INNER JOIN StockMovements original ON original.Id = reversal.ReversalOfMovementId WHERE original.Reference = $Reference AND reversal.Quantity = -original.Quantity;", new DatabaseParameter("$Reference", receipt.ReceiptNumber)));
+		await Assert.ThrowsAnyAsync<InvalidOperationException>(() => context.Receipts.ReverseAsync(receipt.Id, receipt.Version, reasonCodeId, "Duplicate"));
+	}
+
+	[Fact]
+	public async Task GoodsReceiptReversalRollsBackWhenAuditFails()
+	{
+		await using var context = await ProcurementTestContext.CreateSqliteAsync();
+		var order = await context.Orders.SaveDraftAsync(context.NewOrder(3));
+		order = await context.Orders.MarkOrderedAsync(order.Id, order.Version);
+		var receipt = await context.Receipts.PostAsync(context.NewReceipt(order, 3));
+		var reasonCodeId = await context.ScalarAsync("SELECT Id FROM ReasonCodes WHERE Code = $Code;", new DatabaseParameter("$Code", ReasonCodeSystemCodes.Returned));
+		await context.Data.ExecuteAsync(
+			"CREATE TRIGGER FailReceiptReversalAudit BEFORE INSERT ON AuditEntries WHEN NEW.EntityType = 'GoodsReceipt' AND NEW.Action = 'Updated' BEGIN SELECT RAISE(ABORT, 'forced receipt reversal audit failure'); END;",
+			CancellationToken.None);
+
+		await Assert.ThrowsAsync<SqliteException>(() => context.Receipts.ReverseAsync(receipt.Id, receipt.Version, reasonCodeId, "Must roll back"));
+
+		var storedOrder = await context.Orders.GetByIdAsync(order.Id) ?? throw new InvalidOperationException();
+		Assert.Equal(PurchaseOrderStatus.Received, storedOrder.Status);
+		Assert.Equal(3, storedOrder.Lines[0].ReceivedQuantity);
+		Assert.Equal(0, await context.ScalarAsync("SELECT COUNT(*) FROM StockMovements WHERE ReversalOfMovementId IS NOT NULL;"));
+		Assert.Equal(0, await context.ScalarAsync("SELECT COUNT(*) FROM GoodsReceipts WHERE ReversedAtUtc IS NOT NULL;"));
+	}
+
+	[Fact]
+	public async Task GoodsReceiptReversalIsRejectedWhenReceivedStockWasAlreadyConsumed()
+	{
+		await using var context = await ProcurementTestContext.CreateSqliteAsync();
+		var order = await context.Orders.SaveDraftAsync(context.NewOrder(5));
+		order = await context.Orders.MarkOrderedAsync(order.Id, order.Version);
+		var receipt = await context.Receipts.PostAsync(context.NewReceipt(order, 5));
+		await context.Data.InsertAsync(
+			"INSERT INTO StockMovements (InventoryId, MovementType, TimestampUtc, Quantity, Reference) VALUES ($InventoryId, $MovementType, $TimestampUtc, -5, 'CONSUMED');",
+			CancellationToken.None,
+			new DatabaseParameter("$InventoryId", context.InventoryId),
+			new DatabaseParameter("$MovementType", (int)StockMovementType.Withdrawal),
+			new DatabaseParameter("$TimestampUtc", DateTime.UtcNow.ToString("O")));
+		var reasonCodeId = await context.ScalarAsync("SELECT Id FROM ReasonCodes WHERE Code = $Code;", new DatabaseParameter("$Code", ReasonCodeSystemCodes.Returned));
+
+		await Assert.ThrowsAsync<InvalidOperationException>(() => context.Receipts.ReverseAsync(receipt.Id, receipt.Version, reasonCodeId, "Stock no longer available"));
+
+		var storedOrder = await context.Orders.GetByIdAsync(order.Id) ?? throw new InvalidOperationException();
+		Assert.Equal(5, storedOrder.Lines[0].ReceivedQuantity);
+		Assert.Equal(0, await context.ScalarAsync("SELECT COUNT(*) FROM StockMovements WHERE ReversalOfMovementId IS NOT NULL;"));
+		Assert.Equal(0, await context.ScalarAsync("SELECT COUNT(*) FROM GoodsReceipts WHERE ReversedAtUtc IS NOT NULL;"));
+	}
+	[Fact]
 	public async Task NewPurchaseOrderIsSavedAsDraft()
 	{
 		await using var context = await ProcurementTestContext.CreateSqliteAsync();

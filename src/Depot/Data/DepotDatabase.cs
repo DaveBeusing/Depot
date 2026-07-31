@@ -359,11 +359,25 @@ public sealed class DepotDatabase : IDatabaseInitializer
 
 			Notes               TEXT NULL,
 
+			ReversalOfMovementId INTEGER NULL,
+
+			ReversalReason       TEXT NULL,
+
+			ReversedAtUtc        TEXT NULL,
+
+			ReversedByUserId     INTEGER NULL,
+
 			FOREIGN KEY(InventoryId)
 				REFERENCES Inventories(Id),
 
 			FOREIGN KEY(ReasonCodeId)
-				REFERENCES ReasonCodes(Id)
+				REFERENCES ReasonCodes(Id),
+
+			FOREIGN KEY(ReversalOfMovementId)
+				REFERENCES StockMovements(Id),
+
+			FOREIGN KEY(ReversedByUserId)
+				REFERENCES Users(Id)
 		);
 		""";
 
@@ -398,7 +412,9 @@ public sealed class DepotDatabase : IDatabaseInitializer
 			Id INTEGER PRIMARY KEY AUTOINCREMENT, ReceiptNumber TEXT NOT NULL UNIQUE, PurchaseOrderId INTEGER NOT NULL,
 			ReceiptDate TEXT NOT NULL, SupplierDeliveryNoteNumber TEXT NOT NULL, ReceivedByUserId INTEGER NOT NULL,
 			InvoiceNumber TEXT NULL, InvoiceDate TEXT NULL, InvoiceDocumentPath TEXT NULL, Notes TEXT NULL,
-			FOREIGN KEY(PurchaseOrderId) REFERENCES PurchaseOrders(Id), FOREIGN KEY(ReceivedByUserId) REFERENCES Users(Id)
+			ReversedAtUtc TEXT NULL, ReversedByUserId INTEGER NULL, ReversalReason TEXT NULL, Version INTEGER NOT NULL DEFAULT 1,
+			FOREIGN KEY(PurchaseOrderId) REFERENCES PurchaseOrders(Id), FOREIGN KEY(ReceivedByUserId) REFERENCES Users(Id),
+			FOREIGN KEY(ReversedByUserId) REFERENCES Users(Id)
 		);
 		CREATE INDEX IF NOT EXISTS IX_GoodsReceipts_PurchaseOrderId ON GoodsReceipts(PurchaseOrderId);
 		CREATE INDEX IF NOT EXISTS IX_GoodsReceipts_ReceivedByUserId ON GoodsReceipts(ReceivedByUserId);
@@ -430,11 +446,15 @@ public sealed class DepotDatabase : IDatabaseInitializer
 			CreatedByUserId INTEGER NOT NULL,
 			PostedByUserId INTEGER NULL,
 			Notes TEXT NULL,
+			ReversedAtUtc TEXT NULL,
+			ReversedByUserId INTEGER NULL,
+			ReversalReason TEXT NULL,
 			Version INTEGER NOT NULL DEFAULT 1,
 			FOREIGN KEY(SourceWarehouseId) REFERENCES Warehouses(Id),
 			FOREIGN KEY(DestinationWarehouseId) REFERENCES Warehouses(Id),
 			FOREIGN KEY(CreatedByUserId) REFERENCES Users(Id),
 			FOREIGN KEY(PostedByUserId) REFERENCES Users(Id),
+			FOREIGN KEY(ReversedByUserId) REFERENCES Users(Id),
 			CHECK(SourceWarehouseId <> DestinationWarehouseId),
 			CHECK(Status IN (1, 2, 3))
 		);
@@ -482,10 +502,14 @@ public sealed class DepotDatabase : IDatabaseInitializer
 			CreatedByUserId INTEGER NOT NULL,
 			PostedByUserId INTEGER NULL,
 			Notes TEXT NULL,
+			ReversedAtUtc TEXT NULL,
+			ReversedByUserId INTEGER NULL,
+			ReversalReason TEXT NULL,
 			Version INTEGER NOT NULL DEFAULT 1,
 			FOREIGN KEY(WarehouseId) REFERENCES Warehouses(Id),
 			FOREIGN KEY(CreatedByUserId) REFERENCES Users(Id),
 			FOREIGN KEY(PostedByUserId) REFERENCES Users(Id),
+			FOREIGN KEY(ReversedByUserId) REFERENCES Users(Id),
 			CHECK(Status IN (1, 2, 3, 4, 5))
 		);
 		CREATE INDEX IF NOT EXISTS IX_InventoryCounts_WarehouseId_Status ON InventoryCounts(WarehouseId, Status);
@@ -677,6 +701,10 @@ public sealed class DepotDatabase : IDatabaseInitializer
 
 		CREATE INDEX IF NOT EXISTS IX_StockMovements_ReasonCodeId
 			ON StockMovements(ReasonCodeId);
+
+		CREATE UNIQUE INDEX IF NOT EXISTS UX_StockMovements_ReversalOfMovementId
+			ON StockMovements(ReversalOfMovementId)
+			WHERE ReversalOfMovementId IS NOT NULL;
 		""";
 
 		command.ExecuteNonQuery();
@@ -925,6 +953,13 @@ public sealed class DepotDatabase : IDatabaseInitializer
 			migratedVersion = 19;
 		}
 
+		if (migratedVersion == 19)
+		{
+			MigrateToMovementReversals(connection);
+			SetDatabaseVersion(connection, 20);
+			migratedVersion = 20;
+		}
+
 		if (migratedVersion < DatabaseVersion.CurrentVersion)
 		{
 			throw new InvalidOperationException(
@@ -935,6 +970,39 @@ public sealed class DepotDatabase : IDatabaseInitializer
 		{
 			throw new InvalidOperationException(
 				$"Database version '{version}' is newer than the supported schema version '{DatabaseVersion.CurrentVersion}'.");
+		}
+	}
+
+	private static void MigrateToMovementReversals(SqliteConnection connection)
+	{
+		AddColumnIfMissing("StockMovements", "ReversalOfMovementId", "INTEGER NULL REFERENCES StockMovements(Id)");
+		AddColumnIfMissing("StockMovements", "ReversalReason", "TEXT NULL");
+		AddColumnIfMissing("StockMovements", "ReversedAtUtc", "TEXT NULL");
+		AddColumnIfMissing("StockMovements", "ReversedByUserId", "INTEGER NULL REFERENCES Users(Id)");
+		if (TableExists(connection, "StockMovements"))
+		{
+			using var indexCommand = connection.CreateCommand();
+			indexCommand.CommandText = "CREATE UNIQUE INDEX IF NOT EXISTS UX_StockMovements_ReversalOfMovementId ON StockMovements(ReversalOfMovementId) WHERE ReversalOfMovementId IS NOT NULL;";
+			indexCommand.ExecuteNonQuery();
+		}
+
+		AddColumnIfMissing("GoodsReceipts", "ReversedAtUtc", "TEXT NULL");
+		AddColumnIfMissing("GoodsReceipts", "ReversedByUserId", "INTEGER NULL REFERENCES Users(Id)");
+		AddColumnIfMissing("GoodsReceipts", "ReversalReason", "TEXT NULL");
+		AddColumnIfMissing("GoodsReceipts", "Version", "INTEGER NOT NULL DEFAULT 1");
+		AddColumnIfMissing("StockTransfers", "ReversedAtUtc", "TEXT NULL");
+		AddColumnIfMissing("StockTransfers", "ReversedByUserId", "INTEGER NULL REFERENCES Users(Id)");
+		AddColumnIfMissing("StockTransfers", "ReversalReason", "TEXT NULL");
+		AddColumnIfMissing("InventoryCounts", "ReversedAtUtc", "TEXT NULL");
+		AddColumnIfMissing("InventoryCounts", "ReversedByUserId", "INTEGER NULL REFERENCES Users(Id)");
+		AddColumnIfMissing("InventoryCounts", "ReversalReason", "TEXT NULL");
+
+		void AddColumnIfMissing(string table, string column, string definition)
+		{
+			if (!TableExists(connection, table) || TableHasColumn(connection, table, column)) return;
+			using var command = connection.CreateCommand();
+			command.CommandText = $"ALTER TABLE {table} ADD COLUMN {column} {definition};";
+			command.ExecuteNonQuery();
 		}
 	}
 

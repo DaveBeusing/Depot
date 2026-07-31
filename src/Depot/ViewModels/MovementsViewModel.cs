@@ -14,21 +14,27 @@ public sealed class MovementsViewModel : BaseViewModel, IDisposable
 	private const int PageSize = 100;
 	private readonly MovementService _movementService;
 	private readonly ReasonCodeService _reasonCodeService;
+	private readonly IFileDialogService _dialogs;
 	private readonly AsyncDebouncer _searchDebouncer = new(TimeSpan.FromMilliseconds(300));
 	private InventoryLookupViewModel? _selectedInventory;
 	private string? _errorMessage;
 	private string _searchText = string.Empty;
 	private int _pageNumber = 1;
 	private long _totalCount;
+	private MovementOverviewItemViewModel? _selectedMovement;
+	private ReasonCodeOptionViewModel? _selectedReversalReasonCode;
+	private string _reversalReason = string.Empty;
 
-	public MovementsViewModel(MovementService movementService, ReasonCodeService reasonCodeService)
+	public MovementsViewModel(MovementService movementService, ReasonCodeService reasonCodeService, IFileDialogService dialogs)
 	{
 		_movementService = movementService;
 		_reasonCodeService = reasonCodeService;
+		_dialogs = dialogs;
 		Editor = new MovementEditorViewModel();
 		CreateMovementCommand = new AsyncRelayCommand(CreateMovementAsync);
 		PreviousPageCommand = new AsyncRelayCommand(PreviousPageAsync, () => PageNumber > 1);
 		NextPageCommand = new AsyncRelayCommand(NextPageAsync, () => HasNextPage);
+		ReverseMovementCommand = new AsyncRelayCommand(ReverseMovementAsync, () => SelectedMovement?.CanReverse == true && SelectedReversalReasonCode?.Id is not null && !string.IsNullOrWhiteSpace(ReversalReason));
 	}
 
 	public ObservableCollection<InventoryLookupViewModel> AvailableInventories { get; } = new();
@@ -47,6 +53,25 @@ public sealed class MovementsViewModel : BaseViewModel, IDisposable
 	public AsyncRelayCommand CreateMovementCommand { get; }
 	public AsyncRelayCommand PreviousPageCommand { get; }
 	public AsyncRelayCommand NextPageCommand { get; }
+	public AsyncRelayCommand ReverseMovementCommand { get; }
+
+	public MovementOverviewItemViewModel? SelectedMovement
+	{
+		get => _selectedMovement;
+		set { if (_selectedMovement == value) return; _selectedMovement = value; OnPropertyChanged(); ReverseMovementCommand.RaiseCanExecuteChanged(); }
+	}
+
+	public ReasonCodeOptionViewModel? SelectedReversalReasonCode
+	{
+		get => _selectedReversalReasonCode;
+		set { if (_selectedReversalReasonCode == value) return; _selectedReversalReasonCode = value; OnPropertyChanged(); ReverseMovementCommand.RaiseCanExecuteChanged(); }
+	}
+
+	public string ReversalReason
+	{
+		get => _reversalReason;
+		set { if (_reversalReason == value) return; _reversalReason = value; OnPropertyChanged(); ReverseMovementCommand.RaiseCanExecuteChanged(); }
+	}
 
 	public int PageNumber
 	{
@@ -223,6 +248,29 @@ public sealed class MovementsViewModel : BaseViewModel, IDisposable
 		}
 	}
 
+	private async Task ReverseMovementAsync(CancellationToken cancellationToken)
+	{
+		if (SelectedMovement is null || SelectedReversalReasonCode?.Id is not long reasonCodeId) return;
+		if (!_dialogs.Confirm(new ConfirmationDialogRequest("Reverse Material Withdrawal", $"Create a full counter-movement for movement {SelectedMovement.MovementId}?", true))) return;
+		BeginOperation("Reversing material withdrawal");
+		try
+		{
+			var original = SelectedMovement;
+			var reversal = await _movementService.ReverseWithdrawalAsync(original.MovementId, reasonCodeId, ReversalReason, cancellationToken);
+			original.MarkReversed();
+			if (PageNumber == 1) Items.Insert(0, new MovementOverviewItemViewModel(reversal));
+			TotalCount++;
+			ReversalReason = string.Empty;
+			SelectedReversalReasonCode = null;
+			ReverseMovementCommand.RaiseCanExecuteChanged();
+			CompleteOperation(false, "Material withdrawal reversed");
+		}
+		catch (Exception exception) when (exception is not OperationCanceledException)
+		{
+			FailOperation(exception, "Material withdrawal could not be reversed");
+		}
+	}
+
 	private async Task PreviousPageAsync(CancellationToken cancellationToken)
 	{
 		if (PageNumber <= 1) return;
@@ -249,5 +297,6 @@ public sealed class MovementsViewModel : BaseViewModel, IDisposable
 		CreateMovementCommand.Dispose();
 		PreviousPageCommand.Dispose();
 		NextPageCommand.Dispose();
+		ReverseMovementCommand.Dispose();
 	}
 }

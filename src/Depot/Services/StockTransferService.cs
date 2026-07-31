@@ -16,6 +16,7 @@ public sealed class StockTransferService
 	private readonly ReasonCodeRepository _reasonCodes;
 	private readonly AuditRepository _auditEntries;
 	private readonly AuditService _audit;
+	private readonly StockMovementReversalService _reversals;
 
 	public StockTransferService(
 		IDatabaseTransactionRunner transactions,
@@ -24,7 +25,8 @@ public sealed class StockTransferService
 		StockMovementRepository stockMovements,
 		ReasonCodeRepository reasonCodes,
 		AuditRepository auditEntries,
-		AuditService audit)
+		AuditService audit,
+		StockMovementReversalService reversals)
 	{
 		_transactions = transactions;
 		_transfers = transfers;
@@ -33,6 +35,45 @@ public sealed class StockTransferService
 		_reasonCodes = reasonCodes;
 		_auditEntries = auditEntries;
 		_audit = audit;
+		_reversals = reversals;
+	}
+
+	public async Task<StockTransfer> ReverseAsync(long id, long version, long reasonCodeId, string reversalReason, CancellationToken cancellationToken = default)
+	{
+		if (id <= 0) throw new ArgumentOutOfRangeException(nameof(id));
+		var userId = _reversals.RequireUser();
+		return await _transactions.ExecuteAsync(
+			async (transaction, token) =>
+			{
+				var before = await _transfers.GetByIdAsync(transaction, id, token)
+					?? throw new InvalidOperationException("The stock transfer was not found.");
+				if (before.Version != version) throw new ConcurrencyConflictException("stock transfer");
+				if (before.Status != StockTransferStatus.Posted || before.IsReversed)
+				{
+					throw new InvalidOperationException("Only a posted, unreversed stock transfer can be reversed.");
+				}
+				var reference = $"Stock Transfer {before.TransferNumber}";
+				var originals = await _stockMovements.ListOriginalsByReferenceAsync(transaction, reference, token);
+				if (originals.Count != before.Lines.Count * 2 || originals.Any(movement => movement.MovementType is not (StockMovementType.TransferOut or StockMovementType.TransferIn)))
+				{
+					throw new InvalidOperationException("The stock-transfer movements are incomplete or inconsistent.");
+				}
+				await _reversals.CreateReversalsAsync(transaction, originals, reasonCodeId, reversalReason, userId, token);
+				var reversedAtUtc = DateTime.UtcNow;
+				var normalizedReason = reversalReason.Trim();
+				if (!await _transfers.MarkReversedAsync(transaction, id, version, reversedAtUtc, userId, normalizedReason, token))
+				{
+					throw new ConcurrencyConflictException("stock transfer");
+				}
+				var after = Copy(before);
+				after.ReversedAtUtc = reversedAtUtc;
+				after.ReversedByUserId = userId;
+				after.ReversalReason = normalizedReason;
+				after.Version++;
+				await _auditEntries.CreateAsync(transaction, _audit.CreateUpdatedEntry(id, before, after), token);
+				return after;
+			},
+			cancellationToken);
 	}
 
 	public async Task<StockTransfer> PostAsync(
@@ -428,6 +469,9 @@ public sealed class StockTransferService
 		CreatedByUserId = source.CreatedByUserId,
 		PostedByUserId = source.PostedByUserId,
 		Notes = source.Notes,
+		ReversedAtUtc = source.ReversedAtUtc,
+		ReversedByUserId = source.ReversedByUserId,
+		ReversalReason = source.ReversalReason,
 		Version = source.Version,
 		Lines = source.Lines
 	};

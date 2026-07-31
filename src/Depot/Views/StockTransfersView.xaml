@@ -232,6 +232,18 @@
 							</DataGrid.Columns>
 						</DataGrid>
 					</controls:Card>
+
+					<controls:Card Margin="0,16,0,0" Visibility="{Binding CanReverse, Converter={StaticResource BooleanToVisibilityConverter}}">
+						<controls:Card.Header><TextBlock Style="{StaticResource SectionTitleStyle}" Text="Reverse Posted Transfer" /></controls:Card.Header>
+						<StackPanel>
+							<TextBlock Text="A full counter-movement is created for every TransferOut and TransferIn movement. The posted transfer remains immutable." Style="{StaticResource BodyStyle}" TextWrapping="Wrap" />
+							<TextBlock Margin="0,12,0,4" Text="Reason Code" Style="{StaticResource FormLabelStyle}" />
+							<ComboBox ItemsSource="{Binding ReversalReasonCodes}" SelectedItem="{Binding SelectedReversalReasonCode}" DisplayMemberPath="Name" Style="{StaticResource AppComboBoxStyle}" />
+							<TextBlock Margin="0,12,0,4" Text="Reason" Style="{StaticResource FormLabelStyle}" />
+							<TextBox MinHeight="64" AcceptsReturn="True" Text="{Binding ReversalReason, UpdateSourceTrigger=PropertyChanged}" TextWrapping="Wrap" Style="{StaticResource MultilineTextBoxStyle}" />
+							<Button Margin="0,16,0,0" HorizontalAlignment="Right" Command="{Binding ReverseTransferCommand}" Content="Reverse Transfer" Style="{StaticResource DangerButtonStyle}" />
+						</StackPanel>
+					</controls:Card>
 				</StackPanel>
 			</ScrollViewer>
 		</Grid>

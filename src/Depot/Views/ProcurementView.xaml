@@ -56,6 +56,25 @@
 							<Button Margin="0,16,0,0" HorizontalAlignment="Right" Command="{Binding PostReceiptCommand}" Content="Post Goods Receipt" Style="{StaticResource PrimaryButtonStyle}" />
 						</StackPanel>
 					</controls:Card>
+
+					<controls:Card Margin="0,16,0,0">
+						<controls:Card.Header><TextBlock Text="Posted Goods Receipts" Style="{StaticResource SectionTitleStyle}" /></controls:Card.Header>
+						<StackPanel>
+							<DataGrid Height="170" IsReadOnly="True" ItemsSource="{Binding GoodsReceipts}" SelectedItem="{Binding SelectedReceipt}" Style="{StaticResource AppDataGridStyle}">
+								<DataGrid.Columns>
+									<DataGridTextColumn Header="Receipt" Binding="{Binding ReceiptNumber}" Width="110" />
+									<DataGridTextColumn Header="Receipt Date" Binding="{Binding ReceiptDate, StringFormat={}{0:d}}" Width="110" />
+									<DataGridTextColumn Header="Delivery Note" Binding="{Binding SupplierDeliveryNoteNumber}" Width="*" />
+									<DataGridCheckBoxColumn Header="Reversed" Binding="{Binding IsReversed, Mode=OneWay}" Width="85" />
+								</DataGrid.Columns>
+							</DataGrid>
+							<Grid Margin="0,12,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="2*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+								<ComboBox ItemsSource="{Binding ReversalReasonCodes}" SelectedItem="{Binding SelectedReversalReasonCode}" DisplayMemberPath="Name" Style="{StaticResource AppComboBoxStyle}" />
+								<controls:TextInput Grid.Column="2" Text="{Binding ReversalReason, UpdateSourceTrigger=PropertyChanged}" />
+								<Button Grid.Column="4" Command="{Binding ReverseReceiptCommand}" Content="Reverse Receipt" Style="{StaticResource DangerButtonStyle}" />
+							</Grid>
+						</StackPanel>
+					</controls:Card>
 				</StackPanel>
 			</ScrollViewer>
 		</Grid>

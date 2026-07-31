@@ -15,6 +15,10 @@ public sealed class InventoryCount
 	public long CreatedByUserId { get; set; }
 	public long? PostedByUserId { get; set; }
 	public string? Notes { get; set; }
+	public DateTime? ReversedAtUtc { get; set; }
+	public long? ReversedByUserId { get; set; }
+	public string? ReversalReason { get; set; }
+	public bool IsReversed => ReversedAtUtc is not null;
 	public long Version { get; set; } = 1;
 	public IReadOnlyList<InventoryCountLine> Lines { get; set; } = [];
 }

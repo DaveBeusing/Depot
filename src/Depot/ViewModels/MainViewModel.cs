@@ -70,12 +70,13 @@ public sealed class MainViewModel : BaseViewModel
 		MovementsViewModel =
 			new MovementsViewModel(
 				movementService,
-				reasonCodeService);
+				reasonCodeService,
+				fileDialogService);
 
-		StockTransfersViewModel = new StockTransfersViewModel(stockTransferService, warehouseService, fileDialogService);
-		InventoryCountsViewModel = new InventoryCountsViewModel(inventoryCountService, warehouseService, fileDialogService);
+		StockTransfersViewModel = new StockTransfersViewModel(stockTransferService, warehouseService, fileDialogService, reasonCodeService);
+		InventoryCountsViewModel = new InventoryCountsViewModel(inventoryCountService, warehouseService, fileDialogService, reasonCodeService);
 
-		ProcurementViewModel = new ProcurementViewModel(purchaseOrderService, goodsReceiptService, supplierService, itemService, fileDialogService);
+		ProcurementViewModel = new ProcurementViewModel(purchaseOrderService, goodsReceiptService, supplierService, itemService, fileDialogService, reasonCodeService);
 
 		ReportsViewModel =
 			new ReportsViewModel(

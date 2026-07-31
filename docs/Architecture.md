@@ -84,7 +84,7 @@ SQLite is covered by integration tests. SQL Server and MySQL/MariaDB have provid
 
 ## Schema and migrations
 
-The current database schema version is **19**. It is independent from the application SemVer version.
+The current database schema version is **20**. It is independent from the application SemVer version.
 
 All providers create the current schema and migrate supported older schemas forward. Migrations cover authentication, inventory-based movements, audit/concurrency, warehouse structure, reason codes, normalized item master data, suppliers, supplier categories, supplier items, purchase orders, and goods receipts.
 
@@ -116,6 +116,8 @@ Master data uses activation/deactivation rather than hard deletion. Services per
 - `StockMovement` references `Inventory` and can reference an optional `ReasonCode`; repositories resolve workflow reasons through the technical code rather than the display name.
 - Stock is derived from movements rather than stored as a mutable balance.
 
+Posted movements are immutable. Schema version 20 adds an optional, unique `ReversalOfMovementId` self-reference plus reversal reason, timestamp, and user metadata. A reversal is a new movement with the negated quantity and the original document reference; the original row is neither updated nor deleted. The unique relationship prevents duplicate full reversals, and services reject reversal chains and reversal movements as cancellation targets.
+
 ### Procurement
 
 - `PurchaseOrder` owns `PurchaseOrderLine` records.
@@ -128,11 +130,15 @@ Legacy `InvoiceNumber`, `InvoiceDate`, and `InvoiceDocumentPath` database column
 
 Purchase-order creation, draft editing, ordering, and cancellation commit their business change and before/after audit entry in one transaction. Goods-receipt posting remains atomic across the receipt, receipt lines, purchase-order received quantities, stock movements, purchase-order status, and receipt audit entry. Purchase-order locking prevents concurrent over-receipt.
 
+Reversing a posted goods receipt creates counter-movements, reduces every affected purchase-order line's received quantity, recalculates the purchase-order status, marks the receipt as reversed, and writes its audit entry in one transaction. The workflow locks affected inventories and rejects a reversal that would produce negative stock.
+
 ### Stock transfers
 
 Schema version 18 introduces `StockTransfer` and `StockTransferLine` for warehouse-to-warehouse transfers. Draft transfers validate distinct warehouses, matching source/destination items, inventory-to-warehouse assignments, positive quantities, and unique inventory pairs. Draft editing and cancellation use optimistic concurrency and commit their audit entry atomically.
 
 Posting locks the transfer and all source/destination inventories in a stable order, validates aggregate source availability, resolves the immutable `TRANSFER` reason code, and creates a paired `TransferOut` and `TransferIn` movement for every line. Movements, Posted status, posting user, and audit entry share one provider-neutral transaction. The service prevents concurrent transfers from overdrawing a shared source.
+
+Reversing a posted transfer counter-books both sides of every movement pair, retains the transfer number as the reference, and records the transfer's reversed metadata and audit entry atomically. The same stable inventory locking and aggregate stock validation protect the reverse direction.
 
 The Transfers main page exposes a server-paged and server-searched transfer list, status filtering, draft editing, warehouse-filtered inventory selection, item-matched destination selection, stock availability, confirmed posting, cancellation, and the generated movement pair. ViewModels own presentation state and targeted list updates; all validation and posting rules remain in `StockTransferService`.
 
@@ -143,6 +149,8 @@ Schema version 19 introduces `InventoryCount` and `InventoryCountLine`. An audit
 Counting updates use line-level optimistic concurrency and preserve `ExpectedQuantity`. A count can move to Review only after every line has a counted quantity and can return to Counting until it is posted. Posted counts are immutable through the service.
 
 Posting a Review count locks the count and all referenced inventories in stable ID order, reloads the movement-derived current quantities, and creates only the required `Correction` movements with the `INVENTORY_CORRECTION` system reason code. `ExpectedQuantity` remains the historical start snapshot, but the posted correction is `CountedQuantity - current quantity at posting time`. This prevents stock movements between snapshot creation and posting from being corrected a second time. Correction movements, Posted status, posting user, completion time, and audit entry commit atomically; inventory rows are never updated directly.
+
+A posted count can be reversed without altering its historical snapshot. Only its correction movements are counter-booked; the count receives reversal metadata and its audit entry in the same transaction. Counts that produced no correction movement can still be marked reversed atomically.
 
 The Inventory Counts main page uses server-side search, warehouse/status filters, separate paging for count headers and positions, quick keyboard quantity entry, uncounted/difference filters, and targeted row updates. Recording a quantity loads only the locked count header and affected line; Review completeness is checked with a server-side aggregate rather than loading the complete snapshot.
 
@@ -163,7 +171,7 @@ The purchase-order reduction removes 19 item lookup commands and the two-command
 
 Mutable entities use `Version` columns where optimistic concurrency is required. Updates include the expected version and throw `ConcurrencyConflictException` when a stale write loses the race.
 
-Audit entries store timestamp, user identity, entity type, entity ID, action, and before/after JSON. Stock movements, purchase-order changes, and goods-receipt audit data are committed with their corresponding transaction. An audit-log administration viewer has not yet been implemented.
+Audit entries store timestamp, user identity, entity type, entity ID, action, and before/after JSON. Stock movements, purchase-order changes, goods receipts, transfers, inventory counts, and their reversals commit audit data with the corresponding transaction. An audit-log administration viewer has not yet been implemented.
 
 Automated SQLite tests cover stale item updates, concurrent withdrawals, movement/audit atomicity, purchase-order audit commit and rollback, concurrent goods receipts, over-receipt rollback, and supplier/master-data reference rules. Equivalent live-server scenarios remain to be verified before version 1.0.
 

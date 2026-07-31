@@ -12,5 +12,10 @@ public sealed class GoodsReceipt
 	public string SupplierDeliveryNoteNumber { get; set; } = string.Empty;
 	public long ReceivedByUserId { get; set; }
 	public string? Notes { get; set; }
+	public DateTime? ReversedAtUtc { get; set; }
+	public long? ReversedByUserId { get; set; }
+	public string? ReversalReason { get; set; }
+	public long Version { get; set; } = 1;
+	public bool IsReversed => ReversedAtUtc is not null;
 	public IReadOnlyList<GoodsReceiptLine> Lines { get; set; } = [];
 }

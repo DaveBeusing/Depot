@@ -2,7 +2,7 @@
 
 Depot is a Windows desktop application for inventory, warehouse, supplier, procurement, user, import, and reporting workflows. It is built with .NET 10, WPF, strict MVVM, and a provider-neutral ADO.NET persistence layer.
 
-The project is under active development on the `0.9.1-preview` line. Implemented workflows are not described as production-ready until the version 1.0 verification checklist has been completed.
+The project is under active development on the `0.13.0-preview` line. Implemented workflows are not described as production-ready until the version 1.0 verification checklist has been completed.
 
 ![Platform](https://img.shields.io/badge/platform-Windows-blue)
 ![Framework](https://img.shields.io/badge/.NET-10-512BD4)
@@ -26,6 +26,7 @@ The project is under active development on the `0.9.1-preview` line. Implemented
 - Atomic goods-receipt posting across receipt records, received quantities, stock movements, and order status
 - Warehouse stock transfers with draft editing, server-side search, status filtering, paging, atomic posting, paired transfer movements, and concurrency-safe stock checks
 - Inventory counts with atomic warehouse snapshots, paged counting and review, optimistic concurrency, and atomic correction posting through stock movements
+- Audited reversal workflows for posted goods receipts, material withdrawals, stock transfers, and inventory counts; reversals create immutable counter-movements and correct their document state atomically
 - Excel import, report search, grouped reports, and Excel export
 - Audit persistence for relevant create/update operations
 - Optimistic concurrency using version columns and explicit conflict errors
@@ -121,7 +122,7 @@ dotnet build Depot.slnx
 dotnet run --project src/Depot/Depot.csproj
 ```
 
-The first installation uses local SQLite and creates `depot.db`. The current database schema version is **19**.
+The first installation uses local SQLite and creates `depot.db`. The current database schema version is **20**.
 
 Connection and backup settings are stored in `depot.settings`. The file is a JSON envelope with a DPAPI-encrypted payload for the current Windows user. Administration > Database can configure, test, and activate SQLite, SQL Server, or MySQL/MariaDB connections. Provider changes take effect after restarting Depot. Connection attempts and failures are written to `depot.database.log` without connection strings or passwords.
 

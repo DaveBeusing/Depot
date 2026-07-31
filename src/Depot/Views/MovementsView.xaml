@@ -52,6 +52,7 @@
 				<Grid>
 					<DataGrid
 						ItemsSource="{Binding Items}"
+						SelectedItem="{Binding SelectedMovement}"
 						Style="{StaticResource AppDataGridStyle}"
 						Visibility="{Binding HasItems, Converter={StaticResource BooleanToVisibilityConverter}}">
 						<DataGrid.Columns>
@@ -140,6 +141,15 @@
 							Command="{Binding CreateMovementCommand}"
 							Content="Create Movement"
 							Style="{StaticResource PrimaryButtonStyle}" />
+
+						<Separator Margin="0,24,0,16" />
+						<TextBlock Text="Reverse Material Withdrawal" Style="{StaticResource SectionTitleStyle}" />
+						<TextBlock Margin="0,6,0,0" Text="Select an unreversed withdrawal in the history. A full counter-movement is created; the original remains unchanged." Style="{StaticResource CaptionStyle}" TextWrapping="Wrap" />
+						<TextBlock Margin="0,16,0,4" Text="Reversal Reason Code" Style="{StaticResource FormLabelStyle}" />
+						<ComboBox DisplayMemberPath="Name" ItemsSource="{Binding ReasonCodes}" SelectedItem="{Binding SelectedReversalReasonCode}" Style="{StaticResource AppComboBoxStyle}" />
+						<TextBlock Margin="0,16,0,4" Text="Reason" Style="{StaticResource FormLabelStyle}" />
+						<TextBox MinHeight="64" AcceptsReturn="True" Text="{Binding ReversalReason, UpdateSourceTrigger=PropertyChanged}" TextWrapping="Wrap" Style="{StaticResource MultilineTextBoxStyle}" />
+						<Button Margin="0,16,0,0" HorizontalAlignment="Right" Command="{Binding ReverseMovementCommand}" Content="Reverse Withdrawal" Style="{StaticResource DangerButtonStyle}" />
 					</StackPanel>
 				</ScrollViewer>
 			</controls:Card>

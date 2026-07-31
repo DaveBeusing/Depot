@@ -15,6 +15,7 @@ public sealed class StockTransfersViewModel : BaseViewModel, IDisposable
 	private readonly StockTransferService _transfers;
 	private readonly WarehouseService _warehouses;
 	private readonly IFileDialogService _dialogs;
+	private readonly ReasonCodeService _reasonCodes;
 	private readonly AsyncDebouncer _search = new(TimeSpan.FromMilliseconds(300));
 	private CancellationTokenSource? _selectionCancellation;
 	private CancellationTokenSource? _inventoryCancellation;
@@ -30,15 +31,19 @@ public sealed class StockTransfersViewModel : BaseViewModel, IDisposable
 	private int _lineQuantity = 1;
 	private int _pageNumber = 1;
 	private long _totalCount;
+	private ReasonCode? _selectedReversalReasonCode;
+	private string _reversalReason = string.Empty;
 
 	public StockTransfersViewModel(
 		StockTransferService transfers,
 		WarehouseService warehouses,
-		IFileDialogService dialogs)
+		IFileDialogService dialogs,
+		ReasonCodeService reasonCodes)
 	{
 		_transfers = transfers;
 		_warehouses = warehouses;
 		_dialogs = dialogs;
+		_reasonCodes = reasonCodes;
 		StatusFilters =
 		[
 			new StockTransferStatusFilter("All statuses", null),
@@ -50,6 +55,7 @@ public sealed class StockTransfersViewModel : BaseViewModel, IDisposable
 		SaveTransferCommand = new AsyncRelayCommand(SaveTransferAsync, () => IsDraft && Lines.Count > 0);
 		PostTransferCommand = new AsyncRelayCommand(PostTransferAsync, () => Draft.Id > 0 && IsDraft);
 		CancelTransferCommand = new AsyncRelayCommand(CancelTransferAsync, () => Draft.Id > 0 && IsDraft);
+		ReverseTransferCommand = new AsyncRelayCommand(ReverseTransferAsync, () => CanReverse && SelectedReversalReasonCode is not null && !string.IsNullOrWhiteSpace(ReversalReason));
 		AddLineCommand = new RelayCommand(AddOrUpdateLine, CanAddLine);
 		RemoveLineCommand = new RelayCommand(RemoveLine, () => IsDraft && SelectedLine is not null);
 		PreviousPageCommand = new AsyncRelayCommand(PreviousPageAsync, () => PageNumber > 1);
@@ -62,6 +68,7 @@ public sealed class StockTransfersViewModel : BaseViewModel, IDisposable
 	public ObservableCollection<StockTransferInventoryOption> SourceInventoryOptions { get; } = new();
 	public ObservableCollection<StockTransferInventoryOption> DestinationInventoryOptions { get; } = new();
 	public ObservableCollection<MovementOverviewItem> Movements { get; } = new();
+	public ObservableCollection<ReasonCode> ReversalReasonCodes { get; } = new();
 	public IReadOnlyList<StockTransferStatusFilter> StatusFilters { get; }
 	public IEnumerable<Warehouse> DestinationWarehouses =>
 		Warehouses.Where(warehouse => warehouse.Id != SelectedSourceWarehouse?.Id);
@@ -70,6 +77,7 @@ public sealed class StockTransfersViewModel : BaseViewModel, IDisposable
 	public AsyncRelayCommand SaveTransferCommand { get; }
 	public AsyncRelayCommand PostTransferCommand { get; }
 	public AsyncRelayCommand CancelTransferCommand { get; }
+	public AsyncRelayCommand ReverseTransferCommand { get; }
 	public RelayCommand AddLineCommand { get; }
 	public RelayCommand RemoveLineCommand { get; }
 	public AsyncRelayCommand PreviousPageCommand { get; }
@@ -84,6 +92,7 @@ public sealed class StockTransfersViewModel : BaseViewModel, IDisposable
 			OnPropertyChanged();
 			OnPropertyChanged(nameof(IsDraft));
 			OnPropertyChanged(nameof(IsReadOnly));
+			OnPropertyChanged(nameof(CanReverse));
 			OnPropertyChanged(nameof(EditorTitle));
 			RaiseCommands();
 		}
@@ -91,10 +100,13 @@ public sealed class StockTransfersViewModel : BaseViewModel, IDisposable
 
 	public bool IsDraft => Draft.Status == StockTransferStatus.Draft;
 	public bool IsReadOnly => !IsDraft;
+	public bool CanReverse => Draft.Status == StockTransferStatus.Posted && !Draft.IsReversed;
 	public bool HasMovements => Movements.Count > 0;
 	public string EditorTitle => Draft.Id == 0 ? "New Stock Transfer" : Draft.TransferNumber;
 	public bool HasNextPage => (long)PageNumber * PageSize < TotalCount;
 	public string PageDisplay => $"Page {PageNumber} · {TotalCount:N0} transfers";
+	public ReasonCode? SelectedReversalReasonCode { get => _selectedReversalReasonCode; set { if (_selectedReversalReasonCode == value) return; _selectedReversalReasonCode = value; OnPropertyChanged(); ReverseTransferCommand.RaiseCanExecuteChanged(); } }
+	public string ReversalReason { get => _reversalReason; set { if (_reversalReason == value) return; _reversalReason = value; OnPropertyChanged(); ReverseTransferCommand.RaiseCanExecuteChanged(); } }
 
 	public string SearchText
 	{
@@ -274,10 +286,13 @@ public sealed class StockTransfersViewModel : BaseViewModel, IDisposable
 				PageNumber,
 				PageSize,
 				cancellationToken);
-			await Task.WhenAll(warehousesTask, transfersTask);
+			var reasonCodesTask = _reasonCodes.GetActiveAsync(cancellationToken);
+			await Task.WhenAll(warehousesTask, transfersTask, reasonCodesTask);
 			Warehouses.Clear();
 			foreach (var warehouse in (await warehousesTask).Where(warehouse => warehouse.IsActive))
 				Warehouses.Add(warehouse);
+			ReversalReasonCodes.Clear();
+			foreach (var reasonCode in await reasonCodesTask) ReversalReasonCodes.Add(reasonCode);
 			ApplyPage(await transfersTask);
 			CompleteOperation(Transfers.Count == 0, $"{TotalCount:N0} transfers");
 		}
@@ -565,6 +580,27 @@ public sealed class StockTransfersViewModel : BaseViewModel, IDisposable
 		}
 	}
 
+	private async Task ReverseTransferAsync(CancellationToken cancellationToken)
+	{
+		if (SelectedReversalReasonCode is null) return;
+		if (!_dialogs.Confirm(new ConfirmationDialogRequest("Reverse Stock Transfer", $"Create counter-movements for {Draft.TransferNumber}?", true))) return;
+		BeginOperation("Transfer wird gegengebucht");
+		try
+		{
+			var reversed = await _transfers.ReverseAsync(Draft.Id, Draft.Version, SelectedReversalReasonCode.Id, ReversalReason, cancellationToken);
+			await ApplySavedTransferAsync(reversed, cancellationToken);
+			CompleteOperation(false, $"{reversed.TransferNumber} reversed");
+		}
+		catch (ConcurrencyConflictException)
+		{
+			FailOperation(new InvalidOperationException("The transfer was changed or reversed by another user. Reload it before continuing."), "Transfer could not be reversed");
+		}
+		catch (Exception exception) when (exception is not OperationCanceledException)
+		{
+			FailOperation(exception, "Transfer could not be reversed");
+		}
+	}
+
 	private async Task ApplySavedTransferAsync(StockTransfer saved, CancellationToken cancellationToken)
 	{
 		var overview = await _transfers.GetOverviewByIdAsync(saved.Id, cancellationToken)
@@ -636,6 +672,7 @@ public sealed class StockTransfersViewModel : BaseViewModel, IDisposable
 		SaveTransferCommand.RaiseCanExecuteChanged();
 		PostTransferCommand.RaiseCanExecuteChanged();
 		CancelTransferCommand.RaiseCanExecuteChanged();
+		ReverseTransferCommand.RaiseCanExecuteChanged();
 		AddLineCommand.RaiseCanExecuteChanged();
 		RemoveLineCommand.RaiseCanExecuteChanged();
 	}
@@ -665,6 +702,9 @@ public sealed class StockTransfersViewModel : BaseViewModel, IDisposable
 		CreatedByUserId = source.CreatedByUserId,
 		PostedByUserId = source.PostedByUserId,
 		Notes = source.Notes,
+		ReversedAtUtc = source.ReversedAtUtc,
+		ReversedByUserId = source.ReversedByUserId,
+		ReversalReason = source.ReversalReason,
 		Version = source.Version,
 		Lines = source.Lines.Select(line => new StockTransferLine
 		{
@@ -696,6 +736,7 @@ public sealed class StockTransfersViewModel : BaseViewModel, IDisposable
 		SaveTransferCommand.Dispose();
 		PostTransferCommand.Dispose();
 		CancelTransferCommand.Dispose();
+		ReverseTransferCommand.Dispose();
 		PreviousPageCommand.Dispose();
 		NextPageCommand.Dispose();
 	}

@@ -36,7 +36,7 @@ public sealed class DatabaseManagementService
 		new("PurchaseOrderLines", ["Id", "PurchaseOrderId", "LineNumber", "ItemId", "Quantity", "UnitPrice", "ReceivedQuantity", "Version"]),
 		new("GoodsReceipts", ["Id", "ReceiptNumber", "PurchaseOrderId", "ReceiptDate", "SupplierDeliveryNoteNumber", "ReceivedByUserId", "InvoiceNumber", "InvoiceDate", "InvoiceDocumentPath", "Notes"]),
 		new("GoodsReceiptLines", ["Id", "GoodsReceiptId", "PurchaseOrderLineId", "InventoryId", "Quantity"]),
-		new("StockMovements", ["Id", "InventoryId", "ReasonCodeId", "MovementType", "TimestampUtc", "Quantity", "UnitPrice", "Reference", "Notes"]),
+		new("StockMovements", ["Id", "InventoryId", "ReasonCodeId", "MovementType", "TimestampUtc", "Quantity", "UnitPrice", "Reference", "Notes", "ReversalOfMovementId", "ReversalReason", "ReversedAtUtc", "ReversedByUserId"]),
 		new("AuditEntries", ["Id", "TimestampUtc", "UserId", "UserEmail", "EntityType", "EntityId", "Action", "BeforeJson", "AfterJson"])
 	];
 

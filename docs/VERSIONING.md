@@ -10,8 +10,8 @@ The single application-version source is `Directory.Build.props` in the reposito
 
 ## Current versions
 
-- Application development line: **0.9.1-preview**
-- Database schema version: **18**
+- Application development line: **0.13.0-preview**
+- Database schema version: **20**
 
 The application version and database schema version are independent. A patch application release can retain the same schema, while a schema migration can occur during a prerelease line.
 
@@ -39,6 +39,8 @@ The About page reads the built assembly information and displays the application
 - SQLite: `DepotDatabase`
 - Microsoft SQL Server: `SqlServerDatabase`
 - MySQL/MariaDB: `MySqlDatabase`
+
+Schema version 20 introduces immutable movement reversals. `StockMovement.ReversalOfMovementId` is a unique optional self-reference and is accompanied by reversal reason, timestamp, and user metadata. Goods receipts, stock transfers, and inventory counts receive versioned reversal metadata so their business correction and audit entry can be committed with all counter-movements in one transaction. Original movements remain unchanged, duplicate full reversals and reversal chains are rejected, and all three providers share the same schema contract.
 
 Schema version 19 adds inventory counts and inventory-count lines, including warehouse and inventory references, unique snapshot lines, status and counted-quantity constraints, indexes, audit-ready timestamps, and optimistic-concurrency versions. Starting a count creates its complete movement-derived warehouse snapshot atomically. Posting does not require another schema change: it preserves that snapshot and calculates each correction against the movement-derived current stock inside the posting transaction. Schema version 18 adds warehouse stock transfers, including transfer lines, foreign keys, uniqueness constraints, indexes, and optimistic-concurrency versions. The application posts transfers atomically as paired TransferOut/TransferIn movements while retaining the same schema version. Schema version 17 separates goods receipts from supplier invoices. It adds the supplier delivery-note number and receiving user, retains historical invoice columns as nullable legacy data, and preserves receipt-line references. Existing receipts receive deterministic `LEGACY-GR-…` delivery-note numbers and use the original audit user where available. Schema version 16 added immutable technical reason-code keys and system-code metadata.
 

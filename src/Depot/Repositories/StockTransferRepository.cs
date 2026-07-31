@@ -12,7 +12,7 @@ namespace Depot.Repositories;
 public sealed class StockTransferRepository : DatabaseRepository
 {
 	private const string TransferColumns =
-		"Id, TransferNumber, SourceWarehouseId, DestinationWarehouseId, TransferDate, Status, CreatedByUserId, PostedByUserId, Notes, Version";
+		"Id, TransferNumber, SourceWarehouseId, DestinationWarehouseId, TransferDate, Status, CreatedByUserId, PostedByUserId, Notes, ReversedAtUtc, ReversedByUserId, ReversalReason, Version";
 	private const string LineColumns =
 		"Id, StockTransferId, LineNumber, SourceInventoryId, DestinationInventoryId, Quantity, Version";
 
@@ -44,7 +44,7 @@ public sealed class StockTransferRepository : DatabaseRepository
 		var where = filters.Count == 0 ? string.Empty : $"WHERE {string.Join(" AND ", filters)}";
 		const string from = "FROM StockTransfers st INNER JOIN Warehouses sw ON sw.Id = st.SourceWarehouseId INNER JOIN Warehouses dw ON dw.Id = st.DestinationWarehouseId INNER JOIN Users createdBy ON createdBy.Id = st.CreatedByUserId";
 		return Database.QueryPageAsync(
-			$"SELECT st.Id, st.TransferNumber, st.SourceWarehouseId, sw.Name, st.DestinationWarehouseId, dw.Name, st.TransferDate, st.Status, createdBy.DisplayName, (SELECT COUNT(*) FROM StockTransferLines lineCount WHERE lineCount.StockTransferId = st.Id), st.Notes, st.Version {from} {where} ORDER BY st.TransferDate DESC, st.Id DESC",
+			$"SELECT st.Id, st.TransferNumber, st.SourceWarehouseId, sw.Name, st.DestinationWarehouseId, dw.Name, st.TransferDate, st.Status, createdBy.DisplayName, (SELECT COUNT(*) FROM StockTransferLines lineCount WHERE lineCount.StockTransferId = st.Id), st.Notes, st.ReversedAtUtc, st.ReversalReason, st.Version {from} {where} ORDER BY st.TransferDate DESC, st.Id DESC",
 			$"SELECT COUNT(*) {from} {where};",
 			ReadOverview,
 			pageNumber,
@@ -57,7 +57,7 @@ public sealed class StockTransferRepository : DatabaseRepository
 		long id,
 		CancellationToken cancellationToken) =>
 		Database.QuerySingleOrDefaultAsync(
-			"SELECT st.Id, st.TransferNumber, st.SourceWarehouseId, sw.Name, st.DestinationWarehouseId, dw.Name, st.TransferDate, st.Status, createdBy.DisplayName, (SELECT COUNT(*) FROM StockTransferLines lineCount WHERE lineCount.StockTransferId = st.Id), st.Notes, st.Version FROM StockTransfers st INNER JOIN Warehouses sw ON sw.Id = st.SourceWarehouseId INNER JOIN Warehouses dw ON dw.Id = st.DestinationWarehouseId INNER JOIN Users createdBy ON createdBy.Id = st.CreatedByUserId WHERE st.Id = $Id;",
+			"SELECT st.Id, st.TransferNumber, st.SourceWarehouseId, sw.Name, st.DestinationWarehouseId, dw.Name, st.TransferDate, st.Status, createdBy.DisplayName, (SELECT COUNT(*) FROM StockTransferLines lineCount WHERE lineCount.StockTransferId = st.Id), st.Notes, st.ReversedAtUtc, st.ReversalReason, st.Version FROM StockTransfers st INNER JOIN Warehouses sw ON sw.Id = st.SourceWarehouseId INNER JOIN Warehouses dw ON dw.Id = st.DestinationWarehouseId INNER JOIN Users createdBy ON createdBy.Id = st.CreatedByUserId WHERE st.Id = $Id;",
 			ReadOverview,
 			cancellationToken,
 			Parameter("$Id", id));
@@ -219,6 +219,17 @@ public sealed class StockTransferRepository : DatabaseRepository
 			Parameter("$Version", version),
 			Parameter("$ExpectedStatus", (int)expectedStatus)) == 1;
 
+	public async Task<bool> MarkReversedAsync(DatabaseTransactionContext transaction, long id, long version, DateTime reversedAtUtc, long reversedByUserId, string reversalReason, CancellationToken cancellationToken) =>
+		await transaction.Session.ExecuteAsync(
+			"UPDATE StockTransfers SET ReversedAtUtc = $ReversedAtUtc, ReversedByUserId = $ReversedByUserId, ReversalReason = $ReversalReason, Version = Version + 1 WHERE Id = $Id AND Version = $Version AND Status = $PostedStatus AND ReversedAtUtc IS NULL;",
+			cancellationToken,
+			Parameter("$ReversedAtUtc", DateTimeValue(reversedAtUtc)),
+			Parameter("$ReversedByUserId", reversedByUserId),
+			Parameter("$ReversalReason", reversalReason),
+			Parameter("$Id", id),
+			Parameter("$Version", version),
+			Parameter("$PostedStatus", (int)StockTransferStatus.Posted)) == 1;
+
 	private static DatabaseParameter[] TransferParameters(StockTransfer transfer) =>
 	[
 		Parameter("$TransferNumber", transfer.TransferNumber),
@@ -251,7 +262,10 @@ public sealed class StockTransferRepository : DatabaseRepository
 		CreatedByUserId = reader.GetInt64(6),
 		PostedByUserId = reader.IsDBNull(7) ? null : reader.GetInt64(7),
 		Notes = reader.IsDBNull(8) ? null : reader.GetString(8),
-		Version = reader.GetInt64(9)
+		ReversedAtUtc = reader.IsDBNull(9) ? null : ParseDateTime(reader.GetString(9)),
+		ReversedByUserId = reader.IsDBNull(10) ? null : reader.GetInt64(10),
+		ReversalReason = reader.IsDBNull(11) ? null : reader.GetString(11),
+		Version = reader.GetInt64(12)
 	};
 
 	private static StockTransferLine ReadLine(DbDataReader reader) => new()
@@ -278,9 +292,17 @@ public sealed class StockTransferRepository : DatabaseRepository
 		CreatedByUserName = reader.GetString(8),
 		LineCount = Convert.ToInt32(reader.GetValue(9), CultureInfo.InvariantCulture),
 		Notes = reader.IsDBNull(10) ? null : reader.GetString(10),
-		Version = reader.GetInt64(11)
+		ReversedAtUtc = reader.IsDBNull(11) ? null : ParseDateTime(reader.GetString(11)),
+		ReversalReason = reader.IsDBNull(12) ? null : reader.GetString(12),
+		Version = reader.GetInt64(13)
 	};
 
 	private static string Date(DateTime value) =>
 		value.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+
+	private static string DateTimeValue(DateTime value) =>
+		value.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture);
+
+	private static DateTime ParseDateTime(string value) =>
+		DateTime.Parse(value, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind).ToUniversalTime();
 }

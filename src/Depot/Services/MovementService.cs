@@ -16,6 +16,7 @@ public sealed class MovementService
 	private readonly ReasonCodeRepository _reasonCodeRepository;
 	private readonly StockMovementRepository _stockMovementRepository;
 	private readonly AuditService _auditService;
+	private readonly StockMovementReversalService _reversals;
 
 	public MovementService(
 		ItemRepository itemRepository,
@@ -25,7 +26,8 @@ public sealed class MovementService
 		WarehouseRepository warehouseRepository,
 		ReasonCodeRepository reasonCodeRepository,
 		StockMovementRepository stockMovementRepository,
-		AuditService auditService)
+		AuditService auditService,
+		StockMovementReversalService reversals)
 	{
 		_itemRepository = itemRepository;
 		_inventoryRepository = inventoryRepository;
@@ -35,6 +37,14 @@ public sealed class MovementService
 		_reasonCodeRepository = reasonCodeRepository;
 		_stockMovementRepository = stockMovementRepository;
 		_auditService = auditService;
+		_reversals = reversals;
+	}
+
+	public async Task<MovementOverviewItem> ReverseWithdrawalAsync(long movementId, long reasonCodeId, string reversalReason, CancellationToken cancellationToken)
+	{
+		var reversal = await _reversals.ReverseWithdrawalAsync(movementId, reasonCodeId, reversalReason, cancellationToken);
+		return await _stockMovementRepository.GetOverviewByIdAsync(reversal.Id, cancellationToken)
+			?? throw new InvalidOperationException("The reversal movement could not be loaded.");
 	}
 
 	public Task<IReadOnlyList<InventoryLookupItem>> SearchAvailableInventoriesAsync(

@@ -12,7 +12,7 @@ namespace Depot.Repositories;
 public sealed class InventoryCountRepository : DatabaseRepository
 {
 	private const string CountColumns =
-		"Id, CountNumber, WarehouseId, Status, CreatedAtUtc, StartedAtUtc, CompletedAtUtc, CreatedByUserId, PostedByUserId, Notes, Version";
+		"Id, CountNumber, WarehouseId, Status, CreatedAtUtc, StartedAtUtc, CompletedAtUtc, CreatedByUserId, PostedByUserId, Notes, ReversedAtUtc, ReversedByUserId, ReversalReason, Version";
 	private const string LineColumns =
 		"Id, InventoryCountId, InventoryId, ExpectedQuantity, CountedQuantity, CountedByUserId, CountedAtUtc, Version";
 
@@ -50,7 +50,7 @@ public sealed class InventoryCountRepository : DatabaseRepository
 		var where = filters.Count == 0 ? string.Empty : $"WHERE {string.Join(" AND ", filters)}";
 		const string from = "FROM InventoryCounts ic INNER JOIN Warehouses w ON w.Id = ic.WarehouseId INNER JOIN Users createdBy ON createdBy.Id = ic.CreatedByUserId";
 		return Database.QueryPageAsync(
-			$"SELECT ic.Id, ic.CountNumber, ic.WarehouseId, w.Name, ic.Status, ic.CreatedAtUtc, ic.StartedAtUtc, createdBy.DisplayName, (SELECT COUNT(*) FROM InventoryCountLines totalLines WHERE totalLines.InventoryCountId = ic.Id), (SELECT COUNT(*) FROM InventoryCountLines countedLines WHERE countedLines.InventoryCountId = ic.Id AND countedLines.CountedQuantity IS NOT NULL), (SELECT COUNT(*) FROM InventoryCountLines differenceLines WHERE differenceLines.InventoryCountId = ic.Id AND differenceLines.CountedQuantity IS NOT NULL AND differenceLines.CountedQuantity <> differenceLines.ExpectedQuantity), ic.Notes, ic.Version {from} {where} ORDER BY ic.CreatedAtUtc DESC, ic.Id DESC",
+			$"SELECT ic.Id, ic.CountNumber, ic.WarehouseId, w.Name, ic.Status, ic.CreatedAtUtc, ic.StartedAtUtc, createdBy.DisplayName, (SELECT COUNT(*) FROM InventoryCountLines totalLines WHERE totalLines.InventoryCountId = ic.Id), (SELECT COUNT(*) FROM InventoryCountLines countedLines WHERE countedLines.InventoryCountId = ic.Id AND countedLines.CountedQuantity IS NOT NULL), (SELECT COUNT(*) FROM InventoryCountLines differenceLines WHERE differenceLines.InventoryCountId = ic.Id AND differenceLines.CountedQuantity IS NOT NULL AND differenceLines.CountedQuantity <> differenceLines.ExpectedQuantity), ic.Notes, ic.ReversedAtUtc, ic.ReversalReason, ic.Version {from} {where} ORDER BY ic.CreatedAtUtc DESC, ic.Id DESC",
 			$"SELECT COUNT(*) {from} {where};",
 			ReadOverview,
 			pageNumber,
@@ -63,7 +63,7 @@ public sealed class InventoryCountRepository : DatabaseRepository
 		long id,
 		CancellationToken cancellationToken) =>
 		Database.QuerySingleOrDefaultAsync(
-			"SELECT ic.Id, ic.CountNumber, ic.WarehouseId, w.Name, ic.Status, ic.CreatedAtUtc, ic.StartedAtUtc, createdBy.DisplayName, (SELECT COUNT(*) FROM InventoryCountLines totalLines WHERE totalLines.InventoryCountId = ic.Id), (SELECT COUNT(*) FROM InventoryCountLines countedLines WHERE countedLines.InventoryCountId = ic.Id AND countedLines.CountedQuantity IS NOT NULL), (SELECT COUNT(*) FROM InventoryCountLines differenceLines WHERE differenceLines.InventoryCountId = ic.Id AND differenceLines.CountedQuantity IS NOT NULL AND differenceLines.CountedQuantity <> differenceLines.ExpectedQuantity), ic.Notes, ic.Version FROM InventoryCounts ic INNER JOIN Warehouses w ON w.Id = ic.WarehouseId INNER JOIN Users createdBy ON createdBy.Id = ic.CreatedByUserId WHERE ic.Id = $Id;",
+			"SELECT ic.Id, ic.CountNumber, ic.WarehouseId, w.Name, ic.Status, ic.CreatedAtUtc, ic.StartedAtUtc, createdBy.DisplayName, (SELECT COUNT(*) FROM InventoryCountLines totalLines WHERE totalLines.InventoryCountId = ic.Id), (SELECT COUNT(*) FROM InventoryCountLines countedLines WHERE countedLines.InventoryCountId = ic.Id AND countedLines.CountedQuantity IS NOT NULL), (SELECT COUNT(*) FROM InventoryCountLines differenceLines WHERE differenceLines.InventoryCountId = ic.Id AND differenceLines.CountedQuantity IS NOT NULL AND differenceLines.CountedQuantity <> differenceLines.ExpectedQuantity), ic.Notes, ic.ReversedAtUtc, ic.ReversalReason, ic.Version FROM InventoryCounts ic INNER JOIN Warehouses w ON w.Id = ic.WarehouseId INNER JOIN Users createdBy ON createdBy.Id = ic.CreatedByUserId WHERE ic.Id = $Id;",
 			ReadOverview,
 			cancellationToken,
 			Parameter("$Id", id));
@@ -277,6 +277,17 @@ public sealed class InventoryCountRepository : DatabaseRepository
 			Parameter("$Version", version),
 			Parameter("$ReviewStatus", (int)InventoryCountStatus.Review)) == 1;
 
+	public async Task<bool> MarkReversedAsync(DatabaseTransactionContext transaction, long id, long version, DateTime reversedAtUtc, long reversedByUserId, string reversalReason, CancellationToken cancellationToken) =>
+		await transaction.Session.ExecuteAsync(
+			"UPDATE InventoryCounts SET ReversedAtUtc = $ReversedAtUtc, ReversedByUserId = $ReversedByUserId, ReversalReason = $ReversalReason, Version = Version + 1 WHERE Id = $Id AND Version = $Version AND Status = $PostedStatus AND ReversedAtUtc IS NULL;",
+			cancellationToken,
+			Parameter("$ReversedAtUtc", DateTimeValue(reversedAtUtc)),
+			Parameter("$ReversedByUserId", reversedByUserId),
+			Parameter("$ReversalReason", reversalReason),
+			Parameter("$Id", id),
+			Parameter("$Version", version),
+			Parameter("$PostedStatus", (int)InventoryCountStatus.Posted)) == 1;
+
 	public async Task<bool> UpdateCountedQuantityAsync(
 		DatabaseTransactionContext transaction,
 		InventoryCountLine line,
@@ -326,7 +337,10 @@ public sealed class InventoryCountRepository : DatabaseRepository
 		CreatedByUserId = reader.GetInt64(7),
 		PostedByUserId = reader.IsDBNull(8) ? null : reader.GetInt64(8),
 		Notes = reader.IsDBNull(9) ? null : reader.GetString(9),
-		Version = reader.GetInt64(10)
+		ReversedAtUtc = reader.IsDBNull(10) ? null : ParseDateTime(reader.GetString(10)),
+		ReversedByUserId = reader.IsDBNull(11) ? null : reader.GetInt64(11),
+		ReversalReason = reader.IsDBNull(12) ? null : reader.GetString(12),
+		Version = reader.GetInt64(13)
 	};
 
 	private static InventoryCountLine ReadLine(DbDataReader reader) => new()
@@ -355,7 +369,9 @@ public sealed class InventoryCountRepository : DatabaseRepository
 		CountedLineCount = Convert.ToInt32(reader.GetValue(9), CultureInfo.InvariantCulture),
 		DifferenceLineCount = Convert.ToInt32(reader.GetValue(10), CultureInfo.InvariantCulture),
 		Notes = reader.IsDBNull(11) ? null : reader.GetString(11),
-		Version = reader.GetInt64(12)
+		ReversedAtUtc = reader.IsDBNull(12) ? null : ParseDateTime(reader.GetString(12)),
+		ReversalReason = reader.IsDBNull(13) ? null : reader.GetString(13),
+		Version = reader.GetInt64(14)
 	};
 
 	private static InventoryCountLineDetails ReadLineDetails(DbDataReader reader) => new()

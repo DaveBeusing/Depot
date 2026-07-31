@@ -17,6 +17,7 @@ public sealed class InventoryCountService
 	private readonly WarehouseRepository _warehouses;
 	private readonly AuditRepository _auditEntries;
 	private readonly AuditService _audit;
+	private readonly StockMovementReversalService _reversals;
 
 	public InventoryCountService(
 		IDatabaseTransactionRunner transactions,
@@ -26,7 +27,8 @@ public sealed class InventoryCountService
 		ReasonCodeRepository reasonCodes,
 		WarehouseRepository warehouses,
 		AuditRepository auditEntries,
-		AuditService audit)
+		AuditService audit,
+		StockMovementReversalService reversals)
 	{
 		_transactions = transactions;
 		_counts = counts;
@@ -36,6 +38,45 @@ public sealed class InventoryCountService
 		_warehouses = warehouses;
 		_auditEntries = auditEntries;
 		_audit = audit;
+		_reversals = reversals;
+	}
+
+	public async Task<InventoryCount> ReverseAsync(long id, long version, long reasonCodeId, string reversalReason, CancellationToken cancellationToken = default)
+	{
+		ValidateId(id);
+		var userId = _reversals.RequireUser();
+		return await _transactions.ExecuteAsync(
+			async (transaction, token) =>
+			{
+				var before = await _counts.GetHeaderByIdForUpdateAsync(transaction, id, token)
+					?? throw new InvalidOperationException("The inventory count was not found.");
+				if (before.Version != version) throw new ConcurrencyConflictException("inventory count");
+				if (before.Status != InventoryCountStatus.Posted || before.IsReversed)
+				{
+					throw new InvalidOperationException("Only a posted, unreversed inventory count can be reversed.");
+				}
+				before.Lines = await _counts.ListLinesAsync(transaction, id, token);
+				var originals = await _stockMovements.ListOriginalsByReferenceAsync(transaction, before.CountNumber, token);
+				if (originals.Any(movement => movement.MovementType != StockMovementType.Correction))
+				{
+					throw new InvalidOperationException("The inventory-count correction movements are inconsistent.");
+				}
+				await _reversals.CreateReversalsAsync(transaction, originals, reasonCodeId, reversalReason, userId, token);
+				var reversedAtUtc = DateTime.UtcNow;
+				var normalizedReason = reversalReason.Trim();
+				if (!await _counts.MarkReversedAsync(transaction, id, version, reversedAtUtc, userId, normalizedReason, token))
+				{
+					throw new ConcurrencyConflictException("inventory count");
+				}
+				var after = Copy(before);
+				after.ReversedAtUtc = reversedAtUtc;
+				after.ReversedByUserId = userId;
+				after.ReversalReason = normalizedReason;
+				after.Version++;
+				await _auditEntries.CreateAsync(transaction, _audit.CreateUpdatedEntry(id, before, after), token);
+				return after;
+			},
+			cancellationToken);
 	}
 
 	public Task<InventoryCount?> GetByIdAsync(
@@ -578,6 +619,9 @@ public sealed class InventoryCountService
 		CreatedByUserId = source.CreatedByUserId,
 		PostedByUserId = source.PostedByUserId,
 		Notes = source.Notes,
+		ReversedAtUtc = source.ReversedAtUtc,
+		ReversedByUserId = source.ReversedByUserId,
+		ReversalReason = source.ReversalReason,
 		Version = source.Version,
 		Lines = source.Lines.Select(Copy).ToArray()
 	};

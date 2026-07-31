@@ -16,6 +16,7 @@ public sealed class InventoryCountsViewModel : BaseViewModel, IDisposable
 	private readonly InventoryCountService _counts;
 	private readonly WarehouseService _warehouses;
 	private readonly IFileDialogService _dialogs;
+	private readonly ReasonCodeService _reasonCodes;
 	private readonly AsyncDebouncer _countSearch = new(TimeSpan.FromMilliseconds(300));
 	private readonly AsyncDebouncer _lineSearch = new(TimeSpan.FromMilliseconds(300));
 	private CancellationTokenSource? _selectionCancellation;
@@ -33,15 +34,19 @@ public sealed class InventoryCountsViewModel : BaseViewModel, IDisposable
 	private long _totalCount;
 	private int _linePageNumber = 1;
 	private long _lineTotalCount;
+	private ReasonCode? _selectedReversalReasonCode;
+	private string _reversalReason = string.Empty;
 
 	public InventoryCountsViewModel(
 		InventoryCountService counts,
 		WarehouseService warehouses,
-		IFileDialogService dialogs)
+		IFileDialogService dialogs,
+		ReasonCodeService reasonCodes)
 	{
 		_counts = counts;
 		_warehouses = warehouses;
 		_dialogs = dialogs;
+		_reasonCodes = reasonCodes;
 		StatusFilters =
 		[
 			new InventoryCountStatusFilter("All statuses", null),
@@ -58,6 +63,7 @@ public sealed class InventoryCountsViewModel : BaseViewModel, IDisposable
 		MoveToReviewCommand = new AsyncRelayCommand(MoveToReviewAsync, () => IsCounting && UncountedLineCount == 0);
 		ReturnToCountingCommand = new AsyncRelayCommand(ReturnToCountingAsync, () => IsReview);
 		PostCommand = new AsyncRelayCommand(PostAsync, () => IsReview);
+		ReverseCommand = new AsyncRelayCommand(ReverseAsync, () => CanReverse && SelectedReversalReasonCode is not null && !string.IsNullOrWhiteSpace(ReversalReason));
 		SaveQuantityCommand = new AsyncRelayCommand(SaveQuantityAsync, () => IsCounting && SelectedLine is not null);
 		PreviousPageCommand = new AsyncRelayCommand(PreviousPageAsync, () => PageNumber > 1);
 		NextPageCommand = new AsyncRelayCommand(NextPageAsync, () => HasNextPage);
@@ -69,6 +75,7 @@ public sealed class InventoryCountsViewModel : BaseViewModel, IDisposable
 	public ObservableCollection<Warehouse> Warehouses { get; } = new();
 	public ObservableCollection<InventoryCountWarehouseFilter> WarehouseFilters { get; } = new();
 	public ObservableCollection<InventoryCountLineRowViewModel> Lines { get; } = new();
+	public ObservableCollection<ReasonCode> ReversalReasonCodes { get; } = new();
 	public IReadOnlyList<InventoryCountStatusFilter> StatusFilters { get; }
 
 	public RelayCommand NewCommand { get; }
@@ -78,6 +85,7 @@ public sealed class InventoryCountsViewModel : BaseViewModel, IDisposable
 	public AsyncRelayCommand MoveToReviewCommand { get; }
 	public AsyncRelayCommand ReturnToCountingCommand { get; }
 	public AsyncRelayCommand PostCommand { get; }
+	public AsyncRelayCommand ReverseCommand { get; }
 	public AsyncRelayCommand SaveQuantityCommand { get; }
 	public AsyncRelayCommand PreviousPageCommand { get; }
 	public AsyncRelayCommand NextPageCommand { get; }
@@ -230,6 +238,7 @@ public sealed class InventoryCountsViewModel : BaseViewModel, IDisposable
 	public bool HasCountLines => Editor.StartedAtUtc is not null &&
 		Editor.Status is (InventoryCountStatus.Counting or InventoryCountStatus.Review or InventoryCountStatus.Posted or InventoryCountStatus.Cancelled);
 	public bool CanCancel => Editor.Id > 0 && Editor.Status is not InventoryCountStatus.Posted and not InventoryCountStatus.Cancelled;
+	public bool CanReverse => Editor.Status == InventoryCountStatus.Posted && !Editor.IsReversed;
 	public bool IsDraftReadOnly => !IsDraft;
 	public string EditorTitle => Editor.Id == 0 ? "New Inventory Count" : Editor.CountNumber;
 	public int UncountedLineCount => SelectedCount is null ? 0 : SelectedCount.TotalLineCount - SelectedCount.CountedLineCount;
@@ -239,6 +248,8 @@ public sealed class InventoryCountsViewModel : BaseViewModel, IDisposable
 	public string LinePageDisplay => $"Page {LinePageNumber} · {LineTotalCount:N0} positions";
 	public string CountProgressDisplay => SelectedCount?.ProgressDisplay ?? "Not started";
 	public string DifferenceSummary => SelectedCount is null ? string.Empty : $"{SelectedCount.DifferenceLineCount:N0} differences · {UncountedLineCount:N0} uncounted";
+	public ReasonCode? SelectedReversalReasonCode { get => _selectedReversalReasonCode; set { if (_selectedReversalReasonCode == value) return; _selectedReversalReasonCode = value; OnPropertyChanged(); ReverseCommand.RaiseCanExecuteChanged(); } }
+	public string ReversalReason { get => _reversalReason; set { if (_reversalReason == value) return; _reversalReason = value; OnPropertyChanged(); ReverseCommand.RaiseCanExecuteChanged(); } }
 
 	public int PageNumber
 	{
@@ -303,7 +314,8 @@ public sealed class InventoryCountsViewModel : BaseViewModel, IDisposable
 		{
 			var warehousesTask = _warehouses.SearchAsync(null, cancellationToken);
 			var countsTask = SearchCountsAsync(cancellationToken);
-			await Task.WhenAll(warehousesTask, countsTask);
+			var reasonCodesTask = _reasonCodes.GetActiveAsync(cancellationToken);
+			await Task.WhenAll(warehousesTask, countsTask, reasonCodesTask);
 			Warehouses.Clear();
 			WarehouseFilters.Clear();
 			WarehouseFilters.Add(new InventoryCountWarehouseFilter("All warehouses", null));
@@ -313,6 +325,8 @@ public sealed class InventoryCountsViewModel : BaseViewModel, IDisposable
 				WarehouseFilters.Add(new InventoryCountWarehouseFilter(warehouse.Name, warehouse.Id));
 			}
 			_selectedWarehouseFilter = WarehouseFilters[0];
+			ReversalReasonCodes.Clear();
+			foreach (var reasonCode in await reasonCodesTask) ReversalReasonCodes.Add(reasonCode);
 			OnPropertyChanged(nameof(SelectedWarehouseFilter));
 			ApplyCountPage(await countsTask);
 			CompleteOperation(InventoryCounts.Count == 0, $"{TotalCount:N0} inventory counts");
@@ -566,6 +580,27 @@ public sealed class InventoryCountsViewModel : BaseViewModel, IDisposable
 			(token => _counts.PostAsync(Editor.Id, Editor.Version, token)),
 			cancellationToken);
 
+	private async Task ReverseAsync(CancellationToken cancellationToken)
+	{
+		if (SelectedReversalReasonCode is null) return;
+		if (!_dialogs.Confirm(new ConfirmationDialogRequest("Reverse Inventory Count", $"Create counter-movements for {Editor.CountNumber}?", true))) return;
+		BeginOperation("Inventurbuchung wird storniert");
+		try
+		{
+			var reversed = await _counts.ReverseAsync(Editor.Id, Editor.Version, SelectedReversalReasonCode.Id, ReversalReason, cancellationToken);
+			await ApplySavedCountAsync(reversed, false, cancellationToken);
+			CompleteOperation(false, $"{reversed.CountNumber} reversed");
+		}
+		catch (ConcurrencyConflictException)
+		{
+			FailConcurrency("Inventory count could not be reversed");
+		}
+		catch (Exception exception) when (exception is not OperationCanceledException)
+		{
+			FailOperation(exception, "Inventory count could not be reversed");
+		}
+	}
+
 	private async Task CancelAsync(CancellationToken cancellationToken) =>
 		await ChangeStatusAsync(
 			"Inventur wird storniert",
@@ -727,6 +762,7 @@ public sealed class InventoryCountsViewModel : BaseViewModel, IDisposable
 		OnPropertyChanged(nameof(HasSelectedCount));
 		OnPropertyChanged(nameof(HasCountLines));
 		OnPropertyChanged(nameof(CanCancel));
+		OnPropertyChanged(nameof(CanReverse));
 		OnPropertyChanged(nameof(IsDraftReadOnly));
 		OnPropertyChanged(nameof(EditorTitle));
 		RaiseCommands();
@@ -740,6 +776,7 @@ public sealed class InventoryCountsViewModel : BaseViewModel, IDisposable
 		MoveToReviewCommand.RaiseCanExecuteChanged();
 		ReturnToCountingCommand.RaiseCanExecuteChanged();
 		PostCommand.RaiseCanExecuteChanged();
+		ReverseCommand.RaiseCanExecuteChanged();
 		SaveQuantityCommand.RaiseCanExecuteChanged();
 	}
 
@@ -770,6 +807,9 @@ public sealed class InventoryCountsViewModel : BaseViewModel, IDisposable
 		CreatedByUserId = source.CreatedByUserId,
 		PostedByUserId = source.PostedByUserId,
 		Notes = source.Notes,
+		ReversedAtUtc = source.ReversedAtUtc,
+		ReversedByUserId = source.ReversedByUserId,
+		ReversalReason = source.ReversalReason,
 		Version = source.Version,
 		Lines = []
 	};
@@ -786,6 +826,7 @@ public sealed class InventoryCountsViewModel : BaseViewModel, IDisposable
 		MoveToReviewCommand.Dispose();
 		ReturnToCountingCommand.Dispose();
 		PostCommand.Dispose();
+		ReverseCommand.Dispose();
 		SaveQuantityCommand.Dispose();
 		PreviousPageCommand.Dispose();
 		NextPageCommand.Dispose();

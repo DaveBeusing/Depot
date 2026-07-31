@@ -13,6 +13,13 @@ internal sealed class ServiceComposition
 		Authorization = new AuthorizationService();
 		var audit = new AuditService(repositories.Audit, Authorization);
 		var passwordHasher = new PasswordHasher();
+		var movementReversals = new StockMovementReversalService(
+			database.TransactionRunner,
+			repositories.Inventories,
+			repositories.StockMovements,
+			repositories.ReasonCodes,
+			repositories.Audit,
+			audit);
 
 		Authentication = new AuthenticationService(repositories.Users, passwordHasher, Authorization);
 		Session = new SessionService(Authorization);
@@ -44,7 +51,8 @@ internal sealed class ServiceComposition
 			repositories.StockMovements,
 			repositories.ReasonCodes,
 			repositories.Audit,
-			audit);
+			audit,
+			movementReversals);
 		StockTransfers = new StockTransferService(
 			database.TransactionRunner,
 			repositories.StockTransfers,
@@ -52,7 +60,8 @@ internal sealed class ServiceComposition
 			repositories.StockMovements,
 			repositories.ReasonCodes,
 			repositories.Audit,
-			audit);
+			audit,
+			movementReversals);
 		InventoryCounts = new InventoryCountService(
 			database.TransactionRunner,
 			repositories.InventoryCounts,
@@ -61,7 +70,8 @@ internal sealed class ServiceComposition
 			repositories.ReasonCodes,
 			repositories.Warehouses,
 			repositories.Audit,
-			audit);
+			audit,
+			movementReversals);
 		Items = new ItemService(
 			repositories.Items,
 			audit,
@@ -89,7 +99,8 @@ internal sealed class ServiceComposition
 			repositories.Warehouses,
 			repositories.ReasonCodes,
 			repositories.StockMovements,
-			audit);
+			audit,
+			movementReversals);
 		Stock = new StockService(
 			repositories.Items,
 			repositories.Inventories,

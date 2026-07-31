@@ -4,7 +4,7 @@
 
 - [ ] Ready for release
 
-Depot is currently `0.9.1-preview` with database schema version **18**. Checked implementation items below mean code exists on `master`; they do not replace the outstanding release verification.
+Depot is currently `0.13.0-preview` with database schema version **20**. Checked implementation items below mean code exists on `master`; they do not replace the outstanding release verification.
 
 ## Implemented and covered by automated tests
 
@@ -30,6 +30,7 @@ Depot is currently `0.9.1-preview` with database schema version **18**. Checked 
 - [x] Concurrent withdrawals cannot create negative stock
 - [x] Stale version updates are rejected
 - [x] Stock movement and audit entry commit together
+- [x] Immutable counter-movements, duplicate-reversal prevention, stock validation, and atomic reversal audit
 
 ### Suppliers and procurement
 
@@ -43,6 +44,8 @@ Depot is currently `0.9.1-preview` with database schema version **18**. Checked 
 - [x] Atomic receipt, received quantity, stock movement, order status, and receipt audit writes
 - [x] Over-receipt rollback
 - [x] Concurrent goods receipts cannot over-receive an order line
+- [x] Goods-receipt reversal corrects received quantities and purchase-order status atomically
+- [x] Material-withdrawal, transfer, and inventory-count reversals create atomic counter-movements
 
 ### Import, reports, and database administration
 
@@ -104,6 +107,7 @@ Depot is currently `0.9.1-preview` with database schema version **18**. Checked 
 - [ ] Stock receipts, issues, corrections, and opening balances verified
 - [ ] Purchase-order edit/cancel/status workflow verified
 - [ ] Partial receipts and delivery-note entry verified
+- [ ] Goods-receipt, withdrawal, transfer, and inventory-count reversal UI and rollback verified
 - [ ] Import and all reports verified with representative customer data
 - [ ] Backup validation, restore, safety backup, and scheduled backup verified
 - [ ] Corrupted backup, unavailable path, locked file, and interrupted operation behavior verified
@@ -133,6 +137,6 @@ Depot is currently `0.9.1-preview` with database schema version **18**. Checked 
 - [ ] All automated tests pass on the release commit
 - [ ] Supported Windows versions tested
 - [ ] Application version finalized in `Directory.Build.props`
-- [ ] Database schema remains version 19 or migration notes are updated
+- [ ] Database schema remains version 20 or migration notes are updated
 - [ ] Installer/package, signing, upgrade, rollback, and uninstall tested
 - [ ] Release notes and known limitations published

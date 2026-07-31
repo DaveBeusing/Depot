@@ -50,6 +50,13 @@ public sealed class ReasonCodeRepository : DatabaseRepository
 			cancellationToken,
 			Parameter("$Id", id));
 
+	public Task<ReasonCode?> GetByIdAsync(DatabaseTransactionContext transaction, long id, CancellationToken cancellationToken) =>
+		transaction.Session.QuerySingleOrDefaultAsync(
+			$"SELECT {Columns} FROM ReasonCodes WHERE Id = $Id;",
+			Read,
+			cancellationToken,
+			Parameter("$Id", id));
+
 	public ReasonCode? GetById(long id) =>
 		Database.QuerySingleOrDefault(
 			$"SELECT {Columns} FROM ReasonCodes WHERE Id = $Id;",

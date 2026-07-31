@@ -94,6 +94,11 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 			MigrateToInventoryCounts(command);
 			version = 19;
 		}
+		if (version == 19)
+		{
+			MigrateToMovementReversals(command);
+			version = 20;
+		}
 		if (version != DatabaseVersion.CurrentVersion)
 		{
 			throw new InvalidOperationException(
@@ -113,6 +118,40 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 	private static void MigrateToInventoryCounts(System.Data.Common.DbCommand command)
 	{
 		command.CommandText = InventoryCountSql + " UPDATE DatabaseInfo SET Version = 19 WHERE Id = 1;";
+		command.Parameters.Clear();
+		command.ExecuteNonQuery();
+	}
+
+	private static void MigrateToMovementReversals(System.Data.Common.DbCommand command)
+	{
+		command.CommandText =
+		"""
+		IF COL_LENGTH(N'StockMovements', N'ReversalOfMovementId') IS NULL ALTER TABLE StockMovements ADD ReversalOfMovementId bigint NULL;
+		IF COL_LENGTH(N'StockMovements', N'ReversalReason') IS NULL ALTER TABLE StockMovements ADD ReversalReason nvarchar(1000) NULL;
+		IF COL_LENGTH(N'StockMovements', N'ReversedAtUtc') IS NULL ALTER TABLE StockMovements ADD ReversedAtUtc nvarchar(40) NULL;
+		IF COL_LENGTH(N'StockMovements', N'ReversedByUserId') IS NULL ALTER TABLE StockMovements ADD ReversedByUserId bigint NULL;
+		IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_StockMovements_ReversalOfMovement') ALTER TABLE StockMovements ADD CONSTRAINT FK_StockMovements_ReversalOfMovement FOREIGN KEY (ReversalOfMovementId) REFERENCES StockMovements(Id);
+		IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_StockMovements_ReversedByUsers') ALTER TABLE StockMovements ADD CONSTRAINT FK_StockMovements_ReversedByUsers FOREIGN KEY (ReversedByUserId) REFERENCES Users(Id);
+		IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_StockMovements_ReversalOfMovementId' AND object_id = OBJECT_ID(N'StockMovements')) CREATE UNIQUE INDEX UX_StockMovements_ReversalOfMovementId ON StockMovements(ReversalOfMovementId) WHERE ReversalOfMovementId IS NOT NULL;
+
+		IF COL_LENGTH(N'GoodsReceipts', N'ReversedAtUtc') IS NULL ALTER TABLE GoodsReceipts ADD ReversedAtUtc nvarchar(40) NULL;
+		IF COL_LENGTH(N'GoodsReceipts', N'ReversedByUserId') IS NULL ALTER TABLE GoodsReceipts ADD ReversedByUserId bigint NULL;
+		IF COL_LENGTH(N'GoodsReceipts', N'ReversalReason') IS NULL ALTER TABLE GoodsReceipts ADD ReversalReason nvarchar(1000) NULL;
+		IF COL_LENGTH(N'GoodsReceipts', N'Version') IS NULL ALTER TABLE GoodsReceipts ADD Version bigint NOT NULL CONSTRAINT DF_GoodsReceipts_Version DEFAULT 1;
+		IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_GoodsReceipts_ReversedByUsers') ALTER TABLE GoodsReceipts ADD CONSTRAINT FK_GoodsReceipts_ReversedByUsers FOREIGN KEY (ReversedByUserId) REFERENCES Users(Id);
+
+		IF COL_LENGTH(N'StockTransfers', N'ReversedAtUtc') IS NULL ALTER TABLE StockTransfers ADD ReversedAtUtc nvarchar(40) NULL;
+		IF COL_LENGTH(N'StockTransfers', N'ReversedByUserId') IS NULL ALTER TABLE StockTransfers ADD ReversedByUserId bigint NULL;
+		IF COL_LENGTH(N'StockTransfers', N'ReversalReason') IS NULL ALTER TABLE StockTransfers ADD ReversalReason nvarchar(1000) NULL;
+		IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_StockTransfers_ReversedByUsers') ALTER TABLE StockTransfers ADD CONSTRAINT FK_StockTransfers_ReversedByUsers FOREIGN KEY (ReversedByUserId) REFERENCES Users(Id);
+
+		IF COL_LENGTH(N'InventoryCounts', N'ReversedAtUtc') IS NULL ALTER TABLE InventoryCounts ADD ReversedAtUtc nvarchar(40) NULL;
+		IF COL_LENGTH(N'InventoryCounts', N'ReversedByUserId') IS NULL ALTER TABLE InventoryCounts ADD ReversedByUserId bigint NULL;
+		IF COL_LENGTH(N'InventoryCounts', N'ReversalReason') IS NULL ALTER TABLE InventoryCounts ADD ReversalReason nvarchar(1000) NULL;
+		IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_InventoryCounts_ReversedByUsers') ALTER TABLE InventoryCounts ADD CONSTRAINT FK_InventoryCounts_ReversedByUsers FOREIGN KEY (ReversedByUserId) REFERENCES Users(Id);
+
+		UPDATE DatabaseInfo SET Version = 20 WHERE Id = 1;
+		""";
 		command.Parameters.Clear();
 		command.ExecuteNonQuery();
 	}
@@ -402,7 +441,7 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 	END;
 	IF OBJECT_ID(N'GoodsReceipts', N'U') IS NULL
 	BEGIN
-		CREATE TABLE GoodsReceipts (Id bigint IDENTITY(1,1) NOT NULL PRIMARY KEY, ReceiptNumber nvarchar(50) NOT NULL UNIQUE, PurchaseOrderId bigint NOT NULL, ReceiptDate nvarchar(10) NOT NULL, SupplierDeliveryNoteNumber nvarchar(100) NOT NULL, ReceivedByUserId bigint NOT NULL, InvoiceNumber nvarchar(100) NULL, InvoiceDate nvarchar(10) NULL, InvoiceDocumentPath nvarchar(1000) NULL, Notes nvarchar(4000) NULL, CONSTRAINT FK_GoodsReceipts_Orders FOREIGN KEY (PurchaseOrderId) REFERENCES PurchaseOrders(Id), CONSTRAINT FK_GoodsReceipts_ReceivedByUsers FOREIGN KEY (ReceivedByUserId) REFERENCES Users(Id));
+		CREATE TABLE GoodsReceipts (Id bigint IDENTITY(1,1) NOT NULL PRIMARY KEY, ReceiptNumber nvarchar(50) NOT NULL UNIQUE, PurchaseOrderId bigint NOT NULL, ReceiptDate nvarchar(10) NOT NULL, SupplierDeliveryNoteNumber nvarchar(100) NOT NULL, ReceivedByUserId bigint NOT NULL, InvoiceNumber nvarchar(100) NULL, InvoiceDate nvarchar(10) NULL, InvoiceDocumentPath nvarchar(1000) NULL, Notes nvarchar(4000) NULL, ReversedAtUtc nvarchar(40) NULL, ReversedByUserId bigint NULL, ReversalReason nvarchar(1000) NULL, Version bigint NOT NULL DEFAULT 1, CONSTRAINT FK_GoodsReceipts_Orders FOREIGN KEY (PurchaseOrderId) REFERENCES PurchaseOrders(Id), CONSTRAINT FK_GoodsReceipts_ReceivedByUsers FOREIGN KEY (ReceivedByUserId) REFERENCES Users(Id), CONSTRAINT FK_GoodsReceipts_ReversedByUsers FOREIGN KEY (ReversedByUserId) REFERENCES Users(Id));
 		CREATE INDEX IX_GoodsReceipts_PurchaseOrderId ON GoodsReceipts(PurchaseOrderId);
 		CREATE INDEX IX_GoodsReceipts_ReceivedByUserId ON GoodsReceipts(ReceivedByUserId);
 	END;
@@ -428,6 +467,9 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 			CreatedByUserId bigint NOT NULL,
 			PostedByUserId bigint NULL,
 			Notes nvarchar(4000) NULL,
+			ReversedAtUtc nvarchar(40) NULL,
+			ReversedByUserId bigint NULL,
+			ReversalReason nvarchar(1000) NULL,
 			Version bigint NOT NULL DEFAULT 1,
 			CONSTRAINT CK_StockTransfers_Warehouses CHECK (SourceWarehouseId <> DestinationWarehouseId),
 			CONSTRAINT CK_StockTransfers_Status CHECK (Status IN (1, 2, 3)),
@@ -435,6 +477,7 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 			CONSTRAINT FK_StockTransfers_DestinationWarehouses FOREIGN KEY (DestinationWarehouseId) REFERENCES Warehouses(Id),
 			CONSTRAINT FK_StockTransfers_CreatedByUsers FOREIGN KEY (CreatedByUserId) REFERENCES Users(Id),
 			CONSTRAINT FK_StockTransfers_PostedByUsers FOREIGN KEY (PostedByUserId) REFERENCES Users(Id)
+			,CONSTRAINT FK_StockTransfers_ReversedByUsers FOREIGN KEY (ReversedByUserId) REFERENCES Users(Id)
 		);
 		CREATE INDEX IX_StockTransfers_SourceWarehouseId_Status ON StockTransfers(SourceWarehouseId, Status);
 		CREATE INDEX IX_StockTransfers_DestinationWarehouseId_Status ON StockTransfers(DestinationWarehouseId, Status);
@@ -480,11 +523,15 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 			CreatedByUserId bigint NOT NULL,
 			PostedByUserId bigint NULL,
 			Notes nvarchar(4000) NULL,
+			ReversedAtUtc nvarchar(40) NULL,
+			ReversedByUserId bigint NULL,
+			ReversalReason nvarchar(1000) NULL,
 			Version bigint NOT NULL DEFAULT 1,
 			CONSTRAINT CK_InventoryCounts_Status CHECK (Status IN (1, 2, 3, 4, 5)),
 			CONSTRAINT FK_InventoryCounts_Warehouses FOREIGN KEY (WarehouseId) REFERENCES Warehouses(Id),
 			CONSTRAINT FK_InventoryCounts_CreatedByUsers FOREIGN KEY (CreatedByUserId) REFERENCES Users(Id),
 			CONSTRAINT FK_InventoryCounts_PostedByUsers FOREIGN KEY (PostedByUserId) REFERENCES Users(Id)
+			,CONSTRAINT FK_InventoryCounts_ReversedByUsers FOREIGN KEY (ReversedByUserId) REFERENCES Users(Id)
 		);
 		CREATE INDEX IX_InventoryCounts_WarehouseId_Status ON InventoryCounts(WarehouseId, Status);
 		CREATE INDEX IX_InventoryCounts_CreatedAtUtc ON InventoryCounts(CreatedAtUtc);
@@ -654,8 +701,14 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 			UnitPrice decimal(18,2) NULL,
 			Reference nvarchar(200) NULL,
 			Notes nvarchar(2000) NULL,
+			ReversalOfMovementId bigint NULL,
+			ReversalReason nvarchar(1000) NULL,
+			ReversedAtUtc nvarchar(40) NULL,
+			ReversedByUserId bigint NULL,
 			CONSTRAINT FK_StockMovements_Inventories FOREIGN KEY (InventoryId) REFERENCES Inventories(Id),
-			CONSTRAINT FK_StockMovements_ReasonCodes FOREIGN KEY (ReasonCodeId) REFERENCES ReasonCodes(Id)
+			CONSTRAINT FK_StockMovements_ReasonCodes FOREIGN KEY (ReasonCodeId) REFERENCES ReasonCodes(Id),
+			CONSTRAINT FK_StockMovements_ReversalOfMovement FOREIGN KEY (ReversalOfMovementId) REFERENCES StockMovements(Id),
+			CONSTRAINT FK_StockMovements_ReversedByUsers FOREIGN KEY (ReversedByUserId) REFERENCES Users(Id)
 		);
 
 	IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_StockMovements_InventoryId_TimestampUtc')
@@ -663,6 +716,9 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 
 	IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_StockMovements_ReasonCodeId')
 		CREATE INDEX IX_StockMovements_ReasonCodeId ON StockMovements(ReasonCodeId);
+
+	IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_StockMovements_ReversalOfMovementId')
+		CREATE UNIQUE INDEX UX_StockMovements_ReversalOfMovementId ON StockMovements(ReversalOfMovementId) WHERE ReversalOfMovementId IS NOT NULL;
 
 	IF OBJECT_ID(N'AuditEntries', N'U') IS NULL
 		CREATE TABLE AuditEntries

@@ -102,6 +102,11 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 				MigrateToInventoryCounts(command);
 				version = 19;
 			}
+			if (version == 19)
+			{
+				MigrateToMovementReversals(command);
+				version = 20;
+			}
 			if (version != DatabaseVersion.CurrentVersion)
 			{
 				throw new InvalidOperationException(
@@ -128,6 +133,34 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 		command.CommandText = InventoryCountSql + " UPDATE DatabaseInfo SET Version = 19 WHERE Id = 1;";
 		command.Parameters.Clear();
 		command.ExecuteNonQuery();
+	}
+
+	private static void MigrateToMovementReversals(System.Data.Common.DbCommand command)
+	{
+		if (!ColumnExists(command, "StockMovements", "ReversalOfMovementId")) Execute(command, "ALTER TABLE StockMovements ADD COLUMN ReversalOfMovementId bigint NULL;");
+		if (!ColumnExists(command, "StockMovements", "ReversalReason")) Execute(command, "ALTER TABLE StockMovements ADD COLUMN ReversalReason varchar(1000) NULL;");
+		if (!ColumnExists(command, "StockMovements", "ReversedAtUtc")) Execute(command, "ALTER TABLE StockMovements ADD COLUMN ReversedAtUtc varchar(40) NULL;");
+		if (!ColumnExists(command, "StockMovements", "ReversedByUserId")) Execute(command, "ALTER TABLE StockMovements ADD COLUMN ReversedByUserId bigint NULL;");
+		if (!ConstraintExists(command, "StockMovements", "FK_StockMovements_ReversalOfMovement")) Execute(command, "ALTER TABLE StockMovements ADD CONSTRAINT FK_StockMovements_ReversalOfMovement FOREIGN KEY (ReversalOfMovementId) REFERENCES StockMovements(Id);");
+		if (!ConstraintExists(command, "StockMovements", "FK_StockMovements_ReversedByUsers")) Execute(command, "ALTER TABLE StockMovements ADD CONSTRAINT FK_StockMovements_ReversedByUsers FOREIGN KEY (ReversedByUserId) REFERENCES Users(Id);");
+		if (!IndexExists(command, "StockMovements", "UX_StockMovements_ReversalOfMovementId")) Execute(command, "ALTER TABLE StockMovements ADD UNIQUE INDEX UX_StockMovements_ReversalOfMovementId (ReversalOfMovementId);");
+
+		if (!ColumnExists(command, "GoodsReceipts", "ReversedAtUtc")) Execute(command, "ALTER TABLE GoodsReceipts ADD COLUMN ReversedAtUtc varchar(40) NULL;");
+		if (!ColumnExists(command, "GoodsReceipts", "ReversedByUserId")) Execute(command, "ALTER TABLE GoodsReceipts ADD COLUMN ReversedByUserId bigint NULL;");
+		if (!ColumnExists(command, "GoodsReceipts", "ReversalReason")) Execute(command, "ALTER TABLE GoodsReceipts ADD COLUMN ReversalReason varchar(1000) NULL;");
+		if (!ColumnExists(command, "GoodsReceipts", "Version")) Execute(command, "ALTER TABLE GoodsReceipts ADD COLUMN Version bigint NOT NULL DEFAULT 1;");
+		if (!ConstraintExists(command, "GoodsReceipts", "FK_GoodsReceipts_ReversedByUsers")) Execute(command, "ALTER TABLE GoodsReceipts ADD CONSTRAINT FK_GoodsReceipts_ReversedByUsers FOREIGN KEY (ReversedByUserId) REFERENCES Users(Id);");
+
+		if (!ColumnExists(command, "StockTransfers", "ReversedAtUtc")) Execute(command, "ALTER TABLE StockTransfers ADD COLUMN ReversedAtUtc varchar(40) NULL;");
+		if (!ColumnExists(command, "StockTransfers", "ReversedByUserId")) Execute(command, "ALTER TABLE StockTransfers ADD COLUMN ReversedByUserId bigint NULL;");
+		if (!ColumnExists(command, "StockTransfers", "ReversalReason")) Execute(command, "ALTER TABLE StockTransfers ADD COLUMN ReversalReason varchar(1000) NULL;");
+		if (!ConstraintExists(command, "StockTransfers", "FK_StockTransfers_ReversedByUsers")) Execute(command, "ALTER TABLE StockTransfers ADD CONSTRAINT FK_StockTransfers_ReversedByUsers FOREIGN KEY (ReversedByUserId) REFERENCES Users(Id);");
+
+		if (!ColumnExists(command, "InventoryCounts", "ReversedAtUtc")) Execute(command, "ALTER TABLE InventoryCounts ADD COLUMN ReversedAtUtc varchar(40) NULL;");
+		if (!ColumnExists(command, "InventoryCounts", "ReversedByUserId")) Execute(command, "ALTER TABLE InventoryCounts ADD COLUMN ReversedByUserId bigint NULL;");
+		if (!ColumnExists(command, "InventoryCounts", "ReversalReason")) Execute(command, "ALTER TABLE InventoryCounts ADD COLUMN ReversalReason varchar(1000) NULL;");
+		if (!ConstraintExists(command, "InventoryCounts", "FK_InventoryCounts_ReversedByUsers")) Execute(command, "ALTER TABLE InventoryCounts ADD CONSTRAINT FK_InventoryCounts_ReversedByUsers FOREIGN KEY (ReversedByUserId) REFERENCES Users(Id);");
+		Execute(command, "UPDATE DatabaseInfo SET Version = 20 WHERE Id = 1;");
 	}
 
 	private static void MigrateGoodsReceiptsToDeliveryDocuments(System.Data.Common.DbCommand command)
@@ -538,7 +571,7 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 	"""
 	CREATE TABLE IF NOT EXISTS PurchaseOrders (Id bigint NOT NULL AUTO_INCREMENT PRIMARY KEY, OrderNumber varchar(50) NOT NULL UNIQUE, SupplierId bigint NOT NULL, OrderDate varchar(10) NOT NULL, ExpectedDeliveryDate varchar(10) NULL, Notes text NULL, Status int NOT NULL DEFAULT 1, Version bigint NOT NULL DEFAULT 1, INDEX IX_PurchaseOrders_SupplierId_Status (SupplierId, Status), INDEX IX_PurchaseOrders_OrderDate (OrderDate), CONSTRAINT FK_PurchaseOrders_Suppliers FOREIGN KEY (SupplierId) REFERENCES Suppliers(Id)) ENGINE=InnoDB;
 	CREATE TABLE IF NOT EXISTS PurchaseOrderLines (Id bigint NOT NULL AUTO_INCREMENT PRIMARY KEY, PurchaseOrderId bigint NOT NULL, LineNumber int NOT NULL, ItemId bigint NOT NULL, Quantity int NOT NULL, UnitPrice decimal(18,2) NOT NULL DEFAULT 0, ReceivedQuantity int NOT NULL DEFAULT 0, Version bigint NOT NULL DEFAULT 1, UNIQUE KEY UQ_PurchaseOrderLines_Number (PurchaseOrderId, LineNumber), UNIQUE KEY UQ_PurchaseOrderLines_Item (PurchaseOrderId, ItemId), INDEX IX_PurchaseOrderLines_ItemId (ItemId), CONSTRAINT CK_PurchaseOrderLines_Quantity CHECK (Quantity > 0 AND ReceivedQuantity >= 0 AND ReceivedQuantity <= Quantity), CONSTRAINT FK_PurchaseOrderLines_Orders FOREIGN KEY (PurchaseOrderId) REFERENCES PurchaseOrders(Id), CONSTRAINT FK_PurchaseOrderLines_Items FOREIGN KEY (ItemId) REFERENCES Items(Id)) ENGINE=InnoDB;
-	CREATE TABLE IF NOT EXISTS GoodsReceipts (Id bigint NOT NULL AUTO_INCREMENT PRIMARY KEY, ReceiptNumber varchar(50) NOT NULL UNIQUE, PurchaseOrderId bigint NOT NULL, ReceiptDate varchar(10) NOT NULL, SupplierDeliveryNoteNumber varchar(100) NOT NULL, ReceivedByUserId bigint NOT NULL, InvoiceNumber varchar(100) NULL, InvoiceDate varchar(10) NULL, InvoiceDocumentPath varchar(1000) NULL, Notes text NULL, INDEX IX_GoodsReceipts_PurchaseOrderId (PurchaseOrderId), INDEX IX_GoodsReceipts_ReceivedByUserId (ReceivedByUserId), CONSTRAINT FK_GoodsReceipts_Orders FOREIGN KEY (PurchaseOrderId) REFERENCES PurchaseOrders(Id), CONSTRAINT FK_GoodsReceipts_ReceivedByUsers FOREIGN KEY (ReceivedByUserId) REFERENCES Users(Id)) ENGINE=InnoDB;
+	CREATE TABLE IF NOT EXISTS GoodsReceipts (Id bigint NOT NULL AUTO_INCREMENT PRIMARY KEY, ReceiptNumber varchar(50) NOT NULL UNIQUE, PurchaseOrderId bigint NOT NULL, ReceiptDate varchar(10) NOT NULL, SupplierDeliveryNoteNumber varchar(100) NOT NULL, ReceivedByUserId bigint NOT NULL, InvoiceNumber varchar(100) NULL, InvoiceDate varchar(10) NULL, InvoiceDocumentPath varchar(1000) NULL, Notes text NULL, ReversedAtUtc varchar(40) NULL, ReversedByUserId bigint NULL, ReversalReason varchar(1000) NULL, Version bigint NOT NULL DEFAULT 1, INDEX IX_GoodsReceipts_PurchaseOrderId (PurchaseOrderId), INDEX IX_GoodsReceipts_ReceivedByUserId (ReceivedByUserId), CONSTRAINT FK_GoodsReceipts_Orders FOREIGN KEY (PurchaseOrderId) REFERENCES PurchaseOrders(Id), CONSTRAINT FK_GoodsReceipts_ReceivedByUsers FOREIGN KEY (ReceivedByUserId) REFERENCES Users(Id), CONSTRAINT FK_GoodsReceipts_ReversedByUsers FOREIGN KEY (ReversedByUserId) REFERENCES Users(Id)) ENGINE=InnoDB;
 	CREATE TABLE IF NOT EXISTS GoodsReceiptLines (Id bigint NOT NULL AUTO_INCREMENT PRIMARY KEY, GoodsReceiptId bigint NOT NULL, PurchaseOrderLineId bigint NOT NULL, InventoryId bigint NOT NULL, Quantity int NOT NULL, UNIQUE KEY UQ_GoodsReceiptLines_OrderLine (GoodsReceiptId, PurchaseOrderLineId), INDEX IX_GoodsReceiptLines_InventoryId (InventoryId), CONSTRAINT CK_GoodsReceiptLines_Quantity CHECK (Quantity > 0), CONSTRAINT FK_GoodsReceiptLines_Receipts FOREIGN KEY (GoodsReceiptId) REFERENCES GoodsReceipts(Id), CONSTRAINT FK_GoodsReceiptLines_OrderLines FOREIGN KEY (PurchaseOrderLineId) REFERENCES PurchaseOrderLines(Id), CONSTRAINT FK_GoodsReceiptLines_Inventories FOREIGN KEY (InventoryId) REFERENCES Inventories(Id)) ENGINE=InnoDB;
 	""";
 
@@ -555,6 +588,9 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 		CreatedByUserId bigint NOT NULL,
 		PostedByUserId bigint NULL,
 		Notes text NULL,
+		ReversedAtUtc varchar(40) NULL,
+		ReversedByUserId bigint NULL,
+		ReversalReason varchar(1000) NULL,
 		Version bigint NOT NULL DEFAULT 1,
 		INDEX IX_StockTransfers_SourceWarehouseId_Status (SourceWarehouseId, Status),
 		INDEX IX_StockTransfers_DestinationWarehouseId_Status (DestinationWarehouseId, Status),
@@ -565,6 +601,7 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 		CONSTRAINT FK_StockTransfers_DestinationWarehouses FOREIGN KEY (DestinationWarehouseId) REFERENCES Warehouses(Id),
 		CONSTRAINT FK_StockTransfers_CreatedByUsers FOREIGN KEY (CreatedByUserId) REFERENCES Users(Id),
 		CONSTRAINT FK_StockTransfers_PostedByUsers FOREIGN KEY (PostedByUserId) REFERENCES Users(Id)
+		,CONSTRAINT FK_StockTransfers_ReversedByUsers FOREIGN KEY (ReversedByUserId) REFERENCES Users(Id)
 	) ENGINE=InnoDB;
 	CREATE TABLE IF NOT EXISTS StockTransferLines
 	(
@@ -601,6 +638,9 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 		CreatedByUserId bigint NOT NULL,
 		PostedByUserId bigint NULL,
 		Notes text NULL,
+		ReversedAtUtc varchar(40) NULL,
+		ReversedByUserId bigint NULL,
+		ReversalReason varchar(1000) NULL,
 		Version bigint NOT NULL DEFAULT 1,
 		INDEX IX_InventoryCounts_WarehouseId_Status (WarehouseId, Status),
 		INDEX IX_InventoryCounts_CreatedAtUtc (CreatedAtUtc),
@@ -608,6 +648,7 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 		CONSTRAINT FK_InventoryCounts_Warehouses FOREIGN KEY (WarehouseId) REFERENCES Warehouses(Id),
 		CONSTRAINT FK_InventoryCounts_CreatedByUsers FOREIGN KEY (CreatedByUserId) REFERENCES Users(Id),
 		CONSTRAINT FK_InventoryCounts_PostedByUsers FOREIGN KEY (PostedByUserId) REFERENCES Users(Id)
+		,CONSTRAINT FK_InventoryCounts_ReversedByUsers FOREIGN KEY (ReversedByUserId) REFERENCES Users(Id)
 	) ENGINE=InnoDB;
 	CREATE TABLE IF NOT EXISTS InventoryCountLines
 	(
@@ -758,8 +799,15 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 		UnitPrice decimal(18,2) NULL,
 		Reference varchar(200) NULL,
 		Notes text NULL,
+		ReversalOfMovementId bigint NULL,
+		ReversalReason varchar(1000) NULL,
+		ReversedAtUtc varchar(40) NULL,
+		ReversedByUserId bigint NULL,
 		CONSTRAINT FK_StockMovements_Inventories FOREIGN KEY (InventoryId) REFERENCES Inventories(Id),
 		CONSTRAINT FK_StockMovements_ReasonCodes FOREIGN KEY (ReasonCodeId) REFERENCES ReasonCodes(Id),
+		CONSTRAINT FK_StockMovements_ReversalOfMovement FOREIGN KEY (ReversalOfMovementId) REFERENCES StockMovements(Id),
+		CONSTRAINT FK_StockMovements_ReversedByUsers FOREIGN KEY (ReversedByUserId) REFERENCES Users(Id),
+		UNIQUE KEY UX_StockMovements_ReversalOfMovementId (ReversalOfMovementId),
 		INDEX IX_StockMovements_InventoryId_TimestampUtc (InventoryId, TimestampUtc),
 		INDEX IX_StockMovements_ReasonCodeId (ReasonCodeId)
 	) ENGINE=InnoDB;

@@ -17,8 +17,11 @@ public sealed class InventoryCountOverviewItem
 	public int CountedLineCount { get; set; }
 	public int DifferenceLineCount { get; set; }
 	public string? Notes { get; set; }
+	public DateTime? ReversedAtUtc { get; set; }
+	public string? ReversalReason { get; set; }
+	public bool IsReversed => ReversedAtUtc is not null;
 	public long Version { get; set; }
-	public string StatusDisplayName => Status.ToString();
+	public string StatusDisplayName => IsReversed ? "Reversed" : Status.ToString();
 	public string ProgressDisplay => TotalLineCount == 0
 		? "Not started"
 		: $"{CountedLineCount:N0} / {TotalLineCount:N0} counted";

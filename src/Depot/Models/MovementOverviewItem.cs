@@ -34,4 +34,11 @@ public sealed class MovementOverviewItem
 	public string? Reference { get; init; }
 
 	public string? Notes { get; init; }
+
+	public long? ReversalOfMovementId { get; init; }
+
+	public bool IsReversed { get; init; }
+
+	public bool CanReverse => MovementType == StockMovementType.Withdrawal &&
+		ReversalOfMovementId is null && !IsReversed;
 }

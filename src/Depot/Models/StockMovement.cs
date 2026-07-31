@@ -24,4 +24,12 @@ public sealed class StockMovement
 	public string? Reference { get; set; }
 
 	public string? Notes { get; set; }
+
+	public long? ReversalOfMovementId { get; set; }
+
+	public string? ReversalReason { get; set; }
+
+	public DateTime? ReversedAtUtc { get; set; }
+
+	public long? ReversedByUserId { get; set; }
 }

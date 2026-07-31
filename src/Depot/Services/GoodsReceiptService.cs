@@ -17,6 +17,7 @@ public sealed class GoodsReceiptService
 	private readonly ReasonCodeRepository _reasonCodes;
 	private readonly AuditRepository _auditEntries;
 	private readonly AuditService _audit;
+	private readonly StockMovementReversalService _reversals;
 
 	public GoodsReceiptService(
 		IDatabaseTransactionRunner transactions,
@@ -26,7 +27,8 @@ public sealed class GoodsReceiptService
 		StockMovementRepository stockMovements,
 		ReasonCodeRepository reasonCodes,
 		AuditRepository auditEntries,
-		AuditService audit)
+		AuditService audit,
+		StockMovementReversalService reversals)
 	{
 		_transactions = transactions;
 		_receipts = receipts;
@@ -36,6 +38,77 @@ public sealed class GoodsReceiptService
 		_reasonCodes = reasonCodes;
 		_auditEntries = auditEntries;
 		_audit = audit;
+		_reversals = reversals;
+	}
+
+	public Task<IReadOnlyList<GoodsReceipt>> ListByPurchaseOrderAsync(long purchaseOrderId, CancellationToken cancellationToken = default) =>
+		_receipts.ListByPurchaseOrderAsync(purchaseOrderId, cancellationToken);
+
+	public async Task<GoodsReceipt> ReverseAsync(long receiptId, long version, long reasonCodeId, string reversalReason, CancellationToken cancellationToken = default)
+	{
+		if (receiptId <= 0) throw new ArgumentOutOfRangeException(nameof(receiptId));
+		var userId = _reversals.RequireUser();
+		return await _transactions.ExecuteAsync(
+			async (transaction, token) =>
+			{
+				var initial = await _receipts.GetByIdAsync(transaction, receiptId, token)
+					?? throw new InvalidOperationException("The goods receipt was not found.");
+				var order = await _purchaseOrders.GetForReceiptUpdateAsync(transaction, initial.PurchaseOrderId, token)
+					?? throw new InvalidOperationException("The purchase order was not found.");
+				var before = await _receipts.GetByIdAsync(transaction, receiptId, token)
+					?? throw new InvalidOperationException("The goods receipt was not found.");
+				if (before.Version != version) throw new ConcurrencyConflictException("goods receipt");
+				if (before.IsReversed) throw new InvalidOperationException("The goods receipt has already been reversed.");
+
+				var originals = await _stockMovements.ListOriginalsByReferenceAsync(transaction, before.ReceiptNumber, token);
+				if (originals.Count != before.Lines.Count || originals.Any(movement => movement.MovementType != StockMovementType.Purchase))
+				{
+					throw new InvalidOperationException("The goods-receipt movements are incomplete or inconsistent.");
+				}
+				await _reversals.CreateReversalsAsync(transaction, originals, reasonCodeId, reversalReason, userId, token);
+
+				var orderLines = order.Lines.ToDictionary(line => line.Id);
+				foreach (var receiptLine in before.Lines)
+				{
+					if (!orderLines.TryGetValue(receiptLine.PurchaseOrderLineId, out var orderLine))
+					{
+						throw new InvalidOperationException("A purchase-order line from the goods receipt was not found.");
+					}
+					var receivedQuantity = orderLine.ReceivedQuantity - receiptLine.Quantity;
+					if (receivedQuantity < 0) throw new InvalidOperationException("The goods-receipt reversal would create a negative received quantity.");
+					if (!await _purchaseOrders.UpdateReceivedQuantityAsync(transaction, orderLine.Id, orderLine.Version, receivedQuantity, token))
+					{
+						throw new ConcurrencyConflictException("purchase order line receipt reversal");
+					}
+					orderLine.ReceivedQuantity = receivedQuantity;
+					orderLine.Version++;
+				}
+
+				var status = orderLines.Values.All(line => line.ReceivedQuantity == 0)
+					? PurchaseOrderStatus.Ordered
+					: orderLines.Values.All(line => line.ReceivedQuantity >= line.Quantity)
+						? PurchaseOrderStatus.Received
+						: PurchaseOrderStatus.PartiallyReceived;
+				if (!await _purchaseOrders.UpdateStatusAsync(transaction, order.Id, order.Version, status, token))
+				{
+					throw new ConcurrencyConflictException("purchase order receipt reversal status");
+				}
+
+				var reversedAtUtc = DateTime.UtcNow;
+				var normalizedReason = reversalReason.Trim();
+				if (!await _receipts.MarkReversedAsync(transaction, before.Id, before.Version, reversedAtUtc, userId, normalizedReason, token))
+				{
+					throw new ConcurrencyConflictException("goods receipt");
+				}
+				var after = Copy(before);
+				after.ReversedAtUtc = reversedAtUtc;
+				after.ReversedByUserId = userId;
+				after.ReversalReason = normalizedReason;
+				after.Version++;
+				await _auditEntries.CreateAsync(transaction, _audit.CreateUpdatedEntry(before.Id, before, after), token);
+				return after;
+			},
+			cancellationToken);
 	}
 
 	public Task<IReadOnlyList<ReceiptInventoryOption>> GetInventoryOptionsAsync(
@@ -214,4 +287,20 @@ public sealed class GoodsReceiptService
 
 	private static string? Normalize(string? value) =>
 		string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+	private static GoodsReceipt Copy(GoodsReceipt source) => new()
+	{
+		Id = source.Id,
+		PurchaseOrderId = source.PurchaseOrderId,
+		ReceiptNumber = source.ReceiptNumber,
+		ReceiptDate = source.ReceiptDate,
+		SupplierDeliveryNoteNumber = source.SupplierDeliveryNoteNumber,
+		ReceivedByUserId = source.ReceivedByUserId,
+		Notes = source.Notes,
+		ReversedAtUtc = source.ReversedAtUtc,
+		ReversedByUserId = source.ReversedByUserId,
+		ReversalReason = source.ReversalReason,
+		Version = source.Version,
+		Lines = source.Lines
+	};
 }

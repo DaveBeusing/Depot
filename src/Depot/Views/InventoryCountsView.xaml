@@ -125,6 +125,16 @@
 								<Button Margin="{StaticResource Button.Margin}" Command="{Binding PostCommand}" Content="Post Count" Style="{StaticResource PrimaryButtonStyle}" Visibility="{Binding IsReview, Converter={StaticResource BooleanToVisibilityConverter}}" />
 								<Button Margin="{StaticResource Button.Margin}" Command="{Binding MoveToReviewCommand}" Content="Move to Review" Style="{StaticResource PrimaryButtonStyle}" Visibility="{Binding IsCounting, Converter={StaticResource BooleanToVisibilityConverter}}" />
 							</StackPanel>
+							<StackPanel Margin="0,20,0,0" Visibility="{Binding CanReverse, Converter={StaticResource BooleanToVisibilityConverter}}">
+								<Separator Margin="0,0,0,16" />
+								<TextBlock Text="Reverse Posted Inventory Count" Style="{StaticResource SectionTitleStyle}" />
+								<TextBlock Margin="0,6,0,0" Text="All inventory-count corrections are counter-posted atomically. The count and original movements remain immutable." Style="{StaticResource CaptionStyle}" TextWrapping="Wrap" />
+								<Grid Margin="0,12,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="2*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+									<ComboBox ItemsSource="{Binding ReversalReasonCodes}" SelectedItem="{Binding SelectedReversalReasonCode}" DisplayMemberPath="Name" Style="{StaticResource AppComboBoxStyle}" />
+									<controls:TextInput Grid.Column="2" Text="{Binding ReversalReason, UpdateSourceTrigger=PropertyChanged}" />
+									<Button Grid.Column="4" Command="{Binding ReverseCommand}" Content="Reverse Count" Style="{StaticResource DangerButtonStyle}" />
+								</Grid>
+							</StackPanel>
 						</StackPanel>
 					</controls:Card>
 

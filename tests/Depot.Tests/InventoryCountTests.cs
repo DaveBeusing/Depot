@@ -389,6 +389,24 @@ public sealed class InventoryCountTests
 	}
 
 	[Fact]
+	public async Task PostedInventoryCountReversalCounterPostsCorrectionsAndRestoresPrePostingStock()
+	{
+		await using var context = await ProcurementTestContext.CreateSqliteAsync();
+		var service = CreateService(context);
+		await AddStockAsync(context, context.InventoryId, 5);
+		var review = await PrepareReviewAsync(context, service, line => line.InventoryId == context.InventoryId ? 8 : line.ExpectedQuantity);
+		var posted = await service.PostAsync(review.Id, review.Version);
+		var reasonCodeId = await context.ScalarAsync("SELECT Id FROM ReasonCodes WHERE Code = $Code;", new DatabaseParameter("$Code", ReasonCodeSystemCodes.InventoryCorrection));
+
+		var reversed = await service.ReverseAsync(posted.Id, posted.Version, reasonCodeId, "Count was entered for the wrong unit");
+
+		Assert.True(reversed.IsReversed);
+		Assert.Equal(5, await CurrentStockAsync(context, context.InventoryId));
+		Assert.Equal(1, await context.ScalarAsync("SELECT COUNT(*) FROM StockMovements WHERE Reference = $Reference AND ReversalOfMovementId IS NOT NULL;", new DatabaseParameter("$Reference", posted.CountNumber)));
+		await Assert.ThrowsAnyAsync<InvalidOperationException>(() => service.ReverseAsync(posted.Id, posted.Version, reasonCodeId, "Duplicate"));
+	}
+
+	[Fact]
 	public async Task InventoryCountsViewModelLoadsServerPagedOverview()
 	{
 		await using var context = await ProcurementTestContext.CreateSqliteAsync();
@@ -399,7 +417,7 @@ public sealed class InventoryCountTests
 			new WarehouseRepository(context.Data),
 			new StorageLocationRepository(context.Data),
 			audit);
-		using var viewModel = new InventoryCountsViewModel(service, warehouses, new ConfirmingFileDialogs());
+		using var viewModel = new InventoryCountsViewModel(service, warehouses, new ConfirmingFileDialogs(), new ReasonCodeService(new ReasonCodeRepository(context.Data), audit));
 
 		await viewModel.LoadAsync();
 
@@ -451,7 +469,14 @@ public sealed class InventoryCountTests
 			new ReasonCodeRepository(context.Data),
 			new WarehouseRepository(context.Data),
 			auditRepository,
-			audit);
+			audit,
+			new StockMovementReversalService(
+				new DatabaseTransactionRunner(context.Data),
+				new InventoryRepository(context.Data),
+				new StockMovementRepository(context.Data),
+				new ReasonCodeRepository(context.Data),
+				auditRepository,
+				audit));
 	}
 
 	private static async Task<InventoryCount> NewDraftAsync(

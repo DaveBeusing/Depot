@@ -16,6 +16,9 @@ public sealed class StockTransferOverviewItem
 	public string CreatedByUserName { get; set; } = string.Empty;
 	public int LineCount { get; set; }
 	public string? Notes { get; set; }
+	public DateTime? ReversedAtUtc { get; set; }
+	public string? ReversalReason { get; set; }
+	public bool IsReversed => ReversedAtUtc is not null;
 	public long Version { get; set; }
-	public string StatusDisplayName => Status.ToString();
+	public string StatusDisplayName => IsReversed ? "Reversed" : Status.ToString();
 }

@@ -106,7 +106,11 @@ public sealed class StockTransferTests
 			new WarehouseRepository(context.Data),
 			new StorageLocationRepository(context.Data),
 			audit);
-		using var viewModel = new StockTransfersViewModel(fixture.Service, warehouses, new ConfirmingFileDialogs());
+		using var viewModel = new StockTransfersViewModel(
+			fixture.Service,
+			warehouses,
+			new ConfirmingFileDialogs(),
+			new ReasonCodeService(new ReasonCodeRepository(context.Data), audit));
 
 		await viewModel.LoadAsync();
 
@@ -283,6 +287,25 @@ public sealed class StockTransferTests
 		Assert.Equal(1, await context.ScalarAsync(
 			"SELECT COUNT(*) FROM AuditEntries WHERE EntityType = 'StockTransfer' AND EntityId = $Id AND Action = 'Updated' AND AfterJson LIKE '%\"status\":2%';",
 			new DatabaseParameter("$Id", posted.Id)));
+	}
+
+	[Fact]
+	public async Task PostedTransferReversalCreatesCompleteCounterTransferAndRestoresStock()
+	{
+		await using var context = await ProcurementTestContext.CreateSqliteAsync();
+		var fixture = await CreateFixtureAsync(context);
+		await AddStockAsync(context, fixture.SourceInventoryId, 10);
+		var draft = await fixture.Service.SaveDraftAsync(NewTransfer(fixture));
+		var posted = await fixture.Service.PostAsync(draft.Id, draft.Version);
+		var reasonCodeId = await context.ScalarAsync("SELECT Id FROM ReasonCodes WHERE Code = $Code;", new DatabaseParameter("$Code", ReasonCodeSystemCodes.Transfer));
+
+		var reversed = await fixture.Service.ReverseAsync(posted.Id, posted.Version, reasonCodeId, "Transfer sent to wrong warehouse");
+
+		Assert.True(reversed.IsReversed);
+		Assert.Equal(10, await StockAsync(context, fixture.SourceInventoryId));
+		Assert.Equal(0, await StockAsync(context, fixture.DestinationInventoryId));
+		Assert.Equal(2, await context.ScalarAsync("SELECT COUNT(*) FROM StockMovements WHERE Reference = $Reference AND ReversalOfMovementId IS NOT NULL;", new DatabaseParameter("$Reference", Reference(posted))));
+		await Assert.ThrowsAnyAsync<InvalidOperationException>(() => fixture.Service.ReverseAsync(posted.Id, posted.Version, reasonCodeId, "Duplicate"));
 	}
 
 	[Fact]
@@ -523,7 +546,14 @@ public sealed class StockTransferTests
 			new StockMovementRepository(context.Data),
 			new ReasonCodeRepository(context.Data),
 			auditRepository,
-			audit);
+			audit,
+			new StockMovementReversalService(
+				new DatabaseTransactionRunner(context.Data),
+				new InventoryRepository(context.Data),
+				new StockMovementRepository(context.Data),
+				new ReasonCodeRepository(context.Data),
+				auditRepository,
+				audit));
 		return new TransferFixture(
 			service,
 			sourceWarehouseId,

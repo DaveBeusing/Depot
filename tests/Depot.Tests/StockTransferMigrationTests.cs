@@ -36,7 +36,7 @@ public sealed class StockTransferMigrationTests : IDisposable
 
 		using var migrated = new SqliteConnection($"Data Source={_databasePath}");
 		migrated.Open();
-		Assert.Equal(19L, Scalar(migrated, "SELECT Version FROM DatabaseInfo;"));
+		Assert.Equal(20L, Scalar(migrated, "SELECT Version FROM DatabaseInfo;"));
 		Assert.Equal(1L, Scalar(migrated, "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'StockTransfers';"));
 		Assert.Equal(1L, Scalar(migrated, "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'StockTransferLines';"));
 		Assert.Equal(1L, Scalar(migrated, "SELECT COUNT(*) FROM sqlite_master WHERE type = 'index' AND name = 'IX_StockTransferLines_SourceInventoryId';"));
