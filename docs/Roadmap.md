@@ -77,7 +77,7 @@ This roadmap reflects the implementation on the current `master` branch. “Impl
 - Large-data readiness: paging/search/streaming infrastructure exists, but some reports and compatibility services still materialize full tables.
 - User-facing paging: server-side paging is used, but not every screen exposes complete page navigation.
 - Audit tooling: audit records are written, but no audit viewer, filter, retention, or export UI exists.
-- Transfer workflow: the movement type and reason code exist, but a complete dedicated transfer workflow requires verification and UI completion.
+- Transfer workflow: the audited Draft/Cancelled domain and persistence foundation exists; atomic TransferOut/TransferIn posting, verification, and UI remain open.
 - General settings: database and backup settings are implemented; the general Settings page remains a placeholder.
 - Provider verification: SQL Server and MySQL/MariaDB implementations exist, but live-server integration coverage is incomplete.
 

@@ -39,6 +39,8 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 			command.CommandText = ProcurementSql;
 			command.Parameters.Clear();
 			command.ExecuteNonQuery();
+			command.CommandText = StockTransferSql;
+			command.ExecuteNonQuery();
 
 			command.CommandText = "SELECT Version FROM DatabaseInfo WHERE Id = 1;";
 			command.Parameters.Clear();
@@ -88,6 +90,11 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 				MigrateGoodsReceiptsToDeliveryDocuments(command);
 				version = 17;
 			}
+			if (version == 17)
+			{
+				MigrateToStockTransfers(command);
+				version = 18;
+			}
 			if (version != DatabaseVersion.CurrentVersion)
 			{
 				throw new InvalidOperationException(
@@ -100,6 +107,13 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 			releaseCommand.CommandText = "SELECT RELEASE_LOCK('Depot.SchemaMigration');";
 			releaseCommand.ExecuteScalar();
 		}
+	}
+
+	private static void MigrateToStockTransfers(System.Data.Common.DbCommand command)
+	{
+		command.CommandText = StockTransferSql + " UPDATE DatabaseInfo SET Version = 18 WHERE Id = 1;";
+		command.Parameters.Clear();
+		command.ExecuteNonQuery();
 	}
 
 	private static void MigrateGoodsReceiptsToDeliveryDocuments(System.Data.Common.DbCommand command)
@@ -512,6 +526,51 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 	CREATE TABLE IF NOT EXISTS PurchaseOrderLines (Id bigint NOT NULL AUTO_INCREMENT PRIMARY KEY, PurchaseOrderId bigint NOT NULL, LineNumber int NOT NULL, ItemId bigint NOT NULL, Quantity int NOT NULL, UnitPrice decimal(18,2) NOT NULL DEFAULT 0, ReceivedQuantity int NOT NULL DEFAULT 0, Version bigint NOT NULL DEFAULT 1, UNIQUE KEY UQ_PurchaseOrderLines_Number (PurchaseOrderId, LineNumber), UNIQUE KEY UQ_PurchaseOrderLines_Item (PurchaseOrderId, ItemId), INDEX IX_PurchaseOrderLines_ItemId (ItemId), CONSTRAINT CK_PurchaseOrderLines_Quantity CHECK (Quantity > 0 AND ReceivedQuantity >= 0 AND ReceivedQuantity <= Quantity), CONSTRAINT FK_PurchaseOrderLines_Orders FOREIGN KEY (PurchaseOrderId) REFERENCES PurchaseOrders(Id), CONSTRAINT FK_PurchaseOrderLines_Items FOREIGN KEY (ItemId) REFERENCES Items(Id)) ENGINE=InnoDB;
 	CREATE TABLE IF NOT EXISTS GoodsReceipts (Id bigint NOT NULL AUTO_INCREMENT PRIMARY KEY, ReceiptNumber varchar(50) NOT NULL UNIQUE, PurchaseOrderId bigint NOT NULL, ReceiptDate varchar(10) NOT NULL, SupplierDeliveryNoteNumber varchar(100) NOT NULL, ReceivedByUserId bigint NOT NULL, InvoiceNumber varchar(100) NULL, InvoiceDate varchar(10) NULL, InvoiceDocumentPath varchar(1000) NULL, Notes text NULL, INDEX IX_GoodsReceipts_PurchaseOrderId (PurchaseOrderId), INDEX IX_GoodsReceipts_ReceivedByUserId (ReceivedByUserId), CONSTRAINT FK_GoodsReceipts_Orders FOREIGN KEY (PurchaseOrderId) REFERENCES PurchaseOrders(Id), CONSTRAINT FK_GoodsReceipts_ReceivedByUsers FOREIGN KEY (ReceivedByUserId) REFERENCES Users(Id)) ENGINE=InnoDB;
 	CREATE TABLE IF NOT EXISTS GoodsReceiptLines (Id bigint NOT NULL AUTO_INCREMENT PRIMARY KEY, GoodsReceiptId bigint NOT NULL, PurchaseOrderLineId bigint NOT NULL, InventoryId bigint NOT NULL, Quantity int NOT NULL, UNIQUE KEY UQ_GoodsReceiptLines_OrderLine (GoodsReceiptId, PurchaseOrderLineId), INDEX IX_GoodsReceiptLines_InventoryId (InventoryId), CONSTRAINT CK_GoodsReceiptLines_Quantity CHECK (Quantity > 0), CONSTRAINT FK_GoodsReceiptLines_Receipts FOREIGN KEY (GoodsReceiptId) REFERENCES GoodsReceipts(Id), CONSTRAINT FK_GoodsReceiptLines_OrderLines FOREIGN KEY (PurchaseOrderLineId) REFERENCES PurchaseOrderLines(Id), CONSTRAINT FK_GoodsReceiptLines_Inventories FOREIGN KEY (InventoryId) REFERENCES Inventories(Id)) ENGINE=InnoDB;
+	""";
+
+	private const string StockTransferSql =
+	"""
+	CREATE TABLE IF NOT EXISTS StockTransfers
+	(
+		Id bigint NOT NULL AUTO_INCREMENT PRIMARY KEY,
+		TransferNumber varchar(50) NOT NULL UNIQUE,
+		SourceWarehouseId bigint NOT NULL,
+		DestinationWarehouseId bigint NOT NULL,
+		TransferDate varchar(10) NOT NULL,
+		Status int NOT NULL DEFAULT 1,
+		CreatedByUserId bigint NOT NULL,
+		PostedByUserId bigint NULL,
+		Notes text NULL,
+		Version bigint NOT NULL DEFAULT 1,
+		INDEX IX_StockTransfers_SourceWarehouseId_Status (SourceWarehouseId, Status),
+		INDEX IX_StockTransfers_DestinationWarehouseId_Status (DestinationWarehouseId, Status),
+		INDEX IX_StockTransfers_TransferDate (TransferDate),
+		CONSTRAINT CK_StockTransfers_Warehouses CHECK (SourceWarehouseId <> DestinationWarehouseId),
+		CONSTRAINT CK_StockTransfers_Status CHECK (Status IN (1, 2, 3)),
+		CONSTRAINT FK_StockTransfers_SourceWarehouses FOREIGN KEY (SourceWarehouseId) REFERENCES Warehouses(Id),
+		CONSTRAINT FK_StockTransfers_DestinationWarehouses FOREIGN KEY (DestinationWarehouseId) REFERENCES Warehouses(Id),
+		CONSTRAINT FK_StockTransfers_CreatedByUsers FOREIGN KEY (CreatedByUserId) REFERENCES Users(Id),
+		CONSTRAINT FK_StockTransfers_PostedByUsers FOREIGN KEY (PostedByUserId) REFERENCES Users(Id)
+	) ENGINE=InnoDB;
+	CREATE TABLE IF NOT EXISTS StockTransferLines
+	(
+		Id bigint NOT NULL AUTO_INCREMENT PRIMARY KEY,
+		StockTransferId bigint NOT NULL,
+		LineNumber int NOT NULL,
+		SourceInventoryId bigint NOT NULL,
+		DestinationInventoryId bigint NOT NULL,
+		Quantity int NOT NULL,
+		Version bigint NOT NULL DEFAULT 1,
+		UNIQUE KEY UQ_StockTransferLines_Number (StockTransferId, LineNumber),
+		UNIQUE KEY UQ_StockTransferLines_InventoryPair (StockTransferId, SourceInventoryId, DestinationInventoryId),
+		INDEX IX_StockTransferLines_SourceInventoryId (SourceInventoryId),
+		INDEX IX_StockTransferLines_DestinationInventoryId (DestinationInventoryId),
+		CONSTRAINT CK_StockTransferLines_Quantity CHECK (Quantity > 0),
+		CONSTRAINT CK_StockTransferLines_Inventories CHECK (SourceInventoryId <> DestinationInventoryId),
+		CONSTRAINT FK_StockTransferLines_Transfers FOREIGN KEY (StockTransferId) REFERENCES StockTransfers(Id),
+		CONSTRAINT FK_StockTransferLines_SourceInventories FOREIGN KEY (SourceInventoryId) REFERENCES Inventories(Id),
+		CONSTRAINT FK_StockTransferLines_DestinationInventories FOREIGN KEY (DestinationInventoryId) REFERENCES Inventories(Id)
+	) ENGINE=InnoDB;
 	""";
 
 	private const string SchemaSql =

@@ -45,6 +45,12 @@ internal sealed class ServiceComposition
 			repositories.ReasonCodes,
 			repositories.Audit,
 			audit);
+		StockTransfers = new StockTransferService(
+			database.TransactionRunner,
+			repositories.StockTransfers,
+			repositories.Inventories,
+			repositories.Audit,
+			audit);
 		Items = new ItemService(
 			repositories.Items,
 			audit,
@@ -107,6 +113,7 @@ internal sealed class ServiceComposition
 	public SupplierItemService SupplierItems { get; }
 	public PurchaseOrderService PurchaseOrders { get; }
 	public GoodsReceiptService GoodsReceipts { get; }
+	public StockTransferService StockTransfers { get; }
 	public WarehouseService Warehouses { get; }
 	public StorageLocationService StorageLocations { get; }
 	public UserService Users { get; }

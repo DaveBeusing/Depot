@@ -32,6 +32,8 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 		command.CommandText = ProcurementSql;
 		command.Parameters.Clear();
 		command.ExecuteNonQuery();
+		command.CommandText = StockTransferSql;
+		command.ExecuteNonQuery();
 
 		command.CommandText = "SELECT Version FROM DatabaseInfo WHERE Id = 1;";
 		var version = Convert.ToInt32(command.ExecuteScalar(), CultureInfo.InvariantCulture);
@@ -80,6 +82,11 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 			MigrateGoodsReceiptsToDeliveryDocuments(command);
 			version = 17;
 		}
+		if (version == 17)
+		{
+			MigrateToStockTransfers(command);
+			version = 18;
+		}
 		if (version != DatabaseVersion.CurrentVersion)
 		{
 			throw new InvalidOperationException(
@@ -87,6 +94,13 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 		}
 
 		transaction.Commit();
+	}
+
+	private static void MigrateToStockTransfers(System.Data.Common.DbCommand command)
+	{
+		command.CommandText = StockTransferSql + " UPDATE DatabaseInfo SET Version = 18 WHERE Id = 1;";
+		command.Parameters.Clear();
+		command.ExecuteNonQuery();
 	}
 
 	private static void MigrateGoodsReceiptsToDeliveryDocuments(System.Data.Common.DbCommand command)
@@ -382,6 +396,57 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 	BEGIN
 		CREATE TABLE GoodsReceiptLines (Id bigint IDENTITY(1,1) NOT NULL PRIMARY KEY, GoodsReceiptId bigint NOT NULL, PurchaseOrderLineId bigint NOT NULL, InventoryId bigint NOT NULL, Quantity int NOT NULL, CONSTRAINT UQ_GoodsReceiptLines_OrderLine UNIQUE (GoodsReceiptId, PurchaseOrderLineId), CONSTRAINT CK_GoodsReceiptLines_Quantity CHECK (Quantity > 0), CONSTRAINT FK_GoodsReceiptLines_Receipts FOREIGN KEY (GoodsReceiptId) REFERENCES GoodsReceipts(Id), CONSTRAINT FK_GoodsReceiptLines_OrderLines FOREIGN KEY (PurchaseOrderLineId) REFERENCES PurchaseOrderLines(Id), CONSTRAINT FK_GoodsReceiptLines_Inventories FOREIGN KEY (InventoryId) REFERENCES Inventories(Id));
 		CREATE INDEX IX_GoodsReceiptLines_InventoryId ON GoodsReceiptLines(InventoryId);
+	END;
+	""";
+
+	private const string StockTransferSql =
+	"""
+	IF OBJECT_ID(N'StockTransfers', N'U') IS NULL
+	BEGIN
+		CREATE TABLE StockTransfers
+		(
+			Id bigint IDENTITY(1,1) NOT NULL PRIMARY KEY,
+			TransferNumber nvarchar(50) NOT NULL UNIQUE,
+			SourceWarehouseId bigint NOT NULL,
+			DestinationWarehouseId bigint NOT NULL,
+			TransferDate nvarchar(10) NOT NULL,
+			Status int NOT NULL DEFAULT 1,
+			CreatedByUserId bigint NOT NULL,
+			PostedByUserId bigint NULL,
+			Notes nvarchar(4000) NULL,
+			Version bigint NOT NULL DEFAULT 1,
+			CONSTRAINT CK_StockTransfers_Warehouses CHECK (SourceWarehouseId <> DestinationWarehouseId),
+			CONSTRAINT CK_StockTransfers_Status CHECK (Status IN (1, 2, 3)),
+			CONSTRAINT FK_StockTransfers_SourceWarehouses FOREIGN KEY (SourceWarehouseId) REFERENCES Warehouses(Id),
+			CONSTRAINT FK_StockTransfers_DestinationWarehouses FOREIGN KEY (DestinationWarehouseId) REFERENCES Warehouses(Id),
+			CONSTRAINT FK_StockTransfers_CreatedByUsers FOREIGN KEY (CreatedByUserId) REFERENCES Users(Id),
+			CONSTRAINT FK_StockTransfers_PostedByUsers FOREIGN KEY (PostedByUserId) REFERENCES Users(Id)
+		);
+		CREATE INDEX IX_StockTransfers_SourceWarehouseId_Status ON StockTransfers(SourceWarehouseId, Status);
+		CREATE INDEX IX_StockTransfers_DestinationWarehouseId_Status ON StockTransfers(DestinationWarehouseId, Status);
+		CREATE INDEX IX_StockTransfers_TransferDate ON StockTransfers(TransferDate);
+	END;
+	IF OBJECT_ID(N'StockTransferLines', N'U') IS NULL
+	BEGIN
+		CREATE TABLE StockTransferLines
+		(
+			Id bigint IDENTITY(1,1) NOT NULL PRIMARY KEY,
+			StockTransferId bigint NOT NULL,
+			LineNumber int NOT NULL,
+			SourceInventoryId bigint NOT NULL,
+			DestinationInventoryId bigint NOT NULL,
+			Quantity int NOT NULL,
+			Version bigint NOT NULL DEFAULT 1,
+			CONSTRAINT UQ_StockTransferLines_Number UNIQUE (StockTransferId, LineNumber),
+			CONSTRAINT UQ_StockTransferLines_InventoryPair UNIQUE (StockTransferId, SourceInventoryId, DestinationInventoryId),
+			CONSTRAINT CK_StockTransferLines_Quantity CHECK (Quantity > 0),
+			CONSTRAINT CK_StockTransferLines_Inventories CHECK (SourceInventoryId <> DestinationInventoryId),
+			CONSTRAINT FK_StockTransferLines_Transfers FOREIGN KEY (StockTransferId) REFERENCES StockTransfers(Id),
+			CONSTRAINT FK_StockTransferLines_SourceInventories FOREIGN KEY (SourceInventoryId) REFERENCES Inventories(Id),
+			CONSTRAINT FK_StockTransferLines_DestinationInventories FOREIGN KEY (DestinationInventoryId) REFERENCES Inventories(Id)
+		);
+		CREATE INDEX IX_StockTransferLines_SourceInventoryId ON StockTransferLines(SourceInventoryId);
+		CREATE INDEX IX_StockTransferLines_DestinationInventoryId ON StockTransferLines(DestinationInventoryId);
 	END;
 	""";
 

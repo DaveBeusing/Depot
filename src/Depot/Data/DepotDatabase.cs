@@ -174,6 +174,8 @@ public sealed class DepotDatabase : IDatabaseInitializer
 		CreateUsersTable(
 			connection);
 
+		CreateStockTransferTables(connection);
+
 		CreateAuditEntriesTable(
 			connection);
 
@@ -406,6 +408,57 @@ public sealed class DepotDatabase : IDatabaseInitializer
 			FOREIGN KEY(PurchaseOrderLineId) REFERENCES PurchaseOrderLines(Id), FOREIGN KEY(InventoryId) REFERENCES Inventories(Id)
 		);
 		CREATE INDEX IF NOT EXISTS IX_GoodsReceiptLines_InventoryId ON GoodsReceiptLines(InventoryId);
+		""";
+		command.ExecuteNonQuery();
+	}
+
+	private static void CreateStockTransferTables(SqliteConnection connection)
+	{
+		using var command = connection.CreateCommand();
+		command.CommandText =
+		"""
+		CREATE TABLE IF NOT EXISTS StockTransfers
+		(
+			Id INTEGER PRIMARY KEY AUTOINCREMENT,
+			TransferNumber TEXT NOT NULL UNIQUE,
+			SourceWarehouseId INTEGER NOT NULL,
+			DestinationWarehouseId INTEGER NOT NULL,
+			TransferDate TEXT NOT NULL,
+			Status INTEGER NOT NULL DEFAULT 1,
+			CreatedByUserId INTEGER NOT NULL,
+			PostedByUserId INTEGER NULL,
+			Notes TEXT NULL,
+			Version INTEGER NOT NULL DEFAULT 1,
+			FOREIGN KEY(SourceWarehouseId) REFERENCES Warehouses(Id),
+			FOREIGN KEY(DestinationWarehouseId) REFERENCES Warehouses(Id),
+			FOREIGN KEY(CreatedByUserId) REFERENCES Users(Id),
+			FOREIGN KEY(PostedByUserId) REFERENCES Users(Id),
+			CHECK(SourceWarehouseId <> DestinationWarehouseId),
+			CHECK(Status IN (1, 2, 3))
+		);
+		CREATE INDEX IF NOT EXISTS IX_StockTransfers_SourceWarehouseId_Status ON StockTransfers(SourceWarehouseId, Status);
+		CREATE INDEX IF NOT EXISTS IX_StockTransfers_DestinationWarehouseId_Status ON StockTransfers(DestinationWarehouseId, Status);
+		CREATE INDEX IF NOT EXISTS IX_StockTransfers_TransferDate ON StockTransfers(TransferDate);
+
+		CREATE TABLE IF NOT EXISTS StockTransferLines
+		(
+			Id INTEGER PRIMARY KEY AUTOINCREMENT,
+			StockTransferId INTEGER NOT NULL,
+			LineNumber INTEGER NOT NULL,
+			SourceInventoryId INTEGER NOT NULL,
+			DestinationInventoryId INTEGER NOT NULL,
+			Quantity INTEGER NOT NULL,
+			Version INTEGER NOT NULL DEFAULT 1,
+			UNIQUE(StockTransferId, LineNumber),
+			UNIQUE(StockTransferId, SourceInventoryId, DestinationInventoryId),
+			FOREIGN KEY(StockTransferId) REFERENCES StockTransfers(Id),
+			FOREIGN KEY(SourceInventoryId) REFERENCES Inventories(Id),
+			FOREIGN KEY(DestinationInventoryId) REFERENCES Inventories(Id),
+			CHECK(Quantity > 0),
+			CHECK(SourceInventoryId <> DestinationInventoryId)
+		);
+		CREATE INDEX IF NOT EXISTS IX_StockTransferLines_SourceInventoryId ON StockTransferLines(SourceInventoryId);
+		CREATE INDEX IF NOT EXISTS IX_StockTransferLines_DestinationInventoryId ON StockTransferLines(DestinationInventoryId);
 		""";
 		command.ExecuteNonQuery();
 	}
@@ -807,6 +860,13 @@ public sealed class DepotDatabase : IDatabaseInitializer
 			MigrateGoodsReceiptsToDeliveryDocuments(connection);
 			SetDatabaseVersion(connection, 17);
 			migratedVersion = 17;
+		}
+
+		if (migratedVersion == 17)
+		{
+			CreateStockTransferTables(connection);
+			SetDatabaseVersion(connection, 18);
+			migratedVersion = 18;
 		}
 
 		if (migratedVersion < DatabaseVersion.CurrentVersion)

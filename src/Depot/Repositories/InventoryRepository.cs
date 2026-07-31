@@ -51,6 +51,48 @@ public sealed class InventoryRepository : DatabaseRepository
 			parameters);
 	}
 
+	public async Task<IReadOnlyList<InventoryTransferContext>> GetTransferContextsByIdsForUpdateAsync(
+		DatabaseTransactionContext transaction,
+		IEnumerable<long> ids,
+		CancellationToken cancellationToken)
+	{
+		var inventoryIds = ids.Distinct().OrderBy(id => id).ToArray();
+		if (inventoryIds.Length == 0)
+		{
+			return [];
+		}
+
+		var parameters = inventoryIds
+			.Select((id, index) => Parameter($"$InventoryId{index}", id))
+			.ToArray();
+		var parameterList = string.Join(", ", parameters.Select(parameter => parameter.Name));
+		await transaction.Session.QueryAsync(
+			Database.GetInventoryBatchLockSql(parameterList),
+			reader => reader.GetInt64(0),
+			cancellationToken,
+			parameters);
+		return await transaction.Session.QueryAsync(
+			$"""
+			SELECT inv.Id, inv.ItemId, sl.WarehouseId, inv.IsActive, sl.IsActive, w.IsActive
+			FROM Inventories inv
+			INNER JOIN StorageLocations sl ON sl.Id = inv.StorageLocationId
+			INNER JOIN Warehouses w ON w.Id = sl.WarehouseId
+			WHERE inv.Id IN ({parameterList})
+			ORDER BY inv.Id;
+			""",
+			reader => new InventoryTransferContext
+			{
+				InventoryId = reader.GetInt64(0),
+				ItemId = reader.GetInt64(1),
+				WarehouseId = reader.GetInt64(2),
+				IsInventoryActive = reader.GetBoolean(3),
+				IsStorageLocationActive = reader.GetBoolean(4),
+				IsWarehouseActive = reader.GetBoolean(5)
+			},
+			cancellationToken,
+			parameters);
+	}
+
 	public Task<Inventory?> GetByContextAsync(
 		long itemId,
 		long purposeId,

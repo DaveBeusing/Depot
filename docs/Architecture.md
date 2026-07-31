@@ -84,7 +84,7 @@ SQLite is covered by integration tests. SQL Server and MySQL/MariaDB have provid
 
 ## Schema and migrations
 
-The current database schema version is **17**. It is independent from the application SemVer version.
+The current database schema version is **18**. It is independent from the application SemVer version.
 
 All providers create the current schema and migrate supported older schemas forward. Migrations cover authentication, inventory-based movements, audit/concurrency, warehouse structure, reason codes, normalized item master data, suppliers, supplier categories, supplier items, purchase orders, and goods receipts.
 
@@ -127,6 +127,12 @@ Master data uses activation/deactivation rather than hard deletion. Services per
 Legacy `InvoiceNumber`, `InvoiceDate`, and `InvoiceDocumentPath` database columns remain nullable for transition and backup compatibility. They are not exposed by the current domain model or UI and are not populated by new receipts. Version-17 migration preserves their existing values, assigns `LEGACY-GR-…` delivery-note numbers, and derives the receiving user from the original receipt audit entry where possible.
 
 Purchase-order creation, draft editing, ordering, and cancellation commit their business change and before/after audit entry in one transaction. Goods-receipt posting remains atomic across the receipt, receipt lines, purchase-order received quantities, stock movements, purchase-order status, and receipt audit entry. Purchase-order locking prevents concurrent over-receipt.
+
+### Stock transfers
+
+Schema version 18 introduces `StockTransfer` and `StockTransferLine` as the audited foundation for warehouse-to-warehouse transfers. Draft transfers validate distinct warehouses, matching source/destination items, inventory-to-warehouse assignments, positive quantities, and unique inventory pairs. Draft editing and cancellation use optimistic concurrency and commit their audit entry atomically.
+
+The `Posted` status is reserved by the domain and schema, but no posting operation exists yet. TransferOut/TransferIn stock movements and their atomic booking workflow are intentionally not implemented in this increment, and there is no stock-transfer UI yet.
 
 ### Procurement database roundtrips
 

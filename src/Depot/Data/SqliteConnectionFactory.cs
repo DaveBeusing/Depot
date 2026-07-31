@@ -48,6 +48,9 @@ public sealed class SqliteConnectionFactory : IDatabaseConnectionFactory
 	public string GetPurchaseOrderLockSql() =>
 		"SELECT Id FROM PurchaseOrders WHERE Id = $PurchaseOrderId;";
 
+	public string GetStockTransferLockSql() =>
+		"SELECT Id FROM StockTransfers WHERE Id = $StockTransferId;";
+
 	public string GetPagingClause() => "LIMIT $PageSize OFFSET $Offset";
 
 }
