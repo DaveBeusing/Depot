@@ -177,7 +177,15 @@ internal sealed class ProcurementTestContext : IAsyncDisposable
 			new SupplierRepository(context.Data),
 			new ItemRepository(context.Data),
 			audit);
-		context._receipts = new GoodsReceiptService(new GoodsReceiptRepository(context.Data), audit);
+		context._receipts = new GoodsReceiptService(
+			new DatabaseTransactionRunner(context.Data),
+			new GoodsReceiptRepository(context.Data),
+			new PurchaseOrderRepository(context.Data),
+			new InventoryRepository(context.Data),
+			new StockMovementRepository(context.Data),
+			new ReasonCodeRepository(context.Data),
+			new AuditRepository(context.Data),
+			audit);
 		return context;
 	}
 

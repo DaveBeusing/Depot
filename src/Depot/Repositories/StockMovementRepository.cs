@@ -23,6 +23,27 @@ public sealed class StockMovementRepository : DatabaseRepository
 	{
 	}
 
+	public Task<long> CreateAsync(
+		DatabaseTransactionContext transaction,
+		StockMovement movement,
+		CancellationToken cancellationToken) =>
+		transaction.Session.InsertAsync(
+			"""
+			INSERT INTO StockMovements
+			(InventoryId, ReasonCodeId, MovementType, TimestampUtc, Quantity, UnitPrice, Reference, Notes)
+			VALUES
+			($InventoryId, $ReasonCodeId, $MovementType, $TimestampUtc, $Quantity, $UnitPrice, $Reference, $Notes);
+			""",
+			cancellationToken,
+			Parameter("$InventoryId", movement.InventoryId),
+			Parameter("$ReasonCodeId", movement.ReasonCodeId),
+			Parameter("$MovementType", (int)movement.MovementType),
+			Parameter("$TimestampUtc", movement.TimestampUtc.ToString("O", CultureInfo.InvariantCulture)),
+			Parameter("$Quantity", movement.Quantity),
+			Parameter("$UnitPrice", movement.UnitPrice),
+			Parameter("$Reference", movement.Reference),
+			Parameter("$Notes", movement.Notes));
+
 	public Task<long> CreateAtomicAsync(
 		StockMovement movement,
 		AuditEntry auditEntry,

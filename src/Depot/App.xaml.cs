@@ -27,6 +27,7 @@ public partial class App : Application
 
 	public static IDatabaseConnectionFactory ConnectionFactory { get; private set; } = null!;
 	public static DatabaseAccess DataAccess { get; private set; } = null!;
+	public static IDatabaseTransactionRunner DatabaseTransactionRunner { get; private set; } = null!;
 	public static IDatabaseInitializer Database { get; private set; } = null!;
 	public static ItemRepository ItemRepository { get; private set; } = null!;
 	public static PurposeRepository PurposeRepository { get; private set; } = null!;
@@ -112,6 +113,7 @@ public partial class App : Application
 
 		ConnectionFactory = DatabaseProviderFactory.CreateConnectionFactory(connectionSettings);
 		DataAccess = new DatabaseAccess(ConnectionFactory);
+		DatabaseTransactionRunner = new DatabaseTransactionRunner(DataAccess);
 		Database = DatabaseProviderFactory.CreateInitializer(ConnectionFactory);
 		Database.Initialize();
 		ConnectionStatusService.SetConnected(connectionSettings);
@@ -199,7 +201,15 @@ public partial class App : Application
 		SupplierService = new SupplierService(SupplierRepository, SupplierItemRepository, SupplierCategoryRepository, AuditService);
 		SupplierItemService = new SupplierItemService(SupplierItemRepository, SupplierRepository, ItemRepository, AuditService);
 		PurchaseOrderService = new PurchaseOrderService(PurchaseOrderRepository, SupplierRepository, ItemRepository, AuditService);
-		GoodsReceiptService = new GoodsReceiptService(GoodsReceiptRepository, AuditService);
+		GoodsReceiptService = new GoodsReceiptService(
+			DatabaseTransactionRunner,
+			GoodsReceiptRepository,
+			PurchaseOrderRepository,
+			InventoryRepository,
+			StockMovementRepository,
+			ReasonCodeRepository,
+			AuditRepository,
+			AuditService);
 
 		ItemService = new ItemService(ItemRepository, AuditService, ManufacturerService, CategoryService, UnitOfMeasureService, PackagingService, SupplierItemRepository);
 

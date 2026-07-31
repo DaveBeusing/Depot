@@ -24,6 +24,26 @@ public sealed class InventoryRepository : DatabaseRepository
 			cancellationToken,
 			Parameter("$Id", id));
 
+	public async Task<Inventory?> GetForUpdateAsync(
+		DatabaseTransactionContext transaction,
+		long id,
+		CancellationToken cancellationToken)
+	{
+		if (await transaction.Session.ExecuteScalarAsync(
+			Database.InventoryLockSql,
+			cancellationToken,
+			Parameter("$InventoryId", id)) is null)
+		{
+			return null;
+		}
+
+		return await transaction.Session.QuerySingleOrDefaultAsync(
+			$"SELECT {SelectColumns} FROM Inventories WHERE Id = $Id;",
+			ReadInventory,
+			cancellationToken,
+			Parameter("$Id", id));
+	}
+
 	public Task<Inventory?> GetByContextAsync(
 		long itemId,
 		long purposeId,

@@ -63,6 +63,16 @@ public sealed class ReasonCodeRepository : DatabaseRepository
 			cancellationToken,
 			Parameter("$Code", code));
 
+	public Task<ReasonCode?> GetByCodeAsync(
+		DatabaseTransactionContext transaction,
+		string code,
+		CancellationToken cancellationToken) =>
+		transaction.Session.QuerySingleOrDefaultAsync(
+			$"SELECT {Columns} FROM ReasonCodes WHERE Code = $Code;",
+			Read,
+			cancellationToken,
+			Parameter("$Code", code));
+
 	public Task<long> CreateAsync(ReasonCode reasonCode, CancellationToken cancellationToken) =>
 		Database.InsertAsync(
 			"INSERT INTO ReasonCodes (Code, Name, Description, IsSystem, IsActive) VALUES ($Code, $Name, $Description, $IsSystem, $IsActive);",

@@ -35,6 +35,12 @@ public sealed class AuditRepository : DatabaseRepository
 		CancellationToken cancellationToken) =>
 		session.ExecuteAsync(InsertSql, cancellationToken, Parameters(entry));
 
+	public Task<int> CreateAsync(
+		DatabaseTransactionContext transaction,
+		AuditEntry entry,
+		CancellationToken cancellationToken) =>
+		transaction.Session.ExecuteAsync(InsertSql, cancellationToken, Parameters(entry));
+
 	public long Create(AuditEntry entry)
 	{
 		return Database.Insert(

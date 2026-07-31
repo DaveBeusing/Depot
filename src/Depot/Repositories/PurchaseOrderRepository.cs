@@ -50,6 +50,48 @@ public sealed class PurchaseOrderRepository : DatabaseRepository
 			"SELECT pol.Id, pol.PurchaseOrderId, pol.LineNumber, pol.ItemId, i.PartNumber, i.Description, pol.Quantity, pol.UnitPrice, pol.ReceivedQuantity, pol.Version FROM PurchaseOrderLines pol INNER JOIN Items i ON i.Id = pol.ItemId WHERE pol.PurchaseOrderId = $PurchaseOrderId ORDER BY pol.LineNumber;",
 			ReadLine, cancellationToken, Parameter("$PurchaseOrderId", purchaseOrderId));
 
+	public async Task<PurchaseOrder?> GetForReceiptUpdateAsync(
+		DatabaseTransactionContext transaction,
+		long id,
+		CancellationToken cancellationToken)
+	{
+		if (await transaction.Session.ExecuteScalarAsync(
+			Database.PurchaseOrderLockSql,
+			cancellationToken,
+			Parameter("$PurchaseOrderId", id)) is null)
+		{
+			return null;
+		}
+
+		return await GetByIdAsync(transaction.Session, id, cancellationToken);
+	}
+
+	public async Task<bool> UpdateReceivedQuantityAsync(
+		DatabaseTransactionContext transaction,
+		long lineId,
+		long version,
+		int receivedQuantity,
+		CancellationToken cancellationToken) =>
+		await transaction.Session.ExecuteAsync(
+			"UPDATE PurchaseOrderLines SET ReceivedQuantity = $ReceivedQuantity, Version = Version + 1 WHERE Id = $Id AND Version = $Version;",
+			cancellationToken,
+			Parameter("$ReceivedQuantity", receivedQuantity),
+			Parameter("$Id", lineId),
+			Parameter("$Version", version)) == 1;
+
+	public async Task<bool> UpdateStatusAsync(
+		DatabaseTransactionContext transaction,
+		long id,
+		long version,
+		PurchaseOrderStatus status,
+		CancellationToken cancellationToken) =>
+		await transaction.Session.ExecuteAsync(
+			"UPDATE PurchaseOrders SET Status = $Status, Version = Version + 1 WHERE Id = $Id AND Version = $Version;",
+			cancellationToken,
+			Parameter("$Status", (int)status),
+			Parameter("$Id", id),
+			Parameter("$Version", version)) == 1;
+
 	public Task<PurchaseOrder> SaveDraftAsync(
 		PurchaseOrder order,
 		Func<PurchaseOrder, AuditEntry> createAuditEntry,

@@ -420,6 +420,32 @@ public sealed class ProcurementTests
 	}
 
 	[Fact]
+	public async Task GoodsReceiptAuditFailureRollsBackEntirePosting()
+	{
+		await using var context = await ProcurementTestContext.CreateSqliteAsync();
+		var order = await CreateOrderedOrderAsync(context, 3);
+		await context.Data.ExecuteAsync(
+			"""
+			CREATE TRIGGER FailGoodsReceiptAudit
+			BEFORE INSERT ON AuditEntries
+			WHEN NEW.EntityType = 'GoodsReceipt'
+			BEGIN
+				SELECT RAISE(ABORT, 'forced audit failure');
+			END;
+			""",
+			CancellationToken.None);
+
+		await Assert.ThrowsAnyAsync<Exception>(() =>
+			context.Receipts.PostAsync(context.NewReceipt(order, 2)));
+
+		Assert.Equal(0, await context.ScalarAsync("SELECT COUNT(*) FROM GoodsReceipts;"));
+		Assert.Equal(0, await context.ScalarAsync("SELECT COUNT(*) FROM GoodsReceiptLines;"));
+		Assert.Equal(0, await context.ScalarAsync("SELECT COUNT(*) FROM StockMovements;"));
+		Assert.Equal(0, await context.ScalarAsync("SELECT COALESCE(SUM(ReceivedQuantity), 0) FROM PurchaseOrderLines;"));
+		Assert.Equal((long)PurchaseOrderStatus.Ordered, await context.ScalarAsync("SELECT Status FROM PurchaseOrders;"));
+	}
+
+	[Fact]
 	public async Task ConcurrentGoodsReceiptsCannotExceedOpenQuantity()
 	{
 		await using var context = await ProcurementTestContext.CreateSqliteAsync();
