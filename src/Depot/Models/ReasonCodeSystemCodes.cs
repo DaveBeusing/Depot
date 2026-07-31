@@ -17,5 +17,6 @@ public static class ReasonCodeSystemCodes
 	public const string Transfer = "TRANSFER";
 
 	public static bool IsRequiredByActiveWorkflow(string code) =>
-		string.Equals(code, GoodsReceipt, StringComparison.Ordinal);
+		string.Equals(code, GoodsReceipt, StringComparison.Ordinal) ||
+		string.Equals(code, Transfer, StringComparison.Ordinal);
 }

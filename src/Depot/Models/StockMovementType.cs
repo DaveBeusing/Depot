@@ -9,5 +9,7 @@ public enum StockMovementType
 	Purchase = 2,
 	Withdrawal = 3,
 	Correction = 4,
-	Transfer = 5
+	Transfer = 5,
+	TransferOut = 6,
+	TransferIn = 7
 }

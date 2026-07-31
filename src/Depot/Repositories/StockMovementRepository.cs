@@ -44,6 +44,32 @@ public sealed class StockMovementRepository : DatabaseRepository
 			Parameter("$Reference", movement.Reference),
 			Parameter("$Notes", movement.Notes));
 
+	public Task<IReadOnlyList<InventoryStockQuantity>> GetCurrentQuantitiesAsync(
+		DatabaseTransactionContext transaction,
+		IEnumerable<long> inventoryIds,
+		CancellationToken cancellationToken)
+	{
+		var ids = inventoryIds.Distinct().OrderBy(id => id).ToArray();
+		if (ids.Length == 0)
+		{
+			return Task.FromResult<IReadOnlyList<InventoryStockQuantity>>([]);
+		}
+
+		var parameters = ids
+			.Select((id, index) => Parameter($"$InventoryId{index}", id))
+			.ToArray();
+		var parameterList = string.Join(", ", parameters.Select(parameter => parameter.Name));
+		return transaction.Session.QueryAsync(
+			$"SELECT InventoryId, COALESCE(SUM(CAST(Quantity AS BIGINT)), 0) FROM StockMovements WHERE InventoryId IN ({parameterList}) GROUP BY InventoryId ORDER BY InventoryId;",
+			reader => new InventoryStockQuantity
+			{
+				InventoryId = reader.GetInt64(0),
+				Quantity = Convert.ToInt64(reader.GetValue(1), CultureInfo.InvariantCulture)
+			},
+			cancellationToken,
+			parameters);
+	}
+
 	public Task<long> CreateAtomicAsync(
 		StockMovement movement,
 		AuditEntry auditEntry,

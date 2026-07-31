@@ -130,9 +130,9 @@ Purchase-order creation, draft editing, ordering, and cancellation commit their 
 
 ### Stock transfers
 
-Schema version 18 introduces `StockTransfer` and `StockTransferLine` as the audited foundation for warehouse-to-warehouse transfers. Draft transfers validate distinct warehouses, matching source/destination items, inventory-to-warehouse assignments, positive quantities, and unique inventory pairs. Draft editing and cancellation use optimistic concurrency and commit their audit entry atomically.
+Schema version 18 introduces `StockTransfer` and `StockTransferLine` for warehouse-to-warehouse transfers. Draft transfers validate distinct warehouses, matching source/destination items, inventory-to-warehouse assignments, positive quantities, and unique inventory pairs. Draft editing and cancellation use optimistic concurrency and commit their audit entry atomically.
 
-The `Posted` status is reserved by the domain and schema, but no posting operation exists yet. TransferOut/TransferIn stock movements and their atomic booking workflow are intentionally not implemented in this increment, and there is no stock-transfer UI yet.
+Posting locks the transfer and all source/destination inventories in a stable order, validates aggregate source availability, resolves the immutable `TRANSFER` reason code, and creates a paired `TransferOut` and `TransferIn` movement for every line. Movements, Posted status, posting user, and audit entry share one provider-neutral transaction. The service prevents concurrent transfers from overdrawing a shared source. A stock-transfer UI has not yet been implemented.
 
 ### Procurement database roundtrips
 

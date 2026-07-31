@@ -49,6 +49,8 @@ internal sealed class ServiceComposition
 			database.TransactionRunner,
 			repositories.StockTransfers,
 			repositories.Inventories,
+			repositories.StockMovements,
+			repositories.ReasonCodes,
 			repositories.Audit,
 			audit);
 		Items = new ItemService(

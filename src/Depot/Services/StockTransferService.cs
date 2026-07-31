@@ -12,6 +12,8 @@ public sealed class StockTransferService
 	private readonly IDatabaseTransactionRunner _transactions;
 	private readonly StockTransferRepository _transfers;
 	private readonly InventoryRepository _inventories;
+	private readonly StockMovementRepository _stockMovements;
+	private readonly ReasonCodeRepository _reasonCodes;
 	private readonly AuditRepository _auditEntries;
 	private readonly AuditService _audit;
 
@@ -19,14 +21,35 @@ public sealed class StockTransferService
 		IDatabaseTransactionRunner transactions,
 		StockTransferRepository transfers,
 		InventoryRepository inventories,
+		StockMovementRepository stockMovements,
+		ReasonCodeRepository reasonCodes,
 		AuditRepository auditEntries,
 		AuditService audit)
 	{
 		_transactions = transactions;
 		_transfers = transfers;
 		_inventories = inventories;
+		_stockMovements = stockMovements;
+		_reasonCodes = reasonCodes;
 		_auditEntries = auditEntries;
 		_audit = audit;
+	}
+
+	public async Task<StockTransfer> PostAsync(
+		long id,
+		long version,
+		CancellationToken cancellationToken = default)
+	{
+		if (id <= 0)
+		{
+			throw new ArgumentOutOfRangeException(nameof(id));
+		}
+		var userId = _audit.CurrentUserId
+			?? throw new InvalidOperationException("A signed-in user is required to post a stock transfer.");
+
+		return await _transactions.ExecuteAsync(
+			(transaction, token) => PostAsync(transaction, id, version, userId, token),
+			cancellationToken);
 	}
 
 	public Task<StockTransfer?> GetByIdAsync(
@@ -183,6 +206,115 @@ public sealed class StockTransferService
 			: _audit.CreateUpdatedEntry(transfer.Id, before, transfer);
 		await _auditEntries.CreateAsync(transaction, auditEntry, cancellationToken);
 		return transfer;
+	}
+
+	private async Task<StockTransfer> PostAsync(
+		DatabaseTransactionContext transaction,
+		long id,
+		long version,
+		long userId,
+		CancellationToken cancellationToken)
+	{
+		var before = await _transfers.GetByIdAsync(transaction, id, cancellationToken)
+			?? throw new InvalidOperationException("The stock transfer was not found.");
+		if (before.Version != version)
+		{
+			throw new ConcurrencyConflictException("stock transfer");
+		}
+		if (before.Status != StockTransferStatus.Draft)
+		{
+			throw new InvalidOperationException("Only draft stock transfers can be posted.");
+		}
+		if (before.Lines.Count == 0)
+		{
+			throw new InvalidOperationException("A stock transfer requires at least one line.");
+		}
+
+		var inventories = (await _inventories.GetTransferContextsByIdsForUpdateAsync(
+			transaction,
+			before.Lines.SelectMany(line => new[] { line.SourceInventoryId, line.DestinationInventoryId }),
+			cancellationToken)).ToDictionary(inventory => inventory.InventoryId);
+		ValidateInventoryAssignments(before, inventories);
+
+		var requiredBySource = before.Lines
+			.GroupBy(line => line.SourceInventoryId)
+			.ToDictionary(group => group.Key, group => group.Sum(line => (long)line.Quantity));
+		var currentBySource = (await _stockMovements.GetCurrentQuantitiesAsync(
+			transaction,
+			requiredBySource.Keys,
+			cancellationToken)).ToDictionary(stock => stock.InventoryId, stock => stock.Quantity);
+		if (requiredBySource.Any(required =>
+			currentBySource.GetValueOrDefault(required.Key) < required.Value))
+		{
+			throw new InsufficientStockException();
+		}
+
+		var reasonCode = await _reasonCodes.GetByCodeAsync(
+			transaction,
+			ReasonCodeSystemCodes.Transfer,
+			cancellationToken);
+		if (reasonCode is null || !reasonCode.IsActive)
+		{
+			throw new InvalidOperationException(
+				$"Required system reason code '{ReasonCodeSystemCodes.Transfer}' is unavailable.");
+		}
+
+		var timestampUtc = DateTime.UtcNow;
+		var reference = $"Stock Transfer {before.TransferNumber}";
+		foreach (var line in before.Lines.OrderBy(line => line.LineNumber))
+		{
+			var transferOut = new StockMovement
+			{
+				InventoryId = line.SourceInventoryId,
+				ReasonCodeId = reasonCode.Id,
+				MovementType = StockMovementType.TransferOut,
+				TimestampUtc = timestampUtc,
+				Quantity = -line.Quantity,
+				Reference = reference,
+				Notes = $"TransferOut to inventory {line.DestinationInventoryId}"
+			};
+			transferOut.Id = await _stockMovements.CreateAsync(
+				transaction,
+				transferOut,
+				cancellationToken);
+
+			var transferIn = new StockMovement
+			{
+				InventoryId = line.DestinationInventoryId,
+				ReasonCodeId = reasonCode.Id,
+				MovementType = StockMovementType.TransferIn,
+				TimestampUtc = timestampUtc,
+				Quantity = line.Quantity,
+				Reference = reference,
+				Notes = $"TransferIn from inventory {line.SourceInventoryId}"
+			};
+			transferIn.Id = await _stockMovements.CreateAsync(
+				transaction,
+				transferIn,
+				cancellationToken);
+		}
+
+		var after = Copy(before);
+		after.Status = StockTransferStatus.Posted;
+		after.PostedByUserId = userId;
+		after.Version = version + 1;
+		if (!await _transfers.SetStatusAsync(
+			transaction,
+			id,
+			version,
+			StockTransferStatus.Draft,
+			StockTransferStatus.Posted,
+			userId,
+			cancellationToken))
+		{
+			throw new ConcurrencyConflictException("stock transfer");
+		}
+
+		await _auditEntries.CreateAsync(
+			transaction,
+			_audit.CreateUpdatedEntry(id, before, after),
+			cancellationToken);
+		return after;
 	}
 
 	private static void NormalizeAndValidate(StockTransfer transfer)
