@@ -15,6 +15,8 @@ public sealed class User
 
 	public bool IsAdministrator { get; set; }
 
+	public bool CanApprovePurchaseOrders { get; set; }
+
 	public bool IsActive { get; set; }
 
 	public DateTime CreatedUtc { get; set; }

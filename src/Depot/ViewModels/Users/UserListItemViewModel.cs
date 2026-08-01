@@ -16,6 +16,7 @@ public sealed class UserListItemViewModel : BaseViewModel
 		Status = user.IsActive ? "Active" : "Inactive";
 		CreatedUtc = user.CreatedUtc;
 		IsAdministrator = user.IsAdministrator;
+		CanApprovePurchaseOrders = user.CanApprovePurchaseOrders;
 		IsActive = user.IsActive;
 		Version = user.Version;
 	}
@@ -27,6 +28,7 @@ public sealed class UserListItemViewModel : BaseViewModel
 	public string Status { get; }
 	public DateTime CreatedUtc { get; }
 	public bool IsAdministrator { get; }
+	public bool CanApprovePurchaseOrders { get; }
 	public bool IsActive { get; }
 	public long Version { get; }
 

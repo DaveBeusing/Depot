@@ -11,7 +11,7 @@ The single application-version source is `Directory.Build.props` in the reposito
 ## Current versions
 
 - Application development line: **0.13.0-preview**
-- Database schema version: **20**
+- Database schema version: **21**
 
 The application version and database schema version are independent. A patch application release can retain the same schema, while a schema migration can occur during a prerelease line.
 
@@ -33,6 +33,8 @@ The MSBuild properties produce:
 The About page reads the built assembly information and displays the application, file, informational, runtime, and database-schema versions.
 
 ## Database schema versioning
+
+Schema version 21 adds the purchase-order approval workflow. Purchase orders store creator, submission, and compact approval-decision metadata; users can receive the explicit `CanApprovePurchaseOrders` permission. Existing numeric status values remain stable for migration compatibility, while new approval, rejection, and closed states extend the workflow.
 
 `src/Depot/Data/DatabaseVersion.cs` is the schema-version source. All providers must use the same current version:
 

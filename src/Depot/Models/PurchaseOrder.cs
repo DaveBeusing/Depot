@@ -13,9 +13,19 @@ public sealed class PurchaseOrder
 	public DateTime? ExpectedDeliveryDate { get; set; }
 	public string? Notes { get; set; }
 	public PurchaseOrderStatus Status { get; set; } = PurchaseOrderStatus.Draft;
+	public long? CreatedByUserId { get; set; }
+	public long? SubmittedByUserId { get; set; }
+	public DateTime? SubmittedAtUtc { get; set; }
+	public long? ApprovalDecisionByUserId { get; set; }
+	public DateTime? ApprovalDecisionAtUtc { get; set; }
+	public string? ApprovalComment { get; set; }
+	public string? CreatedByUserDisplay { get; set; }
+	public string? SubmittedByUserDisplay { get; set; }
+	public string? ApprovalDecisionByUserDisplay { get; set; }
 	public string StatusDisplayName => Status switch
 	{
 		PurchaseOrderStatus.PartiallyReceived => "Partially Received",
+		PurchaseOrderStatus.PendingApproval => "Pending Approval",
 		_ => Status.ToString()
 	};
 	public long Version { get; set; } = 1;

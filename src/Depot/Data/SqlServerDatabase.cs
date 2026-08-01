@@ -99,6 +99,11 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 			MigrateToMovementReversals(command);
 			version = 20;
 		}
+		if (version == 20)
+		{
+			MigrateToPurchaseOrderApproval(command);
+			version = 21;
+		}
 		if (version != DatabaseVersion.CurrentVersion)
 		{
 			throw new InvalidOperationException(
@@ -106,6 +111,26 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 		}
 
 		transaction.Commit();
+	}
+
+	private static void MigrateToPurchaseOrderApproval(System.Data.Common.DbCommand command)
+	{
+		command.CommandText =
+		"""
+		IF COL_LENGTH(N'Users', N'CanApprovePurchaseOrders') IS NULL ALTER TABLE Users ADD CanApprovePurchaseOrders bit NOT NULL CONSTRAINT DF_Users_CanApprovePurchaseOrders DEFAULT 0;
+		IF COL_LENGTH(N'PurchaseOrders', N'CreatedByUserId') IS NULL ALTER TABLE PurchaseOrders ADD CreatedByUserId bigint NULL;
+		IF COL_LENGTH(N'PurchaseOrders', N'SubmittedByUserId') IS NULL ALTER TABLE PurchaseOrders ADD SubmittedByUserId bigint NULL;
+		IF COL_LENGTH(N'PurchaseOrders', N'SubmittedAtUtc') IS NULL ALTER TABLE PurchaseOrders ADD SubmittedAtUtc nvarchar(40) NULL;
+		IF COL_LENGTH(N'PurchaseOrders', N'ApprovalDecisionByUserId') IS NULL ALTER TABLE PurchaseOrders ADD ApprovalDecisionByUserId bigint NULL;
+		IF COL_LENGTH(N'PurchaseOrders', N'ApprovalDecisionAtUtc') IS NULL ALTER TABLE PurchaseOrders ADD ApprovalDecisionAtUtc nvarchar(40) NULL;
+		IF COL_LENGTH(N'PurchaseOrders', N'ApprovalComment') IS NULL ALTER TABLE PurchaseOrders ADD ApprovalComment nvarchar(2000) NULL;
+		IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_PurchaseOrders_CreatedByUsers') ALTER TABLE PurchaseOrders ADD CONSTRAINT FK_PurchaseOrders_CreatedByUsers FOREIGN KEY (CreatedByUserId) REFERENCES Users(Id);
+		IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_PurchaseOrders_SubmittedByUsers') ALTER TABLE PurchaseOrders ADD CONSTRAINT FK_PurchaseOrders_SubmittedByUsers FOREIGN KEY (SubmittedByUserId) REFERENCES Users(Id);
+		IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_PurchaseOrders_ApprovalDecisionByUsers') ALTER TABLE PurchaseOrders ADD CONSTRAINT FK_PurchaseOrders_ApprovalDecisionByUsers FOREIGN KEY (ApprovalDecisionByUserId) REFERENCES Users(Id);
+		UPDATE DatabaseInfo SET Version = 21 WHERE Id = 1;
+		""";
+		command.Parameters.Clear();
+		command.ExecuteNonQuery();
 	}
 
 	private static void MigrateToStockTransfers(System.Data.Common.DbCommand command)
@@ -431,7 +456,7 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 	"""
 	IF OBJECT_ID(N'PurchaseOrders', N'U') IS NULL
 	BEGIN
-		CREATE TABLE PurchaseOrders (Id bigint IDENTITY(1,1) NOT NULL PRIMARY KEY, OrderNumber nvarchar(50) NOT NULL UNIQUE, SupplierId bigint NOT NULL, OrderDate nvarchar(10) NOT NULL, ExpectedDeliveryDate nvarchar(10) NULL, Notes nvarchar(4000) NULL, Status int NOT NULL DEFAULT 1, Version bigint NOT NULL DEFAULT 1, CONSTRAINT FK_PurchaseOrders_Suppliers FOREIGN KEY (SupplierId) REFERENCES Suppliers(Id));
+		CREATE TABLE PurchaseOrders (Id bigint IDENTITY(1,1) NOT NULL PRIMARY KEY, OrderNumber nvarchar(50) NOT NULL UNIQUE, SupplierId bigint NOT NULL, OrderDate nvarchar(10) NOT NULL, ExpectedDeliveryDate nvarchar(10) NULL, Notes nvarchar(4000) NULL, Status int NOT NULL DEFAULT 1, CreatedByUserId bigint NULL, SubmittedByUserId bigint NULL, SubmittedAtUtc nvarchar(40) NULL, ApprovalDecisionByUserId bigint NULL, ApprovalDecisionAtUtc nvarchar(40) NULL, ApprovalComment nvarchar(2000) NULL, Version bigint NOT NULL DEFAULT 1, CONSTRAINT FK_PurchaseOrders_Suppliers FOREIGN KEY (SupplierId) REFERENCES Suppliers(Id), CONSTRAINT FK_PurchaseOrders_CreatedByUsers FOREIGN KEY (CreatedByUserId) REFERENCES Users(Id), CONSTRAINT FK_PurchaseOrders_SubmittedByUsers FOREIGN KEY (SubmittedByUserId) REFERENCES Users(Id), CONSTRAINT FK_PurchaseOrders_ApprovalDecisionByUsers FOREIGN KEY (ApprovalDecisionByUserId) REFERENCES Users(Id));
 		CREATE INDEX IX_PurchaseOrders_SupplierId_Status ON PurchaseOrders(SupplierId, Status); CREATE INDEX IX_PurchaseOrders_OrderDate ON PurchaseOrders(OrderDate);
 	END;
 	IF OBJECT_ID(N'PurchaseOrderLines', N'U') IS NULL
@@ -684,6 +709,7 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 			DisplayName nvarchar(200) NOT NULL,
 			PasswordHash nvarchar(500) NOT NULL,
 			IsAdministrator bit NOT NULL CONSTRAINT DF_Users_IsAdministrator DEFAULT 0,
+			CanApprovePurchaseOrders bit NOT NULL CONSTRAINT DF_Users_CanApprovePurchaseOrders DEFAULT 0,
 			IsActive bit NOT NULL CONSTRAINT DF_Users_IsActive DEFAULT 1,
 			CreatedUtc nvarchar(40) NOT NULL,
 			Version bigint NOT NULL CONSTRAINT DF_Users_Version DEFAULT 1

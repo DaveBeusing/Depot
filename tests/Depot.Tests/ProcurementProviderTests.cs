@@ -36,7 +36,7 @@ public sealed class ProcurementProviderTests
 		await using var context = await ProcurementTestContext.CreateServerAsync(factory, initializer);
 		var order = await context.Orders.SaveDraftAsync(context.NewOrder(quantity: 5));
 		Assert.Equal(PurchaseOrderStatus.Draft, order.Status);
-		order = await context.Orders.MarkOrderedAsync(order.Id, order.Version);
+		order = await context.ApproveAndOrderAsync(order);
 
 		var results = await Task.WhenAll(AttemptAsync("A"), AttemptAsync("B"));
 

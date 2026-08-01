@@ -9,5 +9,9 @@ public enum PurchaseOrderStatus
 	Ordered = 2,
 	PartiallyReceived = 3,
 	Received = 4,
-	Cancelled = 5
+	Cancelled = 5,
+	PendingApproval = 6,
+	Approved = 7,
+	Closed = 8,
+	Rejected = 9
 }

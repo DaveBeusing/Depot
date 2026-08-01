@@ -17,6 +17,8 @@ internal sealed class ProcurementTestContext : IAsyncDisposable
 	private PurchaseOrderService? _orders;
 	private GoodsReceiptService? _receipts;
 	private AuthorizationService? _authorization;
+	private User? _administrator;
+	private User? _approver;
 
 	private ProcurementTestContext(
 		IDatabaseConnectionFactory connectionFactory,
@@ -43,6 +45,7 @@ internal sealed class ProcurementTestContext : IAsyncDisposable
 	public long SecondInventoryId { get; private set; }
 	public long InactiveInventoryId { get; private set; }
 	public long TestStorageLocationId { get; private set; }
+	public long ApproverUserId => _approver?.Id ?? throw new InvalidOperationException("The test approver was not initialized.");
 
 	public static async Task<ProcurementTestContext> CreateSqliteAsync()
 	{
@@ -102,6 +105,28 @@ internal sealed class ProcurementTestContext : IAsyncDisposable
 				}
 			]
 		};
+
+	public async Task<PurchaseOrder> ApproveAndOrderAsync(PurchaseOrder order)
+	{
+		var submitted = await Orders.SubmitForApprovalAsync(order.Id, order.Version);
+		SignInApprover();
+		try
+		{
+			var approved = await Orders.ApproveAsync(submitted.Id, submitted.Version, "Approved by integration test");
+			SignInAdministrator();
+			return await Orders.MarkOrderedAsync(approved.Id, approved.Version);
+		}
+		finally
+		{
+			SignInAdministrator();
+		}
+	}
+
+	public void SignInApprover() => Authorization.SignIn(
+		_approver ?? throw new InvalidOperationException("The test approver was not initialized."));
+
+	public void SignInAdministrator() => Authorization.SignIn(
+		_administrator ?? throw new InvalidOperationException("The test administrator was not initialized."));
 
 	public async Task<long> ScalarAsync(
 		string sql,
@@ -170,13 +195,24 @@ internal sealed class ProcurementTestContext : IAsyncDisposable
 		var administrator = await new UserRepository(context.Data).GetByEmailAsync("admin@depot.local", CancellationToken.None)
 			?? throw new InvalidOperationException("The default administrator was not initialized.");
 		authorization.SignIn(administrator);
+		context._administrator = administrator;
+		var approverId = await context.Data.InsertAsync(
+			"INSERT INTO Users (Email, DisplayName, PasswordHash, IsAdministrator, CanApprovePurchaseOrders, IsActive, CreatedUtc) VALUES ($Email, $DisplayName, $PasswordHash, 0, 1, 1, $CreatedUtc);",
+			CancellationToken.None,
+			new DatabaseParameter("$Email", $"approver-{suffix}@depot.test"),
+			new DatabaseParameter("$DisplayName", "Procurement Approver"),
+			new DatabaseParameter("$PasswordHash", "test-only-not-used"),
+			new DatabaseParameter("$CreatedUtc", DateTime.UtcNow.ToString("O", System.Globalization.CultureInfo.InvariantCulture)));
+		context._approver = await new UserRepository(context.Data).GetByIdAsync(approverId, CancellationToken.None)
+			?? throw new InvalidOperationException("The procurement approver was not initialized.");
 		context._authorization = authorization;
 		var audit = new AuditService(new AuditRepository(context.Data), authorization);
 		context._orders = new PurchaseOrderService(
 			new PurchaseOrderRepository(context.Data),
 			new SupplierRepository(context.Data),
 			new ItemRepository(context.Data),
-			audit);
+			audit,
+			authorization);
 		context._receipts = new GoodsReceiptService(
 			new DatabaseTransactionRunner(context.Data),
 			new GoodsReceiptRepository(context.Data),
@@ -233,6 +269,7 @@ internal sealed class ProcurementTestContext : IAsyncDisposable
 		await Data.ExecuteAsync("DELETE FROM GoodsReceipts WHERE PurchaseOrderId IN (SELECT Id FROM PurchaseOrders WHERE SupplierId IN ($First, $Second));", CancellationToken.None, new DatabaseParameter("$First", supplierIds[0]), new DatabaseParameter("$Second", supplierIds[1]));
 		await Data.ExecuteAsync("DELETE FROM PurchaseOrderLines WHERE PurchaseOrderId IN (SELECT Id FROM PurchaseOrders WHERE SupplierId IN ($First, $Second));", CancellationToken.None, new DatabaseParameter("$First", supplierIds[0]), new DatabaseParameter("$Second", supplierIds[1]));
 		await Data.ExecuteAsync("DELETE FROM PurchaseOrders WHERE SupplierId IN ($First, $Second);", CancellationToken.None, new DatabaseParameter("$First", supplierIds[0]), new DatabaseParameter("$Second", supplierIds[1]));
+		await Data.ExecuteAsync("DELETE FROM Users WHERE Id = $Id;", CancellationToken.None, new DatabaseParameter("$Id", ApproverUserId));
 		await Data.ExecuteAsync("DELETE FROM Inventories WHERE Id IN ($First, $Second, $Inactive);", CancellationToken.None, new DatabaseParameter("$First", inventoryIds[0]), new DatabaseParameter("$Second", inventoryIds[1]), new DatabaseParameter("$Inactive", inventoryIds[2]));
 		await Data.ExecuteAsync("DELETE FROM StorageLocations WHERE Id = $Id;", CancellationToken.None, new DatabaseParameter("$Id", TestStorageLocationId));
 		await Data.ExecuteAsync("DELETE FROM Items WHERE Id IN ($First, $Second, $Inactive);", CancellationToken.None, new DatabaseParameter("$First", itemIds[0]), new DatabaseParameter("$Second", itemIds[1]), new DatabaseParameter("$Inactive", itemIds[2]));

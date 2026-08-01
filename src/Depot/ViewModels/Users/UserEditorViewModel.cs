@@ -13,6 +13,7 @@ public sealed class UserEditorViewModel : BaseViewModel
 	private string _displayName = string.Empty;
 	private string _password = string.Empty;
 	private bool _isAdministrator;
+	private bool _canApprovePurchaseOrders;
 	private bool _isActive = true;
 	private long _version = 1;
 
@@ -75,6 +76,16 @@ public sealed class UserEditorViewModel : BaseViewModel
 		}
 	}
 
+	public bool CanApprovePurchaseOrders
+	{
+		get => _canApprovePurchaseOrders;
+		set
+		{
+			_canApprovePurchaseOrders = value;
+			OnPropertyChanged();
+		}
+	}
+
 	public bool IsActive
 	{
 		get => _isActive;
@@ -104,6 +115,7 @@ public sealed class UserEditorViewModel : BaseViewModel
 		DisplayName = string.Empty;
 		Password = string.Empty;
 		IsAdministrator = false;
+		CanApprovePurchaseOrders = false;
 		IsActive = true;
 		Version = 1;
 	}

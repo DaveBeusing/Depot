@@ -38,7 +38,28 @@
 								<StackPanel Grid.Column="4"><TextBlock Text="Unit Price" Style="{StaticResource FormLabelStyle}" /><controls:TextInput Text="{Binding LineUnitPrice, UpdateSourceTrigger=PropertyChanged}" /></StackPanel>
 								<StackPanel Grid.Column="6" VerticalAlignment="Bottom" Orientation="Horizontal"><Button Command="{Binding RemoveLineCommand}" Content="Remove" Style="{StaticResource SecondaryButtonStyle}" /><Button Margin="{StaticResource Button.Margin}" Command="{Binding AddLineCommand}" Content="{Binding SaveLineText}" Style="{StaticResource SecondaryButtonStyle}" /></StackPanel>
 							</Grid>
-							<StackPanel Margin="0,16,0,0" HorizontalAlignment="Right" Orientation="Horizontal"><Button Command="{Binding CancelOrderCommand}" Content="Cancel Order" Style="{StaticResource SecondaryButtonStyle}" /><Button Margin="{StaticResource Button.Margin}" Command="{Binding SaveOrderCommand}" Content="Save Draft" Style="{StaticResource SecondaryButtonStyle}" /><Button Margin="{StaticResource Button.Margin}" Command="{Binding MarkOrderedCommand}" Content="Mark Ordered" Style="{StaticResource PrimaryButtonStyle}" /></StackPanel>
+							<controls:Card Margin="0,16,0,0" Visibility="{Binding HasApprovalHistory, Converter={StaticResource BooleanToVisibilityConverter}}">
+								<StackPanel>
+									<TextBlock Text="Approval history" Style="{StaticResource CardTitleStyle}" />
+									<TextBlock Margin="0,6,0,0" Text="{Binding Draft.SubmittedByUserDisplay, StringFormat=Submitted by: {0}}" />
+									<TextBlock Text="{Binding Draft.SubmittedAtUtc, StringFormat=Submitted (UTC): {0:yyyy-MM-dd HH:mm:ss}Z}" />
+									<TextBlock Text="{Binding Draft.ApprovalDecisionByUserDisplay, StringFormat=Decision by: {0}}" />
+									<TextBlock Text="{Binding Draft.ApprovalDecisionAtUtc, StringFormat=Decision (UTC): {0:yyyy-MM-dd HH:mm:ss}Z}" />
+									<TextBlock Text="{Binding Draft.ApprovalComment, StringFormat=Comment: {0}}" TextWrapping="Wrap" />
+								</StackPanel>
+							</controls:Card>
+							<TextBlock Margin="0,16,0,0" Text="Approval comment" Style="{StaticResource FormLabelStyle}" />
+							<TextBox MinHeight="48" AcceptsReturn="True" Text="{Binding ApprovalComment, UpdateSourceTrigger=PropertyChanged}" TextWrapping="Wrap" Style="{StaticResource MultilineTextBoxStyle}" />
+							<WrapPanel Margin="0,16,0,0" HorizontalAlignment="Right">
+								<Button Command="{Binding SaveOrderCommand}" Content="Save Draft" Style="{StaticResource SecondaryButtonStyle}" />
+								<Button Margin="{StaticResource Button.Margin}" Command="{Binding SubmitForApprovalCommand}" Content="Submit for Approval" Style="{StaticResource PrimaryButtonStyle}" />
+								<Button Margin="{StaticResource Button.Margin}" Command="{Binding ApproveCommand}" Content="Approve" Style="{StaticResource PrimaryButtonStyle}" />
+								<Button Margin="{StaticResource Button.Margin}" Command="{Binding RejectCommand}" Content="Reject" Style="{StaticResource DangerButtonStyle}" />
+								<Button Margin="{StaticResource Button.Margin}" Command="{Binding ReopenRejectedCommand}" Content="Reopen Draft" Style="{StaticResource SecondaryButtonStyle}" />
+								<Button Margin="{StaticResource Button.Margin}" Command="{Binding MarkOrderedCommand}" Content="Mark Ordered" Style="{StaticResource PrimaryButtonStyle}" />
+								<Button Margin="{StaticResource Button.Margin}" Command="{Binding CloseOrderCommand}" Content="Close Order" Style="{StaticResource SecondaryButtonStyle}" />
+								<Button Margin="{StaticResource Button.Margin}" Command="{Binding CancelOrderCommand}" Content="Cancel Order" Style="{StaticResource DangerButtonStyle}" />
+							</WrapPanel>
 						</StackPanel>
 					</controls:Card>
 

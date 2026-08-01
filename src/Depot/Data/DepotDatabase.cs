@@ -393,7 +393,11 @@ public sealed class DepotDatabase : IDatabaseInitializer
 		(
 			Id INTEGER PRIMARY KEY AUTOINCREMENT, OrderNumber TEXT NOT NULL UNIQUE, SupplierId INTEGER NOT NULL,
 			OrderDate TEXT NOT NULL, ExpectedDeliveryDate TEXT, Notes TEXT, Status INTEGER NOT NULL DEFAULT 1,
-			Version INTEGER NOT NULL DEFAULT 1, FOREIGN KEY(SupplierId) REFERENCES Suppliers(Id)
+			CreatedByUserId INTEGER NULL, SubmittedByUserId INTEGER NULL, SubmittedAtUtc TEXT NULL,
+			ApprovalDecisionByUserId INTEGER NULL, ApprovalDecisionAtUtc TEXT NULL, ApprovalComment TEXT NULL,
+			Version INTEGER NOT NULL DEFAULT 1, FOREIGN KEY(SupplierId) REFERENCES Suppliers(Id),
+			FOREIGN KEY(CreatedByUserId) REFERENCES Users(Id), FOREIGN KEY(SubmittedByUserId) REFERENCES Users(Id),
+			FOREIGN KEY(ApprovalDecisionByUserId) REFERENCES Users(Id)
 		);
 		CREATE INDEX IF NOT EXISTS IX_PurchaseOrders_SupplierId_Status ON PurchaseOrders(SupplierId, Status);
 		CREATE INDEX IF NOT EXISTS IX_PurchaseOrders_OrderDate ON PurchaseOrders(OrderDate);
@@ -725,6 +729,7 @@ public sealed class DepotDatabase : IDatabaseInitializer
 			DisplayName         TEXT NOT NULL,
 			PasswordHash        TEXT NOT NULL,
 			IsAdministrator     INTEGER NOT NULL DEFAULT 0,
+			CanApprovePurchaseOrders INTEGER NOT NULL DEFAULT 0,
 			IsActive            INTEGER NOT NULL DEFAULT 1,
 			CreatedUtc          TEXT NOT NULL,
 			Version             INTEGER NOT NULL DEFAULT 1
@@ -960,6 +965,13 @@ public sealed class DepotDatabase : IDatabaseInitializer
 			migratedVersion = 20;
 		}
 
+		if (migratedVersion == 20)
+		{
+			MigrateToPurchaseOrderApproval(connection);
+			SetDatabaseVersion(connection, 21);
+			migratedVersion = 21;
+		}
+
 		if (migratedVersion < DatabaseVersion.CurrentVersion)
 		{
 			throw new InvalidOperationException(
@@ -970,6 +982,25 @@ public sealed class DepotDatabase : IDatabaseInitializer
 		{
 			throw new InvalidOperationException(
 				$"Database version '{version}' is newer than the supported schema version '{DatabaseVersion.CurrentVersion}'.");
+		}
+	}
+
+	private static void MigrateToPurchaseOrderApproval(SqliteConnection connection)
+	{
+		AddColumn("Users", "CanApprovePurchaseOrders", "INTEGER NOT NULL DEFAULT 0");
+		AddColumn("PurchaseOrders", "CreatedByUserId", "INTEGER NULL REFERENCES Users(Id)");
+		AddColumn("PurchaseOrders", "SubmittedByUserId", "INTEGER NULL REFERENCES Users(Id)");
+		AddColumn("PurchaseOrders", "SubmittedAtUtc", "TEXT NULL");
+		AddColumn("PurchaseOrders", "ApprovalDecisionByUserId", "INTEGER NULL REFERENCES Users(Id)");
+		AddColumn("PurchaseOrders", "ApprovalDecisionAtUtc", "TEXT NULL");
+		AddColumn("PurchaseOrders", "ApprovalComment", "TEXT NULL");
+
+		void AddColumn(string table, string column, string definition)
+		{
+			if (!TableExists(connection, table) || TableHasColumn(connection, table, column)) return;
+			using var command = connection.CreateCommand();
+			command.CommandText = $"ALTER TABLE {table} ADD COLUMN {column} {definition};";
+			command.ExecuteNonQuery();
 		}
 	}
 

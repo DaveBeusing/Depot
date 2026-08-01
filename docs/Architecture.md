@@ -84,7 +84,7 @@ SQLite is covered by integration tests. SQL Server and MySQL/MariaDB have provid
 
 ## Schema and migrations
 
-The current database schema version is **20**. It is independent from the application SemVer version.
+The current database schema version is **21**. It is independent from the application SemVer version.
 
 All providers create the current schema and migrate supported older schemas forward. Migrations cover authentication, inventory-based movements, audit/concurrency, warehouse structure, reason codes, normalized item master data, suppliers, supplier categories, supplier items, purchase orders, and goods receipts.
 
@@ -121,14 +121,16 @@ Posted movements are immutable. Schema version 20 adds an optional, unique `Reve
 ### Procurement
 
 - `PurchaseOrder` owns `PurchaseOrderLine` records.
-- Status values are Draft, Ordered, PartiallyReceived, Received, and Cancelled.
+- Status values are Draft, PendingApproval, Approved, Ordered, PartiallyReceived, Received, Closed, Cancelled, and Rejected.
 - `GoodsReceipt` references exactly one purchase order and owns `GoodsReceiptLine` records.
 - A goods receipt is a warehouse document with a supplier delivery-note number, receipt date, receiving user, notes, and destination inventory per line.
 - Supplier invoices are intentionally not part of the goods-receipt domain. A separate `SupplierInvoice` entity can be introduced later without changing the receipt contract.
 
 Legacy `InvoiceNumber`, `InvoiceDate`, and `InvoiceDocumentPath` database columns remain nullable for transition and backup compatibility. They are not exposed by the current domain model or UI and are not populated by new receipts. Version-17 migration preserves their existing values, assigns `LEGACY-GR-…` delivery-note numbers, and derives the receiving user from the original receipt audit entry where possible.
 
-Purchase-order creation, draft editing, ordering, and cancellation commit their business change and before/after audit entry in one transaction. Goods-receipt posting remains atomic across the receipt, receipt lines, purchase-order received quantities, stock movements, purchase-order status, and receipt audit entry. Purchase-order locking prevents concurrent over-receipt.
+Schema version 21 introduces purchase-order approval metadata and the fixed `CanApprovePurchaseOrders` user permission. Drafts must be submitted and approved before ordering. Approval or rejection requires an administrator or explicitly authorized active user, and the creator cannot decide their own order. Submission, decision, reopening, ordering, closing, cancellation, and their before/after audit entries use optimistic concurrency and commit atomically.
+
+Purchase-order creation and draft editing also commit their business change and audit entry in one transaction. Goods-receipt posting remains atomic across the receipt, receipt lines, purchase-order received quantities, stock movements, purchase-order status, and receipt audit entry. Purchase-order locking prevents concurrent over-receipt.
 
 Reversing a posted goods receipt creates counter-movements, reduces every affected purchase-order line's received quantity, recalculates the purchase-order status, marks the receipt as reversed, and writes its audit entry in one transaction. The workflow locks affected inventories and rejects a reversal that would produce negative stock.
 

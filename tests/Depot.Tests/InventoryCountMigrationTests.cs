@@ -36,7 +36,7 @@ public sealed class InventoryCountMigrationTests : IDisposable
 
 		using var migrated = new SqliteConnection($"Data Source={_databasePath}");
 		migrated.Open();
-		Assert.Equal(20L, Scalar(migrated, "SELECT Version FROM DatabaseInfo;"));
+		Assert.Equal((long)DatabaseVersion.CurrentVersion, Scalar(migrated, "SELECT Version FROM DatabaseInfo;"));
 		Assert.Equal(1L, Scalar(migrated, "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'InventoryCounts';"));
 		Assert.Equal(1L, Scalar(migrated, "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'InventoryCountLines';"));
 		Assert.Equal(1L, Scalar(migrated, "SELECT COUNT(*) FROM sqlite_master WHERE type = 'index' AND name = 'IX_InventoryCounts_WarehouseId_Status';"));

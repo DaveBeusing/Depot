@@ -12,7 +12,7 @@ namespace Depot.Repositories;
 public sealed class UserRepository : DatabaseRepository
 {
 	private const string SelectColumns =
-		"Id, Email, DisplayName, IsAdministrator, IsActive, CreatedUtc, Version";
+		"Id, Email, DisplayName, IsAdministrator, CanApprovePurchaseOrders, IsActive, CreatedUtc, Version";
 
 	public UserRepository(DatabaseAccess database)
 		: base(database)
@@ -72,14 +72,15 @@ public sealed class UserRepository : DatabaseRepository
 		Database.InsertAsync(
 			"""
 			INSERT INTO Users
-			(Email, DisplayName, PasswordHash, IsAdministrator, IsActive, CreatedUtc)
-			VALUES ($Email, $DisplayName, $PasswordHash, $IsAdministrator, $IsActive, $CreatedUtc);
+			(Email, DisplayName, PasswordHash, IsAdministrator, CanApprovePurchaseOrders, IsActive, CreatedUtc)
+			VALUES ($Email, $DisplayName, $PasswordHash, $IsAdministrator, $CanApprovePurchaseOrders, $IsActive, $CreatedUtc);
 			""",
 			cancellationToken,
 			Parameter("$Email", user.Email),
 			Parameter("$DisplayName", user.DisplayName),
 			Parameter("$PasswordHash", passwordHash),
 			Parameter("$IsAdministrator", user.IsAdministrator),
+			Parameter("$CanApprovePurchaseOrders", user.CanApprovePurchaseOrders),
 			Parameter("$IsActive", user.IsActive),
 			Parameter("$CreatedUtc", user.CreatedUtc.ToString("O", CultureInfo.InvariantCulture)));
 
@@ -95,6 +96,7 @@ public sealed class UserRepository : DatabaseRepository
 			Parameter("$Email", user.Email),
 			Parameter("$DisplayName", user.DisplayName),
 			Parameter("$IsAdministrator", user.IsAdministrator),
+			Parameter("$CanApprovePurchaseOrders", user.CanApprovePurchaseOrders),
 			Parameter("$Version", user.Version)
 		};
 		if (passwordHash is not null)
@@ -106,7 +108,7 @@ public sealed class UserRepository : DatabaseRepository
 			$"""
 			UPDATE Users
 			SET Email = $Email, DisplayName = $DisplayName, {passwordAssignment}
-			    IsAdministrator = $IsAdministrator, Version = Version + 1
+			    IsAdministrator = $IsAdministrator, CanApprovePurchaseOrders = $CanApprovePurchaseOrders, Version = Version + 1
 			WHERE Id = $Id AND Version = $Version;
 			""",
 			cancellationToken,
@@ -153,14 +155,15 @@ public sealed class UserRepository : DatabaseRepository
 		Database.Insert(
 			"""
 			INSERT INTO Users
-			(Email, DisplayName, PasswordHash, IsAdministrator, IsActive, CreatedUtc)
+			(Email, DisplayName, PasswordHash, IsAdministrator, CanApprovePurchaseOrders, IsActive, CreatedUtc)
 			VALUES
-			($Email, $DisplayName, $PasswordHash, $IsAdministrator, $IsActive, $CreatedUtc);
+			($Email, $DisplayName, $PasswordHash, $IsAdministrator, $CanApprovePurchaseOrders, $IsActive, $CreatedUtc);
 			""",
 			Parameter("$Email", user.Email),
 			Parameter("$DisplayName", user.DisplayName),
 			Parameter("$PasswordHash", passwordHash),
 			Parameter("$IsAdministrator", user.IsAdministrator),
+			Parameter("$CanApprovePurchaseOrders", user.CanApprovePurchaseOrders),
 			Parameter("$IsActive", user.IsActive),
 			Parameter("$CreatedUtc", user.CreatedUtc.ToString("O", CultureInfo.InvariantCulture)));
 
@@ -172,6 +175,7 @@ public sealed class UserRepository : DatabaseRepository
 				"""
 				UPDATE Users
 				SET Email = $Email, DisplayName = $DisplayName, IsAdministrator = $IsAdministrator,
+				    CanApprovePurchaseOrders = $CanApprovePurchaseOrders,
 				    Version = Version + 1
 				WHERE Id = $Id AND Version = $Version;
 				""",
@@ -179,6 +183,7 @@ public sealed class UserRepository : DatabaseRepository
 				Parameter("$Email", user.Email),
 				Parameter("$DisplayName", user.DisplayName),
 				Parameter("$IsAdministrator", user.IsAdministrator),
+				Parameter("$CanApprovePurchaseOrders", user.CanApprovePurchaseOrders),
 				Parameter("$Version", user.Version)) == 1;
 		}
 
@@ -186,7 +191,7 @@ public sealed class UserRepository : DatabaseRepository
 			"""
 			UPDATE Users
 			SET Email = $Email, DisplayName = $DisplayName, PasswordHash = $PasswordHash,
-			    IsAdministrator = $IsAdministrator, Version = Version + 1
+			    IsAdministrator = $IsAdministrator, CanApprovePurchaseOrders = $CanApprovePurchaseOrders, Version = Version + 1
 			WHERE Id = $Id AND Version = $Version;
 			""",
 			Parameter("$Id", user.Id),
@@ -194,6 +199,7 @@ public sealed class UserRepository : DatabaseRepository
 			Parameter("$DisplayName", user.DisplayName),
 			Parameter("$PasswordHash", passwordHash),
 			Parameter("$IsAdministrator", user.IsAdministrator),
+			Parameter("$CanApprovePurchaseOrders", user.CanApprovePurchaseOrders),
 			Parameter("$Version", user.Version)) == 1;
 	}
 
@@ -212,7 +218,7 @@ public sealed class UserRepository : DatabaseRepository
 		new()
 		{
 			User = ReadUser(reader),
-			PasswordHash = reader.GetString(7)
+			PasswordHash = reader.GetString(8)
 		};
 
 	private static User ReadUser(DbDataReader reader) =>
@@ -222,11 +228,12 @@ public sealed class UserRepository : DatabaseRepository
 			Email = reader.GetString(1),
 			DisplayName = reader.GetString(2),
 			IsAdministrator = reader.GetBoolean(3),
-			IsActive = reader.GetBoolean(4),
+			CanApprovePurchaseOrders = reader.GetBoolean(4),
+			IsActive = reader.GetBoolean(5),
 			CreatedUtc = DateTime.Parse(
-				reader.GetString(5),
+				reader.GetString(6),
 				CultureInfo.InvariantCulture,
 				DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal),
-			Version = reader.GetInt64(6)
+			Version = reader.GetInt64(7)
 		};
 }

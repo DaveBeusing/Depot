@@ -308,7 +308,12 @@ public sealed class MainViewModel : BaseViewModel
 
 	public string CurrentUserDisplayName => _authorizationService.CurrentUser?.DisplayName ?? string.Empty;
 
-	public string CurrentUserRole => _authorizationService.CurrentUser?.IsAdministrator == true ? "Administrator" : "User";
+	public string CurrentUserRole => _authorizationService.CurrentUser switch
+	{
+		{ IsAdministrator: true } => "Administrator",
+		{ CanApprovePurchaseOrders: true } => "Purchase Approver",
+		_ => "User"
+	};
 
 	private void Logout()
 	{

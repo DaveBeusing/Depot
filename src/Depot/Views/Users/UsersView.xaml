@@ -140,11 +140,17 @@
 						Style="{StaticResource HintStyle}"
 						Text="{Binding Editor.PasswordHint}" />
 
-					<CheckBox
-						Grid.Row="16"
-						Content="Administrator"
-						IsChecked="{Binding Editor.IsAdministrator}"
-						Style="{StaticResource AppCheckBoxStyle}" />
+					<StackPanel Grid.Row="16" Orientation="Horizontal">
+						<CheckBox
+							Content="Administrator"
+							IsChecked="{Binding Editor.IsAdministrator}"
+							Style="{StaticResource AppCheckBoxStyle}" />
+						<CheckBox
+							Margin="20,0,0,0"
+							Content="Approve purchase orders"
+							IsChecked="{Binding Editor.CanApprovePurchaseOrders}"
+							Style="{StaticResource AppCheckBoxStyle}" />
+					</StackPanel>
 
 					<Grid Grid.Row="18">
 						<controls:StatusBadge

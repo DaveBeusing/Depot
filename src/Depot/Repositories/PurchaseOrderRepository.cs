@@ -12,8 +12,8 @@ namespace Depot.Repositories;
 
 public sealed class PurchaseOrderRepository : DatabaseRepository
 {
-	private const string Columns = "po.Id, po.OrderNumber, po.SupplierId, s.Name, po.OrderDate, po.ExpectedDeliveryDate, po.Notes, po.Status, po.Version";
-	private const string From = "FROM PurchaseOrders po INNER JOIN Suppliers s ON s.Id = po.SupplierId";
+	private const string Columns = "po.Id, po.OrderNumber, po.SupplierId, s.Name, po.OrderDate, po.ExpectedDeliveryDate, po.Notes, po.Status, po.CreatedByUserId, po.SubmittedByUserId, po.SubmittedAtUtc, po.ApprovalDecisionByUserId, po.ApprovalDecisionAtUtc, po.ApprovalComment, createdUser.DisplayName, submittedUser.DisplayName, decisionUser.DisplayName, po.Version";
+	private const string From = "FROM PurchaseOrders po INNER JOIN Suppliers s ON s.Id = po.SupplierId LEFT JOIN Users createdUser ON createdUser.Id = po.CreatedByUserId LEFT JOIN Users submittedUser ON submittedUser.Id = po.SubmittedByUserId LEFT JOIN Users decisionUser ON decisionUser.Id = po.ApprovalDecisionByUserId";
 	private const string LineColumns = "pol.Id, pol.PurchaseOrderId, pol.LineNumber, pol.ItemId, i.PartNumber, i.Description, pol.Quantity, pol.UnitPrice, pol.ReceivedQuantity, pol.Version";
 
 	public PurchaseOrderRepository(DatabaseAccess database) : base(database) { }
@@ -66,7 +66,7 @@ public sealed class PurchaseOrderRepository : DatabaseRepository
 
 		var rows = await transaction.Session.QueryAsync(
 			$"SELECT {Columns}, {LineColumns} {From} INNER JOIN PurchaseOrderLines pol ON pol.PurchaseOrderId = po.Id INNER JOIN Items i ON i.Id = pol.ItemId WHERE po.Id = $Id ORDER BY pol.LineNumber;",
-			reader => new ReceiptOrderRow(ReadOrder(reader), ReadLine(reader, 9)),
+			reader => new ReceiptOrderRow(ReadOrder(reader), ReadLine(reader, 18)),
 			cancellationToken,
 			Parameter("$Id", id));
 		if (rows.Count == 0)
@@ -115,8 +115,8 @@ public sealed class PurchaseOrderRepository : DatabaseRepository
 			{
 				var temporaryNumber = $"PENDING-{Guid.NewGuid():N}";
 				order.Id = await session.InsertAsync(
-					"INSERT INTO PurchaseOrders (OrderNumber, SupplierId, OrderDate, ExpectedDeliveryDate, Notes, Status) VALUES ($OrderNumber, $SupplierId, $OrderDate, $ExpectedDeliveryDate, $Notes, $Status);",
-					token, Parameter("$OrderNumber", temporaryNumber), Parameter("$SupplierId", order.SupplierId), Parameter("$OrderDate", Date(order.OrderDate)), Parameter("$ExpectedDeliveryDate", NullableDate(order.ExpectedDeliveryDate)), Parameter("$Notes", order.Notes), Parameter("$Status", (int)PurchaseOrderStatus.Draft));
+					"INSERT INTO PurchaseOrders (OrderNumber, SupplierId, OrderDate, ExpectedDeliveryDate, Notes, Status, CreatedByUserId) VALUES ($OrderNumber, $SupplierId, $OrderDate, $ExpectedDeliveryDate, $Notes, $Status, $CreatedByUserId);",
+					token, Parameter("$OrderNumber", temporaryNumber), Parameter("$SupplierId", order.SupplierId), Parameter("$OrderDate", Date(order.OrderDate)), Parameter("$ExpectedDeliveryDate", NullableDate(order.ExpectedDeliveryDate)), Parameter("$Notes", order.Notes), Parameter("$Status", (int)PurchaseOrderStatus.Draft), Parameter("$CreatedByUserId", order.CreatedByUserId));
 				order.OrderNumber = $"PO-{order.Id:000000}";
 				await session.ExecuteAsync("UPDATE PurchaseOrders SET OrderNumber = $OrderNumber WHERE Id = $Id;", token, Parameter("$OrderNumber", order.OrderNumber), Parameter("$Id", order.Id));
 			}
@@ -170,11 +170,17 @@ public sealed class PurchaseOrderRepository : DatabaseRepository
 		Database.ExecuteInWriteTransactionAsync(async (session, token) =>
 		{
 			var updated = await session.ExecuteAsync(
-				"UPDATE PurchaseOrders SET Status = $Status, Version = Version + 1 WHERE Id = $Id AND Version = $Version AND Status = $Expected;",
+				"UPDATE PurchaseOrders SET Status = $Status, CreatedByUserId = $CreatedByUserId, SubmittedByUserId = $SubmittedByUserId, SubmittedAtUtc = $SubmittedAtUtc, ApprovalDecisionByUserId = $ApprovalDecisionByUserId, ApprovalDecisionAtUtc = $ApprovalDecisionAtUtc, ApprovalComment = $ApprovalComment, Version = Version + 1 WHERE Id = $Id AND Version = $Version AND Status = $Expected;",
 				token,
 				Parameter("$Status", (int)status),
 				Parameter("$Id", id),
 				Parameter("$Version", version),
+				Parameter("$CreatedByUserId", result.CreatedByUserId),
+				Parameter("$SubmittedByUserId", result.SubmittedByUserId),
+				Parameter("$SubmittedAtUtc", NullableUtc(result.SubmittedAtUtc)),
+				Parameter("$ApprovalDecisionByUserId", result.ApprovalDecisionByUserId),
+				Parameter("$ApprovalDecisionAtUtc", NullableUtc(result.ApprovalDecisionAtUtc)),
+				Parameter("$ApprovalComment", result.ApprovalComment),
 				Parameter("$Expected", (int)expected));
 			if (updated != 1) throw new ConcurrencyConflictException("purchase order");
 			await AuditRepository.CreateAsync(session, auditEntry, token);
@@ -204,7 +210,17 @@ public sealed class PurchaseOrderRepository : DatabaseRepository
 	{
 		Id = reader.GetInt64(0), OrderNumber = reader.GetString(1), SupplierId = reader.GetInt64(2), SupplierName = reader.GetString(3),
 		OrderDate = ParseDate(reader.GetString(4)), ExpectedDeliveryDate = reader.IsDBNull(5) ? null : ParseDate(reader.GetString(5)), Notes = reader.IsDBNull(6) ? null : reader.GetString(6),
-		Status = (PurchaseOrderStatus)reader.GetInt32(7), Version = reader.GetInt64(8)
+		Status = (PurchaseOrderStatus)reader.GetInt32(7),
+		CreatedByUserId = reader.IsDBNull(8) ? null : reader.GetInt64(8),
+		SubmittedByUserId = reader.IsDBNull(9) ? null : reader.GetInt64(9),
+		SubmittedAtUtc = reader.IsDBNull(10) ? null : ParseUtc(reader.GetString(10)),
+		ApprovalDecisionByUserId = reader.IsDBNull(11) ? null : reader.GetInt64(11),
+		ApprovalDecisionAtUtc = reader.IsDBNull(12) ? null : ParseUtc(reader.GetString(12)),
+		ApprovalComment = reader.IsDBNull(13) ? null : reader.GetString(13),
+		CreatedByUserDisplay = reader.IsDBNull(14) ? null : reader.GetString(14),
+		SubmittedByUserDisplay = reader.IsDBNull(15) ? null : reader.GetString(15),
+		ApprovalDecisionByUserDisplay = reader.IsDBNull(16) ? null : reader.GetString(16),
+		Version = reader.GetInt64(17)
 	};
 
 	private static PurchaseOrderLine ReadLine(DbDataReader reader) => new()
@@ -222,6 +238,8 @@ public sealed class PurchaseOrderRepository : DatabaseRepository
 	private static DatabaseParameter[] LineParameters(PurchaseOrderLine line) => [Parameter("$PurchaseOrderId", line.PurchaseOrderId), Parameter("$LineNumber", line.LineNumber), Parameter("$ItemId", line.ItemId), Parameter("$Quantity", line.Quantity), Parameter("$UnitPrice", line.UnitPrice)];
 	private static string Date(DateTime value) => value.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
 	private static object? NullableDate(DateTime? value) => value is null ? null : Date(value.Value);
+	private static object? NullableUtc(DateTime? value) => value is null ? null : value.Value.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture);
 	private static DateTime ParseDate(string value) => DateTime.Parse(value, CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal);
+	private static DateTime ParseUtc(string value) => DateTime.Parse(value, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal);
 	private sealed record ReceiptOrderRow(PurchaseOrder Order, PurchaseOrderLine Line);
 }

@@ -50,7 +50,8 @@ This roadmap reflects the implementation on the current `master` branch. “Impl
 - [x] Opening balances, purchases, withdrawals, and corrections
 - [x] Current stock and weighted average cost calculations
 - [x] Purchase orders and purchase-order lines
-- [x] Draft, Ordered, PartiallyReceived, Received, and Cancelled statuses
+- [x] Draft, approval, ordering, receipt, closing, rejection, and cancellation statuses
+- [x] Atomic purchase-order submission and separation-of-duties approval with explicit permission
 - [x] Delivery-note-based goods receipts separated from supplier invoices
 - [x] Partial receipts and automatic purchase-order status updates
 - [x] Atomic receipt, stock-movement, received-quantity, status, and audit writes

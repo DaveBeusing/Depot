@@ -37,7 +37,7 @@ public sealed class MovementReversalMigrationTests : IDisposable
 
 		using var migrated = new SqliteConnection($"Data Source={_path}");
 		migrated.Open();
-		Assert.Equal(20L, Scalar(migrated, "SELECT Version FROM DatabaseInfo;"));
+		Assert.Equal((long)DatabaseVersion.CurrentVersion, Scalar(migrated, "SELECT Version FROM DatabaseInfo;"));
 		Assert.True(HasColumn(migrated, "StockMovements", "ReversalOfMovementId"));
 		Assert.True(HasColumn(migrated, "StockMovements", "ReversedByUserId"));
 		Assert.True(HasColumn(migrated, "GoodsReceipts", "Version"));

@@ -43,7 +43,8 @@ internal sealed class ServiceComposition
 			repositories.PurchaseOrders,
 			repositories.Suppliers,
 			repositories.Items,
-			audit);
+			audit,
+			Authorization);
 		GoodsReceipts = new GoodsReceiptService(
 			database.TransactionRunner,
 			repositories.GoodsReceipts,

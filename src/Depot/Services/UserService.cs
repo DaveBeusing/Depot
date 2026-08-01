@@ -39,6 +39,7 @@ public sealed class UserService
 		string displayName,
 		string password,
 		bool isAdministrator,
+		bool canApprovePurchaseOrders,
 		CancellationToken cancellationToken)
 	{
 		email = NormalizeAndValidateEmail(email);
@@ -51,6 +52,7 @@ public sealed class UserService
 			Email = email,
 			DisplayName = displayName,
 			IsAdministrator = isAdministrator,
+			CanApprovePurchaseOrders = canApprovePurchaseOrders,
 			IsActive = true,
 			CreatedUtc = DateTime.UtcNow
 		};
@@ -69,6 +71,7 @@ public sealed class UserService
 		string displayName,
 		string password,
 		bool isAdministrator,
+		bool canApprovePurchaseOrders,
 		CancellationToken cancellationToken)
 	{
 		if (id <= 0) throw new ArgumentException("User id is required.", nameof(id));
@@ -85,6 +88,7 @@ public sealed class UserService
 		user.Email = email;
 		user.DisplayName = displayName;
 		user.IsAdministrator = isAdministrator;
+		user.CanApprovePurchaseOrders = canApprovePurchaseOrders;
 		var passwordHash = string.IsNullOrEmpty(password) ? null : _passwordHasher.Hash(password);
 		if (!await _userRepository.UpdateAsync(user, passwordHash, cancellationToken))
 			throw new ConcurrencyConflictException("user");
@@ -122,7 +126,8 @@ public sealed class UserService
 		string email,
 		string displayName,
 		string password,
-		bool isAdministrator)
+		bool isAdministrator,
+		bool canApprovePurchaseOrders)
 	{
 		email = NormalizeAndValidateEmail(email);
 		displayName = ValidateDisplayName(displayName);
@@ -138,6 +143,7 @@ public sealed class UserService
 			Email = email,
 			DisplayName = displayName,
 			IsAdministrator = isAdministrator,
+			CanApprovePurchaseOrders = canApprovePurchaseOrders,
 			IsActive = true,
 			CreatedUtc = DateTime.UtcNow
 		};
@@ -153,7 +159,8 @@ public sealed class UserService
 		string email,
 		string displayName,
 		string password,
-		bool isAdministrator)
+		bool isAdministrator,
+		bool canApprovePurchaseOrders)
 	{
 		if (id <= 0)
 		{
@@ -184,6 +191,7 @@ public sealed class UserService
 		user.Email = email;
 		user.DisplayName = displayName;
 		user.IsAdministrator = isAdministrator;
+		user.CanApprovePurchaseOrders = canApprovePurchaseOrders;
 		if (!_userRepository.Update(
 			user,
 			string.IsNullOrEmpty(password) ? null : _passwordHasher.Hash(password)))
@@ -282,6 +290,7 @@ public sealed class UserService
 			Email = user.Email,
 			DisplayName = user.DisplayName,
 			IsAdministrator = user.IsAdministrator,
+			CanApprovePurchaseOrders = user.CanApprovePurchaseOrders,
 			IsActive = user.IsActive,
 			CreatedUtc = user.CreatedUtc,
 			Version = user.Version

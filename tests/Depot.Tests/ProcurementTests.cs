@@ -20,7 +20,7 @@ public sealed class ProcurementTests
 	{
 		await using var context = await ProcurementTestContext.CreateSqliteAsync();
 		var order = await context.Orders.SaveDraftAsync(context.NewOrder(5));
-		order = await context.Orders.MarkOrderedAsync(order.Id, order.Version);
+		order = await context.ApproveAndOrderAsync(order);
 		var receipt = await context.Receipts.PostAsync(context.NewReceipt(order, 5));
 		var reasonCodeId = await context.ScalarAsync("SELECT Id FROM ReasonCodes WHERE Code = $Code;", new DatabaseParameter("$Code", ReasonCodeSystemCodes.Returned));
 
@@ -40,7 +40,7 @@ public sealed class ProcurementTests
 	{
 		await using var context = await ProcurementTestContext.CreateSqliteAsync();
 		var order = await context.Orders.SaveDraftAsync(context.NewOrder(3));
-		order = await context.Orders.MarkOrderedAsync(order.Id, order.Version);
+		order = await context.ApproveAndOrderAsync(order);
 		var receipt = await context.Receipts.PostAsync(context.NewReceipt(order, 3));
 		var reasonCodeId = await context.ScalarAsync("SELECT Id FROM ReasonCodes WHERE Code = $Code;", new DatabaseParameter("$Code", ReasonCodeSystemCodes.Returned));
 		await context.Data.ExecuteAsync(
@@ -61,7 +61,7 @@ public sealed class ProcurementTests
 	{
 		await using var context = await ProcurementTestContext.CreateSqliteAsync();
 		var order = await context.Orders.SaveDraftAsync(context.NewOrder(5));
-		order = await context.Orders.MarkOrderedAsync(order.Id, order.Version);
+		order = await context.ApproveAndOrderAsync(order);
 		var receipt = await context.Receipts.PostAsync(context.NewReceipt(order, 5));
 		await context.Data.InsertAsync(
 			"INSERT INTO StockMovements (InventoryId, MovementType, TimestampUtc, Quantity, Reference) VALUES ($InventoryId, $MovementType, $TimestampUtc, -5, 'CONSUMED');",
@@ -89,6 +89,104 @@ public sealed class ProcurementTests
 		Assert.Matches("^PO-[0-9]{6}$", saved.OrderNumber);
 		Assert.Equal(PurchaseOrderStatus.Draft, saved.Status);
 		Assert.Single(saved.Lines);
+		Assert.Equal(context.Authorization.CurrentUser?.Id, saved.CreatedByUserId);
+	}
+
+	[Fact]
+	public async Task ApprovalWorkflowCapturesDecisionAndPreventsSelfApproval()
+	{
+		await using var context = await ProcurementTestContext.CreateSqliteAsync();
+		var draft = await context.Orders.SaveDraftAsync(context.NewOrder());
+
+		var pending = await context.Orders.SubmitForApprovalAsync(draft.Id, draft.Version);
+
+		Assert.Equal(PurchaseOrderStatus.PendingApproval, pending.Status);
+		Assert.Equal(context.Authorization.CurrentUser?.Id, pending.SubmittedByUserId);
+		Assert.NotNull(pending.SubmittedAtUtc);
+		pending.Notes = "Pending orders are immutable";
+		await Assert.ThrowsAsync<InvalidOperationException>(() => context.Orders.SaveDraftAsync(pending));
+		await Assert.ThrowsAsync<InvalidOperationException>(() =>
+			context.Orders.ApproveAsync(pending.Id, pending.Version, "Self approval"));
+
+		context.SignInApprover();
+		var approved = await context.Orders.ApproveAsync(pending.Id, pending.Version, "Budget checked");
+
+		Assert.Equal(PurchaseOrderStatus.Approved, approved.Status);
+		Assert.Equal(context.ApproverUserId, approved.ApprovalDecisionByUserId);
+		Assert.NotNull(approved.ApprovalDecisionAtUtc);
+		Assert.Equal("Budget checked", approved.ApprovalComment);
+		var ordered = await context.Orders.MarkOrderedAsync(approved.Id, approved.Version);
+		Assert.Equal(PurchaseOrderStatus.Ordered, ordered.Status);
+	}
+
+	[Fact]
+	public async Task ApprovalRequiresExplicitPermissionAndHonorsConcurrency()
+	{
+		await using var context = await ProcurementTestContext.CreateSqliteAsync();
+		var draft = await context.Orders.SaveDraftAsync(context.NewOrder());
+		var pending = await context.Orders.SubmitForApprovalAsync(draft.Id, draft.Version);
+		context.Authorization.SignIn(new User
+		{
+			Id = context.ApproverUserId,
+			Email = "unprivileged@depot.test",
+			DisplayName = "Unprivileged user",
+			IsActive = true
+		});
+
+		await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+			context.Orders.ApproveAsync(pending.Id, pending.Version));
+
+		context.SignInApprover();
+		var approved = await context.Orders.ApproveAsync(pending.Id, pending.Version);
+		await Assert.ThrowsAsync<ConcurrencyConflictException>(() =>
+			context.Orders.RejectAsync(pending.Id, pending.Version, "Stale rejection"));
+		Assert.Equal(PurchaseOrderStatus.Approved,
+			(await context.Orders.GetByIdAsync(approved.Id))?.Status);
+	}
+
+	[Fact]
+	public async Task RejectedOrderCanBeReopenedOrCancelled()
+	{
+		await using var context = await ProcurementTestContext.CreateSqliteAsync();
+		var draft = await context.Orders.SaveDraftAsync(context.NewOrder());
+		var pending = await context.Orders.SubmitForApprovalAsync(draft.Id, draft.Version);
+		context.SignInApprover();
+		var rejected = await context.Orders.RejectAsync(pending.Id, pending.Version, "Please revise quantities");
+		context.SignInAdministrator();
+
+		var reopened = await context.Orders.ReopenRejectedAsync(rejected.Id, rejected.Version);
+
+		Assert.Equal(PurchaseOrderStatus.Draft, reopened.Status);
+		Assert.Null(reopened.SubmittedByUserId);
+		Assert.Null(reopened.ApprovalDecisionByUserId);
+		Assert.Null(reopened.ApprovalComment);
+
+		pending = await context.Orders.SubmitForApprovalAsync(reopened.Id, reopened.Version);
+		context.SignInApprover();
+		rejected = await context.Orders.RejectAsync(pending.Id, pending.Version);
+		context.SignInAdministrator();
+		var cancelled = await context.Orders.CancelAsync(rejected.Id, rejected.Version);
+		Assert.Equal(PurchaseOrderStatus.Cancelled, cancelled.Status);
+	}
+
+	[Fact]
+	public async Task ApprovalAuditFailureRollsBackDecision()
+	{
+		await using var context = await ProcurementTestContext.CreateSqliteAsync();
+		var draft = await context.Orders.SaveDraftAsync(context.NewOrder());
+		var pending = await context.Orders.SubmitForApprovalAsync(draft.Id, draft.Version);
+		context.SignInApprover();
+		await context.Data.ExecuteAsync(
+			"CREATE TRIGGER FailApprovalAudit BEFORE INSERT ON AuditEntries WHEN NEW.EntityType = 'PurchaseOrder' BEGIN SELECT RAISE(ABORT, 'forced approval audit failure'); END;",
+			CancellationToken.None);
+
+		await Assert.ThrowsAsync<SqliteException>(() =>
+			context.Orders.ApproveAsync(pending.Id, pending.Version, "Must roll back"));
+
+		var unchanged = await context.Orders.GetByIdAsync(pending.Id) ?? throw new InvalidOperationException();
+		Assert.Equal(PurchaseOrderStatus.PendingApproval, unchanged.Status);
+		Assert.Equal(pending.Version, unchanged.Version);
+		Assert.Null(unchanged.ApprovalDecisionByUserId);
 	}
 
 	[Fact]
@@ -98,7 +196,7 @@ public sealed class ProcurementTests
 		var order = await context.Orders.SaveDraftAsync(context.NewOrder());
 		order.Notes = "Updated draft";
 		order = await context.Orders.SaveDraftAsync(order);
-		order = await context.Orders.MarkOrderedAsync(order.Id, order.Version);
+		order = await context.ApproveAndOrderAsync(order);
 		order = await context.Orders.CancelAsync(order.Id, order.Version);
 
 		var auditStates = await context.Data.QueryAsync(
@@ -107,16 +205,20 @@ public sealed class ProcurementTests
 			CancellationToken.None,
 			new DatabaseParameter("$Id", order.Id));
 
-		Assert.Equal(4, auditStates.Count);
+		Assert.Equal(6, auditStates.Count);
 		Assert.Null(auditStates[0].BeforeJson);
 		Assert.Equal(order.Id, JsonInt64(auditStates[0].AfterJson, "id"));
 		Assert.Null(JsonString(auditStates[0].AfterJson, "notes"));
 		Assert.Null(JsonString(RequiredJson(auditStates[1].BeforeJson), "notes"));
 		Assert.Equal("Updated draft", JsonString(auditStates[1].AfterJson, "notes"));
 		Assert.Equal((int)PurchaseOrderStatus.Draft, JsonInt32(RequiredJson(auditStates[2].BeforeJson), "status"));
-		Assert.Equal((int)PurchaseOrderStatus.Ordered, JsonInt32(auditStates[2].AfterJson, "status"));
-		Assert.Equal((int)PurchaseOrderStatus.Ordered, JsonInt32(RequiredJson(auditStates[3].BeforeJson), "status"));
-		Assert.Equal((int)PurchaseOrderStatus.Cancelled, JsonInt32(auditStates[3].AfterJson, "status"));
+		Assert.Equal((int)PurchaseOrderStatus.PendingApproval, JsonInt32(auditStates[2].AfterJson, "status"));
+		Assert.Equal((int)PurchaseOrderStatus.PendingApproval, JsonInt32(RequiredJson(auditStates[3].BeforeJson), "status"));
+		Assert.Equal((int)PurchaseOrderStatus.Approved, JsonInt32(auditStates[3].AfterJson, "status"));
+		Assert.Equal((int)PurchaseOrderStatus.Approved, JsonInt32(RequiredJson(auditStates[4].BeforeJson), "status"));
+		Assert.Equal((int)PurchaseOrderStatus.Ordered, JsonInt32(auditStates[4].AfterJson, "status"));
+		Assert.Equal((int)PurchaseOrderStatus.Ordered, JsonInt32(RequiredJson(auditStates[5].BeforeJson), "status"));
+		Assert.Equal((int)PurchaseOrderStatus.Cancelled, JsonInt32(auditStates[5].AfterJson, "status"));
 	}
 
 	[Fact]
@@ -149,13 +251,13 @@ public sealed class ProcurementTests
 		Assert.Equal(originalVersion, unchanged.Version);
 		Assert.Equal(1, await context.ScalarAsync("SELECT COUNT(*) FROM AuditEntries WHERE EntityType = 'PurchaseOrder';"));
 
-		await Assert.ThrowsAsync<SqliteException>(() => context.Orders.MarkOrderedAsync(unchanged.Id, unchanged.Version));
+		await Assert.ThrowsAsync<SqliteException>(() => context.Orders.SubmitForApprovalAsync(unchanged.Id, unchanged.Version));
 		unchanged = await context.Orders.GetByIdAsync(order.Id) ?? throw new InvalidOperationException();
 		Assert.Equal(PurchaseOrderStatus.Draft, unchanged.Status);
 		Assert.Equal(originalVersion, unchanged.Version);
 
 		context.Authorization.SignIn(administrator);
-		var ordered = await context.Orders.MarkOrderedAsync(unchanged.Id, unchanged.Version);
+		var ordered = await context.ApproveAndOrderAsync(unchanged);
 		var orderedVersion = ordered.Version;
 		UseInvalidAuditUser(context);
 		await Assert.ThrowsAsync<SqliteException>(() => context.Orders.CancelAsync(ordered.Id, ordered.Version));
@@ -163,7 +265,7 @@ public sealed class ProcurementTests
 		var stillOrdered = await context.Orders.GetByIdAsync(order.Id) ?? throw new InvalidOperationException();
 		Assert.Equal(PurchaseOrderStatus.Ordered, stillOrdered.Status);
 		Assert.Equal(orderedVersion, stillOrdered.Version);
-		Assert.Equal(2, await context.ScalarAsync("SELECT COUNT(*) FROM AuditEntries WHERE EntityType = 'PurchaseOrder';"));
+		Assert.Equal(4, await context.ScalarAsync("SELECT COUNT(*) FROM AuditEntries WHERE EntityType = 'PurchaseOrder';"));
 	}
 
 	[Fact]
@@ -250,22 +352,25 @@ public sealed class ProcurementTests
 	{
 		await using var context = await ProcurementTestContext.CreateSqliteAsync();
 		var order = await context.Orders.SaveDraftAsync(context.NewOrder());
-		order = await context.Orders.MarkOrderedAsync(order.Id, order.Version);
+		order = await context.ApproveAndOrderAsync(order);
 		order.Notes = "Editing is no longer allowed";
 
 		await Assert.ThrowsAsync<InvalidOperationException>(() => context.Orders.SaveDraftAsync(order));
 	}
 
 	[Fact]
-	public async Task DraftPurchaseOrderCanBeMarkedOrdered()
+	public async Task PurchaseOrderRequiresApprovalBeforeItCanBeMarkedOrdered()
 	{
 		await using var context = await ProcurementTestContext.CreateSqliteAsync();
 		var order = await context.Orders.SaveDraftAsync(context.NewOrder());
 
-		var ordered = await context.Orders.MarkOrderedAsync(order.Id, order.Version);
+		await Assert.ThrowsAsync<ConcurrencyConflictException>(() =>
+			context.Orders.MarkOrderedAsync(order.Id, order.Version));
+
+		var ordered = await context.ApproveAndOrderAsync(order);
 
 		Assert.Equal(PurchaseOrderStatus.Ordered, ordered.Status);
-		Assert.Equal(order.Version + 1, ordered.Version);
+		Assert.Equal(order.Version + 3, ordered.Version);
 	}
 
 	[Fact]
@@ -273,7 +378,7 @@ public sealed class ProcurementTests
 	{
 		await using var context = await ProcurementTestContext.CreateSqliteAsync();
 		var order = await context.Orders.SaveDraftAsync(context.NewOrder());
-		order = await context.Orders.MarkOrderedAsync(order.Id, order.Version);
+		order = await context.ApproveAndOrderAsync(order);
 
 		await Assert.ThrowsAsync<ConcurrencyConflictException>(() =>
 			context.Orders.MarkOrderedAsync(order.Id, order.Version));
@@ -437,7 +542,7 @@ public sealed class ProcurementTests
 			new PurchaseOrderLine { ItemId = context.SecondItemId, Quantity = 2, UnitPrice = 6m }
 		];
 		var order = await context.Orders.SaveDraftAsync(draft);
-		order = await context.Orders.MarkOrderedAsync(order.Id, order.Version);
+		order = await context.ApproveAndOrderAsync(order);
 		var receipt = context.NewReceipt(order, 1);
 		receipt.Lines =
 		[
@@ -603,7 +708,7 @@ public sealed class ProcurementTests
 			Assert.NotEmpty(line.ItemPartNumber);
 			Assert.NotEmpty(line.ItemDescription);
 		});
-		order = await context.Orders.MarkOrderedAsync(order.Id, order.Version);
+		order = await context.ApproveAndOrderAsync(order);
 		var receipt = new GoodsReceipt
 		{
 			PurchaseOrderId = order.Id,
@@ -633,7 +738,7 @@ public sealed class ProcurementTests
 		int quantity)
 	{
 		var order = await context.Orders.SaveDraftAsync(context.NewOrder(quantity));
-		return await context.Orders.MarkOrderedAsync(order.Id, order.Version);
+		return await context.ApproveAndOrderAsync(order);
 	}
 
 	private static void UseInvalidAuditUser(ProcurementTestContext context) =>

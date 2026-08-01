@@ -37,4 +37,8 @@ public sealed class AuthorizationService
 	public bool CanOpenSettings() => CurrentUser?.IsAdministrator == true;
 
 	public bool CanViewAuditLog() => CurrentUser?.IsAdministrator == true;
+
+	public bool CanApprovePurchaseOrders() =>
+		CurrentUser is { IsActive: true } user &&
+		(user.IsAdministrator || user.CanApprovePurchaseOrders);
 }
