@@ -38,6 +38,8 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 		command.ExecuteNonQuery();
 		command.CommandText = MaterialIssueSql;
 		command.ExecuteNonQuery();
+		command.CommandText = MaterialReturnSql;
+		command.ExecuteNonQuery();
 
 		command.CommandText = "SELECT Version FROM DatabaseInfo WHERE Id = 1;";
 		var version = Convert.ToInt32(command.ExecuteScalar(), CultureInfo.InvariantCulture);
@@ -116,6 +118,11 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 			MigrateToMaterialIssues(command);
 			version = 23;
 		}
+		if (version == 23)
+		{
+			MigrateToMaterialReturns(command);
+			version = 24;
+		}
 		if (version != DatabaseVersion.CurrentVersion)
 		{
 			throw new InvalidOperationException(
@@ -162,6 +169,13 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 	private static void MigrateToMaterialIssues(System.Data.Common.DbCommand command)
 	{
 		command.CommandText = MaterialIssueSql + " UPDATE DatabaseInfo SET Version = 23 WHERE Id = 1;";
+		command.Parameters.Clear();
+		command.ExecuteNonQuery();
+	}
+
+	private static void MigrateToMaterialReturns(System.Data.Common.DbCommand command)
+	{
+		command.CommandText = MaterialReturnSql + " UPDATE DatabaseInfo SET Version = 24 WHERE Id = 1;";
 		command.Parameters.Clear();
 		command.ExecuteNonQuery();
 	}
@@ -651,6 +665,44 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 		);
 		CREATE INDEX IX_MaterialIssueLines_InventoryId ON MaterialIssueLines(InventoryId);
 		CREATE INDEX IX_MaterialIssueLines_ReasonCodeId ON MaterialIssueLines(ReasonCodeId);
+	END;
+	""";
+
+	private const string MaterialReturnSql =
+	"""
+	IF OBJECT_ID(N'MaterialReturns', N'U') IS NULL
+	BEGIN
+		CREATE TABLE MaterialReturns
+		(
+			Id bigint IDENTITY(1,1) NOT NULL PRIMARY KEY, ReturnNumber nvarchar(50) NOT NULL UNIQUE,
+			ReturnDate nvarchar(10) NOT NULL, Status int NOT NULL DEFAULT 1, RecipientOrSource nvarchar(250) NOT NULL,
+			OriginalMaterialIssueId bigint NULL, Reference nvarchar(250) NULL, Notes nvarchar(4000) NULL,
+			CreatedByUserId bigint NOT NULL, PostedByUserId bigint NULL, PostedAtUtc nvarchar(40) NULL,
+			Version bigint NOT NULL DEFAULT 1, CONSTRAINT CK_MaterialReturns_Status CHECK (Status IN (1, 2, 3)),
+			CONSTRAINT FK_MaterialReturns_OriginalIssues FOREIGN KEY (OriginalMaterialIssueId) REFERENCES MaterialIssues(Id),
+			CONSTRAINT FK_MaterialReturns_CreatedByUsers FOREIGN KEY (CreatedByUserId) REFERENCES Users(Id),
+			CONSTRAINT FK_MaterialReturns_PostedByUsers FOREIGN KEY (PostedByUserId) REFERENCES Users(Id)
+		);
+		CREATE INDEX IX_MaterialReturns_ReturnDate ON MaterialReturns(ReturnDate);
+		CREATE INDEX IX_MaterialReturns_Status ON MaterialReturns(Status);
+		CREATE INDEX IX_MaterialReturns_OriginalMaterialIssueId ON MaterialReturns(OriginalMaterialIssueId);
+	END;
+	IF OBJECT_ID(N'MaterialReturnLines', N'U') IS NULL
+	BEGIN
+		CREATE TABLE MaterialReturnLines
+		(
+			Id bigint IDENTITY(1,1) NOT NULL PRIMARY KEY, MaterialReturnId bigint NOT NULL, LineNumber int NOT NULL,
+			InventoryId bigint NOT NULL, Quantity int NOT NULL, ReasonCodeId bigint NOT NULL, Notes nvarchar(2000) NULL,
+			Version bigint NOT NULL DEFAULT 1,
+			CONSTRAINT UQ_MaterialReturnLines_Number UNIQUE (MaterialReturnId, LineNumber),
+			CONSTRAINT UQ_MaterialReturnLines_Inventory UNIQUE (MaterialReturnId, InventoryId),
+			CONSTRAINT CK_MaterialReturnLines_Quantity CHECK (Quantity > 0),
+			CONSTRAINT FK_MaterialReturnLines_Returns FOREIGN KEY (MaterialReturnId) REFERENCES MaterialReturns(Id),
+			CONSTRAINT FK_MaterialReturnLines_Inventories FOREIGN KEY (InventoryId) REFERENCES Inventories(Id),
+			CONSTRAINT FK_MaterialReturnLines_ReasonCodes FOREIGN KEY (ReasonCodeId) REFERENCES ReasonCodes(Id)
+		);
+		CREATE INDEX IX_MaterialReturnLines_InventoryId ON MaterialReturnLines(InventoryId);
+		CREATE INDEX IX_MaterialReturnLines_ReasonCodeId ON MaterialReturnLines(ReasonCodeId);
 	END;
 	""";
 

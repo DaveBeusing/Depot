@@ -38,6 +38,7 @@ public sealed class MainViewModel : BaseViewModel
 		StockTransferService stockTransferService,
 		InventoryCountService inventoryCountService,
 		MaterialIssueService materialIssueService,
+		MaterialReturnService materialReturnService,
 		WarehouseService warehouseService,
 		StorageLocationService storageLocationService,
 		UserService userService,
@@ -79,6 +80,7 @@ public sealed class MainViewModel : BaseViewModel
 		StockTransfersViewModel = new StockTransfersViewModel(stockTransferService, warehouseService, fileDialogService, reasonCodeService);
 		InventoryCountsViewModel = new InventoryCountsViewModel(inventoryCountService, warehouseService, fileDialogService, reasonCodeService);
 		MaterialIssuesViewModel = new MaterialIssuesViewModel(materialIssueService, reasonCodeService, fileDialogService);
+		MaterialReturnsViewModel = new MaterialReturnsViewModel(materialReturnService, reasonCodeService, fileDialogService);
 
 		ProcurementViewModel = new ProcurementViewModel(purchaseOrderService, goodsReceiptService, supplierService, itemService, fileDialogService, reasonCodeService);
 		PurchaseOrderApprovalsViewModel = new PurchaseOrderApprovalsViewModel(purchaseOrderApprovalService);
@@ -176,6 +178,14 @@ public sealed class MainViewModel : BaseViewModel
 		NavigationItems.Add(
 			new NavigationItem
 			{
+				Name = "Material Returns",
+				IconData = "M 17,4 L 5,4 L 5,16 L 17,16 M 8,8 L 3,11 L 8,14 M 3,11 L 13,11",
+				Section = ShellSection.MaterialReturns
+			});
+
+		NavigationItems.Add(
+			new NavigationItem
+			{
 				Name = "Procurement",
 				IconData = "M 3,4 L 17,4 L 16,17 L 4,17 Z M 7,4 L 7,2 L 13,2 L 13,4 M 7,8 L 13,8 M 7,12 L 13,12",
 				Section = ShellSection.Procurement
@@ -239,6 +249,8 @@ public sealed class MainViewModel : BaseViewModel
 
 	public MaterialIssuesViewModel MaterialIssuesViewModel { get; }
 
+	public MaterialReturnsViewModel MaterialReturnsViewModel { get; }
+
 	public ProcurementViewModel ProcurementViewModel { get; }
 
 	public PurchaseOrderApprovalsViewModel PurchaseOrderApprovalsViewModel { get; }
@@ -287,6 +299,7 @@ public sealed class MainViewModel : BaseViewModel
 			ShellSection.Transfers => StockTransfersViewModel,
 			ShellSection.InventoryCounts => InventoryCountsViewModel,
 			ShellSection.MaterialIssues => MaterialIssuesViewModel,
+			ShellSection.MaterialReturns => MaterialReturnsViewModel,
 			ShellSection.Procurement => ProcurementViewModel,
 			ShellSection.Approvals => PurchaseOrderApprovalsViewModel,
 			ShellSection.Reports => ReportsViewModel,
@@ -328,6 +341,10 @@ public sealed class MainViewModel : BaseViewModel
 		else if (CurrentViewModel == MaterialIssuesViewModel)
 		{
 			await MaterialIssuesViewModel.LoadAsync(cancellationToken);
+		}
+		else if (CurrentViewModel == MaterialReturnsViewModel)
+		{
+			await MaterialReturnsViewModel.LoadAsync(cancellationToken);
 		}
 		else if (CurrentViewModel == ProcurementViewModel)
 		{

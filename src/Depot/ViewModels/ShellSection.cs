@@ -12,6 +12,7 @@ public enum ShellSection
 	Transfers,
 	InventoryCounts,
 	MaterialIssues,
+	MaterialReturns,
 	Procurement,
 	Approvals,
 	Reports,

@@ -180,6 +180,8 @@ public sealed class DepotDatabase : IDatabaseInitializer
 
 		CreateMaterialIssueTables(connection);
 
+		CreateMaterialReturnTables(connection);
+
 		CreateAuditEntriesTable(
 			connection);
 
@@ -570,6 +572,38 @@ public sealed class DepotDatabase : IDatabaseInitializer
 		);
 		CREATE INDEX IF NOT EXISTS IX_MaterialIssueLines_InventoryId ON MaterialIssueLines(InventoryId);
 		CREATE INDEX IF NOT EXISTS IX_MaterialIssueLines_ReasonCodeId ON MaterialIssueLines(ReasonCodeId);
+		""";
+		command.ExecuteNonQuery();
+	}
+
+	private static void CreateMaterialReturnTables(SqliteConnection connection)
+	{
+		using var command = connection.CreateCommand();
+		command.CommandText =
+		"""
+		CREATE TABLE IF NOT EXISTS MaterialReturns
+		(
+			Id INTEGER PRIMARY KEY AUTOINCREMENT, ReturnNumber TEXT NOT NULL UNIQUE, ReturnDate TEXT NOT NULL,
+			Status INTEGER NOT NULL DEFAULT 1, RecipientOrSource TEXT NOT NULL, OriginalMaterialIssueId INTEGER NULL,
+			Reference TEXT NULL, Notes TEXT NULL, CreatedByUserId INTEGER NOT NULL, PostedByUserId INTEGER NULL,
+			PostedAtUtc TEXT NULL, Version INTEGER NOT NULL DEFAULT 1,
+			FOREIGN KEY(OriginalMaterialIssueId) REFERENCES MaterialIssues(Id),
+			FOREIGN KEY(CreatedByUserId) REFERENCES Users(Id), FOREIGN KEY(PostedByUserId) REFERENCES Users(Id),
+			CHECK(Status IN (1, 2, 3))
+		);
+		CREATE INDEX IF NOT EXISTS IX_MaterialReturns_ReturnDate ON MaterialReturns(ReturnDate);
+		CREATE INDEX IF NOT EXISTS IX_MaterialReturns_Status ON MaterialReturns(Status);
+		CREATE INDEX IF NOT EXISTS IX_MaterialReturns_OriginalMaterialIssueId ON MaterialReturns(OriginalMaterialIssueId);
+		CREATE TABLE IF NOT EXISTS MaterialReturnLines
+		(
+			Id INTEGER PRIMARY KEY AUTOINCREMENT, MaterialReturnId INTEGER NOT NULL, LineNumber INTEGER NOT NULL,
+			InventoryId INTEGER NOT NULL, Quantity INTEGER NOT NULL, ReasonCodeId INTEGER NOT NULL, Notes TEXT NULL,
+			Version INTEGER NOT NULL DEFAULT 1, UNIQUE(MaterialReturnId, LineNumber), UNIQUE(MaterialReturnId, InventoryId),
+			FOREIGN KEY(MaterialReturnId) REFERENCES MaterialReturns(Id), FOREIGN KEY(InventoryId) REFERENCES Inventories(Id),
+			FOREIGN KEY(ReasonCodeId) REFERENCES ReasonCodes(Id), CHECK(Quantity > 0)
+		);
+		CREATE INDEX IF NOT EXISTS IX_MaterialReturnLines_InventoryId ON MaterialReturnLines(InventoryId);
+		CREATE INDEX IF NOT EXISTS IX_MaterialReturnLines_ReasonCodeId ON MaterialReturnLines(ReasonCodeId);
 		""";
 		command.ExecuteNonQuery();
 	}
@@ -1018,6 +1052,13 @@ public sealed class DepotDatabase : IDatabaseInitializer
 			CreateMaterialIssueTables(connection);
 			SetDatabaseVersion(connection, 23);
 			migratedVersion = 23;
+		}
+
+		if (migratedVersion == 23)
+		{
+			CreateMaterialReturnTables(connection);
+			SetDatabaseVersion(connection, 24);
+			migratedVersion = 24;
 		}
 
 		if (migratedVersion < DatabaseVersion.CurrentVersion)

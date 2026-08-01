@@ -63,6 +63,7 @@ This roadmap reflects the implementation on the current `master` branch. “Impl
 - [x] Atomic inventory-count posting against current stock through audited correction movements
 - [x] Atomic, audited counter-booking for goods receipts, material withdrawals, transfers, and inventory-count postings
 - [x] Structured material issues with drafts, server-side list search/paging, atomic Withdrawal posting, cancellation, reversal, and movement details
+- [x] Independent material returns with optional issue linkage, positive stock posting, server-side list search/paging, and correction by counter-booking
 
 ### Administration and output
 

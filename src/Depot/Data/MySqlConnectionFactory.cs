@@ -79,6 +79,9 @@ public sealed class MySqlConnectionFactory : IDatabaseConnectionFactory
 	public string GetMaterialIssueLockSql() =>
 		"SELECT Id FROM MaterialIssues WHERE Id = $MaterialIssueId FOR UPDATE;";
 
+	public string GetMaterialReturnLockSql() =>
+		"SELECT Id FROM MaterialReturns WHERE Id = $MaterialReturnId FOR UPDATE;";
+
 	public string GetPagingClause() => "LIMIT $PageSize OFFSET $Offset";
 	public string CastToInt64(string expression) => $"CAST({expression} AS SIGNED)";
 

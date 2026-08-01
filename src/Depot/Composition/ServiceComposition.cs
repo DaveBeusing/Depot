@@ -89,6 +89,16 @@ internal sealed class ServiceComposition
 			repositories.Audit,
 			audit,
 			movementReversals);
+		MaterialReturns = new MaterialReturnService(
+			database.TransactionRunner,
+			repositories.MaterialReturns,
+			repositories.MaterialIssues,
+			repositories.Inventories,
+			repositories.StockMovements,
+			repositories.ReasonCodes,
+			repositories.Audit,
+			audit,
+			movementReversals);
 		Items = new ItemService(
 			repositories.Items,
 			audit,
@@ -148,6 +158,7 @@ internal sealed class ServiceComposition
 	public StockTransferService StockTransfers { get; }
 	public InventoryCountService InventoryCounts { get; }
 	public MaterialIssueService MaterialIssues { get; }
+	public MaterialReturnService MaterialReturns { get; }
 	public WarehouseService Warehouses { get; }
 	public StorageLocationService StorageLocations { get; }
 	public UserService Users { get; }

@@ -45,6 +45,8 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 			command.ExecuteNonQuery();
 			command.CommandText = MaterialIssueSql;
 			command.ExecuteNonQuery();
+			command.CommandText = MaterialReturnSql;
+			command.ExecuteNonQuery();
 
 			command.CommandText = "SELECT Version FROM DatabaseInfo WHERE Id = 1;";
 			command.Parameters.Clear();
@@ -124,6 +126,11 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 				MigrateToMaterialIssues(command);
 				version = 23;
 			}
+			if (version == 23)
+			{
+				MigrateToMaterialReturns(command);
+				version = 24;
+			}
 			if (version != DatabaseVersion.CurrentVersion)
 			{
 				throw new InvalidOperationException(
@@ -165,6 +172,13 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 	private static void MigrateToMaterialIssues(System.Data.Common.DbCommand command)
 	{
 		command.CommandText = MaterialIssueSql + " UPDATE DatabaseInfo SET Version = 23 WHERE Id = 1;";
+		command.Parameters.Clear();
+		command.ExecuteNonQuery();
+	}
+
+	private static void MigrateToMaterialReturns(System.Data.Common.DbCommand command)
+	{
+		command.CommandText = MaterialReturnSql + " UPDATE DatabaseInfo SET Version = 24 WHERE Id = 1;";
 		command.Parameters.Clear();
 		command.ExecuteNonQuery();
 	}
@@ -744,6 +758,35 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 		CONSTRAINT FK_MaterialIssueLines_Issues FOREIGN KEY (MaterialIssueId) REFERENCES MaterialIssues(Id),
 		CONSTRAINT FK_MaterialIssueLines_Inventories FOREIGN KEY (InventoryId) REFERENCES Inventories(Id),
 		CONSTRAINT FK_MaterialIssueLines_ReasonCodes FOREIGN KEY (ReasonCodeId) REFERENCES ReasonCodes(Id)
+	) ENGINE=InnoDB;
+	""";
+
+	private const string MaterialReturnSql =
+	"""
+	CREATE TABLE IF NOT EXISTS MaterialReturns
+	(
+		Id bigint NOT NULL AUTO_INCREMENT PRIMARY KEY, ReturnNumber varchar(50) NOT NULL UNIQUE,
+		ReturnDate varchar(10) NOT NULL, Status int NOT NULL DEFAULT 1, RecipientOrSource varchar(250) NOT NULL,
+		OriginalMaterialIssueId bigint NULL, Reference varchar(250) NULL, Notes text NULL, CreatedByUserId bigint NOT NULL,
+		PostedByUserId bigint NULL, PostedAtUtc varchar(40) NULL, Version bigint NOT NULL DEFAULT 1,
+		INDEX IX_MaterialReturns_ReturnDate (ReturnDate), INDEX IX_MaterialReturns_Status (Status),
+		INDEX IX_MaterialReturns_OriginalMaterialIssueId (OriginalMaterialIssueId),
+		CONSTRAINT CK_MaterialReturns_Status CHECK (Status IN (1, 2, 3)),
+		CONSTRAINT FK_MaterialReturns_OriginalIssues FOREIGN KEY (OriginalMaterialIssueId) REFERENCES MaterialIssues(Id),
+		CONSTRAINT FK_MaterialReturns_CreatedByUsers FOREIGN KEY (CreatedByUserId) REFERENCES Users(Id),
+		CONSTRAINT FK_MaterialReturns_PostedByUsers FOREIGN KEY (PostedByUserId) REFERENCES Users(Id)
+	) ENGINE=InnoDB;
+	CREATE TABLE IF NOT EXISTS MaterialReturnLines
+	(
+		Id bigint NOT NULL AUTO_INCREMENT PRIMARY KEY, MaterialReturnId bigint NOT NULL, LineNumber int NOT NULL,
+		InventoryId bigint NOT NULL, Quantity int NOT NULL, ReasonCodeId bigint NOT NULL, Notes varchar(2000) NULL,
+		Version bigint NOT NULL DEFAULT 1, UNIQUE KEY UQ_MaterialReturnLines_Number (MaterialReturnId, LineNumber),
+		UNIQUE KEY UQ_MaterialReturnLines_Inventory (MaterialReturnId, InventoryId),
+		INDEX IX_MaterialReturnLines_InventoryId (InventoryId), INDEX IX_MaterialReturnLines_ReasonCodeId (ReasonCodeId),
+		CONSTRAINT CK_MaterialReturnLines_Quantity CHECK (Quantity > 0),
+		CONSTRAINT FK_MaterialReturnLines_Returns FOREIGN KEY (MaterialReturnId) REFERENCES MaterialReturns(Id),
+		CONSTRAINT FK_MaterialReturnLines_Inventories FOREIGN KEY (InventoryId) REFERENCES Inventories(Id),
+		CONSTRAINT FK_MaterialReturnLines_ReasonCodes FOREIGN KEY (ReasonCodeId) REFERENCES ReasonCodes(Id)
 	) ENGINE=InnoDB;
 	""";
 

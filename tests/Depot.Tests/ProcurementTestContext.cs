@@ -19,6 +19,7 @@ internal sealed class ProcurementTestContext : IAsyncDisposable
 	private GoodsReceiptService? _receipts;
 	private AuthorizationService? _authorization;
 	private MaterialIssueService? _materialIssues;
+	private MaterialReturnService? _materialReturns;
 	private User? _administrator;
 	private User? _approver;
 
@@ -40,6 +41,7 @@ internal sealed class ProcurementTestContext : IAsyncDisposable
 	public GoodsReceiptService Receipts => _receipts ?? throw new InvalidOperationException("The goods receipt service was not initialized.");
 	public AuthorizationService Authorization => _authorization ?? throw new InvalidOperationException("Authorization was not initialized.");
 	public MaterialIssueService MaterialIssues => _materialIssues ?? throw new InvalidOperationException("The material issue service was not initialized.");
+	public MaterialReturnService MaterialReturns => _materialReturns ?? throw new InvalidOperationException("The material return service was not initialized.");
 	public long SupplierId { get; private set; }
 	public long InactiveSupplierId { get; private set; }
 	public long ItemId { get; private set; }
@@ -240,6 +242,16 @@ internal sealed class ProcurementTestContext : IAsyncDisposable
 			new AuditRepository(context.Data),
 			audit,
 			issueReversals);
+		context._materialReturns = new MaterialReturnService(
+			new DatabaseTransactionRunner(context.Data),
+			new MaterialReturnRepository(context.Data),
+			new MaterialIssueRepository(context.Data),
+			new InventoryRepository(context.Data),
+			issueMovements,
+			new ReasonCodeRepository(context.Data),
+			new AuditRepository(context.Data),
+			audit,
+			issueReversals);
 		context._receipts = new GoodsReceiptService(
 			new DatabaseTransactionRunner(context.Data),
 			new GoodsReceiptRepository(context.Data),
@@ -292,8 +304,11 @@ internal sealed class ProcurementTestContext : IAsyncDisposable
 			new DatabaseParameter("$SupplierId", supplierIds[0]),
 			new DatabaseParameter("$InactiveSupplierId", supplierIds[1]));
 		await Data.ExecuteAsync("DELETE FROM AuditEntries WHERE EntityType = 'MaterialIssue' AND EntityId IN (SELECT Id FROM MaterialIssues WHERE Recipient LIKE 'Material issue test %');", CancellationToken.None);
+		await Data.ExecuteAsync("DELETE FROM AuditEntries WHERE EntityType = 'MaterialReturn' AND EntityId IN (SELECT Id FROM MaterialReturns WHERE RecipientOrSource LIKE 'Material return test %');", CancellationToken.None);
 		await Data.ExecuteAsync("DELETE FROM StockMovements WHERE InventoryId IN ($First, $Second, $Inactive);", CancellationToken.None, new DatabaseParameter("$First", inventoryIds[0]), new DatabaseParameter("$Second", inventoryIds[1]), new DatabaseParameter("$Inactive", inventoryIds[2]));
 		await Data.ExecuteAsync("DELETE FROM MaterialIssueLines WHERE MaterialIssueId IN (SELECT Id FROM MaterialIssues WHERE Recipient LIKE 'Material issue test %');", CancellationToken.None);
+		await Data.ExecuteAsync("DELETE FROM MaterialReturnLines WHERE MaterialReturnId IN (SELECT Id FROM MaterialReturns WHERE RecipientOrSource LIKE 'Material return test %');", CancellationToken.None);
+		await Data.ExecuteAsync("DELETE FROM MaterialReturns WHERE RecipientOrSource LIKE 'Material return test %';", CancellationToken.None);
 		await Data.ExecuteAsync("DELETE FROM MaterialIssues WHERE Recipient LIKE 'Material issue test %';", CancellationToken.None);
 		await Data.ExecuteAsync("DELETE FROM GoodsReceiptLines WHERE InventoryId IN ($First, $Second, $Inactive);", CancellationToken.None, new DatabaseParameter("$First", inventoryIds[0]), new DatabaseParameter("$Second", inventoryIds[1]), new DatabaseParameter("$Inactive", inventoryIds[2]));
 		await Data.ExecuteAsync("DELETE FROM GoodsReceipts WHERE PurchaseOrderId IN (SELECT Id FROM PurchaseOrders WHERE SupplierId IN ($First, $Second));", CancellationToken.None, new DatabaseParameter("$First", supplierIds[0]), new DatabaseParameter("$Second", supplierIds[1]));

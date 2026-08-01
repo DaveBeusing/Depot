@@ -50,6 +50,7 @@ internal sealed class ViewModelFactory
 			_services.StockTransfers,
 			_services.InventoryCounts,
 			_services.MaterialIssues,
+			_services.MaterialReturns,
 			_services.Warehouses,
 			_services.StorageLocations,
 			_services.Users,

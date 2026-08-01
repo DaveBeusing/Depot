@@ -4,7 +4,7 @@
 
 - [ ] Ready for release
 
-Depot is currently `0.13.0-preview` with database schema version **23**. Checked implementation items below mean code exists on `master`; they do not replace the outstanding release verification.
+Depot is currently `0.13.0-preview` with database schema version **24**. Checked implementation items below mean code exists on `master`; they do not replace the outstanding release verification.
 
 ## Implemented and covered by automated tests
 
@@ -49,6 +49,7 @@ Depot is currently `0.13.0-preview` with database schema version **23**. Checked
 - [x] Goods-receipt reversal corrects received quantities and purchase-order status atomically
 - [x] Material-withdrawal, transfer, and inventory-count reversals create atomic counter-movements
 - [x] Structured material-issue drafts, posting, cancellation, reversal, paging, search, and movement details
+- [x] Independent material-return drafts, positive posting, optional issue reference, cancellation, and counter-booking correction
 
 ### Import, reports, and database administration
 
