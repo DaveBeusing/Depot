@@ -43,7 +43,8 @@ public sealed class DatabaseManagementService
 		new("GoodsReceipts", ["Id", "ReceiptNumber", "PurchaseOrderId", "ReceiptDate", "SupplierDeliveryNoteNumber", "ReceivedByUserId", "InvoiceNumber", "InvoiceDate", "InvoiceDocumentPath", "Notes"]),
 		new("GoodsReceiptLines", ["Id", "GoodsReceiptId", "PurchaseOrderLineId", "InventoryId", "Quantity"]),
 		new("StockMovements", ["Id", "InventoryId", "ReasonCodeId", "MovementType", "TimestampUtc", "Quantity", "UnitPrice", "Reference", "Notes", "ReversalOfMovementId", "ReversalReason", "ReversedAtUtc", "ReversedByUserId"]),
-		new("AuditEntries", ["Id", "TimestampUtc", "UserId", "UserEmail", "EntityType", "EntityId", "Action", "BeforeJson", "AfterJson"])
+		new("AuditEntries", ["Id", "TimestampUtc", "UserId", "UserEmail", "EntityType", "EntityId", "Action", "BeforeJson", "AfterJson"]),
+		new("WorkflowOperations", ["Id", "OperationId", "Workflow", "EntityId", "CompletedAtUtc"])
 	];
 
 	private readonly IDatabaseConnectionFactory _connectionFactory;

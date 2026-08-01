@@ -81,6 +81,12 @@ public sealed class PurchaseOrderApprovalService
 		return _purchaseOrders.ApproveAsync(purchaseOrderId, version, comment, cancellationToken);
 	}
 
+	public Task<PurchaseOrder> ApproveAsync(long purchaseOrderId, long version, string? comment, Guid operationId, CancellationToken cancellationToken = default)
+	{
+		EnsureAuthorized();
+		return _purchaseOrders.ApproveAsync(purchaseOrderId, version, comment, operationId, cancellationToken);
+	}
+
 	public Task<PurchaseOrder> RejectAsync(
 		long purchaseOrderId,
 		long version,
@@ -89,6 +95,12 @@ public sealed class PurchaseOrderApprovalService
 	{
 		EnsureAuthorized();
 		return _purchaseOrders.RejectAsync(purchaseOrderId, version, comment, cancellationToken);
+	}
+
+	public Task<PurchaseOrder> RejectAsync(long purchaseOrderId, long version, string? comment, Guid operationId, CancellationToken cancellationToken = default)
+	{
+		EnsureAuthorized();
+		return _purchaseOrders.RejectAsync(purchaseOrderId, version, comment, operationId, cancellationToken);
 	}
 
 	public async Task<PurchaseOrderApprovalSummary> GetSummaryAsync(

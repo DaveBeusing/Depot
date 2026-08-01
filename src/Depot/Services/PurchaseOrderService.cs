@@ -78,10 +78,16 @@ public sealed class PurchaseOrderService
 	}
 
 	public Task<PurchaseOrder> ApproveAsync(long id, long version, string? comment = null, CancellationToken cancellationToken = default) =>
-		DecideApprovalAsync(id, version, PurchaseOrderStatus.Approved, comment, cancellationToken);
+		ApproveAsync(id, version, comment, Guid.NewGuid(), cancellationToken);
+
+	public Task<PurchaseOrder> ApproveAsync(long id, long version, string? comment, Guid operationId, CancellationToken cancellationToken = default) =>
+		DecideApprovalAsync(id, version, PurchaseOrderStatus.Approved, comment, operationId, cancellationToken);
 
 	public Task<PurchaseOrder> RejectAsync(long id, long version, string? comment = null, CancellationToken cancellationToken = default) =>
-		DecideApprovalAsync(id, version, PurchaseOrderStatus.Rejected, comment, cancellationToken);
+		RejectAsync(id, version, comment, Guid.NewGuid(), cancellationToken);
+
+	public Task<PurchaseOrder> RejectAsync(long id, long version, string? comment, Guid operationId, CancellationToken cancellationToken = default) =>
+		DecideApprovalAsync(id, version, PurchaseOrderStatus.Rejected, comment, operationId, cancellationToken);
 
 	public Task<PurchaseOrder> ReopenRejectedAsync(long id, long version, CancellationToken cancellationToken = default) =>
 		RequireAndChangeStatusAsync(ApplicationPermission.PurchaseOrdersEdit, id, version, PurchaseOrderStatus.Rejected, PurchaseOrderStatus.Draft,
@@ -96,17 +102,29 @@ public sealed class PurchaseOrderService
 				order.ApprovalComment = null;
 			}, cancellationToken);
 
-	public async Task<PurchaseOrder> PlaceOrderAsync(long id, long version, CancellationToken cancellationToken = default)
+	public Task<PurchaseOrder> PlaceOrderAsync(long id, long version, CancellationToken cancellationToken = default) =>
+		PlaceOrderAsync(id, version, Guid.NewGuid(), cancellationToken);
+
+	public async Task<PurchaseOrder> PlaceOrderAsync(long id, long version, Guid operationId, CancellationToken cancellationToken = default)
 	{
 		_authorization.RequirePermission(ApplicationPermission.PurchaseOrdersOrder);
+		var operation = new WorkflowOperation(operationId, WorkflowOperationNames.PlacePurchaseOrder, id);
+		var completed = await _orders.GetCompletedOperationAsync(operation, cancellationToken);
+		if (completed is not null) return completed;
 		var before = await GetForTransitionAsync(id, version, PurchaseOrderStatus.Approved, cancellationToken);
 		await ValidateOrderContentAsync(before, cancellationToken);
-		return await ChangeStatusAsync(before, version, PurchaseOrderStatus.Approved, PurchaseOrderStatus.Ordered, null, cancellationToken);
+		return await ChangeStatusAsync(before, version, PurchaseOrderStatus.Approved, PurchaseOrderStatus.Ordered, null, operation, cancellationToken);
 	}
 
-	public async Task<PurchaseOrder> CloseOrderAsync(long id, long version, string reason, CancellationToken cancellationToken = default)
+	public Task<PurchaseOrder> CloseOrderAsync(long id, long version, string reason, CancellationToken cancellationToken = default) =>
+		CloseOrderAsync(id, version, reason, Guid.NewGuid(), cancellationToken);
+
+	public async Task<PurchaseOrder> CloseOrderAsync(long id, long version, string reason, Guid operationId, CancellationToken cancellationToken = default)
 	{
 		_authorization.RequirePermission(ApplicationPermission.PurchaseOrdersClose);
+		var operation = new WorkflowOperation(operationId, WorkflowOperationNames.ClosePurchaseOrder, id);
+		var completed = await _orders.GetCompletedOperationAsync(operation, cancellationToken);
+		if (completed is not null) return completed;
 		var normalizedReason = Normalize(reason) ?? throw new ArgumentException("A close reason is required.", nameof(reason));
 		if (normalizedReason.Length > 2000) throw new ArgumentException("The close reason must not exceed 2000 characters.", nameof(reason));
 		var user = CurrentUser();
@@ -121,7 +139,7 @@ public sealed class PurchaseOrderService
 				result.ClosedByUserDisplay = user.DisplayName;
 				result.ClosedAtUtc = DateTime.UtcNow;
 				result.CloseReason = normalizedReason;
-			}, cancellationToken);
+			}, operation, cancellationToken);
 	}
 
 	public async Task<PurchaseOrder> CancelAsync(long id, long version, CancellationToken cancellationToken = default)
@@ -134,11 +152,14 @@ public sealed class PurchaseOrderService
 		return await ChangeStatusAsync(order, version, order.Status, PurchaseOrderStatus.Cancelled, null, cancellationToken);
 	}
 
-	private async Task<PurchaseOrder> DecideApprovalAsync(long id, long version, PurchaseOrderStatus decision, string? comment, CancellationToken cancellationToken)
+	private async Task<PurchaseOrder> DecideApprovalAsync(long id, long version, PurchaseOrderStatus decision, string? comment, Guid operationId, CancellationToken cancellationToken)
 	{
 		if (!_authorization.CanApprovePurchaseOrders())
 			throw new UnauthorizedAccessException("The current user is not permitted to approve purchase orders.");
 		var user = CurrentUser();
+		var operation = new WorkflowOperation(operationId, decision == PurchaseOrderStatus.Approved ? WorkflowOperationNames.ApprovePurchaseOrder : WorkflowOperationNames.RejectPurchaseOrder, id);
+		var completed = await _orders.GetCompletedOperationAsync(operation, cancellationToken);
+		if (completed is not null) return completed;
 		comment = Normalize(comment);
 		if (comment?.Length > 2000) throw new ArgumentException("The approval comment must not exceed 2000 characters.", nameof(comment));
 		var before = await _orders.GetByIdAsync(id, cancellationToken) ?? throw new InvalidOperationException("Purchase order was not found.");
@@ -151,7 +172,7 @@ public sealed class PurchaseOrderService
 				order.ApprovalDecisionByUserDisplay = user.DisplayName;
 				order.ApprovalDecisionAtUtc = DateTime.UtcNow;
 				order.ApprovalComment = comment;
-			}, cancellationToken);
+			}, operation, cancellationToken);
 	}
 
 	private async Task<PurchaseOrder> ChangeStatusAsync(long id, long version, PurchaseOrderStatus expected, PurchaseOrderStatus status, Action<PurchaseOrder>? applyMetadata, CancellationToken cancellationToken)
@@ -172,6 +193,16 @@ public sealed class PurchaseOrderService
 		PurchaseOrderStatus expected,
 		PurchaseOrderStatus status,
 		Action<PurchaseOrder>? applyMetadata,
+		CancellationToken cancellationToken) =>
+		await ChangeStatusAsync(before, version, expected, status, applyMetadata, null, cancellationToken);
+
+	private async Task<PurchaseOrder> ChangeStatusAsync(
+		PurchaseOrder before,
+		long version,
+		PurchaseOrderStatus expected,
+		PurchaseOrderStatus status,
+		Action<PurchaseOrder>? applyMetadata,
+		WorkflowOperation? operation,
 		CancellationToken cancellationToken)
 	{
 		if (before.Version != version) throw new ConcurrencyConflictException("purchase order");
@@ -211,6 +242,7 @@ public sealed class PurchaseOrderService
 			status,
 			after,
 			_audit.CreateUpdatedEntry(before.Id, before, after),
+			operation,
 			cancellationToken);
 	}
 

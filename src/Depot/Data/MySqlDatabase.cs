@@ -49,6 +49,7 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 			command.ExecuteNonQuery();
 			command.CommandText = SupplierReturnSql;
 			command.ExecuteNonQuery();
+			EnsureWorkflowOperations(command);
 
 			command.CommandText = "SELECT Version FROM DatabaseInfo WHERE Id = 1;";
 			command.Parameters.Clear();
@@ -143,6 +144,11 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 				MigrateToFixedUserRoles(command);
 				version = 26;
 			}
+			if (version == 26)
+			{
+				MigrateToWorkflowOperations(command);
+				version = 27;
+			}
 			if (version != DatabaseVersion.CurrentVersion)
 			{
 				throw new InvalidOperationException(
@@ -208,6 +214,15 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 		Execute(command, "UPDATE Users SET Role = CASE WHEN IsAdministrator = true THEN 1 WHEN CanApprovePurchaseOrders = true THEN 3 ELSE 0 END;");
 		Execute(command, "UPDATE DatabaseInfo SET Version = 26 WHERE Id = 1;");
 	}
+
+	private static void MigrateToWorkflowOperations(System.Data.Common.DbCommand command)
+	{
+		EnsureWorkflowOperations(command);
+		Execute(command, "UPDATE DatabaseInfo SET Version = 27 WHERE Id = 1;");
+	}
+
+	private static void EnsureWorkflowOperations(System.Data.Common.DbCommand command) =>
+		Execute(command, "CREATE TABLE IF NOT EXISTS WorkflowOperations (Id bigint NOT NULL AUTO_INCREMENT PRIMARY KEY, OperationId varchar(36) NOT NULL UNIQUE, Workflow varchar(100) NOT NULL, EntityId bigint NOT NULL, CompletedAtUtc varchar(40) NOT NULL, INDEX IX_WorkflowOperations_Entity (Workflow, EntityId));");
 
 	private static void MigrateToStockTransfers(System.Data.Common.DbCommand command)
 	{

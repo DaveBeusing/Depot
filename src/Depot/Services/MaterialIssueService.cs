@@ -57,11 +57,14 @@ public sealed class MaterialIssueService
 	}
 
 	public Task<MaterialIssue> PostMaterialIssueAsync(long id, long version, CancellationToken cancellationToken = default)
+		=> PostMaterialIssueAsync(id, version, Guid.NewGuid(), cancellationToken);
+
+	public Task<MaterialIssue> PostMaterialIssueAsync(long id, long version, Guid operationId, CancellationToken cancellationToken = default)
 	{
 		_authorization.RequirePermission(ApplicationPermission.MaterialIssuesPost);
 		if (id <= 0) throw new ArgumentOutOfRangeException(nameof(id));
 		var userId = RequireUser("post");
-		return _transactions.ExecuteAsync((transaction, token) => PostMaterialIssueAsync(transaction, id, version, userId, token), cancellationToken);
+		return _transactions.ExecuteAsync((transaction, token) => PostMaterialIssueAsync(transaction, id, version, userId, new(operationId, WorkflowOperationNames.PostMaterialIssue, id), token), cancellationToken);
 	}
 
 	public Task<MaterialIssue> CancelAsync(long id, long version, CancellationToken cancellationToken = default)
@@ -140,8 +143,10 @@ public sealed class MaterialIssueService
 		return issue;
 	}
 
-	private async Task<MaterialIssue> PostMaterialIssueAsync(DatabaseTransactionContext transaction, long id, long version, long userId, CancellationToken cancellationToken)
+	private async Task<MaterialIssue> PostMaterialIssueAsync(DatabaseTransactionContext transaction, long id, long version, long userId, WorkflowOperation operation, CancellationToken cancellationToken)
 	{
+		if (await WorkflowOperationRepository.IsCompletedAsync(transaction.Session, operation, cancellationToken))
+			return await _issues.GetByIdAsync(transaction, id, cancellationToken) ?? throw new InvalidOperationException("The completed material issue operation could not be reloaded.");
 		var before = await _issues.GetByIdAsync(transaction, id, cancellationToken) ?? throw new InvalidOperationException("The material issue was not found.");
 		if (before.Version != version) throw new ConcurrencyConflictException("material issue");
 		if (before.Status != MaterialIssueStatus.Draft) throw new InvalidOperationException("Only a draft material issue can be posted.");
@@ -159,6 +164,7 @@ public sealed class MaterialIssueService
 		if (!await _issues.SetPostedAsync(transaction, id, version, userId, postedAtUtc, cancellationToken)) throw new ConcurrencyConflictException("material issue");
 		var after = Copy(before); after.Status = MaterialIssueStatus.Posted; after.PostedByUserId = userId; after.PostedAtUtc = postedAtUtc; after.Version++;
 		await _auditEntries.CreateAsync(transaction, _audit.CreateUpdatedEntry(id, before, after), cancellationToken);
+		await WorkflowOperationRepository.CompleteAsync(transaction.Session, operation, cancellationToken);
 		return after;
 	}
 

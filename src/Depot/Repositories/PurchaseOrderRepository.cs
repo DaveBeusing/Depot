@@ -77,6 +77,20 @@ public sealed class PurchaseOrderRepository : DatabaseRepository
 		return order;
 	}
 
+	public async Task<PurchaseOrder?> GetCompletedOperationAsync(WorkflowOperation operation, CancellationToken cancellationToken)
+	{
+		var existing = await Database.QuerySingleOrDefaultAsync(
+			"SELECT Workflow, EntityId FROM WorkflowOperations WHERE OperationId = $OperationId;",
+			reader => new { Workflow = reader.GetString(0), EntityId = reader.GetInt64(1) },
+			cancellationToken,
+			Parameter("$OperationId", operation.OperationId.ToString("D")));
+		if (existing is null) return null;
+		if (!string.Equals(existing.Workflow, operation.Workflow, StringComparison.Ordinal) || existing.EntityId != operation.EntityId)
+			throw new InvalidOperationException("The operation ID is already assigned to a different workflow operation.");
+		return await GetByIdAsync(operation.EntityId, cancellationToken)
+			?? throw new InvalidOperationException("The completed purchase order operation could not be reloaded.");
+	}
+
 	public Task<IReadOnlyList<PurchaseOrderLine>> ListLinesAsync(long purchaseOrderId, CancellationToken cancellationToken) =>
 		Database.QueryAsync(
 			$"SELECT {LineColumns} FROM PurchaseOrderLines pol INNER JOIN Items i ON i.Id = pol.ItemId WHERE pol.PurchaseOrderId = $PurchaseOrderId ORDER BY pol.LineNumber;",
@@ -197,9 +211,12 @@ public sealed class PurchaseOrderRepository : DatabaseRepository
 		PurchaseOrderStatus status,
 		PurchaseOrder result,
 		AuditEntry auditEntry,
+		WorkflowOperation? operation,
 		CancellationToken cancellationToken) =>
 		Database.ExecuteInWriteTransactionAsync(async (session, token) =>
 		{
+			if (operation is not null && await WorkflowOperationRepository.IsCompletedAsync(session, operation, token))
+				return await GetByIdAsync(session, id, token) ?? throw new InvalidOperationException("The completed purchase order operation could not be reloaded.");
 			var updated = await session.ExecuteAsync(
 				"UPDATE PurchaseOrders SET Status = $Status, CreatedByUserId = $CreatedByUserId, SubmittedByUserId = $SubmittedByUserId, SubmittedAtUtc = $SubmittedAtUtc, ApprovalDecisionByUserId = $ApprovalDecisionByUserId, ApprovalDecisionAtUtc = $ApprovalDecisionAtUtc, ApprovalComment = $ApprovalComment, ClosedByUserId = $ClosedByUserId, ClosedAtUtc = $ClosedAtUtc, CloseReason = $CloseReason, Version = Version + 1 WHERE Id = $Id AND Version = $Version AND Status = $Expected;",
 				token,
@@ -216,8 +233,14 @@ public sealed class PurchaseOrderRepository : DatabaseRepository
 				Parameter("$ClosedAtUtc", NullableUtc(result.ClosedAtUtc)),
 				Parameter("$CloseReason", result.CloseReason),
 				Parameter("$Expected", (int)expected));
-			if (updated != 1) throw new ConcurrencyConflictException("purchase order");
+			if (updated != 1)
+			{
+				if (operation is not null && await WorkflowOperationRepository.IsCompletedAsync(session, operation, token))
+					return await GetByIdAsync(session, id, token) ?? throw new InvalidOperationException("The completed purchase order operation could not be reloaded.");
+				throw new ConcurrencyConflictException("purchase order");
+			}
 			await AuditRepository.CreateAsync(session, auditEntry, token);
+			if (operation is not null) await WorkflowOperationRepository.CompleteAsync(session, operation, token);
 			return result;
 		}, cancellationToken);
 

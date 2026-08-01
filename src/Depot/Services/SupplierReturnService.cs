@@ -100,13 +100,20 @@ public sealed class SupplierReturnService
 	public Task<SupplierReturn> PostSupplierReturnAsync(
 		long id,
 		long version,
+		CancellationToken cancellationToken = default) =>
+		PostSupplierReturnAsync(id, version, Guid.NewGuid(), cancellationToken);
+
+	public Task<SupplierReturn> PostSupplierReturnAsync(
+		long id,
+		long version,
+		Guid operationId,
 		CancellationToken cancellationToken = default)
 	{
 		_authorization.RequirePermission(ApplicationPermission.SupplierReturnsPost);
 		ArgumentOutOfRangeException.ThrowIfNegativeOrZero(id);
 		var userId = RequireUser("post");
 		return _transactions.ExecuteAsync(
-			(transaction, token) => PostSupplierReturnAsync(transaction, id, version, userId, token),
+			(transaction, token) => PostSupplierReturnAsync(transaction, id, version, userId, new(operationId, WorkflowOperationNames.PostSupplierReturn, id), token),
 			cancellationToken);
 	}
 
@@ -264,8 +271,11 @@ public sealed class SupplierReturnService
 		long id,
 		long version,
 		long userId,
+		WorkflowOperation operation,
 		CancellationToken cancellationToken)
 	{
+		if (await WorkflowOperationRepository.IsCompletedAsync(transaction.Session, operation, cancellationToken))
+			return await _returns.GetByIdAsync(transaction, id, cancellationToken) ?? throw new InvalidOperationException("The completed supplier return operation could not be reloaded.");
 		var before = await _returns.GetByIdAsync(transaction, id, cancellationToken)
 			?? throw new InvalidOperationException("The supplier return was not found.");
 		if (before.Version != version) throw new ConcurrencyConflictException("supplier return");
@@ -312,6 +322,7 @@ public sealed class SupplierReturnService
 			transaction,
 			_audit.CreateUpdatedEntry(id, before, after),
 			cancellationToken);
+		await WorkflowOperationRepository.CompleteAsync(transaction.Session, operation, cancellationToken);
 		return after;
 	}
 

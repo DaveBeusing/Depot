@@ -14,6 +14,17 @@ namespace Depot.Tests;
 public sealed class MaterialReturnTests
 {
 	[Fact]
+	public async Task PostingIsIdempotentForTheSameOperationId()
+	{
+		await using var context = await ProcurementTestContext.CreateSqliteAsync();
+		var value = await context.MaterialReturns.SaveDraftAsync(await NewReturnAsync(context, 2));
+		var operationId = Guid.NewGuid();
+		var posted = await context.MaterialReturns.PostMaterialReturnAsync(value.Id, value.Version, operationId);
+		var retried = await context.MaterialReturns.PostMaterialReturnAsync(value.Id, value.Version, operationId);
+		Assert.Equal(posted.Version, retried.Version);
+		Assert.Equal(1, await context.ScalarAsync("SELECT COUNT(*) FROM StockMovements WHERE Reference = $Reference AND ReversalOfMovementId IS NULL;", new DatabaseParameter("$Reference", $"Material Return {value.ReturnNumber}")));
+	}
+	[Fact]
 	public async Task FreeReturnRequiresBusinessExplanationAndCanBeCancelledAsDraft()
 	{
 		await using var context = await ProcurementTestContext.CreateSqliteAsync();

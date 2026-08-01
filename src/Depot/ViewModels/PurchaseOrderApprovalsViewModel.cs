@@ -176,10 +176,11 @@ public sealed class PurchaseOrderApprovalsViewModel : BaseViewModel, IDisposable
 		BeginOperation(approve ? "Approving purchase order" : "Rejecting purchase order");
 		try
 		{
+			var operationId = Guid.NewGuid();
 			if (approve)
-				await _approvals.ApproveAsync(selected.Id, selected.Version, DecisionComment, cancellationToken);
+				await _approvals.ApproveAsync(selected.Id, selected.Version, DecisionComment, operationId, cancellationToken);
 			else
-				await _approvals.RejectAsync(selected.Id, selected.Version, DecisionComment, cancellationToken);
+				await _approvals.RejectAsync(selected.Id, selected.Version, DecisionComment, operationId, cancellationToken);
 			RemoveApproval(selected);
 			await RefreshSummaryAsync(cancellationToken);
 			CompleteOperation(Approvals.Count == 0, approve ? "Purchase order approved" : "Purchase order rejected");

@@ -229,15 +229,16 @@ public sealed class ProcurementViewModel : BaseViewModel, IDisposable
 		try { Draft.Lines = Lines.Select(Copy).ToArray(); var saved = await _orders.SaveDraftAsync(Copy(Draft), cancellationToken); ApplyChangedOrder(saved); CompleteOperation(false, "Purchase order saved"); }
 		catch (Exception exception) when (exception is not OperationCanceledException) { FailOperation(exception, "Purchase order could not be saved"); }
 	}
-	private async Task PlaceOrderAsync(CancellationToken cancellationToken) => await ChangeStatusAsync(() => _orders.PlaceOrderAsync(Draft.Id, Draft.Version, cancellationToken), "Purchase order placed", cancellationToken);
+	private async Task PlaceOrderAsync(CancellationToken cancellationToken) { var operationId = Guid.NewGuid(); await ChangeStatusAsync(() => _orders.PlaceOrderAsync(Draft.Id, Draft.Version, operationId, cancellationToken), "Purchase order placed", PurchaseOrderStatus.Ordered, cancellationToken); }
 	private async Task SubmitForApprovalAsync(CancellationToken cancellationToken) => await ChangeStatusAsync(() => _orders.SubmitForApprovalAsync(Draft.Id, Draft.Version, cancellationToken), "Purchase order submitted for approval", cancellationToken);
-	private async Task ApproveAsync(CancellationToken cancellationToken) => await ChangeStatusAsync(() => _orders.ApproveAsync(Draft.Id, Draft.Version, ApprovalComment, cancellationToken), "Purchase order approved", cancellationToken);
-	private async Task RejectAsync(CancellationToken cancellationToken) => await ChangeStatusAsync(() => _orders.RejectAsync(Draft.Id, Draft.Version, ApprovalComment, cancellationToken), "Purchase order rejected", cancellationToken);
+	private async Task ApproveAsync(CancellationToken cancellationToken) { var operationId = Guid.NewGuid(); await ChangeStatusAsync(() => _orders.ApproveAsync(Draft.Id, Draft.Version, ApprovalComment, operationId, cancellationToken), "Purchase order approved", PurchaseOrderStatus.Approved, cancellationToken); }
+	private async Task RejectAsync(CancellationToken cancellationToken) { var operationId = Guid.NewGuid(); await ChangeStatusAsync(() => _orders.RejectAsync(Draft.Id, Draft.Version, ApprovalComment, operationId, cancellationToken), "Purchase order rejected", PurchaseOrderStatus.Rejected, cancellationToken); }
 	private async Task ReopenRejectedAsync(CancellationToken cancellationToken) => await ChangeStatusAsync(() => _orders.ReopenRejectedAsync(Draft.Id, Draft.Version, cancellationToken), "Purchase order reopened as draft", cancellationToken);
 	private async Task CloseOrderAsync(CancellationToken cancellationToken)
 	{
 		if (!_fileDialogs.Confirm(new ConfirmationDialogRequest("Close Purchase Order", $"Close purchase order {Draft.OrderNumber}? Open quantities will remain open, but no further goods receipts will be accepted.\n\nReason: {CloseReason.Trim()}", true))) return;
-		await ChangeStatusAsync(() => _orders.CloseOrderAsync(Draft.Id, Draft.Version, CloseReason, cancellationToken), "Purchase order closed", cancellationToken);
+		var operationId = Guid.NewGuid();
+		await ChangeStatusAsync(() => _orders.CloseOrderAsync(Draft.Id, Draft.Version, CloseReason, operationId, cancellationToken), "Purchase order closed", PurchaseOrderStatus.Closed, cancellationToken);
 	}
 	private async Task CancelOrderAsync(CancellationToken cancellationToken)
 	{
@@ -245,10 +246,31 @@ public sealed class ProcurementViewModel : BaseViewModel, IDisposable
 		await ChangeStatusAsync(() => _orders.CancelAsync(Draft.Id, Draft.Version, cancellationToken), "Purchase order cancelled", cancellationToken);
 	}
 	private async Task ChangeStatusAsync(Func<Task<PurchaseOrder>> action, string message, CancellationToken cancellationToken)
+		=> await ChangeStatusAsync(action, message, null, cancellationToken);
+
+	private async Task ChangeStatusAsync(Func<Task<PurchaseOrder>> action, string message, PurchaseOrderStatus? expectedStatus, CancellationToken cancellationToken)
 	{
 		BeginOperation("Updating purchase order status");
 		try { var saved = await action(); ApplyChangedOrder(saved); await Task.WhenAll(BuildReceiptLinesAsync(saved, cancellationToken), LoadReceiptsAsync(saved.Id, cancellationToken)); ApprovalComment = string.Empty; CloseReason = string.Empty; CompleteOperation(false, message); }
-		catch (Exception exception) when (exception is not OperationCanceledException) { FailOperation(exception, "Purchase order status could not be updated"); }
+		catch (Exception exception) when (exception is not OperationCanceledException)
+		{
+			if (expectedStatus is not null && await ReconcileStatusAsync(Draft.Id, expectedStatus.Value, message)) return;
+			FailOperation(exception, "Purchase order status could not be updated");
+		}
+	}
+
+	private async Task<bool> ReconcileStatusAsync(long id, PurchaseOrderStatus expectedStatus, string successMessage)
+	{
+		try
+		{
+			var current = await _orders.GetByIdAsync(id, CancellationToken.None);
+			if (current?.Status != expectedStatus) return false;
+			ApplyChangedOrder(current);
+			await Task.WhenAll(BuildReceiptLinesAsync(current, CancellationToken.None), LoadReceiptsAsync(current.Id, CancellationToken.None));
+			CompleteOperation(false, $"{successMessage}; current server status confirmed");
+			return true;
+		}
+		catch { return false; }
 	}
 
 	private async Task BuildReceiptLinesAsync(PurchaseOrder order, CancellationToken cancellationToken = default)

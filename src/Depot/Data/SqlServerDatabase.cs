@@ -42,6 +42,7 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 		command.ExecuteNonQuery();
 		command.CommandText = SupplierReturnSql;
 		command.ExecuteNonQuery();
+		EnsureWorkflowOperations(command);
 
 		command.CommandText = "SELECT Version FROM DatabaseInfo WHERE Id = 1;";
 		var version = Convert.ToInt32(command.ExecuteScalar(), CultureInfo.InvariantCulture);
@@ -135,6 +136,11 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 			MigrateToFixedUserRoles(command);
 			version = 26;
 		}
+		if (version == 26)
+		{
+			MigrateToWorkflowOperations(command);
+			version = 27;
+		}
 		if (version != DatabaseVersion.CurrentVersion)
 		{
 			throw new InvalidOperationException(
@@ -204,6 +210,21 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 	private static void MigrateToFixedUserRoles(System.Data.Common.DbCommand command)
 	{
 		command.CommandText = "IF COL_LENGTH(N'Users', N'Role') IS NULL ALTER TABLE Users ADD Role int NOT NULL CONSTRAINT DF_Users_Role DEFAULT 0; UPDATE Users SET Role = CASE WHEN IsAdministrator = 1 THEN 1 WHEN CanApprovePurchaseOrders = 1 THEN 3 ELSE 0 END; IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'CK_Users_Role') ALTER TABLE Users ADD CONSTRAINT CK_Users_Role CHECK (Role IN (0,1,2,3,4)); UPDATE DatabaseInfo SET Version = 26 WHERE Id = 1;";
+		command.Parameters.Clear();
+		command.ExecuteNonQuery();
+	}
+
+	private static void MigrateToWorkflowOperations(System.Data.Common.DbCommand command)
+	{
+		EnsureWorkflowOperations(command);
+		command.CommandText = "UPDATE DatabaseInfo SET Version = 27 WHERE Id = 1;";
+		command.Parameters.Clear();
+		command.ExecuteNonQuery();
+	}
+
+	private static void EnsureWorkflowOperations(System.Data.Common.DbCommand command)
+	{
+		command.CommandText = "IF OBJECT_ID(N'WorkflowOperations', N'U') IS NULL CREATE TABLE WorkflowOperations (Id bigint IDENTITY(1,1) NOT NULL CONSTRAINT PK_WorkflowOperations PRIMARY KEY, OperationId nvarchar(36) NOT NULL CONSTRAINT UQ_WorkflowOperations_OperationId UNIQUE, Workflow nvarchar(100) NOT NULL, EntityId bigint NOT NULL, CompletedAtUtc nvarchar(40) NOT NULL); IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_WorkflowOperations_Entity') CREATE INDEX IX_WorkflowOperations_Entity ON WorkflowOperations(Workflow, EntityId);";
 		command.Parameters.Clear();
 		command.ExecuteNonQuery();
 	}

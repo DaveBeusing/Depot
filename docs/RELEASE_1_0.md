@@ -4,7 +4,7 @@
 
 - [ ] Ready for release
 
-Depot is currently `0.13.0-preview` with database schema version **26**. Checked implementation items below mean code exists on `master`; they do not replace the outstanding release verification.
+Depot is currently `0.13.0-preview` with database schema version **27**. Checked implementation items below mean code exists on `master`; they do not replace the outstanding release verification.
 
 ## Implemented and covered by automated tests
 
@@ -144,6 +144,6 @@ Depot is currently `0.13.0-preview` with database schema version **26**. Checked
 - [ ] All automated tests pass on the release commit
 - [ ] Supported Windows versions tested
 - [ ] Application version finalized in `Directory.Build.props`
-- [ ] Database schema remains version 20 or migration notes are updated
+- [ ] Database schema remains version 27 or migration notes are updated
 - [ ] Installer/package, signing, upgrade, rollback, and uninstall tested
 - [ ] Release notes and known limitations published

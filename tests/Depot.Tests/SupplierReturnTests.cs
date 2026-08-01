@@ -13,6 +13,19 @@ namespace Depot.Tests;
 
 public sealed class SupplierReturnTests
 {
+	[Fact]
+	public async Task PostingIsIdempotentForTheSameOperationId()
+	{
+		await using var context = await ProcurementTestContext.CreateSqliteAsync();
+		var (_, receipt) = await CreateReceiptAsync(context, 2);
+		var value = await NewReturnAsync(context, receipt, 2);
+		var saved = await context.SupplierReturns.SaveDraftAsync(value);
+		var operationId = Guid.NewGuid();
+		var posted = await context.SupplierReturns.PostSupplierReturnAsync(saved.Id, saved.Version, operationId);
+		var retried = await context.SupplierReturns.PostSupplierReturnAsync(saved.Id, saved.Version, operationId);
+		Assert.Equal(posted.Version, retried.Version);
+		Assert.Equal(1, await context.ScalarAsync("SELECT COUNT(*) FROM StockMovements WHERE Reference = $Reference AND ReversalOfMovementId IS NULL;", new DatabaseParameter("$Reference", $"Supplier Return {saved.ReturnNumber}")));
+	}
     [Fact]
     public async Task DraftCanBeSavedAndCancelled()
     {

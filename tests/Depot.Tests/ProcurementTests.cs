@@ -227,6 +227,38 @@ public sealed class ProcurementTests
 	}
 
 	[Fact]
+	public async Task CriticalPurchaseOrderTransitionsAreIdempotentByOperationId()
+	{
+		await using var context = await ProcurementTestContext.CreateSqliteAsync();
+		var approvalDraft = await context.Orders.SaveDraftAsync(context.NewOrder());
+		var approvalPending = await context.Orders.SubmitForApprovalAsync(approvalDraft.Id, approvalDraft.Version);
+		context.SignInApprover();
+		var approveOperation = Guid.NewGuid();
+		var approved = await context.Orders.ApproveAsync(approvalPending.Id, approvalPending.Version, null, approveOperation);
+		var approvedRetry = await context.Orders.ApproveAsync(approvalPending.Id, approvalPending.Version, null, approveOperation);
+		Assert.Equal(approved.Version, approvedRetry.Version);
+
+		context.SignInAdministrator();
+		var placeOperation = Guid.NewGuid();
+		var ordered = await context.Orders.PlaceOrderAsync(approved.Id, approved.Version, placeOperation);
+		var orderedRetry = await context.Orders.PlaceOrderAsync(approved.Id, approved.Version, placeOperation);
+		Assert.Equal(ordered.Version, orderedRetry.Version);
+		var closeOperation = Guid.NewGuid();
+		var closed = await context.Orders.CloseOrderAsync(ordered.Id, ordered.Version, "Idempotency test", closeOperation);
+		var closedRetry = await context.Orders.CloseOrderAsync(ordered.Id, ordered.Version, "Idempotency test", closeOperation);
+		Assert.Equal(closed.Version, closedRetry.Version);
+
+		var rejectionDraft = await context.Orders.SaveDraftAsync(context.NewOrder(itemId: context.SecondItemId));
+		var rejectionPending = await context.Orders.SubmitForApprovalAsync(rejectionDraft.Id, rejectionDraft.Version);
+		context.SignInApprover();
+		var rejectOperation = Guid.NewGuid();
+		var rejected = await context.Orders.RejectAsync(rejectionPending.Id, rejectionPending.Version, "Rejected", rejectOperation);
+		var rejectedRetry = await context.Orders.RejectAsync(rejectionPending.Id, rejectionPending.Version, "Rejected", rejectOperation);
+		Assert.Equal(rejected.Version, rejectedRetry.Version);
+		Assert.Equal(4, await context.ScalarAsync("SELECT COUNT(*) FROM WorkflowOperations WHERE EntityId IN ($First, $Second);", new DatabaseParameter("$First", approvalDraft.Id), new DatabaseParameter("$Second", rejectionDraft.Id)));
+	}
+
+	[Fact]
 	public async Task SubmissionAndPlacementRevalidateRequiredMasterData()
 	{
 		await using var context = await ProcurementTestContext.CreateSqliteAsync();

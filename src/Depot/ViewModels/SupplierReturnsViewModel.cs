@@ -162,7 +162,7 @@ public sealed class SupplierReturnsViewModel : BaseViewModel, IDisposable
     }
     private void RemoveLine() { if (SelectedLine is null) return; Lines.Remove(SelectedLine); SelectedLine = null; RaiseCommands(); }
     private async Task SaveAsync(CancellationToken token) => await ExecuteChangeAsync("Supplier return is saving", "Supplier return saved", () => _service.SaveDraftAsync(ToModel(), token), token);
-    private async Task PostAsync(CancellationToken token) { if (!_dialogs.Confirm(new ConfirmationDialogRequest("Post Supplier Return", $"Post {Draft.ReturnNumber} and remove the selected quantities from stock?", true))) return; await ExecuteChangeAsync("Stock is being checked and the supplier return is posting", "Supplier return posted", () => _service.PostSupplierReturnAsync(Draft.Id, Draft.Version, token), token); }
+    private async Task PostAsync(CancellationToken token) { if (!_dialogs.Confirm(new ConfirmationDialogRequest("Post Supplier Return", $"Post {Draft.ReturnNumber} and remove the selected quantities from stock?", true))) return; var operationId = Guid.NewGuid(); await ExecuteChangeAsync("Stock is being checked and the supplier return is posting", "Supplier return posted", () => _service.PostSupplierReturnAsync(Draft.Id, Draft.Version, operationId, token), SupplierReturnStatus.Posted, token); }
     private async Task CancelAsync(CancellationToken token) { if (!_dialogs.Confirm(new ConfirmationDialogRequest("Cancel Draft", $"Cancel draft {Draft.ReturnNumber}?", true))) return; await ExecuteChangeAsync("Supplier return is cancelling", "Draft cancelled", () => _service.CancelAsync(Draft.Id, Draft.Version, token), token); }
     private async Task ReverseAsync(CancellationToken token)
     {
@@ -173,12 +173,16 @@ public sealed class SupplierReturnsViewModel : BaseViewModel, IDisposable
         catch (Exception exception) when (exception is not OperationCanceledException) { FailOperation(exception, "Supplier return could not be reversed"); }
     }
     private async Task ExecuteChangeAsync(string busy, string complete, Func<Task<SupplierReturn>> action, CancellationToken token)
+        => await ExecuteChangeAsync(busy, complete, action, null, token);
+    private async Task ExecuteChangeAsync(string busy, string complete, Func<Task<SupplierReturn>> action, SupplierReturnStatus? expectedStatus, CancellationToken token)
     {
         BeginOperation(busy);
-        try { var changed = await action(); var details = await _service.GetByIdAsync(changed.Id, token) ?? throw new InvalidOperationException("The supplier return was not found after the operation."); var overview = await _service.GetOverviewByIdAsync(changed.Id, token) ?? throw new InvalidOperationException("The supplier return overview was not found."); ApplyOverview(overview); Draft = Copy(details); ReplaceLines(details.Lines); Replace(ReturnableLines, await _service.GetReturnableLinesAsync(details.GoodsReceiptId, token)); Replace(Movements, await _service.GetMovementsAsync(details.Id, token)); NotifyMovementState(); CompleteOperation(false, complete); }
-        catch (ConcurrencyConflictException exception) { FailOperation(exception, "The supplier return was changed by another user"); }
-        catch (Exception exception) when (exception is not OperationCanceledException) { FailOperation(exception, "Supplier return operation failed"); }
+        try { var changed = await action(); await ApplyCurrentAsync(changed, complete, token); }
+        catch (ConcurrencyConflictException exception) { if (expectedStatus is not null && await ReconcilePostAsync(complete)) return; FailOperation(exception, "The supplier return was changed by another user"); }
+        catch (Exception exception) when (exception is not OperationCanceledException) { if (expectedStatus is not null && await ReconcilePostAsync(complete)) return; FailOperation(exception, "Supplier return operation failed"); }
     }
+    private async Task ApplyCurrentAsync(SupplierReturn changed, string complete, CancellationToken token) { var details = await _service.GetByIdAsync(changed.Id, token) ?? throw new InvalidOperationException("The supplier return was not found after the operation."); var overview = await _service.GetOverviewByIdAsync(changed.Id, token) ?? throw new InvalidOperationException("The supplier return overview was not found."); ApplyOverview(overview); Draft = Copy(details); ReplaceLines(details.Lines); Replace(ReturnableLines, await _service.GetReturnableLinesAsync(details.GoodsReceiptId, token)); Replace(Movements, await _service.GetMovementsAsync(details.Id, token)); NotifyMovementState(); CompleteOperation(false, complete); }
+    private async Task<bool> ReconcilePostAsync(string complete) { try { var current = await _service.GetByIdAsync(Draft.Id, CancellationToken.None); if (current?.Status != SupplierReturnStatus.Posted) return false; await ApplyCurrentAsync(current, $"{complete}; current server status confirmed", CancellationToken.None); return true; } catch { return false; } }
     private SupplierReturn ToModel() { var value = Copy(Draft); value.Lines = Lines.Select(line => line.ToModel()).ToArray(); return value; }
     private void ReplaceLines(IReadOnlyList<SupplierReturnLine> values) { Lines.Clear(); foreach (var value in values) Lines.Add(new(value)); }
     private void ApplyPage(PageResult<SupplierReturnOverviewItem> page) { var id = SelectedReturn?.Id; Replace(Returns, page.Items); TotalCount = page.TotalCount; PageNumber = page.PageNumber; if (id is not null) { _selectedReturn = Returns.FirstOrDefault(value => value.Id == id); OnPropertyChanged(nameof(SelectedReturn)); } }

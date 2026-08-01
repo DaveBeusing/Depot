@@ -49,10 +49,13 @@ public sealed class MaterialReturnService
 	}
 
 	public Task<MaterialReturn> PostMaterialReturnAsync(long id, long version, CancellationToken cancellationToken = default)
+		=> PostMaterialReturnAsync(id, version, Guid.NewGuid(), cancellationToken);
+
+	public Task<MaterialReturn> PostMaterialReturnAsync(long id, long version, Guid operationId, CancellationToken cancellationToken = default)
 	{
 		_authorization.RequirePermission(ApplicationPermission.MaterialReturnsPost);
 		if (id <= 0) throw new ArgumentOutOfRangeException(nameof(id)); var userId = RequireUser("post");
-		return _transactions.ExecuteAsync((transaction, token) => PostMaterialReturnAsync(transaction, id, version, userId, token), cancellationToken);
+		return _transactions.ExecuteAsync((transaction, token) => PostMaterialReturnAsync(transaction, id, version, userId, new(operationId, WorkflowOperationNames.PostMaterialReturn, id), token), cancellationToken);
 	}
 
 	public Task<MaterialReturn> CancelAsync(long id, long version, CancellationToken cancellationToken = default)
@@ -98,8 +101,10 @@ public sealed class MaterialReturnService
 		await _auditEntries.CreateAsync(transaction, before is null ? _audit.CreateCreatedEntry(value.Id, value) : _audit.CreateUpdatedEntry(value.Id, before, value), cancellationToken); return value;
 	}
 
-	private async Task<MaterialReturn> PostMaterialReturnAsync(DatabaseTransactionContext transaction, long id, long version, long userId, CancellationToken cancellationToken)
+	private async Task<MaterialReturn> PostMaterialReturnAsync(DatabaseTransactionContext transaction, long id, long version, long userId, WorkflowOperation operation, CancellationToken cancellationToken)
 	{
+		if (await WorkflowOperationRepository.IsCompletedAsync(transaction.Session, operation, cancellationToken))
+			return await _returns.GetByIdAsync(transaction, id, cancellationToken) ?? throw new InvalidOperationException("The completed material return operation could not be reloaded.");
 		var before = await _returns.GetByIdAsync(transaction, id, cancellationToken) ?? throw new InvalidOperationException("The material return was not found.");
 		if (before.Version != version) throw new ConcurrencyConflictException("material return"); if (before.Status != MaterialReturnStatus.Draft) throw new InvalidOperationException("Only a draft material return can be posted.");
 		NormalizeAndValidate(before); await ValidateReferencesAsync(transaction, before, cancellationToken);
@@ -107,7 +112,9 @@ public sealed class MaterialReturnService
 		foreach (var line in before.Lines.OrderBy(line => line.LineNumber)) { var movement = new StockMovement { InventoryId = line.InventoryId, ReasonCodeId = line.ReasonCodeId, MovementType = StockMovementType.MaterialReturn, TimestampUtc = postedAtUtc, Quantity = line.Quantity, Reference = DocumentReference(before.ReturnNumber), Notes = line.Notes }; movement.Id = await _movements.CreateAsync(transaction, movement, cancellationToken); }
 		if (!await _returns.SetPostedAsync(transaction, id, version, userId, postedAtUtc, cancellationToken)) throw new ConcurrencyConflictException("material return");
 		var after = Copy(before); after.Status = MaterialReturnStatus.Posted; after.PostedByUserId = userId; after.PostedAtUtc = postedAtUtc; after.Version++;
-		await _auditEntries.CreateAsync(transaction, _audit.CreateUpdatedEntry(id, before, after), cancellationToken); return after;
+		await _auditEntries.CreateAsync(transaction, _audit.CreateUpdatedEntry(id, before, after), cancellationToken);
+		await WorkflowOperationRepository.CompleteAsync(transaction.Session, operation, cancellationToken);
+		return after;
 	}
 
 	private async Task ValidateReferencesAsync(DatabaseTransactionContext transaction, MaterialReturn value, CancellationToken cancellationToken)

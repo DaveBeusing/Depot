@@ -187,6 +187,8 @@ public sealed class DepotDatabase : IDatabaseInitializer
 		CreateAuditEntriesTable(
 			connection);
 
+		CreateWorkflowOperationsTable(connection);
+
 		CreateDefaultPurpose(
 			connection);
 
@@ -875,6 +877,25 @@ public sealed class DepotDatabase : IDatabaseInitializer
 		command.ExecuteNonQuery();
 	}
 
+	private static void CreateWorkflowOperationsTable(SqliteConnection connection)
+	{
+		using var command = connection.CreateCommand();
+		command.CommandText =
+			"""
+			CREATE TABLE IF NOT EXISTS WorkflowOperations
+			(
+				Id INTEGER PRIMARY KEY AUTOINCREMENT,
+				OperationId TEXT NOT NULL UNIQUE,
+				Workflow TEXT NOT NULL,
+				EntityId INTEGER NOT NULL,
+				CompletedAtUtc TEXT NOT NULL
+			);
+			CREATE INDEX IF NOT EXISTS IX_WorkflowOperations_Entity
+				ON WorkflowOperations(Workflow, EntityId);
+			""";
+		command.ExecuteNonQuery();
+	}
+
 	private static void CreateDefaultPurpose(
 		SqliteConnection connection)
 	{
@@ -1114,6 +1135,13 @@ public sealed class DepotDatabase : IDatabaseInitializer
 			MigrateToFixedUserRoles(connection);
 			SetDatabaseVersion(connection, 26);
 			migratedVersion = 26;
+		}
+
+		if (migratedVersion == 26)
+		{
+			CreateWorkflowOperationsTable(connection);
+			SetDatabaseVersion(connection, 27);
+			migratedVersion = 27;
 		}
 
 		if (migratedVersion < DatabaseVersion.CurrentVersion)

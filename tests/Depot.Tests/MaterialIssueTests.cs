@@ -136,6 +136,21 @@ public sealed class MaterialIssueTests
 		Assert.Equal(1, await context.ScalarAsync("SELECT COUNT(*) FROM StockMovements WHERE Reference = $Reference AND ReversalOfMovementId IS NULL;", new DatabaseParameter("$Reference", $"Material Issue {issue.IssueNumber}")));
 	}
 
+	[Fact]
+	public async Task PostingIsIdempotentForTheSameOperationId()
+	{
+		await using var context = await ProcurementTestContext.CreateSqliteAsync();
+		await AddStockAsync(context, context.InventoryId, 10);
+		var issue = await context.MaterialIssues.SaveDraftAsync(await NewIssueAsync(context, 2));
+		var operationId = Guid.NewGuid();
+
+		var posted = await context.MaterialIssues.PostMaterialIssueAsync(issue.Id, issue.Version, operationId);
+		var retried = await context.MaterialIssues.PostMaterialIssueAsync(issue.Id, issue.Version, operationId);
+
+		Assert.Equal(posted.Version, retried.Version);
+		Assert.Equal(1, await context.ScalarAsync("SELECT COUNT(*) FROM StockMovements WHERE Reference = $Reference AND ReversalOfMovementId IS NULL;", new DatabaseParameter("$Reference", $"Material Issue {issue.IssueNumber}")));
+	}
+
 	private static async Task<MaterialIssue> NewIssueAsync(ProcurementTestContext context, int quantity) => new()
 	{
 		IssueDate = DateTime.Today,
