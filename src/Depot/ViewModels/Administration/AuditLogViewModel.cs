@@ -129,6 +129,7 @@ public sealed class AuditLogViewModel : BaseViewModel, IDisposable
 	{
 		_detailsCancellation?.Cancel();
 		_detailsCancellation?.Dispose();
+		_detailsCancellation = null;
 		Details = null;
 		IsLoadingDetails = false;
 		if (entry is null) return;

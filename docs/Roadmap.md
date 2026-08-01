@@ -52,6 +52,7 @@ This roadmap reflects the implementation on the current `master` branch. “Impl
 - [x] Purchase orders and purchase-order lines
 - [x] Draft, approval, ordering, receipt, closing, rejection, and cancellation statuses
 - [x] Atomic purchase-order submission and separation-of-duties approval with explicit permission
+- [x] Dedicated approval work queue with server-side filters, paging, aggregate metrics, details, and status history
 - [x] Delivery-note-based goods receipts separated from supplier invoices
 - [x] Partial receipts and automatic purchase-order status updates
 - [x] Atomic receipt, stock-movement, received-quantity, status, and audit writes

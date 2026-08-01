@@ -39,6 +39,7 @@ Depot is currently `0.13.0-preview` with database schema version **21**. Checked
 - [x] SupplierItem many-to-many assignments and preferred supplier
 - [x] Purchase-order drafts, lines, generated order numbers, status changes, search, and filters
 - [x] Purchase-order submission, approval/rejection, explicit approver permission, and creator/approver separation
+- [x] Permission-restricted approval main page with bounded server-side work queue and targeted decision updates
 - [x] Atomic purchase-order create/edit/order/cancel and before/after audit writes
 - [x] Partial and final goods receipts
 - [x] Delivery-note number, receipt date, receiving user, notes, destination, and quantity validation

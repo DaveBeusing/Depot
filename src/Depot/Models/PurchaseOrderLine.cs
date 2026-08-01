@@ -15,5 +15,6 @@ public sealed class PurchaseOrderLine
 	public decimal UnitPrice { get; set; }
 	public int ReceivedQuantity { get; set; }
 	public int OpenQuantity => Quantity - ReceivedQuantity;
+	public decimal LineTotal => Quantity * UnitPrice;
 	public long Version { get; set; } = 1;
 }

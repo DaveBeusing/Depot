@@ -12,6 +12,7 @@ public enum ShellSection
 	Transfers,
 	InventoryCounts,
 	Procurement,
+	Approvals,
 	Reports,
 	Administration
 }

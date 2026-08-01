@@ -15,6 +15,7 @@ internal sealed class ProcurementTestContext : IAsyncDisposable
 	private readonly string? _databasePath;
 	private readonly bool _cleanDatabaseRows;
 	private PurchaseOrderService? _orders;
+	private PurchaseOrderApprovalService? _approvals;
 	private GoodsReceiptService? _receipts;
 	private AuthorizationService? _authorization;
 	private User? _administrator;
@@ -34,6 +35,7 @@ internal sealed class ProcurementTestContext : IAsyncDisposable
 	public IDatabaseConnectionFactory ConnectionFactory { get; }
 	public DatabaseAccess Data { get; }
 	public PurchaseOrderService Orders => _orders ?? throw new InvalidOperationException("The purchase order service was not initialized.");
+	public PurchaseOrderApprovalService Approvals => _approvals ?? throw new InvalidOperationException("The purchase order approval service was not initialized.");
 	public GoodsReceiptService Receipts => _receipts ?? throw new InvalidOperationException("The goods receipt service was not initialized.");
 	public AuthorizationService Authorization => _authorization ?? throw new InvalidOperationException("Authorization was not initialized.");
 	public long SupplierId { get; private set; }
@@ -213,6 +215,12 @@ internal sealed class ProcurementTestContext : IAsyncDisposable
 			new ItemRepository(context.Data),
 			audit,
 			authorization);
+		context._approvals = new PurchaseOrderApprovalService(
+			new PurchaseOrderRepository(context.Data),
+			new AuditRepository(context.Data),
+			context._orders,
+			authorization,
+			new AuditJsonSanitizer());
 		context._receipts = new GoodsReceiptService(
 			new DatabaseTransactionRunner(context.Data),
 			new GoodsReceiptRepository(context.Data),

@@ -22,6 +22,7 @@ The project is under active development on the `0.13.0-preview` line. Implemente
 - Normalized item master data: manufacturer, category, unit of measure, and packaging
 - Supplier categories, suppliers, and many-to-many `SupplierItem` assignments with supplier-specific commercial data
 - Purchase orders and lines with automatic `PO-xxxxxx` numbering, separation-of-duties approval workflow, search, and filtering
+- Dedicated permission-restricted approval work queue with server-side filters, paging, totals, details, and status history
 - Delivery-note-based goods receipts with receipt date, receiving user, partial receipts, and automatic purchase-order status updates
 - Atomic goods-receipt posting across receipt records, received quantities, stock movements, and order status
 - Warehouse stock transfers with draft editing, server-side search, status filtering, paging, atomic posting, paired transfer movements, and concurrency-safe stock checks

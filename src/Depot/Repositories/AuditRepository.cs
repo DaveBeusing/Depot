@@ -50,6 +50,20 @@ public sealed class AuditRepository : DatabaseRepository
 			cancellationToken,
 			Parameter("$Id", id));
 
+	public Task<IReadOnlyList<AuditLogDetails>> GetEntityHistoryAsync(
+		string entityType,
+		long entityId,
+		int maximumCount,
+		CancellationToken cancellationToken) =>
+		Database.QuerySliceAsync(
+			$"SELECT {ListColumns}, BeforeJson, AfterJson FROM AuditEntries WHERE EntityType = $EntityType AND EntityId = $EntityId ORDER BY TimestampUtc DESC, Id DESC",
+			ReadDetails,
+			0,
+			maximumCount,
+			cancellationToken,
+			Parameter("$EntityType", entityType),
+			Parameter("$EntityId", entityId));
+
 	public async Task<AuditLogFilterOptions> GetFilterOptionsAsync(CancellationToken cancellationToken)
 	{
 		var entityTypes = await Database.QueryAsync(

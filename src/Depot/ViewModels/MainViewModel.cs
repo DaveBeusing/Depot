@@ -33,6 +33,7 @@ public sealed class MainViewModel : BaseViewModel
 		SupplierService supplierService,
 		SupplierItemService supplierItemService,
 		PurchaseOrderService purchaseOrderService,
+		PurchaseOrderApprovalService purchaseOrderApprovalService,
 		GoodsReceiptService goodsReceiptService,
 		StockTransferService stockTransferService,
 		InventoryCountService inventoryCountService,
@@ -78,6 +79,7 @@ public sealed class MainViewModel : BaseViewModel
 		InventoryCountsViewModel = new InventoryCountsViewModel(inventoryCountService, warehouseService, fileDialogService, reasonCodeService);
 
 		ProcurementViewModel = new ProcurementViewModel(purchaseOrderService, goodsReceiptService, supplierService, itemService, fileDialogService, reasonCodeService);
+		PurchaseOrderApprovalsViewModel = new PurchaseOrderApprovalsViewModel(purchaseOrderApprovalService);
 
 		ReportsViewModel =
 			new ReportsViewModel(
@@ -169,6 +171,17 @@ public sealed class MainViewModel : BaseViewModel
 				Section = ShellSection.Procurement
 			});
 
+		if (_authorizationService.CanApprovePurchaseOrders())
+		{
+			NavigationItems.Add(
+				new NavigationItem
+				{
+					Name = "Approvals",
+					IconData = "M 3,10 L 8,15 L 17,5 M 3,3 L 17,3 L 17,18 L 3,18 Z",
+					Section = ShellSection.Approvals
+				});
+		}
+
 		NavigationItems.Add(
 			new NavigationItem
 			{
@@ -216,6 +229,8 @@ public sealed class MainViewModel : BaseViewModel
 
 	public ProcurementViewModel ProcurementViewModel { get; }
 
+	public PurchaseOrderApprovalsViewModel PurchaseOrderApprovalsViewModel { get; }
+
 	public ReportsViewModel ReportsViewModel { get; }
 
 	public ImportViewModel ImportViewModel { get; }
@@ -260,6 +275,7 @@ public sealed class MainViewModel : BaseViewModel
 			ShellSection.Transfers => StockTransfersViewModel,
 			ShellSection.InventoryCounts => InventoryCountsViewModel,
 			ShellSection.Procurement => ProcurementViewModel,
+			ShellSection.Approvals => PurchaseOrderApprovalsViewModel,
 			ShellSection.Reports => ReportsViewModel,
 			ShellSection.Administration => AdministrationViewModel,
 			_ => DashboardViewModel
@@ -299,6 +315,10 @@ public sealed class MainViewModel : BaseViewModel
 		else if (CurrentViewModel == ProcurementViewModel)
 		{
 			await ProcurementViewModel.LoadAsync(cancellationToken);
+		}
+		else if (CurrentViewModel == PurchaseOrderApprovalsViewModel)
+		{
+			await PurchaseOrderApprovalsViewModel.LoadAsync(cancellationToken);
 		}
 		else if (CurrentViewModel == ReportsViewModel)
 		{

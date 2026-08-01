@@ -38,6 +38,37 @@ public sealed class PurchaseOrderRepository : DatabaseRepository
 			$"SELECT COUNT(*) {From} {where}", ReadOrder, pageNumber, pageSize, cancellationToken, parameters.ToArray());
 	}
 
+	public Task<PageResult<PurchaseOrderApprovalWorkItem>> SearchPendingApprovalsAsync(
+		PurchaseOrderApprovalFilter filter,
+		int pageNumber,
+		int pageSize,
+		CancellationToken cancellationToken)
+	{
+		var (where, parameters) = BuildApprovalFilter(filter);
+		const string approvalFrom =
+			"FROM PurchaseOrders po INNER JOIN Suppliers s ON s.Id = po.SupplierId LEFT JOIN Users creator ON creator.Id = po.CreatedByUserId";
+		return Database.QueryPageAsync(
+			$"SELECT po.Id, po.OrderNumber, po.SupplierId, s.Name, po.OrderDate, po.ExpectedDeliveryDate, po.Notes, po.CreatedByUserId, creator.DisplayName, po.SubmittedAtUtc, (SELECT COALESCE(SUM(pol.Quantity * pol.UnitPrice), 0) FROM PurchaseOrderLines pol WHERE pol.PurchaseOrderId = po.Id), po.Version {approvalFrom} {where} ORDER BY po.SubmittedAtUtc, po.Id",
+			$"SELECT COUNT(*) {approvalFrom} {where};",
+			ReadApprovalWorkItem,
+			pageNumber,
+			pageSize,
+			cancellationToken,
+			parameters);
+	}
+
+	public Task<PurchaseOrderApprovalSummary?> GetPendingApprovalSummaryAsync(
+		PurchaseOrderApprovalFilter filter,
+		CancellationToken cancellationToken)
+	{
+		var (where, parameters) = BuildApprovalFilter(filter);
+		return Database.QuerySingleOrDefaultAsync(
+			$"SELECT COUNT(*), MIN(po.SubmittedAtUtc), COALESCE(SUM(COALESCE(orderTotals.TotalAmount, 0)), 0) FROM PurchaseOrders po INNER JOIN Suppliers s ON s.Id = po.SupplierId LEFT JOIN Users creator ON creator.Id = po.CreatedByUserId LEFT JOIN (SELECT PurchaseOrderId, SUM(Quantity * UnitPrice) AS TotalAmount FROM PurchaseOrderLines GROUP BY PurchaseOrderId) orderTotals ON orderTotals.PurchaseOrderId = po.Id {where};",
+			ReadApprovalSummary,
+			cancellationToken,
+			parameters);
+	}
+
 	public async Task<PurchaseOrder?> GetByIdAsync(long id, CancellationToken cancellationToken)
 	{
 		var order = await Database.QuerySingleOrDefaultAsync($"SELECT {Columns} {From} WHERE po.Id = $Id;", ReadOrder, cancellationToken, Parameter("$Id", id));
@@ -234,6 +265,67 @@ public sealed class PurchaseOrderRepository : DatabaseRepository
 		Id = reader.GetInt64(offset), PurchaseOrderId = reader.GetInt64(offset + 1), LineNumber = reader.GetInt32(offset + 2), ItemId = reader.GetInt64(offset + 3), ItemPartNumber = reader.GetString(offset + 4), ItemDescription = reader.GetString(offset + 5),
 		Quantity = reader.GetInt32(offset + 6), UnitPrice = reader.GetDecimal(offset + 7), ReceivedQuantity = reader.GetInt32(offset + 8), Version = reader.GetInt64(offset + 9)
 	};
+
+	private static (string WhereClause, DatabaseParameter[] Parameters) BuildApprovalFilter(PurchaseOrderApprovalFilter filter)
+	{
+		var predicates = new List<string> { "po.Status = $PendingApproval" };
+		var parameters = new List<DatabaseParameter> { Parameter("$PendingApproval", (int)PurchaseOrderStatus.PendingApproval) };
+		if (!string.IsNullOrWhiteSpace(filter.SearchText))
+		{
+			predicates.Add("(po.OrderNumber LIKE $Search OR s.Name LIKE $Search OR po.Notes LIKE $Search OR creator.DisplayName LIKE $Search OR creator.Email LIKE $Search)");
+			parameters.Add(Parameter("$Search", $"%{filter.SearchText.Trim()}%"));
+		}
+		AddContainsFilter(predicates, parameters, "s.Name", "$Supplier", filter.SupplierFilter);
+		if (!string.IsNullOrWhiteSpace(filter.CreatorFilter))
+		{
+			predicates.Add("(creator.DisplayName LIKE $Creator OR creator.Email LIKE $Creator)");
+			parameters.Add(Parameter("$Creator", $"%{filter.CreatorFilter.Trim()}%"));
+		}
+		if (filter.SubmittedFromUtc is not null)
+		{
+			predicates.Add("po.SubmittedAtUtc >= $SubmittedFromUtc");
+			parameters.Add(Parameter("$SubmittedFromUtc", NullableUtc(filter.SubmittedFromUtc)));
+		}
+		if (filter.SubmittedToUtcExclusive is not null)
+		{
+			predicates.Add("po.SubmittedAtUtc < $SubmittedToUtc");
+			parameters.Add(Parameter("$SubmittedToUtc", NullableUtc(filter.SubmittedToUtcExclusive)));
+		}
+		return ($"WHERE {string.Join(" AND ", predicates)}", parameters.ToArray());
+	}
+
+	private static void AddContainsFilter(
+		ICollection<string> predicates,
+		ICollection<DatabaseParameter> parameters,
+		string column,
+		string parameter,
+		string? value)
+	{
+		if (string.IsNullOrWhiteSpace(value)) return;
+		predicates.Add($"{column} LIKE {parameter}");
+		parameters.Add(Parameter(parameter, $"%{value.Trim()}%"));
+	}
+
+	private static PurchaseOrderApprovalWorkItem ReadApprovalWorkItem(DbDataReader reader) =>
+		new(
+			reader.GetInt64(0),
+			reader.GetString(1),
+			reader.GetInt64(2),
+			reader.GetString(3),
+			ParseDate(reader.GetString(4)),
+			reader.IsDBNull(5) ? null : ParseDate(reader.GetString(5)),
+			reader.IsDBNull(6) ? null : reader.GetString(6),
+			reader.IsDBNull(7) ? null : reader.GetInt64(7),
+			reader.IsDBNull(8) ? "Unknown user" : reader.GetString(8),
+			ParseUtc(reader.GetString(9)),
+			Convert.ToDecimal(reader.GetValue(10), CultureInfo.InvariantCulture),
+			reader.GetInt64(11));
+
+	private static PurchaseOrderApprovalSummary ReadApprovalSummary(DbDataReader reader) =>
+		new(
+			Convert.ToInt64(reader.GetValue(0), CultureInfo.InvariantCulture),
+			reader.IsDBNull(1) ? null : ParseUtc(reader.GetString(1)),
+			Convert.ToDecimal(reader.GetValue(2), CultureInfo.InvariantCulture));
 
 	private static DatabaseParameter[] LineParameters(PurchaseOrderLine line) => [Parameter("$PurchaseOrderId", line.PurchaseOrderId), Parameter("$LineNumber", line.LineNumber), Parameter("$ItemId", line.ItemId), Parameter("$Quantity", line.Quantity), Parameter("$UnitPrice", line.UnitPrice)];
 	private static string Date(DateTime value) => value.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
