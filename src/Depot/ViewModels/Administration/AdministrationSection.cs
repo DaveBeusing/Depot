@@ -9,6 +9,7 @@ public enum AdministrationSection
 	MasterData,
 	Users,
 	Database,
+	AuditLog,
 	Settings,
 	About
 }

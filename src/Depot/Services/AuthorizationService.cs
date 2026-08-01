@@ -35,4 +35,6 @@ public sealed class AuthorizationService
 	public bool CanManageDatabase() => CurrentUser?.IsAdministrator == true;
 
 	public bool CanOpenSettings() => CurrentUser?.IsAdministrator == true;
+
+	public bool CanViewAuditLog() => CurrentUser?.IsAdministrator == true;
 }

@@ -21,6 +21,7 @@ public sealed class AdministrationViewModel
 	private readonly MasterDataViewModel _masterDataViewModel;
 	private readonly UserViewModel _userViewModel;
 	private readonly DatabaseSettingsViewModel _databaseSettingsViewModel;
+	private readonly AuditLogViewModel _auditLogViewModel;
 	private readonly AboutViewModel _aboutViewModel;
 
 	private NavigationItem? _selectedNavigationItem;
@@ -45,6 +46,7 @@ public sealed class AdministrationViewModel
 		ConnectionStatusService connectionStatusService,
 		DatabaseConnectionTester databaseConnectionTester,
 		DatabaseManagementService databaseManagementService,
+		AuditLogService auditLogService,
 		IFileDialogService fileDialogService,
 		ApplicationInformationService applicationInformationService)
 	{
@@ -61,6 +63,7 @@ public sealed class AdministrationViewModel
 				databaseManagementService,
 				fileDialogService);
 		_aboutViewModel = new AboutViewModel(applicationInformationService);
+		_auditLogViewModel = new AuditLogViewModel(auditLogService, fileDialogService);
 
 		NavigationItems.Add(
 			new NavigationItem
@@ -88,6 +91,13 @@ public sealed class AdministrationViewModel
 			{
 				Name = "Database",
 				Section = AdministrationSection.Database
+			});
+
+		NavigationItems.Add(
+			new NavigationItem
+			{
+				Name = "Audit Log",
+				Section = AdministrationSection.AuditLog
 			});
 
 		NavigationItems.Add(
@@ -155,6 +165,9 @@ public sealed class AdministrationViewModel
 				AdministrationSection.Database =>
 					_databaseSettingsViewModel,
 
+				AdministrationSection.AuditLog =>
+					_auditLogViewModel,
+
 				AdministrationSection.Settings =>
 					new PlaceholderViewModel(
 						"Settings",
@@ -178,6 +191,7 @@ public sealed class AdministrationViewModel
 			MasterDataViewModel masterData => masterData.LoadAsync(),
 			UserViewModel users => users.LoadUsersAsync(),
 			DatabaseSettingsViewModel database => database.LoadAsync(),
+			AuditLogViewModel auditLog => auditLog.LoadAsync(),
 			_ => Task.CompletedTask
 		};
 }

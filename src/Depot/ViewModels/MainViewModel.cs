@@ -47,6 +47,7 @@ public sealed class MainViewModel : BaseViewModel
 		ConnectionStatusService connectionStatusService,
 		DatabaseConnectionTester databaseConnectionTester,
 		DatabaseManagementService databaseManagementService,
+		AuditLogService auditLogService,
 		ApplicationInformationService applicationInformationService)
 		{
 		
@@ -108,6 +109,7 @@ public sealed class MainViewModel : BaseViewModel
 				connectionStatusService,
 				databaseConnectionTester,
 				databaseManagementService,
+				auditLogService,
 				fileDialogService,
 				applicationInformationService);
 

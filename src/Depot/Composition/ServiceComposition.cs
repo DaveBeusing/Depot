@@ -11,6 +11,7 @@ internal sealed class ServiceComposition
 	public ServiceComposition(DatabaseComposition database, RepositoryComposition repositories)
 	{
 		Authorization = new AuthorizationService();
+		AuditLog = new AuditLogService(repositories.Audit, Authorization, new AuditJsonSanitizer());
 		var audit = new AuditService(repositories.Audit, Authorization);
 		var passwordHasher = new PasswordHasher();
 		var movementReversals = new StockMovementReversalService(
@@ -112,6 +113,7 @@ internal sealed class ServiceComposition
 	}
 
 	public AuthorizationService Authorization { get; }
+	public AuditLogService AuditLog { get; }
 	public AuthenticationService Authentication { get; }
 	public SessionService Session { get; }
 	public ItemService Items { get; }
