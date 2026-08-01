@@ -1,0 +1,45 @@
+#!/bin/sh
+
+REPOSITORY_ROOT="$(git rev-parse --show-toplevel)"
+VERSION_SCRIPT="$REPOSITORY_ROOT/.githooks/scripts/bump-version.ps1"
+VERSION_FILE="$REPOSITORY_ROOT/Directory.Build.props"
+
+echo "Updating Depot build version..."
+
+if [ ! -f "$VERSION_SCRIPT" ]; then
+    echo "ERROR: Version script not found:"
+    echo "$VERSION_SCRIPT"
+    exit 1
+fi
+
+if command -v pwsh >/dev/null 2>&1; then
+    POWERSHELL="pwsh"
+elif command -v powershell.exe >/dev/null 2>&1; then
+    POWERSHELL="powershell.exe"
+else
+    echo "ERROR: Neither pwsh nor powershell.exe was found."
+    exit 1
+fi
+
+"$POWERSHELL" \
+    -NoProfile \
+    -ExecutionPolicy Bypass \
+    -File "$VERSION_SCRIPT" \
+    -Part Build
+
+RESULT=$?
+
+if [ $RESULT -ne 0 ]; then
+    echo "ERROR: Depot version update failed."
+    exit $RESULT
+fi
+
+git add "$VERSION_FILE"
+
+if [ $? -ne 0 ]; then
+    echo "ERROR: Directory.Build.props could not be staged."
+    exit 1
+fi
+
+echo "Directory.Build.props added to the commit."
+exit 0
