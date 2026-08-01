@@ -18,9 +18,11 @@ public sealed class PurposeRepository : DatabaseRepository
 	}
 
 	public Task<IReadOnlyList<Purpose>> ListActiveAsync(CancellationToken cancellationToken) =>
-		Database.QueryAsync(
-			$"SELECT {SelectColumns} FROM Purposes WHERE IsActive = 1 ORDER BY Name;",
+		Database.QuerySliceAsync(
+			$"SELECT {SelectColumns} FROM Purposes WHERE IsActive = 1 ORDER BY Name, Id",
 			ReadPurpose,
+			0,
+			200,
 			cancellationToken);
 
 	public Task<Purpose?> GetByIdAsync(long id, CancellationToken cancellationToken) =>

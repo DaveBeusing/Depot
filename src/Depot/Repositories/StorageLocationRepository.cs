@@ -27,16 +27,18 @@ public sealed class StorageLocationRepository : DatabaseRepository
 		if (warehouseId is not null) parameters.Add(Parameter("$WarehouseId", warehouseId.Value));
 		if (hasSearch) parameters.Add(Parameter("$Search", $"%{search}%"));
 		return Database.QueryAsync(
-			$"SELECT {Columns} FROM StorageLocations {filter} ORDER BY IsActive DESC, Name;",
+			$"SELECT {Columns} FROM StorageLocations {filter} ORDER BY IsActive DESC, Name, Id;",
 			Read,
 			cancellationToken,
 			parameters.ToArray());
 	}
 
 	public Task<IReadOnlyList<StorageLocation>> ListActiveAsync(CancellationToken cancellationToken) =>
-		Database.QueryAsync(
-			$"SELECT {Columns} FROM StorageLocations WHERE IsActive = 1 ORDER BY WarehouseId, Name;",
+		Database.QuerySliceAsync(
+			$"SELECT {Columns} FROM StorageLocations WHERE IsActive = 1 ORDER BY WarehouseId, Name, Id",
 			Read,
+			0,
+			200,
 			cancellationToken);
 
 	public Task<StorageLocation?> GetByIdAsync(long id, CancellationToken cancellationToken) =>

@@ -20,11 +20,19 @@ public sealed class WarehouseRepository : DatabaseRepository
 		var filter = string.IsNullOrWhiteSpace(search) ? string.Empty : "WHERE Name LIKE $Search OR Description LIKE $Search";
 		var parameters = string.IsNullOrWhiteSpace(search) ? [] : new[] { Parameter("$Search", $"%{search}%") };
 		return Database.QueryAsync(
-			$"SELECT {Columns} FROM Warehouses {filter} ORDER BY IsActive DESC, Name;",
+			$"SELECT {Columns} FROM Warehouses {filter} ORDER BY IsActive DESC, Name, Id;",
 			Read,
 			cancellationToken,
 			parameters);
 	}
+
+	public Task<IReadOnlyList<Warehouse>> ListActiveOptionsAsync(int count, CancellationToken cancellationToken) =>
+		Database.QuerySliceAsync(
+			$"SELECT {Columns} FROM Warehouses WHERE IsActive = 1 ORDER BY Name, Id",
+			Read,
+			0,
+			count,
+			cancellationToken);
 
 	public Task<Warehouse?> GetByIdAsync(long id, CancellationToken cancellationToken) =>
 		Database.QuerySingleOrDefaultAsync(

@@ -14,6 +14,35 @@ namespace Depot.Tests;
 public sealed class MaterialIssueTests
 {
 	[Fact]
+	public async Task InventoryOptionsAreFilteredPagedAggregatedAndCancellableOnTheServer()
+	{
+		await using var context = await ProcurementTestContext.CreateSqliteAsync();
+		await AddStockAsync(context, context.InventoryId, 7);
+		var warehouseId = await context.ScalarAsync(
+			"SELECT sl.WarehouseId FROM Inventories inv INNER JOIN StorageLocations sl ON sl.Id = inv.StorageLocationId WHERE inv.Id = $Id;",
+			new DatabaseParameter("$Id", context.InventoryId));
+
+		var page = await context.MaterialIssues.SearchInventoryOptionsAsync(
+			null,
+			context.ItemId,
+			warehouseId,
+			1,
+			1);
+
+		var option = Assert.Single(page.Items);
+		Assert.Equal(context.ItemId, option.ItemId);
+		Assert.Equal(7, option.CurrentStock);
+		Assert.True(page.TotalCount >= 1);
+		var empty = await context.MaterialIssues.SearchInventoryOptionsAsync(null, context.ItemId, long.MaxValue, 1, 10);
+		Assert.Empty(empty.Items);
+
+		using var cancellation = new CancellationTokenSource();
+		await cancellation.CancelAsync();
+		await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+			context.MaterialIssues.SearchInventoryOptionsAsync(null, context.ItemId, warehouseId, 1, 10, cancellation.Token));
+	}
+
+	[Fact]
 	public async Task DraftCanBeSavedEditedAndCancelled()
 	{
 		await using var context = await ProcurementTestContext.CreateSqliteAsync();

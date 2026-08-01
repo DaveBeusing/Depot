@@ -28,16 +28,18 @@ public sealed class ReasonCodeRepository : DatabaseRepository
 			? []
 			: new[] { Parameter("$Search", $"%{search}%") };
 		return Database.QueryAsync(
-			$"SELECT {Columns} FROM ReasonCodes {filter} ORDER BY IsActive DESC, Name, Code;",
+			$"SELECT {Columns} FROM ReasonCodes {filter} ORDER BY IsActive DESC, Name, Code, Id;",
 			Read,
 			cancellationToken,
 			parameters);
 	}
 
 	public Task<IReadOnlyList<ReasonCode>> ListActiveAsync(CancellationToken cancellationToken) =>
-		Database.QueryAsync(
-			$"SELECT {Columns} FROM ReasonCodes WHERE IsActive = 1 ORDER BY Name, Code;",
+		Database.QuerySliceAsync(
+			$"SELECT {Columns} FROM ReasonCodes WHERE IsActive = 1 ORDER BY Name, Code, Id",
 			Read,
+			0,
+			200,
 			cancellationToken);
 
 	public Task<ReasonCode?> GetByIdAsync(long id, CancellationToken cancellationToken) =>

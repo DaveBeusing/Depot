@@ -38,16 +38,18 @@ public abstract class ItemReferenceDataRepository<T> : DatabaseRepository
 			? []
 			: new[] { Parameter("$Search", $"%{search}%") };
 		return Database.QueryAsync(
-			$"SELECT {Columns} FROM {_tableName} {filter} ORDER BY IsActive DESC, Name;",
+			$"SELECT {Columns} FROM {_tableName} {filter} ORDER BY IsActive DESC, Name, Id;",
 			Read,
 			cancellationToken,
 			parameters);
 	}
 
 	public Task<IReadOnlyList<T>> ListActiveAsync(CancellationToken cancellationToken) =>
-		Database.QueryAsync(
-			$"SELECT {Columns} FROM {_tableName} WHERE IsActive = 1 ORDER BY Name;",
+		Database.QuerySliceAsync(
+			$"SELECT {Columns} FROM {_tableName} WHERE IsActive = 1 ORDER BY Name, Id",
 			Read,
+			0,
+			200,
 			cancellationToken);
 
 	public Task<T?> GetByIdAsync(long id, CancellationToken cancellationToken) =>

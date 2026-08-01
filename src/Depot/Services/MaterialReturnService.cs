@@ -32,6 +32,7 @@ public sealed class MaterialReturnService
 	public Task<MaterialReturn?> GetByIdAsync(long id, CancellationToken cancellationToken = default) => _returns.GetByIdAsync(id, cancellationToken);
 	public Task<MaterialReturnOverviewItem?> GetOverviewByIdAsync(long id, CancellationToken cancellationToken = default) => _returns.GetOverviewByIdAsync(id, cancellationToken);
 	public Task<PageResult<InventoryOverviewItem>> SearchInventoryOptionsAsync(string? searchText, int pageNumber = 1, int pageSize = 100, CancellationToken cancellationToken = default) => _inventories.SearchOverviewPageAsync(searchText, pageNumber, pageSize, cancellationToken);
+	public Task<PageResult<InventoryOverviewItem>> SearchInventoryOptionsAsync(string? searchText, long? itemId, long? warehouseId, int pageNumber = 1, int pageSize = 100, CancellationToken cancellationToken = default) => _inventories.SearchOverviewPageAsync(searchText, itemId, warehouseId, pageNumber, pageSize, cancellationToken);
 	public Task<PageResult<MaterialIssueOverviewItem>> SearchOriginalIssuesAsync(string? searchText, int pageNumber = 1, int pageSize = 100, CancellationToken cancellationToken = default) => _issues.SearchAsync(searchText, MaterialIssueStatus.Posted, pageNumber, pageSize, cancellationToken);
 
 	public async Task<IReadOnlyList<MovementOverviewItem>> GetMovementsAsync(long id, CancellationToken cancellationToken = default)

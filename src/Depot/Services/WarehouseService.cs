@@ -25,6 +25,9 @@ public sealed class WarehouseService
 	public Task<IReadOnlyList<Warehouse>> SearchAsync(string? searchText, CancellationToken cancellationToken = default) =>
 		_warehouses.SearchAsync(searchText, cancellationToken);
 
+	public Task<IReadOnlyList<Warehouse>> GetActiveOptionsAsync(int count = 200, CancellationToken cancellationToken = default) =>
+		_warehouses.ListActiveOptionsAsync(count, cancellationToken);
+
 	public async Task<Warehouse> GetOrCreateAsync(string name, CancellationToken cancellationToken = default)
 	{
 		var normalized = name.Trim();

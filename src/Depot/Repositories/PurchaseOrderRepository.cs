@@ -46,9 +46,9 @@ public sealed class PurchaseOrderRepository : DatabaseRepository
 	{
 		var (where, parameters) = BuildApprovalFilter(filter);
 		const string approvalFrom =
-			"FROM PurchaseOrders po INNER JOIN Suppliers s ON s.Id = po.SupplierId LEFT JOIN Users creator ON creator.Id = po.CreatedByUserId";
+			"FROM PurchaseOrders po INNER JOIN Suppliers s ON s.Id = po.SupplierId LEFT JOIN Users creator ON creator.Id = po.CreatedByUserId LEFT JOIN (SELECT PurchaseOrderId, SUM(Quantity * UnitPrice) AS TotalAmount FROM PurchaseOrderLines GROUP BY PurchaseOrderId) orderTotals ON orderTotals.PurchaseOrderId = po.Id";
 		return Database.QueryPageAsync(
-			$"SELECT po.Id, po.OrderNumber, po.SupplierId, s.Name, po.OrderDate, po.ExpectedDeliveryDate, po.Notes, po.CreatedByUserId, creator.DisplayName, po.SubmittedAtUtc, (SELECT COALESCE(SUM(pol.Quantity * pol.UnitPrice), 0) FROM PurchaseOrderLines pol WHERE pol.PurchaseOrderId = po.Id), po.Version {approvalFrom} {where} ORDER BY po.SubmittedAtUtc, po.Id",
+			$"SELECT po.Id, po.OrderNumber, po.SupplierId, s.Name, po.OrderDate, po.ExpectedDeliveryDate, po.Notes, po.CreatedByUserId, creator.DisplayName, po.SubmittedAtUtc, COALESCE(orderTotals.TotalAmount, 0), po.Version {approvalFrom} {where} ORDER BY po.SubmittedAtUtc, po.Id",
 			$"SELECT COUNT(*) {approvalFrom} {where};",
 			ReadApprovalWorkItem,
 			pageNumber,

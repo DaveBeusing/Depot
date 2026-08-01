@@ -126,16 +126,37 @@ public sealed class InventoryRepository : DatabaseRepository
 		string? searchText,
 		int pageNumber,
 		int pageSize,
+		CancellationToken cancellationToken) =>
+		SearchOverviewPageAsync(searchText, null, null, pageNumber, pageSize, cancellationToken);
+
+	public Task<PageResult<InventoryOverviewItem>> SearchOverviewPageAsync(
+		string? searchText,
+		long? itemId,
+		long? warehouseId,
+		int pageNumber,
+		int pageSize,
 		CancellationToken cancellationToken)
 	{
 		var search = searchText?.Trim();
 		var hasSearch = !string.IsNullOrWhiteSpace(search);
-		var filter = hasSearch
-			? "AND (i.PartNumber LIKE $Search OR i.Description LIKE $Search OR m.Name LIKE $Search OR c.Name LIKE $Search OR p.Name LIKE $Search OR w.Name LIKE $Search OR sl.Name LIKE $Search)"
-			: string.Empty;
-		var parameters = hasSearch
-			? new[] { Parameter("$Search", $"%{search}%") }
-			: [];
+		var filters = new List<string>();
+		var parameters = new List<DatabaseParameter>();
+		if (hasSearch)
+		{
+			filters.Add("(i.PartNumber LIKE $Search OR i.Description LIKE $Search OR m.Name LIKE $Search OR c.Name LIKE $Search OR p.Name LIKE $Search OR w.Name LIKE $Search OR sl.Name LIKE $Search)");
+			parameters.Add(Parameter("$Search", $"%{search}%"));
+		}
+		if (itemId is not null)
+		{
+			filters.Add("inv.ItemId = $ItemId");
+			parameters.Add(Parameter("$ItemId", itemId.Value));
+		}
+		if (warehouseId is not null)
+		{
+			filters.Add("sl.WarehouseId = $WarehouseId");
+			parameters.Add(Parameter("$WarehouseId", warehouseId.Value));
+		}
+		var filter = filters.Count == 0 ? string.Empty : $"AND {string.Join(" AND ", filters)}";
 		return Database.QueryPageAsync(
 			$"""
 			SELECT inv.Id, i.Id, i.PartNumber, i.Description, m.Name, c.Name,
@@ -172,7 +193,7 @@ public sealed class InventoryRepository : DatabaseRepository
 			pageNumber,
 			pageSize,
 			cancellationToken,
-			parameters);
+			parameters.ToArray());
 	}
 
 	public Task<IReadOnlyList<InventoryLookupItem>> SearchLookupAsync(

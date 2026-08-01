@@ -19,6 +19,7 @@ public sealed class SupplierReturnsViewModel : BaseViewModel, IDisposable
     private readonly AsyncDebouncer _search = new(TimeSpan.FromMilliseconds(300));
     private readonly AsyncDebouncer _receiptSearch = new(TimeSpan.FromMilliseconds(300));
     private CancellationTokenSource? _selectionCancellation;
+    private CancellationTokenSource? _receiptSelectionCancellation;
     private SupplierReturnOverviewItem? _selectedReturn;
     private SupplierReturn _draft = NewDraft();
     private SupplierReturnReceiptOption? _selectedReceipt;
@@ -86,7 +87,20 @@ public sealed class SupplierReturnsViewModel : BaseViewModel, IDisposable
     public bool HasNextPage => (long)PageNumber * PageSize < TotalCount;
     public string PageDisplay => $"Page {PageNumber} · {TotalCount:N0} returns";
     public SupplierReturnOverviewItem? SelectedReturn { get => _selectedReturn; set { if (_selectedReturn == value) return; _selectedReturn = value; OnPropertyChanged(); _selectionCancellation?.Cancel(); _selectionCancellation?.Dispose(); _selectionCancellation = new CancellationTokenSource(); _ = LoadSelectedAsync(value, _selectionCancellation.Token); } }
-    public SupplierReturnReceiptOption? SelectedReceipt { get => _selectedReceipt; set { if (_selectedReceipt == value) return; _selectedReceipt = value; OnPropertyChanged(); _ = ApplyReceiptAsync(value); } }
+    public SupplierReturnReceiptOption? SelectedReceipt
+    {
+        get => _selectedReceipt;
+        set
+        {
+            if (_selectedReceipt == value) return;
+            _selectedReceipt = value;
+            OnPropertyChanged();
+            _receiptSelectionCancellation?.Cancel();
+            _receiptSelectionCancellation?.Dispose();
+            _receiptSelectionCancellation = new CancellationTokenSource();
+            _ = ApplyReceiptAsync(value, _receiptSelectionCancellation.Token);
+        }
+    }
     public SupplierReturnableLine? SelectedAvailableLine { get => _selectedAvailableLine; set { if (_selectedAvailableLine == value) return; _selectedAvailableLine = value; OnPropertyChanged(); LineQuantity = Math.Max(1, Math.Min(value?.ReturnableQuantity ?? 1, value is null ? 1 : (int)Math.Min(value.AvailableStock, int.MaxValue))); AddLineCommand.RaiseCanExecuteChanged(); } }
     public SupplierReturnLineEditor? SelectedLine { get => _selectedLine; set { if (_selectedLine == value) return; _selectedLine = value; OnPropertyChanged(); _selectedAvailableLine = value is null ? null : ReturnableLines.FirstOrDefault(option => option.GoodsReceiptLineId == value.GoodsReceiptLineId); OnPropertyChanged(nameof(SelectedAvailableLine)); SelectedReasonCode = value is null ? null : ReasonCodes.FirstOrDefault(reason => reason.Id == value.ReasonCodeId); LineQuantity = value?.Quantity ?? 1; OnPropertyChanged(nameof(SaveLineText)); RaiseCommands(); } }
     public ReasonCode? SelectedReasonCode { get => _selectedReasonCode; set { if (_selectedReasonCode == value) return; _selectedReasonCode = value; OnPropertyChanged(); AddLineCommand.RaiseCanExecuteChanged(); } }
@@ -119,12 +133,12 @@ public sealed class SupplierReturnsViewModel : BaseViewModel, IDisposable
 
     private async Task LoadPageAsync(CancellationToken token = default) { try { ApplyPage(await _service.SearchAsync(SearchText, SelectedSupplierFilter.SupplierId, SelectedStatusFilter.Status, PageNumber, PageSize, token)); } catch (Exception exception) when (exception is not OperationCanceledException) { FailOperation(exception, "Supplier returns could not be loaded"); } }
     private async Task LoadReceiptOptionsAsync(CancellationToken token = default) { try { Replace(ReceiptOptions, await _service.SearchReceiptOptionsAsync(ReceiptSearchText, SelectedSupplierFilter.SupplierId, token)); } catch (Exception exception) when (exception is not OperationCanceledException) { FailOperation(exception, "Goods receipts could not be loaded"); } }
-    private async Task ApplyReceiptAsync(SupplierReturnReceiptOption? receipt)
+    private async Task ApplyReceiptAsync(SupplierReturnReceiptOption? receipt, CancellationToken cancellationToken)
     {
         if (receipt is null || !IsDraft) return;
         Draft.SupplierId = receipt.SupplierId; Draft.SupplierName = receipt.SupplierName; Draft.PurchaseOrderId = receipt.PurchaseOrderId; Draft.PurchaseOrderNumber = receipt.PurchaseOrderNumber; Draft.GoodsReceiptId = receipt.GoodsReceiptId; Draft.GoodsReceiptNumber = receipt.ReceiptNumber;
         OnPropertyChanged(nameof(Draft));
-        try { Replace(ReturnableLines, await _service.GetReturnableLinesAsync(receipt.GoodsReceiptId)); Lines.Clear(); SelectedLine = null; RaiseCommands(); } catch (Exception exception) { FailOperation(exception, "Returnable receipt lines could not be loaded"); }
+        try { Replace(ReturnableLines, await _service.GetReturnableLinesAsync(receipt.GoodsReceiptId, cancellationToken)); Lines.Clear(); SelectedLine = null; RaiseCommands(); } catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { } catch (Exception exception) { FailOperation(exception, "Returnable receipt lines could not be loaded"); }
     }
     private async Task LoadSelectedAsync(SupplierReturnOverviewItem? overview, CancellationToken token)
     {
@@ -202,7 +216,7 @@ public sealed class SupplierReturnsViewModel : BaseViewModel, IDisposable
     private static void Replace<T>(ObservableCollection<T> target, IReadOnlyList<T> values) { target.Clear(); foreach (var value in values) target.Add(value); }
     private static SupplierReturn NewDraft() => new() { ReturnDate = DateTime.Today };
     private static SupplierReturn Copy(SupplierReturn value) => new() { Id = value.Id, ReturnNumber = value.ReturnNumber, SupplierId = value.SupplierId, SupplierName = value.SupplierName, ReturnDate = value.ReturnDate, Status = value.Status, PurchaseOrderId = value.PurchaseOrderId, PurchaseOrderNumber = value.PurchaseOrderNumber, GoodsReceiptId = value.GoodsReceiptId, GoodsReceiptNumber = value.GoodsReceiptNumber, SupplierReference = value.SupplierReference, Notes = value.Notes, CreatedByUserId = value.CreatedByUserId, PostedByUserId = value.PostedByUserId, PostedAtUtc = value.PostedAtUtc, ReversedByUserId = value.ReversedByUserId, ReversedAtUtc = value.ReversedAtUtc, ReversalReason = value.ReversalReason, Version = value.Version, Lines = value.Lines };
-    public void Dispose() { _search.Dispose(); _receiptSearch.Dispose(); _selectionCancellation?.Cancel(); _selectionCancellation?.Dispose(); SaveCommand.Dispose(); PostCommand.Dispose(); CancelCommand.Dispose(); ReverseCommand.Dispose(); PreviousPageCommand.Dispose(); NextPageCommand.Dispose(); }
+    public void Dispose() { _search.Dispose(); _receiptSearch.Dispose(); _selectionCancellation?.Cancel(); _selectionCancellation?.Dispose(); _receiptSelectionCancellation?.Cancel(); _receiptSelectionCancellation?.Dispose(); SaveCommand.Dispose(); PostCommand.Dispose(); CancelCommand.Dispose(); ReverseCommand.Dispose(); PreviousPageCommand.Dispose(); NextPageCommand.Dispose(); }
 }
 
 public sealed record SupplierReturnStatusFilter(string Name, SupplierReturnStatus? Status);

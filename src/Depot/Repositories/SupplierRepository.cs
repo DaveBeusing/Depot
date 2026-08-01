@@ -44,7 +44,7 @@ public sealed class SupplierRepository : DatabaseRepository
 	}
 
 	public Task<IReadOnlyList<Supplier>> ListActiveAsync(CancellationToken cancellationToken) =>
-		Database.QueryAsync($"SELECT {Columns} {From} WHERE s.IsActive = 1 ORDER BY s.Name;", Read, cancellationToken);
+		Database.QuerySliceAsync($"SELECT {Columns} {From} WHERE s.IsActive = 1 ORDER BY s.Name, s.Id", Read, 0, 200, cancellationToken);
 
 	public Task<Supplier?> GetByIdAsync(long id, CancellationToken cancellationToken) =>
 		Database.QuerySingleOrDefaultAsync($"SELECT {Columns} {From} WHERE s.Id = $Id;", Read, cancellationToken, Parameter("$Id", id));

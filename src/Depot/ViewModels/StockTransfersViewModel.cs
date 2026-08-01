@@ -279,7 +279,7 @@ public sealed class StockTransfersViewModel : BaseViewModel, IDisposable
 		BeginOperation("Transfers werden geladen");
 		try
 		{
-			var warehousesTask = _warehouses.SearchAsync(null, cancellationToken);
+			var warehousesTask = _warehouses.GetActiveOptionsAsync(200, cancellationToken);
 			var transfersTask = _transfers.SearchAsync(
 				SearchText,
 				SelectedStatusFilter.Status,

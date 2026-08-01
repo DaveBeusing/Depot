@@ -312,7 +312,7 @@ public sealed class InventoryCountsViewModel : BaseViewModel, IDisposable
 		BeginOperation("Inventuren werden geladen");
 		try
 		{
-			var warehousesTask = _warehouses.SearchAsync(null, cancellationToken);
+			var warehousesTask = _warehouses.GetActiveOptionsAsync(200, cancellationToken);
 			var countsTask = SearchCountsAsync(cancellationToken);
 			var reasonCodesTask = _reasonCodes.GetActiveAsync(cancellationToken);
 			await Task.WhenAll(warehousesTask, countsTask, reasonCodesTask);
