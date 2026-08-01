@@ -55,12 +55,12 @@ public sealed class MaterialIssueService
 		return _transactions.ExecuteAsync((transaction, token) => SaveDraftAsync(transaction, issue, userId, token), cancellationToken);
 	}
 
-	public Task<MaterialIssue> PostAsync(long id, long version, CancellationToken cancellationToken = default)
+	public Task<MaterialIssue> PostMaterialIssueAsync(long id, long version, CancellationToken cancellationToken = default)
 	{
 		_authorization.RequirePermission(ApplicationPermission.MaterialIssuesPost);
 		if (id <= 0) throw new ArgumentOutOfRangeException(nameof(id));
 		var userId = RequireUser("post");
-		return _transactions.ExecuteAsync((transaction, token) => PostAsync(transaction, id, version, userId, token), cancellationToken);
+		return _transactions.ExecuteAsync((transaction, token) => PostMaterialIssueAsync(transaction, id, version, userId, token), cancellationToken);
 	}
 
 	public Task<MaterialIssue> CancelAsync(long id, long version, CancellationToken cancellationToken = default)
@@ -139,7 +139,7 @@ public sealed class MaterialIssueService
 		return issue;
 	}
 
-	private async Task<MaterialIssue> PostAsync(DatabaseTransactionContext transaction, long id, long version, long userId, CancellationToken cancellationToken)
+	private async Task<MaterialIssue> PostMaterialIssueAsync(DatabaseTransactionContext transaction, long id, long version, long userId, CancellationToken cancellationToken)
 	{
 		var before = await _issues.GetByIdAsync(transaction, id, cancellationToken) ?? throw new InvalidOperationException("The material issue was not found.");
 		if (before.Version != version) throw new ConcurrencyConflictException("material issue");

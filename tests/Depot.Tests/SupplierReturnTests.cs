@@ -30,7 +30,7 @@ public sealed class SupplierReturnTests
         await using var context = await ProcurementTestContext.CreateSqliteAsync();
         var (order, receipt) = await CreateReceiptAsync(context, 6);
         var saved = await context.SupplierReturns.SaveDraftAsync(await NewReturnAsync(context, receipt, 2));
-        var posted = await context.SupplierReturns.PostAsync(saved.Id, saved.Version);
+        var posted = await context.SupplierReturns.PostSupplierReturnAsync(saved.Id, saved.Version);
         Assert.Equal(SupplierReturnStatus.Posted, posted.Status);
         Assert.Equal(1, await context.ScalarAsync("SELECT COUNT(*) FROM StockMovements WHERE Reference = $Reference AND MovementType = $Type AND Quantity = -2 AND ReversalOfMovementId IS NULL;", new DatabaseParameter("$Reference", $"Supplier Return {saved.ReturnNumber}"), new DatabaseParameter("$Type", (int)StockMovementType.SupplierReturn)));
         Assert.Equal(6, await context.ScalarAsync("SELECT ReceivedQuantity FROM PurchaseOrderLines WHERE Id = $Id;", new DatabaseParameter("$Id", order.Lines[0].Id)));
@@ -44,7 +44,7 @@ public sealed class SupplierReturnTests
         await using var context = await ProcurementTestContext.CreateSqliteAsync();
         var (_, receipt) = await CreateReceiptAsync(context, 5);
         var first = await context.SupplierReturns.SaveDraftAsync(await NewReturnAsync(context, receipt, 3));
-        await context.SupplierReturns.PostAsync(first.Id, first.Version);
+        await context.SupplierReturns.PostSupplierReturnAsync(first.Id, first.Version);
         var available = Assert.Single(await context.SupplierReturns.GetReturnableLinesAsync(receipt.Id));
         Assert.Equal(3, available.AlreadyReturnedQuantity);
         Assert.Equal(2, available.ReturnableQuantity);
@@ -70,8 +70,8 @@ public sealed class SupplierReturnTests
 		var first = await context.SupplierReturns.SaveDraftAsync(await NewReturnAsync(context, receipt, 4));
 		var second = await context.SupplierReturns.SaveDraftAsync(await NewReturnAsync(context, receipt, 4));
 		var results = await Task.WhenAll(
-			CaptureAsync(() => context.SupplierReturns.PostAsync(first.Id, first.Version)),
-			CaptureAsync(() => context.SupplierReturns.PostAsync(second.Id, second.Version)));
+			CaptureAsync(() => context.SupplierReturns.PostSupplierReturnAsync(first.Id, first.Version)),
+			CaptureAsync(() => context.SupplierReturns.PostSupplierReturnAsync(second.Id, second.Version)));
 		Assert.Single(results, result => result is null);
 		Assert.Single(results, result => result is not null);
 		Assert.Equal(1, await context.ScalarAsync("SELECT COUNT(*) FROM SupplierReturns WHERE Status = $Posted;", new DatabaseParameter("$Posted", (int)SupplierReturnStatus.Posted)));
@@ -84,8 +84,8 @@ public sealed class SupplierReturnTests
         var (_, receipt) = await CreateReceiptAsync(context, 4);
         var saved = await context.SupplierReturns.SaveDraftAsync(await NewReturnAsync(context, receipt, 4));
         var issue = await context.MaterialIssues.SaveDraftAsync(new MaterialIssue { IssueDate = DateTime.Today, Recipient = $"Material issue test {Guid.NewGuid():N}", Lines = [new MaterialIssueLine { InventoryId = context.InventoryId, Quantity = 4, ReasonCodeId = await ReasonIdAsync(context, ReasonCodeSystemCodes.GoodsIssue) }] });
-        await context.MaterialIssues.PostAsync(issue.Id, issue.Version);
-        await Assert.ThrowsAsync<InsufficientStockException>(() => context.SupplierReturns.PostAsync(saved.Id, saved.Version));
+        await context.MaterialIssues.PostMaterialIssueAsync(issue.Id, issue.Version);
+        await Assert.ThrowsAsync<InsufficientStockException>(() => context.SupplierReturns.PostSupplierReturnAsync(saved.Id, saved.Version));
         Assert.Equal(SupplierReturnStatus.Draft, (await context.SupplierReturns.GetByIdAsync(saved.Id))?.Status);
         Assert.Equal(0, await context.ScalarAsync("SELECT COUNT(*) FROM StockMovements WHERE Reference = $Reference;", new DatabaseParameter("$Reference", $"Supplier Return {saved.ReturnNumber}")));
     }
@@ -97,7 +97,7 @@ public sealed class SupplierReturnTests
         var (_, receipt) = await CreateReceiptAsync(context, 4);
         var saved = await context.SupplierReturns.SaveDraftAsync(await NewReturnAsync(context, receipt, 2));
         await context.Data.ExecuteAsync("CREATE TRIGGER FailSupplierReturnAudit BEFORE INSERT ON AuditEntries WHEN NEW.EntityType = 'SupplierReturn' AND NEW.Action = 'Updated' BEGIN SELECT RAISE(ABORT, 'forced supplier return audit failure'); END;", CancellationToken.None);
-        await Assert.ThrowsAsync<SqliteException>(() => context.SupplierReturns.PostAsync(saved.Id, saved.Version));
+        await Assert.ThrowsAsync<SqliteException>(() => context.SupplierReturns.PostSupplierReturnAsync(saved.Id, saved.Version));
         Assert.Equal(SupplierReturnStatus.Draft, (await context.SupplierReturns.GetByIdAsync(saved.Id))?.Status);
         Assert.Equal(0, await context.ScalarAsync("SELECT COUNT(*) FROM StockMovements WHERE Reference = $Reference;", new DatabaseParameter("$Reference", $"Supplier Return {saved.ReturnNumber}")));
     }
@@ -108,8 +108,8 @@ public sealed class SupplierReturnTests
         await using var context = await ProcurementTestContext.CreateSqliteAsync();
         var (_, receipt) = await CreateReceiptAsync(context, 3);
         var saved = await context.SupplierReturns.SaveDraftAsync(await NewReturnAsync(context, receipt, 1));
-        var posted = await context.SupplierReturns.PostAsync(saved.Id, saved.Version);
-        await Assert.ThrowsAsync<ConcurrencyConflictException>(() => context.SupplierReturns.PostAsync(saved.Id, saved.Version));
+        var posted = await context.SupplierReturns.PostSupplierReturnAsync(saved.Id, saved.Version);
+        await Assert.ThrowsAsync<ConcurrencyConflictException>(() => context.SupplierReturns.PostSupplierReturnAsync(saved.Id, saved.Version));
         await Assert.ThrowsAsync<InvalidOperationException>(() => context.SupplierReturns.SaveDraftAsync(posted));
         await Assert.ThrowsAsync<InvalidOperationException>(() => context.SupplierReturns.CancelAsync(posted.Id, posted.Version));
     }
@@ -120,7 +120,7 @@ public sealed class SupplierReturnTests
         await using var context = await ProcurementTestContext.CreateSqliteAsync();
         var (_, receipt) = await CreateReceiptAsync(context, 5);
         var saved = await context.SupplierReturns.SaveDraftAsync(await NewReturnAsync(context, receipt, 2));
-        var posted = await context.SupplierReturns.PostAsync(saved.Id, saved.Version);
+        var posted = await context.SupplierReturns.PostSupplierReturnAsync(saved.Id, saved.Version);
         var reasonId = await ReasonIdAsync(context, ReasonCodeSystemCodes.InventoryCorrection);
         var reversals = await context.SupplierReturns.ReverseAsync(posted.Id, posted.Version, reasonId, "Supplier accepted cancellation");
         Assert.Single(reversals);
@@ -135,7 +135,7 @@ public sealed class SupplierReturnTests
     {
         var order = await context.Orders.SaveDraftAsync(context.NewOrder(quantity));
         order = await context.ApproveAndOrderAsync(order);
-        var receipt = await context.Receipts.PostAsync(context.NewReceipt(order, quantity));
+        var receipt = await context.Receipts.PostGoodsReceiptAsync(context.NewReceipt(order, quantity));
         return (order, receipt);
     }
 

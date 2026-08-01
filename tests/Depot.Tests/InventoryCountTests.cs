@@ -238,7 +238,7 @@ public sealed class InventoryCountTests
 		await AddStockAsync(context, context.InventoryId, 5);
 		var review = await PrepareReviewAsync(context, service, line => line.ExpectedQuantity);
 
-		var posted = await service.PostAsync(review.Id, review.Version);
+		var posted = await service.PostInventoryCountAsync(review.Id, review.Version);
 
 		Assert.Equal(InventoryCountStatus.Posted, posted.Status);
 		Assert.NotNull(posted.CompletedAtUtc);
@@ -259,7 +259,7 @@ public sealed class InventoryCountTests
 			service,
 			line => line.InventoryId == context.InventoryId ? 2 : 6);
 
-		var posted = await service.PostAsync(review.Id, review.Version);
+		var posted = await service.PostInventoryCountAsync(review.Id, review.Version);
 
 		Assert.Equal(2, await CurrentStockAsync(context, context.InventoryId));
 		Assert.Equal(6, await CurrentStockAsync(context, context.SecondInventoryId));
@@ -280,7 +280,7 @@ public sealed class InventoryCountTests
 			line => line.InventoryId == context.InventoryId ? 6 : line.ExpectedQuantity);
 		await AddStockAsync(context, context.InventoryId, 2);
 
-		var posted = await service.PostAsync(review.Id, review.Version);
+		var posted = await service.PostInventoryCountAsync(review.Id, review.Version);
 		var reloaded = await service.GetByIdAsync(posted.Id) ?? throw new InvalidOperationException();
 
 		Assert.Equal(5, Assert.Single(reloaded.Lines, line => line.InventoryId == context.InventoryId).ExpectedQuantity);
@@ -309,7 +309,7 @@ public sealed class InventoryCountTests
 			""",
 			CancellationToken.None);
 
-		await Assert.ThrowsAsync<SqliteException>(() => service.PostAsync(review.Id, review.Version));
+		await Assert.ThrowsAsync<SqliteException>(() => service.PostInventoryCountAsync(review.Id, review.Version));
 
 		var stored = await service.GetByIdAsync(review.Id) ?? throw new InvalidOperationException();
 		Assert.Equal(InventoryCountStatus.Review, stored.Status);
@@ -335,13 +335,13 @@ public sealed class InventoryCountTests
 		Assert.Single(results, result => result);
 		Assert.Equal(1, await CorrectionCountAsync(context, review.CountNumber));
 		Assert.Equal(4, await CurrentStockAsync(context, context.InventoryId));
-		await Assert.ThrowsAnyAsync<InvalidOperationException>(() => service.PostAsync(review.Id, review.Version));
+		await Assert.ThrowsAnyAsync<InvalidOperationException>(() => service.PostInventoryCountAsync(review.Id, review.Version));
 
 		async Task<bool> TryPostAsync()
 		{
 			try
 			{
-				await service.PostAsync(review.Id, review.Version);
+				await service.PostInventoryCountAsync(review.Id, review.Version);
 				return true;
 			}
 			catch (InvalidOperationException)
@@ -362,7 +362,7 @@ public sealed class InventoryCountTests
 			line => line.InventoryId == context.InventoryId ? 1 : line.ExpectedQuantity);
 
 		var exception = await Assert.ThrowsAsync<ConcurrencyConflictException>(() =>
-			service.PostAsync(review.Id, review.Version + 1));
+			service.PostInventoryCountAsync(review.Id, review.Version + 1));
 
 		Assert.Contains("changed by another session", exception.Message, StringComparison.Ordinal);
 		Assert.Equal(0, await CorrectionCountAsync(context, review.CountNumber));
@@ -379,7 +379,7 @@ public sealed class InventoryCountTests
 			service,
 			line => line.InventoryId == context.InventoryId ? 1 : line.ExpectedQuantity);
 
-		var posted = await service.PostAsync(review.Id, review.Version);
+		var posted = await service.PostInventoryCountAsync(review.Id, review.Version);
 
 		Assert.Equal(1, await context.ScalarAsync(
 			"SELECT COUNT(*) FROM StockMovements sm INNER JOIN ReasonCodes rc ON rc.Id = sm.ReasonCodeId WHERE sm.Reference = $Reference AND rc.Code = $Code;",
@@ -395,7 +395,7 @@ public sealed class InventoryCountTests
 		var service = CreateService(context);
 		await AddStockAsync(context, context.InventoryId, 5);
 		var review = await PrepareReviewAsync(context, service, line => line.InventoryId == context.InventoryId ? 8 : line.ExpectedQuantity);
-		var posted = await service.PostAsync(review.Id, review.Version);
+		var posted = await service.PostInventoryCountAsync(review.Id, review.Version);
 		var reasonCodeId = await context.ScalarAsync("SELECT Id FROM ReasonCodes WHERE Code = $Code;", new DatabaseParameter("$Code", ReasonCodeSystemCodes.InventoryCorrection));
 
 		var reversed = await service.ReverseAsync(posted.Id, posted.Version, reasonCodeId, "Count was entered for the wrong unit");

@@ -531,7 +531,7 @@ public sealed class StockTransfersViewModel : BaseViewModel, IDisposable
 		BeginOperation("Transfer wird gebucht – Bestände werden geprüft");
 		try
 		{
-			var posted = await _transfers.PostAsync(Draft.Id, Draft.Version, cancellationToken);
+			var posted = await _transfers.PostStockTransferAsync(Draft.Id, Draft.Version, cancellationToken);
 			await ApplySavedTransferAsync(posted, cancellationToken);
 			CompleteOperation(false, $"{posted.TransferNumber} posted");
 		}

@@ -285,7 +285,7 @@ public sealed class InventoryCountService
 			cancellationToken);
 	}
 
-	public async Task<InventoryCount> PostAsync(
+	public async Task<InventoryCount> PostInventoryCountAsync(
 		long id,
 		long version,
 		CancellationToken cancellationToken = default)
@@ -295,7 +295,7 @@ public sealed class InventoryCountService
 			?? throw new InvalidOperationException("A signed-in user is required to post an inventory count.");
 
 		return await _transactions.ExecuteAsync(
-			(transaction, token) => PostAsync(transaction, id, version, userId, token),
+			(transaction, token) => PostInventoryCountAsync(transaction, id, version, userId, token),
 			cancellationToken);
 	}
 
@@ -399,7 +399,7 @@ public sealed class InventoryCountService
 		return count;
 	}
 
-	private async Task<InventoryCount> PostAsync(
+	private async Task<InventoryCount> PostInventoryCountAsync(
 		DatabaseTransactionContext transaction,
 		long id,
 		long version,

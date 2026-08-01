@@ -37,7 +37,7 @@ public sealed class MaterialReturnTests
 		await Assert.ThrowsAsync<InvalidOperationException>(() => context.MaterialReturns.SaveDraftAsync(value));
 
 		await AddStockAsync(context, 2);
-		issue = await context.MaterialIssues.PostAsync(issue.Id, issue.Version);
+		issue = await context.MaterialIssues.PostMaterialIssueAsync(issue.Id, issue.Version);
 		value = await NewReturnAsync(context, 1); value.OriginalMaterialIssueId = issue.Id; value.Reference = null; value.Notes = null;
 		var saved = await context.MaterialReturns.SaveDraftAsync(value);
 		Assert.Equal(issue.Id, saved.OriginalMaterialIssueId);
@@ -50,7 +50,7 @@ public sealed class MaterialReturnTests
 		await using var context = await ProcurementTestContext.CreateSqliteAsync();
 		var value = await context.MaterialReturns.SaveDraftAsync(await NewReturnAsync(context, 4));
 
-		var posted = await context.MaterialReturns.PostAsync(value.Id, value.Version);
+		var posted = await context.MaterialReturns.PostMaterialReturnAsync(value.Id, value.Version);
 
 		Assert.Equal(MaterialReturnStatus.Posted, posted.Status);
 		Assert.NotNull(posted.PostedAtUtc);
@@ -66,7 +66,7 @@ public sealed class MaterialReturnTests
 		var value = await context.MaterialReturns.SaveDraftAsync(await NewReturnAsync(context, 3));
 		await context.Data.ExecuteAsync("CREATE TRIGGER FailMaterialReturnAudit BEFORE INSERT ON AuditEntries WHEN NEW.EntityType = 'MaterialReturn' BEGIN SELECT RAISE(ABORT, 'forced material return audit failure'); END;", CancellationToken.None);
 
-		await Assert.ThrowsAsync<SqliteException>(() => context.MaterialReturns.PostAsync(value.Id, value.Version));
+		await Assert.ThrowsAsync<SqliteException>(() => context.MaterialReturns.PostMaterialReturnAsync(value.Id, value.Version));
 		Assert.Equal(MaterialReturnStatus.Draft, (await context.MaterialReturns.GetByIdAsync(value.Id))?.Status);
 		Assert.Equal(0, await context.ScalarAsync("SELECT COUNT(*) FROM StockMovements WHERE Reference = $Reference;", new DatabaseParameter("$Reference", $"Material Return {value.ReturnNumber}")));
 	}
@@ -76,8 +76,8 @@ public sealed class MaterialReturnTests
 	{
 		await using var context = await ProcurementTestContext.CreateSqliteAsync();
 		var value = await context.MaterialReturns.SaveDraftAsync(await NewReturnAsync(context, 2));
-		var posted = await context.MaterialReturns.PostAsync(value.Id, value.Version);
-		await Assert.ThrowsAsync<ConcurrencyConflictException>(() => context.MaterialReturns.PostAsync(value.Id, value.Version));
+		var posted = await context.MaterialReturns.PostMaterialReturnAsync(value.Id, value.Version);
+		await Assert.ThrowsAsync<ConcurrencyConflictException>(() => context.MaterialReturns.PostMaterialReturnAsync(value.Id, value.Version));
 		await Assert.ThrowsAsync<InvalidOperationException>(() => context.MaterialReturns.SaveDraftAsync(posted));
 		await Assert.ThrowsAsync<InvalidOperationException>(() => context.MaterialReturns.CancelAsync(posted.Id, posted.Version));
 	}
@@ -87,7 +87,7 @@ public sealed class MaterialReturnTests
 	{
 		await using var context = await ProcurementTestContext.CreateSqliteAsync();
 		var value = await context.MaterialReturns.SaveDraftAsync(await NewReturnAsync(context, 5));
-		var posted = await context.MaterialReturns.PostAsync(value.Id, value.Version);
+		var posted = await context.MaterialReturns.PostMaterialReturnAsync(value.Id, value.Version);
 		var correctionReason = await ReasonIdAsync(context, ReasonCodeSystemCodes.InventoryCorrection);
 
 		var corrections = await context.MaterialReturns.CorrectAsync(posted.Id, posted.Version, correctionReason, "Wrong inventory selected");

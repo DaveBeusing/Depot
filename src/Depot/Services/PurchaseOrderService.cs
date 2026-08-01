@@ -38,27 +38,8 @@ public sealed class PurchaseOrderService
 	public async Task<PurchaseOrder> SaveDraftAsync(PurchaseOrder draft, CancellationToken cancellationToken = default)
 	{
 		_authorization.RequirePermission(draft.Id == 0 ? ApplicationPermission.PurchaseOrdersCreate : ApplicationPermission.PurchaseOrdersEdit);
-		draft.Notes = Normalize(draft.Notes);
 		if (draft.Id != 0 && draft.Status != PurchaseOrderStatus.Draft) throw new InvalidOperationException("Only draft purchase orders can be edited.");
-		var supplier = await _suppliers.GetByIdAsync(draft.SupplierId, cancellationToken) ?? throw new InvalidOperationException("The selected supplier was not found.");
-		if (!supplier.IsActive) throw new InvalidOperationException("The selected supplier is inactive.");
-		if (draft.ExpectedDeliveryDate is not null && draft.ExpectedDeliveryDate.Value.Date < draft.OrderDate.Date) throw new ArgumentException("Expected delivery date cannot be earlier than the order date.");
-		if (draft.Notes?.Length > 4000) throw new ArgumentException("Notes must not exceed 4000 characters.");
-		if (draft.Lines.Count == 0) throw new InvalidOperationException("A purchase order requires at least one line.");
-		if (draft.Lines.Select(line => line.ItemId).Distinct().Count() != draft.Lines.Count) throw new InvalidOperationException("An item can only occur once per purchase order.");
-		var items = (await _items.GetByIdsAsync(
-			draft.Lines.Select(line => line.ItemId),
-			cancellationToken)).ToDictionary(item => item.Id);
-		foreach (var line in draft.Lines)
-		{
-			if (line.Quantity <= 0) throw new ArgumentOutOfRangeException(nameof(line.Quantity), "Quantity must be greater than zero.");
-			if (line.UnitPrice < 0) throw new ArgumentOutOfRangeException(nameof(line.UnitPrice), "Unit price cannot be negative.");
-			if (!items.TryGetValue(line.ItemId, out var item)) throw new InvalidOperationException("An ordered item was not found.");
-			if (!item.IsActive) throw new InvalidOperationException($"Item '{item.PartNumber}' is inactive.");
-			line.ItemPartNumber = item.PartNumber;
-			line.ItemDescription = item.Description;
-		}
-		draft.SupplierName = supplier.Name;
+		await ValidateOrderContentAsync(draft, cancellationToken);
 		var isNew = draft.Id == 0;
 		if (isNew)
 		{
@@ -75,11 +56,13 @@ public sealed class PurchaseOrderService
 			cancellationToken);
 	}
 
-	public Task<PurchaseOrder> SubmitForApprovalAsync(long id, long version, CancellationToken cancellationToken = default)
+	public async Task<PurchaseOrder> SubmitForApprovalAsync(long id, long version, CancellationToken cancellationToken = default)
 	{
 		_authorization.RequirePermission(ApplicationPermission.PurchaseOrdersSubmit);
 		var user = CurrentUser();
-		return ChangeStatusAsync(id, version, PurchaseOrderStatus.Draft, PurchaseOrderStatus.PendingApproval,
+		var before = await GetForTransitionAsync(id, version, PurchaseOrderStatus.Draft, cancellationToken);
+		await ValidateOrderContentAsync(before, cancellationToken);
+		return await ChangeStatusAsync(before, version, PurchaseOrderStatus.Draft, PurchaseOrderStatus.PendingApproval,
 			order =>
 			{
 				order.CreatedByUserId ??= user.Id;
@@ -113,10 +96,15 @@ public sealed class PurchaseOrderService
 				order.ApprovalComment = null;
 			}, cancellationToken);
 
-	public Task<PurchaseOrder> MarkOrderedAsync(long id, long version, CancellationToken cancellationToken = default) =>
-		RequireAndChangeStatusAsync(ApplicationPermission.PurchaseOrdersOrder, id, version, PurchaseOrderStatus.Approved, PurchaseOrderStatus.Ordered, null, cancellationToken);
+	public async Task<PurchaseOrder> PlaceOrderAsync(long id, long version, CancellationToken cancellationToken = default)
+	{
+		_authorization.RequirePermission(ApplicationPermission.PurchaseOrdersOrder);
+		var before = await GetForTransitionAsync(id, version, PurchaseOrderStatus.Approved, cancellationToken);
+		await ValidateOrderContentAsync(before, cancellationToken);
+		return await ChangeStatusAsync(before, version, PurchaseOrderStatus.Approved, PurchaseOrderStatus.Ordered, null, cancellationToken);
+	}
 
-	public async Task<PurchaseOrder> CloseAsync(long id, long version, string reason, CancellationToken cancellationToken = default)
+	public async Task<PurchaseOrder> CloseOrderAsync(long id, long version, string reason, CancellationToken cancellationToken = default)
 	{
 		_authorization.RequirePermission(ApplicationPermission.PurchaseOrdersClose);
 		var normalizedReason = Normalize(reason) ?? throw new ArgumentException("A close reason is required.", nameof(reason));
@@ -186,6 +174,9 @@ public sealed class PurchaseOrderService
 		Action<PurchaseOrder>? applyMetadata,
 		CancellationToken cancellationToken)
 	{
+		if (before.Version != version) throw new ConcurrencyConflictException("purchase order");
+		if (before.Status != expected)
+			throw new InvalidOperationException($"The purchase order must be in {expected} status for this transition.");
 		var after = new PurchaseOrder
 		{
 			Id = before.Id,
@@ -221,6 +212,48 @@ public sealed class PurchaseOrderService
 			after,
 			_audit.CreateUpdatedEntry(before.Id, before, after),
 			cancellationToken);
+	}
+
+	private async Task<PurchaseOrder> GetForTransitionAsync(
+		long id,
+		long version,
+		PurchaseOrderStatus expected,
+		CancellationToken cancellationToken)
+	{
+		var order = await _orders.GetByIdAsync(id, cancellationToken)
+			?? throw new InvalidOperationException("Purchase order was not found.");
+		if (order.Version != version) throw new ConcurrencyConflictException("purchase order");
+		if (order.Status != expected)
+			throw new InvalidOperationException($"The purchase order must be in {expected} status for this transition.");
+		return order;
+	}
+
+	private async Task ValidateOrderContentAsync(PurchaseOrder order, CancellationToken cancellationToken)
+	{
+		order.Notes = Normalize(order.Notes);
+		var supplier = await _suppliers.GetByIdAsync(order.SupplierId, cancellationToken)
+			?? throw new InvalidOperationException("The selected supplier was not found.");
+		if (!supplier.IsActive) throw new InvalidOperationException("The selected supplier is inactive.");
+		if (order.ExpectedDeliveryDate is not null && order.ExpectedDeliveryDate.Value.Date < order.OrderDate.Date)
+			throw new ArgumentException("Expected delivery date cannot be earlier than the order date.");
+		if (order.Notes?.Length > 4000) throw new ArgumentException("Notes must not exceed 4000 characters.");
+		if (order.Lines.Count == 0) throw new InvalidOperationException("A purchase order requires at least one line.");
+		if (order.Lines.Select(line => line.ItemId).Distinct().Count() != order.Lines.Count)
+			throw new InvalidOperationException("An item can only occur once per purchase order.");
+
+		var items = (await _items.GetByIdsAsync(
+			order.Lines.Select(line => line.ItemId),
+			cancellationToken)).ToDictionary(item => item.Id);
+		foreach (var line in order.Lines)
+		{
+			if (line.Quantity <= 0) throw new ArgumentOutOfRangeException(nameof(line.Quantity), "Quantity must be greater than zero.");
+			if (line.UnitPrice < 0) throw new ArgumentOutOfRangeException(nameof(line.UnitPrice), "Unit price cannot be negative.");
+			if (!items.TryGetValue(line.ItemId, out var item)) throw new InvalidOperationException("An ordered item was not found.");
+			if (!item.IsActive) throw new InvalidOperationException($"Item '{item.PartNumber}' is inactive.");
+			line.ItemPartNumber = item.PartNumber;
+			line.ItemDescription = item.Description;
+		}
+		order.SupplierName = supplier.Name;
 	}
 
 	private User CurrentUser() =>

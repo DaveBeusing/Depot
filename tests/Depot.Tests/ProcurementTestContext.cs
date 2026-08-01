@@ -122,7 +122,7 @@ internal sealed class ProcurementTestContext : IAsyncDisposable
 		{
 			var approved = await Orders.ApproveAsync(submitted.Id, submitted.Version, "Approved by integration test");
 			SignInAdministrator();
-			return await Orders.MarkOrderedAsync(approved.Id, approved.Version);
+			return await Orders.PlaceOrderAsync(approved.Id, approved.Version);
 		}
 		finally
 		{

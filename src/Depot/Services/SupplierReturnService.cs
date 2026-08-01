@@ -97,7 +97,7 @@ public sealed class SupplierReturnService
 			cancellationToken);
 	}
 
-	public Task<SupplierReturn> PostAsync(
+	public Task<SupplierReturn> PostSupplierReturnAsync(
 		long id,
 		long version,
 		CancellationToken cancellationToken = default)
@@ -106,7 +106,7 @@ public sealed class SupplierReturnService
 		ArgumentOutOfRangeException.ThrowIfNegativeOrZero(id);
 		var userId = RequireUser("post");
 		return _transactions.ExecuteAsync(
-			(transaction, token) => PostAsync(transaction, id, version, userId, token),
+			(transaction, token) => PostSupplierReturnAsync(transaction, id, version, userId, token),
 			cancellationToken);
 	}
 
@@ -259,7 +259,7 @@ public sealed class SupplierReturnService
 		return value;
 	}
 
-	private async Task<SupplierReturn> PostAsync(
+	private async Task<SupplierReturn> PostSupplierReturnAsync(
 		DatabaseTransactionContext transaction,
 		long id,
 		long version,

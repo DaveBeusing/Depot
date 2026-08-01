@@ -577,7 +577,7 @@ public sealed class InventoryCountsViewModel : BaseViewModel, IDisposable
 			"Inventur wird gebucht",
 			"Post Inventory Count",
 			$"Post {Editor.CountNumber}? Corrections will be calculated against the current stock and cannot be undone.",
-			(token => _counts.PostAsync(Editor.Id, Editor.Version, token)),
+			(token => _counts.PostInventoryCountAsync(Editor.Id, Editor.Version, token)),
 			cancellationToken);
 
 	private async Task ReverseAsync(CancellationToken cancellationToken)

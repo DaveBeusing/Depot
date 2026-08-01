@@ -76,7 +76,7 @@ public sealed class StockTransferService
 			cancellationToken);
 	}
 
-	public async Task<StockTransfer> PostAsync(
+	public async Task<StockTransfer> PostStockTransferAsync(
 		long id,
 		long version,
 		CancellationToken cancellationToken = default)
@@ -89,7 +89,7 @@ public sealed class StockTransferService
 			?? throw new InvalidOperationException("A signed-in user is required to post a stock transfer.");
 
 		return await _transactions.ExecuteAsync(
-			(transaction, token) => PostAsync(transaction, id, version, userId, token),
+			(transaction, token) => PostStockTransferAsync(transaction, id, version, userId, token),
 			cancellationToken);
 	}
 
@@ -283,7 +283,7 @@ public sealed class StockTransferService
 		return transfer;
 	}
 
-	private async Task<StockTransfer> PostAsync(
+	private async Task<StockTransfer> PostStockTransferAsync(
 		DatabaseTransactionContext transaction,
 		long id,
 		long version,

@@ -73,7 +73,7 @@ public sealed class AuthorizationServiceTests
 		await Assert.ThrowsAsync<UnauthorizedAccessException>(() => context.MaterialReturns.SaveDraftAsync(new MaterialReturn()));
 		context.Authorization.SignIn(new User { Id = 900002, Role = UserRole.Purchasing, IsActive = true });
 		await Assert.ThrowsAsync<UnauthorizedAccessException>(() => context.Orders.ApproveAsync(1, 1));
-		await Assert.ThrowsAsync<UnauthorizedAccessException>(() => context.SupplierReturns.PostAsync(1, 1));
+		await Assert.ThrowsAsync<UnauthorizedAccessException>(() => context.SupplierReturns.PostSupplierReturnAsync(1, 1));
 	}
 
 	private static AuthorizationService SignIn(UserRole role)

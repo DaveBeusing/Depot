@@ -85,7 +85,7 @@ public sealed class StockTransferTests
 		var fixture = await CreateFixtureAsync(context);
 		await AddStockAsync(context, fixture.SourceInventoryId, 10);
 		var draft = await fixture.Service.SaveDraftAsync(NewTransfer(fixture));
-		var posted = await fixture.Service.PostAsync(draft.Id, draft.Version);
+		var posted = await fixture.Service.PostStockTransferAsync(draft.Id, draft.Version);
 
 		var movements = await fixture.Service.GetMovementsAsync(posted.Id);
 
@@ -271,7 +271,7 @@ public sealed class StockTransferTests
 		await AddStockAsync(context, fixture.SourceInventoryId, 10);
 		var draft = await fixture.Service.SaveDraftAsync(NewTransfer(fixture));
 
-		var posted = await fixture.Service.PostAsync(draft.Id, draft.Version);
+		var posted = await fixture.Service.PostStockTransferAsync(draft.Id, draft.Version);
 
 		Assert.Equal(StockTransferStatus.Posted, posted.Status);
 		Assert.Equal(context.Authorization.CurrentUser?.Id, posted.PostedByUserId);
@@ -296,7 +296,7 @@ public sealed class StockTransferTests
 		var fixture = await CreateFixtureAsync(context);
 		await AddStockAsync(context, fixture.SourceInventoryId, 10);
 		var draft = await fixture.Service.SaveDraftAsync(NewTransfer(fixture));
-		var posted = await fixture.Service.PostAsync(draft.Id, draft.Version);
+		var posted = await fixture.Service.PostStockTransferAsync(draft.Id, draft.Version);
 		var reasonCodeId = await context.ScalarAsync("SELECT Id FROM ReasonCodes WHERE Code = $Code;", new DatabaseParameter("$Code", ReasonCodeSystemCodes.Transfer));
 
 		var reversed = await fixture.Service.ReverseAsync(posted.Id, posted.Version, reasonCodeId, "Transfer sent to wrong warehouse");
@@ -328,7 +328,7 @@ public sealed class StockTransferTests
 		];
 		var draft = await fixture.Service.SaveDraftAsync(transfer);
 
-		await fixture.Service.PostAsync(draft.Id, draft.Version);
+		await fixture.Service.PostStockTransferAsync(draft.Id, draft.Version);
 
 		Assert.Equal(4, await context.ScalarAsync(
 			"SELECT COUNT(*) FROM StockMovements WHERE Reference = $Reference;",
@@ -348,7 +348,7 @@ public sealed class StockTransferTests
 		var draft = await fixture.Service.SaveDraftAsync(NewTransfer(fixture));
 
 		await Assert.ThrowsAsync<InsufficientStockException>(() =>
-			fixture.Service.PostAsync(draft.Id, draft.Version));
+			fixture.Service.PostStockTransferAsync(draft.Id, draft.Version));
 
 		Assert.Equal(2, await StockAsync(context, fixture.SourceInventoryId));
 		Assert.Equal(0, await StockAsync(context, fixture.DestinationInventoryId));
@@ -369,7 +369,7 @@ public sealed class StockTransferTests
 			new DatabaseParameter("$InventoryId", fixture.OtherItemDestinationInventoryId),
 			new DatabaseParameter("$TransferId", wrongItem.Id));
 		await Assert.ThrowsAsync<InvalidOperationException>(() =>
-			fixture.Service.PostAsync(wrongItem.Id, wrongItem.Version));
+			fixture.Service.PostStockTransferAsync(wrongItem.Id, wrongItem.Version));
 
 		var wrongWarehouse = await fixture.Service.SaveDraftAsync(NewTransfer(fixture));
 		await context.Data.ExecuteAsync(
@@ -378,7 +378,7 @@ public sealed class StockTransferTests
 			new DatabaseParameter("$InventoryId", fixture.AlternateDestinationInventoryId),
 			new DatabaseParameter("$TransferId", wrongWarehouse.Id));
 		await Assert.ThrowsAsync<InvalidOperationException>(() =>
-			fixture.Service.PostAsync(wrongWarehouse.Id, wrongWarehouse.Version));
+			fixture.Service.PostStockTransferAsync(wrongWarehouse.Id, wrongWarehouse.Version));
 
 		Assert.Equal(0, await TransferMovementCountAsync(context, wrongItem));
 		Assert.Equal(0, await TransferMovementCountAsync(context, wrongWarehouse));
@@ -411,7 +411,7 @@ public sealed class StockTransferTests
 		{
 			try
 			{
-				await fixture.Service.PostAsync(transfer.Id, transfer.Version);
+				await fixture.Service.PostStockTransferAsync(transfer.Id, transfer.Version);
 				return true;
 			}
 			catch (InsufficientStockException)
@@ -441,7 +441,7 @@ public sealed class StockTransferTests
 			CancellationToken.None);
 
 		await Assert.ThrowsAsync<SqliteException>(() =>
-			fixture.Service.PostAsync(draft.Id, draft.Version));
+			fixture.Service.PostStockTransferAsync(draft.Id, draft.Version));
 
 		Assert.Equal(10, await StockAsync(context, fixture.SourceInventoryId));
 		Assert.Equal(0, await StockAsync(context, fixture.DestinationInventoryId));
@@ -469,7 +469,7 @@ public sealed class StockTransferTests
 			CancellationToken.None);
 
 		await Assert.ThrowsAsync<SqliteException>(() =>
-			fixture.Service.PostAsync(draft.Id, draft.Version));
+			fixture.Service.PostStockTransferAsync(draft.Id, draft.Version));
 
 		Assert.Equal(10, await StockAsync(context, fixture.SourceInventoryId));
 		Assert.Equal(0, await StockAsync(context, fixture.DestinationInventoryId));
@@ -486,7 +486,7 @@ public sealed class StockTransferTests
 		var draft = await fixture.Service.SaveDraftAsync(NewTransfer(fixture));
 
 		await Assert.ThrowsAsync<ConcurrencyConflictException>(() =>
-			fixture.Service.PostAsync(draft.Id, draft.Version + 1));
+			fixture.Service.PostStockTransferAsync(draft.Id, draft.Version + 1));
 
 		Assert.Equal(0, await TransferMovementCountAsync(context, draft));
 		Assert.Equal((long)StockTransferStatus.Draft, await TransferStatusAsync(context, draft.Id));

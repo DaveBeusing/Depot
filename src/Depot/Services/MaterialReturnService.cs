@@ -47,11 +47,11 @@ public sealed class MaterialReturnService
 		return _transactions.ExecuteAsync((transaction, token) => SaveDraftAsync(transaction, value, userId, token), cancellationToken);
 	}
 
-	public Task<MaterialReturn> PostAsync(long id, long version, CancellationToken cancellationToken = default)
+	public Task<MaterialReturn> PostMaterialReturnAsync(long id, long version, CancellationToken cancellationToken = default)
 	{
 		_authorization.RequirePermission(ApplicationPermission.MaterialReturnsPost);
 		if (id <= 0) throw new ArgumentOutOfRangeException(nameof(id)); var userId = RequireUser("post");
-		return _transactions.ExecuteAsync((transaction, token) => PostAsync(transaction, id, version, userId, token), cancellationToken);
+		return _transactions.ExecuteAsync((transaction, token) => PostMaterialReturnAsync(transaction, id, version, userId, token), cancellationToken);
 	}
 
 	public Task<MaterialReturn> CancelAsync(long id, long version, CancellationToken cancellationToken = default)
@@ -97,7 +97,7 @@ public sealed class MaterialReturnService
 		await _auditEntries.CreateAsync(transaction, before is null ? _audit.CreateCreatedEntry(value.Id, value) : _audit.CreateUpdatedEntry(value.Id, before, value), cancellationToken); return value;
 	}
 
-	private async Task<MaterialReturn> PostAsync(DatabaseTransactionContext transaction, long id, long version, long userId, CancellationToken cancellationToken)
+	private async Task<MaterialReturn> PostMaterialReturnAsync(DatabaseTransactionContext transaction, long id, long version, long userId, CancellationToken cancellationToken)
 	{
 		var before = await _returns.GetByIdAsync(transaction, id, cancellationToken) ?? throw new InvalidOperationException("The material return was not found.");
 		if (before.Version != version) throw new ConcurrencyConflictException("material return"); if (before.Status != MaterialReturnStatus.Draft) throw new InvalidOperationException("Only a draft material return can be posted.");

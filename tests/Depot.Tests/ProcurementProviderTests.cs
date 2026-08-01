@@ -76,7 +76,7 @@ public sealed class ProcurementProviderTests
 				}
 			]
 		});
-		await context.SupplierReturns.PostAsync(supplierReturn.Id, supplierReturn.Version);
+		await context.SupplierReturns.PostSupplierReturnAsync(supplierReturn.Id, supplierReturn.Version);
 		Assert.Equal(1, await context.ScalarAsync(
 			"SELECT COUNT(*) FROM StockMovements WHERE Reference = $Reference AND MovementType = $MovementType AND Quantity = -1;",
 			new DatabaseParameter("$Reference", $"Supplier Return {supplierReturn.ReturnNumber}"),
@@ -111,7 +111,7 @@ public sealed class ProcurementProviderTests
 			{
 				var receipt = context.NewReceipt(order, 4);
 				receipt.SupplierDeliveryNoteNumber = $"DN-{factory.Provider}-{suffix}-{Guid.NewGuid():N}";
-				await context.Receipts.PostAsync(receipt);
+				await context.Receipts.PostGoodsReceiptAsync(receipt);
 				return true;
 			}
 			catch (InvalidOperationException)

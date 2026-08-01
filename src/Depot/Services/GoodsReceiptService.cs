@@ -123,7 +123,7 @@ public sealed class GoodsReceiptService
 		CancellationToken cancellationToken = default) =>
 		_receipts.ListInventoryOptionsByItemIdsAsync(itemIds, cancellationToken);
 
-	public async Task<GoodsReceipt> PostAsync(
+	public async Task<GoodsReceipt> PostGoodsReceiptAsync(
 		GoodsReceipt receipt,
 		CancellationToken cancellationToken = default)
 	{
@@ -132,11 +132,11 @@ public sealed class GoodsReceiptService
 			?? throw new InvalidOperationException("A signed-in user is required to post a goods receipt.");
 
 		return await _transactions.ExecuteAsync(
-			(transaction, token) => PostAsync(transaction, receipt, token),
+			(transaction, token) => PostGoodsReceiptAsync(transaction, receipt, token),
 			cancellationToken);
 	}
 
-	private async Task<GoodsReceipt> PostAsync(
+	private async Task<GoodsReceipt> PostGoodsReceiptAsync(
 		DatabaseTransactionContext transaction,
 		GoodsReceipt receipt,
 		CancellationToken cancellationToken)

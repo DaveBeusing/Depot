@@ -148,7 +148,7 @@ public sealed class SupplierReturnsViewModel : BaseViewModel, IDisposable
     }
     private void RemoveLine() { if (SelectedLine is null) return; Lines.Remove(SelectedLine); SelectedLine = null; RaiseCommands(); }
     private async Task SaveAsync(CancellationToken token) => await ExecuteChangeAsync("Supplier return is saving", "Supplier return saved", () => _service.SaveDraftAsync(ToModel(), token), token);
-    private async Task PostAsync(CancellationToken token) { if (!_dialogs.Confirm(new ConfirmationDialogRequest("Post Supplier Return", $"Post {Draft.ReturnNumber} and remove the selected quantities from stock?", true))) return; await ExecuteChangeAsync("Stock is being checked and the supplier return is posting", "Supplier return posted", () => _service.PostAsync(Draft.Id, Draft.Version, token), token); }
+    private async Task PostAsync(CancellationToken token) { if (!_dialogs.Confirm(new ConfirmationDialogRequest("Post Supplier Return", $"Post {Draft.ReturnNumber} and remove the selected quantities from stock?", true))) return; await ExecuteChangeAsync("Stock is being checked and the supplier return is posting", "Supplier return posted", () => _service.PostSupplierReturnAsync(Draft.Id, Draft.Version, token), token); }
     private async Task CancelAsync(CancellationToken token) { if (!_dialogs.Confirm(new ConfirmationDialogRequest("Cancel Draft", $"Cancel draft {Draft.ReturnNumber}?", true))) return; await ExecuteChangeAsync("Supplier return is cancelling", "Draft cancelled", () => _service.CancelAsync(Draft.Id, Draft.Version, token), token); }
     private async Task ReverseAsync(CancellationToken token)
     {

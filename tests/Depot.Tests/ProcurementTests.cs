@@ -21,7 +21,7 @@ public sealed class ProcurementTests
 		await using var context = await ProcurementTestContext.CreateSqliteAsync();
 		var order = await context.ApproveAndOrderAsync(await context.Orders.SaveDraftAsync(context.NewOrder(10)));
 
-		var closed = await context.Orders.CloseAsync(order.Id, order.Version, "Supplier discontinued the remaining delivery");
+		var closed = await context.Orders.CloseOrderAsync(order.Id, order.Version, "Supplier discontinued the remaining delivery");
 		var stored = await context.Orders.GetByIdAsync(order.Id) ?? throw new InvalidOperationException();
 
 		Assert.Equal(PurchaseOrderStatus.Closed, closed.Status);
@@ -39,15 +39,15 @@ public sealed class ProcurementTests
 	{
 		await using var context = await ProcurementTestContext.CreateSqliteAsync();
 		var order = await context.ApproveAndOrderAsync(await context.Orders.SaveDraftAsync(context.NewOrder(10)));
-		await context.Receipts.PostAsync(context.NewReceipt(order, 4));
+		await context.Receipts.PostGoodsReceiptAsync(context.NewReceipt(order, 4));
 		var partial = await context.Orders.GetByIdAsync(order.Id) ?? throw new InvalidOperationException();
 
-		var closed = await context.Orders.CloseAsync(partial.Id, partial.Version, "Accept the partial delivery as final");
+		var closed = await context.Orders.CloseOrderAsync(partial.Id, partial.Version, "Accept the partial delivery as final");
 
 		Assert.Equal(PurchaseOrderStatus.Closed, closed.Status);
 		Assert.Equal(4, Assert.Single(closed.Lines).ReceivedQuantity);
 		Assert.Equal(6, closed.Lines[0].OpenQuantity);
-		await Assert.ThrowsAsync<InvalidOperationException>(() => context.Receipts.PostAsync(context.NewReceipt(closed, 1)));
+		await Assert.ThrowsAsync<InvalidOperationException>(() => context.Receipts.PostGoodsReceiptAsync(context.NewReceipt(closed, 1)));
 		var stored = await context.Orders.GetByIdAsync(order.Id) ?? throw new InvalidOperationException();
 		Assert.Equal(PurchaseOrderStatus.Closed, stored.Status);
 		Assert.Equal(4, Assert.Single(stored.Lines).ReceivedQuantity);
@@ -58,12 +58,12 @@ public sealed class ProcurementTests
 	{
 		await using var context = await ProcurementTestContext.CreateSqliteAsync();
 		var draft = await context.Orders.SaveDraftAsync(context.NewOrder());
-		await Assert.ThrowsAsync<ArgumentException>(() => context.Orders.CloseAsync(draft.Id, draft.Version, "  "));
-		await Assert.ThrowsAsync<InvalidOperationException>(() => context.Orders.CloseAsync(draft.Id, draft.Version, "Not ordered"));
+		await Assert.ThrowsAsync<ArgumentException>(() => context.Orders.CloseOrderAsync(draft.Id, draft.Version, "  "));
+		await Assert.ThrowsAsync<InvalidOperationException>(() => context.Orders.CloseOrderAsync(draft.Id, draft.Version, "Not ordered"));
 
 		var ordered = await context.ApproveAndOrderAsync(draft);
-		await context.Orders.CloseAsync(ordered.Id, ordered.Version, "No longer required");
-		await Assert.ThrowsAsync<ConcurrencyConflictException>(() => context.Orders.CloseAsync(ordered.Id, ordered.Version, "Stale close"));
+		await context.Orders.CloseOrderAsync(ordered.Id, ordered.Version, "No longer required");
+		await Assert.ThrowsAsync<ConcurrencyConflictException>(() => context.Orders.CloseOrderAsync(ordered.Id, ordered.Version, "Stale close"));
 	}
 
 	[Fact]
@@ -75,7 +75,7 @@ public sealed class ProcurementTests
 			"CREATE TRIGGER FailCloseAudit BEFORE INSERT ON AuditEntries WHEN NEW.EntityType = 'PurchaseOrder' BEGIN SELECT RAISE(ABORT, 'forced close audit failure'); END;",
 			CancellationToken.None);
 
-		await Assert.ThrowsAsync<SqliteException>(() => context.Orders.CloseAsync(order.Id, order.Version, "Must roll back"));
+		await Assert.ThrowsAsync<SqliteException>(() => context.Orders.CloseOrderAsync(order.Id, order.Version, "Must roll back"));
 
 		var stored = await context.Orders.GetByIdAsync(order.Id) ?? throw new InvalidOperationException();
 		Assert.Equal(PurchaseOrderStatus.Ordered, stored.Status);
@@ -89,7 +89,7 @@ public sealed class ProcurementTests
 	{
 		await using var context = await ProcurementTestContext.CreateSqliteAsync();
 		var order = await context.ApproveAndOrderAsync(await context.Orders.SaveDraftAsync(context.NewOrder(10)));
-		await context.Receipts.PostAsync(context.NewReceipt(order, 4));
+		await context.Receipts.PostGoodsReceiptAsync(context.NewReceipt(order, 4));
 		var partial = await context.Orders.GetByIdAsync(order.Id) ?? throw new InvalidOperationException();
 
 		await Assert.ThrowsAsync<InvalidOperationException>(() => context.Orders.CancelAsync(partial.Id, partial.Version));
@@ -102,7 +102,7 @@ public sealed class ProcurementTests
 		await using var context = await ProcurementTestContext.CreateSqliteAsync();
 		var order = await context.Orders.SaveDraftAsync(context.NewOrder(5));
 		order = await context.ApproveAndOrderAsync(order);
-		var receipt = await context.Receipts.PostAsync(context.NewReceipt(order, 5));
+		var receipt = await context.Receipts.PostGoodsReceiptAsync(context.NewReceipt(order, 5));
 		var reasonCodeId = await context.ScalarAsync("SELECT Id FROM ReasonCodes WHERE Code = $Code;", new DatabaseParameter("$Code", ReasonCodeSystemCodes.Returned));
 
 		var reversed = await context.Receipts.ReverseAsync(receipt.Id, receipt.Version, reasonCodeId, "Supplier delivery rejected");
@@ -122,7 +122,7 @@ public sealed class ProcurementTests
 		await using var context = await ProcurementTestContext.CreateSqliteAsync();
 		var order = await context.Orders.SaveDraftAsync(context.NewOrder(3));
 		order = await context.ApproveAndOrderAsync(order);
-		var receipt = await context.Receipts.PostAsync(context.NewReceipt(order, 3));
+		var receipt = await context.Receipts.PostGoodsReceiptAsync(context.NewReceipt(order, 3));
 		var reasonCodeId = await context.ScalarAsync("SELECT Id FROM ReasonCodes WHERE Code = $Code;", new DatabaseParameter("$Code", ReasonCodeSystemCodes.Returned));
 		await context.Data.ExecuteAsync(
 			"CREATE TRIGGER FailReceiptReversalAudit BEFORE INSERT ON AuditEntries WHEN NEW.EntityType = 'GoodsReceipt' AND NEW.Action = 'Updated' BEGIN SELECT RAISE(ABORT, 'forced receipt reversal audit failure'); END;",
@@ -143,7 +143,7 @@ public sealed class ProcurementTests
 		await using var context = await ProcurementTestContext.CreateSqliteAsync();
 		var order = await context.Orders.SaveDraftAsync(context.NewOrder(5));
 		order = await context.ApproveAndOrderAsync(order);
-		var receipt = await context.Receipts.PostAsync(context.NewReceipt(order, 5));
+		var receipt = await context.Receipts.PostGoodsReceiptAsync(context.NewReceipt(order, 5));
 		await context.Data.InsertAsync(
 			"INSERT INTO StockMovements (InventoryId, MovementType, TimestampUtc, Quantity, Reference) VALUES ($InventoryId, $MovementType, $TimestampUtc, -5, 'CONSUMED');",
 			CancellationToken.None,
@@ -197,7 +197,7 @@ public sealed class ProcurementTests
 		Assert.NotNull(approved.ApprovalDecisionAtUtc);
 		Assert.Equal("Budget checked", approved.ApprovalComment);
 		context.SignInAdministrator();
-		var ordered = await context.Orders.MarkOrderedAsync(approved.Id, approved.Version);
+		var ordered = await context.Orders.PlaceOrderAsync(approved.Id, approved.Version);
 		Assert.Equal(PurchaseOrderStatus.Ordered, ordered.Status);
 	}
 
@@ -224,6 +224,41 @@ public sealed class ProcurementTests
 			context.Orders.RejectAsync(pending.Id, pending.Version, "Stale rejection"));
 		Assert.Equal(PurchaseOrderStatus.Approved,
 			(await context.Orders.GetByIdAsync(approved.Id))?.Status);
+	}
+
+	[Fact]
+	public async Task SubmissionAndPlacementRevalidateRequiredMasterData()
+	{
+		await using var context = await ProcurementTestContext.CreateSqliteAsync();
+		var firstDraft = await context.Orders.SaveDraftAsync(context.NewOrder());
+		await context.Data.ExecuteAsync(
+			"UPDATE Suppliers SET IsActive = 0 WHERE Id = $Id;",
+			CancellationToken.None,
+			new DatabaseParameter("$Id", context.SupplierId));
+
+		var submitError = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+			context.Orders.SubmitForApprovalAsync(firstDraft.Id, firstDraft.Version));
+		Assert.Equal("The selected supplier is inactive.", submitError.Message);
+		Assert.Equal(PurchaseOrderStatus.Draft, (await context.Orders.GetByIdAsync(firstDraft.Id))?.Status);
+
+		await context.Data.ExecuteAsync(
+			"UPDATE Suppliers SET IsActive = 1 WHERE Id = $Id;",
+			CancellationToken.None,
+			new DatabaseParameter("$Id", context.SupplierId));
+		var secondDraft = await context.Orders.SaveDraftAsync(context.NewOrder());
+		var pending = await context.Orders.SubmitForApprovalAsync(secondDraft.Id, secondDraft.Version);
+		context.SignInApprover();
+		var approved = await context.Orders.ApproveAsync(pending.Id, pending.Version);
+		context.SignInAdministrator();
+		await context.Data.ExecuteAsync(
+			"UPDATE Suppliers SET IsActive = 0 WHERE Id = $Id;",
+			CancellationToken.None,
+			new DatabaseParameter("$Id", context.SupplierId));
+
+		var placeError = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+			context.Orders.PlaceOrderAsync(approved.Id, approved.Version));
+		Assert.Equal("The selected supplier is inactive.", placeError.Message);
+		Assert.Equal(PurchaseOrderStatus.Approved, (await context.Orders.GetByIdAsync(approved.Id))?.Status);
 	}
 
 	[Fact]
@@ -441,13 +476,13 @@ public sealed class ProcurementTests
 	}
 
 	[Fact]
-	public async Task PurchaseOrderRequiresApprovalBeforeItCanBeMarkedOrdered()
+	public async Task PurchaseOrderRequiresApprovalBeforeItCanBePlaced()
 	{
 		await using var context = await ProcurementTestContext.CreateSqliteAsync();
 		var order = await context.Orders.SaveDraftAsync(context.NewOrder());
 
-		await Assert.ThrowsAsync<ConcurrencyConflictException>(() =>
-			context.Orders.MarkOrderedAsync(order.Id, order.Version));
+		await Assert.ThrowsAsync<InvalidOperationException>(() =>
+			context.Orders.PlaceOrderAsync(order.Id, order.Version));
 
 		var ordered = await context.ApproveAndOrderAsync(order);
 
@@ -462,8 +497,8 @@ public sealed class ProcurementTests
 		var order = await context.Orders.SaveDraftAsync(context.NewOrder());
 		order = await context.ApproveAndOrderAsync(order);
 
-		await Assert.ThrowsAsync<ConcurrencyConflictException>(() =>
-			context.Orders.MarkOrderedAsync(order.Id, order.Version));
+		await Assert.ThrowsAsync<InvalidOperationException>(() =>
+			context.Orders.PlaceOrderAsync(order.Id, order.Version));
 	}
 
 	[Fact]
@@ -489,7 +524,7 @@ public sealed class ProcurementTests
 		await using var context = await ProcurementTestContext.CreateSqliteAsync();
 		var order = await CreateOrderedOrderAsync(context, 3);
 
-		var receipt = await context.Receipts.PostAsync(context.NewReceipt(order, 1));
+		var receipt = await context.Receipts.PostGoodsReceiptAsync(context.NewReceipt(order, 1));
 
 		Assert.True(receipt.Id > 0);
 		Assert.Matches("^GR-[0-9]{6}$", receipt.ReceiptNumber);
@@ -508,7 +543,7 @@ public sealed class ProcurementTests
 		await using var context = await ProcurementTestContext.CreateSqliteAsync();
 		var order = await CreateOrderedOrderAsync(context, 10);
 
-		await context.Receipts.PostAsync(context.NewReceipt(order, 4));
+		await context.Receipts.PostGoodsReceiptAsync(context.NewReceipt(order, 4));
 
 		var updated = await context.Orders.GetByIdAsync(order.Id) ?? throw new InvalidOperationException();
 		Assert.Equal(PurchaseOrderStatus.PartiallyReceived, updated.Status);
@@ -521,8 +556,8 @@ public sealed class ProcurementTests
 		await using var context = await ProcurementTestContext.CreateSqliteAsync();
 		var order = await CreateOrderedOrderAsync(context, 10);
 
-		await context.Receipts.PostAsync(context.NewReceipt(order, 4));
-		await context.Receipts.PostAsync(context.NewReceipt(order, 6));
+		await context.Receipts.PostGoodsReceiptAsync(context.NewReceipt(order, 4));
+		await context.Receipts.PostGoodsReceiptAsync(context.NewReceipt(order, 6));
 
 		var updated = await context.Orders.GetByIdAsync(order.Id) ?? throw new InvalidOperationException();
 		Assert.Equal(PurchaseOrderStatus.Received, updated.Status);
@@ -536,7 +571,7 @@ public sealed class ProcurementTests
 		var order = await CreateOrderedOrderAsync(context, 2);
 
 		await Assert.ThrowsAsync<InvalidOperationException>(() =>
-			context.Receipts.PostAsync(context.NewReceipt(order, 3)));
+			context.Receipts.PostGoodsReceiptAsync(context.NewReceipt(order, 3)));
 
 		Assert.Equal(0, await context.ScalarAsync("SELECT COUNT(*) FROM GoodsReceipts;"));
 	}
@@ -548,7 +583,7 @@ public sealed class ProcurementTests
 		var order = await CreateOrderedOrderAsync(context, 2);
 
 		var exception = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-			context.Receipts.PostAsync(context.NewReceipt(order, 1, context.SecondInventoryId)));
+			context.Receipts.PostGoodsReceiptAsync(context.NewReceipt(order, 1, context.SecondInventoryId)));
 
 		Assert.Contains("does not belong", exception.Message, StringComparison.OrdinalIgnoreCase);
 	}
@@ -563,7 +598,7 @@ public sealed class ProcurementTests
 		var inventoryId = useInactiveInventory ? context.InactiveInventoryId : long.MaxValue;
 
 		await Assert.ThrowsAsync<InvalidOperationException>(() =>
-			context.Receipts.PostAsync(context.NewReceipt(order, 1, inventoryId)));
+			context.Receipts.PostGoodsReceiptAsync(context.NewReceipt(order, 1, inventoryId)));
 
 		Assert.Equal(0, await context.ScalarAsync("SELECT COUNT(*) FROM GoodsReceipts;"));
 	}
@@ -574,7 +609,7 @@ public sealed class ProcurementTests
 		await using var context = await ProcurementTestContext.CreateSqliteAsync();
 		var order = await CreateOrderedOrderAsync(context, 5);
 
-		var receipt = await context.Receipts.PostAsync(context.NewReceipt(order, 3));
+		var receipt = await context.Receipts.PostGoodsReceiptAsync(context.NewReceipt(order, 3));
 
 		Assert.Equal(1, await context.ScalarAsync(
 			"SELECT COUNT(*) FROM StockMovements WHERE InventoryId = $InventoryId AND Quantity = 3 AND Reference = $Reference;",
@@ -592,7 +627,7 @@ public sealed class ProcurementTests
 			CancellationToken.None,
 			new DatabaseParameter("$Code", ReasonCodeSystemCodes.GoodsReceipt));
 
-		var receipt = await context.Receipts.PostAsync(context.NewReceipt(order, 1));
+		var receipt = await context.Receipts.PostGoodsReceiptAsync(context.NewReceipt(order, 1));
 
 		Assert.Equal(1, await context.ScalarAsync(
 			"SELECT COUNT(*) FROM StockMovements sm INNER JOIN ReasonCodes rc ON rc.Id = sm.ReasonCodeId WHERE sm.Reference = $Reference AND rc.Code = $Code;",
@@ -606,7 +641,7 @@ public sealed class ProcurementTests
 		await using var context = await ProcurementTestContext.CreateSqliteAsync();
 		var order = await CreateOrderedOrderAsync(context, 5);
 
-		await context.Receipts.PostAsync(context.NewReceipt(order, 2));
+		await context.Receipts.PostGoodsReceiptAsync(context.NewReceipt(order, 2));
 
 		Assert.Equal(2, await context.ScalarAsync(
 			"SELECT ReceivedQuantity FROM PurchaseOrderLines WHERE Id = $Id;",
@@ -633,7 +668,7 @@ public sealed class ProcurementTests
 		];
 		var auditCountBefore = await context.ScalarAsync("SELECT COUNT(*) FROM AuditEntries;");
 
-		await Assert.ThrowsAsync<InvalidOperationException>(() => context.Receipts.PostAsync(receipt));
+		await Assert.ThrowsAsync<InvalidOperationException>(() => context.Receipts.PostGoodsReceiptAsync(receipt));
 
 		Assert.Equal(0, await context.ScalarAsync("SELECT COUNT(*) FROM GoodsReceipts;"));
 		Assert.Equal(0, await context.ScalarAsync("SELECT COUNT(*) FROM GoodsReceiptLines;"));
@@ -649,7 +684,7 @@ public sealed class ProcurementTests
 		await using var context = await ProcurementTestContext.CreateSqliteAsync();
 		var order = await CreateOrderedOrderAsync(context, 3);
 
-		var receipt = await context.Receipts.PostAsync(context.NewReceipt(order, 2));
+		var receipt = await context.Receipts.PostGoodsReceiptAsync(context.NewReceipt(order, 2));
 
 		Assert.Equal(1, await context.ScalarAsync(
 			"SELECT COUNT(*) FROM AuditEntries WHERE EntityType = 'GoodsReceipt' AND EntityId = $Id AND Action = 'Created' AND AfterJson IS NOT NULL;",
@@ -686,7 +721,7 @@ public sealed class ProcurementTests
 			CancellationToken.None);
 
 		await Assert.ThrowsAnyAsync<Exception>(() =>
-			context.Receipts.PostAsync(context.NewReceipt(order, 2)));
+			context.Receipts.PostGoodsReceiptAsync(context.NewReceipt(order, 2)));
 
 		Assert.Equal(0, await context.ScalarAsync("SELECT COUNT(*) FROM GoodsReceipts;"));
 		Assert.Equal(0, await context.ScalarAsync("SELECT COUNT(*) FROM GoodsReceiptLines;"));
@@ -714,7 +749,7 @@ public sealed class ProcurementTests
 			{
 				var receipt = context.NewReceipt(order, 4);
 				receipt.SupplierDeliveryNoteNumber = $"DN-CONCURRENT-{suffix}";
-				await context.Receipts.PostAsync(receipt);
+				await context.Receipts.PostGoodsReceiptAsync(receipt);
 				return true;
 			}
 			catch (InvalidOperationException)
@@ -732,7 +767,7 @@ public sealed class ProcurementTests
 		var receipt = context.NewReceipt(order, 1);
 		receipt.SupplierDeliveryNoteNumber = string.Empty;
 
-		await Assert.ThrowsAsync<ArgumentException>(() => context.Receipts.PostAsync(receipt));
+		await Assert.ThrowsAsync<ArgumentException>(() => context.Receipts.PostGoodsReceiptAsync(receipt));
 
 		Assert.Equal(0, await context.ScalarAsync("SELECT COUNT(*) FROM GoodsReceipts;"));
 	}
@@ -745,7 +780,7 @@ public sealed class ProcurementTests
 		var receipt = context.NewReceipt(order, 1);
 		receipt.ReceiptDate = DateTime.Today.AddDays(1);
 
-		await Assert.ThrowsAsync<ArgumentException>(() => context.Receipts.PostAsync(receipt));
+		await Assert.ThrowsAsync<ArgumentException>(() => context.Receipts.PostGoodsReceiptAsync(receipt));
 
 		Assert.Equal(0, await context.ScalarAsync("SELECT COUNT(*) FROM GoodsReceipts;"));
 	}
@@ -804,7 +839,7 @@ public sealed class ProcurementTests
 			}).ToArray()
 		};
 
-		var posted = await context.Receipts.PostAsync(receipt);
+		var posted = await context.Receipts.PostGoodsReceiptAsync(receipt);
 
 		Assert.Equal(20, posted.Lines.Count);
 		Assert.Equal(20, await context.ScalarAsync(

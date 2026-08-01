@@ -24,7 +24,7 @@ public sealed class MaterialIssueTests
 		issue = await context.MaterialIssues.SaveDraftAsync(issue);
 		var cancelled = await context.MaterialIssues.CancelAsync(issue.Id, issue.Version);
 		Assert.Equal(MaterialIssueStatus.Cancelled, cancelled.Status);
-		await Assert.ThrowsAsync<InvalidOperationException>(() => context.MaterialIssues.PostAsync(cancelled.Id, cancelled.Version));
+		await Assert.ThrowsAsync<InvalidOperationException>(() => context.MaterialIssues.PostMaterialIssueAsync(cancelled.Id, cancelled.Version));
 	}
 
 	[Fact]
@@ -37,7 +37,7 @@ public sealed class MaterialIssueTests
 		issue.Lines = [.. issue.Lines, new MaterialIssueLine { InventoryId = context.SecondInventoryId, Quantity = 3, ReasonCodeId = issue.Lines[0].ReasonCodeId, Notes = "Second line" }];
 		issue = await context.MaterialIssues.SaveDraftAsync(issue);
 
-		var posted = await context.MaterialIssues.PostAsync(issue.Id, issue.Version);
+		var posted = await context.MaterialIssues.PostMaterialIssueAsync(issue.Id, issue.Version);
 
 		Assert.Equal(MaterialIssueStatus.Posted, posted.Status);
 		Assert.Equal(context.Authorization.CurrentUser?.Id, posted.PostedByUserId);
@@ -56,7 +56,7 @@ public sealed class MaterialIssueTests
 		var issue = await context.MaterialIssues.SaveDraftAsync(await NewIssueAsync(context, 3));
 		var auditBefore = await context.ScalarAsync("SELECT COUNT(*) FROM AuditEntries WHERE EntityType = 'MaterialIssue' AND EntityId = $Id;", new DatabaseParameter("$Id", issue.Id));
 
-		await Assert.ThrowsAsync<InsufficientStockException>(() => context.MaterialIssues.PostAsync(issue.Id, issue.Version));
+		await Assert.ThrowsAsync<InsufficientStockException>(() => context.MaterialIssues.PostMaterialIssueAsync(issue.Id, issue.Version));
 
 		Assert.Equal(MaterialIssueStatus.Draft, (await context.MaterialIssues.GetByIdAsync(issue.Id))?.Status);
 		Assert.Equal(0, await context.ScalarAsync("SELECT COUNT(*) FROM StockMovements WHERE Reference = $Reference;", new DatabaseParameter("$Reference", $"Material Issue {issue.IssueNumber}")));
@@ -71,7 +71,7 @@ public sealed class MaterialIssueTests
 		var issue = await context.MaterialIssues.SaveDraftAsync(await NewIssueAsync(context, 2));
 		await context.Data.ExecuteAsync("CREATE TRIGGER FailMaterialIssuePostAudit BEFORE INSERT ON AuditEntries WHEN NEW.EntityType = 'MaterialIssue' BEGIN SELECT RAISE(ABORT, 'forced material issue audit failure'); END;", CancellationToken.None);
 
-		await Assert.ThrowsAsync<SqliteException>(() => context.MaterialIssues.PostAsync(issue.Id, issue.Version));
+		await Assert.ThrowsAsync<SqliteException>(() => context.MaterialIssues.PostMaterialIssueAsync(issue.Id, issue.Version));
 
 		Assert.Equal(MaterialIssueStatus.Draft, (await context.MaterialIssues.GetByIdAsync(issue.Id))?.Status);
 		Assert.Equal(0, await context.ScalarAsync("SELECT COUNT(*) FROM StockMovements WHERE Reference = $Reference;", new DatabaseParameter("$Reference", $"Material Issue {issue.IssueNumber}")));
@@ -83,7 +83,7 @@ public sealed class MaterialIssueTests
 		await using var context = await ProcurementTestContext.CreateSqliteAsync();
 		await AddStockAsync(context, context.InventoryId, 10);
 		var issue = await context.MaterialIssues.SaveDraftAsync(await NewIssueAsync(context, 4));
-		var posted = await context.MaterialIssues.PostAsync(issue.Id, issue.Version);
+		var posted = await context.MaterialIssues.PostMaterialIssueAsync(issue.Id, issue.Version);
 		var reasonId = await ReasonIdAsync(context, ReasonCodeSystemCodes.Returned);
 
 		var reversed = await context.MaterialIssues.ReverseAsync(posted.Id, posted.Version, reasonId, "Issued to the wrong recipient");
@@ -102,8 +102,8 @@ public sealed class MaterialIssueTests
 		var invalid = await NewIssueAsync(context, 1); invalid.Lines[0].ReasonCodeId = 0;
 		await Assert.ThrowsAsync<InvalidOperationException>(() => context.MaterialIssues.SaveDraftAsync(invalid));
 		var issue = await context.MaterialIssues.SaveDraftAsync(await NewIssueAsync(context, 2));
-		await context.MaterialIssues.PostAsync(issue.Id, issue.Version);
-		await Assert.ThrowsAsync<ConcurrencyConflictException>(() => context.MaterialIssues.PostAsync(issue.Id, issue.Version));
+		await context.MaterialIssues.PostMaterialIssueAsync(issue.Id, issue.Version);
+		await Assert.ThrowsAsync<ConcurrencyConflictException>(() => context.MaterialIssues.PostMaterialIssueAsync(issue.Id, issue.Version));
 		Assert.Equal(1, await context.ScalarAsync("SELECT COUNT(*) FROM StockMovements WHERE Reference = $Reference AND ReversalOfMovementId IS NULL;", new DatabaseParameter("$Reference", $"Material Issue {issue.IssueNumber}")));
 	}
 
