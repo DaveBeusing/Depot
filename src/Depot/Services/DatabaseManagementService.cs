@@ -37,6 +37,8 @@ public sealed class DatabaseManagementService
 		new("MaterialIssueLines", ["Id", "MaterialIssueId", "LineNumber", "InventoryId", "Quantity", "ReasonCodeId", "Notes", "Version"]),
 		new("MaterialReturns", ["Id", "ReturnNumber", "ReturnDate", "Status", "RecipientOrSource", "OriginalMaterialIssueId", "Reference", "Notes", "CreatedByUserId", "PostedByUserId", "PostedAtUtc", "Version"]),
 		new("MaterialReturnLines", ["Id", "MaterialReturnId", "LineNumber", "InventoryId", "Quantity", "ReasonCodeId", "Notes", "Version"]),
+		new("SupplierReturns", ["Id", "ReturnNumber", "SupplierId", "ReturnDate", "Status", "PurchaseOrderId", "GoodsReceiptId", "SupplierReference", "Notes", "CreatedByUserId", "PostedByUserId", "PostedAtUtc", "ReversedByUserId", "ReversedAtUtc", "ReversalReason", "Version"]),
+		new("SupplierReturnLines", ["Id", "SupplierReturnId", "InventoryId", "ItemId", "Quantity", "UnitCost", "ReasonCodeId", "GoodsReceiptLineId", "Version"]),
 		new("PurchaseOrderLines", ["Id", "PurchaseOrderId", "LineNumber", "ItemId", "Quantity", "UnitPrice", "ReceivedQuantity", "Version"]),
 		new("GoodsReceipts", ["Id", "ReceiptNumber", "PurchaseOrderId", "ReceiptDate", "SupplierDeliveryNoteNumber", "ReceivedByUserId", "InvoiceNumber", "InvoiceDate", "InvoiceDocumentPath", "Notes"]),
 		new("GoodsReceiptLines", ["Id", "GoodsReceiptId", "PurchaseOrderLineId", "InventoryId", "Quantity"]),

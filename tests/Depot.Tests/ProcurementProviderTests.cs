@@ -50,6 +50,37 @@ public sealed class ProcurementProviderTests
 		Assert.Equal(1, await context.ScalarAsync(
 			"SELECT COUNT(*) FROM AuditEntries WHERE EntityType = 'GoodsReceipt' AND EntityId IN (SELECT Id FROM GoodsReceipts WHERE PurchaseOrderId = $PurchaseOrderId);",
 			new DatabaseParameter("$PurchaseOrderId", order.Id)));
+		var receiptOption = (await context.SupplierReturns.SearchReceiptOptionsAsync(null, context.SupplierId))
+			.Single(option => option.PurchaseOrderId == order.Id);
+		var returnableLine = Assert.Single(await context.SupplierReturns.GetReturnableLinesAsync(receiptOption.GoodsReceiptId));
+		var reasonCodeId = Convert.ToInt64(await context.Data.ExecuteScalarAsync(
+			"SELECT Id FROM ReasonCodes WHERE Code = $Code;",
+			CancellationToken.None,
+			new DatabaseParameter("$Code", ReasonCodeSystemCodes.Returned)));
+		var supplierReturn = await context.SupplierReturns.SaveDraftAsync(new SupplierReturn
+		{
+			SupplierId = context.SupplierId,
+			PurchaseOrderId = order.Id,
+			GoodsReceiptId = receiptOption.GoodsReceiptId,
+			ReturnDate = DateTime.Today,
+			Notes = "Provider contract supplier return",
+			Lines =
+			[
+				new SupplierReturnLine
+				{
+					GoodsReceiptLineId = returnableLine.GoodsReceiptLineId,
+					InventoryId = returnableLine.InventoryId,
+					ItemId = returnableLine.ItemId,
+					Quantity = 1,
+					ReasonCodeId = reasonCodeId
+				}
+			]
+		});
+		await context.SupplierReturns.PostAsync(supplierReturn.Id, supplierReturn.Version);
+		Assert.Equal(1, await context.ScalarAsync(
+			"SELECT COUNT(*) FROM StockMovements WHERE Reference = $Reference AND MovementType = $MovementType AND Quantity = -1;",
+			new DatabaseParameter("$Reference", $"Supplier Return {supplierReturn.ReturnNumber}"),
+			new DatabaseParameter("$MovementType", (int)StockMovementType.SupplierReturn)));
 
 		var orderCountBeforeAuditFailure = await context.ScalarAsync(
 			"SELECT COUNT(*) FROM PurchaseOrders WHERE SupplierId = $SupplierId;",

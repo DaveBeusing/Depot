@@ -24,6 +24,7 @@ public interface IDatabaseConnectionFactory
 	string GetInventoryCountInventoryLockSql();
 	string GetMaterialIssueLockSql();
 	string GetMaterialReturnLockSql();
+	string GetSupplierReturnLockSql();
 	string GetPagingClause();
 	string CastToInt64(string expression);
 }

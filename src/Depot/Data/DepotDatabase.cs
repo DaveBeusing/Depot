@@ -182,6 +182,8 @@ public sealed class DepotDatabase : IDatabaseInitializer
 
 		CreateMaterialReturnTables(connection);
 
+		CreateSupplierReturnTables(connection);
+
 		CreateAuditEntriesTable(
 			connection);
 
@@ -604,6 +606,42 @@ public sealed class DepotDatabase : IDatabaseInitializer
 		);
 		CREATE INDEX IF NOT EXISTS IX_MaterialReturnLines_InventoryId ON MaterialReturnLines(InventoryId);
 		CREATE INDEX IF NOT EXISTS IX_MaterialReturnLines_ReasonCodeId ON MaterialReturnLines(ReasonCodeId);
+		""";
+		command.ExecuteNonQuery();
+	}
+
+	private static void CreateSupplierReturnTables(SqliteConnection connection)
+	{
+		using var command = connection.CreateCommand();
+		command.CommandText =
+		"""
+		CREATE TABLE IF NOT EXISTS SupplierReturns
+		(
+			Id INTEGER PRIMARY KEY AUTOINCREMENT, ReturnNumber TEXT NOT NULL UNIQUE, SupplierId INTEGER NOT NULL,
+			ReturnDate TEXT NOT NULL, Status INTEGER NOT NULL DEFAULT 1, PurchaseOrderId INTEGER NOT NULL,
+			GoodsReceiptId INTEGER NOT NULL, SupplierReference TEXT NULL, Notes TEXT NULL, CreatedByUserId INTEGER NOT NULL,
+			PostedByUserId INTEGER NULL, PostedAtUtc TEXT NULL, ReversedByUserId INTEGER NULL,
+			ReversedAtUtc TEXT NULL, ReversalReason TEXT NULL, Version INTEGER NOT NULL DEFAULT 1,
+			FOREIGN KEY(SupplierId) REFERENCES Suppliers(Id), FOREIGN KEY(PurchaseOrderId) REFERENCES PurchaseOrders(Id),
+			FOREIGN KEY(GoodsReceiptId) REFERENCES GoodsReceipts(Id), FOREIGN KEY(CreatedByUserId) REFERENCES Users(Id),
+			FOREIGN KEY(PostedByUserId) REFERENCES Users(Id), FOREIGN KEY(ReversedByUserId) REFERENCES Users(Id),
+			CHECK(Status IN (1, 2, 3))
+		);
+		CREATE INDEX IF NOT EXISTS IX_SupplierReturns_SupplierId_Status ON SupplierReturns(SupplierId, Status);
+		CREATE INDEX IF NOT EXISTS IX_SupplierReturns_ReturnDate ON SupplierReturns(ReturnDate);
+		CREATE INDEX IF NOT EXISTS IX_SupplierReturns_GoodsReceiptId ON SupplierReturns(GoodsReceiptId);
+		CREATE TABLE IF NOT EXISTS SupplierReturnLines
+		(
+			Id INTEGER PRIMARY KEY AUTOINCREMENT, SupplierReturnId INTEGER NOT NULL, InventoryId INTEGER NOT NULL,
+			ItemId INTEGER NOT NULL, Quantity INTEGER NOT NULL, UnitCost NUMERIC NOT NULL, ReasonCodeId INTEGER NOT NULL,
+			GoodsReceiptLineId INTEGER NOT NULL, Version INTEGER NOT NULL DEFAULT 1,
+			UNIQUE(SupplierReturnId, GoodsReceiptLineId), FOREIGN KEY(SupplierReturnId) REFERENCES SupplierReturns(Id),
+			FOREIGN KEY(InventoryId) REFERENCES Inventories(Id), FOREIGN KEY(ItemId) REFERENCES Items(Id),
+			FOREIGN KEY(ReasonCodeId) REFERENCES ReasonCodes(Id), FOREIGN KEY(GoodsReceiptLineId) REFERENCES GoodsReceiptLines(Id),
+			CHECK(Quantity > 0), CHECK(UnitCost >= 0)
+		);
+		CREATE INDEX IF NOT EXISTS IX_SupplierReturnLines_InventoryId ON SupplierReturnLines(InventoryId);
+		CREATE INDEX IF NOT EXISTS IX_SupplierReturnLines_GoodsReceiptLineId ON SupplierReturnLines(GoodsReceiptLineId);
 		""";
 		command.ExecuteNonQuery();
 	}
@@ -1059,6 +1097,13 @@ public sealed class DepotDatabase : IDatabaseInitializer
 			CreateMaterialReturnTables(connection);
 			SetDatabaseVersion(connection, 24);
 			migratedVersion = 24;
+		}
+
+		if (migratedVersion == 24)
+		{
+			CreateSupplierReturnTables(connection);
+			SetDatabaseVersion(connection, 25);
+			migratedVersion = 25;
 		}
 
 		if (migratedVersion < DatabaseVersion.CurrentVersion)

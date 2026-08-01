@@ -82,6 +82,9 @@ public sealed class MySqlConnectionFactory : IDatabaseConnectionFactory
 	public string GetMaterialReturnLockSql() =>
 		"SELECT Id FROM MaterialReturns WHERE Id = $MaterialReturnId FOR UPDATE;";
 
+	public string GetSupplierReturnLockSql() =>
+		"SELECT Id FROM SupplierReturns WHERE Id = $SupplierReturnId FOR UPDATE;";
+
 	public string GetPagingClause() => "LIMIT $PageSize OFFSET $Offset";
 	public string CastToInt64(string expression) => $"CAST({expression} AS SIGNED)";
 

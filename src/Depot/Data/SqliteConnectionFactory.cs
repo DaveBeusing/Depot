@@ -63,6 +63,9 @@ public sealed class SqliteConnectionFactory : IDatabaseConnectionFactory
 	public string GetMaterialReturnLockSql() =>
 		"SELECT Id FROM MaterialReturns WHERE Id = $MaterialReturnId;";
 
+	public string GetSupplierReturnLockSql() =>
+		"SELECT Id FROM SupplierReturns WHERE Id = $SupplierReturnId;";
+
 	public string GetPagingClause() => "LIMIT $PageSize OFFSET $Offset";
 	public string CastToInt64(string expression) => $"CAST({expression} AS INTEGER)";
 

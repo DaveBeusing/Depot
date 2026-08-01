@@ -4,7 +4,7 @@
 
 - [ ] Ready for release
 
-Depot is currently `0.13.0-preview` with database schema version **24**. Checked implementation items below mean code exists on `master`; they do not replace the outstanding release verification.
+Depot is currently `0.13.0-preview` with database schema version **25**. Checked implementation items below mean code exists on `master`; they do not replace the outstanding release verification.
 
 ## Implemented and covered by automated tests
 
@@ -37,6 +37,8 @@ Depot is currently `0.13.0-preview` with database schema version **24**. Checked
 - [x] Supplier categories independent from item categories
 - [x] Supplier create, edit, search, activate, and deactivate
 - [x] SupplierItem many-to-many assignments and preferred supplier
+- [x] Supplier-return drafts, receipt-position selection, net-return validation, atomic posting, negative movements, and counter-booking
+- [x] Receipt and purchase-order received quantities remain immutable historical facts; supplier returns are evaluated separately
 - [x] Purchase-order drafts, lines, generated order numbers, status changes, search, and filters
 - [x] Purchase-order submission, approval/rejection, explicit approver permission, and creator/approver separation
 - [x] Permission-restricted approval main page with bounded server-side work queue and targeted decision updates

@@ -47,6 +47,8 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 			command.ExecuteNonQuery();
 			command.CommandText = MaterialReturnSql;
 			command.ExecuteNonQuery();
+			command.CommandText = SupplierReturnSql;
+			command.ExecuteNonQuery();
 
 			command.CommandText = "SELECT Version FROM DatabaseInfo WHERE Id = 1;";
 			command.Parameters.Clear();
@@ -131,6 +133,11 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 				MigrateToMaterialReturns(command);
 				version = 24;
 			}
+			if (version == 24)
+			{
+				MigrateToSupplierReturns(command);
+				version = 25;
+			}
 			if (version != DatabaseVersion.CurrentVersion)
 			{
 				throw new InvalidOperationException(
@@ -181,6 +188,12 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 		command.CommandText = MaterialReturnSql + " UPDATE DatabaseInfo SET Version = 24 WHERE Id = 1;";
 		command.Parameters.Clear();
 		command.ExecuteNonQuery();
+	}
+
+	private static void MigrateToSupplierReturns(System.Data.Common.DbCommand command)
+	{
+		command.CommandText = SupplierReturnSql + " UPDATE DatabaseInfo SET Version = 25 WHERE Id = 1;";
+		command.Parameters.Clear(); command.ExecuteNonQuery();
 	}
 
 	private static void MigrateToStockTransfers(System.Data.Common.DbCommand command)
@@ -788,6 +801,12 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 		CONSTRAINT FK_MaterialReturnLines_Inventories FOREIGN KEY (InventoryId) REFERENCES Inventories(Id),
 		CONSTRAINT FK_MaterialReturnLines_ReasonCodes FOREIGN KEY (ReasonCodeId) REFERENCES ReasonCodes(Id)
 	) ENGINE=InnoDB;
+	""";
+
+	private const string SupplierReturnSql =
+	"""
+	CREATE TABLE IF NOT EXISTS SupplierReturns (Id bigint NOT NULL AUTO_INCREMENT PRIMARY KEY, ReturnNumber varchar(50) NOT NULL UNIQUE, SupplierId bigint NOT NULL, ReturnDate varchar(10) NOT NULL, Status int NOT NULL DEFAULT 1, PurchaseOrderId bigint NOT NULL, GoodsReceiptId bigint NOT NULL, SupplierReference varchar(250) NULL, Notes text NULL, CreatedByUserId bigint NOT NULL, PostedByUserId bigint NULL, PostedAtUtc varchar(40) NULL, ReversedByUserId bigint NULL, ReversedAtUtc varchar(40) NULL, ReversalReason varchar(1000) NULL, Version bigint NOT NULL DEFAULT 1, INDEX IX_SupplierReturns_SupplierId_Status (SupplierId, Status), INDEX IX_SupplierReturns_ReturnDate (ReturnDate), INDEX IX_SupplierReturns_GoodsReceiptId (GoodsReceiptId), CONSTRAINT CK_SupplierReturns_Status CHECK (Status IN (1,2,3)), CONSTRAINT FK_SupplierReturns_Suppliers FOREIGN KEY (SupplierId) REFERENCES Suppliers(Id), CONSTRAINT FK_SupplierReturns_Orders FOREIGN KEY (PurchaseOrderId) REFERENCES PurchaseOrders(Id), CONSTRAINT FK_SupplierReturns_Receipts FOREIGN KEY (GoodsReceiptId) REFERENCES GoodsReceipts(Id), CONSTRAINT FK_SupplierReturns_CreatedByUsers FOREIGN KEY (CreatedByUserId) REFERENCES Users(Id), CONSTRAINT FK_SupplierReturns_PostedByUsers FOREIGN KEY (PostedByUserId) REFERENCES Users(Id), CONSTRAINT FK_SupplierReturns_ReversedByUsers FOREIGN KEY (ReversedByUserId) REFERENCES Users(Id)) ENGINE=InnoDB;
+	CREATE TABLE IF NOT EXISTS SupplierReturnLines (Id bigint NOT NULL AUTO_INCREMENT PRIMARY KEY, SupplierReturnId bigint NOT NULL, InventoryId bigint NOT NULL, ItemId bigint NOT NULL, Quantity int NOT NULL, UnitCost decimal(18,2) NOT NULL, ReasonCodeId bigint NOT NULL, GoodsReceiptLineId bigint NOT NULL, Version bigint NOT NULL DEFAULT 1, UNIQUE KEY UQ_SupplierReturnLines_ReceiptLine (SupplierReturnId, GoodsReceiptLineId), INDEX IX_SupplierReturnLines_InventoryId (InventoryId), INDEX IX_SupplierReturnLines_GoodsReceiptLineId (GoodsReceiptLineId), CONSTRAINT CK_SupplierReturnLines_QuantityCost CHECK (Quantity > 0 AND UnitCost >= 0), CONSTRAINT FK_SupplierReturnLines_Returns FOREIGN KEY (SupplierReturnId) REFERENCES SupplierReturns(Id), CONSTRAINT FK_SupplierReturnLines_Inventories FOREIGN KEY (InventoryId) REFERENCES Inventories(Id), CONSTRAINT FK_SupplierReturnLines_Items FOREIGN KEY (ItemId) REFERENCES Items(Id), CONSTRAINT FK_SupplierReturnLines_Reasons FOREIGN KEY (ReasonCodeId) REFERENCES ReasonCodes(Id), CONSTRAINT FK_SupplierReturnLines_ReceiptLines FOREIGN KEY (GoodsReceiptLineId) REFERENCES GoodsReceiptLines(Id)) ENGINE=InnoDB;
 	""";
 
 	private const string SchemaSql =

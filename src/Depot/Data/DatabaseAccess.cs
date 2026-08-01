@@ -32,6 +32,7 @@ public sealed class DatabaseAccess
 	public string InventoryCountInventoryLockSql => _connectionFactory.GetInventoryCountInventoryLockSql();
 	public string MaterialIssueLockSql => _connectionFactory.GetMaterialIssueLockSql();
 	public string MaterialReturnLockSql => _connectionFactory.GetMaterialReturnLockSql();
+	public string SupplierReturnLockSql => _connectionFactory.GetSupplierReturnLockSql();
 	public string CastToInt64(string expression) => _connectionFactory.CastToInt64(expression);
 
 	public static string CaseInsensitiveEquals(string column, string parameter) =>

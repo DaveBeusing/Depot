@@ -83,6 +83,9 @@ public sealed class SqlServerConnectionFactory : IDatabaseConnectionFactory
 	public string GetMaterialReturnLockSql() =>
 		"SELECT Id FROM MaterialReturns WITH (UPDLOCK, HOLDLOCK) WHERE Id = $MaterialReturnId;";
 
+	public string GetSupplierReturnLockSql() =>
+		"SELECT Id FROM SupplierReturns WITH (UPDLOCK, HOLDLOCK) WHERE Id = $SupplierReturnId;";
+
 	public string GetPagingClause() => "OFFSET $Offset ROWS FETCH NEXT $PageSize ROWS ONLY";
 	public string CastToInt64(string expression) => $"CAST({expression} AS BIGINT)";
 

@@ -40,6 +40,8 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 		command.ExecuteNonQuery();
 		command.CommandText = MaterialReturnSql;
 		command.ExecuteNonQuery();
+		command.CommandText = SupplierReturnSql;
+		command.ExecuteNonQuery();
 
 		command.CommandText = "SELECT Version FROM DatabaseInfo WHERE Id = 1;";
 		var version = Convert.ToInt32(command.ExecuteScalar(), CultureInfo.InvariantCulture);
@@ -123,6 +125,11 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 			MigrateToMaterialReturns(command);
 			version = 24;
 		}
+		if (version == 24)
+		{
+			MigrateToSupplierReturns(command);
+			version = 25;
+		}
 		if (version != DatabaseVersion.CurrentVersion)
 		{
 			throw new InvalidOperationException(
@@ -178,6 +185,12 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 		command.CommandText = MaterialReturnSql + " UPDATE DatabaseInfo SET Version = 24 WHERE Id = 1;";
 		command.Parameters.Clear();
 		command.ExecuteNonQuery();
+	}
+
+	private static void MigrateToSupplierReturns(System.Data.Common.DbCommand command)
+	{
+		command.CommandText = SupplierReturnSql + " UPDATE DatabaseInfo SET Version = 25 WHERE Id = 1;";
+		command.Parameters.Clear(); command.ExecuteNonQuery();
 	}
 
 	private static void MigrateToStockTransfers(System.Data.Common.DbCommand command)
@@ -703,6 +716,20 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 		);
 		CREATE INDEX IX_MaterialReturnLines_InventoryId ON MaterialReturnLines(InventoryId);
 		CREATE INDEX IX_MaterialReturnLines_ReasonCodeId ON MaterialReturnLines(ReasonCodeId);
+	END;
+	""";
+
+	private const string SupplierReturnSql =
+	"""
+	IF OBJECT_ID(N'SupplierReturns', N'U') IS NULL
+	BEGIN
+		CREATE TABLE SupplierReturns (Id bigint IDENTITY(1,1) NOT NULL PRIMARY KEY, ReturnNumber nvarchar(50) NOT NULL UNIQUE, SupplierId bigint NOT NULL, ReturnDate nvarchar(10) NOT NULL, Status int NOT NULL DEFAULT 1, PurchaseOrderId bigint NOT NULL, GoodsReceiptId bigint NOT NULL, SupplierReference nvarchar(250) NULL, Notes nvarchar(4000) NULL, CreatedByUserId bigint NOT NULL, PostedByUserId bigint NULL, PostedAtUtc nvarchar(40) NULL, ReversedByUserId bigint NULL, ReversedAtUtc nvarchar(40) NULL, ReversalReason nvarchar(1000) NULL, Version bigint NOT NULL DEFAULT 1, CONSTRAINT CK_SupplierReturns_Status CHECK (Status IN (1,2,3)), CONSTRAINT FK_SupplierReturns_Suppliers FOREIGN KEY (SupplierId) REFERENCES Suppliers(Id), CONSTRAINT FK_SupplierReturns_Orders FOREIGN KEY (PurchaseOrderId) REFERENCES PurchaseOrders(Id), CONSTRAINT FK_SupplierReturns_Receipts FOREIGN KEY (GoodsReceiptId) REFERENCES GoodsReceipts(Id), CONSTRAINT FK_SupplierReturns_CreatedByUsers FOREIGN KEY (CreatedByUserId) REFERENCES Users(Id), CONSTRAINT FK_SupplierReturns_PostedByUsers FOREIGN KEY (PostedByUserId) REFERENCES Users(Id), CONSTRAINT FK_SupplierReturns_ReversedByUsers FOREIGN KEY (ReversedByUserId) REFERENCES Users(Id));
+		CREATE INDEX IX_SupplierReturns_SupplierId_Status ON SupplierReturns(SupplierId, Status); CREATE INDEX IX_SupplierReturns_ReturnDate ON SupplierReturns(ReturnDate); CREATE INDEX IX_SupplierReturns_GoodsReceiptId ON SupplierReturns(GoodsReceiptId);
+	END;
+	IF OBJECT_ID(N'SupplierReturnLines', N'U') IS NULL
+	BEGIN
+		CREATE TABLE SupplierReturnLines (Id bigint IDENTITY(1,1) NOT NULL PRIMARY KEY, SupplierReturnId bigint NOT NULL, InventoryId bigint NOT NULL, ItemId bigint NOT NULL, Quantity int NOT NULL, UnitCost decimal(18,2) NOT NULL, ReasonCodeId bigint NOT NULL, GoodsReceiptLineId bigint NOT NULL, Version bigint NOT NULL DEFAULT 1, CONSTRAINT UQ_SupplierReturnLines_ReceiptLine UNIQUE (SupplierReturnId, GoodsReceiptLineId), CONSTRAINT CK_SupplierReturnLines_QuantityCost CHECK (Quantity > 0 AND UnitCost >= 0), CONSTRAINT FK_SupplierReturnLines_Returns FOREIGN KEY (SupplierReturnId) REFERENCES SupplierReturns(Id), CONSTRAINT FK_SupplierReturnLines_Inventories FOREIGN KEY (InventoryId) REFERENCES Inventories(Id), CONSTRAINT FK_SupplierReturnLines_Items FOREIGN KEY (ItemId) REFERENCES Items(Id), CONSTRAINT FK_SupplierReturnLines_Reasons FOREIGN KEY (ReasonCodeId) REFERENCES ReasonCodes(Id), CONSTRAINT FK_SupplierReturnLines_ReceiptLines FOREIGN KEY (GoodsReceiptLineId) REFERENCES GoodsReceiptLines(Id));
+		CREATE INDEX IX_SupplierReturnLines_InventoryId ON SupplierReturnLines(InventoryId); CREATE INDEX IX_SupplierReturnLines_GoodsReceiptLineId ON SupplierReturnLines(GoodsReceiptLineId);
 	END;
 	""";
 

@@ -33,7 +33,7 @@ The presentation layer contains WPF views, ViewModels, commands, converters, reu
 - Native file selection and confirmation dialogs are accessed through `IFileDialogService`.
 - Shared UI values and styles live in `Resources/`; repeated behavior belongs in reusable controls.
 
-The shell currently contains Dashboard, Inventory, Items, Movements, Procurement, Reports, and role-restricted Administration modules.
+The shell currently contains Dashboard, Inventory, Items, Movements, Transfers, Inventory Counts, Material Issues, Material Returns, Procurement, Supplier Returns, Approvals, Reports, and role-restricted Administration modules.
 
 Administration contains Import, Master Data, Users, Database, Settings, and About. General Settings remains a placeholder; database/provider/backup settings are implemented in the Database module.
 
@@ -84,7 +84,7 @@ SQLite is covered by integration tests. SQL Server and MySQL/MariaDB have provid
 
 ## Schema and migrations
 
-The current database schema version is **24**. It is independent from the application SemVer version.
+The current database schema version is **25**. It is independent from the application SemVer version.
 
 All providers create the current schema and migrate supported older schemas forward. Migrations cover authentication, inventory-based movements, audit/concurrency, warehouse structure, reason codes, normalized item master data, suppliers, supplier categories, supplier items, purchase orders, and goods receipts.
 
@@ -135,6 +135,8 @@ Schema version 22 adds the explicit purchase-order closure metadata `ClosedByUse
 Schema version 23 introduces structured `MaterialIssue` and `MaterialIssueLine` documents. Draft editing, posting, cancellation, and reversal are orchestrated by `MaterialIssueService`; repositories remain data-only. Posting locks the document and all inventories in stable order, validates active inventories and reason codes, creates one immutable Withdrawal movement per line, and commits status, user metadata, and audit in the same provider-neutral transaction. Reversal uses the shared counter-movement mechanism.
 
 Schema version 24 introduces the independent `MaterialReturn` and `MaterialReturnLine` workflow. A return may reference a posted material issue through a nullable foreign key or stand alone with a required business reference or explanation. Posting creates positive `MaterialReturn` movements and never sets `ReversalOfMovementId`. Posted return documents remain immutable; corrections use explicit negative counter-movements through the shared reversal infrastructure while the document retains its Posted status.
+
+Schema version 25 introduces `SupplierReturn` and `SupplierReturnLine`. A supplier return references one posted, non-reversed goods receipt and derives supplier, purchase order, item, inventory, and unit cost from that historical receipt chain. Posting locks the return and affected inventories, validates the net received quantity after prior non-reversed supplier returns and the current movement-derived stock, creates negative `SupplierReturn` movements, and commits status plus audit atomically. Historical `GoodsReceiptLine.Quantity` and `PurchaseOrderLine.ReceivedQuantity` remain unchanged: they record the receipt fact, while net supplier returns are evaluated separately. Counter-booking marks the supplier return as reversed for net-return calculations without rewriting its posted history.
 
 The permission-restricted Approvals main page is backed by `PurchaseOrderApprovalService`. Its work queue selects only `PendingApproval` orders with server-side search, supplier/creator/date filters, stable submission-time sorting, and paging. Count, oldest submission, and total open value are database aggregates. Order lines and a bounded audit-derived status history load only after selection. A successful decision removes only the affected row and refreshes only the aggregates; interrupted or conflicting decisions re-query the selected order before reporting its current status.
 
