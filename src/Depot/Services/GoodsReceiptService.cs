@@ -84,7 +84,9 @@ public sealed class GoodsReceiptService
 					orderLine.Version++;
 				}
 
-				var status = orderLines.Values.All(line => line.ReceivedQuantity == 0)
+				var status = order.Status == PurchaseOrderStatus.Closed
+					? PurchaseOrderStatus.Closed
+					: orderLines.Values.All(line => line.ReceivedQuantity == 0)
 					? PurchaseOrderStatus.Ordered
 					: orderLines.Values.All(line => line.ReceivedQuantity >= line.Quantity)
 						? PurchaseOrderStatus.Received

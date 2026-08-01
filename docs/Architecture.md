@@ -84,7 +84,7 @@ SQLite is covered by integration tests. SQL Server and MySQL/MariaDB have provid
 
 ## Schema and migrations
 
-The current database schema version is **21**. It is independent from the application SemVer version.
+The current database schema version is **22**. It is independent from the application SemVer version.
 
 All providers create the current schema and migrate supported older schemas forward. Migrations cover authentication, inventory-based movements, audit/concurrency, warehouse structure, reason codes, normalized item master data, suppliers, supplier categories, supplier items, purchase orders, and goods receipts.
 
@@ -128,7 +128,9 @@ Posted movements are immutable. Schema version 20 adds an optional, unique `Reve
 
 Legacy `InvoiceNumber`, `InvoiceDate`, and `InvoiceDocumentPath` database columns remain nullable for transition and backup compatibility. They are not exposed by the current domain model or UI and are not populated by new receipts. Version-17 migration preserves their existing values, assigns `LEGACY-GR-…` delivery-note numbers, and derives the receiving user from the original receipt audit entry where possible.
 
-Schema version 21 introduces purchase-order approval metadata and the fixed `CanApprovePurchaseOrders` user permission. Drafts must be submitted and approved before ordering. Approval or rejection requires an administrator or explicitly authorized active user, and the creator cannot decide their own order. Submission, decision, reopening, ordering, closing, cancellation, and their before/after audit entries use optimistic concurrency and commit atomically.
+Schema version 21 introduces purchase-order approval metadata and the fixed `CanApprovePurchaseOrders` user permission. Drafts must be submitted and approved before ordering. Approval or rejection requires an administrator or explicitly authorized active user, and the creator cannot decide their own order. Submission, decision, reopening, ordering, and cancellation use optimistic concurrency and commit their before/after audit entries atomically.
+
+Schema version 22 adds the explicit purchase-order closure metadata `ClosedByUserId`, `ClosedAtUtc`, and `CloseReason`. Only ordered or partially received orders can be closed. Closing preserves received and open quantities, prevents further goods receipts, and is committed atomically with its audit entry. Cancellation remains a separate transition and is rejected after any posted receipt.
 
 The permission-restricted Approvals main page is backed by `PurchaseOrderApprovalService`. Its work queue selects only `PendingApproval` orders with server-side search, supplier/creator/date filters, stable submission-time sorting, and paging. Count, oldest submission, and total open value are database aggregates. Order lines and a bounded audit-derived status history load only after selection. A successful decision removes only the affected row and refreshes only the aggregates; interrupted or conflicting decisions re-query the selected order before reporting its current status.
 

@@ -4,7 +4,7 @@
 
 - [ ] Ready for release
 
-Depot is currently `0.13.0-preview` with database schema version **21**. Checked implementation items below mean code exists on `master`; they do not replace the outstanding release verification.
+Depot is currently `0.13.0-preview` with database schema version **22**. Checked implementation items below mean code exists on `master`; they do not replace the outstanding release verification.
 
 ## Implemented and covered by automated tests
 

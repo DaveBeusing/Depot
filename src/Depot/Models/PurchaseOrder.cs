@@ -19,9 +19,13 @@ public sealed class PurchaseOrder
 	public long? ApprovalDecisionByUserId { get; set; }
 	public DateTime? ApprovalDecisionAtUtc { get; set; }
 	public string? ApprovalComment { get; set; }
+	public long? ClosedByUserId { get; set; }
+	public DateTime? ClosedAtUtc { get; set; }
+	public string? CloseReason { get; set; }
 	public string? CreatedByUserDisplay { get; set; }
 	public string? SubmittedByUserDisplay { get; set; }
 	public string? ApprovalDecisionByUserDisplay { get; set; }
+	public string? ClosedByUserDisplay { get; set; }
 	public string StatusDisplayName => Status switch
 	{
 		PurchaseOrderStatus.PartiallyReceived => "Partially Received",

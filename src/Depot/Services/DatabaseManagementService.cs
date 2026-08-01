@@ -32,7 +32,7 @@ public sealed class DatabaseManagementService
 		new("StorageLocations", ["Id", "WarehouseId", "Name", "Description", "IsActive", "Version"]),
 		new("Users", ["Id", "Email", "DisplayName", "PasswordHash", "IsAdministrator", "CanApprovePurchaseOrders", "IsActive", "CreatedUtc", "Version"]),
 		new("Inventories", ["Id", "ItemId", "PurposeId", "StorageLocationId", "IsActive", "Version"]),
-		new("PurchaseOrders", ["Id", "OrderNumber", "SupplierId", "OrderDate", "ExpectedDeliveryDate", "Notes", "Status", "CreatedByUserId", "SubmittedByUserId", "SubmittedAtUtc", "ApprovalDecisionByUserId", "ApprovalDecisionAtUtc", "ApprovalComment", "Version"]),
+		new("PurchaseOrders", ["Id", "OrderNumber", "SupplierId", "OrderDate", "ExpectedDeliveryDate", "Notes", "Status", "CreatedByUserId", "SubmittedByUserId", "SubmittedAtUtc", "ApprovalDecisionByUserId", "ApprovalDecisionAtUtc", "ApprovalComment", "ClosedByUserId", "ClosedAtUtc", "CloseReason", "Version"]),
 		new("PurchaseOrderLines", ["Id", "PurchaseOrderId", "LineNumber", "ItemId", "Quantity", "UnitPrice", "ReceivedQuantity", "Version"]),
 		new("GoodsReceipts", ["Id", "ReceiptNumber", "PurchaseOrderId", "ReceiptDate", "SupplierDeliveryNoteNumber", "ReceivedByUserId", "InvoiceNumber", "InvoiceDate", "InvoiceDocumentPath", "Notes"]),
 		new("GoodsReceiptLines", ["Id", "GoodsReceiptId", "PurchaseOrderLineId", "InventoryId", "Quantity"]),

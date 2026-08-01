@@ -46,7 +46,7 @@ public sealed class PurchaseOrderApprovalMigrationTests : IDisposable
 		migrated.Open();
 		using var versionCommand = migrated.CreateCommand();
 		versionCommand.CommandText = "SELECT Version FROM DatabaseInfo;";
-		Assert.Equal(21L, (long)(versionCommand.ExecuteScalar() ?? 0L));
+		Assert.Equal(DatabaseVersion.CurrentVersion, Convert.ToInt32(versionCommand.ExecuteScalar(), System.Globalization.CultureInfo.InvariantCulture));
 		using var statusCommand = migrated.CreateCommand();
 		statusCommand.CommandText = "SELECT Status FROM PurchaseOrders WHERE Id = 1;";
 		Assert.Equal(2L, (long)(statusCommand.ExecuteScalar() ?? 0L));

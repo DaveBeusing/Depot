@@ -109,13 +109,31 @@ public sealed class PurchaseOrderService
 	public Task<PurchaseOrder> MarkOrderedAsync(long id, long version, CancellationToken cancellationToken = default) =>
 		ChangeStatusAsync(id, version, PurchaseOrderStatus.Approved, PurchaseOrderStatus.Ordered, null, cancellationToken);
 
-	public Task<PurchaseOrder> CloseAsync(long id, long version, CancellationToken cancellationToken = default) =>
-		ChangeStatusAsync(id, version, PurchaseOrderStatus.Received, PurchaseOrderStatus.Closed, null, cancellationToken);
+	public async Task<PurchaseOrder> CloseAsync(long id, long version, string reason, CancellationToken cancellationToken = default)
+	{
+		var normalizedReason = Normalize(reason) ?? throw new ArgumentException("A close reason is required.", nameof(reason));
+		if (normalizedReason.Length > 2000) throw new ArgumentException("The close reason must not exceed 2000 characters.", nameof(reason));
+		var user = CurrentUser();
+		var order = await _orders.GetByIdAsync(id, cancellationToken) ?? throw new InvalidOperationException("Purchase order was not found.");
+		if (order.Version != version) throw new ConcurrencyConflictException("purchase order");
+		if (order.Status is not (PurchaseOrderStatus.Ordered or PurchaseOrderStatus.PartiallyReceived))
+			throw new InvalidOperationException("Only ordered or partially received purchase orders can be closed.");
+		return await ChangeStatusAsync(order, version, order.Status, PurchaseOrderStatus.Closed,
+			result =>
+			{
+				result.ClosedByUserId = user.Id;
+				result.ClosedByUserDisplay = user.DisplayName;
+				result.ClosedAtUtc = DateTime.UtcNow;
+				result.CloseReason = normalizedReason;
+			}, cancellationToken);
+	}
 
 	public async Task<PurchaseOrder> CancelAsync(long id, long version, CancellationToken cancellationToken = default)
 	{
 		var order = await _orders.GetByIdAsync(id, cancellationToken) ?? throw new InvalidOperationException("Purchase order was not found.");
+		if (order.Version != version) throw new ConcurrencyConflictException("purchase order");
 		if (order.Status is not (PurchaseOrderStatus.Draft or PurchaseOrderStatus.Rejected or PurchaseOrderStatus.Approved or PurchaseOrderStatus.Ordered)) throw new InvalidOperationException("This purchase order can no longer be cancelled.");
+		if (order.Lines.Any(line => line.ReceivedQuantity > 0)) throw new InvalidOperationException("A purchase order with posted goods receipts cannot be cancelled. Close it instead.");
 		return await ChangeStatusAsync(order, version, order.Status, PurchaseOrderStatus.Cancelled, null, cancellationToken);
 	}
 
@@ -169,9 +187,13 @@ public sealed class PurchaseOrderService
 			ApprovalDecisionByUserId = before.ApprovalDecisionByUserId,
 			ApprovalDecisionAtUtc = before.ApprovalDecisionAtUtc,
 			ApprovalComment = before.ApprovalComment,
+			ClosedByUserId = before.ClosedByUserId,
+			ClosedAtUtc = before.ClosedAtUtc,
+			CloseReason = before.CloseReason,
 			CreatedByUserDisplay = before.CreatedByUserDisplay,
 			SubmittedByUserDisplay = before.SubmittedByUserDisplay,
 			ApprovalDecisionByUserDisplay = before.ApprovalDecisionByUserDisplay,
+			ClosedByUserDisplay = before.ClosedByUserDisplay,
 			Version = version + 1,
 			Lines = before.Lines
 		};

@@ -16,6 +16,87 @@ namespace Depot.Tests;
 public sealed class ProcurementTests
 {
 	[Fact]
+	public async Task OrderedPurchaseOrderCanBeClosedWithRequiredMetadataAndAtomicAudit()
+	{
+		await using var context = await ProcurementTestContext.CreateSqliteAsync();
+		var order = await context.ApproveAndOrderAsync(await context.Orders.SaveDraftAsync(context.NewOrder(10)));
+
+		var closed = await context.Orders.CloseAsync(order.Id, order.Version, "Supplier discontinued the remaining delivery");
+		var stored = await context.Orders.GetByIdAsync(order.Id) ?? throw new InvalidOperationException();
+
+		Assert.Equal(PurchaseOrderStatus.Closed, closed.Status);
+		Assert.Equal(context.Authorization.CurrentUser?.Id, closed.ClosedByUserId);
+		Assert.NotNull(closed.ClosedAtUtc);
+		Assert.Equal("Supplier discontinued the remaining delivery", closed.CloseReason);
+		Assert.Equal(0, Assert.Single(stored.Lines).ReceivedQuantity);
+		Assert.Equal(1, await context.ScalarAsync(
+			"SELECT COUNT(*) FROM AuditEntries WHERE EntityType = 'PurchaseOrder' AND EntityId = $Id AND Action = 'Updated' AND AfterJson LIKE '%supplier discontinued%';",
+			new DatabaseParameter("$Id", order.Id)));
+	}
+
+	[Fact]
+	public async Task PartiallyReceivedPurchaseOrderCanBeClosedWithoutChangingOpenQuantityAndRejectsFurtherReceipts()
+	{
+		await using var context = await ProcurementTestContext.CreateSqliteAsync();
+		var order = await context.ApproveAndOrderAsync(await context.Orders.SaveDraftAsync(context.NewOrder(10)));
+		await context.Receipts.PostAsync(context.NewReceipt(order, 4));
+		var partial = await context.Orders.GetByIdAsync(order.Id) ?? throw new InvalidOperationException();
+
+		var closed = await context.Orders.CloseAsync(partial.Id, partial.Version, "Accept the partial delivery as final");
+
+		Assert.Equal(PurchaseOrderStatus.Closed, closed.Status);
+		Assert.Equal(4, Assert.Single(closed.Lines).ReceivedQuantity);
+		Assert.Equal(6, closed.Lines[0].OpenQuantity);
+		await Assert.ThrowsAsync<InvalidOperationException>(() => context.Receipts.PostAsync(context.NewReceipt(closed, 1)));
+		var stored = await context.Orders.GetByIdAsync(order.Id) ?? throw new InvalidOperationException();
+		Assert.Equal(PurchaseOrderStatus.Closed, stored.Status);
+		Assert.Equal(4, Assert.Single(stored.Lines).ReceivedQuantity);
+	}
+
+	[Fact]
+	public async Task ClosingRequiresReasonAndAllowedStatusAndHonorsConcurrency()
+	{
+		await using var context = await ProcurementTestContext.CreateSqliteAsync();
+		var draft = await context.Orders.SaveDraftAsync(context.NewOrder());
+		await Assert.ThrowsAsync<ArgumentException>(() => context.Orders.CloseAsync(draft.Id, draft.Version, "  "));
+		await Assert.ThrowsAsync<InvalidOperationException>(() => context.Orders.CloseAsync(draft.Id, draft.Version, "Not ordered"));
+
+		var ordered = await context.ApproveAndOrderAsync(draft);
+		await context.Orders.CloseAsync(ordered.Id, ordered.Version, "No longer required");
+		await Assert.ThrowsAsync<ConcurrencyConflictException>(() => context.Orders.CloseAsync(ordered.Id, ordered.Version, "Stale close"));
+	}
+
+	[Fact]
+	public async Task ClosingRollsBackWhenAuditWriteFails()
+	{
+		await using var context = await ProcurementTestContext.CreateSqliteAsync();
+		var order = await context.ApproveAndOrderAsync(await context.Orders.SaveDraftAsync(context.NewOrder()));
+		await context.Data.ExecuteAsync(
+			"CREATE TRIGGER FailCloseAudit BEFORE INSERT ON AuditEntries WHEN NEW.EntityType = 'PurchaseOrder' BEGIN SELECT RAISE(ABORT, 'forced close audit failure'); END;",
+			CancellationToken.None);
+
+		await Assert.ThrowsAsync<SqliteException>(() => context.Orders.CloseAsync(order.Id, order.Version, "Must roll back"));
+
+		var stored = await context.Orders.GetByIdAsync(order.Id) ?? throw new InvalidOperationException();
+		Assert.Equal(PurchaseOrderStatus.Ordered, stored.Status);
+		Assert.Null(stored.ClosedByUserId);
+		Assert.Null(stored.ClosedAtUtc);
+		Assert.Null(stored.CloseReason);
+	}
+
+	[Fact]
+	public async Task PurchaseOrderWithPostedReceiptCannotBeCancelled()
+	{
+		await using var context = await ProcurementTestContext.CreateSqliteAsync();
+		var order = await context.ApproveAndOrderAsync(await context.Orders.SaveDraftAsync(context.NewOrder(10)));
+		await context.Receipts.PostAsync(context.NewReceipt(order, 4));
+		var partial = await context.Orders.GetByIdAsync(order.Id) ?? throw new InvalidOperationException();
+
+		await Assert.ThrowsAsync<InvalidOperationException>(() => context.Orders.CancelAsync(partial.Id, partial.Version));
+		Assert.Equal(PurchaseOrderStatus.PartiallyReceived, (await context.Orders.GetByIdAsync(order.Id))?.Status);
+	}
+
+	[Fact]
 	public async Task GoodsReceiptReversalRestoresStockReceivedQuantityAndOrderStatusAtomically()
 	{
 		await using var context = await ProcurementTestContext.CreateSqliteAsync();

@@ -104,6 +104,11 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 			MigrateToPurchaseOrderApproval(command);
 			version = 21;
 		}
+		if (version == 21)
+		{
+			MigrateToPurchaseOrderClosure(command);
+			version = 22;
+		}
 		if (version != DatabaseVersion.CurrentVersion)
 		{
 			throw new InvalidOperationException(
@@ -128,6 +133,20 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 		IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_PurchaseOrders_SubmittedByUsers') ALTER TABLE PurchaseOrders ADD CONSTRAINT FK_PurchaseOrders_SubmittedByUsers FOREIGN KEY (SubmittedByUserId) REFERENCES Users(Id);
 		IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_PurchaseOrders_ApprovalDecisionByUsers') ALTER TABLE PurchaseOrders ADD CONSTRAINT FK_PurchaseOrders_ApprovalDecisionByUsers FOREIGN KEY (ApprovalDecisionByUserId) REFERENCES Users(Id);
 		UPDATE DatabaseInfo SET Version = 21 WHERE Id = 1;
+		""";
+		command.Parameters.Clear();
+		command.ExecuteNonQuery();
+	}
+
+	private static void MigrateToPurchaseOrderClosure(System.Data.Common.DbCommand command)
+	{
+		command.CommandText =
+		"""
+		IF COL_LENGTH(N'PurchaseOrders', N'ClosedByUserId') IS NULL ALTER TABLE PurchaseOrders ADD ClosedByUserId bigint NULL;
+		IF COL_LENGTH(N'PurchaseOrders', N'ClosedAtUtc') IS NULL ALTER TABLE PurchaseOrders ADD ClosedAtUtc nvarchar(40) NULL;
+		IF COL_LENGTH(N'PurchaseOrders', N'CloseReason') IS NULL ALTER TABLE PurchaseOrders ADD CloseReason nvarchar(2000) NULL;
+		IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_PurchaseOrders_ClosedByUsers') ALTER TABLE PurchaseOrders ADD CONSTRAINT FK_PurchaseOrders_ClosedByUsers FOREIGN KEY (ClosedByUserId) REFERENCES Users(Id);
+		UPDATE DatabaseInfo SET Version = 22 WHERE Id = 1;
 		""";
 		command.Parameters.Clear();
 		command.ExecuteNonQuery();
@@ -456,7 +475,7 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 	"""
 	IF OBJECT_ID(N'PurchaseOrders', N'U') IS NULL
 	BEGIN
-		CREATE TABLE PurchaseOrders (Id bigint IDENTITY(1,1) NOT NULL PRIMARY KEY, OrderNumber nvarchar(50) NOT NULL UNIQUE, SupplierId bigint NOT NULL, OrderDate nvarchar(10) NOT NULL, ExpectedDeliveryDate nvarchar(10) NULL, Notes nvarchar(4000) NULL, Status int NOT NULL DEFAULT 1, CreatedByUserId bigint NULL, SubmittedByUserId bigint NULL, SubmittedAtUtc nvarchar(40) NULL, ApprovalDecisionByUserId bigint NULL, ApprovalDecisionAtUtc nvarchar(40) NULL, ApprovalComment nvarchar(2000) NULL, Version bigint NOT NULL DEFAULT 1, CONSTRAINT FK_PurchaseOrders_Suppliers FOREIGN KEY (SupplierId) REFERENCES Suppliers(Id), CONSTRAINT FK_PurchaseOrders_CreatedByUsers FOREIGN KEY (CreatedByUserId) REFERENCES Users(Id), CONSTRAINT FK_PurchaseOrders_SubmittedByUsers FOREIGN KEY (SubmittedByUserId) REFERENCES Users(Id), CONSTRAINT FK_PurchaseOrders_ApprovalDecisionByUsers FOREIGN KEY (ApprovalDecisionByUserId) REFERENCES Users(Id));
+		CREATE TABLE PurchaseOrders (Id bigint IDENTITY(1,1) NOT NULL PRIMARY KEY, OrderNumber nvarchar(50) NOT NULL UNIQUE, SupplierId bigint NOT NULL, OrderDate nvarchar(10) NOT NULL, ExpectedDeliveryDate nvarchar(10) NULL, Notes nvarchar(4000) NULL, Status int NOT NULL DEFAULT 1, CreatedByUserId bigint NULL, SubmittedByUserId bigint NULL, SubmittedAtUtc nvarchar(40) NULL, ApprovalDecisionByUserId bigint NULL, ApprovalDecisionAtUtc nvarchar(40) NULL, ApprovalComment nvarchar(2000) NULL, ClosedByUserId bigint NULL, ClosedAtUtc nvarchar(40) NULL, CloseReason nvarchar(2000) NULL, Version bigint NOT NULL DEFAULT 1, CONSTRAINT FK_PurchaseOrders_Suppliers FOREIGN KEY (SupplierId) REFERENCES Suppliers(Id), CONSTRAINT FK_PurchaseOrders_CreatedByUsers FOREIGN KEY (CreatedByUserId) REFERENCES Users(Id), CONSTRAINT FK_PurchaseOrders_SubmittedByUsers FOREIGN KEY (SubmittedByUserId) REFERENCES Users(Id), CONSTRAINT FK_PurchaseOrders_ApprovalDecisionByUsers FOREIGN KEY (ApprovalDecisionByUserId) REFERENCES Users(Id), CONSTRAINT FK_PurchaseOrders_ClosedByUsers FOREIGN KEY (ClosedByUserId) REFERENCES Users(Id));
 		CREATE INDEX IX_PurchaseOrders_SupplierId_Status ON PurchaseOrders(SupplierId, Status); CREATE INDEX IX_PurchaseOrders_OrderDate ON PurchaseOrders(OrderDate);
 	END;
 	IF OBJECT_ID(N'PurchaseOrderLines', N'U') IS NULL

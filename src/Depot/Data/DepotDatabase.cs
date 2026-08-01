@@ -395,9 +395,10 @@ public sealed class DepotDatabase : IDatabaseInitializer
 			OrderDate TEXT NOT NULL, ExpectedDeliveryDate TEXT, Notes TEXT, Status INTEGER NOT NULL DEFAULT 1,
 			CreatedByUserId INTEGER NULL, SubmittedByUserId INTEGER NULL, SubmittedAtUtc TEXT NULL,
 			ApprovalDecisionByUserId INTEGER NULL, ApprovalDecisionAtUtc TEXT NULL, ApprovalComment TEXT NULL,
+			ClosedByUserId INTEGER NULL, ClosedAtUtc TEXT NULL, CloseReason TEXT NULL,
 			Version INTEGER NOT NULL DEFAULT 1, FOREIGN KEY(SupplierId) REFERENCES Suppliers(Id),
 			FOREIGN KEY(CreatedByUserId) REFERENCES Users(Id), FOREIGN KEY(SubmittedByUserId) REFERENCES Users(Id),
-			FOREIGN KEY(ApprovalDecisionByUserId) REFERENCES Users(Id)
+			FOREIGN KEY(ApprovalDecisionByUserId) REFERENCES Users(Id), FOREIGN KEY(ClosedByUserId) REFERENCES Users(Id)
 		);
 		CREATE INDEX IF NOT EXISTS IX_PurchaseOrders_SupplierId_Status ON PurchaseOrders(SupplierId, Status);
 		CREATE INDEX IF NOT EXISTS IX_PurchaseOrders_OrderDate ON PurchaseOrders(OrderDate);
@@ -972,6 +973,13 @@ public sealed class DepotDatabase : IDatabaseInitializer
 			migratedVersion = 21;
 		}
 
+		if (migratedVersion == 21)
+		{
+			MigrateToPurchaseOrderClosure(connection);
+			SetDatabaseVersion(connection, 22);
+			migratedVersion = 22;
+		}
+
 		if (migratedVersion < DatabaseVersion.CurrentVersion)
 		{
 			throw new InvalidOperationException(
@@ -1000,6 +1008,21 @@ public sealed class DepotDatabase : IDatabaseInitializer
 			if (!TableExists(connection, table) || TableHasColumn(connection, table, column)) return;
 			using var command = connection.CreateCommand();
 			command.CommandText = $"ALTER TABLE {table} ADD COLUMN {column} {definition};";
+			command.ExecuteNonQuery();
+		}
+	}
+
+	private static void MigrateToPurchaseOrderClosure(SqliteConnection connection)
+	{
+		AddColumn("ClosedByUserId", "INTEGER NULL REFERENCES Users(Id)");
+		AddColumn("ClosedAtUtc", "TEXT NULL");
+		AddColumn("CloseReason", "TEXT NULL");
+
+		void AddColumn(string column, string definition)
+		{
+			if (!TableExists(connection, "PurchaseOrders") || TableHasColumn(connection, "PurchaseOrders", column)) return;
+			using var command = connection.CreateCommand();
+			command.CommandText = $"ALTER TABLE PurchaseOrders ADD COLUMN {column} {definition};";
 			command.ExecuteNonQuery();
 		}
 	}

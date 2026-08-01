@@ -46,10 +46,17 @@
 									<TextBlock Text="{Binding Draft.ApprovalDecisionByUserDisplay, StringFormat=Decision by: {0}}" />
 									<TextBlock Text="{Binding Draft.ApprovalDecisionAtUtc, StringFormat=Decision (UTC): {0:yyyy-MM-dd HH:mm:ss}Z}" />
 									<TextBlock Text="{Binding Draft.ApprovalComment, StringFormat=Comment: {0}}" TextWrapping="Wrap" />
+									<TextBlock Text="{Binding Draft.ClosedByUserDisplay, StringFormat=Closed by: {0}}" />
+									<TextBlock Text="{Binding Draft.ClosedAtUtc, StringFormat=Closed (UTC): {0:yyyy-MM-dd HH:mm:ss}Z}" />
+									<TextBlock Text="{Binding Draft.CloseReason, StringFormat=Close reason: {0}}" TextWrapping="Wrap" />
 								</StackPanel>
 							</controls:Card>
 							<TextBlock Margin="0,16,0,0" Text="Approval comment" Style="{StaticResource FormLabelStyle}" />
 							<TextBox MinHeight="48" AcceptsReturn="True" Text="{Binding ApprovalComment, UpdateSourceTrigger=PropertyChanged}" TextWrapping="Wrap" Style="{StaticResource MultilineTextBoxStyle}" />
+							<StackPanel Visibility="{Binding CanClose, Converter={StaticResource BooleanToVisibilityConverter}}">
+								<TextBlock Margin="0,12,0,0" Text="Close reason (required)" Style="{StaticResource FormLabelStyle}" />
+								<TextBox MinHeight="48" AcceptsReturn="True" MaxLength="2000" Text="{Binding CloseReason, UpdateSourceTrigger=PropertyChanged}" TextWrapping="Wrap" Style="{StaticResource MultilineTextBoxStyle}" />
+							</StackPanel>
 							<WrapPanel Margin="0,16,0,0" HorizontalAlignment="Right">
 								<Button Command="{Binding SaveOrderCommand}" Content="Save Draft" Style="{StaticResource SecondaryButtonStyle}" />
 								<Button Margin="{StaticResource Button.Margin}" Command="{Binding SubmitForApprovalCommand}" Content="Submit for Approval" Style="{StaticResource PrimaryButtonStyle}" />

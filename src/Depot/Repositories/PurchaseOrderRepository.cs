@@ -12,8 +12,8 @@ namespace Depot.Repositories;
 
 public sealed class PurchaseOrderRepository : DatabaseRepository
 {
-	private const string Columns = "po.Id, po.OrderNumber, po.SupplierId, s.Name, po.OrderDate, po.ExpectedDeliveryDate, po.Notes, po.Status, po.CreatedByUserId, po.SubmittedByUserId, po.SubmittedAtUtc, po.ApprovalDecisionByUserId, po.ApprovalDecisionAtUtc, po.ApprovalComment, createdUser.DisplayName, submittedUser.DisplayName, decisionUser.DisplayName, po.Version";
-	private const string From = "FROM PurchaseOrders po INNER JOIN Suppliers s ON s.Id = po.SupplierId LEFT JOIN Users createdUser ON createdUser.Id = po.CreatedByUserId LEFT JOIN Users submittedUser ON submittedUser.Id = po.SubmittedByUserId LEFT JOIN Users decisionUser ON decisionUser.Id = po.ApprovalDecisionByUserId";
+	private const string Columns = "po.Id, po.OrderNumber, po.SupplierId, s.Name, po.OrderDate, po.ExpectedDeliveryDate, po.Notes, po.Status, po.CreatedByUserId, po.SubmittedByUserId, po.SubmittedAtUtc, po.ApprovalDecisionByUserId, po.ApprovalDecisionAtUtc, po.ApprovalComment, po.ClosedByUserId, po.ClosedAtUtc, po.CloseReason, createdUser.DisplayName, submittedUser.DisplayName, decisionUser.DisplayName, closedUser.DisplayName, po.Version";
+	private const string From = "FROM PurchaseOrders po INNER JOIN Suppliers s ON s.Id = po.SupplierId LEFT JOIN Users createdUser ON createdUser.Id = po.CreatedByUserId LEFT JOIN Users submittedUser ON submittedUser.Id = po.SubmittedByUserId LEFT JOIN Users decisionUser ON decisionUser.Id = po.ApprovalDecisionByUserId LEFT JOIN Users closedUser ON closedUser.Id = po.ClosedByUserId";
 	private const string LineColumns = "pol.Id, pol.PurchaseOrderId, pol.LineNumber, pol.ItemId, i.PartNumber, i.Description, pol.Quantity, pol.UnitPrice, pol.ReceivedQuantity, pol.Version";
 
 	public PurchaseOrderRepository(DatabaseAccess database) : base(database) { }
@@ -97,7 +97,7 @@ public sealed class PurchaseOrderRepository : DatabaseRepository
 
 		var rows = await transaction.Session.QueryAsync(
 			$"SELECT {Columns}, {LineColumns} {From} INNER JOIN PurchaseOrderLines pol ON pol.PurchaseOrderId = po.Id INNER JOIN Items i ON i.Id = pol.ItemId WHERE po.Id = $Id ORDER BY pol.LineNumber;",
-			reader => new ReceiptOrderRow(ReadOrder(reader), ReadLine(reader, 18)),
+			reader => new ReceiptOrderRow(ReadOrder(reader), ReadLine(reader, 22)),
 			cancellationToken,
 			Parameter("$Id", id));
 		if (rows.Count == 0)
@@ -201,7 +201,7 @@ public sealed class PurchaseOrderRepository : DatabaseRepository
 		Database.ExecuteInWriteTransactionAsync(async (session, token) =>
 		{
 			var updated = await session.ExecuteAsync(
-				"UPDATE PurchaseOrders SET Status = $Status, CreatedByUserId = $CreatedByUserId, SubmittedByUserId = $SubmittedByUserId, SubmittedAtUtc = $SubmittedAtUtc, ApprovalDecisionByUserId = $ApprovalDecisionByUserId, ApprovalDecisionAtUtc = $ApprovalDecisionAtUtc, ApprovalComment = $ApprovalComment, Version = Version + 1 WHERE Id = $Id AND Version = $Version AND Status = $Expected;",
+				"UPDATE PurchaseOrders SET Status = $Status, CreatedByUserId = $CreatedByUserId, SubmittedByUserId = $SubmittedByUserId, SubmittedAtUtc = $SubmittedAtUtc, ApprovalDecisionByUserId = $ApprovalDecisionByUserId, ApprovalDecisionAtUtc = $ApprovalDecisionAtUtc, ApprovalComment = $ApprovalComment, ClosedByUserId = $ClosedByUserId, ClosedAtUtc = $ClosedAtUtc, CloseReason = $CloseReason, Version = Version + 1 WHERE Id = $Id AND Version = $Version AND Status = $Expected;",
 				token,
 				Parameter("$Status", (int)status),
 				Parameter("$Id", id),
@@ -212,6 +212,9 @@ public sealed class PurchaseOrderRepository : DatabaseRepository
 				Parameter("$ApprovalDecisionByUserId", result.ApprovalDecisionByUserId),
 				Parameter("$ApprovalDecisionAtUtc", NullableUtc(result.ApprovalDecisionAtUtc)),
 				Parameter("$ApprovalComment", result.ApprovalComment),
+				Parameter("$ClosedByUserId", result.ClosedByUserId),
+				Parameter("$ClosedAtUtc", NullableUtc(result.ClosedAtUtc)),
+				Parameter("$CloseReason", result.CloseReason),
 				Parameter("$Expected", (int)expected));
 			if (updated != 1) throw new ConcurrencyConflictException("purchase order");
 			await AuditRepository.CreateAsync(session, auditEntry, token);
@@ -248,10 +251,14 @@ public sealed class PurchaseOrderRepository : DatabaseRepository
 		ApprovalDecisionByUserId = reader.IsDBNull(11) ? null : reader.GetInt64(11),
 		ApprovalDecisionAtUtc = reader.IsDBNull(12) ? null : ParseUtc(reader.GetString(12)),
 		ApprovalComment = reader.IsDBNull(13) ? null : reader.GetString(13),
-		CreatedByUserDisplay = reader.IsDBNull(14) ? null : reader.GetString(14),
-		SubmittedByUserDisplay = reader.IsDBNull(15) ? null : reader.GetString(15),
-		ApprovalDecisionByUserDisplay = reader.IsDBNull(16) ? null : reader.GetString(16),
-		Version = reader.GetInt64(17)
+		ClosedByUserId = reader.IsDBNull(14) ? null : reader.GetInt64(14),
+		ClosedAtUtc = reader.IsDBNull(15) ? null : ParseUtc(reader.GetString(15)),
+		CloseReason = reader.IsDBNull(16) ? null : reader.GetString(16),
+		CreatedByUserDisplay = reader.IsDBNull(17) ? null : reader.GetString(17),
+		SubmittedByUserDisplay = reader.IsDBNull(18) ? null : reader.GetString(18),
+		ApprovalDecisionByUserDisplay = reader.IsDBNull(19) ? null : reader.GetString(19),
+		ClosedByUserDisplay = reader.IsDBNull(20) ? null : reader.GetString(20),
+		Version = reader.GetInt64(21)
 	};
 
 	private static PurchaseOrderLine ReadLine(DbDataReader reader) => new()
