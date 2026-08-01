@@ -21,8 +21,29 @@ public sealed class GoodsReceiptRepository : DatabaseRepository
 	public Task<IReadOnlyList<ReceiptInventoryOption>> ListInventoryOptionsAsync(
 		long itemId,
 		CancellationToken cancellationToken) =>
-		Database.QueryAsync(
-			"SELECT inv.Id, inv.ItemId, w.Name, sl.Name, p.Name FROM Inventories inv INNER JOIN StorageLocations sl ON sl.Id = inv.StorageLocationId INNER JOIN Warehouses w ON w.Id = sl.WarehouseId INNER JOIN Purposes p ON p.Id = inv.PurposeId WHERE inv.ItemId = $ItemId AND inv.IsActive = 1 AND sl.IsActive = 1 AND w.IsActive = 1 ORDER BY w.Name, sl.Name, p.Name;",
+		Database.QuerySliceAsync(
+			"SELECT inv.Id, inv.ItemId, w.Name, sl.Name, p.Name FROM Inventories inv INNER JOIN StorageLocations sl ON sl.Id = inv.StorageLocationId INNER JOIN Warehouses w ON w.Id = sl.WarehouseId INNER JOIN Purposes p ON p.Id = inv.PurposeId WHERE inv.ItemId = $ItemId AND inv.IsActive = 1 AND sl.IsActive = 1 AND w.IsActive = 1 ORDER BY w.Name, sl.Name, p.Name, inv.Id",
+			reader => new ReceiptInventoryOption
+			{
+				InventoryId = reader.GetInt64(0),
+				ItemId = reader.GetInt64(1),
+				DisplayName = $"{reader.GetString(2)} / {reader.GetString(3)} / {reader.GetString(4)}"
+			},
+			0,
+			100,
+			cancellationToken,
+			Parameter("$ItemId", itemId));
+
+	public Task<IReadOnlyList<ReceiptInventoryOption>> ListInventoryOptionsByItemIdsAsync(
+		IEnumerable<long> itemIds,
+		CancellationToken cancellationToken)
+	{
+		var ids = itemIds.Distinct().OrderBy(id => id).ToArray();
+		if (ids.Length == 0) return Task.FromResult<IReadOnlyList<ReceiptInventoryOption>>([]);
+		var parameters = ids.Select((id, index) => Parameter($"$ItemId{index}", id)).ToArray();
+		var parameterList = string.Join(", ", parameters.Select(parameter => parameter.Name));
+		return Database.QueryAsync(
+			$"SELECT inv.Id, inv.ItemId, w.Name, sl.Name, p.Name FROM Inventories inv INNER JOIN StorageLocations sl ON sl.Id = inv.StorageLocationId INNER JOIN Warehouses w ON w.Id = sl.WarehouseId INNER JOIN Purposes p ON p.Id = inv.PurposeId WHERE inv.ItemId IN ({parameterList}) AND inv.IsActive = 1 AND sl.IsActive = 1 AND w.IsActive = 1 ORDER BY inv.ItemId, w.Name, sl.Name, p.Name, inv.Id;",
 			reader => new ReceiptInventoryOption
 			{
 				InventoryId = reader.GetInt64(0),
@@ -30,7 +51,8 @@ public sealed class GoodsReceiptRepository : DatabaseRepository
 				DisplayName = $"{reader.GetString(2)} / {reader.GetString(3)} / {reader.GetString(4)}"
 			},
 			cancellationToken,
-			Parameter("$ItemId", itemId));
+			parameters);
+	}
 
 	public async Task<IReadOnlyList<GoodsReceipt>> ListByPurchaseOrderAsync(long purchaseOrderId, CancellationToken cancellationToken)
 	{
@@ -39,13 +61,18 @@ public sealed class GoodsReceiptRepository : DatabaseRepository
 			ReadReceipt,
 			cancellationToken,
 			Parameter("$PurchaseOrderId", purchaseOrderId));
+		if (receipts.Count == 0) return receipts;
+		var parameters = receipts.Select((receipt, index) => Parameter($"$ReceiptId{index}", receipt.Id)).ToArray();
+		var parameterList = string.Join(", ", parameters.Select(parameter => parameter.Name));
+		var lines = await Database.QueryAsync(
+			$"SELECT {LineColumns} FROM GoodsReceiptLines WHERE GoodsReceiptId IN ({parameterList}) ORDER BY GoodsReceiptId, Id;",
+			ReadLine,
+			cancellationToken,
+			parameters);
+		var linesByReceipt = lines.GroupBy(line => line.GoodsReceiptId).ToDictionary(group => group.Key, group => (IReadOnlyList<GoodsReceiptLine>)group.ToArray());
 		foreach (var receipt in receipts)
 		{
-			receipt.Lines = await Database.QueryAsync(
-				$"SELECT {LineColumns} FROM GoodsReceiptLines WHERE GoodsReceiptId = $GoodsReceiptId ORDER BY Id;",
-				ReadLine,
-				cancellationToken,
-				Parameter("$GoodsReceiptId", receipt.Id));
+			receipt.Lines = linesByReceipt.GetValueOrDefault(receipt.Id) ?? [];
 		}
 		return receipts;
 	}

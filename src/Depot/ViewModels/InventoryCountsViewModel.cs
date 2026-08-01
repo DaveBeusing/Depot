@@ -744,8 +744,7 @@ public sealed class InventoryCountsViewModel : BaseViewModel, IDisposable
 	private void ApplyCountPage(PageResult<InventoryCountOverviewItem> page)
 	{
 		var selectedId = SelectedCount?.Id;
-		InventoryCounts.Clear();
-		foreach (var count in page.Items) InventoryCounts.Add(count);
+		CollectionSynchronizer.Replace(InventoryCounts, page.Items);
 		TotalCount = page.TotalCount;
 		if (selectedId is not null)
 		{

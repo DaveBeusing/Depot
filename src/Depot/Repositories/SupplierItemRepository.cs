@@ -24,7 +24,7 @@ public sealed class SupplierItemRepository : DatabaseRepository
 		var parameters = string.IsNullOrWhiteSpace(search)
 			? new[] { Parameter("$SupplierId", supplierId) }
 			: new[] { Parameter("$SupplierId", supplierId), Parameter("$Search", $"%{search}%") };
-		return Database.QueryAsync($"SELECT {Columns} {From} WHERE si.SupplierId = $SupplierId {filter} ORDER BY si.IsActive DESC, si.IsPreferredSupplier DESC, i.PartNumber;", Read, cancellationToken, parameters);
+		return Database.QuerySliceAsync($"SELECT {Columns} {From} WHERE si.SupplierId = $SupplierId {filter} ORDER BY si.IsActive DESC, si.IsPreferredSupplier DESC, i.PartNumber, si.Id", Read, 0, 200, cancellationToken, parameters);
 	}
 
 	public Task<SupplierItem?> GetByIdAsync(long id, CancellationToken cancellationToken) =>

@@ -78,7 +78,7 @@ This roadmap reflects the implementation on the current `master` branch. “Impl
 
 ## Partially implemented
 
-- Fully asynchronous data access: primary UI paths are asynchronous, but legacy synchronous `GetAll()` paths remain.
+- Fully asynchronous data access: productive list/report paths are asynchronous and obsolete unbounded `GetAll()` APIs have been removed; targeted synchronous import-write compatibility remains.
 - Large-data readiness: paging/search/streaming infrastructure exists, but some reports and compatibility services still materialize full tables.
 - User-facing paging: server-side paging is used, but not every screen exposes complete page navigation.
 - Audit tooling: audit records are written, but no audit viewer, filter, retention, or export UI exists.

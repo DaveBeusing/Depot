@@ -84,7 +84,7 @@ Depot is currently `0.13.0-preview` with database schema version **20**. Checked
 - [x] Server-side paging infrastructure
 - [x] Debounced server-side search on primary list screens
 - [x] Streaming API for large result processing
-- [ ] Remove or justify remaining synchronous `GetAll()` application paths
+- [x] Remove or explicitly classify synchronous `GetAll()` application paths
 - [ ] Add full page navigation where bounded first-page loading is insufficient
 - [ ] Verify large reports do not require full in-memory materialization
 - [ ] Complete 100,000+ record performance and memory test

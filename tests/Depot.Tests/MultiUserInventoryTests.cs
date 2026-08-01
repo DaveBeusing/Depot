@@ -61,9 +61,6 @@ public sealed class MultiUserInventoryTests : IDisposable
 		_movementService = new MovementService(
 			_itemRepository,
 			_inventoryRepository,
-			purposeRepository,
-			storageLocationRepository,
-			warehouseRepository,
 			_reasonCodeRepository,
 			_movementRepository,
 			audit,
@@ -121,7 +118,7 @@ public sealed class MultiUserInventoryTests : IDisposable
 	public async Task ReasonCodeTechnicalKeysAreStableAndInactiveCustomCodesCannotBeUsedForNewMovements()
 	{
 		var inventory = CreateInventory();
-		var defaults = _reasonCodeRepository.GetAll();
+		var defaults = await _reasonCodeRepository.ListActiveAsync(CancellationToken.None);
 		var defaultCodes = defaults.Select(item => item.Code).OrderBy(code => code).ToArray();
 		Assert.Equal(
 			new[]

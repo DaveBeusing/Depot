@@ -27,6 +27,12 @@ public sealed class SupplierService
 	public Task<IReadOnlyList<Supplier>> SearchAsync(string? searchText, CancellationToken cancellationToken = default) =>
 		_suppliers.SearchAsync(searchText, cancellationToken);
 
+	public Task<IReadOnlyList<Supplier>> SearchActiveAsync(string? searchText, int count, CancellationToken cancellationToken = default) =>
+		_suppliers.SearchActiveSliceAsync(searchText, count, cancellationToken);
+
+	public Task<Supplier?> GetByIdAsync(long id, CancellationToken cancellationToken = default) =>
+		_suppliers.GetByIdAsync(id, cancellationToken);
+
 	public Task<IReadOnlyList<Supplier>> GetActiveAsync(CancellationToken cancellationToken = default) =>
 		_activeCache.GetAsync(_suppliers.ListActiveAsync, cancellationToken);
 

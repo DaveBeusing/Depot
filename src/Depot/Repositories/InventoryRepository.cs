@@ -155,7 +155,7 @@ public sealed class InventoryRepository : DatabaseRepository
 			LEFT JOIN StockMovements sm ON sm.InventoryId = inv.Id
 			WHERE inv.IsActive = 1 AND i.IsActive = 1 {filter}
 			GROUP BY inv.Id, i.Id, i.PartNumber, i.Description, m.Name, c.Name, p.Name, w.Name, sl.Name
-			ORDER BY i.PartNumber, p.Name, w.Name, sl.Name
+			ORDER BY i.PartNumber, p.Name, w.Name, sl.Name, inv.Id
 			""",
 			$"""
 			SELECT COUNT(*)
@@ -197,10 +197,52 @@ public sealed class InventoryRepository : DatabaseRepository
 			INNER JOIN StorageLocations sl ON sl.Id = inv.StorageLocationId
 			INNER JOIN Warehouses w ON w.Id = sl.WarehouseId
 			WHERE inv.IsActive = 1 AND i.IsActive = 1 {filter}
-			ORDER BY i.PartNumber, p.Name, w.Name, sl.Name
+			ORDER BY i.PartNumber, p.Name, w.Name, sl.Name, inv.Id
 			""",
 			ReadLookup,
 			0,
+			count,
+			cancellationToken,
+			parameters);
+	}
+
+	public Task<IReadOnlyList<InventoryOverviewItem>> ListOverviewSliceAsync(
+		string? searchText,
+		int offset,
+		int count,
+		CancellationToken cancellationToken)
+	{
+		var search = searchText?.Trim();
+		var hasSearch = !string.IsNullOrWhiteSpace(search);
+		var filter = hasSearch
+			? "AND (i.PartNumber LIKE $Search OR i.Description LIKE $Search OR m.Name LIKE $Search OR c.Name LIKE $Search OR p.Name LIKE $Search OR w.Name LIKE $Search OR sl.Name LIKE $Search)"
+			: string.Empty;
+		var parameters = hasSearch
+			? new[] { Parameter("$Search", $"%{search}%") }
+			: [];
+		return Database.QuerySliceAsync(
+			$"""
+			SELECT inv.Id, i.Id, i.PartNumber, i.Description, m.Name, c.Name,
+			       p.Name, w.Name, sl.Name,
+			       COALESCE(SUM(sm.Quantity), 0) AS CurrentStock,
+			       COALESCE(
+			           SUM(CASE WHEN sm.Quantity > 0 AND sm.UnitPrice IS NOT NULL THEN sm.Quantity * sm.UnitPrice ELSE 0 END)
+			           / NULLIF(SUM(CASE WHEN sm.Quantity > 0 AND sm.UnitPrice IS NOT NULL THEN sm.Quantity ELSE 0 END), 0),
+			           0) AS AverageCost
+			FROM Inventories inv
+			INNER JOIN Items i ON i.Id = inv.ItemId
+			LEFT JOIN Manufacturers m ON m.Id = i.ManufacturerId
+			LEFT JOIN Categories c ON c.Id = i.CategoryId
+			INNER JOIN Purposes p ON p.Id = inv.PurposeId
+			INNER JOIN StorageLocations sl ON sl.Id = inv.StorageLocationId
+			INNER JOIN Warehouses w ON w.Id = sl.WarehouseId
+			LEFT JOIN StockMovements sm ON sm.InventoryId = inv.Id
+			WHERE inv.IsActive = 1 AND i.IsActive = 1 {filter}
+			GROUP BY inv.Id, i.Id, i.PartNumber, i.Description, m.Name, c.Name, p.Name, w.Name, sl.Name
+			ORDER BY i.PartNumber, p.Name, w.Name, sl.Name, inv.Id
+			""",
+			ReadOverview,
+			offset,
 			count,
 			cancellationToken,
 			parameters);
@@ -215,7 +257,7 @@ public sealed class InventoryRepository : DatabaseRepository
 		var parameters = new List<DatabaseParameter> { Parameter("$WarehouseId", warehouseId) };
 		if (itemId is not null) parameters.Add(Parameter("$ItemId", itemId.Value));
 		var quantity = Database.CastToInt64("sm.Quantity");
-		return Database.QueryAsync(
+		return Database.QuerySliceAsync(
 			$"""
 			SELECT inv.Id, inv.ItemId, i.PartNumber, i.Description, w.Name, sl.Name, p.Name,
 			       COALESCE((SELECT SUM({quantity}) FROM StockMovements sm WHERE sm.InventoryId = inv.Id), 0)
@@ -226,7 +268,7 @@ public sealed class InventoryRepository : DatabaseRepository
 			INNER JOIN Warehouses w ON w.Id = sl.WarehouseId
 			WHERE sl.WarehouseId = $WarehouseId {itemFilter}
 			  AND inv.IsActive = 1 AND i.IsActive = 1 AND sl.IsActive = 1 AND w.IsActive = 1
-			ORDER BY i.PartNumber, sl.Name, p.Name;
+			ORDER BY i.PartNumber, sl.Name, p.Name, inv.Id
 			""",
 			reader => new StockTransferInventoryOption
 			{
@@ -239,6 +281,8 @@ public sealed class InventoryRepository : DatabaseRepository
 				PurposeName = reader.GetString(6),
 				CurrentStock = Convert.ToInt64(reader.GetValue(7), System.Globalization.CultureInfo.InvariantCulture)
 			},
+			0,
+			200,
 			cancellationToken,
 			parameters.ToArray());
 	}
@@ -336,17 +380,110 @@ public sealed class InventoryRepository : DatabaseRepository
 			LEFT JOIN StockMovements sm ON sm.InventoryId = inv.Id
 			WHERE inv.IsActive = 1 AND i.IsActive = 1 {filter}
 			GROUP BY inv.Id, i.Id, i.PartNumber, i.Description, m.Name, c.Name, p.Name, w.Name, sl.Name
-			ORDER BY i.PartNumber, p.Name, w.Name, sl.Name;
+			ORDER BY i.PartNumber, p.Name, w.Name, sl.Name, inv.Id;
 			""",
 			ReadOverview,
 			parameters,
 			cancellationToken);
 	}
 
-	public IReadOnlyList<Inventory> GetAll() =>
-		Database.Query(
-			$"SELECT {SelectColumns} FROM Inventories WHERE IsActive = 1 ORDER BY ItemId;",
-			ReadInventory);
+	public Task<InventoryReportSummary?> GetReportSummaryAsync(
+		string? searchText,
+		CancellationToken cancellationToken)
+	{
+		var search = searchText?.Trim();
+		var hasSearch = !string.IsNullOrWhiteSpace(search);
+		var filter = hasSearch
+			? "AND (i.PartNumber LIKE $Search OR i.Description LIKE $Search OR m.Name LIKE $Search OR c.Name LIKE $Search OR p.Name LIKE $Search OR w.Name LIKE $Search OR sl.Name LIKE $Search)"
+			: string.Empty;
+		var parameters = hasSearch
+			? new[] { Parameter("$Search", $"%{search}%") }
+			: [];
+		var quantity = Database.CastToInt64("sm.Quantity");
+		return Database.QuerySingleOrDefaultAsync(
+			$"""
+			SELECT COUNT(*), COUNT(DISTINCT summary.ItemId),
+			       COALESCE(SUM(summary.CurrentStock), 0),
+			       COALESCE(SUM(summary.CurrentStock * summary.AverageCost), 0)
+			FROM
+			(
+				SELECT inv.Id, i.Id AS ItemId,
+				       COALESCE(SUM({quantity}), 0) AS CurrentStock,
+				       COALESCE(
+				           SUM(CASE WHEN sm.Quantity > 0 AND sm.UnitPrice IS NOT NULL THEN {quantity} * sm.UnitPrice ELSE 0 END)
+				           / NULLIF(SUM(CASE WHEN sm.Quantity > 0 AND sm.UnitPrice IS NOT NULL THEN {quantity} ELSE 0 END), 0),
+				           0) AS AverageCost
+				FROM Inventories inv
+				INNER JOIN Items i ON i.Id = inv.ItemId
+				LEFT JOIN Manufacturers m ON m.Id = i.ManufacturerId
+				LEFT JOIN Categories c ON c.Id = i.CategoryId
+				INNER JOIN Purposes p ON p.Id = inv.PurposeId
+				INNER JOIN StorageLocations sl ON sl.Id = inv.StorageLocationId
+				INNER JOIN Warehouses w ON w.Id = sl.WarehouseId
+				LEFT JOIN StockMovements sm ON sm.InventoryId = inv.Id
+				WHERE inv.IsActive = 1 AND i.IsActive = 1 {filter}
+				GROUP BY inv.Id, i.Id
+			) summary;
+			""",
+			ReadReportSummary,
+			cancellationToken,
+			parameters);
+	}
+
+	public Task<IReadOnlyList<GroupedInventoryReportItem>> GetGroupedReportItemsAsync(
+		string? searchText,
+		GroupedInventoryReportType reportType,
+		CancellationToken cancellationToken)
+	{
+		var search = searchText?.Trim();
+		var hasSearch = !string.IsNullOrWhiteSpace(search);
+		var filter = hasSearch
+			? "AND (i.PartNumber LIKE $Search OR i.Description LIKE $Search OR m.Name LIKE $Search OR c.Name LIKE $Search OR p.Name LIKE $Search OR w.Name LIKE $Search OR sl.Name LIKE $Search)"
+			: string.Empty;
+		var parameters = hasSearch
+			? new[] { Parameter("$Search", $"%{search}%") }
+			: [];
+		var groupExpression = reportType switch
+		{
+			GroupedInventoryReportType.Location => "sl.Name",
+			GroupedInventoryReportType.Warehouse => "w.Name",
+			GroupedInventoryReportType.Purpose => "p.Name",
+			GroupedInventoryReportType.Category => "COALESCE(c.Name, 'Uncategorized')",
+			GroupedInventoryReportType.Manufacturer => "COALESCE(m.Name, 'Unspecified Manufacturer')",
+			_ => throw new ArgumentOutOfRangeException(nameof(reportType))
+		};
+		var quantity = Database.CastToInt64("sm.Quantity");
+		return Database.QueryAsync(
+			$"""
+			SELECT summary.GroupName, COUNT(*), COUNT(DISTINCT summary.ItemId),
+			       COALESCE(SUM(summary.CurrentStock), 0),
+			       COALESCE(SUM(summary.CurrentStock * summary.AverageCost), 0)
+			FROM
+			(
+				SELECT inv.Id, i.Id AS ItemId, {groupExpression} AS GroupName,
+				       COALESCE(SUM({quantity}), 0) AS CurrentStock,
+				       COALESCE(
+				           SUM(CASE WHEN sm.Quantity > 0 AND sm.UnitPrice IS NOT NULL THEN {quantity} * sm.UnitPrice ELSE 0 END)
+				           / NULLIF(SUM(CASE WHEN sm.Quantity > 0 AND sm.UnitPrice IS NOT NULL THEN {quantity} ELSE 0 END), 0),
+				           0) AS AverageCost
+				FROM Inventories inv
+				INNER JOIN Items i ON i.Id = inv.ItemId
+				LEFT JOIN Manufacturers m ON m.Id = i.ManufacturerId
+				LEFT JOIN Categories c ON c.Id = i.CategoryId
+				INNER JOIN Purposes p ON p.Id = inv.PurposeId
+				INNER JOIN StorageLocations sl ON sl.Id = inv.StorageLocationId
+				INNER JOIN Warehouses w ON w.Id = sl.WarehouseId
+				LEFT JOIN StockMovements sm ON sm.InventoryId = inv.Id
+				WHERE inv.IsActive = 1 AND i.IsActive = 1 {filter}
+				GROUP BY inv.Id, i.Id, {groupExpression}
+			) summary
+			GROUP BY summary.GroupName
+			ORDER BY summary.GroupName;
+			""",
+			ReadGroupedReportItem,
+			cancellationToken,
+			parameters);
+	}
 
 	public IReadOnlyList<Inventory> GetByItem(long itemId) =>
 		Database.Query(
@@ -451,5 +588,24 @@ public sealed class InventoryRepository : DatabaseRepository
 			TotalStockQuantity = Convert.ToInt32(reader.GetValue(1), System.Globalization.CultureInfo.InvariantCulture),
 			TotalInventoryValue = Convert.ToDecimal(reader.GetValue(2), System.Globalization.CultureInfo.InvariantCulture),
 			TotalMovements = Convert.ToInt32(reader.GetValue(3), System.Globalization.CultureInfo.InvariantCulture)
+		};
+
+	private static InventoryReportSummary ReadReportSummary(DbDataReader reader) =>
+		new()
+		{
+			TotalInventoryRows = Convert.ToInt32(reader.GetValue(0), System.Globalization.CultureInfo.InvariantCulture),
+			TotalItems = Convert.ToInt32(reader.GetValue(1), System.Globalization.CultureInfo.InvariantCulture),
+			TotalStockQuantity = Convert.ToInt32(reader.GetValue(2), System.Globalization.CultureInfo.InvariantCulture),
+			TotalInventoryValue = Convert.ToDecimal(reader.GetValue(3), System.Globalization.CultureInfo.InvariantCulture)
+		};
+
+	private static GroupedInventoryReportItem ReadGroupedReportItem(DbDataReader reader) =>
+		new()
+		{
+			GroupName = reader.GetString(0),
+			InventoryRows = Convert.ToInt32(reader.GetValue(1), System.Globalization.CultureInfo.InvariantCulture),
+			TotalItems = Convert.ToInt32(reader.GetValue(2), System.Globalization.CultureInfo.InvariantCulture),
+			TotalStockQuantity = Convert.ToInt32(reader.GetValue(3), System.Globalization.CultureInfo.InvariantCulture),
+			InventoryValue = Convert.ToDecimal(reader.GetValue(4), System.Globalization.CultureInfo.InvariantCulture)
 		};
 }

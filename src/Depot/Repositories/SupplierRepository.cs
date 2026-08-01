@@ -28,7 +28,19 @@ public sealed class SupplierRepository : DatabaseRepository
 			: hasAccountNumber
 				? new[] { Parameter("$Search", $"%{search}%"), Parameter("$AccountNumber", accountNumber) }
 				: new[] { Parameter("$Search", $"%{search}%") };
-		return Database.QueryAsync($"SELECT {Columns} {From} {filter} ORDER BY s.IsActive DESC, s.Name;", Read, cancellationToken, parameters);
+		return Database.QuerySliceAsync($"SELECT {Columns} {From} {filter} ORDER BY s.IsActive DESC, s.Name, s.Id", Read, 0, 200, cancellationToken, parameters);
+	}
+
+	public Task<IReadOnlyList<Supplier>> SearchActiveSliceAsync(string? searchText, int count, CancellationToken cancellationToken)
+	{
+		var search = searchText?.Trim();
+		var filter = string.IsNullOrWhiteSpace(search)
+			? string.Empty
+			: "AND (s.Name LIKE $Search OR s.CustomerNumber LIKE $Search OR s.Contact LIKE $Search)";
+		var parameters = string.IsNullOrWhiteSpace(search)
+			? []
+			: new[] { Parameter("$Search", $"%{search}%") };
+		return Database.QuerySliceAsync($"SELECT {Columns} {From} WHERE s.IsActive = 1 {filter} ORDER BY s.Name, s.Id", Read, 0, count, cancellationToken, parameters);
 	}
 
 	public Task<IReadOnlyList<Supplier>> ListActiveAsync(CancellationToken cancellationToken) =>

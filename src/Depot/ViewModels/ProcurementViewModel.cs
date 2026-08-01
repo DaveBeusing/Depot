@@ -18,6 +18,8 @@ public sealed class ProcurementViewModel : BaseViewModel, IDisposable
 	private readonly IFileDialogService _fileDialogs;
 	private readonly ReasonCodeService _reasonCodes;
 	private readonly AsyncDebouncer _search = new(TimeSpan.FromMilliseconds(300));
+	private readonly AsyncDebouncer _supplierSearch = new(TimeSpan.FromMilliseconds(300));
+	private readonly AsyncDebouncer _itemSearch = new(TimeSpan.FromMilliseconds(300));
 	private PurchaseOrder? _selectedOrder;
 	private PurchaseOrder _draft = NewOrderDraft();
 	private PurchaseOrderLine? _selectedLine;
@@ -32,6 +34,8 @@ public sealed class ProcurementViewModel : BaseViewModel, IDisposable
 	private GoodsReceipt? _selectedReceipt;
 	private ReasonCode? _selectedReversalReasonCode;
 	private string _reversalReason = string.Empty;
+	private string _supplierSearchText = string.Empty;
+	private string _itemSearchText = string.Empty;
 
 	public ProcurementViewModel(PurchaseOrderService orders, GoodsReceiptService receipts, SupplierService suppliers, ItemService items, IFileDialogService fileDialogs, ReasonCodeService reasonCodes)
 	{
@@ -73,6 +77,8 @@ public sealed class ProcurementViewModel : BaseViewModel, IDisposable
 	public string SaveLineText => SelectedLine is null ? "Add Line" : "Update Line";
 
 	public string SearchText { get => _searchText; set { if (_searchText == value) return; _searchText = value; OnPropertyChanged(); _ = _search.DebounceAsync(LoadOrdersAsync); } }
+	public string SupplierSearchText { get => _supplierSearchText; set { if (_supplierSearchText == value) return; _supplierSearchText = value; OnPropertyChanged(); _ = _supplierSearch.DebounceAsync(LoadSupplierOptionsAsync); } }
+	public string ItemSearchText { get => _itemSearchText; set { if (_itemSearchText == value) return; _itemSearchText = value; OnPropertyChanged(); _ = _itemSearch.DebounceAsync(LoadItemOptionsAsync); } }
 	public PurchaseOrderStatusFilter SelectedStatusFilter { get => _selectedStatusFilter; set { if (_selectedStatusFilter == value) return; _selectedStatusFilter = value; OnPropertyChanged(); _ = LoadOrdersAsync(); } }
 	public PurchaseOrder? SelectedOrder
 	{
@@ -105,13 +111,13 @@ public sealed class ProcurementViewModel : BaseViewModel, IDisposable
 		BeginOperation("Loading purchase orders");
 		try
 		{
-			var suppliersTask = _suppliers.GetActiveAsync(cancellationToken);
-			var itemsTask = _items.SearchItemsAsync(null, 1, 200, cancellationToken);
+			var suppliersTask = _suppliers.SearchActiveAsync(SupplierSearchText, 50, cancellationToken);
+			var itemsTask = _items.SearchItemsAsync(ItemSearchText, 1, 50, cancellationToken);
 			var ordersTask = _orders.SearchAsync(SearchText, SelectedStatusFilter.Status, 1, 100, cancellationToken);
 			var reasonCodesTask = _reasonCodes.GetActiveAsync(cancellationToken);
 			await Task.WhenAll(suppliersTask, itemsTask, ordersTask, reasonCodesTask);
-			Suppliers.Clear(); foreach (var supplier in await suppliersTask) Suppliers.Add(supplier);
-			Items.Clear(); foreach (var item in (await itemsTask).Items) Items.Add(item);
+			ReplaceOptions(Suppliers, await suppliersTask);
+			ReplaceOptions(Items, (await itemsTask).Items);
 			ReversalReasonCodes.Clear(); foreach (var reasonCode in await reasonCodesTask) ReversalReasonCodes.Add(reasonCode);
 			ReplaceOrders((await ordersTask).Items); CompleteOperation(Orders.Count == 0, $"{Orders.Count:N0} purchase orders");
 		}
@@ -124,12 +130,34 @@ public sealed class ProcurementViewModel : BaseViewModel, IDisposable
 		catch (Exception exception) when (exception is not OperationCanceledException) { FailOperation(exception, "Purchase orders could not be loaded"); }
 	}
 
+	private async Task LoadSupplierOptionsAsync(CancellationToken cancellationToken = default)
+	{
+		try { ReplaceOptions(Suppliers, await _suppliers.SearchActiveAsync(SupplierSearchText, 50, cancellationToken)); }
+		catch (Exception exception) when (exception is not OperationCanceledException) { FailOperation(exception, "Supplier options could not be loaded"); }
+	}
+
+	private async Task LoadItemOptionsAsync(CancellationToken cancellationToken = default)
+	{
+		try
+		{
+			var page = await _items.SearchItemsAsync(ItemSearchText, 1, 50, cancellationToken);
+			ReplaceOptions(Items, page.Items);
+			if (SelectedItem is not null && Items.All(item => item.Id != SelectedItem.Id)) SelectedItem = null;
+		}
+		catch (Exception exception) when (exception is not OperationCanceledException) { FailOperation(exception, "Item options could not be loaded"); }
+	}
+
 	private async Task SelectOrderAsync(PurchaseOrder? order)
 	{
 		if (order is null) { Draft = NewOrderDraft(); Lines.Clear(); ReceiptLines.Clear(); GoodsReceipts.Clear(); SelectedReceipt = null; return; }
 		try
 		{
 			var details = await _orders.GetByIdAsync(order.Id) ?? throw new InvalidOperationException("Purchase order was not found.");
+			if (Suppliers.All(supplier => supplier.Id != details.SupplierId))
+			{
+				var supplier = await _suppliers.GetByIdAsync(details.SupplierId);
+				if (supplier is not null) Suppliers.Add(supplier);
+			}
 			Draft = Copy(details); Lines.Clear(); foreach (var line in details.Lines) Lines.Add(Copy(line));
 			OnPropertyChanged(nameof(EditorTitle)); OnPropertyChanged(nameof(CanReceive)); RaiseCommands();
 			await Task.WhenAll(BuildReceiptLinesAsync(details), LoadReceiptsAsync(details.Id));
@@ -174,10 +202,14 @@ public sealed class ProcurementViewModel : BaseViewModel, IDisposable
 	{
 		ReceiptLines.Clear(); SupplierDeliveryNoteNumber = string.Empty; ReceiptDate = DateTime.Today; ReceiptNotes = null;
 		if (order.Status is not (PurchaseOrderStatus.Ordered or PurchaseOrderStatus.PartiallyReceived)) return;
-		foreach (var line in order.Lines.Where(line => line.OpenQuantity > 0))
+		var openLines = order.Lines.Where(line => line.OpenQuantity > 0).ToArray();
+		var optionsByItem = (await _receipts.GetInventoryOptionsAsync(openLines.Select(line => line.ItemId)))
+			.GroupBy(option => option.ItemId)
+			.ToDictionary(group => group.Key, group => group.ToArray());
+		foreach (var line in openLines)
 		{
 			var editor = new GoodsReceiptLineEditor(line);
-			foreach (var option in await _receipts.GetInventoryOptionsAsync(line.ItemId)) editor.InventoryOptions.Add(option);
+			foreach (var option in optionsByItem.GetValueOrDefault(line.ItemId) ?? []) editor.InventoryOptions.Add(option);
 			editor.SelectedInventory = editor.InventoryOptions.FirstOrDefault(); ReceiptLines.Add(editor);
 		}
 	}
@@ -235,13 +267,20 @@ public sealed class ProcurementViewModel : BaseViewModel, IDisposable
 		catch (Exception exception) when (exception is not OperationCanceledException) { FailOperation(exception, "Goods receipt could not be reversed"); }
 	}
 
-	private void ReplaceOrders(IReadOnlyList<PurchaseOrder> values) { var id = SelectedOrder?.Id; Orders.Clear(); foreach (var value in values) Orders.Add(value); var selected = Orders.FirstOrDefault(value => value.Id == id); _selectedOrder = null; OnPropertyChanged(nameof(SelectedOrder)); if (selected is not null) SelectedOrder = selected; }
+	private void ReplaceOrders(IReadOnlyList<PurchaseOrder> values) { var id = SelectedOrder?.Id; CollectionSynchronizer.Replace(Orders, values); var selected = Orders.FirstOrDefault(value => value.Id == id); _selectedOrder = null; OnPropertyChanged(nameof(SelectedOrder)); if (selected is not null) SelectedOrder = selected; }
+	private static void ReplaceOptions<T>(ObservableCollection<T> target, IReadOnlyList<T> values)
+	{
+		var sharedCount = Math.Min(target.Count, values.Count);
+		for (var index = 0; index < sharedCount; index++) target[index] = values[index];
+		while (target.Count > values.Count) target.RemoveAt(target.Count - 1);
+		for (var index = sharedCount; index < values.Count; index++) target.Add(values[index]);
+	}
 	private void RaiseCommands() { SaveOrderCommand.RaiseCanExecuteChanged(); MarkOrderedCommand.RaiseCanExecuteChanged(); CancelOrderCommand.RaiseCanExecuteChanged(); AddLineCommand.RaiseCanExecuteChanged(); RemoveLineCommand.RaiseCanExecuteChanged(); PostReceiptCommand.RaiseCanExecuteChanged(); ReverseReceiptCommand.RaiseCanExecuteChanged(); }
 	private static PurchaseOrder NewOrderDraft() => new() { OrderDate = DateTime.Today, ExpectedDeliveryDate = DateTime.Today.AddDays(7) };
 	private static PurchaseOrder Copy(PurchaseOrder value) => new() { Id = value.Id, OrderNumber = value.OrderNumber, SupplierId = value.SupplierId, SupplierName = value.SupplierName, OrderDate = value.OrderDate, ExpectedDeliveryDate = value.ExpectedDeliveryDate, Notes = value.Notes, Status = value.Status, Version = value.Version, Lines = value.Lines.Select(Copy).ToArray() };
 	private static PurchaseOrderLine Copy(PurchaseOrderLine value) => new() { Id = value.Id, PurchaseOrderId = value.PurchaseOrderId, LineNumber = value.LineNumber, ItemId = value.ItemId, ItemPartNumber = value.ItemPartNumber, ItemDescription = value.ItemDescription, Quantity = value.Quantity, UnitPrice = value.UnitPrice, ReceivedQuantity = value.ReceivedQuantity, Version = value.Version };
 	private static string StatusLabel(PurchaseOrderStatus status) => status switch { PurchaseOrderStatus.PartiallyReceived => "Partially Received", _ => status.ToString() };
-	public void Dispose() { _search.Dispose(); SaveOrderCommand.Dispose(); MarkOrderedCommand.Dispose(); CancelOrderCommand.Dispose(); PostReceiptCommand.Dispose(); ReverseReceiptCommand.Dispose(); }
+	public void Dispose() { _search.Dispose(); _supplierSearch.Dispose(); _itemSearch.Dispose(); SaveOrderCommand.Dispose(); MarkOrderedCommand.Dispose(); CancelOrderCommand.Dispose(); PostReceiptCommand.Dispose(); ReverseReceiptCommand.Dispose(); }
 }
 
 public sealed record PurchaseOrderStatusFilter(string Name, PurchaseOrderStatus? Status);

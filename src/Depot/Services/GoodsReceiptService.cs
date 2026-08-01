@@ -116,6 +116,11 @@ public sealed class GoodsReceiptService
 		CancellationToken cancellationToken = default) =>
 		_receipts.ListInventoryOptionsAsync(itemId, cancellationToken);
 
+	public Task<IReadOnlyList<ReceiptInventoryOption>> GetInventoryOptionsAsync(
+		IEnumerable<long> itemIds,
+		CancellationToken cancellationToken = default) =>
+		_receipts.ListInventoryOptionsByItemIdsAsync(itemIds, cancellationToken);
+
 	public async Task<GoodsReceipt> PostAsync(
 		GoodsReceipt receipt,
 		CancellationToken cancellationToken = default)

@@ -72,7 +72,7 @@ public sealed class ItemRepository : DatabaseRepository
 			? new[] { Parameter("$Search", $"%{search}%") }
 			: [];
 		return Database.QueryPageAsync(
-			$"SELECT {SelectColumns} {SelectFrom} WHERE {filter} ORDER BY i.PartNumber",
+			$"SELECT {SelectColumns} {SelectFrom} WHERE {filter} ORDER BY i.PartNumber, i.Id",
 			$"SELECT COUNT(*) {SelectFrom} WHERE {filter};",
 			ReadItem,
 			pageNumber,
@@ -157,8 +157,6 @@ public sealed class ItemRepository : DatabaseRepository
 			""",
 			Parameter("$Id", id),
 			Parameter("$Version", version)) == 1;
-
-	public IReadOnlyList<Item> GetAll() => SearchActive(null);
 
 	public IReadOnlyList<Item> SearchActive(string? searchText)
 	{

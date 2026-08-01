@@ -34,11 +34,6 @@ public sealed class ItemService
 		_supplierItems = supplierItems;
 	}
 
-	public IReadOnlyList<Item> GetItems()
-	{
-		return _itemRepository.GetAll();
-	}
-
 	public IReadOnlyList<Item> SearchItems(
 		string? searchText)
 	{

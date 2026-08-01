@@ -210,7 +210,7 @@ public sealed class StockMovementRepository : DatabaseRepository
 			INNER JOIN Warehouses w ON w.Id = sl.WarehouseId
 			LEFT JOIN ReasonCodes rc ON rc.Id = sm.ReasonCodeId
 			{filter}
-			ORDER BY sm.TimestampUtc DESC
+			ORDER BY sm.TimestampUtc DESC, sm.Id DESC
 			""",
 			$"""
 			SELECT COUNT(*) FROM StockMovements sm
@@ -255,7 +255,7 @@ public sealed class StockMovementRepository : DatabaseRepository
 		int count,
 		CancellationToken cancellationToken) =>
 		Database.QuerySliceAsync(
-			$"SELECT {QualifiedSelectColumns}, rc.Name FROM StockMovements sm LEFT JOIN ReasonCodes rc ON rc.Id = sm.ReasonCodeId WHERE sm.InventoryId = $InventoryId ORDER BY sm.TimestampUtc DESC",
+			$"SELECT {QualifiedSelectColumns}, rc.Name FROM StockMovements sm LEFT JOIN ReasonCodes rc ON rc.Id = sm.ReasonCodeId WHERE sm.InventoryId = $InventoryId ORDER BY sm.TimestampUtc DESC, sm.Id DESC",
 			ReadMovementWithReason,
 			0,
 			count,
@@ -276,7 +276,7 @@ public sealed class StockMovementRepository : DatabaseRepository
 			INNER JOIN StorageLocations sl ON sl.Id = inv.StorageLocationId
 			INNER JOIN Warehouses w ON w.Id = sl.WarehouseId
 			LEFT JOIN ReasonCodes rc ON rc.Id = sm.ReasonCodeId
-			ORDER BY sm.TimestampUtc DESC
+			ORDER BY sm.TimestampUtc DESC, sm.Id DESC
 			""",
 			ReadDashboardMovement,
 			0,
@@ -307,8 +307,6 @@ public sealed class StockMovementRepository : DatabaseRepository
 
 	public long CreateAtomic(StockMovement movement, AuditEntry auditEntry)
 		=> CreateAtomicCore(movement, auditEntry);
-
-	public IReadOnlyList<StockMovement> GetAll() => Search(null);
 
 	public IReadOnlyList<StockMovement> Search(string? searchText)
 	{

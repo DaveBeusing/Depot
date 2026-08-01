@@ -123,7 +123,12 @@
 			</controls:Card.Header>
 
 			<Grid>
+				<Grid.RowDefinitions>
+					<RowDefinition Height="*" />
+					<RowDefinition Height="Auto" />
+				</Grid.RowDefinitions>
 				<DataGrid
+					Grid.Row="0"
 					ItemsSource="{Binding InventoryValueItems}"
 					Style="{StaticResource AppDataGridStyle}"
 					Visibility="{Binding ShowInventoryValueRows, Converter={StaticResource BooleanToVisibilityConverter}}">
@@ -140,6 +145,7 @@
 				</DataGrid>
 
 				<DataGrid
+					Grid.Row="0"
 					ItemsSource="{Binding GroupedItems}"
 					Style="{StaticResource AppDataGridStyle}"
 					Visibility="{Binding ShowGroupedRows, Converter={StaticResource BooleanToVisibilityConverter}}">
@@ -153,9 +159,21 @@
 				</DataGrid>
 
 				<controls:EmptyState
+					Grid.Row="0"
 					Title="No report data"
 					Description="{Binding EmptyReportMessage}"
 					Visibility="{Binding HasNoReportRows, Converter={StaticResource BooleanToVisibilityConverter}}" />
+
+				<StackPanel
+					Grid.Row="1"
+					Margin="0,16,0,0"
+					HorizontalAlignment="Right"
+					Orientation="Horizontal"
+					Visibility="{Binding ShowPaging, Converter={StaticResource BooleanToVisibilityConverter}}">
+					<Button Command="{Binding PreviousPageCommand}" Content="Previous" Style="{StaticResource SecondaryButtonStyle}" />
+					<TextBlock Margin="16,0" VerticalAlignment="Center" Text="{Binding PageDisplay}" Style="{StaticResource CaptionStyle}" />
+					<Button Command="{Binding NextPageCommand}" Content="Next" Style="{StaticResource SecondaryButtonStyle}" />
+				</StackPanel>
 			</Grid>
 		</controls:Card>
 	</Grid>

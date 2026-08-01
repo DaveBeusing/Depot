@@ -40,9 +40,6 @@ public sealed class ReasonCodeRepository : DatabaseRepository
 			Read,
 			cancellationToken);
 
-	public IReadOnlyList<ReasonCode> GetAll() =>
-		Database.Query($"SELECT {Columns} FROM ReasonCodes ORDER BY Name, Code;", Read);
-
 	public Task<ReasonCode?> GetByIdAsync(long id, CancellationToken cancellationToken) =>
 		Database.QuerySingleOrDefaultAsync(
 			$"SELECT {Columns} FROM ReasonCodes WHERE Id = $Id;",

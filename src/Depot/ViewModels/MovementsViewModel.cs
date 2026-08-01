@@ -206,8 +206,7 @@ public sealed class MovementsViewModel : BaseViewModel, IDisposable
 			PageNumber,
 			PageSize,
 			cancellationToken);
-		Items.Clear();
-		foreach (var movement in page.Items) Items.Add(new MovementOverviewItemViewModel(movement));
+		CollectionSynchronizer.Replace(Items, page.Items.Select(movement => new MovementOverviewItemViewModel(movement)).ToArray());
 		TotalCount = page.TotalCount;
 		OnPropertyChanged(nameof(HasItems));
 		OnPropertyChanged(nameof(HasNoItems));

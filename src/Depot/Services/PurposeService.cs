@@ -23,11 +23,6 @@ public sealed class PurposeService
 		_auditService = auditService;
 	}
 
-	public IReadOnlyList<Purpose> GetPurposes()
-	{
-		return _purposeRepository.GetAll();
-	}
-
 	public Purpose CreatePurpose(
 		string name,
 		string? description)

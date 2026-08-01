@@ -47,7 +47,8 @@ SQL Server and MySQL/MariaDB support is implemented in code, but live-server mig
 - Most interactive list loading is asynchronous and cancellable.
 - Items, inventory, movements, users, and purchase-order searches use server-side paging infrastructure.
 - Search debounce is used across the main large-data and master-data screens.
-- Some legacy service/report paths still call synchronous `GetAll()` methods or materialize complete data sets.
+- Productive list and report paths no longer use synchronous, unbounded `GetAll()` reads against remote databases.
+- Inventory reports use server-side paging and aggregation; large Excel exports read deterministic database slices and report progress.
 - The purchase-order screen currently loads a bounded server-side page without full user-facing page navigation.
 - Audit records are persisted, but there is no administration UI for browsing or exporting the audit trail.
 - General application preferences remain a placeholder; database and backup settings are implemented separately.
@@ -153,6 +154,7 @@ Depot uses Semantic Versioning from `Directory.Build.props`. Application release
 - [Roadmap](docs/Roadmap.md)
 - [Version 1.0 release checklist](docs/RELEASE_1_0.md)
 - [Versioning](docs/VERSIONING.md)
+- [Data-access audit](docs/DATA_ACCESS_AUDIT.md)
 
 ## License
 

@@ -685,8 +685,7 @@ public sealed class StockTransfersViewModel : BaseViewModel, IDisposable
 
 	private static void Replace<T>(ObservableCollection<T> target, IEnumerable<T> values)
 	{
-		target.Clear();
-		foreach (var value in values) target.Add(value);
+		CollectionSynchronizer.Replace(target, values as IReadOnlyList<T> ?? values.ToArray());
 	}
 
 	private static StockTransfer NewDraft() => new() { TransferDate = DateTime.Today };

@@ -39,9 +39,6 @@ public sealed class StorageLocationRepository : DatabaseRepository
 			Read,
 			cancellationToken);
 
-	public IReadOnlyList<StorageLocation> GetAll() =>
-		Database.Query($"SELECT {Columns} FROM StorageLocations ORDER BY WarehouseId, Name;", Read);
-
 	public Task<StorageLocation?> GetByIdAsync(long id, CancellationToken cancellationToken) =>
 		Database.QuerySingleOrDefaultAsync(
 			$"SELECT {Columns} FROM StorageLocations WHERE Id = $Id;",

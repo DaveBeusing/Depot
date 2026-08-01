@@ -61,11 +61,6 @@ public sealed class PurposeRepository : DatabaseRepository
 			Parameter("$Id", id),
 			Parameter("$Version", version)) == 1;
 
-	public IReadOnlyList<Purpose> GetAll() =>
-		Database.Query(
-			$"SELECT {SelectColumns} FROM Purposes WHERE IsActive = 1 ORDER BY Name;",
-			ReadPurpose);
-
 	public Purpose? GetById(long id) =>
 		Database.QuerySingleOrDefault(
 			$"SELECT {SelectColumns} FROM Purposes WHERE Id = $Id;",

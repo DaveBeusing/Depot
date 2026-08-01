@@ -94,20 +94,11 @@ internal sealed class ServiceComposition
 		Movements = new MovementService(
 			repositories.Items,
 			repositories.Inventories,
-			repositories.Purposes,
-			repositories.StorageLocations,
-			repositories.Warehouses,
 			repositories.ReasonCodes,
 			repositories.StockMovements,
 			audit,
 			movementReversals);
-		Stock = new StockService(
-			repositories.Items,
-			repositories.Inventories,
-			repositories.Purposes,
-			repositories.StorageLocations,
-			repositories.Warehouses,
-			repositories.StockMovements);
+		Stock = new StockService(repositories.Inventories, repositories.StockMovements);
 		Reports = new ReportService(Stock);
 		var inventoryManagement = new InventoryManagementService(repositories.Inventories, audit);
 		Import = new ImportService(

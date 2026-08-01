@@ -104,8 +104,7 @@ public sealed class InventoryViewModel : BaseViewModel, IDisposable
 				PageNumber,
 				PageSize,
 				cancellationToken);
-			Items.Clear();
-			foreach (var item in page.Items) Items.Add(new InventoryOverviewItemViewModel(item));
+			CollectionSynchronizer.Replace(Items, page.Items.Select(item => new InventoryOverviewItemViewModel(item)).ToArray());
 			TotalCount = page.TotalCount;
 			SelectedItem = selectedId is null
 				? null

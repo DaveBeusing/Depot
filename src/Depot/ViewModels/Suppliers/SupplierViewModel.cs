@@ -126,9 +126,8 @@ public sealed class SupplierViewModel : BaseViewModel, IDisposable
 
 	private async Task LoadSupplierItemsAsync(CancellationToken cancellationToken = default)
 	{
-		SupplierItems.Clear();
-		if (SelectedSupplier is null) return;
-		try { foreach (var value in await _supplierItemService.SearchAsync(SelectedSupplier.Id, SupplierItemSearchText, cancellationToken)) SupplierItems.Add(value); }
+		if (SelectedSupplier is null) { CollectionSynchronizer.Replace(SupplierItems, Array.Empty<SupplierItem>()); return; }
+		try { var values = await _supplierItemService.SearchAsync(SelectedSupplier.Id, SupplierItemSearchText, cancellationToken); CollectionSynchronizer.Replace(SupplierItems, values); }
 		catch (Exception exception) when (exception is not OperationCanceledException) { FailOperation(exception, "Supplier items could not be loaded"); }
 	}
 
@@ -137,7 +136,7 @@ public sealed class SupplierViewModel : BaseViewModel, IDisposable
 		try
 		{
 			var page = await _itemService.SearchItemsAsync(ItemSearchText, 1, 50, cancellationToken);
-			ItemOptions.Clear(); foreach (var item in page.Items) ItemOptions.Add(item);
+			CollectionSynchronizer.Replace(ItemOptions, page.Items);
 			if (SupplierItemDraft.ItemId > 0) SelectedItemOption = ItemOptions.FirstOrDefault(item => item.Id == SupplierItemDraft.ItemId);
 		}
 		catch (Exception exception) when (exception is not OperationCanceledException) { FailOperation(exception, "Items could not be loaded"); }
@@ -189,7 +188,7 @@ public sealed class SupplierViewModel : BaseViewModel, IDisposable
 		try { Process.Start(new ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true }); }
 		catch (Exception exception) { FailOperation(exception, "Supplier URL could not be opened"); }
 	}
-	private void ReplaceSuppliers(IReadOnlyList<Supplier> values) { var selectedId = SelectedSupplier?.Id; Suppliers.Clear(); foreach (var value in values) Suppliers.Add(value); SelectedSupplier = Suppliers.FirstOrDefault(value => value.Id == selectedId); }
+	private void ReplaceSuppliers(IReadOnlyList<Supplier> values) { var selectedId = SelectedSupplier?.Id; CollectionSynchronizer.Replace(Suppliers, values); SelectedSupplier = Suppliers.FirstOrDefault(value => value.Id == selectedId); }
 	private void ReplaceSupplier(Supplier value) { var existing = Suppliers.FirstOrDefault(item => item.Id == value.Id); if (existing is null) Suppliers.Add(value); else Suppliers[Suppliers.IndexOf(existing)] = value; }
 
 	private static Supplier NewSupplierDraft() => new();

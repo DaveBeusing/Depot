@@ -117,8 +117,7 @@ public sealed class UserViewModel : BaseViewModel, IDisposable
 				PageNumber,
 				PageSize,
 				cancellationToken);
-			Users.Clear();
-			foreach (var user in page.Items) Users.Add(new UserListItemViewModel(user));
+			CollectionSynchronizer.Replace(Users, page.Items.Select(user => new UserListItemViewModel(user)).ToArray());
 			TotalCount = page.TotalCount;
 			SelectedUser = selectedId is null ? null : Users.FirstOrDefault(x => x.Id == selectedId);
 			CompleteOperation(Users.Count == 0, $"{page.TotalCount:N0} users");

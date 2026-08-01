@@ -27,8 +27,6 @@ public sealed class UserService
 		_auditService = auditService;
 	}
 
-	public IReadOnlyList<User> GetUsers() => _userRepository.GetAll();
-
 	public Task<PageResult<User>> SearchUsersAsync(
 		string? searchText,
 		int pageNumber,

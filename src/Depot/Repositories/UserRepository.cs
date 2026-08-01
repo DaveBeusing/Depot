@@ -30,7 +30,7 @@ public sealed class UserRepository : DatabaseRepository
 		var filter = hasSearch ? "WHERE Email LIKE $Search OR DisplayName LIKE $Search" : string.Empty;
 		var parameters = hasSearch ? new[] { Parameter("$Search", $"%{search}%") } : [];
 		return Database.QueryPageAsync(
-			$"SELECT {SelectColumns} FROM Users {filter} ORDER BY IsActive DESC, Email",
+			$"SELECT {SelectColumns} FROM Users {filter} ORDER BY IsActive DESC, Email, Id",
 			$"SELECT COUNT(*) FROM Users {filter};",
 			ReadUser,
 			pageNumber,
@@ -124,11 +124,6 @@ public sealed class UserRepository : DatabaseRepository
 			Parameter("$Id", id),
 			Parameter("$IsActive", isActive),
 			Parameter("$Version", version)) == 1;
-
-	public IReadOnlyList<User> GetAll() =>
-		Database.Query(
-			$"SELECT {SelectColumns} FROM Users ORDER BY IsActive DESC, Email;",
-			ReadUser);
 
 	public User? GetByEmail(string email)
 	{

@@ -66,7 +66,7 @@ Repositories own SQL, data mapping, and persistence operations. They use the sha
 - transient write-conflict retries;
 - provider-specific locking statements.
 
-The intended direction is fully asynchronous access. That migration is incomplete because some services and reports still use synchronous `GetAll()` calls or fully materialized collections.
+Productive list and report paths are asynchronous and do not use unbounded synchronous `GetAll()` reads. Obsolete `GetAll()` APIs were removed. Small reference-data choices remain deliberately bounded or cached.
 
 ## Database providers
 
@@ -192,4 +192,4 @@ SQLite maintenance and backup/restore are integration-tested. Live SQL Server an
 
 Implemented infrastructure includes asynchronous commands, cancellation, shared loading/error states, debounced server-side search, page queries, slice queries, caching for selected reference data, and streaming APIs.
 
-Items, inventory, movements, users, and purchase orders use bounded or paged server queries in their main list paths. Some older stock, movement, purpose, user, and report operations still use synchronous full-table reads. Therefore readiness for 100,000+ records is a target under active work, not a verified capability.
+Items, inventory, movements, users, purchase orders, transfers, and inventory counts use bounded or paged server queries. Report summaries and groups are aggregated by the database; inventory-value exports read deterministic 500-row slices with cancellation and progress. Readiness for 100,000+ records remains an acceptance target because ClosedXML retains the generated workbook and live-server load tests are outstanding. See `DATA_ACCESS_AUDIT.md` for the path classification.

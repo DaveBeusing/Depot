@@ -19,6 +19,7 @@ public sealed class ReportsViewModel
 	private const string StockByPurposeReportName = "Stock by Purpose";
 	private const string StockByCategoryReportName = "Stock by Category";
 	private const string StockByManufacturerReportName = "Stock by Manufacturer";
+	private const int PageSize = 100;
 
 	private readonly ReportService _reportService;
 	private readonly IFileDialogService _fileDialogService;
@@ -33,6 +34,8 @@ public sealed class ReportsViewModel
 	private int _totalItems;
 	private int _totalStockQuantity;
 	private decimal _totalInventoryValue;
+	private int _pageNumber = 1;
+	private long _totalCount;
 
 	public ReportsViewModel(
 		ReportService reportService,
@@ -61,9 +64,13 @@ public sealed class ReportsViewModel
 			new AsyncRelayCommand(
 				ExportAsync,
 				CanExport);
+		PreviousPageCommand = new AsyncRelayCommand(PreviousPageAsync, () => PageNumber > 1);
+		NextPageCommand = new AsyncRelayCommand(NextPageAsync, () => HasNextPage);
 	}
 
 	public AsyncRelayCommand ExportCommand { get; }
+	public AsyncRelayCommand PreviousPageCommand { get; }
+	public AsyncRelayCommand NextPageCommand { get; }
 
 	public ObservableCollection<string> ReportOptions { get; }
 
@@ -90,6 +97,7 @@ public sealed class ReportsViewModel
 
 			_selectedReport =
 				value;
+			SetPage(1, 0);
 
 			OnPropertyChanged();
 			OnPropertyChanged(
@@ -121,6 +129,16 @@ public sealed class ReportsViewModel
 	public bool IsGroupedReportSelected =>
 		!IsInventoryValueReportSelected;
 
+	public int PageNumber => _pageNumber;
+
+	public long TotalCount => _totalCount;
+
+	public bool HasNextPage => IsInventoryValueReportSelected && (long)PageNumber * PageSize < TotalCount;
+
+	public bool ShowPaging => IsInventoryValueReportSelected && TotalCount > PageSize;
+
+	public string PageDisplay => $"Page {PageNumber} · {TotalCount:N0} rows";
+
 	private ReportDefinition SelectedReportDefinition =>
 		_reportDefinitions[SelectedReport];
 
@@ -137,6 +155,7 @@ public sealed class ReportsViewModel
 
 			_searchText =
 				value;
+			SetPage(1, 0);
 
 			OnPropertyChanged();
 
@@ -298,8 +317,10 @@ public sealed class ReportsViewModel
 	private async Task LoadInventoryValueReportAsync(CancellationToken cancellationToken)
 	{
 		var report =
-			await _reportService.GetInventoryValueReportAsync(
+			await _reportService.GetInventoryValueReportPageAsync(
 				SearchText,
+				PageNumber,
+				PageSize,
 				cancellationToken);
 
 		ApplyTotals(
@@ -308,15 +329,17 @@ public sealed class ReportsViewModel
 			report.TotalStockQuantity,
 			report.TotalInventoryValue);
 
-		InventoryValueItems.Clear();
+		SetPage(report.PageNumber, report.TotalCount);
+		ReplaceInventoryValueItems(report.Items.Select(item => new InventoryValueReportItemViewModel(item)).ToArray());
 		GroupedItems.Clear();
+	}
 
-		foreach (var item in report.Items)
-		{
-			InventoryValueItems.Add(
-				new InventoryValueReportItemViewModel(
-					item));
-		}
+	private void ReplaceInventoryValueItems(IReadOnlyList<InventoryValueReportItemViewModel> items)
+	{
+		var sharedCount = Math.Min(InventoryValueItems.Count, items.Count);
+		for (var index = 0; index < sharedCount; index++) InventoryValueItems[index] = items[index];
+		while (InventoryValueItems.Count > items.Count) InventoryValueItems.RemoveAt(InventoryValueItems.Count - 1);
+		for (var index = sharedCount; index < items.Count; index++) InventoryValueItems.Add(items[index]);
 	}
 
 	private async Task LoadGroupedInventoryReportAsync(
@@ -384,6 +407,33 @@ public sealed class ReportsViewModel
 		return HasReportRows;
 	}
 
+	private async Task PreviousPageAsync(CancellationToken cancellationToken)
+	{
+		if (PageNumber <= 1) return;
+		SetPage(PageNumber - 1, TotalCount);
+		await LoadAsync(cancellationToken);
+	}
+
+	private async Task NextPageAsync(CancellationToken cancellationToken)
+	{
+		if (!HasNextPage) return;
+		SetPage(PageNumber + 1, TotalCount);
+		await LoadAsync(cancellationToken);
+	}
+
+	private void SetPage(int pageNumber, long totalCount)
+	{
+		_pageNumber = pageNumber;
+		_totalCount = totalCount;
+		OnPropertyChanged(nameof(PageNumber));
+		OnPropertyChanged(nameof(TotalCount));
+		OnPropertyChanged(nameof(HasNextPage));
+		OnPropertyChanged(nameof(ShowPaging));
+		OnPropertyChanged(nameof(PageDisplay));
+		PreviousPageCommand?.RaiseCanExecuteChanged();
+		NextPageCommand?.RaiseCanExecuteChanged();
+	}
+
 	private async Task ExportAsync(CancellationToken cancellationToken)
 	{
 		var filePath = _fileDialogService.ShowSaveFile(
@@ -402,15 +452,23 @@ public sealed class ReportsViewModel
 		{
 			BeginOperation("Exporting report...");
 
+			var progress = new Progress<ReportExportProgress>(value =>
+				SetExportStatus($"Exporting {value.ProcessedRows:N0} of {value.TotalRows:N0} rows ({value.Percentage}%)", false));
 			await SelectedReportDefinition.Export(
 				SearchText,
 				filePath,
+				progress,
 				cancellationToken);
 
 			SetExportStatus(
 				$"Exported to {filePath}",
 				isError: false);
 			CompleteOperation(statusText: "Report exported.");
+		}
+		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+		{
+			SetExportStatus("Export cancelled.", isError: false);
+			CompleteOperation(statusText: "Export cancelled.");
 		}
 		catch (Exception ex)
 		{
@@ -467,10 +525,11 @@ public sealed class ReportsViewModel
 				"Inventory Value Report.xlsx",
 				isInventoryValueReport: true,
 				LoadInventoryValueReportAsync,
-				(searchText, filePath, cancellationToken) =>
+				(searchText, filePath, progress, cancellationToken) =>
 					_reportService.ExportInventoryValueReportAsync(
 						searchText,
 						filePath,
+						progress,
 						cancellationToken)),
 
 			new ReportDefinition(
@@ -525,14 +584,15 @@ public sealed class ReportsViewModel
 		};
 	}
 
-	private Func<string?, string, CancellationToken, Task> CreateGroupedExport(
+	private Func<string?, string, IProgress<ReportExportProgress>?, CancellationToken, Task> CreateGroupedExport(
 		GroupedInventoryReportType reportType)
 	{
-		return (searchText, filePath, cancellationToken) =>
+		return (searchText, filePath, progress, cancellationToken) =>
 			_reportService.ExportGroupedInventoryReportAsync(
 					searchText,
 					reportType,
 					filePath,
+					progress,
 					cancellationToken);
 	}
 
@@ -540,6 +600,8 @@ public sealed class ReportsViewModel
 	{
 		_searchDebouncer.Dispose();
 		ExportCommand.Dispose();
+		PreviousPageCommand.Dispose();
+		NextPageCommand.Dispose();
 	}
 
 	private sealed class ReportDefinition
@@ -549,7 +611,7 @@ public sealed class ReportsViewModel
 			string defaultExportFileName,
 			bool isInventoryValueReport,
 			Func<CancellationToken, Task> load,
-			Func<string?, string, CancellationToken, Task> export)
+			Func<string?, string, IProgress<ReportExportProgress>?, CancellationToken, Task> export)
 		{
 			Name =
 				name;
@@ -575,6 +637,6 @@ public sealed class ReportsViewModel
 
 		public Func<CancellationToken, Task> Load { get; }
 
-		public Func<string?, string, CancellationToken, Task> Export { get; }
+		public Func<string?, string, IProgress<ReportExportProgress>?, CancellationToken, Task> Export { get; }
 	}
 }

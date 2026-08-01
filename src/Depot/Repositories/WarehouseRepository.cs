@@ -26,9 +26,6 @@ public sealed class WarehouseRepository : DatabaseRepository
 			parameters);
 	}
 
-	public IReadOnlyList<Warehouse> GetAll() =>
-		Database.Query($"SELECT {Columns} FROM Warehouses ORDER BY Name;", Read);
-
 	public Task<Warehouse?> GetByIdAsync(long id, CancellationToken cancellationToken) =>
 		Database.QuerySingleOrDefaultAsync(
 			$"SELECT {Columns} FROM Warehouses WHERE Id = $Id;",

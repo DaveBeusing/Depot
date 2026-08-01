@@ -135,8 +135,7 @@ public sealed class ItemsViewModel : BaseViewModel, IDisposable
 				PageNumber,
 				PageSize,
 				cancellationToken);
-			Items.Clear();
-			foreach (var item in page.Items) Items.Add(new ItemViewModel(item));
+			CollectionSynchronizer.Replace(Items, page.Items.Select(item => new ItemViewModel(item)).ToArray());
 			TotalCount = page.TotalCount;
 			SelectedItem = selectedId is null ? null : Items.FirstOrDefault(x => x.Id == selectedId);
 			RaiseCollectionState();
