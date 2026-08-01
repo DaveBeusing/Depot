@@ -77,6 +77,14 @@ public sealed class ReasonCodeRepository : DatabaseRepository
 			cancellationToken,
 			Parameter("$Code", code));
 
+	public Task<IReadOnlyList<ReasonCode>> GetByIdsAsync(DatabaseTransactionContext transaction, IEnumerable<long> ids, CancellationToken cancellationToken)
+	{
+		var values = ids.Distinct().OrderBy(id => id).ToArray();
+		if (values.Length == 0) return Task.FromResult<IReadOnlyList<ReasonCode>>([]);
+		var parameters = values.Select((id, index) => Parameter($"$ReasonCodeId{index}", id)).ToArray();
+		return transaction.Session.QueryAsync($"SELECT {Columns} FROM ReasonCodes WHERE Id IN ({string.Join(", ", parameters.Select(parameter => parameter.Name))}) ORDER BY Id;", Read, cancellationToken, parameters);
+	}
+
 	public Task<long> CreateAsync(ReasonCode reasonCode, CancellationToken cancellationToken) =>
 		Database.InsertAsync(
 			"INSERT INTO ReasonCodes (Code, Name, Description, IsSystem, IsActive) VALUES ($Code, $Name, $Description, $IsSystem, $IsActive);",

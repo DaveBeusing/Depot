@@ -77,6 +77,9 @@ public sealed class SqlServerConnectionFactory : IDatabaseConnectionFactory
 	public string GetInventoryCountInventoryLockSql() =>
 		"SELECT inv.Id FROM Inventories inv WITH (UPDLOCK, HOLDLOCK) INNER JOIN StorageLocations sl ON sl.Id = inv.StorageLocationId WHERE sl.WarehouseId = $WarehouseId AND inv.IsActive = 1 ORDER BY inv.Id;";
 
+	public string GetMaterialIssueLockSql() =>
+		"SELECT Id FROM MaterialIssues WITH (UPDLOCK, HOLDLOCK) WHERE Id = $MaterialIssueId;";
+
 	public string GetPagingClause() => "OFFSET $Offset ROWS FETCH NEXT $PageSize ROWS ONLY";
 	public string CastToInt64(string expression) => $"CAST({expression} AS BIGINT)";
 

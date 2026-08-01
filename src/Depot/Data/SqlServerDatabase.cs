@@ -36,6 +36,8 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 		command.ExecuteNonQuery();
 		command.CommandText = InventoryCountSql;
 		command.ExecuteNonQuery();
+		command.CommandText = MaterialIssueSql;
+		command.ExecuteNonQuery();
 
 		command.CommandText = "SELECT Version FROM DatabaseInfo WHERE Id = 1;";
 		var version = Convert.ToInt32(command.ExecuteScalar(), CultureInfo.InvariantCulture);
@@ -109,6 +111,11 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 			MigrateToPurchaseOrderClosure(command);
 			version = 22;
 		}
+		if (version == 22)
+		{
+			MigrateToMaterialIssues(command);
+			version = 23;
+		}
 		if (version != DatabaseVersion.CurrentVersion)
 		{
 			throw new InvalidOperationException(
@@ -148,6 +155,13 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 		IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_PurchaseOrders_ClosedByUsers') ALTER TABLE PurchaseOrders ADD CONSTRAINT FK_PurchaseOrders_ClosedByUsers FOREIGN KEY (ClosedByUserId) REFERENCES Users(Id);
 		UPDATE DatabaseInfo SET Version = 22 WHERE Id = 1;
 		""";
+		command.Parameters.Clear();
+		command.ExecuteNonQuery();
+	}
+
+	private static void MigrateToMaterialIssues(System.Data.Common.DbCommand command)
+	{
+		command.CommandText = MaterialIssueSql + " UPDATE DatabaseInfo SET Version = 23 WHERE Id = 1;";
 		command.Parameters.Clear();
 		command.ExecuteNonQuery();
 	}
@@ -599,6 +613,44 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 			CONSTRAINT FK_InventoryCountLines_CountedByUsers FOREIGN KEY (CountedByUserId) REFERENCES Users(Id)
 		);
 		CREATE INDEX IX_InventoryCountLines_InventoryId ON InventoryCountLines(InventoryId);
+	END;
+	""";
+
+	private const string MaterialIssueSql =
+	"""
+	IF OBJECT_ID(N'MaterialIssues', N'U') IS NULL
+	BEGIN
+		CREATE TABLE MaterialIssues
+		(
+			Id bigint IDENTITY(1,1) NOT NULL PRIMARY KEY, IssueNumber nvarchar(50) NOT NULL UNIQUE,
+			IssueDate nvarchar(10) NOT NULL, Status int NOT NULL DEFAULT 1, Recipient nvarchar(250) NOT NULL,
+			Reference nvarchar(250) NULL, Notes nvarchar(4000) NULL, CreatedByUserId bigint NOT NULL,
+			PostedByUserId bigint NULL, PostedAtUtc nvarchar(40) NULL, ReversedByUserId bigint NULL,
+			ReversedAtUtc nvarchar(40) NULL, ReversalReason nvarchar(1000) NULL, Version bigint NOT NULL DEFAULT 1,
+			CONSTRAINT CK_MaterialIssues_Status CHECK (Status IN (1, 2, 3, 4)),
+			CONSTRAINT FK_MaterialIssues_CreatedByUsers FOREIGN KEY (CreatedByUserId) REFERENCES Users(Id),
+			CONSTRAINT FK_MaterialIssues_PostedByUsers FOREIGN KEY (PostedByUserId) REFERENCES Users(Id),
+			CONSTRAINT FK_MaterialIssues_ReversedByUsers FOREIGN KEY (ReversedByUserId) REFERENCES Users(Id)
+		);
+		CREATE INDEX IX_MaterialIssues_IssueDate ON MaterialIssues(IssueDate);
+		CREATE INDEX IX_MaterialIssues_Status ON MaterialIssues(Status);
+	END;
+	IF OBJECT_ID(N'MaterialIssueLines', N'U') IS NULL
+	BEGIN
+		CREATE TABLE MaterialIssueLines
+		(
+			Id bigint IDENTITY(1,1) NOT NULL PRIMARY KEY, MaterialIssueId bigint NOT NULL, LineNumber int NOT NULL,
+			InventoryId bigint NOT NULL, Quantity int NOT NULL, ReasonCodeId bigint NOT NULL, Notes nvarchar(2000) NULL,
+			Version bigint NOT NULL DEFAULT 1,
+			CONSTRAINT UQ_MaterialIssueLines_Number UNIQUE (MaterialIssueId, LineNumber),
+			CONSTRAINT UQ_MaterialIssueLines_Inventory UNIQUE (MaterialIssueId, InventoryId),
+			CONSTRAINT CK_MaterialIssueLines_Quantity CHECK (Quantity > 0),
+			CONSTRAINT FK_MaterialIssueLines_Issues FOREIGN KEY (MaterialIssueId) REFERENCES MaterialIssues(Id),
+			CONSTRAINT FK_MaterialIssueLines_Inventories FOREIGN KEY (InventoryId) REFERENCES Inventories(Id),
+			CONSTRAINT FK_MaterialIssueLines_ReasonCodes FOREIGN KEY (ReasonCodeId) REFERENCES ReasonCodes(Id)
+		);
+		CREATE INDEX IX_MaterialIssueLines_InventoryId ON MaterialIssueLines(InventoryId);
+		CREATE INDEX IX_MaterialIssueLines_ReasonCodeId ON MaterialIssueLines(ReasonCodeId);
 	END;
 	""";
 

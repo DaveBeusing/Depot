@@ -76,6 +76,9 @@ public sealed class MySqlConnectionFactory : IDatabaseConnectionFactory
 	public string GetInventoryCountInventoryLockSql() =>
 		"SELECT inv.Id FROM Inventories inv INNER JOIN StorageLocations sl ON sl.Id = inv.StorageLocationId WHERE sl.WarehouseId = $WarehouseId AND inv.IsActive = 1 ORDER BY inv.Id FOR UPDATE;";
 
+	public string GetMaterialIssueLockSql() =>
+		"SELECT Id FROM MaterialIssues WHERE Id = $MaterialIssueId FOR UPDATE;";
+
 	public string GetPagingClause() => "LIMIT $PageSize OFFSET $Offset";
 	public string CastToInt64(string expression) => $"CAST({expression} AS SIGNED)";
 

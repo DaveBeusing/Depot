@@ -57,6 +57,9 @@ public sealed class SqliteConnectionFactory : IDatabaseConnectionFactory
 	public string GetInventoryCountInventoryLockSql() =>
 		"SELECT inv.Id FROM Inventories inv INNER JOIN StorageLocations sl ON sl.Id = inv.StorageLocationId WHERE sl.WarehouseId = $WarehouseId AND inv.IsActive = 1 ORDER BY inv.Id;";
 
+	public string GetMaterialIssueLockSql() =>
+		"SELECT Id FROM MaterialIssues WHERE Id = $MaterialIssueId;";
+
 	public string GetPagingClause() => "LIMIT $PageSize OFFSET $Offset";
 	public string CastToInt64(string expression) => $"CAST({expression} AS INTEGER)";
 

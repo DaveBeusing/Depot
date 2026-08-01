@@ -51,6 +51,9 @@
 			<DataTemplate DataType="{x:Type viewModels:InventoryCountsViewModel}">
 				<views:InventoryCountsView />
 			</DataTemplate>
+			<DataTemplate DataType="{x:Type viewModels:MaterialIssuesViewModel}">
+				<views:MaterialIssuesView />
+			</DataTemplate>
 			<DataTemplate DataType="{x:Type viewModels:ProcurementViewModel}">
 				<views:ProcurementView />
 			</DataTemplate>

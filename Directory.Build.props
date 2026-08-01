@@ -3,7 +3,7 @@
 		<DepotVersionMajor>0</DepotVersionMajor>
 		<DepotVersionMinor>13</DepotVersionMinor>
 		<DepotVersionPatch>0</DepotVersionPatch>
-		<DepotVersionBuild Condition="'$(DepotVersionBuild)' == ''">3</DepotVersionBuild>
+		<DepotVersionBuild Condition="'$(DepotVersionBuild)' == ''">4</DepotVersionBuild>
 		<DepotVersionSuffix Condition="'$(DepotVersionSuffix)' == ''">preview</DepotVersionSuffix>
 		<VersionPrefix>$(DepotVersionMajor).$(DepotVersionMinor).$(DepotVersionPatch)</VersionPrefix>
 		<VersionSuffix Condition="'$(DepotStableRelease)' != 'true'">$(DepotVersionSuffix)</VersionSuffix>

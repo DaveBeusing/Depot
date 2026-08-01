@@ -11,7 +11,7 @@ The single application-version source is `Directory.Build.props` in the reposito
 ## Current versions
 
 - Application development line: **0.13.0-preview**
-- Database schema version: **22**
+- Database schema version: **23**
 
 The application version and database schema version are independent. A patch application release can retain the same schema, while a schema migration can occur during a prerelease line.
 
@@ -33,6 +33,8 @@ The MSBuild properties produce:
 The About page reads the built assembly information and displays the application, file, informational, runtime, and database-schema versions.
 
 ## Database schema versioning
+
+Schema version 23 adds structured material-issue documents and lines, including generated issue numbers, lifecycle status, responsible users and timestamps, required per-line reason-code references, optimistic-concurrency versions, constraints, and indexes. Posting and reversal use the shared provider-neutral transaction and movement infrastructure without direct stock updates.
 
 Schema version 22 adds explicit purchase-order closure metadata. A closure records the required reason, acting user, and UTC timestamp without altering received or remaining quantities. Closed orders reject further goods receipts; cancellation remains reserved for orders without posted receipts. The status change and audit entry share one transaction on every provider.
 

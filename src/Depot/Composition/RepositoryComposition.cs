@@ -24,6 +24,7 @@ internal sealed class RepositoryComposition
 		GoodsReceipts = new GoodsReceiptRepository(dataAccess);
 		StockTransfers = new StockTransferRepository(dataAccess);
 		InventoryCounts = new InventoryCountRepository(dataAccess);
+		MaterialIssues = new MaterialIssueRepository(dataAccess);
 		Inventories = new InventoryRepository(dataAccess);
 		Warehouses = new WarehouseRepository(dataAccess);
 		StorageLocations = new StorageLocationRepository(dataAccess);
@@ -46,6 +47,7 @@ internal sealed class RepositoryComposition
 	public GoodsReceiptRepository GoodsReceipts { get; }
 	public StockTransferRepository StockTransfers { get; }
 	public InventoryCountRepository InventoryCounts { get; }
+	public MaterialIssueRepository MaterialIssues { get; }
 	public InventoryRepository Inventories { get; }
 	public WarehouseRepository Warehouses { get; }
 	public StorageLocationRepository StorageLocations { get; }

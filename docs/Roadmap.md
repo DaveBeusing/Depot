@@ -62,6 +62,7 @@ This roadmap reflects the implementation on the current `master` branch. “Impl
 - [x] Inventory-count drafts, atomic snapshots, paged counting/review UI, cancellation, and return to Counting
 - [x] Atomic inventory-count posting against current stock through audited correction movements
 - [x] Atomic, audited counter-booking for goods receipts, material withdrawals, transfers, and inventory-count postings
+- [x] Structured material issues with drafts, server-side list search/paging, atomic Withdrawal posting, cancellation, reversal, and movement details
 
 ### Administration and output
 

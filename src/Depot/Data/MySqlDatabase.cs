@@ -43,6 +43,8 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 			command.ExecuteNonQuery();
 			command.CommandText = InventoryCountSql;
 			command.ExecuteNonQuery();
+			command.CommandText = MaterialIssueSql;
+			command.ExecuteNonQuery();
 
 			command.CommandText = "SELECT Version FROM DatabaseInfo WHERE Id = 1;";
 			command.Parameters.Clear();
@@ -117,6 +119,11 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 				MigrateToPurchaseOrderClosure(command);
 				version = 22;
 			}
+			if (version == 22)
+			{
+				MigrateToMaterialIssues(command);
+				version = 23;
+			}
 			if (version != DatabaseVersion.CurrentVersion)
 			{
 				throw new InvalidOperationException(
@@ -153,6 +160,13 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 		if (!ColumnExists(command, "PurchaseOrders", "CloseReason")) Execute(command, "ALTER TABLE PurchaseOrders ADD COLUMN CloseReason varchar(2000) NULL;");
 		if (!ConstraintExists(command, "PurchaseOrders", "FK_PurchaseOrders_ClosedByUsers")) Execute(command, "ALTER TABLE PurchaseOrders ADD CONSTRAINT FK_PurchaseOrders_ClosedByUsers FOREIGN KEY (ClosedByUserId) REFERENCES Users(Id);");
 		Execute(command, "UPDATE DatabaseInfo SET Version = 22 WHERE Id = 1;");
+	}
+
+	private static void MigrateToMaterialIssues(System.Data.Common.DbCommand command)
+	{
+		command.CommandText = MaterialIssueSql + " UPDATE DatabaseInfo SET Version = 23 WHERE Id = 1;";
+		command.Parameters.Clear();
+		command.ExecuteNonQuery();
 	}
 
 	private static void MigrateToStockTransfers(System.Data.Common.DbCommand command)
@@ -700,6 +714,36 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 		CONSTRAINT FK_InventoryCountLines_Counts FOREIGN KEY (InventoryCountId) REFERENCES InventoryCounts(Id),
 		CONSTRAINT FK_InventoryCountLines_Inventories FOREIGN KEY (InventoryId) REFERENCES Inventories(Id),
 		CONSTRAINT FK_InventoryCountLines_CountedByUsers FOREIGN KEY (CountedByUserId) REFERENCES Users(Id)
+	) ENGINE=InnoDB;
+	""";
+
+	private const string MaterialIssueSql =
+	"""
+	CREATE TABLE IF NOT EXISTS MaterialIssues
+	(
+		Id bigint NOT NULL AUTO_INCREMENT PRIMARY KEY, IssueNumber varchar(50) NOT NULL UNIQUE,
+		IssueDate varchar(10) NOT NULL, Status int NOT NULL DEFAULT 1, Recipient varchar(250) NOT NULL,
+		Reference varchar(250) NULL, Notes text NULL, CreatedByUserId bigint NOT NULL, PostedByUserId bigint NULL,
+		PostedAtUtc varchar(40) NULL, ReversedByUserId bigint NULL, ReversedAtUtc varchar(40) NULL,
+		ReversalReason varchar(1000) NULL, Version bigint NOT NULL DEFAULT 1,
+		INDEX IX_MaterialIssues_IssueDate (IssueDate), INDEX IX_MaterialIssues_Status (Status),
+		CONSTRAINT CK_MaterialIssues_Status CHECK (Status IN (1, 2, 3, 4)),
+		CONSTRAINT FK_MaterialIssues_CreatedByUsers FOREIGN KEY (CreatedByUserId) REFERENCES Users(Id),
+		CONSTRAINT FK_MaterialIssues_PostedByUsers FOREIGN KEY (PostedByUserId) REFERENCES Users(Id),
+		CONSTRAINT FK_MaterialIssues_ReversedByUsers FOREIGN KEY (ReversedByUserId) REFERENCES Users(Id)
+	) ENGINE=InnoDB;
+	CREATE TABLE IF NOT EXISTS MaterialIssueLines
+	(
+		Id bigint NOT NULL AUTO_INCREMENT PRIMARY KEY, MaterialIssueId bigint NOT NULL, LineNumber int NOT NULL,
+		InventoryId bigint NOT NULL, Quantity int NOT NULL, ReasonCodeId bigint NOT NULL, Notes varchar(2000) NULL,
+		Version bigint NOT NULL DEFAULT 1,
+		UNIQUE KEY UQ_MaterialIssueLines_Number (MaterialIssueId, LineNumber),
+		UNIQUE KEY UQ_MaterialIssueLines_Inventory (MaterialIssueId, InventoryId),
+		INDEX IX_MaterialIssueLines_InventoryId (InventoryId), INDEX IX_MaterialIssueLines_ReasonCodeId (ReasonCodeId),
+		CONSTRAINT CK_MaterialIssueLines_Quantity CHECK (Quantity > 0),
+		CONSTRAINT FK_MaterialIssueLines_Issues FOREIGN KEY (MaterialIssueId) REFERENCES MaterialIssues(Id),
+		CONSTRAINT FK_MaterialIssueLines_Inventories FOREIGN KEY (InventoryId) REFERENCES Inventories(Id),
+		CONSTRAINT FK_MaterialIssueLines_ReasonCodes FOREIGN KEY (ReasonCodeId) REFERENCES ReasonCodes(Id)
 	) ENGINE=InnoDB;
 	""";
 

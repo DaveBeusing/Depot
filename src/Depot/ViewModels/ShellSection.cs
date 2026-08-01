@@ -11,6 +11,7 @@ public enum ShellSection
 	Movements,
 	Transfers,
 	InventoryCounts,
+	MaterialIssues,
 	Procurement,
 	Approvals,
 	Reports,

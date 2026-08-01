@@ -178,6 +178,8 @@ public sealed class DepotDatabase : IDatabaseInitializer
 
 		CreateInventoryCountTables(connection);
 
+		CreateMaterialIssueTables(connection);
+
 		CreateAuditEntriesTable(
 			connection);
 
@@ -537,6 +539,37 @@ public sealed class DepotDatabase : IDatabaseInitializer
 			CHECK(CountedQuantity IS NULL OR CountedQuantity >= 0)
 		);
 		CREATE INDEX IF NOT EXISTS IX_InventoryCountLines_InventoryId ON InventoryCountLines(InventoryId);
+		""";
+		command.ExecuteNonQuery();
+	}
+
+	private static void CreateMaterialIssueTables(SqliteConnection connection)
+	{
+		using var command = connection.CreateCommand();
+		command.CommandText =
+		"""
+		CREATE TABLE IF NOT EXISTS MaterialIssues
+		(
+			Id INTEGER PRIMARY KEY AUTOINCREMENT, IssueNumber TEXT NOT NULL UNIQUE, IssueDate TEXT NOT NULL,
+			Status INTEGER NOT NULL DEFAULT 1, Recipient TEXT NOT NULL, Reference TEXT NULL, Notes TEXT NULL,
+			CreatedByUserId INTEGER NOT NULL, PostedByUserId INTEGER NULL, PostedAtUtc TEXT NULL,
+			ReversedByUserId INTEGER NULL, ReversedAtUtc TEXT NULL, ReversalReason TEXT NULL,
+			Version INTEGER NOT NULL DEFAULT 1,
+			FOREIGN KEY(CreatedByUserId) REFERENCES Users(Id), FOREIGN KEY(PostedByUserId) REFERENCES Users(Id),
+			FOREIGN KEY(ReversedByUserId) REFERENCES Users(Id), CHECK(Status IN (1, 2, 3, 4))
+		);
+		CREATE INDEX IF NOT EXISTS IX_MaterialIssues_IssueDate ON MaterialIssues(IssueDate);
+		CREATE INDEX IF NOT EXISTS IX_MaterialIssues_Status ON MaterialIssues(Status);
+		CREATE TABLE IF NOT EXISTS MaterialIssueLines
+		(
+			Id INTEGER PRIMARY KEY AUTOINCREMENT, MaterialIssueId INTEGER NOT NULL, LineNumber INTEGER NOT NULL,
+			InventoryId INTEGER NOT NULL, Quantity INTEGER NOT NULL, ReasonCodeId INTEGER NOT NULL, Notes TEXT NULL,
+			Version INTEGER NOT NULL DEFAULT 1, UNIQUE(MaterialIssueId, LineNumber), UNIQUE(MaterialIssueId, InventoryId),
+			FOREIGN KEY(MaterialIssueId) REFERENCES MaterialIssues(Id), FOREIGN KEY(InventoryId) REFERENCES Inventories(Id),
+			FOREIGN KEY(ReasonCodeId) REFERENCES ReasonCodes(Id), CHECK(Quantity > 0)
+		);
+		CREATE INDEX IF NOT EXISTS IX_MaterialIssueLines_InventoryId ON MaterialIssueLines(InventoryId);
+		CREATE INDEX IF NOT EXISTS IX_MaterialIssueLines_ReasonCodeId ON MaterialIssueLines(ReasonCodeId);
 		""";
 		command.ExecuteNonQuery();
 	}
@@ -978,6 +1011,13 @@ public sealed class DepotDatabase : IDatabaseInitializer
 			MigrateToPurchaseOrderClosure(connection);
 			SetDatabaseVersion(connection, 22);
 			migratedVersion = 22;
+		}
+
+		if (migratedVersion == 22)
+		{
+			CreateMaterialIssueTables(connection);
+			SetDatabaseVersion(connection, 23);
+			migratedVersion = 23;
 		}
 
 		if (migratedVersion < DatabaseVersion.CurrentVersion)
