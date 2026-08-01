@@ -38,11 +38,11 @@ public sealed class MaterialIssuesViewModel : BaseViewModel, IDisposable
 		_service = service; _reasonCodes = reasonCodes; _dialogs = dialogs;
 		StatusFilters = [new("All statuses", null), .. Enum.GetValues<MaterialIssueStatus>().Select(status => new MaterialIssueStatusFilter(status.ToString(), status))];
 		_selectedStatusFilter = StatusFilters[0];
-		NewIssueCommand = new RelayCommand(NewIssue);
-		SaveCommand = new AsyncRelayCommand(SaveAsync, () => IsDraft && Lines.Count > 0);
-		PostCommand = new AsyncRelayCommand(PostAsync, () => Draft.Id > 0 && IsDraft);
-		CancelCommand = new AsyncRelayCommand(CancelAsync, () => Draft.Id > 0 && IsDraft);
-		ReverseCommand = new AsyncRelayCommand(ReverseAsync, () => Draft.Status == MaterialIssueStatus.Posted && SelectedReversalReasonCode is not null && !string.IsNullOrWhiteSpace(ReversalReason));
+		NewIssueCommand = new RelayCommand(NewIssue, () => CanCreate);
+		SaveCommand = new AsyncRelayCommand(SaveAsync, () => CanCreate && IsDraft && Lines.Count > 0);
+		PostCommand = new AsyncRelayCommand(PostAsync, () => CanPost && Draft.Id > 0 && IsDraft);
+		CancelCommand = new AsyncRelayCommand(CancelAsync, () => CanCreate && Draft.Id > 0 && IsDraft);
+		ReverseCommand = new AsyncRelayCommand(ReverseAsync, () => CanReverse && Draft.Status == MaterialIssueStatus.Posted && SelectedReversalReasonCode is not null && !string.IsNullOrWhiteSpace(ReversalReason));
 		AddLineCommand = new RelayCommand(AddOrUpdateLine, () => IsDraft && SelectedInventory is not null && SelectedReasonCode is not null && LineQuantity > 0);
 		RemoveLineCommand = new RelayCommand(RemoveLine, () => IsDraft && SelectedLine is not null);
 		PreviousPageCommand = new AsyncRelayCommand(PreviousPageAsync, () => PageNumber > 1);
@@ -66,9 +66,11 @@ public sealed class MaterialIssuesViewModel : BaseViewModel, IDisposable
 	public AsyncRelayCommand NextPageCommand { get; }
 
 	public MaterialIssue Draft { get => _draft; private set { _draft = value; OnPropertyChanged(); OnPropertyChanged(nameof(IsDraft)); OnPropertyChanged(nameof(IsReadOnly)); OnPropertyChanged(nameof(CanReverse)); OnPropertyChanged(nameof(EditorTitle)); RaiseCommands(); } }
-	public bool IsDraft => Draft.Status == MaterialIssueStatus.Draft;
+	public bool CanCreate => _service.CanCreate;
+	public bool CanPost => _service.CanPost;
+	public bool CanReverse => _service.CanReverse && Draft.Status == MaterialIssueStatus.Posted;
+	public bool IsDraft => Draft.Status == MaterialIssueStatus.Draft && CanCreate;
 	public bool IsReadOnly => !IsDraft;
-	public bool CanReverse => Draft.Status == MaterialIssueStatus.Posted;
 	public bool HasMovements => Movements.Count > 0;
 	public string EditorTitle => Draft.Id == 0 ? "New Material Issue" : Draft.IssueNumber;
 	public bool HasNextPage => (long)PageNumber * PageSize < TotalCount;

@@ -45,10 +45,10 @@ public sealed class SupplierReturnsViewModel : BaseViewModel, IDisposable
         _selectedSupplierFilter = SupplierFilters[0];
         StatusFilters = [new("All statuses", null), .. Enum.GetValues<SupplierReturnStatus>().Select(status => new SupplierReturnStatusFilter(status.ToString(), status))];
         _selectedStatusFilter = StatusFilters[0];
-        NewReturnCommand = new RelayCommand(NewReturn);
-        SaveCommand = new AsyncRelayCommand(SaveAsync, () => IsDraft && Lines.Count > 0);
-        PostCommand = new AsyncRelayCommand(PostAsync, () => Draft.Id > 0 && IsDraft);
-        CancelCommand = new AsyncRelayCommand(CancelAsync, () => Draft.Id > 0 && IsDraft);
+		NewReturnCommand = new RelayCommand(NewReturn, () => CanCreate);
+		SaveCommand = new AsyncRelayCommand(SaveAsync, () => CanCreate && IsDraft && Lines.Count > 0);
+		PostCommand = new AsyncRelayCommand(PostAsync, () => CanPost && Draft.Id > 0 && IsDraft);
+		CancelCommand = new AsyncRelayCommand(CancelAsync, () => CanCreate && Draft.Id > 0 && IsDraft);
         ReverseCommand = new AsyncRelayCommand(ReverseAsync, () => CanReverse && SelectedReversalReasonCode is not null && !string.IsNullOrWhiteSpace(ReversalReason));
         AddLineCommand = new RelayCommand(AddOrUpdateLine, () => IsDraft && SelectedAvailableLine is not null && SelectedReasonCode is not null && LineQuantity > 0);
         RemoveLineCommand = new RelayCommand(RemoveLine, () => IsDraft && SelectedLine is not null);
@@ -75,10 +75,12 @@ public sealed class SupplierReturnsViewModel : BaseViewModel, IDisposable
     public AsyncRelayCommand NextPageCommand { get; }
 
     public SupplierReturn Draft { get => _draft; private set { _draft = value; OnPropertyChanged(); OnPropertyChanged(nameof(IsDraft)); OnPropertyChanged(nameof(IsReadOnly)); OnPropertyChanged(nameof(CanReverse)); OnPropertyChanged(nameof(EditorTitle)); RaiseCommands(); } }
-    public bool IsDraft => Draft.Status == SupplierReturnStatus.Draft;
+	public bool CanCreate => _service.CanCreate;
+	public bool CanPost => _service.CanPost;
+	public bool IsDraft => Draft.Status == SupplierReturnStatus.Draft && CanCreate;
     public bool IsReadOnly => !IsDraft;
     public bool HasMovements => Movements.Count > 0;
-    public bool CanReverse => Draft.Status == SupplierReturnStatus.Posted && !Draft.IsReversed && Movements.Where(movement => movement.MovementType == StockMovementType.SupplierReturn).Any() && Movements.Where(movement => movement.MovementType == StockMovementType.SupplierReturn).All(movement => !movement.IsReversed);
+	public bool CanReverse => CanPost && Draft.Status == SupplierReturnStatus.Posted && !Draft.IsReversed && Movements.Where(movement => movement.MovementType == StockMovementType.SupplierReturn).Any() && Movements.Where(movement => movement.MovementType == StockMovementType.SupplierReturn).All(movement => !movement.IsReversed);
     public string EditorTitle => Draft.Id == 0 ? "New Supplier Return" : Draft.ReturnNumber;
     public string SaveLineText => SelectedLine is null ? "Add Line" : "Update Line";
     public bool HasNextPage => (long)PageNumber * PageSize < TotalCount;

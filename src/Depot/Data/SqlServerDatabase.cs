@@ -130,11 +130,19 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 			MigrateToSupplierReturns(command);
 			version = 25;
 		}
+		if (version == 25)
+		{
+			MigrateToFixedUserRoles(command);
+			version = 26;
+		}
 		if (version != DatabaseVersion.CurrentVersion)
 		{
 			throw new InvalidOperationException(
 				$"SQL Server schema version '{version}' is not supported. Expected '{DatabaseVersion.CurrentVersion}'.");
 		}
+		command.CommandText = "UPDATE Users SET Role = 1 WHERE IsAdministrator = 1 AND Role = 0;";
+		command.Parameters.Clear();
+		command.ExecuteNonQuery();
 
 		transaction.Commit();
 	}
@@ -191,6 +199,13 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 	{
 		command.CommandText = SupplierReturnSql + " UPDATE DatabaseInfo SET Version = 25 WHERE Id = 1;";
 		command.Parameters.Clear(); command.ExecuteNonQuery();
+	}
+
+	private static void MigrateToFixedUserRoles(System.Data.Common.DbCommand command)
+	{
+		command.CommandText = "IF COL_LENGTH(N'Users', N'Role') IS NULL ALTER TABLE Users ADD Role int NOT NULL CONSTRAINT DF_Users_Role DEFAULT 0; UPDATE Users SET Role = CASE WHEN IsAdministrator = 1 THEN 1 WHEN CanApprovePurchaseOrders = 1 THEN 3 ELSE 0 END; IF NOT EXISTS (SELECT 1 FROM sys.check_constraints WHERE name = N'CK_Users_Role') ALTER TABLE Users ADD CONSTRAINT CK_Users_Role CHECK (Role IN (0,1,2,3,4)); UPDATE DatabaseInfo SET Version = 26 WHERE Id = 1;";
+		command.Parameters.Clear();
+		command.ExecuteNonQuery();
 	}
 
 	private static void MigrateToStockTransfers(System.Data.Common.DbCommand command)
@@ -860,6 +875,7 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 			PasswordHash nvarchar(500) NOT NULL,
 			IsAdministrator bit NOT NULL CONSTRAINT DF_Users_IsAdministrator DEFAULT 0,
 			CanApprovePurchaseOrders bit NOT NULL CONSTRAINT DF_Users_CanApprovePurchaseOrders DEFAULT 0,
+			Role int NOT NULL CONSTRAINT DF_Users_Role DEFAULT 0 CONSTRAINT CK_Users_Role CHECK (Role IN (0,1,2,3,4)),
 			IsActive bit NOT NULL CONSTRAINT DF_Users_IsActive DEFAULT 1,
 			CreatedUtc nvarchar(40) NOT NULL,
 			Version bigint NOT NULL CONSTRAINT DF_Users_Version DEFAULT 1

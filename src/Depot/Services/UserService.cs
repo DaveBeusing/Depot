@@ -38,10 +38,10 @@ public sealed class UserService
 		string email,
 		string displayName,
 		string password,
-		bool isAdministrator,
-		bool canApprovePurchaseOrders,
+		UserRole role,
 		CancellationToken cancellationToken)
 	{
+		ValidateRole(role);
 		email = NormalizeAndValidateEmail(email);
 		displayName = ValidateDisplayName(displayName);
 		ValidatePassword(password);
@@ -51,8 +51,9 @@ public sealed class UserService
 		{
 			Email = email,
 			DisplayName = displayName,
-			IsAdministrator = isAdministrator,
-			CanApprovePurchaseOrders = canApprovePurchaseOrders,
+			Role = role,
+			IsAdministrator = role == UserRole.Administrator,
+			CanApprovePurchaseOrders = role == UserRole.Approver,
 			IsActive = true,
 			CreatedUtc = DateTime.UtcNow
 		};
@@ -70,10 +71,10 @@ public sealed class UserService
 		string email,
 		string displayName,
 		string password,
-		bool isAdministrator,
-		bool canApprovePurchaseOrders,
+		UserRole role,
 		CancellationToken cancellationToken)
 	{
+		ValidateRole(role);
 		if (id <= 0) throw new ArgumentException("User id is required.", nameof(id));
 		email = NormalizeAndValidateEmail(email);
 		displayName = ValidateDisplayName(displayName);
@@ -87,8 +88,9 @@ public sealed class UserService
 		var before = Copy(user);
 		user.Email = email;
 		user.DisplayName = displayName;
-		user.IsAdministrator = isAdministrator;
-		user.CanApprovePurchaseOrders = canApprovePurchaseOrders;
+		user.Role = role;
+		user.IsAdministrator = role == UserRole.Administrator;
+		user.CanApprovePurchaseOrders = role == UserRole.Approver;
 		var passwordHash = string.IsNullOrEmpty(password) ? null : _passwordHasher.Hash(password);
 		if (!await _userRepository.UpdateAsync(user, passwordHash, cancellationToken))
 			throw new ConcurrencyConflictException("user");
@@ -126,9 +128,9 @@ public sealed class UserService
 		string email,
 		string displayName,
 		string password,
-		bool isAdministrator,
-		bool canApprovePurchaseOrders)
+		UserRole role)
 	{
+		ValidateRole(role);
 		email = NormalizeAndValidateEmail(email);
 		displayName = ValidateDisplayName(displayName);
 		ValidatePassword(password);
@@ -142,8 +144,9 @@ public sealed class UserService
 		{
 			Email = email,
 			DisplayName = displayName,
-			IsAdministrator = isAdministrator,
-			CanApprovePurchaseOrders = canApprovePurchaseOrders,
+			Role = role,
+			IsAdministrator = role == UserRole.Administrator,
+			CanApprovePurchaseOrders = role == UserRole.Approver,
 			IsActive = true,
 			CreatedUtc = DateTime.UtcNow
 		};
@@ -159,9 +162,9 @@ public sealed class UserService
 		string email,
 		string displayName,
 		string password,
-		bool isAdministrator,
-		bool canApprovePurchaseOrders)
+		UserRole role)
 	{
+		ValidateRole(role);
 		if (id <= 0)
 		{
 			throw new ArgumentException("User id is required.", nameof(id));
@@ -190,8 +193,9 @@ public sealed class UserService
 
 		user.Email = email;
 		user.DisplayName = displayName;
-		user.IsAdministrator = isAdministrator;
-		user.CanApprovePurchaseOrders = canApprovePurchaseOrders;
+		user.Role = role;
+		user.IsAdministrator = role == UserRole.Administrator;
+		user.CanApprovePurchaseOrders = role == UserRole.Approver;
 		if (!_userRepository.Update(
 			user,
 			string.IsNullOrEmpty(password) ? null : _passwordHasher.Hash(password)))
@@ -283,6 +287,11 @@ public sealed class UserService
 		}
 	}
 
+	private static void ValidateRole(UserRole role)
+	{
+		if (!Enum.IsDefined(role)) throw new ArgumentOutOfRangeException(nameof(role));
+	}
+
 	private static User Copy(User user) =>
 		new()
 		{
@@ -291,6 +300,7 @@ public sealed class UserService
 			DisplayName = user.DisplayName,
 			IsAdministrator = user.IsAdministrator,
 			CanApprovePurchaseOrders = user.CanApprovePurchaseOrders,
+			Role = user.Role,
 			IsActive = user.IsActive,
 			CreatedUtc = user.CreatedUtc,
 			Version = user.Version

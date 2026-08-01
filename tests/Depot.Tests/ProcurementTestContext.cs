@@ -243,7 +243,8 @@ internal sealed class ProcurementTestContext : IAsyncDisposable
 			new ReasonCodeRepository(context.Data),
 			new AuditRepository(context.Data),
 			audit,
-			issueReversals);
+			issueReversals,
+			authorization);
 		context._materialReturns = new MaterialReturnService(
 			new DatabaseTransactionRunner(context.Data),
 			new MaterialReturnRepository(context.Data),
@@ -253,7 +254,8 @@ internal sealed class ProcurementTestContext : IAsyncDisposable
 			new ReasonCodeRepository(context.Data),
 			new AuditRepository(context.Data),
 			audit,
-			issueReversals);
+			issueReversals,
+			authorization);
 		context._supplierReturns = new SupplierReturnService(
 			new DatabaseTransactionRunner(context.Data),
 			new SupplierReturnRepository(context.Data),
@@ -264,7 +266,8 @@ internal sealed class ProcurementTestContext : IAsyncDisposable
 			new ReasonCodeRepository(context.Data),
 			new AuditRepository(context.Data),
 			audit,
-			issueReversals);
+			issueReversals,
+			authorization);
 		context._receipts = new GoodsReceiptService(
 			new DatabaseTransactionRunner(context.Data),
 			new GoodsReceiptRepository(context.Data),

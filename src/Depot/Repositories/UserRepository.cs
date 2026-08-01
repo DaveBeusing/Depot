@@ -12,7 +12,7 @@ namespace Depot.Repositories;
 public sealed class UserRepository : DatabaseRepository
 {
 	private const string SelectColumns =
-		"Id, Email, DisplayName, IsAdministrator, CanApprovePurchaseOrders, IsActive, CreatedUtc, Version";
+		"Id, Email, DisplayName, IsAdministrator, CanApprovePurchaseOrders, IsActive, CreatedUtc, Version, Role";
 
 	public UserRepository(DatabaseAccess database)
 		: base(database)
@@ -72,8 +72,8 @@ public sealed class UserRepository : DatabaseRepository
 		Database.InsertAsync(
 			"""
 			INSERT INTO Users
-			(Email, DisplayName, PasswordHash, IsAdministrator, CanApprovePurchaseOrders, IsActive, CreatedUtc)
-			VALUES ($Email, $DisplayName, $PasswordHash, $IsAdministrator, $CanApprovePurchaseOrders, $IsActive, $CreatedUtc);
+			(Email, DisplayName, PasswordHash, IsAdministrator, CanApprovePurchaseOrders, Role, IsActive, CreatedUtc)
+			VALUES ($Email, $DisplayName, $PasswordHash, $IsAdministrator, $CanApprovePurchaseOrders, $Role, $IsActive, $CreatedUtc);
 			""",
 			cancellationToken,
 			Parameter("$Email", user.Email),
@@ -81,6 +81,7 @@ public sealed class UserRepository : DatabaseRepository
 			Parameter("$PasswordHash", passwordHash),
 			Parameter("$IsAdministrator", user.IsAdministrator),
 			Parameter("$CanApprovePurchaseOrders", user.CanApprovePurchaseOrders),
+			Parameter("$Role", (int)user.Role),
 			Parameter("$IsActive", user.IsActive),
 			Parameter("$CreatedUtc", user.CreatedUtc.ToString("O", CultureInfo.InvariantCulture)));
 
@@ -97,6 +98,7 @@ public sealed class UserRepository : DatabaseRepository
 			Parameter("$DisplayName", user.DisplayName),
 			Parameter("$IsAdministrator", user.IsAdministrator),
 			Parameter("$CanApprovePurchaseOrders", user.CanApprovePurchaseOrders),
+			Parameter("$Role", (int)user.Role),
 			Parameter("$Version", user.Version)
 		};
 		if (passwordHash is not null)
@@ -108,7 +110,7 @@ public sealed class UserRepository : DatabaseRepository
 			$"""
 			UPDATE Users
 			SET Email = $Email, DisplayName = $DisplayName, {passwordAssignment}
-			    IsAdministrator = $IsAdministrator, CanApprovePurchaseOrders = $CanApprovePurchaseOrders, Version = Version + 1
+			    IsAdministrator = $IsAdministrator, CanApprovePurchaseOrders = $CanApprovePurchaseOrders, Role = $Role, Version = Version + 1
 			WHERE Id = $Id AND Version = $Version;
 			""",
 			cancellationToken,
@@ -155,15 +157,16 @@ public sealed class UserRepository : DatabaseRepository
 		Database.Insert(
 			"""
 			INSERT INTO Users
-			(Email, DisplayName, PasswordHash, IsAdministrator, CanApprovePurchaseOrders, IsActive, CreatedUtc)
+			(Email, DisplayName, PasswordHash, IsAdministrator, CanApprovePurchaseOrders, Role, IsActive, CreatedUtc)
 			VALUES
-			($Email, $DisplayName, $PasswordHash, $IsAdministrator, $CanApprovePurchaseOrders, $IsActive, $CreatedUtc);
+			($Email, $DisplayName, $PasswordHash, $IsAdministrator, $CanApprovePurchaseOrders, $Role, $IsActive, $CreatedUtc);
 			""",
 			Parameter("$Email", user.Email),
 			Parameter("$DisplayName", user.DisplayName),
 			Parameter("$PasswordHash", passwordHash),
 			Parameter("$IsAdministrator", user.IsAdministrator),
 			Parameter("$CanApprovePurchaseOrders", user.CanApprovePurchaseOrders),
+			Parameter("$Role", (int)user.Role),
 			Parameter("$IsActive", user.IsActive),
 			Parameter("$CreatedUtc", user.CreatedUtc.ToString("O", CultureInfo.InvariantCulture)));
 
@@ -175,7 +178,7 @@ public sealed class UserRepository : DatabaseRepository
 				"""
 				UPDATE Users
 				SET Email = $Email, DisplayName = $DisplayName, IsAdministrator = $IsAdministrator,
-				    CanApprovePurchaseOrders = $CanApprovePurchaseOrders,
+				    CanApprovePurchaseOrders = $CanApprovePurchaseOrders, Role = $Role,
 				    Version = Version + 1
 				WHERE Id = $Id AND Version = $Version;
 				""",
@@ -184,6 +187,7 @@ public sealed class UserRepository : DatabaseRepository
 				Parameter("$DisplayName", user.DisplayName),
 				Parameter("$IsAdministrator", user.IsAdministrator),
 				Parameter("$CanApprovePurchaseOrders", user.CanApprovePurchaseOrders),
+				Parameter("$Role", (int)user.Role),
 				Parameter("$Version", user.Version)) == 1;
 		}
 
@@ -191,7 +195,7 @@ public sealed class UserRepository : DatabaseRepository
 			"""
 			UPDATE Users
 			SET Email = $Email, DisplayName = $DisplayName, PasswordHash = $PasswordHash,
-			    IsAdministrator = $IsAdministrator, CanApprovePurchaseOrders = $CanApprovePurchaseOrders, Version = Version + 1
+			    IsAdministrator = $IsAdministrator, CanApprovePurchaseOrders = $CanApprovePurchaseOrders, Role = $Role, Version = Version + 1
 			WHERE Id = $Id AND Version = $Version;
 			""",
 			Parameter("$Id", user.Id),
@@ -200,6 +204,7 @@ public sealed class UserRepository : DatabaseRepository
 			Parameter("$PasswordHash", passwordHash),
 			Parameter("$IsAdministrator", user.IsAdministrator),
 			Parameter("$CanApprovePurchaseOrders", user.CanApprovePurchaseOrders),
+			Parameter("$Role", (int)user.Role),
 			Parameter("$Version", user.Version)) == 1;
 	}
 
@@ -218,17 +223,22 @@ public sealed class UserRepository : DatabaseRepository
 		new()
 		{
 			User = ReadUser(reader),
-			PasswordHash = reader.GetString(8)
+			PasswordHash = reader.GetString(9)
 		};
 
-	private static User ReadUser(DbDataReader reader) =>
-		new()
+	private static User ReadUser(DbDataReader reader)
+	{
+		var isAdministrator = reader.GetBoolean(3);
+		var canApprove = reader.GetBoolean(4);
+		var storedRole = (UserRole)reader.GetInt32(8);
+		return new()
 		{
 			Id = reader.GetInt64(0),
 			Email = reader.GetString(1),
 			DisplayName = reader.GetString(2),
-			IsAdministrator = reader.GetBoolean(3),
-			CanApprovePurchaseOrders = reader.GetBoolean(4),
+			IsAdministrator = isAdministrator,
+			CanApprovePurchaseOrders = canApprove,
+			Role = isAdministrator ? UserRole.Administrator : storedRole == UserRole.User && canApprove ? UserRole.Approver : storedRole,
 			IsActive = reader.GetBoolean(5),
 			CreatedUtc = DateTime.Parse(
 				reader.GetString(6),
@@ -236,4 +246,5 @@ public sealed class UserRepository : DatabaseRepository
 				DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal),
 			Version = reader.GetInt64(7)
 		};
+	}
 }

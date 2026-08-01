@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 using Depot.Models;
+using Depot.Services;
 
 namespace Depot.ViewModels.Users;
 
@@ -12,7 +13,8 @@ public sealed class UserListItemViewModel : BaseViewModel
 		Id = user.Id;
 		Email = user.Email;
 		DisplayName = user.DisplayName;
-		Role = user.IsAdministrator ? "Administrator" : "User";
+		UserRole = AuthorizationService.EffectiveRole(user);
+		Role = UserRole.ToString();
 		Status = user.IsActive ? "Active" : "Inactive";
 		CreatedUtc = user.CreatedUtc;
 		IsAdministrator = user.IsAdministrator;
@@ -25,6 +27,7 @@ public sealed class UserListItemViewModel : BaseViewModel
 	public string Email { get; }
 	public string DisplayName { get; }
 	public string Role { get; } 
+	public UserRole UserRole { get; }
 	public string Status { get; }
 	public DateTime CreatedUtc { get; }
 	public bool IsAdministrator { get; }

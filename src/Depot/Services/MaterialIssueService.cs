@@ -17,8 +17,9 @@ public sealed class MaterialIssueService
 	private readonly AuditRepository _auditEntries;
 	private readonly AuditService _audit;
 	private readonly StockMovementReversalService _reversals;
+	private readonly AuthorizationService _authorization;
 
-	public MaterialIssueService(IDatabaseTransactionRunner transactions, MaterialIssueRepository issues, InventoryRepository inventories, StockMovementRepository movements, ReasonCodeRepository reasonCodes, AuditRepository auditEntries, AuditService audit, StockMovementReversalService reversals)
+	public MaterialIssueService(IDatabaseTransactionRunner transactions, MaterialIssueRepository issues, InventoryRepository inventories, StockMovementRepository movements, ReasonCodeRepository reasonCodes, AuditRepository auditEntries, AuditService audit, StockMovementReversalService reversals, AuthorizationService authorization)
 	{
 		_transactions = transactions;
 		_issues = issues;
@@ -28,7 +29,12 @@ public sealed class MaterialIssueService
 		_auditEntries = auditEntries;
 		_audit = audit;
 		_reversals = reversals;
+		_authorization = authorization;
 	}
+
+	public bool CanCreate => _authorization.HasPermission(ApplicationPermission.MaterialIssuesCreate);
+	public bool CanPost => _authorization.HasPermission(ApplicationPermission.MaterialIssuesPost);
+	public bool CanReverse => _authorization.HasPermission(ApplicationPermission.MaterialIssuesReverse);
 
 	public Task<PageResult<MaterialIssueOverviewItem>> SearchAsync(string? searchText, MaterialIssueStatus? status, int pageNumber, int pageSize, CancellationToken cancellationToken = default) => _issues.SearchAsync(searchText, status, pageNumber, pageSize, cancellationToken);
 	public Task<MaterialIssue?> GetByIdAsync(long id, CancellationToken cancellationToken = default) => _issues.GetByIdAsync(id, cancellationToken);
@@ -43,6 +49,7 @@ public sealed class MaterialIssueService
 
 	public Task<MaterialIssue> SaveDraftAsync(MaterialIssue issue, CancellationToken cancellationToken = default)
 	{
+		_authorization.RequirePermission(ApplicationPermission.MaterialIssuesCreate);
 		NormalizeAndValidate(issue);
 		var userId = RequireUser("save");
 		return _transactions.ExecuteAsync((transaction, token) => SaveDraftAsync(transaction, issue, userId, token), cancellationToken);
@@ -50,6 +57,7 @@ public sealed class MaterialIssueService
 
 	public Task<MaterialIssue> PostAsync(long id, long version, CancellationToken cancellationToken = default)
 	{
+		_authorization.RequirePermission(ApplicationPermission.MaterialIssuesPost);
 		if (id <= 0) throw new ArgumentOutOfRangeException(nameof(id));
 		var userId = RequireUser("post");
 		return _transactions.ExecuteAsync((transaction, token) => PostAsync(transaction, id, version, userId, token), cancellationToken);
@@ -57,6 +65,7 @@ public sealed class MaterialIssueService
 
 	public Task<MaterialIssue> CancelAsync(long id, long version, CancellationToken cancellationToken = default)
 	{
+		_authorization.RequirePermission(ApplicationPermission.MaterialIssuesCreate);
 		if (id <= 0) throw new ArgumentOutOfRangeException(nameof(id));
 		RequireUser("cancel");
 		return _transactions.ExecuteAsync(async (transaction, token) =>
@@ -73,6 +82,7 @@ public sealed class MaterialIssueService
 
 	public Task<MaterialIssue> ReverseAsync(long id, long version, long reasonCodeId, string reversalReason, CancellationToken cancellationToken = default)
 	{
+		_authorization.RequirePermission(ApplicationPermission.MaterialIssuesReverse);
 		if (id <= 0) throw new ArgumentOutOfRangeException(nameof(id));
 		var userId = _reversals.RequireUser();
 		return _transactions.ExecuteAsync(async (transaction, token) =>

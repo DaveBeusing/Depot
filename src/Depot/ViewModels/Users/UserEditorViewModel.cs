@@ -1,6 +1,8 @@
 // Copyright (c) 2026 David Beusing
 // Licensed under the MIT License.
 
+using Depot.Models;
+
 namespace Depot.ViewModels.Users;
 
 /// <summary>
@@ -12,8 +14,7 @@ public sealed class UserEditorViewModel : BaseViewModel
 	private string _email = string.Empty;
 	private string _displayName = string.Empty;
 	private string _password = string.Empty;
-	private bool _isAdministrator;
-	private bool _canApprovePurchaseOrders;
+	private UserRole _role;
 	private bool _isActive = true;
 	private long _version = 1;
 
@@ -66,22 +67,14 @@ public sealed class UserEditorViewModel : BaseViewModel
 		}
 	}
 
-	public bool IsAdministrator
-	{
-		get => _isAdministrator;
-		set
-		{
-			_isAdministrator = value;
-			OnPropertyChanged();
-		}
-	}
+	public IReadOnlyList<UserRole> Roles { get; } = Enum.GetValues<UserRole>();
 
-	public bool CanApprovePurchaseOrders
+	public UserRole Role
 	{
-		get => _canApprovePurchaseOrders;
+		get => _role;
 		set
 		{
-			_canApprovePurchaseOrders = value;
+			_role = value;
 			OnPropertyChanged();
 		}
 	}
@@ -114,8 +107,7 @@ public sealed class UserEditorViewModel : BaseViewModel
 		Email = string.Empty;
 		DisplayName = string.Empty;
 		Password = string.Empty;
-		IsAdministrator = false;
-		CanApprovePurchaseOrders = false;
+		Role = UserRole.User;
 		IsActive = true;
 		Version = 1;
 	}

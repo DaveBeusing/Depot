@@ -141,8 +141,7 @@ public sealed class UserViewModel : BaseViewModel, IDisposable
 		Editor.Email = SelectedUser.Email;
 		Editor.DisplayName = SelectedUser.DisplayName;
 		Editor.Password = string.Empty;
-		Editor.IsAdministrator = SelectedUser.IsAdministrator;
-		Editor.CanApprovePurchaseOrders = SelectedUser.CanApprovePurchaseOrders;
+		Editor.Role = SelectedUser.UserRole;
 		Editor.IsActive = SelectedUser.IsActive;
 		Editor.Version = SelectedUser.Version;
 	}
@@ -163,10 +162,10 @@ public sealed class UserViewModel : BaseViewModel, IDisposable
 		{
 			var user = Editor.Id == 0
 				? await _userService.CreateUserAsync(
-					Editor.Email, Editor.DisplayName, Editor.Password, Editor.IsAdministrator, Editor.CanApprovePurchaseOrders, cancellationToken)
+					Editor.Email, Editor.DisplayName, Editor.Password, Editor.Role, cancellationToken)
 				: await _userService.UpdateUserAsync(
 					Editor.Id, Editor.Version, Editor.Email, Editor.DisplayName,
-					Editor.Password, Editor.IsAdministrator, Editor.CanApprovePurchaseOrders, cancellationToken);
+					Editor.Password, Editor.Role, cancellationToken);
 			UpdateUser(user);
 			Editor.Clear();
 			SelectedUser = null;

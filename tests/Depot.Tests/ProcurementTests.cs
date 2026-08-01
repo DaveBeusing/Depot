@@ -196,6 +196,7 @@ public sealed class ProcurementTests
 		Assert.Equal(context.ApproverUserId, approved.ApprovalDecisionByUserId);
 		Assert.NotNull(approved.ApprovalDecisionAtUtc);
 		Assert.Equal("Budget checked", approved.ApprovalComment);
+		context.SignInAdministrator();
 		var ordered = await context.Orders.MarkOrderedAsync(approved.Id, approved.Version);
 		Assert.Equal(PurchaseOrderStatus.Ordered, ordered.Status);
 	}
@@ -828,6 +829,8 @@ public sealed class ProcurementTests
 			Id = long.MaxValue,
 			Email = "missing-audit-user@depot.test",
 			DisplayName = "Missing audit user",
+			Role = UserRole.Administrator,
+			IsAdministrator = true,
 			IsActive = true
 		});
 

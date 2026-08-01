@@ -836,6 +836,7 @@ public sealed class DepotDatabase : IDatabaseInitializer
 			PasswordHash        TEXT NOT NULL,
 			IsAdministrator     INTEGER NOT NULL DEFAULT 0,
 			CanApprovePurchaseOrders INTEGER NOT NULL DEFAULT 0,
+			Role                INTEGER NOT NULL DEFAULT 0 CHECK(Role IN (0, 1, 2, 3, 4)),
 			IsActive            INTEGER NOT NULL DEFAULT 1,
 			CreatedUtc          TEXT NOT NULL,
 			Version             INTEGER NOT NULL DEFAULT 1
@@ -913,6 +914,7 @@ public sealed class DepotDatabase : IDatabaseInitializer
 			DisplayName,
 			PasswordHash,
 			IsAdministrator,
+			Role,
 			IsActive,
 			CreatedUtc
 		)
@@ -921,6 +923,7 @@ public sealed class DepotDatabase : IDatabaseInitializer
 			'admin@depot.local',
 			'Administrator',
 			'pbkdf2-sha256$210000$9vL0kVt/HZBUCpsJYjPW6Q==$B1lZ+NRxxR/E8kwIE5PK0wXR2BPDmFTeLiKYyAEuhaE=',
+			1,
 			1,
 			1,
 			strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
@@ -1106,6 +1109,13 @@ public sealed class DepotDatabase : IDatabaseInitializer
 			migratedVersion = 25;
 		}
 
+		if (migratedVersion == 25)
+		{
+			MigrateToFixedUserRoles(connection);
+			SetDatabaseVersion(connection, 26);
+			migratedVersion = 26;
+		}
+
 		if (migratedVersion < DatabaseVersion.CurrentVersion)
 		{
 			throw new InvalidOperationException(
@@ -1136,6 +1146,28 @@ public sealed class DepotDatabase : IDatabaseInitializer
 			command.CommandText = $"ALTER TABLE {table} ADD COLUMN {column} {definition};";
 			command.ExecuteNonQuery();
 		}
+	}
+
+	private static void MigrateToFixedUserRoles(SqliteConnection connection)
+	{
+		if (!TableExists(connection, "Users")) return;
+		if (!TableHasColumn(connection, "Users", "Role"))
+		{
+			using var alterCommand = connection.CreateCommand();
+			alterCommand.CommandText = "ALTER TABLE Users ADD COLUMN Role INTEGER NOT NULL DEFAULT 0 CHECK(Role IN (0, 1, 2, 3, 4));";
+			alterCommand.ExecuteNonQuery();
+		}
+		var hasAdministrator = TableHasColumn(connection, "Users", "IsAdministrator");
+		var hasApprover = TableHasColumn(connection, "Users", "CanApprovePurchaseOrders");
+		using var command = connection.CreateCommand();
+		command.CommandText = (hasAdministrator, hasApprover) switch
+		{
+			(true, true) => "UPDATE Users SET Role = CASE WHEN IsAdministrator = 1 THEN 1 WHEN CanApprovePurchaseOrders = 1 THEN 3 ELSE 0 END;",
+			(true, false) => "UPDATE Users SET Role = CASE WHEN IsAdministrator = 1 THEN 1 ELSE 0 END;",
+			(false, true) => "UPDATE Users SET Role = CASE WHEN CanApprovePurchaseOrders = 1 THEN 3 ELSE 0 END;",
+			_ => "UPDATE Users SET Role = 0;"
+		};
+		command.ExecuteNonQuery();
 	}
 
 	private static void MigrateToPurchaseOrderClosure(SqliteConnection connection)

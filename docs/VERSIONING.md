@@ -11,7 +11,7 @@ The single application-version source is `Directory.Build.props` in the reposito
 ## Current versions
 
 - Application development line: **0.13.0-preview**
-- Database schema version: **25**
+- Database schema version: **26**
 
 The application version and database schema version are independent. A patch application release can retain the same schema, while a schema migration can occur during a prerelease line.
 
@@ -33,6 +33,8 @@ The MSBuild properties produce:
 The About page reads the built assembly information and displays the application, file, informational, runtime, and database-schema versions.
 
 ## Database schema versioning
+
+Schema version 26 adds fixed user roles and their provider-neutral permission mapping. Existing administrators migrate to Administrator, existing purchase approvers to Approver, and all other accounts to User. Purchasing and WarehouseOperator can then be assigned through user administration. The migration retains legacy flags for compatibility while `AuthorizationService` and workflow services use the fixed role matrix as the effective contract.
 
 Schema version 25 adds structured supplier-return documents and lines. Returns are tied to received positions, validate the remaining net-received quantity and current stock inside the posting transaction, create immutable negative movements, and retain receipt and purchase-order received quantities as historical facts. Reversal metadata allows counter-booked returns to be excluded from later net-return calculations across SQLite, SQL Server, and MySQL/MariaDB.
 

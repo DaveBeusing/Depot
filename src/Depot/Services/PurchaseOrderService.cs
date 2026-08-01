@@ -29,9 +29,15 @@ public sealed class PurchaseOrderService
 	public Task<PurchaseOrder?> GetByIdAsync(long id, CancellationToken cancellationToken = default) => _orders.GetByIdAsync(id, cancellationToken);
 
 	public bool CanCurrentUserApprove => _authorization.CanApprovePurchaseOrders();
+	public bool CanCurrentUserCreate => _authorization.HasPermission(ApplicationPermission.PurchaseOrdersCreate);
+	public bool CanCurrentUserEdit => _authorization.HasPermission(ApplicationPermission.PurchaseOrdersEdit);
+	public bool CanCurrentUserSubmit => _authorization.HasPermission(ApplicationPermission.PurchaseOrdersSubmit);
+	public bool CanCurrentUserOrder => _authorization.HasPermission(ApplicationPermission.PurchaseOrdersOrder);
+	public bool CanCurrentUserClose => _authorization.HasPermission(ApplicationPermission.PurchaseOrdersClose);
 
 	public async Task<PurchaseOrder> SaveDraftAsync(PurchaseOrder draft, CancellationToken cancellationToken = default)
 	{
+		_authorization.RequirePermission(draft.Id == 0 ? ApplicationPermission.PurchaseOrdersCreate : ApplicationPermission.PurchaseOrdersEdit);
 		draft.Notes = Normalize(draft.Notes);
 		if (draft.Id != 0 && draft.Status != PurchaseOrderStatus.Draft) throw new InvalidOperationException("Only draft purchase orders can be edited.");
 		var supplier = await _suppliers.GetByIdAsync(draft.SupplierId, cancellationToken) ?? throw new InvalidOperationException("The selected supplier was not found.");
@@ -71,6 +77,7 @@ public sealed class PurchaseOrderService
 
 	public Task<PurchaseOrder> SubmitForApprovalAsync(long id, long version, CancellationToken cancellationToken = default)
 	{
+		_authorization.RequirePermission(ApplicationPermission.PurchaseOrdersSubmit);
 		var user = CurrentUser();
 		return ChangeStatusAsync(id, version, PurchaseOrderStatus.Draft, PurchaseOrderStatus.PendingApproval,
 			order =>
@@ -94,7 +101,7 @@ public sealed class PurchaseOrderService
 		DecideApprovalAsync(id, version, PurchaseOrderStatus.Rejected, comment, cancellationToken);
 
 	public Task<PurchaseOrder> ReopenRejectedAsync(long id, long version, CancellationToken cancellationToken = default) =>
-		ChangeStatusAsync(id, version, PurchaseOrderStatus.Rejected, PurchaseOrderStatus.Draft,
+		RequireAndChangeStatusAsync(ApplicationPermission.PurchaseOrdersEdit, id, version, PurchaseOrderStatus.Rejected, PurchaseOrderStatus.Draft,
 			order =>
 			{
 				order.SubmittedByUserId = null;
@@ -107,10 +114,11 @@ public sealed class PurchaseOrderService
 			}, cancellationToken);
 
 	public Task<PurchaseOrder> MarkOrderedAsync(long id, long version, CancellationToken cancellationToken = default) =>
-		ChangeStatusAsync(id, version, PurchaseOrderStatus.Approved, PurchaseOrderStatus.Ordered, null, cancellationToken);
+		RequireAndChangeStatusAsync(ApplicationPermission.PurchaseOrdersOrder, id, version, PurchaseOrderStatus.Approved, PurchaseOrderStatus.Ordered, null, cancellationToken);
 
 	public async Task<PurchaseOrder> CloseAsync(long id, long version, string reason, CancellationToken cancellationToken = default)
 	{
+		_authorization.RequirePermission(ApplicationPermission.PurchaseOrdersClose);
 		var normalizedReason = Normalize(reason) ?? throw new ArgumentException("A close reason is required.", nameof(reason));
 		if (normalizedReason.Length > 2000) throw new ArgumentException("The close reason must not exceed 2000 characters.", nameof(reason));
 		var user = CurrentUser();
@@ -130,6 +138,7 @@ public sealed class PurchaseOrderService
 
 	public async Task<PurchaseOrder> CancelAsync(long id, long version, CancellationToken cancellationToken = default)
 	{
+		_authorization.RequirePermission(ApplicationPermission.PurchaseOrdersEdit);
 		var order = await _orders.GetByIdAsync(id, cancellationToken) ?? throw new InvalidOperationException("Purchase order was not found.");
 		if (order.Version != version) throw new ConcurrencyConflictException("purchase order");
 		if (order.Status is not (PurchaseOrderStatus.Draft or PurchaseOrderStatus.Rejected or PurchaseOrderStatus.Approved or PurchaseOrderStatus.Ordered)) throw new InvalidOperationException("This purchase order can no longer be cancelled.");
@@ -161,6 +170,12 @@ public sealed class PurchaseOrderService
 	{
 		var before = await _orders.GetByIdAsync(id, cancellationToken) ?? throw new InvalidOperationException("Purchase order was not found.");
 		return await ChangeStatusAsync(before, version, expected, status, applyMetadata, cancellationToken);
+	}
+
+	private Task<PurchaseOrder> RequireAndChangeStatusAsync(ApplicationPermission permission, long id, long version, PurchaseOrderStatus expected, PurchaseOrderStatus status, Action<PurchaseOrder>? applyMetadata, CancellationToken cancellationToken)
+	{
+		_authorization.RequirePermission(permission);
+		return ChangeStatusAsync(id, version, expected, status, applyMetadata, cancellationToken);
 	}
 
 	private async Task<PurchaseOrder> ChangeStatusAsync(

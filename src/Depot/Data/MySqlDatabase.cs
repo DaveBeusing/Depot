@@ -138,11 +138,17 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 				MigrateToSupplierReturns(command);
 				version = 25;
 			}
+			if (version == 25)
+			{
+				MigrateToFixedUserRoles(command);
+				version = 26;
+			}
 			if (version != DatabaseVersion.CurrentVersion)
 			{
 				throw new InvalidOperationException(
 					$"MySQL/MariaDB schema version '{version}' is not supported. Expected '{DatabaseVersion.CurrentVersion}'.");
 			}
+			Execute(command, "UPDATE Users SET Role = 1 WHERE IsAdministrator = true AND Role = 0;");
 		}
 		finally
 		{
@@ -194,6 +200,13 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 	{
 		command.CommandText = SupplierReturnSql + " UPDATE DatabaseInfo SET Version = 25 WHERE Id = 1;";
 		command.Parameters.Clear(); command.ExecuteNonQuery();
+	}
+
+	private static void MigrateToFixedUserRoles(System.Data.Common.DbCommand command)
+	{
+		if (!ColumnExists(command, "Users", "Role")) Execute(command, "ALTER TABLE Users ADD COLUMN Role int NOT NULL DEFAULT 0 CHECK (Role IN (0,1,2,3,4));");
+		Execute(command, "UPDATE Users SET Role = CASE WHEN IsAdministrator = true THEN 1 WHEN CanApprovePurchaseOrders = true THEN 3 ELSE 0 END;");
+		Execute(command, "UPDATE DatabaseInfo SET Version = 26 WHERE Id = 1;");
 	}
 
 	private static void MigrateToStockTransfers(System.Data.Common.DbCommand command)
@@ -924,6 +937,7 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 		PasswordHash varchar(500) NOT NULL,
 		IsAdministrator boolean NOT NULL DEFAULT false,
 		CanApprovePurchaseOrders boolean NOT NULL DEFAULT false,
+		Role int NOT NULL DEFAULT 0 CHECK (Role IN (0,1,2,3,4)),
 		IsActive boolean NOT NULL DEFAULT true,
 		CreatedUtc varchar(40) NOT NULL,
 		Version bigint NOT NULL DEFAULT 1

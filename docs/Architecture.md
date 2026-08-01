@@ -84,7 +84,7 @@ SQLite is covered by integration tests. SQL Server and MySQL/MariaDB have provid
 
 ## Schema and migrations
 
-The current database schema version is **25**. It is independent from the application SemVer version.
+The current database schema version is **26**. It is independent from the application SemVer version.
 
 All providers create the current schema and migrate supported older schemas forward. Migrations cover authentication, inventory-based movements, audit/concurrency, warehouse structure, reason codes, normalized item master data, suppliers, supplier categories, supplier items, purchase orders, and goods receipts.
 
@@ -137,6 +137,8 @@ Schema version 23 introduces structured `MaterialIssue` and `MaterialIssueLine` 
 Schema version 24 introduces the independent `MaterialReturn` and `MaterialReturnLine` workflow. A return may reference a posted material issue through a nullable foreign key or stand alone with a required business reference or explanation. Posting creates positive `MaterialReturn` movements and never sets `ReversalOfMovementId`. Posted return documents remain immutable; corrections use explicit negative counter-movements through the shared reversal infrastructure while the document retains its Posted status.
 
 Schema version 25 introduces `SupplierReturn` and `SupplierReturnLine`. A supplier return references one posted, non-reversed goods receipt and derives supplier, purchase order, item, inventory, and unit cost from that historical receipt chain. Posting locks the return and affected inventories, validates the net received quantity after prior non-reversed supplier returns and the current movement-derived stock, creates negative `SupplierReturn` movements, and commits status plus audit atomically. Historical `GoodsReceiptLine.Quantity` and `PurchaseOrderLine.ReceivedQuantity` remain unchanged: they record the receipt fact, while net supplier returns are evaluated separately. Counter-booking marks the supplier return as reversed for net-return calculations without rewriting its posted history.
+
+Schema version 26 replaces the isolated administrator/approver flags as the effective authorization contract with fixed `UserRole` assignments. `AuthorizationService` maps Administrator to all permissions, Purchasing to purchase-order creation/editing/submission/ordering/closure, Approver to approval decisions, and WarehouseOperator to material issues, material returns, and supplier returns. Standard users receive none of these mutation permissions. Services enforce every permission independently from UI visibility; creator/approver separation remains mandatory. Legacy administrator and approver flags are migrated deterministically and retained only for database compatibility.
 
 The permission-restricted Approvals main page is backed by `PurchaseOrderApprovalService`. Its work queue selects only `PendingApproval` orders with server-side search, supplier/creator/date filters, stable submission-time sorting, and paging. Count, oldest submission, and total open value are database aggregates. Order lines and a bounded audit-derived status history load only after selection. A successful decision removes only the affected row and refreshes only the aggregates; interrupted or conflicting decisions re-query the selected order before reporting its current status.
 

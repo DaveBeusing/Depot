@@ -4,7 +4,7 @@
 
 - [ ] Ready for release
 
-Depot is currently `0.13.0-preview` with database schema version **25**. Checked implementation items below mean code exists on `master`; they do not replace the outstanding release verification.
+Depot is currently `0.13.0-preview` with database schema version **26**. Checked implementation items below mean code exists on `master`; they do not replace the outstanding release verification.
 
 ## Implemented and covered by automated tests
 
@@ -41,6 +41,7 @@ Depot is currently `0.13.0-preview` with database schema version **25**. Checked
 - [x] Receipt and purchase-order received quantities remain immutable historical facts; supplier returns are evaluated separately
 - [x] Purchase-order drafts, lines, generated order numbers, status changes, search, and filters
 - [x] Purchase-order submission, approval/rejection, explicit approver permission, and creator/approver separation
+- [x] Fixed workflow roles and service-level permissions for purchase orders, material issues, material returns, and supplier returns
 - [x] Permission-restricted approval main page with bounded server-side work queue and targeted decision updates
 - [x] Atomic purchase-order create/edit/order/cancel and before/after audit writes
 - [x] Partial and final goods receipts

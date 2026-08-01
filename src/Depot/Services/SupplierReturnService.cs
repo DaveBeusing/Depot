@@ -19,6 +19,7 @@ public sealed class SupplierReturnService
 	private readonly AuditRepository _auditEntries;
 	private readonly AuditService _audit;
 	private readonly StockMovementReversalService _reversals;
+	private readonly AuthorizationService _authorization;
 
 	public SupplierReturnService(
 		IDatabaseTransactionRunner transactions,
@@ -30,7 +31,8 @@ public sealed class SupplierReturnService
 		ReasonCodeRepository reasons,
 		AuditRepository auditEntries,
 		AuditService audit,
-		StockMovementReversalService reversals)
+		StockMovementReversalService reversals,
+		AuthorizationService authorization)
 	{
 		_transactions = transactions;
 		_returns = returns;
@@ -42,7 +44,11 @@ public sealed class SupplierReturnService
 		_auditEntries = auditEntries;
 		_audit = audit;
 		_reversals = reversals;
+		_authorization = authorization;
 	}
+
+	public bool CanCreate => _authorization.HasPermission(ApplicationPermission.SupplierReturnsCreate);
+	public bool CanPost => _authorization.HasPermission(ApplicationPermission.SupplierReturnsPost);
 
 	public Task<PageResult<SupplierReturnOverviewItem>> SearchAsync(
 		string? search,
@@ -83,6 +89,7 @@ public sealed class SupplierReturnService
 		SupplierReturn value,
 		CancellationToken cancellationToken = default)
 	{
+		_authorization.RequirePermission(ApplicationPermission.SupplierReturnsCreate);
 		NormalizeAndValidate(value);
 		var userId = RequireUser("save");
 		return _transactions.ExecuteAsync(
@@ -95,6 +102,7 @@ public sealed class SupplierReturnService
 		long version,
 		CancellationToken cancellationToken = default)
 	{
+		_authorization.RequirePermission(ApplicationPermission.SupplierReturnsPost);
 		ArgumentOutOfRangeException.ThrowIfNegativeOrZero(id);
 		var userId = RequireUser("post");
 		return _transactions.ExecuteAsync(
@@ -107,6 +115,7 @@ public sealed class SupplierReturnService
 		long version,
 		CancellationToken cancellationToken = default)
 	{
+		_authorization.RequirePermission(ApplicationPermission.SupplierReturnsCreate);
 		ArgumentOutOfRangeException.ThrowIfNegativeOrZero(id);
 		RequireUser("cancel");
 		return _transactions.ExecuteAsync(
@@ -139,6 +148,7 @@ public sealed class SupplierReturnService
 		string reversalReason,
 		CancellationToken cancellationToken = default)
 	{
+		_authorization.RequirePermission(ApplicationPermission.SupplierReturnsPost);
 		ArgumentOutOfRangeException.ThrowIfNegativeOrZero(id);
 		var userId = _reversals.RequireUser();
 		return _transactions.ExecuteAsync(

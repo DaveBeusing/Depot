@@ -17,7 +17,7 @@
 				<ListBox Grid.Row="4" ItemsSource="{Binding Orders}" SelectedItem="{Binding SelectedOrder}" Style="{StaticResource MasterDataListBoxStyle}" ItemContainerStyle="{StaticResource MasterDataListBoxItemStyle}">
 					<ListBox.ItemTemplate><DataTemplate><Grid Margin="4"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><StackPanel><TextBlock Text="{Binding OrderNumber}" FontWeight="SemiBold" /><TextBlock Text="{Binding SupplierName}" Style="{StaticResource CaptionStyle}" /></StackPanel><StackPanel Grid.Column="1" HorizontalAlignment="Right"><TextBlock Text="{Binding StatusDisplayName}" /><TextBlock Text="{Binding OrderDate, StringFormat={}{0:d}}" Style="{StaticResource CaptionStyle}" /></StackPanel></Grid></DataTemplate></ListBox.ItemTemplate>
 				</ListBox>
-				<Button Grid.Row="6" Command="{Binding NewOrderCommand}" Content="New Purchase Order" Style="{StaticResource PrimaryButtonStyle}" />
+				<Button Grid.Row="6" Command="{Binding NewOrderCommand}" Content="New Purchase Order" Style="{StaticResource PrimaryButtonStyle}" Visibility="{Binding CanCreateOrders, Converter={StaticResource BooleanToVisibilityConverter}}" />
 			</Grid>
 
 			<ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
@@ -58,14 +58,14 @@
 								<TextBox MinHeight="48" AcceptsReturn="True" MaxLength="2000" Text="{Binding CloseReason, UpdateSourceTrigger=PropertyChanged}" TextWrapping="Wrap" Style="{StaticResource MultilineTextBoxStyle}" />
 							</StackPanel>
 							<WrapPanel Margin="0,16,0,0" HorizontalAlignment="Right">
-								<Button Command="{Binding SaveOrderCommand}" Content="Save Draft" Style="{StaticResource SecondaryButtonStyle}" />
-								<Button Margin="{StaticResource Button.Margin}" Command="{Binding SubmitForApprovalCommand}" Content="Submit for Approval" Style="{StaticResource PrimaryButtonStyle}" />
-								<Button Margin="{StaticResource Button.Margin}" Command="{Binding ApproveCommand}" Content="Approve" Style="{StaticResource PrimaryButtonStyle}" />
-								<Button Margin="{StaticResource Button.Margin}" Command="{Binding RejectCommand}" Content="Reject" Style="{StaticResource DangerButtonStyle}" />
-								<Button Margin="{StaticResource Button.Margin}" Command="{Binding ReopenRejectedCommand}" Content="Reopen Draft" Style="{StaticResource SecondaryButtonStyle}" />
-								<Button Margin="{StaticResource Button.Margin}" Command="{Binding MarkOrderedCommand}" Content="Mark Ordered" Style="{StaticResource PrimaryButtonStyle}" />
-								<Button Margin="{StaticResource Button.Margin}" Command="{Binding CloseOrderCommand}" Content="Close Order" Style="{StaticResource SecondaryButtonStyle}" />
-								<Button Margin="{StaticResource Button.Margin}" Command="{Binding CancelOrderCommand}" Content="Cancel Order" Style="{StaticResource DangerButtonStyle}" />
+								<Button Command="{Binding SaveOrderCommand}" Content="Save Draft" Style="{StaticResource SecondaryButtonStyle}" Visibility="{Binding CanEditOrders, Converter={StaticResource BooleanToVisibilityConverter}}" />
+								<Button Margin="{StaticResource Button.Margin}" Command="{Binding SubmitForApprovalCommand}" Content="Submit for Approval" Style="{StaticResource PrimaryButtonStyle}" Visibility="{Binding CanSubmitOrders, Converter={StaticResource BooleanToVisibilityConverter}}" />
+								<Button Margin="{StaticResource Button.Margin}" Command="{Binding ApproveCommand}" Content="Approve" Style="{StaticResource PrimaryButtonStyle}" Visibility="{Binding CanApproveOrders, Converter={StaticResource BooleanToVisibilityConverter}}" />
+								<Button Margin="{StaticResource Button.Margin}" Command="{Binding RejectCommand}" Content="Reject" Style="{StaticResource DangerButtonStyle}" Visibility="{Binding CanApproveOrders, Converter={StaticResource BooleanToVisibilityConverter}}" />
+								<Button Margin="{StaticResource Button.Margin}" Command="{Binding ReopenRejectedCommand}" Content="Reopen Draft" Style="{StaticResource SecondaryButtonStyle}" Visibility="{Binding CanEditOrders, Converter={StaticResource BooleanToVisibilityConverter}}" />
+								<Button Margin="{StaticResource Button.Margin}" Command="{Binding MarkOrderedCommand}" Content="Mark Ordered" Style="{StaticResource PrimaryButtonStyle}" Visibility="{Binding CanOrderPurchaseOrders, Converter={StaticResource BooleanToVisibilityConverter}}" />
+								<Button Margin="{StaticResource Button.Margin}" Command="{Binding CloseOrderCommand}" Content="Close Order" Style="{StaticResource SecondaryButtonStyle}" Visibility="{Binding CanCloseOrders, Converter={StaticResource BooleanToVisibilityConverter}}" />
+								<Button Margin="{StaticResource Button.Margin}" Command="{Binding CancelOrderCommand}" Content="Cancel Order" Style="{StaticResource DangerButtonStyle}" Visibility="{Binding CanEditOrders, Converter={StaticResource BooleanToVisibilityConverter}}" />
 							</WrapPanel>
 						</StackPanel>
 					</controls:Card>

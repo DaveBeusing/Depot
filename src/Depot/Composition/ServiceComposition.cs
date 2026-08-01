@@ -88,7 +88,8 @@ internal sealed class ServiceComposition
 			repositories.ReasonCodes,
 			repositories.Audit,
 			audit,
-			movementReversals);
+			movementReversals,
+			Authorization);
 		MaterialReturns = new MaterialReturnService(
 			database.TransactionRunner,
 			repositories.MaterialReturns,
@@ -98,7 +99,8 @@ internal sealed class ServiceComposition
 			repositories.ReasonCodes,
 			repositories.Audit,
 			audit,
-			movementReversals);
+			movementReversals,
+			Authorization);
 		SupplierReturns = new SupplierReturnService(
 			database.TransactionRunner,
 			repositories.SupplierReturns,
@@ -109,7 +111,8 @@ internal sealed class ServiceComposition
 			repositories.ReasonCodes,
 			repositories.Audit,
 			audit,
-			movementReversals);
+			movementReversals,
+			Authorization);
 		Items = new ItemService(
 			repositories.Items,
 			audit,

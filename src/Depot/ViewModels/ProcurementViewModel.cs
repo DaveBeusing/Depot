@@ -44,19 +44,19 @@ public sealed class ProcurementViewModel : BaseViewModel, IDisposable
 		_orders = orders; _receipts = receipts; _suppliers = suppliers; _items = items; _fileDialogs = fileDialogs; _reasonCodes = reasonCodes;
 		StatusFilters = [new("All statuses", null), .. Enum.GetValues<PurchaseOrderStatus>().Select(status => new PurchaseOrderStatusFilter(StatusLabel(status), status))];
 		_selectedStatusFilter = StatusFilters[0];
-		NewOrderCommand = new RelayCommand(NewOrder);
+		NewOrderCommand = new RelayCommand(NewOrder, () => CanCreateOrders);
 		SaveOrderCommand = new AsyncRelayCommand(SaveOrderAsync, () => IsDraft);
-		SubmitForApprovalCommand = new AsyncRelayCommand(SubmitForApprovalAsync, () => Draft.Id > 0 && Draft.Status == PurchaseOrderStatus.Draft);
+		SubmitForApprovalCommand = new AsyncRelayCommand(SubmitForApprovalAsync, () => CanSubmitOrders && Draft.Id > 0 && Draft.Status == PurchaseOrderStatus.Draft);
 		ApproveCommand = new AsyncRelayCommand(ApproveAsync, () => Draft.Status == PurchaseOrderStatus.PendingApproval && _orders.CanCurrentUserApprove);
 		RejectCommand = new AsyncRelayCommand(RejectAsync, () => Draft.Status == PurchaseOrderStatus.PendingApproval && _orders.CanCurrentUserApprove);
-		ReopenRejectedCommand = new AsyncRelayCommand(ReopenRejectedAsync, () => Draft.Status == PurchaseOrderStatus.Rejected);
-		MarkOrderedCommand = new AsyncRelayCommand(MarkOrderedAsync, () => Draft.Status == PurchaseOrderStatus.Approved);
+		ReopenRejectedCommand = new AsyncRelayCommand(ReopenRejectedAsync, () => CanEditOrders && Draft.Status == PurchaseOrderStatus.Rejected);
+		MarkOrderedCommand = new AsyncRelayCommand(MarkOrderedAsync, () => CanOrderPurchaseOrders && Draft.Status == PurchaseOrderStatus.Approved);
 		CloseOrderCommand = new AsyncRelayCommand(CloseOrderAsync, () => CanClose && !string.IsNullOrWhiteSpace(CloseReason));
-		CancelOrderCommand = new AsyncRelayCommand(CancelOrderAsync, () => Draft.Status is PurchaseOrderStatus.Draft or PurchaseOrderStatus.Rejected or PurchaseOrderStatus.Approved or PurchaseOrderStatus.Ordered);
+		CancelOrderCommand = new AsyncRelayCommand(CancelOrderAsync, () => CanEditOrders && Draft.Status is (PurchaseOrderStatus.Draft or PurchaseOrderStatus.Rejected or PurchaseOrderStatus.Approved or PurchaseOrderStatus.Ordered));
 		AddLineCommand = new RelayCommand(AddOrUpdateLine, () => IsDraft && SelectedItem is not null);
 		RemoveLineCommand = new RelayCommand(RemoveLine, () => IsDraft && SelectedLine is not null);
 		PostReceiptCommand = new AsyncRelayCommand(PostReceiptAsync, () => CanReceive);
-		ReverseReceiptCommand = new AsyncRelayCommand(ReverseReceiptAsync, () => SelectedReceipt is { IsReversed: false } && SelectedReversalReasonCode is not null && !string.IsNullOrWhiteSpace(ReversalReason));
+		ReverseReceiptCommand = new AsyncRelayCommand(ReverseReceiptAsync, () => CanReverseReceipt && SelectedReversalReasonCode is not null && !string.IsNullOrWhiteSpace(ReversalReason));
 	}
 
 	public ObservableCollection<PurchaseOrder> Orders { get; } = new();
@@ -82,10 +82,16 @@ public sealed class ProcurementViewModel : BaseViewModel, IDisposable
 	public AsyncRelayCommand ReverseReceiptCommand { get; }
 
 	public PurchaseOrder Draft { get => _draft; private set { _draft = value; OnPropertyChanged(); OnPropertyChanged(nameof(IsDraft)); OnPropertyChanged(nameof(IsOrderReadOnly)); OnPropertyChanged(nameof(CanClose)); OnPropertyChanged(nameof(HasApprovalHistory)); RaiseCommands(); } }
-	public bool IsDraft => Draft.Status == PurchaseOrderStatus.Draft;
+	public bool CanCreateOrders => _orders.CanCurrentUserCreate;
+	public bool CanEditOrders => _orders.CanCurrentUserEdit;
+	public bool CanSubmitOrders => _orders.CanCurrentUserSubmit;
+	public bool CanApproveOrders => _orders.CanCurrentUserApprove;
+	public bool CanOrderPurchaseOrders => _orders.CanCurrentUserOrder;
+	public bool CanCloseOrders => _orders.CanCurrentUserClose;
+	public bool IsDraft => Draft.Status == PurchaseOrderStatus.Draft && (Draft.Id == 0 ? CanCreateOrders : CanEditOrders);
 	public bool IsOrderReadOnly => !IsDraft;
-	public bool CanClose => Draft.Status is PurchaseOrderStatus.Ordered or PurchaseOrderStatus.PartiallyReceived;
-	public bool CanReceive => SelectedOrder?.Status is PurchaseOrderStatus.Ordered or PurchaseOrderStatus.PartiallyReceived;
+	public bool CanClose => CanCloseOrders && Draft.Status is (PurchaseOrderStatus.Ordered or PurchaseOrderStatus.PartiallyReceived);
+	public bool CanReceive => CanOrderPurchaseOrders && SelectedOrder?.Status is (PurchaseOrderStatus.Ordered or PurchaseOrderStatus.PartiallyReceived);
 	public string EditorTitle => Draft.Id == 0 ? "New Purchase Order" : Draft.OrderNumber;
 	public string SaveLineText => SelectedLine is null ? "Add Line" : "Update Line";
 
@@ -115,7 +121,7 @@ public sealed class ProcurementViewModel : BaseViewModel, IDisposable
 	public DateTime ReceiptDate { get => _receiptDate; set { if (_receiptDate == value) return; _receiptDate = value; OnPropertyChanged(); } }
 	public string? ReceiptNotes { get => _receiptNotes; set { if (_receiptNotes == value) return; _receiptNotes = value; OnPropertyChanged(); } }
 	public GoodsReceipt? SelectedReceipt { get => _selectedReceipt; set { if (_selectedReceipt == value) return; _selectedReceipt = value; OnPropertyChanged(); OnPropertyChanged(nameof(CanReverseReceipt)); ReverseReceiptCommand.RaiseCanExecuteChanged(); } }
-	public bool CanReverseReceipt => SelectedReceipt is { IsReversed: false };
+	public bool CanReverseReceipt => CanOrderPurchaseOrders && SelectedReceipt is { IsReversed: false };
 	public ReasonCode? SelectedReversalReasonCode { get => _selectedReversalReasonCode; set { if (_selectedReversalReasonCode == value) return; _selectedReversalReasonCode = value; OnPropertyChanged(); ReverseReceiptCommand.RaiseCanExecuteChanged(); } }
 	public string ReversalReason { get => _reversalReason; set { if (_reversalReason == value) return; _reversalReason = value; OnPropertyChanged(); ReverseReceiptCommand.RaiseCanExecuteChanged(); } }
 	public string ApprovalComment { get => _approvalComment; set { if (_approvalComment == value) return; _approvalComment = value; OnPropertyChanged(); } }

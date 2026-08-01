@@ -38,7 +38,7 @@ public sealed class MaterialReturnsViewModel : BaseViewModel, IDisposable
 	{
 		_service = service; _reasonCodes = reasonCodes; _dialogs = dialogs;
 		StatusFilters = [new("All statuses", null), .. Enum.GetValues<MaterialReturnStatus>().Select(status => new MaterialReturnStatusFilter(status.ToString(), status))]; _selectedStatusFilter = StatusFilters[0];
-		NewReturnCommand = new RelayCommand(NewReturn); SaveCommand = new AsyncRelayCommand(SaveAsync, () => IsDraft && Lines.Count > 0); PostCommand = new AsyncRelayCommand(PostAsync, () => Draft.Id > 0 && IsDraft); CancelCommand = new AsyncRelayCommand(CancelAsync, () => Draft.Id > 0 && IsDraft); CorrectCommand = new AsyncRelayCommand(CorrectAsync, () => CanCorrect && SelectedCorrectionReasonCode is not null && !string.IsNullOrWhiteSpace(CorrectionReason)); AddLineCommand = new RelayCommand(AddOrUpdateLine, () => IsDraft && SelectedInventory is not null && SelectedReasonCode is not null && LineQuantity > 0); RemoveLineCommand = new RelayCommand(RemoveLine, () => IsDraft && SelectedLine is not null); PreviousPageCommand = new AsyncRelayCommand(PreviousPageAsync, () => PageNumber > 1); NextPageCommand = new AsyncRelayCommand(NextPageAsync, () => HasNextPage);
+		NewReturnCommand = new RelayCommand(NewReturn, () => CanCreate); SaveCommand = new AsyncRelayCommand(SaveAsync, () => CanCreate && IsDraft && Lines.Count > 0); PostCommand = new AsyncRelayCommand(PostAsync, () => CanPost && Draft.Id > 0 && IsDraft); CancelCommand = new AsyncRelayCommand(CancelAsync, () => CanCreate && Draft.Id > 0 && IsDraft); CorrectCommand = new AsyncRelayCommand(CorrectAsync, () => CanCorrect && SelectedCorrectionReasonCode is not null && !string.IsNullOrWhiteSpace(CorrectionReason)); AddLineCommand = new RelayCommand(AddOrUpdateLine, () => IsDraft && SelectedInventory is not null && SelectedReasonCode is not null && LineQuantity > 0); RemoveLineCommand = new RelayCommand(RemoveLine, () => IsDraft && SelectedLine is not null); PreviousPageCommand = new AsyncRelayCommand(PreviousPageAsync, () => PageNumber > 1); NextPageCommand = new AsyncRelayCommand(NextPageAsync, () => HasNextPage);
 	}
 
 	public ObservableCollection<MaterialReturnOverviewItem> Returns { get; } = new();
@@ -59,10 +59,12 @@ public sealed class MaterialReturnsViewModel : BaseViewModel, IDisposable
 	public AsyncRelayCommand NextPageCommand { get; }
 
 	public MaterialReturn Draft { get => _draft; private set { _draft = value; OnPropertyChanged(); OnPropertyChanged(nameof(IsDraft)); OnPropertyChanged(nameof(IsReadOnly)); OnPropertyChanged(nameof(CanCorrect)); OnPropertyChanged(nameof(EditorTitle)); RaiseCommands(); } }
-	public bool IsDraft => Draft.Status == MaterialReturnStatus.Draft;
+	public bool CanCreate => _service.CanCreate;
+	public bool CanPost => _service.CanPost;
+	public bool IsDraft => Draft.Status == MaterialReturnStatus.Draft && CanCreate;
 	public bool IsReadOnly => !IsDraft;
 	public bool HasMovements => Movements.Count > 0;
-	public bool CanCorrect => Draft.Status == MaterialReturnStatus.Posted && Movements.Any(movement => movement.MovementType == StockMovementType.MaterialReturn) && Movements.Where(movement => movement.MovementType == StockMovementType.MaterialReturn).All(movement => !movement.IsReversed);
+	public bool CanCorrect => CanPost && Draft.Status == MaterialReturnStatus.Posted && Movements.Any(movement => movement.MovementType == StockMovementType.MaterialReturn) && Movements.Where(movement => movement.MovementType == StockMovementType.MaterialReturn).All(movement => !movement.IsReversed);
 	public string EditorTitle => Draft.Id == 0 ? "New Material Return" : Draft.ReturnNumber;
 	public string SaveLineText => SelectedLine is null ? "Add Line" : "Update Line";
 	public bool HasNextPage => (long)PageNumber * PageSize < TotalCount;
