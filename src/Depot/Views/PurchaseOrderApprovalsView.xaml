@@ -31,9 +31,7 @@
 						<ListBox ItemsSource="{Binding Approvals}" SelectedItem="{Binding SelectedApproval}" Style="{StaticResource MasterDataListBoxStyle}" ItemContainerStyle="{StaticResource MasterDataListBoxItemStyle}">
 							<ListBox.ItemTemplate><DataTemplate><Grid Margin="4"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><StackPanel><TextBlock FontWeight="SemiBold" Text="{Binding OrderNumber}" /><TextBlock Text="{Binding SupplierName}" Style="{StaticResource CaptionStyle}" TextTrimming="CharacterEllipsis" /><TextBlock Text="{Binding CreatorDisplayName, StringFormat=Created by {0}}" Style="{StaticResource CaptionStyle}" TextTrimming="CharacterEllipsis" /></StackPanel><StackPanel Grid.Column="1" Margin="8,0,0,0" HorizontalAlignment="Right"><TextBlock HorizontalAlignment="Right" Text="{Binding TotalAmount, StringFormat={}{0:C2}}" FontWeight="SemiBold" /><TextBlock HorizontalAlignment="Right" Text="{Binding SubmittedAtLocal, StringFormat={}{0:g}}" Style="{StaticResource CaptionStyle}" /></StackPanel></Grid></DataTemplate></ListBox.ItemTemplate>
 						</ListBox>
-						<controls:EmptyState Title="No pending approvals" Description="The approval queue is empty or no orders match the current filters.">
-							<controls:EmptyState.Style><Style TargetType="{x:Type controls:EmptyState}" BasedOn="{StaticResource {x:Type controls:EmptyState}}"><Setter Property="Visibility" Value="Collapsed" /><Style.Triggers><DataTrigger Binding="{Binding Approvals.Count}" Value="0"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers></Style></controls:EmptyState.Style>
-						</controls:EmptyState>
+						<controls:WorkflowListState ItemCount="{Binding Approvals.Count}" SearchText="{Binding SearchText}" IsBusy="{Binding IsBusy}" HasError="{Binding HasOperationError}" ErrorText="{Binding OperationError}" />
 					</Grid>
 					<controls:PaginationControl Grid.Row="3" PreviousCommand="{Binding PreviousPageCommand}" NextCommand="{Binding NextPageCommand}" PageText="{Binding PageDisplay}" />
 				</Grid>

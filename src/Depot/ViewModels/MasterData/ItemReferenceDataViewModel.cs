@@ -118,6 +118,7 @@ public sealed class ItemReferenceDataViewModel : BaseViewModel, IDisposable
 		Name = string.Empty;
 		Description = null;
 		_editorVersion = 0;
+		RequestEditorFocus();
 	}
 
 	private async Task SaveAsync(CancellationToken cancellationToken)
@@ -129,6 +130,7 @@ public sealed class ItemReferenceDataViewModel : BaseViewModel, IDisposable
 			Replace(saved);
 			SelectedItem = saved;
 			CompleteOperation(false, $"{_service.SingularName} saved");
+			RequestEditorFocus();
 		}
 		catch (Exception exception) when (exception is not OperationCanceledException)
 		{

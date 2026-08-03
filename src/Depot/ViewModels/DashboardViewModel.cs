@@ -69,6 +69,8 @@ public sealed class DashboardViewModel
 
 	public ObservableCollection<DashboardRecentMovementViewModel> RecentMovements { get; }
 		= new();
+	public bool HasRecentMovements => RecentMovements.Count > 0;
+	public bool HasNoRecentMovements => !HasRecentMovements;
 
 	public async Task LoadAsync(CancellationToken cancellationToken = default)
 	{
@@ -96,6 +98,8 @@ public sealed class DashboardViewModel
 			{
 				RecentMovements.Add(new DashboardRecentMovementViewModel(movement));
 			}
+			OnPropertyChanged(nameof(HasRecentMovements));
+			OnPropertyChanged(nameof(HasNoRecentMovements));
 			CompleteOperation(RecentMovements.Count == 0, "Dashboard loaded");
 		}
 		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)

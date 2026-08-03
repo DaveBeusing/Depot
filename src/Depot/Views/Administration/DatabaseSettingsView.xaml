@@ -227,11 +227,6 @@
 				Text="Monitor, protect and maintain the active Depot database. Credentials are never displayed."
 				TextWrapping="Wrap" />
 
-			<controls:OperationStatus
-				ErrorText="{Binding OperationError}"
-				HasError="{Binding HasOperationError}"
-				IsBusy="{Binding IsBusy}"
-				StatusText="{Binding StatusText}" />
 			<ProgressBar
 				Height="4"
 				Margin="0,0,0,16"
@@ -312,22 +307,20 @@
 			</controls:Card>
 
 			<controls:Card Margin="0,16,0,0">
-				<StackPanel>
-					<TextBlock Text="Maintenance actions" Style="{StaticResource CardTitleStyle}" />
-					<WrapPanel Margin="0,16,0,0">
-						<Button Command="{Binding CreateBackupCommand}" Content="Create backup" Style="{StaticResource PrimaryButtonStyle}" />
-						<Button Margin="8,0,0,0" Command="{Binding RestoreBackupCommand}" Content="Restore backup" Style="{StaticResource SecondaryButtonStyle}" />
-						<Button Margin="8,0,0,0" Command="{Binding ValidateBackupCommand}" Content="Validate backup" Style="{StaticResource SecondaryButtonStyle}" />
-						<Button Margin="8,0,0,0" Command="{Binding CheckIntegrityCommand}" Content="Check integrity" Style="{StaticResource SecondaryButtonStyle}" />
-						<Button Margin="8,0,0,0" Command="{Binding CompactCommand}" Content="Compact SQLite" Style="{StaticResource SecondaryButtonStyle}" />
-						<Button Margin="8,0,0,0" Command="{Binding RefreshCommand}" Content="Refresh" Style="{StaticResource SecondaryButtonStyle}" />
-					</WrapPanel>
-					<TextBlock
-						Margin="0,12,0,0"
-						Foreground="{StaticResource SecondaryTextBrush}"
-						Text="Restore validates the selected backup and creates a safety backup before replacing any records. Compact is available only for SQLite."
-						TextWrapping="Wrap" />
-				</StackPanel>
+				<Grid>
+					<Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="24" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+					<StackPanel>
+						<TextBlock Text="Backup and diagnostics" Style="{StaticResource CardTitleStyle}" />
+						<TextBlock Margin="0,6,0,16" Text="Non-destructive protection and verification actions." TextWrapping="Wrap" Style="{StaticResource CaptionStyle}" />
+						<StackPanel Orientation="Horizontal"><Button Command="{Binding CreateBackupCommand}" Content="Create backup" Style="{StaticResource PrimaryButtonStyle}" /><Button Margin="8,0,0,0" Command="{Binding ValidateBackupCommand}" Content="Validate backup" Style="{StaticResource SecondaryButtonStyle}" /></StackPanel>
+						<StackPanel Margin="0,8,0,0" Orientation="Horizontal"><Button Command="{Binding CheckIntegrityCommand}" Content="Check integrity" Style="{StaticResource SecondaryButtonStyle}" /><Button Margin="8,0,0,0" Command="{Binding RefreshCommand}" Content="Refresh" Style="{StaticResource SecondaryButtonStyle}" /></StackPanel>
+					</StackPanel>
+					<StackPanel Grid.Column="2">
+						<TextBlock Text="Destructive maintenance" Style="{StaticResource CardTitleStyle}" />
+						<TextBlock Margin="0,6,0,16" Text="These actions require explicit confirmation. Restore validates the backup and creates a safety backup first." TextWrapping="Wrap" Style="{StaticResource CaptionStyle}" />
+						<StackPanel Orientation="Horizontal"><Button Command="{Binding RestoreBackupCommand}" Content="Restore backup" Style="{StaticResource DangerButtonStyle}" /><Button Margin="8,0,0,0" Command="{Binding CompactCommand}" Content="Compact SQLite" Style="{StaticResource SecondaryButtonStyle}" /></StackPanel>
+					</StackPanel>
+				</Grid>
 			</controls:Card>
 
 			<TextBlock Margin="0,24,0,12" Text="Available backups" Style="{StaticResource SectionTitleStyle}" />
@@ -338,11 +331,11 @@
 				SelectedItem="{Binding SelectedBackup}"
 				Style="{StaticResource AppDataGridStyle}">
 				<DataGrid.Columns>
-					<DataGridTextColumn Width="145" Binding="{Binding CreatedDisplay}" Header="Created" />
-					<DataGridTextColumn Width="90" Binding="{Binding SizeDisplay}" Header="Size" />
+					<DataGridTextColumn Width="145" Binding="{Binding CreatedDisplay}" Header="Created" ElementStyle="{StaticResource AppDataGridTextStyle}" />
+					<DataGridTextColumn Width="90" Binding="{Binding SizeDisplay}" Header="Size" ElementStyle="{StaticResource AppDataGridNumericTextStyle}" />
 					<DataGridTextColumn Width="90" Binding="{Binding Provider}" Header="Provider" />
 					<DataGridCheckBoxColumn Width="70" Binding="{Binding IsValid}" Header="Valid" IsReadOnly="True" />
-					<DataGridTextColumn Width="*" Binding="{Binding FilePath}" Header="Path" />
+					<DataGridTextColumn Width="*" Binding="{Binding FilePath}" Header="Path" ElementStyle="{StaticResource AppDataGridTextStyle}" />
 				</DataGrid.Columns>
 			</DataGrid>
 			<TextBlock

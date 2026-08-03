@@ -129,9 +129,6 @@
 		<Setter Property="Margin" Value="{DynamicResource Label.Margin}" />
 	</Style>
 
-	<!-- Form Value -->
-	<Style x:Key="FormValueStyle" TargetType="TextBlock" BasedOn="{StaticResource BodyStyle}" />
-
 	<!-- Hint -->
 	<Style x:Key="HintStyle" TargetType="TextBlock" BasedOn="{StaticResource CaptionStyle}" />
 

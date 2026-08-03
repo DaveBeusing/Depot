@@ -111,6 +111,9 @@ public sealed class ProcurementViewModel : BaseViewModel, IDisposable
 	public long TotalCount { get => _totalCount; private set { if (_totalCount == value) return; _totalCount = value; OnPropertyChanged(); OnPropertyChanged(nameof(PageDisplay)); OnPropertyChanged(nameof(HasNextPage)); RaisePagingCommands(); } }
 	public bool HasNextPage => (long)PageNumber * PageSize < TotalCount;
 	public string PageDisplay => $"Page {PageNumber} · {TotalCount:N0} orders";
+	public bool HasSelectedOrder => SelectedOrder is not null;
+	public bool HasNoSelectedOrder => !HasSelectedOrder;
+
 	public PurchaseOrder? SelectedOrder
 	{
 		get => _selectedOrder;
@@ -119,6 +122,8 @@ public sealed class ProcurementViewModel : BaseViewModel, IDisposable
 			if (_selectedOrder == value) return;
 			_selectedOrder = value;
 			OnPropertyChanged();
+			OnPropertyChanged(nameof(HasSelectedOrder));
+			OnPropertyChanged(nameof(HasNoSelectedOrder));
 			OnPropertyChanged(nameof(CanReceive));
 			OnPropertyChanged(nameof(ShowReceiptEntry));
 			_selectionCancellation?.Cancel();

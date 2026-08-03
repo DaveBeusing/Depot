@@ -112,4 +112,23 @@
 			</Setter.Value>
 		</Setter>
 	</Style>
+
+	<Style x:Key="WorkflowFocusVisualStyle">
+		<Setter Property="Control.Template"><Setter.Value><ControlTemplate><Border Margin="2" BorderBrush="{DynamicResource PrimaryBrush}" BorderThickness="2" CornerRadius="{DynamicResource CornerRadius.Small}" /></ControlTemplate></Setter.Value></Setter>
+	</Style>
+
+	<Style x:Key="WorkflowTabItemStyle" TargetType="TabItem">
+		<Setter Property="Padding" Value="16,10" />
+		<Setter Property="Margin" Value="0,0,8,0" />
+		<Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}" />
+		<Setter Property="FontWeight" Value="SemiBold" />
+		<Setter Property="FocusVisualStyle" Value="{StaticResource WorkflowFocusVisualStyle}" />
+		<Style.Triggers><Trigger Property="IsSelected" Value="True"><Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" /></Trigger></Style.Triggers>
+	</Style>
+
+	<Style x:Key="WorkflowTabControlStyle" TargetType="TabControl">
+		<Setter Property="Background" Value="Transparent" />
+		<Setter Property="BorderThickness" Value="0" />
+		<Setter Property="ItemContainerStyle" Value="{StaticResource WorkflowTabItemStyle}" />
+	</Style>
 </ResourceDictionary>

@@ -178,11 +178,13 @@ public sealed class PurposeViewModel
 
 		DeactivatePurposeCommand.RaiseCanExecuteChanged();
 		ToggleActiveCommand.RaiseCanExecuteChanged();
+		RequestEditorFocus();
 	}
 
 	private async Task SavePurposeAsync(CancellationToken cancellationToken)
 	{
 		ClearError();
+		BeginOperation("Saving purpose");
 
 		try
 		{
@@ -204,11 +206,13 @@ public sealed class PurposeViewModel
 			Editor.Clear();
 
 			SelectedPurpose = null;
+			CompleteOperation(Purposes.Count == 0, "Purpose saved");
+			RequestEditorFocus();
 		}
-		catch (Exception ex)
+		catch (Exception ex) when (ex is not OperationCanceledException)
 		{
-			ErrorMessage =
-				ex.Message;
+			ErrorMessage = ex.Message;
+			FailOperation(ex, "Purpose could not be saved");
 		}
 	}
 

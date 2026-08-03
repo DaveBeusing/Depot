@@ -7,6 +7,7 @@ using System.Diagnostics;
 using Depot.Commands;
 using Depot.Models;
 using Depot.Services;
+using Depot.ViewModels.Shared;
 
 namespace Depot.ViewModels.Suppliers;
 
@@ -27,6 +28,8 @@ public sealed class SupplierViewModel : BaseViewModel, IDisposable
 	private string _searchText = string.Empty;
 	private string _supplierItemSearchText = string.Empty;
 	private string _itemSearchText = string.Empty;
+	private ActivationFilterOption _selectedActivationFilter = ActivationFilterOption.All[0];
+	private ActivationFilterOption _selectedSupplierItemActivationFilter = ActivationFilterOption.All[0];
 
 	public SupplierViewModel(SupplierService supplierService, SupplierItemService supplierItemService, SupplierCategoryService categoryService, ItemService itemService)
 	{
@@ -55,14 +58,29 @@ public sealed class SupplierViewModel : BaseViewModel, IDisposable
 	public AsyncRelayCommand SaveSupplierItemCommand { get; }
 	public AsyncRelayCommand ToggleSupplierItemCommand { get; }
 
-	public Supplier Draft { get => _draft; private set { _draft = value; OnPropertyChanged(); OnPropertyChanged(nameof(AccountNumberText)); OnPropertyChanged(nameof(SupplierEditorTitle)); OpenUrlCommand.RaiseCanExecuteChanged(); } }
+	public Supplier Draft { get => _draft; private set { _draft = value; OnPropertyChanged(); OnPropertyChanged(nameof(AccountNumberText)); OnPropertyChanged(nameof(SupplierEditorTitle)); OnPropertyChanged(nameof(SupplierStatus)); OpenUrlCommand.RaiseCanExecuteChanged(); } }
 	public string AccountNumberText => Draft.AccountNumber == 0 ? string.Empty : Draft.AccountNumber.ToString(System.Globalization.CultureInfo.InvariantCulture);
-	public SupplierItem SupplierItemDraft { get => _supplierItemDraft; private set { _supplierItemDraft = value; OnPropertyChanged(); OnPropertyChanged(nameof(SupplierItemEditorTitle)); } }
+	public SupplierItem SupplierItemDraft { get => _supplierItemDraft; private set { _supplierItemDraft = value; OnPropertyChanged(); OnPropertyChanged(nameof(SupplierItemEditorTitle)); OnPropertyChanged(nameof(SupplierItemStatus)); } }
 	public string SupplierEditorTitle => Draft.Id == 0 ? "New Supplier" : "Supplier Details";
 	public string SupplierItemEditorTitle => SupplierItemDraft.Id == 0 ? "New Supplier Item" : "Edit Supplier Item";
 	public string SupplierActionText => SelectedSupplier?.IsActive == true ? "Deactivate" : "Activate";
 	public string SupplierItemActionText => SelectedSupplierItem?.IsActive == true ? "Deactivate" : "Activate";
 	public bool HasSelectedSupplier => SelectedSupplier is not null;
+	public IReadOnlyList<ActivationFilterOption> ActivationFilters => ActivationFilterOption.All;
+	public string SupplierStatus => Draft.Id == 0 ? "New" : Draft.IsActive ? "Active" : "Inactive";
+	public string SupplierItemStatus => SupplierItemDraft.Id == 0 ? "New" : SupplierItemDraft.IsActive ? "Active" : "Inactive";
+
+	public ActivationFilterOption SelectedActivationFilter
+	{
+		get => _selectedActivationFilter;
+		set { if (_selectedActivationFilter == value) return; _selectedActivationFilter = value; OnPropertyChanged(); _ = _supplierSearch.DebounceAsync(LoadSuppliersAsync); }
+	}
+
+	public ActivationFilterOption SelectedSupplierItemActivationFilter
+	{
+		get => _selectedSupplierItemActivationFilter;
+		set { if (_selectedSupplierItemActivationFilter == value) return; _selectedSupplierItemActivationFilter = value; OnPropertyChanged(); _ = _supplierItemSearch.DebounceAsync(LoadSupplierItemsAsync); }
+	}
 
 	public string SearchText { get => _searchText; set { if (_searchText == value) return; _searchText = value; OnPropertyChanged(); _ = _supplierSearch.DebounceAsync(LoadSuppliersAsync); } }
 	public string SupplierItemSearchText { get => _supplierItemSearchText; set { if (_supplierItemSearchText == value) return; _supplierItemSearchText = value; OnPropertyChanged(); _ = _supplierItemSearch.DebounceAsync(LoadSupplierItemsAsync); } }
@@ -127,7 +145,12 @@ public sealed class SupplierViewModel : BaseViewModel, IDisposable
 	private async Task LoadSupplierItemsAsync(CancellationToken cancellationToken = default)
 	{
 		if (SelectedSupplier is null) { CollectionSynchronizer.Replace(SupplierItems, Array.Empty<SupplierItem>()); return; }
-		try { var values = await _supplierItemService.SearchAsync(SelectedSupplier.Id, SupplierItemSearchText, cancellationToken); CollectionSynchronizer.Replace(SupplierItems, values); }
+		try
+		{
+			var values = await _supplierItemService.SearchAsync(SelectedSupplier.Id, SupplierItemSearchText, cancellationToken);
+			if (SelectedSupplierItemActivationFilter.IsActive is bool isActive) values = [.. values.Where(value => value.IsActive == isActive)];
+			CollectionSynchronizer.Replace(SupplierItems, values);
+		}
 		catch (Exception exception) when (exception is not OperationCanceledException) { FailOperation(exception, "Supplier items could not be loaded"); }
 	}
 
@@ -142,13 +165,13 @@ public sealed class SupplierViewModel : BaseViewModel, IDisposable
 		catch (Exception exception) when (exception is not OperationCanceledException) { FailOperation(exception, "Items could not be loaded"); }
 	}
 
-	private void NewSupplier() { SelectedSupplier = null; Draft = NewSupplierDraft(); }
+	private void NewSupplier() { SelectedSupplier = null; Draft = NewSupplierDraft(); RequestEditorFocus(); }
 	private void NewSupplierItem() { SelectedSupplierItem = null; SupplierItemDraft = NewSupplierItemDraft(); SelectedItemOption = null; }
 
 	private async Task SaveSupplierAsync(CancellationToken cancellationToken)
 	{
 		BeginOperation("Saving supplier");
-		try { var saved = await _supplierService.SaveAsync(Copy(Draft), cancellationToken); ReplaceSupplier(saved); SelectedSupplier = saved; CompleteOperation(false, "Supplier saved"); }
+		try { var saved = await _supplierService.SaveAsync(Copy(Draft), cancellationToken); ReplaceSupplier(saved); SelectedSupplier = saved; CompleteOperation(false, "Supplier saved"); RequestEditorFocus(); }
 		catch (Exception exception) when (exception is not OperationCanceledException) { FailOperation(exception, "Supplier could not be saved"); }
 	}
 
@@ -188,7 +211,13 @@ public sealed class SupplierViewModel : BaseViewModel, IDisposable
 		try { Process.Start(new ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true }); }
 		catch (Exception exception) { FailOperation(exception, "Supplier URL could not be opened"); }
 	}
-	private void ReplaceSuppliers(IReadOnlyList<Supplier> values) { var selectedId = SelectedSupplier?.Id; CollectionSynchronizer.Replace(Suppliers, values); SelectedSupplier = Suppliers.FirstOrDefault(value => value.Id == selectedId); }
+	private void ReplaceSuppliers(IReadOnlyList<Supplier> values)
+	{
+		var selectedId = SelectedSupplier?.Id;
+		if (SelectedActivationFilter.IsActive is bool isActive) values = [.. values.Where(value => value.IsActive == isActive)];
+		CollectionSynchronizer.Replace(Suppliers, values);
+		SelectedSupplier = Suppliers.FirstOrDefault(value => value.Id == selectedId);
+	}
 	private void ReplaceSupplier(Supplier value) { var existing = Suppliers.FirstOrDefault(item => item.Id == value.Id); if (existing is null) Suppliers.Add(value); else Suppliers[Suppliers.IndexOf(existing)] = value; }
 
 	private static Supplier NewSupplierDraft() => new();

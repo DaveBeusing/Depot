@@ -51,34 +51,53 @@ public sealed class ItemRepository : DatabaseRepository
 			Parameter("$Version", item.Version)) == 1;
 
 	public async Task<bool> DeactivateAsync(long id, long version, CancellationToken cancellationToken) =>
+		await SetActiveAsync(id, version, false, cancellationToken);
+
+	public async Task<bool> SetActiveAsync(long id, long version, bool isActive, CancellationToken cancellationToken) =>
 		await Database.ExecuteAsync(
-			"UPDATE Items SET IsActive = 0, Version = Version + 1 WHERE Id = $Id AND Version = $Version;",
+			"UPDATE Items SET IsActive = $IsActive, Version = Version + 1 WHERE Id = $Id AND Version = $Version;",
 			cancellationToken,
 			Parameter("$Id", id),
-			Parameter("$Version", version)) == 1;
+			Parameter("$Version", version),
+			Parameter("$IsActive", isActive)) == 1;
 
 	public Task<PageResult<Item>> SearchPageAsync(
 		string? searchText,
+		int pageNumber,
+		int pageSize,
+		CancellationToken cancellationToken) =>
+		SearchPageAsync(searchText, true, pageNumber, pageSize, cancellationToken);
+
+	public Task<PageResult<Item>> SearchPageAsync(
+		string? searchText,
+		bool? isActive,
 		int pageNumber,
 		int pageSize,
 		CancellationToken cancellationToken)
 	{
 		var search = searchText?.Trim();
 		var hasSearch = !string.IsNullOrWhiteSpace(search);
-		var filter = hasSearch
-			? "i.IsActive = 1 AND (i.PartNumber LIKE $Search OR i.Description LIKE $Search OR m.Name LIKE $Search OR c.Name LIKE $Search OR u.Name LIKE $Search OR pk.Name LIKE $Search OR EXISTS (SELECT 1 FROM SupplierItems si INNER JOIN Suppliers s ON s.Id = si.SupplierId WHERE si.ItemId = i.Id AND si.IsActive = 1 AND (s.Name LIKE $Search OR si.SupplierPartNumber LIKE $Search)))"
-			: "i.IsActive = 1";
-		var parameters = hasSearch
-			? new[] { Parameter("$Search", $"%{search}%") }
-			: [];
+		var predicates = new List<string>();
+		var parameters = new List<DatabaseParameter>();
+		if (isActive is not null)
+		{
+			predicates.Add("i.IsActive = $IsActive");
+			parameters.Add(Parameter("$IsActive", isActive.Value));
+		}
+		if (hasSearch)
+		{
+			predicates.Add("(i.PartNumber LIKE $Search OR i.Description LIKE $Search OR m.Name LIKE $Search OR c.Name LIKE $Search OR u.Name LIKE $Search OR pk.Name LIKE $Search OR EXISTS (SELECT 1 FROM SupplierItems si INNER JOIN Suppliers s ON s.Id = si.SupplierId WHERE si.ItemId = i.Id AND si.IsActive = 1 AND (s.Name LIKE $Search OR si.SupplierPartNumber LIKE $Search)))");
+			parameters.Add(Parameter("$Search", $"%{search}%"));
+		}
+		var filter = predicates.Count == 0 ? "1 = 1" : string.Join(" AND ", predicates);
 		return Database.QueryPageAsync(
-			$"SELECT {SelectColumns} {SelectFrom} WHERE {filter} ORDER BY i.PartNumber, i.Id",
+			$"SELECT {SelectColumns} {SelectFrom} WHERE {filter} ORDER BY i.IsActive DESC, i.PartNumber, i.Id",
 			$"SELECT COUNT(*) {SelectFrom} WHERE {filter};",
 			ReadItem,
 			pageNumber,
 			pageSize,
 			cancellationToken,
-			parameters);
+			parameters.ToArray());
 	}
 
 	public Task<Item?> GetByIdAsync(long id, CancellationToken cancellationToken) =>

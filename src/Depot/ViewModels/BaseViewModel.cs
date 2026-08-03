@@ -11,6 +11,9 @@ public abstract class BaseViewModel : INotifyPropertyChanged
 	private ViewModelState _state = ViewModelState.Loaded;
 	private string _statusText = string.Empty;
 	private string? _operationError;
+	private int _editorFocusRequest;
+
+	public int EditorFocusRequest => _editorFocusRequest;
 
 	public ViewModelState State
 	{
@@ -80,6 +83,12 @@ public abstract class BaseViewModel : INotifyPropertyChanged
 		OperationError = exception.Message;
 		StatusText = statusText;
 		State = ViewModelState.Error;
+	}
+
+	protected void RequestEditorFocus()
+	{
+		_editorFocusRequest++;
+		OnPropertyChanged(nameof(EditorFocusRequest));
 	}
 
 	protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)

@@ -11,12 +11,6 @@
 		Direction="270"
 		Opacity="0.08"
 		ShadowDepth="2" />
-	<DropShadowEffect
-		x:Key="Shell.ContentShadow"
-		BlurRadius="18"
-		Direction="270"
-		Opacity="0.09"
-		ShadowDepth="3" />
 
 	<Style x:Key="CardBaseStyle" TargetType="{x:Type controls:Card}">
 		<Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
@@ -97,30 +91,6 @@
 	<Style
 		TargetType="{x:Type controls:Card}"
 		BasedOn="{StaticResource CardBaseStyle}" />
-
-	<Style
-		x:Key="SubtleCardStyle"
-		TargetType="{x:Type controls:Card}"
-		BasedOn="{StaticResource CardBaseStyle}">
-		<Setter Property="Background" Value="{DynamicResource SurfaceAltBrush}" />
-		<Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
-	</Style>
-
-	<Style
-		x:Key="InfoCardStyle"
-		TargetType="{x:Type controls:Card}"
-		BasedOn="{StaticResource CardBaseStyle}">
-		<Setter Property="Background" Value="{StaticResource MetricCard.IconBackgroundBrush}" />
-		<Setter Property="BorderBrush" Value="{StaticResource MetricCard.IconBorderBrush}" />
-	</Style>
-
-	<Style
-		x:Key="SuccessCardStyle"
-		TargetType="{x:Type controls:Card}"
-		BasedOn="{StaticResource CardBaseStyle}">
-		<Setter Property="Background" Value="{DynamicResource SuccessBrush}" />
-		<Setter Property="BorderBrush" Value="{DynamicResource SuccessBrush}" />
-	</Style>
 
 	<Style TargetType="{x:Type controls:MetricCard}">
 		<Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />

@@ -59,35 +59,5 @@
 	</Style>
 
 
-	<!-- Navigation Button Style -->
-	<Style x:Key="NavigationButtonStyle" TargetType="Button">
-		<Setter Property="Background" Value="Transparent"/>
-		<Setter Property="BorderThickness" Value="0"/>
-		<Setter Property="Foreground" Value="{DynamicResource NavigationForegroundBrush}"/>
-		<Setter Property="HorizontalContentAlignment" Value="Left"/>
-		<Setter Property="Cursor" Value="Hand"/>
-		<Setter Property="Padding" Value="{StaticResource Navigation.Item.Padding}"/>
-		<Setter Property="Margin" Value="0"/>
-		<Setter Property="FontWeight" Value="SemiBold"/>
-		<Setter Property="Template">
-			<Setter.Value>
-				<ControlTemplate TargetType="Button">
-					<Border x:Name="Border" Background="Transparent" CornerRadius="6">
-						<ContentPresenter Margin="8,0" VerticalAlignment="Center"/>
-					</Border>
-					<ControlTemplate.Triggers>
-						<Trigger Property="IsMouseOver" Value="True">
-							<Setter	TargetName="Border"	Property="Background" Value="{DynamicResource NavigationHoverBrush}"/>
-						</Trigger>
-						<Trigger Property="IsPressed" Value="True">
-							<Setter	TargetName="Border" Property="Background" Value="{DynamicResource NavigationSelectedBackgroundBrush}"/>
-						</Trigger>
-					</ControlTemplate.Triggers>
-				</ControlTemplate>
-			</Setter.Value>
-		</Setter>
-	</Style>
-
-
 
 </ResourceDictionary>

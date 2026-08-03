@@ -67,9 +67,9 @@
 								<StackPanel>
 									<TextBlock FontWeight="SemiBold" Text="{Binding TransferNumber}" />
 									<TextBlock Style="{StaticResource CaptionStyle}">
-										<Run Text="{Binding SourceWarehouseName}" />
+										<Run Text="{Binding SourceWarehouseName, Mode=OneWay}" />
 										<Run Text=" → " />
-										<Run Text="{Binding DestinationWarehouseName}" />
+										<Run Text="{Binding DestinationWarehouseName, Mode=OneWay}" />
 									</TextBlock>
 								</StackPanel>
 								<StackPanel Grid.Column="1" HorizontalAlignment="Right">

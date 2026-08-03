@@ -42,14 +42,14 @@
 				Icon="M 5,3 L 15,3 L 17,5 L 17,19 L 3,19 L 3,5 Z M 7,3 L 7,1 L 13,1 L 13,3 M 7,8 L 13,8 M 7,12 L 13,12 M 7,16 L 11,16"
 				SupportingText="Catalog entries"
 				Title="Total Items"
-				Value="{Binding TotalItems}" />
+				Value="{Binding TotalItems, StringFormat={}{0:N0}}" />
 
 			<controls:MetricCard
 				Grid.Column="2"
 				Icon="M 2,6 L 10,2 L 18,6 L 10,10 Z M 2,6 L 2,14 L 10,18 L 10,10 M 18,6 L 18,14 L 10,18"
 				SupportingText="Units currently on hand"
 				Title="Total Stock"
-				Value="{Binding TotalStockQuantity}" />
+				Value="{Binding TotalStockQuantity, StringFormat={}{0:N0}}" />
 
 			<controls:MetricCard
 				Grid.Column="4"
@@ -64,7 +64,7 @@
 				Icon="M 3,6 L 15,6 M 12,3 L 15,6 L 12,9 M 17,14 L 5,14 M 8,11 L 5,14 L 8,17"
 				SupportingText="Recorded stock transactions"
 				Title="Movements"
-				Value="{Binding TotalMovements}" />
+				Value="{Binding TotalMovements, StringFormat={}{0:N0}}" />
 
 		</Grid>
 
@@ -75,21 +75,21 @@
 					Style="{StaticResource SectionTitleStyle}" />
 			</controls:Card.Header>
 
-			<DataGrid
+			<Grid><DataGrid
 				Style="{StaticResource AppDataGridStyle}"
-				ItemsSource="{Binding RecentMovements}">
+				ItemsSource="{Binding RecentMovements}" Visibility="{Binding HasRecentMovements, Converter={StaticResource BooleanToVisibilityConverter}}">
 
 					<DataGrid.Columns>
 
 						<DataGridTextColumn
 							Header="Date"
 							Binding="{Binding TimestampLocal, StringFormat={}{0:g}}"
-							Width="180" />
+							Width="130" ElementStyle="{StaticResource AppDataGridTextStyle}" />
 
 						<DataGridTextColumn
 							Header="Part Number"
 							Binding="{Binding PartNumber}"
-							Width="180" />
+							Width="130" ElementStyle="{StaticResource AppDataGridTextStyle}" />
 
 						<DataGridTextColumn
 							Header="Description"
@@ -97,34 +97,24 @@
 							Width="*" ElementStyle="{StaticResource AppDataGridTextStyle}" />
 
 						<DataGridTextColumn
-							Header="Purpose"
-							Binding="{Binding PurposeName}"
-							Width="140" />
-
-						<DataGridTextColumn
 							Header="Warehouse"
 							Binding="{Binding WarehouseName}"
-							Width="140" />
-
-						<DataGridTextColumn
-							Header="Storage Location"
-							Binding="{Binding LocationName}"
-							Width="140" />
+							Width="120" ElementStyle="{StaticResource AppDataGridTextStyle}" />
 
 						<DataGridTextColumn
 							Header="Type"
 							Binding="{Binding MovementType}"
-							Width="120" />
+							Width="100" ElementStyle="{StaticResource AppDataGridTextStyle}" />
 
 						<DataGridTextColumn
 							Header="Quantity"
 							Binding="{Binding Quantity, StringFormat={}{0:N2}}"
 							Width="100" ElementStyle="{StaticResource AppDataGridNumericTextStyle}" />
-						<DataGridTextColumn Header="Reason" Binding="{Binding ReasonCodeName}" Width="120" />
+						<DataGridTextColumn Header="Reason" Binding="{Binding ReasonCodeName}" Width="120" ElementStyle="{StaticResource AppDataGridTextStyle}" />
 
 					</DataGrid.Columns>
 
-			</DataGrid>
+			</DataGrid><controls:EmptyState Title="No recent movements" Description="Recent stock activity will appear here." Visibility="{Binding HasNoRecentMovements, Converter={StaticResource BooleanToVisibilityConverter}}" /></Grid>
 		</controls:Card>
 
 	</Grid>

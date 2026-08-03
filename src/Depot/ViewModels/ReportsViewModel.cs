@@ -137,7 +137,7 @@ public sealed class ReportsViewModel
 
 	public bool ShowPaging => IsInventoryValueReportSelected && TotalCount > PageSize;
 
-	public string PageDisplay => $"Page {PageNumber} · {TotalCount:N0} rows";
+	public string PageDisplay => $"Page {PageNumber} - {TotalCount:N0} rows";
 
 	private ReportDefinition SelectedReportDefinition =>
 		_reportDefinitions[SelectedReport];

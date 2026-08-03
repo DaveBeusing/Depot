@@ -6,6 +6,7 @@ using System.Collections.ObjectModel;
 using Depot.Commands;
 using Depot.Models;
 using Depot.Services;
+using Depot.ViewModels.Shared;
 
 namespace Depot.ViewModels;
 
@@ -20,6 +21,7 @@ public sealed class ItemsViewModel : BaseViewModel, IDisposable
 	private string _searchText = string.Empty;
 	private int _pageNumber = 1;
 	private long _totalCount;
+	private ActivationFilterOption _selectedActivationFilter = ActivationFilterOption.All[0];
 
 	public ItemsViewModel(
 		ItemService itemService,
@@ -46,12 +48,28 @@ public sealed class ItemsViewModel : BaseViewModel, IDisposable
 	public bool HasItems => Items.Count > 0;
 	public bool HasNoItems => !HasItems;
 	public bool HasNextPage => (long)PageNumber * PageSize < TotalCount;
+	public IReadOnlyList<ActivationFilterOption> ActivationFilters => ActivationFilterOption.All;
+	public string EditorStatus => Editor.Id == 0 ? "New" : SelectedItem?.IsActive == true ? "Active" : "Inactive";
+	public string ActivationActionText => SelectedItem?.IsActive == true ? "Deactivate" : "Activate";
 	public ItemEditorViewModel Editor { get; }
 	public RelayCommand NewItemCommand { get; }
 	public AsyncRelayCommand SaveItemCommand { get; }
 	public AsyncRelayCommand DeactivateItemCommand { get; }
 	public AsyncRelayCommand PreviousPageCommand { get; }
 	public AsyncRelayCommand NextPageCommand { get; }
+
+	public ActivationFilterOption SelectedActivationFilter
+	{
+		get => _selectedActivationFilter;
+		set
+		{
+			if (_selectedActivationFilter == value) return;
+			_selectedActivationFilter = value;
+			OnPropertyChanged();
+			PageNumber = 1;
+			_ = _searchDebouncer.DebounceAsync(LoadItemsAsync);
+		}
+	}
 
 	public int PageNumber
 	{
@@ -100,6 +118,8 @@ public sealed class ItemsViewModel : BaseViewModel, IDisposable
 			if (_selectedItem == value) return;
 			_selectedItem = value;
 			OnPropertyChanged();
+			OnPropertyChanged(nameof(EditorStatus));
+			OnPropertyChanged(nameof(ActivationActionText));
 			LoadSelectedItem();
 			DeactivateItemCommand.RaiseCanExecuteChanged();
 		}
@@ -132,6 +152,7 @@ public sealed class ItemsViewModel : BaseViewModel, IDisposable
 			}
 			var page = await _itemService.SearchItemsAsync(
 				SearchText,
+				SelectedActivationFilter.IsActive,
 				PageNumber,
 				PageSize,
 				cancellationToken);
@@ -171,7 +192,10 @@ public sealed class ItemsViewModel : BaseViewModel, IDisposable
 		ClearError();
 		SelectedItem = null;
 		Editor.Clear();
+		OnPropertyChanged(nameof(EditorStatus));
+		OnPropertyChanged(nameof(ActivationActionText));
 		DeactivateItemCommand.RaiseCanExecuteChanged();
+		RequestEditorFocus();
 	}
 
 	private async Task SaveItemAsync(CancellationToken cancellationToken)
@@ -202,6 +226,7 @@ public sealed class ItemsViewModel : BaseViewModel, IDisposable
 			Editor.Clear();
 			SelectedItem = null;
 			CompleteOperation(Items.Count == 0, "Item saved");
+			RequestEditorFocus();
 		}
 		catch (Exception exception) when (exception is not OperationCanceledException)
 		{
@@ -216,23 +241,22 @@ public sealed class ItemsViewModel : BaseViewModel, IDisposable
 	{
 		ClearError();
 		if (!Editor.IsExistingItem) return;
-		BeginOperation("Deactivating item");
+		var isActive = SelectedItem?.IsActive != true;
+		BeginOperation(isActive ? "Activating item" : "Deactivating item");
 		try
 		{
 			var id = Editor.Id;
-			await _itemService.DeactivateItemAsync(id, Editor.Version, cancellationToken);
-			var existing = Items.FirstOrDefault(x => x.Id == id);
-			if (existing is not null) Items.Remove(existing);
-			TotalCount = Math.Max(0, TotalCount - 1);
+			var saved = await _itemService.SetItemActiveAsync(id, Editor.Version, isActive, cancellationToken);
+			UpdateItem(saved);
 			Editor.Clear();
 			SelectedItem = null;
 			RaiseCollectionState();
-			CompleteOperation(Items.Count == 0, "Item deactivated");
+			CompleteOperation(Items.Count == 0, saved.IsActive ? "Item activated" : "Item deactivated");
 		}
 		catch (Exception exception) when (exception is not OperationCanceledException)
 		{
 			ErrorMessage = exception.Message;
-			FailOperation(exception, "Item could not be deactivated");
+			FailOperation(exception, "Item status could not be changed");
 		}
 	}
 
@@ -255,9 +279,14 @@ public sealed class ItemsViewModel : BaseViewModel, IDisposable
 		var existing = Items.FirstOrDefault(x => x.Id == item.Id);
 		if (existing is not null)
 		{
-			Items[Items.IndexOf(existing)] = new ItemViewModel(item);
+			if (MatchesActivationFilter(item)) Items[Items.IndexOf(existing)] = new ItemViewModel(item);
+			else
+			{
+				Items.Remove(existing);
+				TotalCount = Math.Max(0, TotalCount - 1);
+			}
 		}
-		else if (PageNumber == 1 && MatchesSearch(item))
+		else if (PageNumber == 1 && MatchesSearch(item) && MatchesActivationFilter(item))
 		{
 			Items.Insert(0, new ItemViewModel(item));
 			if (Items.Count > PageSize) Items.RemoveAt(Items.Count - 1);
@@ -265,6 +294,9 @@ public sealed class ItemsViewModel : BaseViewModel, IDisposable
 		}
 		RaiseCollectionState();
 	}
+
+	private bool MatchesActivationFilter(Item item) =>
+		SelectedActivationFilter.IsActive is not bool isActive || item.IsActive == isActive;
 
 	private bool MatchesSearch(Item item)
 	{

@@ -144,6 +144,7 @@ public sealed class ReasonCodeViewModel : BaseViewModel, IDisposable
 		Name = string.Empty;
 		Description = null;
 		_editorVersion = 0;
+		RequestEditorFocus();
 	}
 
 	private async Task SaveAsync(CancellationToken cancellationToken)
@@ -161,6 +162,7 @@ public sealed class ReasonCodeViewModel : BaseViewModel, IDisposable
 			Replace(saved);
 			SelectedReasonCode = saved;
 			CompleteOperation(false, "Reason code saved");
+			RequestEditorFocus();
 		}
 		catch (Exception exception) when (exception is not OperationCanceledException)
 		{

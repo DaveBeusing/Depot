@@ -212,6 +212,17 @@ public sealed class ItemService
 		return _itemRepository.SearchPageAsync(searchText, pageNumber, pageSize, cancellationToken);
 	}
 
+	public Task<PageResult<Item>> SearchItemsAsync(
+		string? searchText,
+		bool? isActive,
+		int pageNumber,
+		int pageSize,
+		CancellationToken cancellationToken)
+	{
+		_auditService.RequirePermission(ApplicationPermission.ItemsView);
+		return _itemRepository.SearchPageAsync(searchText, isActive, pageNumber, pageSize, cancellationToken);
+	}
+
 	public async Task<Item> CreateItemAsync(
 		string partNumber,
 		string description,
@@ -362,6 +373,24 @@ public sealed class ItemService
 		item.IsActive = false;
 		item.Version++;
 		await _auditService.RecordDeactivatedAsync(item.Id, before, item, cancellationToken);
+	}
+
+	public async Task<Item> SetItemActiveAsync(long id, long expectedVersion, bool isActive, CancellationToken cancellationToken)
+	{
+		_auditService.RequirePermission(ApplicationPermission.ItemsManage);
+		if (id <= 0) throw new ArgumentException("Item id is required.", nameof(id));
+		var item = await _itemRepository.GetByIdAsync(id, cancellationToken)
+			?? throw new InvalidOperationException($"Item with id '{id}' was not found.");
+		if (!isActive && await _supplierItems.HasActiveForItemAsync(id, cancellationToken))
+			throw new InvalidOperationException($"Item '{item.PartNumber}' has active supplier assignments and cannot be deactivated.");
+		if (item.Version != expectedVersion || !await _itemRepository.SetActiveAsync(id, expectedVersion, isActive, cancellationToken))
+			throw new ConcurrencyConflictException("item");
+		var before = Copy(item);
+		item.IsActive = isActive;
+		item.Version++;
+		if (isActive) await _auditService.RecordUpdatedAsync(item.Id, before, item, cancellationToken);
+		else await _auditService.RecordDeactivatedAsync(item.Id, before, item, cancellationToken);
+		return item;
 	}
 
 	private static Item Copy(Item item) =>

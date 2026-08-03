@@ -31,9 +31,12 @@ public sealed class UserService
 	}
 
 	public async Task<PageResult<User>> SearchUsersAsync(string? searchText, int pageNumber, int pageSize, CancellationToken cancellationToken)
+		=> await SearchUsersAsync(searchText, null, pageNumber, pageSize, cancellationToken);
+
+	public async Task<PageResult<User>> SearchUsersAsync(string? searchText, bool? isActive, int pageNumber, int pageSize, CancellationToken cancellationToken)
 	{
 		_authorization.RequirePermission(ApplicationPermission.UsersView);
-		var page = await _users.SearchPageAsync(searchText, pageNumber, pageSize, cancellationToken);
+		var page = await _users.SearchPageAsync(searchText, isActive, pageNumber, pageSize, cancellationToken);
 		var ids = page.Items.Select(user => user.Id).ToArray();
 		var roles = await _roles.GetUserRolesAsync(ids, cancellationToken);
 		var permissions = await _roles.GetEffectivePermissionsAsync(ids, cancellationToken);

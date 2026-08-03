@@ -354,18 +354,6 @@
         </Setter>
     </Style>
 
-    <Style x:Key="AppDataGridCheckBoxStyle" TargetType="CheckBox">
-        <Setter Property="HorizontalAlignment" Value="Center" />
-        <Setter Property="VerticalAlignment" Value="Center" />
-        <Setter Property="Focusable" Value="False" />
-    </Style>
-
-    <Style x:Key="AppDataGridHyperlinkStyle" TargetType="TextBlock">
-        <Setter Property="Foreground" Value="{DynamicResource PrimaryBrush}" />
-        <Setter Property="TextDecorations" Value="None" />
-        <Setter Property="Cursor" Value="Hand" />
-    </Style>
-
     <Style x:Key="AppDataGridStyle" TargetType="DataGrid">
         <Setter Property="AutoGenerateColumns" Value="False" />
         <Setter Property="CanUserAddRows" Value="False" />
@@ -417,6 +405,9 @@
                         BorderThickness="{TemplateBinding BorderThickness}"
                         CornerRadius="{StaticResource DataGrid.CornerRadius}"
                         SnapsToDevicePixels="True">
+						<Border.Resources>
+							<Style TargetType="TextBlock" BasedOn="{StaticResource AppDataGridTextStyle}" />
+						</Border.Resources>
                         <ScrollViewer
                             x:Name="DG_ScrollViewer"
                             Focusable="False">

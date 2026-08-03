@@ -6,7 +6,7 @@
 	<Grid>
 		<Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
 		<controls:PageHeader Title="Roles" Subtitle="Manage reusable permission sets and protected system roles.">
-			<controls:PageHeader.Actions><controls:OperationStatus ErrorText="{Binding OperationError}" HasError="{Binding HasOperationError}" IsBusy="{Binding IsBusy}" StatusText="{Binding StatusText}" /></controls:PageHeader.Actions>
+			<controls:PageHeader.Actions><controls:OperationPanel ErrorText="{Binding OperationError}" HasError="{Binding HasOperationError}" IsBusy="{Binding IsBusy}" StatusText="{Binding StatusText}" /></controls:PageHeader.Actions>
 		</controls:PageHeader>
 		<controls:SearchBox Grid.Row="1" Margin="{StaticResource Search.Margin}" Placeholder="Search roles" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
 		<Grid Grid.Row="2">

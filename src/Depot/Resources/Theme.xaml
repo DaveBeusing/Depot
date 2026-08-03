@@ -1,19 +1,24 @@
 <ResourceDictionary
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <ResourceDictionary.MergedDictionaries>
-        <ResourceDictionary Source="Colors.xaml"/>
-        <ResourceDictionary Source="Typography.xaml"/>
-        <ResourceDictionary Source="Spacing.xaml"/>
-        <ResourceDictionary Source="Navigation.xaml"/>
-        <ResourceDictionary Source="Buttons.xaml"/>
-        <ResourceDictionary Source="Inputs.xaml"/>
-        <ResourceDictionary Source="DataGrid.xaml"/>
-        <ResourceDictionary Source="Status.xaml" />
-        <ResourceDictionary Source="Cards.xaml"/>
-        <ResourceDictionary Source="PageHeaders.xaml"/>
-        <ResourceDictionary Source="Dialogs.xaml"/>
-        <ResourceDictionary Source="EmptyStates.xaml"/>
-		<ResourceDictionary Source="Workflows.xaml"/>
-    </ResourceDictionary.MergedDictionaries>
+	<ResourceDictionary.MergedDictionaries>
+		<!-- Foundations -->
+		<ResourceDictionary Source="Colors.xaml" />
+		<ResourceDictionary Source="Typography.xaml" />
+		<ResourceDictionary Source="Spacing.xaml" />
+
+		<!-- Controls -->
+		<ResourceDictionary Source="Buttons.xaml" />
+		<ResourceDictionary Source="Inputs.xaml" />
+		<ResourceDictionary Source="Cards.xaml" />
+		<ResourceDictionary Source="DataGrid.xaml" />
+		<ResourceDictionary Source="Status.xaml" />
+		<ResourceDictionary Source="PageHeaders.xaml" />
+		<ResourceDictionary Source="EmptyStates.xaml" />
+		<ResourceDictionary Source="Navigation.xaml" />
+		<ResourceDictionary Source="Dialogs.xaml" />
+
+		<!-- Composite application patterns -->
+		<ResourceDictionary Source="Workflows.xaml" />
+	</ResourceDictionary.MergedDictionaries>
 </ResourceDictionary>

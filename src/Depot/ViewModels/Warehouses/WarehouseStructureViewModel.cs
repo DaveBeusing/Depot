@@ -6,6 +6,7 @@ using System.Collections.ObjectModel;
 using Depot.Commands;
 using Depot.Models;
 using Depot.Services;
+using Depot.ViewModels.Shared;
 
 namespace Depot.ViewModels.Warehouses;
 
@@ -27,6 +28,8 @@ public sealed class WarehouseStructureViewModel : BaseViewModel, IDisposable
 	private long _locationEditorVersion;
 	private string _locationName = string.Empty;
 	private string? _locationDescription;
+	private ActivationFilterOption _selectedWarehouseActivationFilter = ActivationFilterOption.All[0];
+	private ActivationFilterOption _selectedLocationActivationFilter = ActivationFilterOption.All[0];
 
 	public WarehouseStructureViewModel(
 		WarehouseService warehouseService,
@@ -50,6 +53,23 @@ public sealed class WarehouseStructureViewModel : BaseViewModel, IDisposable
 	public RelayCommand NewStorageLocationCommand { get; }
 	public AsyncRelayCommand SaveStorageLocationCommand { get; }
 	public AsyncRelayCommand ToggleStorageLocationCommand { get; }
+	public IReadOnlyList<ActivationFilterOption> ActivationFilters => ActivationFilterOption.All;
+	public string WarehouseEditorTitle => _warehouseEditorId == 0 ? "New warehouse" : "Warehouse details";
+	public string LocationEditorTitle => _locationEditorId == 0 ? "New storage location" : "Storage location details";
+	public string WarehouseStatus => _warehouseEditorId == 0 ? "New" : SelectedWarehouse?.IsActive == true ? "Active" : "Inactive";
+	public string StorageLocationStatus => _locationEditorId == 0 ? "New" : SelectedStorageLocation?.IsActive == true ? "Active" : "Inactive";
+
+	public ActivationFilterOption SelectedWarehouseActivationFilter
+	{
+		get => _selectedWarehouseActivationFilter;
+		set { if (_selectedWarehouseActivationFilter == value) return; _selectedWarehouseActivationFilter = value; OnPropertyChanged(); _ = _warehouseSearchDebouncer.DebounceAsync(LoadAsync); }
+	}
+
+	public ActivationFilterOption SelectedLocationActivationFilter
+	{
+		get => _selectedLocationActivationFilter;
+		set { if (_selectedLocationActivationFilter == value) return; _selectedLocationActivationFilter = value; OnPropertyChanged(); _ = _locationSearchDebouncer.DebounceAsync(LoadStorageLocationsAsync); }
+	}
 
 	public string WarehouseSearchText
 	{
@@ -84,6 +104,8 @@ public sealed class WarehouseStructureViewModel : BaseViewModel, IDisposable
 			_selectedWarehouse = value;
 			OnPropertyChanged();
 			OnPropertyChanged(nameof(WarehouseActionText));
+			OnPropertyChanged(nameof(WarehouseEditorTitle));
+			OnPropertyChanged(nameof(WarehouseStatus));
 			LoadWarehouseEditor(value);
 			NewStorageLocationCommand.RaiseCanExecuteChanged();
 			SaveStorageLocationCommand.RaiseCanExecuteChanged();
@@ -101,6 +123,8 @@ public sealed class WarehouseStructureViewModel : BaseViewModel, IDisposable
 			_selectedStorageLocation = value;
 			OnPropertyChanged();
 			OnPropertyChanged(nameof(StorageLocationActionText));
+			OnPropertyChanged(nameof(LocationEditorTitle));
+			OnPropertyChanged(nameof(StorageLocationStatus));
 			LoadStorageLocationEditor(value);
 			ToggleStorageLocationCommand.RaiseCanExecuteChanged();
 		}
@@ -120,6 +144,7 @@ public sealed class WarehouseStructureViewModel : BaseViewModel, IDisposable
 		{
 			var selectedId = SelectedWarehouse?.Id;
 			var warehouses = await _warehouseService.SearchAsync(WarehouseSearchText, cancellationToken);
+			if (SelectedWarehouseActivationFilter.IsActive is bool isActive) warehouses = [.. warehouses.Where(value => value.IsActive == isActive)];
 			Warehouses.Clear();
 			foreach (var warehouse in warehouses) Warehouses.Add(warehouse);
 			SelectedWarehouse = Warehouses.FirstOrDefault(item => item.Id == selectedId) ?? Warehouses.FirstOrDefault();
@@ -138,6 +163,7 @@ public sealed class WarehouseStructureViewModel : BaseViewModel, IDisposable
 			var locations = warehouseId is null
 				? Array.Empty<StorageLocation>()
 				: await _storageLocationService.SearchAsync(warehouseId, LocationSearchText, cancellationToken);
+			if (SelectedLocationActivationFilter.IsActive is bool isActive) locations = [.. locations.Where(value => value.IsActive == isActive)];
 			StorageLocations.Clear();
 			foreach (var location in locations) StorageLocations.Add(location);
 			SelectedStorageLocation = StorageLocations.FirstOrDefault(item => item.Id == selectedId) ?? StorageLocations.FirstOrDefault();
@@ -153,6 +179,9 @@ public sealed class WarehouseStructureViewModel : BaseViewModel, IDisposable
 		_warehouseEditorVersion = 0;
 		WarehouseName = string.Empty;
 		WarehouseDescription = null;
+		OnPropertyChanged(nameof(WarehouseEditorTitle));
+		OnPropertyChanged(nameof(WarehouseStatus));
+		RequestEditorFocus();
 	}
 
 	private async Task SaveWarehouseAsync(CancellationToken cancellationToken)
@@ -169,6 +198,7 @@ public sealed class WarehouseStructureViewModel : BaseViewModel, IDisposable
 			ReplaceWarehouse(warehouse);
 			SelectedWarehouse = warehouse;
 			CompleteOperation(statusText: "Warehouse saved.");
+			RequestEditorFocus();
 		}
 		catch (Exception exception) when (exception is not OperationCanceledException) { FailOperation(exception, "Warehouse could not be saved."); }
 	}
@@ -198,6 +228,9 @@ public sealed class WarehouseStructureViewModel : BaseViewModel, IDisposable
 		_locationEditorVersion = 0;
 		LocationName = string.Empty;
 		LocationDescription = null;
+		OnPropertyChanged(nameof(LocationEditorTitle));
+		OnPropertyChanged(nameof(StorageLocationStatus));
+		RequestEditorFocus();
 	}
 
 	private async Task SaveStorageLocationAsync(CancellationToken cancellationToken)
@@ -216,6 +249,7 @@ public sealed class WarehouseStructureViewModel : BaseViewModel, IDisposable
 			ReplaceStorageLocation(location);
 			SelectedStorageLocation = location;
 			CompleteOperation(statusText: "Storage location saved.");
+			RequestEditorFocus();
 		}
 		catch (Exception exception) when (exception is not OperationCanceledException) { FailOperation(exception, "Storage location could not be saved."); }
 	}

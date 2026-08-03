@@ -6,6 +6,7 @@ using System.Collections.ObjectModel;
 using Depot.Commands;
 using Depot.Models;
 using Depot.Services;
+using Depot.ViewModels.Shared;
 
 namespace Depot.ViewModels.Users;
 
@@ -20,6 +21,7 @@ public sealed class UserViewModel : BaseViewModel, IDisposable
 	private int _pageNumber = 1;
 	private long _totalCount;
 	private IReadOnlyList<Role> _availableRoles = [];
+	private ActivationFilterOption _selectedActivationFilter = ActivationFilterOption.All[0];
 
 	public UserViewModel(UserService userService)
 	{
@@ -40,6 +42,22 @@ public sealed class UserViewModel : BaseViewModel, IDisposable
 	public AsyncRelayCommand NextPageCommand { get; }
 	public ObservableCollection<UserListItemViewModel> Users { get; } = new();
 	public bool HasNextPage => (long)PageNumber * PageSize < TotalCount;
+	public IReadOnlyList<ActivationFilterOption> ActivationFilters => ActivationFilterOption.All;
+	public bool HasUsers => Users.Count > 0;
+	public string EditorStatus => Editor.IsExistingUser ? Editor.IsActive ? "Active" : "Inactive" : "New";
+
+	public ActivationFilterOption SelectedActivationFilter
+	{
+		get => _selectedActivationFilter;
+		set
+		{
+			if (_selectedActivationFilter == value) return;
+			_selectedActivationFilter = value;
+			OnPropertyChanged();
+			PageNumber = 1;
+			_ = _searchDebouncer.DebounceAsync(LoadUsersAsync);
+		}
+	}
 
 	public int PageNumber
 	{
@@ -88,6 +106,7 @@ public sealed class UserViewModel : BaseViewModel, IDisposable
 			if (_selectedUser == value) return;
 			_selectedUser = value;
 			OnPropertyChanged();
+			OnPropertyChanged(nameof(EditorStatus));
 			LoadSelectedUser();
 			ToggleActiveCommand.RaiseCanExecuteChanged();
 		}
@@ -120,12 +139,14 @@ public sealed class UserViewModel : BaseViewModel, IDisposable
 			}
 			var page = await _userService.SearchUsersAsync(
 				SearchText,
+				SelectedActivationFilter.IsActive,
 				PageNumber,
 				PageSize,
 				cancellationToken);
 			CollectionSynchronizer.Replace(Users, page.Items.Select(user => new UserListItemViewModel(user)).ToArray());
 			TotalCount = page.TotalCount;
 			SelectedUser = selectedId is null ? null : Users.FirstOrDefault(x => x.Id == selectedId);
+			OnPropertyChanged(nameof(HasUsers));
 			CompleteOperation(Users.Count == 0, $"{page.TotalCount:N0} users");
 		}
 		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -158,7 +179,9 @@ public sealed class UserViewModel : BaseViewModel, IDisposable
 		ClearError();
 		SelectedUser = null;
 		Editor.Clear();
+		OnPropertyChanged(nameof(EditorStatus));
 		ToggleActiveCommand.RaiseCanExecuteChanged();
+		RequestEditorFocus();
 	}
 
 	private async Task SaveUserAsync(CancellationToken cancellationToken)
@@ -177,6 +200,7 @@ public sealed class UserViewModel : BaseViewModel, IDisposable
 			Editor.Clear();
 			SelectedUser = null;
 			CompleteOperation(Users.Count == 0, "User saved");
+			RequestEditorFocus();
 		}
 		catch (Exception exception) when (exception is not OperationCanceledException)
 		{
@@ -214,13 +238,20 @@ public sealed class UserViewModel : BaseViewModel, IDisposable
 	private void UpdateUser(User user)
 	{
 		var existing = Users.FirstOrDefault(x => x.Id == user.Id);
-		if (existing is not null) Users[Users.IndexOf(existing)] = new UserListItemViewModel(user);
-		else if (PageNumber == 1)
+		var matchesFilter = SelectedActivationFilter.IsActive is not bool isActive || user.IsActive == isActive;
+		if (existing is not null && matchesFilter) Users[Users.IndexOf(existing)] = new UserListItemViewModel(user);
+		else if (existing is not null)
+		{
+			Users.Remove(existing);
+			TotalCount = Math.Max(0, TotalCount - 1);
+		}
+		else if (PageNumber == 1 && matchesFilter)
 		{
 			Users.Insert(0, new UserListItemViewModel(user));
 			if (Users.Count > PageSize) Users.RemoveAt(Users.Count - 1);
 			TotalCount++;
 		}
+		OnPropertyChanged(nameof(HasUsers));
 	}
 
 	private async Task PreviousPageAsync(CancellationToken cancellationToken)

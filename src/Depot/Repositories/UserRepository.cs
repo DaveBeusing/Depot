@@ -23,12 +23,31 @@ public sealed class UserRepository : DatabaseRepository
 		string? searchText,
 		int pageNumber,
 		int pageSize,
+		CancellationToken cancellationToken) =>
+		SearchPageAsync(searchText, null, pageNumber, pageSize, cancellationToken);
+
+	public Task<PageResult<User>> SearchPageAsync(
+		string? searchText,
+		bool? isActive,
+		int pageNumber,
+		int pageSize,
 		CancellationToken cancellationToken)
 	{
 		var search = searchText?.Trim();
 		var hasSearch = !string.IsNullOrWhiteSpace(search);
-		var filter = hasSearch ? "WHERE Email LIKE $Search OR DisplayName LIKE $Search" : string.Empty;
-		var parameters = hasSearch ? new[] { Parameter("$Search", $"%{search}%") } : [];
+		var predicates = new List<string>();
+		var parameters = new List<DatabaseParameter>();
+		if (hasSearch)
+		{
+			predicates.Add("(Email LIKE $Search OR DisplayName LIKE $Search)");
+			parameters.Add(Parameter("$Search", $"%{search}%"));
+		}
+		if (isActive is not null)
+		{
+			predicates.Add("IsActive = $IsActive");
+			parameters.Add(Parameter("$IsActive", isActive.Value));
+		}
+		var filter = predicates.Count == 0 ? string.Empty : $"WHERE {string.Join(" AND ", predicates)}";
 		return Database.QueryPageAsync(
 			$"SELECT {SelectColumns} FROM Users {filter} ORDER BY IsActive DESC, Email, Id",
 			$"SELECT COUNT(*) FROM Users {filter};",
@@ -36,7 +55,7 @@ public sealed class UserRepository : DatabaseRepository
 			pageNumber,
 			pageSize,
 			cancellationToken,
-			parameters);
+			parameters.ToArray());
 	}
 
 	public Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken)
