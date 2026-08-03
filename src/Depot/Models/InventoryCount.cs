@@ -10,7 +10,9 @@ public sealed class InventoryCount
 	public long WarehouseId { get; set; }
 	public InventoryCountStatus Status { get; set; } = InventoryCountStatus.Draft;
 	public DateTime CreatedAtUtc { get; set; }
+	public DateTime CreatedAtLocal => CreatedAtUtc.ToLocalTime();
 	public DateTime? StartedAtUtc { get; set; }
+	public DateTime? StartedAtLocal => StartedAtUtc?.ToLocalTime();
 	public DateTime? CompletedAtUtc { get; set; }
 	public long CreatedByUserId { get; set; }
 	public long? PostedByUserId { get; set; }

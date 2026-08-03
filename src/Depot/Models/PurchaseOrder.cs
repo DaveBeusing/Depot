@@ -21,6 +21,9 @@ public sealed class PurchaseOrder
 	public string? ApprovalComment { get; set; }
 	public long? ClosedByUserId { get; set; }
 	public DateTime? ClosedAtUtc { get; set; }
+	public DateTime? SubmittedAtLocal => SubmittedAtUtc?.ToLocalTime();
+	public DateTime? ApprovalDecisionAtLocal => ApprovalDecisionAtUtc?.ToLocalTime();
+	public DateTime? ClosedAtLocal => ClosedAtUtc?.ToLocalTime();
 	public string? CloseReason { get; set; }
 	public string? CreatedByUserDisplay { get; set; }
 	public string? SubmittedByUserDisplay { get; set; }

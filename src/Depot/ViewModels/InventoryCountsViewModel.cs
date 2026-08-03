@@ -867,6 +867,7 @@ public sealed class InventoryCountLineRowViewModel : BaseViewModel
 	public long ExpectedQuantity { get; }
 	public string? CountedByUserName { get; }
 	public DateTime? CountedAtUtc { get; }
+	public DateTime? CountedAtLocal => CountedAtUtc?.ToLocalTime();
 	public long Version { get; }
 
 	public long? CountedQuantity

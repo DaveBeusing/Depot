@@ -14,5 +14,6 @@
         <ResourceDictionary Source="PageHeaders.xaml"/>
         <ResourceDictionary Source="Dialogs.xaml"/>
         <ResourceDictionary Source="EmptyStates.xaml"/>
+		<ResourceDictionary Source="Workflows.xaml"/>
     </ResourceDictionary.MergedDictionaries>
 </ResourceDictionary>

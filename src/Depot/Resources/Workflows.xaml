@@ -1,0 +1,115 @@
+<ResourceDictionary
+	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:controls="clr-namespace:Depot.Controls">
+
+	<Style TargetType="{x:Type controls:FilterBar}">
+		<Setter Property="Margin" Value="0,0,0,12" />
+		<Setter Property="Template">
+			<Setter.Value>
+				<ControlTemplate TargetType="{x:Type controls:FilterBar}">
+					<Border Padding="12" Background="{DynamicResource SurfaceAltBrush}" CornerRadius="{DynamicResource CornerRadius.Small}">
+						<ContentPresenter />
+					</Border>
+				</ControlTemplate>
+			</Setter.Value>
+		</Setter>
+	</Style>
+
+	<Style TargetType="{x:Type controls:PaginationControl}">
+		<Setter Property="Template">
+			<Setter.Value>
+				<ControlTemplate TargetType="{x:Type controls:PaginationControl}">
+					<Grid>
+						<Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+						<Button Command="{TemplateBinding PreviousCommand}" Content="Previous" Style="{DynamicResource SecondaryButtonStyle}" />
+						<TextBlock Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center" Text="{TemplateBinding PageText}" Style="{DynamicResource CaptionStyle}" />
+						<Button Grid.Column="2" Command="{TemplateBinding NextCommand}" Content="Next" Style="{DynamicResource SecondaryButtonStyle}" />
+					</Grid>
+				</ControlTemplate>
+			</Setter.Value>
+		</Setter>
+	</Style>
+
+	<Style TargetType="{x:Type controls:WorkflowHeader}">
+		<Setter Property="Margin" Value="0,0,0,16" />
+		<Setter Property="Template">
+			<Setter.Value>
+				<ControlTemplate TargetType="{x:Type controls:WorkflowHeader}">
+					<Grid>
+						<Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+						<StackPanel>
+							<TextBlock Text="{TemplateBinding Title}" TextTrimming="CharacterEllipsis" Style="{DynamicResource SectionTitleStyle}" />
+							<TextBlock Margin="0,3,0,0" Text="{TemplateBinding Subtitle}" TextTrimming="CharacterEllipsis" Style="{DynamicResource CaptionStyle}" />
+						</StackPanel>
+						<controls:DocumentStatusBadge Grid.Column="1" Margin="16,0,0,0" Status="{TemplateBinding Status}" />
+					</Grid>
+				</ControlTemplate>
+			</Setter.Value>
+		</Setter>
+	</Style>
+
+	<Style TargetType="{x:Type controls:WorkflowActionBar}">
+		<Setter Property="Margin" Value="0,16,0,0" />
+		<Setter Property="Template">
+			<Setter.Value>
+				<ControlTemplate TargetType="{x:Type controls:WorkflowActionBar}">
+					<Grid>
+						<Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="24" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+						<ContentPresenter Content="{TemplateBinding SecondaryActions}" HorizontalAlignment="Left" />
+						<ContentPresenter Grid.Column="2" Content="{TemplateBinding PrimaryAction}" HorizontalAlignment="Right" />
+					</Grid>
+				</ControlTemplate>
+			</Setter.Value>
+		</Setter>
+	</Style>
+
+	<Style TargetType="{x:Type controls:OperationPanel}">
+		<Setter Property="Template">
+			<Setter.Value>
+				<ControlTemplate TargetType="{x:Type controls:OperationPanel}">
+					<controls:OperationStatus ErrorText="{TemplateBinding ErrorText}" HasError="{TemplateBinding HasError}" IsBusy="{TemplateBinding IsBusy}" StatusText="{TemplateBinding StatusText}" />
+				</ControlTemplate>
+			</Setter.Value>
+		</Setter>
+	</Style>
+
+	<Style TargetType="{x:Type controls:MasterDetailGrid}">
+		<Setter Property="Template">
+			<Setter.Value>
+				<ControlTemplate TargetType="{x:Type controls:MasterDetailGrid}">
+					<Grid>
+						<Grid.ColumnDefinitions>
+							<ColumnDefinition Width="{DynamicResource MasterPane.DefaultWidth}" MinWidth="{DynamicResource MasterPane.MinWidth}" MaxWidth="{DynamicResource MasterPane.MaxWidth}" />
+							<ColumnDefinition Width="{DynamicResource MasterDetail.ColumnGap}" />
+							<ColumnDefinition Width="*" MinWidth="360" />
+						</Grid.ColumnDefinitions>
+						<ContentPresenter Content="{TemplateBinding Master}" />
+						<ContentPresenter Grid.Column="2" Content="{TemplateBinding Detail}" />
+					</Grid>
+				</ControlTemplate>
+			</Setter.Value>
+		</Setter>
+	</Style>
+
+	<Style TargetType="{x:Type controls:WorkflowListState}">
+		<Setter Property="Panel.ZIndex" Value="2" />
+		<Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+		<Setter Property="Visibility" Value="Collapsed" />
+		<Setter Property="Template">
+			<Setter.Value>
+				<ControlTemplate TargetType="{x:Type controls:WorkflowListState}">
+					<Border Background="{TemplateBinding Background}">
+						<controls:EmptyState x:Name="State" Title="No documents yet" Description="Create the first document to begin this workflow." />
+					</Border>
+					<ControlTemplate.Triggers>
+						<Trigger Property="ItemCount" Value="0"><Setter Property="Visibility" Value="Visible" /></Trigger>
+						<Trigger Property="IsSearchActive" Value="True"><Setter TargetName="State" Property="Title" Value="No results" /><Setter TargetName="State" Property="Description" Value="No documents match the current search and filters." /></Trigger>
+						<Trigger Property="IsBusy" Value="True"><Setter Property="Visibility" Value="Visible" /><Setter TargetName="State" Property="Title" Value="Loading" /><Setter TargetName="State" Property="Description" Value="Documents are being loaded." /></Trigger>
+						<Trigger Property="HasError" Value="True"><Setter Property="Visibility" Value="Visible" /><Setter TargetName="State" Property="Title" Value="Documents could not be loaded" /><Setter TargetName="State" Property="Description" Value="{Binding ErrorText, RelativeSource={RelativeSource TemplatedParent}}" /></Trigger>
+					</ControlTemplate.Triggers>
+				</ControlTemplate>
+			</Setter.Value>
+		</Setter>
+	</Style>
+</ResourceDictionary>

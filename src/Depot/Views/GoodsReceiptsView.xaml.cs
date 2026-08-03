@@ -5,7 +5,7 @@ using System.Windows.Controls;
 
 namespace Depot.Views;
 
-public partial class ProcurementView : UserControl
+public partial class GoodsReceiptsView : UserControl
 {
-	public ProcurementView() => InitializeComponent();
+	public GoodsReceiptsView() => InitializeComponent();
 }

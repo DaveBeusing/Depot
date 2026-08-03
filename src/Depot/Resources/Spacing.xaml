@@ -1,6 +1,7 @@
 <ResourceDictionary
 	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:sys="clr-namespace:System;assembly=System.Runtime">
 
 	<!-- Page -->
 	<Thickness x:Key="Page.Padding">24</Thickness>
@@ -12,6 +13,13 @@
 	<Thickness x:Key="Page.Header.BottomMargin">0,0,0,16</Thickness>
 	<Thickness x:Key="SecondaryNavigation.Margin">0,0,0,16</Thickness>
 	<Thickness x:Key="SecondaryNavigation.Item.Padding">14,8</Thickness>
+	<GridLength x:Key="MasterDetail.ColumnGap">16</GridLength>
+	<GridLength x:Key="MasterPane.DefaultWidth">370</GridLength>
+	<sys:Double x:Key="MasterPane.MinWidth">300</sys:Double>
+	<sys:Double x:Key="MasterPane.MaxWidth">440</sys:Double>
+	<CornerRadius x:Key="CornerRadius.Small">6</CornerRadius>
+	<CornerRadius x:Key="CornerRadius.Medium">8</CornerRadius>
+	<CornerRadius x:Key="CornerRadius.Large">12</CornerRadius>
 
 	<!-- Cards -->
 	<Thickness x:Key="Card.Padding">16</Thickness>

@@ -71,7 +71,9 @@ public sealed class MainViewModel : BaseViewModel
 		MaterialReturnsViewModel = new MaterialReturnsViewModel(materialReturnService, reasonCodeService, fileDialogService);
 		SupplierReturnsViewModel = new SupplierReturnsViewModel(supplierReturnService, supplierService, reasonCodeService, fileDialogService);
 		ProcurementViewModel = new ProcurementViewModel(purchaseOrderService, goodsReceiptService, supplierService, itemService, fileDialogService, reasonCodeService);
-		PurchaseOrderApprovalsViewModel = new PurchaseOrderApprovalsViewModel(purchaseOrderApprovalService);
+		PurchaseOrdersPageViewModel = new PurchaseOrdersPageViewModel(ProcurementViewModel);
+		GoodsReceiptsPageViewModel = new GoodsReceiptsPageViewModel(ProcurementViewModel);
+		PurchaseOrderApprovalsViewModel = new PurchaseOrderApprovalsViewModel(purchaseOrderApprovalService, fileDialogService);
 		ReportsViewModel = new ReportsViewModel(reportService, fileDialogService);
 		ImportViewModel = new ImportViewModel(importService, fileDialogService);
 		AdministrationViewModel = new AdministrationViewModel(
@@ -100,6 +102,8 @@ public sealed class MainViewModel : BaseViewModel
 	public MaterialReturnsViewModel MaterialReturnsViewModel { get; }
 	public SupplierReturnsViewModel SupplierReturnsViewModel { get; }
 	public ProcurementViewModel ProcurementViewModel { get; }
+	public PurchaseOrdersPageViewModel PurchaseOrdersPageViewModel { get; }
+	public GoodsReceiptsPageViewModel GoodsReceiptsPageViewModel { get; }
 	public PurchaseOrderApprovalsViewModel PurchaseOrderApprovalsViewModel { get; }
 	public ReportsViewModel ReportsViewModel { get; }
 	public ImportViewModel ImportViewModel { get; }
@@ -154,10 +158,8 @@ public sealed class MainViewModel : BaseViewModel
 		if (_authorization.HasPermission(ApplicationPermission.PurchasingView))
 		{
 			var purchasingPages = new List<SecondaryNavigationItem>();
-			AddPage(purchasingPages, ApplicationPermission.PurchaseOrdersView, "Purchase Orders", ProcurementViewModel, ProcurementViewModel.LoadAsync,
-				() => ProcurementViewModel.Section = ProcurementSection.PurchaseOrders);
-			AddPage(purchasingPages, ApplicationPermission.GoodsReceiptsView, "Goods Receipts", ProcurementViewModel, ProcurementViewModel.LoadAsync,
-				() => ProcurementViewModel.Section = ProcurementSection.GoodsReceipts);
+			AddPage(purchasingPages, ApplicationPermission.PurchaseOrdersView, "Purchase Orders", PurchaseOrdersPageViewModel, PurchaseOrdersPageViewModel.LoadAsync);
+			AddPage(purchasingPages, ApplicationPermission.GoodsReceiptsView, "Goods Receipts", GoodsReceiptsPageViewModel, GoodsReceiptsPageViewModel.LoadAsync);
 			AddPage(purchasingPages, ApplicationPermission.SupplierReturnsView, "Supplier Returns", SupplierReturnsViewModel, SupplierReturnsViewModel.LoadAsync);
 			AddModule("Purchasing", Icons.Purchasing, "Manage orders, supplier deliveries, and returns.", purchasingPages);
 		}

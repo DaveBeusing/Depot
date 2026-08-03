@@ -39,7 +39,6 @@ public sealed class ProcurementViewModel : BaseViewModel, IDisposable
 	private string _reversalReason = string.Empty;
 	private string _supplierSearchText = string.Empty;
 	private string _itemSearchText = string.Empty;
-	private string _approvalComment = string.Empty;
 	private string _closeReason = string.Empty;
 	private int _pageNumber = 1;
 	private long _totalCount;
@@ -52,8 +51,6 @@ public sealed class ProcurementViewModel : BaseViewModel, IDisposable
 		NewOrderCommand = new RelayCommand(NewOrder, () => CanCreateOrders);
 		SaveOrderCommand = new AsyncRelayCommand(SaveOrderAsync, () => IsDraft);
 		SubmitForApprovalCommand = new AsyncRelayCommand(SubmitForApprovalAsync, () => CanSubmitOrders && Draft.Id > 0 && Draft.Status == PurchaseOrderStatus.Draft);
-		ApproveCommand = new AsyncRelayCommand(ApproveAsync, () => Draft.Status == PurchaseOrderStatus.PendingApproval && _orders.CanCurrentUserApprove);
-		RejectCommand = new AsyncRelayCommand(RejectAsync, () => Draft.Status == PurchaseOrderStatus.PendingApproval && _orders.CanCurrentUserApprove);
 		ReopenRejectedCommand = new AsyncRelayCommand(ReopenRejectedAsync, () => CanEditOrders && Draft.Status == PurchaseOrderStatus.Rejected);
 		PlaceOrderCommand = new AsyncRelayCommand(PlaceOrderAsync, () => CanOrderPurchaseOrders && Draft.Status == PurchaseOrderStatus.Approved);
 		CloseOrderCommand = new AsyncRelayCommand(CloseOrderAsync, () => CanClose && !string.IsNullOrWhiteSpace(CloseReason));
@@ -72,14 +69,13 @@ public sealed class ProcurementViewModel : BaseViewModel, IDisposable
 	public ObservableCollection<PurchaseOrderLine> Lines { get; } = new();
 	public ObservableCollection<GoodsReceiptLineEditor> ReceiptLines { get; } = new();
 	public ObservableCollection<GoodsReceipt> GoodsReceipts { get; } = new();
+	public ObservableCollection<MovementOverviewItem> ReceiptMovements { get; } = new();
 	public ObservableCollection<ReasonCode> ReversalReasonCodes { get; } = new();
 	public IReadOnlyList<PurchaseOrderStatusFilter> StatusFilters { get; }
 	public RelayCommand NewOrderCommand { get; }
 	public AsyncRelayCommand SaveOrderCommand { get; }
 	public AsyncRelayCommand PlaceOrderCommand { get; }
 	public AsyncRelayCommand SubmitForApprovalCommand { get; }
-	public AsyncRelayCommand ApproveCommand { get; }
-	public AsyncRelayCommand RejectCommand { get; }
 	public AsyncRelayCommand ReopenRejectedCommand { get; }
 	public AsyncRelayCommand CloseOrderCommand { get; }
 	public AsyncRelayCommand CancelOrderCommand { get; }
@@ -94,12 +90,15 @@ public sealed class ProcurementViewModel : BaseViewModel, IDisposable
 	public bool CanCreateOrders => _orders.CanCurrentUserCreate;
 	public bool CanEditOrders => _orders.CanCurrentUserEdit;
 	public bool CanSubmitOrders => _orders.CanCurrentUserSubmit;
-	public bool CanApproveOrders => _orders.CanCurrentUserApprove;
 	public bool CanOrderPurchaseOrders => _orders.CanCurrentUserOrder;
 	public bool CanCloseOrders => _orders.CanCurrentUserClose;
 	public bool IsDraft => Draft.Status == PurchaseOrderStatus.Draft && (Draft.Id == 0 ? CanCreateOrders : CanEditOrders);
 	public bool IsOrderReadOnly => !IsDraft;
 	public bool CanClose => CanCloseOrders && Draft.Status is (PurchaseOrderStatus.Ordered or PurchaseOrderStatus.PartiallyReceived);
+	public bool CanSubmitCurrent => CanSubmitOrders && Draft.Id > 0 && Draft.Status == PurchaseOrderStatus.Draft;
+	public bool CanReopenCurrent => CanEditOrders && Draft.Status == PurchaseOrderStatus.Rejected;
+	public bool CanPlaceCurrent => CanOrderPurchaseOrders && Draft.Status == PurchaseOrderStatus.Approved;
+	public bool CanCancelCurrent => CanEditOrders && Draft.Id > 0 && Draft.Status is (PurchaseOrderStatus.Draft or PurchaseOrderStatus.Rejected or PurchaseOrderStatus.Approved or PurchaseOrderStatus.Ordered);
 	public bool CanReceive => _receipts.CanPost && SelectedOrder?.Status is (PurchaseOrderStatus.Ordered or PurchaseOrderStatus.PartiallyReceived);
 	public string EditorTitle => Draft.Id == 0 ? "New Purchase Order" : Draft.OrderNumber;
 	public string SaveLineText => SelectedLine is null ? "Add Line" : "Update Line";
@@ -144,7 +143,7 @@ public sealed class ProcurementViewModel : BaseViewModel, IDisposable
 	public string SupplierDeliveryNoteNumber { get => _supplierDeliveryNoteNumber; set { if (_supplierDeliveryNoteNumber == value) return; _supplierDeliveryNoteNumber = value; OnPropertyChanged(); } }
 	public DateTime ReceiptDate { get => _receiptDate; set { if (_receiptDate == value) return; _receiptDate = value; OnPropertyChanged(); } }
 	public string? ReceiptNotes { get => _receiptNotes; set { if (_receiptNotes == value) return; _receiptNotes = value; OnPropertyChanged(); } }
-	public GoodsReceipt? SelectedReceipt { get => _selectedReceipt; set { if (_selectedReceipt == value) return; _selectedReceipt = value; OnPropertyChanged(); OnPropertyChanged(nameof(CanReverseReceipt)); ReverseReceiptCommand.RaiseCanExecuteChanged(); } }
+	public GoodsReceipt? SelectedReceipt { get => _selectedReceipt; set { if (_selectedReceipt == value) return; _selectedReceipt = value; OnPropertyChanged(); OnPropertyChanged(nameof(CanReverseReceipt)); ReverseReceiptCommand.RaiseCanExecuteChanged(); _ = LoadReceiptMovementsAsync(value); } }
 	public bool CanReverseReceipt => _receipts.CanReverse && SelectedReceipt is { IsReversed: false };
 	public ProcurementSection Section
 	{
@@ -166,7 +165,6 @@ public sealed class ProcurementViewModel : BaseViewModel, IDisposable
 	public bool ShowNewOrderButton => IsPurchaseOrdersSection && CanCreateOrders;
 	public ReasonCode? SelectedReversalReasonCode { get => _selectedReversalReasonCode; set { if (_selectedReversalReasonCode == value) return; _selectedReversalReasonCode = value; OnPropertyChanged(); ReverseReceiptCommand.RaiseCanExecuteChanged(); } }
 	public string ReversalReason { get => _reversalReason; set { if (_reversalReason == value) return; _reversalReason = value; OnPropertyChanged(); ReverseReceiptCommand.RaiseCanExecuteChanged(); } }
-	public string ApprovalComment { get => _approvalComment; set { if (_approvalComment == value) return; _approvalComment = value; OnPropertyChanged(); } }
 	public string CloseReason { get => _closeReason; set { if (_closeReason == value) return; _closeReason = value; OnPropertyChanged(); CloseOrderCommand.RaiseCanExecuteChanged(); } }
 	public bool HasApprovalHistory => Draft.SubmittedAtUtc is not null;
 
@@ -177,7 +175,9 @@ public sealed class ProcurementViewModel : BaseViewModel, IDisposable
 		{
 			var suppliersTask = _suppliers.SearchActiveAsync(SupplierSearchText, 50, cancellationToken);
 			var itemsTask = _items.SearchItemsAsync(ItemSearchText, 1, 50, cancellationToken);
-			var ordersTask = _orders.SearchAsync(SearchText, SelectedStatusFilter.Status, PageNumber, PageSize, cancellationToken);
+			var ordersTask = IsGoodsReceiptsSection
+				? _receipts.SearchOpenOrdersAsync(SearchText, PageNumber, PageSize, cancellationToken)
+				: _orders.SearchAsync(SearchText, SelectedStatusFilter.Status, PageNumber, PageSize, cancellationToken);
 			var reasonCodesTask = _reasonCodes.GetActiveAsync(cancellationToken);
 			await Task.WhenAll(suppliersTask, itemsTask, ordersTask, reasonCodesTask);
 			ReplaceOptions(Suppliers, await suppliersTask);
@@ -190,7 +190,13 @@ public sealed class ProcurementViewModel : BaseViewModel, IDisposable
 
 	private async Task LoadOrdersAsync(CancellationToken cancellationToken = default)
 	{
-		try { ApplyOrderPage(await _orders.SearchAsync(SearchText, SelectedStatusFilter.Status, PageNumber, PageSize, cancellationToken)); }
+		try
+		{
+			var page = IsGoodsReceiptsSection
+				? await _receipts.SearchOpenOrdersAsync(SearchText, PageNumber, PageSize, cancellationToken)
+				: await _orders.SearchAsync(SearchText, SelectedStatusFilter.Status, PageNumber, PageSize, cancellationToken);
+			ApplyOrderPage(page);
+		}
 		catch (Exception exception) when (exception is not OperationCanceledException) { FailOperation(exception, "Purchase orders could not be loaded"); }
 	}
 
@@ -222,7 +228,7 @@ public sealed class ProcurementViewModel : BaseViewModel, IDisposable
 				var supplier = await _suppliers.GetByIdAsync(details.SupplierId, cancellationToken);
 				if (supplier is not null) Suppliers.Add(supplier);
 			}
-			Draft = Copy(details); ApprovalComment = string.Empty; CloseReason = string.Empty; Lines.Clear(); foreach (var line in details.Lines) Lines.Add(Copy(line));
+			Draft = Copy(details); CloseReason = string.Empty; Lines.Clear(); foreach (var line in details.Lines) Lines.Add(Copy(line));
 			OnPropertyChanged(nameof(EditorTitle)); OnPropertyChanged(nameof(CanReceive)); OnPropertyChanged(nameof(ShowReceiptEntry)); RaiseCommands();
 			await Task.WhenAll(BuildReceiptLinesAsync(details, cancellationToken), LoadReceiptsAsync(details.Id, cancellationToken));
 		}
@@ -252,8 +258,6 @@ public sealed class ProcurementViewModel : BaseViewModel, IDisposable
 	}
 	private async Task PlaceOrderAsync(CancellationToken cancellationToken) { var operationId = Guid.NewGuid(); await ChangeStatusAsync(() => _orders.PlaceOrderAsync(Draft.Id, Draft.Version, operationId, cancellationToken), "Purchase order placed", PurchaseOrderStatus.Ordered, cancellationToken); }
 	private async Task SubmitForApprovalAsync(CancellationToken cancellationToken) => await ChangeStatusAsync(() => _orders.SubmitForApprovalAsync(Draft.Id, Draft.Version, cancellationToken), "Purchase order submitted for approval", cancellationToken);
-	private async Task ApproveAsync(CancellationToken cancellationToken) { var operationId = Guid.NewGuid(); await ChangeStatusAsync(() => _orders.ApproveAsync(Draft.Id, Draft.Version, ApprovalComment, operationId, cancellationToken), "Purchase order approved", PurchaseOrderStatus.Approved, cancellationToken); }
-	private async Task RejectAsync(CancellationToken cancellationToken) { var operationId = Guid.NewGuid(); await ChangeStatusAsync(() => _orders.RejectAsync(Draft.Id, Draft.Version, ApprovalComment, operationId, cancellationToken), "Purchase order rejected", PurchaseOrderStatus.Rejected, cancellationToken); }
 	private async Task ReopenRejectedAsync(CancellationToken cancellationToken) => await ChangeStatusAsync(() => _orders.ReopenRejectedAsync(Draft.Id, Draft.Version, cancellationToken), "Purchase order reopened as draft", cancellationToken);
 	private async Task CloseOrderAsync(CancellationToken cancellationToken)
 	{
@@ -272,7 +276,7 @@ public sealed class ProcurementViewModel : BaseViewModel, IDisposable
 	private async Task ChangeStatusAsync(Func<Task<PurchaseOrder>> action, string message, PurchaseOrderStatus? expectedStatus, CancellationToken cancellationToken)
 	{
 		BeginOperation("Updating purchase order status");
-		try { var saved = await action(); ApplyChangedOrder(saved); await Task.WhenAll(BuildReceiptLinesAsync(saved, cancellationToken), LoadReceiptsAsync(saved.Id, cancellationToken)); ApprovalComment = string.Empty; CloseReason = string.Empty; CompleteOperation(false, message); }
+		try { var saved = await action(); ApplyChangedOrder(saved); await Task.WhenAll(BuildReceiptLinesAsync(saved, cancellationToken), LoadReceiptsAsync(saved.Id, cancellationToken)); CloseReason = string.Empty; CompleteOperation(false, message); }
 		catch (Exception exception) when (exception is not OperationCanceledException)
 		{
 			if (expectedStatus is not null && await ReconcileStatusAsync(Draft.Id, expectedStatus.Value, message)) return;
@@ -326,6 +330,20 @@ public sealed class ProcurementViewModel : BaseViewModel, IDisposable
 		var receipts = await _receipts.ListByPurchaseOrderAsync(purchaseOrderId, cancellationToken);
 		GoodsReceipts.Clear(); foreach (var receipt in receipts) GoodsReceipts.Add(receipt);
 		SelectedReceipt = GoodsReceipts.FirstOrDefault();
+	}
+	private async Task LoadReceiptMovementsAsync(GoodsReceipt? receipt, CancellationToken cancellationToken = default)
+	{
+		try
+		{
+			var movements = receipt is null
+				? Array.Empty<MovementOverviewItem>()
+				: await _receipts.ListMovementsAsync(receipt.ReceiptNumber, cancellationToken);
+			ReplaceOptions(ReceiptMovements, movements);
+		}
+		catch (Exception exception) when (exception is not OperationCanceledException)
+		{
+			FailOperation(exception, "Goods receipt movements could not be loaded");
+		}
 	}
 	private async Task ReverseReceiptAsync(CancellationToken cancellationToken)
 	{
@@ -419,12 +437,12 @@ public sealed class ProcurementViewModel : BaseViewModel, IDisposable
 			order.SupplierName.Contains(search, StringComparison.OrdinalIgnoreCase) ||
 			(order.Notes?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false);
 	}
-	private void RaiseCommands() { SaveOrderCommand.RaiseCanExecuteChanged(); SubmitForApprovalCommand.RaiseCanExecuteChanged(); ApproveCommand.RaiseCanExecuteChanged(); RejectCommand.RaiseCanExecuteChanged(); ReopenRejectedCommand.RaiseCanExecuteChanged(); PlaceOrderCommand.RaiseCanExecuteChanged(); CloseOrderCommand.RaiseCanExecuteChanged(); CancelOrderCommand.RaiseCanExecuteChanged(); AddLineCommand.RaiseCanExecuteChanged(); RemoveLineCommand.RaiseCanExecuteChanged(); PostReceiptCommand.RaiseCanExecuteChanged(); ReverseReceiptCommand.RaiseCanExecuteChanged(); }
+	private void RaiseCommands() { OnPropertyChanged(nameof(CanSubmitCurrent)); OnPropertyChanged(nameof(CanReopenCurrent)); OnPropertyChanged(nameof(CanPlaceCurrent)); OnPropertyChanged(nameof(CanCancelCurrent)); SaveOrderCommand.RaiseCanExecuteChanged(); SubmitForApprovalCommand.RaiseCanExecuteChanged(); ReopenRejectedCommand.RaiseCanExecuteChanged(); PlaceOrderCommand.RaiseCanExecuteChanged(); CloseOrderCommand.RaiseCanExecuteChanged(); CancelOrderCommand.RaiseCanExecuteChanged(); AddLineCommand.RaiseCanExecuteChanged(); RemoveLineCommand.RaiseCanExecuteChanged(); PostReceiptCommand.RaiseCanExecuteChanged(); ReverseReceiptCommand.RaiseCanExecuteChanged(); }
 	private static PurchaseOrder NewOrderDraft() => new() { OrderDate = DateTime.Today, ExpectedDeliveryDate = DateTime.Today.AddDays(7) };
 	private static PurchaseOrder Copy(PurchaseOrder value) => new() { Id = value.Id, OrderNumber = value.OrderNumber, SupplierId = value.SupplierId, SupplierName = value.SupplierName, OrderDate = value.OrderDate, ExpectedDeliveryDate = value.ExpectedDeliveryDate, Notes = value.Notes, Status = value.Status, CreatedByUserId = value.CreatedByUserId, SubmittedByUserId = value.SubmittedByUserId, SubmittedAtUtc = value.SubmittedAtUtc, ApprovalDecisionByUserId = value.ApprovalDecisionByUserId, ApprovalDecisionAtUtc = value.ApprovalDecisionAtUtc, ApprovalComment = value.ApprovalComment, ClosedByUserId = value.ClosedByUserId, ClosedAtUtc = value.ClosedAtUtc, CloseReason = value.CloseReason, CreatedByUserDisplay = value.CreatedByUserDisplay, SubmittedByUserDisplay = value.SubmittedByUserDisplay, ApprovalDecisionByUserDisplay = value.ApprovalDecisionByUserDisplay, ClosedByUserDisplay = value.ClosedByUserDisplay, Version = value.Version, Lines = value.Lines.Select(Copy).ToArray() };
 	private static PurchaseOrderLine Copy(PurchaseOrderLine value) => new() { Id = value.Id, PurchaseOrderId = value.PurchaseOrderId, LineNumber = value.LineNumber, ItemId = value.ItemId, ItemPartNumber = value.ItemPartNumber, ItemDescription = value.ItemDescription, Quantity = value.Quantity, UnitPrice = value.UnitPrice, ReceivedQuantity = value.ReceivedQuantity, Version = value.Version };
 	private static string StatusLabel(PurchaseOrderStatus status) => status switch { PurchaseOrderStatus.PartiallyReceived => "Partially Received", PurchaseOrderStatus.PendingApproval => "Pending Approval", _ => status.ToString() };
-	public void Dispose() { _selectionCancellation?.Cancel(); _selectionCancellation?.Dispose(); _search.Dispose(); _supplierSearch.Dispose(); _itemSearch.Dispose(); SaveOrderCommand.Dispose(); SubmitForApprovalCommand.Dispose(); ApproveCommand.Dispose(); RejectCommand.Dispose(); ReopenRejectedCommand.Dispose(); PlaceOrderCommand.Dispose(); CloseOrderCommand.Dispose(); CancelOrderCommand.Dispose(); PostReceiptCommand.Dispose(); ReverseReceiptCommand.Dispose(); PreviousPageCommand.Dispose(); NextPageCommand.Dispose(); }
+	public void Dispose() { _selectionCancellation?.Cancel(); _selectionCancellation?.Dispose(); _search.Dispose(); _supplierSearch.Dispose(); _itemSearch.Dispose(); SaveOrderCommand.Dispose(); SubmitForApprovalCommand.Dispose(); ReopenRejectedCommand.Dispose(); PlaceOrderCommand.Dispose(); CloseOrderCommand.Dispose(); CancelOrderCommand.Dispose(); PostReceiptCommand.Dispose(); ReverseReceiptCommand.Dispose(); PreviousPageCommand.Dispose(); NextPageCommand.Dispose(); }
 }
 
 public sealed record PurchaseOrderStatusFilter(string Name, PurchaseOrderStatus? Status);

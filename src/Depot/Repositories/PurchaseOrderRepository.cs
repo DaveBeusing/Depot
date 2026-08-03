@@ -38,6 +38,30 @@ public sealed class PurchaseOrderRepository : DatabaseRepository
 			$"SELECT COUNT(*) {From} {where}", ReadOrder, pageNumber, pageSize, cancellationToken, parameters.ToArray());
 	}
 
+	public Task<PageResult<PurchaseOrder>> SearchOpenForReceiptAsync(string? searchText, int pageNumber, int pageSize, CancellationToken cancellationToken)
+	{
+		var filters = new List<string> { "po.Status IN ($Ordered, $PartiallyReceived)" };
+		var parameters = new List<DatabaseParameter>
+		{
+			Parameter("$Ordered", (int)PurchaseOrderStatus.Ordered),
+			Parameter("$PartiallyReceived", (int)PurchaseOrderStatus.PartiallyReceived)
+		};
+		if (!string.IsNullOrWhiteSpace(searchText))
+		{
+			filters.Add("(po.OrderNumber LIKE $Search OR s.Name LIKE $Search OR po.Notes LIKE $Search)");
+			parameters.Add(Parameter("$Search", $"%{searchText.Trim()}%"));
+		}
+		var where = $"WHERE {string.Join(" AND ", filters)}";
+		return Database.QueryPageAsync(
+			$"SELECT {Columns} {From} {where} ORDER BY po.ExpectedDeliveryDate, po.Id",
+			$"SELECT COUNT(*) {From} {where}",
+			ReadOrder,
+			pageNumber,
+			pageSize,
+			cancellationToken,
+			parameters.ToArray());
+	}
+
 	public Task<PageResult<PurchaseOrderApprovalWorkItem>> SearchPendingApprovalsAsync(
 		PurchaseOrderApprovalFilter filter,
 		int pageNumber,

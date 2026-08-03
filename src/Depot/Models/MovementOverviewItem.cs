@@ -8,6 +8,7 @@ public sealed class MovementOverviewItem
 	public long MovementId { get; init; }
 
 	public DateTime TimestampUtc { get; init; }
+	public DateTime TimestampLocal => TimestampUtc.ToLocalTime();
 
 	public long InventoryId { get; init; }
 

@@ -11,7 +11,7 @@ public enum StatusBadgeVariant
     Error
 }
 
-public sealed class StatusBadge : ContentControl
+public class StatusBadge : ContentControl
 {
     public static readonly DependencyProperty VariantProperty = DependencyProperty.Register(
         nameof(Variant),

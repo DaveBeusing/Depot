@@ -49,6 +49,18 @@ public sealed class GoodsReceiptService
 		return _receipts.ListByPurchaseOrderAsync(purchaseOrderId, cancellationToken);
 	}
 
+	public Task<PageResult<PurchaseOrder>> SearchOpenOrdersAsync(string? searchText, int pageNumber, int pageSize, CancellationToken cancellationToken = default)
+	{
+		_audit.RequirePermission(ApplicationPermission.GoodsReceiptsView);
+		return _purchaseOrders.SearchOpenForReceiptAsync(searchText, pageNumber, pageSize, cancellationToken);
+	}
+
+	public Task<IReadOnlyList<MovementOverviewItem>> ListMovementsAsync(string receiptNumber, CancellationToken cancellationToken = default)
+	{
+		_audit.RequirePermission(ApplicationPermission.GoodsReceiptsView);
+		return _stockMovements.ListByReferenceAsync(receiptNumber, cancellationToken);
+	}
+
 	public async Task<GoodsReceipt> ReverseAsync(long receiptId, long version, long reasonCodeId, string reversalReason, CancellationToken cancellationToken = default)
 	{
 		_audit.RequirePermission(ApplicationPermission.GoodsReceiptsReverse);

@@ -13,6 +13,7 @@ public sealed class PurchaseOrderApprovalsViewModel : BaseViewModel, IDisposable
 {
 	private const int PageSize = 50;
 	private readonly PurchaseOrderApprovalService _approvals;
+	private readonly IFileDialogService? _dialogs;
 	private readonly AsyncDebouncer _searchDebouncer = new(TimeSpan.FromMilliseconds(300));
 	private CancellationTokenSource? _detailsCancellation;
 	private string _searchText = string.Empty;
@@ -28,9 +29,12 @@ public sealed class PurchaseOrderApprovalsViewModel : BaseViewModel, IDisposable
 	private long _totalCount;
 	private bool _isLoadingDetails;
 
-	public PurchaseOrderApprovalsViewModel(PurchaseOrderApprovalService approvals)
+	public PurchaseOrderApprovalsViewModel(PurchaseOrderApprovalService approvals) : this(approvals, null) { }
+
+	public PurchaseOrderApprovalsViewModel(PurchaseOrderApprovalService approvals, IFileDialogService? dialogs)
 	{
 		_approvals = approvals;
+		_dialogs = dialogs;
 		ApproveCommand = new AsyncRelayCommand(ApproveAsync, () => CanDecideSelected);
 		RejectCommand = new AsyncRelayCommand(RejectAsync, () => CanDecideSelected);
 		PreviousPageCommand = new AsyncRelayCommand(PreviousPageAsync, () => PageNumber > 1);
@@ -173,6 +177,11 @@ public sealed class PurchaseOrderApprovalsViewModel : BaseViewModel, IDisposable
 	{
 		var selected = SelectedApproval;
 		if (selected is null) return;
+		var action = approve ? "approve" : "reject";
+		if (_dialogs is not null && !_dialogs.Confirm(new ConfirmationDialogRequest(
+			approve ? "Approve Purchase Order" : "Reject Purchase Order",
+			$"Do you want to {action} purchase order {selected.OrderNumber}?",
+			!approve))) return;
 		BeginOperation(approve ? "Approving purchase order" : "Rejecting purchase order");
 		try
 		{

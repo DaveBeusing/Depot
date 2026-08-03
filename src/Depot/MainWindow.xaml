@@ -57,8 +57,11 @@
 			<DataTemplate DataType="{x:Type viewModels:MaterialReturnsViewModel}">
 				<views:MaterialReturnsView />
 			</DataTemplate>
-			<DataTemplate DataType="{x:Type viewModels:ProcurementViewModel}">
-				<views:ProcurementView />
+			<DataTemplate DataType="{x:Type viewModels:PurchaseOrdersPageViewModel}">
+				<views:PurchaseOrdersView />
+			</DataTemplate>
+			<DataTemplate DataType="{x:Type viewModels:GoodsReceiptsPageViewModel}">
+				<views:GoodsReceiptsView />
 			</DataTemplate>
 			<DataTemplate DataType="{x:Type viewModels:SupplierReturnsViewModel}">
 				<views:SupplierReturnsView />
