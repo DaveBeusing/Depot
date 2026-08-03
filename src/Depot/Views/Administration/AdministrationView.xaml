@@ -24,7 +24,7 @@
 			ItemContainerStyle="{DynamicResource SecondaryNavigationItemStyle}">
 			<ListBox.ItemsPanel>
 				<ItemsPanelTemplate>
-					<WrapPanel Orientation="Horizontal" />
+					<StackPanel Orientation="Horizontal" />
 				</ItemsPanelTemplate>
 			</ListBox.ItemsPanel>
 			<ListBox.ItemTemplate>

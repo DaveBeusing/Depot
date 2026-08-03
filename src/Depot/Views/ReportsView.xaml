@@ -46,7 +46,7 @@
 			</controls:PageHeader.Actions>
 		</controls:PageHeader>
 
-		<Grid Grid.Row="1" Margin="{StaticResource Search.Margin}">
+		<controls:FilterBar Grid.Row="1"><Grid>
 			<Grid.ColumnDefinitions>
 				<ColumnDefinition Width="240" />
 				<ColumnDefinition Width="16" />
@@ -66,9 +66,9 @@
 				Placeholder="Search report"
 				Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
 				ToolTip="{Binding SearchToolTip}" />
-		</Grid>
+		</Grid></controls:FilterBar>
 
-		<controls:OperationStatus
+		<controls:OperationPanel
 			Grid.Row="2"
 			Margin="0,0,0,16"
 			ErrorText="{Binding OperationError}"
@@ -134,13 +134,13 @@
 					Visibility="{Binding ShowInventoryValueRows, Converter={StaticResource BooleanToVisibilityConverter}}">
 					<DataGrid.Columns>
 						<DataGridTextColumn Header="Part Number" Binding="{Binding PartNumber}" Width="150" />
-						<DataGridTextColumn Header="Description" Binding="{Binding Description}" Width="*" />
+						<DataGridTextColumn Header="Description" Binding="{Binding Description}" Width="*" ElementStyle="{StaticResource AppDataGridTextStyle}" />
 						<DataGridTextColumn Header="Purpose" Binding="{Binding PurposeName}" Width="120" />
 						<DataGridTextColumn Header="Warehouse" Binding="{Binding WarehouseName}" Width="120" />
 						<DataGridTextColumn Header="Storage Location" Binding="{Binding LocationName}" Width="120" />
-						<DataGridTextColumn Header="Stock" Binding="{Binding CurrentStock}" Width="80" />
-						<DataGridTextColumn Header="Avg Cost" Binding="{Binding AverageCost, StringFormat={}{0:C2}}" Width="120" />
-						<DataGridTextColumn Header="Value" Binding="{Binding InventoryValue, StringFormat={}{0:C2}}" Width="120" />
+						<DataGridTextColumn Header="Stock" Binding="{Binding CurrentStock, StringFormat={}{0:N2}}" Width="80" ElementStyle="{StaticResource AppDataGridNumericTextStyle}" />
+						<DataGridTextColumn Header="Avg Cost" Binding="{Binding AverageCost, StringFormat={}{0:C2}}" Width="120" ElementStyle="{StaticResource AppDataGridNumericTextStyle}" />
+						<DataGridTextColumn Header="Value" Binding="{Binding InventoryValue, StringFormat={}{0:C2}}" Width="120" ElementStyle="{StaticResource AppDataGridNumericTextStyle}" />
 					</DataGrid.Columns>
 				</DataGrid>
 
@@ -151,10 +151,10 @@
 					Visibility="{Binding ShowGroupedRows, Converter={StaticResource BooleanToVisibilityConverter}}">
 					<DataGrid.Columns>
 						<DataGridTextColumn Header="Group" Binding="{Binding GroupName}" Width="*" />
-						<DataGridTextColumn Header="Inventory Rows" Binding="{Binding InventoryRows}" Width="140" />
-						<DataGridTextColumn Header="Items" Binding="{Binding TotalItems}" Width="100" />
-						<DataGridTextColumn Header="Total Stock" Binding="{Binding TotalStockQuantity}" Width="120" />
-						<DataGridTextColumn Header="Inventory Value" Binding="{Binding InventoryValue, StringFormat={}{0:C2}}" Width="160" />
+						<DataGridTextColumn Header="Inventory Rows" Binding="{Binding InventoryRows, StringFormat={}{0:N0}}" Width="140" ElementStyle="{StaticResource AppDataGridNumericTextStyle}" />
+						<DataGridTextColumn Header="Items" Binding="{Binding TotalItems, StringFormat={}{0:N0}}" Width="100" ElementStyle="{StaticResource AppDataGridNumericTextStyle}" />
+						<DataGridTextColumn Header="Total Stock" Binding="{Binding TotalStockQuantity, StringFormat={}{0:N2}}" Width="120" ElementStyle="{StaticResource AppDataGridNumericTextStyle}" />
+						<DataGridTextColumn Header="Inventory Value" Binding="{Binding InventoryValue, StringFormat={}{0:C2}}" Width="160" ElementStyle="{StaticResource AppDataGridNumericTextStyle}" />
 					</DataGrid.Columns>
 				</DataGrid>
 
@@ -164,16 +164,11 @@
 					Description="{Binding EmptyReportMessage}"
 					Visibility="{Binding HasNoReportRows, Converter={StaticResource BooleanToVisibilityConverter}}" />
 
-				<StackPanel
+				<controls:PaginationControl
 					Grid.Row="1"
 					Margin="0,16,0,0"
-					HorizontalAlignment="Right"
-					Orientation="Horizontal"
-					Visibility="{Binding ShowPaging, Converter={StaticResource BooleanToVisibilityConverter}}">
-					<Button Command="{Binding PreviousPageCommand}" Content="Previous" Style="{StaticResource SecondaryButtonStyle}" />
-					<TextBlock Margin="16,0" VerticalAlignment="Center" Text="{Binding PageDisplay}" Style="{StaticResource CaptionStyle}" />
-					<Button Command="{Binding NextPageCommand}" Content="Next" Style="{StaticResource SecondaryButtonStyle}" />
-				</StackPanel>
+					PreviousCommand="{Binding PreviousPageCommand}" NextCommand="{Binding NextPageCommand}" PageText="{Binding PageDisplay}"
+					Visibility="{Binding ShowPaging, Converter={StaticResource BooleanToVisibilityConverter}}" />
 			</Grid>
 		</controls:Card>
 	</Grid>

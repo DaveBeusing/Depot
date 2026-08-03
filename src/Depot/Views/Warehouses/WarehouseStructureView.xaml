@@ -5,30 +5,20 @@
 	xmlns:controls="clr-namespace:Depot.Controls">
 
 	<Grid>
-		<Grid.RowDefinitions>
-			<RowDefinition Height="Auto" />
-			<RowDefinition Height="16" />
-			<RowDefinition Height="*" />
-		</Grid.RowDefinitions>
+		<Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="16" /><RowDefinition Height="*" /></Grid.RowDefinitions>
 
 		<controls:PageHeader
 			Title="Warehouse Structure"
 			Subtitle="Organize warehouses and their physical storage locations.">
-			<controls:PageHeader.Actions>
-				<controls:OperationStatus
-					ErrorText="{Binding OperationError}"
-					HasError="{Binding HasOperationError}"
-					IsBusy="{Binding IsBusy}"
-					StatusText="{Binding StatusText}" />
-			</controls:PageHeader.Actions>
 		</controls:PageHeader>
+		<controls:OperationPanel Grid.Row="1" ErrorText="{Binding OperationError}" HasError="{Binding HasOperationError}" IsBusy="{Binding IsBusy}" StatusText="{Binding StatusText}" />
 
-		<Grid Grid.Row="2">
+		<Grid Grid.Row="3">
 			<Grid.ColumnDefinitions>
-				<ColumnDefinition Width="280" />
-				<ColumnDefinition Width="16" />
-				<ColumnDefinition Width="280" />
-				<ColumnDefinition Width="16" />
+				<ColumnDefinition Width="240" />
+				<ColumnDefinition Width="{StaticResource MasterDetail.ColumnGap}" />
+				<ColumnDefinition Width="240" />
+				<ColumnDefinition Width="{StaticResource MasterDetail.ColumnGap}" />
 				<ColumnDefinition Width="*" />
 			</Grid.ColumnDefinitions>
 
@@ -49,14 +39,14 @@
 						<TextBlock Text="Warehouses" Style="{StaticResource CardTitleStyle}" />
 						<Button Grid.Column="1" Command="{Binding NewWarehouseCommand}" Content="New" Style="{StaticResource SecondaryButtonStyle}" />
 					</Grid>
-					<controls:SearchBox Grid.Row="2" Placeholder="Search warehouses" Text="{Binding WarehouseSearchText, UpdateSourceTrigger=PropertyChanged}" />
+					<controls:FilterBar Grid.Row="2"><controls:SearchBox Placeholder="Search warehouses" Text="{Binding WarehouseSearchText, UpdateSourceTrigger=PropertyChanged}" /></controls:FilterBar>
 					<ListBox Grid.Row="4" ItemsSource="{Binding Warehouses}" SelectedItem="{Binding SelectedWarehouse}" Style="{StaticResource AppListBoxStyle}">
 						<ListBox.ItemTemplate>
 							<DataTemplate>
 								<StackPanel Margin="0,6">
 									<TextBlock FontWeight="SemiBold" Text="{Binding Name}" />
 									<TextBlock Margin="0,2,0,0" Foreground="{StaticResource SecondaryTextBrush}" Text="{Binding Description}" TextTrimming="CharacterEllipsis" />
-									<TextBlock Margin="0,2,0,0" FontSize="11" Foreground="{StaticResource SecondaryTextBrush}" Text="{Binding IsActive, StringFormat=Active: {0}}" />
+									<controls:ActivationStatusBadge Margin="0,4,0,0" HorizontalAlignment="Left" IsActive="{Binding IsActive}" />
 								</StackPanel>
 							</DataTemplate>
 						</ListBox.ItemTemplate>

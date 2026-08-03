@@ -66,7 +66,6 @@ public sealed class AdministrationViewModel : BaseViewModel
 		AddIf(authorization, ApplicationPermission.ImportManage, "Import", AdministrationSection.Import);
 		AddIf(authorization, ApplicationPermission.AuditLogView, "Audit Log", AdministrationSection.AuditLog);
 		AddIf(authorization, ApplicationPermission.DatabaseView, "Database", AdministrationSection.Database);
-		AddIf(authorization, ApplicationPermission.SettingsView, "Settings", AdministrationSection.Settings);
 		if (authorization.HasPermission(ApplicationPermission.AdministrationView))
 			NavigationItems.Add(new NavigationItem { Name = "About", Section = AdministrationSection.About });
 		SelectedNavigationItem = NavigationItems.FirstOrDefault();
@@ -88,7 +87,6 @@ public sealed class AdministrationViewModel : BaseViewModel
 			AdministrationSection.Roles => _roleViewModel,
 			AdministrationSection.Database => _databaseSettingsViewModel,
 			AdministrationSection.AuditLog => _auditLogViewModel,
-			AdministrationSection.Settings => new PlaceholderViewModel("Settings", "Application settings will be available in a future release."),
 			AdministrationSection.About => _aboutViewModel,
 			_ => null
 		};

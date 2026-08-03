@@ -15,38 +15,20 @@
 		<controls:PageHeader
 			Grid.Row="0"
 			Title="Users">
-			<controls:PageHeader.Actions>
-				<controls:OperationStatus
-					ErrorText="{Binding OperationError}"
-					HasError="{Binding HasOperationError}"
-					IsBusy="{Binding IsBusy}"
-					StatusText="{Binding StatusText}" />
-			</controls:PageHeader.Actions>
 		</controls:PageHeader>
 
-		<controls:SearchBox
+		<controls:FilterBar
 			Grid.Row="1"
-			Margin="{StaticResource Search.Margin}"
-			Placeholder="Search users by name or email"
-			Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
+			><controls:SearchBox Placeholder="Search users by name or email" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" /></controls:FilterBar>
 
-		<Border
+		<controls:OperationPanel
 			Grid.Row="2"
-			Margin="0,0,0,16"
-			Padding="12"
-			Background="{StaticResource ErrorBrush}"
-			CornerRadius="6"
-			Visibility="{Binding HasErrorMessage, Converter={StaticResource BooleanToVisibilityConverter}}">
-			<TextBlock
-				Foreground="{StaticResource ErrorForegroundBrush}"
-				Text="{Binding ErrorMessage}"
-				TextWrapping="Wrap" />
-		</Border>
+			ErrorText="{Binding OperationError}" HasError="{Binding HasOperationError}" IsBusy="{Binding IsBusy}" StatusText="{Binding StatusText}" />
 
 		<Grid Grid.Row="3">
 			<Grid.ColumnDefinitions>
-				<ColumnDefinition Width="320" />
-				<ColumnDefinition Width="16" />
+				<ColumnDefinition Width="{StaticResource MasterPane.DefaultWidth}" MinWidth="{StaticResource MasterPane.MinWidth}" MaxWidth="{StaticResource MasterPane.MaxWidth}" />
+				<ColumnDefinition Width="{StaticResource MasterDetail.ColumnGap}" />
 				<ColumnDefinition Width="*" />
 			</Grid.ColumnDefinitions>
 
@@ -56,11 +38,7 @@
 					<RowDefinition Height="8" />
 					<RowDefinition Height="*" />
 				</Grid.RowDefinitions>
-				<StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
-					<Button Command="{Binding PreviousPageCommand}" Content="Previous" Style="{StaticResource SecondaryButtonStyle}" />
-					<TextBlock Margin="12,0" VerticalAlignment="Center" Text="{Binding PageNumber, StringFormat=Page {0}}" />
-					<Button Command="{Binding NextPageCommand}" Content="Next" Style="{StaticResource SecondaryButtonStyle}" />
-				</StackPanel>
+				<controls:PaginationControl PreviousCommand="{Binding PreviousPageCommand}" NextCommand="{Binding NextPageCommand}" PageText="{Binding PageNumber, StringFormat=Page {0}}" />
 				<ListBox
 				Grid.Row="2"
 				ItemsSource="{Binding Users}"

@@ -1,143 +1,20 @@
-<UserControl
-	x:Class="Depot.Views.Purposes.PurposesView"
-	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-	xmlns:controls="clr-namespace:Depot.Controls">
-
+<UserControl x:Class="Depot.Views.Purposes.PurposesView" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:controls="clr-namespace:Depot.Controls">
 	<Grid>
-
-		<Grid.RowDefinitions>
-			<RowDefinition Height="Auto" />
-			<RowDefinition Height="16" />
-			<RowDefinition Height="*" />
-		</Grid.RowDefinitions>
-
-		<controls:PageHeader
-			Grid.Row="0"
-			Title="Purposes">
-			<controls:PageHeader.Actions>
-				<controls:OperationStatus ErrorText="{Binding OperationError}" HasError="{Binding HasOperationError}" IsBusy="{Binding IsBusy}" StatusText="{Binding StatusText}" />
-			</controls:PageHeader.Actions>
-		</controls:PageHeader>
-
-		<Grid Grid.Row="2">
-
-			<Grid.ColumnDefinitions>
-				<ColumnDefinition Width="2*" />
-				<ColumnDefinition Width="16" />
-				<ColumnDefinition Width="*" />
-			</Grid.ColumnDefinitions>
-
-			<Grid Grid.Column="0">
-
-				<Grid.RowDefinitions>
-					<RowDefinition Height="Auto" />
-					<RowDefinition Height="8" />
-					<RowDefinition Height="*" />
-				</Grid.RowDefinitions>
-
-				<controls:SearchBox
-					Grid.Row="0"
-					Placeholder="Search purposes"
-					Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
-
-				<DataGrid
-					Grid.Row="2"
-					ItemsSource="{Binding Purposes}"
-					SelectedItem="{Binding SelectedPurpose}"
-					Style="{StaticResource AppDataGridStyle}">
-
-					<DataGrid.Columns>
-
-						<DataGridTextColumn
-							Header="Name"
-							Binding="{Binding Name}"
-							Width="220" />
-
-						<DataGridTextColumn
-							Header="Description"
-							Binding="{Binding Description}"
-							Width="*" />
-
-					</DataGrid.Columns>
-
-				</DataGrid>
-
-			</Grid>
-
-			<controls:Card Grid.Column="2">
-
-				<Grid>
-
-					<Grid.RowDefinitions>
-						<RowDefinition Height="Auto" />
-						<RowDefinition Height="16" />
-						<RowDefinition Height="Auto" />
-						<RowDefinition Height="8" />
-						<RowDefinition Height="Auto" />
-						<RowDefinition Height="8" />
-						<RowDefinition Height="Auto" />
-						<RowDefinition Height="16" />
-						<RowDefinition Height="Auto" />
-						<RowDefinition Height="*" />
-					</Grid.RowDefinitions>
-
-					<TextBlock
-						Grid.Row="0"
-						Text="{Binding Editor.EditorTitle}"
-						Style="{StaticResource SectionTitleStyle}" />
-
-					<TextBlock
-						Grid.Row="2"
-						Text="Name" />
-
-					<TextBox
-						Grid.Row="4"
-						Style="{StaticResource AppTextBoxStyle}"						
-						Text="{Binding Editor.Name, UpdateSourceTrigger=PropertyChanged}" />
-
-					<TextBlock
-						Grid.Row="6"
-						Text="Description" />
-
-					<TextBox
-						Grid.Row="8"
-						AcceptsReturn="True"
-						MinHeight="80"
-						Style="{StaticResource MultilineTextBoxStyle}"
-						Text="{Binding Editor.Description, UpdateSourceTrigger=PropertyChanged}" />
-
-					<StackPanel
-						Grid.Row="9"
-						Orientation="Horizontal"
-						HorizontalAlignment="Right"
-						VerticalAlignment="Bottom">
-
-						<Button
-							Content="New"
-							Command="{Binding NewPurposeCommand}"
-							Style="{StaticResource PrimaryButtonStyle}" />
-
-						<Button
-							Content="Save"
-							Command="{Binding SavePurposeCommand}"
-							Margin="{StaticResource Button.Margin}"
-							Style="{StaticResource PrimaryButtonStyle}" />
-
-						<Button
-							Content="Deactivate"
-							Command="{Binding DeactivatePurposeCommand}"
-							Margin="{StaticResource Button.Margin}"
-							Style="{StaticResource DangerButtonStyle}" />
-
-					</StackPanel>
-
-				</Grid>
-
-			</controls:Card>
-
-		</Grid>
-
+		<Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="16" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+		<controls:PageHeader Title="Purposes" Subtitle="Maintain the business purposes assigned to inventory records."><controls:PageHeader.Actions><controls:OperationPanel ErrorText="{Binding OperationError}" HasError="{Binding HasOperationError}" IsBusy="{Binding IsBusy}" StatusText="{Binding StatusText}" /></controls:PageHeader.Actions></controls:PageHeader>
+		<controls:MasterDetailGrid Grid.Row="2">
+			<controls:MasterDetailGrid.Master><Grid><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="12" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+				<controls:FilterBar><StackPanel><controls:SearchBox Placeholder="Search purposes" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" /><ComboBox Margin="0,8,0,0" ItemsSource="{Binding ActivationFilters}" SelectedItem="{Binding SelectedActivationFilter}" DisplayMemberPath="Name" Style="{StaticResource AppComboBoxStyle}" /></StackPanel></controls:FilterBar>
+				<Grid Grid.Row="1"><DataGrid ItemsSource="{Binding Purposes}" SelectedItem="{Binding SelectedPurpose}" Style="{StaticResource AppDataGridStyle}"><DataGrid.Columns><DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*" /><DataGridTemplateColumn Header="Status" Width="90"><DataGridTemplateColumn.CellTemplate><DataTemplate><controls:ActivationStatusBadge IsActive="{Binding IsActive}" /></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn></DataGrid.Columns></DataGrid><controls:WorkflowListState ItemCount="{Binding Purposes.Count}" SearchText="{Binding SearchText}" IsBusy="{Binding IsBusy}" HasError="{Binding HasOperationError}" ErrorText="{Binding OperationError}" /></Grid>
+				<Button Grid.Row="3" Command="{Binding NewPurposeCommand}" Content="New Purpose" Style="{StaticResource PrimaryButtonStyle}" />
+			</Grid></controls:MasterDetailGrid.Master>
+			<controls:MasterDetailGrid.Detail><controls:Card><Grid><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="16" /><RowDefinition Height="Auto" /><RowDefinition Height="12" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+				<controls:WorkflowHeader Title="{Binding Editor.EditorTitle}" Subtitle="Inventory purpose" Status="{Binding EditorStatus}" />
+				<StackPanel Grid.Row="2"><TextBlock Text="Name *" Style="{StaticResource FormLabelStyle}" /><TextBox MaxLength="200" Style="{StaticResource AppTextBoxStyle}" Text="{Binding Editor.Name, UpdateSourceTrigger=PropertyChanged}" /></StackPanel>
+				<StackPanel Grid.Row="4"><TextBlock Text="Description" Style="{StaticResource FormLabelStyle}" /><TextBox MinHeight="96" MaxLength="500" AcceptsReturn="True" Style="{StaticResource MultilineTextBoxStyle}" Text="{Binding Editor.Description, UpdateSourceTrigger=PropertyChanged}" TextWrapping="Wrap" /><TextBlock Margin="0,8,0,0" Text="Purposes referenced by inventory records may require reassignment before deactivation." Style="{StaticResource CaptionStyle}" /></StackPanel>
+				<controls:WorkflowActionBar Grid.Row="6"><controls:WorkflowActionBar.SecondaryActions><StackPanel Orientation="Horizontal"><Button Command="{Binding NewPurposeCommand}" Content="Cancel" Style="{StaticResource SecondaryButtonStyle}" /><Button Margin="{StaticResource Button.Margin}" Command="{Binding ToggleActiveCommand}" Content="{Binding ActionText}" Style="{StaticResource SecondaryButtonStyle}" /></StackPanel></controls:WorkflowActionBar.SecondaryActions><controls:WorkflowActionBar.PrimaryAction><Button Command="{Binding SavePurposeCommand}" Content="Save" IsDefault="True" Style="{StaticResource PrimaryButtonStyle}" /></controls:WorkflowActionBar.PrimaryAction></controls:WorkflowActionBar>
+			</Grid></controls:Card></controls:MasterDetailGrid.Detail>
+		</controls:MasterDetailGrid>
 	</Grid>
-
+	<UserControl.InputBindings><KeyBinding Key="Escape" Command="{Binding NewPurposeCommand}" /></UserControl.InputBindings>
 </UserControl>

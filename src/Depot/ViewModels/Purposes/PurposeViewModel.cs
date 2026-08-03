@@ -5,6 +5,7 @@ using System.Collections.ObjectModel;
 
 using Depot.Commands;
 using Depot.Services;
+using Depot.ViewModels.Shared;
 
 namespace Depot.ViewModels.Purposes;
 
@@ -12,13 +13,15 @@ namespace Depot.ViewModels.Purposes;
 /// Represents the purpose management module.
 /// </summary>
 public sealed class PurposeViewModel
-	: BaseViewModel
+	: BaseViewModel, IDisposable
 {
 	private readonly PurposeService _purposeService;
+	private readonly AsyncDebouncer _searchDebouncer = new(TimeSpan.FromMilliseconds(300));
 
 	private PurposeListItemViewModel? _selectedPurpose;
 	private string _searchText = string.Empty;
 	private string? _errorMessage;
+	private ActivationFilterOption _selectedActivationFilter = ActivationFilterOption.All[0];
 
 	public PurposeViewModel(
 		PurposeService purposeService)
@@ -35,6 +38,7 @@ public sealed class PurposeViewModel
 		SavePurposeCommand = new AsyncRelayCommand(SavePurposeAsync);
 
 		DeactivatePurposeCommand = new AsyncRelayCommand(DeactivatePurposeAsync, CanDeactivatePurpose);
+		ToggleActiveCommand = new AsyncRelayCommand(ToggleActiveAsync, CanDeactivatePurpose);
 	}
 
 	public ObservableCollection<PurposeListItemViewModel> Purposes { get; }
@@ -47,6 +51,15 @@ public sealed class PurposeViewModel
 	public AsyncRelayCommand SavePurposeCommand { get; }
 
 	public AsyncRelayCommand DeactivatePurposeCommand { get; }
+	public AsyncRelayCommand ToggleActiveCommand { get; }
+	public IReadOnlyList<ActivationFilterOption> ActivationFilters => ActivationFilterOption.All;
+	public ActivationFilterOption SelectedActivationFilter
+	{
+		get => _selectedActivationFilter;
+		set { if (_selectedActivationFilter == value) return; _selectedActivationFilter = value; OnPropertyChanged(); _ = LoadPurposesAsync(); }
+	}
+	public string EditorStatus => SelectedPurpose is null ? "New" : SelectedPurpose.IsActive ? "Active" : "Inactive";
+	public string ActionText => SelectedPurpose?.IsActive == true ? "Deactivate" : "Activate";
 
 	public string SearchText
 	{
@@ -58,7 +71,7 @@ public sealed class PurposeViewModel
 
 			OnPropertyChanged();
 
-			_ = LoadPurposesAsync();
+			_ = _searchDebouncer.DebounceAsync(LoadPurposesAsync);
 		}
 	}
 
@@ -75,6 +88,9 @@ public sealed class PurposeViewModel
 			LoadSelectedPurpose();
 
 			DeactivatePurposeCommand.RaiseCanExecuteChanged();
+			ToggleActiveCommand.RaiseCanExecuteChanged();
+			OnPropertyChanged(nameof(EditorStatus));
+			OnPropertyChanged(nameof(ActionText));
 		}
 	}
 
@@ -105,23 +121,7 @@ public sealed class PurposeViewModel
 
 		try
 		{
-		var purposes = await _purposeService.GetPurposesAsync(cancellationToken);
-
-		if (!string.IsNullOrWhiteSpace(SearchText))
-		{
-			purposes =
-				purposes
-					.Where(
-						x =>
-							x.Name.Contains(
-								SearchText,
-								StringComparison.OrdinalIgnoreCase) ||
-
-							(x.Description?.Contains(
-								SearchText,
-								StringComparison.OrdinalIgnoreCase) ?? false))
-					.ToList();
-		}
+		var purposes = await _purposeService.SearchAsync(SearchText, SelectedActivationFilter.IsActive, cancellationToken);
 
 		foreach (var purpose in purposes)
 		{
@@ -177,6 +177,7 @@ public sealed class PurposeViewModel
 		Editor.Clear();
 
 		DeactivatePurposeCommand.RaiseCanExecuteChanged();
+		ToggleActiveCommand.RaiseCanExecuteChanged();
 	}
 
 	private async Task SavePurposeAsync(CancellationToken cancellationToken)
@@ -247,8 +248,35 @@ public sealed class PurposeViewModel
 		}
 	}
 
+	private async Task ToggleActiveAsync(CancellationToken cancellationToken)
+	{
+		if (SelectedPurpose is null) return;
+		BeginOperation(SelectedPurpose.IsActive ? "Deactivating purpose" : "Activating purpose");
+		try
+		{
+			var saved = await _purposeService.SetActiveAsync(SelectedPurpose.Id, SelectedPurpose.Version, !SelectedPurpose.IsActive, cancellationToken);
+			var replacement = new PurposeListItemViewModel(saved);
+			var index = Purposes.IndexOf(SelectedPurpose);
+			if (index >= 0) Purposes[index] = replacement;
+			SelectedPurpose = replacement;
+			CompleteOperation(false, saved.IsActive ? "Purpose activated" : "Purpose deactivated");
+		}
+		catch (Exception exception) when (exception is not OperationCanceledException)
+		{
+			FailOperation(exception, "Purpose status could not be changed");
+		}
+	}
+
 	private void ClearError()
 	{
 		ErrorMessage = null;
+	}
+
+	public void Dispose()
+	{
+		_searchDebouncer.Dispose();
+		SavePurposeCommand.Dispose();
+		DeactivatePurposeCommand.Dispose();
+		ToggleActiveCommand.Dispose();
 	}
 }

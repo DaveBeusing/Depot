@@ -6,6 +6,7 @@ using System.Collections.ObjectModel;
 using Depot.Commands;
 using Depot.Models;
 using Depot.Services;
+using Depot.ViewModels.Shared;
 
 namespace Depot.ViewModels.ReasonCodes;
 
@@ -19,6 +20,7 @@ public sealed class ReasonCodeViewModel : BaseViewModel, IDisposable
 	private string _name = string.Empty;
 	private string? _description;
 	private long _editorVersion;
+	private ActivationFilterOption _selectedActivationFilter = ActivationFilterOption.All[0];
 
 	public ReasonCodeViewModel(ReasonCodeService service)
 	{
@@ -32,6 +34,12 @@ public sealed class ReasonCodeViewModel : BaseViewModel, IDisposable
 	public RelayCommand NewCommand { get; }
 	public AsyncRelayCommand SaveCommand { get; }
 	public AsyncRelayCommand ToggleActiveCommand { get; }
+	public IReadOnlyList<ActivationFilterOption> ActivationFilters => ActivationFilterOption.All;
+	public ActivationFilterOption SelectedActivationFilter
+	{
+		get => _selectedActivationFilter;
+		set { if (_selectedActivationFilter == value) return; _selectedActivationFilter = value; OnPropertyChanged(); _ = LoadAsync(); }
+	}
 
 	public string SearchText
 	{
@@ -58,6 +66,7 @@ public sealed class ReasonCodeViewModel : BaseViewModel, IDisposable
 			Description = value?.Description;
 			_editorVersion = value?.Version ?? 0;
 			OnPropertyChanged(nameof(EditorTitle));
+			OnPropertyChanged(nameof(EditorStatus));
 			OnPropertyChanged(nameof(ActionText));
 			OnPropertyChanged(nameof(IsCodeReadOnly));
 			OnPropertyChanged(nameof(CanChangeActiveState));
@@ -98,6 +107,7 @@ public sealed class ReasonCodeViewModel : BaseViewModel, IDisposable
 		}
 	}
 	public string EditorTitle => SelectedReasonCode is null ? "New Reason Code" : "Edit Reason Code";
+	public string EditorStatus => SelectedReasonCode is null ? "New" : SelectedReasonCode.IsActive ? "Active" : "Inactive";
 	public string ActionText => SelectedReasonCode?.IsActive == true ? "Deactivate" : "Activate";
 	public bool IsCodeReadOnly => SelectedReasonCode is not null;
 	public bool CanChangeActiveState => SelectedReasonCode is not { IsSystem: true, IsActive: true } reasonCode ||
@@ -110,6 +120,8 @@ public sealed class ReasonCodeViewModel : BaseViewModel, IDisposable
 		{
 			var selectedId = SelectedReasonCode?.Id;
 			var reasonCodes = await _service.SearchAsync(SearchText, cancellationToken);
+			if (SelectedActivationFilter.IsActive is bool isActive)
+				reasonCodes = [.. reasonCodes.Where(value => value.IsActive == isActive)];
 			ReasonCodes.Clear();
 			foreach (var reasonCode in reasonCodes) ReasonCodes.Add(reasonCode);
 			SelectedReasonCode = ReasonCodes.FirstOrDefault(item => item.Id == selectedId);

@@ -213,6 +213,12 @@ public sealed class PurposeService
 	public Task<IReadOnlyList<Purpose>> GetPurposesAsync(CancellationToken cancellationToken) =>
 		GetPurposesAuthorizedAsync(cancellationToken);
 
+	public Task<IReadOnlyList<Purpose>> SearchAsync(string? searchText, bool? isActive, CancellationToken cancellationToken = default)
+	{
+		_auditService.RequirePermission(ApplicationPermission.MasterDataView);
+		return _purposeRepository.SearchAsync(searchText, isActive, cancellationToken);
+	}
+
 	private async Task<IReadOnlyList<Purpose>> GetPurposesAuthorizedAsync(CancellationToken cancellationToken)
 	{
 		_auditService.RequirePermission(ApplicationPermission.MasterDataView);
@@ -288,6 +294,23 @@ public sealed class PurposeService
 		purpose.Version++;
 		await _auditService.RecordDeactivatedAsync(purpose.Id, before, purpose, cancellationToken);
 		_cache.Invalidate();
+	}
+
+	public async Task<Purpose> SetActiveAsync(long id, long expectedVersion, bool isActive, CancellationToken cancellationToken)
+	{
+		_auditService.RequirePermission(ApplicationPermission.MasterDataManage);
+		var purpose = await _purposeRepository.GetByIdAsync(id, cancellationToken)
+			?? throw new InvalidOperationException($"Purpose with id '{id}' was not found.");
+		if (purpose.Version != expectedVersion ||
+			!await _purposeRepository.SetActiveAsync(id, expectedVersion, isActive, cancellationToken))
+			throw new ConcurrencyConflictException("purpose");
+		var before = Copy(purpose);
+		purpose.IsActive = isActive;
+		purpose.Version++;
+		if (isActive) await _auditService.RecordUpdatedAsync(purpose.Id, before, purpose, cancellationToken);
+		else await _auditService.RecordDeactivatedAsync(purpose.Id, before, purpose, cancellationToken);
+		_cache.Invalidate();
+		return purpose;
 	}
 
 	private static Purpose Copy(Purpose purpose) =>

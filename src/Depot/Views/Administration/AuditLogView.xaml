@@ -7,7 +7,7 @@
 	<Grid>
 		<Grid.RowDefinitions>
 			<RowDefinition Height="Auto" />
-			<RowDefinition Height="12" />
+			<RowDefinition Height="Auto" />
 			<RowDefinition Height="Auto" />
 			<RowDefinition Height="8" />
 			<RowDefinition Height="Auto" />
@@ -17,14 +17,12 @@
 
 		<controls:PageHeader Grid.Row="0" Title="Audit Log" Subtitle="Read-only history of security and business changes.">
 			<controls:PageHeader.Actions>
-				<StackPanel Orientation="Horizontal">
-					<controls:OperationStatus ErrorText="{Binding OperationError}" HasError="{Binding HasOperationError}" IsBusy="{Binding IsBusy}" StatusText="{Binding StatusText}" />
-					<Button Margin="12,0,0,0" Command="{Binding ExportCommand}" Content="Export CSV" Style="{StaticResource SecondaryButtonStyle}" />
-				</StackPanel>
+				<Button Command="{Binding ExportCommand}" Content="Export CSV" Style="{StaticResource SecondaryButtonStyle}" />
 			</controls:PageHeader.Actions>
 		</controls:PageHeader>
+		<controls:OperationPanel Grid.Row="1" ErrorText="{Binding OperationError}" HasError="{Binding HasOperationError}" IsBusy="{Binding IsBusy}" StatusText="{Binding StatusText}" />
 
-		<Grid Grid.Row="2">
+		<controls:FilterBar Grid.Row="2"><Grid>
 			<Grid.ColumnDefinitions>
 				<ColumnDefinition Width="2*" />
 				<ColumnDefinition Width="12" />
@@ -41,7 +39,7 @@
 			<ComboBox Grid.Column="4" ItemsSource="{Binding EntityTypes}" SelectedItem="{Binding SelectedEntityType}" ToolTip="Entity type (blank means all)" />
 			<ComboBox Grid.Column="6" ItemsSource="{Binding Actions}" SelectedItem="{Binding SelectedAction}" ToolTip="Action (blank means all)" />
 			<TextBox Grid.Column="8" Style="{StaticResource AppTextBoxStyle}" Text="{Binding EntityIdFilter, UpdateSourceTrigger=PropertyChanged}" ToolTip="Entity ID" />
-		</Grid>
+		</Grid></controls:FilterBar>
 
 		<Grid Grid.Row="4">
 			<Grid.ColumnDefinitions>
@@ -63,9 +61,9 @@
 
 		<Grid Grid.Row="6">
 			<Grid.ColumnDefinitions>
-				<ColumnDefinition Width="5*" />
-				<ColumnDefinition Width="16" />
-				<ColumnDefinition Width="4*" />
+				<ColumnDefinition Width="{StaticResource MasterPane.DefaultWidth}" MinWidth="{StaticResource MasterPane.MinWidth}" MaxWidth="{StaticResource MasterPane.MaxWidth}" />
+				<ColumnDefinition Width="{StaticResource MasterDetail.ColumnGap}" />
+				<ColumnDefinition Width="*" />
 			</Grid.ColumnDefinitions>
 
 			<Grid Grid.Column="0">
@@ -79,12 +77,7 @@
 						<DataGridTextColumn Header="ID" Binding="{Binding EntityId}" Width="75" />
 					</DataGrid.Columns>
 				</DataGrid>
-				<StackPanel Grid.Row="1" Margin="0,12,0,0" HorizontalAlignment="Right" Orientation="Horizontal">
-					<TextBlock VerticalAlignment="Center" Text="{Binding TotalCount, StringFormat={}{0:N0} entries}" />
-					<Button Margin="16,0,0,0" Command="{Binding PreviousPageCommand}" Content="Previous" Style="{StaticResource SecondaryButtonStyle}" />
-					<TextBlock Margin="12,0" VerticalAlignment="Center" Text="{Binding PageNumber, StringFormat=Page {0}}" />
-					<Button Command="{Binding NextPageCommand}" Content="Next" Style="{StaticResource SecondaryButtonStyle}" />
-				</StackPanel>
+				<controls:PaginationControl Grid.Row="1" Margin="0,12,0,0" PreviousCommand="{Binding PreviousPageCommand}" NextCommand="{Binding NextPageCommand}" PageText="{Binding PageNumber, StringFormat=Page {0}}" ToolTip="{Binding TotalCount, StringFormat={}{0:N0} entries}" />
 			</Grid>
 
 			<controls:Card Grid.Column="2">
@@ -100,7 +93,7 @@
 							<TextBlock Text="{Binding Details.Entry.EntityType, StringFormat=Entity: {0}}" />
 							<TextBlock Text="{Binding Details.Entry.EntityId, StringFormat=Entity ID: {0}}" />
 							<TextBlock Margin="0,16,0,6" Text="Changed values" Style="{StaticResource FormLabelStyle}" />
-							<DataGrid Height="180" ItemsSource="{Binding Details.Changes}" IsReadOnly="True" AutoGenerateColumns="False" Style="{StaticResource AppDataGridStyle}">
+							<DataGrid MinHeight="160" MaxHeight="260" ItemsSource="{Binding Details.Changes}" IsReadOnly="True" AutoGenerateColumns="False" Style="{StaticResource AppDataGridStyle}">
 								<DataGrid.Columns>
 									<DataGridTextColumn Header="Property" Binding="{Binding Property}" Width="*" />
 									<DataGridTextColumn Header="Before" Binding="{Binding Before}" Width="*" />

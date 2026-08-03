@@ -18,6 +18,17 @@
     <SolidColorBrush x:Key="DataGrid.ScrollThumbHoverBrush" Color="#98A4B3" />
 	<CornerRadius x:Key="DataGrid.CornerRadius">8</CornerRadius>
 
+	<Style x:Key="AppDataGridTextStyle" TargetType="TextBlock">
+		<Setter Property="VerticalAlignment" Value="Center" />
+		<Setter Property="TextTrimming" Value="CharacterEllipsis" />
+		<Setter Property="ToolTip" Value="{Binding Text, RelativeSource={RelativeSource Self}}" />
+	</Style>
+
+	<Style x:Key="AppDataGridNumericTextStyle" TargetType="TextBlock" BasedOn="{StaticResource AppDataGridTextStyle}">
+		<Setter Property="HorizontalAlignment" Value="Stretch" />
+		<Setter Property="TextAlignment" Value="Right" />
+	</Style>
+
     <Style x:Key="AppDataGridScrollBarThumbStyle" TargetType="Thumb">
         <Setter Property="Background" Value="{StaticResource DataGrid.ScrollThumbBrush}" />
         <Setter Property="Template">

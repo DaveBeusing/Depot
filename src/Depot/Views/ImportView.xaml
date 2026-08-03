@@ -1,216 +1,30 @@
-<UserControl
-	x:Class="Depot.Views.ImportView"
-	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-	xmlns:controls="clr-namespace:Depot.Controls">
-
-	<Grid Margin="16">
-
-		<Grid.RowDefinitions>
-			<RowDefinition Height="Auto" />
-			<RowDefinition Height="16" />
-			<RowDefinition Height="Auto" />
-			<RowDefinition Height="16" />
-			<RowDefinition Height="Auto" />
-			<RowDefinition Height="8" />
-			<RowDefinition Height="*" />
-			<RowDefinition Height="16" />
-			<RowDefinition Height="Auto" />
-			<RowDefinition Height="8" />
-			<RowDefinition Height="180" />
-		</Grid.RowDefinitions>
-
-		<controls:PageHeader
-			Grid.Row="0"
-			Title="Import">
-			<controls:PageHeader.Actions>
-				<controls:OperationStatus
-					ErrorText="{Binding OperationError}"
-					HasError="{Binding HasOperationError}"
-					IsBusy="{Binding IsBusy}"
-					StatusText="{Binding StatusText}" />
-			</controls:PageHeader.Actions>
-		</controls:PageHeader>
-
-		<Grid Grid.Row="2">
-
-			<Grid.ColumnDefinitions>
-				<ColumnDefinition Width="*" />
-				<ColumnDefinition Width="16" />
-				<ColumnDefinition Width="Auto" />
-				<ColumnDefinition Width="8" />
-				<ColumnDefinition Width="Auto" />
-			</Grid.ColumnDefinitions>
-
-			<TextBox
-				Grid.Column="0"
-				IsReadOnly="True"
-				Text="{Binding FilePath, Mode=OneWay}" />
-
-			<Button
-				Grid.Column="2"
-				Content="Browse..."
-				Style="{StaticResource PrimaryButtonStyle}"
-				Command="{Binding BrowseCommand}" />
-
-			<Button
-				Grid.Column="4"
-				Content="Import"
-				Style="{StaticResource PrimaryButtonStyle}"
-				Margin="{StaticResource Button.Margin}"
-				Command="{Binding ImportCommand}" />
-
+<UserControl x:Class="Depot.Views.ImportView" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:controls="clr-namespace:Depot.Controls">
+	<Grid>
+		<Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="16" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+		<controls:PageHeader Title="Import" Subtitle="Choose a file, review the validated preview, and confirm the import." />
+		<controls:OperationPanel Grid.Row="1" ErrorText="{Binding OperationError}" HasError="{Binding HasOperationError}" IsBusy="{Binding IsBusy}" StatusText="{Binding StatusText}" />
+		<controls:Card Grid.Row="2">
+			<Grid>
+				<Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="16" /><RowDefinition Height="Auto" /><RowDefinition Height="16" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+				<TextBlock Text="1  Choose file     2  Validate and preview     3  Confirm import     4  Review result" Style="{StaticResource CardTitleStyle}" />
+				<Grid Grid.Row="2"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBox IsReadOnly="True" Text="{Binding FilePath, Mode=OneWay}" Style="{StaticResource AppTextBoxStyle}" /><Button Grid.Column="2" Command="{Binding BrowseCommand}" Content="Browse..." Style="{StaticResource SecondaryButtonStyle}" /></Grid>
+				<controls:WorkflowActionBar Grid.Row="4"><controls:WorkflowActionBar.SecondaryActions><TextBlock VerticalAlignment="Center" Text="{Binding TotalItems, StringFormat={}{0:N0} preview rows}" Style="{StaticResource CaptionStyle}" /></controls:WorkflowActionBar.SecondaryActions><controls:WorkflowActionBar.PrimaryAction><Button IsDefault="True" Command="{Binding ImportCommand}" Content="Confirm and import" Style="{StaticResource PrimaryButtonStyle}" /></controls:WorkflowActionBar.PrimaryAction></controls:WorkflowActionBar>
+			</Grid>
+		</controls:Card>
+		<Grid Grid.Row="4">
+			<Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="12" /><RowDefinition Height="*" /><RowDefinition Height="12" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+			<Grid>
+				<Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+				<TextBlock Text="{Binding TotalItems, StringFormat=Total: {0:N0}}" /><TextBlock Grid.Column="1" Text="{Binding NewItems, StringFormat=New: {0:N0}}" /><TextBlock Grid.Column="2" Text="{Binding ExistingItems, StringFormat=Existing: {0:N0}}" /><TextBlock Grid.Column="3" Text="{Binding Warnings, StringFormat=Warnings: {0:N0}}" /><TextBlock Grid.Column="4" Text="{Binding TotalQuantity, StringFormat=Quantity: {0:N2}}" /><TextBlock Grid.Column="5" HorizontalAlignment="Right" Text="{Binding TotalValue, StringFormat=Value: {0:C2}}" />
+			</Grid>
+			<DataGrid Grid.Row="2" Style="{StaticResource AppDataGridStyle}" ItemsSource="{Binding Items}">
+				<DataGrid.Columns>
+					<DataGridTextColumn Header="Part number" Binding="{Binding PartNumber}" Width="140" ElementStyle="{StaticResource AppDataGridTextStyle}" /><DataGridTextColumn Header="Description" Binding="{Binding Description}" Width="*" ElementStyle="{StaticResource AppDataGridTextStyle}" /><DataGridTextColumn Header="Warehouse" Binding="{Binding Warehouse}" Width="130" ElementStyle="{StaticResource AppDataGridTextStyle}" /><DataGridTextColumn Header="Location" Binding="{Binding Location}" Width="120" ElementStyle="{StaticResource AppDataGridTextStyle}" /><DataGridTextColumn Header="Quantity" Binding="{Binding Quantity, StringFormat={}{0:N2}}" Width="90" ElementStyle="{StaticResource AppDataGridNumericTextStyle}" /><DataGridTextColumn Header="Unit price" Binding="{Binding UnitPrice, StringFormat={}{0:C2}}" Width="110" ElementStyle="{StaticResource AppDataGridNumericTextStyle}" /><DataGridTextColumn Header="Total" Binding="{Binding TotalValue, StringFormat={}{0:C2}}" Width="110" ElementStyle="{StaticResource AppDataGridNumericTextStyle}" /><DataGridCheckBoxColumn Header="Exists" Binding="{Binding ItemAlreadyExists, Mode=OneWay}" Width="70" />
+				</DataGrid.Columns>
+			</DataGrid>
+			<Expander Grid.Row="4" Header="{Binding Warnings, StringFormat=Warnings ({0:N0})}" Visibility="{Binding Warnings, Converter={StaticResource NonZeroToVisibilityConverter}}">
+				<DataGrid MaxHeight="220" Margin="0,8,0,0" Style="{StaticResource AppDataGridStyle}" ItemsSource="{Binding WarningItems}"><DataGrid.Columns><DataGridTextColumn Header="Row" Binding="{Binding RowNumber}" Width="80" ElementStyle="{StaticResource AppDataGridNumericTextStyle}" /><DataGridTextColumn Header="Warning" Binding="{Binding Message}" Width="*" ElementStyle="{StaticResource AppDataGridTextStyle}" /></DataGrid.Columns></DataGrid>
+			</Expander>
 		</Grid>
-
-		<WrapPanel
-			Grid.Row="4"
-			HorizontalAlignment="Left">
-
-			<TextBlock
-				Margin="0,0,24,0"
-				Text="{Binding TotalItems, StringFormat=Total: {0}, Mode=OneWay}" />
-
-			<TextBlock
-				Margin="0,0,24,0"
-				Text="{Binding NewItems, StringFormat=New: {0}, Mode=OneWay}" />
-
-			<TextBlock
-				Margin="0,0,24,0"
-				Text="{Binding ExistingItems, StringFormat=Existing: {0}, Mode=OneWay}" />
-
-			<TextBlock
-				Margin="0,0,24,0"
-				Text="{Binding Warnings, StringFormat=Warnings: {0}, Mode=OneWay}" />
-
-			<TextBlock
-				Margin="0,0,24,0"
-				Text="{Binding TotalQuantity, StringFormat=Quantity: {0}, Mode=OneWay}" />
-
-			<TextBlock
-				Text="{Binding TotalValue, StringFormat=Value: {0:C2}, Mode=OneWay}" />
-
-		</WrapPanel>
-
-		<WrapPanel
-			Grid.Row="6"
-			Margin="0,0,0,8"
-			HorizontalAlignment="Left"
-			VerticalAlignment="Top"
-			Visibility="{Binding Result.HasResult, Converter={StaticResource BooleanToVisibilityConverter}}">
-
-			<TextBlock
-				Margin="0,0,24,0"
-				Text="{Binding Result.ImportedItems, StringFormat=Imported Items: {0}, Mode=OneWay}" />
-
-			<TextBlock
-				Margin="0,0,24,0"
-				Text="{Binding Result.ImportedMovements, StringFormat=Imported Movements: {0}, Mode=OneWay}" />
-
-			<TextBlock
-				Text="{Binding Result.SkippedItems, StringFormat=Skipped Items: {0}, Mode=OneWay}" />
-
-		</WrapPanel>
-
-		<DataGrid
-			Grid.Row="6"
-			Style="{StaticResource AppDataGridStyle}"
-			Margin="0,28,0,0"
-			HorizontalAlignment="Stretch"
-			VerticalAlignment="Stretch"
-			ItemsSource="{Binding Items}">
-
-			<DataGrid.Columns>
-
-				<DataGridTextColumn
-					Header="P/N"
-					Binding="{Binding PartNumber}"
-					Width="160" />
-
-				<DataGridTextColumn
-					Header="Description"
-					Binding="{Binding Description}"
-					Width="*" />
-
-				<DataGridTextColumn
-					Header="Manufacturer"
-					Binding="{Binding Manufacturer}"
-					Width="140" />
-
-				<DataGridTextColumn
-					Header="Category"
-					Binding="{Binding Category}"
-					Width="140" />
-
-				<DataGridTextColumn
-					Header="Warehouse"
-					Binding="{Binding Warehouse}"
-					Width="140" />
-
-				<DataGridTextColumn
-					Header="Storage Location"
-					Binding="{Binding Location}"
-					Width="140" />
-
-				<DataGridTextColumn
-					Header="Quantity"
-					Binding="{Binding Quantity}"
-					Width="100" />
-
-				<DataGridTextColumn
-					Header="Unit Price"
-					Binding="{Binding UnitPrice, StringFormat={}{0:C2}}"
-					Width="120" />
-
-				<DataGridTextColumn
-					Header="Total Value"
-					Binding="{Binding TotalValue, StringFormat={}{0:C2}}"
-					Width="120" />
-
-				<DataGridCheckBoxColumn
-					Header="Exists"
-					Binding="{Binding ItemAlreadyExists, Mode=OneWay}"
-					Width="80" />
-
-			</DataGrid.Columns>
-
-		</DataGrid>
-
-		<TextBlock
-			Grid.Row="8"
-			Text="{Binding Warnings, StringFormat=Warnings ({0})}"
-			Style="{StaticResource SectionTitleStyle}"
-			Visibility="{Binding Warnings, Converter={StaticResource NonZeroToVisibilityConverter}}" />
-
-		<DataGrid
-			Grid.Row="10"
-			Style="{StaticResource AppDataGridStyle}"
-			ItemsSource="{Binding WarningItems}"
-			Visibility="{Binding Warnings, Converter={StaticResource NonZeroToVisibilityConverter}}">
-
-			<DataGrid.RowStyle>
-				<Style TargetType="DataGridRow" BasedOn="{StaticResource AppDataGridRowStyle}">
-					<Setter
-						Property="Background"
-						Value="{DynamicResource ErrorBrush}" />
-				</Style>
-			</DataGrid.RowStyle>
-
-			<DataGrid.Columns>
-
-				<DataGridTextColumn
-					Header="Row"
-					Binding="{Binding RowNumber}"
-					Width="80" />
-
-				<DataGridTextColumn
-					Header="Warning"
-					Binding="{Binding Message}"
-					Width="*" />
-
-			</DataGrid.Columns>
-
-		</DataGrid>
-
 	</Grid>
-
 </UserControl>

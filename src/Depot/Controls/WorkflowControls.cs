@@ -135,3 +135,21 @@ public sealed class WorkflowListState : Control
 	private static void OnSearchTextChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs args) =>
 		((WorkflowListState)dependencyObject).SetValue(IsSearchActivePropertyKey, !string.IsNullOrWhiteSpace(args.NewValue as string));
 }
+
+public sealed class ActivationStatusBadge : StatusBadge
+{
+	public static readonly DependencyProperty IsActiveProperty = DependencyProperty.Register(
+		nameof(IsActive),
+		typeof(bool),
+		typeof(ActivationStatusBadge),
+		new PropertyMetadata(true, OnIsActiveChanged));
+
+	public bool IsActive { get => (bool)GetValue(IsActiveProperty); set => SetValue(IsActiveProperty, value); }
+
+	private static void OnIsActiveChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs args)
+	{
+		var badge = (ActivationStatusBadge)dependencyObject;
+		badge.Content = (bool)args.NewValue ? "Active" : "Inactive";
+		badge.Variant = (bool)args.NewValue ? StatusBadgeVariant.Success : StatusBadgeVariant.Neutral;
+	}
+}

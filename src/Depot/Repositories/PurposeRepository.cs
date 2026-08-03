@@ -25,6 +25,24 @@ public sealed class PurposeRepository : DatabaseRepository
 			200,
 			cancellationToken);
 
+	public Task<IReadOnlyList<Purpose>> SearchAsync(string? searchText, bool? isActive, CancellationToken cancellationToken)
+	{
+		var filters = new List<string>();
+		var parameters = new List<DatabaseParameter>();
+		if (!string.IsNullOrWhiteSpace(searchText))
+		{
+			filters.Add("(Name LIKE $Search OR Description LIKE $Search)");
+			parameters.Add(Parameter("$Search", $"%{searchText.Trim()}%"));
+		}
+		if (isActive is not null)
+		{
+			filters.Add("IsActive = $IsActive");
+			parameters.Add(Parameter("$IsActive", isActive.Value));
+		}
+		var where = filters.Count == 0 ? string.Empty : $"WHERE {string.Join(" AND ", filters)}";
+		return Database.QuerySliceAsync($"SELECT {SelectColumns} FROM Purposes {where} ORDER BY Name, Id", ReadPurpose, 0, 200, cancellationToken, parameters.ToArray());
+	}
+
 	public Task<Purpose?> GetByIdAsync(long id, CancellationToken cancellationToken) =>
 		Database.QuerySingleOrDefaultAsync(
 			$"SELECT {SelectColumns} FROM Purposes WHERE Id = $Id;",
@@ -60,6 +78,14 @@ public sealed class PurposeRepository : DatabaseRepository
 		await Database.ExecuteAsync(
 			"UPDATE Purposes SET IsActive = 0, Version = Version + 1 WHERE Id = $Id AND Version = $Version;",
 			cancellationToken,
+			Parameter("$Id", id),
+			Parameter("$Version", version)) == 1;
+
+	public async Task<bool> SetActiveAsync(long id, long version, bool isActive, CancellationToken cancellationToken) =>
+		await Database.ExecuteAsync(
+			"UPDATE Purposes SET IsActive = $IsActive, Version = Version + 1 WHERE Id = $Id AND Version = $Version;",
+			cancellationToken,
+			Parameter("$IsActive", isActive),
 			Parameter("$Id", id),
 			Parameter("$Version", version)) == 1;
 

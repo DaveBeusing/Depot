@@ -4,25 +4,27 @@
 	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
 	xmlns:controls="clr-namespace:Depot.Controls">
 	<Grid>
-		<Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="16" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+		<Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="16" /><RowDefinition Height="*" /></Grid.RowDefinitions>
 		<controls:PageHeader Title="Suppliers" Subtitle="Maintain commercial supplier data and supplier-specific item conditions.">
-			<controls:PageHeader.Actions><controls:OperationStatus ErrorText="{Binding OperationError}" HasError="{Binding HasOperationError}" IsBusy="{Binding IsBusy}" StatusText="{Binding StatusText}" /></controls:PageHeader.Actions>
 		</controls:PageHeader>
-		<Grid Grid.Row="2">
-			<Grid.ColumnDefinitions><ColumnDefinition Width="320" /><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-			<Grid>
+		<controls:OperationPanel Grid.Row="1" ErrorText="{Binding OperationError}" HasError="{Binding HasOperationError}" IsBusy="{Binding IsBusy}" StatusText="{Binding StatusText}" />
+		<controls:MasterDetailGrid Grid.Row="3">
+			<controls:MasterDetailGrid.Master>
+			<controls:Card><Grid>
 				<Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="8" /><RowDefinition Height="*" /><RowDefinition Height="12" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
-				<controls:SearchBox Placeholder="Search suppliers" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
+				<controls:FilterBar><controls:SearchBox Placeholder="Search suppliers" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" /></controls:FilterBar>
 				<ListBox Grid.Row="2" ItemsSource="{Binding Suppliers}" SelectedItem="{Binding SelectedSupplier}" Style="{StaticResource MasterDataListBoxStyle}" ItemContainerStyle="{StaticResource MasterDataListBoxItemStyle}">
-					<ListBox.ItemTemplate><DataTemplate><Grid Margin="4"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><StackPanel><TextBlock Text="{Binding Name}" FontWeight="SemiBold" /><TextBlock Text="{Binding AccountNumber}" Style="{StaticResource CaptionStyle}" /></StackPanel><Ellipse Grid.Column="1" Width="8" Height="8" VerticalAlignment="Center"><Ellipse.Style><Style TargetType="Ellipse"><Setter Property="Fill" Value="{StaticResource SuccessForegroundBrush}" /><Style.Triggers><DataTrigger Binding="{Binding IsActive}" Value="False"><Setter Property="Fill" Value="{StaticResource SecondaryTextBrush}" /></DataTrigger></Style.Triggers></Style></Ellipse.Style></Ellipse></Grid></DataTemplate></ListBox.ItemTemplate>
+					<ListBox.ItemTemplate><DataTemplate><Grid Margin="4"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><StackPanel><TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" ToolTip="{Binding Name}" /><TextBlock Text="{Binding AccountNumber}" Style="{StaticResource CaptionStyle}" /></StackPanel><controls:ActivationStatusBadge Grid.Column="1" IsActive="{Binding IsActive}" /></Grid></DataTemplate></ListBox.ItemTemplate>
 				</ListBox>
 				<Button Grid.Row="4" Command="{Binding NewSupplierCommand}" Content="New Supplier" Style="{StaticResource PrimaryButtonStyle}" />
-			</Grid>
+			</Grid></controls:Card>
+			</controls:MasterDetailGrid.Master>
+			<controls:MasterDetailGrid.Detail>
 
-			<ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+			<ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
 				<StackPanel>
 					<controls:Card>
-						<controls:Card.Header><TextBlock Text="{Binding SupplierEditorTitle}" Style="{StaticResource SectionTitleStyle}" /></controls:Card.Header>
+						<controls:Card.Header><controls:WorkflowHeader Title="{Binding SupplierEditorTitle}" Subtitle="Commercial data and supplier account settings" /></controls:Card.Header>
 						<StackPanel>
 							<Grid>
 								<Grid.ColumnDefinitions><ColumnDefinition Width="160" /><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
@@ -74,6 +76,7 @@
 					</controls:Card>
 				</StackPanel>
 			</ScrollViewer>
-		</Grid>
+			</controls:MasterDetailGrid.Detail>
+		</controls:MasterDetailGrid>
 	</Grid>
 </UserControl>

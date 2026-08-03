@@ -5,15 +5,9 @@
 	xmlns:controls="clr-namespace:Depot.Controls">
 
 	<ScrollViewer VerticalScrollBarVisibility="Auto">
-		<StackPanel MaxWidth="760" HorizontalAlignment="Left">
-			<TextBlock
-				Text="Database connection"
-				Style="{StaticResource SectionTitleStyle}" />
-			<TextBlock
-				Margin="0,6,0,20"
-				Foreground="{StaticResource SecondaryTextBrush}"
-				Text="Choose the database target and securely store its connection settings."
-				TextWrapping="Wrap" />
+		<StackPanel MaxWidth="900" HorizontalAlignment="Left">
+			<controls:PageHeader Title="Database" Subtitle="Connection, provider, backup, integrity, and maintenance." />
+			<controls:OperationPanel ErrorText="{Binding OperationError}" HasError="{Binding HasOperationError}" IsBusy="{Binding IsBusy}" StatusText="{Binding StatusText}" />
 
 			<controls:ConnectionStatusIndicator
 				Margin="0,0,0,20"

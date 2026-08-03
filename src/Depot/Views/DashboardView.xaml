@@ -18,7 +18,7 @@
 			Grid.Row="0"
 			Title="Dashboard" />
 
-		<controls:OperationStatus
+		<controls:OperationPanel
 			Grid.Row="1"
 			IsBusy="{Binding IsBusy}"
 			HasError="{Binding HasOperationError}"
@@ -83,7 +83,7 @@
 
 						<DataGridTextColumn
 							Header="Date"
-							Binding="{Binding TimestampLocal}"
+							Binding="{Binding TimestampLocal, StringFormat={}{0:g}}"
 							Width="180" />
 
 						<DataGridTextColumn
@@ -94,7 +94,7 @@
 						<DataGridTextColumn
 							Header="Description"
 							Binding="{Binding Description}"
-							Width="*" />
+							Width="*" ElementStyle="{StaticResource AppDataGridTextStyle}" />
 
 						<DataGridTextColumn
 							Header="Purpose"
@@ -118,8 +118,8 @@
 
 						<DataGridTextColumn
 							Header="Quantity"
-							Binding="{Binding Quantity}"
-							Width="100" />
+							Binding="{Binding Quantity, StringFormat={}{0:N2}}"
+							Width="100" ElementStyle="{StaticResource AppDataGridNumericTextStyle}" />
 						<DataGridTextColumn Header="Reason" Binding="{Binding ReasonCodeName}" Width="120" />
 
 					</DataGrid.Columns>

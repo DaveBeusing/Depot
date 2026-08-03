@@ -6,6 +6,7 @@ using System.Collections.ObjectModel;
 using Depot.Commands;
 using Depot.Models;
 using Depot.Services;
+using Depot.ViewModels.Shared;
 
 namespace Depot.ViewModels.MasterData;
 
@@ -18,6 +19,7 @@ public sealed class ItemReferenceDataViewModel : BaseViewModel, IDisposable
 	private string _name = string.Empty;
 	private string? _description;
 	private long _editorVersion;
+	private ActivationFilterOption _selectedActivationFilter = ActivationFilterOption.All[0];
 
 	public ItemReferenceDataViewModel(IItemReferenceDataService service)
 	{
@@ -34,7 +36,14 @@ public sealed class ItemReferenceDataViewModel : BaseViewModel, IDisposable
 	public RelayCommand NewCommand { get; }
 	public AsyncRelayCommand SaveCommand { get; }
 	public AsyncRelayCommand ToggleActiveCommand { get; }
+	public IReadOnlyList<ActivationFilterOption> ActivationFilters => ActivationFilterOption.All;
+	public ActivationFilterOption SelectedActivationFilter
+	{
+		get => _selectedActivationFilter;
+		set { if (_selectedActivationFilter == value) return; _selectedActivationFilter = value; OnPropertyChanged(); _ = LoadAsync(); }
+	}
 	public string EditorTitle => SelectedItem is null ? $"New {_service.SingularName}" : $"Edit {_service.SingularName}";
+	public string EditorStatus => SelectedItem is null ? "New" : SelectedItem.IsActive ? "Active" : "Inactive";
 	public string ActionText => SelectedItem?.IsActive == true ? "Deactivate" : "Activate";
 
 	public string SearchText
@@ -61,6 +70,7 @@ public sealed class ItemReferenceDataViewModel : BaseViewModel, IDisposable
 			Description = value?.Description;
 			_editorVersion = value?.Version ?? 0;
 			OnPropertyChanged(nameof(EditorTitle));
+			OnPropertyChanged(nameof(EditorStatus));
 			OnPropertyChanged(nameof(ActionText));
 			ToggleActiveCommand.RaiseCanExecuteChanged();
 		}
@@ -85,6 +95,8 @@ public sealed class ItemReferenceDataViewModel : BaseViewModel, IDisposable
 		{
 			var selectedId = SelectedItem?.Id;
 			var values = await _service.SearchAsync(SearchText, cancellationToken);
+			if (SelectedActivationFilter.IsActive is bool isActive)
+				values = [.. values.Where(value => value.IsActive == isActive)];
 			Items.Clear();
 			foreach (var value in values) Items.Add(value);
 			SelectedItem = Items.FirstOrDefault(item => item.Id == selectedId);

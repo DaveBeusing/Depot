@@ -18,6 +18,7 @@ public sealed class PurposeListItemViewModel
 		Name = purpose.Name;
 		Description = purpose.Description;
 		Version = purpose.Version;
+		IsActive = purpose.IsActive;
 	}
 
 	public long Id { get; }
@@ -27,4 +28,6 @@ public sealed class PurposeListItemViewModel
 	public string? Description { get; }
 
 	public long Version { get; }
+
+	public bool IsActive { get; }
 }
