@@ -30,6 +30,7 @@ public static class SystemRoleCatalog
 	[
 		new(AdministratorCode, "Administrator", "Protected system role with every Depot permission.", PermissionCatalog.All),
 		new(PurchasingCode, "Purchasing", "Creates and manages suppliers and purchase orders.", Union(CommonViewPermissions,
+			ApplicationPermission.PurchasingView,
 			ApplicationPermission.PurchaseOrdersView, ApplicationPermission.PurchaseOrdersCreate,
 			ApplicationPermission.PurchaseOrdersEdit, ApplicationPermission.PurchaseOrdersSubmit,
 			ApplicationPermission.PurchaseOrdersOrder, ApplicationPermission.PurchaseOrdersClose,
@@ -38,6 +39,7 @@ public static class SystemRoleCatalog
 		new(ApproverCode, "Approver", "Reviews purchase orders while preserving creator/approver separation.", Union(CommonViewPermissions,
 			ApplicationPermission.PurchaseOrdersView, ApplicationPermission.PurchaseOrdersApprove)),
 		new(WarehouseOperatorCode, "Warehouse Operator", "Operates warehouse documents and stock workflows.", Union(CommonViewPermissions,
+			ApplicationPermission.PurchasingView,
 			ApplicationPermission.InventoryManage,
 			ApplicationPermission.StockMovementsCreate, ApplicationPermission.StockMovementsPost, ApplicationPermission.StockMovementsReverse,
 			ApplicationPermission.StockTransfersCreate, ApplicationPermission.StockTransfersEdit, ApplicationPermission.StockTransfersPost, ApplicationPermission.StockTransfersReverse,

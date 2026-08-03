@@ -7,7 +7,9 @@ using Depot.Models;
 using Depot.Services;
 using Depot.ViewModels.MasterData;
 using Depot.ViewModels.Shared;
+using Depot.ViewModels.Suppliers;
 using Depot.ViewModels.Users;
+using Depot.ViewModels.Warehouses;
 
 namespace Depot.ViewModels.Administration;
 
@@ -56,15 +58,18 @@ public sealed class AdministrationViewModel : BaseViewModel
 		_aboutViewModel = new AboutViewModel(applicationInformationService);
 		_auditLogViewModel = new AuditLogViewModel(auditLogService, fileDialogService);
 
-		AddIf(authorization, ApplicationPermission.ImportManage, "Import", AdministrationSection.Import);
 		AddIf(authorization, ApplicationPermission.MasterDataView, "Master Data", AdministrationSection.MasterData);
+		AddIf(authorization, ApplicationPermission.MasterDataView, "Warehouses & Locations", AdministrationSection.Warehouses);
+		AddIf(authorization, ApplicationPermission.SuppliersView, "Suppliers", AdministrationSection.Suppliers);
 		AddIf(authorization, ApplicationPermission.UsersView, "Users", AdministrationSection.Users);
 		AddIf(authorization, ApplicationPermission.RolesView, "Roles", AdministrationSection.Roles);
-		AddIf(authorization, ApplicationPermission.DatabaseView, "Database", AdministrationSection.Database);
+		AddIf(authorization, ApplicationPermission.ImportManage, "Import", AdministrationSection.Import);
 		AddIf(authorization, ApplicationPermission.AuditLogView, "Audit Log", AdministrationSection.AuditLog);
+		AddIf(authorization, ApplicationPermission.DatabaseView, "Database", AdministrationSection.Database);
 		AddIf(authorization, ApplicationPermission.SettingsView, "Settings", AdministrationSection.Settings);
-		NavigationItems.Add(new NavigationItem { Name = "About", Section = AdministrationSection.About });
-		SelectedNavigationItem = NavigationItems[0];
+		if (authorization.HasPermission(ApplicationPermission.AdministrationView))
+			NavigationItems.Add(new NavigationItem { Name = "About", Section = AdministrationSection.About });
+		SelectedNavigationItem = NavigationItems.FirstOrDefault();
 	}
 
 	public ObservableCollection<NavigationItem> NavigationItems { get; } = new();
@@ -77,6 +82,8 @@ public sealed class AdministrationViewModel : BaseViewModel
 		{
 			AdministrationSection.Import => _importViewModel,
 			AdministrationSection.MasterData => _masterDataViewModel,
+			AdministrationSection.Warehouses => _masterDataViewModel.WarehouseStructureViewModel,
+			AdministrationSection.Suppliers => _masterDataViewModel.SupplierViewModel,
 			AdministrationSection.Users => _userViewModel,
 			AdministrationSection.Roles => _roleViewModel,
 			AdministrationSection.Database => _databaseSettingsViewModel,
@@ -88,13 +95,17 @@ public sealed class AdministrationViewModel : BaseViewModel
 		_ = LoadCurrentViewModelAsync();
 	}
 
-	private Task LoadCurrentViewModelAsync() => CurrentViewModel switch
+	public Task LoadAsync(CancellationToken cancellationToken = default) => LoadCurrentViewModelAsync(cancellationToken);
+
+	private Task LoadCurrentViewModelAsync(CancellationToken cancellationToken = default) => CurrentViewModel switch
 	{
-		MasterDataViewModel masterData => masterData.LoadAsync(),
-		UserViewModel users => users.LoadUsersAsync(),
-		RoleViewModel roles => roles.LoadAsync(),
-		DatabaseSettingsViewModel database => database.LoadAsync(),
-		AuditLogViewModel auditLog => auditLog.LoadAsync(),
+		MasterDataViewModel masterData => masterData.LoadAsync(cancellationToken),
+		WarehouseStructureViewModel warehouses => warehouses.LoadAsync(cancellationToken),
+		SupplierViewModel suppliers => suppliers.LoadAsync(cancellationToken),
+		UserViewModel users => users.LoadUsersAsync(cancellationToken),
+		RoleViewModel roles => roles.LoadAsync(cancellationToken),
+		DatabaseSettingsViewModel database => database.LoadAsync(cancellationToken),
+		AuditLogViewModel auditLog => auditLog.LoadAsync(cancellationToken),
 		_ => Task.CompletedTask
 	};
 

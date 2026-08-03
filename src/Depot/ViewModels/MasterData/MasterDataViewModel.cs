@@ -66,20 +66,11 @@ public sealed class MasterDataViewModel
 		AddItemReferenceNavigation("Units of Measure", MasterDataSection.UnitsOfMeasure);
 		AddItemReferenceNavigation("Packaging", MasterDataSection.Packaging);
 		AddItemReferenceNavigation("Supplier Categories", MasterDataSection.SupplierCategories);
-		AddItemReferenceNavigation("Suppliers", MasterDataSection.Suppliers);
-
 		NavigationItems.Add(
 			new NavigationItem
 			{
 				Name = "Reason Codes",
 				Section = MasterDataSection.ReasonCodes
-			});
-
-		NavigationItems.Add(
-			new NavigationItem
-			{
-				Name = "Warehouse Structure",
-				Section = MasterDataSection.WarehouseStructure
 			});
 
 		SelectedNavigationItem =
@@ -89,6 +80,8 @@ public sealed class MasterDataViewModel
 
 	public ObservableCollection<NavigationItem> NavigationItems { get; }
 		= new();
+	public WarehouseStructureViewModel WarehouseStructureViewModel => _warehouseStructureViewModel;
+	public SupplierViewModel SupplierViewModel => _supplierViewModel;
 
 	public NavigationItem? SelectedNavigationItem
 	{

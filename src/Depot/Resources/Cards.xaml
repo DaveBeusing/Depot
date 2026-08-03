@@ -122,16 +122,6 @@
 		<Setter Property="BorderBrush" Value="{DynamicResource SuccessBrush}" />
 	</Style>
 
-	<Style
-		x:Key="ShellContentCardStyle"
-		TargetType="{x:Type controls:Card}"
-		BasedOn="{StaticResource CardBaseStyle}">
-		<Setter Property="Margin" Value="{DynamicResource Shell.Content.Margin}" />
-		<Setter Property="Padding" Value="{DynamicResource Shell.Content.Padding}" />
-		<Setter Property="BorderBrush" Value="{DynamicResource CardBorderBrush}" />
-		<Setter Property="Effect" Value="{StaticResource Shell.ContentShadow}" />
-	</Style>
-
 	<Style TargetType="{x:Type controls:MetricCard}">
 		<Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
 		<Setter Property="MinHeight" Value="132" />

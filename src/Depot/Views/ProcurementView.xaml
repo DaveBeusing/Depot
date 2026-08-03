@@ -18,12 +18,12 @@
 					<ListBox.ItemTemplate><DataTemplate><Grid Margin="4"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><StackPanel><TextBlock Text="{Binding OrderNumber}" FontWeight="SemiBold" /><TextBlock Text="{Binding SupplierName}" Style="{StaticResource CaptionStyle}" /></StackPanel><StackPanel Grid.Column="1" HorizontalAlignment="Right"><TextBlock Text="{Binding StatusDisplayName}" /><TextBlock Text="{Binding OrderDate, StringFormat={}{0:d}}" Style="{StaticResource CaptionStyle}" /></StackPanel></Grid></DataTemplate></ListBox.ItemTemplate>
 				</ListBox>
 				<Grid Grid.Row="6"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><Button Command="{Binding PreviousPageCommand}" Content="Previous" Style="{StaticResource SecondaryButtonStyle}" /><TextBlock Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center" Text="{Binding PageDisplay}" Style="{StaticResource CaptionStyle}" /><Button Grid.Column="2" Command="{Binding NextPageCommand}" Content="Next" Style="{StaticResource SecondaryButtonStyle}" /></Grid>
-				<Button Grid.Row="8" Command="{Binding NewOrderCommand}" Content="New Purchase Order" Style="{StaticResource PrimaryButtonStyle}" Visibility="{Binding CanCreateOrders, Converter={StaticResource BooleanToVisibilityConverter}}" />
+				<Button Grid.Row="8" Command="{Binding NewOrderCommand}" Content="New Purchase Order" Style="{StaticResource PrimaryButtonStyle}" Visibility="{Binding ShowNewOrderButton, Converter={StaticResource BooleanToVisibilityConverter}}" />
 			</Grid>
 
 			<ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
 				<StackPanel>
-					<controls:Card>
+					<controls:Card Visibility="{Binding IsPurchaseOrdersSection, Converter={StaticResource BooleanToVisibilityConverter}}">
 						<controls:Card.Header><DockPanel><TextBlock Text="{Binding EditorTitle}" Style="{StaticResource SectionTitleStyle}" /></DockPanel></controls:Card.Header>
 						<StackPanel>
 							<Grid><Grid.ColumnDefinitions><ColumnDefinition Width="2*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
@@ -71,7 +71,7 @@
 						</StackPanel>
 					</controls:Card>
 
-					<controls:Card Margin="0,16,0,0" Visibility="{Binding CanReceive, Converter={StaticResource BooleanToVisibilityConverter}}">
+					<controls:Card Margin="0,16,0,0" Visibility="{Binding ShowReceiptEntry, Converter={StaticResource BooleanToVisibilityConverter}}">
 						<controls:Card.Header><TextBlock Text="Post Goods Receipt" Style="{StaticResource SectionTitleStyle}" /></controls:Card.Header>
 						<StackPanel>
 							<TextBlock Text="Record the supplier delivery note, receipt date, destination inventory, and received quantities. All receipt lines and stock movements are posted atomically." Style="{StaticResource BodyStyle}" TextWrapping="Wrap" />
@@ -86,7 +86,7 @@
 						</StackPanel>
 					</controls:Card>
 
-					<controls:Card Margin="0,16,0,0">
+					<controls:Card Margin="0,16,0,0" Visibility="{Binding IsGoodsReceiptsSection, Converter={StaticResource BooleanToVisibilityConverter}}">
 						<controls:Card.Header><TextBlock Text="Posted Goods Receipts" Style="{StaticResource SectionTitleStyle}" /></controls:Card.Header>
 						<StackPanel>
 							<DataGrid Height="170" IsReadOnly="True" ItemsSource="{Binding GoodsReceipts}" SelectedItem="{Binding SelectedReceipt}" Style="{StaticResource AppDataGridStyle}">

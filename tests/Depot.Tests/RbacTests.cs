@@ -84,6 +84,24 @@ public sealed class RbacTests : IDisposable
 	}
 
 	[Fact]
+	public async Task CurrentSchemaRefreshesSystemRolePermissionsFromTheCatalog()
+	{
+		await _data.ExecuteAsync(
+			"DELETE FROM RolePermissions WHERE PermissionId IN (SELECT Id FROM Permissions WHERE Code = $Code);",
+			CancellationToken.None,
+			new DatabaseParameter("$Code", PermissionCatalog.Code(ApplicationPermission.PurchasingView)));
+
+		new DepotDatabase(_factory).Initialize();
+
+		var purchasing = await new RoleRepository(_data).GetByCodeAsync(SystemRoleCatalog.PurchasingCode, CancellationToken.None)
+			?? throw new InvalidOperationException();
+		var permissions = await new RoleRepository(_data).GetEffectivePermissionsAsync(
+			await CreateUserWithRoleAsync(purchasing.Id),
+			CancellationToken.None);
+		Assert.Contains(ApplicationPermission.PurchasingView, permissions);
+	}
+
+	[Fact]
 	public async Task SystemRolesAreProtectedAndCustomRoleChangesAreAuditedWithConcurrency()
 	{
 		var (roles, service, _) = await CreateRoleServiceAsync();
@@ -154,6 +172,12 @@ public sealed class RbacTests : IDisposable
 	}
 
 	private Task<long> CreateUserAsync(string email) => _data.InsertAsync("INSERT INTO Users (Email, DisplayName, PasswordHash, IsAdministrator, CanApprovePurchaseOrders, Role, IsActive, CreatedUtc) VALUES ($Email, 'RBAC Test', 'unused', 0, 0, 0, 1, '2026-01-01T00:00:00Z');", CancellationToken.None, new DatabaseParameter("$Email", email));
+	private async Task<long> CreateUserWithRoleAsync(long roleId)
+	{
+		var userId = await CreateUserAsync($"catalog-{Guid.NewGuid():N}@depot.test");
+		await _data.ExecuteAsync("INSERT INTO UserRoles (UserId, RoleId) VALUES ($UserId, $RoleId);", CancellationToken.None, new DatabaseParameter("$UserId", userId), new DatabaseParameter("$RoleId", roleId));
+		return userId;
+	}
 	private async Task AssignSystemRoleAsync(long userId, string code) => await _data.ExecuteAsync("INSERT INTO UserRoles (UserId, RoleId) SELECT $UserId, Id FROM Roles WHERE Code = $Code;", CancellationToken.None, new DatabaseParameter("$UserId", userId), new DatabaseParameter("$Code", code));
 	private async Task InsertLegacyUserAsync(string email, bool administrator, bool approver, UserRole role) => await _data.ExecuteAsync("INSERT INTO Users (Email, DisplayName, PasswordHash, IsAdministrator, CanApprovePurchaseOrders, Role, IsActive, CreatedUtc) VALUES ($Email, 'Legacy', 'unused', $Administrator, $Approver, $Role, 1, '2026-01-01T00:00:00Z');", CancellationToken.None, new DatabaseParameter("$Email", email), new DatabaseParameter("$Administrator", administrator), new DatabaseParameter("$Approver", approver), new DatabaseParameter("$Role", (int)role));
 	private Task<IReadOnlyList<string>> RoleCodesAsync(string email) => _data.QueryAsync("SELECT r.Code FROM Roles r INNER JOIN UserRoles ur ON ur.RoleId = r.Id INNER JOIN Users u ON u.Id = ur.UserId WHERE u.Email = $Email ORDER BY r.Code;", reader => reader.GetString(0), CancellationToken.None, new DatabaseParameter("$Email", email));

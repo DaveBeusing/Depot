@@ -11,6 +11,7 @@ namespace Depot.ViewModels;
 
 public sealed class ProcurementViewModel : BaseViewModel, IDisposable
 {
+	private ProcurementSection _section;
 	private const int PageSize = 50;
 	private readonly PurchaseOrderService _orders;
 	private readonly GoodsReceiptService _receipts;
@@ -99,7 +100,7 @@ public sealed class ProcurementViewModel : BaseViewModel, IDisposable
 	public bool IsDraft => Draft.Status == PurchaseOrderStatus.Draft && (Draft.Id == 0 ? CanCreateOrders : CanEditOrders);
 	public bool IsOrderReadOnly => !IsDraft;
 	public bool CanClose => CanCloseOrders && Draft.Status is (PurchaseOrderStatus.Ordered or PurchaseOrderStatus.PartiallyReceived);
-	public bool CanReceive => CanOrderPurchaseOrders && SelectedOrder?.Status is (PurchaseOrderStatus.Ordered or PurchaseOrderStatus.PartiallyReceived);
+	public bool CanReceive => _receipts.CanPost && SelectedOrder?.Status is (PurchaseOrderStatus.Ordered or PurchaseOrderStatus.PartiallyReceived);
 	public string EditorTitle => Draft.Id == 0 ? "New Purchase Order" : Draft.OrderNumber;
 	public string SaveLineText => SelectedLine is null ? "Add Line" : "Update Line";
 
@@ -119,6 +120,8 @@ public sealed class ProcurementViewModel : BaseViewModel, IDisposable
 			if (_selectedOrder == value) return;
 			_selectedOrder = value;
 			OnPropertyChanged();
+			OnPropertyChanged(nameof(CanReceive));
+			OnPropertyChanged(nameof(ShowReceiptEntry));
 			_selectionCancellation?.Cancel();
 			_selectionCancellation?.Dispose();
 			_selectionCancellation = new CancellationTokenSource();
@@ -142,7 +145,25 @@ public sealed class ProcurementViewModel : BaseViewModel, IDisposable
 	public DateTime ReceiptDate { get => _receiptDate; set { if (_receiptDate == value) return; _receiptDate = value; OnPropertyChanged(); } }
 	public string? ReceiptNotes { get => _receiptNotes; set { if (_receiptNotes == value) return; _receiptNotes = value; OnPropertyChanged(); } }
 	public GoodsReceipt? SelectedReceipt { get => _selectedReceipt; set { if (_selectedReceipt == value) return; _selectedReceipt = value; OnPropertyChanged(); OnPropertyChanged(nameof(CanReverseReceipt)); ReverseReceiptCommand.RaiseCanExecuteChanged(); } }
-	public bool CanReverseReceipt => CanOrderPurchaseOrders && SelectedReceipt is { IsReversed: false };
+	public bool CanReverseReceipt => _receipts.CanReverse && SelectedReceipt is { IsReversed: false };
+	public ProcurementSection Section
+	{
+		get => _section;
+		set
+		{
+			if (_section == value) return;
+			_section = value;
+			OnPropertyChanged();
+			OnPropertyChanged(nameof(IsPurchaseOrdersSection));
+			OnPropertyChanged(nameof(IsGoodsReceiptsSection));
+			OnPropertyChanged(nameof(ShowReceiptEntry));
+			OnPropertyChanged(nameof(ShowNewOrderButton));
+		}
+	}
+	public bool IsPurchaseOrdersSection => Section == ProcurementSection.PurchaseOrders;
+	public bool IsGoodsReceiptsSection => Section == ProcurementSection.GoodsReceipts;
+	public bool ShowReceiptEntry => IsGoodsReceiptsSection && CanReceive;
+	public bool ShowNewOrderButton => IsPurchaseOrdersSection && CanCreateOrders;
 	public ReasonCode? SelectedReversalReasonCode { get => _selectedReversalReasonCode; set { if (_selectedReversalReasonCode == value) return; _selectedReversalReasonCode = value; OnPropertyChanged(); ReverseReceiptCommand.RaiseCanExecuteChanged(); } }
 	public string ReversalReason { get => _reversalReason; set { if (_reversalReason == value) return; _reversalReason = value; OnPropertyChanged(); ReverseReceiptCommand.RaiseCanExecuteChanged(); } }
 	public string ApprovalComment { get => _approvalComment; set { if (_approvalComment == value) return; _approvalComment = value; OnPropertyChanged(); } }
@@ -202,7 +223,7 @@ public sealed class ProcurementViewModel : BaseViewModel, IDisposable
 				if (supplier is not null) Suppliers.Add(supplier);
 			}
 			Draft = Copy(details); ApprovalComment = string.Empty; CloseReason = string.Empty; Lines.Clear(); foreach (var line in details.Lines) Lines.Add(Copy(line));
-			OnPropertyChanged(nameof(EditorTitle)); OnPropertyChanged(nameof(CanReceive)); RaiseCommands();
+			OnPropertyChanged(nameof(EditorTitle)); OnPropertyChanged(nameof(CanReceive)); OnPropertyChanged(nameof(ShowReceiptEntry)); RaiseCommands();
 			await Task.WhenAll(BuildReceiptLinesAsync(details, cancellationToken), LoadReceiptsAsync(details.Id, cancellationToken));
 		}
 		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
@@ -332,6 +353,7 @@ public sealed class ProcurementViewModel : BaseViewModel, IDisposable
 			await BuildReceiptLinesAsync(updatedOrder, cancellationToken);
 			OnPropertyChanged(nameof(EditorTitle));
 			OnPropertyChanged(nameof(CanReceive));
+			OnPropertyChanged(nameof(ShowReceiptEntry));
 			RaiseCommands();
 			CompleteOperation(false, "Goods receipt reversed");
 		}
@@ -384,6 +406,7 @@ public sealed class ProcurementViewModel : BaseViewModel, IDisposable
 		Draft = Copy(order);
 		OnPropertyChanged(nameof(EditorTitle));
 		OnPropertyChanged(nameof(CanReceive));
+		OnPropertyChanged(nameof(ShowReceiptEntry));
 		OnPropertyChanged(nameof(HasApprovalHistory));
 		RaiseCommands();
 	}

@@ -7,6 +7,8 @@ public enum AdministrationSection
 {
 	Import,
 	MasterData,
+	Warehouses,
+	Suppliers,
 	Users,
 	Roles,
 	Database,

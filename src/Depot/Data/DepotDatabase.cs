@@ -1227,6 +1227,9 @@ public sealed class DepotDatabase : IDatabaseInitializer
 			throw new InvalidOperationException(
 				$"Database version '{version}' is newer than the supported schema version '{DatabaseVersion.CurrentVersion}'.");
 		}
+
+		CreateRbacTables(connection);
+		SeedRbac(connection, false);
 	}
 
 	private static void MigrateToPurchaseOrderApproval(SqliteConnection connection)

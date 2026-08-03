@@ -33,7 +33,7 @@ The presentation layer contains WPF views, ViewModels, commands, converters, reu
 - Native file selection and confirmation dialogs are accessed through `IFileDialogService`.
 - Shared UI values and styles live in `Resources/`; repeated behavior belongs in reusable controls.
 
-The shell currently contains Dashboard, Inventory, Items, Movements, Transfers, Inventory Counts, Material Issues, Material Returns, Procurement, Supplier Returns, Approvals, Reports, and role-restricted Administration modules.
+The shell exposes seven permission-aware primary modules: Dashboard, Inventory, Warehouse, Purchasing, Approvals, Reports, and Administration. Inventory, Warehouse, Purchasing, and Administration use a horizontal secondary navigation directly below the module header and remember their selected page for the lifetime of the session. Small explicit navigation records hold content and load delegates, so `MainViewModel` no longer routes pages through a central section switch. Approvals remains independent and does not grant access to Purchasing. The content surface is neutral rather than wrapped in an outer shell card.
 
 Administration contains Import, Master Data, Users, Database, Settings, and About. General Settings remains a placeholder; database/provider/backup settings are implemented in the Database module.
 

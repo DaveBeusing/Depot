@@ -13,22 +13,28 @@ internal static class RbacCatalogSeeder
 	{
 		foreach (var permission in PermissionCatalog.Definitions)
 		{
-			Execute(command,
-				"INSERT INTO Permissions (Code, Name, Module, Action) SELECT $Code, $Name, $Module, $Action WHERE NOT EXISTS (SELECT 1 FROM Permissions WHERE Code = $Code);",
-				("$Code", permission.Code), ("$Name", permission.Name), ("$Module", permission.Module), ("$Action", permission.Action));
-			Execute(command,
+			var updated = Execute(command,
 				"UPDATE Permissions SET Name = $Name, Module = $Module, Action = $Action WHERE Code = $Code;",
 				("$Code", permission.Code), ("$Name", permission.Name), ("$Module", permission.Module), ("$Action", permission.Action));
+			if (updated == 0)
+			{
+				Execute(command,
+					"INSERT INTO Permissions (Code, Name, Module, Action) VALUES ($Code, $Name, $Module, $Action);",
+					("$Code", permission.Code), ("$Name", permission.Name), ("$Module", permission.Module), ("$Action", permission.Action));
+			}
 		}
 
 		foreach (var role in SystemRoleCatalog.Definitions)
 		{
-			Execute(command,
-				"INSERT INTO Roles (Code, Name, Description, IsSystem, IsActive, Version) SELECT $Code, $Name, $Description, 1, 1, 1 WHERE NOT EXISTS (SELECT 1 FROM Roles WHERE Code = $Code);",
-				("$Code", role.Code), ("$Name", role.Name), ("$Description", role.Description));
-			Execute(command,
+			var updated = Execute(command,
 				"UPDATE Roles SET Name = $Name, Description = $Description, IsSystem = 1, IsActive = 1 WHERE Code = $Code;",
 				("$Code", role.Code), ("$Name", role.Name), ("$Description", role.Description));
+			if (updated == 0)
+			{
+				Execute(command,
+					"INSERT INTO Roles (Code, Name, Description, IsSystem, IsActive, Version) VALUES ($Code, $Name, $Description, 1, 1, 1);",
+					("$Code", role.Code), ("$Name", role.Name), ("$Description", role.Description));
+			}
 			Execute(command, "DELETE FROM RolePermissions WHERE RoleId = (SELECT Id FROM Roles WHERE Code = $Code);", ("$Code", role.Code));
 			foreach (var permission in role.Permissions.OrderBy(PermissionCatalog.Code, StringComparer.Ordinal))
 			{
@@ -76,17 +82,17 @@ internal static class RbacCatalogSeeder
 			$"INSERT INTO UserRoles (UserId, RoleId) SELECT u.Id, r.Id FROM Users u, Roles r WHERE r.Code = $RoleCode AND ({predicate}) AND NOT EXISTS (SELECT 1 FROM UserRoles ur WHERE ur.UserId = u.Id AND ur.RoleId = r.Id);",
 			("$RoleCode", roleCode));
 
-	private static void Execute(DbCommand command, string sql, params (string Name, object? Value)[] parameters)
+	private static int Execute(DbCommand command, string sql, params (string Name, object? Value)[] parameters)
 	{
-		command.CommandText = sql;
+		command.CommandText = sql.Replace("$", "@", StringComparison.Ordinal);
 		command.Parameters.Clear();
 		foreach (var (name, value) in parameters)
 		{
 			var parameter = command.CreateParameter();
-			parameter.ParameterName = name;
+			parameter.ParameterName = name.Replace("$", "@", StringComparison.Ordinal);
 			parameter.Value = value ?? DBNull.Value;
 			command.Parameters.Add(parameter);
 		}
-		command.ExecuteNonQuery();
+		return command.ExecuteNonQuery();
 	}
 }

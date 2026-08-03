@@ -9,6 +9,8 @@ namespace Depot.Services;
 
 public sealed class GoodsReceiptService
 {
+	public bool CanPost => _audit.HasPermission(ApplicationPermission.GoodsReceiptsPost);
+	public bool CanReverse => _audit.HasPermission(ApplicationPermission.GoodsReceiptsReverse);
 	private readonly IDatabaseTransactionRunner _transactions;
 	private readonly GoodsReceiptRepository _receipts;
 	private readonly PurchaseOrderRepository _purchaseOrders;

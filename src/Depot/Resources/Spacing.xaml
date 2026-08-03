@@ -7,8 +7,11 @@
 	<Thickness x:Key="Page.Margin">24</Thickness>
 
 	<!-- Shell -->
+	<GridLength x:Key="Shell.Sidebar.Width">240</GridLength>
 	<Thickness x:Key="Shell.Content.Margin">18</Thickness>
-	<Thickness x:Key="Shell.Content.Padding">24</Thickness>
+	<Thickness x:Key="Page.Header.BottomMargin">0,0,0,16</Thickness>
+	<Thickness x:Key="SecondaryNavigation.Margin">0,0,0,16</Thickness>
+	<Thickness x:Key="SecondaryNavigation.Item.Padding">14,8</Thickness>
 
 	<!-- Cards -->
 	<Thickness x:Key="Card.Padding">16</Thickness>
@@ -35,7 +38,7 @@
 	<Thickness x:Key="Navigation.Admin.Margin">8,24,8,4</Thickness>
 	<Thickness x:Key="Navigation.Item.Padding">12</Thickness>
 	<Thickness x:Key="Navigation.Header.Margin">24,24,24,32</Thickness>
-	<Thickness x:Key="Navigation.UserPanel.Margin">0,24,0,0</Thickness>
+	<Thickness x:Key="Navigation.UserPanel.Margin">12</Thickness>
 	<Thickness x:Key="Navigation.Logout.Margin">0,12,0,0</Thickness>
 
 	<!-- Dialogs -->

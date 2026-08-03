@@ -28,6 +28,7 @@ public enum ApplicationPermission
 	InventoryCountsEdit,
 	InventoryCountsPost,
 	InventoryCountsReverse,
+	PurchasingView,
 	PurchaseOrdersView,
 	PurchaseOrdersCreate,
 	PurchaseOrdersEdit,
