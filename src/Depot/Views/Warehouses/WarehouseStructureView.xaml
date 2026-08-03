@@ -3,7 +3,7 @@
 		<Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="16" /><RowDefinition Height="*" /></Grid.RowDefinitions>
 		<controls:PageHeader Title="Warehouses &amp; Locations" Subtitle="Organize warehouses and their physical storage locations." />
 		<controls:OperationPanel Grid.Row="1" ErrorText="{Binding OperationError}" HasError="{Binding HasOperationError}" IsBusy="{Binding IsBusy}" StatusText="{Binding StatusText}" />
-		<TabControl Grid.Row="3" Style="{StaticResource WorkflowTabControlStyle}">
+		<TabControl Grid.Row="3" Style="{StaticResource AppTabControlStyle}">
 			<TabItem Header="Warehouses"><controls:MasterDetailGrid Margin="0,16,0,0">
 				<controls:MasterDetailGrid.Master><controls:Card><Grid><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="12" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
 					<controls:FilterBar><Grid><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="8" /><RowDefinition Height="Auto" /></Grid.RowDefinitions><controls:SearchBox Placeholder="Search warehouses" Text="{Binding WarehouseSearchText, UpdateSourceTrigger=PropertyChanged}" /><ComboBox Grid.Row="2" ItemsSource="{Binding ActivationFilters}" SelectedItem="{Binding SelectedWarehouseActivationFilter}" DisplayMemberPath="Name" Style="{StaticResource AppComboBoxStyle}" /></Grid></controls:FilterBar>

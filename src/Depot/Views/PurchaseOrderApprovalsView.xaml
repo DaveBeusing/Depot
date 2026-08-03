@@ -44,7 +44,7 @@
 						<Grid Visibility="{Binding HasDetails, Converter={StaticResource BooleanToVisibilityConverter}}">
 							<Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
 							<controls:WorkflowHeader Title="{Binding Details.Order.OrderNumber}" Subtitle="{Binding Details.Order.SupplierName}" Status="{Binding Details.Order.StatusDisplayName}" />
-							<TabControl Grid.Row="1">
+							<TabControl Grid.Row="1" Style="{StaticResource AppTabControlStyle}">
 								<TabItem Header="Order">
 									<Grid Margin="0,12,0,0"><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="12" /><RowDefinition Height="*" /></Grid.RowDefinitions>
 										<Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><StackPanel><TextBlock Text="Created by" Style="{StaticResource FormLabelStyle}" /><TextBlock Text="{Binding Details.Order.CreatedByUserDisplay}" Style="{StaticResource BodyStyle}" TextTrimming="CharacterEllipsis" /></StackPanel><StackPanel Grid.Column="2"><TextBlock Text="Order date" Style="{StaticResource FormLabelStyle}" /><TextBlock Text="{Binding Details.Order.OrderDate, StringFormat={}{0:d}}" Style="{StaticResource BodyStyle}" /></StackPanel><StackPanel Grid.Column="4"><TextBlock Text="Expected delivery" Style="{StaticResource FormLabelStyle}" /><TextBlock Text="{Binding Details.Order.ExpectedDeliveryDate, StringFormat={}{0:d}}" Style="{StaticResource BodyStyle}" /></StackPanel></Grid>

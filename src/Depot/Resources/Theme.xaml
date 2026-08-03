@@ -10,6 +10,8 @@
 		<!-- Controls -->
 		<ResourceDictionary Source="Buttons.xaml" />
 		<ResourceDictionary Source="Inputs.xaml" />
+		<ResourceDictionary Source="DatePicker.xaml" />
+		<ResourceDictionary Source="Tabs.xaml" />
 		<ResourceDictionary Source="Cards.xaml" />
 		<ResourceDictionary Source="DataGrid.xaml" />
 		<ResourceDictionary Source="Status.xaml" />

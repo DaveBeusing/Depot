@@ -19,6 +19,35 @@
 	<CornerRadius x:Key="SecondaryNavigation.Item.CornerRadius">6</CornerRadius>
 	<sys:Double x:Key="SecondaryNavigation.Item.MinHeight">34</sys:Double>
 	<sys:Double x:Key="SecondaryNavigation.Item.MaxWidth">260</sys:Double>
+
+	<!-- Inputs -->
+	<sys:Double x:Key="Input.MinHeight">36</sys:Double>
+	<CornerRadius x:Key="Input.CornerRadius">6</CornerRadius>
+	<Thickness x:Key="Input.BorderThickness">1</Thickness>
+	<Thickness x:Key="Input.FocusBorderThickness">2</Thickness>
+	<sys:Double x:Key="DatePicker.Button.Width">36</sys:Double>
+	<GridLength x:Key="DatePicker.Button.ColumnWidth">36</GridLength>
+	<sys:Double x:Key="DatePicker.Icon.Size">16</sys:Double>
+	<Thickness x:Key="DatePicker.Popup.Margin">0,4,0,8</Thickness>
+	<Thickness x:Key="DatePicker.Popup.Padding">12</Thickness>
+	<CornerRadius x:Key="DatePicker.Popup.CornerRadius">8</CornerRadius>
+	<Thickness x:Key="DatePicker.Calendar.Header.Margin">0,0,0,8</Thickness>
+	<Thickness x:Key="DatePicker.Calendar.Day.Margin">1</Thickness>
+	<Thickness x:Key="DatePicker.Calendar.Button.Margin">2</Thickness>
+	<Thickness x:Key="DatePicker.Calendar.FocusBorderThickness">2</Thickness>
+	<sys:Double x:Key="DatePicker.Calendar.NavigationButton.Size">32</sys:Double>
+	<sys:Double x:Key="DatePicker.Calendar.NavigationIcon.Size">12</sys:Double>
+	<sys:Double x:Key="DatePicker.Calendar.Day.Size">32</sys:Double>
+	<sys:Double x:Key="DatePicker.Calendar.Button.Width">64</sys:Double>
+	<sys:Double x:Key="DatePicker.Calendar.Button.Height">40</sys:Double>
+
+	<!-- Tabs -->
+	<Thickness x:Key="Tab.Item.Padding">14,8</Thickness>
+	<Thickness x:Key="Tab.Item.Margin">0,0,8,8</Thickness>
+	<Thickness x:Key="Tab.Item.BorderThickness">1</Thickness>
+	<CornerRadius x:Key="Tab.Item.CornerRadius">6</CornerRadius>
+	<sys:Double x:Key="Tab.Item.MinHeight">36</sys:Double>
+	<Thickness x:Key="Tab.Content.Margin">0,4,0,0</Thickness>
 	<GridLength x:Key="MasterDetail.ColumnGap">16</GridLength>
 	<GridLength x:Key="MasterPane.DefaultWidth">370</GridLength>
 	<sys:Double x:Key="MasterPane.MinWidth">300</sys:Double>
