@@ -3,9 +3,9 @@
 		<DepotVersionMajor>0</DepotVersionMajor>
 		<DepotVersionMinor>13</DepotVersionMinor>
 		<DepotVersionPatch>0</DepotVersionPatch>
-		<DepotVersionBuild Condition="'$(DepotVersionBuild)' == ''">15</DepotVersionBuild>
+		<DepotVersionBuild Condition="'$(DepotVersionBuild)' == ''">16</DepotVersionBuild>
 		<DepotVersionSuffix Condition="'$(DepotVersionSuffix)' == ''">preview</DepotVersionSuffix>
-		<VersionPrefix>$(DepotVersionMajor).$(DepotVersionMinor).$(DepotVersionPatch)</VersionPrefix>
+		<VersionPrefix>$(DepotVersionMajor).$(DepotVersionMinor).$(DepotVersionBuild)</VersionPrefix>
 		<VersionSuffix Condition="'$(DepotStableRelease)' != 'true'">$(DepotVersionSuffix)</VersionSuffix>
 		<AssemblyVersion>$(DepotVersionMajor).$(DepotVersionMinor).0.0</AssemblyVersion>
 		<FileVersion>$(DepotVersionMajor).$(DepotVersionMinor).$(DepotVersionPatch).$(DepotVersionBuild)</FileVersion>

@@ -11,7 +11,7 @@
 		</Grid.RowDefinitions>
 
 		<controls:PageHeader
-			Margin="{DynamicResource Page.Header.BottomMargin}"
+			Margin="{DynamicResource Shell.Module.Header.Margin}"
 			Title="{Binding Title}"
 			Subtitle="{Binding Subtitle}" />
 
@@ -22,19 +22,11 @@
 			SelectedItem="{Binding SelectedPage}"
 			Style="{DynamicResource SecondaryNavigationListBoxStyle}"
 			ItemContainerStyle="{DynamicResource SecondaryNavigationItemStyle}"
-			Visibility="{Binding HasMultiplePages, Converter={StaticResource BooleanToVisibilityConverter}}">
-			<ListBox.ItemsPanel>
-				<ItemsPanelTemplate>
-					<StackPanel Orientation="Horizontal" />
-				</ItemsPanelTemplate>
-			</ListBox.ItemsPanel>
-			<ListBox.ItemTemplate>
-				<DataTemplate>
-					<TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
-				</DataTemplate>
-			</ListBox.ItemTemplate>
-		</ListBox>
+			Visibility="{Binding HasMultiplePages, Converter={StaticResource BooleanToVisibilityConverter}}" />
 
-		<controls:ShellModuleContentControl Grid.Row="2" Content="{Binding CurrentViewModel}" />
+		<controls:ShellModuleContentControl
+			Grid.Row="2"
+			Margin="{DynamicResource Shell.Module.Content.Margin}"
+			Content="{Binding CurrentViewModel}" />
 	</Grid>
 </UserControl>

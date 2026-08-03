@@ -88,6 +88,12 @@
 
 	</Style>
 
+	<Style x:Key="SecondaryNavigationTextStyle" TargetType="TextBlock" BasedOn="{StaticResource BodyStyle}">
+		<Setter Property="FontWeight" Value="SemiBold" />
+		<Setter Property="TextTrimming" Value="CharacterEllipsis" />
+		<Setter Property="TextWrapping" Value="NoWrap" />
+	</Style>
+
 	<!-- Caption -->
 
 	<Style

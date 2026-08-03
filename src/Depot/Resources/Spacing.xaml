@@ -10,9 +10,15 @@
 	<!-- Shell -->
 	<GridLength x:Key="Shell.Sidebar.Width">240</GridLength>
 	<Thickness x:Key="Shell.Content.Margin">18</Thickness>
-	<Thickness x:Key="Page.Header.BottomMargin">0,0,0,16</Thickness>
-	<Thickness x:Key="SecondaryNavigation.Margin">0,0,0,16</Thickness>
-	<Thickness x:Key="SecondaryNavigation.Item.Padding">14,8</Thickness>
+	<Thickness x:Key="Shell.Module.Header.Margin">0,0,0,12</Thickness>
+	<Thickness x:Key="Shell.Module.Content.Margin">0</Thickness>
+	<Thickness x:Key="SecondaryNavigation.Margin">0,0,0,8</Thickness>
+	<Thickness x:Key="SecondaryNavigation.Item.Margin">0,0,8,8</Thickness>
+	<Thickness x:Key="SecondaryNavigation.Item.Padding">12,7</Thickness>
+	<Thickness x:Key="SecondaryNavigation.Item.BorderThickness">1</Thickness>
+	<CornerRadius x:Key="SecondaryNavigation.Item.CornerRadius">6</CornerRadius>
+	<sys:Double x:Key="SecondaryNavigation.Item.MinHeight">34</sys:Double>
+	<sys:Double x:Key="SecondaryNavigation.Item.MaxWidth">260</sys:Double>
 	<GridLength x:Key="MasterDetail.ColumnGap">16</GridLength>
 	<GridLength x:Key="MasterPane.DefaultWidth">370</GridLength>
 	<sys:Double x:Key="MasterPane.MinWidth">300</sys:Double>

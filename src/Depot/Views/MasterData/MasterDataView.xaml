@@ -6,34 +6,19 @@
 	<Grid>
 		<Grid.RowDefinitions>
 			<RowDefinition Height="Auto" />
-			<RowDefinition Height="Auto" />
 			<RowDefinition Height="*" />
 		</Grid.RowDefinitions>
 
-		<controls:PageHeader
-			Margin="{DynamicResource Page.Header.BottomMargin}"
-			Title="Master Data"
-			Subtitle="Manage reusable business entities used throughout Depot." />
-
 		<ListBox
-			Grid.Row="1"
 			Margin="{DynamicResource SecondaryNavigation.Margin}"
 			ItemsSource="{Binding NavigationItems}"
 			SelectedItem="{Binding SelectedNavigationItem}"
 			Style="{DynamicResource SecondaryNavigationListBoxStyle}"
-			ItemContainerStyle="{DynamicResource SecondaryNavigationItemStyle}">
-			<ListBox.ItemsPanel>
-				<ItemsPanelTemplate>
-					<StackPanel Orientation="Horizontal" />
-				</ItemsPanelTemplate>
-			</ListBox.ItemsPanel>
-			<ListBox.ItemTemplate>
-				<DataTemplate>
-					<TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
-				</DataTemplate>
-			</ListBox.ItemTemplate>
-		</ListBox>
+			ItemContainerStyle="{DynamicResource SecondaryNavigationItemStyle}" />
 
-		<ContentControl Grid.Row="2" Content="{Binding CurrentViewModel}" />
+		<controls:ShellModuleContentControl
+			Grid.Row="1"
+			Margin="{DynamicResource Shell.Module.Content.Margin}"
+			Content="{Binding CurrentViewModel}" />
 	</Grid>
 </UserControl>

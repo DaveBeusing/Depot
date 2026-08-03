@@ -16,6 +16,7 @@
 		<ResourceDictionary Source="PageHeaders.xaml" />
 		<ResourceDictionary Source="EmptyStates.xaml" />
 		<ResourceDictionary Source="Navigation.xaml" />
+		<ResourceDictionary Source="SecondaryNavigation.xaml" />
 		<ResourceDictionary Source="Dialogs.xaml" />
 
 		<!-- Composite application patterns -->
