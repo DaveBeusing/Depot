@@ -18,6 +18,7 @@ public sealed class ImportService
 	private readonly StorageLocationService _storageLocationService;
 	private readonly InventoryManagementService _inventoryManagementService;
 	private readonly MovementService _movementService;
+	private readonly IAuthorizationService _authorization;
 
 	public ImportService(
 		ItemRepository itemRepository,
@@ -26,7 +27,8 @@ public sealed class ImportService
 		WarehouseService warehouseService,
 		StorageLocationService storageLocationService,
 		InventoryManagementService inventoryManagementService,
-		MovementService movementService)
+		MovementService movementService,
+		IAuthorizationService authorization)
 	{
 		_itemRepository = itemRepository;
 		_itemService = itemService;
@@ -35,12 +37,14 @@ public sealed class ImportService
 		_storageLocationService = storageLocationService;
 		_inventoryManagementService = inventoryManagementService;
 		_movementService = movementService;
+		_authorization = authorization;
 	}
 
 	public ImportPreview CreatePreview(
 		string filePath,
 		CancellationToken cancellationToken = default)
 	{
+		_authorization.RequirePermission(ApplicationPermission.ImportManage);
 		var itemsByKey =
 			new Dictionary<string, ImportPreviewAccumulator>(
 				StringComparer.OrdinalIgnoreCase);
@@ -269,6 +273,7 @@ public sealed class ImportService
 	public ImportResult ExecuteImport(
 		ImportPreview preview)
 	{
+		_authorization.RequirePermission(ApplicationPermission.ImportManage);
 		var importedItems = 0;
 		var importedMovements = 0;
 		var skippedItems = 0;
@@ -331,6 +336,7 @@ public sealed class ImportService
 		ImportPreview preview,
 		CancellationToken cancellationToken = default)
 	{
+		_authorization.RequirePermission(ApplicationPermission.ImportManage);
 		var importedItems = 0;
 		var importedMovements = 0;
 		var skippedItems = 0;

@@ -22,7 +22,7 @@ internal sealed class ServiceComposition
 			repositories.Audit,
 			audit);
 
-		Authentication = new AuthenticationService(repositories.Users, passwordHasher, Authorization);
+		Authentication = new AuthenticationService(repositories.Users, repositories.Roles, passwordHasher, Authorization);
 		Session = new SessionService(Authorization);
 		Manufacturers = new ManufacturerService(repositories.Manufacturers, audit);
 		Categories = new CategoryService(repositories.Categories, audit);
@@ -131,7 +131,8 @@ internal sealed class ServiceComposition
 			repositories.StorageLocations,
 			repositories.Warehouses,
 			audit);
-		Users = new UserService(repositories.Users, passwordHasher, Authorization, audit);
+		Roles = new RoleService(database.TransactionRunner, repositories.Roles, repositories.Audit, audit, Authorization);
+		Users = new UserService(database.TransactionRunner, repositories.Users, repositories.Roles, repositories.Audit, passwordHasher, Authorization, audit);
 		Movements = new MovementService(
 			repositories.Items,
 			repositories.Inventories,
@@ -140,7 +141,7 @@ internal sealed class ServiceComposition
 			audit,
 			movementReversals);
 		Stock = new StockService(repositories.Inventories, repositories.StockMovements);
-		Reports = new ReportService(Stock);
+		Reports = new ReportService(Stock, Authorization);
 		var inventoryManagement = new InventoryManagementService(repositories.Inventories, audit);
 		Import = new ImportService(
 			repositories.Items,
@@ -149,7 +150,8 @@ internal sealed class ServiceComposition
 			Warehouses,
 			StorageLocations,
 			inventoryManagement,
-			Movements);
+			Movements,
+			Authorization);
 	}
 
 	public AuthorizationService Authorization { get; }
@@ -177,6 +179,7 @@ internal sealed class ServiceComposition
 	public WarehouseService Warehouses { get; }
 	public StorageLocationService StorageLocations { get; }
 	public UserService Users { get; }
+	public RoleService Roles { get; }
 	public MovementService Movements { get; }
 	public StockService Stock { get; }
 	public ReportService Reports { get; }

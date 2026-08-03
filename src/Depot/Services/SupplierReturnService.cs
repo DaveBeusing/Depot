@@ -19,7 +19,7 @@ public sealed class SupplierReturnService
 	private readonly AuditRepository _auditEntries;
 	private readonly AuditService _audit;
 	private readonly StockMovementReversalService _reversals;
-	private readonly AuthorizationService _authorization;
+	private readonly IAuthorizationService _authorization;
 
 	public SupplierReturnService(
 		IDatabaseTransactionRunner transactions,
@@ -32,7 +32,7 @@ public sealed class SupplierReturnService
 		AuditRepository auditEntries,
 		AuditService audit,
 		StockMovementReversalService reversals,
-		AuthorizationService authorization)
+		IAuthorizationService authorization)
 	{
 		_transactions = transactions;
 		_returns = returns;
@@ -56,11 +56,17 @@ public sealed class SupplierReturnService
 		SupplierReturnStatus? status,
 		int page,
 		int size,
-		CancellationToken cancellationToken = default) =>
-		_returns.SearchAsync(search, supplierId, status, page, size, cancellationToken);
+		CancellationToken cancellationToken = default)
+	{
+		_authorization.RequirePermission(ApplicationPermission.SupplierReturnsView);
+		return _returns.SearchAsync(search, supplierId, status, page, size, cancellationToken);
+	}
 
-	public Task<SupplierReturn?> GetByIdAsync(long id, CancellationToken cancellationToken = default) =>
-		_returns.GetByIdAsync(id, cancellationToken);
+	public Task<SupplierReturn?> GetByIdAsync(long id, CancellationToken cancellationToken = default)
+	{
+		_authorization.RequirePermission(ApplicationPermission.SupplierReturnsView);
+		return _returns.GetByIdAsync(id, cancellationToken);
+	}
 
 	public Task<SupplierReturnOverviewItem?> GetOverviewByIdAsync(long id, CancellationToken cancellationToken = default) =>
 		_returns.GetOverviewByIdAsync(id, cancellationToken);
@@ -89,7 +95,7 @@ public sealed class SupplierReturnService
 		SupplierReturn value,
 		CancellationToken cancellationToken = default)
 	{
-		_authorization.RequirePermission(ApplicationPermission.SupplierReturnsCreate);
+		_authorization.RequirePermission(value.Id == 0 ? ApplicationPermission.SupplierReturnsCreate : ApplicationPermission.SupplierReturnsEdit);
 		NormalizeAndValidate(value);
 		var userId = RequireUser("save");
 		return _transactions.ExecuteAsync(
@@ -122,7 +128,7 @@ public sealed class SupplierReturnService
 		long version,
 		CancellationToken cancellationToken = default)
 	{
-		_authorization.RequirePermission(ApplicationPermission.SupplierReturnsCreate);
+		_authorization.RequirePermission(ApplicationPermission.SupplierReturnsEdit);
 		ArgumentOutOfRangeException.ThrowIfNegativeOrZero(id);
 		RequireUser("cancel");
 		return _transactions.ExecuteAsync(
@@ -155,7 +161,7 @@ public sealed class SupplierReturnService
 		string reversalReason,
 		CancellationToken cancellationToken = default)
 	{
-		_authorization.RequirePermission(ApplicationPermission.SupplierReturnsPost);
+		_authorization.RequirePermission(ApplicationPermission.SupplierReturnsReverse);
 		ArgumentOutOfRangeException.ThrowIfNegativeOrZero(id);
 		var userId = _reversals.RequireUser();
 		return _transactions.ExecuteAsync(

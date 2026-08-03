@@ -43,6 +43,7 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 		command.CommandText = SupplierReturnSql;
 		command.ExecuteNonQuery();
 		EnsureWorkflowOperations(command);
+		EnsureRbacTables(command);
 
 		command.CommandText = "SELECT Version FROM DatabaseInfo WHERE Id = 1;";
 		var version = Convert.ToInt32(command.ExecuteScalar(), CultureInfo.InvariantCulture);
@@ -141,14 +142,18 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 			MigrateToWorkflowOperations(command);
 			version = 27;
 		}
+		if (version == 27)
+		{
+			MigrateToRbac(command);
+			version = 28;
+		}
 		if (version != DatabaseVersion.CurrentVersion)
 		{
 			throw new InvalidOperationException(
 				$"SQL Server schema version '{version}' is not supported. Expected '{DatabaseVersion.CurrentVersion}'.");
 		}
-		command.CommandText = "UPDATE Users SET Role = 1 WHERE IsAdministrator = 1 AND Role = 0;";
-		command.Parameters.Clear();
-		command.ExecuteNonQuery();
+		RbacCatalogSeeder.EnsureCatalog(command);
+		RbacCatalogSeeder.EnsureDefaultAdministratorAssignment(command);
 
 		transaction.Commit();
 	}
@@ -225,6 +230,35 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 	private static void EnsureWorkflowOperations(System.Data.Common.DbCommand command)
 	{
 		command.CommandText = "IF OBJECT_ID(N'WorkflowOperations', N'U') IS NULL CREATE TABLE WorkflowOperations (Id bigint IDENTITY(1,1) NOT NULL CONSTRAINT PK_WorkflowOperations PRIMARY KEY, OperationId nvarchar(36) NOT NULL CONSTRAINT UQ_WorkflowOperations_OperationId UNIQUE, Workflow nvarchar(100) NOT NULL, EntityId bigint NOT NULL, CompletedAtUtc nvarchar(40) NOT NULL); IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_WorkflowOperations_Entity') CREATE INDEX IX_WorkflowOperations_Entity ON WorkflowOperations(Workflow, EntityId);";
+		command.Parameters.Clear();
+		command.ExecuteNonQuery();
+	}
+
+	private static void MigrateToRbac(System.Data.Common.DbCommand command)
+	{
+		EnsureRbacTables(command);
+		RbacCatalogSeeder.EnsureCatalog(command);
+		RbacCatalogSeeder.MigrateLegacyUsers(command);
+		command.CommandText = "UPDATE DatabaseInfo SET Version = 28 WHERE Id = 1;";
+		command.Parameters.Clear();
+		command.ExecuteNonQuery();
+	}
+
+	private static void EnsureRbacTables(System.Data.Common.DbCommand command)
+	{
+		command.CommandText =
+			"""
+			IF OBJECT_ID(N'Roles', N'U') IS NULL
+				CREATE TABLE Roles (Id bigint IDENTITY(1,1) NOT NULL CONSTRAINT PK_Roles PRIMARY KEY, Code nvarchar(100) NOT NULL CONSTRAINT UQ_Roles_Code UNIQUE, Name nvarchar(200) NOT NULL, Description nvarchar(1000) NULL, IsSystem bit NOT NULL CONSTRAINT DF_Roles_IsSystem DEFAULT 0, IsActive bit NOT NULL CONSTRAINT DF_Roles_IsActive DEFAULT 1, Version bigint NOT NULL CONSTRAINT DF_Roles_Version DEFAULT 1);
+			IF OBJECT_ID(N'Permissions', N'U') IS NULL
+				CREATE TABLE Permissions (Id bigint IDENTITY(1,1) NOT NULL CONSTRAINT PK_Permissions PRIMARY KEY, Code nvarchar(150) NOT NULL CONSTRAINT UQ_Permissions_Code UNIQUE, Name nvarchar(250) NOT NULL, Module nvarchar(100) NOT NULL, Action nvarchar(50) NOT NULL);
+			IF OBJECT_ID(N'RolePermissions', N'U') IS NULL
+				CREATE TABLE RolePermissions (Id bigint IDENTITY(1,1) NOT NULL CONSTRAINT PK_RolePermissions PRIMARY KEY, RoleId bigint NOT NULL, PermissionId bigint NOT NULL, CONSTRAINT UQ_RolePermissions UNIQUE (RoleId, PermissionId), CONSTRAINT FK_RolePermissions_Roles FOREIGN KEY (RoleId) REFERENCES Roles(Id) ON DELETE CASCADE, CONSTRAINT FK_RolePermissions_Permissions FOREIGN KEY (PermissionId) REFERENCES Permissions(Id) ON DELETE CASCADE);
+			IF OBJECT_ID(N'UserRoles', N'U') IS NULL
+				CREATE TABLE UserRoles (Id bigint IDENTITY(1,1) NOT NULL CONSTRAINT PK_UserRoles PRIMARY KEY, UserId bigint NOT NULL, RoleId bigint NOT NULL, CONSTRAINT UQ_UserRoles UNIQUE (UserId, RoleId), CONSTRAINT FK_UserRoles_Users FOREIGN KEY (UserId) REFERENCES Users(Id) ON DELETE CASCADE, CONSTRAINT FK_UserRoles_Roles FOREIGN KEY (RoleId) REFERENCES Roles(Id));
+			IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_RolePermissions_PermissionId') CREATE INDEX IX_RolePermissions_PermissionId ON RolePermissions(PermissionId);
+			IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_UserRoles_RoleId') CREATE INDEX IX_UserRoles_RoleId ON UserRoles(RoleId);
+			""";
 		command.Parameters.Clear();
 		command.ExecuteNonQuery();
 	}

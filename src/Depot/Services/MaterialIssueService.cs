@@ -17,9 +17,9 @@ public sealed class MaterialIssueService
 	private readonly AuditRepository _auditEntries;
 	private readonly AuditService _audit;
 	private readonly StockMovementReversalService _reversals;
-	private readonly AuthorizationService _authorization;
+	private readonly IAuthorizationService _authorization;
 
-	public MaterialIssueService(IDatabaseTransactionRunner transactions, MaterialIssueRepository issues, InventoryRepository inventories, StockMovementRepository movements, ReasonCodeRepository reasonCodes, AuditRepository auditEntries, AuditService audit, StockMovementReversalService reversals, AuthorizationService authorization)
+	public MaterialIssueService(IDatabaseTransactionRunner transactions, MaterialIssueRepository issues, InventoryRepository inventories, StockMovementRepository movements, ReasonCodeRepository reasonCodes, AuditRepository auditEntries, AuditService audit, StockMovementReversalService reversals, IAuthorizationService authorization)
 	{
 		_transactions = transactions;
 		_issues = issues;
@@ -36,8 +36,8 @@ public sealed class MaterialIssueService
 	public bool CanPost => _authorization.HasPermission(ApplicationPermission.MaterialIssuesPost);
 	public bool CanReverse => _authorization.HasPermission(ApplicationPermission.MaterialIssuesReverse);
 
-	public Task<PageResult<MaterialIssueOverviewItem>> SearchAsync(string? searchText, MaterialIssueStatus? status, int pageNumber, int pageSize, CancellationToken cancellationToken = default) => _issues.SearchAsync(searchText, status, pageNumber, pageSize, cancellationToken);
-	public Task<MaterialIssue?> GetByIdAsync(long id, CancellationToken cancellationToken = default) => _issues.GetByIdAsync(id, cancellationToken);
+	public Task<PageResult<MaterialIssueOverviewItem>> SearchAsync(string? searchText, MaterialIssueStatus? status, int pageNumber, int pageSize, CancellationToken cancellationToken = default) { _authorization.RequirePermission(ApplicationPermission.MaterialIssuesView); return _issues.SearchAsync(searchText, status, pageNumber, pageSize, cancellationToken); }
+	public Task<MaterialIssue?> GetByIdAsync(long id, CancellationToken cancellationToken = default) { _authorization.RequirePermission(ApplicationPermission.MaterialIssuesView); return _issues.GetByIdAsync(id, cancellationToken); }
 	public Task<MaterialIssueOverviewItem?> GetOverviewByIdAsync(long id, CancellationToken cancellationToken = default) => _issues.GetOverviewByIdAsync(id, cancellationToken);
 	public Task<PageResult<InventoryOverviewItem>> SearchInventoryOptionsAsync(string? searchText, int pageNumber = 1, int pageSize = 100, CancellationToken cancellationToken = default) => _inventories.SearchOverviewPageAsync(searchText, pageNumber, pageSize, cancellationToken);
 	public Task<PageResult<InventoryOverviewItem>> SearchInventoryOptionsAsync(string? searchText, long? itemId, long? warehouseId, int pageNumber = 1, int pageSize = 100, CancellationToken cancellationToken = default) => _inventories.SearchOverviewPageAsync(searchText, itemId, warehouseId, pageNumber, pageSize, cancellationToken);
@@ -50,7 +50,7 @@ public sealed class MaterialIssueService
 
 	public Task<MaterialIssue> SaveDraftAsync(MaterialIssue issue, CancellationToken cancellationToken = default)
 	{
-		_authorization.RequirePermission(ApplicationPermission.MaterialIssuesCreate);
+		_authorization.RequirePermission(issue.Id == 0 ? ApplicationPermission.MaterialIssuesCreate : ApplicationPermission.MaterialIssuesEdit);
 		NormalizeAndValidate(issue);
 		var userId = RequireUser("save");
 		return _transactions.ExecuteAsync((transaction, token) => SaveDraftAsync(transaction, issue, userId, token), cancellationToken);
@@ -69,7 +69,7 @@ public sealed class MaterialIssueService
 
 	public Task<MaterialIssue> CancelAsync(long id, long version, CancellationToken cancellationToken = default)
 	{
-		_authorization.RequirePermission(ApplicationPermission.MaterialIssuesCreate);
+		_authorization.RequirePermission(ApplicationPermission.MaterialIssuesEdit);
 		if (id <= 0) throw new ArgumentOutOfRangeException(nameof(id));
 		RequireUser("cancel");
 		return _transactions.ExecuteAsync(async (transaction, token) =>

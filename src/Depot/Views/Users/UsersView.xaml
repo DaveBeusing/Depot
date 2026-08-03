@@ -80,7 +80,7 @@
 								Grid.Row="1"
 								Margin="0,2,0,0"
 								Foreground="{StaticResource SecondaryTextBrush}"
-								Text="{Binding Email}"
+								Text="{Binding Roles}"
 								TextTrimming="CharacterEllipsis" />
 						</Grid>
 					</DataTemplate>
@@ -141,9 +141,17 @@
 						Text="{Binding Editor.PasswordHint}" />
 
 					<StackPanel Grid.Row="16">
-						<TextBlock Text="Role" Style="{StaticResource FormLabelStyle}" />
-						<ComboBox ItemsSource="{Binding Editor.Roles}" SelectedItem="{Binding Editor.Role}" Style="{StaticResource AppComboBoxStyle}" />
-						<TextBlock Margin="0,6,0,0" Text="Roles use fixed Depot permission assignments." Style="{StaticResource HintStyle}" />
+						<TextBlock Text="Roles" Style="{StaticResource FormLabelStyle}" />
+						<ItemsControl ItemsSource="{Binding Editor.Roles}">
+							<ItemsControl.ItemTemplate>
+								<DataTemplate>
+									<CheckBox Margin="0,4,0,0" Content="{Binding Name}" IsChecked="{Binding IsSelected}" />
+								</DataTemplate>
+							</ItemsControl.ItemTemplate>
+						</ItemsControl>
+						<TextBlock Margin="0,6,0,0" Text="Effective permissions are the union of all active roles." Style="{StaticResource HintStyle}" />
+						<TextBlock Margin="0,8,0,0" Text="Effective permissions" Style="{StaticResource FormLabelStyle}" />
+						<TextBlock Foreground="{StaticResource SecondaryTextBrush}" MaxHeight="72" Text="{Binding Editor.EffectivePermissions}" TextWrapping="Wrap" />
 					</StackPanel>
 
 					<Grid Grid.Row="18">

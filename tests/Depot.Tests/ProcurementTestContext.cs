@@ -130,11 +130,17 @@ internal sealed class ProcurementTestContext : IAsyncDisposable
 		}
 	}
 
-	public void SignInApprover() => Authorization.SignIn(
-		_approver ?? throw new InvalidOperationException("The test approver was not initialized."));
+	public void SignInApprover()
+	{
+		var user = _approver ?? throw new InvalidOperationException("The test approver was not initialized.");
+		Authorization.SignIn(user, user.EffectivePermissions);
+	}
 
-	public void SignInAdministrator() => Authorization.SignIn(
-		_administrator ?? throw new InvalidOperationException("The test administrator was not initialized."));
+	public void SignInAdministrator()
+	{
+		var user = _administrator ?? throw new InvalidOperationException("The test administrator was not initialized.");
+		Authorization.SignIn(user, user.EffectivePermissions);
+	}
 
 	public async Task<long> ScalarAsync(
 		string sql,
@@ -200,9 +206,12 @@ internal sealed class ProcurementTestContext : IAsyncDisposable
 		context.InactiveInventoryId = await InsertInventoryAsync(context.Data, context.ItemId, purposeId, context.TestStorageLocationId, false);
 
 		var authorization = new AuthorizationService();
+		var roleRepository = new RoleRepository(context.Data);
 		var administrator = await new UserRepository(context.Data).GetByEmailAsync("admin@depot.local", CancellationToken.None)
 			?? throw new InvalidOperationException("The default administrator was not initialized.");
-		authorization.SignIn(administrator);
+		administrator.Roles = await roleRepository.GetUserRolesAsync(administrator.Id, CancellationToken.None);
+		administrator.EffectivePermissions = await roleRepository.GetEffectivePermissionsAsync(administrator.Id, CancellationToken.None);
+		authorization.SignIn(administrator, administrator.EffectivePermissions);
 		context._administrator = administrator;
 		var approverId = await context.Data.InsertAsync(
 			"INSERT INTO Users (Email, DisplayName, PasswordHash, IsAdministrator, CanApprovePurchaseOrders, IsActive, CreatedUtc) VALUES ($Email, $DisplayName, $PasswordHash, 0, 1, 1, $CreatedUtc);",
@@ -213,6 +222,9 @@ internal sealed class ProcurementTestContext : IAsyncDisposable
 			new DatabaseParameter("$CreatedUtc", DateTime.UtcNow.ToString("O", System.Globalization.CultureInfo.InvariantCulture)));
 		context._approver = await new UserRepository(context.Data).GetByIdAsync(approverId, CancellationToken.None)
 			?? throw new InvalidOperationException("The procurement approver was not initialized.");
+		await context.Data.ExecuteAsync("INSERT INTO UserRoles (UserId, RoleId) SELECT $UserId, Id FROM Roles WHERE Code = $Code;", CancellationToken.None, new DatabaseParameter("$UserId", approverId), new DatabaseParameter("$Code", SystemRoleCatalog.ApproverCode));
+		context._approver.Roles = await roleRepository.GetUserRolesAsync(approverId, CancellationToken.None);
+		context._approver.EffectivePermissions = await roleRepository.GetEffectivePermissionsAsync(approverId, CancellationToken.None);
 		context._authorization = authorization;
 		var audit = new AuditService(new AuditRepository(context.Data), authorization);
 		context._orders = new PurchaseOrderService(

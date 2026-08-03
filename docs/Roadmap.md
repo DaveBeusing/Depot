@@ -23,7 +23,7 @@ This roadmap reflects the implementation on the current `master` branch. “Impl
 
 - [x] Email/password authentication
 - [x] PBKDF2-SHA256 password hashing with per-user salts
-- [x] Fixed Administrator, Purchasing, Approver, WarehouseOperator, and standard-user roles with service-enforced workflow permissions
+- [x] Database-backed multi-role RBAC with a central permission catalog, protected system roles, service enforcement, session cache, audit, and optimistic concurrency
 - [x] Audit-entry persistence
 - [x] Optimistic concurrency with version columns
 - [x] Transactional stock movements

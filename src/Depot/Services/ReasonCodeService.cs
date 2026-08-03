@@ -34,6 +34,7 @@ public sealed class ReasonCodeService
 		string? description,
 		CancellationToken cancellationToken = default)
 	{
+		_auditService.RequirePermission(ApplicationPermission.MasterDataManage);
 		code = NormalizeCode(code);
 		name = name.Trim();
 		description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
@@ -85,6 +86,7 @@ public sealed class ReasonCodeService
 		bool isActive,
 		CancellationToken cancellationToken = default)
 	{
+		_auditService.RequirePermission(ApplicationPermission.MasterDataManage);
 		var reasonCode = await _repository.GetByIdAsync(id, cancellationToken)
 			?? throw new InvalidOperationException($"Reason code with id '{id}' was not found.");
 		if (!isActive && reasonCode.IsSystem && ReasonCodeSystemCodes.IsRequiredByActiveWorkflow(reasonCode.Code))

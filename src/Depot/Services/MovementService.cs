@@ -27,6 +27,7 @@ public sealed class MovementService
 
 	public async Task<MovementOverviewItem> ReverseWithdrawalAsync(long movementId, long reasonCodeId, string reversalReason, CancellationToken cancellationToken)
 	{
+		_audit.RequirePermission(ApplicationPermission.StockMovementsReverse);
 		var reversal = await _reversals.ReverseWithdrawalAsync(movementId, reasonCodeId, reversalReason, cancellationToken);
 		return await _movements.GetOverviewByIdAsync(reversal.Id, cancellationToken)
 			?? throw new InvalidOperationException("The reversal movement could not be loaded.");
@@ -35,8 +36,11 @@ public sealed class MovementService
 	public Task<IReadOnlyList<InventoryLookupItem>> SearchAvailableInventoriesAsync(string? searchText, int count, CancellationToken cancellationToken) =>
 		_inventories.SearchLookupAsync(searchText, count, cancellationToken);
 
-	public Task<PageResult<MovementOverviewItem>> SearchAsync(string? searchText, int pageNumber, int pageSize, CancellationToken cancellationToken) =>
-		_movements.SearchOverviewPageAsync(searchText, pageNumber, pageSize, cancellationToken);
+	public Task<PageResult<MovementOverviewItem>> SearchAsync(string? searchText, int pageNumber, int pageSize, CancellationToken cancellationToken)
+	{
+		_audit.RequirePermission(ApplicationPermission.StockMovementsView);
+		return _movements.SearchOverviewPageAsync(searchText, pageNumber, pageSize, cancellationToken);
+	}
 
 	public Task<MovementOverviewItem> AddPurchaseAsync(long inventoryId, int quantity, decimal unitPrice, long? reasonCodeId, string? reference, string? notes, CancellationToken cancellationToken)
 	{
@@ -90,6 +94,7 @@ public sealed class MovementService
 
 	private void Create(long inventoryId, StockMovementType movementType, int quantity, decimal? unitPrice, long? reasonCodeId, string? reference, string? notes)
 	{
+		_audit.RequirePermission(ApplicationPermission.StockMovementsPost);
 		if (inventoryId <= 0) throw new ArgumentException("Inventory id is required.", nameof(inventoryId));
 		var inventory = _inventories.GetById(inventoryId) ?? throw new InvalidOperationException($"Inventory with id '{inventoryId}' was not found.");
 		if (_items.GetById(inventory.ItemId) is null) throw new InvalidOperationException($"Item with id '{inventory.ItemId}' was not found.");
@@ -100,6 +105,7 @@ public sealed class MovementService
 
 	private async Task<MovementOverviewItem> CreateAsync(long inventoryId, StockMovementType movementType, int quantity, decimal? unitPrice, long? reasonCodeId, string? reference, string? notes, CancellationToken cancellationToken)
 	{
+		_audit.RequirePermission(ApplicationPermission.StockMovementsPost);
 		if (inventoryId <= 0) throw new ArgumentException("Inventory id is required.", nameof(inventoryId));
 		var inventory = await _inventories.GetByIdAsync(inventoryId, cancellationToken) ?? throw new InvalidOperationException($"Inventory with id '{inventoryId}' was not found.");
 		if (await _items.GetByIdAsync(inventory.ItemId, cancellationToken) is null) throw new InvalidOperationException($"Item with id '{inventory.ItemId}' was not found.");

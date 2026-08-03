@@ -15,7 +15,7 @@ The project is under active development on the `0.13.0-preview` line. Implemente
 
 ### Fully implemented in the application
 
-- Email/password authentication, PBKDF2-SHA256 password hashing, fixed Administrator/Purchasing/Approver/WarehouseOperator/User roles, session switching, and administrator-managed users
+- Email/password authentication, PBKDF2-SHA256 password hashing, database-backed multi-role RBAC, session switching, and administrator-managed users and roles
 - Dashboard metrics, recent movements, inventory valuation, and German Euro formatting
 - Item, inventory, purpose, warehouse, storage-location, and stock-movement workflows
 - Reason codes with immutable technical keys, editable display names, protected workflow system codes, search, activation, and movement references
@@ -52,7 +52,7 @@ SQL Server and MySQL/MariaDB support is implemented in code, but live-server mig
 - Productive list and report paths no longer use synchronous, unbounded `GetAll()` reads against remote databases.
 - Inventory reports use server-side paging and aggregation; large Excel exports read deterministic database slices and report progress.
 - The purchase-order screen currently loads a bounded server-side page without full user-facing page navigation.
-- Audit records are persisted, but there is no administration UI for browsing or exporting the audit trail.
+- Audit records are persisted and exposed through a read-only, filtered administration view with sanitized detail and export.
 - General application preferences remain a placeholder; database and backup settings are implemented separately.
 
 ### Not started
@@ -125,7 +125,7 @@ dotnet build Depot.slnx
 dotnet run --project src/Depot/Depot.csproj
 ```
 
-The first installation uses local SQLite and creates `depot.db`. The current database schema version is **27**.
+The first installation uses local SQLite and creates `depot.db`. The current database schema version is **28**.
 
 Connection and backup settings are stored in `depot.settings`. The file is a JSON envelope with a DPAPI-encrypted payload for the current Windows user. Administration > Database can configure, test, and activate SQLite, SQL Server, or MySQL/MariaDB connections. Provider changes take effect after restarting Depot. Connection attempts and failures are written to `depot.database.log` without connection strings or passwords.
 

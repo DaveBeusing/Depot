@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 using Depot.Data;
+using Depot.Models;
 using Depot.Repositories;
 using Depot.Services;
 
@@ -48,7 +49,7 @@ public sealed class ItemReferenceDataTests : IDisposable
 		var authorization = new AuthorizationService();
 		var administrator = new UserRepository(database).GetByEmail("admin@depot.local")
 			?? throw new InvalidOperationException("The test administrator was not initialized.");
-		authorization.SignIn(administrator);
+		authorization.SignIn(administrator, PermissionCatalog.All);
 		var audit = new AuditService(new AuditRepository(database), authorization);
 		var manufacturerService = new ManufacturerService(new ManufacturerRepository(database), audit);
 		var categoryService = new CategoryService(new CategoryRepository(database), audit);

@@ -8,33 +8,20 @@ namespace Depot.Services;
 public sealed class AuthenticationService
 {
 	private readonly UserRepository _userRepository;
+	private readonly RoleRepository _roleRepository;
 	private readonly PasswordHasher _passwordHasher;
 	private readonly AuthorizationService _authorizationService;
 
 	public AuthenticationService(
 		UserRepository userRepository,
+		RoleRepository roleRepository,
 		PasswordHasher passwordHasher,
 		AuthorizationService authorizationService)
 	{
 		_userRepository = userRepository;
+		_roleRepository = roleRepository;
 		_passwordHasher = passwordHasher;
 		_authorizationService = authorizationService;
-	}
-
-	public bool SignIn(string email, string password)
-	{
-		var normalizedEmail = email.Trim().ToLowerInvariant();
-		var authentication = _userRepository.GetAuthenticationByEmail(normalizedEmail);
-
-		if (authentication is null ||
-			!authentication.User.IsActive ||
-			!_passwordHasher.Verify(password, authentication.PasswordHash))
-		{
-			return false;
-		}
-
-		_authorizationService.SignIn(authentication.User);
-		return true;
 	}
 
 	public async Task<bool> SignInAsync(
@@ -52,7 +39,9 @@ public sealed class AuthenticationService
 		{
 			return false;
 		}
-		_authorizationService.SignIn(authentication.User);
+		authentication.User.Roles = await _roleRepository.GetUserRolesAsync(authentication.User.Id, cancellationToken);
+		authentication.User.EffectivePermissions = await _roleRepository.GetEffectivePermissionsAsync(authentication.User.Id, cancellationToken);
+		_authorizationService.SignIn(authentication.User, authentication.User.EffectivePermissions);
 		return true;
 	}
 }

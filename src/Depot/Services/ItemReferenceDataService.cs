@@ -40,8 +40,11 @@ public abstract class ItemReferenceDataService<T> : IItemReferenceDataService
 	public string SingularName { get; }
 	public string PluralName { get; }
 
-	public async Task<IReadOnlyList<ItemReferenceData>> SearchAsync(string? searchText, CancellationToken cancellationToken = default) =>
-		[.. await _repository.SearchAsync(searchText, cancellationToken)];
+	public async Task<IReadOnlyList<ItemReferenceData>> SearchAsync(string? searchText, CancellationToken cancellationToken = default)
+	{
+		_auditService.RequirePermission(ApplicationPermission.MasterDataView);
+		return [.. await _repository.SearchAsync(searchText, cancellationToken)];
+	}
 
 	public async Task<IReadOnlyList<ItemReferenceData>> GetActiveAsync(CancellationToken cancellationToken = default) =>
 		[.. await _activeCache.GetAsync(_repository.ListActiveAsync, cancellationToken)];
@@ -53,6 +56,7 @@ public abstract class ItemReferenceDataService<T> : IItemReferenceDataService
 		string? description,
 		CancellationToken cancellationToken = default)
 	{
+		_auditService.RequirePermission(ApplicationPermission.MasterDataManage);
 		name = name.Trim();
 		description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
 		if (string.IsNullOrWhiteSpace(name))
@@ -95,6 +99,7 @@ public abstract class ItemReferenceDataService<T> : IItemReferenceDataService
 		bool isActive,
 		CancellationToken cancellationToken = default)
 	{
+		_auditService.RequirePermission(ApplicationPermission.MasterDataManage);
 		var value = await _repository.GetByIdAsync(id, cancellationToken)
 			?? throw new InvalidOperationException($"{SingularName} with id '{id}' was not found.");
 		if (!isActive && await _repository.IsReferencedAsync(id, cancellationToken))
@@ -111,6 +116,7 @@ public abstract class ItemReferenceDataService<T> : IItemReferenceDataService
 
 	public async Task<ItemReferenceData?> GetOrCreateAsync(string? name, CancellationToken cancellationToken = default)
 	{
+		_auditService.RequirePermission(ApplicationPermission.MasterDataManage);
 		if (string.IsNullOrWhiteSpace(name)) return null;
 		name = name.Trim();
 		var existing = await _repository.GetByNameAsync(name, cancellationToken);

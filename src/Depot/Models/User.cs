@@ -19,6 +19,11 @@ public sealed class User
 
 	public UserRole Role { get; set; }
 
+	public IReadOnlyList<Role> Roles { get; set; } = [];
+
+	public IReadOnlySet<ApplicationPermission> EffectivePermissions { get; set; }
+		= new HashSet<ApplicationPermission>();
+
 	public bool IsActive { get; set; }
 
 	public DateTime CreatedUtc { get; set; }

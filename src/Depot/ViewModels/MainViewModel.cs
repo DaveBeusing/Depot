@@ -16,7 +16,7 @@ public sealed class MainViewModel : BaseViewModel
 	private CancellationTokenSource? _navigationLoadCancellation;
 	private NavigationItem? _selectedNavigationItem;
 	private BaseViewModel? _currentViewModel;
-	private readonly AuthorizationService _authorizationService;
+	private readonly IAuthorizationService _authorizationService;
 	private readonly SessionService _sessionService;
 	
 	public MainViewModel(
@@ -44,7 +44,8 @@ public sealed class MainViewModel : BaseViewModel
 		WarehouseService warehouseService,
 		StorageLocationService storageLocationService,
 		UserService userService,
-		AuthorizationService authorizationService,
+		RoleService roleService,
+		IAuthorizationService authorizationService,
 		SessionService sessionService,
 		ImportService importService,
 		IFileDialogService fileDialogService,
@@ -114,6 +115,8 @@ public sealed class MainViewModel : BaseViewModel
 				warehouseService,
 				storageLocationService,
 				userService,
+				roleService,
+				authorizationService,
 				settingsService,
 				connectionStatusService,
 				databaseConnectionTester,
@@ -122,7 +125,7 @@ public sealed class MainViewModel : BaseViewModel
 				fileDialogService,
 				applicationInformationService);
 
-		NavigationItems.Add(
+		if (_authorizationService.HasPermission(ApplicationPermission.DashboardView)) NavigationItems.Add(
 			new NavigationItem
 			{
 				Name = "Dashboard",
@@ -130,7 +133,7 @@ public sealed class MainViewModel : BaseViewModel
 				Section = ShellSection.Dashboard
 			});
 
-		NavigationItems.Add(
+		if (_authorizationService.HasPermission(ApplicationPermission.InventoryView)) NavigationItems.Add(
 			new NavigationItem
 			{
 				Name = "Inventory",
@@ -138,7 +141,7 @@ public sealed class MainViewModel : BaseViewModel
 				Section = ShellSection.Inventory
 			});
 
-		NavigationItems.Add(
+		if (_authorizationService.HasPermission(ApplicationPermission.ItemsView)) NavigationItems.Add(
 			new NavigationItem
 			{
 				Name = "Items",
@@ -146,7 +149,7 @@ public sealed class MainViewModel : BaseViewModel
 				Section = ShellSection.Items
 			});
 
-		NavigationItems.Add(
+		if (_authorizationService.HasPermission(ApplicationPermission.StockMovementsView)) NavigationItems.Add(
 			new NavigationItem
 			{
 				Name = "Movements",
@@ -154,7 +157,7 @@ public sealed class MainViewModel : BaseViewModel
 				Section = ShellSection.Movements
 			});
 
-		NavigationItems.Add(
+		if (_authorizationService.HasPermission(ApplicationPermission.StockTransfersView)) NavigationItems.Add(
 			new NavigationItem
 			{
 				Name = "Transfers",
@@ -162,7 +165,7 @@ public sealed class MainViewModel : BaseViewModel
 				Section = ShellSection.Transfers
 			});
 
-		NavigationItems.Add(
+		if (_authorizationService.HasPermission(ApplicationPermission.InventoryCountsView)) NavigationItems.Add(
 			new NavigationItem
 			{
 				Name = "Inventory Counts",
@@ -170,19 +173,19 @@ public sealed class MainViewModel : BaseViewModel
 				Section = ShellSection.InventoryCounts
 			});
 
-		if (_authorizationService.HasAnyPermission(ApplicationPermission.MaterialIssuesCreate, ApplicationPermission.MaterialIssuesPost, ApplicationPermission.MaterialIssuesReverse))
+		if (_authorizationService.HasPermission(ApplicationPermission.MaterialIssuesView))
 			NavigationItems.Add(new NavigationItem { Name = "Material Issues", IconData = "M 3,4 L 17,4 L 17,16 L 3,16 Z M 6,8 L 14,8 M 6,12 L 11,12 M 14,10 L 18,10 M 16,8 L 18,10 L 16,12", Section = ShellSection.MaterialIssues });
 
-		if (_authorizationService.HasAnyPermission(ApplicationPermission.MaterialReturnsCreate, ApplicationPermission.MaterialReturnsPost))
+		if (_authorizationService.HasPermission(ApplicationPermission.MaterialReturnsView))
 			NavigationItems.Add(new NavigationItem { Name = "Material Returns", IconData = "M 17,4 L 5,4 L 5,16 L 17,16 M 8,8 L 3,11 L 8,14 M 3,11 L 13,11", Section = ShellSection.MaterialReturns });
 
-		if (_authorizationService.HasAnyPermission(ApplicationPermission.PurchaseOrdersCreate, ApplicationPermission.PurchaseOrdersEdit, ApplicationPermission.PurchaseOrdersSubmit, ApplicationPermission.PurchaseOrdersApprove, ApplicationPermission.PurchaseOrdersOrder, ApplicationPermission.PurchaseOrdersClose))
+		if (_authorizationService.HasPermission(ApplicationPermission.PurchaseOrdersView))
 			NavigationItems.Add(new NavigationItem { Name = "Procurement", IconData = "M 3,4 L 17,4 L 16,17 L 4,17 Z M 7,4 L 7,2 L 13,2 L 13,4 M 7,8 L 13,8 M 7,12 L 13,12", Section = ShellSection.Procurement });
 
-		if (_authorizationService.HasAnyPermission(ApplicationPermission.SupplierReturnsCreate, ApplicationPermission.SupplierReturnsPost))
+		if (_authorizationService.HasPermission(ApplicationPermission.SupplierReturnsView))
 			NavigationItems.Add(new NavigationItem { Name = "Supplier Returns", IconData = "M 17,4 L 5,4 L 5,16 L 17,16 M 8,8 L 3,11 L 8,14 M 3,11 L 13,11 M 13,7 L 17,11 L 13,15", Section = ShellSection.SupplierReturns });
 
-		if (_authorizationService.CanApprovePurchaseOrders())
+		if (_authorizationService.HasPermission(ApplicationPermission.PurchaseOrdersApprove))
 		{
 			NavigationItems.Add(
 				new NavigationItem
@@ -193,7 +196,7 @@ public sealed class MainViewModel : BaseViewModel
 				});
 		}
 
-		NavigationItems.Add(
+		if (_authorizationService.HasPermission(ApplicationPermission.ReportsView)) NavigationItems.Add(
 			new NavigationItem
 			{
 				Name = "Reports",
@@ -201,9 +204,15 @@ public sealed class MainViewModel : BaseViewModel
 				Section = ShellSection.Reports
 			});
 
-		// Only show the Administration section if the user has permission to manage users
-		// CanManageUsers() represents the administrator role in version 1.0.
-		if (_authorizationService.CanManageUsers())
+		if (_authorizationService.HasAnyPermission(
+			ApplicationPermission.AdministrationView,
+			ApplicationPermission.ImportManage,
+			ApplicationPermission.MasterDataView,
+			ApplicationPermission.UsersView,
+			ApplicationPermission.RolesView,
+			ApplicationPermission.DatabaseView,
+			ApplicationPermission.AuditLogView,
+			ApplicationPermission.SettingsView))
 		{
 			NavigationItems.Add(
 				new NavigationItem
@@ -215,7 +224,7 @@ public sealed class MainViewModel : BaseViewModel
 				});
 		}
 
-		SelectedNavigationItem = NavigationItems[0];
+		SelectedNavigationItem = NavigationItems.Count == 0 ? null : NavigationItems[0];
 	}
 
 	public ObservableCollection<NavigationItem> NavigationItems { get; } = new();
@@ -359,12 +368,9 @@ public sealed class MainViewModel : BaseViewModel
 
 	public string CurrentUserDisplayName => _authorizationService.CurrentUser?.DisplayName ?? string.Empty;
 
-	public string CurrentUserRole => AuthorizationService.EffectiveRole(_authorizationService.CurrentUser) switch
-	{
-		UserRole.WarehouseOperator => "Warehouse Operator",
-		UserRole.Approver => "Purchase Approver",
-		var role => role.ToString()
-	};
+	public string CurrentUserRole => _authorizationService.CurrentUser is { Roles.Count: > 0 } user
+		? string.Join(", ", user.Roles.Select(role => role.Name))
+		: "No active role";
 
 	private void Logout()
 	{

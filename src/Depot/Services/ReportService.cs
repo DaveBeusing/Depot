@@ -12,12 +12,14 @@ public sealed class ReportService
 	private const string EuroCurrencyFormat = "#,##0.00 [$€-407]";
 
 	private readonly StockService _stockService;
+	private readonly IAuthorizationService _authorization;
 
 	public ReportService(
-		StockService stockService)
+		StockService stockService,
+		IAuthorizationService authorization)
 	{
-		_stockService =
-			stockService;
+		_stockService = stockService;
+		_authorization = authorization;
 	}
 
 	public async Task<InventoryValueReportPage> GetInventoryValueReportPageAsync(
@@ -26,6 +28,7 @@ public sealed class ReportService
 		int pageSize,
 		CancellationToken cancellationToken)
 	{
+		_authorization.RequirePermission(ApplicationPermission.ReportsView);
 		var pageTask = _stockService.SearchInventoryOverviewAsync(searchText, pageNumber, pageSize, cancellationToken);
 		var summaryTask = _stockService.GetInventoryReportSummaryAsync(searchText, cancellationToken);
 		await Task.WhenAll(pageTask, summaryTask);
@@ -49,6 +52,7 @@ public sealed class ReportService
 		GroupedInventoryReportType reportType,
 		CancellationToken cancellationToken)
 	{
+		_authorization.RequirePermission(ApplicationPermission.ReportsView);
 		var itemsTask = _stockService.GetGroupedInventoryReportItemsAsync(searchText, reportType, cancellationToken);
 		var summaryTask = _stockService.GetInventoryReportSummaryAsync(searchText, cancellationToken);
 		await Task.WhenAll(itemsTask, summaryTask);
@@ -69,6 +73,7 @@ public sealed class ReportService
 		IProgress<ReportExportProgress>? progress = null,
 		CancellationToken cancellationToken = default)
 	{
+		_authorization.RequirePermission(ApplicationPermission.ReportsExport);
 		const int pageSize = 500;
 		var summary = await _stockService.GetInventoryReportSummaryAsync(searchText, cancellationToken).ConfigureAwait(false)
 			?? new InventoryReportSummary();
@@ -274,6 +279,7 @@ public sealed class ReportService
 		IProgress<ReportExportProgress>? progress = null,
 		CancellationToken cancellationToken = default)
 	{
+		_authorization.RequirePermission(ApplicationPermission.ReportsExport);
 		var definition = GetGroupedInventoryReportDefinition(reportType);
 		var report = await GetGroupedInventoryReportAsync(
 			searchText,

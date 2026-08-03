@@ -61,7 +61,7 @@ public sealed class ReportScalabilityTests
 	}
 
 	private static ReportService CreateService(ProcurementTestContext context) =>
-		new(new StockService(new InventoryRepository(context.Data), new StockMovementRepository(context.Data)));
+		new(new StockService(new InventoryRepository(context.Data), new StockMovementRepository(context.Data)), context.Authorization);
 
 	private static Task<long> AddStockAsync(ProcurementTestContext context, long inventoryId, int quantity, decimal unitPrice) =>
 		context.Data.InsertAsync(

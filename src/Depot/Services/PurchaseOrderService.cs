@@ -12,9 +12,9 @@ public sealed class PurchaseOrderService
 	private readonly SupplierRepository _suppliers;
 	private readonly ItemRepository _items;
 	private readonly AuditService _audit;
-	private readonly AuthorizationService _authorization;
+	private readonly IAuthorizationService _authorization;
 
-	public PurchaseOrderService(PurchaseOrderRepository orders, SupplierRepository suppliers, ItemRepository items, AuditService audit, AuthorizationService authorization)
+	public PurchaseOrderService(PurchaseOrderRepository orders, SupplierRepository suppliers, ItemRepository items, AuditService audit, IAuthorizationService authorization)
 	{
 		_orders = orders;
 		_suppliers = suppliers;
@@ -23,12 +23,19 @@ public sealed class PurchaseOrderService
 		_authorization = authorization;
 	}
 
-	public Task<PageResult<PurchaseOrder>> SearchAsync(string? searchText, PurchaseOrderStatus? status, int pageNumber = 1, int pageSize = 100, CancellationToken cancellationToken = default) =>
-		_orders.SearchAsync(searchText, status, pageNumber, pageSize, cancellationToken);
+	public Task<PageResult<PurchaseOrder>> SearchAsync(string? searchText, PurchaseOrderStatus? status, int pageNumber = 1, int pageSize = 100, CancellationToken cancellationToken = default)
+	{
+		_authorization.RequirePermission(ApplicationPermission.PurchaseOrdersView);
+		return _orders.SearchAsync(searchText, status, pageNumber, pageSize, cancellationToken);
+	}
 
-	public Task<PurchaseOrder?> GetByIdAsync(long id, CancellationToken cancellationToken = default) => _orders.GetByIdAsync(id, cancellationToken);
+	public Task<PurchaseOrder?> GetByIdAsync(long id, CancellationToken cancellationToken = default)
+	{
+		_authorization.RequirePermission(ApplicationPermission.PurchaseOrdersView);
+		return _orders.GetByIdAsync(id, cancellationToken);
+	}
 
-	public bool CanCurrentUserApprove => _authorization.CanApprovePurchaseOrders();
+	public bool CanCurrentUserApprove => _authorization.HasPermission(ApplicationPermission.PurchaseOrdersApprove);
 	public bool CanCurrentUserCreate => _authorization.HasPermission(ApplicationPermission.PurchaseOrdersCreate);
 	public bool CanCurrentUserEdit => _authorization.HasPermission(ApplicationPermission.PurchaseOrdersEdit);
 	public bool CanCurrentUserSubmit => _authorization.HasPermission(ApplicationPermission.PurchaseOrdersSubmit);
@@ -154,7 +161,7 @@ public sealed class PurchaseOrderService
 
 	private async Task<PurchaseOrder> DecideApprovalAsync(long id, long version, PurchaseOrderStatus decision, string? comment, Guid operationId, CancellationToken cancellationToken)
 	{
-		if (!_authorization.CanApprovePurchaseOrders())
+		if (!_authorization.HasPermission(ApplicationPermission.PurchaseOrdersApprove))
 			throw new UnauthorizedAccessException("The current user is not permitted to approve purchase orders.");
 		var user = CurrentUser();
 		var operation = new WorkflowOperation(operationId, decision == PurchaseOrderStatus.Approved ? WorkflowOperationNames.ApprovePurchaseOrder : WorkflowOperationNames.RejectPurchaseOrder, id);

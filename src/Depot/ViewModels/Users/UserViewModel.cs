@@ -19,6 +19,7 @@ public sealed class UserViewModel : BaseViewModel, IDisposable
 	private string? _errorMessage;
 	private int _pageNumber = 1;
 	private long _totalCount;
+	private IReadOnlyList<Role> _availableRoles = [];
 
 	public UserViewModel(UserService userService)
 	{
@@ -112,6 +113,11 @@ public sealed class UserViewModel : BaseViewModel, IDisposable
 		var selectedId = SelectedUser?.Id;
 		try
 		{
+			if (_availableRoles.Count == 0)
+			{
+				_availableRoles = await _userService.ListAssignableRolesAsync(cancellationToken);
+				Editor.SetRoles(_availableRoles, []);
+			}
 			var page = await _userService.SearchUsersAsync(
 				SearchText,
 				PageNumber,
@@ -141,7 +147,8 @@ public sealed class UserViewModel : BaseViewModel, IDisposable
 		Editor.Email = SelectedUser.Email;
 		Editor.DisplayName = SelectedUser.DisplayName;
 		Editor.Password = string.Empty;
-		Editor.Role = SelectedUser.UserRole;
+		Editor.SetRoles(_availableRoles, SelectedUser.RoleIds);
+		Editor.EffectivePermissions = SelectedUser.EffectivePermissions;
 		Editor.IsActive = SelectedUser.IsActive;
 		Editor.Version = SelectedUser.Version;
 	}
@@ -162,10 +169,10 @@ public sealed class UserViewModel : BaseViewModel, IDisposable
 		{
 			var user = Editor.Id == 0
 				? await _userService.CreateUserAsync(
-					Editor.Email, Editor.DisplayName, Editor.Password, Editor.Role, cancellationToken)
+					Editor.Email, Editor.DisplayName, Editor.Password, Editor.SelectedRoleIds, cancellationToken)
 				: await _userService.UpdateUserAsync(
 					Editor.Id, Editor.Version, Editor.Email, Editor.DisplayName,
-					Editor.Password, Editor.Role, cancellationToken);
+					Editor.Password, Editor.SelectedRoleIds, cancellationToken);
 			UpdateUser(user);
 			Editor.Clear();
 			SelectedUser = null;

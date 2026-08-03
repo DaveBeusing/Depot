@@ -91,7 +91,7 @@ public sealed class SupplierManagementTests : IDisposable
 		var authorization = new AuthorizationService();
 		var administrator = new UserRepository(database).GetByEmail("admin@depot.local")
 			?? throw new InvalidOperationException("The test administrator was not initialized.");
-		authorization.SignIn(administrator);
+		authorization.SignIn(administrator, PermissionCatalog.All);
 		var audit = new AuditService(new AuditRepository(database), authorization);
 		var categoryRepository = new CategoryRepository(database);
 		var categoryService = new CategoryService(categoryRepository, audit);

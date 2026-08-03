@@ -26,8 +26,11 @@ public sealed class StorageLocationService
 	public Task<IReadOnlyList<StorageLocation>> SearchAsync(
 		long? warehouseId,
 		string? searchText,
-		CancellationToken cancellationToken = default) =>
-		_locations.SearchAsync(warehouseId, searchText, cancellationToken);
+		CancellationToken cancellationToken = default)
+	{
+		_audit.RequirePermission(ApplicationPermission.MasterDataView);
+		return _locations.SearchAsync(warehouseId, searchText, cancellationToken);
+	}
 
 	public Task<IReadOnlyList<StorageLocation>> GetActiveAsync(CancellationToken cancellationToken = default) =>
 		_activeCache.GetAsync(_locations.ListActiveAsync, cancellationToken);
@@ -37,6 +40,7 @@ public sealed class StorageLocationService
 		string name,
 		CancellationToken cancellationToken = default)
 	{
+		_audit.RequirePermission(ApplicationPermission.MasterDataManage);
 		var normalized = name.Trim();
 		var existing = await _locations.GetByNameAsync(warehouseId, normalized, cancellationToken);
 		return existing ?? await SaveAsync(0, 0, warehouseId, normalized, null, cancellationToken);
@@ -50,6 +54,7 @@ public sealed class StorageLocationService
 		string? description,
 		CancellationToken cancellationToken = default)
 	{
+		_audit.RequirePermission(ApplicationPermission.MasterDataManage);
 		name = name.Trim();
 		description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
 		if (warehouseId <= 0) throw new ArgumentException("Warehouse is required.", nameof(warehouseId));
@@ -96,6 +101,7 @@ public sealed class StorageLocationService
 		bool isActive,
 		CancellationToken cancellationToken = default)
 	{
+		_audit.RequirePermission(ApplicationPermission.MasterDataManage);
 		var location = await _locations.GetByIdAsync(id, cancellationToken)
 			?? throw new InvalidOperationException($"Storage location with id '{id}' was not found.");
 		if (isActive)

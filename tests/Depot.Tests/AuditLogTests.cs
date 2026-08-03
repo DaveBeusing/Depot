@@ -60,7 +60,7 @@ public sealed class AuditLogTests
 				AfterJson = "{\"passwordHash\":\"new-secret\",\"name\":\"After\"}"
 			}, CancellationToken.None);
 			var authorization = new AuthorizationService();
-			authorization.SignIn(new User { Id = 1, Email = "admin@example.test", IsAdministrator = true, IsActive = true });
+			authorization.SignIn(new User { Id = 1, Email = "admin@example.test", IsActive = true }, PermissionCatalog.All);
 			var service = new AuditLogService(repository, authorization, new AuditJsonSanitizer());
 
 			var page = await service.SearchAsync(
@@ -91,7 +91,7 @@ public sealed class AuditLogTests
 			var factory = new SqliteConnectionFactory(path);
 			new DepotDatabase(factory).Initialize();
 			var authorization = new AuthorizationService();
-			authorization.SignIn(new User { Id = 2, Email = "user@example.test", IsAdministrator = false, IsActive = true });
+			authorization.SignIn(new User { Id = 2, Email = "user@example.test", IsActive = true }, []);
 			var service = new AuditLogService(
 				new AuditRepository(new DatabaseAccess(factory)), authorization, new AuditJsonSanitizer());
 

@@ -3,27 +3,23 @@
 
 using System.Collections.ObjectModel;
 
+using Depot.Models;
+using Depot.Services;
+using Depot.ViewModels.MasterData;
 using Depot.ViewModels.Shared;
 using Depot.ViewModels.Users;
-using Depot.ViewModels.MasterData;
-using Depot.Services;
-
 
 namespace Depot.ViewModels.Administration;
 
-/// <summary>
-/// Provides navigation and content selection for the administration area.
-/// </summary>
-public sealed class AdministrationViewModel
-	: BaseViewModel
+public sealed class AdministrationViewModel : BaseViewModel
 {
 	private readonly ImportViewModel _importViewModel;
 	private readonly MasterDataViewModel _masterDataViewModel;
 	private readonly UserViewModel _userViewModel;
+	private readonly RoleViewModel _roleViewModel;
 	private readonly DatabaseSettingsViewModel _databaseSettingsViewModel;
 	private readonly AuditLogViewModel _auditLogViewModel;
 	private readonly AboutViewModel _aboutViewModel;
-
 	private NavigationItem? _selectedNavigationItem;
 	private BaseViewModel? _currentViewModel;
 
@@ -42,6 +38,8 @@ public sealed class AdministrationViewModel
 		WarehouseService warehouseService,
 		StorageLocationService storageLocationService,
 		UserService userService,
+		RoleService roleService,
+		IAuthorizationService authorization,
 		SettingsService settingsService,
 		ConnectionStatusService connectionStatusService,
 		DatabaseConnectionTester databaseConnectionTester,
@@ -52,146 +50,56 @@ public sealed class AdministrationViewModel
 	{
 		_importViewModel = importViewModel;
 		_masterDataViewModel = new MasterDataViewModel(purposeService, reasonCodeService, manufacturerService, categoryService, unitOfMeasureService, packagingService, supplierCategoryService, supplierService, supplierItemService, itemService, warehouseService, storageLocationService);
-		_userViewModel =
-			new UserViewModel(
-				userService);
-		_databaseSettingsViewModel =
-			new DatabaseSettingsViewModel(
-				settingsService,
-				connectionStatusService,
-				databaseConnectionTester,
-				databaseManagementService,
-				fileDialogService);
+		_userViewModel = new UserViewModel(userService);
+		_roleViewModel = new RoleViewModel(roleService);
+		_databaseSettingsViewModel = new DatabaseSettingsViewModel(settingsService, connectionStatusService, databaseConnectionTester, databaseManagementService, fileDialogService);
 		_aboutViewModel = new AboutViewModel(applicationInformationService);
 		_auditLogViewModel = new AuditLogViewModel(auditLogService, fileDialogService);
 
-		NavigationItems.Add(
-			new NavigationItem
-			{
-				Name = "Import",
-				Section = AdministrationSection.Import
-			});
-
-		NavigationItems.Add(
-			new NavigationItem
-			{
-				Name = "Master Data",
-				Section = AdministrationSection.MasterData
-			});
-
-		NavigationItems.Add(
-			new NavigationItem
-			{
-				Name = "Users",
-				Section = AdministrationSection.Users
-			});
-
-		NavigationItems.Add(
-			new NavigationItem
-			{
-				Name = "Database",
-				Section = AdministrationSection.Database
-			});
-
-		NavigationItems.Add(
-			new NavigationItem
-			{
-				Name = "Audit Log",
-				Section = AdministrationSection.AuditLog
-			});
-
-		NavigationItems.Add(
-			new NavigationItem
-			{
-				Name = "Settings",
-				Section = AdministrationSection.Settings
-			});
-
-		NavigationItems.Add(
-			new NavigationItem
-			{
-				Name = "About",
-				Section = AdministrationSection.About
-			});
-
-		SelectedNavigationItem =
-			NavigationItems[0];
+		AddIf(authorization, ApplicationPermission.ImportManage, "Import", AdministrationSection.Import);
+		AddIf(authorization, ApplicationPermission.MasterDataView, "Master Data", AdministrationSection.MasterData);
+		AddIf(authorization, ApplicationPermission.UsersView, "Users", AdministrationSection.Users);
+		AddIf(authorization, ApplicationPermission.RolesView, "Roles", AdministrationSection.Roles);
+		AddIf(authorization, ApplicationPermission.DatabaseView, "Database", AdministrationSection.Database);
+		AddIf(authorization, ApplicationPermission.AuditLogView, "Audit Log", AdministrationSection.AuditLog);
+		AddIf(authorization, ApplicationPermission.SettingsView, "Settings", AdministrationSection.Settings);
+		NavigationItems.Add(new NavigationItem { Name = "About", Section = AdministrationSection.About });
+		SelectedNavigationItem = NavigationItems[0];
 	}
 
-	public ObservableCollection<NavigationItem> NavigationItems { get; }
-		= new();
-
-	public NavigationItem? SelectedNavigationItem
-	{
-		get => _selectedNavigationItem;
-		set
-		{
-			_selectedNavigationItem = value;
-			OnPropertyChanged();
-			UpdateCurrentViewModel();
-		}
-	}
-
-	public BaseViewModel? CurrentViewModel
-	{
-		get => _currentViewModel;
-		private set
-		{
-			_currentViewModel = value;
-			OnPropertyChanged();
-		}
-	}
+	public ObservableCollection<NavigationItem> NavigationItems { get; } = new();
+	public NavigationItem? SelectedNavigationItem { get => _selectedNavigationItem; set { _selectedNavigationItem = value; OnPropertyChanged(); UpdateCurrentViewModel(); } }
+	public BaseViewModel? CurrentViewModel { get => _currentViewModel; private set { _currentViewModel = value; OnPropertyChanged(); } }
 
 	private void UpdateCurrentViewModel()
 	{
-		if (SelectedNavigationItem is null)
+		CurrentViewModel = SelectedNavigationItem?.Section is not AdministrationSection section ? null : section switch
 		{
-			CurrentViewModel = null;
-			return;
-		}
-
-		CurrentViewModel =
-			(AdministrationSection)SelectedNavigationItem.Section switch
-			{
-				AdministrationSection.Import =>
-					_importViewModel,
-
-				AdministrationSection.MasterData =>
-					_masterDataViewModel,
-
-				AdministrationSection.Users =>
-					_userViewModel,
-
-				AdministrationSection.Database =>
-					_databaseSettingsViewModel,
-
-				AdministrationSection.AuditLog =>
-					_auditLogViewModel,
-
-				AdministrationSection.Settings =>
-					new PlaceholderViewModel(
-						"Settings",
-						"Application settings will be available in a future release."),
-
-				AdministrationSection.About =>
-					_aboutViewModel,
-
-				_ =>
-					new PlaceholderViewModel(
-						"Administration",
-						"This administration section is currently under development.")
-			};
-
+			AdministrationSection.Import => _importViewModel,
+			AdministrationSection.MasterData => _masterDataViewModel,
+			AdministrationSection.Users => _userViewModel,
+			AdministrationSection.Roles => _roleViewModel,
+			AdministrationSection.Database => _databaseSettingsViewModel,
+			AdministrationSection.AuditLog => _auditLogViewModel,
+			AdministrationSection.Settings => new PlaceholderViewModel("Settings", "Application settings will be available in a future release."),
+			AdministrationSection.About => _aboutViewModel,
+			_ => null
+		};
 		_ = LoadCurrentViewModelAsync();
 	}
 
-	private Task LoadCurrentViewModelAsync() =>
-		CurrentViewModel switch
-		{
-			MasterDataViewModel masterData => masterData.LoadAsync(),
-			UserViewModel users => users.LoadUsersAsync(),
-			DatabaseSettingsViewModel database => database.LoadAsync(),
-			AuditLogViewModel auditLog => auditLog.LoadAsync(),
-			_ => Task.CompletedTask
-		};
+	private Task LoadCurrentViewModelAsync() => CurrentViewModel switch
+	{
+		MasterDataViewModel masterData => masterData.LoadAsync(),
+		UserViewModel users => users.LoadUsersAsync(),
+		RoleViewModel roles => roles.LoadAsync(),
+		DatabaseSettingsViewModel database => database.LoadAsync(),
+		AuditLogViewModel auditLog => auditLog.LoadAsync(),
+		_ => Task.CompletedTask
+	};
+
+	private void AddIf(IAuthorizationService authorization, ApplicationPermission permission, string name, AdministrationSection section)
+	{
+		if (authorization.HasPermission(permission)) NavigationItems.Add(new NavigationItem { Name = name, Section = section });
+	}
 }

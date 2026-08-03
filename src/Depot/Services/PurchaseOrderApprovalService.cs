@@ -14,14 +14,14 @@ public sealed class PurchaseOrderApprovalService
 	private readonly PurchaseOrderRepository _orders;
 	private readonly AuditRepository _auditRepository;
 	private readonly PurchaseOrderService _purchaseOrders;
-	private readonly AuthorizationService _authorization;
+	private readonly IAuthorizationService _authorization;
 	private readonly AuditJsonSanitizer _sanitizer;
 
 	public PurchaseOrderApprovalService(
 		PurchaseOrderRepository orders,
 		AuditRepository auditRepository,
 		PurchaseOrderService purchaseOrders,
-		AuthorizationService authorization,
+		IAuthorizationService authorization,
 		AuditJsonSanitizer sanitizer)
 	{
 		_orders = orders;
@@ -32,7 +32,7 @@ public sealed class PurchaseOrderApprovalService
 	}
 
 	public bool CanDecide(long? createdByUserId) =>
-		_authorization.CanApprovePurchaseOrders() &&
+		_authorization.HasPermission(ApplicationPermission.PurchaseOrdersApprove) &&
 		_authorization.CurrentUser?.Id != createdByUserId;
 
 	public async Task<PurchaseOrderApprovalPage> SearchAsync(
@@ -157,7 +157,7 @@ public sealed class PurchaseOrderApprovalService
 
 	private void EnsureAuthorized()
 	{
-		if (!_authorization.CanApprovePurchaseOrders())
+		if (!_authorization.HasPermission(ApplicationPermission.PurchaseOrdersApprove))
 			throw new UnauthorizedAccessException("The current user is not permitted to approve purchase orders.");
 	}
 }

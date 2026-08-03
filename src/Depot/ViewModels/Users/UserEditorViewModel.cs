@@ -1,6 +1,8 @@
 // Copyright (c) 2026 David Beusing
 // Licensed under the MIT License.
 
+using System.Collections.ObjectModel;
+
 using Depot.Models;
 
 namespace Depot.ViewModels.Users;
@@ -14,9 +16,9 @@ public sealed class UserEditorViewModel : BaseViewModel
 	private string _email = string.Empty;
 	private string _displayName = string.Empty;
 	private string _password = string.Empty;
-	private UserRole _role;
 	private bool _isActive = true;
 	private long _version = 1;
+	private string _effectivePermissions = "Calculated after saving.";
 
 	public long Version
 	{
@@ -67,16 +69,15 @@ public sealed class UserEditorViewModel : BaseViewModel
 		}
 	}
 
-	public IReadOnlyList<UserRole> Roles { get; } = Enum.GetValues<UserRole>();
+	public ObservableCollection<RoleSelectionViewModel> Roles { get; } = new();
+	public IReadOnlyCollection<long> SelectedRoleIds => Roles.Where(role => role.IsSelected).Select(role => role.Id).ToArray();
+	public string EffectivePermissions { get => _effectivePermissions; set { _effectivePermissions = value; OnPropertyChanged(); } }
 
-	public UserRole Role
+	public void SetRoles(IEnumerable<Role> availableRoles, IEnumerable<long> selectedRoleIds)
 	{
-		get => _role;
-		set
-		{
-			_role = value;
-			OnPropertyChanged();
-		}
+		var selected = selectedRoleIds.ToHashSet();
+		Roles.Clear();
+		foreach (var role in availableRoles) Roles.Add(new RoleSelectionViewModel(role, selected.Contains(role.Id)));
 	}
 
 	public bool IsActive
@@ -107,8 +108,9 @@ public sealed class UserEditorViewModel : BaseViewModel
 		Email = string.Empty;
 		DisplayName = string.Empty;
 		Password = string.Empty;
-		Role = UserRole.User;
+		foreach (var role in Roles) role.IsSelected = string.Equals(role.Name, "User", StringComparison.Ordinal);
 		IsActive = true;
 		Version = 1;
+		EffectivePermissions = "Calculated after saving.";
 	}
 }

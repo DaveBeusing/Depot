@@ -41,11 +41,15 @@ public sealed class GoodsReceiptService
 		_reversals = reversals;
 	}
 
-	public Task<IReadOnlyList<GoodsReceipt>> ListByPurchaseOrderAsync(long purchaseOrderId, CancellationToken cancellationToken = default) =>
-		_receipts.ListByPurchaseOrderAsync(purchaseOrderId, cancellationToken);
+	public Task<IReadOnlyList<GoodsReceipt>> ListByPurchaseOrderAsync(long purchaseOrderId, CancellationToken cancellationToken = default)
+	{
+		_audit.RequirePermission(ApplicationPermission.GoodsReceiptsView);
+		return _receipts.ListByPurchaseOrderAsync(purchaseOrderId, cancellationToken);
+	}
 
 	public async Task<GoodsReceipt> ReverseAsync(long receiptId, long version, long reasonCodeId, string reversalReason, CancellationToken cancellationToken = default)
 	{
+		_audit.RequirePermission(ApplicationPermission.GoodsReceiptsReverse);
 		if (receiptId <= 0) throw new ArgumentOutOfRangeException(nameof(receiptId));
 		var userId = _reversals.RequireUser();
 		return await _transactions.ExecuteAsync(
@@ -115,18 +119,25 @@ public sealed class GoodsReceiptService
 
 	public Task<IReadOnlyList<ReceiptInventoryOption>> GetInventoryOptionsAsync(
 		long itemId,
-		CancellationToken cancellationToken = default) =>
-		_receipts.ListInventoryOptionsAsync(itemId, cancellationToken);
+		CancellationToken cancellationToken = default)
+	{
+		_audit.RequirePermission(ApplicationPermission.GoodsReceiptsCreate);
+		return _receipts.ListInventoryOptionsAsync(itemId, cancellationToken);
+	}
 
 	public Task<IReadOnlyList<ReceiptInventoryOption>> GetInventoryOptionsAsync(
 		IEnumerable<long> itemIds,
-		CancellationToken cancellationToken = default) =>
-		_receipts.ListInventoryOptionsByItemIdsAsync(itemIds, cancellationToken);
+		CancellationToken cancellationToken = default)
+	{
+		_audit.RequirePermission(ApplicationPermission.GoodsReceiptsCreate);
+		return _receipts.ListInventoryOptionsByItemIdsAsync(itemIds, cancellationToken);
+	}
 
 	public async Task<GoodsReceipt> PostGoodsReceiptAsync(
 		GoodsReceipt receipt,
 		CancellationToken cancellationToken = default)
 	{
+		_audit.RequirePermission(ApplicationPermission.GoodsReceiptsPost);
 		Validate(receipt);
 		receipt.ReceivedByUserId = _audit.CurrentUserId
 			?? throw new InvalidOperationException("A signed-in user is required to post a goods receipt.");

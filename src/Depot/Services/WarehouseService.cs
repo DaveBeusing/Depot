@@ -22,14 +22,18 @@ public sealed class WarehouseService
 		_audit = audit;
 	}
 
-	public Task<IReadOnlyList<Warehouse>> SearchAsync(string? searchText, CancellationToken cancellationToken = default) =>
-		_warehouses.SearchAsync(searchText, cancellationToken);
+	public Task<IReadOnlyList<Warehouse>> SearchAsync(string? searchText, CancellationToken cancellationToken = default)
+	{
+		_audit.RequirePermission(ApplicationPermission.MasterDataView);
+		return _warehouses.SearchAsync(searchText, cancellationToken);
+	}
 
 	public Task<IReadOnlyList<Warehouse>> GetActiveOptionsAsync(int count = 200, CancellationToken cancellationToken = default) =>
 		_warehouses.ListActiveOptionsAsync(count, cancellationToken);
 
 	public async Task<Warehouse> GetOrCreateAsync(string name, CancellationToken cancellationToken = default)
 	{
+		_audit.RequirePermission(ApplicationPermission.MasterDataManage);
 		var normalized = name.Trim();
 		var existing = await _warehouses.GetByNameAsync(normalized, cancellationToken);
 		return existing ?? await SaveAsync(0, 0, normalized, null, cancellationToken);
@@ -42,6 +46,7 @@ public sealed class WarehouseService
 		string? description,
 		CancellationToken cancellationToken = default)
 	{
+		_audit.RequirePermission(ApplicationPermission.MasterDataManage);
 		(name, description) = Normalize(name, description);
 		if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("Warehouse name is required.", nameof(name));
 		var duplicate = await _warehouses.GetByNameAsync(name, cancellationToken);
@@ -74,6 +79,7 @@ public sealed class WarehouseService
 		bool isActive,
 		CancellationToken cancellationToken = default)
 	{
+		_audit.RequirePermission(ApplicationPermission.MasterDataManage);
 		var warehouse = await _warehouses.GetByIdAsync(id, cancellationToken)
 			?? throw new InvalidOperationException($"Warehouse with id '{id}' was not found.");
 		if (!isActive && await _storageLocations.HasActiveForWarehouseAsync(id, cancellationToken))

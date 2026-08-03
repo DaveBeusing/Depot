@@ -43,6 +43,7 @@ public sealed class InventoryCountService
 
 	public async Task<InventoryCount> ReverseAsync(long id, long version, long reasonCodeId, string reversalReason, CancellationToken cancellationToken = default)
 	{
+		_audit.RequirePermission(ApplicationPermission.InventoryCountsReverse);
 		ValidateId(id);
 		var userId = _reversals.RequireUser();
 		return await _transactions.ExecuteAsync(
@@ -81,8 +82,11 @@ public sealed class InventoryCountService
 
 	public Task<InventoryCount?> GetByIdAsync(
 		long id,
-		CancellationToken cancellationToken = default) =>
-		_counts.GetByIdAsync(id, cancellationToken);
+		CancellationToken cancellationToken = default)
+	{
+		_audit.RequirePermission(ApplicationPermission.InventoryCountsView);
+		return _counts.GetByIdAsync(id, cancellationToken);
+	}
 
 	public Task<InventoryCount?> GetHeaderByIdAsync(
 		long id,
@@ -95,8 +99,11 @@ public sealed class InventoryCountService
 		long? warehouseId,
 		int pageNumber,
 		int pageSize,
-		CancellationToken cancellationToken = default) =>
-		_counts.SearchAsync(searchText, status, warehouseId, pageNumber, pageSize, cancellationToken);
+		CancellationToken cancellationToken = default)
+	{
+		_audit.RequirePermission(ApplicationPermission.InventoryCountsView);
+		return _counts.SearchAsync(searchText, status, warehouseId, pageNumber, pageSize, cancellationToken);
+	}
 
 	public Task<InventoryCountOverviewItem?> GetOverviewByIdAsync(
 		long id,
@@ -112,6 +119,7 @@ public sealed class InventoryCountService
 		int pageSize,
 		CancellationToken cancellationToken = default)
 	{
+		_audit.RequirePermission(ApplicationPermission.InventoryCountsEdit);
 		ValidateId(inventoryCountId);
 		return _counts.SearchLineDetailsAsync(
 			inventoryCountId,
@@ -132,6 +140,7 @@ public sealed class InventoryCountService
 		InventoryCount count,
 		CancellationToken cancellationToken = default)
 	{
+		_audit.RequirePermission(count.Id == 0 ? ApplicationPermission.InventoryCountsCreate : ApplicationPermission.InventoryCountsEdit);
 		NormalizeAndValidateDraft(count);
 		var userId = _audit.CurrentUserId
 			?? throw new InvalidOperationException("A signed-in user is required to save an inventory count.");
@@ -145,6 +154,7 @@ public sealed class InventoryCountService
 		long version,
 		CancellationToken cancellationToken = default)
 	{
+		_audit.RequirePermission(ApplicationPermission.InventoryCountsEdit);
 		ValidateId(id);
 		if (_audit.CurrentUserId is null)
 		{
@@ -261,6 +271,7 @@ public sealed class InventoryCountService
 		long version,
 		CancellationToken cancellationToken = default)
 	{
+		_audit.RequirePermission(ApplicationPermission.InventoryCountsEdit);
 		ValidateId(id);
 		EnsureSignedInForStatusChange();
 		return await _transactions.ExecuteAsync(
@@ -290,6 +301,7 @@ public sealed class InventoryCountService
 		long version,
 		CancellationToken cancellationToken = default)
 	{
+		_audit.RequirePermission(ApplicationPermission.InventoryCountsPost);
 		ValidateId(id);
 		var userId = _audit.CurrentUserId
 			?? throw new InvalidOperationException("A signed-in user is required to post an inventory count.");
@@ -302,19 +314,23 @@ public sealed class InventoryCountService
 	public Task<InventoryCount> ReturnToCountingAsync(
 		long id,
 		long version,
-		CancellationToken cancellationToken = default) =>
-		ChangeStatusAsync(
+		CancellationToken cancellationToken = default)
+	{
+		_audit.RequirePermission(ApplicationPermission.InventoryCountsEdit);
+		return ChangeStatusAsync(
 			id,
 			version,
 			InventoryCountStatus.Review,
 			InventoryCountStatus.Counting,
 			cancellationToken);
+	}
 
 	public async Task<InventoryCount> CancelAsync(
 		long id,
 		long version,
 		CancellationToken cancellationToken = default)
 	{
+		_audit.RequirePermission(ApplicationPermission.InventoryCountsEdit);
 		ValidateId(id);
 		EnsureSignedInForStatusChange();
 		return await _transactions.ExecuteAsync(

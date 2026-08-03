@@ -11,7 +11,7 @@ The single application-version source is `Directory.Build.props` in the reposito
 ## Current versions
 
 - Application development line: **0.13.0-preview**
-- Database schema version: **27**
+- Database schema version: **28**
 
 The application version and database schema version are independent. A patch application release can retain the same schema, while a schema migration can occur during a prerelease line.
 
@@ -33,6 +33,8 @@ The MSBuild properties produce:
 The About page reads the built assembly information and displays the application, file, informational, runtime, and database-schema versions.
 
 ## Database schema versioning
+
+Schema version 28 replaces fixed single-role authorization with provider-neutral database-backed RBAC. `Roles`, `Permissions`, `RolePermissions`, and `UserRoles` support multiple roles per user and effective-permission union. Protected system roles are seeded from the central permission catalog. Existing administrator, purchasing, approver, warehouse-operator, and standard users are assigned equivalent roles; legacy user columns remain only for compatibility and do not drive authorization.
 
 Schema version 27 introduces the `WorkflowOperations` idempotency ledger for critical procurement and material-booking transitions. Operation IDs are unique across providers and are committed atomically with status, movements, and audit data, allowing clients to reconcile ambiguous network outcomes without repeating a booking.
 

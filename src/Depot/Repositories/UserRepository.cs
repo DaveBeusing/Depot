@@ -85,6 +85,15 @@ public sealed class UserRepository : DatabaseRepository
 			Parameter("$IsActive", user.IsActive),
 			Parameter("$CreatedUtc", user.CreatedUtc.ToString("O", CultureInfo.InvariantCulture)));
 
+	public static Task<long> CreateAsync(DatabaseTransactionContext transaction, User user, string passwordHash, CancellationToken cancellationToken) =>
+		transaction.Session.InsertAsync(
+			"INSERT INTO Users (Email, DisplayName, PasswordHash, IsAdministrator, CanApprovePurchaseOrders, Role, IsActive, CreatedUtc) VALUES ($Email, $DisplayName, $PasswordHash, $IsAdministrator, $CanApprovePurchaseOrders, $Role, $IsActive, $CreatedUtc);",
+			cancellationToken,
+			Parameter("$Email", user.Email), Parameter("$DisplayName", user.DisplayName), Parameter("$PasswordHash", passwordHash),
+			Parameter("$IsAdministrator", user.IsAdministrator), Parameter("$CanApprovePurchaseOrders", user.CanApprovePurchaseOrders),
+			Parameter("$Role", (int)user.Role), Parameter("$IsActive", user.IsActive),
+			Parameter("$CreatedUtc", user.CreatedUtc.ToString("O", CultureInfo.InvariantCulture)));
+
 	public async Task<bool> UpdateAsync(
 		User user,
 		string? passwordHash,
@@ -128,6 +137,26 @@ public sealed class UserRepository : DatabaseRepository
 			Parameter("$Id", id),
 			Parameter("$IsActive", isActive),
 			Parameter("$Version", version)) == 1;
+
+	public static async Task<bool> UpdateAsync(DatabaseTransactionContext transaction, User user, string? passwordHash, CancellationToken cancellationToken)
+	{
+		var passwordAssignment = passwordHash is null ? string.Empty : "PasswordHash = $PasswordHash,";
+		var parameters = new List<DatabaseParameter>
+		{
+			Parameter("$Id", user.Id), Parameter("$Email", user.Email), Parameter("$DisplayName", user.DisplayName), Parameter("$Version", user.Version)
+		};
+		if (passwordHash is not null) parameters.Add(Parameter("$PasswordHash", passwordHash));
+		return await transaction.Session.ExecuteAsync(
+			$"UPDATE Users SET Email = $Email, DisplayName = $DisplayName, {passwordAssignment} Version = Version + 1 WHERE Id = $Id AND Version = $Version;",
+			cancellationToken,
+			parameters.ToArray()) == 1;
+	}
+
+	public static async Task<bool> SetActiveAsync(DatabaseTransactionContext transaction, long id, bool isActive, long version, CancellationToken cancellationToken) =>
+		await transaction.Session.ExecuteAsync(
+			"UPDATE Users SET IsActive = $IsActive, Version = Version + 1 WHERE Id = $Id AND Version = $Version;",
+			cancellationToken,
+			Parameter("$Id", id), Parameter("$IsActive", isActive), Parameter("$Version", version)) == 1;
 
 	public User? GetByEmail(string email)
 	{
@@ -228,17 +257,14 @@ public sealed class UserRepository : DatabaseRepository
 
 	private static User ReadUser(DbDataReader reader)
 	{
-		var isAdministrator = reader.GetBoolean(3);
-		var canApprove = reader.GetBoolean(4);
-		var storedRole = (UserRole)reader.GetInt32(8);
 		return new()
 		{
 			Id = reader.GetInt64(0),
 			Email = reader.GetString(1),
 			DisplayName = reader.GetString(2),
-			IsAdministrator = isAdministrator,
-			CanApprovePurchaseOrders = canApprove,
-			Role = isAdministrator ? UserRole.Administrator : storedRole == UserRole.User && canApprove ? UserRole.Approver : storedRole,
+			IsAdministrator = reader.GetBoolean(3),
+			CanApprovePurchaseOrders = reader.GetBoolean(4),
+			Role = (UserRole)reader.GetInt32(8),
 			IsActive = reader.GetBoolean(5),
 			CreatedUtc = DateTime.Parse(
 				reader.GetString(6),

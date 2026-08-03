@@ -3,6 +3,7 @@
 
 using System.Net.Mail;
 
+using Depot.Data;
 using Depot.Models;
 using Depot.Repositories;
 
@@ -10,299 +11,159 @@ namespace Depot.Services;
 
 public sealed class UserService
 {
-	private readonly UserRepository _userRepository;
+	private readonly IDatabaseTransactionRunner _transactions;
+	private readonly UserRepository _users;
+	private readonly RoleRepository _roles;
+	private readonly AuditRepository _auditEntries;
 	private readonly PasswordHasher _passwordHasher;
-	private readonly AuthorizationService _authorizationService;
-	private readonly AuditService _auditService;
+	private readonly AuthorizationService _authorization;
+	private readonly AuditService _audit;
 
-	public UserService(
-		UserRepository userRepository,
-		PasswordHasher passwordHasher,
-		AuthorizationService authorizationService,
-		AuditService auditService)
+	public UserService(IDatabaseTransactionRunner transactions, UserRepository users, RoleRepository roles, AuditRepository auditEntries, PasswordHasher passwordHasher, AuthorizationService authorization, AuditService audit)
 	{
-		_userRepository = userRepository;
+		_transactions = transactions;
+		_users = users;
+		_roles = roles;
+		_auditEntries = auditEntries;
 		_passwordHasher = passwordHasher;
-		_authorizationService = authorizationService;
-		_auditService = auditService;
+		_authorization = authorization;
+		_audit = audit;
 	}
 
-	public Task<PageResult<User>> SearchUsersAsync(
-		string? searchText,
-		int pageNumber,
-		int pageSize,
-		CancellationToken cancellationToken) =>
-		_userRepository.SearchPageAsync(searchText, pageNumber, pageSize, cancellationToken);
-
-	public async Task<User> CreateUserAsync(
-		string email,
-		string displayName,
-		string password,
-		UserRole role,
-		CancellationToken cancellationToken)
+	public async Task<PageResult<User>> SearchUsersAsync(string? searchText, int pageNumber, int pageSize, CancellationToken cancellationToken)
 	{
-		ValidateRole(role);
+		_authorization.RequirePermission(ApplicationPermission.UsersView);
+		var page = await _users.SearchPageAsync(searchText, pageNumber, pageSize, cancellationToken);
+		var ids = page.Items.Select(user => user.Id).ToArray();
+		var roles = await _roles.GetUserRolesAsync(ids, cancellationToken);
+		var permissions = await _roles.GetEffectivePermissionsAsync(ids, cancellationToken);
+		foreach (var user in page.Items)
+		{
+			user.Roles = roles.GetValueOrDefault(user.Id) ?? [];
+			user.EffectivePermissions = permissions.GetValueOrDefault(user.Id) ?? new HashSet<ApplicationPermission>();
+		}
+		return page;
+	}
+
+	public Task<IReadOnlyList<Role>> ListAssignableRolesAsync(CancellationToken cancellationToken)
+	{
+		_authorization.RequirePermission(ApplicationPermission.UsersManage);
+		return _roles.ListActiveAsync(cancellationToken);
+	}
+
+	public async Task<User> CreateUserAsync(string email, string displayName, string password, IReadOnlyCollection<long> roleIds, CancellationToken cancellationToken)
+	{
+		_authorization.RequirePermission(ApplicationPermission.UsersManage);
 		email = NormalizeAndValidateEmail(email);
 		displayName = ValidateDisplayName(displayName);
 		ValidatePassword(password);
-		if (await _userRepository.GetByEmailAsync(email, cancellationToken) is not null)
-			throw new InvalidOperationException($"A user with email '{email}' already exists.");
-		var user = new User
+		var roles = await ValidateRolesAsync(roleIds, cancellationToken);
+		if (await _users.GetByEmailAsync(email, cancellationToken) is not null) throw new InvalidOperationException($"A user with email '{email}' already exists.");
+		var user = new User { Email = email, DisplayName = displayName, Role = UserRole.User, IsAdministrator = false, CanApprovePurchaseOrders = false, IsActive = true, CreatedUtc = DateTime.UtcNow, Roles = roles };
+		user.Id = await _transactions.ExecuteAsync(async (transaction, token) =>
 		{
-			Email = email,
-			DisplayName = displayName,
-			Role = role,
-			IsAdministrator = role == UserRole.Administrator,
-			CanApprovePurchaseOrders = role == UserRole.Approver,
-			IsActive = true,
-			CreatedUtc = DateTime.UtcNow
-		};
-		user.Id = await _userRepository.CreateAsync(
-			user,
-			_passwordHasher.Hash(password),
-			cancellationToken);
-		await _auditService.RecordCreatedAsync(user.Id, user, cancellationToken);
-		return user;
+			var id = await UserRepository.CreateAsync(transaction, user, _passwordHasher.Hash(password), token);
+			user.Id = id;
+			await RoleRepository.ReplaceUserRolesAsync(transaction, id, roles.Select(role => role.Id), token);
+			await _auditEntries.CreateAsync(transaction, _audit.CreateCreatedEntry(id, user), token);
+			return id;
+		}, cancellationToken);
+		return await HydrateAsync(user, cancellationToken);
 	}
 
-	public async Task<User> UpdateUserAsync(
-		long id,
-		long expectedVersion,
-		string email,
-		string displayName,
-		string password,
-		UserRole role,
-		CancellationToken cancellationToken)
+	public async Task<User> UpdateUserAsync(long id, long expectedVersion, string email, string displayName, string password, IReadOnlyCollection<long> roleIds, CancellationToken cancellationToken)
 	{
-		ValidateRole(role);
-		if (id <= 0) throw new ArgumentException("User id is required.", nameof(id));
+		_authorization.RequirePermission(ApplicationPermission.UsersManage);
+		if (id <= 0) throw new ArgumentOutOfRangeException(nameof(id));
 		email = NormalizeAndValidateEmail(email);
 		displayName = ValidateDisplayName(displayName);
 		if (!string.IsNullOrEmpty(password)) ValidatePassword(password);
-		var user = await _userRepository.GetByIdAsync(id, cancellationToken)
-			?? throw new InvalidOperationException($"User with id '{id}' was not found.");
-		if (user.Version != expectedVersion) throw new ConcurrencyConflictException("user");
-		var duplicate = await _userRepository.GetByEmailAsync(email, cancellationToken);
-		if (duplicate is not null && duplicate.Id != id)
-			throw new InvalidOperationException($"A user with email '{email}' already exists.");
-		var before = Copy(user);
-		user.Email = email;
-		user.DisplayName = displayName;
-		user.Role = role;
-		user.IsAdministrator = role == UserRole.Administrator;
-		user.CanApprovePurchaseOrders = role == UserRole.Approver;
-		var passwordHash = string.IsNullOrEmpty(password) ? null : _passwordHasher.Hash(password);
-		if (!await _userRepository.UpdateAsync(user, passwordHash, cancellationToken))
-			throw new ConcurrencyConflictException("user");
-		user.Version++;
-		await _auditService.RecordUpdatedAsync(user.Id, before, user, cancellationToken);
-		if (_authorizationService.CurrentUser?.Id == user.Id) _authorizationService.SignIn(user);
+		var roles = await ValidateRolesAsync(roleIds, cancellationToken);
+		var stored = await _users.GetByIdAsync(id, cancellationToken) ?? throw new InvalidOperationException("The user was not found.");
+		var before = await HydrateAsync(stored, cancellationToken);
+		if (before.Version != expectedVersion) throw new ConcurrencyConflictException("user");
+		var duplicate = await _users.GetByEmailAsync(email, cancellationToken);
+		if (duplicate is not null && duplicate.Id != id) throw new InvalidOperationException($"A user with email '{email}' already exists.");
+		var after = Copy(before);
+		after.Email = email;
+		after.DisplayName = displayName;
+		after.Roles = roles;
+		await _transactions.ExecuteAsync(async (transaction, token) =>
+		{
+			var hash = string.IsNullOrEmpty(password) ? null : _passwordHasher.Hash(password);
+			if (!await UserRepository.UpdateAsync(transaction, after, hash, token)) throw new ConcurrencyConflictException("user");
+			await RoleRepository.ReplaceUserRolesAsync(transaction, id, roles.Select(role => role.Id), token);
+			after.Version++;
+			await _auditEntries.CreateAsync(transaction, _audit.CreateUpdatedEntry(id, before, after), token);
+			return true;
+		}, cancellationToken);
+		after = await HydrateAsync(after, cancellationToken);
+		if (_authorization.CurrentUser?.Id == after.Id) _authorization.SignIn(after, after.EffectivePermissions);
+		return after;
+	}
+
+	public async Task<User> SetActiveAsync(long id, bool isActive, long expectedVersion, CancellationToken cancellationToken)
+	{
+		_authorization.RequirePermission(ApplicationPermission.UsersManage);
+		if (id <= 0) throw new ArgumentOutOfRangeException(nameof(id));
+		var stored = await _users.GetByIdAsync(id, cancellationToken) ?? throw new InvalidOperationException("The user was not found.");
+		var before = await HydrateAsync(stored, cancellationToken);
+		if (before.Version != expectedVersion) throw new ConcurrencyConflictException("user");
+		if (!isActive && _authorization.CurrentUser?.Id == id) throw new InvalidOperationException("The currently signed-in user cannot be deactivated.");
+		var after = Copy(before);
+		after.IsActive = isActive;
+		await _transactions.ExecuteAsync(async (transaction, token) =>
+		{
+			if (!await UserRepository.SetActiveAsync(transaction, id, isActive, expectedVersion, token)) throw new ConcurrencyConflictException("user");
+			after.Version++;
+			await _auditEntries.CreateAsync(transaction, isActive ? _audit.CreateUpdatedEntry(id, before, after) : CreateDeactivatedEntry(id, before, after), token);
+			return true;
+		}, cancellationToken);
+		return after;
+	}
+
+	private AuditEntry CreateDeactivatedEntry(long id, User before, User after)
+	{
+		var entry = _audit.CreateUpdatedEntry(id, before, after);
+		entry.Action = "Deactivated";
+		return entry;
+	}
+
+	private async Task<User> HydrateAsync(User user, CancellationToken cancellationToken)
+	{
+		user.Roles = await _roles.GetUserRolesAsync(user.Id, cancellationToken);
+		user.EffectivePermissions = await _roles.GetEffectivePermissionsAsync(user.Id, cancellationToken);
 		return user;
 	}
 
-	public async Task<User> SetActiveAsync(
-		long id,
-		bool isActive,
-		long expectedVersion,
-		CancellationToken cancellationToken)
+	private async Task<IReadOnlyList<Role>> ValidateRolesAsync(IEnumerable<long> roleIds, CancellationToken cancellationToken)
 	{
-		if (id <= 0) throw new ArgumentException("User id is required.", nameof(id));
-		var user = await _userRepository.GetByIdAsync(id, cancellationToken)
-			?? throw new InvalidOperationException($"User with id '{id}' was not found.");
-		if (user.Version != expectedVersion) throw new ConcurrencyConflictException("user");
-		if (!isActive && _authorizationService.CurrentUser?.Id == user.Id)
-			throw new InvalidOperationException("The currently signed-in user cannot be deactivated.");
-		if (!await _userRepository.SetActiveAsync(id, isActive, expectedVersion, cancellationToken))
-			throw new ConcurrencyConflictException("user");
-		var before = Copy(user);
-		user.IsActive = isActive;
-		user.Version++;
-		if (isActive)
-			await _auditService.RecordUpdatedAsync(user.Id, before, user, cancellationToken);
-		else
-			await _auditService.RecordDeactivatedAsync(user.Id, before, user, cancellationToken);
-		return user;
-	}
-
-	public User CreateUser(
-		string email,
-		string displayName,
-		string password,
-		UserRole role)
-	{
-		ValidateRole(role);
-		email = NormalizeAndValidateEmail(email);
-		displayName = ValidateDisplayName(displayName);
-		ValidatePassword(password);
-
-		if (_userRepository.GetByEmail(email) is not null)
-		{
-			throw new InvalidOperationException($"A user with email '{email}' already exists.");
-		}
-
-		var user = new User
-		{
-			Email = email,
-			DisplayName = displayName,
-			Role = role,
-			IsAdministrator = role == UserRole.Administrator,
-			CanApprovePurchaseOrders = role == UserRole.Approver,
-			IsActive = true,
-			CreatedUtc = DateTime.UtcNow
-		};
-
-		user.Id = _userRepository.Create(user, _passwordHasher.Hash(password));
-		_auditService.RecordCreated(user.Id, user);
-		return user;
-	}
-
-	public User UpdateUser(
-		long id,
-		long expectedVersion,
-		string email,
-		string displayName,
-		string password,
-		UserRole role)
-	{
-		ValidateRole(role);
-		if (id <= 0)
-		{
-			throw new ArgumentException("User id is required.", nameof(id));
-		}
-
-		email = NormalizeAndValidateEmail(email);
-		displayName = ValidateDisplayName(displayName);
-		if (!string.IsNullOrEmpty(password))
-		{
-			ValidatePassword(password);
-		}
-
-		var user = _userRepository.GetById(id)
-			?? throw new InvalidOperationException($"User with id '{id}' was not found.");
-		if (user.Version != expectedVersion)
-		{
-			throw new ConcurrencyConflictException("user");
-		}
-
-		var before = Copy(user);
-		var existingEmail = _userRepository.GetByEmail(email);
-		if (existingEmail is not null && existingEmail.Id != id)
-		{
-			throw new InvalidOperationException($"A user with email '{email}' already exists.");
-		}
-
-		user.Email = email;
-		user.DisplayName = displayName;
-		user.Role = role;
-		user.IsAdministrator = role == UserRole.Administrator;
-		user.CanApprovePurchaseOrders = role == UserRole.Approver;
-		if (!_userRepository.Update(
-			user,
-			string.IsNullOrEmpty(password) ? null : _passwordHasher.Hash(password)))
-		{
-			throw new ConcurrencyConflictException("user");
-		}
-
-		user.Version++;
-		_auditService.RecordUpdated(user.Id, before, user);
-
-		if (_authorizationService.CurrentUser?.Id == user.Id)
-		{
-			_authorizationService.SignIn(user);
-		}
-
-		return user;
-	}
-
-	public void SetActive(long id, bool isActive, long expectedVersion)
-	{
-		if (id <= 0)
-		{
-			throw new ArgumentException("User id is required.", nameof(id));
-		}
-
-		var user = _userRepository.GetById(id)
-			?? throw new InvalidOperationException($"User with id '{id}' was not found.");
-		if (user.Version != expectedVersion)
-		{
-			throw new ConcurrencyConflictException("user");
-		}
-
-		if (!isActive && _authorizationService.CurrentUser?.Id == user.Id)
-		{
-			throw new InvalidOperationException("The currently signed-in user cannot be deactivated.");
-		}
-
-		if (!_userRepository.SetActive(id, isActive, expectedVersion))
-		{
-			throw new ConcurrencyConflictException("user");
-		}
-
-		var before = Copy(user);
-		user.IsActive = isActive;
-		user.Version++;
-		if (isActive)
-		{
-			_auditService.RecordUpdated(user.Id, before, user);
-		}
-		else
-		{
-			_auditService.RecordDeactivated(user.Id, before, user);
-		}
+		var ids = roleIds.Distinct().ToArray();
+		if (ids.Length == 0) throw new ArgumentException("At least one active role is required.", nameof(roleIds));
+		var roles = await _roles.GetByIdsAsync(ids, cancellationToken);
+		if (roles.Count != ids.Length || roles.Any(role => !role.IsActive)) throw new InvalidOperationException("Every assigned role must exist and be active.");
+		return roles;
 	}
 
 	private static string NormalizeAndValidateEmail(string email)
 	{
 		email = email.Trim().ToLowerInvariant();
-		if (!MailAddress.TryCreate(email, out var parsedAddress) ||
-			!string.Equals(parsedAddress.Address, email, StringComparison.OrdinalIgnoreCase))
-		{
-			throw new ArgumentException("A valid email address is required.", nameof(email));
-		}
-
+		if (!MailAddress.TryCreate(email, out var parsed) || !string.Equals(parsed.Address, email, StringComparison.OrdinalIgnoreCase)) throw new ArgumentException("A valid email address is required.", nameof(email));
 		return email;
 	}
 
 	private static string ValidateDisplayName(string displayName)
 	{
 		displayName = displayName.Trim();
-		if (string.IsNullOrWhiteSpace(displayName))
-		{
-			throw new ArgumentException("Display name is required.", nameof(displayName));
-		}
-
+		if (displayName.Length is < 1 or > 200) throw new ArgumentException("Display name must contain 1-200 characters.", nameof(displayName));
 		return displayName;
 	}
 
 	private static void ValidatePassword(string password)
 	{
-		if (password.Length < 8 ||
-			!password.Any(char.IsUpper) ||
-			!password.Any(char.IsLower) ||
-			!password.Any(char.IsDigit))
-		{
-			throw new ArgumentException(
-				"The password must contain at least 8 characters, including uppercase, lowercase, and a number.",
-				nameof(password));
-		}
+		if (password.Length < 8 || !password.Any(char.IsUpper) || !password.Any(char.IsLower) || !password.Any(char.IsDigit))
+			throw new ArgumentException("The password must contain at least 8 characters, including uppercase, lowercase, and a number.", nameof(password));
 	}
 
-	private static void ValidateRole(UserRole role)
-	{
-		if (!Enum.IsDefined(role)) throw new ArgumentOutOfRangeException(nameof(role));
-	}
-
-	private static User Copy(User user) =>
-		new()
-		{
-			Id = user.Id,
-			Email = user.Email,
-			DisplayName = user.DisplayName,
-			IsAdministrator = user.IsAdministrator,
-			CanApprovePurchaseOrders = user.CanApprovePurchaseOrders,
-			Role = user.Role,
-			IsActive = user.IsActive,
-			CreatedUtc = user.CreatedUtc,
-			Version = user.Version
-		};
+	private static User Copy(User user) => new() { Id = user.Id, Email = user.Email, DisplayName = user.DisplayName, IsAdministrator = user.IsAdministrator, CanApprovePurchaseOrders = user.CanApprovePurchaseOrders, Role = user.Role, Roles = user.Roles.ToArray(), EffectivePermissions = user.EffectivePermissions.ToHashSet(), IsActive = user.IsActive, CreatedUtc = user.CreatedUtc, Version = user.Version };
 }

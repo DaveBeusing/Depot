@@ -26,6 +26,7 @@ public sealed class SupplierItemService
 
 	public async Task<SupplierItem> SaveAsync(SupplierItem draft, CancellationToken cancellationToken = default)
 	{
+		_audit.RequirePermission(ApplicationPermission.SuppliersManage);
 		draft.SupplierPartNumber = draft.SupplierPartNumber.Trim();
 		if (draft.SupplierId <= 0) throw new ArgumentException("Supplier is required.", nameof(draft.SupplierId));
 		if (draft.ItemId <= 0) throw new ArgumentException("Item is required.", nameof(draft.ItemId));
@@ -67,6 +68,7 @@ public sealed class SupplierItemService
 
 	public async Task<SupplierItem> SetActiveAsync(long id, long version, bool isActive, CancellationToken cancellationToken = default)
 	{
+		_audit.RequirePermission(ApplicationPermission.SuppliersManage);
 		var value = await _supplierItems.GetByIdAsync(id, cancellationToken)
 			?? throw new InvalidOperationException("Supplier item was not found.");
 		if (isActive)

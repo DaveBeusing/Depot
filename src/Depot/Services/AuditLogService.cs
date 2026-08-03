@@ -14,12 +14,12 @@ public sealed class AuditLogService
 {
 	private const int ExportPageSize = 500;
 	private readonly AuditRepository _repository;
-	private readonly AuthorizationService _authorization;
+	private readonly IAuthorizationService _authorization;
 	private readonly AuditJsonSanitizer _sanitizer;
 
 	public AuditLogService(
 		AuditRepository repository,
-		AuthorizationService authorization,
+		IAuthorizationService authorization,
 		AuditJsonSanitizer sanitizer)
 	{
 		_repository = repository;
@@ -90,8 +90,7 @@ public sealed class AuditLogService
 
 	private void EnsureAuthorized()
 	{
-		if (!_authorization.CanViewAuditLog())
-			throw new UnauthorizedAccessException("Only administrators can view the audit log.");
+		_authorization.RequirePermission(ApplicationPermission.AuditLogView);
 	}
 
 	private static string EscapeCsv(string value) =>

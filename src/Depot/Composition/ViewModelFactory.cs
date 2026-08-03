@@ -55,6 +55,7 @@ internal sealed class ViewModelFactory
 			_services.Warehouses,
 			_services.StorageLocations,
 			_services.Users,
+			_services.Roles,
 			_services.Authorization,
 			_services.Session,
 			_services.Import,

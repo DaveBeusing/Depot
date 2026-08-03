@@ -405,7 +405,7 @@ public sealed class ProcurementTests
 		Assert.Equal(PurchaseOrderStatus.Draft, unchanged.Status);
 		Assert.Equal(originalVersion, unchanged.Version);
 
-		context.Authorization.SignIn(administrator);
+		context.Authorization.SignIn(administrator, PermissionCatalog.All);
 		var ordered = await context.ApproveAndOrderAsync(unchanged);
 		var orderedVersion = ordered.Version;
 		UseInvalidAuditUser(context);
@@ -899,7 +899,7 @@ public sealed class ProcurementTests
 			Role = UserRole.Administrator,
 			IsAdministrator = true,
 			IsActive = true
-		});
+		}, PermissionCatalog.All);
 
 	private static long JsonInt64(string json, string propertyName)
 	{

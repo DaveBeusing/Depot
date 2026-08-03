@@ -8,6 +8,7 @@ public enum AdministrationSection
 	Import,
 	MasterData,
 	Users,
+	Roles,
 	Database,
 	AuditLog,
 	Settings,

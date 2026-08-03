@@ -4,7 +4,7 @@
 
 - [ ] Ready for release
 
-Depot is currently `0.13.0-preview` with database schema version **27**. Checked implementation items below mean code exists on `master`; they do not replace the outstanding release verification.
+Depot is currently `0.13.0-preview` with database schema version **28**. Checked implementation items below mean code exists on `master`; they do not replace the outstanding release verification.
 
 ## Implemented and covered by automated tests
 
@@ -13,7 +13,7 @@ Depot is currently `0.13.0-preview` with database schema version **27**. Checked
 - [x] First-run SQLite database creation
 - [x] Default administrator creation
 - [x] Email/password login and logout
-- [x] Administrator and standard-user authorization
+- [x] Database-backed multi-role RBAC and service-side authorization
 - [x] PBKDF2-SHA256 password hashing
 - [x] Application/version/schema information
 
@@ -41,7 +41,7 @@ Depot is currently `0.13.0-preview` with database schema version **27**. Checked
 - [x] Receipt and purchase-order received quantities remain immutable historical facts; supplier returns are evaluated separately
 - [x] Purchase-order drafts, lines, generated order numbers, status changes, search, and filters
 - [x] Purchase-order submission, approval/rejection, explicit approver permission, and creator/approver separation
-- [x] Fixed workflow roles and service-level permissions for purchase orders, material issues, material returns, and supplier returns
+- [x] Granular catalog permissions, protected system roles, role union, and service-level workflow authorization
 - [x] Permission-restricted approval main page with bounded server-side work queue and targeted decision updates
 - [x] Atomic purchase-order create/edit/order/cancel and before/after audit writes
 - [x] Partial and final goods receipts
@@ -144,6 +144,6 @@ Depot is currently `0.13.0-preview` with database schema version **27**. Checked
 - [ ] All automated tests pass on the release commit
 - [ ] Supported Windows versions tested
 - [ ] Application version finalized in `Directory.Build.props`
-- [ ] Database schema remains version 27 or migration notes are updated
+- [ ] Database schema remains version 28 or migration notes are updated
 - [ ] Installer/package, signing, upgrade, rollback, and uninstall tested
 - [ ] Release notes and known limitations published

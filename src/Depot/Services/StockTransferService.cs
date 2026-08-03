@@ -40,6 +40,7 @@ public sealed class StockTransferService
 
 	public async Task<StockTransfer> ReverseAsync(long id, long version, long reasonCodeId, string reversalReason, CancellationToken cancellationToken = default)
 	{
+		_audit.RequirePermission(ApplicationPermission.StockTransfersReverse);
 		if (id <= 0) throw new ArgumentOutOfRangeException(nameof(id));
 		var userId = _reversals.RequireUser();
 		return await _transactions.ExecuteAsync(
@@ -81,6 +82,7 @@ public sealed class StockTransferService
 		long version,
 		CancellationToken cancellationToken = default)
 	{
+		_audit.RequirePermission(ApplicationPermission.StockTransfersPost);
 		if (id <= 0)
 		{
 			throw new ArgumentOutOfRangeException(nameof(id));
@@ -95,27 +97,37 @@ public sealed class StockTransferService
 
 	public Task<StockTransfer?> GetByIdAsync(
 		long id,
-		CancellationToken cancellationToken = default) =>
-		_transfers.GetByIdAsync(id, cancellationToken);
+		CancellationToken cancellationToken = default)
+	{
+		_audit.RequirePermission(ApplicationPermission.StockTransfersView);
+		return _transfers.GetByIdAsync(id, cancellationToken);
+	}
 
 	public Task<PageResult<StockTransferOverviewItem>> SearchAsync(
 		string? searchText,
 		StockTransferStatus? status,
 		int pageNumber,
 		int pageSize,
-		CancellationToken cancellationToken = default) =>
-		_transfers.SearchAsync(searchText, status, pageNumber, pageSize, cancellationToken);
+		CancellationToken cancellationToken = default)
+	{
+		_audit.RequirePermission(ApplicationPermission.StockTransfersView);
+		return _transfers.SearchAsync(searchText, status, pageNumber, pageSize, cancellationToken);
+	}
 
 	public Task<StockTransferOverviewItem?> GetOverviewByIdAsync(
 		long id,
-		CancellationToken cancellationToken = default) =>
-		_transfers.GetOverviewByIdAsync(id, cancellationToken);
+		CancellationToken cancellationToken = default)
+	{
+		_audit.RequirePermission(ApplicationPermission.StockTransfersView);
+		return _transfers.GetOverviewByIdAsync(id, cancellationToken);
+	}
 
 	public Task<IReadOnlyList<StockTransferInventoryOption>> GetInventoryOptionsAsync(
 		long warehouseId,
 		long? itemId = null,
 		CancellationToken cancellationToken = default)
 	{
+		_audit.RequirePermission(ApplicationPermission.StockTransfersView);
 		if (warehouseId <= 0) throw new ArgumentOutOfRangeException(nameof(warehouseId));
 		if (itemId is <= 0) throw new ArgumentOutOfRangeException(nameof(itemId));
 		return _inventories.ListTransferOptionsAsync(warehouseId, itemId, cancellationToken);
@@ -125,6 +137,7 @@ public sealed class StockTransferService
 		long stockTransferId,
 		CancellationToken cancellationToken = default)
 	{
+		_audit.RequirePermission(ApplicationPermission.StockTransfersView);
 		var transfer = await _transfers.GetByIdAsync(stockTransferId, cancellationToken)
 			?? throw new InvalidOperationException("The stock transfer was not found.");
 		return await _stockMovements.ListByReferenceAsync(
@@ -136,6 +149,7 @@ public sealed class StockTransferService
 		StockTransfer transfer,
 		CancellationToken cancellationToken = default)
 	{
+		_audit.RequirePermission(transfer.Id == 0 ? ApplicationPermission.StockTransfersCreate : ApplicationPermission.StockTransfersEdit);
 		NormalizeAndValidate(transfer);
 		var userId = _audit.CurrentUserId
 			?? throw new InvalidOperationException("A signed-in user is required to save a stock transfer.");
@@ -149,6 +163,7 @@ public sealed class StockTransferService
 		long version,
 		CancellationToken cancellationToken = default)
 	{
+		_audit.RequirePermission(ApplicationPermission.StockTransfersEdit);
 		if (id <= 0)
 		{
 			throw new ArgumentOutOfRangeException(nameof(id));

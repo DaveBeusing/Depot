@@ -108,6 +108,9 @@
 			<DataTemplate DataType="{x:Type userViewModels:UserViewModel}">
 				<userViews:UsersView />
 			</DataTemplate>
+			<DataTemplate DataType="{x:Type userViewModels:RoleViewModel}">
+				<userViews:RolesView />
+			</DataTemplate>
 		</ResourceDictionary>
 	</Window.Resources>
 

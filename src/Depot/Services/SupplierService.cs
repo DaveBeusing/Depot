@@ -38,6 +38,7 @@ public sealed class SupplierService
 
 	public async Task<Supplier> SaveAsync(Supplier draft, CancellationToken cancellationToken = default)
 	{
+		_audit.RequirePermission(ApplicationPermission.SuppliersManage);
 		Normalize(draft);
 		Validate(draft);
 		var duplicateName = await _suppliers.GetByNameAsync(draft.Name, cancellationToken);
@@ -75,6 +76,7 @@ public sealed class SupplierService
 
 	public async Task<Supplier> SetActiveAsync(long id, long version, bool isActive, CancellationToken cancellationToken = default)
 	{
+		_audit.RequirePermission(ApplicationPermission.SuppliersManage);
 		var supplier = await _suppliers.GetByIdAsync(id, cancellationToken)
 			?? throw new InvalidOperationException($"Supplier with id '{id}' was not found.");
 		if (!isActive && await _supplierItems.HasActiveForSupplierAsync(id, cancellationToken))

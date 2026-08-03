@@ -50,6 +50,7 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 			command.CommandText = SupplierReturnSql;
 			command.ExecuteNonQuery();
 			EnsureWorkflowOperations(command);
+			EnsureRbacTables(command);
 
 			command.CommandText = "SELECT Version FROM DatabaseInfo WHERE Id = 1;";
 			command.Parameters.Clear();
@@ -149,12 +150,18 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 				MigrateToWorkflowOperations(command);
 				version = 27;
 			}
+			if (version == 27)
+			{
+				MigrateToRbac(command);
+				version = 28;
+			}
 			if (version != DatabaseVersion.CurrentVersion)
 			{
 				throw new InvalidOperationException(
 					$"MySQL/MariaDB schema version '{version}' is not supported. Expected '{DatabaseVersion.CurrentVersion}'.");
 			}
-			Execute(command, "UPDATE Users SET Role = 1 WHERE IsAdministrator = true AND Role = 0;");
+			RbacCatalogSeeder.EnsureCatalog(command);
+			RbacCatalogSeeder.EnsureDefaultAdministratorAssignment(command);
 		}
 		finally
 		{
@@ -223,6 +230,23 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 
 	private static void EnsureWorkflowOperations(System.Data.Common.DbCommand command) =>
 		Execute(command, "CREATE TABLE IF NOT EXISTS WorkflowOperations (Id bigint NOT NULL AUTO_INCREMENT PRIMARY KEY, OperationId varchar(36) NOT NULL UNIQUE, Workflow varchar(100) NOT NULL, EntityId bigint NOT NULL, CompletedAtUtc varchar(40) NOT NULL, INDEX IX_WorkflowOperations_Entity (Workflow, EntityId));");
+
+	private static void MigrateToRbac(System.Data.Common.DbCommand command)
+	{
+		EnsureRbacTables(command);
+		RbacCatalogSeeder.EnsureCatalog(command);
+		RbacCatalogSeeder.MigrateLegacyUsers(command);
+		Execute(command, "UPDATE DatabaseInfo SET Version = 28 WHERE Id = 1;");
+	}
+
+	private static void EnsureRbacTables(System.Data.Common.DbCommand command) =>
+		Execute(command,
+			"""
+			CREATE TABLE IF NOT EXISTS Roles (Id bigint NOT NULL AUTO_INCREMENT PRIMARY KEY, Code varchar(100) NOT NULL UNIQUE, Name varchar(200) NOT NULL, Description varchar(1000) NULL, IsSystem boolean NOT NULL DEFAULT false, IsActive boolean NOT NULL DEFAULT true, Version bigint NOT NULL DEFAULT 1) ENGINE=InnoDB;
+			CREATE TABLE IF NOT EXISTS Permissions (Id bigint NOT NULL AUTO_INCREMENT PRIMARY KEY, Code varchar(150) NOT NULL UNIQUE, Name varchar(250) NOT NULL, Module varchar(100) NOT NULL, Action varchar(50) NOT NULL) ENGINE=InnoDB;
+			CREATE TABLE IF NOT EXISTS RolePermissions (Id bigint NOT NULL AUTO_INCREMENT PRIMARY KEY, RoleId bigint NOT NULL, PermissionId bigint NOT NULL, UNIQUE KEY UQ_RolePermissions (RoleId, PermissionId), INDEX IX_RolePermissions_PermissionId (PermissionId), CONSTRAINT FK_RolePermissions_Roles FOREIGN KEY (RoleId) REFERENCES Roles(Id) ON DELETE CASCADE, CONSTRAINT FK_RolePermissions_Permissions FOREIGN KEY (PermissionId) REFERENCES Permissions(Id) ON DELETE CASCADE) ENGINE=InnoDB;
+			CREATE TABLE IF NOT EXISTS UserRoles (Id bigint NOT NULL AUTO_INCREMENT PRIMARY KEY, UserId bigint NOT NULL, RoleId bigint NOT NULL, UNIQUE KEY UQ_UserRoles (UserId, RoleId), INDEX IX_UserRoles_RoleId (RoleId), CONSTRAINT FK_UserRoles_Users FOREIGN KEY (UserId) REFERENCES Users(Id) ON DELETE CASCADE, CONSTRAINT FK_UserRoles_Roles FOREIGN KEY (RoleId) REFERENCES Roles(Id)) ENGINE=InnoDB;
+			""");
 
 	private static void MigrateToStockTransfers(System.Data.Common.DbCommand command)
 	{

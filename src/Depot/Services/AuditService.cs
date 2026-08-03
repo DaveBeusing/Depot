@@ -16,11 +16,11 @@ public sealed class AuditService
 	};
 
 	private readonly AuditRepository _auditRepository;
-	private readonly AuthorizationService _authorizationService;
+	private readonly IAuthorizationService _authorizationService;
 
 	public AuditService(
 		AuditRepository auditRepository,
-		AuthorizationService authorizationService)
+		IAuthorizationService authorizationService)
 	{
 		_auditRepository = auditRepository;
 		_authorizationService = authorizationService;
@@ -42,6 +42,8 @@ public sealed class AuditService
 		CreateEntry(typeof(T).Name, entityId, "Updated", before, after);
 
 	public long? CurrentUserId => _authorizationService.CurrentUser?.Id;
+	public bool HasPermission(ApplicationPermission permission) => _authorizationService.HasPermission(permission);
+	public void RequirePermission(ApplicationPermission permission) => _authorizationService.RequirePermission(permission);
 
 	public void RecordUpdated<T>(long entityId, T before, T after) where T : class =>
 		Record(typeof(T).Name, entityId, "Updated", before, after);

@@ -27,6 +27,7 @@ public sealed class PurposeService
 		string name,
 		string? description)
 	{
+		_auditService.RequirePermission(ApplicationPermission.MasterDataManage);
 		name =
 			name.Trim();
 
@@ -80,6 +81,7 @@ public sealed class PurposeService
 		string name,
 		string? description)
 	{
+		_auditService.RequirePermission(ApplicationPermission.MasterDataManage);
 		name =
 			name.Trim();
 
@@ -151,6 +153,7 @@ public sealed class PurposeService
 		long id,
 		long expectedVersion)
 	{
+		_auditService.RequirePermission(ApplicationPermission.MasterDataManage);
 		if (id <= 0)
 		{
 			throw new ArgumentException(
@@ -183,6 +186,7 @@ public sealed class PurposeService
 	public Purpose GetOrCreatePurpose(
 		string name)
 	{
+		_auditService.RequirePermission(ApplicationPermission.MasterDataManage);
 		name = name.Trim();
 
 		if (string.IsNullOrWhiteSpace(name))
@@ -207,13 +211,20 @@ public sealed class PurposeService
 	}
 
 	public Task<IReadOnlyList<Purpose>> GetPurposesAsync(CancellationToken cancellationToken) =>
-		_cache.GetAsync(_purposeRepository.ListActiveAsync, cancellationToken);
+		GetPurposesAuthorizedAsync(cancellationToken);
+
+	private async Task<IReadOnlyList<Purpose>> GetPurposesAuthorizedAsync(CancellationToken cancellationToken)
+	{
+		_auditService.RequirePermission(ApplicationPermission.MasterDataView);
+		return await _cache.GetAsync(_purposeRepository.ListActiveAsync, cancellationToken);
+	}
 
 	public async Task<Purpose> CreatePurposeAsync(
 		string name,
 		string? description,
 		CancellationToken cancellationToken)
 	{
+		_auditService.RequirePermission(ApplicationPermission.MasterDataManage);
 		(name, description) = Normalize(name, description);
 		ValidateName(name);
 		if (await _purposeRepository.GetByNameAsync(name, cancellationToken) is not null)
@@ -229,6 +240,7 @@ public sealed class PurposeService
 		string name,
 		CancellationToken cancellationToken = default)
 	{
+		_auditService.RequirePermission(ApplicationPermission.MasterDataManage);
 		var (normalizedName, _) = Normalize(name, null);
 		ValidateName(normalizedName);
 		var existing = await _purposeRepository.GetByNameAsync(normalizedName, cancellationToken);
@@ -242,6 +254,7 @@ public sealed class PurposeService
 		string? description,
 		CancellationToken cancellationToken)
 	{
+		_auditService.RequirePermission(ApplicationPermission.MasterDataManage);
 		(name, description) = Normalize(name, description);
 		if (id <= 0) throw new ArgumentException("Purpose id is required.", nameof(id));
 		ValidateName(name);
@@ -264,6 +277,7 @@ public sealed class PurposeService
 
 	public async Task DeactivatePurposeAsync(long id, long expectedVersion, CancellationToken cancellationToken)
 	{
+		_auditService.RequirePermission(ApplicationPermission.MasterDataManage);
 		var purpose = await _purposeRepository.GetByIdAsync(id, cancellationToken)
 			?? throw new InvalidOperationException($"Purpose with id '{id}' was not found.");
 		if (purpose.Version != expectedVersion ||

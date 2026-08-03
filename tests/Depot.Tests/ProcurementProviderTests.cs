@@ -94,7 +94,7 @@ public sealed class ProcurementProviderTests
 			Email = "missing-provider-audit-user@depot.test",
 			DisplayName = "Missing provider audit user",
 			IsActive = true
-		});
+		}, PermissionCatalog.All);
 		var auditFailure = await Record.ExceptionAsync(() =>
 			context.Orders.SaveDraftAsync(context.NewOrder(quantity: 1)));
 		Assert.NotNull(auditFailure);

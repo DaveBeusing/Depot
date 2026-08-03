@@ -84,7 +84,7 @@ SQLite is covered by integration tests. SQL Server and MySQL/MariaDB have provid
 
 ## Schema and migrations
 
-The current database schema version is **27**. It is independent from the application SemVer version.
+The current database schema version is **28**. It is independent from the application SemVer version.
 
 All providers create the current schema and migrate supported older schemas forward. Migrations cover authentication, inventory-based movements, audit/concurrency, warehouse structure, reason codes, normalized item master data, suppliers, supplier categories, supplier items, purchase orders, and goods receipts.
 
@@ -138,9 +138,11 @@ Schema version 24 introduces the independent `MaterialReturn` and `MaterialRetur
 
 Schema version 25 introduces `SupplierReturn` and `SupplierReturnLine`. A supplier return references one posted, non-reversed goods receipt and derives supplier, purchase order, item, inventory, and unit cost from that historical receipt chain. Posting locks the return and affected inventories, validates the net received quantity after prior non-reversed supplier returns and the current movement-derived stock, creates negative `SupplierReturn` movements, and commits status plus audit atomically. Historical `GoodsReceiptLine.Quantity` and `PurchaseOrderLine.ReceivedQuantity` remain unchanged: they record the receipt fact, while net supplier returns are evaluated separately. Counter-booking marks the supplier return as reversed for net-return calculations without rewriting its posted history.
 
-Schema version 26 replaces the isolated administrator/approver flags as the effective authorization contract with fixed `UserRole` assignments. `AuthorizationService` maps Administrator to all permissions, Purchasing to purchase-order creation/editing/submission/ordering/closure, Approver to approval decisions, and WarehouseOperator to material issues, material returns, and supplier returns. Standard users receive none of these mutation permissions. Services enforce every permission independently from UI visibility; creator/approver separation remains mandatory. Legacy administrator and approver flags are migrated deterministically and retained only for database compatibility.
+Schema version 26 introduced fixed workflow roles as an intermediate authorization model. Its legacy user fields remain readable for migration compatibility but no longer determine effective authorization.
 
 Schema version 27 adds the small provider-neutral `WorkflowOperations` idempotency ledger. Critical approval, ordering, closure, material-issue, material-return, and supplier-return operations persist their caller-generated operation ID in the same transaction as the business change and audit entry. Repeating a completed operation ID returns the persisted document state without creating another status transition or stock movement.
+
+Schema version 28 introduces database-backed RBAC through `Roles`, `Permissions`, `RolePermissions`, and `UserRoles`. A user may hold multiple active roles and receives the union of their catalogued permissions. Permissions are cached only for the authenticated session and cleared on logout or user changes. The Administrator system role is protected and receives every catalog permission through data, without an administrator bypass in authorization code. Existing accounts are migrated to Administrator, Purchasing, Approver, Warehouse Operator, or User assignments without removing legacy columns. Role and user-role changes use optimistic concurrency and atomic audit entries; services remain the security boundary while UI visibility is only a usability aid. Separation of purchase-order creator and approver remains an independent business rule.
 
 The permission-restricted Approvals main page is backed by `PurchaseOrderApprovalService`. Its work queue selects only `PendingApproval` orders with server-side search, supplier/creator/date filters, stable submission-time sorting, and paging. Count, oldest submission, and total open value are database aggregates. Order lines and a bounded audit-derived status history load only after selection. A successful decision removes only the affected row and refreshes only the aggregates; interrupted or conflicting decisions re-query the selected order before reporting its current status.
 

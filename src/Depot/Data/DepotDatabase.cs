@@ -174,6 +174,8 @@ public sealed class DepotDatabase : IDatabaseInitializer
 		CreateUsersTable(
 			connection);
 
+		CreateRbacTables(connection);
+
 		CreateStockTransferTables(connection);
 
 		CreateInventoryCountTables(connection);
@@ -200,6 +202,8 @@ public sealed class DepotDatabase : IDatabaseInitializer
 
 		CreateDefaultAdministrator(
 			connection);
+
+		SeedRbac(connection, true);
 	}
 
 	private static void CreateItemsTable(
@@ -877,6 +881,66 @@ public sealed class DepotDatabase : IDatabaseInitializer
 		command.ExecuteNonQuery();
 	}
 
+	private static void CreateRbacTables(SqliteConnection connection)
+	{
+		using var command = connection.CreateCommand();
+		command.CommandText =
+			"""
+			CREATE TABLE IF NOT EXISTS Roles
+			(
+				Id INTEGER PRIMARY KEY AUTOINCREMENT,
+				Code TEXT NOT NULL COLLATE NOCASE UNIQUE,
+				Name TEXT NOT NULL,
+				Description TEXT NULL,
+				IsSystem INTEGER NOT NULL DEFAULT 0,
+				IsActive INTEGER NOT NULL DEFAULT 1,
+				Version INTEGER NOT NULL DEFAULT 1
+			);
+			CREATE TABLE IF NOT EXISTS Permissions
+			(
+				Id INTEGER PRIMARY KEY AUTOINCREMENT,
+				Code TEXT NOT NULL COLLATE NOCASE UNIQUE,
+				Name TEXT NOT NULL,
+				Module TEXT NOT NULL,
+				Action TEXT NOT NULL
+			);
+			CREATE TABLE IF NOT EXISTS RolePermissions
+			(
+				Id INTEGER PRIMARY KEY AUTOINCREMENT,
+				RoleId INTEGER NOT NULL REFERENCES Roles(Id) ON DELETE CASCADE,
+				PermissionId INTEGER NOT NULL REFERENCES Permissions(Id) ON DELETE CASCADE,
+				UNIQUE(RoleId, PermissionId)
+			);
+			CREATE TABLE IF NOT EXISTS UserRoles
+			(
+				Id INTEGER PRIMARY KEY AUTOINCREMENT,
+				UserId INTEGER NOT NULL REFERENCES Users(Id) ON DELETE CASCADE,
+				RoleId INTEGER NOT NULL REFERENCES Roles(Id),
+				UNIQUE(UserId, RoleId)
+			);
+			CREATE INDEX IF NOT EXISTS IX_RolePermissions_PermissionId ON RolePermissions(PermissionId);
+			CREATE INDEX IF NOT EXISTS IX_UserRoles_RoleId ON UserRoles(RoleId);
+			""";
+		command.ExecuteNonQuery();
+	}
+
+	private static void SeedRbac(SqliteConnection connection, bool migrateLegacyUsers)
+	{
+		using var command = connection.CreateCommand();
+		RbacCatalogSeeder.EnsureCatalog(command);
+		if (!TableExists(connection, "Users")) return;
+		if (migrateLegacyUsers)
+		{
+			RbacCatalogSeeder.MigrateLegacyUsers(
+				command,
+				TableHasColumn(connection, "Users", "IsAdministrator"),
+				TableHasColumn(connection, "Users", "Role"),
+				TableHasColumn(connection, "Users", "CanApprovePurchaseOrders"));
+		}
+		if (TableHasColumn(connection, "Users", "Email"))
+			RbacCatalogSeeder.EnsureDefaultAdministratorAssignment(command);
+	}
+
 	private static void CreateWorkflowOperationsTable(SqliteConnection connection)
 	{
 		using var command = connection.CreateCommand();
@@ -1142,6 +1206,14 @@ public sealed class DepotDatabase : IDatabaseInitializer
 			CreateWorkflowOperationsTable(connection);
 			SetDatabaseVersion(connection, 27);
 			migratedVersion = 27;
+		}
+
+		if (migratedVersion == 27)
+		{
+			CreateRbacTables(connection);
+			SeedRbac(connection, true);
+			SetDatabaseVersion(connection, 28);
+			migratedVersion = 28;
 		}
 
 		if (migratedVersion < DatabaseVersion.CurrentVersion)

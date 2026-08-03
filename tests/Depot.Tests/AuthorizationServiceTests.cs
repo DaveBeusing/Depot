@@ -54,12 +54,14 @@ public sealed class AuthorizationServiceTests
 	}
 
 	[Fact]
-	public void InactiveAndNormalUsersHaveNoWorkflowPermissions()
+	public void InactiveUsersHaveNoPermissionsAndNormalUsersHaveReadOnlyPermissions()
 	{
 		var normal = SignIn(UserRole.User);
-		Assert.All(Enum.GetValues<ApplicationPermission>(), permission => Assert.False(normal.HasPermission(permission)));
+		Assert.True(normal.HasPermission(ApplicationPermission.InventoryView));
+		Assert.False(normal.HasPermission(ApplicationPermission.InventoryManage));
+		Assert.False(normal.HasPermission(ApplicationPermission.PurchaseOrdersCreate));
 		var inactive = new AuthorizationService();
-		inactive.SignIn(new User { Id = 2, Role = UserRole.Administrator, IsAdministrator = true, IsActive = false });
+		inactive.SignIn(new User { Id = 2, IsActive = false }, PermissionCatalog.All);
 		Assert.All(Enum.GetValues<ApplicationPermission>(), permission => Assert.False(inactive.HasPermission(permission)));
 	}
 
@@ -67,11 +69,11 @@ public sealed class AuthorizationServiceTests
 	public async Task ServicesRejectUnauthorizedWorkflowChangesBeforeDatabaseMutation()
 	{
 		await using var context = await ProcurementTestContext.CreateSqliteAsync();
-		context.Authorization.SignIn(new User { Id = 900001, Role = UserRole.Approver, IsActive = true });
+		context.Authorization.SignIn(new User { Id = 900001, IsActive = true }, Permissions(UserRole.Approver));
 		await Assert.ThrowsAsync<UnauthorizedAccessException>(() => context.Orders.SaveDraftAsync(context.NewOrder()));
 		await Assert.ThrowsAsync<UnauthorizedAccessException>(() => context.MaterialIssues.SaveDraftAsync(new MaterialIssue()));
 		await Assert.ThrowsAsync<UnauthorizedAccessException>(() => context.MaterialReturns.SaveDraftAsync(new MaterialReturn()));
-		context.Authorization.SignIn(new User { Id = 900002, Role = UserRole.Purchasing, IsActive = true });
+		context.Authorization.SignIn(new User { Id = 900002, IsActive = true }, Permissions(UserRole.Purchasing));
 		await Assert.ThrowsAsync<UnauthorizedAccessException>(() => context.Orders.ApproveAsync(1, 1));
 		await Assert.ThrowsAsync<UnauthorizedAccessException>(() => context.SupplierReturns.PostSupplierReturnAsync(1, 1));
 	}
@@ -79,7 +81,20 @@ public sealed class AuthorizationServiceTests
 	private static AuthorizationService SignIn(UserRole role)
 	{
 		var authorization = new AuthorizationService();
-		authorization.SignIn(new User { Id = 1, Role = role, IsAdministrator = role == UserRole.Administrator, CanApprovePurchaseOrders = role == UserRole.Approver, IsActive = true });
+		authorization.SignIn(new User { Id = 1, IsActive = true }, Permissions(role));
 		return authorization;
+	}
+
+	private static IReadOnlySet<ApplicationPermission> Permissions(UserRole role)
+	{
+		var code = role switch
+		{
+			UserRole.Administrator => SystemRoleCatalog.AdministratorCode,
+			UserRole.Purchasing => SystemRoleCatalog.PurchasingCode,
+			UserRole.Approver => SystemRoleCatalog.ApproverCode,
+			UserRole.WarehouseOperator => SystemRoleCatalog.WarehouseOperatorCode,
+			_ => SystemRoleCatalog.UserCode
+		};
+		return SystemRoleCatalog.Definitions.Single(definition => definition.Code == code).Permissions;
 	}
 }

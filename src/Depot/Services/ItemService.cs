@@ -37,6 +37,7 @@ public sealed class ItemService
 	public IReadOnlyList<Item> SearchItems(
 		string? searchText)
 	{
+		_auditService.RequirePermission(ApplicationPermission.ItemsView);
 		return _itemRepository.SearchActive(
 			searchText);
 	}
@@ -47,6 +48,7 @@ public sealed class ItemService
 		string? manufacturer,
 		string? category)
 	{
+		_auditService.RequirePermission(ApplicationPermission.ItemsCreate);
 		partNumber = partNumber.Trim();
 		description = description.Trim();
 		manufacturer = string.IsNullOrWhiteSpace(manufacturer)
@@ -106,6 +108,7 @@ public sealed class ItemService
 		string? manufacturer,
 		string? category)
 	{
+		_auditService.RequirePermission(ApplicationPermission.ItemsEdit);
 		description = description.Trim();
 		manufacturer = string.IsNullOrWhiteSpace(manufacturer)
 			? null
@@ -164,6 +167,7 @@ public sealed class ItemService
 		long id,
 		long expectedVersion)
 	{
+		_auditService.RequirePermission(ApplicationPermission.ItemsManage);
 		if (id <= 0)
 		{
 			throw new ArgumentException(
@@ -202,8 +206,11 @@ public sealed class ItemService
 		string? searchText,
 		int pageNumber,
 		int pageSize,
-		CancellationToken cancellationToken) =>
-		_itemRepository.SearchPageAsync(searchText, pageNumber, pageSize, cancellationToken);
+		CancellationToken cancellationToken)
+	{
+		_auditService.RequirePermission(ApplicationPermission.ItemsView);
+		return _itemRepository.SearchPageAsync(searchText, pageNumber, pageSize, cancellationToken);
+	}
 
 	public async Task<Item> CreateItemAsync(
 		string partNumber,
@@ -212,6 +219,7 @@ public sealed class ItemService
 		string? category,
 		CancellationToken cancellationToken)
 	{
+		_auditService.RequirePermission(ApplicationPermission.ItemsCreate);
 		(partNumber, description, manufacturer, category) = Normalize(
 			partNumber,
 			description,
@@ -246,6 +254,7 @@ public sealed class ItemService
 		string? category,
 		CancellationToken cancellationToken)
 	{
+		_auditService.RequirePermission(ApplicationPermission.ItemsEdit);
 		if (id <= 0) throw new ArgumentException("Item id is required.", nameof(id));
 		var normalized = Normalize(string.Empty, description, manufacturer, category);
 		description = normalized.Description;
@@ -281,6 +290,7 @@ public sealed class ItemService
 		long? packagingId,
 		CancellationToken cancellationToken)
 	{
+		_auditService.RequirePermission(ApplicationPermission.ItemsCreate);
 		partNumber = partNumber.Trim();
 		description = description.Trim();
 		Validate(partNumber, description);
@@ -312,6 +322,7 @@ public sealed class ItemService
 		long? packagingId,
 		CancellationToken cancellationToken)
 	{
+		_auditService.RequirePermission(ApplicationPermission.ItemsEdit);
 		if (id <= 0) throw new ArgumentException("Item id is required.", nameof(id));
 		description = description.Trim();
 		if (string.IsNullOrWhiteSpace(description)) throw new ArgumentException("Description is required.", nameof(description));
@@ -336,6 +347,7 @@ public sealed class ItemService
 		long expectedVersion,
 		CancellationToken cancellationToken)
 	{
+		_auditService.RequirePermission(ApplicationPermission.ItemsManage);
 		if (id <= 0) throw new ArgumentException("Item id is required.", nameof(id));
 		var item = await _itemRepository.GetByIdAsync(id, cancellationToken)
 			?? throw new InvalidOperationException($"Item with id '{id}' was not found.");
