@@ -236,6 +236,7 @@ public sealed class PurchaseOrderRepository : DatabaseRepository
 		PurchaseOrder result,
 		AuditEntry auditEntry,
 		WorkflowOperation? operation,
+		Func<DatabaseSession, CancellationToken, Task>? additionalWrite,
 		CancellationToken cancellationToken) =>
 		Database.ExecuteInWriteTransactionAsync(async (session, token) =>
 		{
@@ -264,6 +265,7 @@ public sealed class PurchaseOrderRepository : DatabaseRepository
 				throw new ConcurrencyConflictException("purchase order");
 			}
 			await AuditRepository.CreateAsync(session, auditEntry, token);
+			if (additionalWrite is not null) await additionalWrite(session, token);
 			if (operation is not null) await WorkflowOperationRepository.CompleteAsync(session, operation, token);
 			return result;
 		}, cancellationToken);

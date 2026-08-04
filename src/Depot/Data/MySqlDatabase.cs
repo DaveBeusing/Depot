@@ -51,6 +51,7 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 			command.ExecuteNonQuery();
 			EnsureWorkflowOperations(command);
 			EnsureRbacTables(command);
+			EnsureNotificationTables(command);
 
 			command.CommandText = "SELECT Version FROM DatabaseInfo WHERE Id = 1;";
 			command.Parameters.Clear();
@@ -155,6 +156,11 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 				MigrateToRbac(command);
 				version = 28;
 			}
+			if (version == 28)
+			{
+				MigrateToNotifications(command);
+				version = 29;
+			}
 			if (version != DatabaseVersion.CurrentVersion)
 			{
 				throw new InvalidOperationException(
@@ -238,6 +244,19 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 		RbacCatalogSeeder.MigrateLegacyUsers(command);
 		Execute(command, "UPDATE DatabaseInfo SET Version = 28 WHERE Id = 1;");
 	}
+
+	private static void MigrateToNotifications(System.Data.Common.DbCommand command)
+	{
+		EnsureNotificationTables(command);
+		Execute(command, "UPDATE DatabaseInfo SET Version = 29 WHERE Id = 1;");
+	}
+
+	private static void EnsureNotificationTables(System.Data.Common.DbCommand command) =>
+		Execute(command,
+			"""
+			CREATE TABLE IF NOT EXISTS Notifications (Id bigint NOT NULL AUTO_INCREMENT PRIMARY KEY, Type int NOT NULL, Severity int NOT NULL, Title varchar(200) NOT NULL, Message varchar(4000) NOT NULL, SourceType varchar(100) NULL, SourceId bigint NULL, SourceNumber varchar(100) NULL, CreatedAtUtc varchar(40) NOT NULL, CreatedByUserId bigint NULL, ExpiresAtUtc varchar(40) NULL, Version bigint NOT NULL DEFAULT 1, INDEX IX_Notifications_Source (SourceType, SourceId), INDEX IX_Notifications_CreatedAtUtc (CreatedAtUtc, Id), CONSTRAINT FK_Notifications_CreatedByUser FOREIGN KEY(CreatedByUserId) REFERENCES Users(Id), CHECK(Type IN (1,2,3)), CHECK(Severity IN (1,2,3,4))) ENGINE=InnoDB;
+			CREATE TABLE IF NOT EXISTS NotificationRecipients (Id bigint NOT NULL AUTO_INCREMENT PRIMARY KEY, NotificationId bigint NOT NULL, UserId bigint NOT NULL, ReadAtUtc varchar(40) NULL, ArchivedAtUtc varchar(40) NULL, CreatedAtUtc varchar(40) NOT NULL, Version bigint NOT NULL DEFAULT 1, UNIQUE KEY UQ_NotificationRecipients (NotificationId, UserId), INDEX IX_NotificationRecipients_Inbox (UserId, ReadAtUtc, ArchivedAtUtc, CreatedAtUtc), CONSTRAINT FK_NotificationRecipients_Notification FOREIGN KEY(NotificationId) REFERENCES Notifications(Id), CONSTRAINT FK_NotificationRecipients_User FOREIGN KEY(UserId) REFERENCES Users(Id)) ENGINE=InnoDB;
+			""");
 
 	private static void EnsureRbacTables(System.Data.Common.DbCommand command) =>
 		Execute(command,

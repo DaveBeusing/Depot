@@ -137,7 +137,8 @@ public sealed class DatabaseProviderTests
 			typeof(PurposeRepository),
 			typeof(ReasonCodeRepository),
 			typeof(StockMovementRepository),
-			typeof(UserRepository)
+			typeof(UserRepository),
+			typeof(NotificationRepository)
 		];
 
 		Assert.All(

@@ -341,6 +341,19 @@ public sealed class InventoryCountsViewModel : BaseViewModel, IDisposable
 		}
 	}
 
+	public async Task OpenCountAsync(long id, CancellationToken cancellationToken = default)
+	{
+		var overview = await _counts.GetOverviewByIdAsync(id, cancellationToken)
+			?? throw new InvalidOperationException("The referenced inventory count no longer exists.");
+		var existing = InventoryCounts.FirstOrDefault(candidate => candidate.Id == id);
+		if (existing is null)
+		{
+			InventoryCounts.Insert(0, overview);
+			existing = overview;
+		}
+		SelectedCount = existing;
+	}
+
 	private Task<PageResult<InventoryCountOverviewItem>> SearchCountsAsync(CancellationToken cancellationToken) =>
 		_counts.SearchAsync(
 			SearchText,

@@ -95,6 +95,7 @@ public partial class App : Application
 		finally
 		{
 			mainViewModel.LogoutRequested -= OnLogoutRequested;
+			mainViewModel.Dispose();
 		}
 
 		StartupDiagnostics.Log("MainWindow closed.");

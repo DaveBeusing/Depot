@@ -59,6 +59,7 @@ internal sealed class DatabaseComposition : IDisposable
 	}
 
 	public void StartBackgroundServices() => BackupScheduler.Start();
+	public void ConfigureNotifications(NotificationService notifications) => BackupScheduler.ConfigureNotifications(notifications);
 
 	public void Dispose() => BackupScheduler.Dispose();
 }

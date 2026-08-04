@@ -32,7 +32,9 @@
 	Width="1600"
 	Height="950"
 	MinWidth="1200"
-	MinHeight="700">
+	MinHeight="700"
+	Activated="OnWindowActivated"
+	Deactivated="OnWindowDeactivated">
 	<Window.CommandBindings>
 		<CommandBinding Command="{x:Static commands:HelpCommands.OpenHelp}" Executed="OnOpenHelpExecuted" />
 		<CommandBinding Command="{x:Static commands:HelpCommands.OpenTopic}" Executed="OnOpenHelpTopicExecuted" />
@@ -131,6 +133,9 @@
 			<DataTemplate DataType="{x:Type helpViewModels:HelpViewModel}">
 				<helpViews:HelpView />
 			</DataTemplate>
+			<DataTemplate DataType="{x:Type viewModels:NotificationCenterViewModel}">
+				<views:NotificationCenterView />
+			</DataTemplate>
 		</ResourceDictionary>
 	</Window.Resources>
 
@@ -169,6 +174,14 @@
 					Command="{x:Static commands:HelpCommands.OpenHelp}"
 					Content="Help Center"
 					ContentTemplate="{StaticResource NavigationHelpActionTemplate}"
+					Style="{StaticResource NavigationActionButtonStyle}" />
+
+				<Button
+					DockPanel.Dock="Bottom"
+					AutomationProperties.Name="Open Notification Center"
+					Command="{Binding NotificationCommand}"
+					Content="{Binding NotificationCenterViewModel}"
+					ContentTemplate="{StaticResource NavigationNotificationActionTemplate}"
 					Style="{StaticResource NavigationActionButtonStyle}" />
 
 

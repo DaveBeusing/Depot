@@ -125,7 +125,9 @@ dotnet build Depot.slnx
 dotnet run --project src/Depot/Depot.csproj
 ```
 
-The first installation uses local SQLite and creates `depot.db`. The current database schema version is **28**.
+The first installation uses local SQLite and creates `depot.db`. The current database schema version is **29**.
+
+Depot also includes an internal Notification Center with a personal, permission-aware inbox, server-side search and paging, read/archive actions, a shell unread badge, controlled record navigation, and transactionally generated workflow notifications. See [Notification Center](docs/NOTIFICATION_CENTER.md).
 
 Connection and backup settings are stored in `depot.settings`. The file is a JSON envelope with a DPAPI-encrypted payload for the current Windows user. Administration > Database can configure, test, and activate SQLite, SQL Server, or MySQL/MariaDB connections. Provider changes take effect after restarting Depot. Connection attempts and failures are written to `depot.database.log` without connection strings or passwords.
 

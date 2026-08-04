@@ -461,6 +461,10 @@ public sealed class InventoryCountTests
 	{
 		var auditRepository = new AuditRepository(context.Data);
 		var audit = new AuditService(auditRepository, context.Authorization);
+		var notifications = new NotificationService(
+			new DatabaseTransactionRunner(context.Data),
+			new NotificationRepository(context.Data),
+			context.Authorization);
 		return new InventoryCountService(
 			new DatabaseTransactionRunner(context.Data),
 			new InventoryCountRepository(context.Data),
@@ -476,7 +480,8 @@ public sealed class InventoryCountTests
 				new StockMovementRepository(context.Data),
 				new ReasonCodeRepository(context.Data),
 				auditRepository,
-				audit));
+				audit),
+			notifications);
 	}
 
 	private static async Task<InventoryCount> NewDraftAsync(

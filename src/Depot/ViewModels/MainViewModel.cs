@@ -13,7 +13,7 @@ using Depot.Services.Help;
 
 namespace Depot.ViewModels;
 
-public sealed class MainViewModel : BaseViewModel
+public sealed class MainViewModel : BaseViewModel, IDisposable
 {
 	private readonly IAuthorizationService _authorization;
 	private readonly SessionService _session;
@@ -21,6 +21,7 @@ public sealed class MainViewModel : BaseViewModel
 	private ShellNavigationItem? _selectedNavigationItem;
 	private BaseViewModel? _currentViewModel;
 	private BaseViewModel? _viewModelBeforeHelp;
+	private BaseViewModel? _viewModelBeforeNotifications;
 
 	public MainViewModel(
 		ItemService itemService,
@@ -59,15 +60,22 @@ public sealed class MainViewModel : BaseViewModel
 		AuditLogService auditLogService,
 		ApplicationInformationService applicationInformationService,
 		IHelpService helpService,
-		HelpMarkdownRenderer helpRenderer)
+		HelpMarkdownRenderer helpRenderer,
+		INotificationService notificationService,
+		INotificationNavigationService notificationNavigationService)
 	{
 		_authorization = authorizationService;
 		_session = sessionService;
 		ConnectionStatus = connectionStatusService;
 		LogoutCommand = new RelayCommand(Logout);
 		HelpCommand = new RelayCommand(() => _ = OpenHelpAsync());
+		NotificationCommand = new RelayCommand(() => _ = OpenNotificationsAsync());
 		HelpViewModel = new HelpViewModel(helpService, helpRenderer);
 		HelpViewModel.CloseRequested += OnHelpCloseRequested;
+		NotificationCenterViewModel = new NotificationCenterViewModel(notificationService, notificationNavigationService);
+		NotificationCenterViewModel.CloseRequested += OnNotificationCloseRequested;
+		notificationNavigationService.SetNavigationHandler(NavigateToNotificationAsync);
+		_notificationNavigation = notificationNavigationService;
 
 		DashboardViewModel = new DashboardViewModel(stockService);
 		InventoryViewModel = new InventoryViewModel(stockService);
@@ -98,6 +106,7 @@ public sealed class MainViewModel : BaseViewModel
 	public ObservableCollection<ShellNavigationItem> NavigationItems { get; } = new();
 	public RelayCommand LogoutCommand { get; }
 	public RelayCommand HelpCommand { get; }
+	public RelayCommand NotificationCommand { get; }
 	public ConnectionStatusService ConnectionStatus { get; }
 	public event EventHandler? LogoutRequested;
 
@@ -118,6 +127,8 @@ public sealed class MainViewModel : BaseViewModel
 	public ImportViewModel ImportViewModel { get; }
 	public AdministrationViewModel AdministrationViewModel { get; }
 	public HelpViewModel HelpViewModel { get; }
+	public NotificationCenterViewModel NotificationCenterViewModel { get; }
+	private readonly INotificationNavigationService _notificationNavigation;
 
 	public string CurrentHelpTopicId => SelectedNavigationItem?.Content switch
 	{
@@ -132,6 +143,15 @@ public sealed class MainViewModel : BaseViewModel
 		CurrentViewModel = HelpViewModel;
 		await HelpViewModel.OpenAsync(topicId ?? CurrentHelpTopicId, cancellationToken);
 	}
+
+	public async Task OpenNotificationsAsync(CancellationToken cancellationToken = default)
+	{
+		if (CurrentViewModel != NotificationCenterViewModel) _viewModelBeforeNotifications = CurrentViewModel;
+		CurrentViewModel = NotificationCenterViewModel;
+		await NotificationCenterViewModel.LoadAsync(cancellationToken);
+	}
+
+	public void SetApplicationActive(bool isActive) => NotificationCenterViewModel.SetApplicationActive(isActive);
 
 	public ShellNavigationItem? SelectedNavigationItem
 	{
@@ -270,6 +290,69 @@ public sealed class MainViewModel : BaseViewModel
 	{
 		CurrentViewModel = _viewModelBeforeHelp ?? SelectedNavigationItem?.Content;
 		_viewModelBeforeHelp = null;
+	}
+
+	private void OnNotificationCloseRequested(object? sender, EventArgs e)
+	{
+		CurrentViewModel = _viewModelBeforeNotifications ?? SelectedNavigationItem?.Content;
+		_viewModelBeforeNotifications = null;
+	}
+
+	private async Task NavigateToNotificationAsync(NotificationNavigationTarget target, CancellationToken cancellationToken)
+	{
+		switch (target.SourceType)
+		{
+			case NotificationSourceTypes.PurchaseOrder:
+				if (target.SourceId is not long orderId) throw new InvalidOperationException("The purchase-order reference is invalid.");
+				await ProcurementViewModel.OpenOrderAsync(orderId, cancellationToken);
+				await NavigateToModulePageAsync("Purchasing", "Purchase Orders", cancellationToken);
+				break;
+			case NotificationSourceTypes.PurchaseOrderApproval:
+				if (target.SourceId is not long approvalId) throw new InvalidOperationException("The approval reference is invalid.");
+				await PurchaseOrderApprovalsViewModel.OpenApprovalAsync(approvalId, cancellationToken);
+				await NavigateToDirectAsync("Approvals", cancellationToken);
+				break;
+			case NotificationSourceTypes.InventoryCount:
+				if (target.SourceId is not long countId) throw new InvalidOperationException("The inventory-count reference is invalid.");
+				await InventoryCountsViewModel.OpenCountAsync(countId, cancellationToken);
+				await NavigateToModulePageAsync("Warehouse", "Inventory Counts", cancellationToken);
+				break;
+			case NotificationSourceTypes.DatabaseAdministration:
+				AdministrationViewModel.NavigateTo(AdministrationSection.Database);
+				await NavigateToDirectAsync("Administration", cancellationToken);
+				break;
+		}
+	}
+
+	private async Task NavigateToDirectAsync(string name, CancellationToken cancellationToken)
+	{
+		var item = NavigationItems.FirstOrDefault(candidate => candidate.Name == name)
+			?? throw new UnauthorizedAccessException("The requested page is not available.");
+		SelectedNavigationItem = item;
+		CurrentViewModel = item.Content;
+		await item.LoadAsync(cancellationToken);
+	}
+
+	private async Task NavigateToModulePageAsync(string moduleName, string pageName, CancellationToken cancellationToken)
+	{
+		var item = NavigationItems.FirstOrDefault(candidate => candidate.Name == moduleName)
+			?? throw new UnauthorizedAccessException("The requested module is not available.");
+		if (item.Content is not ShellModuleViewModel module)
+			throw new InvalidOperationException("The requested navigation target is invalid.");
+		module.SelectedPage = module.Pages.FirstOrDefault(page => page.Name == pageName)
+			?? throw new UnauthorizedAccessException("The requested page is not available.");
+		SelectedNavigationItem = item;
+		CurrentViewModel = module;
+		await module.LoadAsync(cancellationToken);
+	}
+
+	public void Dispose()
+	{
+		_notificationNavigation.SetNavigationHandler(null);
+		NotificationCenterViewModel.CloseRequested -= OnNotificationCloseRequested;
+		NotificationCenterViewModel.Dispose();
+		_navigationCancellation?.Cancel();
+		_navigationCancellation?.Dispose();
 	}
 
 	private static class Icons

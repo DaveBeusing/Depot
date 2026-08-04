@@ -84,7 +84,7 @@ SQLite is covered by integration tests. SQL Server and MySQL/MariaDB have provid
 
 ## Schema and migrations
 
-The current database schema version is **28**. It is independent from the application SemVer version.
+The current database schema version is **29**. It is independent from the application SemVer version.
 
 All providers create the current schema and migrate supported older schemas forward. Migrations cover authentication, inventory-based movements, audit/concurrency, warehouse structure, reason codes, normalized item master data, suppliers, supplier categories, supplier items, purchase orders, and goods receipts.
 
@@ -143,6 +143,8 @@ Schema version 26 introduced fixed workflow roles as an intermediate authorizati
 Schema version 27 adds the small provider-neutral `WorkflowOperations` idempotency ledger. Critical approval, ordering, closure, material-issue, material-return, and supplier-return operations persist their caller-generated operation ID in the same transaction as the business change and audit entry. Repeating a completed operation ID returns the persisted document state without creating another status transition or stock movement.
 
 Schema version 28 introduces database-backed RBAC through `Roles`, `Permissions`, `RolePermissions`, and `UserRoles`. A user may hold multiple active roles and receives the union of their catalogued permissions. Permissions are cached only for the authenticated session and cleared on logout or user changes. The Administrator system role is protected and receives every catalog permission through data, without bypassing permission checks in authorization code. Existing accounts are migrated to Administrator, Purchasing, Approver, Warehouse Operator, or User assignments without removing legacy columns. Role and user-role changes use optimistic concurrency and atomic audit entries; services remain the security boundary while UI visibility is only a usability aid. Creator/approver separation remains an independent business rule with one explicit service-side exception: the technical Administrator system role may approve or reject its own purchase orders.
+
+Schema version 29 introduces the internal Notification Center through `Notifications` and `NotificationRecipients`. Shared immutable content is separated from per-user read/archive state, recipients are materialized from active RBAC assignments at event time, and the inbox is isolated by the current user ID. Purchase-order submission and decisions plus inventory-count Review transitions persist business state, audit, and notification recipients in one transaction. The shell polls only the unread count every 60 seconds while active. Controlled source types navigate through the central shell navigation path and repeat the permission check; notifications never confer access. See [Notification Center](NOTIFICATION_CENTER.md).
 
 The permission-restricted Approvals main page is backed by `PurchaseOrderApprovalService`. Its work queue selects only `PendingApproval` orders with server-side search, supplier/creator/date filters, stable submission-time sorting, and paging. Count, oldest submission, and total open value are database aggregates. Order lines and a bounded audit-derived status history load only after selection. A successful decision removes only the affected row and refreshes only the aggregates; interrupted or conflicting decisions re-query the selected order before reporting its current status.
 

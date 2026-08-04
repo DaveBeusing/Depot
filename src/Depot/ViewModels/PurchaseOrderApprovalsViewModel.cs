@@ -129,6 +129,33 @@ public sealed class PurchaseOrderApprovalsViewModel : BaseViewModel, IDisposable
 
 	public Task LoadAsync(CancellationToken cancellationToken = default) => LoadPageAsync(cancellationToken);
 
+	public async Task OpenApprovalAsync(long id, CancellationToken cancellationToken = default)
+	{
+		var details = await _approvals.GetDetailsAsync(id, cancellationToken)
+			?? throw new InvalidOperationException("The referenced purchase order no longer exists.");
+		if (details.Order.Status != PurchaseOrderStatus.PendingApproval)
+			throw new InvalidOperationException("The referenced purchase order is no longer awaiting approval.");
+		var existing = Approvals.FirstOrDefault(item => item.Id == id);
+		if (existing is null)
+		{
+			existing = new PurchaseOrderApprovalWorkItem(
+				details.Order.Id,
+				details.Order.OrderNumber,
+				details.Order.SupplierId,
+				details.Order.SupplierName,
+				details.Order.OrderDate,
+				details.Order.ExpectedDeliveryDate,
+				details.Order.Notes,
+				details.Order.CreatedByUserId,
+				details.Order.CreatedByUserDisplay ?? "Unknown user",
+				details.Order.SubmittedAtUtc ?? DateTime.UtcNow,
+				details.TotalAmount,
+				details.Order.Version);
+			Approvals.Insert(0, existing);
+		}
+		SelectedApproval = existing;
+	}
+
 	private async Task LoadPageAsync(CancellationToken cancellationToken)
 	{
 		BeginOperation("Loading pending approvals");

@@ -1,6 +1,7 @@
 // Copyright (c) 2026 David Beusing
 // Licensed under the MIT License.
 
+using Depot.Data;
 using Depot.Models;
 using Depot.Repositories;
 
@@ -13,14 +14,16 @@ public sealed class PurchaseOrderService
 	private readonly ItemRepository _items;
 	private readonly AuditService _audit;
 	private readonly IAuthorizationService _authorization;
+	private readonly NotificationService _notifications;
 
-	public PurchaseOrderService(PurchaseOrderRepository orders, SupplierRepository suppliers, ItemRepository items, AuditService audit, IAuthorizationService authorization)
+	public PurchaseOrderService(PurchaseOrderRepository orders, SupplierRepository suppliers, ItemRepository items, AuditService audit, IAuthorizationService authorization, NotificationService notifications)
 	{
 		_orders = orders;
 		_suppliers = suppliers;
 		_items = items;
 		_audit = audit;
 		_authorization = authorization;
+		_notifications = notifications;
 	}
 
 	public Task<PageResult<PurchaseOrder>> SearchAsync(string? searchText, PurchaseOrderStatus? status, int pageNumber = 1, int pageSize = 100, CancellationToken cancellationToken = default)
@@ -244,7 +247,7 @@ public sealed class PurchaseOrderService
 			Lines = before.Lines
 		};
 		applyMetadata?.Invoke(after);
-		return await _orders.SetStatusAsync(
+		var changed = await _orders.SetStatusAsync(
 			before.Id,
 			version,
 			expected,
@@ -252,7 +255,53 @@ public sealed class PurchaseOrderService
 			after,
 			_audit.CreateUpdatedEntry(before.Id, before, after),
 			operation,
+			(session, token) => CreateStatusNotificationAsync(new DatabaseTransactionContext(session), before, after, token),
 			cancellationToken);
+		if (status is PurchaseOrderStatus.PendingApproval or PurchaseOrderStatus.Approved or PurchaseOrderStatus.Rejected)
+			_notifications.RaiseChanged();
+		return changed;
+	}
+
+	private async Task CreateStatusNotificationAsync(
+		DatabaseTransactionContext transaction,
+		PurchaseOrder before,
+		PurchaseOrder after,
+		CancellationToken cancellationToken)
+	{
+		NotificationRequest? request = after.Status switch
+		{
+			PurchaseOrderStatus.PendingApproval => new(
+				NotificationType.Workflow, NotificationSeverity.Information,
+				$"Purchase order {after.OrderNumber} requires approval",
+				$"{after.SubmittedByUserDisplay ?? "A user"} submitted purchase order {after.OrderNumber} for approval.",
+				NotificationSourceTypes.PurchaseOrderApproval, after.Id, after.OrderNumber, after.SubmittedByUserId),
+			PurchaseOrderStatus.Approved => new(
+				NotificationType.Workflow, NotificationSeverity.Success,
+				$"Purchase order {after.OrderNumber} approved",
+				$"Purchase order {after.OrderNumber} was approved.",
+				NotificationSourceTypes.PurchaseOrder, after.Id, after.OrderNumber, after.ApprovalDecisionByUserId),
+			PurchaseOrderStatus.Rejected => new(
+				NotificationType.Workflow, NotificationSeverity.Warning,
+				$"Purchase order {after.OrderNumber} rejected",
+				$"Purchase order {after.OrderNumber} was rejected{(string.IsNullOrWhiteSpace(after.ApprovalComment) ? "." : $": {after.ApprovalComment}")}",
+				NotificationSourceTypes.PurchaseOrder, after.Id, after.OrderNumber, after.ApprovalDecisionByUserId),
+			_ => null
+		};
+		if (request is null) return;
+
+		IReadOnlyCollection<long> recipients;
+		if (after.Status == PurchaseOrderStatus.PendingApproval)
+		{
+			var holders = await _notifications.ResolvePermissionHoldersAsync(transaction, ApplicationPermission.PurchaseOrdersApprove, cancellationToken);
+			var administrators = (await _notifications.ResolveAdministratorsAsync(transaction, cancellationToken)).ToHashSet();
+			recipients = holders.Where(id => id != after.CreatedByUserId || administrators.Contains(id)).Distinct().ToArray();
+		}
+		else
+		{
+			recipients = new long?[] { before.CreatedByUserId, before.SubmittedByUserId }
+				.Where(id => id is > 0).Select(id => id.GetValueOrDefault()).Distinct().ToArray();
+		}
+		await _notifications.CreateAsync(transaction, request, recipients, cancellationToken);
 	}
 
 	private async Task<PurchaseOrder> GetForTransitionAsync(

@@ -355,6 +355,31 @@
 		</Grid>
 	</DataTemplate>
 
+	<DataTemplate x:Key="NavigationNotificationActionTemplate">
+		<Grid VerticalAlignment="Center">
+			<Grid.ColumnDefinitions>
+				<ColumnDefinition Width="18" />
+				<ColumnDefinition Width="12" />
+				<ColumnDefinition Width="*" />
+				<ColumnDefinition Width="Auto" />
+			</Grid.ColumnDefinitions>
+			<Path
+				Grid.Column="0"
+				Width="18"
+				Height="18"
+				Data="M 4,14 L 16,14 C 14.5,12.5 14,11 14,8 C 14,5.8 12.2,4 10,4 C 7.8,4 6,5.8 6,8 C 6,11 5.5,12.5 4,14 Z M 8,16 C 8.5,17.3 11.5,17.3 12,16"
+				Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Button}}}"
+				StrokeEndLineCap="Round"
+				StrokeLineJoin="Round"
+				StrokeThickness="1.5"
+				Stretch="Uniform" />
+			<TextBlock Grid.Column="2" VerticalAlignment="Center" Text="Notification Center" TextTrimming="CharacterEllipsis" Style="{DynamicResource NavigationTextStyle}" />
+			<Border Grid.Column="3" MinWidth="{DynamicResource Notification.Badge.MinWidth}" Height="{DynamicResource Notification.Badge.Height}" Padding="{DynamicResource Notification.Badge.Padding}" Background="{DynamicResource PrimaryBrush}" CornerRadius="{DynamicResource Notification.Badge.CornerRadius}" Visibility="{Binding HasUnreadNotifications, Converter={StaticResource BooleanToVisibilityConverter}}">
+				<TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="White" FontSize="11" FontWeight="SemiBold" Text="{Binding UnreadBadgeText}" />
+			</Border>
+		</Grid>
+	</DataTemplate>
+
 	<Style x:Key="NavigationActionButtonStyle" TargetType="Button">
 		<Setter Property="MinHeight" Value="44" />
 		<Setter Property="Margin" Value="{DynamicResource Navigation.Item.Margin}" />

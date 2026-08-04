@@ -236,12 +236,17 @@ internal sealed class ProcurementTestContext : IAsyncDisposable
 		context._approver.EffectivePermissions = await roleRepository.GetEffectivePermissionsAsync(approverId, CancellationToken.None);
 		context._authorization = authorization;
 		var audit = new AuditService(new AuditRepository(context.Data), authorization);
+		var notifications = new NotificationService(
+			new DatabaseTransactionRunner(context.Data),
+			new NotificationRepository(context.Data),
+			authorization);
 		context._orders = new PurchaseOrderService(
 			new PurchaseOrderRepository(context.Data),
 			new SupplierRepository(context.Data),
 			new ItemRepository(context.Data),
 			audit,
-			authorization);
+			authorization,
+			notifications);
 		context._approvals = new PurchaseOrderApprovalService(
 			new PurchaseOrderRepository(context.Data),
 			new AuditRepository(context.Data),

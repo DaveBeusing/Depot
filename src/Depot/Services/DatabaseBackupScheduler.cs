@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 using Depot.Diagnostics;
+using Depot.Models;
 
 namespace Depot.Services;
 
@@ -12,6 +13,7 @@ public sealed class DatabaseBackupScheduler : IDisposable
 	private readonly SemaphoreSlim _executionLock = new(1, 1);
 	private readonly CancellationTokenSource _cancellation = new();
 	private Timer? _timer;
+	private NotificationService? _notifications;
 
 	public DatabaseBackupScheduler(
 		DatabaseManagementService databaseManagementService,
@@ -29,6 +31,8 @@ public sealed class DatabaseBackupScheduler : IDisposable
 			dueTime: TimeSpan.FromSeconds(10),
 			period: TimeSpan.FromHours(1));
 	}
+
+	public void ConfigureNotifications(NotificationService notifications) => _notifications = notifications;
 
 	public async Task<bool> RunDueBackupAsync(CancellationToken cancellationToken = default)
 	{
@@ -54,6 +58,24 @@ public sealed class DatabaseBackupScheduler : IDisposable
 		catch (Exception exception)
 		{
 			StartupDiagnostics.LogException(exception);
+			if (_notifications is not null)
+			{
+				try
+				{
+					await _notifications.NotifyAdministratorsAsync(
+						new NotificationRequest(
+							NotificationType.System,
+							NotificationSeverity.Error,
+							"Automatic database backup failed",
+							"Depot could not complete the scheduled database backup. Open Database Administration to review the backup configuration and run a connection test.",
+							NotificationSourceTypes.DatabaseAdministration),
+						cancellationToken);
+				}
+				catch (Exception notificationException)
+				{
+					StartupDiagnostics.LogException(notificationException);
+				}
+			}
 			return false;
 		}
 		finally

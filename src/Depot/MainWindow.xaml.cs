@@ -16,6 +16,16 @@ public partial class MainWindow : Window
 		InitializeComponent();
 	}
 
+	private void OnWindowActivated(object? sender, EventArgs e)
+	{
+		if (DataContext is MainViewModel viewModel) viewModel.SetApplicationActive(true);
+	}
+
+	private void OnWindowDeactivated(object? sender, EventArgs e)
+	{
+		if (DataContext is MainViewModel viewModel) viewModel.SetApplicationActive(false);
+	}
+
 	private async void OnOpenHelpExecuted(object sender, ExecutedRoutedEventArgs e)
 	{
 		if (DataContext is MainViewModel viewModel) await viewModel.OpenHelpAsync();

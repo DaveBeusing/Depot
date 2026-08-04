@@ -77,6 +77,13 @@ public sealed class AdministrationViewModel : BaseViewModel
 	public BaseViewModel? CurrentViewModel { get => _currentViewModel; private set { _currentViewModel = value; OnPropertyChanged(); } }
 	public string HelpTopicId => SelectedNavigationItem?.HelpTopicId ?? HelpService.FallbackTopicId;
 
+	public void NavigateTo(AdministrationSection section)
+	{
+		var target = NavigationItems.FirstOrDefault(item => item.Section is AdministrationSection value && value == section)
+			?? throw new UnauthorizedAccessException("The requested administration page is not available.");
+		SelectedNavigationItem = target;
+	}
+
 	private void UpdateCurrentViewModel()
 	{
 		CurrentViewModel = SelectedNavigationItem?.Section is not AdministrationSection section ? null : section switch

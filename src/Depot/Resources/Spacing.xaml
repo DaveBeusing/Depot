@@ -24,6 +24,11 @@
 	<sys:Double x:Key="Input.MinHeight">36</sys:Double>
 	<sys:Double x:Key="CopyableText.MinHeight">24</sys:Double>
 	<sys:Double x:Key="Link.MinHeight">24</sys:Double>
+	<sys:Double x:Key="Notification.Badge.MinWidth">22</sys:Double>
+	<sys:Double x:Key="Notification.Badge.Height">20</sys:Double>
+	<Thickness x:Key="Notification.Badge.Padding">5,1</Thickness>
+	<CornerRadius x:Key="Notification.Badge.CornerRadius">10</CornerRadius>
+	<Thickness x:Key="Notification.List.Badge.Margin">8,0,0,0</Thickness>
 	<CornerRadius x:Key="Input.CornerRadius">6</CornerRadius>
 	<Thickness x:Key="Input.BorderThickness">1</Thickness>
 	<Thickness x:Key="Input.FocusBorderThickness">2</Thickness>

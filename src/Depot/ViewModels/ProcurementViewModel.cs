@@ -193,6 +193,19 @@ public sealed class ProcurementViewModel : BaseViewModel, IDisposable
 		catch (Exception exception) when (exception is not OperationCanceledException) { FailOperation(exception, "Purchase orders could not be loaded"); }
 	}
 
+	public async Task OpenOrderAsync(long id, CancellationToken cancellationToken = default)
+	{
+		var order = await _orders.GetByIdAsync(id, cancellationToken)
+			?? throw new InvalidOperationException("The referenced purchase order no longer exists.");
+		var existing = Orders.FirstOrDefault(candidate => candidate.Id == id);
+		if (existing is null)
+		{
+			Orders.Insert(0, order);
+			existing = order;
+		}
+		SelectedOrder = existing;
+	}
+
 	private async Task LoadOrdersAsync(CancellationToken cancellationToken = default)
 	{
 		try

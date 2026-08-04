@@ -18,6 +18,7 @@ public sealed class InventoryCountService
 	private readonly AuditRepository _auditEntries;
 	private readonly AuditService _audit;
 	private readonly StockMovementReversalService _reversals;
+	private readonly NotificationService _notifications;
 
 	public InventoryCountService(
 		IDatabaseTransactionRunner transactions,
@@ -28,7 +29,8 @@ public sealed class InventoryCountService
 		WarehouseRepository warehouses,
 		AuditRepository auditEntries,
 		AuditService audit,
-		StockMovementReversalService reversals)
+		StockMovementReversalService reversals,
+		NotificationService notifications)
 	{
 		_transactions = transactions;
 		_counts = counts;
@@ -39,6 +41,7 @@ public sealed class InventoryCountService
 		_auditEntries = auditEntries;
 		_audit = audit;
 		_reversals = reversals;
+		_notifications = notifications;
 	}
 
 	public async Task<InventoryCount> ReverseAsync(long id, long version, long reasonCodeId, string reversalReason, CancellationToken cancellationToken = default)
@@ -274,7 +277,7 @@ public sealed class InventoryCountService
 		_audit.RequirePermission(ApplicationPermission.InventoryCountsEdit);
 		ValidateId(id);
 		EnsureSignedInForStatusChange();
-		return await _transactions.ExecuteAsync(
+		var result = await _transactions.ExecuteAsync(
 			async (transaction, token) =>
 			{
 				var before = await GetForStatusChangeAsync(
@@ -294,6 +297,8 @@ public sealed class InventoryCountService
 					token);
 			},
 			cancellationToken);
+		_notifications.RaiseChanged();
+		return result;
 	}
 
 	public async Task<InventoryCount> PostInventoryCountAsync(
@@ -590,6 +595,26 @@ public sealed class InventoryCountService
 			transaction,
 			_audit.CreateUpdatedEntry(before.Id, before, after),
 			cancellationToken);
+		if (status == InventoryCountStatus.Review)
+		{
+			var recipients = await _notifications.ResolvePermissionHoldersAsync(
+				transaction,
+				ApplicationPermission.InventoryCountsPost,
+				cancellationToken);
+			await _notifications.CreateAsync(
+				transaction,
+				new NotificationRequest(
+					NotificationType.Workflow,
+					NotificationSeverity.Information,
+					$"Inventory count {after.CountNumber} is ready for review",
+					$"Inventory count {after.CountNumber} has been completed and is ready to be reviewed and posted.",
+					NotificationSourceTypes.InventoryCount,
+					after.Id,
+					after.CountNumber,
+					_audit.CurrentUserId),
+				recipients,
+				cancellationToken);
+		}
 		return after;
 	}
 

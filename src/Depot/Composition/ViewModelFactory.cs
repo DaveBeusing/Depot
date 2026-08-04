@@ -67,5 +67,7 @@ internal sealed class ViewModelFactory
 			_services.AuditLog,
 			_applicationInformation,
 			_services.Help,
-			_services.HelpRenderer);
+			_services.HelpRenderer,
+			_services.Notifications,
+			_services.NotificationNavigation);
 }

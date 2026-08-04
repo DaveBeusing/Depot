@@ -12,6 +12,9 @@ internal sealed class ServiceComposition
 	public ServiceComposition(DatabaseComposition database, RepositoryComposition repositories)
 	{
 		Authorization = new AuthorizationService();
+		NotificationNavigation = new NotificationNavigationService(Authorization);
+		Notifications = new NotificationService(database.TransactionRunner, repositories.Notifications, Authorization);
+		database.ConfigureNotifications(Notifications);
 		HelpContent = new EmbeddedHelpContentProvider(typeof(ServiceComposition).Assembly);
 		Help = new HelpService(HelpContent, Authorization, new HelpSearchService());
 		HelpRenderer = new HelpMarkdownRenderer();
@@ -48,7 +51,8 @@ internal sealed class ServiceComposition
 			repositories.Suppliers,
 			repositories.Items,
 			audit,
-			Authorization);
+			Authorization,
+			Notifications);
 		PurchaseOrderApprovals = new PurchaseOrderApprovalService(
 			repositories.PurchaseOrders,
 			repositories.Audit,
@@ -83,7 +87,8 @@ internal sealed class ServiceComposition
 			repositories.Warehouses,
 			repositories.Audit,
 			audit,
-			movementReversals);
+			movementReversals,
+			Notifications);
 		MaterialIssues = new MaterialIssueService(
 			database.TransactionRunner,
 			repositories.MaterialIssues,
@@ -159,6 +164,8 @@ internal sealed class ServiceComposition
 	}
 
 	public AuthorizationService Authorization { get; }
+	public NotificationService Notifications { get; }
+	public NotificationNavigationService NotificationNavigation { get; }
 	public IHelpContentProvider HelpContent { get; }
 	public IHelpService Help { get; }
 	public HelpMarkdownRenderer HelpRenderer { get; }

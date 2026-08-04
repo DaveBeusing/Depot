@@ -44,6 +44,7 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 		command.ExecuteNonQuery();
 		EnsureWorkflowOperations(command);
 		EnsureRbacTables(command);
+		EnsureNotificationTables(command);
 
 		command.CommandText = "SELECT Version FROM DatabaseInfo WHERE Id = 1;";
 		var version = Convert.ToInt32(command.ExecuteScalar(), CultureInfo.InvariantCulture);
@@ -147,6 +148,11 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 			MigrateToRbac(command);
 			version = 28;
 		}
+		if (version == 28)
+		{
+			MigrateToNotifications(command);
+			version = 29;
+		}
 		if (version != DatabaseVersion.CurrentVersion)
 		{
 			throw new InvalidOperationException(
@@ -240,6 +246,30 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 		RbacCatalogSeeder.EnsureCatalog(command);
 		RbacCatalogSeeder.MigrateLegacyUsers(command);
 		command.CommandText = "UPDATE DatabaseInfo SET Version = 28 WHERE Id = 1;";
+		command.Parameters.Clear();
+		command.ExecuteNonQuery();
+	}
+
+	private static void MigrateToNotifications(System.Data.Common.DbCommand command)
+	{
+		EnsureNotificationTables(command);
+		command.CommandText = "UPDATE DatabaseInfo SET Version = 29 WHERE Id = 1;";
+		command.Parameters.Clear();
+		command.ExecuteNonQuery();
+	}
+
+	private static void EnsureNotificationTables(System.Data.Common.DbCommand command)
+	{
+		command.CommandText =
+			"""
+			IF OBJECT_ID(N'Notifications', N'U') IS NULL
+				CREATE TABLE Notifications (Id bigint IDENTITY(1,1) NOT NULL CONSTRAINT PK_Notifications PRIMARY KEY, Type int NOT NULL, Severity int NOT NULL, Title nvarchar(200) NOT NULL, Message nvarchar(4000) NOT NULL, SourceType nvarchar(100) NULL, SourceId bigint NULL, SourceNumber nvarchar(100) NULL, CreatedAtUtc nvarchar(40) NOT NULL, CreatedByUserId bigint NULL, ExpiresAtUtc nvarchar(40) NULL, Version bigint NOT NULL CONSTRAINT DF_Notifications_Version DEFAULT 1, CONSTRAINT CK_Notifications_Type CHECK(Type IN (1,2,3)), CONSTRAINT CK_Notifications_Severity CHECK(Severity IN (1,2,3,4)), CONSTRAINT FK_Notifications_CreatedByUser FOREIGN KEY(CreatedByUserId) REFERENCES Users(Id));
+			IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Notifications_Source') CREATE INDEX IX_Notifications_Source ON Notifications(SourceType, SourceId);
+			IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_Notifications_CreatedAtUtc') CREATE INDEX IX_Notifications_CreatedAtUtc ON Notifications(CreatedAtUtc, Id);
+			IF OBJECT_ID(N'NotificationRecipients', N'U') IS NULL
+				CREATE TABLE NotificationRecipients (Id bigint IDENTITY(1,1) NOT NULL CONSTRAINT PK_NotificationRecipients PRIMARY KEY, NotificationId bigint NOT NULL, UserId bigint NOT NULL, ReadAtUtc nvarchar(40) NULL, ArchivedAtUtc nvarchar(40) NULL, CreatedAtUtc nvarchar(40) NOT NULL, Version bigint NOT NULL CONSTRAINT DF_NotificationRecipients_Version DEFAULT 1, CONSTRAINT UQ_NotificationRecipients UNIQUE(NotificationId, UserId), CONSTRAINT FK_NotificationRecipients_Notification FOREIGN KEY(NotificationId) REFERENCES Notifications(Id), CONSTRAINT FK_NotificationRecipients_User FOREIGN KEY(UserId) REFERENCES Users(Id));
+			IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_NotificationRecipients_Inbox') CREATE INDEX IX_NotificationRecipients_Inbox ON NotificationRecipients(UserId, ReadAtUtc, ArchivedAtUtc, CreatedAtUtc);
+			""";
 		command.Parameters.Clear();
 		command.ExecuteNonQuery();
 	}

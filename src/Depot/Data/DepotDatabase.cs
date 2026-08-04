@@ -176,6 +176,8 @@ public sealed class DepotDatabase : IDatabaseInitializer
 
 		CreateRbacTables(connection);
 
+		CreateNotificationTables(connection);
+
 		CreateStockTransferTables(connection);
 
 		CreateInventoryCountTables(connection);
@@ -1216,6 +1218,13 @@ public sealed class DepotDatabase : IDatabaseInitializer
 			migratedVersion = 28;
 		}
 
+		if (migratedVersion == 28)
+		{
+			CreateNotificationTables(connection);
+			SetDatabaseVersion(connection, 29);
+			migratedVersion = 29;
+		}
+
 		if (migratedVersion < DatabaseVersion.CurrentVersion)
 		{
 			throw new InvalidOperationException(
@@ -1230,6 +1239,46 @@ public sealed class DepotDatabase : IDatabaseInitializer
 
 		CreateRbacTables(connection);
 		SeedRbac(connection, false);
+		CreateNotificationTables(connection);
+	}
+
+	private static void CreateNotificationTables(SqliteConnection connection)
+	{
+		using var command = connection.CreateCommand();
+		command.CommandText =
+		"""
+		CREATE TABLE IF NOT EXISTS Notifications
+		(
+			Id INTEGER PRIMARY KEY AUTOINCREMENT,
+			Type INTEGER NOT NULL CHECK(Type IN (1, 2, 3)),
+			Severity INTEGER NOT NULL CHECK(Severity IN (1, 2, 3, 4)),
+			Title TEXT NOT NULL CHECK(length(Title) BETWEEN 1 AND 200),
+			Message TEXT NOT NULL CHECK(length(Message) BETWEEN 1 AND 4000),
+			SourceType TEXT NULL CHECK(SourceType IS NULL OR length(SourceType) <= 100),
+			SourceId INTEGER NULL,
+			SourceNumber TEXT NULL CHECK(SourceNumber IS NULL OR length(SourceNumber) <= 100),
+			CreatedAtUtc TEXT NOT NULL,
+			CreatedByUserId INTEGER NULL REFERENCES Users(Id),
+			ExpiresAtUtc TEXT NULL,
+			Version INTEGER NOT NULL DEFAULT 1
+		);
+		CREATE INDEX IF NOT EXISTS IX_Notifications_Source ON Notifications(SourceType, SourceId);
+		CREATE INDEX IF NOT EXISTS IX_Notifications_CreatedAtUtc ON Notifications(CreatedAtUtc, Id);
+
+		CREATE TABLE IF NOT EXISTS NotificationRecipients
+		(
+			Id INTEGER PRIMARY KEY AUTOINCREMENT,
+			NotificationId INTEGER NOT NULL REFERENCES Notifications(Id),
+			UserId INTEGER NOT NULL REFERENCES Users(Id),
+			ReadAtUtc TEXT NULL,
+			ArchivedAtUtc TEXT NULL,
+			CreatedAtUtc TEXT NOT NULL,
+			Version INTEGER NOT NULL DEFAULT 1,
+			UNIQUE(NotificationId, UserId)
+		);
+		CREATE INDEX IF NOT EXISTS IX_NotificationRecipients_Inbox ON NotificationRecipients(UserId, ReadAtUtc, ArchivedAtUtc, CreatedAtUtc);
+		""";
+		command.ExecuteNonQuery();
 	}
 
 	private static void MigrateToPurchaseOrderApproval(SqliteConnection connection)
