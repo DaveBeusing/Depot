@@ -9,23 +9,18 @@
 		<Grid.RowDefinitions>
 			<RowDefinition Height="Auto" />
 			<RowDefinition Height="Auto" />
-			<RowDefinition Height="Auto" />
 			<RowDefinition Height="24" />
 			<RowDefinition Height="*" />
 		</Grid.RowDefinitions>
 
-		<controls:PageHeader
-			Grid.Row="0"
-			Title="Dashboard" />
-
 		<controls:OperationPanel
-			Grid.Row="1"
+			Grid.Row="0"
 			IsBusy="{Binding IsBusy}"
 			HasError="{Binding HasOperationError}"
 			StatusText="{Binding StatusText}"
 			ErrorText="{Binding OperationError}" />
 
-		<Grid Grid.Row="2">
+		<Grid Grid.Row="1">
 
 			<Grid.ColumnDefinitions>
 				<ColumnDefinition Width="*" />
@@ -68,7 +63,7 @@
 
 		</Grid>
 
-		<controls:Card Grid.Row="4">
+		<controls:Card Grid.Row="3">
 			<controls:Card.Header>
 				<TextBlock
 					Text="Recent Movements"

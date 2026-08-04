@@ -7,21 +7,19 @@
 	<Grid>
 		<Grid.RowDefinitions>
 			<RowDefinition Height="Auto" />
-			<RowDefinition Height="16" />
+			<RowDefinition Height="8" />
 			<RowDefinition Height="*" />
 		</Grid.RowDefinitions>
 
-		<controls:PageHeader
-			Title="Transfers"
-			Subtitle="Plan and post stock movements between warehouses.">
-			<controls:PageHeader.Actions>
-				<StackPanel Orientation="Horizontal"><controls:OperationPanel
+		<Grid>
+			<Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+			<controls:OperationPanel
 					ErrorText="{Binding OperationError}"
 					HasError="{Binding HasOperationError}" HelpTopicId="warehouse.transfers"
 					IsBusy="{Binding IsBusy}"
-					StatusText="{Binding StatusText}" /><Button MinWidth="{DynamicResource Help.ContextButton.MinWidth}" Margin="{DynamicResource Button.Margin}" AutomationProperties.Name="Open transfers help" Command="{x:Static commands:HelpCommands.OpenTopic}" CommandParameter="warehouse.transfers" Content="Help" Style="{DynamicResource SecondaryButtonStyle}" /></StackPanel>
-			</controls:PageHeader.Actions>
-		</controls:PageHeader>
+					StatusText="{Binding StatusText}" />
+			<Button Grid.Column="1" MinWidth="{DynamicResource Help.ContextButton.MinWidth}" AutomationProperties.Name="Open transfers help" Command="{x:Static commands:HelpCommands.OpenTopic}" CommandParameter="warehouse.transfers" Content="Help" Style="{DynamicResource SecondaryButtonStyle}" />
+		</Grid>
 
 		<Grid Grid.Row="2">
 			<Grid.ColumnDefinitions>

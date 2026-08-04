@@ -4,10 +4,8 @@
 	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
 	xmlns:controls="clr-namespace:Depot.Controls">
 	<Grid>
-		<Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="16" /><RowDefinition Height="*" /></Grid.RowDefinitions>
-		<controls:PageHeader Title="Material Issues" Subtitle="Prepare, post and reverse structured material withdrawals.">
-			<controls:PageHeader.Actions><controls:OperationPanel ErrorText="{Binding OperationError}" HasError="{Binding HasOperationError}" IsBusy="{Binding IsBusy}" StatusText="{Binding StatusText}" /></controls:PageHeader.Actions>
-		</controls:PageHeader>
+		<Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="8" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+		<controls:OperationPanel ErrorText="{Binding OperationError}" HasError="{Binding HasOperationError}" IsBusy="{Binding IsBusy}" StatusText="{Binding StatusText}" />
 		<Grid Grid.Row="2">
 			<Grid.ColumnDefinitions><ColumnDefinition Width="{StaticResource MasterPane.DefaultWidth}" MinWidth="{StaticResource MasterPane.MinWidth}" MaxWidth="{StaticResource MasterPane.MaxWidth}" /><ColumnDefinition Width="{StaticResource MasterDetail.ColumnGap}" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
 			<Grid>

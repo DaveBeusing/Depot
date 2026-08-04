@@ -58,6 +58,32 @@
 		<Setter Property="BorderBrush" Value="{DynamicResource ErrorBrush}"/>
 	</Style>
 
+	<Style x:Key="AppLinkButtonStyle" TargetType="Button">
+		<Setter Property="MinHeight" Value="{DynamicResource Link.MinHeight}" />
+		<Setter Property="Padding" Value="0" />
+		<Setter Property="HorizontalContentAlignment" Value="Left" />
+		<Setter Property="Background" Value="Transparent" />
+		<Setter Property="BorderBrush" Value="Transparent" />
+		<Setter Property="BorderThickness" Value="{DynamicResource Input.BorderThickness}" />
+		<Setter Property="Foreground" Value="{DynamicResource PrimaryBrush}" />
+		<Setter Property="Cursor" Value="Hand" />
+		<Setter Property="FocusVisualStyle" Value="{x:Null}" />
+		<Setter Property="Template">
+			<Setter.Value>
+				<ControlTemplate TargetType="Button">
+					<Border x:Name="FocusBorder" Padding="{TemplateBinding Padding}" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{DynamicResource Input.CornerRadius}">
+						<TextBlock Foreground="{TemplateBinding Foreground}" Text="{TemplateBinding Content}" TextDecorations="Underline" TextTrimming="CharacterEllipsis" />
+					</Border>
+					<ControlTemplate.Triggers>
+						<Trigger Property="IsMouseOver" Value="True"><Setter TargetName="FocusBorder" Property="Background" Value="{DynamicResource HoverBrush}" /></Trigger>
+						<Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="FocusBorder" Property="BorderBrush" Value="{DynamicResource PrimaryBrush}" /></Trigger>
+						<Trigger Property="IsEnabled" Value="False"><Setter TargetName="FocusBorder" Property="Opacity" Value="0.45" /></Trigger>
+					</ControlTemplate.Triggers>
+				</ControlTemplate>
+			</Setter.Value>
+		</Setter>
+	</Style>
+
 
 
 </ResourceDictionary>

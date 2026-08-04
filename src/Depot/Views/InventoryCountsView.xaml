@@ -7,19 +7,19 @@
 	<Grid>
 		<Grid.RowDefinitions>
 			<RowDefinition Height="Auto" />
-			<RowDefinition Height="16" />
+			<RowDefinition Height="8" />
 			<RowDefinition Height="*" />
 		</Grid.RowDefinitions>
 
-		<controls:PageHeader Title="Inventory Counts" Subtitle="Create warehouse snapshots, record physical quantities, and review differences.">
-			<controls:PageHeader.Actions>
-				<StackPanel Orientation="Horizontal"><controls:OperationPanel
+		<Grid>
+			<Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+			<controls:OperationPanel
 					ErrorText="{Binding OperationError}"
 					HasError="{Binding HasOperationError}" HelpTopicId="warehouse.inventory-counts"
 					IsBusy="{Binding IsBusy}"
-					StatusText="{Binding StatusText}" /><Button MinWidth="{DynamicResource Help.ContextButton.MinWidth}" Margin="{DynamicResource Button.Margin}" AutomationProperties.Name="Open inventory counts help" Command="{x:Static commands:HelpCommands.OpenTopic}" CommandParameter="warehouse.inventory-counts" Content="Help" Style="{DynamicResource SecondaryButtonStyle}" /></StackPanel>
-			</controls:PageHeader.Actions>
-		</controls:PageHeader>
+					StatusText="{Binding StatusText}" />
+			<Button Grid.Column="1" MinWidth="{DynamicResource Help.ContextButton.MinWidth}" AutomationProperties.Name="Open inventory counts help" Command="{x:Static commands:HelpCommands.OpenTopic}" CommandParameter="warehouse.inventory-counts" Content="Help" Style="{DynamicResource SecondaryButtonStyle}" />
+		</Grid>
 
 		<Grid Grid.Row="2">
 			<Grid.ColumnDefinitions>

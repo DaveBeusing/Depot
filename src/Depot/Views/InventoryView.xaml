@@ -1,8 +1,7 @@
 <UserControl x:Class="Depot.Views.InventoryView" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:controls="clr-namespace:Depot.Controls">
 	<Grid>
-		<Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
-		<controls:PageHeader Title="Inventory" Subtitle="Review stock, valuation, and activity by physical storage location." />
-		<controls:OperationPanel Grid.Row="1" IsBusy="{Binding IsBusy}" HasError="{Binding HasOperationError}" StatusText="{Binding StatusText}" ErrorText="{Binding OperationError}" />
+		<Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="8" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+		<controls:OperationPanel IsBusy="{Binding IsBusy}" HasError="{Binding HasOperationError}" StatusText="{Binding StatusText}" ErrorText="{Binding OperationError}" />
 		<controls:MasterDetailGrid Grid.Row="2">
 			<controls:MasterDetailGrid.Master>
 				<controls:Card><Grid>
@@ -40,8 +39,8 @@
 							<Grid Grid.Row="2">
 								<Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
 								<controls:MetricCard Title="Current stock" Value="{Binding Details.CurrentStock, StringFormat={}{0:N2}}" />
-								<controls:MetricCard Grid.Column="2" Title="Average cost" Value="{Binding Details.AverageCost, StringFormat={}{0:C2}}" />
-								<controls:MetricCard Grid.Column="4" Title="Inventory value" Value="{Binding Details.InventoryValue, StringFormat={}{0:C2}}" />
+								<controls:MetricCard Grid.Column="2" Title="Average cost" Value="{Binding Details.AverageCost}" ValueStringFormat="{}{0:C2}" />
+								<controls:MetricCard Grid.Column="4" Title="Inventory value" Value="{Binding Details.InventoryValue}" ValueStringFormat="{}{0:C2}" />
 							</Grid>
 							<Grid Grid.Row="4">
 								<DataGrid ItemsSource="{Binding Details.RecentMovements}" Style="{StaticResource AppDataGridStyle}" Visibility="{Binding Details.HasRecentMovements, Converter={StaticResource BooleanToVisibilityConverter}}">
