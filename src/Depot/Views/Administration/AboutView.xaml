@@ -16,7 +16,11 @@
 			IsBusy="{Binding IsBusy}"
 			StatusText="{Binding StatusText}" />
 
-		<ScrollViewer Grid.Row="2" HorizontalContentAlignment="Stretch" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+		<ScrollViewer
+			Grid.Row="2"
+			HorizontalContentAlignment="Stretch"
+			HorizontalScrollBarVisibility="Disabled"
+			VerticalScrollBarVisibility="Auto">
 			<StackPanel HorizontalAlignment="Stretch">
 				<Grid>
 					<Grid.ColumnDefinitions>
@@ -40,48 +44,64 @@
 					</StackPanel>
 				</Grid>
 
-				<Separator Margin="0,24,0,20" />
-
-				<Grid>
+				<Grid Margin="{DynamicResource About.Section.Margin}">
 					<Grid.ColumnDefinitions>
-						<ColumnDefinition Width="{DynamicResource About.Details.LabelWidth}" />
-						<ColumnDefinition Width="16" />
+						<ColumnDefinition Width="*" /><ColumnDefinition Width="12" />
+						<ColumnDefinition Width="*" /><ColumnDefinition Width="12" />
+						<ColumnDefinition Width="*" /><ColumnDefinition Width="12" />
 						<ColumnDefinition Width="*" />
 					</Grid.ColumnDefinitions>
-					<Grid.RowDefinitions>
-						<RowDefinition Height="Auto" /><RowDefinition Height="12" />
-						<RowDefinition Height="Auto" /><RowDefinition Height="12" />
-						<RowDefinition Height="Auto" /><RowDefinition Height="12" />
-						<RowDefinition Height="Auto" /><RowDefinition Height="12" />
-						<RowDefinition Height="Auto" /><RowDefinition Height="12" />
-						<RowDefinition Height="Auto" /><RowDefinition Height="12" />
-						<RowDefinition Height="Auto" /><RowDefinition Height="12" />
-						<RowDefinition Height="Auto" />
-					</Grid.RowDefinitions>
+					<controls:Card><StackPanel><TextBlock Text="Local and server databases" Style="{StaticResource CardTitleStyle}" /><TextBlock Margin="{DynamicResource Control.Margin}" Text="Use SQLite locally or connect to SQL Server and MySQL/MariaDB." TextWrapping="Wrap" Style="{StaticResource CaptionStyle}" /></StackPanel></controls:Card>
+					<controls:Card Grid.Column="2"><StackPanel><TextBlock Text="Offline-capable desktop app" Style="{StaticResource CardTitleStyle}" /><TextBlock Margin="{DynamicResource Control.Margin}" Text="Core workflows and integrated help remain available without online services." TextWrapping="Wrap" Style="{StaticResource CaptionStyle}" /></StackPanel></controls:Card>
+					<controls:Card Grid.Column="4"><StackPanel><TextBlock Text="Immutable movement journal" Style="{StaticResource CardTitleStyle}" /><TextBlock Margin="{DynamicResource Control.Margin}" Text="Posted stock changes remain traceable and corrections use counter-movements." TextWrapping="Wrap" Style="{StaticResource CaptionStyle}" /></StackPanel></controls:Card>
+					<controls:Card Grid.Column="6"><StackPanel><TextBlock Text="Multi-user ready" Style="{StaticResource CardTitleStyle}" /><TextBlock Margin="{DynamicResource Control.Margin}" Text="Transactions, audit entries and optimistic concurrency protect shared workflows." TextWrapping="Wrap" Style="{StaticResource CaptionStyle}" /></StackPanel></controls:Card>
+				</Grid>
 
-					<TextBlock Text="Application version" Style="{StaticResource FormLabelStyle}" />
-					<TextBox Grid.Column="2" Text="{Binding Information.Version, Mode=OneWay}" Style="{StaticResource CopyableTextStyle}" />
-					<TextBlock Grid.Row="2" Text="Build metadata" Style="{StaticResource FormLabelStyle}" />
-					<TextBox Grid.Row="2" Grid.Column="2" Text="{Binding Information.BuildMetadata, Mode=OneWay}" ToolTip="{Binding Information.BuildMetadata}" Style="{StaticResource CopyableTextStyle}" />
-					<TextBlock Grid.Row="4" Text="Runtime" Style="{StaticResource FormLabelStyle}" />
-					<TextBox Grid.Row="4" Grid.Column="2" Text="{Binding Information.Runtime, Mode=OneWay}" Style="{StaticResource CopyableTextStyle}" />
-					<TextBlock Grid.Row="6" Text="Operating system" Style="{StaticResource FormLabelStyle}" />
-					<TextBox Grid.Row="6" Grid.Column="2" Text="{Binding Information.OperatingSystem, Mode=OneWay}" Style="{StaticResource CopyableTextStyle}" />
-					<TextBlock Grid.Row="8" Text="Architecture" Style="{StaticResource FormLabelStyle}" />
-					<TextBox Grid.Row="8" Grid.Column="2" Text="{Binding Information.ProcessArchitecture, Mode=OneWay}" Style="{StaticResource CopyableTextStyle}" />
-					<TextBlock Grid.Row="10" Text="Database schema" Style="{StaticResource FormLabelStyle}" />
-					<TextBox Grid.Row="10" Grid.Column="2" Text="{Binding Information.DatabaseSchemaVersion, Mode=OneWay}" Style="{StaticResource CopyableTextStyle}" />
-					<TextBlock Grid.Row="12" Text="License" Style="{StaticResource FormLabelStyle}" />
-					<TextBox Grid.Row="12" Grid.Column="2" Text="{Binding Information.License, Mode=OneWay}" Style="{StaticResource CopyableTextStyle}" />
-					<TextBlock Grid.Row="14" Text="Repository" Style="{StaticResource FormLabelStyle}" />
-					<Button
-						Grid.Row="14"
-						Grid.Column="2"
-						AutomationProperties.Name="Open Depot repository"
-						Command="{Binding OpenRepositoryCommand}"
-						Content="{Binding Information.RepositoryUrl}"
-						Style="{StaticResource AppLinkButtonStyle}"
-						ToolTip="{Binding Information.RepositoryUrl}" />
+				<controls:Card Margin="{DynamicResource About.Section.Margin}">
+					<controls:Card.Header><TextBlock Text="Technical information" Style="{StaticResource SectionTitleStyle}" /></controls:Card.Header>
+					<Grid>
+						<Grid.ColumnDefinitions>
+							<ColumnDefinition Width="{DynamicResource About.Details.LabelWidth}" />
+							<ColumnDefinition Width="16" />
+							<ColumnDefinition Width="*" />
+						</Grid.ColumnDefinitions>
+						<Grid.RowDefinitions>
+							<RowDefinition Height="Auto" /><RowDefinition Height="12" />
+							<RowDefinition Height="Auto" /><RowDefinition Height="12" />
+							<RowDefinition Height="Auto" /><RowDefinition Height="12" />
+							<RowDefinition Height="Auto" /><RowDefinition Height="12" />
+							<RowDefinition Height="Auto" /><RowDefinition Height="12" />
+							<RowDefinition Height="Auto" /><RowDefinition Height="12" />
+							<RowDefinition Height="Auto" /><RowDefinition Height="12" />
+							<RowDefinition Height="Auto" />
+						</Grid.RowDefinitions>
+
+						<TextBlock Text="Application version" Style="{StaticResource FormLabelStyle}" />
+						<TextBox Grid.Column="2" Text="{Binding Information.Version, Mode=OneWay}" Style="{StaticResource CopyableTextStyle}" />
+						<TextBlock Grid.Row="2" Text="Build metadata" Style="{StaticResource FormLabelStyle}" />
+						<TextBox Grid.Row="2" Grid.Column="2" Text="{Binding Information.BuildMetadata, Mode=OneWay}" Style="{StaticResource CopyableTextStyle}" />
+						<TextBlock Grid.Row="4" Text="Runtime" Style="{StaticResource FormLabelStyle}" />
+						<TextBox Grid.Row="4" Grid.Column="2" Text="{Binding Information.Runtime, Mode=OneWay}" Style="{StaticResource CopyableTextStyle}" />
+						<TextBlock Grid.Row="6" Text="Operating system" Style="{StaticResource FormLabelStyle}" />
+						<TextBox Grid.Row="6" Grid.Column="2" Text="{Binding Information.OperatingSystem, Mode=OneWay}" Style="{StaticResource CopyableTextStyle}" />
+						<TextBlock Grid.Row="8" Text="Architecture" Style="{StaticResource FormLabelStyle}" />
+						<TextBox Grid.Row="8" Grid.Column="2" Text="{Binding Information.ProcessArchitecture, Mode=OneWay}" Style="{StaticResource CopyableTextStyle}" />
+						<TextBlock Grid.Row="10" Text="Database schema" Style="{StaticResource FormLabelStyle}" />
+						<TextBox Grid.Row="10" Grid.Column="2" Text="{Binding Information.DatabaseSchemaVersion, Mode=OneWay}" Style="{StaticResource CopyableTextStyle}" />
+						<TextBlock Grid.Row="12" Text="License" Style="{StaticResource FormLabelStyle}" />
+						<TextBox Grid.Row="12" Grid.Column="2" Text="{Binding Information.License, Mode=OneWay}" Style="{StaticResource CopyableTextStyle}" />
+						<TextBlock Grid.Row="14" Text="Repository" Style="{StaticResource FormLabelStyle}" />
+						<Button Grid.Row="14" Grid.Column="2" AutomationProperties.Name="Open Depot repository" Command="{Binding OpenRepositoryCommand}" Content="{Binding Information.RepositoryUrl}" Style="{StaticResource AppLinkButtonStyle}" ToolTip="{Binding Information.RepositoryUrl}" />
+					</Grid>
+				</controls:Card>
+
+				<Grid Margin="{DynamicResource About.Section.Margin}">
+					<Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+					<StackPanel>
+						<TextBlock Text="{Binding Information.Copyright}" Style="{StaticResource CaptionStyle}" />
+						<TextBlock Margin="{DynamicResource Control.Margin}" Text="Licensed under the MIT License. Third-party components retain their respective licenses." TextWrapping="Wrap" Style="{StaticResource CaptionStyle}" />
+					</StackPanel>
+					<Button Grid.Column="1" VerticalAlignment="Bottom" Command="{Binding CopyInformationCommand}" Content="Copy all information" Style="{StaticResource SecondaryButtonStyle}" />
 				</Grid>
 			</StackPanel>
 		</ScrollViewer>

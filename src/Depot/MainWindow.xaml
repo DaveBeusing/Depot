@@ -201,7 +201,7 @@
 			Grid.Column="1"
 			Margin="{DynamicResource Shell.Content.Margin}"
 			Background="{DynamicResource BackgroundBrush}">
-			<ContentControl Content="{Binding CurrentViewModel}" />
+			<ContentControl Content="{Binding CurrentViewModel}" Style="{StaticResource ShellContentHostStyle}" />
 		</Grid>
 
 	</Grid>

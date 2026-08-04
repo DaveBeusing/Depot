@@ -14,6 +14,7 @@ public sealed class ProcurementViewModel : BaseViewModel, IDisposable
 	private ProcurementSection _section;
 	private const int PageSize = 50;
 	private readonly PurchaseOrderService _orders;
+	private readonly PurchaseOrderHistoryService _history;
 	private readonly GoodsReceiptService _receipts;
 	private readonly SupplierService _suppliers;
 	private readonly ItemService _items;
@@ -43,9 +44,9 @@ public sealed class ProcurementViewModel : BaseViewModel, IDisposable
 	private int _pageNumber = 1;
 	private long _totalCount;
 
-	public ProcurementViewModel(PurchaseOrderService orders, GoodsReceiptService receipts, SupplierService suppliers, ItemService items, IFileDialogService fileDialogs, ReasonCodeService reasonCodes)
+	public ProcurementViewModel(PurchaseOrderService orders, PurchaseOrderHistoryService history, GoodsReceiptService receipts, SupplierService suppliers, ItemService items, IFileDialogService fileDialogs, ReasonCodeService reasonCodes)
 	{
-		_orders = orders; _receipts = receipts; _suppliers = suppliers; _items = items; _fileDialogs = fileDialogs; _reasonCodes = reasonCodes;
+		_orders = orders; _history = history; _receipts = receipts; _suppliers = suppliers; _items = items; _fileDialogs = fileDialogs; _reasonCodes = reasonCodes;
 		StatusFilters = [new("All statuses", null), .. Enum.GetValues<PurchaseOrderStatus>().Select(status => new PurchaseOrderStatusFilter(StatusLabel(status), status))];
 		_selectedStatusFilter = StatusFilters[0];
 		NewOrderCommand = new RelayCommand(NewOrder, () => CanCreateOrders);
@@ -67,6 +68,7 @@ public sealed class ProcurementViewModel : BaseViewModel, IDisposable
 	public ObservableCollection<Supplier> Suppliers { get; } = new();
 	public ObservableCollection<Item> Items { get; } = new();
 	public ObservableCollection<PurchaseOrderLine> Lines { get; } = new();
+	public ObservableCollection<PurchaseOrderHistoryItem> StatusHistory { get; } = new();
 	public ObservableCollection<GoodsReceiptLineEditor> ReceiptLines { get; } = new();
 	public ObservableCollection<GoodsReceipt> GoodsReceipts { get; } = new();
 	public ObservableCollection<MovementOverviewItem> ReceiptMovements { get; } = new();
@@ -172,6 +174,8 @@ public sealed class ProcurementViewModel : BaseViewModel, IDisposable
 	public string ReversalReason { get => _reversalReason; set { if (_reversalReason == value) return; _reversalReason = value; OnPropertyChanged(); ReverseReceiptCommand.RaiseCanExecuteChanged(); } }
 	public string CloseReason { get => _closeReason; set { if (_closeReason == value) return; _closeReason = value; OnPropertyChanged(); CloseOrderCommand.RaiseCanExecuteChanged(); } }
 	public bool HasApprovalHistory => Draft.SubmittedAtUtc is not null;
+	public bool HasStatusHistory => StatusHistory.Count > 0;
+	public bool HasNoStatusHistory => StatusHistory.Count == 0;
 
 	public async Task LoadAsync(CancellationToken cancellationToken = default)
 	{
@@ -237,7 +241,7 @@ public sealed class ProcurementViewModel : BaseViewModel, IDisposable
 
 	private async Task SelectOrderAsync(PurchaseOrder? order, CancellationToken cancellationToken)
 	{
-		if (order is null) { Draft = NewOrderDraft(); CloseReason = string.Empty; Lines.Clear(); ReceiptLines.Clear(); GoodsReceipts.Clear(); SelectedReceipt = null; return; }
+		if (order is null) { Draft = NewOrderDraft(); CloseReason = string.Empty; Lines.Clear(); StatusHistory.Clear(); NotifyStatusHistoryChanged(); ReceiptLines.Clear(); GoodsReceipts.Clear(); SelectedReceipt = null; return; }
 		try
 		{
 			var details = await _orders.GetByIdAsync(order.Id, cancellationToken) ?? throw new InvalidOperationException("Purchase order was not found.");
@@ -248,13 +252,13 @@ public sealed class ProcurementViewModel : BaseViewModel, IDisposable
 			}
 			Draft = Copy(details); CloseReason = string.Empty; Lines.Clear(); foreach (var line in details.Lines) Lines.Add(Copy(line));
 			OnPropertyChanged(nameof(EditorTitle)); OnPropertyChanged(nameof(CanReceive)); OnPropertyChanged(nameof(ShowReceiptEntry)); RaiseCommands();
-			await Task.WhenAll(BuildReceiptLinesAsync(details, cancellationToken), LoadReceiptsAsync(details.Id, cancellationToken));
+			await Task.WhenAll(BuildReceiptLinesAsync(details, cancellationToken), LoadReceiptsAsync(details.Id, cancellationToken), LoadStatusHistoryAsync(details.Id, cancellationToken));
 		}
 		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
 		catch (Exception exception) { FailOperation(exception, "Purchase order details could not be loaded"); }
 	}
 
-	private void NewOrder() { SelectedOrder = null; Draft = NewOrderDraft(); Lines.Clear(); ReceiptLines.Clear(); OnPropertyChanged(nameof(EditorTitle)); }
+	private void NewOrder() { SelectedOrder = null; Draft = NewOrderDraft(); Lines.Clear(); StatusHistory.Clear(); NotifyStatusHistoryChanged(); ReceiptLines.Clear(); OnPropertyChanged(nameof(EditorTitle)); }
 	private void AddOrUpdateLine()
 	{
 		if (SelectedItem is null || LineQuantity <= 0 || LineUnitPrice < 0) return;
@@ -271,7 +275,7 @@ public sealed class ProcurementViewModel : BaseViewModel, IDisposable
 	private async Task SaveOrderAsync(CancellationToken cancellationToken)
 	{
 		BeginOperation("Saving purchase order");
-		try { Draft.Lines = Lines.Select(Copy).ToArray(); var saved = await _orders.SaveDraftAsync(Copy(Draft), cancellationToken); ApplyChangedOrder(saved); CompleteOperation(false, "Purchase order saved"); }
+		try { Draft.Lines = Lines.Select(Copy).ToArray(); var saved = await _orders.SaveDraftAsync(Copy(Draft), cancellationToken); ApplyChangedOrder(saved); await LoadStatusHistoryAsync(saved.Id, cancellationToken); CompleteOperation(false, "Purchase order saved"); }
 		catch (Exception exception) when (exception is not OperationCanceledException) { FailOperation(exception, "Purchase order could not be saved"); }
 	}
 	private async Task PlaceOrderAsync(CancellationToken cancellationToken) { var operationId = Guid.NewGuid(); await ChangeStatusAsync(() => _orders.PlaceOrderAsync(Draft.Id, Draft.Version, operationId, cancellationToken), "Purchase order placed", PurchaseOrderStatus.Ordered, cancellationToken); }
@@ -294,7 +298,7 @@ public sealed class ProcurementViewModel : BaseViewModel, IDisposable
 	private async Task ChangeStatusAsync(Func<Task<PurchaseOrder>> action, string message, PurchaseOrderStatus? expectedStatus, CancellationToken cancellationToken)
 	{
 		BeginOperation("Updating purchase order status");
-		try { var saved = await action(); ApplyChangedOrder(saved); await Task.WhenAll(BuildReceiptLinesAsync(saved, cancellationToken), LoadReceiptsAsync(saved.Id, cancellationToken)); CloseReason = string.Empty; CompleteOperation(false, message); }
+		try { var saved = await action(); ApplyChangedOrder(saved); await Task.WhenAll(BuildReceiptLinesAsync(saved, cancellationToken), LoadReceiptsAsync(saved.Id, cancellationToken), LoadStatusHistoryAsync(saved.Id, cancellationToken)); CloseReason = string.Empty; CompleteOperation(false, message); }
 		catch (Exception exception) when (exception is not OperationCanceledException)
 		{
 			if (expectedStatus is not null && await ReconcileStatusAsync(Draft.Id, expectedStatus.Value, message)) return;
@@ -309,7 +313,7 @@ public sealed class ProcurementViewModel : BaseViewModel, IDisposable
 			var current = await _orders.GetByIdAsync(id, CancellationToken.None);
 			if (current?.Status != expectedStatus) return false;
 			ApplyChangedOrder(current);
-			await Task.WhenAll(BuildReceiptLinesAsync(current, CancellationToken.None), LoadReceiptsAsync(current.Id, CancellationToken.None));
+			await Task.WhenAll(BuildReceiptLinesAsync(current, CancellationToken.None), LoadReceiptsAsync(current.Id, CancellationToken.None), LoadStatusHistoryAsync(current.Id, CancellationToken.None));
 			CompleteOperation(false, $"{successMessage}; current server status confirmed");
 			return true;
 		}
@@ -349,6 +353,16 @@ public sealed class ProcurementViewModel : BaseViewModel, IDisposable
 		GoodsReceipts.Clear(); foreach (var receipt in receipts) GoodsReceipts.Add(receipt);
 		SelectedReceipt = GoodsReceipts.FirstOrDefault();
 	}
+	private async Task LoadStatusHistoryAsync(long purchaseOrderId, CancellationToken cancellationToken = default)
+	{
+		ReplaceOptions(StatusHistory, await _history.GetHistoryAsync(purchaseOrderId, cancellationToken));
+		NotifyStatusHistoryChanged();
+	}
+	private void NotifyStatusHistoryChanged()
+	{
+		OnPropertyChanged(nameof(HasStatusHistory));
+		OnPropertyChanged(nameof(HasNoStatusHistory));
+	}
 	private async Task LoadReceiptMovementsAsync(GoodsReceipt? receipt, CancellationToken cancellationToken = default)
 	{
 		try
@@ -386,7 +400,7 @@ public sealed class ProcurementViewModel : BaseViewModel, IDisposable
 			Draft = Copy(updatedOrder);
 			Lines.Clear();
 			foreach (var line in updatedOrder.Lines) Lines.Add(Copy(line));
-			await BuildReceiptLinesAsync(updatedOrder, cancellationToken);
+			await Task.WhenAll(BuildReceiptLinesAsync(updatedOrder, cancellationToken), LoadStatusHistoryAsync(updatedOrder.Id, cancellationToken));
 			OnPropertyChanged(nameof(EditorTitle));
 			OnPropertyChanged(nameof(CanReceive));
 			OnPropertyChanged(nameof(ShowReceiptEntry));
@@ -406,7 +420,7 @@ public sealed class ProcurementViewModel : BaseViewModel, IDisposable
 	{
 		var order = await _orders.GetByIdAsync(id, cancellationToken) ?? throw new InvalidOperationException("The purchase order was not found after the operation.");
 		ApplyChangedOrder(order);
-		await Task.WhenAll(BuildReceiptLinesAsync(order, cancellationToken), LoadReceiptsAsync(order.Id, cancellationToken));
+		await Task.WhenAll(BuildReceiptLinesAsync(order, cancellationToken), LoadReceiptsAsync(order.Id, cancellationToken), LoadStatusHistoryAsync(order.Id, cancellationToken));
 	}
 	private Task PreviousPageAsync(CancellationToken cancellationToken) { if (PageNumber <= 1) return Task.CompletedTask; PageNumber--; return LoadOrdersAsync(cancellationToken); }
 	private Task NextPageAsync(CancellationToken cancellationToken) { if (!HasNextPage) return Task.CompletedTask; PageNumber++; return LoadOrdersAsync(cancellationToken); }

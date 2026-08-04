@@ -50,7 +50,7 @@
 		<Setter Property="IsReadOnlyCaretVisible" Value="False" />
 		<Setter Property="CaretBrush" Value="Transparent" />
 		<Setter Property="VerticalContentAlignment" Value="Center" />
-		<Setter Property="SelectionBrush" Value="{DynamicResource PrimaryBrush}" />
+		<Setter Property="SelectionBrush" Value="{DynamicResource CopyableTextSelectionBrush}" />
 		<Setter Property="TextWrapping" Value="Wrap" />
 		<Setter Property="HorizontalScrollBarVisibility" Value="Disabled" />
 		<Setter Property="VerticalScrollBarVisibility" Value="Disabled" />

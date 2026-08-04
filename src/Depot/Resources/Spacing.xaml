@@ -96,6 +96,7 @@
 	<!-- About -->
 	<sys:Double x:Key="About.Logo.Size">96</sys:Double>
 	<GridLength x:Key="About.Details.LabelWidth">180</GridLength>
+	<Thickness x:Key="About.Section.Margin">0,24,0,0</Thickness>
 
 	<!-- Help Center -->
 	<GridLength x:Key="Help.Navigation.Width">320</GridLength>

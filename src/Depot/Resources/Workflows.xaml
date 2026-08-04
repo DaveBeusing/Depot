@@ -135,9 +135,25 @@
 		</Setter>
 	</Style>
 
-	<Style TargetType="{x:Type controls:ShellModuleContentControl}">
+	<Style x:Key="ShellContentHostStyle" TargetType="ContentControl">
 		<Setter Property="HorizontalContentAlignment" Value="Stretch" />
 		<Setter Property="VerticalContentAlignment" Value="Stretch" />
+		<Setter Property="Template">
+			<Setter.Value>
+				<ControlTemplate TargetType="ContentControl">
+					<ContentPresenter
+						HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+						VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+						Content="{TemplateBinding Content}"
+						ContentStringFormat="{TemplateBinding ContentStringFormat}"
+						ContentTemplate="{TemplateBinding ContentTemplate}"
+						ContentTemplateSelector="{TemplateBinding ContentTemplateSelector}" />
+				</ControlTemplate>
+			</Setter.Value>
+		</Setter>
+	</Style>
+
+	<Style TargetType="{x:Type controls:ShellModuleContentControl}" BasedOn="{StaticResource ShellContentHostStyle}">
 	</Style>
 
 	<Style TargetType="{x:Type controls:WorkflowListState}">

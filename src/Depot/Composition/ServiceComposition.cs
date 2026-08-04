@@ -59,6 +59,10 @@ internal sealed class ServiceComposition
 			PurchaseOrders,
 			Authorization,
 			new AuditJsonSanitizer());
+		PurchaseOrderHistory = new PurchaseOrderHistoryService(
+			repositories.Audit,
+			Authorization,
+			new AuditJsonSanitizer());
 		GoodsReceipts = new GoodsReceiptService(
 			database.TransactionRunner,
 			repositories.GoodsReceipts,
@@ -184,6 +188,7 @@ internal sealed class ServiceComposition
 	public SupplierItemService SupplierItems { get; }
 	public PurchaseOrderService PurchaseOrders { get; }
 	public PurchaseOrderApprovalService PurchaseOrderApprovals { get; }
+	public PurchaseOrderHistoryService PurchaseOrderHistory { get; }
 	public GoodsReceiptService GoodsReceipts { get; }
 	public StockTransferService StockTransfers { get; }
 	public InventoryCountService InventoryCounts { get; }

@@ -39,6 +39,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		SupplierItemService supplierItemService,
 		PurchaseOrderService purchaseOrderService,
 		PurchaseOrderApprovalService purchaseOrderApprovalService,
+		PurchaseOrderHistoryService purchaseOrderHistoryService,
 		GoodsReceiptService goodsReceiptService,
 		StockTransferService stockTransferService,
 		InventoryCountService inventoryCountService,
@@ -86,7 +87,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		MaterialIssuesViewModel = new MaterialIssuesViewModel(materialIssueService, reasonCodeService, fileDialogService);
 		MaterialReturnsViewModel = new MaterialReturnsViewModel(materialReturnService, reasonCodeService, fileDialogService);
 		SupplierReturnsViewModel = new SupplierReturnsViewModel(supplierReturnService, supplierService, reasonCodeService, fileDialogService);
-		ProcurementViewModel = new ProcurementViewModel(purchaseOrderService, goodsReceiptService, supplierService, itemService, fileDialogService, reasonCodeService);
+		ProcurementViewModel = new ProcurementViewModel(purchaseOrderService, purchaseOrderHistoryService, goodsReceiptService, supplierService, itemService, fileDialogService, reasonCodeService);
 		PurchaseOrdersPageViewModel = new PurchaseOrdersPageViewModel(ProcurementViewModel);
 		GoodsReceiptsPageViewModel = new GoodsReceiptsPageViewModel(ProcurementViewModel);
 		PurchaseOrderApprovalsViewModel = new PurchaseOrderApprovalsViewModel(purchaseOrderApprovalService, fileDialogService);
