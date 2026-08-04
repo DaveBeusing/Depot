@@ -20,7 +20,7 @@ Permissions are loaded for the active login session and enforced by services as 
 > [!WARNING] Deactivating a user immediately prevents effective authorization on the next session.
 
 - The protected Administrator system role cannot be removed or stripped of its intended protection.
-- Workflow rules such as self-approval prevention remain separate from permissions.
+- Workflow rules remain separate from permissions: non-administrators cannot decide their own purchase orders, while the protected Administrator system role is exempt only when it also provides `PurchaseOrders.Approve`.
 
 ## Required permissions
 `Users.View` or `Roles.View`; changes require the corresponding Manage permission.

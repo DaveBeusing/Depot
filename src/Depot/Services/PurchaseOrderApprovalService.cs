@@ -33,7 +33,8 @@ public sealed class PurchaseOrderApprovalService
 
 	public bool CanDecide(long? createdByUserId) =>
 		_authorization.HasPermission(ApplicationPermission.PurchaseOrdersApprove) &&
-		_authorization.CurrentUser?.Id != createdByUserId;
+		(_authorization.CurrentUser?.Id != createdByUserId ||
+		 _authorization.IsInRole(SystemRoleCatalog.AdministratorCode));
 
 	public async Task<PurchaseOrderApprovalPage> SearchAsync(
 		PurchaseOrderApprovalFilter filter,

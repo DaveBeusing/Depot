@@ -5,7 +5,7 @@ The approval queue is a focused worklist containing only purchase orders in Pend
 
 ## Prerequisites
 - You have the approval permission.
-- The order was submitted by another user.
+- For non-administrators, the order was created by another user.
 
 ## Steps
 1. Open **Approvals**.
@@ -18,7 +18,8 @@ The approval queue is a focused worklist containing only purchase orders in Pend
 The decision, user, timestamp, order status, and audit entry are committed atomically. The decided order is removed from the worklist.
 
 ## Common problems
-- Depot enforces the four-eyes rule in the service, not only in the UI.
+- Depot enforces the four-eyes rule in the service, not only in the UI. Non-administrators cannot approve or reject their own orders.
+- Members of the protected Administrator system role may decide their own orders when necessary, but still require `PurchaseOrders.Approve`.
 - If another user decided first, reload the current status after the concurrency message.
 
 ## Required permissions

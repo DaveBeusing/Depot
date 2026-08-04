@@ -30,6 +30,12 @@ public sealed class AuthorizationService : IAuthorizationService
 		_effectivePermissions = new HashSet<ApplicationPermission>();
 	}
 
+	public bool IsInRole(string roleCode) =>
+		CurrentUser is { IsActive: true } user &&
+		user.Roles.Any(role =>
+			role.IsActive &&
+			string.Equals(role.Code, roleCode, StringComparison.Ordinal));
+
 	public bool HasPermission(ApplicationPermission permission) =>
 		CurrentUser is { IsActive: true } && _effectivePermissions.Contains(permission);
 

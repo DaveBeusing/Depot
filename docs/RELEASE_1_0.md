@@ -40,7 +40,7 @@ Depot is currently `0.13.0-preview` with database schema version **28**. Checked
 - [x] Supplier-return drafts, receipt-position selection, net-return validation, atomic posting, negative movements, and counter-booking
 - [x] Receipt and purchase-order received quantities remain immutable historical facts; supplier returns are evaluated separately
 - [x] Purchase-order drafts, lines, generated order numbers, status changes, search, and filters
-- [x] Purchase-order submission, approval/rejection, explicit approver permission, and creator/approver separation
+- [x] Purchase-order submission, approval/rejection, explicit approver permission, creator/approver separation, and the service-enforced Administrator exception
 - [x] Granular catalog permissions, protected system roles, role union, and service-level workflow authorization
 - [x] Permission-restricted approval main page with bounded server-side work queue and targeted decision updates
 - [x] Atomic purchase-order create/edit/order/cancel and before/after audit writes

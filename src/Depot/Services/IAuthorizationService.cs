@@ -10,6 +10,7 @@ public interface IAuthorizationService
 	User? CurrentUser { get; }
 	bool IsLoggedIn { get; }
 	IReadOnlySet<ApplicationPermission> EffectivePermissions { get; }
+	bool IsInRole(string roleCode);
 	bool HasPermission(ApplicationPermission permission);
 	bool HasAnyPermission(params ApplicationPermission[] permissions);
 	void RequirePermission(ApplicationPermission permission);

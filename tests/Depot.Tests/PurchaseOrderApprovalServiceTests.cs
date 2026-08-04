@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 using Depot.Models;
+using Depot.Services;
 using Depot.ViewModels;
 
 using Xunit;
@@ -10,6 +11,118 @@ namespace Depot.Tests;
 
 public sealed class PurchaseOrderApprovalServiceTests
 {
+	[Fact]
+	public async Task ApproverCanApproveAnOrderCreatedByAnotherUser()
+	{
+		await using var context = await ProcurementTestContext.CreateSqliteAsync();
+		var pending = await CreatePendingAsync(context);
+		context.SignInApprover();
+
+		var approved = await context.Approvals.ApproveAsync(pending.Id, pending.Version, "Reviewed");
+
+		Assert.Equal(PurchaseOrderStatus.Approved, approved.Status);
+		Assert.Equal(context.ApproverUserId, approved.ApprovalDecisionByUserId);
+	}
+
+	[Theory]
+	[InlineData(true)]
+	[InlineData(false)]
+	public async Task ApproverCannotDecideAnOrderTheyCreated(bool approve)
+	{
+		await using var context = await ProcurementTestContext.CreateSqliteAsync();
+		context.SignInApproverWithPurchasingPermissions();
+		var pending = await CreatePendingAsync(context);
+
+		Assert.False(context.Approvals.CanDecide(pending.CreatedByUserId));
+		var error = approve
+			? await Assert.ThrowsAsync<InvalidOperationException>(() => context.Approvals.ApproveAsync(pending.Id, pending.Version, null))
+			: await Assert.ThrowsAsync<InvalidOperationException>(() => context.Approvals.RejectAsync(pending.Id, pending.Version, "Not acceptable"));
+
+		Assert.Contains("creator", error.Message, StringComparison.OrdinalIgnoreCase);
+		Assert.Equal(PurchaseOrderStatus.PendingApproval, (await context.Orders.GetByIdAsync(pending.Id))?.Status);
+	}
+
+	[Theory]
+	[InlineData(true)]
+	[InlineData(false)]
+	public async Task AdministratorCanDecideAnOrderTheyCreated(bool approve)
+	{
+		await using var context = await ProcurementTestContext.CreateSqliteAsync();
+		var pending = await CreatePendingAsync(context);
+
+		Assert.True(context.Approvals.CanDecide(pending.CreatedByUserId));
+		var decided = approve
+			? await context.Approvals.ApproveAsync(pending.Id, pending.Version, "Administrator approval")
+			: await context.Approvals.RejectAsync(pending.Id, pending.Version, "Administrator rejection");
+
+		Assert.Equal(approve ? PurchaseOrderStatus.Approved : PurchaseOrderStatus.Rejected, decided.Status);
+		Assert.Equal(pending.CreatedByUserId, decided.ApprovalDecisionByUserId);
+	}
+
+	[Fact]
+	public async Task ApprovalViewModelEnablesAdministratorDecisionForAnOwnOrder()
+	{
+		await using var context = await ProcurementTestContext.CreateSqliteAsync();
+		var pending = await CreatePendingAsync(context);
+		using var viewModel = new PurchaseOrderApprovalsViewModel(context.Approvals);
+		await viewModel.LoadAsync();
+		viewModel.SelectedApproval = viewModel.Approvals.Single(order => order.Id == pending.Id);
+
+		Assert.True(viewModel.CanDecideSelected);
+		Assert.True(viewModel.ApproveCommand.CanExecute(null));
+		Assert.True(viewModel.RejectCommand.CanExecute(null));
+	}
+
+	[Fact]
+	public async Task UserWithoutApprovalPermissionCannotDecideAnOrder()
+	{
+		await using var context = await ProcurementTestContext.CreateSqliteAsync();
+		var pending = await CreatePendingAsync(context);
+		context.Authorization.SignIn(new User { Id = 800001, IsActive = true }, [ApplicationPermission.PurchaseOrdersView]);
+
+		await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+			context.Approvals.ApproveAsync(pending.Id, pending.Version, null));
+		await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+			context.Approvals.RejectAsync(pending.Id, pending.Version, null));
+	}
+
+	[Fact]
+	public async Task AdministratorSelfApprovalRemainsAtomicAndIdempotent()
+	{
+		await using var context = await ProcurementTestContext.CreateSqliteAsync();
+		var pending = await CreatePendingAsync(context);
+		var operationId = Guid.NewGuid();
+
+		var approved = await context.Approvals.ApproveAsync(pending.Id, pending.Version, "Approved once", operationId);
+		var retry = await context.Approvals.ApproveAsync(pending.Id, pending.Version, "Approved once", operationId);
+
+		Assert.Equal(approved.Version, retry.Version);
+		Assert.Equal(1, await context.ScalarAsync(
+			"SELECT COUNT(*) FROM AuditEntries WHERE EntityType = 'PurchaseOrder' AND EntityId = $Id AND Action = 'Updated' AND AfterJson LIKE '%\"status\":7%';",
+			new Depot.Data.DatabaseParameter("$Id", pending.Id)));
+		Assert.Equal(1, await context.ScalarAsync(
+			"SELECT COUNT(*) FROM WorkflowOperations WHERE OperationId = $OperationId;",
+			new Depot.Data.DatabaseParameter("$OperationId", operationId.ToString("D"))));
+	}
+
+	[Fact]
+	public async Task ConcurrentApprovalDecisionsAllowOnlyOneResult()
+	{
+		await using var context = await ProcurementTestContext.CreateSqliteAsync();
+		var pending = await CreatePendingAsync(context);
+
+		var results = await Task.WhenAll(
+			TryDecideAsync(() => context.Approvals.ApproveAsync(pending.Id, pending.Version, null, Guid.NewGuid())),
+			TryDecideAsync(() => context.Approvals.RejectAsync(pending.Id, pending.Version, null, Guid.NewGuid())));
+
+		Assert.Single(results, result => result);
+		var current = await context.Orders.GetByIdAsync(pending.Id) ?? throw new InvalidOperationException();
+		Assert.Contains(current.Status, new[] { PurchaseOrderStatus.Approved, PurchaseOrderStatus.Rejected });
+		Assert.Equal(1, await context.ScalarAsync(
+			"SELECT COUNT(*) FROM AuditEntries WHERE EntityType = 'PurchaseOrder' AND EntityId = $Id AND Action = 'Updated' AND (AfterJson LIKE '%\"status\":7%' OR AfterJson LIKE '%\"status\":9%');",
+			new Depot.Data.DatabaseParameter("$Id", pending.Id)));
+	}
+
 	[Fact]
 	public async Task WorkQueueReturnsOnlyPendingOrdersWithFiltersSummaryAndHistory()
 	{
@@ -97,5 +210,28 @@ public sealed class PurchaseOrderApprovalServiceTests
 
 		await Assert.ThrowsAsync<UnauthorizedAccessException>(() => context.Approvals.SearchAsync(
 			new PurchaseOrderApprovalFilter(null, null, null, null, null), 1, 50));
+	}
+
+	private static async Task<PurchaseOrder> CreatePendingAsync(ProcurementTestContext context)
+	{
+		var draft = await context.Orders.SaveDraftAsync(context.NewOrder());
+		return await context.Orders.SubmitForApprovalAsync(draft.Id, draft.Version);
+	}
+
+	private static async Task<bool> TryDecideAsync(Func<Task<PurchaseOrder>> decision)
+	{
+		try
+		{
+			await decision();
+			return true;
+		}
+		catch (ConcurrencyConflictException)
+		{
+			return false;
+		}
+		catch (InvalidOperationException)
+		{
+			return false;
+		}
 	}
 }

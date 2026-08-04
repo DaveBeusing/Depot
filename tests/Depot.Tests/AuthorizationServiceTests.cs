@@ -15,6 +15,21 @@ public sealed class AuthorizationServiceTests
 	{
 		var authorization = SignIn(UserRole.Administrator);
 		foreach (var permission in Enum.GetValues<ApplicationPermission>()) Assert.True(authorization.HasPermission(permission));
+		Assert.True(authorization.IsInRole(SystemRoleCatalog.AdministratorCode));
+	}
+
+	[Fact]
+	public void RoleMembershipUsesTheTechnicalCodeInsteadOfTheDisplayName()
+	{
+		var authorization = new AuthorizationService();
+		authorization.SignIn(new User
+		{
+			Id = 1,
+			IsActive = true,
+			Roles = [new Role { Code = "CUSTOM_ROLE", Name = "Administrator", IsActive = true }]
+		}, [ApplicationPermission.PurchaseOrdersApprove]);
+
+		Assert.False(authorization.IsInRole(SystemRoleCatalog.AdministratorCode));
 	}
 
 	[Fact]
@@ -80,14 +95,23 @@ public sealed class AuthorizationServiceTests
 
 	private static AuthorizationService SignIn(UserRole role)
 	{
+		var code = RoleCode(role);
+		var definition = SystemRoleCatalog.Definitions.Single(candidate => candidate.Code == code);
 		var authorization = new AuthorizationService();
-		authorization.SignIn(new User { Id = 1, IsActive = true }, Permissions(role));
+		authorization.SignIn(new User
+		{
+			Id = 1,
+			IsActive = true,
+			Roles = [new Role { Code = definition.Code, Name = definition.Name, IsSystem = true, IsActive = true }]
+		}, definition.Permissions);
 		return authorization;
 	}
 
-	private static IReadOnlySet<ApplicationPermission> Permissions(UserRole role)
-	{
-		var code = role switch
+	private static IReadOnlySet<ApplicationPermission> Permissions(UserRole role) =>
+		SystemRoleCatalog.Definitions.Single(definition => definition.Code == RoleCode(role)).Permissions;
+
+	private static string RoleCode(UserRole role) =>
+		role switch
 		{
 			UserRole.Administrator => SystemRoleCatalog.AdministratorCode,
 			UserRole.Purchasing => SystemRoleCatalog.PurchasingCode,
@@ -95,6 +119,4 @@ public sealed class AuthorizationServiceTests
 			UserRole.WarehouseOperator => SystemRoleCatalog.WarehouseOperatorCode,
 			_ => SystemRoleCatalog.UserCode
 		};
-		return SystemRoleCatalog.Definitions.Single(definition => definition.Code == code).Permissions;
-	}
 }

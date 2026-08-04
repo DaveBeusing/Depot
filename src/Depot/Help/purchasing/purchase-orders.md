@@ -20,7 +20,7 @@ Every transition validates status, permission, version, and required data and is
 
 ## Common problems
 - Draft orders cannot move directly to Ordered.
-- The creator cannot approve their own order.
+- Non-administrator creators cannot approve or reject their own order. Members of the protected Administrator system role may do so and still require the approval permission.
 - Cancel is only available when no receipt has been posted.
 
 ## Required permissions

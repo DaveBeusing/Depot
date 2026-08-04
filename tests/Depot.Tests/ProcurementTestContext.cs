@@ -136,6 +136,15 @@ internal sealed class ProcurementTestContext : IAsyncDisposable
 		Authorization.SignIn(user, user.EffectivePermissions);
 	}
 
+	public void SignInApproverWithPurchasingPermissions()
+	{
+		var user = _approver ?? throw new InvalidOperationException("The test approver was not initialized.");
+		var purchasingPermissions = SystemRoleCatalog.Definitions
+			.Single(role => role.Code == SystemRoleCatalog.PurchasingCode)
+			.Permissions;
+		Authorization.SignIn(user, user.EffectivePermissions.Concat(purchasingPermissions));
+	}
+
 	public void SignInAdministrator()
 	{
 		var user = _administrator ?? throw new InvalidOperationException("The test administrator was not initialized.");

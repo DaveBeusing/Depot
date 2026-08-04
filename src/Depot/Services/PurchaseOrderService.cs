@@ -170,7 +170,9 @@ public sealed class PurchaseOrderService
 		comment = Normalize(comment);
 		if (comment?.Length > 2000) throw new ArgumentException("The approval comment must not exceed 2000 characters.", nameof(comment));
 		var before = await _orders.GetByIdAsync(id, cancellationToken) ?? throw new InvalidOperationException("Purchase order was not found.");
-		if (before.CreatedByUserId == user.Id)
+		var isSelfApproval = before.CreatedByUserId == user.Id;
+		var isAdministrator = _authorization.IsInRole(SystemRoleCatalog.AdministratorCode);
+		if (isSelfApproval && !isAdministrator)
 			throw new InvalidOperationException("A purchase order cannot be approved or rejected by its creator.");
 		return await ChangeStatusAsync(before, version, PurchaseOrderStatus.PendingApproval, decision,
 			order =>

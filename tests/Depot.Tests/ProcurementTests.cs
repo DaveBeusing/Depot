@@ -174,7 +174,7 @@ public sealed class ProcurementTests
 	}
 
 	[Fact]
-	public async Task ApprovalWorkflowCapturesDecisionAndPreventsSelfApproval()
+	public async Task ApprovalWorkflowCapturesDecisionMetadata()
 	{
 		await using var context = await ProcurementTestContext.CreateSqliteAsync();
 		var draft = await context.Orders.SaveDraftAsync(context.NewOrder());
@@ -186,9 +186,6 @@ public sealed class ProcurementTests
 		Assert.NotNull(pending.SubmittedAtUtc);
 		pending.Notes = "Pending orders are immutable";
 		await Assert.ThrowsAsync<InvalidOperationException>(() => context.Orders.SaveDraftAsync(pending));
-		await Assert.ThrowsAsync<InvalidOperationException>(() =>
-			context.Orders.ApproveAsync(pending.Id, pending.Version, "Self approval"));
-
 		context.SignInApprover();
 		var approved = await context.Orders.ApproveAsync(pending.Id, pending.Version, "Budget checked");
 
