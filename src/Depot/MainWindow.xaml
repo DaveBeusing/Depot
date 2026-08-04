@@ -3,6 +3,7 @@
 	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
 	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
 	xmlns:controls="clr-namespace:Depot.Controls"
+	xmlns:commands="clr-namespace:Depot.Commands"
 	xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
 	xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
 	xmlns:viewModels="clr-namespace:Depot.ViewModels"
@@ -23,6 +24,8 @@
 	xmlns:supplierViews="clr-namespace:Depot.Views.Suppliers"
 	xmlns:userViewModels="clr-namespace:Depot.ViewModels.Users"
 	xmlns:userViews="clr-namespace:Depot.Views.Users"
+	xmlns:helpViewModels="clr-namespace:Depot.ViewModels.Help"
+	xmlns:helpViews="clr-namespace:Depot.Views.Help"
 	mc:Ignorable="d"
 	Title="Depot - Inventory Management"
 	Icon="/Resources/Images/Depot.ico"
@@ -30,6 +33,14 @@
 	Height="950"
 	MinWidth="1200"
 	MinHeight="700">
+	<Window.CommandBindings>
+		<CommandBinding Command="{x:Static commands:HelpCommands.OpenHelp}" Executed="OnOpenHelpExecuted" />
+		<CommandBinding Command="{x:Static commands:HelpCommands.OpenTopic}" Executed="OnOpenHelpTopicExecuted" />
+		<CommandBinding Command="{x:Static commands:HelpCommands.CopyDiagnostics}" Executed="OnCopyDiagnosticsExecuted" />
+	</Window.CommandBindings>
+	<Window.InputBindings>
+		<KeyBinding Key="F1" Command="{x:Static commands:HelpCommands.OpenHelp}" />
+	</Window.InputBindings>
 
 	<Window.Resources>
 		<ResourceDictionary>			
@@ -117,6 +128,9 @@
 			<DataTemplate DataType="{x:Type userViewModels:RoleViewModel}">
 				<userViews:RolesView />
 			</DataTemplate>
+			<DataTemplate DataType="{x:Type helpViewModels:HelpViewModel}">
+				<helpViews:HelpView />
+			</DataTemplate>
 		</ResourceDictionary>
 	</Window.Resources>
 
@@ -148,6 +162,12 @@
 					ConnectionState="{Binding ConnectionStatus.CompactState}"
 					ConnectionStatus="{Binding ConnectionStatus.CompactStatus}"
 					LogoutCommand="{Binding LogoutCommand}" />
+
+				<Button
+					DockPanel.Dock="Bottom"
+					AutomationProperties.Name="Open Help Center"
+					Command="{x:Static commands:HelpCommands.OpenHelp}"
+					Style="{StaticResource SidebarHelpButtonStyle}" />
 
 
 				<!-- Navigation Items -->

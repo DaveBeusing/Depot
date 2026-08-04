@@ -157,6 +157,7 @@ Depot uses Semantic Versioning from `Directory.Build.props`. Application release
 - [Version 1.0 release checklist](docs/RELEASE_1_0.md)
 - [Versioning](docs/VERSIONING.md)
 - [Data-access audit](docs/DATA_ACCESS_AUDIT.md)
+- [Offline Help Center](docs/HELP_CENTER.md)
 
 ## License
 

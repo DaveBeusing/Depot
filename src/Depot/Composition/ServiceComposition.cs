@@ -3,6 +3,7 @@
 
 using Depot.Services;
 using Depot.Services.Import;
+using Depot.Services.Help;
 
 namespace Depot.Composition;
 
@@ -11,6 +12,9 @@ internal sealed class ServiceComposition
 	public ServiceComposition(DatabaseComposition database, RepositoryComposition repositories)
 	{
 		Authorization = new AuthorizationService();
+		HelpContent = new EmbeddedHelpContentProvider(typeof(ServiceComposition).Assembly);
+		Help = new HelpService(HelpContent, Authorization, new HelpSearchService());
+		HelpRenderer = new HelpMarkdownRenderer();
 		AuditLog = new AuditLogService(repositories.Audit, Authorization, new AuditJsonSanitizer());
 		var audit = new AuditService(repositories.Audit, Authorization);
 		var passwordHasher = new PasswordHasher();
@@ -155,6 +159,9 @@ internal sealed class ServiceComposition
 	}
 
 	public AuthorizationService Authorization { get; }
+	public IHelpContentProvider HelpContent { get; }
+	public IHelpService Help { get; }
+	public HelpMarkdownRenderer HelpRenderer { get; }
 	public AuditLogService AuditLog { get; }
 	public AuthenticationService Authentication { get; }
 	public SessionService Session { get; }

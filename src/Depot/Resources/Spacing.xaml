@@ -83,8 +83,42 @@
 	<Thickness x:Key="Navigation.Header.Margin">24,24,24,32</Thickness>
 	<Thickness x:Key="Navigation.UserPanel.Margin">12</Thickness>
 	<Thickness x:Key="Navigation.Logout.Margin">0,12,0,0</Thickness>
+	<Thickness x:Key="Navigation.Help.Margin">8,4</Thickness>
+	<sys:Double x:Key="Navigation.Help.MinHeight">44</sys:Double>
+
+	<!-- Help Center -->
+	<GridLength x:Key="Help.Navigation.Width">320</GridLength>
+	<GridLength x:Key="Help.ColumnGap">20</GridLength>
+	<sys:Double x:Key="Help.Document.MaxWidth">920</sys:Double>
+	<sys:Double x:Key="Help.Document.FontSize">14</sys:Double>
+	<sys:Double x:Key="Help.Heading1.FontSize">26</sys:Double>
+	<sys:Double x:Key="Help.Heading2.FontSize">18</sys:Double>
+	<Thickness x:Key="Help.Heading1.Margin">0,0,0,18</Thickness>
+	<Thickness x:Key="Help.Heading2.Margin">0,22,0,8</Thickness>
+	<Thickness x:Key="Help.Paragraph.Margin">0,0,0,12</Thickness>
+	<Thickness x:Key="Help.List.Margin">22,0,0,12</Thickness>
+	<Thickness x:Key="Help.ListItem.Margin">0,2,0,2</Thickness>
+	<Thickness x:Key="Help.Callout.Margin">0,8,0,16</Thickness>
+	<Thickness x:Key="Help.Callout.Padding">14</Thickness>
+	<Thickness x:Key="Help.Table.Margin">0,8,0,16</Thickness>
+	<Thickness x:Key="Help.Table.Cell.Padding">10,7</Thickness>
+	<Thickness x:Key="Help.Topic.Margin">0,0,0,4</Thickness>
+	<Thickness x:Key="Help.Topic.Padding">10,8</Thickness>
+	<Thickness x:Key="Help.Topic.Category.Margin">0,2,0,0</Thickness>
+	<Thickness x:Key="Help.Topic.BorderThickness">1</Thickness>
+	<Thickness x:Key="Help.Topic.FocusMargin">2</Thickness>
+	<Thickness x:Key="Help.Topic.FocusBorderThickness">1</Thickness>
+	<CornerRadius x:Key="Help.Topic.CornerRadius">6</CornerRadius>
+	<CornerRadius x:Key="Help.Topic.FocusCornerRadius">4</CornerRadius>
+	<sys:Double x:Key="Help.Topic.MinHeight">42</sys:Double>
+	<Thickness x:Key="Help.Link.Padding">10,6</Thickness>
+	<Thickness x:Key="Help.Related.Margin">0,20,0,0</Thickness>
+	<Thickness x:Key="Help.Related.Item.Margin">0,0,8,8</Thickness>
+	<Thickness x:Key="Help.Article.Padding">24</Thickness>
+	<sys:Double x:Key="Help.ContextButton.MinWidth">76</sys:Double>
 
 	<!-- Dialogs -->
 	<Thickness x:Key="Dialog.Padding">24</Thickness>
+	<FontFamily x:Key="Help.Document.FontFamily">Segoe UI</FontFamily>
 
 </ResourceDictionary>

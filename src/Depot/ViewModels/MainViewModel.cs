@@ -8,6 +8,8 @@ using Depot.Models;
 using Depot.Services;
 using Depot.Services.Import;
 using Depot.ViewModels.Administration;
+using Depot.ViewModels.Help;
+using Depot.Services.Help;
 
 namespace Depot.ViewModels;
 
@@ -18,6 +20,7 @@ public sealed class MainViewModel : BaseViewModel
 	private CancellationTokenSource? _navigationCancellation;
 	private ShellNavigationItem? _selectedNavigationItem;
 	private BaseViewModel? _currentViewModel;
+	private BaseViewModel? _viewModelBeforeHelp;
 
 	public MainViewModel(
 		ItemService itemService,
@@ -54,12 +57,17 @@ public sealed class MainViewModel : BaseViewModel
 		DatabaseConnectionTester databaseConnectionTester,
 		DatabaseManagementService databaseManagementService,
 		AuditLogService auditLogService,
-		ApplicationInformationService applicationInformationService)
+		ApplicationInformationService applicationInformationService,
+		IHelpService helpService,
+		HelpMarkdownRenderer helpRenderer)
 	{
 		_authorization = authorizationService;
 		_session = sessionService;
 		ConnectionStatus = connectionStatusService;
 		LogoutCommand = new RelayCommand(Logout);
+		HelpCommand = new RelayCommand(() => _ = OpenHelpAsync());
+		HelpViewModel = new HelpViewModel(helpService, helpRenderer);
+		HelpViewModel.CloseRequested += OnHelpCloseRequested;
 
 		DashboardViewModel = new DashboardViewModel(stockService);
 		InventoryViewModel = new InventoryViewModel(stockService);
@@ -89,6 +97,7 @@ public sealed class MainViewModel : BaseViewModel
 
 	public ObservableCollection<ShellNavigationItem> NavigationItems { get; } = new();
 	public RelayCommand LogoutCommand { get; }
+	public RelayCommand HelpCommand { get; }
 	public ConnectionStatusService ConnectionStatus { get; }
 	public event EventHandler? LogoutRequested;
 
@@ -108,6 +117,21 @@ public sealed class MainViewModel : BaseViewModel
 	public ReportsViewModel ReportsViewModel { get; }
 	public ImportViewModel ImportViewModel { get; }
 	public AdministrationViewModel AdministrationViewModel { get; }
+	public HelpViewModel HelpViewModel { get; }
+
+	public string CurrentHelpTopicId => SelectedNavigationItem?.Content switch
+	{
+		ShellModuleViewModel { SelectedPage.Content: AdministrationViewModel administration } => administration.HelpTopicId,
+		ShellModuleViewModel module => module.SelectedPage?.HelpTopicId ?? HelpService.FallbackTopicId,
+		_ => SelectedNavigationItem?.HelpTopicId ?? HelpService.FallbackTopicId
+	};
+
+	public async Task OpenHelpAsync(string? topicId = null, CancellationToken cancellationToken = default)
+	{
+		if (CurrentViewModel != HelpViewModel) _viewModelBeforeHelp = CurrentViewModel;
+		CurrentViewModel = HelpViewModel;
+		await HelpViewModel.OpenAsync(topicId ?? CurrentHelpTopicId, cancellationToken);
+	}
 
 	public ShellNavigationItem? SelectedNavigationItem
 	{
@@ -140,45 +164,46 @@ public sealed class MainViewModel : BaseViewModel
 
 	private void BuildNavigation()
 	{
-		AddDirect(ApplicationPermission.DashboardView, "Dashboard", Icons.Dashboard, DashboardViewModel, DashboardViewModel.LoadAsync);
+		AddDirect(ApplicationPermission.DashboardView, "Dashboard", Icons.Dashboard, DashboardViewModel, DashboardViewModel.LoadAsync, HelpService.FallbackTopicId);
 
 		var inventoryPages = new List<SecondaryNavigationItem>();
-		AddPage(inventoryPages, ApplicationPermission.InventoryView, "Overview", InventoryViewModel, InventoryViewModel.LoadAsync);
-		AddPage(inventoryPages, ApplicationPermission.ItemsView, "Items", ItemsViewModel, ItemsViewModel.LoadItemsAsync);
-		AddPage(inventoryPages, ApplicationPermission.StockMovementsView, "Movements", MovementsViewModel, MovementsViewModel.LoadAsync);
+		AddPage(inventoryPages, ApplicationPermission.InventoryView, "Overview", InventoryViewModel, InventoryViewModel.LoadAsync, "inventory.overview");
+		AddPage(inventoryPages, ApplicationPermission.ItemsView, "Items", ItemsViewModel, ItemsViewModel.LoadItemsAsync, "inventory.items");
+		AddPage(inventoryPages, ApplicationPermission.StockMovementsView, "Movements", MovementsViewModel, MovementsViewModel.LoadAsync, "inventory.movements");
 		AddModule("Inventory", Icons.Inventory, "Monitor stock, items, and immutable inventory movements.", inventoryPages);
 
 		var warehousePages = new List<SecondaryNavigationItem>();
-		AddPage(warehousePages, ApplicationPermission.StockTransfersView, "Transfers", StockTransfersViewModel, StockTransfersViewModel.LoadAsync);
-		AddPage(warehousePages, ApplicationPermission.InventoryCountsView, "Inventory Counts", InventoryCountsViewModel, InventoryCountsViewModel.LoadAsync);
-		AddPage(warehousePages, ApplicationPermission.MaterialIssuesView, "Material Issues", MaterialIssuesViewModel, MaterialIssuesViewModel.LoadAsync);
-		AddPage(warehousePages, ApplicationPermission.MaterialReturnsView, "Material Returns", MaterialReturnsViewModel, MaterialReturnsViewModel.LoadAsync);
+		AddPage(warehousePages, ApplicationPermission.StockTransfersView, "Transfers", StockTransfersViewModel, StockTransfersViewModel.LoadAsync, "warehouse.transfers");
+		AddPage(warehousePages, ApplicationPermission.InventoryCountsView, "Inventory Counts", InventoryCountsViewModel, InventoryCountsViewModel.LoadAsync, "warehouse.inventory-counts");
+		AddPage(warehousePages, ApplicationPermission.MaterialIssuesView, "Material Issues", MaterialIssuesViewModel, MaterialIssuesViewModel.LoadAsync, "warehouse.material-issues");
+		AddPage(warehousePages, ApplicationPermission.MaterialReturnsView, "Material Returns", MaterialReturnsViewModel, MaterialReturnsViewModel.LoadAsync, "warehouse.material-returns");
 		AddModule("Warehouse", Icons.Warehouse, "Execute controlled warehouse operations and physical stock workflows.", warehousePages);
 
 		if (_authorization.HasPermission(ApplicationPermission.PurchasingView))
 		{
 			var purchasingPages = new List<SecondaryNavigationItem>();
-			AddPage(purchasingPages, ApplicationPermission.PurchaseOrdersView, "Purchase Orders", PurchaseOrdersPageViewModel, PurchaseOrdersPageViewModel.LoadAsync);
-			AddPage(purchasingPages, ApplicationPermission.GoodsReceiptsView, "Goods Receipts", GoodsReceiptsPageViewModel, GoodsReceiptsPageViewModel.LoadAsync);
-			AddPage(purchasingPages, ApplicationPermission.SupplierReturnsView, "Supplier Returns", SupplierReturnsViewModel, SupplierReturnsViewModel.LoadAsync);
+			AddPage(purchasingPages, ApplicationPermission.PurchaseOrdersView, "Purchase Orders", PurchaseOrdersPageViewModel, PurchaseOrdersPageViewModel.LoadAsync, "purchasing.purchase-orders");
+			AddPage(purchasingPages, ApplicationPermission.GoodsReceiptsView, "Goods Receipts", GoodsReceiptsPageViewModel, GoodsReceiptsPageViewModel.LoadAsync, "purchasing.goods-receipts");
+			AddPage(purchasingPages, ApplicationPermission.SupplierReturnsView, "Supplier Returns", SupplierReturnsViewModel, SupplierReturnsViewModel.LoadAsync, "purchasing.supplier-returns");
 			AddModule("Purchasing", Icons.Purchasing, "Manage orders, supplier deliveries, and returns.", purchasingPages);
 		}
 
-		AddDirect(ApplicationPermission.PurchaseOrdersApprove, "Approvals", Icons.Approvals, PurchaseOrderApprovalsViewModel, PurchaseOrderApprovalsViewModel.LoadAsync);
-		AddDirect(ApplicationPermission.ReportsView, "Reports", Icons.Reports, ReportsViewModel, ReportsViewModel.LoadAsync);
+		AddDirect(ApplicationPermission.PurchaseOrdersApprove, "Approvals", Icons.Approvals, PurchaseOrderApprovalsViewModel, PurchaseOrderApprovalsViewModel.LoadAsync, "approvals.queue");
+		AddDirect(ApplicationPermission.ReportsView, "Reports", Icons.Reports, ReportsViewModel, ReportsViewModel.LoadAsync, "reports.overview");
 
 		if (AdministrationViewModel.NavigationItems.Count > 0)
 		{
 			var administrationModule = new ShellModuleViewModel(
 				"Administration",
 				"Configure master data, security, connectivity, and application settings.",
-				[new SecondaryNavigationItem { Name = "Administration", Content = AdministrationViewModel, LoadAsync = AdministrationViewModel.LoadAsync }]);
+				[new SecondaryNavigationItem { Name = "Administration", Content = AdministrationViewModel, LoadAsync = AdministrationViewModel.LoadAsync, HelpTopicId = HelpService.FallbackTopicId }]);
 			NavigationItems.Add(new ShellNavigationItem
 			{
 				Name = "Administration",
 				IconData = Icons.Administration,
 				Content = administrationModule,
 				LoadAsync = administrationModule.LoadAsync,
+				HelpTopicId = HelpService.FallbackTopicId,
 				IsSeparated = true
 			});
 		}
@@ -189,17 +214,18 @@ public sealed class MainViewModel : BaseViewModel
 		string name,
 		string icon,
 		BaseViewModel content,
-		Func<CancellationToken, Task> loadAsync)
+		Func<CancellationToken, Task> loadAsync,
+		string helpTopicId)
 	{
 		if (!_authorization.HasPermission(permission)) return;
-		NavigationItems.Add(new ShellNavigationItem { Name = name, IconData = icon, Content = content, LoadAsync = loadAsync });
+		NavigationItems.Add(new ShellNavigationItem { Name = name, IconData = icon, Content = content, LoadAsync = loadAsync, HelpTopicId = helpTopicId });
 	}
 
 	private void AddModule(string name, string icon, string subtitle, IReadOnlyCollection<SecondaryNavigationItem> pages)
 	{
 		if (pages.Count == 0) return;
 		var module = new ShellModuleViewModel(name, subtitle, pages);
-		NavigationItems.Add(new ShellNavigationItem { Name = name, IconData = icon, Content = module, LoadAsync = module.LoadAsync });
+		NavigationItems.Add(new ShellNavigationItem { Name = name, IconData = icon, Content = module, LoadAsync = module.LoadAsync, HelpTopicId = pages.First().HelpTopicId });
 	}
 
 	private void AddPage(
@@ -208,10 +234,11 @@ public sealed class MainViewModel : BaseViewModel
 		string name,
 		BaseViewModel content,
 		Func<CancellationToken, Task> loadAsync,
+		string helpTopicId,
 		Action? activate = null)
 	{
 		if (_authorization.HasPermission(permission))
-			pages.Add(new SecondaryNavigationItem { Name = name, Content = content, LoadAsync = loadAsync, Activate = activate });
+			pages.Add(new SecondaryNavigationItem { Name = name, Content = content, LoadAsync = loadAsync, HelpTopicId = helpTopicId, Activate = activate });
 	}
 
 	private async Task LoadSelectedAsync()
@@ -234,6 +261,12 @@ public sealed class MainViewModel : BaseViewModel
 	{
 		_session.Logout();
 		LogoutRequested?.Invoke(this, EventArgs.Empty);
+	}
+
+	private void OnHelpCloseRequested(object? sender, EventArgs e)
+	{
+		CurrentViewModel = _viewModelBeforeHelp ?? SelectedNavigationItem?.Content;
+		_viewModelBeforeHelp = null;
 	}
 
 	private static class Icons

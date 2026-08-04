@@ -20,6 +20,7 @@
 		<ResourceDictionary Source="Navigation.xaml" />
 		<ResourceDictionary Source="SecondaryNavigation.xaml" />
 		<ResourceDictionary Source="Dialogs.xaml" />
+		<ResourceDictionary Source="Help.xaml" />
 
 		<!-- Composite application patterns -->
 		<ResourceDictionary Source="Workflows.xaml" />

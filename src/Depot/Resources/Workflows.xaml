@@ -1,7 +1,8 @@
 <ResourceDictionary
 	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
 	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-	xmlns:controls="clr-namespace:Depot.Controls">
+	xmlns:controls="clr-namespace:Depot.Controls"
+	xmlns:commands="clr-namespace:Depot.Commands">
 
 	<Style x:Key="MasterDataListBoxStyle" TargetType="ListBox">
 		<Setter Property="Background" Value="Transparent" />
@@ -92,7 +93,17 @@
 		<Setter Property="Template">
 			<Setter.Value>
 				<ControlTemplate TargetType="{x:Type controls:OperationPanel}">
-					<controls:OperationStatus ErrorText="{TemplateBinding ErrorText}" HasError="{TemplateBinding HasError}" IsBusy="{TemplateBinding IsBusy}" StatusText="{TemplateBinding StatusText}" />
+					<StackPanel>
+						<controls:OperationStatus ErrorText="{TemplateBinding ErrorText}" HasError="{TemplateBinding HasError}" IsBusy="{TemplateBinding IsBusy}" StatusText="{TemplateBinding StatusText}" />
+						<StackPanel x:Name="DiagnosticActions" Margin="{DynamicResource Control.Margin}" HorizontalAlignment="Right" Orientation="Horizontal" Visibility="Collapsed">
+							<Button Command="{x:Static commands:HelpCommands.CopyDiagnostics}" CommandParameter="{TemplateBinding ErrorText}" Content="Copy diagnostics" Style="{DynamicResource SecondaryButtonStyle}" />
+							<Button Margin="{DynamicResource Button.Margin}" Command="{x:Static commands:HelpCommands.OpenTopic}" CommandParameter="{TemplateBinding HelpTopicId}" Content="Open Help" Style="{DynamicResource SecondaryButtonStyle}" />
+						</StackPanel>
+					</StackPanel>
+					<ControlTemplate.Triggers>
+						<Trigger Property="HasError" Value="True"><Setter TargetName="DiagnosticActions" Property="Visibility" Value="Visible" /></Trigger>
+						<Trigger Property="HelpTopicId" Value=""><Setter TargetName="DiagnosticActions" Property="Visibility" Value="Collapsed" /></Trigger>
+					</ControlTemplate.Triggers>
 				</ControlTemplate>
 			</Setter.Value>
 		</Setter>

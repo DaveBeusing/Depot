@@ -65,5 +65,7 @@ internal sealed class ViewModelFactory
 			_database.ConnectionTester,
 			_database.Management,
 			_services.AuditLog,
-			_applicationInformation);
+			_applicationInformation,
+			_services.Help,
+			_services.HelpRenderer);
 }

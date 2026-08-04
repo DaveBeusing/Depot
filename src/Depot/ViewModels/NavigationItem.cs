@@ -11,5 +11,7 @@ public sealed class NavigationItem
 
 	public required Enum Section { get; init; }
 
+	public string HelpTopicId { get; init; } = "getting-started.first-login";
+
 	public bool IsSeparated { get; init; }
 }

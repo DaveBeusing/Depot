@@ -10,6 +10,7 @@ using Depot.ViewModels.Shared;
 using Depot.ViewModels.Suppliers;
 using Depot.ViewModels.Users;
 using Depot.ViewModels.Warehouses;
+using Depot.Services.Help;
 
 namespace Depot.ViewModels.Administration;
 
@@ -67,13 +68,14 @@ public sealed class AdministrationViewModel : BaseViewModel
 		AddIf(authorization, ApplicationPermission.AuditLogView, "Audit Log", AdministrationSection.AuditLog);
 		AddIf(authorization, ApplicationPermission.DatabaseView, "Database", AdministrationSection.Database);
 		if (authorization.HasPermission(ApplicationPermission.AdministrationView))
-			NavigationItems.Add(new NavigationItem { Name = "About", Section = AdministrationSection.About });
+			NavigationItems.Add(new NavigationItem { Name = "About", Section = AdministrationSection.About, HelpTopicId = HelpService.FallbackTopicId });
 		SelectedNavigationItem = NavigationItems.FirstOrDefault();
 	}
 
 	public ObservableCollection<NavigationItem> NavigationItems { get; } = new();
 	public NavigationItem? SelectedNavigationItem { get => _selectedNavigationItem; set { _selectedNavigationItem = value; OnPropertyChanged(); UpdateCurrentViewModel(); } }
 	public BaseViewModel? CurrentViewModel { get => _currentViewModel; private set { _currentViewModel = value; OnPropertyChanged(); } }
+	public string HelpTopicId => SelectedNavigationItem?.HelpTopicId ?? HelpService.FallbackTopicId;
 
 	private void UpdateCurrentViewModel()
 	{
@@ -109,6 +111,18 @@ public sealed class AdministrationViewModel : BaseViewModel
 
 	private void AddIf(IAuthorizationService authorization, ApplicationPermission permission, string name, AdministrationSection section)
 	{
-		if (authorization.HasPermission(permission)) NavigationItems.Add(new NavigationItem { Name = name, Section = section });
+		if (authorization.HasPermission(permission)) NavigationItems.Add(new NavigationItem { Name = name, Section = section, HelpTopicId = TopicFor(section) });
 	}
+
+	private static string TopicFor(AdministrationSection section) => section switch
+	{
+		AdministrationSection.Users or AdministrationSection.Roles => "administration.users",
+		AdministrationSection.Database => "administration.database",
+		AdministrationSection.AuditLog => "administration.audit-log",
+		AdministrationSection.MasterData => "inventory.items",
+		AdministrationSection.Warehouses => "warehouse.transfers",
+		AdministrationSection.Suppliers => "purchasing.purchase-orders",
+		AdministrationSection.About or AdministrationSection.Import or AdministrationSection.Settings => HelpService.FallbackTopicId,
+		_ => HelpService.FallbackTopicId
+	};
 }

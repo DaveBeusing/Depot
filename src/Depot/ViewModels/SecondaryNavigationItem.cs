@@ -8,5 +8,6 @@ public sealed class SecondaryNavigationItem
 	public required string Name { get; init; }
 	public required BaseViewModel Content { get; init; }
 	public required Func<CancellationToken, Task> LoadAsync { get; init; }
+	public string HelpTopicId { get; init; } = "getting-started.first-login";
 	public Action? Activate { get; init; }
 }

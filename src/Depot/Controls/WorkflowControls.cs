@@ -55,6 +55,7 @@ public sealed class OperationPanel : Control
 	public static readonly DependencyProperty HasErrorProperty = DependencyProperty.Register(nameof(HasError), typeof(bool), typeof(OperationPanel), new PropertyMetadata(false));
 	public static readonly DependencyProperty StatusTextProperty = DependencyProperty.Register(nameof(StatusText), typeof(string), typeof(OperationPanel), new PropertyMetadata(string.Empty));
 	public static readonly DependencyProperty ErrorTextProperty = DependencyProperty.Register(nameof(ErrorText), typeof(string), typeof(OperationPanel), new PropertyMetadata(string.Empty));
+	public static readonly DependencyProperty HelpTopicIdProperty = DependencyProperty.Register(nameof(HelpTopicId), typeof(string), typeof(OperationPanel), new PropertyMetadata(string.Empty));
 
 	static OperationPanel() => DefaultStyleKeyProperty.OverrideMetadata(typeof(OperationPanel), new FrameworkPropertyMetadata(typeof(OperationPanel)));
 
@@ -62,6 +63,7 @@ public sealed class OperationPanel : Control
 	public bool HasError { get => (bool)GetValue(HasErrorProperty); set => SetValue(HasErrorProperty, value); }
 	public string StatusText { get => (string)GetValue(StatusTextProperty); set => SetValue(StatusTextProperty, value); }
 	public string ErrorText { get => (string)GetValue(ErrorTextProperty); set => SetValue(ErrorTextProperty, value); }
+	public string HelpTopicId { get => (string)GetValue(HelpTopicIdProperty); set => SetValue(HelpTopicIdProperty, value); }
 }
 
 public sealed class DocumentStatusBadge : StatusBadge

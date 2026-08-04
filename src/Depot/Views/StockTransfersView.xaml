@@ -2,7 +2,8 @@
 	x:Class="Depot.Views.StockTransfersView"
 	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
 	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-	xmlns:controls="clr-namespace:Depot.Controls">
+	xmlns:controls="clr-namespace:Depot.Controls"
+	xmlns:commands="clr-namespace:Depot.Commands">
 	<Grid>
 		<Grid.RowDefinitions>
 			<RowDefinition Height="Auto" />
@@ -14,11 +15,11 @@
 			Title="Transfers"
 			Subtitle="Plan and post stock movements between warehouses.">
 			<controls:PageHeader.Actions>
-				<controls:OperationPanel
+				<StackPanel Orientation="Horizontal"><controls:OperationPanel
 					ErrorText="{Binding OperationError}"
-					HasError="{Binding HasOperationError}"
+					HasError="{Binding HasOperationError}" HelpTopicId="warehouse.transfers"
 					IsBusy="{Binding IsBusy}"
-					StatusText="{Binding StatusText}" />
+					StatusText="{Binding StatusText}" /><Button MinWidth="{DynamicResource Help.ContextButton.MinWidth}" Margin="{DynamicResource Button.Margin}" AutomationProperties.Name="Open transfers help" Command="{x:Static commands:HelpCommands.OpenTopic}" CommandParameter="warehouse.transfers" Content="Help" Style="{DynamicResource SecondaryButtonStyle}" /></StackPanel>
 			</controls:PageHeader.Actions>
 		</controls:PageHeader>
 
