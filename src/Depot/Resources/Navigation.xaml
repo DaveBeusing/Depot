@@ -374,7 +374,17 @@
 				StrokeThickness="1.5"
 				Stretch="Uniform" />
 			<TextBlock Grid.Column="2" VerticalAlignment="Center" Text="Notification Center" TextTrimming="CharacterEllipsis" Style="{DynamicResource NavigationTextStyle}" />
-			<Border Grid.Column="3" MinWidth="{DynamicResource Notification.Badge.MinWidth}" Height="{DynamicResource Notification.Badge.Height}" Padding="{DynamicResource Notification.Badge.Padding}" Background="{DynamicResource PrimaryBrush}" CornerRadius="{DynamicResource Notification.Badge.CornerRadius}" Visibility="{Binding HasUnreadNotifications, Converter={StaticResource BooleanToVisibilityConverter}}">
+			<Border Grid.Column="3" MinWidth="{DynamicResource Notification.Badge.MinWidth}" Height="{DynamicResource Notification.Badge.Height}" Padding="{DynamicResource Notification.Badge.Padding}" Background="{DynamicResource PrimaryBrush}" CornerRadius="{DynamicResource Notification.Badge.CornerRadius}">
+				<Border.Style>
+					<Style TargetType="Border">
+						<Setter Property="Visibility" Value="Collapsed" />
+						<Style.Triggers>
+							<DataTrigger Binding="{Binding HasUnreadNotifications}" Value="True">
+								<Setter Property="Visibility" Value="Visible" />
+							</DataTrigger>
+						</Style.Triggers>
+					</Style>
+				</Border.Style>
 				<TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="White" FontSize="11" FontWeight="SemiBold" Text="{Binding UnreadBadgeText}" />
 			</Border>
 		</Grid>
