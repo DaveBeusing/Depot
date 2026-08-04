@@ -167,7 +167,9 @@
 					DockPanel.Dock="Bottom"
 					AutomationProperties.Name="Open Help Center"
 					Command="{x:Static commands:HelpCommands.OpenHelp}"
-					Style="{StaticResource SidebarHelpButtonStyle}" />
+					Content="Help Center"
+					ContentTemplate="{StaticResource NavigationHelpActionTemplate}"
+					Style="{StaticResource NavigationActionButtonStyle}" />
 
 
 				<!-- Navigation Items -->

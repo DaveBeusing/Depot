@@ -24,21 +24,33 @@
 		<Setter Property="BorderBrush" Value="Transparent" />
 		<Setter Property="BorderThickness" Value="{DynamicResource Help.Topic.BorderThickness}" />
 		<Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+		<Setter Property="VerticalContentAlignment" Value="Center" />
 		<Setter Property="FocusVisualStyle" Value="{x:Null}" />
+		<Setter Property="Cursor" Value="Hand" />
+		<Setter Property="SnapsToDevicePixels" Value="True" />
+		<Setter Property="UseLayoutRounding" Value="True" />
 		<Setter Property="Template">
 			<Setter.Value>
 				<ControlTemplate TargetType="ListBoxItem">
-					<Border x:Name="Surface" Padding="{TemplateBinding Padding}" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{DynamicResource Help.Topic.CornerRadius}">
-						<Grid>
-							<ContentPresenter />
-							<Border x:Name="Focus" Margin="{DynamicResource Help.Topic.FocusMargin}" BorderBrush="{DynamicResource PrimaryBrush}" BorderThickness="{DynamicResource Help.Topic.FocusBorderThickness}" CornerRadius="{DynamicResource Help.Topic.FocusCornerRadius}" Visibility="Collapsed" />
-						</Grid>
+					<Border
+						x:Name="Surface"
+						Padding="{TemplateBinding Padding}"
+						Background="{TemplateBinding Background}"
+						BorderBrush="{TemplateBinding BorderBrush}"
+						BorderThickness="{TemplateBinding BorderThickness}"
+						CornerRadius="{DynamicResource Help.Topic.CornerRadius}"
+						SnapsToDevicePixels="True">
+						<ContentPresenter
+							HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+							VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+							Content="{TemplateBinding Content}"
+							ContentTemplate="{TemplateBinding ContentTemplate}" />
 					</Border>
 					<ControlTemplate.Triggers>
 						<Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Surface" Property="Background" Value="{DynamicResource HoverBrush}" /></Trigger>
-						<Trigger Property="IsSelected" Value="True"><Setter TargetName="Surface" Property="Background" Value="{DynamicResource NavigationSelectedBackgroundBrush}" /><Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource PrimaryBrush}" /></Trigger>
-						<Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Focus" Property="Visibility" Value="Visible" /></Trigger>
-						<Trigger Property="IsEnabled" Value="False"><Setter TargetName="Surface" Property="Opacity" Value="0.5" /></Trigger>
+						<Trigger Property="IsSelected" Value="True"><Setter TargetName="Surface" Property="Background" Value="{DynamicResource NavigationSelectedBackgroundBrush}" /><Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource BorderBrush}" /><Setter Property="Foreground" Value="{DynamicResource PrimaryBrush}" /></Trigger>
+						<Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter TargetName="Surface" Property="BorderBrush" Value="{DynamicResource PrimaryBrush}" /></Trigger>
+						<Trigger Property="IsEnabled" Value="False"><Setter TargetName="Surface" Property="Opacity" Value="0.45" /><Setter Property="Cursor" Value="Arrow" /></Trigger>
 					</ControlTemplate.Triggers>
 				</ControlTemplate>
 			</Setter.Value>
@@ -57,37 +69,4 @@
 		<Setter Property="MaxZoom" Value="200" />
 	</Style>
 
-	<Style x:Key="SidebarHelpButtonStyle" TargetType="Button">
-		<Setter Property="MinHeight" Value="{DynamicResource Navigation.Help.MinHeight}" />
-		<Setter Property="Margin" Value="{DynamicResource Navigation.Help.Margin}" />
-		<Setter Property="Padding" Value="{DynamicResource Navigation.Item.Padding}" />
-		<Setter Property="HorizontalContentAlignment" Value="Stretch" />
-		<Setter Property="Background" Value="Transparent" />
-		<Setter Property="BorderBrush" Value="Transparent" />
-		<Setter Property="BorderThickness" Value="0" />
-		<Setter Property="Foreground" Value="{DynamicResource NavigationForegroundBrush}" />
-		<Setter Property="Cursor" Value="Hand" />
-		<Setter Property="FocusVisualStyle" Value="{x:Null}" />
-		<Setter Property="Template">
-			<Setter.Value>
-				<ControlTemplate TargetType="Button">
-					<Border x:Name="Surface" Padding="{TemplateBinding Padding}" Background="{TemplateBinding Background}" CornerRadius="{DynamicResource SecondaryNavigation.Item.CornerRadius}">
-						<Grid>
-							<Grid.ColumnDefinitions><ColumnDefinition Width="18" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-							<Path Width="18" Height="18" Data="M 8,6 C 8,3 13,3 13,6 C 13,8 10,8 10,11 M 10,14 L 10,15 M 2,10 A 8,8 0 1 0 18,10 A 8,8 0 1 0 2,10" Stroke="{TemplateBinding Foreground}" StrokeThickness="1.5" StrokeLineJoin="Round" StrokeEndLineCap="Round" />
-							<TextBlock Grid.Column="2" Text="Help" Style="{DynamicResource NavigationTextStyle}" />
-							<TextBlock Grid.Column="3" Text="F1" Foreground="{DynamicResource NavigationMutedTextBrush}" Style="{DynamicResource CaptionStyle}" />
-							<Border x:Name="Focus" Grid.ColumnSpan="4" Margin="{DynamicResource Help.Topic.FocusMargin}" BorderBrush="{DynamicResource NavigationAccentBrush}" BorderThickness="{DynamicResource Help.Topic.FocusBorderThickness}" CornerRadius="{DynamicResource Help.Topic.FocusCornerRadius}" Visibility="Collapsed" />
-						</Grid>
-					</Border>
-					<ControlTemplate.Triggers>
-						<Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Surface" Property="Background" Value="{DynamicResource NavigationHoverBrush}" /></Trigger>
-						<Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Focus" Property="Visibility" Value="Visible" /></Trigger>
-						<Trigger Property="IsPressed" Value="True"><Setter TargetName="Surface" Property="Opacity" Value="0.7" /></Trigger>
-						<Trigger Property="IsEnabled" Value="False"><Setter TargetName="Surface" Property="Opacity" Value="0.45" /></Trigger>
-					</ControlTemplate.Triggers>
-				</ControlTemplate>
-			</Setter.Value>
-		</Setter>
-	</Style>
 </ResourceDictionary>

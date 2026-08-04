@@ -154,8 +154,11 @@ public sealed class MainViewModel : BaseViewModel
 			if (_currentViewModel == value) return;
 			_currentViewModel = value;
 			OnPropertyChanged();
+			OnPropertyChanged(nameof(IsHelpOpen));
 		}
 	}
+
+	public bool IsHelpOpen => CurrentViewModel == HelpViewModel;
 
 	public string CurrentUserDisplayName => _authorization.CurrentUser?.DisplayName ?? string.Empty;
 	public string CurrentUserRole => _authorization.CurrentUser is { Roles.Count: > 0 } user

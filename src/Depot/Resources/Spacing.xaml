@@ -83,8 +83,8 @@
 	<Thickness x:Key="Navigation.Header.Margin">24,24,24,32</Thickness>
 	<Thickness x:Key="Navigation.UserPanel.Margin">12</Thickness>
 	<Thickness x:Key="Navigation.Logout.Margin">0,12,0,0</Thickness>
-	<Thickness x:Key="Navigation.Help.Margin">8,4</Thickness>
-	<sys:Double x:Key="Navigation.Help.MinHeight">44</sys:Double>
+	<Thickness x:Key="Navigation.Shortcut.Margin">12,0,0,0</Thickness>
+	<sys:Double x:Key="Navigation.Shortcut.MinWidth">20</sys:Double>
 
 	<!-- Help Center -->
 	<GridLength x:Key="Help.Navigation.Width">320</GridLength>
