@@ -94,10 +94,8 @@
 	<sys:Double x:Key="Navigation.Shortcut.MinWidth">20</sys:Double>
 
 	<!-- About -->
-	<sys:Double x:Key="About.Content.MaxWidth">960</sys:Double>
 	<sys:Double x:Key="About.Logo.Size">96</sys:Double>
 	<GridLength x:Key="About.Details.LabelWidth">180</GridLength>
-	<sys:Double x:Key="Database.Content.MaxWidth">1040</sys:Double>
 
 	<!-- Help Center -->
 	<GridLength x:Key="Help.Navigation.Width">320</GridLength>

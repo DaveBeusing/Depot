@@ -27,8 +27,10 @@
 
 		<TabControl Grid.Row="2" Style="{StaticResource AppTabControlStyle}">
 			<TabItem Header="Connection">
-				<ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-					<StackPanel MaxWidth="{DynamicResource Database.Content.MaxWidth}" HorizontalAlignment="Left">
+				<Grid>
+					<Grid.RowDefinitions><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+				<ScrollViewer HorizontalContentAlignment="Stretch" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+					<StackPanel HorizontalAlignment="Stretch">
 						<controls:ConnectionStatusIndicator
 							Margin="0,0,0,16"
 							State="{Binding ConnectionStatus.State}"
@@ -36,11 +38,11 @@
 							Detail="{Binding ConnectionStatus.Detail}" />
 
 						<controls:FilterBar>
-							<StackPanel Orientation="Horizontal">
+							<WrapPanel>
 								<RadioButton Content="Local database" GroupName="DatabaseProvider" IsChecked="{Binding UseLocalDatabase}" Style="{StaticResource OptionRadioButtonStyle}" />
 								<RadioButton Margin="{DynamicResource Button.Margin}" Content="SQL Server" GroupName="DatabaseProvider" IsChecked="{Binding UseSqlServer}" Style="{StaticResource OptionRadioButtonStyle}" />
 								<RadioButton Margin="{DynamicResource Button.Margin}" Content="MySQL / MariaDB" GroupName="DatabaseProvider" IsChecked="{Binding UseMySql}" Style="{StaticResource OptionRadioButtonStyle}" />
-							</StackPanel>
+							</WrapPanel>
 						</controls:FilterBar>
 
 						<controls:Card Visibility="{Binding UseLocalDatabase, Converter={StaticResource BooleanToVisibilityConverter}}">
@@ -95,17 +97,18 @@
 							<Border Padding="{DynamicResource Card.Padding}" Background="{StaticResource ErrorBrush}" CornerRadius="{StaticResource CornerRadius.Small}" Visibility="{Binding HasError, Converter={StaticResource BooleanToVisibilityConverter}}"><TextBlock Foreground="{StaticResource ErrorForegroundBrush}" Text="{Binding Message}" TextWrapping="Wrap" /></Border>
 						</Grid>
 
-						<controls:WorkflowActionBar>
-							<controls:WorkflowActionBar.SecondaryActions><Button Command="{Binding TestConnectionCommand}" Content="Test connection" Style="{StaticResource SecondaryButtonStyle}" /></controls:WorkflowActionBar.SecondaryActions>
-							<controls:WorkflowActionBar.PrimaryAction><Button Command="{Binding SaveCommand}" Content="Save settings" Style="{StaticResource PrimaryButtonStyle}" /></controls:WorkflowActionBar.PrimaryAction>
-						</controls:WorkflowActionBar>
 					</StackPanel>
 				</ScrollViewer>
+					<controls:WorkflowActionBar Grid.Row="1">
+						<controls:WorkflowActionBar.SecondaryActions><Button Command="{Binding TestConnectionCommand}" Content="Test connection" Style="{StaticResource SecondaryButtonStyle}" /></controls:WorkflowActionBar.SecondaryActions>
+						<controls:WorkflowActionBar.PrimaryAction><Button Command="{Binding SaveCommand}" Content="Save settings" Style="{StaticResource PrimaryButtonStyle}" /></controls:WorkflowActionBar.PrimaryAction>
+					</controls:WorkflowActionBar>
+				</Grid>
 			</TabItem>
 
 			<TabItem Header="Maintenance">
-				<ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-					<StackPanel MaxWidth="{DynamicResource Database.Content.MaxWidth}" HorizontalAlignment="Left">
+				<ScrollViewer HorizontalContentAlignment="Stretch" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+					<StackPanel HorizontalAlignment="Stretch">
 						<ProgressBar Height="4" Margin="0,0,0,16" Maximum="100" Value="{Binding OperationProgress, Mode=OneWay}" Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}" />
 
 						<controls:Card>
@@ -139,11 +142,11 @@
 								<StackPanel>
 									<TextBlock Text="Backup and maintenance" Style="{StaticResource CardTitleStyle}" />
 									<TextBlock Margin="{DynamicResource Control.Margin}" Text="Create and verify backups, check integrity, or refresh the current overview." Style="{StaticResource CaptionStyle}" TextWrapping="Wrap" />
-									<StackPanel Margin="{DynamicResource Control.Margin.Large}" Orientation="Horizontal"><Button Command="{Binding CreateBackupCommand}" Content="Create backup" Style="{StaticResource PrimaryButtonStyle}" /><Button Margin="{DynamicResource Button.Margin}" Command="{Binding ValidateBackupCommand}" Content="Validate backup" Style="{StaticResource SecondaryButtonStyle}" /><Button Margin="{DynamicResource Button.Margin}" Command="{Binding CheckIntegrityCommand}" Content="Check integrity" Style="{StaticResource SecondaryButtonStyle}" /><Button Margin="{DynamicResource Button.Margin}" Command="{Binding RefreshCommand}" Content="Refresh" Style="{StaticResource SecondaryButtonStyle}" /></StackPanel>
+									<WrapPanel Margin="{DynamicResource Control.Margin.Large}"><Button Command="{Binding CreateBackupCommand}" Content="Create backup" Style="{StaticResource PrimaryButtonStyle}" /><Button Margin="{DynamicResource Button.Margin}" Command="{Binding ValidateBackupCommand}" Content="Validate backup" Style="{StaticResource SecondaryButtonStyle}" /><Button Margin="{DynamicResource Button.Margin}" Command="{Binding CheckIntegrityCommand}" Content="Check integrity" Style="{StaticResource SecondaryButtonStyle}" /><Button Margin="{DynamicResource Button.Margin}" Command="{Binding RefreshCommand}" Content="Refresh" Style="{StaticResource SecondaryButtonStyle}" /></WrapPanel>
 									<Separator Margin="0,20,0,16" />
 									<TextBlock Text="Destructive maintenance" Style="{StaticResource CardTitleStyle}" />
 									<TextBlock Margin="{DynamicResource Control.Margin}" Text="Restore validates the selected backup and creates a safety backup first. Compact is available for SQLite only." Style="{StaticResource CaptionStyle}" TextWrapping="Wrap" />
-									<StackPanel Margin="{DynamicResource Control.Margin.Large}" Orientation="Horizontal"><Button Command="{Binding RestoreBackupCommand}" Content="Restore backup" Style="{StaticResource DangerButtonStyle}" /><Button Margin="{DynamicResource Button.Margin}" Command="{Binding CompactCommand}" Content="Compact SQLite" Style="{StaticResource SecondaryButtonStyle}" /></StackPanel>
+									<WrapPanel Margin="{DynamicResource Control.Margin.Large}"><Button Command="{Binding RestoreBackupCommand}" Content="Restore backup" Style="{StaticResource DangerButtonStyle}" /><Button Margin="{DynamicResource Button.Margin}" Command="{Binding CompactCommand}" Content="Compact SQLite" Style="{StaticResource SecondaryButtonStyle}" /></WrapPanel>
 								</StackPanel>
 							</controls:Card>
 						</Grid>

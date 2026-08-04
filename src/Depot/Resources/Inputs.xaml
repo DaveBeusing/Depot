@@ -45,16 +45,34 @@
 		<Setter Property="Background" Value="Transparent" />
 		<Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
 		<Setter Property="BorderBrush" Value="Transparent" />
-		<Setter Property="BorderThickness" Value="{DynamicResource Input.BorderThickness}" />
+		<Setter Property="BorderThickness" Value="0" />
 		<Setter Property="IsReadOnly" Value="True" />
+		<Setter Property="IsReadOnlyCaretVisible" Value="False" />
+		<Setter Property="CaretBrush" Value="Transparent" />
 		<Setter Property="VerticalContentAlignment" Value="Center" />
 		<Setter Property="SelectionBrush" Value="{DynamicResource PrimaryBrush}" />
 		<Setter Property="TextWrapping" Value="Wrap" />
-		<Setter Property="FocusVisualStyle" Value="{x:Null}" />
-		<Style.Triggers>
-			<Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter Property="BorderBrush" Value="{DynamicResource PrimaryBrush}" /></Trigger>
-			<Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="{DynamicResource SurfaceAltBrush}" /></Trigger>
-		</Style.Triggers>
+		<Setter Property="HorizontalScrollBarVisibility" Value="Disabled" />
+		<Setter Property="VerticalScrollBarVisibility" Value="Disabled" />
+		<Setter Property="ToolTip" Value="{Binding Text, RelativeSource={RelativeSource Self}}" />
+		<Setter Property="Template">
+			<Setter.Value>
+				<ControlTemplate TargetType="TextBox">
+					<Border x:Name="CopyableSurface" Background="{TemplateBinding Background}">
+						<ScrollViewer
+							x:Name="PART_ContentHost"
+							Focusable="False"
+							HorizontalScrollBarVisibility="{TemplateBinding HorizontalScrollBarVisibility}"
+							VerticalScrollBarVisibility="{TemplateBinding VerticalScrollBarVisibility}" />
+					</Border>
+					<ControlTemplate.Triggers>
+						<Trigger Property="IsKeyboardFocused" Value="True">
+							<Setter TargetName="CopyableSurface" Property="Background" Value="{DynamicResource NavigationSelectedBackgroundBrush}" />
+						</Trigger>
+					</ControlTemplate.Triggers>
+				</ControlTemplate>
+			</Setter.Value>
+		</Setter>
 	</Style>
 
 	<Style TargetType="{x:Type controls:TextInput}">

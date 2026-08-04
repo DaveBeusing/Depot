@@ -85,7 +85,6 @@
 							<RowDefinition Height="16" />
 							<RowDefinition Height="Auto" />
 							<RowDefinition Height="16" />
-							<RowDefinition Height="Auto" />
 							<RowDefinition Height="*" />
 							<RowDefinition Height="Auto" />
 						</Grid.RowDefinitions>
@@ -102,8 +101,8 @@
 							<StackPanel Grid.Column="2"><TextBlock Text="Unit price" Style="{StaticResource FormLabelStyle}" /><controls:TextInput IsEnabled="{Binding Editor.RequiresUnitPrice}" Text="{Binding Editor.UnitPrice, UpdateSourceTrigger=PropertyChanged}" /></StackPanel>
 							<StackPanel Grid.Column="4"><TextBlock Text="Reference" Style="{StaticResource FormLabelStyle}" /><controls:TextInput Text="{Binding Editor.Reference, UpdateSourceTrigger=PropertyChanged}" /></StackPanel>
 						</Grid>
-						<StackPanel Grid.Row="6"><TextBlock Text="Notes" Style="{StaticResource FormLabelStyle}" /><TextBox MinHeight="72" AcceptsReturn="True" Style="{StaticResource MultilineTextBoxStyle}" Text="{Binding Editor.Notes, UpdateSourceTrigger=PropertyChanged}" TextWrapping="Wrap" /></StackPanel>
-						<controls:WorkflowActionBar Grid.Row="8">
+						<Grid Grid.Row="6"><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions><TextBlock Text="Notes" Style="{StaticResource FormLabelStyle}" /><TextBox Grid.Row="1" MinHeight="72" VerticalAlignment="Stretch" VerticalContentAlignment="Top" AcceptsReturn="True" Style="{StaticResource MultilineTextBoxStyle}" Text="{Binding Editor.Notes, UpdateSourceTrigger=PropertyChanged}" TextWrapping="Wrap" /></Grid>
+						<controls:WorkflowActionBar Grid.Row="7">
 							<controls:WorkflowActionBar.SecondaryActions><TextBlock VerticalAlignment="Center" Text="Stock is changed only through the resulting immutable movement." Style="{StaticResource CaptionStyle}" /></controls:WorkflowActionBar.SecondaryActions>
 							<controls:WorkflowActionBar.PrimaryAction><Button Command="{Binding CreateMovementCommand}" Content="Create movement" Style="{StaticResource PrimaryButtonStyle}" /></controls:WorkflowActionBar.PrimaryAction>
 						</controls:WorkflowActionBar>

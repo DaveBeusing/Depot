@@ -58,6 +58,8 @@
 	<Style x:Key="AppTabControlStyle" TargetType="TabControl">
 		<Setter Property="Background" Value="Transparent" />
 		<Setter Property="BorderThickness" Value="0" />
+		<Setter Property="HorizontalContentAlignment" Value="Stretch" />
+		<Setter Property="VerticalContentAlignment" Value="Stretch" />
 		<Setter Property="ItemContainerStyle" Value="{StaticResource AppTabItemStyle}" />
 		<Setter Property="KeyboardNavigation.DirectionalNavigation" Value="Contained" />
 		<Setter Property="ItemsPanel">
@@ -82,6 +84,8 @@
 							x:Name="PART_SelectedContentHost"
 							Grid.Row="1"
 							Margin="{DynamicResource Tab.Content.Margin}"
+							HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+							VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
 							Content="{TemplateBinding SelectedContent}"
 							ContentStringFormat="{TemplateBinding SelectedContentStringFormat}"
 							ContentTemplate="{TemplateBinding SelectedContentTemplate}"

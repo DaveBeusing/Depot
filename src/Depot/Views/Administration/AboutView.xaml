@@ -16,8 +16,8 @@
 			IsBusy="{Binding IsBusy}"
 			StatusText="{Binding StatusText}" />
 
-		<ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-			<StackPanel MaxWidth="{DynamicResource About.Content.MaxWidth}" HorizontalAlignment="Left">
+		<ScrollViewer Grid.Row="2" HorizontalContentAlignment="Stretch" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+			<StackPanel HorizontalAlignment="Stretch">
 				<Grid>
 					<Grid.ColumnDefinitions>
 						<ColumnDefinition Width="Auto" />

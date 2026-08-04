@@ -27,6 +27,8 @@
 		<controls:ShellModuleContentControl
 			Grid.Row="2"
 			Margin="{DynamicResource Shell.Module.Content.Margin}"
+			HorizontalContentAlignment="Stretch"
+			VerticalContentAlignment="Stretch"
 			Content="{Binding CurrentViewModel}" />
 	</Grid>
 </UserControl>

@@ -30,11 +30,15 @@
 
 	<Style TargetType="{x:Type controls:FilterBar}">
 		<Setter Property="Margin" Value="0,0,0,12" />
+		<Setter Property="HorizontalContentAlignment" Value="Stretch" />
+		<Setter Property="VerticalContentAlignment" Value="Stretch" />
 		<Setter Property="Template">
 			<Setter.Value>
 				<ControlTemplate TargetType="{x:Type controls:FilterBar}">
 					<Border Padding="12" Background="{DynamicResource SurfaceAltBrush}" CornerRadius="{DynamicResource CornerRadius.Small}">
-						<ContentPresenter />
+						<ContentPresenter
+							HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+							VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
 					</Border>
 				</ControlTemplate>
 			</Setter.Value>
@@ -76,13 +80,15 @@
 
 	<Style TargetType="{x:Type controls:WorkflowActionBar}">
 		<Setter Property="Margin" Value="0,16,0,0" />
+		<Setter Property="HorizontalContentAlignment" Value="Stretch" />
+		<Setter Property="VerticalContentAlignment" Value="Stretch" />
 		<Setter Property="Template">
 			<Setter.Value>
 				<ControlTemplate TargetType="{x:Type controls:WorkflowActionBar}">
 					<Grid>
 						<Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="24" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-						<ContentPresenter Content="{TemplateBinding SecondaryActions}" HorizontalAlignment="Left" />
-						<ContentPresenter Grid.Column="2" Content="{TemplateBinding PrimaryAction}" HorizontalAlignment="Right" />
+						<ContentPresenter Content="{TemplateBinding SecondaryActions}" HorizontalAlignment="Left" VerticalAlignment="Center" />
+						<ContentPresenter Grid.Column="2" Content="{TemplateBinding PrimaryAction}" HorizontalAlignment="Right" VerticalAlignment="Center" />
 					</Grid>
 				</ControlTemplate>
 			</Setter.Value>
@@ -110,6 +116,8 @@
 	</Style>
 
 	<Style TargetType="{x:Type controls:MasterDetailGrid}">
+		<Setter Property="HorizontalContentAlignment" Value="Stretch" />
+		<Setter Property="VerticalContentAlignment" Value="Stretch" />
 		<Setter Property="Template">
 			<Setter.Value>
 				<ControlTemplate TargetType="{x:Type controls:MasterDetailGrid}">
@@ -119,12 +127,17 @@
 							<ColumnDefinition Width="{DynamicResource MasterDetail.ColumnGap}" />
 							<ColumnDefinition Width="*" MinWidth="360" />
 						</Grid.ColumnDefinitions>
-						<ContentPresenter Content="{TemplateBinding Master}" />
-						<ContentPresenter Grid.Column="2" Content="{TemplateBinding Detail}" />
+						<ContentPresenter Content="{TemplateBinding Master}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
+						<ContentPresenter Grid.Column="2" Content="{TemplateBinding Detail}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
 					</Grid>
 				</ControlTemplate>
 			</Setter.Value>
 		</Setter>
+	</Style>
+
+	<Style TargetType="{x:Type controls:ShellModuleContentControl}">
+		<Setter Property="HorizontalContentAlignment" Value="Stretch" />
+		<Setter Property="VerticalContentAlignment" Value="Stretch" />
 	</Style>
 
 	<Style TargetType="{x:Type controls:WorkflowListState}">
