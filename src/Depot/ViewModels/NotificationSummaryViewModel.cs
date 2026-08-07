@@ -11,8 +11,12 @@ public sealed class NotificationSummaryViewModel : BaseViewModel, IDisposable
 	private readonly CancellationTokenSource _lifetime = new();
 	private readonly PeriodicTimer _timer = new(TimeSpan.FromSeconds(60));
 	private readonly SynchronizationContext? _synchronizationContext = SynchronizationContext.Current;
+	private readonly SemaphoreSlim _refreshGate = new(1, 1);
 	private long _unreadCount;
 	private bool _isApplicationActive = true;
+	private int _refreshRequested;
+	private int _consecutiveFailures;
+	private DateTime _nextAttemptUtc;
 
 	public NotificationSummaryViewModel(INotificationService notifications)
 	{
@@ -47,15 +51,39 @@ public sealed class NotificationSummaryViewModel : BaseViewModel, IDisposable
 
 	public async Task RefreshAsync(CancellationToken cancellationToken = default)
 	{
+		Interlocked.Exchange(ref _refreshRequested, 1);
+		if (!await _refreshGate.WaitAsync(0, cancellationToken)) return;
 		try
 		{
-			UnreadCount = await _notifications.GetUnreadCountAsync(cancellationToken);
+			do
+			{
+				Interlocked.Exchange(ref _refreshRequested, 0);
+				if (!_isApplicationActive || DateTime.UtcNow < _nextAttemptUtc) return;
+				try
+				{
+					UnreadCount = await _notifications.GetUnreadCountAsync(cancellationToken);
+					_consecutiveFailures = 0;
+					_nextAttemptUtc = DateTime.MinValue;
+				}
+				catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+				{
+					return;
+				}
+				catch (Exception)
+				{
+					_consecutiveFailures++;
+					var delayMinutes = Math.Min(15, 1 << Math.Min(_consecutiveFailures - 1, 4));
+					_nextAttemptUtc = DateTime.UtcNow.AddMinutes(delayMinutes);
+					return;
+				}
+			}
+			while (Interlocked.Exchange(ref _refreshRequested, 0) == 1);
 		}
-		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+		finally
 		{
-		}
-		catch (Exception)
-		{
+			_refreshGate.Release();
+			if (_isApplicationActive && Volatile.Read(ref _refreshRequested) == 1 && !_lifetime.IsCancellationRequested)
+				_ = RefreshAsync(_lifetime.Token);
 		}
 	}
 

@@ -154,6 +154,7 @@ internal sealed class ServiceComposition
 			audit,
 			movementReversals);
 		Stock = new StockService(repositories.Inventories, repositories.StockMovements);
+		Dashboard = new DashboardService(Stock, repositories.Dashboard, Authorization);
 		Reports = new ReportService(Stock, Authorization);
 		var inventoryManagement = new InventoryManagementService(repositories.Inventories, audit);
 		Import = new ImportService(
@@ -201,6 +202,7 @@ internal sealed class ServiceComposition
 	public RoleService Roles { get; }
 	public MovementService Movements { get; }
 	public StockService Stock { get; }
+	public DashboardService Dashboard { get; }
 	public ReportService Reports { get; }
 	public ImportService Import { get; }
 }

@@ -47,6 +47,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 	public MainViewModel(
 		ItemService itemService,
 		StockService stockService,
+		DashboardService dashboardService,
 		MovementService movementService,
 		ReportService reportService,
 		PurposeService purposeService,
@@ -95,7 +96,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		HelpCommand = new RelayCommand(() => _ = OpenHelpAsync());
 		NotificationCommand = new RelayCommand(() => _ = OpenNotificationsAsync());
 
-		_dashboard = new(() => new DashboardViewModel(stockService));
+		_dashboard = new(() => new DashboardViewModel(dashboardService));
 		_inventory = new(() => new InventoryViewModel(stockService));
 		_items = new(() => new ItemsViewModel(itemService, manufacturerService, categoryService, unitOfMeasureService, packagingService));
 		_movements = new(() => new MovementsViewModel(

@@ -20,7 +20,8 @@
 			StatusText="{Binding StatusText}"
 			ErrorText="{Binding OperationError}" />
 
-		<Grid Grid.Row="1">
+		<StackPanel Grid.Row="1">
+		<Grid Visibility="{Binding HasCoreInventoryMetrics, Converter={StaticResource BooleanToVisibilityConverter}}">
 
 			<Grid.ColumnDefinitions>
 				<ColumnDefinition Width="*" />
@@ -62,6 +63,23 @@
 				Value="{Binding TotalMovements, StringFormat={}{0:N0}}" />
 
 		</Grid>
+
+		<Grid Margin="{StaticResource Control.Margin.Large}">
+			<Grid.ColumnDefinitions>
+				<ColumnDefinition Width="*" />
+				<ColumnDefinition Width="16" />
+				<ColumnDefinition Width="*" />
+				<ColumnDefinition Width="16" />
+				<ColumnDefinition Width="*" />
+				<ColumnDefinition Width="16" />
+				<ColumnDefinition Width="*" />
+			</Grid.ColumnDefinitions>
+			<controls:MetricCard Grid.Column="0" Title="Pending Approvals" Value="{Binding ApprovalSummary.OpenCount, StringFormat={}{0:N0}}" SupportingText="{Binding ApprovalSupportingText}" Visibility="{Binding HasApprovalMetrics, Converter={StaticResource BooleanToVisibilityConverter}}" />
+			<controls:MetricCard Grid.Column="2" Title="Purchasing Attention" Value="{Binding PurchasingAttentionCount, StringFormat={}{0:N0}}" SupportingText="{Binding PurchasingSupportingText}" Visibility="{Binding HasPurchasingMetrics, Converter={StaticResource BooleanToVisibilityConverter}}" />
+			<controls:MetricCard Grid.Column="4" Title="Warehouse Work" Value="{Binding WarehouseWorkCount, StringFormat={}{0:N0}}" SupportingText="{Binding WarehouseSupportingText}" Visibility="{Binding HasWarehouseMetrics, Converter={StaticResource BooleanToVisibilityConverter}}" />
+			<controls:MetricCard Grid.Column="6" Title="Active Users" Value="{Binding AdministrationMetrics.ActiveUsers, StringFormat={}{0:N0}}" SupportingText="Active security principals" Visibility="{Binding HasAdministrationMetrics, Converter={StaticResource BooleanToVisibilityConverter}}" />
+		</Grid>
+		</StackPanel>
 
 		<controls:Card Grid.Row="3">
 			<controls:Card.Header>

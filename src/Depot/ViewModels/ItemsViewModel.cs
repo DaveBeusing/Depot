@@ -16,6 +16,7 @@ public sealed class ItemsViewModel : BaseViewModel, IDisposable
 	private readonly ItemService _itemService;
 	private readonly IItemReferenceDataService[] _referenceServices;
 	private readonly AsyncDebouncer _searchDebouncer = new(TimeSpan.FromMilliseconds(300));
+	private readonly LatestRequest _listRequest = new();
 	private ItemViewModel? _selectedItem;
 	private string? _errorMessage;
 	private string _searchText = string.Empty;
@@ -141,13 +142,15 @@ public sealed class ItemsViewModel : BaseViewModel, IDisposable
 
 	public async Task LoadItemsAsync(CancellationToken cancellationToken = default)
 	{
+		var request = _listRequest.Begin(cancellationToken);
 		BeginOperation("Loading items");
 		var selectedId = SelectedItem?.Id;
 		try
 		{
 			if (Manufacturers.Count == 0)
 			{
-				var values = await Task.WhenAll(_referenceServices.Select(service => service.GetActiveAsync(cancellationToken)));
+				var values = await Task.WhenAll(_referenceServices.Select(service => service.GetActiveAsync(request.Token)));
+				if (!request.IsCurrent) return;
 				Fill(Manufacturers, values[0]); Fill(Categories, values[1]); Fill(UnitsOfMeasure, values[2]); Fill(Packagings, values[3]);
 			}
 			var page = await _itemService.SearchItemsAsync(
@@ -155,17 +158,19 @@ public sealed class ItemsViewModel : BaseViewModel, IDisposable
 				SelectedActivationFilter.IsActive,
 				PageNumber,
 				PageSize,
-				cancellationToken);
+				request.Token);
+			if (!request.IsCurrent) return;
 			CollectionSynchronizer.Replace(Items, page.Items.Select(item => new ItemViewModel(item)).ToArray());
 			TotalCount = page.TotalCount;
 			SelectedItem = selectedId is null ? null : Items.FirstOrDefault(x => x.Id == selectedId);
 			RaiseCollectionState();
 			CompleteOperation(Items.Count == 0, $"{page.TotalCount:N0} items");
 		}
-		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+		catch (OperationCanceledException) when (request.Token.IsCancellationRequested)
 		{
-			CompleteOperation(Items.Count == 0);
+			if (request.IsCurrent) CompleteOperation(Items.Count == 0);
 		}
+		catch (Exception) when (!request.IsCurrent) { }
 		catch (Exception exception)
 		{
 			ErrorMessage = exception.Message;
@@ -333,6 +338,7 @@ public sealed class ItemsViewModel : BaseViewModel, IDisposable
 	public void Dispose()
 	{
 		_searchDebouncer.Dispose();
+		_listRequest.Dispose();
 		SaveItemCommand.Dispose();
 		DeactivateItemCommand.Dispose();
 		PreviousPageCommand.Dispose();

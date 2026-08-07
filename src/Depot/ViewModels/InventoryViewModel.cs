@@ -13,11 +13,13 @@ public sealed class InventoryViewModel : BaseViewModel, IDisposable
 	private const int PageSize = 100;
 	private readonly StockService _stockService;
 	private readonly AsyncDebouncer _searchDebouncer = new(TimeSpan.FromMilliseconds(300));
-	private CancellationTokenSource? _detailsCancellation;
+	private readonly LatestRequest _listRequest = new();
+	private readonly LatestRequest _detailsRequest = new();
 	private InventoryOverviewItemViewModel? _selectedItem;
 	private string _searchText = string.Empty;
 	private int _pageNumber = 1;
 	private long _totalCount;
+	private bool _isLoadingDetails;
 
 	public InventoryViewModel(StockService stockService)
 	{
@@ -33,6 +35,7 @@ public sealed class InventoryViewModel : BaseViewModel, IDisposable
 	public bool HasSelectedItem => SelectedItem is not null;
 	public bool HasNoSelectedItem => !HasSelectedItem;
 	public bool HasNextPage => (long)PageNumber * PageSize < TotalCount;
+	public bool IsLoadingDetails { get => _isLoadingDetails; private set { if (_isLoadingDetails == value) return; _isLoadingDetails = value; OnPropertyChanged(); } }
 	public InventoryDetailsViewModel Details { get; }
 	public AsyncRelayCommand PreviousPageCommand { get; }
 	public AsyncRelayCommand NextPageCommand { get; }
@@ -86,15 +89,13 @@ public sealed class InventoryViewModel : BaseViewModel, IDisposable
 			OnPropertyChanged();
 			OnPropertyChanged(nameof(HasSelectedItem));
 			OnPropertyChanged(nameof(HasNoSelectedItem));
-			_detailsCancellation?.Cancel();
-			_detailsCancellation?.Dispose();
-			_detailsCancellation = new CancellationTokenSource();
-			_ = LoadSelectedDetailsAsync(_detailsCancellation.Token);
+			_ = LoadSelectedDetailsAsync(value);
 		}
 	}
 
 	public async Task LoadAsync(CancellationToken cancellationToken = default)
 	{
+		var request = _listRequest.Begin(cancellationToken);
 		BeginOperation("Loading inventory");
 		var selectedId = SelectedItem?.InventoryId;
 		try
@@ -103,7 +104,8 @@ public sealed class InventoryViewModel : BaseViewModel, IDisposable
 				SearchText,
 				PageNumber,
 				PageSize,
-				cancellationToken);
+				request.Token);
+			if (!request.IsCurrent) return;
 			CollectionSynchronizer.Replace(Items, page.Items.Select(item => new InventoryOverviewItemViewModel(item)).ToArray());
 			TotalCount = page.TotalCount;
 			SelectedItem = selectedId is null
@@ -114,37 +116,44 @@ public sealed class InventoryViewModel : BaseViewModel, IDisposable
 			if (SelectedItem is null) Details.Clear();
 			CompleteOperation(Items.Count == 0, $"{page.TotalCount:N0} inventory records");
 		}
-		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+		catch (OperationCanceledException) when (request.Token.IsCancellationRequested)
 		{
-			CompleteOperation(Items.Count == 0);
+			if (request.IsCurrent) CompleteOperation(Items.Count == 0);
 		}
+		catch (Exception) when (!request.IsCurrent) { }
 		catch (Exception exception)
 		{
 			FailOperation(exception, "Inventory could not be loaded");
 		}
 	}
 
-	private async Task LoadSelectedDetailsAsync(CancellationToken cancellationToken)
+	private async Task LoadSelectedDetailsAsync(InventoryOverviewItemViewModel? selected)
 	{
-		if (SelectedItem is null)
+		var request = _detailsRequest.Begin();
+		if (selected is null)
 		{
 			Details.Clear();
+			IsLoadingDetails = false;
 			return;
 		}
+		IsLoadingDetails = true;
 		try
 		{
 			var details = await _stockService.GetInventoryDetailsAsync(
-				SelectedItem.InventoryId,
-				cancellationToken);
+				selected.InventoryId,
+				request.Token);
+			if (!request.IsCurrent || SelectedItem?.InventoryId != selected.InventoryId) return;
 			Details.Load(details);
 		}
-		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+		catch (OperationCanceledException) when (request.Token.IsCancellationRequested)
 		{
 		}
+		catch (Exception) when (!request.IsCurrent) { }
 		catch (Exception exception)
 		{
 			FailOperation(exception, "Inventory details could not be loaded");
 		}
+		finally { if (request.IsCurrent) IsLoadingDetails = false; }
 	}
 
 	private async Task PreviousPageAsync(CancellationToken cancellationToken)
@@ -170,8 +179,8 @@ public sealed class InventoryViewModel : BaseViewModel, IDisposable
 	public void Dispose()
 	{
 		_searchDebouncer.Dispose();
-		_detailsCancellation?.Cancel();
-		_detailsCancellation?.Dispose();
+		_listRequest.Dispose();
+		_detailsRequest.Dispose();
 		PreviousPageCommand.Dispose();
 		NextPageCommand.Dispose();
 	}

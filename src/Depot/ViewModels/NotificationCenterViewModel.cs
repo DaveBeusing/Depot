@@ -18,10 +18,8 @@ public sealed class NotificationCenterViewModel : BaseViewModel, IDisposable
 	private readonly INotificationService _notifications;
 	private readonly INotificationNavigationService _navigation;
 	private readonly AsyncDebouncer _searchDebouncer = new(TimeSpan.FromMilliseconds(300));
-	private readonly CancellationTokenSource _lifetime = new();
-	private readonly PeriodicTimer _pollingTimer = new(TimeSpan.FromSeconds(60));
-	private readonly SynchronizationContext? _synchronizationContext = SynchronizationContext.Current;
-	private CancellationTokenSource? _detailsCancellation;
+	private readonly LatestRequest _listRequest = new();
+	private readonly LatestRequest _detailsRequest = new();
 	private NotificationListItem? _selectedItem;
 	private NotificationDetails? _details;
 	private string _searchText = string.Empty;
@@ -32,14 +30,12 @@ public sealed class NotificationCenterViewModel : BaseViewModel, IDisposable
 	private DateTime? _toDate;
 	private int _pageNumber = 1;
 	private long _totalCount;
-	private long _unreadCount;
-	private bool _isApplicationActive = true;
+	private bool _isLoadingDetails;
 
 	public NotificationCenterViewModel(INotificationService notifications, INotificationNavigationService navigation)
 	{
 		_notifications = notifications;
 		_navigation = navigation;
-		_notifications.NotificationsChanged += OnNotificationsChanged;
 		TypeFilters = [new("All types", null), .. Enum.GetValues<NotificationType>().Select(value => new NotificationTypeFilterOption(value.ToString(), value))];
 		SeverityFilters = [new("All severities", null), .. Enum.GetValues<NotificationSeverity>().Select(value => new NotificationSeverityFilterOption(value.ToString(), value))];
 		_selectedType = TypeFilters[0];
@@ -54,7 +50,6 @@ public sealed class NotificationCenterViewModel : BaseViewModel, IDisposable
 		MarkPageReadCommand = new AsyncRelayCommand(MarkPageReadAsync, () => Items.Any(item => item.IsUnread));
 		OpenRelatedCommand = new AsyncRelayCommand(OpenRelatedAsync, () => Details?.SourceType is not null);
 		CloseCommand = new RelayCommand(() => CloseRequested?.Invoke(this, EventArgs.Empty));
-		_ = PollAsync(_lifetime.Token);
 	}
 
 	public ObservableCollection<NotificationListItem> Items { get; } = new();
@@ -107,44 +102,33 @@ public sealed class NotificationCenterViewModel : BaseViewModel, IDisposable
 
 	public bool HasDetails => Details is not null;
 	public bool HasNoDetails => Details is null;
+	public bool IsLoadingDetails { get => _isLoadingDetails; private set { if (_isLoadingDetails == value) return; _isLoadingDetails = value; OnPropertyChanged(); } }
 	public int PageNumber { get => _pageNumber; private set { if (_pageNumber == value) return; _pageNumber = value; OnPropertyChanged(); OnPropertyChanged(nameof(PageDisplay)); RaisePagingCommands(); } }
 	public long TotalCount { get => _totalCount; private set { if (_totalCount == value) return; _totalCount = value; OnPropertyChanged(); OnPropertyChanged(nameof(PageDisplay)); OnPropertyChanged(nameof(HasNextPage)); RaisePagingCommands(); } }
 	public bool HasNextPage => (long)PageNumber * PageSize < TotalCount;
 	public string PageDisplay => $"Page {PageNumber} · {TotalCount:N0} notifications";
-	public long UnreadCount { get => _unreadCount; private set { if (_unreadCount == value) return; _unreadCount = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasUnreadNotifications)); OnPropertyChanged(nameof(UnreadBadgeText)); } }
-	public bool HasUnreadNotifications => UnreadCount > 0;
-	public string UnreadBadgeText => UnreadCount > 99 ? "99+" : UnreadCount.ToString(System.Globalization.CultureInfo.CurrentCulture);
 
 	public async Task LoadAsync(CancellationToken cancellationToken = default)
 	{
+		var request = _listRequest.Begin(cancellationToken);
 		BeginOperation("Loading notifications");
 		try
 		{
-			var page = await _notifications.GetPageAsync(CreateFilter(), PageNumber, PageSize, cancellationToken);
+			var page = await _notifications.GetPageAsync(CreateFilter(), PageNumber, PageSize, request.Token);
+			if (!request.IsCurrent) return;
 			var selectedId = SelectedItem?.RecipientId;
 			CollectionSynchronizer.Replace(Items, page.Items);
 			TotalCount = page.TotalCount;
 			SelectedItem = selectedId is null ? null : Items.FirstOrDefault(item => item.RecipientId == selectedId);
-			await RefreshUnreadCountAsync(cancellationToken);
 			MarkPageReadCommand.RaiseCanExecuteChanged();
 			CompleteOperation(Items.Count == 0, Items.Count == 0 ? "No notifications found" : $"{TotalCount:N0} notifications");
 		}
-		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
+		catch (OperationCanceledException) when (request.Token.IsCancellationRequested) { }
+		catch (Exception) when (!request.IsCurrent) { }
 		catch (Exception exception) { FailOperation(exception, "Notifications could not be loaded"); }
 	}
 
-	public async Task RefreshUnreadCountAsync(CancellationToken cancellationToken = default)
-	{
-		try { UnreadCount = await _notifications.GetUnreadCountAsync(cancellationToken); }
-		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
-		catch (Exception) { }
-	}
-
-	public void SetApplicationActive(bool isActive)
-	{
-		_isApplicationActive = isActive;
-		if (isActive) _ = RefreshUnreadCountAsync(_lifetime.Token);
-	}
+	public void SetApplicationActive(bool isActive) { }
 
 	private NotificationFilter CreateFilter() => new(
 		SearchText, InboxFilter, SelectedType.Value, SelectedSeverity.Value,
@@ -158,15 +142,21 @@ public sealed class NotificationCenterViewModel : BaseViewModel, IDisposable
 
 	private async Task LoadDetailsAsync(NotificationListItem? item)
 	{
-		_detailsCancellation?.Cancel();
-		_detailsCancellation?.Dispose();
-		_detailsCancellation = null;
+		var request = _detailsRequest.Begin();
 		Details = null;
+		IsLoadingDetails = false;
 		if (item is null) return;
-		_detailsCancellation = new CancellationTokenSource();
-		try { Details = await _notifications.GetDetailsAsync(item.RecipientId, _detailsCancellation.Token); }
-		catch (OperationCanceledException) when (_detailsCancellation.IsCancellationRequested) { }
+		IsLoadingDetails = true;
+		try
+		{
+			var details = await _notifications.GetDetailsAsync(item.RecipientId, request.Token);
+			if (!request.IsCurrent || SelectedItem?.RecipientId != item.RecipientId) return;
+			Details = details;
+		}
+		catch (OperationCanceledException) when (request.Token.IsCancellationRequested) { }
+		catch (Exception) when (!request.IsCurrent) { }
 		catch (Exception exception) { FailOperation(exception, "Notification details could not be loaded"); }
+		finally { if (request.IsCurrent) IsLoadingDetails = false; }
 	}
 
 	private async Task ChangeReadStateAsync(bool read, CancellationToken cancellationToken)
@@ -181,9 +171,12 @@ public sealed class NotificationCenterViewModel : BaseViewModel, IDisposable
 			item.ReadAtUtc = read ? DateTime.UtcNow : null;
 			item.RecipientVersion++;
 			OnPropertyChanged(nameof(Items));
-			await LoadDetailsAsync(item);
-			await RefreshUnreadCountAsync(cancellationToken);
+			Details = details with { ReadAtUtc = item.ReadAtUtc, RecipientVersion = item.RecipientVersion };
+			if (read && InboxFilter == NotificationInboxFilter.Unread)
+				RemoveCurrentItem(item);
+			MarkPageReadCommand.RaiseCanExecuteChanged();
 		}
+		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
 		catch (Exception exception) { FailOperation(exception, "Notification state could not be changed"); }
 	}
 
@@ -201,14 +194,14 @@ public sealed class NotificationCenterViewModel : BaseViewModel, IDisposable
 			else await _notifications.RestoreAsync(details.RecipientId, details.RecipientVersion, cancellationToken);
 			if ((archive && InboxFilter != NotificationInboxFilter.Archived) || (!archive && InboxFilter == NotificationInboxFilter.Archived))
 			{
-				Items.Remove(item); TotalCount--; SelectedItem = null;
+				RemoveCurrentItem(item);
 			}
 			else
 			{
-				item.ArchivedAtUtc = archive ? DateTime.UtcNow : null; item.RecipientVersion++; OnPropertyChanged(nameof(Items)); await LoadDetailsAsync(item);
+				item.ArchivedAtUtc = archive ? DateTime.UtcNow : null; item.RecipientVersion++; OnPropertyChanged(nameof(Items)); Details = details with { ArchivedAtUtc = item.ArchivedAtUtc, RecipientVersion = item.RecipientVersion };
 			}
-			await RefreshUnreadCountAsync(cancellationToken);
 		}
+		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
 		catch (Exception exception) { FailOperation(exception, "Notification state could not be changed"); }
 	}
 
@@ -217,12 +210,24 @@ public sealed class NotificationCenterViewModel : BaseViewModel, IDisposable
 
 	private async Task MarkPageReadAsync(CancellationToken cancellationToken)
 	{
-		await _notifications.MarkVisiblePageReadAsync(Items.Where(item => item.IsUnread).Select(item => item.RecipientId), cancellationToken);
-		foreach (var item in Items.Where(item => item.IsUnread)) { item.ReadAtUtc = DateTime.UtcNow; item.RecipientVersion++; }
-		OnPropertyChanged(nameof(Items));
-		if (SelectedItem is not null) await LoadDetailsAsync(SelectedItem);
-		await RefreshUnreadCountAsync(cancellationToken);
-		MarkPageReadCommand.RaiseCanExecuteChanged();
+		try
+		{
+			await _notifications.MarkVisiblePageReadAsync(Items.Where(item => item.IsUnread).Select(item => item.RecipientId), cancellationToken);
+			foreach (var item in Items.Where(item => item.IsUnread)) { item.ReadAtUtc = DateTime.UtcNow; item.RecipientVersion++; }
+			OnPropertyChanged(nameof(Items));
+			if (Details is { } details && SelectedItem is { } selected)
+				Details = details with { ReadAtUtc = selected.ReadAtUtc, RecipientVersion = selected.RecipientVersion };
+			if (InboxFilter == NotificationInboxFilter.Unread)
+			{
+				var removedCount = Items.Count;
+				Items.Clear();
+				SelectedItem = null;
+				TotalCount = Math.Max(0, TotalCount - removedCount);
+			}
+			MarkPageReadCommand.RaiseCanExecuteChanged();
+		}
+		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
+		catch (Exception exception) { FailOperation(exception, "Notifications could not be marked as read"); }
 	}
 
 	private async Task OpenRelatedAsync(CancellationToken cancellationToken)
@@ -237,35 +242,18 @@ public sealed class NotificationCenterViewModel : BaseViewModel, IDisposable
 	private void RaisePagingCommands() { PreviousPageCommand.RaiseCanExecuteChanged(); NextPageCommand.RaiseCanExecuteChanged(); }
 	private void RaiseDetailCommands() { MarkReadCommand.RaiseCanExecuteChanged(); MarkUnreadCommand.RaiseCanExecuteChanged(); ArchiveCommand.RaiseCanExecuteChanged(); RestoreCommand.RaiseCanExecuteChanged(); OpenRelatedCommand.RaiseCanExecuteChanged(); }
 
-	private async Task PollAsync(CancellationToken cancellationToken)
+	private void RemoveCurrentItem(NotificationListItem item)
 	{
-		await RefreshUnreadCountAsync(cancellationToken);
-		try
-		{
-			while (await _pollingTimer.WaitForNextTickAsync(cancellationToken))
-				if (_isApplicationActive) await RefreshUnreadCountAsync(cancellationToken);
-		}
-		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
-	}
-
-	private void OnNotificationsChanged(object? sender, EventArgs e)
-	{
-		if (_synchronizationContext is null)
-		{
-			_ = RefreshUnreadCountAsync(_lifetime.Token);
-			return;
-		}
-		_synchronizationContext.Post(_ => _ = RefreshUnreadCountAsync(_lifetime.Token), null);
+		var index = Items.IndexOf(item);
+		Items.Remove(item);
+		TotalCount = Math.Max(0, TotalCount - 1);
+		SelectedItem = Items.Count == 0 ? null : Items[Math.Min(index, Items.Count - 1)];
 	}
 
 	public void Dispose()
 	{
-		_notifications.NotificationsChanged -= OnNotificationsChanged;
-		_lifetime.Cancel();
-		_pollingTimer.Dispose();
-		_lifetime.Dispose();
-		_detailsCancellation?.Cancel();
-		_detailsCancellation?.Dispose();
+		_listRequest.Dispose();
+		_detailsRequest.Dispose();
 		_searchDebouncer.Dispose();
 		RefreshCommand.Dispose(); PreviousPageCommand.Dispose(); NextPageCommand.Dispose();
 		MarkReadCommand.Dispose(); MarkUnreadCommand.Dispose(); ArchiveCommand.Dispose(); RestoreCommand.Dispose(); MarkPageReadCommand.Dispose();

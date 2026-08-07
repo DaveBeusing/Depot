@@ -20,6 +20,9 @@ public sealed class SupplierViewModel : BaseViewModel, IDisposable
 	private readonly AsyncDebouncer _supplierSearch = new(TimeSpan.FromMilliseconds(300));
 	private readonly AsyncDebouncer _supplierItemSearch = new(TimeSpan.FromMilliseconds(300));
 	private readonly AsyncDebouncer _itemSearch = new(TimeSpan.FromMilliseconds(300));
+	private readonly LatestRequest _supplierRequest = new();
+	private readonly LatestRequest _supplierItemRequest = new();
+	private readonly LatestRequest _itemOptionRequest = new();
 	private Supplier? _selectedSupplier;
 	private SupplierItem? _selectedSupplierItem;
 	private Item? _selectedItemOption;
@@ -122,46 +125,61 @@ public sealed class SupplierViewModel : BaseViewModel, IDisposable
 
 	public async Task LoadAsync(CancellationToken cancellationToken = default)
 	{
+		var request = _supplierRequest.Begin(cancellationToken);
 		BeginOperation("Loading suppliers");
 		try
 		{
-			var categoryTask = _categoryService.GetActiveAsync(cancellationToken);
-			var supplierTask = _supplierService.SearchAsync(SearchText, cancellationToken);
+			var categoryTask = _categoryService.GetActiveAsync(request.Token);
+			var supplierTask = _supplierService.SearchAsync(SearchText, request.Token);
 			await Task.WhenAll(categoryTask, supplierTask);
+			if (!request.IsCurrent) return;
 			Categories.Clear(); foreach (var category in await categoryTask) Categories.Add(category);
 			ReplaceSuppliers(await supplierTask);
-			await LoadItemOptionsAsync(cancellationToken);
+			await LoadItemOptionsAsync(request.Token);
 			CompleteOperation(Suppliers.Count == 0, $"{Suppliers.Count:N0} suppliers");
 		}
+		catch (OperationCanceledException) when (request.Token.IsCancellationRequested) { }
 		catch (Exception exception) when (exception is not OperationCanceledException) { FailOperation(exception, "Suppliers could not be loaded"); }
 	}
 
 	private async Task LoadSuppliersAsync(CancellationToken cancellationToken)
 	{
-		try { ReplaceSuppliers(await _supplierService.SearchAsync(SearchText, cancellationToken)); }
+		var request = _supplierRequest.Begin(cancellationToken);
+		try { var values = await _supplierService.SearchAsync(SearchText, request.Token); if (request.IsCurrent) ReplaceSuppliers(values); }
+		catch (OperationCanceledException) when (request.Token.IsCancellationRequested) { }
+		catch (Exception) when (!request.IsCurrent) { }
 		catch (Exception exception) when (exception is not OperationCanceledException) { FailOperation(exception, "Suppliers could not be loaded"); }
 	}
 
 	private async Task LoadSupplierItemsAsync(CancellationToken cancellationToken = default)
 	{
+		var request = _supplierItemRequest.Begin(cancellationToken);
 		if (SelectedSupplier is null) { CollectionSynchronizer.Replace(SupplierItems, Array.Empty<SupplierItem>()); return; }
+		var supplierId = SelectedSupplier.Id;
 		try
 		{
-			var values = await _supplierItemService.SearchAsync(SelectedSupplier.Id, SupplierItemSearchText, cancellationToken);
+			var values = await _supplierItemService.SearchAsync(supplierId, SupplierItemSearchText, request.Token);
+			if (!request.IsCurrent || SelectedSupplier?.Id != supplierId) return;
 			if (SelectedSupplierItemActivationFilter.IsActive is bool isActive) values = [.. values.Where(value => value.IsActive == isActive)];
 			CollectionSynchronizer.Replace(SupplierItems, values);
 		}
+		catch (OperationCanceledException) when (request.Token.IsCancellationRequested) { }
+		catch (Exception) when (!request.IsCurrent) { }
 		catch (Exception exception) when (exception is not OperationCanceledException) { FailOperation(exception, "Supplier items could not be loaded"); }
 	}
 
 	private async Task LoadItemOptionsAsync(CancellationToken cancellationToken = default)
 	{
+		var request = _itemOptionRequest.Begin(cancellationToken);
 		try
 		{
-			var page = await _itemService.SearchItemsAsync(ItemSearchText, 1, 50, cancellationToken);
+			var page = await _itemService.SearchItemsAsync(ItemSearchText, 1, 50, request.Token);
+			if (!request.IsCurrent) return;
 			CollectionSynchronizer.Replace(ItemOptions, page.Items);
 			if (SupplierItemDraft.ItemId > 0) SelectedItemOption = ItemOptions.FirstOrDefault(item => item.Id == SupplierItemDraft.ItemId);
 		}
+		catch (OperationCanceledException) when (request.Token.IsCancellationRequested) { }
+		catch (Exception) when (!request.IsCurrent) { }
 		catch (Exception exception) when (exception is not OperationCanceledException) { FailOperation(exception, "Items could not be loaded"); }
 	}
 
@@ -191,7 +209,7 @@ public sealed class SupplierViewModel : BaseViewModel, IDisposable
 		{
 			var draft = Copy(SupplierItemDraft); draft.SupplierId = SelectedSupplier.Id; draft.ItemId = SelectedItemOption?.Id ?? 0;
 			var saved = await _supplierItemService.SaveAsync(draft, cancellationToken);
-			await LoadSupplierItemsAsync(cancellationToken); SelectedSupplierItem = SupplierItems.FirstOrDefault(value => value.Id == saved.Id);
+			ReplaceSupplierItem(saved); SelectedSupplierItem = SupplierItems.FirstOrDefault(value => value.Id == saved.Id);
 			CompleteOperation(false, "Supplier item saved");
 		}
 		catch (Exception exception) when (exception is not OperationCanceledException) { FailOperation(exception, "Supplier item could not be saved"); }
@@ -201,7 +219,7 @@ public sealed class SupplierViewModel : BaseViewModel, IDisposable
 	{
 		if (SelectedSupplierItem is null) return;
 		BeginOperation("Updating supplier item status");
-		try { await _supplierItemService.SetActiveAsync(SelectedSupplierItem.Id, SelectedSupplierItem.Version, !SelectedSupplierItem.IsActive, cancellationToken); await LoadSupplierItemsAsync(cancellationToken); CompleteOperation(false, "Supplier item status updated"); }
+		try { var saved = await _supplierItemService.SetActiveAsync(SelectedSupplierItem.Id, SelectedSupplierItem.Version, !SelectedSupplierItem.IsActive, cancellationToken); ReplaceSupplierItem(saved); SelectedSupplierItem = SupplierItems.FirstOrDefault(value => value.Id == saved.Id); CompleteOperation(false, "Supplier item status updated"); }
 		catch (Exception exception) when (exception is not OperationCanceledException) { FailOperation(exception, "Supplier item status could not be changed"); }
 	}
 
@@ -218,12 +236,33 @@ public sealed class SupplierViewModel : BaseViewModel, IDisposable
 		CollectionSynchronizer.Replace(Suppliers, values);
 		SelectedSupplier = Suppliers.FirstOrDefault(value => value.Id == selectedId);
 	}
-	private void ReplaceSupplier(Supplier value) { var existing = Suppliers.FirstOrDefault(item => item.Id == value.Id); if (existing is null) Suppliers.Add(value); else Suppliers[Suppliers.IndexOf(existing)] = value; }
+	private void ReplaceSupplier(Supplier value)
+	{
+		var existing = Suppliers.FirstOrDefault(item => item.Id == value.Id);
+		var matchesActivation = SelectedActivationFilter.IsActive is not bool isActive || value.IsActive == isActive;
+		var matchesSearch = string.IsNullOrWhiteSpace(SearchText) ||
+			value.Name.Contains(SearchText.Trim(), StringComparison.OrdinalIgnoreCase) ||
+			value.AccountNumber.ToString(System.Globalization.CultureInfo.InvariantCulture).Contains(SearchText.Trim(), StringComparison.OrdinalIgnoreCase) ||
+			(value.CustomerNumber?.Contains(SearchText.Trim(), StringComparison.OrdinalIgnoreCase) ?? false);
+		if (!matchesActivation || !matchesSearch) { if (existing is not null) Suppliers.Remove(existing); return; }
+		if (existing is null) Suppliers.Add(value); else Suppliers[Suppliers.IndexOf(existing)] = value;
+	}
+	private void ReplaceSupplierItem(SupplierItem value)
+	{
+		var existing = SupplierItems.FirstOrDefault(item => item.Id == value.Id);
+		var matchesActivation = SelectedSupplierItemActivationFilter.IsActive is not bool isActive || value.IsActive == isActive;
+		var matchesSearch = string.IsNullOrWhiteSpace(SupplierItemSearchText) ||
+			value.SupplierPartNumber.Contains(SupplierItemSearchText.Trim(), StringComparison.OrdinalIgnoreCase) ||
+			value.ItemPartNumber.Contains(SupplierItemSearchText.Trim(), StringComparison.OrdinalIgnoreCase) ||
+			value.ItemDescription.Contains(SupplierItemSearchText.Trim(), StringComparison.OrdinalIgnoreCase);
+		if (!matchesActivation || !matchesSearch) { if (existing is not null) SupplierItems.Remove(existing); return; }
+		if (existing is null) SupplierItems.Add(value); else SupplierItems[SupplierItems.IndexOf(existing)] = value;
+	}
 
 	private static Supplier NewSupplierDraft() => new();
 	private static SupplierItem NewSupplierItemDraft() => new() { MinimumOrderQuantity = 1 };
 	private static Supplier Copy(Supplier s) => new() { Id=s.Id, AccountNumber=s.AccountNumber, CustomerNumber=s.CustomerNumber, Name=s.Name, Contact=s.Contact, Email=s.Email, Phone=s.Phone, Address=s.Address, RmaTerms=s.RmaTerms, Url=s.Url, PaymentTerm=s.PaymentTerm, Iban=s.Iban, AccountName=s.AccountName, SepaMandate=s.SepaMandate, VatNumber=s.VatNumber, SupplierCategoryId=s.SupplierCategoryId, SupplierCategoryName=s.SupplierCategoryName, Loyalty=s.Loyalty, Quality=s.Quality, Notes=s.Notes, IsActive=s.IsActive, Version=s.Version };
 	private static SupplierItem Copy(SupplierItem s) => new() { Id=s.Id, SupplierId=s.SupplierId, ItemId=s.ItemId, ItemPartNumber=s.ItemPartNumber, ItemDescription=s.ItemDescription, SupplierPartNumber=s.SupplierPartNumber, PurchasePrice=s.PurchasePrice, LeadTimeDays=s.LeadTimeDays, MinimumOrderQuantity=s.MinimumOrderQuantity, IsPreferredSupplier=s.IsPreferredSupplier, IsActive=s.IsActive, Version=s.Version };
 
-	public void Dispose() { _supplierSearch.Dispose(); _supplierItemSearch.Dispose(); _itemSearch.Dispose(); SaveSupplierCommand.Dispose(); ToggleSupplierCommand.Dispose(); SaveSupplierItemCommand.Dispose(); ToggleSupplierItemCommand.Dispose(); }
+	public void Dispose() { _supplierSearch.Dispose(); _supplierItemSearch.Dispose(); _itemSearch.Dispose(); _supplierRequest.Dispose(); _supplierItemRequest.Dispose(); _itemOptionRequest.Dispose(); SaveSupplierCommand.Dispose(); ToggleSupplierCommand.Dispose(); SaveSupplierItemCommand.Dispose(); ToggleSupplierItemCommand.Dispose(); }
 }

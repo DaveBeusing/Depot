@@ -33,6 +33,7 @@ internal sealed class ViewModelFactory
 		new(
 			_services.Items,
 			_services.Stock,
+			_services.Dashboard,
 			_services.Movements,
 			_services.Reports,
 			_services.Purposes,

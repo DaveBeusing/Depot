@@ -25,6 +25,7 @@ public sealed class ReportsViewModel
 	private readonly IFileDialogService _fileDialogService;
 	private readonly IReadOnlyDictionary<string, ReportDefinition> _reportDefinitions;
 	private readonly AsyncDebouncer _searchDebouncer = new(TimeSpan.FromMilliseconds(300));
+	private readonly LatestRequest _loadRequest = new();
 
 	private string _selectedReport = InventoryValueReportName;
 	private string _searchText = string.Empty;
@@ -293,19 +294,22 @@ public sealed class ReportsViewModel
 
 	public async Task LoadAsync(CancellationToken cancellationToken = default)
 	{
+		var request = _loadRequest.Begin(cancellationToken);
 		BeginOperation("Loading report...");
 
 		try
 		{
-			await SelectedReportDefinition.Load(cancellationToken);
+			await SelectedReportDefinition.Load(request.Token);
+			if (!request.IsCurrent) return;
 
 			RaiseReportRowsChanged();
 			CompleteOperation(!HasReportRows, "Report loaded.");
 		}
-		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+		catch (OperationCanceledException) when (request.Token.IsCancellationRequested)
 		{
 			return;
 		}
+		catch (Exception) when (!request.IsCurrent) { }
 		catch (Exception ex)
 		{
 			FailOperation(ex, "The report could not be loaded.");
@@ -322,6 +326,7 @@ public sealed class ReportsViewModel
 				PageNumber,
 				PageSize,
 				cancellationToken);
+		if (cancellationToken.IsCancellationRequested) return;
 
 		ApplyTotals(
 			report.TotalInventoryRows,
@@ -351,6 +356,7 @@ public sealed class ReportsViewModel
 				SearchText,
 				reportType,
 				cancellationToken);
+		if (cancellationToken.IsCancellationRequested) return;
 
 		ApplyTotals(
 			report.TotalInventoryRows,
@@ -599,6 +605,7 @@ public sealed class ReportsViewModel
 	public void Dispose()
 	{
 		_searchDebouncer.Dispose();
+		_loadRequest.Dispose();
 		ExportCommand.Dispose();
 		PreviousPageCommand.Dispose();
 		NextPageCommand.Dispose();

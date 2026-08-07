@@ -15,7 +15,8 @@ public sealed class PurchaseOrderApprovalsViewModel : BaseViewModel, IDisposable
 	private readonly PurchaseOrderApprovalService _approvals;
 	private readonly IFileDialogService? _dialogs;
 	private readonly AsyncDebouncer _searchDebouncer = new(TimeSpan.FromMilliseconds(300));
-	private CancellationTokenSource? _detailsCancellation;
+	private readonly LatestRequest _listRequest = new();
+	private readonly LatestRequest _detailsRequest = new();
 	private string _searchText = string.Empty;
 	private string _supplierFilter = string.Empty;
 	private string _creatorFilter = string.Empty;
@@ -158,10 +159,12 @@ public sealed class PurchaseOrderApprovalsViewModel : BaseViewModel, IDisposable
 
 	private async Task LoadPageAsync(CancellationToken cancellationToken)
 	{
+		var request = _listRequest.Begin(cancellationToken);
 		BeginOperation("Loading pending approvals");
 		try
 		{
-			var result = await _approvals.SearchAsync(CreateFilter(), PageNumber, PageSize, cancellationToken);
+			var result = await _approvals.SearchAsync(CreateFilter(), PageNumber, PageSize, request.Token);
+			if (!request.IsCurrent) return;
 			var selectedId = SelectedApproval?.Id;
 			CollectionSynchronizer.Replace(Approvals, result.Page.Items);
 			TotalCount = result.Page.TotalCount;
@@ -169,29 +172,29 @@ public sealed class PurchaseOrderApprovalsViewModel : BaseViewModel, IDisposable
 			SelectedApproval = selectedId is null ? null : Approvals.FirstOrDefault(item => item.Id == selectedId);
 			CompleteOperation(Approvals.Count == 0, $"{result.Summary.OpenCount:N0} pending approvals");
 		}
-		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
+		catch (OperationCanceledException) when (request.Token.IsCancellationRequested) { }
+		catch (Exception) when (!request.IsCurrent) { }
 		catch (Exception exception) { FailOperation(exception, "Pending approvals could not be loaded"); }
 	}
 
 	private async Task LoadDetailsAsync(PurchaseOrderApprovalWorkItem? approval)
 	{
-		_detailsCancellation?.Cancel();
-		_detailsCancellation?.Dispose();
-		_detailsCancellation = null;
+		var request = _detailsRequest.Begin();
 		Details = null;
 		IsLoadingDetails = false;
 		if (approval is null) return;
-		_detailsCancellation = new CancellationTokenSource();
-		var token = _detailsCancellation.Token;
 		IsLoadingDetails = true;
 		try
 		{
-			Details = await _approvals.GetDetailsAsync(approval.Id, token)
+			var details = await _approvals.GetDetailsAsync(approval.Id, request.Token)
 				?? throw new InvalidOperationException("The purchase order no longer exists.");
+			if (!request.IsCurrent || SelectedApproval?.Id != approval.Id) return;
+			Details = details;
 		}
-		catch (OperationCanceledException) when (token.IsCancellationRequested) { }
+		catch (OperationCanceledException) when (request.Token.IsCancellationRequested) { }
+		catch (Exception) when (!request.IsCurrent) { }
 		catch (Exception exception) { FailOperation(exception, "Approval details could not be loaded"); }
-		finally { if (!token.IsCancellationRequested) IsLoadingDetails = false; }
+		finally { if (request.IsCurrent) IsLoadingDetails = false; }
 	}
 
 	private Task ApproveAsync(CancellationToken cancellationToken) =>
@@ -340,8 +343,8 @@ public sealed class PurchaseOrderApprovalsViewModel : BaseViewModel, IDisposable
 
 	public void Dispose()
 	{
-		_detailsCancellation?.Cancel();
-		_detailsCancellation?.Dispose();
+		_listRequest.Dispose();
+		_detailsRequest.Dispose();
 		_searchDebouncer.Dispose();
 		ApproveCommand.Dispose();
 		RejectCommand.Dispose();

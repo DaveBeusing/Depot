@@ -103,20 +103,35 @@ public sealed class NotificationService : INotificationService
 	public Task<NotificationDetails?> GetDetailsAsync(long recipientId, CancellationToken cancellationToken = default) =>
 		_notifications.GetDetailsAsync(recipientId, CurrentUserId(), DateTime.UtcNow, cancellationToken);
 
-	public Task MarkReadAsync(long recipientId, long version, CancellationToken cancellationToken = default) =>
-		SetReadStateAsync(recipientId, version, DateTime.UtcNow, cancellationToken);
+	public async Task MarkReadAsync(long recipientId, long version, CancellationToken cancellationToken = default)
+	{
+		await SetReadStateAsync(recipientId, version, DateTime.UtcNow, cancellationToken);
+		RaiseChanged();
+	}
 
-	public Task MarkUnreadAsync(long recipientId, long version, CancellationToken cancellationToken = default) =>
-		SetReadStateAsync(recipientId, version, null, cancellationToken);
+	public async Task MarkUnreadAsync(long recipientId, long version, CancellationToken cancellationToken = default)
+	{
+		await SetReadStateAsync(recipientId, version, null, cancellationToken);
+		RaiseChanged();
+	}
 
-	public Task ArchiveAsync(long recipientId, long version, CancellationToken cancellationToken = default) =>
-		SetArchivedStateAsync(recipientId, version, DateTime.UtcNow, cancellationToken);
+	public async Task ArchiveAsync(long recipientId, long version, CancellationToken cancellationToken = default)
+	{
+		await SetArchivedStateAsync(recipientId, version, DateTime.UtcNow, cancellationToken);
+		RaiseChanged();
+	}
 
-	public Task RestoreAsync(long recipientId, long version, CancellationToken cancellationToken = default) =>
-		SetArchivedStateAsync(recipientId, version, null, cancellationToken);
+	public async Task RestoreAsync(long recipientId, long version, CancellationToken cancellationToken = default)
+	{
+		await SetArchivedStateAsync(recipientId, version, null, cancellationToken);
+		RaiseChanged();
+	}
 
-	public Task MarkVisiblePageReadAsync(IEnumerable<long> recipientIds, CancellationToken cancellationToken = default) =>
-		_notifications.MarkVisiblePageReadAsync(CurrentUserId(), recipientIds.Distinct().ToArray(), DateTime.UtcNow, cancellationToken);
+	public async Task MarkVisiblePageReadAsync(IEnumerable<long> recipientIds, CancellationToken cancellationToken = default)
+	{
+		await _notifications.MarkVisiblePageReadAsync(CurrentUserId(), recipientIds.Distinct().ToArray(), DateTime.UtcNow, cancellationToken);
+		RaiseChanged();
+	}
 
 	public async Task<long> CreateAsync(
 		DatabaseTransactionContext transaction,

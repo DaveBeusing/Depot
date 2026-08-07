@@ -35,6 +35,7 @@ internal sealed class RepositoryComposition
 		Roles = new RoleRepository(dataAccess);
 		Audit = new AuditRepository(dataAccess);
 		Notifications = new NotificationRepository(dataAccess);
+		Dashboard = new DashboardRepository(dataAccess);
 	}
 
 	public ItemRepository Items { get; }
@@ -62,4 +63,5 @@ internal sealed class RepositoryComposition
 	public RoleRepository Roles { get; }
 	public AuditRepository Audit { get; }
 	public NotificationRepository Notifications { get; }
+	public DashboardRepository Dashboard { get; }
 }

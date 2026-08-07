@@ -17,6 +17,7 @@ public sealed class MovementsViewModel : BaseViewModel, IDisposable
 	private readonly IFileDialogService _dialogs;
 	private readonly Action? _inventoryChanged;
 	private readonly AsyncDebouncer _searchDebouncer = new(TimeSpan.FromMilliseconds(300));
+	private readonly LatestRequest _listRequest = new();
 	private InventoryLookupViewModel? _selectedInventory;
 	private string? _errorMessage;
 	private string _searchText = string.Empty;
@@ -153,6 +154,7 @@ public sealed class MovementsViewModel : BaseViewModel, IDisposable
 			var reasonCodesTask = _reasonCodeService.GetActiveAsync(cancellationToken);
 			var movementsTask = LoadMovementPageAsync(cancellationToken);
 			await Task.WhenAll(inventoriesTask, reasonCodesTask, movementsTask);
+			if (!await movementsTask) return;
 			AvailableInventories.Clear();
 			foreach (var inventory in await inventoriesTask)
 			{
@@ -191,7 +193,7 @@ public sealed class MovementsViewModel : BaseViewModel, IDisposable
 		BeginOperation("Searching movements");
 		try
 		{
-			await LoadMovementPageAsync(cancellationToken);
+			if (!await LoadMovementPageAsync(cancellationToken)) return;
 			CompleteOperation(Items.Count == 0, $"{TotalCount:N0} movements");
 		}
 		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -205,17 +207,27 @@ public sealed class MovementsViewModel : BaseViewModel, IDisposable
 		}
 	}
 
-	private async Task LoadMovementPageAsync(CancellationToken cancellationToken)
+	private async Task<bool> LoadMovementPageAsync(CancellationToken cancellationToken)
 	{
-		var page = await _movementService.SearchAsync(
-			SearchText,
-			PageNumber,
-			PageSize,
-			cancellationToken);
-		CollectionSynchronizer.Replace(Items, page.Items.Select(movement => new MovementOverviewItemViewModel(movement)).ToArray());
-		TotalCount = page.TotalCount;
-		OnPropertyChanged(nameof(HasItems));
-		OnPropertyChanged(nameof(HasNoItems));
+		var request = _listRequest.Begin(cancellationToken);
+		try
+		{
+			var page = await _movementService.SearchAsync(
+				SearchText,
+				PageNumber,
+				PageSize,
+				request.Token);
+			if (!request.IsCurrent) return false;
+			CollectionSynchronizer.Replace(Items, page.Items.Select(movement => new MovementOverviewItemViewModel(movement)).ToArray());
+			TotalCount = page.TotalCount;
+			OnPropertyChanged(nameof(HasItems));
+			OnPropertyChanged(nameof(HasNoItems));
+			return true;
+		}
+		catch (OperationCanceledException) when (request.Token.IsCancellationRequested)
+		{
+			return false;
+		}
 	}
 
 	private async Task CreateMovementAsync(CancellationToken cancellationToken)
@@ -301,6 +313,7 @@ public sealed class MovementsViewModel : BaseViewModel, IDisposable
 	public void Dispose()
 	{
 		_searchDebouncer.Dispose();
+		_listRequest.Dispose();
 		CreateMovementCommand.Dispose();
 		PreviousPageCommand.Dispose();
 		NextPageCommand.Dispose();

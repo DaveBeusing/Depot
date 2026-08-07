@@ -1,0 +1,50 @@
+// Copyright (c) 2026 David Beusing
+// Licensed under the MIT License.
+
+using Depot.Models;
+using Depot.Repositories;
+
+namespace Depot.Services;
+
+public sealed class DashboardService
+{
+	private readonly StockService _stock;
+	private readonly DashboardRepository _dashboard;
+	private readonly IAuthorizationService _authorization;
+
+	public DashboardService(
+		StockService stock,
+		DashboardRepository dashboard,
+		IAuthorizationService authorization)
+	{
+		_stock = stock;
+		_dashboard = dashboard;
+		_authorization = authorization;
+	}
+
+	public async Task<(DashboardData? Inventory, DashboardRoleMetrics Roles)> GetAsync(CancellationToken cancellationToken)
+	{
+		Task<DashboardData?> inventoryTask = HasCoreInventoryPermission()
+			? GetInventoryAsync(cancellationToken)
+			: Task.FromResult<DashboardData?>(null);
+		var rolesTask = _dashboard.GetRoleMetricsAsync(
+			_authorization.HasPermission(ApplicationPermission.PurchaseOrdersApprove),
+			_authorization.HasAnyPermission(ApplicationPermission.PurchaseOrdersView, ApplicationPermission.SupplierReturnsView),
+			_authorization.HasAnyPermission(ApplicationPermission.InventoryCountsView, ApplicationPermission.StockTransfersView),
+			_authorization.HasPermission(ApplicationPermission.UsersView),
+			cancellationToken);
+
+		await Task.WhenAll(inventoryTask, rolesTask);
+		return (await inventoryTask, await rolesTask ?? new DashboardRoleMetrics(null, null, null, null));
+	}
+
+	private bool HasCoreInventoryPermission() =>
+		_authorization.HasAnyPermission(
+			ApplicationPermission.InventoryView,
+			ApplicationPermission.ItemsView,
+			ApplicationPermission.StockMovementsView);
+
+	private async Task<DashboardData?> GetInventoryAsync(CancellationToken cancellationToken) =>
+		await _stock.GetDashboardDataAsync(cancellationToken);
+
+}

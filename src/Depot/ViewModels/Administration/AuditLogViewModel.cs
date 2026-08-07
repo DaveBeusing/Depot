@@ -16,7 +16,8 @@ public sealed class AuditLogViewModel : BaseViewModel, IDisposable
 	private readonly AuditLogService _service;
 	private readonly IFileDialogService _fileDialogs;
 	private readonly AsyncDebouncer _filterDebouncer = new(TimeSpan.FromMilliseconds(300));
-	private CancellationTokenSource? _detailsCancellation;
+	private readonly LatestRequest _listRequest = new();
+	private readonly LatestRequest _detailsRequest = new();
 	private string _searchText = string.Empty;
 	private string _userFilter = string.Empty;
 	private string _entityIdFilter = string.Empty;
@@ -112,34 +113,39 @@ public sealed class AuditLogViewModel : BaseViewModel, IDisposable
 
 	private async Task LoadPageAsync(CancellationToken cancellationToken)
 	{
+		var request = _listRequest.Begin(cancellationToken);
 		BeginOperation("Loading audit log");
 		try
 		{
-			var page = await _service.SearchAsync(CreateFilter(), PageNumber, PageSize, cancellationToken);
+			var page = await _service.SearchAsync(CreateFilter(), PageNumber, PageSize, request.Token);
+			if (!request.IsCurrent) return;
 			CollectionSynchronizer.Replace(Entries, page.Items);
 			TotalCount = page.TotalCount;
 			if (SelectedEntry is not null && Entries.All(entry => entry.Id != SelectedEntry.Id)) SelectedEntry = null;
 			CompleteOperation(Entries.Count == 0, $"{page.TotalCount:N0} audit entries");
 		}
-		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
+		catch (OperationCanceledException) when (request.Token.IsCancellationRequested) { }
+		catch (Exception) when (!request.IsCurrent) { }
 		catch (Exception exception) { FailOperation(exception, "Audit log could not be loaded"); }
 	}
 
 	private async Task LoadDetailsAsync(AuditLogListItem? entry)
 	{
-		_detailsCancellation?.Cancel();
-		_detailsCancellation?.Dispose();
-		_detailsCancellation = null;
+		var request = _detailsRequest.Begin();
 		Details = null;
 		IsLoadingDetails = false;
 		if (entry is null) return;
-		_detailsCancellation = new CancellationTokenSource();
-		var token = _detailsCancellation.Token;
 		IsLoadingDetails = true;
-		try { Details = await _service.GetDetailsAsync(entry.Id, token); }
-		catch (OperationCanceledException) when (token.IsCancellationRequested) { }
+		try
+		{
+			var details = await _service.GetDetailsAsync(entry.Id, request.Token);
+			if (!request.IsCurrent || SelectedEntry?.Id != entry.Id) return;
+			Details = details;
+		}
+		catch (OperationCanceledException) when (request.Token.IsCancellationRequested) { }
+		catch (Exception) when (!request.IsCurrent) { }
 		catch (Exception exception) { FailOperation(exception, "Audit details could not be loaded"); }
-		finally { if (!token.IsCancellationRequested) IsLoadingDetails = false; }
+		finally { if (request.IsCurrent) IsLoadingDetails = false; }
 	}
 
 	private AuditLogFilter CreateFilter()
@@ -190,8 +196,8 @@ public sealed class AuditLogViewModel : BaseViewModel, IDisposable
 
 	public void Dispose()
 	{
-		_detailsCancellation?.Cancel();
-		_detailsCancellation?.Dispose();
+		_listRequest.Dispose();
+		_detailsRequest.Dispose();
 		_filterDebouncer.Dispose();
 		PreviousPageCommand.Dispose();
 		NextPageCommand.Dispose();
