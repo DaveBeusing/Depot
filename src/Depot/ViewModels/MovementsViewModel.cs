@@ -15,6 +15,7 @@ public sealed class MovementsViewModel : BaseViewModel, IDisposable
 	private readonly MovementService _movementService;
 	private readonly ReasonCodeService _reasonCodeService;
 	private readonly IFileDialogService _dialogs;
+	private readonly Action? _inventoryChanged;
 	private readonly AsyncDebouncer _searchDebouncer = new(TimeSpan.FromMilliseconds(300));
 	private InventoryLookupViewModel? _selectedInventory;
 	private string? _errorMessage;
@@ -25,11 +26,16 @@ public sealed class MovementsViewModel : BaseViewModel, IDisposable
 	private ReasonCodeOptionViewModel? _selectedReversalReasonCode;
 	private string _reversalReason = string.Empty;
 
-	public MovementsViewModel(MovementService movementService, ReasonCodeService reasonCodeService, IFileDialogService dialogs)
+	public MovementsViewModel(
+		MovementService movementService,
+		ReasonCodeService reasonCodeService,
+		IFileDialogService dialogs,
+		Action? inventoryChanged = null)
 	{
 		_movementService = movementService;
 		_reasonCodeService = reasonCodeService;
 		_dialogs = dialogs;
+		_inventoryChanged = inventoryChanged;
 		Editor = new MovementEditorViewModel();
 		CreateMovementCommand = new AsyncRelayCommand(CreateMovementAsync);
 		PreviousPageCommand = new AsyncRelayCommand(PreviousPageAsync, () => PageNumber > 1);
@@ -238,6 +244,7 @@ public sealed class MovementsViewModel : BaseViewModel, IDisposable
 			SelectedInventory = null;
 			OnPropertyChanged(nameof(HasItems));
 			OnPropertyChanged(nameof(HasNoItems));
+			_inventoryChanged?.Invoke();
 			CompleteOperation(false, "Movement saved");
 		}
 		catch (Exception exception) when (exception is not OperationCanceledException)
@@ -262,6 +269,7 @@ public sealed class MovementsViewModel : BaseViewModel, IDisposable
 			ReversalReason = string.Empty;
 			SelectedReversalReasonCode = null;
 			ReverseMovementCommand.RaiseCanExecuteChanged();
+			_inventoryChanged?.Invoke();
 			CompleteOperation(false, "Material withdrawal reversed");
 		}
 		catch (Exception exception) when (exception is not OperationCanceledException)

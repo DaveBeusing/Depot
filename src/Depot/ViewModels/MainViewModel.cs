@@ -6,10 +6,10 @@ using System.Collections.ObjectModel;
 using Depot.Commands;
 using Depot.Models;
 using Depot.Services;
+using Depot.Services.Help;
 using Depot.Services.Import;
 using Depot.ViewModels.Administration;
 using Depot.ViewModels.Help;
-using Depot.Services.Help;
 
 namespace Depot.ViewModels;
 
@@ -17,11 +17,32 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 {
 	private readonly IAuthorizationService _authorization;
 	private readonly SessionService _session;
+	private readonly INotificationNavigationService _notificationNavigation;
+	private readonly Lazy<DashboardViewModel> _dashboard;
+	private readonly Lazy<InventoryViewModel> _inventory;
+	private readonly Lazy<ItemsViewModel> _items;
+	private readonly Lazy<MovementsViewModel> _movements;
+	private readonly Lazy<StockTransfersViewModel> _stockTransfers;
+	private readonly Lazy<InventoryCountsViewModel> _inventoryCounts;
+	private readonly Lazy<MaterialIssuesViewModel> _materialIssues;
+	private readonly Lazy<MaterialReturnsViewModel> _materialReturns;
+	private readonly Lazy<SupplierReturnsViewModel> _supplierReturns;
+	private readonly Lazy<ProcurementViewModel> _procurement;
+	private readonly Lazy<PurchaseOrdersPageViewModel> _purchaseOrdersPage;
+	private readonly Lazy<GoodsReceiptsPageViewModel> _goodsReceiptsPage;
+	private readonly Lazy<PurchaseOrderApprovalsViewModel> _purchaseOrderApprovals;
+	private readonly Lazy<ReportsViewModel> _reports;
+	private readonly Lazy<ImportViewModel> _import;
+	private readonly Lazy<AdministrationViewModel> _administration;
+	private readonly Lazy<HelpViewModel> _help;
+	private readonly Lazy<NotificationCenterViewModel> _notificationCenter;
+	private readonly NavigationLoadState _notificationLoadState = new();
 	private CancellationTokenSource? _navigationCancellation;
 	private ShellNavigationItem? _selectedNavigationItem;
 	private BaseViewModel? _currentViewModel;
 	private BaseViewModel? _viewModelBeforeHelp;
 	private BaseViewModel? _viewModelBeforeNotifications;
+	private bool _disposed;
 
 	public MainViewModel(
 		ItemService itemService,
@@ -67,103 +88,89 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 	{
 		_authorization = authorizationService;
 		_session = sessionService;
+		_notificationNavigation = notificationNavigationService;
 		ConnectionStatus = connectionStatusService;
+		NotificationSummaryViewModel = new NotificationSummaryViewModel(notificationService);
 		LogoutCommand = new RelayCommand(Logout);
 		HelpCommand = new RelayCommand(() => _ = OpenHelpAsync());
 		NotificationCommand = new RelayCommand(() => _ = OpenNotificationsAsync());
-		HelpViewModel = new HelpViewModel(helpService, helpRenderer);
-		HelpViewModel.CloseRequested += OnHelpCloseRequested;
-		NotificationCenterViewModel = new NotificationCenterViewModel(notificationService, notificationNavigationService);
-		NotificationCenterViewModel.CloseRequested += OnNotificationCloseRequested;
-		notificationNavigationService.SetNavigationHandler(NavigateToNotificationAsync);
-		_notificationNavigation = notificationNavigationService;
 
-		DashboardViewModel = new DashboardViewModel(stockService);
-		InventoryViewModel = new InventoryViewModel(stockService);
-		ItemsViewModel = new ItemsViewModel(itemService, manufacturerService, categoryService, unitOfMeasureService, packagingService);
-		MovementsViewModel = new MovementsViewModel(movementService, reasonCodeService, fileDialogService);
-		StockTransfersViewModel = new StockTransfersViewModel(stockTransferService, warehouseService, fileDialogService, reasonCodeService);
-		InventoryCountsViewModel = new InventoryCountsViewModel(inventoryCountService, warehouseService, fileDialogService, reasonCodeService);
-		MaterialIssuesViewModel = new MaterialIssuesViewModel(materialIssueService, reasonCodeService, fileDialogService);
-		MaterialReturnsViewModel = new MaterialReturnsViewModel(materialReturnService, reasonCodeService, fileDialogService);
-		SupplierReturnsViewModel = new SupplierReturnsViewModel(supplierReturnService, supplierService, reasonCodeService, fileDialogService);
-		ProcurementViewModel = new ProcurementViewModel(purchaseOrderService, purchaseOrderHistoryService, goodsReceiptService, supplierService, itemService, fileDialogService, reasonCodeService);
-		PurchaseOrdersPageViewModel = new PurchaseOrdersPageViewModel(ProcurementViewModel);
-		GoodsReceiptsPageViewModel = new GoodsReceiptsPageViewModel(ProcurementViewModel);
-		PurchaseOrderApprovalsViewModel = new PurchaseOrderApprovalsViewModel(purchaseOrderApprovalService, fileDialogService);
-		ReportsViewModel = new ReportsViewModel(reportService, fileDialogService);
-		ImportViewModel = new ImportViewModel(importService, fileDialogService);
-		AdministrationViewModel = new AdministrationViewModel(
-			ImportViewModel, itemService, purposeService, reasonCodeService, manufacturerService, categoryService,
+		_dashboard = new(() => new DashboardViewModel(stockService));
+		_inventory = new(() => new InventoryViewModel(stockService));
+		_items = new(() => new ItemsViewModel(itemService, manufacturerService, categoryService, unitOfMeasureService, packagingService));
+		_movements = new(() => new MovementsViewModel(
+			movementService,
+			reasonCodeService,
+			fileDialogService,
+			MarkInventoryPagesStale));
+		_stockTransfers = new(() => new StockTransfersViewModel(stockTransferService, warehouseService, fileDialogService, reasonCodeService));
+		_inventoryCounts = new(() => new InventoryCountsViewModel(inventoryCountService, warehouseService, fileDialogService, reasonCodeService));
+		_materialIssues = new(() => new MaterialIssuesViewModel(materialIssueService, reasonCodeService, fileDialogService));
+		_materialReturns = new(() => new MaterialReturnsViewModel(materialReturnService, reasonCodeService, fileDialogService));
+		_supplierReturns = new(() => new SupplierReturnsViewModel(supplierReturnService, supplierService, reasonCodeService, fileDialogService));
+		_procurement = new(() => new ProcurementViewModel(
+			purchaseOrderService,
+			purchaseOrderHistoryService,
+			goodsReceiptService,
+			supplierService,
+			itemService,
+			fileDialogService,
+			reasonCodeService,
+			MarkPurchasingPagesStale,
+			MarkInventoryPagesStale));
+		_purchaseOrdersPage = new(() => new PurchaseOrdersPageViewModel(_procurement.Value));
+		_goodsReceiptsPage = new(() => new GoodsReceiptsPageViewModel(_procurement.Value));
+		_purchaseOrderApprovals = new(() => new PurchaseOrderApprovalsViewModel(purchaseOrderApprovalService, fileDialogService));
+		_reports = new(() => new ReportsViewModel(reportService, fileDialogService));
+		_import = new(() => new ImportViewModel(importService, fileDialogService));
+		_administration = new(() => new AdministrationViewModel(
+			_import.Value, itemService, purposeService, reasonCodeService, manufacturerService, categoryService,
 			unitOfMeasureService, packagingService, supplierCategoryService, supplierService, supplierItemService,
 			warehouseService, storageLocationService, userService, roleService, authorizationService, settingsService,
 			connectionStatusService, databaseConnectionTester, databaseManagementService, auditLogService,
-			fileDialogService, applicationInformationService);
+			fileDialogService, applicationInformationService));
+		_help = new(() => CreateHelpViewModel(helpService, helpRenderer));
+		_notificationCenter = new(() => CreateNotificationCenterViewModel(notificationService, notificationNavigationService));
 
+		notificationNavigationService.SetNavigationHandler(NavigateToNotificationAsync);
 		BuildNavigation();
-		SelectedNavigationItem = NavigationItems.FirstOrDefault();
+		if (NavigationItems.FirstOrDefault() is { } startPage) _ = NavigateAsync(startPage);
 	}
 
-	public ObservableCollection<ShellNavigationItem> NavigationItems { get; } = new();
+	public ObservableCollection<ShellNavigationItem> NavigationItems { get; } = [];
 	public RelayCommand LogoutCommand { get; }
 	public RelayCommand HelpCommand { get; }
 	public RelayCommand NotificationCommand { get; }
 	public ConnectionStatusService ConnectionStatus { get; }
+	public NotificationSummaryViewModel NotificationSummaryViewModel { get; }
 	public event EventHandler? LogoutRequested;
 
-	public DashboardViewModel DashboardViewModel { get; }
-	public InventoryViewModel InventoryViewModel { get; }
-	public ItemsViewModel ItemsViewModel { get; }
-	public MovementsViewModel MovementsViewModel { get; }
-	public StockTransfersViewModel StockTransfersViewModel { get; }
-	public InventoryCountsViewModel InventoryCountsViewModel { get; }
-	public MaterialIssuesViewModel MaterialIssuesViewModel { get; }
-	public MaterialReturnsViewModel MaterialReturnsViewModel { get; }
-	public SupplierReturnsViewModel SupplierReturnsViewModel { get; }
-	public ProcurementViewModel ProcurementViewModel { get; }
-	public PurchaseOrdersPageViewModel PurchaseOrdersPageViewModel { get; }
-	public GoodsReceiptsPageViewModel GoodsReceiptsPageViewModel { get; }
-	public PurchaseOrderApprovalsViewModel PurchaseOrderApprovalsViewModel { get; }
-	public ReportsViewModel ReportsViewModel { get; }
-	public ImportViewModel ImportViewModel { get; }
-	public AdministrationViewModel AdministrationViewModel { get; }
-	public HelpViewModel HelpViewModel { get; }
-	public NotificationCenterViewModel NotificationCenterViewModel { get; }
-	private readonly INotificationNavigationService _notificationNavigation;
-
-	public string CurrentHelpTopicId => SelectedNavigationItem?.Content switch
-	{
-		ShellModuleViewModel { SelectedPage.Content: AdministrationViewModel administration } => administration.HelpTopicId,
-		ShellModuleViewModel module => module.SelectedPage?.HelpTopicId ?? HelpService.FallbackTopicId,
-		_ => SelectedNavigationItem?.HelpTopicId ?? HelpService.FallbackTopicId
-	};
-
-	public async Task OpenHelpAsync(string? topicId = null, CancellationToken cancellationToken = default)
-	{
-		if (CurrentViewModel != HelpViewModel) _viewModelBeforeHelp = CurrentViewModel;
-		CurrentViewModel = HelpViewModel;
-		await HelpViewModel.OpenAsync(topicId ?? CurrentHelpTopicId, cancellationToken);
-	}
-
-	public async Task OpenNotificationsAsync(CancellationToken cancellationToken = default)
-	{
-		if (CurrentViewModel != NotificationCenterViewModel) _viewModelBeforeNotifications = CurrentViewModel;
-		CurrentViewModel = NotificationCenterViewModel;
-		await NotificationCenterViewModel.LoadAsync(cancellationToken);
-	}
-
-	public void SetApplicationActive(bool isActive) => NotificationCenterViewModel.SetApplicationActive(isActive);
+	public DashboardViewModel DashboardViewModel => _dashboard.Value;
+	public InventoryViewModel InventoryViewModel => _inventory.Value;
+	public ItemsViewModel ItemsViewModel => _items.Value;
+	public MovementsViewModel MovementsViewModel => _movements.Value;
+	public StockTransfersViewModel StockTransfersViewModel => _stockTransfers.Value;
+	public InventoryCountsViewModel InventoryCountsViewModel => _inventoryCounts.Value;
+	public MaterialIssuesViewModel MaterialIssuesViewModel => _materialIssues.Value;
+	public MaterialReturnsViewModel MaterialReturnsViewModel => _materialReturns.Value;
+	public SupplierReturnsViewModel SupplierReturnsViewModel => _supplierReturns.Value;
+	public ProcurementViewModel ProcurementViewModel => _procurement.Value;
+	public PurchaseOrdersPageViewModel PurchaseOrdersPageViewModel => _purchaseOrdersPage.Value;
+	public GoodsReceiptsPageViewModel GoodsReceiptsPageViewModel => _goodsReceiptsPage.Value;
+	public PurchaseOrderApprovalsViewModel PurchaseOrderApprovalsViewModel => _purchaseOrderApprovals.Value;
+	public ReportsViewModel ReportsViewModel => _reports.Value;
+	public ImportViewModel ImportViewModel => _import.Value;
+	public AdministrationViewModel AdministrationViewModel => _administration.Value;
+	public HelpViewModel HelpViewModel => _help.Value;
+	public NotificationCenterViewModel NotificationCenterViewModel => _notificationCenter.Value;
 
 	public ShellNavigationItem? SelectedNavigationItem
 	{
 		get => _selectedNavigationItem;
 		set
 		{
-			if (_selectedNavigationItem == value) return;
-			_selectedNavigationItem = value;
-			CurrentViewModel = value?.Content;
-			OnPropertyChanged();
-			_ = LoadSelectedAsync();
+			if (value is null || _selectedNavigationItem == value) return;
+			_ = NavigateAsync(value);
 		}
 	}
 
@@ -179,112 +186,267 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		}
 	}
 
-	public bool IsHelpOpen => CurrentViewModel == HelpViewModel;
-
+	public bool IsHelpOpen => _help.IsValueCreated && CurrentViewModel == _help.Value;
 	public string CurrentUserDisplayName => _authorization.CurrentUser?.DisplayName ?? string.Empty;
 	public string CurrentUserRole => _authorization.CurrentUser is { Roles.Count: > 0 } user
 		? string.Join(", ", user.Roles.Select(role => role.Name))
 		: "No active role";
 
+	public string CurrentHelpTopicId
+	{
+		get
+		{
+			if (CurrentViewModel is ShellModuleViewModel module && module.SelectedPage is { } page)
+			{
+				if (page.IsContentCreated && page.Content is AdministrationViewModel administration)
+					return administration.HelpTopicId;
+				return page.HelpTopicId;
+			}
+			return SelectedNavigationItem?.HelpTopicId ?? HelpService.FallbackTopicId;
+		}
+	}
+
+	public async Task NavigateAsync(ShellNavigationItem target, CancellationToken cancellationToken = default)
+	{
+		ObjectDisposedException.ThrowIf(_disposed, this);
+		var navigation = BeginNavigation(cancellationToken);
+		SetSelectedNavigationItem(target);
+		CurrentViewModel = target.Content;
+		try
+		{
+			await target.ActivateAsync(navigation.Token);
+		}
+		catch (OperationCanceledException) when (navigation.IsCancellationRequested)
+		{
+		}
+		catch (Exception exception)
+		{
+			FailOperation(exception, $"{target.Name} could not be loaded");
+		}
+	}
+
+	public async Task RefreshCurrentAsync(CancellationToken cancellationToken = default)
+	{
+		var selected = SelectedNavigationItem;
+		if (selected is null) return;
+		var navigation = BeginNavigation(cancellationToken);
+		try
+		{
+			await selected.RefreshAsync(navigation.Token);
+		}
+		catch (OperationCanceledException) when (navigation.IsCancellationRequested)
+		{
+		}
+	}
+
+	public async Task OpenHelpAsync(string? topicId = null, CancellationToken cancellationToken = default)
+	{
+		var targetTopicId = topicId ?? CurrentHelpTopicId;
+		var help = HelpViewModel;
+		if (CurrentViewModel != help) _viewModelBeforeHelp = CurrentViewModel;
+		CancelNavigationLoad();
+		CurrentViewModel = help;
+		await help.OpenAsync(targetTopicId, cancellationToken);
+	}
+
+	public async Task OpenNotificationsAsync(CancellationToken cancellationToken = default)
+	{
+		var notifications = NotificationCenterViewModel;
+		if (CurrentViewModel != notifications) _viewModelBeforeNotifications = CurrentViewModel;
+		CancelNavigationLoad();
+		CurrentViewModel = notifications;
+		await _notificationLoadState.ActivateAsync(notifications.LoadAsync, cancellationToken);
+	}
+
+	public void SetApplicationActive(bool isActive)
+	{
+		NotificationSummaryViewModel.SetApplicationActive(isActive);
+		if (_notificationCenter.IsValueCreated) _notificationCenter.Value.SetApplicationActive(isActive);
+	}
+
 	private void BuildNavigation()
 	{
-		AddDirect(ApplicationPermission.DashboardView, "Dashboard", Icons.Dashboard, DashboardViewModel, DashboardViewModel.LoadAsync, HelpService.FallbackTopicId);
+		AddDirect(ApplicationPermission.DashboardView, "Dashboard", Icons.Dashboard, () => _dashboard.Value, (viewModel, token) => viewModel.LoadAsync(token), HelpService.FallbackTopicId);
 
 		var inventoryPages = new List<SecondaryNavigationItem>();
-		AddPage(inventoryPages, ApplicationPermission.InventoryView, "Overview", InventoryViewModel, InventoryViewModel.LoadAsync, "inventory.overview");
-		AddPage(inventoryPages, ApplicationPermission.ItemsView, "Items", ItemsViewModel, ItemsViewModel.LoadItemsAsync, "inventory.items");
-		AddPage(inventoryPages, ApplicationPermission.StockMovementsView, "Movements", MovementsViewModel, MovementsViewModel.LoadAsync, "inventory.movements");
+		AddPage(inventoryPages, ApplicationPermission.InventoryView, "Overview", () => _inventory.Value, (viewModel, token) => viewModel.LoadAsync(token), "inventory.overview");
+		AddPage(inventoryPages, ApplicationPermission.ItemsView, "Items", () => _items.Value, (viewModel, token) => viewModel.LoadItemsAsync(token), "inventory.items");
+		AddPage(inventoryPages, ApplicationPermission.StockMovementsView, "Movements", () => _movements.Value, (viewModel, token) => viewModel.LoadAsync(token), "inventory.movements");
 		AddModule("Inventory", Icons.Inventory, "Monitor stock, items, and immutable inventory movements.", inventoryPages);
 
 		var warehousePages = new List<SecondaryNavigationItem>();
-		AddPage(warehousePages, ApplicationPermission.StockTransfersView, "Transfers", StockTransfersViewModel, StockTransfersViewModel.LoadAsync, "warehouse.transfers");
-		AddPage(warehousePages, ApplicationPermission.InventoryCountsView, "Inventory Counts", InventoryCountsViewModel, InventoryCountsViewModel.LoadAsync, "warehouse.inventory-counts");
-		AddPage(warehousePages, ApplicationPermission.MaterialIssuesView, "Material Issues", MaterialIssuesViewModel, MaterialIssuesViewModel.LoadAsync, "warehouse.material-issues");
-		AddPage(warehousePages, ApplicationPermission.MaterialReturnsView, "Material Returns", MaterialReturnsViewModel, MaterialReturnsViewModel.LoadAsync, "warehouse.material-returns");
+		AddPage(warehousePages, ApplicationPermission.StockTransfersView, "Transfers", () => _stockTransfers.Value, (viewModel, token) => viewModel.LoadAsync(token), "warehouse.transfers");
+		AddPage(warehousePages, ApplicationPermission.InventoryCountsView, "Inventory Counts", () => _inventoryCounts.Value, (viewModel, token) => viewModel.LoadAsync(token), "warehouse.inventory-counts");
+		AddPage(warehousePages, ApplicationPermission.MaterialIssuesView, "Material Issues", () => _materialIssues.Value, (viewModel, token) => viewModel.LoadAsync(token), "warehouse.material-issues");
+		AddPage(warehousePages, ApplicationPermission.MaterialReturnsView, "Material Returns", () => _materialReturns.Value, (viewModel, token) => viewModel.LoadAsync(token), "warehouse.material-returns");
 		AddModule("Warehouse", Icons.Warehouse, "Execute controlled warehouse operations and physical stock workflows.", warehousePages);
 
 		if (_authorization.HasPermission(ApplicationPermission.PurchasingView))
 		{
 			var purchasingPages = new List<SecondaryNavigationItem>();
-			AddPage(purchasingPages, ApplicationPermission.PurchaseOrdersView, "Purchase Orders", PurchaseOrdersPageViewModel, PurchaseOrdersPageViewModel.LoadAsync, "purchasing.purchase-orders");
-			AddPage(purchasingPages, ApplicationPermission.GoodsReceiptsView, "Goods Receipts", GoodsReceiptsPageViewModel, GoodsReceiptsPageViewModel.LoadAsync, "purchasing.goods-receipts");
-			AddPage(purchasingPages, ApplicationPermission.SupplierReturnsView, "Supplier Returns", SupplierReturnsViewModel, SupplierReturnsViewModel.LoadAsync, "purchasing.supplier-returns");
+			AddPage(purchasingPages, ApplicationPermission.PurchaseOrdersView, "Purchase Orders", () => _purchaseOrdersPage.Value, (viewModel, token) => viewModel.LoadAsync(token), "purchasing.purchase-orders", () => _procurement.Value.Section = ProcurementSection.PurchaseOrders);
+			AddPage(purchasingPages, ApplicationPermission.GoodsReceiptsView, "Goods Receipts", () => _goodsReceiptsPage.Value, (viewModel, token) => viewModel.LoadAsync(token), "purchasing.goods-receipts", () => _procurement.Value.Section = ProcurementSection.GoodsReceipts);
+			AddPage(purchasingPages, ApplicationPermission.SupplierReturnsView, "Supplier Returns", () => _supplierReturns.Value, (viewModel, token) => viewModel.LoadAsync(token), "purchasing.supplier-returns");
 			AddModule("Purchasing", Icons.Purchasing, "Manage orders, supplier deliveries, and returns.", purchasingPages);
 		}
 
-		AddDirect(ApplicationPermission.PurchaseOrdersApprove, "Approvals", Icons.Approvals, PurchaseOrderApprovalsViewModel, PurchaseOrderApprovalsViewModel.LoadAsync, "approvals.queue");
-		AddDirect(ApplicationPermission.ReportsView, "Reports", Icons.Reports, ReportsViewModel, ReportsViewModel.LoadAsync, "reports.overview");
+		AddDirect(ApplicationPermission.PurchaseOrdersApprove, "Approvals", Icons.Approvals, () => _purchaseOrderApprovals.Value, (viewModel, token) => viewModel.LoadAsync(token), "approvals.queue");
+		AddDirect(ApplicationPermission.ReportsView, "Reports", Icons.Reports, () => _reports.Value, (viewModel, token) => viewModel.LoadAsync(token), "reports.overview");
 
-		if (AdministrationViewModel.NavigationItems.Count > 0)
+		if (HasAdministrationPages())
 		{
-			var administrationModule = new ShellModuleViewModel(
-				"Administration",
-				"Configure master data, security, connectivity, and application settings.",
-				[new SecondaryNavigationItem { Name = "Administration", Content = AdministrationViewModel, LoadAsync = AdministrationViewModel.LoadAsync, HelpTopicId = HelpService.FallbackTopicId }]);
-			NavigationItems.Add(new ShellNavigationItem
+			var administrationPages = new List<SecondaryNavigationItem>
 			{
-				Name = "Administration",
-				IconData = Icons.Administration,
-				Content = administrationModule,
-				LoadAsync = administrationModule.LoadAsync,
-				HelpTopicId = HelpService.FallbackTopicId,
-				IsSeparated = true
-			});
+				new(
+					"Administration",
+					() => _administration.Value,
+					(viewModel, token) => ((AdministrationViewModel)viewModel).ActivateAsync(token),
+					HelpService.FallbackTopicId)
+			};
+			AddModule("Administration", Icons.Administration, "Configure master data, security, connectivity, and application settings.", administrationPages, true);
 		}
 	}
 
-	private void AddDirect(
+	private void AddDirect<TViewModel>(
 		ApplicationPermission permission,
 		string name,
 		string icon,
-		BaseViewModel content,
-		Func<CancellationToken, Task> loadAsync,
+		Func<TViewModel> createContent,
+		Func<TViewModel, CancellationToken, Task> loadAsync,
 		string helpTopicId)
+		where TViewModel : BaseViewModel
 	{
 		if (!_authorization.HasPermission(permission)) return;
-		NavigationItems.Add(new ShellNavigationItem { Name = name, IconData = icon, Content = content, LoadAsync = loadAsync, HelpTopicId = helpTopicId });
+		NavigationItems.Add(new ShellNavigationItem(
+			name,
+			icon,
+			() => createContent(),
+			(viewModel, token) => loadAsync((TViewModel)viewModel, token),
+			helpTopicId));
 	}
 
-	private void AddModule(string name, string icon, string subtitle, IReadOnlyCollection<SecondaryNavigationItem> pages)
-	{
-		if (pages.Count == 0) return;
-		var module = new ShellModuleViewModel(name, subtitle, pages);
-		NavigationItems.Add(new ShellNavigationItem { Name = name, IconData = icon, Content = module, LoadAsync = module.LoadAsync, HelpTopicId = pages.First().HelpTopicId });
-	}
-
-	private void AddPage(
+	private void AddPage<TViewModel>(
 		ICollection<SecondaryNavigationItem> pages,
 		ApplicationPermission permission,
 		string name,
-		BaseViewModel content,
-		Func<CancellationToken, Task> loadAsync,
+		Func<TViewModel> createContent,
+		Func<TViewModel, CancellationToken, Task> loadAsync,
 		string helpTopicId,
 		Action? activate = null)
+		where TViewModel : BaseViewModel
 	{
-		if (_authorization.HasPermission(permission))
-			pages.Add(new SecondaryNavigationItem { Name = name, Content = content, LoadAsync = loadAsync, HelpTopicId = helpTopicId, Activate = activate });
+		if (!_authorization.HasPermission(permission)) return;
+		pages.Add(new SecondaryNavigationItem(
+			name,
+			() => createContent(),
+			(viewModel, token) => loadAsync((TViewModel)viewModel, token),
+			helpTopicId,
+			activate));
 	}
 
-	private async Task LoadSelectedAsync()
+	private void AddModule(
+		string name,
+		string icon,
+		string subtitle,
+		IReadOnlyCollection<SecondaryNavigationItem> pages,
+		bool isSeparated = false)
+	{
+		if (pages.Count == 0) return;
+		NavigationItems.Add(new ShellNavigationItem(
+			name,
+			icon,
+			() => CreateModule(name, subtitle, pages),
+			(viewModel, token) => ((ShellModuleViewModel)viewModel).ActivateAsync(token),
+			pages.First().HelpTopicId,
+			isSeparated,
+			false,
+			(viewModel, token) => ((ShellModuleViewModel)viewModel).RefreshAsync(token)));
+	}
+
+	private ShellModuleViewModel CreateModule(
+		string name,
+		string subtitle,
+		IEnumerable<SecondaryNavigationItem> pages)
+	{
+		var module = new ShellModuleViewModel(name, subtitle, pages);
+		module.NavigationRequested += OnModuleNavigationRequested;
+		return module;
+	}
+
+	private async void OnModuleNavigationRequested(object? sender, EventArgs e)
+	{
+		if (sender is not ShellModuleViewModel module) return;
+		var item = NavigationItems.FirstOrDefault(candidate => candidate.IsContentCreated && ReferenceEquals(candidate.Content, module));
+		if (item is not null) await NavigateAsync(item);
+	}
+
+	private bool HasAdministrationPages() =>
+		_authorization.HasAnyPermission(
+			ApplicationPermission.MasterDataView,
+			ApplicationPermission.SuppliersView,
+			ApplicationPermission.UsersView,
+			ApplicationPermission.RolesView,
+			ApplicationPermission.ImportManage,
+			ApplicationPermission.AuditLogView,
+			ApplicationPermission.DatabaseView,
+			ApplicationPermission.AdministrationView);
+
+	private void MarkInventoryPagesStale()
+	{
+		MarkModulePageStale("Inventory", "Overview");
+		MarkModulePageStale("Inventory", "Movements");
+	}
+
+	private void MarkPurchasingPagesStale()
+	{
+		MarkModulePageStale("Purchasing", "Purchase Orders");
+		MarkModulePageStale("Purchasing", "Goods Receipts");
+	}
+
+	private void MarkModulePageStale(string moduleName, string pageName)
+	{
+		var moduleItem = NavigationItems.FirstOrDefault(item => item.Name == moduleName);
+		if (moduleItem?.IsContentCreated != true || moduleItem.Content is not ShellModuleViewModel module) return;
+		module.Pages.FirstOrDefault(page => page.Name == pageName)?.MarkStale();
+	}
+
+	private CancellationTokenSource BeginNavigation(CancellationToken cancellationToken)
+	{
+		CancelNavigationLoad();
+		_navigationCancellation = cancellationToken.CanBeCanceled
+			? CancellationTokenSource.CreateLinkedTokenSource(cancellationToken)
+			: new CancellationTokenSource();
+		return _navigationCancellation;
+	}
+
+	private void CancelNavigationLoad()
 	{
 		_navigationCancellation?.Cancel();
 		_navigationCancellation?.Dispose();
-		_navigationCancellation = new CancellationTokenSource();
-		var selected = SelectedNavigationItem;
-		if (selected is null) return;
-		try
-		{
-			await selected.LoadAsync(_navigationCancellation.Token);
-		}
-		catch (OperationCanceledException) when (_navigationCancellation.IsCancellationRequested)
-		{
-		}
+		_navigationCancellation = null;
 	}
 
-	private void Logout()
+	private void SetSelectedNavigationItem(ShellNavigationItem item)
 	{
-		_session.Logout();
-		LogoutRequested?.Invoke(this, EventArgs.Empty);
+		if (_selectedNavigationItem == item) return;
+		_selectedNavigationItem = item;
+		OnPropertyChanged(nameof(SelectedNavigationItem));
+	}
+
+	private HelpViewModel CreateHelpViewModel(IHelpService helpService, HelpMarkdownRenderer helpRenderer)
+	{
+		var viewModel = new HelpViewModel(helpService, helpRenderer);
+		viewModel.CloseRequested += OnHelpCloseRequested;
+		return viewModel;
+	}
+
+	private NotificationCenterViewModel CreateNotificationCenterViewModel(
+		INotificationService notificationService,
+		INotificationNavigationService navigationService)
+	{
+		var viewModel = new NotificationCenterViewModel(notificationService, navigationService);
+		viewModel.CloseRequested += OnNotificationCloseRequested;
+		return viewModel;
 	}
 
 	private void OnHelpCloseRequested(object? sender, EventArgs e)
@@ -305,55 +467,79 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		{
 			case NotificationSourceTypes.PurchaseOrder:
 				if (target.SourceId is not long orderId) throw new InvalidOperationException("The purchase-order reference is invalid.");
-				await ProcurementViewModel.OpenOrderAsync(orderId, cancellationToken);
 				await NavigateToModulePageAsync("Purchasing", "Purchase Orders", cancellationToken);
+				await ProcurementViewModel.OpenOrderAsync(orderId, cancellationToken);
 				break;
 			case NotificationSourceTypes.PurchaseOrderApproval:
 				if (target.SourceId is not long approvalId) throw new InvalidOperationException("The approval reference is invalid.");
-				await PurchaseOrderApprovalsViewModel.OpenApprovalAsync(approvalId, cancellationToken);
 				await NavigateToDirectAsync("Approvals", cancellationToken);
+				await PurchaseOrderApprovalsViewModel.OpenApprovalAsync(approvalId, cancellationToken);
 				break;
 			case NotificationSourceTypes.InventoryCount:
 				if (target.SourceId is not long countId) throw new InvalidOperationException("The inventory-count reference is invalid.");
-				await InventoryCountsViewModel.OpenCountAsync(countId, cancellationToken);
 				await NavigateToModulePageAsync("Warehouse", "Inventory Counts", cancellationToken);
+				await InventoryCountsViewModel.OpenCountAsync(countId, cancellationToken);
 				break;
 			case NotificationSourceTypes.DatabaseAdministration:
-				AdministrationViewModel.NavigateTo(AdministrationSection.Database);
 				await NavigateToDirectAsync("Administration", cancellationToken);
+				await AdministrationViewModel.NavigateToAsync(AdministrationSection.Database, cancellationToken);
 				break;
 		}
 	}
 
-	private async Task NavigateToDirectAsync(string name, CancellationToken cancellationToken)
+	private Task NavigateToDirectAsync(string name, CancellationToken cancellationToken)
 	{
 		var item = NavigationItems.FirstOrDefault(candidate => candidate.Name == name)
 			?? throw new UnauthorizedAccessException("The requested page is not available.");
-		SelectedNavigationItem = item;
-		CurrentViewModel = item.Content;
-		await item.LoadAsync(cancellationToken);
+		return NavigateAsync(item, cancellationToken);
 	}
 
-	private async Task NavigateToModulePageAsync(string moduleName, string pageName, CancellationToken cancellationToken)
+	private async Task NavigateToModulePageAsync(
+		string moduleName,
+		string pageName,
+		CancellationToken cancellationToken)
 	{
 		var item = NavigationItems.FirstOrDefault(candidate => candidate.Name == moduleName)
 			?? throw new UnauthorizedAccessException("The requested module is not available.");
 		if (item.Content is not ShellModuleViewModel module)
 			throw new InvalidOperationException("The requested navigation target is invalid.");
-		module.SelectedPage = module.Pages.FirstOrDefault(page => page.Name == pageName)
+		var page = module.Pages.FirstOrDefault(candidate => candidate.Name == pageName)
 			?? throw new UnauthorizedAccessException("The requested page is not available.");
-		SelectedNavigationItem = item;
-		CurrentViewModel = module;
-		await module.LoadAsync(cancellationToken);
+		module.SetSelectedPage(page);
+		await NavigateAsync(item, cancellationToken);
+	}
+
+	private void Logout()
+	{
+		_session.Logout();
+		LogoutRequested?.Invoke(this, EventArgs.Empty);
 	}
 
 	public void Dispose()
 	{
+		if (_disposed) return;
+		_disposed = true;
 		_notificationNavigation.SetNavigationHandler(null);
-		NotificationCenterViewModel.CloseRequested -= OnNotificationCloseRequested;
-		NotificationCenterViewModel.Dispose();
-		_navigationCancellation?.Cancel();
-		_navigationCancellation?.Dispose();
+		CancelNavigationLoad();
+		_notificationLoadState.Dispose();
+		NotificationSummaryViewModel.Dispose();
+		foreach (var item in NavigationItems)
+		{
+			if (item.IsContentCreated && item.Content is ShellModuleViewModel module)
+				module.NavigationRequested -= OnModuleNavigationRequested;
+			item.Dispose();
+		}
+		if (_procurement.IsValueCreated) _procurement.Value.Dispose();
+		if (_help.IsValueCreated)
+		{
+			_help.Value.CloseRequested -= OnHelpCloseRequested;
+			_help.Value.Dispose();
+		}
+		if (_notificationCenter.IsValueCreated)
+		{
+			_notificationCenter.Value.CloseRequested -= OnNotificationCloseRequested;
+			_notificationCenter.Value.Dispose();
+		}
 	}
 
 	private static class Icons

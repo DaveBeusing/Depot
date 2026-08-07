@@ -35,8 +35,8 @@ public sealed class ShellNavigationTests
 	[Fact]
 	public void ModuleKeepsItsSelectedSecondaryPage()
 	{
-		var first = new SecondaryNavigationItem { Name = "First", Content = new StubViewModel(), LoadAsync = _ => Task.CompletedTask };
-		var second = new SecondaryNavigationItem { Name = "Second", Content = new StubViewModel(), LoadAsync = _ => Task.CompletedTask };
+		var first = new SecondaryNavigationItem("First", () => new StubViewModel(), (_, _) => Task.CompletedTask, "first");
+		var second = new SecondaryNavigationItem("Second", () => new StubViewModel(), (_, _) => Task.CompletedTask, "second");
 		using var module = new ShellModuleViewModel("Module", "Description", [first, second]);
 
 		module.SelectedPage = second;

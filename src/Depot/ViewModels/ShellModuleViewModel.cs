@@ -7,7 +7,6 @@ namespace Depot.ViewModels;
 
 public sealed class ShellModuleViewModel : BaseViewModel, IDisposable
 {
-	private CancellationTokenSource? _loadCancellation;
 	private SecondaryNavigationItem? _selectedPage;
 
 	public ShellModuleViewModel(string title, string subtitle, IEnumerable<SecondaryNavigationItem> pages)
@@ -16,9 +15,9 @@ public sealed class ShellModuleViewModel : BaseViewModel, IDisposable
 		Subtitle = subtitle;
 		Pages = new ObservableCollection<SecondaryNavigationItem>(pages);
 		_selectedPage = Pages.FirstOrDefault();
-		_selectedPage?.Activate?.Invoke();
 	}
 
+	public event EventHandler? NavigationRequested;
 	public string Title { get; }
 	public string Subtitle { get; }
 	public ObservableCollection<SecondaryNavigationItem> Pages { get; }
@@ -31,34 +30,27 @@ public sealed class ShellModuleViewModel : BaseViewModel, IDisposable
 		set
 		{
 			if (_selectedPage == value || value is null) return;
-			_selectedPage = value;
-			value.Activate?.Invoke();
-			OnPropertyChanged();
-			OnPropertyChanged(nameof(CurrentViewModel));
-			_ = ReloadAsync();
+			SetSelectedPage(value);
+			NavigationRequested?.Invoke(this, EventArgs.Empty);
 		}
 	}
 
-	public Task LoadAsync(CancellationToken cancellationToken = default) =>
-		SelectedPage?.LoadAsync(cancellationToken) ?? Task.CompletedTask;
-
-	private async Task ReloadAsync()
+	public void SetSelectedPage(SecondaryNavigationItem page)
 	{
-		_loadCancellation?.Cancel();
-		_loadCancellation?.Dispose();
-		_loadCancellation = new CancellationTokenSource();
-		try
-		{
-			await LoadAsync(_loadCancellation.Token);
-		}
-		catch (OperationCanceledException) when (_loadCancellation.IsCancellationRequested)
-		{
-		}
+		if (_selectedPage == page) return;
+		_selectedPage = page;
+		OnPropertyChanged(nameof(SelectedPage));
+		OnPropertyChanged(nameof(CurrentViewModel));
 	}
+
+	public Task ActivateAsync(CancellationToken cancellationToken = default) =>
+		SelectedPage?.ActivateAsync(cancellationToken) ?? Task.CompletedTask;
+
+	public Task RefreshAsync(CancellationToken cancellationToken = default) =>
+		SelectedPage?.RefreshAsync(cancellationToken) ?? Task.CompletedTask;
 
 	public void Dispose()
 	{
-		_loadCancellation?.Cancel();
-		_loadCancellation?.Dispose();
+		foreach (var page in Pages) page.Dispose();
 	}
 }

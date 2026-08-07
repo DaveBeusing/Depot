@@ -180,7 +180,7 @@
 					DockPanel.Dock="Bottom"
 					AutomationProperties.Name="Open Notification Center"
 					Command="{Binding NotificationCommand}"
-					Content="{Binding NotificationCenterViewModel}"
+					Content="{Binding NotificationSummaryViewModel}"
 					ContentTemplate="{StaticResource NavigationNotificationActionTemplate}"
 					Style="{StaticResource NavigationActionButtonStyle}" />
 

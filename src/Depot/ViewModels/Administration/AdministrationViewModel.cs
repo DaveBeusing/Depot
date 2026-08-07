@@ -5,16 +5,15 @@ using System.Collections.ObjectModel;
 
 using Depot.Models;
 using Depot.Services;
+using Depot.Services.Help;
 using Depot.ViewModels.MasterData;
-using Depot.ViewModels.Shared;
 using Depot.ViewModels.Suppliers;
 using Depot.ViewModels.Users;
 using Depot.ViewModels.Warehouses;
-using Depot.Services.Help;
 
 namespace Depot.ViewModels.Administration;
 
-public sealed class AdministrationViewModel : BaseViewModel
+public sealed class AdministrationViewModel : BaseViewModel, IDisposable
 {
 	private readonly ImportViewModel _importViewModel;
 	private readonly MasterDataViewModel _masterDataViewModel;
@@ -23,6 +22,8 @@ public sealed class AdministrationViewModel : BaseViewModel
 	private readonly DatabaseSettingsViewModel _databaseSettingsViewModel;
 	private readonly AuditLogViewModel _auditLogViewModel;
 	private readonly AboutViewModel _aboutViewModel;
+	private readonly Dictionary<AdministrationSection, NavigationLoadState> _loadStates = [];
+	private CancellationTokenSource? _navigationCancellation;
 	private NavigationItem? _selectedNavigationItem;
 	private BaseViewModel? _currentViewModel;
 
@@ -68,45 +69,103 @@ public sealed class AdministrationViewModel : BaseViewModel
 		AddIf(authorization, ApplicationPermission.AuditLogView, "Audit Log", AdministrationSection.AuditLog);
 		AddIf(authorization, ApplicationPermission.DatabaseView, "Database", AdministrationSection.Database);
 		if (authorization.HasPermission(ApplicationPermission.AdministrationView))
-			NavigationItems.Add(new NavigationItem { Name = "About", Section = AdministrationSection.About, HelpTopicId = HelpService.FallbackTopicId });
-		SelectedNavigationItem = NavigationItems.FirstOrDefault();
+			Add("About", AdministrationSection.About, HelpService.FallbackTopicId);
+		SetSelection(NavigationItems.FirstOrDefault());
 	}
 
-	public ObservableCollection<NavigationItem> NavigationItems { get; } = new();
-	public NavigationItem? SelectedNavigationItem { get => _selectedNavigationItem; set { _selectedNavigationItem = value; OnPropertyChanged(); UpdateCurrentViewModel(); } }
-	public BaseViewModel? CurrentViewModel { get => _currentViewModel; private set { _currentViewModel = value; OnPropertyChanged(); } }
+	public ObservableCollection<NavigationItem> NavigationItems { get; } = [];
+	public NavigationItem? SelectedNavigationItem
+	{
+		get => _selectedNavigationItem;
+		set
+		{
+			if (value is null || _selectedNavigationItem == value) return;
+			_ = NavigateAsync(value);
+		}
+	}
+
+	public BaseViewModel? CurrentViewModel
+	{
+		get => _currentViewModel;
+		private set
+		{
+			if (_currentViewModel == value) return;
+			_currentViewModel = value;
+			OnPropertyChanged();
+		}
+	}
+
 	public string HelpTopicId => SelectedNavigationItem?.HelpTopicId ?? HelpService.FallbackTopicId;
 
-	public void NavigateTo(AdministrationSection section)
+	public Task ActivateAsync(CancellationToken cancellationToken = default) =>
+		ActivateCurrentAsync(false, cancellationToken);
+
+	public Task RefreshAsync(CancellationToken cancellationToken = default) =>
+		ActivateCurrentAsync(true, cancellationToken);
+
+	public async Task NavigateToAsync(AdministrationSection section, CancellationToken cancellationToken = default)
 	{
 		var target = NavigationItems.FirstOrDefault(item => item.Section is AdministrationSection value && value == section)
 			?? throw new UnauthorizedAccessException("The requested administration page is not available.");
-		SelectedNavigationItem = target;
+		await NavigateAsync(target, cancellationToken);
 	}
 
-	private void UpdateCurrentViewModel()
+	private async Task NavigateAsync(NavigationItem target, CancellationToken cancellationToken = default)
 	{
-		CurrentViewModel = SelectedNavigationItem?.Section is not AdministrationSection section ? null : section switch
+		_navigationCancellation?.Cancel();
+		_navigationCancellation?.Dispose();
+		var navigation = cancellationToken.CanBeCanceled
+			? CancellationTokenSource.CreateLinkedTokenSource(cancellationToken)
+			: new CancellationTokenSource();
+		_navigationCancellation = navigation;
+		SetSelection(target);
+		try
 		{
-			AdministrationSection.Import => _importViewModel,
-			AdministrationSection.MasterData => _masterDataViewModel,
-			AdministrationSection.Warehouses => _masterDataViewModel.WarehouseStructureViewModel,
-			AdministrationSection.Suppliers => _masterDataViewModel.SupplierViewModel,
-			AdministrationSection.Users => _userViewModel,
-			AdministrationSection.Roles => _roleViewModel,
-			AdministrationSection.Database => _databaseSettingsViewModel,
-			AdministrationSection.AuditLog => _auditLogViewModel,
-			AdministrationSection.About => _aboutViewModel,
-			_ => null
-		};
-		_ = LoadCurrentViewModelAsync();
+			await ActivateCurrentAsync(false, navigation.Token);
+		}
+		catch (OperationCanceledException) when (navigation.IsCancellationRequested)
+		{
+		}
+		catch (Exception exception)
+		{
+			FailOperation(exception, $"{target.Name} could not be loaded");
+		}
 	}
 
-	public Task LoadAsync(CancellationToken cancellationToken = default) => LoadCurrentViewModelAsync(cancellationToken);
-
-	private Task LoadCurrentViewModelAsync(CancellationToken cancellationToken = default) => CurrentViewModel switch
+	private Task ActivateCurrentAsync(bool refresh, CancellationToken cancellationToken)
 	{
-		MasterDataViewModel masterData => masterData.LoadAsync(cancellationToken),
+		if (SelectedNavigationItem?.Section is not AdministrationSection section) return Task.CompletedTask;
+		var state = _loadStates[section];
+		return refresh
+			? state.RefreshAsync(LoadCurrentViewModelAsync, cancellationToken)
+			: state.ActivateAsync(LoadCurrentViewModelAsync, cancellationToken);
+	}
+
+	private void SetSelection(NavigationItem? target)
+	{
+		_selectedNavigationItem = target;
+		OnPropertyChanged(nameof(SelectedNavigationItem));
+		CurrentViewModel = target?.Section is AdministrationSection section ? ViewModelFor(section) : null;
+		OnPropertyChanged(nameof(HelpTopicId));
+	}
+
+	private BaseViewModel ViewModelFor(AdministrationSection section) => section switch
+	{
+		AdministrationSection.Import => _importViewModel,
+		AdministrationSection.MasterData => _masterDataViewModel,
+		AdministrationSection.Warehouses => _masterDataViewModel.WarehouseStructureViewModel,
+		AdministrationSection.Suppliers => _masterDataViewModel.SupplierViewModel,
+		AdministrationSection.Users => _userViewModel,
+		AdministrationSection.Roles => _roleViewModel,
+		AdministrationSection.Database => _databaseSettingsViewModel,
+		AdministrationSection.AuditLog => _auditLogViewModel,
+		AdministrationSection.About => _aboutViewModel,
+		_ => _aboutViewModel
+	};
+
+	private Task LoadCurrentViewModelAsync(CancellationToken cancellationToken) => CurrentViewModel switch
+	{
+		MasterDataViewModel masterData => masterData.ActivateAsync(cancellationToken),
 		WarehouseStructureViewModel warehouses => warehouses.LoadAsync(cancellationToken),
 		SupplierViewModel suppliers => suppliers.LoadAsync(cancellationToken),
 		UserViewModel users => users.LoadUsersAsync(cancellationToken),
@@ -118,7 +177,13 @@ public sealed class AdministrationViewModel : BaseViewModel
 
 	private void AddIf(IAuthorizationService authorization, ApplicationPermission permission, string name, AdministrationSection section)
 	{
-		if (authorization.HasPermission(permission)) NavigationItems.Add(new NavigationItem { Name = name, Section = section, HelpTopicId = TopicFor(section) });
+		if (authorization.HasPermission(permission)) Add(name, section, TopicFor(section));
+	}
+
+	private void Add(string name, AdministrationSection section, string helpTopicId)
+	{
+		NavigationItems.Add(new NavigationItem { Name = name, Section = section, HelpTopicId = helpTopicId });
+		_loadStates.Add(section, new NavigationLoadState());
 	}
 
 	private static string TopicFor(AdministrationSection section) => section switch
@@ -129,7 +194,18 @@ public sealed class AdministrationViewModel : BaseViewModel
 		AdministrationSection.MasterData => "inventory.items",
 		AdministrationSection.Warehouses => "warehouse.transfers",
 		AdministrationSection.Suppliers => "purchasing.purchase-orders",
-		AdministrationSection.About or AdministrationSection.Import or AdministrationSection.Settings => HelpService.FallbackTopicId,
 		_ => HelpService.FallbackTopicId
 	};
+
+	public void Dispose()
+	{
+		_navigationCancellation?.Cancel();
+		_navigationCancellation?.Dispose();
+		foreach (var state in _loadStates.Values) state.Dispose();
+		_masterDataViewModel.Dispose();
+		if (_userViewModel is IDisposable users) users.Dispose();
+		if (_roleViewModel is IDisposable roles) roles.Dispose();
+		if (_databaseSettingsViewModel is IDisposable database) database.Dispose();
+		if (_auditLogViewModel is IDisposable audit) audit.Dispose();
+	}
 }
