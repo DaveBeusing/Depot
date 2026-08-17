@@ -10,6 +10,12 @@ using Depot.ViewModels;
 
 namespace Depot.Controls;
 
+public sealed class WorkspaceTabClosingEventArgs(ShellNavigationItem item) : EventArgs
+{
+	public ShellNavigationItem Item { get; } = item;
+	public bool Cancel { get; set; }
+}
+
 public sealed class WorkspaceTabControl : TabControl
 {
 	public static readonly DependencyProperty ActiveItemProperty = DependencyProperty.Register(
@@ -26,6 +32,8 @@ public sealed class WorkspaceTabControl : TabControl
 		CommandBindings.Add(new CommandBinding(CloseOtherTabsCommand, OnCloseOtherTabsExecuted, OnCloseOtherTabsCanExecute));
 		CommandBindings.Add(new CommandBinding(CloseTabsToRightCommand, OnCloseTabsToRightExecuted, OnCloseTabsToRightCanExecute));
 	}
+
+	public event EventHandler<WorkspaceTabClosingEventArgs>? TabClosing;
 
 	public ShellNavigationItem? ActiveItem
 	{
@@ -92,9 +100,12 @@ public sealed class WorkspaceTabControl : TabControl
 	private void OnCloseOtherTabsExecuted(object sender, ExecutedRoutedEventArgs e)
 	{
 		if (e.Parameter is not ShellNavigationItem keep) return;
-		foreach (var item in Items.OfType<ShellNavigationItem>().Where(item => !ReferenceEquals(item, keep)).ToArray()) Items.Remove(item);
-		SelectedItem = keep;
-		SetCurrentValue(ActiveItemProperty, keep);
+		foreach (var item in Items.OfType<ShellNavigationItem>().Where(item => !ReferenceEquals(item, keep)).ToArray()) Close(item);
+		if (Items.Contains(keep))
+		{
+			SelectedItem = keep;
+			SetCurrentValue(ActiveItemProperty, keep);
+		}
 		e.Handled = true;
 	}
 
@@ -110,16 +121,19 @@ public sealed class WorkspaceTabControl : TabControl
 	{
 		if (e.Parameter is not ShellNavigationItem item) return;
 		var index = Items.IndexOf(item);
-		while (Items.Count > index + 1) Items.RemoveAt(Items.Count - 1);
-		SelectedItem = item;
-		SetCurrentValue(ActiveItemProperty, item);
+		foreach (var candidate in Items.OfType<ShellNavigationItem>().Skip(index + 1).ToArray()) Close(candidate);
+		if (Items.Contains(item))
+		{
+			SelectedItem = item;
+			SetCurrentValue(ActiveItemProperty, item);
+		}
 		e.Handled = true;
 	}
 
 	private void Close(ShellNavigationItem item)
 	{
 		var index = Items.IndexOf(item);
-		if (index < 0 || Items.Count <= 1) return;
+		if (index < 0 || Items.Count <= 1 || !CanClose(item)) return;
 		var wasSelected = ReferenceEquals(SelectedItem, item);
 		Items.Remove(item);
 		if (!wasSelected) return;
@@ -129,6 +143,13 @@ public sealed class WorkspaceTabControl : TabControl
 			SelectedItem = next;
 			SetCurrentValue(ActiveItemProperty, next);
 		}
+	}
+
+	private bool CanClose(ShellNavigationItem item)
+	{
+		var args = new WorkspaceTabClosingEventArgs(item);
+		TabClosing?.Invoke(this, args);
+		return !args.Cancel;
 	}
 
 	private static T? FindAncestor<T>(DependencyObject? current) where T : DependencyObject
