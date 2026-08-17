@@ -9,6 +9,7 @@ public sealed class SecondaryNavigationItem : IDisposable
 	private readonly Func<BaseViewModel, CancellationToken, Task> _loadAsync;
 	private readonly NavigationLoadState _loadState = new();
 	private readonly bool _ownsContent;
+	private readonly bool _alwaysActivate;
 
 	public SecondaryNavigationItem(
 		string name,
@@ -16,7 +17,8 @@ public sealed class SecondaryNavigationItem : IDisposable
 		Func<BaseViewModel, CancellationToken, Task> loadAsync,
 		string helpTopicId,
 		Action? activate = null,
-		bool ownsContent = true)
+		bool ownsContent = true,
+		bool alwaysActivate = false)
 	{
 		Name = name;
 		_content = new Lazy<BaseViewModel>(createContent);
@@ -24,6 +26,7 @@ public sealed class SecondaryNavigationItem : IDisposable
 		HelpTopicId = helpTopicId;
 		Activate = activate;
 		_ownsContent = ownsContent;
+		_alwaysActivate = alwaysActivate;
 	}
 
 	public string Name { get; }
@@ -36,7 +39,9 @@ public sealed class SecondaryNavigationItem : IDisposable
 	public Task ActivateAsync(CancellationToken cancellationToken = default)
 	{
 		Activate?.Invoke();
-		return _loadState.ActivateAsync(token => _loadAsync(Content, token), cancellationToken);
+		return _alwaysActivate
+			? _loadState.RefreshAsync(token => _loadAsync(Content, token), cancellationToken)
+			: _loadState.ActivateAsync(token => _loadAsync(Content, token), cancellationToken);
 	}
 
 	public Task RefreshAsync(CancellationToken cancellationToken = default)
