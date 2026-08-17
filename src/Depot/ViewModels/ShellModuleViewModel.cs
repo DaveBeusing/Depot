@@ -74,7 +74,8 @@ public sealed class ShellModuleViewModel : BaseViewModel, IDisposable
 				() => administration,
 				(_, token) => administration.NavigateToAsync((AdministrationSection)item.Section, token),
 				item.HelpTopicId,
-				ownsContent: false))
+				ownsContent: false,
+				alwaysActivate: true))
 			.ToList();
 
 		Pages.Clear();
