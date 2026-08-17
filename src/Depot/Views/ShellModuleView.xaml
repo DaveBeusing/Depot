@@ -3,30 +3,8 @@
 	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
 	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
 	xmlns:controls="clr-namespace:Depot.Controls">
-	<Grid>
-		<Grid.RowDefinitions>
-			<RowDefinition Height="Auto" />
-			<RowDefinition Height="Auto" />
-			<RowDefinition Height="*" />
-		</Grid.RowDefinitions>
-
-		<controls:PageHeader
-			Margin="{DynamicResource Shell.Module.Header.Margin}"
-			Title="{Binding Title}"
-			Subtitle="{Binding Subtitle}" />
-
-		<ListBox
-			Grid.Row="1"
-			Margin="{DynamicResource SecondaryNavigation.Margin}"
-			ItemsSource="{Binding Pages}"
-			SelectedItem="{Binding SelectedPage}"
-			Style="{DynamicResource SecondaryNavigationListBoxStyle}"
-			ItemContainerStyle="{DynamicResource SecondaryNavigationItemStyle}"
-			Visibility="{Binding HasMultiplePages, Converter={StaticResource BooleanToVisibilityConverter}}" />
-
+	<Grid Background="{DynamicResource BackgroundBrush}">
 		<controls:ShellModuleContentControl
-			Grid.Row="2"
-			Margin="{DynamicResource Shell.Module.Content.Margin}"
 			HorizontalContentAlignment="Stretch"
 			VerticalContentAlignment="Stretch"
 			Content="{Binding CurrentViewModel}" />
