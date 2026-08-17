@@ -1,8 +1,8 @@
 # Depot
 
-Depot is a Windows desktop application for inventory, warehouse, supplier, procurement, user, import, and reporting workflows. It is built with .NET 10, WPF, strict MVVM, and a provider-neutral ADO.NET persistence layer.
+Depot is a Windows desktop application for inventory, warehouse, supplier, procurement, administration, reporting, and operational workflows. It is built with .NET 10, WPF, MVVM, and a provider-neutral ADO.NET persistence layer.
 
-The project is under active development on the `0.13.0-preview` line. Implemented workflows are not described as production-ready until the version 1.0 verification checklist has been completed.
+The project is under active development on the **0.13.28-preview** line. Implemented workflows are not described as production-ready until the version 1.0 verification checklist has been completed.
 
 ![Platform](https://img.shields.io/badge/platform-Windows-blue)
 ![Framework](https://img.shields.io/badge/.NET-10-512BD4)
@@ -13,28 +13,53 @@ The project is under active development on the `0.13.0-preview` line. Implemente
 
 ## Current implementation status
 
-### Fully implemented in the application
+### Application shell and UX
+
+Depot uses a dark workspace-oriented shell with an activity bar, persistent tabs, contextual section navigation, and a compact status bar.
+
+Implemented shell features include:
+
+- Activity-bar navigation for top-level workspaces
+- Persistent workspace tabs with close buttons, middle-click close, overflow handling, and tab context actions
+- `Ctrl+W` to close the active tab
+- `Ctrl+Tab` / `Ctrl+Shift+Tab` to move between open tabs
+- `Ctrl+P` Quick Open for workspaces, sections, items, purchase orders, and suppliers
+- Grouped Quick Open results with type badges and session-recent records
+- `Ctrl+Shift+P` Command Palette for navigation and direct workflow actions
+- Direct commands for New Item, New Purchase Order, Start Inventory Count, Transfer Stock, and Receive Goods
+- F1 context Help in its own workspace tab
+- Notification Center and signed-in user details as workspace tabs
+- Permission-aware unread notification badge
+- Unsaved-changes protection for Items, Purchase Orders, Suppliers, Supplier Items, and Roles across workspace changes, section changes, tab closing, sign-out, and application closing
+- Action-oriented dashboard links into operational workspaces
+- Administrator dashboard visibility across all available role-oriented overview sections
+
+### Fully implemented workflows
 
 - Email/password authentication, PBKDF2-SHA256 password hashing, database-backed multi-role RBAC, session switching, and administrator-managed users and roles
-- Dashboard metrics, recent movements, inventory valuation, and German Euro formatting
+- Dashboard metrics, operational attention links, recent movements, and inventory valuation
 - Item, inventory, purpose, warehouse, storage-location, and stock-movement workflows
-- Reason codes with immutable technical keys, editable display names, protected workflow system codes, search, activation, and movement references
 - Normalized item master data: manufacturer, category, unit of measure, and packaging
+- Reason codes with immutable technical keys, editable display names, protected workflow system codes, search, activation, and movement references
 - Supplier categories, suppliers, and many-to-many `SupplierItem` assignments with supplier-specific commercial data
-- Supplier-return documents linked to received positions, with net-return validation, atomic negative stock movements, and counter-booking
-- Purchase orders and lines with automatic `PO-xxxxxx` numbering, separation-of-duties approval workflow, search, and filtering
-- Dedicated permission-restricted approval work queue with server-side filters, paging, totals, details, and status history
-- Delivery-note-based goods receipts with receipt date, receiving user, partial receipts, and automatic purchase-order status updates
+- Purchase orders and lines with automatic numbering, separation-of-duties approval workflow, search, filtering, status history, and direct navigation
+- Dedicated permission-restricted purchase-order approval work queue
+- Delivery-note-based goods receipts with partial receipts and automatic purchase-order status updates
 - Atomic goods-receipt posting across receipt records, received quantities, stock movements, and order status
-- Warehouse stock transfers with draft editing, server-side search, status filtering, paging, atomic posting, paired transfer movements, and concurrency-safe stock checks
-- Inventory counts with atomic warehouse snapshots, paged counting and review, optimistic concurrency, and atomic correction posting through stock movements
-- Audited reversal workflows for posted goods receipts, material withdrawals, stock transfers, and inventory counts; reversals create immutable counter-movements and correct their document state atomically
-- Excel import, report search, grouped reports, and Excel export
-- Audit persistence for relevant create/update operations
+- Supplier-return documents linked to received positions with atomic negative stock movements
+- Warehouse stock transfers with draft editing, search, status filtering, paging, atomic posting, paired movements, and concurrency-safe stock checks
+- Inventory counts with warehouse snapshots, counting, review, optimistic concurrency, and atomic correction posting
+- Material issue and material return workflows
+- Audited reversal workflows for posted goods receipts, material issues, stock transfers, and inventory counts
+- Excel import and export
+- Inventory and grouped reporting with search, paging, aggregation, and export
+- Audit persistence and a filtered read-only Audit Log administration workspace
 - Optimistic concurrency using version columns and explicit conflict errors
-- Database administration: overview, provider/schema/connection display, backup validation, backup, restore with safety backup, scheduled backups, integrity checks, and SQLite compaction
+- Database administration with provider/schema/connection overview, backup validation, backup, restore with safety backup, scheduled backups, integrity checks, and SQLite compaction
 - Encrypted `depot.settings` storage using Windows DPAPI
 - Connection testing, connection-state UI, safe provider-specific errors, and database logging without exposed credentials
+- Integrated offline Help Center with permission-aware topics, search, related topics, diagnostics, and context-sensitive F1 routing
+- Internal Notification Center with server-side search and paging, read/archive actions, unread badge, record navigation, and workflow-generated notifications
 
 ### Database providers
 
@@ -44,32 +69,18 @@ The project is under active development on the `0.13.0-preview` line. Implemente
 
 SQL Server and MySQL/MariaDB support is implemented in code, but live-server migration, backup/restore, concurrency, and long-running acceptance tests are still required before version 1.0. Provider support must therefore not yet be interpreted as a production certification.
 
-### Partially implemented
-
-- Most interactive list loading is asynchronous and cancellable.
-- Items, inventory, movements, users, and purchase-order searches use server-side paging infrastructure.
-- Search debounce is used across the main large-data and master-data screens.
-- Productive list and report paths no longer use synchronous, unbounded `GetAll()` reads against remote databases.
-- Inventory reports use server-side paging and aggregation; large Excel exports read deterministic database slices and report progress.
-- The purchase-order screen currently loads a bounded server-side page without full user-facing page navigation.
-- Audit records are persisted and exposed through a read-only, filtered administration view with sanitized detail and export.
-- General application preferences remain a placeholder; database and backup settings are implemented separately.
-
-### Not started
-
-- Barcode scanning and barcode generation
-- Label design and printing
-- Dedicated audit-log viewer/export
-- General application-preferences module
-
-### To verify before version 1.0
+### Remaining work before version 1.0
 
 - Live SQL Server and MySQL/MariaDB installation and migration matrices
 - Live server backup/restore and failure-recovery drills
 - Multi-client concurrency and long-running load tests against server providers
 - Large-data acceptance tests with at least 100,000 records
-- Complete UI, accessibility, keyboard-navigation, localization, packaging, and upgrade testing
-- Security review of deployment defaults, credentials, retained legacy invoice-path data, logs, and backup retention
+- Complete UI runtime, accessibility, keyboard-navigation, localization, packaging, and upgrade testing
+- Security review of deployment defaults, credentials, logs, retained legacy data, and backup retention
+- Resolve the currently long-running automated test-process behavior in CI
+- General application-preferences module
+- Barcode scanning and barcode generation
+- Label design and printing
 
 ## Architecture
 
@@ -98,7 +109,11 @@ See [Architecture](docs/Architecture.md) for details.
 
 ## UI design system
 
-Shared resources live under `src/Depot/Resources`; reusable controls live under `src/Depot/Controls`. The UI kit includes colors, typography, spacing, buttons, inputs, navigation, cards, DataGrid styles, dialogs, status presentation, loading feedback, and reusable controls such as `Card`, `MetricCard`, `SearchBox`, `PageHeader`, `StatusBadge`, and `EmptyState`.
+Shared resources live under `src/Depot/Resources`; reusable controls live under `src/Depot/Controls`.
+
+The current UI system uses a compact dark visual language with centralized colors, typography, 32-pixel interaction sizing, consistent cards and container geometry, dark DataGrid/ListBox/ComboBox states, master/detail workflow layouts, status presentation, loading feedback, and reusable controls such as `Card`, `MetricCard`, `SearchBox`, `PageHeader`, `StatusBadge`, `WorkflowActionBar`, `MasterDetailGrid`, and `EmptyState`.
+
+Shell-specific resources are separated from workflow resources so activity navigation, workspace tabs, context navigation, inputs, cards, buttons, tables, and status components share the same design tokens.
 
 ## Technology
 
@@ -116,7 +131,7 @@ Requirements:
 
 - Windows 10 or Windows 11
 - [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
-- Visual Studio, JetBrains Rider, or the .NET CLI
+- Visual Studio, JetBrains Rider, VS Code, or the .NET CLI
 
 ```powershell
 git clone https://github.com/DaveBeusing/Depot.git
@@ -127,11 +142,20 @@ dotnet run --project src/Depot/Depot.csproj
 
 The first installation uses local SQLite and creates `depot.db`. The current database schema version is **29**.
 
-Depot also includes an internal Notification Center with a personal, permission-aware inbox, server-side search and paging, read/archive actions, a shell unread badge, controlled record navigation, and transactionally generated workflow notifications. See [Notification Center](docs/NOTIFICATION_CENTER.md).
-
 Connection and backup settings are stored in `depot.settings`. The file is a JSON envelope with a DPAPI-encrypted payload for the current Windows user. Administration > Database can configure, test, and activate SQLite, SQL Server, or MySQL/MariaDB connections. Provider changes take effect after restarting Depot. Connection attempts and failures are written to `depot.database.log` without connection strings or passwords.
 
 For a new database, sign in with `admin@depot.local` and `Depot123!`, then change the password in Administration > Users.
+
+## Keyboard navigation
+
+| Shortcut | Action |
+| --- | --- |
+| `Ctrl+P` | Quick Open |
+| `Ctrl+Shift+P` | Command Palette |
+| `Ctrl+W` | Close active workspace tab |
+| `Ctrl+Tab` | Next workspace tab |
+| `Ctrl+Shift+Tab` | Previous workspace tab |
+| `F1` | Context-sensitive Help |
 
 ## Project structure
 
@@ -139,6 +163,7 @@ For a new database, sign in with `admin@depot.local` and `Depot123!`, then chang
 src/Depot/
   Controls/       Reusable WPF controls
   Data/           Provider factories, initialization, and migrations
+  Help/           Embedded offline Help Center content
   Models/         Domain, status, and report models
   Repositories/   Provider-neutral persistence
   Resources/      Design system resource dictionaries
@@ -160,6 +185,7 @@ Depot uses Semantic Versioning from `Directory.Build.props`. Application release
 - [Versioning](docs/VERSIONING.md)
 - [Data-access audit](docs/DATA_ACCESS_AUDIT.md)
 - [Offline Help Center](docs/HELP_CENTER.md)
+- [Notification Center](docs/NOTIFICATION_CENTER.md)
 
 ## License
 
