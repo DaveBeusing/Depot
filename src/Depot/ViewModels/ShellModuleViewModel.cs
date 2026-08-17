@@ -28,6 +28,7 @@ public sealed class ShellModuleViewModel : BaseViewModel, IDisposable
 	public ObservableCollection<SecondaryNavigationItem> Pages { get; }
 	public bool HasMultiplePages => Pages.Count > 1;
 	public BaseViewModel? CurrentViewModel => SelectedPage?.Content;
+	public Func<BaseViewModel?, bool>? NavigationGuard { get; set; }
 
 	public SecondaryNavigationItem? SelectedPage
 	{
@@ -35,17 +36,23 @@ public sealed class ShellModuleViewModel : BaseViewModel, IDisposable
 		set
 		{
 			if (_selectedPage == value || value is null) return;
-			SetSelectedPage(value);
+			if (!SetSelectedPage(value)) return;
 			NavigationRequested?.Invoke(this, EventArgs.Empty);
 		}
 	}
 
-	public void SetSelectedPage(SecondaryNavigationItem page)
+	public bool SetSelectedPage(SecondaryNavigationItem page)
 	{
-		if (_selectedPage == page) return;
+		if (_selectedPage == page) return true;
+		if (_selectedPage is not null && NavigationGuard?.Invoke(CurrentViewModel) == false)
+		{
+			OnPropertyChanged(nameof(SelectedPage));
+			return false;
+		}
 		_selectedPage = page;
 		OnPropertyChanged(nameof(SelectedPage));
 		OnPropertyChanged(nameof(CurrentViewModel));
+		return true;
 	}
 
 	public async Task ActivateAsync(CancellationToken cancellationToken = default)
