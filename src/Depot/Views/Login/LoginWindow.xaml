@@ -8,82 +8,20 @@
 	Style="{StaticResource AppDialogWindowStyle}"
 	WindowStartupLocation="CenterScreen"
 	ShowInTaskbar="true">
-
-	<Border
-		Padding="32"
-		Background="{StaticResource BackgroundBrush}">
-		<controls:Card Width="400">
+	<Border Padding="24" Background="{DynamicResource BackgroundBrush}">
+		<controls:Card Width="380">
 			<StackPanel>
-				<Image
-					Width="72"
-					Height="64"
-					HorizontalAlignment="Center"
-					Margin="0,0,0,20"
-					Source="/Resources/Images/Depot.png" />
-
-				<TextBlock
-					HorizontalAlignment="Center"
-					Text="Sign in to Depot"
-					TextAlignment="Center"
-					Style="{StaticResource PageTitleStyle}" />
-
-				<TextBlock
-					Margin="0,6,0,24"
-					HorizontalAlignment="Center"
-					Foreground="{StaticResource SecondaryTextBrush}"
-					Text="Use your Depot account to continue."
-					TextAlignment="Center" />
-
-				<TextBlock
-					Text="Email"
-					Style="{StaticResource FormLabelStyle}" />
-
-				<controls:TextInput
-					Text="{Binding Email, UpdateSourceTrigger=PropertyChanged}" />
-
-				<TextBlock
-					Margin="0,16,0,4"
-					Text="Password"
-					Style="{StaticResource FormLabelStyle}" />
-
-				<controls:PasswordInput
-					PasswordValue="{Binding Password, UpdateSourceTrigger=PropertyChanged}"
-					Style="{StaticResource RoundedPasswordInputStyle}" />
-
-				<Border
-					Margin="0,16,0,0"
-					Padding="12"
-					Background="{StaticResource ErrorBrush}"
-					CornerRadius="6"
-					Visibility="{Binding HasErrorMessage, Converter={StaticResource BooleanToVisibilityConverter}}">
-					<TextBlock
-						Foreground="{StaticResource ErrorForegroundBrush}"
-						Text="{Binding ErrorMessage}"
-						TextWrapping="Wrap" />
-				</Border>
-
-				<controls:OperationStatus
-					Margin="0,16,0,0"
-					IsBusy="{Binding IsBusy}"
-					HasError="{Binding HasOperationError}"
-					StatusText="{Binding StatusText}"
-					ErrorText="{Binding OperationError}" />
-
-				<Button
-					Margin="0,24,0,0"
-					HorizontalAlignment="Stretch"
-					Command="{Binding LoginCommand}"
-					Content="Sign in"
-					IsDefault="True"
-					Style="{StaticResource PrimaryButtonStyle}" />
-
-				<controls:ConnectionStatusIndicator
-					Margin="0,20,0,0"
-					HorizontalAlignment="Center"
-					Compact="True"
-					Foreground="{StaticResource SecondaryTextBrush}"
-					State="{Binding ConnectionStatus.CompactState}"
-					Status="{Binding ConnectionStatus.DatabaseStatus}" />
+				<Image Width="64" Height="56" HorizontalAlignment="Center" Margin="0,0,0,16" Source="/Resources/Images/Depot.png" />
+				<TextBlock HorizontalAlignment="Center" Text="Sign in to Depot" TextAlignment="Center" Style="{StaticResource PageTitleStyle}" />
+				<TextBlock Margin="0,4,0,20" HorizontalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}" Text="Use your Depot account to continue." TextAlignment="Center" Style="{StaticResource BodyStyle}" />
+				<TextBlock Text="Email" Style="{StaticResource FormLabelStyle}" />
+				<controls:TextInput Text="{Binding Email, UpdateSourceTrigger=PropertyChanged}" />
+				<TextBlock Margin="0,12,0,4" Text="Password" Style="{StaticResource FormLabelStyle}" />
+				<controls:PasswordInput PasswordValue="{Binding Password, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource RoundedPasswordInputStyle}" />
+				<Border Margin="0,12,0,0" Padding="10,8" Background="{DynamicResource ErrorBrush}" BorderBrush="{DynamicResource ErrorForegroundBrush}" BorderThickness="1" CornerRadius="{DynamicResource CornerRadius.Medium}" Visibility="{Binding HasErrorMessage, Converter={StaticResource BooleanToVisibilityConverter}}"><TextBlock Foreground="{DynamicResource ErrorForegroundBrush}" Text="{Binding ErrorMessage}" TextWrapping="Wrap" Style="{StaticResource CaptionStyle}" /></Border>
+				<controls:OperationStatus Margin="0,12,0,0" IsBusy="{Binding IsBusy}" HasError="{Binding HasOperationError}" StatusText="{Binding StatusText}" ErrorText="{Binding OperationError}" />
+				<Button Margin="0,20,0,0" HorizontalAlignment="Stretch" Command="{Binding LoginCommand}" Content="Sign in" IsDefault="True" Style="{StaticResource PrimaryButtonStyle}" />
+				<controls:ConnectionStatusIndicator Margin="0,16,0,0" HorizontalAlignment="Center" Compact="True" Foreground="{DynamicResource SecondaryTextBrush}" State="{Binding ConnectionStatus.CompactState}" Status="{Binding ConnectionStatus.DatabaseStatus}" />
 			</StackPanel>
 		</controls:Card>
 	</Border>

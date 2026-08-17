@@ -84,7 +84,7 @@ public partial class App : Application
 		var mainViewModel = composition.ViewModels.CreateMain();
 		StartupDiagnostics.Log("MainViewModel created.");
 
-		var mainWindow = new MainWindow { DataContext = mainViewModel };
+		var mainWindow = new MainWindow(composition.Services.Authorization) { DataContext = mainViewModel };
 		MainWindow = mainWindow;
 		StartupDiagnostics.Log("MainWindow created.");
 		mainViewModel.LogoutRequested += OnLogoutRequested;

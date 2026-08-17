@@ -24,14 +24,17 @@ public sealed class DashboardService
 
 	public async Task<(DashboardData? Inventory, DashboardRoleMetrics Roles)> GetAsync(CancellationToken cancellationToken)
 	{
-		Task<DashboardData?> inventoryTask = HasCoreInventoryPermission()
+		var isAdministrator = _authorization.CurrentUser?.IsAdministrator == true;
+
+		Task<DashboardData?> inventoryTask = isAdministrator || HasCoreInventoryPermission()
 			? GetInventoryAsync(cancellationToken)
 			: Task.FromResult<DashboardData?>(null);
+
 		var rolesTask = _dashboard.GetRoleMetricsAsync(
-			_authorization.HasPermission(ApplicationPermission.PurchaseOrdersApprove),
-			_authorization.HasAnyPermission(ApplicationPermission.PurchaseOrdersView, ApplicationPermission.SupplierReturnsView),
-			_authorization.HasAnyPermission(ApplicationPermission.InventoryCountsView, ApplicationPermission.StockTransfersView),
-			_authorization.HasPermission(ApplicationPermission.UsersView),
+			isAdministrator || _authorization.HasPermission(ApplicationPermission.PurchaseOrdersApprove),
+			isAdministrator || _authorization.HasAnyPermission(ApplicationPermission.PurchaseOrdersView, ApplicationPermission.SupplierReturnsView),
+			isAdministrator || _authorization.HasAnyPermission(ApplicationPermission.InventoryCountsView, ApplicationPermission.StockTransfersView),
+			isAdministrator || _authorization.HasPermission(ApplicationPermission.UsersView),
 			cancellationToken);
 
 		await Task.WhenAll(inventoryTask, rolesTask);
@@ -46,5 +49,4 @@ public sealed class DashboardService
 
 	private async Task<DashboardData?> GetInventoryAsync(CancellationToken cancellationToken) =>
 		await _stock.GetDashboardDataAsync(cancellationToken);
-
 }

@@ -3,48 +3,48 @@
 	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
 	<!-- Base -->
-	<SolidColorBrush x:Key="BackgroundBrush"	Color="#F7F8FA" />
-	<SolidColorBrush x:Key="SurfaceBrush" Color="#FFFFFF" />
-	<SolidColorBrush x:Key="SurfaceAltBrush"	Color="#F9FAFB" />
+	<SolidColorBrush x:Key="BackgroundBrush" Color="#18181B" />
+	<SolidColorBrush x:Key="SurfaceBrush" Color="#1E1E22" />
+	<SolidColorBrush x:Key="SurfaceAltBrush" Color="#222226" />
 
 	<!-- Primary -->
-	<SolidColorBrush x:Key="PrimaryBrush" Color="#2563EB" />
+	<SolidColorBrush x:Key="PrimaryBrush" Color="#6C8FF5" />
 	<SolidColorBrush x:Key="PrimaryForegroundBrush" Color="#FFFFFF" />
-	<SolidColorBrush x:Key="PrimaryHoverBrush" Color="#1D4ED8" />
-	<SolidColorBrush x:Key="PrimaryPressedBrush" Color="#1E40AF" />
-	<SolidColorBrush x:Key="HoverBrush" Color="#0D2563EB" />
-	<SolidColorBrush x:Key="CardBorderBrush" Color="#EEF2F7" />
+	<SolidColorBrush x:Key="PrimaryHoverBrush" Color="#7C9CFF" />
+	<SolidColorBrush x:Key="PrimaryPressedBrush" Color="#5578DF" />
+	<SolidColorBrush x:Key="HoverBrush" Color="#27272C" />
+	<SolidColorBrush x:Key="CardBorderBrush" Color="#303036" />
 
 	<!-- Text -->
-	<SolidColorBrush x:Key="PrimaryTextBrush" Color="#111827" />
-	<SolidColorBrush x:Key="SecondaryTextBrush" Color="#6B7280" />
+	<SolidColorBrush x:Key="PrimaryTextBrush" Color="#E4E4E7" />
+	<SolidColorBrush x:Key="SecondaryTextBrush" Color="#A1A1AA" />
 
 	<!-- Borders -->
-	<SolidColorBrush x:Key="BorderBrush" Color="#E5E7EB" />
+	<SolidColorBrush x:Key="BorderBrush" Color="#303036" />
 
 	<!-- Navigation -->
-	<SolidColorBrush x:Key="NavigationBackgroundBrush" Color="#1F2937" />
-	<SolidColorBrush x:Key="NavigationForegroundBrush" Color="#E5E7EB" />
-	<SolidColorBrush x:Key="NavigationHoverBrush" Color="#374151" />
-	<SolidColorBrush x:Key="NavigationSelectedBrush" Color="#2563EB" />
+	<SolidColorBrush x:Key="NavigationBackgroundBrush" Color="#1B1B1F" />
+	<SolidColorBrush x:Key="NavigationForegroundBrush" Color="#D4D4D8" />
+	<SolidColorBrush x:Key="NavigationHoverBrush" Color="#29292E" />
+	<SolidColorBrush x:Key="NavigationSelectedBrush" Color="#34343A" />
 
 	<!-- Navigation Selection -->
-	<SolidColorBrush x:Key="NavigationSelectedBackgroundBrush" Color="#1A2563EB" />
-	<SolidColorBrush x:Key="CopyableTextSelectionBrush" Color="#4D2563EB" />
-	<SolidColorBrush x:Key="NavigationAccentBrush" Color="#2563EB" />
+	<SolidColorBrush x:Key="NavigationSelectedBackgroundBrush" Color="#2C2C32" />
+	<SolidColorBrush x:Key="CopyableTextSelectionBrush" Color="#596C8FF5" />
+	<SolidColorBrush x:Key="NavigationAccentBrush" Color="#6C8FF5" />
 
 	<!-- Sidebar -->
-	<SolidColorBrush x:Key="NavigationBorderBrush" Color="#2E3948" />
-	<SolidColorBrush x:Key="NavigationUserPanelBrush" Color="#263244" />
-	<SolidColorBrush x:Key="NavigationUserPanelBorderBrush" Color="#344155" />
-	<SolidColorBrush x:Key="NavigationMutedTextBrush" Color="#9CA9BA" />
+	<SolidColorBrush x:Key="NavigationBorderBrush" Color="#303036" />
+	<SolidColorBrush x:Key="NavigationUserPanelBrush" Color="#202024" />
+	<SolidColorBrush x:Key="NavigationUserPanelBorderBrush" Color="#303036" />
+	<SolidColorBrush x:Key="NavigationMutedTextBrush" Color="#8D8D96" />
 
 	<!-- Status -->
-	<SolidColorBrush x:Key="SuccessBrush" Color="#DCFCE7" />
-	<SolidColorBrush x:Key="SuccessForegroundBrush" Color="#166534" />
-	<SolidColorBrush x:Key="WarningBrush" Color="#FEF3C7" />
-	<SolidColorBrush x:Key="WarningForegroundBrush" Color="#92400E" />
-	<SolidColorBrush x:Key="ErrorBrush" Color="#FEE2E2" />
-	<SolidColorBrush x:Key="ErrorForegroundBrush" Color="#991B1B" />
+	<SolidColorBrush x:Key="SuccessBrush" Color="#173B2A" />
+	<SolidColorBrush x:Key="SuccessForegroundBrush" Color="#74D99F" />
+	<SolidColorBrush x:Key="WarningBrush" Color="#443616" />
+	<SolidColorBrush x:Key="WarningForegroundBrush" Color="#F0C36A" />
+	<SolidColorBrush x:Key="ErrorBrush" Color="#472024" />
+	<SolidColorBrush x:Key="ErrorForegroundBrush" Color="#F28B91" />
 
 </ResourceDictionary>

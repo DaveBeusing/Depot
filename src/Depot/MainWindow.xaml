@@ -1,209 +1,108 @@
-﻿<Window
-	x:Class="Depot.MainWindow"
-	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-	xmlns:controls="clr-namespace:Depot.Controls"
-	xmlns:commands="clr-namespace:Depot.Commands"
-	xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-	xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-	xmlns:viewModels="clr-namespace:Depot.ViewModels"
-	xmlns:administrationViewModels="clr-namespace:Depot.ViewModels.Administration"
-	xmlns:sharedViewModels="clr-namespace:Depot.ViewModels.Shared"
-	xmlns:views="clr-namespace:Depot.Views"
-	xmlns:administrationViews="clr-namespace:Depot.Views.Administration"
-	xmlns:sharedViews="clr-namespace:Depot.Views.Shared"
-	xmlns:masterDataViewModels="clr-namespace:Depot.ViewModels.MasterData"
-	xmlns:masterDataViews="clr-namespace:Depot.Views.MasterData"
-	xmlns:purposeViewModels="clr-namespace:Depot.ViewModels.Purposes"
-	xmlns:purposeViews="clr-namespace:Depot.Views.Purposes"
-	xmlns:reasonCodeViewModels="clr-namespace:Depot.ViewModels.ReasonCodes"
-	xmlns:reasonCodeViews="clr-namespace:Depot.Views.ReasonCodes"
-	xmlns:warehouseViewModels="clr-namespace:Depot.ViewModels.Warehouses"
-	xmlns:warehouseViews="clr-namespace:Depot.Views.Warehouses"
-	xmlns:supplierViewModels="clr-namespace:Depot.ViewModels.Suppliers"
-	xmlns:supplierViews="clr-namespace:Depot.Views.Suppliers"
-	xmlns:userViewModels="clr-namespace:Depot.ViewModels.Users"
-	xmlns:userViews="clr-namespace:Depot.Views.Users"
-	xmlns:helpViewModels="clr-namespace:Depot.ViewModels.Help"
-	xmlns:helpViews="clr-namespace:Depot.Views.Help"
-	mc:Ignorable="d"
-	Title="Depot - Inventory Management"
-	Icon="/Resources/Images/Depot.ico"
-	Width="1600"
-	Height="950"
-	MinWidth="1200"
-	MinHeight="700"
-	Activated="OnWindowActivated"
-	Deactivated="OnWindowDeactivated">
-	<Window.CommandBindings>
-		<CommandBinding Command="{x:Static commands:HelpCommands.OpenHelp}" Executed="OnOpenHelpExecuted" />
-		<CommandBinding Command="{x:Static commands:HelpCommands.OpenTopic}" Executed="OnOpenHelpTopicExecuted" />
-		<CommandBinding Command="{x:Static commands:HelpCommands.CopyDiagnostics}" Executed="OnCopyDiagnosticsExecuted" />
-	</Window.CommandBindings>
-	<Window.InputBindings>
-		<KeyBinding Key="F1" Command="{x:Static commands:HelpCommands.OpenHelp}" />
-	</Window.InputBindings>
+<Window x:Class="Depot.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:Depot"
+        xmlns:controls="clr-namespace:Depot.Controls"
+        xmlns:commands="clr-namespace:Depot.Commands"
+        xmlns:viewModels="clr-namespace:Depot.ViewModels"
+        xmlns:administrationViewModels="clr-namespace:Depot.ViewModels.Administration"
+        xmlns:sharedViewModels="clr-namespace:Depot.ViewModels.Shared"
+        xmlns:views="clr-namespace:Depot.Views"
+        xmlns:administrationViews="clr-namespace:Depot.Views.Administration"
+        xmlns:sharedViews="clr-namespace:Depot.Views.Shared"
+        xmlns:masterDataViewModels="clr-namespace:Depot.ViewModels.MasterData"
+        xmlns:masterDataViews="clr-namespace:Depot.Views.MasterData"
+        xmlns:purposeViewModels="clr-namespace:Depot.ViewModels.Purposes"
+        xmlns:purposeViews="clr-namespace:Depot.Views.Purposes"
+        xmlns:reasonCodeViewModels="clr-namespace:Depot.ViewModels.ReasonCodes"
+        xmlns:reasonCodeViews="clr-namespace:Depot.Views.ReasonCodes"
+        xmlns:warehouseViewModels="clr-namespace:Depot.ViewModels.Warehouses"
+        xmlns:warehouseViews="clr-namespace:Depot.Views.Warehouses"
+        xmlns:supplierViewModels="clr-namespace:Depot.ViewModels.Suppliers"
+        xmlns:supplierViews="clr-namespace:Depot.Views.Suppliers"
+        xmlns:userViewModels="clr-namespace:Depot.ViewModels.Users"
+        xmlns:userViews="clr-namespace:Depot.Views.Users"
+        xmlns:helpViewModels="clr-namespace:Depot.ViewModels.Help"
+        xmlns:helpViews="clr-namespace:Depot.Views.Help"
+        Title="Depot - Inventory Management" Icon="/Resources/Images/Depot.ico" Width="1600" Height="950" MinWidth="1200" MinHeight="700"
+        Activated="OnWindowActivated" Deactivated="OnWindowDeactivated">
+    <Window.CommandBindings>
+        <CommandBinding Command="{x:Static commands:HelpCommands.OpenHelp}" Executed="OnOpenHelpExecuted" />
+        <CommandBinding Command="{x:Static commands:HelpCommands.OpenTopic}" Executed="OnOpenHelpTopicExecuted" />
+        <CommandBinding Command="{x:Static commands:HelpCommands.CopyDiagnostics}" Executed="OnCopyDiagnosticsExecuted" />
+    </Window.CommandBindings>
+    <Window.InputBindings><KeyBinding Key="F1" Command="{x:Static commands:HelpCommands.OpenHelp}" /></Window.InputBindings>
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries><ResourceDictionary Source="Resources/Shell.xaml" /></ResourceDictionary.MergedDictionaries>
+            <DataTemplate DataType="{x:Type viewModels:DashboardViewModel}"><views:DashboardView /></DataTemplate>
+            <DataTemplate DataType="{x:Type viewModels:InventoryViewModel}"><views:InventoryView /></DataTemplate>
+            <DataTemplate DataType="{x:Type viewModels:ItemsViewModel}"><views:ItemsView /></DataTemplate>
+            <DataTemplate DataType="{x:Type viewModels:MovementsViewModel}"><views:MovementsView /></DataTemplate>
+            <DataTemplate DataType="{x:Type viewModels:StockTransfersViewModel}"><views:StockTransfersView /></DataTemplate>
+            <DataTemplate DataType="{x:Type viewModels:InventoryCountsViewModel}"><views:InventoryCountsView /></DataTemplate>
+            <DataTemplate DataType="{x:Type viewModels:MaterialIssuesViewModel}"><views:MaterialIssuesView /></DataTemplate>
+            <DataTemplate DataType="{x:Type viewModels:MaterialReturnsViewModel}"><views:MaterialReturnsView /></DataTemplate>
+            <DataTemplate DataType="{x:Type viewModels:PurchaseOrdersPageViewModel}"><views:PurchaseOrdersView /></DataTemplate>
+            <DataTemplate DataType="{x:Type viewModels:GoodsReceiptsPageViewModel}"><views:GoodsReceiptsView /></DataTemplate>
+            <DataTemplate DataType="{x:Type viewModels:SupplierReturnsViewModel}"><views:SupplierReturnsView /></DataTemplate>
+            <DataTemplate DataType="{x:Type viewModels:PurchaseOrderApprovalsViewModel}"><views:PurchaseOrderApprovalsView /></DataTemplate>
+            <DataTemplate DataType="{x:Type viewModels:ReportsViewModel}"><views:ReportsView /></DataTemplate>
+            <DataTemplate DataType="{x:Type viewModels:ShellModuleViewModel}"><views:ShellModuleView /></DataTemplate>
+            <DataTemplate DataType="{x:Type viewModels:ImportViewModel}"><views:ImportView /></DataTemplate>
+            <DataTemplate DataType="{x:Type viewModels:CurrentUserViewModel}"><views:CurrentUserView /></DataTemplate>
+            <DataTemplate DataType="{x:Type administrationViewModels:AdministrationViewModel}"><administrationViews:AdministrationView /></DataTemplate>
+            <DataTemplate DataType="{x:Type administrationViewModels:DatabaseSettingsViewModel}"><administrationViews:DatabaseSettingsView /></DataTemplate>
+            <DataTemplate DataType="{x:Type administrationViewModels:AboutViewModel}"><administrationViews:AboutView /></DataTemplate>
+            <DataTemplate DataType="{x:Type administrationViewModels:AuditLogViewModel}"><administrationViews:AuditLogView /></DataTemplate>
+            <DataTemplate DataType="{x:Type sharedViewModels:PlaceholderViewModel}"><sharedViews:PlaceholderView /></DataTemplate>
+            <DataTemplate DataType="{x:Type masterDataViewModels:MasterDataViewModel}"><masterDataViews:MasterDataView /></DataTemplate>
+            <DataTemplate DataType="{x:Type purposeViewModels:PurposeViewModel}"><purposeViews:PurposesView /></DataTemplate>
+            <DataTemplate DataType="{x:Type masterDataViewModels:ItemReferenceDataViewModel}"><masterDataViews:ItemReferenceDataView /></DataTemplate>
+            <DataTemplate DataType="{x:Type reasonCodeViewModels:ReasonCodeViewModel}"><reasonCodeViews:ReasonCodesView /></DataTemplate>
+            <DataTemplate DataType="{x:Type warehouseViewModels:WarehouseStructureViewModel}"><warehouseViews:WarehouseStructureView /></DataTemplate>
+            <DataTemplate DataType="{x:Type supplierViewModels:SupplierViewModel}"><supplierViews:SuppliersView /></DataTemplate>
+            <DataTemplate DataType="{x:Type userViewModels:UserViewModel}"><userViews:UsersView /></DataTemplate>
+            <DataTemplate DataType="{x:Type userViewModels:RoleViewModel}"><userViews:RolesView /></DataTemplate>
+            <DataTemplate DataType="{x:Type helpViewModels:HelpViewModel}"><helpViews:HelpView /></DataTemplate>
+            <DataTemplate DataType="{x:Type viewModels:NotificationCenterViewModel}"><views:NotificationCenterView /></DataTemplate>
+        </ResourceDictionary>
+    </Window.Resources>
 
-	<Window.Resources>
-		<ResourceDictionary>			
-			<DataTemplate DataType="{x:Type viewModels:DashboardViewModel}">
-				<views:DashboardView />
-			</DataTemplate>
-			<DataTemplate DataType="{x:Type viewModels:InventoryViewModel}">
-				<views:InventoryView />
-			</DataTemplate>
-			<DataTemplate DataType="{x:Type viewModels:ItemsViewModel}">
-				<views:ItemsView />
-			</DataTemplate>
-			<DataTemplate DataType="{x:Type viewModels:MovementsViewModel}">
-				<views:MovementsView />
-			</DataTemplate>
-			<DataTemplate DataType="{x:Type viewModels:StockTransfersViewModel}">
-				<views:StockTransfersView />
-			</DataTemplate>
-			<DataTemplate DataType="{x:Type viewModels:InventoryCountsViewModel}">
-				<views:InventoryCountsView />
-			</DataTemplate>
-			<DataTemplate DataType="{x:Type viewModels:MaterialIssuesViewModel}">
-				<views:MaterialIssuesView />
-			</DataTemplate>
-			<DataTemplate DataType="{x:Type viewModels:MaterialReturnsViewModel}">
-				<views:MaterialReturnsView />
-			</DataTemplate>
-			<DataTemplate DataType="{x:Type viewModels:PurchaseOrdersPageViewModel}">
-				<views:PurchaseOrdersView />
-			</DataTemplate>
-			<DataTemplate DataType="{x:Type viewModels:GoodsReceiptsPageViewModel}">
-				<views:GoodsReceiptsView />
-			</DataTemplate>
-			<DataTemplate DataType="{x:Type viewModels:SupplierReturnsViewModel}">
-				<views:SupplierReturnsView />
-			</DataTemplate>
-			<DataTemplate DataType="{x:Type viewModels:PurchaseOrderApprovalsViewModel}">
-				<views:PurchaseOrderApprovalsView />
-			</DataTemplate>
-			<DataTemplate DataType="{x:Type viewModels:ReportsViewModel}">
-				<views:ReportsView />
-			</DataTemplate>
-			<DataTemplate DataType="{x:Type viewModels:ShellModuleViewModel}">
-				<views:ShellModuleView />
-			</DataTemplate>
-			<DataTemplate DataType="{x:Type viewModels:ImportViewModel}">
-				<views:ImportView />
-			</DataTemplate>
-			<DataTemplate DataType="{x:Type administrationViewModels:AdministrationViewModel}">
-				<administrationViews:AdministrationView />
-			</DataTemplate>
-			<DataTemplate DataType="{x:Type administrationViewModels:DatabaseSettingsViewModel}">
-				<administrationViews:DatabaseSettingsView />
-			</DataTemplate>
-			<DataTemplate DataType="{x:Type administrationViewModels:AboutViewModel}">
-				<administrationViews:AboutView />
-			</DataTemplate>
-			<DataTemplate DataType="{x:Type administrationViewModels:AuditLogViewModel}">
-				<administrationViews:AuditLogView />
-			</DataTemplate>
-			<DataTemplate DataType="{x:Type sharedViewModels:PlaceholderViewModel}">
-				<sharedViews:PlaceholderView />
-			</DataTemplate>
-			<DataTemplate DataType="{x:Type masterDataViewModels:MasterDataViewModel}">
-				<masterDataViews:MasterDataView />
-			</DataTemplate>
-			<DataTemplate DataType="{x:Type purposeViewModels:PurposeViewModel}">
-				<purposeViews:PurposesView />
-			</DataTemplate>
-			<DataTemplate DataType="{x:Type masterDataViewModels:ItemReferenceDataViewModel}">
-				<masterDataViews:ItemReferenceDataView />
-			</DataTemplate>
-			<DataTemplate DataType="{x:Type reasonCodeViewModels:ReasonCodeViewModel}">
-				<reasonCodeViews:ReasonCodesView />
-			</DataTemplate>
-			<DataTemplate DataType="{x:Type warehouseViewModels:WarehouseStructureViewModel}">
-				<warehouseViews:WarehouseStructureView />
-			</DataTemplate>
-			<DataTemplate DataType="{x:Type supplierViewModels:SupplierViewModel}">
-				<supplierViews:SuppliersView />
-			</DataTemplate>
-			<DataTemplate DataType="{x:Type userViewModels:UserViewModel}">
-				<userViews:UsersView />
-			</DataTemplate>
-			<DataTemplate DataType="{x:Type userViewModels:RoleViewModel}">
-				<userViews:RolesView />
-			</DataTemplate>
-			<DataTemplate DataType="{x:Type helpViewModels:HelpViewModel}">
-				<helpViews:HelpView />
-			</DataTemplate>
-			<DataTemplate DataType="{x:Type viewModels:NotificationCenterViewModel}">
-				<views:NotificationCenterView />
-			</DataTemplate>
-		</ResourceDictionary>
-	</Window.Resources>
+    <Grid Background="{DynamicResource BackgroundBrush}" UseLayoutRounding="True" SnapsToDevicePixels="True">
+        <Grid.ColumnDefinitions><ColumnDefinition Width="52" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+        <Grid.RowDefinitions><RowDefinition Height="*" /><RowDefinition Height="24" /></Grid.RowDefinitions>
 
-	<Grid Background="{StaticResource BackgroundBrush}" UseLayoutRounding="True" SnapsToDevicePixels="True">
+        <Border Grid.Row="0" Grid.Column="0" Background="{DynamicResource NavigationBackgroundBrush}" BorderBrush="{DynamicResource NavigationBorderBrush}" BorderThickness="0,0,1,0">
+            <DockPanel>
+                <Border DockPanel.Dock="Top" Height="52" BorderBrush="{DynamicResource NavigationBorderBrush}" BorderThickness="0,0,0,1"><Image Source="/Resources/Images/Depot_32.png" Width="26" Height="26" /></Border>
+                <StackPanel DockPanel.Dock="Bottom">
+                    <Button Style="{StaticResource ActivityUtilityButtonStyle}" Command="{Binding NotificationCommand}" ToolTip="Notifications">
+                        <Grid Width="28" Height="28">
+                            <Path Width="20" Height="20" Data="{StaticResource Shell.NotificationIcon}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="1.5" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            <Border Style="{StaticResource NotificationBadgeStyle}" HorizontalAlignment="Right" VerticalAlignment="Top" Visibility="{Binding NotificationSummaryViewModel.HasUnreadNotifications, Converter={StaticResource BooleanToVisibilityConverter}}"><TextBlock Text="{Binding NotificationSummaryViewModel.UnreadBadgeText}" Foreground="White" FontSize="9" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center" /></Border>
+                        </Grid>
+                    </Button>
+                    <Button Style="{StaticResource ActivityUtilityButtonStyle}" Command="{x:Static commands:HelpCommands.OpenHelp}" ToolTip="Help (F1)"><Path Width="20" Height="20" Data="{StaticResource Shell.HelpIcon}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="1.5" Stretch="Uniform" /></Button>
+                    <Button Style="{StaticResource UserAvatarButtonStyle}" Content="{Binding CurrentUserInitials, RelativeSource={RelativeSource AncestorType={x:Type local:MainWindow}}}" ToolTip="{Binding CurrentUserDisplayName, RelativeSource={RelativeSource AncestorType={x:Type local:MainWindow}}}" Click="OnCurrentUserClick" />
+                </StackPanel>
+                <ListBox Style="{StaticResource ActivityBarListStyle}" ItemContainerStyle="{StaticResource ActivityBarItemStyle}" ItemTemplate="{StaticResource ActivityBarItemTemplate}" ItemsSource="{Binding NavigationItems}" SelectedItem="{Binding SelectedNavigationItem}" />
+            </DockPanel>
+        </Border>
 
-		<Grid.ColumnDefinitions>
-			<ColumnDefinition Width="{StaticResource Shell.Sidebar.Width}" />
-			<ColumnDefinition Width="*" />
-		</Grid.ColumnDefinitions>
+        <Grid Grid.Row="0" Grid.Column="1" Background="{DynamicResource BackgroundBrush}">
+            <Grid.RowDefinitions><RowDefinition Height="36" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+            <controls:WorkspaceTabControl x:Name="WorkspaceTabs" Grid.Row="0" ActiveItem="{Binding SelectedNavigationItem, Mode=TwoWay}" Style="{StaticResource WorkspaceTabControlStyle}" ItemContainerStyle="{StaticResource WorkspaceTabItemStyle}" ItemTemplate="{StaticResource WorkspaceTabHeaderTemplate}" TabClosing="OnWorkspaceTabClosing" />
+            <ContentControl Grid.Row="1" Content="{Binding SelectedNavigationItem.Content}" ContentTemplateSelector="{StaticResource ActivityContextTemplateSelector}" />
+            <Border Grid.Row="2" Padding="16" Background="{DynamicResource BackgroundBrush}"><ContentControl Content="{Binding CurrentViewModel}" HorizontalContentAlignment="Stretch" VerticalAlignment="Stretch" Background="{DynamicResource BackgroundBrush}" /></Border>
+        </Grid>
 
-		<Border
-			Grid.Column="0"
-			Background="{StaticResource NavigationBackgroundBrush}"
-			BorderBrush="{StaticResource NavigationBorderBrush}"
-			BorderThickness="0,0,1,0">
-
-			<DockPanel>
-
-				<controls:SidebarBrand
-					DockPanel.Dock="Top"
-					LogoSource="/Resources/Images/Depot.png"
-					Title="Depot"
-					Subtitle="Inventory Management" />
-
-				<controls:SidebarUserPanel
-					DockPanel.Dock="Bottom"
-					DisplayName="{Binding CurrentUserDisplayName}"
-					Role="{Binding CurrentUserRole}"
-					ConnectionState="{Binding ConnectionStatus.CompactState}"
-					ConnectionStatus="{Binding ConnectionStatus.CompactStatus}"
-					LogoutCommand="{Binding LogoutCommand}" />
-
-				<Button
-					DockPanel.Dock="Bottom"
-					AutomationProperties.Name="Open Help Center"
-					Command="{x:Static commands:HelpCommands.OpenHelp}"
-					Content="Help Center"
-					ContentTemplate="{StaticResource NavigationHelpActionTemplate}"
-					Style="{StaticResource NavigationActionButtonStyle}" />
-
-				<Button
-					DockPanel.Dock="Bottom"
-					AutomationProperties.Name="Open Notification Center"
-					Command="{Binding NotificationCommand}"
-					Content="{Binding NotificationSummaryViewModel}"
-					ContentTemplate="{StaticResource NavigationNotificationActionTemplate}"
-					Style="{StaticResource NavigationActionButtonStyle}" />
-
-
-				<!-- Navigation Items -->
-				<ListBox
-					Style="{StaticResource NavigationListBoxStyle}"
-					ItemContainerStyle="{StaticResource NavigationListBoxItemStyle}"
-					ItemTemplate="{StaticResource NavigationItemTemplate}"
-					ItemsSource="{Binding NavigationItems}"
-					SelectedItem="{Binding SelectedNavigationItem}" />
-
-			</DockPanel>
-
-		</Border>
-
-		<Grid
-			Grid.Column="1"
-			Margin="{DynamicResource Shell.Content.Margin}"
-			Background="{DynamicResource BackgroundBrush}">
-			<ContentControl Content="{Binding CurrentViewModel}" Style="{StaticResource ShellContentHostStyle}" />
-		</Grid>
-
-	</Grid>
-
+        <Border Grid.Row="1" Grid.ColumnSpan="2" Background="{DynamicResource SurfaceAltBrush}" BorderBrush="{DynamicResource NavigationBorderBrush}" BorderThickness="0,1,0,0">
+            <Grid Margin="8,0"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center"><Ellipse Width="7" Height="7" Fill="{DynamicResource SuccessForegroundBrush}" Margin="0,0,6,0" /><TextBlock Text="{Binding ConnectionStatus.CompactStatus}" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="10" /></StackPanel>
+                <TextBlock Grid.Column="1" Text="{Binding SelectedNavigationItem.Name}" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="10" VerticalAlignment="Center" Margin="18,0,0,0" />
+                <TextBlock Grid.Column="3" Text="{Binding CurrentUserDisplayName}" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="10" VerticalAlignment="Center" />
+            </Grid>
+        </Border>
+    </Grid>
 </Window>
