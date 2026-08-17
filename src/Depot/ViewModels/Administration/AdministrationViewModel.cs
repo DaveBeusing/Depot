@@ -73,7 +73,15 @@ public sealed class AdministrationViewModel : BaseViewModel, IDisposable
 		SetSelection(NavigationItems.FirstOrDefault());
 	}
 
+	public string Title => "Administration";
 	public ObservableCollection<NavigationItem> NavigationItems { get; } = [];
+	public ObservableCollection<NavigationItem> Pages => NavigationItems;
+	public NavigationItem? SelectedPage
+	{
+		get => SelectedNavigationItem;
+		set => SelectedNavigationItem = value;
+	}
+
 	public NavigationItem? SelectedNavigationItem
 	{
 		get => _selectedNavigationItem;
@@ -145,6 +153,7 @@ public sealed class AdministrationViewModel : BaseViewModel, IDisposable
 	{
 		_selectedNavigationItem = target;
 		OnPropertyChanged(nameof(SelectedNavigationItem));
+		OnPropertyChanged(nameof(SelectedPage));
 		CurrentViewModel = target?.Section is AdministrationSection section ? ViewModelFor(section) : null;
 		OnPropertyChanged(nameof(HelpTopicId));
 	}
