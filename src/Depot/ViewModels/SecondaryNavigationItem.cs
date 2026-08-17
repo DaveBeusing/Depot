@@ -8,19 +8,22 @@ public sealed class SecondaryNavigationItem : IDisposable
 	private readonly Lazy<BaseViewModel> _content;
 	private readonly Func<BaseViewModel, CancellationToken, Task> _loadAsync;
 	private readonly NavigationLoadState _loadState = new();
+	private readonly bool _ownsContent;
 
 	public SecondaryNavigationItem(
 		string name,
 		Func<BaseViewModel> createContent,
 		Func<BaseViewModel, CancellationToken, Task> loadAsync,
 		string helpTopicId,
-		Action? activate = null)
+		Action? activate = null,
+		bool ownsContent = true)
 	{
 		Name = name;
 		_content = new Lazy<BaseViewModel>(createContent);
 		_loadAsync = loadAsync;
 		HelpTopicId = helpTopicId;
 		Activate = activate;
+		_ownsContent = ownsContent;
 	}
 
 	public string Name { get; }
@@ -47,6 +50,6 @@ public sealed class SecondaryNavigationItem : IDisposable
 	public void Dispose()
 	{
 		_loadState.Dispose();
-		if (_content.IsValueCreated && _content.Value is IDisposable disposable) disposable.Dispose();
+		if (_ownsContent && _content.IsValueCreated && _content.Value is IDisposable disposable) disposable.Dispose();
 	}
 }
