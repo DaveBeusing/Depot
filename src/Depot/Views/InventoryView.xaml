@@ -15,7 +15,7 @@
 								<DataGridTextColumn Header="Stock" Binding="{Binding CurrentStock, StringFormat={}{0:N2}}" Width="82" ElementStyle="{StaticResource AppDataGridNumericTextStyle}" />
 							</DataGrid.Columns>
 						</DataGrid>
-						<controls:WorkflowListState ItemCount="{Binding Items.Count}" SearchText="{Binding SearchText}" IsBusy="{Binding IsBusy}" HasError="{Binding HasOperationError}" ErrorText="{Binding OperationError}" />
+						<controls:EmptyState Title="No inventory positions yet" Description="Inventory positions are created when stock is received, issued, returned, transferred, or otherwise moved into a storage location." Visibility="{Binding HasNoItems, Converter={StaticResource BooleanToVisibilityConverter}}" />
 					</Grid>
 					<controls:PaginationControl Grid.Row="2" Margin="0,10,0,0" PreviousCommand="{Binding PreviousPageCommand}" NextCommand="{Binding NextPageCommand}" PageText="{Binding PageNumber, StringFormat=Page {0}}" />
 				</Grid></controls:Card>
