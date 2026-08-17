@@ -1,6 +1,7 @@
 <ResourceDictionary
 	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:controls="clr-namespace:Depot.Controls">
 
 	<Thickness x:Key="Workspace.Padding">20</Thickness>
 	<Thickness x:Key="Workspace.Section.Margin">0,0,0,16</Thickness>
@@ -27,6 +28,15 @@
 		<Setter Property="FontSize" Value="12" />
 		<Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}" />
 		<Setter Property="TextWrapping" Value="Wrap" />
+	</Style>
+
+	<Style x:Key="WorkspaceCardStyle" TargetType="{x:Type controls:Card}">
+		<Setter Property="Padding" Value="14" />
+		<Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+		<Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+		<Setter Property="BorderThickness" Value="1" />
+		<Setter Property="HorizontalContentAlignment" Value="Stretch" />
+		<Setter Property="VerticalContentAlignment" Value="Stretch" />
 	</Style>
 
 	<Style x:Key="WorkspaceSectionHeaderStyle" TargetType="TextBlock">
