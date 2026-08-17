@@ -17,8 +17,8 @@
 	</Style>
 
 	<Style x:Key="MasterDataListBoxItemStyle" TargetType="ListBoxItem">
-		<Setter Property="Margin" Value="4" />
-		<Setter Property="Padding" Value="{DynamicResource Control.Padding}" />
+		<Setter Property="Margin" Value="3" />
+		<Setter Property="Padding" Value="10,7" />
 		<Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
 		<Setter Property="HorizontalContentAlignment" Value="Stretch" />
 		<Setter Property="FocusVisualStyle" Value="{x:Null}" />
@@ -29,16 +29,14 @@
 	</Style>
 
 	<Style TargetType="{x:Type controls:FilterBar}">
-		<Setter Property="Margin" Value="0,0,0,12" />
+		<Setter Property="Margin" Value="0,0,0,10" />
 		<Setter Property="HorizontalContentAlignment" Value="Stretch" />
 		<Setter Property="VerticalContentAlignment" Value="Stretch" />
 		<Setter Property="Template">
 			<Setter.Value>
 				<ControlTemplate TargetType="{x:Type controls:FilterBar}">
-					<Border Padding="12" Background="{DynamicResource SurfaceAltBrush}" CornerRadius="{DynamicResource CornerRadius.Small}">
-						<ContentPresenter
-							HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
-							VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+					<Border Padding="10" Background="{DynamicResource SurfaceAltBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="8">
+						<ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
 					</Border>
 				</ControlTemplate>
 			</Setter.Value>
@@ -61,14 +59,14 @@
 	</Style>
 
 	<Style TargetType="{x:Type controls:WorkflowHeader}">
-		<Setter Property="Margin" Value="0,0,0,16" />
+		<Setter Property="Margin" Value="0,0,0,12" />
 		<Setter Property="Template">
 			<Setter.Value>
 				<ControlTemplate TargetType="{x:Type controls:WorkflowHeader}">
 					<Grid>
 						<Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
 						<StackPanel>
-							<TextBlock Text="{TemplateBinding Title}" TextTrimming="CharacterEllipsis" Style="{DynamicResource SectionTitleStyle}" />
+							<TextBlock Text="{TemplateBinding Title}" TextTrimming="CharacterEllipsis" FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryTextBrush}" />
 							<TextBlock Margin="0,3,0,0" Text="{TemplateBinding Subtitle}" TextTrimming="CharacterEllipsis" Style="{DynamicResource CaptionStyle}" />
 						</StackPanel>
 						<controls:DocumentStatusBadge Grid.Column="1" Margin="16,0,0,0" Status="{TemplateBinding Status}" />
@@ -79,17 +77,19 @@
 	</Style>
 
 	<Style TargetType="{x:Type controls:WorkflowActionBar}">
-		<Setter Property="Margin" Value="0,16,0,0" />
+		<Setter Property="Margin" Value="0,12,0,0" />
 		<Setter Property="HorizontalContentAlignment" Value="Stretch" />
 		<Setter Property="VerticalContentAlignment" Value="Stretch" />
 		<Setter Property="Template">
 			<Setter.Value>
 				<ControlTemplate TargetType="{x:Type controls:WorkflowActionBar}">
-					<Grid>
-						<Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="24" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-						<ContentPresenter Content="{TemplateBinding SecondaryActions}" HorizontalAlignment="Left" VerticalAlignment="Center" />
-						<ContentPresenter Grid.Column="2" Content="{TemplateBinding PrimaryAction}" HorizontalAlignment="Right" VerticalAlignment="Center" />
-					</Grid>
+					<Border Padding="10,9" Background="{DynamicResource SurfaceAltBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="8">
+						<Grid>
+							<Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="20" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+							<ContentPresenter Content="{TemplateBinding SecondaryActions}" HorizontalAlignment="Left" VerticalAlignment="Center" />
+							<ContentPresenter Grid.Column="2" Content="{TemplateBinding PrimaryAction}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+						</Grid>
+					</Border>
 				</ControlTemplate>
 			</Setter.Value>
 		</Setter>
@@ -124,7 +124,7 @@
 					<Grid>
 						<Grid.ColumnDefinitions>
 							<ColumnDefinition Width="{DynamicResource MasterPane.DefaultWidth}" MinWidth="{DynamicResource MasterPane.MinWidth}" MaxWidth="{DynamicResource MasterPane.MaxWidth}" />
-							<ColumnDefinition Width="{DynamicResource MasterDetail.ColumnGap}" />
+							<ColumnDefinition Width="12" />
 							<ColumnDefinition Width="*" MinWidth="360" />
 						</Grid.ColumnDefinitions>
 						<ContentPresenter Content="{TemplateBinding Master}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
@@ -138,23 +138,10 @@
 	<Style x:Key="ShellContentHostStyle" TargetType="ContentControl">
 		<Setter Property="HorizontalContentAlignment" Value="Stretch" />
 		<Setter Property="VerticalContentAlignment" Value="Stretch" />
-		<Setter Property="Template">
-			<Setter.Value>
-				<ControlTemplate TargetType="ContentControl">
-					<ContentPresenter
-						HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
-						VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
-						Content="{TemplateBinding Content}"
-						ContentStringFormat="{TemplateBinding ContentStringFormat}"
-						ContentTemplate="{TemplateBinding ContentTemplate}"
-						ContentTemplateSelector="{TemplateBinding ContentTemplateSelector}" />
-				</ControlTemplate>
-			</Setter.Value>
-		</Setter>
+		<Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ContentControl"><ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}" Content="{TemplateBinding Content}" ContentStringFormat="{TemplateBinding ContentStringFormat}" ContentTemplate="{TemplateBinding ContentTemplate}" ContentTemplateSelector="{TemplateBinding ContentTemplateSelector}" /></ControlTemplate></Setter.Value></Setter>
 	</Style>
 
-	<Style TargetType="{x:Type controls:ShellModuleContentControl}" BasedOn="{StaticResource ShellContentHostStyle}">
-	</Style>
+	<Style TargetType="{x:Type controls:ShellModuleContentControl}" BasedOn="{StaticResource ShellContentHostStyle}" />
 
 	<Style TargetType="{x:Type controls:WorkflowListState}">
 		<Setter Property="Panel.ZIndex" Value="2" />
@@ -163,9 +150,7 @@
 		<Setter Property="Template">
 			<Setter.Value>
 				<ControlTemplate TargetType="{x:Type controls:WorkflowListState}">
-					<Border Background="{TemplateBinding Background}">
-						<controls:EmptyState x:Name="State" Title="No documents yet" Description="Create the first document to begin this workflow." />
-					</Border>
+					<Border Background="{TemplateBinding Background}"><controls:EmptyState x:Name="State" Title="No documents yet" Description="Create the first document to begin this workflow." /></Border>
 					<ControlTemplate.Triggers>
 						<Trigger Property="ItemCount" Value="0"><Setter Property="Visibility" Value="Visible" /></Trigger>
 						<Trigger Property="IsSearchActive" Value="True"><Setter TargetName="State" Property="Title" Value="No results" /><Setter TargetName="State" Property="Description" Value="No documents match the current search and filters." /></Trigger>
@@ -176,5 +161,4 @@
 			</Setter.Value>
 		</Setter>
 	</Style>
-
 </ResourceDictionary>
