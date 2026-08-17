@@ -4,132 +4,62 @@
 	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
 	xmlns:controls="clr-namespace:Depot.Controls">
 
-	<Grid>
-
+	<Grid Margin="{StaticResource Workspace.Padding}">
 		<Grid.RowDefinitions>
 			<RowDefinition Height="Auto" />
 			<RowDefinition Height="Auto" />
-			<RowDefinition Height="24" />
+			<RowDefinition Height="16" />
 			<RowDefinition Height="*" />
 		</Grid.RowDefinitions>
 
-		<controls:OperationPanel
-			Grid.Row="0"
-			IsBusy="{Binding IsBusy}"
-			HasError="{Binding HasOperationError}"
-			StatusText="{Binding StatusText}"
-			ErrorText="{Binding OperationError}" />
+		<controls:OperationPanel Grid.Row="0" IsBusy="{Binding IsBusy}" HasError="{Binding HasOperationError}" StatusText="{Binding StatusText}" ErrorText="{Binding OperationError}" />
 
 		<StackPanel Grid.Row="1">
-		<Grid Visibility="{Binding HasCoreInventoryMetrics, Converter={StaticResource BooleanToVisibilityConverter}}">
+			<Grid Visibility="{Binding HasCoreInventoryMetrics, Converter={StaticResource BooleanToVisibilityConverter}}">
+				<Grid.ColumnDefinitions>
+					<ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /><ColumnDefinition Width="12" />
+					<ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" />
+				</Grid.ColumnDefinitions>
+				<controls:MetricCard Grid.Column="0" Icon="M 5,3 L 15,3 L 17,5 L 17,19 L 3,19 L 3,5 Z M 7,3 L 7,1 L 13,1 L 13,3 M 7,8 L 13,8 M 7,12 L 13,12 M 7,16 L 11,16" SupportingText="Catalog entries" Title="Total Items" Value="{Binding TotalItems, StringFormat={}{0:N0}}" />
+				<controls:MetricCard Grid.Column="2" Icon="M 2,6 L 10,2 L 18,6 L 10,10 Z M 2,6 L 2,14 L 10,18 L 10,10 M 18,6 L 18,14 L 10,18" SupportingText="Units currently on hand" Title="Total Stock" Value="{Binding TotalStockQuantity, StringFormat={}{0:N0}}" />
+				<controls:MetricCard Grid.Column="4" Icon="M 18,10 A 8,8 0 1 1 2,10 A 8,8 0 1 1 18,10 M 12.5,6.5 C 11.8,5.8 8.5,5.5 8,7 C 7.4,8.8 12.8,8.5 12,11 C 11.5,12.5 8.2,12.2 7.5,11.5 M 10,4.5 L 10,15.5" SupportingText="Current inventory valuation" Title="Inventory Value" Value="{Binding TotalInventoryValue}" ValueStringFormat="{}{0:C2}" />
+				<controls:MetricCard Grid.Column="6" Icon="M 3,6 L 15,6 M 12,3 L 15,6 L 12,9 M 17,14 L 5,14 M 8,11 L 5,14 L 8,17" SupportingText="Recorded stock transactions" Title="Movements" Value="{Binding TotalMovements, StringFormat={}{0:N0}}" />
+			</Grid>
 
-			<Grid.ColumnDefinitions>
-				<ColumnDefinition Width="*" />
-				<ColumnDefinition Width="16" />
-				<ColumnDefinition Width="*" />
-				<ColumnDefinition Width="16" />
-				<ColumnDefinition Width="*" />
-				<ColumnDefinition Width="16" />
-				<ColumnDefinition Width="*" />
-			</Grid.ColumnDefinitions>
-
-			<controls:MetricCard
-				Grid.Column="0"
-				Icon="M 5,3 L 15,3 L 17,5 L 17,19 L 3,19 L 3,5 Z M 7,3 L 7,1 L 13,1 L 13,3 M 7,8 L 13,8 M 7,12 L 13,12 M 7,16 L 11,16"
-				SupportingText="Catalog entries"
-				Title="Total Items"
-				Value="{Binding TotalItems, StringFormat={}{0:N0}}" />
-
-			<controls:MetricCard
-				Grid.Column="2"
-				Icon="M 2,6 L 10,2 L 18,6 L 10,10 Z M 2,6 L 2,14 L 10,18 L 10,10 M 18,6 L 18,14 L 10,18"
-				SupportingText="Units currently on hand"
-				Title="Total Stock"
-				Value="{Binding TotalStockQuantity, StringFormat={}{0:N0}}" />
-
-			<controls:MetricCard
-				Grid.Column="4"
-				Icon="M 18,10 A 8,8 0 1 1 2,10 A 8,8 0 1 1 18,10 M 12.5,6.5 C 11.8,5.8 8.5,5.5 8,7 C 7.4,8.8 12.8,8.5 12,11 C 11.5,12.5 8.2,12.2 7.5,11.5 M 10,4.5 L 10,15.5"
-				SupportingText="Current inventory valuation"
-				Title="Inventory Value"
-				Value="{Binding TotalInventoryValue}"
-				ValueStringFormat="{}{0:C2}" />
-
-			<controls:MetricCard
-				Grid.Column="6"
-				Icon="M 3,6 L 15,6 M 12,3 L 15,6 L 12,9 M 17,14 L 5,14 M 8,11 L 5,14 L 8,17"
-				SupportingText="Recorded stock transactions"
-				Title="Movements"
-				Value="{Binding TotalMovements, StringFormat={}{0:N0}}" />
-
-		</Grid>
-
-		<Grid Margin="{StaticResource Control.Margin.Large}">
-			<Grid.ColumnDefinitions>
-				<ColumnDefinition Width="*" />
-				<ColumnDefinition Width="16" />
-				<ColumnDefinition Width="*" />
-				<ColumnDefinition Width="16" />
-				<ColumnDefinition Width="*" />
-				<ColumnDefinition Width="16" />
-				<ColumnDefinition Width="*" />
-			</Grid.ColumnDefinitions>
-			<controls:MetricCard Grid.Column="0" Title="Pending Approvals" Value="{Binding ApprovalSummary.OpenCount, StringFormat={}{0:N0}}" SupportingText="{Binding ApprovalSupportingText}" Visibility="{Binding HasApprovalMetrics, Converter={StaticResource BooleanToVisibilityConverter}}" />
-			<controls:MetricCard Grid.Column="2" Title="Purchasing Attention" Value="{Binding PurchasingAttentionCount, StringFormat={}{0:N0}}" SupportingText="{Binding PurchasingSupportingText}" Visibility="{Binding HasPurchasingMetrics, Converter={StaticResource BooleanToVisibilityConverter}}" />
-			<controls:MetricCard Grid.Column="4" Title="Warehouse Work" Value="{Binding WarehouseWorkCount, StringFormat={}{0:N0}}" SupportingText="{Binding WarehouseSupportingText}" Visibility="{Binding HasWarehouseMetrics, Converter={StaticResource BooleanToVisibilityConverter}}" />
-			<controls:MetricCard Grid.Column="6" Title="Active Users" Value="{Binding AdministrationMetrics.ActiveUsers, StringFormat={}{0:N0}}" SupportingText="Active security principals" Visibility="{Binding HasAdministrationMetrics, Converter={StaticResource BooleanToVisibilityConverter}}" />
-		</Grid>
+			<Grid Margin="0,12,0,0">
+				<Grid.ColumnDefinitions>
+					<ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /><ColumnDefinition Width="12" />
+					<ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" />
+				</Grid.ColumnDefinitions>
+				<controls:MetricCard Grid.Column="0" Title="Pending Approvals" Value="{Binding ApprovalSummary.OpenCount, StringFormat={}{0:N0}}" SupportingText="{Binding ApprovalSupportingText}" Visibility="{Binding HasApprovalMetrics, Converter={StaticResource BooleanToVisibilityConverter}}" />
+				<controls:MetricCard Grid.Column="2" Title="Purchasing Attention" Value="{Binding PurchasingAttentionCount, StringFormat={}{0:N0}}" SupportingText="{Binding PurchasingSupportingText}" Visibility="{Binding HasPurchasingMetrics, Converter={StaticResource BooleanToVisibilityConverter}}" />
+				<controls:MetricCard Grid.Column="4" Title="Warehouse Work" Value="{Binding WarehouseWorkCount, StringFormat={}{0:N0}}" SupportingText="{Binding WarehouseSupportingText}" Visibility="{Binding HasWarehouseMetrics, Converter={StaticResource BooleanToVisibilityConverter}}" />
+				<controls:MetricCard Grid.Column="6" Title="Active Users" Value="{Binding AdministrationMetrics.ActiveUsers, StringFormat={}{0:N0}}" SupportingText="Active security principals" Visibility="{Binding HasAdministrationMetrics, Converter={StaticResource BooleanToVisibilityConverter}}" />
+			</Grid>
 		</StackPanel>
 
-		<controls:Card Grid.Row="3">
+		<controls:Card Grid.Row="3" Style="{StaticResource WorkspaceCardStyle}">
 			<controls:Card.Header>
-				<TextBlock
-					Text="Recent Movements"
-					Style="{StaticResource SectionTitleStyle}" />
+				<Grid>
+					<Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+					<TextBlock Text="Recent Movements" Style="{StaticResource WorkspaceTitleStyle}" />
+					<TextBlock Grid.Column="1" Text="Latest inventory activity" Style="{StaticResource CaptionStyle}" VerticalAlignment="Center" />
+				</Grid>
 			</controls:Card.Header>
-
-			<Grid><DataGrid
-				Style="{StaticResource AppDataGridStyle}"
-				ItemsSource="{Binding RecentMovements}" Visibility="{Binding HasRecentMovements, Converter={StaticResource BooleanToVisibilityConverter}}">
-
+			<Grid>
+				<DataGrid Style="{StaticResource AppDataGridStyle}" ItemsSource="{Binding RecentMovements}" Visibility="{Binding HasRecentMovements, Converter={StaticResource BooleanToVisibilityConverter}}">
 					<DataGrid.Columns>
-
-						<DataGridTextColumn
-							Header="Date"
-							Binding="{Binding TimestampLocal, StringFormat={}{0:g}}"
-							Width="130" ElementStyle="{StaticResource AppDataGridTextStyle}" />
-
-						<DataGridTextColumn
-							Header="Part Number"
-							Binding="{Binding PartNumber}"
-							Width="130" ElementStyle="{StaticResource AppDataGridTextStyle}" />
-
-						<DataGridTextColumn
-							Header="Description"
-							Binding="{Binding Description}"
-							Width="*" ElementStyle="{StaticResource AppDataGridTextStyle}" />
-
-						<DataGridTextColumn
-							Header="Warehouse"
-							Binding="{Binding WarehouseName}"
-							Width="120" ElementStyle="{StaticResource AppDataGridTextStyle}" />
-
-						<DataGridTextColumn
-							Header="Type"
-							Binding="{Binding MovementType}"
-							Width="100" ElementStyle="{StaticResource AppDataGridTextStyle}" />
-
-						<DataGridTextColumn
-							Header="Quantity"
-							Binding="{Binding Quantity, StringFormat={}{0:N2}}"
-							Width="100" ElementStyle="{StaticResource AppDataGridNumericTextStyle}" />
+						<DataGridTextColumn Header="Date" Binding="{Binding TimestampLocal, StringFormat={}{0:g}}" Width="130" ElementStyle="{StaticResource AppDataGridTextStyle}" />
+						<DataGridTextColumn Header="Part Number" Binding="{Binding PartNumber}" Width="130" ElementStyle="{StaticResource AppDataGridTextStyle}" />
+						<DataGridTextColumn Header="Description" Binding="{Binding Description}" Width="*" ElementStyle="{StaticResource AppDataGridTextStyle}" />
+						<DataGridTextColumn Header="Warehouse" Binding="{Binding WarehouseName}" Width="120" ElementStyle="{StaticResource AppDataGridTextStyle}" />
+						<DataGridTextColumn Header="Type" Binding="{Binding MovementType}" Width="100" ElementStyle="{StaticResource AppDataGridTextStyle}" />
+						<DataGridTextColumn Header="Quantity" Binding="{Binding Quantity, StringFormat={}{0:N2}}" Width="100" ElementStyle="{StaticResource AppDataGridNumericTextStyle}" />
 						<DataGridTextColumn Header="Reason" Binding="{Binding ReasonCodeName}" Width="120" ElementStyle="{StaticResource AppDataGridTextStyle}" />
-
 					</DataGrid.Columns>
-
-			</DataGrid><controls:EmptyState Title="No recent movements" Description="Recent stock activity will appear here." Visibility="{Binding HasNoRecentMovements, Converter={StaticResource BooleanToVisibilityConverter}}" /></Grid>
+				</DataGrid>
+				<controls:EmptyState Title="No recent movements" Description="Recent stock activity will appear here." Visibility="{Binding HasNoRecentMovements, Converter={StaticResource BooleanToVisibilityConverter}}" />
+			</Grid>
 		</controls:Card>
-
 	</Grid>
-
 </UserControl>
