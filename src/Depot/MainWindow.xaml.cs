@@ -8,6 +8,7 @@ using System.Windows.Input;
 using Depot.Services;
 using Depot.Services.Help;
 using Depot.ViewModels;
+using Depot.Views;
 
 namespace Depot;
 
@@ -50,17 +51,24 @@ public partial class MainWindow : Window
 	protected override void OnPreviewKeyDown(KeyEventArgs e)
 	{
 		base.OnPreviewKeyDown(e);
-		if ((Keyboard.Modifiers & ModifierKeys.Control) == 0) return;
-		if (e.Key == Key.W)
-		{
-			WorkspaceTabs.CloseActiveTab();
-			e.Handled = true;
-		}
-		else if (e.Key == Key.Tab)
-		{
-			WorkspaceTabs.SelectRelativeTab((Keyboard.Modifiers & ModifierKeys.Shift) != 0 ? -1 : 1);
-			e.Handled = true;
-		}
+		var modifiers = Keyboard.Modifiers;
+		if ((modifiers & ModifierKeys.Control) == 0) return;
+		if (e.Key == Key.W) { WorkspaceTabs.CloseActiveTab(); e.Handled = true; }
+		else if (e.Key == Key.Tab) { WorkspaceTabs.SelectRelativeTab((modifiers & ModifierKeys.Shift) != 0 ? -1 : 1); e.Handled = true; }
+		else if (e.Key == Key.P && (modifiers & ModifierKeys.Shift) != 0) { OpenPalette(ShellPaletteMode.Commands); e.Handled = true; }
+		else if (e.Key == Key.P) { OpenPalette(ShellPaletteMode.QuickOpen); e.Handled = true; }
+	}
+
+	private void OpenPalette(ShellPaletteMode mode)
+	{
+		if (DataContext is not MainViewModel viewModel) return;
+		var palette = new ShellPaletteWindow(
+			viewModel,
+			mode,
+			() => viewModel.OpenNotificationsAsync(),
+			() => viewModel.OpenHelpAsync(),
+			() => viewModel.NavigateAsync(_currentUserNavigationItem)) { Owner = this };
+		palette.ShowDialog();
 	}
 
 	private void OnLoaded(object sender, RoutedEventArgs e) => ObserveViewModel(DataContext as MainViewModel);
@@ -89,37 +97,10 @@ public partial class MainWindow : Window
 		}
 	}
 
-	private void OnWindowActivated(object? sender, EventArgs e)
-	{
-		if (DataContext is MainViewModel viewModel) viewModel.SetApplicationActive(true);
-	}
-
-	private void OnWindowDeactivated(object? sender, EventArgs e)
-	{
-		if (DataContext is MainViewModel viewModel) viewModel.SetApplicationActive(false);
-	}
-
-	private async void OnCurrentUserClick(object sender, RoutedEventArgs e)
-	{
-		if (DataContext is MainViewModel viewModel) await viewModel.NavigateAsync(_currentUserNavigationItem);
-	}
-
-	private async void OnOpenHelpExecuted(object sender, ExecutedRoutedEventArgs e)
-	{
-		if (DataContext is MainViewModel viewModel) await viewModel.OpenHelpAsync();
-		e.Handled = true;
-	}
-
-	private async void OnOpenHelpTopicExecuted(object sender, ExecutedRoutedEventArgs e)
-	{
-		if (DataContext is MainViewModel viewModel) await viewModel.OpenHelpAsync(e.Parameter as string);
-		e.Handled = true;
-	}
-
-	private void OnCopyDiagnosticsExecuted(object sender, ExecutedRoutedEventArgs e)
-	{
-		var sanitized = new DiagnosticsSanitizer().Sanitize(e.Parameter as string);
-		if (!string.IsNullOrWhiteSpace(sanitized)) Clipboard.SetText(sanitized);
-		e.Handled = true;
-	}
+	private void OnWindowActivated(object? sender, EventArgs e) { if (DataContext is MainViewModel viewModel) viewModel.SetApplicationActive(true); }
+	private void OnWindowDeactivated(object? sender, EventArgs e) { if (DataContext is MainViewModel viewModel) viewModel.SetApplicationActive(false); }
+	private async void OnCurrentUserClick(object sender, RoutedEventArgs e) { if (DataContext is MainViewModel viewModel) await viewModel.NavigateAsync(_currentUserNavigationItem); }
+	private async void OnOpenHelpExecuted(object sender, ExecutedRoutedEventArgs e) { if (DataContext is MainViewModel viewModel) await viewModel.OpenHelpAsync(); e.Handled = true; }
+	private async void OnOpenHelpTopicExecuted(object sender, ExecutedRoutedEventArgs e) { if (DataContext is MainViewModel viewModel) await viewModel.OpenHelpAsync(e.Parameter as string); e.Handled = true; }
+	private void OnCopyDiagnosticsExecuted(object sender, ExecutedRoutedEventArgs e) { var sanitized = new DiagnosticsSanitizer().Sanitize(e.Parameter as string); if (!string.IsNullOrWhiteSpace(sanitized)) Clipboard.SetText(sanitized); e.Handled = true; }
 }
