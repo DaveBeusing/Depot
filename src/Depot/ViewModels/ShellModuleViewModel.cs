@@ -74,6 +74,7 @@ public sealed class ShellModuleViewModel : BaseViewModel, IDisposable
 		if (_administrationPagesExpanded || CurrentViewModel is not AdministrationViewModel administration) return;
 		if (administration.NavigationItems.Count == 0) return;
 
+		administration.NavigationGuard = NavigationGuard;
 		var selectedSection = administration.SelectedNavigationItem?.Section;
 		var proxyPages = administration.NavigationItems
 			.Select(item => new SecondaryNavigationItem(
