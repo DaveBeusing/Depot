@@ -85,7 +85,7 @@ public static class UnsavedChangesGuard
 			draft.OrderDate != selected.OrderDate ||
 			draft.ExpectedDeliveryDate != selected.ExpectedDeliveryDate ||
 			!string.Equals(draft.Notes, selected.Notes, StringComparison.Ordinal) ||
-			!PurchaseOrderLinesEqual(viewModel.Lines, selected.Lines);
+			!PurchaseOrderLinesEqual(viewModel.Lines, draft.Lines);
 	}
 
 	private static bool PurchaseOrderLinesEqual(IReadOnlyCollection<PurchaseOrderLine> current, IReadOnlyList<PurchaseOrderLine> baseline)
