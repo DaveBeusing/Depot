@@ -9,7 +9,7 @@ Transfers move the same item between inventories in different warehouses through
 - The source has sufficient stock.
 
 ## Steps
-1. Open **Warehouse > Transfers** and create a draft.
+1. Open **Warehouse > Transfers**, or use **Ctrl+Shift+P** and run **Transfer Stock** to open the workflow and create a new Draft.
 2. Select source and destination warehouses.
 3. Add each inventory pair once and enter a positive quantity.
 4. Save the draft.
@@ -23,10 +23,12 @@ Depot atomically creates paired movements, links them with the transfer number, 
 - Identical source and destination warehouses are not allowed.
 - Posting fails if another transaction consumes the source stock first.
 - A posted transfer is corrected through counter-movements, not editing.
+- Direct workflow commands are shown only when the corresponding workspace is available.
 
 ## Required permissions
 `StockTransfers.View`; creating, editing, posting, and reversing use separate permissions.
 
 ## Related topics
+- [Workspace Navigation](topic:getting-started.workspace-navigation)
 - [Inventory Overview](topic:inventory.overview)
 - [Insufficient Stock](topic:troubleshooting.insufficient-stock)
