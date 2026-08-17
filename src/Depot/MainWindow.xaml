@@ -105,7 +105,7 @@
 				</Grid>
 			</DataTemplate>
 
-			<DataTemplate x:Key="ModuleSidebarTemplate" DataType="{x:Type viewModels:ShellModuleViewModel}">
+			<DataTemplate x:Key="ModuleSidebarTemplate">
 				<StackPanel>
 					<TextBlock Text="{Binding Title}" Foreground="{DynamicResource PrimaryTextBrush}" FontSize="13" FontWeight="SemiBold" Margin="14,16,14,3" />
 					<TextBlock Text="{Binding Subtitle}" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="11" TextWrapping="Wrap" Margin="14,0,14,14" />
@@ -118,6 +118,10 @@
 					<TextBlock Text="Activity workspace" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="11" Margin="0,5,0,0" />
 				</StackPanel>
 			</DataTemplate>
+			<controls:ActivitySidebarTemplateSelector
+				x:Key="ActivitySidebarTemplateSelector"
+				ModuleTemplate="{StaticResource ModuleSidebarTemplate}"
+				DefaultTemplate="{StaticResource DirectSidebarTemplate}" />
 
 			<Style x:Key="WorkspaceTabControlStyle" TargetType="controls:WorkspaceTabControl">
 				<Setter Property="Background" Value="#1B1B1F" />
@@ -198,11 +202,10 @@
 						<TextBlock Text="Inventory Operations" Foreground="{DynamicResource NavigationMutedTextBrush}" FontSize="10" Margin="0,3,0,0" />
 					</StackPanel>
 				</Border>
-				<ContentControl Grid.Row="1" Content="{Binding SelectedNavigationItem.Content}" ContentTemplate="{StaticResource DirectSidebarTemplate}">
-					<ContentControl.Resources>
-						<DataTemplate DataType="{x:Type viewModels:ShellModuleViewModel}"><ContentControl Content="{Binding}" ContentTemplate="{StaticResource ModuleSidebarTemplate}" /></DataTemplate>
-					</ContentControl.Resources>
-				</ContentControl>
+				<ContentControl
+					Grid.Row="1"
+					Content="{Binding SelectedNavigationItem.Content}"
+					ContentTemplateSelector="{StaticResource ActivitySidebarTemplateSelector}" />
 				<Border Grid.Row="2" Padding="12" BorderBrush="{DynamicResource NavigationBorderBrush}" BorderThickness="0,1,0,0">
 					<StackPanel>
 						<TextBlock Text="{Binding CurrentUserDisplayName}" Foreground="{DynamicResource PrimaryTextBrush}" FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
