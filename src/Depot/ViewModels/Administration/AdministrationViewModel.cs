@@ -76,6 +76,7 @@ public sealed class AdministrationViewModel : BaseViewModel, IDisposable
 	public string Title => "Administration";
 	public ObservableCollection<NavigationItem> NavigationItems { get; } = [];
 	public ObservableCollection<NavigationItem> Pages => NavigationItems;
+	public Func<BaseViewModel?, bool>? NavigationGuard { get; set; }
 	public NavigationItem? SelectedPage
 	{
 		get => SelectedNavigationItem;
@@ -105,11 +106,8 @@ public sealed class AdministrationViewModel : BaseViewModel, IDisposable
 
 	public string HelpTopicId => SelectedNavigationItem?.HelpTopicId ?? HelpService.FallbackTopicId;
 
-	public Task ActivateAsync(CancellationToken cancellationToken = default) =>
-		ActivateCurrentAsync(false, cancellationToken);
-
-	public Task RefreshAsync(CancellationToken cancellationToken = default) =>
-		ActivateCurrentAsync(true, cancellationToken);
+	public Task ActivateAsync(CancellationToken cancellationToken = default) => ActivateCurrentAsync(false, cancellationToken);
+	public Task RefreshAsync(CancellationToken cancellationToken = default) => ActivateCurrentAsync(true, cancellationToken);
 
 	public async Task NavigateToAsync(AdministrationSection section, CancellationToken cancellationToken = default)
 	{
@@ -120,6 +118,13 @@ public sealed class AdministrationViewModel : BaseViewModel, IDisposable
 
 	private async Task NavigateAsync(NavigationItem target, CancellationToken cancellationToken = default)
 	{
+		if (_selectedNavigationItem != target && NavigationGuard?.Invoke(CurrentViewModel) == false)
+		{
+			OnPropertyChanged(nameof(SelectedNavigationItem));
+			OnPropertyChanged(nameof(SelectedPage));
+			return;
+		}
+
 		_navigationCancellation?.Cancel();
 		_navigationCancellation?.Dispose();
 		var navigation = cancellationToken.CanBeCanceled
@@ -127,26 +132,16 @@ public sealed class AdministrationViewModel : BaseViewModel, IDisposable
 			: new CancellationTokenSource();
 		_navigationCancellation = navigation;
 		SetSelection(target);
-		try
-		{
-			await ActivateCurrentAsync(false, navigation.Token);
-		}
-		catch (OperationCanceledException) when (navigation.IsCancellationRequested)
-		{
-		}
-		catch (Exception exception)
-		{
-			FailOperation(exception, $"{target.Name} could not be loaded");
-		}
+		try { await ActivateCurrentAsync(false, navigation.Token); }
+		catch (OperationCanceledException) when (navigation.IsCancellationRequested) { }
+		catch (Exception exception) { FailOperation(exception, $"{target.Name} could not be loaded"); }
 	}
 
 	private Task ActivateCurrentAsync(bool refresh, CancellationToken cancellationToken)
 	{
 		if (SelectedNavigationItem?.Section is not AdministrationSection section) return Task.CompletedTask;
 		var state = _loadStates[section];
-		return refresh
-			? state.RefreshAsync(LoadCurrentViewModelAsync, cancellationToken)
-			: state.ActivateAsync(LoadCurrentViewModelAsync, cancellationToken);
+		return refresh ? state.RefreshAsync(LoadCurrentViewModelAsync, cancellationToken) : state.ActivateAsync(LoadCurrentViewModelAsync, cancellationToken);
 	}
 
 	private void SetSelection(NavigationItem? target)
