@@ -5,6 +5,7 @@ using System.ComponentModel;
 using System.Windows;
 using System.Windows.Input;
 
+using Depot.Controls;
 using Depot.Services;
 using Depot.Services.Help;
 using Depot.ViewModels;
@@ -20,6 +21,7 @@ public partial class MainWindow : Window
 
 	private readonly CurrentUserViewModel _currentUserViewModel;
 	private readonly ShellNavigationItem _currentUserNavigationItem;
+	private readonly List<ShellPaletteEntry> _recentQuickOpenEntries = [];
 	private ShellNavigationItem? _notificationNavigationItem;
 	private ShellNavigationItem? _helpNavigationItem;
 	private MainViewModel? _observedViewModel;
@@ -36,6 +38,12 @@ public partial class MainWindow : Window
 
 	public string CurrentUserInitials => _currentUserViewModel.Initials;
 	public string CurrentUserDisplayName => _currentUserViewModel.User.DisplayName;
+
+	protected override void OnClosing(CancelEventArgs e)
+	{
+		if (!e.Cancel && DataContext is MainViewModel viewModel && !viewModel.ConfirmDiscardChanges(viewModel.CurrentViewModel)) e.Cancel = true;
+		base.OnClosing(e);
+	}
 
 	protected override void OnClosed(EventArgs e)
 	{
@@ -67,8 +75,14 @@ public partial class MainWindow : Window
 			mode,
 			() => viewModel.OpenNotificationsAsync(),
 			() => viewModel.OpenHelpAsync(),
-			() => viewModel.NavigateAsync(_currentUserNavigationItem)) { Owner = this };
+			() => viewModel.NavigateAsync(_currentUserNavigationItem),
+			_recentQuickOpenEntries) { Owner = this };
 		palette.ShowDialog();
+	}
+
+	private void OnWorkspaceTabClosing(object? sender, WorkspaceTabClosingEventArgs e)
+	{
+		if (DataContext is MainViewModel viewModel && !viewModel.ConfirmDiscardChanges(e.Item)) e.Cancel = true;
 	}
 
 	private void OnLoaded(object sender, RoutedEventArgs e) => ObserveViewModel(DataContext as MainViewModel);
