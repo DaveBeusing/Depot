@@ -24,5 +24,6 @@
 
 		<!-- Composite application patterns -->
 		<ResourceDictionary Source="Workflows.xaml" />
+		<ResourceDictionary Source="WorkspacePolish.xaml" />
 	</ResourceDictionary.MergedDictionaries>
 </ResourceDictionary>
