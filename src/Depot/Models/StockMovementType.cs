@@ -15,5 +15,7 @@ public enum StockMovementType
 	Reversal = 8,
 	MaterialReturn = 9,
 	SupplierReturn = 10,
-	SalesShipment = 11
+	SalesShipment = 11,
+	SalesShipmentReversal = 12,
+	CustomerReturn = 13
 }
