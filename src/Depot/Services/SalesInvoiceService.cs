@@ -18,8 +18,9 @@ public sealed class SalesInvoiceService
 	private readonly AuditService _audit;
 	private readonly IAuthorizationService _authorization;
 	private readonly NotificationService _notifications;
+	private readonly SalesCreditNoteService _creditNotes;
 
-	public SalesInvoiceService(IDatabaseTransactionRunner transactions, SalesInvoiceRepository invoices, ShipmentRepository shipments, SalesOrderRepository orders, CustomerRepository customers, AuditRepository auditEntries, AuditService audit, IAuthorizationService authorization, NotificationService notifications)
+	public SalesInvoiceService(IDatabaseTransactionRunner transactions, SalesInvoiceRepository invoices, ShipmentRepository shipments, SalesOrderRepository orders, CustomerRepository customers, AuditRepository auditEntries, AuditService audit, IAuthorizationService authorization, NotificationService notifications, SalesCreditNoteService creditNotes)
 	{
 		_transactions = transactions;
 		_invoices = invoices;
@@ -30,10 +31,13 @@ public sealed class SalesInvoiceService
 		_audit = audit;
 		_authorization = authorization;
 		_notifications = notifications;
+		_creditNotes = creditNotes;
 	}
 
 	public bool CanCreate => _authorization.HasPermission(ApplicationPermission.SalesInvoicesCreate);
 	public bool CanPost => _authorization.HasPermission(ApplicationPermission.SalesInvoicesPost);
+	public bool CanCreateCreditNote => _creditNotes.CanCreate;
+	public bool CanPostCreditNote => _creditNotes.CanPost;
 
 	public Task<PageResult<SalesInvoice>> SearchAsync(string? searchText, SalesInvoiceStatus? status, int pageNumber = 1, int pageSize = 100, CancellationToken cancellationToken = default)
 	{
@@ -47,13 +51,17 @@ public sealed class SalesInvoiceService
 		return _invoices.GetByIdAsync(id, cancellationToken);
 	}
 
+	public Task<PageResult<SalesCreditNote>> SearchCreditNotesAsync(string? searchText, SalesCreditNoteStatus? status, int pageNumber = 1, int pageSize = 100, CancellationToken token = default) => _creditNotes.SearchAsync(searchText, status, pageNumber, pageSize, token);
+	public Task<SalesCreditNote> CreateCreditNoteAsync(long invoiceId, string reason, CancellationToken token = default) => _creditNotes.CreateFromInvoiceAsync(invoiceId, reason, token);
+	public Task<SalesCreditNote> PostCreditNoteAsync(long id, long version, CancellationToken token = default) => _creditNotes.PostAsync(id, version, token);
+
 	public async Task<SalesInvoice> CreateFromShipmentAsync(long shipmentId, CancellationToken cancellationToken = default)
 	{
 		_authorization.RequirePermission(ApplicationPermission.SalesInvoicesCreate);
 		var user = RequireUser();
 		return await _transactions.ExecuteAsync(async (transaction, token) =>
 		{
-			if (await _invoices.GetByShipmentIdAsync(shipmentId, token) is not null) throw new InvalidOperationException("This shipment already has a sales invoice.");
+			if (await _invoices.GetByShipmentIdAsync(transaction, shipmentId, token) is not null) throw new InvalidOperationException("This shipment already has a sales invoice.");
 			var shipment = await _shipments.GetByIdAsync(transaction, shipmentId, token) ?? throw new InvalidOperationException("Shipment was not found.");
 			if (shipment.Status != ShipmentStatus.Posted) throw new InvalidOperationException("Only a posted shipment can be invoiced.");
 			var order = await _orders.GetByIdAsync(transaction, shipment.SalesOrderId, token) ?? throw new InvalidOperationException("Sales order was not found.");
@@ -83,6 +91,21 @@ public sealed class SalesInvoiceService
 			await _invoices.CreateAsync(transaction, invoice, token);
 			await _auditEntries.CreateAsync(transaction, _audit.CreateCreatedEntry(invoice.Id, invoice), token);
 			return await _invoices.GetByIdAsync(transaction, invoice.Id, token) ?? invoice;
+		}, cancellationToken);
+	}
+
+	public async Task<SalesInvoice> CancelDraftAsync(long id, long version, CancellationToken cancellationToken = default)
+	{
+		_authorization.RequirePermission(ApplicationPermission.SalesInvoicesCreate);
+		return await _transactions.ExecuteAsync(async (transaction, token) =>
+		{
+			var before = await _invoices.GetByIdAsync(transaction, id, token) ?? throw new InvalidOperationException("Sales invoice was not found.");
+			if (before.Version != version) throw new ConcurrencyConflictException("sales invoice");
+			if (before.Status != SalesInvoiceStatus.Draft) throw new InvalidOperationException("Only a draft invoice can be cancelled.");
+			if (!await _invoices.CancelDraftAsync(transaction, id, version, token)) throw new ConcurrencyConflictException("sales invoice");
+			var after = await _invoices.GetByIdAsync(transaction, id, token) ?? throw new InvalidOperationException("Sales invoice could not be reloaded.");
+			await _auditEntries.CreateAsync(transaction, _audit.CreateUpdatedEntry(id, before, after), token);
+			return after;
 		}, cancellationToken);
 	}
 
