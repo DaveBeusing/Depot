@@ -16,12 +16,13 @@ public sealed class ShipmentService
 	private readonly InventoryRepository _inventories;
 	private readonly StockMovementRepository _movements;
 	private readonly SalesInvoiceRepository _invoices;
+	private readonly CustomerReturnService _customerReturns;
 	private readonly AuditRepository _auditEntries;
 	private readonly AuditService _audit;
 	private readonly IAuthorizationService _authorization;
 	private readonly NotificationService _notifications;
 
-	public ShipmentService(IDatabaseTransactionRunner transactions, ShipmentRepository shipments, SalesOrderRepository orders, InventoryReservationRepository reservations, InventoryRepository inventories, StockMovementRepository movements, SalesInvoiceRepository invoices, AuditRepository auditEntries, AuditService audit, IAuthorizationService authorization, NotificationService notifications)
+	public ShipmentService(IDatabaseTransactionRunner transactions, ShipmentRepository shipments, SalesOrderRepository orders, InventoryReservationRepository reservations, InventoryRepository inventories, StockMovementRepository movements, SalesInvoiceRepository invoices, CustomerReturnService customerReturns, AuditRepository auditEntries, AuditService audit, IAuthorizationService authorization, NotificationService notifications)
 	{
 		_transactions = transactions;
 		_shipments = shipments;
@@ -30,6 +31,7 @@ public sealed class ShipmentService
 		_inventories = inventories;
 		_movements = movements;
 		_invoices = invoices;
+		_customerReturns = customerReturns;
 		_auditEntries = auditEntries;
 		_audit = audit;
 		_authorization = authorization;
@@ -40,6 +42,11 @@ public sealed class ShipmentService
 	public bool CanEdit => _authorization.HasPermission(ApplicationPermission.ShipmentsEdit);
 	public bool CanPost => _authorization.HasPermission(ApplicationPermission.ShipmentsPost);
 	public bool CanReverse => _authorization.HasPermission(ApplicationPermission.ShipmentsReverse);
+	public bool CanCreateCustomerReturn => _customerReturns.CanCreate;
+	public bool CanPostCustomerReturn => _customerReturns.CanPost;
+	public Task<PageResult<CustomerReturn>> SearchCustomerReturnsAsync(string? searchText, CustomerReturnStatus? status, int pageNumber = 1, int pageSize = 100, CancellationToken token = default) => _customerReturns.SearchAsync(searchText, status, pageNumber, pageSize, token);
+	public Task<CustomerReturn> CreateCustomerReturnAsync(long shipmentId, string reason, CancellationToken token = default) => _customerReturns.CreateFromShipmentAsync(shipmentId, reason, token);
+	public Task<CustomerReturn> PostCustomerReturnAsync(long id, long version, CancellationToken token = default) => _customerReturns.PostAsync(id, version, token);
 
 	public Task<PageResult<Shipment>> SearchAsync(string? searchText, ShipmentStatus? status, int pageNumber = 1, int pageSize = 100, CancellationToken cancellationToken = default)
 	{
