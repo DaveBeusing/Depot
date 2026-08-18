@@ -118,4 +118,8 @@ public static class NotificationSourceTypes
 	public const string PurchaseOrderApproval = "PurchaseOrderApproval";
 	public const string InventoryCount = "InventoryCount";
 	public const string DatabaseAdministration = "DatabaseAdministration";
+	public const string SalesOrder = "SalesOrder";
+	public const string SalesOrderApproval = "SalesOrderApproval";
+	public const string Shipment = "Shipment";
+	public const string SalesInvoice = "SalesInvoice";
 }
