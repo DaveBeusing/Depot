@@ -47,6 +47,7 @@
             <DataTemplate DataType="{x:Type viewModels:GoodsReceiptsPageViewModel}"><views:GoodsReceiptsView /></DataTemplate>
             <DataTemplate DataType="{x:Type viewModels:SupplierReturnsViewModel}"><views:SupplierReturnsView /></DataTemplate>
             <DataTemplate DataType="{x:Type viewModels:PurchaseOrderApprovalsViewModel}"><views:PurchaseOrderApprovalsView /></DataTemplate>
+            <DataTemplate DataType="{x:Type viewModels:SalesViewModel}"><views:SalesView /></DataTemplate>
             <DataTemplate DataType="{x:Type viewModels:ReportsViewModel}"><views:ReportsView /></DataTemplate>
             <DataTemplate DataType="{x:Type viewModels:ShellModuleViewModel}"><views:ShellModuleView /></DataTemplate>
             <DataTemplate DataType="{x:Type viewModels:ImportViewModel}"><views:ImportView /></DataTemplate>
