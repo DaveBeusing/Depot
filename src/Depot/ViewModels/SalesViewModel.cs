@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 using System.Collections.ObjectModel;
+using System.Text.Json;
 
 using Depot.Commands;
 using Depot.Models;
@@ -24,7 +25,9 @@ public enum SalesQuickOpenKind
 	Customer,
 	SalesOrder,
 	Shipment,
-	Invoice
+	Invoice,
+	CustomerReturn,
+	CreditNote
 }
 
 public sealed record SalesQuickOpenItem(SalesQuickOpenKind Kind, long Id, string Title, string Subtitle);
@@ -44,9 +47,14 @@ public sealed class SalesViewModel : BaseViewModel, IDisposable
 	private SalesSection _section;
 	private string _searchText = string.Empty;
 	private Customer? _selectedCustomer;
+	private Customer? _customerBaseline;
 	private SalesOrder? _selectedOrder;
+	private SalesOrder? _orderBaseline;
 	private Shipment? _selectedShipment;
+	private Shipment? _shipmentBaseline;
 	private SalesInvoice? _selectedInvoice;
+	private CustomerReturn? _selectedCustomerReturn;
+	private SalesCreditNote? _selectedCreditNote;
 	private Customer _customerDraft = NewCustomerDraft();
 	private SalesOrder _orderDraft = NewOrderDraft();
 	private Item? _selectedItem;
@@ -61,7 +69,9 @@ public sealed class SalesViewModel : BaseViewModel, IDisposable
 	private int _shipmentQuantity = 1;
 	private string? _carrier;
 	private string? _trackingNumber;
+	private string? _shipmentNotes;
 	private string? _approvalComment;
+	private string _correctionReason = string.Empty;
 
 	public SalesViewModel(
 		CustomerService customers,
@@ -91,12 +101,19 @@ public sealed class SalesViewModel : BaseViewModel, IDisposable
 		SubmitCommand = new AsyncRelayCommand(SubmitAsync, () => _orders.CanSubmit && OrderDraft.Id > 0 && OrderDraft.Status == SalesOrderStatus.Draft);
 		ApproveCommand = new AsyncRelayCommand(ApproveAsync, () => _orders.CanApprove && SelectedOrder?.Status == SalesOrderStatus.PendingApproval);
 		RejectCommand = new AsyncRelayCommand(RejectAsync, () => _orders.CanApprove && SelectedOrder?.Status == SalesOrderStatus.PendingApproval);
-		ReserveCommand = new AsyncRelayCommand(ReserveAsync, () => _orders.CanEdit && SelectedOrder?.Status == SalesOrderStatus.Approved && SelectedOrderLine is not null && SelectedAvailability is not null && ReservationQuantity > 0);
+		ReserveCommand = new AsyncRelayCommand(ReserveAsync, () => _orders.CanEdit && SelectedOrder is { Status: SalesOrderStatus.Approved or SalesOrderStatus.Released or SalesOrderStatus.PartiallyShipped } && SelectedOrderLine is not null && SelectedAvailability is not null && ReservationQuantity > 0);
 		ReleaseCommand = new AsyncRelayCommand(ReleaseAsync, () => _orders.CanRelease && SelectedOrder?.Status == SalesOrderStatus.Approved);
 		CreateShipmentCommand = new AsyncRelayCommand(CreateShipmentAsync, () => _shipments.CanCreate && SelectedOrder is { Status: SalesOrderStatus.Released or SalesOrderStatus.PartiallyShipped } && SelectedReservation is not null && ShipmentQuantity > 0);
+		SaveShipmentCommand = new AsyncRelayCommand(SaveShipmentAsync, () => _shipments.CanEdit && SelectedShipment?.Status == ShipmentStatus.Draft);
 		PostShipmentCommand = new AsyncRelayCommand(PostShipmentAsync, () => _shipments.CanPost && SelectedShipment?.Status == ShipmentStatus.Draft);
+		ReverseShipmentCommand = new AsyncRelayCommand(ReverseShipmentAsync, () => _shipments.CanReverse && SelectedShipment?.Status == ShipmentStatus.Posted && SelectedShipment.ReversedAtUtc is null && !string.IsNullOrWhiteSpace(CorrectionReason));
+		CreateCustomerReturnCommand = new AsyncRelayCommand(CreateCustomerReturnAsync, () => _shipments.CanCreateCustomerReturn && SelectedShipment?.Status == ShipmentStatus.Posted && !string.IsNullOrWhiteSpace(CorrectionReason));
+		PostCustomerReturnCommand = new AsyncRelayCommand(PostCustomerReturnAsync, () => _shipments.CanPostCustomerReturn && SelectedCustomerReturn?.Status == CustomerReturnStatus.Draft);
 		CreateInvoiceCommand = new AsyncRelayCommand(CreateInvoiceAsync, () => _invoices.CanCreate && SelectedShipment?.Status == ShipmentStatus.Posted);
+		CancelInvoiceCommand = new AsyncRelayCommand(CancelInvoiceAsync, () => _invoices.CanCreate && SelectedInvoice?.Status == SalesInvoiceStatus.Draft);
 		PostInvoiceCommand = new AsyncRelayCommand(PostInvoiceAsync, () => _invoices.CanPost && SelectedInvoice?.Status == SalesInvoiceStatus.Draft);
+		CreateCreditNoteCommand = new AsyncRelayCommand(CreateCreditNoteAsync, () => _invoices.CanCreateCreditNote && SelectedInvoice?.Status == SalesInvoiceStatus.Posted && !string.IsNullOrWhiteSpace(CorrectionReason));
+		PostCreditNoteCommand = new AsyncRelayCommand(PostCreditNoteAsync, () => _invoices.CanPostCreditNote && SelectedCreditNote?.Status == SalesCreditNoteStatus.Draft);
 		OrderConfirmationCommand = new RelayCommand(GenerateOrderConfirmation, () => SelectedOrder is not null);
 		DeliveryNoteCommand = new RelayCommand(GenerateDeliveryNote, () => SelectedShipment is not null);
 		InvoicePdfCommand = new RelayCommand(GenerateInvoice, () => SelectedInvoice is not null);
@@ -107,6 +124,8 @@ public sealed class SalesViewModel : BaseViewModel, IDisposable
 	public ObservableCollection<SalesOrder> PendingApprovals { get; } = [];
 	public ObservableCollection<Shipment> Shipments { get; } = [];
 	public ObservableCollection<SalesInvoice> Invoices { get; } = [];
+	public ObservableCollection<CustomerReturn> CustomerReturns { get; } = [];
+	public ObservableCollection<SalesCreditNote> CreditNotes { get; } = [];
 	public ObservableCollection<Item> Items { get; } = [];
 	public ObservableCollection<SalesOrderLine> OrderLines { get; } = [];
 	public ObservableCollection<InventoryReservation> Reservations { get; } = [];
@@ -124,9 +143,16 @@ public sealed class SalesViewModel : BaseViewModel, IDisposable
 	public AsyncRelayCommand ReserveCommand { get; }
 	public AsyncRelayCommand ReleaseCommand { get; }
 	public AsyncRelayCommand CreateShipmentCommand { get; }
+	public AsyncRelayCommand SaveShipmentCommand { get; }
 	public AsyncRelayCommand PostShipmentCommand { get; }
+	public AsyncRelayCommand ReverseShipmentCommand { get; }
+	public AsyncRelayCommand CreateCustomerReturnCommand { get; }
+	public AsyncRelayCommand PostCustomerReturnCommand { get; }
 	public AsyncRelayCommand CreateInvoiceCommand { get; }
+	public AsyncRelayCommand CancelInvoiceCommand { get; }
 	public AsyncRelayCommand PostInvoiceCommand { get; }
+	public AsyncRelayCommand CreateCreditNoteCommand { get; }
+	public AsyncRelayCommand PostCreditNoteCommand { get; }
 	public RelayCommand OrderConfirmationCommand { get; }
 	public RelayCommand DeliveryNoteCommand { get; }
 	public RelayCommand InvoicePdfCommand { get; }
@@ -158,19 +184,25 @@ public sealed class SalesViewModel : BaseViewModel, IDisposable
 	public bool CanViewOrders => _authorization.HasPermission(ApplicationPermission.SalesOrdersView);
 	public bool CanViewShipments => _authorization.HasPermission(ApplicationPermission.ShipmentsView);
 	public bool CanViewInvoices => _authorization.HasPermission(ApplicationPermission.SalesInvoicesView);
+	public bool CanViewCustomerReturns => _authorization.HasPermission(ApplicationPermission.CustomerReturnsView);
+	public bool CanViewCreditNotes => _authorization.HasPermission(ApplicationPermission.CreditNotesView);
 
 	public string SearchText { get => _searchText; set { if (_searchText == value) return; _searchText = value; OnPropertyChanged(); } }
 	public Customer CustomerDraft { get => _customerDraft; private set { _customerDraft = value; OnPropertyChanged(); } }
 	public SalesOrder OrderDraft { get => _orderDraft; private set { _orderDraft = value; OnPropertyChanged(); OnPropertyChanged(nameof(OrderTitle)); RaiseCommands(); } }
 	public string OrderTitle => OrderDraft.Id == 0 ? "New Sales Order" : OrderDraft.OrderNumber;
 	public string? ApprovalComment { get => _approvalComment; set { _approvalComment = value; OnPropertyChanged(); } }
-	public string? Carrier { get => _carrier; set { _carrier = value; OnPropertyChanged(); } }
-	public string? TrackingNumber { get => _trackingNumber; set { _trackingNumber = value; OnPropertyChanged(); } }
+	public string? Carrier { get => _carrier; set { if (_carrier == value) return; _carrier = value; OnPropertyChanged(); } }
+	public string? TrackingNumber { get => _trackingNumber; set { if (_trackingNumber == value) return; _trackingNumber = value; OnPropertyChanged(); } }
+	public string? ShipmentNotes { get => _shipmentNotes; set { if (_shipmentNotes == value) return; _shipmentNotes = value; OnPropertyChanged(); } }
+	public string CorrectionReason { get => _correctionReason; set { if (_correctionReason == value) return; _correctionReason = value; OnPropertyChanged(); RaiseCommands(); } }
 
-	public Customer? SelectedCustomer { get => _selectedCustomer; set { if (_selectedCustomer == value) return; _selectedCustomer = value; OnPropertyChanged(); CustomerDraft = value is null ? NewCustomerDraft() : Copy(value); } }
+	public Customer? SelectedCustomer { get => _selectedCustomer; set { if (_selectedCustomer == value) return; _selectedCustomer = value; OnPropertyChanged(); _customerBaseline = value is null ? null : Copy(value); CustomerDraft = value is null ? NewCustomerDraft() : Copy(value); } }
 	public SalesOrder? SelectedOrder { get => _selectedOrder; set { if (_selectedOrder == value) return; _selectedOrder = value; OnPropertyChanged(); _ = LoadSelectedOrderAsync(value); RaiseCommands(); } }
-	public Shipment? SelectedShipment { get => _selectedShipment; set { if (_selectedShipment == value) return; _selectedShipment = value; OnPropertyChanged(); RaiseCommands(); } }
+	public Shipment? SelectedShipment { get => _selectedShipment; set { if (_selectedShipment == value) return; _selectedShipment = value; OnPropertyChanged(); _ = LoadSelectedShipmentAsync(value); RaiseCommands(); } }
 	public SalesInvoice? SelectedInvoice { get => _selectedInvoice; set { if (_selectedInvoice == value) return; _selectedInvoice = value; OnPropertyChanged(); RaiseCommands(); } }
+	public CustomerReturn? SelectedCustomerReturn { get => _selectedCustomerReturn; set { if (_selectedCustomerReturn == value) return; _selectedCustomerReturn = value; OnPropertyChanged(); RaiseCommands(); } }
+	public SalesCreditNote? SelectedCreditNote { get => _selectedCreditNote; set { if (_selectedCreditNote == value) return; _selectedCreditNote = value; OnPropertyChanged(); RaiseCommands(); } }
 	public Item? SelectedItem { get => _selectedItem; set { if (_selectedItem == value) return; _selectedItem = value; OnPropertyChanged(); AddLineCommand.RaiseCanExecuteChanged(); } }
 	public SalesOrderLine? SelectedOrderLine { get => _selectedOrderLine; set { if (_selectedOrderLine == value) return; _selectedOrderLine = value; OnPropertyChanged(); _ = LoadAvailabilityAsync(value); RaiseCommands(); } }
 	public SalesInventoryAvailability? SelectedAvailability { get => _selectedAvailability; set { _selectedAvailability = value; OnPropertyChanged(); ReserveCommand.RaiseCanExecuteChanged(); } }
@@ -189,6 +221,41 @@ public sealed class SalesViewModel : BaseViewModel, IDisposable
 	public long DraftInvoiceCount => Invoices.LongCount(invoice => invoice.Status == SalesInvoiceStatus.Draft);
 	public decimal PostedRevenue => Invoices.Where(invoice => invoice.Status == SalesInvoiceStatus.Posted).Sum(invoice => invoice.NetAmount);
 
+	public bool HasUnsavedChanges()
+	{
+		if (IsCustomers)
+			return _customerBaseline is null ? !Equivalent(CustomerDraft, NewCustomerDraft()) : !Equivalent(CustomerDraft, _customerBaseline);
+		if (IsSalesOrders && OrderDraft.Status == SalesOrderStatus.Draft)
+		{
+			var current = Copy(OrderDraft); current.Lines = OrderLines.Select(CopyLine).ToArray();
+			return _orderBaseline is null ? !Equivalent(current, NewOrderDraft()) : !Equivalent(current, _orderBaseline);
+		}
+		if (IsShipping && SelectedShipment?.Status == ShipmentStatus.Draft && _shipmentBaseline is not null)
+			return !string.Equals(Carrier, _shipmentBaseline.Carrier, StringComparison.Ordinal) || !string.Equals(TrackingNumber, _shipmentBaseline.TrackingNumber, StringComparison.Ordinal) || !string.Equals(ShipmentNotes, _shipmentBaseline.Notes, StringComparison.Ordinal);
+		return false;
+	}
+
+	public void DiscardUnsavedChanges()
+	{
+		if (IsCustomers)
+		{
+			CustomerDraft = _customerBaseline is null ? NewCustomerDraft() : Copy(_customerBaseline);
+			return;
+		}
+		if (IsSalesOrders)
+		{
+			OrderDraft = _orderBaseline is null ? NewOrderDraft() : Copy(_orderBaseline);
+			Replace(OrderLines, OrderDraft.Lines.Select(CopyLine));
+			return;
+		}
+		if (IsShipping && _shipmentBaseline is not null)
+		{
+			Carrier = _shipmentBaseline.Carrier;
+			TrackingNumber = _shipmentBaseline.TrackingNumber;
+			ShipmentNotes = _shipmentBaseline.Notes;
+		}
+	}
+
 	public async Task LoadAsync(CancellationToken cancellationToken = default)
 	{
 		var request = _loadRequest.Begin(cancellationToken);
@@ -204,6 +271,8 @@ public sealed class SalesViewModel : BaseViewModel, IDisposable
 			else { Orders.Clear(); PendingApprovals.Clear(); }
 			if (CanViewShipments) Replace(Shipments, (await _shipments.SearchAsync(SearchText, null, 1, PageSize, request.Token)).Items); else Shipments.Clear();
 			if (CanViewInvoices) Replace(Invoices, (await _invoices.SearchAsync(SearchText, null, 1, PageSize, request.Token)).Items); else Invoices.Clear();
+			if (CanViewCustomerReturns) Replace(CustomerReturns, (await _shipments.SearchCustomerReturnsAsync(SearchText, null, 1, PageSize, request.Token)).Items); else CustomerReturns.Clear();
+			if (CanViewCreditNotes) Replace(CreditNotes, (await _invoices.SearchCreditNotesAsync(SearchText, null, 1, PageSize, request.Token)).Items); else CreditNotes.Clear();
 			if (_authorization.HasPermission(ApplicationPermission.ItemsView)) Replace(Items, (await _items.SearchItemsAsync(string.Empty, 1, PageSize, request.Token)).Items); else Items.Clear();
 			if (!request.IsCurrent) return;
 			NotifyMetrics();
@@ -222,6 +291,8 @@ public sealed class SalesViewModel : BaseViewModel, IDisposable
 		if (CanViewOrders) result.AddRange((await _orders.SearchAsync(text, null, 1, 8, cancellationToken)).Items.Select(value => new SalesQuickOpenItem(SalesQuickOpenKind.SalesOrder, value.Id, value.OrderNumber, value.CustomerName)));
 		if (CanViewShipments) result.AddRange((await _shipments.SearchAsync(text, null, 1, 6, cancellationToken)).Items.Select(value => new SalesQuickOpenItem(SalesQuickOpenKind.Shipment, value.Id, value.ShipmentNumber, value.SalesOrderNumber)));
 		if (CanViewInvoices) result.AddRange((await _invoices.SearchAsync(text, null, 1, 6, cancellationToken)).Items.Select(value => new SalesQuickOpenItem(SalesQuickOpenKind.Invoice, value.Id, value.InvoiceNumber, value.CustomerName)));
+		if (CanViewCustomerReturns) result.AddRange((await _shipments.SearchCustomerReturnsAsync(text, null, 1, 4, cancellationToken)).Items.Select(value => new SalesQuickOpenItem(SalesQuickOpenKind.CustomerReturn, value.Id, value.ReturnNumber, "Customer return")));
+		if (CanViewCreditNotes) result.AddRange((await _invoices.SearchCreditNotesAsync(text, null, 1, 4, cancellationToken)).Items.Select(value => new SalesQuickOpenItem(SalesQuickOpenKind.CreditNote, value.Id, value.CreditNoteNumber, "Credit note")));
 		return result;
 	}
 
@@ -233,15 +304,17 @@ public sealed class SalesViewModel : BaseViewModel, IDisposable
 			case SalesQuickOpenKind.SalesOrder: Section = SalesSection.SalesOrders; SelectedOrder = await _orders.GetByIdAsync(item.Id, cancellationToken); break;
 			case SalesQuickOpenKind.Shipment: Section = SalesSection.Shipping; SelectedShipment = await _shipments.GetByIdAsync(item.Id, cancellationToken); break;
 			case SalesQuickOpenKind.Invoice: Section = SalesSection.Invoices; SelectedInvoice = await _invoices.GetByIdAsync(item.Id, cancellationToken); break;
+			case SalesQuickOpenKind.CustomerReturn: Section = SalesSection.Shipping; SelectedCustomerReturn = CustomerReturns.FirstOrDefault(value => value.Id == item.Id); break;
+			case SalesQuickOpenKind.CreditNote: Section = SalesSection.Invoices; SelectedCreditNote = CreditNotes.FirstOrDefault(value => value.Id == item.Id); break;
 		}
 	}
 
-	private void NewCustomer() { SelectedCustomer = null; CustomerDraft = NewCustomerDraft(); RequestEditorFocus(); }
-	private async Task SaveCustomerAsync(CancellationToken token) { var saved = await _customers.SaveAsync(CustomerDraft, token); SelectedCustomer = saved; await LoadAsync(token); }
-	private void NewOrder() { SelectedOrder = null; OrderDraft = NewOrderDraft(); Replace(OrderLines, []); Replace(Reservations, []); RequestEditorFocus(); }
+	private void NewCustomer() { _customerBaseline = null; SelectedCustomer = null; CustomerDraft = NewCustomerDraft(); RequestEditorFocus(); }
+	private async Task SaveCustomerAsync(CancellationToken token) { var saved = await _customers.SaveAsync(CustomerDraft, token); SelectedCustomer = saved; _customerBaseline = Copy(saved); await LoadAsync(token); }
+	private void NewOrder() { _orderBaseline = null; SelectedOrder = null; OrderDraft = NewOrderDraft(); Replace(OrderLines, []); Replace(Reservations, []); RequestEditorFocus(); }
 	private void AddLine() { if (SelectedItem is null || LineQuantity <= 0) return; var line = new SalesOrderLine { LineNumber = OrderLines.Count + 1, ItemId = SelectedItem.Id, PartNumber = SelectedItem.PartNumber, Description = SelectedItem.Description, Quantity = LineQuantity, UnitPrice = LineUnitPrice, DiscountPercent = LineDiscountPercent, TaxRate = LineTaxRate }; OrderLines.Add(line); OrderDraft.Lines = OrderLines.ToArray(); SelectedOrderLine = line; RaiseCommands(); }
 	private void RemoveLine() { if (SelectedOrderLine is null) return; OrderLines.Remove(SelectedOrderLine); for (var index = 0; index < OrderLines.Count; index++) OrderLines[index].LineNumber = index + 1; OrderDraft.Lines = OrderLines.ToArray(); SelectedOrderLine = null; RaiseCommands(); }
-	private async Task SaveOrderAsync(CancellationToken token) { OrderDraft.Lines = OrderLines.ToArray(); var saved = await _orders.SaveDraftAsync(OrderDraft, token); SelectedOrder = saved; await LoadAsync(token); }
+	private async Task SaveOrderAsync(CancellationToken token) { OrderDraft.Lines = OrderLines.ToArray(); var saved = await _orders.SaveDraftAsync(OrderDraft, token); SelectedOrder = saved; _orderBaseline = Copy(saved); await LoadAsync(token); }
 	private async Task SubmitAsync(CancellationToken token) { var source = SelectedOrder ?? OrderDraft; if (source.Id <= 0) return; SelectedOrder = await _orders.SubmitAsync(source.Id, source.Version, token); await LoadAsync(token); }
 	private async Task ApproveAsync(CancellationToken token) { if (SelectedOrder is null) return; SelectedOrder = await _orders.ApproveAsync(SelectedOrder.Id, SelectedOrder.Version, ApprovalComment, token); await LoadAsync(token); }
 	private async Task RejectAsync(CancellationToken token) { if (SelectedOrder is null) return; SelectedOrder = await _orders.RejectAsync(SelectedOrder.Id, SelectedOrder.Version, ApprovalComment, token); await LoadAsync(token); }
@@ -256,16 +329,37 @@ public sealed class SalesViewModel : BaseViewModel, IDisposable
 	}
 
 	private async Task ReleaseAsync(CancellationToken token) { if (SelectedOrder is null) return; SelectedOrder = await _orders.ReleaseAsync(SelectedOrder.Id, SelectedOrder.Version, token); await LoadAsync(token); }
-	private async Task CreateShipmentAsync(CancellationToken token) { if (SelectedOrder is null || SelectedReservation is null) return; SelectedShipment = await _shipments.CreateAsync(SelectedOrder.Id, [new ShipmentLineRequest(SelectedReservation.Id, ShipmentQuantity)], Carrier, TrackingNumber, null, token); Section = SalesSection.Shipping; await LoadAsync(token); }
+	private async Task CreateShipmentAsync(CancellationToken token) { if (SelectedOrder is null || SelectedReservation is null) return; SelectedShipment = await _shipments.CreateAsync(SelectedOrder.Id, [new ShipmentLineRequest(SelectedReservation.Id, ShipmentQuantity)], Carrier, TrackingNumber, ShipmentNotes, token); Section = SalesSection.Shipping; await LoadAsync(token); }
+	private async Task SaveShipmentAsync(CancellationToken token) { if (SelectedShipment is null) return; var draft = Copy(SelectedShipment); draft.Carrier = Carrier; draft.TrackingNumber = TrackingNumber; draft.Notes = ShipmentNotes; SelectedShipment = await _shipments.UpdateDraftAsync(draft, token); await LoadAsync(token); }
 	private async Task PostShipmentAsync(CancellationToken token) { if (SelectedShipment is null) return; SelectedShipment = await _shipments.PostAsync(SelectedShipment.Id, SelectedShipment.Version, token); await LoadAsync(token); }
+	private async Task ReverseShipmentAsync(CancellationToken token) { if (SelectedShipment is null) return; SelectedShipment = await _shipments.ReverseAsync(SelectedShipment.Id, SelectedShipment.Version, CorrectionReason, token); CorrectionReason = string.Empty; await LoadAsync(token); }
+	private async Task CreateCustomerReturnAsync(CancellationToken token) { if (SelectedShipment is null) return; SelectedCustomerReturn = await _shipments.CreateCustomerReturnAsync(SelectedShipment.Id, CorrectionReason, token); CorrectionReason = string.Empty; await LoadAsync(token); }
+	private async Task PostCustomerReturnAsync(CancellationToken token) { if (SelectedCustomerReturn is null) return; SelectedCustomerReturn = await _shipments.PostCustomerReturnAsync(SelectedCustomerReturn.Id, SelectedCustomerReturn.Version, token); await LoadAsync(token); }
 	private async Task CreateInvoiceAsync(CancellationToken token) { if (SelectedShipment is null) return; SelectedInvoice = await _invoices.CreateFromShipmentAsync(SelectedShipment.Id, token); Section = SalesSection.Invoices; await LoadAsync(token); }
+	private async Task CancelInvoiceAsync(CancellationToken token) { if (SelectedInvoice is null) return; SelectedInvoice = await _invoices.CancelDraftAsync(SelectedInvoice.Id, SelectedInvoice.Version, token); await LoadAsync(token); }
 	private async Task PostInvoiceAsync(CancellationToken token) { if (SelectedInvoice is null) return; SelectedInvoice = await _invoices.PostAsync(SelectedInvoice.Id, SelectedInvoice.Version, token); await LoadAsync(token); }
+	private async Task CreateCreditNoteAsync(CancellationToken token) { if (SelectedInvoice is null) return; SelectedCreditNote = await _invoices.CreateCreditNoteAsync(SelectedInvoice.Id, CorrectionReason, token); CorrectionReason = string.Empty; await LoadAsync(token); }
+	private async Task PostCreditNoteAsync(CancellationToken token) { if (SelectedCreditNote is null) return; SelectedCreditNote = await _invoices.PostCreditNoteAsync(SelectedCreditNote.Id, SelectedCreditNote.Version, token); await LoadAsync(token); }
 
 	private async Task LoadSelectedOrderAsync(SalesOrder? order)
 	{
-		if (order is null) { OrderDraft = NewOrderDraft(); Replace(OrderLines, []); Replace(Reservations, []); return; }
-		try { var loaded = await _orders.GetByIdAsync(order.Id) ?? order; _orderDraft = Copy(loaded); OnPropertyChanged(nameof(OrderDraft)); OnPropertyChanged(nameof(OrderTitle)); Replace(OrderLines, loaded.Lines); Replace(Reservations, await _orders.GetReservationsAsync(loaded.Id)); SelectedOrderLine = OrderLines.FirstOrDefault(); SelectedReservation = Reservations.FirstOrDefault(value => value.Status == InventoryReservationStatus.Active); RaiseCommands(); }
+		if (order is null) { _orderBaseline = null; OrderDraft = NewOrderDraft(); Replace(OrderLines, []); Replace(Reservations, []); return; }
+		try { var loaded = await _orders.GetByIdAsync(order.Id) ?? order; _selectedOrder = loaded; OnPropertyChanged(nameof(SelectedOrder)); _orderBaseline = Copy(loaded); OrderDraft = Copy(loaded); Replace(OrderLines, loaded.Lines.Select(CopyLine)); Replace(Reservations, await _orders.GetReservationsAsync(loaded.Id)); SelectedOrderLine = OrderLines.FirstOrDefault(); SelectedReservation = Reservations.FirstOrDefault(value => value.Status == InventoryReservationStatus.Active); RaiseCommands(); }
 		catch (Exception exception) { FailOperation(exception, "Sales order details could not be loaded"); }
+	}
+
+	private async Task LoadSelectedShipmentAsync(Shipment? shipment)
+	{
+		if (shipment is null) { _shipmentBaseline = null; Carrier = null; TrackingNumber = null; ShipmentNotes = null; return; }
+		try
+		{
+			var loaded = await _shipments.GetByIdAsync(shipment.Id) ?? shipment;
+			_selectedShipment = loaded; OnPropertyChanged(nameof(SelectedShipment));
+			_shipmentBaseline = Copy(loaded);
+			Carrier = loaded.Carrier; TrackingNumber = loaded.TrackingNumber; ShipmentNotes = loaded.Notes;
+			RaiseCommands();
+		}
+		catch (Exception exception) { FailOperation(exception, "Shipment details could not be loaded"); }
 	}
 
 	private async Task LoadAvailabilityAsync(SalesOrderLine? line)
@@ -280,11 +374,14 @@ public sealed class SalesViewModel : BaseViewModel, IDisposable
 	private void GenerateDeliveryNote() { if (SelectedShipment is null) return; var path = _fileDialogs.ShowSaveFile(new SaveFileDialogRequest("Save delivery note", "PDF document (*.pdf)|*.pdf", ".pdf", $"{SelectedShipment.ShipmentNumber}-delivery-note.pdf")); if (path is not null) _documents.CreateDeliveryNote(path, SelectedShipment); }
 	private void GenerateInvoice() { if (SelectedInvoice is null) return; var path = _fileDialogs.ShowSaveFile(new SaveFileDialogRequest("Save sales invoice", "PDF document (*.pdf)|*.pdf", ".pdf", $"{SelectedInvoice.InvoiceNumber}.pdf")); if (path is not null) _documents.CreateInvoice(path, SelectedInvoice); }
 	private void NotifyMetrics() { OnPropertyChanged(nameof(OpenOrdersCount)); OnPropertyChanged(nameof(PendingApprovalCount)); OnPropertyChanged(nameof(ReadyToShipCount)); OnPropertyChanged(nameof(DraftShipmentCount)); OnPropertyChanged(nameof(DraftInvoiceCount)); OnPropertyChanged(nameof(PostedRevenue)); }
-	private void RaiseCommands() { SaveOrderCommand.RaiseCanExecuteChanged(); SubmitCommand.RaiseCanExecuteChanged(); ApproveCommand.RaiseCanExecuteChanged(); RejectCommand.RaiseCanExecuteChanged(); ReserveCommand.RaiseCanExecuteChanged(); ReleaseCommand.RaiseCanExecuteChanged(); CreateShipmentCommand.RaiseCanExecuteChanged(); PostShipmentCommand.RaiseCanExecuteChanged(); CreateInvoiceCommand.RaiseCanExecuteChanged(); PostInvoiceCommand.RaiseCanExecuteChanged(); OrderConfirmationCommand.RaiseCanExecuteChanged(); DeliveryNoteCommand.RaiseCanExecuteChanged(); InvoicePdfCommand.RaiseCanExecuteChanged(); AddLineCommand.RaiseCanExecuteChanged(); RemoveLineCommand.RaiseCanExecuteChanged(); }
+	private void RaiseCommands() { SaveOrderCommand.RaiseCanExecuteChanged(); SubmitCommand.RaiseCanExecuteChanged(); ApproveCommand.RaiseCanExecuteChanged(); RejectCommand.RaiseCanExecuteChanged(); ReserveCommand.RaiseCanExecuteChanged(); ReleaseCommand.RaiseCanExecuteChanged(); CreateShipmentCommand.RaiseCanExecuteChanged(); SaveShipmentCommand.RaiseCanExecuteChanged(); PostShipmentCommand.RaiseCanExecuteChanged(); ReverseShipmentCommand.RaiseCanExecuteChanged(); CreateCustomerReturnCommand.RaiseCanExecuteChanged(); PostCustomerReturnCommand.RaiseCanExecuteChanged(); CreateInvoiceCommand.RaiseCanExecuteChanged(); CancelInvoiceCommand.RaiseCanExecuteChanged(); PostInvoiceCommand.RaiseCanExecuteChanged(); CreateCreditNoteCommand.RaiseCanExecuteChanged(); PostCreditNoteCommand.RaiseCanExecuteChanged(); OrderConfirmationCommand.RaiseCanExecuteChanged(); DeliveryNoteCommand.RaiseCanExecuteChanged(); InvoicePdfCommand.RaiseCanExecuteChanged(); AddLineCommand.RaiseCanExecuteChanged(); RemoveLineCommand.RaiseCanExecuteChanged(); }
 	private static Customer NewCustomerDraft() => new() { Currency = "EUR", PaymentTermsDays = 30, IsActive = true };
 	private static SalesOrder NewOrderDraft() => new() { OrderDate = DateTime.Today, Currency = "EUR", Status = SalesOrderStatus.Draft };
 	private static Customer Copy(Customer value) => new() { Id = value.Id, CustomerNumber = value.CustomerNumber, Name = value.Name, BillingAddress = value.BillingAddress, ShippingAddress = value.ShippingAddress, ContactName = value.ContactName, Email = value.Email, Phone = value.Phone, TaxId = value.TaxId, PaymentTermsDays = value.PaymentTermsDays, Currency = value.Currency, IsActive = value.IsActive, Version = value.Version };
-	private static SalesOrder Copy(SalesOrder value) => new() { Id = value.Id, OrderNumber = value.OrderNumber, CustomerId = value.CustomerId, CustomerName = value.CustomerName, OrderDate = value.OrderDate, RequestedDeliveryDate = value.RequestedDeliveryDate, Currency = value.Currency, CustomerReference = value.CustomerReference, Notes = value.Notes, Status = value.Status, CreatedByUserId = value.CreatedByUserId, SubmittedByUserId = value.SubmittedByUserId, SubmittedAtUtc = value.SubmittedAtUtc, ApprovalDecisionByUserId = value.ApprovalDecisionByUserId, ApprovalDecisionAtUtc = value.ApprovalDecisionAtUtc, ApprovalComment = value.ApprovalComment, ReleasedByUserId = value.ReleasedByUserId, ReleasedAtUtc = value.ReleasedAtUtc, CancelledByUserId = value.CancelledByUserId, CancelledAtUtc = value.CancelledAtUtc, CancelReason = value.CancelReason, Version = value.Version, Lines = value.Lines.Select(line => new SalesOrderLine { Id = line.Id, SalesOrderId = line.SalesOrderId, LineNumber = line.LineNumber, ItemId = line.ItemId, PartNumber = line.PartNumber, Description = line.Description, Quantity = line.Quantity, UnitPrice = line.UnitPrice, DiscountPercent = line.DiscountPercent, TaxRate = line.TaxRate, ReservedQuantity = line.ReservedQuantity, ShippedQuantity = line.ShippedQuantity, InvoicedQuantity = line.InvoicedQuantity, Version = line.Version }).ToArray() };
+	private static SalesOrderLine CopyLine(SalesOrderLine line) => new() { Id=line.Id, SalesOrderId=line.SalesOrderId, LineNumber=line.LineNumber, ItemId=line.ItemId, PartNumber=line.PartNumber, Description=line.Description, Quantity=line.Quantity, UnitPrice=line.UnitPrice, DiscountPercent=line.DiscountPercent, TaxRate=line.TaxRate, ReservedQuantity=line.ReservedQuantity, ShippedQuantity=line.ShippedQuantity, InvoicedQuantity=line.InvoicedQuantity, Version=line.Version };
+	private static SalesOrder Copy(SalesOrder value) => new() { Id = value.Id, OrderNumber = value.OrderNumber, CustomerId = value.CustomerId, CustomerName = value.CustomerName, OrderDate = value.OrderDate, RequestedDeliveryDate = value.RequestedDeliveryDate, Currency = value.Currency, CustomerReference = value.CustomerReference, Notes = value.Notes, Status = value.Status, CreatedByUserId = value.CreatedByUserId, SubmittedByUserId = value.SubmittedByUserId, SubmittedAtUtc = value.SubmittedAtUtc, ApprovalDecisionByUserId = value.ApprovalDecisionByUserId, ApprovalDecisionAtUtc = value.ApprovalDecisionAtUtc, ApprovalComment = value.ApprovalComment, ReleasedByUserId = value.ReleasedByUserId, ReleasedAtUtc = value.ReleasedAtUtc, CancelledByUserId = value.CancelledByUserId, CancelledAtUtc = value.CancelledAtUtc, CancelReason = value.CancelReason, Version = value.Version, Lines = value.Lines.Select(CopyLine).ToArray() };
+	private static Shipment Copy(Shipment value) => new() { Id=value.Id, ShipmentNumber=value.ShipmentNumber, SalesOrderId=value.SalesOrderId, SalesOrderNumber=value.SalesOrderNumber, CustomerId=value.CustomerId, CustomerName=value.CustomerName, ShipmentDate=value.ShipmentDate, Status=value.Status, Carrier=value.Carrier, TrackingNumber=value.TrackingNumber, ShippingAddress=value.ShippingAddress, Notes=value.Notes, CreatedByUserId=value.CreatedByUserId, PostedByUserId=value.PostedByUserId, PostedAtUtc=value.PostedAtUtc, ReversedAtUtc=value.ReversedAtUtc, ReversedByUserId=value.ReversedByUserId, ReversalReason=value.ReversalReason, Version=value.Version, Lines=value.Lines.ToArray() };
+	private static bool Equivalent<T>(T left, T right) => string.Equals(JsonSerializer.Serialize(left), JsonSerializer.Serialize(right), StringComparison.Ordinal);
 	private static void Replace<T>(ObservableCollection<T> target, IEnumerable<T> values) { target.Clear(); foreach (var value in values) target.Add(value); }
-	public void Dispose() { _loadRequest.Dispose(); foreach (var command in new IDisposable[] { SaveCustomerCommand, SaveOrderCommand, SubmitCommand, ApproveCommand, RejectCommand, ReserveCommand, ReleaseCommand, CreateShipmentCommand, PostShipmentCommand, CreateInvoiceCommand, PostInvoiceCommand }) command.Dispose(); }
+	public void Dispose() { _loadRequest.Dispose(); foreach (var command in new IDisposable[] { SaveCustomerCommand, SaveOrderCommand, SubmitCommand, ApproveCommand, RejectCommand, ReserveCommand, ReleaseCommand, CreateShipmentCommand, SaveShipmentCommand, PostShipmentCommand, ReverseShipmentCommand, CreateCustomerReturnCommand, PostCustomerReturnCommand, CreateInvoiceCommand, CancelInvoiceCommand, PostInvoiceCommand, CreateCreditNoteCommand, PostCreditNoteCommand }) command.Dispose(); }
 }
