@@ -66,4 +66,5 @@ public sealed class SalesOrderLine
 	public decimal TaxAmount => Math.Round(NetAmount * TaxRate / 100m, 2, MidpointRounding.AwayFromZero);
 	public decimal GrossAmount => NetAmount + TaxAmount;
 	public int OpenQuantity => Math.Max(0, Quantity - ShippedQuantity);
+	public int BackorderedQuantity => Math.Max(0, OpenQuantity - ReservedQuantity);
 }
