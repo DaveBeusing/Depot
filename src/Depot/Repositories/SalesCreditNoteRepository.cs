@@ -37,6 +37,15 @@ public sealed class SalesCreditNoteRepository : DatabaseRepository
 		return value;
 	}
 
+	public async Task<SalesCreditNote?> GetByIdAsync(DatabaseTransactionContext tx, long id, CancellationToken token)
+	{
+		var rows = await tx.Session.QueryAsync($"SELECT {Columns} FROM SalesCreditNotes cn WHERE cn.Id=$Id;", Read, token, Parameter("$Id", id));
+		if (rows.Count == 0) return null;
+		var value = rows[0];
+		value.Lines = await tx.Session.QueryAsync(LineSql + " WHERE cnl.SalesCreditNoteId=$Id ORDER BY cnl.Id;", ReadLine, token, Parameter("$Id", id));
+		return value;
+	}
+
 	public async Task<SalesCreditNote?> GetByInvoiceIdAsync(long invoiceId, CancellationToken token) =>
 		await Database.QuerySingleOrDefaultAsync($"SELECT {Columns} FROM SalesCreditNotes cn WHERE cn.SalesInvoiceId=$InvoiceId ORDER BY cn.Id DESC;", Read, token, Parameter("$InvoiceId", invoiceId));
 
