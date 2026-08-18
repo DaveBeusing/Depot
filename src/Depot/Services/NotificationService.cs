@@ -131,7 +131,7 @@ public sealed class NotificationService : INotificationService
 	private static string? Normalize(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 }
 
-public sealed record NotificationNavigationTarget(string SourceType, long? SourceId);
+public sealed record NotificationNavigationTarget(string SourceType, long? SourceId, string? SourceNumber);
 
 public interface INotificationNavigationService
 {
@@ -164,6 +164,6 @@ public sealed class NotificationNavigationService : INotificationNavigationServi
 		};
 		_authorization.RequirePermission(requiredPermission);
 		var handler = _handler ?? throw new InvalidOperationException("Notification navigation is not available.");
-		return handler(new NotificationNavigationTarget(notification.SourceType, notification.SourceId), cancellationToken);
+		return handler(new NotificationNavigationTarget(notification.SourceType, notification.SourceId, notification.SourceNumber), cancellationToken);
 	}
 }
