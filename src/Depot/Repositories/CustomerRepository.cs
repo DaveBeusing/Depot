@@ -26,9 +26,18 @@ public sealed class CustomerRepository : DatabaseRepository
 		return Database.QueryPageAsync($"SELECT {Columns} FROM Customers {where} ORDER BY Name, CustomerNumber", $"SELECT COUNT(*) FROM Customers {where}", Read, pageNumber, pageSize, cancellationToken, parameters.ToArray());
 	}
 
-	public Task<Customer?> GetByIdAsync(long id, CancellationToken cancellationToken) => Database.QuerySingleOrDefaultAsync($"SELECT {Columns} FROM Customers WHERE Id = $Id;", Read, cancellationToken, Parameter("$Id", id));
+	public async Task<Customer?> GetByIdAsync(long id, CancellationToken cancellationToken)
+	{
+		var customer = await Database.QuerySingleOrDefaultAsync($"SELECT {Columns} FROM Customers WHERE Id = $Id;", Read, cancellationToken, Parameter("$Id", id));
+		if (customer is null) return null;
+		customer.Addresses = await ListAddressesAsync(id, cancellationToken);
+		return customer;
+	}
 
 	public Task<IReadOnlyList<Customer>> ListActiveAsync(CancellationToken cancellationToken) => Database.QueryAsync($"SELECT {Columns} FROM Customers WHERE IsActive = 1 ORDER BY Name, CustomerNumber;", Read, cancellationToken);
+
+	public Task<IReadOnlyList<CustomerAddress>> ListAddressesAsync(long customerId, CancellationToken cancellationToken) =>
+		Database.QueryAsync("SELECT Id,CustomerId,Type,Name,Address,IsDefault,IsActive,Version FROM CustomerAddresses WHERE CustomerId=$CustomerId AND IsActive=1 ORDER BY Type,IsDefault DESC,Id;", ReadAddress, cancellationToken, Parameter("$CustomerId", customerId));
 
 	public async Task<Customer> SaveAsync(Customer customer, CancellationToken cancellationToken)
 	{
@@ -38,12 +47,55 @@ public sealed class CustomerRepository : DatabaseRepository
 			customer.Id = await Database.InsertAsync("INSERT INTO Customers (CustomerNumber, Name, BillingAddress, ShippingAddress, ContactName, Email, Phone, TaxId, PaymentTermsDays, Currency, IsActive) VALUES ($CustomerNumber, $Name, $BillingAddress, $ShippingAddress, $ContactName, $Email, $Phone, $TaxId, $PaymentTermsDays, $Currency, $IsActive);", cancellationToken, Parameters(customer));
 			customer.CustomerNumber = $"CU-{customer.Id:000000}";
 			await Database.ExecuteAsync("UPDATE Customers SET CustomerNumber = $CustomerNumber WHERE Id = $Id;", cancellationToken, Parameter("$CustomerNumber", customer.CustomerNumber), Parameter("$Id", customer.Id));
+			await SyncDefaultAddressAsync(customer.Id, CustomerAddressType.Billing, customer.BillingAddress, cancellationToken);
+			await SyncDefaultAddressAsync(customer.Id, CustomerAddressType.Shipping, customer.ShippingAddress, cancellationToken);
+			customer.Addresses = await ListAddressesAsync(customer.Id, cancellationToken);
 			return customer;
 		}
 		var updated = await Database.ExecuteAsync("UPDATE Customers SET Name=$Name, BillingAddress=$BillingAddress, ShippingAddress=$ShippingAddress, ContactName=$ContactName, Email=$Email, Phone=$Phone, TaxId=$TaxId, PaymentTermsDays=$PaymentTermsDays, Currency=$Currency, IsActive=$IsActive, Version=Version+1 WHERE Id=$Id AND Version=$Version;", cancellationToken, Parameters(customer).Concat([Parameter("$Id", customer.Id), Parameter("$Version", customer.Version)]).ToArray());
 		if (updated != 1) throw new Services.ConcurrencyConflictException("customer");
 		customer.Version++;
+		await SyncDefaultAddressAsync(customer.Id, CustomerAddressType.Billing, customer.BillingAddress, cancellationToken);
+		await SyncDefaultAddressAsync(customer.Id, CustomerAddressType.Shipping, customer.ShippingAddress, cancellationToken);
+		customer.Addresses = await ListAddressesAsync(customer.Id, cancellationToken);
 		return customer;
+	}
+
+	public async Task<CustomerAddress> SaveAddressAsync(CustomerAddress address, CancellationToken cancellationToken)
+	{
+		if (address.CustomerId <= 0) throw new ArgumentException("A customer is required.", nameof(address));
+		if (string.IsNullOrWhiteSpace(address.Address)) throw new ArgumentException("An address is required.", nameof(address));
+		if (address.IsDefault)
+			await Database.ExecuteAsync("UPDATE CustomerAddresses SET IsDefault=0,Version=Version+1 WHERE CustomerId=$CustomerId AND Type=$Type AND IsDefault=1;", cancellationToken, Parameter("$CustomerId", address.CustomerId), Parameter("$Type", (int)address.Type));
+		if (address.Id == 0)
+		{
+			address.Id = await Database.InsertAsync("INSERT INTO CustomerAddresses (CustomerId,Type,Name,Address,IsDefault,IsActive) VALUES ($CustomerId,$Type,$Name,$Address,$IsDefault,$IsActive);", cancellationToken,
+				Parameter("$CustomerId", address.CustomerId), Parameter("$Type", (int)address.Type), Parameter("$Name", address.Name), Parameter("$Address", address.Address.Trim()), Parameter("$IsDefault", address.IsDefault), Parameter("$IsActive", address.IsActive));
+			return address;
+		}
+		var updated = await Database.ExecuteAsync("UPDATE CustomerAddresses SET Type=$Type,Name=$Name,Address=$Address,IsDefault=$IsDefault,IsActive=$IsActive,Version=Version+1 WHERE Id=$Id AND Version=$Version;", cancellationToken,
+			Parameter("$Type", (int)address.Type), Parameter("$Name", address.Name), Parameter("$Address", address.Address.Trim()), Parameter("$IsDefault", address.IsDefault), Parameter("$IsActive", address.IsActive), Parameter("$Id", address.Id), Parameter("$Version", address.Version));
+		if (updated != 1) throw new Services.ConcurrencyConflictException("customer address");
+		address.Version++;
+		return address;
+	}
+
+	private async Task SyncDefaultAddressAsync(long customerId, CustomerAddressType type, string? value, CancellationToken cancellationToken)
+	{
+		var current = await Database.QuerySingleOrDefaultAsync("SELECT Id,CustomerId,Type,Name,Address,IsDefault,IsActive,Version FROM CustomerAddresses WHERE CustomerId=$CustomerId AND Type=$Type AND IsDefault=1 ORDER BY Id LIMIT 1;", ReadAddress, cancellationToken, Parameter("$CustomerId", customerId), Parameter("$Type", (int)type));
+		if (string.IsNullOrWhiteSpace(value))
+		{
+			if (current is not null) await Database.ExecuteAsync("UPDATE CustomerAddresses SET IsActive=0,Version=Version+1 WHERE Id=$Id AND Version=$Version;", cancellationToken, Parameter("$Id", current.Id), Parameter("$Version", current.Version));
+			return;
+		}
+		if (current is null)
+		{
+			await SaveAddressAsync(new CustomerAddress { CustomerId = customerId, Type = type, Address = value.Trim(), IsDefault = true, IsActive = true }, cancellationToken);
+			return;
+		}
+		if (string.Equals(current.Address, value.Trim(), StringComparison.Ordinal) && current.IsActive) return;
+		current.Address = value.Trim(); current.IsActive = true; current.IsDefault = true;
+		await SaveAddressAsync(current, cancellationToken);
 	}
 
 	private static DatabaseParameter[] Parameters(Customer c) =>
@@ -58,5 +110,10 @@ public sealed class CustomerRepository : DatabaseRepository
 		Id = r.GetInt64(0), CustomerNumber = r.GetString(1), Name = r.GetString(2), BillingAddress = r.IsDBNull(3) ? null : r.GetString(3), ShippingAddress = r.IsDBNull(4) ? null : r.GetString(4),
 		ContactName = r.IsDBNull(5) ? null : r.GetString(5), Email = r.IsDBNull(6) ? null : r.GetString(6), Phone = r.IsDBNull(7) ? null : r.GetString(7), TaxId = r.IsDBNull(8) ? null : r.GetString(8),
 		PaymentTermsDays = r.GetInt32(9), Currency = r.GetString(10), IsActive = r.GetBoolean(11), Version = r.GetInt64(12)
+	};
+
+	private static CustomerAddress ReadAddress(DbDataReader r) => new()
+	{
+		Id = r.GetInt64(0), CustomerId = r.GetInt64(1), Type = (CustomerAddressType)r.GetInt32(2), Name = r.IsDBNull(3) ? null : r.GetString(3), Address = r.GetString(4), IsDefault = r.GetBoolean(5), IsActive = r.GetBoolean(6), Version = r.GetInt64(7)
 	};
 }
