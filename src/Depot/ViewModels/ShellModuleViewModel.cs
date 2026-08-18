@@ -20,6 +20,7 @@ public sealed class ShellModuleViewModel : BaseViewModel, IDisposable
 		_ownedPages = pages.ToList();
 		Pages = new ObservableCollection<SecondaryNavigationItem>(_ownedPages);
 		_selectedPage = Pages.FirstOrDefault();
+		_selectedPage?.Activate?.Invoke();
 	}
 
 	public event EventHandler? NavigationRequested;
@@ -50,6 +51,7 @@ public sealed class ShellModuleViewModel : BaseViewModel, IDisposable
 			return false;
 		}
 		_selectedPage = page;
+		page.Activate?.Invoke();
 		OnPropertyChanged(nameof(SelectedPage));
 		OnPropertyChanged(nameof(CurrentViewModel));
 		return true;
@@ -94,6 +96,7 @@ public sealed class ShellModuleViewModel : BaseViewModel, IDisposable
 			: Pages.FirstOrDefault(page =>
 				administration.NavigationItems.Any(item =>
 					item.Name == page.Name && Equals(item.Section, selectedSection))) ?? Pages.FirstOrDefault();
+		_selectedPage?.Activate?.Invoke();
 
 		_administrationPagesExpanded = true;
 		OnPropertyChanged(nameof(Pages));
