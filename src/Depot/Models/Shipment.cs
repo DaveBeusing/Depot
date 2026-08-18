@@ -27,6 +27,9 @@ public sealed class Shipment
 	public long CreatedByUserId { get; set; }
 	public long? PostedByUserId { get; set; }
 	public DateTime? PostedAtUtc { get; set; }
+	public DateTime? ReversedAtUtc { get; set; }
+	public long? ReversedByUserId { get; set; }
+	public string? ReversalReason { get; set; }
 	public long Version { get; set; } = 1;
 	public IReadOnlyList<ShipmentLine> Lines { get; set; } = [];
 }
