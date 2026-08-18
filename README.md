@@ -1,6 +1,6 @@
 # Depot
 
-Depot is a Windows desktop application for inventory, warehouse, supplier, procurement, administration, reporting, and operational workflows. It is built with .NET 10, WPF, MVVM, and a provider-neutral ADO.NET persistence layer.
+Depot is a Windows desktop application for inventory, warehouse, procurement, sales fulfillment, administration, reporting, and operational workflows. It is built with .NET 10, WPF, MVVM, and a provider-neutral ADO.NET persistence layer.
 
 The project is under active development on the **0.13.28-preview** line. Implemented workflows are not described as production-ready until the version 1.0 verification checklist has been completed.
 
@@ -23,64 +23,120 @@ Implemented shell features include:
 - Persistent workspace tabs with close buttons, middle-click close, overflow handling, and tab context actions
 - `Ctrl+W` to close the active tab
 - `Ctrl+Tab` / `Ctrl+Shift+Tab` to move between open tabs
-- `Ctrl+P` Quick Open for workspaces, sections, items, purchase orders, and suppliers
+- `Ctrl+P` Quick Open for workspaces, sections, operational records, purchase records, and sales records
 - Grouped Quick Open results with type badges and session-recent records
 - `Ctrl+Shift+P` Command Palette for navigation and direct workflow actions
-- Direct commands for New Item, New Purchase Order, Start Inventory Count, Transfer Stock, and Receive Goods
 - F1 context Help in its own workspace tab
 - Notification Center and signed-in user details as workspace tabs
 - Permission-aware unread notification badge
-- Unsaved-changes protection for Items, Purchase Orders, Suppliers, Supplier Items, and Roles across workspace changes, section changes, tab closing, sign-out, and application closing
+- Unsaved-changes protection across workspace changes, section changes, tab closing, sign-out, and application closing, including Sales customer, sales-order, and shipment drafts
 - Action-oriented dashboard links into operational workspaces
 - Administrator dashboard visibility across all available role-oriented overview sections
 
-### Fully implemented workflows
+### Inventory, warehouse, and procurement
+
+Depot currently includes:
 
 - Email/password authentication, PBKDF2-SHA256 password hashing, database-backed multi-role RBAC, session switching, and administrator-managed users and roles
 - Dashboard metrics, operational attention links, recent movements, and inventory valuation
-- Item, inventory, purpose, warehouse, storage-location, and stock-movement workflows
+- Item, inventory, purpose, warehouse, storage-location, and immutable stock-movement workflows
 - Normalized item master data: manufacturer, category, unit of measure, and packaging
-- Reason codes with immutable technical keys, editable display names, protected workflow system codes, search, activation, and movement references
-- Supplier categories, suppliers, and many-to-many `SupplierItem` assignments with supplier-specific commercial data
-- Purchase orders and lines with automatic numbering, separation-of-duties approval workflow, search, filtering, status history, and direct navigation
-- Dedicated permission-restricted purchase-order approval work queue
-- Delivery-note-based goods receipts with partial receipts and automatic purchase-order status updates
-- Atomic goods-receipt posting across receipt records, received quantities, stock movements, and order status
-- Supplier-return documents linked to received positions with atomic negative stock movements
-- Warehouse stock transfers with draft editing, search, status filtering, paging, atomic posting, paired movements, and concurrency-safe stock checks
-- Inventory counts with warehouse snapshots, counting, review, optimistic concurrency, and atomic correction posting
+- Reason codes with immutable technical keys and editable display names
+- Supplier categories, suppliers, and many-to-many `SupplierItem` assignments
+- Purchase orders with approval, ordering, closing, search, status history, and direct navigation
+- Goods receipts with partial receipts and atomic stock posting
+- Supplier returns with negative stock movements
+- Warehouse transfers with paired movements and concurrency-safe stock checks
+- Inventory counts with snapshots, review, optimistic concurrency, and atomic correction posting
 - Material issue and material return workflows
-- Audited reversal workflows for posted goods receipts, material issues, stock transfers, and inventory counts
+- Audited reversal workflows for posted warehouse documents
 - Excel import and export
-- Inventory and grouped reporting with search, paging, aggregation, and export
-- Audit persistence and a filtered read-only Audit Log administration workspace
-- Optimistic concurrency using version columns and explicit conflict errors
-- Database administration with provider/schema/connection overview, backup validation, backup, restore with safety backup, scheduled backups, integrity checks, and SQLite compaction
-- Encrypted `depot.settings` storage using Windows DPAPI
-- Connection testing, connection-state UI, safe provider-specific errors, and database logging without exposed credentials
-- Integrated offline Help Center with permission-aware topics, search, related topics, diagnostics, and context-sensitive F1 routing
-- Internal Notification Center with server-side search and paging, read/archive actions, unread badge, record navigation, and workflow-generated notifications
+- Inventory and grouped reporting
+- Filtered read-only Audit Log
+- Database administration, backup, restore, scheduled backups, integrity checks, and SQLite compaction
+- Integrated offline Help Center and Notification Center
 
-### Database providers
+### Sales and order-to-cash
+
+The Sales workspace implements a separate order-to-cash domain rather than reusing procurement documents in reverse.
+
+The primary flow is:
+
+```text
+Customer
+   ↓
+Sales Order Draft
+   ↓
+Submit / Approval
+   ↓
+Inventory Reservation
+   ↓
+Release
+   ↓
+Shipment
+   ↓
+SalesShipment stock movement
+   ↓
+Sales Invoice
+   ↓
+Completed
+```
+
+Implemented Sales capabilities include:
+
+- Customer master data with billing/shipping information, payment terms, tax ID, contact data, currency, activation, and optimistic concurrency
+- Sales orders and lines with automatic numbering, customer/item snapshots, pricing, discounts, tax, requested delivery dates, and status workflow
+- Creator/approver separation with Administrator override
+- Inventory reservations that reduce **available** stock without changing physical stock
+- Concurrency-safe reservation checks against current on-hand quantity and reservations from other sales orders
+- Partial reservation and release; unreserved quantities remain visible as **Backorder** and can be allocated later
+- Per-line Ordered, Reserved, Backorder, Shipped, and Invoiced quantities
+- Shipment drafts with editable carrier, tracking number, notes, and delivery-note PDF generation
+- Atomic shipment posting that creates negative `SalesShipment` stock movements and consumes reservations
+- Shipment reversal before invoicing through positive `SalesShipmentReversal` counter-movements; original movements remain immutable
+- Customer Returns for physical returns after shipment, creating positive `CustomerReturn` stock movements
+- Shipment-based invoice creation with pricing/tax snapshots and invoice PDF generation
+- Draft invoice cancellation before posting
+- Posted invoice correction through immutable Sales Credit Notes instead of editing the original invoice
+- Sales Overview metrics and central Dashboard integration
+- Sales records in Quick Open and workflow actions in the Command Palette
+- Notification deep links into Sales Orders, Approvals, Shipping, and Invoices
+- Sales-specific offline Help topics
+
+### Sales roles
+
+Default system roles now include:
+
+- **Sales User** — maintains customers and creates/submits sales orders
+- **Sales Manager** — reviews, approves, releases, and monitors sales fulfillment
+- **Warehouse Operator** — creates/edits/posts/reverses shipments and processes customer returns
+- **Finance** — creates/posts invoices and creates/posts credit notes
+- **Administrator** — retains every Depot permission and sees every role-oriented dashboard overview
+
+All Sales actions remain permission-based; the role definitions are defaults, not hard-coded workflow identities.
+
+### Database providers and migrations
 
 - SQLite is the default first-installation provider and is covered by automated integration tests.
-- Microsoft SQL Server has a dedicated connection factory, database initializer, schema migrations, locking SQL, connection tests, and error normalization.
-- MySQL/MariaDB has a dedicated connection factory, database initializer, schema migrations, locking SQL, connection tests, and error normalization.
+- Microsoft SQL Server has a dedicated connection factory, database initializer, locking SQL, connection tests, and error normalization.
+- MySQL/MariaDB has a dedicated connection factory, database initializer, locking SQL, connection tests, and error normalization.
+
+The core Depot database schema is currently **29**. Sales uses a separate versioned feature-migration registry in `DepotFeatureVersions`; the current Sales feature schema is **2**. This keeps the Sales rollout upgradeable across SQLite, SQL Server, and MySQL/MariaDB while the 1.0 migration chain is being consolidated.
 
 SQL Server and MySQL/MariaDB support is implemented in code, but live-server migration, backup/restore, concurrency, and long-running acceptance tests are still required before version 1.0. Provider support must therefore not yet be interpreted as a production certification.
 
 ### Remaining work before version 1.0
 
-- Live SQL Server and MySQL/MariaDB installation and migration matrices
+- Live SQL Server and MySQL/MariaDB installation and migration matrices, including Sales feature migrations
 - Live server backup/restore and failure-recovery drills
-- Multi-client concurrency and long-running load tests against server providers
-- Large-data acceptance tests with at least 100,000 records
+- Multi-client reservation, shipping, receipt, and inventory concurrency tests against server providers
+- Large-data acceptance tests with at least 100,000 records and high stock-movement volumes
 - Complete UI runtime, accessibility, keyboard-navigation, localization, packaging, and upgrade testing
 - Security review of deployment defaults, credentials, logs, retained legacy data, and backup retention
 - Resolve the currently long-running automated test-process behavior in CI
-- General application-preferences module
-- Barcode scanning and barcode generation
-- Label design and printing
+- Consolidate feature migrations into the final 1.0 migration/upgrade policy
+
+Barcode scanning/generation, label design/printing, CRM-style quoting, payment collection, accounts receivable, and general-ledger functionality are intentionally outside the current order-to-cash scope.
 
 ## Architecture
 
@@ -98,12 +154,7 @@ DatabaseAccess
 SQLite / Microsoft SQL Server / MySQL or MariaDB
 ```
 
-- Views contain layout and bindings.
-- ViewModels contain presentation state, loading state, and UI commands.
-- Services contain validation and business workflows.
-- Repositories contain persistence SQL and mapping.
-- `DatabaseAccess` provides shared asynchronous queries, paging, transactions, streaming, and provider normalization.
-- `App.xaml.cs` is the composition root.
+Views contain layout and bindings. ViewModels contain presentation state and UI commands. Services enforce business rules and transactional workflows. Repositories contain persistence SQL and mapping. `DatabaseAccess` provides shared asynchronous queries, paging, transactions, streaming, and provider normalization. `App.xaml.cs` is the composition root.
 
 See [Architecture](docs/Architecture.md) for details.
 
@@ -111,9 +162,7 @@ See [Architecture](docs/Architecture.md) for details.
 
 Shared resources live under `src/Depot/Resources`; reusable controls live under `src/Depot/Controls`.
 
-The current UI system uses a compact dark visual language with centralized colors, typography, 32-pixel interaction sizing, consistent cards and container geometry, dark DataGrid/ListBox/ComboBox states, master/detail workflow layouts, status presentation, loading feedback, and reusable controls such as `Card`, `MetricCard`, `SearchBox`, `PageHeader`, `StatusBadge`, `WorkflowActionBar`, `MasterDetailGrid`, and `EmptyState`.
-
-Shell-specific resources are separated from workflow resources so activity navigation, workspace tabs, context navigation, inputs, cards, buttons, tables, and status components share the same design tokens.
+The UI uses a compact dark visual language with centralized colors, typography, 32-pixel interaction sizing, consistent cards and container geometry, dark DataGrid/ListBox/ComboBox states, master/detail workflow layouts, status presentation, loading feedback, and reusable controls such as `Card`, `MetricCard`, `SearchBox`, `PageHeader`, `StatusBadge`, `WorkflowActionBar`, `MasterDetailGrid`, and `EmptyState`.
 
 ## Technology
 
@@ -123,6 +172,7 @@ Shell-specific resources are separated from workflow resources so activity navig
 - SQL Server via `Microsoft.Data.SqlClient`
 - MySQL/MariaDB via `MySqlConnector`
 - ClosedXML for Excel import and export
+- PDFsharp-WPF for generated Sales documents
 - Nullable reference types enabled
 
 ## Getting started
@@ -141,15 +191,13 @@ cd Depot
 dotnet restore Depot.slnx
 ```
 
-Run Depot directly in Debug configuration during development:
+Run Depot directly in Debug configuration:
 
 ```powershell
 dotnet run --project src/Depot/Depot.csproj -c Debug
 ```
 
-The first installation uses local SQLite and creates `depot.db`. The current database schema version is **29**.
-
-Connection and backup settings are stored in `depot.settings`. The file is a JSON envelope with a DPAPI-encrypted payload for the current Windows user. Administration > Database can configure, test, and activate SQLite, SQL Server, or MySQL/MariaDB connections. Provider changes take effect after restarting Depot. Connection attempts and failures are written to `depot.database.log` without connection strings or passwords.
+The first installation uses local SQLite and creates `depot.db`. Connection and backup settings are stored in `depot.settings`. Administration > Database can configure, test, and activate SQLite, SQL Server, or MySQL/MariaDB connections. Provider changes take effect after restarting Depot.
 
 For a new database, sign in with `admin@depot.local` and `Depot123!`, then change the password in Administration > Users.
 
@@ -159,19 +207,17 @@ Depot targets `net10.0-windows`. Version metadata is taken from `Directory.Build
 
 ### Debug build
 
-Use Debug builds for local development and debugging:
-
 ```powershell
 dotnet build Depot.slnx -c Debug
 ```
 
-Run the application directly:
+Run the application:
 
 ```powershell
 dotnet run --project src/Depot/Depot.csproj -c Debug
 ```
 
-The application output is written below:
+Output:
 
 ```text
 src\Depot\bin\Debug\net10.0-windows\
@@ -179,23 +225,19 @@ src\Depot\bin\Debug\net10.0-windows\
 
 ### Release build
 
-Build the complete solution with compiler optimizations enabled:
-
 ```powershell
 dotnet build Depot.slnx -c Release
 ```
 
-The application output is written below:
+Output:
 
 ```text
 src\Depot\bin\Release\net10.0-windows\
 ```
 
-A Release build is useful for validation, but `dotnet publish` should be used when creating files for distribution.
+Use `dotnet publish` rather than the normal build output for distribution.
 
 ### Framework-dependent Release publish
-
-Create a compact Windows x64 publish that uses an installed .NET 10 Desktop Runtime on the target computer:
 
 ```powershell
 dotnet publish src/Depot/Depot.csproj `
@@ -204,17 +246,9 @@ dotnet publish src/Depot/Depot.csproj `
   --self-contained false
 ```
 
-The published files are written to:
-
-```text
-src\Depot\bin\Release\net10.0-windows\win-x64\publish\
-```
-
-Distribute the complete contents of this directory. The target computer must have the matching .NET 10 Desktop Runtime installed.
+The target computer needs the matching .NET 10 Desktop Runtime.
 
 ### Self-contained Release publish
-
-Create a Windows x64 deployment that carries its own .NET runtime:
 
 ```powershell
 dotnet publish src/Depot/Depot.csproj `
@@ -223,11 +257,9 @@ dotnet publish src/Depot/Depot.csproj `
   --self-contained true
 ```
 
-This produces a larger publish directory, but the target computer does not need a separately installed .NET runtime.
+The target computer does not need a separately installed .NET runtime.
 
 ### Self-contained single-file publish
-
-For a portable single executable, use:
 
 ```powershell
 dotnet publish src/Depot/Depot.csproj `
@@ -240,21 +272,17 @@ dotnet publish src/Depot/Depot.csproj `
   -p:DebugSymbols=false
 ```
 
-The result is written to:
+The default publish directory is:
 
 ```text
 src\Depot\bin\Release\net10.0-windows\win-x64\publish\
 ```
 
-For this publish mode, `Depot.exe` is the distributable application file. Managed dependencies, the .NET runtime, embedded Help content, and native libraries supported by single-file publishing are bundled into the executable. `IncludeNativeLibrariesForSelfExtract` allows native dependencies to be extracted automatically by the .NET host at runtime when required.
+For this mode, `Depot.exe` is the distributable application. Managed dependencies, the .NET runtime, embedded Help content, and supported native libraries are bundled into the executable. Runtime data such as `depot.db`, `depot.settings`, logs, backups, generated PDFs, and exports remains external.
 
-Runtime-generated application data is intentionally not bundled into the executable. Files such as `depot.db`, `depot.settings`, database logs, backups, and exports are created or managed by Depot at runtime.
+Do not enable `PublishTrimmed` for release distribution without a dedicated WPF/XAML trimming validation pass.
 
-> **Note:** Do not enable `PublishTrimmed` for release distribution without a dedicated trimming validation pass. Depot is a WPF application and uses XAML, bindings, reflection-sensitive framework behavior, and third-party libraries that may require metadata which trimming can remove.
-
-### Optional publish directory
-
-To produce a clean, predictable output folder, append `-o` to any publish command:
+### Optional clean publish directory
 
 ```powershell
 dotnet publish src/Depot/Depot.csproj `
@@ -268,13 +296,7 @@ dotnet publish src/Depot/Depot.csproj `
   -o artifacts/publish/win-x64
 ```
 
-This writes the distributable files to:
-
-```text
-artifacts\publish\win-x64\
-```
-
-Before distributing a Release or single-file build, run the automated tests and perform a clean-machine startup test against the intended database provider.
+Before distributing a build, run the automated tests and perform a clean-machine startup test against the intended database provider.
 
 ## Keyboard navigation
 
