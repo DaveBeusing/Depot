@@ -21,18 +21,7 @@ public sealed class SalesOrderService
 	private readonly IAuthorizationService _authorization;
 	private readonly NotificationService _notifications;
 
-	public SalesOrderService(
-		IDatabaseTransactionRunner transactions,
-		SalesOrderRepository orders,
-		CustomerRepository customers,
-		ItemRepository items,
-		InventoryRepository inventories,
-		InventoryReservationRepository reservations,
-		StockMovementRepository movements,
-		AuditRepository auditEntries,
-		AuditService audit,
-		IAuthorizationService authorization,
-		NotificationService notifications)
+	public SalesOrderService(IDatabaseTransactionRunner transactions, SalesOrderRepository orders, CustomerRepository customers, ItemRepository items, InventoryRepository inventories, InventoryReservationRepository reservations, StockMovementRepository movements, AuditRepository auditEntries, AuditService audit, IAuthorizationService authorization, NotificationService notifications)
 	{
 		_transactions = transactions;
 		_orders = orders;
@@ -52,30 +41,10 @@ public sealed class SalesOrderService
 	public bool CanSubmit => _authorization.HasPermission(ApplicationPermission.SalesOrdersSubmit);
 	public bool CanApprove => _authorization.HasPermission(ApplicationPermission.SalesOrdersApprove);
 	public bool CanRelease => _authorization.HasPermission(ApplicationPermission.SalesOrdersRelease);
-
-	public Task<PageResult<SalesOrder>> SearchAsync(string? searchText, SalesOrderStatus? status, int pageNumber = 1, int pageSize = 100, CancellationToken cancellationToken = default)
-	{
-		_authorization.RequirePermission(ApplicationPermission.SalesOrdersView);
-		return _orders.SearchAsync(searchText, status, pageNumber, pageSize, cancellationToken);
-	}
-
-	public Task<SalesOrder?> GetByIdAsync(long id, CancellationToken cancellationToken = default)
-	{
-		_authorization.RequirePermission(ApplicationPermission.SalesOrdersView);
-		return _orders.GetByIdAsync(id, cancellationToken);
-	}
-
-	public Task<IReadOnlyList<InventoryReservation>> GetReservationsAsync(long orderId, CancellationToken cancellationToken = default)
-	{
-		_authorization.RequirePermission(ApplicationPermission.SalesOrdersView);
-		return _reservations.ListByOrderAsync(orderId, cancellationToken);
-	}
-
-	public Task<IReadOnlyList<SalesInventoryAvailability>> SearchAvailabilityAsync(long itemId, string? searchText = null, CancellationToken cancellationToken = default)
-	{
-		_authorization.RequirePermission(ApplicationPermission.SalesOrdersEdit);
-		return _reservations.SearchAvailabilityAsync(itemId, searchText, cancellationToken);
-	}
+	public Task<PageResult<SalesOrder>> SearchAsync(string? searchText, SalesOrderStatus? status, int pageNumber = 1, int pageSize = 100, CancellationToken cancellationToken = default) { _authorization.RequirePermission(ApplicationPermission.SalesOrdersView); return _orders.SearchAsync(searchText, status, pageNumber, pageSize, cancellationToken); }
+	public Task<SalesOrder?> GetByIdAsync(long id, CancellationToken cancellationToken = default) { _authorization.RequirePermission(ApplicationPermission.SalesOrdersView); return _orders.GetByIdAsync(id, cancellationToken); }
+	public Task<IReadOnlyList<InventoryReservation>> GetReservationsAsync(long orderId, CancellationToken cancellationToken = default) { _authorization.RequirePermission(ApplicationPermission.SalesOrdersView); return _reservations.ListByOrderAsync(orderId, cancellationToken); }
+	public Task<IReadOnlyList<SalesInventoryAvailability>> SearchAvailabilityAsync(long itemId, string? searchText = null, CancellationToken cancellationToken = default) { _authorization.RequirePermission(ApplicationPermission.SalesOrdersEdit); return _reservations.SearchAvailabilityAsync(itemId, searchText, cancellationToken); }
 
 	public async Task<SalesOrder> SaveDraftAsync(SalesOrder order, CancellationToken cancellationToken = default)
 	{
@@ -90,9 +59,7 @@ public sealed class SalesOrderService
 		return saved;
 	}
 
-	public Task<SalesOrder> SubmitAsync(long id, long version, CancellationToken cancellationToken = default) =>
-		ChangeStatusAsync(ApplicationPermission.SalesOrdersSubmit, id, version, SalesOrderStatus.Draft, SalesOrderStatus.PendingApproval,
-			order => { var user = RequireUser(); order.SubmittedByUserId = user.Id; order.SubmittedAtUtc = DateTime.UtcNow; order.ApprovalDecisionByUserId = null; order.ApprovalDecisionAtUtc = null; order.ApprovalComment = null; }, cancellationToken);
+	public Task<SalesOrder> SubmitAsync(long id, long version, CancellationToken cancellationToken = default) => ChangeStatusAsync(ApplicationPermission.SalesOrdersSubmit, id, version, SalesOrderStatus.Draft, SalesOrderStatus.PendingApproval, order => { var user = RequireUser(); order.SubmittedByUserId = user.Id; order.SubmittedAtUtc = DateTime.UtcNow; order.ApprovalDecisionByUserId = null; order.ApprovalDecisionAtUtc = null; order.ApprovalComment = null; }, cancellationToken);
 
 	public async Task<SalesOrder> ApproveAsync(long id, long version, string? comment = null, CancellationToken cancellationToken = default)
 	{
@@ -103,8 +70,7 @@ public sealed class SalesOrderService
 		if (before.Status != SalesOrderStatus.PendingApproval) throw new InvalidOperationException("Only a pending sales order can be approved.");
 		if (before.CreatedByUserId == user.Id && !user.IsAdministrator) throw new InvalidOperationException("A sales order cannot be approved by its creator.");
 		comment = Normalize(comment);
-		return await ChangeStatusCoreAsync(before, version, SalesOrderStatus.PendingApproval, SalesOrderStatus.Approved,
-			order => { order.ApprovalDecisionByUserId = user.Id; order.ApprovalDecisionAtUtc = DateTime.UtcNow; order.ApprovalComment = comment; }, cancellationToken);
+		return await ChangeStatusCoreAsync(before, version, SalesOrderStatus.PendingApproval, SalesOrderStatus.Approved, order => { order.ApprovalDecisionByUserId = user.Id; order.ApprovalDecisionAtUtc = DateTime.UtcNow; order.ApprovalComment = comment; }, cancellationToken);
 	}
 
 	public async Task<SalesOrder> RejectAsync(long id, long version, string? comment = null, CancellationToken cancellationToken = default)
@@ -115,13 +81,10 @@ public sealed class SalesOrderService
 		if (before.Version != version) throw new ConcurrencyConflictException("sales order");
 		if (before.Status != SalesOrderStatus.PendingApproval) throw new InvalidOperationException("Only a pending sales order can be rejected.");
 		if (before.CreatedByUserId == user.Id && !user.IsAdministrator) throw new InvalidOperationException("A sales order cannot be rejected by its creator.");
-		return await ChangeStatusCoreAsync(before, version, SalesOrderStatus.PendingApproval, SalesOrderStatus.Rejected,
-			order => { order.ApprovalDecisionByUserId = user.Id; order.ApprovalDecisionAtUtc = DateTime.UtcNow; order.ApprovalComment = Normalize(comment); }, cancellationToken);
+		return await ChangeStatusCoreAsync(before, version, SalesOrderStatus.PendingApproval, SalesOrderStatus.Rejected, order => { order.ApprovalDecisionByUserId = user.Id; order.ApprovalDecisionAtUtc = DateTime.UtcNow; order.ApprovalComment = Normalize(comment); }, cancellationToken);
 	}
 
-	public Task<SalesOrder> ReopenRejectedAsync(long id, long version, CancellationToken cancellationToken = default) =>
-		ChangeStatusAsync(ApplicationPermission.SalesOrdersEdit, id, version, SalesOrderStatus.Rejected, SalesOrderStatus.Draft,
-			order => { order.SubmittedByUserId = null; order.SubmittedAtUtc = null; order.ApprovalDecisionByUserId = null; order.ApprovalDecisionAtUtc = null; order.ApprovalComment = null; }, cancellationToken);
+	public Task<SalesOrder> ReopenRejectedAsync(long id, long version, CancellationToken cancellationToken = default) => ChangeStatusAsync(ApplicationPermission.SalesOrdersEdit, id, version, SalesOrderStatus.Rejected, SalesOrderStatus.Draft, order => { order.SubmittedByUserId = null; order.SubmittedAtUtc = null; order.ApprovalDecisionByUserId = null; order.ApprovalDecisionAtUtc = null; order.ApprovalComment = null; }, cancellationToken);
 
 	public async Task<SalesOrder> SetReservationsAsync(long id, long version, IReadOnlyCollection<SalesReservationRequest> requests, CancellationToken cancellationToken = default)
 	{
@@ -132,7 +95,7 @@ public sealed class SalesOrderService
 		{
 			var before = await _orders.GetByIdAsync(transaction, id, token) ?? throw new InvalidOperationException("Sales order was not found.");
 			if (before.Version != version) throw new ConcurrencyConflictException("sales order");
-			if (before.Status != SalesOrderStatus.Approved) throw new InvalidOperationException("Inventory can only be reserved for an approved sales order.");
+			if (before.Status is not (SalesOrderStatus.Approved or SalesOrderStatus.Released or SalesOrderStatus.PartiallyShipped)) throw new InvalidOperationException("Inventory can only be reserved for an approved or released sales order.");
 			if (requests.Any(request => request.Quantity <= 0)) throw new ArgumentOutOfRangeException(nameof(requests));
 			if (requests.Any(request => before.Lines.All(line => line.Id != request.SalesOrderLineId))) throw new InvalidOperationException("A reservation references a line that does not belong to the sales order.");
 			var inventoryIds = requests.Select(request => request.InventoryId).Distinct().OrderBy(value => value).ToArray();
@@ -149,9 +112,7 @@ public sealed class SalesOrderService
 			var current = (await _movements.GetCurrentQuantitiesAsync(transaction, inventoryIds, token)).ToDictionary(value => value.InventoryId, value => value.Quantity);
 			foreach (var inventoryGroup in requests.GroupBy(value => value.InventoryId))
 			{
-				var otherReserved = Convert.ToInt64(await transaction.Session.ExecuteScalarAsync(
-					"SELECT COALESCE(SUM(Quantity),0) FROM InventoryReservations WHERE InventoryId=$InventoryId AND Status=$Active AND SalesOrderLineId NOT IN (SELECT Id FROM SalesOrderLines WHERE SalesOrderId=$OrderId);",
-					token, new DatabaseParameter("$InventoryId", inventoryGroup.Key), new DatabaseParameter("$Active", (int)InventoryReservationStatus.Active), new DatabaseParameter("$OrderId", id)) ?? 0);
+				var otherReserved = Convert.ToInt64(await transaction.Session.ExecuteScalarAsync("SELECT COALESCE(SUM(Quantity),0) FROM InventoryReservations WHERE InventoryId=$InventoryId AND Status=$Active AND SalesOrderLineId NOT IN (SELECT Id FROM SalesOrderLines WHERE SalesOrderId=$OrderId);", token, new DatabaseParameter("$InventoryId", inventoryGroup.Key), new DatabaseParameter("$Active", (int)InventoryReservationStatus.Active), new DatabaseParameter("$OrderId", id)) ?? 0);
 				var requested = inventoryGroup.Sum(value => value.Quantity);
 				if (current.GetValueOrDefault(inventoryGroup.Key) - otherReserved < requested) throw new InsufficientStockException();
 			}
@@ -163,7 +124,7 @@ public sealed class SalesOrderService
 			foreach (var line in before.Lines)
 			{
 				var reserved = requests.Where(value => value.SalesOrderLineId == line.Id).Sum(value => value.Quantity);
-				if (reserved > line.OpenQuantity) throw new InvalidOperationException("Reserved quantity cannot exceed the open sales-order quantity.");
+				if (reserved > Math.Max(0, line.Quantity - line.ShippedQuantity)) throw new InvalidOperationException("Reserved quantity cannot exceed the unshipped sales-order quantity.");
 				await _orders.UpdateLineQuantitiesAsync(transaction, line.Id, reserved, line.ShippedQuantity, line.InvoicedQuantity, token);
 			}
 			var after = await _orders.GetByIdAsync(transaction, id, token) ?? throw new InvalidOperationException("Sales order could not be reloaded.");
@@ -180,13 +141,14 @@ public sealed class SalesOrderService
 		if (order.Version != version) throw new ConcurrencyConflictException("sales order");
 		if (order.Status != SalesOrderStatus.Approved) throw new InvalidOperationException("Only an approved sales order can be released.");
 		var reservations = await _reservations.ListByOrderAsync(id, cancellationToken);
+		var activeReserved = reservations.Where(value => value.Status == InventoryReservationStatus.Active).Sum(value => value.Quantity);
+		if (activeReserved <= 0) throw new InvalidOperationException("At least one quantity must be reserved before release.");
 		foreach (var line in order.Lines)
 		{
 			var reserved = reservations.Where(value => value.SalesOrderLineId == line.Id && value.Status == InventoryReservationStatus.Active).Sum(value => value.Quantity);
-			if (reserved != line.Quantity) throw new InvalidOperationException($"Line {line.LineNumber} must be fully reserved before release.");
+			if (reserved > Math.Max(0, line.Quantity - line.ShippedQuantity)) throw new InvalidOperationException($"Line {line.LineNumber} is over-reserved.");
 		}
-		return await ChangeStatusCoreAsync(order, version, SalesOrderStatus.Approved, SalesOrderStatus.Released,
-			result => { result.ReleasedByUserId = user.Id; result.ReleasedAtUtc = DateTime.UtcNow; }, cancellationToken);
+		return await ChangeStatusCoreAsync(order, version, SalesOrderStatus.Approved, SalesOrderStatus.Released, result => { result.ReleasedByUserId = user.Id; result.ReleasedAtUtc = DateTime.UtcNow; }, cancellationToken);
 	}
 
 	public async Task<SalesOrder> CancelAsync(long id, long version, string reason, CancellationToken cancellationToken = default)
@@ -238,9 +200,7 @@ public sealed class SalesOrderService
 	{
 		var userId = _authorization.CurrentUser?.Id;
 		if (order.Status == SalesOrderStatus.PendingApproval)
-		{
 			await _notifications.NotifyPermissionHoldersAsync(new(NotificationType.Workflow, NotificationSeverity.Information, $"Sales order {order.OrderNumber} requires approval", $"Sales order {order.OrderNumber} for {order.CustomerName} requires approval.", NotificationSourceTypes.SalesOrderApproval, order.Id, order.OrderNumber, userId), ApplicationPermission.SalesOrdersApprove, order.CreatedByUserId is null ? null : [order.CreatedByUserId.Value], cancellationToken);
-		}
 		else if (order.Status is SalesOrderStatus.Approved or SalesOrderStatus.Rejected)
 		{
 			var recipients = new long?[] { order.CreatedByUserId, order.SubmittedByUserId }.Where(value => value is > 0).Select(value => value!.Value).Distinct().ToArray();
