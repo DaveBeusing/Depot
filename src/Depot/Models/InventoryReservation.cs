@@ -37,5 +37,6 @@ public sealed class SalesInventoryAvailability
 	public long OnHand { get; set; }
 	public long Reserved { get; set; }
 	public long Available => OnHand - Reserved;
+	public long AvailableQuantity => Available;
 	public string Display => $"{PartNumber} · {WarehouseName} / {StorageLocationName} · Available {Available:N0}";
 }
