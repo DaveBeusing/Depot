@@ -34,6 +34,11 @@ public sealed class SalesInvoiceRepository : DatabaseRepository
 	}
 	public Task<IReadOnlyList<SalesInvoiceLine>> ListLinesAsync(long id,CancellationToken token)=>Database.QueryAsync(LineSql+" WHERE sil.SalesInvoiceId=$Id ORDER BY sil.LineNumber;",ReadLine,token,Parameter("$Id",id));
 	public Task<SalesInvoice?> GetByShipmentIdAsync(long shipmentId,CancellationToken token)=>Database.QuerySingleOrDefaultAsync($"SELECT {Columns} {From} WHERE si.ShipmentId=$ShipmentId;",Read,token,Parameter("$ShipmentId",shipmentId));
+	public async Task<SalesInvoice?> GetByShipmentIdAsync(DatabaseTransactionContext tx,long shipmentId,CancellationToken token)
+	{
+		var rows=await tx.Session.QueryAsync($"SELECT {Columns} {From} WHERE si.ShipmentId=$ShipmentId;",Read,token,Parameter("$ShipmentId",shipmentId));
+		if(rows.Count==0)return null;var invoice=rows[0];invoice.Lines=await tx.Session.QueryAsync(LineSql+" WHERE sil.SalesInvoiceId=$Id ORDER BY sil.LineNumber;",ReadLine,token,Parameter("$Id",invoice.Id));return invoice;
+	}
 
 	public async Task<long> CreateAsync(DatabaseTransactionContext tx,SalesInvoice invoice,CancellationToken token)
 	{
@@ -50,6 +55,7 @@ public sealed class SalesInvoiceRepository : DatabaseRepository
 		return invoice.Id;
 	}
 	public async Task<bool> PostAsync(DatabaseTransactionContext tx,long id,long version,long userId,DateTime at,CancellationToken token)=>await tx.Session.ExecuteAsync("UPDATE SalesInvoices SET Status=$Posted,PostedByUserId=$UserId,PostedAtUtc=$At,Version=Version+1 WHERE Id=$Id AND Version=$Version AND Status=$Draft;",token,Parameter("$Posted",(int)SalesInvoiceStatus.Posted),Parameter("$UserId",userId),Parameter("$At",at.ToString("O",CultureInfo.InvariantCulture)),Parameter("$Id",id),Parameter("$Version",version),Parameter("$Draft",(int)SalesInvoiceStatus.Draft))==1;
+	public async Task<bool> CancelDraftAsync(DatabaseTransactionContext tx,long id,long version,CancellationToken token)=>await tx.Session.ExecuteAsync("UPDATE SalesInvoices SET Status=$Cancelled,Version=Version+1 WHERE Id=$Id AND Version=$Version AND Status=$Draft;",token,Parameter("$Cancelled",(int)SalesInvoiceStatus.Cancelled),Parameter("$Id",id),Parameter("$Version",version),Parameter("$Draft",(int)SalesInvoiceStatus.Draft))==1;
 
 	private static DatabaseParameter[] Parameters(SalesInvoice i)=>[new("$Number",i.InvoiceNumber),new("$CustomerId",i.CustomerId),new("$OrderId",i.SalesOrderId),new("$ShipmentId",i.ShipmentId),new("$InvoiceDate",i.InvoiceDate.ToString("yyyy-MM-dd",CultureInfo.InvariantCulture)),new("$DueDate",i.DueDate.ToString("yyyy-MM-dd",CultureInfo.InvariantCulture)),new("$Currency",i.Currency),new("$Status",(int)i.Status),new("$Reference",i.CustomerReference),new("$Address",i.BillingAddress),new("$Notes",i.Notes),new("$UserId",i.CreatedByUserId)];
 	private const string LineSql="SELECT sil.Id,sil.SalesInvoiceId,sil.LineNumber,sil.SalesOrderLineId,sil.ShipmentLineId,sil.PartNumber,sil.Description,sil.Quantity,sil.UnitPrice,sil.DiscountPercent,sil.TaxRate,sil.Version FROM SalesInvoiceLines sil";
