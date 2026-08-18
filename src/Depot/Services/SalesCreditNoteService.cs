@@ -61,7 +61,7 @@ public sealed class SalesCreditNoteService
 			};
 			await _creditNotes.CreateAsync(transaction, value, cancellationToken);
 			await _auditEntries.CreateAsync(transaction, _audit.CreateCreatedEntry(value.Id, value), cancellationToken);
-			return await _creditNotes.GetByIdAsync(value.Id, cancellationToken) ?? value;
+			return await _creditNotes.GetByIdAsync(transaction, value.Id, cancellationToken) ?? value;
 		}, token);
 	}
 
@@ -71,12 +71,12 @@ public sealed class SalesCreditNoteService
 		var user = RequireUser();
 		return await _transactions.ExecuteAsync(async (transaction, cancellationToken) =>
 		{
-			var before = await _creditNotes.GetByIdAsync(id, cancellationToken) ?? throw new InvalidOperationException("Credit note was not found.");
+			var before = await _creditNotes.GetByIdAsync(transaction, id, cancellationToken) ?? throw new InvalidOperationException("Credit note was not found.");
 			if (before.Version != version) throw new ConcurrencyConflictException("sales credit note");
 			if (before.Status != SalesCreditNoteStatus.Draft) throw new InvalidOperationException("Only a draft credit note can be posted.");
 			var postedAt = DateTime.UtcNow;
 			if (!await _creditNotes.PostAsync(transaction, id, version, user.Id, postedAt, cancellationToken)) throw new ConcurrencyConflictException("sales credit note");
-			var after = await _creditNotes.GetByIdAsync(id, cancellationToken) ?? throw new InvalidOperationException("Credit note could not be reloaded.");
+			var after = await _creditNotes.GetByIdAsync(transaction, id, cancellationToken) ?? throw new InvalidOperationException("Credit note could not be reloaded.");
 			await _auditEntries.CreateAsync(transaction, _audit.CreateUpdatedEntry(id, before, after), cancellationToken);
 			return after;
 		}, token);
