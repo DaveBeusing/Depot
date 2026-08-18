@@ -7,9 +7,9 @@ using Depot.Models;
 
 namespace Depot.Data;
 
-internal static class SalesSchemaMigration
+public static class SalesSchemaMigration
 {
-	private const int CurrentVersion = 2;
+	public const int CurrentVersion = 2;
 	private const string FeatureName = "Sales";
 
 	public static void Migrate(IDatabaseConnectionFactory connectionFactory)
