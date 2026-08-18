@@ -22,6 +22,7 @@ public partial class DashboardView : UserControl
 			case "Approvals": await NavigateTopLevelAsync(viewModel, "Approvals"); break;
 			case "Purchasing": await NavigateModulePageAsync(viewModel, "Purchasing", "Purchase Orders"); break;
 			case "Warehouse": await NavigateModulePageAsync(viewModel, "Warehouse", "Inventory Counts"); break;
+			case "Sales": await NavigateModulePageAsync(viewModel, "Sales", "Overview"); break;
 			case "InventoryMovements": await NavigateModulePageAsync(viewModel, "Inventory", "Movements"); break;
 			case "AdministrationUsers":
 				await NavigateTopLevelAsync(viewModel, "Administration");
