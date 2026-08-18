@@ -21,6 +21,7 @@ public static class UnsavedChangesGuard
 		{
 			ItemsViewModel items when HasItemChanges(items) => new("item", () => DiscardItemChanges(items)),
 			ProcurementViewModel purchasing when HasPurchaseOrderChanges(purchasing) => new("purchase order", () => DiscardPurchaseOrderChanges(purchasing)),
+			SalesViewModel sales when sales.HasUnsavedChanges() => new("sales document", sales.DiscardUnsavedChanges),
 			SupplierViewModel suppliers when HasSupplierChanges(suppliers) => new("supplier", () => DiscardSupplierChanges(suppliers)),
 			RoleViewModel roles when HasRoleChanges(roles) => new("role", () => DiscardRoleChanges(roles)),
 			_ => null
