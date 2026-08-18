@@ -15,12 +15,13 @@ public sealed class ShipmentService
 	private readonly InventoryReservationRepository _reservations;
 	private readonly InventoryRepository _inventories;
 	private readonly StockMovementRepository _movements;
+	private readonly SalesInvoiceRepository _invoices;
 	private readonly AuditRepository _auditEntries;
 	private readonly AuditService _audit;
 	private readonly IAuthorizationService _authorization;
 	private readonly NotificationService _notifications;
 
-	public ShipmentService(IDatabaseTransactionRunner transactions, ShipmentRepository shipments, SalesOrderRepository orders, InventoryReservationRepository reservations, InventoryRepository inventories, StockMovementRepository movements, AuditRepository auditEntries, AuditService audit, IAuthorizationService authorization, NotificationService notifications)
+	public ShipmentService(IDatabaseTransactionRunner transactions, ShipmentRepository shipments, SalesOrderRepository orders, InventoryReservationRepository reservations, InventoryRepository inventories, StockMovementRepository movements, SalesInvoiceRepository invoices, AuditRepository auditEntries, AuditService audit, IAuthorizationService authorization, NotificationService notifications)
 	{
 		_transactions = transactions;
 		_shipments = shipments;
@@ -28,6 +29,7 @@ public sealed class ShipmentService
 		_reservations = reservations;
 		_inventories = inventories;
 		_movements = movements;
+		_invoices = invoices;
 		_auditEntries = auditEntries;
 		_audit = audit;
 		_authorization = authorization;
@@ -35,7 +37,9 @@ public sealed class ShipmentService
 	}
 
 	public bool CanCreate => _authorization.HasPermission(ApplicationPermission.ShipmentsCreate);
+	public bool CanEdit => _authorization.HasPermission(ApplicationPermission.ShipmentsEdit);
 	public bool CanPost => _authorization.HasPermission(ApplicationPermission.ShipmentsPost);
+	public bool CanReverse => _authorization.HasPermission(ApplicationPermission.ShipmentsReverse);
 
 	public Task<PageResult<Shipment>> SearchAsync(string? searchText, ShipmentStatus? status, int pageNumber = 1, int pageSize = 100, CancellationToken cancellationToken = default)
 	{
@@ -76,6 +80,21 @@ public sealed class ShipmentService
 			await _shipments.CreateAsync(transaction, shipment, token);
 			await _auditEntries.CreateAsync(transaction, _audit.CreateCreatedEntry(shipment.Id, shipment), token);
 			return await _shipments.GetByIdAsync(transaction, shipment.Id, token) ?? shipment;
+		}, cancellationToken);
+	}
+
+	public async Task<Shipment> UpdateDraftAsync(Shipment shipment, CancellationToken cancellationToken = default)
+	{
+		_authorization.RequirePermission(ApplicationPermission.ShipmentsEdit);
+		if (shipment.Id <= 0 || shipment.Status != ShipmentStatus.Draft) throw new InvalidOperationException("Only a draft shipment can be edited.");
+		return await _transactions.ExecuteAsync(async (transaction, token) =>
+		{
+			var before = await _shipments.GetByIdAsync(transaction, shipment.Id, token) ?? throw new InvalidOperationException("Shipment was not found.");
+			if (before.Version != shipment.Version) throw new ConcurrencyConflictException("shipment");
+			if (!await _shipments.UpdateDraftAsync(transaction, shipment, shipment.Version, token)) throw new ConcurrencyConflictException("shipment");
+			var after = await _shipments.GetByIdAsync(transaction, shipment.Id, token) ?? throw new InvalidOperationException("Shipment could not be reloaded.");
+			await _auditEntries.CreateAsync(transaction, _audit.CreateUpdatedEntry(shipment.Id, before, after), token);
+			return after;
 		}, cancellationToken);
 	}
 
@@ -121,6 +140,43 @@ public sealed class ShipmentService
 		}, cancellationToken);
 		await _notifications.NotifyUsersAsync(new(NotificationType.Workflow, NotificationSeverity.Success, $"Shipment {result.ShipmentNumber} posted", $"Shipment {result.ShipmentNumber} for sales order {result.SalesOrderNumber} was posted.", NotificationSourceTypes.Shipment, result.Id, result.ShipmentNumber, user.Id), [user.Id], cancellationToken);
 		return result;
+	}
+
+	public async Task<Shipment> ReverseAsync(long id, long version, string reason, CancellationToken cancellationToken = default)
+	{
+		_authorization.RequirePermission(ApplicationPermission.ShipmentsReverse);
+		if (string.IsNullOrWhiteSpace(reason)) throw new ArgumentException("A reversal reason is required.", nameof(reason));
+		var user = RequireUser();
+		return await _transactions.ExecuteAsync(async (transaction, token) =>
+		{
+			var before = await _shipments.GetByIdAsync(transaction, id, token) ?? throw new InvalidOperationException("Shipment was not found.");
+			if (before.Version != version) throw new ConcurrencyConflictException("shipment");
+			if (before.Status != ShipmentStatus.Posted || before.ReversedAtUtc is not null) throw new InvalidOperationException("Only an unreversed posted shipment can be reversed.");
+			var invoice = await _invoices.GetByShipmentIdAsync(transaction, id, token);
+			if (invoice is not null && invoice.Status != SalesInvoiceStatus.Cancelled) throw new InvalidOperationException("Cancel the draft invoice or use a customer return and credit note for an already invoiced shipment.");
+			var order = await _orders.GetByIdAsync(transaction, before.SalesOrderId, token) ?? throw new InvalidOperationException("Sales order was not found.");
+			var reversedAt = DateTime.UtcNow;
+			foreach (var line in before.Lines)
+			{
+				var orderLine = order.Lines.Single(value => value.Id == line.SalesOrderLineId);
+				var movement = new StockMovement { InventoryId = line.InventoryId, MovementType = StockMovementType.SalesShipmentReversal, TimestampUtc = reversedAt, Quantity = line.Quantity, Reference = $"Shipment reversal {before.ShipmentNumber}", Notes = reason.Trim() };
+				movement.Id = await _movements.CreateAsync(transaction, movement, token);
+				var reservation = new InventoryReservation { SalesOrderLineId = line.SalesOrderLineId, InventoryId = line.InventoryId, Quantity = line.Quantity, Status = InventoryReservationStatus.Active, CreatedAtUtc = reversedAt, CreatedByUserId = user.Id };
+				reservation.Id = await _reservations.CreateAsync(transaction, reservation, token);
+				await _orders.UpdateLineQuantitiesAsync(transaction, orderLine.Id, orderLine.ReservedQuantity + line.Quantity, Math.Max(0, orderLine.ShippedQuantity - line.Quantity), orderLine.InvoicedQuantity, token);
+			}
+			if (!await _shipments.ReverseAsync(transaction, id, version, user.Id, reversedAt, reason.Trim(), token)) throw new ConcurrencyConflictException("shipment");
+			var reloadedOrder = await _orders.GetByIdAsync(transaction, order.Id, token) ?? throw new InvalidOperationException("Sales order could not be reloaded.");
+			var targetStatus = reloadedOrder.Lines.Any(line => line.ShippedQuantity > 0) ? SalesOrderStatus.PartiallyShipped : SalesOrderStatus.Released;
+			if (reloadedOrder.Status != targetStatus)
+			{
+				var changed = SalesOrderService.Copy(reloadedOrder); changed.Status = targetStatus;
+				if (!await _orders.SetStatusAsync(transaction, changed, reloadedOrder.Version, reloadedOrder.Status, token)) throw new ConcurrencyConflictException("sales order");
+			}
+			var after = await _shipments.GetByIdAsync(transaction, id, token) ?? throw new InvalidOperationException("Shipment could not be reloaded.");
+			await _auditEntries.CreateAsync(transaction, _audit.CreateUpdatedEntry(id, before, after), token);
+			return after;
+		}, cancellationToken);
 	}
 
 	private User RequireUser() => _authorization.CurrentUser is { IsActive: true } user ? user : throw new UnauthorizedAccessException("An active signed-in user is required for shipping.");
