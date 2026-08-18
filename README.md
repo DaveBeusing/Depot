@@ -133,11 +133,18 @@ Requirements:
 - [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
 - Visual Studio, JetBrains Rider, VS Code, or the .NET CLI
 
+Clone and restore the repository:
+
 ```powershell
 git clone https://github.com/DaveBeusing/Depot.git
 cd Depot
-dotnet build Depot.slnx
-dotnet run --project src/Depot/Depot.csproj
+dotnet restore Depot.slnx
+```
+
+Run Depot directly in Debug configuration during development:
+
+```powershell
+dotnet run --project src/Depot/Depot.csproj -c Debug
 ```
 
 The first installation uses local SQLite and creates `depot.db`. The current database schema version is **29**.
@@ -145,6 +152,129 @@ The first installation uses local SQLite and creates `depot.db`. The current dat
 Connection and backup settings are stored in `depot.settings`. The file is a JSON envelope with a DPAPI-encrypted payload for the current Windows user. Administration > Database can configure, test, and activate SQLite, SQL Server, or MySQL/MariaDB connections. Provider changes take effect after restarting Depot. Connection attempts and failures are written to `depot.database.log` without connection strings or passwords.
 
 For a new database, sign in with `admin@depot.local` and `Depot123!`, then change the password in Administration > Users.
+
+## Build and publish
+
+Depot targets `net10.0-windows`. Version metadata is taken from `Directory.Build.props`; the current preview version is **0.13.28-preview**.
+
+### Debug build
+
+Use Debug builds for local development and debugging:
+
+```powershell
+dotnet build Depot.slnx -c Debug
+```
+
+Run the application directly:
+
+```powershell
+dotnet run --project src/Depot/Depot.csproj -c Debug
+```
+
+The application output is written below:
+
+```text
+src\Depot\bin\Debug\net10.0-windows\
+```
+
+### Release build
+
+Build the complete solution with compiler optimizations enabled:
+
+```powershell
+dotnet build Depot.slnx -c Release
+```
+
+The application output is written below:
+
+```text
+src\Depot\bin\Release\net10.0-windows\
+```
+
+A Release build is useful for validation, but `dotnet publish` should be used when creating files for distribution.
+
+### Framework-dependent Release publish
+
+Create a compact Windows x64 publish that uses an installed .NET 10 Desktop Runtime on the target computer:
+
+```powershell
+dotnet publish src/Depot/Depot.csproj `
+  -c Release `
+  -r win-x64 `
+  --self-contained false
+```
+
+The published files are written to:
+
+```text
+src\Depot\bin\Release\net10.0-windows\win-x64\publish\
+```
+
+Distribute the complete contents of this directory. The target computer must have the matching .NET 10 Desktop Runtime installed.
+
+### Self-contained Release publish
+
+Create a Windows x64 deployment that carries its own .NET runtime:
+
+```powershell
+dotnet publish src/Depot/Depot.csproj `
+  -c Release `
+  -r win-x64 `
+  --self-contained true
+```
+
+This produces a larger publish directory, but the target computer does not need a separately installed .NET runtime.
+
+### Self-contained single-file publish
+
+For a portable single executable, use:
+
+```powershell
+dotnet publish src/Depot/Depot.csproj `
+  -c Release `
+  -r win-x64 `
+  --self-contained true `
+  -p:PublishSingleFile=true `
+  -p:IncludeNativeLibrariesForSelfExtract=true `
+  -p:DebugType=None `
+  -p:DebugSymbols=false
+```
+
+The result is written to:
+
+```text
+src\Depot\bin\Release\net10.0-windows\win-x64\publish\
+```
+
+For this publish mode, `Depot.exe` is the distributable application file. Managed dependencies, the .NET runtime, embedded Help content, and native libraries supported by single-file publishing are bundled into the executable. `IncludeNativeLibrariesForSelfExtract` allows native dependencies to be extracted automatically by the .NET host at runtime when required.
+
+Runtime-generated application data is intentionally not bundled into the executable. Files such as `depot.db`, `depot.settings`, database logs, backups, and exports are created or managed by Depot at runtime.
+
+> **Note:** Do not enable `PublishTrimmed` for release distribution without a dedicated trimming validation pass. Depot is a WPF application and uses XAML, bindings, reflection-sensitive framework behavior, and third-party libraries that may require metadata which trimming can remove.
+
+### Optional publish directory
+
+To produce a clean, predictable output folder, append `-o` to any publish command:
+
+```powershell
+dotnet publish src/Depot/Depot.csproj `
+  -c Release `
+  -r win-x64 `
+  --self-contained true `
+  -p:PublishSingleFile=true `
+  -p:IncludeNativeLibrariesForSelfExtract=true `
+  -p:DebugType=None `
+  -p:DebugSymbols=false `
+  -o artifacts/publish/win-x64
+```
+
+This writes the distributable files to:
+
+```text
+artifacts\publish\win-x64\
+```
+
+Before distributing a Release or single-file build, run the automated tests and perform a clean-machine startup test against the intended database provider.
 
 ## Keyboard navigation
 
