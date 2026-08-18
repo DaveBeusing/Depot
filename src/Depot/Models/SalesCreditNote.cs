@@ -39,5 +39,6 @@ public sealed class SalesCreditNoteLine
 	public decimal TaxRate { get; set; }
 	public decimal NetAmount => Math.Round(Quantity * UnitPrice * (1m - DiscountPercent / 100m), 2, MidpointRounding.AwayFromZero);
 	public decimal TaxAmount => Math.Round(NetAmount * TaxRate / 100m, 2, MidpointRounding.AwayFromZero);
+	public decimal GrossAmount => NetAmount + TaxAmount;
 	public long Version { get; set; } = 1;
 }
