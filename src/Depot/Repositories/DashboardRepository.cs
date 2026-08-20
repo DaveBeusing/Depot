@@ -55,15 +55,24 @@ public sealed class DashboardRepository : DatabaseRepository
 		if (includeSales)
 		{
 			columns.Add("(SELECT COUNT(*) FROM SalesOrders WHERE Status = $SalesPendingApproval)");
+			columns.Add("(SELECT COUNT(*) FROM SalesOrders so WHERE so.Status = $SalesApproved AND EXISTS (SELECT 1 FROM SalesOrderLines sol WHERE sol.SalesOrderId=so.Id AND sol.ReservedQuantity + sol.ShippedQuantity < sol.Quantity))");
+			columns.Add("(SELECT COUNT(*) FROM SalesOrders so WHERE so.Status IN ($SalesReleased,$SalesPartiallyShipped) AND EXISTS (SELECT 1 FROM SalesOrderLines sol WHERE sol.SalesOrderId=so.Id AND sol.ReservedQuantity + sol.ShippedQuantity < sol.Quantity))");
 			columns.Add("(SELECT COUNT(*) FROM SalesOrders WHERE Status IN ($SalesReleased, $SalesPartiallyShipped))");
 			columns.Add("(SELECT COUNT(*) FROM Shipments WHERE Status = $ShipmentDraft)");
 			columns.Add("(SELECT COUNT(*) FROM SalesInvoices WHERE Status = $InvoiceDraft)");
+			columns.Add("(SELECT COUNT(*) FROM CustomerReturns WHERE ReturnDate >= $MonthStart)");
+			columns.Add("(SELECT COUNT(*) FROM SalesCreditNotes WHERE CreditDate >= $MonthStart)");
+			columns.Add("((SELECT COALESCE(SUM(sil.Quantity * sil.UnitPrice * (1 - sil.DiscountPercent / 100.0)),0) FROM SalesInvoiceLines sil INNER JOIN SalesInvoices si ON si.Id=sil.SalesInvoiceId WHERE si.Status=$InvoicePosted AND si.InvoiceDate >= $MonthStart) - (SELECT COALESCE(SUM(cnl.Quantity * cnl.UnitPrice * (1 - cnl.DiscountPercent / 100.0)),0) FROM SalesCreditNoteLines cnl INNER JOIN SalesCreditNotes cn ON cn.Id=cnl.SalesCreditNoteId WHERE cn.Status=$CreditPosted AND cn.CreditDate >= $MonthStart))");
 			parameters.AddRange([
 				Parameter("$SalesPendingApproval", (int)SalesOrderStatus.PendingApproval),
+				Parameter("$SalesApproved", (int)SalesOrderStatus.Approved),
 				Parameter("$SalesReleased", (int)SalesOrderStatus.Released),
 				Parameter("$SalesPartiallyShipped", (int)SalesOrderStatus.PartiallyShipped),
 				Parameter("$ShipmentDraft", (int)ShipmentStatus.Draft),
-				Parameter("$InvoiceDraft", (int)SalesInvoiceStatus.Draft)
+				Parameter("$InvoiceDraft", (int)SalesInvoiceStatus.Draft),
+				Parameter("$InvoicePosted", (int)SalesInvoiceStatus.Posted),
+				Parameter("$CreditPosted", (int)SalesCreditNoteStatus.Posted),
+				Parameter("$MonthStart", new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1))
 			]);
 		}
 		if (includeAdministration) columns.Add("(SELECT COUNT(*) FROM Users WHERE IsActive = 1)");
@@ -87,7 +96,7 @@ public sealed class DashboardRepository : DatabaseRepository
 		if (includeApprovals) approvals = new PurchaseOrderApprovalSummary(Long(reader, ordinal++), Utc(reader, ordinal++), Decimal(reader, ordinal++));
 		if (includePurchasing) purchasing = new DashboardPurchasingMetrics(Long(reader, ordinal++), Long(reader, ordinal++), Long(reader, ordinal++), Long(reader, ordinal++));
 		if (includeWarehouse) warehouse = new DashboardWarehouseMetrics(Long(reader, ordinal++), Long(reader, ordinal++));
-		if (includeSales) sales = new DashboardSalesMetrics(Long(reader, ordinal++), Long(reader, ordinal++), Long(reader, ordinal++), Long(reader, ordinal++));
+		if (includeSales) sales = new DashboardSalesMetrics(Long(reader, ordinal++), Long(reader, ordinal++), Long(reader, ordinal++), Long(reader, ordinal++), Long(reader, ordinal++), Long(reader, ordinal++), Long(reader, ordinal++), Long(reader, ordinal++), Decimal(reader, ordinal++));
 		if (includeAdministration) administration = new DashboardAdministrationMetrics(Long(reader, ordinal));
 		return new DashboardRoleMetrics(approvals, purchasing, warehouse, sales, administration);
 	}
