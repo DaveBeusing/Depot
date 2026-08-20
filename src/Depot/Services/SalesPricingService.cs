@@ -19,6 +19,7 @@ public sealed class SalesPricingService
 		_authorization = authorization;
 	}
 
+	public bool CanView => _authorization.HasPermission(ApplicationPermission.SalesPricingView);
 	public bool CanManage => _authorization.HasPermission(ApplicationPermission.SalesPricingManage);
 	public Task<IReadOnlyList<SalesPriceList>> ListAsync(CancellationToken token = default) { _authorization.RequirePermission(ApplicationPermission.SalesPricingView); return _prices.ListAsync(token); }
 	public Task<SalesPriceResult?> ResolveAsync(long customerId,long itemId,DateTime date,CancellationToken token=default) => _prices.ResolveAsync(customerId,itemId,date,token);
