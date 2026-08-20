@@ -28,11 +28,13 @@ public sealed class SalesCreditNoteService
 
 	public bool CanCreate => _authorization.HasPermission(ApplicationPermission.CreditNotesCreate);
 	public bool CanPost => _authorization.HasPermission(ApplicationPermission.CreditNotesPost);
+
 	public Task<PageResult<SalesCreditNote>> SearchAsync(string? searchText, SalesCreditNoteStatus? status, int pageNumber = 1, int pageSize = 100, CancellationToken token = default)
 	{
 		_authorization.RequirePermission(ApplicationPermission.CreditNotesView);
 		return _creditNotes.SearchAsync(searchText, status, pageNumber, pageSize, token);
 	}
+
 	public Task<SalesCreditNote?> GetByIdAsync(long id, CancellationToken token = default)
 	{
 		_authorization.RequirePermission(ApplicationPermission.CreditNotesView);
@@ -41,15 +43,33 @@ public sealed class SalesCreditNoteService
 
 	public async Task<SalesCreditNote> CreateFromInvoiceAsync(long invoiceId, string reason, CancellationToken token = default)
 	{
+		var invoice = await _invoices.GetByIdAsync(invoiceId, token) ?? throw new InvalidOperationException("Sales invoice was not found.");
+		return await CreateFromInvoiceAsync(invoiceId, invoice.Lines.Select(line => new SalesCreditRequest(line.Id, line.Quantity)).ToArray(), reason, token);
+	}
+
+	public async Task<SalesCreditNote> CreateFromInvoiceAsync(long invoiceId, IReadOnlyCollection<SalesCreditRequest> requests, string reason, CancellationToken token = default)
+	{
 		_authorization.RequirePermission(ApplicationPermission.CreditNotesCreate);
 		if (string.IsNullOrWhiteSpace(reason)) throw new ArgumentException("A credit-note reason is required.", nameof(reason));
+		if (requests.Count == 0 || requests.Any(request => request.Quantity <= 0)) throw new InvalidOperationException("A credit note requires at least one positive quantity.");
+		if (requests.Select(request => request.SalesInvoiceLineId).Distinct().Count() != requests.Count) throw new InvalidOperationException("An invoice line can only occur once per credit note.");
 		var user = RequireUser();
 		return await _transactions.ExecuteAsync(async (transaction, cancellationToken) =>
 		{
 			var invoice = await _invoices.GetByIdAsync(transaction, invoiceId, cancellationToken) ?? throw new InvalidOperationException("Sales invoice was not found.");
 			if (invoice.Status != SalesInvoiceStatus.Posted) throw new InvalidOperationException("Only a posted sales invoice can be credited.");
-			var existing = await transaction.Session.ExecuteScalarAsync("SELECT COUNT(*) FROM SalesCreditNotes WHERE SalesInvoiceId=$InvoiceId AND Status=$Posted;", cancellationToken, new DatabaseParameter("$InvoiceId", invoiceId), new DatabaseParameter("$Posted", (int)SalesCreditNoteStatus.Posted));
-			if (Convert.ToInt64(existing ?? 0) > 0) throw new InvalidOperationException("This invoice already has a posted credit note.");
+			var linesById = invoice.Lines.ToDictionary(line => line.Id);
+			foreach (var request in requests)
+			{
+				if (!linesById.TryGetValue(request.SalesInvoiceLineId, out var invoiceLine)) throw new InvalidOperationException("A credit-note line does not belong to the selected invoice.");
+				var existing = Convert.ToInt32(await transaction.Session.ExecuteScalarAsync(
+					"SELECT COALESCE(SUM(cnl.Quantity),0) FROM SalesCreditNoteLines cnl INNER JOIN SalesCreditNotes cn ON cn.Id=cnl.SalesCreditNoteId WHERE cn.SalesInvoiceId=$InvoiceId AND cnl.SalesInvoiceLineId=$LineId;",
+					cancellationToken,
+					new DatabaseParameter("$InvoiceId", invoiceId),
+					new DatabaseParameter("$LineId", request.SalesInvoiceLineId)) ?? 0);
+				if (existing + request.Quantity > invoiceLine.Quantity) throw new InvalidOperationException("Credit quantity exceeds the remaining invoice quantity.");
+			}
+
 			var value = new SalesCreditNote
 			{
 				SalesInvoiceId = invoice.Id,
@@ -57,7 +77,18 @@ public sealed class SalesCreditNoteService
 				CreditDate = DateTime.Today,
 				Reason = reason.Trim(),
 				CreatedByUserId = user.Id,
-				Lines = invoice.Lines.Select(line => new SalesCreditNoteLine { SalesInvoiceLineId = line.Id, Quantity = line.Quantity, UnitPrice = line.UnitPrice, DiscountPercent = line.DiscountPercent, TaxRate = line.TaxRate }).ToArray()
+				Lines = requests.Select(request =>
+				{
+					var line = linesById[request.SalesInvoiceLineId];
+					return new SalesCreditNoteLine
+					{
+						SalesInvoiceLineId = line.Id,
+						Quantity = request.Quantity,
+						UnitPrice = line.UnitPrice,
+						DiscountPercent = line.DiscountPercent,
+						TaxRate = line.TaxRate
+					};
+				}).ToArray()
 			};
 			await _creditNotes.CreateAsync(transaction, value, cancellationToken);
 			await _auditEntries.CreateAsync(transaction, _audit.CreateCreatedEntry(value.Id, value), cancellationToken);
