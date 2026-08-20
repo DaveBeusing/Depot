@@ -15,8 +15,9 @@ public sealed class SalesCreditNoteService
 	private readonly AuditRepository _auditEntries;
 	private readonly AuditService _audit;
 	private readonly IAuthorizationService _authorization;
+	private readonly NotificationService _notifications;
 
-	public SalesCreditNoteService(IDatabaseTransactionRunner transactions, SalesCreditNoteRepository creditNotes, SalesInvoiceRepository invoices, AuditRepository auditEntries, AuditService audit, IAuthorizationService authorization)
+	public SalesCreditNoteService(IDatabaseTransactionRunner transactions, SalesCreditNoteRepository creditNotes, SalesInvoiceRepository invoices, AuditRepository auditEntries, AuditService audit, IAuthorizationService authorization, NotificationService notifications)
 	{
 		_transactions = transactions;
 		_creditNotes = creditNotes;
@@ -24,6 +25,7 @@ public sealed class SalesCreditNoteService
 		_auditEntries = auditEntries;
 		_audit = audit;
 		_authorization = authorization;
+		_notifications = notifications;
 	}
 
 	public bool CanCreate => _authorization.HasPermission(ApplicationPermission.CreditNotesCreate);
@@ -80,14 +82,7 @@ public sealed class SalesCreditNoteService
 				Lines = requests.Select(request =>
 				{
 					var line = linesById[request.SalesInvoiceLineId];
-					return new SalesCreditNoteLine
-					{
-						SalesInvoiceLineId = line.Id,
-						Quantity = request.Quantity,
-						UnitPrice = line.UnitPrice,
-						DiscountPercent = line.DiscountPercent,
-						TaxRate = line.TaxRate
-					};
+					return new SalesCreditNoteLine { SalesInvoiceLineId = line.Id, Quantity = request.Quantity, UnitPrice = line.UnitPrice, DiscountPercent = line.DiscountPercent, TaxRate = line.TaxRate };
 				}).ToArray()
 			};
 			await _creditNotes.CreateAsync(transaction, value, cancellationToken);
@@ -100,7 +95,7 @@ public sealed class SalesCreditNoteService
 	{
 		_authorization.RequirePermission(ApplicationPermission.CreditNotesPost);
 		var user = RequireUser();
-		return await _transactions.ExecuteAsync(async (transaction, cancellationToken) =>
+		var result = await _transactions.ExecuteAsync(async (transaction, cancellationToken) =>
 		{
 			var before = await _creditNotes.GetByIdAsync(transaction, id, cancellationToken) ?? throw new InvalidOperationException("Credit note was not found.");
 			if (before.Version != version) throw new ConcurrencyConflictException("sales credit note");
@@ -111,6 +106,19 @@ public sealed class SalesCreditNoteService
 			await _auditEntries.CreateAsync(transaction, _audit.CreateUpdatedEntry(id, before, after), cancellationToken);
 			return after;
 		}, token);
+
+		var request = new NotificationRequest(
+			NotificationType.Workflow,
+			NotificationSeverity.Information,
+			$"Credit note {result.CreditNoteNumber} posted",
+			$"Credit note {result.CreditNoteNumber} was posted for sales invoice {result.SalesInvoiceId}.",
+			NotificationSourceTypes.CreditNote,
+			result.Id,
+			result.CreditNoteNumber,
+			user.Id);
+		await _notifications.NotifyPermissionHoldersAsync(request, ApplicationPermission.SalesOrdersView, [user.Id], token);
+		await _notifications.NotifyPermissionHoldersAsync(request, ApplicationPermission.CreditNotesView, [user.Id], token);
+		return result;
 	}
 
 	private User RequireUser() => _authorization.CurrentUser is { IsActive: true } user ? user : throw new UnauthorizedAccessException("An active signed-in user is required for credit notes.");
