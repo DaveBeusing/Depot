@@ -148,7 +148,17 @@ public sealed class SalesOrderService
 			var reserved = reservations.Where(value => value.SalesOrderLineId == line.Id && value.Status == InventoryReservationStatus.Active).Sum(value => value.Quantity);
 			if (reserved > Math.Max(0, line.Quantity - line.ShippedQuantity)) throw new InvalidOperationException($"Line {line.LineNumber} is over-reserved.");
 		}
-		return await ChangeStatusCoreAsync(order, version, SalesOrderStatus.Approved, SalesOrderStatus.Released, result => { result.ReleasedByUserId = user.Id; result.ReleasedAtUtc = DateTime.UtcNow; }, cancellationToken);
+		var released = await ChangeStatusCoreAsync(order, version, SalesOrderStatus.Approved, SalesOrderStatus.Released, result => { result.ReleasedByUserId = user.Id; result.ReleasedAtUtc = DateTime.UtcNow; }, cancellationToken);
+		var backordered = released.Lines.Sum(line => line.BackorderedQuantity);
+		if (backordered > 0)
+		{
+			await _notifications.NotifyPermissionHoldersAsync(
+				new NotificationRequest(NotificationType.Workflow, NotificationSeverity.Warning, $"Sales order {released.OrderNumber} has backorders", $"{backordered:N0} unit(s) on sales order {released.OrderNumber} are not reserved and remain backordered.", NotificationSourceTypes.SalesOrder, released.Id, released.OrderNumber, user.Id),
+				ApplicationPermission.SalesOrdersView,
+				[user.Id],
+				cancellationToken);
+		}
+		return released;
 	}
 
 	public async Task<SalesOrder> CancelAsync(long id, long version, string reason, CancellationToken cancellationToken = default)
@@ -213,6 +223,9 @@ public sealed class SalesOrderService
 		if (order.CustomerId <= 0) throw new InvalidOperationException("A customer is required.");
 		var customer = await _customers.GetByIdAsync(order.CustomerId, cancellationToken) ?? throw new InvalidOperationException("Customer was not found.");
 		if (!customer.IsActive) throw new InvalidOperationException("The customer is inactive.");
+		order.CustomerName = customer.Name;
+		order.BillingAddress = Normalize(order.BillingAddress) ?? customer.Addresses.FirstOrDefault(a => a.IsActive && a.IsDefault && a.Type == CustomerAddressType.Billing)?.Address ?? customer.BillingAddress;
+		order.ShippingAddress = Normalize(order.ShippingAddress) ?? customer.Addresses.FirstOrDefault(a => a.IsActive && a.IsDefault && a.Type == CustomerAddressType.Shipping)?.Address ?? customer.ShippingAddress;
 		order.Currency = string.IsNullOrWhiteSpace(order.Currency) ? customer.Currency : order.Currency.Trim().ToUpperInvariant();
 		order.CustomerReference = Normalize(order.CustomerReference); order.Notes = Normalize(order.Notes);
 		if (order.Lines.Count == 0) throw new InvalidOperationException("A sales order requires at least one line.");
@@ -225,5 +238,5 @@ public sealed class SalesOrderService
 
 	private User RequireUser() => _authorization.CurrentUser is { IsActive: true } user ? user : throw new UnauthorizedAccessException("An active signed-in user is required for sales operations.");
 	private static string? Normalize(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
-	internal static SalesOrder Copy(SalesOrder source) => new() { Id=source.Id,OrderNumber=source.OrderNumber,CustomerId=source.CustomerId,CustomerName=source.CustomerName,OrderDate=source.OrderDate,RequestedDeliveryDate=source.RequestedDeliveryDate,Currency=source.Currency,CustomerReference=source.CustomerReference,Notes=source.Notes,Status=source.Status,CreatedByUserId=source.CreatedByUserId,SubmittedByUserId=source.SubmittedByUserId,SubmittedAtUtc=source.SubmittedAtUtc,ApprovalDecisionByUserId=source.ApprovalDecisionByUserId,ApprovalDecisionAtUtc=source.ApprovalDecisionAtUtc,ApprovalComment=source.ApprovalComment,ReleasedByUserId=source.ReleasedByUserId,ReleasedAtUtc=source.ReleasedAtUtc,CancelledByUserId=source.CancelledByUserId,CancelledAtUtc=source.CancelledAtUtc,CancelReason=source.CancelReason,Version=source.Version,Lines=source.Lines };
+	internal static SalesOrder Copy(SalesOrder source) => new() { Id=source.Id,OrderNumber=source.OrderNumber,CustomerId=source.CustomerId,CustomerName=source.CustomerName,BillingAddress=source.BillingAddress,ShippingAddress=source.ShippingAddress,OrderDate=source.OrderDate,RequestedDeliveryDate=source.RequestedDeliveryDate,Currency=source.Currency,CustomerReference=source.CustomerReference,Notes=source.Notes,Status=source.Status,CreatedByUserId=source.CreatedByUserId,SubmittedByUserId=source.SubmittedByUserId,SubmittedAtUtc=source.SubmittedAtUtc,ApprovalDecisionByUserId=source.ApprovalDecisionByUserId,ApprovalDecisionAtUtc=source.ApprovalDecisionAtUtc,ApprovalComment=source.ApprovalComment,ReleasedByUserId=source.ReleasedByUserId,ReleasedAtUtc=source.ReleasedAtUtc,CancelledByUserId=source.CancelledByUserId,CancelledAtUtc=source.CancelledAtUtc,CancelReason=source.CancelReason,Version=source.Version,Lines=source.Lines };
 }
