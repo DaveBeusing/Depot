@@ -121,5 +121,7 @@ public static class NotificationSourceTypes
 	public const string SalesOrder = "SalesOrder";
 	public const string SalesOrderApproval = "SalesOrderApproval";
 	public const string Shipment = "Shipment";
+	public const string CustomerReturn = "CustomerReturn";
 	public const string SalesInvoice = "SalesInvoice";
+	public const string SalesCreditNote = "SalesCreditNote";
 }
