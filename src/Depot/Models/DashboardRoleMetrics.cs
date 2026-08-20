@@ -22,8 +22,13 @@ public sealed record DashboardWarehouseMetrics(
 
 public sealed record DashboardSalesMetrics(
 	long PendingApprovals,
+	long AwaitingReservation,
+	long BackorderedOrders,
 	long ReadyToShipOrders,
 	long DraftShipments,
-	long DraftInvoices);
+	long DraftInvoices,
+	long ReturnsThisMonth,
+	long CreditNotesThisMonth,
+	decimal NetSalesThisMonth);
 
 public sealed record DashboardAdministrationMetrics(long ActiveUsers);
