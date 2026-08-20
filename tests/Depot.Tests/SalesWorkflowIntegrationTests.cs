@@ -34,7 +34,8 @@ public sealed class SalesWorkflowIntegrationTests : IAsyncLifetime
 		var reservation = Assert.Single(await fixture.Orders.GetReservationsAsync(released.Id));
 		var shipment = await fixture.Shipments.CreateAsync(released.Id, [new ShipmentLineRequest(reservation.Id, 10)], "DHL", "TRACK-001", "Integration shipment");
 		Assert.Equal("Shipping Street 2", shipment.ShippingAddress);
-		var postedShipment = await fixture.Shipments.PostAsync(shipment.Id, shipment.Version);
+		await Assert.ThrowsAsync<InvalidOperationException>(() => fixture.Shipments.PostAsync(shipment.Id, shipment.Version));
+		var postedShipment = await fixture.PackAndPostAsync(shipment);
 		Assert.Equal(10, await fixture.CurrentStockAsync());
 		var invoicedOrder = await fixture.Orders.GetByIdAsync(released.Id) ?? throw new InvalidOperationException();
 		Assert.Equal(SalesOrderStatus.Shipped, invoicedOrder.Status);
@@ -61,14 +62,14 @@ public sealed class SalesWorkflowIntegrationTests : IAsyncLifetime
 		var released = await fixture.Orders.ReleaseAsync(reserved.Id, reserved.Version);
 		var firstReservation = Assert.Single(await fixture.Orders.GetReservationsAsync(released.Id), value => value.Status == InventoryReservationStatus.Active);
 		var firstShipment = await fixture.Shipments.CreateAsync(released.Id, [new ShipmentLineRequest(firstReservation.Id, 8)]);
-		await fixture.Shipments.PostAsync(firstShipment.Id, firstShipment.Version);
+		await fixture.PackAndPostAsync(firstShipment);
 		var partiallyShipped = await fixture.Orders.GetByIdAsync(released.Id) ?? throw new InvalidOperationException();
 		Assert.Equal(SalesOrderStatus.PartiallyShipped, partiallyShipped.Status);
 		Assert.Equal(7, partiallyShipped.Lines[0].BackorderedQuantity);
 		var reReserved = await fixture.Orders.SetReservationsAsync(partiallyShipped.Id, partiallyShipped.Version, [new SalesReservationRequest(partiallyShipped.Lines[0].Id, fixture.InventoryId, 7)]);
 		var secondReservation = Assert.Single(await fixture.Orders.GetReservationsAsync(reReserved.Id), value => value.Status == InventoryReservationStatus.Active);
 		var secondShipment = await fixture.Shipments.CreateAsync(reReserved.Id, [new ShipmentLineRequest(secondReservation.Id, 7)]);
-		await fixture.Shipments.PostAsync(secondShipment.Id, secondShipment.Version);
+		await fixture.PackAndPostAsync(secondShipment);
 		var shipped = await fixture.Orders.GetByIdAsync(released.Id) ?? throw new InvalidOperationException();
 		Assert.Equal(SalesOrderStatus.Shipped, shipped.Status);
 		Assert.Equal(0, shipped.Lines[0].BackorderedQuantity);
@@ -132,13 +133,14 @@ public sealed class SalesWorkflowIntegrationTests : IAsyncLifetime
 	private sealed class SalesFixture
 	{
 		private readonly DatabaseAccess _data;
-		private SalesFixture(DatabaseAccess data, CustomerService customers, SalesOrderService orders, ShipmentService shipments, SalesInvoiceService invoices, long itemId, long inventoryId)
+		private SalesFixture(DatabaseAccess data, CustomerService customers, SalesOrderService orders, ShipmentService shipments, ShipmentPackingService packing, SalesInvoiceService invoices, long itemId, long inventoryId)
 		{
-			_data = data; Customers = customers; Orders = orders; Shipments = shipments; Invoices = invoices; ItemId = itemId; InventoryId = inventoryId;
+			_data = data; Customers = customers; Orders = orders; Shipments = shipments; Packing = packing; Invoices = invoices; ItemId = itemId; InventoryId = inventoryId;
 		}
 		public CustomerService Customers { get; }
 		public SalesOrderService Orders { get; }
 		public ShipmentService Shipments { get; }
+		public ShipmentPackingService Packing { get; }
 		public SalesInvoiceService Invoices { get; }
 		public long ItemId { get; }
 		public long InventoryId { get; }
@@ -165,11 +167,18 @@ public sealed class SalesWorkflowIntegrationTests : IAsyncLifetime
 			var customerReturns = new CustomerReturnService(runner, customerReturnRepository, shipmentRepository, movementRepository, auditRepository, audit, authorization, notifications);
 			var credits = new SalesCreditNoteService(runner, creditNoteRepository, invoiceRepository, auditRepository, audit, authorization, notifications);
 			var shipments = new ShipmentService(runner, shipmentRepository, orderRepository, reservationRepository, inventoryRepository, movementRepository, invoiceRepository, customerReturns, auditRepository, audit, authorization, notifications);
+			var packing = new ShipmentPackingService(runner, shipmentRepository, auditRepository, audit, authorization);
 			var invoices = new SalesInvoiceService(runner, invoiceRepository, shipmentRepository, orderRepository, customerRepository, auditRepository, audit, authorization, notifications, credits);
-			return new SalesFixture(data, customers, orders, shipments, invoices, itemId, inventoryId);
+			return new SalesFixture(data, customers, orders, shipments, packing, invoices, itemId, inventoryId);
 		}
 
 		public async Task<long> CurrentStockAsync() => Convert.ToInt64(await _data.ExecuteScalarAsync("SELECT COALESCE(SUM(Quantity),0) FROM StockMovements WHERE InventoryId=$InventoryId;", CancellationToken.None, new DatabaseParameter("$InventoryId", InventoryId)));
+		public async Task<Shipment> PackAndPostAsync(Shipment shipment)
+		{
+			var picking = await Packing.SetStatusAsync(shipment.Id, shipment.Version, ShipmentPackingStatus.Picking);
+			var packed = await Packing.SetStatusAsync(picking.Id, picking.Version, ShipmentPackingStatus.Packed);
+			return await Shipments.PostAsync(packed.Id, packed.Version);
+		}
 		public async Task<Shipment> CreatePostedShipmentAsync(int quantity)
 		{
 			var customer = await Customers.SaveAsync(new Customer { Name = $"Shipment Customer {Guid.NewGuid():N}", Currency = "EUR" });
@@ -177,7 +186,7 @@ public sealed class SalesWorkflowIntegrationTests : IAsyncLifetime
 			var submitted = await Orders.SubmitAsync(draft.Id, draft.Version); var approved = await Orders.ApproveAsync(submitted.Id, submitted.Version);
 			var reserved = await Orders.SetReservationsAsync(approved.Id, approved.Version, [new SalesReservationRequest(approved.Lines[0].Id, InventoryId, quantity)]);
 			var released = await Orders.ReleaseAsync(reserved.Id, reserved.Version); var reservation = Assert.Single(await Orders.GetReservationsAsync(released.Id), value => value.Status == InventoryReservationStatus.Active);
-			var shipment = await Shipments.CreateAsync(released.Id, [new ShipmentLineRequest(reservation.Id, quantity)]); return await Shipments.PostAsync(shipment.Id, shipment.Version);
+			var shipment = await Shipments.CreateAsync(released.Id, [new ShipmentLineRequest(reservation.Id, quantity)]); return await PackAndPostAsync(shipment);
 		}
 	}
 }
