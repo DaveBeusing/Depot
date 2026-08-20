@@ -1,16 +1,20 @@
 # Sales Orders
 
-Sales orders define the customer demand, prices and quantities that drive reservation, shipping and invoicing.
+Sales orders define the customer demand, prices, addresses and quantities that drive reservation, shipping and invoicing.
 
 ## Workflow
 
-A new order starts as **Draft**. Add items, quantities, unit prices, discounts and tax rates, then save and submit it. Submitted orders move to **Pending Approval** and cannot be edited until rejected and reopened.
+A new order starts as **Draft**. Select the customer, then select the billing and shipping addresses for this order. Depot copies those addresses into the order as snapshots. Later changes to the customer master record do not alter an existing order, shipment or invoice.
+
+Add items, quantities, unit prices, discounts and tax rates, then save and submit the order. Submitted orders move to **Pending Approval** and cannot be edited until rejected and reopened.
 
 After approval, reserve inventory against one or more order lines. Depot shows **Ordered**, **Reserved**, **Backorder**, **Shipped** and **Invoiced** quantities so the fulfillment state is visible per line.
 
 ## Partial release and backorders
 
 An approved order can be released once at least one quantity is reserved. A full reservation is not required. Unreserved quantities remain as backorders and can be reserved later while the order is Released or Partially Shipped.
+
+When an order is released with an outstanding backorder, Depot creates a workflow notification for Sales users so the missing allocation is visible without repeatedly checking the order.
 
 Physical stock is not reduced when an order is approved, reserved or released. Stock changes only when a shipment is posted.
 
