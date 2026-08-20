@@ -38,19 +38,8 @@ public sealed class SalesInvoiceService
 	public bool CanPost => _authorization.HasPermission(ApplicationPermission.SalesInvoicesPost);
 	public bool CanCreateCreditNote => _creditNotes.CanCreate;
 	public bool CanPostCreditNote => _creditNotes.CanPost;
-
-	public Task<PageResult<SalesInvoice>> SearchAsync(string? searchText, SalesInvoiceStatus? status, int pageNumber = 1, int pageSize = 100, CancellationToken cancellationToken = default)
-	{
-		_authorization.RequirePermission(ApplicationPermission.SalesInvoicesView);
-		return _invoices.SearchAsync(searchText, status, pageNumber, pageSize, cancellationToken);
-	}
-
-	public Task<SalesInvoice?> GetByIdAsync(long id, CancellationToken cancellationToken = default)
-	{
-		_authorization.RequirePermission(ApplicationPermission.SalesInvoicesView);
-		return _invoices.GetByIdAsync(id, cancellationToken);
-	}
-
+	public Task<PageResult<SalesInvoice>> SearchAsync(string? searchText, SalesInvoiceStatus? status, int pageNumber = 1, int pageSize = 100, CancellationToken cancellationToken = default) { _authorization.RequirePermission(ApplicationPermission.SalesInvoicesView); return _invoices.SearchAsync(searchText, status, pageNumber, pageSize, cancellationToken); }
+	public Task<SalesInvoice?> GetByIdAsync(long id, CancellationToken cancellationToken = default) { _authorization.RequirePermission(ApplicationPermission.SalesInvoicesView); return _invoices.GetByIdAsync(id, cancellationToken); }
 	public Task<PageResult<SalesCreditNote>> SearchCreditNotesAsync(string? searchText, SalesCreditNoteStatus? status, int pageNumber = 1, int pageSize = 100, CancellationToken token = default) => _creditNotes.SearchAsync(searchText, status, pageNumber, pageSize, token);
 	public Task<SalesCreditNote> CreateCreditNoteAsync(long invoiceId, string reason, CancellationToken token = default) => _creditNotes.CreateFromInvoiceAsync(invoiceId, reason, token);
 	public Task<SalesCreditNote> CreateCreditNoteAsync(long invoiceId, IReadOnlyCollection<SalesCreditRequest> requests, string reason, CancellationToken token = default) => _creditNotes.CreateFromInvoiceAsync(invoiceId, requests, reason, token);
@@ -71,7 +60,7 @@ public sealed class SalesInvoiceService
 			var invoice = new SalesInvoice
 			{
 				CustomerId = customer.Id,
-				CustomerName = customer.Name,
+				CustomerName = order.CustomerName,
 				SalesOrderId = order.Id,
 				SalesOrderNumber = order.OrderNumber,
 				ShipmentId = shipment.Id,
@@ -81,7 +70,7 @@ public sealed class SalesInvoiceService
 				Currency = order.Currency,
 				Status = SalesInvoiceStatus.Draft,
 				CustomerReference = order.CustomerReference,
-				BillingAddress = customer.BillingAddress,
+				BillingAddress = order.BillingAddress,
 				CreatedByUserId = user.Id,
 				Lines = shipment.Lines.Select((shipmentLine, index) =>
 				{
