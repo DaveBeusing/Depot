@@ -24,7 +24,14 @@ internal sealed class ViewModelFactory
 		_services = services;
 		_fileDialogs = fileDialogs;
 		_applicationInformation = applicationInformation;
-		SalesCommercialContext.ConfigureUi(_services.Customers, _services.Items, _fileDialogs);
+		SalesCommercialContext.ConfigureUi(
+			_services.Customers,
+			_services.SalesOrders,
+			_services.Shipments,
+			_services.SalesInvoices,
+			_services.Items,
+			_services.Authorization,
+			_fileDialogs);
 	}
 
 	public LoginViewModel CreateLogin() =>
