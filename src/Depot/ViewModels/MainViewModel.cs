@@ -130,7 +130,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		_salesOrders = new(() => new SalesOrdersViewModel(CreateSalesWorkspace()));
 		_salesApprovals = new(() => new SalesApprovalsViewModel(CreateSalesWorkspace()));
 		_salesShipping = new(() => new ShippingViewModel(CreateSalesWorkspace()));
-		_salesInvoices = new(() => new SalesInvoicesViewModel(CreateSalesWorkspace()));
+		_salesInvoices = new(() => new SalesInvoicesViewModel(CreateSalesWorkspace(), salesInvoiceService, fileDialogService, new SalesDocumentService()));
 		_reports = new(() => new ReportsViewModel(reportService, fileDialogService));
 		_import = new(() => new ImportViewModel(importService, fileDialogService));
 		_administration = new(() => new AdministrationViewModel(
@@ -464,9 +464,17 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 				if (target.SourceId is not long shipmentId) throw new InvalidOperationException("The shipment reference is invalid.");
 				await OpenSalesQuickItemAsync(new SalesQuickOpenItem(SalesQuickOpenKind.Shipment, shipmentId, target.SourceNumber ?? string.Empty, string.Empty), cancellationToken);
 				break;
+			case NotificationSourceTypes.CustomerReturn:
+				if (target.SourceId is not long returnId) throw new InvalidOperationException("The customer-return reference is invalid.");
+				await OpenSalesQuickItemAsync(new SalesQuickOpenItem(SalesQuickOpenKind.CustomerReturn, returnId, target.SourceNumber ?? string.Empty, string.Empty), cancellationToken);
+				break;
 			case NotificationSourceTypes.SalesInvoice:
 				if (target.SourceId is not long invoiceId) throw new InvalidOperationException("The sales-invoice reference is invalid.");
 				await OpenSalesQuickItemAsync(new SalesQuickOpenItem(SalesQuickOpenKind.Invoice, invoiceId, target.SourceNumber ?? string.Empty, string.Empty), cancellationToken);
+				break;
+			case NotificationSourceTypes.SalesCreditNote:
+				if (target.SourceId is not long creditId) throw new InvalidOperationException("The credit-note reference is invalid.");
+				await OpenSalesQuickItemAsync(new SalesQuickOpenItem(SalesQuickOpenKind.CreditNote, creditId, target.SourceNumber ?? string.Empty, string.Empty), cancellationToken);
 				break;
 		}
 	}
