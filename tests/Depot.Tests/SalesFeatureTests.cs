@@ -19,16 +19,17 @@ public sealed class SalesFeatureTests : IDisposable
 	{
 		var factory = new SqliteConnectionFactory(_databasePath);
 		new DepotDatabase(factory).Initialize();
-
 		SalesSchemaMigration.Migrate(factory);
 		SalesSchemaMigration.Migrate(factory);
 
 		using var connection = new SqliteConnection($"Data Source={_databasePath}");
 		connection.Open();
 		Assert.Equal((long)SalesSchemaMigration.CurrentVersion, Scalar(connection, "SELECT Version FROM DepotFeatureVersions WHERE Name='Sales';"));
-		foreach (var table in new[] { "Customers", "CustomerAddresses", "SalesOrders", "SalesOrderLines", "InventoryReservations", "Shipments", "ShipmentLines", "SalesInvoices", "SalesInvoiceLines", "CustomerReturns", "CustomerReturnLines", "SalesCreditNotes", "SalesCreditNoteLines" })
+		foreach (var table in new[] { "Customers", "CustomerAddresses", "CustomerContacts", "SalesOrders", "SalesOrderLines", "InventoryReservations", "Shipments", "ShipmentLines", "SalesInvoices", "SalesInvoiceLines", "CustomerReturns", "CustomerReturnLines", "SalesCreditNotes", "SalesCreditNoteLines", "SalesPriceLists", "SalesPriceListItems", "CustomerPriceLists", "SalesQuotes", "SalesQuoteLines" })
 			Assert.Equal(1L, Scalar(connection, $"SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='{table}';"));
 		Assert.Equal(1L, Scalar(connection, "SELECT COUNT(*) FROM pragma_table_info('Shipments') WHERE name='ReversedAtUtc';"));
+		Assert.Equal(1L, Scalar(connection, "SELECT COUNT(*) FROM pragma_table_info('Shipments') WHERE name='PackingStatus';"));
+		Assert.Equal(1L, Scalar(connection, "SELECT COUNT(*) FROM pragma_table_info('Shipments') WHERE name='PackedAtUtc';"));
 		Assert.Equal(1L, Scalar(connection, "SELECT COUNT(*) FROM pragma_table_info('CustomerAddresses') WHERE name='IsDefault';"));
 		Assert.Equal(1L, Scalar(connection, "SELECT COUNT(*) FROM pragma_table_info('SalesOrders') WHERE name='BillingAddress';"));
 		Assert.Equal(1L, Scalar(connection, "SELECT COUNT(*) FROM pragma_table_info('SalesOrders') WHERE name='ShippingAddress';"));
@@ -40,15 +41,22 @@ public sealed class SalesFeatureTests : IDisposable
 		Assert.Equal("Shipments.Reverse", PermissionCatalog.Code(ApplicationPermission.ShipmentsReverse));
 		Assert.Equal("CustomerReturns.Post", PermissionCatalog.Code(ApplicationPermission.CustomerReturnsPost));
 		Assert.Equal("CreditNotes.Post", PermissionCatalog.Code(ApplicationPermission.CreditNotesPost));
+		Assert.Equal("SalesQuotes.Convert", PermissionCatalog.Code(ApplicationPermission.SalesQuotesConvert));
+		Assert.Equal("SalesPricing.Manage", PermissionCatalog.Code(ApplicationPermission.SalesPricingManage));
 	}
 
 	[Fact]
-	public void SalesRolesContainCorrectionPermissions()
+	public void SalesRolesContainCommercialAndCorrectionPermissions()
 	{
 		var warehouse = SystemRoleCatalog.Definitions.Single(role => role.Code == SystemRoleCatalog.WarehouseOperatorCode);
+		var sales = SystemRoleCatalog.Definitions.Single(role => role.Code == SystemRoleCatalog.SalesUserCode);
+		var salesManager = SystemRoleCatalog.Definitions.Single(role => role.Code == SystemRoleCatalog.SalesManagerCode);
 		var finance = SystemRoleCatalog.Definitions.Single(role => role.Code == SystemRoleCatalog.FinanceCode);
 		Assert.Contains(ApplicationPermission.ShipmentsReverse, warehouse.Permissions);
 		Assert.Contains(ApplicationPermission.CustomerReturnsPost, warehouse.Permissions);
+		Assert.Contains(ApplicationPermission.SalesQuotesCreate, sales.Permissions);
+		Assert.Contains(ApplicationPermission.SalesQuotesConvert, salesManager.Permissions);
+		Assert.Contains(ApplicationPermission.SalesPricingManage, salesManager.Permissions);
 		Assert.Contains(ApplicationPermission.CreditNotesCreate, finance.Permissions);
 		Assert.Contains(ApplicationPermission.CreditNotesPost, finance.Permissions);
 	}
