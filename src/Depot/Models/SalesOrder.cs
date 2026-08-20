@@ -22,6 +22,8 @@ public sealed class SalesOrder
 	public string OrderNumber { get; set; } = string.Empty;
 	public long CustomerId { get; set; }
 	public string CustomerName { get; set; } = string.Empty;
+	public string? BillingAddress { get; set; }
+	public string? ShippingAddress { get; set; }
 	public DateTime OrderDate { get; set; } = DateTime.Today;
 	public DateTime? RequestedDeliveryDate { get; set; }
 	public string Currency { get; set; } = "EUR";
