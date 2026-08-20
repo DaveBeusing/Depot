@@ -1,0 +1,63 @@
+<UserControl x:Class="Depot.Views.SalesCustomersView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:Depot.Controls">
+    <Grid>
+        <controls:OperationPanel ErrorText="{Binding Workspace.OperationError}" HasError="{Binding Workspace.HasOperationError}" IsBusy="{Binding Workspace.IsBusy}" StatusText="{Binding Workspace.StatusText}" />
+        <controls:MasterDetailGrid>
+            <controls:MasterDetailGrid.Master>
+                <controls:Card>
+                    <Grid>
+                        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                        <controls:SearchBox Placeholder="Search customers" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
+                        <ListBox Grid.Row="1" Margin="0,10,0,0" ItemsSource="{Binding Workspace.Customers}" SelectedItem="{Binding SelectedCustomer}" Style="{StaticResource MasterDataListBoxStyle}" ItemContainerStyle="{StaticResource MasterDataListBoxItemStyle}">
+                            <ListBox.ItemTemplate><DataTemplate><StackPanel><TextBlock Text="{Binding Name}" FontWeight="SemiBold"/><TextBlock Text="{Binding CustomerNumber}" Style="{StaticResource CaptionStyle}"/></StackPanel></DataTemplate></ListBox.ItemTemplate>
+                        </ListBox>
+                        <Button Grid.Row="2" Margin="0,10,0,0" HorizontalAlignment="Right" Command="{Binding NewCustomerCommand}" Content="New customer" Style="{StaticResource PrimaryButtonStyle}" />
+                    </Grid>
+                </controls:Card>
+            </controls:MasterDetailGrid.Master>
+            <controls:MasterDetailGrid.Detail>
+                <Grid>
+                    <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="12"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                    <controls:Card>
+                        <Grid>
+                            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                            <controls:WorkflowHeader Title="Customer" Subtitle="Contact and commercial master data" Status="{Binding Workspace.CustomerDraft.CustomerNumber}" />
+                            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                                <Grid Margin="0,12,0,0">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="14"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="12"/><RowDefinition Height="Auto"/><RowDefinition Height="12"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                                    <StackPanel><TextBlock Text="Name *" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding Workspace.CustomerDraft.Name, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+                                    <StackPanel Grid.Column="2"><TextBlock Text="Contact" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding Workspace.CustomerDraft.ContactName, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+                                    <StackPanel Grid.Row="2"><TextBlock Text="Email" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding Workspace.CustomerDraft.Email, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+                                    <StackPanel Grid.Row="2" Grid.Column="2"><TextBlock Text="Phone" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding Workspace.CustomerDraft.Phone, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+                                    <StackPanel Grid.Row="4"><TextBlock Text="Payment terms (days)" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding Workspace.CustomerDraft.PaymentTermsDays, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+                                    <StackPanel Grid.Row="4" Grid.Column="2"><TextBlock Text="Currency" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding Workspace.CustomerDraft.Currency, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+                                </Grid>
+                            </ScrollViewer>
+                            <controls:WorkflowActionBar Grid.Row="2"><controls:WorkflowActionBar.PrimaryAction><Button Command="{Binding SaveCustomerCommand}" Content="Save customer" Style="{StaticResource PrimaryButtonStyle}"/></controls:WorkflowActionBar.PrimaryAction></controls:WorkflowActionBar>
+                        </Grid>
+                    </controls:Card>
+                    <controls:Card Grid.Row="2">
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="1.1*"/><ColumnDefinition Width="14"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                            <Grid Grid.ColumnSpan="3"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="Addresses" Style="{StaticResource WorkspaceTitleStyle}"/><TextBlock Text="Maintain billing, shipping and additional destinations." Style="{StaticResource CaptionStyle}" Margin="0,3,0,0"/></StackPanel><Button Grid.Column="1" Command="{Binding NewAddressCommand}" Content="New address" Style="{StaticResource SecondaryButtonStyle}"/></Grid>
+                            <ListBox Grid.Row="1" Margin="0,12,0,0" ItemsSource="{Binding Addresses}" SelectedItem="{Binding SelectedAddress}" Style="{StaticResource MasterDataListBoxStyle}" ItemContainerStyle="{StaticResource MasterDataListBoxItemStyle}">
+                                <ListBox.ItemTemplate><DataTemplate><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel><TextBlock FontWeight="SemiBold"><Run Text="{Binding Type}"/><Run Text=" · "/><Run Text="{Binding Name, TargetNullValue=Address}"/></TextBlock><TextBlock Text="{Binding Address}" Style="{StaticResource CaptionStyle}" TextTrimming="CharacterEllipsis"/></StackPanel><TextBlock Grid.Column="1" Text="Default" Foreground="{DynamicResource PrimaryBrush}" Visibility="{Binding IsDefault, Converter={StaticResource BooleanToVisibilityConverter}}"/></Grid></DataTemplate></ListBox.ItemTemplate>
+                            </ListBox>
+                            <StackPanel Grid.Row="1" Grid.Column="2" Margin="0,12,0,0">
+                                <TextBlock Text="Type" Style="{StaticResource FormLabelStyle}"/><ComboBox ItemsSource="{Binding AddressTypes}" SelectedItem="{Binding AddressDraft.Type}" Style="{StaticResource AppComboBoxStyle}"/>
+                                <TextBlock Text="Name" Style="{StaticResource FormLabelStyle}" Margin="0,10,0,0"/><controls:TextInput Text="{Binding AddressDraft.Name, UpdateSourceTrigger=PropertyChanged}"/>
+                                <TextBlock Text="Address *" Style="{StaticResource FormLabelStyle}" Margin="0,10,0,0"/><TextBox MinHeight="86" AcceptsReturn="True" TextWrapping="Wrap" Style="{StaticResource MultilineTextBoxStyle}" Text="{Binding AddressDraft.Address, UpdateSourceTrigger=PropertyChanged}"/>
+                                <CheckBox Margin="0,10,0,0" Content="Use as default for this address type" IsChecked="{Binding AddressDraft.IsDefault}"/>
+                                <Button Margin="0,12,0,0" HorizontalAlignment="Right" Command="{Binding SaveAddressCommand}" Content="Save address" Style="{StaticResource PrimaryButtonStyle}"/>
+                            </StackPanel>
+                        </Grid>
+                    </controls:Card>
+                </Grid>
+            </controls:MasterDetailGrid.Detail>
+        </controls:MasterDetailGrid>
+    </Grid>
+</UserControl>
