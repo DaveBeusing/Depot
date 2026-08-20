@@ -53,6 +53,7 @@ public sealed class SalesInvoiceService
 
 	public Task<PageResult<SalesCreditNote>> SearchCreditNotesAsync(string? searchText, SalesCreditNoteStatus? status, int pageNumber = 1, int pageSize = 100, CancellationToken token = default) => _creditNotes.SearchAsync(searchText, status, pageNumber, pageSize, token);
 	public Task<SalesCreditNote> CreateCreditNoteAsync(long invoiceId, string reason, CancellationToken token = default) => _creditNotes.CreateFromInvoiceAsync(invoiceId, reason, token);
+	public Task<SalesCreditNote> CreateCreditNoteAsync(long invoiceId, IReadOnlyCollection<SalesCreditRequest> requests, string reason, CancellationToken token = default) => _creditNotes.CreateFromInvoiceAsync(invoiceId, requests, reason, token);
 	public Task<SalesCreditNote> PostCreditNoteAsync(long id, long version, CancellationToken token = default) => _creditNotes.PostAsync(id, version, token);
 
 	public async Task<SalesInvoice> CreateFromShipmentAsync(long shipmentId, CancellationToken cancellationToken = default)
