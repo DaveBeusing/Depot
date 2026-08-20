@@ -158,6 +158,10 @@ v6  Customer Contacts, Price Lists, Customer Pricing, Sales Quotes and Shipment 
 
 The feature migration remains intentionally separate until the final version 1.0 migration policy is consolidated. SQL Server and MySQL/MariaDB support exists in code but still requires live-server migration, backup/restore and concurrency certification before 1.0.
 
+### Sales validation
+
+The automated Sales suite covers the core order-to-cash workflow plus the commercial extensions. It includes packed-shipment enforcement, backorders, reversals, customer returns, credit notes, schema v6, permissions and roles, Customer Contacts, customer-specific Pricing, Quote conversion, Sales Order Timeline events and Invoice Due Status.
+
 ### Remaining work before version 1.0
 
 - Live SQL Server and MySQL/MariaDB installation and migration matrices
