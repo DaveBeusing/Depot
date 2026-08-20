@@ -1,0 +1,53 @@
+<UserControl x:Class="Depot.Views.SalesInvoicesView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:Depot.Controls">
+    <Grid>
+        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="12"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+        <controls:WorkflowHeader Title="Sales invoices" Subtitle="Shipment-based invoicing, posting and auditable credit notes" Status="{Binding Workspace.DraftInvoiceCount}" />
+
+        <controls:MasterDetailGrid Grid.Row="2">
+            <controls:MasterDetailGrid.Master>
+                <controls:Card>
+                    <Grid>
+                        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                        <controls:SearchBox Placeholder="Search invoices, orders or customers" Text="{Binding Workspace.SearchText, UpdateSourceTrigger=PropertyChanged}"/>
+                        <ListBox Grid.Row="1" Margin="0,10,0,0" ItemsSource="{Binding Workspace.Invoices}" SelectedItem="{Binding Workspace.SelectedInvoice}" Style="{StaticResource MasterDataListBoxStyle}" ItemContainerStyle="{StaticResource MasterDataListBoxItemStyle}">
+                            <ListBox.ItemTemplate><DataTemplate><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="{Binding InvoiceNumber}" FontWeight="SemiBold"/><TextBlock Text="{Binding CustomerName}" Style="{StaticResource CaptionStyle}"/></StackPanel><controls:DocumentStatusBadge Grid.Column="1" Status="{Binding Status}"/></Grid></DataTemplate></ListBox.ItemTemplate>
+                        </ListBox>
+                    </Grid>
+                </controls:Card>
+            </controls:MasterDetailGrid.Master>
+
+            <controls:MasterDetailGrid.Detail>
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+                        <controls:Card>
+                            <StackPanel>
+                                <controls:WorkflowHeader Title="{Binding Workspace.SelectedInvoice.InvoiceNumber, TargetNullValue=Invoice}" Subtitle="{Binding Workspace.SelectedInvoice.SalesOrderNumber}" Status="{Binding Workspace.SelectedInvoice.Status}"/>
+                                <ComboBox Margin="0,12,0,0" ItemsSource="{Binding Workspace.Shipments}" SelectedItem="{Binding Workspace.SelectedShipment}" DisplayMemberPath="ShipmentNumber" Style="{StaticResource AppComboBoxStyle}"/>
+                                <DataGrid Margin="0,12,0,0" ItemsSource="{Binding Workspace.SelectedInvoice.Lines}" SelectedItem="{Binding SelectedInvoiceLine}" Style="{StaticResource AppDataGridStyle}" MinHeight="150">
+                                    <DataGrid.Columns><DataGridTextColumn Header="Item" Binding="{Binding PartNumber}" Width="120"/><DataGridTextColumn Header="Description" Binding="{Binding Description}" Width="*"/><DataGridTextColumn Header="Qty" Binding="{Binding Quantity}" Width="60"/><DataGridTextColumn Header="Net" Binding="{Binding NetAmount, StringFormat={}{0:C2}}" Width="100"/><DataGridTextColumn Header="Tax" Binding="{Binding TaxAmount, StringFormat={}{0:C2}}" Width="100"/><DataGridTextColumn Header="Gross" Binding="{Binding GrossAmount, StringFormat={}{0:C2}}" Width="100"/></DataGrid.Columns>
+                                </DataGrid>
+                                <Grid Margin="0,12,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="Invoice gross" Style="{StaticResource CaptionStyle}"/><TextBlock Text="{Binding Workspace.SelectedInvoice.GrossAmount, StringFormat={}{0:C2}}" FontSize="18" FontWeight="SemiBold"/></StackPanel><StackPanel Grid.Column="1" HorizontalAlignment="Right"><TextBlock Text="Effective after posted credits" Style="{StaticResource CaptionStyle}" HorizontalAlignment="Right"/><TextBlock Text="{Binding EffectiveGrossAmount, StringFormat={}{0:C2}}" FontSize="18" FontWeight="SemiBold" HorizontalAlignment="Right"/></StackPanel></Grid>
+                                <controls:WorkflowActionBar Margin="0,12,0,0"><controls:WorkflowActionBar.SecondaryActions><StackPanel Orientation="Horizontal"><Button Command="{Binding Workspace.CreateInvoiceCommand}" Content="Create from shipment" Style="{StaticResource SecondaryButtonStyle}"/><Button Margin="{StaticResource Button.Margin}" Command="{Binding Workspace.InvoicePdfCommand}" Content="Invoice PDF" Style="{StaticResource SecondaryButtonStyle}"/><Button Margin="{StaticResource Button.Margin}" Command="{Binding Workspace.CancelInvoiceCommand}" Content="Cancel draft" Style="{StaticResource SecondaryButtonStyle}"/></StackPanel></controls:WorkflowActionBar.SecondaryActions><controls:WorkflowActionBar.PrimaryAction><Button Command="{Binding Workspace.PostInvoiceCommand}" Content="Post invoice" Style="{StaticResource PrimaryButtonStyle}"/></controls:WorkflowActionBar.PrimaryAction></controls:WorkflowActionBar>
+                            </StackPanel>
+                        </controls:Card>
+
+                        <controls:Card Margin="0,12,0,0" Visibility="{Binding Workspace.CanViewCreditNotes, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <StackPanel>
+                                <TextBlock Text="Credit notes" Style="{StaticResource WorkspaceTitleStyle}" />
+                                <TextBlock Margin="0,4,0,10" Text="Posted invoices remain immutable. Credit either the complete invoice or a selected line quantity; Depot prevents the cumulative credited quantity from exceeding the invoice." Style="{StaticResource CaptionStyle}" TextWrapping="Wrap" />
+                                <DataGrid ItemsSource="{Binding Workspace.CreditNotes}" SelectedItem="{Binding Workspace.SelectedCreditNote}" Style="{StaticResource AppDataGridStyle}" MaxHeight="180">
+                                    <DataGrid.Columns><DataGridTextColumn Header="Credit note" Binding="{Binding CreditNoteNumber}" Width="130"/><DataGridTextColumn Header="Date" Binding="{Binding CreditDate, StringFormat={}{0:d}}" Width="100"/><DataGridTextColumn Header="Reason" Binding="{Binding Reason}" Width="*"/><DataGridTextColumn Header="Gross" Binding="{Binding GrossAmount, StringFormat={}{0:C2}}" Width="100"/><DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="90"/></DataGrid.Columns>
+                                </DataGrid>
+                                <Grid Margin="0,10,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="10"/><ColumnDefinition Width="100"/><ColumnDefinition Width="10"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="Correction reason" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding Workspace.CorrectionReason, UpdateSourceTrigger=PropertyChanged}"/></StackPanel><StackPanel Grid.Column="2"><TextBlock Text="Credit qty" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding CreditQuantity, UpdateSourceTrigger=PropertyChanged}"/></StackPanel><StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Bottom"><Button Command="{Binding CreatePartialCreditNoteCommand}" Content="Credit selected qty" Style="{StaticResource SecondaryButtonStyle}"/><Button Margin="{StaticResource Button.Margin}" Command="{Binding Workspace.CreateCreditNoteCommand}" Content="Credit full invoice" Style="{StaticResource SecondaryButtonStyle}"/></StackPanel></Grid>
+                                <controls:WorkflowActionBar Margin="0,10,0,0"><controls:WorkflowActionBar.SecondaryActions><Button Command="{Binding CreditNotePdfCommand}" Content="Credit note PDF" Style="{StaticResource SecondaryButtonStyle}"/></controls:WorkflowActionBar.SecondaryActions><controls:WorkflowActionBar.PrimaryAction><Button Command="{Binding Workspace.PostCreditNoteCommand}" Content="Post credit note" Style="{StaticResource PrimaryButtonStyle}"/></controls:WorkflowActionBar.PrimaryAction></controls:WorkflowActionBar>
+                            </StackPanel>
+                        </controls:Card>
+                    </StackPanel>
+                </ScrollViewer>
+            </controls:MasterDetailGrid.Detail>
+        </controls:MasterDetailGrid>
+    </Grid>
+</UserControl>
