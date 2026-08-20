@@ -4,7 +4,7 @@ Sales invoices are created from posted shipments, so invoiced quantities remain 
 
 ## Invoice workflow
 
-Select a posted shipment and create an invoice. Depot uses the Sales Order billing-address snapshot together with shipment quantities and the order's pricing, discount and tax snapshots.
+Select a posted shipment and create an invoice under **Sales > Invoices**. Depot uses the Sales Order billing-address snapshot together with shipment quantities and the order's pricing, discount and tax snapshots.
 
 The Invoice workspace shows **Due Status**, **Due Date** and **Days Until Due**. Posted invoices are classified as Not Due, Due Today or Overdue; draft and cancelled invoices retain their own states.
 
@@ -18,4 +18,8 @@ You can credit the complete invoice or select an invoice line and enter a partia
 
 The Invoice workspace shows original gross amount and effective value after posted credits. Use **Credit note PDF** to generate the correction document with references to the original invoice and Sales Order.
 
-If goods physically return as well, process the inventory side independently with a Customer Return under **Sales > Shipping**.
+If goods physically return as well, process the inventory side independently with a Customer Return under **Warehouse > Shipping**.
+
+## Related topics
+- [Sales Orders](topic:sales.orders)
+- [Shipping, Packing and Customer Returns](topic:sales.shipping)
