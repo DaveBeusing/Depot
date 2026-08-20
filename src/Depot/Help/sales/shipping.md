@@ -2,18 +2,22 @@
 
 Shipping converts reserved sales-order quantities into physical goods issue.
 
-## Shipment workflow
+## Pick and pack workflow
 
-Create a shipment from an active reservation. While the shipment is **Draft**, carrier, tracking number and notes can be edited and saved. Posting the shipment creates negative `SalesShipment` stock movements and consumes the corresponding reservation.
+Create a shipment from an active reservation. The Shipping workspace shows the sales order, reservation/pick source, shipment quantity and the resulting pick/pack lines together. The shipment inherits the shipping-address snapshot stored on the Sales Order.
+
+While the shipment is **Draft**, carrier, tracking number and notes can be edited and saved. Posting creates negative `SalesShipment` stock movements and consumes the corresponding reservation.
 
 Partial shipments are supported. The sales order remains **Partially Shipped** until all ordered quantities are shipped.
 
 ## Shipment reversal
 
-If a posted shipment has not been invoiced, use **Reverse shipment** with a reason. Depot creates positive `SalesShipmentReversal` counter-movements, restores reservations and moves the order back to Released or Partially Shipped. The original stock movements remain immutable.
+Use **Reverse posting** only when the original shipment was posted incorrectly and has not entered an immutable invoicing path. Depot creates positive `SalesShipmentReversal` counter-movements, restores reservations and moves the order back to Released or Partially Shipped. The original movements remain unchanged.
 
 ## Customer return
 
-If the shipment has already entered the invoicing process, use **Create return** instead of reversing the shipment. Posting a customer return creates positive `CustomerReturn` stock movements. Only quantities not already returned can be processed.
+Use **Create customer return** when goods were genuinely delivered and physically come back from the customer. Posting a return creates positive `CustomerReturn` stock movements. Depot prevents returned quantities from exceeding the shipment quantity and sends workflow notifications to the relevant Sales and Finance users.
 
-A commercial correction for a posted invoice is handled separately with a Credit Note under Sales Invoices.
+Use **Return receipt PDF** to create an auditable return document referencing the original shipment.
+
+If the shipment was invoiced, handle the commercial correction separately with a Credit Note under **Sales > Invoices**.
