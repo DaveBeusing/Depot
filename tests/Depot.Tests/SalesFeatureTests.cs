@@ -30,6 +30,8 @@ public sealed class SalesFeatureTests : IDisposable
 			Assert.Equal(1L, Scalar(connection, $"SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='{table}';"));
 		Assert.Equal(1L, Scalar(connection, "SELECT COUNT(*) FROM pragma_table_info('Shipments') WHERE name='ReversedAtUtc';"));
 		Assert.Equal(1L, Scalar(connection, "SELECT COUNT(*) FROM pragma_table_info('CustomerAddresses') WHERE name='IsDefault';"));
+		Assert.Equal(1L, Scalar(connection, "SELECT COUNT(*) FROM pragma_table_info('SalesOrders') WHERE name='BillingAddress';"));
+		Assert.Equal(1L, Scalar(connection, "SELECT COUNT(*) FROM pragma_table_info('SalesOrders') WHERE name='ShippingAddress';"));
 	}
 
 	[Fact]
