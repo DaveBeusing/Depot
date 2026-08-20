@@ -1,21 +1,25 @@
-# Customers
+# Customers and Contacts
 
-Customers hold the commercial master data used by sales orders, shipments and invoices.
+Customers hold the commercial master data used by quotes, sales orders, shipments and invoices.
 
 ## Customer workspace
 
-Open **Sales > Customers** to search, create and maintain customers in the dedicated customer workspace. Customer numbers are assigned by Depot when a record is created. Contact data, payment terms, currency and activation remain part of the customer master record.
+Open **Sales > Customers** to search, create and maintain customers. Customer numbers are assigned by Depot when a record is created. Payment terms, currency and activation remain part of the customer master record.
 
 ## Multiple addresses
 
 A customer can have multiple address records. Each address is classified as **Billing**, **Shipping** or **Other** and can have a descriptive name such as Headquarters, Bonn Warehouse or Toronto Office.
 
-Use **Default** to identify the preferred address for a type. Sales Orders use those defaults when a customer is selected, but another suitable address can be chosen for an individual order.
+Use **Default** to identify the preferred address for a type. Quotes and Sales Orders use those defaults when a customer is selected, but document snapshots remain independent from later master-data changes.
 
-Legacy billing and shipping fields remain synchronized with the default addresses for compatibility with existing data.
+## Contacts
+
+The **Contacts** tab stores multiple people per customer. Contacts can be classified as General, Commercial, Purchasing, Logistics, Accounting or Technical and can hold department, email, phone and mobile information.
+
+Mark the most commonly used person as **Primary contact**. Quotes offer the available customer contacts and use the selected contact as a document snapshot and email recipient.
 
 ## Historical documents
 
-Customer addresses are master data and can change. Sales Orders therefore store the selected billing and shipping addresses as snapshots. Shipments inherit the order's shipping snapshot and invoices inherit its billing snapshot, so changing a customer later does not change historical operational documents.
+Sales Orders store selected billing and shipping addresses as snapshots. Shipments inherit the order's shipping snapshot and invoices inherit its billing snapshot, so changing customer master data later does not change historical operational documents.
 
-Unsaved customer edits are protected by Depot's global unsaved-changes guard when you leave the Sales section or close the workspace tab.
+Unsaved customer edits remain protected by Depot's global unsaved-changes guard.
