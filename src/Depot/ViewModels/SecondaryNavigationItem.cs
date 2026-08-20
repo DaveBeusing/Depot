@@ -36,7 +36,7 @@ public sealed class SecondaryNavigationItem : IDisposable
 	public bool IsContentCreated => _content.IsValueCreated;
 	public string HelpTopicId { get; }
 	public Action? Activate { get; }
-	public bool IsVisible { get; }
+	public bool IsVisible { get; set; }
 	public NavigationLoadStatus LoadStatus => _loadState.Status;
 
 	public Task ActivateAsync(CancellationToken cancellationToken = default)
