@@ -58,10 +58,12 @@ Depot currently includes:
 
 ### Sales and order-to-cash
 
-Sales is a separate domain rather than procurement documents used in reverse.
+Sales is a separate commercial and fulfillment domain rather than procurement documents used in reverse.
 
 ```text
-Customer
+Customer + Contacts
+   ↓
+Quote / Customer Pricing (optional)
    ↓
 Sales Order Draft
    ↓
@@ -71,7 +73,7 @@ Inventory Reservation
    ↓
 Release
    ↓
-Pick / Pack / Shipment
+Picking / Packed / Shipment
    ↓
 SalesShipment stock movement
    ↓
@@ -90,42 +92,49 @@ Posted invoice correction  → Credit Note
 
 Implemented Sales capabilities include:
 
-- Dedicated Customer workspace with search, customer editor and multiple normalized addresses
+- Sales Commercial Hub combining operational overview, Quotes and customer Pricing
+- Dedicated Customer workspace with search, customer editor, multiple normalized addresses and multiple contacts
+- Customer contact roles for General, Commercial, Purchasing, Logistics, Accounting and Technical use cases, including a primary-contact flag
 - Billing, Shipping and Other customer address types with per-type default selection
-- Sales Order billing/shipping address picker
-- Immutable billing and shipping address snapshots on Sales Orders
-- Shipment inheritance of the Sales Order shipping-address snapshot
-- Invoice inheritance of the Sales Order billing-address snapshot
-- Sales orders and lines with automatic numbering, item snapshots, prices, discounts, tax, requested delivery dates, and status workflow
+- Sales Order billing/shipping address picker and immutable address snapshots
+- Customer-specific price lists with validity windows, item prices, discounts and customer assignments
+- Price resolution for Quotes and an explicit **Apply customer price** action in Sales Orders
+- Sales Quotes with Draft, Sent, Accepted, Rejected and Converted lifecycle, contact/address snapshots and conversion into a Sales Order draft
+- Quote PDF generation and local `.eml` email drafts with the PDF attached
+- Sales orders and lines with automatic numbering, item snapshots, prices, discounts, tax, requested delivery dates, and approval workflow
+- Sales Order Timeline spanning approval, release, shipment, invoice, return and credit-note events
 - Creator/approver separation with Administrator override
 - Inventory reservations that reduce **available** stock without changing physical stock
 - Concurrency-safe reservation checks against current on-hand quantity and reservations from other sales orders
 - Partial reservation and release; unreserved quantities remain visible as **Backorder** and can be allocated later
 - Backorder workflow notifications when an order is released with unreserved demand
 - Per-line Ordered, Reserved, Backorder, Shipped, and Invoiced quantities
-- Dedicated Pick/Pack Shipping workspace with draft carrier, tracking, notes and pick-source selection
+- Dedicated Shipping workspace with shipment Draft state plus **Not Started → Picking → Packed** packing workflow
+- Shipment posting is blocked until the shipment is Packed
+- Pick List, Packing Slip and Delivery Note PDF generation
 - Atomic shipment posting with negative `SalesShipment` stock movements and reservation consumption
 - Shipment reversal through immutable positive `SalesShipmentReversal` counter-movements
 - Customer Returns for real physical returns with positive `CustomerReturn` movements and workflow notifications
-- Delivery Note and Customer Return Receipt PDF generation
-- Shipment-based invoice creation with pricing/tax and address snapshots
+- Customer Return Receipt PDF generation
+- Shipment-based invoice creation with pricing/tax and billing-address snapshots
+- Invoice Due Status with Not Due, Due Today and Overdue states
+- Invoice PDF generation and local email-draft creation with PDF attachment
 - Draft invoice cancellation
 - Full and partial immutable Credit Notes with cumulative quantity validation
-- Invoice and Credit Note PDF generation
-- Credit Note workflow notifications
+- Credit Note PDF generation and workflow notifications
 - Sales Dashboard metrics including approvals, reservation/backorder attention, fulfillment workload, returns, credits and monthly net sales
 - Sales records in Quick Open and workflow actions in the Command Palette
 - Notification deep links into Sales Orders, Approvals, Shipping, Customer Returns, Invoices and Credit Notes
-- Dedicated offline Help topics for the complete Sales workflow
+- Dedicated offline Help topics for Sales, Customers, Quotes, Pricing, Orders, Shipping and Invoices
 
 ### Sales roles
 
 Default system roles include:
 
-- **Sales User** — customers and sales-order creation/submission
-- **Sales Manager** — approval, release and fulfillment monitoring
-- **Warehouse Operator** — shipment creation/editing/posting/reversal and customer returns
-- **Finance** — invoices and credit notes
+- **Sales User** — customers, contacts, quotes and sales-order creation/submission
+- **Sales Manager** — quote conversion, customer pricing management, approval, release and fulfillment monitoring
+- **Warehouse Operator** — shipment picking/packing/posting/reversal and customer returns
+- **Finance** — invoices, credit notes and pricing visibility
 - **Administrator** — all permissions and all role-oriented dashboard views
 
 All actions remain permission-based; role definitions are defaults rather than hard-coded workflow identities.
@@ -136,7 +145,7 @@ All actions remain permission-based; role definitions are defaults rather than h
 - Microsoft SQL Server has a dedicated connection factory, database initializer, locking SQL, connection tests, and error normalization.
 - MySQL/MariaDB has a dedicated connection factory, database initializer, locking SQL, connection tests, and error normalization.
 
-The core Depot database schema is currently **29**. Sales currently uses a versioned feature registry in `DepotFeatureVersions`; the current Sales schema is **5**:
+The core Depot database schema is currently **29**. Sales uses a versioned feature registry in `DepotFeatureVersions`; the current Sales schema is **6**:
 
 ```text
 v1  Initial Sales domain
@@ -144,6 +153,7 @@ v2  Shipment corrections, Customer Returns and Credit Notes
 v3  Normalized Customer Addresses
 v4  Reservation history and repeated backorder allocation
 v5  Sales Order billing/shipping address snapshots
+v6  Customer Contacts, Price Lists, Customer Pricing, Sales Quotes and Shipment Packing state
 ```
 
 The feature migration remains intentionally separate until the final version 1.0 migration policy is consolidated. SQL Server and MySQL/MariaDB support exists in code but still requires live-server migration, backup/restore and concurrency certification before 1.0.
@@ -158,7 +168,7 @@ The feature migration remains intentionally separate until the final version 1.0
 - Security review of deployment defaults, credentials, logs and backup retention
 - Consolidate feature migrations into the final 1.0 migration/upgrade policy
 
-Barcode scanning/generation, label design/printing, CRM-style quoting, payment collection, accounts receivable, and general-ledger functionality remain outside the current order-to-cash scope.
+Barcode scanning/generation, label design/printing, payment collection, accounts receivable, and general-ledger functionality remain outside the current scope.
 
 ## Architecture
 
