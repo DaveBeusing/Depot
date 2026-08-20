@@ -48,6 +48,9 @@ public sealed class SalesViewModel : BaseViewModel, IDisposable
 	private string _searchText = string.Empty;
 	private Customer? _selectedCustomer;
 	private Customer? _customerBaseline;
+	private Customer? _selectedOrderCustomer;
+	private CustomerAddress? _selectedBillingAddress;
+	private CustomerAddress? _selectedShippingAddress;
 	private SalesOrder? _selectedOrder;
 	private SalesOrder? _orderBaseline;
 	private Shipment? _selectedShipment;
@@ -120,6 +123,8 @@ public sealed class SalesViewModel : BaseViewModel, IDisposable
 	}
 
 	public ObservableCollection<Customer> Customers { get; } = [];
+	public ObservableCollection<CustomerAddress> BillingAddresses { get; } = [];
+	public ObservableCollection<CustomerAddress> ShippingAddresses { get; } = [];
 	public ObservableCollection<SalesOrder> Orders { get; } = [];
 	public ObservableCollection<SalesOrder> PendingApprovals { get; } = [];
 	public ObservableCollection<Shipment> Shipments { get; } = [];
@@ -186,6 +191,7 @@ public sealed class SalesViewModel : BaseViewModel, IDisposable
 	public bool CanViewInvoices => _authorization.HasPermission(ApplicationPermission.SalesInvoicesView);
 	public bool CanViewCustomerReturns => _authorization.HasPermission(ApplicationPermission.CustomerReturnsView);
 	public bool CanViewCreditNotes => _authorization.HasPermission(ApplicationPermission.CreditNotesView);
+	public bool CanEditCustomers => _customers.CanEdit;
 
 	public string SearchText { get => _searchText; set { if (_searchText == value) return; _searchText = value; OnPropertyChanged(); } }
 	public Customer CustomerDraft { get => _customerDraft; private set { _customerDraft = value; OnPropertyChanged(); } }
@@ -197,7 +203,10 @@ public sealed class SalesViewModel : BaseViewModel, IDisposable
 	public string? ShipmentNotes { get => _shipmentNotes; set { if (_shipmentNotes == value) return; _shipmentNotes = value; OnPropertyChanged(); } }
 	public string CorrectionReason { get => _correctionReason; set { if (_correctionReason == value) return; _correctionReason = value; OnPropertyChanged(); RaiseCommands(); } }
 
-	public Customer? SelectedCustomer { get => _selectedCustomer; set { if (_selectedCustomer == value) return; _selectedCustomer = value; OnPropertyChanged(); _customerBaseline = value is null ? null : Copy(value); CustomerDraft = value is null ? NewCustomerDraft() : Copy(value); } }
+	public Customer? SelectedCustomer { get => _selectedCustomer; set { if (_selectedCustomer == value) return; _selectedCustomer = value; OnPropertyChanged(); _ = LoadSelectedCustomerAsync(value); } }
+	public Customer? SelectedOrderCustomer { get => _selectedOrderCustomer; set { if (_selectedOrderCustomer == value) return; _selectedOrderCustomer = value; OnPropertyChanged(); _ = LoadOrderAddressesAsync(value, true); } }
+	public CustomerAddress? SelectedBillingAddress { get => _selectedBillingAddress; set { if (_selectedBillingAddress == value) return; _selectedBillingAddress = value; if (value is not null) OrderDraft.BillingAddress = value.Address; OnPropertyChanged(); OnPropertyChanged(nameof(OrderDraft)); } }
+	public CustomerAddress? SelectedShippingAddress { get => _selectedShippingAddress; set { if (_selectedShippingAddress == value) return; _selectedShippingAddress = value; if (value is not null) OrderDraft.ShippingAddress = value.Address; OnPropertyChanged(); OnPropertyChanged(nameof(OrderDraft)); } }
 	public SalesOrder? SelectedOrder { get => _selectedOrder; set { if (_selectedOrder == value) return; _selectedOrder = value; OnPropertyChanged(); _ = LoadSelectedOrderAsync(value); RaiseCommands(); } }
 	public Shipment? SelectedShipment { get => _selectedShipment; set { if (_selectedShipment == value) return; _selectedShipment = value; OnPropertyChanged(); _ = LoadSelectedShipmentAsync(value); RaiseCommands(); } }
 	public SalesInvoice? SelectedInvoice { get => _selectedInvoice; set { if (_selectedInvoice == value) return; _selectedInvoice = value; OnPropertyChanged(); RaiseCommands(); } }
@@ -221,6 +230,10 @@ public sealed class SalesViewModel : BaseViewModel, IDisposable
 	public long DraftInvoiceCount => Invoices.LongCount(invoice => invoice.Status == SalesInvoiceStatus.Draft);
 	public decimal PostedRevenue => Invoices.Where(invoice => invoice.Status == SalesInvoiceStatus.Posted).Sum(invoice => invoice.NetAmount);
 
+	public Task<IReadOnlyList<CustomerAddress>> GetCustomerAddressesAsync(long customerId, CancellationToken token = default) => _customers.ListAddressesAsync(customerId, token);
+	public Task<CustomerAddress> SaveCustomerAddressAsync(CustomerAddress address, CancellationToken token = default) => _customers.SaveAddressAsync(address, token);
+	public async Task ReloadSelectedCustomerAsync(CancellationToken token = default) { if (SelectedCustomer is null) return; var loaded = await _customers.GetByIdAsync(SelectedCustomer.Id, token); if (loaded is not null) { _selectedCustomer = loaded; OnPropertyChanged(nameof(SelectedCustomer)); _customerBaseline = Copy(loaded); CustomerDraft = Copy(loaded); } }
+
 	public bool HasUnsavedChanges()
 	{
 		if (IsCustomers)
@@ -237,23 +250,9 @@ public sealed class SalesViewModel : BaseViewModel, IDisposable
 
 	public void DiscardUnsavedChanges()
 	{
-		if (IsCustomers)
-		{
-			CustomerDraft = _customerBaseline is null ? NewCustomerDraft() : Copy(_customerBaseline);
-			return;
-		}
-		if (IsSalesOrders)
-		{
-			OrderDraft = _orderBaseline is null ? NewOrderDraft() : Copy(_orderBaseline);
-			Replace(OrderLines, OrderDraft.Lines.Select(CopyLine));
-			return;
-		}
-		if (IsShipping && _shipmentBaseline is not null)
-		{
-			Carrier = _shipmentBaseline.Carrier;
-			TrackingNumber = _shipmentBaseline.TrackingNumber;
-			ShipmentNotes = _shipmentBaseline.Notes;
-		}
+		if (IsCustomers) { CustomerDraft = _customerBaseline is null ? NewCustomerDraft() : Copy(_customerBaseline); return; }
+		if (IsSalesOrders) { OrderDraft = _orderBaseline is null ? NewOrderDraft() : Copy(_orderBaseline); Replace(OrderLines, OrderDraft.Lines.Select(CopyLine)); return; }
+		if (IsShipping && _shipmentBaseline is not null) { Carrier = _shipmentBaseline.Carrier; TrackingNumber = _shipmentBaseline.TrackingNumber; ShipmentNotes = _shipmentBaseline.Notes; }
 	}
 
 	public async Task LoadAsync(CancellationToken cancellationToken = default)
@@ -263,11 +262,7 @@ public sealed class SalesViewModel : BaseViewModel, IDisposable
 		try
 		{
 			if (CanViewCustomers) Replace(Customers, (await _customers.SearchAsync(SearchText, false, 1, PageSize, request.Token)).Items); else Customers.Clear();
-			if (CanViewOrders)
-			{
-				Replace(Orders, (await _orders.SearchAsync(SearchText, null, 1, PageSize, request.Token)).Items);
-				Replace(PendingApprovals, Orders.Where(order => order.Status == SalesOrderStatus.PendingApproval));
-			}
+			if (CanViewOrders) { Replace(Orders, (await _orders.SearchAsync(SearchText, null, 1, PageSize, request.Token)).Items); Replace(PendingApprovals, Orders.Where(order => order.Status == SalesOrderStatus.PendingApproval)); }
 			else { Orders.Clear(); PendingApprovals.Clear(); }
 			if (CanViewShipments) Replace(Shipments, (await _shipments.SearchAsync(SearchText, null, 1, PageSize, request.Token)).Items); else Shipments.Clear();
 			if (CanViewInvoices) Replace(Invoices, (await _invoices.SearchAsync(SearchText, null, 1, PageSize, request.Token)).Items); else Invoices.Clear();
@@ -275,8 +270,7 @@ public sealed class SalesViewModel : BaseViewModel, IDisposable
 			if (CanViewCreditNotes) Replace(CreditNotes, (await _invoices.SearchCreditNotesAsync(SearchText, null, 1, PageSize, request.Token)).Items); else CreditNotes.Clear();
 			if (_authorization.HasPermission(ApplicationPermission.ItemsView)) Replace(Items, (await _items.SearchItemsAsync(string.Empty, 1, PageSize, request.Token)).Items); else Items.Clear();
 			if (!request.IsCurrent) return;
-			NotifyMetrics();
-			CompleteOperation(false, "Sales workspace loaded");
+			NotifyMetrics(); CompleteOperation(false, "Sales workspace loaded");
 		}
 		catch (OperationCanceledException) when (request.Token.IsCancellationRequested) { }
 		catch (Exception exception) { FailOperation(exception, "Sales workspace could not be loaded"); }
@@ -284,8 +278,7 @@ public sealed class SalesViewModel : BaseViewModel, IDisposable
 
 	public async Task<IReadOnlyList<SalesQuickOpenItem>> QuickSearchAsync(string text, CancellationToken cancellationToken = default)
 	{
-		text = text.Trim();
-		if (text.Length < 2) return [];
+		text = text.Trim(); if (text.Length < 2) return [];
 		var result = new List<SalesQuickOpenItem>();
 		if (CanViewCustomers) result.AddRange((await _customers.SearchAsync(text, false, 1, 6, cancellationToken)).Items.Select(value => new SalesQuickOpenItem(SalesQuickOpenKind.Customer, value.Id, value.Name, value.CustomerNumber)));
 		if (CanViewOrders) result.AddRange((await _orders.SearchAsync(text, null, 1, 8, cancellationToken)).Items.Select(value => new SalesQuickOpenItem(SalesQuickOpenKind.SalesOrder, value.Id, value.OrderNumber, value.CustomerName)));
@@ -309,12 +302,19 @@ public sealed class SalesViewModel : BaseViewModel, IDisposable
 		}
 	}
 
-	private void NewCustomer() { _customerBaseline = null; SelectedCustomer = null; CustomerDraft = NewCustomerDraft(); RequestEditorFocus(); }
-	private async Task SaveCustomerAsync(CancellationToken token) { var saved = await _customers.SaveAsync(CustomerDraft, token); SelectedCustomer = saved; _customerBaseline = Copy(saved); await LoadAsync(token); }
-	private void NewOrder() { _orderBaseline = null; SelectedOrder = null; OrderDraft = NewOrderDraft(); Replace(OrderLines, []); Replace(Reservations, []); RequestEditorFocus(); }
+	private void NewCustomer() { _customerBaseline = null; _selectedCustomer = null; OnPropertyChanged(nameof(SelectedCustomer)); CustomerDraft = NewCustomerDraft(); RequestEditorFocus(); }
+	private async Task SaveCustomerAsync(CancellationToken token) { var saved = await _customers.SaveAsync(CustomerDraft, token); _selectedCustomer = saved; OnPropertyChanged(nameof(SelectedCustomer)); _customerBaseline = Copy(saved); CustomerDraft = Copy(saved); await LoadAsync(token); }
+	private void NewOrder() { _orderBaseline = null; _selectedOrder = null; OnPropertyChanged(nameof(SelectedOrder)); _selectedOrderCustomer = null; OnPropertyChanged(nameof(SelectedOrderCustomer)); _selectedBillingAddress = null; _selectedShippingAddress = null; BillingAddresses.Clear(); ShippingAddresses.Clear(); OrderDraft = NewOrderDraft(); Replace(OrderLines, []); Replace(Reservations, []); RequestEditorFocus(); }
 	private void AddLine() { if (SelectedItem is null || LineQuantity <= 0) return; var line = new SalesOrderLine { LineNumber = OrderLines.Count + 1, ItemId = SelectedItem.Id, PartNumber = SelectedItem.PartNumber, Description = SelectedItem.Description, Quantity = LineQuantity, UnitPrice = LineUnitPrice, DiscountPercent = LineDiscountPercent, TaxRate = LineTaxRate }; OrderLines.Add(line); OrderDraft.Lines = OrderLines.ToArray(); SelectedOrderLine = line; RaiseCommands(); }
 	private void RemoveLine() { if (SelectedOrderLine is null) return; OrderLines.Remove(SelectedOrderLine); for (var index = 0; index < OrderLines.Count; index++) OrderLines[index].LineNumber = index + 1; OrderDraft.Lines = OrderLines.ToArray(); SelectedOrderLine = null; RaiseCommands(); }
-	private async Task SaveOrderAsync(CancellationToken token) { OrderDraft.Lines = OrderLines.ToArray(); var saved = await _orders.SaveDraftAsync(OrderDraft, token); SelectedOrder = saved; _orderBaseline = Copy(saved); await LoadAsync(token); }
+	private async Task SaveOrderAsync(CancellationToken token)
+	{
+		if (SelectedOrderCustomer is not null) { OrderDraft.CustomerId = SelectedOrderCustomer.Id; OrderDraft.CustomerName = SelectedOrderCustomer.Name; }
+		OrderDraft.BillingAddress = SelectedBillingAddress?.Address ?? OrderDraft.BillingAddress ?? SelectedOrderCustomer?.BillingAddress;
+		OrderDraft.ShippingAddress = SelectedShippingAddress?.Address ?? OrderDraft.ShippingAddress ?? SelectedOrderCustomer?.ShippingAddress;
+		OrderDraft.Lines = OrderLines.ToArray();
+		var saved = await _orders.SaveDraftAsync(OrderDraft, token); SelectedOrder = saved; _orderBaseline = Copy(saved); await LoadAsync(token);
+	}
 	private async Task SubmitAsync(CancellationToken token) { var source = SelectedOrder ?? OrderDraft; if (source.Id <= 0) return; SelectedOrder = await _orders.SubmitAsync(source.Id, source.Version, token); await LoadAsync(token); }
 	private async Task ApproveAsync(CancellationToken token) { if (SelectedOrder is null) return; SelectedOrder = await _orders.ApproveAsync(SelectedOrder.Id, SelectedOrder.Version, ApprovalComment, token); await LoadAsync(token); }
 	private async Task RejectAsync(CancellationToken token) { if (SelectedOrder is null) return; SelectedOrder = await _orders.RejectAsync(SelectedOrder.Id, SelectedOrder.Version, ApprovalComment, token); await LoadAsync(token); }
@@ -324,8 +324,7 @@ public sealed class SalesViewModel : BaseViewModel, IDisposable
 		if (SelectedOrder is null || SelectedOrderLine is null || SelectedAvailability is null) return;
 		var requests = Reservations.Where(value => value.Status == InventoryReservationStatus.Active && value.SalesOrderLineId != SelectedOrderLine.Id).Select(value => new SalesReservationRequest(value.SalesOrderLineId, value.InventoryId, value.Quantity)).ToList();
 		requests.Add(new SalesReservationRequest(SelectedOrderLine.Id, SelectedAvailability.InventoryId, ReservationQuantity));
-		SelectedOrder = await _orders.SetReservationsAsync(SelectedOrder.Id, SelectedOrder.Version, requests, token);
-		await LoadSelectedOrderAsync(SelectedOrder);
+		SelectedOrder = await _orders.SetReservationsAsync(SelectedOrder.Id, SelectedOrder.Version, requests, token); await LoadSelectedOrderAsync(SelectedOrder);
 	}
 
 	private async Task ReleaseAsync(CancellationToken token) { if (SelectedOrder is null) return; SelectedOrder = await _orders.ReleaseAsync(SelectedOrder.Id, SelectedOrder.Version, token); await LoadAsync(token); }
@@ -341,24 +340,53 @@ public sealed class SalesViewModel : BaseViewModel, IDisposable
 	private async Task CreateCreditNoteAsync(CancellationToken token) { if (SelectedInvoice is null) return; SelectedCreditNote = await _invoices.CreateCreditNoteAsync(SelectedInvoice.Id, CorrectionReason, token); CorrectionReason = string.Empty; await LoadAsync(token); }
 	private async Task PostCreditNoteAsync(CancellationToken token) { if (SelectedCreditNote is null) return; SelectedCreditNote = await _invoices.PostCreditNoteAsync(SelectedCreditNote.Id, SelectedCreditNote.Version, token); await LoadAsync(token); }
 
+	private async Task LoadSelectedCustomerAsync(Customer? customer)
+	{
+		if (customer is null) { _customerBaseline = null; CustomerDraft = NewCustomerDraft(); return; }
+		try { var loaded = await _customers.GetByIdAsync(customer.Id) ?? customer; _selectedCustomer = loaded; OnPropertyChanged(nameof(SelectedCustomer)); _customerBaseline = Copy(loaded); CustomerDraft = Copy(loaded); }
+		catch (Exception exception) { FailOperation(exception, "Customer details could not be loaded"); }
+	}
+
+	private async Task LoadOrderAddressesAsync(Customer? customer, bool applyDefaults)
+	{
+		BillingAddresses.Clear(); ShippingAddresses.Clear();
+		if (customer is null) return;
+		try
+		{
+			var loaded = await _customers.GetByIdAsync(customer.Id) ?? customer;
+			_selectedOrderCustomer = loaded; OnPropertyChanged(nameof(SelectedOrderCustomer));
+			OrderDraft.CustomerId = loaded.Id; OrderDraft.CustomerName = loaded.Name;
+			var addresses = loaded.Addresses.Count > 0 ? loaded.Addresses : await _customers.ListAddressesAsync(loaded.Id);
+			Replace(BillingAddresses, addresses.Where(a => a.IsActive && a.Type is CustomerAddressType.Billing or CustomerAddressType.Other));
+			Replace(ShippingAddresses, addresses.Where(a => a.IsActive && a.Type is CustomerAddressType.Shipping or CustomerAddressType.Other));
+			if (applyDefaults)
+			{
+				SelectedBillingAddress = BillingAddresses.FirstOrDefault(a => a.IsDefault) ?? BillingAddresses.FirstOrDefault();
+				SelectedShippingAddress = ShippingAddresses.FirstOrDefault(a => a.IsDefault) ?? ShippingAddresses.FirstOrDefault();
+			}
+		}
+		catch (Exception exception) { FailOperation(exception, "Customer addresses could not be loaded"); }
+	}
+
 	private async Task LoadSelectedOrderAsync(SalesOrder? order)
 	{
-		if (order is null) { _orderBaseline = null; OrderDraft = NewOrderDraft(); Replace(OrderLines, []); Replace(Reservations, []); return; }
-		try { var loaded = await _orders.GetByIdAsync(order.Id) ?? order; _selectedOrder = loaded; OnPropertyChanged(nameof(SelectedOrder)); _orderBaseline = Copy(loaded); OrderDraft = Copy(loaded); Replace(OrderLines, loaded.Lines.Select(CopyLine)); Replace(Reservations, await _orders.GetReservationsAsync(loaded.Id)); SelectedOrderLine = OrderLines.FirstOrDefault(); SelectedReservation = Reservations.FirstOrDefault(value => value.Status == InventoryReservationStatus.Active); RaiseCommands(); }
+		if (order is null) { _orderBaseline = null; OrderDraft = NewOrderDraft(); Replace(OrderLines, []); Replace(Reservations, []); BillingAddresses.Clear(); ShippingAddresses.Clear(); return; }
+		try
+		{
+			var loaded = await _orders.GetByIdAsync(order.Id) ?? order; _selectedOrder = loaded; OnPropertyChanged(nameof(SelectedOrder)); _orderBaseline = Copy(loaded); OrderDraft = Copy(loaded);
+			Replace(OrderLines, loaded.Lines.Select(CopyLine)); Replace(Reservations, await _orders.GetReservationsAsync(loaded.Id)); SelectedOrderLine = OrderLines.FirstOrDefault(); SelectedReservation = Reservations.FirstOrDefault(value => value.Status == InventoryReservationStatus.Active);
+			var customer = Customers.FirstOrDefault(c => c.Id == loaded.CustomerId) ?? await _customers.GetByIdAsync(loaded.CustomerId); _selectedOrderCustomer = customer; OnPropertyChanged(nameof(SelectedOrderCustomer)); await LoadOrderAddressesAsync(customer, false);
+			_selectedBillingAddress = BillingAddresses.FirstOrDefault(a => string.Equals(a.Address, loaded.BillingAddress, StringComparison.Ordinal)) ?? BillingAddresses.FirstOrDefault(a => a.IsDefault); OnPropertyChanged(nameof(SelectedBillingAddress));
+			_selectedShippingAddress = ShippingAddresses.FirstOrDefault(a => string.Equals(a.Address, loaded.ShippingAddress, StringComparison.Ordinal)) ?? ShippingAddresses.FirstOrDefault(a => a.IsDefault); OnPropertyChanged(nameof(SelectedShippingAddress));
+			RaiseCommands();
+		}
 		catch (Exception exception) { FailOperation(exception, "Sales order details could not be loaded"); }
 	}
 
 	private async Task LoadSelectedShipmentAsync(Shipment? shipment)
 	{
 		if (shipment is null) { _shipmentBaseline = null; Carrier = null; TrackingNumber = null; ShipmentNotes = null; return; }
-		try
-		{
-			var loaded = await _shipments.GetByIdAsync(shipment.Id) ?? shipment;
-			_selectedShipment = loaded; OnPropertyChanged(nameof(SelectedShipment));
-			_shipmentBaseline = Copy(loaded);
-			Carrier = loaded.Carrier; TrackingNumber = loaded.TrackingNumber; ShipmentNotes = loaded.Notes;
-			RaiseCommands();
-		}
+		try { var loaded = await _shipments.GetByIdAsync(shipment.Id) ?? shipment; _selectedShipment = loaded; OnPropertyChanged(nameof(SelectedShipment)); _shipmentBaseline = Copy(loaded); Carrier = loaded.Carrier; TrackingNumber = loaded.TrackingNumber; ShipmentNotes = loaded.Notes; RaiseCommands(); }
 		catch (Exception exception) { FailOperation(exception, "Shipment details could not be loaded"); }
 	}
 
@@ -377,9 +405,10 @@ public sealed class SalesViewModel : BaseViewModel, IDisposable
 	private void RaiseCommands() { SaveOrderCommand.RaiseCanExecuteChanged(); SubmitCommand.RaiseCanExecuteChanged(); ApproveCommand.RaiseCanExecuteChanged(); RejectCommand.RaiseCanExecuteChanged(); ReserveCommand.RaiseCanExecuteChanged(); ReleaseCommand.RaiseCanExecuteChanged(); CreateShipmentCommand.RaiseCanExecuteChanged(); SaveShipmentCommand.RaiseCanExecuteChanged(); PostShipmentCommand.RaiseCanExecuteChanged(); ReverseShipmentCommand.RaiseCanExecuteChanged(); CreateCustomerReturnCommand.RaiseCanExecuteChanged(); PostCustomerReturnCommand.RaiseCanExecuteChanged(); CreateInvoiceCommand.RaiseCanExecuteChanged(); CancelInvoiceCommand.RaiseCanExecuteChanged(); PostInvoiceCommand.RaiseCanExecuteChanged(); CreateCreditNoteCommand.RaiseCanExecuteChanged(); PostCreditNoteCommand.RaiseCanExecuteChanged(); OrderConfirmationCommand.RaiseCanExecuteChanged(); DeliveryNoteCommand.RaiseCanExecuteChanged(); InvoicePdfCommand.RaiseCanExecuteChanged(); AddLineCommand.RaiseCanExecuteChanged(); RemoveLineCommand.RaiseCanExecuteChanged(); }
 	private static Customer NewCustomerDraft() => new() { Currency = "EUR", PaymentTermsDays = 30, IsActive = true };
 	private static SalesOrder NewOrderDraft() => new() { OrderDate = DateTime.Today, Currency = "EUR", Status = SalesOrderStatus.Draft };
-	private static Customer Copy(Customer value) => new() { Id = value.Id, CustomerNumber = value.CustomerNumber, Name = value.Name, BillingAddress = value.BillingAddress, ShippingAddress = value.ShippingAddress, ContactName = value.ContactName, Email = value.Email, Phone = value.Phone, TaxId = value.TaxId, PaymentTermsDays = value.PaymentTermsDays, Currency = value.Currency, IsActive = value.IsActive, Version = value.Version };
+	private static Customer Copy(Customer value) => new() { Id = value.Id, CustomerNumber = value.CustomerNumber, Name = value.Name, BillingAddress = value.BillingAddress, ShippingAddress = value.ShippingAddress, ContactName = value.ContactName, Email = value.Email, Phone = value.Phone, TaxId = value.TaxId, PaymentTermsDays = value.PaymentTermsDays, Currency = value.Currency, IsActive = value.IsActive, Version = value.Version, Addresses = value.Addresses.Select(CopyAddress).ToArray() };
+	private static CustomerAddress CopyAddress(CustomerAddress value) => new() { Id=value.Id, CustomerId=value.CustomerId, Type=value.Type, Name=value.Name, Address=value.Address, IsDefault=value.IsDefault, IsActive=value.IsActive, Version=value.Version };
 	private static SalesOrderLine CopyLine(SalesOrderLine line) => new() { Id=line.Id, SalesOrderId=line.SalesOrderId, LineNumber=line.LineNumber, ItemId=line.ItemId, PartNumber=line.PartNumber, Description=line.Description, Quantity=line.Quantity, UnitPrice=line.UnitPrice, DiscountPercent=line.DiscountPercent, TaxRate=line.TaxRate, ReservedQuantity=line.ReservedQuantity, ShippedQuantity=line.ShippedQuantity, InvoicedQuantity=line.InvoicedQuantity, Version=line.Version };
-	private static SalesOrder Copy(SalesOrder value) => new() { Id = value.Id, OrderNumber = value.OrderNumber, CustomerId = value.CustomerId, CustomerName = value.CustomerName, OrderDate = value.OrderDate, RequestedDeliveryDate = value.RequestedDeliveryDate, Currency = value.Currency, CustomerReference = value.CustomerReference, Notes = value.Notes, Status = value.Status, CreatedByUserId = value.CreatedByUserId, SubmittedByUserId = value.SubmittedByUserId, SubmittedAtUtc = value.SubmittedAtUtc, ApprovalDecisionByUserId = value.ApprovalDecisionByUserId, ApprovalDecisionAtUtc = value.ApprovalDecisionAtUtc, ApprovalComment = value.ApprovalComment, ReleasedByUserId = value.ReleasedByUserId, ReleasedAtUtc = value.ReleasedAtUtc, CancelledByUserId = value.CancelledByUserId, CancelledAtUtc = value.CancelledAtUtc, CancelReason = value.CancelReason, Version = value.Version, Lines = value.Lines.Select(CopyLine).ToArray() };
+	private static SalesOrder Copy(SalesOrder value) => new() { Id = value.Id, OrderNumber = value.OrderNumber, CustomerId = value.CustomerId, CustomerName = value.CustomerName, BillingAddress=value.BillingAddress, ShippingAddress=value.ShippingAddress, OrderDate = value.OrderDate, RequestedDeliveryDate = value.RequestedDeliveryDate, Currency = value.Currency, CustomerReference = value.CustomerReference, Notes = value.Notes, Status = value.Status, CreatedByUserId = value.CreatedByUserId, SubmittedByUserId = value.SubmittedByUserId, SubmittedAtUtc = value.SubmittedAtUtc, ApprovalDecisionByUserId = value.ApprovalDecisionByUserId, ApprovalDecisionAtUtc = value.ApprovalDecisionAtUtc, ApprovalComment = value.ApprovalComment, ReleasedByUserId = value.ReleasedByUserId, ReleasedAtUtc = value.ReleasedAtUtc, CancelledByUserId = value.CancelledByUserId, CancelledAtUtc = value.CancelledAtUtc, CancelReason = value.CancelReason, Version = value.Version, Lines = value.Lines.Select(CopyLine).ToArray() };
 	private static Shipment Copy(Shipment value) => new() { Id=value.Id, ShipmentNumber=value.ShipmentNumber, SalesOrderId=value.SalesOrderId, SalesOrderNumber=value.SalesOrderNumber, CustomerId=value.CustomerId, CustomerName=value.CustomerName, ShipmentDate=value.ShipmentDate, Status=value.Status, Carrier=value.Carrier, TrackingNumber=value.TrackingNumber, ShippingAddress=value.ShippingAddress, Notes=value.Notes, CreatedByUserId=value.CreatedByUserId, PostedByUserId=value.PostedByUserId, PostedAtUtc=value.PostedAtUtc, ReversedAtUtc=value.ReversedAtUtc, ReversedByUserId=value.ReversedByUserId, ReversalReason=value.ReversalReason, Version=value.Version, Lines=value.Lines.ToArray() };
 	private static bool Equivalent<T>(T left, T right) => string.Equals(JsonSerializer.Serialize(left), JsonSerializer.Serialize(right), StringComparison.Ordinal);
 	private static void Replace<T>(ObservableCollection<T> target, IEnumerable<T> values) { target.Clear(); foreach (var value in values) target.Add(value); }
