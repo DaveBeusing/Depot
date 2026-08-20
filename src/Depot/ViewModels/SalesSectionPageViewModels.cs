@@ -1,6 +1,8 @@
 // Copyright (c) 2026 David Beusing
 // Licensed under the MIT License.
 
+using System.Collections.ObjectModel;
+
 using Depot.Commands;
 using Depot.Models;
 using Depot.Services;
@@ -43,7 +45,100 @@ public abstract class SalesSectionPageViewModel : BaseViewModel, IDisposable
 }
 
 public sealed class SalesOverviewViewModel(SalesViewModel workspace) : SalesSectionPageViewModel(workspace, SalesSection.Overview);
-public sealed class CustomersViewModel(SalesViewModel workspace) : SalesSectionPageViewModel(workspace, SalesSection.Customers);
+
+public sealed class CustomersViewModel : SalesSectionPageViewModel
+{
+	private Customer? _selectedCustomer;
+	private CustomerAddress? _selectedAddress;
+	private CustomerAddress _addressDraft = NewAddressDraft();
+
+	public CustomersViewModel(SalesViewModel workspace) : base(workspace, SalesSection.Customers)
+	{
+		NewAddressCommand = new RelayCommand(NewAddress, () => Workspace.SelectedCustomer is not null && Workspace.CanEditCustomers);
+		SaveAddressCommand = new AsyncRelayCommand(SaveAddressAsync, () => Workspace.SelectedCustomer is not null && Workspace.CanEditCustomers && !string.IsNullOrWhiteSpace(AddressDraft.Address));
+	}
+
+	public ObservableCollection<CustomerAddress> Addresses { get; } = [];
+	public IReadOnlyList<CustomerAddressType> AddressTypes { get; } = Enum.GetValues<CustomerAddressType>();
+	public RelayCommand NewAddressCommand { get; }
+	public AsyncRelayCommand SaveAddressCommand { get; }
+	public string SearchText { get => Workspace.SearchText; set { Workspace.SearchText = value; OnPropertyChanged(); } }
+	public Customer CustomerDraft => Workspace.CustomerDraft;
+	public RelayCommand NewCustomerCommand => Workspace.NewCustomerCommand;
+	public AsyncRelayCommand SaveCustomerCommand => Workspace.SaveCustomerCommand;
+
+	public Customer? SelectedCustomer
+	{
+		get => _selectedCustomer;
+		set
+		{
+			if (_selectedCustomer == value) return;
+			_selectedCustomer = value;
+			OnPropertyChanged();
+			_ = SelectCustomerAsync(value);
+		}
+	}
+
+	public CustomerAddress? SelectedAddress
+	{
+		get => _selectedAddress;
+		set
+		{
+			if (_selectedAddress == value) return;
+			_selectedAddress = value;
+			AddressDraft = value is null ? NewAddressDraft() : Copy(value);
+			OnPropertyChanged();
+		}
+	}
+
+	public CustomerAddress AddressDraft
+	{
+		get => _addressDraft;
+		private set { _addressDraft = value; OnPropertyChanged(); SaveAddressCommand.RaiseCanExecuteChanged(); }
+	}
+
+	public override async Task LoadAsync(CancellationToken cancellationToken = default)
+	{
+		await base.LoadAsync(cancellationToken);
+		if (SelectedCustomer is not null) await SelectCustomerAsync(SelectedCustomer, cancellationToken);
+	}
+
+	private async Task SelectCustomerAsync(Customer? customer, CancellationToken token = default)
+	{
+		Workspace.SelectedCustomer = customer;
+		if (customer is null) { Addresses.Clear(); NewAddressCommand.RaiseCanExecuteChanged(); SaveAddressCommand.RaiseCanExecuteChanged(); return; }
+		await Workspace.OpenQuickItemAsync(new SalesQuickOpenItem(SalesQuickOpenKind.Customer, customer.Id, customer.Name, customer.CustomerNumber), token);
+		Replace(Addresses, Workspace.CustomerDraft.Addresses);
+		SelectedAddress = Addresses.FirstOrDefault(a => a.IsDefault) ?? Addresses.FirstOrDefault();
+		OnPropertyChanged(nameof(CustomerDraft));
+		NewAddressCommand.RaiseCanExecuteChanged(); SaveAddressCommand.RaiseCanExecuteChanged();
+	}
+
+	private void NewAddress()
+	{
+		_selectedAddress = null; OnPropertyChanged(nameof(SelectedAddress));
+		AddressDraft = NewAddressDraft();
+		if (Workspace.SelectedCustomer is { } customer) AddressDraft.CustomerId = customer.Id;
+	}
+
+	private async Task SaveAddressAsync(CancellationToken token)
+	{
+		if (Workspace.SelectedCustomer is not { } customer) return;
+		AddressDraft.CustomerId = customer.Id;
+		var saved = await Workspace.SaveCustomerAddressAsync(AddressDraft, token);
+		await Workspace.ReloadSelectedCustomerAsync(token);
+		Replace(Addresses, Workspace.CustomerDraft.Addresses);
+		SelectedAddress = Addresses.FirstOrDefault(a => a.Id == saved.Id);
+		OnPropertyChanged(nameof(CustomerDraft));
+	}
+
+	private static CustomerAddress NewAddressDraft() => new() { Type = CustomerAddressType.Shipping, IsActive = true };
+	private static CustomerAddress Copy(CustomerAddress value) => new() { Id=value.Id, CustomerId=value.CustomerId, Type=value.Type, Name=value.Name, Address=value.Address, IsDefault=value.IsDefault, IsActive=value.IsActive, Version=value.Version };
+	private static void Replace<T>(ObservableCollection<T> target, IEnumerable<T> values) { target.Clear(); foreach (var value in values) target.Add(value); }
+
+	public override void Dispose() { SaveAddressCommand.Dispose(); base.Dispose(); }
+}
+
 public sealed class SalesOrdersViewModel(SalesViewModel workspace) : SalesSectionPageViewModel(workspace, SalesSection.SalesOrders);
 public sealed class SalesApprovalsViewModel(SalesViewModel workspace) : SalesSectionPageViewModel(workspace, SalesSection.Approvals);
 public sealed class ShippingViewModel(SalesViewModel workspace) : SalesSectionPageViewModel(workspace, SalesSection.Shipping);
