@@ -16,8 +16,9 @@ public sealed class CustomerReturnService
 	private readonly AuditRepository _auditEntries;
 	private readonly AuditService _audit;
 	private readonly IAuthorizationService _authorization;
+	private readonly NotificationService _notifications;
 
-	public CustomerReturnService(IDatabaseTransactionRunner transactions, CustomerReturnRepository returns, ShipmentRepository shipments, StockMovementRepository movements, AuditRepository auditEntries, AuditService audit, IAuthorizationService authorization)
+	public CustomerReturnService(IDatabaseTransactionRunner transactions, CustomerReturnRepository returns, ShipmentRepository shipments, StockMovementRepository movements, AuditRepository auditEntries, AuditService audit, IAuthorizationService authorization, NotificationService notifications)
 	{
 		_transactions = transactions;
 		_returns = returns;
@@ -26,6 +27,7 @@ public sealed class CustomerReturnService
 		_auditEntries = auditEntries;
 		_audit = audit;
 		_authorization = authorization;
+		_notifications = notifications;
 	}
 
 	public bool CanCreate => _authorization.HasPermission(ApplicationPermission.CustomerReturnsCreate);
@@ -69,7 +71,7 @@ public sealed class CustomerReturnService
 	{
 		_authorization.RequirePermission(ApplicationPermission.CustomerReturnsPost);
 		var user = RequireUser();
-		return await _transactions.ExecuteAsync(async (transaction, cancellationToken) =>
+		var result = await _transactions.ExecuteAsync(async (transaction, cancellationToken) =>
 		{
 			var before = await _returns.GetByIdAsync(transaction, id, cancellationToken) ?? throw new InvalidOperationException("Customer return was not found.");
 			if (before.Version != version) throw new ConcurrencyConflictException("customer return");
@@ -85,6 +87,19 @@ public sealed class CustomerReturnService
 			await _auditEntries.CreateAsync(transaction, _audit.CreateUpdatedEntry(id, before, after), cancellationToken);
 			return after;
 		}, token);
+
+		var request = new NotificationRequest(
+			NotificationType.Workflow,
+			NotificationSeverity.Information,
+			$"Customer return {result.ReturnNumber} posted",
+			$"Customer return {result.ReturnNumber} was posted and inventory was returned to stock.",
+			NotificationSourceTypes.CustomerReturn,
+			result.Id,
+			result.ReturnNumber,
+			user.Id);
+		await _notifications.NotifyPermissionHoldersAsync(request, ApplicationPermission.SalesOrdersView, [user.Id], token);
+		await _notifications.NotifyPermissionHoldersAsync(request, ApplicationPermission.CreditNotesView, [user.Id], token);
+		return result;
 	}
 
 	private User RequireUser() => _authorization.CurrentUser is { IsActive: true } user ? user : throw new UnauthorizedAccessException("An active signed-in user is required for customer returns.");
