@@ -10,7 +10,11 @@ internal static class SalesCommercialContext
 	public static SalesQuoteService Quotes { get; private set; } = null!;
 	public static ShipmentPackingService Packing { get; private set; } = null!;
 	public static CustomerService Customers { get; private set; } = null!;
+	public static SalesOrderService Orders { get; private set; } = null!;
+	public static ShipmentService Shipments { get; private set; } = null!;
+	public static SalesInvoiceService Invoices { get; private set; } = null!;
 	public static ItemService Items { get; private set; } = null!;
+	public static IAuthorizationService Authorization { get; private set; } = null!;
 	public static IFileDialogService FileDialogs { get; private set; } = null!;
 	public static SalesDocumentEmailService Email { get; private set; } = new();
 	public static SalesDocumentService Documents { get; private set; } = new();
@@ -34,10 +38,21 @@ internal static class SalesCommercialContext
 		IsConfigured = true;
 	}
 
-	public static void ConfigureUi(CustomerService customers, ItemService items, IFileDialogService fileDialogs)
+	public static void ConfigureUi(
+		CustomerService customers,
+		SalesOrderService orders,
+		ShipmentService shipments,
+		SalesInvoiceService invoices,
+		ItemService items,
+		IAuthorizationService authorization,
+		IFileDialogService fileDialogs)
 	{
 		Customers = customers;
+		Orders = orders;
+		Shipments = shipments;
+		Invoices = invoices;
 		Items = items;
+		Authorization = authorization;
 		FileDialogs = fileDialogs;
 		IsUiConfigured = true;
 	}
