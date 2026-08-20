@@ -27,7 +27,45 @@ public abstract class SalesSectionPageViewModel : BaseViewModel, IDisposable
 	public virtual void Dispose() => Workspace.Dispose();
 }
 
-public sealed class SalesOverviewViewModel(SalesViewModel workspace) : SalesSectionPageViewModel(workspace, SalesSection.Overview);
+public sealed class SalesOverviewViewModel : SalesSectionPageViewModel
+{
+	private int _selectedCommercialTab;
+
+	public SalesOverviewViewModel(SalesViewModel workspace)
+		: this(
+			workspace,
+			new SalesQuotesViewModel(SalesCommercialContext.Quotes, SalesCommercialContext.Pricing, SalesCommercialContext.Customers, SalesCommercialContext.Items, SalesCommercialContext.FileDialogs, SalesCommercialContext.Documents),
+			new SalesPricingViewModel(SalesCommercialContext.Pricing, SalesCommercialContext.Customers, SalesCommercialContext.Items))
+	{
+	}
+
+	public SalesOverviewViewModel(SalesViewModel workspace, SalesQuotesViewModel quotes, SalesPricingViewModel pricing)
+		: base(workspace, SalesSection.Overview)
+	{
+		Quotes = quotes;
+		Pricing = pricing;
+	}
+
+	public SalesQuotesViewModel Quotes { get; }
+	public SalesPricingViewModel Pricing { get; }
+	public bool CanViewQuotes => SalesCommercialContext.Quotes.CanView;
+	public bool CanViewPricing => SalesCommercialContext.Pricing.CanView;
+	public int SelectedCommercialTab { get => _selectedCommercialTab; set { if (_selectedCommercialTab == value) return; _selectedCommercialTab = value; OnPropertyChanged(); } }
+
+	public override async Task LoadAsync(CancellationToken cancellationToken = default)
+	{
+		await base.LoadAsync(cancellationToken);
+		if (CanViewQuotes) await Quotes.LoadAsync(cancellationToken);
+		if (CanViewPricing) await Pricing.LoadAsync(cancellationToken);
+	}
+
+	public override void Dispose()
+	{
+		Quotes.Dispose();
+		Pricing.Dispose();
+		base.Dispose();
+	}
+}
 
 public sealed class CustomersViewModel : SalesSectionPageViewModel
 {
@@ -37,6 +75,8 @@ public sealed class CustomersViewModel : SalesSectionPageViewModel
 	private CustomerAddress _addressDraft = NewAddressDraft();
 	private CustomerContact? _selectedContact;
 	private CustomerContact _contactDraft = NewContactDraft();
+
+	public CustomersViewModel(SalesViewModel workspace) : this(workspace, SalesCommercialContext.Customers) { }
 
 	public CustomersViewModel(SalesViewModel workspace, CustomerService customers) : base(workspace, SalesSection.Customers)
 	{
@@ -114,6 +154,9 @@ public sealed class SalesOrdersViewModel : SalesSectionPageViewModel
 	private readonly SalesPricingService _pricing;
 	private readonly SalesTimelineService _timeline;
 	private SalesOrder? _selectedOrder;
+
+	public SalesOrdersViewModel(SalesViewModel workspace) : this(workspace, SalesCommercialContext.Pricing, SalesCommercialContext.Timeline) { }
+
 	public SalesOrdersViewModel(SalesViewModel workspace, SalesPricingService pricing, SalesTimelineService timeline) : base(workspace, SalesSection.SalesOrders)
 	{
 		_pricing=pricing;_timeline=timeline;
@@ -133,17 +176,31 @@ public sealed class SalesApprovalsViewModel(SalesViewModel workspace) : SalesSec
 public sealed class ShippingViewModel : SalesSectionPageViewModel
 {
 	private readonly ShipmentPackingService _packing;
-	public ShippingViewModel(SalesViewModel workspace,ShipmentPackingService packing):base(workspace,SalesSection.Shipping)
+	private readonly IFileDialogService _fileDialogs;
+	private readonly SalesDocumentService _documents;
+
+	public ShippingViewModel(SalesViewModel workspace) : this(workspace, SalesCommercialContext.Packing, SalesCommercialContext.FileDialogs, SalesCommercialContext.Documents) { }
+
+	public ShippingViewModel(SalesViewModel workspace,ShipmentPackingService packing,IFileDialogService? fileDialogs=null,SalesDocumentService? documents=null):base(workspace,SalesSection.Shipping)
 	{
+		_packing=packing;
+		_fileDialogs=fileDialogs??SalesCommercialContext.FileDialogs;
+		_documents=documents??SalesCommercialContext.Documents;
 		StartPickingCommand=new AsyncRelayCommand(ct=>SetPackingAsync(ShipmentPackingStatus.Picking,ct),()=>_packing.CanPack&&Workspace.SelectedShipment?.Status==ShipmentStatus.Draft);
 		MarkPackedCommand=new AsyncRelayCommand(ct=>SetPackingAsync(ShipmentPackingStatus.Packed,ct),()=>_packing.CanPack&&Workspace.SelectedShipment?.Status==ShipmentStatus.Draft);
 		ResetPackingCommand=new AsyncRelayCommand(ct=>SetPackingAsync(ShipmentPackingStatus.NotStarted,ct),()=>_packing.CanPack&&Workspace.SelectedShipment?.Status==ShipmentStatus.Draft);
+		PickListPdfCommand=new RelayCommand(CreatePickList,()=>Workspace.SelectedShipment is not null);
+		PackingSlipPdfCommand=new RelayCommand(CreatePackingSlip,()=>Workspace.SelectedShipment is not null);
 	}
 	public AsyncRelayCommand StartPickingCommand{get;}
 	public AsyncRelayCommand MarkPackedCommand{get;}
 	public AsyncRelayCommand ResetPackingCommand{get;}
+	public RelayCommand PickListPdfCommand{get;}
+	public RelayCommand PackingSlipPdfCommand{get;}
 	private async Task SetPackingAsync(ShipmentPackingStatus status,CancellationToken token){if(Workspace.SelectedShipment is null)return;Workspace.SelectedShipment=await _packing.SetStatusAsync(Workspace.SelectedShipment.Id,Workspace.SelectedShipment.Version,status,token);Raise();}
-	private void Raise(){StartPickingCommand.RaiseCanExecuteChanged();MarkPackedCommand.RaiseCanExecuteChanged();ResetPackingCommand.RaiseCanExecuteChanged();}
+	private void CreatePickList(){if(Workspace.SelectedShipment is not { } shipment)return;var path=_fileDialogs.ShowSaveFile(new SaveFileDialogRequest("Save pick list","PDF document (*.pdf)|*.pdf",".pdf",$"{shipment.ShipmentNumber}-pick-list.pdf"));if(path is not null)_documents.CreatePickList(path,shipment);}
+	private void CreatePackingSlip(){if(Workspace.SelectedShipment is not { } shipment)return;var path=_fileDialogs.ShowSaveFile(new SaveFileDialogRequest("Save packing slip","PDF document (*.pdf)|*.pdf",".pdf",$"{shipment.ShipmentNumber}-packing-slip.pdf"));if(path is not null)_documents.CreatePackingSlip(path,shipment);}
+	private void Raise(){StartPickingCommand.RaiseCanExecuteChanged();MarkPackedCommand.RaiseCanExecuteChanged();ResetPackingCommand.RaiseCanExecuteChanged();PickListPdfCommand.RaiseCanExecuteChanged();PackingSlipPdfCommand.RaiseCanExecuteChanged();}
 	public override async Task LoadAsync(CancellationToken cancellationToken=default){await base.LoadAsync(cancellationToken);Raise();}
 	public override void Dispose(){StartPickingCommand.Dispose();MarkPackedCommand.Dispose();ResetPackingCommand.Dispose();base.Dispose();}
 }
@@ -153,14 +210,16 @@ public sealed class SalesInvoicesViewModel : SalesSectionPageViewModel
 	private readonly SalesInvoiceService _invoices;
 	private readonly IFileDialogService _fileDialogs;
 	private readonly SalesDocumentService _documents;
+	private readonly SalesDocumentEmailService _email;
 	private SalesInvoiceLine? _selectedInvoiceLine;
 	private int _creditQuantity = 1;
 
 	public SalesInvoicesViewModel(SalesViewModel workspace, SalesInvoiceService invoices, IFileDialogService fileDialogs, SalesDocumentService documents) : base(workspace, SalesSection.Invoices)
 	{
-		_invoices = invoices; _fileDialogs = fileDialogs; _documents = documents;
+		_invoices = invoices; _fileDialogs = fileDialogs; _documents = documents; _email=SalesCommercialContext.Email;
 		CreatePartialCreditNoteCommand = new AsyncRelayCommand(CreatePartialCreditNoteAsync, CanCreatePartialCreditNote);
 		CreditNotePdfCommand = new RelayCommand(CreateCreditNotePdf, () => Workspace.SelectedCreditNote is not null && Workspace.SelectedInvoice is not null);
+		InvoiceEmailCommand = new RelayCommand(CreateInvoiceEmail, () => Workspace.SelectedInvoice is not null);
 	}
 	public SalesInvoiceLine? SelectedInvoiceLine { get => _selectedInvoiceLine; set { if (_selectedInvoiceLine == value) return; _selectedInvoiceLine = value; OnPropertyChanged(); CreatePartialCreditNoteCommand.RaiseCanExecuteChanged(); } }
 	public int CreditQuantity { get => _creditQuantity; set { if (_creditQuantity == value) return; _creditQuantity = value; OnPropertyChanged(); CreatePartialCreditNoteCommand.RaiseCanExecuteChanged(); } }
@@ -168,9 +227,11 @@ public sealed class SalesInvoicesViewModel : SalesSectionPageViewModel
 	public decimal EffectiveGrossAmount => Math.Max(0m, (Workspace.SelectedInvoice?.GrossAmount ?? 0m) - CreditedGrossAmount);
 	public AsyncRelayCommand CreatePartialCreditNoteCommand { get; }
 	public RelayCommand CreditNotePdfCommand { get; }
-	public override async Task LoadAsync(CancellationToken cancellationToken = default){await base.LoadAsync(cancellationToken);SelectedInvoiceLine=Workspace.SelectedInvoice?.Lines.FirstOrDefault();OnPropertyChanged(nameof(CreditedGrossAmount));OnPropertyChanged(nameof(EffectiveGrossAmount));CreatePartialCreditNoteCommand.RaiseCanExecuteChanged();CreditNotePdfCommand.RaiseCanExecuteChanged();}
+	public RelayCommand InvoiceEmailCommand { get; }
+	public override async Task LoadAsync(CancellationToken cancellationToken = default){await base.LoadAsync(cancellationToken);SelectedInvoiceLine=Workspace.SelectedInvoice?.Lines.FirstOrDefault();OnPropertyChanged(nameof(CreditedGrossAmount));OnPropertyChanged(nameof(EffectiveGrossAmount));CreatePartialCreditNoteCommand.RaiseCanExecuteChanged();CreditNotePdfCommand.RaiseCanExecuteChanged();InvoiceEmailCommand.RaiseCanExecuteChanged();}
 	private bool CanCreatePartialCreditNote()=>_invoices.CanCreateCreditNote&&Workspace.SelectedInvoice?.Status==SalesInvoiceStatus.Posted&&SelectedInvoiceLine is not null&&CreditQuantity>0&&CreditQuantity<=SelectedInvoiceLine.Quantity&&!string.IsNullOrWhiteSpace(Workspace.CorrectionReason);
 	private async Task CreatePartialCreditNoteAsync(CancellationToken token){if(Workspace.SelectedInvoice is null||SelectedInvoiceLine is null)return;Workspace.SelectedCreditNote=await _invoices.CreateCreditNoteAsync(Workspace.SelectedInvoice.Id,[new SalesCreditRequest(SelectedInvoiceLine.Id,CreditQuantity)],Workspace.CorrectionReason,token);Workspace.CorrectionReason=string.Empty;await LoadAsync(token);}
 	private void CreateCreditNotePdf(){if(Workspace.SelectedCreditNote is null||Workspace.SelectedInvoice is null)return;var path=_fileDialogs.ShowSaveFile(new SaveFileDialogRequest("Save credit note","PDF document (*.pdf)|*.pdf",".pdf",$"{Workspace.SelectedCreditNote.CreditNoteNumber}.pdf"));if(path is not null)_documents.CreateCreditNote(path,Workspace.SelectedCreditNote,Workspace.SelectedInvoice);}
+	private void CreateInvoiceEmail(){if(Workspace.SelectedInvoice is not { } invoice)return;var pdf=Path.Combine(Path.GetTempPath(),$"{invoice.InvoiceNumber}-{Guid.NewGuid():N}.pdf");_documents.CreateInvoice(pdf,invoice);var draft=_email.CreateDraft(pdf,null,$"Invoice {invoice.InvoiceNumber}",$"Please find invoice {invoice.InvoiceNumber} attached.\n\nDue date: {invoice.DueDate:d}");_email.OpenDraft(draft);}
 	public override void Dispose(){CreatePartialCreditNoteCommand.Dispose();base.Dispose();}
 }
