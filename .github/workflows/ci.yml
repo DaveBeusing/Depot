@@ -14,7 +14,7 @@ permissions:
 jobs:
   build-test:
     runs-on: windows-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     steps:
       - name: Checkout
@@ -31,5 +31,8 @@ jobs:
       - name: Build
         run: dotnet build Depot.slnx --configuration Release --no-restore
 
-      - name: Test
-        run: dotnet test tests/Depot.Tests/Depot.Tests.csproj --configuration Release --no-build --blame-hang --blame-hang-timeout 3m --logger "console;verbosity=normal"
+      - name: Sales tests
+        run: dotnet test tests/Depot.Tests/Depot.Tests.csproj --configuration Release --no-build --filter "FullyQualifiedName~Sales" --blame-hang --blame-hang-timeout 90s --logger "console;verbosity=normal"
+
+      - name: Regression tests
+        run: dotnet test tests/Depot.Tests/Depot.Tests.csproj --configuration Release --no-build --filter "FullyQualifiedName!~Sales" --blame-hang --blame-hang-timeout 3m --logger "console;verbosity=normal"
