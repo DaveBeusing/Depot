@@ -20,7 +20,7 @@ public sealed class ShellModuleViewModel : BaseViewModel, IDisposable
 		Subtitle = subtitle;
 		_ownedPages = title == "Sales" ? NormalizeSalesPages(pages) : pages.ToList();
 		Pages = new ObservableCollection<SecondaryNavigationItem>(_ownedPages);
-		_selectedPage = Pages.FirstOrDefault();
+		_selectedPage = Pages.FirstOrDefault(page => page.IsVisible) ?? Pages.FirstOrDefault();
 		_selectedPage?.Activate?.Invoke();
 	}
 
@@ -28,7 +28,7 @@ public sealed class ShellModuleViewModel : BaseViewModel, IDisposable
 	public string Title { get; }
 	public string Subtitle { get; }
 	public ObservableCollection<SecondaryNavigationItem> Pages { get; }
-	public bool HasMultiplePages => Pages.Count > 1;
+	public bool HasMultiplePages => Pages.Count(page => page.IsVisible) > 1;
 	public BaseViewModel? CurrentViewModel => SelectedPage?.Content;
 	public Func<BaseViewModel?, bool>? NavigationGuard { get; set; }
 
@@ -74,14 +74,15 @@ public sealed class ShellModuleViewModel : BaseViewModel, IDisposable
 
 	private static List<SecondaryNavigationItem> NormalizeSalesPages(IEnumerable<SecondaryNavigationItem> pages)
 	{
-		var original = pages.Where(page => page.Name != "Approvals").ToList();
-		if (!SalesCommercialContext.IsConfigured || !SalesCommercialContext.IsUiConfigured) return original;
+		var original = pages.ToList();
+		var approvalPage = original.FirstOrDefault(page => page.Name == "Approvals");
+		if (approvalPage is not null) approvalPage.IsVisible = false;
 
 		var result = new List<SecondaryNavigationItem>();
-		foreach (var page in original)
+		foreach (var page in original.Where(page => page.Name != "Approvals"))
 		{
 			result.Add(page);
-			if (page.Name != "Overview") continue;
+			if (page.Name != "Overview" || !SalesCommercialContext.IsConfigured || !SalesCommercialContext.IsUiConfigured) continue;
 
 			if (SalesCommercialContext.Quotes.CanView)
 			{
@@ -110,6 +111,8 @@ public sealed class ShellModuleViewModel : BaseViewModel, IDisposable
 					"sales.pricing"));
 			}
 		}
+
+		if (approvalPage is not null) result.Add(approvalPage);
 		return result;
 	}
 
