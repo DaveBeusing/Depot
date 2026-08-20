@@ -47,6 +47,13 @@ public sealed class CustomerService
 		return _customers.ListAddressesAsync(customerId, cancellationToken);
 	}
 
+	public Task<IReadOnlyList<CustomerContact>> ListContactsAsync(long customerId, CancellationToken cancellationToken = default)
+	{
+		_authorization.RequirePermission(ApplicationPermission.CustomersView);
+		if (customerId <= 0) return Task.FromResult<IReadOnlyList<CustomerContact>>([]);
+		return _customers.ListContactsAsync(customerId, cancellationToken);
+	}
+
 	public async Task<CustomerAddress> SaveAddressAsync(CustomerAddress address, CancellationToken cancellationToken = default)
 	{
 		_authorization.RequirePermission(ApplicationPermission.CustomersEdit);
@@ -58,6 +65,23 @@ public sealed class CustomerService
 		if (address.Name?.Length > 250) throw new ArgumentException("Address names must not exceed 250 characters.", nameof(address));
 		var saved = await _customers.SaveAddressAsync(address, cancellationToken);
 		var customer = await _customers.GetByIdAsync(address.CustomerId, cancellationToken);
+		if (customer is not null) await _audit.RecordUpdatedAsync(customer.Id, customer, customer, cancellationToken);
+		return saved;
+	}
+
+	public async Task<CustomerContact> SaveContactAsync(CustomerContact contact, CancellationToken cancellationToken = default)
+	{
+		_authorization.RequirePermission(ApplicationPermission.CustomersEdit);
+		if (contact.CustomerId <= 0) throw new ArgumentException("A customer is required.", nameof(contact));
+		contact.Name = contact.Name.Trim();
+		contact.Department = Normalize(contact.Department);
+		contact.Email = Normalize(contact.Email);
+		contact.Phone = Normalize(contact.Phone);
+		contact.Mobile = Normalize(contact.Mobile);
+		if (contact.Name.Length == 0 || contact.Name.Length > 250) throw new ArgumentException("A valid contact name is required.");
+		if (contact.Department?.Length > 250 || contact.Email?.Length > 250 || contact.Phone?.Length > 100 || contact.Mobile?.Length > 100) throw new ArgumentException("Customer contact data exceeds its maximum length.");
+		var saved = await _customers.SaveContactAsync(contact, cancellationToken);
+		var customer = await _customers.GetByIdAsync(contact.CustomerId, cancellationToken);
 		if (customer is not null) await _audit.RecordUpdatedAsync(customer.Id, customer, customer, cancellationToken);
 		return saved;
 	}
