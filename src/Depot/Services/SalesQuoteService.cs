@@ -19,6 +19,7 @@ public sealed class SalesQuoteService
 		_quotes=quotes; _customers=customers; _orders=orders; _audit=audit; _authorization=authorization;
 	}
 
+	public bool CanView => _authorization.HasPermission(ApplicationPermission.SalesQuotesView);
 	public bool CanCreate => _authorization.HasPermission(ApplicationPermission.SalesQuotesCreate);
 	public bool CanEdit => _authorization.HasPermission(ApplicationPermission.SalesQuotesEdit);
 	public bool CanSend => _authorization.HasPermission(ApplicationPermission.SalesQuotesSend);
