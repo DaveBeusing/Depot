@@ -40,6 +40,28 @@ public sealed class CustomerService
 		return _customers.GetByIdAsync(id, cancellationToken);
 	}
 
+	public Task<IReadOnlyList<CustomerAddress>> ListAddressesAsync(long customerId, CancellationToken cancellationToken = default)
+	{
+		_authorization.RequirePermission(ApplicationPermission.CustomersView);
+		if (customerId <= 0) return Task.FromResult<IReadOnlyList<CustomerAddress>>([]);
+		return _customers.ListAddressesAsync(customerId, cancellationToken);
+	}
+
+	public async Task<CustomerAddress> SaveAddressAsync(CustomerAddress address, CancellationToken cancellationToken = default)
+	{
+		_authorization.RequirePermission(ApplicationPermission.CustomersEdit);
+		if (address.CustomerId <= 0) throw new ArgumentException("A customer is required.", nameof(address));
+		address.Name = Normalize(address.Name);
+		address.Address = address.Address.Trim();
+		if (address.Address.Length == 0) throw new ArgumentException("An address is required.", nameof(address));
+		if (address.Address.Length > 2000) throw new ArgumentException("Customer address must not exceed 2000 characters.", nameof(address));
+		if (address.Name?.Length > 250) throw new ArgumentException("Address names must not exceed 250 characters.", nameof(address));
+		var saved = await _customers.SaveAddressAsync(address, cancellationToken);
+		var customer = await _customers.GetByIdAsync(address.CustomerId, cancellationToken);
+		if (customer is not null) await _audit.RecordUpdatedAsync(customer.Id, customer, customer, cancellationToken);
+		return saved;
+	}
+
 	public async Task<Customer> SaveAsync(Customer customer, CancellationToken cancellationToken = default)
 	{
 		_authorization.RequirePermission(customer.Id == 0 ? ApplicationPermission.CustomersCreate : ApplicationPermission.CustomersEdit);
