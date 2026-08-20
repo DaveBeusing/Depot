@@ -31,7 +31,7 @@ public sealed class DashboardViewModel : BaseViewModel, IDisposable
 	public PurchaseOrderApprovalSummary? ApprovalSummary { get => _approvalSummary; private set { _approvalSummary = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasApprovalMetrics)); OnPropertyChanged(nameof(ApprovalSupportingText)); } }
 	public DashboardPurchasingMetrics? PurchasingMetrics { get => _purchasingMetrics; private set { _purchasingMetrics = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasPurchasingMetrics)); OnPropertyChanged(nameof(PurchasingAttentionCount)); OnPropertyChanged(nameof(PurchasingSupportingText)); } }
 	public DashboardWarehouseMetrics? WarehouseMetrics { get => _warehouseMetrics; private set { _warehouseMetrics = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasWarehouseMetrics)); OnPropertyChanged(nameof(WarehouseWorkCount)); OnPropertyChanged(nameof(WarehouseSupportingText)); } }
-	public DashboardSalesMetrics? SalesMetrics { get => _salesMetrics; private set { _salesMetrics = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasSalesMetrics)); OnPropertyChanged(nameof(SalesAttentionCount)); OnPropertyChanged(nameof(SalesSupportingText)); } }
+	public DashboardSalesMetrics? SalesMetrics { get => _salesMetrics; private set { _salesMetrics = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasSalesMetrics)); OnPropertyChanged(nameof(SalesAttentionCount)); OnPropertyChanged(nameof(SalesSupportingText)); OnPropertyChanged(nameof(SalesCommercialText)); } }
 	public DashboardAdministrationMetrics? AdministrationMetrics { get => _administrationMetrics; private set { _administrationMetrics = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasAdministrationMetrics)); } }
 	public bool HasApprovalMetrics => ApprovalSummary is not null;
 	public bool HasPurchasingMetrics => PurchasingMetrics is not null;
@@ -41,11 +41,12 @@ public sealed class DashboardViewModel : BaseViewModel, IDisposable
 	public bool HasCoreInventoryMetrics { get; private set; }
 	public long PurchasingAttentionCount => PurchasingMetrics is null ? 0 : PurchasingMetrics.PendingOrApprovedOrders + PurchasingMetrics.PartiallyReceivedOrders + PurchasingMetrics.OverdueDeliveries + PurchasingMetrics.SupplierReturnsRequiringAttention;
 	public long WarehouseWorkCount => WarehouseMetrics is null ? 0 : WarehouseMetrics.InventoryCountsAwaitingReviewOrPosting + WarehouseMetrics.OpenTransfers;
-	public long SalesAttentionCount => SalesMetrics is null ? 0 : SalesMetrics.PendingApprovals + SalesMetrics.ReadyToShipOrders + SalesMetrics.DraftShipments + SalesMetrics.DraftInvoices;
+	public long SalesAttentionCount => SalesMetrics is null ? 0 : SalesMetrics.PendingApprovals + SalesMetrics.AwaitingReservation + SalesMetrics.BackorderedOrders + SalesMetrics.ReadyToShipOrders + SalesMetrics.DraftShipments + SalesMetrics.DraftInvoices;
 	public string ApprovalSupportingText => ApprovalSummary is null ? string.Empty : $"Oldest: {(ApprovalSummary.OldestSubmittedAtUtc?.ToLocalTime().ToString("g") ?? "None")} · {ApprovalSummary.TotalAmount:C2}";
 	public string PurchasingSupportingText => PurchasingMetrics is null ? string.Empty : $"Orders: {PurchasingMetrics.PendingOrApprovedOrders:N0} · Partial: {PurchasingMetrics.PartiallyReceivedOrders:N0} · Overdue: {PurchasingMetrics.OverdueDeliveries:N0} · Returns: {PurchasingMetrics.SupplierReturnsRequiringAttention:N0}";
 	public string WarehouseSupportingText => WarehouseMetrics is null ? string.Empty : $"Counts: {WarehouseMetrics.InventoryCountsAwaitingReviewOrPosting:N0} · Transfers: {WarehouseMetrics.OpenTransfers:N0}";
-	public string SalesSupportingText => SalesMetrics is null ? string.Empty : $"Approvals: {SalesMetrics.PendingApprovals:N0} · Ready: {SalesMetrics.ReadyToShipOrders:N0} · Shipments: {SalesMetrics.DraftShipments:N0} · Invoices: {SalesMetrics.DraftInvoices:N0}";
+	public string SalesSupportingText => SalesMetrics is null ? string.Empty : $"Approvals: {SalesMetrics.PendingApprovals:N0} · Reserve: {SalesMetrics.AwaitingReservation:N0} · Backorders: {SalesMetrics.BackorderedOrders:N0} · Ready: {SalesMetrics.ReadyToShipOrders:N0}";
+	public string SalesCommercialText => SalesMetrics is null ? string.Empty : $"Draft shipments: {SalesMetrics.DraftShipments:N0} · Draft invoices: {SalesMetrics.DraftInvoices:N0} · Returns: {SalesMetrics.ReturnsThisMonth:N0} · Credits: {SalesMetrics.CreditNotesThisMonth:N0} · Net sales: {SalesMetrics.NetSalesThisMonth:C2}";
 
 	public ObservableCollection<DashboardRecentMovementViewModel> RecentMovements { get; } = new();
 	public bool HasRecentMovements => RecentMovements.Count > 0;
