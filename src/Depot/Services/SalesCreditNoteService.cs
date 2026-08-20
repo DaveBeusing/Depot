@@ -30,24 +30,9 @@ public sealed class SalesCreditNoteService
 
 	public bool CanCreate => _authorization.HasPermission(ApplicationPermission.CreditNotesCreate);
 	public bool CanPost => _authorization.HasPermission(ApplicationPermission.CreditNotesPost);
-
-	public Task<PageResult<SalesCreditNote>> SearchAsync(string? searchText, SalesCreditNoteStatus? status, int pageNumber = 1, int pageSize = 100, CancellationToken token = default)
-	{
-		_authorization.RequirePermission(ApplicationPermission.CreditNotesView);
-		return _creditNotes.SearchAsync(searchText, status, pageNumber, pageSize, token);
-	}
-
-	public Task<SalesCreditNote?> GetByIdAsync(long id, CancellationToken token = default)
-	{
-		_authorization.RequirePermission(ApplicationPermission.CreditNotesView);
-		return _creditNotes.GetByIdAsync(id, token);
-	}
-
-	public async Task<SalesCreditNote> CreateFromInvoiceAsync(long invoiceId, string reason, CancellationToken token = default)
-	{
-		var invoice = await _invoices.GetByIdAsync(invoiceId, token) ?? throw new InvalidOperationException("Sales invoice was not found.");
-		return await CreateFromInvoiceAsync(invoiceId, invoice.Lines.Select(line => new SalesCreditRequest(line.Id, line.Quantity)).ToArray(), reason, token);
-	}
+	public Task<PageResult<SalesCreditNote>> SearchAsync(string? searchText, SalesCreditNoteStatus? status, int pageNumber = 1, int pageSize = 100, CancellationToken token = default) { _authorization.RequirePermission(ApplicationPermission.CreditNotesView); return _creditNotes.SearchAsync(searchText, status, pageNumber, pageSize, token); }
+	public Task<SalesCreditNote?> GetByIdAsync(long id, CancellationToken token = default) { _authorization.RequirePermission(ApplicationPermission.CreditNotesView); return _creditNotes.GetByIdAsync(id, token); }
+	public async Task<SalesCreditNote> CreateFromInvoiceAsync(long invoiceId, string reason, CancellationToken token = default) { var invoice = await _invoices.GetByIdAsync(invoiceId, token) ?? throw new InvalidOperationException("Sales invoice was not found."); return await CreateFromInvoiceAsync(invoiceId, invoice.Lines.Select(line => new SalesCreditRequest(line.Id, line.Quantity)).ToArray(), reason, token); }
 
 	public async Task<SalesCreditNote> CreateFromInvoiceAsync(long invoiceId, IReadOnlyCollection<SalesCreditRequest> requests, string reason, CancellationToken token = default)
 	{
@@ -64,27 +49,10 @@ public sealed class SalesCreditNoteService
 			foreach (var request in requests)
 			{
 				if (!linesById.TryGetValue(request.SalesInvoiceLineId, out var invoiceLine)) throw new InvalidOperationException("A credit-note line does not belong to the selected invoice.");
-				var existing = Convert.ToInt32(await transaction.Session.ExecuteScalarAsync(
-					"SELECT COALESCE(SUM(cnl.Quantity),0) FROM SalesCreditNoteLines cnl INNER JOIN SalesCreditNotes cn ON cn.Id=cnl.SalesCreditNoteId WHERE cn.SalesInvoiceId=$InvoiceId AND cnl.SalesInvoiceLineId=$LineId;",
-					cancellationToken,
-					new DatabaseParameter("$InvoiceId", invoiceId),
-					new DatabaseParameter("$LineId", request.SalesInvoiceLineId)) ?? 0);
+				var existing = Convert.ToInt32(await transaction.Session.ExecuteScalarAsync("SELECT COALESCE(SUM(cnl.Quantity),0) FROM SalesCreditNoteLines cnl INNER JOIN SalesCreditNotes cn ON cn.Id=cnl.SalesCreditNoteId WHERE cn.SalesInvoiceId=$InvoiceId AND cnl.SalesInvoiceLineId=$LineId;", cancellationToken, new DatabaseParameter("$InvoiceId", invoiceId), new DatabaseParameter("$LineId", request.SalesInvoiceLineId)) ?? 0);
 				if (existing + request.Quantity > invoiceLine.Quantity) throw new InvalidOperationException("Credit quantity exceeds the remaining invoice quantity.");
 			}
-
-			var value = new SalesCreditNote
-			{
-				SalesInvoiceId = invoice.Id,
-				CustomerId = invoice.CustomerId,
-				CreditDate = DateTime.Today,
-				Reason = reason.Trim(),
-				CreatedByUserId = user.Id,
-				Lines = requests.Select(request =>
-				{
-					var line = linesById[request.SalesInvoiceLineId];
-					return new SalesCreditNoteLine { SalesInvoiceLineId = line.Id, Quantity = request.Quantity, UnitPrice = line.UnitPrice, DiscountPercent = line.DiscountPercent, TaxRate = line.TaxRate };
-				}).ToArray()
-			};
+			var value = new SalesCreditNote { SalesInvoiceId = invoice.Id, CustomerId = invoice.CustomerId, CreditDate = DateTime.Today, Reason = reason.Trim(), CreatedByUserId = user.Id, Lines = requests.Select(request => { var line = linesById[request.SalesInvoiceLineId]; return new SalesCreditNoteLine { SalesInvoiceLineId = line.Id, Quantity = request.Quantity, UnitPrice = line.UnitPrice, DiscountPercent = line.DiscountPercent, TaxRate = line.TaxRate }; }).ToArray() };
 			await _creditNotes.CreateAsync(transaction, value, cancellationToken);
 			await _auditEntries.CreateAsync(transaction, _audit.CreateCreatedEntry(value.Id, value), cancellationToken);
 			return await _creditNotes.GetByIdAsync(transaction, value.Id, cancellationToken) ?? value;
@@ -106,16 +74,7 @@ public sealed class SalesCreditNoteService
 			await _auditEntries.CreateAsync(transaction, _audit.CreateUpdatedEntry(id, before, after), cancellationToken);
 			return after;
 		}, token);
-
-		var request = new NotificationRequest(
-			NotificationType.Workflow,
-			NotificationSeverity.Information,
-			$"Credit note {result.CreditNoteNumber} posted",
-			$"Credit note {result.CreditNoteNumber} was posted for sales invoice {result.SalesInvoiceId}.",
-			NotificationSourceTypes.CreditNote,
-			result.Id,
-			result.CreditNoteNumber,
-			user.Id);
+		var request = new NotificationRequest(NotificationType.Workflow, NotificationSeverity.Information, $"Credit note {result.CreditNoteNumber} posted", $"Credit note {result.CreditNoteNumber} was posted for sales invoice {result.SalesInvoiceId}.", NotificationSourceTypes.SalesCreditNote, result.Id, result.CreditNoteNumber, user.Id);
 		await _notifications.NotifyPermissionHoldersAsync(request, ApplicationPermission.SalesOrdersView, [user.Id], token);
 		await _notifications.NotifyPermissionHoldersAsync(request, ApplicationPermission.CreditNotesView, [user.Id], token);
 		return result;
