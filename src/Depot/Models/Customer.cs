@@ -38,4 +38,5 @@ public sealed class Customer
 	public bool IsActive { get; set; } = true;
 	public long Version { get; set; } = 1;
 	public IReadOnlyList<CustomerAddress> Addresses { get; set; } = [];
+	public IReadOnlyList<CustomerContact> Contacts { get; set; } = [];
 }
