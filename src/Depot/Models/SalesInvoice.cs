@@ -10,6 +10,15 @@ public enum SalesInvoiceStatus
 	Cancelled = 3
 }
 
+public enum SalesInvoiceDueStatus
+{
+	Draft,
+	NotDue,
+	DueToday,
+	Overdue,
+	Cancelled
+}
+
 public sealed class SalesInvoice
 {
 	public long Id { get; set; }
@@ -35,6 +44,15 @@ public sealed class SalesInvoice
 	public decimal NetAmount => Lines.Sum(line => line.NetAmount);
 	public decimal TaxAmount => Lines.Sum(line => line.TaxAmount);
 	public decimal GrossAmount => Lines.Sum(line => line.GrossAmount);
+	public int DaysUntilDue => (DueDate.Date - DateTime.Today).Days;
+	public SalesInvoiceDueStatus DueStatus => Status switch
+	{
+		SalesInvoiceStatus.Cancelled => SalesInvoiceDueStatus.Cancelled,
+		SalesInvoiceStatus.Draft => SalesInvoiceDueStatus.Draft,
+		_ when DueDate.Date < DateTime.Today => SalesInvoiceDueStatus.Overdue,
+		_ when DueDate.Date == DateTime.Today => SalesInvoiceDueStatus.DueToday,
+		_ => SalesInvoiceDueStatus.NotDue
+	};
 }
 
 public sealed class SalesInvoiceLine
