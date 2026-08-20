@@ -1,19 +1,29 @@
-# Sales Overview
+# Sales Commercial Hub
 
-The Sales workspace covers Depot's order-to-cash process from customer master data through fulfillment and invoicing.
+The Sales workspace covers Depot's commercial and order-to-cash process from customer master data and quotations through fulfillment and invoicing.
 
-## Process
+## Commercial Hub
 
-1. Create or select a customer.
-2. Create a sales order and add order lines.
-3. Submit the order for approval.
+The **Overview** page contains three areas:
+
+- **Overview** — operational Sales workload and order-to-cash status.
+- **Quotes** — customer quotations, PDF/email output and conversion to Sales Orders.
+- **Pricing** — customer price lists, item prices, discounts and customer assignments.
+
+Availability depends on the user's Sales, Quotes and Pricing permissions.
+
+## Order-to-cash process
+
+1. Create or select a customer and maintain addresses and contacts.
+2. Optionally prepare a Quote using customer-specific pricing and convert it to a Sales Order.
+3. Create or edit the Sales Order and submit it for approval.
 4. Approve and reserve available inventory.
-5. Release the reserved quantity for fulfillment. Partial reservations are allowed; the remaining quantity is shown as backorder.
-6. Create and post a shipment. Physical stock is reduced only when the shipment is posted.
-7. Create an invoice from the posted shipment and post the invoice.
+5. Release the reserved quantity. Unreserved demand remains visible as backorder.
+6. Create a shipment, move it through Picking to Packed, then post the physical goods issue.
+7. Create and post an invoice from the shipment. Due-state information remains visible in the Invoice workspace.
 
 ## Corrections
 
-Posted operational records are not edited in place. Before invoicing, a posted shipment can be reversed with a positive counter-movement. After invoicing, use a Customer Return to restore stock and a Credit Note to correct the commercial document.
+Posted operational records are not edited in place. Before invoicing, an incorrect shipment can be reversed. Physical returns use Customer Returns, while posted invoice corrections use Credit Notes.
 
-Use the Sales tabs for Customers, Sales Orders, Approvals, Shipping and Invoices. Access depends on your assigned permissions.
+The Sales Order Timeline links the key lifecycle events across these documents.
