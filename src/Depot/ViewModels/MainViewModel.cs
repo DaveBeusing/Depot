@@ -287,15 +287,15 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 
 	public async Task OpenSalesQuickItemAsync(SalesQuickOpenItem item, CancellationToken cancellationToken = default)
 	{
-		var (pageName, workspace) = item.Kind switch
+		var (moduleName, pageName, workspace) = item.Kind switch
 		{
-			SalesQuickOpenKind.Customer => ("Customers", CustomersViewModel.Workspace),
-			SalesQuickOpenKind.SalesOrder => ("Sales Orders", SalesOrdersViewModel.Workspace),
-			SalesQuickOpenKind.Shipment or SalesQuickOpenKind.CustomerReturn => ("Shipping", ShippingViewModel.Workspace),
-			SalesQuickOpenKind.Invoice or SalesQuickOpenKind.CreditNote => ("Invoices", SalesInvoicesViewModel.Workspace),
-			_ => ("Overview", SalesOverviewViewModel.Workspace)
+			SalesQuickOpenKind.Customer => ("Sales", "Customers", CustomersViewModel.Workspace),
+			SalesQuickOpenKind.SalesOrder => ("Sales", "Sales Orders", SalesOrdersViewModel.Workspace),
+			SalesQuickOpenKind.Shipment or SalesQuickOpenKind.CustomerReturn => ("Warehouse", "Shipping", ShippingViewModel.Workspace),
+			SalesQuickOpenKind.Invoice or SalesQuickOpenKind.CreditNote => ("Sales", "Invoices", SalesInvoicesViewModel.Workspace),
+			_ => ("Sales", "Overview", SalesOverviewViewModel.Workspace)
 		};
-		await NavigateToModulePageAsync("Sales", pageName, cancellationToken);
+		await NavigateToModulePageAsync(moduleName, pageName, cancellationToken);
 		await workspace.OpenQuickItemAsync(item, cancellationToken);
 	}
 
@@ -314,7 +314,8 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		AddPage(warehousePages, ApplicationPermission.InventoryCountsView, "Inventory Counts", () => _inventoryCounts.Value, (viewModel, token) => viewModel.LoadAsync(token), "warehouse.inventory-counts");
 		AddPage(warehousePages, ApplicationPermission.MaterialIssuesView, "Material Issues", () => _materialIssues.Value, (viewModel, token) => viewModel.LoadAsync(token), "warehouse.material-issues");
 		AddPage(warehousePages, ApplicationPermission.MaterialReturnsView, "Material Returns", () => _materialReturns.Value, (viewModel, token) => viewModel.LoadAsync(token), "warehouse.material-returns");
-		AddModule("Warehouse", Icons.Warehouse, "Execute controlled warehouse operations and physical stock workflows.", warehousePages);
+		AddPage(warehousePages, ApplicationPermission.ShipmentsView, "Shipping", () => _salesShipping.Value, (viewModel, token) => viewModel.LoadAsync(token), "sales.shipping");
+		AddModule("Warehouse", Icons.Warehouse, "Execute controlled warehouse operations, fulfillment, shipping, and physical stock workflows.", warehousePages);
 
 		if (_authorization.HasPermission(ApplicationPermission.PurchasingView))
 		{
@@ -330,9 +331,8 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		AddPage(salesPages, ApplicationPermission.CustomersView, "Customers", () => _salesCustomers.Value, (viewModel, token) => viewModel.LoadAsync(token), "sales.customers");
 		AddPage(salesPages, ApplicationPermission.SalesOrdersView, "Sales Orders", () => _salesOrders.Value, (viewModel, token) => viewModel.LoadAsync(token), "sales.orders");
 		AddPage(salesPages, ApplicationPermission.SalesOrdersApprove, "Approvals", () => _salesApprovals.Value, (viewModel, token) => viewModel.LoadAsync(token), "sales.approvals");
-		AddPage(salesPages, ApplicationPermission.ShipmentsView, "Shipping", () => _salesShipping.Value, (viewModel, token) => viewModel.LoadAsync(token), "sales.shipping");
 		AddPage(salesPages, ApplicationPermission.SalesInvoicesView, "Invoices", () => _salesInvoices.Value, (viewModel, token) => viewModel.LoadAsync(token), "sales.invoices");
-		AddModule("Sales", Icons.Sales, "Manage customers, sales orders, fulfillment, shipping, and invoicing.", salesPages);
+		AddModule("Sales", Icons.Sales, "Manage customers, sales orders, fulfillment, and invoicing.", salesPages);
 
 		AddDirect(ApplicationPermission.PurchaseOrdersApprove, "Approvals", Icons.Approvals, () => _purchaseOrderApprovals.Value, (viewModel, token) => viewModel.LoadAsync(token), "approvals.queue");
 		AddDirect(ApplicationPermission.ReportsView, "Reports", Icons.Reports, () => _reports.Value, (viewModel, token) => viewModel.LoadAsync(token), "reports.overview");
