@@ -122,10 +122,9 @@ public partial class MainWindow : Window
 		AddSalesPage(pages, ApplicationPermission.CustomersView, "Customers", SalesSection.Customers, "sales.customers");
 		AddSalesPage(pages, ApplicationPermission.SalesOrdersView, "Sales Orders", SalesSection.SalesOrders, "sales.orders");
 		AddSalesPage(pages, ApplicationPermission.SalesOrdersApprove, "Approvals", SalesSection.Approvals, "sales.approvals");
-		AddSalesPage(pages, ApplicationPermission.ShipmentsView, "Shipping", SalesSection.Shipping, "sales.shipping");
 		AddSalesPage(pages, ApplicationPermission.SalesInvoicesView, "Invoices", SalesSection.Invoices, "sales.invoices");
 		if (pages.Count == 0) return;
-		var module = new ShellModuleViewModel("Sales", "Manage customers, sales orders, approvals, fulfillment, shipping, and invoicing.", pages) { NavigationGuard = viewModel.ConfirmDiscardChanges };
+		var module = new ShellModuleViewModel("Sales", "Manage customers, sales orders, approvals, fulfillment, and invoicing.", pages) { NavigationGuard = viewModel.ConfirmDiscardChanges };
 		_salesNavigationItem = new ShellNavigationItem("Sales", SalesIconData, () => module, (content, token) => ((ShellModuleViewModel)content).ActivateAsync(token), pages[0].HelpTopicId, false, false, (content, token) => ((ShellModuleViewModel)content).RefreshAsync(token));
 		var reportsIndex = viewModel.NavigationItems.ToList().FindIndex(item => item.Name == "Reports");
 		if (reportsIndex < 0) viewModel.NavigationItems.Add(_salesNavigationItem);
@@ -161,7 +160,10 @@ public partial class MainWindow : Window
 				await NavigateSalesAsync(viewModel, "Approvals", cancellationToken); await _salesViewModel.OpenQuickItemAsync(new(SalesQuickOpenKind.SalesOrder, salesApprovalId, string.Empty, string.Empty), cancellationToken); _salesViewModel.Section = SalesSection.Approvals; break;
 			case NotificationSourceTypes.Shipment:
 				if (target.SourceId is not long shipmentId) throw new InvalidOperationException("The shipment reference is invalid.");
-				await NavigateSalesAsync(viewModel, "Shipping", cancellationToken); await _salesViewModel.OpenQuickItemAsync(new(SalesQuickOpenKind.Shipment, shipmentId, string.Empty, string.Empty), cancellationToken); break;
+				await NavigateModulePageAsync(viewModel, "Warehouse", "Shipping", cancellationToken); await viewModel.ShippingViewModel.Workspace.OpenQuickItemAsync(new(SalesQuickOpenKind.Shipment, shipmentId, target.SourceNumber ?? string.Empty, string.Empty), cancellationToken); break;
+			case NotificationSourceTypes.CustomerReturn:
+				if (target.SourceId is not long returnId) throw new InvalidOperationException("The customer return reference is invalid.");
+				await NavigateModulePageAsync(viewModel, "Warehouse", "Shipping", cancellationToken); await viewModel.ShippingViewModel.Workspace.OpenQuickItemAsync(new(SalesQuickOpenKind.CustomerReturn, returnId, target.SourceNumber ?? string.Empty, string.Empty), cancellationToken); break;
 			case NotificationSourceTypes.SalesInvoice:
 				if (target.SourceId is not long invoiceId) throw new InvalidOperationException("The invoice reference is invalid.");
 				await NavigateSalesAsync(viewModel, "Invoices", cancellationToken); await _salesViewModel.OpenQuickItemAsync(new(SalesQuickOpenKind.Invoice, invoiceId, string.Empty, string.Empty), cancellationToken); break;
