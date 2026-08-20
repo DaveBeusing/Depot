@@ -17,15 +17,15 @@ public partial class SalesShippingView : UserControl
 
 	private void OnReturnReceiptClick(object sender, RoutedEventArgs e)
 	{
-		if (DataContext is not SalesViewModel viewModel || viewModel.SelectedCustomerReturn is null || viewModel.SelectedShipment is null) return;
+		if (DataContext is not ShippingViewModel page || page.Workspace.SelectedCustomerReturn is null || page.Workspace.SelectedShipment is null) return;
 		var dialog = new SaveFileDialog
 		{
 			Title = "Save customer return receipt",
 			Filter = "PDF document (*.pdf)|*.pdf",
 			DefaultExt = ".pdf",
-			FileName = $"{viewModel.SelectedCustomerReturn.ReturnNumber}-return-receipt.pdf"
+			FileName = $"{page.Workspace.SelectedCustomerReturn.ReturnNumber}-return-receipt.pdf"
 		};
 		if (dialog.ShowDialog() != true) return;
-		new SalesDocumentService().CreateCustomerReturnReceipt(dialog.FileName, viewModel.SelectedCustomerReturn, viewModel.SelectedShipment);
+		SalesCommercialContext.Documents.CreateCustomerReturnReceipt(dialog.FileName, page.Workspace.SelectedCustomerReturn, page.Workspace.SelectedShipment);
 	}
 }
