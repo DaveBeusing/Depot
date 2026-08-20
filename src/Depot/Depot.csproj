@@ -20,6 +20,7 @@
     <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" Version="2.1.12" />
     <Resource Include="Resources\Images\Depot.ico" />
     <Resource Include="Resources\Images\Depot.png" />
+    <Resource Include="Resources\Images\Depot_32.png" />
 	<EmbeddedResource Include="Help\manifest.json" />
 	<EmbeddedResource Include="Help\**\*.md" />
   </ItemGroup>
