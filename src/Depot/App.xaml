@@ -19,7 +19,7 @@
 			<DataTemplate DataType="{x:Type viewModels:CustomersViewModel}"><views:SalesView DataContext="{Binding Workspace}" /></DataTemplate>
 			<DataTemplate DataType="{x:Type viewModels:SalesOrdersViewModel}"><views:SalesView DataContext="{Binding Workspace}" /></DataTemplate>
 			<DataTemplate DataType="{x:Type viewModels:SalesApprovalsViewModel}"><views:SalesView DataContext="{Binding Workspace}" /></DataTemplate>
-			<DataTemplate DataType="{x:Type viewModels:ShippingViewModel}"><views:SalesView DataContext="{Binding Workspace}" /></DataTemplate>
+			<DataTemplate DataType="{x:Type viewModels:ShippingViewModel}"><views:SalesShippingView DataContext="{Binding Workspace}" /></DataTemplate>
 			<DataTemplate DataType="{x:Type viewModels:SalesInvoicesViewModel}"><views:SalesView DataContext="{Binding Workspace}" /></DataTemplate>
 
 		</ResourceDictionary>
