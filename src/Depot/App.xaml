@@ -15,7 +15,7 @@
 			<BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
 			<converters:NonZeroToVisibilityConverter x:Key="NonZeroToVisibilityConverter" />
 
-			<DataTemplate DataType="{x:Type viewModels:SalesOverviewViewModel}"><views:SalesView DataContext="{Binding Workspace}" /></DataTemplate>
+			<DataTemplate DataType="{x:Type viewModels:SalesOverviewViewModel}"><views:SalesCommercialHubView /></DataTemplate>
 			<DataTemplate DataType="{x:Type viewModels:CustomersViewModel}"><views:SalesCustomersView /></DataTemplate>
 			<DataTemplate DataType="{x:Type viewModels:SalesQuotesViewModel}"><views:SalesQuotesView /></DataTemplate>
 			<DataTemplate DataType="{x:Type viewModels:SalesPricingViewModel}"><views:SalesPricingView /></DataTemplate>
