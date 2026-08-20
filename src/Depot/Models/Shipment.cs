@@ -10,6 +10,13 @@ public enum ShipmentStatus
 	Cancelled = 3
 }
 
+public enum ShipmentPackingStatus
+{
+	NotStarted = 1,
+	Picking = 2,
+	Packed = 3
+}
+
 public sealed class Shipment
 {
 	public long Id { get; set; }
@@ -20,6 +27,9 @@ public sealed class Shipment
 	public string CustomerName { get; set; } = string.Empty;
 	public DateTime ShipmentDate { get; set; } = DateTime.Today;
 	public ShipmentStatus Status { get; set; } = ShipmentStatus.Draft;
+	public ShipmentPackingStatus PackingStatus { get; set; } = ShipmentPackingStatus.NotStarted;
+	public DateTime? PackedAtUtc { get; set; }
+	public long? PackedByUserId { get; set; }
 	public string? Carrier { get; set; }
 	public string? TrackingNumber { get; set; }
 	public string? ShippingAddress { get; set; }
