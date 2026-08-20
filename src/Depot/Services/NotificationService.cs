@@ -159,7 +159,9 @@ public sealed class NotificationNavigationService : INotificationNavigationServi
 			NotificationSourceTypes.SalesOrder => ApplicationPermission.SalesOrdersView,
 			NotificationSourceTypes.SalesOrderApproval => ApplicationPermission.SalesOrdersApprove,
 			NotificationSourceTypes.Shipment => ApplicationPermission.ShipmentsView,
+			NotificationSourceTypes.CustomerReturn => ApplicationPermission.CustomerReturnsView,
 			NotificationSourceTypes.SalesInvoice => ApplicationPermission.SalesInvoicesView,
+			NotificationSourceTypes.SalesCreditNote => ApplicationPermission.CreditNotesView,
 			_ => throw new InvalidOperationException("The notification target is not supported by this version of Depot.")
 		};
 		_authorization.RequirePermission(requiredPermission);
