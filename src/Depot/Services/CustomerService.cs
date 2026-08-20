@@ -17,6 +17,7 @@ public sealed class CustomerService
 		_customers = customers;
 		_audit = audit;
 		_authorization = authorization;
+		SalesCommercialContext.ConfigureCustomer(this);
 	}
 
 	public bool CanCreate => _authorization.HasPermission(ApplicationPermission.CustomersCreate);
