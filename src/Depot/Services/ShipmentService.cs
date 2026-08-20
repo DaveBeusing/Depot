@@ -80,10 +80,7 @@ public sealed class ShipmentService
 				var orderLine = order.Lines.Single(value => value.Id == reservation.SalesOrderLineId);
 				lines.Add(new ShipmentLine { SalesOrderLineId = orderLine.Id, InventoryReservationId = reservation.Id, InventoryId = reservation.InventoryId, ItemId = orderLine.ItemId, PartNumber = orderLine.PartNumber, Description = orderLine.Description, Quantity = request.Quantity });
 			}
-			var customerAddress = order.CustomerId > 0
-				? await transaction.Session.QuerySingleOrDefaultAsync("SELECT ShippingAddress FROM Customers WHERE Id=$Id;", r => new AddressRow(r.IsDBNull(0) ? null : r.GetString(0)), token, new DatabaseParameter("$Id", order.CustomerId))
-				: null;
-			var shipment = new Shipment { SalesOrderId = order.Id, SalesOrderNumber = order.OrderNumber, CustomerId = order.CustomerId, CustomerName = order.CustomerName, ShipmentDate = DateTime.Today, Status = ShipmentStatus.Draft, Carrier = Normalize(carrier), TrackingNumber = Normalize(trackingNumber), ShippingAddress = customerAddress?.Value, Notes = Normalize(notes), CreatedByUserId = user.Id, Lines = lines };
+			var shipment = new Shipment { SalesOrderId = order.Id, SalesOrderNumber = order.OrderNumber, CustomerId = order.CustomerId, CustomerName = order.CustomerName, ShipmentDate = DateTime.Today, Status = ShipmentStatus.Draft, Carrier = Normalize(carrier), TrackingNumber = Normalize(trackingNumber), ShippingAddress = order.ShippingAddress, Notes = Normalize(notes), CreatedByUserId = user.Id, Lines = lines };
 			await _shipments.CreateAsync(transaction, shipment, token);
 			await _auditEntries.CreateAsync(transaction, _audit.CreateCreatedEntry(shipment.Id, shipment), token);
 			return await _shipments.GetByIdAsync(transaction, shipment.Id, token) ?? shipment;
@@ -188,5 +185,4 @@ public sealed class ShipmentService
 
 	private User RequireUser() => _authorization.CurrentUser is { IsActive: true } user ? user : throw new UnauthorizedAccessException("An active signed-in user is required for shipping.");
 	private static string? Normalize(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
-	private sealed record AddressRow(string? Value);
 }
