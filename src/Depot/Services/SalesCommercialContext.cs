@@ -17,15 +17,16 @@ internal static class SalesCommercialContext
 	public static bool DomainConfigured { get; private set; }
 	public static bool UiConfigured { get; private set; }
 
-	public static void ConfigureDomain(CustomerService customers, SalesPricingService pricing, SalesTimelineService timeline, SalesQuoteService quotes, ShipmentPackingService packing)
+	public static void Configure(SalesPricingService pricing, SalesTimelineService timeline, SalesQuoteService quotes, ShipmentPackingService packing)
 	{
-		Customers = customers;
 		Pricing = pricing;
 		Timeline = timeline;
 		Quotes = quotes;
 		Packing = packing;
 		DomainConfigured = true;
 	}
+
+	public static void ConfigureCustomer(CustomerService customers) => Customers = customers;
 
 	public static void ConfigureUi(ItemService items, IFileDialogService fileDialogs)
 	{
