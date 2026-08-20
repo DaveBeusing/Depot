@@ -15,6 +15,11 @@
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderThickness" Value="2,0,0,0" />
         <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="ToolTip" Value="{Binding Name}" />
+        <Setter Property="ToolTipService.Placement" Value="Right" />
+        <Setter Property="ToolTipService.InitialShowDelay" Value="300" />
+        <Setter Property="ToolTipService.BetweenShowDelay" Value="0" />
+        <Setter Property="ToolTipService.ShowDuration" Value="6000" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ListBoxItem">
@@ -30,7 +35,7 @@
         </Setter>
     </Style>
     <DataTemplate x:Key="ActivityBarItemTemplate">
-        <Grid Width="46" Height="46" ToolTip="{Binding Name}">
+        <Grid Width="46" Height="46">
             <Path Width="21" Height="21" Data="{Binding IconData}" Stroke="{DynamicResource NavigationForegroundBrush}" StrokeThickness="1.5" Stretch="Uniform" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" />
         </Grid>
     </DataTemplate>
@@ -44,6 +49,10 @@
         <Setter Property="BorderThickness" Value="0" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="ToolTipService.Placement" Value="Right" />
+        <Setter Property="ToolTipService.InitialShowDelay" Value="300" />
+        <Setter Property="ToolTipService.BetweenShowDelay" Value="0" />
+        <Setter Property="ToolTipService.ShowDuration" Value="6000" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
@@ -63,6 +72,7 @@
         <Setter Property="Foreground" Value="{DynamicResource PrimaryForegroundBrush}" /><Setter Property="Background" Value="{DynamicResource PrimaryBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource NavigationBorderBrush}" /><Setter Property="BorderThickness" Value="1" />
         <Setter Property="FontSize" Value="11" /><Setter Property="FontWeight" Value="SemiBold" /><Setter Property="Cursor" Value="Hand" /><Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="ToolTipService.Placement" Value="Right" /><Setter Property="ToolTipService.InitialShowDelay" Value="300" /><Setter Property="ToolTipService.BetweenShowDelay" Value="0" /><Setter Property="ToolTipService.ShowDuration" Value="6000" />
         <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button"><Border x:Name="Root" CornerRadius="18" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"><ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" /></Border><ControlTemplate.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Root" Property="Opacity" Value="0.86" /></Trigger><Trigger Property="IsPressed" Value="True"><Setter TargetName="Root" Property="Opacity" Value="0.7" /></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter>
     </Style>
     <Style x:Key="NotificationBadgeStyle" TargetType="Border">
@@ -76,6 +86,7 @@
                 <ListBox.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate></ListBox.ItemsPanel>
                 <ListBox.ItemContainerStyle>
                     <Style TargetType="ListBoxItem">
+                        <Setter Property="Visibility" Value="{Binding IsVisible, Converter={StaticResource BooleanToVisibilityConverter}}" />
                         <Setter Property="Background" Value="Transparent" /><Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}" /><Setter Property="Padding" Value="12,0" />
                         <Setter Property="HorizontalContentAlignment" Value="Center" /><Setter Property="VerticalContentAlignment" Value="Center" /><Setter Property="Cursor" Value="Hand" />
                         <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ListBoxItem"><Border x:Name="Root" Background="{TemplateBinding Background}" BorderBrush="Transparent" BorderThickness="0,0,0,2" Padding="{TemplateBinding Padding}"><ContentPresenter VerticalAlignment="Center" /></Border><ControlTemplate.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" /></Trigger><Trigger Property="IsSelected" Value="True"><Setter TargetName="Root" Property="BorderBrush" Value="{DynamicResource NavigationAccentBrush}" /><Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" /></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter>

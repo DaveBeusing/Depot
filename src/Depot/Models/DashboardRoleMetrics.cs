@@ -7,6 +7,7 @@ public sealed record DashboardRoleMetrics(
 	PurchaseOrderApprovalSummary? Approvals,
 	DashboardPurchasingMetrics? Purchasing,
 	DashboardWarehouseMetrics? Warehouse,
+	DashboardSalesMetrics? Sales,
 	DashboardAdministrationMetrics? Administration);
 
 public sealed record DashboardPurchasingMetrics(
@@ -18,5 +19,16 @@ public sealed record DashboardPurchasingMetrics(
 public sealed record DashboardWarehouseMetrics(
 	long InventoryCountsAwaitingReviewOrPosting,
 	long OpenTransfers);
+
+public sealed record DashboardSalesMetrics(
+	long PendingApprovals,
+	long AwaitingReservation,
+	long BackorderedOrders,
+	long ReadyToShipOrders,
+	long DraftShipments,
+	long DraftInvoices,
+	long ReturnsThisMonth,
+	long CreditNotesThisMonth,
+	decimal NetSalesThisMonth);
 
 public sealed record DashboardAdministrationMetrics(long ActiveUsers);

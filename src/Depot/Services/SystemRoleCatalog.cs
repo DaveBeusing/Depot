@@ -15,6 +15,9 @@ public static class SystemRoleCatalog
 	public const string PurchasingCode = "PURCHASING";
 	public const string ApproverCode = "APPROVER";
 	public const string WarehouseOperatorCode = "WAREHOUSE_OPERATOR";
+	public const string SalesUserCode = "SALES_USER";
+	public const string SalesManagerCode = "SALES_MANAGER";
+	public const string FinanceCode = "FINANCE";
 	public const string UserCode = "USER";
 
 	private static readonly IReadOnlySet<ApplicationPermission> CommonViewPermissions = Set(
@@ -47,13 +50,40 @@ public static class SystemRoleCatalog
 			ApplicationPermission.GoodsReceiptsView, ApplicationPermission.GoodsReceiptsCreate, ApplicationPermission.GoodsReceiptsPost, ApplicationPermission.GoodsReceiptsReverse,
 			ApplicationPermission.MaterialIssuesView, ApplicationPermission.MaterialIssuesCreate, ApplicationPermission.MaterialIssuesEdit, ApplicationPermission.MaterialIssuesPost, ApplicationPermission.MaterialIssuesReverse,
 			ApplicationPermission.MaterialReturnsView, ApplicationPermission.MaterialReturnsCreate, ApplicationPermission.MaterialReturnsEdit, ApplicationPermission.MaterialReturnsPost, ApplicationPermission.MaterialReturnsReverse,
-			ApplicationPermission.SupplierReturnsView, ApplicationPermission.SupplierReturnsCreate, ApplicationPermission.SupplierReturnsEdit, ApplicationPermission.SupplierReturnsPost, ApplicationPermission.SupplierReturnsReverse)),
+			ApplicationPermission.SupplierReturnsView, ApplicationPermission.SupplierReturnsCreate, ApplicationPermission.SupplierReturnsEdit, ApplicationPermission.SupplierReturnsPost, ApplicationPermission.SupplierReturnsReverse,
+			ApplicationPermission.SalesView, ApplicationPermission.SalesOrdersView,
+			ApplicationPermission.ShipmentsView, ApplicationPermission.ShipmentsCreate, ApplicationPermission.ShipmentsEdit, ApplicationPermission.ShipmentsPost, ApplicationPermission.ShipmentsReverse,
+			ApplicationPermission.CustomerReturnsView, ApplicationPermission.CustomerReturnsCreate, ApplicationPermission.CustomerReturnsPost)),
+		new(SalesUserCode, "Sales User", "Creates customer records, quotes and sales orders and submits them for approval.", Union(CommonViewPermissions,
+			ApplicationPermission.SalesView,
+			ApplicationPermission.CustomersView, ApplicationPermission.CustomersCreate, ApplicationPermission.CustomersEdit,
+			ApplicationPermission.SalesQuotesView, ApplicationPermission.SalesQuotesCreate, ApplicationPermission.SalesQuotesEdit, ApplicationPermission.SalesQuotesSend, ApplicationPermission.SalesQuotesConvert,
+			ApplicationPermission.SalesPricingView,
+			ApplicationPermission.SalesOrdersView, ApplicationPermission.SalesOrdersCreate, ApplicationPermission.SalesOrdersEdit,
+			ApplicationPermission.SalesOrdersSubmit)),
+		new(SalesManagerCode, "Sales Manager", "Manages quotes and pricing and approves and releases sales orders.", Union(CommonViewPermissions,
+			ApplicationPermission.SalesView,
+			ApplicationPermission.CustomersView, ApplicationPermission.CustomersCreate, ApplicationPermission.CustomersEdit,
+			ApplicationPermission.SalesQuotesView, ApplicationPermission.SalesQuotesCreate, ApplicationPermission.SalesQuotesEdit, ApplicationPermission.SalesQuotesSend, ApplicationPermission.SalesQuotesConvert,
+			ApplicationPermission.SalesPricingView, ApplicationPermission.SalesPricingManage,
+			ApplicationPermission.SalesOrdersView, ApplicationPermission.SalesOrdersCreate, ApplicationPermission.SalesOrdersEdit,
+			ApplicationPermission.SalesOrdersSubmit, ApplicationPermission.SalesOrdersApprove,
+			ApplicationPermission.SalesOrdersRelease, ApplicationPermission.SalesOrdersCancel,
+			ApplicationPermission.ShipmentsView,
+			ApplicationPermission.CustomerReturnsView,
+			ApplicationPermission.SalesInvoicesView, ApplicationPermission.CreditNotesView)),
+		new(FinanceCode, "Finance", "Creates, reviews, posts, and corrects customer sales invoices.", Union(CommonViewPermissions,
+			ApplicationPermission.SalesView,
+			ApplicationPermission.CustomersView,
+			ApplicationPermission.SalesPricingView,
+			ApplicationPermission.SalesOrdersView,
+			ApplicationPermission.ShipmentsView,
+			ApplicationPermission.CustomerReturnsView,
+			ApplicationPermission.SalesInvoicesView, ApplicationPermission.SalesInvoicesCreate, ApplicationPermission.SalesInvoicesPost,
+			ApplicationPermission.CreditNotesView, ApplicationPermission.CreditNotesCreate, ApplicationPermission.CreditNotesPost)),
 		new(UserCode, "User", "Read-only access to standard operational views.", CommonViewPermissions)
 	];
 
 	private static IReadOnlySet<ApplicationPermission> Set(params ApplicationPermission[] permissions) => permissions.ToHashSet();
-
-	private static IReadOnlySet<ApplicationPermission> Union(
-		IEnumerable<ApplicationPermission> existing,
-		params ApplicationPermission[] additional) => existing.Concat(additional).ToHashSet();
+	private static IReadOnlySet<ApplicationPermission> Union(IEnumerable<ApplicationPermission> existing, params ApplicationPermission[] additional) => existing.Concat(additional).ToHashSet();
 }

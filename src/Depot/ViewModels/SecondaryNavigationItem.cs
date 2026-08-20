@@ -18,7 +18,8 @@ public sealed class SecondaryNavigationItem : IDisposable
 		string helpTopicId,
 		Action? activate = null,
 		bool ownsContent = true,
-		bool alwaysActivate = false)
+		bool alwaysActivate = false,
+		bool isVisible = true)
 	{
 		Name = name;
 		_content = new Lazy<BaseViewModel>(createContent);
@@ -27,6 +28,7 @@ public sealed class SecondaryNavigationItem : IDisposable
 		Activate = activate;
 		_ownsContent = ownsContent;
 		_alwaysActivate = alwaysActivate;
+		IsVisible = isVisible;
 	}
 
 	public string Name { get; }
@@ -34,6 +36,7 @@ public sealed class SecondaryNavigationItem : IDisposable
 	public bool IsContentCreated => _content.IsValueCreated;
 	public string HelpTopicId { get; }
 	public Action? Activate { get; }
+	public bool IsVisible { get; set; }
 	public NavigationLoadStatus LoadStatus => _loadState.Status;
 
 	public Task ActivateAsync(CancellationToken cancellationToken = default)

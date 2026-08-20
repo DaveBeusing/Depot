@@ -7,23 +7,20 @@ using System.Windows.Markup;
 using Depot.Composition;
 using Depot.Diagnostics;
 using Depot.Services;
+using Depot.ViewModels;
 using Depot.Views.Login;
 
 namespace Depot;
 
 public partial class App : Application
 {
-	private readonly ApplicationInformationService _applicationInformation =
-		new(typeof(App).Assembly);
+	private readonly ApplicationInformationService _applicationInformation = new(typeof(App).Assembly);
 	private readonly IFileDialogService _fileDialogs = new FileDialogService();
 	private DepotApplicationServices? _composition;
 
 	static App()
 	{
-		FrameworkElement.LanguageProperty.OverrideMetadata(
-			typeof(FrameworkElement),
-			new FrameworkPropertyMetadata(
-				XmlLanguage.GetLanguage("de-DE")));
+		FrameworkElement.LanguageProperty.OverrideMetadata(typeof(FrameworkElement), new FrameworkPropertyMetadata(XmlLanguage.GetLanguage("de-DE")));
 	}
 
 	protected override void OnStartup(StartupEventArgs e)
@@ -33,8 +30,7 @@ public partial class App : Application
 		try
 		{
 			base.OnStartup(e);
-			StartupDiagnostics.Log(
-				$"Application startup. Version {_applicationInformation.GetVersionInfo().InformationalVersion}.");
+			StartupDiagnostics.Log($"Application startup. Version {_applicationInformation.GetVersionInfo().InformationalVersion}.");
 			var composition = DepotApplicationServices.Create(_fileDialogs, _applicationInformation);
 			_composition = composition;
 			StartupDiagnostics.Log("Application composition initialized.");
@@ -53,19 +49,9 @@ public partial class App : Application
 		while (true)
 		{
 			composition.Services.Session.Reset();
-			if (!ShowLogin(composition))
-			{
-				Shutdown();
-				return;
-			}
-
+			if (!ShowLogin(composition)) { Shutdown(); return; }
 			ShowMainWindow(composition);
-			if (!composition.Services.Session.LogoutRequestedByUser)
-			{
-				Shutdown();
-				return;
-			}
-
+			if (!composition.Services.Session.LogoutRequestedByUser) { Shutdown(); return; }
 			StartupDiagnostics.Log("Restarting session.");
 		}
 	}
@@ -82,33 +68,29 @@ public partial class App : Application
 	private void ShowMainWindow(DepotApplicationServices composition)
 	{
 		var mainViewModel = composition.ViewModels.CreateMain();
+		var salesViewModel = new SalesViewModel(
+			composition.Services.Customers,
+			composition.Services.SalesOrders,
+			composition.Services.Shipments,
+			composition.Services.SalesInvoices,
+			composition.Services.Items,
+			composition.Services.Authorization,
+			_fileDialogs,
+			new SalesDocumentService());
 		StartupDiagnostics.Log("MainViewModel created.");
 
-		var mainWindow = new MainWindow(composition.Services.Authorization) { DataContext = mainViewModel };
+		var mainWindow = new MainWindow(composition.Services.Authorization, composition.Services.NotificationNavigation, salesViewModel) { DataContext = mainViewModel };
 		MainWindow = mainWindow;
 		StartupDiagnostics.Log("MainWindow created.");
 		mainViewModel.LogoutRequested += OnLogoutRequested;
-		try
-		{
-			mainWindow.ShowDialog();
-		}
-		finally
-		{
-			mainViewModel.LogoutRequested -= OnLogoutRequested;
-			mainViewModel.Dispose();
-		}
-
+		try { mainWindow.ShowDialog(); }
+		finally { mainViewModel.LogoutRequested -= OnLogoutRequested; mainViewModel.Dispose(); }
 		StartupDiagnostics.Log("MainWindow closed.");
 
-		void OnLogoutRequested(object? sender, EventArgs e)
-		{
-			mainWindow.Close();
-		}
+		void OnLogoutRequested(object? sender, EventArgs e) => mainWindow.Close();
 	}
 
-	private static void OnDispatcherUnhandledException(
-		object sender,
-		System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
+	private static void OnDispatcherUnhandledException(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
 	{
 		StartupDiagnostics.LogException(e.Exception);
 		StartupDiagnostics.ShowRuntimeError(e.Exception);

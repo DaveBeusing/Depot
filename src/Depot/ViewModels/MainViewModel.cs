@@ -32,6 +32,13 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 	private readonly Lazy<PurchaseOrdersPageViewModel> _purchaseOrdersPage;
 	private readonly Lazy<GoodsReceiptsPageViewModel> _goodsReceiptsPage;
 	private readonly Lazy<PurchaseOrderApprovalsViewModel> _purchaseOrderApprovals;
+	private readonly Lazy<SalesViewModel> _salesSearch;
+	private readonly Lazy<SalesOverviewViewModel> _salesOverview;
+	private readonly Lazy<CustomersViewModel> _salesCustomers;
+	private readonly Lazy<SalesOrdersViewModel> _salesOrders;
+	private readonly Lazy<SalesApprovalsViewModel> _salesApprovals;
+	private readonly Lazy<ShippingViewModel> _salesShipping;
+	private readonly Lazy<SalesInvoicesViewModel> _salesInvoices;
 	private readonly Lazy<ReportsViewModel> _reports;
 	private readonly Lazy<ImportViewModel> _import;
 	private readonly Lazy<AdministrationViewModel> _administration;
@@ -69,6 +76,10 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		MaterialIssueService materialIssueService,
 		MaterialReturnService materialReturnService,
 		SupplierReturnService supplierReturnService,
+		CustomerService customerService,
+		SalesOrderService salesOrderService,
+		ShipmentService shipmentService,
+		SalesInvoiceService salesInvoiceService,
 		WarehouseService warehouseService,
 		StorageLocationService storageLocationService,
 		UserService userService,
@@ -98,6 +109,8 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		HelpCommand = new RelayCommand(() => _ = OpenHelpAsync());
 		NotificationCommand = new RelayCommand(() => _ = OpenNotificationsAsync());
 
+		SalesViewModel CreateSalesWorkspace() => new(customerService, salesOrderService, shipmentService, salesInvoiceService, itemService, authorizationService, fileDialogService, new SalesDocumentService());
+
 		_dashboard = new(() => new DashboardViewModel(dashboardService));
 		_inventory = new(() => new InventoryViewModel(stockService));
 		_items = new(() => new ItemsViewModel(itemService, manufacturerService, categoryService, unitOfMeasureService, packagingService));
@@ -111,6 +124,13 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		_purchaseOrdersPage = new(() => new PurchaseOrdersPageViewModel(_procurement.Value));
 		_goodsReceiptsPage = new(() => new GoodsReceiptsPageViewModel(_procurement.Value));
 		_purchaseOrderApprovals = new(() => new PurchaseOrderApprovalsViewModel(purchaseOrderApprovalService, fileDialogService));
+		_salesSearch = new(CreateSalesWorkspace);
+		_salesOverview = new(() => new SalesOverviewViewModel(CreateSalesWorkspace()));
+		_salesCustomers = new(() => new CustomersViewModel(CreateSalesWorkspace()));
+		_salesOrders = new(() => new SalesOrdersViewModel(CreateSalesWorkspace()));
+		_salesApprovals = new(() => new SalesApprovalsViewModel(CreateSalesWorkspace()));
+		_salesShipping = new(() => new ShippingViewModel(CreateSalesWorkspace()));
+		_salesInvoices = new(() => new SalesInvoicesViewModel(CreateSalesWorkspace(), salesInvoiceService, fileDialogService, new SalesDocumentService()));
 		_reports = new(() => new ReportsViewModel(reportService, fileDialogService));
 		_import = new(() => new ImportViewModel(importService, fileDialogService));
 		_administration = new(() => new AdministrationViewModel(
@@ -148,6 +168,13 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 	public PurchaseOrdersPageViewModel PurchaseOrdersPageViewModel => _purchaseOrdersPage.Value;
 	public GoodsReceiptsPageViewModel GoodsReceiptsPageViewModel => _goodsReceiptsPage.Value;
 	public PurchaseOrderApprovalsViewModel PurchaseOrderApprovalsViewModel => _purchaseOrderApprovals.Value;
+	public SalesViewModel SalesViewModel => _salesSearch.Value;
+	public SalesOverviewViewModel SalesOverviewViewModel => _salesOverview.Value;
+	public CustomersViewModel CustomersViewModel => _salesCustomers.Value;
+	public SalesOrdersViewModel SalesOrdersViewModel => _salesOrders.Value;
+	public SalesApprovalsViewModel SalesApprovalsViewModel => _salesApprovals.Value;
+	public ShippingViewModel ShippingViewModel => _salesShipping.Value;
+	public SalesInvoicesViewModel SalesInvoicesViewModel => _salesInvoices.Value;
 	public ReportsViewModel ReportsViewModel => _reports.Value;
 	public ImportViewModel ImportViewModel => _import.Value;
 	public AdministrationViewModel AdministrationViewModel => _administration.Value;
@@ -204,8 +231,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		return confirmed;
 	}
 
-	public bool ConfirmDiscardChanges(ShellNavigationItem item) =>
-		!item.IsContentCreated || ConfirmDiscardChanges(item.Content);
+	public bool ConfirmDiscardChanges(ShellNavigationItem item) => !item.IsContentCreated || ConfirmDiscardChanges(item.Content);
 
 	public async Task NavigateAsync(ShellNavigationItem target, CancellationToken cancellationToken = default)
 	{
@@ -259,20 +285,38 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		if (_notificationCenter.IsValueCreated) _notificationCenter.Value.SetApplicationActive(isActive);
 	}
 
+	public async Task OpenSalesQuickItemAsync(SalesQuickOpenItem item, CancellationToken cancellationToken = default)
+	{
+		var (moduleName, pageName, workspace) = item.Kind switch
+		{
+			SalesQuickOpenKind.Customer => ("Sales", "Customers", CustomersViewModel.Workspace),
+			SalesQuickOpenKind.SalesOrder => ("Sales", "Sales Orders", SalesOrdersViewModel.Workspace),
+			SalesQuickOpenKind.Shipment or SalesQuickOpenKind.CustomerReturn => ("Warehouse", "Shipping", ShippingViewModel.Workspace),
+			SalesQuickOpenKind.Invoice or SalesQuickOpenKind.CreditNote => ("Sales", "Invoices", SalesInvoicesViewModel.Workspace),
+			_ => ("Sales", "Overview", SalesOverviewViewModel.Workspace)
+		};
+		await NavigateToModulePageAsync(moduleName, pageName, cancellationToken);
+		await workspace.OpenQuickItemAsync(item, cancellationToken);
+	}
+
 	private void BuildNavigation()
 	{
 		AddDirect(ApplicationPermission.DashboardView, "Dashboard", Icons.Dashboard, () => _dashboard.Value, (viewModel, token) => viewModel.LoadAsync(token), HelpService.FallbackTopicId);
+
 		var inventoryPages = new List<SecondaryNavigationItem>();
 		AddPage(inventoryPages, ApplicationPermission.InventoryView, "Overview", () => _inventory.Value, (viewModel, token) => viewModel.LoadAsync(token), "inventory.overview");
 		AddPage(inventoryPages, ApplicationPermission.ItemsView, "Items", () => _items.Value, (viewModel, token) => viewModel.LoadItemsAsync(token), "inventory.items");
 		AddPage(inventoryPages, ApplicationPermission.StockMovementsView, "Movements", () => _movements.Value, (viewModel, token) => viewModel.LoadAsync(token), "inventory.movements");
 		AddModule("Inventory", Icons.Inventory, "Monitor stock, items, and immutable inventory movements.", inventoryPages);
+
 		var warehousePages = new List<SecondaryNavigationItem>();
 		AddPage(warehousePages, ApplicationPermission.StockTransfersView, "Transfers", () => _stockTransfers.Value, (viewModel, token) => viewModel.LoadAsync(token), "warehouse.transfers");
 		AddPage(warehousePages, ApplicationPermission.InventoryCountsView, "Inventory Counts", () => _inventoryCounts.Value, (viewModel, token) => viewModel.LoadAsync(token), "warehouse.inventory-counts");
 		AddPage(warehousePages, ApplicationPermission.MaterialIssuesView, "Material Issues", () => _materialIssues.Value, (viewModel, token) => viewModel.LoadAsync(token), "warehouse.material-issues");
 		AddPage(warehousePages, ApplicationPermission.MaterialReturnsView, "Material Returns", () => _materialReturns.Value, (viewModel, token) => viewModel.LoadAsync(token), "warehouse.material-returns");
-		AddModule("Warehouse", Icons.Warehouse, "Execute controlled warehouse operations and physical stock workflows.", warehousePages);
+		AddPage(warehousePages, ApplicationPermission.ShipmentsView, "Shipping", () => _salesShipping.Value, (viewModel, token) => viewModel.LoadAsync(token), "sales.shipping");
+		AddModule("Warehouse", Icons.Warehouse, "Execute controlled warehouse operations, fulfillment, shipping, and physical stock workflows.", warehousePages);
+
 		if (_authorization.HasPermission(ApplicationPermission.PurchasingView))
 		{
 			var purchasingPages = new List<SecondaryNavigationItem>();
@@ -281,6 +325,15 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 			AddPage(purchasingPages, ApplicationPermission.SupplierReturnsView, "Supplier Returns", () => _supplierReturns.Value, (viewModel, token) => viewModel.LoadAsync(token), "purchasing.supplier-returns");
 			AddModule("Purchasing", Icons.Purchasing, "Manage orders, supplier deliveries, and returns.", purchasingPages);
 		}
+
+		var salesPages = new List<SecondaryNavigationItem>();
+		AddPage(salesPages, ApplicationPermission.SalesView, "Overview", () => _salesOverview.Value, (viewModel, token) => viewModel.LoadAsync(token), "sales.overview");
+		AddPage(salesPages, ApplicationPermission.CustomersView, "Customers", () => _salesCustomers.Value, (viewModel, token) => viewModel.LoadAsync(token), "sales.customers");
+		AddPage(salesPages, ApplicationPermission.SalesOrdersView, "Sales Orders", () => _salesOrders.Value, (viewModel, token) => viewModel.LoadAsync(token), "sales.orders");
+		AddPage(salesPages, ApplicationPermission.SalesOrdersApprove, "Approvals", () => _salesApprovals.Value, (viewModel, token) => viewModel.LoadAsync(token), "sales.approvals");
+		AddPage(salesPages, ApplicationPermission.SalesInvoicesView, "Invoices", () => _salesInvoices.Value, (viewModel, token) => viewModel.LoadAsync(token), "sales.invoices");
+		AddModule("Sales", Icons.Sales, "Manage customers, sales orders, fulfillment, and invoicing.", salesPages);
+
 		AddDirect(ApplicationPermission.PurchaseOrdersApprove, "Approvals", Icons.Approvals, () => _purchaseOrderApprovals.Value, (viewModel, token) => viewModel.LoadAsync(token), "approvals.queue");
 		AddDirect(ApplicationPermission.ReportsView, "Reports", Icons.Reports, () => _reports.Value, (viewModel, token) => viewModel.LoadAsync(token), "reports.overview");
 		if (HasAdministrationPages())
@@ -328,6 +381,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 	private bool HasAdministrationPages() => _authorization.HasAnyPermission(ApplicationPermission.MasterDataView, ApplicationPermission.SuppliersView, ApplicationPermission.UsersView, ApplicationPermission.RolesView, ApplicationPermission.ImportManage, ApplicationPermission.AuditLogView, ApplicationPermission.DatabaseView, ApplicationPermission.AdministrationView);
 	private void MarkInventoryPagesStale() { MarkModulePageStale("Inventory", "Overview"); MarkModulePageStale("Inventory", "Movements"); }
 	private void MarkPurchasingPagesStale() { MarkModulePageStale("Purchasing", "Purchase Orders"); MarkModulePageStale("Purchasing", "Goods Receipts"); }
+
 	private void MarkModulePageStale(string moduleName, string pageName)
 	{
 		var moduleItem = NavigationItems.FirstOrDefault(item => item.Name == moduleName);
@@ -380,15 +434,48 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		{
 			case NotificationSourceTypes.PurchaseOrder:
 				if (target.SourceId is not long orderId) throw new InvalidOperationException("The purchase-order reference is invalid.");
-				await NavigateToModulePageAsync("Purchasing", "Purchase Orders", cancellationToken); await ProcurementViewModel.OpenOrderAsync(orderId, cancellationToken); break;
+				await NavigateToModulePageAsync("Purchasing", "Purchase Orders", cancellationToken);
+				await ProcurementViewModel.OpenOrderAsync(orderId, cancellationToken);
+				break;
 			case NotificationSourceTypes.PurchaseOrderApproval:
 				if (target.SourceId is not long approvalId) throw new InvalidOperationException("The approval reference is invalid.");
-				await NavigateToDirectAsync("Approvals", cancellationToken); await PurchaseOrderApprovalsViewModel.OpenApprovalAsync(approvalId, cancellationToken); break;
+				await NavigateToDirectAsync("Approvals", cancellationToken);
+				await PurchaseOrderApprovalsViewModel.OpenApprovalAsync(approvalId, cancellationToken);
+				break;
 			case NotificationSourceTypes.InventoryCount:
 				if (target.SourceId is not long countId) throw new InvalidOperationException("The inventory-count reference is invalid.");
-				await NavigateToModulePageAsync("Warehouse", "Inventory Counts", cancellationToken); await InventoryCountsViewModel.OpenCountAsync(countId, cancellationToken); break;
+				await NavigateToModulePageAsync("Warehouse", "Inventory Counts", cancellationToken);
+				await InventoryCountsViewModel.OpenCountAsync(countId, cancellationToken);
+				break;
 			case NotificationSourceTypes.DatabaseAdministration:
-				await NavigateToDirectAsync("Administration", cancellationToken); await AdministrationViewModel.NavigateToAsync(AdministrationSection.Database, cancellationToken); break;
+				await NavigateToDirectAsync("Administration", cancellationToken);
+				await AdministrationViewModel.NavigateToAsync(AdministrationSection.Database, cancellationToken);
+				break;
+			case NotificationSourceTypes.SalesOrder:
+				if (target.SourceId is not long salesOrderId) throw new InvalidOperationException("The sales-order reference is invalid.");
+				await OpenSalesQuickItemAsync(new SalesQuickOpenItem(SalesQuickOpenKind.SalesOrder, salesOrderId, target.SourceNumber ?? string.Empty, string.Empty), cancellationToken);
+				break;
+			case NotificationSourceTypes.SalesOrderApproval:
+				if (target.SourceId is not long salesApprovalId) throw new InvalidOperationException("The sales-order approval reference is invalid.");
+				await NavigateToModulePageAsync("Sales", "Approvals", cancellationToken);
+				await SalesApprovalsViewModel.Workspace.OpenQuickItemAsync(new SalesQuickOpenItem(SalesQuickOpenKind.SalesOrder, salesApprovalId, target.SourceNumber ?? string.Empty, string.Empty), cancellationToken);
+				break;
+			case NotificationSourceTypes.Shipment:
+				if (target.SourceId is not long shipmentId) throw new InvalidOperationException("The shipment reference is invalid.");
+				await OpenSalesQuickItemAsync(new SalesQuickOpenItem(SalesQuickOpenKind.Shipment, shipmentId, target.SourceNumber ?? string.Empty, string.Empty), cancellationToken);
+				break;
+			case NotificationSourceTypes.CustomerReturn:
+				if (target.SourceId is not long returnId) throw new InvalidOperationException("The customer-return reference is invalid.");
+				await OpenSalesQuickItemAsync(new SalesQuickOpenItem(SalesQuickOpenKind.CustomerReturn, returnId, target.SourceNumber ?? string.Empty, string.Empty), cancellationToken);
+				break;
+			case NotificationSourceTypes.SalesInvoice:
+				if (target.SourceId is not long invoiceId) throw new InvalidOperationException("The sales-invoice reference is invalid.");
+				await OpenSalesQuickItemAsync(new SalesQuickOpenItem(SalesQuickOpenKind.Invoice, invoiceId, target.SourceNumber ?? string.Empty, string.Empty), cancellationToken);
+				break;
+			case NotificationSourceTypes.SalesCreditNote:
+				if (target.SourceId is not long creditId) throw new InvalidOperationException("The credit-note reference is invalid.");
+				await OpenSalesQuickItemAsync(new SalesQuickOpenItem(SalesQuickOpenKind.CreditNote, creditId, target.SourceNumber ?? string.Empty, string.Empty), cancellationToken);
+				break;
 		}
 	}
 
@@ -428,6 +515,13 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 			item.Dispose();
 		}
 		if (_procurement.IsValueCreated) _procurement.Value.Dispose();
+		if (_salesSearch.IsValueCreated) _salesSearch.Value.Dispose();
+		if (_salesOverview.IsValueCreated) _salesOverview.Value.Dispose();
+		if (_salesCustomers.IsValueCreated) _salesCustomers.Value.Dispose();
+		if (_salesOrders.IsValueCreated) _salesOrders.Value.Dispose();
+		if (_salesApprovals.IsValueCreated) _salesApprovals.Value.Dispose();
+		if (_salesShipping.IsValueCreated) _salesShipping.Value.Dispose();
+		if (_salesInvoices.IsValueCreated) _salesInvoices.Value.Dispose();
 		if (_help.IsValueCreated) { _help.Value.CloseRequested -= OnHelpCloseRequested; _help.Value.Dispose(); }
 		if (_notificationCenter.IsValueCreated) { _notificationCenter.Value.CloseRequested -= OnNotificationCloseRequested; _notificationCenter.Value.Dispose(); }
 	}
@@ -438,6 +532,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		public const string Inventory = "M 2,6 L 10,2 L 18,6 L 10,10 Z M 2,6 L 2,14 L 10,18 L 10,10 M 18,6 L 18,14 L 10,18";
 		public const string Warehouse = "M 2,8 L 10,3 L 18,8 L 18,18 L 2,18 Z M 6,18 L 6,11 L 14,11 L 14,18";
 		public const string Purchasing = "M 3,4 L 17,4 L 16,17 L 4,17 Z M 7,4 L 7,2 L 13,2 L 13,4 M 7,8 L 13,8 M 7,12 L 13,12";
+		public const string Sales = "M 3,4 L 17,4 L 17,16 L 3,16 Z M 6,8 L 14,8 M 6,11 L 12,11 M 6,14 L 10,14";
 		public const string Approvals = "M 3,10 L 8,15 L 17,5 M 3,3 L 17,3 L 17,18 L 3,18 Z";
 		public const string Reports = "M 2,17 L 18,17 M 4,14 L 8,10 L 11,12 L 16,5 M 13,5 L 16,5 L 16,8";
 		public const string Administration = "M 4,5 L 16,5 M 7,2 L 7,8 M 4,15 L 16,15 M 13,12 L 13,18 M 4,10 L 16,10 M 10,7 L 10,13";

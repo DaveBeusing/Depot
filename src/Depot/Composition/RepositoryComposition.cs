@@ -27,6 +27,16 @@ internal sealed class RepositoryComposition
 		MaterialIssues = new MaterialIssueRepository(dataAccess);
 		MaterialReturns = new MaterialReturnRepository(dataAccess);
 		SupplierReturns = new SupplierReturnRepository(dataAccess);
+		Customers = new CustomerRepository(dataAccess);
+		SalesOrders = new SalesOrderRepository(dataAccess);
+		SalesTimeline = new SalesTimelineRepository(dataAccess);
+		SalesPriceLists = new SalesPriceListRepository(dataAccess);
+		SalesQuotes = new SalesQuoteRepository(dataAccess);
+		InventoryReservations = new InventoryReservationRepository(dataAccess);
+		Shipments = new ShipmentRepository(dataAccess);
+		SalesInvoices = new SalesInvoiceRepository(dataAccess);
+		CustomerReturns = new CustomerReturnRepository(dataAccess);
+		SalesCreditNotes = new SalesCreditNoteRepository(dataAccess);
 		Inventories = new InventoryRepository(dataAccess);
 		Warehouses = new WarehouseRepository(dataAccess);
 		StorageLocations = new StorageLocationRepository(dataAccess);
@@ -55,6 +65,16 @@ internal sealed class RepositoryComposition
 	public MaterialIssueRepository MaterialIssues { get; }
 	public MaterialReturnRepository MaterialReturns { get; }
 	public SupplierReturnRepository SupplierReturns { get; }
+	public CustomerRepository Customers { get; }
+	public SalesOrderRepository SalesOrders { get; }
+	public SalesTimelineRepository SalesTimeline { get; }
+	public SalesPriceListRepository SalesPriceLists { get; }
+	public SalesQuoteRepository SalesQuotes { get; }
+	public InventoryReservationRepository InventoryReservations { get; }
+	public ShipmentRepository Shipments { get; }
+	public SalesInvoiceRepository SalesInvoices { get; }
+	public CustomerReturnRepository CustomerReturns { get; }
+	public SalesCreditNoteRepository SalesCreditNotes { get; }
 	public InventoryRepository Inventories { get; }
 	public WarehouseRepository Warehouses { get; }
 	public StorageLocationRepository StorageLocations { get; }
