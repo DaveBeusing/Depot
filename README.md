@@ -1,8 +1,8 @@
 # Depot
 
-Depot is a Windows desktop application for inventory, warehouse, procurement, sales fulfillment, administration, reporting, and operational workflows. It is built with .NET 10, WPF, MVVM, and a provider-neutral ADO.NET persistence layer.
+Depot is a Windows desktop application for inventory, warehouse, procurement, sales, administration, reporting, and operational workflows. It is built with .NET 10, WPF, MVVM, and a provider-neutral ADO.NET persistence layer.
 
-The project is under active development on the **0.13.28-preview** line. Implemented workflows are not described as production-ready until the version 1.0 verification checklist has been completed.
+The project is under active development on the **0.14.0-preview** line. Implemented workflows are not described as production-ready until the version 1.0 verification checklist has been completed.
 
 ![Platform](https://img.shields.io/badge/platform-Windows-blue)
 ![Framework](https://img.shields.io/badge/.NET-10-512BD4)
@@ -15,12 +15,17 @@ The project is under active development on the **0.13.28-preview** line. Impleme
 
 ### Application shell and UX
 
-Depot uses a dark workspace-oriented shell with an activity bar, persistent tabs, contextual section navigation, and a compact status bar.
+Depot uses a sleek dark workspace-oriented shell inspired by modern development tools.
+
+The left activity bar starts with the Depot logo and exposes permission-aware workspace icons. Hovering an icon shows a tooltip with the workspace name. Notifications, Help, and the signed-in user remain grouped in the utility area at the bottom.
 
 Implemented shell features include:
 
 - Activity-bar navigation for top-level workspaces
+- Depot branding above the activity bar
+- Hover tooltips for activity-bar and utility icons
 - Persistent workspace tabs with close buttons, middle-click close, overflow handling, and tab context actions
+- Contextual section navigation directly below the workspace tabs
 - `Ctrl+W` to close the active tab
 - `Ctrl+Tab` / `Ctrl+Shift+Tab` to move between open tabs
 - `Ctrl+P` Quick Open for workspaces, sections, operational records, purchase records, and sales records
@@ -33,32 +38,74 @@ Implemented shell features include:
 - Action-oriented dashboard links into operational workspaces
 - Administrator dashboard visibility across all available role-oriented overview sections
 
-### Inventory, warehouse, and procurement
+The current top-level information architecture is:
+
+```text
+Dashboard
+Inventory
+  Overview | Items | Movements
+Warehouse
+  Transfers | Inventory Counts | Material Issues | Material Returns | Shipping
+Purchasing
+  Purchase Orders | Goods Receipts | Supplier Returns
+Sales
+  Overview | Quotes | Pricing | Customers | Sales Orders | Invoices
+Approvals
+  Purchase Approvals | Sales Approvals
+Reports
+Administration
+```
+
+Shipping intentionally lives under **Warehouse** because picking, packing, shipment posting, reversals, and physical customer returns are warehouse operations even though they originate from a Sales Order.
+
+### Inventory and warehouse
 
 Depot currently includes:
 
-- Email/password authentication, PBKDF2-SHA256 password hashing, database-backed multi-role RBAC, session switching, and administrator-managed users and roles
 - Dashboard metrics, operational attention links, recent movements, and inventory valuation
 - Item, inventory, purpose, warehouse, storage-location, and immutable stock-movement workflows
 - Normalized item master data: manufacturer, category, unit of measure, and packaging
 - Reason codes with immutable technical keys and editable display names
-- Supplier categories, suppliers, and many-to-many `SupplierItem` assignments
-- Purchase orders with approval, ordering, closing, search, status history, and direct navigation
-- Goods receipts with partial receipts and atomic stock posting
-- Supplier returns with negative stock movements
 - Warehouse transfers with paired movements and concurrency-safe stock checks
 - Inventory counts with snapshots, review, optimistic concurrency, and atomic correction posting
 - Material issue and material return workflows
 - Audited reversal workflows for posted warehouse documents
+- Shipping, picking, packing, shipment posting, shipment reversal, and Customer Returns
+- Pick List, Packing Slip, Delivery Note, and Customer Return Receipt PDFs
 - Excel import and export
 - Inventory and grouped reporting
-- Filtered read-only Audit Log
-- Database administration, backup, restore, scheduled backups, integrity checks, and SQLite compaction
-- Integrated offline Help Center and Notification Center
+
+### Procurement
+
+Depot includes a separate procurement lifecycle:
+
+```text
+Supplier
+   ↓
+Purchase Order Draft
+   ↓
+Submit
+   ↓
+Approvals > Purchase Approvals
+   ↓
+Ordered
+   ↓
+Goods Receipt
+   ↓
+Stock Movement
+```
+
+Implemented procurement capabilities include:
+
+- Supplier categories, suppliers, and many-to-many `SupplierItem` assignments
+- Purchase Orders with submission, approval, rejection, ordering, closing, search, and status history
+- Goods Receipts with partial receipts and atomic stock posting
+- Supplier Returns with negative stock movements
+- Four-eyes approval workflow in the central Approvals workspace
 
 ### Sales and order-to-cash
 
-Sales is a separate commercial and fulfillment domain rather than procurement documents used in reverse.
+Sales is a dedicated commercial domain rather than procurement documents used in reverse.
 
 ```text
 Customer + Contacts
@@ -67,17 +114,19 @@ Quote / Customer Pricing (optional)
    ↓
 Sales Order Draft
    ↓
-Submit / Approval
+Submit
    ↓
-Inventory Reservation
+Approvals > Sales Approvals
    ↓
-Release
+Inventory Reservation / Release
    ↓
-Picking / Packed / Shipment
+Warehouse > Shipping
+   ↓
+Picking → Packed → Shipment
    ↓
 SalesShipment stock movement
    ↓
-Sales Invoice
+Sales > Invoices
    ↓
 Completed
 ```
@@ -85,59 +134,90 @@ Completed
 Corrections remain separate and auditable:
 
 ```text
-Incorrect shipment posting → Shipment Reversal
-Physical goods returned    → Customer Return
-Posted invoice correction  → Credit Note
+Incorrect shipment posting → Warehouse > Shipping > Shipment Reversal
+Physical goods returned    → Warehouse > Shipping > Customer Return
+Posted invoice correction  → Sales > Invoices > Credit Note
 ```
 
 Implemented Sales capabilities include:
 
-- Sales Commercial Hub combining operational overview, Quotes and customer Pricing
-- Dedicated Customer workspace with search, customer editor, multiple normalized addresses and multiple contacts
-- Customer contact roles for General, Commercial, Purchasing, Logistics, Accounting and Technical use cases, including a primary-contact flag
-- Billing, Shipping and Other customer address types with per-type default selection
-- Sales Order billing/shipping address picker and immutable address snapshots
-- Customer-specific price lists with validity windows, item prices, discounts and customer assignments
+- Dedicated Sales Overview
+- Quotes and Pricing as first-class Sales sections
+- Dedicated Customer workspace with search and customer editor
+- Multiple normalized customer addresses with Billing, Shipping, and Other address types
+- Default Billing and Shipping addresses
+- Multiple Customer Contacts with General, Commercial, Purchasing, Logistics, Accounting, and Technical roles
+- Primary-contact support
+- Sales Order billing/shipping address picker with immutable snapshots
+- Customer-specific price lists with validity windows, item prices, discounts, and customer assignments
 - Price resolution for Quotes and an explicit **Apply customer price** action in Sales Orders
-- Sales Quotes with Draft, Sent, Accepted, Rejected and Converted lifecycle, contact/address snapshots and conversion into a Sales Order draft
-- Quote PDF generation and local `.eml` email drafts with the PDF attached
-- Sales orders and lines with automatic numbering, item snapshots, prices, discounts, tax, requested delivery dates, and approval workflow
-- Sales Order Timeline spanning approval, release, shipment, invoice, return and credit-note events
+- Sales Quotes with Draft, Sent, Accepted, Rejected, and Converted lifecycle
+- Quote contact/address snapshots and conversion into a Sales Order draft
+- Quote PDF generation and local `.eml` email drafts with PDF attachment
+- Sales Orders and lines with automatic numbering, item snapshots, prices, discounts, tax, requested delivery dates, and approval workflow
+- Central Sales Approval queue under **Approvals > Sales Approvals**
 - Creator/approver separation with Administrator override
-- Inventory reservations that reduce **available** stock without changing physical stock
-- Concurrency-safe reservation checks against current on-hand quantity and reservations from other sales orders
-- Partial reservation and release; unreserved quantities remain visible as **Backorder** and can be allocated later
-- Backorder workflow notifications when an order is released with unreserved demand
+- Inventory reservations that reduce available stock without changing physical stock
+- Concurrency-safe reservation checks against on-hand quantity and reservations from other Sales Orders
+- Partial reservation and release with explicit Backorder quantities
+- Backorder workflow notifications
 - Per-line Ordered, Reserved, Backorder, Shipped, and Invoiced quantities
-- Dedicated Shipping workspace with shipment Draft state plus **Not Started → Picking → Packed** packing workflow
-- Shipment posting is blocked until the shipment is Packed
-- Pick List, Packing Slip and Delivery Note PDF generation
+- Sales Order Timeline spanning approval, release, shipment, invoice, return, and credit-note events
+- Shipping under the Warehouse workspace with Draft plus **Not Started → Picking → Packed** workflow
+- Shipment posting blocked until the shipment is Packed
 - Atomic shipment posting with negative `SalesShipment` stock movements and reservation consumption
 - Shipment reversal through immutable positive `SalesShipmentReversal` counter-movements
-- Customer Returns for real physical returns with positive `CustomerReturn` movements and workflow notifications
-- Customer Return Receipt PDF generation
+- Customer Returns with positive `CustomerReturn` movements and workflow notifications
 - Shipment-based invoice creation with pricing/tax and billing-address snapshots
-- Invoice Due Status with Not Due, Due Today and Overdue states
+- Invoice Due Status with Not Due, Due Today, and Overdue states
 - Invoice PDF generation and local email-draft creation with PDF attachment
 - Draft invoice cancellation
 - Full and partial immutable Credit Notes with cumulative quantity validation
 - Credit Note PDF generation and workflow notifications
-- Sales Dashboard metrics including approvals, reservation/backorder attention, fulfillment workload, returns, credits and monthly net sales
+- Sales Dashboard metrics including approvals, reservation/backorder attention, fulfillment workload, returns, credits, and monthly net sales
 - Sales records in Quick Open and workflow actions in the Command Palette
-- Notification deep links into Sales Orders, Approvals, Shipping, Customer Returns, Invoices and Credit Notes
-- Dedicated offline Help topics for Sales, Customers, Quotes, Pricing, Orders, Shipping and Invoices
+- Notification deep links that route Shipments and Customer Returns to **Warehouse > Shipping** and commercial records to Sales
+
+### Approvals
+
+The global **Approvals** workspace centralizes four-eyes decisions instead of duplicating approval navigation inside Purchasing or Sales.
+
+Depending on permissions it exposes:
+
+- **Purchase Approvals** — pending Purchase Orders
+- **Sales Approvals** — pending Sales Orders
+
+The business services enforce creator/approver separation independently of the UI. Administrator overrides remain permission-controlled and audited.
 
 ### Sales roles
 
 Default system roles include:
 
-- **Sales User** — customers, contacts, quotes and sales-order creation/submission
-- **Sales Manager** — quote conversion, customer pricing management, approval, release and fulfillment monitoring
-- **Warehouse Operator** — shipment picking/packing/posting/reversal and customer returns
-- **Finance** — invoices, credit notes and pricing visibility
+- **Sales User** — customers, contacts, quotes, and Sales Order creation/submission
+- **Sales Manager** — quote conversion, customer pricing management, Sales approval/release, and fulfillment monitoring
+- **Warehouse Operator** — shipment picking/packing/posting/reversal and Customer Returns
+- **Finance** — invoices, Credit Notes, and pricing visibility
 - **Administrator** — all permissions and all role-oriented dashboard views
 
 All actions remain permission-based; role definitions are defaults rather than hard-coded workflow identities.
+
+### Administration and security
+
+Depot includes:
+
+- Email/password authentication
+- PBKDF2-SHA256 password hashing
+- Database-backed multi-role RBAC
+- Session switching
+- Administrator-managed users and roles
+- Filtered read-only Audit Log
+- Database provider configuration
+- Backup and restore
+- Scheduled backups
+- Integrity checks
+- SQLite compaction
+- Integrated offline Help Center
+- Notification Center
 
 ### Database providers and migrations
 
@@ -156,11 +236,27 @@ v5  Sales Order billing/shipping address snapshots
 v6  Customer Contacts, Price Lists, Customer Pricing, Sales Quotes and Shipment Packing state
 ```
 
-The feature migration remains intentionally separate until the final version 1.0 migration policy is consolidated. SQL Server and MySQL/MariaDB support exists in code but still requires live-server migration, backup/restore and concurrency certification before 1.0.
+The Sales feature migration remains separate until the final version 1.0 migration policy is consolidated. SQL Server and MySQL/MariaDB support exists in code but still requires live-server migration, backup/restore, and concurrency certification before 1.0.
 
-### Sales validation
+### Validation
 
-The automated Sales suite covers the core order-to-cash workflow plus the commercial extensions. It includes packed-shipment enforcement, backorders, reversals, customer returns, credit notes, schema v6, permissions and roles, Customer Contacts, customer-specific Pricing, Quote conversion, Sales Order Timeline events and Invoice Due Status.
+The automated Sales suite covers the core order-to-cash workflow and commercial extensions, including:
+
+- Sales schema migrations through v6
+- Permissions and system roles
+- Customer Contacts
+- Customer Pricing
+- Quote conversion
+- Sales Order address snapshots
+- Reservations and Backorders
+- Packed-shipment enforcement
+- Shipment posting and reversal
+- Customer Returns
+- Invoice creation and Due Status
+- Full and partial Credit Notes
+- Sales Order Timeline events
+
+CI separates Sales tests from the existing regression suite and validates a Release build before the final publish gate.
 
 ### Remaining work before version 1.0
 
@@ -169,7 +265,7 @@ The automated Sales suite covers the core order-to-cash workflow plus the commer
 - Multi-client reservation, shipping, receipt, and inventory concurrency tests against server providers
 - Large-data acceptance testing with at least 100,000 records and high movement volumes
 - UI runtime, accessibility, scaling, keyboard-navigation, localization, packaging, and upgrade acceptance
-- Security review of deployment defaults, credentials, logs and backup retention
+- Security review of deployment defaults, credentials, logs, and backup retention
 - Consolidate feature migrations into the final 1.0 migration/upgrade policy
 
 Barcode scanning/generation, label design/printing, payment collection, accounts receivable, and general-ledger functionality remain outside the current scope.
@@ -198,7 +294,7 @@ See [Architecture](docs/Architecture.md) for details.
 
 Shared resources live under `src/Depot/Resources`; reusable controls live under `src/Depot/Controls`.
 
-The UI uses a compact dark visual language with centralized colors, typography, consistent interaction sizing, cards, dark grids/lists/combo boxes, master/detail layouts, status presentation, loading feedback, workflow action bars and empty states.
+The UI uses a compact dark visual language with centralized colors, typography, consistent interaction sizing, cards, dark grids/lists/combo boxes, master/detail layouts, status presentation, loading feedback, workflow action bars, empty states, workspace tabs, and activity-bar navigation.
 
 ## Technology
 
@@ -208,7 +304,7 @@ The UI uses a compact dark visual language with centralized colors, typography, 
 - SQL Server via `Microsoft.Data.SqlClient`
 - MySQL/MariaDB via `MySqlConnector`
 - ClosedXML for Excel import/export
-- PDFsharp-WPF for Sales documents
+- PDFsharp-WPF for Sales and fulfillment documents
 - Nullable reference types enabled
 
 ## Getting started
@@ -226,13 +322,13 @@ dotnet restore Depot.slnx
 dotnet run --project src/Depot/Depot.csproj -c Debug
 ```
 
-The first installation uses local SQLite and creates `depot.db`. Connection and backup settings are stored in `depot.settings`. Administration > Database can configure SQLite, SQL Server, or MySQL/MariaDB.
+The first installation uses local SQLite and creates `depot.db`. Connection and backup settings are stored in `depot.settings`. **Administration > Database** can configure SQLite, SQL Server, or MySQL/MariaDB.
 
-For a new database, sign in with `admin@depot.local` and `Depot123!`, then change the password in Administration > Users.
+For a new database, sign in with `admin@depot.local` and `Depot123!`, then change the password in **Administration > Users**.
 
 ## Build and publish
 
-Depot targets `net10.0-windows`. Version metadata comes from `Directory.Build.props`; the current preview version is **0.13.28-preview**.
+Depot targets `net10.0-windows`. Version metadata comes from `Directory.Build.props`; the current preview line is **0.14.0-preview**.
 
 ### Debug
 
@@ -319,7 +415,7 @@ dotnet test tests/Depot.Tests/Depot.Tests.csproj -c Release --filter "FullyQuali
 dotnet test tests/Depot.Tests/Depot.Tests.csproj -c Release --filter "FullyQualifiedName!~Sales"
 ```
 
-CI performs both suites separately and only attempts the final self-contained single-file publish after both pass.
+CI performs the suites separately and validates the final self-contained single-file publish after the required gates pass.
 
 ## Keyboard navigation
 
@@ -341,7 +437,7 @@ src/Depot/
   Help/           Embedded offline Help Center content
   Models/         Domain, status, and report models
   Repositories/   Provider-neutral persistence
-  Resources/      Design system resource dictionaries
+  Resources/      Design system resource dictionaries and branding
   Services/       Business and application workflows
   ViewModels/     Presentation logic and commands
   Views/          WPF views and windows
@@ -351,7 +447,7 @@ tests/Depot.Tests/
 
 ## Versioning and documentation
 
-Depot uses Semantic Versioning from `Directory.Build.props`. Application release versions and database schema versions are independent. See:
+Depot uses Semantic Versioning metadata from `Directory.Build.props`. Application release versions and database schema versions are independent. See:
 
 - [Architecture](docs/Architecture.md)
 - [Coding Standard](docs/CodingStandard.md)
