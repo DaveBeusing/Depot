@@ -116,6 +116,7 @@ public partial class MainWindow : Window
 	private void EnsureSalesNavigation(MainViewModel viewModel)
 	{
 		if (_salesNavigationItem is not null || !_authorization.HasPermission(ApplicationPermission.SalesView)) return;
+		if (viewModel.NavigationItems.Any(item => string.Equals(item.Name, "Sales", StringComparison.OrdinalIgnoreCase))) return;
 		var pages = new List<SecondaryNavigationItem>();
 		AddSalesPage(pages, ApplicationPermission.SalesView, "Overview", SalesSection.Overview, "sales.overview");
 		AddSalesPage(pages, ApplicationPermission.CustomersView, "Customers", SalesSection.Customers, "sales.customers");
@@ -167,22 +168,22 @@ public partial class MainWindow : Window
 		}
 	}
 
-	private static Task NavigateDirectAsync(MainViewModel viewModel, string name, CancellationToken token)
+	private static Task NavigateDirectAsync(MainViewModel viewModel, string name, CancellationToken cancellationToken)
 	{
 		var item = viewModel.NavigationItems.FirstOrDefault(candidate => candidate.Name == name) ?? throw new UnauthorizedAccessException("The requested page is not available.");
-		return viewModel.NavigateAsync(item, token);
+		return viewModel.NavigateAsync(item, cancellationToken);
 	}
 
-	private static async Task NavigateModulePageAsync(MainViewModel viewModel, string moduleName, string pageName, CancellationToken token)
+	private static async Task NavigateModulePageAsync(MainViewModel viewModel, string moduleName, string pageName, CancellationToken cancellationToken)
 	{
 		var item = viewModel.NavigationItems.FirstOrDefault(candidate => candidate.Name == moduleName) ?? throw new UnauthorizedAccessException("The requested module is not available.");
 		if (item.Content is not ShellModuleViewModel module) throw new InvalidOperationException("The requested navigation target is invalid.");
 		var page = module.Pages.FirstOrDefault(candidate => candidate.Name == pageName) ?? throw new UnauthorizedAccessException("The requested page is not available.");
 		if (!module.SetSelectedPage(page)) return;
-		await viewModel.NavigateAsync(item, token);
+		await viewModel.NavigateAsync(item, cancellationToken);
 	}
 
-	private static Task NavigateSalesAsync(MainViewModel viewModel, string pageName, CancellationToken token) => NavigateModulePageAsync(viewModel, "Sales", pageName, token);
+	private static Task NavigateSalesAsync(MainViewModel viewModel, string pageName, CancellationToken cancellationToken) => NavigateModulePageAsync(viewModel, "Sales", pageName, cancellationToken);
 
 	private void OnMainViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
 	{
