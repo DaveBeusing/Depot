@@ -1,0 +1,104 @@
+<UserControl x:Class="Depot.Views.SalesShippingView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:Depot.Controls">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="12" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <controls:WorkflowHeader Title="Shipping" Subtitle="Pick reserved stock, prepare the shipment and post the physical goods issue" Status="{Binding DraftShipmentCount}" />
+
+        <controls:MasterDetailGrid Grid.Row="2">
+            <controls:MasterDetailGrid.Master>
+                <controls:Card>
+                    <Grid>
+                        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                        <controls:SearchBox Placeholder="Search shipments or sales orders" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
+                        <ListBox Grid.Row="1" Margin="0,10,0,0" ItemsSource="{Binding Shipments}" SelectedItem="{Binding SelectedShipment}" Style="{StaticResource MasterDataListBoxStyle}" ItemContainerStyle="{StaticResource MasterDataListBoxItemStyle}">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                        <StackPanel><TextBlock Text="{Binding ShipmentNumber}" FontWeight="SemiBold"/><TextBlock Text="{Binding SalesOrderNumber}" Style="{StaticResource CaptionStyle}"/></StackPanel>
+                                        <controls:DocumentStatusBadge Grid.Column="1" Status="{Binding Status}" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                        <TextBlock Grid.Row="2" Margin="0,10,0,0" Text="Select a posted shipment for corrections or a released order to create the next shipment." Style="{StaticResource CaptionStyle}" TextWrapping="Wrap" />
+                    </Grid>
+                </controls:Card>
+            </controls:MasterDetailGrid.Master>
+
+            <controls:MasterDetailGrid.Detail>
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+                        <controls:Card>
+                            <StackPanel>
+                                <controls:WorkflowHeader Title="{Binding SelectedShipment.ShipmentNumber, TargetNullValue=Prepare shipment}" Subtitle="{Binding SelectedOrder.OrderNumber, TargetNullValue=Select a released sales order}" Status="{Binding SelectedShipment.Status}" />
+                                <Grid Margin="0,12,0,0">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                    <StackPanel><TextBlock Text="Sales order" Style="{StaticResource FormLabelStyle}"/><ComboBox ItemsSource="{Binding Orders}" SelectedItem="{Binding SelectedOrder}" DisplayMemberPath="OrderNumber" Style="{StaticResource AppComboBoxStyle}"/></StackPanel>
+                                    <StackPanel Grid.Column="2"><TextBlock Text="Reservation / pick source" Style="{StaticResource FormLabelStyle}"/><ComboBox ItemsSource="{Binding Reservations}" SelectedItem="{Binding SelectedReservation}" Style="{StaticResource AppComboBoxStyle}"><ComboBox.ItemTemplate><DataTemplate><TextBlock><Run Text="Inventory "/><Run Text="{Binding InventoryId}"/><Run Text=" · reserved "/><Run Text="{Binding Quantity}"/></TextBlock></DataTemplate></ComboBox.ItemTemplate></ComboBox></StackPanel>
+                                </Grid>
+                                <Grid Margin="0,10,0,0">
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="100"/><ColumnDefinition Width="10"/><ColumnDefinition Width="*"/><ColumnDefinition Width="10"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                    <StackPanel><TextBlock Text="Ship qty" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding ShipmentQuantity, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+                                    <StackPanel Grid.Column="2"><TextBlock Text="Carrier" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding Carrier, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+                                    <StackPanel Grid.Column="4"><TextBlock Text="Tracking" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding TrackingNumber, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+                                </Grid>
+                                <StackPanel Margin="0,10,0,0"><TextBlock Text="Shipping notes" Style="{StaticResource FormLabelStyle}"/><TextBox MinHeight="64" AcceptsReturn="True" TextWrapping="Wrap" Style="{StaticResource MultilineTextBoxStyle}" Text="{Binding ShipmentNotes, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+
+                                <TextBlock Margin="0,16,0,6" Text="Pick / pack lines" Style="{StaticResource WorkspaceTitleStyle}" />
+                                <DataGrid ItemsSource="{Binding SelectedShipment.Lines}" Style="{StaticResource AppDataGridStyle}" MinHeight="130">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Item" Binding="{Binding PartNumber}" Width="120"/>
+                                        <DataGridTextColumn Header="Description" Binding="{Binding Description}" Width="*"/>
+                                        <DataGridTextColumn Header="Ship" Binding="{Binding Quantity}" Width="80"/>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+
+                                <controls:WorkflowActionBar Margin="0,12,0,0">
+                                    <controls:WorkflowActionBar.SecondaryActions><StackPanel Orientation="Horizontal"><Button Command="{Binding CreateShipmentCommand}" Content="Create shipment" Style="{StaticResource SecondaryButtonStyle}"/><Button Margin="{StaticResource Button.Margin}" Command="{Binding SaveShipmentCommand}" Content="Save draft" Style="{StaticResource SecondaryButtonStyle}"/><Button Margin="{StaticResource Button.Margin}" Command="{Binding DeliveryNoteCommand}" Content="Delivery note PDF" Style="{StaticResource SecondaryButtonStyle}"/></StackPanel></controls:WorkflowActionBar.SecondaryActions>
+                                    <controls:WorkflowActionBar.PrimaryAction><Button Command="{Binding PostShipmentCommand}" Content="Post shipment" Style="{StaticResource PrimaryButtonStyle}"/></controls:WorkflowActionBar.PrimaryAction>
+                                </controls:WorkflowActionBar>
+                            </StackPanel>
+                        </controls:Card>
+
+                        <Grid Margin="0,12,0,0">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                            <controls:Card>
+                                <StackPanel>
+                                    <TextBlock Text="Correct a posting error" Style="{StaticResource WorkspaceTitleStyle}" />
+                                    <TextBlock Margin="0,4,0,10" Text="Use reversal only when the original shipment was posted incorrectly. Depot creates an immutable positive counter-movement and restores the reservation." Style="{StaticResource CaptionStyle}" TextWrapping="Wrap" />
+                                    <TextBlock Text="Correction reason" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding CorrectionReason, UpdateSourceTrigger=PropertyChanged}"/>
+                                    <Button Margin="0,10,0,0" HorizontalAlignment="Right" Command="{Binding ReverseShipmentCommand}" Content="Reverse posting" Style="{StaticResource DangerButtonStyle}"/>
+                                </StackPanel>
+                            </controls:Card>
+                            <controls:Card Grid.Column="2">
+                                <StackPanel>
+                                    <TextBlock Text="Receive goods returned by customer" Style="{StaticResource WorkspaceTitleStyle}" />
+                                    <TextBlock Margin="0,4,0,10" Text="Use a customer return when goods were actually delivered and physically come back. This creates a separate return document and positive stock movement." Style="{StaticResource CaptionStyle}" TextWrapping="Wrap" />
+                                    <Button HorizontalAlignment="Right" Command="{Binding CreateCustomerReturnCommand}" Content="Create customer return" Style="{StaticResource SecondaryButtonStyle}"/>
+                                </StackPanel>
+                            </controls:Card>
+                        </Grid>
+
+                        <controls:Card Margin="0,12,0,0" Visibility="{Binding CanViewCustomerReturns, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <StackPanel>
+                                <TextBlock Text="Customer returns" Style="{StaticResource WorkspaceTitleStyle}" />
+                                <DataGrid Margin="0,10,0,0" ItemsSource="{Binding CustomerReturns}" SelectedItem="{Binding SelectedCustomerReturn}" Style="{StaticResource AppDataGridStyle}" MaxHeight="200">
+                                    <DataGrid.Columns><DataGridTextColumn Header="Return" Binding="{Binding ReturnNumber}" Width="130"/><DataGridTextColumn Header="Date" Binding="{Binding ReturnDate, StringFormat={}{0:d}}" Width="110"/><DataGridTextColumn Header="Reason" Binding="{Binding Reason}" Width="*"/><DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="100"/></DataGrid.Columns>
+                                </DataGrid>
+                                <Button Margin="0,10,0,0" HorizontalAlignment="Right" Command="{Binding PostCustomerReturnCommand}" Content="Post customer return" Style="{StaticResource PrimaryButtonStyle}"/>
+                            </StackPanel>
+                        </controls:Card>
+                    </StackPanel>
+                </ScrollViewer>
+            </controls:MasterDetailGrid.Detail>
+        </controls:MasterDetailGrid>
+    </Grid>
+</UserControl>
