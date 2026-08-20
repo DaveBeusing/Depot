@@ -74,6 +74,47 @@ public sealed class SalesDocumentService
 		Save(document, path);
 	}
 
+	public void CreateCreditNote(string path, SalesCreditNote creditNote, SalesInvoice invoice)
+	{
+		ArgumentException.ThrowIfNullOrWhiteSpace(path);
+		ArgumentNullException.ThrowIfNull(creditNote);
+		ArgumentNullException.ThrowIfNull(invoice);
+		var document = CreateDocument("Credit Note", creditNote.CreditNoteNumber);
+		var page = document.AddPage();
+		var graphics = XGraphics.FromPdfPage(page);
+		var y = DrawHeader(graphics, "CREDIT NOTE", creditNote.CreditNoteNumber, invoice.CustomerName, creditNote.CreditDate);
+		y = DrawAddress(graphics, y, "Customer", invoice.CustomerName, invoice.BillingAddress);
+		y = DrawMetadata(graphics, y, [
+			("Invoice", invoice.InvoiceNumber),
+			("Sales order", invoice.SalesOrderNumber),
+			("Status", creditNote.Status.ToString()),
+			("Reason", Trim(creditNote.Reason, 28))
+		]);
+		y = DrawCreditLines(graphics, page, y, creditNote.Lines, invoice.Lines, invoice.Currency);
+		DrawTotals(graphics, page, y, -creditNote.NetAmount, -creditNote.TaxAmount, -creditNote.GrossAmount, invoice.Currency);
+		Save(document, path);
+	}
+
+	public void CreateCustomerReturnReceipt(string path, CustomerReturn customerReturn, Shipment shipment)
+	{
+		ArgumentException.ThrowIfNullOrWhiteSpace(path);
+		ArgumentNullException.ThrowIfNull(customerReturn);
+		ArgumentNullException.ThrowIfNull(shipment);
+		var document = CreateDocument("Customer Return", customerReturn.ReturnNumber);
+		var page = document.AddPage();
+		var graphics = XGraphics.FromPdfPage(page);
+		var y = DrawHeader(graphics, "CUSTOMER RETURN", customerReturn.ReturnNumber, shipment.CustomerName, customerReturn.ReturnDate);
+		y = DrawAddress(graphics, y, "Customer", shipment.CustomerName, shipment.ShippingAddress);
+		y = DrawMetadata(graphics, y, [
+			("Shipment", shipment.ShipmentNumber),
+			("Sales order", shipment.SalesOrderNumber),
+			("Status", customerReturn.Status.ToString()),
+			("Reason", Trim(customerReturn.Reason, 28))
+		]);
+		DrawReturnLines(graphics, page, y, customerReturn.Lines, shipment.Lines);
+		Save(document, path);
+	}
+
 	private static PdfDocument CreateDocument(string title, string subject)
 	{
 		var document = new PdfDocument();
@@ -156,6 +197,26 @@ public sealed class SalesDocumentService
 		return y + 8;
 	}
 
+	private static double DrawCreditLines(XGraphics graphics, PdfPage page, double y, IReadOnlyList<SalesCreditNoteLine> lines, IReadOnlyList<SalesInvoiceLine> invoiceLines, string currency)
+	{
+		var invoiceById = invoiceLines.ToDictionary(line => line.Id);
+		DrawTableHeader(graphics, y, "Item", "Description", "Qty", "Unit", "Tax", "Credit");
+		y += 22;
+		foreach (var line in lines)
+		{
+			y = EnsurePageSpace(ref graphics, page.Owner, ref page, y, 32);
+			invoiceById.TryGetValue(line.SalesInvoiceLineId, out var source);
+			graphics.DrawString(source?.PartNumber ?? $"Line {line.SalesInvoiceLineId}", BodyFont, XBrushes.Black, new XPoint(40, y));
+			graphics.DrawString(Trim(source?.Description ?? "Credited invoice line", 40), BodyFont, XBrushes.Black, new XPoint(125, y));
+			graphics.DrawString(line.Quantity.ToString("N0"), BodyFont, XBrushes.Black, new XPoint(365, y));
+			graphics.DrawString(Money(line.UnitPrice, currency), BodyFont, XBrushes.Black, new XPoint(405, y));
+			graphics.DrawString($"{line.TaxRate:N0}%", BodyFont, XBrushes.Black, new XPoint(475, y));
+			graphics.DrawString(Money(-line.GrossAmount, currency), BodyFont, XBrushes.Black, new XPoint(515, y));
+			y += 20;
+		}
+		return y + 8;
+	}
+
 	private static void DrawShipmentLines(XGraphics graphics, PdfPage page, double y, IReadOnlyList<ShipmentLine> lines)
 	{
 		graphics.DrawString("Item", HeadingFont, XBrushes.Black, new XPoint(40, y));
@@ -167,6 +228,24 @@ public sealed class SalesDocumentService
 			y = EnsurePageSpace(ref graphics, page.Owner, ref page, y, 28);
 			graphics.DrawString(line.PartNumber, BodyFont, XBrushes.Black, new XPoint(40, y));
 			graphics.DrawString(Trim(line.Description, 55), BodyFont, XBrushes.Black, new XPoint(150, y));
+			graphics.DrawString(line.Quantity.ToString("N0"), BodyFont, XBrushes.Black, new XPoint(510, y));
+			y += 20;
+		}
+	}
+
+	private static void DrawReturnLines(XGraphics graphics, PdfPage page, double y, IReadOnlyList<CustomerReturnLine> lines, IReadOnlyList<ShipmentLine> shipmentLines)
+	{
+		var shipmentById = shipmentLines.ToDictionary(line => line.Id);
+		graphics.DrawString("Item", HeadingFont, XBrushes.Black, new XPoint(40, y));
+		graphics.DrawString("Description", HeadingFont, XBrushes.Black, new XPoint(150, y));
+		graphics.DrawString("Returned", HeadingFont, XBrushes.Black, new XPoint(480, y));
+		y += 22;
+		foreach (var line in lines)
+		{
+			y = EnsurePageSpace(ref graphics, page.Owner, ref page, y, 28);
+			shipmentById.TryGetValue(line.ShipmentLineId, out var source);
+			graphics.DrawString(source?.PartNumber ?? $"Line {line.ShipmentLineId}", BodyFont, XBrushes.Black, new XPoint(40, y));
+			graphics.DrawString(Trim(source?.Description ?? "Returned shipment line", 55), BodyFont, XBrushes.Black, new XPoint(150, y));
 			graphics.DrawString(line.Quantity.ToString("N0"), BodyFont, XBrushes.Black, new XPoint(510, y));
 			y += 20;
 		}
