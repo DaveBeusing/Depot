@@ -33,6 +33,7 @@ public static class UnsavedChangesGuard
 	{
 		ShellModuleViewModel module => Resolve(module.CurrentViewModel),
 		AdministrationViewModel administration => Resolve(administration.CurrentViewModel),
+		SalesSectionPageViewModel page => page.Workspace,
 		PurchaseOrdersPageViewModel page => page.Workflow,
 		GoodsReceiptsPageViewModel page => page.Workflow,
 		_ => viewModel
