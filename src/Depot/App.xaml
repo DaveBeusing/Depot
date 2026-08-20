@@ -17,9 +17,11 @@
 
 			<DataTemplate DataType="{x:Type viewModels:SalesOverviewViewModel}"><views:SalesView DataContext="{Binding Workspace}" /></DataTemplate>
 			<DataTemplate DataType="{x:Type viewModels:CustomersViewModel}"><views:SalesCustomersView /></DataTemplate>
-			<DataTemplate DataType="{x:Type viewModels:SalesOrdersViewModel}"><views:SalesOrdersView DataContext="{Binding Workspace}" /></DataTemplate>
+			<DataTemplate DataType="{x:Type viewModels:SalesQuotesViewModel}"><views:SalesQuotesView /></DataTemplate>
+			<DataTemplate DataType="{x:Type viewModels:SalesPricingViewModel}"><views:SalesPricingView /></DataTemplate>
+			<DataTemplate DataType="{x:Type viewModels:SalesOrdersViewModel}"><views:SalesOrdersView /></DataTemplate>
 			<DataTemplate DataType="{x:Type viewModels:SalesApprovalsViewModel}"><views:SalesView DataContext="{Binding Workspace}" /></DataTemplate>
-			<DataTemplate DataType="{x:Type viewModels:ShippingViewModel}"><views:SalesShippingView DataContext="{Binding Workspace}" /></DataTemplate>
+			<DataTemplate DataType="{x:Type viewModels:ShippingViewModel}"><views:SalesShippingView /></DataTemplate>
 			<DataTemplate DataType="{x:Type viewModels:SalesInvoicesViewModel}"><views:SalesInvoicesView /></DataTemplate>
 
 		</ResourceDictionary>
