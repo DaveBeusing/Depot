@@ -10,7 +10,7 @@ namespace Depot.Repositories;
 
 public sealed class SalesOrderRepository : DatabaseRepository
 {
-	private const string Columns = "so.Id, so.OrderNumber, so.CustomerId, c.Name, so.OrderDate, so.RequestedDeliveryDate, so.Currency, so.CustomerReference, so.Notes, so.Status, so.CreatedByUserId, so.SubmittedByUserId, so.SubmittedAtUtc, so.ApprovalDecisionByUserId, so.ApprovalDecisionAtUtc, so.ApprovalComment, so.ReleasedByUserId, so.ReleasedAtUtc, so.CancelledByUserId, so.CancelledAtUtc, so.CancelReason, so.Version";
+	private const string Columns = "so.Id, so.OrderNumber, so.CustomerId, c.Name, so.BillingAddress, so.ShippingAddress, so.OrderDate, so.RequestedDeliveryDate, so.Currency, so.CustomerReference, so.Notes, so.Status, so.CreatedByUserId, so.SubmittedByUserId, so.SubmittedAtUtc, so.ApprovalDecisionByUserId, so.ApprovalDecisionAtUtc, so.ApprovalComment, so.ReleasedByUserId, so.ReleasedAtUtc, so.CancelledByUserId, so.CancelledAtUtc, so.CancelReason, so.Version";
 	private const string From = "FROM SalesOrders so INNER JOIN Customers c ON c.Id = so.CustomerId";
 	public SalesOrderRepository(DatabaseAccess database) : base(database) { }
 
@@ -47,13 +47,13 @@ public sealed class SalesOrderRepository : DatabaseRepository
 		if (order.Id == 0)
 		{
 			order.OrderNumber = $"PENDING-{Guid.NewGuid():N}";
-			order.Id = await session.InsertAsync("INSERT INTO SalesOrders (OrderNumber, CustomerId, OrderDate, RequestedDeliveryDate, Currency, CustomerReference, Notes, Status, CreatedByUserId) VALUES ($OrderNumber,$CustomerId,$OrderDate,$RequestedDeliveryDate,$Currency,$CustomerReference,$Notes,$Status,$CreatedByUserId);", token, OrderParameters(order));
+			order.Id = await session.InsertAsync("INSERT INTO SalesOrders (OrderNumber, CustomerId, BillingAddress, ShippingAddress, OrderDate, RequestedDeliveryDate, Currency, CustomerReference, Notes, Status, CreatedByUserId) VALUES ($OrderNumber,$CustomerId,$BillingAddress,$ShippingAddress,$OrderDate,$RequestedDeliveryDate,$Currency,$CustomerReference,$Notes,$Status,$CreatedByUserId);", token, OrderParameters(order));
 			order.OrderNumber = $"SO-{order.Id:000000}";
 			await session.ExecuteAsync("UPDATE SalesOrders SET OrderNumber=$OrderNumber WHERE Id=$Id;", token, Parameter("$OrderNumber", order.OrderNumber), Parameter("$Id", order.Id));
 		}
 		else
 		{
-			var updated = await session.ExecuteAsync("UPDATE SalesOrders SET CustomerId=$CustomerId, OrderDate=$OrderDate, RequestedDeliveryDate=$RequestedDeliveryDate, Currency=$Currency, CustomerReference=$CustomerReference, Notes=$Notes, Version=Version+1 WHERE Id=$Id AND Version=$Version AND Status=$Draft;", token,
+			var updated = await session.ExecuteAsync("UPDATE SalesOrders SET CustomerId=$CustomerId, BillingAddress=$BillingAddress, ShippingAddress=$ShippingAddress, OrderDate=$OrderDate, RequestedDeliveryDate=$RequestedDeliveryDate, Currency=$Currency, CustomerReference=$CustomerReference, Notes=$Notes, Version=Version+1 WHERE Id=$Id AND Version=$Version AND Status=$Draft;", token,
 				[.. OrderParameters(order), Parameter("$Id", order.Id), Parameter("$Version", order.Version), Parameter("$Draft", (int)SalesOrderStatus.Draft)]);
 			if (updated != 1) throw new Services.ConcurrencyConflictException("sales order"); order.Version++;
 		}
@@ -85,14 +85,14 @@ public sealed class SalesOrderRepository : DatabaseRepository
 
 	private static DatabaseParameter[] OrderParameters(SalesOrder o) =>
 	[
-		new("$OrderNumber", o.OrderNumber), new("$CustomerId", o.CustomerId), new("$OrderDate", Date(o.OrderDate)), new("$RequestedDeliveryDate", Date(o.RequestedDeliveryDate)), new("$Currency", o.Currency), new("$CustomerReference", o.CustomerReference), new("$Notes", o.Notes), new("$Status", (int)o.Status), new("$CreatedByUserId", o.CreatedByUserId)
+		new("$OrderNumber", o.OrderNumber), new("$CustomerId", o.CustomerId), new("$BillingAddress", o.BillingAddress), new("$ShippingAddress", o.ShippingAddress), new("$OrderDate", Date(o.OrderDate)), new("$RequestedDeliveryDate", Date(o.RequestedDeliveryDate)), new("$Currency", o.Currency), new("$CustomerReference", o.CustomerReference), new("$Notes", o.Notes), new("$Status", (int)o.Status), new("$CreatedByUserId", o.CreatedByUserId)
 	];
 	private static DatabaseParameter[] LineParameters(SalesOrderLine l) =>
 	[
 		new("$SalesOrderId", l.SalesOrderId), new("$LineNumber", l.LineNumber), new("$ItemId", l.ItemId), new("$PartNumber", l.PartNumber), new("$Description", l.Description), new("$Quantity", l.Quantity), new("$UnitPrice", l.UnitPrice), new("$DiscountPercent", l.DiscountPercent), new("$TaxRate", l.TaxRate)
 	];
 	private const string LineSql = "SELECT sol.Id,sol.SalesOrderId,sol.LineNumber,sol.ItemId,sol.PartNumber,sol.Description,sol.Quantity,sol.UnitPrice,sol.DiscountPercent,sol.TaxRate,sol.ReservedQuantity,sol.ShippedQuantity,sol.InvoicedQuantity,sol.Version FROM SalesOrderLines sol";
-	private static SalesOrder ReadOrder(DbDataReader r) => new() { Id=r.GetInt64(0), OrderNumber=r.GetString(1), CustomerId=r.GetInt64(2), CustomerName=r.GetString(3), OrderDate=ParseDate(r.GetValue(4)), RequestedDeliveryDate=r.IsDBNull(5)?null:ParseDate(r.GetValue(5)), Currency=r.GetString(6), CustomerReference=r.IsDBNull(7)?null:r.GetString(7), Notes=r.IsDBNull(8)?null:r.GetString(8), Status=(SalesOrderStatus)r.GetInt32(9), CreatedByUserId=r.IsDBNull(10)?null:r.GetInt64(10), SubmittedByUserId=r.IsDBNull(11)?null:r.GetInt64(11), SubmittedAtUtc=ParseUtc(r,12), ApprovalDecisionByUserId=r.IsDBNull(13)?null:r.GetInt64(13), ApprovalDecisionAtUtc=ParseUtc(r,14), ApprovalComment=r.IsDBNull(15)?null:r.GetString(15), ReleasedByUserId=r.IsDBNull(16)?null:r.GetInt64(16), ReleasedAtUtc=ParseUtc(r,17), CancelledByUserId=r.IsDBNull(18)?null:r.GetInt64(18), CancelledAtUtc=ParseUtc(r,19), CancelReason=r.IsDBNull(20)?null:r.GetString(20), Version=r.GetInt64(21) };
+	private static SalesOrder ReadOrder(DbDataReader r) => new() { Id=r.GetInt64(0), OrderNumber=r.GetString(1), CustomerId=r.GetInt64(2), CustomerName=r.GetString(3), BillingAddress=r.IsDBNull(4)?null:r.GetString(4), ShippingAddress=r.IsDBNull(5)?null:r.GetString(5), OrderDate=ParseDate(r.GetValue(6)), RequestedDeliveryDate=r.IsDBNull(7)?null:ParseDate(r.GetValue(7)), Currency=r.GetString(8), CustomerReference=r.IsDBNull(9)?null:r.GetString(9), Notes=r.IsDBNull(10)?null:r.GetString(10), Status=(SalesOrderStatus)r.GetInt32(11), CreatedByUserId=r.IsDBNull(12)?null:r.GetInt64(12), SubmittedByUserId=r.IsDBNull(13)?null:r.GetInt64(13), SubmittedAtUtc=ParseUtc(r,14), ApprovalDecisionByUserId=r.IsDBNull(15)?null:r.GetInt64(15), ApprovalDecisionAtUtc=ParseUtc(r,16), ApprovalComment=r.IsDBNull(17)?null:r.GetString(17), ReleasedByUserId=r.IsDBNull(18)?null:r.GetInt64(18), ReleasedAtUtc=ParseUtc(r,19), CancelledByUserId=r.IsDBNull(20)?null:r.GetInt64(20), CancelledAtUtc=ParseUtc(r,21), CancelReason=r.IsDBNull(22)?null:r.GetString(22), Version=r.GetInt64(23) };
 	private static SalesOrderLine ReadLine(DbDataReader r) => new() { Id=r.GetInt64(0), SalesOrderId=r.GetInt64(1), LineNumber=r.GetInt32(2), ItemId=r.GetInt64(3), PartNumber=r.GetString(4), Description=r.GetString(5), Quantity=r.GetInt32(6), UnitPrice=r.GetDecimal(7), DiscountPercent=r.GetDecimal(8), TaxRate=r.GetDecimal(9), ReservedQuantity=r.GetInt32(10), ShippedQuantity=r.GetInt32(11), InvoicedQuantity=r.GetInt32(12), Version=r.GetInt64(13) };
 	private static string Date(DateTime value) => value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
 	private static object? Date(DateTime? value) => value is null ? null : Date(value.Value);
