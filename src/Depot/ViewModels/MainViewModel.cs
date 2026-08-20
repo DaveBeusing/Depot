@@ -32,7 +32,13 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 	private readonly Lazy<PurchaseOrdersPageViewModel> _purchaseOrdersPage;
 	private readonly Lazy<GoodsReceiptsPageViewModel> _goodsReceiptsPage;
 	private readonly Lazy<PurchaseOrderApprovalsViewModel> _purchaseOrderApprovals;
-	private readonly Lazy<SalesViewModel> _sales;
+	private readonly Lazy<SalesViewModel> _salesSearch;
+	private readonly Lazy<SalesOverviewViewModel> _salesOverview;
+	private readonly Lazy<CustomersViewModel> _salesCustomers;
+	private readonly Lazy<SalesOrdersViewModel> _salesOrders;
+	private readonly Lazy<SalesApprovalsViewModel> _salesApprovals;
+	private readonly Lazy<ShippingViewModel> _salesShipping;
+	private readonly Lazy<SalesInvoicesViewModel> _salesInvoices;
 	private readonly Lazy<ReportsViewModel> _reports;
 	private readonly Lazy<ImportViewModel> _import;
 	private readonly Lazy<AdministrationViewModel> _administration;
@@ -103,6 +109,8 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		HelpCommand = new RelayCommand(() => _ = OpenHelpAsync());
 		NotificationCommand = new RelayCommand(() => _ = OpenNotificationsAsync());
 
+		SalesViewModel CreateSalesWorkspace() => new(customerService, salesOrderService, shipmentService, salesInvoiceService, itemService, authorizationService, fileDialogService, new SalesDocumentService());
+
 		_dashboard = new(() => new DashboardViewModel(dashboardService));
 		_inventory = new(() => new InventoryViewModel(stockService));
 		_items = new(() => new ItemsViewModel(itemService, manufacturerService, categoryService, unitOfMeasureService, packagingService));
@@ -116,7 +124,13 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		_purchaseOrdersPage = new(() => new PurchaseOrdersPageViewModel(_procurement.Value));
 		_goodsReceiptsPage = new(() => new GoodsReceiptsPageViewModel(_procurement.Value));
 		_purchaseOrderApprovals = new(() => new PurchaseOrderApprovalsViewModel(purchaseOrderApprovalService, fileDialogService));
-		_sales = new(() => new SalesViewModel(customerService, salesOrderService, shipmentService, salesInvoiceService, itemService, authorizationService, fileDialogService, new SalesDocumentService()));
+		_salesSearch = new(CreateSalesWorkspace);
+		_salesOverview = new(() => new SalesOverviewViewModel(CreateSalesWorkspace()));
+		_salesCustomers = new(() => new CustomersViewModel(CreateSalesWorkspace()));
+		_salesOrders = new(() => new SalesOrdersViewModel(CreateSalesWorkspace()));
+		_salesApprovals = new(() => new SalesApprovalsViewModel(CreateSalesWorkspace()));
+		_salesShipping = new(() => new ShippingViewModel(CreateSalesWorkspace()));
+		_salesInvoices = new(() => new SalesInvoicesViewModel(CreateSalesWorkspace()));
 		_reports = new(() => new ReportsViewModel(reportService, fileDialogService));
 		_import = new(() => new ImportViewModel(importService, fileDialogService));
 		_administration = new(() => new AdministrationViewModel(
@@ -154,7 +168,13 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 	public PurchaseOrdersPageViewModel PurchaseOrdersPageViewModel => _purchaseOrdersPage.Value;
 	public GoodsReceiptsPageViewModel GoodsReceiptsPageViewModel => _goodsReceiptsPage.Value;
 	public PurchaseOrderApprovalsViewModel PurchaseOrderApprovalsViewModel => _purchaseOrderApprovals.Value;
-	public SalesViewModel SalesViewModel => _sales.Value;
+	public SalesViewModel SalesViewModel => _salesSearch.Value;
+	public SalesOverviewViewModel SalesOverviewViewModel => _salesOverview.Value;
+	public CustomersViewModel CustomersViewModel => _salesCustomers.Value;
+	public SalesOrdersViewModel SalesOrdersViewModel => _salesOrders.Value;
+	public SalesApprovalsViewModel SalesApprovalsViewModel => _salesApprovals.Value;
+	public ShippingViewModel ShippingViewModel => _salesShipping.Value;
+	public SalesInvoicesViewModel SalesInvoicesViewModel => _salesInvoices.Value;
 	public ReportsViewModel ReportsViewModel => _reports.Value;
 	public ImportViewModel ImportViewModel => _import.Value;
 	public AdministrationViewModel AdministrationViewModel => _administration.Value;
@@ -265,6 +285,20 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		if (_notificationCenter.IsValueCreated) _notificationCenter.Value.SetApplicationActive(isActive);
 	}
 
+	public async Task OpenSalesQuickItemAsync(SalesQuickOpenItem item, CancellationToken cancellationToken = default)
+	{
+		var (pageName, workspace) = item.Kind switch
+		{
+			SalesQuickOpenKind.Customer => ("Customers", CustomersViewModel.Workspace),
+			SalesQuickOpenKind.SalesOrder => ("Sales Orders", SalesOrdersViewModel.Workspace),
+			SalesQuickOpenKind.Shipment or SalesQuickOpenKind.CustomerReturn => ("Shipping", ShippingViewModel.Workspace),
+			SalesQuickOpenKind.Invoice or SalesQuickOpenKind.CreditNote => ("Invoices", SalesInvoicesViewModel.Workspace),
+			_ => ("Overview", SalesOverviewViewModel.Workspace)
+		};
+		await NavigateToModulePageAsync("Sales", pageName, cancellationToken);
+		await workspace.OpenQuickItemAsync(item, cancellationToken);
+	}
+
 	private void BuildNavigation()
 	{
 		AddDirect(ApplicationPermission.DashboardView, "Dashboard", Icons.Dashboard, () => _dashboard.Value, (viewModel, token) => viewModel.LoadAsync(token), HelpService.FallbackTopicId);
@@ -292,12 +326,12 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		}
 
 		var salesPages = new List<SecondaryNavigationItem>();
-		AddSalesPage(salesPages, ApplicationPermission.SalesView, "Overview", SalesSection.Overview, "sales.overview");
-		AddSalesPage(salesPages, ApplicationPermission.CustomersView, "Customers", SalesSection.Customers, "sales.customers");
-		AddSalesPage(salesPages, ApplicationPermission.SalesOrdersView, "Sales Orders", SalesSection.SalesOrders, "sales.orders");
-		AddSalesPage(salesPages, ApplicationPermission.SalesOrdersApprove, "Approvals", SalesSection.Approvals, "sales.approvals");
-		AddSalesPage(salesPages, ApplicationPermission.ShipmentsView, "Shipping", SalesSection.Shipping, "sales.shipping");
-		AddSalesPage(salesPages, ApplicationPermission.SalesInvoicesView, "Invoices", SalesSection.Invoices, "sales.invoices");
+		AddPage(salesPages, ApplicationPermission.SalesView, "Overview", () => _salesOverview.Value, (viewModel, token) => viewModel.LoadAsync(token), "sales.overview");
+		AddPage(salesPages, ApplicationPermission.CustomersView, "Customers", () => _salesCustomers.Value, (viewModel, token) => viewModel.LoadAsync(token), "sales.customers");
+		AddPage(salesPages, ApplicationPermission.SalesOrdersView, "Sales Orders", () => _salesOrders.Value, (viewModel, token) => viewModel.LoadAsync(token), "sales.orders");
+		AddPage(salesPages, ApplicationPermission.SalesOrdersApprove, "Approvals", () => _salesApprovals.Value, (viewModel, token) => viewModel.LoadAsync(token), "sales.approvals");
+		AddPage(salesPages, ApplicationPermission.ShipmentsView, "Shipping", () => _salesShipping.Value, (viewModel, token) => viewModel.LoadAsync(token), "sales.shipping");
+		AddPage(salesPages, ApplicationPermission.SalesInvoicesView, "Invoices", () => _salesInvoices.Value, (viewModel, token) => viewModel.LoadAsync(token), "sales.invoices");
 		AddModule("Sales", Icons.Sales, "Manage customers, sales orders, fulfillment, shipping, and invoicing.", salesPages);
 
 		AddDirect(ApplicationPermission.PurchaseOrdersApprove, "Approvals", Icons.Approvals, () => _purchaseOrderApprovals.Value, (viewModel, token) => viewModel.LoadAsync(token), "approvals.queue");
@@ -322,19 +356,6 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 	{
 		if (!_authorization.HasPermission(permission)) return;
 		pages.Add(new SecondaryNavigationItem(name, () => createContent(), (viewModel, token) => loadAsync((TViewModel)viewModel, token), helpTopicId, activate));
-	}
-
-	private void AddSalesPage(ICollection<SecondaryNavigationItem> pages, ApplicationPermission permission, string name, SalesSection section, string helpTopicId)
-	{
-		if (!_authorization.HasPermission(permission)) return;
-		pages.Add(new SecondaryNavigationItem(
-			name,
-			() => _sales.Value,
-			(viewModel, token) => ((SalesViewModel)viewModel).LoadAsync(token),
-			helpTopicId,
-			activate: () => _sales.Value.Section = section,
-			ownsContent: false,
-			alwaysActivate: true));
 	}
 
 	private void AddModule(string name, string icon, string subtitle, IReadOnlyCollection<SecondaryNavigationItem> pages, bool isSeparated = false)
@@ -432,23 +453,20 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 				break;
 			case NotificationSourceTypes.SalesOrder:
 				if (target.SourceId is not long salesOrderId) throw new InvalidOperationException("The sales-order reference is invalid.");
-				await NavigateToModulePageAsync("Sales", "Sales Orders", cancellationToken);
-				await SalesViewModel.OpenQuickItemAsync(new SalesQuickOpenItem(SalesQuickOpenKind.SalesOrder, salesOrderId, target.SourceNumber ?? string.Empty, string.Empty), cancellationToken);
+				await OpenSalesQuickItemAsync(new SalesQuickOpenItem(SalesQuickOpenKind.SalesOrder, salesOrderId, target.SourceNumber ?? string.Empty, string.Empty), cancellationToken);
 				break;
 			case NotificationSourceTypes.SalesOrderApproval:
 				if (target.SourceId is not long salesApprovalId) throw new InvalidOperationException("The sales-order approval reference is invalid.");
 				await NavigateToModulePageAsync("Sales", "Approvals", cancellationToken);
-				await SalesViewModel.OpenQuickItemAsync(new SalesQuickOpenItem(SalesQuickOpenKind.SalesOrder, salesApprovalId, target.SourceNumber ?? string.Empty, string.Empty), cancellationToken);
+				await SalesApprovalsViewModel.Workspace.OpenQuickItemAsync(new SalesQuickOpenItem(SalesQuickOpenKind.SalesOrder, salesApprovalId, target.SourceNumber ?? string.Empty, string.Empty), cancellationToken);
 				break;
 			case NotificationSourceTypes.Shipment:
 				if (target.SourceId is not long shipmentId) throw new InvalidOperationException("The shipment reference is invalid.");
-				await NavigateToModulePageAsync("Sales", "Shipping", cancellationToken);
-				await SalesViewModel.OpenQuickItemAsync(new SalesQuickOpenItem(SalesQuickOpenKind.Shipment, shipmentId, target.SourceNumber ?? string.Empty, string.Empty), cancellationToken);
+				await OpenSalesQuickItemAsync(new SalesQuickOpenItem(SalesQuickOpenKind.Shipment, shipmentId, target.SourceNumber ?? string.Empty, string.Empty), cancellationToken);
 				break;
 			case NotificationSourceTypes.SalesInvoice:
 				if (target.SourceId is not long invoiceId) throw new InvalidOperationException("The sales-invoice reference is invalid.");
-				await NavigateToModulePageAsync("Sales", "Invoices", cancellationToken);
-				await SalesViewModel.OpenQuickItemAsync(new SalesQuickOpenItem(SalesQuickOpenKind.Invoice, invoiceId, target.SourceNumber ?? string.Empty, string.Empty), cancellationToken);
+				await OpenSalesQuickItemAsync(new SalesQuickOpenItem(SalesQuickOpenKind.Invoice, invoiceId, target.SourceNumber ?? string.Empty, string.Empty), cancellationToken);
 				break;
 		}
 	}
@@ -489,7 +507,13 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 			item.Dispose();
 		}
 		if (_procurement.IsValueCreated) _procurement.Value.Dispose();
-		if (_sales.IsValueCreated) _sales.Value.Dispose();
+		if (_salesSearch.IsValueCreated) _salesSearch.Value.Dispose();
+		if (_salesOverview.IsValueCreated) _salesOverview.Value.Dispose();
+		if (_salesCustomers.IsValueCreated) _salesCustomers.Value.Dispose();
+		if (_salesOrders.IsValueCreated) _salesOrders.Value.Dispose();
+		if (_salesApprovals.IsValueCreated) _salesApprovals.Value.Dispose();
+		if (_salesShipping.IsValueCreated) _salesShipping.Value.Dispose();
+		if (_salesInvoices.IsValueCreated) _salesInvoices.Value.Dispose();
 		if (_help.IsValueCreated) { _help.Value.CloseRequested -= OnHelpCloseRequested; _help.Value.Dispose(); }
 		if (_notificationCenter.IsValueCreated) { _notificationCenter.Value.CloseRequested -= OnNotificationCloseRequested; _notificationCenter.Value.Dispose(); }
 	}
