@@ -1,21 +1,23 @@
 # Sales Orders
 
-Sales orders define the customer demand, prices, addresses and quantities that drive reservation, shipping and invoicing.
+Sales orders define customer demand, prices, address snapshots and quantities that drive reservation, shipping and invoicing.
 
 ## Workflow
 
-A new order starts as **Draft**. Select the customer, then select the billing and shipping addresses for this order. Depot copies those addresses into the order as snapshots. Later changes to the customer master record do not alter an existing order, shipment or invoice.
+A new order starts as **Draft**. Select the customer and the billing/shipping addresses for the order. Depot stores those addresses as snapshots so later customer changes do not alter existing documents.
 
-Add items, quantities, unit prices, discounts and tax rates, then save and submit the order. Submitted orders move to **Pending Approval** and cannot be edited until rejected and reopened.
+Add items, quantities, prices, discounts and tax rates. If the customer has an assigned price list, select an item and use **Apply customer price** to load the valid customer price and discount for the order date.
 
-After approval, reserve inventory against one or more order lines. Depot shows **Ordered**, **Reserved**, **Backorder**, **Shipped** and **Invoiced** quantities so the fulfillment state is visible per line.
+Save and submit the order. Submitted orders move to **Pending Approval**. After approval, reserve inventory against one or more lines and release the available quantity for fulfillment.
 
-## Partial release and backorders
+## Allocation and backorders
 
-An approved order can be released once at least one quantity is reserved. A full reservation is not required. Unreserved quantities remain as backorders and can be reserved later while the order is Released or Partially Shipped.
+Depot shows **Ordered**, **Reserved**, **Backorder**, **Shipped** and **Invoiced** quantities per line. An approved order can be released with a partial reservation. Unreserved demand remains a backorder and can be allocated later.
 
-When an order is released with an outstanding backorder, Depot creates a workflow notification for Sales users so the missing allocation is visible without repeatedly checking the order.
+Physical stock is not reduced by approval, reservation or release. Stock changes only when a packed shipment is posted.
 
-Physical stock is not reduced when an order is approved, reserved or released. Stock changes only when a shipment is posted.
+## Timeline
+
+The Order Timeline combines key lifecycle events in one view: creation, submission, approval, release, shipment posting/reversal, invoices, customer returns and credit notes. Use it to understand the operational history without manually joining separate documents.
 
 Unsaved draft changes are protected when you navigate away or close the workspace tab.
