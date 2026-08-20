@@ -31,8 +31,8 @@ public sealed class ShipmentPackingService
 			var before=await _shipments.GetByIdAsync(tx,shipmentId,ct)??throw new InvalidOperationException("Shipment was not found.");
 			if(before.Status!=ShipmentStatus.Draft)throw new InvalidOperationException("Only draft shipments can be packed.");
 			if(before.Version!=version)throw new ConcurrencyConflictException("shipment");
-			var packedAt=status==ShipmentPackingStatus.Packed?DateTime.UtcNow:null;
-			var packedBy=status==ShipmentPackingStatus.Packed?user.Id:null;
+			DateTime? packedAt=status==ShipmentPackingStatus.Packed?DateTime.UtcNow:null;
+			long? packedBy=status==ShipmentPackingStatus.Packed?user.Id:null;
 			if(!await _shipments.SetPackingStatusAsync(tx,shipmentId,version,status,packedBy,packedAt,ct))throw new ConcurrencyConflictException("shipment");
 			var after=await _shipments.GetByIdAsync(tx,shipmentId,ct)??throw new InvalidOperationException("Shipment could not be reloaded.");
 			await _auditEntries.CreateAsync(tx,_audit.CreateUpdatedEntry(shipmentId,before,after),ct);
