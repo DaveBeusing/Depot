@@ -21,13 +21,7 @@ internal sealed class ServiceComposition
 		AuditLog = new AuditLogService(repositories.Audit, Authorization, new AuditJsonSanitizer());
 		var audit = new AuditService(repositories.Audit, Authorization);
 		var passwordHasher = new PasswordHasher();
-		var movementReversals = new StockMovementReversalService(
-			database.TransactionRunner,
-			repositories.Inventories,
-			repositories.StockMovements,
-			repositories.ReasonCodes,
-			repositories.Audit,
-			audit);
+		var movementReversals = new StockMovementReversalService(database.TransactionRunner,repositories.Inventories,repositories.StockMovements,repositories.ReasonCodes,repositories.Audit,audit);
 
 		Authentication = new AuthenticationService(repositories.Users, repositories.Roles, passwordHasher, Authorization);
 		Session = new SessionService(Authorization);
@@ -49,10 +43,14 @@ internal sealed class ServiceComposition
 		SupplierReturns = new SupplierReturnService(database.TransactionRunner, repositories.SupplierReturns, repositories.PurchaseOrders, repositories.GoodsReceipts, repositories.Inventories, repositories.StockMovements, repositories.ReasonCodes, repositories.Audit, audit, movementReversals, Authorization);
 
 		Customers = new CustomerService(repositories.Customers, audit, Authorization);
+		SalesPricing = new SalesPricingService(repositories.SalesPriceLists, audit, Authorization);
+		SalesTimeline = new SalesTimelineService(repositories.SalesTimeline, Authorization);
 		SalesOrders = new SalesOrderService(database.TransactionRunner, repositories.SalesOrders, repositories.Customers, repositories.Items, repositories.Inventories, repositories.InventoryReservations, repositories.StockMovements, repositories.Audit, audit, Authorization, Notifications);
+		SalesQuotes = new SalesQuoteService(repositories.SalesQuotes, repositories.Customers, SalesOrders, audit, Authorization);
 		CustomerReturns = new CustomerReturnService(database.TransactionRunner, repositories.CustomerReturns, repositories.Shipments, repositories.StockMovements, repositories.Audit, audit, Authorization, Notifications);
 		SalesCreditNotes = new SalesCreditNoteService(database.TransactionRunner, repositories.SalesCreditNotes, repositories.SalesInvoices, repositories.Audit, audit, Authorization, Notifications);
 		Shipments = new ShipmentService(database.TransactionRunner, repositories.Shipments, repositories.SalesOrders, repositories.InventoryReservations, repositories.Inventories, repositories.StockMovements, repositories.SalesInvoices, CustomerReturns, repositories.Audit, audit, Authorization, Notifications);
+		ShipmentPacking = new ShipmentPackingService(database.TransactionRunner, repositories.Shipments, repositories.Audit, audit, Authorization);
 		SalesInvoices = new SalesInvoiceService(database.TransactionRunner, repositories.SalesInvoices, repositories.Shipments, repositories.SalesOrders, repositories.Customers, repositories.Audit, audit, Authorization, Notifications, SalesCreditNotes);
 
 		Items = new ItemService(repositories.Items, audit, Manufacturers, Categories, UnitsOfMeasure, Packagings, repositories.SupplierItems);
@@ -99,8 +97,12 @@ internal sealed class ServiceComposition
 	public MaterialReturnService MaterialReturns { get; }
 	public SupplierReturnService SupplierReturns { get; }
 	public CustomerService Customers { get; }
+	public SalesPricingService SalesPricing { get; }
+	public SalesTimelineService SalesTimeline { get; }
 	public SalesOrderService SalesOrders { get; }
+	public SalesQuoteService SalesQuotes { get; }
 	public ShipmentService Shipments { get; }
+	public ShipmentPackingService ShipmentPacking { get; }
 	public SalesInvoiceService SalesInvoices { get; }
 	public CustomerReturnService CustomerReturns { get; }
 	public SalesCreditNoteService SalesCreditNotes { get; }
