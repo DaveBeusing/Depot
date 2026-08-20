@@ -9,7 +9,7 @@ namespace Depot.Data;
 
 public static class SalesSchemaMigration
 {
-	public const int CurrentVersion = 4;
+	public const int CurrentVersion = 5;
 	private const string FeatureName = "Sales";
 
 	public static void Migrate(IDatabaseConnectionFactory connectionFactory)
@@ -45,6 +45,13 @@ public static class SalesSchemaMigration
 			SalesReservationSchema.Ensure(connectionFactory);
 			WriteVersion(connectionFactory, 4);
 			version = 4;
+		}
+
+		if (version == 4)
+		{
+			SalesOrderAddressSnapshotSchema.Ensure(connectionFactory);
+			WriteVersion(connectionFactory, 5);
+			version = 5;
 		}
 
 		if (version != CurrentVersion)
