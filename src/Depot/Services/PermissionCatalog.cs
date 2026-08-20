@@ -7,7 +7,7 @@ public static class PermissionCatalog
 {
 	private static readonly string[] Actions =
 	[
-		"Reverse", "Approve", "Create", "Manage", "Submit", "Release", "Cancel", "Export", "Order", "Close", "Edit", "Post", "View"
+		"Reverse", "Approve", "Create", "Manage", "Submit", "Release", "Cancel", "Convert", "Send", "Export", "Order", "Close", "Edit", "Post", "View"
 	];
 	private static readonly IReadOnlyList<PermissionDefinition> DefinitionsValue =
 		Enum.GetValues<ApplicationPermission>()
@@ -22,7 +22,6 @@ public static class PermissionCatalog
 	public static IReadOnlySet<ApplicationPermission> All { get; } = DefinitionsValue.Select(value => value.Permission).ToHashSet();
 
 	public static string Code(ApplicationPermission permission) => ByPermission[permission].Code;
-
 	public static bool TryParse(string code, out ApplicationPermission permission) => ByCode.TryGetValue(code, out permission);
 
 	private static PermissionDefinition CreateDefinition(ApplicationPermission permission)
@@ -45,5 +44,4 @@ public static class PermissionCatalog
 
 	private static string SplitWords(string value) =>
 		string.Concat(value.Select((character, index) => index > 0 && char.IsUpper(character) ? $" {character}" : character.ToString()));
-
 }
