@@ -2,10 +2,10 @@
 	<PropertyGroup>
 		<DepotVersionMajor>0</DepotVersionMajor>
 		<DepotVersionMinor>14</DepotVersionMinor>
-		<DepotVersionPatch>3</DepotVersionPatch>
+		<DepotVersionPatch>4</DepotVersionPatch>
 		<DepotVersionBuild Condition="'$(DepotVersionBuild)' == ''">0</DepotVersionBuild>
 		<DepotVersionSuffix Condition="'$(DepotVersionSuffix)' == ''">preview</DepotVersionSuffix>
-		<VersionPrefix>$(DepotVersionMajor).$(DepotVersionMinor).$(DepotVersionBuild)</VersionPrefix>
+		<VersionPrefix>$(DepotVersionMajor).$(DepotVersionMinor).$(DepotVersionPatch)</VersionPrefix>
 		<VersionSuffix Condition="'$(DepotStableRelease)' != 'true'">$(DepotVersionSuffix)</VersionSuffix>
 		<AssemblyVersion>$(DepotVersionMajor).$(DepotVersionMinor).0.0</AssemblyVersion>
 		<FileVersion>$(DepotVersionMajor).$(DepotVersionMinor).$(DepotVersionPatch).$(DepotVersionBuild)</FileVersion>

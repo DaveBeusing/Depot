@@ -33,6 +33,19 @@ public sealed class ShellNavigationTests
 	}
 
 	[Fact]
+	public void CommercialWorkspacePermissionsRemainPartOfThePermissionCatalog()
+	{
+		Assert.Contains(ApplicationPermission.SalesView, PermissionCatalog.All);
+		Assert.Contains(ApplicationPermission.SalesQuotesView, PermissionCatalog.All);
+		Assert.Contains(ApplicationPermission.SalesPricingView, PermissionCatalog.All);
+		Assert.Contains(ApplicationPermission.CustomersView, PermissionCatalog.All);
+		Assert.Contains(ApplicationPermission.SalesOrdersView, PermissionCatalog.All);
+		Assert.Contains(ApplicationPermission.SalesOrdersApprove, PermissionCatalog.All);
+		Assert.Contains(ApplicationPermission.SalesInvoicesView, PermissionCatalog.All);
+		Assert.Contains(ApplicationPermission.ShipmentsView, PermissionCatalog.All);
+	}
+
+	[Fact]
 	public void ModuleKeepsItsSelectedSecondaryPage()
 	{
 		var first = new SecondaryNavigationItem("First", () => new StubViewModel(), (_, _) => Task.CompletedTask, "first");
