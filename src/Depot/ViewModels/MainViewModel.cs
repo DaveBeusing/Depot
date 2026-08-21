@@ -34,6 +34,8 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 	private readonly Lazy<PurchaseOrderApprovalsViewModel> _purchaseOrderApprovals;
 	private readonly Lazy<SalesViewModel> _salesSearch;
 	private readonly Lazy<SalesOverviewViewModel> _salesOverview;
+	private readonly Lazy<SalesQuotesViewModel> _salesQuotes;
+	private readonly Lazy<SalesPricingViewModel> _salesPricing;
 	private readonly Lazy<CustomersViewModel> _salesCustomers;
 	private readonly Lazy<SalesOrdersViewModel> _salesOrders;
 	private readonly Lazy<SalesApprovalsViewModel> _salesApprovals;
@@ -126,6 +128,8 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		_purchaseOrderApprovals = new(() => new PurchaseOrderApprovalsViewModel(purchaseOrderApprovalService, fileDialogService));
 		_salesSearch = new(CreateSalesWorkspace);
 		_salesOverview = new(() => new SalesOverviewViewModel(CreateSalesWorkspace()));
+		_salesQuotes = new(() => new SalesQuotesViewModel(SalesCommercialContext.Quotes, SalesCommercialContext.Pricing, SalesCommercialContext.Customers, SalesCommercialContext.Items, SalesCommercialContext.FileDialogs, SalesCommercialContext.Documents));
+		_salesPricing = new(() => new SalesPricingViewModel(SalesCommercialContext.Pricing, SalesCommercialContext.Customers, SalesCommercialContext.Items));
 		_salesCustomers = new(() => new CustomersViewModel(CreateSalesWorkspace()));
 		_salesOrders = new(() => new SalesOrdersViewModel(CreateSalesWorkspace()));
 		_salesApprovals = new(() => new SalesApprovalsViewModel(CreateSalesWorkspace()));
@@ -170,6 +174,8 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 	public PurchaseOrderApprovalsViewModel PurchaseOrderApprovalsViewModel => _purchaseOrderApprovals.Value;
 	public SalesViewModel SalesViewModel => _salesSearch.Value;
 	public SalesOverviewViewModel SalesOverviewViewModel => _salesOverview.Value;
+	public SalesQuotesViewModel SalesQuotesViewModel => _salesQuotes.Value;
+	public SalesPricingViewModel SalesPricingViewModel => _salesPricing.Value;
 	public CustomersViewModel CustomersViewModel => _salesCustomers.Value;
 	public SalesOrdersViewModel SalesOrdersViewModel => _salesOrders.Value;
 	public SalesApprovalsViewModel SalesApprovalsViewModel => _salesApprovals.Value;
@@ -328,13 +334,18 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 
 		var salesPages = new List<SecondaryNavigationItem>();
 		AddPage(salesPages, ApplicationPermission.SalesView, "Overview", () => _salesOverview.Value, (viewModel, token) => viewModel.LoadAsync(token), "sales.overview");
+		AddPage(salesPages, ApplicationPermission.SalesQuotesView, "Quotes", () => _salesQuotes.Value, (viewModel, token) => viewModel.LoadAsync(token), "sales.quotes");
+		AddPage(salesPages, ApplicationPermission.SalesPricingView, "Pricing", () => _salesPricing.Value, (viewModel, token) => viewModel.LoadAsync(token), "sales.pricing");
 		AddPage(salesPages, ApplicationPermission.CustomersView, "Customers", () => _salesCustomers.Value, (viewModel, token) => viewModel.LoadAsync(token), "sales.customers");
 		AddPage(salesPages, ApplicationPermission.SalesOrdersView, "Sales Orders", () => _salesOrders.Value, (viewModel, token) => viewModel.LoadAsync(token), "sales.orders");
-		AddPage(salesPages, ApplicationPermission.SalesOrdersApprove, "Approvals", () => _salesApprovals.Value, (viewModel, token) => viewModel.LoadAsync(token), "sales.approvals");
 		AddPage(salesPages, ApplicationPermission.SalesInvoicesView, "Invoices", () => _salesInvoices.Value, (viewModel, token) => viewModel.LoadAsync(token), "sales.invoices");
-		AddModule("Sales", Icons.Sales, "Manage customers, sales orders, fulfillment, and invoicing.", salesPages);
+		AddModule("Sales", Icons.Sales, "Manage quotes, pricing, customers, sales orders, and invoicing.", salesPages);
 
-		AddDirect(ApplicationPermission.PurchaseOrdersApprove, "Approvals", Icons.Approvals, () => _purchaseOrderApprovals.Value, (viewModel, token) => viewModel.LoadAsync(token), "approvals.queue");
+		var approvalPages = new List<SecondaryNavigationItem>();
+		AddPage(approvalPages, ApplicationPermission.PurchaseOrdersApprove, "Purchase Approvals", () => _purchaseOrderApprovals.Value, (viewModel, token) => viewModel.LoadAsync(token), "approvals.purchase");
+		AddPage(approvalPages, ApplicationPermission.SalesOrdersApprove, "Sales Approvals", () => _salesApprovals.Value, (viewModel, token) => viewModel.LoadAsync(token), "approvals.sales");
+		AddModule("Approvals", Icons.Approvals, "Review and decide pending purchase and sales approvals.", approvalPages);
+
 		AddDirect(ApplicationPermission.ReportsView, "Reports", Icons.Reports, () => _reports.Value, (viewModel, token) => viewModel.LoadAsync(token), "reports.overview");
 		if (HasAdministrationPages())
 		{
@@ -439,7 +450,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 				break;
 			case NotificationSourceTypes.PurchaseOrderApproval:
 				if (target.SourceId is not long approvalId) throw new InvalidOperationException("The approval reference is invalid.");
-				await NavigateToDirectAsync("Approvals", cancellationToken);
+				await NavigateToModulePageAsync("Approvals", "Purchase Approvals", cancellationToken);
 				await PurchaseOrderApprovalsViewModel.OpenApprovalAsync(approvalId, cancellationToken);
 				break;
 			case NotificationSourceTypes.InventoryCount:
@@ -457,7 +468,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 				break;
 			case NotificationSourceTypes.SalesOrderApproval:
 				if (target.SourceId is not long salesApprovalId) throw new InvalidOperationException("The sales-order approval reference is invalid.");
-				await NavigateToModulePageAsync("Sales", "Approvals", cancellationToken);
+				await NavigateToModulePageAsync("Approvals", "Sales Approvals", cancellationToken);
 				await SalesApprovalsViewModel.Workspace.OpenQuickItemAsync(new SalesQuickOpenItem(SalesQuickOpenKind.SalesOrder, salesApprovalId, target.SourceNumber ?? string.Empty, string.Empty), cancellationToken);
 				break;
 			case NotificationSourceTypes.Shipment:
@@ -517,6 +528,8 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		if (_procurement.IsValueCreated) _procurement.Value.Dispose();
 		if (_salesSearch.IsValueCreated) _salesSearch.Value.Dispose();
 		if (_salesOverview.IsValueCreated) _salesOverview.Value.Dispose();
+		if (_salesQuotes.IsValueCreated) _salesQuotes.Value.Dispose();
+		if (_salesPricing.IsValueCreated) _salesPricing.Value.Dispose();
 		if (_salesCustomers.IsValueCreated) _salesCustomers.Value.Dispose();
 		if (_salesOrders.IsValueCreated) _salesOrders.Value.Dispose();
 		if (_salesApprovals.IsValueCreated) _salesApprovals.Value.Dispose();
