@@ -3,7 +3,7 @@
 
 namespace Depot.ViewModels;
 
-public sealed class ShellNavigationItem : IDisposable
+public class ShellNavigationItem : IDisposable
 {
 	private readonly Lazy<BaseViewModel> _content;
 	private readonly Func<BaseViewModel, CancellationToken, Task> _loadAsync;
@@ -19,7 +19,10 @@ public sealed class ShellNavigationItem : IDisposable
 		string helpTopicId,
 		bool isSeparated = false,
 		bool ownsLoadState = true,
-		Func<BaseViewModel, CancellationToken, Task>? refreshAsync = null)
+		Func<BaseViewModel, CancellationToken, Task>? refreshAsync = null,
+		ShellRoute? route = null,
+		string? tabKey = null,
+		bool isDocument = false)
 	{
 		Name = name;
 		IconData = iconData;
@@ -29,6 +32,9 @@ public sealed class ShellNavigationItem : IDisposable
 		_ownsLoadState = ownsLoadState;
 		HelpTopicId = helpTopicId;
 		IsSeparated = isSeparated;
+		Route = route ?? ShellRoute.FromName(name);
+		TabKey = string.IsNullOrWhiteSpace(tabKey) ? Route.Value : tabKey.Trim();
+		IsDocument = isDocument;
 	}
 
 	public string Name { get; }
@@ -37,6 +43,9 @@ public sealed class ShellNavigationItem : IDisposable
 	public bool IsContentCreated => _content.IsValueCreated;
 	public string HelpTopicId { get; }
 	public bool IsSeparated { get; }
+	public ShellRoute Route { get; }
+	public string TabKey { get; }
+	public bool IsDocument { get; }
 	public NavigationLoadStatus LoadStatus => _loadState.Status;
 
 	public Task ActivateAsync(CancellationToken cancellationToken = default) => _ownsLoadState

@@ -19,7 +19,8 @@ public sealed class SecondaryNavigationItem : IDisposable
 		Action? activate = null,
 		bool ownsContent = true,
 		bool alwaysActivate = false,
-		bool isVisible = true)
+		bool isVisible = true,
+		ShellRoute? route = null)
 	{
 		Name = name;
 		_content = new Lazy<BaseViewModel>(createContent);
@@ -29,12 +30,14 @@ public sealed class SecondaryNavigationItem : IDisposable
 		_ownsContent = ownsContent;
 		_alwaysActivate = alwaysActivate;
 		IsVisible = isVisible;
+		Route = route ?? new ShellRoute(helpTopicId);
 	}
 
 	public string Name { get; }
 	public BaseViewModel Content => _content.Value;
 	public bool IsContentCreated => _content.IsValueCreated;
 	public string HelpTopicId { get; }
+	public ShellRoute Route { get; }
 	public Action? Activate { get; }
 	public bool IsVisible { get; set; }
 	public NavigationLoadStatus LoadStatus => _loadState.Status;
