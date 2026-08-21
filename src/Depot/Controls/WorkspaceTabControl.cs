@@ -41,6 +41,25 @@ public sealed class WorkspaceTabControl : TabControl
 		set => SetValue(ActiveItemProperty, value);
 	}
 
+	public ShellNavigationItem OpenOrActivate(ShellNavigationItem item)
+	{
+		ArgumentNullException.ThrowIfNull(item);
+		var existing = Items.OfType<ShellNavigationItem>().FirstOrDefault(candidate =>
+			string.Equals(candidate.TabKey, item.TabKey, StringComparison.OrdinalIgnoreCase));
+		if (existing is not null)
+		{
+			if (!ReferenceEquals(existing, item)) item.Dispose();
+			SelectedItem = existing;
+			if (!ReferenceEquals(ActiveItem, existing)) SetCurrentValue(ActiveItemProperty, existing);
+			return existing;
+		}
+
+		Items.Add(item);
+		SelectedItem = item;
+		if (!ReferenceEquals(ActiveItem, item)) SetCurrentValue(ActiveItemProperty, item);
+		return item;
+	}
+
 	public void CloseActiveTab()
 	{
 		if (SelectedItem is ShellNavigationItem item) Close(item);
@@ -75,8 +94,7 @@ public sealed class WorkspaceTabControl : TabControl
 	private static void OnActiveItemChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs e)
 	{
 		if (dependencyObject is not WorkspaceTabControl control || e.NewValue is not ShellNavigationItem item) return;
-		if (!control.Items.Contains(item)) control.Items.Add(item);
-		control.SelectedItem = item;
+		control.OpenOrActivate(item);
 	}
 
 	private void OnCloseTabCanExecute(object sender, CanExecuteRoutedEventArgs e)
@@ -136,6 +154,7 @@ public sealed class WorkspaceTabControl : TabControl
 		if (index < 0 || Items.Count <= 1 || !CanClose(item)) return;
 		var wasSelected = ReferenceEquals(SelectedItem, item);
 		Items.Remove(item);
+		if (item.IsDocument) item.Dispose();
 		if (!wasSelected) return;
 		var nextIndex = index < Items.Count ? index : Items.Count - 1;
 		if (Items[nextIndex] is ShellNavigationItem next)
