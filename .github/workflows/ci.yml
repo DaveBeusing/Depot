@@ -7,8 +7,10 @@ on:
     branches: [ master ]
 
 jobs:
-  build-test:
+  build-publish:
+    name: Build and publish
     runs-on: windows-latest
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -24,12 +26,6 @@ jobs:
       - name: Build
         run: dotnet build Depot.slnx --configuration Release --no-restore
 
-      - name: Sales tests
-        run: dotnet test tests/Depot.Tests/Depot.Tests.csproj --configuration Release --no-build --filter "FullyQualifiedName~Sales" --blame-hang --blame-hang-timeout 90s --logger "console;verbosity=normal"
-
-      - name: Regression tests
-        run: dotnet test tests/Depot.Tests/Depot.Tests.csproj --configuration Release --no-build --filter "FullyQualifiedName!~Sales" --blame-hang --blame-hang-timeout 120s --logger "console;verbosity=normal"
-
       - name: Release single-file publish
         run: >-
           dotnet publish src/Depot/Depot.csproj
@@ -42,3 +38,39 @@ jobs:
           -p:DebugType=None
           -p:DebugSymbols=false
           -o artifacts/publish/win-x64
+
+  test:
+    name: Tests - ${{ matrix.name }}
+    runs-on: windows-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Sales
+            filter: FullyQualifiedName~Sales
+          - name: Inventory-Warehouse
+            filter: FullyQualifiedName~Inventory|FullyQualifiedName~StockTransfer|FullyQualifiedName~MaterialIssue|FullyQualifiedName~MaterialReturn|FullyQualifiedName~Shipment
+          - name: Purchasing
+            filter: FullyQualifiedName~Purchase|FullyQualifiedName~GoodsReceipt|FullyQualifiedName~SupplierReturn|FullyQualifiedName~Procurement
+          - name: Shell-UX
+            filter: FullyQualifiedName~Shell|FullyQualifiedName~Navigation|FullyQualifiedName~Help|FullyQualifiedName~Notification|FullyQualifiedName~ApplicationInformation
+          - name: Core-Persistence
+            filter: FullyQualifiedName!~Sales&FullyQualifiedName!~Inventory&FullyQualifiedName!~StockTransfer&FullyQualifiedName!~MaterialIssue&FullyQualifiedName!~MaterialReturn&FullyQualifiedName!~Shipment&FullyQualifiedName!~Purchase&FullyQualifiedName!~GoodsReceipt&FullyQualifiedName!~SupplierReturn&FullyQualifiedName!~Procurement&FullyQualifiedName!~Shell&FullyQualifiedName!~Navigation&FullyQualifiedName!~Help&FullyQualifiedName!~Notification&FullyQualifiedName!~ApplicationInformation
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore Depot.slnx
+
+      - name: Build tests
+        run: dotnet build tests/Depot.Tests/Depot.Tests.csproj --configuration Release --no-restore
+
+      - name: Run tests
+        run: dotnet test tests/Depot.Tests/Depot.Tests.csproj --configuration Release --no-build --filter "${{ matrix.filter }}" --blame-hang --blame-hang-timeout 120s --logger "console;verbosity=normal"
