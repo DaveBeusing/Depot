@@ -23,8 +23,8 @@ public sealed class HelpCenterTests
 		await service.ValidateAsync();
 		var catalog = await service.GetCatalogAsync();
 
-		Assert.Equal("1.0", catalog.Version);
-		Assert.Equal(20, catalog.Topics.Count);
+		Assert.Equal("1.4", catalog.Version);
+		Assert.Equal(29, catalog.Topics.Count);
 		Assert.Equal(catalog.Topics.Count, catalog.Topics.Select(topic => topic.Id).Distinct(StringComparer.Ordinal).Count());
 	}
 
@@ -36,7 +36,8 @@ public sealed class HelpCenterTests
 		var catalog = await service.GetCatalogAsync();
 
 		Assert.Contains(catalog.Topics, topic => topic.Id == "inventory.items");
-		Assert.DoesNotContain(catalog.Topics, topic => topic.Id == "approvals.queue");
+		Assert.Contains(catalog.Topics, topic => topic.Id == "approvals.queue");
+		Assert.DoesNotContain(catalog.Topics, topic => topic.Id == "sales.approvals");
 		Assert.Null(await service.GetTopicAsync("administration.database"));
 	}
 
@@ -61,7 +62,9 @@ public sealed class HelpCenterTests
 
 		var related = await service.GetRelatedTopicsAsync("inventory.items");
 
-		Assert.Empty(related);
+		Assert.Contains(related, topic => topic.Id == "getting-started.workspace-navigation");
+		Assert.DoesNotContain(related, topic => topic.Id == "purchasing.purchase-orders");
+		Assert.DoesNotContain(related, topic => topic.Id == "sales.orders");
 	}
 
 	[Fact]

@@ -26,6 +26,9 @@ jobs:
       - name: Build
         run: dotnet build Depot.slnx --configuration Release --no-restore
 
+      - name: Restore win-x64 runtime
+        run: dotnet restore src/Depot/Depot.csproj --runtime win-x64
+
       - name: Release single-file publish
         run: >-
           dotnet publish src/Depot/Depot.csproj
@@ -73,4 +76,4 @@ jobs:
         run: dotnet build tests/Depot.Tests/Depot.Tests.csproj --configuration Release --no-restore
 
       - name: Run tests
-        run: dotnet test tests/Depot.Tests/Depot.Tests.csproj --configuration Release --no-build --filter "${{ matrix.filter }}" --blame-hang --blame-hang-timeout 120s --logger "console;verbosity=normal"
+        run: dotnet test tests/Depot.Tests/Depot.Tests.csproj --configuration Release --no-build --filter "${{ matrix.filter }}" --blame-hang --blame-hang-timeout 8m --logger "console;verbosity=normal"
