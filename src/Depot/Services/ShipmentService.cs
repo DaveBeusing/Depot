@@ -111,6 +111,7 @@ public sealed class ShipmentService
 			var before = await _shipments.GetByIdAsync(transaction, id, token) ?? throw new InvalidOperationException("Shipment was not found.");
 			if (before.Version != version) throw new ConcurrencyConflictException("shipment");
 			if (before.Status != ShipmentStatus.Draft) throw new InvalidOperationException("Only a draft shipment can be posted.");
+			if (before.PackingStatus != ShipmentPackingStatus.Packed) throw new InvalidOperationException("Only a packed shipment can be posted.");
 			if (before.Lines.Count == 0) throw new InvalidOperationException("A shipment requires at least one line.");
 			var order = await _orders.GetByIdAsync(transaction, before.SalesOrderId, token) ?? throw new InvalidOperationException("Sales order was not found.");
 			if (order.Status is not (SalesOrderStatus.Released or SalesOrderStatus.PartiallyShipped)) throw new InvalidOperationException("The sales order is not available for shipping.");
