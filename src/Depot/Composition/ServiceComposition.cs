@@ -21,7 +21,13 @@ internal sealed class ServiceComposition
 		AuditLog = new AuditLogService(repositories.Audit, Authorization, new AuditJsonSanitizer());
 		var audit = new AuditService(repositories.Audit, Authorization);
 		var passwordHasher = new PasswordHasher();
-		var movementReversals = new StockMovementReversalService(database.TransactionRunner,repositories.Inventories,repositories.StockMovements,repositories.ReasonCodes,repositories.Audit,audit);
+		var movementReversals = new StockMovementReversalService(
+			database.TransactionRunner,
+			repositories.Inventories,
+			repositories.StockMovements,
+			repositories.ReasonCodes,
+			repositories.Audit,
+			audit);
 
 		Authentication = new AuthenticationService(repositories.Users, repositories.Roles, passwordHasher, Authorization);
 		Session = new SessionService(Authorization);
@@ -52,7 +58,8 @@ internal sealed class ServiceComposition
 		Shipments = new ShipmentService(database.TransactionRunner, repositories.Shipments, repositories.SalesOrders, repositories.InventoryReservations, repositories.Inventories, repositories.StockMovements, repositories.SalesInvoices, CustomerReturns, repositories.Audit, audit, Authorization, Notifications);
 		ShipmentPacking = new ShipmentPackingService(database.TransactionRunner, repositories.Shipments, repositories.Audit, audit, Authorization);
 		SalesInvoices = new SalesInvoiceService(database.TransactionRunner, repositories.SalesInvoices, repositories.Shipments, repositories.SalesOrders, repositories.Customers, repositories.Audit, audit, Authorization, Notifications, SalesCreditNotes);
-		SalesCommercialContext.Configure(SalesPricing, SalesTimeline, SalesQuotes, ShipmentPacking);
+		SalesDocuments = new SalesDocumentService();
+		SalesEmail = new SalesDocumentEmailService();
 
 		Items = new ItemService(repositories.Items, audit, Manufacturers, Categories, UnitsOfMeasure, Packagings, repositories.SupplierItems);
 		Purposes = new PurposeService(repositories.Purposes, audit);
@@ -67,6 +74,22 @@ internal sealed class ServiceComposition
 		Reports = new ReportService(Stock, Authorization);
 		var inventoryManagement = new InventoryManagementService(repositories.Inventories, audit);
 		Import = new ImportService(repositories.Items, Items, Purposes, Warehouses, StorageLocations, inventoryManagement, Movements, Authorization);
+
+		Sales = new SalesServices(
+			Customers,
+			SalesPricing,
+			SalesTimeline,
+			SalesOrders,
+			SalesQuotes,
+			Shipments,
+			ShipmentPacking,
+			SalesInvoices,
+			CustomerReturns,
+			SalesCreditNotes,
+			Items,
+			Authorization,
+			SalesDocuments,
+			SalesEmail);
 	}
 
 	public AuthorizationService Authorization { get; }
@@ -107,6 +130,9 @@ internal sealed class ServiceComposition
 	public SalesInvoiceService SalesInvoices { get; }
 	public CustomerReturnService CustomerReturns { get; }
 	public SalesCreditNoteService SalesCreditNotes { get; }
+	public SalesDocumentService SalesDocuments { get; }
+	public SalesDocumentEmailService SalesEmail { get; }
+	public SalesServices Sales { get; }
 	public WarehouseService Warehouses { get; }
 	public StorageLocationService StorageLocations { get; }
 	public UserService Users { get; }

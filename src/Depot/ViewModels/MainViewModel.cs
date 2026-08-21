@@ -78,10 +78,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		MaterialIssueService materialIssueService,
 		MaterialReturnService materialReturnService,
 		SupplierReturnService supplierReturnService,
-		CustomerService customerService,
-		SalesOrderService salesOrderService,
-		ShipmentService shipmentService,
-		SalesInvoiceService salesInvoiceService,
+		SalesServices salesServices,
 		WarehouseService warehouseService,
 		StorageLocationService storageLocationService,
 		UserService userService,
@@ -111,7 +108,15 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		HelpCommand = new RelayCommand(() => _ = OpenHelpAsync());
 		NotificationCommand = new RelayCommand(() => _ = OpenNotificationsAsync());
 
-		SalesViewModel CreateSalesWorkspace() => new(customerService, salesOrderService, shipmentService, salesInvoiceService, itemService, authorizationService, fileDialogService, new SalesDocumentService());
+		var salesWorkspace = new SalesViewModel(
+			salesServices.Customers,
+			salesServices.Orders,
+			salesServices.Shipments,
+			salesServices.Invoices,
+			salesServices.Items,
+			salesServices.Authorization,
+			fileDialogService,
+			salesServices.Documents);
 
 		_dashboard = new(() => new DashboardViewModel(dashboardService));
 		_inventory = new(() => new InventoryViewModel(stockService));
@@ -126,15 +131,15 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		_purchaseOrdersPage = new(() => new PurchaseOrdersPageViewModel(_procurement.Value));
 		_goodsReceiptsPage = new(() => new GoodsReceiptsPageViewModel(_procurement.Value));
 		_purchaseOrderApprovals = new(() => new PurchaseOrderApprovalsViewModel(purchaseOrderApprovalService, fileDialogService));
-		_salesSearch = new(CreateSalesWorkspace);
-		_salesOverview = new(() => new SalesOverviewViewModel(CreateSalesWorkspace()));
-		_salesQuotes = new(() => new SalesQuotesViewModel(SalesCommercialContext.Quotes, SalesCommercialContext.Pricing, SalesCommercialContext.Customers, SalesCommercialContext.Items, SalesCommercialContext.FileDialogs, SalesCommercialContext.Documents));
-		_salesPricing = new(() => new SalesPricingViewModel(SalesCommercialContext.Pricing, SalesCommercialContext.Customers, SalesCommercialContext.Items));
-		_salesCustomers = new(() => new CustomersViewModel(CreateSalesWorkspace()));
-		_salesOrders = new(() => new SalesOrdersViewModel(CreateSalesWorkspace()));
-		_salesApprovals = new(() => new SalesApprovalsViewModel(CreateSalesWorkspace()));
-		_salesShipping = new(() => new ShippingViewModel(CreateSalesWorkspace()));
-		_salesInvoices = new(() => new SalesInvoicesViewModel(CreateSalesWorkspace(), salesInvoiceService, fileDialogService, new SalesDocumentService()));
+		_salesSearch = new(() => salesWorkspace);
+		_salesOverview = new(() => new SalesOverviewViewModel(salesWorkspace));
+		_salesQuotes = new(() => new SalesQuotesViewModel(salesServices.Quotes, salesServices.Pricing, salesServices.Customers, salesServices.Items, fileDialogService, salesServices.Documents));
+		_salesPricing = new(() => new SalesPricingViewModel(salesServices.Pricing, salesServices.Customers, salesServices.Items));
+		_salesCustomers = new(() => new CustomersViewModel(salesWorkspace, salesServices.Customers));
+		_salesOrders = new(() => new SalesOrdersViewModel(salesWorkspace, salesServices.Pricing, salesServices.Timeline));
+		_salesApprovals = new(() => new SalesApprovalsViewModel(salesWorkspace));
+		_salesShipping = new(() => new ShippingViewModel(salesWorkspace, salesServices.Packing, fileDialogService, salesServices.Documents));
+		_salesInvoices = new(() => new SalesInvoicesViewModel(salesWorkspace, salesServices.Invoices, fileDialogService, salesServices.Documents, salesServices.Email));
 		_reports = new(() => new ReportsViewModel(reportService, fileDialogService));
 		_import = new(() => new ImportViewModel(importService, fileDialogService));
 		_administration = new(() => new AdministrationViewModel(
@@ -526,7 +531,6 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 			item.Dispose();
 		}
 		if (_procurement.IsValueCreated) _procurement.Value.Dispose();
-		if (_salesSearch.IsValueCreated) _salesSearch.Value.Dispose();
 		if (_salesOverview.IsValueCreated) _salesOverview.Value.Dispose();
 		if (_salesQuotes.IsValueCreated) _salesQuotes.Value.Dispose();
 		if (_salesPricing.IsValueCreated) _salesPricing.Value.Dispose();
@@ -535,6 +539,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		if (_salesApprovals.IsValueCreated) _salesApprovals.Value.Dispose();
 		if (_salesShipping.IsValueCreated) _salesShipping.Value.Dispose();
 		if (_salesInvoices.IsValueCreated) _salesInvoices.Value.Dispose();
+		if (_salesSearch.IsValueCreated) _salesSearch.Value.Dispose();
 		if (_help.IsValueCreated) { _help.Value.CloseRequested -= OnHelpCloseRequested; _help.Value.Dispose(); }
 		if (_notificationCenter.IsValueCreated) { _notificationCenter.Value.CloseRequested -= OnNotificationCloseRequested; _notificationCenter.Value.Dispose(); }
 	}

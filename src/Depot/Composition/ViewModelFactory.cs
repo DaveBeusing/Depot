@@ -24,14 +24,6 @@ internal sealed class ViewModelFactory
 		_services = services;
 		_fileDialogs = fileDialogs;
 		_applicationInformation = applicationInformation;
-		SalesCommercialContext.ConfigureUi(
-			_services.Customers,
-			_services.SalesOrders,
-			_services.Shipments,
-			_services.SalesInvoices,
-			_services.Items,
-			_services.Authorization,
-			_fileDialogs);
 	}
 
 	public LoginViewModel CreateLogin() =>
@@ -62,10 +54,7 @@ internal sealed class ViewModelFactory
 			_services.MaterialIssues,
 			_services.MaterialReturns,
 			_services.SupplierReturns,
-			_services.Customers,
-			_services.SalesOrders,
-			_services.Shipments,
-			_services.SalesInvoices,
+			_services.Sales,
 			_services.Warehouses,
 			_services.StorageLocations,
 			_services.Users,
