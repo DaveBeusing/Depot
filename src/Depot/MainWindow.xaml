@@ -43,15 +43,15 @@
         </Border>
 
         <Grid Grid.Row="0" Grid.Column="1" Background="{DynamicResource BackgroundBrush}">
-            <Grid.RowDefinitions><RowDefinition Height="{StaticResource Shell.TabHeight}" /><RowDefinition Height="Auto" /><RowDefinition Height="30" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+            <Grid.RowDefinitions><RowDefinition Height="{StaticResource Shell.TabHeight}" /><RowDefinition Height="Auto" /><RowDefinition Height="{StaticResource Shell.BreadcrumbHeight}" /><RowDefinition Height="*" /></Grid.RowDefinitions>
             <controls:WorkspaceTabControl x:Name="WorkspaceTabs" Grid.Row="0" ActiveItem="{Binding SelectedNavigationItem, Mode=TwoWay}" Style="{StaticResource WorkspaceTabControlStyle}" ItemContainerStyle="{StaticResource WorkspaceTabItemStyle}" ItemTemplate="{StaticResource WorkspaceTabHeaderTemplate}" TabClosing="OnWorkspaceTabClosing" />
             <ContentControl Grid.Row="1" Content="{Binding SelectedNavigationItem.Content}" ContentTemplateSelector="{StaticResource ActivityContextTemplateSelector}" />
             <Border Grid.Row="2" Background="{DynamicResource SurfaceAltBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
-                <DockPanel Margin="10,0">
+                <DockPanel Margin="{StaticResource Shell.BreadcrumbMargin}">
                     <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
-                        <Button Width="24" Height="22" Padding="0" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource SecondaryTextBrush}" Content="‹" FontSize="18" ToolTip="Back (Alt+Left)" Click="OnBackClick" IsEnabled="{Binding CanNavigateBack, RelativeSource={RelativeSource AncestorType={x:Type local:MainWindow}}}" />
-                        <Button Width="24" Height="22" Padding="0" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource SecondaryTextBrush}" Content="›" FontSize="18" ToolTip="Forward (Alt+Right)" Click="OnForwardClick" IsEnabled="{Binding CanNavigateForward, RelativeSource={RelativeSource AncestorType={x:Type local:MainWindow}}}" />
-                        <TextBlock Margin="8,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="{StaticResource Shell.CaptionFontSize}" Text="{Binding BreadcrumbText, RelativeSource={RelativeSource AncestorType={x:Type local:MainWindow}}}" />
+                        <Button Width="{StaticResource Shell.NavigationButtonSize}" Height="{StaticResource Shell.NavigationButtonSize}" Padding="0" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource SecondaryTextBrush}" Content="‹" FontSize="{StaticResource Shell.NavigationGlyphSize}" ToolTip="Back (Alt+Left)" Click="OnBackClick" IsEnabled="{Binding CanNavigateBack, RelativeSource={RelativeSource AncestorType={x:Type local:MainWindow}}}" />
+                        <Button Width="{StaticResource Shell.NavigationButtonSize}" Height="{StaticResource Shell.NavigationButtonSize}" Padding="0" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource SecondaryTextBrush}" Content="›" FontSize="{StaticResource Shell.NavigationGlyphSize}" ToolTip="Forward (Alt+Right)" Click="OnForwardClick" IsEnabled="{Binding CanNavigateForward, RelativeSource={RelativeSource AncestorType={x:Type local:MainWindow}}}" />
+                        <TextBlock Margin="{StaticResource Shell.BreadcrumbTextMargin}" VerticalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="{StaticResource Shell.CaptionFontSize}" Text="{Binding BreadcrumbText, RelativeSource={RelativeSource AncestorType={x:Type local:MainWindow}}}" />
                     </StackPanel>
                 </DockPanel>
             </Border>

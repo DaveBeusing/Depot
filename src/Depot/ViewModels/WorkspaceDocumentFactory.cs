@@ -15,7 +15,8 @@ public static class WorkspaceDocumentFactory
 	public static ShellNavigationItem Create<TViewModel>(
 		WorkspaceDocumentDescriptor descriptor,
 		Func<TViewModel> createContent,
-		Func<TViewModel, CancellationToken, Task> loadAsync)
+		Func<TViewModel, CancellationToken, Task> loadAsync,
+		bool ownsContent = true)
 		where TViewModel : BaseViewModel
 	{
 		ArgumentNullException.ThrowIfNull(descriptor);
@@ -29,6 +30,7 @@ public static class WorkspaceDocumentFactory
 			descriptor.HelpTopicId,
 			route: descriptor.Route,
 			tabKey: descriptor.Key,
-			isDocument: true);
+			isDocument: true,
+			ownsContent: ownsContent);
 	}
 }

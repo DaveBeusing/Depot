@@ -19,13 +19,11 @@ public partial class MainWindow : Window
 	private const string UserIconData = "M12,12 C15.3,12 18,9.3 18,6 C18,2.7 15.3,0 12,0 C8.7,0 6,2.7 6,6 C6,9.3 8.7,12 12,12 M2,24 C2,18.5 6.5,14 12,14 C17.5,14 22,18.5 22,24";
 	private const string NotificationIconData = "M4,15 L16,15 M6,15 L6,9 C6,5.7 7.8,3 10,3 C12.2,3 14,5.7 14,9 L14,15 M8,18 L12,18";
 	private const string HelpIconData = "M10,18 A8,8 0 1 0 10,2 A8,8 0 1 0 10,18 M7.8,7.2 C8,5.8 9,5 10.3,5 C11.8,5 12.8,5.9 12.8,7.2 C12.8,8.2 12.2,8.8 11.2,9.5 C10.4,10.1 10,10.7 10,11.8 M10,14.5 L10,14.6";
+	private const string RecordIconData = "M3,3 L17,3 L17,17 L3,17 Z M6,7 L14,7 M6,10 L14,10 M6,13 L11,13";
 
-	public static readonly DependencyProperty BreadcrumbTextProperty = DependencyProperty.Register(
-		nameof(BreadcrumbText), typeof(string), typeof(MainWindow), new PropertyMetadata(string.Empty));
-	public static readonly DependencyProperty CanNavigateBackProperty = DependencyProperty.Register(
-		nameof(CanNavigateBack), typeof(bool), typeof(MainWindow), new PropertyMetadata(false));
-	public static readonly DependencyProperty CanNavigateForwardProperty = DependencyProperty.Register(
-		nameof(CanNavigateForward), typeof(bool), typeof(MainWindow), new PropertyMetadata(false));
+	public static readonly DependencyProperty BreadcrumbTextProperty = DependencyProperty.Register(nameof(BreadcrumbText), typeof(string), typeof(MainWindow), new PropertyMetadata(string.Empty));
+	public static readonly DependencyProperty CanNavigateBackProperty = DependencyProperty.Register(nameof(CanNavigateBack), typeof(bool), typeof(MainWindow), new PropertyMetadata(false));
+	public static readonly DependencyProperty CanNavigateForwardProperty = DependencyProperty.Register(nameof(CanNavigateForward), typeof(bool), typeof(MainWindow), new PropertyMetadata(false));
 
 	private readonly CurrentUserViewModel _currentUserViewModel;
 	private readonly ShellNavigationItem _currentUserNavigationItem;
@@ -114,11 +112,16 @@ public partial class MainWindow : Window
 	private void ObserveViewModel(MainViewModel? viewModel)
 	{
 		if (ReferenceEquals(_observedViewModel, viewModel)) return;
-		if (_observedViewModel is not null) _observedViewModel.PropertyChanged -= OnMainViewModelPropertyChanged;
+		if (_observedViewModel is not null)
+		{
+			_observedViewModel.PropertyChanged -= OnMainViewModelPropertyChanged;
+			_observedViewModel.SalesViewModel.PropertyChanged -= OnSalesWorkspacePropertyChanged;
+		}
 		_observedViewModel = viewModel;
 		if (_observedViewModel is not null)
 		{
 			_observedViewModel.PropertyChanged += OnMainViewModelPropertyChanged;
+			_observedViewModel.SalesViewModel.PropertyChanged += OnSalesWorkspacePropertyChanged;
 			UpdateNavigationContext(_observedViewModel);
 		}
 	}
@@ -134,6 +137,51 @@ public partial class MainWindow : Window
 	private void OnModulePropertyChanged(object? sender, PropertyChangedEventArgs e)
 	{
 		if (e.PropertyName == nameof(ShellModuleViewModel.SelectedPage) && DataContext is MainViewModel viewModel) UpdateNavigationContext(viewModel);
+	}
+
+	private void OnSalesWorkspacePropertyChanged(object? sender, PropertyChangedEventArgs e)
+	{
+		if (_observedViewModel is not { } viewModel) return;
+		SalesQuickOpenItem? item = e.PropertyName switch
+		{
+			nameof(SalesViewModel.SelectedCustomer) when viewModel.SalesViewModel.SelectedCustomer is { } customer => new(SalesQuickOpenKind.Customer, customer.Id, customer.Name, customer.CustomerNumber),
+			nameof(SalesViewModel.SelectedOrder) when viewModel.SalesViewModel.SelectedOrder is { } order => new(SalesQuickOpenKind.SalesOrder, order.Id, order.OrderNumber, order.CustomerName),
+			nameof(SalesViewModel.SelectedShipment) when viewModel.SalesViewModel.SelectedShipment is { } shipment => new(SalesQuickOpenKind.Shipment, shipment.Id, shipment.ShipmentNumber, shipment.SalesOrderNumber),
+			nameof(SalesViewModel.SelectedInvoice) when viewModel.SalesViewModel.SelectedInvoice is { } invoice => new(SalesQuickOpenKind.Invoice, invoice.Id, invoice.InvoiceNumber, invoice.CustomerName),
+			nameof(SalesViewModel.SelectedCustomerReturn) when viewModel.SalesViewModel.SelectedCustomerReturn is { } customerReturn => new(SalesQuickOpenKind.CustomerReturn, customerReturn.Id, customerReturn.ReturnNumber, "Customer return"),
+			nameof(SalesViewModel.SelectedCreditNote) when viewModel.SalesViewModel.SelectedCreditNote is { } creditNote => new(SalesQuickOpenKind.CreditNote, creditNote.Id, creditNote.CreditNoteNumber, "Credit note"),
+			_ => null
+		};
+		if (item is not null) OpenSalesDocument(viewModel, item);
+	}
+
+	private void OpenSalesDocument(MainViewModel viewModel, SalesQuickOpenItem item)
+	{
+		var key = $"{item.Kind}:{item.Id}".ToLowerInvariant();
+		ShellNavigationItem document = item.Kind switch
+		{
+			SalesQuickOpenKind.Customer => WorkspaceDocumentFactory.Create(
+				new WorkspaceDocumentDescriptor(key, item.Title, ShellRoutes.Sales.Customers, RecordIconData, "sales.customers"),
+				() => viewModel.CustomersViewModel,
+				async (page, token) => { await page.LoadAsync(token); await page.Workspace.OpenQuickItemAsync(item, token); page.SelectedCustomer = page.Workspace.SelectedCustomer; },
+				ownsContent: false),
+			SalesQuickOpenKind.SalesOrder => WorkspaceDocumentFactory.Create(
+				new WorkspaceDocumentDescriptor(key, item.Title, ShellRoutes.Sales.Orders, RecordIconData, "sales.orders"),
+				() => viewModel.SalesOrdersViewModel,
+				async (page, token) => { await page.LoadAsync(token); await page.Workspace.OpenQuickItemAsync(item, token); page.SelectedOrder = page.Workspace.SelectedOrder; },
+				ownsContent: false),
+			SalesQuickOpenKind.Shipment or SalesQuickOpenKind.CustomerReturn => WorkspaceDocumentFactory.Create(
+				new WorkspaceDocumentDescriptor(key, item.Title, ShellRoutes.Warehouse.Shipping, RecordIconData, "sales.shipping"),
+				() => viewModel.ShippingViewModel,
+				async (page, token) => { await page.LoadAsync(token); await page.Workspace.OpenQuickItemAsync(item, token); },
+				ownsContent: false),
+			_ => WorkspaceDocumentFactory.Create(
+				new WorkspaceDocumentDescriptor(key, item.Title, ShellRoutes.Sales.Invoices, RecordIconData, "sales.invoices"),
+				() => viewModel.SalesInvoicesViewModel,
+				async (page, token) => { await page.LoadAsync(token); await page.Workspace.OpenQuickItemAsync(item, token); },
+				ownsContent: false)
+		};
+		WorkspaceTabs.ActiveItem = WorkspaceTabs.OpenOrActivate(document);
 	}
 
 	private void OnMainViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -160,8 +208,8 @@ public partial class MainWindow : Window
 		var item = viewModel.SelectedNavigationItem;
 		if (item is null) return;
 		var route = item.Route;
-		var breadcrumb = item.Name;
-		if (item.IsContentCreated && item.Content is ShellModuleViewModel module)
+		var breadcrumb = item.IsDocument ? $"{item.Route.Value} › {item.Name}" : item.Name;
+		if (!item.IsDocument && item.IsContentCreated && item.Content is ShellModuleViewModel module)
 		{
 			ObserveModule(module);
 			if (module.SelectedPage is { } page)
@@ -170,10 +218,7 @@ public partial class MainWindow : Window
 				breadcrumb = $"{item.Name} › {page.Name}";
 			}
 		}
-		else
-		{
-			ObserveModule(null);
-		}
+		else ObserveModule(null);
 
 		BreadcrumbText = breadcrumb;
 		if (!_historyNavigation) _history.Record(route);

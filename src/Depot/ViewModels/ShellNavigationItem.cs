@@ -9,6 +9,7 @@ public class ShellNavigationItem : IDisposable
 	private readonly Func<BaseViewModel, CancellationToken, Task> _loadAsync;
 	private readonly Func<BaseViewModel, CancellationToken, Task>? _refreshAsync;
 	private readonly bool _ownsLoadState;
+	private readonly bool _ownsContent;
 	private readonly NavigationLoadState _loadState = new();
 
 	public ShellNavigationItem(
@@ -22,7 +23,8 @@ public class ShellNavigationItem : IDisposable
 		Func<BaseViewModel, CancellationToken, Task>? refreshAsync = null,
 		ShellRoute? route = null,
 		string? tabKey = null,
-		bool isDocument = false)
+		bool isDocument = false,
+		bool ownsContent = true)
 	{
 		Name = name;
 		IconData = iconData;
@@ -30,6 +32,7 @@ public class ShellNavigationItem : IDisposable
 		_loadAsync = loadAsync;
 		_refreshAsync = refreshAsync;
 		_ownsLoadState = ownsLoadState;
+		_ownsContent = ownsContent;
 		HelpTopicId = helpTopicId;
 		IsSeparated = isSeparated;
 		Route = route ?? ShellRoute.FromName(name);
@@ -61,6 +64,6 @@ public class ShellNavigationItem : IDisposable
 	public void Dispose()
 	{
 		_loadState.Dispose();
-		if (_content.IsValueCreated && _content.Value is IDisposable disposable) disposable.Dispose();
+		if (_ownsContent && _content.IsValueCreated && _content.Value is IDisposable disposable) disposable.Dispose();
 	}
 }
