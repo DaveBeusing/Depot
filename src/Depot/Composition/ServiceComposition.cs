@@ -19,15 +19,10 @@ internal sealed class ServiceComposition
 		Help = new HelpService(HelpContent, Authorization, new HelpSearchService());
 		HelpRenderer = new HelpMarkdownRenderer();
 		AuditLog = new AuditLogService(repositories.Audit, Authorization, new AuditJsonSanitizer());
+		DataSubjectAccess = new DataSubjectAccessService(database.DataAccess, Authorization);
 		var audit = new AuditService(repositories.Audit, Authorization);
 		var passwordHasher = new PasswordHasher();
-		var movementReversals = new StockMovementReversalService(
-			database.TransactionRunner,
-			repositories.Inventories,
-			repositories.StockMovements,
-			repositories.ReasonCodes,
-			repositories.Audit,
-			audit);
+		var movementReversals = new StockMovementReversalService(database.TransactionRunner, repositories.Inventories, repositories.StockMovements, repositories.ReasonCodes, repositories.Audit, audit);
 
 		Authentication = new AuthenticationService(repositories.Users, repositories.Roles, passwordHasher, Authorization);
 		Session = new SessionService(Authorization);
@@ -47,7 +42,6 @@ internal sealed class ServiceComposition
 		MaterialIssues = new MaterialIssueService(database.TransactionRunner, repositories.MaterialIssues, repositories.Inventories, repositories.StockMovements, repositories.ReasonCodes, repositories.Audit, audit, movementReversals, Authorization);
 		MaterialReturns = new MaterialReturnService(database.TransactionRunner, repositories.MaterialReturns, repositories.MaterialIssues, repositories.Inventories, repositories.StockMovements, repositories.ReasonCodes, repositories.Audit, audit, movementReversals, Authorization);
 		SupplierReturns = new SupplierReturnService(database.TransactionRunner, repositories.SupplierReturns, repositories.PurchaseOrders, repositories.GoodsReceipts, repositories.Inventories, repositories.StockMovements, repositories.ReasonCodes, repositories.Audit, audit, movementReversals, Authorization);
-
 		Customers = new CustomerService(repositories.Customers, audit, Authorization);
 		SalesPricing = new SalesPricingService(repositories.SalesPriceLists, audit, Authorization);
 		SalesTimeline = new SalesTimelineService(repositories.SalesTimeline, Authorization);
@@ -60,7 +54,6 @@ internal sealed class ServiceComposition
 		SalesInvoices = new SalesInvoiceService(database.TransactionRunner, repositories.SalesInvoices, repositories.Shipments, repositories.SalesOrders, repositories.Customers, repositories.Audit, audit, Authorization, Notifications, SalesCreditNotes);
 		SalesDocuments = new SalesDocumentService();
 		SalesEmail = new SalesDocumentEmailService();
-
 		Items = new ItemService(repositories.Items, audit, Manufacturers, Categories, UnitsOfMeasure, Packagings, repositories.SupplierItems);
 		Purposes = new PurposeService(repositories.Purposes, audit);
 		ReasonCodes = new ReasonCodeService(repositories.ReasonCodes, audit);
@@ -74,22 +67,7 @@ internal sealed class ServiceComposition
 		Reports = new ReportService(Stock, Authorization);
 		var inventoryManagement = new InventoryManagementService(repositories.Inventories, audit);
 		Import = new ImportService(repositories.Items, Items, Purposes, Warehouses, StorageLocations, inventoryManagement, Movements, Authorization);
-
-		Sales = new SalesServices(
-			Customers,
-			SalesPricing,
-			SalesTimeline,
-			SalesOrders,
-			SalesQuotes,
-			Shipments,
-			ShipmentPacking,
-			SalesInvoices,
-			CustomerReturns,
-			SalesCreditNotes,
-			Items,
-			Authorization,
-			SalesDocuments,
-			SalesEmail);
+		Sales = new SalesServices(Customers, SalesPricing, SalesTimeline, SalesOrders, SalesQuotes, Shipments, ShipmentPacking, SalesInvoices, CustomerReturns, SalesCreditNotes, Items, Authorization, SalesDocuments, SalesEmail);
 	}
 
 	public AuthorizationService Authorization { get; }
@@ -99,6 +77,7 @@ internal sealed class ServiceComposition
 	public IHelpService Help { get; }
 	public HelpMarkdownRenderer HelpRenderer { get; }
 	public AuditLogService AuditLog { get; }
+	public DataSubjectAccessService DataSubjectAccess { get; }
 	public AuthenticationService Authentication { get; }
 	public SessionService Session { get; }
 	public ItemService Items { get; }
