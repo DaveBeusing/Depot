@@ -9,26 +9,23 @@ $configRelease = "2026-01-31"
 $configVersion = "3.0.2"
 
 New-Item -ItemType Directory -Force -Path $WorkDir | Out-Null
-$validatorZip = Join-Path $WorkDir "validator.zip"
+$validatorJar = Join-Path $WorkDir "validator-$validatorVersion-standalone.jar"
 $configZip = Join-Path $WorkDir "validator-config.zip"
-$validatorDir = Join-Path $WorkDir "validator"
 $configDir = Join-Path $WorkDir "config"
 
-if (-not (Test-Path $validatorDir)) {
-    Invoke-WebRequest "https://github.com/itplr-kosit/validator/releases/download/v$validatorVersion/validator-$validatorVersion.zip" -OutFile $validatorZip
-    Expand-Archive $validatorZip -DestinationPath $validatorDir -Force
+if (-not (Test-Path $validatorJar)) {
+    Invoke-WebRequest "https://github.com/itplr-kosit/validator/releases/download/v$validatorVersion/validator-$validatorVersion-standalone.jar" -OutFile $validatorJar
 }
 if (-not (Test-Path $configDir)) {
     Invoke-WebRequest "https://github.com/itplr-kosit/validator-configuration-xrechnung/releases/download/v$configRelease/xrechnung-$configVersion-validator-configuration-$configRelease.zip" -OutFile $configZip
     Expand-Archive $configZip -DestinationPath $configDir -Force
 }
 
-$jar = Get-ChildItem -Path $validatorDir -Filter "validator-*.jar" -Recurse | Select-Object -First 1
 $scenario = Get-ChildItem -Path $configDir -Filter "scenarios.xml" -Recurse | Select-Object -First 1
-if (-not $jar -or -not $scenario) { throw "KoSIT validator assets are incomplete." }
+if (-not (Test-Path $validatorJar) -or -not $scenario) { throw "KoSIT validator assets are incomplete." }
 
 $invoiceFull = (Resolve-Path $InvoicePath).Path
-& java -jar $jar.FullName -s $scenario.FullName -r $scenario.DirectoryName -h $invoiceFull
+& java -jar $validatorJar -s $scenario.FullName -r $scenario.DirectoryName -h $invoiceFull
 if ($LASTEXITCODE -ne 0) { throw "KoSIT validation failed with exit code $LASTEXITCODE." }
 
 $report = Get-ChildItem -Path (Split-Path $invoiceFull) -Filter "*-report.xml" | Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1
