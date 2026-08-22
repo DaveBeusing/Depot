@@ -284,15 +284,34 @@ Before claiming CRA conformity for an actual marketed Depot release, complete th
 
 # Phase 6 - Electronic invoicing readiness
 
+**Status: TECHNICAL IMPLEMENTATION COMPLETE — 2026-08-22**
+
 Target: When Depot invoices are intended for regulated electronic exchange.
 
-- [ ] Establish an EN 16931-compatible semantic invoice model.
-- [ ] Support required German profiles/formats such as XRechnung where in scope.
-- [ ] Evaluate ZUGFeRD/Factur-X support.
-- [ ] Validate generated structured invoices against applicable schemas and business rules.
-- [ ] Preserve the authoritative structured invoice data and associated human-readable representation where applicable.
-- [ ] Treat electronic invoice correction/credit workflows as immutable business transactions.
-- [ ] Add automated conformance tests using representative invoices.
+The generic electronic-invoicing implementation is complete to the point possible without an operational persisted invoice workflow and production PDF/A-3 pipeline. External/profile acceptance gates remain explicit in `docs/compliance/PHASE6_STATUS.md`.
+
+- [x] Establish an EN 16931-oriented semantic invoice model covering invoice identity, seller/buyer, references, payment, lines, tax data and invoice/credit-note types.
+- [x] Support German XRechnung through deterministic UN/CEFACT CII generation targeted at XRechnung 3.0.
+- [x] Evaluate ZUGFeRD/Factur-X support and document the required PDF/A-3 plus embedded CII architecture; do not claim hybrid-format support without a conforming PDF/A-3 pipeline.
+- [x] Validate generated structured invoices with application-level business-term checks and a pinned official KoSIT XRechnung validator/configuration conformance workflow using representative fixtures.
+- [x] Define the structured semantic/XML invoice as authoritative and human-readable PDF/renderings as derived representations; future persistence integration must retain issued XML immutably.
+- [x] Treat electronic invoice correction/credit semantics as immutable business transactions aligned with Phase 4; credit-note type code and tests are implemented.
+- [x] Add automated conformance tests covering mandatory business terms, deterministic generation, representative totals/profile identification, credit-note type, fixture drift and KoSIT validation.
+
+## Phase 6 evidence
+
+- `src/Depot/Models/ElectronicInvoice.cs`
+- `src/Depot/Services/ElectronicInvoiceService.cs`
+- `tests/Depot.Tests/ElectronicInvoiceTests.cs`
+- `tests/Depot.Tests/Fixtures/ElectronicInvoice/xrechnung-cii-basic.xml`
+- `scripts/einvoice/validate-xrechnung.ps1`
+- `.github/workflows/electronic-invoice-conformance.yml`
+- `docs/compliance/ELECTRONIC_INVOICING.md`
+- `docs/compliance/PHASE6_STATUS.md`
+
+## Production/integration acceptance gates
+
+Before claiming production electronic-invoice support, integrate the semantic model/XML into the actual persisted invoice workflow; retain issued XML and linkage immutably; validate supported scenarios against the currently applicable KoSIT/XRechnung release and recipient/channel requirements; add organization-specific seller/payment configuration and representative fixtures for every supported tax scenario; and implement/validate a true PDF/A-3 pipeline before claiming ZUGFeRD/Factur-X support.
 
 ---
 
@@ -367,8 +386,8 @@ A production release should not be approved until at least the following evidenc
 6. Release signing and release provenance. **Technical pipeline complete; production certificate acceptance pending**
 7. GDPR data inventory/retention and data-subject workflow. **Technical implementation complete; deployment/legal acceptance pending**
 8. GoBD-oriented immutable business-record model. **Technical implementation complete; deployment/legal acceptance pending**
-9. CRA risk assessment and vulnerability/update lifecycle. **Technical implementation complete; production/legal conformity acceptance pending**
-10. E-invoicing conformance when structured invoicing enters scope.
+9. CRA risk assessment and vulnerability/update lifecycle. **Technical implementation complete; production/legal acceptance pending**
+10. E-invoicing conformance when structured invoicing enters scope. **Technical implementation complete; persisted workflow/PDF-A-3/production acceptance pending**
 11. Enterprise identity/SIEM features based on customer demand.
 
 ## Review cadence
