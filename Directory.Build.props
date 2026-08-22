@@ -2,7 +2,7 @@
 	<PropertyGroup>
 		<DepotVersionMajor>0</DepotVersionMajor>
 		<DepotVersionMinor>14</DepotVersionMinor>
-		<DepotVersionPatch>29</DepotVersionPatch>
+		<DepotVersionPatch>30</DepotVersionPatch>
 		<DepotVersionBuild Condition="'$(DepotVersionBuild)' == ''">0</DepotVersionBuild>
 		<DepotVersionSuffix Condition="'$(DepotVersionSuffix)' == ''">preview</DepotVersionSuffix>
 		<VersionPrefix>$(DepotVersionMajor).$(DepotVersionMinor).$(DepotVersionPatch)</VersionPrefix>
@@ -13,5 +13,9 @@
 		<Company>David Beusing</Company>
 		<Authors>David Beusing</Authors>
 		<Copyright>Copyright © 2026 David Beusing</Copyright>
+		<NuGetAudit>true</NuGetAudit>
+		<NuGetAuditMode>all</NuGetAuditMode>
+		<NuGetAuditLevel>low</NuGetAuditLevel>
+		<WarningsAsErrors Condition="'$(AuditPipeline)' == 'true'">$(WarningsAsErrors);NU1901;NU1902;NU1903;NU1904</WarningsAsErrors>
 	</PropertyGroup>
 </Project>
