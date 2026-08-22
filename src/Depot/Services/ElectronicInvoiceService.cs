@@ -28,6 +28,7 @@ public sealed class ElectronicInvoiceService
 		Require(invoice.InvoiceNumber, "BT-1", "Invoice number is required.", issues);
 		Require(invoice.Currency, "BT-5", "Invoice currency is required.", issues);
 		Require(invoice.BuyerReference, "BT-10", "Buyer reference is required for the XRechnung profile.", issues);
+		Require(invoice.BusinessProcessId, "BT-23", "Business process identifier is required for XRechnung.", issues);
 		ValidateParty(invoice.Seller, "seller", issues);
 		ValidateParty(invoice.Buyer, "buyer", issues);
 
@@ -67,7 +68,7 @@ public sealed class ElectronicInvoiceService
 			new XAttribute(XNamespace.Xmlns + "rsm", Rsm),
 			new XAttribute(XNamespace.Xmlns + "ram", Ram),
 			new XAttribute(XNamespace.Xmlns + "udt", Udt),
-			CreateContext("urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0"),
+			CreateContext(invoice.BusinessProcessId, "urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0"),
 			new XElement(Rsm + "ExchangedDocument",
 				new XElement(Ram + "ID", invoice.InvoiceNumber),
 				new XElement(Ram + "TypeCode", ((int)invoice.TypeCode).ToString(CultureInfo.InvariantCulture)),
@@ -76,7 +77,7 @@ public sealed class ElectronicInvoiceService
 			new XElement(Rsm + "SupplyChainTradeTransaction",
 				invoice.Lines.Select(CreateLine),
 				CreateHeaderAgreement(invoice),
-				new XElement(Ram + "ApplicableHeaderTradeDelivery"),
+				CreateHeaderDelivery(invoice),
 				CreateSettlement(invoice, totals)));
 
 		return new XDocument(new XDeclaration("1.0", "utf-8", null), root);
@@ -84,8 +85,10 @@ public sealed class ElectronicInvoiceService
 
 	public string CreateXRechnungXml(ElectronicInvoice invoice) => CreateXRechnung(invoice).ToString(SaveOptions.DisableFormatting);
 
-	private static XElement CreateContext(string guideline) =>
-		new(Rsm + "ExchangedDocumentContext", new XElement(Ram + "GuidelineSpecifiedDocumentContextParameter", new XElement(Ram + "ID", guideline)));
+	private static XElement CreateContext(string businessProcessId, string guideline) =>
+		new(Rsm + "ExchangedDocumentContext",
+			new XElement(Ram + "BusinessProcessSpecifiedDocumentContextParameter", new XElement(Ram + "ID", businessProcessId)),
+			new XElement(Ram + "GuidelineSpecifiedDocumentContextParameter", new XElement(Ram + "ID", guideline)));
 
 	private static XElement CreateHeaderAgreement(ElectronicInvoice invoice) =>
 		new(Ram + "ApplicableHeaderTradeAgreement",
@@ -94,10 +97,20 @@ public sealed class ElectronicInvoiceService
 			CreateParty("BuyerTradeParty", invoice.Buyer),
 			string.IsNullOrWhiteSpace(invoice.PurchaseOrderReference) ? null : new XElement(Ram + "BuyerOrderReferencedDocument", new XElement(Ram + "IssuerAssignedID", invoice.PurchaseOrderReference)));
 
+	private static XElement CreateHeaderDelivery(ElectronicInvoice invoice) =>
+		new(Ram + "ApplicableHeaderTradeDelivery",
+			invoice.ActualDeliveryDate is null ? null : new XElement(Ram + "ActualDeliverySupplyChainEvent",
+				new XElement(Ram + "OccurrenceDateTime", new XElement(Udt + "DateTimeString", new XAttribute("format", "102"), invoice.ActualDeliveryDate.Value.ToString("yyyyMMdd", CultureInfo.InvariantCulture)))));
+
 	private static XElement CreateParty(string name, ElectronicInvoiceParty party) =>
 		new(Ram + name,
 			new XElement(Ram + "Name", party.Name),
 			string.IsNullOrWhiteSpace(party.RegistrationIdentifier) ? null : new XElement(Ram + "SpecifiedLegalOrganization", new XElement(Ram + "ID", string.IsNullOrWhiteSpace(party.RegistrationIdentifierScheme) ? null : new XAttribute("schemeID", party.RegistrationIdentifierScheme), party.RegistrationIdentifier)),
+			string.IsNullOrWhiteSpace(party.ContactName) && string.IsNullOrWhiteSpace(party.ContactPhone) && string.IsNullOrWhiteSpace(party.ContactEmail) ? null :
+				new XElement(Ram + "DefinedTradeContact",
+					string.IsNullOrWhiteSpace(party.ContactName) ? null : new XElement(Ram + "PersonName", party.ContactName),
+					string.IsNullOrWhiteSpace(party.ContactPhone) ? null : new XElement(Ram + "TelephoneUniversalCommunication", new XElement(Ram + "CompleteNumber", party.ContactPhone)),
+					string.IsNullOrWhiteSpace(party.ContactEmail) ? null : new XElement(Ram + "EmailURIUniversalCommunication", new XElement(Ram + "URIID", party.ContactEmail))),
 			new XElement(Ram + "PostalTradeAddress",
 				new XElement(Ram + "PostcodeCode", party.PostalCode),
 				new XElement(Ram + "LineOne", party.AddressLine1),
@@ -173,8 +186,14 @@ public sealed class ElectronicInvoiceService
 		Require(party.CountryCode, role == "seller" ? "BT-40" : "BT-55", $"{role} country code is required.", issues);
 		Require(party.ElectronicAddress, role == "seller" ? "BT-34" : "BT-49", $"{role} electronic address is required for XRechnung.", issues);
 		Require(party.ElectronicAddressScheme, role == "seller" ? "BT-34-scheme" : "BT-49-scheme", $"{role} electronic address scheme is required for XRechnung.", issues);
-		if (role == "seller" && string.IsNullOrWhiteSpace(party.VatIdentifier) && string.IsNullOrWhiteSpace(party.TaxIdentifier))
-			issues.Add(new("BR-CO-09", "Seller VAT identifier or tax registration identifier is required."));
+		if (role == "seller")
+		{
+			Require(party.ContactName, "BT-41", "seller contact name is required for XRechnung.", issues);
+			Require(party.ContactPhone, "BT-42", "seller contact telephone is required for XRechnung.", issues);
+			Require(party.ContactEmail, "BT-43", "seller contact email is required for XRechnung.", issues);
+			if (string.IsNullOrWhiteSpace(party.VatIdentifier) && string.IsNullOrWhiteSpace(party.TaxIdentifier))
+				issues.Add(new("BR-CO-09", "Seller VAT identifier or tax registration identifier is required."));
+		}
 	}
 
 	private static void Require(string? value, string code, string message, ICollection<ElectronicInvoiceValidationIssue> issues)

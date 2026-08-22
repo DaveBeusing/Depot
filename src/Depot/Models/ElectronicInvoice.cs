@@ -15,8 +15,10 @@ public sealed class ElectronicInvoice
 	public ElectronicInvoiceTypeCode TypeCode { get; init; } = ElectronicInvoiceTypeCode.Invoice;
 	public DateOnly IssueDate { get; init; }
 	public DateOnly? DueDate { get; init; }
+	public DateOnly? ActualDeliveryDate { get; init; }
 	public string Currency { get; init; } = "EUR";
 	public string BuyerReference { get; init; } = string.Empty;
+	public string BusinessProcessId { get; init; } = "urn:fdc:peppol.eu:2017:poacc:billing:01:1.0";
 	public string? PurchaseOrderReference { get; init; }
 	public ElectronicInvoiceParty Seller { get; init; } = new();
 	public ElectronicInvoiceParty Buyer { get; init; } = new();
