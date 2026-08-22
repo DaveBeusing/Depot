@@ -15,6 +15,28 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  security-tests:
+    name: Authentication and authorization tests
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore Depot.slnx
+
+      - name: Build security tests
+        run: dotnet build tests/Depot.Tests/Depot.Tests.csproj --configuration Release --no-restore
+
+      - name: Run security boundary tests
+        run: dotnet test tests/Depot.Tests/Depot.Tests.csproj --configuration Release --no-build --filter "FullyQualifiedName~PasswordHasherSecurityTests|FullyQualifiedName~AuthorizationServiceTests|FullyQualifiedName~RbacTests|FullyQualifiedName~PurchaseOrderApprovalServiceTests|FullyQualifiedName~AuditLogTests" --logger "console;verbosity=normal"
+
   vulnerability-audit:
     name: NuGet vulnerability audit
     runs-on: windows-latest
