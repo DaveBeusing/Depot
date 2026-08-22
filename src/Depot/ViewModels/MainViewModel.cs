@@ -19,6 +19,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 	private readonly SessionService _session;
 	private readonly INotificationNavigationService _notificationNavigation;
 	private readonly IFileDialogService _fileDialogs;
+	private readonly WelcomeViewModel _welcome;
 	private readonly Lazy<DashboardViewModel> _dashboard;
 	private readonly Lazy<InventoryViewModel> _inventory;
 	private readonly Lazy<ItemsViewModel> _items;
@@ -107,6 +108,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		LogoutCommand = new RelayCommand(Logout);
 		HelpCommand = new RelayCommand(() => _ = OpenHelpAsync());
 		NotificationCommand = new RelayCommand(() => _ = OpenNotificationsAsync());
+		_welcome = new WelcomeViewModel(CurrentUserDisplayName, DateTime.Now);
 
 		var salesWorkspace = new SalesViewModel(
 			salesServices.Customers,
@@ -153,7 +155,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 
 		notificationNavigationService.SetNavigationHandler(NavigateToNotificationAsync);
 		BuildNavigation();
-		if (NavigationItems.FirstOrDefault() is { } startPage) _ = NavigateAsync(startPage);
+		CurrentViewModel = _welcome;
 	}
 
 	public ObservableCollection<ShellNavigationItem> NavigationItems { get; } = [];
@@ -164,6 +166,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 	public NotificationSummaryViewModel NotificationSummaryViewModel { get; }
 	public event EventHandler? LogoutRequested;
 
+	public WelcomeViewModel WelcomeViewModel => _welcome;
 	public DashboardViewModel DashboardViewModel => _dashboard.Value;
 	public InventoryViewModel InventoryViewModel => _inventory.Value;
 	public ItemsViewModel ItemsViewModel => _items.Value;
