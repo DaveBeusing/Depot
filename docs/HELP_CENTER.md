@@ -1,128 +1,58 @@
 # Depot Help Center
 
-Depot ships an integrated, offline Help Center. It uses embedded Markdown files and native WPF `FlowDocument` rendering. It does not use a browser, WebView, HTML, JavaScript, online service, or business-database table.
-
-Help opens as a regular workspace tab in the application shell. Pressing **F1** resolves the current context and activates the Help tab without replacing the user's other open workspaces.
+Depot ships an integrated offline Help Center using embedded Markdown and native WPF `FlowDocument` rendering. Help opens as a regular workspace tab; F1 resolves the current application context without replacing other open workspaces.
 
 ## Content structure
 
-Help content is versioned with the application under `src/Depot/Help`:
+Help content is versioned with the application under `src/Depot/Help`. The current manifest version is **1.5** and contains Getting Started, Inventory, Warehouse, Purchasing, Sales, Approvals, Reports, Administration, and Troubleshooting topics.
 
-```text
-Help/
-  manifest.json
-  getting-started/
-  inventory/
-  warehouse/
-  purchasing/
-  approvals/
-  reports/
-  administration/
-  troubleshooting/
-```
-
-`manifest.json` defines the content version and every topic. Each topic contains:
-
-| Field | Purpose |
-| --- | --- |
-| `id` | Stable technical topic ID |
-| `title` | English display title |
-| `category` | Category shown in the Help Center |
-| `file` | Markdown path relative to `Help` |
-| `order` | Stable display order |
-| `keywords` | Search aliases and terminology |
-| `requiredPermission` | Optional permission-catalog code |
-| `relatedTopics` | Stable IDs of related topics |
-
-The build embeds the manifest and Markdown files in `Depot.dll`. Content therefore follows the installed application version and is never stored in the operational database.
+`manifest.json` defines stable topic IDs, titles, categories, Markdown files, ordering, search keywords, optional required permissions, and related topics. IDs are application contracts and should not be renamed after use.
 
 ## Current shell guidance
 
-The Getting Started category documents the current workspace-oriented shell, including:
+Getting Started documentation must remain synchronized with the actual shell behavior:
 
-- activity-bar navigation
-- persistent workspace tabs
-- contextual section navigation
-- `Ctrl+P` Quick Open
+- sign-in opens a tabless Welcome page rather than selecting a module
+- the Welcome page uses the signed-in display name and local time-of-day greeting
+- all workspace tabs are closeable; closing the final tab restores Welcome
+- activity-bar navigation and contextual module navigation
+- `Ctrl+P` Quick Open and keyed document tabs for supported records
 - `Ctrl+Shift+P` Command Palette
-- `Ctrl+W` tab closing
-- `Ctrl+Tab` and `Ctrl+Shift+Tab` tab switching
+- `Ctrl+W`, `Ctrl+Tab`, and `Ctrl+Shift+Tab`
+- `Alt+Left` / `Alt+Right` navigation history
 - F1 context Help
-- unsaved-changes protection
-- grouped Quick Open results and session-recent records
-- direct workflow commands such as New Item, New Purchase Order, Start Inventory Count, Transfer Stock, and Receive Goods
+- database status detail on status-indicator hover
+- clickable application version opening About
+- unsaved-change protection
 
-Help topics for affected workflows should mention these direct navigation paths where they materially improve the task.
+The Dashboard topic documents only metrics already supplied by `DashboardService`/`DashboardRepository`. Administrator behavior currently includes Inventory, Purchasing, Warehouse, Sales, Approvals, Administration, and Reports overview access; Help must not invent additional dashboard data.
 
-## Topic ID conventions
+## Supported Markdown
 
-Topic IDs are lowercase and use the format `category.topic-name`, for example:
+The native renderer supports headings, paragraphs, ordered/unordered lists, bold, italic, inline code, notes/warnings, images, `topic:` internal links, and simple pipe tables. HTML and arbitrary external links are not supported.
 
-- `getting-started.workspace-navigation`
-- `inventory.items`
-- `warehouse.inventory-counts`
-- `purchasing.goods-receipts`
-- `troubleshooting.concurrency-conflict`
+## Updating Help
 
-IDs are application contracts. Do not rename an existing ID after it has been used for context help or internal links. Change the title when display wording needs to change.
+1. Verify the current UI, ViewModels, services, permissions, and navigation routes before changing documentation.
+2. Create/update the Markdown topic in the appropriate category.
+3. Keep stable topic IDs and deterministic ordering in `manifest.json`.
+4. Add keywords for current terminology and shortcuts.
+5. Add only valid `topic:` links and existing permission codes.
+6. Increment the manifest version when the content contract changes materially.
+7. Run `HelpCenterTests`; validation covers duplicate IDs, missing files, unknown permissions, and broken links.
 
-## Supported Markdown subset
+Do not document planned functionality as available.
 
-The native renderer intentionally supports only:
+## Context Help
 
-- headings using `#` through `######`
-- paragraphs
-- ordered and unordered lists
-- bold using `**text**`
-- italic using `*text*`
-- inline code using backticks
-- notes using `> [!NOTE]`
-- warnings using `> [!WARNING]`
-- images using `![description](resource-path)`
-- internal links using `[label](topic:stable.topic-id)`
-- simple pipe tables
-
-HTML and arbitrary external links are not supported.
-
-## Adding or updating a topic
-
-1. Create or update an English Markdown file in the appropriate category directory.
-2. Use the standard article sections: Summary, Prerequisites, Steps, Result, Common problems, Required permissions, and Related topics where they are relevant.
-3. Add one manifest entry for every new stable ID and keep display ordering deterministic.
-4. Add search aliases to `keywords` where terminology differs, such as `transfer`, `relocation`, `quick open`, or `command palette`.
-5. Add internal and related-topic links only to IDs already present in the manifest.
-6. Keep shell shortcuts and direct workflow commands synchronized with the implementation.
-7. Run `HelpCenterTests`. Validation fails for duplicate IDs, missing files, unknown permissions, and broken links.
-
-Do not describe planned functionality as available.
-
-## Context help
-
-Main shell items and secondary pages carry a `HelpTopicId`. F1 resolves the currently selected page and opens that topic in the Help workspace tab. A missing or unavailable context topic falls back to `getting-started.first-login`.
-
-Useful workflow links use the routed `HelpCommands.OpenTopic` command:
-
-```xml
-<Button
-    Command="{x:Static commands:HelpCommands.OpenTopic}"
-    CommandParameter="warehouse.transfers"
-    Style="{StaticResource ContextHelpButtonStyle}" />
-```
-
-Use explicit links for complex workflows and recovery guidance. Do not add a help icon to every field.
+Shell items and contextual pages carry a `HelpTopicId`. F1 resolves the current page and opens that topic. Missing/unavailable context falls back to `getting-started.first-login`.
 
 ## Permissions
 
-`requiredPermission` uses the existing central permission code, such as `GoodsReceipts.View`. `HelpService` filters topic lists, search results, direct topic access, and related topics against the effective permissions of the signed-in user.
+`requiredPermission` uses the central permission catalog. `HelpService` filters topic lists, search, direct access, and related topics against effective permissions. Public Getting Started and Troubleshooting topics can omit a permission. Help visibility never grants business access.
 
-Public getting-started and troubleshooting topics omit `requiredPermission`. Help visibility never grants business access; workflow services continue to enforce authorization independently.
+## Search and diagnostics
 
-## Search and related topics
+Search is local and weighted across title, manifest keywords, headings, and body text. Related topics are permission-filtered.
 
-Search is local and weighted across title, manifest keywords, headings, and body text. All entered terms must match. Titles and keyword aliases rank ahead of body matches.
-
-Related topics are defined by stable IDs in the manifest and are permission-filtered before display.
-
-## Diagnostics
-
-Selected operation-error panels can offer **Open Help** and **Copy diagnostics**. Copied text passes through `DiagnosticsSanitizer`, which masks passwords, connection strings, hashes, salts, secrets, tokens, encryption keys, protected configuration, and sensitive SQL parameter values.
+Selected operation-error panels can expose **Open Help** and **Copy diagnostics**. Diagnostic text passes through `DiagnosticsSanitizer` to mask credentials, connection strings, hashes, salts, secrets, tokens, encryption keys, protected configuration, and sensitive SQL parameter values.
