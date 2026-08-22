@@ -19,6 +19,8 @@ public sealed class ElectronicInvoiceTests
 		Assert.Contains(result.Issues, issue => issue.Code == "BT-1");
 		Assert.Contains(result.Issues, issue => issue.Code == "BT-10");
 		Assert.Contains(result.Issues, issue => issue.Code == "BG-25");
+		Assert.Contains(result.Issues, issue => issue.Code == "BT-34");
+		Assert.Contains(result.Issues, issue => issue.Code == "BT-49");
 	}
 
 	[Fact]
@@ -58,8 +60,8 @@ public sealed class ElectronicInvoiceTests
 		DueDate = new DateOnly(2026, 9, 21),
 		Currency = "EUR",
 		BuyerReference = "04011000-12345-03",
-		Seller = new ElectronicInvoiceParty { Name = "Depot GmbH", VatIdentifier = "DE123456789", AddressLine1 = "Example 1", City = "Bonn", PostalCode = "53111", CountryCode = "DE" },
-		Buyer = new ElectronicInvoiceParty { Name = "Customer GmbH", AddressLine1 = "Buyer 2", City = "Berlin", PostalCode = "10115", CountryCode = "DE" },
+		Seller = new ElectronicInvoiceParty { Name = "Depot GmbH", ElectronicAddress = "seller@example.de", ElectronicAddressScheme = "EM", VatIdentifier = "DE123456789", AddressLine1 = "Example 1", City = "Bonn", PostalCode = "53111", CountryCode = "DE" },
+		Buyer = new ElectronicInvoiceParty { Name = "Customer GmbH", ElectronicAddress = "buyer@example.de", ElectronicAddressScheme = "EM", AddressLine1 = "Buyer 2", City = "Berlin", PostalCode = "10115", CountryCode = "DE" },
 		Payment = new ElectronicInvoicePayment { MeansCode = "58", AccountIdentifier = "DE02120300000000202051", FinancialInstitutionIdentifier = "BYLADEM1001", Terms = "Payable within 30 days." },
 		Lines = [new ElectronicInvoiceLine { Id = "1", Name = "Item A", Quantity = 2m, UnitPrice = 100m, TaxRate = 19m }]
 	};

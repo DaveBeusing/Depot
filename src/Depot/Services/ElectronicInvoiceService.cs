@@ -96,15 +96,15 @@ public sealed class ElectronicInvoiceService
 
 	private static XElement CreateParty(string name, ElectronicInvoiceParty party) =>
 		new(Ram + name,
-			string.IsNullOrWhiteSpace(party.ElectronicAddress) ? null : new XElement(Ram + "URIUniversalCommunication", new XElement(Ram + "URIID", new XAttribute("schemeID", party.ElectronicAddressScheme ?? "EM"), party.ElectronicAddress)),
 			new XElement(Ram + "Name", party.Name),
-			string.IsNullOrWhiteSpace(party.RegistrationIdentifier) ? null : new XElement(Ram + "SpecifiedLegalOrganization", new XElement(Ram + "ID", party.RegistrationIdentifier)),
+			string.IsNullOrWhiteSpace(party.RegistrationIdentifier) ? null : new XElement(Ram + "SpecifiedLegalOrganization", new XElement(Ram + "ID", string.IsNullOrWhiteSpace(party.RegistrationIdentifierScheme) ? null : new XAttribute("schemeID", party.RegistrationIdentifierScheme), party.RegistrationIdentifier)),
 			new XElement(Ram + "PostalTradeAddress",
 				new XElement(Ram + "PostcodeCode", party.PostalCode),
 				new XElement(Ram + "LineOne", party.AddressLine1),
 				string.IsNullOrWhiteSpace(party.AddressLine2) ? null : new XElement(Ram + "LineTwo", party.AddressLine2),
 				new XElement(Ram + "CityName", party.City),
 				new XElement(Ram + "CountryID", party.CountryCode)),
+			new XElement(Ram + "URIUniversalCommunication", new XElement(Ram + "URIID", new XAttribute("schemeID", party.ElectronicAddressScheme ?? "EM"), party.ElectronicAddress)),
 			string.IsNullOrWhiteSpace(party.VatIdentifier) ? null : new XElement(Ram + "SpecifiedTaxRegistration", new XElement(Ram + "ID", new XAttribute("schemeID", "VA"), party.VatIdentifier)),
 			string.IsNullOrWhiteSpace(party.TaxIdentifier) ? null : new XElement(Ram + "SpecifiedTaxRegistration", new XElement(Ram + "ID", new XAttribute("schemeID", "FC"), party.TaxIdentifier)));
 
@@ -129,20 +129,18 @@ public sealed class ElectronicInvoiceService
 		var taxGroups = invoice.Lines.GroupBy(line => new { line.TaxCategoryCode, line.TaxRate });
 		return new XElement(Ram + "ApplicableHeaderTradeSettlement",
 			new XElement(Ram + "InvoiceCurrencyCode", invoice.Currency),
+			CreatePayment(invoice),
 			taxGroups.Select(group =>
 			{
 				var basis = Round(group.Sum(line => line.Quantity * line.UnitPrice * (1m - line.DiscountPercent / 100m)));
 				var tax = Round(basis * group.Key.TaxRate / 100m);
 				return new XElement(Ram + "ApplicableTradeTax", new XElement(Ram + "CalculatedAmount", Money(tax)), new XElement(Ram + "TypeCode", "VAT"), new XElement(Ram + "BasisAmount", Money(basis)), new XElement(Ram + "CategoryCode", group.Key.TaxCategoryCode), new XElement(Ram + "RateApplicablePercent", Number(group.Key.TaxRate)));
 			}),
-			CreatePayment(invoice),
 			string.IsNullOrWhiteSpace(invoice.Payment.Terms) && invoice.DueDate is null ? null : new XElement(Ram + "SpecifiedTradePaymentTerms",
 				string.IsNullOrWhiteSpace(invoice.Payment.Terms) ? null : new XElement(Ram + "Description", invoice.Payment.Terms),
 				invoice.DueDate is null ? null : new XElement(Ram + "DueDateDateTime", new XElement(Udt + "DateTimeString", new XAttribute("format", "102"), invoice.DueDate.Value.ToString("yyyyMMdd", CultureInfo.InvariantCulture)))),
 			new XElement(Ram + "SpecifiedTradeSettlementHeaderMonetarySummation",
 				new XElement(Ram + "LineTotalAmount", Money(totals.Net)),
-				new XElement(Ram + "ChargeTotalAmount", "0.00"),
-				new XElement(Ram + "AllowanceTotalAmount", "0.00"),
 				new XElement(Ram + "TaxBasisTotalAmount", Money(totals.Net)),
 				new XElement(Ram + "TaxTotalAmount", new XAttribute("currencyID", invoice.Currency), Money(totals.Tax)),
 				new XElement(Ram + "GrandTotalAmount", Money(totals.Gross)),
@@ -173,6 +171,8 @@ public sealed class ElectronicInvoiceService
 		Require(party.City, role == "seller" ? "BT-37" : "BT-52", $"{role} city is required.", issues);
 		Require(party.PostalCode, role == "seller" ? "BT-38" : "BT-53", $"{role} postal code is required.", issues);
 		Require(party.CountryCode, role == "seller" ? "BT-40" : "BT-55", $"{role} country code is required.", issues);
+		Require(party.ElectronicAddress, role == "seller" ? "BT-34" : "BT-49", $"{role} electronic address is required for XRechnung.", issues);
+		Require(party.ElectronicAddressScheme, role == "seller" ? "BT-34-scheme" : "BT-49-scheme", $"{role} electronic address scheme is required for XRechnung.", issues);
 		if (role == "seller" && string.IsNullOrWhiteSpace(party.VatIdentifier) && string.IsNullOrWhiteSpace(party.TaxIdentifier))
 			issues.Add(new("BR-CO-09", "Seller VAT identifier or tax registration identifier is required."));
 	}
