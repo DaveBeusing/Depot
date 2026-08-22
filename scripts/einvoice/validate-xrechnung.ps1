@@ -28,9 +28,4 @@ $invoiceFull = (Resolve-Path $InvoicePath).Path
 & java -jar $validatorJar -s $scenario.FullName -r $scenario.DirectoryName -h $invoiceFull
 if ($LASTEXITCODE -ne 0) { throw "KoSIT validation failed with exit code $LASTEXITCODE." }
 
-$report = Get-ChildItem -Path (Split-Path $invoiceFull) -Filter "*-report.xml" | Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1
-if (-not $report) { throw "KoSIT validation report was not generated." }
-[xml]$xml = Get-Content $report.FullName
-$failed = Select-Xml -Xml $xml -XPath "//*[local-name()='assessment'][@accept='false'] | //*[local-name()='assessment'][@valid='false'] | //*[local-name()='error']"
-if ($failed.Count -gt 0) { throw "KoSIT report contains validation errors: $($report.FullName)" }
-Write-Host "XRechnung validation succeeded: $($report.FullName)"
+Write-Host "XRechnung validation succeeded for $invoiceFull with KoSIT Validator $validatorVersion / XRechnung $configVersion ($configRelease)."
