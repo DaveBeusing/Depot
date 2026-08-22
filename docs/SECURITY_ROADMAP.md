@@ -239,21 +239,46 @@ Before claiming GoBD conformity for a specific deployment, the operator/qualifie
 
 # Phase 5 - Cyber Resilience Act readiness
 
+**Status: TECHNICAL IMPLEMENTATION COMPLETE — 2026-08-22**
+
 Target: Complete before CRA obligations applicable to Depot require it.
 
-- [ ] Determine and document Depot's CRA product classification and applicable conformity-assessment route.
-- [ ] Maintain a cybersecurity risk assessment.
-- [ ] Link identified risks to mitigations, tests, and residual-risk decisions.
-- [ ] Maintain a supported-components/dependency inventory and SBOM.
-- [ ] Establish coordinated vulnerability disclosure intake.
-- [ ] Define vulnerability triage and remediation SLAs.
-- [ ] Define security-update creation, validation, distribution, and rollback.
-- [ ] Define the product support period and communicate it clearly.
-- [ ] Maintain vulnerability and security-incident reporting procedures for applicable regulatory deadlines.
-- [ ] Maintain required technical documentation and conformity evidence.
-- [ ] Review secure-by-default installation and configuration.
-- [ ] Ensure known exploitable vulnerabilities are handled before release unless explicitly risk-accepted under a documented process.
-- [ ] Review CE/conformity-marking obligations before commercial distribution where applicable.
+The repository/application controls that can be implemented without a final marketed product, legal classification, named organizational reporting roles or formal conformity assessment are complete. Production/legal acceptance items remain explicit gates in `docs/compliance/PHASE5_STATUS.md`.
+
+- [x] Determine and document a technical preliminary CRA product classification and working conformity route in `CRA_CLASSIFICATION.md`; final legal classification remains an external gate.
+- [x] Maintain a CRA-oriented cybersecurity risk assessment in `CRA_RISK_ASSESSMENT.md`.
+- [x] Link identified risks to mitigations, tests/evidence and residual-risk targets.
+- [x] Maintain a supported-components/dependency inventory and CycloneDX SBOM through the Security supply chain workflow.
+- [x] Establish coordinated vulnerability disclosure intake guidance in repository-root `SECURITY.md`; production must verify/enable a dependable private reporting channel.
+- [x] Define vulnerability triage and remediation SLAs in `VULNERABILITY_MANAGEMENT.md`.
+- [x] Define security-update creation, validation, distribution, communication and rollback in `SECURITY_UPDATE_LIFECYCLE.md`.
+- [x] Define a CRA-aligned support-period baseline in `SUPPORT_POLICY.md`; each marketed release must publish its release-specific end date and determination factors.
+- [x] Maintain vulnerability and security-incident reporting procedures with 24h/72h/final-report timing in `CRA_INCIDENT_REPORTING.md`.
+- [x] Maintain technical documentation/evidence through `CRA_TECHNICAL_DOCUMENTATION.md` and an automated CRA evidence artifact with source/version and SHA-256 manifest.
+- [x] Review secure-by-default installation/configuration in `SECURE_DEFAULTS_REVIEW.md` and retain existing first-run/TLS/secret/RBAC controls.
+- [x] Enforce release treatment of known vulnerabilities through NuGet audit and machine-validated risk acceptances; Critical and actively exploited vulnerabilities cannot use the normal exception mechanism.
+- [x] Review and document CE/conformity-marking obligations as a required external acceptance gate before commercial EU distribution; final declaration/marking cannot be completed generically in repository code.
+
+## Phase 5 evidence
+
+- `docs/compliance/PHASE5_STATUS.md`
+- `docs/compliance/CRA_CLASSIFICATION.md`
+- `docs/compliance/CRA_RISK_ASSESSMENT.md`
+- `docs/compliance/CRA_INCIDENT_REPORTING.md`
+- `docs/compliance/CRA_TECHNICAL_DOCUMENTATION.md`
+- `docs/compliance/SECURITY_UPDATE_LIFECYCLE.md`
+- `docs/compliance/SECURE_DEFAULTS_REVIEW.md`
+- `docs/compliance/VULNERABILITY_MANAGEMENT.md`
+- `docs/compliance/SUPPORT_POLICY.md`
+- root `SECURITY.md`
+- `security/security-risk-acceptances.json`
+- automated risk-acceptance validator in CI/release workflows
+- automated CRA technical-evidence package with CycloneDX SBOM and SHA-256 manifest
+- audited release restore and release-integrity evidence
+
+## Production/legal acceptance gates
+
+Before claiming CRA conformity for an actual marketed Depot release, complete the legal scope/economic-operator/classification decision, applicable conformity assessment, EU declaration/CE marking where required, release-specific Annex II/user/manufacturer information, support end date, operational private vulnerability channel, named incident/reporting roles, competent CSIRT/ENISA Single Reporting Platform setup, reporting tabletop exercise, and then-current Commission/harmonised-standard review. Existing Phase 2 production signing and provider/recovery acceptance gates also remain applicable.
 
 ---
 
@@ -342,7 +367,7 @@ A production release should not be approved until at least the following evidenc
 6. Release signing and release provenance. **Technical pipeline complete; production certificate acceptance pending**
 7. GDPR data inventory/retention and data-subject workflow. **Technical implementation complete; deployment/legal acceptance pending**
 8. GoBD-oriented immutable business-record model. **Technical implementation complete; deployment/legal acceptance pending**
-9. CRA risk assessment and vulnerability/update lifecycle.
+9. CRA risk assessment and vulnerability/update lifecycle. **Technical implementation complete; production/legal conformity acceptance pending**
 10. E-invoicing conformance when structured invoicing enters scope.
 11. Enterprise identity/SIEM features based on customer demand.
 
