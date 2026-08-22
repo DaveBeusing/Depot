@@ -2,7 +2,7 @@
 	<PropertyGroup>
 		<DepotVersionMajor>0</DepotVersionMajor>
 		<DepotVersionMinor>14</DepotVersionMinor>
-		<DepotVersionPatch>50</DepotVersionPatch>
+		<DepotVersionPatch>51</DepotVersionPatch>
 		<DepotVersionBuild Condition="'$(DepotVersionBuild)' == ''">0</DepotVersionBuild>
 		<DepotVersionSuffix Condition="'$(DepotVersionSuffix)' == ''">preview</DepotVersionSuffix>
 		<VersionPrefix>$(DepotVersionMajor).$(DepotVersionMinor).$(DepotVersionPatch)</VersionPrefix>
@@ -13,6 +13,9 @@
 		<Company>David Beusing</Company>
 		<Authors>David Beusing</Authors>
 		<Copyright>Copyright © 2026 David Beusing</Copyright>
+		<RepositoryUrl>https://github.com/DaveBeusing/Depot</RepositoryUrl>
+		<RepositoryType>git</RepositoryType>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<NuGetAudit>true</NuGetAudit>
 		<NuGetAuditMode>all</NuGetAuditMode>
 		<NuGetAuditLevel>low</NuGetAuditLevel>
