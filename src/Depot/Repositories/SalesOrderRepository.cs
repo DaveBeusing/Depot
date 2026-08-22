@@ -41,9 +41,14 @@ public sealed class SalesOrderRepository : DatabaseRepository
 	public Task<IReadOnlyList<SalesOrderLine>> ListLinesAsync(long id, CancellationToken cancellationToken) => Database.QueryAsync(LineSql + " WHERE sol.SalesOrderId=$Id ORDER BY sol.LineNumber;", ReadLine, cancellationToken, Parameter("$Id", id));
 	public Task<IReadOnlyList<SalesOrderLine>> ListLinesAsync(DatabaseTransactionContext tx, long id, CancellationToken token) => tx.Session.QueryAsync(LineSql + " WHERE sol.SalesOrderId=$Id ORDER BY sol.LineNumber;", ReadLine, token, Parameter("$Id", id));
 
-	public Task<SalesOrder> SaveDraftAsync(SalesOrder order, CancellationToken cancellationToken) => Database.ExecuteInWriteTransactionAsync(async (session, token) =>
+	public Task<SalesOrder> SaveDraftAsync(SalesOrder order, CancellationToken cancellationToken) =>
+		Database.ExecuteInWriteTransactionAsync(
+			(session, token) => SaveDraftAsync(new DatabaseTransactionContext(session), order, token),
+			cancellationToken);
+
+	public async Task<SalesOrder> SaveDraftAsync(DatabaseTransactionContext transaction, SalesOrder order, CancellationToken token)
 	{
-		var tx = new DatabaseTransactionContext(session);
+		var session = transaction.Session;
 		if (order.Id == 0)
 		{
 			order.OrderNumber = $"PENDING-{Guid.NewGuid():N}";
@@ -70,8 +75,8 @@ public sealed class SalesOrderRepository : DatabaseRepository
 				if (updated != 1) throw new Services.ConcurrencyConflictException("sales order line"); line.Version++;
 			}
 		}
-		return await GetByIdAsync(tx, order.Id, token) ?? order;
-	}, cancellationToken);
+		return await GetByIdAsync(transaction, order.Id, token) ?? order;
+	}
 
 	public async Task<bool> SetStatusAsync(DatabaseTransactionContext tx, SalesOrder order, long expectedVersion, SalesOrderStatus expectedStatus, CancellationToken token)
 	{
