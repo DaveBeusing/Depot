@@ -4,28 +4,28 @@ Depot ships an integrated offline Help Center using embedded Markdown and native
 
 ## Content structure
 
-Help content is versioned with the application under `src/Depot/Help`. The current manifest version is **1.5** and contains Getting Started, Inventory, Warehouse, Purchasing, Sales, Approvals, Reports, Administration, and Troubleshooting topics.
+Help content is versioned with the application under `src/Depot/Help`. The current manifest version is **1.6** and contains Getting Started, Inventory, Warehouse, Purchasing, Sales, Approvals, Reports, Administration, and Troubleshooting topics.
 
 `manifest.json` defines stable topic IDs, titles, categories, Markdown files, ordering, search keywords, optional required permissions, and related topics. IDs are application contracts and should not be renamed after use.
 
-## Current shell guidance
+## Current user guidance
 
-Getting Started documentation must remain synchronized with the actual shell behavior:
+Help must remain synchronized with current application behavior, especially security/compliance changes that affect normal operation:
 
-- sign-in opens a tabless Welcome page rather than selecting a module
-- the Welcome page uses the signed-in display name and local time-of-day greeting
+- a new database has no shared default administrator password; Depot requires first-run administrator creation
+- the login flow opens the tabless Welcome page after authentication
 - all workspace tabs are closeable; closing the final tab restores Welcome
-- activity-bar navigation and contextual module navigation
-- `Ctrl+P` Quick Open and keyed document tabs for supported records
-- `Ctrl+Shift+P` Command Palette
-- `Ctrl+W`, `Ctrl+Tab`, and `Ctrl+Shift+Tab`
-- `Alt+Left` / `Alt+Right` navigation history
-- F1 context Help
-- database status detail on status-indicator hover
-- clickable application version opening About
-- unsaved-change protection
+- `Ctrl+P` Quick Open, `Ctrl+Shift+P` Command Palette, tab/history shortcuts, and F1 context Help
+- remote SQL Server/MySQL/MariaDB configuration uses the supported encrypted-transport defaults
+- backup guidance documents validation, restore safety, automatic retention, and environment-specific recovery acceptance
+- Audit Log documentation includes filtered CSV export and structured business-record evidence export
+- Privacy Data documents person-related discovery/export without implying automatic legal erasure decisions
+- Sales invoice Help distinguishes current operational invoice/credit-note behavior from the EN 16931/XRechnung technical conformance foundation
+- Help must never document removed default credentials or imply legal certification from technical controls
 
-The Dashboard topic documents only metrics already supplied by `DashboardService`/`DashboardRepository`. Administrator behavior currently includes Inventory, Purchasing, Warehouse, Sales, Approvals, Administration, and Reports overview access; Help must not invent additional dashboard data.
+## Manifest 1.6 changes
+
+Manifest 1.6 adds the `administration.privacy-data` topic and refreshes keywords/related topics around first-run administration, privacy, security, audit evidence, backup retention, encrypted database configuration, and electronic invoicing.
 
 ## Supported Markdown
 
@@ -39,7 +39,8 @@ The native renderer supports headings, paragraphs, ordered/unordered lists, bold
 4. Add keywords for current terminology and shortcuts.
 5. Add only valid `topic:` links and existing permission codes.
 6. Increment the manifest version when the content contract changes materially.
-7. Run `HelpCenterTests`; validation covers duplicate IDs, missing files, unknown permissions, and broken links.
+7. Run the Help Center regression tests; validation covers duplicate IDs, missing files, unknown permissions, and broken links.
+8. Verify first-run/security/privacy wording whenever authentication, data retention, audit, backup, or database configuration changes.
 
 Do not document planned functionality as available.
 
