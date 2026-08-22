@@ -1,0 +1,46 @@
+name: Security supply chain
+
+on:
+  push:
+    branches: [ master, compliance ]
+  pull_request:
+    branches: [ master ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-supply-chain-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sbom:
+    name: Generate SBOM
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore Depot.slnx
+
+      - name: Install CycloneDX tool
+        run: dotnet tool install --global CycloneDX --version 6.2.0
+
+      - name: Generate CycloneDX SBOM
+        run: dotnet-CycloneDX Depot.slnx --configuration Release --output artifacts/sbom --output-format json --filename depot.cdx.json
+
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: depot-sbom
+          path: artifacts/sbom/depot.cdx.json
+          if-no-files-found: error
+          retention-days: 90
