@@ -3,53 +3,89 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="clr-namespace:Depot.Controls">
     <UserControl.Resources>
-        <Style x:Key="DashboardActionRowStyle" TargetType="Button">
-            <Setter Property="Padding" Value="12,9" /><Setter Property="Margin" Value="0,0,0,4" /><Setter Property="Background" Value="Transparent" /><Setter Property="BorderBrush" Value="Transparent" /><Setter Property="BorderThickness" Value="0" /><Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" /><Setter Property="HorizontalContentAlignment" Value="Stretch" /><Setter Property="Cursor" Value="Hand" /><Setter Property="FocusVisualStyle" Value="{x:Null}" />
-            <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button"><Border x:Name="Root" Padding="{TemplateBinding Padding}" Background="{TemplateBinding Background}" CornerRadius="6"><ContentPresenter HorizontalAlignment="Stretch" /></Border><ControlTemplate.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Root" Property="Background" Value="{DynamicResource HoverBrush}" /></Trigger><Trigger Property="IsPressed" Value="True"><Setter TargetName="Root" Property="Background" Value="{DynamicResource NavigationSelectedBackgroundBrush}" /></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter>
+        <Style x:Key="DashboardModuleButtonStyle" TargetType="Button">
+            <Setter Property="Padding" Value="16" />
+            <Setter Property="Margin" Value="0,0,12,12" />
+            <Setter Property="Background" Value="{DynamicResource SurfaceBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="VerticalContentAlignment" Value="Stretch" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Root" Padding="{TemplateBinding Padding}" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="8">
+                            <ContentPresenter HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Root" Property="Background" Value="{DynamicResource HoverBrush}" /></Trigger>
+                            <Trigger Property="IsPressed" Value="True"><Setter TargetName="Root" Property="Background" Value="{DynamicResource NavigationSelectedBackgroundBrush}" /></Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
     </UserControl.Resources>
+
     <Grid>
-        <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="12" /><RowDefinition Height="Auto" /><RowDefinition Height="12" /><RowDefinition Height="*" /></Grid.RowDefinitions>
-        <controls:PageHeader Title="Dashboard" Subtitle="Operational overview and work that needs attention." />
+        <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+        <controls:PageHeader Title="Dashboard" Subtitle="Operational overview across available Depot modules." />
         <controls:OperationPanel Grid.Row="1" IsBusy="{Binding IsBusy}" HasError="{Binding HasOperationError}" StatusText="{Binding StatusText}" ErrorText="{Binding OperationError}" />
 
-        <Grid Grid.Row="3" Visibility="{Binding HasCoreInventoryMetrics, Converter={StaticResource BooleanToVisibilityConverter}}">
-            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="10" /><ColumnDefinition Width="*" /><ColumnDefinition Width="10" /><ColumnDefinition Width="*" /><ColumnDefinition Width="10" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-            <controls:MetricCard Grid.Column="0" Icon="M 5,3 L 15,3 L 17,5 L 17,19 L 3,19 L 3,5 Z M 7,3 L 7,1 L 13,1 L 13,3 M 7,8 L 13,8 M 7,12 L 13,12 M 7,16 L 11,16" SupportingText="Catalog entries" Title="Total Items" Value="{Binding TotalItems, StringFormat={}{0:N0}}" />
-            <controls:MetricCard Grid.Column="2" Icon="M 2,6 L 10,2 L 18,6 L 10,10 Z M 2,6 L 2,14 L 10,18 L 10,10 M 18,6 L 18,14 L 10,18" SupportingText="Units currently on hand" Title="Total Stock" Value="{Binding TotalStockQuantity, StringFormat={}{0:N0}}" />
-            <controls:MetricCard Grid.Column="4" Icon="M 18,10 A 8,8 0 1 1 2,10 A 8,8 0 1 1 18,10 M 12.5,6.5 C 11.8,5.8 8.5,5.5 8,7 C 7.4,8.8 12.8,8.5 12,11 C 11.5,12.5 8.2,12.2 7.5,11.5 M 10,4.5 L 10,15.5" SupportingText="Current inventory valuation" Title="Inventory Value" Value="{Binding TotalInventoryValue}" ValueStringFormat="{}{0:C2}" />
-            <controls:MetricCard Grid.Column="6" Icon="M 3,6 L 15,6 M 12,3 L 15,6 L 12,9 M 17,14 L 5,14 M 8,11 L 5,14 L 8,17" SupportingText="Recorded stock transactions" Title="Movements" Value="{Binding TotalMovements, StringFormat={}{0:N0}}" />
-        </Grid>
+        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="0,12,0,0">
+                <TextBlock Text="Module overview" Style="{StaticResource SectionTitleStyle}" Margin="0,0,0,10" />
+                <UniformGrid Columns="3">
+                    <Button Style="{StaticResource DashboardModuleButtonStyle}" Tag="Inventory" Click="OnDashboardActionClick" Visibility="{Binding HasCoreInventoryMetrics, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <StackPanel><TextBlock Text="Inventory" FontSize="16" FontWeight="SemiBold" /><TextBlock Text="Catalog, stock, value and movement activity" Style="{StaticResource CaptionStyle}" Margin="0,4,0,12" /><UniformGrid Columns="2"><StackPanel><TextBlock Text="{Binding TotalItems, StringFormat={}{0:N0}}" FontSize="22" FontWeight="SemiBold" /><TextBlock Text="Items" Style="{StaticResource CaptionStyle}" /></StackPanel><StackPanel><TextBlock Text="{Binding TotalStockQuantity, StringFormat={}{0:N0}}" FontSize="22" FontWeight="SemiBold" /><TextBlock Text="Stock units" Style="{StaticResource CaptionStyle}" /></StackPanel><StackPanel Margin="0,10,0,0"><TextBlock Text="{Binding TotalInventoryValue, StringFormat={}{0:C2}}" FontSize="18" FontWeight="SemiBold" /><TextBlock Text="Inventory value" Style="{StaticResource CaptionStyle}" /></StackPanel><StackPanel Margin="0,10,0,0"><TextBlock Text="{Binding TotalMovements, StringFormat={}{0:N0}}" FontSize="18" FontWeight="SemiBold" /><TextBlock Text="Movements" Style="{StaticResource CaptionStyle}" /></StackPanel></UniformGrid></StackPanel>
+                    </Button>
 
-        <Grid Grid.Row="5">
-            <Grid.ColumnDefinitions><ColumnDefinition Width="380" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-            <controls:Card Style="{StaticResource WorkspaceCardStyle}">
-                <controls:Card.Header><StackPanel><TextBlock Text="Needs attention" Style="{StaticResource WorkspaceTitleStyle}" /><TextBlock Text="Open the relevant workspace directly." Style="{StaticResource CaptionStyle}" Margin="0,3,0,0" /></StackPanel></controls:Card.Header>
-                <ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel>
-                    <Button Style="{StaticResource DashboardActionRowStyle}" Tag="Approvals" Click="OnDashboardActionClick" Visibility="{Binding HasApprovalMetrics, Converter={StaticResource BooleanToVisibilityConverter}}"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><StackPanel><TextBlock Text="Pending approvals" FontWeight="SemiBold" /><TextBlock Text="{Binding ApprovalSupportingText}" Style="{StaticResource CaptionStyle}" Margin="0,2,0,0" TextTrimming="CharacterEllipsis" /></StackPanel><TextBlock Grid.Column="1" Text="{Binding ApprovalSummary.OpenCount, StringFormat={}{0:N0}}" FontSize="18" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryBrush}" VerticalAlignment="Center" /></Grid></Button>
-                    <Button Style="{StaticResource DashboardActionRowStyle}" Tag="Purchasing" Click="OnDashboardActionClick" Visibility="{Binding HasPurchasingMetrics, Converter={StaticResource BooleanToVisibilityConverter}}"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><StackPanel><TextBlock Text="Purchasing attention" FontWeight="SemiBold" /><TextBlock Text="{Binding PurchasingSupportingText}" Style="{StaticResource CaptionStyle}" Margin="0,2,0,0" TextTrimming="CharacterEllipsis" /></StackPanel><TextBlock Grid.Column="1" Text="{Binding PurchasingAttentionCount, StringFormat={}{0:N0}}" FontSize="18" FontWeight="SemiBold" Foreground="{DynamicResource WarningForegroundBrush}" VerticalAlignment="Center" /></Grid></Button>
-                    <Button Style="{StaticResource DashboardActionRowStyle}" Tag="Warehouse" Click="OnDashboardActionClick" Visibility="{Binding HasWarehouseMetrics, Converter={StaticResource BooleanToVisibilityConverter}}"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><StackPanel><TextBlock Text="Warehouse work" FontWeight="SemiBold" /><TextBlock Text="{Binding WarehouseSupportingText}" Style="{StaticResource CaptionStyle}" Margin="0,2,0,0" TextTrimming="CharacterEllipsis" /></StackPanel><TextBlock Grid.Column="1" Text="{Binding WarehouseWorkCount, StringFormat={}{0:N0}}" FontSize="18" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryBrush}" VerticalAlignment="Center" /></Grid></Button>
-                    <Button Style="{StaticResource DashboardActionRowStyle}" Tag="Sales" Click="OnDashboardActionClick" Visibility="{Binding HasSalesMetrics, Converter={StaticResource BooleanToVisibilityConverter}}"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><StackPanel><TextBlock Text="Sales workflow" FontWeight="SemiBold" /><TextBlock Text="{Binding SalesSupportingText}" Style="{StaticResource CaptionStyle}" Margin="0,2,0,0" TextTrimming="CharacterEllipsis" /><TextBlock Text="{Binding SalesCommercialText}" Style="{StaticResource CaptionStyle}" Margin="0,2,0,0" TextTrimming="CharacterEllipsis" /></StackPanel><TextBlock Grid.Column="1" Text="{Binding SalesAttentionCount, StringFormat={}{0:N0}}" FontSize="18" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryBrush}" VerticalAlignment="Center" /></Grid></Button>
-                    <Button Style="{StaticResource DashboardActionRowStyle}" Tag="AdministrationUsers" Click="OnDashboardActionClick" Visibility="{Binding HasAdministrationMetrics, Converter={StaticResource BooleanToVisibilityConverter}}"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><StackPanel><TextBlock Text="Active users" FontWeight="SemiBold" /><TextBlock Text="Review users and access" Style="{StaticResource CaptionStyle}" Margin="0,2,0,0" /></StackPanel><TextBlock Grid.Column="1" Text="{Binding AdministrationMetrics.ActiveUsers, StringFormat={}{0:N0}}" FontSize="18" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryBrush}" VerticalAlignment="Center" /></Grid></Button>
-                </StackPanel></ScrollViewer>
-            </controls:Card>
+                    <Button Style="{StaticResource DashboardModuleButtonStyle}" Tag="Purchasing" Click="OnDashboardActionClick" Visibility="{Binding HasPurchasingMetrics, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <StackPanel><TextBlock Text="Purchasing" FontSize="16" FontWeight="SemiBold" /><TextBlock Text="Purchase orders, receipts and supplier returns" Style="{StaticResource CaptionStyle}" Margin="0,4,0,12" /><TextBlock Text="{Binding PurchasingAttentionCount, StringFormat={}{0:N0}}" FontSize="26" FontWeight="SemiBold" Foreground="{DynamicResource WarningForegroundBrush}" /><TextBlock Text="Items requiring attention" Style="{StaticResource CaptionStyle}" /><TextBlock Text="{Binding PurchasingSupportingText}" Style="{StaticResource CaptionStyle}" Margin="0,10,0,0" TextWrapping="Wrap" /></StackPanel>
+                    </Button>
 
-            <controls:Card Grid.Column="2" Style="{StaticResource WorkspaceCardStyle}">
-                <controls:Card.Header><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><StackPanel><TextBlock Text="Recent activity" Style="{StaticResource WorkspaceTitleStyle}" /><TextBlock Text="Latest inventory movements" Style="{StaticResource CaptionStyle}" Margin="0,3,0,0" /></StackPanel><Button Grid.Column="1" Content="Open movements" Tag="InventoryMovements" Click="OnDashboardActionClick" Style="{StaticResource SecondaryButtonStyle}" /></Grid></controls:Card.Header>
-                <Grid>
-                    <DataGrid Style="{StaticResource AppDataGridStyle}" ItemsSource="{Binding RecentMovements}" Visibility="{Binding HasRecentMovements, Converter={StaticResource BooleanToVisibilityConverter}}" MouseDoubleClick="OnRecentMovementDoubleClick">
-                        <DataGrid.Columns>
-                            <DataGridTextColumn Header="Date" Binding="{Binding TimestampLocal, StringFormat={}{0:g}}" Width="130" ElementStyle="{StaticResource AppDataGridTextStyle}" />
-                            <DataGridTextColumn Header="Part Number" Binding="{Binding PartNumber}" Width="130" ElementStyle="{StaticResource AppDataGridTextStyle}" />
-                            <DataGridTextColumn Header="Description" Binding="{Binding Description}" Width="*" ElementStyle="{StaticResource AppDataGridTextStyle}" />
-                            <DataGridTextColumn Header="Warehouse" Binding="{Binding WarehouseName}" Width="120" ElementStyle="{StaticResource AppDataGridTextStyle}" />
-                            <DataGridTextColumn Header="Type" Binding="{Binding MovementType}" Width="100" ElementStyle="{StaticResource AppDataGridTextStyle}" />
-                            <DataGridTextColumn Header="Quantity" Binding="{Binding Quantity, StringFormat={}{0:N2}}" Width="100" ElementStyle="{StaticResource AppDataGridNumericTextStyle}" />
-                        </DataGrid.Columns>
-                    </DataGrid>
-                    <controls:EmptyState Title="No recent movements" Description="Recent stock activity will appear here." Visibility="{Binding HasNoRecentMovements, Converter={StaticResource BooleanToVisibilityConverter}}" />
-                </Grid>
-            </controls:Card>
-        </Grid>
+                    <Button Style="{StaticResource DashboardModuleButtonStyle}" Tag="Warehouse" Click="OnDashboardActionClick" Visibility="{Binding HasWarehouseMetrics, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <StackPanel><TextBlock Text="Warehouse" FontSize="16" FontWeight="SemiBold" /><TextBlock Text="Counts, transfers and warehouse execution" Style="{StaticResource CaptionStyle}" Margin="0,4,0,12" /><TextBlock Text="{Binding WarehouseWorkCount, StringFormat={}{0:N0}}" FontSize="26" FontWeight="SemiBold" /><TextBlock Text="Open warehouse work" Style="{StaticResource CaptionStyle}" /><TextBlock Text="{Binding WarehouseSupportingText}" Style="{StaticResource CaptionStyle}" Margin="0,10,0,0" TextWrapping="Wrap" /></StackPanel>
+                    </Button>
+
+                    <Button Style="{StaticResource DashboardModuleButtonStyle}" Tag="Sales" Click="OnDashboardActionClick" Visibility="{Binding HasSalesMetrics, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <StackPanel><TextBlock Text="Sales" FontSize="16" FontWeight="SemiBold" /><TextBlock Text="Orders, fulfillment, invoices and commercial activity" Style="{StaticResource CaptionStyle}" Margin="0,4,0,12" /><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><StackPanel><TextBlock Text="{Binding SalesAttentionCount, StringFormat={}{0:N0}}" FontSize="26" FontWeight="SemiBold" /><TextBlock Text="Workflow attention" Style="{StaticResource CaptionStyle}" /></StackPanel><StackPanel Grid.Column="1"><TextBlock Text="{Binding SalesMetrics.NetSalesThisMonth, StringFormat={}{0:C2}}" FontSize="20" FontWeight="SemiBold" /><TextBlock Text="Net sales this month" Style="{StaticResource CaptionStyle}" /></StackPanel></Grid><TextBlock Text="{Binding SalesSupportingText}" Style="{StaticResource CaptionStyle}" Margin="0,10,0,0" TextWrapping="Wrap" /><TextBlock Text="{Binding SalesCommercialText}" Style="{StaticResource CaptionStyle}" Margin="0,3,0,0" TextWrapping="Wrap" /></StackPanel>
+                    </Button>
+
+                    <Button Style="{StaticResource DashboardModuleButtonStyle}" Tag="Approvals" Click="OnDashboardActionClick" Visibility="{Binding HasApprovalMetrics, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <StackPanel><TextBlock Text="Approvals" FontSize="16" FontWeight="SemiBold" /><TextBlock Text="Pending purchase and sales decisions" Style="{StaticResource CaptionStyle}" Margin="0,4,0,12" /><TextBlock Text="{Binding ApprovalSummary.OpenCount, StringFormat={}{0:N0}}" FontSize="26" FontWeight="SemiBold" Foreground="{DynamicResource PrimaryBrush}" /><TextBlock Text="Open approvals" Style="{StaticResource CaptionStyle}" /><TextBlock Text="{Binding ApprovalSupportingText}" Style="{StaticResource CaptionStyle}" Margin="0,10,0,0" TextWrapping="Wrap" /></StackPanel>
+                    </Button>
+
+                    <Button Style="{StaticResource DashboardModuleButtonStyle}" Tag="AdministrationUsers" Click="OnDashboardActionClick" Visibility="{Binding HasAdministrationMetrics, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <StackPanel><TextBlock Text="Administration" FontSize="16" FontWeight="SemiBold" /><TextBlock Text="Users, access and application administration" Style="{StaticResource CaptionStyle}" Margin="0,4,0,12" /><TextBlock Text="{Binding AdministrationMetrics.ActiveUsers, StringFormat={}{0:N0}}" FontSize="26" FontWeight="SemiBold" /><TextBlock Text="Active users" Style="{StaticResource CaptionStyle}" /></StackPanel>
+                    </Button>
+
+                    <Button Style="{StaticResource DashboardModuleButtonStyle}" Tag="Reports" Click="OnDashboardActionClick" Visibility="{Binding HasAdministrationMetrics, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <StackPanel><TextBlock Text="Reports" FontSize="16" FontWeight="SemiBold" /><TextBlock Text="Inventory value and stock distribution reporting" Style="{StaticResource CaptionStyle}" Margin="0,4,0,12" /><TextBlock Text="Open reporting workspace" FontSize="16" FontWeight="SemiBold" /><TextBlock Text="Analyze and export the current report result." Style="{StaticResource CaptionStyle}" Margin="0,6,0,0" TextWrapping="Wrap" /></StackPanel>
+                    </Button>
+                </UniformGrid>
+
+                <TextBlock Text="Recent activity" Style="{StaticResource SectionTitleStyle}" Margin="0,8,0,10" />
+                <controls:Card Style="{StaticResource WorkspaceCardStyle}" Margin="0,0,0,12">
+                    <controls:Card.Header><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><StackPanel><TextBlock Text="Latest inventory movements" Style="{StaticResource WorkspaceTitleStyle}" /><TextBlock Text="Recent stock activity across inventory." Style="{StaticResource CaptionStyle}" Margin="0,3,0,0" /></StackPanel><Button Grid.Column="1" Content="Open movements" Tag="InventoryMovements" Click="OnDashboardActionClick" Style="{StaticResource SecondaryButtonStyle}" /></Grid></controls:Card.Header>
+                    <Grid MinHeight="260">
+                        <DataGrid Style="{StaticResource AppDataGridStyle}" ItemsSource="{Binding RecentMovements}" Visibility="{Binding HasRecentMovements, Converter={StaticResource BooleanToVisibilityConverter}}" MouseDoubleClick="OnRecentMovementDoubleClick">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Date" Binding="{Binding TimestampLocal, StringFormat={}{0:g}}" Width="130" ElementStyle="{StaticResource AppDataGridTextStyle}" />
+                                <DataGridTextColumn Header="Part Number" Binding="{Binding PartNumber}" Width="130" ElementStyle="{StaticResource AppDataGridTextStyle}" />
+                                <DataGridTextColumn Header="Description" Binding="{Binding Description}" Width="*" ElementStyle="{StaticResource AppDataGridTextStyle}" />
+                                <DataGridTextColumn Header="Warehouse" Binding="{Binding WarehouseName}" Width="120" ElementStyle="{StaticResource AppDataGridTextStyle}" />
+                                <DataGridTextColumn Header="Type" Binding="{Binding MovementType}" Width="100" ElementStyle="{StaticResource AppDataGridTextStyle}" />
+                                <DataGridTextColumn Header="Quantity" Binding="{Binding Quantity, StringFormat={}{0:N2}}" Width="100" ElementStyle="{StaticResource AppDataGridNumericTextStyle}" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+                        <controls:EmptyState Title="No recent movements" Description="Recent stock activity will appear here." Visibility="{Binding HasNoRecentMovements, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                    </Grid>
+                </controls:Card>
+            </StackPanel>
+        </ScrollViewer>
     </Grid>
 </UserControl>

@@ -19,10 +19,12 @@ public partial class DashboardView : UserControl
 		if (sender is not FrameworkElement { Tag: string target } || Window.GetWindow(this)?.DataContext is not MainViewModel viewModel) return;
 		switch (target)
 		{
+			case "Inventory": await NavigateModulePageAsync(viewModel, "Inventory", "Overview"); break;
 			case "Approvals": await NavigateTopLevelAsync(viewModel, "Approvals"); break;
 			case "Purchasing": await NavigateModulePageAsync(viewModel, "Purchasing", "Purchase Orders"); break;
 			case "Warehouse": await NavigateModulePageAsync(viewModel, "Warehouse", "Inventory Counts"); break;
 			case "Sales": await NavigateModulePageAsync(viewModel, "Sales", "Overview"); break;
+			case "Reports": await NavigateTopLevelAsync(viewModel, "Reports"); break;
 			case "InventoryMovements": await NavigateModulePageAsync(viewModel, "Inventory", "Movements"); break;
 			case "AdministrationUsers":
 				await NavigateTopLevelAsync(viewModel, "Administration");

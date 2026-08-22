@@ -68,18 +68,9 @@ public partial class App : Application
 	private void ShowMainWindow(DepotApplicationServices composition)
 	{
 		var mainViewModel = composition.ViewModels.CreateMain();
-		var salesViewModel = new SalesViewModel(
-			composition.Services.Customers,
-			composition.Services.SalesOrders,
-			composition.Services.Shipments,
-			composition.Services.SalesInvoices,
-			composition.Services.Items,
-			composition.Services.Authorization,
-			_fileDialogs,
-			new SalesDocumentService());
 		StartupDiagnostics.Log("MainViewModel created.");
 
-		var mainWindow = new MainWindow(composition.Services.Authorization, composition.Services.NotificationNavigation, salesViewModel) { DataContext = mainViewModel };
+		var mainWindow = new MainWindow(composition.Services.Authorization, _applicationInformation) { DataContext = mainViewModel };
 		MainWindow = mainWindow;
 		StartupDiagnostics.Log("MainWindow created.");
 		mainViewModel.LogoutRequested += OnLogoutRequested;

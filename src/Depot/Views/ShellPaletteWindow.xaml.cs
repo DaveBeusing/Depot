@@ -47,7 +47,9 @@ public partial class ShellPaletteWindow : Window
 	private readonly Func<Task> _openHelp;
 	private readonly Func<Task> _openUser;
 	private readonly IList<ShellPaletteEntry> _recentEntries;
+	private readonly ShellCommandRegistry _commands = new();
 	private CancellationTokenSource? _searchCancellation;
+	private bool _commandsRegistered;
 	private bool _updating;
 
 	public ShellPaletteWindow(MainViewModel viewModel, ShellPaletteMode mode, Func<Task> openNotifications, Func<Task> openHelp, Func<Task> openUser, IList<ShellPaletteEntry> recentEntries)
@@ -107,51 +109,69 @@ public partial class ShellPaletteWindow : Window
 
 	private IReadOnlyList<ShellPaletteEntry> BuildCommandEntries(string query)
 	{
-		var entries = BuildNavigationEntries();
-		entries.Add(new("Open Notifications", "Open the notification center workspace", "Shell", "SHELL", NotificationIcon, _openNotifications));
-		entries.Add(new("Open Help", "Open Depot help", "Shell", "SHELL", HelpIcon, _openHelp));
-		entries.Add(new("Open User", "Open the signed-in user workspace", "Shell", "SHELL", UserIcon, _openUser));
-		AddWorkflowAction(entries, "Inventory", "Items", "New Item", "Create a new inventory item", ItemIcon, async () => { if (await NavigateModulePageAsync("Inventory", "Items")) _viewModel.ItemsViewModel.NewItemCommand.Execute(null); });
-		AddWorkflowAction(entries, "Purchasing", "Purchase Orders", "New Purchase Order", "Create a new purchase order", PurchaseOrderIcon, async () => { if (await NavigateModulePageAsync("Purchasing", "Purchase Orders")) _viewModel.ProcurementViewModel.NewOrderCommand.Execute(null); });
-		AddWorkflowAction(entries, "Warehouse", "Inventory Counts", "Start Inventory Count", "Open a new physical inventory count", ActionIcon, async () => { if (await NavigateModulePageAsync("Warehouse", "Inventory Counts")) _viewModel.InventoryCountsViewModel.NewCommand.Execute(null); });
-		AddWorkflowAction(entries, "Warehouse", "Transfers", "Transfer Stock", "Create a warehouse stock transfer", ActionIcon, async () => { if (await NavigateModulePageAsync("Warehouse", "Transfers")) _viewModel.StockTransfersViewModel.NewTransferCommand.Execute(null); });
-		AddWorkflowAction(entries, "Purchasing", "Goods Receipts", "Receive Goods", "Open the goods receipt workflow", PurchaseOrderIcon, async () => { await NavigateModulePageAsync("Purchasing", "Goods Receipts"); });
-
-		AddWorkflowAction(entries, "Sales", "Customers", "Sales: New Customer", "Create a customer account", CustomerIcon, async () => { if (await NavigateModulePageAsync("Sales", "Customers")) _viewModel.CustomersViewModel.Workspace.NewCustomerCommand.Execute(null); });
-		AddWorkflowAction(entries, "Sales", "Sales Orders", "Sales: New Sales Order", "Create a customer sales order", SalesOrderIcon, async () => { if (await NavigateModulePageAsync("Sales", "Sales Orders")) _viewModel.SalesOrdersViewModel.Workspace.NewOrderCommand.Execute(null); });
-		AddWorkflowAction(entries, "Sales", "Approvals", "Sales: Open Approval Queue", "Review submitted sales orders", SalesOrderIcon, async () => { await NavigateModulePageAsync("Sales", "Approvals"); });
-		AddWorkflowAction(entries, "Sales", "Shipping", "Sales: Ship Order", "Open released orders for picking and shipping", ShipmentIcon, async () => { await NavigateModulePageAsync("Sales", "Shipping"); });
-		AddWorkflowAction(entries, "Sales", "Shipping", "Sales: Create Customer Return", "Open shipping and customer returns", ReturnIcon, async () => { await NavigateModulePageAsync("Sales", "Shipping"); });
-		AddWorkflowAction(entries, "Sales", "Invoices", "Sales: Create Invoice", "Create an invoice from a posted shipment", InvoiceIcon, async () => { await NavigateModulePageAsync("Sales", "Invoices"); });
-
-		entries.Add(new("Sign Out", "End the current Depot session", "Account", "ACCOUNT", UserIcon, () => { _viewModel.LogoutCommand.Execute(null); return Task.CompletedTask; }));
-		return Filter(entries, query);
+		EnsureCommandsRegistered();
+		return _commands.Search(query)
+			.Select(command => new ShellPaletteEntry(command.Title, command.Subtitle, command.Group, command.TypeLabel, command.IconData, command.ExecuteAsync))
+			.ToArray();
 	}
 
-	private void AddWorkflowAction(List<ShellPaletteEntry> entries, string moduleName, string pageName, string title, string subtitle, string icon, Func<Task> execute)
+	private void EnsureCommandsRegistered()
 	{
-		if (HasModulePage(moduleName, pageName)) entries.Add(new(title, subtitle, "Actions", "ACTION", icon, execute));
+		if (_commandsRegistered) return;
+		_commandsRegistered = true;
+
+		foreach (var module in ShellFeatureCatalog.Create(_viewModel).Modules)
+		{
+			var moduleRoute = module.Route;
+			_commands.Register(new($"route:{moduleRoute}", module.Name, "Open workspace", "Workspaces", "WORKSPACE", module.IconData, () => _viewModel.NavigateToRouteAsync(moduleRoute)));
+			foreach (var page in module.Pages)
+			{
+				var pageRoute = page.Route;
+				_commands.Register(new($"route:{pageRoute}", $"{module.Name}: {page.Name}", "Open workspace section", "Workspace Sections", "SECTION", module.IconData, () => _viewModel.NavigateToRouteAsync(pageRoute)));
+			}
+		}
+
+		_commands.Register(new("shell.notifications", "Open Notifications", "Open the notification center workspace", "Shell", "SHELL", NotificationIcon, _openNotifications));
+		_commands.Register(new("shell.help", "Open Help", "Open Depot help", "Shell", "SHELL", HelpIcon, _openHelp));
+		_commands.Register(new("shell.user", "Open User", "Open the signed-in user workspace", "Shell", "SHELL", UserIcon, _openUser));
+		RegisterWorkflowAction(ShellRoutes.Inventory.Items, "inventory.new-item", "New Item", "Create a new inventory item", ItemIcon, async () => { await _viewModel.NavigateToRouteAsync(ShellRoutes.Inventory.Items); _viewModel.ItemsViewModel.NewItemCommand.Execute(null); });
+		RegisterWorkflowAction(ShellRoutes.Purchasing.PurchaseOrders, "purchasing.new-order", "New Purchase Order", "Create a new purchase order", PurchaseOrderIcon, async () => { await _viewModel.NavigateToRouteAsync(ShellRoutes.Purchasing.PurchaseOrders); _viewModel.ProcurementViewModel.NewOrderCommand.Execute(null); });
+		RegisterWorkflowAction(ShellRoutes.Warehouse.InventoryCounts, "warehouse.new-count", "Start Inventory Count", "Open a new physical inventory count", ActionIcon, async () => { await _viewModel.NavigateToRouteAsync(ShellRoutes.Warehouse.InventoryCounts); _viewModel.InventoryCountsViewModel.NewCommand.Execute(null); });
+		RegisterWorkflowAction(ShellRoutes.Warehouse.Transfers, "warehouse.new-transfer", "Transfer Stock", "Create a warehouse stock transfer", ActionIcon, async () => { await _viewModel.NavigateToRouteAsync(ShellRoutes.Warehouse.Transfers); _viewModel.StockTransfersViewModel.NewTransferCommand.Execute(null); });
+		RegisterWorkflowAction(ShellRoutes.Purchasing.GoodsReceipts, "purchasing.receive", "Receive Goods", "Open the goods receipt workflow", PurchaseOrderIcon, () => _viewModel.NavigateToRouteAsync(ShellRoutes.Purchasing.GoodsReceipts));
+		RegisterWorkflowAction(ShellRoutes.Sales.Customers, "sales.new-customer", "Sales: New Customer", "Create a customer account", CustomerIcon, async () => { await _viewModel.NavigateToRouteAsync(ShellRoutes.Sales.Customers); _viewModel.CustomersViewModel.Workspace.NewCustomerCommand.Execute(null); });
+		RegisterWorkflowAction(ShellRoutes.Sales.Orders, "sales.new-order", "Sales: New Sales Order", "Create a customer sales order", SalesOrderIcon, async () => { await _viewModel.NavigateToRouteAsync(ShellRoutes.Sales.Orders); _viewModel.SalesOrdersViewModel.Workspace.NewOrderCommand.Execute(null); });
+		RegisterWorkflowAction(ShellRoutes.Approvals.Sales, "sales.approvals", "Sales: Open Approval Queue", "Review submitted sales orders", SalesOrderIcon, () => _viewModel.NavigateToRouteAsync(ShellRoutes.Approvals.Sales));
+		RegisterWorkflowAction(ShellRoutes.Warehouse.Shipping, "sales.shipping", "Sales: Ship Order", "Open released orders for picking and shipping", ShipmentIcon, () => _viewModel.NavigateToRouteAsync(ShellRoutes.Warehouse.Shipping));
+		RegisterWorkflowAction(ShellRoutes.Warehouse.Shipping, "sales.return", "Sales: Create Customer Return", "Open shipping and customer returns", ReturnIcon, () => _viewModel.NavigateToRouteAsync(ShellRoutes.Warehouse.Shipping));
+		RegisterWorkflowAction(ShellRoutes.Sales.Invoices, "sales.invoice", "Sales: Create Invoice", "Create an invoice from a posted shipment", InvoiceIcon, () => _viewModel.NavigateToRouteAsync(ShellRoutes.Sales.Invoices));
+		_commands.Register(new("account.sign-out", "Sign Out", "End the current Depot session", "Account", "ACCOUNT", UserIcon, () => { _viewModel.LogoutCommand.Execute(null); return Task.CompletedTask; }));
+	}
+
+	private void RegisterWorkflowAction(ShellRoute route, string id, string title, string subtitle, string icon, Func<Task> execute)
+	{
+		if (_viewModel.FindPage(route) is null && _viewModel.FindWorkspace(route) is null) return;
+		_commands.Register(new(id, title, subtitle, "Actions", "ACTION", icon, execute));
 	}
 
 	private List<ShellPaletteEntry> BuildNavigationEntries()
 	{
 		var entries = new List<ShellPaletteEntry>();
-		foreach (var item in _viewModel.NavigationItems)
+		foreach (var module in ShellFeatureCatalog.Create(_viewModel).Modules)
 		{
-			var capturedItem = item;
-			entries.Add(new(item.Name, "Open workspace", "Workspaces", "WORKSPACE", item.IconData, () => _viewModel.NavigateAsync(capturedItem)));
-			if (item.Content is not ShellModuleViewModel module) continue;
+			var moduleRoute = module.Route;
+			entries.Add(new(module.Name, "Open workspace", "Workspaces", "WORKSPACE", module.IconData, () => _viewModel.NavigateToRouteAsync(moduleRoute)));
 			foreach (var page in module.Pages)
 			{
-				var capturedPage = page;
-				entries.Add(new($"{item.Name}: {page.Name}", "Open workspace section", "Workspace Sections", "SECTION", item.IconData, async () => { if (!module.SetSelectedPage(capturedPage)) return; await _viewModel.NavigateAsync(capturedItem); }));
+				var pageRoute = page.Route;
+				entries.Add(new($"{module.Name}: {page.Name}", "Open workspace section", "Workspace Sections", "SECTION", module.IconData, () => _viewModel.NavigateToRouteAsync(pageRoute)));
 			}
 		}
 		foreach (var adminItem in _viewModel.AdministrationViewModel.NavigationItems)
 		{
 			if (adminItem.Section is not AdministrationSection section) continue;
 			var capturedSection = section;
-			entries.Add(new($"Administration: {adminItem.Name}", "Open administration section", "Workspace Sections", "SECTION", WorkspaceIcon, async () => { if (!await NavigateTopLevelAsync("Administration")) return; await _viewModel.AdministrationViewModel.NavigateToAsync(capturedSection); }));
+			entries.Add(new($"Administration: {adminItem.Name}", "Open administration section", "Workspace Sections", "SECTION", WorkspaceIcon, async () => { await _viewModel.NavigateToRouteAsync(ShellRoutes.Administration); await _viewModel.AdministrationViewModel.NavigateToAsync(capturedSection); }));
 		}
 		return entries;
 	}
@@ -183,7 +203,7 @@ public partial class ShellPaletteWindow : Window
 			foreach (var item in _viewModel.ItemsViewModel.Items.Take(8))
 			{
 				var captured = item;
-				entries.Add(new(captured.PartNumber, captured.Description, "Items", "ITEM", ItemIcon, async () => { if (!await NavigateModulePageAsync("Inventory", "Items")) return; _viewModel.ItemsViewModel.SelectedItem = captured; }, $"item:{captured.Id}"));
+				entries.Add(new(captured.PartNumber, captured.Description, "Items", "ITEM", ItemIcon, async () => { await _viewModel.NavigateToRouteAsync(ShellRoutes.Inventory.Items, token); _viewModel.ItemsViewModel.SelectedItem = captured; }, $"item:{captured.Id}"));
 			}
 			_viewModel.ItemsViewModel.SearchText = oldItemSearch;
 
@@ -197,7 +217,7 @@ public partial class ShellPaletteWindow : Window
 			foreach (var order in _viewModel.ProcurementViewModel.Orders.Take(8))
 			{
 				var captured = order;
-				entries.Add(new(captured.OrderNumber, captured.SupplierName ?? "Purchase order", "Purchase Orders", "PO", PurchaseOrderIcon, async () => { if (!await NavigateModulePageAsync("Purchasing", "Purchase Orders")) return; await _viewModel.ProcurementViewModel.OpenOrderAsync(captured.Id); }, $"po:{captured.Id}"));
+				entries.Add(new(captured.OrderNumber, captured.SupplierName ?? "Purchase order", "Purchase Orders", "PO", PurchaseOrderIcon, async () => { await _viewModel.NavigateToRouteAsync(ShellRoutes.Purchasing.PurchaseOrders, token); await _viewModel.ProcurementViewModel.OpenOrderAsync(captured.Id); }, $"po:{captured.Id}"));
 			}
 			foreach (var supplier in _viewModel.ProcurementViewModel.Suppliers.Take(6))
 			{
@@ -208,7 +228,7 @@ public partial class ShellPaletteWindow : Window
 			_viewModel.ProcurementViewModel.SupplierSearchText = oldSupplierSearch;
 			_viewModel.ProcurementViewModel.Section = oldSection;
 
-			if (HasModulePage("Sales", "Overview"))
+			if (_viewModel.FindPage(ShellRoutes.Sales.Overview) is not null)
 			{
 				foreach (var result in await _viewModel.SalesViewModel.QuickSearchAsync(text, token))
 				{
@@ -233,7 +253,7 @@ public partial class ShellPaletteWindow : Window
 
 	private async Task OpenSupplierAsync(Supplier supplier, string query)
 	{
-		if (!await NavigateTopLevelAsync("Administration")) return;
+		await _viewModel.NavigateToRouteAsync(ShellRoutes.Administration);
 		await _viewModel.AdministrationViewModel.NavigateToAsync(AdministrationSection.Suppliers);
 		if (_viewModel.AdministrationViewModel.CurrentViewModel is SupplierViewModel suppliers)
 		{
@@ -241,30 +261,6 @@ public partial class ShellPaletteWindow : Window
 			await suppliers.LoadAsync();
 			suppliers.SelectedSupplier = suppliers.Suppliers.FirstOrDefault(candidate => candidate.Id == supplier.Id);
 		}
-	}
-
-	private async Task<bool> NavigateTopLevelAsync(string name)
-	{
-		var item = _viewModel.NavigationItems.FirstOrDefault(candidate => candidate.Name == name);
-		if (item is null) return false;
-		await _viewModel.NavigateAsync(item);
-		return ReferenceEquals(_viewModel.SelectedNavigationItem, item);
-	}
-
-	private async Task<bool> NavigateModulePageAsync(string moduleName, string pageName)
-	{
-		var item = _viewModel.NavigationItems.FirstOrDefault(candidate => candidate.Name == moduleName);
-		if (item is null || item.Content is not ShellModuleViewModel module) return false;
-		var page = module.Pages.FirstOrDefault(candidate => candidate.Name == pageName);
-		if (page is null || !module.SetSelectedPage(page)) return false;
-		await _viewModel.NavigateAsync(item);
-		return ReferenceEquals(_viewModel.SelectedNavigationItem, item) && ReferenceEquals(module.SelectedPage, page);
-	}
-
-	private bool HasModulePage(string moduleName, string pageName)
-	{
-		var item = _viewModel.NavigationItems.FirstOrDefault(candidate => candidate.Name == moduleName);
-		return item?.Content is ShellModuleViewModel module && module.Pages.Any(candidate => candidate.Name == pageName);
 	}
 
 	private void Remember(ShellPaletteEntry entry)

@@ -3,7 +3,6 @@
 
 using System.Collections.ObjectModel;
 
-using Depot.Services;
 using Depot.ViewModels.Administration;
 
 namespace Depot.ViewModels;
@@ -18,7 +17,7 @@ public sealed class ShellModuleViewModel : BaseViewModel, IDisposable
 	{
 		Title = title;
 		Subtitle = subtitle;
-		_ownedPages = title == "Sales" ? NormalizeSalesPages(pages) : pages.ToList();
+		_ownedPages = pages.ToList();
 		Pages = new ObservableCollection<SecondaryNavigationItem>(_ownedPages);
 		_selectedPage = Pages.FirstOrDefault(page => page.IsVisible) ?? Pages.FirstOrDefault();
 		_selectedPage?.Activate?.Invoke();
@@ -70,50 +69,6 @@ public sealed class ShellModuleViewModel : BaseViewModel, IDisposable
 		if (SelectedPage is null) return;
 		await SelectedPage.RefreshAsync(cancellationToken);
 		ExpandAdministrationPagesIfNeeded();
-	}
-
-	private static List<SecondaryNavigationItem> NormalizeSalesPages(IEnumerable<SecondaryNavigationItem> pages)
-	{
-		var original = pages.ToList();
-		var approvalPage = original.FirstOrDefault(page => page.Name == "Approvals");
-		if (approvalPage is not null) approvalPage.IsVisible = false;
-
-		var result = new List<SecondaryNavigationItem>();
-		foreach (var page in original.Where(page => page.Name != "Approvals"))
-		{
-			result.Add(page);
-			if (page.Name != "Overview" || !SalesCommercialContext.IsConfigured || !SalesCommercialContext.IsUiConfigured) continue;
-
-			if (SalesCommercialContext.Quotes.CanView)
-			{
-				result.Add(new SecondaryNavigationItem(
-					"Quotes",
-					() => new SalesQuotesViewModel(
-						SalesCommercialContext.Quotes,
-						SalesCommercialContext.Pricing,
-						SalesCommercialContext.Customers,
-						SalesCommercialContext.Items,
-						SalesCommercialContext.FileDialogs,
-						SalesCommercialContext.Documents),
-					(viewModel, token) => ((SalesQuotesViewModel)viewModel).LoadAsync(token),
-					"sales.quotes"));
-			}
-
-			if (SalesCommercialContext.Pricing.CanView)
-			{
-				result.Add(new SecondaryNavigationItem(
-					"Pricing",
-					() => new SalesPricingViewModel(
-						SalesCommercialContext.Pricing,
-						SalesCommercialContext.Customers,
-						SalesCommercialContext.Items),
-					(viewModel, token) => ((SalesPricingViewModel)viewModel).LoadAsync(token),
-					"sales.pricing"));
-			}
-		}
-
-		if (approvalPage is not null) result.Add(approvalPage);
-		return result;
 	}
 
 	private void ExpandAdministrationPagesIfNeeded()

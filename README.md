@@ -2,43 +2,17 @@
 
 Depot is a Windows desktop application for inventory, warehouse, procurement, sales, administration, reporting, and operational workflows. It is built with .NET 10, WPF, MVVM, and a provider-neutral ADO.NET persistence layer.
 
-The project is under active development on the **0.14.0-preview** line. Implemented workflows are not described as production-ready until the version 1.0 verification checklist has been completed.
+The project is under active development on the **0.14.28-preview** line and is not yet production-certified.
 
-![Platform](https://img.shields.io/badge/platform-Windows-blue)
-![Framework](https://img.shields.io/badge/.NET-10-512BD4)
-![UI](https://img.shields.io/badge/UI-WPF-512BD4)
-![Database](https://img.shields.io/badge/database-SQLite%20%7C%20SQL%20Server%20%7C%20MySQL%2FMariaDB-0F80CC)
-![Architecture](https://img.shields.io/badge/architecture-MVVM-orange)
-![License](https://img.shields.io/badge/license-MIT-yellow)
+## Application shell
 
-## Current implementation status
+Depot uses a dark workspace-oriented shell with permission-aware activity-bar navigation and closeable workspace tabs. After sign-in, no module or tab is selected automatically: a tabless Welcome page greets the user according to the local time of day and shows shortcuts for Quick Open, Command Palette, tab switching, tab closing, and context Help. Closing the final tab returns to this Welcome page.
 
-### Application shell and UX
+The status bar shows database connection state; hovering its database indicator exposes the current connection detail. The current application version is shown on the right and opens the existing About page when selected.
 
-Depot uses a sleek dark workspace-oriented shell inspired by modern development tools.
+Navigation supports stable routes, `Alt+Left` / `Alt+Right` history, `Ctrl+P` Quick Open, `Ctrl+Shift+P` Command Palette, keyed document tabs for supported records, `Ctrl+W`, `Ctrl+Tab` / `Ctrl+Shift+Tab`, and F1 context Help.
 
-The left activity bar starts with the Depot logo and exposes permission-aware workspace icons. Hovering an icon shows a tooltip with the workspace name. Notifications, Help, and the signed-in user remain grouped in the utility area at the bottom.
-
-Implemented shell features include:
-
-- Activity-bar navigation for top-level workspaces
-- Depot branding above the activity bar
-- Hover tooltips for activity-bar and utility icons
-- Persistent workspace tabs with close buttons, middle-click close, overflow handling, and tab context actions
-- Contextual section navigation directly below the workspace tabs
-- `Ctrl+W` to close the active tab
-- `Ctrl+Tab` / `Ctrl+Shift+Tab` to move between open tabs
-- `Ctrl+P` Quick Open for workspaces, sections, operational records, purchase records, and sales records
-- Grouped Quick Open results with type badges and session-recent records
-- `Ctrl+Shift+P` Command Palette for navigation and direct workflow actions
-- F1 context Help in its own workspace tab
-- Notification Center and signed-in user details as workspace tabs
-- Permission-aware unread notification badge
-- Unsaved-changes protection across workspace changes, section changes, tab closing, sign-out, and application closing
-- Action-oriented dashboard links into operational workspaces
-- Administrator dashboard visibility across all available role-oriented overview sections
-
-The current top-level information architecture is:
+## Workspaces
 
 ```text
 Dashboard
@@ -56,245 +30,66 @@ Reports
 Administration
 ```
 
-Shipping intentionally lives under **Warehouse** because picking, packing, shipment posting, reversals, and physical customer returns are warehouse operations even though they originate from a Sales Order.
+Shipping lives under **Warehouse** because picking, packing, shipment posting, reversals, and physical Customer Returns are warehouse operations even though they originate from Sales Orders.
 
-### Inventory and warehouse
+## Dashboard
 
-Depot currently includes:
+The Dashboard is permission-aware and uses existing business services/repositories rather than maintaining separate dashboard data. Administrators receive all currently implemented overview groups:
 
-- Dashboard metrics, operational attention links, recent movements, and inventory valuation
-- Item, inventory, purpose, warehouse, storage-location, and immutable stock-movement workflows
-- Normalized item master data: manufacturer, category, unit of measure, and packaging
-- Reason codes with immutable technical keys and editable display names
-- Warehouse transfers with paired movements and concurrency-safe stock checks
-- Inventory counts with snapshots, review, optimistic concurrency, and atomic correction posting
-- Material issue and material return workflows
-- Audited reversal workflows for posted warehouse documents
-- Shipping, picking, packing, shipment posting, shipment reversal, and Customer Returns
-- Pick List, Packing Slip, Delivery Note, and Customer Return Receipt PDFs
-- Excel import and export
-- Inventory and grouped reporting
+- **Inventory** — total items, total stock, inventory value, movements
+- **Purchasing** — pending/approved orders, partial receipts, overdue deliveries, Supplier Returns requiring attention
+- **Warehouse** — Inventory Counts awaiting review/posting and open transfers
+- **Sales** — approvals, reservation/backorder and fulfillment workload, draft invoices/shipments, returns, credits, monthly net sales
+- **Approvals** — open Purchase Order approval summary
+- **Administration** — active users
+- **Reports** — entry into the existing Reports workspace
 
-### Procurement
+Recent inventory movements remain available as operational activity. Non-administrator content follows effective permissions.
 
-Depot includes a separate procurement lifecycle:
+## Functional scope
 
-```text
-Supplier
-   ↓
-Purchase Order Draft
-   ↓
-Submit
-   ↓
-Approvals > Purchase Approvals
-   ↓
-Ordered
-   ↓
-Goods Receipt
-   ↓
-Stock Movement
-```
+**Inventory and Warehouse:** item/inventory master data, immutable stock movements, warehouses/locations, transfers, inventory counts with optimistic concurrency, material issues/returns, shipping, picking, packing, shipment posting/reversal, Customer Returns, fulfillment PDFs, Excel import/export.
 
-Implemented procurement capabilities include:
-
-- Supplier categories, suppliers, and many-to-many `SupplierItem` assignments
-- Purchase Orders with submission, approval, rejection, ordering, closing, search, and status history
-- Goods Receipts with partial receipts and atomic stock posting
-- Supplier Returns with negative stock movements
-- Four-eyes approval workflow in the central Approvals workspace
-
-### Sales and order-to-cash
-
-Sales is a dedicated commercial domain rather than procurement documents used in reverse.
+**Purchasing:** Suppliers, Supplier Items, Purchase Orders, Purchase Approvals, Goods Receipts, Supplier Returns, partial receipts, status history, and atomic inventory posting.
 
 ```text
-Customer + Contacts
-   ↓
-Quote / Customer Pricing (optional)
-   ↓
-Sales Order Draft
-   ↓
-Submit
-   ↓
-Approvals > Sales Approvals
-   ↓
-Inventory Reservation / Release
-   ↓
-Warehouse > Shipping
-   ↓
-Picking → Packed → Shipment
-   ↓
-SalesShipment stock movement
-   ↓
-Sales > Invoices
-   ↓
-Completed
+Supplier → Purchase Order → Submit → Purchase Approval → Ordered → Goods Receipt → Stock Movement
 ```
 
-Corrections remain separate and auditable:
+**Sales:** Customers and Contacts, Quotes, Customer Pricing, Sales Orders, Sales Approvals, reservations/backorders, Warehouse fulfillment, Invoices, Credit Notes, Customer Returns, PDFs, email drafts, and Sales Order Timeline.
 
 ```text
-Incorrect shipment posting → Warehouse > Shipping > Shipment Reversal
-Physical goods returned    → Warehouse > Shipping > Customer Return
-Posted invoice correction  → Sales > Invoices > Credit Note
+Customer / Quote / Pricing → Sales Order → Sales Approval → Reservation / Backorder
+→ Warehouse > Shipping → Picking → Packed → Shipment → Sales > Invoices / Credit Notes
 ```
 
-Implemented Sales capabilities include:
+Supported Sales records can open as keyed document tabs so reopening the same supported record activates its existing tab instead of creating a duplicate.
 
-- Dedicated Sales Overview
-- Quotes and Pricing as first-class Sales sections
-- Dedicated Customer workspace with search and customer editor
-- Multiple normalized customer addresses with Billing, Shipping, and Other address types
-- Default Billing and Shipping addresses
-- Multiple Customer Contacts with General, Commercial, Purchasing, Logistics, Accounting, and Technical roles
-- Primary-contact support
-- Sales Order billing/shipping address picker with immutable snapshots
-- Customer-specific price lists with validity windows, item prices, discounts, and customer assignments
-- Price resolution for Quotes and an explicit **Apply customer price** action in Sales Orders
-- Sales Quotes with Draft, Sent, Accepted, Rejected, and Converted lifecycle
-- Quote contact/address snapshots and conversion into a Sales Order draft
-- Quote PDF generation and local `.eml` email drafts with PDF attachment
-- Sales Orders and lines with automatic numbering, item snapshots, prices, discounts, tax, requested delivery dates, and approval workflow
-- Central Sales Approval queue under **Approvals > Sales Approvals**
-- Creator/approver separation with Administrator override
-- Inventory reservations that reduce available stock without changing physical stock
-- Concurrency-safe reservation checks against on-hand quantity and reservations from other Sales Orders
-- Partial reservation and release with explicit Backorder quantities
-- Backorder workflow notifications
-- Per-line Ordered, Reserved, Backorder, Shipped, and Invoiced quantities
-- Sales Order Timeline spanning approval, release, shipment, invoice, return, and credit-note events
-- Shipping under the Warehouse workspace with Draft plus **Not Started → Picking → Packed** workflow
-- Shipment posting blocked until the shipment is Packed
-- Atomic shipment posting with negative `SalesShipment` stock movements and reservation consumption
-- Shipment reversal through immutable positive `SalesShipmentReversal` counter-movements
-- Customer Returns with positive `CustomerReturn` movements and workflow notifications
-- Shipment-based invoice creation with pricing/tax and billing-address snapshots
-- Invoice Due Status with Not Due, Due Today, and Overdue states
-- Invoice PDF generation and local email-draft creation with PDF attachment
-- Draft invoice cancellation
-- Full and partial immutable Credit Notes with cumulative quantity validation
-- Credit Note PDF generation and workflow notifications
-- Sales Dashboard metrics including approvals, reservation/backorder attention, fulfillment workload, returns, credits, and monthly net sales
-- Sales records in Quick Open and workflow actions in the Command Palette
-- Notification deep links that route Shipments and Customer Returns to **Warehouse > Shipping** and commercial records to Sales
+**Approvals and security:** central Purchase/Sales approval queues, creator/approver separation enforced in business services, database-backed multi-role RBAC, authentication, session switching, and audited administrator overrides.
 
-### Approvals
+**Administration:** users/roles, database provider configuration, backup/restore, scheduled backups, integrity checks, SQLite compaction, Audit Log, About/application information, Notification Center, and offline Help Center.
 
-The global **Approvals** workspace centralizes four-eyes decisions instead of duplicating approval navigation inside Purchasing or Sales.
+## Database providers
 
-Depending on permissions it exposes:
+SQLite is the default provider. Microsoft SQL Server and MySQL/MariaDB provider implementations are also present. Live-server migration, recovery, backup/restore, and concurrency certification remain part of the version 1.0 acceptance work.
 
-- **Purchase Approvals** — pending Purchase Orders
-- **Sales Approvals** — pending Sales Orders
+The core database schema is currently **29**. Sales uses the versioned `DepotFeatureVersions` registry and is currently schema **6**. Application release versions and database schema versions are independent.
 
-The business services enforce creator/approver separation independently of the UI. Administrator overrides remain permission-controlled and audited.
+## Offline Help Center
 
-### Sales roles
+Depot ships an embedded Markdown Help Center rendered natively in WPF. It is permission-filtered, locally searchable, uses stable topic links, and opens as a normal workspace tab. F1 resolves the current Help context.
 
-Default system roles include:
-
-- **Sales User** — customers, contacts, quotes, and Sales Order creation/submission
-- **Sales Manager** — quote conversion, customer pricing management, Sales approval/release, and fulfillment monitoring
-- **Warehouse Operator** — shipment picking/packing/posting/reversal and Customer Returns
-- **Finance** — invoices, Credit Notes, and pricing visibility
-- **Administrator** — all permissions and all role-oriented dashboard views
-
-All actions remain permission-based; role definitions are defaults rather than hard-coded workflow identities.
-
-### Administration and security
-
-Depot includes:
-
-- Email/password authentication
-- PBKDF2-SHA256 password hashing
-- Database-backed multi-role RBAC
-- Session switching
-- Administrator-managed users and roles
-- Filtered read-only Audit Log
-- Database provider configuration
-- Backup and restore
-- Scheduled backups
-- Integrity checks
-- SQLite compaction
-- Integrated offline Help Center
-- Notification Center
-
-### Database providers and migrations
-
-- SQLite is the default provider and is covered by automated integration tests.
-- Microsoft SQL Server has a dedicated connection factory, database initializer, locking SQL, connection tests, and error normalization.
-- MySQL/MariaDB has a dedicated connection factory, database initializer, locking SQL, connection tests, and error normalization.
-
-The core Depot database schema is currently **29**. Sales uses a versioned feature registry in `DepotFeatureVersions`; the current Sales schema is **6**:
-
-```text
-v1  Initial Sales domain
-v2  Shipment corrections, Customer Returns and Credit Notes
-v3  Normalized Customer Addresses
-v4  Reservation history and repeated backorder allocation
-v5  Sales Order billing/shipping address snapshots
-v6  Customer Contacts, Price Lists, Customer Pricing, Sales Quotes and Shipment Packing state
-```
-
-The Sales feature migration remains separate until the final version 1.0 migration policy is consolidated. SQL Server and MySQL/MariaDB support exists in code but still requires live-server migration, backup/restore, and concurrency certification before 1.0.
-
-### Validation
-
-The automated Sales suite covers the core order-to-cash workflow and commercial extensions, including:
-
-- Sales schema migrations through v6
-- Permissions and system roles
-- Customer Contacts
-- Customer Pricing
-- Quote conversion
-- Sales Order address snapshots
-- Reservations and Backorders
-- Packed-shipment enforcement
-- Shipment posting and reversal
-- Customer Returns
-- Invoice creation and Due Status
-- Full and partial Credit Notes
-- Sales Order Timeline events
-
-CI separates Sales tests from the existing regression suite and validates a Release build before the final publish gate.
-
-### Remaining work before version 1.0
-
-- Live SQL Server and MySQL/MariaDB installation and migration matrices
-- Live-server backup/restore and failure-recovery drills
-- Multi-client reservation, shipping, receipt, and inventory concurrency tests against server providers
-- Large-data acceptance testing with at least 100,000 records and high movement volumes
-- UI runtime, accessibility, scaling, keyboard-navigation, localization, packaging, and upgrade acceptance
-- Security review of deployment defaults, credentials, logs, and backup retention
-- Consolidate feature migrations into the final 1.0 migration/upgrade policy
-
-Barcode scanning/generation, label design/printing, payment collection, accounts receivable, and general-ledger functionality remain outside the current scope.
+Help manifest **1.5** documents the current tabless Welcome state, fully closeable tabs, navigation history, database/version status-bar behavior, current workspace structure, and administrator Dashboard overview. See `docs/HELP_CENTER.md` for authoring rules.
 
 ## Architecture
 
 ```text
-Views
-  |
-ViewModels
-  |
-Services
-  |
-Repositories
-  |
-DatabaseAccess
-  |
-SQLite / Microsoft SQL Server / MySQL or MariaDB
+Views → ViewModels → Services → Repositories → DatabaseAccess
+                                      ↓
+                    SQLite / SQL Server / MySQL or MariaDB
 ```
 
-Views contain layout and bindings. ViewModels contain presentation state and commands. Services enforce business rules and transactional workflows. Repositories contain persistence SQL and mapping. `DatabaseAccess` provides shared asynchronous queries, paging, transactions, streaming, and provider normalization.
-
-See [Architecture](docs/Architecture.md) for details.
-
-## UI design system
-
-Shared resources live under `src/Depot/Resources`; reusable controls live under `src/Depot/Controls`.
-
-The UI uses a compact dark visual language with centralized colors, typography, consistent interaction sizing, cards, dark grids/lists/combo boxes, master/detail layouts, status presentation, loading feedback, workflow action bars, empty states, workspace tabs, and activity-bar navigation.
+Views contain layout/bindings, ViewModels presentation state/commands, Services business rules and transactions, and Repositories persistence SQL/mapping. Shared UI resources live under `src/Depot/Resources`; reusable WPF controls under `src/Depot/Controls`.
 
 ## Technology
 
@@ -309,11 +104,7 @@ The UI uses a compact dark visual language with centralized colors, typography, 
 
 ## Getting started
 
-Requirements:
-
-- Windows 10 or Windows 11
-- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
-- Visual Studio, JetBrains Rider, VS Code, or the .NET CLI
+Requirements: Windows 10/11 and the .NET 10 SDK.
 
 ```powershell
 git clone https://github.com/DaveBeusing/Depot.git
@@ -322,100 +113,33 @@ dotnet restore Depot.slnx
 dotnet run --project src/Depot/Depot.csproj -c Debug
 ```
 
-The first installation uses local SQLite and creates `depot.db`. Connection and backup settings are stored in `depot.settings`. **Administration > Database** can configure SQLite, SQL Server, or MySQL/MariaDB.
+A new installation defaults to local SQLite and creates `depot.db`; settings are stored in `depot.settings`. **Administration > Database** configures SQLite, SQL Server, or MySQL/MariaDB.
 
-For a new database, sign in with `admin@depot.local` and `Depot123!`, then change the password in **Administration > Users**.
+For a new database, sign in with `admin@depot.local` / `Depot123!` and change the password in **Administration > Users**.
 
 ## Build and publish
 
-Depot targets `net10.0-windows`. Version metadata comes from `Directory.Build.props`; the current preview line is **0.14.0-preview**.
-
-### Debug
+Depot targets `net10.0-windows`. WPF XAML items are explicitly compiled by the project.
 
 ```powershell
 dotnet build Depot.slnx -c Debug
-dotnet run --project src/Depot/Depot.csproj -c Debug
-```
-
-Output:
-
-```text
-src\Depot\bin\Debug\net10.0-windows\
-```
-
-### Release build
-
-```powershell
 dotnet build Depot.slnx -c Release
 ```
 
-Output:
-
-```text
-src\Depot\bin\Release\net10.0-windows\
-```
-
-### Framework-dependent publish
+Self-contained single-file publish:
 
 ```powershell
+dotnet restore src/Depot/Depot.csproj -r win-x64
 dotnet publish src/Depot/Depot.csproj `
-  -c Release `
-  -r win-x64 `
-  --self-contained false
-```
-
-### Self-contained publish
-
-```powershell
-dotnet publish src/Depot/Depot.csproj `
-  -c Release `
-  -r win-x64 `
-  --self-contained true
-```
-
-### Self-contained single-file publish
-
-```powershell
-dotnet publish src/Depot/Depot.csproj `
-  -c Release `
-  -r win-x64 `
-  --self-contained true `
+  -c Release -r win-x64 --self-contained true `
   -p:PublishSingleFile=true `
   -p:IncludeNativeLibrariesForSelfExtract=true `
-  -p:DebugType=None `
-  -p:DebugSymbols=false
+  -p:DebugType=None -p:DebugSymbols=false
 ```
 
-Default output:
+Runtime data (`depot.db`, `depot.settings`, logs, backups, PDFs, exports) remains external. Do not enable `PublishTrimmed` without dedicated WPF/XAML trimming validation.
 
-```text
-src\Depot\bin\Release\net10.0-windows\win-x64\publish\
-```
-
-For this mode, `Depot.exe` is the distributable application. Runtime data such as `depot.db`, `depot.settings`, logs, backups, generated PDFs, and exports remains external. Do not enable `PublishTrimmed` without a dedicated WPF/XAML trimming validation pass.
-
-For a clean output directory:
-
-```powershell
-dotnet publish src/Depot/Depot.csproj `
-  -c Release `
-  -r win-x64 `
-  --self-contained true `
-  -p:PublishSingleFile=true `
-  -p:IncludeNativeLibrariesForSelfExtract=true `
-  -p:DebugType=None `
-  -p:DebugSymbols=false `
-  -o artifacts/publish/win-x64
-```
-
-Before distribution, run both test groups and the Release publish:
-
-```powershell
-dotnet test tests/Depot.Tests/Depot.Tests.csproj -c Release --filter "FullyQualifiedName~Sales"
-dotnet test tests/Depot.Tests/Depot.Tests.csproj -c Release --filter "FullyQualifiedName!~Sales"
-```
-
-CI performs the suites separately and validates the final self-contained single-file publish after the required gates pass.
+CI separates bounded Sales, Inventory/Warehouse, Purchasing, Shell/UX, and Core/Persistence suites, validates Release build/publish, and cancels superseded runs for the same pull request.
 
 ## Keyboard navigation
 
@@ -423,9 +147,11 @@ CI performs the suites separately and validates the final self-contained single-
 | --- | --- |
 | `Ctrl+P` | Quick Open |
 | `Ctrl+Shift+P` | Command Palette |
-| `Ctrl+W` | Close active workspace tab |
-| `Ctrl+Tab` | Next workspace tab |
-| `Ctrl+Shift+Tab` | Previous workspace tab |
+| `Ctrl+W` | Close active tab |
+| `Ctrl+Tab` | Next tab |
+| `Ctrl+Shift+Tab` | Previous tab |
+| `Alt+Left` | Navigate backward |
+| `Alt+Right` | Navigate forward |
 | `F1` | Context-sensitive Help |
 
 ## Project structure
@@ -433,31 +159,40 @@ CI performs the suites separately and validates the final self-contained single-
 ```text
 src/Depot/
   Controls/       Reusable WPF controls
-  Data/           Provider factories, initialization, and migrations
-  Help/           Embedded offline Help Center content
-  Models/         Domain, status, and report models
+  Data/           Provider factories, initialization, migrations
+  Help/           Embedded offline Help Center
+  Models/         Domain, status, report models
   Repositories/   Provider-neutral persistence
-  Resources/      Design system resource dictionaries and branding
-  Services/       Business and application workflows
+  Resources/      Design system and branding
+  Services/       Business/application workflows
   ViewModels/     Presentation logic and commands
   Views/          WPF views and windows
 tests/Depot.Tests/
-  Automated unit and SQLite integration tests
+  Unit and SQLite integration tests
 ```
 
-## Versioning and documentation
+## Remaining work before 1.0
 
-Depot uses Semantic Versioning metadata from `Directory.Build.props`. Application release versions and database schema versions are independent. See:
+- Live SQL Server/MySQL/MariaDB installation and migration matrices
+- Live-server backup/restore and recovery drills
+- Multi-client concurrency tests against server providers
+- Large-data acceptance testing
+- UI accessibility, scaling, keyboard, localization, packaging, upgrade acceptance
+- Security review of deployment defaults, credentials, logs, backup retention
+- Consolidated final 1.0 migration/upgrade policy
 
-- [Architecture](docs/Architecture.md)
-- [Coding Standard](docs/CodingStandard.md)
-- [Roadmap](docs/Roadmap.md)
-- [Version 1.0 release checklist](docs/RELEASE_1_0.md)
-- [Versioning](docs/VERSIONING.md)
-- [Data-access audit](docs/DATA_ACCESS_AUDIT.md)
-- [Offline Help Center](docs/HELP_CENTER.md)
-- [Notification Center](docs/NOTIFICATION_CENTER.md)
+Barcode scanning/generation, label design/printing, payment collection, accounts receivable, and general-ledger functionality remain outside current scope.
+
+## Documentation
+
+- `docs/Architecture.md`
+- `docs/CodingStandard.md`
+- `docs/Roadmap.md`
+- `docs/RELEASE_1_0.md`
+- `docs/VERSIONING.md`
+- `docs/DATA_ACCESS_AUDIT.md`
+- `docs/HELP_CENTER.md`
 
 ## License
 
-Depot is released under the MIT License. See [LICENSE.md](LICENSE.md).
+Depot is licensed under the MIT License.

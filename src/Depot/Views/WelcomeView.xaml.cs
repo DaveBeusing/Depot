@@ -5,7 +5,7 @@ using System.Windows.Controls;
 
 namespace Depot.Views;
 
-public partial class PurchaseOrderApprovalsView : UserControl
+public partial class WelcomeView : UserControl
 {
-	public PurchaseOrderApprovalsView() => InitializeComponent();
+	public WelcomeView() => InitializeComponent();
 }

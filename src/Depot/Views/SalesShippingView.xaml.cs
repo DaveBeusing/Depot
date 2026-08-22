@@ -13,6 +13,8 @@ namespace Depot.Views;
 
 public partial class SalesShippingView : UserControl
 {
+	private readonly SalesDocumentService _documents = new();
+
 	public SalesShippingView() => InitializeComponent();
 
 	private void OnReturnReceiptClick(object sender, RoutedEventArgs e)
@@ -26,6 +28,6 @@ public partial class SalesShippingView : UserControl
 			FileName = $"{page.Workspace.SelectedCustomerReturn.ReturnNumber}-return-receipt.pdf"
 		};
 		if (dialog.ShowDialog() != true) return;
-		SalesCommercialContext.Documents.CreateCustomerReturnReceipt(dialog.FileName, page.Workspace.SelectedCustomerReturn, page.Workspace.SelectedShipment);
+		_documents.CreateCustomerReturnReceipt(dialog.FileName, page.Workspace.SelectedCustomerReturn, page.Workspace.SelectedShipment);
 	}
 }

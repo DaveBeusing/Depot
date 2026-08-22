@@ -18,6 +18,9 @@ public sealed class WorkspaceTabClosingEventArgs(ShellNavigationItem item) : Eve
 
 public sealed class WorkspaceTabControl : TabControl
 {
+	private const string WelcomeTabKey = "__welcome__";
+	private ShellNavigationItem? _welcomeItem;
+
 	public static readonly DependencyProperty ActiveItemProperty = DependencyProperty.Register(
 		nameof(ActiveItem), typeof(ShellNavigationItem), typeof(WorkspaceTabControl),
 		new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.BindsTwoWayByDefault, OnActiveItemChanged));
@@ -39,6 +42,26 @@ public sealed class WorkspaceTabControl : TabControl
 	{
 		get => (ShellNavigationItem?)GetValue(ActiveItemProperty);
 		set => SetValue(ActiveItemProperty, value);
+	}
+
+	public ShellNavigationItem OpenOrActivate(ShellNavigationItem item)
+	{
+		ArgumentNullException.ThrowIfNull(item);
+		if (string.Equals(item.TabKey, WelcomeTabKey, StringComparison.OrdinalIgnoreCase)) return item;
+		var existing = Items.OfType<ShellNavigationItem>().FirstOrDefault(candidate =>
+			string.Equals(candidate.TabKey, item.TabKey, StringComparison.OrdinalIgnoreCase));
+		if (existing is not null)
+		{
+			if (!ReferenceEquals(existing, item)) item.Dispose();
+			SelectedItem = existing;
+			if (!ReferenceEquals(ActiveItem, existing)) SetCurrentValue(ActiveItemProperty, existing);
+			return existing;
+		}
+
+		Items.Add(item);
+		SelectedItem = item;
+		if (!ReferenceEquals(ActiveItem, item)) SetCurrentValue(ActiveItemProperty, item);
+		return item;
 	}
 
 	public void CloseActiveTab()
@@ -65,7 +88,7 @@ public sealed class WorkspaceTabControl : TabControl
 	protected override void OnPreviewMouseDown(MouseButtonEventArgs e)
 	{
 		base.OnPreviewMouseDown(e);
-		if (e.ChangedButton != MouseButton.Middle || Items.Count <= 1) return;
+		if (e.ChangedButton != MouseButton.Middle) return;
 		var tab = FindAncestor<TabItem>(e.OriginalSource as DependencyObject);
 		if (tab?.DataContext is not ShellNavigationItem item || !Items.Contains(item)) return;
 		Close(item);
@@ -75,13 +98,13 @@ public sealed class WorkspaceTabControl : TabControl
 	private static void OnActiveItemChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs e)
 	{
 		if (dependencyObject is not WorkspaceTabControl control || e.NewValue is not ShellNavigationItem item) return;
-		if (!control.Items.Contains(item)) control.Items.Add(item);
-		control.SelectedItem = item;
+		if (string.Equals(item.TabKey, WelcomeTabKey, StringComparison.OrdinalIgnoreCase)) return;
+		control.OpenOrActivate(item);
 	}
 
 	private void OnCloseTabCanExecute(object sender, CanExecuteRoutedEventArgs e)
 	{
-		e.CanExecute = e.Parameter is ShellNavigationItem item && Items.Contains(item) && Items.Count > 1;
+		e.CanExecute = e.Parameter is ShellNavigationItem item && Items.Contains(item);
 		e.Handled = true;
 	}
 
@@ -133,9 +156,19 @@ public sealed class WorkspaceTabControl : TabControl
 	private void Close(ShellNavigationItem item)
 	{
 		var index = Items.IndexOf(item);
-		if (index < 0 || Items.Count <= 1 || !CanClose(item)) return;
+		if (index < 0 || !CanClose(item)) return;
 		var wasSelected = ReferenceEquals(SelectedItem, item);
 		Items.Remove(item);
+		if (item.IsDocument) item.Dispose();
+
+		if (Items.Count == 0)
+		{
+			SelectedItem = null;
+			SetCurrentValue(ActiveItemProperty, null);
+			ShowWelcome();
+			return;
+		}
+
 		if (!wasSelected) return;
 		var nextIndex = index < Items.Count ? index : Items.Count - 1;
 		if (Items[nextIndex] is ShellNavigationItem next)
@@ -143,6 +176,21 @@ public sealed class WorkspaceTabControl : TabControl
 			SelectedItem = next;
 			SetCurrentValue(ActiveItemProperty, next);
 		}
+	}
+
+	private void ShowWelcome()
+	{
+		if (DataContext is not MainViewModel viewModel) return;
+		_welcomeItem ??= new ShellNavigationItem(
+			"Welcome",
+			string.Empty,
+			() => viewModel.WelcomeViewModel,
+			(_, _) => Task.CompletedTask,
+			"getting-started.first-login",
+			ownsLoadState: false,
+			tabKey: WelcomeTabKey,
+			ownsContent: false);
+		_ = viewModel.NavigateAsync(_welcomeItem);
 	}
 
 	private bool CanClose(ShellNavigationItem item)

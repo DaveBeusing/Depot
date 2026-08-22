@@ -4,6 +4,8 @@
 using System.Windows;
 using System.Windows.Controls;
 
+using Depot.ViewModels;
+
 namespace Depot.Controls;
 
 public sealed class OperationStatus : Control
@@ -22,11 +24,7 @@ public sealed class OperationStatus : Control
 	}
 
 	public static readonly DependencyProperty IsBusyProperty =
-		DependencyProperty.Register(
-			nameof(IsBusy),
-			typeof(bool),
-			typeof(OperationStatus),
-			new PropertyMetadata(false));
+		DependencyProperty.Register(nameof(IsBusy), typeof(bool), typeof(OperationStatus), new PropertyMetadata(false));
 
 	public string StatusText
 	{
@@ -35,11 +33,7 @@ public sealed class OperationStatus : Control
 	}
 
 	public static readonly DependencyProperty StatusTextProperty =
-		DependencyProperty.Register(
-			nameof(StatusText),
-			typeof(string),
-			typeof(OperationStatus),
-			new PropertyMetadata(string.Empty));
+		DependencyProperty.Register(nameof(StatusText), typeof(string), typeof(OperationStatus), new PropertyMetadata(string.Empty));
 
 	public string? ErrorText
 	{
@@ -48,11 +42,7 @@ public sealed class OperationStatus : Control
 	}
 
 	public static readonly DependencyProperty ErrorTextProperty =
-		DependencyProperty.Register(
-			nameof(ErrorText),
-			typeof(string),
-			typeof(OperationStatus),
-			new PropertyMetadata(null));
+		DependencyProperty.Register(nameof(ErrorText), typeof(string), typeof(OperationStatus), new PropertyMetadata(null));
 
 	public bool HasError
 	{
@@ -61,9 +51,23 @@ public sealed class OperationStatus : Control
 	}
 
 	public static readonly DependencyProperty HasErrorProperty =
-		DependencyProperty.Register(
-			nameof(HasError),
-			typeof(bool),
-			typeof(OperationStatus),
-			new PropertyMetadata(false));
+		DependencyProperty.Register(nameof(HasError), typeof(bool), typeof(OperationStatus), new PropertyMetadata(false));
+
+	public OperationSeverity Severity
+	{
+		get => (OperationSeverity)GetValue(SeverityProperty);
+		set => SetValue(SeverityProperty, value);
+	}
+
+	public static readonly DependencyProperty SeverityProperty =
+		DependencyProperty.Register(nameof(Severity), typeof(OperationSeverity), typeof(OperationStatus), new PropertyMetadata(OperationSeverity.None));
+
+	public string? ActionText
+	{
+		get => (string?)GetValue(ActionTextProperty);
+		set => SetValue(ActionTextProperty, value);
+	}
+
+	public static readonly DependencyProperty ActionTextProperty =
+		DependencyProperty.Register(nameof(ActionText), typeof(string), typeof(OperationStatus), new PropertyMetadata(null));
 }

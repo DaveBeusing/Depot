@@ -7,11 +7,18 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <StartupObject>Depot.Program</StartupObject>
-    <NuGetAudit>false</NuGetAudit>
     <ApplicationIcon>Resources\Images\Depot.ico</ApplicationIcon>
+    <EnableDefaultApplicationDefinition>false</EnableDefaultApplicationDefinition>
+    <EnableDefaultPageItems>false</EnableDefaultPageItems>
   </PropertyGroup>
 
-   <ItemGroup>
+  <ItemGroup>
+    <None Remove="**\*.xaml" />
+    <ApplicationDefinition Include="App.xaml" />
+    <Page Include="**\*.xaml" Exclude="App.xaml;bin\**;obj\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="ClosedXML" Version="0.105.0" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.10" />
     <PackageReference Include="Microsoft.Data.SqlClient" Version="7.0.2" />
@@ -21,8 +28,8 @@
     <Resource Include="Resources\Images\Depot.ico" />
     <Resource Include="Resources\Images\Depot.png" />
     <Resource Include="Resources\Images\Depot_32.png" />
-	<EmbeddedResource Include="Help\manifest.json" />
-	<EmbeddedResource Include="Help\**\*.md" />
+    <EmbeddedResource Include="Help\manifest.json" />
+    <EmbeddedResource Include="Help\**\*.md" />
   </ItemGroup>
 
 </Project>
