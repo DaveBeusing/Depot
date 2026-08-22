@@ -1,0 +1,107 @@
+name: Security supply chain
+
+on:
+  push:
+    branches: [ master, compliance ]
+  pull_request:
+    branches: [ master ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-supply-chain-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  security-tests:
+    name: Authentication and authorization tests
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore locked dependencies
+        run: dotnet restore Depot.slnx --locked-mode
+
+      - name: Build security tests
+        run: dotnet build tests/Depot.Tests/Depot.Tests.csproj --configuration Release --no-restore
+
+      - name: Run security boundary tests
+        run: dotnet test tests/Depot.Tests/Depot.Tests.csproj --configuration Release --no-build --filter "FullyQualifiedName~PasswordHasherSecurityTests|FullyQualifiedName~AuthorizationServiceTests|FullyQualifiedName~RbacTests|FullyQualifiedName~PurchaseOrderApprovalServiceTests|FullyQualifiedName~AuditLogTests" --logger "console;verbosity=normal"
+
+  vulnerability-audit:
+    name: NuGet vulnerability audit
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Audit locked direct and transitive dependencies
+        run: dotnet restore Depot.slnx --locked-mode -p:AuditPipeline=true
+
+  dependency-locks:
+    name: Verify dependency locks
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Verify committed lock files
+        run: dotnet restore Depot.slnx --locked-mode
+
+  sbom:
+    name: Generate dependency evidence
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore locked dependencies
+        run: dotnet restore Depot.slnx --locked-mode
+
+      - name: Install CycloneDX tool
+        run: dotnet tool install --global CycloneDX --version 6.2.0
+
+      - name: Generate CycloneDX SBOM with license evidence
+        run: dotnet-CycloneDX Depot.slnx --configuration Release --output artifacts/sbom --output-format json --filename depot.cdx.json --include-license-text
+
+      - name: Generate dependency inventory
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force artifacts/sbom | Out-Null
+          dotnet list Depot.slnx package --include-transitive | Out-File -FilePath artifacts/sbom/dependencies.txt -Encoding utf8
+          dotnet list Depot.slnx package --deprecated --include-transitive | Out-File -FilePath artifacts/sbom/deprecated.txt -Encoding utf8
+
+      - name: Upload dependency evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: depot-dependency-evidence
+          path: artifacts/sbom/
+          if-no-files-found: error
+          retention-days: 90
