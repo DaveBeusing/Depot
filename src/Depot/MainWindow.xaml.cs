@@ -10,6 +10,7 @@ using Depot.Diagnostics;
 using Depot.Services;
 using Depot.Services.Help;
 using Depot.ViewModels;
+using Depot.ViewModels.Administration;
 using Depot.Views;
 
 namespace Depot;
@@ -27,17 +28,20 @@ public partial class MainWindow : Window
 
 	private readonly CurrentUserViewModel _currentUserViewModel;
 	private readonly ShellNavigationItem _currentUserNavigationItem;
+	private readonly ApplicationInformationService _applicationInformation;
 	private readonly List<ShellPaletteEntry> _recentQuickOpenEntries = [];
 	private readonly NavigationHistoryService _history = new();
 	private ShellNavigationItem? _notificationNavigationItem;
 	private ShellNavigationItem? _helpNavigationItem;
+	private ShellNavigationItem? _aboutNavigationItem;
 	private MainViewModel? _observedViewModel;
 	private ShellModuleViewModel? _observedModule;
 	private bool _historyNavigation;
 
-	public MainWindow(IAuthorizationService authorization)
+	public MainWindow(IAuthorizationService authorization, ApplicationInformationService applicationInformation)
 	{
 		var user = authorization.CurrentUser ?? throw new InvalidOperationException("A signed-in user is required to open the main window.");
+		_applicationInformation = applicationInformation;
 		_currentUserViewModel = new CurrentUserViewModel(user);
 		_currentUserNavigationItem = new ShellNavigationItem("User", UserIconData, () => _currentUserViewModel, (_, _) => Task.CompletedTask, "getting-started.first-login");
 		InitializeComponent();
@@ -47,6 +51,7 @@ public partial class MainWindow : Window
 
 	public string CurrentUserInitials => _currentUserViewModel.Initials;
 	public string CurrentUserDisplayName => _currentUserViewModel.User.DisplayName;
+	public string ApplicationVersion => _applicationInformation.GetVersionInfo().Version;
 	public string BreadcrumbText { get => (string)GetValue(BreadcrumbTextProperty); private set => SetValue(BreadcrumbTextProperty, value); }
 	public bool CanNavigateBack { get => (bool)GetValue(CanNavigateBackProperty); private set => SetValue(CanNavigateBackProperty, value); }
 	public bool CanNavigateForward { get => (bool)GetValue(CanNavigateForwardProperty); private set => SetValue(CanNavigateForwardProperty, value); }
@@ -65,6 +70,7 @@ public partial class MainWindow : Window
 		ObserveViewModel(null);
 		_notificationNavigationItem?.Dispose();
 		_helpNavigationItem?.Dispose();
+		_aboutNavigationItem?.Dispose();
 		_currentUserNavigationItem.Dispose();
 		base.OnClosed(e);
 	}
@@ -245,6 +251,12 @@ public partial class MainWindow : Window
 	private void OnWindowActivated(object? sender, EventArgs e) { if (DataContext is MainViewModel viewModel) viewModel.SetApplicationActive(true); }
 	private void OnWindowDeactivated(object? sender, EventArgs e) { if (DataContext is MainViewModel viewModel) viewModel.SetApplicationActive(false); }
 	private async void OnCurrentUserClick(object sender, RoutedEventArgs e) { if (DataContext is MainViewModel viewModel) await viewModel.NavigateAsync(_currentUserNavigationItem); }
+	private async void OnVersionClick(object sender, RoutedEventArgs e)
+	{
+		if (DataContext is not MainViewModel viewModel) return;
+		_aboutNavigationItem ??= new ShellNavigationItem("About", HelpIconData, () => new AboutViewModel(_applicationInformation), (_, _) => Task.CompletedTask, HelpService.FallbackTopicId);
+		await viewModel.NavigateAsync(_aboutNavigationItem);
+	}
 	private async void OnOpenHelpExecuted(object sender, ExecutedRoutedEventArgs e) { if (DataContext is MainViewModel viewModel) await viewModel.OpenHelpAsync(); e.Handled = true; }
 	private async void OnOpenHelpTopicExecuted(object sender, ExecutedRoutedEventArgs e) { if (DataContext is MainViewModel viewModel) await viewModel.OpenHelpAsync(e.Parameter as string); e.Handled = true; }
 	private void OnCopyDiagnosticsExecuted(object sender, ExecutedRoutedEventArgs e) { var sanitized = new DiagnosticsSanitizer().Sanitize(e.Parameter as string); if (!string.IsNullOrWhiteSpace(sanitized)) Clipboard.SetText(sanitized); e.Handled = true; }

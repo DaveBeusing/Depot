@@ -50,10 +50,12 @@
         </Grid>
 
         <Border Grid.Row="1" Grid.ColumnSpan="2" Background="{DynamicResource SurfaceAltBrush}" BorderBrush="{DynamicResource NavigationBorderBrush}" BorderThickness="0,1,0,0">
-            <Grid Margin="{StaticResource Shell.StatusMargin}"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                <controls:ConnectionStatusIndicator State="{Binding ConnectionStatus.CompactState}" Status="{Binding ConnectionStatus.CompactStatus}" Compact="True" VerticalAlignment="Center" />
+            <Grid Margin="{StaticResource Shell.StatusMargin}">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                <controls:ConnectionStatusIndicator State="{Binding ConnectionStatus.CompactState}" Status="{Binding ConnectionStatus.CompactStatus}" Detail="{Binding ConnectionStatus.Detail}" ToolTip="{Binding ConnectionStatus.Detail}" Compact="True" VerticalAlignment="Center" />
                 <TextBlock Grid.Column="1" Text="{Binding SelectedNavigationItem.Name}" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="{StaticResource Shell.CaptionFontSize}" VerticalAlignment="Center" Margin="{StaticResource Shell.StatusSectionMargin}" />
-                <TextBlock Grid.Column="3" Text="{Binding CurrentUserDisplayName}" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="{StaticResource Shell.CaptionFontSize}" VerticalAlignment="Center" />
+                <Button Grid.Column="3" Content="{Binding ApplicationVersion, RelativeSource={RelativeSource AncestorType={x:Type local:MainWindow}}}" Foreground="{DynamicResource SecondaryTextBrush}" Background="Transparent" BorderThickness="0" Padding="8,0" FontSize="{StaticResource Shell.CaptionFontSize}" Cursor="Hand" FocusVisualStyle="{x:Null}" ToolTip="About Depot" Click="OnVersionClick" />
+                <TextBlock Grid.Column="4" Text="{Binding CurrentUserDisplayName}" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="{StaticResource Shell.CaptionFontSize}" VerticalAlignment="Center" />
             </Grid>
         </Border>
     </Grid>
