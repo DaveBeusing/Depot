@@ -14,18 +14,18 @@ public abstract class SalesSectionPageViewModel : BaseViewModel, IDisposable
 	protected SalesSectionPageViewModel(SalesViewModel workspace, SalesSection section)
 	{
 		Workspace = workspace;
-		State = SalesWorkspaceState.For(workspace);
+		WorkspaceState = SalesWorkspaceState.For(workspace);
 		Section = section;
-		State.Section = section;
+		WorkspaceState.Section = section;
 	}
 
 	public SalesViewModel Workspace { get; }
-	public SalesWorkspaceState State { get; }
+	public SalesWorkspaceState WorkspaceState { get; }
 	public SalesSection Section { get; }
-	public virtual Task LoadAsync(CancellationToken cancellationToken = default) { State.Section = Section; return Workspace.LoadAsync(cancellationToken); }
+	public virtual Task LoadAsync(CancellationToken cancellationToken = default) { WorkspaceState.Section = Section; return Workspace.LoadAsync(cancellationToken); }
 	public virtual Task RefreshAsync(CancellationToken cancellationToken = default) => LoadAsync(cancellationToken);
-	public bool HasUnsavedChanges() { State.Section = Section; return Workspace.HasUnsavedChanges(); }
-	public void DiscardUnsavedChanges() { State.Section = Section; Workspace.DiscardUnsavedChanges(); }
+	public bool HasUnsavedChanges() { WorkspaceState.Section = Section; return Workspace.HasUnsavedChanges(); }
+	public void DiscardUnsavedChanges() { WorkspaceState.Section = Section; Workspace.DiscardUnsavedChanges(); }
 	public virtual void Dispose() { }
 }
 
@@ -43,10 +43,10 @@ public sealed class CustomersViewModel : SalesSectionPageViewModel
 	public CustomersViewModel(SalesViewModel workspace, CustomerService customers) : base(workspace, SalesSection.Customers)
 	{
 		_customers = customers;
-		NewAddressCommand = new RelayCommand(NewAddress, () => State.SelectedCustomer is not null && Workspace.CanEditCustomers);
-		SaveAddressCommand = new AsyncRelayCommand(SaveAddressAsync, () => State.SelectedCustomer is not null && Workspace.CanEditCustomers && !string.IsNullOrWhiteSpace(AddressDraft.Address));
-		NewContactCommand = new RelayCommand(NewContact, () => State.SelectedCustomer is not null && Workspace.CanEditCustomers);
-		SaveContactCommand = new AsyncRelayCommand(SaveContactAsync, () => State.SelectedCustomer is not null && Workspace.CanEditCustomers && !string.IsNullOrWhiteSpace(ContactDraft.Name));
+		NewAddressCommand = new RelayCommand(NewAddress, () => WorkspaceState.SelectedCustomer is not null && Workspace.CanEditCustomers);
+		SaveAddressCommand = new AsyncRelayCommand(SaveAddressAsync, () => WorkspaceState.SelectedCustomer is not null && Workspace.CanEditCustomers && !string.IsNullOrWhiteSpace(AddressDraft.Address));
+		NewContactCommand = new RelayCommand(NewContact, () => WorkspaceState.SelectedCustomer is not null && Workspace.CanEditCustomers);
+		SaveContactCommand = new AsyncRelayCommand(SaveContactAsync, () => WorkspaceState.SelectedCustomer is not null && Workspace.CanEditCustomers && !string.IsNullOrWhiteSpace(ContactDraft.Name));
 	}
 
 	public ObservableCollection<CustomerAddress> Addresses { get; } = [];
@@ -57,7 +57,7 @@ public sealed class CustomersViewModel : SalesSectionPageViewModel
 	public AsyncRelayCommand SaveAddressCommand { get; }
 	public RelayCommand NewContactCommand { get; }
 	public AsyncRelayCommand SaveContactCommand { get; }
-	public string SearchText { get => State.SearchText; set { State.SearchText = value; OnPropertyChanged(); } }
+	public string SearchText { get => WorkspaceState.SearchText; set { WorkspaceState.SearchText = value; OnPropertyChanged(); } }
 	public Customer CustomerDraft => Workspace.CustomerDraft;
 	public RelayCommand NewCustomerCommand => Workspace.NewCustomerCommand;
 	public AsyncRelayCommand SaveCustomerCommand => Workspace.SaveCustomerCommand;
@@ -88,7 +88,7 @@ public sealed class CustomersViewModel : SalesSectionPageViewModel
 
 	private async Task SelectCustomerAsync(Customer? customer, CancellationToken token = default)
 	{
-		State.SelectedCustomer = customer;
+		WorkspaceState.SelectedCustomer = customer;
 		if (customer is null) { Addresses.Clear(); Contacts.Clear(); RaiseCustomerCommands(); return; }
 		await Workspace.OpenQuickItemAsync(new SalesQuickOpenItem(SalesQuickOpenKind.Customer, customer.Id, customer.Name, customer.CustomerNumber), token);
 		var loaded = await _customers.GetByIdAsync(customer.Id, token) ?? customer;
@@ -100,10 +100,10 @@ public sealed class CustomersViewModel : SalesSectionPageViewModel
 		RaiseCustomerCommands();
 	}
 
-	private void NewAddress() { _selectedAddress = null; OnPropertyChanged(nameof(SelectedAddress)); AddressDraft = NewAddressDraft(); if (State.SelectedCustomer is { } customer) AddressDraft.CustomerId = customer.Id; }
-	private async Task SaveAddressAsync(CancellationToken token) { if (State.SelectedCustomer is not { } customer) return; AddressDraft.CustomerId = customer.Id; var saved = await Workspace.SaveCustomerAddressAsync(AddressDraft, token); await SelectCustomerAsync(customer, token); SelectedAddress = Addresses.FirstOrDefault(a => a.Id == saved.Id); }
-	private void NewContact() { _selectedContact = null; OnPropertyChanged(nameof(SelectedContact)); ContactDraft = NewContactDraft(); if (State.SelectedCustomer is { } customer) ContactDraft.CustomerId = customer.Id; }
-	private async Task SaveContactAsync(CancellationToken token) { if (State.SelectedCustomer is not { } customer) return; ContactDraft.CustomerId = customer.Id; var saved = await _customers.SaveContactAsync(ContactDraft, token); await SelectCustomerAsync(customer, token); SelectedContact = Contacts.FirstOrDefault(c => c.Id == saved.Id); }
+	private void NewAddress() { _selectedAddress = null; OnPropertyChanged(nameof(SelectedAddress)); AddressDraft = NewAddressDraft(); if (WorkspaceState.SelectedCustomer is { } customer) AddressDraft.CustomerId = customer.Id; }
+	private async Task SaveAddressAsync(CancellationToken token) { if (WorkspaceState.SelectedCustomer is not { } customer) return; AddressDraft.CustomerId = customer.Id; var saved = await Workspace.SaveCustomerAddressAsync(AddressDraft, token); await SelectCustomerAsync(customer, token); SelectedAddress = Addresses.FirstOrDefault(a => a.Id == saved.Id); }
+	private void NewContact() { _selectedContact = null; OnPropertyChanged(nameof(SelectedContact)); ContactDraft = NewContactDraft(); if (WorkspaceState.SelectedCustomer is { } customer) ContactDraft.CustomerId = customer.Id; }
+	private async Task SaveContactAsync(CancellationToken token) { if (WorkspaceState.SelectedCustomer is not { } customer) return; ContactDraft.CustomerId = customer.Id; var saved = await _customers.SaveContactAsync(ContactDraft, token); await SelectCustomerAsync(customer, token); SelectedContact = Contacts.FirstOrDefault(c => c.Id == saved.Id); }
 	private void RaiseCustomerCommands() { NewAddressCommand.RaiseCanExecuteChanged(); SaveAddressCommand.RaiseCanExecuteChanged(); NewContactCommand.RaiseCanExecuteChanged(); SaveContactCommand.RaiseCanExecuteChanged(); }
 	private static CustomerAddress NewAddressDraft() => new() { Type = CustomerAddressType.Shipping, IsActive = true };
 	private static CustomerContact NewContactDraft() => new() { Role = CustomerContactRole.General, IsActive = true };
@@ -128,8 +128,8 @@ public sealed class SalesOrdersViewModel : SalesSectionPageViewModel
 
 	public ObservableCollection<SalesOrderTimelineItem> Timeline { get; } = [];
 	public AsyncRelayCommand ApplyCustomerPriceCommand { get; }
-	public SalesOrder? SelectedOrder { get => _selectedOrder; set { if (_selectedOrder == value) return; _selectedOrder = value; State.SelectedOrder = value; OnPropertyChanged(); _ = LoadTimelineAsync(value); } }
-	public override async Task LoadAsync(CancellationToken cancellationToken = default) { await base.LoadAsync(cancellationToken); if (State.SelectedOrder is { } order) { _selectedOrder = order; OnPropertyChanged(nameof(SelectedOrder)); await LoadTimelineAsync(order, cancellationToken); } ApplyCustomerPriceCommand.RaiseCanExecuteChanged(); }
+	public SalesOrder? SelectedOrder { get => _selectedOrder; set { if (_selectedOrder == value) return; _selectedOrder = value; WorkspaceState.SelectedOrder = value; OnPropertyChanged(); _ = LoadTimelineAsync(value); } }
+	public override async Task LoadAsync(CancellationToken cancellationToken = default) { await base.LoadAsync(cancellationToken); if (WorkspaceState.SelectedOrder is { } order) { _selectedOrder = order; OnPropertyChanged(nameof(SelectedOrder)); await LoadTimelineAsync(order, cancellationToken); } ApplyCustomerPriceCommand.RaiseCanExecuteChanged(); }
 	private async Task LoadTimelineAsync(SalesOrder? order, CancellationToken token = default) { Timeline.Clear(); if (order is null) return; foreach (var item in await _timeline.ListAsync(order, token)) Timeline.Add(item); }
 	private async Task ApplyCustomerPriceAsync(CancellationToken token) { if (Workspace.SelectedOrderCustomer is null || Workspace.SelectedItem is null) return; var price = await _pricing.ResolveAsync(Workspace.SelectedOrderCustomer.Id, Workspace.SelectedItem.Id, Workspace.OrderDraft.OrderDate, token); if (price is null) return; Workspace.LineUnitPrice = price.UnitPrice; Workspace.LineDiscountPercent = price.DiscountPercent; }
 	public override void Dispose() => ApplyCustomerPriceCommand.Dispose();
@@ -148,11 +148,11 @@ public sealed class ShippingViewModel : SalesSectionPageViewModel
 		_packing = packing;
 		_fileDialogs = fileDialogs;
 		_documents = documents;
-		StartPickingCommand = new AsyncRelayCommand(ct => SetPackingAsync(ShipmentPackingStatus.Picking, ct), () => _packing.CanPack && State.SelectedShipment?.Status == ShipmentStatus.Draft);
-		MarkPackedCommand = new AsyncRelayCommand(ct => SetPackingAsync(ShipmentPackingStatus.Packed, ct), () => _packing.CanPack && State.SelectedShipment?.Status == ShipmentStatus.Draft);
-		ResetPackingCommand = new AsyncRelayCommand(ct => SetPackingAsync(ShipmentPackingStatus.NotStarted, ct), () => _packing.CanPack && State.SelectedShipment?.Status == ShipmentStatus.Draft);
-		PickListPdfCommand = new RelayCommand(CreatePickList, () => State.SelectedShipment is not null);
-		PackingSlipPdfCommand = new RelayCommand(CreatePackingSlip, () => State.SelectedShipment is not null);
+		StartPickingCommand = new AsyncRelayCommand(ct => SetPackingAsync(ShipmentPackingStatus.Picking, ct), () => _packing.CanPack && WorkspaceState.SelectedShipment?.Status == ShipmentStatus.Draft);
+		MarkPackedCommand = new AsyncRelayCommand(ct => SetPackingAsync(ShipmentPackingStatus.Packed, ct), () => _packing.CanPack && WorkspaceState.SelectedShipment?.Status == ShipmentStatus.Draft);
+		ResetPackingCommand = new AsyncRelayCommand(ct => SetPackingAsync(ShipmentPackingStatus.NotStarted, ct), () => _packing.CanPack && WorkspaceState.SelectedShipment?.Status == ShipmentStatus.Draft);
+		PickListPdfCommand = new RelayCommand(CreatePickList, () => WorkspaceState.SelectedShipment is not null);
+		PackingSlipPdfCommand = new RelayCommand(CreatePackingSlip, () => WorkspaceState.SelectedShipment is not null);
 	}
 
 	public AsyncRelayCommand StartPickingCommand { get; }
@@ -160,9 +160,9 @@ public sealed class ShippingViewModel : SalesSectionPageViewModel
 	public AsyncRelayCommand ResetPackingCommand { get; }
 	public RelayCommand PickListPdfCommand { get; }
 	public RelayCommand PackingSlipPdfCommand { get; }
-	private async Task SetPackingAsync(ShipmentPackingStatus status, CancellationToken token) { if (State.SelectedShipment is null) return; State.SelectedShipment = await _packing.SetStatusAsync(State.SelectedShipment.Id, State.SelectedShipment.Version, status, token); Raise(); }
-	private void CreatePickList() { if (State.SelectedShipment is not { } shipment) return; var path = _fileDialogs.ShowSaveFile(new SaveFileDialogRequest("Save pick list", "PDF document (*.pdf)|*.pdf", ".pdf", $"{shipment.ShipmentNumber}-pick-list.pdf")); if (path is not null) _documents.CreatePickList(path, shipment); }
-	private void CreatePackingSlip() { if (State.SelectedShipment is not { } shipment) return; var path = _fileDialogs.ShowSaveFile(new SaveFileDialogRequest("Save packing slip", "PDF document (*.pdf)|*.pdf", ".pdf", $"{shipment.ShipmentNumber}-packing-slip.pdf")); if (path is not null) _documents.CreatePackingSlip(path, shipment); }
+	private async Task SetPackingAsync(ShipmentPackingStatus status, CancellationToken token) { if (WorkspaceState.SelectedShipment is null) return; WorkspaceState.SelectedShipment = await _packing.SetStatusAsync(WorkspaceState.SelectedShipment.Id, WorkspaceState.SelectedShipment.Version, status, token); Raise(); }
+	private void CreatePickList() { if (WorkspaceState.SelectedShipment is not { } shipment) return; var path = _fileDialogs.ShowSaveFile(new SaveFileDialogRequest("Save pick list", "PDF document (*.pdf)|*.pdf", ".pdf", $"{shipment.ShipmentNumber}-pick-list.pdf")); if (path is not null) _documents.CreatePickList(path, shipment); }
+	private void CreatePackingSlip() { if (WorkspaceState.SelectedShipment is not { } shipment) return; var path = _fileDialogs.ShowSaveFile(new SaveFileDialogRequest("Save packing slip", "PDF document (*.pdf)|*.pdf", ".pdf", $"{shipment.ShipmentNumber}-packing-slip.pdf")); if (path is not null) _documents.CreatePackingSlip(path, shipment); }
 	private void Raise() { StartPickingCommand.RaiseCanExecuteChanged(); MarkPackedCommand.RaiseCanExecuteChanged(); ResetPackingCommand.RaiseCanExecuteChanged(); PickListPdfCommand.RaiseCanExecuteChanged(); PackingSlipPdfCommand.RaiseCanExecuteChanged(); }
 	public override async Task LoadAsync(CancellationToken cancellationToken = default) { await base.LoadAsync(cancellationToken); Raise(); }
 	public override void Dispose() { StartPickingCommand.Dispose(); MarkPackedCommand.Dispose(); ResetPackingCommand.Dispose(); }
@@ -184,21 +184,21 @@ public sealed class SalesInvoicesViewModel : SalesSectionPageViewModel
 		_documents = documents;
 		_email = email;
 		CreatePartialCreditNoteCommand = new AsyncRelayCommand(CreatePartialCreditNoteAsync, CanCreatePartialCreditNote);
-		CreditNotePdfCommand = new RelayCommand(CreateCreditNotePdf, () => State.SelectedCreditNote is not null && State.SelectedInvoice is not null);
-		InvoiceEmailCommand = new RelayCommand(CreateInvoiceEmail, () => State.SelectedInvoice is not null);
+		CreditNotePdfCommand = new RelayCommand(CreateCreditNotePdf, () => WorkspaceState.SelectedCreditNote is not null && WorkspaceState.SelectedInvoice is not null);
+		InvoiceEmailCommand = new RelayCommand(CreateInvoiceEmail, () => WorkspaceState.SelectedInvoice is not null);
 	}
 
 	public SalesInvoiceLine? SelectedInvoiceLine { get => _selectedInvoiceLine; set { if (_selectedInvoiceLine == value) return; _selectedInvoiceLine = value; OnPropertyChanged(); CreatePartialCreditNoteCommand.RaiseCanExecuteChanged(); } }
 	public int CreditQuantity { get => _creditQuantity; set { if (_creditQuantity == value) return; _creditQuantity = value; OnPropertyChanged(); CreatePartialCreditNoteCommand.RaiseCanExecuteChanged(); } }
-	public decimal CreditedGrossAmount => State.SelectedInvoice is null ? 0m : Workspace.CreditNotes.Where(note => note.SalesInvoiceId == State.SelectedInvoice.Id && note.Status == SalesCreditNoteStatus.Posted).Sum(note => note.GrossAmount);
-	public decimal EffectiveGrossAmount => Math.Max(0m, (State.SelectedInvoice?.GrossAmount ?? 0m) - CreditedGrossAmount);
+	public decimal CreditedGrossAmount => WorkspaceState.SelectedInvoice is null ? 0m : Workspace.CreditNotes.Where(note => note.SalesInvoiceId == WorkspaceState.SelectedInvoice.Id && note.Status == SalesCreditNoteStatus.Posted).Sum(note => note.GrossAmount);
+	public decimal EffectiveGrossAmount => Math.Max(0m, (WorkspaceState.SelectedInvoice?.GrossAmount ?? 0m) - CreditedGrossAmount);
 	public AsyncRelayCommand CreatePartialCreditNoteCommand { get; }
 	public RelayCommand CreditNotePdfCommand { get; }
 	public RelayCommand InvoiceEmailCommand { get; }
-	public override async Task LoadAsync(CancellationToken cancellationToken = default) { await base.LoadAsync(cancellationToken); SelectedInvoiceLine = State.SelectedInvoice?.Lines.FirstOrDefault(); OnPropertyChanged(nameof(CreditedGrossAmount)); OnPropertyChanged(nameof(EffectiveGrossAmount)); CreatePartialCreditNoteCommand.RaiseCanExecuteChanged(); CreditNotePdfCommand.RaiseCanExecuteChanged(); InvoiceEmailCommand.RaiseCanExecuteChanged(); }
-	private bool CanCreatePartialCreditNote() => _invoices.CanCreateCreditNote && State.SelectedInvoice?.Status == SalesInvoiceStatus.Posted && SelectedInvoiceLine is not null && CreditQuantity > 0 && CreditQuantity <= SelectedInvoiceLine.Quantity && !string.IsNullOrWhiteSpace(Workspace.CorrectionReason);
-	private async Task CreatePartialCreditNoteAsync(CancellationToken token) { if (State.SelectedInvoice is null || SelectedInvoiceLine is null) return; State.SelectedCreditNote = await _invoices.CreateCreditNoteAsync(State.SelectedInvoice.Id, [new SalesCreditRequest(SelectedInvoiceLine.Id, CreditQuantity)], Workspace.CorrectionReason, token); Workspace.CorrectionReason = string.Empty; await LoadAsync(token); }
-	private void CreateCreditNotePdf() { if (State.SelectedCreditNote is null || State.SelectedInvoice is null) return; var path = _fileDialogs.ShowSaveFile(new SaveFileDialogRequest("Save credit note", "PDF document (*.pdf)|*.pdf", ".pdf", $"{State.SelectedCreditNote.CreditNoteNumber}.pdf")); if (path is not null) _documents.CreateCreditNote(path, State.SelectedCreditNote, State.SelectedInvoice); }
-	private void CreateInvoiceEmail() { if (State.SelectedInvoice is not { } invoice) return; var pdf = Path.Combine(Path.GetTempPath(), $"{invoice.InvoiceNumber}-{Guid.NewGuid():N}.pdf"); _documents.CreateInvoice(pdf, invoice); var draft = _email.CreateDraft(pdf, null, $"Invoice {invoice.InvoiceNumber}", $"Please find invoice {invoice.InvoiceNumber} attached.\n\nDue date: {invoice.DueDate:d}"); _email.OpenDraft(draft); }
+	public override async Task LoadAsync(CancellationToken cancellationToken = default) { await base.LoadAsync(cancellationToken); SelectedInvoiceLine = WorkspaceState.SelectedInvoice?.Lines.FirstOrDefault(); OnPropertyChanged(nameof(CreditedGrossAmount)); OnPropertyChanged(nameof(EffectiveGrossAmount)); CreatePartialCreditNoteCommand.RaiseCanExecuteChanged(); CreditNotePdfCommand.RaiseCanExecuteChanged(); InvoiceEmailCommand.RaiseCanExecuteChanged(); }
+	private bool CanCreatePartialCreditNote() => _invoices.CanCreateCreditNote && WorkspaceState.SelectedInvoice?.Status == SalesInvoiceStatus.Posted && SelectedInvoiceLine is not null && CreditQuantity > 0 && CreditQuantity <= SelectedInvoiceLine.Quantity && !string.IsNullOrWhiteSpace(Workspace.CorrectionReason);
+	private async Task CreatePartialCreditNoteAsync(CancellationToken token) { if (WorkspaceState.SelectedInvoice is null || SelectedInvoiceLine is null) return; WorkspaceState.SelectedCreditNote = await _invoices.CreateCreditNoteAsync(WorkspaceState.SelectedInvoice.Id, [new SalesCreditRequest(SelectedInvoiceLine.Id, CreditQuantity)], Workspace.CorrectionReason, token); Workspace.CorrectionReason = string.Empty; await LoadAsync(token); }
+	private void CreateCreditNotePdf() { if (WorkspaceState.SelectedCreditNote is null || WorkspaceState.SelectedInvoice is null) return; var path = _fileDialogs.ShowSaveFile(new SaveFileDialogRequest("Save credit note", "PDF document (*.pdf)|*.pdf", ".pdf", $"{WorkspaceState.SelectedCreditNote.CreditNoteNumber}.pdf")); if (path is not null) _documents.CreateCreditNote(path, WorkspaceState.SelectedCreditNote, WorkspaceState.SelectedInvoice); }
+	private void CreateInvoiceEmail() { if (WorkspaceState.SelectedInvoice is not { } invoice) return; var pdf = Path.Combine(Path.GetTempPath(), $"{invoice.InvoiceNumber}-{Guid.NewGuid():N}.pdf"); _documents.CreateInvoice(pdf, invoice); var draft = _email.CreateDraft(pdf, null, $"Invoice {invoice.InvoiceNumber}", $"Please find invoice {invoice.InvoiceNumber} attached.\n\nDue date: {invoice.DueDate:d}"); _email.OpenDraft(draft); }
 	public override void Dispose() => CreatePartialCreditNoteCommand.Dispose();
 }
