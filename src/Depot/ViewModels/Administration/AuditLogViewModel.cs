@@ -39,6 +39,7 @@ public sealed class AuditLogViewModel : BaseViewModel, IDisposable
 		NextPageCommand = new AsyncRelayCommand(NextPageAsync, () => HasNextPage);
 		ClearFiltersCommand = new RelayCommand(ClearFilters);
 		ExportCommand = new AsyncRelayCommand(ExportAsync);
+		ExportEvidenceCommand = new AsyncRelayCommand(ExportEvidenceAsync, CanExportEvidence);
 		EntityTypes.Add(string.Empty);
 		Actions.Add(string.Empty);
 	}
@@ -50,6 +51,7 @@ public sealed class AuditLogViewModel : BaseViewModel, IDisposable
 	public AsyncRelayCommand NextPageCommand { get; }
 	public RelayCommand ClearFiltersCommand { get; }
 	public AsyncRelayCommand ExportCommand { get; }
+	public AsyncRelayCommand ExportEvidenceCommand { get; }
 	public bool HasNextPage => (long)PageNumber * PageSize < TotalCount;
 
 	public string SearchText { get => _searchText; set => SetFilter(ref _searchText, value); }
@@ -80,6 +82,7 @@ public sealed class AuditLogViewModel : BaseViewModel, IDisposable
 			if (_selectedEntry == value) return;
 			_selectedEntry = value;
 			OnPropertyChanged();
+			ExportEvidenceCommand.RaiseCanExecuteChanged();
 			_ = LoadDetailsAsync(value);
 		}
 	}
@@ -174,6 +177,28 @@ public sealed class AuditLogViewModel : BaseViewModel, IDisposable
 		catch (Exception exception) when (exception is not OperationCanceledException) { FailOperation(exception, "Audit export failed"); }
 	}
 
+	private async Task ExportEvidenceAsync(CancellationToken cancellationToken)
+	{
+		var entry = SelectedEntry;
+		if (entry is null || BusinessRecordCatalog.Find(entry.EntityType) is null) return;
+		var path = _fileDialogs.ShowSaveFile(new SaveFileDialogRequest(
+			"Export business record evidence",
+			"JSON files (*.json)|*.json",
+			".json",
+			$"depot-{entry.EntityType.ToLowerInvariant()}-{entry.EntityId}-{DateTime.Now:yyyyMMdd-HHmmss}.json"));
+		if (string.IsNullOrWhiteSpace(path)) return;
+		BeginOperation("Exporting business record evidence");
+		try
+		{
+			await _service.ExportBusinessRecordEvidenceAsync(entry.EntityType, entry.EntityId, path, cancellationToken);
+			CompleteOperation(false, "Business record evidence exported");
+		}
+		catch (Exception exception) when (exception is not OperationCanceledException) { FailOperation(exception, "Business record evidence export failed"); }
+	}
+
+	private bool CanExportEvidence() =>
+		SelectedEntry is { } entry && BusinessRecordCatalog.Find(entry.EntityType) is not null;
+
 	private void ClearFilters()
 	{
 		_searchText = _userFilter = _entityIdFilter = _selectedEntityType = _selectedAction = string.Empty;
@@ -202,5 +227,6 @@ public sealed class AuditLogViewModel : BaseViewModel, IDisposable
 		PreviousPageCommand.Dispose();
 		NextPageCommand.Dispose();
 		ExportCommand.Dispose();
+		ExportEvidenceCommand.Dispose();
 	}
 }
