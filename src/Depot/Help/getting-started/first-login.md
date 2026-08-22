@@ -1,42 +1,43 @@
 # First Login
 
 ## Summary
-Sign in with your Depot email address and password. After authentication, Depot opens the workspace shell on a tabless Welcome page instead of selecting a module automatically.
+Depot no longer uses a shared default administrator password. A new database requires creation of its initial administrator before normal sign-in can begin.
 
-## Prerequisites
-- Depot has been installed and initialized.
-- Your account is active.
-- For a server provider, the workstation can reach the database server.
+## New database / first run
+1. Start Depot and allow the selected database provider to initialize.
+2. If the database has no usable application user, Depot opens the first-run administrator setup.
+3. Enter the administrator's individual display name/login email and a password that satisfies the displayed password policy.
+4. Confirm the password and create the administrator.
+5. Continue to normal sign-in.
 
-## Steps
-1. Start Depot.
-2. Confirm that the database connection is available.
-3. Enter your email address and password.
-4. Select **Sign in**.
-5. Review the Welcome page. It greets you by display name according to the local time of day and lists supported keyboard shortcuts.
-6. Select a module from the activity bar or use **Ctrl+P** to open a workspace, section, or supported record.
+> [!WARNING] Do not create shared administrator credentials or reuse a password from another system.
+
+The bootstrap decision is based on the connected database, not merely whether the executable has been started before. Connecting a fresh Depot installation to an existing configured database therefore does not create another administrator automatically.
+
+## Normal sign-in
+1. Confirm that the database connection is available.
+2. Enter your Depot email/login and password.
+3. Select **Sign in**.
+4. Depot opens the tabless Welcome page.
+5. Select a module from the activity bar or use **Ctrl+P**.
+
+Repeated failed sign-in attempts are temporarily throttled per account.
 
 ## Result
-Depot shows only modules permitted by your active roles. No workspace tab is selected or created automatically after sign-in. Workspaces and supported records open as tabs when you choose them.
+Depot shows only modules permitted by your active roles. No workspace tab is created automatically after sign-in. Closing the final tab returns to Welcome.
 
-If you close the final open tab, Depot returns to the Welcome page. The Welcome page itself is not a workspace tab.
-
-Use **Ctrl+P** for Quick Open, **Ctrl+Shift+P** for the Command Palette, **Ctrl+Tab** to move between open tabs, **Ctrl+W** to close the active tab, and **F1** for context-sensitive Help.
+Use **Ctrl+P** for Quick Open, **Ctrl+Shift+P** for the Command Palette, **Ctrl+Tab** to move between tabs, **Ctrl+W** to close the active tab, and **F1** for context Help.
 
 ## Status bar
-The database indicator shows the current connection state. Hover it to see the configured database detail. The current application version is also displayed in the status bar; selecting the version opens the About page.
+The database indicator shows connection state and the current application version opens About when selected.
 
 ## Common problems
-> [!WARNING] Do not share passwords or include them in diagnostics.
-
 - If the connection is unavailable, see [Database Connection Failures](topic:troubleshooting.database-connection-failures).
 - If access is missing after login, ask an administrator to review your active roles.
-- If a workspace or command is not visible, your account may not have the required permission.
-- Seeing the Welcome page with no tabs after sign-in or after closing the final tab is expected behavior.
-
-## Required permissions
-No application permission is required to open the sign-in window. Workspace visibility is permission-aware after sign-in.
+- If the first-run administrator page appears unexpectedly, verify that Depot is connected to the intended database and that a usable user exists there.
+- Never include passwords or protected connection information in diagnostics.
 
 ## Related topics
 - [Workspace Navigation](topic:getting-started.workspace-navigation)
+- [Users and Roles](topic:administration.users)
 - [Database Connection Failures](topic:troubleshooting.database-connection-failures)
