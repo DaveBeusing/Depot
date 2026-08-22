@@ -37,6 +37,18 @@ jobs:
       - name: Run security, privacy and record-integrity boundary tests
         run: dotnet test tests/Depot.Tests/Depot.Tests.csproj --configuration Release --no-build --filter "FullyQualifiedName~PasswordHasherSecurityTests|FullyQualifiedName~AuthorizationServiceTests|FullyQualifiedName~RbacTests|FullyQualifiedName~PurchaseOrderApprovalServiceTests|FullyQualifiedName~AuditLogTests|FullyQualifiedName~DataSubjectAccessServiceTests|FullyQualifiedName~BusinessRecordIntegrityTests" --logger "console;verbosity=normal"
 
+  risk-acceptance-policy:
+    name: Validate security risk acceptances
+    runs-on: windows-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Reject invalid or expired security exceptions
+        shell: pwsh
+        run: ./scripts/security/validate-risk-acceptances.ps1
+
   vulnerability-audit:
     name: NuGet vulnerability audit
     runs-on: windows-latest

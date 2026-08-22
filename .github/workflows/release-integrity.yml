@@ -10,6 +10,8 @@ on:
       - 'src/Depot/**'
       - 'Directory.Build.props'
       - 'src/Depot/packages.lock.json'
+      - 'security/security-risk-acceptances.json'
+      - 'scripts/security/validate-risk-acceptances.ps1'
   workflow_dispatch:
 
 permissions:
@@ -33,16 +35,20 @@ jobs:
           "commit=$head" | Out-File artifacts-source.txt -Encoding ascii
           "ref=${{ github.ref }}" | Add-Content artifacts-source.txt -Encoding ascii
 
+      - name: Validate security risk acceptances
+        shell: pwsh
+        run: ./scripts/security/validate-risk-acceptances.ps1
+
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
 
       - name: Restore locked dependencies
-        run: dotnet restore Depot.slnx --locked-mode
+        run: dotnet restore Depot.slnx --locked-mode -p:AuditPipeline=true
 
       - name: Restore win-x64 runtime
-        run: dotnet restore src/Depot/Depot.csproj --runtime win-x64
+        run: dotnet restore src/Depot/Depot.csproj --runtime win-x64 -p:AuditPipeline=true
 
       - name: Publish release artifact
         run: >-
@@ -97,6 +103,7 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force artifacts/release | Out-Null
           Copy-Item artifacts-source.txt artifacts/release/source.txt
+          Copy-Item security/security-risk-acceptances.json artifacts/release/security-risk-acceptances.json
           Get-ChildItem artifacts/release/win-x64 -File | Sort-Object Name | ForEach-Object {
             $hash = Get-FileHash $_.FullName -Algorithm SHA256
             "$($hash.Hash.ToLowerInvariant()) *win-x64/$($_.Name)"
