@@ -33,37 +33,26 @@ public sealed class PurchaseOrderApprovalService
 
 	public bool CanDecide(long? createdByUserId) =>
 		_authorization.HasPermission(ApplicationPermission.PurchaseOrdersApprove) &&
-		(_authorization.CurrentUser?.Id != createdByUserId ||
-		 _authorization.IsInRole(SystemRoleCatalog.AdministratorCode));
+		(_authorization.CurrentUser?.Id != createdByUserId || _authorization.IsInRole(SystemRoleCatalog.AdministratorCode));
 
-	public async Task<PurchaseOrderApprovalPage> SearchAsync(
-		PurchaseOrderApprovalFilter filter,
-		int pageNumber,
-		int pageSize,
-		CancellationToken cancellationToken = default)
+	public async Task<PurchaseOrderApprovalPage> SearchAsync(PurchaseOrderApprovalFilter filter, int pageNumber, int pageSize, CancellationToken cancellationToken = default)
 	{
 		EnsureAuthorized();
 		var pageTask = _orders.SearchPendingApprovalsAsync(filter, pageNumber, pageSize, cancellationToken);
 		var summaryTask = _orders.GetPendingApprovalSummaryAsync(filter, cancellationToken);
 		await Task.WhenAll(pageTask, summaryTask);
-		return new PurchaseOrderApprovalPage(
-			await pageTask,
-			await summaryTask ?? new PurchaseOrderApprovalSummary(0, null, 0));
+		return new PurchaseOrderApprovalPage(await pageTask, await summaryTask ?? new PurchaseOrderApprovalSummary(0, null, 0));
 	}
 
-	public async Task<PurchaseOrderApprovalDetails?> GetDetailsAsync(
-		long purchaseOrderId,
-		CancellationToken cancellationToken = default)
+	public async Task<PurchaseOrderApprovalDetails?> GetDetailsAsync(long purchaseOrderId, CancellationToken cancellationToken = default)
 	{
 		EnsureAuthorized();
 		var orderTask = _orders.GetByIdAsync(purchaseOrderId, cancellationToken);
-		var historyTask = _auditRepository.GetEntityHistoryAsync(
-			nameof(PurchaseOrder), purchaseOrderId, HistoryLimit, cancellationToken);
+		var historyTask = _auditRepository.GetEntityHistoryAsync(nameof(PurchaseOrder), purchaseOrderId, HistoryLimit, cancellationToken);
 		await Task.WhenAll(orderTask, historyTask);
 		var order = await orderTask;
 		if (order is null) return null;
-		var history = (await historyTask).Select(ToHistoryItem).ToArray();
-		return new PurchaseOrderApprovalDetails(order, history);
+		return new PurchaseOrderApprovalDetails(order, (await historyTask).Select(ToHistoryItem).ToArray());
 	}
 
 	public Task<PurchaseOrder?> GetCurrentAsync(long purchaseOrderId, CancellationToken cancellationToken = default)
@@ -72,54 +61,50 @@ public sealed class PurchaseOrderApprovalService
 		return _orders.GetByIdAsync(purchaseOrderId, cancellationToken);
 	}
 
-	public Task<PurchaseOrder> ApproveAsync(
-		long purchaseOrderId,
-		long version,
-		string? comment,
-		CancellationToken cancellationToken = default)
+	public async Task<PurchaseOrder> ApproveAsync(long purchaseOrderId, long version, string? comment, CancellationToken cancellationToken = default)
 	{
 		EnsureAuthorized();
-		return _purchaseOrders.ApproveAsync(purchaseOrderId, version, comment, cancellationToken);
+		comment = await NormalizeAdministratorOverrideAsync(purchaseOrderId, comment, cancellationToken);
+		return await _purchaseOrders.ApproveAsync(purchaseOrderId, version, comment, cancellationToken);
 	}
 
-	public Task<PurchaseOrder> ApproveAsync(long purchaseOrderId, long version, string? comment, Guid operationId, CancellationToken cancellationToken = default)
+	public async Task<PurchaseOrder> ApproveAsync(long purchaseOrderId, long version, string? comment, Guid operationId, CancellationToken cancellationToken = default)
 	{
 		EnsureAuthorized();
-		return _purchaseOrders.ApproveAsync(purchaseOrderId, version, comment, operationId, cancellationToken);
+		comment = await NormalizeAdministratorOverrideAsync(purchaseOrderId, comment, cancellationToken);
+		return await _purchaseOrders.ApproveAsync(purchaseOrderId, version, comment, operationId, cancellationToken);
 	}
 
-	public Task<PurchaseOrder> RejectAsync(
-		long purchaseOrderId,
-		long version,
-		string? comment,
-		CancellationToken cancellationToken = default)
+	public async Task<PurchaseOrder> RejectAsync(long purchaseOrderId, long version, string? comment, CancellationToken cancellationToken = default)
 	{
 		EnsureAuthorized();
-		return _purchaseOrders.RejectAsync(purchaseOrderId, version, comment, cancellationToken);
+		comment = await NormalizeAdministratorOverrideAsync(purchaseOrderId, comment, cancellationToken);
+		return await _purchaseOrders.RejectAsync(purchaseOrderId, version, comment, cancellationToken);
 	}
 
-	public Task<PurchaseOrder> RejectAsync(long purchaseOrderId, long version, string? comment, Guid operationId, CancellationToken cancellationToken = default)
+	public async Task<PurchaseOrder> RejectAsync(long purchaseOrderId, long version, string? comment, Guid operationId, CancellationToken cancellationToken = default)
 	{
 		EnsureAuthorized();
-		return _purchaseOrders.RejectAsync(purchaseOrderId, version, comment, operationId, cancellationToken);
+		comment = await NormalizeAdministratorOverrideAsync(purchaseOrderId, comment, cancellationToken);
+		return await _purchaseOrders.RejectAsync(purchaseOrderId, version, comment, operationId, cancellationToken);
 	}
 
-	public async Task<PurchaseOrderApprovalSummary> GetSummaryAsync(
-		PurchaseOrderApprovalFilter filter,
-		CancellationToken cancellationToken = default)
+	public async Task<PurchaseOrderApprovalSummary> GetSummaryAsync(PurchaseOrderApprovalFilter filter, CancellationToken cancellationToken = default)
 	{
 		EnsureAuthorized();
-		return await _orders.GetPendingApprovalSummaryAsync(filter, cancellationToken)
-			?? new PurchaseOrderApprovalSummary(0, null, 0);
+		return await _orders.GetPendingApprovalSummaryAsync(filter, cancellationToken) ?? new PurchaseOrderApprovalSummary(0, null, 0);
+	}
+
+	private async Task<string?> NormalizeAdministratorOverrideAsync(long purchaseOrderId, string? comment, CancellationToken cancellationToken)
+	{
+		var order = await _orders.GetByIdAsync(purchaseOrderId, cancellationToken) ?? throw new InvalidOperationException("Purchase order was not found.");
+		var isSelfDecision = order.CreatedByUserId is not null && order.CreatedByUserId == _authorization.CurrentUser?.Id;
+		var isAdministrator = _authorization.IsInRole(SystemRoleCatalog.AdministratorCode);
+		return AdministratorOverrideAudit.NormalizeDecisionComment(isSelfDecision, isAdministrator, comment);
 	}
 
 	private PurchaseOrderApprovalHistoryItem ToHistoryItem(AuditLogDetails entry) =>
-		new(
-			entry.TimestampUtc,
-			entry.UserEmail,
-			entry.Action,
-			DescribeStatusChange(entry.BeforeJson, entry.AfterJson),
-			_sanitizer.Compare(entry.BeforeJson, entry.AfterJson));
+		new(entry.TimestampUtc, entry.UserEmail, entry.Action, DescribeStatusChange(entry.BeforeJson, entry.AfterJson), _sanitizer.Compare(entry.BeforeJson, entry.AfterJson));
 
 	private static string DescribeStatusChange(string? beforeJson, string? afterJson)
 	{
@@ -137,15 +122,10 @@ public sealed class PurchaseOrderApprovalService
 		try
 		{
 			using var document = JsonDocument.Parse(json);
-			if (!document.RootElement.TryGetProperty("status", out var value) ||
-				!value.TryGetInt32(out var status) ||
-				!Enum.IsDefined(typeof(PurchaseOrderStatus), status)) return null;
+			if (!document.RootElement.TryGetProperty("status", out var value) || !value.TryGetInt32(out var status) || !Enum.IsDefined(typeof(PurchaseOrderStatus), status)) return null;
 			return (PurchaseOrderStatus)status;
 		}
-		catch (JsonException)
-		{
-			return null;
-		}
+		catch (JsonException) { return null; }
 	}
 
 	private static string DisplayStatus(PurchaseOrderStatus? status) => status switch
