@@ -182,38 +182,58 @@ Before claiming GDPR/DSGVO readiness for a specific deployment, the controller/q
 
 # Phase 4 - GoBD and business-record integrity
 
+**Status: TECHNICAL IMPLEMENTATION COMPLETE — 2026-08-22**
+
 Target: Before Depot is relied upon for relevant German business records/processes.
+
+The technical business-record integrity baseline is implemented. Deployment-specific tax relevance, statutory retention periods, organizational procedures, formal procedural-documentation approval, external-system responsibilities, and tax-authority-specific export requirements remain acceptance gates outside the generic application code.
 
 ## Record integrity
 
-- [ ] Classify business objects by mutability and retention requirements.
-- [ ] Make posted/finalized records immutable where required.
-- [ ] Use explicit cancellation, reversal, correction, return, or credit transactions instead of destructive edits.
-- [ ] Preserve links between original and correcting transactions.
-- [ ] Preserve historical values needed to understand a transaction later.
-- [ ] Prevent silent renumbering or reuse of finalized document numbers.
-- [ ] Define numbering rules for invoices, credit notes, shipments, purchase documents, and other relevant records.
+- [x] Classify business objects by mutability and retention requirements using `BusinessRecordCatalog`.
+- [x] Make posted/finalized records immutable through service/repository workflow-state and optimistic-concurrency predicates in the reviewed core workflows.
+- [x] Use explicit cancellation, reversal, correction, return, close, or credit transactions instead of destructive edits.
+- [x] Preserve original records and links/references needed to reconstruct correcting transactions.
+- [x] Preserve historical before/after values in audit evidence for audited retained state changes.
+- [x] Prevent silent renumbering or reuse through stable identity-derived document numbers and documented no-reuse/no-backfill rules.
+- [x] Define numbering rules for invoices, credit notes, shipments, purchasing, warehouse, return, and sales documents in `docs/compliance/BUSINESS_RECORD_INTEGRITY.md`.
 
 ## Traceability
 
-- [ ] Ensure relevant business events can be reconstructed chronologically.
-- [ ] Preserve actor and timestamp information.
-- [ ] Record workflow status transitions.
-- [ ] Ensure audit and business transactions commit consistently.
-- [ ] Define correction reasons where appropriate.
+- [x] Ensure relevant audited business events can be reconstructed chronologically through UTC audit history and structured snapshots.
+- [x] Preserve actor and timestamp information for attributed workflow transitions.
+- [x] Record workflow status transitions through versioned business state and audit entries.
+- [x] Ensure reviewed retained business mutations and corresponding audit entries commit consistently in shared database transactions; sales-order draft save was hardened to the same model.
+- [x] Define and require correction reasons in reviewed reversal/cancellation/credit workflows where needed to explain the correction.
 
 ## Retention and export
 
-- [ ] Define retention categories without hard-coding legal periods where deployment policy should control them.
-- [ ] Provide machine-readable export of relevant records and metadata.
-- [ ] Preserve readability of retained documents.
-- [ ] Ensure backup/restore does not break historical integrity.
+- [x] Define technical retention categories without hard-coding statutory periods that belong to deployment/legal policy.
+- [x] Provide machine-readable JSON business-record evidence export with record classification, chronological audit events, actor/timestamps, sanitized before/after data, and latest snapshot.
+- [x] Preserve readability through structured authoritative data and documented reconstruction/export semantics.
+- [x] Define backup/restore integrity rules so identities, document numbers, relationships, status, audit history, and schema version are preserved as a unit.
 
 ## Documentation
 
-- [ ] Create technical input for a GoBD-oriented procedural documentation package.
-- [ ] Document data creation, processing, storage, correction, export, backup, restore, and migration.
-- [ ] Maintain version/migration history sufficient to explain historical data states.
+- [x] Create technical input for a GoBD-oriented procedural documentation package in `docs/compliance/PROCEDURAL_DOCUMENTATION.md`.
+- [x] Document data creation, processing, storage, correction, export, backup, restore, and migration.
+- [x] Define migration/change-control rules to preserve stable ids, permanent document numbers, audit history, semantic meaning, and explainable historical states.
+
+## Phase 4 evidence
+
+- `docs/compliance/PHASE4_STATUS.md`
+- `docs/compliance/BUSINESS_RECORD_INTEGRITY.md`
+- `docs/compliance/PROCEDURAL_DOCUMENTATION.md`
+- executable `BusinessRecordCatalog`
+- classified business-record evidence JSON export in `AuditLogService`
+- Audit Log → Export evidence workflow
+- atomic sales-order draft + audit persistence
+- forced-audit-failure rollback regression test
+- `BusinessRecordIntegrityTests` in the security/compliance CI gate
+
+## Production/legal acceptance gates
+
+Before claiming GoBD conformity for a specific deployment, the operator/qualified adviser must determine which Depot records and processes are tax-relevant, define concrete retention periods, complete and approve the organization-specific procedural documentation, define segregation of duties and operating controls, document external interfaces, validate required authority/export formats, and retain change/recovery evidence appropriate to the deployment.
 
 ---
 
@@ -321,7 +341,7 @@ A production release should not be approved until at least the following evidenc
 5. Audit-log completion and retention/export policy. **Complete**
 6. Release signing and release provenance. **Technical pipeline complete; production certificate acceptance pending**
 7. GDPR data inventory/retention and data-subject workflow. **Technical implementation complete; deployment/legal acceptance pending**
-8. GoBD-oriented immutable business-record model.
+8. GoBD-oriented immutable business-record model. **Technical implementation complete; deployment/legal acceptance pending**
 9. CRA risk assessment and vulnerability/update lifecycle.
 10. E-invoicing conformance when structured invoicing enters scope.
 11. Enterprise identity/SIEM features based on customer demand.
