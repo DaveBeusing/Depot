@@ -22,10 +22,6 @@ public partial class MainWindow : Window
 	private const string HelpIconData = "M10,18 A8,8 0 1 0 10,2 A8,8 0 1 0 10,18 M7.8,7.2 C8,5.8 9,5 10.3,5 C11.8,5 12.8,5.9 12.8,7.2 C12.8,8.2 12.2,8.8 11.2,9.5 C10.4,10.1 10,10.7 10,11.8 M10,14.5 L10,14.6";
 	private const string RecordIconData = "M3,3 L17,3 L17,17 L3,17 Z M6,7 L14,7 M6,10 L14,10 M6,13 L11,13";
 
-	public static readonly DependencyProperty BreadcrumbTextProperty = DependencyProperty.Register(nameof(BreadcrumbText), typeof(string), typeof(MainWindow), new PropertyMetadata(string.Empty));
-	public static readonly DependencyProperty CanNavigateBackProperty = DependencyProperty.Register(nameof(CanNavigateBack), typeof(bool), typeof(MainWindow), new PropertyMetadata(false));
-	public static readonly DependencyProperty CanNavigateForwardProperty = DependencyProperty.Register(nameof(CanNavigateForward), typeof(bool), typeof(MainWindow), new PropertyMetadata(false));
-
 	private readonly CurrentUserViewModel _currentUserViewModel;
 	private readonly ShellNavigationItem _currentUserNavigationItem;
 	private readonly ApplicationInformationService _applicationInformation;
@@ -52,9 +48,6 @@ public partial class MainWindow : Window
 	public string CurrentUserInitials => _currentUserViewModel.Initials;
 	public string CurrentUserDisplayName => _currentUserViewModel.User.DisplayName;
 	public string ApplicationVersion => _applicationInformation.GetVersionInfo().Version;
-	public string BreadcrumbText { get => (string)GetValue(BreadcrumbTextProperty); private set => SetValue(BreadcrumbTextProperty, value); }
-	public bool CanNavigateBack { get => (bool)GetValue(CanNavigateBackProperty); private set => SetValue(CanNavigateBackProperty, value); }
-	public bool CanNavigateForward { get => (bool)GetValue(CanNavigateForwardProperty); private set => SetValue(CanNavigateForwardProperty, value); }
 
 	protected override void OnClosing(CancelEventArgs e)
 	{
@@ -199,13 +192,11 @@ public partial class MainWindow : Window
 		{
 			_notificationNavigationItem ??= new ShellNavigationItem("Notifications", NotificationIconData, () => viewModel.NotificationCenterViewModel, (_, _) => Task.CompletedTask, "getting-started.first-login");
 			WorkspaceTabs.ActiveItem = _notificationNavigationItem;
-			BreadcrumbText = "Notifications";
 		}
 		else if (ReferenceEquals(viewModel.CurrentViewModel, viewModel.HelpViewModel))
 		{
 			_helpNavigationItem ??= new ShellNavigationItem("Help", HelpIconData, () => viewModel.HelpViewModel, (_, _) => Task.CompletedTask, HelpService.FallbackTopicId);
 			WorkspaceTabs.ActiveItem = _helpNavigationItem;
-			BreadcrumbText = "Help";
 		}
 	}
 
@@ -214,22 +205,14 @@ public partial class MainWindow : Window
 		var item = viewModel.SelectedNavigationItem;
 		if (item is null) return;
 		var route = item.Route;
-		var breadcrumb = item.IsDocument ? $"{item.Route.Value} › {item.Name}" : item.Name;
 		if (!item.IsDocument && item.IsContentCreated && item.Content is ShellModuleViewModel module)
 		{
 			ObserveModule(module);
-			if (module.SelectedPage is { } page)
-			{
-				route = page.Route;
-				breadcrumb = $"{item.Name} › {page.Name}";
-			}
+			if (module.SelectedPage is { } page) route = page.Route;
 		}
 		else ObserveModule(null);
 
-		BreadcrumbText = breadcrumb;
 		if (!_historyNavigation) _history.Record(route);
-		CanNavigateBack = _history.CanGoBack;
-		CanNavigateForward = _history.CanGoForward;
 	}
 
 	private async Task NavigateHistoryAsync(bool forward)
@@ -246,8 +229,6 @@ public partial class MainWindow : Window
 		}
 	}
 
-	private async void OnBackClick(object sender, RoutedEventArgs e) => await NavigateHistoryAsync(false);
-	private async void OnForwardClick(object sender, RoutedEventArgs e) => await NavigateHistoryAsync(true);
 	private void OnWindowActivated(object? sender, EventArgs e) { if (DataContext is MainViewModel viewModel) viewModel.SetApplicationActive(true); }
 	private void OnWindowDeactivated(object? sender, EventArgs e) { if (DataContext is MainViewModel viewModel) viewModel.SetApplicationActive(false); }
 	private async void OnCurrentUserClick(object sender, RoutedEventArgs e) { if (DataContext is MainViewModel viewModel) await viewModel.NavigateAsync(_currentUserNavigationItem); }
