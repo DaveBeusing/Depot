@@ -20,6 +20,16 @@ Describe the change and the problem it solves.
 
 If any security-impact item applies, describe the threat/abuse case considered, controls added or changed, tests/evidence, and any residual risk.
 
+## Privacy impact
+
+- [ ] No new personal-data category or use
+- [ ] Data inventory remains accurate or has been updated
+- [ ] Retention/lifecycle behavior remains accurate or has been updated
+- [ ] No new telemetry, analytics, crash upload, cloud sync, remote support, or background external transmission
+- [ ] Data-subject discovery/export impact reviewed
+
+If personal-data handling or external transmission changes, document purpose, minimum fields, access roles, storage/derived copies, retention, recipients, security controls, and update `DATA_INVENTORY.md`, `PRIVACY_BY_DESIGN.md`, or `TELEMETRY_POLICY.md` as applicable.
+
 ## Dependency impact
 
 - [ ] No new/updated production dependency

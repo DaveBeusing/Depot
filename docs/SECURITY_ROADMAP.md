@@ -145,19 +145,38 @@ The application and CI controls that can be implemented without production infra
 
 # Phase 3 - GDPR / data protection readiness
 
+**Status: TECHNICAL IMPLEMENTATION COMPLETE — 2026-08-22**
+
 Target: Before production use with personal data.
 
-- [ ] Inventory personal-data categories processed by Depot.
-- [ ] Document purposes and typical data flows.
-- [ ] Identify storage locations including databases, settings, logs, backups, PDFs, and exports.
-- [ ] Apply data minimization to master data and logs.
-- [ ] Define retention and deletion behavior by record category.
-- [ ] Distinguish delete, deactivate, anonymize, archive, and legally retained records.
-- [ ] Provide administrator workflows to locate relevant personal data.
-- [ ] Define export capability for data-subject requests where applicable.
-- [ ] Ensure backup retention is consistent with deletion/retention policy.
-- [ ] Document privacy-by-design decisions for major features.
-- [ ] Review whether telemetry or remote services are introduced in future releases before enabling them.
+The technical privacy baseline is implemented. Depot intentionally does not hard-code legal bases, statutory retention periods, erasure decisions, or controller obligations; these remain deployment/legal decisions and must be validated before production use.
+
+- [x] Inventory personal-data categories processed by Depot in `docs/compliance/DATA_INVENTORY.md`.
+- [x] Document purposes and typical data flows, including derived PDF/export/backup copies.
+- [x] Identify storage locations including databases, protected settings, diagnostics/logs, backups, PDFs, spreadsheet/CSV exports, notifications, and generated documents.
+- [x] Apply a technical data-minimization baseline through purpose-based fields, field-length/normalization validation, RBAC, secret redaction, and privacy review rules.
+- [x] Define retention and deletion behavior by record category in `docs/compliance/RETENTION_POLICY.md`; concrete legal periods remain controller/deployment policy.
+- [x] Distinguish delete, deactivate, anonymize, archive, and legally/business-retained records and prohibit unsafe blanket deletion of historical business/audit evidence.
+- [x] Provide an administrator workflow under Administration → Privacy Data to locate personal data across users, customers, customer contacts, suppliers, and attributable audit records.
+- [x] Provide an administrator-only machine-readable JSON discovery export for data-subject handling; authentication hashes and connection secrets are excluded by design.
+- [x] Align backup retention with lifecycle policy and document that restoring historical backups can reintroduce previously removed data and requires reapplication of applicable erasure/restriction actions.
+- [x] Document privacy-by-design review requirements for new personal-data features in `docs/compliance/PRIVACY_BY_DESIGN.md`.
+- [x] Establish a default-deny review gate for future telemetry, analytics, crash upload, cloud sync, remote support, or other background external transmission in `docs/compliance/TELEMETRY_POLICY.md` and the PR review process.
+
+## Phase 3 evidence
+
+- `docs/compliance/DATA_INVENTORY.md`
+- `docs/compliance/RETENTION_POLICY.md`
+- `docs/compliance/PRIVACY_BY_DESIGN.md`
+- `docs/compliance/TELEMETRY_POLICY.md`
+- `DataSubjectAccessService` with RBAC, bounded discovery queries, JSON export, and secret exclusion
+- Administration → Privacy Data workflow
+- automated privacy discovery/authorization/export tests
+- existing audit/diagnostic sanitization, backup retention, and permission controls
+
+## Production/legal acceptance gates
+
+Before claiming GDPR/DSGVO readiness for a specific deployment, the controller/qualified adviser must still determine lawful bases, notices, processor arrangements, concrete retention periods, data-subject response procedures, international transfer requirements where applicable, and whether any requested erasure must be restricted because of overriding legal/business retention duties.
 
 ---
 
@@ -301,7 +320,7 @@ A production release should not be approved until at least the following evidenc
 4. First-run administrator and credential-storage hardening. **Complete**
 5. Audit-log completion and retention/export policy. **Complete**
 6. Release signing and release provenance. **Technical pipeline complete; production certificate acceptance pending**
-7. GDPR data inventory/retention model.
+7. GDPR data inventory/retention and data-subject workflow. **Technical implementation complete; deployment/legal acceptance pending**
 8. GoBD-oriented immutable business-record model.
 9. CRA risk assessment and vulnerability/update lifecycle.
 10. E-invoicing conformance when structured invoicing enters scope.

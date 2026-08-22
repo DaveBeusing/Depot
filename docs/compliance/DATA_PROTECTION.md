@@ -2,85 +2,62 @@
 
 ## Purpose
 
-This document establishes the initial privacy and data-protection framework for Depot. Deployment-specific GDPR/DSGVO obligations remain the responsibility of the relevant controller/processor and require legal/organizational assessment in addition to software controls.
+This document establishes the technical privacy and data-protection baseline for Depot. Deployment-specific GDPR/DSGVO obligations remain the responsibility of the relevant controller/processor and require legal/organizational assessment in addition to software controls.
 
-## Likely personal-data locations
+## Personal-data inventory
 
-Depot may process personal data in:
-
-- application users,
-- customers and contacts,
-- supplier contacts,
-- sales/purchasing documents,
-- audit records,
-- application logs,
-- PDFs and spreadsheet exports,
-- database backups,
-- settings/configuration where user identifiers are stored.
+The authoritative technical inventory is maintained in `DATA_INVENTORY.md`. It covers application users, customer and supplier/contact data, business documents, audit evidence, notifications, generated documents, exports, backups, protected settings, and diagnostics/logs.
 
 ## Principles
 
-- Data minimization.
-- Purpose limitation.
+- Data minimization and purpose limitation.
 - Privacy by design and by default.
 - Least-privilege access.
-- Defined retention.
-- Traceable administrative access where appropriate.
-- Secure deletion/anonymization where legally and technically appropriate.
+- Defined lifecycle and retention decisions.
+- Traceable privileged access where appropriate.
+- No destructive erasure of records that must remain as business/audit evidence.
+- No background external transmission without privacy/security review.
 
-## Required work
+## Technical baseline
 
-### Data inventory
+### Data inventory and flows
 
-- [ ] Identify personal-data fields by entity.
-- [ ] Identify storage locations and derived copies.
-- [ ] Identify exports and generated documents.
-- [ ] Identify backup copies and retention.
-- [ ] Document future external integrations/telemetry before use.
+- [x] Identify personal-data fields/categories by entity and workflow (`DATA_INVENTORY.md`).
+- [x] Identify primary storage and derived copies including PDFs, spreadsheet/CSV exports, backups and diagnostics.
+- [x] Document purposes and typical propagation paths.
+- [x] Require inventory review when future telemetry/integrations are introduced.
 
 ### Lifecycle
 
-For each data category determine whether Depot should support:
+- [x] Distinguish deletion, deactivation, anonymization, archival, and legal/business retention (`RETENTION_POLICY.md`).
+- [x] Prefer deactivation over destructive deletion when historical references exist.
+- [x] Keep posted/finalized business records and audit evidence outside blanket erasure workflows.
+- [x] Document backup expiry/restoration implications for prior erasure/restriction actions.
 
-- deletion,
-- deactivation,
-- anonymization/pseudonymization,
-- archival,
-- legal/business retention.
+Concrete legal retention periods and final erasure decisions are deployment/controller policy and are intentionally not hard-coded into automatic destructive jobs.
 
-Deletion must not destroy records that must remain immutable or retained for another lawful reason; those cases require a defined alternative such as restricted retention or anonymization where appropriate.
+### Access and minimization
 
-### Access
-
-- [ ] Ensure permissions restrict access to personal data according to role.
-- [ ] Review administrator capabilities.
-- [ ] Record appropriate privileged actions.
-- [ ] Avoid exposing unnecessary personal data in list views, errors, notifications, and logs.
+- [x] Existing RBAC limits customer, supplier, user, audit and administration surfaces.
+- [x] Master-data services normalize inputs and apply bounded field lengths.
+- [x] Audit/diagnostic presentation redacts credentials, hashes, tokens, keys and connection secrets.
+- [x] Privacy discovery/export requires `AdministrationView` permission.
+- [x] Privacy exports intentionally exclude password hashes and database credentials.
 
 ### Data-subject support
 
-- [ ] Provide reliable search/identification of relevant person-related records.
-- [ ] Define export procedures/capability where applicable.
-- [ ] Define correction workflows.
-- [ ] Define deletion/anonymization workflows subject to retention constraints.
+- [x] Provide Administration → Privacy Data discovery workflow.
+- [x] Search users, customers, customer contacts, suppliers and attributable audit evidence by person-related identifiers.
+- [x] Provide machine-readable JSON discovery export.
+- [x] Bound per-source search results and require at least two search characters to reduce unintended bulk disclosure.
+- [x] Preserve correction/deactivation workflows rather than introducing unsafe one-click deletion.
 
-### Logs
+The discovery package is an administrative aid. A controller must still verify derived files, external recipients, backups and immutable business records when answering a real data-subject request.
 
-Logs should not contain passwords, connection-string secrets, unnecessary customer details, full invoice content, or other sensitive values unless specifically justified and protected.
+### Logs and backups
 
-### Backups
-
-Backup retention must be documented. Access must be restricted. Recovery procedures must account for data-protection obligations and avoid uncontrolled proliferation of restored copies.
+Logs must not contain passwords, connection-string secrets, unnecessary full business-document content, or protected settings. Backup retention/access/encryption controls are defined in `AUDIT_AND_RECOVERY.md`; lifecycle interaction is defined in `RETENTION_POLICY.md`.
 
 ## Privacy review triggers
 
-Perform a privacy review when adding:
-
-- telemetry,
-- cloud services,
-- email sending,
-- external identity providers,
-- APIs/integrations,
-- new customer/supplier/person fields,
-- analytics,
-- remote support features.
+`PRIVACY_BY_DESIGN.md` and `TELEMETRY_POLICY.md` require review before adding telemetry, cloud services, email providers, external identity, APIs/integrations, new person-related fields, analytics, crash upload, remote support, or other external/background transmission.
