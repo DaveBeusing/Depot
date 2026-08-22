@@ -34,6 +34,7 @@ public partial class App : Application
 			var composition = DepotApplicationServices.Create(_fileDialogs, _applicationInformation);
 			_composition = composition;
 			StartupDiagnostics.Log("Application composition initialized.");
+			if (!EnsureAdministrator(composition)) { Shutdown(); return; }
 			RunApplication(composition);
 		}
 		catch (Exception exception)
@@ -42,6 +43,16 @@ public partial class App : Application
 			StartupDiagnostics.ShowStartupError(exception);
 			Shutdown();
 		}
+	}
+
+	private static bool EnsureAdministrator(DepotApplicationServices composition)
+	{
+		var bootstrap = new AdministratorBootstrapService(composition.Database.DataAccess, composition.Database.TransactionRunner, composition.Services.Authorization);
+		if (!bootstrap.RequiresSetupAsync(CancellationToken.None).GetAwaiter().GetResult()) return true;
+		StartupDiagnostics.Log("Administrator bootstrap required for the current database.");
+		var result = new FirstRunAdminWindow(bootstrap).ShowDialog();
+		StartupDiagnostics.Log($"Administrator bootstrap returned: {result}");
+		return result == true;
 	}
 
 	private void RunApplication(DepotApplicationServices composition)
@@ -69,7 +80,6 @@ public partial class App : Application
 	{
 		var mainViewModel = composition.ViewModels.CreateMain();
 		StartupDiagnostics.Log("MainViewModel created.");
-
 		var mainWindow = new MainWindow(composition.Services.Authorization, _applicationInformation) { DataContext = mainViewModel };
 		MainWindow = mainWindow;
 		StartupDiagnostics.Log("MainWindow created.");
@@ -77,7 +87,6 @@ public partial class App : Application
 		try { mainWindow.ShowDialog(); }
 		finally { mainViewModel.LogoutRequested -= OnLogoutRequested; mainViewModel.Dispose(); }
 		StartupDiagnostics.Log("MainWindow closed.");
-
 		void OnLogoutRequested(object? sender, EventArgs e) => mainWindow.Close();
 	}
 

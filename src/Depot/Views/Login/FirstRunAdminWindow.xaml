@@ -1,0 +1,29 @@
+<Window
+	x:Class="Depot.Views.Login.FirstRunAdminWindow"
+	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	Title="Secure Depot setup"
+	Icon="/Resources/Images/Depot.ico"
+	Style="{StaticResource AppDialogWindowStyle}"
+	WindowStartupLocation="CenterScreen"
+	ShowInTaskbar="true"
+	ResizeMode="NoResize">
+	<Border Padding="24" Background="{DynamicResource BackgroundBrush}">
+		<StackPanel Width="420">
+			<Image Width="64" Height="56" HorizontalAlignment="Center" Margin="0,0,0,16" Source="/Resources/Images/Depot.png" />
+			<TextBlock Text="Create the first administrator" TextAlignment="Center" Style="{StaticResource PageTitleStyle}" />
+			<TextBlock Margin="0,6,0,20" Foreground="{DynamicResource SecondaryTextBrush}" Text="Depot no longer ships with shared default credentials. Create an administrator for this database before continuing." TextWrapping="Wrap" TextAlignment="Center" />
+			<TextBlock Text="Display name" Style="{StaticResource FormLabelStyle}" />
+			<TextBox x:Name="DisplayNameBox" />
+			<TextBlock Margin="0,12,0,4" Text="Email" Style="{StaticResource FormLabelStyle}" />
+			<TextBox x:Name="EmailBox" />
+			<TextBlock Margin="0,12,0,4" Text="Password" Style="{StaticResource FormLabelStyle}" />
+			<PasswordBox x:Name="PasswordBox" />
+			<TextBlock Margin="0,4,0,0" Foreground="{DynamicResource SecondaryTextBrush}" Text="12-128 characters with uppercase, lowercase, number and symbol." TextWrapping="Wrap" />
+			<TextBlock Margin="0,12,0,4" Text="Confirm password" Style="{StaticResource FormLabelStyle}" />
+			<PasswordBox x:Name="ConfirmPasswordBox" />
+			<TextBlock x:Name="ErrorText" Margin="0,12,0,0" Foreground="{DynamicResource ErrorForegroundBrush}" TextWrapping="Wrap" Visibility="Collapsed" />
+			<Button x:Name="CreateButton" Margin="0,20,0,0" HorizontalAlignment="Stretch" Content="Create administrator" IsDefault="True" Style="{StaticResource PrimaryButtonStyle}" Click="CreateAdministrator_Click" />
+		</StackPanel>
+	</Border>
+</Window>
