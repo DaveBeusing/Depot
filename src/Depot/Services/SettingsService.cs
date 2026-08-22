@@ -10,11 +10,7 @@ public sealed class SettingsService
 {
 	private readonly SettingsRepository _settingsRepository;
 
-	public SettingsService(SettingsRepository settingsRepository)
-	{
-		_settingsRepository = settingsRepository;
-	}
-
+	public SettingsService(SettingsRepository settingsRepository) => _settingsRepository = settingsRepository;
 	public DatabaseConnectionSettings CurrentSettings { get; private set; } = new();
 
 	public DatabaseConnectionSettings LoadOrCreate()
@@ -25,7 +21,6 @@ public sealed class SettingsService
 			_settingsRepository.Save(CurrentSettings);
 			return Clone(CurrentSettings);
 		}
-
 		CurrentSettings = NormalizeAndValidate(_settingsRepository.Load());
 		return Clone(CurrentSettings);
 	}
@@ -37,8 +32,7 @@ public sealed class SettingsService
 		return Clone(CurrentSettings);
 	}
 
-	public DatabaseConnectionSettings Validate(DatabaseConnectionSettings settings) =>
-		NormalizeAndValidate(settings);
+	public DatabaseConnectionSettings Validate(DatabaseConnectionSettings settings) => NormalizeAndValidate(settings);
 
 	public DatabaseConnectionSettings RecordSuccessfulBackup(DateTime completedUtc)
 	{
@@ -47,8 +41,7 @@ public sealed class SettingsService
 		return Save(settings);
 	}
 
-	private static DatabaseConnectionSettings NormalizeAndValidate(
-		DatabaseConnectionSettings settings)
+	private static DatabaseConnectionSettings NormalizeAndValidate(DatabaseConnectionSettings settings)
 	{
 		settings.LocalDatabasePath = settings.LocalDatabasePath.Trim();
 		settings.SqlServerHost = settings.SqlServerHost.Trim();
@@ -59,84 +52,48 @@ public sealed class SettingsService
 		settings.MySqlUserName = settings.MySqlUserName.Trim();
 		settings.BackupDirectory = settings.BackupDirectory.Trim();
 
-		if (string.IsNullOrWhiteSpace(settings.BackupDirectory))
-		{
-			throw new ArgumentException("A backup directory is required.");
-		}
-
-		if (settings.BackupIntervalDays is < 1 or > 365)
-		{
-			throw new ArgumentOutOfRangeException(
-				nameof(settings.BackupIntervalDays),
-				"The backup interval must be between 1 and 365 days.");
-		}
-
-		if (string.IsNullOrWhiteSpace(settings.LocalDatabasePath))
-		{
-			throw new ArgumentException("A local database path is required.");
-		}
+		if (string.IsNullOrWhiteSpace(settings.BackupDirectory)) throw new ArgumentException("A backup directory is required.");
+		if (settings.BackupIntervalDays is < 1 or > 365) throw new ArgumentOutOfRangeException(nameof(settings.BackupIntervalDays), "The backup interval must be between 1 and 365 days.");
+		if (string.IsNullOrWhiteSpace(settings.LocalDatabasePath)) throw new ArgumentException("A local database path is required.");
 
 		if (settings.Provider == DatabaseProvider.MySql)
 		{
-			if (string.IsNullOrWhiteSpace(settings.MySqlHost) ||
-				string.IsNullOrWhiteSpace(settings.MySqlDatabase) ||
-				string.IsNullOrWhiteSpace(settings.MySqlUserName) ||
-				string.IsNullOrEmpty(settings.MySqlPassword))
-			{
+			if (string.IsNullOrWhiteSpace(settings.MySqlHost) || string.IsNullOrWhiteSpace(settings.MySqlDatabase) || string.IsNullOrWhiteSpace(settings.MySqlUserName) || string.IsNullOrEmpty(settings.MySqlPassword))
 				throw new ArgumentException("Host, database, user name, and password are required for MySQL/MariaDB.");
-			}
-
-			if (settings.MySqlPort is < 1 or > 65535)
-			{
-				throw new ArgumentOutOfRangeException(nameof(settings.MySqlPort), "The MySQL/MariaDB port must be between 1 and 65535.");
-			}
+			if (settings.MySqlPort is < 1 or > 65535) throw new ArgumentOutOfRangeException(nameof(settings.MySqlPort), "The MySQL/MariaDB port must be between 1 and 65535.");
+			if (!settings.UseMySqlTls) throw new ArgumentException("TLS is required for remote MySQL/MariaDB connections.", nameof(settings.UseMySqlTls));
 		}
 
 		if (settings.Provider == DatabaseProvider.SqlServer)
 		{
-			if (string.IsNullOrWhiteSpace(settings.SqlServerHost) ||
-				string.IsNullOrWhiteSpace(settings.SqlServerDatabase) ||
-				string.IsNullOrWhiteSpace(settings.SqlServerUserName) ||
-				string.IsNullOrEmpty(settings.SqlServerPassword))
-			{
-				throw new ArgumentException(
-					"Server, database, user name, and password are required for SQL Server.");
-			}
-
-			if (settings.SqlServerPort is < 1 or > 65535)
-			{
-				throw new ArgumentOutOfRangeException(
-					nameof(settings.SqlServerPort),
-					"The SQL Server port must be between 1 and 65535.");
-			}
+			if (string.IsNullOrWhiteSpace(settings.SqlServerHost) || string.IsNullOrWhiteSpace(settings.SqlServerDatabase) || string.IsNullOrWhiteSpace(settings.SqlServerUserName) || string.IsNullOrEmpty(settings.SqlServerPassword))
+				throw new ArgumentException("Server, database, user name, and password are required for SQL Server.");
+			if (settings.SqlServerPort is < 1 or > 65535) throw new ArgumentOutOfRangeException(nameof(settings.SqlServerPort), "The SQL Server port must be between 1 and 65535.");
+			if (!settings.EncryptSqlServerConnection) throw new ArgumentException("Encryption is required for remote SQL Server connections.", nameof(settings.EncryptSqlServerConnection));
 		}
-
 		return Clone(settings);
 	}
 
-	private static DatabaseConnectionSettings Clone(DatabaseConnectionSettings settings)
+	private static DatabaseConnectionSettings Clone(DatabaseConnectionSettings settings) => new()
 	{
-		return new DatabaseConnectionSettings
-		{
-			Provider = settings.Provider,
-			LocalDatabasePath = settings.LocalDatabasePath,
-			SqlServerHost = settings.SqlServerHost,
-			SqlServerPort = settings.SqlServerPort,
-			SqlServerDatabase = settings.SqlServerDatabase,
-			SqlServerUserName = settings.SqlServerUserName,
-			SqlServerPassword = settings.SqlServerPassword,
-			EncryptSqlServerConnection = settings.EncryptSqlServerConnection,
-			TrustSqlServerCertificate = settings.TrustSqlServerCertificate,
-			MySqlHost = settings.MySqlHost,
-			MySqlPort = settings.MySqlPort,
-			MySqlDatabase = settings.MySqlDatabase,
-			MySqlUserName = settings.MySqlUserName,
-			MySqlPassword = settings.MySqlPassword,
-			UseMySqlTls = settings.UseMySqlTls,
-			AutomaticBackupsEnabled = settings.AutomaticBackupsEnabled,
-			BackupDirectory = settings.BackupDirectory,
-			BackupIntervalDays = settings.BackupIntervalDays,
-			LastSuccessfulBackupUtc = settings.LastSuccessfulBackupUtc
-		};
-	}
+		Provider = settings.Provider,
+		LocalDatabasePath = settings.LocalDatabasePath,
+		SqlServerHost = settings.SqlServerHost,
+		SqlServerPort = settings.SqlServerPort,
+		SqlServerDatabase = settings.SqlServerDatabase,
+		SqlServerUserName = settings.SqlServerUserName,
+		SqlServerPassword = settings.SqlServerPassword,
+		EncryptSqlServerConnection = settings.EncryptSqlServerConnection,
+		TrustSqlServerCertificate = settings.TrustSqlServerCertificate,
+		MySqlHost = settings.MySqlHost,
+		MySqlPort = settings.MySqlPort,
+		MySqlDatabase = settings.MySqlDatabase,
+		MySqlUserName = settings.MySqlUserName,
+		MySqlPassword = settings.MySqlPassword,
+		UseMySqlTls = settings.UseMySqlTls,
+		AutomaticBackupsEnabled = settings.AutomaticBackupsEnabled,
+		BackupDirectory = settings.BackupDirectory,
+		BackupIntervalDays = settings.BackupIntervalDays,
+		LastSuccessfulBackupUtc = settings.LastSuccessfulBackupUtc
+	};
 }
