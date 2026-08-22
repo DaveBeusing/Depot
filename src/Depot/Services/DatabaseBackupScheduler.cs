@@ -15,9 +15,7 @@ public sealed class DatabaseBackupScheduler : IDisposable
 	private Timer? _timer;
 	private NotificationService? _notifications;
 
-	public DatabaseBackupScheduler(
-		DatabaseManagementService databaseManagementService,
-		SettingsService settingsService)
+	public DatabaseBackupScheduler(DatabaseManagementService databaseManagementService, SettingsService settingsService)
 	{
 		_databaseManagementService = databaseManagementService;
 		_settingsService = settingsService;
@@ -25,11 +23,7 @@ public sealed class DatabaseBackupScheduler : IDisposable
 
 	public void Start()
 	{
-		_timer ??= new Timer(
-			_ => _ = RunDueBackupAsync(_cancellation.Token),
-			state: null,
-			dueTime: TimeSpan.FromSeconds(10),
-			period: TimeSpan.FromHours(1));
+		_timer ??= new Timer(_ => _ = RunDueBackupAsync(_cancellation.Token), null, TimeSpan.FromSeconds(10), TimeSpan.FromHours(1));
 	}
 
 	public void ConfigureNotifications(NotificationService notifications) => _notifications = notifications;
@@ -44,17 +38,17 @@ public sealed class DatabaseBackupScheduler : IDisposable
 
 		try
 		{
-			await _databaseManagementService.CreateBackupAsync(
-				_databaseManagementService.GetAutomaticBackupPath(),
-				progress: null,
-				cancellationToken);
+			var backup = await _databaseManagementService.CreateBackupAsync(_databaseManagementService.GetAutomaticBackupPath(), progress: null, cancellationToken);
+			var backupDirectory = Path.GetDirectoryName(backup.FilePath);
+			if (!string.IsNullOrWhiteSpace(backupDirectory))
+			{
+				var deleted = BackupRetentionPolicy.Prune(backupDirectory, DateTime.UtcNow);
+				if (deleted.Count > 0) StartupDiagnostics.Log($"Automatic backup retention removed {deleted.Count} expired backup(s).");
+			}
 			StartupDiagnostics.Log("Scheduled database backup completed.");
 			return true;
 		}
-		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-		{
-			return false;
-		}
+		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { return false; }
 		catch (Exception exception)
 		{
 			StartupDiagnostics.LogException(exception);
@@ -62,26 +56,13 @@ public sealed class DatabaseBackupScheduler : IDisposable
 			{
 				try
 				{
-					await _notifications.NotifyAdministratorsAsync(
-						new NotificationRequest(
-							NotificationType.System,
-							NotificationSeverity.Error,
-							"Automatic database backup failed",
-							"Depot could not complete the scheduled database backup. Open Database Administration to review the backup configuration and run a connection test.",
-							NotificationSourceTypes.DatabaseAdministration),
-						cancellationToken);
+					await _notifications.NotifyAdministratorsAsync(new NotificationRequest(NotificationType.System, NotificationSeverity.Error, "Automatic database backup failed", "Depot could not complete the scheduled database backup. Open Database Administration to review the backup configuration and run a connection test.", NotificationSourceTypes.DatabaseAdministration), cancellationToken);
 				}
-				catch (Exception notificationException)
-				{
-					StartupDiagnostics.LogException(notificationException);
-				}
+				catch (Exception notificationException) { StartupDiagnostics.LogException(notificationException); }
 			}
 			return false;
 		}
-		finally
-		{
-			_executionLock.Release();
-		}
+		finally { _executionLock.Release(); }
 	}
 
 	public void Dispose()
