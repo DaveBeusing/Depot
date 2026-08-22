@@ -32,7 +32,7 @@ jobs:
         run: dotnet restore Depot.slnx -p:AuditPipeline=true
 
   sbom:
-    name: Generate SBOM
+    name: Generate dependency evidence
     runs-on: windows-latest
     timeout-minutes: 15
     steps:
@@ -50,13 +50,20 @@ jobs:
       - name: Install CycloneDX tool
         run: dotnet tool install --global CycloneDX --version 6.2.0
 
-      - name: Generate CycloneDX SBOM
-        run: dotnet-CycloneDX Depot.slnx --configuration Release --output artifacts/sbom --output-format json --filename depot.cdx.json
+      - name: Generate CycloneDX SBOM with license evidence
+        run: dotnet-CycloneDX Depot.slnx --configuration Release --output artifacts/sbom --output-format json --filename depot.cdx.json --include-license-text
 
-      - name: Upload SBOM
+      - name: Generate dependency inventory
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force artifacts/sbom | Out-Null
+          dotnet list Depot.slnx package --include-transitive | Out-File -FilePath artifacts/sbom/dependencies.txt -Encoding utf8
+          dotnet list Depot.slnx package --deprecated --include-transitive | Out-File -FilePath artifacts/sbom/deprecated.txt -Encoding utf8
+
+      - name: Upload dependency evidence
         uses: actions/upload-artifact@v4
         with:
-          name: depot-sbom
-          path: artifacts/sbom/depot.cdx.json
+          name: depot-dependency-evidence
+          path: artifacts/sbom/
           if-no-files-found: error
           retention-days: 90
