@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 using Depot.Data;
+using Depot.Models;
 using Depot.Repositories;
 using Depot.Services;
 
