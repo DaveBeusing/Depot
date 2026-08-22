@@ -1,0 +1,111 @@
+name: Release integrity
+
+on:
+  push:
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ master ]
+    paths:
+      - '.github/workflows/release-integrity.yml'
+      - 'src/Depot/**'
+      - 'Directory.Build.props'
+      - 'src/Depot/packages.lock.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  release-integrity:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout exact source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify source identity
+        shell: pwsh
+        run: |
+          $head = git rev-parse HEAD
+          if ($head -ne '${{ github.sha }}') { throw "Checkout SHA $head does not match workflow SHA ${{ github.sha }}" }
+          "commit=$head" | Out-File artifacts-source.txt -Encoding ascii
+          "ref=${{ github.ref }}" | Add-Content artifacts-source.txt -Encoding ascii
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore locked dependencies
+        run: dotnet restore Depot.slnx --locked-mode
+
+      - name: Restore win-x64 runtime
+        run: dotnet restore src/Depot/Depot.csproj --runtime win-x64
+
+      - name: Publish release artifact
+        run: >-
+          dotnet publish src/Depot/Depot.csproj
+          --configuration Release
+          --runtime win-x64
+          --self-contained true
+          --no-restore
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:DebugType=None
+          -p:DebugSymbols=false
+          -o artifacts/release/win-x64
+
+      - name: Require signing credentials for tagged releases
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        env:
+          SIGNING_PFX: ${{ secrets.DEPOT_SIGNING_PFX_BASE64 }}
+          SIGNING_PASSWORD: ${{ secrets.DEPOT_SIGNING_PASSWORD }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:SIGNING_PFX) -or [string]::IsNullOrWhiteSpace($env:SIGNING_PASSWORD)) {
+            throw 'Tagged production releases require DEPOT_SIGNING_PFX_BASE64 and DEPOT_SIGNING_PASSWORD repository secrets.'
+          }
+
+      - name: Authenticode sign executable
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        env:
+          SIGNING_PFX: ${{ secrets.DEPOT_SIGNING_PFX_BASE64 }}
+          SIGNING_PASSWORD: ${{ secrets.DEPOT_SIGNING_PASSWORD }}
+        run: |
+          $certificate = Join-Path $env:RUNNER_TEMP 'depot-signing.pfx'
+          [IO.File]::WriteAllBytes($certificate, [Convert]::FromBase64String($env:SIGNING_PFX))
+          try {
+            $signtool = Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\bin' -Filter signtool.exe -Recurse |
+              Where-Object { $_.FullName -match '\\x64\\signtool\.exe$' } |
+              Sort-Object FullName -Descending |
+              Select-Object -First 1
+            if ($null -eq $signtool) { throw 'signtool.exe was not found on the runner.' }
+            & $signtool.FullName sign /fd SHA256 /f $certificate /p $env:SIGNING_PASSWORD /tr http://timestamp.digicert.com /td SHA256 'artifacts\release\win-x64\Depot.exe'
+            if ($LASTEXITCODE -ne 0) { throw 'Authenticode signing failed.' }
+            & $signtool.FullName verify /pa /v 'artifacts\release\win-x64\Depot.exe'
+            if ($LASTEXITCODE -ne 0) { throw 'Authenticode verification failed.' }
+          }
+          finally {
+            Remove-Item $certificate -Force -ErrorAction SilentlyContinue
+          }
+
+      - name: Create integrity manifest
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force artifacts/release | Out-Null
+          Copy-Item artifacts-source.txt artifacts/release/source.txt
+          Get-ChildItem artifacts/release/win-x64 -File | Sort-Object Name | ForEach-Object {
+            $hash = Get-FileHash $_.FullName -Algorithm SHA256
+            "$($hash.Hash.ToLowerInvariant()) *win-x64/$($_.Name)"
+          } | Out-File artifacts/release/SHA256SUMS.txt -Encoding ascii
+
+      - name: Upload release integrity evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: depot-release-${{ github.sha }}
+          path: artifacts/release/
+          if-no-files-found: error
+          retention-days: 90
