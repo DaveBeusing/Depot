@@ -8,10 +8,10 @@
 	<SolidColorBrush x:Key="SurfaceAltBrush" Color="#222226" />
 
 	<!-- Primary -->
-	<SolidColorBrush x:Key="PrimaryBrush" Color="#6C8FF5" />
+	<SolidColorBrush x:Key="PrimaryBrush" Color="#315ACB" />
 	<SolidColorBrush x:Key="PrimaryForegroundBrush" Color="#FFFFFF" />
-	<SolidColorBrush x:Key="PrimaryHoverBrush" Color="#7C9CFF" />
-	<SolidColorBrush x:Key="PrimaryPressedBrush" Color="#5578DF" />
+	<SolidColorBrush x:Key="PrimaryHoverBrush" Color="#3D66D6" />
+	<SolidColorBrush x:Key="PrimaryPressedBrush" Color="#2448A8" />
 	<SolidColorBrush x:Key="HoverBrush" Color="#27272C" />
 	<SolidColorBrush x:Key="CardBorderBrush" Color="#303036" />
 
@@ -30,7 +30,7 @@
 
 	<!-- Navigation Selection -->
 	<SolidColorBrush x:Key="NavigationSelectedBackgroundBrush" Color="#2C2C32" />
-	<SolidColorBrush x:Key="CopyableTextSelectionBrush" Color="#596C8FF5" />
+	<SolidColorBrush x:Key="CopyableTextSelectionBrush" Color="#59315ACB" />
 	<SolidColorBrush x:Key="NavigationAccentBrush" Color="#6C8FF5" />
 
 	<!-- Sidebar -->
