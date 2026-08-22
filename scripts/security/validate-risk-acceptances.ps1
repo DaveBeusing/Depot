@@ -54,6 +54,14 @@ foreach ($entry in $exceptions) {
         [void](Require-Text $entry $field)
     }
 
+    $activeProperty = $entry.PSObject.Properties["activelyExploited"]
+    if ($null -eq $activeProperty -or $activeProperty.Value -isnot [bool]) {
+        throw "Risk acceptance '$id' must declare activelyExploited as a boolean."
+    }
+    if ($activeProperty.Value -eq $true) {
+        throw "Actively exploited vulnerability '$id' cannot be released through the normal risk-acceptance mechanism."
+    }
+
     $expiryText = [string]$entry.expiresUtc
     $expiry = [DateTimeOffset]::MinValue
     if (-not [DateTimeOffset]::TryParse($expiryText, [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::AssumeUniversal, [ref]$expiry)) {
