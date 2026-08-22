@@ -88,6 +88,48 @@ public sealed class BusinessRecordIntegrityTests : IDisposable
 	}
 
 	[Fact]
+	public async Task SalesOrderDraftAndAuditRollbackTogetherWhenAuditInsertFails()
+	{
+		var customerId = await _database.InsertAsync(
+			"INSERT INTO Customers (CustomerNumber,Name,PaymentTermsDays,Currency,IsActive) VALUES ('CU-ATOMIC','Atomic Customer',30,'EUR',1);",
+			CancellationToken.None);
+		var itemId = await _database.InsertAsync(
+			"INSERT INTO Items (PartNumber,Description,IsActive) VALUES ('ATOMIC-ITEM','Atomic Item',1);",
+			CancellationToken.None);
+		await _database.ExecuteAsync(
+			"CREATE TRIGGER RejectSalesOrderAudit BEFORE INSERT ON AuditEntries WHEN NEW.EntityType = 'SalesOrder' BEGIN SELECT RAISE(ABORT, 'audit rejected'); END;",
+			CancellationToken.None);
+
+		var authorization = Authorized(ApplicationPermission.SalesOrdersCreate);
+		var transactions = new DatabaseTransactionRunner(_database);
+		var auditRepository = new AuditRepository(_database);
+		var service = new SalesOrderService(
+			transactions,
+			new SalesOrderRepository(_database),
+			new CustomerRepository(_database),
+			new ItemRepository(_database),
+			new InventoryRepository(_database),
+			new InventoryReservationRepository(_database),
+			new StockMovementRepository(_database),
+			auditRepository,
+			new AuditService(auditRepository, authorization),
+			authorization,
+			new NotificationService(transactions, new NotificationRepository(_database), authorization));
+		var order = new SalesOrder
+		{
+			CustomerId = customerId,
+			OrderDate = DateTime.Today,
+			Currency = "EUR",
+			Status = SalesOrderStatus.Draft,
+			Lines = [new SalesOrderLine { ItemId = itemId, Quantity = 1, UnitPrice = 10m, DiscountPercent = 0m, TaxRate = 19m }]
+		};
+
+		await Assert.ThrowsAnyAsync<Exception>(() => service.SaveDraftAsync(order, CancellationToken.None));
+		Assert.Equal(0L, Convert.ToInt64(await _database.ExecuteScalarAsync("SELECT COUNT(*) FROM SalesOrders;", CancellationToken.None)));
+		Assert.Equal(0L, Convert.ToInt64(await _database.ExecuteScalarAsync("SELECT COUNT(*) FROM AuditEntries WHERE EntityType='SalesOrder';", CancellationToken.None)));
+	}
+
+	[Fact]
 	public async Task EvidenceExportRequiresDedicatedExportPermission()
 	{
 		var repository = new AuditRepository(_database);
