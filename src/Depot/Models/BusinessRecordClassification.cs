@@ -22,8 +22,8 @@ public sealed record BusinessRecordClassification(
 
 public static class BusinessRecordCatalog
 {
-	private static readonly IReadOnlyDictionary<string, BusinessRecordClassification> Classifications =
-		new Dictionary<string, BusinessRecordClassification>(StringComparer.Ordinal)
+	private static readonly Dictionary<string, BusinessRecordClassification> Classifications =
+		new(StringComparer.Ordinal)
 		{
 			[nameof(PurchaseOrder)] = Record(nameof(PurchaseOrder), BusinessRecordRetentionCategory.BusinessTransaction, "Draft", "Ordered / PartiallyReceived / Received / Closed / Cancelled", "Close or compensating receipt/return workflow; posted receipts are never deleted", "PO-{database identity:000000}"),
 			[nameof(GoodsReceipt)] = Record(nameof(GoodsReceipt), BusinessRecordRetentionCategory.AccountingRelevant, "Draft preparation only", "Posted or reversed", "Explicit reversal with reason and linked compensating stock movements", "GR-{database identity:000000}"),
