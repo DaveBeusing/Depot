@@ -53,10 +53,16 @@ public sealed class SalesOrderService
 		await ValidateContentAsync(order, cancellationToken);
 		var user = RequireUser();
 		if (order.Id == 0) order.CreatedByUserId = user.Id;
-		var before = order.Id == 0 ? null : await _orders.GetByIdAsync(order.Id, cancellationToken);
-		var saved = await _orders.SaveDraftAsync(order, cancellationToken);
-		await _auditEntries.CreateAsync(before is null ? _audit.CreateCreatedEntry(saved.Id, saved) : _audit.CreateUpdatedEntry(saved.Id, before!, saved), cancellationToken);
-		return saved;
+		return await _transactions.ExecuteAsync(async (transaction, token) =>
+		{
+			var before = order.Id == 0 ? null : await _orders.GetByIdAsync(transaction, order.Id, token);
+			var saved = await _orders.SaveDraftAsync(transaction, order, token);
+			await _auditEntries.CreateAsync(
+				transaction,
+				before is null ? _audit.CreateCreatedEntry(saved.Id, saved) : _audit.CreateUpdatedEntry(saved.Id, before, saved),
+				token);
+			return saved;
+		}, cancellationToken);
 	}
 
 	public Task<SalesOrder> SubmitAsync(long id, long version, CancellationToken cancellationToken = default) => ChangeStatusAsync(ApplicationPermission.SalesOrdersSubmit, id, version, SalesOrderStatus.Draft, SalesOrderStatus.PendingApproval, order => { var user = RequireUser(); order.SubmittedByUserId = user.Id; order.SubmittedAtUtc = DateTime.UtcNow; order.ApprovalDecisionByUserId = null; order.ApprovalDecisionAtUtc = null; order.ApprovalComment = null; }, cancellationToken);
