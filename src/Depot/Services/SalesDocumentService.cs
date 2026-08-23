@@ -28,14 +28,6 @@ public sealed class SalesDocumentService
 		_issuerSnapshots = new DocumentIssuerSnapshotService(dataAccess);
 	}
 
-	public SalesDocumentService(CompanyDocumentIdentityService issuerService)
-	{
-		_issuerService = issuerService;
-		var settingsService = new SettingsService(new SettingsRepository("depot.settings"));
-		var settings = settingsService.LoadOrCreate();
-		_issuerSnapshots = new DocumentIssuerSnapshotService(new DatabaseAccess(DatabaseProviderFactory.CreateConnectionFactory(settings)));
-	}
-
 	public SalesDocumentService(CompanyDocumentIdentityService issuerService, DocumentIssuerSnapshotService issuerSnapshots)
 	{
 		_issuerService = issuerService;
