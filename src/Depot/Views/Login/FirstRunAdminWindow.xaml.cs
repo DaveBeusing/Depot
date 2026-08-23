@@ -38,7 +38,7 @@ public partial class FirstRunAdminWindow : Window
 
 		if (string.IsNullOrEmpty(confirmation))
 		{
-			SetFeedback(PasswordMatchText, "○ Re-enter the password to confirm it.", isValid: null);
+			SetFeedback(PasswordMatchText, "✕ Re-enter the password to confirm it.", isValid: false);
 		}
 		else if (string.Equals(password, confirmation, StringComparison.Ordinal))
 		{
@@ -53,10 +53,10 @@ public partial class FirstRunAdminWindow : Window
 	private void SetRequirement(TextBlock target, bool isMet, string label) =>
 		SetFeedback(target, $"{(isMet ? "✓" : "✕")} {label}", isMet);
 
-	private void SetFeedback(TextBlock target, string message, bool? isValid)
+	private static void SetFeedback(TextBlock target, string message, bool isValid)
 	{
 		target.Text = message;
-		target.SetResourceReference(ForegroundProperty, isValid == false ? "ErrorForegroundBrush" : "SecondaryTextBrush");
+		target.SetResourceReference(ForegroundProperty, isValid ? "SuccessForegroundBrush" : "ErrorForegroundBrush");
 	}
 
 	private async void CreateAdministrator_Click(object sender, RoutedEventArgs e)
