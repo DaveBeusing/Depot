@@ -118,6 +118,7 @@ public sealed class SalesInvoiceService
 			}
 			var postedAt = DateTime.UtcNow;
 			if (!await _invoices.PostAsync(transaction, id, version, user.Id, postedAt, token)) throw new ConcurrencyConflictException("sales invoice");
+			await DocumentIssuerSnapshotService.CaptureCurrentAsync(transaction, DocumentIssuerSnapshotType.SalesInvoice, id, postedAt, token);
 			var reloadedOrder = await _orders.GetByIdAsync(transaction, order.Id, token) ?? throw new InvalidOperationException("Sales order could not be reloaded.");
 			if (reloadedOrder.Status == SalesOrderStatus.Shipped && reloadedOrder.Lines.All(line => line.InvoicedQuantity >= line.ShippedQuantity && line.ShippedQuantity >= line.Quantity))
 			{
