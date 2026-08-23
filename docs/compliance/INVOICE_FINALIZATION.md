@@ -37,6 +37,8 @@ Structured billing fields are maintained separately from the display-oriented mu
 
 `SalesInvoiceFinalizationService.LoadRequired` verifies the digest before returning the record. `ExportXRechnung` exports the verified persisted XML without regenerating it.
 
+The Invoice workspace exposes **Export XRechnung** only for posted invoices. The UI delegates to `SalesDocumentService`, which uses the composed `SalesInvoiceFinalizationService`; it does not create a second database access path or reconstruct the document from current Company/Customer data. Legacy posted invoices without a finalization record fail closed when export is attempted.
+
 The generated document uses the existing deterministic EN 16931-oriented UN/CEFACT CII generator targeted at XRechnung 3.0. The runtime generator performs Depot's application-level validation. Representative XML remains checked by the CI validation baseline; the external KoSIT validator executable is not invoked as part of the runtime posting transaction.
 
 ## Tax-scenario boundary
@@ -49,7 +51,13 @@ Zero-rated, exempt and reverse-charge lines fail closed. They must not be guesse
 
 `SalesInvoiceFinalizations` has exactly one row per Sales Invoice through its primary key. Application finalization rejects a second record. There is no application update path for BuyerPayload, XML or hash.
 
-Changing Customer or Company master data after posting cannot change the saved finalization. If persisted XML is modified outside the normal application path, the SHA-256 check fails when the finalization is loaded.
+Changing Customer or Company master data after posting cannot change the saved finalization. If persisted XML is modified outside the normal application path, the SHA-256 check fails when the finalization is loaded or exported.
+
+The SHA-256 value is an application-level integrity/tamper-detection control, not a digital signature. It does not by itself provide third-party authenticity, non-repudiation, or qualified electronic-signature evidence.
+
+## Credit-note boundary
+
+Posted credit notes currently capture their own immutable issuer snapshot, but the Buyer/XRechnung finalization path described here applies to sales invoices only. Electronic credit-note issuance must not be advertised as fully finalized until equivalent Buyer snapshot, exact XML retention, integrity verification, and supported tax-profile handling are implemented.
 
 ## Legacy invoices
 
