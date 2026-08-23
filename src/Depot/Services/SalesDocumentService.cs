@@ -18,6 +18,7 @@ public sealed class SalesDocumentService
 	private static readonly XFont SmallFont = new("Segoe UI", 8, XFontStyleEx.Regular);
 	private readonly CompanyDocumentIdentityService _issuerService;
 	private readonly DocumentIssuerSnapshotService _issuerSnapshots;
+	private readonly SalesInvoiceFinalizationService _invoiceFinalizations;
 
 	public SalesDocumentService()
 	{
@@ -26,12 +27,14 @@ public sealed class SalesDocumentService
 		var dataAccess = new DatabaseAccess(DatabaseProviderFactory.CreateConnectionFactory(settings));
 		_issuerService = new CompanyDocumentIdentityService(dataAccess, settings.Provider);
 		_issuerSnapshots = new DocumentIssuerSnapshotService(dataAccess);
+		_invoiceFinalizations = new SalesInvoiceFinalizationService(dataAccess);
 	}
 
-	public SalesDocumentService(CompanyDocumentIdentityService issuerService, DocumentIssuerSnapshotService issuerSnapshots)
+	public SalesDocumentService(CompanyDocumentIdentityService issuerService, DocumentIssuerSnapshotService issuerSnapshots, SalesInvoiceFinalizationService invoiceFinalizations)
 	{
 		_issuerService = issuerService;
 		_issuerSnapshots = issuerSnapshots;
+		_invoiceFinalizations = invoiceFinalizations;
 	}
 
 	public void CreateQuote(string path, SalesQuote quote)
@@ -91,6 +94,14 @@ public sealed class SalesDocumentService
 		y = DrawAddress(graphics, y, "Bill to", invoice.CustomerName, invoice.BillingAddress);
 		y = DrawMetadata(graphics, y, [("Sales order", invoice.SalesOrderNumber), ("Shipment", invoice.ShipmentNumber), ("Customer reference", invoice.CustomerReference ?? "—"), ("Due date", invoice.DueDate.ToString("d"))]);
 		y = DrawInvoiceLines(graphics, page, y, invoice.Lines, invoice.Currency); DrawTotals(graphics, page, y, invoice.NetAmount, invoice.TaxAmount, invoice.GrossAmount, invoice.Currency); DrawIssuerFooter(graphics, page, issuer); Save(document, path);
+	}
+
+	public void ExportXRechnung(string path, SalesInvoice invoice)
+	{
+		ArgumentException.ThrowIfNullOrWhiteSpace(path);
+		ArgumentNullException.ThrowIfNull(invoice);
+		if (invoice.Status != SalesInvoiceStatus.Posted) throw new InvalidOperationException("Only a posted sales invoice has an issued XRechnung document.");
+		_invoiceFinalizations.ExportXRechnung(invoice.Id, path);
 	}
 
 	public void CreateCreditNote(string path, SalesCreditNote creditNote, SalesInvoice invoice)
