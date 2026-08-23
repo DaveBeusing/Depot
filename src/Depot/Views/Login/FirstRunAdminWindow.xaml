@@ -24,11 +24,18 @@
 
 				<TextBlock Margin="0,12,0,4" Text="Password" Style="{StaticResource FormLabelStyle}" />
 				<controls:PasswordInput x:Name="PasswordBox" Style="{StaticResource RoundedPasswordInputStyle}" PasswordValueChanged="PasswordInput_Changed" />
-				<TextBlock x:Name="PasswordStatusText" Margin="0,6,0,0" Foreground="{DynamicResource SecondaryTextBrush}" Text="Enter 12–128 characters with uppercase, lowercase, number and symbol." TextWrapping="Wrap" Style="{StaticResource CaptionStyle}" />
+				<StackPanel Margin="0,7,0,0">
+					<TextBlock x:Name="LengthRequirementText" Text="○ 12–128 characters" Style="{StaticResource CaptionStyle}" />
+					<TextBlock x:Name="UppercaseRequirementText" Margin="0,2,0,0" Text="○ At least one uppercase letter" Style="{StaticResource CaptionStyle}" />
+					<TextBlock x:Name="LowercaseRequirementText" Margin="0,2,0,0" Text="○ At least one lowercase letter" Style="{StaticResource CaptionStyle}" />
+					<TextBlock x:Name="DigitRequirementText" Margin="0,2,0,0" Text="○ At least one number" Style="{StaticResource CaptionStyle}" />
+					<TextBlock x:Name="SymbolRequirementText" Margin="0,2,0,0" Text="○ At least one symbol" Style="{StaticResource CaptionStyle}" />
+					<TextBlock x:Name="AccountNameRequirementText" Margin="0,2,0,0" Text="○ Must not contain the account name" Style="{StaticResource CaptionStyle}" />
+				</StackPanel>
 
 				<TextBlock Margin="0,12,0,4" Text="Confirm password" Style="{StaticResource FormLabelStyle}" />
 				<controls:PasswordInput x:Name="ConfirmPasswordBox" Style="{StaticResource RoundedPasswordInputStyle}" PasswordValueChanged="PasswordInput_Changed" />
-				<TextBlock x:Name="PasswordMatchText" Margin="0,6,0,0" Foreground="{DynamicResource SecondaryTextBrush}" Text="Re-enter the password to confirm it." TextWrapping="Wrap" Style="{StaticResource CaptionStyle}" />
+				<TextBlock x:Name="PasswordMatchText" Margin="0,6,0,0" Foreground="{DynamicResource SecondaryTextBrush}" Text="○ Re-enter the password to confirm it." TextWrapping="Wrap" Style="{StaticResource CaptionStyle}" />
 
 				<Border Margin="0,12,0,0" Padding="10,8" Background="{DynamicResource ErrorBrush}" BorderBrush="{DynamicResource ErrorForegroundBrush}" BorderThickness="1" CornerRadius="{DynamicResource CornerRadius.Medium}" Visibility="Collapsed" x:Name="ErrorPanel">
 					<TextBlock x:Name="ErrorText" Foreground="{DynamicResource ErrorForegroundBrush}" TextWrapping="Wrap" Style="{StaticResource CaptionStyle}" />
