@@ -137,27 +137,15 @@ public sealed class UserViewModel : BaseViewModel, IDisposable
 				_availableRoles = await _userService.ListAssignableRolesAsync(cancellationToken);
 				Editor.SetRoles(_availableRoles, []);
 			}
-			var page = await _userService.SearchUsersAsync(
-				SearchText,
-				SelectedActivationFilter.IsActive,
-				PageNumber,
-				PageSize,
-				cancellationToken);
+			var page = await _userService.SearchUsersAsync(SearchText, SelectedActivationFilter.IsActive, PageNumber, PageSize, cancellationToken);
 			CollectionSynchronizer.Replace(Users, page.Items.Select(user => new UserListItemViewModel(user)).ToArray());
 			TotalCount = page.TotalCount;
 			SelectedUser = selectedId is null ? null : Users.FirstOrDefault(x => x.Id == selectedId);
 			OnPropertyChanged(nameof(HasUsers));
 			CompleteOperation(Users.Count == 0, $"{page.TotalCount:N0} users");
 		}
-		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-		{
-			CompleteOperation(Users.Count == 0);
-		}
-		catch (Exception exception)
-		{
-			ErrorMessage = exception.Message;
-			FailOperation(exception, "Users could not be loaded");
-		}
+		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { CompleteOperation(Users.Count == 0); }
+		catch (Exception exception) { ErrorMessage = exception.Message; FailOperation(exception, "Users could not be loaded"); }
 	}
 
 	private void LoadSelectedUser()
@@ -168,6 +156,7 @@ public sealed class UserViewModel : BaseViewModel, IDisposable
 		Editor.Email = SelectedUser.Email;
 		Editor.DisplayName = SelectedUser.DisplayName;
 		Editor.Password = string.Empty;
+		Editor.ConfirmPassword = string.Empty;
 		Editor.SetRoles(_availableRoles, SelectedUser.RoleIds);
 		Editor.EffectivePermissions = SelectedUser.EffectivePermissions;
 		Editor.IsActive = SelectedUser.IsActive;
@@ -187,15 +176,18 @@ public sealed class UserViewModel : BaseViewModel, IDisposable
 	private async Task SaveUserAsync(CancellationToken cancellationToken)
 	{
 		ClearError();
+		if (!Editor.PasswordInputIsValid)
+		{
+			ErrorMessage = "The password does not meet all security requirements or the confirmation does not match.";
+			FailOperation(new ArgumentException(ErrorMessage), "User could not be saved");
+			return;
+		}
 		BeginOperation("Saving user");
 		try
 		{
 			var user = Editor.Id == 0
-				? await _userService.CreateUserAsync(
-					Editor.Email, Editor.DisplayName, Editor.Password, Editor.SelectedRoleIds, cancellationToken)
-				: await _userService.UpdateUserAsync(
-					Editor.Id, Editor.Version, Editor.Email, Editor.DisplayName,
-					Editor.Password, Editor.SelectedRoleIds, cancellationToken);
+				? await _userService.CreateUserAsync(Editor.Email, Editor.DisplayName, Editor.Password, Editor.SelectedRoleIds, cancellationToken)
+				: await _userService.UpdateUserAsync(Editor.Id, Editor.Version, Editor.Email, Editor.DisplayName, Editor.Password, Editor.SelectedRoleIds, cancellationToken);
 			UpdateUser(user);
 			Editor.Clear();
 			SelectedUser = null;
@@ -218,11 +210,7 @@ public sealed class UserViewModel : BaseViewModel, IDisposable
 		BeginOperation(Editor.IsActive ? "Deactivating user" : "Activating user");
 		try
 		{
-			var user = await _userService.SetActiveAsync(
-				Editor.Id,
-				!Editor.IsActive,
-				Editor.Version,
-				cancellationToken);
+			var user = await _userService.SetActiveAsync(Editor.Id, !Editor.IsActive, Editor.Version, cancellationToken);
 			UpdateUser(user);
 			Editor.Clear();
 			SelectedUser = null;
@@ -240,11 +228,7 @@ public sealed class UserViewModel : BaseViewModel, IDisposable
 		var existing = Users.FirstOrDefault(x => x.Id == user.Id);
 		var matchesFilter = SelectedActivationFilter.IsActive is not bool isActive || user.IsActive == isActive;
 		if (existing is not null && matchesFilter) Users[Users.IndexOf(existing)] = new UserListItemViewModel(user);
-		else if (existing is not null)
-		{
-			Users.Remove(existing);
-			TotalCount = Math.Max(0, TotalCount - 1);
-		}
+		else if (existing is not null) { Users.Remove(existing); TotalCount = Math.Max(0, TotalCount - 1); }
 		else if (PageNumber == 1 && matchesFilter)
 		{
 			Users.Insert(0, new UserListItemViewModel(user));
@@ -254,26 +238,9 @@ public sealed class UserViewModel : BaseViewModel, IDisposable
 		OnPropertyChanged(nameof(HasUsers));
 	}
 
-	private async Task PreviousPageAsync(CancellationToken cancellationToken)
-	{
-		if (PageNumber <= 1) return;
-		PageNumber--;
-		await LoadUsersAsync(cancellationToken);
-	}
-
-	private async Task NextPageAsync(CancellationToken cancellationToken)
-	{
-		if (!HasNextPage) return;
-		PageNumber++;
-		await LoadUsersAsync(cancellationToken);
-	}
-
-	private void RaisePagingCommands()
-	{
-		PreviousPageCommand.RaiseCanExecuteChanged();
-		NextPageCommand.RaiseCanExecuteChanged();
-	}
-
+	private async Task PreviousPageAsync(CancellationToken cancellationToken) { if (PageNumber <= 1) return; PageNumber--; await LoadUsersAsync(cancellationToken); }
+	private async Task NextPageAsync(CancellationToken cancellationToken) { if (!HasNextPage) return; PageNumber++; await LoadUsersAsync(cancellationToken); }
+	private void RaisePagingCommands() { PreviousPageCommand.RaiseCanExecuteChanged(); NextPageCommand.RaiseCanExecuteChanged(); }
 	private void ClearError() => ErrorMessage = null;
 
 	public void Dispose()

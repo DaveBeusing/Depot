@@ -13,6 +13,7 @@ public enum AdministrationSection
 	Roles,
 	Database,
 	AuditLog,
+	Privacy,
 	Settings,
 	About
 }

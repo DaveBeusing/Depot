@@ -31,11 +31,7 @@ public sealed class LoginViewModel : BaseViewModel
 		get => _email;
 		set
 		{
-			if (_email == value)
-			{
-				return;
-			}
-
+			if (_email == value) return;
 			_email = value;
 			OnPropertyChanged();
 			ClearError();
@@ -48,11 +44,7 @@ public sealed class LoginViewModel : BaseViewModel
 		get => _password;
 		set
 		{
-			if (_password == value)
-			{
-				return;
-			}
-
+			if (_password == value) return;
 			_password = value;
 			OnPropertyChanged();
 			ClearError();
@@ -72,16 +64,11 @@ public sealed class LoginViewModel : BaseViewModel
 	}
 
 	public bool HasErrorMessage => !string.IsNullOrWhiteSpace(ErrorMessage);
-
 	public AsyncRelayCommand LoginCommand { get; }
-
 	public ConnectionStatusService ConnectionStatus { get; }
-
 	public event EventHandler? LoginSucceeded;
 
-	private bool CanLogin() =>
-		!string.IsNullOrWhiteSpace(Email) &&
-		!string.IsNullOrEmpty(Password);
+	private bool CanLogin() => !string.IsNullOrWhiteSpace(Email) && !string.IsNullOrEmpty(Password);
 
 	private async Task LoginAsync(CancellationToken cancellationToken)
 	{
@@ -92,7 +79,7 @@ public sealed class LoginViewModel : BaseViewModel
 			Password = string.Empty;
 			ErrorMessage = "The email or password is incorrect, or the account is inactive.";
 			StartupDiagnostics.Log("Login: authentication failed.");
-			FailOperation(new InvalidOperationException(ErrorMessage), "Sign in failed");
+			CompleteOperation();
 			return;
 		}
 
@@ -104,9 +91,6 @@ public sealed class LoginViewModel : BaseViewModel
 
 	private void ClearError()
 	{
-		if (ErrorMessage is not null)
-		{
-			ErrorMessage = null;
-		}
+		if (ErrorMessage is not null) ErrorMessage = null;
 	}
 }

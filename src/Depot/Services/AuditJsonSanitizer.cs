@@ -14,11 +14,10 @@ public sealed class AuditJsonSanitizer
 	private const string InvalidPayload = "[Invalid audit payload hidden]";
 	private static readonly string[] SensitiveNames =
 	[
-		"password", "hash", "salt", "connectionstring", "connection_string",
-		"secret", "credential", "accesstoken", "refresh_token", "protectedconfiguration",
-		"encryptedsettings", "encryptionkey", "privatekey"
+		"password", "hash", "salt", "connectionstring", "connection_string", "secret", "credential",
+		"token", "accesstoken", "refresh_token", "bearer", "apikey", "api_key", "clientsecret",
+		"protectedconfiguration", "encryptedsettings", "encryptionkey", "privatekey", "certificatepassword"
 	];
-
 	private static readonly JsonSerializerOptions DisplayOptions = new() { WriteIndented = true };
 
 	public string Sanitize(string? json)
@@ -31,10 +30,7 @@ public sealed class AuditJsonSanitizer
 			SanitizeNode(root);
 			return root.ToJsonString(DisplayOptions);
 		}
-		catch (JsonException)
-		{
-			return InvalidPayload;
-		}
+		catch (JsonException) { return InvalidPayload; }
 	}
 
 	public IReadOnlyList<AuditValueChange> Compare(string? beforeJson, string? afterJson)
@@ -43,12 +39,8 @@ public sealed class AuditJsonSanitizer
 		var after = Flatten(Sanitize(afterJson));
 		return before.Keys.Union(after.Keys, StringComparer.OrdinalIgnoreCase)
 			.OrderBy(key => key, StringComparer.OrdinalIgnoreCase)
-			.Select(key => new AuditValueChange(
-				key,
-				before.GetValueOrDefault(key, "—"),
-				after.GetValueOrDefault(key, "—")))
-			.Where(change => !string.Equals(change.Before, change.After, StringComparison.Ordinal))
-			.ToArray();
+			.Select(key => new AuditValueChange(key, before.GetValueOrDefault(key, "—"), after.GetValueOrDefault(key, "—")))
+			.Where(change => !string.Equals(change.Before, change.After, StringComparison.Ordinal)).ToArray();
 	}
 
 	private static void SanitizeNode(JsonNode node)
@@ -61,28 +53,18 @@ public sealed class AuditJsonSanitizer
 				else if (property.Value is not null) SanitizeNode(property.Value);
 			}
 		}
-		else if (node is JsonArray arrayNode)
-		{
-			foreach (var child in arrayNode)
-			{
-				if (child is not null) SanitizeNode(child);
-			}
-		}
+		else if (node is JsonArray arrayNode) foreach (var child in arrayNode) if (child is not null) SanitizeNode(child);
 	}
 
 	private static bool IsSensitive(string propertyName)
 	{
-		var normalized = propertyName.Replace("-", string.Empty, StringComparison.Ordinal)
-			.Replace("_", string.Empty, StringComparison.Ordinal);
-		return SensitiveNames.Any(name => normalized.Contains(
-			name.Replace("_", string.Empty, StringComparison.Ordinal),
-			StringComparison.OrdinalIgnoreCase));
+		var normalized = propertyName.Replace("-", string.Empty, StringComparison.Ordinal).Replace("_", string.Empty, StringComparison.Ordinal);
+		return SensitiveNames.Any(name => normalized.Contains(name.Replace("_", string.Empty, StringComparison.Ordinal), StringComparison.OrdinalIgnoreCase));
 	}
 
 	private static Dictionary<string, string> Flatten(string sanitizedJson)
 	{
-		if (sanitizedJson is "—" or InvalidPayload)
-			return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+		if (sanitizedJson is "—" or InvalidPayload) return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 		try
 		{
 			var root = JsonNode.Parse(sanitizedJson);
@@ -90,10 +72,7 @@ public sealed class AuditJsonSanitizer
 			if (root is not null) FlattenNode(root, "$", result);
 			return result;
 		}
-		catch (JsonException)
-		{
-			return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-		}
+		catch (JsonException) { return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase); }
 	}
 
 	private static void FlattenNode(JsonNode node, string path, IDictionary<string, string> result)
@@ -101,17 +80,10 @@ public sealed class AuditJsonSanitizer
 		switch (node)
 		{
 			case JsonObject objectNode:
-				foreach (var property in objectNode)
-				{
-					if (property.Value is not null) FlattenNode(property.Value, $"{path}.{property.Key}", result);
-				}
+				foreach (var property in objectNode) if (property.Value is not null) FlattenNode(property.Value, $"{path}.{property.Key}", result);
 				break;
 			case JsonArray arrayNode:
-				for (var index = 0; index < arrayNode.Count; index++)
-				{
-					var child = arrayNode[index];
-					if (child is not null) FlattenNode(child, $"{path}[{index}]", result);
-				}
+				for (var index = 0; index < arrayNode.Count; index++) if (arrayNode[index] is { } child) FlattenNode(child, $"{path}[{index}]", result);
 				break;
 			default:
 				result[path] = node.ToJsonString().Trim('"');

@@ -4,6 +4,7 @@
 using System.Collections.ObjectModel;
 
 using Depot.Models;
+using Depot.Services;
 
 namespace Depot.ViewModels.Users;
 
@@ -16,6 +17,7 @@ public sealed class UserEditorViewModel : BaseViewModel
 	private string _email = string.Empty;
 	private string _displayName = string.Empty;
 	private string _password = string.Empty;
+	private string _confirmPassword = string.Empty;
 	private bool _isActive = true;
 	private long _version = 1;
 	private string _effectivePermissions = "Calculated after saving.";
@@ -36,6 +38,7 @@ public sealed class UserEditorViewModel : BaseViewModel
 			OnPropertyChanged(nameof(IsExistingUser));
 			OnPropertyChanged(nameof(EditorTitle));
 			OnPropertyChanged(nameof(PasswordHint));
+			RaisePasswordValidationChanged();
 		}
 	}
 
@@ -46,6 +49,7 @@ public sealed class UserEditorViewModel : BaseViewModel
 		{
 			_email = value;
 			OnPropertyChanged();
+			RaisePasswordValidationChanged();
 		}
 	}
 
@@ -56,6 +60,18 @@ public sealed class UserEditorViewModel : BaseViewModel
 		{
 			_password = value;
 			OnPropertyChanged();
+			RaisePasswordValidationChanged();
+		}
+	}
+
+	public string ConfirmPassword
+	{
+		get => _confirmPassword;
+		set
+		{
+			_confirmPassword = value;
+			OnPropertyChanged();
+			RaisePasswordValidationChanged();
 		}
 	}
 
@@ -87,8 +103,8 @@ public sealed class UserEditorViewModel : BaseViewModel
 		{
 			_isActive = value;
 			OnPropertyChanged();
-            OnPropertyChanged(nameof(Status));
-	        OnPropertyChanged(nameof(ActivationButtonText));
+			OnPropertyChanged(nameof(Status));
+			OnPropertyChanged(nameof(ActivationButtonText));
 			OnPropertyChanged(nameof(IsInactive));
 		}
 	}
@@ -97,10 +113,34 @@ public sealed class UserEditorViewModel : BaseViewModel
 	public bool IsExistingUser => Id != 0;
 	public string EditorTitle => IsExistingUser ? "Edit User" : "New User";
 	public string PasswordHint => IsExistingUser
-		? "Leave blank to keep it; new passwords require 8+ characters, uppercase, lowercase, and a number."
-		: "8+ characters with uppercase, lowercase, and a number.";
-    public string Status => IsActive ? "Active" : "Inactive";
-    public string ActivationButtonText => IsActive ? "Deactivate" : "Activate";
+		? "Leave both password fields blank to keep the current password."
+		: "Set a password that satisfies every requirement below.";
+	public string Status => IsActive ? "Active" : "Inactive";
+	public string ActivationButtonText => IsActive ? "Deactivate" : "Activate";
+
+	private PasswordPolicyEvaluation PasswordEvaluation => PasswordPolicy.Evaluate(Password, Email);
+	public bool PasswordValidationRequired => !IsExistingUser || !string.IsNullOrEmpty(Password) || !string.IsNullOrEmpty(ConfirmPassword);
+	public bool PasswordHasValidLength => PasswordEvaluation.HasValidLength;
+	public bool PasswordHasUppercase => PasswordEvaluation.HasUppercase;
+	public bool PasswordHasLowercase => PasswordEvaluation.HasLowercase;
+	public bool PasswordHasDigit => PasswordEvaluation.HasDigit;
+	public bool PasswordHasSymbol => PasswordEvaluation.HasSymbol;
+	public bool PasswordExcludesAccountName => PasswordEvaluation.ExcludesAccountName;
+	public bool PasswordConfirmationMatches => !string.IsNullOrEmpty(ConfirmPassword) && string.Equals(Password, ConfirmPassword, StringComparison.Ordinal);
+	public bool PasswordInputIsValid => !PasswordValidationRequired || (PasswordEvaluation.IsValid && PasswordConfirmationMatches);
+
+	private void RaisePasswordValidationChanged()
+	{
+		OnPropertyChanged(nameof(PasswordValidationRequired));
+		OnPropertyChanged(nameof(PasswordHasValidLength));
+		OnPropertyChanged(nameof(PasswordHasUppercase));
+		OnPropertyChanged(nameof(PasswordHasLowercase));
+		OnPropertyChanged(nameof(PasswordHasDigit));
+		OnPropertyChanged(nameof(PasswordHasSymbol));
+		OnPropertyChanged(nameof(PasswordExcludesAccountName));
+		OnPropertyChanged(nameof(PasswordConfirmationMatches));
+		OnPropertyChanged(nameof(PasswordInputIsValid));
+	}
 
 	public void Clear()
 	{
@@ -108,6 +148,7 @@ public sealed class UserEditorViewModel : BaseViewModel
 		Email = string.Empty;
 		DisplayName = string.Empty;
 		Password = string.Empty;
+		ConfirmPassword = string.Empty;
 		foreach (var role in Roles) role.IsSelected = string.Equals(role.Name, "User", StringComparison.Ordinal);
 		IsActive = true;
 		Version = 1;

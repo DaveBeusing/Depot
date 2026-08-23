@@ -1,114 +1,124 @@
 # Depot Roadmap
 
-This roadmap reflects the implementation on the current `master` branch. “Implemented” means the workflow exists in code; it does not by itself mean production certification.
+This roadmap reflects the implementation on the current `compliance` branch. “Implemented” means the workflow/control exists in code and automated evidence where practical; it does not by itself mean production certification or legal conformity.
 
-## Fully implemented
+## Implemented foundations
 
 ### Architecture and platform
 
-- [x] .NET 10 WPF application with strict MVVM layering
-- [x] Composition root in `App.xaml.cs`
-- [x] Shared provider-neutral `DatabaseAccess`
-- [x] SQLite initialization and migrations
-- [x] SQL Server connection factory, initialization, and migrations
-- [x] MySQL/MariaDB connection factory, initialization, and migrations
-- [x] Explicit safe database errors and credential-safe connection logging
-- [x] Encrypted persistent database settings
-- [x] Shared busy/loading/empty/error ViewModel state
-- [x] Cancellation support for asynchronous database workflows
-- [x] Server-side paging and slice-query infrastructure
-- [x] Debounced server-side search on primary list screens
+- [x] .NET 10 WPF application with MVVM layering
+- [x] provider-neutral `DatabaseAccess`
+- [x] SQLite, SQL Server, and MySQL/MariaDB provider implementations
+- [x] encrypted persistent database settings
+- [x] asynchronous data-access patterns, cancellation, paging, and debounced search
+- [x] shared dark design system and workspace/tab shell
 
-### Security and multi-user foundations
+### Security and compliance
 
-- [x] Email/password authentication
-- [x] PBKDF2-SHA256 password hashing with per-user salts
-- [x] Database-backed multi-role RBAC with a central permission catalog, protected system roles, service enforcement, session cache, audit, and optimistic concurrency
-- [x] Audit-entry persistence
-- [x] Optimistic concurrency with version columns
-- [x] Transactional stock movements
-- [x] Provider-specific inventory and purchase-order locking
-- [x] Concurrent withdrawal and concurrent goods-receipt protection
+- [x] first-run administrator bootstrap; no shared production default password
+- [x] database-backed multi-role RBAC with service-layer authorization
+- [x] password policy, login throttling, PBKDF2-HMAC-SHA256 versioned hashing
+- [x] DPAPI-protected database secrets and encrypted remote database transport
+- [x] audit viewer, filtering, CSV export, sanitized details, and structured evidence export
+- [x] automatic backup retention and documented recovery controls
+- [x] privacy data discovery/export with secret exclusion
+- [x] business-record classification, immutable final states, traceable correction/reversal/credit workflows
+- [x] CycloneDX SBOM, dependency locks, NuGet vulnerability audit, license/dependency evidence
+- [x] CRA risk/evidence/update/vulnerability-management baseline
+- [x] release-integrity workflow with source binding, SHA-256 manifests, and prepared Authenticode/timestamp support
 
-### Inventory and master data
+### Inventory, warehouse, purchasing, and sales
 
-- [x] Items and inventories
-- [x] Purposes
-- [x] Warehouses and storage locations
-- [x] Reason codes and standard seed values
-- [x] Manufacturers
-- [x] Item categories
-- [x] Units of measure
-- [x] Packaging
-- [x] Supplier categories
-- [x] Suppliers
-- [x] Supplier items and preferred-supplier rules
-- [x] Activation/deactivation and reference checks for master data
+- [x] item/inventory/master-data management
+- [x] immutable stock movements and counter-movement corrections
+- [x] transfers, inventory counts, material issues/returns, shipping, picking/packing, and customer returns
+- [x] suppliers, supplier items, purchase orders, approvals, goods receipts, and supplier returns
+- [x] customers/contacts, quotes, pricing, sales orders, approvals, reservations/backorders, shipments, invoices, credit notes, and timelines
+- [x] creator/approver separation and audited administrator overrides
 
-### Operations
+### Privacy and records
 
-- [x] Opening balances, purchases, withdrawals, and corrections
-- [x] Current stock and weighted average cost calculations
-- [x] Purchase orders and purchase-order lines
-- [x] Draft, approval, ordering, receipt, closing, rejection, and cancellation statuses
-- [x] Atomic purchase-order submission and separation-of-duties approval with explicit permission
-- [x] Dedicated approval work queue with server-side filters, paging, aggregate metrics, details, and status history
-- [x] Delivery-note-based goods receipts separated from supplier invoices
-- [x] Partial receipts and automatic purchase-order status updates
-- [x] Atomic receipt, stock-movement, received-quantity, status, and audit writes
-- [x] Immutable technical reason-code keys and protected workflow system codes
-- [x] Warehouse stock-transfer drafts, cancellation, and atomic TransferOut/TransferIn posting
-- [x] Transfers main page with server-side search, status filter, paging, inventory selection, availability, and movement details
-- [x] Inventory-count drafts, atomic snapshots, paged counting/review UI, cancellation, and return to Counting
-- [x] Atomic inventory-count posting against current stock through audited correction movements
-- [x] Atomic, audited counter-booking for goods receipts, material withdrawals, transfers, and inventory-count postings
-- [x] Structured material issues with drafts, server-side list search/paging, atomic Withdrawal posting, cancellation, reversal, and movement details
-- [x] Independent material returns with optional issue linkage, positive stock posting, server-side list search/paging, and correction by counter-booking
-- [x] Supplier returns linked to goods-receipt positions, including net-return and stock validation, atomic posting, paging, filters, movement details, and counter-booking
+- [x] personal-data inventory and retention/lifecycle model
+- [x] Administration > Privacy Data discovery and JSON export
+- [x] GoBD-oriented technical procedural documentation
+- [x] business-record JSON evidence package from Audit Log
+- [x] atomic business mutation + audit persistence for reviewed retained workflows
 
-### Administration and output
+### Electronic invoicing
 
-- [x] Administration shell
-- [x] User management
-- [x] Excel import preview, validation, and execution
-- [x] Inventory and grouped reports
-- [x] Excel export
-- [x] About/version information
-- [x] Database overview and connection test
-- [x] Backup creation and validation
-- [x] Restore with safety backup
-- [x] Persistent automatic backup scheduling
-- [x] Integrity checks
-- [x] SQLite compaction
+- [x] EN 16931-oriented semantic invoice model
+- [x] deterministic UN/CEFACT CII generation targeted at XRechnung 3.0
+- [x] invoice and credit-note type handling
+- [x] application-level business-term validation
+- [x] representative XRechnung fixture and pinned KoSIT conformance workflow
 
-## Partially implemented
+### Quality and accessibility
 
-- Fully asynchronous data access: productive list/report paths are asynchronous and obsolete unbounded `GetAll()` APIs have been removed; targeted synchronous import-write compatibility remains.
-- Large-data readiness: paging/search/streaming infrastructure exists, but some reports and compatibility services still materialize full tables.
-- User-facing paging: server-side paging is used, but not every screen exposes complete page navigation.
-- Audit tooling: audit records are written, but no audit viewer, filter, retention, or export UI exists.
-- Transfer workflow: application workflow and UI are implemented; live SQL Server and MySQL/MariaDB concurrency verification remains open.
-- Reversal workflow: application workflow and SQLite rollback/concurrency coverage are implemented; live SQL Server and MySQL/MariaDB verification remains open.
-- General settings: database and backup settings are implemented; the general Settings page remains a placeholder.
-- Provider verification: SQL Server and MySQL/MariaDB implementations exist, but live-server integration coverage is incomplete.
+- [x] Windows Server 2022/2025 quality matrix on .NET 10
+- [x] zero-warning build gate
+- [x] bounded regression suites and 100,000-record SQLite performance baseline
+- [x] static accessibility checks for focus visibility, key contrast pairs, automation names, and non-color status semantics
+- [x] WCAG 2.2 AA / EN 301 549 inspired desktop engineering baseline
 
-## Not started
+## Remaining production/release acceptance
 
-- [ ] Barcode scanning and generation
-- [ ] Label templates and printing
-- [ ] Dedicated audit-log administration UI
-- [ ] General application-preferences implementation
+These items require real infrastructure, signing identities, interactive desktop testing, organization-specific legal decisions, or a marketed-product decision rather than additional generic repository code.
 
-## Must be verified before version 1.0
+### Providers and recovery
 
-- [ ] Clean installation and supported-schema migration on supported Windows versions
-- [ ] Live SQL Server and MySQL/MariaDB schema-migration matrix
-- [ ] Live provider backup, validation, restore, and recovery drills
-- [ ] Multi-client concurrency tests against SQL Server and MySQL/MariaDB
-- [ ] Long-running import, report, and procurement tests
-- [ ] 100,000+ record performance and memory acceptance tests
-- [ ] Full keyboard, focus, accessibility, scaling, and localization pass
-- [ ] Separate SupplierInvoice domain and invoice-verification workflow
-- [ ] Security review of default credentials, encrypted settings, logs, backups, and retained legacy invoice data
-- [ ] Release packaging, signing, upgrade, rollback, and uninstall verification
-- [ ] Complete manual regression test and release notes
+- [ ] live SQL Server clean-install/migration matrix
+- [ ] live MySQL/MariaDB clean-install/migration matrix
+- [ ] live backup/restore/recovery drills for every advertised provider/version
+- [ ] multi-client concurrency and representative latency/load tests
+- [ ] Windows ACL-denied recovery scenario
+
+### Accessibility and desktop acceptance
+
+- [ ] keyboard-only walkthrough of all critical workflows
+- [ ] focus-order/no-keyboard-trap review
+- [ ] Accessibility Insights or equivalent automation inspection
+- [ ] Windows Narrator baseline
+- [ ] visual DPI/scaling acceptance at 100%, 125%, 150%, and 200%
+- [ ] manual disabled/selected/hover/error/warning/success visual-state review
+
+### Release engineering
+
+- [ ] production Authenticode certificate configured and validated
+- [ ] production timestamp validation
+- [ ] installer/package, upgrade, rollback, and uninstall acceptance
+- [ ] final supported Windows/database matrix
+- [ ] release notes and known limitations
+
+### Electronic invoicing
+
+- [ ] integrate structured invoice XML into the operational persisted invoice workflow
+- [ ] retain issued XML immutably with correction/reference linkage
+- [ ] validate every advertised tax/profile/channel scenario with the applicable production KoSIT/XRechnung release
+- [ ] implement and validate PDF/A-3 before claiming ZUGFeRD/Factur-X support
+
+### Legal/organizational acceptance
+
+- [ ] deployment-specific GDPR lawful bases, notices, retention periods, processor arrangements, and data-subject procedure
+- [ ] organization-specific GoBD procedural documentation and tax-relevance determination
+- [ ] final CRA scope/classification/economic-operator/conformity assessment and CE/Declaration steps where applicable
+- [ ] production vulnerability-reporting and regulatory incident contacts
+
+## Phase 8 — Enterprise readiness
+
+Planned based on customer demand:
+
+- [ ] MFA
+- [ ] Microsoft Entra ID / OIDC
+- [ ] SAML where justified
+- [ ] centralized audit/SIEM integration
+- [ ] enterprise deployment/hardening guide
+- [ ] ISO/IEC 27001 customer-control mapping and security-questionnaire evidence
+- [ ] NIS2-influenced customer/supply-chain requirements
+
+## Out of current scope
+
+- barcode scanning/generation
+- label template design and printing
+- payment collection
+- accounts receivable
+- general ledger/accounting

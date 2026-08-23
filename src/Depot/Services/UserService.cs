@@ -59,7 +59,7 @@ public sealed class UserService
 		_authorization.RequirePermission(ApplicationPermission.UsersManage);
 		email = NormalizeAndValidateEmail(email);
 		displayName = ValidateDisplayName(displayName);
-		ValidatePassword(password);
+		PasswordPolicy.Validate(password, email);
 		var roles = await ValidateRolesAsync(roleIds, cancellationToken);
 		if (await _users.GetByEmailAsync(email, cancellationToken) is not null) throw new InvalidOperationException($"A user with email '{email}' already exists.");
 		var user = new User { Email = email, DisplayName = displayName, Role = UserRole.User, IsAdministrator = false, CanApprovePurchaseOrders = false, IsActive = true, CreatedUtc = DateTime.UtcNow, Roles = roles };
@@ -80,7 +80,7 @@ public sealed class UserService
 		if (id <= 0) throw new ArgumentOutOfRangeException(nameof(id));
 		email = NormalizeAndValidateEmail(email);
 		displayName = ValidateDisplayName(displayName);
-		if (!string.IsNullOrEmpty(password)) ValidatePassword(password);
+		if (!string.IsNullOrEmpty(password)) PasswordPolicy.Validate(password, email);
 		var roles = await ValidateRolesAsync(roleIds, cancellationToken);
 		var stored = await _users.GetByIdAsync(id, cancellationToken) ?? throw new InvalidOperationException("The user was not found.");
 		var before = await HydrateAsync(stored, cancellationToken);
@@ -160,12 +160,6 @@ public sealed class UserService
 		displayName = displayName.Trim();
 		if (displayName.Length is < 1 or > 200) throw new ArgumentException("Display name must contain 1-200 characters.", nameof(displayName));
 		return displayName;
-	}
-
-	private static void ValidatePassword(string password)
-	{
-		if (password.Length < 8 || !password.Any(char.IsUpper) || !password.Any(char.IsLower) || !password.Any(char.IsDigit))
-			throw new ArgumentException("The password must contain at least 8 characters, including uppercase, lowercase, and a number.", nameof(password));
 	}
 
 	private static User Copy(User user) => new() { Id = user.Id, Email = user.Email, DisplayName = user.DisplayName, IsAdministrator = user.IsAdministrator, CanApprovePurchaseOrders = user.CanApprovePurchaseOrders, Role = user.Role, Roles = user.Roles.ToArray(), EffectivePermissions = user.EffectivePermissions.ToHashSet(), IsActive = user.IsActive, CreatedUtc = user.CreatedUtc, Version = user.Version };

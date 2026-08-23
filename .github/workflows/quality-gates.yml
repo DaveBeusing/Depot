@@ -1,0 +1,42 @@
+name: Software quality gates
+
+on:
+  pull_request:
+    branches: [ master ]
+  push:
+    branches: [ master, compliance ]
+
+concurrency:
+  group: quality-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  compatibility:
+    name: Windows compatibility - ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2022, windows-2025]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Restore locked dependencies
+        run: dotnet restore Depot.slnx --locked-mode
+      - name: Build with zero warnings
+        run: dotnet build Depot.slnx --configuration Release --no-restore -warnaserror
+      - name: Run regression suite
+        run: dotnet test tests/Depot.Tests/Depot.Tests.csproj --configuration Release --no-build --filter "QualityGate!=Performance" --blame-hang --blame-hang-timeout 8m --logger "console;verbosity=normal"
+      - name: Run 100k performance baseline
+        run: dotnet test tests/Depot.Tests/Depot.Tests.csproj --configuration Release --no-build --filter "QualityGate=Performance" --logger "console;verbosity=normal"
+
+  accessibility-static:
+    runs-on: windows-2025
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify desktop accessibility baseline
+        shell: pwsh
+        run: ./scripts/quality/test-accessibility.ps1

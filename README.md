@@ -2,13 +2,26 @@
 
 Depot is a Windows desktop application for inventory, warehouse, procurement, sales, administration, reporting, and operational workflows. It is built with .NET 10, WPF, MVVM, and a provider-neutral ADO.NET persistence layer.
 
-The project is under active development on the **0.14.28-preview** line and is not yet production-certified.
+The project is under active development on the **0.14.x-preview** line and is not yet production-certified. Security/compliance roadmap phases 1-7 have their technically implementable repository/application controls in place; production, legal, provider, signing, accessibility, and environment acceptance gates remain where documented.
+
+## Highlights
+
+- Inventory, warehouse, purchasing, sales, approvals, reporting, and administration workspaces
+- SQLite plus SQL Server and MySQL/MariaDB provider implementations
+- database-backed multi-role RBAC with service-layer authorization
+- first-run administrator bootstrap with no shared production default password
+- password policy, login throttling, versioned PBKDF2-HMAC-SHA256 password hashing
+- DPAPI-protected persisted database credentials and mandatory encrypted transport for supported remote-provider settings
+- immutable/correction-oriented business-record workflows and structured audit evidence
+- administrator Audit Log, evidence export, and Privacy Data discovery/export
+- backup validation, restore, automatic backup retention, integrity checks, and SQLite compaction
+- CycloneDX SBOM, NuGet vulnerability audit, dependency lock verification, CRA evidence generation, and release-integrity workflows
+- EN 16931-oriented electronic invoice model with XRechnung CII generation and pinned KoSIT conformance validation
+- ISO/IEC-25010-inspired software-quality gates and automated accessibility baselines
 
 ## Application shell
 
-Depot uses a dark workspace-oriented shell with permission-aware activity-bar navigation and closeable workspace tabs. After sign-in, no module or tab is selected automatically: a tabless Welcome page greets the user according to the local time of day and shows shortcuts for Quick Open, Command Palette, tab switching, tab closing, and context Help. Closing the final tab returns to this Welcome page.
-
-The status bar shows database connection state; hovering its database indicator exposes the current connection detail. The current application version is shown on the right and opens the existing About page when selected.
+Depot uses a dark workspace-oriented shell with permission-aware activity-bar navigation and closeable workspace tabs. After sign-in, no module or tab is selected automatically: a tabless Welcome page greets the user and exposes navigation shortcuts. Closing the final tab returns to Welcome.
 
 Navigation supports stable routes, `Alt+Left` / `Alt+Right` history, `Ctrl+P` Quick Open, `Ctrl+Shift+P` Command Palette, keyed document tabs for supported records, `Ctrl+W`, `Ctrl+Tab` / `Ctrl+Shift+Tab`, and F1 context Help.
 
@@ -30,56 +43,37 @@ Reports
 Administration
 ```
 
-Shipping lives under **Warehouse** because picking, packing, shipment posting, reversals, and physical Customer Returns are warehouse operations even though they originate from Sales Orders.
+Administration includes users/roles, database configuration, backup/restore, Audit Log, Privacy Data, About/application information, Notification Center, and the offline Help Center.
 
-## Dashboard
+## Business-record integrity
 
-The Dashboard is permission-aware and uses existing business services/repositories rather than maintaining separate dashboard data. Administrators receive all currently implemented overview groups:
+Depot treats finalized operational records as historical evidence where the workflow requires it. Corrections use explicit reversal, return, cancellation, close, or credit-note transactions rather than silently rewriting finalized history. Audit evidence preserves actor, UTC timestamp, state transitions, and sanitized before/after data for reviewed workflows.
 
-- **Inventory** — total items, total stock, inventory value, movements
-- **Purchasing** — pending/approved orders, partial receipts, overdue deliveries, Supplier Returns requiring attention
-- **Warehouse** — Inventory Counts awaiting review/posting and open transfers
-- **Sales** — approvals, reservation/backorder and fulfillment workload, draft invoices/shipments, returns, credits, monthly net sales
-- **Approvals** — open Purchase Order approval summary
-- **Administration** — active users
-- **Reports** — entry into the existing Reports workspace
+The Audit Log can also produce a structured JSON evidence export for classified business records.
 
-Recent inventory movements remain available as operational activity. Non-administrator content follows effective permissions.
+## Privacy
 
-## Functional scope
+**Administration > Privacy Data** provides an authorized discovery workflow for person-related data and a machine-readable JSON export. Authentication hashes, connection credentials, and protected settings are excluded by design.
 
-**Inventory and Warehouse:** item/inventory master data, immutable stock movements, warehouses/locations, transfers, inventory counts with optimistic concurrency, material issues/returns, shipping, picking, packing, shipment posting/reversal, Customer Returns, fulfillment PDFs, Excel import/export.
+Depot deliberately does not provide a universal destructive “GDPR delete” action: deletion, deactivation, anonymization, archival, and retention depend on record type and the operator's legal obligations.
 
-**Purchasing:** Suppliers, Supplier Items, Purchase Orders, Purchase Approvals, Goods Receipts, Supplier Returns, partial receipts, status history, and atomic inventory posting.
+## Electronic invoicing
 
-```text
-Supplier → Purchase Order → Submit → Purchase Approval → Ordered → Goods Receipt → Stock Movement
-```
+Depot includes an EN 16931-oriented semantic electronic-invoice model and deterministic UN/CEFACT CII generation targeted at XRechnung 3.0. Representative XML is validated in CI with a pinned KoSIT XRechnung validator/configuration.
 
-**Sales:** Customers and Contacts, Quotes, Customer Pricing, Sales Orders, Sales Approvals, reservations/backorders, Warehouse fulfillment, Invoices, Credit Notes, Customer Returns, PDFs, email drafts, and Sales Order Timeline.
-
-```text
-Customer / Quote / Pricing → Sales Order → Sales Approval → Reservation / Backorder
-→ Warehouse > Shipping → Picking → Packed → Shipment → Sales > Invoices / Credit Notes
-```
-
-Supported Sales records can open as keyed document tabs so reopening the same supported record activates its existing tab instead of creating a duplicate.
-
-**Approvals and security:** central Purchase/Sales approval queues, creator/approver separation enforced in business services, database-backed multi-role RBAC, authentication, session switching, and audited administrator overrides.
-
-**Administration:** users/roles, database provider configuration, backup/restore, scheduled backups, integrity checks, SQLite compaction, Audit Log, About/application information, Notification Center, and offline Help Center.
+This is a technical foundation. Production electronic-invoice support still requires integration into the persisted invoice workflow, immutable retention of issued XML, organization/recipient-specific configuration, and validation of every advertised tax/profile scenario. ZUGFeRD/Factur-X is not claimed until a true PDF/A-3 pipeline is implemented and validated.
 
 ## Database providers
 
-SQLite is the default provider. Microsoft SQL Server and MySQL/MariaDB provider implementations are also present. Live-server migration, recovery, backup/restore, and concurrency certification remain part of the version 1.0 acceptance work.
+SQLite is the default provider. Microsoft SQL Server and MySQL/MariaDB implementations are also present. Supported remote-provider settings enforce encrypted transport. Live-server migration, backup/restore, recovery, concurrency, and version-matrix acceptance remain required before a server configuration is advertised as production-supported.
 
-The core database schema is currently **29**. Sales uses the versioned `DepotFeatureVersions` registry and is currently schema **6**. Application release versions and database schema versions are independent.
+The core database schema is currently **29**. Sales uses the versioned `DepotFeatureVersions` registry. Application release versions and database schema versions are independent.
 
 ## Offline Help Center
 
-Depot ships an embedded Markdown Help Center rendered natively in WPF. It is permission-filtered, locally searchable, uses stable topic links, and opens as a normal workspace tab. F1 resolves the current Help context.
+Depot ships an embedded Markdown Help Center rendered natively in WPF. It is permission-filtered, locally searchable, uses stable topic links, and opens as a workspace tab. F1 resolves the current Help context.
 
-Help manifest **1.5** documents the current tabless Welcome state, fully closeable tabs, navigation history, database/version status-bar behavior, current workspace structure, and administrator Dashboard overview. See `docs/HELP_CENTER.md` for authoring rules.
+Help manifest **1.6** documents first-run administrator creation, current workspace/navigation behavior, hardened database/backup guidance, Audit Log evidence export, Privacy Data, and electronic-invoice status. See `docs/HELP_CENTER.md` for authoring rules.
 
 ## Architecture
 
@@ -109,21 +103,21 @@ Requirements: Windows 10/11 and the .NET 10 SDK.
 ```powershell
 git clone https://github.com/DaveBeusing/Depot.git
 cd Depot
-dotnet restore Depot.slnx
+dotnet restore Depot.slnx --locked-mode
 dotnet run --project src/Depot/Depot.csproj -c Debug
 ```
 
-A new installation defaults to local SQLite and creates `depot.db`; settings are stored in `depot.settings`. **Administration > Database** configures SQLite, SQL Server, or MySQL/MariaDB.
+A new installation defaults to local SQLite and creates `depot.db`; protected settings are stored in `depot.settings`. **Administration > Database** configures SQLite, SQL Server, or MySQL/MariaDB.
 
-For a new database, sign in with `admin@depot.local` / `Depot123!` and change the password in **Administration > Users**.
+### First run
+
+Depot no longer uses a shared default administrator login. If the selected database has no usable application user, Depot starts the administrator-bootstrap workflow and requires creation of the initial administrator with an individual email/login and a password that satisfies the current password policy. Existing configured databases proceed to normal sign-in.
 
 ## Build and publish
 
-Depot targets `net10.0-windows`. WPF XAML items are explicitly compiled by the project.
-
 ```powershell
 dotnet build Depot.slnx -c Debug
-dotnet build Depot.slnx -c Release
+dotnet build Depot.slnx -c Release -warnaserror
 ```
 
 Self-contained single-file publish:
@@ -139,7 +133,17 @@ dotnet publish src/Depot/Depot.csproj `
 
 Runtime data (`depot.db`, `depot.settings`, logs, backups, PDFs, exports) remains external. Do not enable `PublishTrimmed` without dedicated WPF/XAML trimming validation.
 
-CI separates bounded Sales, Inventory/Warehouse, Purchasing, Shell/UX, and Core/Persistence suites, validates Release build/publish, and cancels superseded runs for the same pull request.
+## CI and assurance
+
+The repository currently includes:
+
+- normal bounded regression CI
+- Security supply-chain workflow with NuGet audit, dependency locks, CycloneDX SBOM/license evidence, security/privacy/integrity tests, and CRA evidence packaging
+- Release-integrity workflow with source binding, SHA-256 manifests, and prepared Authenticode/timestamp support
+- Electronic-invoice conformance workflow using pinned KoSIT validation
+- Software-quality gates on Windows Server 2022 and 2025, including zero-warning build, regression suite, 100,000-record performance baseline, and static accessibility checks
+
+Production Authenticode signing requires the real protected signing identity and remains a release acceptance gate.
 
 ## Keyboard navigation
 
@@ -161,25 +165,31 @@ src/Depot/
   Controls/       Reusable WPF controls
   Data/           Provider factories, initialization, migrations
   Help/           Embedded offline Help Center
-  Models/         Domain, status, report models
+  Models/         Domain, status, report and e-invoice models
   Repositories/   Provider-neutral persistence
   Resources/      Design system and branding
   Services/       Business/application workflows
   ViewModels/     Presentation logic and commands
   Views/          WPF views and windows
 tests/Depot.Tests/
-  Unit and SQLite integration tests
+  Unit, SQLite integration, security, quality and conformance tests
+scripts/
+  e-invoice, quality and security/compliance automation
 ```
 
 ## Remaining work before 1.0
 
-- Live SQL Server/MySQL/MariaDB installation and migration matrices
-- Live-server backup/restore and recovery drills
-- Multi-client concurrency tests against server providers
-- Large-data acceptance testing
-- UI accessibility, scaling, keyboard, localization, packaging, upgrade acceptance
-- Security review of deployment defaults, credentials, logs, backup retention
-- Consolidated final 1.0 migration/upgrade policy
+Major remaining acceptance work is environment- or production-specific rather than missing generic foundations:
+
+- live SQL Server/MySQL/MariaDB migration, recovery, concurrency, performance, and supported-version matrices
+- Windows ACL-denied recovery test
+- production code-signing certificate and timestamp validation
+- interactive keyboard/focus, Narrator/Accessibility Insights, and 100/125/150/200% DPI acceptance
+- representative production sizing/load tests
+- production integration and immutable persistence of issued XRechnung XML
+- PDF/A-3 implementation before any ZUGFeRD/Factur-X claim
+- operator/legal acceptance for GDPR, GoBD, CRA classification/conformity, retention periods, and organization-specific procedures
+- installer/package, upgrade, rollback, and uninstall acceptance
 
 Barcode scanning/generation, label design/printing, payment collection, accounts receivable, and general-ledger functionality remain outside current scope.
 
@@ -189,9 +199,9 @@ Barcode scanning/generation, label design/printing, payment collection, accounts
 - `docs/CodingStandard.md`
 - `docs/Roadmap.md`
 - `docs/RELEASE_1_0.md`
-- `docs/VERSIONING.md`
-- `docs/DATA_ACCESS_AUDIT.md`
+- `docs/SECURITY_ROADMAP.md`
 - `docs/HELP_CENTER.md`
+- `docs/compliance/`
 
 ## License
 

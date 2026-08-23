@@ -54,6 +54,7 @@
 	<DataTemplate DataType="{x:Type administrationViewModels:DatabaseSettingsViewModel}"><administrationViews:DatabaseSettingsView /></DataTemplate>
 	<DataTemplate DataType="{x:Type administrationViewModels:AboutViewModel}"><administrationViews:AboutView /></DataTemplate>
 	<DataTemplate DataType="{x:Type administrationViewModels:AuditLogViewModel}"><administrationViews:AuditLogView /></DataTemplate>
+	<DataTemplate DataType="{x:Type administrationViewModels:PrivacyDataViewModel}"><administrationViews:PrivacyDataView /></DataTemplate>
 	<DataTemplate DataType="{x:Type sharedViewModels:PlaceholderViewModel}"><sharedViews:PlaceholderView /></DataTemplate>
 	<DataTemplate DataType="{x:Type masterDataViewModels:MasterDataViewModel}"><masterDataViews:MasterDataView /></DataTemplate>
 	<DataTemplate DataType="{x:Type purposeViewModels:PurposeViewModel}"><purposeViews:PurposesView /></DataTemplate>

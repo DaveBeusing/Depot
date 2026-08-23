@@ -3,6 +3,7 @@
 
 using System.Collections.ObjectModel;
 
+using Depot.Data;
 using Depot.Models;
 using Depot.Services;
 using Depot.Services.Help;
@@ -21,6 +22,7 @@ public sealed class AdministrationViewModel : BaseViewModel, IDisposable
 	private readonly RoleViewModel _roleViewModel;
 	private readonly DatabaseSettingsViewModel _databaseSettingsViewModel;
 	private readonly AuditLogViewModel _auditLogViewModel;
+	private readonly PrivacyDataViewModel _privacyDataViewModel;
 	private readonly AboutViewModel _aboutViewModel;
 	private readonly Dictionary<AdministrationSection, NavigationLoadState> _loadStates = [];
 	private CancellationTokenSource? _navigationCancellation;
@@ -59,6 +61,8 @@ public sealed class AdministrationViewModel : BaseViewModel, IDisposable
 		_databaseSettingsViewModel = new DatabaseSettingsViewModel(settingsService, connectionStatusService, databaseConnectionTester, databaseManagementService, fileDialogService);
 		_aboutViewModel = new AboutViewModel(applicationInformationService);
 		_auditLogViewModel = new AuditLogViewModel(auditLogService, fileDialogService);
+		var privacyDatabase = new DatabaseAccess(DatabaseProviderFactory.CreateConnectionFactory(settingsService.CurrentSettings));
+		_privacyDataViewModel = new PrivacyDataViewModel(new DataSubjectAccessService(privacyDatabase, authorization), fileDialogService);
 
 		AddIf(authorization, ApplicationPermission.MasterDataView, "Master Data", AdministrationSection.MasterData);
 		AddIf(authorization, ApplicationPermission.MasterDataView, "Warehouses & Locations", AdministrationSection.Warehouses);
@@ -68,8 +72,8 @@ public sealed class AdministrationViewModel : BaseViewModel, IDisposable
 		AddIf(authorization, ApplicationPermission.ImportManage, "Import", AdministrationSection.Import);
 		AddIf(authorization, ApplicationPermission.AuditLogView, "Audit Log", AdministrationSection.AuditLog);
 		AddIf(authorization, ApplicationPermission.DatabaseView, "Database", AdministrationSection.Database);
-		if (authorization.HasPermission(ApplicationPermission.AdministrationView))
-			Add("About", AdministrationSection.About, HelpService.FallbackTopicId);
+		AddIf(authorization, ApplicationPermission.AdministrationView, "Privacy Data", AdministrationSection.Privacy);
+		if (authorization.HasPermission(ApplicationPermission.AdministrationView)) Add("About", AdministrationSection.About, HelpService.FallbackTopicId);
 		SetSelection(NavigationItems.FirstOrDefault());
 	}
 
@@ -77,11 +81,7 @@ public sealed class AdministrationViewModel : BaseViewModel, IDisposable
 	public ObservableCollection<NavigationItem> NavigationItems { get; } = [];
 	public ObservableCollection<NavigationItem> Pages => NavigationItems;
 	public Func<BaseViewModel?, bool>? NavigationGuard { get; set; }
-	public NavigationItem? SelectedPage
-	{
-		get => SelectedNavigationItem;
-		set => SelectedNavigationItem = value;
-	}
+	public NavigationItem? SelectedPage { get => SelectedNavigationItem; set => SelectedNavigationItem = value; }
 
 	public NavigationItem? SelectedNavigationItem
 	{
@@ -105,7 +105,6 @@ public sealed class AdministrationViewModel : BaseViewModel, IDisposable
 	}
 
 	public string HelpTopicId => SelectedNavigationItem?.HelpTopicId ?? HelpService.FallbackTopicId;
-
 	public Task ActivateAsync(CancellationToken cancellationToken = default) => ActivateCurrentAsync(false, cancellationToken);
 	public Task RefreshAsync(CancellationToken cancellationToken = default) => ActivateCurrentAsync(true, cancellationToken);
 
@@ -124,12 +123,9 @@ public sealed class AdministrationViewModel : BaseViewModel, IDisposable
 			OnPropertyChanged(nameof(SelectedPage));
 			return;
 		}
-
 		_navigationCancellation?.Cancel();
 		_navigationCancellation?.Dispose();
-		var navigation = cancellationToken.CanBeCanceled
-			? CancellationTokenSource.CreateLinkedTokenSource(cancellationToken)
-			: new CancellationTokenSource();
+		var navigation = cancellationToken.CanBeCanceled ? CancellationTokenSource.CreateLinkedTokenSource(cancellationToken) : new CancellationTokenSource();
 		_navigationCancellation = navigation;
 		SetSelection(target);
 		try { await ActivateCurrentAsync(false, navigation.Token); }
@@ -163,6 +159,7 @@ public sealed class AdministrationViewModel : BaseViewModel, IDisposable
 		AdministrationSection.Roles => _roleViewModel,
 		AdministrationSection.Database => _databaseSettingsViewModel,
 		AdministrationSection.AuditLog => _auditLogViewModel,
+		AdministrationSection.Privacy => _privacyDataViewModel,
 		AdministrationSection.About => _aboutViewModel,
 		_ => _aboutViewModel
 	};
@@ -176,6 +173,7 @@ public sealed class AdministrationViewModel : BaseViewModel, IDisposable
 		RoleViewModel roles => roles.LoadAsync(cancellationToken),
 		DatabaseSettingsViewModel database => database.LoadAsync(cancellationToken),
 		AuditLogViewModel auditLog => auditLog.LoadAsync(cancellationToken),
+		PrivacyDataViewModel privacy => privacy.LoadAsync(cancellationToken),
 		_ => Task.CompletedTask
 	};
 
@@ -211,5 +209,6 @@ public sealed class AdministrationViewModel : BaseViewModel, IDisposable
 		if (_roleViewModel is IDisposable roles) roles.Dispose();
 		if (_databaseSettingsViewModel is IDisposable database) database.Dispose();
 		if (_auditLogViewModel is IDisposable audit) audit.Dispose();
+		_privacyDataViewModel.Dispose();
 	}
 }

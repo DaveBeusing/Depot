@@ -10,14 +10,7 @@ namespace Depot.Composition;
 
 internal sealed class DatabaseComposition : IDisposable
 {
-	private DatabaseComposition(
-		DatabaseAccess dataAccess,
-		IDatabaseTransactionRunner transactionRunner,
-		SettingsService settings,
-		ConnectionStatusService connectionStatus,
-		DatabaseConnectionTester connectionTester,
-		DatabaseManagementService management,
-		DatabaseBackupScheduler backupScheduler)
+	private DatabaseComposition(DatabaseAccess dataAccess, IDatabaseTransactionRunner transactionRunner, SettingsService settings, ConnectionStatusService connectionStatus, DatabaseConnectionTester connectionTester, DatabaseManagementService management, DatabaseBackupScheduler backupScheduler)
 	{
 		DataAccess = dataAccess;
 		TransactionRunner = transactionRunner;
@@ -49,18 +42,10 @@ internal sealed class DatabaseComposition : IDisposable
 		SalesSchemaMigration.Migrate(connectionFactory);
 		connectionStatus.SetConnected(connectionSettings);
 		var management = new DatabaseManagementService(connectionFactory, settings);
-		return new DatabaseComposition(
-			dataAccess,
-			new DatabaseTransactionRunner(dataAccess),
-			settings,
-			connectionStatus,
-			new DatabaseConnectionTester(),
-			management,
-			new DatabaseBackupScheduler(management, settings));
+		return new DatabaseComposition(dataAccess, new DatabaseTransactionRunner(dataAccess), settings, connectionStatus, new DatabaseConnectionTester(), management, new DatabaseBackupScheduler(management, settings));
 	}
 
 	public void StartBackgroundServices() => BackupScheduler.Start();
 	public void ConfigureNotifications(NotificationService notifications) => BackupScheduler.ConfigureNotifications(notifications);
-
 	public void Dispose() => BackupScheduler.Dispose();
 }

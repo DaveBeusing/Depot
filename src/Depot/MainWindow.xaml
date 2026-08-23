@@ -27,24 +27,24 @@
 
         <Border Grid.Row="0" Grid.Column="0" Background="{DynamicResource NavigationBackgroundBrush}" BorderBrush="{DynamicResource NavigationBorderBrush}" BorderThickness="0,0,1,0">
             <DockPanel>
-                <Border DockPanel.Dock="Top" Height="{StaticResource Shell.BrandHeight}" BorderBrush="{DynamicResource NavigationBorderBrush}" BorderThickness="0,0,0,1"><Image Source="/Resources/Images/Depot_32.png" Width="26" Height="26" /></Border>
+                <Border DockPanel.Dock="Top" Height="{StaticResource Shell.BrandHeight}" BorderBrush="{DynamicResource NavigationBorderBrush}" BorderThickness="0,0,0,1"><Image Source="/Resources/Images/Depot_32.png" Width="26" Height="26" AutomationProperties.Name="Depot" /></Border>
                 <StackPanel DockPanel.Dock="Bottom">
-                    <Button Style="{StaticResource ActivityUtilityButtonStyle}" Command="{Binding NotificationCommand}" ToolTip="Notifications">
+                    <Button Style="{StaticResource ActivityUtilityButtonStyle}" Command="{Binding NotificationCommand}" ToolTip="Notifications" AutomationProperties.Name="Notifications">
                         <Grid Width="28" Height="28">
                             <Path Width="20" Height="20" Data="{StaticResource Shell.NotificationIcon}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="1.5" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" />
                             <Border Style="{StaticResource NotificationBadgeStyle}" HorizontalAlignment="Right" VerticalAlignment="Top" Visibility="{Binding NotificationSummaryViewModel.HasUnreadNotifications, Converter={StaticResource BooleanToVisibilityConverter}}"><TextBlock Text="{Binding NotificationSummaryViewModel.UnreadBadgeText}" Foreground="White" FontSize="{StaticResource Shell.BadgeFontSize}" FontWeight="SemiBold" HorizontalAlignment="Center" VerticalAlignment="Center" /></Border>
                         </Grid>
                     </Button>
-                    <Button Style="{StaticResource ActivityUtilityButtonStyle}" Command="{x:Static commands:HelpCommands.OpenHelp}" ToolTip="Help (F1)"><Path Width="20" Height="20" Data="{StaticResource Shell.HelpIcon}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="1.5" Stretch="Uniform" /></Button>
-                    <Button Style="{StaticResource UserAvatarButtonStyle}" Content="{Binding CurrentUserInitials, RelativeSource={RelativeSource AncestorType={x:Type local:MainWindow}}}" ToolTip="{Binding CurrentUserDisplayName, RelativeSource={RelativeSource AncestorType={x:Type local:MainWindow}}}" Click="OnCurrentUserClick" />
+                    <Button Style="{StaticResource ActivityUtilityButtonStyle}" Command="{x:Static commands:HelpCommands.OpenHelp}" ToolTip="Help (F1)" AutomationProperties.Name="Help"><Path Width="20" Height="20" Data="{StaticResource Shell.HelpIcon}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="1.5" Stretch="Uniform" /></Button>
+                    <Button Style="{StaticResource UserAvatarButtonStyle}" Content="{Binding CurrentUserInitials, RelativeSource={RelativeSource AncestorType={x:Type local:MainWindow}}}" ToolTip="{Binding CurrentUserDisplayName, RelativeSource={RelativeSource AncestorType={x:Type local:MainWindow}}}" AutomationProperties.Name="Current user" Click="OnCurrentUserClick" />
                 </StackPanel>
-                <ListBox Style="{StaticResource ActivityBarListStyle}" ItemContainerStyle="{StaticResource ActivityBarItemStyle}" ItemTemplate="{StaticResource ActivityBarItemTemplate}" ItemsSource="{Binding NavigationItems}" SelectedItem="{Binding SelectedNavigationItem}" />
+                <ListBox Style="{StaticResource ActivityBarListStyle}" ItemContainerStyle="{StaticResource ActivityBarItemStyle}" ItemTemplate="{StaticResource ActivityBarItemTemplate}" ItemsSource="{Binding NavigationItems}" SelectedItem="{Binding SelectedNavigationItem}" AutomationProperties.Name="Application navigation" />
             </DockPanel>
         </Border>
 
         <Grid Grid.Row="0" Grid.Column="1" Background="{DynamicResource BackgroundBrush}">
             <Grid.RowDefinitions><RowDefinition Height="{StaticResource Shell.TabHeight}" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
-            <controls:WorkspaceTabControl x:Name="WorkspaceTabs" Grid.Row="0" ActiveItem="{Binding SelectedNavigationItem, Mode=TwoWay}" Style="{StaticResource WorkspaceTabControlStyle}" ItemContainerStyle="{StaticResource WorkspaceTabItemStyle}" ItemTemplate="{StaticResource WorkspaceTabHeaderTemplate}" TabClosing="OnWorkspaceTabClosing" />
+            <controls:WorkspaceTabControl x:Name="WorkspaceTabs" Grid.Row="0" ActiveItem="{Binding SelectedNavigationItem, Mode=TwoWay}" Style="{StaticResource WorkspaceTabControlStyle}" ItemContainerStyle="{StaticResource WorkspaceTabItemStyle}" ItemTemplate="{StaticResource WorkspaceTabHeaderTemplate}" TabClosing="OnWorkspaceTabClosing" AutomationProperties.Name="Workspace tabs" />
             <ContentControl Grid.Row="1" Content="{Binding SelectedNavigationItem.Content}" ContentTemplateSelector="{StaticResource ActivityContextTemplateSelector}" />
             <Border Grid.Row="2" Padding="{StaticResource Shell.ContentPadding}" Background="{DynamicResource BackgroundBrush}"><ContentControl Content="{Binding CurrentViewModel}" HorizontalContentAlignment="Stretch" VerticalAlignment="Stretch" Background="{DynamicResource BackgroundBrush}" /></Border>
         </Grid>
@@ -52,9 +52,9 @@
         <Border Grid.Row="1" Grid.ColumnSpan="2" Background="{DynamicResource SurfaceAltBrush}" BorderBrush="{DynamicResource NavigationBorderBrush}" BorderThickness="0,1,0,0">
             <Grid Margin="{StaticResource Shell.StatusMargin}">
                 <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                <controls:ConnectionStatusIndicator State="{Binding ConnectionStatus.CompactState}" Status="{Binding ConnectionStatus.CompactStatus}" Detail="{Binding ConnectionStatus.Detail}" ToolTip="{Binding ConnectionStatus.Detail}" Compact="True" VerticalAlignment="Center" />
+                <controls:ConnectionStatusIndicator State="{Binding ConnectionStatus.CompactState}" Status="{Binding ConnectionStatus.CompactStatus}" Detail="{Binding ConnectionStatus.Detail}" ToolTip="{Binding ConnectionStatus.Detail}" Compact="True" VerticalAlignment="Center" AutomationProperties.Name="{Binding ConnectionStatus.CompactStatus}" />
                 <TextBlock Grid.Column="1" Text="{Binding SelectedItem.Name, ElementName=WorkspaceTabs}" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="{StaticResource Shell.CaptionFontSize}" VerticalAlignment="Center" Margin="{StaticResource Shell.StatusSectionMargin}" />
-                <Button Grid.Column="3" Content="{Binding ApplicationVersion, RelativeSource={RelativeSource AncestorType={x:Type local:MainWindow}}}" Foreground="{DynamicResource SecondaryTextBrush}" Background="Transparent" BorderThickness="0" Padding="8,0" FontSize="{StaticResource Shell.CaptionFontSize}" Cursor="Hand" FocusVisualStyle="{x:Null}" ToolTip="About Depot" Click="OnVersionClick" />
+                <Button Grid.Column="3" Content="{Binding ApplicationVersion, RelativeSource={RelativeSource AncestorType={x:Type local:MainWindow}}}" Foreground="{DynamicResource SecondaryTextBrush}" Background="Transparent" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Padding="8,0" FontSize="{StaticResource Shell.CaptionFontSize}" Cursor="Hand" ToolTip="About Depot" AutomationProperties.Name="About Depot" Click="OnVersionClick" />
                 <TextBlock Grid.Column="4" Text="{Binding CurrentUserDisplayName}" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="{StaticResource Shell.CaptionFontSize}" VerticalAlignment="Center" />
             </Grid>
         </Border>

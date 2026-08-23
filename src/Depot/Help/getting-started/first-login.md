@@ -1,42 +1,40 @@
 # First Login
 
 ## Summary
-Sign in with your Depot email address and password. After authentication, Depot opens the workspace shell on a tabless Welcome page instead of selecting a module automatically.
+Depot no longer uses a shared default administrator password. New databases and older databases that still depend on the retired shared administrator are migrated through the administrator setup dialog.
 
-## Prerequisites
-- Depot has been installed and initialized.
-- Your account is active.
-- For a server provider, the workstation can reach the database server.
+## New database or legacy database migration
+1. Start Depot and allow the selected database provider to initialize.
+2. Depot checks whether the connected database has an active personal administrator.
+3. If no active administrator exists, or the retired `admin@depot.local` account is still active, Depot opens the administrator setup dialog.
+4. Enter an individual display name/login email and a password that satisfies the displayed password policy.
+5. Create the administrator and continue to normal sign-in.
 
-## Steps
-1. Start Depot.
-2. Confirm that the database connection is available.
-3. Enter your email address and password.
-4. Select **Sign in**.
-5. Review the Welcome page. It greets you by display name according to the local time of day and lists supported keyboard shortcuts.
-6. Select a module from the activity bar or use **Ctrl+P** to open a workspace, section, or supported record.
+The old shared administrator is not disabled merely by opening a database. If it is still active, Depot retires it atomically only after the replacement administrator is created successfully. If an earlier preview already disabled the legacy account but left the database without an active administrator, Depot detects that state and offers the same recovery/migration setup.
+
+> [!WARNING] Do not create shared administrator credentials or reuse a password from another system.
+
+## Normal sign-in
+1. Confirm that the database connection is available.
+2. Enter your Depot email/login and password.
+3. Select **Sign in**.
+4. Depot opens the tabless Welcome page.
+5. Select a module from the activity bar or use **Ctrl+P**.
+
+Repeated failed sign-in attempts are temporarily throttled per account. Invalid credentials are shown as one inline authentication message.
 
 ## Result
-Depot shows only modules permitted by your active roles. No workspace tab is selected or created automatically after sign-in. Workspaces and supported records open as tabs when you choose them.
+Depot shows only modules permitted by your active roles. No workspace tab is created automatically after sign-in. Closing the final tab returns to Welcome.
 
-If you close the final open tab, Depot returns to the Welcome page. The Welcome page itself is not a workspace tab.
-
-Use **Ctrl+P** for Quick Open, **Ctrl+Shift+P** for the Command Palette, **Ctrl+Tab** to move between open tabs, **Ctrl+W** to close the active tab, and **F1** for context-sensitive Help.
-
-## Status bar
-The database indicator shows the current connection state. Hover it to see the configured database detail. The current application version is also displayed in the status bar; selecting the version opens the About page.
+Use **Ctrl+P** for Quick Open, **Ctrl+Shift+P** for the Command Palette, **Ctrl+Tab** to move between tabs, **Ctrl+W** to close the active tab, and **F1** for context Help.
 
 ## Common problems
-> [!WARNING] Do not share passwords or include them in diagnostics.
-
 - If the connection is unavailable, see [Database Connection Failures](topic:troubleshooting.database-connection-failures).
+- If an older remote database no longer accepts `admin@depot.local`, restart with the current build. Depot will offer administrator migration when no active administrator remains.
 - If access is missing after login, ask an administrator to review your active roles.
-- If a workspace or command is not visible, your account may not have the required permission.
-- Seeing the Welcome page with no tabs after sign-in or after closing the final tab is expected behavior.
-
-## Required permissions
-No application permission is required to open the sign-in window. Workspace visibility is permission-aware after sign-in.
+- Never include passwords or protected connection information in diagnostics.
 
 ## Related topics
 - [Workspace Navigation](topic:getting-started.workspace-navigation)
+- [Users and Roles](topic:administration.users)
 - [Database Connection Failures](topic:troubleshooting.database-connection-failures)
