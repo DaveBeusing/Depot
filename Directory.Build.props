@@ -2,7 +2,7 @@
 	<PropertyGroup>
 		<DepotVersionMajor>0</DepotVersionMajor>
 		<DepotVersionMinor>14</DepotVersionMinor>
-		<DepotVersionPatch>117</DepotVersionPatch>
+		<DepotVersionPatch>118</DepotVersionPatch>
 		<DepotVersionBuild Condition="'$(DepotVersionBuild)' == ''">0</DepotVersionBuild>
 		<DepotVersionSuffix Condition="'$(DepotVersionSuffix)' == ''">preview</DepotVersionSuffix>
 		<VersionPrefix>$(DepotVersionMajor).$(DepotVersionMinor).$(DepotVersionPatch)</VersionPrefix>
