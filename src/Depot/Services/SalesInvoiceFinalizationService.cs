@@ -66,6 +66,11 @@ public sealed class SalesInvoiceFinalizationService
 			new DatabaseParameter("$Id", invoice.Id));
 		if (Convert.ToInt32(existing, CultureInfo.InvariantCulture) != 0)
 			throw new InvalidOperationException("This sales invoice is already finalized and its buyer/XRechnung identity cannot be replaced.");
+		if (invoice.Lines.Count == 0) throw new InvalidOperationException("A finalized invoice requires at least one invoice line.");
+		if (invoice.Lines.Any(line => line.TaxRate <= 0m))
+			throw new InvalidOperationException("Electronic invoice finalization currently requires a positive standard VAT rate on every line. Zero-rated, exempt and reverse-charge lines require an explicit EN 16931 tax category and exemption reason before they can be issued safely.");
+		if (string.IsNullOrWhiteSpace(issuer.Iban))
+			throw new InvalidOperationException("Company IBAN is required before an invoice can be finalized for electronic payment.");
 
 		var customerRows = await transaction.Session.QueryAsync(
 			"SELECT CustomerNumber,Name,ContactName,Email,Phone,TaxId,VatId,BuyerReference,EInvoiceEndpoint,EInvoiceEndpointScheme,BillingStreet,BillingAddressLine2,BillingPostalCode,BillingCity,BillingCountryCode FROM Customers WHERE Id=$Id;",
@@ -118,7 +123,7 @@ public sealed class SalesInvoiceFinalizationService
 			Payment = new ElectronicInvoicePayment
 			{
 				MeansCode = "58",
-				AccountIdentifier = string.IsNullOrWhiteSpace(issuer.Iban) ? null : issuer.Iban,
+				AccountIdentifier = issuer.Iban,
 				AccountName = string.IsNullOrWhiteSpace(issuer.AccountHolder) ? issuer.LegalName : issuer.AccountHolder,
 				FinancialInstitutionIdentifier = string.IsNullOrWhiteSpace(issuer.Bic) ? null : issuer.Bic,
 				PaymentReference = invoice.InvoiceNumber,
@@ -134,7 +139,7 @@ public sealed class SalesInvoiceFinalizationService
 				UnitPrice = line.UnitPrice,
 				DiscountPercent = line.DiscountPercent,
 				TaxRate = line.TaxRate,
-				TaxCategoryCode = line.TaxRate == 0m ? "Z" : "S",
+				TaxCategoryCode = "S",
 				SellerItemIdentifier = line.PartNumber
 			}).ToArray(),
 			Note = invoice.Notes
