@@ -51,6 +51,7 @@
 	<DataTemplate DataType="{x:Type viewModels:NotificationCenterViewModel}"><views:NotificationCenterView /></DataTemplate>
 
 	<DataTemplate DataType="{x:Type administrationViewModels:AdministrationViewModel}"><administrationViews:AdministrationView /></DataTemplate>
+	<DataTemplate DataType="{x:Type administrationViewModels:CompanyProfileViewModel}"><administrationViews:CompanyProfileView /></DataTemplate>
 	<DataTemplate DataType="{x:Type administrationViewModels:DatabaseSettingsViewModel}"><administrationViews:DatabaseSettingsView /></DataTemplate>
 	<DataTemplate DataType="{x:Type administrationViewModels:AboutViewModel}"><administrationViews:AboutView /></DataTemplate>
 	<DataTemplate DataType="{x:Type administrationViewModels:AuditLogViewModel}"><administrationViews:AuditLogView /></DataTemplate>
