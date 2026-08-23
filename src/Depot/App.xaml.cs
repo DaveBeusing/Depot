@@ -23,7 +23,7 @@ public partial class App : Application
 		FrameworkElement.LanguageProperty.OverrideMetadata(typeof(FrameworkElement), new FrameworkPropertyMetadata(XmlLanguage.GetLanguage("de-DE")));
 	}
 
-	protected override void OnStartup(StartupEventArgs e)
+	protected override async void OnStartup(StartupEventArgs e)
 	{
 		ShutdownMode = ShutdownMode.OnExplicitShutdown;
 		DispatcherUnhandledException += OnDispatcherUnhandledException;
@@ -34,7 +34,11 @@ public partial class App : Application
 			var composition = DepotApplicationServices.Create(_fileDialogs, _applicationInformation);
 			_composition = composition;
 			StartupDiagnostics.Log("Application composition initialized.");
-			if (!EnsureAdministrator(composition)) { Shutdown(); return; }
+			if (!await EnsureAdministratorAsync(composition))
+			{
+				Shutdown();
+				return;
+			}
 			RunApplication(composition);
 		}
 		catch (Exception exception)
@@ -45,11 +49,14 @@ public partial class App : Application
 		}
 	}
 
-	private static bool EnsureAdministrator(DepotApplicationServices composition)
+	private static async Task<bool> EnsureAdministratorAsync(DepotApplicationServices composition)
 	{
 		var bootstrap = new AdministratorBootstrapService(composition.Database.DataAccess, composition.Database.TransactionRunner, composition.Services.Authorization);
-		if (!bootstrap.RequiresSetupAsync(CancellationToken.None).GetAwaiter().GetResult()) return true;
-		StartupDiagnostics.Log("Administrator bootstrap required for the current database.");
+		StartupDiagnostics.Log("Checking administrator bootstrap state.");
+		var requiresSetup = await bootstrap.RequiresSetupAsync(CancellationToken.None);
+		StartupDiagnostics.Log($"Administrator bootstrap required: {requiresSetup}.");
+		if (!requiresSetup) return true;
+
 		var result = new FirstRunAdminWindow(bootstrap).ShowDialog();
 		StartupDiagnostics.Log($"Administrator bootstrap returned: {result}");
 		return result == true;
@@ -60,9 +67,17 @@ public partial class App : Application
 		while (true)
 		{
 			composition.Services.Session.Reset();
-			if (!ShowLogin(composition)) { Shutdown(); return; }
+			if (!ShowLogin(composition))
+			{
+				Shutdown();
+				return;
+			}
 			ShowMainWindow(composition);
-			if (!composition.Services.Session.LogoutRequestedByUser) { Shutdown(); return; }
+			if (!composition.Services.Session.LogoutRequestedByUser)
+			{
+				Shutdown();
+				return;
+			}
 			StartupDiagnostics.Log("Restarting session.");
 		}
 	}
