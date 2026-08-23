@@ -19,8 +19,8 @@ public partial class FirstRunAdminWindow : Window
 
 	private async void CreateAdministrator_Click(object sender, RoutedEventArgs e)
 	{
-		ErrorText.Visibility = Visibility.Collapsed;
-		if (!string.Equals(PasswordBox.Password, ConfirmPasswordBox.Password, StringComparison.Ordinal))
+		ErrorPanel.Visibility = Visibility.Collapsed;
+		if (!string.Equals(PasswordBox.PasswordValue, ConfirmPasswordBox.PasswordValue, StringComparison.Ordinal))
 		{
 			ShowError("The password confirmation does not match.");
 			return;
@@ -29,7 +29,7 @@ public partial class FirstRunAdminWindow : Window
 		CreateButton.IsEnabled = false;
 		try
 		{
-			await _bootstrap.CreateAdministratorAsync(EmailBox.Text, DisplayNameBox.Text, PasswordBox.Password, CancellationToken.None);
+			await _bootstrap.CreateAdministratorAsync(EmailBox.Text, DisplayNameBox.Text, PasswordBox.PasswordValue, CancellationToken.None);
 			DialogResult = true;
 		}
 		catch (Exception exception) when (exception is ArgumentException or InvalidOperationException)
@@ -45,6 +45,6 @@ public partial class FirstRunAdminWindow : Window
 	private void ShowError(string message)
 	{
 		ErrorText.Text = message;
-		ErrorText.Visibility = Visibility.Visible;
+		ErrorPanel.Visibility = Visibility.Visible;
 	}
 }
