@@ -24,6 +24,12 @@ public sealed class PasswordInput : Control
 				FrameworkPropertyMetadataOptions.BindsTwoWayByDefault,
 				OnPasswordValueChanged));
 
+	public static readonly RoutedEvent PasswordValueChangedEvent = EventManager.RegisterRoutedEvent(
+		nameof(PasswordValueChanged),
+		RoutingStrategy.Bubble,
+		typeof(RoutedEventHandler),
+		typeof(PasswordInput));
+
 	static PasswordInput()
 	{
 		DefaultStyleKeyProperty.OverrideMetadata(
@@ -35,6 +41,12 @@ public sealed class PasswordInput : Control
 	{
 		get => (string)GetValue(PasswordValueProperty);
 		set => SetValue(PasswordValueProperty, value);
+	}
+
+	public event RoutedEventHandler PasswordValueChanged
+	{
+		add => AddHandler(PasswordValueChangedEvent, value);
+		remove => RemoveHandler(PasswordValueChangedEvent, value);
 	}
 
 	public override void OnApplyTemplate()
@@ -75,6 +87,8 @@ public sealed class PasswordInput : Control
 		{
 			input.SynchronizePasswordBox(eventArgs.NewValue as string ?? string.Empty);
 		}
+
+		input.RaiseEvent(new RoutedEventArgs(PasswordValueChangedEvent, input));
 	}
 
 	private void OnPasswordChanged(object sender, RoutedEventArgs e)
