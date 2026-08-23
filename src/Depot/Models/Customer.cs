@@ -33,6 +33,15 @@ public sealed class Customer
 	public string? Email { get; set; }
 	public string? Phone { get; set; }
 	public string? TaxId { get; set; }
+	public string? VatId { get; set; }
+	public string? BuyerReference { get; set; }
+	public string? EInvoiceEndpoint { get; set; }
+	public string? EInvoiceEndpointScheme { get; set; }
+	public string? BillingStreet { get; set; }
+	public string? BillingAddressLine2 { get; set; }
+	public string? BillingPostalCode { get; set; }
+	public string? BillingCity { get; set; }
+	public string? BillingCountryCode { get; set; }
 	public int PaymentTermsDays { get; set; } = 30;
 	public string Currency { get; set; } = "EUR";
 	public bool IsActive { get; set; } = true;
