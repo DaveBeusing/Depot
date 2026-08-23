@@ -74,6 +74,21 @@ public sealed class SalesInvoiceFinalizationTests : IDisposable
 	}
 
 	[Fact]
+	public async Task FinalizationRejectsInvalidBuyerCountryCodeSyntax()
+	{
+		await _database.ExecuteAsync("UPDATE Customers SET BillingCountryCode='1!' WHERE Id=1;", CancellationToken.None);
+		var runner = new DatabaseTransactionRunner(_database);
+
+		var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => runner.ExecuteAsync(
+			(transaction, token) => SalesInvoiceFinalizationService.FinalizeAsync(transaction, Invoice(), Issuer(), DateTime.UtcNow, token),
+			CancellationToken.None));
+
+		Assert.Contains("country code", exception.Message, StringComparison.OrdinalIgnoreCase);
+		Assert.Contains("ASCII letters", exception.Message, StringComparison.OrdinalIgnoreCase);
+		Assert.Equal(0L, Convert.ToInt64(await _database.ExecuteScalarAsync("SELECT COUNT(*) FROM SalesInvoiceFinalizations WHERE SalesInvoiceId=42;", CancellationToken.None)));
+	}
+
+	[Fact]
 	public async Task LoadingFinalizationRejectsTamperedXRechnungXml()
 	{
 		var runner = new DatabaseTransactionRunner(_database);
