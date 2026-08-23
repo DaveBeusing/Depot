@@ -54,6 +54,7 @@ internal sealed class ServiceComposition
 		SalesInvoices = new SalesInvoiceService(database.TransactionRunner, repositories.SalesInvoices, repositories.Shipments, repositories.SalesOrders, repositories.Customers, repositories.Audit, audit, Authorization, Notifications, SalesCreditNotes);
 		CompanyDocumentIdentity = new CompanyDocumentIdentityService(database.DataAccess, database.Settings.CurrentSettings.Provider);
 		DocumentIssuerSnapshots = new DocumentIssuerSnapshotService(database.DataAccess);
+		SalesInvoiceFinalizations = new SalesInvoiceFinalizationService(database.DataAccess);
 		SalesDocuments = new SalesDocumentService(CompanyDocumentIdentity, DocumentIssuerSnapshots);
 		SalesEmail = new SalesDocumentEmailService();
 		Items = new ItemService(repositories.Items, audit, Manufacturers, Categories, UnitsOfMeasure, Packagings, repositories.SupplierItems);
@@ -69,7 +70,7 @@ internal sealed class ServiceComposition
 		Reports = new ReportService(Stock, Authorization);
 		var inventoryManagement = new InventoryManagementService(repositories.Inventories, audit);
 		Import = new ImportService(repositories.Items, Items, Purposes, Warehouses, StorageLocations, inventoryManagement, Movements, Authorization);
-		Sales = new SalesServices(Customers, SalesPricing, SalesTimeline, SalesOrders, SalesQuotes, Shipments, ShipmentPacking, SalesInvoices, CustomerReturns, SalesCreditNotes, Items, Authorization, SalesDocuments, SalesEmail);
+		Sales = new SalesServices(Customers, SalesPricing, SalesTimeline, SalesOrders, SalesQuotes, Shipments, ShipmentPacking, SalesInvoices, CustomerReturns, SalesCreditNotes, Items, Authorization, SalesDocuments, SalesEmail, SalesInvoiceFinalizations);
 	}
 
 	public AuthorizationService Authorization { get; }
@@ -113,6 +114,7 @@ internal sealed class ServiceComposition
 	public SalesCreditNoteService SalesCreditNotes { get; }
 	public CompanyDocumentIdentityService CompanyDocumentIdentity { get; }
 	public DocumentIssuerSnapshotService DocumentIssuerSnapshots { get; }
+	public SalesInvoiceFinalizationService SalesInvoiceFinalizations { get; }
 	public SalesDocumentService SalesDocuments { get; }
 	public SalesDocumentEmailService SalesEmail { get; }
 	public SalesServices Sales { get; }
