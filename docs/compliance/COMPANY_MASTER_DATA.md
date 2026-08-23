@@ -10,6 +10,7 @@ Depot's company profile is the authoritative issuer/legal-entity master-data sou
 4. **Transaction data stays outside company master data.** Invoice number/date, customer VAT ID, supply date, tax treatment, product origin, HS/commodity code, customs value, export-control classification, sanctions screening and shipment declarations belong to the transaction/product domain.
 5. **Sensitive identifiers are not automatically printable.** In particular IOSS and internal customs-account references must be consumed only by workflows that explicitly require them.
 6. **One authoritative issuer, explicit projections.** Human-readable PDFs and structured electronic invoices consume a sanitized `DocumentIssuerProfile` derived from Company master data. This prevents document generators from each inventing their own sender data or accidentally exposing unrelated regulatory identifiers.
+7. **Mutable master, immutable issued identity.** Company master data remains editable for future business, but posted financial documents capture the issuer values they actually used. Later Company changes must not rewrite the identity of an issued invoice or credit note.
 
 ## Implemented data groups
 
@@ -36,8 +37,16 @@ The resulting `DocumentIssuerProfile` contains only normal publication-safe issu
 
 Restricted or scenario-specific values such as IOSS and internal customs-account references are deliberately absent from `DocumentIssuerProfile`. Their existence in Company master data can therefore never make them appear accidentally on an ordinary quote, invoice, credit note or delivery document.
 
+## Finalized financial documents
+
+Draft documents resolve the current Company master because they are not yet historical records. Posting a Sales Invoice or Sales Credit Note captures an immutable `DocumentIssuerProfile` in `SalesDocumentIssuerSnapshots` inside the posting transaction.
+
+Sales Invoice posting additionally combines that seller snapshot with the frozen Buyer identity and exact XRechnung XML stored in `SalesInvoiceFinalizations`. This means a later change to legal name, address, register details, tax identifiers, contact data, bank details or electronic-invoice endpoint affects future documents only; it does not alter a previously finalized invoice.
+
+Missing historical issuer/finalization data fails closed. Depot does not regenerate an old posted invoice from today's Company master data merely because current data is available.
+
 ## Legal references used for the baseline
 
 The technical baseline was designed against current German business-letter and invoice requirements, EU VAT invoice requirements and EU customs identification concepts. These sources establish minimum patterns; they do not make Depot a substitute for jurisdiction-specific legal/tax review.
 
-Production document templates must be acceptance-tested for each supported legal form, country, tax treatment and international-trade scenario before relying on the generated disclosures.
+Production document templates and electronic-invoice scenarios must be acceptance-tested for each supported legal form, country, tax treatment, recipient/channel and international-trade scenario before relying on the generated disclosures.
