@@ -9,6 +9,7 @@ Depot's company profile is the authoritative issuer/legal-entity master-data sou
 3. **Conditional obligations.** Branch, liquidation, supervisory-board, capital-disclosure and fiscal-representative data is required only when the corresponding business condition is enabled.
 4. **Transaction data stays outside company master data.** Invoice number/date, customer VAT ID, supply date, tax treatment, product origin, HS/commodity code, customs value, export-control classification, sanctions screening and shipment declarations belong to the transaction/product domain.
 5. **Sensitive identifiers are not automatically printable.** In particular IOSS and internal customs-account references must be consumed only by workflows that explicitly require them.
+6. **One authoritative issuer, explicit projections.** Human-readable PDFs and structured electronic invoices consume a sanitized `DocumentIssuerProfile` derived from Company master data. This prevents document generators from each inventing their own sender data or accidentally exposing unrelated regulatory identifiers.
 
 ## Implemented data groups
 
@@ -26,6 +27,14 @@ Depot's company profile is the authoritative issuer/legal-entity master-data sou
 - Regulatory authority and regulated-profession disclosure data
 - Contact, banking, IBAN/BIC and SEPA creditor identifier
 - Currency, language, payment-term and legal-footer defaults
+
+## Business-document integration
+
+`CompanyDocumentIdentityService` reads the current profile immediately before document generation and re-runs the company validation rules. If the company profile has never been configured or contains blocking errors, the document is not generated.
+
+The resulting `DocumentIssuerProfile` contains only normal publication-safe issuer fields. Sales PDFs use it for the issuer name, address, document metadata, registration/management disclosure, tax identifiers, bank details and contact footer. The same projection maps into `ElectronicInvoiceParty` for EN 16931/XRechnung seller data.
+
+Restricted or scenario-specific values such as IOSS and internal customs-account references are deliberately absent from `DocumentIssuerProfile`. Their existence in Company master data can therefore never make them appear accidentally on an ordinary quote, invoice, credit note or delivery document.
 
 ## Legal references used for the baseline
 
