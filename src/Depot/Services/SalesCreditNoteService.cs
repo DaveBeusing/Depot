@@ -70,6 +70,7 @@ public sealed class SalesCreditNoteService
 			if (before.Status != SalesCreditNoteStatus.Draft) throw new InvalidOperationException("Only a draft credit note can be posted.");
 			var postedAt = DateTime.UtcNow;
 			if (!await _creditNotes.PostAsync(transaction, id, version, user.Id, postedAt, cancellationToken)) throw new ConcurrencyConflictException("sales credit note");
+			await DocumentIssuerSnapshotService.CaptureCurrentAsync(transaction, DocumentIssuerSnapshotType.SalesCreditNote, id, postedAt, cancellationToken);
 			var after = await _creditNotes.GetByIdAsync(transaction, id, cancellationToken) ?? throw new InvalidOperationException("Credit note could not be reloaded.");
 			await _auditEntries.CreateAsync(transaction, _audit.CreateUpdatedEntry(id, before, after), cancellationToken);
 			return after;
