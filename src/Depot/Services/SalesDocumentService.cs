@@ -1,7 +1,9 @@
 // Copyright (c) 2026 David Beusing
 // Licensed under the MIT License.
 
+using Depot.Data;
 using Depot.Models;
+using Depot.Repositories;
 
 using PdfSharp.Drawing;
 using PdfSharp.Pdf;
@@ -16,6 +18,7 @@ public sealed class SalesDocumentService
 	private static readonly XFont SmallFont = new("Segoe UI", 8, XFontStyleEx.Regular);
 	private readonly CompanyDocumentIdentityService _issuerService;
 
+	public SalesDocumentService() : this(CreateIssuerService()) { }
 	public SalesDocumentService(CompanyDocumentIdentityService issuerService) => _issuerService = issuerService;
 
 	public void CreateQuote(string path, SalesQuote quote)
@@ -97,6 +100,12 @@ public sealed class SalesDocumentService
 		DrawReturnLines(graphics,page,y,customerReturn.Lines,shipment.Lines);DrawIssuerFooter(graphics,page,issuer);Save(document,path);
 	}
 
+	private static CompanyDocumentIdentityService CreateIssuerService()
+	{
+		var settingsService=new SettingsService(new SettingsRepository("depot.settings"));
+		var settings=settingsService.LoadOrCreate();
+		return new CompanyDocumentIdentityService(new DatabaseAccess(DatabaseProviderFactory.CreateConnectionFactory(settings)),settings.Provider);
+	}
 	private static PdfDocument CreateDocument(DocumentIssuerProfile issuer,string title,string subject){var document=new PdfDocument();document.Info.Title=$"{issuer.DisplayName} - {title}";document.Info.Subject=subject;document.Info.Creator=issuer.LegalName;document.Info.Author=issuer.LegalName;return document;}
 	private static double DrawHeader(XGraphics graphics,DocumentIssuerProfile issuer,string title,string number,string customer,DateTime date){graphics.DrawString(Trim(issuer.DisplayName,50),HeadingFont,XBrushes.Black,new XPoint(40,38));graphics.DrawString(Trim(issuer.PostalAddress,82),SmallFont,XBrushes.Gray,new XPoint(40,54));graphics.DrawString(title,TitleFont,XBrushes.Black,new XPoint(40,82));graphics.DrawString(number,HeadingFont,XBrushes.Black,new XPoint(40,106));graphics.DrawString(date.ToString("d"),BodyFont,XBrushes.Black,new XPoint(470,45));graphics.DrawString(customer,BodyFont,XBrushes.Black,new XPoint(360,106));graphics.DrawLine(XPens.LightGray,40,120,555,120);return 146;}
 	private static void DrawIssuerFooter(XGraphics graphics,PdfPage page,DocumentIssuerProfile issuer){var y=page.Height.Point-44;graphics.DrawLine(XPens.LightGray,40,y-8,555,y-8);var legal=string.Join(" · ",new[]{issuer.RegistrationLine,issuer.TaxLine}.Where(value=>!string.IsNullOrWhiteSpace(value)));graphics.DrawString(Trim(legal,110),SmallFont,XBrushes.Gray,new XPoint(40,y));var bank=issuer.BankLine;var contact=string.Join(" · ",new[]{issuer.Email,issuer.Phone,issuer.Website}.Where(value=>!string.IsNullOrWhiteSpace(value)));graphics.DrawString(Trim(string.Join(" · ",new[]{bank,contact}.Where(value=>!string.IsNullOrWhiteSpace(value))),110),SmallFont,XBrushes.Gray,new XPoint(40,y+11));}
