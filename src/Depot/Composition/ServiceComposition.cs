@@ -52,7 +52,8 @@ internal sealed class ServiceComposition
 		Shipments = new ShipmentService(database.TransactionRunner, repositories.Shipments, repositories.SalesOrders, repositories.InventoryReservations, repositories.Inventories, repositories.StockMovements, repositories.SalesInvoices, CustomerReturns, repositories.Audit, audit, Authorization, Notifications);
 		ShipmentPacking = new ShipmentPackingService(database.TransactionRunner, repositories.Shipments, repositories.Audit, audit, Authorization);
 		SalesInvoices = new SalesInvoiceService(database.TransactionRunner, repositories.SalesInvoices, repositories.Shipments, repositories.SalesOrders, repositories.Customers, repositories.Audit, audit, Authorization, Notifications, SalesCreditNotes);
-		SalesDocuments = new SalesDocumentService();
+		CompanyDocumentIdentity = new CompanyDocumentIdentityService(database.DataAccess, database.Settings.CurrentSettings.Provider);
+		SalesDocuments = new SalesDocumentService(CompanyDocumentIdentity);
 		SalesEmail = new SalesDocumentEmailService();
 		Items = new ItemService(repositories.Items, audit, Manufacturers, Categories, UnitsOfMeasure, Packagings, repositories.SupplierItems);
 		Purposes = new PurposeService(repositories.Purposes, audit);
@@ -109,6 +110,7 @@ internal sealed class ServiceComposition
 	public SalesInvoiceService SalesInvoices { get; }
 	public CustomerReturnService CustomerReturns { get; }
 	public SalesCreditNoteService SalesCreditNotes { get; }
+	public CompanyDocumentIdentityService CompanyDocumentIdentity { get; }
 	public SalesDocumentService SalesDocuments { get; }
 	public SalesDocumentEmailService SalesEmail { get; }
 	public SalesServices Sales { get; }
