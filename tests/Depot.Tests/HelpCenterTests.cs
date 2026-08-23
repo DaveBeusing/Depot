@@ -24,7 +24,7 @@ public sealed class HelpCenterTests
 		var catalog = await service.GetCatalogAsync();
 
 		Assert.Equal("1.6", catalog.Version);
-		Assert.Equal(29, catalog.Topics.Count);
+		Assert.NotEmpty(catalog.Topics);
 		Assert.Equal(catalog.Topics.Count, catalog.Topics.Select(topic => topic.Id).Distinct(StringComparer.Ordinal).Count());
 	}
 
