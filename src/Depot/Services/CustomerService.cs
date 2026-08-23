@@ -69,7 +69,7 @@ public sealed class CustomerService
 		Required(customer.BillingCity, "Billing city", errors);
 		Required(customer.BillingCountryCode, "Billing country code", errors);
 		if (string.IsNullOrWhiteSpace(customer.TaxId) && string.IsNullOrWhiteSpace(customer.VatId)) errors.Add("Tax ID or VAT ID is required for finalized buyer identity.");
-		if (!string.IsNullOrWhiteSpace(customer.BillingCountryCode) && customer.BillingCountryCode.Trim().Length != 2) errors.Add("Billing country code must be ISO 3166-1 alpha-2.");
+		if (!string.IsNullOrWhiteSpace(customer.BillingCountryCode) && !IsIsoAlpha2Syntax(customer.BillingCountryCode)) errors.Add("Billing country code must use two ASCII letters (ISO 3166-1 alpha-2 syntax).");
 		return errors;
 	}
 
@@ -80,8 +80,14 @@ public sealed class CustomerService
 		if (customer.Name.Length == 0) throw new ArgumentException("A customer name is required."); if (customer.Name.Length > 250) throw new ArgumentException("Customer name must not exceed 250 characters."); if (customer.Currency.Length != 3) throw new ArgumentException("Currency must be a three-letter code."); if (customer.PaymentTermsDays < 0 || customer.PaymentTermsDays > 3650) throw new ArgumentOutOfRangeException(nameof(customer.PaymentTermsDays));
 		if (customer.Email?.Length > 250 || customer.Phone?.Length > 100 || customer.TaxId?.Length > 100 || customer.VatId?.Length > 100 || customer.BuyerReference?.Length > 250 || customer.EInvoiceEndpoint?.Length > 250 || customer.EInvoiceEndpointScheme?.Length > 50) throw new ArgumentException("Customer identity data exceeds its maximum length.");
 		if (customer.BillingStreet?.Length > 250 || customer.BillingAddressLine2?.Length > 250 || customer.BillingPostalCode?.Length > 50 || customer.BillingCity?.Length > 250) throw new ArgumentException("Structured billing address exceeds its maximum length.");
-		if (customer.BillingCountryCode is { Length: > 0 } country && country.Length != 2) throw new ArgumentException("Billing country code must be ISO 3166-1 alpha-2.");
+		if (customer.BillingCountryCode is { Length: > 0 } country && !IsIsoAlpha2Syntax(country)) throw new ArgumentException("Billing country code must use two ASCII letters (ISO 3166-1 alpha-2 syntax).");
 		if (customer.BillingAddress?.Length > 2000 || customer.ShippingAddress?.Length > 2000) throw new ArgumentException("Customer address exceeds its maximum length.");
+	}
+
+	private static bool IsIsoAlpha2Syntax(string value)
+	{
+		var country = value.Trim();
+		return country.Length == 2 && country.All(character => character is >= 'A' and <= 'Z' or >= 'a' and <= 'z');
 	}
 
 	private static void Required(string? value, string name, ICollection<string> errors) { if (string.IsNullOrWhiteSpace(value)) errors.Add($"{name} is required."); }
