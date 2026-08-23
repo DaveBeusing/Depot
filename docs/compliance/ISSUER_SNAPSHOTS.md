@@ -6,7 +6,7 @@ Depot stores the company identity used for posted financial documents separately
 
 Issuer snapshots currently apply to posted sales invoices and posted sales credit notes. Draft documents continue to resolve the current Company master data because they are not yet finalized business records.
 
-When a financial document is posted, Depot projects the current `CompanyProfile` to the publishable `DocumentIssuerProfile` and inserts that projection into `SalesDocumentIssuerSnapshots` inside the same database transaction as the posting status change and audit event.
+When a financial document is posted, Depot projects the current `CompanyProfile` to the publishable `DocumentIssuerProfile` and inserts that projection into `SalesDocumentIssuerSnapshots` inside the same database transaction as the posting status change and audit event. If issuer capture fails, the complete posting transaction fails and is rolled back.
 
 The snapshot contains the legal/trading identity, postal address, register/tax disclosure, management disclosure, ordinary contact data, bank details and structured-invoice endpoint data needed for regeneration. It deliberately excludes workflow-specific or sensitive company registrations such as IOSS and internal customs-account references.
 
@@ -29,7 +29,7 @@ Financial documents posted before this schema existed do not contain provable hi
 
 ## Database migration
 
-Sales schema version 7 adds `SalesDocumentIssuerSnapshots` for SQLite, SQL Server and MySQL/MariaDB.
+Sales schema version 7 adds `SalesDocumentIssuerSnapshots` for SQLite, SQL Server and MySQL/MariaDB and ensures Company-profile storage exists before financial posting is attempted.
 
 ## Evidence
 
