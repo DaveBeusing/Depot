@@ -38,7 +38,7 @@ internal sealed class ServiceComposition
 		PurchaseOrderHistory = new PurchaseOrderHistoryService(repositories.Audit, Authorization, new AuditJsonSanitizer());
 		GoodsReceipts = new GoodsReceiptService(database.TransactionRunner, repositories.GoodsReceipts, repositories.PurchaseOrders, repositories.Inventories, repositories.StockMovements, repositories.ReasonCodes, repositories.Audit, audit, movementReversals);
 		StockTransfers = new StockTransferService(database.TransactionRunner, repositories.StockTransfers, repositories.Inventories, repositories.StockMovements, repositories.ReasonCodes, repositories.Audit, audit, movementReversals);
-		InventoryCounts = new InventoryCountService(database.TransactionRunner, repositories.InventoryCounts, repositories.Inventories, repositories.StockMovements, repositories.ReasonCodes, repositories.Warehouses, repositories.Audit, audit, movementReversals, Notifications);
+		InventoryCounts = new InventoryCountService(database.TransactionRunner, repositories.InventoryCounts, repositories.StockMovements, repositories.ReasonCodes, repositories.Warehouses, repositories.Audit, audit, movementReversals, Notifications);
 		MaterialIssues = new MaterialIssueService(database.TransactionRunner, repositories.MaterialIssues, repositories.Inventories, repositories.StockMovements, repositories.ReasonCodes, repositories.Audit, audit, movementReversals, Authorization);
 		MaterialReturns = new MaterialReturnService(database.TransactionRunner, repositories.MaterialReturns, repositories.MaterialIssues, repositories.Inventories, repositories.StockMovements, repositories.ReasonCodes, repositories.Audit, audit, movementReversals, Authorization);
 		SupplierReturns = new SupplierReturnService(database.TransactionRunner, repositories.SupplierReturns, repositories.PurchaseOrders, repositories.GoodsReceipts, repositories.Inventories, repositories.StockMovements, repositories.ReasonCodes, repositories.Audit, audit, movementReversals, Authorization);
@@ -53,7 +53,8 @@ internal sealed class ServiceComposition
 		ShipmentPacking = new ShipmentPackingService(database.TransactionRunner, repositories.Shipments, repositories.Audit, audit, Authorization);
 		SalesInvoices = new SalesInvoiceService(database.TransactionRunner, repositories.SalesInvoices, repositories.Shipments, repositories.SalesOrders, repositories.Customers, repositories.Audit, audit, Authorization, Notifications, SalesCreditNotes);
 		CompanyDocumentIdentity = new CompanyDocumentIdentityService(database.DataAccess, database.Settings.CurrentSettings.Provider);
-		SalesDocuments = new SalesDocumentService(CompanyDocumentIdentity);
+		DocumentIssuerSnapshots = new DocumentIssuerSnapshotService(database.DataAccess);
+		SalesDocuments = new SalesDocumentService(CompanyDocumentIdentity, DocumentIssuerSnapshots);
 		SalesEmail = new SalesDocumentEmailService();
 		Items = new ItemService(repositories.Items, audit, Manufacturers, Categories, UnitsOfMeasure, Packagings, repositories.SupplierItems);
 		Purposes = new PurposeService(repositories.Purposes, audit);
@@ -111,6 +112,7 @@ internal sealed class ServiceComposition
 	public CustomerReturnService CustomerReturns { get; }
 	public SalesCreditNoteService SalesCreditNotes { get; }
 	public CompanyDocumentIdentityService CompanyDocumentIdentity { get; }
+	public DocumentIssuerSnapshotService DocumentIssuerSnapshots { get; }
 	public SalesDocumentService SalesDocuments { get; }
 	public SalesDocumentEmailService SalesEmail { get; }
 	public SalesServices Sales { get; }
