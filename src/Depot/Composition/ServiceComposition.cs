@@ -55,7 +55,7 @@ internal sealed class ServiceComposition
 		CompanyDocumentIdentity = new CompanyDocumentIdentityService(database.DataAccess, database.Settings.CurrentSettings.Provider);
 		DocumentIssuerSnapshots = new DocumentIssuerSnapshotService(database.DataAccess);
 		SalesInvoiceFinalizations = new SalesInvoiceFinalizationService(database.DataAccess);
-		SalesDocuments = new SalesDocumentService(CompanyDocumentIdentity, DocumentIssuerSnapshots);
+		SalesDocuments = new SalesDocumentService(CompanyDocumentIdentity, DocumentIssuerSnapshots, SalesInvoiceFinalizations);
 		SalesEmail = new SalesDocumentEmailService();
 		Items = new ItemService(repositories.Items, audit, Manufacturers, Categories, UnitsOfMeasure, Packagings, repositories.SupplierItems);
 		Purposes = new PurposeService(repositories.Purposes, audit);
