@@ -29,7 +29,7 @@ Financial documents posted before this schema existed do not contain provable hi
 
 ## Database migration
 
-Sales schema version 7 adds `SalesDocumentIssuerSnapshots` for SQLite, SQL Server and MySQL/MariaDB and ensures Company-profile storage exists before financial posting is attempted. The application build carrying this completed block is version `0.14.113-preview`.
+Sales schema version 7 adds `SalesDocumentIssuerSnapshots` for SQLite, SQL Server and MySQL/MariaDB and ensures Company-profile storage exists before financial posting is attempted.
 
 ## Evidence
 
