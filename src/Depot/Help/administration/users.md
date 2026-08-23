@@ -8,10 +8,15 @@ A new database does not use a shared default administrator password. Depot requi
 
 ## User management
 1. Open **Administration > Users** to create or edit an account.
-2. Enter identity information and, when setting/resetting a password, satisfy the current password policy shown by the application.
-3. Assign one or more active roles.
-4. Use **Roles** to inspect or maintain non-protected role permissions.
-5. Save changes and start a new session where required for the updated permissions to take effect.
+2. Enter identity information and, when setting or resetting a password, satisfy every password requirement shown below the password field. Each rule turns green when satisfied and remains red while unmet.
+3. Re-enter the password in **Confirm password**. The confirmation must match before the user can be saved.
+4. For an existing account, leave both password fields blank to keep the current password unchanged.
+5. Assign one or more active roles.
+6. Use **Roles** to inspect or maintain non-protected role permissions.
+7. Save changes and start a new session where required for updated permissions to take effect.
+
+## Password policy
+The Users editor uses the same central policy as first-run administrator setup: 12–128 characters, at least one uppercase letter, one lowercase letter, one number and one symbol, and the password must not contain the account name. The UI is advisory feedback; the same policy is also enforced when the account is saved.
 
 ## Security behavior
 - Passwords are stored as salted, versioned PBKDF2-HMAC-SHA256 hashes rather than recoverable plaintext.
