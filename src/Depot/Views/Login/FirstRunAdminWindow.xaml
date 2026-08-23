@@ -11,8 +11,8 @@
 	<Border Padding="24" Background="{DynamicResource BackgroundBrush}">
 		<StackPanel Width="420">
 			<Image Width="64" Height="56" HorizontalAlignment="Center" Margin="0,0,0,16" Source="/Resources/Images/Depot.png" />
-			<TextBlock Text="Create the first administrator" TextAlignment="Center" Style="{StaticResource PageTitleStyle}" />
-			<TextBlock Margin="0,6,0,20" Foreground="{DynamicResource SecondaryTextBrush}" Text="Depot no longer ships with shared default credentials. Create an administrator for this database before continuing." TextWrapping="Wrap" TextAlignment="Center" />
+			<TextBlock Text="Create an administrator" TextAlignment="Center" Style="{StaticResource PageTitleStyle}" />
+			<TextBlock Margin="0,6,0,20" Foreground="{DynamicResource SecondaryTextBrush}" Text="This database has no active personal administrator, or still uses the retired shared administrator account. Create an individual administrator before continuing. The legacy account is retired only after the new administrator has been created successfully." TextWrapping="Wrap" TextAlignment="Center" />
 			<TextBlock Text="Display name" Style="{StaticResource FormLabelStyle}" />
 			<TextBox x:Name="DisplayNameBox" />
 			<TextBlock Margin="0,12,0,4" Text="Email" Style="{StaticResource FormLabelStyle}" />

@@ -40,7 +40,6 @@ internal sealed class DatabaseComposition : IDisposable
 		var database = DatabaseProviderFactory.CreateInitializer(connectionFactory);
 		database.Initialize();
 		SalesSchemaMigration.Migrate(connectionFactory);
-		LegacyAdministratorRetirement.Retire(dataAccess);
 		connectionStatus.SetConnected(connectionSettings);
 		var management = new DatabaseManagementService(connectionFactory, settings);
 		return new DatabaseComposition(dataAccess, new DatabaseTransactionRunner(dataAccess), settings, connectionStatus, new DatabaseConnectionTester(), management, new DatabaseBackupScheduler(management, settings));

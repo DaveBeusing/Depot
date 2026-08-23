@@ -36,8 +36,11 @@ public sealed class AdministratorBootstrapService
 	{
 		var legacy = await _users.GetByEmailAsync(LegacyAdministratorEmail, cancellationToken);
 		if (legacy?.IsActive == true) return true;
-		var activeUsers = Convert.ToInt64(await _database.ExecuteScalarAsync("SELECT COUNT(*) FROM Users WHERE IsActive = 1;", cancellationToken));
-		return activeUsers == 0;
+
+		var activeAdministrators = Convert.ToInt64(await _database.ExecuteScalarAsync(
+			"SELECT COUNT(*) FROM Users WHERE IsActive = 1 AND IsAdministrator = 1;",
+			cancellationToken));
+		return activeAdministrators == 0;
 	}
 
 	public async Task<User> CreateAdministratorAsync(string email, string displayName, string password, CancellationToken cancellationToken)
