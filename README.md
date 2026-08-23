@@ -16,6 +16,8 @@ The project is under active development on the **0.14.x-preview** line and is no
 - administrator Audit Log, evidence export, and Privacy Data discovery/export
 - backup validation, restore, automatic backup retention, integrity checks, and SQLite compaction
 - CycloneDX SBOM, NuGet vulnerability audit, dependency lock verification, CRA evidence generation, and release-integrity workflows
+- Administration > Company as the legal seller identity used by generated business documents
+- immutable seller and buyer invoice identity with persisted issued XRechnung XML and SHA-256 integrity verification
 - EN 16931-oriented electronic invoice model with XRechnung CII generation and pinned KoSIT conformance validation
 - ISO/IEC-25010-inspired software-quality gates and automated accessibility baselines
 
@@ -43,7 +45,7 @@ Reports
 Administration
 ```
 
-Administration includes users/roles, database configuration, backup/restore, Audit Log, Privacy Data, About/application information, Notification Center, and the offline Help Center.
+Administration includes Company master data, users/roles, database configuration, backup/restore, Audit Log, Privacy Data, About/application information, Notification Center, and the offline Help Center.
 
 ## Business-record integrity
 
@@ -61,19 +63,23 @@ Depot deliberately does not provide a universal destructive “GDPR delete” ac
 
 Depot includes an EN 16931-oriented semantic electronic-invoice model and deterministic UN/CEFACT CII generation targeted at XRechnung 3.0. Representative XML is validated in CI with a pinned KoSIT XRechnung validator/configuration.
 
-This is a technical foundation. Production electronic-invoice support still requires integration into the persisted invoice workflow, immutable retention of issued XML, organization/recipient-specific configuration, and validation of every advertised tax/profile scenario. ZUGFeRD/Factur-X is not claimed until a true PDF/A-3 pipeline is implemented and validated.
+Sales-invoice posting is the immutable invoice-identity boundary. In the same transaction Depot captures the historical seller profile, freezes the relevant buyer identity and structured billing/tax data, generates the XRechnung-oriented CII XML, and stores the exact issued XML with a SHA-256 fingerprint. Later customer or company master-data changes therefore cannot change the finalized structured invoice. The Invoice workspace can export the verified persisted XML for posted invoices; it is not regenerated from current master data.
+
+Posting fails closed when mandatory seller/buyer data is incomplete or when the invoice uses a tax scenario that the persisted commercial model cannot represent unambiguously. The current finalization path accepts positive standard-VAT sales-invoice lines. Zero-rated, exempt, and reverse-charge scenarios remain blocked until explicit EN 16931 tax category and exemption/reason semantics are stored on the commercial document. Electronic credit-note buyer/XML finalization remains separate follow-up work.
+
+Runtime posting performs Depot application-level validation and does not invoke the external KoSIT executable. Production deployment still requires organization/recipient-specific routing configuration and validation of every advertised tax/profile/channel scenario against the applicable production XRechnung/KoSIT release. ZUGFeRD/Factur-X is not claimed until a true PDF/A-3 pipeline is implemented and validated.
 
 ## Database providers
 
 SQLite is the default provider. Microsoft SQL Server and MySQL/MariaDB implementations are also present. Supported remote-provider settings enforce encrypted transport. Live-server migration, backup/restore, recovery, concurrency, and version-matrix acceptance remain required before a server configuration is advertised as production-supported.
 
-The core database schema is currently **29**. Sales uses the versioned `DepotFeatureVersions` registry. Application release versions and database schema versions are independent.
+The core database schema is currently **29**. Sales uses the versioned `DepotFeatureVersions` registry; Sales invoice finalization is schema version **8**. Application release versions and database schema versions are independent.
 
 ## Offline Help Center
 
 Depot ships an embedded Markdown Help Center rendered natively in WPF. It is permission-filtered, locally searchable, uses stable topic links, and opens as a workspace tab. F1 resolves the current Help context.
 
-Help manifest **1.6** documents first-run administrator creation, current workspace/navigation behavior, hardened database/backup guidance, Audit Log evidence export, Privacy Data, and electronic-invoice status. See `docs/HELP_CENTER.md` for authoring rules.
+Help manifest **1.6** documents first-run administrator creation, current workspace/navigation behavior, hardened database/backup guidance, Audit Log evidence export, Privacy Data, Company identity, and electronic-invoice finalization/export. See `docs/HELP_CENTER.md` for authoring rules.
 
 ## Architecture
 
@@ -107,7 +113,7 @@ dotnet restore Depot.slnx --locked-mode
 dotnet run --project src/Depot/Depot.csproj -c Debug
 ```
 
-A new installation defaults to local SQLite and creates `depot.db`; protected settings are stored in `depot.settings`. **Administration > Database** configures SQLite, SQL Server, or MySQL/MariaDB.
+A new installation defaults to local SQLite and creates `depot.db`; protected settings are stored in `depot.settings`. **Administration > Database** configures SQLite, SQL Server, or MySQL/MariaDB. **Administration > Company** configures the legal seller/document identity used by business documents and electronic-invoice finalization.
 
 ### First run
 
@@ -131,7 +137,7 @@ dotnet publish src/Depot/Depot.csproj `
   -p:DebugType=None -p:DebugSymbols=false
 ```
 
-Runtime data (`depot.db`, `depot.settings`, logs, backups, PDFs, exports) remains external. Do not enable `PublishTrimmed` without dedicated WPF/XAML trimming validation.
+Runtime data (`depot.db`, `depot.settings`, logs, backups, PDFs, XML exports, evidence exports) remains external. Do not enable `PublishTrimmed` without dedicated WPF/XAML trimming validation.
 
 ## CI and assurance
 
@@ -186,7 +192,9 @@ Major remaining acceptance work is environment- or production-specific rather th
 - production code-signing certificate and timestamp validation
 - interactive keyboard/focus, Narrator/Accessibility Insights, and 100/125/150/200% DPI acceptance
 - representative production sizing/load tests
-- production integration and immutable persistence of issued XRechnung XML
+- explicit EN 16931 tax-category/exemption semantics for zero-rated, exempt, and reverse-charge invoice scenarios
+- buyer/XRechnung finalization for electronic credit notes
+- production recipient/channel routing and full advertised-scenario validation against the applicable KoSIT/XRechnung release
 - PDF/A-3 implementation before any ZUGFeRD/Factur-X claim
 - operator/legal acceptance for GDPR, GoBD, CRA classification/conformity, retention periods, and organization-specific procedures
 - installer/package, upgrade, rollback, and uninstall acceptance
