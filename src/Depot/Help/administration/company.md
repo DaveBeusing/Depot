@@ -19,7 +19,7 @@ Maintain the domestic tax number and/or VAT/GST registration. Additional registr
 OSS and IOSS identifiers are stored separately. Sensitive identifiers such as IOSS are **not part of the normal printable document identity** and are not automatically emitted on quotes, invoices or shipping documents.
 
 ## Electronic invoicing
-The electronic invoicing section stores the seller electronic address/endpoint and scheme plus an optional Leitweg-ID. Depot maps the publishable Company identity into the EN 16931/XRechnung seller party so the structured invoice and human-readable documents use the same issuer source.
+The electronic invoicing section stores the seller electronic address/endpoint and scheme plus an optional Leitweg-ID. Depot maps the publication-safe Company identity into the EN 16931/XRechnung seller party so the structured invoice and human-readable documents use the same issuer source.
 
 ## International trade and customs
 EORI, REX, AEO and customs references can be maintained for applicable international-trade workflows. Default Incoterms 2020 and named place/port are reusable defaults only; the actual transaction or shipment must override them whenever the commercial agreement differs.
@@ -33,7 +33,7 @@ Optional fields cover LEI, GLN, D-U-N-S, Packaging/EPR, WEEE, battery registrati
 General phone, email and website fields can be used on generated documents. The invoice contact email can differ from the general contact address. Bank account holder, bank name, IBAN and BIC are available for payment instructions. A SEPA creditor identifier can be stored where Direct Debit is used.
 
 ## Document output
-Normal generated PDFs now use the Company profile for:
+Normal generated PDFs use the Company profile for:
 
 - issuer/display name and PDF metadata;
 - registered postal address;
