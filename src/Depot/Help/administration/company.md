@@ -5,6 +5,8 @@ The **Administration > Company** page stores the legal identity of the organizat
 
 Depot validates the company profile before a business document is generated. If mandatory legal master data is incomplete, document creation is blocked with an actionable message instead of silently falling back to a generic `DEPOT` sender.
 
+For finalized financial documents, the Company page is the source for future postings, not a live rewrite source for historical documents. Posted invoices and credit notes keep the issuer identity captured when they were posted.
+
 ## Required legal identity
 Maintain the registered legal company name and legal form, registered office where applicable, full business address, registration authority/type/number for registered entities, and the legally relevant management or representatives for the selected jurisdiction/legal form. German GmbH/UG/AG profiles receive the corresponding German corporate-disclosure checks without applying those rules blindly to foreign entities.
 
@@ -20,6 +22,10 @@ OSS and IOSS identifiers are stored separately. Sensitive identifiers such as IO
 
 ## Electronic invoicing
 The electronic invoicing section stores the seller electronic address/endpoint and scheme plus an optional Leitweg-ID. Depot maps the publication-safe Company identity into the EN 16931/XRechnung seller party so the structured invoice and human-readable documents use the same issuer source.
+
+When a Sales Invoice is posted, the seller projection is frozen together with the invoice's Buyer identity and generated XRechnung XML. Editing Company data later changes future documents only. The **Export XRechnung** action on a posted invoice therefore exports the persisted issued XML rather than rebuilding it from the current Company profile.
+
+Runtime invoice posting performs Depot's application-level electronic-invoice validation. The external KoSIT validator is used by CI for representative conformance evidence, not invoked inside the posting transaction. Production recipient/channel configuration and validation of every advertised tax/profile scenario remain deployment/release acceptance tasks.
 
 ## International trade and customs
 EORI, REX, AEO and customs references can be maintained for applicable international-trade workflows. Default Incoterms 2020 and named place/port are reusable defaults only; the actual transaction or shipment must override them whenever the commercial agreement differs.
@@ -44,6 +50,8 @@ Normal generated PDFs use the Company profile for:
 
 The printable issuer model intentionally contains only publication-safe fields. IOSS, internal customs-account references and unrelated regulatory identifiers cannot leak into a normal document simply because they exist in Company master data.
 
+Draft documents use the current Company profile. Posting a Sales Invoice or Sales Credit Note captures an immutable issuer snapshot. A posted document with a missing historical snapshot fails closed instead of falling back to today's Company data.
+
 ## Document defaults
 Default currency, language, payment terms and Incoterm/location provide reusable defaults for future transaction workflows. Additional legal footer text is available for disclosures that are applicable but not represented by a dedicated field.
 
@@ -51,7 +59,7 @@ Default currency, language, payment terms and Incoterm/location provide reusable
 Depot displays blocking validation errors and non-blocking recommendations while the profile is edited. Saving is blocked while required structural/legal fields are invalid. Business-document generation performs the same validation again at point of use. The company profile uses optimistic concurrency; if another user saves a newer version first, reload the current data before saving again.
 
 ## Permissions
-Viewing the administration page requires `Settings.View`; changing the company profile requires `Settings.Manage`. Sales users do not need settings-administration permission merely to create an authorized sales document: the document pipeline reads only the sanitized issuer snapshot required for that document.
+Viewing the administration page requires `Settings.View`; changing the company profile requires `Settings.Manage`. Sales users do not need settings-administration permission merely to create an authorized sales document: the document pipeline reads only the sanitized issuer identity required for that document.
 
 ## Related topics
 - [Sales Quotes](topic:sales.quotes)
