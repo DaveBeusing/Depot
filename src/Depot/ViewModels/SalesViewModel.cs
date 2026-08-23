@@ -405,7 +405,33 @@ public sealed class SalesViewModel : BaseViewModel, IDisposable
 	private void RaiseCommands() { SaveOrderCommand.RaiseCanExecuteChanged(); SubmitCommand.RaiseCanExecuteChanged(); ApproveCommand.RaiseCanExecuteChanged(); RejectCommand.RaiseCanExecuteChanged(); ReserveCommand.RaiseCanExecuteChanged(); ReleaseCommand.RaiseCanExecuteChanged(); CreateShipmentCommand.RaiseCanExecuteChanged(); SaveShipmentCommand.RaiseCanExecuteChanged(); PostShipmentCommand.RaiseCanExecuteChanged(); ReverseShipmentCommand.RaiseCanExecuteChanged(); CreateCustomerReturnCommand.RaiseCanExecuteChanged(); PostCustomerReturnCommand.RaiseCanExecuteChanged(); CreateInvoiceCommand.RaiseCanExecuteChanged(); CancelInvoiceCommand.RaiseCanExecuteChanged(); PostInvoiceCommand.RaiseCanExecuteChanged(); CreateCreditNoteCommand.RaiseCanExecuteChanged(); PostCreditNoteCommand.RaiseCanExecuteChanged(); OrderConfirmationCommand.RaiseCanExecuteChanged(); DeliveryNoteCommand.RaiseCanExecuteChanged(); InvoicePdfCommand.RaiseCanExecuteChanged(); AddLineCommand.RaiseCanExecuteChanged(); RemoveLineCommand.RaiseCanExecuteChanged(); }
 	private static Customer NewCustomerDraft() => new() { Currency = "EUR", PaymentTermsDays = 30, IsActive = true };
 	private static SalesOrder NewOrderDraft() => new() { OrderDate = DateTime.Today, Currency = "EUR", Status = SalesOrderStatus.Draft };
-	private static Customer Copy(Customer value) => new() { Id = value.Id, CustomerNumber = value.CustomerNumber, Name = value.Name, BillingAddress = value.BillingAddress, ShippingAddress = value.ShippingAddress, ContactName = value.ContactName, Email = value.Email, Phone = value.Phone, TaxId = value.TaxId, PaymentTermsDays = value.PaymentTermsDays, Currency = value.Currency, IsActive = value.IsActive, Version = value.Version, Addresses = value.Addresses.Select(CopyAddress).ToArray() };
+	private static Customer Copy(Customer value) => new()
+	{
+		Id = value.Id,
+		CustomerNumber = value.CustomerNumber,
+		Name = value.Name,
+		BillingAddress = value.BillingAddress,
+		ShippingAddress = value.ShippingAddress,
+		ContactName = value.ContactName,
+		Email = value.Email,
+		Phone = value.Phone,
+		TaxId = value.TaxId,
+		VatId = value.VatId,
+		BuyerReference = value.BuyerReference,
+		EInvoiceEndpoint = value.EInvoiceEndpoint,
+		EInvoiceEndpointScheme = value.EInvoiceEndpointScheme,
+		BillingStreet = value.BillingStreet,
+		BillingAddressLine2 = value.BillingAddressLine2,
+		BillingPostalCode = value.BillingPostalCode,
+		BillingCity = value.BillingCity,
+		BillingCountryCode = value.BillingCountryCode,
+		PaymentTermsDays = value.PaymentTermsDays,
+		Currency = value.Currency,
+		IsActive = value.IsActive,
+		Version = value.Version,
+		Addresses = value.Addresses.Select(CopyAddress).ToArray(),
+		Contacts = value.Contacts.ToArray()
+	};
 	private static CustomerAddress CopyAddress(CustomerAddress value) => new() { Id=value.Id, CustomerId=value.CustomerId, Type=value.Type, Name=value.Name, Address=value.Address, IsDefault=value.IsDefault, IsActive=value.IsActive, Version=value.Version };
 	private static SalesOrderLine CopyLine(SalesOrderLine line) => new() { Id=line.Id, SalesOrderId=line.SalesOrderId, LineNumber=line.LineNumber, ItemId=line.ItemId, PartNumber=line.PartNumber, Description=line.Description, Quantity=line.Quantity, UnitPrice=line.UnitPrice, DiscountPercent=line.DiscountPercent, TaxRate=line.TaxRate, ReservedQuantity=line.ReservedQuantity, ShippedQuantity=line.ShippedQuantity, InvoicedQuantity=line.InvoicedQuantity, Version=line.Version };
 	private static SalesOrder Copy(SalesOrder value) => new() { Id = value.Id, OrderNumber = value.OrderNumber, CustomerId = value.CustomerId, CustomerName = value.CustomerName, BillingAddress=value.BillingAddress, ShippingAddress=value.ShippingAddress, OrderDate = value.OrderDate, RequestedDeliveryDate = value.RequestedDeliveryDate, Currency = value.Currency, CustomerReference = value.CustomerReference, Notes = value.Notes, Status = value.Status, CreatedByUserId = value.CreatedByUserId, SubmittedByUserId = value.SubmittedByUserId, SubmittedAtUtc = value.SubmittedAtUtc, ApprovalDecisionByUserId = value.ApprovalDecisionByUserId, ApprovalDecisionAtUtc = value.ApprovalDecisionAtUtc, ApprovalComment = value.ApprovalComment, ReleasedByUserId = value.ReleasedByUserId, ReleasedAtUtc = value.ReleasedAtUtc, CancelledByUserId = value.CancelledByUserId, CancelledAtUtc = value.CancelledAtUtc, CancelReason = value.CancelReason, Version = value.Version, Lines = value.Lines.Select(CopyLine).ToArray() };
