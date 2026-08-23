@@ -19,7 +19,8 @@ public sealed class SalesServices
 		ItemService items,
 		IAuthorizationService authorization,
 		SalesDocumentService documents,
-		SalesDocumentEmailService email)
+		SalesDocumentEmailService email,
+		SalesInvoiceFinalizationService invoiceFinalizations)
 	{
 		Customers = customers;
 		Pricing = pricing;
@@ -35,6 +36,7 @@ public sealed class SalesServices
 		Authorization = authorization;
 		Documents = documents;
 		Email = email;
+		InvoiceFinalizations = invoiceFinalizations;
 	}
 
 	public CustomerService Customers { get; }
@@ -51,4 +53,5 @@ public sealed class SalesServices
 	public IAuthorizationService Authorization { get; }
 	public SalesDocumentService Documents { get; }
 	public SalesDocumentEmailService Email { get; }
+	public SalesInvoiceFinalizationService InvoiceFinalizations { get; }
 }
