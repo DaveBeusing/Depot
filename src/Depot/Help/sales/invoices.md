@@ -45,6 +45,8 @@ The ordinary multiline Billing Address remains the commercial address snapshot u
 
 At posting, Depot builds the XRechnung-oriented UN/CEFACT CII document from the frozen invoice, issuer and buyer data and stores the exact generated XML in `SalesInvoiceFinalizations`. A SHA-256 fingerprint is stored alongside the XML and is verified whenever the finalization is loaded or exported. Export therefore returns the persisted issued XML instead of generating a potentially different document from current master data.
 
+For a posted invoice, use **Export XRechnung** in the Invoice action bar. The action is disabled for Draft invoices because no issued XML exists before successful posting. The export path loads the finalized record, verifies its SHA-256 fingerprint, and writes those stored XML bytes as UTF-8 without regenerating the invoice.
+
 The runtime generator performs Depot's EN 16931/XRechnung model validation. Representative generated XML remains checked in CI with the pinned KoSIT validator/configuration. Runtime posting does not currently invoke the external KoSIT validator executable itself.
 
 Depot currently finalizes only invoice lines with a positive standard VAT rate. Zero-rated, exempt and reverse-charge scenarios are deliberately blocked until the invoice model carries the explicit EN 16931 tax category and exemption/reason semantics needed to issue them without guessing.
@@ -55,7 +57,7 @@ ZUGFeRD/Factur-X is not currently claimed. A true implementation requires a conf
 
 Posted invoices are immutable. Corrections are recorded as separate Credit Notes. Depot tracks cumulative credited quantities and prevents the total from exceeding the originally invoiced quantity.
 
-Each credit note captures its own issuer snapshot when it is posted. This preserves the legal identity that applied to the correction document even if company master data changes later. Buyer/XRechnung finalization for credit notes remains a separate follow-up because the current electronic-invoice flow in this block finalizes sales invoices only.
+Each credit note captures its own issuer snapshot when it is posted. This preserves the legal identity that applied to the correction document even if company master data changes later. Buyer/XRechnung finalization for credit notes remains a separate follow-up because the current electronic-invoice flow finalizes sales invoices only.
 
 The correction record remains linked to the original invoice/Sales Order. If goods physically return as well, process the inventory side independently with a Customer Return under **Warehouse > Shipping**.
 
