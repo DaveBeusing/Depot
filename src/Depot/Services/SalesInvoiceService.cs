@@ -118,6 +118,8 @@ public sealed class SalesInvoiceService
 			}
 			var postedAt = DateTime.UtcNow;
 			if (!await _invoices.PostAsync(transaction, id, version, user.Id, postedAt, token)) throw new ConcurrencyConflictException("sales invoice");
+			var issuer = await DocumentIssuerSnapshotService.CaptureCurrentAsync(transaction, DocumentIssuerSnapshotType.SalesInvoice, id, postedAt, token);
+			await SalesInvoiceFinalizationService.FinalizeAsync(transaction, before, issuer, postedAt, token);
 			var reloadedOrder = await _orders.GetByIdAsync(transaction, order.Id, token) ?? throw new InvalidOperationException("Sales order could not be reloaded.");
 			if (reloadedOrder.Status == SalesOrderStatus.Shipped && reloadedOrder.Lines.All(line => line.InvoicedQuantity >= line.ShippedQuantity && line.ShippedQuantity >= line.Quantity))
 			{
@@ -130,7 +132,7 @@ public sealed class SalesInvoiceService
 			await _auditEntries.CreateAsync(transaction, _audit.CreateUpdatedEntry(id, before, after), token);
 			return after;
 		}, cancellationToken);
-		await _notifications.NotifyUsersAsync(new(NotificationType.Workflow, NotificationSeverity.Success, $"Invoice {result.InvoiceNumber} posted", $"Sales invoice {result.InvoiceNumber} for {result.CustomerName} was posted.", NotificationSourceTypes.SalesInvoice, result.Id, result.InvoiceNumber, user.Id), [user.Id], cancellationToken);
+		await _notifications.NotifyUsersAsync(new(NotificationType.Workflow, NotificationSeverity.Success, $"Invoice {result.InvoiceNumber} posted", $"Sales invoice {result.InvoiceNumber} for {result.CustomerName} was posted and its buyer/XRechnung identity was finalized.", NotificationSourceTypes.SalesInvoice, result.Id, result.InvoiceNumber, user.Id), [user.Id], cancellationToken);
 		return result;
 	}
 

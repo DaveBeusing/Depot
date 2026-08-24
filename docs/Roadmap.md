@@ -1,6 +1,6 @@
 # Depot Roadmap
 
-This roadmap reflects the implementation on the current `compliance` branch. “Implemented” means the workflow/control exists in code and automated evidence where practical; it does not by itself mean production certification or legal conformity.
+This roadmap reflects the current implementation state. “Implemented” means the workflow/control exists in code and automated evidence where practical; it does not by itself mean production certification or legal conformity.
 
 ## Implemented foundations
 
@@ -44,13 +44,25 @@ This roadmap reflects the implementation on the current `compliance` branch. “
 - [x] business-record JSON evidence package from Audit Log
 - [x] atomic business mutation + audit persistence for reviewed retained workflows
 
+### Company and document identity
+
+- [x] Administration > Company as authoritative legal seller/document profile
+- [x] seller identity projection into generated sales and fulfillment documents
+- [x] immutable issuer snapshots for posted sales invoices and credit notes
+- [x] no fallback from historical posted documents to mutable current seller master data
+
 ### Electronic invoicing
 
 - [x] EN 16931-oriented semantic invoice model
 - [x] deterministic UN/CEFACT CII generation targeted at XRechnung 3.0
-- [x] invoice and credit-note type handling
+- [x] invoice and credit-note type handling in the semantic/generator layer
 - [x] application-level business-term validation
 - [x] representative XRechnung fixture and pinned KoSIT conformance workflow
+- [x] structured Customer buyer identity including Buyer Reference, endpoint/scheme, tax identity, and structured billing address
+- [x] atomic sales-invoice posting/finalization with seller snapshot, buyer snapshot, and generated XML
+- [x] immutable retention of the exact issued sales-invoice XML with SHA-256 integrity verification
+- [x] verified XRechnung XML export from the posted Invoice workspace without regeneration from current master data
+- [x] fail-closed posting for incomplete invoice identity and unsupported ambiguous tax scenarios
 
 ### Quality and accessibility
 
@@ -62,7 +74,7 @@ This roadmap reflects the implementation on the current `compliance` branch. “
 
 ## Remaining production/release acceptance
 
-These items require real infrastructure, signing identities, interactive desktop testing, organization-specific legal decisions, or a marketed-product decision rather than additional generic repository code.
+These items require real infrastructure, signing identities, interactive desktop testing, organization-specific legal decisions, additional commercial tax semantics, or a marketed-product decision rather than generic seller/buyer invoice-finalization foundations.
 
 ### Providers and recovery
 
@@ -91,9 +103,11 @@ These items require real infrastructure, signing identities, interactive desktop
 
 ### Electronic invoicing
 
-- [ ] integrate structured invoice XML into the operational persisted invoice workflow
-- [ ] retain issued XML immutably with correction/reference linkage
+- [ ] persist explicit EN 16931 tax-category and exemption/reason semantics for zero-rated, exempt, and reverse-charge commercial lines
+- [ ] extend buyer/XML finalization to electronic credit notes where that channel is advertised
+- [ ] configure organization/recipient-specific routing and delivery channels
 - [ ] validate every advertised tax/profile/channel scenario with the applicable production KoSIT/XRechnung release
+- [ ] define controlled remediation procedures for legacy posted invoices without historical finalization records
 - [ ] implement and validate PDF/A-3 before claiming ZUGFeRD/Factur-X support
 
 ### Legal/organizational acceptance

@@ -77,6 +77,31 @@
                                     </StackPanel></ScrollViewer>
                                 </Grid>
                             </TabItem>
+                            <TabItem Header="E-Invoice Identity">
+                                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                    <Grid Margin="0,10,0,0">
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="14"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/><RowDefinition Height="12"/><RowDefinition Height="Auto"/><RowDefinition Height="12"/><RowDefinition Height="Auto"/><RowDefinition Height="12"/><RowDefinition Height="Auto"/><RowDefinition Height="12"/><RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+                                        <StackPanel Grid.ColumnSpan="3">
+                                            <TextBlock Text="Electronic invoice buyer identity" FontWeight="SemiBold"/>
+                                            <TextBlock Text="These structured fields are frozen together with the billing-address snapshot when an invoice is posted. Complete data is required for XRechnung finalization." Style="{StaticResource CaptionStyle}" Margin="0,3,0,0" TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="2"><TextBlock Text="Buyer reference (BT-10) *" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding Workspace.CustomerDraft.BuyerReference, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+                                        <StackPanel Grid.Row="2" Grid.Column="2"><TextBlock Text="Electronic address (BT-49) *" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding Workspace.CustomerDraft.EInvoiceEndpoint, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+                                        <StackPanel Grid.Row="4"><TextBlock Text="Tax ID" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding Workspace.CustomerDraft.TaxId, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+                                        <StackPanel Grid.Row="4" Grid.Column="2"><TextBlock Text="VAT ID" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding Workspace.CustomerDraft.VatId, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+                                        <StackPanel Grid.Row="6"><TextBlock Text="Endpoint scheme *" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding Workspace.CustomerDraft.EInvoiceEndpointScheme, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+                                        <StackPanel Grid.Row="6" Grid.Column="2"><TextBlock Text="Billing street *" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding Workspace.CustomerDraft.BillingStreet, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+                                        <StackPanel Grid.Row="8">
+                                            <TextBlock Text="Address line 2" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding Workspace.CustomerDraft.BillingAddressLine2, UpdateSourceTrigger=PropertyChanged}"/>
+                                            <Grid Margin="0,10,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="0.7*"/><ColumnDefinition Width="10"/><ColumnDefinition Width="1.3*"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="Postal code *" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding Workspace.CustomerDraft.BillingPostalCode, UpdateSourceTrigger=PropertyChanged}"/></StackPanel><StackPanel Grid.Column="2"><TextBlock Text="City *" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding Workspace.CustomerDraft.BillingCity, UpdateSourceTrigger=PropertyChanged}"/></StackPanel></Grid>
+                                        </StackPanel>
+                                        <StackPanel Grid.Row="8" Grid.Column="2"><TextBlock Text="Country code (ISO alpha-2) *" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding Workspace.CustomerDraft.BillingCountryCode, UpdateSourceTrigger=PropertyChanged}"/><TextBlock Margin="0,8,0,0" Text="At least one of Tax ID or VAT ID must be present before an invoice can be posted." Style="{StaticResource CaptionStyle}" TextWrapping="Wrap"/></StackPanel>
+                                    </Grid>
+                                </ScrollViewer>
+                            </TabItem>
                         </TabControl>
                     </controls:Card>
                 </Grid>

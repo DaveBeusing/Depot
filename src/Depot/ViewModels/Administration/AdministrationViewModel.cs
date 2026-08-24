@@ -20,6 +20,7 @@ public sealed class AdministrationViewModel : BaseViewModel, IDisposable
 	private readonly MasterDataViewModel _masterDataViewModel;
 	private readonly UserViewModel _userViewModel;
 	private readonly RoleViewModel _roleViewModel;
+	private readonly CompanyProfileViewModel _companyProfileViewModel;
 	private readonly DatabaseSettingsViewModel _databaseSettingsViewModel;
 	private readonly AuditLogViewModel _auditLogViewModel;
 	private readonly PrivacyDataViewModel _privacyDataViewModel;
@@ -61,6 +62,9 @@ public sealed class AdministrationViewModel : BaseViewModel, IDisposable
 		_databaseSettingsViewModel = new DatabaseSettingsViewModel(settingsService, connectionStatusService, databaseConnectionTester, databaseManagementService, fileDialogService);
 		_aboutViewModel = new AboutViewModel(applicationInformationService);
 		_auditLogViewModel = new AuditLogViewModel(auditLogService, fileDialogService);
+
+		var companyDatabase = new DatabaseAccess(DatabaseProviderFactory.CreateConnectionFactory(settingsService.CurrentSettings));
+		_companyProfileViewModel = new CompanyProfileViewModel(new CompanyProfileService(companyDatabase, settingsService.CurrentSettings.Provider, authorization));
 		var privacyDatabase = new DatabaseAccess(DatabaseProviderFactory.CreateConnectionFactory(settingsService.CurrentSettings));
 		_privacyDataViewModel = new PrivacyDataViewModel(new DataSubjectAccessService(privacyDatabase, authorization), fileDialogService);
 
@@ -69,6 +73,7 @@ public sealed class AdministrationViewModel : BaseViewModel, IDisposable
 		AddIf(authorization, ApplicationPermission.SuppliersView, "Suppliers", AdministrationSection.Suppliers);
 		AddIf(authorization, ApplicationPermission.UsersView, "Users", AdministrationSection.Users);
 		AddIf(authorization, ApplicationPermission.RolesView, "Roles", AdministrationSection.Roles);
+		AddIf(authorization, ApplicationPermission.SettingsView, "Company", AdministrationSection.Company);
 		AddIf(authorization, ApplicationPermission.ImportManage, "Import", AdministrationSection.Import);
 		AddIf(authorization, ApplicationPermission.AuditLogView, "Audit Log", AdministrationSection.AuditLog);
 		AddIf(authorization, ApplicationPermission.DatabaseView, "Database", AdministrationSection.Database);
@@ -157,6 +162,7 @@ public sealed class AdministrationViewModel : BaseViewModel, IDisposable
 		AdministrationSection.Suppliers => _masterDataViewModel.SupplierViewModel,
 		AdministrationSection.Users => _userViewModel,
 		AdministrationSection.Roles => _roleViewModel,
+		AdministrationSection.Company => _companyProfileViewModel,
 		AdministrationSection.Database => _databaseSettingsViewModel,
 		AdministrationSection.AuditLog => _auditLogViewModel,
 		AdministrationSection.Privacy => _privacyDataViewModel,
@@ -171,6 +177,7 @@ public sealed class AdministrationViewModel : BaseViewModel, IDisposable
 		SupplierViewModel suppliers => suppliers.LoadAsync(cancellationToken),
 		UserViewModel users => users.LoadUsersAsync(cancellationToken),
 		RoleViewModel roles => roles.LoadAsync(cancellationToken),
+		CompanyProfileViewModel company => company.LoadAsync(cancellationToken),
 		DatabaseSettingsViewModel database => database.LoadAsync(cancellationToken),
 		AuditLogViewModel auditLog => auditLog.LoadAsync(cancellationToken),
 		PrivacyDataViewModel privacy => privacy.LoadAsync(cancellationToken),
@@ -191,8 +198,10 @@ public sealed class AdministrationViewModel : BaseViewModel, IDisposable
 	private static string TopicFor(AdministrationSection section) => section switch
 	{
 		AdministrationSection.Users or AdministrationSection.Roles => "administration.users",
+		AdministrationSection.Company => "administration.company",
 		AdministrationSection.Database => "administration.database",
 		AdministrationSection.AuditLog => "administration.audit-log",
+		AdministrationSection.Privacy => "administration.privacy-data",
 		AdministrationSection.MasterData => "inventory.items",
 		AdministrationSection.Warehouses => "warehouse.transfers",
 		AdministrationSection.Suppliers => "purchasing.purchase-orders",
@@ -207,6 +216,7 @@ public sealed class AdministrationViewModel : BaseViewModel, IDisposable
 		_masterDataViewModel.Dispose();
 		if (_userViewModel is IDisposable users) users.Dispose();
 		if (_roleViewModel is IDisposable roles) roles.Dispose();
+		_companyProfileViewModel.Dispose();
 		if (_databaseSettingsViewModel is IDisposable database) database.Dispose();
 		if (_auditLogViewModel is IDisposable audit) audit.Dispose();
 		_privacyDataViewModel.Dispose();

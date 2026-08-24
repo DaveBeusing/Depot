@@ -2,214 +2,273 @@
 
 ## Overview
 
-Depot is a .NET 10 WPF application using strict MVVM and a layered persistence architecture.
+Depot is a .NET 10 Windows desktop application built with WPF, MVVM, service-layer business rules, provider-neutral repositories, and ADO.NET database abstractions.
 
 ```text
 Presentation
   Views
-    |
+    ↓ bindings/commands
   ViewModels
-    |
+    ↓ application operations
 Business
   Services
-    |
+    ↓ persistence contracts / transactions
 Persistence
-  Repositories
-    |
-  DatabaseAccess
-    |
-  SQLite / Microsoft SQL Server / MySQL or MariaDB
+  Repositories + DatabaseAccess
+    ↓
+  SQLite / SQL Server / MySQL or MariaDB
 ```
 
-`App.xaml.cs` is the composition root. It creates provider infrastructure, repositories, services, and the root ViewModels.
+The composition classes under `src/Depot/Composition` create database infrastructure, repositories, services, and root ViewModels. Dependencies are passed explicitly; Views and ViewModels do not open database connections or contain SQL.
+
+## Application shell
+
+Depot uses a dark workspace-oriented shell with permission-aware primary modules and secondary pages. Main modules currently include:
+
+- Dashboard
+- Inventory
+- Warehouse
+- Purchasing
+- Sales
+- Approvals
+- Reports
+- Administration
+
+The shell supports closeable document/workspace tabs, stable routes, navigation history, Quick Open, Command Palette, F1 context Help, notifications, and unsaved-change guards.
+
+Module/page visibility is permission-aware for usability, but authorization is enforced again by services. UI visibility is never treated as a security boundary.
 
 ## Presentation layer
 
-The presentation layer contains WPF views, ViewModels, commands, converters, reusable controls, and resource dictionaries.
+Views contain layout, bindings, and presentation resources. ViewModels own presentation state, commands, selection, loading/error feedback, and cancellable user workflows.
 
-- Views contain layout and bindings only.
-- ViewModels expose state, commands, loading/error feedback, and cancellable UI workflows.
-- ViewModels call services and never contain SQL.
-- Native file selection and confirmation dialogs are accessed through `IFileDialogService`.
-- Shared UI values and styles live in `Resources/`; repeated behavior belongs in reusable controls.
+Key rules:
 
-The shell exposes seven permission-aware primary modules: Dashboard, Inventory, Warehouse, Purchasing, Approvals, Reports, and Administration. Inventory, Warehouse, Purchasing, and Administration use a horizontal secondary navigation directly below the module header and remember their selected page for the lifetime of the session. Small explicit navigation records hold content and load delegates, so `MainViewModel` no longer routes pages through a central section switch. Approvals remains independent and does not grant access to Purchasing. The content surface is neutral rather than wrapped in an outer shell card.
+- Views do not contain business logic or SQL.
+- ViewModels call application/domain services.
+- Services do not reference WPF Views or controls.
+- File-save/open and confirmation interactions use `IFileDialogService`.
+- Shared design-system resources live in `src/Depot/Resources`.
+- Reusable WPF controls live in `src/Depot/Controls`.
+- Long-running loads use cancellation and stale-request protection where applicable.
 
-Administration contains Import, Master Data, Users, Database, Settings, and About. General Settings remains a placeholder; database/provider/backup settings are implemented in the Database module.
+The Sales workspace is split into section ViewModels for Overview, Quotes, Pricing, Customers, Sales Orders, Approvals, Shipping, and Invoices while sharing coordinated sales state where needed.
 
-## Business layer
+## Business/service layer
 
-Services own validation and application workflows, including:
+Services are the business and security boundary. They own validation, permissions, state transitions, transaction orchestration, and cross-repository invariants.
 
-- item and normalized item-reference data management;
-- inventory, stock calculation, movements, and valuation;
-- warehouse and storage-location management;
-- supplier and supplier-item management;
-- purchase-order lifecycle and delivery-note-based goods receipts;
-- authentication, authorization, sessions, and password hashing;
-- import, reporting, audit creation, settings, and database administration.
+Major service groups include:
 
-Services do not reference ViewModels or WPF controls.
+- authentication, session, users, roles, and RBAC;
+- item/master-data and supplier management;
+- inventory, stock movements, transfers, counts, issues, returns, and reversals;
+- purchasing, approvals, goods receipts, and supplier returns;
+- sales customers, pricing, quotes, orders, reservations, shipments, invoices, credit notes, and customer returns;
+- Company legal/document identity;
+- document generation, historical issuer snapshots, and Sales Invoice XRechnung finalization;
+- audit, privacy-data discovery/export, notifications, reporting, backup/recovery, settings, and help.
+
+Business services use optimistic concurrency and provider-neutral transaction runners for workflows that must commit atomically.
 
 ## Persistence layer
 
-Repositories own SQL, data mapping, and persistence operations. They use the shared `DatabaseAccess` abstraction rather than opening provider connections directly.
+Repositories own SQL and row mapping. They use `DatabaseAccess` / transaction-session abstractions rather than constructing arbitrary provider connections inside business workflows.
 
-`DatabaseAccess` provides:
+`DatabaseAccess` and the connection-factory layer provide:
 
-- synchronous compatibility methods still used by legacy paths;
-- asynchronous query and command execution;
-- cancellation-token propagation;
-- server-side page and slice queries;
-- asynchronous streaming;
+- SQLite, SQL Server, and MySQL/MariaDB provider implementations;
+- parameter normalization and provider-specific generated-ID behavior;
+- async query/command execution and cancellation;
+- bounded paging/slicing/streaming paths;
 - provider-controlled write transactions;
-- transient write-conflict retries;
-- provider-specific locking statements.
+- provider-specific locking SQL where required;
+- normalized connection/error handling without leaking credentials.
 
-Productive list and report paths are asynchronous and do not use unbounded synchronous `GetAll()` reads. Obsolete `GetAll()` APIs were removed. Small reference-data choices remain deliberately bounded or cached.
+The application avoids application-wide mutable caches for business records. Small reference data may be bounded/cached where appropriate; transactional truth remains in the database.
 
-## Database providers
+## Database schemas and migrations
 
-The application supports three provider implementations behind `IDatabaseConnectionFactory` and `IDatabaseInitializer`:
+Depot has two version concepts that must not be confused:
 
-| Provider | Driver | Initialization and migrations | Locking strategy |
-|---|---|---|---|
-| SQLite | `Microsoft.Data.Sqlite` | `DepotDatabase` | immediate write transaction |
-| Microsoft SQL Server | `Microsoft.Data.SqlClient` | `SqlServerDatabase` | serializable transaction and `UPDLOCK`/`HOLDLOCK` |
-| MySQL/MariaDB | `MySqlConnector` | `MySqlDatabase` | serializable transaction and `FOR UPDATE` |
+- **Core database schema:** currently version **29**.
+- **Feature schemas:** selected domains can maintain an independent feature-version registry in `DepotFeatureVersions`. Sales Invoice finalization is currently Sales feature schema **8**.
 
-Repository SQL uses shared parameter conventions. Provider wrappers normalize parameter syntax, generated-ID queries, and case-insensitive comparison details. Connection failures are translated into explicit safe errors and logged without credentials.
+Application SemVer is independent from both database schema systems.
 
-SQLite is covered by integration tests. SQL Server and MySQL/MariaDB have provider-factory and SQL-normalization tests plus optional environment-configured procurement concurrency contracts. Broader live migration, maintenance, and multi-client verification remains a version 1.0 requirement.
+All advertised providers have schema creation/migration implementations for repository-supported structures. Live SQL Server/MySQL/MariaDB version matrices, migration/recovery drills, representative concurrency, and latency/load acceptance remain production-release gates.
 
-## Schema and migrations
+## Authorization and identity
 
-The current database schema version is **29**. It is independent from the application SemVer version.
+Core schema version 28 introduced database-backed RBAC through Roles, Permissions, RolePermissions, and UserRoles. Effective permissions are the union of active assigned roles and are enforced at service boundaries.
 
-All providers create the current schema and migrate supported older schemas forward. Migrations cover authentication, inventory-based movements, audit/concurrency, warehouse structure, reason codes, normalized item master data, suppliers, supplier categories, supplier items, purchase orders, and goods receipts.
+The protected Administrator role receives catalogued permissions through persisted role data rather than hidden authorization bypasses. Explicit business rules such as creator/approver separation remain separate from generic permissions.
 
-The application refuses unsupported newer schemas and reports provider-specific migration failures through the shared error layer.
+First-run databases use an administrator-bootstrap workflow rather than shared default credentials. Password policy, throttling, versioned PBKDF2-HMAC-SHA256 hashing, protected database settings, and encrypted remote transport are part of the security baseline.
 
-## Domain model
+## Audit, business records, and corrections
 
-### Master data
+Depot treats posted/finalized records as historical evidence when the workflow requires it. Corrections are represented by explicit operations rather than destructive rewriting, for example:
 
-- `Item`
-- `Manufacturer`
-- `Category`
-- `UnitOfMeasure`
-- `Packaging`
-- `Purpose`
-- `ReasonCode`, whose immutable unique `Code` is separate from its editable display `Name`; seeded system codes are protected when required by active workflows
-- `Warehouse`
-- `StorageLocation`
-- `SupplierCategory`
-- `Supplier`
-- `SupplierItem`
+- stock movement counter-movements;
+- goods-receipt reversal;
+- transfer/count reversal;
+- material return/supplier return workflows;
+- shipment/customer return workflows;
+- Sales Credit Notes for posted Sales Invoices.
 
-Master data uses activation/deactivation rather than hard deletion. Services perform validation and reference checks before deactivation.
+Reviewed retained workflows persist business state and audit evidence atomically. Audit entries capture actor, UTC timestamp, action/state transition, entity identity, and sanitized before/after data.
 
-### Inventory and movements
+## Inventory and warehouse integrity
 
-- `Inventory` represents an item, purpose, and storage-location context.
-- The warehouse is derived through the storage location.
-- `StockMovement` references `Inventory` and can reference an optional `ReasonCode`; repositories resolve workflow reasons through the technical code rather than the display name.
-- Stock is derived from movements rather than stored as a mutable balance.
+Stock is movement-derived rather than maintained as an independently mutable balance. Provider-specific locks and stable inventory ordering protect posting workflows from oversubscription and lock-order inversion.
 
-Posted movements are immutable. Schema version 20 adds an optional, unique `ReversalOfMovementId` self-reference plus reversal reason, timestamp, and user metadata. A reversal is a new movement with the negated quantity and the original document reference; the original row is neither updated nor deleted. The unique relationship prevents duplicate full reversals, and services reject reversal chains and reversal movements as cancellation targets.
+Posted movements are immutable. Reversal creates a new counter-movement linked to the original where applicable. Transfers create paired out/in movements. Inventory counts preserve their starting snapshot and post only the required correction against movement-derived stock at posting time.
 
-### Procurement
+## Purchasing
 
-- `PurchaseOrder` owns `PurchaseOrderLine` records.
-- Status values are Draft, PendingApproval, Approved, Ordered, PartiallyReceived, Received, Closed, Cancelled, and Rejected.
-- `GoodsReceipt` references exactly one purchase order and owns `GoodsReceiptLine` records.
-- A goods receipt is a warehouse document with a supplier delivery-note number, receipt date, receiving user, notes, and destination inventory per line.
-- Supplier invoices are intentionally not part of the goods-receipt domain. A separate `SupplierInvoice` entity can be introduced later without changing the receipt contract.
+Purchase Orders use audited lifecycle transitions, explicit approvals, optimistic concurrency, and creator/approver separation. Goods Receipts are warehouse receipt facts, not supplier invoices.
 
-Legacy `InvoiceNumber`, `InvoiceDate`, and `InvoiceDocumentPath` database columns remain nullable for transition and backup compatibility. They are not exposed by the current domain model or UI and are not populated by new receipts. Version-17 migration preserves their existing values, assigns `LEGACY-GR-…` delivery-note numbers, and derives the receiving user from the original receipt audit entry where possible.
+Goods-receipt posting, purchase-order quantity/status effects, stock movements, and audit share one transaction. Supplier Returns preserve historical receipt facts and represent outbound corrections separately.
 
-Schema version 21 introduces purchase-order approval metadata and the fixed `CanApprovePurchaseOrders` user permission. Drafts must be submitted and approved before ordering. Approval or rejection requires an explicitly authorized active user. Non-administrators cannot decide their own order; members of the protected Administrator system role may do so, provided their effective permissions include `PurchaseOrders.Approve`. Submission, decision, reopening, ordering, and cancellation use optimistic concurrency and commit their before/after audit entries atomically.
+Critical workflows use the `WorkflowOperations` idempotency ledger where implemented so replay of a completed operation ID does not duplicate business effects.
 
-Schema version 22 adds the explicit purchase-order closure metadata `ClosedByUserId`, `ClosedAtUtc`, and `CloseReason`. Only ordered or partially received orders can be closed. Closing preserves received and open quantities, prevents further goods receipts, and is committed atomically with its audit entry. Cancellation remains a separate transition and is rejected after any posted receipt.
+## Sales architecture
 
-Schema version 23 introduces structured `MaterialIssue` and `MaterialIssueLine` documents. Draft editing, posting, cancellation, and reversal are orchestrated by `MaterialIssueService`; repositories remain data-only. Posting locks the document and all inventories in stable order, validates active inventories and reason codes, creates one immutable Withdrawal movement per line, and commits status, user metadata, and audit in the same provider-neutral transaction. Reversal uses the shared counter-movement mechanism.
+Sales contains Customers/Contacts/Addresses, Quotes, Pricing, Sales Orders, Reservations, Shipments, Customer Returns, Sales Invoices, and Credit Notes.
 
-Schema version 24 introduces the independent `MaterialReturn` and `MaterialReturnLine` workflow. A return may reference a posted material issue through a nullable foreign key or stand alone with a required business reference or explanation. Posting creates positive `MaterialReturn` movements and never sets `ReversalOfMovementId`. Posted return documents remain immutable; corrections use explicit negative counter-movements through the shared reversal infrastructure while the document retains its Posted status.
+Commercial transaction values are snapshotted progressively:
 
-Schema version 25 introduces `SupplierReturn` and `SupplierReturnLine`. A supplier return references one posted, non-reversed goods receipt and derives supplier, purchase order, item, inventory, and unit cost from that historical receipt chain. Posting locks the return and affected inventories, validates the net received quantity after prior non-reversed supplier returns and the current movement-derived stock, creates negative `SupplierReturn` movements, and commits status plus audit atomically. Historical `GoodsReceiptLine.Quantity` and `PurchaseOrderLine.ReceivedQuantity` remain unchanged: they record the receipt fact, while net supplier returns are evaluated separately. Counter-booking marks the supplier return as reversed for net-return calculations without rewriting its posted history.
+- Sales Orders retain commercial customer/address/reference and line pricing/tax values used by later fulfillment.
+- Shipments derive from posted/released order state and reservation/inventory data.
+- Sales Invoices are created from posted shipments and retain their invoice billing-address snapshot and invoiced commercial lines.
+- Posting a Sales Invoice is the final financial-document identity boundary described below.
 
-Schema version 26 introduced fixed workflow roles as an intermediate authorization model. Its legacy user fields remain readable for migration compatibility but no longer determine effective authorization.
+Posted Sales Invoices are corrected with Credit Notes rather than editing the original invoice.
 
-Schema version 27 adds the small provider-neutral `WorkflowOperations` idempotency ledger. Critical approval, ordering, closure, material-issue, material-return, and supplier-return operations persist their caller-generated operation ID in the same transaction as the business change and audit entry. Repeating a completed operation ID returns the persisted document state without creating another status transition or stock movement.
+## Company master and document issuer identity
 
-Schema version 28 introduces database-backed RBAC through `Roles`, `Permissions`, `RolePermissions`, and `UserRoles`. A user may hold multiple active roles and receives the union of their catalogued permissions. Permissions are cached only for the authenticated session and cleared on logout or user changes. The Administrator system role is protected and receives every catalog permission through data, without bypassing permission checks in authorization code. Existing accounts are migrated to Administrator, Purchasing, Approver, Warehouse Operator, or User assignments without removing legacy columns. Role and user-role changes use optimistic concurrency and atomic audit entries; services remain the security boundary while UI visibility is only a usability aid. Creator/approver separation remains an independent business rule with one explicit service-side exception: the technical Administrator system role may approve or reject its own purchase orders.
+`Administration > Company` is the authoritative mutable legal seller/document profile for the current database. It contains structured legal, registration, tax, contact, banking, electronic-invoice, customs, and selected regulatory data.
 
-Schema version 29 introduces the internal Notification Center through `Notifications` and `NotificationRecipients`. Shared immutable content is separated from per-user read/archive state, recipients are materialized from active RBAC assignments at event time, and the inbox is isolated by the current user ID. Purchase-order submission and decisions plus inventory-count Review transitions persist business state, audit, and notification recipients in one transaction. The shell polls only the unread count every 60 seconds while active. Controlled source types navigate through the central shell navigation path and repeat the permission check; notifications never confer access. See [Notification Center](NOTIFICATION_CENTER.md).
+`CompanyDocumentIdentityService` validates and projects that master data into a publication-safe `DocumentIssuerProfile`. Restricted/scenario-specific values such as IOSS or internal customs-account references are deliberately excluded from ordinary document identity.
 
-The permission-restricted Approvals main page is backed by `PurchaseOrderApprovalService`. Its work queue selects only `PendingApproval` orders with server-side search, supplier/creator/date filters, stable submission-time sorting, and paging. Count, oldest submission, and total open value are database aggregates. Order lines and a bounded audit-derived status history load only after selection. A successful decision removes only the affected row and refreshes only the aggregates; interrupted or conflicting decisions re-query the selected order before reporting its current status.
+Draft/current operational documents can use current Company master data. Posted financial documents do not.
 
-Purchase-order creation and draft editing also commit their business change and audit entry in one transaction. Goods-receipt posting remains atomic across the receipt, receipt lines, purchase-order received quantities, stock movements, purchase-order status, and receipt audit entry. Purchase-order locking prevents concurrent over-receipt.
+`SalesDocumentIssuerSnapshots` stores one immutable issuer projection for each posted Sales Invoice or Sales Credit Note. A posted document whose historical issuer snapshot is missing fails closed rather than falling back to today's Company master.
 
-Reversing a posted goods receipt creates counter-movements, reduces every affected purchase-order line's received quantity, recalculates the purchase-order status, marks the receipt as reversed, and writes its audit entry in one transaction. The workflow locks affected inventories and rejects a reversal that would produce negative stock.
+## Sales Invoice finalization
 
-### Stock transfers
+Sales Invoice posting is an atomic business-document finalization transaction. The service transaction includes, as applicable:
 
-Schema version 18 introduces `StockTransfer` and `StockTransferLine` for warehouse-to-warehouse transfers. Draft transfers validate distinct warehouses, matching source/destination items, inventory-to-warehouse assignments, positive quantities, and unique inventory pairs. Draft editing and cancellation use optimistic concurrency and commit their audit entry atomically.
+1. invoice quantity effects on Sales Order lines;
+2. Draft → Posted invoice transition and posting user/time;
+3. immutable seller `DocumentIssuerProfile` capture;
+4. Buyer identity validation and `DocumentBuyerProfile` capture;
+5. deterministic XRechnung-oriented UN/CEFACT CII generation;
+6. persistence of the exact generated XML and SHA-256 fingerprint;
+7. Sales Order completion transition where all conditions are met;
+8. audit persistence.
 
-Posting locks the transfer and all source/destination inventories in a stable order, validates aggregate source availability, resolves the immutable `TRANSFER` reason code, and creates a paired `TransferOut` and `TransferIn` movement for every line. Movements, Posted status, posting user, and audit entry share one provider-neutral transaction. The service prevents concurrent transfers from overdrawing a shared source.
+If seller/Buyer identity, payment configuration, tax semantics, or XML generation is invalid, the transaction rolls back and the invoice remains unposted.
 
-Reversing a posted transfer counter-books both sides of every movement pair, retains the transfer number as the reference, and records the transfer's reversed metadata and audit entry atomically. The same stable inventory locking and aggregate stock validation protect the reverse direction.
+### Buyer identity
 
-The Transfers main page exposes a server-paged and server-searched transfer list, status filtering, draft editing, warehouse-filtered inventory selection, item-matched destination selection, stock availability, confirmed posting, cancellation, and the generated movement pair. ViewModels own presentation state and targeted list updates; all validation and posting rules remain in `StockTransferService`.
+Customer master data includes structured electronic-invoice fields separate from display-oriented/free-form addresses:
 
-### Inventory counts
+- Buyer Reference (BT-10);
+- electronic endpoint/address (BT-49) and scheme;
+- Tax ID and VAT ID;
+- structured billing street/address line/postal code/city/country;
+- normal contact data.
 
-Schema version 19 introduces `InventoryCount` and `InventoryCountLine`. An audited draft belongs to one active warehouse and can be edited or cancelled with optimistic concurrency. Starting a count locks the draft and all active warehouse inventories, snapshots their current movement-derived quantities, creates one unique line per inventory, changes the status to Counting, and writes the audit entry in one provider-neutral transaction.
+The finalized Buyer record also keeps the invoice's existing free-form billing-address snapshot. Country code validation enforces two ASCII letters as ISO alpha-2 syntax; at least one Buyer tax identifier is required by the current finalization path.
 
-Counting updates use line-level optimistic concurrency and preserve `ExpectedQuantity`. A count can move to Review only after every line has a counted quantity and can return to Counting until it is posted. Posted counts are immutable through the service.
+### Exact issued XML and integrity
 
-Posting a Review count locks the count and all referenced inventories in stable ID order, reloads the movement-derived current quantities, and creates only the required `Correction` movements with the `INVENTORY_CORRECTION` system reason code. `ExpectedQuantity` remains the historical start snapshot, but the posted correction is `CountedQuantity - current quantity at posting time`. This prevents stock movements between snapshot creation and posting from being corrected a second time. Correction movements, Posted status, posting user, completion time, and audit entry commit atomically; inventory rows are never updated directly.
+`SalesInvoiceFinalizations` has one row per Sales Invoice and stores:
 
-A posted count can be reversed without altering its historical snapshot. Only its correction movements are counter-booked; the count receives reversal metadata and its audit entry in the same transaction. Counts that produced no correction movement can still be marked reversed atomically.
+- serialized immutable Buyer payload;
+- exact XRechnung XML generated at posting;
+- SHA-256 digest of the UTF-8 XML;
+- finalization timestamp.
 
-The Inventory Counts main page uses server-side search, warehouse/status filters, separate paging for count headers and positions, quick keyboard quantity entry, uncounted/difference filters, and targeted row updates. Recording a quantity loads only the locked count header and affected line; Review completeness is checked with a server-side aggregate rather than loading the complete snapshot.
+Loading or exporting a finalization recalculates and verifies the SHA-256 digest. The Invoice workspace exposes **Export XRechnung** only for posted invoices and exports the persisted verified XML through `SalesDocumentService`; it does not regenerate the document from current Company/Customer master data.
 
-### Procurement database roundtrips
+The digest is an application integrity/tamper-detection control, not a digital signature or independent authenticity/non-repudiation mechanism.
 
-The remote-database paths use bounded batch reads without introducing an application cache. Item validation for purchase-order lines is performed by one `GetByIdsAsync` query. Goods-receipt order lines are loaded together, while destination inventories are locked by one provider-specific, ID-sorted batch statement and then loaded by one batch query. The deterministic ID order avoids provider lock-order inversions. Paging and server-side search paths are unchanged.
+### Electronic-invoice boundary
 
-The following command counts are the expected SQL roundtrips for successful 20-line workflows. Transaction begin and commit protocol messages are excluded; each insert with provider-specific identity retrieval counts as one command.
+The semantic/generator layer supports Invoice and Credit Note type codes, but the operational Buyer/XML finalization described above currently applies to Sales Invoices only. Posted Sales Credit Notes capture immutable issuer identity; equivalent Buyer/XML finalization remains follow-up work before electronic credit-note issuance is advertised.
 
-| Workflow | Before | After | Reduction |
-| --- | ---: | ---: | ---: |
-| Save a new draft purchase order with 20 lines | 47 | 26 | 45% |
-| Post a goods receipt with 20 lines and 20 destination inventories | 108 | 69 | 36% |
+The current commercial line model does not persist an explicit EN 16931 tax category plus exemption/reason semantics. Therefore Sales Invoice finalization accepts positive taxable rates and fails closed for zero-rated, exempt, or reverse-charge lines instead of guessing their category from a numeric `0%`.
 
-The purchase-order reduction removes 19 item lookup commands and the two-command post-save reload. The goods-receipt reduction replaces 20 individual inventory locks plus 20 individual inventory reads with one sorted batch lock and one batch read, and combines the order header and its lines after locking. Per-line inserts and optimistic updates remain individual commands because their generated IDs and row-version checks are part of the existing behavioral contract.
+Representative CII is validated in CI against pinned KoSIT/XRechnung assets. Runtime posting performs Depot application-level validation and does not execute the external KoSIT validator. Production recipient/channel configuration and validation of every advertised tax/profile/channel scenario remain release/deployment gates.
 
-## Audit and optimistic concurrency
+ZUGFeRD/Factur-X is not claimed; it requires a conforming PDF/A-3 container and end-to-end validation.
 
-Mutable entities use `Version` columns where optimistic concurrency is required. Updates include the expected version and throw `ConcurrencyConflictException` when a stale write loses the race.
+## Documents
 
-Audit entries store timestamp, user identity, entity type, entity ID, action, and before/after JSON. Stock movements, purchase-order changes, goods receipts, transfers, inventory counts, and their reversals commit audit data with the corresponding transaction. An audit-log administration viewer has not yet been implemented.
+`SalesDocumentService` generates human-readable PDFs and exposes persisted XRechnung XML export. Document responsibilities are intentionally separated:
 
-Automated SQLite tests cover stale item updates, concurrent withdrawals, movement/audit atomicity, purchase-order audit commit and rollback, concurrent goods receipts, over-receipt rollback, and supplier/master-data reference rules. Equivalent live-server scenarios remain to be verified before version 1.0.
+- PDF generation resolves current or historical issuer identity according to document status.
+- Posted invoice PDF regeneration requires the historical issuer snapshot.
+- XRechnung export requires the historical `SalesInvoiceFinalizations` record and verifies its hash.
+- No UI/ViewModel layer reconstructs seller/Buyer/XML data independently.
 
-## Database administration
+## Notifications
 
-`DatabaseManagementService` provides:
+Core schema version 29 introduced the Notification Center through `Notifications` and `NotificationRecipients`. Shared immutable notification content is separated from per-user read/archive state.
 
-- provider, schema, connection, size, and last-backup overview;
-- portable archive backup and validation;
-- restore with pre-validation and automatic safety backup;
-- persistent scheduled backups;
-- provider-specific integrity checks;
-- SQLite `VACUUM` compaction.
+Recipients are materialized from active RBAC assignments at event time. Notification navigation goes through controlled shell routes and repeats permission checks; possession of a notification never grants access to the referenced business record.
 
-SQLite maintenance and backup/restore are integration-tested. Live SQL Server and MySQL/MariaDB recovery testing is still required.
+## Privacy and data protection
+
+Administration > Privacy Data provides authorized discovery and machine-readable export of supported person-related data. Authentication hashes, connection credentials, protected configuration, and other secrets are excluded.
+
+Electronic invoice finalization records may contain contact, tax, and financial information and therefore inherit Depot's authorization, backup, retention, audit, and privacy requirements.
+
+Depot deliberately does not provide a universal destructive GDPR-delete operation because legal retention and lifecycle handling are record-specific.
+
+## Database administration and recovery
+
+`DatabaseManagementService` covers provider/schema status, backup/archive validation, restore with safety-backup behavior, scheduled backup retention, provider-specific integrity checks, and SQLite compaction.
+
+SQLite recovery paths are automated where practical. Live SQL Server/MySQL/MariaDB recovery drills and provider/version acceptance remain production gates.
 
 ## Loading and large-data behavior
 
-Implemented infrastructure includes asynchronous commands, cancellation, shared loading/error states, debounced server-side search, page queries, slice queries, caching for selected reference data, and streaming APIs.
+Productive list/report paths use bounded paging, aggregation, slices, or streaming rather than unbounded application reads. Search paths are server-side and cancellation-aware where applicable.
 
-Items, inventory, movements, users, purchase orders, transfers, and inventory counts use bounded or paged server queries. Report summaries and groups are aggregated by the database; inventory-value exports read deterministic 500-row slices with cancellation and progress. Readiness for 100,000+ records remains an acceptance target because ClosedXML retains the generated workbook and live-server load tests are outstanding. See `DATA_ACCESS_AUDIT.md` for the path classification.
+CI includes a 100,000-record SQLite performance baseline. Representative production sizing, network latency, concurrency, and external-provider performance remain release acceptance tasks.
+
+## Quality and accessibility
+
+Software-quality gates build with zero warnings and run regression suites on Windows Server 2022 and 2025. Static accessibility gates protect focus visibility, selected core contrast pairs, automation names, and textual/non-color status semantics.
+
+Interactive keyboard, focus-order, Narrator/Accessibility Insights, DPI/scaling, visual-state, and real desktop/provider acceptance remain explicit 1.0 release gates.
+
+## Key architectural invariants
+
+- Business rules live in services, not Views or repositories.
+- Permissions are enforced by services even when UI elements are hidden.
+- Finalized business records are not silently rewritten.
+- Historical financial identity never falls back to mutable current master data.
+- Corrections are explicit business operations.
+- Stock remains movement-derived.
+- Critical multi-entity effects commit in one transaction.
+- Provider-specific behavior stays behind provider/data-access abstractions.
+- Electronic invoice XML exported for a posted invoice is the persisted issued representation, not a reconstruction.
+- Technical compliance evidence is not described as legal certification.
+
+## Related documentation
+
+- `README.md`
+- `docs/Roadmap.md`
+- `docs/RELEASE_1_0.md`
+- `docs/SECURITY_ROADMAP.md`
+- `docs/DATA_ACCESS_AUDIT.md`
+- `docs/NOTIFICATION_CENTER.md`
+- `docs/compliance/COMPANY_MASTER_DATA.md`
+- `docs/compliance/ISSUER_SNAPSHOTS.md`
+- `docs/compliance/ELECTRONIC_INVOICING.md`
+- `docs/compliance/INVOICE_FINALIZATION.md`

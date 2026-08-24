@@ -1,6 +1,8 @@
 // Copyright (c) 2026 David Beusing
 // Licensed under the MIT License.
 
+using Xunit;
+
 namespace Depot.Tests;
 
 public sealed class ApplicationStartupTests

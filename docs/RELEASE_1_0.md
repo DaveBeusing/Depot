@@ -4,7 +4,7 @@
 
 - [ ] Ready for release
 
-Depot is currently on the `0.14.x-preview` line with core database schema **29**. Checked items mean the technical implementation/evidence exists; they do not replace environment-specific, legal, accessibility, provider, signing, or operational acceptance.
+Depot is currently on the `0.14.x-preview` line with core database schema **29** and Sales feature schema **8** for invoice finalization. Checked items mean the technical implementation/evidence exists; they do not replace environment-specific, legal, accessibility, provider, signing, tax-profile, routing, or operational acceptance.
 
 ## Implemented technical baseline
 
@@ -33,6 +33,8 @@ Depot is currently on the `0.14.x-preview` line with core database schema **29**
 - [x] actor/UTC timestamp/state-transition evidence
 - [x] atomic business + audit persistence for reviewed retained workflows
 - [x] GoBD-oriented technical procedural-documentation baseline
+- [x] immutable historical seller snapshots for posted sales invoices and credit notes
+- [x] immutable buyer identity and exact issued XML retention for finalized sales invoices
 
 ### Backup and recovery
 
@@ -55,9 +57,14 @@ Depot is currently on the `0.14.x-preview` line with core database schema **29**
 
 - [x] EN 16931-oriented semantic invoice model
 - [x] XRechnung 3.0-oriented CII generation
-- [x] deterministic invoice/credit-note serialization
+- [x] deterministic invoice/credit-note serialization in the semantic/generator layer
 - [x] application-level business-term validation
 - [x] pinned KoSIT representative conformance validation
+- [x] structured buyer master data for Buyer Reference, electronic endpoint/scheme, tax identity, and billing address
+- [x] atomic sales-invoice posting with seller snapshot, buyer snapshot, and XRechnung generation
+- [x] exact issued sales-invoice XML retained immutably with SHA-256 tamper detection
+- [x] posted Invoice workspace exports the verified persisted XRechnung XML instead of regenerating it
+- [x] fail-closed handling for incomplete identity and unsupported ambiguous tax scenarios
 
 ### Software quality and accessibility
 
@@ -114,10 +121,15 @@ Depot is currently on the `0.14.x-preview` line with core database schema **29**
 
 ### Electronic invoicing
 
-- [ ] electronic-invoice model integrated into the persisted operational invoice workflow
-- [ ] issued structured XML retained immutably with invoice/correction linkage
-- [ ] organization-specific seller/payment configuration validated
-- [ ] every advertised tax/profile/channel scenario validated against the applicable KoSIT/XRechnung version
+- [x] sales-invoice model integrated into the persisted operational posting workflow
+- [x] issued sales-invoice XML retained immutably with invoice linkage and integrity verification
+- [x] seller identity and payment data sourced from the controlled Company master and frozen at posting
+- [x] buyer/customer identity and structured billing/tax data frozen at posting
+- [ ] explicit EN 16931 VAT-category and exemption/reason semantics persisted for zero-rated, exempt, and reverse-charge lines
+- [ ] electronic credit-note buyer/XML finalization implemented before advertising that channel
+- [ ] organization/recipient-specific electronic routing configuration validated
+- [ ] every advertised tax/profile/channel scenario validated against the applicable production KoSIT/XRechnung version
+- [ ] controlled remediation procedure approved for legacy posted invoices without historical finalization records
 - [ ] PDF/A-3 implemented and validated before any ZUGFeRD/Factur-X support claim
 
 ### Compliance/legal/organizational

@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 
 using Depot.Commands;
 using Depot.Models;
@@ -186,6 +187,8 @@ public sealed class SalesInvoicesViewModel : SalesSectionPageViewModel
 		CreatePartialCreditNoteCommand = new AsyncRelayCommand(CreatePartialCreditNoteAsync, CanCreatePartialCreditNote);
 		CreditNotePdfCommand = new RelayCommand(CreateCreditNotePdf, () => WorkspaceState.SelectedCreditNote is not null && WorkspaceState.SelectedInvoice is not null);
 		InvoiceEmailCommand = new RelayCommand(CreateInvoiceEmail, () => WorkspaceState.SelectedInvoice is not null);
+		XRechnungXmlCommand = new RelayCommand(ExportXRechnung, () => WorkspaceState.SelectedInvoice?.Status == SalesInvoiceStatus.Posted);
+		Workspace.PropertyChanged += OnWorkspacePropertyChanged;
 	}
 
 	public SalesInvoiceLine? SelectedInvoiceLine { get => _selectedInvoiceLine; set { if (_selectedInvoiceLine == value) return; _selectedInvoiceLine = value; OnPropertyChanged(); CreatePartialCreditNoteCommand.RaiseCanExecuteChanged(); } }
@@ -195,10 +198,14 @@ public sealed class SalesInvoicesViewModel : SalesSectionPageViewModel
 	public AsyncRelayCommand CreatePartialCreditNoteCommand { get; }
 	public RelayCommand CreditNotePdfCommand { get; }
 	public RelayCommand InvoiceEmailCommand { get; }
-	public override async Task LoadAsync(CancellationToken cancellationToken = default) { await base.LoadAsync(cancellationToken); SelectedInvoiceLine = WorkspaceState.SelectedInvoice?.Lines.FirstOrDefault(); OnPropertyChanged(nameof(CreditedGrossAmount)); OnPropertyChanged(nameof(EffectiveGrossAmount)); CreatePartialCreditNoteCommand.RaiseCanExecuteChanged(); CreditNotePdfCommand.RaiseCanExecuteChanged(); InvoiceEmailCommand.RaiseCanExecuteChanged(); }
+	public RelayCommand XRechnungXmlCommand { get; }
+	public override async Task LoadAsync(CancellationToken cancellationToken = default) { await base.LoadAsync(cancellationToken); SelectedInvoiceLine = WorkspaceState.SelectedInvoice?.Lines.FirstOrDefault(); OnPropertyChanged(nameof(CreditedGrossAmount)); OnPropertyChanged(nameof(EffectiveGrossAmount)); RaiseInvoiceCommands(); }
 	private bool CanCreatePartialCreditNote() => _invoices.CanCreateCreditNote && WorkspaceState.SelectedInvoice?.Status == SalesInvoiceStatus.Posted && SelectedInvoiceLine is not null && CreditQuantity > 0 && CreditQuantity <= SelectedInvoiceLine.Quantity && !string.IsNullOrWhiteSpace(Workspace.CorrectionReason);
 	private async Task CreatePartialCreditNoteAsync(CancellationToken token) { if (WorkspaceState.SelectedInvoice is null || SelectedInvoiceLine is null) return; WorkspaceState.SelectedCreditNote = await _invoices.CreateCreditNoteAsync(WorkspaceState.SelectedInvoice.Id, [new SalesCreditRequest(SelectedInvoiceLine.Id, CreditQuantity)], Workspace.CorrectionReason, token); Workspace.CorrectionReason = string.Empty; await LoadAsync(token); }
 	private void CreateCreditNotePdf() { if (WorkspaceState.SelectedCreditNote is null || WorkspaceState.SelectedInvoice is null) return; var path = _fileDialogs.ShowSaveFile(new SaveFileDialogRequest("Save credit note", "PDF document (*.pdf)|*.pdf", ".pdf", $"{WorkspaceState.SelectedCreditNote.CreditNoteNumber}.pdf")); if (path is not null) _documents.CreateCreditNote(path, WorkspaceState.SelectedCreditNote, WorkspaceState.SelectedInvoice); }
 	private void CreateInvoiceEmail() { if (WorkspaceState.SelectedInvoice is not { } invoice) return; var pdf = Path.Combine(Path.GetTempPath(), $"{invoice.InvoiceNumber}-{Guid.NewGuid():N}.pdf"); _documents.CreateInvoice(pdf, invoice); var draft = _email.CreateDraft(pdf, null, $"Invoice {invoice.InvoiceNumber}", $"Please find invoice {invoice.InvoiceNumber} attached.\n\nDue date: {invoice.DueDate:d}"); _email.OpenDraft(draft); }
-	public override void Dispose() => CreatePartialCreditNoteCommand.Dispose();
+	private void ExportXRechnung() { if (WorkspaceState.SelectedInvoice is not { Status: SalesInvoiceStatus.Posted } invoice) return; var path = _fileDialogs.ShowSaveFile(new SaveFileDialogRequest("Export XRechnung", "XML document (*.xml)|*.xml", ".xml", $"{invoice.InvoiceNumber}-xrechnung.xml")); if (path is not null) _documents.ExportXRechnung(path, invoice); }
+	private void OnWorkspacePropertyChanged(object? sender, PropertyChangedEventArgs e) { if (e.PropertyName != nameof(SalesViewModel.SelectedInvoice)) return; SelectedInvoiceLine = WorkspaceState.SelectedInvoice?.Lines.FirstOrDefault(); OnPropertyChanged(nameof(CreditedGrossAmount)); OnPropertyChanged(nameof(EffectiveGrossAmount)); RaiseInvoiceCommands(); }
+	private void RaiseInvoiceCommands() { CreatePartialCreditNoteCommand.RaiseCanExecuteChanged(); CreditNotePdfCommand.RaiseCanExecuteChanged(); InvoiceEmailCommand.RaiseCanExecuteChanged(); XRechnungXmlCommand.RaiseCanExecuteChanged(); }
+	public override void Dispose() { Workspace.PropertyChanged -= OnWorkspacePropertyChanged; CreatePartialCreditNoteCommand.Dispose(); }
 }

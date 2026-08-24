@@ -1,0 +1,168 @@
+<UserControl x:Class="Depot.Views.Administration.CompanyProfileView"
+	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:controls="clr-namespace:Depot.Controls">
+	<Grid>
+		<Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="16" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+		<controls:PageHeader Title="Company" Subtitle="Authoritative legal-entity, tax, payment, e-invoicing and international-trade master data." />
+		<controls:OperationPanel Grid.Row="1" ErrorText="{Binding OperationError}" HasError="{Binding HasOperationError}" IsBusy="{Binding IsBusy}" StatusText="{Binding StatusText}" />
+		<ScrollViewer Grid.Row="3" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+			<StackPanel>
+				<controls:Card Margin="0,0,0,16"><StackPanel>
+					<TextBlock Text="Legal identity and establishment" Style="{StaticResource SectionTitleStyle}" />
+					<TextBlock Margin="0,4,0,16" Text="Core identity of the legal entity issuing quotations, orders and invoices. Required fields adapt to the jurisdiction and registration status." TextWrapping="Wrap" Style="{StaticResource CaptionStyle}" />
+					<Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+						<StackPanel><TextBlock Text="Legal company name *" Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding LegalName, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
+						<StackPanel Grid.Column="2"><TextBlock Text="Legal form *" Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding LegalForm, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
+					</Grid>
+					<Grid Margin="0,12,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+						<StackPanel><TextBlock Text="Trading name" Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding TradingName, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
+						<StackPanel Grid.Column="2"><TextBlock Text="Registered office / seat" Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding RegisteredOffice, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
+					</Grid>
+					<Grid Margin="0,12,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+						<StackPanel><TextBlock Text="Street and house number *" Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding Street, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
+						<StackPanel Grid.Column="2"><TextBlock Text="Address line 2" Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding AddressLine2, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
+					</Grid>
+					<Grid Margin="0,12,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="140" /><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="150" /><ColumnDefinition Width="16" /><ColumnDefinition Width="150" /></Grid.ColumnDefinitions>
+						<StackPanel><TextBlock Text="Postal code" Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding PostalCode, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
+						<StackPanel Grid.Column="2"><TextBlock Text="City *" Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding City, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
+						<StackPanel Grid.Column="4"><TextBlock Text="Country *" Style="{StaticResource FormLabelStyle}" /><TextBox MaxLength="2" Text="{Binding CountryCode, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
+						<StackPanel Grid.Column="6"><TextBlock Text="Tax residence *" Style="{StaticResource FormLabelStyle}" /><TextBox MaxLength="2" Text="{Binding TaxResidenceCountryCode, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
+					</Grid>
+					<StackPanel Margin="0,12,0,0"><TextBlock Text="State / region" Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding State, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
+				</StackPanel></controls:Card>
+
+				<controls:Card Margin="0,0,0,16"><StackPanel>
+					<TextBlock Text="Registration and corporate representation" Style="{StaticResource SectionTitleStyle}" />
+					<CheckBox Margin="0,12,0,0" Content="Entity is registered in a company/commercial/public register" IsChecked="{Binding IsRegisteredEntity}" Style="{StaticResource AppCheckBoxStyle}" />
+					<Grid Margin="0,12,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="140" /><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+						<StackPanel><TextBlock Text="Registration authority / court" Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding RegisterCourt, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
+						<StackPanel Grid.Column="2"><TextBlock Text="Register type" Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding RegisterType, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
+						<StackPanel Grid.Column="4"><TextBlock Text="Company registration number" Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding RegisterNumber, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
+					</Grid>
+					<StackPanel Margin="0,12,0,0"><TextBlock Text="Legal representatives / management" Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding ManagingDirectors, UpdateSourceTrigger=PropertyChanged}" TextWrapping="Wrap" Style="{StaticResource MultilineTextBoxStyle}" /></StackPanel>
+					<Grid Margin="0,12,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+						<StackPanel><TextBlock Text="LEI" Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding LegalEntityIdentifier, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
+						<StackPanel Grid.Column="2"><TextBlock Text="GLN" Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding Gln, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
+						<StackPanel Grid.Column="4"><TextBlock Text="D-U-N-S" Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding DunsNumber, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
+					</Grid>
+					<CheckBox Margin="0,16,0,0" Content="Company has a supervisory board" IsChecked="{Binding HasSupervisoryBoard}" Style="{StaticResource AppCheckBoxStyle}" />
+					<StackPanel Margin="0,8,0,0"><TextBlock Text="Supervisory board chair" Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding SupervisoryBoardChair, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
+					<CheckBox Margin="0,16,0,0" Content="Business documents disclose share / registered capital" IsChecked="{Binding PublishesShareCapital}" Style="{StaticResource AppCheckBoxStyle}" />
+					<Grid Margin="0,8,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+						<StackPanel><TextBlock Text="Share / registered capital" Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding ShareCapital, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
+						<StackPanel Grid.Column="2"><TextBlock Text="Outstanding capital contributions" Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding OutstandingCapital, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
+					</Grid>
+					<CheckBox Margin="0,16,0,0" Content="Company is in liquidation / winding-up" IsChecked="{Binding IsInLiquidation}" Style="{StaticResource AppCheckBoxStyle}" />
+					<StackPanel Margin="0,8,0,0"><TextBlock Text="Liquidator(s)" Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding Liquidators, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
+					<CheckBox Margin="0,16,0,0" Content="This Depot installation represents a registered branch" IsChecked="{Binding IsBranch}" Style="{StaticResource AppCheckBoxStyle}" />
+					<Grid Margin="0,8,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+						<StackPanel><TextBlock Text="Branch name" Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding BranchName, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
+						<StackPanel Grid.Column="2"><TextBlock Text="Branch registration authority" Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding BranchRegistrationAuthority, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
+						<StackPanel Grid.Column="4"><TextBlock Text="Branch registration number" Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding BranchRegistrationNumber, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
+					</Grid>
+				</StackPanel></controls:Card>
+
+				<controls:Card Margin="0,0,0,16"><StackPanel>
+					<TextBlock Text="Tax, fiscal representation and electronic invoicing" Style="{StaticResource SectionTitleStyle}" />
+					<Grid Margin="0,16,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+						<StackPanel><TextBlock Text="Domestic tax number" Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding TaxNumber, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
+						<StackPanel Grid.Column="2"><TextBlock Text="Primary VAT / GST ID" Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding VatId, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
+						<StackPanel Grid.Column="4"><TextBlock Text="Business ID / W-IdNr." Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding BusinessId, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
+					</Grid>
+					<StackPanel Margin="0,12,0,0"><TextBlock Text="Additional tax registrations" Style="{StaticResource FormLabelStyle}" /><TextBox MinHeight="64" Text="{Binding AdditionalTaxRegistrations, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" TextWrapping="Wrap" Style="{StaticResource MultilineTextBoxStyle}" /><TextBlock Margin="0,4,0,0" Text="One per line: CC | TYPE | IDENTIFIER, for example FR | VAT | FR12345678901." Style="{StaticResource HintStyle}" /></StackPanel>
+					<Grid Margin="0,12,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+						<StackPanel><TextBlock Text="OSS registration / member state" Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding OssRegistration, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
+						<StackPanel Grid.Column="2"><TextBlock Text="IOSS identification number" Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding IossIdentificationNumber, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /><TextBlock Margin="0,4,0,0" Text="Treat IOSS identifiers as restricted data; do not print on ordinary commercial documents." Style="{StaticResource HintStyle}" /></StackPanel>
+					</Grid>
+					<CheckBox Margin="0,16,0,0" Content="A fiscal/tax representative must be disclosed" IsChecked="{Binding HasFiscalRepresentative}" Style="{StaticResource AppCheckBoxStyle}" />
+					<Grid Margin="0,8,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+						<StackPanel><TextBlock Text="Fiscal representative name" Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding FiscalRepresentativeName, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
+						<StackPanel Grid.Column="2"><TextBlock Text="Fiscal representative VAT ID" Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding FiscalRepresentativeVatId, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
+					</Grid>
+					<StackPanel Margin="0,8,0,0"><TextBlock Text="Fiscal representative address" Style="{StaticResource FormLabelStyle}" /><TextBox MinHeight="52" Text="{Binding FiscalRepresentativeAddress, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" TextWrapping="Wrap" Style="{StaticResource MultilineTextBoxStyle}" /></StackPanel>
+					<Grid Margin="0,16,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="220" /><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+						<StackPanel><TextBlock Text="E-invoice electronic address / endpoint" Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding EInvoiceEndpoint, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
+						<StackPanel Grid.Column="2"><TextBlock Text="Endpoint scheme" Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding EInvoiceEndpointScheme, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
+						<StackPanel Grid.Column="4"><TextBlock Text="Leitweg-ID" Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding LeitwegId, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
+					</Grid>
+				</StackPanel></controls:Card>
+
+				<controls:Card Margin="0,0,0,16"><StackPanel>
+					<TextBlock Text="Customs and international trade" Style="{StaticResource SectionTitleStyle}" />
+					<TextBlock Margin="0,4,0,16" Text="Identifiers used for cross-border customs and preferential-origin processes. Populate only registrations actually assigned to the company." TextWrapping="Wrap" Style="{StaticResource CaptionStyle}" />
+					<Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+						<StackPanel><TextBlock Text="EORI number" Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding EoriNumber, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
+						<StackPanel Grid.Column="2"><TextBlock Text="REX number" Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding RexNumber, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
+						<StackPanel Grid.Column="4"><TextBlock Text="AEO authorization number" Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding AeoAuthorizationNumber, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
+					</Grid>
+					<StackPanel Margin="0,12,0,0"><TextBlock Text="Customs account / deferment reference" Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding CustomsAccountReference, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
+					<Grid Margin="0,12,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="180" /><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+						<StackPanel><TextBlock Text="Default Incoterm" Style="{StaticResource FormLabelStyle}" /><TextBox MaxLength="3" Text="{Binding DefaultIncoterm, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
+						<StackPanel Grid.Column="2"><TextBlock Text="Named place / port" Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding DefaultIncotermPlace, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
+					</Grid>
+					<StackPanel Margin="0,12,0,0"><TextBlock Text="Default exporter / origin statement" Style="{StaticResource FormLabelStyle}" /><TextBox MinHeight="64" Text="{Binding ExporterStatement, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" TextWrapping="Wrap" Style="{StaticResource MultilineTextBoxStyle}" /><TextBlock Margin="0,4,0,0" Text="Use only as a template. Origin, HS code, value, Incoterm and export statements remain transaction/product specific." Style="{StaticResource HintStyle}" /></StackPanel>
+				</StackPanel></controls:Card>
+
+				<controls:Card Margin="0,0,0,16"><StackPanel>
+					<TextBlock Text="Regulatory and market registrations" Style="{StaticResource SectionTitleStyle}" />
+					<Grid Margin="0,16,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+						<StackPanel><TextBlock Text="Packaging / EPR registration" Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding PackagingRegistrationNumber, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
+						<StackPanel Grid.Column="2"><TextBlock Text="WEEE registration" Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding WeeeRegistrationNumber, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
+						<StackPanel Grid.Column="4"><TextBlock Text="Battery registration" Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding BatteryRegistrationNumber, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
+					</Grid>
+					<StackPanel Margin="0,12,0,0"><TextBlock Text="Additional regulatory / EPR registrations" Style="{StaticResource FormLabelStyle}" /><TextBox MinHeight="64" Text="{Binding AdditionalRegulatoryRegistrations, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" TextWrapping="Wrap" Style="{StaticResource MultilineTextBoxStyle}" /><TextBlock Margin="0,4,0,0" Text="One per line: CC | SCHEME | IDENTIFIER. Use for country-specific EPR, environmental, licensing or market registrations." Style="{StaticResource HintStyle}" /></StackPanel>
+					<Grid Margin="0,16,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+						<StackPanel><TextBlock Text="Regulatory / supervisory authority" Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding RegulatoryAuthority, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
+						<StackPanel Grid.Column="2"><TextBlock Text="Professional title" Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding ProfessionalTitle, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
+					</Grid>
+					<Grid Margin="0,12,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="160" /><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+						<StackPanel><TextBlock Text="Title jurisdiction" Style="{StaticResource FormLabelStyle}" /><TextBox MaxLength="2" Text="{Binding ProfessionalTitleCountryCode, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
+						<StackPanel Grid.Column="2"><TextBlock Text="Professional rules / reference URL" Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding ProfessionalRulesReference, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
+					</Grid>
+				</StackPanel></controls:Card>
+
+				<controls:Card Margin="0,0,0,16"><StackPanel>
+					<TextBlock Text="Contact and payment details" Style="{StaticResource SectionTitleStyle}" />
+					<Grid Margin="0,16,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+						<StackPanel><TextBlock Text="Phone" Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding Phone, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
+						<StackPanel Grid.Column="2"><TextBlock Text="General email" Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding Email, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
+					</Grid>
+					<Grid Margin="0,12,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+						<StackPanel><TextBlock Text="Website" Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding Website, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
+						<StackPanel Grid.Column="2"><TextBlock Text="Invoice contact email" Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding InvoiceEmail, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
+					</Grid>
+					<Grid Margin="0,16,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+						<StackPanel><TextBlock Text="Account holder" Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding AccountHolder, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
+						<StackPanel Grid.Column="2"><TextBlock Text="Bank name" Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding BankName, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
+					</Grid>
+					<Grid Margin="0,12,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="220" /><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+						<StackPanel><TextBlock Text="IBAN" Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding Iban, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
+						<StackPanel Grid.Column="2"><TextBlock Text="BIC" Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding Bic, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
+						<StackPanel Grid.Column="4"><TextBlock Text="SEPA creditor identifier" Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding SepaCreditorIdentifier, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
+					</Grid>
+				</StackPanel></controls:Card>
+
+				<controls:Card><StackPanel>
+					<TextBlock Text="Document defaults" Style="{StaticResource SectionTitleStyle}" />
+					<Grid Margin="0,16,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+						<StackPanel><TextBlock Text="Default currency" Style="{StaticResource FormLabelStyle}" /><TextBox MaxLength="3" Text="{Binding DefaultCurrency, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
+						<StackPanel Grid.Column="2"><TextBlock Text="Default language" Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding DefaultLanguage, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
+						<StackPanel Grid.Column="4"><TextBlock Text="Payment terms (days)" Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding PaymentTermsDays, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
+					</Grid>
+					<StackPanel Margin="0,12,0,0"><TextBlock Text="Additional legal footer text" Style="{StaticResource FormLabelStyle}" /><TextBox MinHeight="72" Text="{Binding LegalFooterAdditionalText, UpdateSourceTrigger=PropertyChanged}" TextWrapping="Wrap" AcceptsReturn="True" Style="{StaticResource MultilineTextBoxStyle}" /></StackPanel>
+				</StackPanel></controls:Card>
+			</StackPanel>
+		</ScrollViewer>
+		<controls:WorkflowActionBar Grid.Row="4" Margin="0,16,0,0">
+			<controls:WorkflowActionBar.SecondaryActions>
+				<StackPanel>
+					<TextBlock Text="{Binding CompletionText}" Style="{StaticResource CaptionStyle}" />
+					<TextBlock MaxWidth="700" Margin="0,4,0,0" Text="{Binding ValidationSummary}" TextWrapping="Wrap" Style="{StaticResource HintStyle}" />
+					<TextBlock MaxWidth="700" Margin="0,6,0,0" Text="{Binding RecommendationSummary}" TextWrapping="Wrap" Style="{StaticResource HintStyle}" />
+				</StackPanel>
+			</controls:WorkflowActionBar.SecondaryActions>
+			<controls:WorkflowActionBar.PrimaryAction><Button Command="{Binding SaveCommand}" Content="Save company data" Style="{StaticResource PrimaryButtonStyle}" /></controls:WorkflowActionBar.PrimaryAction>
+		</controls:WorkflowActionBar>
+	</Grid>
+</UserControl>

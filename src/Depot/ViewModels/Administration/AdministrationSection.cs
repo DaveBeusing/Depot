@@ -11,6 +11,7 @@ public enum AdministrationSection
 	Suppliers,
 	Users,
 	Roles,
+	Company,
 	Database,
 	AuditLog,
 	Privacy,

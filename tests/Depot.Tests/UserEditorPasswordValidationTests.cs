@@ -3,6 +3,8 @@
 
 using Depot.ViewModels.Users;
 
+using Xunit;
+
 namespace Depot.Tests;
 
 public sealed class UserEditorPasswordValidationTests
