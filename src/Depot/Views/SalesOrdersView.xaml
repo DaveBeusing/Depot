@@ -3,8 +3,9 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="clr-namespace:Depot.Controls">
     <Grid>
+        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
         <controls:OperationPanel ErrorText="{Binding Workspace.OperationError}" HasError="{Binding Workspace.HasOperationError}" IsBusy="{Binding Workspace.IsBusy}" StatusText="{Binding Workspace.StatusText}" />
-        <controls:MasterDetailGrid>
+        <controls:MasterDetailGrid Grid.Row="1">
             <controls:MasterDetailGrid.Master>
                 <controls:Card><Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                     <controls:SearchBox Placeholder="Search sales orders or customers" Text="{Binding Workspace.SearchText, UpdateSourceTrigger=PropertyChanged}"/>
