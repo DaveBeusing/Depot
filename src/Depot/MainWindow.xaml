@@ -28,7 +28,7 @@
 
         <Border Grid.Row="0" Grid.Column="0" Background="{DynamicResource NavigationBackgroundBrush}" BorderBrush="{DynamicResource NavigationBorderBrush}" BorderThickness="0,0,1,0">
             <DockPanel>
-                <Border DockPanel.Dock="Top" Height="{StaticResource Shell.BrandHeight}" BorderBrush="{DynamicResource NavigationBorderBrush}" BorderThickness="0,0,0,1"><Image Source="/Resources/Images/Depot_32.png" Width="26" Height="26" AutomationProperties.Name="Depot" /></Border>
+                <Button DockPanel.Dock="Top" Height="{StaticResource Shell.BrandHeight}" Style="{StaticResource BrandButtonStyle}" ToolTip="About Depot" AutomationProperties.Name="About Depot" Click="OnVersionClick"><Image Source="/Resources/Images/Depot_32.png" Width="26" Height="26" AutomationProperties.Name="Depot" /></Button>
                 <StackPanel DockPanel.Dock="Bottom">
                     <Button Style="{StaticResource ActivityUtilityButtonStyle}" Command="{Binding NotificationCommand}" ToolTip="Notifications" AutomationProperties.Name="Notifications">
                         <Grid Width="28" Height="28">
@@ -47,7 +47,7 @@
             <Grid.RowDefinitions><RowDefinition Height="{StaticResource Shell.TabHeight}" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
             <controls:WorkspaceTabControl x:Name="WorkspaceTabs" Grid.Row="0" ActiveItem="{Binding SelectedNavigationItem, Mode=TwoWay}" Style="{StaticResource WorkspaceTabControlStyle}" ItemContainerStyle="{StaticResource WorkspaceTabItemStyle}" ItemTemplate="{StaticResource WorkspaceTabHeaderTemplate}" TabClosing="OnWorkspaceTabClosing" AutomationProperties.Name="Workspace tabs" />
             <ContentControl Grid.Row="1" Content="{Binding SelectedNavigationItem.Content}" ContentTemplateSelector="{StaticResource ActivityContextTemplateSelector}" />
-            <Border Grid.Row="2" Padding="{StaticResource Shell.ContentPadding}" Background="{DynamicResource BackgroundBrush}"><ContentControl Content="{Binding CurrentViewModel}" HorizontalContentAlignment="Stretch" VerticalAlignment="Stretch" Background="{DynamicResource BackgroundBrush}" /></Border>
+            <Border Grid.Row="2" Padding="{StaticResource Shell.ContentPadding}" Background="{DynamicResource BackgroundBrush}"><ContentControl Content="{Binding CurrentViewModel}" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" Background="{DynamicResource BackgroundBrush}" /></Border>
         </Grid>
 
         <Border Grid.Row="1" Grid.ColumnSpan="2" Background="{DynamicResource SurfaceAltBrush}" BorderBrush="{DynamicResource NavigationBorderBrush}" BorderThickness="0,1,0,0">
