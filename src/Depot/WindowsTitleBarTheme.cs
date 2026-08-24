@@ -8,7 +8,7 @@ using System.Windows.Media;
 
 namespace Depot;
 
-internal static partial class WindowsTitleBarTheme
+internal static class WindowsTitleBarTheme
 {
 	private const int DwmwaUseImmersiveDarkMode = 20;
 	private const int DwmwaCaptionColor = 35;
@@ -37,6 +37,6 @@ internal static partial class WindowsTitleBarTheme
 
 	private static int ToColorRef(Color color) => color.R | color.G << 8 | color.B << 16;
 
-	[LibraryImport("dwmapi.dll")]
-	private static partial int DwmSetWindowAttribute(IntPtr hwnd, int dwAttribute, ref int pvAttribute, int cbAttribute);
+	[DllImport("dwmapi.dll")]
+	private static extern int DwmSetWindowAttribute(IntPtr hwnd, int dwAttribute, ref int pvAttribute, int cbAttribute);
 }
