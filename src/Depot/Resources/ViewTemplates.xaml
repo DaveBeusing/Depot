@@ -31,6 +31,7 @@
 	<DataTemplate DataType="{x:Type viewModels:InventoryCountsViewModel}"><views:InventoryCountsView /></DataTemplate>
 	<DataTemplate DataType="{x:Type viewModels:MaterialIssuesViewModel}"><views:MaterialIssuesView /></DataTemplate>
 	<DataTemplate DataType="{x:Type viewModels:MaterialReturnsViewModel}"><views:MaterialReturnsView /></DataTemplate>
+	<DataTemplate DataType="{x:Type viewModels:PurchaseOverviewViewModel}"><views:PurchaseOverviewView /></DataTemplate>
 	<DataTemplate DataType="{x:Type viewModels:PurchaseOrdersPageViewModel}"><views:PurchaseOrdersView /></DataTemplate>
 	<DataTemplate DataType="{x:Type viewModels:GoodsReceiptsPageViewModel}"><views:GoodsReceiptsView /></DataTemplate>
 	<DataTemplate DataType="{x:Type viewModels:SupplierReturnsViewModel}"><views:SupplierReturnsView /></DataTemplate>
@@ -41,7 +42,7 @@
 	<DataTemplate DataType="{x:Type viewModels:SalesQuotesViewModel}"><views:SalesQuotesView /></DataTemplate>
 	<DataTemplate DataType="{x:Type viewModels:SalesPricingViewModel}"><views:SalesPricingView /></DataTemplate>
 	<DataTemplate DataType="{x:Type viewModels:SalesOrdersViewModel}"><views:SalesOrdersView /></DataTemplate>
-	<DataTemplate DataType="{x:Type viewModels:SalesApprovalsViewModel}"><views:SalesView DataContext="{Binding Workspace}" /></DataTemplate>
+	<DataTemplate DataType="{x:Type viewModels:SalesApprovalsViewModel}"><views:SalesApprovalsView /></DataTemplate>
 	<DataTemplate DataType="{x:Type viewModels:ShippingViewModel}"><views:SalesShippingView /></DataTemplate>
 	<DataTemplate DataType="{x:Type viewModels:SalesInvoicesViewModel}"><views:SalesInvoicesView /></DataTemplate>
 	<DataTemplate DataType="{x:Type viewModels:ReportsViewModel}"><views:ReportsView /></DataTemplate>
