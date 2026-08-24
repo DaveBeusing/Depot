@@ -21,6 +21,7 @@ public partial class App : Application
 	static App()
 	{
 		FrameworkElement.LanguageProperty.OverrideMetadata(typeof(FrameworkElement), new FrameworkPropertyMetadata(XmlLanguage.GetLanguage("de-DE")));
+		EventManager.RegisterClassHandler(typeof(Window), FrameworkElement.LoadedEvent, new RoutedEventHandler(OnWindowLoaded));
 	}
 
 	protected override async void OnStartup(StartupEventArgs e)
@@ -103,6 +104,11 @@ public partial class App : Application
 		finally { mainViewModel.LogoutRequested -= OnLogoutRequested; mainViewModel.Dispose(); }
 		StartupDiagnostics.Log("MainWindow closed.");
 		void OnLogoutRequested(object? sender, EventArgs e) => mainWindow.Close();
+	}
+
+	private static void OnWindowLoaded(object sender, RoutedEventArgs e)
+	{
+		if (sender is Window window) WindowsTitleBarTheme.Apply(window);
 	}
 
 	private static void OnDispatcherUnhandledException(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
