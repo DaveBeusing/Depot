@@ -12,7 +12,31 @@ namespace Depot.Views;
 
 public partial class DashboardView : UserControl
 {
-	public DashboardView() => InitializeComponent();
+	private CancellationTokenSource? _refreshCancellation;
+
+	public DashboardView()
+	{
+		InitializeComponent();
+		Loaded += OnLoaded;
+		Unloaded += OnUnloaded;
+	}
+
+	private async void OnLoaded(object sender, RoutedEventArgs e)
+	{
+		if (DataContext is not DashboardViewModel viewModel || viewModel.IsBusy) return;
+		_refreshCancellation?.Cancel();
+		_refreshCancellation?.Dispose();
+		_refreshCancellation = new CancellationTokenSource();
+		try { await viewModel.LoadAsync(_refreshCancellation.Token); }
+		catch (OperationCanceledException) when (_refreshCancellation.IsCancellationRequested) { }
+	}
+
+	private void OnUnloaded(object sender, RoutedEventArgs e)
+	{
+		_refreshCancellation?.Cancel();
+		_refreshCancellation?.Dispose();
+		_refreshCancellation = null;
+	}
 
 	private async void OnDashboardActionClick(object sender, RoutedEventArgs e)
 	{

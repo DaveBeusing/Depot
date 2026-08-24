@@ -1,0 +1,22 @@
+<UserControl x:Class="Depot.Views.PurchaseOverviewView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:Depot.Controls">
+    <Grid>
+        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+        <controls:OperationPanel ErrorText="{Binding OperationError}" HasError="{Binding HasOperationError}" IsBusy="{Binding IsBusy}" StatusText="{Binding StatusText}" />
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <controls:WorkflowHeader Title="Purchasing overview" Subtitle="Purchase-to-receipt operations, approval and supplier fulfillment" Status="Live" />
+                <UniformGrid Columns="3" Margin="0,14,0,0">
+                    <controls:Card Margin="0,0,10,10"><StackPanel><TextBlock Text="Open orders" Style="{StaticResource CaptionStyle}"/><TextBlock Text="{Binding OpenOrdersCount, StringFormat={}{0:N0}}" FontSize="28" FontWeight="SemiBold"/><TextBlock Text="Purchase orders still in progress" Style="{StaticResource CaptionStyle}"/></StackPanel></controls:Card>
+                    <controls:Card Margin="0,0,10,10"><StackPanel><TextBlock Text="Pending approval" Style="{StaticResource CaptionStyle}"/><TextBlock Text="{Binding PendingApprovalCount, StringFormat={}{0:N0}}" FontSize="28" FontWeight="SemiBold"/><TextBlock Text="Orders waiting for a decision" Style="{StaticResource CaptionStyle}"/></StackPanel></controls:Card>
+                    <controls:Card Margin="0,0,0,10"><StackPanel><TextBlock Text="Approved to order" Style="{StaticResource CaptionStyle}"/><TextBlock Text="{Binding ApprovedToOrderCount, StringFormat={}{0:N0}}" FontSize="28" FontWeight="SemiBold"/><TextBlock Text="Approved orders not yet placed" Style="{StaticResource CaptionStyle}"/></StackPanel></controls:Card>
+                    <controls:Card Margin="0,0,10,10"><StackPanel><TextBlock Text="Awaiting receipt" Style="{StaticResource CaptionStyle}"/><TextBlock Text="{Binding AwaitingReceiptCount, StringFormat={}{0:N0}}" FontSize="28" FontWeight="SemiBold"/><TextBlock Text="Placed orders with stock still due" Style="{StaticResource CaptionStyle}"/></StackPanel></controls:Card>
+                    <controls:Card Margin="0,0,10,10"><StackPanel><TextBlock Text="Partially received" Style="{StaticResource CaptionStyle}"/><TextBlock Text="{Binding PartiallyReceivedCount, StringFormat={}{0:N0}}" FontSize="28" FontWeight="SemiBold"/><TextBlock Text="Orders with outstanding quantities" Style="{StaticResource CaptionStyle}"/></StackPanel></controls:Card>
+                    <controls:Card Margin="0,0,0,10"><StackPanel><TextBlock Text="Received orders" Style="{StaticResource CaptionStyle}"/><TextBlock Text="{Binding ReceivedOrdersCount, StringFormat={}{0:N0}}" FontSize="28" FontWeight="SemiBold"/><TextBlock Text="Purchase orders fully received" Style="{StaticResource CaptionStyle}"/></StackPanel></controls:Card>
+                </UniformGrid>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

@@ -13,6 +13,7 @@
 		<ResourceDictionary Source="DatePicker.xaml" />
 		<ResourceDictionary Source="Tabs.xaml" />
 		<ResourceDictionary Source="Cards.xaml" />
+		<ResourceDictionary Source="ScrollBars.xaml" />
 		<ResourceDictionary Source="DataGrid.xaml" />
 		<ResourceDictionary Source="Status.xaml" />
 		<ResourceDictionary Source="PageHeaders.xaml" />
@@ -25,5 +26,6 @@
 		<!-- Composite application patterns -->
 		<ResourceDictionary Source="Workflows.xaml" />
 		<ResourceDictionary Source="WorkspacePolish.xaml" />
+		<ResourceDictionary Source="ButtonPolish.xaml" />
 	</ResourceDictionary.MergedDictionaries>
 </ResourceDictionary>

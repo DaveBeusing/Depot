@@ -30,6 +30,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 	private readonly Lazy<MaterialReturnsViewModel> _materialReturns;
 	private readonly Lazy<SupplierReturnsViewModel> _supplierReturns;
 	private readonly Lazy<ProcurementViewModel> _procurement;
+	private readonly Lazy<PurchaseOverviewViewModel> _purchaseOverview;
 	private readonly Lazy<PurchaseOrdersPageViewModel> _purchaseOrdersPage;
 	private readonly Lazy<GoodsReceiptsPageViewModel> _goodsReceiptsPage;
 	private readonly Lazy<PurchaseOrderApprovalsViewModel> _purchaseOrderApprovals;
@@ -130,6 +131,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		_materialReturns = new(() => new MaterialReturnsViewModel(materialReturnService, reasonCodeService, fileDialogService));
 		_supplierReturns = new(() => new SupplierReturnsViewModel(supplierReturnService, supplierService, reasonCodeService, fileDialogService));
 		_procurement = new(() => new ProcurementViewModel(purchaseOrderService, purchaseOrderHistoryService, goodsReceiptService, supplierService, itemService, fileDialogService, reasonCodeService, MarkPurchasingPagesStale, MarkInventoryPagesStale));
+		_purchaseOverview = new(() => new PurchaseOverviewViewModel(purchaseOrderService));
 		_purchaseOrdersPage = new(() => new PurchaseOrdersPageViewModel(_procurement.Value));
 		_goodsReceiptsPage = new(() => new GoodsReceiptsPageViewModel(_procurement.Value));
 		_purchaseOrderApprovals = new(() => new PurchaseOrderApprovalsViewModel(purchaseOrderApprovalService, fileDialogService));
@@ -177,6 +179,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 	public MaterialReturnsViewModel MaterialReturnsViewModel => _materialReturns.Value;
 	public SupplierReturnsViewModel SupplierReturnsViewModel => _supplierReturns.Value;
 	public ProcurementViewModel ProcurementViewModel => _procurement.Value;
+	public PurchaseOverviewViewModel PurchaseOverviewViewModel => _purchaseOverview.Value;
 	public PurchaseOrdersPageViewModel PurchaseOrdersPageViewModel => _purchaseOrdersPage.Value;
 	public GoodsReceiptsPageViewModel GoodsReceiptsPageViewModel => _goodsReceiptsPage.Value;
 	public PurchaseOrderApprovalsViewModel PurchaseOrderApprovalsViewModel => _purchaseOrderApprovals.Value;
@@ -334,6 +337,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		if (_authorization.HasPermission(ApplicationPermission.PurchasingView))
 		{
 			var purchasingPages = new List<SecondaryNavigationItem>();
+			AddPage(purchasingPages, ApplicationPermission.PurchaseOrdersView, "Overview", () => _purchaseOverview.Value, (viewModel, token) => viewModel.LoadAsync(token), "purchasing.overview");
 			AddPage(purchasingPages, ApplicationPermission.PurchaseOrdersView, "Purchase Orders", () => _purchaseOrdersPage.Value, (viewModel, token) => viewModel.LoadAsync(token), "purchasing.purchase-orders", () => _procurement.Value.Section = ProcurementSection.PurchaseOrders);
 			AddPage(purchasingPages, ApplicationPermission.GoodsReceiptsView, "Goods Receipts", () => _goodsReceiptsPage.Value, (viewModel, token) => viewModel.LoadAsync(token), "purchasing.goods-receipts", () => _procurement.Value.Section = ProcurementSection.GoodsReceipts);
 			AddPage(purchasingPages, ApplicationPermission.SupplierReturnsView, "Supplier Returns", () => _supplierReturns.Value, (viewModel, token) => viewModel.LoadAsync(token), "purchasing.supplier-returns");
@@ -399,7 +403,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 
 	private bool HasAdministrationPages() => _authorization.HasAnyPermission(ApplicationPermission.MasterDataView, ApplicationPermission.SuppliersView, ApplicationPermission.UsersView, ApplicationPermission.RolesView, ApplicationPermission.ImportManage, ApplicationPermission.AuditLogView, ApplicationPermission.DatabaseView, ApplicationPermission.AdministrationView);
 	private void MarkInventoryPagesStale() { MarkModulePageStale("Inventory", "Overview"); MarkModulePageStale("Inventory", "Movements"); }
-	private void MarkPurchasingPagesStale() { MarkModulePageStale("Purchasing", "Purchase Orders"); MarkModulePageStale("Purchasing", "Goods Receipts"); }
+	private void MarkPurchasingPagesStale() { MarkModulePageStale("Purchasing", "Overview"); MarkModulePageStale("Purchasing", "Purchase Orders"); MarkModulePageStale("Purchasing", "Goods Receipts"); }
 
 	private void MarkModulePageStale(string moduleName, string pageName)
 	{
