@@ -7,7 +7,7 @@ This document identifies the documentation baseline for the current development 
 ## Current baseline
 
 - Application line: `0.14.x-preview`
-- Current branch version: `0.14.129-preview`
+- Current branch version: `0.14.130-preview`
 - Help manifest: `1.7`
 - Core database schema: 29 plus the additive provider-neutral Item master-data extension
 - Sales invoice-finalization schema: 8

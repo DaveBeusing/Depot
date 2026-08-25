@@ -4,6 +4,8 @@
 using System.Data.Common;
 using System.Globalization;
 
+using Depot.Models;
+
 namespace Depot.Data;
 
 internal static class ItemMasterDataSchema
