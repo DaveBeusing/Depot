@@ -4,7 +4,7 @@ Depot ships an integrated offline Help Center using embedded Markdown and native
 
 ## Content structure
 
-Help content is versioned with the application under `src/Depot/Help`. The current manifest version is **1.6** and contains Getting Started, Inventory, Warehouse, Purchasing, Sales, Approvals, Reports, Administration, and Troubleshooting topics.
+Help content is versioned with the application under `src/Depot/Help`. The current manifest version is **1.7** and contains Getting Started, Inventory, Warehouse, Purchasing, Sales, Approvals, Reports, Administration, and Troubleshooting topics.
 
 `manifest.json` defines stable topic IDs, titles, categories, Markdown files, ordering, search keywords, optional required permissions, and related topics. IDs are application contracts and should not be renamed after use.
 
@@ -20,12 +20,13 @@ Help must remain synchronized with current application behavior, especially secu
 - backup guidance documents validation, restore safety, automatic retention, and environment-specific recovery acceptance
 - Audit Log documentation includes filtered CSV export and structured business-record evidence export
 - Privacy Data documents person-related discovery/export without implying automatic legal erasure decisions
+- Item Help documents identification, lifecycle, trade/compliance and logistics master data, including the fixed kg/mm physical-unit contract and the operational boundary of tracking/type/lifecycle classifications
 - Sales invoice Help distinguishes current operational invoice/credit-note behavior from the EN 16931/XRechnung technical conformance foundation
 - Help must never document removed default credentials or imply legal certification from technical controls
 
-## Manifest 1.6 changes
+## Manifest 1.7 changes
 
-Manifest 1.6 adds the `administration.privacy-data` topic and refreshes keywords/related topics around first-run administration, privacy, security, audit evidence, backup retention, encrypted database configuration, and electronic invoicing.
+Manifest 1.7 refreshes the existing `inventory.items` topic for the enriched item-master-data contract. Search keywords now include GTIN, model/revision/product family, lifecycle, customs/ECCN, dangerous goods/battery, RoHS/REACH, logistics measurements and replacement-item concepts. The topic explicitly distinguishes persisted master-data classifications from workflow capabilities that are not yet implemented, such as serial/lot capture enforcement.
 
 ## Supported Markdown
 

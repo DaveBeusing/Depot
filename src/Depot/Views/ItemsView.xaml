@@ -31,7 +31,7 @@
                                 <controls:SearchBox automation:AutomationProperties.Name="Search items"
                                                     Placeholder="Search items"
                                                     Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-                                                    ToolTip="Search by part number, description, GTIN, origin, tariff number, manufacturer, category, unit, packaging, or notes" />
+                                                    ToolTip="Search by part number, description, GTIN, model, revision, product family, origin, tariff number, ECCN, UN number, manufacturer, category, unit, packaging, or notes" />
                                 <ComboBox Grid.Row="2" automation:AutomationProperties.Name="Item status filter" ItemsSource="{Binding ActivationFilters}" SelectedItem="{Binding SelectedActivationFilter}" DisplayMemberPath="Name" Style="{StaticResource AppComboBoxStyle}" />
                             </Grid>
                         </controls:FilterBar>
@@ -41,9 +41,8 @@
                                     <DataGridTextColumn Header="Part number" Binding="{Binding PartNumber}" Width="125" ElementStyle="{StaticResource AppDataGridTextStyle}" />
                                     <DataGridTextColumn Header="Description" Binding="{Binding Description}" Width="*" ElementStyle="{StaticResource AppDataGridTextStyle}" />
                                     <DataGridTextColumn Header="GTIN" Binding="{Binding Gtin}" Width="110" ElementStyle="{StaticResource AppDataGridTextStyle}" />
-                                    <DataGridTextColumn Header="Type" Binding="{Binding ItemType}" Width="95" ElementStyle="{StaticResource AppDataGridTextStyle}" />
+                                    <DataGridTextColumn Header="Model" Binding="{Binding Model}" Width="105" ElementStyle="{StaticResource AppDataGridTextStyle}" />
                                     <DataGridTextColumn Header="Lifecycle" Binding="{Binding LifecycleStatus}" Width="105" ElementStyle="{StaticResource AppDataGridTextStyle}" />
-                                    <DataGridTextColumn Header="Category" Binding="{Binding Category}" Width="115" ElementStyle="{StaticResource AppDataGridTextStyle}" />
                                     <DataGridTemplateColumn Header="Status" Width="80">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
@@ -70,98 +69,183 @@
                             <RowDefinition Height="*" />
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
-                        <controls:WorkflowHeader Title="{Binding Editor.EditorTitle}" Subtitle="Part numbers are immutable after creation." Status="{Binding EditorStatus}" />
+                        <controls:WorkflowHeader Title="{Binding Editor.EditorTitle}" Subtitle="Part numbers are immutable after creation. Weight is stored in kg; dimensions are stored in mm." Status="{Binding EditorStatus}" />
                         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="12" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto" /><RowDefinition Height="12" />
-                                    <RowDefinition Height="Auto" /><RowDefinition Height="12" />
-                                    <RowDefinition Height="Auto" /><RowDefinition Height="12" />
-                                    <RowDefinition Height="Auto" /><RowDefinition Height="12" />
-                                    <RowDefinition Height="Auto" /><RowDefinition Height="12" />
-                                    <RowDefinition Height="Auto" /><RowDefinition Height="12" />
-                                    <RowDefinition Height="Auto" /><RowDefinition Height="12" />
-                                    <RowDefinition Height="Auto" /><RowDefinition Height="12" />
-                                    <RowDefinition Height="Auto" />
-                                </Grid.RowDefinitions>
-                                <StackPanel>
-                                    <TextBlock Text="Part number *" Style="{StaticResource FormLabelStyle}" />
-                                    <controls:TextInput controls:FocusRequest.RequestId="{Binding EditorFocusRequest}" automation:AutomationProperties.Name="Part number" IsEnabled="{Binding Editor.CanEditPartNumber}" Text="{Binding Editor.PartNumber, UpdateSourceTrigger=PropertyChanged}" />
-                                </StackPanel>
-                                <StackPanel Grid.Column="2">
-                                    <TextBlock Text="Description *" Style="{StaticResource FormLabelStyle}" />
-                                    <controls:TextInput automation:AutomationProperties.Name="Description" Text="{Binding Editor.Description, UpdateSourceTrigger=PropertyChanged}" />
-                                </StackPanel>
-                                <StackPanel Grid.Row="2">
-                                    <TextBlock Text="Manufacturer" Style="{StaticResource FormLabelStyle}" />
-                                    <ComboBox automation:AutomationProperties.Name="Manufacturer" ItemsSource="{Binding Manufacturers}" SelectedItem="{Binding Editor.Manufacturer}" DisplayMemberPath="Name" Style="{StaticResource AppComboBoxStyle}" />
-                                </StackPanel>
-                                <StackPanel Grid.Row="2" Grid.Column="2">
-                                    <TextBlock Text="Category" Style="{StaticResource FormLabelStyle}" />
-                                    <ComboBox automation:AutomationProperties.Name="Category" ItemsSource="{Binding Categories}" SelectedItem="{Binding Editor.Category}" DisplayMemberPath="Name" Style="{StaticResource AppComboBoxStyle}" />
-                                </StackPanel>
-                                <StackPanel Grid.Row="4">
-                                    <TextBlock Text="Unit of measure" Style="{StaticResource FormLabelStyle}" />
-                                    <ComboBox automation:AutomationProperties.Name="Unit of measure" ItemsSource="{Binding UnitsOfMeasure}" SelectedItem="{Binding Editor.UnitOfMeasure}" DisplayMemberPath="Name" Style="{StaticResource AppComboBoxStyle}" />
-                                </StackPanel>
-                                <StackPanel Grid.Row="4" Grid.Column="2">
-                                    <TextBlock Text="Packaging" Style="{StaticResource FormLabelStyle}" />
-                                    <ComboBox automation:AutomationProperties.Name="Packaging" ItemsSource="{Binding Packagings}" SelectedItem="{Binding Editor.Packaging}" DisplayMemberPath="Name" Style="{StaticResource AppComboBoxStyle}" />
-                                </StackPanel>
-                                <StackPanel Grid.Row="6">
-                                    <TextBlock Text="GTIN" Style="{StaticResource FormLabelStyle}" />
-                                    <controls:TextInput automation:AutomationProperties.Name="GTIN" Text="{Binding Editor.Gtin, UpdateSourceTrigger=PropertyChanged}" />
-                                </StackPanel>
-                                <StackPanel Grid.Row="6" Grid.Column="2">
-                                    <TextBlock Text="Item type" Style="{StaticResource FormLabelStyle}" />
-                                    <ComboBox automation:AutomationProperties.Name="Item type" ItemsSource="{Binding ItemTypes}" SelectedItem="{Binding Editor.ItemType}" Style="{StaticResource AppComboBoxStyle}" />
-                                </StackPanel>
-                                <StackPanel Grid.Row="8">
-                                    <TextBlock Text="Lifecycle status" Style="{StaticResource FormLabelStyle}" />
-                                    <ComboBox automation:AutomationProperties.Name="Lifecycle status" ItemsSource="{Binding LifecycleStatuses}" SelectedItem="{Binding Editor.LifecycleStatus}" Style="{StaticResource AppComboBoxStyle}" />
-                                </StackPanel>
-                                <StackPanel Grid.Row="8" Grid.Column="2">
-                                    <TextBlock Text="Tracking mode" Style="{StaticResource FormLabelStyle}" />
-                                    <ComboBox automation:AutomationProperties.Name="Tracking mode" ItemsSource="{Binding TrackingModes}" SelectedItem="{Binding Editor.TrackingMode}" Style="{StaticResource AppComboBoxStyle}" />
-                                </StackPanel>
-                                <StackPanel Grid.Row="10">
-                                    <TextBlock Text="Country of origin" Style="{StaticResource FormLabelStyle}" />
-                                    <controls:TextInput automation:AutomationProperties.Name="Country of origin" Text="{Binding Editor.CountryOfOrigin, UpdateSourceTrigger=PropertyChanged}" />
-                                </StackPanel>
-                                <StackPanel Grid.Row="10" Grid.Column="2">
-                                    <TextBlock Text="Customs tariff number" Style="{StaticResource FormLabelStyle}" />
-                                    <controls:TextInput automation:AutomationProperties.Name="Customs tariff number" Text="{Binding Editor.CustomsTariffNumber, UpdateSourceTrigger=PropertyChanged}" />
-                                </StackPanel>
-                                <StackPanel Grid.Row="12">
-                                    <TextBlock Text="Net weight" Style="{StaticResource FormLabelStyle}" />
-                                    <controls:TextInput automation:AutomationProperties.Name="Net weight" Text="{Binding Editor.NetWeight, UpdateSourceTrigger=PropertyChanged}" />
-                                </StackPanel>
-                                <StackPanel Grid.Row="12" Grid.Column="2">
-                                    <TextBlock Text="Replacement item ID" Style="{StaticResource FormLabelStyle}" />
-                                    <controls:TextInput automation:AutomationProperties.Name="Replacement item ID" Text="{Binding Editor.ReplacementItemId, UpdateSourceTrigger=PropertyChanged}" />
-                                </StackPanel>
-                                <StackPanel Grid.Row="14">
-                                    <TextBlock Text="Length" Style="{StaticResource FormLabelStyle}" />
-                                    <controls:TextInput automation:AutomationProperties.Name="Length" Text="{Binding Editor.Length, UpdateSourceTrigger=PropertyChanged}" />
-                                </StackPanel>
-                                <StackPanel Grid.Row="14" Grid.Column="2">
-                                    <TextBlock Text="Width" Style="{StaticResource FormLabelStyle}" />
-                                    <controls:TextInput automation:AutomationProperties.Name="Width" Text="{Binding Editor.Width, UpdateSourceTrigger=PropertyChanged}" />
-                                </StackPanel>
-                                <StackPanel Grid.Row="16">
-                                    <TextBlock Text="Height" Style="{StaticResource FormLabelStyle}" />
-                                    <controls:TextInput automation:AutomationProperties.Name="Height" Text="{Binding Editor.Height, UpdateSourceTrigger=PropertyChanged}" />
-                                </StackPanel>
-                                <StackPanel Grid.Row="16" Grid.Column="2">
-                                    <TextBlock Text="Notes" Style="{StaticResource FormLabelStyle}" />
-                                    <controls:TextInput automation:AutomationProperties.Name="Notes" Text="{Binding Editor.Notes, UpdateSourceTrigger=PropertyChanged}" />
-                                </StackPanel>
-                            </Grid>
+                            <StackPanel>
+                                <TextBlock Text="Identity and classification" FontSize="14" FontWeight="SemiBold" Margin="0,4,0,10" />
+                                <Grid>
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" /><RowDefinition Height="12" />
+                                        <RowDefinition Height="Auto" /><RowDefinition Height="12" />
+                                        <RowDefinition Height="Auto" /><RowDefinition Height="12" />
+                                        <RowDefinition Height="Auto" /><RowDefinition Height="12" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Text="Part number *" Style="{StaticResource FormLabelStyle}" />
+                                        <controls:TextInput controls:FocusRequest.RequestId="{Binding EditorFocusRequest}" automation:AutomationProperties.Name="Part number" IsEnabled="{Binding Editor.CanEditPartNumber}" Text="{Binding Editor.PartNumber, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock Text="Description *" Style="{StaticResource FormLabelStyle}" />
+                                        <controls:TextInput automation:AutomationProperties.Name="Description" Text="{Binding Editor.Description, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Row="2">
+                                        <TextBlock Text="Manufacturer" Style="{StaticResource FormLabelStyle}" />
+                                        <ComboBox automation:AutomationProperties.Name="Manufacturer" ItemsSource="{Binding Manufacturers}" SelectedItem="{Binding Editor.Manufacturer}" DisplayMemberPath="Name" Style="{StaticResource AppComboBoxStyle}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Row="2" Grid.Column="2">
+                                        <TextBlock Text="Category" Style="{StaticResource FormLabelStyle}" />
+                                        <ComboBox automation:AutomationProperties.Name="Category" ItemsSource="{Binding Categories}" SelectedItem="{Binding Editor.Category}" DisplayMemberPath="Name" Style="{StaticResource AppComboBoxStyle}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Row="4">
+                                        <TextBlock Text="Unit of measure" Style="{StaticResource FormLabelStyle}" />
+                                        <ComboBox automation:AutomationProperties.Name="Unit of measure" ItemsSource="{Binding UnitsOfMeasure}" SelectedItem="{Binding Editor.UnitOfMeasure}" DisplayMemberPath="Name" Style="{StaticResource AppComboBoxStyle}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Row="4" Grid.Column="2">
+                                        <TextBlock Text="Packaging" Style="{StaticResource FormLabelStyle}" />
+                                        <ComboBox automation:AutomationProperties.Name="Packaging" ItemsSource="{Binding Packagings}" SelectedItem="{Binding Editor.Packaging}" DisplayMemberPath="Name" Style="{StaticResource AppComboBoxStyle}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Row="6">
+                                        <TextBlock Text="GTIN" Style="{StaticResource FormLabelStyle}" />
+                                        <controls:TextInput automation:AutomationProperties.Name="GTIN" Text="{Binding Editor.Gtin, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Row="6" Grid.Column="2">
+                                        <TextBlock Text="Item type" Style="{StaticResource FormLabelStyle}" />
+                                        <ComboBox automation:AutomationProperties.Name="Item type" ItemsSource="{Binding ItemTypes}" SelectedItem="{Binding Editor.ItemType}" Style="{StaticResource AppComboBoxStyle}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Row="8">
+                                        <TextBlock Text="Model" Style="{StaticResource FormLabelStyle}" />
+                                        <controls:TextInput automation:AutomationProperties.Name="Model" Text="{Binding Editor.Model, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Row="8" Grid.Column="2">
+                                        <TextBlock Text="Revision" Style="{StaticResource FormLabelStyle}" />
+                                        <controls:TextInput automation:AutomationProperties.Name="Revision" Text="{Binding Editor.Revision, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+                                </Grid>
+
+                                <TextBlock Text="Lifecycle and product family" FontSize="14" FontWeight="SemiBold" Margin="0,20,0,10" />
+                                <Grid>
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" /><RowDefinition Height="12" />
+                                        <RowDefinition Height="Auto" /><RowDefinition Height="12" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Text="Product family" Style="{StaticResource FormLabelStyle}" />
+                                        <controls:TextInput automation:AutomationProperties.Name="Product family" Text="{Binding Editor.ProductFamily, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock Text="Lifecycle status" Style="{StaticResource FormLabelStyle}" />
+                                        <ComboBox automation:AutomationProperties.Name="Lifecycle status" ItemsSource="{Binding LifecycleStatuses}" SelectedItem="{Binding Editor.LifecycleStatus}" Style="{StaticResource AppComboBoxStyle}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Row="2">
+                                        <TextBlock Text="Introduction date" Style="{StaticResource FormLabelStyle}" />
+                                        <DatePicker automation:AutomationProperties.Name="Introduction date" SelectedDate="{Binding Editor.IntroductionDate, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Row="2" Grid.Column="2">
+                                        <TextBlock Text="End-of-life date" Style="{StaticResource FormLabelStyle}" />
+                                        <DatePicker automation:AutomationProperties.Name="End-of-life date" SelectedDate="{Binding Editor.EndOfLifeDate, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Row="4">
+                                        <TextBlock Text="Last-buy date" Style="{StaticResource FormLabelStyle}" />
+                                        <DatePicker automation:AutomationProperties.Name="Last-buy date" SelectedDate="{Binding Editor.LastBuyDate, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Row="4" Grid.Column="2">
+                                        <TextBlock Text="End-of-support date" Style="{StaticResource FormLabelStyle}" />
+                                        <DatePicker automation:AutomationProperties.Name="End-of-support date" SelectedDate="{Binding Editor.EndOfSupportDate, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+                                </Grid>
+
+                                <TextBlock Text="Trade and compliance" FontSize="14" FontWeight="SemiBold" Margin="0,20,0,10" />
+                                <Grid>
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" /><RowDefinition Height="12" />
+                                        <RowDefinition Height="Auto" /><RowDefinition Height="12" />
+                                        <RowDefinition Height="Auto" /><RowDefinition Height="12" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Text="Country of origin (ISO alpha-2)" Style="{StaticResource FormLabelStyle}" />
+                                        <controls:TextInput automation:AutomationProperties.Name="Country of origin" Text="{Binding Editor.CountryOfOrigin, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock Text="Customs tariff number" Style="{StaticResource FormLabelStyle}" />
+                                        <controls:TextInput automation:AutomationProperties.Name="Customs tariff number" Text="{Binding Editor.CustomsTariffNumber, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Row="2">
+                                        <TextBlock Text="ECCN" Style="{StaticResource FormLabelStyle}" />
+                                        <controls:TextInput automation:AutomationProperties.Name="ECCN" Text="{Binding Editor.Eccn, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Row="2" Grid.Column="2">
+                                        <TextBlock Text="Tracking mode" Style="{StaticResource FormLabelStyle}" />
+                                        <ComboBox automation:AutomationProperties.Name="Tracking mode" ItemsSource="{Binding TrackingModes}" SelectedItem="{Binding Editor.TrackingMode}" Style="{StaticResource AppComboBoxStyle}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Row="4">
+                                        <TextBlock Text="RoHS status" Style="{StaticResource FormLabelStyle}" />
+                                        <ComboBox automation:AutomationProperties.Name="RoHS status" ItemsSource="{Binding ComplianceStatuses}" SelectedItem="{Binding Editor.RohsStatus}" Style="{StaticResource AppComboBoxStyle}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Row="4" Grid.Column="2">
+                                        <TextBlock Text="REACH status" Style="{StaticResource FormLabelStyle}" />
+                                        <ComboBox automation:AutomationProperties.Name="REACH status" ItemsSource="{Binding ComplianceStatuses}" SelectedItem="{Binding Editor.ReachStatus}" Style="{StaticResource AppComboBoxStyle}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Row="6">
+                                        <CheckBox automation:AutomationProperties.Name="Dangerous goods" Content="Dangerous goods" IsChecked="{Binding Editor.IsDangerousGoods}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Row="6" Grid.Column="2">
+                                        <CheckBox automation:AutomationProperties.Name="Contains battery" Content="Contains battery" IsChecked="{Binding Editor.ContainsBattery}" />
+                                    </StackPanel>
+                                </Grid>
+
+                                <TextBlock Text="Logistics" FontSize="14" FontWeight="SemiBold" Margin="0,20,0,10" />
+                                <Grid>
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" /><RowDefinition Height="12" />
+                                        <RowDefinition Height="Auto" /><RowDefinition Height="12" />
+                                        <RowDefinition Height="Auto" /><RowDefinition Height="12" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Text="UN number" Style="{StaticResource FormLabelStyle}" />
+                                        <controls:TextInput automation:AutomationProperties.Name="UN number" Text="{Binding Editor.UnNumber, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock Text="Replacement item" Style="{StaticResource FormLabelStyle}" />
+                                        <Grid>
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                            <ComboBox automation:AutomationProperties.Name="Replacement item" ItemsSource="{Binding ReplacementItems}" SelectedValue="{Binding Editor.ReplacementItemId, Mode=TwoWay}" SelectedValuePath="Id" DisplayMemberPath="PartNumber" IsTextSearchEnabled="True" Style="{StaticResource AppComboBoxStyle}" />
+                                            <Button Grid.Column="1" Margin="6,0,0,0" Command="{Binding ClearReplacementCommand}" Content="Clear" Style="{StaticResource SecondaryButtonStyle}" />
+                                        </Grid>
+                                    </StackPanel>
+                                    <StackPanel Grid.Row="2">
+                                        <TextBlock Text="Net weight (kg)" Style="{StaticResource FormLabelStyle}" />
+                                        <controls:TextInput automation:AutomationProperties.Name="Net weight in kilograms" Text="{Binding Editor.NetWeightKg, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Row="2" Grid.Column="2">
+                                        <TextBlock Text="Gross weight (kg)" Style="{StaticResource FormLabelStyle}" />
+                                        <controls:TextInput automation:AutomationProperties.Name="Gross weight in kilograms" Text="{Binding Editor.GrossWeightKg, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Row="4">
+                                        <TextBlock Text="Length (mm)" Style="{StaticResource FormLabelStyle}" />
+                                        <controls:TextInput automation:AutomationProperties.Name="Length in millimeters" Text="{Binding Editor.LengthMm, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Row="4" Grid.Column="2">
+                                        <TextBlock Text="Width (mm)" Style="{StaticResource FormLabelStyle}" />
+                                        <controls:TextInput automation:AutomationProperties.Name="Width in millimeters" Text="{Binding Editor.WidthMm, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Row="6">
+                                        <TextBlock Text="Height (mm)" Style="{StaticResource FormLabelStyle}" />
+                                        <controls:TextInput automation:AutomationProperties.Name="Height in millimeters" Text="{Binding Editor.HeightMm, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Row="6" Grid.Column="2">
+                                        <TextBlock Text="Notes" Style="{StaticResource FormLabelStyle}" />
+                                        <controls:TextInput automation:AutomationProperties.Name="Notes" Text="{Binding Editor.Notes, UpdateSourceTrigger=PropertyChanged}" />
+                                    </StackPanel>
+                                </Grid>
+                            </StackPanel>
                         </ScrollViewer>
                         <controls:WorkflowActionBar Grid.Row="2">
                             <controls:WorkflowActionBar.SecondaryActions>

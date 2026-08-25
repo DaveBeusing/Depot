@@ -14,7 +14,7 @@ public sealed class ItemRepository : DatabaseRepository
 	private const string SelectColumns =
 		"i.Id, i.PartNumber, i.Description, m.Name, c.Name, u.Name, pk.Name, i.IsActive, i.Version, i.ManufacturerId, i.CategoryId, i.UnitOfMeasureId, i.PackagingId";
 	private const string MasterDataSelectColumns =
-		SelectColumns + ", i.Gtin, i.ItemType, i.LifecycleStatus, i.CountryOfOrigin, i.CustomsTariffNumber, i.TrackingMode, i.NetWeight, i.Length, i.Width, i.Height, i.ReplacementItemId, i.Notes";
+		SelectColumns + ", i.Gtin, i.ItemType, i.LifecycleStatus, i.Revision, i.Model, i.ProductFamily, i.CountryOfOrigin, i.CustomsTariffNumber, i.Eccn, i.TrackingMode, i.NetWeightKg, i.GrossWeightKg, i.LengthMm, i.WidthMm, i.HeightMm, i.IsDangerousGoods, i.UnNumber, i.ContainsBattery, i.RohsStatus, i.ReachStatus, i.IntroductionDate, i.EndOfLifeDate, i.LastBuyDate, i.EndOfSupportDate, i.ReplacementItemId, i.Notes";
 	private const string SelectFrom =
 		"FROM Items i LEFT JOIN Manufacturers m ON m.Id = i.ManufacturerId LEFT JOIN Categories c ON c.Id = i.CategoryId LEFT JOIN UnitsOfMeasure u ON u.Id = i.UnitOfMeasureId LEFT JOIN Packagings pk ON pk.Id = i.PackagingId";
 
@@ -40,9 +40,9 @@ public sealed class ItemRepository : DatabaseRepository
 		Database.InsertAsync(
 			"""
 			INSERT INTO Items
-			(PartNumber, Description, ManufacturerId, CategoryId, UnitOfMeasureId, PackagingId, Gtin, ItemType, LifecycleStatus, CountryOfOrigin, CustomsTariffNumber, TrackingMode, NetWeight, Length, Width, Height, ReplacementItemId, Notes, IsActive)
+			(PartNumber, Description, ManufacturerId, CategoryId, UnitOfMeasureId, PackagingId, Gtin, ItemType, LifecycleStatus, Revision, Model, ProductFamily, CountryOfOrigin, CustomsTariffNumber, Eccn, TrackingMode, NetWeightKg, GrossWeightKg, LengthMm, WidthMm, HeightMm, IsDangerousGoods, UnNumber, ContainsBattery, RohsStatus, ReachStatus, IntroductionDate, EndOfLifeDate, LastBuyDate, EndOfSupportDate, ReplacementItemId, Notes, IsActive)
 			VALUES
-			($PartNumber, $Description, $ManufacturerId, $CategoryId, $UnitOfMeasureId, $PackagingId, $Gtin, $ItemType, $LifecycleStatus, $CountryOfOrigin, $CustomsTariffNumber, $TrackingMode, $NetWeight, $Length, $Width, $Height, $ReplacementItemId, $Notes, $IsActive);
+			($PartNumber, $Description, $ManufacturerId, $CategoryId, $UnitOfMeasureId, $PackagingId, $Gtin, $ItemType, $LifecycleStatus, $Revision, $Model, $ProductFamily, $CountryOfOrigin, $CustomsTariffNumber, $Eccn, $TrackingMode, $NetWeightKg, $GrossWeightKg, $LengthMm, $WidthMm, $HeightMm, $IsDangerousGoods, $UnNumber, $ContainsBattery, $RohsStatus, $ReachStatus, $IntroductionDate, $EndOfLifeDate, $LastBuyDate, $EndOfSupportDate, $ReplacementItemId, $Notes, $IsActive);
 			""",
 			cancellationToken,
 			MasterDataParameters(item));
@@ -76,13 +76,27 @@ public sealed class ItemRepository : DatabaseRepository
 			    Gtin = $Gtin,
 			    ItemType = $ItemType,
 			    LifecycleStatus = $LifecycleStatus,
+			    Revision = $Revision,
+			    Model = $Model,
+			    ProductFamily = $ProductFamily,
 			    CountryOfOrigin = $CountryOfOrigin,
 			    CustomsTariffNumber = $CustomsTariffNumber,
+			    Eccn = $Eccn,
 			    TrackingMode = $TrackingMode,
-			    NetWeight = $NetWeight,
-			    Length = $Length,
-			    Width = $Width,
-			    Height = $Height,
+			    NetWeightKg = $NetWeightKg,
+			    GrossWeightKg = $GrossWeightKg,
+			    LengthMm = $LengthMm,
+			    WidthMm = $WidthMm,
+			    HeightMm = $HeightMm,
+			    IsDangerousGoods = $IsDangerousGoods,
+			    UnNumber = $UnNumber,
+			    ContainsBattery = $ContainsBattery,
+			    RohsStatus = $RohsStatus,
+			    ReachStatus = $ReachStatus,
+			    IntroductionDate = $IntroductionDate,
+			    EndOfLifeDate = $EndOfLifeDate,
+			    LastBuyDate = $LastBuyDate,
+			    EndOfSupportDate = $EndOfSupportDate,
 			    ReplacementItemId = $ReplacementItemId,
 			    Notes = $Notes,
 			    IsActive = $IsActive,
@@ -146,7 +160,7 @@ public sealed class ItemRepository : DatabaseRepository
 		if (hasSearch)
 		{
 			var masterSearch = includeMasterData
-				? " OR i.Gtin LIKE $Search OR i.CountryOfOrigin LIKE $Search OR i.CustomsTariffNumber LIKE $Search OR i.Notes LIKE $Search"
+				? " OR i.Gtin LIKE $Search OR i.Revision LIKE $Search OR i.Model LIKE $Search OR i.ProductFamily LIKE $Search OR i.CountryOfOrigin LIKE $Search OR i.CustomsTariffNumber LIKE $Search OR i.Eccn LIKE $Search OR i.UnNumber LIKE $Search OR i.Notes LIKE $Search"
 				: string.Empty;
 			predicates.Add($"(i.PartNumber LIKE $Search OR i.Description LIKE $Search OR m.Name LIKE $Search OR c.Name LIKE $Search OR u.Name LIKE $Search OR pk.Name LIKE $Search{masterSearch} OR EXISTS (SELECT 1 FROM SupplierItems si INNER JOIN Suppliers s ON s.Id = si.SupplierId WHERE si.ItemId = i.Id AND si.IsActive = 1 AND (s.Name LIKE $Search OR si.SupplierPartNumber LIKE $Search)))");
 			parameters.Add(Parameter("$Search", $"%{search}%"));
@@ -164,6 +178,12 @@ public sealed class ItemRepository : DatabaseRepository
 			parameters.ToArray());
 	}
 
+	public Task<IReadOnlyList<Item>> GetActiveItemsAsync(CancellationToken cancellationToken) =>
+		Database.QueryAsync(
+			$"SELECT {SelectColumns} {SelectFrom} WHERE i.IsActive = 1 ORDER BY i.PartNumber, i.Id;",
+			ReadItem,
+			cancellationToken);
+
 	public Task<Item?> GetByIdAsync(long id, CancellationToken cancellationToken) =>
 		Database.QuerySingleOrDefaultAsync(
 			$"SELECT {SelectColumns} {SelectFrom} WHERE i.Id = $Id;",
@@ -177,6 +197,13 @@ public sealed class ItemRepository : DatabaseRepository
 			ReadMasterDataItem,
 			cancellationToken,
 			Parameter("$Id", id));
+
+	public Task<Item?> GetByGtinAsync(string gtin, CancellationToken cancellationToken) =>
+		Database.QuerySingleOrDefaultAsync(
+			$"SELECT {SelectColumns} {SelectFrom} WHERE i.Gtin = $Gtin;",
+			ReadItem,
+			cancellationToken,
+			Parameter("$Gtin", gtin));
 
 	public Task<IReadOnlyList<Item>> GetByIdsAsync(
 		IEnumerable<long> ids,
@@ -293,13 +320,27 @@ public sealed class ItemRepository : DatabaseRepository
 			Parameter("$Gtin", item.Gtin),
 			Parameter("$ItemType", (int)item.ItemType),
 			Parameter("$LifecycleStatus", (int)item.LifecycleStatus),
+			Parameter("$Revision", item.Revision),
+			Parameter("$Model", item.Model),
+			Parameter("$ProductFamily", item.ProductFamily),
 			Parameter("$CountryOfOrigin", item.CountryOfOrigin),
 			Parameter("$CustomsTariffNumber", item.CustomsTariffNumber),
+			Parameter("$Eccn", item.Eccn),
 			Parameter("$TrackingMode", (int)item.TrackingMode),
-			Parameter("$NetWeight", item.NetWeight),
-			Parameter("$Length", item.Length),
-			Parameter("$Width", item.Width),
-			Parameter("$Height", item.Height),
+			Parameter("$NetWeightKg", item.NetWeightKg),
+			Parameter("$GrossWeightKg", item.GrossWeightKg),
+			Parameter("$LengthMm", item.LengthMm),
+			Parameter("$WidthMm", item.WidthMm),
+			Parameter("$HeightMm", item.HeightMm),
+			Parameter("$IsDangerousGoods", item.IsDangerousGoods),
+			Parameter("$UnNumber", item.UnNumber),
+			Parameter("$ContainsBattery", item.ContainsBattery),
+			Parameter("$RohsStatus", (int)item.RohsStatus),
+			Parameter("$ReachStatus", (int)item.ReachStatus),
+			Parameter("$IntroductionDate", item.IntroductionDate?.Date),
+			Parameter("$EndOfLifeDate", item.EndOfLifeDate?.Date),
+			Parameter("$LastBuyDate", item.LastBuyDate?.Date),
+			Parameter("$EndOfSupportDate", item.EndOfSupportDate?.Date),
 			Parameter("$ReplacementItemId", item.ReplacementItemId),
 			Parameter("$Notes", item.Notes),
 			Parameter("$IsActive", item.IsActive)
@@ -336,18 +377,35 @@ public sealed class ItemRepository : DatabaseRepository
 		item.Gtin = reader.IsDBNull(13) ? null : reader.GetString(13);
 		item.ItemType = (ItemType)reader.GetInt32(14);
 		item.LifecycleStatus = (ItemLifecycleStatus)reader.GetInt32(15);
-		item.CountryOfOrigin = reader.IsDBNull(16) ? null : reader.GetString(16);
-		item.CustomsTariffNumber = reader.IsDBNull(17) ? null : reader.GetString(17);
-		item.TrackingMode = (ItemTrackingMode)reader.GetInt32(18);
-		item.NetWeight = ReadNullableDecimal(reader, 19);
-		item.Length = ReadNullableDecimal(reader, 20);
-		item.Width = ReadNullableDecimal(reader, 21);
-		item.Height = ReadNullableDecimal(reader, 22);
-		item.ReplacementItemId = reader.IsDBNull(23) ? null : reader.GetInt64(23);
-		item.Notes = reader.IsDBNull(24) ? null : reader.GetString(24);
+		item.Revision = reader.IsDBNull(16) ? null : reader.GetString(16);
+		item.Model = reader.IsDBNull(17) ? null : reader.GetString(17);
+		item.ProductFamily = reader.IsDBNull(18) ? null : reader.GetString(18);
+		item.CountryOfOrigin = reader.IsDBNull(19) ? null : reader.GetString(19);
+		item.CustomsTariffNumber = reader.IsDBNull(20) ? null : reader.GetString(20);
+		item.Eccn = reader.IsDBNull(21) ? null : reader.GetString(21);
+		item.TrackingMode = (ItemTrackingMode)reader.GetInt32(22);
+		item.NetWeightKg = ReadNullableDecimal(reader, 23);
+		item.GrossWeightKg = ReadNullableDecimal(reader, 24);
+		item.LengthMm = ReadNullableDecimal(reader, 25);
+		item.WidthMm = ReadNullableDecimal(reader, 26);
+		item.HeightMm = ReadNullableDecimal(reader, 27);
+		item.IsDangerousGoods = reader.GetBoolean(28);
+		item.UnNumber = reader.IsDBNull(29) ? null : reader.GetString(29);
+		item.ContainsBattery = reader.GetBoolean(30);
+		item.RohsStatus = (ItemComplianceStatus)reader.GetInt32(31);
+		item.ReachStatus = (ItemComplianceStatus)reader.GetInt32(32);
+		item.IntroductionDate = ReadNullableDate(reader, 33);
+		item.EndOfLifeDate = ReadNullableDate(reader, 34);
+		item.LastBuyDate = ReadNullableDate(reader, 35);
+		item.EndOfSupportDate = ReadNullableDate(reader, 36);
+		item.ReplacementItemId = reader.IsDBNull(37) ? null : reader.GetInt64(37);
+		item.Notes = reader.IsDBNull(38) ? null : reader.GetString(38);
 		return item;
 	}
 
 	private static decimal? ReadNullableDecimal(DbDataReader reader, int ordinal) =>
 		reader.IsDBNull(ordinal) ? null : Convert.ToDecimal(reader.GetValue(ordinal), CultureInfo.InvariantCulture);
+
+	private static DateTime? ReadNullableDate(DbDataReader reader, int ordinal) =>
+		reader.IsDBNull(ordinal) ? null : Convert.ToDateTime(reader.GetValue(ordinal), CultureInfo.InvariantCulture).Date;
 }
