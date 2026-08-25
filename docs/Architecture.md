@@ -98,6 +98,16 @@ Application SemVer is independent from both database schema systems.
 
 All advertised providers have schema creation/migration implementations for repository-supported structures. Live SQL Server/MySQL/MariaDB version matrices, migration/recovery drills, representative concurrency, and latency/load acceptance remain production-release gates.
 
+### Item master-data extension
+
+The enriched item master remains on the normal `View -> ViewModel -> Service -> Repository -> DatabaseAccess` path. `ItemService` owns normalization, permissions and cross-field validation; `ItemRepository` owns SQL and mapping.
+
+`DatabaseProviderFactory` decorates each provider's normal initializer with the additive, idempotent `ItemMasterDataSchema` extension. The extension has explicit SQLite, SQL Server and MySQL/MariaDB definitions and adds the product-identification, lifecycle, trade/compliance and logistics fields without bypassing the shared data-access layer.
+
+GTIN is validated in the service and protected by a provider-specific unique database index for concurrent/race-safe uniqueness. Physical values use an explicit unit contract: weights are persisted as kilograms and dimensions as millimetres. Activation/deactivation loads the complete master-data projection before audit persistence so audit evidence retains the full before/after record.
+
+Item master-data classifications are not silently interpreted as transaction rules. In particular, `TrackingMode` does not yet create/enforce serial or lot capture, and `ItemType`/`LifecycleStatus` do not automatically block stock, purchasing or sales workflows unless a dedicated workflow rule explicitly implements that behavior. See `docs/ITEM_MASTER_DATA.md`.
+
 ## Authorization and identity
 
 Core schema version 28 introduced database-backed RBAC through Roles, Permissions, RolePermissions, and UserRoles. Effective permissions are the union of active assigned roles and are enforced at service boundaries.
@@ -217,7 +227,7 @@ ZUGFeRD/Factur-X is not claimed; it requires a conforming PDF/A-3 container and 
 
 ## Notifications
 
-Core schema version 29 introduced the Notification Center through `Notifications` and `NotificationRecipients`. Shared immutable notification content is separated from per-user read/archive state.
+Core schema version 29 introduced the Notification Center through `Notifications` and `NotificationRecipients`.
 
 Recipients are materialized from active RBAC assignments at event time. Notification navigation goes through controlled shell routes and repeats permission checks; possession of a notification never grants access to the referenced business record.
 
@@ -263,6 +273,7 @@ Interactive keyboard, focus-order, Narrator/Accessibility Insights, DPI/scaling,
 ## Related documentation
 
 - `README.md`
+- `docs/ITEM_MASTER_DATA.md`
 - `docs/Roadmap.md`
 - `docs/RELEASE_1_0.md`
 - `docs/SECURITY_ROADMAP.md`

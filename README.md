@@ -7,6 +7,7 @@ The project is under active development on the **0.14.x-preview** line and is no
 ## Highlights
 
 - Inventory, warehouse, purchasing, sales, approvals, reporting, and administration workspaces
+- enriched Item master data with GTIN, revision/model/product family, lifecycle, customs/export, RoHS/REACH, dangerous-goods/battery and explicit kg/mm logistics attributes
 - SQLite plus SQL Server and MySQL/MariaDB provider implementations
 - database-backed multi-role RBAC with service-layer authorization
 - first-run administrator bootstrap with no shared production default password
@@ -47,6 +48,14 @@ Administration
 
 Administration includes Company master data, users/roles, database configuration, backup/restore, Audit Log, Privacy Data, About/application information, Notification Center, and the offline Help Center.
 
+## Item master data
+
+**Inventory > Items** keeps the part number as the immutable manufacturer part number (MPN) and adds structured product attributes for identification, lifecycle, trade/compliance and logistics. GTIN is checksum-validated and unique, replacement references target active items, lifecycle dates are consistency-checked, and dangerous goods require a UN number.
+
+Physical values use an explicit contract: net/gross weight is stored in kilograms and length/width/height in millimetres. Item status changes retain the complete master record in audit evidence.
+
+`TrackingMode`, `ItemType` and `LifecycleStatus` are currently master-data classifications. Serial/lot capture enforcement and automatic stock/purchasing/sales blocking or substitution are separate workflow capabilities and are not implied by setting those fields. See `docs/ITEM_MASTER_DATA.md`.
+
 ## Business-record integrity
 
 Depot treats finalized operational records as historical evidence where the workflow requires it. Corrections use explicit reversal, return, cancellation, close, or credit-note transactions rather than silently rewriting finalized history. Audit evidence preserves actor, UTC timestamp, state transitions, and sanitized before/after data for reviewed workflows.
@@ -73,13 +82,13 @@ Runtime posting performs Depot application-level validation and does not invoke 
 
 SQLite is the default provider. Microsoft SQL Server and MySQL/MariaDB implementations are also present. Supported remote-provider settings enforce encrypted transport. Live-server migration, backup/restore, recovery, concurrency, and version-matrix acceptance remain required before a server configuration is advertised as production-supported.
 
-The core database schema is currently **29**. Sales uses the versioned `DepotFeatureVersions` registry; Sales invoice finalization is schema version **8**. Application release versions and database schema versions are independent.
+The core database schema is currently **29**. The Item master uses an additive provider-neutral schema extension applied after the normal provider initializer. Sales uses the versioned `DepotFeatureVersions` registry; Sales invoice finalization is schema version **8**. Application release versions and database schema versions are independent.
 
 ## Offline Help Center
 
 Depot ships an embedded Markdown Help Center rendered natively in WPF. It is permission-filtered, locally searchable, uses stable topic links, and opens as a workspace tab. F1 resolves the current Help context.
 
-Help manifest **1.6** documents first-run administrator creation, current workspace/navigation behavior, hardened database/backup guidance, Audit Log evidence export, Privacy Data, Company identity, and electronic-invoice finalization/export. See `docs/HELP_CENTER.md` for authoring rules.
+Help manifest **1.7** documents first-run administrator creation, current workspace/navigation behavior, enriched Item master data, hardened database/backup guidance, Audit Log evidence export, Privacy Data, Company identity, and electronic-invoice finalization/export. See `docs/HELP_CENTER.md` for authoring rules.
 
 ## Architecture
 
@@ -192,6 +201,8 @@ Major remaining acceptance work is environment- or production-specific rather th
 - production code-signing certificate and timestamp validation
 - interactive keyboard/focus, Narrator/Accessibility Insights, and 100/125/150/200% DPI acceptance
 - representative production sizing/load tests
+- serial/lot capture and enforcement for items whose tracking mode requires traceability
+- explicit workflow rules for service/non-stock item types and lifecycle-driven purchasing/sales/substitution behavior
 - explicit EN 16931 tax-category/exemption semantics for zero-rated, exempt, and reverse-charge invoice scenarios
 - buyer/XRechnung finalization for electronic credit notes
 - production recipient/channel routing and full advertised-scenario validation against the applicable KoSIT/XRechnung release
@@ -204,6 +215,7 @@ Barcode scanning/generation, label design/printing, payment collection, accounts
 ## Documentation
 
 - `docs/Architecture.md`
+- `docs/ITEM_MASTER_DATA.md`
 - `docs/CodingStandard.md`
 - `docs/Roadmap.md`
 - `docs/RELEASE_1_0.md`

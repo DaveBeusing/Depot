@@ -35,6 +35,7 @@ public sealed class ItemsViewModel : BaseViewModel, IDisposable
 		_referenceServices = [manufacturerService, categoryService, unitOfMeasureService, packagingService];
 		Editor = new ItemEditorViewModel();
 		NewItemCommand = new RelayCommand(NewItem);
+		ClearReplacementCommand = new RelayCommand(() => Editor.ReplacementItemId = null);
 		SaveItemCommand = new AsyncRelayCommand(SaveItemAsync);
 		DeactivateItemCommand = new AsyncRelayCommand(DeactivateItemAsync, CanDeactivateItem);
 		PreviousPageCommand = new AsyncRelayCommand(PreviousPageAsync, () => PageNumber > 1);
@@ -42,10 +43,15 @@ public sealed class ItemsViewModel : BaseViewModel, IDisposable
 	}
 
 	public ObservableCollection<ItemViewModel> Items { get; } = new();
+	public ObservableCollection<ItemViewModel> ReplacementItems { get; } = new();
 	public ObservableCollection<ItemReferenceData> Manufacturers { get; } = new();
 	public ObservableCollection<ItemReferenceData> Categories { get; } = new();
 	public ObservableCollection<ItemReferenceData> UnitsOfMeasure { get; } = new();
 	public ObservableCollection<ItemReferenceData> Packagings { get; } = new();
+	public IReadOnlyList<ItemType> ItemTypes { get; } = Enum.GetValues<ItemType>();
+	public IReadOnlyList<ItemLifecycleStatus> LifecycleStatuses { get; } = Enum.GetValues<ItemLifecycleStatus>();
+	public IReadOnlyList<ItemTrackingMode> TrackingModes { get; } = Enum.GetValues<ItemTrackingMode>();
+	public IReadOnlyList<ItemComplianceStatus> ComplianceStatuses { get; } = Enum.GetValues<ItemComplianceStatus>();
 	public bool HasItems => Items.Count > 0;
 	public bool HasNoItems => !HasItems;
 	public bool HasNextPage => (long)PageNumber * PageSize < TotalCount;
@@ -54,6 +60,7 @@ public sealed class ItemsViewModel : BaseViewModel, IDisposable
 	public string ActivationActionText => SelectedItem?.IsActive == true ? "Deactivate" : "Activate";
 	public ItemEditorViewModel Editor { get; }
 	public RelayCommand NewItemCommand { get; }
+	public RelayCommand ClearReplacementCommand { get; }
 	public AsyncRelayCommand SaveItemCommand { get; }
 	public AsyncRelayCommand DeactivateItemCommand { get; }
 	public AsyncRelayCommand PreviousPageCommand { get; }
@@ -151,9 +158,18 @@ public sealed class ItemsViewModel : BaseViewModel, IDisposable
 			{
 				var values = await Task.WhenAll(_referenceServices.Select(service => service.GetActiveAsync(request.Token)));
 				if (!request.IsCurrent) return;
-				Fill(Manufacturers, values[0]); Fill(Categories, values[1]); Fill(UnitsOfMeasure, values[2]); Fill(Packagings, values[3]);
+				Fill(Manufacturers, values[0]);
+				Fill(Categories, values[1]);
+				Fill(UnitsOfMeasure, values[2]);
+				Fill(Packagings, values[3]);
 			}
-			var page = await _itemService.SearchItemsAsync(
+			if (ReplacementItems.Count == 0)
+			{
+				var replacements = await _itemService.GetReplacementCandidatesAsync(request.Token);
+				if (!request.IsCurrent) return;
+				ReplaceReplacementItems(replacements);
+			}
+			var page = await _itemService.SearchItemMasterDataAsync(
 				SearchText,
 				SelectedActivationFilter.IsActive,
 				PageNumber,
@@ -189,6 +205,32 @@ public sealed class ItemsViewModel : BaseViewModel, IDisposable
 		Editor.Category = Categories.FirstOrDefault(value => value.Id == SelectedItem.CategoryId);
 		Editor.UnitOfMeasure = UnitsOfMeasure.FirstOrDefault(value => value.Id == SelectedItem.UnitOfMeasureId);
 		Editor.Packaging = Packagings.FirstOrDefault(value => value.Id == SelectedItem.PackagingId);
+		Editor.Gtin = SelectedItem.Gtin;
+		Editor.ItemType = SelectedItem.ItemType;
+		Editor.LifecycleStatus = SelectedItem.LifecycleStatus;
+		Editor.Revision = SelectedItem.Revision;
+		Editor.Model = SelectedItem.Model;
+		Editor.ProductFamily = SelectedItem.ProductFamily;
+		Editor.CountryOfOrigin = SelectedItem.CountryOfOrigin;
+		Editor.CustomsTariffNumber = SelectedItem.CustomsTariffNumber;
+		Editor.Eccn = SelectedItem.Eccn;
+		Editor.TrackingMode = SelectedItem.TrackingMode;
+		Editor.NetWeightKg = SelectedItem.NetWeightKg;
+		Editor.GrossWeightKg = SelectedItem.GrossWeightKg;
+		Editor.LengthMm = SelectedItem.LengthMm;
+		Editor.WidthMm = SelectedItem.WidthMm;
+		Editor.HeightMm = SelectedItem.HeightMm;
+		Editor.IsDangerousGoods = SelectedItem.IsDangerousGoods;
+		Editor.UnNumber = SelectedItem.UnNumber;
+		Editor.ContainsBattery = SelectedItem.ContainsBattery;
+		Editor.RohsStatus = SelectedItem.RohsStatus;
+		Editor.ReachStatus = SelectedItem.ReachStatus;
+		Editor.IntroductionDate = SelectedItem.IntroductionDate;
+		Editor.EndOfLifeDate = SelectedItem.EndOfLifeDate;
+		Editor.LastBuyDate = SelectedItem.LastBuyDate;
+		Editor.EndOfSupportDate = SelectedItem.EndOfSupportDate;
+		Editor.ReplacementItemId = SelectedItem.ReplacementItemId;
+		Editor.Notes = SelectedItem.Notes;
 		Editor.Version = SelectedItem.Version;
 	}
 
@@ -209,16 +251,18 @@ public sealed class ItemsViewModel : BaseViewModel, IDisposable
 		BeginOperation("Saving item");
 		try
 		{
+			var masterData = Editor.ToMasterData();
 			var item = Editor.Id == 0
-				? await _itemService.CreateItemWithReferencesAsync(
+				? await _itemService.CreateItemMasterDataAsync(
 					Editor.PartNumber,
 					Editor.Description,
 					Editor.Manufacturer?.Id,
 					Editor.Category?.Id,
 					Editor.UnitOfMeasure?.Id,
 					Editor.Packaging?.Id,
+					masterData,
 					cancellationToken)
-				: await _itemService.UpdateItemWithReferencesAsync(
+				: await _itemService.UpdateItemMasterDataAsync(
 					Editor.Id,
 					Editor.Version,
 					Editor.Description,
@@ -226,8 +270,10 @@ public sealed class ItemsViewModel : BaseViewModel, IDisposable
 					Editor.Category?.Id,
 					Editor.UnitOfMeasure?.Id,
 					Editor.Packaging?.Id,
+					masterData,
 					cancellationToken);
 			UpdateItem(item);
+			UpdateReplacementCandidate(item);
 			Editor.Clear();
 			SelectedItem = null;
 			CompleteOperation(Items.Count == 0, "Item saved");
@@ -253,6 +299,7 @@ public sealed class ItemsViewModel : BaseViewModel, IDisposable
 			var id = Editor.Id;
 			var saved = await _itemService.SetItemActiveAsync(id, Editor.Version, isActive, cancellationToken);
 			UpdateItem(saved);
+			UpdateReplacementCandidate(saved);
 			Editor.Clear();
 			SelectedItem = null;
 			RaiseCollectionState();
@@ -300,6 +347,33 @@ public sealed class ItemsViewModel : BaseViewModel, IDisposable
 		RaiseCollectionState();
 	}
 
+	private void UpdateReplacementCandidate(Item item)
+	{
+		var existing = ReplacementItems.FirstOrDefault(candidate => candidate.Id == item.Id);
+		if (!item.IsActive)
+		{
+			if (existing is not null) ReplacementItems.Remove(existing);
+			return;
+		}
+		var viewModel = new ItemViewModel(item);
+		if (existing is not null) ReplacementItems[ReplacementItems.IndexOf(existing)] = viewModel;
+		else ReplacementItems.Add(viewModel);
+		SortReplacementItems();
+	}
+
+	private void ReplaceReplacementItems(IReadOnlyList<Item> items)
+	{
+		ReplacementItems.Clear();
+		foreach (var item in items) ReplacementItems.Add(new ItemViewModel(item));
+	}
+
+	private void SortReplacementItems()
+	{
+		var sorted = ReplacementItems.OrderBy(item => item.PartNumber, StringComparer.OrdinalIgnoreCase).ThenBy(item => item.Id).ToArray();
+		ReplacementItems.Clear();
+		foreach (var item in sorted) ReplacementItems.Add(item);
+	}
+
 	private bool MatchesActivationFilter(Item item) =>
 		SelectedActivationFilter.IsActive is not bool isActive || item.IsActive == isActive;
 
@@ -312,7 +386,16 @@ public sealed class ItemsViewModel : BaseViewModel, IDisposable
 			(item.Manufacturer?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false) ||
 			(item.Category?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false) ||
 			(item.UnitOfMeasure?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false) ||
-			(item.Packaging?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false);
+			(item.Packaging?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false) ||
+			(item.Gtin?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false) ||
+			(item.Revision?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false) ||
+			(item.Model?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false) ||
+			(item.ProductFamily?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false) ||
+			(item.CountryOfOrigin?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false) ||
+			(item.CustomsTariffNumber?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false) ||
+			(item.Eccn?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false) ||
+			(item.UnNumber?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false) ||
+			(item.Notes?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false);
 	}
 
 	private void RaiseCollectionState()

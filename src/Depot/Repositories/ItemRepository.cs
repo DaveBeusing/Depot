@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 using System.Data.Common;
+using System.Globalization;
 
 using Depot.Data;
 using Depot.Models;
@@ -12,6 +13,8 @@ public sealed class ItemRepository : DatabaseRepository
 {
 	private const string SelectColumns =
 		"i.Id, i.PartNumber, i.Description, m.Name, c.Name, u.Name, pk.Name, i.IsActive, i.Version, i.ManufacturerId, i.CategoryId, i.UnitOfMeasureId, i.PackagingId";
+	private const string MasterDataSelectColumns =
+		SelectColumns + ", i.Gtin, i.ItemType, i.LifecycleStatus, i.Revision, i.Model, i.ProductFamily, i.CountryOfOrigin, i.CustomsTariffNumber, i.Eccn, i.TrackingMode, i.NetWeightKg, i.GrossWeightKg, i.LengthMm, i.WidthMm, i.HeightMm, i.IsDangerousGoods, i.UnNumber, i.ContainsBattery, i.RohsStatus, i.ReachStatus, i.IntroductionDate, i.EndOfLifeDate, i.LastBuyDate, i.EndOfSupportDate, i.ReplacementItemId, i.Notes";
 	private const string SelectFrom =
 		"FROM Items i LEFT JOIN Manufacturers m ON m.Id = i.ManufacturerId LEFT JOIN Categories c ON c.Id = i.CategoryId LEFT JOIN UnitsOfMeasure u ON u.Id = i.UnitOfMeasureId LEFT JOIN Packagings pk ON pk.Id = i.PackagingId";
 
@@ -33,6 +36,17 @@ public sealed class ItemRepository : DatabaseRepository
 			Parameter("$UnitOfMeasureId", item.UnitOfMeasureId), Parameter("$PackagingId", item.PackagingId),
 			Parameter("$IsActive", item.IsActive));
 
+	public Task<long> CreateMasterDataAsync(Item item, CancellationToken cancellationToken) =>
+		Database.InsertAsync(
+			"""
+			INSERT INTO Items
+			(PartNumber, Description, ManufacturerId, CategoryId, UnitOfMeasureId, PackagingId, Gtin, ItemType, LifecycleStatus, Revision, Model, ProductFamily, CountryOfOrigin, CustomsTariffNumber, Eccn, TrackingMode, NetWeightKg, GrossWeightKg, LengthMm, WidthMm, HeightMm, IsDangerousGoods, UnNumber, ContainsBattery, RohsStatus, ReachStatus, IntroductionDate, EndOfLifeDate, LastBuyDate, EndOfSupportDate, ReplacementItemId, Notes, IsActive)
+			VALUES
+			($PartNumber, $Description, $ManufacturerId, $CategoryId, $UnitOfMeasureId, $PackagingId, $Gtin, $ItemType, $LifecycleStatus, $Revision, $Model, $ProductFamily, $CountryOfOrigin, $CustomsTariffNumber, $Eccn, $TrackingMode, $NetWeightKg, $GrossWeightKg, $LengthMm, $WidthMm, $HeightMm, $IsDangerousGoods, $UnNumber, $ContainsBattery, $RohsStatus, $ReachStatus, $IntroductionDate, $EndOfLifeDate, $LastBuyDate, $EndOfSupportDate, $ReplacementItemId, $Notes, $IsActive);
+			""",
+			cancellationToken,
+			MasterDataParameters(item));
+
 	public async Task<bool> UpdateAsync(Item item, CancellationToken cancellationToken) =>
 		await Database.ExecuteAsync(
 			"""
@@ -49,6 +63,48 @@ public sealed class ItemRepository : DatabaseRepository
 			Parameter("$UnitOfMeasureId", item.UnitOfMeasureId), Parameter("$PackagingId", item.PackagingId),
 			Parameter("$IsActive", item.IsActive),
 			Parameter("$Version", item.Version)) == 1;
+
+	public async Task<bool> UpdateMasterDataAsync(Item item, CancellationToken cancellationToken) =>
+		await Database.ExecuteAsync(
+			"""
+			UPDATE Items
+			SET Description = $Description,
+			    ManufacturerId = $ManufacturerId,
+			    CategoryId = $CategoryId,
+			    UnitOfMeasureId = $UnitOfMeasureId,
+			    PackagingId = $PackagingId,
+			    Gtin = $Gtin,
+			    ItemType = $ItemType,
+			    LifecycleStatus = $LifecycleStatus,
+			    Revision = $Revision,
+			    Model = $Model,
+			    ProductFamily = $ProductFamily,
+			    CountryOfOrigin = $CountryOfOrigin,
+			    CustomsTariffNumber = $CustomsTariffNumber,
+			    Eccn = $Eccn,
+			    TrackingMode = $TrackingMode,
+			    NetWeightKg = $NetWeightKg,
+			    GrossWeightKg = $GrossWeightKg,
+			    LengthMm = $LengthMm,
+			    WidthMm = $WidthMm,
+			    HeightMm = $HeightMm,
+			    IsDangerousGoods = $IsDangerousGoods,
+			    UnNumber = $UnNumber,
+			    ContainsBattery = $ContainsBattery,
+			    RohsStatus = $RohsStatus,
+			    ReachStatus = $ReachStatus,
+			    IntroductionDate = $IntroductionDate,
+			    EndOfLifeDate = $EndOfLifeDate,
+			    LastBuyDate = $LastBuyDate,
+			    EndOfSupportDate = $EndOfSupportDate,
+			    ReplacementItemId = $ReplacementItemId,
+			    Notes = $Notes,
+			    IsActive = $IsActive,
+			    Version = Version + 1
+			WHERE Id = $Id AND Version = $Version;
+			""",
+			cancellationToken,
+			MasterDataParameters(item, includeIdentity: true)) == 1;
 
 	public async Task<bool> DeactivateAsync(long id, long version, CancellationToken cancellationToken) =>
 		await SetActiveAsync(id, version, false, cancellationToken);
@@ -73,6 +129,23 @@ public sealed class ItemRepository : DatabaseRepository
 		bool? isActive,
 		int pageNumber,
 		int pageSize,
+		CancellationToken cancellationToken) =>
+		SearchPageCoreAsync(searchText, isActive, pageNumber, pageSize, false, cancellationToken);
+
+	public Task<PageResult<Item>> SearchMasterDataPageAsync(
+		string? searchText,
+		bool? isActive,
+		int pageNumber,
+		int pageSize,
+		CancellationToken cancellationToken) =>
+		SearchPageCoreAsync(searchText, isActive, pageNumber, pageSize, true, cancellationToken);
+
+	private Task<PageResult<Item>> SearchPageCoreAsync(
+		string? searchText,
+		bool? isActive,
+		int pageNumber,
+		int pageSize,
+		bool includeMasterData,
 		CancellationToken cancellationToken)
 	{
 		var search = searchText?.Trim();
@@ -86,19 +159,30 @@ public sealed class ItemRepository : DatabaseRepository
 		}
 		if (hasSearch)
 		{
-			predicates.Add("(i.PartNumber LIKE $Search OR i.Description LIKE $Search OR m.Name LIKE $Search OR c.Name LIKE $Search OR u.Name LIKE $Search OR pk.Name LIKE $Search OR EXISTS (SELECT 1 FROM SupplierItems si INNER JOIN Suppliers s ON s.Id = si.SupplierId WHERE si.ItemId = i.Id AND si.IsActive = 1 AND (s.Name LIKE $Search OR si.SupplierPartNumber LIKE $Search)))");
+			var masterSearch = includeMasterData
+				? " OR i.Gtin LIKE $Search OR i.Revision LIKE $Search OR i.Model LIKE $Search OR i.ProductFamily LIKE $Search OR i.CountryOfOrigin LIKE $Search OR i.CustomsTariffNumber LIKE $Search OR i.Eccn LIKE $Search OR i.UnNumber LIKE $Search OR i.Notes LIKE $Search"
+				: string.Empty;
+			predicates.Add($"(i.PartNumber LIKE $Search OR i.Description LIKE $Search OR m.Name LIKE $Search OR c.Name LIKE $Search OR u.Name LIKE $Search OR pk.Name LIKE $Search{masterSearch} OR EXISTS (SELECT 1 FROM SupplierItems si INNER JOIN Suppliers s ON s.Id = si.SupplierId WHERE si.ItemId = i.Id AND si.IsActive = 1 AND (s.Name LIKE $Search OR si.SupplierPartNumber LIKE $Search)))");
 			parameters.Add(Parameter("$Search", $"%{search}%"));
 		}
 		var filter = predicates.Count == 0 ? "1 = 1" : string.Join(" AND ", predicates);
+		var columns = includeMasterData ? MasterDataSelectColumns : SelectColumns;
+		Func<DbDataReader, Item> reader = includeMasterData ? ReadMasterDataItem : ReadItem;
 		return Database.QueryPageAsync(
-			$"SELECT {SelectColumns} {SelectFrom} WHERE {filter} ORDER BY i.IsActive DESC, i.PartNumber, i.Id",
+			$"SELECT {columns} {SelectFrom} WHERE {filter} ORDER BY i.IsActive DESC, i.PartNumber, i.Id",
 			$"SELECT COUNT(*) {SelectFrom} WHERE {filter};",
-			ReadItem,
+			reader,
 			pageNumber,
 			pageSize,
 			cancellationToken,
 			parameters.ToArray());
 	}
+
+	public Task<IReadOnlyList<Item>> GetActiveItemsAsync(CancellationToken cancellationToken) =>
+		Database.QueryAsync(
+			$"SELECT {SelectColumns} {SelectFrom} WHERE i.IsActive = 1 ORDER BY i.PartNumber, i.Id;",
+			ReadItem,
+			cancellationToken);
 
 	public Task<Item?> GetByIdAsync(long id, CancellationToken cancellationToken) =>
 		Database.QuerySingleOrDefaultAsync(
@@ -106,6 +190,20 @@ public sealed class ItemRepository : DatabaseRepository
 			ReadItem,
 			cancellationToken,
 			Parameter("$Id", id));
+
+	public Task<Item?> GetMasterDataByIdAsync(long id, CancellationToken cancellationToken) =>
+		Database.QuerySingleOrDefaultAsync(
+			$"SELECT {MasterDataSelectColumns} {SelectFrom} WHERE i.Id = $Id;",
+			ReadMasterDataItem,
+			cancellationToken,
+			Parameter("$Id", id));
+
+	public Task<Item?> GetByGtinAsync(string gtin, CancellationToken cancellationToken) =>
+		Database.QuerySingleOrDefaultAsync(
+			$"SELECT {SelectColumns} {SelectFrom} WHERE i.Gtin = $Gtin;",
+			ReadItem,
+			cancellationToken,
+			Parameter("$Gtin", gtin));
 
 	public Task<IReadOnlyList<Item>> GetByIdsAsync(
 		IEnumerable<long> ids,
@@ -209,6 +307,52 @@ public sealed class ItemRepository : DatabaseRepository
 			ReadItem,
 			Parameter("$PartNumber", partNumber));
 
+	private static DatabaseParameter[] MasterDataParameters(Item item, bool includeIdentity = false)
+	{
+		var parameters = new List<DatabaseParameter>
+		{
+			Parameter("$PartNumber", item.PartNumber),
+			Parameter("$Description", item.Description),
+			Parameter("$ManufacturerId", item.ManufacturerId),
+			Parameter("$CategoryId", item.CategoryId),
+			Parameter("$UnitOfMeasureId", item.UnitOfMeasureId),
+			Parameter("$PackagingId", item.PackagingId),
+			Parameter("$Gtin", item.Gtin),
+			Parameter("$ItemType", (int)item.ItemType),
+			Parameter("$LifecycleStatus", (int)item.LifecycleStatus),
+			Parameter("$Revision", item.Revision),
+			Parameter("$Model", item.Model),
+			Parameter("$ProductFamily", item.ProductFamily),
+			Parameter("$CountryOfOrigin", item.CountryOfOrigin),
+			Parameter("$CustomsTariffNumber", item.CustomsTariffNumber),
+			Parameter("$Eccn", item.Eccn),
+			Parameter("$TrackingMode", (int)item.TrackingMode),
+			Parameter("$NetWeightKg", item.NetWeightKg),
+			Parameter("$GrossWeightKg", item.GrossWeightKg),
+			Parameter("$LengthMm", item.LengthMm),
+			Parameter("$WidthMm", item.WidthMm),
+			Parameter("$HeightMm", item.HeightMm),
+			Parameter("$IsDangerousGoods", item.IsDangerousGoods),
+			Parameter("$UnNumber", item.UnNumber),
+			Parameter("$ContainsBattery", item.ContainsBattery),
+			Parameter("$RohsStatus", (int)item.RohsStatus),
+			Parameter("$ReachStatus", (int)item.ReachStatus),
+			Parameter("$IntroductionDate", item.IntroductionDate?.Date),
+			Parameter("$EndOfLifeDate", item.EndOfLifeDate?.Date),
+			Parameter("$LastBuyDate", item.LastBuyDate?.Date),
+			Parameter("$EndOfSupportDate", item.EndOfSupportDate?.Date),
+			Parameter("$ReplacementItemId", item.ReplacementItemId),
+			Parameter("$Notes", item.Notes),
+			Parameter("$IsActive", item.IsActive)
+		};
+		if (includeIdentity)
+		{
+			parameters.Add(Parameter("$Id", item.Id));
+			parameters.Add(Parameter("$Version", item.Version));
+		}
+		return parameters.ToArray();
+	}
+
 	private static Item ReadItem(DbDataReader reader) =>
 		new()
 		{
@@ -226,4 +370,42 @@ public sealed class ItemRepository : DatabaseRepository
 			UnitOfMeasureId = reader.IsDBNull(11) ? null : reader.GetInt64(11),
 			PackagingId = reader.IsDBNull(12) ? null : reader.GetInt64(12)
 		};
+
+	private static Item ReadMasterDataItem(DbDataReader reader)
+	{
+		var item = ReadItem(reader);
+		item.Gtin = reader.IsDBNull(13) ? null : reader.GetString(13);
+		item.ItemType = (ItemType)reader.GetInt32(14);
+		item.LifecycleStatus = (ItemLifecycleStatus)reader.GetInt32(15);
+		item.Revision = reader.IsDBNull(16) ? null : reader.GetString(16);
+		item.Model = reader.IsDBNull(17) ? null : reader.GetString(17);
+		item.ProductFamily = reader.IsDBNull(18) ? null : reader.GetString(18);
+		item.CountryOfOrigin = reader.IsDBNull(19) ? null : reader.GetString(19);
+		item.CustomsTariffNumber = reader.IsDBNull(20) ? null : reader.GetString(20);
+		item.Eccn = reader.IsDBNull(21) ? null : reader.GetString(21);
+		item.TrackingMode = (ItemTrackingMode)reader.GetInt32(22);
+		item.NetWeightKg = ReadNullableDecimal(reader, 23);
+		item.GrossWeightKg = ReadNullableDecimal(reader, 24);
+		item.LengthMm = ReadNullableDecimal(reader, 25);
+		item.WidthMm = ReadNullableDecimal(reader, 26);
+		item.HeightMm = ReadNullableDecimal(reader, 27);
+		item.IsDangerousGoods = reader.GetBoolean(28);
+		item.UnNumber = reader.IsDBNull(29) ? null : reader.GetString(29);
+		item.ContainsBattery = reader.GetBoolean(30);
+		item.RohsStatus = (ItemComplianceStatus)reader.GetInt32(31);
+		item.ReachStatus = (ItemComplianceStatus)reader.GetInt32(32);
+		item.IntroductionDate = ReadNullableDate(reader, 33);
+		item.EndOfLifeDate = ReadNullableDate(reader, 34);
+		item.LastBuyDate = ReadNullableDate(reader, 35);
+		item.EndOfSupportDate = ReadNullableDate(reader, 36);
+		item.ReplacementItemId = reader.IsDBNull(37) ? null : reader.GetInt64(37);
+		item.Notes = reader.IsDBNull(38) ? null : reader.GetString(38);
+		return item;
+	}
+
+	private static decimal? ReadNullableDecimal(DbDataReader reader, int ordinal) =>
+		reader.IsDBNull(ordinal) ? null : Convert.ToDecimal(reader.GetValue(ordinal), CultureInfo.InvariantCulture);
+
+	private static DateTime? ReadNullableDate(DbDataReader reader, int ordinal) =>
+		reader.IsDBNull(ordinal) ? null : Convert.ToDateTime(reader.GetValue(ordinal), CultureInfo.InvariantCulture).Date;
 }
