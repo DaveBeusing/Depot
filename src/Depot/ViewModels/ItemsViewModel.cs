@@ -46,6 +46,9 @@ public sealed class ItemsViewModel : BaseViewModel, IDisposable
 	public ObservableCollection<ItemReferenceData> Categories { get; } = new();
 	public ObservableCollection<ItemReferenceData> UnitsOfMeasure { get; } = new();
 	public ObservableCollection<ItemReferenceData> Packagings { get; } = new();
+	public IReadOnlyList<ItemType> ItemTypes { get; } = Enum.GetValues<ItemType>();
+	public IReadOnlyList<ItemLifecycleStatus> LifecycleStatuses { get; } = Enum.GetValues<ItemLifecycleStatus>();
+	public IReadOnlyList<ItemTrackingMode> TrackingModes { get; } = Enum.GetValues<ItemTrackingMode>();
 	public bool HasItems => Items.Count > 0;
 	public bool HasNoItems => !HasItems;
 	public bool HasNextPage => (long)PageNumber * PageSize < TotalCount;
@@ -153,7 +156,7 @@ public sealed class ItemsViewModel : BaseViewModel, IDisposable
 				if (!request.IsCurrent) return;
 				Fill(Manufacturers, values[0]); Fill(Categories, values[1]); Fill(UnitsOfMeasure, values[2]); Fill(Packagings, values[3]);
 			}
-			var page = await _itemService.SearchItemsAsync(
+			var page = await _itemService.SearchItemMasterDataAsync(
 				SearchText,
 				SelectedActivationFilter.IsActive,
 				PageNumber,
@@ -189,6 +192,18 @@ public sealed class ItemsViewModel : BaseViewModel, IDisposable
 		Editor.Category = Categories.FirstOrDefault(value => value.Id == SelectedItem.CategoryId);
 		Editor.UnitOfMeasure = UnitsOfMeasure.FirstOrDefault(value => value.Id == SelectedItem.UnitOfMeasureId);
 		Editor.Packaging = Packagings.FirstOrDefault(value => value.Id == SelectedItem.PackagingId);
+		Editor.Gtin = SelectedItem.Gtin;
+		Editor.ItemType = SelectedItem.ItemType;
+		Editor.LifecycleStatus = SelectedItem.LifecycleStatus;
+		Editor.CountryOfOrigin = SelectedItem.CountryOfOrigin;
+		Editor.CustomsTariffNumber = SelectedItem.CustomsTariffNumber;
+		Editor.TrackingMode = SelectedItem.TrackingMode;
+		Editor.NetWeight = SelectedItem.NetWeight;
+		Editor.Length = SelectedItem.Length;
+		Editor.Width = SelectedItem.Width;
+		Editor.Height = SelectedItem.Height;
+		Editor.ReplacementItemId = SelectedItem.ReplacementItemId;
+		Editor.Notes = SelectedItem.Notes;
 		Editor.Version = SelectedItem.Version;
 	}
 
@@ -209,16 +224,18 @@ public sealed class ItemsViewModel : BaseViewModel, IDisposable
 		BeginOperation("Saving item");
 		try
 		{
+			var masterData = Editor.ToMasterData();
 			var item = Editor.Id == 0
-				? await _itemService.CreateItemWithReferencesAsync(
+				? await _itemService.CreateItemMasterDataAsync(
 					Editor.PartNumber,
 					Editor.Description,
 					Editor.Manufacturer?.Id,
 					Editor.Category?.Id,
 					Editor.UnitOfMeasure?.Id,
 					Editor.Packaging?.Id,
+					masterData,
 					cancellationToken)
-				: await _itemService.UpdateItemWithReferencesAsync(
+				: await _itemService.UpdateItemMasterDataAsync(
 					Editor.Id,
 					Editor.Version,
 					Editor.Description,
@@ -226,6 +243,7 @@ public sealed class ItemsViewModel : BaseViewModel, IDisposable
 					Editor.Category?.Id,
 					Editor.UnitOfMeasure?.Id,
 					Editor.Packaging?.Id,
+					masterData,
 					cancellationToken);
 			UpdateItem(item);
 			Editor.Clear();
@@ -312,7 +330,11 @@ public sealed class ItemsViewModel : BaseViewModel, IDisposable
 			(item.Manufacturer?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false) ||
 			(item.Category?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false) ||
 			(item.UnitOfMeasure?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false) ||
-			(item.Packaging?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false);
+			(item.Packaging?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false) ||
+			(item.Gtin?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false) ||
+			(item.CountryOfOrigin?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false) ||
+			(item.CustomsTariffNumber?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false) ||
+			(item.Notes?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false);
 	}
 
 	private void RaiseCollectionState()

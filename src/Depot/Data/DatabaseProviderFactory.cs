@@ -18,12 +18,33 @@ public static class DatabaseProviderFactory
 		};
 
 	public static IDatabaseInitializer CreateInitializer(
-		IDatabaseConnectionFactory connectionFactory) =>
-		connectionFactory switch
+		IDatabaseConnectionFactory connectionFactory)
+	{
+		var initializer = connectionFactory switch
 		{
-			SqliteConnectionFactory sqlite => new DepotDatabase(sqlite),
+			SqliteConnectionFactory sqlite => (IDatabaseInitializer)new DepotDatabase(sqlite),
 			SqlServerConnectionFactory sqlServer => new SqlServerDatabase(sqlServer),
 			MySqlConnectionFactory mySql => new MySqlDatabase(mySql),
 			_ => throw new NotSupportedException("The database initializer is not available.")
 		};
+		return new ItemMasterDataInitializer(initializer, connectionFactory);
+	}
+
+	private sealed class ItemMasterDataInitializer : IDatabaseInitializer
+	{
+		private readonly IDatabaseInitializer _inner;
+		private readonly IDatabaseConnectionFactory _connectionFactory;
+
+		public ItemMasterDataInitializer(IDatabaseInitializer inner, IDatabaseConnectionFactory connectionFactory)
+		{
+			_inner = inner;
+			_connectionFactory = connectionFactory;
+		}
+
+		public void Initialize()
+		{
+			_inner.Initialize();
+			ItemMasterDataSchema.Ensure(_connectionFactory);
+		}
+	}
 }

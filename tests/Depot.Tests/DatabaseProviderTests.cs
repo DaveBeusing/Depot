@@ -104,7 +104,7 @@ public sealed class DatabaseProviderTests
 			});
 
 		Assert.IsType<MySqlConnectionFactory>(factory);
-		Assert.IsType<MySqlDatabase>(DatabaseProviderFactory.CreateInitializer(factory));
+		Assert.IsAssignableFrom<IDatabaseInitializer>(DatabaseProviderFactory.CreateInitializer(factory));
 	}
 
 	[Fact]

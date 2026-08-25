@@ -3,55 +3,41 @@
 
 namespace Depot.Models;
 
-public sealed class Item
+public enum ItemType
 {
-	public long Id { get; set; }
+	StockItem = 1,
+	NonStockItem = 2,
+	Service = 3
+}
 
-	public string PartNumber { get; set; } = string.Empty;
+public enum ItemLifecycleStatus
+{
+	New = 1,
+	Active = 2,
+	EndOfLife = 3,
+	Discontinued = 4,
+	Obsolete = 5
+}
 
-	public string Description { get; set; } = string.Empty;
+public enum ItemTrackingMode
+{
+	None = 0,
+	SerialNumber = 1,
+	Lot = 2
+}
 
-	public string? Manufacturer { get; set; }
-
-	public string? Category { get; set; }
-
-	public string? UnitOfMeasure { get; set; }
-
-	public string? Packaging { get; set; }
-
-	public long? ManufacturerId { get; set; }
-
-	public long? CategoryId { get; set; }
-
-	public long? UnitOfMeasureId { get; set; }
-
-	public long? PackagingId { get; set; }
-
+public sealed class ItemMasterDataInput
+{
 	public string? Gtin { get; set; }
-
 	public ItemType ItemType { get; set; } = ItemType.StockItem;
-
 	public ItemLifecycleStatus LifecycleStatus { get; set; } = ItemLifecycleStatus.Active;
-
 	public string? CountryOfOrigin { get; set; }
-
 	public string? CustomsTariffNumber { get; set; }
-
 	public ItemTrackingMode TrackingMode { get; set; } = ItemTrackingMode.None;
-
 	public decimal? NetWeight { get; set; }
-
 	public decimal? Length { get; set; }
-
 	public decimal? Width { get; set; }
-
 	public decimal? Height { get; set; }
-
 	public long? ReplacementItemId { get; set; }
-
 	public string? Notes { get; set; }
-
-	public bool IsActive { get; set; } = true;
-
-	public long Version { get; set; } = 1;
 }

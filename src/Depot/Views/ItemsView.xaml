@@ -1,1 +1,182 @@
-<UserControl x:Class="Depot.Views.ItemsView" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:automation="clr-namespace:System.Windows.Automation;assembly=PresentationCore" xmlns:controls="clr-namespace:Depot.Controls"><UserControl.InputBindings><KeyBinding Key="Escape" Command="{Binding NewItemCommand}" /></UserControl.InputBindings><Grid><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions><controls:OperationPanel IsBusy="{Binding IsBusy}" HasError="{Binding HasOperationError}" StatusText="{Binding StatusText}" ErrorText="{Binding OperationError}" /><controls:MasterDetailGrid Grid.Row="1"><controls:MasterDetailGrid.Master><controls:Card><Grid><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions><controls:FilterBar><Grid><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="6" /><RowDefinition Height="Auto" /></Grid.RowDefinitions><controls:SearchBox automation:AutomationProperties.Name="Search items" Placeholder="Search items" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" ToolTip="Search by part number, description, manufacturer, category, unit, or packaging" /><ComboBox Grid.Row="2" automation:AutomationProperties.Name="Item status filter" ItemsSource="{Binding ActivationFilters}" SelectedItem="{Binding SelectedActivationFilter}" DisplayMemberPath="Name" Style="{StaticResource AppComboBoxStyle}" /></Grid></controls:FilterBar><Grid Grid.Row="1"><DataGrid ItemsSource="{Binding Items}" SelectedItem="{Binding SelectedItem}" Style="{StaticResource AppDataGridStyle}" Visibility="{Binding HasItems, Converter={StaticResource BooleanToVisibilityConverter}}"><DataGrid.Columns><DataGridTextColumn Header="Part number" Binding="{Binding PartNumber}" Width="125" ElementStyle="{StaticResource AppDataGridTextStyle}" /><DataGridTextColumn Header="Description" Binding="{Binding Description}" Width="*" ElementStyle="{StaticResource AppDataGridTextStyle}" /><DataGridTextColumn Header="Category" Binding="{Binding Category}" Width="115" ElementStyle="{StaticResource AppDataGridTextStyle}" /><DataGridTemplateColumn Header="Status" Width="80"><DataGridTemplateColumn.CellTemplate><DataTemplate><controls:ActivationStatusBadge IsActive="{Binding IsActive}" /></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn></DataGrid.Columns></DataGrid><controls:WorkflowListState ItemCount="{Binding Items.Count}" SearchText="{Binding SearchText}" IsBusy="{Binding IsBusy}" HasError="{Binding HasOperationError}" ErrorText="{Binding OperationError}" /></Grid><Grid Grid.Row="2" Margin="0,10,0,0"><controls:PaginationControl PreviousCommand="{Binding PreviousPageCommand}" NextCommand="{Binding NextPageCommand}" PageText="{Binding PageNumber, StringFormat=Page {0}}" /><Button HorizontalAlignment="Right" Command="{Binding NewItemCommand}" Content="New item" Style="{StaticResource PrimaryButtonStyle}" /></Grid></Grid></controls:Card></controls:MasterDetailGrid.Master><controls:MasterDetailGrid.Detail><controls:Card><Grid><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions><controls:WorkflowHeader Title="{Binding Editor.EditorTitle}" Subtitle="Part numbers are immutable after creation." Status="{Binding EditorStatus}" /><ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="12" /><RowDefinition Height="Auto" /><RowDefinition Height="12" /><RowDefinition Height="Auto" /></Grid.RowDefinitions><StackPanel><TextBlock Text="Part number *" Style="{StaticResource FormLabelStyle}" /><controls:TextInput controls:FocusRequest.RequestId="{Binding EditorFocusRequest}" automation:AutomationProperties.Name="Part number" IsEnabled="{Binding Editor.CanEditPartNumber}" Text="{Binding Editor.PartNumber, UpdateSourceTrigger=PropertyChanged}" /></StackPanel><StackPanel Grid.Column="2"><TextBlock Text="Description *" Style="{StaticResource FormLabelStyle}" /><controls:TextInput automation:AutomationProperties.Name="Description" Text="{Binding Editor.Description, UpdateSourceTrigger=PropertyChanged}" /></StackPanel><StackPanel Grid.Row="2"><TextBlock Text="Manufacturer" Style="{StaticResource FormLabelStyle}" /><ComboBox automation:AutomationProperties.Name="Manufacturer" ItemsSource="{Binding Manufacturers}" SelectedItem="{Binding Editor.Manufacturer}" DisplayMemberPath="Name" Style="{StaticResource AppComboBoxStyle}" /></StackPanel><StackPanel Grid.Row="2" Grid.Column="2"><TextBlock Text="Category" Style="{StaticResource FormLabelStyle}" /><ComboBox automation:AutomationProperties.Name="Category" ItemsSource="{Binding Categories}" SelectedItem="{Binding Editor.Category}" DisplayMemberPath="Name" Style="{StaticResource AppComboBoxStyle}" /></StackPanel><StackPanel Grid.Row="4"><TextBlock Text="Unit of measure" Style="{StaticResource FormLabelStyle}" /><ComboBox automation:AutomationProperties.Name="Unit of measure" ItemsSource="{Binding UnitsOfMeasure}" SelectedItem="{Binding Editor.UnitOfMeasure}" DisplayMemberPath="Name" Style="{StaticResource AppComboBoxStyle}" /></StackPanel><StackPanel Grid.Row="4" Grid.Column="2"><TextBlock Text="Packaging" Style="{StaticResource FormLabelStyle}" /><ComboBox automation:AutomationProperties.Name="Packaging" ItemsSource="{Binding Packagings}" SelectedItem="{Binding Editor.Packaging}" DisplayMemberPath="Name" Style="{StaticResource AppComboBoxStyle}" /></StackPanel></Grid></ScrollViewer><controls:WorkflowActionBar Grid.Row="2"><controls:WorkflowActionBar.SecondaryActions><StackPanel Orientation="Horizontal"><Button Command="{Binding NewItemCommand}" Content="Cancel" Style="{StaticResource SecondaryButtonStyle}" /><Button Margin="{StaticResource Button.Margin}" Command="{Binding DeactivateItemCommand}" Content="{Binding ActivationActionText}" Style="{StaticResource SecondaryButtonStyle}" /></StackPanel></controls:WorkflowActionBar.SecondaryActions><controls:WorkflowActionBar.PrimaryAction><Button IsDefault="True" Command="{Binding SaveItemCommand}" Content="{Binding Editor.SaveButtonText}" Style="{StaticResource PrimaryButtonStyle}" /></controls:WorkflowActionBar.PrimaryAction></controls:WorkflowActionBar></Grid></controls:Card></controls:MasterDetailGrid.Detail></controls:MasterDetailGrid></Grid></UserControl>
+<UserControl x:Class="Depot.Views.ItemsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:automation="clr-namespace:System.Windows.Automation;assembly=PresentationCore"
+             xmlns:controls="clr-namespace:Depot.Controls">
+    <UserControl.InputBindings>
+        <KeyBinding Key="Escape" Command="{Binding NewItemCommand}" />
+    </UserControl.InputBindings>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <controls:OperationPanel IsBusy="{Binding IsBusy}" HasError="{Binding HasOperationError}" StatusText="{Binding StatusText}" ErrorText="{Binding OperationError}" />
+        <controls:MasterDetailGrid Grid.Row="1">
+            <controls:MasterDetailGrid.Master>
+                <controls:Card>
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <controls:FilterBar>
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="6" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <controls:SearchBox automation:AutomationProperties.Name="Search items"
+                                                    Placeholder="Search items"
+                                                    Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                                                    ToolTip="Search by part number, description, GTIN, origin, tariff number, manufacturer, category, unit, packaging, or notes" />
+                                <ComboBox Grid.Row="2" automation:AutomationProperties.Name="Item status filter" ItemsSource="{Binding ActivationFilters}" SelectedItem="{Binding SelectedActivationFilter}" DisplayMemberPath="Name" Style="{StaticResource AppComboBoxStyle}" />
+                            </Grid>
+                        </controls:FilterBar>
+                        <Grid Grid.Row="1">
+                            <DataGrid ItemsSource="{Binding Items}" SelectedItem="{Binding SelectedItem}" Style="{StaticResource AppDataGridStyle}" Visibility="{Binding HasItems, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Part number" Binding="{Binding PartNumber}" Width="125" ElementStyle="{StaticResource AppDataGridTextStyle}" />
+                                    <DataGridTextColumn Header="Description" Binding="{Binding Description}" Width="*" ElementStyle="{StaticResource AppDataGridTextStyle}" />
+                                    <DataGridTextColumn Header="GTIN" Binding="{Binding Gtin}" Width="110" ElementStyle="{StaticResource AppDataGridTextStyle}" />
+                                    <DataGridTextColumn Header="Type" Binding="{Binding ItemType}" Width="95" ElementStyle="{StaticResource AppDataGridTextStyle}" />
+                                    <DataGridTextColumn Header="Lifecycle" Binding="{Binding LifecycleStatus}" Width="105" ElementStyle="{StaticResource AppDataGridTextStyle}" />
+                                    <DataGridTextColumn Header="Category" Binding="{Binding Category}" Width="115" ElementStyle="{StaticResource AppDataGridTextStyle}" />
+                                    <DataGridTemplateColumn Header="Status" Width="80">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <controls:ActivationStatusBadge IsActive="{Binding IsActive}" />
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                            <controls:WorkflowListState ItemCount="{Binding Items.Count}" SearchText="{Binding SearchText}" IsBusy="{Binding IsBusy}" HasError="{Binding HasOperationError}" ErrorText="{Binding OperationError}" />
+                        </Grid>
+                        <Grid Grid.Row="2" Margin="0,10,0,0">
+                            <controls:PaginationControl PreviousCommand="{Binding PreviousPageCommand}" NextCommand="{Binding NextPageCommand}" PageText="{Binding PageNumber, StringFormat=Page {0}}" />
+                            <Button HorizontalAlignment="Right" Command="{Binding NewItemCommand}" Content="New item" Style="{StaticResource PrimaryButtonStyle}" />
+                        </Grid>
+                    </Grid>
+                </controls:Card>
+            </controls:MasterDetailGrid.Master>
+            <controls:MasterDetailGrid.Detail>
+                <controls:Card>
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <controls:WorkflowHeader Title="{Binding Editor.EditorTitle}" Subtitle="Part numbers are immutable after creation." Status="{Binding EditorStatus}" />
+                        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="12" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" /><RowDefinition Height="12" />
+                                    <RowDefinition Height="Auto" /><RowDefinition Height="12" />
+                                    <RowDefinition Height="Auto" /><RowDefinition Height="12" />
+                                    <RowDefinition Height="Auto" /><RowDefinition Height="12" />
+                                    <RowDefinition Height="Auto" /><RowDefinition Height="12" />
+                                    <RowDefinition Height="Auto" /><RowDefinition Height="12" />
+                                    <RowDefinition Height="Auto" /><RowDefinition Height="12" />
+                                    <RowDefinition Height="Auto" /><RowDefinition Height="12" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <StackPanel>
+                                    <TextBlock Text="Part number *" Style="{StaticResource FormLabelStyle}" />
+                                    <controls:TextInput controls:FocusRequest.RequestId="{Binding EditorFocusRequest}" automation:AutomationProperties.Name="Part number" IsEnabled="{Binding Editor.CanEditPartNumber}" Text="{Binding Editor.PartNumber, UpdateSourceTrigger=PropertyChanged}" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Text="Description *" Style="{StaticResource FormLabelStyle}" />
+                                    <controls:TextInput automation:AutomationProperties.Name="Description" Text="{Binding Editor.Description, UpdateSourceTrigger=PropertyChanged}" />
+                                </StackPanel>
+                                <StackPanel Grid.Row="2">
+                                    <TextBlock Text="Manufacturer" Style="{StaticResource FormLabelStyle}" />
+                                    <ComboBox automation:AutomationProperties.Name="Manufacturer" ItemsSource="{Binding Manufacturers}" SelectedItem="{Binding Editor.Manufacturer}" DisplayMemberPath="Name" Style="{StaticResource AppComboBoxStyle}" />
+                                </StackPanel>
+                                <StackPanel Grid.Row="2" Grid.Column="2">
+                                    <TextBlock Text="Category" Style="{StaticResource FormLabelStyle}" />
+                                    <ComboBox automation:AutomationProperties.Name="Category" ItemsSource="{Binding Categories}" SelectedItem="{Binding Editor.Category}" DisplayMemberPath="Name" Style="{StaticResource AppComboBoxStyle}" />
+                                </StackPanel>
+                                <StackPanel Grid.Row="4">
+                                    <TextBlock Text="Unit of measure" Style="{StaticResource FormLabelStyle}" />
+                                    <ComboBox automation:AutomationProperties.Name="Unit of measure" ItemsSource="{Binding UnitsOfMeasure}" SelectedItem="{Binding Editor.UnitOfMeasure}" DisplayMemberPath="Name" Style="{StaticResource AppComboBoxStyle}" />
+                                </StackPanel>
+                                <StackPanel Grid.Row="4" Grid.Column="2">
+                                    <TextBlock Text="Packaging" Style="{StaticResource FormLabelStyle}" />
+                                    <ComboBox automation:AutomationProperties.Name="Packaging" ItemsSource="{Binding Packagings}" SelectedItem="{Binding Editor.Packaging}" DisplayMemberPath="Name" Style="{StaticResource AppComboBoxStyle}" />
+                                </StackPanel>
+                                <StackPanel Grid.Row="6">
+                                    <TextBlock Text="GTIN" Style="{StaticResource FormLabelStyle}" />
+                                    <controls:TextInput automation:AutomationProperties.Name="GTIN" Text="{Binding Editor.Gtin, UpdateSourceTrigger=PropertyChanged}" />
+                                </StackPanel>
+                                <StackPanel Grid.Row="6" Grid.Column="2">
+                                    <TextBlock Text="Item type" Style="{StaticResource FormLabelStyle}" />
+                                    <ComboBox automation:AutomationProperties.Name="Item type" ItemsSource="{Binding ItemTypes}" SelectedItem="{Binding Editor.ItemType}" Style="{StaticResource AppComboBoxStyle}" />
+                                </StackPanel>
+                                <StackPanel Grid.Row="8">
+                                    <TextBlock Text="Lifecycle status" Style="{StaticResource FormLabelStyle}" />
+                                    <ComboBox automation:AutomationProperties.Name="Lifecycle status" ItemsSource="{Binding LifecycleStatuses}" SelectedItem="{Binding Editor.LifecycleStatus}" Style="{StaticResource AppComboBoxStyle}" />
+                                </StackPanel>
+                                <StackPanel Grid.Row="8" Grid.Column="2">
+                                    <TextBlock Text="Tracking mode" Style="{StaticResource FormLabelStyle}" />
+                                    <ComboBox automation:AutomationProperties.Name="Tracking mode" ItemsSource="{Binding TrackingModes}" SelectedItem="{Binding Editor.TrackingMode}" Style="{StaticResource AppComboBoxStyle}" />
+                                </StackPanel>
+                                <StackPanel Grid.Row="10">
+                                    <TextBlock Text="Country of origin" Style="{StaticResource FormLabelStyle}" />
+                                    <controls:TextInput automation:AutomationProperties.Name="Country of origin" Text="{Binding Editor.CountryOfOrigin, UpdateSourceTrigger=PropertyChanged}" />
+                                </StackPanel>
+                                <StackPanel Grid.Row="10" Grid.Column="2">
+                                    <TextBlock Text="Customs tariff number" Style="{StaticResource FormLabelStyle}" />
+                                    <controls:TextInput automation:AutomationProperties.Name="Customs tariff number" Text="{Binding Editor.CustomsTariffNumber, UpdateSourceTrigger=PropertyChanged}" />
+                                </StackPanel>
+                                <StackPanel Grid.Row="12">
+                                    <TextBlock Text="Net weight" Style="{StaticResource FormLabelStyle}" />
+                                    <controls:TextInput automation:AutomationProperties.Name="Net weight" Text="{Binding Editor.NetWeight, UpdateSourceTrigger=PropertyChanged}" />
+                                </StackPanel>
+                                <StackPanel Grid.Row="12" Grid.Column="2">
+                                    <TextBlock Text="Replacement item ID" Style="{StaticResource FormLabelStyle}" />
+                                    <controls:TextInput automation:AutomationProperties.Name="Replacement item ID" Text="{Binding Editor.ReplacementItemId, UpdateSourceTrigger=PropertyChanged}" />
+                                </StackPanel>
+                                <StackPanel Grid.Row="14">
+                                    <TextBlock Text="Length" Style="{StaticResource FormLabelStyle}" />
+                                    <controls:TextInput automation:AutomationProperties.Name="Length" Text="{Binding Editor.Length, UpdateSourceTrigger=PropertyChanged}" />
+                                </StackPanel>
+                                <StackPanel Grid.Row="14" Grid.Column="2">
+                                    <TextBlock Text="Width" Style="{StaticResource FormLabelStyle}" />
+                                    <controls:TextInput automation:AutomationProperties.Name="Width" Text="{Binding Editor.Width, UpdateSourceTrigger=PropertyChanged}" />
+                                </StackPanel>
+                                <StackPanel Grid.Row="16">
+                                    <TextBlock Text="Height" Style="{StaticResource FormLabelStyle}" />
+                                    <controls:TextInput automation:AutomationProperties.Name="Height" Text="{Binding Editor.Height, UpdateSourceTrigger=PropertyChanged}" />
+                                </StackPanel>
+                                <StackPanel Grid.Row="16" Grid.Column="2">
+                                    <TextBlock Text="Notes" Style="{StaticResource FormLabelStyle}" />
+                                    <controls:TextInput automation:AutomationProperties.Name="Notes" Text="{Binding Editor.Notes, UpdateSourceTrigger=PropertyChanged}" />
+                                </StackPanel>
+                            </Grid>
+                        </ScrollViewer>
+                        <controls:WorkflowActionBar Grid.Row="2">
+                            <controls:WorkflowActionBar.SecondaryActions>
+                                <StackPanel Orientation="Horizontal">
+                                    <Button Command="{Binding NewItemCommand}" Content="Cancel" Style="{StaticResource SecondaryButtonStyle}" />
+                                    <Button Margin="{StaticResource Button.Margin}" Command="{Binding DeactivateItemCommand}" Content="{Binding ActivationActionText}" Style="{StaticResource SecondaryButtonStyle}" />
+                                </StackPanel>
+                            </controls:WorkflowActionBar.SecondaryActions>
+                            <controls:WorkflowActionBar.PrimaryAction>
+                                <Button IsDefault="True" Command="{Binding SaveItemCommand}" Content="{Binding Editor.SaveButtonText}" Style="{StaticResource PrimaryButtonStyle}" />
+                            </controls:WorkflowActionBar.PrimaryAction>
+                        </controls:WorkflowActionBar>
+                    </Grid>
+                </controls:Card>
+            </controls:MasterDetailGrid.Detail>
+        </controls:MasterDetailGrid>
+    </Grid>
+</UserControl>
