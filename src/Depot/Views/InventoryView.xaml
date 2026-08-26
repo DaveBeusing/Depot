@@ -12,138 +12,145 @@
             IsBusy="{Binding IsBusy}"
             HasError="{Binding HasOperationError}"
             StatusText="{Binding StatusText}"
-            ErrorText="{Binding OperationError}" />
+            ErrorText="{Binding OperationError}"
+            HelpTopicId="inventory.overview" />
 
-        <controls:MasterDetailGrid Grid.Row="1">
-            <controls:MasterDetailGrid.Master>
-                <controls:Card>
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="*" />
-                            <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
+        <TabControl Grid.Row="1" Style="{StaticResource AppTabControlStyle}">
+            <TabItem Header="Inventory overview">
+                <controls:MasterDetailGrid>
+                    <controls:MasterDetailGrid.Master>
+                        <controls:Card>
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <controls:FilterBar>
+                                    <controls:SearchBox Placeholder="Search inventory" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" ToolTip="Search by item, purpose, warehouse, or storage location" />
+                                </controls:FilterBar>
+                                <Grid Grid.Row="1">
+                                    <DataGrid ItemsSource="{Binding Items}" SelectedItem="{Binding SelectedItem}" Style="{StaticResource AppDataGridStyle}">
+                                        <DataGrid.Columns>
+                                            <DataGridTextColumn Header="Part number" Binding="{Binding PartNumber}" Width="120" ElementStyle="{StaticResource AppDataGridTextStyle}" />
+                                            <DataGridTextColumn Header="Description" Binding="{Binding Description}" Width="*" ElementStyle="{StaticResource AppDataGridTextStyle}" />
+                                            <DataGridTextColumn Header="Stock" Binding="{Binding CurrentStock, StringFormat={}{0:N2}}" Width="82" ElementStyle="{StaticResource AppDataGridNumericTextStyle}" />
+                                        </DataGrid.Columns>
+                                    </DataGrid>
+                                    <controls:EmptyState Title="No inventory positions yet" Description="Inventory positions are created when stock is received, issued, returned, transferred, or otherwise moved into a storage location." Visibility="{Binding HasNoItems, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                </Grid>
+                                <controls:PaginationControl Grid.Row="2" Margin="0,10,0,0" PreviousCommand="{Binding PreviousPageCommand}" NextCommand="{Binding NextPageCommand}" PageText="{Binding PageNumber, StringFormat=Page {0}}" />
+                            </Grid>
+                        </controls:Card>
+                    </controls:MasterDetailGrid.Master>
 
-                        <controls:FilterBar>
-                            <controls:SearchBox
-                                Placeholder="Search inventory"
-                                Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-                                ToolTip="Search by item, purpose, warehouse, or storage location" />
-                        </controls:FilterBar>
-
-                        <Grid Grid.Row="1">
-                            <DataGrid
-                                ItemsSource="{Binding Items}"
-                                SelectedItem="{Binding SelectedItem}"
-                                Style="{StaticResource AppDataGridStyle}">
-                                <DataGrid.Columns>
-                                    <DataGridTextColumn Header="Part number" Binding="{Binding PartNumber}" Width="120" ElementStyle="{StaticResource AppDataGridTextStyle}" />
-                                    <DataGridTextColumn Header="Description" Binding="{Binding Description}" Width="*" ElementStyle="{StaticResource AppDataGridTextStyle}" />
-                                    <DataGridTextColumn Header="Stock" Binding="{Binding CurrentStock, StringFormat={}{0:N2}}" Width="82" ElementStyle="{StaticResource AppDataGridNumericTextStyle}" />
-                                </DataGrid.Columns>
-                            </DataGrid>
-                            <controls:EmptyState
-                                Title="No inventory positions yet"
-                                Description="Inventory positions are created when stock is received, issued, returned, transferred, or otherwise moved into a storage location."
-                                Visibility="{Binding HasNoItems, Converter={StaticResource BooleanToVisibilityConverter}}" />
-                        </Grid>
-
-                        <controls:PaginationControl
-                            Grid.Row="2"
-                            Margin="0,10,0,0"
-                            PreviousCommand="{Binding PreviousPageCommand}"
-                            NextCommand="{Binding NextPageCommand}"
-                            PageText="{Binding PageNumber, StringFormat=Page {0}}" />
-                    </Grid>
-                </controls:Card>
-            </controls:MasterDetailGrid.Master>
-
-            <controls:MasterDetailGrid.Detail>
-                <controls:Card>
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto" />
-                            <RowDefinition Height="*" />
-                        </Grid.RowDefinitions>
-
-                        <controls:WorkflowHeader
-                            Title="Inventory details"
-                            Subtitle="Stock is calculated from immutable movements." />
-
-                        <Grid Grid.Row="1" Margin="0,12,0,0">
-                            <controls:EmptyState
-                                Title="Select an inventory row"
-                                Description="Item, storage, valuation, and recent movements will appear here."
-                                Visibility="{Binding HasNoSelectedItem, Converter={StaticResource BooleanToVisibilityConverter}}" />
-
-                            <ScrollViewer
-                                VerticalScrollBarVisibility="Auto"
-                                Visibility="{Binding HasSelectedItem, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                <StackPanel>
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="120" />
-                                            <ColumnDefinition Width="*" />
-                                        </Grid.ColumnDefinitions>
-                                        <Grid.RowDefinitions>
-                                            <RowDefinition Height="Auto" />
-                                            <RowDefinition Height="8" />
-                                            <RowDefinition Height="Auto" />
-                                            <RowDefinition Height="8" />
-                                            <RowDefinition Height="Auto" />
-                                            <RowDefinition Height="8" />
-                                            <RowDefinition Height="Auto" />
-                                        </Grid.RowDefinitions>
-                                        <TextBlock Text="Part number" Style="{StaticResource FormLabelStyle}" />
-                                        <TextBlock Grid.Column="1" Text="{Binding Details.PartNumber}" FontWeight="SemiBold" />
-                                        <TextBlock Grid.Row="2" Text="Description" Style="{StaticResource FormLabelStyle}" />
-                                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Details.Description}" TextWrapping="Wrap" />
-                                        <TextBlock Grid.Row="4" Text="Purpose" Style="{StaticResource FormLabelStyle}" />
-                                        <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding Details.PurposeName}" />
-                                        <TextBlock Grid.Row="6" Text="Storage" Style="{StaticResource FormLabelStyle}" />
-                                        <TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding Details.StorageDisplay}" />
-                                    </Grid>
-
-                                    <UniformGrid Columns="3" Margin="0,16,0,0">
-                                        <StackPanel Margin="0,0,10,0">
-                                            <TextBlock Text="Current stock" Style="{StaticResource FormLabelStyle}" />
-                                            <TextBlock Text="{Binding Details.CurrentStock, StringFormat={}{0:N2}}" FontSize="20" FontWeight="SemiBold" />
-                                        </StackPanel>
-                                        <StackPanel Margin="0,0,10,0">
-                                            <TextBlock Text="Average cost" Style="{StaticResource FormLabelStyle}" />
-                                            <TextBlock Text="{Binding Details.AverageCost, StringFormat={}{0:C2}}" FontSize="20" FontWeight="SemiBold" />
-                                        </StackPanel>
+                    <controls:MasterDetailGrid.Detail>
+                        <controls:Card>
+                            <Grid>
+                                <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+                                <controls:WorkflowHeader Title="Inventory details" Subtitle="Stock is calculated from immutable movements." />
+                                <Grid Grid.Row="1" Margin="0,12,0,0">
+                                    <controls:EmptyState Title="Select an inventory row" Description="Item, storage, valuation, and recent movements will appear here." Visibility="{Binding HasNoSelectedItem, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                    <ScrollViewer VerticalScrollBarVisibility="Auto" Visibility="{Binding HasSelectedItem, Converter={StaticResource BooleanToVisibilityConverter}}">
                                         <StackPanel>
-                                            <TextBlock Text="Inventory value" Style="{StaticResource FormLabelStyle}" />
-                                            <TextBlock Text="{Binding Details.InventoryValue, StringFormat={}{0:C2}}" FontSize="20" FontWeight="SemiBold" />
+                                            <Grid>
+                                                <Grid.ColumnDefinitions><ColumnDefinition Width="120" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                                <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="8" /><RowDefinition Height="Auto" /><RowDefinition Height="8" /><RowDefinition Height="Auto" /><RowDefinition Height="8" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                                                <TextBlock Text="Part number" Style="{StaticResource FormLabelStyle}" /><TextBlock Grid.Column="1" Text="{Binding Details.PartNumber}" FontWeight="SemiBold" />
+                                                <TextBlock Grid.Row="2" Text="Description" Style="{StaticResource FormLabelStyle}" /><TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Details.Description}" TextWrapping="Wrap" />
+                                                <TextBlock Grid.Row="4" Text="Purpose" Style="{StaticResource FormLabelStyle}" /><TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding Details.PurposeName}" />
+                                                <TextBlock Grid.Row="6" Text="Storage" Style="{StaticResource FormLabelStyle}" /><TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding Details.StorageDisplay}" />
+                                            </Grid>
+                                            <UniformGrid Columns="3" Margin="0,16,0,0">
+                                                <StackPanel Margin="0,0,10,0"><TextBlock Text="Current stock" Style="{StaticResource FormLabelStyle}" /><TextBlock Text="{Binding Details.CurrentStock, StringFormat={}{0:N2}}" FontSize="20" FontWeight="SemiBold" /></StackPanel>
+                                                <StackPanel Margin="0,0,10,0"><TextBlock Text="Average cost" Style="{StaticResource FormLabelStyle}" /><TextBlock Text="{Binding Details.AverageCost, StringFormat={}{0:C2}}" FontSize="20" FontWeight="SemiBold" /></StackPanel>
+                                                <StackPanel><TextBlock Text="Inventory value" Style="{StaticResource FormLabelStyle}" /><TextBlock Text="{Binding Details.InventoryValue, StringFormat={}{0:C2}}" FontSize="20" FontWeight="SemiBold" /></StackPanel>
+                                            </UniformGrid>
+                                            <TextBlock Text="Recent movements" Style="{StaticResource WorkspaceTitleStyle}" Margin="0,18,0,8" />
+                                            <Grid MinHeight="180">
+                                                <DataGrid ItemsSource="{Binding Details.RecentMovements}" Style="{StaticResource AppDataGridStyle}" Visibility="{Binding Details.HasRecentMovements, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                    <DataGrid.Columns>
+                                                        <DataGridTextColumn Header="Date" Binding="{Binding TimestampLocal, StringFormat={}{0:g}}" Width="130" ElementStyle="{StaticResource AppDataGridTextStyle}" />
+                                                        <DataGridTextColumn Header="Type" Binding="{Binding MovementType}" Width="110" ElementStyle="{StaticResource AppDataGridTextStyle}" />
+                                                        <DataGridTextColumn Header="Reason" Binding="{Binding ReasonCodeName}" Width="*" ElementStyle="{StaticResource AppDataGridTextStyle}" />
+                                                        <DataGridTextColumn Header="Quantity" Binding="{Binding Quantity, StringFormat={}{0:N2}}" Width="90" ElementStyle="{StaticResource AppDataGridNumericTextStyle}" />
+                                                        <DataGridTextColumn Header="Unit price" Binding="{Binding UnitPrice, StringFormat={}{0:C2}}" Width="110" ElementStyle="{StaticResource AppDataGridNumericTextStyle}" />
+                                                    </DataGrid.Columns>
+                                                </DataGrid>
+                                                <controls:EmptyState Title="No movements recorded" Description="Recent activity for this inventory will appear here." Visibility="{Binding Details.HasNoRecentMovements, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                            </Grid>
                                         </StackPanel>
-                                    </UniformGrid>
+                                    </ScrollViewer>
+                                </Grid>
+                            </Grid>
+                        </controls:Card>
+                    </controls:MasterDetailGrid.Detail>
+                </controls:MasterDetailGrid>
+            </TabItem>
 
-                                    <TextBlock Text="Recent movements" Style="{StaticResource WorkspaceTitleStyle}" Margin="0,18,0,8" />
-                                    <Grid MinHeight="180">
-                                        <DataGrid
-                                            ItemsSource="{Binding Details.RecentMovements}"
-                                            Style="{StaticResource AppDataGridStyle}"
-                                            Visibility="{Binding Details.HasRecentMovements, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <TabItem Header="Serial / lot traceability">
+                <controls:MasterDetailGrid>
+                    <controls:MasterDetailGrid.Master>
+                        <controls:Card>
+                            <Grid>
+                                <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                                <controls:FilterBar>
+                                    <controls:SearchBox Placeholder="Search serial, lot, item, warehouse or location" Text="{Binding TraceabilitySearchText, UpdateSourceTrigger=PropertyChanged}" />
+                                </controls:FilterBar>
+                                <Grid Grid.Row="1">
+                                    <DataGrid ItemsSource="{Binding TraceabilityBalances}" SelectedItem="{Binding SelectedTraceability}" Style="{StaticResource AppDataGridStyle}">
+                                        <DataGrid.Columns>
+                                            <DataGridTextColumn Header="Part number" Binding="{Binding PartNumber}" Width="115" />
+                                            <DataGridTextColumn Header="Mode" Binding="{Binding TrackingMode}" Width="85" />
+                                            <DataGridTextColumn Header="Serial / lot" Binding="{Binding Code}" Width="150" />
+                                            <DataGridTextColumn Header="Qty" Binding="{Binding Quantity, StringFormat={}{0:N0}}" Width="55" ElementStyle="{StaticResource AppDataGridNumericTextStyle}" />
+                                            <DataGridTextColumn Header="Warehouse" Binding="{Binding Warehouse}" Width="110" />
+                                            <DataGridTextColumn Header="Location" Binding="{Binding StorageLocation}" Width="100" />
+                                            <DataGridTextColumn Header="Purpose" Binding="{Binding Purpose}" Width="100" />
+                                            <DataGridTextColumn Header="Expiry" Binding="{Binding ExpiryDate, StringFormat={}{0:d}}" Width="90" />
+                                            <DataGridCheckBoxColumn Header="Blocked" Binding="{Binding IsBlocked}" Width="65" />
+                                        </DataGrid.Columns>
+                                    </DataGrid>
+                                    <controls:EmptyState Title="No tracked stock" Description="Serial- and lot-tracked stock appears here after a tracked inbound movement has been posted." Visibility="{Binding HasNoTraceabilityBalances, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                </Grid>
+                                <controls:PaginationControl Grid.Row="2" Margin="0,10,0,0" PreviousCommand="{Binding PreviousTraceabilityPageCommand}" NextCommand="{Binding NextTraceabilityPageCommand}" PageText="{Binding TraceabilityPageNumber, StringFormat=Page {0}}" />
+                            </Grid>
+                        </controls:Card>
+                    </controls:MasterDetailGrid.Master>
+
+                    <controls:MasterDetailGrid.Detail>
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <StackPanel>
+                                <controls:Card>
+                                    <controls:Card.Header><controls:WorkflowHeader Title="Traceability history" Subtitle="{Binding SelectedTraceability.Code}" /></controls:Card.Header>
+                                    <Grid MinHeight="260">
+                                        <DataGrid ItemsSource="{Binding TraceabilityHistory}" Style="{StaticResource AppDataGridStyle}" Visibility="{Binding HasTraceabilityHistory, Converter={StaticResource BooleanToVisibilityConverter}}">
                                             <DataGrid.Columns>
-                                                <DataGridTextColumn Header="Date" Binding="{Binding TimestampLocal, StringFormat={}{0:g}}" Width="130" ElementStyle="{StaticResource AppDataGridTextStyle}" />
-                                                <DataGridTextColumn Header="Type" Binding="{Binding MovementType}" Width="110" ElementStyle="{StaticResource AppDataGridTextStyle}" />
-                                                <DataGridTextColumn Header="Reason" Binding="{Binding ReasonCodeName}" Width="*" ElementStyle="{StaticResource AppDataGridTextStyle}" />
-                                                <DataGridTextColumn Header="Quantity" Binding="{Binding Quantity, StringFormat={}{0:N2}}" Width="90" ElementStyle="{StaticResource AppDataGridNumericTextStyle}" />
-                                                <DataGridTextColumn Header="Unit price" Binding="{Binding UnitPrice, StringFormat={}{0:C2}}" Width="110" ElementStyle="{StaticResource AppDataGridNumericTextStyle}" />
+                                                <DataGridTextColumn Header="Time" Binding="{Binding TimestampUtc, StringFormat={}{0:g}}" Width="130" />
+                                                <DataGridTextColumn Header="Type" Binding="{Binding MovementType}" Width="110" />
+                                                <DataGridTextColumn Header="Qty" Binding="{Binding Quantity, StringFormat={}{0:N0}}" Width="60" ElementStyle="{StaticResource AppDataGridNumericTextStyle}" />
+                                                <DataGridTextColumn Header="Warehouse" Binding="{Binding Warehouse}" Width="110" />
+                                                <DataGridTextColumn Header="Location" Binding="{Binding StorageLocation}" Width="100" />
+                                                <DataGridTextColumn Header="Reference" Binding="{Binding Reference}" Width="*" />
                                             </DataGrid.Columns>
                                         </DataGrid>
-                                        <controls:EmptyState
-                                            Title="No movements recorded"
-                                            Description="Recent activity for this inventory will appear here."
-                                            Visibility="{Binding Details.HasNoRecentMovements, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                        <controls:EmptyState Title="No tracking history selected" Description="Select a serial or lot balance to see its complete movement history." Visibility="{Binding HasNoTraceabilityHistory, Converter={StaticResource BooleanToVisibilityConverter}}" />
                                     </Grid>
-                                </StackPanel>
-                            </ScrollViewer>
-                        </Grid>
-                    </Grid>
-                </controls:Card>
-            </controls:MasterDetailGrid.Detail>
-        </controls:MasterDetailGrid>
+                                </controls:Card>
+                                <controls:Card Margin="0,12,0,0" Visibility="{Binding CanManageTraceability, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                    <controls:Card.Header><TextBlock Text="Stock control" Style="{StaticResource SectionTitleStyle}" /></controls:Card.Header>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="10" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="8" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                        <StackPanel><TextBlock Text="Block reason" Style="{StaticResource FormLabelStyle}" /><controls:TextInput Text="{Binding BlockReason, UpdateSourceTrigger=PropertyChanged}" /></StackPanel>
+                                        <Button Grid.Column="2" VerticalAlignment="Bottom" Command="{Binding BlockTrackingUnitCommand}" Content="Block unit" Style="{StaticResource DangerButtonStyle}" />
+                                        <Button Grid.Column="4" VerticalAlignment="Bottom" Command="{Binding UnblockTrackingUnitCommand}" Content="Unblock" Style="{StaticResource SecondaryButtonStyle}" />
+                                    </Grid>
+                                </controls:Card>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </controls:MasterDetailGrid.Detail>
+                </controls:MasterDetailGrid>
+            </TabItem>
+        </TabControl>
     </Grid>
 </UserControl>

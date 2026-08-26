@@ -20,8 +20,9 @@ public sealed class SalesOrderService
 	private readonly AuditService _audit;
 	private readonly IAuthorizationService _authorization;
 	private readonly NotificationService _notifications;
+	private readonly ItemTraceabilityService? _traceability;
 
-	public SalesOrderService(IDatabaseTransactionRunner transactions, SalesOrderRepository orders, CustomerRepository customers, ItemRepository items, InventoryRepository inventories, InventoryReservationRepository reservations, StockMovementRepository movements, AuditRepository auditEntries, AuditService audit, IAuthorizationService authorization, NotificationService notifications)
+	public SalesOrderService(IDatabaseTransactionRunner transactions, SalesOrderRepository orders, CustomerRepository customers, ItemRepository items, InventoryRepository inventories, InventoryReservationRepository reservations, StockMovementRepository movements, AuditRepository auditEntries, AuditService audit, IAuthorizationService authorization, NotificationService notifications, ItemTraceabilityService? traceability = null)
 	{
 		_transactions = transactions;
 		_orders = orders;
@@ -34,6 +35,7 @@ public sealed class SalesOrderService
 		_audit = audit;
 		_authorization = authorization;
 		_notifications = notifications;
+		_traceability = traceability;
 	}
 
 	public bool CanCreate => _authorization.HasPermission(ApplicationPermission.SalesOrdersCreate);
@@ -57,10 +59,7 @@ public sealed class SalesOrderService
 		{
 			var before = order.Id == 0 ? null : await _orders.GetByIdAsync(transaction, order.Id, token);
 			var saved = await _orders.SaveDraftAsync(transaction, order, token);
-			await _auditEntries.CreateAsync(
-				transaction,
-				before is null ? _audit.CreateCreatedEntry(saved.Id, saved) : _audit.CreateUpdatedEntry(saved.Id, before, saved),
-				token);
+			await _auditEntries.CreateAsync(transaction, before is null ? _audit.CreateCreatedEntry(saved.Id, saved) : _audit.CreateUpdatedEntry(saved.Id, before, saved), token);
 			return saved;
 		}, cancellationToken);
 	}
@@ -112,6 +111,11 @@ public sealed class SalesOrderService
 			{
 				var line = before.Lines.Single(value => value.Id == request.SalesOrderLineId);
 				if (inventoryById[request.InventoryId].ItemId != line.ItemId) throw new InvalidOperationException("A reservation inventory must contain the sales-order item.");
+				if (_traceability is not null)
+				{
+					var policy = await _traceability.GetPolicyAsync(transaction, request.InventoryId, token);
+					ItemTraceabilityService.EnsurePhysicalStockItem(policy, "sales reservation");
+				}
 			}
 			await _reservations.ReleaseOrderAsync(transaction, id, user.Id, token);
 			foreach (var line in before.Lines) await _orders.UpdateLineQuantitiesAsync(transaction, line.Id, 0, line.ShippedQuantity, line.InvoicedQuantity, token);
@@ -158,11 +162,7 @@ public sealed class SalesOrderService
 		var backordered = released.Lines.Sum(line => line.BackorderedQuantity);
 		if (backordered > 0)
 		{
-			await _notifications.NotifyPermissionHoldersAsync(
-				new NotificationRequest(NotificationType.Workflow, NotificationSeverity.Warning, $"Sales order {released.OrderNumber} has backorders", $"{backordered:N0} unit(s) on sales order {released.OrderNumber} are not reserved and remain backordered.", NotificationSourceTypes.SalesOrder, released.Id, released.OrderNumber, user.Id),
-				ApplicationPermission.SalesOrdersView,
-				[user.Id],
-				cancellationToken);
+			await _notifications.NotifyPermissionHoldersAsync(new NotificationRequest(NotificationType.Workflow, NotificationSeverity.Warning, $"Sales order {released.OrderNumber} has backorders", $"{backordered:N0} unit(s) on sales order {released.OrderNumber} are not reserved and remain backordered.", NotificationSourceTypes.SalesOrder, released.Id, released.OrderNumber, user.Id), ApplicationPermission.SalesOrdersView, [user.Id], cancellationToken);
 		}
 		return released;
 	}
@@ -239,7 +239,13 @@ public sealed class SalesOrderService
 		var items = await _items.GetByIdsAsync(order.Lines.Select(line => line.ItemId), cancellationToken);
 		if (items.Count != order.Lines.Select(line => line.ItemId).Distinct().Count() || items.Any(item => !item.IsActive)) throw new InvalidOperationException("Every sales-order item must exist and be active.");
 		var byId = items.ToDictionary(item => item.Id);
-		foreach (var line in order.Lines) { line.PartNumber = byId[line.ItemId].PartNumber; line.Description = byId[line.ItemId].Description; }
+		foreach (var line in order.Lines)
+		{
+			var item = byId[line.ItemId];
+			ItemOperationalPolicy.EnsureSellable(item);
+			line.PartNumber = item.PartNumber;
+			line.Description = item.Description;
+		}
 	}
 
 	private User RequireUser() => _authorization.CurrentUser is { IsActive: true } user ? user : throw new UnauthorizedAccessException("An active signed-in user is required for sales operations.");

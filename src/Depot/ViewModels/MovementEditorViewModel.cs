@@ -5,128 +5,36 @@ using Depot.Models;
 
 namespace Depot.ViewModels;
 
-public sealed class MovementEditorViewModel
-	: BaseViewModel
+public sealed class MovementEditorViewModel : BaseViewModel
 {
 	private long _inventoryId;
-
-	private StockMovementType _movementType =
-		StockMovementType.Purchase;
-
+	private StockMovementType _movementType = StockMovementType.Purchase;
 	private int _quantity;
-
 	private decimal _unitPrice;
-
 	private long? _reasonCodeId;
-
 	private string? _reference;
-
 	private string? _notes;
+	private string? _trackingText;
 
-	public long InventoryId
-	{
-		get => _inventoryId;
-
-		set
-		{
-			_inventoryId = value;
-
-			OnPropertyChanged();
-		}
-	}
-
-	public StockMovementType MovementType
-	{
-		get => _movementType;
-
-		set
-		{
-			_movementType = value;
-
-			OnPropertyChanged();
-
-			OnPropertyChanged(
-				nameof(RequiresUnitPrice));
-		}
-	}
-
-	public bool RequiresUnitPrice =>
-		MovementType ==
-		StockMovementType.Purchase;
-
-	public int Quantity
-	{
-		get => _quantity;
-
-		set
-		{
-			_quantity = value;
-
-			OnPropertyChanged();
-		}
-	}
-
-	public decimal UnitPrice
-	{
-		get => _unitPrice;
-
-		set
-		{
-			_unitPrice = value;
-
-			OnPropertyChanged();
-		}
-	}
-
-	public long? ReasonCodeId
-	{
-		get => _reasonCodeId;
-		set
-		{
-			_reasonCodeId = value;
-			OnPropertyChanged();
-		}
-	}
-
-	public string? Reference
-	{
-		get => _reference;
-
-		set
-		{
-			_reference = value;
-
-			OnPropertyChanged();
-		}
-	}
-
-	public string? Notes
-	{
-		get => _notes;
-
-		set
-		{
-			_notes = value;
-
-			OnPropertyChanged();
-		}
-	}
+	public long InventoryId { get => _inventoryId; set { _inventoryId = value; OnPropertyChanged(); } }
+	public StockMovementType MovementType { get => _movementType; set { _movementType = value; OnPropertyChanged(); OnPropertyChanged(nameof(RequiresUnitPrice)); } }
+	public bool RequiresUnitPrice => MovementType == StockMovementType.Purchase;
+	public int Quantity { get => _quantity; set { _quantity = value; OnPropertyChanged(); } }
+	public decimal UnitPrice { get => _unitPrice; set { _unitPrice = value; OnPropertyChanged(); } }
+	public long? ReasonCodeId { get => _reasonCodeId; set { _reasonCodeId = value; OnPropertyChanged(); } }
+	public string? Reference { get => _reference; set { _reference = value; OnPropertyChanged(); } }
+	public string? Notes { get => _notes; set { _notes = value; OnPropertyChanged(); } }
+	public string? TrackingText { get => _trackingText; set { _trackingText = value; OnPropertyChanged(); } }
 
 	public void Clear()
 	{
 		InventoryId = 0;
-
-		MovementType =
-			StockMovementType.Purchase;
-
+		MovementType = StockMovementType.Purchase;
 		Quantity = 0;
-
 		UnitPrice = 0m;
-
 		ReasonCodeId = null;
-
 		Reference = null;
-
 		Notes = null;
+		TrackingText = null;
 	}
 }

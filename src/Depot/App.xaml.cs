@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Markup;
 
 using Depot.Composition;
+using Depot.Controls;
 using Depot.Diagnostics;
 using Depot.Services;
 using Depot.ViewModels;
@@ -22,6 +23,7 @@ public partial class App : Application
 	{
 		FrameworkElement.LanguageProperty.OverrideMetadata(typeof(FrameworkElement), new FrameworkPropertyMetadata(XmlLanguage.GetLanguage("de-DE")));
 		EventManager.RegisterClassHandler(typeof(Window), FrameworkElement.LoadedEvent, new RoutedEventHandler(OnWindowLoaded));
+		TrackingCaptureBehavior.Register();
 	}
 
 	protected override async void OnStartup(StartupEventArgs e)

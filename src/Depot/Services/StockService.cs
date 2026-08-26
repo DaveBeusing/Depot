@@ -10,12 +10,16 @@ public sealed class StockService
 {
 	private readonly InventoryRepository _inventories;
 	private readonly StockMovementRepository _movements;
+	private readonly ItemTraceabilityService? _traceability;
 
-	public StockService(InventoryRepository inventories, StockMovementRepository movements)
+	public StockService(InventoryRepository inventories, StockMovementRepository movements, ItemTraceabilityService? traceability = null)
 	{
 		_inventories = inventories;
 		_movements = movements;
+		_traceability = traceability;
 	}
+
+	public bool CanManageTraceability => _traceability?.CanManage == true;
 
 	public Task<PageResult<InventoryOverviewItem>> SearchInventoryOverviewAsync(
 		string? searchText,
@@ -23,6 +27,26 @@ public sealed class StockService
 		int pageSize,
 		CancellationToken cancellationToken) =>
 		_inventories.SearchOverviewPageAsync(searchText, pageNumber, pageSize, cancellationToken);
+
+	public Task<PageResult<ItemTraceabilityBalance>> SearchTraceabilityBalancesAsync(
+		string? searchText,
+		int pageNumber,
+		int pageSize,
+		CancellationToken cancellationToken) =>
+		_traceability?.SearchBalancesAsync(searchText, null, pageNumber, pageSize, cancellationToken)
+		?? Task.FromResult(new PageResult<ItemTraceabilityBalance>([], pageNumber, pageSize, 0));
+
+	public Task<PageResult<ItemTraceabilityHistoryEntry>> SearchTraceabilityHistoryAsync(
+		long trackingUnitId,
+		int pageNumber,
+		int pageSize,
+		CancellationToken cancellationToken) =>
+		_traceability?.SearchHistoryAsync(null, trackingUnitId, pageNumber, pageSize, cancellationToken)
+		?? Task.FromResult(new PageResult<ItemTraceabilityHistoryEntry>([], pageNumber, pageSize, 0));
+
+	public Task SetTraceabilityBlockedAsync(ItemTraceabilityBalance unit, bool isBlocked, string? reason, CancellationToken cancellationToken) =>
+		_traceability?.SetBlockedAsync(unit, isBlocked, reason, cancellationToken)
+		?? Task.FromException(new InvalidOperationException("Traceability management is not available in this composition."));
 
 	public Task<IReadOnlyList<InventoryOverviewItem>> ListInventoryOverviewSliceAsync(
 		string? searchText,

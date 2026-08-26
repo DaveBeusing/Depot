@@ -27,15 +27,15 @@ public static class DatabaseProviderFactory
 			MySqlConnectionFactory mySql => new MySqlDatabase(mySql),
 			_ => throw new NotSupportedException("The database initializer is not available.")
 		};
-		return new ItemMasterDataInitializer(initializer, connectionFactory);
+		return new FeatureSchemaInitializer(initializer, connectionFactory);
 	}
 
-	private sealed class ItemMasterDataInitializer : IDatabaseInitializer
+	private sealed class FeatureSchemaInitializer : IDatabaseInitializer
 	{
 		private readonly IDatabaseInitializer _inner;
 		private readonly IDatabaseConnectionFactory _connectionFactory;
 
-		public ItemMasterDataInitializer(IDatabaseInitializer inner, IDatabaseConnectionFactory connectionFactory)
+		public FeatureSchemaInitializer(IDatabaseInitializer inner, IDatabaseConnectionFactory connectionFactory)
 		{
 			_inner = inner;
 			_connectionFactory = connectionFactory;
@@ -45,6 +45,7 @@ public static class DatabaseProviderFactory
 		{
 			_inner.Initialize();
 			ItemMasterDataSchema.Ensure(_connectionFactory);
+			ItemTraceabilitySchema.Ensure(_connectionFactory);
 		}
 	}
 }

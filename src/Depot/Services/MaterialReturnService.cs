@@ -19,10 +19,11 @@ public sealed class MaterialReturnService
 	private readonly AuditService _audit;
 	private readonly StockMovementReversalService _reversals;
 	private readonly IAuthorizationService _authorization;
+	private readonly ItemTraceabilityService? _traceability;
 
-	public MaterialReturnService(IDatabaseTransactionRunner transactions, MaterialReturnRepository returns, MaterialIssueRepository issues, InventoryRepository inventories, StockMovementRepository movements, ReasonCodeRepository reasonCodes, AuditRepository auditEntries, AuditService audit, StockMovementReversalService reversals, IAuthorizationService authorization)
+	public MaterialReturnService(IDatabaseTransactionRunner transactions, MaterialReturnRepository returns, MaterialIssueRepository issues, InventoryRepository inventories, StockMovementRepository movements, ReasonCodeRepository reasonCodes, AuditRepository auditEntries, AuditService audit, StockMovementReversalService reversals, IAuthorizationService authorization, ItemTraceabilityService? traceability = null)
 	{
-		_transactions = transactions; _returns = returns; _issues = issues; _inventories = inventories; _movements = movements; _reasonCodes = reasonCodes; _auditEntries = auditEntries; _audit = audit; _reversals = reversals; _authorization = authorization;
+		_transactions = transactions; _returns = returns; _issues = issues; _inventories = inventories; _movements = movements; _reasonCodes = reasonCodes; _auditEntries = auditEntries; _audit = audit; _reversals = reversals; _authorization = authorization; _traceability = traceability;
 	}
 
 	public bool CanCreate => _authorization.HasPermission(ApplicationPermission.MaterialReturnsCreate);
@@ -48,14 +49,22 @@ public sealed class MaterialReturnService
 		return _transactions.ExecuteAsync((transaction, token) => SaveDraftAsync(transaction, value, userId, token), cancellationToken);
 	}
 
-	public Task<MaterialReturn> PostMaterialReturnAsync(long id, long version, CancellationToken cancellationToken = default)
-		=> PostMaterialReturnAsync(id, version, Guid.NewGuid(), cancellationToken);
+	public Task<MaterialReturn> PostMaterialReturnAsync(long id, long version, CancellationToken cancellationToken = default) =>
+		PostMaterialReturnAsync(id, version, EmptyTracking(), Guid.NewGuid(), cancellationToken);
 
-	public Task<MaterialReturn> PostMaterialReturnAsync(long id, long version, Guid operationId, CancellationToken cancellationToken = default)
+	public Task<MaterialReturn> PostMaterialReturnAsync(long id, long version, Guid operationId, CancellationToken cancellationToken = default) =>
+		PostMaterialReturnAsync(id, version, EmptyTracking(), operationId, cancellationToken);
+
+	public Task<MaterialReturn> PostMaterialReturnAsync(long id, long version, IReadOnlyDictionary<long, IReadOnlyList<TrackingAllocationInput>> trackingByLineId, CancellationToken cancellationToken = default) =>
+		PostMaterialReturnAsync(id, version, trackingByLineId, Guid.NewGuid(), cancellationToken);
+
+	public Task<MaterialReturn> PostMaterialReturnAsync(long id, long version, IReadOnlyDictionary<long, IReadOnlyList<TrackingAllocationInput>> trackingByLineId, Guid operationId, CancellationToken cancellationToken = default)
 	{
 		_authorization.RequirePermission(ApplicationPermission.MaterialReturnsPost);
-		if (id <= 0) throw new ArgumentOutOfRangeException(nameof(id)); var userId = RequireUser("post");
-		return _transactions.ExecuteAsync((transaction, token) => PostMaterialReturnAsync(transaction, id, version, userId, new(operationId, WorkflowOperationNames.PostMaterialReturn, id), token), cancellationToken);
+		if (id <= 0) throw new ArgumentOutOfRangeException(nameof(id));
+		ArgumentNullException.ThrowIfNull(trackingByLineId);
+		var userId = RequireUser("post");
+		return _transactions.ExecuteAsync((transaction, token) => PostMaterialReturnAsync(transaction, id, version, userId, trackingByLineId, new(operationId, WorkflowOperationNames.PostMaterialReturn, id), token), cancellationToken);
 	}
 
 	public Task<MaterialReturn> CancelAsync(long id, long version, CancellationToken cancellationToken = default)
@@ -101,15 +110,26 @@ public sealed class MaterialReturnService
 		await _auditEntries.CreateAsync(transaction, before is null ? _audit.CreateCreatedEntry(value.Id, value) : _audit.CreateUpdatedEntry(value.Id, before, value), cancellationToken); return value;
 	}
 
-	private async Task<MaterialReturn> PostMaterialReturnAsync(DatabaseTransactionContext transaction, long id, long version, long userId, WorkflowOperation operation, CancellationToken cancellationToken)
+	private async Task<MaterialReturn> PostMaterialReturnAsync(DatabaseTransactionContext transaction, long id, long version, long userId, IReadOnlyDictionary<long, IReadOnlyList<TrackingAllocationInput>> trackingByLineId, WorkflowOperation operation, CancellationToken cancellationToken)
 	{
 		if (await WorkflowOperationRepository.IsCompletedAsync(transaction.Session, operation, cancellationToken))
 			return await _returns.GetByIdAsync(transaction, id, cancellationToken) ?? throw new InvalidOperationException("The completed material return operation could not be reloaded.");
 		var before = await _returns.GetByIdAsync(transaction, id, cancellationToken) ?? throw new InvalidOperationException("The material return was not found.");
 		if (before.Version != version) throw new ConcurrencyConflictException("material return"); if (before.Status != MaterialReturnStatus.Draft) throw new InvalidOperationException("Only a draft material return can be posted.");
 		NormalizeAndValidate(before); await ValidateReferencesAsync(transaction, before, cancellationToken);
+		ValidateTrackingKeys(before.Lines.Select(line => line.Id), trackingByLineId);
 		var postedAtUtc = DateTime.UtcNow;
-		foreach (var line in before.Lines.OrderBy(line => line.LineNumber)) { var movement = new StockMovement { InventoryId = line.InventoryId, ReasonCodeId = line.ReasonCodeId, MovementType = StockMovementType.MaterialReturn, TimestampUtc = postedAtUtc, Quantity = line.Quantity, Reference = DocumentReference(before.ReturnNumber), Notes = line.Notes }; movement.Id = await _movements.CreateAsync(transaction, movement, cancellationToken); }
+		foreach (var line in before.Lines.OrderBy(line => line.LineNumber))
+		{
+			if (_traceability is not null)
+			{
+				var policy = await _traceability.GetPolicyAsync(transaction, line.InventoryId, cancellationToken);
+				ItemTraceabilityService.EnsurePhysicalStockItem(policy, "material return");
+			}
+			var movement = new StockMovement { InventoryId = line.InventoryId, ReasonCodeId = line.ReasonCodeId, MovementType = StockMovementType.MaterialReturn, TimestampUtc = postedAtUtc, Quantity = line.Quantity, Reference = DocumentReference(before.ReturnNumber), Notes = line.Notes };
+			movement.Id = await _movements.CreateAsync(transaction, movement, cancellationToken);
+			if (_traceability is not null) await _traceability.AttachMovementAsync(transaction, movement, trackingByLineId.GetValueOrDefault(line.Id) ?? [], cancellationToken);
+		}
 		if (!await _returns.SetPostedAsync(transaction, id, version, userId, postedAtUtc, cancellationToken)) throw new ConcurrencyConflictException("material return");
 		var after = Copy(before); after.Status = MaterialReturnStatus.Posted; after.PostedByUserId = userId; after.PostedAtUtc = postedAtUtc; after.Version++;
 		await _auditEntries.CreateAsync(transaction, _audit.CreateUpdatedEntry(id, before, after), cancellationToken);
@@ -133,6 +153,12 @@ public sealed class MaterialReturnService
 		foreach (var line in value.Lines) { line.Notes = Normalize(line.Notes); if (line.Notes?.Length > 2000) throw new ArgumentException("Line notes must not exceed 2000 characters."); }
 	}
 
+	private static IReadOnlyDictionary<long, IReadOnlyList<TrackingAllocationInput>> EmptyTracking() => new Dictionary<long, IReadOnlyList<TrackingAllocationInput>>();
+	private static void ValidateTrackingKeys(IEnumerable<long> validLineIds, IReadOnlyDictionary<long, IReadOnlyList<TrackingAllocationInput>> trackingByLineId)
+	{
+		var valid = validLineIds.ToHashSet();
+		if (trackingByLineId.Keys.Any(id => !valid.Contains(id))) throw new InvalidOperationException("Tracking data references a line outside this material return.");
+	}
 	private long RequireUser(string operation) => _audit.CurrentUserId ?? throw new InvalidOperationException($"A signed-in user is required to {operation} a material return.");
 	private static string DocumentReference(string number) => $"Material Return {number}";
 	private static string? Normalize(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
