@@ -10,6 +10,7 @@ public sealed class GoodsReceiptLine
 	public long PurchaseOrderLineId { get; set; }
 	public long InventoryId { get; set; }
 	public int Quantity { get; set; }
+	public IReadOnlyList<TrackingAllocationInput> TrackingAllocations { get; set; } = [];
 }
 
 public sealed class ReceiptInventoryOption

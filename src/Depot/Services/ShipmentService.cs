@@ -21,8 +21,9 @@ public sealed class ShipmentService
 	private readonly AuditService _audit;
 	private readonly IAuthorizationService _authorization;
 	private readonly NotificationService _notifications;
+	private readonly ItemTraceabilityService? _traceability;
 
-	public ShipmentService(IDatabaseTransactionRunner transactions, ShipmentRepository shipments, SalesOrderRepository orders, InventoryReservationRepository reservations, InventoryRepository inventories, StockMovementRepository movements, SalesInvoiceRepository invoices, CustomerReturnService customerReturns, AuditRepository auditEntries, AuditService audit, IAuthorizationService authorization, NotificationService notifications)
+	public ShipmentService(IDatabaseTransactionRunner transactions, ShipmentRepository shipments, SalesOrderRepository orders, InventoryReservationRepository reservations, InventoryRepository inventories, StockMovementRepository movements, SalesInvoiceRepository invoices, CustomerReturnService customerReturns, AuditRepository auditEntries, AuditService audit, IAuthorizationService authorization, NotificationService notifications, ItemTraceabilityService? traceability = null)
 	{
 		_transactions = transactions;
 		_shipments = shipments;
@@ -36,6 +37,7 @@ public sealed class ShipmentService
 		_audit = audit;
 		_authorization = authorization;
 		_notifications = notifications;
+		_traceability = traceability;
 	}
 
 	public bool CanCreate => _authorization.HasPermission(ApplicationPermission.ShipmentsCreate);
@@ -47,6 +49,7 @@ public sealed class ShipmentService
 	public Task<PageResult<CustomerReturn>> SearchCustomerReturnsAsync(string? searchText, CustomerReturnStatus? status, int pageNumber = 1, int pageSize = 100, CancellationToken token = default) => _customerReturns.SearchAsync(searchText, status, pageNumber, pageSize, token);
 	public Task<CustomerReturn> CreateCustomerReturnAsync(long shipmentId, string reason, CancellationToken token = default) => _customerReturns.CreateFromShipmentAsync(shipmentId, reason, token);
 	public Task<CustomerReturn> PostCustomerReturnAsync(long id, long version, CancellationToken token = default) => _customerReturns.PostAsync(id, version, token);
+	public Task<CustomerReturn> PostCustomerReturnAsync(long id, long version, IReadOnlyDictionary<long, IReadOnlyList<TrackingAllocationInput>> trackingByLineId, CancellationToken token = default) => _customerReturns.PostAsync(id, version, trackingByLineId, token);
 
 	public Task<PageResult<Shipment>> SearchAsync(string? searchText, ShipmentStatus? status, int pageNumber = 1, int pageSize = 100, CancellationToken cancellationToken = default)
 	{
@@ -102,9 +105,13 @@ public sealed class ShipmentService
 		}, cancellationToken);
 	}
 
-	public async Task<Shipment> PostAsync(long id, long version, CancellationToken cancellationToken = default)
+	public Task<Shipment> PostAsync(long id, long version, CancellationToken cancellationToken = default) =>
+		PostAsync(id, version, new Dictionary<long, IReadOnlyList<TrackingAllocationInput>>(), cancellationToken);
+
+	public async Task<Shipment> PostAsync(long id, long version, IReadOnlyDictionary<long, IReadOnlyList<TrackingAllocationInput>> trackingByLineId, CancellationToken cancellationToken = default)
 	{
 		_authorization.RequirePermission(ApplicationPermission.ShipmentsPost);
+		ArgumentNullException.ThrowIfNull(trackingByLineId);
 		var user = RequireUser();
 		var result = await _transactions.ExecuteAsync(async (transaction, token) =>
 		{
@@ -113,6 +120,8 @@ public sealed class ShipmentService
 			if (before.Status != ShipmentStatus.Draft) throw new InvalidOperationException("Only a draft shipment can be posted.");
 			if (before.PackingStatus != ShipmentPackingStatus.Packed) throw new InvalidOperationException("Only a packed shipment can be posted.");
 			if (before.Lines.Count == 0) throw new InvalidOperationException("A shipment requires at least one line.");
+			var validLineIds = before.Lines.Select(line => line.Id).ToHashSet();
+			if (trackingByLineId.Keys.Any(lineId => !validLineIds.Contains(lineId))) throw new InvalidOperationException("Tracking data references a line outside this shipment.");
 			var order = await _orders.GetByIdAsync(transaction, before.SalesOrderId, token) ?? throw new InvalidOperationException("Sales order was not found.");
 			if (order.Status is not (SalesOrderStatus.Released or SalesOrderStatus.PartiallyShipped)) throw new InvalidOperationException("The sales order is not available for shipping.");
 			var inventoryIds = before.Lines.Select(line => line.InventoryId).Distinct().OrderBy(value => value).ToArray();
@@ -124,8 +133,14 @@ public sealed class ShipmentService
 			{
 				var orderLine = order.Lines.Single(value => value.Id == line.SalesOrderLineId);
 				if (orderLine.ShippedQuantity + line.Quantity > orderLine.Quantity) throw new InvalidOperationException("Shipment quantity exceeds the sales-order quantity.");
+				if (_traceability is not null)
+				{
+					var policy = await _traceability.GetPolicyAsync(transaction, line.InventoryId, token);
+					ItemTraceabilityService.EnsurePhysicalStockItem(policy, "shipment");
+				}
 				var movement = new StockMovement { InventoryId = line.InventoryId, MovementType = StockMovementType.SalesShipment, TimestampUtc = postedAt, Quantity = -line.Quantity, Reference = $"Shipment {before.ShipmentNumber}", Notes = before.TrackingNumber is null ? before.Notes : $"Tracking {before.TrackingNumber}{(string.IsNullOrWhiteSpace(before.Notes) ? string.Empty : $" · {before.Notes}")}" };
 				movement.Id = await _movements.CreateAsync(transaction, movement, token);
+				if (_traceability is not null) await _traceability.AttachMovementAsync(transaction, movement, trackingByLineId.GetValueOrDefault(line.Id) ?? [], token);
 				await _reservations.ConsumeAsync(transaction, line.InventoryReservationId, line.Quantity, user.Id, token);
 				await _orders.UpdateLineQuantitiesAsync(transaction, orderLine.Id, Math.Max(0, orderLine.ReservedQuantity - line.Quantity), orderLine.ShippedQuantity + line.Quantity, orderLine.InvoicedQuantity, token);
 			}
@@ -160,12 +175,17 @@ public sealed class ShipmentService
 			var invoice = await _invoices.GetByShipmentIdAsync(transaction, id, token);
 			if (invoice is not null && invoice.Status != SalesInvoiceStatus.Cancelled) throw new InvalidOperationException("Cancel the draft invoice or use a customer return and credit note for an already invoiced shipment.");
 			var order = await _orders.GetByIdAsync(transaction, before.SalesOrderId, token) ?? throw new InvalidOperationException("Sales order was not found.");
+			var originalMovements = (await _movements.ListOriginalsByReferenceAsync(transaction, $"Shipment {before.ShipmentNumber}", token)).Where(movement => movement.MovementType == StockMovementType.SalesShipment).ToList();
+			if (originalMovements.Count != before.Lines.Count) throw new InvalidOperationException("The shipment stock movements are incomplete or inconsistent.");
 			var reversedAt = DateTime.UtcNow;
-			foreach (var line in before.Lines)
+			foreach (var line in before.Lines.OrderBy(value => value.Id))
 			{
 				var orderLine = order.Lines.Single(value => value.Id == line.SalesOrderLineId);
-				var movement = new StockMovement { InventoryId = line.InventoryId, MovementType = StockMovementType.SalesShipmentReversal, TimestampUtc = reversedAt, Quantity = line.Quantity, Reference = $"Shipment reversal {before.ShipmentNumber}", Notes = reason.Trim() };
+				var original = originalMovements.FirstOrDefault(value => value.InventoryId == line.InventoryId && value.Quantity == -line.Quantity) ?? throw new InvalidOperationException("The shipment movement for a line could not be resolved.");
+				originalMovements.Remove(original);
+				var movement = new StockMovement { InventoryId = line.InventoryId, MovementType = StockMovementType.SalesShipmentReversal, TimestampUtc = reversedAt, Quantity = line.Quantity, Reference = $"Shipment reversal {before.ShipmentNumber}", Notes = reason.Trim(), ReversalOfMovementId = original.Id, ReversalReason = reason.Trim(), ReversedAtUtc = reversedAt, ReversedByUserId = user.Id };
 				movement.Id = await _movements.CreateAsync(transaction, movement, token);
+				if (_traceability is not null) await _traceability.AttachReversalAsync(transaction, original, movement, token);
 				var reservation = new InventoryReservation { SalesOrderLineId = line.SalesOrderLineId, InventoryId = line.InventoryId, Quantity = line.Quantity, Status = InventoryReservationStatus.Active, CreatedAtUtc = reversedAt, CreatedByUserId = user.Id };
 				reservation.Id = await _reservations.CreateAsync(transaction, reservation, token);
 				await _orders.UpdateLineQuantitiesAsync(transaction, orderLine.Id, orderLine.ReservedQuantity + line.Quantity, Math.Max(0, orderLine.ShippedQuantity - line.Quantity), orderLine.InvoicedQuantity, token);

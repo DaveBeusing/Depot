@@ -23,7 +23,7 @@ public sealed class HelpCenterTests
 		await service.ValidateAsync();
 		var catalog = await service.GetCatalogAsync();
 
-		Assert.Equal("1.6", catalog.Version);
+		Assert.Equal("1.8", catalog.Version);
 		Assert.NotEmpty(catalog.Topics);
 		Assert.Equal(catalog.Topics.Count, catalog.Topics.Select(topic => topic.Id).Distinct(StringComparer.Ordinal).Count());
 	}
@@ -36,6 +36,7 @@ public sealed class HelpCenterTests
 		var catalog = await service.GetCatalogAsync();
 
 		Assert.Contains(catalog.Topics, topic => topic.Id == "inventory.items");
+		Assert.Contains(catalog.Topics, topic => topic.Id == "inventory.traceability");
 		Assert.Contains(catalog.Topics, topic => topic.Id == "approvals.queue");
 		Assert.DoesNotContain(catalog.Topics, topic => topic.Id == "sales.approvals");
 		Assert.Null(await service.GetTopicAsync("administration.database"));
@@ -45,14 +46,17 @@ public sealed class HelpCenterTests
 	public async Task SearchUsesTitlesBodyHeadingsAndKeywordAliases()
 	{
 		var service = CreateService(PermissionCatalog.All);
+		var traceabilityService = CreateService([ApplicationPermission.ItemsView]);
 
 		var relocation = await service.SearchAsync("relocation");
 		var stocktake = await service.SearchAsync("stocktake");
 		var cancellation = await service.SearchAsync("cancellation");
+		var serial = await traceabilityService.SearchAsync("serial number");
 
-		Assert.Equal("warehouse.transfers", Assert.Single(relocation).Definition.Id);
-		Assert.Equal("warehouse.inventory-counts", Assert.Single(stocktake).Definition.Id);
+		Assert.Contains(relocation, topic => topic.Definition.Id == "warehouse.transfers");
+		Assert.Contains(stocktake, topic => topic.Definition.Id == "warehouse.inventory-counts");
 		Assert.Contains(cancellation, topic => topic.Definition.Id == "inventory.movements");
+		Assert.Contains(serial, topic => topic.Definition.Id == "inventory.traceability");
 	}
 
 	[Fact]
@@ -62,7 +66,8 @@ public sealed class HelpCenterTests
 
 		var related = await service.GetRelatedTopicsAsync("inventory.items");
 
-		Assert.Contains(related, topic => topic.Id == "getting-started.workspace-navigation");
+		Assert.Contains(related, topic => topic.Id == "inventory.traceability");
+		Assert.DoesNotContain(related, topic => topic.Id == "inventory.overview");
 		Assert.DoesNotContain(related, topic => topic.Id == "purchasing.purchase-orders");
 		Assert.DoesNotContain(related, topic => topic.Id == "sales.orders");
 	}
@@ -171,22 +176,11 @@ public sealed class HelpCenterTests
 		return new HelpService(provider ?? new EmbeddedHelpContentProvider(typeof(App).Assembly), authorization, new HelpSearchService());
 	}
 
-	private static HelpTopicDefinition Definition(string id, string file) => new()
-	{
-		Id = id,
-		Title = id,
-		Category = "Test",
-		File = file,
-		Order = 1
-	};
+	private static HelpTopicDefinition Definition(string id, string file) => new() { Id = id, Title = id, Category = "Test", File = file, Order = 1 };
 
 	private sealed class MemoryProvider(HelpManifest manifest, IReadOnlyDictionary<string, string> files) : IHelpContentProvider
 	{
 		public Task<HelpManifest> LoadManifestAsync(CancellationToken cancellationToken = default) => Task.FromResult(manifest);
-
-		public Task<string> LoadContentAsync(HelpTopicDefinition topic, CancellationToken cancellationToken = default) =>
-			files.TryGetValue(topic.File, out var content)
-				? Task.FromResult(content)
-				: Task.FromException<string>(new FileNotFoundException(topic.File));
+		public Task<string> LoadContentAsync(HelpTopicDefinition topic, CancellationToken cancellationToken = default) => files.TryGetValue(topic.File, out var content) ? Task.FromResult(content) : Task.FromException<string>(new FileNotFoundException(topic.File));
 	}
 }

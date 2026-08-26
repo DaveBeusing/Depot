@@ -48,56 +48,44 @@ Business validation and permissions remain in `ItemService`. SQL, paging and row
 - dangerous-goods flag and UN number
 - battery indication
 
-These are product/item attributes. They are intentionally separate from Company legal-entity master data and from supplier-specific commercial data.
-
 ### Traceability and logistics
 
-- intended tracking mode: none, serial number or lot
+- tracking mode: none, serial number or lot
 - net and gross weight in kilograms
 - length, width and height in millimetres
 - internal notes
 
-The physical-unit contract is fixed: **kg for weight, mm for dimensions**. Persisted property/column names make that contract explicit.
+The physical-unit contract is fixed: **kg for weight, mm for dimensions**.
 
 ## Validation and integrity
 
-`ItemService` normalizes and validates master data before persistence. Current controls include:
+`ItemService` normalizes and validates master data before persistence. Controls include valid/unique GTIN, country-code syntax, physical-value consistency, dangerous-goods classification, bounded strings, lifecycle-date ordering, valid replacement references, enum validation and optimistic concurrency.
 
-- valid GTIN-8/12/13/14 checksum;
-- GTIN uniqueness checked by the service and protected by a unique database index for race safety;
-- two-letter uppercase country-code syntax;
-- non-negative weights and dimensions;
-- gross weight not lower than net weight;
-- dangerous goods requiring `UN1234`-style classification;
-- bounded string lengths for revision/model/product family/trade fields/notes;
-- lifecycle dates that cannot move backwards relative to their prerequisite dates;
-- replacement item must exist, be active and cannot reference itself;
-- enum values are validated before persistence;
-- optimistic concurrency remains enforced by item `Version`.
-
-Activation/deactivation reads the full item master before writing audit evidence, so the before/after audit payload does not lose extended master-data fields.
+Activation/deactivation reads the full item master before writing audit evidence, so the before/after audit payload retains extended master-data fields.
 
 ## Provider-neutral schema extension
 
-`DatabaseProviderFactory` decorates the provider's normal database initializer with `ItemMasterDataSchema.Ensure`. The additive schema extension is idempotent and has explicit SQLite, SQL Server and MySQL/MariaDB column definitions.
+`DatabaseProviderFactory` decorates the provider's normal database initializer with the item-master schema extension. It is additive and idempotent for SQLite, SQL Server and MySQL/MariaDB. Provider-specific unique-index syntax remains inside the data layer.
 
-The current branch previously introduced unit-ambiguous physical columns. The schema extension copies those values into the explicit `*Kg` / `*Mm` columns when those legacy branch columns are present. The old columns are not used by the current repository contract.
+## Operational behavior
 
-GTIN uniqueness is created provider-specifically:
+`ItemType`, `TrackingMode` and lifecycle fields are operational controls, not display-only metadata.
 
-- SQLite: filtered unique index for non-null GTIN values;
-- SQL Server: filtered unique index for non-null GTIN values;
-- MySQL/MariaDB: nullable unique index (multiple null values remain supported by the provider).
+### Item type
 
-## Current operational boundary
+Only `StockItem` records may participate in physical stock movements. Service/non-stock records are rejected by traceability-aware physical posting paths rather than silently creating inventory evidence.
 
-Some master-data values describe intent but do not by themselves alter every transaction workflow:
+### Tracking mode
 
-- `TrackingMode` does not yet create or enforce serial/lot capture on receipts, issues, transfers or shipments.
-- `ItemType` does not yet universally suppress physical stock workflows for service/non-stock records.
-- `LifecycleStatus` and lifecycle dates do not yet automatically block purchasing/sales or substitute the replacement item.
+`None` requires no serial/lot allocation. `SerialNumber` requires one unique serial code per moved unit with allocation quantity 1. `LotNumber` requires the complete movement quantity to be allocated across one or more lot codes.
 
-Those behaviors require explicit cross-workflow business rules and dedicated transaction/schema support. They must be implemented as separate features rather than inferred silently from the master record.
+Tracking identity and mutable quality state live in `ItemTrackingUnits`; signed movement allocations live in `StockMovementTracking`. Current tracked quantity/location is derived from those movements. See `ITEM_TRACEABILITY.md`.
+
+### Lifecycle
+
+Discontinued and obsolete items are blocked from new purchasing/sales decisions where lifecycle enforcement is invoked. Last-buy dates block purchasing after the configured date. End-of-life/end-of-support states can produce operational warnings, and a configured replacement item is included in the guidance rather than silently substituted.
+
+Automatic substitution is intentionally not performed: changing the commercial or physical item identity must remain an explicit user/business decision.
 
 ## Supplier/commercial separation
 
@@ -105,4 +93,4 @@ Supplier part numbers, supplier assignment, preference, lead time and supplier-s
 
 ## Testing
 
-Item master regression coverage includes provider-initializer idempotency, complete repository round-trip and GTIN uniqueness at the database boundary. Existing repository/provider tests continue to verify the shared data-access architecture.
+Regression coverage protects provider-initializer idempotency, complete repository round-trip, GTIN uniqueness, traceability schema/index creation, capture parsing and ambiguity rejection, physical item-type restrictions and lifecycle purchase/sales policy behavior. Transactional workflow and reversal suites continue to protect the owning stock/document operations.

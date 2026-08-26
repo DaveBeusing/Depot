@@ -58,12 +58,7 @@ public sealed class PurchaseOrderService
 			draft.CreatedByUserDisplay = creator.DisplayName;
 		}
 		var before = isNew ? null : await _orders.GetByIdAsync(draft.Id, cancellationToken);
-		return await _orders.SaveDraftAsync(
-			draft,
-			after => isNew
-				? _audit.CreateCreatedEntry(after.Id, after)
-				: _audit.CreateUpdatedEntry(after.Id, before ?? throw new InvalidOperationException("Purchase order was not found before saving."), after),
-			cancellationToken);
+		return await _orders.SaveDraftAsync(draft, after => isNew ? _audit.CreateCreatedEntry(after.Id, after) : _audit.CreateUpdatedEntry(after.Id, before ?? throw new InvalidOperationException("Purchase order was not found before saving."), after), cancellationToken);
 	}
 
 	public async Task<PurchaseOrder> SubmitForApprovalAsync(long id, long version, CancellationToken cancellationToken = default)
@@ -72,48 +67,38 @@ public sealed class PurchaseOrderService
 		var user = CurrentUser();
 		var before = await GetForTransitionAsync(id, version, PurchaseOrderStatus.Draft, cancellationToken);
 		await ValidateOrderContentAsync(before, cancellationToken);
-		return await ChangeStatusAsync(before, version, PurchaseOrderStatus.Draft, PurchaseOrderStatus.PendingApproval,
-			order =>
-			{
-				order.CreatedByUserId ??= user.Id;
-				order.CreatedByUserDisplay ??= user.DisplayName;
-				order.SubmittedByUserId = user.Id;
-				order.SubmittedByUserDisplay = user.DisplayName;
-				order.SubmittedAtUtc = DateTime.UtcNow;
-				order.ApprovalDecisionByUserId = null;
-				order.ApprovalDecisionByUserDisplay = null;
-				order.ApprovalDecisionAtUtc = null;
-				order.ApprovalComment = null;
-			}, cancellationToken);
+		return await ChangeStatusAsync(before, version, PurchaseOrderStatus.Draft, PurchaseOrderStatus.PendingApproval, order =>
+		{
+			order.CreatedByUserId ??= user.Id;
+			order.CreatedByUserDisplay ??= user.DisplayName;
+			order.SubmittedByUserId = user.Id;
+			order.SubmittedByUserDisplay = user.DisplayName;
+			order.SubmittedAtUtc = DateTime.UtcNow;
+			order.ApprovalDecisionByUserId = null;
+			order.ApprovalDecisionByUserDisplay = null;
+			order.ApprovalDecisionAtUtc = null;
+			order.ApprovalComment = null;
+		}, cancellationToken);
 	}
 
-	public Task<PurchaseOrder> ApproveAsync(long id, long version, string? comment = null, CancellationToken cancellationToken = default) =>
-		ApproveAsync(id, version, comment, Guid.NewGuid(), cancellationToken);
-
-	public Task<PurchaseOrder> ApproveAsync(long id, long version, string? comment, Guid operationId, CancellationToken cancellationToken = default) =>
-		DecideApprovalAsync(id, version, PurchaseOrderStatus.Approved, comment, operationId, cancellationToken);
-
-	public Task<PurchaseOrder> RejectAsync(long id, long version, string? comment = null, CancellationToken cancellationToken = default) =>
-		RejectAsync(id, version, comment, Guid.NewGuid(), cancellationToken);
-
-	public Task<PurchaseOrder> RejectAsync(long id, long version, string? comment, Guid operationId, CancellationToken cancellationToken = default) =>
-		DecideApprovalAsync(id, version, PurchaseOrderStatus.Rejected, comment, operationId, cancellationToken);
+	public Task<PurchaseOrder> ApproveAsync(long id, long version, string? comment = null, CancellationToken cancellationToken = default) => ApproveAsync(id, version, comment, Guid.NewGuid(), cancellationToken);
+	public Task<PurchaseOrder> ApproveAsync(long id, long version, string? comment, Guid operationId, CancellationToken cancellationToken = default) => DecideApprovalAsync(id, version, PurchaseOrderStatus.Approved, comment, operationId, cancellationToken);
+	public Task<PurchaseOrder> RejectAsync(long id, long version, string? comment = null, CancellationToken cancellationToken = default) => RejectAsync(id, version, comment, Guid.NewGuid(), cancellationToken);
+	public Task<PurchaseOrder> RejectAsync(long id, long version, string? comment, Guid operationId, CancellationToken cancellationToken = default) => DecideApprovalAsync(id, version, PurchaseOrderStatus.Rejected, comment, operationId, cancellationToken);
 
 	public Task<PurchaseOrder> ReopenRejectedAsync(long id, long version, CancellationToken cancellationToken = default) =>
-		RequireAndChangeStatusAsync(ApplicationPermission.PurchaseOrdersEdit, id, version, PurchaseOrderStatus.Rejected, PurchaseOrderStatus.Draft,
-			order =>
-			{
-				order.SubmittedByUserId = null;
-				order.SubmittedByUserDisplay = null;
-				order.SubmittedAtUtc = null;
-				order.ApprovalDecisionByUserId = null;
-				order.ApprovalDecisionByUserDisplay = null;
-				order.ApprovalDecisionAtUtc = null;
-				order.ApprovalComment = null;
-			}, cancellationToken);
+		RequireAndChangeStatusAsync(ApplicationPermission.PurchaseOrdersEdit, id, version, PurchaseOrderStatus.Rejected, PurchaseOrderStatus.Draft, order =>
+		{
+			order.SubmittedByUserId = null;
+			order.SubmittedByUserDisplay = null;
+			order.SubmittedAtUtc = null;
+			order.ApprovalDecisionByUserId = null;
+			order.ApprovalDecisionByUserDisplay = null;
+			order.ApprovalDecisionAtUtc = null;
+			order.ApprovalComment = null;
+		}, cancellationToken);
 
-	public Task<PurchaseOrder> PlaceOrderAsync(long id, long version, CancellationToken cancellationToken = default) =>
-		PlaceOrderAsync(id, version, Guid.NewGuid(), cancellationToken);
+	public Task<PurchaseOrder> PlaceOrderAsync(long id, long version, CancellationToken cancellationToken = default) => PlaceOrderAsync(id, version, Guid.NewGuid(), cancellationToken);
 
 	public async Task<PurchaseOrder> PlaceOrderAsync(long id, long version, Guid operationId, CancellationToken cancellationToken = default)
 	{
@@ -126,8 +111,7 @@ public sealed class PurchaseOrderService
 		return await ChangeStatusAsync(before, version, PurchaseOrderStatus.Approved, PurchaseOrderStatus.Ordered, null, operation, cancellationToken);
 	}
 
-	public Task<PurchaseOrder> CloseOrderAsync(long id, long version, string reason, CancellationToken cancellationToken = default) =>
-		CloseOrderAsync(id, version, reason, Guid.NewGuid(), cancellationToken);
+	public Task<PurchaseOrder> CloseOrderAsync(long id, long version, string reason, CancellationToken cancellationToken = default) => CloseOrderAsync(id, version, reason, Guid.NewGuid(), cancellationToken);
 
 	public async Task<PurchaseOrder> CloseOrderAsync(long id, long version, string reason, Guid operationId, CancellationToken cancellationToken = default)
 	{
@@ -140,16 +124,14 @@ public sealed class PurchaseOrderService
 		var user = CurrentUser();
 		var order = await _orders.GetByIdAsync(id, cancellationToken) ?? throw new InvalidOperationException("Purchase order was not found.");
 		if (order.Version != version) throw new ConcurrencyConflictException("purchase order");
-		if (order.Status is not (PurchaseOrderStatus.Ordered or PurchaseOrderStatus.PartiallyReceived))
-			throw new InvalidOperationException("Only ordered or partially received purchase orders can be closed.");
-		return await ChangeStatusAsync(order, version, order.Status, PurchaseOrderStatus.Closed,
-			result =>
-			{
-				result.ClosedByUserId = user.Id;
-				result.ClosedByUserDisplay = user.DisplayName;
-				result.ClosedAtUtc = DateTime.UtcNow;
-				result.CloseReason = normalizedReason;
-			}, operation, cancellationToken);
+		if (order.Status is not (PurchaseOrderStatus.Ordered or PurchaseOrderStatus.PartiallyReceived)) throw new InvalidOperationException("Only ordered or partially received purchase orders can be closed.");
+		return await ChangeStatusAsync(order, version, order.Status, PurchaseOrderStatus.Closed, result =>
+		{
+			result.ClosedByUserId = user.Id;
+			result.ClosedByUserDisplay = user.DisplayName;
+			result.ClosedAtUtc = DateTime.UtcNow;
+			result.CloseReason = normalizedReason;
+		}, operation, cancellationToken);
 	}
 
 	public async Task<PurchaseOrder> CancelAsync(long id, long version, CancellationToken cancellationToken = default)
@@ -164,8 +146,7 @@ public sealed class PurchaseOrderService
 
 	private async Task<PurchaseOrder> DecideApprovalAsync(long id, long version, PurchaseOrderStatus decision, string? comment, Guid operationId, CancellationToken cancellationToken)
 	{
-		if (!_authorization.HasPermission(ApplicationPermission.PurchaseOrdersApprove))
-			throw new UnauthorizedAccessException("The current user is not permitted to approve purchase orders.");
+		if (!_authorization.HasPermission(ApplicationPermission.PurchaseOrdersApprove)) throw new UnauthorizedAccessException("The current user is not permitted to approve purchase orders.");
 		var user = CurrentUser();
 		var operation = new WorkflowOperation(operationId, decision == PurchaseOrderStatus.Approved ? WorkflowOperationNames.ApprovePurchaseOrder : WorkflowOperationNames.RejectPurchaseOrder, id);
 		var completed = await _orders.GetCompletedOperationAsync(operation, cancellationToken);
@@ -175,16 +156,14 @@ public sealed class PurchaseOrderService
 		var before = await _orders.GetByIdAsync(id, cancellationToken) ?? throw new InvalidOperationException("Purchase order was not found.");
 		var isSelfApproval = before.CreatedByUserId == user.Id;
 		var isAdministrator = _authorization.IsInRole(SystemRoleCatalog.AdministratorCode);
-		if (isSelfApproval && !isAdministrator)
-			throw new InvalidOperationException("A purchase order cannot be approved or rejected by its creator.");
-		return await ChangeStatusAsync(before, version, PurchaseOrderStatus.PendingApproval, decision,
-			order =>
-			{
-				order.ApprovalDecisionByUserId = user.Id;
-				order.ApprovalDecisionByUserDisplay = user.DisplayName;
-				order.ApprovalDecisionAtUtc = DateTime.UtcNow;
-				order.ApprovalComment = comment;
-			}, operation, cancellationToken);
+		if (isSelfApproval && !isAdministrator) throw new InvalidOperationException("A purchase order cannot be approved or rejected by its creator.");
+		return await ChangeStatusAsync(before, version, PurchaseOrderStatus.PendingApproval, decision, order =>
+		{
+			order.ApprovalDecisionByUserId = user.Id;
+			order.ApprovalDecisionByUserDisplay = user.DisplayName;
+			order.ApprovalDecisionAtUtc = DateTime.UtcNow;
+			order.ApprovalComment = comment;
+		}, operation, cancellationToken);
 	}
 
 	private async Task<PurchaseOrder> ChangeStatusAsync(long id, long version, PurchaseOrderStatus expected, PurchaseOrderStatus status, Action<PurchaseOrder>? applyMetadata, CancellationToken cancellationToken)
@@ -199,96 +178,36 @@ public sealed class PurchaseOrderService
 		return ChangeStatusAsync(id, version, expected, status, applyMetadata, cancellationToken);
 	}
 
-	private async Task<PurchaseOrder> ChangeStatusAsync(
-		PurchaseOrder before,
-		long version,
-		PurchaseOrderStatus expected,
-		PurchaseOrderStatus status,
-		Action<PurchaseOrder>? applyMetadata,
-		CancellationToken cancellationToken) =>
+	private async Task<PurchaseOrder> ChangeStatusAsync(PurchaseOrder before, long version, PurchaseOrderStatus expected, PurchaseOrderStatus status, Action<PurchaseOrder>? applyMetadata, CancellationToken cancellationToken) =>
 		await ChangeStatusAsync(before, version, expected, status, applyMetadata, null, cancellationToken);
 
-	private async Task<PurchaseOrder> ChangeStatusAsync(
-		PurchaseOrder before,
-		long version,
-		PurchaseOrderStatus expected,
-		PurchaseOrderStatus status,
-		Action<PurchaseOrder>? applyMetadata,
-		WorkflowOperation? operation,
-		CancellationToken cancellationToken)
+	private async Task<PurchaseOrder> ChangeStatusAsync(PurchaseOrder before, long version, PurchaseOrderStatus expected, PurchaseOrderStatus status, Action<PurchaseOrder>? applyMetadata, WorkflowOperation? operation, CancellationToken cancellationToken)
 	{
 		if (before.Version != version) throw new ConcurrencyConflictException("purchase order");
-		if (before.Status != expected)
-			throw new InvalidOperationException($"The purchase order must be in {expected} status for this transition.");
+		if (before.Status != expected) throw new InvalidOperationException($"The purchase order must be in {expected} status for this transition.");
 		var after = new PurchaseOrder
 		{
-			Id = before.Id,
-			OrderNumber = before.OrderNumber,
-			SupplierId = before.SupplierId,
-			SupplierName = before.SupplierName,
-			OrderDate = before.OrderDate,
-			ExpectedDeliveryDate = before.ExpectedDeliveryDate,
-			Notes = before.Notes,
-			Status = status,
-			CreatedByUserId = before.CreatedByUserId,
-			SubmittedByUserId = before.SubmittedByUserId,
-			SubmittedAtUtc = before.SubmittedAtUtc,
-			ApprovalDecisionByUserId = before.ApprovalDecisionByUserId,
-			ApprovalDecisionAtUtc = before.ApprovalDecisionAtUtc,
-			ApprovalComment = before.ApprovalComment,
-			ClosedByUserId = before.ClosedByUserId,
-			ClosedAtUtc = before.ClosedAtUtc,
-			CloseReason = before.CloseReason,
-			CreatedByUserDisplay = before.CreatedByUserDisplay,
-			SubmittedByUserDisplay = before.SubmittedByUserDisplay,
-			ApprovalDecisionByUserDisplay = before.ApprovalDecisionByUserDisplay,
-			ClosedByUserDisplay = before.ClosedByUserDisplay,
-			Version = version + 1,
-			Lines = before.Lines
+			Id = before.Id, OrderNumber = before.OrderNumber, SupplierId = before.SupplierId, SupplierName = before.SupplierName, OrderDate = before.OrderDate, ExpectedDeliveryDate = before.ExpectedDeliveryDate, Notes = before.Notes, Status = status,
+			CreatedByUserId = before.CreatedByUserId, SubmittedByUserId = before.SubmittedByUserId, SubmittedAtUtc = before.SubmittedAtUtc, ApprovalDecisionByUserId = before.ApprovalDecisionByUserId, ApprovalDecisionAtUtc = before.ApprovalDecisionAtUtc, ApprovalComment = before.ApprovalComment,
+			ClosedByUserId = before.ClosedByUserId, ClosedAtUtc = before.ClosedAtUtc, CloseReason = before.CloseReason, CreatedByUserDisplay = before.CreatedByUserDisplay, SubmittedByUserDisplay = before.SubmittedByUserDisplay, ApprovalDecisionByUserDisplay = before.ApprovalDecisionByUserDisplay, ClosedByUserDisplay = before.ClosedByUserDisplay,
+			Version = version + 1, Lines = before.Lines
 		};
 		applyMetadata?.Invoke(after);
-		var changed = await _orders.SetStatusAsync(
-			before.Id,
-			version,
-			expected,
-			status,
-			after,
-			_audit.CreateUpdatedEntry(before.Id, before, after),
-			operation,
-			(session, token) => CreateStatusNotificationAsync(new DatabaseTransactionContext(session), before, after, token),
-			cancellationToken);
-		if (status is PurchaseOrderStatus.PendingApproval or PurchaseOrderStatus.Approved or PurchaseOrderStatus.Rejected)
-			_notifications.RaiseChanged();
+		var changed = await _orders.SetStatusAsync(before.Id, version, expected, status, after, _audit.CreateUpdatedEntry(before.Id, before, after), operation, (session, token) => CreateStatusNotificationAsync(new DatabaseTransactionContext(session), before, after, token), cancellationToken);
+		if (status is PurchaseOrderStatus.PendingApproval or PurchaseOrderStatus.Approved or PurchaseOrderStatus.Rejected) _notifications.RaiseChanged();
 		return changed;
 	}
 
-	private async Task CreateStatusNotificationAsync(
-		DatabaseTransactionContext transaction,
-		PurchaseOrder before,
-		PurchaseOrder after,
-		CancellationToken cancellationToken)
+	private async Task CreateStatusNotificationAsync(DatabaseTransactionContext transaction, PurchaseOrder before, PurchaseOrder after, CancellationToken cancellationToken)
 	{
 		NotificationRequest? request = after.Status switch
 		{
-			PurchaseOrderStatus.PendingApproval => new(
-				NotificationType.Workflow, NotificationSeverity.Information,
-				$"Purchase order {after.OrderNumber} requires approval",
-				$"{after.SubmittedByUserDisplay ?? "A user"} submitted purchase order {after.OrderNumber} for approval.",
-				NotificationSourceTypes.PurchaseOrderApproval, after.Id, after.OrderNumber, after.SubmittedByUserId),
-			PurchaseOrderStatus.Approved => new(
-				NotificationType.Workflow, NotificationSeverity.Success,
-				$"Purchase order {after.OrderNumber} approved",
-				$"Purchase order {after.OrderNumber} was approved.",
-				NotificationSourceTypes.PurchaseOrder, after.Id, after.OrderNumber, after.ApprovalDecisionByUserId),
-			PurchaseOrderStatus.Rejected => new(
-				NotificationType.Workflow, NotificationSeverity.Warning,
-				$"Purchase order {after.OrderNumber} rejected",
-				$"Purchase order {after.OrderNumber} was rejected{(string.IsNullOrWhiteSpace(after.ApprovalComment) ? "." : $": {after.ApprovalComment}")}",
-				NotificationSourceTypes.PurchaseOrder, after.Id, after.OrderNumber, after.ApprovalDecisionByUserId),
+			PurchaseOrderStatus.PendingApproval => new(NotificationType.Workflow, NotificationSeverity.Information, $"Purchase order {after.OrderNumber} requires approval", $"{after.SubmittedByUserDisplay ?? "A user"} submitted purchase order {after.OrderNumber} for approval.", NotificationSourceTypes.PurchaseOrderApproval, after.Id, after.OrderNumber, after.SubmittedByUserId),
+			PurchaseOrderStatus.Approved => new(NotificationType.Workflow, NotificationSeverity.Success, $"Purchase order {after.OrderNumber} approved", $"Purchase order {after.OrderNumber} was approved.", NotificationSourceTypes.PurchaseOrder, after.Id, after.OrderNumber, after.ApprovalDecisionByUserId),
+			PurchaseOrderStatus.Rejected => new(NotificationType.Workflow, NotificationSeverity.Warning, $"Purchase order {after.OrderNumber} rejected", $"Purchase order {after.OrderNumber} was rejected{(string.IsNullOrWhiteSpace(after.ApprovalComment) ? "." : $": {after.ApprovalComment}")}", NotificationSourceTypes.PurchaseOrder, after.Id, after.OrderNumber, after.ApprovalDecisionByUserId),
 			_ => null
 		};
 		if (request is null) return;
-
 		IReadOnlyCollection<long> recipients;
 		if (after.Status == PurchaseOrderStatus.PendingApproval)
 		{
@@ -296,60 +215,41 @@ public sealed class PurchaseOrderService
 			var administrators = (await _notifications.ResolveAdministratorsAsync(transaction, cancellationToken)).ToHashSet();
 			recipients = holders.Where(id => id != after.CreatedByUserId || administrators.Contains(id)).Distinct().ToArray();
 		}
-		else
-		{
-			recipients = new long?[] { before.CreatedByUserId, before.SubmittedByUserId }
-				.Where(id => id is > 0).Select(id => id.GetValueOrDefault()).Distinct().ToArray();
-		}
+		else recipients = new long?[] { before.CreatedByUserId, before.SubmittedByUserId }.Where(id => id is > 0).Select(id => id.GetValueOrDefault()).Distinct().ToArray();
 		await _notifications.CreateAsync(transaction, request, recipients, cancellationToken);
 	}
 
-	private async Task<PurchaseOrder> GetForTransitionAsync(
-		long id,
-		long version,
-		PurchaseOrderStatus expected,
-		CancellationToken cancellationToken)
+	private async Task<PurchaseOrder> GetForTransitionAsync(long id, long version, PurchaseOrderStatus expected, CancellationToken cancellationToken)
 	{
-		var order = await _orders.GetByIdAsync(id, cancellationToken)
-			?? throw new InvalidOperationException("Purchase order was not found.");
+		var order = await _orders.GetByIdAsync(id, cancellationToken) ?? throw new InvalidOperationException("Purchase order was not found.");
 		if (order.Version != version) throw new ConcurrencyConflictException("purchase order");
-		if (order.Status != expected)
-			throw new InvalidOperationException($"The purchase order must be in {expected} status for this transition.");
+		if (order.Status != expected) throw new InvalidOperationException($"The purchase order must be in {expected} status for this transition.");
 		return order;
 	}
 
 	private async Task ValidateOrderContentAsync(PurchaseOrder order, CancellationToken cancellationToken)
 	{
 		order.Notes = Normalize(order.Notes);
-		var supplier = await _suppliers.GetByIdAsync(order.SupplierId, cancellationToken)
-			?? throw new InvalidOperationException("The selected supplier was not found.");
+		var supplier = await _suppliers.GetByIdAsync(order.SupplierId, cancellationToken) ?? throw new InvalidOperationException("The selected supplier was not found.");
 		if (!supplier.IsActive) throw new InvalidOperationException("The selected supplier is inactive.");
-		if (order.ExpectedDeliveryDate is not null && order.ExpectedDeliveryDate.Value.Date < order.OrderDate.Date)
-			throw new ArgumentException("Expected delivery date cannot be earlier than the order date.");
+		if (order.ExpectedDeliveryDate is not null && order.ExpectedDeliveryDate.Value.Date < order.OrderDate.Date) throw new ArgumentException("Expected delivery date cannot be earlier than the order date.");
 		if (order.Notes?.Length > 4000) throw new ArgumentException("Notes must not exceed 4000 characters.");
 		if (order.Lines.Count == 0) throw new InvalidOperationException("A purchase order requires at least one line.");
-		if (order.Lines.Select(line => line.ItemId).Distinct().Count() != order.Lines.Count)
-			throw new InvalidOperationException("An item can only occur once per purchase order.");
-
-		var items = (await _items.GetByIdsAsync(
-			order.Lines.Select(line => line.ItemId),
-			cancellationToken)).ToDictionary(item => item.Id);
+		if (order.Lines.Select(line => line.ItemId).Distinct().Count() != order.Lines.Count) throw new InvalidOperationException("An item can only occur once per purchase order.");
+		var items = (await _items.GetByIdsAsync(order.Lines.Select(line => line.ItemId), cancellationToken)).ToDictionary(item => item.Id);
 		foreach (var line in order.Lines)
 		{
 			if (line.Quantity <= 0) throw new ArgumentOutOfRangeException(nameof(line.Quantity), "Quantity must be greater than zero.");
 			if (line.UnitPrice < 0) throw new ArgumentOutOfRangeException(nameof(line.UnitPrice), "Unit price cannot be negative.");
 			if (!items.TryGetValue(line.ItemId, out var item)) throw new InvalidOperationException("An ordered item was not found.");
 			if (!item.IsActive) throw new InvalidOperationException($"Item '{item.PartNumber}' is inactive.");
+			ItemOperationalPolicy.EnsurePurchasable(item, order.OrderDate);
 			line.ItemPartNumber = item.PartNumber;
 			line.ItemDescription = item.Description;
 		}
 		order.SupplierName = supplier.Name;
 	}
 
-	private User CurrentUser() =>
-		_authorization.CurrentUser is { IsActive: true } user
-			? user
-			: throw new UnauthorizedAccessException("An active signed-in user is required.");
-
+	private User CurrentUser() => _authorization.CurrentUser is { IsActive: true } user ? user : throw new UnauthorizedAccessException("An active signed-in user is required.");
 	private static string? Normalize(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 }
