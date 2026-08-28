@@ -123,6 +123,8 @@ public enum ApplicationPermission
 	FinanceSupplierInvoicesReverse,
 	FinancePayablePaymentsPost,
 	FinancePayablePaymentsReverse,
+	FinanceInventoryAccountingView,
+	FinanceInventoryAccountingManage,
 	SuppliersView,
 	SuppliersManage,
 	MasterDataView,
