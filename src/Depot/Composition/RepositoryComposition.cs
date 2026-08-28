@@ -42,6 +42,7 @@ internal sealed class RepositoryComposition
 		FinancePostingProfiles = new FinancePostingProfileRepository(dataAccess);
 		FinanceAccountsReceivable = new FinanceAccountsReceivableRepository(dataAccess);
 		FinanceAccountsPayable = new FinanceAccountsPayableRepository(dataAccess);
+		FinanceInventoryAccounting = new FinanceInventoryAccountingRepository(dataAccess);
 		Inventories = new InventoryRepository(dataAccess);
 		Warehouses = new WarehouseRepository(dataAccess);
 		StorageLocations = new StorageLocationRepository(dataAccess);
@@ -85,6 +86,7 @@ internal sealed class RepositoryComposition
 	public FinancePostingProfileRepository FinancePostingProfiles { get; }
 	public FinanceAccountsReceivableRepository FinanceAccountsReceivable { get; }
 	public FinanceAccountsPayableRepository FinanceAccountsPayable { get; }
+	public FinanceInventoryAccountingRepository FinanceInventoryAccounting { get; }
 	public InventoryRepository Inventories { get; }
 	public WarehouseRepository Warehouses { get; }
 	public StorageLocationRepository StorageLocations { get; }
