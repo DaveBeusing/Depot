@@ -50,6 +50,7 @@
 	<DataTemplate DataType="{x:Type viewModels:FinanceInventoryAccountingViewModel}"><views:FinanceInventoryAccountingView /></DataTemplate>
 	<DataTemplate DataType="{x:Type viewModels:FinanceBankingViewModel}"><views:FinanceBankingView /></DataTemplate>
 	<DataTemplate DataType="{x:Type viewModels:FinanceFinancialReportingViewModel}"><views:FinanceFinancialReportingView /></DataTemplate>
+	<DataTemplate DataType="{x:Type viewModels:FinanceLocalizationViewModel}"><views:FinanceLocalizationView /></DataTemplate>
 	<DataTemplate DataType="{x:Type viewModels:ReportsViewModel}"><views:ReportsView /></DataTemplate>
 	<DataTemplate DataType="{x:Type viewModels:ShellModuleViewModel}"><views:ShellModuleView /></DataTemplate>
 	<DataTemplate DataType="{x:Type viewModels:ImportViewModel}"><views:ImportView /></DataTemplate>

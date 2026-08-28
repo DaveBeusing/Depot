@@ -29,6 +29,7 @@ internal sealed class ServiceComposition
 		AccountsPayable = new FinanceAccountsPayableService(database.TransactionRunner, repositories.FinanceAccountsPayable, FinanceGeneralLedger, repositories.Audit, audit, Authorization);
 		Banking = new FinanceBankingService(database.TransactionRunner, repositories.FinanceBanking, AccountsPayable, repositories.Audit, audit, Authorization);
 		FinancialReporting = new FinanceFinancialReportingService(database.TransactionRunner, repositories.FinanceFinancialReporting, repositories.FinanceFinancialReportingInventory, AccountsReceivable, AccountsPayable, repositories.Audit, audit, Authorization);
+		Localization = new FinanceLocalizationService(database.TransactionRunner, repositories.FinanceLocalization, repositories.Audit, audit, Authorization);
 		var passwordHasher = new PasswordHasher();
 		ItemTraceability = new ItemTraceabilityService(repositories.ItemTraceability, audit);
 		var movementReversals = new StockMovementReversalService(database.TransactionRunner, repositories.Inventories, repositories.StockMovements, repositories.ReasonCodes, repositories.Audit, audit, ItemTraceability);
@@ -97,6 +98,7 @@ internal sealed class ServiceComposition
 	public FinanceInventoryMovementAccountingService InventoryMovementAccounting { get; }
 	public FinanceBankingService Banking { get; }
 	public FinanceFinancialReportingService FinancialReporting { get; }
+	public FinanceLocalizationService Localization { get; }
 	public AuthenticationService Authentication { get; }
 	public SessionService Session { get; }
 	public ItemService Items { get; }

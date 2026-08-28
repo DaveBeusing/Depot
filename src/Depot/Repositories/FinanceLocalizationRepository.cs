@@ -54,9 +54,9 @@ public sealed class FinanceLocalizationRepository : DatabaseRepository
 
 	internal async Task<bool> HasOverlappingAssignmentAsync(DatabaseTransactionContext transaction, Guid legalEntityId, DateOnly effectiveFrom, DateOnly? effectiveTo, long excludeId, CancellationToken cancellationToken)
 	{
-		var value = await transaction.Session.QuerySingleOrDefaultAsync("SELECT COUNT(*) FROM FinanceLocalizationAssignments WHERE LegalEntityId=$Entity AND IsActive=1 AND Id<>$Exclude AND ($End IS NULL OR EffectiveFrom<=$End) AND (EffectiveTo IS NULL OR EffectiveTo>=$From);", reader => Convert.ToInt64(reader.GetValue(0), CultureInfo.InvariantCulture), cancellationToken,
+		var values = await transaction.Session.QueryAsync("SELECT COUNT(*) FROM FinanceLocalizationAssignments WHERE LegalEntityId=$Entity AND IsActive=1 AND Id<>$Exclude AND ($End IS NULL OR EffectiveFrom<=$End) AND (EffectiveTo IS NULL OR EffectiveTo>=$From);", reader => Convert.ToInt64(reader.GetValue(0), CultureInfo.InvariantCulture), cancellationToken,
 			Parameter("$Entity", legalEntityId.ToString("D")), Parameter("$Exclude", excludeId), Parameter("$From", Date(effectiveFrom)), Parameter("$End", effectiveTo.HasValue ? Date(effectiveTo.Value) : null));
-		return value > 0;
+		return values.FirstOrDefault() > 0;
 	}
 
 	internal Task<long> CreateAssignmentAsync(DatabaseTransactionContext transaction, FinanceLocalizationAssignment value, CancellationToken cancellationToken) =>
@@ -73,6 +73,13 @@ public sealed class FinanceLocalizationRepository : DatabaseRepository
 	internal Task<IReadOnlyList<FinanceLocalizationRegistryEntry>> GetEffectiveRegistryAsync(DatabaseTransactionContext transaction, string packCode, DateOnly asOfDate, CancellationToken cancellationToken) =>
 		transaction.Session.QueryAsync(RegistrySelect + " WHERE PackCode=$Pack AND IsActive=1 AND EffectiveFrom<=$Date AND (EffectiveTo IS NULL OR EffectiveTo>=$Date) ORDER BY RequirementCode,EffectiveFrom DESC,Id DESC;", ReadRegistry, cancellationToken,
 			Parameter("$Pack", packCode), Parameter("$Date", Date(asOfDate)));
+
+	internal async Task<bool> HasOverlappingRegistryEntryAsync(DatabaseTransactionContext transaction, string packCode, string requirementCode, DateOnly effectiveFrom, DateOnly? effectiveTo, long excludeId, CancellationToken cancellationToken)
+	{
+		var values = await transaction.Session.QueryAsync("SELECT COUNT(*) FROM FinanceLocalizationRegistryEntries WHERE PackCode=$Pack AND RequirementCode=$Requirement AND IsActive=1 AND Id<>$Exclude AND ($End IS NULL OR EffectiveFrom<=$End) AND (EffectiveTo IS NULL OR EffectiveTo>=$From);", reader => Convert.ToInt64(reader.GetValue(0), CultureInfo.InvariantCulture), cancellationToken,
+			Parameter("$Pack", packCode), Parameter("$Requirement", requirementCode), Parameter("$Exclude", excludeId), Parameter("$From", Date(effectiveFrom)), Parameter("$End", effectiveTo.HasValue ? Date(effectiveTo.Value) : null));
+		return values.FirstOrDefault() > 0;
+	}
 
 	internal Task<long> CreateRegistryEntryAsync(DatabaseTransactionContext transaction, FinanceLocalizationRegistryEntry value, CancellationToken cancellationToken) =>
 		transaction.Session.InsertAsync("INSERT INTO FinanceLocalizationRegistryEntries (Version,PackCode,RequirementCode,Category,SupportLevel,EffectiveFrom,EffectiveTo,Title,Description,Reference,IsBuiltIn,IsActive) VALUES (1,$Pack,$Requirement,$Category,$Support,$From,$To,$Title,$Description,$Reference,0,$Active);", cancellationToken, RegistryParameters(value));
