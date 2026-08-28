@@ -6,52 +6,44 @@ This document identifies the documentation baseline for the current development 
 
 ## Current baseline
 
-- Application line: `0.15.x-preview`
-- F4 implementation baseline before documentation commit: `0.15.22-preview`
-- Help manifest: `1.13`
+- Application: `0.15.34-preview`
+- Help manifest: `1.15`
 - Core database schema: `29`
 - Sales feature schema: `8`
-- Finance feature schema: `6`
-- Finance F0: complete — jurisdiction-neutral foundation
-- Finance F1: complete — immutable General Ledger and posting engine
-- Finance F2: complete — Accounts Receivable and Finance > Receivables
-- Finance F3: complete — Accounts Payable and Finance > Payables
-- Finance F4: complete — FIFO Inventory Accounting and Finance > Inventory Accounting
-- Finance F5: next — Banking and Payments
+- Finance feature schema: `8`
+- Finance F0-F6: complete
+- Finance F7: next — Localization Framework
 
-## F4 documentation synchronization
+## F6 synchronization
 
-The F4 documentation commit synchronizes central documentation and embedded Help with the completed F4 implementation. It does not introduce another database schema revision; F4 remains Finance schema **6**.
+The F6 documentation commit synchronizes Roadmap, Current Status, Finance Architecture, the dedicated Financial Reporting design note, Help Center, embedded `finance.reporting` Help and the Help manifest.
 
-Synchronized surfaces include README, Finance architecture/compliance/status/roadmap documentation, Help Center documentation, the embedded `finance.inventory-accounting` article and Help manifest **1.13**.
+Help manifest **1.15** adds stable topic `finance.reporting`, guarded by `FinanceFinancialReporting.View`.
 
-Help manifest **1.13** is a material contract change because F4 adds stable topic `finance.inventory-accounting`, guarded by `FinanceInventoryAccounting.View`, and cross-links Inventory, Warehouse, Purchasing, Sales, Finance and Audit topics.
+## F6 documentation invariants
 
-## F4 documentation invariants
+Documentation must state that:
 
-Documentation must describe:
-
-- `FinanceGeneralLedgerService` as the authoritative immutable accounting posting boundary;
-- FIFO as the only currently implemented valuation method;
-- Goods Receipt and Sales Shipment valuation/GL effects as transaction-coupled when F4 is active;
-- inventory-count adjustment processing as idempotent movement-based valuation/catch-up, without rewriting Warehouse history;
-- purchase-price variance as a post-AP financial consequence, not a replacement for F3 matching/approval;
-- landed cost as explicit user-supplied capitalization/allocation input, not inferred accounting policy;
-- historical reconciliation as true as-of reconstruction using consumption/reversal and landed-cost timing;
-- reconciliation runs as immutable AuditEvidence snapshots;
-- Finance v6 / Sales v8 / core 29 as independent schema levels;
-- F5 Banking and Payments as the next Finance package.
+- F1 remains the authoritative immutable General Ledger;
+- GL-derived F6 reports use persisted reporting-currency journal values;
+- AR/AP aging remains in open-item transaction currency unless a future persisted conversion model is added;
+- cash-flow and tax classification require explicit account mappings and are not inferred from account names/numbers;
+- historical inventory valuation comes from F4 valuation evidence;
+- dimension filtering uses persisted F1 journal-line dimensions;
+- CSV export is deterministic and permission-controlled;
+- `FinanceReportSnapshot` is immutable `AuditEvidence` with parameter/content hashes and operation idempotency;
+- Finance schema 8 is provider-neutral code for SQLite, SQL Server and MySQL/MariaDB, not live-provider certification;
+- F7 localization/statutory packs are not implemented by F6.
 
 ## Documentation rules
 
 Documentation must not:
 
 - document removed/default credentials;
-- reconstruct historical seller/buyer/accounting evidence from mutable current master data;
+- reconstruct historical accounting evidence from mutable current master data;
 - describe technical compliance controls as legal/statutory certification;
-- imply an unconfigured jurisdiction, currency, tax rate, chart, accounting standard, account or matching tolerance;
+- imply an unconfigured jurisdiction, currency, tax rate, chart/account, accounting standard or reporting classification;
 - claim weighted-average, standard cost, LIFO, impairment/NRV or manufacturing costing as implemented;
-- claim that F4 determines which landed-cost components are legally/accountingly capitalizable;
-- describe F5-F7 as implemented;
-- imply that GL/AR/AP/inventory controls alone establish GoBD, HGB, IFRS, GAAP, tax or audit compliance;
-- hide pre-existing repository failures by attributing them to unrelated Finance changes.
+- claim that F6 reports are jurisdiction-specific statutory filings;
+- describe F7 as implemented;
+- hide repository failures by attributing them to unrelated Finance changes.

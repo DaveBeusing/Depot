@@ -2,61 +2,42 @@
 
 Updated: 2026-08-28
 
-Depot is on the `0.15.x-preview` line. Finance work packages **F0 through F5 are implemented** on branch `finance`. Remaining items are production, environment, legal, accessibility, provider, signing, localization/accounting-policy, and enterprise acceptance gates.
+Depot is on the `0.15.x-preview` line. Finance work packages **F0 through F6 are implemented** on branch `finance`. Remaining Finance work is F7 localization plus production/environment/legal/accessibility/provider/signing acceptance.
 
-## Finance F0 — International Finance Foundation
-F0 established explicit legal entities, currencies/exchange rates, fiscal calendars/accounting periods, charts/accounts, accounting books, journal definitions, dimensions, tax registrations, number sequences and localization extension contracts. Finance feature schema **1**.
+## Implemented Finance packages
 
-## Finance F1 — General Ledger & Posting Engine
-F1 added immutable balanced journals, transaction/reporting currency snapshots, posting profiles, operation/source idempotency, open-period/date/legal-entity enforcement, account/dimension validation, transactional Finance number allocation, linked reversals and atomic audit evidence. Finance feature schema **2**.
+- **F0 — International Finance Foundation:** legal entities, currencies/FX, fiscal calendars/periods, charts/accounts, books, journals, dimensions, tax registrations and number sequences. Finance schema 1.
+- **F1 — General Ledger & Posting Engine:** immutable balanced journals, reporting-currency snapshots, posting profiles, period/account/dimension validation, idempotency, Audit evidence and linked reversals. Finance schema 2.
+- **F2 — Accounts Receivable:** customer open items, payments/allocations, write-offs, aging/statements, dunning and Sales → AR → GL integration. Finance schema 3.
+- **F3 — Accounts Payable:** supplier documents/open items, three-way matching, exception approval, payments/allocations/reversals, aging/statements and AP → GL integration. Finance schema 4.
+- **F4 — Inventory Accounting:** FIFO valuation, GRNI/COGS, inventory adjustments, PPV, landed cost, historical as-of valuation and Inventory ↔ GL reconciliation. Finance schema 6.
+- **F5 — Banking and Payments:** bank accounts, immutable CSV/camt.053 statements, payment proposals/execution, AR/AP/GL reconciliation and cash position. Finance schema 7.
+- **F6 — Financial Reporting:** trial balance, GL detail, balance sheet, P&L, cash flow, AR/AP aging, tax summary, historical inventory valuation, COGS, dimension filtering, explicit reporting mappings, deterministic CSV and immutable report snapshots. Finance schema 8.
 
-## Finance F2 — Accounts Receivable
-F2 added the customer subledger and **Finance > Receivables** with Sales source integration, customer open items, payments/allocations, controlled write-offs, aging/statements, dunning and granular RBAC. Finance feature schema **3**.
+## F6 accounting/reporting boundary
 
-## Finance F3 — Accounts Payable
-F3 added the supplier subledger and **Finance > Payables** with supplier-document lifecycle, AP open items, three-way matching, explicit exception approval, payments/allocations/reversals, aging/statements and configured F1 GL integration. Finance feature schema **4**.
+F6 does not create another ledger. GL-derived reports read persisted F1 journal entries/lines in the accounting book's **Reporting Currency**. Balance Sheet, P&L, Cash Flow, Tax Summary and COGS classification use explicit per-account reporting mappings rather than account-name heuristics.
 
-## Finance F4 — Inventory Accounting
-F4 added provider-neutral FIFO valuation, Goods Receipt inventory/GRNI posting, Sales Shipment FIFO/COGS posting, controlled valuation reversals, inventory-count valuation, purchase-price variance, landed-cost allocation, historical as-of valuation and inventory-to-GL reconciliation. Finance feature schema **6**.
+AR/AP aging remains in each open item's transaction currency; F6 does not invent historical subledger FX. Historical inventory valuation is reconstructed from F4 valuation evidence and persisted FX snapshots. Optional dimension filters use the dimensions already persisted on F1 journal lines.
 
-## Finance F5 — Banking and Payments
-
-**F5 — Banking and Payments is implemented.** Finance feature schema is **7** and the package adds:
-
-- bank-account master/configuration tied to legal entity, accounting book, active direct-posting GL account and explicit currency;
-- immutable bank statements and normalized statement lines;
-- CSV and ISO 20022 `camt.053` statement import;
-- operation/content idempotency and exact opening/transaction/closing balance validation;
-- bank-line reconciliation against F2 AR payment, F3 AP payment or F1 GL bank-account evidence;
-- explicit reconciliation reversal preserving original evidence;
-- supplier-payment proposals from AP open items;
-- creator/approver segregation for payment runs;
-- idempotent payment-run execution through the existing F3 Accounts Payable service;
-- cash-position comparison of latest statement closing balance versus bank GL balance and unreconciled-line count;
-- dedicated **Finance > Banking** workspace;
-- granular Banking/Statement/Reconciliation/Payment/Cash Position RBAC and retained-record classifications;
-- provider-neutral schema DDL for SQLite, SQL Server and MySQL/MariaDB.
-
-F5 statement import is not direct bank connectivity. Depot does not claim EBICS, PSD2/open-banking conformance, payment initiation certification, sanctions/AML/KYC decisioning or bank-specific ISO 20022 profile certification.
+A `FinanceReportSnapshot` persists the report kind/parameters, parameter hash, content hash, canonical CSV, creator and timestamp. Snapshot creation is operation-idempotent and rejects reuse of an operation ID for different content. Snapshots are retained `AuditEvidence`; they do not make a report a statutory filing.
 
 ## Versions
 
-- Application: **0.15.28-preview**
+- Application: **0.15.34-preview**
 - Core database schema: **29**
 - Sales feature schema: **8**
-- Finance feature schema: **7**
-- Help manifest: **1.14**
+- Finance feature schema: **8**
+- Help manifest: **1.15**
 
 `Directory.Build.props` is authoritative for the exact application patch. Each commit increments `DepotVersionPatch`.
 
 ## Validation boundary
 
-F5-specific regression evidence covers Finance schema 7, CSV and `camt.053` parsing, cross-currency fail-closed behavior, Banking RBAC/segregation and retained accounting evidence. Release Build, win-x64 publish and Release Integrity are required on the final head; broad repository test failures are classified against the pre-existing baseline.
+F6 regression evidence covers schema 8, real F1 ledger cutoff/reporting currency, explicit cash-flow classification, Finance RBAC, retained snapshot classification, snapshot idempotency/content binding and deterministic CSV export. Release Build and win-x64 publish must pass on the final head. Broad repository failures, if any, are classified separately from F6.
 
-Provider-neutral schema/code exists for SQLite, SQL Server and MySQL/MariaDB. Live SQL Server/MySQL/MariaDB Finance v7 migration, locking, concurrency, rollback, recovery and representative statement/payment/reconciliation load testing remain production acceptance gates.
+Provider-neutral F6 DDL exists for SQLite, SQL Server and MySQL/MariaDB. Live SQL Server/MySQL/MariaDB Finance v8 migration, provider locking/concurrency, recovery and representative reporting load tests remain production acceptance gates.
 
 ## Next Finance package
 
-The next package is **F6 — Financial Reporting**: trial balance, GL detail, balance sheet, profit/loss, cash-flow, subledger aging, tax/inventory summaries, dimension-aware reporting and exports.
-
-After F6, **F7 — Localization Framework** remains planned. Phase 8 enterprise readiness remains planned.
+The next package is **F7 — Localization Framework**: generic reference localization, EU/German reference implementation, additional country packs and an effective-dated localization/compliance registry.

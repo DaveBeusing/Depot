@@ -2,40 +2,43 @@
 
 Updated: 2026-08-28
 
-Depot's current `0.15.x-preview` line includes the previously implemented authentication/RBAC, inventory/traceability, business-record integrity, seller/buyer invoice identity and Finance F0-F2 controls plus the completed **Finance F3 — Accounts Payable** package.
+Depot's current `0.15.x-preview` line includes the completed **Finance F0-F6** baseline.
 
-## Finance F3 — Accounts Payable
+## Finance workspaces
 
-- Finance now contains two permission-aware pages: **Receivables** and **Payables**.
-- **Finance > Payables** allows users with the corresponding permissions to work with supplier documents, AP open items, aging, supplier statements, supplier payments/allocations and AP configuration.
-- Supplier invoices and supplier credit notes follow explicit draft → submit → approve/reject → post → reverse states.
-- Draft supplier documents support multiple lines and optional Purchase Order / Goods Receipt references.
-- PO-linked invoice lines are checked against supplier, ordered unit price, posted/non-reversed receipt quantity and already invoiced quantity.
-- Matching is fail-closed: Depot does not silently apply generic percentage, quantity or price tolerances.
-- A mismatch becomes a **Match Exception**. Approving it requires the separate `FinanceSupplierMatchExceptions.Approve` permission and a reason that is retained as evidence.
-- Non-PO invoices remain supported; Depot does not invent a purchase-order relationship.
-- Posting an approved supplier document creates the configured General Ledger posting and AP open item in one transaction.
-- Supplier invoices create credit-direction AP balances; supplier credit notes create debit-direction balances.
-- Supplier payments support partial/full allocation, overpayment/unapplied debit balances and later allocation.
-- Reversing a supplier payment restores every active allocation from that payment, creates the linked General Ledger reversal and retains the original payment/allocation evidence.
-- A posted supplier document can be reversed only while its AP open item remains completely unsettled; settlement corrections must occur first.
-- AP aging shows due-date buckets by supplier/currency and keeps unapplied debits visible separately.
-- Supplier statements are derived from retained AP evidence.
+Finance now provides permission-aware workspaces for **Receivables**, **Payables**, **Inventory Accounting**, **Banking**, and **Financial Reporting**. All financial posting consequences still flow through the existing immutable General Ledger boundary.
 
-## Permissions and segregation of duties
+## F6 — Financial Reporting
 
-F3 adds dedicated permissions for AP view/manage, supplier-document create/submit/approve/post/reverse, match-exception approve, and supplier-payment post/reverse.
+Users with the corresponding permissions can now:
 
-The default Finance role receives normal AP operational rights but **does not automatically receive supplier-document approval or match-exception approval**. Service-layer authorization remains authoritative regardless of UI visibility.
+- generate Trial Balance and General Ledger detail;
+- produce Balance Sheet and Profit & Loss views;
+- create Cash Flow reports from explicitly classified cash/counterpart accounts;
+- view Accounts Receivable and Accounts Payable aging;
+- generate Tax Summary, historical Inventory Valuation and COGS reports;
+- filter GL-derived reports by a persisted accounting dimension/value pair;
+- configure per-account reporting classifications for statement sections, cash flow, tax, cash-account identity and COGS;
+- export deterministic CSV;
+- retain immutable report snapshots bound to their parameters/content with SHA-256 hashes.
 
-## Help and documentation
+GL-derived reports use persisted reporting-currency values from F1. AR/AP aging remains in each open item's transaction currency rather than silently applying a current or guessed historical exchange rate.
 
-- Help manifest **1.12** adds **Accounts Payable** (`finance.payables`) guarded by `FinancePayables.View`.
-- Finance Foundation, General Ledger, Accounts Receivable, Purchasing, Goods Receipts and Audit Help are cross-linked with the AP topic where relevant.
-- Central architecture/compliance/status/roadmap/release documentation now identifies F0-F3 as implemented and F4 Inventory Accounting as next.
+## Permissions
 
-## Scope limits
+F6 adds separate permissions for financial-report viewing, mapping management, CSV export and report-snapshot creation. Service-layer authorization remains authoritative regardless of UI visibility.
 
-F3 does not implement inventory valuation, COGS, GRNI, landed cost, bank payment files, statutory inbound e-invoice validation, or jurisdiction-specific tax determination. Those remain separate future packages/acceptance work.
+## Evidence and scope limits
 
-Provider-neutral Finance schema **4** exists for SQLite, SQL Server and MySQL/MariaDB; live server migration/concurrency/recovery/performance acceptance remains required before production support claims.
+Report snapshots preserve canonical CSV, parameters, user/time evidence and hashes. They are retained AuditEvidence and cannot be edited into a different historical result.
+
+F6 does not certify report layouts for HGB, IFRS, US-GAAP, GoBD, tax returns or other jurisdiction-specific filings. Country-specific statutory presentation and filing behavior remains future F7 localization/compliance scope.
+
+## Current technical baseline
+
+- Application: **0.15.34-preview**
+- Finance schema: **8**
+- Help manifest: **1.15**
+- Provider-neutral schema/code: SQLite, SQL Server and MySQL/MariaDB
+
+Live remote-provider migration/concurrency/recovery/performance acceptance remains required before production-provider support claims.
