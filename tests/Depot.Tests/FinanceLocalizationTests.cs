@@ -117,7 +117,7 @@ public sealed class FinanceLocalizationTests
 
 		public static TestContext Create()
 		{
-			var path=Path.Combine(Path.GetTempPath(),$"depot-finance-f7-{Guid.NewGuid():N}.db");
+			var path=Path.Combine(Path.GetTempPath(),$"depot-finance-localization-{Guid.NewGuid():N}.db");
 			var factory=new SqliteConnectionFactory(path);
 			new DepotDatabase(factory).Initialize();
 			FinanceInventoryAccountingSchemaMigration.Migrate(factory);

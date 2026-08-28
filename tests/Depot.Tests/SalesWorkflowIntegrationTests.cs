@@ -68,7 +68,7 @@ public sealed class SalesWorkflowIntegrationTests : IAsyncLifetime
 		Assert.Equal(7, partiallyShipped.Lines[0].BackorderedQuantity);
 		var reReserved = await fixture.Orders.SetReservationsAsync(partiallyShipped.Id, partiallyShipped.Version, [new SalesReservationRequest(partiallyShipped.Lines[0].Id, fixture.InventoryId, 7)]);
 		var secondReservation = Assert.Single(await fixture.Orders.GetReservationsAsync(reReserved.Id), value => value.Status == InventoryReservationStatus.Active);
-		var secondShipment = await fixture.Shipments.CreateAsync(reReserved.Id, [new ShipmentLineRequest(secondReservation.Id, 7)]);
+		var secondShipment = await fixture.Shipments.CreateAsync(released.Id, [new ShipmentLineRequest(secondReservation.Id, 7)]);
 		await fixture.PackAndPostAsync(secondShipment);
 		var shipped = await fixture.Orders.GetByIdAsync(released.Id) ?? throw new InvalidOperationException();
 		Assert.Equal(SalesOrderStatus.Shipped, shipped.Status);
@@ -153,6 +153,28 @@ public sealed class SalesWorkflowIntegrationTests : IAsyncLifetime
 			var users = new UserRepository(data);
 			var admin = await users.GetByEmailAsync("admin@depot.local", CancellationToken.None) ?? throw new InvalidOperationException("Default administrator missing.");
 			admin.Roles = await roles.GetUserRolesAsync(admin.Id, CancellationToken.None); admin.EffectivePermissions = PermissionCatalog.All; authorization.SignIn(admin, PermissionCatalog.All);
+			var company = new CompanyProfileService(data, DatabaseProvider.Local, authorization);
+			await company.SaveAsync(new CompanyProfile
+			{
+				LegalName = "Depot Sales Integration GmbH",
+				LegalForm = "GmbH",
+				Street = "Test Street 1",
+				PostalCode = "53111",
+				City = "Bonn",
+				CountryCode = "DE",
+				TaxResidenceCountryCode = "DE",
+				RegisteredOffice = "Bonn",
+				IsRegisteredEntity = true,
+				RegisterCourt = "Amtsgericht Bonn",
+				RegisterType = "HRB",
+				RegisterNumber = "12345",
+				ManagingDirectors = "Integration Test",
+				VatId = "DE111111111",
+				Email = "sales-integration@depot.test",
+				InvoiceEmail = "invoice-integration@depot.test",
+				DefaultCurrency = "EUR",
+				PaymentTermsDays = 14
+			});
 			var suffix = Guid.NewGuid().ToString("N");
 			var itemId = await data.InsertAsync("INSERT INTO Items (PartNumber,Description,IsActive) VALUES ($PartNumber,$Description,1);", CancellationToken.None, new DatabaseParameter("$PartNumber", $"SALES-{suffix}"), new DatabaseParameter("$Description", "Sales integration item"));
 			var purposeId = Convert.ToInt64(await data.ExecuteScalarAsync("SELECT MIN(Id) FROM Purposes;", CancellationToken.None));

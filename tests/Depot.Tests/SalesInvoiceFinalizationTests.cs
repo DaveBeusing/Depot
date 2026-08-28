@@ -22,6 +22,7 @@ public sealed class SalesInvoiceFinalizationTests : IDisposable
 	{
 		_factory = new SqliteConnectionFactory(_databasePath);
 		new DepotDatabase(_factory).Initialize();
+		SalesSchemaMigration.Migrate(_factory);
 		_database = new DatabaseAccess(_factory);
 		SeedFinalizableInvoice();
 	}
