@@ -6,220 +6,121 @@ Updated: 2026-08-28
 
 - [ ] Ready for release
 
-Depot is currently on the `0.15.x-preview` line with core database schema **29**, Sales feature schema **8**, and Finance feature schema **3**. Checked items mean the technical implementation/evidence exists; they do not replace environment-specific, legal, accessibility, provider, signing, tax-profile, routing, accounting-localization, collections, or operational acceptance.
+Depot is on the `0.15.x-preview` line with core database schema **29**, Sales feature schema **8**, Finance feature schema **4**, and Help manifest **1.12**. Checked items represent implemented technical controls/evidence only; they do not replace provider, legal, accounting, accessibility, signing, localization or deployment acceptance.
 
-## Implemented technical baseline
+## Implemented Finance baseline
 
-### Authentication and authorization
+### F0 — International Finance Foundation
 
-- [x] first-run administrator creation; no shared production default credentials
-- [x] password policy and login throttling
-- [x] versioned PBKDF2-HMAC-SHA256 password hashing
-- [x] database-backed multi-role RBAC
-- [x] service-layer authorization
-- [x] creator/approver separation and audited administrator overrides
+- [x] legal entities, currencies/exchange rates, fiscal calendars/periods
+- [x] charts/accounts, accounting books, journals, dimensions, tax registrations, number sequences
+- [x] localization/tax/exchange-rate extension boundaries
+- [x] Finance schema v1
 
-### Data protection and audit
+### F1 — General Ledger & Posting Engine
 
-- [x] DPAPI-protected persisted database secrets
-- [x] encrypted transport enforced by supported remote-provider settings
-- [x] Audit Log viewer, filters, paging, sanitized details, CSV export
-- [x] structured business-record evidence export
-- [x] Privacy Data discovery and machine-readable JSON export
-- [x] secret exclusion/redaction requirements
+- [x] immutable balanced double-entry journals
+- [x] transaction/reporting currency and FX snapshots
+- [x] posting profiles
+- [x] period/date/legal-entity/account/dimension validation
+- [x] source/operation idempotency
+- [x] transactional number allocation and Audit evidence
+- [x] explicit linked reversals
+- [x] sensitive manual-journal permission
+- [x] Finance schema v2
 
-### Business-record integrity
+### F2 — Accounts Receivable
 
-- [x] immutable/final-state workflow rules for reviewed retained business records
-- [x] correction/reversal/return/credit workflows instead of destructive edits
-- [x] actor/UTC timestamp/state-transition evidence
-- [x] atomic business + audit persistence for reviewed retained workflows
-- [x] GoBD-oriented technical procedural-documentation baseline
-- [x] immutable historical seller snapshots for posted sales invoices and credit notes
-- [x] immutable buyer identity and exact issued XML retention for finalized sales invoices
+- [x] Sales Invoice/Credit Note → AR → GL integration
+- [x] customer open items and allocations
+- [x] partial/full payments, overpayments and later credit allocation
+- [x] payment and write-off reversals
+- [x] aging/statements and dunning
+- [x] Finance > Receivables
+- [x] Finance schema v3
 
-### Finance F0 — international foundation
+### F3 — Accounts Payable
 
-- [x] explicit legal entities, currencies/minor units, sourced exchange rates and tax registrations
-- [x] fiscal calendars/accounting periods
-- [x] charts/accounts, accounting books and journal definitions
-- [x] accounting dimensions/values and Finance number sequences
-- [x] localization, tax-determination and exchange-rate extension boundaries
-- [x] dedicated Finance RBAC
-- [x] provider-neutral Finance feature schema v1
-- [x] no seeded jurisdiction/currency/tax/chart/accounting-standard defaults
+- [x] supplier invoice/credit-note lifecycle
+- [x] AP open items with source/journal linkage
+- [x] configured AP → F1 GL posting/reversal transaction
+- [x] PO / goods-receipt / supplier-invoice matching
+- [x] fail-closed match behavior with no implicit tolerance
+- [x] explicit match-exception approval and retained reason
+- [x] supplier-document approval and match-exception approval separated in RBAC
+- [x] supplier payments, partial/full allocation, overpayments and later allocation
+- [x] supplier-payment reversal restoring every active allocation
+- [x] AP aging and supplier statements
+- [x] Finance > Payables
+- [x] Finance schema v4 for SQLite, SQL Server and MySQL/MariaDB
+- [x] Help manifest 1.12 / `finance.payables`
+- [x] regression coverage for schema, AP→GL, matching, payment reversal, RBAC and retained records
 
-### Finance F1 — General Ledger & Posting Engine
+## Other implemented technical baseline
 
-- [x] immutable journal-entry headers/lines
-- [x] balanced double-entry enforcement in transaction and reporting currency
-- [x] transaction/reporting currency and historical exchange-rate snapshots
-- [x] posting profiles with named amount-key account determination
-- [x] operation and source-document idempotency
-- [x] open accounting-period/date/legal-entity validation
-- [x] account/chart/direct-posting validation
-- [x] required accounting-dimension validation
-- [x] General Ledger number allocation inside the accounting transaction
-- [x] explicit linked reversal with immutable original entry
-- [x] atomic accounting + Audit Log persistence and rollback on audit failure
-- [x] optimistic posting-profile concurrency and database uniqueness boundaries
-- [x] dedicated sensitive permission for free manual journals
-- [x] provider-neutral Finance feature schema v2 for SQLite, SQL Server, and MySQL/MariaDB
-- [x] regression coverage for balance, idempotency, period rejection, audit rollback, profile posting and reversal
-
-### Finance F2 — Accounts Receivable
-
-- [x] Finance feature schema v3 for SQLite, SQL Server, and MySQL/MariaDB
-- [x] explicit F2 dependency on current Sales feature schema/customer master
-- [x] receivable debit/credit open-item subledger with source and GL linkage
-- [x] configured Sales Invoice/Credit Note → AR → GL integration in the source transaction
-- [x] fail-safe behavior with no invented AR/GL defaults when AR configuration is absent
-- [x] partial/full customer-payment allocation and unapplied overpayments
-- [x] later customer-credit allocation
-- [x] payment reversal restoring every active allocation and creating linked GL reversal
-- [x] write-off posting with separate sensitive authorization
-- [x] write-off reversal restoring the receivable and creating linked GL reversal
-- [x] aged receivables and customer statement projections
-- [x] configurable dunning policies and retained idempotent dunning runs
-- [x] granular AR/payment/write-off/dunning RBAC
-- [x] Finance > Receivables workspace
-- [x] Help manifest 1.11 Accounts Receivable topic
-- [x] regression coverage for F2 migration, idempotency, GL balance linkage, settlement/reversal, write-offs, aging, dunning, RBAC and record classification
-
-### Backup and recovery
-
-- [x] backup creation and archive validation
-- [x] restore with safety-backup behavior
-- [x] automatic backup scheduling and retention
-- [x] SQLite integrity check and compaction
-- [x] clean/corrupt/interrupted/unavailable-target regression coverage where automatable
-
-### Supply chain and release integrity
-
-- [x] NuGet locked restore
-- [x] direct/transitive vulnerability audit
-- [x] CycloneDX SBOM and dependency/license evidence
-- [x] CRA technical-evidence package
-- [x] source/tag binding and SHA-256 release manifest
-- [x] Authenticode/timestamp workflow support without private key in repository
-
-### Electronic invoicing
-
-- [x] EN 16931-oriented semantic invoice model
-- [x] XRechnung 3.0-oriented CII generation
-- [x] deterministic invoice/credit-note serialization in the semantic/generator layer
-- [x] application-level business-term validation
-- [x] pinned KoSIT representative conformance validation
-- [x] structured buyer master data for Buyer Reference, electronic endpoint/scheme, tax identity, and billing address
-- [x] atomic sales-invoice posting with seller snapshot, buyer snapshot, and XRechnung generation
-- [x] exact issued sales-invoice XML retained immutably with SHA-256 tamper detection
-- [x] posted Invoice workspace exports the verified persisted XRechnung XML instead of regenerating it
-- [x] fail-closed handling for incomplete identity and unsupported ambiguous tax scenarios
-
-### Software quality and accessibility
-
-- [x] release builds with warnings-as-errors in quality gates
-- [x] bounded regression suites
-- [x] Windows Server 2022/2025 CI quality matrix
-- [x] 100,000-record SQLite performance baseline
-- [x] static keyboard-focus regression check
-- [x] core 4.5:1 contrast checks
-- [x] shell automation names and textual status semantics
-- [x] accessibility/manual release matrix documented
+- [x] first-run administrator creation, hardened authentication and multi-role RBAC
+- [x] service-layer authorization and creator/approver controls where implemented
+- [x] immutable/correction-oriented retained business records and Audit evidence
+- [x] backup/recovery controls and privacy export
+- [x] dependency locks, NuGet audit, SBOM/evidence and release-integrity workflows
+- [x] Sales Invoice seller/buyer/XRechnung finalization and persisted XML integrity evidence
+- [x] bounded regression/quality/accessibility CI controls
 
 ## Required production acceptance before 1.0
 
-### Database providers
+### Providers and Finance
 
-- [ ] supported Windows desktop editions defined and tested
-- [ ] SQL Server supported-version clean-install and migration matrix
-- [ ] MySQL/MariaDB supported-version clean-install and migration matrix
-- [ ] live backup/restore/recovery drills for every advertised provider
-- [ ] live multi-client concurrency tests
-- [ ] representative network latency/load tests
-- [ ] Finance v1 -> v3 live-server migration and concurrent GL/AR posting acceptance
-- [ ] provider-specific Finance locking/deadlock/retry acceptance for posting, settlement and reversal under representative load
-- [ ] Windows ACL-denied recovery scenario
+- [ ] supported Windows/database versions finalized
+- [ ] live SQL Server Finance v1→v4 migration, concurrency, locking, recovery and performance matrix
+- [ ] live MySQL/MariaDB Finance v1→v4 migration, concurrency, locking, recovery and performance matrix
+- [ ] provider-specific AP matching/settlement/reversal deadlock/retry acceptance
+- [ ] deployment legal entity/chart/book/calendar/posting-profile approval
+- [ ] AR/AP subledger-to-GL reconciliation procedures and exception handling
+- [ ] AP supplier-document approval/match-exception segregation-of-duties review
+- [ ] customer/supplier payment evidence/reconciliation procedure until Banking is implemented
+- [ ] accounting record retention/export/backup/restore procedures
+- [ ] jurisdiction-specific accounting/tax/localization acceptance
 
-### Finance production/accounting acceptance
+### UI/accessibility
 
-- [ ] deployment legal entities, functional/reporting currencies and accounting books approved
-- [ ] deployment chart of accounts and F1/F2 posting profiles approved
-- [ ] exchange-rate source/effective-date governance approved
-- [ ] period-close/reopen procedure and privileged reopen controls implemented/accepted
-- [ ] Finance role/segregation-of-duties matrix approved, including manual journals and write-offs
-- [ ] accounting/AR-record retention, backup, restore and export procedures approved
-- [ ] live AR subledger-to-GL reconciliation acceptance and exception procedure
-- [ ] customer-payment evidence/import/reconciliation procedure approved until F5 Banking exists
-- [ ] write-off policy, approval threshold, evidence and tax treatment approved
-- [ ] dunning/collections wording, fees/interest, delivery proof, escalation and legal review accepted
-- [ ] jurisdiction-specific accounting/tax/localization package accepted for every marketed deployment
-- [ ] required statutory reports/exports/filing interfaces implemented and accepted where applicable
+- [ ] keyboard-only critical-workflow walkthrough including Finance > Receivables and Finance > Payables
+- [ ] focus/no-keyboard-trap review
+- [ ] Narrator/Accessibility Insights baseline
+- [ ] 100/125/150/200% DPI acceptance
 
-### User interface/accessibility
+### Security/release engineering
 
-- [ ] keyboard-only critical-workflow walkthrough including Finance > Receivables
-- [ ] focus-order/no-keyboard-trap verification
-- [ ] Accessibility Insights or equivalent scan across production screens
-- [ ] Windows Narrator baseline
-- [ ] 100%, 125%, 150%, and 200% DPI/scaling acceptance
-- [ ] manual disabled/hover/selected/error/warning/success state review
-- [ ] localization/formatting acceptance for supported cultures
-
-### Security and operations
-
-- [ ] production backup storage/ACL/encryption configuration accepted
-- [ ] production vulnerability-reporting channel operational
-- [ ] named incident/security owners and escalation path
-- [ ] security update/support period published for the release
-- [ ] final dependency/license review for release commit
-- [ ] no unresolved Critical vulnerability; High findings resolved or explicitly accepted under policy
-
-### Release engineering
-
-- [ ] all required release CI/security/quality/e-invoice workflows pass or documented pre-existing failures are resolved before the actual release gate
-- [ ] production Authenticode signing identity configured
-- [ ] Authenticode signature verified on produced artifacts
-- [ ] production timestamp verified
-- [ ] installer/package tested
-- [ ] upgrade/rollback/uninstall tested
-- [ ] final application version/tag finalized
-- [ ] release notes, known limitations, hashes, SBOM, and support information published
+- [ ] production backup/security ownership and vulnerability-reporting process accepted
+- [ ] production Authenticode identity and timestamp verified
+- [ ] installer/package upgrade/rollback/uninstall accepted
+- [ ] final release notes, known limitations, hashes, SBOM and support information published
 
 ### Electronic invoicing
 
-- [x] sales-invoice model integrated into persisted operational posting workflow
-- [x] issued sales-invoice XML retained immutably with invoice linkage and integrity verification
-- [x] seller identity and payment data sourced from controlled Company master and frozen at posting
-- [x] buyer/customer identity and structured billing/tax data frozen at posting
-- [ ] explicit EN 16931 VAT-category and exemption/reason semantics persisted for zero-rated, exempt, and reverse-charge lines
-- [ ] electronic credit-note buyer/XML finalization implemented before advertising that channel
-- [ ] organization/recipient-specific electronic routing configuration validated
-- [ ] every advertised tax/profile/channel scenario validated against applicable production KoSIT/XRechnung version
-- [ ] controlled remediation procedure approved for legacy posted invoices without historical finalization records
-- [ ] PDF/A-3 implemented and validated before any ZUGFeRD/Factur-X support claim
+- [ ] remaining EN 16931 special-tax semantics accepted
+- [ ] electronic credit-note finalization where advertised
+- [ ] recipient/channel routing acceptance
+- [ ] every advertised production scenario validated against applicable KoSIT/XRechnung release
+- [ ] PDF/A-3 before any ZUGFeRD/Factur-X claim
 
-### Compliance/legal/organizational
+### Legal/organizational
 
-- [ ] final GDPR/DSGVO controller/deployment assessment
-- [ ] concrete retention periods and data-subject procedures approved
-- [ ] GoBD tax-relevance and organization-specific procedural documentation approved
-- [ ] final CRA scope/economic-operator/classification/conformity assessment completed
-- [ ] Declaration/CE/user/manufacturer information completed where applicable
-- [ ] regulatory incident-reporting/tabletop readiness completed where applicable
+- [ ] GDPR/DSGVO deployment assessment and retention procedures
+- [ ] organization-specific GoBD/accounting procedures
+- [ ] final CRA applicability/classification/conformity work
+- [ ] qualified accounting/tax/legal review for each marketed Finance localization
 
-## Finance packages still outside the completed baseline
+## Finance packages outside completed baseline
 
-The Finance foundation, General Ledger engine, and Accounts Receivable are implemented through F2. The following packages remain incomplete until separately delivered and verified:
+F0-F3 are implemented. Remaining packages are:
 
-- F3 Accounts Payable and supplier-invoice/matching integration
-- F4 Inventory Accounting/valuation/COGS/GRNI integration
-- F5 Banking/payments/reconciliation
-- F6 financial reporting
-- F7 localization/statutory packages
+- F4 Inventory Accounting / valuation / COGS / GRNI
+- F5 Banking and Payments
+- F6 Financial Reporting
+- F7 Localization/statutory packages
 
 ## Other out-of-scope items unless separately approved
 
 - barcode scanning/generation
 - label template design/printing
-- enterprise MFA/Entra ID/OIDC/SAML unless Phase 8 scope is pulled forward
+- enterprise MFA/Entra/OIDC/SAML until separately scoped

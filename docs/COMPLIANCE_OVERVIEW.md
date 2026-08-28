@@ -2,40 +2,41 @@
 
 Updated: 2026-08-28
 
-Depot's compliance/security roadmap separates implemented technical controls from legal or deployment-specific claims. Phases 1-7 have technically implementable controls in place; remaining acceptance gates are tracked in `docs/SECURITY_ROADMAP.md`, `docs/RELEASE_1_0.md`, `docs/FINANCE_COMPLIANCE.md`, and `docs/compliance`.
+Depot separates implemented technical controls from legal, accounting, tax, audit or certification claims. Security/compliance roadmap phases 1-7 retain their technically implementable controls; remaining acceptance gates are tracked in the security, release, Finance and compliance documentation.
 
-Technical baselines currently cover software supply-chain security, authentication/RBAC hardening, privacy discovery/export, business-record integrity, CRA evidence/update/vulnerability processes, Company/document identity, immutable issuer/buyer snapshots, Sales Invoice XRechnung finalization/integrity verification, representative KoSIT validation, software-quality/accessibility gates, Finance F0, Finance F1 General Ledger controls, and Finance F2 Accounts Receivable controls.
+## Finance F0-F3 technical baseline
 
-## Finance F0/F1
+F0 provides explicit legal entities, currencies/exchange rates, periods, books/charts/accounts, tax registrations, dimensions, number sequences and localization/tax/exchange-rate extension boundaries with no seeded jurisdiction/accounting defaults.
 
-F0 adds explicit legal entities, currencies, sourced exchange rates, periods, accounting books, charts/accounts, tax registrations, dimensions, number sequences, localization/tax-determination interfaces, provider-neutral Finance schema versioning, and dedicated Finance RBAC. It deliberately seeds no jurisdiction/accounting defaults.
+F1 provides immutable balanced double entry, historical FX evidence, period/date/legal-entity/account/dimension validation, source/operation idempotency, transactional number allocation, explicit reversal, atomic Audit evidence and separate free-manual-journal authorization.
 
-F1 adds balanced immutable double entry, historical FX evidence, open-period/date/legal-entity checks, account/chart/dimension validation, deterministic operation/source idempotency, transactional number allocation, explicit reversal, atomic Audit Log persistence, posting-profile concurrency, and separated manual-journal authorization.
+F2 adds the customer subledger: retained AR open items, Sales→AR→GL atomicity, payments/allocations/overpayments, reversal, controlled write-offs, aging/statements and dunning evidence.
 
-## Finance F2
+F3 raises Finance feature schema to **4** and adds the supplier subledger:
 
-Finance F2 raises the Finance feature schema to **3** and adds technical customer-subledger controls:
+- retained supplier invoices/credit notes, AP open items and supplier payments linked to GL evidence;
+- explicit draft/submission/approval/post/reversal lifecycle;
+- PO/goods-receipt/invoice matching based on supplier, PO price, non-reversed received quantity and previously invoiced quantity;
+- fail-closed matching with no implicit generic tolerance;
+- separate match-exception approval permission and retained reason;
+- partial/full supplier-payment allocation and unapplied debit balances;
+- supplier-payment reversal restoring active allocations and creating linked GL reversal;
+- AP aging and supplier-statement projections;
+- service-layer segregation between operational AP rights and supplier-document/match-exception approval.
 
-- retained receivable debit/credit open items linked to source document and GL journal;
-- configured Sales Invoice/Credit Note → AR → GL atomic processing;
-- operation-idempotent customer payment records;
-- explicit allocation records for partial/full settlement and unapplied overpayments;
-- later credit allocation without rewriting source invoices;
-- payment reversal that restores every active allocation and uses a linked GL reversal;
-- write-off records with sensitive dedicated authorization and linked reversal;
-- aging/customer-statement projections from retained AR evidence;
-- configurable dunning policies and retained idempotent dunning-run evidence;
-- F2 Sales-schema dependency made explicit in migration;
-- service-layer segregation between normal Finance AR operations and sensitive write-off authority.
+These are engineering controls that improve traceability, repeatability, subledger/GL reconciliation capability, correction history, authorization and retry safety. They do not by themselves establish HGB, GoBD, IFRS, US-GAAP, VAT/GST/sales-tax, statutory retention, inbound e-invoice, payment-services, audit or tax-filing conformity.
 
-These controls improve traceability, subledger/GL reconciliation capability, reproducibility, segregation of duties, historical integrity, and retry/correction safety. They are engineering controls, not a declaration that Depot or a deployment conforms to a specific accounting, tax, audit, collections, or records regime.
+## Current versions
 
-See `docs/FINANCE_COMPLIANCE.md` for the detailed Finance-specific boundary.
+- Core database schema: **29**
+- Sales feature schema: **8**
+- Finance feature schema: **4**
+- Help manifest: **1.12**
 
-## No certification claim
+## Remaining acceptance
 
-F0/F1/F2 do not establish HGB, GoBD, IFRS, US-GAAP, VAT/GST/sales-tax, SAF-T, DATEV, XBRL, statutory-reporting, statutory-retention, receivable-valuation/impairment, legal dunning/collections, banking/payment-services, audit, or tax-filing conformity. Those outcomes depend on localization, configuration, organizational procedures, deployment controls, legal/accounting review, reconciliation, retention/export processes, and jurisdiction-specific acceptance.
+Production use still requires live provider migration/concurrency/recovery testing, deployment-specific chart/book/calendar/posting-profile approval, AR/AP-to-GL reconciliation procedures, AP approval/exception segregation-of-duties review, payment evidence/reconciliation, retention/export procedures, localization/accounting/tax review, signing/deployment acceptance and qualified organizational/legal/accounting validation.
 
-The electronic-invoice technical boundary remains separate: special tax semantics, electronic credit-note finalization, recipient/channel configuration, and every advertised production scenario still require applicable implementation/acceptance.
+F3 does not include inventory valuation/COGS/GRNI; that remains F4 Inventory Accounting.
 
-This documentation is engineering evidence and does not itself certify Depot against ISO, CRA, GDPR/DSGVO, GoBD, EN 16931, XRechnung, WCAG, accounting standards, tax law, collections law, or another legal/standards framework. A stored SHA-256 fingerprint is an application integrity control, not a digital signature or independent authenticity proof.
+This document is engineering evidence and not a certification statement.

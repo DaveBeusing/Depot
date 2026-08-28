@@ -1,75 +1,137 @@
-# Finance compliance boundary
+# Finance Compliance and Control Boundaries
 
 Updated: 2026-08-28
 
-Finance F0/F1/F2 is an engineering foundation and accounting-control implementation, not an accounting, tax, audit, statutory, collections, or software certification. It provides technical controls that later jurisdiction-specific implementations can use and that operators can include in their own control environment.
+## Status and intent
+
+This document describes technical controls implemented in Depot Finance F0-F3. It is not a legal opinion, accounting-policy determination, tax determination, certification, audit opinion, or claim of compliance with any jurisdiction-specific standard.
+
+Current Finance feature schema: **4**.
+
+## Core principle
+
+Finance core is jurisdiction-neutral. Country-, tax-, filing-, invoice-format- and accounting-standard-specific behavior must be configured or supplied by localization/compliance extensions. F0-F3 do not hard-code Germany, EUR, a VAT rate, SKR03/SKR04, HGB, IFRS, US-GAAP or XRechnung into generic accounting behavior.
 
 ## Implemented technical controls
 
-F0 provides explicit legal-entity/currency/period/book/chart/tax-registration/dimension/number-sequence foundations, localization/tax/exchange-rate extension boundaries, dedicated Finance RBAC, provider-neutral feature versioning, and no seeded jurisdiction/accounting defaults.
+### Record integrity
 
-F1 adds balanced immutable double entry, explicit reversals, open-period/date/legal-entity enforcement, operation/source idempotency, atomic number allocation and Audit Log evidence, historical currency/FX snapshots, account/chart/dimension validation, posting-profile concurrency, and separate manual-journal authorization.
+- Posted General Ledger entries are immutable through Finance workflows.
+- Corrections use linked reversal entries.
+- Supplier/customer subledger records preserve their source identity and journal linkage.
+- Posted supplier documents and supplier payments are retained accounting-relevant records.
+- Payment reversals preserve the original payment and allocation history.
+- Supplier-document reversal preserves the original supplier document and journal.
 
-F2 additionally provides:
+These controls support evidence integrity but do not independently establish statutory retention compliance. Organization-specific retention periods, archival controls, export procedures and operating instructions remain required.
 
-- customer receivable open-item evidence with immutable source identity/original amount and controlled remaining balance;
-- transactionally coupled Sales Invoice/Credit Note → AR → GL processing when AR is configured;
-- explicit customer-payment records and allocation evidence;
-- partial settlement and unapplied-credit treatment without destructive source-document mutation;
-- payment reversal that restores every active allocation from the payment while preserving original payment/allocation evidence;
-- controlled write-off records with dedicated authorization and linked GL reversal;
-- aged receivable and customer-statement projections from retained subledger evidence;
-- configurable dunning policies and persisted dunning-run evidence;
-- operation/request idempotency for payments, allocation operations, and dunning runs;
-- optimistic/race-safety boundaries for settlement and corrections;
-- service-layer segregation between normal Finance Receivables operations and sensitive write-off authority;
-- provider-neutral Finance feature schema version **3**.
+### Double-entry and posting controls
 
-`FinanceReceivableOpenItem`, `FinanceReceivablePayment`, and `FinanceReceivableWriteOff` are classified as accounting-relevant retained business records. `FinanceDunningRun` is classified as retained audit evidence. Original source Sales documents and GL journals are not rewritten by AR settlement/correction workflows.
+F1 validates balanced debit/credit totals in transaction and reporting currency and uses configured posting profiles. F2 and F3 invoke this boundary rather than creating parallel ledger logic.
 
-## Compliance relevance
+Posting rejects invalid or inactive accounting configuration, closed/wrong periods, invalid accounts/dimensions, missing required FX snapshots and incompatible source/profile configuration.
 
-These controls are relevant building blocks for accounting-record integrity, subledger/GL traceability, segregation of duties, change evidence, receivable reconciliation, repeatable processing, and correction history. They support future jurisdiction-specific GoBD/HGB, IFRS/GAAP, VAT/GST/sales-tax, audit-export, SAF-T, DATEV, XBRL, collections/dunning, and filing work, but do not by themselves establish conformity with any regime.
+### Period and number controls
 
-GoBD-relevant engineering characteristics such as traceability, immutability/correction history, authorization, audit evidence, reproducible processing, and subledger linkage are technical controls only. They do not replace organization-specific procedures, retention/export rules, legal/accounting review, or deployment acceptance.
+Finance uses explicit fiscal calendars/accounting periods and Finance number sequences. Number allocation occurs inside the accounting transaction. A failed posting must not leave a partially committed journal/subledger result.
 
-## Accounts Receivable compliance boundary
+Whether a specific organization requires gapless, chronological or legally prescribed numbering must be assessed in its applicable jurisdiction and procedure documentation.
 
-F2 does **not** claim that Depot's dunning feature constitutes a legally compliant reminder/collections process for any country. F2 stores configured overdue levels and run evidence; it does not determine statutory reminder wording, default interest, reminder fees, notice periods, service/delivery proof, limitation periods, insolvency treatment, debt-collection licensing, court procedures, or consumer-protection obligations.
+### Audit trail
 
-F2 write-offs are controlled accounting corrections, not a tax-law determination that a receivable is legally/tax-deductibly irrecoverable. Deployment rules must define who may authorize a write-off, what evidence is required, thresholds/approvals, tax consequences, and reporting/export requirements.
+Finance mutations persist Audit Log evidence in the same transactional unit where required. Audit evidence includes user/action/time and before/after or action snapshots according to the existing audit framework.
 
-Aging and customer statements are operational/accounting projections from the retained AR subledger. Their existence does not establish statutory financial-statement presentation, confirmation-of-balances procedures, audit confirmation, or legal account-statement requirements.
+Audit logging is a technical control. Production audit retention, access review, monitoring, export and evidentiary procedures remain organizational acceptance items.
 
-Customer payment posting in F2 is an accounting/subledger record. F2 is **not** a banking/payment-execution package and does not claim PSD2/Open Banking, payment-service-provider, card/PCI, ISO 20022 bank statement, cash application, or bank reconciliation functionality. Those concerns belong to later banking integration.
+### Idempotency and retry safety
 
-## Electronic invoicing separation
+Retry-sensitive GL, AR and AP operations use operation IDs and, where appropriate, request hashes/source identity. Reusing an operation ID with different content is rejected. This reduces duplicate financial postings under retry/concurrency conditions.
 
-Existing XRechnung/EN 16931 functionality remains a separate electronic-invoicing capability. F2 consumes finalized Sales invoice/credit-note monetary values and source identity; it does not treat XRechnung as a generic tax-determination or accounting-compliance engine.
+### Accounts Receivable controls
 
-Special tax semantics, electronic credit-note Buyer/XML finalization, recipient routing, and full production-profile validation remain separate implementation/acceptance work.
+F2 includes customer open items, allocations, overpayments, payment reversals, write-offs, aging, statements and dunning. Sensitive write-off rights are withheld from the default Finance role.
 
-## What F2 does not claim
+### Accounts Payable controls
 
-F0/F1/F2 do not demonstrate conformity with HGB, GoBD, IFRS, US GAAP, VAT/GST/sales-tax law, SAF-T, DATEV, XBRL, statutory retention, statutory account plans, statutory receivable valuation/impairment, tax filing, legal dunning/collections, banking regulation, or audit standards.
+F3 includes supplier invoices/credit notes, open items, supplier payments, allocations, reversal, aging/statements and PO/goods-receipt/invoice matching.
 
-ISO-style country/currency syntax validation is a structural guard only. Production reference-data governance must define valid codes, currencies, exchange-rate sources, charts/accounts, posting profiles, tax registrations, accounting standards, effective dates, AR configuration, dunning policies, write-off procedures, and approval roles.
+Three-way matching is fail-closed in generic core:
 
-## Remaining assurance work
+- supplier must match the referenced purchase order;
+- invoiced quantity cannot exceed currently received and not-yet-invoiced quantity;
+- invoiced unit price must equal purchase-order unit price;
+- reversed goods receipts do not provide matching quantity;
+- no implicit percentage/quantity/price tolerance exists.
 
-Before Finance can be represented as production accounting evidence for a particular organization/jurisdiction, acceptance must additionally cover:
+A mismatch becomes an explicit match exception. Approval of that exception requires `FinanceSupplierMatchExceptions.Approve` and a retained reason. This avoids silently converting a mismatch into an accepted posting.
 
-- live SQL Server/MySQL/MariaDB Finance v1→v3 migration, locking, deadlock/retry, recovery, and load tests;
-- role design and segregation-of-duties approval, including manual journals and write-offs;
-- chart/account/posting-profile approval;
-- legal-entity/fiscal-calendar/period-close and privileged reopen procedures;
-- exchange-rate source/effective-date governance;
-- AR subledger-to-GL reconciliation procedures and exception handling;
-- customer payment evidence/import/reconciliation procedure until Banking is implemented;
-- write-off policy, evidence, approval thresholds, and tax treatment;
-- dunning/collections policy, wording, fees/interest, delivery proof, escalation, and applicable legal review;
-- backup, retention, restore, and export procedures for accounting/AR records;
-- statutory/localization rules, reports, exports, and filing interfaces;
-- documented operator procedures and qualified legal/accounting review.
+Non-PO invoices are supported; they do not receive invented purchase-order evidence.
 
-The next Finance package is F3 Accounts Payable and must preserve the same immutable/idempotent posting boundary while adding supplier subledger truth and source/matching controls.
+### Approval and segregation of duties
+
+F3 separates permissions for:
+
+- supplier-document creation;
+- submission;
+- normal approval;
+- match-exception approval;
+- posting;
+- reversal;
+- supplier-payment posting/reversal.
+
+The default Finance role receives operational AP rights but not supplier-document approval or match-exception approval. Deployment role design must ensure that incompatible permissions are not assigned to the same person where the organization's control framework requires four-eyes separation. Role configuration and periodic access review remain organizational controls.
+
+## Tax boundary
+
+Supplier-document tax amounts in F3 are explicit document inputs consumed by configured posting profiles. F3 does not infer VAT/GST/sales-tax rates, deductibility, reverse charge, exemptions, place of supply, withholding tax or statutory tax-code treatment.
+
+A jurisdiction/localization package may later determine and validate such semantics, but it must not be smuggled into generic AP behavior as an implicit default.
+
+## Electronic invoicing boundary
+
+The existing Sales XRechnung/EN 16931 functionality is separate from generic Finance. F3 does not claim inbound e-invoice parsing, validation, routing or statutory supplier-invoice compliance. Those require separate implementation and acceptance.
+
+## Provider and operational acceptance
+
+Finance schema 4 has provider-specific DDL for SQLite, SQL Server and MySQL/MariaDB. Before production claims, each supported deployment matrix still requires live acceptance for:
+
+- fresh install and upgrade from Finance schemas 1/2/3;
+- locking and concurrent posting/allocation behavior;
+- deadlock/transient-retry behavior;
+- backup, restore and recovery;
+- representative data volumes/performance;
+- identity/sequence behavior;
+- date/decimal semantics;
+- failure rollback under audit/GL/subledger errors.
+
+## Standards and regulatory relevance
+
+Depending on deployment and customer context, technical controls may contribute evidence toward frameworks such as ISO 27001, SOC-style controls, OWASP ASVS, EU CRA security obligations, GDPR accountability and accounting-control expectations. Applicability and conformity must be assessed separately by qualified organizational/legal/accounting stakeholders.
+
+No repository feature should be described externally as certified or legally compliant solely because these controls exist.
+
+## Current gaps / future packages
+
+F3 does not close:
+
+- inventory accounting/valuation/COGS — planned F4;
+- banking/payment-file workflows — later package;
+- statutory financial statements and consolidation;
+- country-specific tax determination/reporting;
+- localization packs;
+- production provider certification;
+- organization-specific retention and procedure documentation;
+- production signing/deployment acceptance.
+
+## Required evidence for F3 release acceptance
+
+At minimum retain:
+
+- Release build/publish result;
+- F3 regression-test result;
+- Finance feature schema 4 migration evidence;
+- RBAC test showing approval/match-exception permissions remain separate;
+- representative AP→GL balance evidence;
+- payment/reversal allocation evidence;
+- provider-matrix acceptance results when production providers are certified;
+- updated Help/documentation identifying the generic/localization boundary.
