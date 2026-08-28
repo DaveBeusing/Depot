@@ -13,6 +13,7 @@ public static class FinanceAccountsReceivableSchemaMigration
 	public static void Migrate(IDatabaseConnectionFactory connectionFactory)
 	{
 		ArgumentNullException.ThrowIfNull(connectionFactory);
+		SalesSchemaMigration.Migrate(connectionFactory);
 		var version = ReadVersion(connectionFactory);
 		if (version > CurrentVersion) throw new InvalidOperationException($"Finance schema version '{version}' is newer than the supported version '{CurrentVersion}'.");
 		if (version < 2)
