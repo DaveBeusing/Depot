@@ -23,6 +23,8 @@ public sealed record FinanceReportingAccountMapping
 	public bool IsActive { get; init; } = true;
 }
 
+public sealed record FinanceReportingAccountRecord(Guid Id, string Number, string Name, FinanceAccountType AccountType, bool IsActive);
+
 public sealed record FinanceReportParameters
 {
 	public FinanceReportKind Kind { get; init; }
@@ -90,7 +92,6 @@ public sealed record FinanceReportSnapshot
 }
 
 internal sealed record FinanceReportingBookRecord(Guid Id, Guid LegalEntityId, Guid ChartOfAccountsId, CurrencyCode ReportingCurrency, bool IsActive);
-internal sealed record FinanceReportingAccountRecord(Guid Id, string Number, string Name, FinanceAccountType AccountType, bool IsActive);
 internal sealed record FinanceTrialBalanceSourceRow(Guid AccountId, string AccountNumber, string AccountName, FinanceAccountType AccountType, decimal Opening, decimal Debit, decimal Credit);
 internal sealed record FinanceGeneralLedgerSourceRow(long JournalEntryId, DateOnly PostingDate, string EntryNumber, Guid AccountId, string AccountNumber, string AccountName, string Description, string SourceType, string SourceId, string SourceEvent, string? SourceReference, decimal Debit, decimal Credit);
 internal sealed record FinanceCashFlowSourceRow(long JournalEntryId, Guid AccountId, string AccountNumber, string AccountName, bool IsCashAccount, FinanceCashFlowCategory Category, decimal Debit, decimal Credit);
