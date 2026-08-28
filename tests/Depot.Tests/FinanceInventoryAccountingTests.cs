@@ -16,7 +16,7 @@ public sealed class FinanceInventoryAccountingTests
 	public void CurrentFinanceMigrationRetainsInventoryAccountingSchema()
 	{
 		using var context = TestContext.Create();
-		Assert.Equal(7L, context.Scalar("SELECT Version FROM DepotFeatureVersions WHERE Name='Finance';"));
+		Assert.Equal(FinanceInventoryAccountingSchemaMigration.CurrentVersion, context.Scalar("SELECT Version FROM DepotFeatureVersions WHERE Name='Finance';"));
 		Assert.Equal(1L, context.Scalar("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='FinanceInventoryValuationLayers';"));
 		Assert.Equal(1L, context.Scalar("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='FinanceInventoryPurchaseVariances';"));
 		Assert.Equal(1L, context.Scalar("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='FinanceInventoryLandedCostOperations';"));

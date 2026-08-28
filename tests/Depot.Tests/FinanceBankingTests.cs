@@ -12,7 +12,7 @@ namespace Depot.Tests;
 public sealed class FinanceBankingTests
 {
 	[Fact]
-	public void FinanceMigrationCreatesBankingSchemaVersionSeven()
+	public void CurrentFinanceMigrationRetainsBankingSchema()
 	{
 		var path = Path.Combine(Path.GetTempPath(), $"depot-finance-f5-{Guid.NewGuid():N}.db");
 		try
@@ -22,7 +22,7 @@ public sealed class FinanceBankingTests
 			FinanceInventoryAccountingSchemaMigration.Migrate(factory);
 			using var connection = new SqliteConnection($"Data Source={path}");
 			connection.Open();
-			Assert.Equal(7L, Scalar(connection, "SELECT Version FROM DepotFeatureVersions WHERE Name='Finance';"));
+			Assert.Equal(FinanceInventoryAccountingSchemaMigration.CurrentVersion, Scalar(connection, "SELECT Version FROM DepotFeatureVersions WHERE Name='Finance';"));
 			Assert.Equal(1L, Scalar(connection, "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='FinanceBankAccounts';"));
 			Assert.Equal(1L, Scalar(connection, "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='FinanceBankStatements';"));
 			Assert.Equal(1L, Scalar(connection, "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='FinanceBankReconciliations';"));

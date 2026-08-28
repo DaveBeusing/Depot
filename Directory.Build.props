@@ -1,19 +1,25 @@
 <Project>
-  <PropertyGroup>
-    <DepotVersionMajor>0</DepotVersionMajor>
-    <DepotVersionMinor>15</DepotVersionMinor>
-    <DepotVersionPatch>32</DepotVersionPatch>
-    <DepotVersionPrerelease>preview</DepotVersionPrerelease>
-    <DepotVersionPrefix>$(DepotVersionMajor).$(DepotVersionMinor).$(DepotVersionPatch)</DepotVersionPrefix>
-    <DepotVersionSuffix Condition="'$(DepotVersionPrerelease)' != ''">-$(DepotVersionPrerelease)</DepotVersionSuffix>
-    <DepotVersion>$(DepotVersionPrefix)$(DepotVersionSuffix)</DepotVersion>
-    <Version>$(DepotVersion)</Version>
-    <VersionPrefix>$(DepotVersionPrefix)</VersionPrefix>
-    <VersionSuffix Condition="'$(DepotVersionPrerelease)' != ''">$(DepotVersionPrerelease)</VersionSuffix>
-    <AssemblyVersion>$(DepotVersionMajor).$(DepotVersionMinor).0.0</AssemblyVersion>
-    <FileVersion>$(DepotVersionPrefix).0</FileVersion>
-    <InformationalVersion>$(DepotVersion)</InformationalVersion>
-    <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
-    <Deterministic>true</Deterministic>
-  </PropertyGroup>
+	<PropertyGroup>
+		<DepotVersionMajor>0</DepotVersionMajor>
+		<DepotVersionMinor>15</DepotVersionMinor>
+		<DepotVersionPatch>33</DepotVersionPatch>
+		<DepotVersionBuild Condition="'$(DepotVersionBuild)' == ''">0</DepotVersionBuild>
+		<DepotVersionSuffix Condition="'$(DepotVersionSuffix)' == ''">preview</DepotVersionSuffix>
+		<VersionPrefix>$(DepotVersionMajor).$(DepotVersionMinor).$(DepotVersionPatch)</VersionPrefix>
+		<VersionSuffix Condition="'$(DepotStableRelease)' != 'true'">$(DepotVersionSuffix)</VersionSuffix>
+		<AssemblyVersion>$(DepotVersionMajor).$(DepotVersionMinor).0.0</AssemblyVersion>
+		<FileVersion>$(DepotVersionMajor).$(DepotVersionMinor).$(DepotVersionPatch).$(DepotVersionBuild)</FileVersion>
+		<Product>Depot</Product>
+		<Company>David Beusing</Company>
+		<Authors>David Beusing</Authors>
+		<Copyright>Copyright © 2026 David Beusing</Copyright>
+		<RepositoryUrl>https://github.com/DaveBeusing/Depot</RepositoryUrl>
+		<RepositoryType>git</RepositoryType>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<NuGetAudit>true</NuGetAudit>
+		<NuGetAuditMode>all</NuGetAuditMode>
+		<NuGetAuditLevel>low</NuGetAuditLevel>
+		<RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+		<WarningsAsErrors Condition="'$(AuditPipeline)' == 'true'">$(WarningsAsErrors);NU1901;NU1902;NU1903;NU1904</WarningsAsErrors>
+	</PropertyGroup>
 </Project>
