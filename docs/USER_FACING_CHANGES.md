@@ -2,54 +2,35 @@
 
 Updated: 2026-08-28
 
-Depot's current `0.15.x-preview` line includes the completed **Finance F0-F7** baseline.
+Depot's current `0.15.x-preview` line includes the integrated Finance platform.
 
 ## Finance workspaces
 
-Finance now provides permission-aware workspaces for **Receivables**, **Payables**, **Inventory Accounting**, **Banking**, **Financial Reporting**, and **Localization**. All financial posting consequences still flow through the existing immutable General Ledger boundary.
+Finance provides permission-aware workspaces for **Receivables**, **Payables**, **Inventory Accounting**, **Banking**, **Financial Reporting**, and **Localization**. Financial posting consequences flow through the immutable General Ledger boundary.
 
-## F7 — Finance Localization
+## Finance Localization
 
-Users with `FinanceLocalization.View` can:
+Users with `FinanceLocalization.View` can select a Legal Entity and as-of date, resolve the effective localization profile, inspect the inherited pack chain and review capability/configuration/procedure references and warnings.
 
-- select a Legal Entity and an as-of date;
-- resolve the effective localization profile;
-- see the inherited pack chain and effective capability/configuration/procedure registry;
-- review warnings for requirements that still need deployment configuration or external procedures.
+Users with `FinanceLocalization.Manage` can create/close effective-dated assignments, create custom regional/country packs, add effective-dated registry entries and maintain custom metadata under optimistic concurrency and Audit controls.
 
-Users with `FinanceLocalization.Manage` can additionally:
+The built-in reference chain is `GENERIC → EU → DE`. A Germany Legal Entity does **not** automatically receive the Germany pack. Explicit assignment is required. Depot rejects country-pack assignments whose country does not match the Legal Entity and rejects overlapping active assignments.
 
-- create and close effective-dated localization assignments;
-- create custom regional/country packs;
-- add effective-dated custom registry entries;
-- maintain custom pack/registry metadata under optimistic concurrency and Audit controls.
-
-The built-in reference chain is `GENERIC → EU → DE`. A Germany Legal Entity does **not** automatically receive the Germany pack. An explicit assignment is required. Depot rejects a country-pack assignment when the pack country does not match the Legal Entity and rejects overlapping active assignments for the same entity.
-
-Built-in pack definitions and built-in registry rows are immutable. Additional country packs can be added using the existing F7 data model without another schema change unless new executable software behavior is required.
+Built-in pack definitions and built-in registry rows are immutable. Additional country packs can use the existing data model without another schema change when new executable behavior is not required.
 
 ## Compliance boundary
 
-Registry support levels mean:
-
-- `SoftwareCapability`
-- `ConfigurationRequired`
-- `ExternalProcedureRequired`
-- `ReferenceOnly`
-
-They are not legal/compliance pass/fail states. F7 does not automatically determine VAT rates, statutory chart mappings, tax return classifications, HGB/IFRS policy, filing eligibility or legal retention/signature obligations. Qualified deployment review remains required.
+Registry support levels are `SoftwareCapability`, `ConfigurationRequired`, `ExternalProcedureRequired` and `ReferenceOnly`. They are not legal/compliance pass/fail states. Depot does not automatically determine VAT rates, statutory chart mappings, tax return classifications, HGB/IFRS policy, filing eligibility or legal retention/signature obligations. Qualified deployment review remains required.
 
 ## Permissions and evidence
 
-F7 adds `FinanceLocalization.View` and `FinanceLocalization.Manage`. The default Finance system role includes both. Service-layer authorization remains authoritative regardless of UI visibility.
-
-Localization assignments and registry entries are retained `AuditEvidence`. Built-in reference definitions are protected from mutation; custom changes create structured Audit records.
+The default Finance system role includes `FinanceLocalization.View` and `FinanceLocalization.Manage`. Service-layer authorization remains authoritative regardless of UI visibility. Localization assignments and registry entries are retained `AuditEvidence`; custom changes create structured Audit records.
 
 ## Current technical baseline
 
-- Application: **0.15.40-preview**
+- Application: **0.15.42-preview**
 - Finance schema: **9**
-- Help manifest: **1.16**
+- Help manifest: **1.17**
 - Provider-neutral schema/code: SQLite, SQL Server and MySQL/MariaDB
 
 Live remote-provider migration/concurrency/recovery/performance and organization-specific localization acceptance remain required before production-provider or jurisdiction-compliance support claims.

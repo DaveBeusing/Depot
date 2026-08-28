@@ -1,6 +1,6 @@
 # Finance Localization
 
-Finance Localization provides an explicit, effective-dated framework for jurisdiction-specific Finance requirements without turning a country code into an automatic accounting or compliance decision.
+Finance Localization provides an explicit, effective-dated framework for jurisdiction-specific Finance requirements without turning a country code into an automatic accounting or compliance decision. It is part of Finance schema **9**.
 
 ## What the workspace does
 
@@ -16,7 +16,7 @@ A Germany legal entity does **not** automatically activate the `DE` pack. A user
 
 ## Effective profile
 
-Select a legal entity and an **As of** date, then choose **Resolve profile**. Depot resolves the assigned root pack and all parent packs in order and shows the effective capability/compliance registry entries for that date.
+Select a legal entity and an **As of** date, then choose **Resolve profile**. Depot resolves the assigned root pack and all parent packs in order and shows the effective capability/configuration/procedure registry entries for that date.
 
 The registry uses four support levels:
 

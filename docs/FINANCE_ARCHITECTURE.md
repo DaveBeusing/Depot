@@ -4,7 +4,7 @@ Updated: 2026-08-28
 
 ## Purpose
 
-Depot Finance is a jurisdiction-neutral accounting platform layer. Business modules create controlled financial consequences through Finance services; they do not maintain an independent accounting truth. The implemented baseline covers **F0 through F7**.
+Depot Finance is a jurisdiction-neutral accounting platform. Business modules create controlled financial consequences through Finance services; they do not maintain an independent accounting truth.
 
 ## Architectural rule
 
@@ -23,102 +23,65 @@ Sales / Purchasing / Inventory / Returns / Banking
                     ↓
           FinanceGeneralLedgerService
                     ↓
-          Immutable General Ledger (F1)
+          Immutable General Ledger
                     ↓
-      FinanceFinancialReportingService (F6)
+      FinanceFinancialReportingService
                     ↓
       Reports / exports / immutable snapshots
 
-Legal Entity (F0)
+Legal Entity
         ↓ explicit effective assignment
-FinanceLocalizationService (F7)
+FinanceLocalizationService
         ↓
 Pack hierarchy + capability/configuration/procedure registry
 ```
 
-F1 remains the single General Ledger authority. F2-F5 create or reconcile financial consequences through existing boundaries. F6 is a read/reporting and snapshot layer; it never posts a parallel accounting ledger. F7 is a localization metadata/control boundary and does not post accounting entries.
+The General Ledger remains the single accounting authority. Receivables, Payables, Inventory Accounting and Banking create or reconcile financial consequences through existing boundaries. Financial Reporting is read/reporting plus immutable snapshot persistence. Localization is metadata/control infrastructure and never posts accounting entries.
 
-## Package boundaries
+## Finance capability boundaries
 
-- **F0:** legal entities, currencies/FX, fiscal calendars/periods, charts/accounts, books, journals, dimensions, tax registrations, number sequences and extension contracts.
-- **F1:** immutable balanced journals, reporting-currency snapshots, posting profiles, period/account/dimension validation, number allocation, idempotency, Audit evidence and linked reversals.
-- **F2:** Accounts Receivable, payments/allocation/write-off, aging/statements/dunning and Sales integration.
-- **F3:** Accounts Payable, supplier-document lifecycle, three-way matching, exception authority, payments/allocation/reversal and AP integration.
-- **F4:** FIFO Inventory Accounting, GRNI/COGS, inventory adjustments, PPV, landed cost, historical valuation and Inventory ↔ GL reconciliation.
-- **F5:** bank accounts, immutable statements, CSV/camt.053 import, payment proposals/execution, reconciliation and cash position.
-- **F6:** financial reporting, explicit report classification mappings, deterministic export and immutable report snapshots.
-- **F7:** explicit effective-dated localization assignments, hierarchical localization packs, effective capability/compliance registry and jurisdiction-extension infrastructure.
+- **Foundation:** legal entities, currencies/FX, fiscal calendars/periods, charts/accounts, accounting books, journals, dimensions, tax registrations and number sequences.
+- **General Ledger:** immutable balanced journals, reporting-currency snapshots, posting profiles, validation, idempotency, Audit evidence and linked reversals.
+- **Accounts Receivable:** customer open items, payments/allocation/write-off, aging/statements/dunning and Sales integration.
+- **Accounts Payable:** supplier-document lifecycle, three-way matching, exception authority, payments/allocation/reversal and Purchasing integration.
+- **Inventory Accounting:** FIFO valuation, GRNI/COGS, inventory adjustments, purchase-price variance, landed cost, historical valuation and Inventory ↔ GL reconciliation.
+- **Banking and Payments:** bank accounts, immutable statements, CSV/camt.053 import, payment proposals/execution, reconciliation and cash position.
+- **Financial Reporting:** configurable reports, explicit account mappings, deterministic export and immutable snapshots.
+- **Localization:** explicit effective-dated assignments, hierarchical localization packs, effective capability/configuration/procedure registry and jurisdiction-extension infrastructure.
 
-## F6 — Financial Reporting
+## Financial Reporting
 
-`FinanceFinancialReportingService` is the F6 service boundary. It exposes Trial Balance, General Ledger detail, Balance Sheet, Profit & Loss, Cash Flow, Accounts Receivable aging, Accounts Payable aging, Tax Summary, historical Inventory Valuation and Cost of Goods Sold.
+`FinanceFinancialReportingService` exposes Trial Balance, General Ledger detail, Balance Sheet, Profit & Loss, Cash Flow, Accounts Receivable aging, Accounts Payable aging, Tax Summary, historical Inventory Valuation and Cost of Goods Sold.
 
-GL-derived reports read persisted `ReportingDebit` / `ReportingCredit`, preserving the F1 posting-time FX snapshot. AR/AP aging remains in each open item's transaction currency. Historical Inventory Valuation reconstructs F4 evidence. Cash-flow, tax, cash-account and COGS meaning uses explicit `FinanceReportingAccountMapping` configuration rather than account-name/number heuristics.
+GL-derived reports read persisted `ReportingDebit` / `ReportingCredit`, preserving posting-time FX evidence. AR/AP aging remains in each open item's transaction currency. Historical Inventory Valuation reconstructs valuation evidence. Cash-flow, tax, cash-account and COGS meaning uses explicit `FinanceReportingAccountMapping` configuration rather than account-name/number heuristics.
 
 CSV export is deterministic and culture-invariant. `FinanceReportSnapshot` retains report parameters, parameter/content SHA-256 hashes, canonical CSV, creator and timestamp and is retained as `AuditEvidence`.
 
-## F7 — Localization Framework
+## Localization Framework
 
-`FinanceLocalizationService` is the F7 service boundary.
+`FinanceLocalizationService` owns explicit localization activation and hierarchy resolution. `LegalEntity.CountryCode` never selects localization automatically. A legal entity has no effective localization profile until an authorized user creates a `FinanceLocalizationAssignment`; active root assignments for one entity cannot overlap.
 
-### Explicit activation
+The built-in hierarchy is `GENERIC → EU → DE`. Built-in pack identities and built-in registry rows are immutable. Custom packs use the same persistence model and can add regional/country definitions without another schema change when no new executable behavior is required.
 
-`LegalEntity.CountryCode` never selects localization automatically. A legal entity has no effective localization profile until an authorized user explicitly creates a `FinanceLocalizationAssignment`. Country is used to validate a country pack. Active root assignments for one legal entity cannot overlap.
+`FinanceLocalizationRegistryEntry` support levels are `SoftwareCapability`, `ConfigurationRequired`, `ExternalProcedureRequired` and `ReferenceOnly`. These values are responsibility/capability labels, not legal or compliance pass/fail flags.
 
-This avoids accidental jurisdiction behavior when legal-entity master data changes or when a deployment has not completed Finance/legal/tax acceptance.
+`FinanceLocalizationAssignment` and `FinanceLocalizationRegistryEntry` are retained `AuditEvidence`. Mutations use service authorization, structured Audit records and optimistic concurrency.
 
-### Pack hierarchy
+## Permissions
 
-`FinanceLocalizationPack` defines `Generic`, `Regional` and `Country` layers. Parent packs must be broader than children. Generic packs have no parent/country; regional packs have a broader parent and no country; country packs have a broader parent and an ISO 3166-1 alpha-2 country.
-
-The built-in hierarchy is:
-
-```text
-GENERIC
-  └─ EU
-      └─ DE
-```
-
-Built-in pack identities are immutable. Custom packs use the same table/model and can add further regional/country definitions without another schema change. Dependency cycles and excessive hierarchy depth fail closed.
-
-### Effective localization profile
-
-`GetEffectiveProfileAsync` resolves the root assignment for the requested date, walks the parent hierarchy, validates the selected country pack against the F0 Legal Entity, then resolves effective registry entries for every pack in the chain.
-
-No inferred compliance state is returned. The profile contains pack/reference evidence plus warnings when deployment configuration or external procedures remain.
-
-### Capability/compliance registry
-
-`FinanceLocalizationRegistryEntry` is an effective-dated record with a requirement code, category, support level, description and reference. Support levels are:
-
-- `SoftwareCapability`
-- `ConfigurationRequired`
-- `ExternalProcedureRequired`
-- `ReferenceOnly`
-
-These values are responsibility/capability labels, not pass/fail compliance flags. Built-in rows are immutable. Custom entries can extend the registry and are protected by optimistic concurrency.
-
-### Retention and audit
-
-`FinanceLocalizationAssignment` and `FinanceLocalizationRegistryEntry` are classified as `AuditEvidence`. Pack/assignment/registry mutations create structured Audit entries. Legal entity, pack and effective-from assignment identity is immutable after creation; changes over time are represented with effective ranges/later records.
-
-## Transaction, concurrency and security
-
-Mutable Finance configuration uses the existing database transaction runner and optimistic versions. Retry-sensitive accounting operations continue to use their existing operation/source idempotency boundaries.
-
-F6 permissions:
+Financial Reporting:
 
 - `FinanceFinancialReporting.View`
 - `FinanceFinancialReporting.Manage`
 - `FinanceFinancialReporting.Export`
 - `FinanceReportSnapshots.Create`
 
-F7 permissions:
+Localization:
 
 - `FinanceLocalization.View`
 - `FinanceLocalization.Manage`
 
-The default Finance role receives these permissions; Administrator continues to receive the complete permission catalog. UI visibility is not an authorization boundary; services enforce permission checks.
+Administrator receives the complete permission catalog. UI visibility is not an authorization boundary; services enforce permissions.
 
 ## Provider and schema model
 
@@ -130,12 +93,10 @@ Current schema baseline:
 - Sales feature schema: **8**
 - Finance feature schema: **9**
 
-Finance migrations are ordered F0 schema 1 → F1 2 → F2 3 → F3 4 → F4 valuation 5 → F4 close/control 6 → F5 Banking 7 → F6 Reporting 8 → F7 Localization 9.
-
-Provider neutrality is a code/design property, not a production certification claim. Live SQL Server/MySQL-MariaDB migration, concurrency, recovery and representative Finance/localization acceptance remain deployment gates.
+Finance schema evolution is sequential from foundation through General Ledger, subledgers, inventory accounting, banking, reporting and localization. Provider neutrality is a code/design property, not a production certification claim. Live SQL Server/MySQL-MariaDB migration, concurrency, recovery and representative Finance/localization acceptance remain deployment gates.
 
 ## Jurisdiction/compliance boundary
 
-F7 supplies extension infrastructure and reference semantics. It does not itself provide a legal opinion, tax determination, statutory filing certification, automatic chart of accounts, VAT rate table, HGB/IFRS policy selection or organization-specific compliance procedure. A jurisdiction that needs new executable software behavior may still require a separately scoped code package built on the F7 framework.
+Localization supplies extension infrastructure and reference semantics. It does not provide a legal opinion, tax determination, statutory filing certification, automatic chart of accounts, VAT rate table, HGB/IFRS policy selection or organization-specific compliance procedure. A jurisdiction that needs new executable software behavior requires separately scoped implementation on top of this framework.
 
 See `FINANCE_LOCALIZATION.md` and `FINANCE_COMPLIANCE.md`.

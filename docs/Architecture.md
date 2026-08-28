@@ -16,67 +16,47 @@ Composition classes create database infrastructure, repositories, services and r
 
 ## Application shell
 
-The shell is permission-aware and workspace-oriented. Finance currently exposes:
-
-- **Finance > Receivables**
-- **Finance > Payables**
-- **Finance > Inventory Accounting**
-- **Finance > Banking**
-- **Finance > Financial Reporting**
-
-UI visibility improves usability only; service authorization is authoritative. Long-running workspace loads use the established cancellation/stale-request model where applicable, and Finance views use central WPF controls/design resources.
+The shell is permission-aware and workspace-oriented. Finance exposes **Receivables**, **Payables**, **Inventory Accounting**, **Banking**, **Financial Reporting** and **Localization**. UI visibility improves usability only; service authorization is authoritative.
 
 ## Finance authority split
 
 - `FinanceGeneralLedgerService` — immutable double-entry accounting truth and posting boundary.
 - `FinanceAccountsReceivableService` — customer subledger/open-item/settlement truth.
 - `FinanceAccountsPayableService` — supplier subledger/document/matching/settlement truth.
-- `FinanceInventoryAccountingService` / costing services — FIFO valuation and inventory accounting evidence.
+- `FinanceInventoryAccountingService` and costing services — FIFO valuation and inventory accounting evidence.
 - `FinanceBankingService` — bank statements, payment-run orchestration, reconciliation and cash-position evidence.
-- `FinanceFinancialReportingService` — read/reporting, mapping and immutable report-snapshot boundary.
-- Sales, Purchasing and Warehouse — source operational truth.
+- `FinanceFinancialReportingService` — reporting, mappings, exports and immutable report-snapshot boundary.
+- `FinanceLocalizationService` — effective-dated localization assignment, pack hierarchy and capability/configuration/procedure references.
+- Sales, Purchasing and Warehouse — operational source truth.
 
-Subledgers/accounting modules call the GL boundary for financial postings rather than duplicating ledger invariants. F6 Financial Reporting reads those existing records and does not create a second ledger.
+Subledgers/accounting modules call the General Ledger boundary for postings rather than duplicating ledger invariants. Reporting reads existing evidence and does not create a second ledger. Localization does not post accounting entries.
 
 ## Schema versions
 
-Independent current version levels are:
-
 - Core database schema: **29**
 - Sales feature schema: **8**
-- Finance feature schema: **8**
-- Application: **0.15.36-preview**
-- Help manifest: **1.15**
+- Finance feature schema: **9**
+- Application: **0.15.42-preview**
+- Help manifest: **1.17**
 
-Finance migrations are sequential:
-
-- v1 — F0 International Finance Foundation
-- v2 — F1 General Ledger & Posting Engine
-- v3 — F2 Accounts Receivable
-- v4 — F3 Accounts Payable
-- v5 — F4 Inventory valuation core
-- v6 — F4 Inventory close/control extensions
-- v7 — F5 Banking and Payments
-- v8 — F6 Financial Reporting
+Finance schema evolution is sequential: foundation (v1), General Ledger (v2), Receivables (v3), Payables (v4), inventory valuation (v5-v6), Banking (v7), Reporting (v8), Localization (v9).
 
 ## Transaction, concurrency and evidence model
 
 Finance mutations use the existing transaction runner/database write transaction. Optimistic versions protect mutable configuration/workflow state. Operation IDs, request/content hashes and unique constraints protect retry-sensitive records. Required GL/subledger/valuation/banking/Audit effects commit or roll back together where they form one business transaction.
 
-Finalized accounting/operational evidence is not silently rewritten. Corrections use reversals or new compensating/assessment evidence. F6 report snapshots are immutable AuditEvidence and bind parameters/content with SHA-256 hashes.
+Finalized accounting and operational evidence is not silently rewritten. Corrections use reversals or new compensating/assessment evidence. Report snapshots and localization assignment/registry evidence are retained under the business-record classification model.
 
-## Reporting architecture
+## Reporting and localization
 
-GL-derived F6 reports query persisted F1 reporting-currency journal lines. AR/AP aging reads the F2/F3 subledgers in transaction currency. Historical Inventory Valuation reconstructs F4 evidence. Cash Flow, Tax Summary and COGS use explicit account mappings rather than name/number heuristics. Optional dimension filters query persisted F1 journal-line dimensions.
+GL-derived reports query persisted reporting-currency journal lines. AR/AP aging reads subledgers in transaction currency. Historical Inventory Valuation reconstructs valuation evidence. Cash Flow, Tax Summary and COGS use explicit account mappings rather than account-name/number heuristics.
+
+Localization never activates from country alone. An effective root-pack assignment is explicit, country packs are validated against the Legal Entity and active assignment ranges cannot overlap. Built-in `GENERIC → EU → DE` references are immutable; custom packs can extend the model without another schema migration when metadata/configuration is sufficient.
 
 ## RBAC and segregation of duties
 
-Service-layer permissions are authoritative. The default Finance role receives operational Finance rights including F6 view/manage/export/snapshot creation; sensitive AP/payment approvals remain separately controlled. Deployments can define stricter custom-role separation for configuration, posting, approval, reconciliation, reporting preparation and review.
+Service-layer permissions are authoritative. The Finance role receives normal Finance management rights; sensitive supplier/payment approvals remain independently controlled. Deployments can define stricter custom-role separation for configuration, posting, approval, reconciliation, reporting preparation and review.
 
 ## Provider acceptance
 
-Finance v8 DDL/code exists for SQLite, SQL Server and MySQL/MariaDB. Provider-neutral implementation is not equivalent to production certification. Live migration, locking, deadlock/retry, recovery, backup/restore, date/decimal behavior and representative performance/concurrency acceptance remain required for every advertised server/version matrix.
-
-## Next Finance boundary
-
-F0-F6 are implemented. **F7 — Localization Framework** is next and owns country/statutory extension infrastructure. Generic Finance does not claim jurisdiction-specific financial-statement, tax-return or filing certification.
+Finance schema 9 DDL/code exists for SQLite, SQL Server and MySQL/MariaDB. Provider-neutral implementation is not equivalent to production certification. Live migration, locking, deadlock/retry, recovery, backup/restore, date/decimal behavior and representative performance/concurrency acceptance remain required for every advertised server/version matrix.

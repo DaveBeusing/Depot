@@ -6,52 +6,25 @@ Updated: 2026-08-28
 
 - [ ] Ready for release
 
-Depot is on the `0.15.x-preview` line with core database schema **29**, Sales feature schema **8**, Finance feature schema **9**, and Help manifest **1.16**. Checked items represent implemented technical controls/evidence only; they do not replace provider, legal, accounting, accessibility, signing, localization or deployment acceptance.
+Depot is on the `0.15.x-preview` line with core database schema **29**, Sales feature schema **8**, Finance feature schema **9**, and Help manifest **1.17**. Checked items represent implemented technical controls/evidence only; they do not replace provider, legal, accounting, accessibility, signing, localization or deployment acceptance.
 
 ## Implemented Finance baseline
 
-### F0 — International Finance Foundation
 - [x] legal entities, currencies/FX, fiscal calendars/periods, charts/accounts, books, journals, dimensions, tax registrations and number sequences
-- [x] Finance schema v1
-
-### F1 — General Ledger & Posting Engine
 - [x] immutable balanced journals, reporting-currency/FX snapshots, posting profiles, validation, idempotency, number allocation, Audit evidence and linked reversals
-- [x] Finance schema v2
-
-### F2 — Accounts Receivable
-- [x] Sales → AR → GL, open items, payments/allocations, write-offs/reversals, aging/statements and dunning
-- [x] Finance > Receivables / schema v3
-
-### F3 — Accounts Payable
-- [x] supplier documents/open items, AP → GL, three-way match, explicit exceptions, payments/reversals, aging/statements and segregation of duties
-- [x] Finance > Payables / schema v4
-
-### F4 — Inventory Accounting
-- [x] FIFO valuation, GRNI/COGS, reversals, inventory adjustments, PPV, landed cost, historical valuation and Inventory ↔ GL reconciliation
-- [x] Finance > Inventory Accounting / schema v6
-
-### F5 — Banking and Payments
+- [x] Sales → Accounts Receivable → GL, open items, payments/allocations, write-offs/reversals, aging/statements and dunning
+- [x] supplier documents/open items, Accounts Payable → GL, three-way match, explicit exceptions, payments/reversals, aging/statements and segregation of duties
+- [x] FIFO valuation, GRNI/COGS, inventory adjustments, purchase-price variance, landed cost, historical valuation and Inventory ↔ GL reconciliation
 - [x] bank accounts, immutable CSV/camt.053 statements, payment proposals/execution, AR/AP/GL reconciliation and cash position
-- [x] Finance > Banking / schema v7
-
-### F6 — Financial Reporting
 - [x] Trial Balance, GL, Balance Sheet, P&L, Cash Flow, AR/AP Aging, Tax Summary, historical Inventory Valuation and COGS
 - [x] optional GL dimension filtering and explicit account mappings
 - [x] deterministic CSV export and immutable SHA-256-bound report snapshots
-- [x] Finance > Financial Reporting / schema v8
-
-### F7 — Localization Framework
-- [x] provider-neutral localization packs, legal-entity assignments and effective registry
+- [x] provider-neutral localization packs, Legal Entity assignments and effective registry
 - [x] immutable built-in `GENERIC → EU → DE` reference hierarchy
-- [x] explicit effective-dated activation; country does not auto-enable localization
-- [x] country guard and active-assignment overlap rejection
-- [x] effective inherited profile resolution
-- [x] SoftwareCapability / ConfigurationRequired / ExternalProcedureRequired / ReferenceOnly separation
-- [x] immutable built-in references and extensible custom regional/country packs
+- [x] explicit effective-dated localization activation with country validation and overlap prevention
+- [x] software-capability/configuration/external-procedure/reference-only separation
 - [x] optimistic concurrency, Audit evidence and Finance RBAC
-- [x] Finance > Localization / schema v9
-- [x] Help manifest 1.16 / `finance.localization`
-- [x] regression evidence for schema, permissions, activation, hierarchy, mismatch, overlap, immutability and custom-country extension
+- [x] Finance workspaces and contextual Help for Receivables, Payables, Inventory Accounting, Banking, Financial Reporting and Localization
 
 ## Other implemented technical baseline
 
@@ -67,14 +40,14 @@ Depot is on the `0.15.x-preview` line with core database schema **29**, Sales fe
 
 ### Providers and Finance
 - [ ] supported Windows/database versions finalized
-- [ ] live SQL Server Finance v1→v9 migration, concurrency, locking, recovery and performance matrix
-- [ ] live MySQL/MariaDB Finance v1→v9 migration, concurrency, locking, recovery and performance matrix
+- [ ] live SQL Server Finance schema 9 migration, concurrency, locking, recovery and performance matrix
+- [ ] live MySQL/MariaDB Finance schema 9 migration, concurrency, locking, recovery and performance matrix
 - [ ] provider-specific AR/AP/FIFO/Banking/reporting/localization deadlock/retry acceptance
-- [ ] deployment legal entity/chart/book/calendar/posting-profile/inventory/bank/reporting/localization-policy approval
+- [ ] deployment Legal Entity/chart/book/calendar/posting-profile/inventory/bank/reporting/localization-policy approval
 - [ ] AR/AP/inventory/bank reconciliation and period-end reporting procedures
 - [ ] AP/payment-proposal segregation-of-duties review
 - [ ] accounting/report/localization evidence retention/export/backup/restore procedures
-- [ ] qualified review of each enabled country pack and every ConfigurationRequired / ExternalProcedureRequired item
+- [ ] qualified review of each enabled country pack and every `ConfigurationRequired` / `ExternalProcedureRequired` item
 - [ ] jurisdiction-specific accounting/tax/localization acceptance
 
 ### UI/accessibility
@@ -102,13 +75,6 @@ Depot is on the `0.15.x-preview` line with core database schema **29**, Sales fe
 - [ ] final CRA applicability/classification/conformity work
 - [ ] qualified accounting/tax/legal review for each marketed Finance localization
 
-## Finance package status
+## Demand-driven extensions
 
-F0-F7 are implemented. Additional country/statutory packs are demand-driven extensions of F7 and must not be marketed as compliant/certified without separate qualified acceptance.
-
-## Other out-of-scope items unless separately approved
-
-- barcode scanning/generation
-- label template design/printing
-- enterprise MFA/Entra/OIDC/SAML until separately scoped
-- direct bank connectivity/payment initiation and jurisdiction-specific statutory filing certification until separately scoped
+Additional country/statutory packs are supported by the localization framework when metadata/configuration is sufficient. They must not be marketed as compliant/certified without separate qualified acceptance. Direct bank connectivity/payment initiation, jurisdiction-specific statutory filing implementations, additional costing methods and other executable behavior require separately scoped implementation.

@@ -6,7 +6,7 @@ Depot ships an embedded offline Markdown Help Center rendered natively in WPF. H
 
 ## Current manifest
 
-Help manifest **1.16** contains eight Finance topics:
+Help manifest **1.17** contains eight Finance topics:
 
 - `finance.foundation` — `Finance.View`
 - `finance.general-ledger` — `FinanceGeneralLedger.View`
@@ -17,8 +17,6 @@ Help manifest **1.16** contains eight Finance topics:
 - `finance.reporting` — `FinanceFinancialReporting.View`
 - `finance.localization` — `FinanceLocalization.View`
 
-## F7 context help
-
 **Finance > Localization** resolves to `finance.localization`. The topic documents explicit effective-dated assignment, `GENERIC → EU → DE` hierarchy resolution, country validation, custom-pack extensibility, registry support levels, RBAC, retained Audit evidence and the legal/tax/compliance boundary.
 
 Help visibility never grants business access; service authorization remains authoritative.
@@ -27,15 +25,7 @@ Help visibility never grants business access; service authorization remains auth
 
 Help must not imply default credentials, jurisdiction, currency, tax rate, chart/account, accounting standard, matching tolerance, reporting classification, statutory filing conformance or legal certification when those are not explicitly configured/implemented.
 
-F7 Help must clearly state that:
-
-- legal-entity country does not activate a pack automatically;
-- localization requires an explicit effective-dated assignment;
-- support levels describe capability/configuration/procedure/reference responsibility and are not pass/fail compliance flags;
-- built-in pack/registry definitions are immutable;
-- custom packs can extend the framework without another schema change;
-- additional executable jurisdiction behavior still requires code when metadata/configuration is insufficient;
-- assigning a pack is not legal, tax, HGB, GoBD, XRechnung or other statutory certification.
+Finance Localization Help must clearly state that legal-entity country does not activate a pack automatically; effective localization requires explicit assignment; support levels are responsibility labels rather than pass/fail compliance flags; built-in references are immutable; custom packs can extend the framework; executable statutory behavior still requires code when metadata/configuration is insufficient; and assigning a pack is not legal, tax, HGB, GoBD, XRechnung or other statutory certification.
 
 ## Updating Help
 
@@ -46,4 +36,4 @@ F7 Help must clearly state that:
 5. Increment the manifest version for material topic/permission/mapping changes.
 6. Run Help regression validation for duplicate IDs, missing files, unknown permissions and broken links.
 
-Help manifest **1.16** is the F7 documentation contract.
+Help manifest **1.17** is the current documentation contract.

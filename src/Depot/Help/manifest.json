@@ -1,5 +1,5 @@
 {
-  "version": "1.16",
+  "version": "1.17",
   "topics": [
     { "id": "getting-started.first-login", "title": "First Login", "category": "Getting Started", "file": "getting-started/first-login.md", "order": 100, "keywords": ["sign in", "first run", "administrator", "password"], "relatedTopics": ["getting-started.workspace-navigation", "administration.users"] },
     { "id": "getting-started.workspace-navigation", "title": "Workspace Navigation", "category": "Getting Started", "file": "getting-started/workspace-navigation.md", "order": 110, "keywords": ["workspace", "tabs", "activity bar", "shortcuts"], "relatedTopics": ["getting-started.first-login", "getting-started.dashboard"] },

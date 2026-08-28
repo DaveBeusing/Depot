@@ -2,130 +2,116 @@
 
 Updated: 2026-08-28
 
-This roadmap distinguishes implemented technical controls from production/legal certification. “Implemented” means repository/application behavior exists and is covered by automated evidence where practical.
+This roadmap describes product capabilities and acceptance work without coupling the repository to historical implementation tranche names.
 
-## Implemented foundations
+## Implemented product capabilities
 
-- [x] .NET 10 WPF / MVVM application
-- [x] `Views → ViewModels → Services → Repositories → DatabaseAccess`
-- [x] provider-neutral SQLite / SQL Server / MySQL-MariaDB persistence
-- [x] cancellation, paging, stale-request protection and provider-controlled transactions
-- [x] shared dark WPF design system and workspace shell
-- [x] hardened authentication, database-backed RBAC and service authorization
-- [x] immutable/correction-oriented retained business records, Audit evidence, backup/recovery controls, privacy export and release evidence
-- [x] inventory/warehouse/purchasing/sales operational workflows
-- [x] immutable seller/buyer Sales Invoice identity and persisted XRechnung XML integrity evidence
+### Platform and operations
 
-## Finance roadmap
+- [x] WPF/MVVM shell, navigation and contextual offline Help
+- [x] inventory, warehouse, purchasing, sales and approval workflows
+- [x] serial/lot traceability and reversal-safe stock evidence
+- [x] database-backed RBAC and service-layer authorization
+- [x] provider-neutral persistence for SQLite, SQL Server and MySQL/MariaDB
+- [x] structured Audit evidence and correction-oriented retained business records
+- [x] company/document identity controls and persisted XRechnung evidence
 
-### F0 — International Finance Foundation — complete
-- [x] legal entities, currencies/exchange rates, fiscal calendars/accounting periods
-- [x] charts/accounts, accounting books, journals, dimensions, tax registrations and number sequences
-- [x] localization/tax/exchange-rate extension boundaries
-- [x] Finance schema **1**
+### Finance Foundation
 
-### F1 — General Ledger & Posting Engine — complete
-- [x] immutable balanced journal entries/lines
-- [x] transaction/reporting currency and FX snapshots
-- [x] posting profiles and amount-key account determination
-- [x] period/account/dimension validation, idempotency, Audit evidence and linked reversals
-- [x] Finance schema **2**
+- [x] legal entities and functional currencies
+- [x] exchange rates
+- [x] fiscal calendars and accounting periods
+- [x] charts of accounts and accounts
+- [x] accounting books and journals
+- [x] accounting dimensions
+- [x] tax registrations
+- [x] Finance number sequences
 
-### F2 — Accounts Receivable — complete
-- [x] Sales Invoice/Credit Note → AR → GL integration
-- [x] customer open items, payments, allocation, write-off, aging, statements and dunning
-- [x] Finance > Receivables workspace and RBAC
-- [x] Finance schema **3**
+### General Ledger and posting
 
-### F3 — Accounts Payable — complete
-- [x] supplier invoice/credit-note lifecycle and AP open items
-- [x] AP → F1 GL posting/reversal
-- [x] three-way matching and explicit exception authority
-- [x] supplier payments, allocations, reversal, aging and statements
-- [x] Finance > Payables workspace and segregation-of-duties RBAC
-- [x] Finance schema **4**
+- [x] immutable balanced journals
+- [x] transaction/reporting currency and posting-time FX evidence
+- [x] posting profiles
+- [x] period/account/dimension validation
+- [x] idempotent source/operation posting
+- [x] transactional number allocation
+- [x] linked reversals and Audit evidence
 
-### F4 — Inventory Accounting — complete
-- [x] provider-neutral FIFO valuation layers and consumption evidence
-- [x] Goods Receipt → inventory/GRNI and Sales Shipment → FIFO/COGS posting
-- [x] linked valuation reversals, inventory-count adjustments, purchase-price variance and landed cost
-- [x] historical as-of valuation and Inventory ↔ GL reconciliation snapshots
-- [x] Finance > Inventory Accounting workspace
-- [x] Finance schema **6**
-- [x] Help `finance.inventory-accounting`
+### Accounts Receivable
 
-### F5 — Banking and Payments — complete
-- [x] bank accounts, immutable statements and normalized CSV / ISO 20022 camt.053 import
-- [x] supplier payment proposals, creator/approver segregation and AP execution
-- [x] AR/AP/GL reconciliation and explicit reversal
-- [x] cash-position comparison
-- [x] Finance > Banking workspace and RBAC
-- [x] Finance schema **7**
-- [x] Help `finance.banking`
+- [x] Sales Invoice/Credit Note → AR → GL
+- [x] customer open items
+- [x] payments and allocations
+- [x] write-offs and reversals
+- [x] aging, statements and dunning
 
-### F6 — Financial Reporting — complete
-- [x] trial balance and General Ledger detail
-- [x] balance sheet and profit/loss
-- [x] cash-flow reporting using explicit cash/counterpart classification
-- [x] Accounts Receivable and Accounts Payable aging reports
-- [x] tax summary, historical inventory valuation and Cost of Goods Sold
-- [x] optional accounting-dimension filtering for GL-derived reports
-- [x] explicit per-account financial-statement, cash-flow, tax, cash-account and COGS mappings
+### Accounts Payable
+
+- [x] supplier invoices and credit notes
+- [x] supplier open items
+- [x] three-way matching and controlled exceptions
+- [x] payments, allocations and reversals
+- [x] aging and supplier statements
+- [x] segregation-of-duties controls
+
+### Inventory Accounting
+
+- [x] FIFO valuation layers and consumptions
+- [x] Goods Receipt inventory/GRNI posting
+- [x] shipment COGS posting
+- [x] inventory adjustments
+- [x] purchase-price variance
+- [x] landed-cost allocation and reversal controls
+- [x] historical as-of valuation
+- [x] Inventory ↔ GL reconciliation
+
+### Banking and Payments
+
+- [x] bank-account configuration
+- [x] immutable CSV and ISO 20022 camt.053 statement import
+- [x] payment proposals and controlled execution
+- [x] AR/AP/GL reconciliation and reversal evidence
+- [x] cash position
+
+### Financial Reporting
+
+- [x] Trial Balance and GL detail
+- [x] Balance Sheet and Profit & Loss
+- [x] Cash Flow
+- [x] AR/AP Aging
+- [x] Tax Summary
+- [x] historical Inventory Valuation and COGS
+- [x] accounting-dimension filters
+- [x] explicit report classification mappings
 - [x] deterministic CSV export
-- [x] immutable, idempotent report snapshots with parameter/content SHA-256 hashes
-- [x] Finance > Financial Reporting workspace and granular RBAC
-- [x] `FinanceReportSnapshot` retained as AuditEvidence
-- [x] Finance schema **8** for SQLite, SQL Server and MySQL/MariaDB
-- [x] Help `finance.reporting`
+- [x] immutable SHA-256-bound report snapshots
 
-### F7 — Localization Framework — complete
-- [x] provider-neutral localization-pack, assignment and capability/compliance-registry persistence
-- [x] immutable built-in `GENERIC`, `EU` and `DE` reference pack hierarchy
-- [x] explicit effective-dated legal-entity assignment; country code never auto-activates localization
-- [x] country mismatch guard, active-range overlap prevention and pack dependency-cycle/depth guards
-- [x] effective profile resolution across parent packs
-- [x] support-level distinction: SoftwareCapability / ConfigurationRequired / ExternalProcedureRequired / ReferenceOnly
-- [x] immutable built-in registry rows and effective-dated custom registry entries
-- [x] custom regional/country packs without another database schema change
-- [x] optimistic concurrency, service RBAC and Audit evidence
-- [x] Finance > Localization workspace
-- [x] `FinanceLocalizationAssignment` and `FinanceLocalizationRegistryEntry` retained as AuditEvidence
-- [x] Finance schema **9** for SQLite, SQL Server and MySQL/MariaDB
-- [x] Help manifest **1.16** / `finance.localization`
-- [x] regression coverage for schema, RBAC, explicit activation, hierarchy resolution, country mismatch, overlap, built-in immutability and extensibility
+### Finance Localization
 
-Additional country packs are demand-driven extensions of F7 and do not require a new Finance schema solely to define another pack.
+- [x] provider-neutral localization packs and legal-entity assignments
+- [x] explicit effective-dated activation
+- [x] built-in `GENERIC → EU → DE` reference hierarchy
+- [x] country validation and overlap prevention
+- [x] inherited effective profile resolution
+- [x] capability/configuration/procedure/reference support levels
+- [x] immutable built-in definitions and extensible custom packs
+- [x] optimistic concurrency, Audit evidence and RBAC
+- [x] **Finance > Localization** workspace and contextual Help
 
-## Remaining production/release acceptance
+## Production acceptance before 1.0
 
-- [ ] live SQL Server Finance v1→v9 clean-install/migration/concurrency/recovery matrix
-- [ ] live MySQL/MariaDB Finance v1→v9 clean-install/migration/concurrency/recovery matrix
-- [ ] provider-specific AR/AP/inventory/banking/reporting/localization locking and deadlock/retry acceptance
-- [ ] representative Finance performance/load tests including FIFO history, statements, reconciliation and reporting
-- [ ] deployment legal entity/chart/book/calendar/posting-profile/inventory/bank/reporting/localization policy approval
-- [ ] AR/AP/inventory/bank reconciliation and period-end reporting operating procedures
-- [ ] AP/payment-proposal segregation-of-duties role review
-- [ ] retention/export and organization-specific accounting/tax/valuation/reporting/localization procedures
-- [ ] qualified review of enabled jurisdiction packs and all ExternalProcedureRequired registry entries
-- [ ] keyboard/focus/Narrator/DPI acceptance including all Finance workspaces
-- [ ] production Authenticode/timestamp and installer/upgrade/rollback acceptance
-- [ ] remaining electronic-invoice tax/profile/routing scenarios
-- [ ] final GDPR/GoBD/CRA/accounting/localization legal/organizational acceptance
+- [ ] live SQL Server migration/concurrency/recovery/performance matrix
+- [ ] live MySQL/MariaDB migration/concurrency/recovery/performance matrix
+- [ ] representative Finance load and deadlock/retry testing
+- [ ] accounting-book/chart/calendar/posting-profile/valuation/reporting policy approval
+- [ ] AR/AP/inventory/bank reconciliation and period-end procedures
+- [ ] segregation-of-duties review for posting, approval, payment and configuration roles
+- [ ] jurisdiction-specific accounting/tax/localization acceptance
+- [ ] retention/export/backup/restore procedures
+- [ ] keyboard-only, screen-reader and DPI accessibility acceptance
+- [ ] production Authenticode signing and installer/upgrade/rollback acceptance
+- [ ] remaining electronic-invoice special-tax/channel scenarios
 
-## Phase 8 — Enterprise readiness
+## Demand-driven extensions
 
-- [ ] MFA
-- [ ] Microsoft Entra ID / OIDC
-- [ ] SAML where justified
-- [ ] centralized audit/SIEM integration
-- [ ] enterprise deployment/hardening guide
-- [ ] ISO/IEC 27001 customer-control mapping
-
-## Out of current completed scope
-
-- barcode scanning/generation and label template printing
-- costing methods other than FIFO until explicitly implemented and accepted
-- direct bank connectivity/payment initiation, EBICS, PSD2/open-banking certification and sanctions/AML decisioning
-- jurisdiction-specific statutory filing implementations beyond explicitly added localization packs
-- statutory certification of report layouts or localization packs
-- automatic legal/tax/accounting decisions inferred from a legal-entity country
+The existing architecture can host additional regional/country localization packs without a schema change when requirements are metadata/configuration only. Jurisdictions that require new executable workflows, statutory filing formats, additional costing methods, direct bank connectivity or other missing behavior require separately scoped implementation and qualified acceptance.
