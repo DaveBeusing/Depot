@@ -21,6 +21,7 @@ internal sealed class ServiceComposition
 		AuditLog = new AuditLogService(repositories.Audit, Authorization, new AuditJsonSanitizer());
 		DataSubjectAccess = new DataSubjectAccessService(database.DataAccess, Authorization);
 		var audit = new AuditService(repositories.Audit, Authorization);
+		FinanceGeneralLedger = new FinanceGeneralLedgerService(database.TransactionRunner, repositories.FinanceGeneralLedger, repositories.FinancePostingProfiles, repositories.Audit, audit, Authorization);
 		var passwordHasher = new PasswordHasher();
 		ItemTraceability = new ItemTraceabilityService(repositories.ItemTraceability, audit);
 		var movementReversals = new StockMovementReversalService(database.TransactionRunner, repositories.Inventories, repositories.StockMovements, repositories.ReasonCodes, repositories.Audit, audit, ItemTraceability);
@@ -82,6 +83,7 @@ internal sealed class ServiceComposition
 	public HelpMarkdownRenderer HelpRenderer { get; }
 	public AuditLogService AuditLog { get; }
 	public DataSubjectAccessService DataSubjectAccess { get; }
+	public FinanceGeneralLedgerService FinanceGeneralLedger { get; }
 	public AuthenticationService Authentication { get; }
 	public SessionService Session { get; }
 	public ItemService Items { get; }

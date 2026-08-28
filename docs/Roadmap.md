@@ -1,6 +1,6 @@
 # Depot Roadmap
 
-Updated: 2026-08-27
+Updated: 2026-08-28
 
 This roadmap reflects the current implementation state. “Implemented” means the workflow/control exists in code and automated evidence where practical; it does not by itself mean production certification or legal conformity.
 
@@ -84,42 +84,70 @@ This roadmap reflects the current implementation state. “Implemented” means 
 - [x] granular Finance RBAC and Finance system-role assignment
 - [x] Finance architecture/compliance documentation and embedded Help manifest 1.9 topic
 
+### Finance F1 — General Ledger & Posting Engine
+
+- [x] immutable journal-entry headers and lines
+- [x] balanced double-entry invariant in transaction and reporting currency
+- [x] transaction/reporting currency plus exchange-rate snapshot
+- [x] posting profiles with named amount-key account determination
+- [x] source-document and operation idempotency
+- [x] accounting-period open/date/legal-entity enforcement
+- [x] active account/chart/direct-posting and required-dimension validation
+- [x] Finance General Ledger number-sequence allocation inside the posting transaction
+- [x] explicit linked reversal/correction transactions with exact counter amounts
+- [x] transactionally persisted Audit Log evidence and rollback on audit failure
+- [x] optimistic posting-profile concurrency and database uniqueness boundaries
+- [x] separate sensitive permission for free manual journals
+- [x] Finance feature schema v2 for SQLite, SQL Server, and MySQL/MariaDB
+- [x] General Ledger Help topic and Help manifest 1.10
+- [x] regression coverage for balance, idempotency, closed periods, audit rollback, profile posting and reversals
+
 ## Finance roadmap
-
-### F1 — General Ledger & Posting Engine
-
-- [ ] immutable journal-entry headers and lines
-- [ ] balanced double-entry invariant (`sum(debit) == sum(credit)`)
-- [ ] posting profiles and source-document account determination
-- [ ] source-document/operation idempotency
-- [ ] accounting-period lock enforcement
-- [ ] explicit reversal/correction transactions
-- [ ] transactionally persisted audit evidence
-- [ ] provider-neutral optimistic concurrency/race-safety tests
 
 ### F2 — Accounts Receivable
 
-- [ ] customer subledger/open items
-- [ ] Sales Invoice/Credit Note GL integration
-- [ ] settlements, due dates, dunning, customer statements
+- [ ] customer subledger/receivable open items
+- [ ] Sales Invoice/Credit Note GL integration through F1 posting profiles
+- [ ] payment allocations including partial and overpayments
+- [ ] due-date settlement state and customer statements
+- [ ] write-offs with dedicated authorization and audit
+- [ ] dunning levels/runs and aged receivables
 
 ### F3 — Accounts Payable
 
 - [ ] supplier invoices/credit notes
 - [ ] supplier subledger/open items
-- [ ] approval/matching and GL integration
+- [ ] purchase-order/goods-receipt/supplier-invoice matching
+- [ ] approval and GL integration
 
 ### F4 — Inventory Accounting
 
 - [ ] valuation layers/policies
 - [ ] inventory-to-GL posting
-- [ ] landed cost and period-end reconciliation
+- [ ] COGS, GRNI, variance and landed-cost accounting
+- [ ] period-end inventory/GL reconciliation
 
 ### F5 — Banking and payments
 
 - [ ] bank accounts/statements
+- [ ] CSV and ISO 20022 statement import
 - [ ] payment proposal/execution abstractions
 - [ ] reconciliation and cash-position integration
+
+### F6 — Financial reporting
+
+- [ ] trial balance and General Ledger report
+- [ ] balance sheet and profit/loss
+- [ ] cash-flow and subledger aging reports
+- [ ] tax summary, inventory valuation and COGS
+- [ ] dimension-aware reporting and exports
+
+### F7 — Localization framework
+
+- [ ] Generic reference localization
+- [ ] EU layer and German reference implementation
+- [ ] additional country packs based on product demand
+- [ ] effective-dated localization/compliance registry
 
 ### Quality and accessibility
 
@@ -139,6 +167,7 @@ These items require real infrastructure, signing identities, interactive desktop
 - [ ] live MySQL/MariaDB clean-install/migration matrix
 - [ ] live backup/restore/recovery drills for every advertised provider/version
 - [ ] multi-client concurrency and representative latency/load tests
+- [ ] Finance v1 -> v2 live-server migration and concurrent posting acceptance
 - [ ] Windows ACL-denied recovery scenario
 
 ### Accessibility and desktop acceptance
@@ -174,6 +203,7 @@ These items require real infrastructure, signing identities, interactive desktop
 - [ ] final CRA scope/classification/economic-operator/conformity assessment and CE/Declaration steps where applicable
 - [ ] production vulnerability-reporting and regulatory incident contacts
 - [ ] deployment-specific accounting/tax/localization validation for every advertised Finance jurisdiction
+- [ ] deployment-specific chart/posting-profile approval, period-close/reopen procedure and segregation-of-duties acceptance
 
 ## Phase 8 — Enterprise readiness
 
@@ -191,5 +221,5 @@ Planned based on customer demand:
 
 - barcode scanning/generation
 - label template design and printing
-- Finance packages F1-F5 until their roadmap items are implemented and verified
+- Finance packages F2-F7 until their roadmap items are implemented and verified
 - jurisdiction-specific statutory filing/localization packages until explicitly implemented and accepted

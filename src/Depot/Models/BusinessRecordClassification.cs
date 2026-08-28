@@ -37,6 +37,7 @@ public static class BusinessRecordCatalog
 			[nameof(CustomerReturn)] = Record(nameof(CustomerReturn), BusinessRecordRetentionCategory.BusinessTransaction, "Draft", "Posted", "Separate corrective transaction; original shipment remains retained", "CR-{database identity:000000}"),
 			[nameof(SalesInvoice)] = Record(nameof(SalesInvoice), BusinessRecordRetentionCategory.AccountingRelevant, "Draft", "Posted or cancelled draft", "Credit note for a posted invoice; posted invoice content remains immutable", "INV-{database identity:000000}"),
 			[nameof(SalesCreditNote)] = Record(nameof(SalesCreditNote), BusinessRecordRetentionCategory.AccountingRelevant, "Draft", "Posted", "Additional correcting credit/debit workflow; posted credit note remains immutable", "CN-{database identity:000000}"),
+			[nameof(FinanceJournalEntry)] = Record(nameof(FinanceJournalEntry), BusinessRecordRetentionCategory.AccountingRelevant, "None after posting", "Posted", "Explicit linked reversal journal entry; the original journal entry remains immutable", "Configured Finance General Ledger number sequence"),
 			[nameof(StockMovement)] = new(nameof(StockMovement), BusinessRecordRetentionCategory.AuditEvidence, "None after creation", "Immediately immutable", "Linked reversal movement; original movement is retained", "Database identity plus immutable reference", true)
 		};
 

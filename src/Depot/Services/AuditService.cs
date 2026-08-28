@@ -41,6 +41,9 @@ public sealed class AuditService
 	public AuditEntry CreateUpdatedEntry<T>(long entityId, T before, T after) where T : class =>
 		CreateEntry(typeof(T).Name, entityId, "Updated", before, after);
 
+	public AuditEntry CreateActionEntry<T>(long entityId, string action, T? before, T? after) where T : class =>
+		CreateEntry(typeof(T).Name, entityId, string.IsNullOrWhiteSpace(action) ? throw new ArgumentException("Audit action is required.", nameof(action)) : action.Trim(), before, after);
+
 	public long? CurrentUserId => _authorizationService.CurrentUser?.Id;
 	public bool HasPermission(ApplicationPermission permission) => _authorizationService.HasPermission(permission);
 	public void RequirePermission(ApplicationPermission permission) => _authorizationService.RequirePermission(permission);

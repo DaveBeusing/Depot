@@ -9,7 +9,7 @@ namespace Depot.Data;
 
 public static class FinanceSchemaMigration
 {
-	public const int CurrentVersion = 1;
+	public const int CurrentVersion = 2;
 	private const string FeatureName = "Finance";
 
 	public static void Migrate(IDatabaseConnectionFactory connectionFactory)
@@ -23,6 +23,12 @@ public static class FinanceSchemaMigration
 			FinanceSchemaInitializer.Ensure(connectionFactory);
 			WriteVersion(connectionFactory, 1);
 			version = 1;
+		}
+		if (version == 1)
+		{
+			FinanceGeneralLedgerSchemaInitializer.Ensure(connectionFactory);
+			WriteVersion(connectionFactory, 2);
+			version = 2;
 		}
 		if (version != CurrentVersion) throw new InvalidOperationException($"Finance schema version '{version}' is not supported. Expected '{CurrentVersion}'.");
 	}
@@ -70,12 +76,14 @@ public static class FinanceSchemaMigration
 
 internal static class FinanceSchemaInitializer
 {
-	public static void Ensure(IDatabaseConnectionFactory connectionFactory)
+	public static void Ensure(IDatabaseConnectionFactory connectionFactory) => Execute(connectionFactory, Statements(connectionFactory.Provider));
+
+	private static void Execute(IDatabaseConnectionFactory connectionFactory, IReadOnlyList<string> statements)
 	{
 		using var connection = connectionFactory.CreateConnection();
 		connection.Open();
 		using var command = connection.CreateCommand();
-		foreach (var statement in Statements(connectionFactory.Provider))
+		foreach (var statement in statements)
 		{
 			command.CommandText = statement;
 			command.Parameters.Clear();
@@ -142,5 +150,63 @@ internal static class FinanceSchemaInitializer
 		"CREATE TABLE IF NOT EXISTS FinanceDimensions (Id VARCHAR(36) NOT NULL PRIMARY KEY, Code VARCHAR(50) NOT NULL UNIQUE, Name VARCHAR(200) NOT NULL, IsRequired BOOLEAN NOT NULL, IsActive BOOLEAN NOT NULL);",
 		"CREATE TABLE IF NOT EXISTS FinanceDimensionValues (Id VARCHAR(36) NOT NULL PRIMARY KEY, DimensionId VARCHAR(36) NOT NULL, Code VARCHAR(100) NOT NULL, Name VARCHAR(200) NOT NULL, IsActive BOOLEAN NOT NULL, UNIQUE KEY UQ_FinanceDimensionValues (DimensionId, Code));",
 		"CREATE TABLE IF NOT EXISTS FinanceNumberSequences (Id VARCHAR(36) NOT NULL PRIMARY KEY, LegalEntityId VARCHAR(36) NOT NULL, Code VARCHAR(50) NOT NULL, DocumentType VARCHAR(100) NOT NULL, Prefix VARCHAR(50) NOT NULL, NumericLength INT NOT NULL, NextNumber BIGINT NOT NULL, IsActive BOOLEAN NOT NULL, UNIQUE KEY UQ_FinanceNumberSequences (LegalEntityId, Code));"
+	];
+}
+
+internal static class FinanceGeneralLedgerSchemaInitializer
+{
+	public static void Ensure(IDatabaseConnectionFactory connectionFactory)
+	{
+		using var connection = connectionFactory.CreateConnection();
+		connection.Open();
+		using var command = connection.CreateCommand();
+		foreach (var statement in Statements(connectionFactory.Provider))
+		{
+			command.CommandText = statement;
+			command.Parameters.Clear();
+			command.ExecuteNonQuery();
+		}
+	}
+
+	private static IReadOnlyList<string> Statements(DatabaseProvider provider) => provider switch
+	{
+		DatabaseProvider.Local => LocalStatements,
+		DatabaseProvider.SqlServer => SqlServerStatements,
+		DatabaseProvider.MySql => MySqlStatements,
+		_ => throw new NotSupportedException($"Finance General Ledger schema initialization is not supported for provider '{provider}'.")
+	};
+
+	private static readonly string[] LocalStatements =
+	[
+		"CREATE TABLE IF NOT EXISTS FinanceJournalEntries (Id INTEGER PRIMARY KEY AUTOINCREMENT, EntryNumber TEXT NOT NULL, OperationId TEXT NOT NULL UNIQUE, RequestHash TEXT NOT NULL, AccountingBookId TEXT NOT NULL, JournalId TEXT NOT NULL, AccountingPeriodId TEXT NOT NULL, PostingDate TEXT NOT NULL, PostedAtUtc TEXT NOT NULL, PostedByUserId INTEGER NULL, Description TEXT NOT NULL, SourceType TEXT NOT NULL, SourceId TEXT NOT NULL, SourceEvent TEXT NOT NULL, SourceReference TEXT NULL, TransactionCurrencyCode TEXT NOT NULL, ReportingCurrencyCode TEXT NOT NULL, ExchangeRateId TEXT NULL, ExchangeRate NUMERIC NOT NULL, EntryKind INTEGER NOT NULL, ReversalOfEntryId INTEGER NULL, UNIQUE(AccountingBookId, EntryNumber), UNIQUE(AccountingBookId, SourceType, SourceId, SourceEvent));",
+		"CREATE INDEX IF NOT EXISTS IX_FinanceJournalEntries_PostingDate ON FinanceJournalEntries (AccountingBookId, PostingDate, Id);",
+		"CREATE TABLE IF NOT EXISTS FinanceJournalEntryLines (Id INTEGER PRIMARY KEY AUTOINCREMENT, JournalEntryId INTEGER NOT NULL, LineNumber INTEGER NOT NULL, AccountId TEXT NOT NULL, Description TEXT NULL, TransactionDebit NUMERIC NOT NULL, TransactionCredit NUMERIC NOT NULL, ReportingDebit NUMERIC NOT NULL, ReportingCredit NUMERIC NOT NULL, UNIQUE(JournalEntryId, LineNumber));",
+		"CREATE INDEX IF NOT EXISTS IX_FinanceJournalEntryLines_Account ON FinanceJournalEntryLines (AccountId, JournalEntryId);",
+		"CREATE TABLE IF NOT EXISTS FinanceJournalLineDimensions (JournalEntryLineId INTEGER NOT NULL, DimensionId TEXT NOT NULL, DimensionValueId TEXT NOT NULL, PRIMARY KEY (JournalEntryLineId, DimensionId));",
+		"CREATE TABLE IF NOT EXISTS FinancePostingProfiles (Id INTEGER PRIMARY KEY AUTOINCREMENT, Version INTEGER NOT NULL DEFAULT 1, LegalEntityId TEXT NOT NULL, AccountingBookId TEXT NOT NULL, JournalId TEXT NOT NULL, Code TEXT NOT NULL, Name TEXT NOT NULL, SourceType TEXT NOT NULL, SourceEvent TEXT NOT NULL, NumberSequenceCode TEXT NOT NULL, IsActive INTEGER NOT NULL, UNIQUE(AccountingBookId, Code));",
+		"CREATE TABLE IF NOT EXISTS FinancePostingProfileLines (Id INTEGER PRIMARY KEY AUTOINCREMENT, PostingProfileId INTEGER NOT NULL, LineNumber INTEGER NOT NULL, AccountId TEXT NOT NULL, Direction INTEGER NOT NULL, AmountKey TEXT NOT NULL, Multiplier NUMERIC NOT NULL, Description TEXT NULL, UNIQUE(PostingProfileId, LineNumber));",
+		"CREATE TABLE IF NOT EXISTS FinanceJournalReversals (OriginalEntryId INTEGER NOT NULL PRIMARY KEY, ReversalEntryId INTEGER NOT NULL UNIQUE);"
+	];
+
+	private static readonly string[] SqlServerStatements =
+	[
+		"IF OBJECT_ID(N'FinanceJournalEntries', N'U') IS NULL CREATE TABLE FinanceJournalEntries (Id bigint IDENTITY(1,1) NOT NULL PRIMARY KEY, EntryNumber nvarchar(100) NOT NULL, OperationId nvarchar(36) NOT NULL UNIQUE, RequestHash char(64) NOT NULL, AccountingBookId nvarchar(36) NOT NULL, JournalId nvarchar(36) NOT NULL, AccountingPeriodId nvarchar(36) NOT NULL, PostingDate date NOT NULL, PostedAtUtc datetime2 NOT NULL, PostedByUserId bigint NULL, Description nvarchar(500) NOT NULL, SourceType nvarchar(100) NOT NULL, SourceId nvarchar(200) NOT NULL, SourceEvent nvarchar(100) NOT NULL, SourceReference nvarchar(200) NULL, TransactionCurrencyCode nvarchar(3) NOT NULL, ReportingCurrencyCode nvarchar(3) NOT NULL, ExchangeRateId nvarchar(36) NULL, ExchangeRate decimal(28,12) NOT NULL, EntryKind int NOT NULL, ReversalOfEntryId bigint NULL, CONSTRAINT UQ_FinanceJournalEntries_Number UNIQUE (AccountingBookId, EntryNumber), CONSTRAINT UQ_FinanceJournalEntries_Source UNIQUE (AccountingBookId, SourceType, SourceId, SourceEvent));",
+		"IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name=N'IX_FinanceJournalEntries_PostingDate' AND object_id=OBJECT_ID(N'FinanceJournalEntries')) CREATE INDEX IX_FinanceJournalEntries_PostingDate ON FinanceJournalEntries (AccountingBookId, PostingDate, Id);",
+		"IF OBJECT_ID(N'FinanceJournalEntryLines', N'U') IS NULL CREATE TABLE FinanceJournalEntryLines (Id bigint IDENTITY(1,1) NOT NULL PRIMARY KEY, JournalEntryId bigint NOT NULL, LineNumber int NOT NULL, AccountId nvarchar(36) NOT NULL, Description nvarchar(500) NULL, TransactionDebit decimal(28,9) NOT NULL, TransactionCredit decimal(28,9) NOT NULL, ReportingDebit decimal(28,9) NOT NULL, ReportingCredit decimal(28,9) NOT NULL, CONSTRAINT UQ_FinanceJournalEntryLines UNIQUE (JournalEntryId, LineNumber));",
+		"IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name=N'IX_FinanceJournalEntryLines_Account' AND object_id=OBJECT_ID(N'FinanceJournalEntryLines')) CREATE INDEX IX_FinanceJournalEntryLines_Account ON FinanceJournalEntryLines (AccountId, JournalEntryId);",
+		"IF OBJECT_ID(N'FinanceJournalLineDimensions', N'U') IS NULL CREATE TABLE FinanceJournalLineDimensions (JournalEntryLineId bigint NOT NULL, DimensionId nvarchar(36) NOT NULL, DimensionValueId nvarchar(36) NOT NULL, CONSTRAINT PK_FinanceJournalLineDimensions PRIMARY KEY (JournalEntryLineId, DimensionId));",
+		"IF OBJECT_ID(N'FinancePostingProfiles', N'U') IS NULL CREATE TABLE FinancePostingProfiles (Id bigint IDENTITY(1,1) NOT NULL PRIMARY KEY, Version bigint NOT NULL CONSTRAINT DF_FinancePostingProfiles_Version DEFAULT 1, LegalEntityId nvarchar(36) NOT NULL, AccountingBookId nvarchar(36) NOT NULL, JournalId nvarchar(36) NOT NULL, Code nvarchar(50) NOT NULL, Name nvarchar(200) NOT NULL, SourceType nvarchar(100) NOT NULL, SourceEvent nvarchar(100) NOT NULL, NumberSequenceCode nvarchar(50) NOT NULL, IsActive bit NOT NULL, CONSTRAINT UQ_FinancePostingProfiles UNIQUE (AccountingBookId, Code));",
+		"IF OBJECT_ID(N'FinancePostingProfileLines', N'U') IS NULL CREATE TABLE FinancePostingProfileLines (Id bigint IDENTITY(1,1) NOT NULL PRIMARY KEY, PostingProfileId bigint NOT NULL, LineNumber int NOT NULL, AccountId nvarchar(36) NOT NULL, Direction int NOT NULL, AmountKey nvarchar(100) NOT NULL, Multiplier decimal(28,9) NOT NULL, Description nvarchar(500) NULL, CONSTRAINT UQ_FinancePostingProfileLines UNIQUE (PostingProfileId, LineNumber));",
+		"IF OBJECT_ID(N'FinanceJournalReversals', N'U') IS NULL CREATE TABLE FinanceJournalReversals (OriginalEntryId bigint NOT NULL PRIMARY KEY, ReversalEntryId bigint NOT NULL UNIQUE);"
+	];
+
+	private static readonly string[] MySqlStatements =
+	[
+		"CREATE TABLE IF NOT EXISTS FinanceJournalEntries (Id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY, EntryNumber VARCHAR(100) NOT NULL, OperationId VARCHAR(36) NOT NULL UNIQUE, RequestHash CHAR(64) NOT NULL, AccountingBookId VARCHAR(36) NOT NULL, JournalId VARCHAR(36) NOT NULL, AccountingPeriodId VARCHAR(36) NOT NULL, PostingDate DATE NOT NULL, PostedAtUtc DATETIME(6) NOT NULL, PostedByUserId BIGINT NULL, Description VARCHAR(500) NOT NULL, SourceType VARCHAR(100) NOT NULL, SourceId VARCHAR(200) NOT NULL, SourceEvent VARCHAR(100) NOT NULL, SourceReference VARCHAR(200) NULL, TransactionCurrencyCode VARCHAR(3) NOT NULL, ReportingCurrencyCode VARCHAR(3) NOT NULL, ExchangeRateId VARCHAR(36) NULL, ExchangeRate DECIMAL(28,12) NOT NULL, EntryKind INT NOT NULL, ReversalOfEntryId BIGINT NULL, UNIQUE KEY UQ_FinanceJournalEntries_Number (AccountingBookId, EntryNumber), UNIQUE KEY UQ_FinanceJournalEntries_Source (AccountingBookId, SourceType, SourceId, SourceEvent), INDEX IX_FinanceJournalEntries_PostingDate (AccountingBookId, PostingDate, Id));",
+		"CREATE TABLE IF NOT EXISTS FinanceJournalEntryLines (Id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY, JournalEntryId BIGINT NOT NULL, LineNumber INT NOT NULL, AccountId VARCHAR(36) NOT NULL, Description VARCHAR(500) NULL, TransactionDebit DECIMAL(28,9) NOT NULL, TransactionCredit DECIMAL(28,9) NOT NULL, ReportingDebit DECIMAL(28,9) NOT NULL, ReportingCredit DECIMAL(28,9) NOT NULL, UNIQUE KEY UQ_FinanceJournalEntryLines (JournalEntryId, LineNumber), INDEX IX_FinanceJournalEntryLines_Account (AccountId, JournalEntryId));",
+		"CREATE TABLE IF NOT EXISTS FinanceJournalLineDimensions (JournalEntryLineId BIGINT NOT NULL, DimensionId VARCHAR(36) NOT NULL, DimensionValueId VARCHAR(36) NOT NULL, PRIMARY KEY (JournalEntryLineId, DimensionId));",
+		"CREATE TABLE IF NOT EXISTS FinancePostingProfiles (Id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY, Version BIGINT NOT NULL DEFAULT 1, LegalEntityId VARCHAR(36) NOT NULL, AccountingBookId VARCHAR(36) NOT NULL, JournalId VARCHAR(36) NOT NULL, Code VARCHAR(50) NOT NULL, Name VARCHAR(200) NOT NULL, SourceType VARCHAR(100) NOT NULL, SourceEvent VARCHAR(100) NOT NULL, NumberSequenceCode VARCHAR(50) NOT NULL, IsActive BOOLEAN NOT NULL, UNIQUE KEY UQ_FinancePostingProfiles (AccountingBookId, Code));",
+		"CREATE TABLE IF NOT EXISTS FinancePostingProfileLines (Id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY, PostingProfileId BIGINT NOT NULL, LineNumber INT NOT NULL, AccountId VARCHAR(36) NOT NULL, Direction INT NOT NULL, AmountKey VARCHAR(100) NOT NULL, Multiplier DECIMAL(28,9) NOT NULL, Description VARCHAR(500) NULL, UNIQUE KEY UQ_FinancePostingProfileLines (PostingProfileId, LineNumber));",
+		"CREATE TABLE IF NOT EXISTS FinanceJournalReversals (OriginalEntryId BIGINT NOT NULL PRIMARY KEY, ReversalEntryId BIGINT NOT NULL UNIQUE);"
 	];
 }

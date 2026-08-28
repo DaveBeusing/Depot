@@ -1,14 +1,14 @@
 # Finance architecture
 
-Updated: 2026-08-27
+Updated: 2026-08-28
 
 ## Purpose
 
-Finance F0 establishes a provider-neutral, jurisdiction-neutral accounting foundation without introducing posting behavior prematurely. It is the base for General Ledger, Accounts Receivable, Accounts Payable, inventory accounting, banking, statutory/localization extensions, and reporting.
+Finance F0 and F1 establish a provider-neutral, jurisdiction-neutral accounting foundation and General Ledger posting engine. They are the base for Accounts Receivable, Accounts Payable, inventory accounting, banking, statutory/localization extensions, and financial reporting.
 
 ## Architectural boundary
 
-The Finance foundation follows Depot's normal architecture and does not create a parallel subsystem:
+Finance follows Depot's normal architecture and does not create a parallel subsystem:
 
 ```text
 Views -> ViewModels -> Services -> Repositories -> DatabaseAccess
@@ -16,11 +16,11 @@ Views -> ViewModels -> Services -> Repositories -> DatabaseAccess
                         SQLite / SQL Server / MySQL-MariaDB
 ```
 
-F0 intentionally stops before a Finance UI and before ledger posting. Domain contracts live under `Models`, provider/localization contracts under `Services`, and the additive feature schema under `Data`.
+F1 remains service/repository-first and intentionally does not expose a partial Finance workspace before source integrations are complete. Domain contracts live under `Models`, accounting orchestration under `Services`, persistence under `Repositories`, and the additive Finance feature schema under `Data`.
 
 ## Jurisdiction neutrality
 
-The core Finance foundation must not encode assumptions such as:
+The Finance core must not encode assumptions such as:
 
 - Germany as the legal jurisdiction;
 - EUR as a default or functional currency;
@@ -31,9 +31,9 @@ The core Finance foundation must not encode assumptions such as:
 
 Country and currency codes validate ISO-style syntax only. Whether a code is currently assigned by the relevant standards body belongs to reference/localization data rather than hard-coded business logic.
 
-## F0 domain model
+## F0 foundation
 
-F0 introduces:
+F0 introduced:
 
 - `CurrencyCode` and `FinanceCurrency`;
 - `LegalEntity`;
@@ -44,56 +44,108 @@ F0 introduces:
 - `AccountingBook`;
 - `JournalDefinition`;
 - `AccountingDimension` and `AccountingDimensionValue`;
-- `FinanceNumberSequence`.
+- `FinanceNumberSequence`;
+- exchange-rate, tax-determination, and localization extension interfaces.
 
-Validation enforces structural invariants such as ISO-style code syntax, positive exchange rates, valid date ranges, non-empty identities/codes, and positive number-sequence counters.
+No currency, country, tax rate, chart, accounting book, or legal entity is seeded implicitly.
 
-## Localization and determination contracts
+## F1 General Ledger model
 
-`IExchangeRateSource` allows exchange-rate acquisition to be implemented by explicit sources. Every returned rate retains a source code and effective timestamp.
+F1 adds:
 
-`ITaxDeterminationService` is the boundary for jurisdiction-specific tax determination. F0 deliberately provides no implicit tax calculation or fallback rate.
+- immutable `FinanceJournalEntry` and `FinanceJournalEntryLine` records;
+- per-line dimension snapshots;
+- transaction and reporting currency on every journal entry;
+- persisted exchange-rate identity and rate snapshot;
+- `FinancePostingProfile` and versioned posting-profile lines;
+- operation IDs and deterministic request fingerprints;
+- source identity (`AccountingBookId`, `SourceType`, `SourceId`, `SourceEvent`);
+- explicit original/reversal links.
 
-`IFinanceLocalizationProvider` is the boundary for country-specific requirements such as tax-registration schemes. Local requirements can therefore be added without contaminating `Finance.Core` concepts.
+Journal entries use database identities so the existing Audit Log can retain their creation/reversal evidence directly.
+
+## Posting invariants
+
+`FinanceGeneralLedgerService` is the sole accounting posting boundary. It validates before persistence that:
+
+- every entry has at least two lines;
+- each line contains exactly one positive debit or credit amount;
+- transaction-currency debit equals credit;
+- accounts are active, directly postable, and belong to the book's chart;
+- all globally required dimensions are present and use active values;
+- book and journal are active and related;
+- the accounting period belongs to the book's legal entity, is open, and contains the posting date;
+- transaction amounts respect the transaction currency's configured minor units;
+- cross-currency postings use an explicit persisted rate matching transaction -> reporting currency;
+- the rate is not effective after the posting date;
+- reporting-currency debit equals credit after minor-unit rounding.
+
+Depot deliberately does not invent a rounding account. If converted reporting lines are not balanced, the caller must provide an explicit configured balancing/rounding line.
+
+## Idempotency and source-document safety
+
+Every posting carries a GUID operation ID. `FinanceJournalEntries.OperationId` is unique and a SHA-256 request fingerprint excludes only the retry token itself. Repeating an identical operation returns the existing journal entry; reusing an operation ID for different accounting content is rejected.
+
+A second unique boundary protects source documents by accounting book, source type, source ID, and source event. This allows later source workflows to retry safely without creating duplicate accounting truth even when the retry uses a new operation ID.
+
+## Number sequences
+
+General Ledger entries consume only an active Finance number sequence whose `DocumentType` is `Finance.GeneralLedger` and whose legal entity matches the book/period. The sequence row is protected inside the write transaction, advanced with an expected-value guard, and rolled back if any later persistence or audit step fails.
+
+## Posting profiles
+
+Posting profiles map named business amount keys to debit/credit accounts, multiplier, journal, book and number sequence. They avoid embedding account numbers in future AR/AP/inventory/banking services.
+
+Profiles use optimistic `Version` concurrency. Create/update runs transactionally, validates all referenced accounting objects, and writes central Audit Log evidence. Profile-based posting requires normal GL posting permission; free manual journals require a separate sensitive permission.
+
+## Reversals and immutability
+
+Posted journal entries are never updated or deleted. `ReverseAsync` locks the original entry, rejects a second reversal, then creates a new entry with the original transaction and reporting debit/credit amounts swapped exactly. The reversal preserves original currency/rate snapshots and links through `FinanceJournalReversals` plus `ReversalOfEntryId`.
+
+The created reversal and the `Reversed` action on the original journal are written to the Audit Log in the same database transaction.
+
+## Transaction and concurrency model
+
+Finance reuses `IDatabaseTransactionRunner` / `DatabaseAccess` rather than introducing its own unit-of-work implementation:
+
+- SQLite uses an immediate write transaction;
+- SQL Server and MySQL/MariaDB use serializable write transactions;
+- known transient write conflicts are retried by the existing central data-access layer;
+- Finance period and number-sequence rows receive explicit no-op updates before authoritative reads to obtain write ownership in the active transaction;
+- unique database constraints remain the final race-safety boundary for operation IDs, source postings, entry numbers, profile codes, line numbers, and reversal links.
+
+Audit writes participate in the same transaction as Finance persistence, so audit failure rolls the journal and number sequence back.
 
 ## Persistence and schema versioning
 
-Finance uses the existing `DepotFeatureVersions` registry and starts with **Finance feature schema version 1**. This schema is independent of application SemVer and of the core database schema (currently 29).
+Finance uses the existing `DepotFeatureVersions` registry. F0 is **Finance feature schema version 1**. F1 raises the Finance feature schema to **version 2** without changing the core database schema.
 
-Finance schema version 1 creates provider-specific equivalents of:
+Version 2 adds provider-specific equivalents of:
 
-- `FinanceCurrencies`
-- `FinanceLegalEntities`
-- `FinanceTaxRegistrations`
-- `FinanceExchangeRates`
-- `FinanceFiscalCalendars`
-- `FinanceAccountingPeriods`
-- `FinanceChartsOfAccounts`
-- `FinanceAccounts`
-- `FinanceAccountingBooks`
-- `FinanceJournals`
-- `FinanceDimensions`
-- `FinanceDimensionValues`
-- `FinanceNumberSequences`
+- `FinanceJournalEntries`
+- `FinanceJournalEntryLines`
+- `FinanceJournalLineDimensions`
+- `FinancePostingProfiles`
+- `FinancePostingProfileLines`
+- `FinanceJournalReversals`
 
-No currency, country, tax rate, chart of accounts, book, or legal entity is seeded implicitly. The migration runs after core initialization and the Sales feature migration and is implemented for SQLite, SQL Server, and MySQL/MariaDB.
+Migration is sequential: a new database receives Finance v1 and then v2; an existing v1 database receives only the v2 extension. SQLite, SQL Server, and MySQL/MariaDB are all covered.
 
 ## RBAC
 
-F0 adds dedicated permissions for Finance read/manage plus exchange rates, periods, accounting books, tax configuration, and number sequences. Permissions are generated through the existing `PermissionCatalog`, synchronized by the existing RBAC seeder, and assigned to the existing Finance system role. The Administrator role continues to receive every catalogued permission through persisted RBAC rather than a hidden bypass.
+F1 adds `FinanceGeneralLedger.View`, `.Post`, `.Reverse`, `FinancePostingProfiles.View`, `.Manage`, and `FinanceManualJournals.Post`.
 
-## F1 hand-off
+The Finance system role receives controlled GL view/post/reversal and posting-profile rights. `FinanceManualJournals.Post` is intentionally withheld from the default Finance role and remains available to Administrator or explicitly configured custom roles.
 
-F1 — General Ledger & Posting Engine will build on this foundation and must add:
+## F2 hand-off
 
-- immutable journal-entry headers and lines;
-- double-entry balance invariant `sum(debit) == sum(credit)`;
-- posting profiles/source-document mappings;
-- source-document and operation idempotency;
-- accounting-period lock enforcement;
-- reversal/correction semantics rather than destructive edits;
-- transactionally persisted audit evidence;
-- optimistic concurrency and race-safe posting;
-- provider-neutral repositories and transaction orchestration.
+F2 — Accounts Receivable must consume the F1 posting engine rather than creating a second ledger truth. Its scope is:
 
-AR, AP, inventory accounting, banking, and statutory reporting must consume the posting engine rather than creating independent ledger truth.
+- Sales Invoice and Credit Note accounting integration;
+- receivable open items;
+- payment allocation including partial and overpayments;
+- write-offs;
+- dunning and aging;
+- source-document posting profiles/account determination.
+
+AP, inventory accounting, banking, and statutory reporting follow the same rule: business processes produce accounting requests; Finance owns immutable accounting truth.

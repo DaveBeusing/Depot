@@ -53,19 +53,32 @@ public sealed class FinanceFoundationTests
 	}
 
 	[Fact]
-	public void FinancePermissionsAreCataloguedAndAssignedToFinanceRole()
+	public void FinancePermissionsAreCataloguedWithManualJournalSegregation()
 	{
 		Assert.Equal("Finance.View", PermissionCatalog.Code(ApplicationPermission.FinanceView));
-		Assert.Equal("FinanceExchangeRates.Manage", PermissionCatalog.Code(ApplicationPermission.FinanceExchangeRatesManage));
+		Assert.Equal("FinanceGeneralLedger.Post", PermissionCatalog.Code(ApplicationPermission.FinanceGeneralLedgerPost));
+		Assert.Equal("FinanceManualJournals.Post", PermissionCatalog.Code(ApplicationPermission.FinanceManualJournalsPost));
 		var financeRole = Assert.Single(SystemRoleCatalog.Definitions, role => role.Code == SystemRoleCatalog.FinanceCode);
 		Assert.Contains(ApplicationPermission.FinanceView, financeRole.Permissions);
 		Assert.Contains(ApplicationPermission.FinanceAccountingBooksManage, financeRole.Permissions);
 		Assert.Contains(ApplicationPermission.FinanceTaxConfigurationManage, financeRole.Permissions);
+		Assert.Contains(ApplicationPermission.FinanceGeneralLedgerPost, financeRole.Permissions);
+		Assert.Contains(ApplicationPermission.FinanceGeneralLedgerReverse, financeRole.Permissions);
+		Assert.Contains(ApplicationPermission.FinancePostingProfilesManage, financeRole.Permissions);
+		Assert.DoesNotContain(ApplicationPermission.FinanceManualJournalsPost, financeRole.Permissions);
 	}
 
 	[Fact]
-	public void FinanceFeatureSchemaStartsAtVersionOne()
+	public void FinanceFeatureSchemaIncludesGeneralLedgerVersionTwo()
 	{
-		Assert.Equal(1, FinanceSchemaMigration.CurrentVersion);
+		Assert.Equal(2, FinanceSchemaMigration.CurrentVersion);
+	}
+
+	[Fact]
+	public void JournalEntriesAreClassifiedAsRetainedAccountingRecords()
+	{
+		var classification = BusinessRecordCatalog.Require(nameof(FinanceJournalEntry));
+		Assert.Equal(BusinessRecordRetentionCategory.AccountingRelevant, classification.RetentionCategory);
+		Assert.Contains("reversal", classification.CorrectionMechanism, StringComparison.OrdinalIgnoreCase);
 	}
 }
