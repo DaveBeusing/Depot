@@ -2,43 +2,54 @@
 
 Updated: 2026-08-28
 
-Depot's current `0.15.x-preview` line includes the completed **Finance F0-F6** baseline.
+Depot's current `0.15.x-preview` line includes the completed **Finance F0-F7** baseline.
 
 ## Finance workspaces
 
-Finance now provides permission-aware workspaces for **Receivables**, **Payables**, **Inventory Accounting**, **Banking**, and **Financial Reporting**. All financial posting consequences still flow through the existing immutable General Ledger boundary.
+Finance now provides permission-aware workspaces for **Receivables**, **Payables**, **Inventory Accounting**, **Banking**, **Financial Reporting**, and **Localization**. All financial posting consequences still flow through the existing immutable General Ledger boundary.
 
-## F6 — Financial Reporting
+## F7 — Finance Localization
 
-Users with the corresponding permissions can now:
+Users with `FinanceLocalization.View` can:
 
-- generate Trial Balance and General Ledger detail;
-- produce Balance Sheet and Profit & Loss views;
-- create Cash Flow reports from explicitly classified cash/counterpart accounts;
-- view Accounts Receivable and Accounts Payable aging;
-- generate Tax Summary, historical Inventory Valuation and COGS reports;
-- filter GL-derived reports by a persisted accounting dimension/value pair;
-- configure per-account reporting classifications for statement sections, cash flow, tax, cash-account identity and COGS;
-- export deterministic CSV;
-- retain immutable report snapshots bound to their parameters/content with SHA-256 hashes.
+- select a Legal Entity and an as-of date;
+- resolve the effective localization profile;
+- see the inherited pack chain and effective capability/configuration/procedure registry;
+- review warnings for requirements that still need deployment configuration or external procedures.
 
-GL-derived reports use persisted reporting-currency values from F1. AR/AP aging remains in each open item's transaction currency rather than silently applying a current or guessed historical exchange rate.
+Users with `FinanceLocalization.Manage` can additionally:
 
-## Permissions
+- create and close effective-dated localization assignments;
+- create custom regional/country packs;
+- add effective-dated custom registry entries;
+- maintain custom pack/registry metadata under optimistic concurrency and Audit controls.
 
-F6 adds separate permissions for financial-report viewing, mapping management, CSV export and report-snapshot creation. Service-layer authorization remains authoritative regardless of UI visibility.
+The built-in reference chain is `GENERIC → EU → DE`. A Germany Legal Entity does **not** automatically receive the Germany pack. An explicit assignment is required. Depot rejects a country-pack assignment when the pack country does not match the Legal Entity and rejects overlapping active assignments for the same entity.
 
-## Evidence and scope limits
+Built-in pack definitions and built-in registry rows are immutable. Additional country packs can be added using the existing F7 data model without another schema change unless new executable software behavior is required.
 
-Report snapshots preserve canonical CSV, parameters, user/time evidence and hashes. They are retained AuditEvidence and cannot be edited into a different historical result.
+## Compliance boundary
 
-F6 does not certify report layouts for HGB, IFRS, US-GAAP, GoBD, tax returns or other jurisdiction-specific filings. Country-specific statutory presentation and filing behavior remains future F7 localization/compliance scope.
+Registry support levels mean:
+
+- `SoftwareCapability`
+- `ConfigurationRequired`
+- `ExternalProcedureRequired`
+- `ReferenceOnly`
+
+They are not legal/compliance pass/fail states. F7 does not automatically determine VAT rates, statutory chart mappings, tax return classifications, HGB/IFRS policy, filing eligibility or legal retention/signature obligations. Qualified deployment review remains required.
+
+## Permissions and evidence
+
+F7 adds `FinanceLocalization.View` and `FinanceLocalization.Manage`. The default Finance system role includes both. Service-layer authorization remains authoritative regardless of UI visibility.
+
+Localization assignments and registry entries are retained `AuditEvidence`. Built-in reference definitions are protected from mutation; custom changes create structured Audit records.
 
 ## Current technical baseline
 
-- Application: **0.15.36-preview**
-- Finance schema: **8**
-- Help manifest: **1.15**
+- Application: **0.15.40-preview**
+- Finance schema: **9**
+- Help manifest: **1.16**
 - Provider-neutral schema/code: SQLite, SQL Server and MySQL/MariaDB
 
-Live remote-provider migration/concurrency/recovery/performance acceptance remains required before production-provider support claims.
+Live remote-provider migration/concurrency/recovery/performance and organization-specific localization acceptance remain required before production-provider or jurisdiction-compliance support claims.

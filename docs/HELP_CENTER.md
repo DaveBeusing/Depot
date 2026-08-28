@@ -6,7 +6,7 @@ Depot ships an embedded offline Markdown Help Center rendered natively in WPF. H
 
 ## Current manifest
 
-Help manifest **1.15** contains seven Finance topics:
+Help manifest **1.16** contains eight Finance topics:
 
 - `finance.foundation` — `Finance.View`
 - `finance.general-ledger` — `FinanceGeneralLedger.View`
@@ -15,10 +15,11 @@ Help manifest **1.15** contains seven Finance topics:
 - `finance.inventory-accounting` — `FinanceInventoryAccounting.View`
 - `finance.banking` — `FinanceBanking.View`
 - `finance.reporting` — `FinanceFinancialReporting.View`
+- `finance.localization` — `FinanceLocalization.View`
 
-## F6 context help
+## F7 context help
 
-**Finance > Financial Reporting** resolves to `finance.reporting`. The topic documents report types, reporting-currency behavior, explicit account mappings, dimension filters, CSV export, immutable snapshots, RBAC and the statutory/localization boundary.
+**Finance > Localization** resolves to `finance.localization`. The topic documents explicit effective-dated assignment, `GENERIC → EU → DE` hierarchy resolution, country validation, custom-pack extensibility, registry support levels, RBAC, retained Audit evidence and the legal/tax/compliance boundary.
 
 Help visibility never grants business access; service authorization remains authoritative.
 
@@ -26,15 +27,15 @@ Help visibility never grants business access; service authorization remains auth
 
 Help must not imply default credentials, jurisdiction, currency, tax rate, chart/account, accounting standard, matching tolerance, reporting classification, statutory filing conformance or legal certification when those are not explicitly configured/implemented.
 
-F6 Help must clearly state that:
+F7 Help must clearly state that:
 
-- F1 is the authoritative General Ledger;
-- GL-derived reports use persisted reporting-currency values;
-- AR/AP aging is shown in transaction currency;
-- Cash Flow and Tax Summary classifications are explicit mappings, not account-name guesses;
-- snapshots retain canonical CSV plus parameter/content hashes and are immutable AuditEvidence;
-- deterministic CSV export is not a jurisdiction-specific filing format;
-- F7 localization packs remain future scope.
+- legal-entity country does not activate a pack automatically;
+- localization requires an explicit effective-dated assignment;
+- support levels describe capability/configuration/procedure/reference responsibility and are not pass/fail compliance flags;
+- built-in pack/registry definitions are immutable;
+- custom packs can extend the framework without another schema change;
+- additional executable jurisdiction behavior still requires code when metadata/configuration is insufficient;
+- assigning a pack is not legal, tax, HGB, GoBD, XRechnung or other statutory certification.
 
 ## Updating Help
 
@@ -45,4 +46,4 @@ F6 Help must clearly state that:
 5. Increment the manifest version for material topic/permission/mapping changes.
 6. Run Help regression validation for duplicate IDs, missing files, unknown permissions and broken links.
 
-Help manifest **1.15** is the F6 documentation contract.
+Help manifest **1.16** is the F7 documentation contract.

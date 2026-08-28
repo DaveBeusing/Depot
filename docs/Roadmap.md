@@ -76,25 +76,37 @@ This roadmap distinguishes implemented technical controls from production/legal 
 - [x] Finance > Financial Reporting workspace and granular RBAC
 - [x] `FinanceReportSnapshot` retained as AuditEvidence
 - [x] Finance schema **8** for SQLite, SQL Server and MySQL/MariaDB
-- [x] Help manifest **1.15** / `finance.reporting`
-- [x] regression coverage for schema, F1 ledger cutoff/reporting currency, mappings, snapshots and export determinism
+- [x] Help `finance.reporting`
 
-### F7 — Localization Framework — next
-- [ ] Generic reference localization
-- [ ] EU layer and German reference implementation
-- [ ] additional country packs based on demand
-- [ ] effective-dated localization/compliance registry
+### F7 — Localization Framework — complete
+- [x] provider-neutral localization-pack, assignment and capability/compliance-registry persistence
+- [x] immutable built-in `GENERIC`, `EU` and `DE` reference pack hierarchy
+- [x] explicit effective-dated legal-entity assignment; country code never auto-activates localization
+- [x] country mismatch guard, active-range overlap prevention and pack dependency-cycle/depth guards
+- [x] effective profile resolution across parent packs
+- [x] support-level distinction: SoftwareCapability / ConfigurationRequired / ExternalProcedureRequired / ReferenceOnly
+- [x] immutable built-in registry rows and effective-dated custom registry entries
+- [x] custom regional/country packs without another database schema change
+- [x] optimistic concurrency, service RBAC and Audit evidence
+- [x] Finance > Localization workspace
+- [x] `FinanceLocalizationAssignment` and `FinanceLocalizationRegistryEntry` retained as AuditEvidence
+- [x] Finance schema **9** for SQLite, SQL Server and MySQL/MariaDB
+- [x] Help manifest **1.16** / `finance.localization`
+- [x] regression coverage for schema, RBAC, explicit activation, hierarchy resolution, country mismatch, overlap, built-in immutability and extensibility
+
+Additional country packs are demand-driven extensions of F7 and do not require a new Finance schema solely to define another pack.
 
 ## Remaining production/release acceptance
 
-- [ ] live SQL Server Finance v1→v8 clean-install/migration/concurrency/recovery matrix
-- [ ] live MySQL/MariaDB Finance v1→v8 clean-install/migration/concurrency/recovery matrix
-- [ ] provider-specific AR/AP/inventory/banking/reporting locking and deadlock/retry acceptance
+- [ ] live SQL Server Finance v1→v9 clean-install/migration/concurrency/recovery matrix
+- [ ] live MySQL/MariaDB Finance v1→v9 clean-install/migration/concurrency/recovery matrix
+- [ ] provider-specific AR/AP/inventory/banking/reporting/localization locking and deadlock/retry acceptance
 - [ ] representative Finance performance/load tests including FIFO history, statements, reconciliation and reporting
-- [ ] deployment legal entity/chart/book/calendar/posting-profile/inventory/bank/reporting policy approval
+- [ ] deployment legal entity/chart/book/calendar/posting-profile/inventory/bank/reporting/localization policy approval
 - [ ] AR/AP/inventory/bank reconciliation and period-end reporting operating procedures
 - [ ] AP/payment-proposal segregation-of-duties role review
-- [ ] retention/export and organization-specific accounting/tax/valuation/reporting procedures
+- [ ] retention/export and organization-specific accounting/tax/valuation/reporting/localization procedures
+- [ ] qualified review of enabled jurisdiction packs and all ExternalProcedureRequired registry entries
 - [ ] keyboard/focus/Narrator/DPI acceptance including all Finance workspaces
 - [ ] production Authenticode/timestamp and installer/upgrade/rollback acceptance
 - [ ] remaining electronic-invoice tax/profile/routing scenarios
@@ -112,8 +124,8 @@ This roadmap distinguishes implemented technical controls from production/legal 
 ## Out of current completed scope
 
 - barcode scanning/generation and label template printing
-- Finance package F7 until separately implemented and verified
 - costing methods other than FIFO until explicitly implemented and accepted
 - direct bank connectivity/payment initiation, EBICS, PSD2/open-banking certification and sanctions/AML decisioning
-- jurisdiction-specific statutory filing/localization packages
-- statutory certification of F6 report layouts; F6 is a configurable accounting reporting layer, not a jurisdiction-specific filing package
+- jurisdiction-specific statutory filing implementations beyond explicitly added localization packs
+- statutory certification of report layouts or localization packs
+- automatic legal/tax/accounting decisions inferred from a legal-entity country

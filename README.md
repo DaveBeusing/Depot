@@ -20,10 +20,11 @@ The active development line is **0.15.x-preview**. Security/compliance controls 
 - Finance F4 FIFO Inventory Accounting with **Finance > Inventory Accounting**
 - Finance F5 Banking and Payments with **Finance > Banking**
 - Finance F6 Financial Reporting with **Finance > Financial Reporting**
+- Finance F7 Localization Framework with **Finance > Localization**
 
 ## Finance
 
-The completed Finance baseline covers **F0 through F6**.
+The completed Finance baseline covers **F0 through F7**.
 
 F0 provides legal entities, currencies/exchange rates, fiscal calendars/periods, charts/accounts, accounting books, journals, dimensions, tax registrations, number sequences and localization/tax/exchange-rate extension boundaries.
 
@@ -39,18 +40,18 @@ F5 provides Banking and Payments: bank accounts, immutable CSV/camt.053 statemen
 
 F6 provides Financial Reporting: Trial Balance, GL detail, Balance Sheet, P&L, Cash Flow, AR/AP Aging, Tax Summary, historical Inventory Valuation, COGS, dimension-aware GL reporting, deterministic CSV export, explicit account mappings and immutable SHA-256-bound report snapshots.
 
-F1 remains the sole General Ledger authority. F6 reads persisted accounting evidence rather than maintaining a second ledger. GL-derived reports use reporting-currency journal values; AR/AP aging remains in open-item transaction currency. Cash-flow and tax meaning require explicit mappings and are never inferred from account names/numbers.
+F7 provides an explicit effective-dated localization framework. Built-in reference packs resolve as `GENERIC → EU → DE`; legal-entity country never activates a pack automatically. Finance users can assign a root pack, add custom regional/country packs without schema changes, and maintain an effective-dated capability/compliance registry. Registry support levels distinguish software capability, required deployment configuration, external procedures and reference-only guidance. F7 does **not** claim legal/tax/accounting compliance or invent tax rates, charts of accounts, filing classifications or statutory accounting decisions.
+
+F1 remains the sole General Ledger authority. F6 reads persisted accounting evidence rather than maintaining a second ledger. F7 describes effective localization/configuration boundaries and does not post accounting entries.
 
 Current schema levels:
 
 - core database schema: **29**
 - Sales feature schema: **8**
-- Finance feature schema: **8**
-- Help manifest: **1.15**
+- Finance feature schema: **9**
+- Help manifest: **1.16**
 
-The next Finance package is **F7 — Localization Framework**.
-
-See `docs/FINANCE_ARCHITECTURE.md`, `docs/FINANCE_REPORTING.md`, `docs/FINANCE_COMPLIANCE.md`, and `docs/Roadmap.md`.
+See `docs/FINANCE_ARCHITECTURE.md`, `docs/FINANCE_LOCALIZATION.md`, `docs/FINANCE_REPORTING.md`, `docs/FINANCE_COMPLIANCE.md`, and `docs/Roadmap.md`.
 
 ## Architecture
 
@@ -82,23 +83,24 @@ Runtime data remains external. Do not enable WPF trimming without dedicated vali
 
 CI includes Release build/publish, bounded regression suites, software-quality/accessibility checks, dependency locks, NuGet vulnerability audit, SBOM/evidence generation, release-integrity checks and electronic-invoice conformance.
 
-F6 regression coverage verifies Finance schema 8, real F1 ledger cutoff/reporting-currency behavior, explicit cash-flow mapping, Finance RBAC, retained report snapshots, snapshot idempotency/content binding and deterministic CSV. Earlier F1-F5 regression suites remain part of the broad baseline.
+F7 regression coverage verifies Finance schema 9, built-in reference packs, explicit assignment semantics, `GENERIC → EU → DE` resolution, country mismatch rejection, overlapping-assignment rejection, built-in immutability, custom country-pack extensibility without another schema change, Finance RBAC and retained localization evidence. Earlier F1-F6 suites remain part of the broad baseline.
 
-Provider-neutral Finance v8 code exists for SQLite, SQL Server and MySQL/MariaDB. Live server migration, locking, deadlock/retry, backup/recovery, concurrency and representative Finance/reporting performance acceptance remain production gates.
+Provider-neutral Finance v9 code exists for SQLite, SQL Server and MySQL/MariaDB. Live server migration, locking, deadlock/retry, backup/recovery, concurrency and representative Finance/localization acceptance remain production gates.
 
 ## Offline Help
 
-Embedded Help manifest **1.15** contains Finance Foundation, General Ledger, Accounts Receivable, Accounts Payable, Inventory Accounting, Banking and **Financial Reporting** (`finance.reporting`) topics. Help visibility follows central permissions and never grants business access.
+Embedded Help manifest **1.16** contains Finance Foundation, General Ledger, Accounts Receivable, Accounts Payable, Inventory Accounting, Banking, Financial Reporting and **Finance Localization** (`finance.localization`) topics. Help visibility follows central permissions and never grants business access.
 
 ## Remaining work before 1.0
 
-Major remaining items include live remote-provider acceptance, production code signing, accessibility/manual desktop acceptance, organization-specific accounting/tax/retention/valuation/reporting procedures, remaining electronic-invoice scenarios, installer/upgrade acceptance and F7 Localization Framework.
+Major remaining items include live remote-provider acceptance, production code signing, accessibility/manual desktop acceptance, organization-specific accounting/tax/retention/valuation/reporting/localization procedures, remaining electronic-invoice scenarios and installer/upgrade acceptance. Additional jurisdiction packs are demand-driven extensions of F7 rather than a prerequisite for the generic F7 framework.
 
 ## Documentation
 
 - `docs/Architecture.md`
 - `docs/CURRENT_STATUS.md`
 - `docs/FINANCE_ARCHITECTURE.md`
+- `docs/FINANCE_LOCALIZATION.md`
 - `docs/FINANCE_REPORTING.md`
 - `docs/FINANCE_COMPLIANCE.md`
 - `docs/DOCUMENTATION_STATUS.md`
