@@ -136,4 +136,4 @@ public sealed class FinanceAccountsReceivableRepository : DatabaseRepository
 
 internal sealed record FinanceFiscalCalendarRecord(Guid Id, Guid LegalEntityId, bool IsActive);
 internal sealed record FinanceAccountingPeriodRecord(Guid Id, DateOnly StartDate, DateOnly EndDate, AccountingPeriodStatus Status);
-internal sealed record FinanceReceivableAgingRow(long CustomerId, string CustomerName, CurrencyCode Currency, DateOnly DueDate, decimal RemainingAmount, FinanceReceivableOpenItemKind Kind);
+public sealed record FinanceReceivableAgingRow(long CustomerId, string CustomerName, CurrencyCode Currency, DateOnly DueDate, decimal RemainingAmount, FinanceReceivableOpenItemKind Kind);
