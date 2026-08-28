@@ -1,8 +1,10 @@
 # Depot Business Record Integrity Baseline
 
+Updated: 2026-08-28
+
 ## Purpose
 
-This document defines the technical integrity model used by Depot for business records that may become relevant to German GoBD-oriented operational or accounting processes. It is engineering evidence, not a legal determination that a specific deployment satisfies GoBD.
+This document defines the technical integrity model used by Depot for business records that may become relevant to operational, accounting, audit, or German GoBD-oriented processes. It is engineering evidence, not a legal determination that a specific deployment satisfies GoBD or another accounting/statutory regime.
 
 ## Core integrity rules
 
@@ -10,10 +12,10 @@ This document defines the technical integrity model used by Depot for business r
 2. Finalized or posted records are not corrected by overwriting their historical business content.
 3. Corrections use explicit status transitions, reversals, returns, cancellations, credit notes, or other compensating transactions.
 4. The original record and the correcting transaction remain identifiable.
-5. Actor, UTC timestamp, action, entity type, entity id, and before/after snapshots are retained in the audit history where the workflow is auditable.
-6. Business data and its audit event should commit in the same database transaction whenever a workflow changes retained business state.
-7. Assigned document numbers are stable identifiers. Numbers are never silently reassigned to another record.
-8. Database backups and restores preserve database identity, document numbers, links, status, audit history, and schema version as a unit.
+5. Actor, UTC timestamp, action, entity type, entity id, and before/after snapshots are retained in audit history where the workflow is auditable.
+6. Business/accounting data and its required audit event commit in the same database transaction whenever a workflow changes retained authoritative state.
+7. Assigned permanent document/accounting numbers remain bound to their record. Numbers are never silently reassigned to another record.
+8. Database backups and restores preserve database identity, document numbers, accounting numbers, links, status, audit history, and schema/feature-schema state as a unit.
 
 ## Record classification
 
@@ -33,100 +35,100 @@ The executable classification is defined in `BusinessRecordCatalog` and is inclu
 | Customer return | Business transaction | Draft | Posted | Separate corrective transaction |
 | Sales invoice | Accounting-relevant | Draft | Posted | Credit note; posted invoice is retained |
 | Sales credit note | Accounting-relevant | Draft | Posted | Additional correcting transaction if required |
+| Finance journal entry | Accounting-relevant | None after posting | Posted | Explicit linked reversal journal entry; original remains immutable |
 | Stock movement | Audit evidence | None after creation | Immediately retained | Linked reversal movement |
 
-Concrete statutory retention periods are intentionally not hard-coded. Deployment policy must determine them.
+Concrete statutory retention periods are intentionally not hard-coded. Deployment/jurisdiction policy must determine them.
 
-## Document numbering
+## Numbering
 
-Depot currently assigns document numbers from the database identity of the newly created record. A temporary `PENDING-...` value may exist only inside the creation transaction before the permanent number is written.
+Operational documents currently use stable record-linked numbering families such as PO, GR, transfer/count/material/supplier-return, sales order/shipment/customer-return, invoice and credit-note numbers.
 
-Supported numbering families include:
+Finance F1 introduces a separate configurable `FinanceNumberSequence` boundary for General Ledger entries. The selected sequence must belong to the same legal entity and appropriate Finance General Ledger document type.
 
-- `PO-######` purchase orders,
-- `GR-######` goods receipts,
-- `ST-######` stock transfers,
-- `IC-######` inventory counts,
-- `MI-######` material issues,
-- `MR-######` material returns,
-- `SR-######` supplier returns,
-- `SO-######` sales orders,
-- `SH-######` shipments,
-- `CR-######` customer returns,
-- `INV-######` sales invoices,
-- `CN-######` sales credit notes.
+Finance numbering rules:
 
-Rules:
+- number allocation occurs inside the same write transaction as the journal entry;
+- the sequence row is advanced with an expected-value/concurrency guard;
+- failure of line persistence, reversal linking, or required Audit Log persistence rolls the sequence update back;
+- an idempotent retry returns the already-created entry and does not consume another number;
+- permanent General Ledger numbers are not reassigned to another journal entry;
+- localization may define numbering policy, but must not silently rewrite historical numbers.
 
-- a permanent number identifies one database record,
-- finalized numbers are not edited by normal workflows,
-- gaps are permitted and are not back-filled merely to produce cosmetic continuity,
-- deleted or rolled-back creation attempts must not cause reuse logic to be added,
-- imports/migrations must preserve historical numbers or record an explicit mapping,
-- changing the numbering scheme is a compliance-impacting migration and requires review.
+Gaps can still arise from external/migration/manual policy or database/operator actions; Depot must not back-fill/reassign historical identifiers merely for cosmetic continuity.
 
-## Immutability and corrections
+## Finance F1 immutability and correction
 
-Repositories and services must enforce state predicates in update statements, not rely only on disabled UI controls. Typical examples are draft-only update predicates and expected-state/expected-version transition predicates.
+`FinanceJournalEntry` is explicitly classified by `BusinessRecordCatalog` as `AccountingRelevant`.
 
-Once a record has produced external or financial effect, correction must use an explicit workflow. Examples already implemented include shipment reversal, stock movement reversal, customer return, supplier return and invoice credit note. Correction reasons are mandatory where the operation would otherwise be ambiguous.
+Once posted:
 
-A correction must not erase the original record. The original and correction remain reconstructable through direct references, document relationships, stock-movement references and/or audit history.
+- its original header/lines/dimension snapshots are retained;
+- transaction/reporting currencies and exchange-rate snapshot remain historical evidence;
+- operation/source identity remains attached to the accounting event;
+- normal F1 workflows do not edit/delete the original entry;
+- correction uses a new linked reversal entry;
+- the reversal swaps the original transaction and reporting debit/credit amounts exactly;
+- a second reversal of the same original is rejected.
+
+The reversal entry and the reversal action on the original are auditable events. Future subledger/source integrations must preserve this model rather than mutating GL truth after posting.
 
 ## Audit consistency
 
-Workflow code should use `IDatabaseTransactionRunner` or repository transaction helpers so the business mutation and the corresponding `AuditEntries` insert commit or roll back together. This is required for posted/finalized business-state changes.
+Workflow code uses `IDatabaseTransactionRunner` / transaction-session infrastructure so retained business/accounting mutation and required `AuditEntries` inserts commit or roll back together.
 
-A code review finding exists whenever a retained business mutation is committed first and its audit entry is written later in an independent transaction. Such findings are release blockers for workflows classified as accounting-relevant or finalized business transactions.
+For Finance F1, journal creation, number allocation, lines/dimensions, reversal linking, and Audit Log evidence participate in the same accounting transaction. If the required audit write fails, the journal transaction rolls back. An unaudited F1 posting is therefore not considered successfully committed by the application workflow.
 
-Notifications, UI refreshes and email delivery are deliberately outside the authoritative database transaction. Failure to notify must not roll back a correctly committed business transaction, and notification success must never be treated as accounting evidence.
+A code review finding exists whenever an accounting-relevant/finalized mutation is committed first and its required audit evidence is written later in an independent transaction.
+
+Notifications, UI refreshes, and email delivery remain outside the authoritative database transaction. Notification success/failure is not accounting evidence.
+
+## Idempotency and source traceability
+
+F1 adds two complementary replay-safety boundaries:
+
+- unique operation ID + deterministic request fingerprint;
+- unique accounting-book/source-type/source-id/source-event identity for source postings.
+
+An identical retry can return the existing accounting record. Reusing either identity for different accounting content is rejected. Later AR/AP/inventory/banking integrations must use these boundaries so source retries cannot duplicate General Ledger truth.
 
 ## Machine-readable evidence export
 
-`AuditLogService.ExportBusinessRecordEvidenceAsync` produces an administrator-authorized JSON evidence package for classified records. The package contains:
+`AuditLogService.ExportBusinessRecordEvidenceAsync` produces administrator-authorized JSON evidence for classified records, including classification, chronological audit events, actors/timestamps, sanitized structured snapshots, and retained latest evidence where applicable.
 
-- export schema identifier,
-- UTC export timestamp,
-- entity type and database id,
-- executable record classification,
-- event count,
-- chronological audit events,
-- actor and UTC event timestamps,
-- sanitized before/after structured JSON,
-- the latest retained snapshot.
+`FinanceJournalEntry` participates in the executable business-record classification. The evidence export remains a technical reconstruction format, not a tax-authority/statutory export specification.
 
-Exports require both `AuditLogView` and `AuditLogExport`. Secrets handled by the audit sanitizer remain excluded.
+## Readability and reconstruction
 
-The evidence export is not a substitute for a tax-authority-specific export format. It provides a stable technical reconstruction format that later regulatory/export adapters can consume.
+Structured database records and audit snapshots are authoritative technical sources. Generated PDFs/spreadsheets are derived representations unless a specific workflow designates otherwise.
 
-## Readability
-
-Structured database records and audit snapshots are the authoritative technical source. Generated PDFs and spreadsheets are derived representations unless a future workflow explicitly designates a generated artifact as authoritative.
-
-For retained records Depot must preserve enough structured values to regenerate or interpret the transaction after the original UI workflow has changed. Release/migration documentation must identify any migration that changes semantic meaning rather than only physical storage.
+Finance reconstruction must preserve enough structured data to understand the book/journal, posting date, source identity, currencies/rate snapshot, account/line amounts, dimensions, entry number, reversal relationship, and audit trail independently of later mutable master/reference changes.
 
 ## Backup and restore
 
-A backup is a point-in-time copy of business records and audit evidence. Restore procedures must preserve relationships and must not selectively restore a business document without the dependent state required to explain it.
+A backup is a point-in-time copy of business records and audit/accounting evidence. Restore procedures must preserve relationships and must not selectively restore a document/journal without dependent state required to explain it.
 
 After restoring an older database:
 
-1. verify schema migration completes successfully,
-2. verify database integrity,
-3. verify document identities and audit history remain present,
-4. reapply any post-backup operational/privacy actions that are still applicable,
-5. record the recovery operation operationally.
+1. verify core and feature-schema migration completes successfully;
+2. verify database integrity;
+3. verify document/Finance entry identities and audit history remain present;
+4. verify Finance feature schema and representative journal/reversal/source links when Finance is in use;
+5. reapply any post-backup operational/privacy actions still applicable;
+6. record the recovery operation operationally.
 
 ## Change review triggers
 
-A compliance/security review is required when changing:
+A compliance/security/accounting review is required when changing:
 
-- permanent document-number assignment,
-- final-state mutability,
-- correction/reversal behavior,
-- audit-event creation or transaction boundaries,
-- deletion of business records,
-- migration of retained fields,
-- backup/restore semantics,
-- generated financial documents,
-- machine-readable business-record export.
+- permanent document/General Ledger number assignment;
+- final-state mutability;
+- Finance balancing/currency snapshot behavior;
+- correction/reversal behavior;
+- operation/source idempotency semantics;
+- period-close/reopen enforcement;
+- audit-event creation or transaction boundaries;
+- deletion/migration of retained fields;
+- backup/restore semantics;
+- generated financial documents;
+- machine-readable business-record/accounting export.

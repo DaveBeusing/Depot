@@ -1,10 +1,12 @@
 # Depot Version 1.0 Release Checklist
 
+Updated: 2026-08-28
+
 ## Status
 
 - [ ] Ready for release
 
-Depot is currently on the `0.14.x-preview` line with core database schema **29** and Sales feature schema **8** for invoice finalization. Checked items mean the technical implementation/evidence exists; they do not replace environment-specific, legal, accessibility, provider, signing, tax-profile, routing, or operational acceptance.
+Depot is currently on the `0.15.x-preview` line with core database schema **29**, Sales feature schema **8**, and Finance feature schema **2**. Checked items mean the technical implementation/evidence exists; they do not replace environment-specific, legal, accessibility, provider, signing, tax-profile, routing, accounting-localization, or operational acceptance.
 
 ## Implemented technical baseline
 
@@ -35,6 +37,36 @@ Depot is currently on the `0.14.x-preview` line with core database schema **29**
 - [x] GoBD-oriented technical procedural-documentation baseline
 - [x] immutable historical seller snapshots for posted sales invoices and credit notes
 - [x] immutable buyer identity and exact issued XML retention for finalized sales invoices
+
+### Finance F0 — international foundation
+
+- [x] explicit legal entities, currencies/minor units, sourced exchange rates and tax registrations
+- [x] fiscal calendars/accounting periods
+- [x] charts/accounts, accounting books and journal definitions
+- [x] accounting dimensions/values and Finance number sequences
+- [x] localization, tax-determination and exchange-rate extension boundaries
+- [x] dedicated Finance RBAC
+- [x] provider-neutral Finance feature schema v1
+- [x] no seeded jurisdiction/currency/tax/chart/accounting-standard defaults
+
+### Finance F1 — General Ledger & Posting Engine
+
+- [x] immutable journal-entry headers/lines
+- [x] balanced double-entry enforcement in transaction and reporting currency
+- [x] transaction/reporting currency and historical exchange-rate snapshots
+- [x] posting profiles with named amount-key account determination
+- [x] operation and source-document idempotency
+- [x] open accounting-period/date/legal-entity validation
+- [x] account/chart/direct-posting validation
+- [x] required accounting-dimension validation
+- [x] General Ledger number allocation inside the accounting transaction
+- [x] explicit linked reversal with immutable original entry
+- [x] atomic accounting + Audit Log persistence and rollback on audit failure
+- [x] optimistic posting-profile concurrency and database uniqueness boundaries
+- [x] dedicated sensitive permission for free manual journals
+- [x] provider-neutral Finance feature schema v2 for SQLite, SQL Server, and MySQL/MariaDB
+- [x] regression coverage for balance, idempotency, period rejection, audit rollback, profile posting and reversal
+- [x] Finance F1 architecture/compliance/README/Help documentation synchronized
 
 ### Backup and recovery
 
@@ -87,7 +119,21 @@ Depot is currently on the `0.14.x-preview` line with core database schema **29**
 - [ ] live backup/restore/recovery drills for every advertised provider
 - [ ] live multi-client concurrency tests
 - [ ] representative network latency/load tests
+- [ ] Finance v1 -> v2 live-server migration and concurrent posting acceptance
+- [ ] provider-specific Finance locking/deadlock/retry acceptance under representative load
 - [ ] Windows ACL-denied recovery scenario
+
+### Finance production/accounting acceptance
+
+- [ ] deployment legal entities, functional/reporting currencies and accounting books approved
+- [ ] deployment chart of accounts and posting profiles approved
+- [ ] exchange-rate source/effective-date governance approved
+- [ ] period-close/reopen procedure and privileged reopen controls implemented/accepted
+- [ ] Finance role/segregation-of-duties matrix approved, including manual journals
+- [ ] accounting-record retention, backup, restore and export procedures approved
+- [ ] live source/subledger-to-GL reconciliation acceptance
+- [ ] jurisdiction-specific accounting/tax/localization package accepted for every marketed deployment
+- [ ] required statutory reports/exports/filing interfaces implemented and accepted where applicable
 
 ### User interface/accessibility
 
@@ -141,9 +187,19 @@ Depot is currently on the `0.14.x-preview` line with core database schema **29**
 - [ ] Declaration/CE/user/manufacturer information completed where applicable
 - [ ] regulatory incident-reporting/tabletop readiness completed where applicable
 
-## Out of 1.0 scope unless separately approved
+## Finance packages still outside the completed baseline
+
+The General Ledger engine itself is implemented in F1. The following packages remain incomplete until separately delivered and verified:
+
+- F2 Accounts Receivable and Sales Invoice/Credit Note GL integration
+- F3 Accounts Payable and supplier-invoice/matching integration
+- F4 Inventory Accounting/valuation/COGS/GRNI integration
+- F5 Banking/payments/reconciliation
+- F6 financial reporting
+- F7 localization/statutory packages
+
+## Other out-of-scope items unless separately approved
 
 - barcode scanning/generation
 - label template design/printing
-- payment collection/accounts receivable/general ledger
 - enterprise MFA/Entra ID/OIDC/SAML unless Phase 8 scope is pulled forward

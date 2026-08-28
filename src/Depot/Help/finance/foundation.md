@@ -1,41 +1,63 @@
 # Finance Foundation
 
-Depot 0.15 provides a provider-neutral foundation for accounting workflows. The Finance core is intentionally jurisdiction-neutral: it does not assume Germany, EUR, a 19% tax rate, SKR03/SKR04, IFRS, or another local accounting configuration.
+Depot 0.15 provides a provider-neutral foundation for accounting workflows. The Finance core is intentionally jurisdiction-neutral: it does not assume Germany, EUR, a 19% tax rate, SKR03/SKR04, IFRS, HGB, US-GAAP, XRechnung, or another local accounting configuration.
 
-## Foundation scope
+## What is implemented
 
 The Finance foundation defines and persists:
 
 - legal entities and functional currencies;
-- currencies using three-letter ISO 4217 syntax and explicit minor units;
+- currencies using three-letter ISO 4217-style syntax and explicit minor units;
 - exchange rates with effective timestamps and source codes;
 - fiscal calendars and accounting periods;
 - charts of accounts and accounts;
-- accounting books for parallel reporting/accounting bases;
+- accounting books for configured reporting/accounting bases;
 - journal definitions;
 - accounting dimensions and dimension values;
 - structured tax registrations;
 - Finance number sequences;
 - exchange-rate, tax-determination, and localization provider interfaces.
 
-Finance feature schema 1 established these structures for SQLite, SQL Server, and MySQL/MariaDB. F1 extends the Finance feature schema to version 2 with the General Ledger and Posting Engine.
+Finance feature schema **1** established those structures for SQLite, SQL Server, and MySQL/MariaDB.
 
-## General Ledger
+Finance F1 extends the feature schema to **2** and adds the General Ledger & Posting Engine. See [General Ledger and Posting](topic:finance.general-ledger).
 
-F1 adds immutable balanced journal entries, posting profiles, transaction/reporting currency snapshots, period-lock enforcement, operation and source-document idempotency, explicit reversals, and atomic audit persistence.
+## General Ledger boundary
 
-See [General Ledger and Posting](topic:finance.general-ledger) for the posting rules and permissions.
+F1 adds immutable balanced journal entries, posting profiles, transaction/reporting currency and exchange-rate snapshots, open-period enforcement, operation/source-document idempotency, Finance number allocation, explicit reversals, and atomic Audit Log persistence.
+
+This is the accounting engine boundary. It does **not** mean that every Sales, Purchasing, or Inventory transaction already creates a GL entry. Those source integrations are added only with their complete Finance packages so Depot does not expose partial accounting behavior.
 
 ## Permissions
 
-`Finance.View` controls the generic Finance read boundary. More granular permissions cover exchange rates, periods, accounting books, tax configuration, number sequences, General Ledger posting, reversals, posting profiles, and manual journals.
+`Finance.View` controls the generic Finance read boundary. More granular permissions cover exchange rates, periods, accounting books, tax configuration, number sequences, General Ledger activity, posting profiles, and manual journals.
 
-The protected Administrator role receives every catalogued permission. The Finance system role receives controlled General Ledger and posting-profile rights, but the sensitive `FinanceManualJournals.Post` permission is deliberately not assigned to that role automatically.
+The protected Administrator role receives all catalogued permissions through normal RBAC. The Finance system role receives controlled General Ledger view/post/reversal and posting-profile permissions, but the sensitive `FinanceManualJournals.Post` permission is deliberately **not** assigned automatically.
 
-## Important boundary
+General Ledger Help itself requires `FinanceGeneralLedger.View`; having only `Finance.View` does not grant access to GL operations.
 
-F1 is the accounting posting engine, not yet Accounts Receivable, Accounts Payable, inventory valuation, banking, statutory filing, or a dedicated Finance workspace. Existing Sales Invoice/XRechnung behavior remains separate until later Finance packages connect source workflows to the posting engine.
+## No jurisdiction defaults
 
-The next Finance package is F2 — Accounts Receivable.
+Depot does not seed a legal entity, chart, book, tax rate, accounting standard, or currency for Finance. Those choices are deployment/localization data and must be explicit.
 
-See also: [Sales Invoices and Credit Notes](topic:sales.invoices) and [Company Master Data](topic:administration.company).
+Country/currency validation in the generic core is structural syntax validation. Whether a code, tax registration, chart, rate source, or accounting configuration is legally/operationally valid for a deployment remains a reference-data/localization/accounting responsibility.
+
+## Current package boundary
+
+Implemented:
+
+- F0 International Finance Foundation
+- F1 General Ledger & Posting Engine
+
+Not yet implemented as complete Finance packages:
+
+- F2 Accounts Receivable and Sales Invoice/Credit Note GL integration
+- F3 Accounts Payable
+- F4 Inventory Accounting
+- F5 Banking/payments/reconciliation
+- F6 financial reporting
+- F7 localization/statutory packages
+
+The next Finance package is **F2 — Accounts Receivable**.
+
+See also: [General Ledger and Posting](topic:finance.general-ledger), [Sales Invoices and Credit Notes](topic:sales.invoices), [Company Master Data](topic:administration.company), and [Audit Log](topic:administration.audit-log).

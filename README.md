@@ -1,8 +1,8 @@
 # Depot
 
-Depot is a Windows desktop application for inventory, warehouse, procurement, sales, finance foundations, administration, reporting, and operational workflows. It is built with .NET 10, WPF, MVVM, and a provider-neutral ADO.NET persistence layer.
+Depot is a Windows desktop application for inventory, warehouse, procurement, sales, finance, administration, reporting, and operational workflows. It is built with .NET 10, WPF, MVVM, and a provider-neutral ADO.NET persistence layer.
 
-The project is under active development on the **0.15.x-preview** line and is not yet production-certified. Security/compliance roadmap phases 1-7 have their technically implementable repository/application controls in place; production, legal, provider, signing, accessibility, and environment acceptance gates remain where documented.
+The project is under active development on the **0.15.x-preview** line and is not yet production-certified. Security/compliance roadmap phases 1-7 have their technically implementable repository/application controls in place; production, legal, provider, signing, accessibility, accounting-localization, and environment acceptance gates remain where documented.
 
 ## Highlights
 
@@ -16,90 +16,86 @@ The project is under active development on the **0.15.x-preview** line and is no
 - backup validation, restore, automatic backup retention, integrity checks, and SQLite compaction
 - CycloneDX SBOM, NuGet vulnerability audit, dependency lock verification, CRA evidence generation, and release-integrity workflows
 - immutable seller/buyer invoice identity with persisted XRechnung XML and SHA-256 integrity verification
-- ISO/IEC-25010-inspired software-quality gates and automated accessibility baselines
-- international Finance foundation with legal entities, explicit currencies/exchange rates, fiscal calendars/periods, charts/accounts, accounting books, journal definitions, dimensions, tax registrations, number sequences and localization boundaries
-- Finance F1 General Ledger and Posting Engine with immutable balanced journals, posting profiles, transaction/reporting currencies, period locks, idempotency, explicit reversals and atomic audit persistence
+- international Finance F0 foundation with legal entities, currencies/exchange rates, fiscal calendars/periods, charts/accounts, accounting books, journal definitions, dimensions, tax registrations, number sequences and localization boundaries
+- Finance F1 General Ledger & Posting Engine with immutable balanced journals, posting profiles, transaction/reporting currencies, period enforcement, idempotency, explicit reversals and atomic audit persistence
 
 ## Application shell
 
 Depot uses a dark workspace-oriented shell with permission-aware activity-bar navigation and closeable workspace tabs. Navigation supports stable routes, `Alt+Left` / `Alt+Right` history, `Ctrl+P` Quick Open, `Ctrl+Shift+P` Command Palette, `Ctrl+W`, tab cycling, and F1 context Help.
 
-## Workspaces
-
-```text
-Dashboard
-Inventory
-  Overview | Items | Movements
-  Overview includes Serial / lot traceability balance + history
-Warehouse
-  Transfers | Inventory Counts | Material Issues | Material Returns | Shipping
-Purchasing
-  Purchase Orders | Goods Receipts | Supplier Returns
-Sales
-  Overview | Quotes | Pricing | Customers | Sales Orders | Invoices
-Approvals
-  Purchase Approvals | Sales Approvals
-Reports
-Administration
-```
-
-Administration includes Company master data, users/roles, database configuration, backup/restore, Audit Log, Privacy Data, About/application information, Notification Center, and the offline Help Center.
-
-Finance currently provides its domain/schema/RBAC foundation and General Ledger service/repository posting boundary. A dedicated Finance workspace follows in later packages rather than exposing incomplete source integrations.
-
-## Item master data and traceability
-
-**Inventory > Items** keeps the part number as the immutable manufacturer part number (MPN) and adds structured identification, lifecycle, trade/compliance and logistics attributes. GTIN is checksum-validated and unique, replacement references target active items, lifecycle dates are consistency-checked, and dangerous goods require a UN number.
-
-`ItemType`, `TrackingMode` and `LifecycleStatus` are operational master-data controls. Physical inventory workflows are restricted to stock items. Serial-number tracking requires one unique serial allocation per moved unit; lot tracking requires the complete movement quantity to be allocated across one or more lots. Discontinued/obsolete items are blocked for new purchase and sales orders, and purchasing also enforces the configured last-buy date.
-
-Traceability is **movement-derived**. `ItemTrackingUnits` stores serial/lot identity, expiry and block state; `StockMovementTracking` stores signed allocations to posted movements. Current serial/lot quantity and location are calculated from those allocations rather than maintained as a second stock balance.
-
-Tracked workflow grids provide a transient **Serial / lot** entry. Serial syntax is `SERIAL` or `SERIAL|yyyy-MM-dd`; lot syntax is `LOT|quantity` or `LOT|quantity|yyyy-MM-dd`, with one allocation per line. The same syntax is available for manual purchase, withdrawal and correction movements. The posting transaction validates the authoritative tracking mode and requires the allocation total to match the movement quantity.
-
-Tracked outbound operations validate availability at the exact source inventory and reject blocked or expired units. Reversals preserve the exact original serial/lot identity with inverted quantities and fail if the required tracked stock is no longer available at the original location. **Inventory > Overview > Serial / lot traceability** provides searchable current balances, movement history and audited block/unblock controls for authorized users.
-
-Legacy Excel opening-balance import intentionally remains fail-closed for tracked items because its format contains no serial/lot allocation columns. See `docs/ITEM_MASTER_DATA.md` and `docs/ITEM_TRACEABILITY.md`.
+Current primary workspaces are Dashboard, Inventory, Warehouse, Purchasing, Sales, Approvals, Reports, and Administration. Finance F1 is currently service/repository-first; a dedicated Finance workspace is intentionally deferred until source integrations and user workflows can be exposed without partial accounting behavior.
 
 ## Finance
 
-Version `0.15.1-preview` completes **F1 — General Ledger & Posting Engine** on top of the F0 International Finance Foundation. The generic Finance layer remains jurisdiction-neutral: it has no implicit Germany, EUR, 19%, SKR03/SKR04, HGB, IFRS, US-GAAP, or XRechnung default.
+The current documentation baseline is **0.15.2-preview**. It documents the completed **F1 — General Ledger & Posting Engine** on top of the **F0 — International Finance Foundation**.
 
-F0 defines legal entities, currency and exchange-rate contracts, fiscal calendars/accounting periods, configurable charts/accounts and accounting books, journal definitions, accounting dimensions, structured tax registrations, Finance number sequences, and exchange-rate/tax/localization interfaces. No country, currency, tax rate, chart, book or legal entity is seeded automatically.
+The generic Finance core is jurisdiction-neutral. It has no implicit Germany, EUR, 19%, SKR03/SKR04, HGB, IFRS, US-GAAP, XRechnung, or other local default.
 
-F1 adds immutable General Ledger entries and lines, deterministic operation/source idempotency, posting profiles, configurable account resolution through amount keys, open-period enforcement, currency-minor-unit validation, transaction/reporting currency and FX snapshots, required dimensions, Finance number-sequence allocation, explicit linked reversals, transactional audit evidence and concurrency-safe write orchestration.
+F0 provides:
 
-Free manual journals require the dedicated `FinanceManualJournals.Post` permission in addition to General Ledger posting. The Finance system role receives controlled GL posting/reversal and posting-profile rights but does not receive that sensitive manual-journal permission automatically.
+- legal entities with explicit functional currency;
+- currencies with explicit minor units;
+- sourced/effective exchange rates;
+- fiscal calendars and accounting periods;
+- charts of accounts and accounts;
+- accounting books and journal definitions;
+- accounting dimensions and values;
+- structured tax registrations;
+- Finance number sequences;
+- exchange-rate, tax-determination, and localization extension contracts.
 
-Finance uses the existing `DepotFeatureVersions` mechanism. **Finance feature schema 2** is initialized/migrated for SQLite, SQL Server, and MySQL/MariaDB. The core database schema remains **29** and Sales feature schema remains **8**; application release versions and feature/core schema versions are independent.
+F1 provides:
 
-F1 deliberately does not force Sales, Purchasing, or Inventory workflows to post GL entries before the corresponding account-determination/open-item package is complete. The next package is **F2 — Accounts Receivable**, which will connect Sales Invoice/Credit Note workflows to the ledger and add receivable open items, payment allocation, write-offs, dunning and aging. See `docs/FINANCE_ARCHITECTURE.md` and `docs/FINANCE_COMPLIANCE.md`.
+- immutable General Ledger journal entries and lines;
+- double-entry validation in transaction and reporting currency;
+- transaction/reporting currency plus persisted exchange-rate snapshot;
+- posting profiles that map named amount keys to configured debit/credit accounts;
+- operation and source-document idempotency;
+- open-period/date/legal-entity enforcement;
+- active-account/chart/direct-posting validation;
+- required accounting dimensions;
+- Finance number-sequence allocation inside the posting transaction;
+- explicit linked reversal entries instead of destructive corrections;
+- atomic Audit Log persistence with rollback of the full accounting transaction if audit persistence fails;
+- optimistic posting-profile concurrency and database uniqueness boundaries.
+
+Free manual journals require the dedicated `FinanceManualJournals.Post` permission in addition to normal General Ledger posting permission. The default Finance system role receives controlled General Ledger posting/reversal and posting-profile permissions but does **not** receive the sensitive manual-journal permission automatically.
+
+Finance uses the existing `DepotFeatureVersions` mechanism. **Finance feature schema 2** is available for SQLite, SQL Server, and MySQL/MariaDB. The core database schema remains **29** and Sales feature schema remains **8**; application SemVer and database/feature schema versions are independent.
+
+F1 deliberately does not force Sales, Purchasing, or Inventory to create accounting entries until their complete source-integration/subledger package exists. The next package is **F2 — Accounts Receivable**, covering Sales Invoice/Credit Note ledger integration, receivable open items, payment allocations, write-offs, dunning, and aging.
+
+See `docs/FINANCE_ARCHITECTURE.md` and `docs/FINANCE_COMPLIANCE.md`.
 
 ## Business-record integrity
 
-Finalized operational records are historical evidence. Corrections use explicit reversal, return, cancellation, close, or credit-note transactions rather than silently rewriting finalized history. Tracking allocations follow the same rule and are immutable movement evidence. Finance journal entries are classified as retained accounting records and can only be corrected through a new linked reversal entry; the original entry is never updated or deleted.
+Finalized operational and accounting records are historical evidence. Corrections use explicit reversal, return, cancellation, close, credit-note, or other correction transactions instead of silently rewriting finalized history.
 
-## Privacy
-
-**Administration > Privacy Data** provides authorized discovery for person-related data and machine-readable JSON export. Authentication hashes, connection credentials, and protected settings are excluded by design.
+Finance journal entries are retained accounting records. Once posted, an entry is not updated or deleted by the F1 workflow. A correction creates a new linked reversal entry while preserving the original entry and its currency/rate/source snapshots.
 
 ## Electronic invoicing
 
-Depot includes an EN 16931-oriented semantic electronic-invoice model and deterministic UN/CEFACT CII generation targeted at XRechnung 3.0. Sales-invoice posting freezes seller/buyer identity, generates the structured XML and stores a SHA-256 fingerprint. Representative XML is validated in CI with a pinned KoSIT validator/configuration.
+Depot includes an EN 16931-oriented semantic electronic-invoice model and deterministic UN/CEFACT CII generation targeted at XRechnung 3.0. Sales-invoice posting freezes seller/buyer identity, persists the exact generated XML, and stores a SHA-256 fingerprint. Representative XML is validated in CI with pinned KoSIT/XRechnung assets.
 
-This electronic-invoice capability remains separate from the jurisdiction-neutral Finance core. F1 does not reinterpret XRechnung or the current Sales tax model as a generic accounting/tax engine.
+Electronic invoicing remains separate from the jurisdiction-neutral Finance core. F1 does not reinterpret XRechnung or the existing Sales tax model as a generic accounting/tax engine.
 
 ## Database providers
 
-SQLite is the default provider. Microsoft SQL Server and MySQL/MariaDB implementations are also present. Supported remote-provider settings enforce encrypted transport. Live-server migration, backup/restore, recovery, concurrency, and version-matrix acceptance remain required before a server configuration is advertised as production-supported.
+SQLite is the default provider. Microsoft SQL Server and MySQL/MariaDB implementations are also present. Supported remote-provider settings enforce encrypted transport. Live-server migration, recovery, concurrency, locking, performance, and supported-version acceptance remain required before a server configuration is advertised as production-supported.
 
-The core database schema is currently **29** plus additive provider-neutral feature schema extensions. Sales feature schema is **8** and Finance feature schema is **2**.
+Current schema levels:
+
+- core database schema: **29**
+- Sales feature schema: **8**
+- Finance feature schema: **2**
 
 ## Offline Help Center
 
-Depot ships an embedded Markdown Help Center rendered natively in WPF. It is permission-filtered, locally searchable, uses stable topic links, and opens as a workspace tab. F1 resolves the current Help context.
+Depot ships an embedded Markdown Help Center rendered natively in WPF. It is permission-filtered, locally searchable, uses stable topic links, and opens as a workspace tab.
 
-Help manifest **1.10** includes the Finance Foundation and **General Ledger and Posting** guides. Finance Help distinguishes implemented F0/F1 capabilities from later AR/AP/inventory-accounting/banking integration and documents the separate permission required for manual journals. See `docs/HELP_CENTER.md` for authoring rules.
+Help manifest **1.10** contains the Finance Foundation and **General Ledger and Posting** topics. The F1 Help explains posting invariants, currency/FX handling, idempotency, posting profiles, manual-journal authorization, reversals, atomic audit behavior, and the boundary to later AR/AP/inventory-accounting/banking packages.
+
+The manifest remains at 1.10 in this documentation refresh because no topic ID, permission contract, or content-file mapping changed.
 
 ## Architecture
 
@@ -109,18 +105,9 @@ Views → ViewModels → Services → Repositories → DatabaseAccess
                     SQLite / SQL Server / MySQL or MariaDB
 ```
 
-Views contain layout/bindings, ViewModels presentation state/commands, Services business rules and transactions, and Repositories persistence SQL/mapping. Traceability follows the same layering and participates in the transaction that posts the owning business document and stock movement. Finance uses the same layering; the General Ledger service owns accounting invariants and transaction orchestration while repositories own provider-neutral persistence. Jurisdiction-specific exchange-rate, tax and localization behavior stays behind explicit service interfaces.
+Services own business/accounting invariants, permissions, state transitions, and transaction orchestration. Repositories own persistence SQL and row mapping. Provider-specific behavior stays behind the established data-access abstractions.
 
-## Technology
-
-- .NET 10 for Windows
-- WPF and MVVM
-- SQLite via `Microsoft.Data.Sqlite`
-- SQL Server via `Microsoft.Data.SqlClient`
-- MySQL/MariaDB via `MySqlConnector`
-- ClosedXML for Excel import/export
-- PDFsharp-WPF for Sales and fulfillment documents
-- Nullable reference types enabled
+`FinanceGeneralLedgerService` is the authoritative F1 posting boundary. Future AR/AP/inventory/banking workflows must call that boundary instead of maintaining a second accounting truth.
 
 ## Getting started
 
@@ -159,71 +146,41 @@ Runtime data remains external. Do not enable `PublishTrimmed` without dedicated 
 
 The repository includes bounded regression CI, security supply-chain checks, dependency locks, CycloneDX SBOM/license evidence, release-integrity checks, electronic-invoice conformance, zero-warning Release builds, regression suites, performance baselines, and static accessibility checks.
 
+Finance F1 regression coverage includes balance validation, operation/source idempotency, closed-period rejection, audit rollback, posting-profile posting, and reversal behavior. Live SQL Server/MySQL/MariaDB Finance migration/concurrency acceptance remains a production gate.
+
 Production Authenticode signing requires the real protected signing identity and remains a release acceptance gate.
-
-## Keyboard navigation
-
-| Shortcut | Action |
-| --- | --- |
-| `Ctrl+P` | Quick Open |
-| `Ctrl+Shift+P` | Command Palette |
-| `Ctrl+W` | Close active tab |
-| `Ctrl+Tab` | Next tab |
-| `Ctrl+Shift+Tab` | Previous tab |
-| `Alt+Left` | Navigate backward |
-| `Alt+Right` | Navigate forward |
-| `F1` | Context-sensitive Help |
-
-## Project structure
-
-```text
-src/Depot/
-  Controls/       Reusable WPF controls
-  Data/           Provider factories, initialization, migrations
-  Help/           Embedded offline Help Center
-  Models/         Domain, status, report and e-invoice models
-  Repositories/   Provider-neutral persistence
-  Resources/      Design system and branding
-  Services/       Business/application workflows
-  ViewModels/     Presentation logic and commands
-  Views/          WPF views and windows
-tests/Depot.Tests/
-  Unit, integration, security, quality and conformance tests
-scripts/
-  e-invoice, quality and security/compliance automation
-```
 
 ## Remaining work before 1.0
 
-Major remaining acceptance work is primarily production/environment specific:
+Major remaining items include:
 
-- live SQL Server/MySQL/MariaDB migration, recovery, concurrency, performance, and supported-version matrices
-- Windows ACL-denied recovery test
-- production code-signing certificate and timestamp validation
-- interactive keyboard/focus, Narrator/Accessibility Insights, and DPI acceptance
-- representative production sizing/load tests
-- explicit EN 16931 tax-category/exemption semantics for zero-rated, exempt, and reverse-charge invoice scenarios
-- buyer/XRechnung finalization for electronic credit notes
-- production recipient/channel routing and full KoSIT/XRechnung scenario validation
-- PDF/A-3 implementation before any ZUGFeRD/Factur-X claim
-- operator/legal acceptance for GDPR, GoBD, CRA classification/conformity, retention periods, and organization-specific procedures
-- installer/package, upgrade, rollback, and uninstall acceptance
-- Finance F2 Accounts Receivable, followed by AP, inventory accounting, banking and reporting packages
+- live SQL Server/MySQL/MariaDB migration, recovery, concurrency, performance, and supported-version matrices;
+- Windows ACL-denied recovery testing;
+- production code-signing certificate and timestamp validation;
+- interactive keyboard/focus, Narrator/Accessibility Insights, and DPI acceptance;
+- representative production sizing/load tests;
+- explicit EN 16931 tax-category/exemption semantics for zero-rated, exempt, and reverse-charge invoice scenarios;
+- buyer/XRechnung finalization for electronic credit notes;
+- production recipient/channel routing and full KoSIT/XRechnung scenario validation;
+- PDF/A-3 implementation before any ZUGFeRD/Factur-X claim;
+- operator/legal acceptance for GDPR, GoBD, CRA classification/conformity, retention periods, and organization-specific procedures;
+- installer/package, upgrade, rollback, and uninstall acceptance;
+- Finance F2 Accounts Receivable, followed by Accounts Payable, inventory accounting, banking, financial reporting, and localization packages.
 
-Barcode scanning/generation and label design/printing remain outside current scope. Finance functionality beyond F1 is explicitly tracked in `docs/Roadmap.md` rather than being claimed as implemented.
+Barcode scanning/generation and label design/printing remain outside current scope. Finance functionality beyond F1 is tracked in `docs/Roadmap.md` rather than claimed as implemented.
 
 ## Documentation
 
 - `docs/Architecture.md`
+- `docs/CURRENT_STATUS.md`
 - `docs/FINANCE_ARCHITECTURE.md`
 - `docs/FINANCE_COMPLIANCE.md`
-- `docs/ITEM_MASTER_DATA.md`
-- `docs/ITEM_TRACEABILITY.md`
-- `docs/CodingStandard.md`
+- `docs/DOCUMENTATION_STATUS.md`
+- `docs/USER_FACING_CHANGES.md`
+- `docs/HELP_CENTER.md`
 - `docs/Roadmap.md`
 - `docs/RELEASE_1_0.md`
 - `docs/SECURITY_ROADMAP.md`
-- `docs/HELP_CENTER.md`
 - `docs/compliance/`
 
 ## License
