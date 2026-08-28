@@ -41,6 +41,7 @@ internal sealed class ViewModelFactory
 			_services.InventoryAccounting,
 			_services.InventoryCosting,
 			_services.InventoryMovementAccounting,
+			_services.Banking,
 			_services.Purposes,
 			_services.ReasonCodes,
 			_services.Manufacturers,

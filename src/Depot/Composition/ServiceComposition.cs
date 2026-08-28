@@ -27,6 +27,7 @@ internal sealed class ServiceComposition
 		InventoryCosting = new FinanceInventoryCostingService(database.TransactionRunner, repositories.FinanceInventoryAccounting, repositories.FinanceInventoryCosting, FinanceGeneralLedger, repositories.Audit, audit, Authorization, repositories.FinanceAccountsPayable);
 		InventoryMovementAccounting = new FinanceInventoryMovementAccountingService(database.TransactionRunner, repositories.FinanceInventoryCosting, repositories.Inventories, InventoryCosting, Authorization);
 		AccountsPayable = new FinanceAccountsPayableService(database.TransactionRunner, repositories.FinanceAccountsPayable, FinanceGeneralLedger, repositories.Audit, audit, Authorization);
+		Banking = new FinanceBankingService(database.TransactionRunner, repositories.FinanceBanking, AccountsPayable, repositories.Audit, audit, Authorization);
 		var passwordHasher = new PasswordHasher();
 		ItemTraceability = new ItemTraceabilityService(repositories.ItemTraceability, audit);
 		var movementReversals = new StockMovementReversalService(database.TransactionRunner, repositories.Inventories, repositories.StockMovements, repositories.ReasonCodes, repositories.Audit, audit, ItemTraceability);
@@ -93,6 +94,7 @@ internal sealed class ServiceComposition
 	public FinanceInventoryAccountingService InventoryAccounting { get; }
 	public FinanceInventoryCostingService InventoryCosting { get; }
 	public FinanceInventoryMovementAccountingService InventoryMovementAccounting { get; }
+	public FinanceBankingService Banking { get; }
 	public AuthenticationService Authentication { get; }
 	public SessionService Session { get; }
 	public ItemService Items { get; }
