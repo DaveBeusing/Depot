@@ -6,7 +6,7 @@ Updated: 2026-08-28
 
 - [ ] Ready for release
 
-Depot is currently on the `0.15.x-preview` line with core database schema **29**, Sales feature schema **8**, and Finance feature schema **2**. Checked items mean the technical implementation/evidence exists; they do not replace environment-specific, legal, accessibility, provider, signing, tax-profile, routing, accounting-localization, or operational acceptance.
+Depot is currently on the `0.15.x-preview` line with core database schema **29**, Sales feature schema **8**, and Finance feature schema **3**. Checked items mean the technical implementation/evidence exists; they do not replace environment-specific, legal, accessibility, provider, signing, tax-profile, routing, accounting-localization, collections, or operational acceptance.
 
 ## Implemented technical baseline
 
@@ -66,7 +66,25 @@ Depot is currently on the `0.15.x-preview` line with core database schema **29**
 - [x] dedicated sensitive permission for free manual journals
 - [x] provider-neutral Finance feature schema v2 for SQLite, SQL Server, and MySQL/MariaDB
 - [x] regression coverage for balance, idempotency, period rejection, audit rollback, profile posting and reversal
-- [x] Finance F1 architecture/compliance/README/Help documentation synchronized
+
+### Finance F2 — Accounts Receivable
+
+- [x] Finance feature schema v3 for SQLite, SQL Server, and MySQL/MariaDB
+- [x] explicit F2 dependency on current Sales feature schema/customer master
+- [x] receivable debit/credit open-item subledger with source and GL linkage
+- [x] configured Sales Invoice/Credit Note → AR → GL integration in the source transaction
+- [x] fail-safe behavior with no invented AR/GL defaults when AR configuration is absent
+- [x] partial/full customer-payment allocation and unapplied overpayments
+- [x] later customer-credit allocation
+- [x] payment reversal restoring every active allocation and creating linked GL reversal
+- [x] write-off posting with separate sensitive authorization
+- [x] write-off reversal restoring the receivable and creating linked GL reversal
+- [x] aged receivables and customer statement projections
+- [x] configurable dunning policies and retained idempotent dunning runs
+- [x] granular AR/payment/write-off/dunning RBAC
+- [x] Finance > Receivables workspace
+- [x] Help manifest 1.11 Accounts Receivable topic
+- [x] regression coverage for F2 migration, idempotency, GL balance linkage, settlement/reversal, write-offs, aging, dunning, RBAC and record classification
 
 ### Backup and recovery
 
@@ -119,25 +137,28 @@ Depot is currently on the `0.15.x-preview` line with core database schema **29**
 - [ ] live backup/restore/recovery drills for every advertised provider
 - [ ] live multi-client concurrency tests
 - [ ] representative network latency/load tests
-- [ ] Finance v1 -> v2 live-server migration and concurrent posting acceptance
-- [ ] provider-specific Finance locking/deadlock/retry acceptance under representative load
+- [ ] Finance v1 -> v3 live-server migration and concurrent GL/AR posting acceptance
+- [ ] provider-specific Finance locking/deadlock/retry acceptance for posting, settlement and reversal under representative load
 - [ ] Windows ACL-denied recovery scenario
 
 ### Finance production/accounting acceptance
 
 - [ ] deployment legal entities, functional/reporting currencies and accounting books approved
-- [ ] deployment chart of accounts and posting profiles approved
+- [ ] deployment chart of accounts and F1/F2 posting profiles approved
 - [ ] exchange-rate source/effective-date governance approved
 - [ ] period-close/reopen procedure and privileged reopen controls implemented/accepted
-- [ ] Finance role/segregation-of-duties matrix approved, including manual journals
-- [ ] accounting-record retention, backup, restore and export procedures approved
-- [ ] live source/subledger-to-GL reconciliation acceptance
+- [ ] Finance role/segregation-of-duties matrix approved, including manual journals and write-offs
+- [ ] accounting/AR-record retention, backup, restore and export procedures approved
+- [ ] live AR subledger-to-GL reconciliation acceptance and exception procedure
+- [ ] customer-payment evidence/import/reconciliation procedure approved until F5 Banking exists
+- [ ] write-off policy, approval threshold, evidence and tax treatment approved
+- [ ] dunning/collections wording, fees/interest, delivery proof, escalation and legal review accepted
 - [ ] jurisdiction-specific accounting/tax/localization package accepted for every marketed deployment
 - [ ] required statutory reports/exports/filing interfaces implemented and accepted where applicable
 
 ### User interface/accessibility
 
-- [ ] keyboard-only critical-workflow walkthrough
+- [ ] keyboard-only critical-workflow walkthrough including Finance > Receivables
 - [ ] focus-order/no-keyboard-trap verification
 - [ ] Accessibility Insights or equivalent scan across production screens
 - [ ] Windows Narrator baseline
@@ -156,7 +177,7 @@ Depot is currently on the `0.15.x-preview` line with core database schema **29**
 
 ### Release engineering
 
-- [ ] all CI/security/quality/e-invoice workflows pass on release commit
+- [ ] all required release CI/security/quality/e-invoice workflows pass or documented pre-existing failures are resolved before the actual release gate
 - [ ] production Authenticode signing identity configured
 - [ ] Authenticode signature verified on produced artifacts
 - [ ] production timestamp verified
@@ -167,14 +188,14 @@ Depot is currently on the `0.15.x-preview` line with core database schema **29**
 
 ### Electronic invoicing
 
-- [x] sales-invoice model integrated into the persisted operational posting workflow
+- [x] sales-invoice model integrated into persisted operational posting workflow
 - [x] issued sales-invoice XML retained immutably with invoice linkage and integrity verification
-- [x] seller identity and payment data sourced from the controlled Company master and frozen at posting
+- [x] seller identity and payment data sourced from controlled Company master and frozen at posting
 - [x] buyer/customer identity and structured billing/tax data frozen at posting
 - [ ] explicit EN 16931 VAT-category and exemption/reason semantics persisted for zero-rated, exempt, and reverse-charge lines
 - [ ] electronic credit-note buyer/XML finalization implemented before advertising that channel
 - [ ] organization/recipient-specific electronic routing configuration validated
-- [ ] every advertised tax/profile/channel scenario validated against the applicable production KoSIT/XRechnung version
+- [ ] every advertised tax/profile/channel scenario validated against applicable production KoSIT/XRechnung version
 - [ ] controlled remediation procedure approved for legacy posted invoices without historical finalization records
 - [ ] PDF/A-3 implemented and validated before any ZUGFeRD/Factur-X support claim
 
@@ -189,9 +210,8 @@ Depot is currently on the `0.15.x-preview` line with core database schema **29**
 
 ## Finance packages still outside the completed baseline
 
-The General Ledger engine itself is implemented in F1. The following packages remain incomplete until separately delivered and verified:
+The Finance foundation, General Ledger engine, and Accounts Receivable are implemented through F2. The following packages remain incomplete until separately delivered and verified:
 
-- F2 Accounts Receivable and Sales Invoice/Credit Note GL integration
 - F3 Accounts Payable and supplier-invoice/matching integration
 - F4 Inventory Accounting/valuation/COGS/GRNI integration
 - F5 Banking/payments/reconciliation

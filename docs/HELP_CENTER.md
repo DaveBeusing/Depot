@@ -2,37 +2,40 @@
 
 Updated: 2026-08-28
 
-Depot ships an integrated offline Help Center using embedded Markdown and native WPF `FlowDocument` rendering. Help opens as a regular workspace tab; F1 resolves the current application context without replacing other open workspaces.
+Depot ships an integrated offline Help Center using embedded Markdown and native WPF `FlowDocument` rendering. Help opens as a regular workspace tab and resolves the current application context without replacing other open workspaces.
 
 ## Content structure
 
-Help content is versioned with the application under `src/Depot/Help`. The current manifest version is **1.10** and contains Getting Started, Inventory, Warehouse, Purchasing, Sales, Approvals, Reports, Finance, Administration, and Troubleshooting topics.
+Help content is versioned with the application under `src/Depot/Help`. The current F2 manifest version is **1.11** and contains Getting Started, Inventory, Warehouse, Purchasing, Sales, Approvals, Reports, Finance, Administration, and Troubleshooting topics.
 
 `manifest.json` defines stable topic IDs, titles, categories, Markdown files, ordering, search keywords, optional required permissions, and related topics. IDs are application contracts and should not be renamed after use.
 
-## Finance Help after F1
+## Finance Help after F2
 
-Manifest 1.10 contains two Finance topics:
+Manifest 1.11 contains three Finance topics:
 
 - `finance.foundation` — Finance Foundation, guarded by `Finance.View`;
-- `finance.general-ledger` — General Ledger and Posting, guarded by `FinanceGeneralLedger.View`.
+- `finance.general-ledger` — General Ledger and Posting, guarded by `FinanceGeneralLedger.View`;
+- `finance.receivables` — Accounts Receivable, guarded by `FinanceReceivables.View`.
 
-The General Ledger article documents the implemented F1 behavior:
+The General Ledger article documents the F1 posting invariants and now explains how F2 consumes that boundary transactionally.
 
-- double-entry balance requirements;
-- transaction/reporting currency and FX snapshots;
-- open-period/legal-entity/date validation;
-- account/chart/direct-posting validation;
-- required dimensions;
-- operation and source-document idempotency;
-- posting profiles;
-- number allocation inside the transaction;
-- atomic Audit Log persistence;
-- manual-journal authorization separation;
-- explicit linked reversal and immutable originals;
-- the boundary to F2 Accounts Receivable and later packages.
+The Accounts Receivable article documents:
 
-The `0.15.2-preview` documentation refresh updates Finance article wording only. Topic IDs, required permissions, related-topic contracts, and Markdown file mappings are unchanged, so manifest version remains **1.10**.
+- AR configuration and its Sales-schema dependency;
+- Sales Invoice/Credit Note → AR → General Ledger atomic integration;
+- receivable debit/credit open items;
+- partial/full payment allocation and unapplied overpayments;
+- later credit allocation;
+- payment reversal including allocations made after the original payment;
+- controlled write-offs and reversals;
+- aging and customer statements;
+- dunning policies/runs;
+- F2 RBAC and sensitive write-off separation;
+- currency/period/idempotency/audit behavior inherited from F1;
+- the boundary to F3 Accounts Payable and later packages.
+
+The Sales Invoice article links directly to Accounts Receivable and explains that configured AR/GL integration participates in the same invoice/credit-note posting transaction.
 
 ## Current user guidance
 
@@ -48,8 +51,8 @@ Help must remain synchronized with current application behavior, especially secu
 - Privacy Data documents person-related discovery/export without implying automatic legal erasure decisions;
 - Item Help documents identification, lifecycle, trade/compliance, logistics, serial/lot capture, traceability and current lifecycle/type workflow restrictions;
 - Sales invoice Help distinguishes current operational invoice/credit-note behavior from EN 16931/XRechnung technical conformance;
-- Finance Help distinguishes implemented F0/F1 accounting controls from future AR/AP/inventory-accounting/banking/reporting/localization work;
-- Finance Help must not imply a default jurisdiction, currency, tax rate, chart of accounts, accounting standard, or statutory certification;
+- Finance Help distinguishes implemented F0/F1/F2 accounting controls from future AP/inventory-accounting/banking/reporting/localization work;
+- Finance Help must not imply a default jurisdiction, currency, tax rate, chart of accounts, accounting standard, bank account, write-off account, statutory dunning rule, or statutory certification;
 - Help must never document removed default credentials or imply legal certification from technical controls.
 
 ## Supported Markdown
@@ -72,13 +75,13 @@ Do not document planned functionality as available.
 
 ## Context Help
 
-Shell items and contextual pages carry a `HelpTopicId`. F1 resolves the current page and opens that topic. Missing/unavailable context falls back to `getting-started.first-login`.
+Shell items and contextual pages carry a `HelpTopicId`. F2's Finance > Receivables page uses `finance.receivables`. Missing/unavailable context falls back to `getting-started.first-login`.
 
 ## Permissions
 
 `requiredPermission` uses the central permission catalog. `HelpService` filters topic lists, search, direct access, and related topics against effective permissions. Public Getting Started and Troubleshooting topics can omit a permission. Help visibility never grants business access.
 
-For Finance, `Finance.View` does not imply General Ledger access. The General Ledger topic requires `FinanceGeneralLedger.View`, matching the service-layer authorization boundary.
+For Finance, `Finance.View` does not imply General Ledger or Receivables access. Their Help topics require `FinanceGeneralLedger.View` and `FinanceReceivables.View`, matching the service-layer authorization boundaries.
 
 ## Search and diagnostics
 

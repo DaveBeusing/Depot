@@ -25,11 +25,11 @@ The composition classes under `src/Depot/Composition` create database infrastruc
 
 ## Application shell
 
-Depot uses a dark workspace-oriented shell with permission-aware primary modules and secondary pages. Current primary modules are Dashboard, Inventory, Warehouse, Purchasing, Sales, Approvals, Reports, and Administration.
+Depot uses a dark workspace-oriented shell with permission-aware primary modules and secondary pages. Current primary modules are Dashboard, Inventory, Warehouse, Purchasing, Sales, Finance, Approvals, Reports, and Administration.
 
 The shell supports closeable workspaces/tabs, stable routes, navigation history, Quick Open, Command Palette, F1 context Help, notifications, and unsaved-change guards. Module/page visibility is permission-aware for usability, but service authorization remains the security boundary.
 
-Finance F1 is intentionally service/repository-first. A dedicated Finance workspace is deferred until source integrations can expose complete user workflows rather than partial accounting behavior.
+Finance F2 introduces the first dedicated Finance workspace page: **Finance > Receivables**. General Ledger remains an accounting service boundary; Depot does not expose a separate free-form GL UI merely because F1 exists.
 
 ## Presentation layer
 
@@ -44,13 +44,17 @@ Key rules:
 - Reusable WPF controls live in `src/Depot/Controls`.
 - Long-running loads use cancellation and stale-request protection where applicable.
 
+`FinanceReceivablesViewModel` is a normal application ViewModel and calls `FinanceAccountsReceivableService`; it does not implement accounting rules or query the database directly.
+
 ## Business/service layer
 
 Services are the business and security boundary. They own validation, permissions, state transitions, transaction orchestration, and cross-repository invariants.
 
-Major service groups include authentication/RBAC, item and supplier master data, inventory/warehouse workflows, purchasing, sales, Company/document identity, electronic-invoice finalization, Finance foundation and General Ledger posting, audit/privacy/notifications/reporting, database management, settings, and Help.
+Major service groups include authentication/RBAC, item and supplier master data, inventory/warehouse workflows, purchasing, sales, Company/document identity, electronic-invoice finalization, Finance foundation, General Ledger posting, Accounts Receivable, audit/privacy/notifications/reporting, database management, settings, and Help.
 
-`FinanceGeneralLedgerService` is the authoritative F1 accounting posting boundary. Future AR/AP/inventory-accounting/banking services must call this service boundary rather than maintain a parallel mutable ledger or independently reproduce accounting invariants.
+`FinanceGeneralLedgerService` is the authoritative accounting posting boundary. AR/AP/inventory-accounting/banking services must call this boundary rather than maintain a parallel mutable ledger or independently reproduce accounting invariants.
+
+`FinanceAccountsReceivableService` is the F2 customer-subledger boundary. It owns receivable open-item, settlement, payment, allocation, write-off, aging, statement, and dunning rules and invokes the F1 GL posting/reversal boundary within the same transaction for accounting mutations.
 
 ## Persistence layer
 
@@ -74,14 +78,14 @@ Depot has independent version concepts:
 
 - **Core database schema:** **29**
 - **Sales feature schema:** **8** in `DepotFeatureVersions`
-- **Finance feature schema:** **2** in `DepotFeatureVersions`
-- **Application version:** independent SemVer (`0.15.2-preview` for this documentation synchronization)
+- **Finance feature schema:** **3** in `DepotFeatureVersions`
+- **Application version:** independent SemVer (`0.15.6-preview` for the completed F2 documentation baseline)
 
-`DatabaseComposition` initializes the core provider schema, then Sales feature migrations, then Finance feature migrations.
+`DatabaseComposition` initializes the core provider schema, then Sales feature migrations, then the Finance migration chain.
 
 Finance schema v1 provides currencies, legal entities, tax registrations, exchange rates, fiscal calendars/periods, charts/accounts, accounting books, journal definitions, dimensions/values, and number sequences.
 
-Finance schema v2 adds provider-specific equivalents of:
+Finance schema v2 adds:
 
 - `FinanceJournalEntries`
 - `FinanceJournalEntryLines`
@@ -90,23 +94,26 @@ Finance schema v2 adds provider-specific equivalents of:
 - `FinancePostingProfileLines`
 - `FinanceJournalReversals`
 
-Migration is sequential. New databases receive v1 and v2; existing Finance v1 databases receive the v2 extension. SQLite, SQL Server, and MySQL/MariaDB implementations exist. Live server migration, locking, deadlock/retry, recovery, and representative load acceptance remain production gates.
+Finance schema v3 adds:
+
+- `FinanceReceivablesConfigurations`
+- `FinanceReceivableOpenItems`
+- `FinanceReceivableAllocations`
+- `FinanceReceivableAllocationOperations`
+- `FinanceReceivablePayments`
+- `FinanceReceivableWriteOffs`
+- `FinanceDunningPolicies`
+- `FinanceDunningPolicyLevels`
+- `FinanceDunningRuns`
+- `FinanceDunningRunLines`
+
+F2 has an explicit dependency on the Sales feature schema because the customer subledger references the existing Customer master and consumes Sales Invoice/Credit Note source identities. `FinanceAccountsReceivableSchemaMigration` therefore ensures the current Sales schema before applying Finance v3. F0/F1 remain conceptually independent of Sales; the dependency begins with the AR integration package.
+
+Migration remains additive and sequential. SQLite, SQL Server, and MySQL/MariaDB implementations exist. Live server migration, locking, deadlock/retry, recovery, and representative load acceptance remain production gates.
 
 ## Finance F0 — International Finance Foundation
 
-F0 follows the normal Depot architecture rather than introducing a parallel accounting stack. It defines:
-
-- `CurrencyCode` / `FinanceCurrency`
-- `LegalEntity`
-- `TaxRegistration`
-- `ExchangeRate`
-- `FiscalCalendar` / `AccountingPeriod`
-- `ChartOfAccounts` / `FinanceAccount`
-- `AccountingBook`
-- `JournalDefinition`
-- `AccountingDimension` / `AccountingDimensionValue`
-- `FinanceNumberSequence`
-- exchange-rate, tax-determination, and localization extension contracts
+F0 follows the normal Depot architecture rather than introducing a parallel accounting stack. It defines currencies, legal entities, tax registrations, exchange rates, fiscal calendars/periods, charts/accounts, accounting books, journals, dimensions, number sequences, and exchange-rate/tax/localization extension contracts.
 
 The generic Finance foundation does not infer Germany, EUR, 19%, SKR03/SKR04, HGB, IFRS, US-GAAP, XRechnung, or another jurisdiction/accounting-standard default.
 
@@ -114,118 +121,106 @@ The generic Finance foundation does not infer Germany, EUR, 19%, SKR03/SKR04, HG
 
 F1 adds immutable journal entries/lines and posting-profile orchestration.
 
-### Posting invariants
+Before persistence, the General Ledger service verifies balance, account/chart/direct-posting eligibility, required dimensions, book/journal/period relationships, period status/date, configured currency precision, exchange-rate identity/effective date, and reporting-currency balance after conversion.
 
-Before persistence, the General Ledger service verifies that:
+Each posting has operation/source idempotency boundaries. Finance numbers are allocated inside the accounting transaction. Posted journals are not edited or deleted; correction creates a linked reversal entry. Journal persistence, number allocation, reversal links, and central Audit Log evidence commit atomically.
 
-- an entry has at least two lines;
-- each line has exactly one positive debit or credit amount;
-- transaction-currency debit equals credit;
-- accounts are active, directly postable, and belong to the accounting book's chart;
-- all configured required dimensions are present with valid active values;
-- the journal is active and belongs to the selected accounting book;
-- the accounting period belongs to the same legal entity, is open, and contains the posting date;
-- transaction amounts respect configured currency minor units;
-- foreign-currency postings use an explicit persisted transaction→reporting exchange rate valid for the posting date;
-- reporting-currency debit equals credit after configured minor-unit rounding.
+## Finance F2 — Accounts Receivable
 
-Depot does not silently invent a rounding line/account. A caller must provide an explicit configured balancing treatment when required.
+F2 adds the customer subledger while preserving the F1 accounting authority.
 
-### Currency and historical snapshots
+### Configuration
 
-Every journal retains transaction and reporting currency. Cross-currency entries retain the used exchange-rate identity/rate snapshot, so later reference-data changes cannot reinterpret historical accounting evidence.
+An active `FinanceReceivablesConfiguration` maps one legal entity/fiscal calendar to four controlled posting profiles: Sales Invoice, Sales Credit Note, customer payment, and receivable write-off. The service verifies that all profiles are active, use the expected source type/event/amount keys, belong to the configured legal entity, and resolve to one accounting book.
 
-### Idempotency
+Depot seeds no AR account, revenue account, tax account, bank account, write-off account, currency, legal entity, dunning policy, or jurisdiction rule.
 
-Each posting has an operation ID and deterministic request fingerprint. Identical retries return the existing entry instead of consuming another number.
+### Sales integration and atomicity
 
-A second uniqueness boundary protects accounting-book/source-type/source-id/source-event. Reusing an operation or source identity with different accounting content is rejected.
+When AR is actively configured, Sales Invoice and Credit Note posting invoke AR inside the **same** `DatabaseTransactionContext` as the Sales status/finalization mutation.
 
-### Posting profiles
+Invoice posting creates a controlled F1 journal and debit receivable open item. Credit-note posting creates its controlled journal and credit open item, then can allocate the credit against the original invoice open item. Any AR/GL validation, period/rate/account/dimension failure, number-allocation failure, persistence failure, or audit failure rolls the entire source transaction back.
 
-Posting profiles map named business amount keys to configured debit/credit accounts, multiplier, journal, accounting book, and General Ledger number sequence. This keeps account numbers out of future Sales/AR, Purchasing/AP, Inventory Accounting, and Banking workflows.
+When no AR configuration is active, existing Sales posting continues without AR/GL entries. This is deliberate fail-safe behavior: Depot never invents accounting configuration.
 
-Profiles use optimistic concurrency and are validated/audited transactionally.
+### Open-item and settlement model
 
-### Number sequences
+Open items retain source type/id/reference, customer, legal entity, accounting book, document/due dates, currency, original amount, remaining amount, linked journal, operation id, version, and creation evidence.
 
-General Ledger numbers are allocated from an active Finance number sequence for the same legal entity. Allocation occurs inside the posting transaction and is rolled back when a later persistence or audit step fails.
+Debit and credit settlement is represented by explicit `FinanceReceivableAllocation` records. Allocation requires the same customer, currency, book, and legal entity; amounts must be positive and cannot exceed available balances. Optimistic versions plus transaction locks/unique operation records protect concurrent settlement and retries.
 
-### Reversals and immutability
+### Payments and overpayments
 
-Posted journal entries are never edited or deleted by the F1 workflow. `ReverseAsync` creates a new linked entry with the original transaction/reporting debit and credit amounts swapped exactly. The original remains intact, and a second reversal of the same original is rejected.
+A customer payment creates a controlled GL posting and payment credit open item. Requested allocations may settle invoices partially or fully. Excess/unallocated value remains as customer credit and can be allocated later.
 
-### Transactions and audit
+Payment reversal uses F1's linked journal reversal and reverses **all active allocations from that payment credit**, including allocations created after the original payment operation. The payment open item is voided while original payment/allocation evidence remains retained.
 
-Finance reuses the established transaction runner / `DatabaseAccess` infrastructure. Accounting persistence, number allocation, reversal linking, and Audit Log writes participate in the same transaction. An audit persistence failure therefore rolls back the accounting transaction rather than leaving an unaudited posting.
+### Write-offs
 
-Unique constraints remain the final database race-safety boundary for operation IDs, source postings, entry numbers, posting-profile identities/lines, and reversal links.
+Write-offs reduce only active debit receivables, cannot exceed the remaining amount, and require a dedicated posting profile. Reversal creates a linked F1 reversal and restores the receivable balance. Write-off post/reverse permissions are intentionally not granted to the default Finance system role.
+
+### Aging, statements, and dunning
+
+Aging is derived from current outstanding invoice open items by due-date bucket and reports unapplied credits separately. Customer statement rows are derived from retained AR open-item evidence for customer/currency/date range.
+
+Dunning policies use configurable levels/overdue thresholds. Dunning runs persist the evaluated open item, customer, currency, outstanding amount, days overdue, and selected level. Runs are idempotent by operation id/request content. F2 does not implement statutory fee/interest logic, legal-collection workflows, or jurisdiction-specific delivery evidence.
 
 ## Authorization and segregation of duties
 
 Effective permissions are database-backed and enforced at service boundaries.
 
-F0 adds generic Finance permissions for Finance access, exchange rates, periods, accounting books, tax configuration, and number sequences.
+F0/F1 permissions remain in force for generic Finance and GL operations. F2 adds:
 
-F1 adds:
+- `FinanceReceivables.View`
+- `FinanceReceivables.Manage`
+- `FinanceReceivablePayments.Post`
+- `FinanceReceivablePayments.Reverse`
+- `FinanceReceivableWriteOffs.Post`
+- `FinanceReceivableWriteOffs.Reverse`
+- `FinanceDunning.View`
+- `FinanceDunning.Manage`
 
-- `FinanceGeneralLedger.View`
-- `FinanceGeneralLedger.Post`
-- `FinanceGeneralLedger.Reverse`
-- `FinancePostingProfiles.View`
-- `FinancePostingProfiles.Manage`
-- `FinanceManualJournals.Post`
-
-The Finance system role receives controlled GL view/post/reversal and posting-profile permissions. The sensitive manual-journal permission is intentionally not assigned automatically. Administrator receives catalogued permissions through the normal RBAC model; deployments can build stricter custom-role separation.
+The Finance system role receives Receivables view/manage, customer payment post/reverse, and dunning rights. Sensitive write-off post/reverse rights remain withheld. `FinanceManualJournals.Post` also remains separate. Administrator receives all catalogued permissions through normal RBAC; deployments can enforce stricter custom-role separation.
 
 ## Audit, business records, and corrections
 
 Depot treats finalized records as historical evidence. Corrections are separate transactions rather than destructive mutation.
 
-Finance journal entries follow that same invariant. Journal creation and reversal write central Audit Log evidence atomically with their accounting mutation. Operation/source identifiers preserve traceability to later originating business workflows.
+Finance journals, receivable open items, payments, and write-offs are accounting-relevant retained records. Dunning runs are retained audit evidence. GL reversals, payment/allocation reversals, and write-off reversals preserve original evidence and write central Audit Log evidence transactionally.
 
 ## Inventory and warehouse integrity
 
 Stock remains movement-derived. Posted stock movements are immutable and corrected through counter-movements. Serial/lot identity is movement-derived through tracking allocations and respects exact-location availability, block/expiry state, and reversal identity.
 
-Finance F1 does not alter this operational truth. Inventory valuation/COGS/GRNI integration belongs to F4 and must consume the F1 posting engine.
+F2 does not change this operational truth. Inventory valuation/COGS/GRNI integration belongs to F4 and must consume the F1 posting engine.
 
 ## Purchasing
 
 Purchase Orders, approvals, goods receipts, and supplier returns remain operational purchasing records. Goods Receipts are not supplier invoices.
 
-Accounts Payable supplier invoices/open items and purchase-order/goods-receipt/invoice matching belong to F3 and will use F1 posting profiles/ledger rather than reinterpret operational receipt facts.
+Accounts Payable supplier invoices/open items and purchase-order/goods-receipt/invoice matching belong to F3 and will consume F1 rather than reinterpret operational receipt facts.
 
 ## Sales and electronic invoicing
 
-Sales contains customers, quotes, pricing, orders, reservations, shipments, invoices, credit notes, and returns. Posted Sales Invoices freeze seller/buyer identity and persist the issued XRechnung XML with integrity verification.
+Sales contains customers, quotes, pricing, orders, reservations, shipments, invoices, credit notes, and returns. Posted Sales Invoices freeze seller/buyer identity and persist issued XRechnung XML with integrity verification.
 
-Finance F1 does not automatically post Sales documents to GL. F2 Accounts Receivable will add receivable open-item truth and connect Sales Invoice/Credit Note events to F1 posting profiles.
-
-Electronic invoicing stays separate from generic Finance. XRechnung/EN 16931 behavior is not used as a generic accounting/tax engine.
+F2 now connects configured Sales Invoice/Credit Note posting to the customer subledger and F1 ledger atomically. Electronic invoicing remains separate from generic Finance: XRechnung/EN 16931 is not used as a generic accounting/tax engine.
 
 ## Company master and legal-entity boundary
 
 `Administration > Company` remains the authoritative mutable legal seller/document identity for the current database. Finance `LegalEntity` is the generic accounting boundary.
 
-F1 does not silently merge/reconstruct those concepts. Explicit mapping/integration must be introduced by a complete workflow package so historical document identity cannot fall back to mutable current master data.
+F2 does not silently merge those concepts. AR configuration explicitly anchors accounting to a Finance legal entity while issued Sales documents retain their own immutable seller/buyer snapshots.
 
 ## Privacy and retention
 
-Finance records can contain financial, reference, tax, actor, and source identifiers and therefore inherit Depot's authorization, backup, retention, audit, and privacy controls. Retention duration and statutory export requirements remain deployment/jurisdiction-specific.
+Finance records can contain financial, reference, customer, tax, actor, source, and collection-state identifiers and therefore inherit Depot's authorization, backup, retention, audit, and privacy controls. Retention duration, statutory exports, reminder wording, and legal collection procedures remain deployment/jurisdiction-specific.
 
 ## Quality and provider acceptance
 
-F1 regression coverage includes:
+F2 regression coverage includes schema v3 migration, Sales-source idempotency and balanced GL linkage, overpayment/later allocation, payment reversal across active allocations, write-off authorization/reversal, aging, dunning idempotency, RBAC, and retained-record classification.
 
-- balanced posting;
-- operation/source idempotency;
-- closed-period rejection;
-- rollback when Audit Log persistence fails;
-- posting-profile posting;
-- explicit reversal behavior.
-
-Live SQL Server/MySQL/MariaDB Finance migration/concurrency/recovery testing remains a production acceptance gate.
+Acceptance distinguishes Finance-introduced failures from pre-existing repository test failures. Live SQL Server/MySQL/MariaDB Finance v3 migration/concurrency/recovery testing remains a production gate.
 
 ## Key architectural invariants
 
@@ -234,11 +229,12 @@ Live SQL Server/MySQL/MariaDB Finance migration/concurrency/recovery testing rem
 - Finalized business/accounting records are not silently rewritten.
 - Corrections are explicit transactions.
 - Stock remains movement-derived.
-- Critical multi-entity effects commit in one transaction.
+- Critical source/subledger/ledger effects commit in one transaction.
 - Provider-specific behavior stays behind provider/data-access abstractions.
-- Generic Finance does not infer jurisdiction, currency, tax rate, chart, or accounting standard.
+- Generic Finance does not infer jurisdiction, currency, tax rate, chart, bank/write-off account, or accounting standard.
 - General Ledger has one authoritative immutable double-entry truth.
-- Future subledgers/source integrations consume F1 rather than creating a second ledger.
+- Accounts Receivable has one controlled open-item/settlement truth and consumes F1 for accounting entries.
+- Future AP/inventory/banking integrations consume F1 rather than creating a second ledger.
 - Technical compliance evidence is not described as legal certification.
 
 ## Related documentation

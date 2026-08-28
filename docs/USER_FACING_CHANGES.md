@@ -15,27 +15,28 @@ Updated: 2026-08-28
 - Posted invoices expose **Export XRechnung**, which exports the verified issued XML instead of regenerating it from current Company or Customer master data.
 - Invoice posting fails closed when mandatory electronic-invoice identity is incomplete or when a zero-rated, exempt, or reverse-charge scenario cannot yet be represented explicitly by the commercial tax model.
 
-## Finance F0/F1
+## Finance F0/F1/F2
 
-- Finance F0 adds jurisdiction-neutral legal-entity, currency/exchange-rate, fiscal-calendar/period, chart/account, accounting-book, journal-definition, dimension, tax-registration and number-sequence foundations.
-- Finance F1 adds the provider-neutral General Ledger posting engine and raises Finance feature schema from 1 to **2** for SQLite, SQL Server, and MySQL/MariaDB.
-- General Ledger entries are immutable once posted and must balance debit and credit in transaction currency and reporting currency.
-- Foreign-currency postings keep the used transaction/reporting currencies and exchange-rate snapshot as historical evidence.
-- Posting profiles map named business amount keys to configured debit/credit accounts so later source workflows do not hard-code account numbers.
-- Posting is blocked when the accounting period is not open for the legal entity/date, when an account is inactive/not directly postable/not in the book's chart, or when a required accounting dimension is missing.
-- Retrying an identical operation or source-document event does not create a second accounting entry or consume another General Ledger number.
-- General Ledger numbers are allocated inside the accounting transaction and roll back if posting or Audit Log persistence fails.
-- Corrections are explicit linked reversal entries; the original journal remains unchanged and cannot be reversed twice.
-- Journal creation/reversal and central Audit Log evidence commit atomically.
-- Controlled profile-based posting uses the normal General Ledger permission. Free manual journals additionally require the sensitive `FinanceManualJournals.Post` permission.
-- The default Finance system role receives controlled General Ledger view/post/reversal and posting-profile permissions, but not the free manual-journal permission automatically.
-- F1 currently exposes a service/repository accounting boundary rather than a partial Finance workspace. Sales, Purchasing, and Inventory are not silently wired to GL until their complete Finance integration package exists.
-- F2 Accounts Receivable is next and will connect Sales Invoice/Credit Note events to F1 while adding receivable open items, payment allocation, write-offs, dunning, and aging.
+- Finance F0 provides jurisdiction-neutral legal-entity, currency/exchange-rate, fiscal-calendar/period, chart/account, accounting-book, journal-definition, dimension, tax-registration and number-sequence foundations.
+- Finance F1 provides the immutable provider-neutral General Ledger posting engine, posting profiles, period/currency/dimension validation, idempotency, number allocation, and explicit reversal.
+- Finance F2 raises Finance feature schema to **3** and adds the **Finance > Receivables** workspace.
+- F2 explicitly ensures Sales schema **8** before AR schema migration because Accounts Receivable uses the existing Customer master and Sales Invoice/Credit Note source records.
+- When AR is actively configured, posting a Sales Invoice or Credit Note also creates its configured General Ledger entry and AR open item in the same transaction. If AR/GL validation or persistence fails, the Sales posting rolls back.
+- When AR is not configured, Depot does not invent accounts or legal/entity defaults; existing Sales posting continues without AR/GL records.
+- Invoice open items are debit receivables. Credit notes and customer payments create credit open items.
+- Customer payments support partial/full allocation and unapplied overpayments. Remaining customer credit can be allocated later to another invoice.
+- Reversing a payment creates a linked GL reversal, restores every active allocation made from that payment credit — including later allocations — and voids the payment open item without deleting original evidence.
+- Receivable write-offs require dedicated sensitive permissions, post through a configured profile, and can be reversed through a linked GL correction that restores the receivable balance.
+- The default Finance role receives normal Receivables/payment/dunning permissions but not write-off post/reverse permissions. Free manual journals remain separately protected as well.
+- Receivables aging groups current and overdue invoice balances by customer/currency and shows unapplied credits separately.
+- Customer statements are built from retained AR open-item evidence.
+- Dunning policies/runs are configurable and retained for audit. F2 does not claim jurisdiction-specific reminder wording, fees/interest, legal escalation, or collection compliance.
+- General Ledger entries remain immutable, foreign-currency postings retain used FX evidence, and all F2 financial posting/reversal paths reuse F1 rather than maintaining a second ledger.
 
 ## Help and documentation
 
-- Help manifest **1.10** contains Finance Foundation and General Ledger and Posting topics.
-- The `0.15.2-preview` documentation synchronization refreshes those Finance articles without changing stable Help topic IDs or permission contracts, so the manifest version remains 1.10.
-- README, architecture, current status, release checklist, compliance overview/matrix, and Finance Help now describe F1 consistently.
+- Help manifest **1.11** adds **Accounts Receivable** (`finance.receivables`) guarded by `FinanceReceivables.View`.
+- Finance Foundation, General Ledger, Sales Invoice, and Accounts Receivable articles are cross-linked and describe the F2 transaction/permission boundaries consistently.
+- README, architecture, Finance architecture/compliance, roadmap, status, release checklist, compliance overview/matrix, and Help now identify F2 as complete and F3 Accounts Payable as next.
 
-Accessibility and software-quality gates continue to run in CI.
+Accessibility and software-quality gates continue to run in CI. F2 acceptance distinguishes newly introduced regressions from test failures already present on the F1 baseline.

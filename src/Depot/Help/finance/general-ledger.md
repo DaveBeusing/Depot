@@ -1,6 +1,6 @@
 # General Ledger and Posting
 
-Finance F1 provides Depot's provider-neutral General Ledger posting boundary. It enforces double entry with immutable balanced journals and is intended for controlled accounting services and later source-workflow integrations; no country-specific chart, tax rate, accounting standard, or currency is assumed.
+Finance F1 provides Depot's provider-neutral General Ledger posting boundary. It enforces double entry with immutable balanced journals and is consumed by controlled accounting services and source-workflow integrations; no country-specific chart, tax rate, accounting standard, or currency is assumed.
 
 ## Posting invariants
 
@@ -15,7 +15,7 @@ Every journal entry is posted atomically and becomes immutable immediately. A va
 - post into an open accounting period belonging to the same legal entity and containing the posting date;
 - comply with the configured transaction-currency minor-unit precision.
 
-A failed validation, persistence operation, number-sequence update, reversal-link write, or Audit Log write rolls the complete transaction back.
+A failed validation, persistence operation, number-sequence update, source-subledger mutation, reversal-link write, or Audit Log write rolls the complete transaction back.
 
 ## Currency and exchange rates
 
@@ -31,7 +31,7 @@ Converted line amounts are rounded using the reporting currency's configured min
 
 Every posting has an operation ID and deterministic request fingerprint. Retrying the same operation/content returns the existing journal entry instead of consuming another document number.
 
-Source postings are also unique per accounting book, source type, source ID, and source event. This allows later Sales/AR, Purchasing/AP, Inventory Accounting, and Banking workflows to retry safely.
+Source postings are also unique per accounting book, source type, source ID, and source event. This allows Sales/Accounts Receivable and future Purchasing/AP, Inventory Accounting, and Banking workflows to retry safely.
 
 Reusing an operation ID or source identity for different accounting content is rejected rather than silently treating different accounting requests as the same posting.
 
@@ -39,15 +39,17 @@ Reusing an operation ID or source identity for different accounting content is r
 
 General Ledger entries use an active Finance number sequence for the same legal entity and General Ledger document type.
 
-Number allocation happens inside the posting transaction. If a later line, reversal-link, or Audit Log write fails, the sequence update rolls back with the journal. An identical retry therefore does not create gaps caused by a failed Depot transaction.
+Number allocation happens inside the posting transaction. If a later line, source-subledger mutation, reversal-link, or Audit Log write fails, the sequence update rolls back with the journal. An identical retry therefore does not create gaps caused by a failed Depot transaction.
 
 ## Posting profiles
 
 Posting profiles map named business amount keys to configured debit or credit accounts. A profile also identifies the accounting book, journal, and General Ledger number sequence used by the posting flow.
 
-This lets later business workflows provide business amounts without embedding account numbers in Sales, Purchasing, Inventory, or Banking services.
+This lets business workflows provide business amounts without embedding account numbers in Sales, Accounts Receivable, Purchasing, Inventory, or Banking services.
 
 Profiles are versioned for optimistic concurrency. Create/update validates their referenced accounting objects and writes Audit Log evidence transactionally.
+
+Finance F2 uses configured posting profiles for Sales Invoices, Sales Credit Notes, customer payments, and receivable write-offs. Accounts Receivable therefore reuses the same GL validations and immutable accounting truth rather than maintaining a second posting engine.
 
 ## Manual journals and permissions
 
@@ -63,6 +65,8 @@ Posted journal entries are never edited or deleted by the F1 workflow.
 
 A correction creates a new linked reversal entry that swaps the original transaction debit/credit and reporting debit/credit amounts exactly. The original journal remains unchanged, preserves its source/currency/rate evidence, and cannot be reversed a second time.
 
+F2 payment and write-off reversals call this same controlled reversal boundary inside their AR transaction, so the subledger and GL correction commit or roll back together.
+
 Both creation of the reversal entry and the reversal action on the original are written to the central Audit Log in the same database transaction.
 
 ## Audit and failure behavior
@@ -75,16 +79,23 @@ If the Audit Log write fails, Depot rolls back:
 - its lines/dimensions;
 - the consumed Finance number;
 - any reversal link;
-- the associated accounting mutation in that transaction.
+- associated Accounts Receivable open-item/payment/allocation/write-off mutations when they are part of the same transaction.
 
-This prevents an F1 posting from being committed without its required central audit evidence.
+This prevents a posting from being committed without its required central audit evidence or leaving a source/subledger state inconsistent with the ledger.
 
-## Current UI/source-integration boundary
+## Current source integration
 
-F1 provides the General Ledger service/repository/schema boundary and does not yet add a dedicated Finance workspace.
+F2 is the first production workflow package that consumes the F1 posting engine directly. With an active AR configuration:
 
-Sales, Purchasing, and Inventory are not forced to post GL entries until their respective Finance integration packages provide complete account determination/subledger behavior. This is deliberate: source-document state and accounting truth must become connected atomically by a complete package rather than by partial UI wiring.
+- Sales Invoice posting produces a GL journal plus debit receivable open item;
+- Sales Credit Note posting produces a GL journal plus credit open item and can allocate against the original invoice;
+- customer payments and write-offs create controlled GL postings;
+- payment/write-off reversals use linked F1 reversal journals.
 
-Next: **F2 — Accounts Receivable**, including Sales Invoice/Credit Note integration, receivable open items, payment allocations including partial/overpayments, write-offs, dunning, and aging.
+The Finance > Receivables workspace exposes the F2 customer-subledger workflows. General Ledger remains an accounting service boundary; a standalone free-form GL workspace is not introduced by F2.
 
-See also: [Finance Foundation](topic:finance.foundation), [Audit Log](topic:administration.audit-log), and [Sales Invoices and Credit Notes](topic:sales.invoices).
+Purchasing, Inventory, and Banking are not forced to post GL entries until their respective Finance integration packages provide complete behavior.
+
+Next: **F3 — Accounts Payable**, including supplier invoices/open items, matching, approval, and controlled GL integration.
+
+See also: [Finance Foundation](topic:finance.foundation), [Accounts Receivable](topic:finance.receivables), [Audit Log](topic:administration.audit-log), and [Sales Invoices and Credit Notes](topic:sales.invoices).

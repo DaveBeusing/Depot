@@ -63,14 +63,14 @@ This roadmap reflects the current implementation state. “Implemented” means 
 - [x] representative XRechnung fixture and pinned KoSIT conformance workflow
 - [x] structured Customer buyer identity including Buyer Reference, endpoint/scheme, tax identity, and structured billing address
 - [x] atomic sales-invoice posting/finalization with seller snapshot, buyer snapshot, and generated XML
-- [x] immutable retention of the exact issued sales-invoice XML with SHA-256 integrity verification
-- [x] verified XRechnung XML export from the posted Invoice workspace without regeneration from current master data
+- [x] immutable retention of exact issued sales-invoice XML with SHA-256 integrity verification
+- [x] verified XRechnung XML export from the posted Invoice workspace without regeneration
 - [x] fail-closed posting for incomplete invoice identity and unsupported ambiguous tax scenarios
 
 ### Finance F0 — International Finance Foundation
 
 - [x] legal entities with explicit country and functional currency
-- [x] currency contracts with three-letter ISO 4217-style syntax and no default currency
+- [x] currency contracts with ISO 4217-style syntax and no default currency
 - [x] sourced/effective exchange-rate model and `IExchangeRateSource`
 - [x] fiscal calendars and accounting periods
 - [x] charts of accounts and account master contracts
@@ -82,7 +82,7 @@ This roadmap reflects the current implementation state. “Implemented” means 
 - [x] `ITaxDeterminationService` and `IFinanceLocalizationProvider` boundaries
 - [x] Finance feature schema v1 for SQLite, SQL Server, and MySQL/MariaDB
 - [x] granular Finance RBAC and Finance system-role assignment
-- [x] Finance architecture/compliance documentation and embedded Help manifest 1.9 topic
+- [x] Finance architecture/compliance documentation and embedded Help topic
 
 ### Finance F1 — General Ledger & Posting Engine
 
@@ -99,19 +99,28 @@ This roadmap reflects the current implementation state. “Implemented” means 
 - [x] optimistic posting-profile concurrency and database uniqueness boundaries
 - [x] separate sensitive permission for free manual journals
 - [x] Finance feature schema v2 for SQLite, SQL Server, and MySQL/MariaDB
-- [x] General Ledger Help topic and Help manifest 1.10
+- [x] General Ledger Help topic
 - [x] regression coverage for balance, idempotency, closed periods, audit rollback, profile posting and reversals
 
+### Finance F2 — Accounts Receivable
+
+- [x] customer subledger / receivable debit and credit open items
+- [x] Sales Invoice/Credit Note → AR → F1 GL integration through configured posting profiles
+- [x] atomic source/subledger/ledger/audit transaction when AR is configured
+- [x] explicit F2 dependency on current Sales feature schema
+- [x] payment posting and allocation including partial payments and overpayments
+- [x] later allocation of unapplied customer credit
+- [x] payment reversal restoring every active allocation from the payment credit
+- [x] due-date/outstanding state and customer statement projection
+- [x] write-offs with dedicated post/reverse authorization and linked GL reversals
+- [x] configurable dunning levels and idempotent retained dunning runs
+- [x] aged receivables with separate unapplied-credit visibility
+- [x] Finance > Receivables workspace and context Help
+- [x] Finance feature schema v3 for SQLite, SQL Server, and MySQL/MariaDB
+- [x] Help manifest 1.11 with `finance.receivables`
+- [x] regression coverage for schema, source idempotency, balance linkage, allocations/reversals, write-offs, aging, dunning, RBAC and record classification
+
 ## Finance roadmap
-
-### F2 — Accounts Receivable
-
-- [ ] customer subledger/receivable open items
-- [ ] Sales Invoice/Credit Note GL integration through F1 posting profiles
-- [ ] payment allocations including partial and overpayments
-- [ ] due-date settlement state and customer statements
-- [ ] write-offs with dedicated authorization and audit
-- [ ] dunning levels/runs and aged receivables
 
 ### F3 — Accounts Payable
 
@@ -119,6 +128,7 @@ This roadmap reflects the current implementation state. “Implemented” means 
 - [ ] supplier subledger/open items
 - [ ] purchase-order/goods-receipt/supplier-invoice matching
 - [ ] approval and GL integration
+- [ ] supplier settlement/payment-run preparation with segregation of duties
 
 ### F4 — Inventory Accounting
 
@@ -159,7 +169,7 @@ This roadmap reflects the current implementation state. “Implemented” means 
 
 ## Remaining production/release acceptance
 
-These items require real infrastructure, signing identities, interactive desktop testing, organization-specific legal decisions, additional commercial tax semantics, or a marketed-product decision rather than generic seller/buyer invoice-finalization and Finance-foundation engineering.
+These items require real infrastructure, signing identities, interactive desktop testing, organization-specific legal decisions, additional commercial tax/accounting semantics, or a marketed-product decision.
 
 ### Providers and recovery
 
@@ -167,12 +177,13 @@ These items require real infrastructure, signing identities, interactive desktop
 - [ ] live MySQL/MariaDB clean-install/migration matrix
 - [ ] live backup/restore/recovery drills for every advertised provider/version
 - [ ] multi-client concurrency and representative latency/load tests
-- [ ] Finance v1 -> v2 live-server migration and concurrent posting acceptance
+- [ ] Finance v1 -> v3 live-server migration and concurrent GL/AR posting acceptance
+- [ ] provider-specific Finance settlement/reversal locking/deadlock/retry acceptance
 - [ ] Windows ACL-denied recovery scenario
 
 ### Accessibility and desktop acceptance
 
-- [ ] keyboard-only walkthrough of all critical workflows
+- [ ] keyboard-only walkthrough of all critical workflows including Finance > Receivables
 - [ ] focus-order/no-keyboard-trap review
 - [ ] Accessibility Insights or equivalent automation inspection
 - [ ] Windows Narrator baseline
@@ -190,11 +201,20 @@ These items require real infrastructure, signing identities, interactive desktop
 ### Electronic invoicing
 
 - [ ] persist explicit EN 16931 tax-category and exemption/reason semantics for zero-rated, exempt, and reverse-charge commercial lines
-- [ ] extend buyer/XML finalization to electronic credit notes where that channel is advertised
+- [ ] extend buyer/XML finalization to electronic credit notes where advertised
 - [ ] configure organization/recipient-specific routing and delivery channels
-- [ ] validate every advertised tax/profile/channel scenario with the applicable production KoSIT/XRechnung release
+- [ ] validate every advertised tax/profile/channel scenario with applicable production KoSIT/XRechnung release
 - [ ] define controlled remediation procedures for legacy posted invoices without historical finalization records
 - [ ] implement and validate PDF/A-3 before claiming ZUGFeRD/Factur-X support
+
+### Finance/accounting operational acceptance
+
+- [ ] deployment-specific legal entity, chart/book, fiscal calendar, AR posting-profile approval
+- [ ] subledger-to-GL reconciliation procedures and exception handling
+- [ ] customer-payment evidence/import/reconciliation procedure until F5 Banking is available
+- [ ] write-off policy, approval thresholds, evidence and tax treatment
+- [ ] dunning/collections wording, fees/interest, delivery proof and legal escalation review
+- [ ] accounting-record retention/export procedures
 
 ### Legal/organizational acceptance
 
@@ -203,7 +223,7 @@ These items require real infrastructure, signing identities, interactive desktop
 - [ ] final CRA scope/classification/economic-operator/conformity assessment and CE/Declaration steps where applicable
 - [ ] production vulnerability-reporting and regulatory incident contacts
 - [ ] deployment-specific accounting/tax/localization validation for every advertised Finance jurisdiction
-- [ ] deployment-specific chart/posting-profile approval, period-close/reopen procedure and segregation-of-duties acceptance
+- [ ] deployment-specific period-close/reopen and segregation-of-duties acceptance
 
 ## Phase 8 — Enterprise readiness
 
@@ -221,5 +241,5 @@ Planned based on customer demand:
 
 - barcode scanning/generation
 - label template design and printing
-- Finance packages F2-F7 until their roadmap items are implemented and verified
+- Finance packages F3-F7 until their roadmap items are implemented and verified
 - jurisdiction-specific statutory filing/localization packages until explicitly implemented and accepted

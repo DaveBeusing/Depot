@@ -12,6 +12,26 @@ A Draft invoice can be reviewed, exported to PDF, opened as an **Email invoice**
 
 Posting is also the finalization boundary for the invoice identity. Depot only completes the posting transaction when the seller identity, buyer identity and XRechnung representation can all be captured successfully.
 
+## Accounts Receivable integration
+
+Finance F2 connects posted Sales Invoices and Sales Credit Notes to the customer subledger when an active Accounts Receivable configuration exists.
+
+For a Sales Invoice, the same database transaction then includes:
+
+- the Sales status/quantity transition;
+- seller/buyer/XRechnung finalization;
+- the configured F1 General Ledger posting;
+- a debit Accounts Receivable open item for the invoice gross amount;
+- Finance number allocation and Audit Log evidence.
+
+If the AR/GL configuration, posting profile, period, exchange rate, account/dimension validation, number allocation, persistence, or audit write fails, the entire invoice posting rolls back. Depot does not leave a posted Sales Invoice without its required configured AR/GL evidence.
+
+If Accounts Receivable is not configured and active, Sales Invoice/Credit Note posting continues with its existing Sales/e-invoice behavior and does **not** invent accounts or Finance defaults.
+
+A posted Sales Credit Note creates a configured GL entry and credit open item. When the original invoice still has an outstanding debit open item for the same customer/currency/book/legal entity, Depot automatically applies as much of the credit as possible. Any remaining credit stays available under **Finance > Receivables** for later allocation.
+
+See [Accounts Receivable](topic:finance.receivables) for payments, overpayments, write-offs, dunning, aging, and customer statements.
+
 ## Historical seller and buyer identity
 
 Draft invoices use the current company and customer master data. When an invoice is posted, Depot freezes both sides needed to reproduce the issued invoice:
@@ -59,9 +79,14 @@ Posted invoices are immutable. Corrections are recorded as separate Credit Notes
 
 Each credit note captures its own issuer snapshot when it is posted. This preserves the legal identity that applied to the correction document even if company master data changes later. Buyer/XRechnung finalization for credit notes remains a separate follow-up because the current electronic-invoice flow finalizes sales invoices only.
 
+When Accounts Receivable is configured, the credit note's Finance posting and AR credit open item are part of the same posting transaction. The original posted invoice remains unchanged; settlement is represented by controlled AR allocations and the GL correction journal rather than by rewriting the invoice.
+
 The correction record remains linked to the original invoice/Sales Order. If goods physically return as well, process the inventory side independently with a Customer Return under **Warehouse > Shipping**.
 
 ## Related topics
+
+- [Accounts Receivable](topic:finance.receivables)
+- [General Ledger and Posting](topic:finance.general-ledger)
 - [Sales Orders](topic:sales.orders)
 - [Shipping, Packing and Customer Returns](topic:sales.shipping)
 - [Company](topic:administration.company)
