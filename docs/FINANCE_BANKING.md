@@ -137,6 +137,8 @@ F5 does not claim:
 
 Those are separate integration, localization and organizational acceptance responsibilities.
 
-## Next package
+## Downstream reporting and next package
 
-**F6 — Financial Reporting** consumes the single F1 ledger plus F2/F3/F4/F5 evidence for trial balance, GL detail, financial statements, cash-flow and dimension-aware reporting.
+**F6 — Financial Reporting is implemented** and consumes the single F1 ledger plus F2/F3/F4/F5 evidence for trial balance, GL detail, financial statements, cash flow and related reporting.
+
+The next Finance package is **F7 — Localization Framework**.

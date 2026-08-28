@@ -6,7 +6,7 @@ This document identifies the documentation baseline for the current development 
 
 ## Current baseline
 
-- Application: `0.15.34-preview`
+- Application: `0.15.36-preview`
 - Help manifest: `1.15`
 - Core database schema: `29`
 - Sales feature schema: `8`
@@ -16,7 +16,7 @@ This document identifies the documentation baseline for the current development 
 
 ## F6 synchronization
 
-The F6 documentation commit synchronizes Roadmap, Current Status, Finance Architecture, the dedicated Financial Reporting design note, Help Center, embedded `finance.reporting` Help and the Help manifest.
+The F6 documentation baseline synchronizes README, Architecture, Compliance Overview, Roadmap, Current Status, Finance Architecture/Compliance/Reporting, Release checklist, User-facing Changes, Help Center, embedded `finance.reporting` Help and the Help manifest.
 
 Help manifest **1.15** adds stable topic `finance.reporting`, guarded by `FinanceFinancialReporting.View`.
 

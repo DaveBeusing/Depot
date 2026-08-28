@@ -45,7 +45,7 @@ Independent current version levels are:
 - Core database schema: **29**
 - Sales feature schema: **8**
 - Finance feature schema: **8**
-- Application: **0.15.35-preview**
+- Application: **0.15.36-preview**
 - Help manifest: **1.15**
 
 Finance migrations are sequential:

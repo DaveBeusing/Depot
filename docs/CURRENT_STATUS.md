@@ -24,7 +24,7 @@ A `FinanceReportSnapshot` persists the report kind/parameters, parameter hash, c
 
 ## Versions
 
-- Application: **0.15.34-preview**
+- Application: **0.15.36-preview**
 - Core database schema: **29**
 - Sales feature schema: **8**
 - Finance feature schema: **8**

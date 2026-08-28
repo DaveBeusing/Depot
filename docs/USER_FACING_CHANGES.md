@@ -36,7 +36,7 @@ F6 does not certify report layouts for HGB, IFRS, US-GAAP, GoBD, tax returns or 
 
 ## Current technical baseline
 
-- Application: **0.15.34-preview**
+- Application: **0.15.36-preview**
 - Finance schema: **8**
 - Help manifest: **1.15**
 - Provider-neutral schema/code: SQLite, SQL Server and MySQL/MariaDB
