@@ -1,0 +1,164 @@
+<UserControl x:Class="Depot.Views.FinanceInventoryAccountingView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:Depot.Controls">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="12"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <controls:PageHeader Title="Inventory Accounting" Subtitle="FIFO valuation, COGS, GRNI, purchase variances, landed cost, inventory adjustments, and period-end reconciliation.">
+            <controls:PageHeader.Actions>
+                <Button Command="{Binding RefreshCommand}" Content="Refresh" Style="{StaticResource PrimaryButtonStyle}"/>
+            </controls:PageHeader.Actions>
+        </controls:PageHeader>
+
+        <controls:OperationPanel Grid.Row="1" ErrorText="{Binding OperationError}" HasError="{Binding HasOperationError}" IsBusy="{Binding IsBusy}" StatusText="{Binding StatusText}"/>
+
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="10"/><ColumnDefinition Width="*"/><ColumnDefinition Width="10"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+            <controls:MetricCard Title="Valued quantity" Value="{Binding TotalQuantity}" SupportingText="Current FIFO quantity"/>
+            <controls:MetricCard Grid.Column="2" Title="Inventory value" Value="{Binding TotalValuation}" ValueStringFormat="{}{0:N2}" SupportingText="Transaction-currency valuation"/>
+            <controls:MetricCard Grid.Column="4" Title="Reconciliations" Value="{Binding Reconciliations.Count}" SupportingText="Retained close snapshots"/>
+        </Grid>
+
+        <TabControl Grid.Row="4">
+            <TabItem Header="Valuation">
+                <DataGrid Margin="8" ItemsSource="{Binding Valuation}" Style="{StaticResource AppDataGridStyle}" AutoGenerateColumns="False" IsReadOnly="True">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Item ID" Binding="{Binding ItemId}" Width="120"/>
+                        <DataGridTextColumn Header="Quantity" Binding="{Binding Quantity}" Width="120" ElementStyle="{StaticResource AppDataGridNumericTextStyle}"/>
+                        <DataGridTextColumn Header="Currency" Binding="{Binding Currency.Value}" Width="100"/>
+                        <DataGridTextColumn Header="Value" Binding="{Binding TransactionValue, StringFormat={}{0:N2}}" Width="160" ElementStyle="{StaticResource AppDataGridNumericTextStyle}"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </TabItem>
+
+            <TabItem Header="Configuration">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <Grid Margin="8">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                        <controls:Card>
+                            <controls:Card.Header><TextBlock Text="Valuation configuration" Style="{StaticResource SectionTitleStyle}"/></controls:Card.Header>
+                            <StackPanel>
+                                <TextBlock Text="Legal entity ID"/><TextBox Text="{Binding LegalEntityId}" Style="{StaticResource AppTextBoxStyle}"/>
+                                <TextBlock Margin="0,8,0,0" Text="Fiscal calendar ID"/><TextBox Text="{Binding FiscalCalendarId}" Style="{StaticResource AppTextBoxStyle}"/>
+                                <TextBlock Margin="0,8,0,0" Text="PO valuation currency"/><TextBox Text="{Binding Currency}" Style="{StaticResource AppTextBoxStyle}"/>
+                                <TextBlock Margin="0,8,0,0" Text="Valuation method"/><ComboBox ItemsSource="{Binding ValuationMethods}" SelectedItem="{Binding ValuationMethod}" Style="{StaticResource AppComboBoxStyle}"/>
+                                <TextBlock Margin="0,8,0,0" Text="Goods-receipt / GRNI profile ID"/><TextBox Text="{Binding GoodsReceiptProfileId}" Style="{StaticResource AppTextBoxStyle}"/>
+                                <TextBlock Margin="0,8,0,0" Text="Sales issue / COGS profile ID"/><TextBox Text="{Binding SalesIssueProfileId}" Style="{StaticResource AppTextBoxStyle}"/>
+                                <CheckBox Margin="0,10,0,0" Content="Configuration active" IsChecked="{Binding ConfigurationActive}"/>
+                                <Button Margin="0,12,0,0" HorizontalAlignment="Right" Command="{Binding SaveConfigurationCommand}" Content="Save configuration" Style="{StaticResource PrimaryButtonStyle}"/>
+                            </StackPanel>
+                        </controls:Card>
+                        <controls:Card Grid.Column="2">
+                            <controls:Card.Header><TextBlock Text="Close and variance policy" Style="{StaticResource SectionTitleStyle}"/></controls:Card.Header>
+                            <StackPanel>
+                                <TextBlock Text="Inventory control account ID"/><TextBox Text="{Binding InventoryControlAccountId}" Style="{StaticResource AppTextBoxStyle}"/>
+                                <TextBlock Margin="0,8,0,0" Text="Inventory-adjustment profile ID"/><TextBox Text="{Binding AdjustmentProfileId}" Style="{StaticResource AppTextBoxStyle}"/>
+                                <TextBlock Margin="0,8,0,0" Text="Purchase-variance profile ID"/><TextBox Text="{Binding PurchaseVarianceProfileId}" Style="{StaticResource AppTextBoxStyle}"/>
+                                <TextBlock Margin="0,8,0,0" Text="Landed-cost profile ID"/><TextBox Text="{Binding LandedCostProfileId}" Style="{StaticResource AppTextBoxStyle}"/>
+                                <CheckBox Margin="0,10,0,0" Content="Policy active" IsChecked="{Binding PolicyActive}"/>
+                                <Button Margin="0,12,0,0" HorizontalAlignment="Right" Command="{Binding SavePolicyCommand}" Content="Save policy" Style="{StaticResource PrimaryButtonStyle}"/>
+                            </StackPanel>
+                        </controls:Card>
+                    </Grid>
+                </ScrollViewer>
+            </TabItem>
+
+            <TabItem Header="Adjustments &amp; Variances">
+                <Grid Margin="8">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                    <controls:Card>
+                        <controls:Card.Header><TextBlock Text="Inventory count valuation" Style="{StaticResource SectionTitleStyle}"/></controls:Card.Header>
+                        <StackPanel>
+                            <TextBlock Text="Inventory count reference"/><TextBox Text="{Binding InventoryCountReference}" Style="{StaticResource AppTextBoxStyle}" ToolTip="Example: IC-000123"/>
+                            <TextBlock Margin="0,8,0,0" TextWrapping="Wrap" Opacity="0.75" Text="Processes unvalued correction movements and their reversals idempotently. Normal goods-receipt and shipment valuation remains transaction-coupled."/>
+                            <Button Margin="0,12,0,0" HorizontalAlignment="Right" Command="{Binding ProcessInventoryCountCommand}" Content="Process count valuation" Style="{StaticResource PrimaryButtonStyle}"/>
+                        </StackPanel>
+                    </controls:Card>
+                    <controls:Card Grid.Column="2">
+                        <controls:Card.Header><TextBlock Text="Purchase-price variance" Style="{StaticResource SectionTitleStyle}"/></controls:Card.Header>
+                        <StackPanel>
+                            <TextBlock Text="Posted supplier document ID"/><TextBox Text="{Binding SupplierDocumentId}" Style="{StaticResource AppTextBoxStyle}"/>
+                            <Button Margin="0,12,0,0" HorizontalAlignment="Right" Command="{Binding ProcessPurchaseVarianceCommand}" Content="Process variance" Style="{StaticResource PrimaryButtonStyle}"/>
+                            <Separator Margin="0,14"/>
+                            <TextBlock Text="Reversal date"/><DatePicker SelectedDate="{Binding VarianceReversalDate}"/>
+                            <TextBlock Margin="0,8,0,0" Text="Reversal reason"/><TextBox Text="{Binding VarianceReversalReason}" Style="{StaticResource AppTextBoxStyle}"/>
+                            <Button Margin="0,12,0,0" HorizontalAlignment="Right" Command="{Binding ReversePurchaseVarianceCommand}" Content="Reverse variance" Style="{StaticResource SecondaryButtonStyle}"/>
+                        </StackPanel>
+                    </controls:Card>
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="Landed Cost">
+                <Grid Margin="8">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="2*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                    <controls:Card>
+                        <controls:Card.Header><TextBlock Text="Allocate landed cost" Style="{StaticResource SectionTitleStyle}"/></controls:Card.Header>
+                        <StackPanel>
+                            <TextBlock Text="Valuation layer IDs"/><TextBox Text="{Binding LandedCostLayerIds}" Style="{StaticResource AppTextBoxStyle}" ToolTip="Comma-separated layer IDs"/>
+                            <Grid Margin="0,8,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="8"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                <StackPanel><TextBlock Text="Posting date"/><DatePicker SelectedDate="{Binding LandedCostDate}"/></StackPanel>
+                                <StackPanel Grid.Column="2"><TextBlock Text="Currency"/><TextBox Text="{Binding LandedCostCurrency}" Style="{StaticResource AppTextBoxStyle}"/></StackPanel>
+                            </Grid>
+                            <Grid Margin="0,8,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="8"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                <StackPanel><TextBlock Text="Amount"/><TextBox Text="{Binding LandedCostAmount}" Style="{StaticResource AppTextBoxStyle}"/></StackPanel>
+                                <StackPanel Grid.Column="2"><TextBlock Text="Allocation method"/><ComboBox ItemsSource="{Binding LandedCostMethods}" SelectedItem="{Binding LandedCostMethod}" Style="{StaticResource AppComboBoxStyle}"/></StackPanel>
+                            </Grid>
+                            <TextBlock Margin="0,8,0,0" Text="Reference"/><TextBox Text="{Binding LandedCostReference}" Style="{StaticResource AppTextBoxStyle}"/>
+                            <Button Margin="0,12,0,0" HorizontalAlignment="Right" Command="{Binding AllocateLandedCostCommand}" Content="Allocate landed cost" Style="{StaticResource PrimaryButtonStyle}"/>
+                        </StackPanel>
+                    </controls:Card>
+                    <controls:Card Grid.Column="2">
+                        <controls:Card.Header><TextBlock Text="Reverse landed cost" Style="{StaticResource SectionTitleStyle}"/></controls:Card.Header>
+                        <StackPanel>
+                            <TextBlock Text="Operation ID"/><TextBox Text="{Binding LandedCostReversalId}" Style="{StaticResource AppTextBoxStyle}"/>
+                            <TextBlock Margin="0,8,0,0" Text="Posting date"/><DatePicker SelectedDate="{Binding LandedCostReversalDate}"/>
+                            <TextBlock Margin="0,8,0,0" Text="Reason"/><TextBox Text="{Binding LandedCostReversalReason}" Style="{StaticResource AppTextBoxStyle}"/>
+                            <Button Margin="0,12,0,0" HorizontalAlignment="Right" Command="{Binding ReverseLandedCostCommand}" Content="Reverse" Style="{StaticResource SecondaryButtonStyle}"/>
+                        </StackPanel>
+                    </controls:Card>
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="Reconciliation">
+                <Grid Margin="8">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="2*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                    <DataGrid ItemsSource="{Binding Reconciliations}" SelectedItem="{Binding SelectedReconciliation}" Style="{StaticResource AppDataGridStyle}" AutoGenerateColumns="False" IsReadOnly="True">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="As of" Binding="{Binding AsOfDate}" Width="110"/>
+                            <DataGridTextColumn Header="Currency" Binding="{Binding ReportingCurrency.Value}" Width="90"/>
+                            <DataGridTextColumn Header="Valuation" Binding="{Binding ValuationAmount, StringFormat={}{0:N2}}" Width="120" ElementStyle="{StaticResource AppDataGridNumericTextStyle}"/>
+                            <DataGridTextColumn Header="GL" Binding="{Binding GeneralLedgerAmount, StringFormat={}{0:N2}}" Width="120" ElementStyle="{StaticResource AppDataGridNumericTextStyle}"/>
+                            <DataGridTextColumn Header="Difference" Binding="{Binding Difference, StringFormat={}{0:N2}}" Width="120" ElementStyle="{StaticResource AppDataGridNumericTextStyle}"/>
+                            <DataGridTextColumn Header="Created" Binding="{Binding CreatedAtUtc}" Width="*"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                    <StackPanel Grid.Column="2">
+                        <controls:Card Margin="0,0,0,12">
+                            <controls:Card.Header><TextBlock Text="Period-end reconciliation" Style="{StaticResource SectionTitleStyle}"/></controls:Card.Header>
+                            <StackPanel>
+                                <TextBlock Text="As-of date"/><DatePicker SelectedDate="{Binding ReconciliationDate}"/>
+                                <Button Margin="0,12,0,0" HorizontalAlignment="Right" Command="{Binding ReconcileCommand}" Content="Run reconciliation" Style="{StaticResource PrimaryButtonStyle}"/>
+                            </StackPanel>
+                        </controls:Card>
+                        <controls:Card>
+                            <controls:Card.Header><TextBlock Text="Selected snapshot" Style="{StaticResource SectionTitleStyle}"/></controls:Card.Header>
+                            <StackPanel>
+                                <TextBlock Text="{Binding SelectedReconciliation.ValuationAmount, StringFormat=Valuation: {0:N2}}"/>
+                                <TextBlock Margin="0,6,0,0" Text="{Binding SelectedReconciliation.GeneralLedgerAmount, StringFormat=General Ledger: {0:N2}}"/>
+                                <TextBlock Margin="0,6,0,0" Text="{Binding SelectedReconciliation.Difference, StringFormat=Difference: {0:N2}}"/>
+                                <TextBlock Margin="0,6,0,0" Text="{Binding SelectedReconciliation.Lines.Count, StringFormat=Item lines: {0}}"/>
+                            </StackPanel>
+                        </controls:Card>
+                    </StackPanel>
+                </Grid>
+            </TabItem>
+        </TabControl>
+    </Grid>
+</UserControl>

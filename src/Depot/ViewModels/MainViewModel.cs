@@ -45,6 +45,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 	private readonly Lazy<SalesInvoicesViewModel> _salesInvoices;
 	private readonly Lazy<FinanceReceivablesViewModel> _financeReceivables;
 	private readonly Lazy<FinancePayablesViewModel> _financePayables;
+	private readonly Lazy<FinanceInventoryAccountingViewModel> _financeInventoryAccounting;
 	private readonly Lazy<ReportsViewModel> _reports;
 	private readonly Lazy<ImportViewModel> _import;
 	private readonly Lazy<AdministrationViewModel> _administration;
@@ -66,6 +67,9 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		ReportService reportService,
 		FinanceAccountsReceivableService financeReceivablesService,
 		FinanceAccountsPayableService financePayablesService,
+		FinanceInventoryAccountingService financeInventoryAccountingService,
+		FinanceInventoryCostingService financeInventoryCostingService,
+		FinanceInventoryMovementAccountingService financeInventoryMovementAccountingService,
 		PurposeService purposeService,
 		ReasonCodeService reasonCodeService,
 		ManufacturerService manufacturerService,
@@ -150,6 +154,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		_salesInvoices = new(() => new SalesInvoicesViewModel(salesWorkspace, salesServices.Invoices, fileDialogService, salesServices.Documents, salesServices.Email));
 		_financeReceivables = new(() => new FinanceReceivablesViewModel(financeReceivablesService));
 		_financePayables = new(() => new FinancePayablesViewModel(financePayablesService));
+		_financeInventoryAccounting = new(() => new FinanceInventoryAccountingViewModel(financeInventoryAccountingService, financeInventoryCostingService, financeInventoryMovementAccountingService));
 		_reports = new(() => new ReportsViewModel(reportService, fileDialogService));
 		_import = new(() => new ImportViewModel(importService, fileDialogService));
 		_administration = new(() => new AdministrationViewModel(
@@ -200,6 +205,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 	public SalesInvoicesViewModel SalesInvoicesViewModel => _salesInvoices.Value;
 	public FinanceReceivablesViewModel FinanceReceivablesViewModel => _financeReceivables.Value;
 	public FinancePayablesViewModel FinancePayablesViewModel => _financePayables.Value;
+	public FinanceInventoryAccountingViewModel FinanceInventoryAccountingViewModel => _financeInventoryAccounting.Value;
 	public ReportsViewModel ReportsViewModel => _reports.Value;
 	public ImportViewModel ImportViewModel => _import.Value;
 	public AdministrationViewModel AdministrationViewModel => _administration.Value;
@@ -364,7 +370,8 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		var financePages = new List<SecondaryNavigationItem>();
 		AddPage(financePages, ApplicationPermission.FinanceReceivablesView, "Receivables", () => _financeReceivables.Value, (viewModel, token) => viewModel.LoadAsync(token), "finance.receivables");
 		AddPage(financePages, ApplicationPermission.FinancePayablesView, "Payables", () => _financePayables.Value, (viewModel, token) => viewModel.LoadAsync(token), "finance.payables");
-		AddModule("Finance", Icons.Finance, "Manage receivables, payables, settlements, aging, matching, and controlled accounting workflows.", financePages);
+		AddPage(financePages, ApplicationPermission.FinanceInventoryAccountingView, "Inventory Accounting", () => _financeInventoryAccounting.Value, (viewModel, token) => viewModel.LoadAsync(token), "finance.inventory-accounting");
+		AddModule("Finance", Icons.Finance, "Manage receivables, payables, inventory valuation, settlements, matching, and controlled accounting workflows.", financePages);
 
 		var approvalPages = new List<SecondaryNavigationItem>();
 		AddPage(approvalPages, ApplicationPermission.PurchaseOrdersApprove, "Purchase Approvals", () => _purchaseOrderApprovals.Value, (viewModel, token) => viewModel.LoadAsync(token), "approvals.purchase");
@@ -562,6 +569,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		if (_salesSearch.IsValueCreated) _salesSearch.Value.Dispose();
 		if (_financeReceivables.IsValueCreated) _financeReceivables.Value.Dispose();
 		if (_financePayables.IsValueCreated) _financePayables.Value.Dispose();
+		if (_financeInventoryAccounting.IsValueCreated) _financeInventoryAccounting.Value.Dispose();
 		if (_help.IsValueCreated) { _help.Value.CloseRequested -= OnHelpCloseRequested; _help.Value.Dispose(); }
 		if (_notificationCenter.IsValueCreated) { _notificationCenter.Value.CloseRequested -= OnNotificationCloseRequested; _notificationCenter.Value.Dispose(); }
 	}

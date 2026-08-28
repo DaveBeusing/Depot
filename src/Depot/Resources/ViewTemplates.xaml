@@ -47,6 +47,7 @@
 	<DataTemplate DataType="{x:Type viewModels:SalesInvoicesViewModel}"><views:SalesInvoicesView /></DataTemplate>
 	<DataTemplate DataType="{x:Type viewModels:FinanceReceivablesViewModel}"><views:FinanceReceivablesView /></DataTemplate>
 	<DataTemplate DataType="{x:Type viewModels:FinancePayablesViewModel}"><views:FinancePayablesView /></DataTemplate>
+	<DataTemplate DataType="{x:Type viewModels:FinanceInventoryAccountingViewModel}"><views:FinanceInventoryAccountingView /></DataTemplate>
 	<DataTemplate DataType="{x:Type viewModels:ReportsViewModel}"><views:ReportsView /></DataTemplate>
 	<DataTemplate DataType="{x:Type viewModels:ShellModuleViewModel}"><views:ShellModuleView /></DataTemplate>
 	<DataTemplate DataType="{x:Type viewModels:ImportViewModel}"><views:ImportView /></DataTemplate>
