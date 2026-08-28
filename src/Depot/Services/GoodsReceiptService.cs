@@ -21,8 +21,9 @@ public sealed class GoodsReceiptService
 	private readonly AuditService _audit;
 	private readonly StockMovementReversalService _reversals;
 	private readonly ItemTraceabilityService? _traceability;
+	private readonly FinanceInventoryAccountingService? _inventoryAccounting;
 
-	public GoodsReceiptService(IDatabaseTransactionRunner transactions, GoodsReceiptRepository receipts, PurchaseOrderRepository purchaseOrders, InventoryRepository inventories, StockMovementRepository stockMovements, ReasonCodeRepository reasonCodes, AuditRepository auditEntries, AuditService audit, StockMovementReversalService reversals, ItemTraceabilityService? traceability = null)
+	public GoodsReceiptService(IDatabaseTransactionRunner transactions, GoodsReceiptRepository receipts, PurchaseOrderRepository purchaseOrders, InventoryRepository inventories, StockMovementRepository stockMovements, ReasonCodeRepository reasonCodes, AuditRepository auditEntries, AuditService audit, StockMovementReversalService reversals, ItemTraceabilityService? traceability = null, FinanceInventoryAccountingService? inventoryAccounting = null)
 	{
 		_transactions = transactions;
 		_receipts = receipts;
@@ -34,6 +35,7 @@ public sealed class GoodsReceiptService
 		_audit = audit;
 		_reversals = reversals;
 		_traceability = traceability;
+		_inventoryAccounting = inventoryAccounting;
 	}
 
 	public Task<IReadOnlyList<GoodsReceipt>> ListByPurchaseOrderAsync(long purchaseOrderId, CancellationToken cancellationToken = default)
@@ -68,7 +70,15 @@ public sealed class GoodsReceiptService
 			if (before.IsReversed) throw new InvalidOperationException("The goods receipt has already been reversed.");
 			var originals = await _stockMovements.ListOriginalsByReferenceAsync(transaction, before.ReceiptNumber, token);
 			if (originals.Count != before.Lines.Count || originals.Any(movement => movement.MovementType != StockMovementType.Purchase)) throw new InvalidOperationException("The goods-receipt movements are incomplete or inconsistent.");
-			await _reversals.CreateReversalsAsync(transaction, originals, reasonCodeId, reversalReason, userId, token);
+			var reversals = await _reversals.CreateReversalsAsync(transaction, originals, reasonCodeId, reversalReason, userId, token);
+			if (_inventoryAccounting is not null)
+			{
+				foreach (var reversal in reversals)
+				{
+					var original = originals.Single(value => value.Id == reversal.ReversalOfMovementId);
+					await _inventoryAccounting.ReverseMovementAsync(transaction, original, reversal, DateOnly.FromDateTime(DateTime.Today), reversalReason, userId, token);
+				}
+			}
 			var orderLines = order.Lines.ToDictionary(line => line.Id);
 			foreach (var receiptLine in before.Lines)
 			{
@@ -148,6 +158,11 @@ public sealed class GoodsReceiptService
 			var movement = new StockMovement { InventoryId = line.InventoryId, ReasonCodeId = reasonCode.Id, MovementType = StockMovementType.Purchase, TimestampUtc = DateTime.UtcNow, Quantity = line.Quantity, UnitPrice = orderLine.UnitPrice, Reference = receipt.ReceiptNumber, Notes = $"Delivery note {receipt.SupplierDeliveryNoteNumber}" };
 			movement.Id = await _stockMovements.CreateAsync(transaction, movement, cancellationToken);
 			if (_traceability is not null) await _traceability.AttachMovementAsync(transaction, movement, line.TrackingAllocations, cancellationToken);
+			if (_inventoryAccounting is not null)
+			{
+				var inventory = inventories[line.InventoryId];
+				await _inventoryAccounting.RecordGoodsReceiptAsync(transaction, movement, inventory.ItemId, orderLine.UnitPrice, DateOnly.FromDateTime(receipt.ReceiptDate), receipt.ReceiptNumber, receipt.ReceivedByUserId!.Value, cancellationToken);
+			}
 		}
 		var newStatus = orderLines.Values.All(line => line.ReceivedQuantity >= line.Quantity) ? PurchaseOrderStatus.Received : PurchaseOrderStatus.PartiallyReceived;
 		if (!await _purchaseOrders.UpdateStatusAsync(transaction, order.Id, order.Version, newStatus, cancellationToken)) throw new ConcurrencyConflictException("purchase order receipt status");

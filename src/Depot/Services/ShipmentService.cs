@@ -22,8 +22,9 @@ public sealed class ShipmentService
 	private readonly IAuthorizationService _authorization;
 	private readonly NotificationService _notifications;
 	private readonly ItemTraceabilityService? _traceability;
+	private readonly FinanceInventoryAccountingService? _inventoryAccounting;
 
-	public ShipmentService(IDatabaseTransactionRunner transactions, ShipmentRepository shipments, SalesOrderRepository orders, InventoryReservationRepository reservations, InventoryRepository inventories, StockMovementRepository movements, SalesInvoiceRepository invoices, CustomerReturnService customerReturns, AuditRepository auditEntries, AuditService audit, IAuthorizationService authorization, NotificationService notifications, ItemTraceabilityService? traceability = null)
+	public ShipmentService(IDatabaseTransactionRunner transactions, ShipmentRepository shipments, SalesOrderRepository orders, InventoryReservationRepository reservations, InventoryRepository inventories, StockMovementRepository movements, SalesInvoiceRepository invoices, CustomerReturnService customerReturns, AuditRepository auditEntries, AuditService audit, IAuthorizationService authorization, NotificationService notifications, ItemTraceabilityService? traceability = null, FinanceInventoryAccountingService? inventoryAccounting = null)
 	{
 		_transactions = transactions;
 		_shipments = shipments;
@@ -38,6 +39,7 @@ public sealed class ShipmentService
 		_authorization = authorization;
 		_notifications = notifications;
 		_traceability = traceability;
+		_inventoryAccounting = inventoryAccounting;
 	}
 
 	public bool CanCreate => _authorization.HasPermission(ApplicationPermission.ShipmentsCreate);
@@ -141,6 +143,7 @@ public sealed class ShipmentService
 				var movement = new StockMovement { InventoryId = line.InventoryId, MovementType = StockMovementType.SalesShipment, TimestampUtc = postedAt, Quantity = -line.Quantity, Reference = $"Shipment {before.ShipmentNumber}", Notes = before.TrackingNumber is null ? before.Notes : $"Tracking {before.TrackingNumber}{(string.IsNullOrWhiteSpace(before.Notes) ? string.Empty : $" · {before.Notes}")}" };
 				movement.Id = await _movements.CreateAsync(transaction, movement, token);
 				if (_traceability is not null) await _traceability.AttachMovementAsync(transaction, movement, trackingByLineId.GetValueOrDefault(line.Id) ?? [], token);
+				if (_inventoryAccounting is not null) await _inventoryAccounting.RecordSalesShipmentAsync(transaction, movement, line.ItemId, DateOnly.FromDateTime(before.ShipmentDate), before.ShipmentNumber, user.Id, token);
 				await _reservations.ConsumeAsync(transaction, line.InventoryReservationId, line.Quantity, user.Id, token);
 				await _orders.UpdateLineQuantitiesAsync(transaction, orderLine.Id, Math.Max(0, orderLine.ReservedQuantity - line.Quantity), orderLine.ShippedQuantity + line.Quantity, orderLine.InvoicedQuantity, token);
 			}
@@ -186,6 +189,7 @@ public sealed class ShipmentService
 				var movement = new StockMovement { InventoryId = line.InventoryId, MovementType = StockMovementType.SalesShipmentReversal, TimestampUtc = reversedAt, Quantity = line.Quantity, Reference = $"Shipment reversal {before.ShipmentNumber}", Notes = reason.Trim(), ReversalOfMovementId = original.Id, ReversalReason = reason.Trim(), ReversedAtUtc = reversedAt, ReversedByUserId = user.Id };
 				movement.Id = await _movements.CreateAsync(transaction, movement, token);
 				if (_traceability is not null) await _traceability.AttachReversalAsync(transaction, original, movement, token);
+				if (_inventoryAccounting is not null) await _inventoryAccounting.ReverseMovementAsync(transaction, original, movement, DateOnly.FromDateTime(DateTime.Today), reason, user.Id, token);
 				var reservation = new InventoryReservation { SalesOrderLineId = line.SalesOrderLineId, InventoryId = line.InventoryId, Quantity = line.Quantity, Status = InventoryReservationStatus.Active, CreatedAtUtc = reversedAt, CreatedByUserId = user.Id };
 				reservation.Id = await _reservations.CreateAsync(transaction, reservation, token);
 				await _orders.UpdateLineQuantitiesAsync(transaction, orderLine.Id, orderLine.ReservedQuantity + line.Quantity, Math.Max(0, orderLine.ShippedQuantity - line.Quantity), orderLine.InvoicedQuantity, token);

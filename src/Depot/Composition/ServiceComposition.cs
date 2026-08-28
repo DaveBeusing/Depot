@@ -28,7 +28,6 @@ internal sealed class ServiceComposition
 		var passwordHasher = new PasswordHasher();
 		ItemTraceability = new ItemTraceabilityService(repositories.ItemTraceability, audit);
 		var movementReversals = new StockMovementReversalService(database.TransactionRunner, repositories.Inventories, repositories.StockMovements, repositories.ReasonCodes, repositories.Audit, audit, ItemTraceability);
-
 		Authentication = new AuthenticationService(repositories.Users, repositories.Roles, passwordHasher, Authorization);
 		Session = new SessionService(Authorization);
 		Manufacturers = new ManufacturerService(repositories.Manufacturers, audit);
@@ -41,7 +40,7 @@ internal sealed class ServiceComposition
 		PurchaseOrders = new PurchaseOrderService(repositories.PurchaseOrders, repositories.Suppliers, repositories.Items, audit, Authorization, Notifications);
 		PurchaseOrderApprovals = new PurchaseOrderApprovalService(repositories.PurchaseOrders, repositories.Audit, PurchaseOrders, Authorization, new AuditJsonSanitizer());
 		PurchaseOrderHistory = new PurchaseOrderHistoryService(repositories.Audit, Authorization, new AuditJsonSanitizer());
-		GoodsReceipts = new GoodsReceiptService(database.TransactionRunner, repositories.GoodsReceipts, repositories.PurchaseOrders, repositories.Inventories, repositories.StockMovements, repositories.ReasonCodes, repositories.Audit, audit, movementReversals, ItemTraceability);
+		GoodsReceipts = new GoodsReceiptService(database.TransactionRunner, repositories.GoodsReceipts, repositories.PurchaseOrders, repositories.Inventories, repositories.StockMovements, repositories.ReasonCodes, repositories.Audit, audit, movementReversals, ItemTraceability, InventoryAccounting);
 		StockTransfers = new StockTransferService(database.TransactionRunner, repositories.StockTransfers, repositories.Inventories, repositories.StockMovements, repositories.ReasonCodes, repositories.Audit, audit, movementReversals, ItemTraceability);
 		InventoryCounts = new InventoryCountService(database.TransactionRunner, repositories.InventoryCounts, repositories.Inventories, repositories.StockMovements, repositories.ReasonCodes, repositories.Warehouses, repositories.Audit, audit, movementReversals, Notifications, ItemTraceability);
 		MaterialIssues = new MaterialIssueService(database.TransactionRunner, repositories.MaterialIssues, repositories.Inventories, repositories.StockMovements, repositories.ReasonCodes, repositories.Audit, audit, movementReversals, Authorization, ItemTraceability);
@@ -54,7 +53,7 @@ internal sealed class ServiceComposition
 		SalesQuotes = new SalesQuoteService(repositories.SalesQuotes, repositories.Customers, SalesOrders, audit, Authorization);
 		CustomerReturns = new CustomerReturnService(database.TransactionRunner, repositories.CustomerReturns, repositories.Shipments, repositories.StockMovements, repositories.Audit, audit, Authorization, Notifications, ItemTraceability);
 		SalesCreditNotes = new SalesCreditNoteService(database.TransactionRunner, repositories.SalesCreditNotes, repositories.SalesInvoices, repositories.Audit, audit, Authorization, Notifications, AccountsReceivable);
-		Shipments = new ShipmentService(database.TransactionRunner, repositories.Shipments, repositories.SalesOrders, repositories.InventoryReservations, repositories.Inventories, repositories.StockMovements, repositories.SalesInvoices, CustomerReturns, repositories.Audit, audit, Authorization, Notifications, ItemTraceability);
+		Shipments = new ShipmentService(database.TransactionRunner, repositories.Shipments, repositories.SalesOrders, repositories.InventoryReservations, repositories.Inventories, repositories.StockMovements, repositories.SalesInvoices, CustomerReturns, repositories.Audit, audit, Authorization, Notifications, ItemTraceability, InventoryAccounting);
 		ShipmentPacking = new ShipmentPackingService(database.TransactionRunner, repositories.Shipments, repositories.Audit, audit, Authorization);
 		SalesInvoices = new SalesInvoiceService(database.TransactionRunner, repositories.SalesInvoices, repositories.Shipments, repositories.SalesOrders, repositories.Customers, repositories.Audit, audit, Authorization, Notifications, SalesCreditNotes, AccountsReceivable);
 		CompanyDocumentIdentity = new CompanyDocumentIdentityService(database.DataAccess, database.Settings.CurrentSettings.Provider);
