@@ -11,7 +11,7 @@ namespace Depot.Repositories;
 
 internal static class FinanceAccountsReceivableRepositoryExtensions
 {
-	internal static Task<FinanceAllocationOperationRecord?> FindAllocationOperationAsync(
+	internal static Task<FinanceReceivableAllocationOperationRecord?> FindAllocationOperationAsync(
 		this FinanceAccountsReceivableRepository repository,
 		DatabaseTransactionContext transaction,
 		Guid operationId,
@@ -20,7 +20,7 @@ internal static class FinanceAccountsReceivableRepositoryExtensions
 		ArgumentNullException.ThrowIfNull(repository);
 		return transaction.Session.QuerySingleOrDefaultAsync(
 			"SELECT OperationId,RequestHash,CreditOpenItemId,CreatedAtUtc,CreatedByUserId FROM FinanceReceivableAllocationOperations WHERE OperationId=$OperationId;",
-			reader => new FinanceAllocationOperationRecord(
+			reader => new FinanceReceivableAllocationOperationRecord(
 				Guid.Parse(reader.GetString(0)),
 				reader.GetString(1),
 				reader.GetInt64(2),
@@ -150,7 +150,7 @@ internal static class FinanceAccountsReceivableRepositoryExtensions
 				DateTimeStyles.RoundtripKind).ToUniversalTime();
 }
 
-internal sealed record FinanceAllocationOperationRecord(
+internal sealed record FinanceReceivableAllocationOperationRecord(
 	Guid OperationId,
 	string RequestHash,
 	long CreditOpenItemId,
