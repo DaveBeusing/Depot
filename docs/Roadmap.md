@@ -19,7 +19,6 @@ This roadmap distinguishes implemented technical controls from production/legal 
 ## Finance roadmap
 
 ### F0 — International Finance Foundation — complete
-
 - [x] legal entities, currencies/exchange rates
 - [x] fiscal calendars/accounting periods
 - [x] charts/accounts, accounting books, journals
@@ -28,7 +27,6 @@ This roadmap distinguishes implemented technical controls from production/legal 
 - [x] Finance schema **1**
 
 ### F1 — General Ledger & Posting Engine — complete
-
 - [x] immutable balanced journal entries/lines
 - [x] transaction/reporting currency and FX snapshots
 - [x] posting profiles and amount-key account determination
@@ -40,66 +38,48 @@ This roadmap distinguishes implemented technical controls from production/legal 
 - [x] Finance schema **2**
 
 ### F2 — Accounts Receivable — complete
-
 - [x] Sales Invoice/Credit Note → AR → GL integration
-- [x] customer open items
-- [x] partial/full payments, overpayments and later allocation
-- [x] payment and write-off reversal
-- [x] aging and customer statements
-- [x] dunning policies/runs
-- [x] Finance > Receivables workspace
-- [x] granular AR/payment/write-off/dunning RBAC
+- [x] customer open items, payments, overpayments and later allocation
+- [x] payment/write-off reversal, aging, statements and dunning
+- [x] Finance > Receivables workspace and granular RBAC
 - [x] Finance schema **3**
 
 ### F3 — Accounts Payable — complete
-
-- [x] supplier invoices and supplier credit notes
-- [x] draft/submission/approval/rejection/post/reversal lifecycle
-- [x] supplier AP open items with source and GL linkage
-- [x] configured AP → F1 GL integration in one transaction
-- [x] PO / goods-receipt / supplier-invoice matching
-- [x] fail-closed matching with no implicit tolerance
-- [x] explicit match-exception approval with retained reason
-- [x] separate supplier-document and match-exception approval permissions
-- [x] partial/full supplier payments and unapplied debit balances
-- [x] later allocation and overpayment handling
-- [x] supplier-payment reversal restoring all active allocations
-- [x] AP aging and supplier statements
-- [x] Finance > Payables workspace
-- [x] Finance schema **4** for SQLite, SQL Server and MySQL/MariaDB
-- [x] Help manifest **1.12** / `finance.payables`
-- [x] regression coverage for schema, AP→GL, matching, payment reversal, RBAC and retained-record classification
+- [x] supplier invoice/credit-note lifecycle and AP open items
+- [x] AP → F1 GL posting/reversal
+- [x] PO / goods-receipt / supplier-invoice matching and explicit exceptions
+- [x] supplier payments, allocations, overpayments, reversal, aging and statements
+- [x] Finance > Payables workspace and segregation-of-duties RBAC
+- [x] Finance schema **4**
 
 ### F4 — Inventory Accounting — complete
-
 - [x] provider-neutral FIFO valuation layers and consumption evidence
-- [x] Goods Receipt → inventory/GRNI posting through F1 General Ledger
-- [x] Sales Shipment → FIFO consumption / COGS posting through F1 General Ledger
-- [x] linked receipt/shipment valuation reversals
-- [x] inventory-count adjustment valuation and controlled catch-up/reversal processing
-- [x] supplier-document purchase-price variance calculation/posting/reversal
-- [x] landed-cost allocation by quantity or existing value with controlled reversal
-- [x] historical as-of inventory valuation reconstruction
-- [x] period-end inventory-control-account ↔ valuation reconciliation snapshots
-- [x] immutable reconciliation line evidence by item
+- [x] Goods Receipt → inventory/GRNI and Sales Shipment → FIFO/COGS posting
+- [x] linked valuation reversals and inventory-count adjustments
+- [x] purchase-price variance and landed-cost allocation/reversal
+- [x] historical as-of valuation and inventory ↔ GL reconciliation snapshots
 - [x] Finance > Inventory Accounting workspace
-- [x] Finance Inventory Accounting RBAC and retained-record classification
-- [x] Finance schema **6** for SQLite, SQL Server and MySQL/MariaDB
+- [x] Finance schema **6**
 - [x] Help manifest **1.13** / `finance.inventory-accounting`
-- [x] regression coverage for schema, RBAC, retention and historical as-of valuation
 
-### F5 — Banking and Payments — next
+### F5 — Banking and Payments — complete
+- [x] bank account master/configuration tied to legal entity, accounting book, GL account and currency
+- [x] immutable bank statements and statement lines
+- [x] CSV statement import with deterministic normalization
+- [x] ISO 20022 `camt.053` statement import
+- [x] import operation/content idempotency and exact balance validation
+- [x] payment proposals from supplier open items
+- [x] creator/approver segregation and explicit payment-run approval
+- [x] idempotent supplier-payment execution through the existing F3 AP service
+- [x] bank-line reconciliation against AR payment, AP payment or configured-bank-account GL evidence
+- [x] explicit reconciliation reversal preserving original evidence
+- [x] cash-position comparison between latest statement balance and bank GL balance
+- [x] Finance > Banking workspace and Banking/Payment RBAC
+- [x] Finance schema **7** for SQLite, SQL Server and MySQL/MariaDB
+- [x] Help manifest **1.14** / `finance.banking`
+- [x] regression coverage for schema, CSV/camt.053 parsing, currency fail-closed behavior, RBAC and retention
 
-- [ ] bank account master/configuration
-- [ ] bank statements and statement lines
-- [ ] CSV and ISO 20022 statement import
-- [ ] payment proposal/execution abstractions
-- [ ] payment-status/evidence lifecycle and segregation of duties
-- [ ] bank reconciliation and cash-position integration
-- [ ] controlled AR/AP settlement linkage to bank evidence
-
-### F6 — Financial Reporting
-
+### F6 — Financial Reporting — next
 - [ ] trial balance and General Ledger report
 - [ ] balance sheet and profit/loss
 - [ ] cash-flow and subledger aging reports
@@ -108,7 +88,6 @@ This roadmap distinguishes implemented technical controls from production/legal 
 - [ ] retained report parameters/snapshots where required
 
 ### F7 — Localization Framework
-
 - [ ] Generic reference localization
 - [ ] EU layer and German reference implementation
 - [ ] additional country packs based on demand
@@ -116,22 +95,21 @@ This roadmap distinguishes implemented technical controls from production/legal 
 
 ## Remaining production/release acceptance
 
-- [ ] live SQL Server Finance v1→v6 clean-install/migration/concurrency/recovery matrix
-- [ ] live MySQL/MariaDB Finance v1→v6 clean-install/migration/concurrency/recovery matrix
-- [ ] provider-specific AR/AP/inventory-accounting locking and deadlock/retry acceptance
-- [ ] representative Finance performance/load tests including large FIFO layer histories and reconciliation
-- [ ] deployment legal entity/chart/book/calendar/posting-profile/inventory-control policy approval
-- [ ] AR/AP/inventory subledger-to-GL reconciliation procedures
-- [ ] AP approval and match-exception segregation-of-duties role review
-- [ ] supplier-payment evidence/reconciliation procedure until F5 Banking is implemented
-- [ ] retention/export and organization-specific accounting/tax/valuation procedures
+- [ ] live SQL Server Finance v1→v7 clean-install/migration/concurrency/recovery matrix
+- [ ] live MySQL/MariaDB Finance v1→v7 clean-install/migration/concurrency/recovery matrix
+- [ ] provider-specific AR/AP/inventory/banking locking and deadlock/retry acceptance
+- [ ] representative Finance performance/load tests including FIFO history, statement imports and reconciliation
+- [ ] deployment legal entity/chart/book/calendar/posting-profile/inventory/bank-account policy approval
+- [ ] AR/AP/inventory/bank reconciliation operating procedures
+- [ ] AP/payment-proposal segregation-of-duties role review
+- [ ] external bank/payment-channel integration and recovery procedure where a deployment adds one
+- [ ] retention/export and organization-specific accounting/tax/valuation/payment procedures
 - [ ] keyboard/focus/Narrator/DPI acceptance including all Finance workspaces
 - [ ] production Authenticode/timestamp and installer/upgrade/rollback acceptance
 - [ ] remaining electronic-invoice tax/profile/routing scenarios
 - [ ] final GDPR/GoBD/CRA/accounting/localization legal/organizational acceptance
 
 ## Phase 8 — Enterprise readiness
-
 - [ ] MFA
 - [ ] Microsoft Entra ID / OIDC
 - [ ] SAML where justified
@@ -143,6 +121,7 @@ This roadmap distinguishes implemented technical controls from production/legal 
 
 - barcode scanning/generation
 - label template design/printing
-- Finance packages F5-F7 until separately implemented and verified
+- Finance packages F6-F7 until separately implemented and verified
 - costing methods other than FIFO until explicitly implemented and accepted
+- direct bank connectivity/payment initiation, EBICS, PSD2/open-banking certification, sanctions/AML decisioning until separately implemented
 - jurisdiction-specific statutory filing/localization packages until explicitly implemented and accepted
