@@ -161,7 +161,7 @@ public sealed class GoodsReceiptService
 			if (_inventoryAccounting is not null)
 			{
 				var inventory = inventories[line.InventoryId];
-				await _inventoryAccounting.RecordGoodsReceiptAsync(transaction, movement, inventory.ItemId, orderLine.UnitPrice, DateOnly.FromDateTime(receipt.ReceiptDate), receipt.ReceiptNumber, receipt.ReceivedByUserId!.Value, cancellationToken);
+				await _inventoryAccounting.RecordGoodsReceiptAsync(transaction, movement, inventory.ItemId, orderLine.UnitPrice, DateOnly.FromDateTime(receipt.ReceiptDate), receipt.ReceiptNumber, receipt.ReceivedByUserId, cancellationToken);
 			}
 		}
 		var newStatus = orderLines.Values.All(line => line.ReceivedQuantity >= line.Quantity) ? PurchaseOrderStatus.Received : PurchaseOrderStatus.PartiallyReceived;
