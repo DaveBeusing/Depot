@@ -94,7 +94,7 @@ public static class FinanceBankStatementParser
 			var reference = Value(details, "Ustrd") ?? Value(entry, "AddtlNtryInf") ?? Value(details, "RmtInf");
 			var counterparty = details?.Descendants().FirstOrDefault(element => element.Name.LocalName is "Dbtr" or "Cdtr")?.Descendants().FirstOrDefault(element => element.Name.LocalName == "Nm")?.Value;
 			var bankCode = entry.Descendants().FirstOrDefault(element => element.Name.LocalName == "BkTxCd")?.Value;
-			lines.Add(new FinanceParsedBankStatementLine(booking.Value, valueDate, amount, currency, Clean(externalId, 200), Clean(reference, 500), Clean(counterparty, 300), Clean(bankCode, 100)));
+			lines.Add(new FinanceParsedBankStatementLine(booking, valueDate, amount, currency, Clean(externalId, 200), Clean(reference, 500), Clean(counterparty, 300), Clean(bankCode, 100)));
 		}
 		if (lines.Count == 0) throw new InvalidDataException("ISO 20022 statement contains no Ntry entries.");
 		fromDate ??= request.FromDate ?? lines.Min(line => line.BookingDate);
