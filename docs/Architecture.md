@@ -12,85 +12,71 @@ Views → ViewModels → Services → Repositories → DatabaseAccess
                     SQLite / SQL Server / MySQL-MariaDB
 ```
 
-Composition classes create database infrastructure, repositories, services and root ViewModels. Views/ViewModels do not contain SQL. Services are the business/security boundary. Repositories own persistence SQL and row mapping. Provider-specific behavior remains behind established data-access abstractions.
+Composition classes create database infrastructure, repositories, services and root ViewModels. Views/ViewModels do not contain SQL. Services are the business/security boundary. Repositories own persistence/query SQL and row mapping. Provider-specific behavior remains behind established data-access abstractions.
 
 ## Application shell
 
-The shell is permission-aware and workspace-oriented. Finance currently exposes two secondary pages:
+The shell is permission-aware and workspace-oriented. Finance currently exposes:
 
-- **Finance > Receivables** — `FinanceReceivables.View`
-- **Finance > Payables** — `FinancePayables.View`
+- **Finance > Receivables**
+- **Finance > Payables**
+- **Finance > Inventory Accounting**
+- **Finance > Banking**
+- **Finance > Financial Reporting**
 
-General Ledger remains an authoritative accounting service boundary rather than a free-form posting UI. UI visibility improves usability only; service authorization is authoritative.
-
-Long-running loads use cancellation/stale-request protection where applicable. Finance Payables uses the normal shell, `AsyncRelayCommand` cancellation model, central controls and central design resources.
+UI visibility improves usability only; service authorization is authoritative. Long-running workspace loads use the established cancellation/stale-request model where applicable, and Finance views use central WPF controls/design resources.
 
 ## Finance authority split
 
-- `FinanceGeneralLedgerService` — immutable double-entry accounting truth.
+- `FinanceGeneralLedgerService` — immutable double-entry accounting truth and posting boundary.
 - `FinanceAccountsReceivableService` — customer subledger/open-item/settlement truth.
 - `FinanceAccountsPayableService` — supplier subledger/document/matching/settlement truth.
-- Sales and Purchasing/Warehouse — source operational truth.
+- `FinanceInventoryAccountingService` / costing services — FIFO valuation and inventory accounting evidence.
+- `FinanceBankingService` — bank statements, payment-run orchestration, reconciliation and cash-position evidence.
+- `FinanceFinancialReportingService` — read/reporting, mapping and immutable report-snapshot boundary.
+- Sales, Purchasing and Warehouse — source operational truth.
 
-AR/AP call the GL boundary in the same database transaction for accounting mutations; they do not duplicate ledger invariants or persist a parallel ledger.
+Subledgers/accounting modules call the GL boundary for financial postings rather than duplicating ledger invariants. F6 Financial Reporting reads those existing records and does not create a second ledger.
 
 ## Schema versions
 
-Independent version levels are:
+Independent current version levels are:
 
 - Core database schema: **29**
 - Sales feature schema: **8**
-- Finance feature schema: **4**
-- Application version: **0.15.14-preview** at the F3 documentation baseline
-- Help manifest: **1.12**
+- Finance feature schema: **8**
+- Application: **0.15.35-preview**
+- Help manifest: **1.15**
 
 Finance migrations are sequential:
 
-- v1 — F0 foundation
-- v2 — F1 General Ledger/posting profiles/reversals
+- v1 — F0 International Finance Foundation
+- v2 — F1 General Ledger & Posting Engine
 - v3 — F2 Accounts Receivable
 - v4 — F3 Accounts Payable
+- v5 — F4 Inventory valuation core
+- v6 — F4 Inventory close/control extensions
+- v7 — F5 Banking and Payments
+- v8 — F6 Financial Reporting
 
-F2/F3 consume existing Sales/Purchasing master/source data where their subledgers require it. Migrations and service composition make those dependencies explicit rather than relying on undocumented startup ordering.
+## Transaction, concurrency and evidence model
 
-## Finance F3 — Accounts Payable
+Finance mutations use the existing transaction runner/database write transaction. Optimistic versions protect mutable configuration/workflow state. Operation IDs, request/content hashes and unique constraints protect retry-sensitive records. Required GL/subledger/valuation/banking/Audit effects commit or roll back together where they form one business transaction.
 
-F3 adds the supplier subledger while preserving the F1 accounting authority.
+Finalized accounting/operational evidence is not silently rewritten. Corrections use reversals or new compensating/assessment evidence. F6 report snapshots are immutable AuditEvidence and bind parameters/content with SHA-256 hashes.
 
-### Supplier documents
+## Reporting architecture
 
-`FinanceSupplierDocument` supports supplier invoices and credit notes with draft, pending-approval, approved/rejected, posted and reversed states. Draft lines may reference Purchase Order and Goods Receipt lines. Posted documents retain approval, matching, source, posting-operation and journal evidence.
-
-### Three-way matching
-
-For PO-linked invoice lines, F3 evaluates supplier identity, PO unit price, non-reversed received quantity and previously invoiced quantity. Generic Finance has no implicit price/quantity tolerance. Mismatches become explicit `Match Exception` state.
-
-Exception approval requires `FinanceSupplierMatchExceptions.Approve` and a retained reason. Non-PO documents are supported and remain matching-not-required rather than receiving invented purchasing evidence.
-
-### AP posting and settlement
-
-Configured supplier-invoice, supplier-credit-note and supplier-payment posting profiles determine GL accounts. A supplier invoice creates a credit AP open item; supplier credit notes and supplier payments create debit-direction AP items. Allocations require the same supplier, currency, accounting book and legal entity and cannot exceed available balances.
-
-Supplier-payment reversal creates a linked F1 reversal, restores all active allocations from the payment and voids the payment open item while retaining original evidence. A posted supplier document can be reversed only while its AP open item remains completely unsettled.
-
-### Transaction and concurrency model
-
-Finance mutations use the existing transaction runner/database write transaction. Optimistic versions protect mutable workflow state. Operation IDs/request hashes and unique constraints protect retry-sensitive operations. Required GL, AP and Audit effects commit or roll back together.
+GL-derived F6 reports query persisted F1 reporting-currency journal lines. AR/AP aging reads the F2/F3 subledgers in transaction currency. Historical Inventory Valuation reconstructs F4 evidence. Cash Flow, Tax Summary and COGS use explicit account mappings rather than name/number heuristics. Optional dimension filters query persisted F1 journal-line dimensions.
 
 ## RBAC and segregation of duties
 
-F3 permissions include AP view/manage, supplier-document create/submit/approve/post/reverse, match-exception approve and supplier-payment post/reverse. The default Finance role receives operational AP rights but does not receive supplier-document approval or match-exception approval automatically.
-
-Deployments remain responsible for assigning custom roles that satisfy their segregation-of-duties policy.
-
-## Business-record integrity
-
-Finalized accounting/operational evidence is not silently rewritten. Supplier documents, AP open items and supplier payments are classified as retained accounting-relevant records. Corrections use explicit reversal/allocation transactions and linked General Ledger reversals.
+Service-layer permissions are authoritative. The default Finance role receives operational Finance rights including F6 view/manage/export/snapshot creation; sensitive AP/payment approvals remain separately controlled. Deployments can define stricter custom-role separation for configuration, posting, approval, reconciliation, reporting preparation and review.
 
 ## Provider acceptance
 
-Finance v4 DDL exists for SQLite, SQL Server and MySQL/MariaDB. Provider-neutral implementation is not equivalent to production certification. Live migration, locking, deadlock/retry, recovery, backup/restore and representative load/concurrency acceptance remain required for every advertised server/version matrix.
+Finance v8 DDL/code exists for SQLite, SQL Server and MySQL/MariaDB. Provider-neutral implementation is not equivalent to production certification. Live migration, locking, deadlock/retry, recovery, backup/restore, date/decimal behavior and representative performance/concurrency acceptance remain required for every advertised server/version matrix.
 
-## F4 boundary
+## Next Finance boundary
 
-Inventory valuation, COGS, GRNI, landed cost, valuation layers and inventory-to-GL accounting remain outside F3. **F4 — Inventory Accounting** must consume the existing F1 General Ledger boundary and preserve the same transaction/audit/idempotency rules.
+F0-F6 are implemented. **F7 — Localization Framework** is next and owns country/statutory extension infrastructure. Generic Finance does not claim jurisdiction-specific financial-statement, tax-return or filing certification.
