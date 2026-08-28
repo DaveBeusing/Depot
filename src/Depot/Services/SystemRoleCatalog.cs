@@ -72,7 +72,7 @@ public static class SystemRoleCatalog
 			ApplicationPermission.ShipmentsView,
 			ApplicationPermission.CustomerReturnsView,
 			ApplicationPermission.SalesInvoicesView, ApplicationPermission.CreditNotesView)),
-		new(FinanceCode, "Finance", "Creates, reviews, posts, and corrects customer sales invoices.", Union(CommonViewPermissions,
+		new(FinanceCode, "Finance", "Manages customer financial documents and the provider-neutral finance foundation.", Union(CommonViewPermissions,
 			ApplicationPermission.SalesView,
 			ApplicationPermission.CustomersView,
 			ApplicationPermission.SalesPricingView,
@@ -80,7 +80,13 @@ public static class SystemRoleCatalog
 			ApplicationPermission.ShipmentsView,
 			ApplicationPermission.CustomerReturnsView,
 			ApplicationPermission.SalesInvoicesView, ApplicationPermission.SalesInvoicesCreate, ApplicationPermission.SalesInvoicesPost,
-			ApplicationPermission.CreditNotesView, ApplicationPermission.CreditNotesCreate, ApplicationPermission.CreditNotesPost)),
+			ApplicationPermission.CreditNotesView, ApplicationPermission.CreditNotesCreate, ApplicationPermission.CreditNotesPost,
+			ApplicationPermission.FinanceView, ApplicationPermission.FinanceManage,
+			ApplicationPermission.FinanceExchangeRatesView, ApplicationPermission.FinanceExchangeRatesManage,
+			ApplicationPermission.FinancePeriodsView, ApplicationPermission.FinancePeriodsManage,
+			ApplicationPermission.FinanceAccountingBooksView, ApplicationPermission.FinanceAccountingBooksManage,
+			ApplicationPermission.FinanceTaxConfigurationView, ApplicationPermission.FinanceTaxConfigurationManage,
+			ApplicationPermission.FinanceNumberSequencesView, ApplicationPermission.FinanceNumberSequencesManage)),
 		new(UserCode, "User", "Read-only access to standard operational views.", CommonViewPermissions)
 	];
 

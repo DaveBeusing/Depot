@@ -1,5 +1,7 @@
 # Depot Roadmap
 
+Updated: 2026-08-27
+
 This roadmap reflects the current implementation state. “Implemented” means the workflow/control exists in code and automated evidence where practical; it does not by itself mean production certification or legal conformity.
 
 ## Implemented foundations
@@ -29,7 +31,8 @@ This roadmap reflects the current implementation state. “Implemented” means 
 
 ### Inventory, warehouse, purchasing, and sales
 
-- [x] item/inventory/master-data management
+- [x] enriched item/inventory/master-data management
+- [x] movement-derived serial/lot traceability with workflow capture, block/expiry controls and reversal-safe identity
 - [x] immutable stock movements and counter-movement corrections
 - [x] transfers, inventory counts, material issues/returns, shipping, picking/packing, and customer returns
 - [x] suppliers, supplier items, purchase orders, approvals, goods receipts, and supplier returns
@@ -64,6 +67,60 @@ This roadmap reflects the current implementation state. “Implemented” means 
 - [x] verified XRechnung XML export from the posted Invoice workspace without regeneration from current master data
 - [x] fail-closed posting for incomplete invoice identity and unsupported ambiguous tax scenarios
 
+### Finance F0 — International Finance Foundation
+
+- [x] legal entities with explicit country and functional currency
+- [x] currency contracts with three-letter ISO 4217-style syntax and no default currency
+- [x] sourced/effective exchange-rate model and `IExchangeRateSource`
+- [x] fiscal calendars and accounting periods
+- [x] charts of accounts and account master contracts
+- [x] accounting books with configurable accounting-standard code
+- [x] journal-definition master data
+- [x] accounting dimensions and values
+- [x] structured tax registrations
+- [x] Finance number sequences
+- [x] `ITaxDeterminationService` and `IFinanceLocalizationProvider` boundaries
+- [x] Finance feature schema v1 for SQLite, SQL Server, and MySQL/MariaDB
+- [x] granular Finance RBAC and Finance system-role assignment
+- [x] Finance architecture/compliance documentation and embedded Help manifest 1.9 topic
+
+## Finance roadmap
+
+### F1 — General Ledger & Posting Engine
+
+- [ ] immutable journal-entry headers and lines
+- [ ] balanced double-entry invariant (`sum(debit) == sum(credit)`)
+- [ ] posting profiles and source-document account determination
+- [ ] source-document/operation idempotency
+- [ ] accounting-period lock enforcement
+- [ ] explicit reversal/correction transactions
+- [ ] transactionally persisted audit evidence
+- [ ] provider-neutral optimistic concurrency/race-safety tests
+
+### F2 — Accounts Receivable
+
+- [ ] customer subledger/open items
+- [ ] Sales Invoice/Credit Note GL integration
+- [ ] settlements, due dates, dunning, customer statements
+
+### F3 — Accounts Payable
+
+- [ ] supplier invoices/credit notes
+- [ ] supplier subledger/open items
+- [ ] approval/matching and GL integration
+
+### F4 — Inventory Accounting
+
+- [ ] valuation layers/policies
+- [ ] inventory-to-GL posting
+- [ ] landed cost and period-end reconciliation
+
+### F5 — Banking and payments
+
+- [ ] bank accounts/statements
+- [ ] payment proposal/execution abstractions
+- [ ] reconciliation and cash-position integration
+
 ### Quality and accessibility
 
 - [x] Windows Server 2022/2025 quality matrix on .NET 10
@@ -74,7 +131,7 @@ This roadmap reflects the current implementation state. “Implemented” means 
 
 ## Remaining production/release acceptance
 
-These items require real infrastructure, signing identities, interactive desktop testing, organization-specific legal decisions, additional commercial tax semantics, or a marketed-product decision rather than generic seller/buyer invoice-finalization foundations.
+These items require real infrastructure, signing identities, interactive desktop testing, organization-specific legal decisions, additional commercial tax semantics, or a marketed-product decision rather than generic seller/buyer invoice-finalization and Finance-foundation engineering.
 
 ### Providers and recovery
 
@@ -116,6 +173,7 @@ These items require real infrastructure, signing identities, interactive desktop
 - [ ] organization-specific GoBD procedural documentation and tax-relevance determination
 - [ ] final CRA scope/classification/economic-operator/conformity assessment and CE/Declaration steps where applicable
 - [ ] production vulnerability-reporting and regulatory incident contacts
+- [ ] deployment-specific accounting/tax/localization validation for every advertised Finance jurisdiction
 
 ## Phase 8 — Enterprise readiness
 
@@ -129,10 +187,9 @@ Planned based on customer demand:
 - [ ] ISO/IEC 27001 customer-control mapping and security-questionnaire evidence
 - [ ] NIS2-influenced customer/supply-chain requirements
 
-## Out of current scope
+## Out of current completed scope
 
 - barcode scanning/generation
 - label template design and printing
-- payment collection
-- accounts receivable
-- general ledger/accounting
+- Finance packages F1-F5 until their roadmap items are implemented and verified
+- jurisdiction-specific statutory filing/localization packages until explicitly implemented and accepted

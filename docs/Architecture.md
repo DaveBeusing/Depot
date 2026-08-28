@@ -1,5 +1,7 @@
 # Depot Architecture
 
+Updated: 2026-08-27
+
 ## Overview
 
 Depot is a .NET 10 Windows desktop application built with WPF, MVVM, service-layer business rules, provider-neutral repositories, and ADO.NET database abstractions.
@@ -38,6 +40,8 @@ The shell supports closeable document/workspace tabs, stable routes, navigation 
 
 Module/page visibility is permission-aware for usability, but authorization is enforced again by services. UI visibility is never treated as a security boundary.
 
+Finance F0 currently supplies domain/schema/RBAC foundations and Help content; it deliberately does not add a General Ledger posting workspace before the posting engine exists.
+
 ## Presentation layer
 
 Views contain layout, bindings, and presentation resources. ViewModels own presentation state, commands, selection, loading/error feedback, and cancellable user workflows.
@@ -67,6 +71,7 @@ Major service groups include:
 - sales customers, pricing, quotes, orders, reservations, shipments, invoices, credit notes, and customer returns;
 - Company legal/document identity;
 - document generation, historical issuer snapshots, and Sales Invoice XRechnung finalization;
+- Finance localization/tax/exchange-rate provider contracts and jurisdiction-neutral foundation models;
 - audit, privacy-data discovery/export, notifications, reporting, backup/recovery, settings, and help.
 
 Business services use optimistic concurrency and provider-neutral transaction runners for workflows that must commit atomically.
@@ -89,14 +94,16 @@ The application avoids application-wide mutable caches for business records. Sma
 
 ## Database schemas and migrations
 
-Depot has two version concepts that must not be confused:
+Depot has version concepts that must not be confused:
 
 - **Core database schema:** currently version **29**.
-- **Feature schemas:** selected domains can maintain an independent feature-version registry in `DepotFeatureVersions`. Sales Invoice finalization is currently Sales feature schema **8**.
-
-Application SemVer is independent from both database schema systems.
+- **Sales feature schema:** currently version **8** in `DepotFeatureVersions`.
+- **Finance feature schema:** currently version **1** in `DepotFeatureVersions`.
+- Application SemVer is independent from all database schema systems.
 
 All advertised providers have schema creation/migration implementations for repository-supported structures. Live SQL Server/MySQL/MariaDB version matrices, migration/recovery drills, representative concurrency, and latency/load acceptance remain production-release gates.
+
+`DatabaseComposition` initializes the core provider schema, then Sales feature migrations, then Finance feature migrations. Finance v1 creates provider-specific equivalents for currencies, legal entities, tax registrations, exchange rates, fiscal calendars/periods, charts/accounts, accounting books, journal definitions, dimensions/values, and number sequences. It deliberately seeds no country, currency, tax rate, chart of accounts, accounting book, accounting standard, or legal entity.
 
 ### Item master-data extension
 
@@ -106,13 +113,27 @@ The enriched item master remains on the normal `View -> ViewModel -> Service -> 
 
 GTIN is validated in the service and protected by a provider-specific unique database index for concurrent/race-safe uniqueness. Physical values use an explicit unit contract: weights are persisted as kilograms and dimensions as millimetres. Activation/deactivation loads the complete master-data projection before audit persistence so audit evidence retains the full before/after record.
 
-Item master-data classifications are not silently interpreted as transaction rules. In particular, `TrackingMode` does not yet create/enforce serial or lot capture, and `ItemType`/`LifecycleStatus` do not automatically block stock, purchasing or sales workflows unless a dedicated workflow rule explicitly implements that behavior. See `docs/ITEM_MASTER_DATA.md`.
+Item master-data classifications are interpreted as transaction rules only where a dedicated workflow explicitly implements the behavior. Current stock, purchasing and sales workflows implement the documented item type, tracking and lifecycle controls; legacy tracked opening-balance import remains fail-closed because it lacks allocation fields. See `docs/ITEM_MASTER_DATA.md` and `docs/ITEM_TRACEABILITY.md`.
+
+## Finance foundation
+
+Finance F0 follows the same Depot architecture rather than introducing a parallel accounting stack. Domain contracts are in `Models`, generic provider/localization contracts in `Services`, and the additive provider-neutral feature migration in `Data`.
+
+F0 introduces `CurrencyCode`, `FinanceCurrency`, `LegalEntity`, `TaxRegistration`, `ExchangeRate`, `FiscalCalendar`, `AccountingPeriod`, `ChartOfAccounts`, `FinanceAccount`, `AccountingBook`, `JournalDefinition`, `AccountingDimension`, `AccountingDimensionValue`, and `FinanceNumberSequence`.
+
+Structural validation covers required identifiers/codes, ISO-style country/currency syntax, positive exchange rates, same-currency rate consistency, valid date ranges, and number-sequence constraints. ISO-style validation is syntactic; authoritative code/reference-data validity remains deployment/reference-data responsibility.
+
+`IExchangeRateSource`, `ITaxDeterminationService`, and `IFinanceLocalizationProvider` define extension boundaries. The generic foundation does not infer Germany, EUR, 19%, SKR03/SKR04, HGB, IFRS, US-GAAP, XRechnung, or another local rule/default. Accounting-standard identity is configuration data rather than a fixed enum.
+
+F0 defines journal master data only. General Ledger entry/line persistence, double-entry balancing, posting profiles, source-document idempotency, period-lock enforcement, reversals, transactional audit and posting concurrency belong to F1. See `docs/FINANCE_ARCHITECTURE.md`.
 
 ## Authorization and identity
 
 Core schema version 28 introduced database-backed RBAC through Roles, Permissions, RolePermissions, and UserRoles. Effective permissions are the union of active assigned roles and are enforced at service boundaries.
 
 The protected Administrator role receives catalogued permissions through persisted role data rather than hidden authorization bypasses. Explicit business rules such as creator/approver separation remain separate from generic permissions.
+
+Finance F0 adds dedicated `Finance.*`-derived permission codes for generic Finance access plus exchange rates, periods, accounting books, tax configuration and number sequences. The existing Finance system role receives them; Administrator inherits them through `PermissionCatalog.All`.
 
 First-run databases use an administrator-bootstrap workflow rather than shared default credentials. Password policy, throttling, versioned PBKDF2-HMAC-SHA256 hashing, protected database settings, and encrypted remote transport are part of the security baseline.
 
@@ -129,11 +150,15 @@ Depot treats posted/finalized records as historical evidence when the workflow r
 
 Reviewed retained workflows persist business state and audit evidence atomically. Audit entries capture actor, UTC timestamp, action/state transition, entity identity, and sanitized before/after data.
 
+Finance F1 must apply the same evidence model to posted journal entries: no destructive rewrite, explicit reversals/corrections, transactional audit, source-document traceability and idempotency.
+
 ## Inventory and warehouse integrity
 
 Stock is movement-derived rather than maintained as an independently mutable balance. Provider-specific locks and stable inventory ordering protect posting workflows from oversubscription and lock-order inversion.
 
 Posted movements are immutable. Reversal creates a new counter-movement linked to the original where applicable. Transfers create paired out/in movements. Inventory counts preserve their starting snapshot and post only the required correction against movement-derived stock at posting time.
+
+Serial/lot identity is also movement-derived through `ItemTrackingUnits` and `StockMovementTracking`; exact-location availability, block/expiry state and reversal identity are enforced in posting workflows.
 
 ## Purchasing
 
@@ -142,6 +167,8 @@ Purchase Orders use audited lifecycle transitions, explicit approvals, optimisti
 Goods-receipt posting, purchase-order quantity/status effects, stock movements, and audit share one transaction. Supplier Returns preserve historical receipt facts and represent outbound corrections separately.
 
 Critical workflows use the `WorkflowOperations` idempotency ledger where implemented so replay of a completed operation ID does not duplicate business effects.
+
+Accounts Payable supplier-invoice accounting remains a later Finance package and must not reinterpret goods-receipt facts as invoices.
 
 ## Sales architecture
 
@@ -156,6 +183,8 @@ Commercial transaction values are snapshotted progressively:
 
 Posted Sales Invoices are corrected with Credit Notes rather than editing the original invoice.
 
+Finance F0 does not yet create an Accounts Receivable subledger or GL posting from these documents; those integrations belong to later Finance packages.
+
 ## Company master and document issuer identity
 
 `Administration > Company` is the authoritative mutable legal seller/document profile for the current database. It contains structured legal, registration, tax, contact, banking, electronic-invoice, customs, and selected regulatory data.
@@ -165,6 +194,8 @@ Posted Sales Invoices are corrected with Credit Notes rather than editing the or
 Draft/current operational documents can use current Company master data. Posted financial documents do not.
 
 `SalesDocumentIssuerSnapshots` stores one immutable issuer projection for each posted Sales Invoice or Sales Credit Note. A posted document whose historical issuer snapshot is missing fails closed rather than falling back to today's Company master.
+
+Finance `LegalEntity` is a generic accounting boundary and does not silently replace or reconstruct existing Company document identity. Explicit integration/mapping belongs to later Finance workflows.
 
 ## Sales Invoice finalization
 
@@ -235,7 +266,7 @@ Recipients are materialized from active RBAC assignments at event time. Notifica
 
 Administration > Privacy Data provides authorized discovery and machine-readable export of supported person-related data. Authentication hashes, connection credentials, protected configuration, and other secrets are excluded.
 
-Electronic invoice finalization records may contain contact, tax, and financial information and therefore inherit Depot's authorization, backup, retention, audit, and privacy requirements.
+Electronic invoice finalization records and future Finance records may contain contact, tax, and financial information and therefore inherit Depot's authorization, backup, retention, audit, and privacy requirements.
 
 Depot deliberately does not provide a universal destructive GDPR-delete operation because legal retention and lifecycle handling are record-specific.
 
@@ -243,7 +274,7 @@ Depot deliberately does not provide a universal destructive GDPR-delete operatio
 
 `DatabaseManagementService` covers provider/schema status, backup/archive validation, restore with safety-backup behavior, scheduled backup retention, provider-specific integrity checks, and SQLite compaction.
 
-SQLite recovery paths are automated where practical. Live SQL Server/MySQL/MariaDB recovery drills and provider/version acceptance remain production gates.
+SQLite recovery paths are automated where practical. Live SQL Server/MySQL/MariaDB recovery drills and provider/version acceptance remain production gates. Finance provider schemas require the same live-provider acceptance before being advertised as production-supported.
 
 ## Loading and large-data behavior
 
@@ -268,17 +299,23 @@ Interactive keyboard, focus-order, Narrator/Accessibility Insights, DPI/scaling,
 - Critical multi-entity effects commit in one transaction.
 - Provider-specific behavior stays behind provider/data-access abstractions.
 - Electronic invoice XML exported for a posted invoice is the persisted issued representation, not a reconstruction.
+- Generic Finance does not infer jurisdiction, currency, tax rate, chart of accounts or accounting standard.
+- Future GL posting has one authoritative balanced double-entry truth and cannot maintain a parallel mutable balance.
 - Technical compliance evidence is not described as legal certification.
 
 ## Related documentation
 
 - `README.md`
+- `docs/FINANCE_ARCHITECTURE.md`
+- `docs/FINANCE_COMPLIANCE.md`
 - `docs/ITEM_MASTER_DATA.md`
+- `docs/ITEM_TRACEABILITY.md`
 - `docs/Roadmap.md`
 - `docs/RELEASE_1_0.md`
 - `docs/SECURITY_ROADMAP.md`
 - `docs/DATA_ACCESS_AUDIT.md`
 - `docs/NOTIFICATION_CENTER.md`
+- `docs/HELP_CENTER.md`
 - `docs/compliance/COMPANY_MASTER_DATA.md`
 - `docs/compliance/ISSUER_SNAPSHOTS.md`
 - `docs/compliance/ELECTRONIC_INVOICING.md`

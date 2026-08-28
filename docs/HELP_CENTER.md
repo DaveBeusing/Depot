@@ -1,10 +1,12 @@
 # Depot Help Center
 
+Updated: 2026-08-27
+
 Depot ships an integrated offline Help Center using embedded Markdown and native WPF `FlowDocument` rendering. Help opens as a regular workspace tab; F1 resolves the current application context without replacing other open workspaces.
 
 ## Content structure
 
-Help content is versioned with the application under `src/Depot/Help`. The current manifest version is **1.7** and contains Getting Started, Inventory, Warehouse, Purchasing, Sales, Approvals, Reports, Administration, and Troubleshooting topics.
+Help content is versioned with the application under `src/Depot/Help`. The current manifest version is **1.9** and contains Getting Started, Inventory, Warehouse, Purchasing, Sales, Approvals, Reports, Finance, Administration, and Troubleshooting topics.
 
 `manifest.json` defines stable topic IDs, titles, categories, Markdown files, ordering, search keywords, optional required permissions, and related topics. IDs are application contracts and should not be renamed after use.
 
@@ -20,13 +22,16 @@ Help must remain synchronized with current application behavior, especially secu
 - backup guidance documents validation, restore safety, automatic retention, and environment-specific recovery acceptance
 - Audit Log documentation includes filtered CSV export and structured business-record evidence export
 - Privacy Data documents person-related discovery/export without implying automatic legal erasure decisions
-- Item Help documents identification, lifecycle, trade/compliance and logistics master data, including the fixed kg/mm physical-unit contract and the operational boundary of tracking/type/lifecycle classifications
+- Item Help documents identification, lifecycle, trade/compliance, logistics, serial/lot capture, traceability and the current lifecycle/type workflow restrictions
 - Sales invoice Help distinguishes current operational invoice/credit-note behavior from the EN 16931/XRechnung technical conformance foundation
+- Finance Help distinguishes F0 domain/schema/configuration foundations from future GL posting and must not imply a default jurisdiction, currency, tax rate, chart of accounts, accounting standard or statutory certification
 - Help must never document removed default credentials or imply legal certification from technical controls
 
-## Manifest 1.7 changes
+## Manifest 1.9 changes
 
-Manifest 1.7 refreshes the existing `inventory.items` topic for the enriched item-master-data contract. Search keywords now include GTIN, model/revision/product family, lifecycle, customs/ECCN, dangerous goods/battery, RoHS/REACH, logistics measurements and replacement-item concepts. The topic explicitly distinguishes persisted master-data classifications from workflow capabilities that are not yet implemented, such as serial/lot capture enforcement.
+Manifest 1.9 adds `finance.foundation`, a permission-filtered Finance topic covering legal entities, currencies/exchange rates, fiscal calendars/accounting periods, charts/accounts, accounting books, journal definitions, dimensions, tax registrations, number sequences, and exchange-rate/tax/localization boundaries.
+
+The topic requires `Finance.View`, cross-links Sales Invoices and Company master data, and explicitly states that F0 does not yet implement General Ledger posting. Existing serial/lot traceability topics introduced in 1.8 remain unchanged.
 
 ## Supported Markdown
 
@@ -41,7 +46,7 @@ The native renderer supports headings, paragraphs, ordered/unordered lists, bold
 5. Add only valid `topic:` links and existing permission codes.
 6. Increment the manifest version when the content contract changes materially.
 7. Run the Help Center regression tests; validation covers duplicate IDs, missing files, unknown permissions, and broken links.
-8. Verify first-run/security/privacy wording whenever authentication, data retention, audit, backup, or database configuration changes.
+8. Verify first-run/security/privacy/finance wording whenever authentication, data retention, audit, backup, database configuration, or financial behavior changes.
 
 Do not document planned functionality as available.
 
