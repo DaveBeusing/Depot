@@ -13,7 +13,9 @@ public enum FinanceInventoryAccountingEventKind
 	GoodsReceipt = 1,
 	SalesShipment = 2,
 	GoodsReceiptReversal = 3,
-	SalesShipmentReversal = 4
+	SalesShipmentReversal = 4,
+	InventoryAdjustment = 5,
+	InventoryAdjustmentReversal = 6
 }
 
 public sealed record FinanceInventoryAccountingConfiguration

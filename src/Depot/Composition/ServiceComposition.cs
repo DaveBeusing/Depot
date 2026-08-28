@@ -23,8 +23,10 @@ internal sealed class ServiceComposition
 		var audit = new AuditService(repositories.Audit, Authorization);
 		FinanceGeneralLedger = new FinanceGeneralLedgerService(database.TransactionRunner, repositories.FinanceGeneralLedger, repositories.FinancePostingProfiles, repositories.Audit, audit, Authorization);
 		AccountsReceivable = new FinanceAccountsReceivableService(database.TransactionRunner, repositories.FinanceAccountsReceivable, FinanceGeneralLedger, repositories.Audit, audit, Authorization);
-		AccountsPayable = new FinanceAccountsPayableService(database.TransactionRunner, repositories.FinanceAccountsPayable, FinanceGeneralLedger, repositories.Audit, audit, Authorization);
 		InventoryAccounting = new FinanceInventoryAccountingService(database.TransactionRunner, repositories.FinanceInventoryAccounting, FinanceGeneralLedger, repositories.Audit, audit, Authorization);
+		InventoryCosting = new FinanceInventoryCostingService(database.TransactionRunner, repositories.FinanceInventoryAccounting, repositories.FinanceInventoryCosting, FinanceGeneralLedger, repositories.Audit, audit, Authorization, repositories.FinanceAccountsPayable);
+		InventoryMovementAccounting = new FinanceInventoryMovementAccountingService(database.TransactionRunner, repositories.FinanceInventoryCosting, repositories.Inventories, InventoryCosting, Authorization);
+		AccountsPayable = new FinanceAccountsPayableService(database.TransactionRunner, repositories.FinanceAccountsPayable, FinanceGeneralLedger, repositories.Audit, audit, Authorization);
 		var passwordHasher = new PasswordHasher();
 		ItemTraceability = new ItemTraceabilityService(repositories.ItemTraceability, audit);
 		var movementReversals = new StockMovementReversalService(database.TransactionRunner, repositories.Inventories, repositories.StockMovements, repositories.ReasonCodes, repositories.Audit, audit, ItemTraceability);
@@ -89,6 +91,8 @@ internal sealed class ServiceComposition
 	public FinanceAccountsReceivableService AccountsReceivable { get; }
 	public FinanceAccountsPayableService AccountsPayable { get; }
 	public FinanceInventoryAccountingService InventoryAccounting { get; }
+	public FinanceInventoryCostingService InventoryCosting { get; }
+	public FinanceInventoryMovementAccountingService InventoryMovementAccounting { get; }
 	public AuthenticationService Authentication { get; }
 	public SessionService Session { get; }
 	public ItemService Items { get; }
