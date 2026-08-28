@@ -74,6 +74,23 @@ public sealed class FinanceGeneralLedgerService
 		return _profiles.GetAllAsync(cancellationToken);
 	}
 
+	internal Task<FinancePostingProfile?> GetPostingProfileInTransactionAsync(DatabaseTransactionContext transaction, long id, CancellationToken cancellationToken) =>
+		_profiles.GetByIdAsync(transaction, id, cancellationToken);
+
+	internal async Task<Guid?> ResolveExchangeRateIdForProfileAsync(
+		DatabaseTransactionContext transaction,
+		long postingProfileId,
+		CurrencyCode transactionCurrency,
+		DateOnly postingDate,
+		CancellationToken cancellationToken)
+	{
+		var profile = await _profiles.GetByIdAsync(transaction, postingProfileId, cancellationToken) ?? throw new InvalidOperationException("Posting profile was not found.");
+		var book = await _ledger.GetBookAsync(transaction, profile.AccountingBookId, cancellationToken) ?? throw new InvalidOperationException("Accounting book was not found.");
+		if (transactionCurrency == book.ReportingCurrency) return null;
+		var rate = await _ledger.FindLatestExchangeRateAsync(transaction, transactionCurrency, book.ReportingCurrency, postingDate, cancellationToken);
+		return rate?.Id ?? throw new InvalidOperationException($"No persisted exchange rate is available for {transactionCurrency.Value}->{book.ReportingCurrency.Value} on or before {postingDate:yyyy-MM-dd}.");
+	}
+
 	public async Task<FinancePostingProfile> SavePostingProfileAsync(FinancePostingProfile profile, CancellationToken cancellationToken = default)
 	{
 		ArgumentNullException.ThrowIfNull(profile);
@@ -116,48 +133,55 @@ public sealed class FinanceGeneralLedgerService
 		ArgumentNullException.ThrowIfNull(request);
 		_authorization.RequirePermission(ApplicationPermission.FinanceGeneralLedgerPost);
 		var user = RequireUser();
-		return await _transactions.ExecuteAsync(async (transaction, token) =>
+		return await _transactions.ExecuteAsync((transaction, token) => PostFromProfileInTransactionAsync(transaction, request, user.Id, token), cancellationToken);
+	}
+
+	internal async Task<FinanceJournalEntry> PostFromProfileInTransactionAsync(
+		DatabaseTransactionContext transaction,
+		FinanceProfilePostingRequest request,
+		long postedByUserId,
+		CancellationToken cancellationToken)
+	{
+		ArgumentNullException.ThrowIfNull(request);
+		if (request.OperationId == Guid.Empty) throw new ArgumentException("An operation ID is required.", nameof(request));
+		if (request.PostingProfileId <= 0) throw new ArgumentException("A posting profile is required.", nameof(request));
+		var profile = await _profiles.GetByIdAsync(transaction, request.PostingProfileId, cancellationToken) ?? throw new InvalidOperationException("Posting profile was not found.");
+		if (!profile.IsActive) throw new InvalidOperationException("The posting profile is inactive.");
+		var lines = new List<FinancePostingLine>();
+		foreach (var profileLine in profile.Lines.OrderBy(value => value.LineNumber))
 		{
-			if (request.OperationId == Guid.Empty) throw new ArgumentException("An operation ID is required.", nameof(request));
-			if (request.PostingProfileId <= 0) throw new ArgumentException("A posting profile is required.", nameof(request));
-			var profile = await _profiles.GetByIdAsync(transaction, request.PostingProfileId, token) ?? throw new InvalidOperationException("Posting profile was not found.");
-			if (!profile.IsActive) throw new InvalidOperationException("The posting profile is inactive.");
-			var lines = new List<FinancePostingLine>();
-			foreach (var profileLine in profile.Lines.OrderBy(value => value.LineNumber))
+			if (!request.Amounts.TryGetValue(profileLine.AmountKey, out var sourceAmount)) throw new InvalidOperationException($"Posting amount '{profileLine.AmountKey}' is required by profile '{profile.Code}'.");
+			if (sourceAmount < 0m) throw new InvalidOperationException($"Posting amount '{profileLine.AmountKey}' cannot be negative.");
+			var amount = sourceAmount * profileLine.Multiplier;
+			if (amount == 0m) continue;
+			lines.Add(new FinancePostingLine
 			{
-				if (!request.Amounts.TryGetValue(profileLine.AmountKey, out var sourceAmount)) throw new InvalidOperationException($"Posting amount '{profileLine.AmountKey}' is required by profile '{profile.Code}'.");
-				if (sourceAmount < 0m) throw new InvalidOperationException($"Posting amount '{profileLine.AmountKey}' cannot be negative.");
-				var amount = sourceAmount * profileLine.Multiplier;
-				if (amount == 0m) continue;
-				lines.Add(new FinancePostingLine
-				{
-					AccountId = profileLine.AccountId,
-					Description = profileLine.Description,
-					Debit = profileLine.Direction == FinancePostingDirection.Debit ? amount : 0m,
-					Credit = profileLine.Direction == FinancePostingDirection.Credit ? amount : 0m,
-					Dimensions = request.Dimensions
-				});
-			}
-			var resolved = NormalizeRequest(new FinancePostingRequest
-			{
-				OperationId = request.OperationId,
-				AccountingBookId = profile.AccountingBookId,
-				JournalId = profile.JournalId,
-				AccountingPeriodId = request.AccountingPeriodId,
-				NumberSequenceCode = profile.NumberSequenceCode,
-				PostingDate = request.PostingDate,
-				Description = request.Description,
-				SourceType = profile.SourceType,
-				SourceId = request.SourceId,
-				SourceEvent = profile.SourceEvent,
-				SourceReference = request.SourceReference,
-				TransactionCurrency = request.TransactionCurrency,
-				ExchangeRateId = request.ExchangeRateId,
-				EntryKind = FinanceJournalEntryKind.Standard,
-				Lines = lines
+				AccountId = profileLine.AccountId,
+				Description = profileLine.Description,
+				Debit = profileLine.Direction == FinancePostingDirection.Debit ? amount : 0m,
+				Credit = profileLine.Direction == FinancePostingDirection.Credit ? amount : 0m,
+				Dimensions = request.Dimensions
 			});
-			return await PostCoreAsync(transaction, resolved, user.Id, null, token);
-		}, cancellationToken);
+		}
+		var resolved = NormalizeRequest(new FinancePostingRequest
+		{
+			OperationId = request.OperationId,
+			AccountingBookId = profile.AccountingBookId,
+			JournalId = profile.JournalId,
+			AccountingPeriodId = request.AccountingPeriodId,
+			NumberSequenceCode = profile.NumberSequenceCode,
+			PostingDate = request.PostingDate,
+			Description = request.Description,
+			SourceType = profile.SourceType,
+			SourceId = request.SourceId,
+			SourceEvent = profile.SourceEvent,
+			SourceReference = request.SourceReference,
+			TransactionCurrency = request.TransactionCurrency,
+			ExchangeRateId = request.ExchangeRateId,
+			EntryKind = FinanceJournalEntryKind.Standard,
+			Lines = lines
+		});
+		return await PostCoreAsync(transaction, resolved, postedByUserId, null, cancellationToken);
 	}
 
 	public async Task<FinanceJournalEntry> ReverseAsync(
@@ -171,75 +195,87 @@ public sealed class FinanceGeneralLedgerService
 	{
 		_authorization.RequirePermission(ApplicationPermission.FinanceGeneralLedgerReverse);
 		var user = RequireUser();
+		return await _transactions.ExecuteAsync(
+			(transaction, token) => ReverseInTransactionAsync(transaction, originalEntryId, operationId, accountingPeriodId, postingDate, numberSequenceCode, reason, user.Id, token),
+			cancellationToken);
+	}
+
+	internal async Task<FinanceJournalEntry> ReverseInTransactionAsync(
+		DatabaseTransactionContext transaction,
+		long originalEntryId,
+		Guid operationId,
+		Guid accountingPeriodId,
+		DateOnly postingDate,
+		string numberSequenceCode,
+		string reason,
+		long postedByUserId,
+		CancellationToken cancellationToken)
+	{
 		if (originalEntryId <= 0) throw new ArgumentOutOfRangeException(nameof(originalEntryId));
 		if (operationId == Guid.Empty) throw new ArgumentException("An operation ID is required.", nameof(operationId));
 		if (accountingPeriodId == Guid.Empty) throw new ArgumentException("An accounting period is required.", nameof(accountingPeriodId));
 		var normalizedSequence = Required(numberSequenceCode, nameof(numberSequenceCode), 50).ToUpperInvariant();
 		var normalizedReason = Required(reason, nameof(reason), 500);
 
-		return await _transactions.ExecuteAsync(async (transaction, token) =>
+		var original = await _ledger.LockEntryAsync(transaction, originalEntryId, cancellationToken) ?? throw new InvalidOperationException("Journal entry was not found.");
+		if (original.EntryKind == FinanceJournalEntryKind.Reversal) throw new InvalidOperationException("A reversal entry cannot itself be reversed. Reverse the original business correction through an explicit new workflow.");
+		var existingReversalId = await _ledger.GetReversalEntryIdAsync(transaction, originalEntryId, cancellationToken);
+		if (existingReversalId.HasValue)
 		{
-			var original = await _ledger.LockEntryAsync(transaction, originalEntryId, token) ?? throw new InvalidOperationException("Journal entry was not found.");
-			if (original.EntryKind == FinanceJournalEntryKind.Reversal) throw new InvalidOperationException("A reversal entry cannot itself be reversed. Reverse the original business correction through an explicit new workflow.");
-			var existingReversalId = await _ledger.GetReversalEntryIdAsync(transaction, originalEntryId, token);
-			if (existingReversalId.HasValue)
-			{
-				var existingReversal = await _ledger.GetByIdAsync(transaction, existingReversalId.Value, token) ?? throw new InvalidOperationException("The reversal link references a missing journal entry.");
-				if (existingReversal.OperationId == operationId) return existingReversal;
-				throw new InvalidOperationException("This journal entry has already been reversed.");
-			}
+			var existingReversal = await _ledger.GetByIdAsync(transaction, existingReversalId.Value, cancellationToken) ?? throw new InvalidOperationException("The reversal link references a missing journal entry.");
+			if (existingReversal.OperationId == operationId) return existingReversal;
+			throw new InvalidOperationException("This journal entry has already been reversed.");
+		}
 
-			var period = await ValidateBookJournalPeriodAsync(transaction, original.AccountingBookId, original.JournalId, accountingPeriodId, postingDate, token);
-			var requestHash = HashReversal(original, accountingPeriodId, postingDate, normalizedSequence, normalizedReason);
-			var operation = await _ledger.FindByOperationAsync(transaction, operationId, token);
-			if (operation is not null) return await ResolveExistingAsync(transaction, operation, requestHash, "operation ID", token);
-			var source = await _ledger.FindBySourceAsync(transaction, original.AccountingBookId, nameof(FinanceJournalEntry), original.Id.ToString(CultureInfo.InvariantCulture), "Reversal", token);
-			if (source is not null) return await ResolveExistingAsync(transaction, source, requestHash, "source posting", token);
+		var period = await ValidateBookJournalPeriodAsync(transaction, original.AccountingBookId, original.JournalId, accountingPeriodId, postingDate, cancellationToken);
+		var requestHash = HashReversal(original, accountingPeriodId, postingDate, normalizedSequence, normalizedReason);
+		var operation = await _ledger.FindByOperationAsync(transaction, operationId, cancellationToken);
+		if (operation is not null) return await ResolveExistingAsync(transaction, operation, requestHash, "operation ID", cancellationToken);
+		var source = await _ledger.FindBySourceAsync(transaction, original.AccountingBookId, nameof(FinanceJournalEntry), original.Id.ToString(CultureInfo.InvariantCulture), "Reversal", cancellationToken);
+		if (source is not null) return await ResolveExistingAsync(transaction, source, requestHash, "source posting", cancellationToken);
 
-			var sequence = await RequireNumberSequenceAsync(transaction, period.LegalEntityId, normalizedSequence, token);
-			var entryNumber = FormatEntryNumber(sequence);
-			var reversal = new FinanceJournalEntry
+		var sequence = await RequireNumberSequenceAsync(transaction, period.LegalEntityId, normalizedSequence, cancellationToken);
+		var reversal = new FinanceJournalEntry
+		{
+			EntryNumber = FormatEntryNumber(sequence),
+			OperationId = operationId,
+			RequestHash = requestHash,
+			AccountingBookId = original.AccountingBookId,
+			JournalId = original.JournalId,
+			AccountingPeriodId = accountingPeriodId,
+			PostingDate = postingDate,
+			PostedAtUtc = DateTime.UtcNow,
+			PostedByUserId = postedByUserId,
+			Description = $"Reversal of {original.EntryNumber}: {normalizedReason}",
+			SourceType = nameof(FinanceJournalEntry),
+			SourceId = original.Id.ToString(CultureInfo.InvariantCulture),
+			SourceEvent = "Reversal",
+			SourceReference = original.EntryNumber,
+			TransactionCurrency = original.TransactionCurrency,
+			ReportingCurrency = original.ReportingCurrency,
+			ExchangeRateId = original.ExchangeRateId,
+			ExchangeRate = original.ExchangeRate,
+			EntryKind = FinanceJournalEntryKind.Reversal,
+			ReversalOfEntryId = original.Id,
+			Lines = original.Lines.Select((line, index) => new FinanceJournalEntryLine
 			{
-				EntryNumber = entryNumber,
-				OperationId = operationId,
-				RequestHash = requestHash,
-				AccountingBookId = original.AccountingBookId,
-				JournalId = original.JournalId,
-				AccountingPeriodId = accountingPeriodId,
-				PostingDate = postingDate,
-				PostedAtUtc = DateTime.UtcNow,
-				PostedByUserId = user.Id,
-				Description = $"Reversal of {original.EntryNumber}: {normalizedReason}",
-				SourceType = nameof(FinanceJournalEntry),
-				SourceId = original.Id.ToString(CultureInfo.InvariantCulture),
-				SourceEvent = "Reversal",
-				SourceReference = original.EntryNumber,
-				TransactionCurrency = original.TransactionCurrency,
-				ReportingCurrency = original.ReportingCurrency,
-				ExchangeRateId = original.ExchangeRateId,
-				ExchangeRate = original.ExchangeRate,
-				EntryKind = FinanceJournalEntryKind.Reversal,
-				ReversalOfEntryId = original.Id,
-				Lines = original.Lines.Select((line, index) => new FinanceJournalEntryLine
-				{
-					LineNumber = index + 1,
-					AccountId = line.AccountId,
-					Description = line.Description,
-					TransactionDebit = line.TransactionCredit,
-					TransactionCredit = line.TransactionDebit,
-					ReportingDebit = line.ReportingCredit,
-					ReportingCredit = line.ReportingDebit,
-					Dimensions = line.Dimensions
-				}).ToArray()
-			};
-			if (await _ledger.AdvanceNumberSequenceAsync(transaction, sequence.Id, sequence.NextNumber, token) != 1) throw new ConcurrencyConflictException("finance number sequence");
-			var reversalId = await _ledger.CreateEntryAsync(transaction, reversal, token);
-			await _ledger.CreateReversalLinkAsync(transaction, original.Id, reversalId, token);
-			var created = await _ledger.GetByIdAsync(transaction, reversalId, token) ?? throw new InvalidOperationException("Reversal entry could not be reloaded.");
-			await _auditEntries.CreateAsync(transaction, _audit.CreateCreatedEntry(created.Id, created), token);
-			await _auditEntries.CreateAsync(transaction, _audit.CreateActionEntry(original.Id, "Reversed", original, original), token);
-			return created;
-		}, cancellationToken);
+				LineNumber = index + 1,
+				AccountId = line.AccountId,
+				Description = line.Description,
+				TransactionDebit = line.TransactionCredit,
+				TransactionCredit = line.TransactionDebit,
+				ReportingDebit = line.ReportingCredit,
+				ReportingCredit = line.ReportingDebit,
+				Dimensions = line.Dimensions
+			}).ToArray()
+		};
+		if (await _ledger.AdvanceNumberSequenceAsync(transaction, sequence.Id, sequence.NextNumber, cancellationToken) != 1) throw new ConcurrencyConflictException("finance number sequence");
+		var reversalId = await _ledger.CreateEntryAsync(transaction, reversal, cancellationToken);
+		await _ledger.CreateReversalLinkAsync(transaction, original.Id, reversalId, cancellationToken);
+		var created = await _ledger.GetByIdAsync(transaction, reversalId, cancellationToken) ?? throw new InvalidOperationException("Reversal entry could not be reloaded.");
+		await _auditEntries.CreateAsync(transaction, _audit.CreateCreatedEntry(created.Id, created), cancellationToken);
+		await _auditEntries.CreateAsync(transaction, _audit.CreateActionEntry(original.Id, "Reversed", original, original), cancellationToken);
+		return created;
 	}
 
 	private async Task<FinanceJournalEntry> PostCoreAsync(DatabaseTransactionContext transaction, FinancePostingRequest request, long postedByUserId, long? reversalOfEntryId, CancellationToken cancellationToken)
@@ -280,7 +316,6 @@ public sealed class FinanceGeneralLedgerService
 			if (!account.AllowDirectPosting) throw new InvalidOperationException($"Account '{account.Number}' does not allow direct posting.");
 			if (account.ChartOfAccountsId != book.ChartOfAccountsId) throw new InvalidOperationException($"Account '{account.Number}' does not belong to the accounting book's chart of accounts.");
 			await ValidateDimensionsAsync(transaction, line, requiredDimensions, dimensionCache, cancellationToken);
-
 			var lineReportingDebit = RoundCurrency(line.Debit * rate.Rate, reportingCurrency.MinorUnits);
 			var lineReportingCredit = RoundCurrency(line.Credit * rate.Rate, reportingCurrency.MinorUnits);
 			transactionDebit += line.Debit;

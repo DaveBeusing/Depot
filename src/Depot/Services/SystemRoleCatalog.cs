@@ -72,7 +72,7 @@ public static class SystemRoleCatalog
 			ApplicationPermission.ShipmentsView,
 			ApplicationPermission.CustomerReturnsView,
 			ApplicationPermission.SalesInvoicesView, ApplicationPermission.CreditNotesView)),
-		new(FinanceCode, "Finance", "Manages customer financial documents, Finance configuration and controlled General Ledger posting.", Union(CommonViewPermissions,
+		new(FinanceCode, "Finance", "Manages customer financial documents, Accounts Receivable, Finance configuration and controlled General Ledger posting.", Union(CommonViewPermissions,
 			ApplicationPermission.SalesView,
 			ApplicationPermission.CustomersView,
 			ApplicationPermission.SalesPricingView,
@@ -88,7 +88,10 @@ public static class SystemRoleCatalog
 			ApplicationPermission.FinanceTaxConfigurationView, ApplicationPermission.FinanceTaxConfigurationManage,
 			ApplicationPermission.FinanceNumberSequencesView, ApplicationPermission.FinanceNumberSequencesManage,
 			ApplicationPermission.FinanceGeneralLedgerView, ApplicationPermission.FinanceGeneralLedgerPost, ApplicationPermission.FinanceGeneralLedgerReverse,
-			ApplicationPermission.FinancePostingProfilesView, ApplicationPermission.FinancePostingProfilesManage)),
+			ApplicationPermission.FinancePostingProfilesView, ApplicationPermission.FinancePostingProfilesManage,
+			ApplicationPermission.FinanceReceivablesView, ApplicationPermission.FinanceReceivablesManage,
+			ApplicationPermission.FinanceReceivablePaymentsPost, ApplicationPermission.FinanceReceivablePaymentsReverse,
+			ApplicationPermission.FinanceDunningView, ApplicationPermission.FinanceDunningManage)),
 		new(UserCode, "User", "Read-only access to standard operational views.", CommonViewPermissions)
 	];
 

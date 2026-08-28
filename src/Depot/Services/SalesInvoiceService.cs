@@ -19,8 +19,9 @@ public sealed class SalesInvoiceService
 	private readonly IAuthorizationService _authorization;
 	private readonly NotificationService _notifications;
 	private readonly SalesCreditNoteService _creditNotes;
+	private readonly FinanceAccountsReceivableService? _accountsReceivable;
 
-	public SalesInvoiceService(IDatabaseTransactionRunner transactions, SalesInvoiceRepository invoices, ShipmentRepository shipments, SalesOrderRepository orders, CustomerRepository customers, AuditRepository auditEntries, AuditService audit, IAuthorizationService authorization, NotificationService notifications, SalesCreditNoteService creditNotes)
+	public SalesInvoiceService(IDatabaseTransactionRunner transactions, SalesInvoiceRepository invoices, ShipmentRepository shipments, SalesOrderRepository orders, CustomerRepository customers, AuditRepository auditEntries, AuditService audit, IAuthorizationService authorization, NotificationService notifications, SalesCreditNoteService creditNotes, FinanceAccountsReceivableService? accountsReceivable = null)
 	{
 		_transactions = transactions;
 		_invoices = invoices;
@@ -32,6 +33,7 @@ public sealed class SalesInvoiceService
 		_authorization = authorization;
 		_notifications = notifications;
 		_creditNotes = creditNotes;
+		_accountsReceivable = accountsReceivable;
 	}
 
 	public bool CanCreate => _authorization.HasPermission(ApplicationPermission.SalesInvoicesCreate);
@@ -129,6 +131,7 @@ public sealed class SalesInvoiceService
 				await _auditEntries.CreateAsync(transaction, _audit.CreateUpdatedEntry(order.Id, order, completed), token);
 			}
 			var after = await _invoices.GetByIdAsync(transaction, id, token) ?? throw new InvalidOperationException("Sales invoice could not be reloaded.");
+			if (_accountsReceivable is not null) await _accountsReceivable.TryPostSalesInvoiceAsync(transaction, after, user.Id, token);
 			await _auditEntries.CreateAsync(transaction, _audit.CreateUpdatedEntry(id, before, after), token);
 			return after;
 		}, cancellationToken);

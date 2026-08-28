@@ -43,6 +43,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 	private readonly Lazy<SalesApprovalsViewModel> _salesApprovals;
 	private readonly Lazy<ShippingViewModel> _salesShipping;
 	private readonly Lazy<SalesInvoicesViewModel> _salesInvoices;
+	private readonly Lazy<FinanceReceivablesViewModel> _financeReceivables;
 	private readonly Lazy<ReportsViewModel> _reports;
 	private readonly Lazy<ImportViewModel> _import;
 	private readonly Lazy<AdministrationViewModel> _administration;
@@ -62,6 +63,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		DashboardService dashboardService,
 		MovementService movementService,
 		ReportService reportService,
+		FinanceAccountsReceivableService financeReceivablesService,
 		PurposeService purposeService,
 		ReasonCodeService reasonCodeService,
 		ManufacturerService manufacturerService,
@@ -144,6 +146,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		_salesApprovals = new(() => new SalesApprovalsViewModel(salesWorkspace));
 		_salesShipping = new(() => new ShippingViewModel(salesWorkspace, salesServices.Packing, fileDialogService, salesServices.Documents));
 		_salesInvoices = new(() => new SalesInvoicesViewModel(salesWorkspace, salesServices.Invoices, fileDialogService, salesServices.Documents, salesServices.Email));
+		_financeReceivables = new(() => new FinanceReceivablesViewModel(financeReceivablesService));
 		_reports = new(() => new ReportsViewModel(reportService, fileDialogService));
 		_import = new(() => new ImportViewModel(importService, fileDialogService));
 		_administration = new(() => new AdministrationViewModel(
@@ -192,6 +195,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 	public SalesApprovalsViewModel SalesApprovalsViewModel => _salesApprovals.Value;
 	public ShippingViewModel ShippingViewModel => _salesShipping.Value;
 	public SalesInvoicesViewModel SalesInvoicesViewModel => _salesInvoices.Value;
+	public FinanceReceivablesViewModel FinanceReceivablesViewModel => _financeReceivables.Value;
 	public ReportsViewModel ReportsViewModel => _reports.Value;
 	public ImportViewModel ImportViewModel => _import.Value;
 	public AdministrationViewModel AdministrationViewModel => _administration.Value;
@@ -352,6 +356,10 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		AddPage(salesPages, ApplicationPermission.SalesOrdersView, "Sales Orders", () => _salesOrders.Value, (viewModel, token) => viewModel.LoadAsync(token), "sales.orders");
 		AddPage(salesPages, ApplicationPermission.SalesInvoicesView, "Invoices", () => _salesInvoices.Value, (viewModel, token) => viewModel.LoadAsync(token), "sales.invoices");
 		AddModule("Sales", Icons.Sales, "Manage quotes, pricing, customers, sales orders, and invoicing.", salesPages);
+
+		var financePages = new List<SecondaryNavigationItem>();
+		AddPage(financePages, ApplicationPermission.FinanceReceivablesView, "Receivables", () => _financeReceivables.Value, (viewModel, token) => viewModel.LoadAsync(token), "finance.receivables");
+		AddModule("Finance", Icons.Finance, "Manage receivables, customer settlements, aging, and controlled dunning.", financePages);
 
 		var approvalPages = new List<SecondaryNavigationItem>();
 		AddPage(approvalPages, ApplicationPermission.PurchaseOrdersApprove, "Purchase Approvals", () => _purchaseOrderApprovals.Value, (viewModel, token) => viewModel.LoadAsync(token), "approvals.purchase");
@@ -547,6 +555,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		if (_salesShipping.IsValueCreated) _salesShipping.Value.Dispose();
 		if (_salesInvoices.IsValueCreated) _salesInvoices.Value.Dispose();
 		if (_salesSearch.IsValueCreated) _salesSearch.Value.Dispose();
+		if (_financeReceivables.IsValueCreated) _financeReceivables.Value.Dispose();
 		if (_help.IsValueCreated) { _help.Value.CloseRequested -= OnHelpCloseRequested; _help.Value.Dispose(); }
 		if (_notificationCenter.IsValueCreated) { _notificationCenter.Value.CloseRequested -= OnNotificationCloseRequested; _notificationCenter.Value.Dispose(); }
 	}
@@ -558,6 +567,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		public const string Warehouse = "M 2,8 L 10,3 L 18,8 L 18,18 L 2,18 Z M 6,18 L 6,11 L 14,11 L 14,18";
 		public const string Purchasing = "M 3,4 L 17,4 L 16,17 L 4,17 Z M 7,4 L 7,2 L 13,2 L 13,4 M 7,8 L 13,8 M 7,12 L 13,12";
 		public const string Sales = "M 3,4 L 17,4 L 17,16 L 3,16 Z M 6,8 L 14,8 M 6,11 L 12,11 M 6,14 L 10,14";
+		public const string Finance = "M 3,5 L 17,5 M 4,9 L 16,9 M 5,13 L 15,13 M 7,2 L 13,2 L 15,5 L 5,5 Z M 6,17 L 14,17";
 		public const string Approvals = "M 3,10 L 8,15 L 17,5 M 3,3 L 17,3 L 17,18 L 3,18 Z";
 		public const string Reports = "M 2,17 L 18,17 M 4,14 L 8,10 L 11,12 L 16,5 M 13,5 L 16,5 L 16,8";
 		public const string Administration = "M 4,5 L 16,5 M 7,2 L 7,8 M 4,15 L 16,15 M 13,12 L 13,18 M 4,10 L 16,10 M 10,7 L 10,13";
