@@ -166,7 +166,7 @@ public sealed record FinanceSupplierApprovalRequest
 	public required bool Approve { get; init; }
 	public string? Comment { get; init; }
 	public bool ApproveMatchException { get; init; }
-	public string? MatchExceptionReason { get; init; }
+	public string MatchExceptionReason { get; init; } = string.Empty;
 }
 
 public sealed record FinanceSupplierPostingRequest
