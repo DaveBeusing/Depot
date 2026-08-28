@@ -2,7 +2,7 @@
 
 Updated: 2026-08-28
 
-Depot is on the `0.15.x-preview` line. Finance work packages **F0 through F3 are implemented** on branch `finance`. Security/compliance roadmap phases 1 through 7 retain their technically implementable repository/application controls; remaining items are production, environment, legal, accessibility, provider, signing, localization/accounting-policy, and enterprise acceptance gates.
+Depot is on the `0.15.x-preview` line. Finance work packages **F0 through F4 are implemented** on branch `finance`. Security/compliance roadmap phases 1 through 7 retain their technically implementable repository/application controls; remaining items are production, environment, legal, accessibility, provider, signing, localization/accounting-policy, and enterprise acceptance gates.
 
 ## Finance F0 — International Finance Foundation
 
@@ -14,66 +14,55 @@ F1 added immutable balanced journals, transaction/reporting currency snapshots, 
 
 ## Finance F2 — Accounts Receivable
 
-F2 added the customer subledger and **Finance > Receivables**:
-
-- Sales Invoice/Credit Note → AR → GL integration;
-- customer open items;
-- partial/full payments and unapplied overpayments;
-- later allocations;
-- payment reversals restoring allocations;
-- controlled write-offs/reversal;
-- aging and customer statements;
-- dunning policies/runs;
-- granular AR RBAC.
-
-Finance feature schema **3**.
+F2 added the customer subledger and **Finance > Receivables** with Sales source integration, customer open items, payments/allocations, controlled write-offs, aging/statements, dunning and granular RBAC. Finance feature schema **3**.
 
 ## Finance F3 — Accounts Payable
 
-**F3 — Accounts Payable is implemented.** It raises Finance feature schema to **4** and adds:
+F3 added the supplier subledger and **Finance > Payables** with supplier-document lifecycle, AP open items, three-way matching, explicit exception approval, payments/allocations/reversals, aging/statements and configured F1 GL integration. Finance feature schema **4**.
 
-- `FinanceAccountsPayableService` as the supplier-subledger business boundary;
-- supplier invoice and supplier credit-note lifecycle;
-- draft, submission, approval/rejection, posting and explicit reversal;
-- supplier AP open items with retained source/journal linkage;
-- configured AP → F1 General Ledger integration in one transaction;
-- partial/full supplier payments and unapplied debit balances;
-- later allocations and overpayment handling;
-- supplier-payment reversal restoring all active allocations from that payment;
-- AP aging and supplier statements;
-- purchase-order / goods-receipt / invoice matching;
-- fail-closed matching with no implicit tolerance;
-- explicit match-exception approval and retained reason;
-- separate supplier-document approval and match-exception permissions;
-- dedicated **Finance > Payables** workspace;
-- F3 regression coverage for schema, AP→GL, matching, settlement reversal, RBAC and retained evidence;
-- Help manifest **1.12** topic `finance.payables`.
+## Finance F4 — Inventory Accounting
 
-The default Finance role receives normal AP creation/submission/posting/reversal/payment/configuration rights but not supplier-document approval or match-exception approval. Deployment role design remains responsible for assigning incompatible rights to appropriately separated users.
+**F4 — Inventory Accounting is implemented.** Finance feature schema is **6** and the package adds:
 
-The generic Finance core still contains no implicit Germany, EUR, VAT rate, SKR03/SKR04, HGB, IFRS, US-GAAP, inbound e-invoice, bank account, AP account, expense account or matching-tolerance default.
+- provider-neutral FIFO valuation layers and valuation-consumption evidence;
+- atomic Goods Receipt → valuation layer → inventory/GRNI GL posting when Inventory Accounting is active;
+- atomic Sales Shipment → FIFO consumption → COGS/inventory GL posting when Inventory Accounting is active;
+- linked receipt/shipment reversal behavior that restores valuation state or fails closed when downstream valuation has already consumed a receipt layer;
+- inventory-count correction valuation with explicit positive/negative adjustment posting and linked reversal support;
+- controlled idempotent inventory-count catch-up by immutable count/movement reference;
+- purchase-price variance calculation from posted supplier documents against referenced PO quantities/prices, plus explicit GL reversal;
+- landed-cost allocation to fully unconsumed layers by quantity or existing value, with explicit reversal before downstream consumption;
+- historical **as-of** valuation reconstruction that respects later consumption and later reversal timing instead of using current-state balances for prior dates;
+- period-end reconciliation between inventory valuation and the configured inventory-control General Ledger account in reporting currency;
+- immutable reconciliation runs and per-item snapshot lines;
+- dedicated **Finance > Inventory Accounting** workspace;
+- Finance Inventory Accounting View/Manage RBAC and retained-record classifications;
+- provider-neutral schema DDL for SQLite, SQL Server and MySQL/MariaDB.
+
+FIFO is the only implemented valuation method in F4. Depot does not silently substitute weighted-average, standard-cost, LIFO or jurisdiction-specific valuation policy.
 
 ## Versions
 
 - Application branch line: **0.15.x-preview**
-- Current F3 implementation before documentation commit: **0.15.13-preview**
 - Core database schema: **29**
 - Sales feature schema: **8**
-- Finance feature schema: **4**
-- Help manifest: **1.12**
+- Finance feature schema: **6**
+- Help manifest after F4 documentation: **1.13**
 
-The documentation commit itself increments `DepotVersionPatch`; use `Directory.Build.props` as the authoritative exact application patch after that commit.
+`Directory.Build.props` is authoritative for the exact application patch. Each commit increments `DepotVersionPatch`.
 
 ## Validation boundary
 
-The F3 test commit passes the Release solution build and win-x64 single-file publish at the build stage. F3 regression groups are used to distinguish newly introduced AP failures from repository failures already present before F3.
+F4-specific regression evidence covers Finance schema 6, F4 RBAC, retained accounting/audit evidence and historical as-of valuation reconstruction. CI also builds all broad test groups so compiler/integration regressions can be separated from repository failures that already existed before F4.
 
-Provider-neutral schema/code exists for SQLite, SQL Server and MySQL/MariaDB. Live SQL Server/MySQL/MariaDB Finance v4 migration, locking, concurrency, rollback, recovery and representative performance testing remain production acceptance gates.
+Provider-neutral schema/code exists for SQLite, SQL Server and MySQL/MariaDB. Live SQL Server/MySQL/MariaDB Finance v6 migration, locking, concurrency, rollback, recovery and representative performance testing remain production acceptance gates.
 
-Current electronic-invoice boundaries remain explicit: Sales XRechnung is separate from generic Finance; F3 does not claim inbound supplier e-invoice compliance or jurisdiction-specific tax determination.
+Current electronic-invoice boundaries remain explicit: Sales XRechnung is separate from generic Finance; F4 does not add country-specific tax, statutory inventory-valuation or inbound supplier e-invoice compliance.
 
 ## Next Finance package
 
-The next package is **F4 — Inventory Accounting**, including inventory valuation/accounting consequences and controlled integration into the existing General Ledger boundary. F3 does not pre-implement valuation or COGS logic.
+The next package is **F5 — Banking and Payments**: bank-account and statement models, CSV/ISO 20022 import, payment proposal/execution abstractions, bank reconciliation, cash position and controlled linkage of AR/AP settlements to bank evidence.
+
+After F5, the planned Finance packages are **F6 — Financial Reporting** and **F7 — Localization Framework**.
 
 Phase 8 enterprise readiness remains planned.

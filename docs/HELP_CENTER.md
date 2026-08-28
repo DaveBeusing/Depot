@@ -6,32 +6,35 @@ Depot ships an embedded offline Markdown Help Center rendered natively in WPF. H
 
 ## Current manifest
 
-Help manifest **1.12** contains four Finance topics:
+Help manifest **1.13** contains five Finance topics:
 
 - `finance.foundation` — `Finance.View`
 - `finance.general-ledger` — `FinanceGeneralLedger.View`
 - `finance.receivables` — `FinanceReceivables.View`
 - `finance.payables` — `FinancePayables.View`
+- `finance.inventory-accounting` — `FinanceInventoryAccounting.View`
 
-The new Accounts Payable topic documents F3 configuration, supplier-document lifecycle, three-way matching, explicit match-exception approval, AP open items, supplier payments/allocations/overpayments, reversals, aging/statements, RBAC, audit/concurrency behavior, provider boundaries and the F4 hand-off.
+The Inventory Accounting topic documents F4 configuration/policy, FIFO valuation, Goods Receipt/GRNI, Sales Shipment/COGS, inventory-count adjustments, purchase-price variance, landed cost, historical as-of reconciliation, reversals, RBAC and accounting-policy/provider boundaries.
 
-Purchasing Purchase Order/Goods Receipt topics and Finance Foundation/GL/AR/Audit topics are cross-linked where relevant.
+Inventory, Warehouse, Purchasing, Sales, Finance and Audit topics are cross-linked where relevant.
 
-## F3 context help
+## F4 context help
 
-**Finance > Payables** resolves to `finance.payables`. Missing/unavailable context falls back through the existing Help service behavior. Help visibility does not grant business access; service authorization remains authoritative.
+**Finance > Inventory Accounting** resolves to `finance.inventory-accounting`. Missing/unavailable context falls back through the existing Help service behavior. Help visibility does not grant business access; service authorization remains authoritative.
 
 ## Content rules
 
-Help must not imply default credentials, jurisdiction, currency, tax rate, chart/account, accounting standard, AP/expense/bank account, matching tolerance, statutory invoice validation or legal certification when those are not explicitly configured/implemented.
+Help must not imply default credentials, jurisdiction, currency, tax rate, chart/account, accounting standard, matching tolerance, capitalization decision, statutory invoice validation or legal certification when those are not explicitly configured/implemented.
 
-F3 Help must clearly state that:
+F4 Help must clearly state that:
 
-- matching is fail-closed with no implicit tolerance;
-- match-exception approval requires a separate permission and retained reason;
-- supplier-document approval and exception approval are distinct rights;
-- posted accounting evidence is corrected through explicit reversal rather than destructive editing;
-- F4 Inventory Accounting and later banking/reporting/localization packages are not yet implemented.
+- FIFO is the only currently implemented costing method;
+- valued inventory cannot silently go negative;
+- receipt reversal can be blocked by downstream valuation consumption;
+- PPV is separate from F3 matching/approval;
+- landed-cost capitalization eligibility is an accounting-policy decision outside generic Finance;
+- period-end reconciliation is technical accounting evidence, not a statutory compliance opinion;
+- F5 Banking and Payments and later reporting/localization packages are not yet implemented.
 
 ## Updating Help
 
@@ -42,4 +45,4 @@ F3 Help must clearly state that:
 5. Increment the manifest version for material topic/permission/mapping changes.
 6. Run Help regression validation for duplicate IDs, missing files, unknown permissions and broken links.
 
-Help manifest 1.12 is the F3 documentation contract.
+Help manifest **1.13** is the F4 documentation contract.

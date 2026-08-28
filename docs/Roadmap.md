@@ -70,21 +70,33 @@ This roadmap distinguishes implemented technical controls from production/legal 
 - [x] Help manifest **1.12** / `finance.payables`
 - [x] regression coverage for schema, AP→GL, matching, payment reversal, RBAC and retained-record classification
 
-### F4 — Inventory Accounting — next
+### F4 — Inventory Accounting — complete
 
-- [ ] valuation layers/policies
-- [ ] inventory-to-GL posting
-- [ ] COGS and GRNI
-- [ ] purchase/inventory variances
-- [ ] landed-cost allocation
-- [ ] period-end inventory/GL reconciliation
+- [x] provider-neutral FIFO valuation layers and consumption evidence
+- [x] Goods Receipt → inventory/GRNI posting through F1 General Ledger
+- [x] Sales Shipment → FIFO consumption / COGS posting through F1 General Ledger
+- [x] linked receipt/shipment valuation reversals
+- [x] inventory-count adjustment valuation and controlled catch-up/reversal processing
+- [x] supplier-document purchase-price variance calculation/posting/reversal
+- [x] landed-cost allocation by quantity or existing value with controlled reversal
+- [x] historical as-of inventory valuation reconstruction
+- [x] period-end inventory-control-account ↔ valuation reconciliation snapshots
+- [x] immutable reconciliation line evidence by item
+- [x] Finance > Inventory Accounting workspace
+- [x] Finance Inventory Accounting RBAC and retained-record classification
+- [x] Finance schema **6** for SQLite, SQL Server and MySQL/MariaDB
+- [x] Help manifest **1.13** / `finance.inventory-accounting`
+- [x] regression coverage for schema, RBAC, retention and historical as-of valuation
 
-### F5 — Banking and Payments
+### F5 — Banking and Payments — next
 
-- [ ] bank accounts/statements
+- [ ] bank account master/configuration
+- [ ] bank statements and statement lines
 - [ ] CSV and ISO 20022 statement import
 - [ ] payment proposal/execution abstractions
-- [ ] reconciliation and cash-position integration
+- [ ] payment-status/evidence lifecycle and segregation of duties
+- [ ] bank reconciliation and cash-position integration
+- [ ] controlled AR/AP settlement linkage to bank evidence
 
 ### F6 — Financial Reporting
 
@@ -93,6 +105,7 @@ This roadmap distinguishes implemented technical controls from production/legal 
 - [ ] cash-flow and subledger aging reports
 - [ ] tax summary, inventory valuation and COGS
 - [ ] dimension-aware reporting and exports
+- [ ] retained report parameters/snapshots where required
 
 ### F7 — Localization Framework
 
@@ -103,16 +116,16 @@ This roadmap distinguishes implemented technical controls from production/legal 
 
 ## Remaining production/release acceptance
 
-- [ ] live SQL Server Finance v1→v4 clean-install/migration/concurrency/recovery matrix
-- [ ] live MySQL/MariaDB Finance v1→v4 clean-install/migration/concurrency/recovery matrix
-- [ ] provider-specific AP settlement/reversal/matching locking and deadlock/retry acceptance
-- [ ] representative Finance performance/load tests
-- [ ] deployment legal entity/chart/book/calendar/posting-profile approval
-- [ ] AR/AP subledger-to-GL reconciliation procedures
+- [ ] live SQL Server Finance v1→v6 clean-install/migration/concurrency/recovery matrix
+- [ ] live MySQL/MariaDB Finance v1→v6 clean-install/migration/concurrency/recovery matrix
+- [ ] provider-specific AR/AP/inventory-accounting locking and deadlock/retry acceptance
+- [ ] representative Finance performance/load tests including large FIFO layer histories and reconciliation
+- [ ] deployment legal entity/chart/book/calendar/posting-profile/inventory-control policy approval
+- [ ] AR/AP/inventory subledger-to-GL reconciliation procedures
 - [ ] AP approval and match-exception segregation-of-duties role review
-- [ ] supplier-payment evidence/reconciliation procedure until Banking is implemented
-- [ ] retention/export and organization-specific accounting/tax procedures
-- [ ] keyboard/focus/Narrator/DPI acceptance including Finance > Receivables and Finance > Payables
+- [ ] supplier-payment evidence/reconciliation procedure until F5 Banking is implemented
+- [ ] retention/export and organization-specific accounting/tax/valuation procedures
+- [ ] keyboard/focus/Narrator/DPI acceptance including all Finance workspaces
 - [ ] production Authenticode/timestamp and installer/upgrade/rollback acceptance
 - [ ] remaining electronic-invoice tax/profile/routing scenarios
 - [ ] final GDPR/GoBD/CRA/accounting/localization legal/organizational acceptance
@@ -130,5 +143,6 @@ This roadmap distinguishes implemented technical controls from production/legal 
 
 - barcode scanning/generation
 - label template design/printing
-- Finance packages F4-F7 until separately implemented and verified
+- Finance packages F5-F7 until separately implemented and verified
+- costing methods other than FIFO until explicitly implemented and accepted
 - jurisdiction-specific statutory filing/localization packages until explicitly implemented and accepted
