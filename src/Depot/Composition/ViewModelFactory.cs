@@ -14,69 +14,61 @@ internal sealed class ViewModelFactory
 	private readonly IFileDialogService _fileDialogs;
 	private readonly ApplicationInformationService _applicationInformation;
 
-	public ViewModelFactory(
-		DatabaseComposition database,
-		ServiceComposition services,
-		IFileDialogService fileDialogs,
-		ApplicationInformationService applicationInformation)
+	public ViewModelFactory(DatabaseComposition database, ServiceComposition services, IFileDialogService fileDialogs, ApplicationInformationService applicationInformation)
 	{
-		_database = database;
-		_services = services;
-		_fileDialogs = fileDialogs;
-		_applicationInformation = applicationInformation;
+		_database=database; _services=services; _fileDialogs=fileDialogs; _applicationInformation=applicationInformation;
 	}
 
-	public LoginViewModel CreateLogin() =>
-		new(_services.Authentication, _database.ConnectionStatus);
+	public LoginViewModel CreateLogin()=>new(_services.Authentication,_database.ConnectionStatus);
 
-	public MainViewModel CreateMain() =>
-		new(
-			_services.Items,
-			_services.Stock,
-			_services.Dashboard,
-			_services.Movements,
-			_services.Reports,
-			_services.AccountsReceivable,
-			_services.AccountsPayable,
-			_services.InventoryAccounting,
-			_services.InventoryCosting,
-			_services.InventoryMovementAccounting,
-			_services.Banking,
-			_services.Purposes,
-			_services.ReasonCodes,
-			_services.Manufacturers,
-			_services.Categories,
-			_services.UnitsOfMeasure,
-			_services.Packagings,
-			_services.SupplierCategories,
-			_services.Suppliers,
-			_services.SupplierItems,
-			_services.PurchaseOrders,
-			_services.PurchaseOrderApprovals,
-			_services.PurchaseOrderHistory,
-			_services.GoodsReceipts,
-			_services.StockTransfers,
-			_services.InventoryCounts,
-			_services.MaterialIssues,
-			_services.MaterialReturns,
-			_services.SupplierReturns,
-			_services.Sales,
-			_services.Warehouses,
-			_services.StorageLocations,
-			_services.Users,
-			_services.Roles,
-			_services.Authorization,
-			_services.Session,
-			_services.Import,
-			_fileDialogs,
-			_database.Settings,
-			_database.ConnectionStatus,
-			_database.ConnectionTester,
-			_database.Management,
-			_services.AuditLog,
-			_applicationInformation,
-			_services.Help,
-			_services.HelpRenderer,
-			_services.Notifications,
-			_services.NotificationNavigation);
+	public MainViewModel CreateMain()=>new(
+		_services.Items,
+		_services.Stock,
+		_services.Dashboard,
+		_services.Movements,
+		_services.Reports,
+		_services.AccountsReceivable,
+		_services.AccountsPayable,
+		_services.InventoryAccounting,
+		_services.InventoryCosting,
+		_services.InventoryMovementAccounting,
+		_services.Banking,
+		_services.FinancialReporting,
+		_services.Purposes,
+		_services.ReasonCodes,
+		_services.Manufacturers,
+		_services.Categories,
+		_services.UnitsOfMeasure,
+		_services.Packagings,
+		_services.SupplierCategories,
+		_services.Suppliers,
+		_services.SupplierItems,
+		_services.PurchaseOrders,
+		_services.PurchaseOrderApprovals,
+		_services.PurchaseOrderHistory,
+		_services.GoodsReceipts,
+		_services.StockTransfers,
+		_services.InventoryCounts,
+		_services.MaterialIssues,
+		_services.MaterialReturns,
+		_services.SupplierReturns,
+		_services.Sales,
+		_services.Warehouses,
+		_services.StorageLocations,
+		_services.Users,
+		_services.Roles,
+		_services.Authorization,
+		_services.Session,
+		_services.Import,
+		_fileDialogs,
+		_database.Settings,
+		_database.ConnectionStatus,
+		_database.ConnectionTester,
+		_database.Management,
+		_services.AuditLog,
+		_applicationInformation,
+		_services.Help,
+		_services.HelpRenderer,
+		_services.Notifications,
+		_services.NotificationNavigation);
 }

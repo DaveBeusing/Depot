@@ -49,12 +49,12 @@
 	<DataTemplate DataType="{x:Type viewModels:FinancePayablesViewModel}"><views:FinancePayablesView /></DataTemplate>
 	<DataTemplate DataType="{x:Type viewModels:FinanceInventoryAccountingViewModel}"><views:FinanceInventoryAccountingView /></DataTemplate>
 	<DataTemplate DataType="{x:Type viewModels:FinanceBankingViewModel}"><views:FinanceBankingView /></DataTemplate>
+	<DataTemplate DataType="{x:Type viewModels:FinanceFinancialReportingViewModel}"><views:FinanceFinancialReportingView /></DataTemplate>
 	<DataTemplate DataType="{x:Type viewModels:ReportsViewModel}"><views:ReportsView /></DataTemplate>
 	<DataTemplate DataType="{x:Type viewModels:ShellModuleViewModel}"><views:ShellModuleView /></DataTemplate>
 	<DataTemplate DataType="{x:Type viewModels:ImportViewModel}"><views:ImportView /></DataTemplate>
 	<DataTemplate DataType="{x:Type viewModels:CurrentUserViewModel}"><views:CurrentUserView /></DataTemplate>
 	<DataTemplate DataType="{x:Type viewModels:NotificationCenterViewModel}"><views:NotificationCenterView /></DataTemplate>
-
 	<DataTemplate DataType="{x:Type administrationViewModels:AdministrationViewModel}"><administrationViews:AdministrationView /></DataTemplate>
 	<DataTemplate DataType="{x:Type administrationViewModels:CompanyProfileViewModel}"><administrationViews:CompanyProfileView /></DataTemplate>
 	<DataTemplate DataType="{x:Type administrationViewModels:DatabaseSettingsViewModel}"><administrationViews:DatabaseSettingsView /></DataTemplate>
