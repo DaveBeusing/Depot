@@ -18,6 +18,11 @@ public sealed class AsyncRelayCommand : ICommand, IDisposable
 		_canExecute = canExecute;
 	}
 
+	public AsyncRelayCommand(Func<Task> execute, Func<bool>? canExecute = null)
+		: this(_ => execute(), canExecute)
+	{
+	}
+
 	public bool CanExecute(object? parameter) =>
 		!_isExecuting && (_canExecute?.Invoke() ?? true);
 
