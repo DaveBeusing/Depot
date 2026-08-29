@@ -54,4 +54,14 @@ public sealed class CustomerPriceListAssignment
 	public string PriceListName { get; set; } = string.Empty;
 }
 
-public sealed record SalesPriceResult(decimal UnitPrice, decimal DiscountPercent, string Source);
+public sealed record SalesPriceResult(
+	decimal UnitPrice,
+	decimal DiscountPercent,
+	long PriceListId,
+	string PriceListName,
+	SalesPriceListScope Scope,
+	string Currency,
+	long? RegionId)
+{
+	public string Source => PriceListName;
+}

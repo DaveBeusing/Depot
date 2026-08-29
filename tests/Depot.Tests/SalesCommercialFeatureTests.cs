@@ -130,7 +130,7 @@ public sealed class SalesCommercialFeatureTests : IAsyncLifetime
 			var customerRepository = new CustomerRepository(data); var customers = new CustomerService(customerRepository, audit, authorization);
 			var orderRepository = new SalesOrderRepository(data);
 			var orders = new SalesOrderService(runner, orderRepository, customerRepository, new ItemRepository(data), new InventoryRepository(data), new InventoryReservationRepository(data), new StockMovementRepository(data), auditRepository, audit, authorization, notifications);
-			var pricing = new SalesPricingService(new SalesPriceListRepository(data), audit, authorization);
+			var pricing = new SalesPricingService(runner, new SalesPriceListRepository(data), auditRepository, audit, authorization);
 			var quotes = new SalesQuoteService(new SalesQuoteRepository(data), customerRepository, orders, audit, authorization);
 			var timeline = new SalesTimelineService(new SalesTimelineRepository(data), authorization);
 			return new CommercialFixture(customers, pricing, quotes, orders, timeline, itemId, partNumber);

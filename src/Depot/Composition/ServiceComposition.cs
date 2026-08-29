@@ -52,7 +52,7 @@ internal sealed class ServiceComposition
 		MaterialReturns = new MaterialReturnService(database.TransactionRunner, repositories.MaterialReturns, repositories.MaterialIssues, repositories.Inventories, repositories.StockMovements, repositories.ReasonCodes, repositories.Audit, audit, movementReversals, Authorization, ItemTraceability);
 		SupplierReturns = new SupplierReturnService(database.TransactionRunner, repositories.SupplierReturns, repositories.PurchaseOrders, repositories.GoodsReceipts, repositories.Inventories, repositories.StockMovements, repositories.ReasonCodes, repositories.Audit, audit, movementReversals, Authorization, ItemTraceability);
 		Customers = new CustomerService(repositories.Customers, audit, Authorization);
-		SalesPricing = new SalesPricingService(repositories.SalesPriceLists, audit, Authorization);
+		SalesPricing = new SalesPricingService(database.TransactionRunner, repositories.SalesPriceLists, repositories.Audit, audit, Authorization);
 		SalesTimeline = new SalesTimelineService(repositories.SalesTimeline, Authorization);
 		SalesOrders = new SalesOrderService(database.TransactionRunner, repositories.SalesOrders, repositories.Customers, repositories.Items, repositories.Inventories, repositories.InventoryReservations, repositories.StockMovements, repositories.Audit, audit, Authorization, Notifications, ItemTraceability);
 		SalesQuotes = new SalesQuoteService(repositories.SalesQuotes, repositories.Customers, SalesOrders, audit, Authorization);
