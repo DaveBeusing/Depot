@@ -8,7 +8,7 @@ using Depot.Services;
 
 namespace Depot.ViewModels;
 
-public sealed class SalesPricingViewModel : BaseViewModel, IDisposable
+public sealed partial class SalesPricingViewModel : BaseViewModel, IDisposable
 {
 	private readonly SalesPricingService _pricing;
 	private readonly CustomerService _customers;
@@ -24,9 +24,10 @@ public sealed class SalesPricingViewModel : BaseViewModel, IDisposable
 	{
 		_pricing=pricing;_customers=customers;_items=items;
 		NewPriceListCommand=new RelayCommand(()=>{SelectedPriceList=null;Draft=NewDraft();});
-		SavePriceListCommand=new AsyncRelayCommand(SavePriceListAsync,()=>_pricing.CanManage&&!string.IsNullOrWhiteSpace(Draft.Name)&&!string.IsNullOrWhiteSpace(Draft.Code));
+		SavePriceListCommand=new AsyncRelayCommand(SavePriceListAsync,()=>_pricing.CanManage&&!string.IsNullOrWhiteSpace(Draft.Name)&&!string.IsNullOrWhiteSpace(Draft.Code)&&(Draft.Scope!=SalesPriceListScope.Region||SelectedPriceListRegion is not null));
 		SavePriceItemCommand=new AsyncRelayCommand(SavePriceItemAsync,()=>_pricing.CanManage&&SelectedPriceList is not null&&SelectedItem is not null&&UnitPrice>=0);
-		AssignCustomerCommand=new AsyncRelayCommand(AssignCustomerAsync,()=>_pricing.CanManage&&SelectedCustomer is not null);
+		AssignCustomerCommand=new AsyncRelayCommand(AssignCustomerAsync,()=>_pricing.CanManage&&SelectedCustomer is not null&&SelectedPriceList?.Scope==SalesPriceListScope.Customer);
+		InitializeScopedPricing();
 	}
 	public ObservableCollection<SalesPriceList> PriceLists{get;}=[];
 	public ObservableCollection<SalesPriceListItem> PriceItems{get;}=[];
@@ -36,9 +37,9 @@ public sealed class SalesPricingViewModel : BaseViewModel, IDisposable
 	public AsyncRelayCommand SavePriceListCommand{get;}
 	public AsyncRelayCommand SavePriceItemCommand{get;}
 	public AsyncRelayCommand AssignCustomerCommand{get;}
-	public SalesPriceList Draft{get=>_draft;private set{_draft=value;OnPropertyChanged();SavePriceListCommand.RaiseCanExecuteChanged();}}
-	public SalesPriceList? SelectedPriceList{get=>_selectedPriceList;set{if(_selectedPriceList==value)return;_selectedPriceList=value;Draft=value is null?NewDraft():Copy(value);Replace(PriceItems,value?.Items??[]);OnPropertyChanged();Raise();}}
-	public Customer? SelectedCustomer{get=>_selectedCustomer;set{_selectedCustomer=value;OnPropertyChanged();AssignCustomerCommand.RaiseCanExecuteChanged();}}
+	public SalesPriceList Draft{get=>_draft;private set{_draft=value;OnPropertyChanged();OnPropertyChanged(nameof(SelectedScope));OnPropertyChanged(nameof(IsRegionScope));OnPropertyChanged(nameof(IsCustomerScope));SavePriceListCommand.RaiseCanExecuteChanged();}}
+	public SalesPriceList? SelectedPriceList{get=>_selectedPriceList;set{if(_selectedPriceList==value)return;_selectedPriceList=value;Draft=value is null?NewDraft():Copy(value);Replace(PriceItems,value?.Items??[]);ApplyScopedPriceList(value);OnPropertyChanged();Raise();}}
+	public Customer? SelectedCustomer{get=>_selectedCustomer;set{_selectedCustomer=value;OnPropertyChanged();AssignCustomerCommand.RaiseCanExecuteChanged();ClearCustomerAssignmentCommand.RaiseCanExecuteChanged();_ = LoadCustomerAssignmentAsync();}}
 	public Item? SelectedItem{get=>_selectedItem;set{_selectedItem=value;OnPropertyChanged();SavePriceItemCommand.RaiseCanExecuteChanged();}}
 	public decimal UnitPrice{get=>_unitPrice;set{_unitPrice=value;OnPropertyChanged();SavePriceItemCommand.RaiseCanExecuteChanged();}}
 	public decimal DiscountPercent{get=>_discountPercent;set{_discountPercent=value;OnPropertyChanged();}}
@@ -46,16 +47,16 @@ public sealed class SalesPricingViewModel : BaseViewModel, IDisposable
 	public async Task LoadAsync(CancellationToken token=default)
 	{
 		BeginOperation("Loading sales pricing");
-		try{Replace(PriceLists,await _pricing.ListAsync(token));Replace(Customers,await _customers.ListActiveAsync(token));Replace(Items,(await _items.SearchItemsAsync(string.Empty,1,200,token)).Items);if(SelectedPriceList is not null)SelectedPriceList=PriceLists.FirstOrDefault(p=>p.Id==SelectedPriceList.Id);CompleteOperation(false,"Sales pricing loaded");}catch(Exception ex){FailOperation(ex,"Sales pricing could not be loaded");}
+		try{Replace(PriceLists,await _pricing.ListAsync(token));await LoadScopedPricingAsync(token);Replace(Customers,await _customers.ListActiveAsync(token));Replace(Items,(await _items.SearchItemsAsync(string.Empty,1,200,token)).Items);if(SelectedPriceList is not null)SelectedPriceList=PriceLists.FirstOrDefault(p=>p.Id==SelectedPriceList.Id);await LoadCustomerAssignmentAsync(token);CompleteOperation(false,"Sales pricing loaded");}catch(Exception ex){FailOperation(ex,"Sales pricing could not be loaded");}
 	}
 	private async Task SavePriceListAsync(CancellationToken token){SelectedPriceList=await _pricing.SaveAsync(Draft,token);await LoadAsync(token);}
 	private async Task SavePriceItemAsync(CancellationToken token){if(SelectedPriceList is null||SelectedItem is null)return;await _pricing.SaveItemAsync(new SalesPriceListItem{SalesPriceListId=SelectedPriceList.Id,ItemId=SelectedItem.Id,UnitPrice=UnitPrice,DiscountPercent=DiscountPercent},token);await LoadAsync(token);}
-	private async Task AssignCustomerAsync(CancellationToken token){if(SelectedCustomer is null)return;await _pricing.AssignCustomerAsync(SelectedCustomer.Id,SelectedPriceList?.Id,token);CompleteOperation(false,SelectedPriceList is null?"Customer price list cleared":$"{SelectedPriceList.Name} assigned to {SelectedCustomer.Name}");}
+	private async Task AssignCustomerAsync(CancellationToken token){if(SelectedCustomer is null)return;await _pricing.AssignCustomerAsync(SelectedCustomer.Id,SelectedPriceList?.Id,token);await LoadCustomerAssignmentAsync(token);CompleteOperation(false,SelectedPriceList is null?"Automatic regional/global pricing enabled":$"{SelectedPriceList.Name} assigned to {SelectedCustomer.Name}");}
 	private void Raise(){SavePriceListCommand.RaiseCanExecuteChanged();SavePriceItemCommand.RaiseCanExecuteChanged();AssignCustomerCommand.RaiseCanExecuteChanged();}
-	private static SalesPriceList NewDraft()=>new(){Currency="EUR",IsActive=true};
-	private static SalesPriceList Copy(SalesPriceList v)=>new(){Id=v.Id,Code=v.Code,Name=v.Name,Currency=v.Currency,ValidFrom=v.ValidFrom,ValidTo=v.ValidTo,IsActive=v.IsActive,Version=v.Version,Items=v.Items};
+	private static SalesPriceList NewDraft()=>new(){Currency="EUR",Scope=SalesPriceListScope.Customer,IsActive=true};
+	private static SalesPriceList Copy(SalesPriceList v)=>new(){Id=v.Id,Code=v.Code,Name=v.Name,Scope=v.Scope,RegionId=v.RegionId,RegionName=v.RegionName,Currency=v.Currency,ValidFrom=v.ValidFrom,ValidTo=v.ValidTo,IsActive=v.IsActive,Version=v.Version,Items=v.Items};
 	private static void Replace<T>(ObservableCollection<T> target,IEnumerable<T> values){target.Clear();foreach(var v in values)target.Add(v);}
-	public void Dispose(){SavePriceListCommand.Dispose();SavePriceItemCommand.Dispose();AssignCustomerCommand.Dispose();}
+	public void Dispose(){SavePriceListCommand.Dispose();SavePriceItemCommand.Dispose();AssignCustomerCommand.Dispose();DisposeScopedPricing();}
 }
 
 public sealed class SalesQuotesViewModel : BaseViewModel, IDisposable

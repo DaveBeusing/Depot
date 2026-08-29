@@ -12,7 +12,7 @@
                         <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                         <controls:SearchBox Placeholder="Search customers" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
                         <ListBox Grid.Row="1" Margin="0,10,0,0" ItemsSource="{Binding Workspace.Customers}" SelectedItem="{Binding SelectedCustomer}" Style="{StaticResource MasterDataListBoxStyle}" ItemContainerStyle="{StaticResource MasterDataListBoxItemStyle}">
-                            <ListBox.ItemTemplate><DataTemplate><StackPanel><TextBlock Text="{Binding Name}" FontWeight="SemiBold"/><TextBlock Text="{Binding CustomerNumber}" Style="{StaticResource CaptionStyle}"/></StackPanel></DataTemplate></ListBox.ItemTemplate>
+                            <ListBox.ItemTemplate><DataTemplate><StackPanel><TextBlock Text="{Binding Name}" FontWeight="SemiBold"/><TextBlock Style="{StaticResource CaptionStyle}"><Run Text="{Binding CustomerNumber}"/><Run Text=" · "/><Run Text="{Binding SalesRegionName, TargetNullValue=Global pricing}"/></TextBlock></StackPanel></DataTemplate></ListBox.ItemTemplate>
                         </ListBox>
                         <Button Grid.Row="2" Margin="0,10,0,0" HorizontalAlignment="Right" Command="{Binding NewCustomerCommand}" Content="New customer" Style="{StaticResource PrimaryButtonStyle}" />
                     </Grid>
@@ -77,6 +77,19 @@
                                         <Button Margin="0,10,0,0" HorizontalAlignment="Right" Command="{Binding SaveContactCommand}" Content="Save contact" Style="{StaticResource PrimaryButtonStyle}"/>
                                     </StackPanel></ScrollViewer>
                                 </Grid>
+                            </TabItem>
+                            <TabItem Header="Pricing">
+                                <StackPanel Margin="0,10,0,0">
+                                    <TextBlock Text="Scoped sales pricing" FontWeight="SemiBold"/>
+                                    <TextBlock Margin="0,3,0,12" Text="A customer-specific price list is optional. Missing item prices automatically fall back through Region → Global." Style="{StaticResource CaptionStyle}" TextWrapping="Wrap"/>
+                                    <TextBlock Text="Region (optional)" Style="{StaticResource FormLabelStyle}"/>
+                                    <ComboBox ItemsSource="{Binding SalesRegions}" SelectedItem="{Binding SelectedSalesRegion}" DisplayMemberPath="Name" Style="{StaticResource AppComboBoxStyle}"/>
+                                    <TextBlock Margin="0,4,0,12" Text="Save the customer to apply a region change. Without a region, automatic pricing uses Global directly." Style="{StaticResource CaptionStyle}" TextWrapping="Wrap"/>
+                                    <TextBlock Text="Price list" Style="{StaticResource FormLabelStyle}"/>
+                                    <ComboBox ItemsSource="{Binding CustomerPriceLists}" SelectedItem="{Binding SelectedCustomerPriceList}" DisplayMemberPath="Name" Style="{StaticResource AppComboBoxStyle}"/>
+                                    <TextBlock Margin="0,8,0,0" Text="{Binding PricingModeText}" FontWeight="SemiBold"/>
+                                    <StackPanel Margin="0,12,0,0" HorizontalAlignment="Right" Orientation="Horizontal"><Button Command="{Binding UseAutomaticPricingCommand}" Content="Use automatic pricing" Style="{StaticResource SecondaryButtonStyle}"/><Button Margin="8,0,0,0" Command="{Binding AssignPriceListCommand}" Content="Use customer-specific list" Style="{StaticResource PrimaryButtonStyle}"/></StackPanel>
+                                </StackPanel>
                             </TabItem>
                             <TabItem Header="E-Invoice Identity">
                                 <ScrollViewer VerticalScrollBarVisibility="Auto">

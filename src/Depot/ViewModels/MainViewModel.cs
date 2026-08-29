@@ -143,7 +143,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		_salesOverview = new(() => new SalesOverviewViewModel(salesWorkspace));
 		_salesQuotes = new(() => new SalesQuotesViewModel(salesServices.Quotes, salesServices.Pricing, salesServices.Customers, salesServices.Items, fileDialogService, salesServices.Documents));
 		_salesPricing = new(() => new SalesPricingViewModel(salesServices.Pricing, salesServices.Customers, salesServices.Items));
-		_salesCustomers = new(() => new CustomersViewModel(salesWorkspace, salesServices.Customers));
+		_salesCustomers = new(() => new CustomersViewModel(salesWorkspace, salesServices.Customers, salesServices.Pricing));
 		_salesOrders = new(() => new SalesOrdersViewModel(salesWorkspace, salesServices.Pricing, salesServices.Timeline));
 		_salesApprovals = new(() => new SalesApprovalsViewModel(salesWorkspace));
 		_salesShipping = new(() => new ShippingViewModel(salesWorkspace, salesServices.Packing, fileDialogService, salesServices.Documents));

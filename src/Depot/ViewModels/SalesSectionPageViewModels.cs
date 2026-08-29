@@ -35,29 +35,40 @@ public sealed class SalesOverviewViewModel(SalesViewModel workspace) : SalesSect
 public sealed class CustomersViewModel : SalesSectionPageViewModel
 {
 	private readonly CustomerService _customers;
+	private readonly SalesPricingService _pricing;
 	private Customer? _selectedCustomer;
 	private CustomerAddress? _selectedAddress;
 	private CustomerAddress _addressDraft = NewAddressDraft();
 	private CustomerContact? _selectedContact;
 	private CustomerContact _contactDraft = NewContactDraft();
+	private SalesRegion? _selectedSalesRegion;
+	private SalesPriceList? _selectedCustomerPriceList;
+	private string _pricingModeText = "Automatic · Global";
 
-	public CustomersViewModel(SalesViewModel workspace, CustomerService customers) : base(workspace, SalesSection.Customers)
+	public CustomersViewModel(SalesViewModel workspace, CustomerService customers, SalesPricingService pricing) : base(workspace, SalesSection.Customers)
 	{
 		_customers = customers;
+		_pricing = pricing;
 		NewAddressCommand = new RelayCommand(NewAddress, () => WorkspaceState.SelectedCustomer is not null && Workspace.CanEditCustomers);
 		SaveAddressCommand = new AsyncRelayCommand(SaveAddressAsync, () => WorkspaceState.SelectedCustomer is not null && Workspace.CanEditCustomers && !string.IsNullOrWhiteSpace(AddressDraft.Address));
 		NewContactCommand = new RelayCommand(NewContact, () => WorkspaceState.SelectedCustomer is not null && Workspace.CanEditCustomers);
 		SaveContactCommand = new AsyncRelayCommand(SaveContactAsync, () => WorkspaceState.SelectedCustomer is not null && Workspace.CanEditCustomers && !string.IsNullOrWhiteSpace(ContactDraft.Name));
+		AssignPriceListCommand = new AsyncRelayCommand(AssignPriceListAsync, () => _pricing.CanManage && SelectedCustomer is not null && SelectedCustomerPriceList is not null);
+		UseAutomaticPricingCommand = new AsyncRelayCommand(UseAutomaticPricingAsync, () => _pricing.CanManage && SelectedCustomer is not null);
 	}
 
 	public ObservableCollection<CustomerAddress> Addresses { get; } = [];
 	public ObservableCollection<CustomerContact> Contacts { get; } = [];
+	public ObservableCollection<SalesRegion> SalesRegions { get; } = [];
+	public ObservableCollection<SalesPriceList> CustomerPriceLists { get; } = [];
 	public IReadOnlyList<CustomerAddressType> AddressTypes { get; } = Enum.GetValues<CustomerAddressType>();
 	public IReadOnlyList<CustomerContactRole> ContactRoles { get; } = Enum.GetValues<CustomerContactRole>();
 	public RelayCommand NewAddressCommand { get; }
 	public AsyncRelayCommand SaveAddressCommand { get; }
 	public RelayCommand NewContactCommand { get; }
 	public AsyncRelayCommand SaveContactCommand { get; }
+	public AsyncRelayCommand AssignPriceListCommand { get; }
+	public AsyncRelayCommand UseAutomaticPricingCommand { get; }
 	public string SearchText { get => WorkspaceState.SearchText; set { WorkspaceState.SearchText = value; OnPropertyChanged(); } }
 	public Customer CustomerDraft => Workspace.CustomerDraft;
 	public RelayCommand NewCustomerCommand => Workspace.NewCustomerCommand;
@@ -80,23 +91,35 @@ public sealed class CustomersViewModel : SalesSectionPageViewModel
 		set { if (_selectedContact == value) return; _selectedContact = value; ContactDraft = value is null ? NewContactDraft() : Copy(value); OnPropertyChanged(); }
 	}
 	public CustomerContact ContactDraft { get => _contactDraft; private set { _contactDraft = value; OnPropertyChanged(); SaveContactCommand.RaiseCanExecuteChanged(); } }
+	public SalesRegion? SelectedSalesRegion { get => _selectedSalesRegion; set { if (_selectedSalesRegion == value) return; _selectedSalesRegion = value; Workspace.CustomerDraft.SalesRegionId = value?.Id; Workspace.CustomerDraft.SalesRegionName = value?.Name; OnPropertyChanged(); UpdatePricingMode(); } }
+	public SalesPriceList? SelectedCustomerPriceList { get => _selectedCustomerPriceList; set { if (_selectedCustomerPriceList == value) return; _selectedCustomerPriceList = value; OnPropertyChanged(); AssignPriceListCommand.RaiseCanExecuteChanged(); } }
+	public string PricingModeText { get => _pricingModeText; private set { if (_pricingModeText == value) return; _pricingModeText = value; OnPropertyChanged(); } }
 
 	public override async Task LoadAsync(CancellationToken cancellationToken = default)
 	{
 		await base.LoadAsync(cancellationToken);
+		if (_pricing.CanView)
+		{
+			Replace(SalesRegions, (await _pricing.ListRegionsAsync(cancellationToken)).Where(value => value.IsActive));
+			Replace(CustomerPriceLists, (await _pricing.ListAsync(cancellationToken)).Where(value => value.IsActive && value.Scope == SalesPriceListScope.Customer));
+		}
 		if (SelectedCustomer is not null) await SelectCustomerAsync(SelectedCustomer, cancellationToken);
 	}
 
 	private async Task SelectCustomerAsync(Customer? customer, CancellationToken token = default)
 	{
 		WorkspaceState.SelectedCustomer = customer;
-		if (customer is null) { Addresses.Clear(); Contacts.Clear(); RaiseCustomerCommands(); return; }
+		if (customer is null) { Addresses.Clear(); Contacts.Clear(); _selectedSalesRegion = null; _selectedCustomerPriceList = null; OnPropertyChanged(nameof(SelectedSalesRegion)); OnPropertyChanged(nameof(SelectedCustomerPriceList)); UpdatePricingMode(); RaiseCustomerCommands(); return; }
 		await Workspace.OpenQuickItemAsync(new SalesQuickOpenItem(SalesQuickOpenKind.Customer, customer.Id, customer.Name, customer.CustomerNumber), token);
 		var loaded = await _customers.GetByIdAsync(customer.Id, token) ?? customer;
 		Replace(Addresses, loaded.Addresses);
 		Replace(Contacts, loaded.Contacts);
 		SelectedAddress = Addresses.FirstOrDefault(a => a.IsDefault) ?? Addresses.FirstOrDefault();
 		SelectedContact = Contacts.FirstOrDefault(c => c.IsPrimary) ?? Contacts.FirstOrDefault();
+		_selectedSalesRegion = loaded.SalesRegionId is null ? null : SalesRegions.FirstOrDefault(value => value.Id == loaded.SalesRegionId); OnPropertyChanged(nameof(SelectedSalesRegion));
+		var assignment = await _pricing.GetCustomerAssignmentAsync(loaded.Id, token);
+		_selectedCustomerPriceList = assignment is null ? null : CustomerPriceLists.FirstOrDefault(value => value.Id == assignment.SalesPriceListId); OnPropertyChanged(nameof(SelectedCustomerPriceList));
+		UpdatePricingMode(); AssignPriceListCommand.RaiseCanExecuteChanged(); UseAutomaticPricingCommand.RaiseCanExecuteChanged();
 		OnPropertyChanged(nameof(CustomerDraft));
 		RaiseCustomerCommands();
 	}
@@ -105,13 +128,16 @@ public sealed class CustomersViewModel : SalesSectionPageViewModel
 	private async Task SaveAddressAsync(CancellationToken token) { if (WorkspaceState.SelectedCustomer is not { } customer) return; AddressDraft.CustomerId = customer.Id; var saved = await Workspace.SaveCustomerAddressAsync(AddressDraft, token); await SelectCustomerAsync(customer, token); SelectedAddress = Addresses.FirstOrDefault(a => a.Id == saved.Id); }
 	private void NewContact() { _selectedContact = null; OnPropertyChanged(nameof(SelectedContact)); ContactDraft = NewContactDraft(); if (WorkspaceState.SelectedCustomer is { } customer) ContactDraft.CustomerId = customer.Id; }
 	private async Task SaveContactAsync(CancellationToken token) { if (WorkspaceState.SelectedCustomer is not { } customer) return; ContactDraft.CustomerId = customer.Id; var saved = await _customers.SaveContactAsync(ContactDraft, token); await SelectCustomerAsync(customer, token); SelectedContact = Contacts.FirstOrDefault(c => c.Id == saved.Id); }
+	private async Task AssignPriceListAsync(CancellationToken token) { if (SelectedCustomer is null || SelectedCustomerPriceList is null) return; await _pricing.AssignCustomerAsync(SelectedCustomer.Id, SelectedCustomerPriceList.Id, token); UpdatePricingMode(); CompleteOperation(false, $"{SelectedCustomerPriceList.Name} assigned to {SelectedCustomer.Name}"); }
+	private async Task UseAutomaticPricingAsync(CancellationToken token) { if (SelectedCustomer is null) return; await _pricing.AssignCustomerAsync(SelectedCustomer.Id, null, token); _selectedCustomerPriceList = null; OnPropertyChanged(nameof(SelectedCustomerPriceList)); UpdatePricingMode(); CompleteOperation(false, $"Automatic pricing enabled for {SelectedCustomer.Name}"); }
+	private void UpdatePricingMode() { PricingModeText = SelectedCustomerPriceList is not null ? $"Customer-specific · {SelectedCustomerPriceList.Name} → Region → Global" : SelectedSalesRegion is not null ? $"Automatic · {SelectedSalesRegion.Name} → Global" : "Automatic · Global"; }
 	private void RaiseCustomerCommands() { NewAddressCommand.RaiseCanExecuteChanged(); SaveAddressCommand.RaiseCanExecuteChanged(); NewContactCommand.RaiseCanExecuteChanged(); SaveContactCommand.RaiseCanExecuteChanged(); }
 	private static CustomerAddress NewAddressDraft() => new() { Type = CustomerAddressType.Shipping, IsActive = true };
 	private static CustomerContact NewContactDraft() => new() { Role = CustomerContactRole.General, IsActive = true };
 	private static CustomerAddress Copy(CustomerAddress v) => new() { Id = v.Id, CustomerId = v.CustomerId, Type = v.Type, Name = v.Name, Address = v.Address, IsDefault = v.IsDefault, IsActive = v.IsActive, Version = v.Version };
 	private static CustomerContact Copy(CustomerContact v) => new() { Id = v.Id, CustomerId = v.CustomerId, Name = v.Name, Role = v.Role, Department = v.Department, Email = v.Email, Phone = v.Phone, Mobile = v.Mobile, IsPrimary = v.IsPrimary, IsActive = v.IsActive, Version = v.Version };
 	private static void Replace<T>(ObservableCollection<T> target, IEnumerable<T> values) { target.Clear(); foreach (var value in values) target.Add(value); }
-	public override void Dispose() { SaveAddressCommand.Dispose(); SaveContactCommand.Dispose(); }
+	public override void Dispose() { SaveAddressCommand.Dispose(); SaveContactCommand.Dispose(); AssignPriceListCommand.Dispose(); UseAutomaticPricingCommand.Dispose(); }
 }
 
 public sealed class SalesOrdersViewModel : SalesSectionPageViewModel
