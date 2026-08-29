@@ -64,4 +64,26 @@ public sealed record SalesPriceResult(
 	long? RegionId)
 {
 	public string Source => PriceListName;
+
+	public void ApplyTo(SalesOrderLine line)
+	{
+		ArgumentNullException.ThrowIfNull(line);
+		line.UnitPrice = UnitPrice;
+		line.DiscountPercent = DiscountPercent;
+		line.PriceSourceListId = PriceListId;
+		line.PriceSourceName = PriceListName;
+		line.PriceSourceScope = Scope;
+		line.PriceSourceCurrency = Currency;
+	}
+
+	public void ApplyTo(SalesQuoteLine line)
+	{
+		ArgumentNullException.ThrowIfNull(line);
+		line.UnitPrice = UnitPrice;
+		line.DiscountPercent = DiscountPercent;
+		line.PriceSourceListId = PriceListId;
+		line.PriceSourceName = PriceListName;
+		line.PriceSourceScope = Scope;
+		line.PriceSourceCurrency = Currency;
+	}
 }

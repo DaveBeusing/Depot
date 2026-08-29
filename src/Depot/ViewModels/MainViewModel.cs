@@ -123,7 +123,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		NotificationCommand = new RelayCommand(() => _ = OpenNotificationsAsync());
 		_welcome = new WelcomeViewModel(CurrentUserDisplayName, DateTime.Now);
 
-		var salesWorkspace = new SalesViewModel(salesServices.Customers, salesServices.Orders, salesServices.Shipments, salesServices.Invoices, salesServices.Items, salesServices.Authorization, fileDialogService, salesServices.Documents);
+		var salesWorkspace = new SalesViewModel(salesServices.Customers, salesServices.Orders, salesServices.Shipments, salesServices.Invoices, salesServices.Items, salesServices.Pricing, salesServices.Authorization, fileDialogService, salesServices.Documents);
 
 		_dashboard = new(() => new DashboardViewModel(dashboardService));
 		_inventory = new(() => new InventoryViewModel(stockService));

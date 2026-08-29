@@ -63,6 +63,7 @@ public sealed class SalesOrderLine
 	public string? PriceSourceName { get; set; }
 	public SalesPriceListScope? PriceSourceScope { get; set; }
 	public string? PriceSourceCurrency { get; set; }
+	public string PriceSourceDisplay => PriceSourceScope is null || string.IsNullOrWhiteSpace(PriceSourceName) ? "Manual price" : $"{PriceSourceName} ({PriceSourceScope})";
 	public decimal TaxRate { get; set; } = 19m;
 	public int ReservedQuantity { get; set; }
 	public int ShippedQuantity { get; set; }

@@ -52,6 +52,12 @@ public sealed class CustomerService
 	{
 		_authorization.RequirePermission(customer.Id == 0 ? ApplicationPermission.CustomersCreate : ApplicationPermission.CustomersEdit);
 		NormalizeAndValidate(customer);
+		if (customer.SalesRegionId is > 0)
+		{
+			var region = await _customers.GetSalesRegionAsync(customer.SalesRegionId.Value, cancellationToken) ?? throw new InvalidOperationException("Sales region was not found.");
+			if (!region.IsActive) throw new InvalidOperationException("An inactive sales region cannot be assigned to a customer.");
+			customer.SalesRegionName = region.Name;
+		}
 		var before = customer.Id == 0 ? null : await _customers.GetByIdAsync(customer.Id, cancellationToken) ?? throw new InvalidOperationException("Customer was not found.");
 		var saved = await _customers.SaveAsync(customer, cancellationToken);
 		if (before is null) await _audit.RecordCreatedAsync(saved.Id, saved, cancellationToken); else await _audit.RecordUpdatedAsync(saved.Id, before, saved, cancellationToken); return saved;

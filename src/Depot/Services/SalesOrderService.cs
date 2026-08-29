@@ -21,8 +21,9 @@ public sealed class SalesOrderService
 	private readonly IAuthorizationService _authorization;
 	private readonly NotificationService _notifications;
 	private readonly ItemTraceabilityService? _traceability;
+	private readonly SalesPricingService? _pricing;
 
-	public SalesOrderService(IDatabaseTransactionRunner transactions, SalesOrderRepository orders, CustomerRepository customers, ItemRepository items, InventoryRepository inventories, InventoryReservationRepository reservations, StockMovementRepository movements, AuditRepository auditEntries, AuditService audit, IAuthorizationService authorization, NotificationService notifications, ItemTraceabilityService? traceability = null)
+	public SalesOrderService(IDatabaseTransactionRunner transactions, SalesOrderRepository orders, CustomerRepository customers, ItemRepository items, InventoryRepository inventories, InventoryReservationRepository reservations, StockMovementRepository movements, AuditRepository auditEntries, AuditService audit, IAuthorizationService authorization, NotificationService notifications, ItemTraceabilityService? traceability = null, SalesPricingService? pricing = null)
 	{
 		_transactions = transactions;
 		_orders = orders;
@@ -36,6 +37,7 @@ public sealed class SalesOrderService
 		_authorization = authorization;
 		_notifications = notifications;
 		_traceability = traceability;
+		_pricing = pricing;
 	}
 
 	public bool CanCreate => _authorization.HasPermission(ApplicationPermission.SalesOrdersCreate);
@@ -48,10 +50,11 @@ public sealed class SalesOrderService
 	public Task<IReadOnlyList<InventoryReservation>> GetReservationsAsync(long orderId, CancellationToken cancellationToken = default) { _authorization.RequirePermission(ApplicationPermission.SalesOrdersView); return _reservations.ListByOrderAsync(orderId, cancellationToken); }
 	public Task<IReadOnlyList<SalesInventoryAvailability>> SearchAvailabilityAsync(long itemId, string? searchText = null, CancellationToken cancellationToken = default) { _authorization.RequirePermission(ApplicationPermission.SalesOrdersEdit); return _reservations.SearchAvailabilityAsync(itemId, searchText, cancellationToken); }
 
-	public async Task<SalesOrder> SaveDraftAsync(SalesOrder order, CancellationToken cancellationToken = default)
+	public async Task<SalesOrder> SaveDraftAsync(SalesOrder order, CancellationToken cancellationToken = default, bool refreshAutomaticPrices = true)
 	{
 		_authorization.RequirePermission(order.Id == 0 ? ApplicationPermission.SalesOrdersCreate : ApplicationPermission.SalesOrdersEdit);
 		if (order.Id != 0 && order.Status != SalesOrderStatus.Draft) throw new InvalidOperationException("Only draft sales orders can be edited.");
+		if (refreshAutomaticPrices && _pricing is not null) await RefreshAutomaticPricesAsync(order, cancellationToken);
 		await ValidateContentAsync(order, cancellationToken);
 		var user = RequireUser();
 		if (order.Id == 0) order.CreatedByUserId = user.Id;
@@ -246,6 +249,24 @@ public sealed class SalesOrderService
 			line.PartNumber = item.PartNumber;
 			line.Description = item.Description;
 		}
+	}
+
+	private async Task RefreshAutomaticPricesAsync(SalesOrder order, CancellationToken cancellationToken)
+	{
+		if (order.CustomerId <= 0) return;
+		foreach (var line in order.Lines.Where(value => value.PriceSourceListId is not null))
+		{
+			var resolved = await _pricing!.ResolveAsync(order.CustomerId, line.ItemId, line.Quantity, order.OrderDate, order.Currency, cancellationToken);
+			if (resolved is not null) resolved.ApplyTo(line); else ClearPriceSource(line);
+		}
+	}
+
+	private static void ClearPriceSource(SalesOrderLine line)
+	{
+		line.PriceSourceListId = null;
+		line.PriceSourceName = null;
+		line.PriceSourceScope = null;
+		line.PriceSourceCurrency = null;
 	}
 
 	private User RequireUser() => _authorization.CurrentUser is { IsActive: true } user ? user : throw new UnauthorizedAccessException("An active signed-in user is required for sales operations.");
