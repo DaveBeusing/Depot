@@ -13,10 +13,11 @@ public sealed class SalesQuoteService
 	private readonly SalesOrderService _orders;
 	private readonly AuditService _audit;
 	private readonly IAuthorizationService _authorization;
+	private readonly SalesPricingService? _pricing;
 
-	public SalesQuoteService(SalesQuoteRepository quotes, CustomerRepository customers, SalesOrderService orders, AuditService audit, IAuthorizationService authorization)
+	public SalesQuoteService(SalesQuoteRepository quotes, CustomerRepository customers, SalesOrderService orders, AuditService audit, IAuthorizationService authorization, SalesPricingService? pricing = null)
 	{
-		_quotes=quotes; _customers=customers; _orders=orders; _audit=audit; _authorization=authorization;
+		_quotes=quotes; _customers=customers; _orders=orders; _audit=audit; _authorization=authorization; _pricing=pricing;
 	}
 
 	public bool CanView => _authorization.HasPermission(ApplicationPermission.SalesQuotesView);
@@ -32,6 +33,7 @@ public sealed class SalesQuoteService
 	{
 		_authorization.RequirePermission(quote.Id==0?ApplicationPermission.SalesQuotesCreate:ApplicationPermission.SalesQuotesEdit);
 		if(quote.Id!=0&&quote.Status!=SalesQuoteStatus.Draft)throw new InvalidOperationException("Only draft quotes can be edited.");
+		if(_pricing is not null)await RefreshAutomaticPricesAsync(quote,token);
 		if(quote.CustomerId<=0||quote.Lines.Count==0||quote.Lines.Any(l=>l.Quantity<=0||l.UnitPrice<0))throw new InvalidOperationException("A quote requires a customer and at least one valid line.");
 		var customer=await _customers.GetByIdAsync(quote.CustomerId,token)??throw new InvalidOperationException("Customer was not found.");
 		quote.BillingAddress??=customer.Addresses.FirstOrDefault(a=>a.Type==CustomerAddressType.Billing&&a.IsDefault)?.Address??customer.BillingAddress;
@@ -53,7 +55,7 @@ public sealed class SalesQuoteService
 		if(quote.Version!=version)throw new ConcurrencyConflictException("sales quote");
 		if(quote.Status is not (SalesQuoteStatus.Accepted or SalesQuoteStatus.Sent))throw new InvalidOperationException("Only a sent or accepted quote can be converted.");
 		if(quote.ValidUntil<DateTime.Today)throw new InvalidOperationException("The quote has expired.");
-		var order=await _orders.SaveDraftAsync(new SalesOrder{CustomerId=quote.CustomerId,BillingAddress=quote.BillingAddress,ShippingAddress=quote.ShippingAddress,OrderDate=DateTime.Today,Currency=quote.Currency,CustomerReference=quote.CustomerReference,Notes=$"Converted from {quote.QuoteNumber}{(string.IsNullOrWhiteSpace(quote.Notes)?string.Empty:$" · {quote.Notes}")}",Lines=quote.Lines.Select(l=>new SalesOrderLine{ItemId=l.ItemId,PartNumber=l.PartNumber,Description=l.Description,Quantity=l.Quantity,UnitPrice=l.UnitPrice,DiscountPercent=l.DiscountPercent,TaxRate=l.TaxRate}).ToArray()},token);
+		var order=await _orders.SaveDraftAsync(new SalesOrder{CustomerId=quote.CustomerId,BillingAddress=quote.BillingAddress,ShippingAddress=quote.ShippingAddress,OrderDate=DateTime.Today,Currency=quote.Currency,CustomerReference=quote.CustomerReference,Notes=$"Converted from {quote.QuoteNumber}{(string.IsNullOrWhiteSpace(quote.Notes)?string.Empty:$" · {quote.Notes}")}",Lines=quote.Lines.Select(l=>new SalesOrderLine{ItemId=l.ItemId,PartNumber=l.PartNumber,Description=l.Description,Quantity=l.Quantity,UnitPrice=l.UnitPrice,DiscountPercent=l.DiscountPercent,PriceSourceListId=l.PriceSourceListId,PriceSourceName=l.PriceSourceName,PriceSourceScope=l.PriceSourceScope,PriceSourceCurrency=l.PriceSourceCurrency,TaxRate=l.TaxRate}).ToArray()},token,false);
 		if(!await _quotes.MarkConvertedAsync(id,version,order.Id,DateTime.UtcNow,token))throw new ConcurrencyConflictException("sales quote");
 		return order;
 	}
@@ -65,6 +67,15 @@ public sealed class SalesQuoteService
 		if(before.Version!=version||before.Status!=expected)throw new ConcurrencyConflictException("sales quote");
 		if(!await _quotes.SetStatusAsync(id,version,expected,target,token))throw new ConcurrencyConflictException("sales quote");
 		return await _quotes.GetByIdAsync(id,token)??throw new InvalidOperationException("Quote could not be reloaded.");
+	}
+	private async Task RefreshAutomaticPricesAsync(SalesQuote quote,CancellationToken token)
+	{
+		if(quote.CustomerId<=0)return;
+		foreach(var line in quote.Lines.Where(value=>value.PriceSourceListId is not null))
+		{
+			var resolved=await _pricing!.ResolveAsync(quote.CustomerId,line.ItemId,line.Quantity,quote.QuoteDate,quote.Currency,token);
+			if(resolved is not null)resolved.ApplyTo(line);else{line.PriceSourceListId=null;line.PriceSourceName=null;line.PriceSourceScope=null;line.PriceSourceCurrency=null;}
+		}
 	}
 	private User RequireUser()=>_authorization.CurrentUser is {IsActive:true} user?user:throw new UnauthorizedAccessException("An active signed-in user is required for quotes.");
 }

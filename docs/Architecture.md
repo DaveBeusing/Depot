@@ -1,6 +1,6 @@
 # Depot Architecture
 
-Updated: 2026-08-28
+Updated: 2026-08-29
 
 ## Overview
 
@@ -31,15 +31,19 @@ The shell is permission-aware and workspace-oriented. Finance exposes **Receivab
 
 Subledgers/accounting modules call the General Ledger boundary for postings rather than duplicating ledger invariants. Reporting reads existing evidence and does not create a second ledger. Localization does not post accounting entries.
 
+## Sales pricing authority
+
+`SalesPricingService` is the single business boundary for item-price resolution. It resolves Customer → Region → Global independently for every item and returns source metadata with the price. Quotes and Sales Orders consume this result; Views and ViewModels do not reproduce fallback logic. Optional customer assignments and customer regions are stored through the existing Sales repositories, while document lines retain resolved-source snapshots.
+
 ## Schema versions
 
-- Core database schema: **29**
-- Sales feature schema: **8**
+- Core database schema: **30**
+- Sales feature schema: **9**
 - Finance feature schema: **9**
-- Application: **0.15.42-preview**
-- Help manifest: **1.17**
+- Application: **0.15.x-preview**
+- Help manifest: **1.18**
 
-Finance schema evolution is sequential: foundation (v1), General Ledger (v2), Receivables (v3), Payables (v4), inventory valuation (v5-v6), Banking (v7), Reporting (v8), Localization (v9).
+Sales schema 9 adds scoped price lists, Sales Regions and quote/order price-source snapshots. Finance schema evolution is sequential: foundation (v1), General Ledger (v2), Receivables (v3), Payables (v4), inventory valuation (v5-v6), Banking (v7), Reporting (v8), Localization (v9).
 
 ## Transaction, concurrency and evidence model
 

@@ -161,6 +161,11 @@ public sealed class MySqlDatabase : IDatabaseInitializer
 				MigrateToNotifications(command);
 				version = 29;
 			}
+			if (version == 29)
+			{
+				Execute(command, "UPDATE DatabaseInfo SET Version = 30 WHERE Id = 1;");
+				version = 30;
+			}
 			if (version != DatabaseVersion.CurrentVersion)
 			{
 				throw new InvalidOperationException(

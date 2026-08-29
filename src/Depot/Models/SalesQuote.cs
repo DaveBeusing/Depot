@@ -52,6 +52,11 @@ public sealed class SalesQuoteLine
 	public int Quantity { get; set; }
 	public decimal UnitPrice { get; set; }
 	public decimal DiscountPercent { get; set; }
+	public long? PriceSourceListId { get; set; }
+	public string? PriceSourceName { get; set; }
+	public SalesPriceListScope? PriceSourceScope { get; set; }
+	public string? PriceSourceCurrency { get; set; }
+	public string PriceSourceDisplay => PriceSourceScope is null || string.IsNullOrWhiteSpace(PriceSourceName) ? "Manual price" : $"{PriceSourceName} ({PriceSourceScope})";
 	public decimal TaxRate { get; set; } = 19m;
 	public long Version { get; set; } = 1;
 	public decimal NetAmount => Math.Round(Quantity * UnitPrice * (1m - DiscountPercent / 100m), 2, MidpointRounding.AwayFromZero);

@@ -44,13 +44,13 @@ public sealed class NotificationCenterTests : IDisposable
 	}
 
 	[Fact]
-	public async Task VersionTwentyEightMigratesToNotificationSchema()
+	public async Task VersionTwentyEightMigratesToCurrentSchema()
 	{
 		await _data.ExecuteAsync("DROP TABLE NotificationRecipients;", CancellationToken.None);
 		await _data.ExecuteAsync("DROP TABLE Notifications;", CancellationToken.None);
 		await _data.ExecuteAsync("UPDATE DatabaseInfo SET Version = 28;", CancellationToken.None);
 		new DepotDatabase(new SqliteConnectionFactory(_path)).Initialize();
-		Assert.Equal(29, await ScalarAsync("SELECT Version FROM DatabaseInfo;"));
+		Assert.Equal(DatabaseVersion.CurrentVersion, await ScalarAsync("SELECT Version FROM DatabaseInfo;"));
 		Assert.Equal(1, await ScalarAsync("SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'NotificationRecipients';"));
 	}
 

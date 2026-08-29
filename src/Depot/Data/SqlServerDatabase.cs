@@ -153,6 +153,13 @@ public sealed class SqlServerDatabase : IDatabaseInitializer
 			MigrateToNotifications(command);
 			version = 29;
 		}
+		if (version == 29)
+		{
+			command.CommandText = "UPDATE DatabaseInfo SET Version = 30 WHERE Id = 1;";
+			command.Parameters.Clear();
+			command.ExecuteNonQuery();
+			version = 30;
+		}
 		if (version != DatabaseVersion.CurrentVersion)
 		{
 			throw new InvalidOperationException(

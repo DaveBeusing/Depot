@@ -35,9 +35,11 @@ public sealed class SalesCommercialFeatureTests : IAsyncLifetime
 	{
 		var fixture = Fixture;
 		var customer = await fixture.Customers.SaveAsync(new Customer { Name = "Pricing Customer", Currency = "EUR" });
-		var list = await fixture.Pricing.SaveAsync(new SalesPriceList { Code = "B2B-EUR", Name = "B2B EUR", Currency = "EUR", IsActive = true });
+		var list = await fixture.Pricing.SaveAsync(new SalesPriceList { Code = "B2B-EUR", Name = "B2B EUR", Currency = "EUR", IsActive = false });
 		await fixture.Pricing.SaveItemAsync(new SalesPriceListItem { SalesPriceListId = list.Id, ItemId = fixture.ItemId, UnitPrice = 89m, DiscountPercent = 7.5m });
 		await fixture.Pricing.AssignCustomerAsync(customer.Id, list.Id);
+		list.IsActive = true;
+		await fixture.Pricing.SaveAsync(list);
 		var price = await fixture.Pricing.ResolveAsync(customer.Id, fixture.ItemId, DateTime.Today);
 		Assert.NotNull(price);
 		Assert.Equal(89m, price.UnitPrice);
@@ -130,7 +132,7 @@ public sealed class SalesCommercialFeatureTests : IAsyncLifetime
 			var customerRepository = new CustomerRepository(data); var customers = new CustomerService(customerRepository, audit, authorization);
 			var orderRepository = new SalesOrderRepository(data);
 			var orders = new SalesOrderService(runner, orderRepository, customerRepository, new ItemRepository(data), new InventoryRepository(data), new InventoryReservationRepository(data), new StockMovementRepository(data), auditRepository, audit, authorization, notifications);
-			var pricing = new SalesPricingService(new SalesPriceListRepository(data), audit, authorization);
+			var pricing = new SalesPricingService(runner, new SalesPriceListRepository(data), auditRepository, audit, authorization);
 			var quotes = new SalesQuoteService(new SalesQuoteRepository(data), customerRepository, orders, audit, authorization);
 			var timeline = new SalesTimelineService(new SalesTimelineRepository(data), authorization);
 			return new CommercialFixture(customers, pricing, quotes, orders, timeline, itemId, partNumber);

@@ -3,11 +3,30 @@
 
 namespace Depot.Models;
 
+public enum SalesPriceListScope
+{
+	Global = 0,
+	Region = 1,
+	Customer = 2
+}
+
+public sealed class SalesRegion
+{
+	public long Id { get; set; }
+	public string Code { get; set; } = string.Empty;
+	public string Name { get; set; } = string.Empty;
+	public bool IsActive { get; set; } = true;
+	public long Version { get; set; } = 1;
+}
+
 public sealed class SalesPriceList
 {
 	public long Id { get; set; }
 	public string Code { get; set; } = string.Empty;
 	public string Name { get; set; } = string.Empty;
+	public SalesPriceListScope Scope { get; set; } = SalesPriceListScope.Customer;
+	public long? RegionId { get; set; }
+	public string? RegionName { get; set; }
 	public string Currency { get; set; } = "EUR";
 	public DateTime? ValidFrom { get; set; }
 	public DateTime? ValidTo { get; set; }
@@ -33,6 +52,39 @@ public sealed class CustomerPriceListAssignment
 	public long CustomerId { get; set; }
 	public long SalesPriceListId { get; set; }
 	public string PriceListName { get; set; } = string.Empty;
+	public bool IsActive { get; set; }
 }
 
-public sealed record SalesPriceResult(decimal UnitPrice, decimal DiscountPercent, string Source);
+public sealed record SalesPriceResult(
+	decimal UnitPrice,
+	decimal DiscountPercent,
+	long PriceListId,
+	string PriceListName,
+	SalesPriceListScope Scope,
+	string Currency,
+	long? RegionId)
+{
+	public string Source => PriceListName;
+
+	public void ApplyTo(SalesOrderLine line)
+	{
+		ArgumentNullException.ThrowIfNull(line);
+		line.UnitPrice = UnitPrice;
+		line.DiscountPercent = DiscountPercent;
+		line.PriceSourceListId = PriceListId;
+		line.PriceSourceName = PriceListName;
+		line.PriceSourceScope = Scope;
+		line.PriceSourceCurrency = Currency;
+	}
+
+	public void ApplyTo(SalesQuoteLine line)
+	{
+		ArgumentNullException.ThrowIfNull(line);
+		line.UnitPrice = UnitPrice;
+		line.DiscountPercent = DiscountPercent;
+		line.PriceSourceListId = PriceListId;
+		line.PriceSourceName = PriceListName;
+		line.PriceSourceScope = Scope;
+		line.PriceSourceCurrency = Currency;
+	}
+}

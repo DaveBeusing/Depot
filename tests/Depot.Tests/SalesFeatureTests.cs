@@ -25,7 +25,7 @@ public sealed class SalesFeatureTests : IDisposable
 		using var connection = new SqliteConnection($"Data Source={_databasePath}");
 		connection.Open();
 		Assert.Equal((long)SalesSchemaMigration.CurrentVersion, Scalar(connection, "SELECT Version FROM DepotFeatureVersions WHERE Name='Sales';"));
-		foreach (var table in new[] { "Customers", "CustomerAddresses", "CustomerContacts", "SalesOrders", "SalesOrderLines", "InventoryReservations", "Shipments", "ShipmentLines", "SalesInvoices", "SalesInvoiceLines", "CustomerReturns", "CustomerReturnLines", "SalesCreditNotes", "SalesCreditNoteLines", "SalesPriceLists", "SalesPriceListItems", "CustomerPriceLists", "SalesQuotes", "SalesQuoteLines" })
+		foreach (var table in new[] { "Customers", "CustomerAddresses", "CustomerContacts", "SalesOrders", "SalesOrderLines", "InventoryReservations", "Shipments", "ShipmentLines", "SalesInvoices", "SalesInvoiceLines", "CustomerReturns", "CustomerReturnLines", "SalesCreditNotes", "SalesCreditNoteLines", "SalesRegions", "SalesPriceLists", "SalesPriceListItems", "CustomerPriceLists", "SalesQuotes", "SalesQuoteLines" })
 			Assert.Equal(1L, Scalar(connection, $"SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='{table}';"));
 		Assert.Equal(1L, Scalar(connection, "SELECT COUNT(*) FROM pragma_table_info('Shipments') WHERE name='ReversedAtUtc';"));
 		Assert.Equal(1L, Scalar(connection, "SELECT COUNT(*) FROM pragma_table_info('Shipments') WHERE name='PackingStatus';"));
@@ -33,6 +33,53 @@ public sealed class SalesFeatureTests : IDisposable
 		Assert.Equal(1L, Scalar(connection, "SELECT COUNT(*) FROM pragma_table_info('CustomerAddresses') WHERE name='IsDefault';"));
 		Assert.Equal(1L, Scalar(connection, "SELECT COUNT(*) FROM pragma_table_info('SalesOrders') WHERE name='BillingAddress';"));
 		Assert.Equal(1L, Scalar(connection, "SELECT COUNT(*) FROM pragma_table_info('SalesOrders') WHERE name='ShippingAddress';"));
+		Assert.Equal(1L, Scalar(connection, "SELECT COUNT(*) FROM pragma_table_info('Customers') WHERE name='SalesRegionId';"));
+		Assert.Equal(1L, Scalar(connection, "SELECT COUNT(*) FROM pragma_table_info('SalesPriceLists') WHERE name='Scope';"));
+		Assert.Equal(1L, Scalar(connection, "SELECT COUNT(*) FROM pragma_table_info('SalesPriceLists') WHERE name='RegionId';"));
+		Assert.Equal(1L, Scalar(connection, "SELECT COUNT(*) FROM pragma_table_info('SalesOrderLines') WHERE name='PriceSourceListId';"));
+		Assert.Equal(1L, Scalar(connection, "SELECT COUNT(*) FROM pragma_table_info('SalesQuoteLines') WHERE name='PriceSourceListId';"));
+	}
+
+	[Fact]
+	public void UpgradeFromVersionEightPreservesPricesAndCustomerAssignments()
+	{
+		var factory = new SqliteConnectionFactory(_databasePath);
+		new DepotDatabase(factory).Initialize();
+		using (var connection = new SqliteConnection($"Data Source={_databasePath}"))
+		{
+			connection.Open();
+			using var command = connection.CreateCommand();
+			command.CommandText = """
+				CREATE TABLE DepotFeatureVersions (Name TEXT PRIMARY KEY, Version INTEGER NOT NULL);
+				INSERT INTO DepotFeatureVersions (Name,Version) VALUES ('Sales',8);
+				CREATE TABLE Customers (Id INTEGER PRIMARY KEY AUTOINCREMENT, Currency TEXT NOT NULL DEFAULT 'EUR', IsActive INTEGER NOT NULL DEFAULT 1);
+				CREATE TABLE SalesPriceLists (Id INTEGER PRIMARY KEY AUTOINCREMENT, Code TEXT NOT NULL UNIQUE, Name TEXT NOT NULL, Currency TEXT NOT NULL, ValidFrom TEXT NULL, ValidTo TEXT NULL, IsActive INTEGER NOT NULL DEFAULT 1, Version INTEGER NOT NULL DEFAULT 1);
+				CREATE TABLE SalesPriceListItems (Id INTEGER PRIMARY KEY AUTOINCREMENT, SalesPriceListId INTEGER NOT NULL, ItemId INTEGER NOT NULL, UnitPrice NUMERIC NOT NULL, DiscountPercent NUMERIC NOT NULL DEFAULT 0, Version INTEGER NOT NULL DEFAULT 1);
+				CREATE TABLE CustomerPriceLists (CustomerId INTEGER PRIMARY KEY, SalesPriceListId INTEGER NOT NULL);
+				CREATE TABLE SalesOrderLines (Id INTEGER PRIMARY KEY AUTOINCREMENT);
+				CREATE TABLE SalesQuoteLines (Id INTEGER PRIMARY KEY AUTOINCREMENT);
+				INSERT INTO Customers (Id,Currency,IsActive) VALUES (41,'EUR',1);
+				INSERT INTO Items (PartNumber,Description,IsActive) VALUES ('LEGACY-PRICE','Legacy priced item',1);
+				INSERT INTO SalesPriceLists (Id,Code,Name,Currency,IsActive) VALUES (51,'LEGACY','Legacy Customer Pricing','EUR',1);
+				INSERT INTO SalesPriceLists (Id,Code,Name,Currency,IsActive) VALUES (52,'LEGACY-UNASSIGNED','Legacy Unassigned Pricing','EUR',1);
+				INSERT INTO SalesPriceListItems (Id,SalesPriceListId,ItemId,UnitPrice,DiscountPercent) VALUES (61,51,(SELECT Id FROM Items WHERE PartNumber='LEGACY-PRICE'),73.50,4.25);
+				INSERT INTO CustomerPriceLists (CustomerId,SalesPriceListId) VALUES (41,51);
+				""";
+			command.ExecuteNonQuery();
+		}
+
+		SalesSchemaMigration.Migrate(factory);
+
+		using var migrated = new SqliteConnection($"Data Source={_databasePath}");
+		migrated.Open();
+		Assert.Equal(9L, Scalar(migrated, "SELECT Version FROM DepotFeatureVersions WHERE Name='Sales';"));
+		Assert.Equal((long)SalesPriceListScope.Customer, Scalar(migrated, "SELECT Scope FROM SalesPriceLists WHERE Id=51;"));
+		Assert.Equal(1L, Scalar(migrated, "SELECT IsActive FROM SalesPriceLists WHERE Id=51;"));
+		Assert.Equal(0L, Scalar(migrated, "SELECT IsActive FROM SalesPriceLists WHERE Id=52;"));
+		Assert.Equal(7350L, Scalar(migrated, "SELECT CAST(UnitPrice*100 AS INTEGER) FROM SalesPriceListItems WHERE Id=61;"));
+		Assert.Equal(51L, Scalar(migrated, "SELECT SalesPriceListId FROM CustomerPriceLists WHERE CustomerId=41;"));
+		Assert.Equal(1L, Scalar(migrated, "SELECT COUNT(*) FROM pragma_table_info('SalesPriceLists') WHERE name='RegionId';"));
+		Assert.Equal(0L, Scalar(migrated, "SELECT COUNT(*) FROM SalesRegions;"));
 	}
 
 	[Fact]

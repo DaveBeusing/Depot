@@ -2,7 +2,9 @@
 
 Updated: 2026-08-29
 
-Depot is on the `0.15.x-preview` development line. The current `finance` branch contains the integrated Finance platform: foundation/master data, immutable General Ledger, Receivables, Payables, FIFO Inventory Accounting, Banking and Payments, Financial Reporting, and effective-dated Localization.
+Depot is on the `0.15.x-preview` development line. The repository contains the integrated Finance platform: foundation/master data, immutable General Ledger, Receivables, Payables, FIFO Inventory Accounting, Banking and Payments, Financial Reporting, and effective-dated Localization.
+
+Sales pricing supports Global, Regional and optional Customer scopes. The central resolver falls back Customer → Region → Global for each item and retains the selected price source on quote and order lines.
 
 ## Finance capabilities
 
@@ -24,10 +26,10 @@ Built-in `GENERIC`, `EU` and `DE` definitions and built-in registry rows are imm
 ## Versions
 
 - Application: **0.15.x-preview** (`Directory.Build.props` is authoritative for the exact patch)
-- Core database schema: **29**
-- Sales feature schema: **8**
+- Core database schema: **30**
+- Sales feature schema: **9**
 - Finance feature schema: **9**
-- Help manifest: **1.17**
+- Help manifest: **1.18**
 
 Every commit increments `DepotVersionPatch`.
 

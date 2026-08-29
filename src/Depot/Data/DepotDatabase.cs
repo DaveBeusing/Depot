@@ -1225,6 +1225,12 @@ public sealed class DepotDatabase : IDatabaseInitializer
 			migratedVersion = 29;
 		}
 
+		if (migratedVersion == 29)
+		{
+			SetDatabaseVersion(connection, 30);
+			migratedVersion = 30;
+		}
+
 		if (migratedVersion < DatabaseVersion.CurrentVersion)
 		{
 			throw new InvalidOperationException(

@@ -1,15 +1,15 @@
 # Documentation status
 
-Updated: 2026-08-28
+Updated: 2026-08-29
 
 This document identifies the documentation baseline for the current development state. User-facing and engineering documentation must distinguish implemented technical controls from production/legal acceptance gates and must describe finalized financial records from persisted historical evidence rather than mutable current master data.
 
 ## Current baseline
 
-- Application: `0.15.42-preview`
-- Help manifest: `1.17`
-- Core database schema: `29`
-- Sales feature schema: `8`
+- Application: `0.15.x-preview`
+- Help manifest: `1.18`
+- Core database schema: `30`
+- Sales feature schema: `9`
 - Finance feature schema: `9`
 - Finance foundation, General Ledger, Receivables, Payables, Inventory Accounting, Banking, Financial Reporting and Localization are implemented on `finance`.
 
@@ -32,6 +32,15 @@ Documentation must state that:
 - localization assignments and registry entries are retained Audit evidence;
 - provider-neutral schema/code is not live-provider certification.
 
+## Sales pricing documentation invariants
+
+Documentation must state that:
+
+- Sales pricing fallback is Customer → Region → Global and is evaluated independently for every item;
+- Customer price-list assignments and Sales Regions are optional;
+- automatically sourced draft pricing and finalized document snapshots remain distinct;
+- a higher-scope list never suppresses fallback for an item absent at that scope.
+
 ## Documentation rules
 
 Documentation must not:
@@ -46,4 +55,4 @@ Documentation must not:
 - claim all possible country packs are implemented merely because the framework can host them;
 - hide repository failures by attributing them to unrelated Finance changes.
 
-Help manifest **1.17** includes stable topic `finance.localization`, guarded by `FinanceLocalization.View`.
+Help manifest **1.18** includes scoped pricing guidance in the stable Sales topics and retains `finance.localization`, guarded by `FinanceLocalization.View`.

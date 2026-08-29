@@ -1,6 +1,6 @@
 # Finance Architecture
 
-Updated: 2026-08-28
+Updated: 2026-08-29
 
 ## Purpose
 
@@ -89,8 +89,8 @@ Provider-neutral Finance DDL exists for SQLite, SQL Server and MySQL/MariaDB.
 
 Current schema baseline:
 
-- Core database schema: **29**
-- Sales feature schema: **8**
+- Core database schema: **30**
+- Sales feature schema: **9**
 - Finance feature schema: **9**
 
 Finance schema evolution is sequential from foundation through General Ledger, subledgers, inventory accounting, banking, reporting and localization. Provider neutrality is a code/design property, not a production certification claim. Live SQL Server/MySQL-MariaDB migration, concurrency, recovery and representative Finance/localization acceptance remain deployment gates.

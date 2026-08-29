@@ -42,6 +42,8 @@ public sealed class Customer
 	public string? BillingPostalCode { get; set; }
 	public string? BillingCity { get; set; }
 	public string? BillingCountryCode { get; set; }
+	public long? SalesRegionId { get; set; }
+	public string? SalesRegionName { get; set; }
 	public int PaymentTermsDays { get; set; } = 30;
 	public string Currency { get; set; } = "EUR";
 	public bool IsActive { get; set; } = true;

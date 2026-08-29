@@ -8,6 +8,7 @@ The active development line is **0.15.x-preview**. Security, compliance, account
 
 - dark permission-aware workspace shell with Quick Open, Command Palette and contextual offline Help
 - inventory, warehouse, purchasing, sales, approvals, reporting and administration workflows
+- scoped per-item Sales pricing with Customer → Region → Global fallback and retained document-price sources
 - enriched Item master data plus serial/lot traceability and reversal-safe movement history
 - SQLite, SQL Server and MySQL/MariaDB provider implementations
 - database-backed RBAC with service-layer authorization
@@ -40,10 +41,10 @@ Localization support levels (`SoftwareCapability`, `ConfigurationRequired`, `Ext
 
 Current schema levels:
 
-- core database schema: **29**
-- Sales feature schema: **8**
+- core database schema: **30**
+- Sales feature schema: **9**
 - Finance feature schema: **9**
-- Help manifest: **1.17**
+- Help manifest: **1.18**
 
 See `docs/FINANCE_ARCHITECTURE.md`, `docs/FINANCE_LOCALIZATION.md`, `docs/FINANCE_REPORTING.md`, `docs/FINANCE_COMPLIANCE.md`, and `docs/Roadmap.md`.
 
@@ -81,7 +82,7 @@ Provider-neutral Finance schema 9 exists for SQLite, SQL Server and MySQL/MariaD
 
 ## Offline Help
 
-Embedded Help manifest **1.17** contains Finance Foundation, General Ledger, Accounts Receivable, Accounts Payable, Inventory Accounting, Banking, Financial Reporting and Finance Localization topics. Help visibility follows central permissions and never grants business access.
+Embedded Help manifest **1.18** contains scoped Sales pricing guidance plus Finance Foundation, General Ledger, Accounts Receivable, Accounts Payable, Inventory Accounting, Banking, Financial Reporting and Finance Localization topics. Help visibility follows central permissions and never grants business access.
 
 ## Remaining work before 1.0
 
@@ -90,6 +91,7 @@ Major remaining items include live remote-provider acceptance, production code s
 ## Documentation
 
 - `docs/Architecture.md`
+- `docs/SALES_PRICING.md`
 - `docs/CURRENT_STATUS.md`
 - `docs/FINANCE_ARCHITECTURE.md`
 - `docs/FINANCE_LOCALIZATION.md`

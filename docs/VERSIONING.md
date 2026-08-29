@@ -10,8 +10,8 @@ The single application-version source is `Directory.Build.props` in the reposito
 
 ## Current versions
 
-- Application development line: **0.13.0-preview**
-- Database schema version: **29**
+- Application development line: **0.15.x-preview**
+- Database schema version: **30**
 
 The application version and database schema version are independent. A patch application release can retain the same schema, while a schema migration can occur during a prerelease line.
 
@@ -33,6 +33,8 @@ The MSBuild properties produce:
 The About page reads the built assembly information and displays the application, file, informational, runtime, and database-schema versions.
 
 ## Database schema versioning
+
+Schema version 30 is the core compatibility baseline for Sales feature schema 9. Sales schema 9 adds provider-neutral scoped price lists, optional Sales Regions on customers, scope/region constraints and indexes, and retained price-source metadata on quote and order lines. Existing price lists migrate to Customer scope while existing item prices and customer assignments remain unchanged.
 
 Schema version 29 adds `Notifications` and `NotificationRecipients` for the private internal Notification Center. It includes unique materialized recipients, user-scoped unread/archive state, expiry handling, source indexes, stable inbox sorting, and provider-neutral migrations for SQLite, SQL Server, and MySQL/MariaDB. Initial purchase-order and inventory-count events join the existing workflow/audit transaction; scheduled backup failures create independent system notifications.
 

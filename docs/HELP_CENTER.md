@@ -1,12 +1,12 @@
 # Depot Help Center
 
-Updated: 2026-08-28
+Updated: 2026-08-29
 
 Depot ships an embedded offline Markdown Help Center rendered natively in WPF. Help is permission-filtered, locally searchable, uses stable topic IDs, and opens in the normal workspace shell.
 
 ## Current manifest
 
-Help manifest **1.17** contains eight Finance topics:
+Help manifest **1.18** contains scoped Sales pricing guidance and eight Finance topics:
 
 - `finance.foundation` — `Finance.View`
 - `finance.general-ledger` — `FinanceGeneralLedger.View`
@@ -36,4 +36,4 @@ Finance Localization Help must clearly state that legal-entity country does not 
 5. Increment the manifest version for material topic/permission/mapping changes.
 6. Run Help regression validation for duplicate IDs, missing files, unknown permissions and broken links.
 
-Help manifest **1.17** is the current documentation contract.
+Help manifest **1.18** is the current documentation contract.

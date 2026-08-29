@@ -1,8 +1,12 @@
 # User-facing changes
 
-Updated: 2026-08-28
+Updated: 2026-08-29
 
 Depot's current `0.15.x-preview` line includes the integrated Finance platform.
+
+## Scoped Sales pricing
+
+Sales price lists now use Global, Regional or optional Customer scope. Price resolution falls back Customer → Region → Global independently for each item, so special and regional lists only need to contain exceptions. Customer-specific price-list assignments and Sales Regions are optional. Quotes and Sales Orders display the resolved source and preserve submitted/finalized pricing snapshots.
 
 ## Finance workspaces
 
@@ -28,9 +32,9 @@ The default Finance system role includes `FinanceLocalization.View` and `Finance
 
 ## Current technical baseline
 
-- Application: **0.15.42-preview**
+- Application: **0.15.x-preview**
 - Finance schema: **9**
-- Help manifest: **1.17**
+- Help manifest: **1.18**
 - Provider-neutral schema/code: SQLite, SQL Server and MySQL/MariaDB
 
 Live remote-provider migration/concurrency/recovery/performance and organization-specific localization acceptance remain required before production-provider or jurisdiction-compliance support claims.

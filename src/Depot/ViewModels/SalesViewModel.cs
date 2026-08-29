@@ -40,6 +40,7 @@ public sealed class SalesViewModel : BaseViewModel, IDisposable
 	private readonly ShipmentService _shipments;
 	private readonly SalesInvoiceService _invoices;
 	private readonly ItemService _items;
+	private readonly SalesPricingService _pricing;
 	private readonly IAuthorizationService _authorization;
 	private readonly IFileDialogService _fileDialogs;
 	private readonly SalesDocumentService _documents;
@@ -82,6 +83,7 @@ public sealed class SalesViewModel : BaseViewModel, IDisposable
 		ShipmentService shipments,
 		SalesInvoiceService invoices,
 		ItemService items,
+		SalesPricingService pricing,
 		IAuthorizationService authorization,
 		IFileDialogService fileDialogs,
 		SalesDocumentService documents)
@@ -91,6 +93,7 @@ public sealed class SalesViewModel : BaseViewModel, IDisposable
 		_shipments = shipments;
 		_invoices = invoices;
 		_items = items;
+		_pricing = pricing;
 		_authorization = authorization;
 		_fileDialogs = fileDialogs;
 		_documents = documents;
@@ -99,7 +102,7 @@ public sealed class SalesViewModel : BaseViewModel, IDisposable
 		SaveCustomerCommand = new AsyncRelayCommand(SaveCustomerAsync, () => CustomerDraft.Id == 0 ? _customers.CanCreate : _customers.CanEdit);
 		NewOrderCommand = new RelayCommand(NewOrder, () => _orders.CanCreate);
 		SaveOrderCommand = new AsyncRelayCommand(SaveOrderAsync, () => OrderDraft.Status == SalesOrderStatus.Draft && (OrderDraft.Id == 0 ? _orders.CanCreate : _orders.CanEdit));
-		AddLineCommand = new RelayCommand(AddLine, () => OrderDraft.Status == SalesOrderStatus.Draft && SelectedItem is not null && LineQuantity > 0);
+		AddLineCommand = new AsyncRelayCommand(AddLineAsync, () => OrderDraft.Status == SalesOrderStatus.Draft && SelectedItem is not null && LineQuantity > 0);
 		RemoveLineCommand = new RelayCommand(RemoveLine, () => OrderDraft.Status == SalesOrderStatus.Draft && SelectedOrderLine is not null);
 		SubmitCommand = new AsyncRelayCommand(SubmitAsync, () => _orders.CanSubmit && OrderDraft.Id > 0 && OrderDraft.Status == SalesOrderStatus.Draft);
 		ApproveCommand = new AsyncRelayCommand(ApproveAsync, () => _orders.CanApprove && SelectedOrder?.Status == SalesOrderStatus.PendingApproval);
@@ -140,7 +143,7 @@ public sealed class SalesViewModel : BaseViewModel, IDisposable
 	public AsyncRelayCommand SaveCustomerCommand { get; }
 	public RelayCommand NewOrderCommand { get; }
 	public AsyncRelayCommand SaveOrderCommand { get; }
-	public RelayCommand AddLineCommand { get; }
+	public AsyncRelayCommand AddLineCommand { get; }
 	public RelayCommand RemoveLineCommand { get; }
 	public AsyncRelayCommand SubmitCommand { get; }
 	public AsyncRelayCommand ApproveCommand { get; }
@@ -305,7 +308,17 @@ public sealed class SalesViewModel : BaseViewModel, IDisposable
 	private void NewCustomer() { _customerBaseline = null; _selectedCustomer = null; OnPropertyChanged(nameof(SelectedCustomer)); CustomerDraft = NewCustomerDraft(); RequestEditorFocus(); }
 	private async Task SaveCustomerAsync(CancellationToken token) { var saved = await _customers.SaveAsync(CustomerDraft, token); _selectedCustomer = saved; OnPropertyChanged(nameof(SelectedCustomer)); _customerBaseline = Copy(saved); CustomerDraft = Copy(saved); await LoadAsync(token); }
 	private void NewOrder() { _orderBaseline = null; _selectedOrder = null; OnPropertyChanged(nameof(SelectedOrder)); _selectedOrderCustomer = null; OnPropertyChanged(nameof(SelectedOrderCustomer)); _selectedBillingAddress = null; _selectedShippingAddress = null; BillingAddresses.Clear(); ShippingAddresses.Clear(); OrderDraft = NewOrderDraft(); Replace(OrderLines, []); Replace(Reservations, []); RequestEditorFocus(); }
-	private void AddLine() { if (SelectedItem is null || LineQuantity <= 0) return; var line = new SalesOrderLine { LineNumber = OrderLines.Count + 1, ItemId = SelectedItem.Id, PartNumber = SelectedItem.PartNumber, Description = SelectedItem.Description, Quantity = LineQuantity, UnitPrice = LineUnitPrice, DiscountPercent = LineDiscountPercent, TaxRate = LineTaxRate }; OrderLines.Add(line); OrderDraft.Lines = OrderLines.ToArray(); SelectedOrderLine = line; RaiseCommands(); }
+	private async Task AddLineAsync(CancellationToken token)
+	{
+		if (SelectedItem is null || LineQuantity <= 0) return;
+		var line = new SalesOrderLine { LineNumber = OrderLines.Count + 1, ItemId = SelectedItem.Id, PartNumber = SelectedItem.PartNumber, Description = SelectedItem.Description, Quantity = LineQuantity, UnitPrice = LineUnitPrice, DiscountPercent = LineDiscountPercent, TaxRate = LineTaxRate };
+		if (SelectedOrderCustomer is not null)
+		{
+			var price = await _pricing.ResolveAsync(SelectedOrderCustomer.Id, SelectedItem.Id, LineQuantity, OrderDraft.OrderDate, OrderDraft.Currency, token);
+			price?.ApplyTo(line);
+		}
+		OrderLines.Add(line); OrderDraft.Lines = OrderLines.ToArray(); SelectedOrderLine = line; RaiseCommands();
+	}
 	private void RemoveLine() { if (SelectedOrderLine is null) return; OrderLines.Remove(SelectedOrderLine); for (var index = 0; index < OrderLines.Count; index++) OrderLines[index].LineNumber = index + 1; OrderDraft.Lines = OrderLines.ToArray(); SelectedOrderLine = null; RaiseCommands(); }
 	private async Task SaveOrderAsync(CancellationToken token)
 	{
@@ -425,6 +438,8 @@ public sealed class SalesViewModel : BaseViewModel, IDisposable
 		BillingPostalCode = value.BillingPostalCode,
 		BillingCity = value.BillingCity,
 		BillingCountryCode = value.BillingCountryCode,
+		SalesRegionId = value.SalesRegionId,
+		SalesRegionName = value.SalesRegionName,
 		PaymentTermsDays = value.PaymentTermsDays,
 		Currency = value.Currency,
 		IsActive = value.IsActive,
@@ -433,10 +448,10 @@ public sealed class SalesViewModel : BaseViewModel, IDisposable
 		Contacts = value.Contacts.ToArray()
 	};
 	private static CustomerAddress CopyAddress(CustomerAddress value) => new() { Id=value.Id, CustomerId=value.CustomerId, Type=value.Type, Name=value.Name, Address=value.Address, IsDefault=value.IsDefault, IsActive=value.IsActive, Version=value.Version };
-	private static SalesOrderLine CopyLine(SalesOrderLine line) => new() { Id=line.Id, SalesOrderId=line.SalesOrderId, LineNumber=line.LineNumber, ItemId=line.ItemId, PartNumber=line.PartNumber, Description=line.Description, Quantity=line.Quantity, UnitPrice=line.UnitPrice, DiscountPercent=line.DiscountPercent, TaxRate=line.TaxRate, ReservedQuantity=line.ReservedQuantity, ShippedQuantity=line.ShippedQuantity, InvoicedQuantity=line.InvoicedQuantity, Version=line.Version };
+	private static SalesOrderLine CopyLine(SalesOrderLine line) => new() { Id=line.Id, SalesOrderId=line.SalesOrderId, LineNumber=line.LineNumber, ItemId=line.ItemId, PartNumber=line.PartNumber, Description=line.Description, Quantity=line.Quantity, UnitPrice=line.UnitPrice, DiscountPercent=line.DiscountPercent, PriceSourceListId=line.PriceSourceListId, PriceSourceName=line.PriceSourceName, PriceSourceScope=line.PriceSourceScope, PriceSourceCurrency=line.PriceSourceCurrency, TaxRate=line.TaxRate, ReservedQuantity=line.ReservedQuantity, ShippedQuantity=line.ShippedQuantity, InvoicedQuantity=line.InvoicedQuantity, Version=line.Version };
 	private static SalesOrder Copy(SalesOrder value) => new() { Id = value.Id, OrderNumber = value.OrderNumber, CustomerId = value.CustomerId, CustomerName = value.CustomerName, BillingAddress=value.BillingAddress, ShippingAddress=value.ShippingAddress, OrderDate = value.OrderDate, RequestedDeliveryDate = value.RequestedDeliveryDate, Currency = value.Currency, CustomerReference = value.CustomerReference, Notes = value.Notes, Status = value.Status, CreatedByUserId = value.CreatedByUserId, SubmittedByUserId = value.SubmittedByUserId, SubmittedAtUtc = value.SubmittedAtUtc, ApprovalDecisionByUserId = value.ApprovalDecisionByUserId, ApprovalDecisionAtUtc = value.ApprovalDecisionAtUtc, ApprovalComment = value.ApprovalComment, ReleasedByUserId = value.ReleasedByUserId, ReleasedAtUtc = value.ReleasedAtUtc, CancelledByUserId = value.CancelledByUserId, CancelledAtUtc = value.CancelledAtUtc, CancelReason = value.CancelReason, Version = value.Version, Lines = value.Lines.Select(CopyLine).ToArray() };
 	private static Shipment Copy(Shipment value) => new() { Id=value.Id, ShipmentNumber=value.ShipmentNumber, SalesOrderId=value.SalesOrderId, SalesOrderNumber=value.SalesOrderNumber, CustomerId=value.CustomerId, CustomerName=value.CustomerName, ShipmentDate=value.ShipmentDate, Status=value.Status, Carrier=value.Carrier, TrackingNumber=value.TrackingNumber, ShippingAddress=value.ShippingAddress, Notes=value.Notes, CreatedByUserId=value.CreatedByUserId, PostedByUserId=value.PostedByUserId, PostedAtUtc=value.PostedAtUtc, ReversedAtUtc=value.ReversedAtUtc, ReversedByUserId=value.ReversedByUserId, ReversalReason=value.ReversalReason, Version=value.Version, Lines=value.Lines.ToArray() };
 	private static bool Equivalent<T>(T left, T right) => string.Equals(JsonSerializer.Serialize(left), JsonSerializer.Serialize(right), StringComparison.Ordinal);
 	private static void Replace<T>(ObservableCollection<T> target, IEnumerable<T> values) { target.Clear(); foreach (var value in values) target.Add(value); }
-	public void Dispose() { _loadRequest.Dispose(); foreach (var command in new IDisposable[] { SaveCustomerCommand, SaveOrderCommand, SubmitCommand, ApproveCommand, RejectCommand, ReserveCommand, ReleaseCommand, CreateShipmentCommand, SaveShipmentCommand, PostShipmentCommand, ReverseShipmentCommand, CreateCustomerReturnCommand, PostCustomerReturnCommand, CreateInvoiceCommand, CancelInvoiceCommand, PostInvoiceCommand, CreateCreditNoteCommand, PostCreditNoteCommand }) command.Dispose(); }
+	public void Dispose() { _loadRequest.Dispose(); foreach (var command in new IDisposable[] { SaveCustomerCommand, SaveOrderCommand, AddLineCommand, SubmitCommand, ApproveCommand, RejectCommand, ReserveCommand, ReleaseCommand, CreateShipmentCommand, SaveShipmentCommand, PostShipmentCommand, ReverseShipmentCommand, CreateCustomerReturnCommand, PostCustomerReturnCommand, CreateInvoiceCommand, CancelInvoiceCommand, PostInvoiceCommand, CreateCreditNoteCommand, PostCreditNoteCommand }) command.Dispose(); }
 }
