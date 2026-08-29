@@ -68,6 +68,8 @@ public sealed class SalesPricingService
 			}
 			if (value.Scope != SalesPriceListScope.Customer && value.Id > 0 && await _prices.HasCustomerAssignmentsAsync(transaction, value.Id, cancellationToken))
 				throw new InvalidOperationException("Clear all customer assignments before changing a customer price list to a default scope.");
+			if (value.IsActive && value.Scope == SalesPriceListScope.Customer && (value.Id == 0 || !await _prices.HasCustomerAssignmentsAsync(transaction, value.Id, cancellationToken)))
+				throw new InvalidOperationException("An active customer price list requires at least one customer assignment. Save it as inactive, assign a customer, and then activate it.");
 			if (value.IsActive && value.Scope is SalesPriceListScope.Global or SalesPriceListScope.Region)
 			{
 				var conflict = await _prices.FindActiveDefaultAsync(transaction, value.Scope, value.RegionId, value.Id, cancellationToken);
@@ -136,14 +138,40 @@ public sealed class SalesPricingService
 			{
 				list = await _prices.GetByIdAsync(transaction, priceListId.Value, cancellationToken) ?? throw new InvalidOperationException("Sales price list was not found.");
 				if (list.Scope != SalesPriceListScope.Customer) throw new InvalidOperationException("Only customer-scoped price lists can be assigned to a customer.");
-				if (!list.IsActive) throw new InvalidOperationException("Only an active customer price list can be assigned.");
 			}
 			await _prices.AssignCustomerAsync(transaction, customerId, list?.Id, cancellationToken);
-			var after = list is null ? null : new CustomerPriceListAssignment { CustomerId = customerId, SalesPriceListId = list.Id, PriceListName = list.Name };
+			if (before is not null && before.SalesPriceListId != list?.Id && !await _prices.HasCustomerAssignmentsAsync(transaction, before.SalesPriceListId, cancellationToken))
+			{
+				var orphaned = await _prices.GetByIdAsync(transaction, before.SalesPriceListId, cancellationToken);
+				if (orphaned is { IsActive: true })
+				{
+					var deactivated = Copy(orphaned);
+					deactivated.IsActive = false;
+					await _prices.SaveAsync(transaction, deactivated, cancellationToken);
+					await _auditEntries.CreateAsync(transaction, _audit.CreateUpdatedEntry(deactivated.Id, orphaned, deactivated), cancellationToken);
+				}
+			}
+			var after = list is null ? null : new CustomerPriceListAssignment { CustomerId = customerId, SalesPriceListId = list.Id, PriceListName = list.Name, IsActive = list.IsActive };
 			await _auditEntries.CreateAsync(transaction, _audit.CreateActionEntry(customerId, "Assigned", before, after), cancellationToken);
 			return true;
 		}, token);
 	}
+
+	private static SalesPriceList Copy(SalesPriceList value) => new()
+	{
+		Id = value.Id,
+		Code = value.Code,
+		Name = value.Name,
+		Scope = value.Scope,
+		RegionId = value.RegionId,
+		RegionName = value.RegionName,
+		Currency = value.Currency,
+		ValidFrom = value.ValidFrom,
+		ValidTo = value.ValidTo,
+		IsActive = value.IsActive,
+		Version = value.Version,
+		Items = value.Items
+	};
 
 	private static void NormalizeAndValidate(SalesPriceList value)
 	{

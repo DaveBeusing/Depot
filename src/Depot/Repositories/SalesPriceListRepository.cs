@@ -90,11 +90,11 @@ public sealed class SalesPriceListRepository : DatabaseRepository
 	}
 
 	public Task<CustomerPriceListAssignment?> GetCustomerAssignmentAsync(long customerId, CancellationToken token) => Database.QuerySingleOrDefaultAsync(
-		"SELECT cpl.CustomerId,cpl.SalesPriceListId,pl.Name FROM CustomerPriceLists cpl INNER JOIN SalesPriceLists pl ON pl.Id=cpl.SalesPriceListId WHERE cpl.CustomerId=$CustomerId;",
-		r => new CustomerPriceListAssignment { CustomerId=r.GetInt64(0), SalesPriceListId=r.GetInt64(1), PriceListName=r.GetString(2) }, token, Parameter("$CustomerId", customerId));
+		"SELECT cpl.CustomerId,cpl.SalesPriceListId,pl.Name,pl.IsActive FROM CustomerPriceLists cpl INNER JOIN SalesPriceLists pl ON pl.Id=cpl.SalesPriceListId WHERE cpl.CustomerId=$CustomerId;",
+		r => new CustomerPriceListAssignment { CustomerId=r.GetInt64(0), SalesPriceListId=r.GetInt64(1), PriceListName=r.GetString(2), IsActive=r.GetBoolean(3) }, token, Parameter("$CustomerId", customerId));
 	public Task<CustomerPriceListAssignment?> GetCustomerAssignmentAsync(DatabaseTransactionContext transaction, long customerId, CancellationToken token) => transaction.Session.QuerySingleOrDefaultAsync(
-		"SELECT cpl.CustomerId,cpl.SalesPriceListId,pl.Name FROM CustomerPriceLists cpl INNER JOIN SalesPriceLists pl ON pl.Id=cpl.SalesPriceListId WHERE cpl.CustomerId=$CustomerId;",
-		r => new CustomerPriceListAssignment { CustomerId=r.GetInt64(0), SalesPriceListId=r.GetInt64(1), PriceListName=r.GetString(2) }, token, Parameter("$CustomerId", customerId));
+		"SELECT cpl.CustomerId,cpl.SalesPriceListId,pl.Name,pl.IsActive FROM CustomerPriceLists cpl INNER JOIN SalesPriceLists pl ON pl.Id=cpl.SalesPriceListId WHERE cpl.CustomerId=$CustomerId;",
+		r => new CustomerPriceListAssignment { CustomerId=r.GetInt64(0), SalesPriceListId=r.GetInt64(1), PriceListName=r.GetString(2), IsActive=r.GetBoolean(3) }, token, Parameter("$CustomerId", customerId));
 
 	public Task<SalesPriceList?> FindActiveDefaultAsync(DatabaseTransactionContext transaction, SalesPriceListScope scope, long? regionId, long excludedId, CancellationToken token) => transaction.Session.QuerySingleOrDefaultAsync(
 		$"{ListSelect} WHERE pl.Scope=$Scope AND pl.IsActive=1 AND (($RegionId IS NULL AND pl.RegionId IS NULL) OR pl.RegionId=$RegionId) AND pl.Id<>$ExcludedId ORDER BY pl.Id;",

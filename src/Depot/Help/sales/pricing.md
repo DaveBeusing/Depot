@@ -10,7 +10,7 @@ The available scopes are:
 
 - **Global** — the fallback for every customer.
 - **Region** — the default for customers assigned to the selected active Sales Region.
-- **Customer** — optional special pricing assigned through the existing customer selector.
+- **Customer** — optional special pricing assigned through the existing customer selector. Create it inactive, assign at least one customer, and then activate it.
 
 There can be only one active Global default and one active Regional default per region. Depot validates these rules when the price list is saved, including concurrent changes by multiple users.
 
@@ -19,6 +19,8 @@ There can be only one active Global default and one active Regional default per 
 For each item, Depot resolves Customer → Region → Global. If the customer list does not contain that item, resolution continues with the Regional list. If the Regional list does not contain it, resolution continues with Global. Inactive, expired, not-yet-valid, wrong-currency and otherwise inapplicable lists are skipped in the same way.
 
 A customer-specific list and a Sales Region are both optional. Without a customer list Depot uses Region → Global; without a region it uses Customer → Global. If no valid item price exists at any scope, the editor keeps the manually entered price and discount.
+
+Removing the final customer assignment automatically deactivates that Customer list. This prevents an active Customer-scoped list without the required binding while allowing the customer to return to automatic pricing.
 
 The resolved result displays and stores the source price-list name and scope. This makes a Regional or Global price distinguishable from special Customer pricing.
 

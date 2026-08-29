@@ -25,8 +25,8 @@ public sealed class ScopedSalesPricingTests : IAsyncLifetime
 		var customer = await fixture.Customers.SaveAsync(new Customer { Name = "Scoped Customer", Currency = "EUR", SalesRegionId = region.Id });
 		var global = await fixture.CreateListAsync("GLOBAL", "Global Standard", SalesPriceListScope.Global);
 		var regional = await fixture.CreateListAsync("DACH", "DACH Standard", SalesPriceListScope.Region, region.Id);
-		var customerList = await fixture.CreateListAsync("SPECIAL", "Customer Special", SalesPriceListScope.Customer);
-		await fixture.Pricing.AssignCustomerAsync(customer.Id, customerList.Id);
+		var customerList = await fixture.CreateListAsync("SPECIAL", "Customer Special", SalesPriceListScope.Customer, active: false);
+		customerList = await fixture.AssignAndActivateAsync(customer.Id, customerList);
 
 		await fixture.AddPriceAsync(global.Id, fixture.ItemA, 100m);
 		await fixture.AddPriceAsync(regional.Id, fixture.ItemA, 95m);
@@ -65,8 +65,8 @@ public sealed class ScopedSalesPricingTests : IAsyncLifetime
 		var customer = await fixture.Customers.SaveAsync(new Customer { Name = "Validity Customer", Currency = "EUR", SalesRegionId = region.Id });
 		var global = await fixture.CreateListAsync("GLOBAL", "Global Standard", SalesPriceListScope.Global);
 		var regional = await fixture.CreateListAsync("DACH", "DACH Standard", SalesPriceListScope.Region, region.Id);
-		var expiredCustomer = await fixture.CreateListAsync("EXPIRED", "Expired Customer", SalesPriceListScope.Customer, validTo: DateTime.Today.AddDays(-1));
-		await fixture.Pricing.AssignCustomerAsync(customer.Id, expiredCustomer.Id);
+		var expiredCustomer = await fixture.CreateListAsync("EXPIRED", "Expired Customer", SalesPriceListScope.Customer, active: false, validTo: DateTime.Today.AddDays(-1));
+		expiredCustomer = await fixture.AssignAndActivateAsync(customer.Id, expiredCustomer);
 		await fixture.AddPriceAsync(global.Id, fixture.ItemA, 100m);
 		await fixture.AddPriceAsync(regional.Id, fixture.ItemA, 95m);
 		await fixture.AddPriceAsync(expiredCustomer.Id, fixture.ItemA, 90m);
@@ -88,8 +88,8 @@ public sealed class ScopedSalesPricingTests : IAsyncLifetime
 		var fixture = Fixture;
 		var customer = await fixture.Customers.SaveAsync(new Customer { Name = "Currency Customer", Currency = "EUR" });
 		var global = await fixture.CreateListAsync("GLOBAL", "Global Standard", SalesPriceListScope.Global);
-		var customerUsd = await fixture.CreateListAsync("USD-SPECIAL", "USD Customer", SalesPriceListScope.Customer, currency: "USD");
-		await fixture.Pricing.AssignCustomerAsync(customer.Id, customerUsd.Id);
+		var customerUsd = await fixture.CreateListAsync("USD-SPECIAL", "USD Customer", SalesPriceListScope.Customer, active: false, currency: "USD");
+		customerUsd = await fixture.AssignAndActivateAsync(customer.Id, customerUsd);
 		await fixture.AddPriceAsync(global.Id, fixture.ItemA, 100m);
 		await fixture.AddPriceAsync(customerUsd.Id, fixture.ItemA, 80m);
 
@@ -141,6 +141,25 @@ public sealed class ScopedSalesPricingTests : IAsyncLifetime
 	}
 
 	[Fact]
+	public async Task ActiveCustomerListsRequireAssignmentsAndLastRemovalDeactivatesList()
+	{
+		var fixture = Fixture;
+		var customer = await fixture.Customers.SaveAsync(new Customer { Name = "Binding Customer", Currency = "EUR" });
+		await Assert.ThrowsAsync<InvalidOperationException>(() => fixture.CreateListAsync("UNBOUND-ACTIVE", "Unbound Active", SalesPriceListScope.Customer));
+		var staged = await fixture.CreateListAsync("STAGED", "Staged Customer Pricing", SalesPriceListScope.Customer, active: false);
+		await fixture.Pricing.AssignCustomerAsync(customer.Id, staged.Id);
+		staged.IsActive = true;
+		staged = await fixture.Pricing.SaveAsync(staged);
+
+		await fixture.Pricing.AssignCustomerAsync(customer.Id, null);
+
+		var stored = (await fixture.Pricing.ListAsync()).Single(value => value.Id == staged.Id);
+		Assert.False(stored.IsActive);
+		Assert.Null(await fixture.Pricing.GetCustomerAssignmentAsync(customer.Id));
+		Assert.True(await fixture.ScalarAsync("SELECT COUNT(*) FROM AuditEntries WHERE EntityType='SalesPriceList' AND EntityId=$Id AND Action='Updated';", new DatabaseParameter("$Id", staged.Id)) >= 2);
+	}
+
+	[Fact]
 	public async Task ResolutionHonorsCancellationAndRejectsInvalidQuantity()
 	{
 		var fixture = Fixture;
@@ -158,12 +177,12 @@ public sealed class ScopedSalesPricingTests : IAsyncLifetime
 		var fixture = Fixture;
 		var region = await fixture.Pricing.SaveRegionAsync(new SalesRegion { Code = "AUDIT", Name = "Audit Region" });
 		var customer = await fixture.Customers.SaveAsync(new Customer { Name = "Audit Customer", Currency = "EUR", SalesRegionId = region.Id });
-		var list = await fixture.CreateListAsync("AUDIT-CUSTOMER", "Audit Customer Pricing", SalesPriceListScope.Customer);
+		var list = await fixture.CreateListAsync("AUDIT-CUSTOMER", "Audit Customer Pricing", SalesPriceListScope.Customer, active: false);
 		await fixture.AddPriceAsync(list.Id, fixture.ItemA, 42m);
-		await fixture.Pricing.AssignCustomerAsync(customer.Id, list.Id);
+		list = await fixture.AssignAndActivateAsync(customer.Id, list);
 
 		Assert.Equal(1L, await fixture.ScalarAsync("SELECT COUNT(*) FROM AuditEntries WHERE EntityType='SalesRegion' AND EntityId=$Id;", new DatabaseParameter("$Id", region.Id)));
-		Assert.Equal(1L, await fixture.ScalarAsync("SELECT COUNT(*) FROM AuditEntries WHERE EntityType='SalesPriceList' AND EntityId=$Id;", new DatabaseParameter("$Id", list.Id)));
+		Assert.Equal(2L, await fixture.ScalarAsync("SELECT COUNT(*) FROM AuditEntries WHERE EntityType='SalesPriceList' AND EntityId=$Id;", new DatabaseParameter("$Id", list.Id)));
 		Assert.Equal(1L, await fixture.ScalarAsync("SELECT COUNT(*) FROM AuditEntries WHERE EntityType='CustomerPriceListAssignment' AND EntityId=$Id;", new DatabaseParameter("$Id", customer.Id)));
 
 		var readOnlyAuthorization = new AuthorizationService();
@@ -360,6 +379,13 @@ public sealed class ScopedSalesPricingTests : IAsyncLifetime
 			ItemId = itemId,
 			UnitPrice = price
 		});
+
+		public async Task<SalesPriceList> AssignAndActivateAsync(long customerId, SalesPriceList list)
+		{
+			await Pricing.AssignCustomerAsync(customerId, list.Id);
+			list.IsActive = true;
+			return await Pricing.SaveAsync(list);
+		}
 
 		public async Task<long> ScalarAsync(string sql, params DatabaseParameter[] parameters)
 		{

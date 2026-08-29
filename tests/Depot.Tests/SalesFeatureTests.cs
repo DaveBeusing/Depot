@@ -61,6 +61,7 @@ public sealed class SalesFeatureTests : IDisposable
 				INSERT INTO Customers (Id,Currency,IsActive) VALUES (41,'EUR',1);
 				INSERT INTO Items (PartNumber,Description,IsActive) VALUES ('LEGACY-PRICE','Legacy priced item',1);
 				INSERT INTO SalesPriceLists (Id,Code,Name,Currency,IsActive) VALUES (51,'LEGACY','Legacy Customer Pricing','EUR',1);
+				INSERT INTO SalesPriceLists (Id,Code,Name,Currency,IsActive) VALUES (52,'LEGACY-UNASSIGNED','Legacy Unassigned Pricing','EUR',1);
 				INSERT INTO SalesPriceListItems (Id,SalesPriceListId,ItemId,UnitPrice,DiscountPercent) VALUES (61,51,(SELECT Id FROM Items WHERE PartNumber='LEGACY-PRICE'),73.50,4.25);
 				INSERT INTO CustomerPriceLists (CustomerId,SalesPriceListId) VALUES (41,51);
 				""";
@@ -73,6 +74,8 @@ public sealed class SalesFeatureTests : IDisposable
 		migrated.Open();
 		Assert.Equal(9L, Scalar(migrated, "SELECT Version FROM DepotFeatureVersions WHERE Name='Sales';"));
 		Assert.Equal((long)SalesPriceListScope.Customer, Scalar(migrated, "SELECT Scope FROM SalesPriceLists WHERE Id=51;"));
+		Assert.Equal(1L, Scalar(migrated, "SELECT IsActive FROM SalesPriceLists WHERE Id=51;"));
+		Assert.Equal(0L, Scalar(migrated, "SELECT IsActive FROM SalesPriceLists WHERE Id=52;"));
 		Assert.Equal(7350L, Scalar(migrated, "SELECT CAST(UnitPrice*100 AS INTEGER) FROM SalesPriceListItems WHERE Id=61;"));
 		Assert.Equal(51L, Scalar(migrated, "SELECT SalesPriceListId FROM CustomerPriceLists WHERE CustomerId=41;"));
 		Assert.Equal(1L, Scalar(migrated, "SELECT COUNT(*) FROM pragma_table_info('SalesPriceLists') WHERE name='RegionId';"));

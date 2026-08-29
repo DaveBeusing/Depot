@@ -52,6 +52,7 @@ public sealed class CustomerPriceListAssignment
 	public long CustomerId { get; set; }
 	public long SalesPriceListId { get; set; }
 	public string PriceListName { get; set; } = string.Empty;
+	public bool IsActive { get; set; }
 }
 
 public sealed record SalesPriceResult(

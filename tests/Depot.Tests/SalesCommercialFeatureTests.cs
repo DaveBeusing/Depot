@@ -35,9 +35,11 @@ public sealed class SalesCommercialFeatureTests : IAsyncLifetime
 	{
 		var fixture = Fixture;
 		var customer = await fixture.Customers.SaveAsync(new Customer { Name = "Pricing Customer", Currency = "EUR" });
-		var list = await fixture.Pricing.SaveAsync(new SalesPriceList { Code = "B2B-EUR", Name = "B2B EUR", Currency = "EUR", IsActive = true });
+		var list = await fixture.Pricing.SaveAsync(new SalesPriceList { Code = "B2B-EUR", Name = "B2B EUR", Currency = "EUR", IsActive = false });
 		await fixture.Pricing.SaveItemAsync(new SalesPriceListItem { SalesPriceListId = list.Id, ItemId = fixture.ItemId, UnitPrice = 89m, DiscountPercent = 7.5m });
 		await fixture.Pricing.AssignCustomerAsync(customer.Id, list.Id);
+		list.IsActive = true;
+		await fixture.Pricing.SaveAsync(list);
 		var price = await fixture.Pricing.ResolveAsync(customer.Id, fixture.ItemId, DateTime.Today);
 		Assert.NotNull(price);
 		Assert.Equal(89m, price.UnitPrice);

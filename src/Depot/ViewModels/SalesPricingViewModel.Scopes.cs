@@ -96,9 +96,13 @@ public sealed partial class SalesPricingViewModel
 	{
 		if (SelectedCustomer is null) { CustomerPricingStatus = "Automatic · Global"; return; }
 		var assignment = await _pricing.GetCustomerAssignmentAsync(SelectedCustomer.Id, token);
-		CustomerPricingStatus = assignment is null
-			? SelectedCustomer.SalesRegionId is null ? "Automatic · Global" : $"Automatic · {SelectedCustomer.SalesRegionName ?? "Region"} → Global"
-			: $"Customer-specific · {assignment.PriceListName} → Region → Global";
+		var automatic = SelectedCustomer.SalesRegionId is null ? "Automatic · Global" : $"Automatic · {SelectedCustomer.SalesRegionName ?? "Region"} → Global";
+		CustomerPricingStatus = assignment switch
+		{
+			null => automatic,
+			{ IsActive: false } => $"{automatic} · staged list {assignment.PriceListName} is inactive",
+			_ => $"Customer-specific · {assignment.PriceListName} → Region → Global"
+		};
 	}
 
 	private static SalesRegion NewRegion() => new() { IsActive = true };

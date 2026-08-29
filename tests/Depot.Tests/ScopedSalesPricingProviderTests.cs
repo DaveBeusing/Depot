@@ -52,8 +52,10 @@ public sealed class ScopedSalesPricingProviderTests
 		var customer = await customers.SaveAsync(new Customer { Name = $"Provider Pricing Customer {suffix}", Currency = "EUR", SalesRegionId = region.Id });
 		var global = await pricing.SaveAsync(new SalesPriceList { Code = $"G-{suffix}", Name = $"Provider Global {suffix}", Scope = SalesPriceListScope.Global, Currency = "EUR" });
 		var regional = await pricing.SaveAsync(new SalesPriceList { Code = $"RPL-{suffix}", Name = $"Provider Regional {suffix}", Scope = SalesPriceListScope.Region, RegionId = region.Id, Currency = "EUR" });
-		var customerList = await pricing.SaveAsync(new SalesPriceList { Code = $"C-{suffix}", Name = $"Provider Customer {suffix}", Scope = SalesPriceListScope.Customer, Currency = "EUR" });
+		var customerList = await pricing.SaveAsync(new SalesPriceList { Code = $"C-{suffix}", Name = $"Provider Customer {suffix}", Scope = SalesPriceListScope.Customer, Currency = "EUR", IsActive = false });
 		await pricing.AssignCustomerAsync(customer.Id, customerList.Id);
+		customerList.IsActive = true;
+		await pricing.SaveAsync(customerList);
 		await pricing.SaveItemAsync(new SalesPriceListItem { SalesPriceListId = regional.Id, ItemId = itemWithRegionalPrice, UnitPrice = 81m });
 		await pricing.SaveItemAsync(new SalesPriceListItem { SalesPriceListId = global.Id, ItemId = itemWithRegionalPrice, UnitPrice = 91m });
 		await pricing.SaveItemAsync(new SalesPriceListItem { SalesPriceListId = global.Id, ItemId = itemWithGlobalPrice, UnitPrice = 101m });

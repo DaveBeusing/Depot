@@ -53,7 +53,7 @@ public sealed partial class SalesPricingViewModel : BaseViewModel, IDisposable
 	private async Task SavePriceItemAsync(CancellationToken token){if(SelectedPriceList is null||SelectedItem is null)return;await _pricing.SaveItemAsync(new SalesPriceListItem{SalesPriceListId=SelectedPriceList.Id,ItemId=SelectedItem.Id,UnitPrice=UnitPrice,DiscountPercent=DiscountPercent},token);await LoadAsync(token);}
 	private async Task AssignCustomerAsync(CancellationToken token){if(SelectedCustomer is null)return;await _pricing.AssignCustomerAsync(SelectedCustomer.Id,SelectedPriceList?.Id,token);await LoadCustomerAssignmentAsync(token);CompleteOperation(false,SelectedPriceList is null?"Automatic regional/global pricing enabled":$"{SelectedPriceList.Name} assigned to {SelectedCustomer.Name}");}
 	private void Raise(){SavePriceListCommand.RaiseCanExecuteChanged();SavePriceItemCommand.RaiseCanExecuteChanged();AssignCustomerCommand.RaiseCanExecuteChanged();}
-	private static SalesPriceList NewDraft()=>new(){Currency="EUR",Scope=SalesPriceListScope.Customer,IsActive=true};
+	private static SalesPriceList NewDraft()=>new(){Currency="EUR",Scope=SalesPriceListScope.Customer,IsActive=false};
 	private static SalesPriceList Copy(SalesPriceList v)=>new(){Id=v.Id,Code=v.Code,Name=v.Name,Scope=v.Scope,RegionId=v.RegionId,RegionName=v.RegionName,Currency=v.Currency,ValidFrom=v.ValidFrom,ValidTo=v.ValidTo,IsActive=v.IsActive,Version=v.Version,Items=v.Items};
 	private static void Replace<T>(ObservableCollection<T> target,IEnumerable<T> values){target.Clear();foreach(var v in values)target.Add(v);}
 	public void Dispose(){SavePriceListCommand.Dispose();SavePriceItemCommand.Dispose();AssignCustomerCommand.Dispose();DisposeScopedPricing();}

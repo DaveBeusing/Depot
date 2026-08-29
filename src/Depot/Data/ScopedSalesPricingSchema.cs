@@ -40,6 +40,7 @@ internal static class ScopedSalesPricingSchema
 		"ALTER TABLE Customers ADD COLUMN SalesRegionId INTEGER NULL REFERENCES SalesRegions(Id);",
 		"CREATE INDEX IX_Customers_SalesRegion ON Customers(SalesRegionId,IsActive);",
 		"CREATE INDEX IX_CustomerPriceLists_List ON CustomerPriceLists(SalesPriceListId,CustomerId);",
+		"UPDATE SalesPriceLists SET IsActive=0 WHERE Scope=2 AND NOT EXISTS (SELECT 1 FROM CustomerPriceLists cpl WHERE cpl.SalesPriceListId=SalesPriceLists.Id);",
 		"ALTER TABLE SalesOrderLines ADD COLUMN PriceSourceListId INTEGER NULL REFERENCES SalesPriceLists(Id);",
 		"ALTER TABLE SalesOrderLines ADD COLUMN PriceSourceName TEXT NULL;",
 		"ALTER TABLE SalesOrderLines ADD COLUMN PriceSourceScope INTEGER NULL CHECK(PriceSourceScope IS NULL OR PriceSourceScope IN (0,1,2));",
@@ -60,6 +61,7 @@ internal static class ScopedSalesPricingSchema
 		"ALTER TABLE Customers ADD CONSTRAINT FK_Customers_SalesRegion FOREIGN KEY (SalesRegionId) REFERENCES SalesRegions(Id);",
 		"CREATE INDEX IX_Customers_SalesRegion ON Customers(SalesRegionId,IsActive);",
 		"CREATE INDEX IX_CustomerPriceLists_List ON CustomerPriceLists(SalesPriceListId,CustomerId);",
+		"UPDATE SalesPriceLists SET IsActive=0 WHERE Scope=2 AND NOT EXISTS (SELECT 1 FROM CustomerPriceLists cpl WHERE cpl.SalesPriceListId=SalesPriceLists.Id);",
 		"ALTER TABLE SalesOrderLines ADD PriceSourceListId bigint NULL, PriceSourceName nvarchar(250) NULL, PriceSourceScope int NULL, PriceSourceCurrency nvarchar(3) NULL;",
 		"ALTER TABLE SalesOrderLines ADD CONSTRAINT FK_SalesOrderLines_PriceSource FOREIGN KEY (PriceSourceListId) REFERENCES SalesPriceLists(Id);",
 		"ALTER TABLE SalesOrderLines ADD CONSTRAINT CK_SalesOrderLines_PriceSourceScope CHECK (PriceSourceScope IS NULL OR PriceSourceScope IN (0,1,2));",
@@ -74,6 +76,7 @@ internal static class ScopedSalesPricingSchema
 		"ALTER TABLE SalesPriceLists ADD COLUMN Scope INT NOT NULL DEFAULT 2, ADD COLUMN RegionId BIGINT NULL, ADD CONSTRAINT CK_SalesPriceLists_Scope CHECK (Scope IN (0,1,2)), ADD CONSTRAINT CK_SalesPriceLists_ScopeRegion CHECK ((Scope=1 AND RegionId IS NOT NULL) OR (Scope IN (0,2) AND RegionId IS NULL)), ADD CONSTRAINT FK_SalesPriceLists_Region FOREIGN KEY(RegionId) REFERENCES SalesRegions(Id), ADD INDEX IX_SalesPriceLists_ScopeRegionActive(Scope,RegionId,IsActive);",
 		"ALTER TABLE Customers ADD COLUMN SalesRegionId BIGINT NULL, ADD CONSTRAINT FK_Customers_SalesRegion FOREIGN KEY(SalesRegionId) REFERENCES SalesRegions(Id), ADD INDEX IX_Customers_SalesRegion(SalesRegionId,IsActive);",
 		"ALTER TABLE CustomerPriceLists ADD INDEX IX_CustomerPriceLists_List(SalesPriceListId,CustomerId);",
+		"UPDATE SalesPriceLists SET IsActive=FALSE WHERE Scope=2 AND NOT EXISTS (SELECT 1 FROM CustomerPriceLists cpl WHERE cpl.SalesPriceListId=SalesPriceLists.Id);",
 		"ALTER TABLE SalesOrderLines ADD COLUMN PriceSourceListId BIGINT NULL, ADD COLUMN PriceSourceName VARCHAR(250) NULL, ADD COLUMN PriceSourceScope INT NULL, ADD COLUMN PriceSourceCurrency VARCHAR(3) NULL, ADD CONSTRAINT FK_SalesOrderLines_PriceSource FOREIGN KEY(PriceSourceListId) REFERENCES SalesPriceLists(Id), ADD CONSTRAINT CK_SalesOrderLines_PriceSourceScope CHECK (PriceSourceScope IS NULL OR PriceSourceScope IN (0,1,2));",
 		"ALTER TABLE SalesQuoteLines ADD COLUMN PriceSourceListId BIGINT NULL, ADD COLUMN PriceSourceName VARCHAR(250) NULL, ADD COLUMN PriceSourceScope INT NULL, ADD COLUMN PriceSourceCurrency VARCHAR(3) NULL, ADD CONSTRAINT FK_SalesQuoteLines_PriceSource FOREIGN KEY(PriceSourceListId) REFERENCES SalesPriceLists(Id), ADD CONSTRAINT CK_SalesQuoteLines_PriceSourceScope CHECK (PriceSourceScope IS NULL OR PriceSourceScope IN (0,1,2));"
 	];

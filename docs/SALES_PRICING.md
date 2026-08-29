@@ -26,7 +26,7 @@ The existence of a higher-scope price list never suppresses fallback for an item
 
 - **Global** — `RegionId` is null and the list is not assigned through `CustomerPriceLists`.
 - **Region** — `RegionId` references an active `SalesRegion` and the list is not assigned through `CustomerPriceLists`.
-- **Customer** — `RegionId` is null and customers may select it through the existing `CustomerPriceLists` relation.
+- **Customer** — `RegionId` is null. An active list requires at least one binding through the existing `CustomerPriceLists` relation. An inactive list may be staged before assignment.
 
 `Customer.SalesRegionId` is optional. A customer without a region skips the regional step. A customer price-list assignment is also optional; the UI presents the absence of an assignment as automatic Region → Global or Global pricing rather than as a missing price list.
 
@@ -64,7 +64,7 @@ Core schema 30 and Sales feature schema 9 add:
 - price-source snapshot columns on `SalesOrderLines` and `SalesQuoteLines`;
 - equivalent foreign keys and scope checks for SQLite, SQL Server, and MySQL/MariaDB.
 
-The Sales 8 → 9 migration classifies every existing price list as `Customer`. Existing price-list items and `CustomerPriceLists` rows are retained unchanged, so established customer-specific pricing continues to resolve after upgrade. New databases receive the same schema through the ordered Sales migration chain.
+The Sales 8 → 9 migration classifies every existing price list as `Customer`. Existing price-list items and `CustomerPriceLists` rows are retained unchanged, so established customer-specific pricing continues to resolve after upgrade. Previously active lists without any customer binding are deactivated because they had no resolving customer and would violate the active Customer-scope invariant; their items are retained. New databases receive the same schema through the ordered Sales migration chain.
 
 ## Sales document behavior
 
