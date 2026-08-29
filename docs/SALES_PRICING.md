@@ -51,7 +51,7 @@ If no valid result exists, editors retain an explicitly entered manual value. Au
 
 At most one active Global default may exist. At most one active Region default may exist for a given region. `SalesPricingService` checks these rules inside the existing provider write transaction. SQLite uses an immediate write transaction; SQL Server and MySQL/MariaDB use serializable write transactions. Existing transient-conflict retry handling remains in force, so concurrent default activations cannot commit two contradictory defaults.
 
-Price-list, price-list-item, region, and customer-assignment mutations use the established optimistic `Version` contract where applicable. The business mutation and its Audit entry commit or roll back together. `SalesPricing.View` and `SalesPricing.Manage` remain the authoritative RBAC permissions.
+Price-list, price-list-item, region, and customer-assignment mutations use the established optimistic `Version` contract where applicable. Adding, changing, and removing an item price records structured Audit evidence. The business mutation and its Audit entry commit or roll back together. `SalesPricing.View` and `SalesPricing.Manage` remain the authoritative RBAC permissions.
 
 ## Schema and migration
 

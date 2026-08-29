@@ -39,6 +39,11 @@ public sealed class ScopedSalesPricingTests : IAsyncLifetime
 		AssertPrice(await fixture.ResolveAsync(customer.Id, fixture.ItemB), 110m, SalesPriceListScope.Region, "DACH Standard");
 		AssertPrice(await fixture.ResolveAsync(customer.Id, fixture.ItemC), 150m, SalesPriceListScope.Global, "Global Standard");
 		Assert.Null(await fixture.ResolveAsync(customer.Id, fixture.ItemD));
+
+		var customerPrice = (await fixture.Pricing.ListAsync()).Single(value => value.Id == customerList.Id).Items.Single(value => value.ItemId == fixture.ItemA);
+		await fixture.Pricing.DeleteItemAsync(customerPrice);
+		AssertPrice(await fixture.ResolveAsync(customer.Id, fixture.ItemA), 95m, SalesPriceListScope.Region, "DACH Standard");
+		Assert.Equal(1L, await fixture.ScalarAsync("SELECT COUNT(*) FROM AuditEntries WHERE EntityType='SalesPriceListItem' AND EntityId=$Id AND Action='Removed';", new DatabaseParameter("$Id", customerPrice.Id)));
 	}
 
 	[Fact]

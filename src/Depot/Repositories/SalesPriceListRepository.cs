@@ -80,6 +80,16 @@ public sealed class SalesPriceListRepository : DatabaseRepository
 		return item;
 	}
 
+	public async Task DeleteItemAsync(DatabaseTransactionContext transaction, long id, long version, CancellationToken token)
+	{
+		var deleted = await transaction.Session.ExecuteAsync(
+			"DELETE FROM SalesPriceListItems WHERE Id=$Id AND Version=$Version;",
+			token,
+			Parameter("$Id", id),
+			Parameter("$Version", version));
+		if (deleted != 1) throw new Services.ConcurrencyConflictException("sales price list item");
+	}
+
 	public async Task AssignCustomerAsync(long customerId, long? listId, CancellationToken token)
 		=> await Database.ExecuteInWriteTransactionAsync(async (session, cancellationToken) => { await AssignCustomerAsync(new DatabaseTransactionContext(session), customerId, listId, cancellationToken); return true; }, token);
 

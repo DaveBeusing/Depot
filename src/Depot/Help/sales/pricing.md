@@ -6,6 +6,8 @@ Customer pricing is managed in **Sales > Overview > Pricing** inside the Commerc
 
 Create a price list with a unique code, display name, scope, currency and optional validity window. Add item prices and optional discount percentages to the selected list. A list can be intentionally incomplete.
 
+Select an existing item-price row and use **Remove selected price** to delete that exception. The next resolution falls back to the lower scope for that item.
+
 The available scopes are:
 
 - **Global** — the fallback for every customer.

@@ -16,6 +16,7 @@ public sealed partial class SalesPricingViewModel : BaseViewModel, IDisposable
 	private SalesPriceList? _selectedPriceList;
 	private Customer? _selectedCustomer;
 	private Item? _selectedItem;
+	private SalesPriceListItem? _selectedPriceItem;
 	private decimal _unitPrice;
 	private decimal _discountPercent;
 	private SalesPriceList _draft = NewDraft();
@@ -26,6 +27,7 @@ public sealed partial class SalesPricingViewModel : BaseViewModel, IDisposable
 		NewPriceListCommand=new RelayCommand(()=>{SelectedPriceList=null;Draft=NewDraft();});
 		SavePriceListCommand=new AsyncRelayCommand(SavePriceListAsync,()=>_pricing.CanManage&&!string.IsNullOrWhiteSpace(Draft.Name)&&!string.IsNullOrWhiteSpace(Draft.Code)&&(Draft.Scope!=SalesPriceListScope.Region||SelectedPriceListRegion is not null));
 		SavePriceItemCommand=new AsyncRelayCommand(SavePriceItemAsync,()=>_pricing.CanManage&&SelectedPriceList is not null&&SelectedItem is not null&&UnitPrice>=0);
+		DeletePriceItemCommand=new AsyncRelayCommand(DeletePriceItemAsync,()=>_pricing.CanManage&&SelectedPriceItem is not null);
 		AssignCustomerCommand=new AsyncRelayCommand(AssignCustomerAsync,()=>_pricing.CanManage&&SelectedCustomer is not null&&SelectedPriceList?.Scope==SalesPriceListScope.Customer);
 		InitializeScopedPricing();
 	}
@@ -36,11 +38,13 @@ public sealed partial class SalesPricingViewModel : BaseViewModel, IDisposable
 	public RelayCommand NewPriceListCommand{get;}
 	public AsyncRelayCommand SavePriceListCommand{get;}
 	public AsyncRelayCommand SavePriceItemCommand{get;}
+	public AsyncRelayCommand DeletePriceItemCommand{get;}
 	public AsyncRelayCommand AssignCustomerCommand{get;}
 	public SalesPriceList Draft{get=>_draft;private set{_draft=value;OnPropertyChanged();OnPropertyChanged(nameof(SelectedScope));OnPropertyChanged(nameof(IsRegionScope));OnPropertyChanged(nameof(IsCustomerScope));SavePriceListCommand.RaiseCanExecuteChanged();}}
-	public SalesPriceList? SelectedPriceList{get=>_selectedPriceList;set{if(_selectedPriceList==value)return;_selectedPriceList=value;Draft=value is null?NewDraft():Copy(value);Replace(PriceItems,value?.Items??[]);ApplyScopedPriceList(value);OnPropertyChanged();Raise();}}
+	public SalesPriceList? SelectedPriceList{get=>_selectedPriceList;set{if(_selectedPriceList==value)return;_selectedPriceList=value;SelectedPriceItem=null;Draft=value is null?NewDraft():Copy(value);Replace(PriceItems,value?.Items??[]);ApplyScopedPriceList(value);OnPropertyChanged();Raise();}}
 	public Customer? SelectedCustomer{get=>_selectedCustomer;set{_selectedCustomer=value;OnPropertyChanged();AssignCustomerCommand.RaiseCanExecuteChanged();ClearCustomerAssignmentCommand.RaiseCanExecuteChanged();_ = LoadCustomerAssignmentAsync();}}
 	public Item? SelectedItem{get=>_selectedItem;set{_selectedItem=value;OnPropertyChanged();SavePriceItemCommand.RaiseCanExecuteChanged();}}
+	public SalesPriceListItem? SelectedPriceItem{get=>_selectedPriceItem;set{if(_selectedPriceItem==value)return;_selectedPriceItem=value;OnPropertyChanged();DeletePriceItemCommand.RaiseCanExecuteChanged();}}
 	public decimal UnitPrice{get=>_unitPrice;set{_unitPrice=value;OnPropertyChanged();SavePriceItemCommand.RaiseCanExecuteChanged();}}
 	public decimal DiscountPercent{get=>_discountPercent;set{_discountPercent=value;OnPropertyChanged();}}
 
@@ -51,12 +55,13 @@ public sealed partial class SalesPricingViewModel : BaseViewModel, IDisposable
 	}
 	private async Task SavePriceListAsync(CancellationToken token){SelectedPriceList=await _pricing.SaveAsync(Draft,token);await LoadAsync(token);}
 	private async Task SavePriceItemAsync(CancellationToken token){if(SelectedPriceList is null||SelectedItem is null)return;await _pricing.SaveItemAsync(new SalesPriceListItem{SalesPriceListId=SelectedPriceList.Id,ItemId=SelectedItem.Id,UnitPrice=UnitPrice,DiscountPercent=DiscountPercent},token);await LoadAsync(token);}
+	private async Task DeletePriceItemAsync(CancellationToken token){if(SelectedPriceItem is null)return;await _pricing.DeleteItemAsync(SelectedPriceItem,token);SelectedPriceItem=null;await LoadAsync(token);CompleteOperation(false,"Price removed");}
 	private async Task AssignCustomerAsync(CancellationToken token){if(SelectedCustomer is null)return;await _pricing.AssignCustomerAsync(SelectedCustomer.Id,SelectedPriceList?.Id,token);await LoadCustomerAssignmentAsync(token);CompleteOperation(false,SelectedPriceList is null?"Automatic regional/global pricing enabled":$"{SelectedPriceList.Name} assigned to {SelectedCustomer.Name}");}
-	private void Raise(){SavePriceListCommand.RaiseCanExecuteChanged();SavePriceItemCommand.RaiseCanExecuteChanged();AssignCustomerCommand.RaiseCanExecuteChanged();}
+	private void Raise(){SavePriceListCommand.RaiseCanExecuteChanged();SavePriceItemCommand.RaiseCanExecuteChanged();DeletePriceItemCommand.RaiseCanExecuteChanged();AssignCustomerCommand.RaiseCanExecuteChanged();}
 	private static SalesPriceList NewDraft()=>new(){Currency="EUR",Scope=SalesPriceListScope.Customer,IsActive=false};
 	private static SalesPriceList Copy(SalesPriceList v)=>new(){Id=v.Id,Code=v.Code,Name=v.Name,Scope=v.Scope,RegionId=v.RegionId,RegionName=v.RegionName,Currency=v.Currency,ValidFrom=v.ValidFrom,ValidTo=v.ValidTo,IsActive=v.IsActive,Version=v.Version,Items=v.Items};
 	private static void Replace<T>(ObservableCollection<T> target,IEnumerable<T> values){target.Clear();foreach(var v in values)target.Add(v);}
-	public void Dispose(){SavePriceListCommand.Dispose();SavePriceItemCommand.Dispose();AssignCustomerCommand.Dispose();DisposeScopedPricing();}
+	public void Dispose(){SavePriceListCommand.Dispose();SavePriceItemCommand.Dispose();DeletePriceItemCommand.Dispose();AssignCustomerCommand.Dispose();DisposeScopedPricing();}
 }
 
 public sealed class SalesQuotesViewModel : BaseViewModel, IDisposable

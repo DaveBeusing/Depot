@@ -105,6 +105,23 @@ public sealed class SalesPricingService
 		}, token);
 	}
 
+	public async Task DeleteItemAsync(SalesPriceListItem item, CancellationToken token = default)
+	{
+		_authorization.RequirePermission(ApplicationPermission.SalesPricingManage);
+		ArgumentNullException.ThrowIfNull(item);
+		if (item.Id <= 0 || item.SalesPriceListId <= 0 || item.ItemId <= 0 || item.Version <= 0)
+			throw new ArgumentException("A persisted price-list item is required.", nameof(item));
+		await _transactions.ExecuteAsync(async (transaction, cancellationToken) =>
+		{
+			var before = await _prices.GetItemAsync(transaction, item.SalesPriceListId, item.ItemId, cancellationToken)
+				?? throw new InvalidOperationException("Sales price-list item was not found.");
+			if (before.Id != item.Id) throw new ConcurrencyConflictException("sales price list item");
+			await _prices.DeleteItemAsync(transaction, item.Id, item.Version, cancellationToken);
+			await _auditEntries.CreateAsync(transaction, _audit.CreateActionEntry(item.Id, "Removed", before, (SalesPriceListItem?)null), cancellationToken);
+			return true;
+		}, token);
+	}
+
 	public async Task<SalesRegion> SaveRegionAsync(SalesRegion value, CancellationToken token = default)
 	{
 		_authorization.RequirePermission(ApplicationPermission.SalesPricingManage);
