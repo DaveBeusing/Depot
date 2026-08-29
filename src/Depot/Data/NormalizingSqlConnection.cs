@@ -36,7 +36,7 @@ internal sealed class NormalizingSqlConnection : DbConnection
 	public override string Database => _inner.Database;
 	public override string DataSource => _inner.DataSource;
 	public override string ServerVersion => _inner.ServerVersion;
-	public override System.Data.ConnectionState State => _inner.State;
+	public override ConnectionState State => _inner.State;
 	public override int ConnectionTimeout => _inner.ConnectionTimeout;
 
 	public override void ChangeDatabase(string databaseName) => _inner.ChangeDatabase(databaseName);
@@ -157,12 +157,27 @@ internal sealed class NormalizingSqlCommand : DbCommand
 	}
 
 	public override void Cancel() => _inner.Cancel();
-	public override int ExecuteNonQuery() => _inner.ExecuteNonQuery();
-	public override object? ExecuteScalar() => _inner.ExecuteScalar();
-	public override void Prepare() => _inner.Prepare();
+	public override int ExecuteNonQuery() { NormalizeParameterNames(); return _inner.ExecuteNonQuery(); }
+	public override object? ExecuteScalar() { NormalizeParameterNames(); return _inner.ExecuteScalar(); }
+	public override Task<int> ExecuteNonQueryAsync(CancellationToken cancellationToken) { NormalizeParameterNames(); return _inner.ExecuteNonQueryAsync(cancellationToken); }
+	public override Task<object?> ExecuteScalarAsync(CancellationToken cancellationToken) { NormalizeParameterNames(); return _inner.ExecuteScalarAsync(cancellationToken); }
+	public override void Prepare() { NormalizeParameterNames(); _inner.Prepare(); }
 	protected override DbParameter CreateDbParameter() => _inner.CreateParameter();
-	protected override DbDataReader ExecuteDbDataReader(CommandBehavior behavior) => _inner.ExecuteReader(behavior);
-	protected override Task<DbDataReader> ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken) =>
-		_inner.ExecuteReaderAsync(behavior, cancellationToken);
+	protected override DbDataReader ExecuteDbDataReader(CommandBehavior behavior) { NormalizeParameterNames(); return _inner.ExecuteReader(behavior); }
+	protected override Task<DbDataReader> ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken)
+	{
+		NormalizeParameterNames();
+		return _inner.ExecuteReaderAsync(behavior, cancellationToken);
+	}
+
+	private void NormalizeParameterNames()
+	{
+		foreach (DbParameter parameter in _inner.Parameters)
+		{
+			if (!string.IsNullOrEmpty(parameter.ParameterName))
+				parameter.ParameterName = _normalize(parameter.ParameterName);
+		}
+	}
+
 	protected override void Dispose(bool disposing) { if (disposing) _inner.Dispose(); base.Dispose(disposing); }
 }
