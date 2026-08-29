@@ -43,9 +43,8 @@ public static class FinanceAccountsPayableSchemaMigration
 		using var transaction = connection.BeginTransaction();
 		using var command = connection.CreateCommand();
 		command.Transaction = transaction;
-		command.CommandText = "UPDATE DepotFeatureVersions SET Version=$Version,UpdatedAtUtc=$UpdatedAtUtc WHERE Name=$Name;";
+		command.CommandText = "UPDATE DepotFeatureVersions SET Version=$Version WHERE Name=$Name;";
 		Add(command, "$Version", version);
-		Add(command, "$UpdatedAtUtc", DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture));
 		Add(command, "$Name", FeatureName);
 		if (command.ExecuteNonQuery() != 1) throw new InvalidOperationException("Finance feature version could not be updated.");
 		transaction.Commit();
