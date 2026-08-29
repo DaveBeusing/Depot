@@ -1,6 +1,6 @@
 # Item master data
 
-Updated: 2026-08-25
+Updated: 2026-08-29
 
 ## Purpose
 
@@ -11,86 +11,56 @@ The implementation follows the normal architecture:
 ```text
 ItemsView
   -> ItemsViewModel / ItemEditorViewModel
-  -> ItemService
-  -> ItemRepository
+  -> ItemService / ItemCostCalculationService
+  -> ItemRepository / ItemCostRepository
   -> DatabaseAccess
   -> SQLite / SQL Server / MySQL or MariaDB
 ```
 
-Business validation and permissions remain in `ItemService`. SQL, paging and row mapping remain in `ItemRepository`.
+Business validation, RBAC, transactions and Audit remain in services. SQL and row mapping remain in repositories.
 
 ## Master-data groups
 
-### Identity and classification
+Identity/classification includes part number, description, manufacturer, category, unit, packaging, GTIN, item type, model, revision and product family. Lifecycle includes lifecycle status and product dates plus optional replacement item. Trade/compliance includes origin, tariff number, ECCN, RoHS/REACH, dangerous-goods/UN and battery state. Traceability/logistics includes tracking mode, weight in kg, dimensions in mm and notes.
 
-- part number / MPN and description
-- manufacturer, category, unit of measure and packaging
-- GTIN
-- item type
-- model, revision and product family
+## Cost build-up
 
-### Lifecycle
+The item master now also owns an optional `ItemCostProfile` and ordered `ItemCostComponents`. These records configure the derived commercial cost of an item; the calculated result is not persisted as a second uncontrolled item price.
 
-- lifecycle status
-- introduction date
-- end-of-life date
-- last-buy date
-- end-of-support date
-- optional replacement item
+The first `BaseCostSource` is the active preferred `SupplierItem.PurchasePrice`. Supplier commercial data remains in `SupplierItems`; the cost profile only states which supported source is used and the source currency. An explicit currency is required because existing supplier prices do not store currency metadata.
 
-### Trade and compliance
+Cost Components support:
 
-- country of origin
-- customs tariff number
-- ECCN
-- RoHS status
-- REACH status
-- dangerous-goods flag and UN number
-- battery indication
+- `Absolute` — adds the configured monetary value;
+- `Percentage` with `BaseCost` — percentage of the original Base Cost;
+- `Percentage` with `RunningTotal` — percentage of the subtotal immediately before that component.
 
-### Traceability and logistics
+Only active components valid on the effective date participate. Ordering is `Sequence`, then component `Id` as a stable secondary key. Negative values and invalid validity windows are rejected. Percentage-specific calculation-base controls are not editable for Absolute components.
 
-- tracking mode: none, serial number or lot
-- net and gross weight in kilograms
-- length, width and height in millimetres
-- internal notes
-
-The physical-unit contract is fixed: **kg for weight, mm for dimensions**.
+The central `ItemCostCalculationService` is the only calculation implementation. Bulk Sales pricing calls this service instead of reproducing the formula in a ViewModel or another pricing service. Full semantics are documented in `ITEM_COSTING_AND_BULK_PRICING.md`.
 
 ## Validation and integrity
 
-`ItemService` normalizes and validates master data before persistence. Controls include valid/unique GTIN, country-code syntax, physical-value consistency, dangerous-goods classification, bounded strings, lifecycle-date ordering, valid replacement references, enum validation and optimistic concurrency.
+`ItemService` continues to normalize and validate core master data. `ItemCostCalculationService` validates cost profiles/components, service-layer permissions and optimistic concurrency. Cost changes use the existing Audit infrastructure.
 
-Activation/deactivation reads the full item master before writing audit evidence, so the before/after audit payload retains extended master-data fields.
+If no active preferred supplier price exists, if multiple preferred rows create ambiguity, or if a requested target currency differs from the explicit cost currency, calculation fails closed. Depot never substitutes zero or silently assumes currency conversion.
 
-## Provider-neutral schema extension
+## Provider-neutral schema
 
-`DatabaseProviderFactory` decorates the provider's normal database initializer with the item-master schema extension. It is additive and idempotent for SQLite, SQL Server and MySQL/MariaDB. Provider-specific unique-index syntax remains inside the data layer.
+The existing core item-master extension remains unchanged. Sales feature schema 10 adds `ItemCostProfiles` and `ItemCostComponents` because the new cost build-up feeds the Sales pricing domain. Provider-specific DDL is isolated in the data layer for SQLite, SQL Server and MySQL/MariaDB.
 
 ## Operational behavior
 
-`ItemType`, `TrackingMode` and lifecycle fields are operational controls, not display-only metadata.
+`ItemType`, `TrackingMode` and lifecycle fields remain operational controls. Only stock items may participate in physical movements; tracked items use the existing serial/lot allocation model; discontinued/obsolete lifecycle policies remain unchanged.
 
-### Item type
+Cost build-up does not mutate inventory valuation, FIFO layers or historical purchase/sales documents. It is a commercial calculation based on current effective master data.
 
-Only `StockItem` records may participate in physical stock movements. Service/non-stock records are rejected by traceability-aware physical posting paths rather than silently creating inventory evidence.
+## Supplier and Sales separation
 
-### Tracking mode
+Supplier part numbers, supplier assignment, preference, lead time and purchase price remain in `SupplierItems`. `ItemCostProfile` references that commercial meaning without copying the purchase price. Customer price lists and transactional pricing remain in the Sales model.
 
-`None` requires no serial/lot allocation. `SerialNumber` requires one unique serial code per moved unit with allocation quantity 1. `LotNumber` requires the complete movement quantity to be allocated across one or more lot codes.
-
-Tracking identity and mutable quality state live in `ItemTrackingUnits`; signed movement allocations live in `StockMovementTracking`. Current tracked quantity/location is derived from those movements. See `ITEM_TRACEABILITY.md`.
-
-### Lifecycle
-
-Discontinued and obsolete items are blocked from new purchasing/sales decisions where lifecycle enforcement is invoked. Last-buy dates block purchasing after the configured date. End-of-life/end-of-support states can produce operational warnings, and a configured replacement item is included in the guidance rather than silently substituted.
-
-Automatic substitution is intentionally not performed: changing the commercial or physical item identity must remain an explicit user/business decision.
-
-## Supplier/commercial separation
-
-Supplier part numbers, supplier assignment, preference, lead time and supplier-specific commercial data belong to `SupplierItems` / purchasing structures rather than the item master. Customer price lists and transactional pricing likewise remain in the Sales pricing model.
+Bulk Price generation consumes Calculated Item Cost and writes only through the existing scoped PriceList model. Customer → Region → Global resolution therefore remains unchanged.
 
 ## Testing
 
-Regression coverage protects provider-initializer idempotency, complete repository round-trip, GTIN uniqueness, traceability schema/index creation, capture parsing and ambiguity rejection, physical item-type restrictions and lifecycle purchase/sales policy behavior. Transactional workflow and reversal suites continue to protect the owning stock/document operations.
+Existing item-master, GTIN, lifecycle and traceability regression coverage remains in force. Item-cost regression tests additionally cover Base Cost only, absolute/percentage components, BaseCost/RunningTotal semantics, deterministic ordering, activity/validity, invalid values, currency mismatch, cancellation and optimistic evidence checks used by Bulk Pricing. Optional live-provider fixtures verify the item-cost schema on SQL Server and MySQL/MariaDB.

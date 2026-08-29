@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 using Depot.Data;
+using Depot.Models;
 using Xunit;
 
 namespace Depot.Tests;

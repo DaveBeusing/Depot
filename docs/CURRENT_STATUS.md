@@ -6,6 +6,8 @@ Depot is on the `0.15.x-preview` development line. The repository contains the i
 
 Sales pricing supports Global, Regional and optional Customer scopes. The central resolver falls back Customer → Region → Global for each item and retains the selected price source on quote and order lines.
 
+Item Cost Build-up now derives a traceable commercial item cost from the active preferred supplier purchase price plus ordered Absolute/Percentage Cost Components. Percentage components explicitly use BaseCost or RunningTotal. Bulk Pricing consumes the same central calculation service, applies Percentage Markup, requires a Preview, supports All Active/Category/Manufacturer/Selected filters and applies through Replace/Only Increase/Only Missing modes to the existing scoped PriceList model.
+
 ## Finance capabilities
 
 - **Finance Foundation:** legal entities, currencies/FX, fiscal calendars/periods, charts/accounts, accounting books, journals, dimensions, tax registrations and number sequences.
@@ -17,17 +19,21 @@ Sales pricing supports Global, Regional and optional Customer scopes. The centra
 - **Financial Reporting:** Trial Balance, GL detail, Balance Sheet, P&L, Cash Flow, AR/AP Aging, Tax Summary, historical Inventory Valuation, COGS, dimension filtering, mappings, deterministic CSV and immutable report snapshots.
 - **Finance Localization:** explicit effective-dated legal-entity assignments, built-in `GENERIC → EU → DE` references, custom pack extensibility, capability/configuration/procedure registry, RBAC and Audit evidence.
 
-## Localization boundary
+## Pricing and costing safeguards
 
-`LegalEntity.CountryCode` is a validation attribute, not an activation switch. A legal entity remains jurisdiction-neutral until an authorized Finance user assigns an effective root localization pack. Active assignments for the same entity cannot overlap.
-
-Built-in `GENERIC`, `EU` and `DE` definitions and built-in registry rows are immutable. Custom regional/country packs can extend the hierarchy without another database schema change. Registry support levels describe technical capability and responsibility boundaries; they are not legal/compliance status flags.
+- Item cost Base Cost is the active preferred supplier purchase price with an explicit Item Cost Profile currency.
+- Legacy supplier prices are not silently treated as EUR; mismatched target currency fails closed until controlled FX conversion is available.
+- Cost Components use deterministic Sequence + persisted Id ordering and optimistic Version checks.
+- Bulk Preview and Apply both use `ItemCostCalculationService`; there is no second cost formula.
+- Percentage Markup is explicitly distinct from Gross Margin.
+- Bulk Apply is atomic, revalidates PriceList/entry/cost evidence and records batch Audit evidence.
+- Historical submitted/finalized Sales documents remain snapshot-based and are not rewritten by later Bulk Pricing.
 
 ## Versions
 
 - Application: **0.15.x-preview** (`Directory.Build.props` is authoritative for the exact patch)
 - Core database schema: **30**
-- Sales feature schema: **9**
+- Sales feature schema: **10**
 - Finance feature schema: **9**
 - Help manifest: **1.18**
 
@@ -35,8 +41,8 @@ Every commit increments `DepotVersionPatch`.
 
 ## Validation boundary
 
-Release Build, win-x64 publish, repository regression tests, Release Integrity, Security Supply Chain and Software Quality gates are required on the final integration head. Provider-neutral Finance DDL exists for SQLite, SQL Server and MySQL/MariaDB. SQL placeholder normalization also normalizes provider parameter names so `$Name` abstractions remain valid when SQL Server/MySQL commands are rewritten to `@Name`. Live server migration, provider locking/concurrency/recovery, performance and organization-specific accounting/localization acceptance remain production gates.
+Release Build, win-x64 publish, repository regression tests, Release Integrity, Security Supply Chain and Software Quality gates are required on the final integration head. Provider-neutral DDL exists for SQLite, SQL Server and MySQL/MariaDB. Optional live-provider tests exercise scoped pricing and Item Cost schema migration when server connection strings are configured.
 
 ## Next steps
 
-The generic Finance platform has no additional mandatory feature milestone in the current roadmap. Remaining Finance work is production acceptance, deployment policy approval and demand-driven country/statutory extensions using the existing localization framework.
+Further pricing extensions are demand-driven: controlled FX conversion for cross-currency cost-to-price generation, additional explicit Base Cost source strategies, Target Gross Margin as a separate pricing rule, and commercial rounding strategies such as 0.05/0.10/0.50 or .99 endings. None of these are simulated by the current Markup implementation.
