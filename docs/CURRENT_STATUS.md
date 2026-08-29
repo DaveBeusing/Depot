@@ -1,6 +1,6 @@
 # Current project status
 
-Updated: 2026-08-28
+Updated: 2026-08-29
 
 Depot is on the `0.15.x-preview` development line. The current `finance` branch contains the integrated Finance platform: foundation/master data, immutable General Ledger, Receivables, Payables, FIFO Inventory Accounting, Banking and Payments, Financial Reporting, and effective-dated Localization.
 
@@ -23,17 +23,17 @@ Built-in `GENERIC`, `EU` and `DE` definitions and built-in registry rows are imm
 
 ## Versions
 
-- Application: **0.15.42-preview**
+- Application: **0.15.x-preview** (`Directory.Build.props` is authoritative for the exact patch)
 - Core database schema: **29**
 - Sales feature schema: **8**
 - Finance feature schema: **9**
 - Help manifest: **1.17**
 
-`Directory.Build.props` is authoritative for the exact application patch. Every commit increments `DepotVersionPatch`.
+Every commit increments `DepotVersionPatch`.
 
 ## Validation boundary
 
-Release Build, win-x64 publish, repository regression tests, Release Integrity, Security Supply Chain and Software Quality gates are required on the final integration head. Provider-neutral Finance DDL exists for SQLite, SQL Server and MySQL/MariaDB; live server migration, provider locking/concurrency/recovery, performance and organization-specific accounting/localization acceptance remain production gates.
+Release Build, win-x64 publish, repository regression tests, Release Integrity, Security Supply Chain and Software Quality gates are required on the final integration head. Provider-neutral Finance DDL exists for SQLite, SQL Server and MySQL/MariaDB. SQL placeholder normalization also normalizes provider parameter names so `$Name` abstractions remain valid when SQL Server/MySQL commands are rewritten to `@Name`. Live server migration, provider locking/concurrency/recovery, performance and organization-specific accounting/localization acceptance remain production gates.
 
 ## Next steps
 

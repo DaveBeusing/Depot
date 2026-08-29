@@ -36,7 +36,7 @@ internal sealed class NormalizingSqlConnection : DbConnection
 	public override string Database => _inner.Database;
 	public override string DataSource => _inner.DataSource;
 	public override string ServerVersion => _inner.ServerVersion;
-	public override ConnectionState State => _inner.State;
+	public override System.Data.ConnectionState State => _inner.State;
 	public override int ConnectionTimeout => _inner.ConnectionTimeout;
 
 	public override void ChangeDatabase(string databaseName) => _inner.ChangeDatabase(databaseName);
