@@ -1,12 +1,12 @@
 # Depot Version 1.0 Release Checklist
 
-Updated: 2026-08-28
+Updated: 2026-08-29
 
 ## Status
 
 - [ ] Ready for release
 
-Depot is on the `0.15.x-preview` line with core database schema **29**, Sales feature schema **8**, Finance feature schema **9**, and Help manifest **1.17**. Checked items represent implemented technical controls/evidence only; they do not replace provider, legal, accounting, accessibility, signing, localization or deployment acceptance.
+Depot is on the `0.15.x-preview` line with core database schema **30**, Sales feature schema **9**, Finance feature schema **9**, and Help manifest **1.18**. Checked items represent implemented technical controls/evidence only; they do not replace provider, legal, accounting, accessibility, signing, localization or deployment acceptance.
 
 ## Implemented Finance baseline
 
@@ -33,6 +33,7 @@ Depot is on the `0.15.x-preview` line with core database schema **29**, Sales fe
 - [x] immutable/correction-oriented retained business records and Audit evidence
 - [x] backup/recovery controls and privacy export
 - [x] dependency locks, NuGet audit, SBOM/evidence and release-integrity workflows
+- [x] centralized per-item Customer → Region → Global Sales pricing with optional customer assignment and retained document source snapshots
 - [x] Sales Invoice seller/buyer/XRechnung finalization and persisted XML integrity evidence
 - [x] bounded regression/quality/accessibility CI controls
 

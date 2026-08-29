@@ -6,7 +6,9 @@ Sales Orders define customer demand, prices, address snapshots, and quantities t
 
 A new order starts as **Draft**. Select the customer and the billing/shipping addresses for the order. Depot stores those addresses as snapshots so later customer changes do not alter existing documents.
 
-Add items, quantities, prices, discounts, and tax rates. If the customer has an assigned price list, select an item and use **Apply customer price** to load the valid customer price and discount for the order date.
+Add items, quantities, prices, discounts, and tax rates. Depot resolves each item's price through Customer → Region → Global. Select a line and use **Resolve price** to apply the valid price and discount for the order date again. The displayed source identifies the price-list name and scope.
+
+Automatically sourced draft lines are refreshed when a draft is saved. Manual prices are retained. Once an order is submitted, later changes to price lists, customer assignments or customer regions do not rewrite its stored pricing snapshots.
 
 Save and submit the order. Submitted orders move to **Pending Approval** and are reviewed under **Approvals > Sales Approvals**. After approval, reserve inventory against one or more lines and release the available quantity for fulfillment.
 
@@ -34,6 +36,7 @@ Unsaved draft changes are protected when you navigate away or close the workspac
 
 ## Related topics
 - [Sales Overview](topic:sales.overview)
+- [Sales Pricing](topic:sales.pricing)
 - [Sales Approvals](topic:sales.approvals)
 - [Shipping, Packing and Customer Returns](topic:sales.shipping)
 - [Sales Invoices and Credit Notes](topic:sales.invoices)
