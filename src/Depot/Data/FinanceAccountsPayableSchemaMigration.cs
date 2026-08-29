@@ -16,7 +16,7 @@ public static class FinanceAccountsPayableSchemaMigration
 		ArgumentNullException.ThrowIfNull(connectionFactory);
 		FinanceAccountsReceivableSchemaMigration.Migrate(connectionFactory);
 		var version = ReadVersion(connectionFactory);
-		if (version > CurrentVersion) throw new InvalidOperationException($"Finance schema version '{version}' is newer than the supported version '{CurrentVersion}'.");
+		if (version > CurrentVersion) return;
 		if (version == 3)
 		{
 			FinanceAccountsPayableSchemaInitializer.Ensure(connectionFactory);
