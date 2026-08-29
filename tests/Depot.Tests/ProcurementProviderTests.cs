@@ -11,6 +11,7 @@ using Xunit;
 
 namespace Depot.Tests;
 
+[Collection("Provider database")]
 public sealed class ProcurementProviderTests
 {
 	[SqlServerProcurementFact]

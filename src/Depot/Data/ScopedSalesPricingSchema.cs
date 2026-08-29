@@ -56,12 +56,15 @@ internal static class ScopedSalesPricingSchema
 		"ALTER TABLE SalesPriceLists ADD Scope int NOT NULL CONSTRAINT DF_SalesPriceLists_Scope DEFAULT 2, RegionId bigint NULL;",
 		"ALTER TABLE SalesPriceLists ADD CONSTRAINT CK_SalesPriceLists_Scope CHECK (Scope IN (0,1,2)), CONSTRAINT CK_SalesPriceLists_ScopeRegion CHECK ((Scope=1 AND RegionId IS NOT NULL) OR (Scope IN (0,2) AND RegionId IS NULL)), CONSTRAINT FK_SalesPriceLists_Region FOREIGN KEY(RegionId) REFERENCES SalesRegions(Id);",
 		"CREATE INDEX IX_SalesPriceLists_ScopeRegionActive ON SalesPriceLists(Scope,RegionId,IsActive);",
-		"ALTER TABLE Customers ADD SalesRegionId bigint NULL CONSTRAINT FK_Customers_SalesRegion FOREIGN KEY REFERENCES SalesRegions(Id);",
+		"ALTER TABLE Customers ADD SalesRegionId bigint NULL;",
+		"ALTER TABLE Customers ADD CONSTRAINT FK_Customers_SalesRegion FOREIGN KEY (SalesRegionId) REFERENCES SalesRegions(Id);",
 		"CREATE INDEX IX_Customers_SalesRegion ON Customers(SalesRegionId,IsActive);",
 		"CREATE INDEX IX_CustomerPriceLists_List ON CustomerPriceLists(SalesPriceListId,CustomerId);",
-		"ALTER TABLE SalesOrderLines ADD PriceSourceListId bigint NULL CONSTRAINT FK_SalesOrderLines_PriceSource FOREIGN KEY REFERENCES SalesPriceLists(Id), PriceSourceName nvarchar(250) NULL, PriceSourceScope int NULL, PriceSourceCurrency nvarchar(3) NULL;",
+		"ALTER TABLE SalesOrderLines ADD PriceSourceListId bigint NULL, PriceSourceName nvarchar(250) NULL, PriceSourceScope int NULL, PriceSourceCurrency nvarchar(3) NULL;",
+		"ALTER TABLE SalesOrderLines ADD CONSTRAINT FK_SalesOrderLines_PriceSource FOREIGN KEY (PriceSourceListId) REFERENCES SalesPriceLists(Id);",
 		"ALTER TABLE SalesOrderLines ADD CONSTRAINT CK_SalesOrderLines_PriceSourceScope CHECK (PriceSourceScope IS NULL OR PriceSourceScope IN (0,1,2));",
-		"ALTER TABLE SalesQuoteLines ADD PriceSourceListId bigint NULL CONSTRAINT FK_SalesQuoteLines_PriceSource FOREIGN KEY REFERENCES SalesPriceLists(Id), PriceSourceName nvarchar(250) NULL, PriceSourceScope int NULL, PriceSourceCurrency nvarchar(3) NULL;",
+		"ALTER TABLE SalesQuoteLines ADD PriceSourceListId bigint NULL, PriceSourceName nvarchar(250) NULL, PriceSourceScope int NULL, PriceSourceCurrency nvarchar(3) NULL;",
+		"ALTER TABLE SalesQuoteLines ADD CONSTRAINT FK_SalesQuoteLines_PriceSource FOREIGN KEY (PriceSourceListId) REFERENCES SalesPriceLists(Id);",
 		"ALTER TABLE SalesQuoteLines ADD CONSTRAINT CK_SalesQuoteLines_PriceSourceScope CHECK (PriceSourceScope IS NULL OR PriceSourceScope IN (0,1,2));"
 	];
 
