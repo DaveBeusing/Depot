@@ -22,7 +22,7 @@ public sealed class ItemCostBulkActiveFilterTests : IDisposable
 		SalesSchemaMigration.Migrate(factory);
 		var data = new DatabaseAccess(factory);
 		var active = await InsertItemAsync(data, "ACTIVE", true, ItemLifecycleStatus.Active);
-		var phaseOut = await InsertItemAsync(data, "PHASE-OUT", true, ItemLifecycleStatus.PhaseOut);
+		var endOfLife = await InsertItemAsync(data, "END-OF-LIFE", true, ItemLifecycleStatus.EndOfLife);
 		_ = await InsertItemAsync(data, "INACTIVE", false, ItemLifecycleStatus.Active);
 
 		var authorization = new AuthorizationService();
@@ -45,7 +45,7 @@ public sealed class ItemCostBulkActiveFilterTests : IDisposable
 			MarkupPercentage = 25m
 		});
 
-		Assert.Equal([active, phaseOut], preview.Rows.Select(row => row.ItemId).Order().ToArray());
+		Assert.Equal([active, endOfLife], preview.Rows.Select(row => row.ItemId).Order().ToArray());
 		Assert.All(preview.Rows, row => Assert.Equal(BulkPricePreviewAction.Error, row.Action));
 	}
 
