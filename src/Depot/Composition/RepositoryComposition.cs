@@ -38,6 +38,16 @@ internal sealed class RepositoryComposition
 		SalesInvoices = new SalesInvoiceRepository(dataAccess);
 		CustomerReturns = new CustomerReturnRepository(dataAccess);
 		SalesCreditNotes = new SalesCreditNoteRepository(dataAccess);
+		FinanceGeneralLedger = new FinanceGeneralLedgerRepository(dataAccess);
+		FinancePostingProfiles = new FinancePostingProfileRepository(dataAccess);
+		FinanceAccountsReceivable = new FinanceAccountsReceivableRepository(dataAccess);
+		FinanceAccountsPayable = new FinanceAccountsPayableRepository(dataAccess);
+		FinanceInventoryAccounting = new FinanceInventoryAccountingRepository(dataAccess);
+		FinanceInventoryCosting = new FinanceInventoryCostingRepository(dataAccess);
+		FinanceBanking = new FinanceBankingRepository(dataAccess);
+		FinanceFinancialReporting = new FinanceFinancialReportingRepository(dataAccess);
+		FinanceFinancialReportingInventory = new FinanceFinancialReportingInventoryRepository(dataAccess);
+		FinanceLocalization = new FinanceLocalizationRepository(dataAccess);
 		Inventories = new InventoryRepository(dataAccess);
 		Warehouses = new WarehouseRepository(dataAccess);
 		StorageLocations = new StorageLocationRepository(dataAccess);
@@ -77,6 +87,16 @@ internal sealed class RepositoryComposition
 	public SalesInvoiceRepository SalesInvoices { get; }
 	public CustomerReturnRepository CustomerReturns { get; }
 	public SalesCreditNoteRepository SalesCreditNotes { get; }
+	public FinanceGeneralLedgerRepository FinanceGeneralLedger { get; }
+	public FinancePostingProfileRepository FinancePostingProfiles { get; }
+	public FinanceAccountsReceivableRepository FinanceAccountsReceivable { get; }
+	public FinanceAccountsPayableRepository FinanceAccountsPayable { get; }
+	public FinanceInventoryAccountingRepository FinanceInventoryAccounting { get; }
+	public FinanceInventoryCostingRepository FinanceInventoryCosting { get; }
+	public FinanceBankingRepository FinanceBanking { get; }
+	public FinanceFinancialReportingRepository FinanceFinancialReporting { get; }
+	public FinanceFinancialReportingInventoryRepository FinanceFinancialReportingInventory { get; }
+	public FinanceLocalizationRepository FinanceLocalization { get; }
 	public InventoryRepository Inventories { get; }
 	public WarehouseRepository Warehouses { get; }
 	public StorageLocationRepository StorageLocations { get; }

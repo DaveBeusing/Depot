@@ -1,13 +1,40 @@
 # Current project status
 
-Updated: 2026-08-25
+Updated: 2026-08-29
 
-Depot is on the `0.14.x-preview` line. Security/compliance roadmap phases 1 through 7 have their technically implementable repository/application controls in place. Remaining items are explicitly tracked as production, environment, legal, accessibility, provider, signing, tax-profile/routing, or enterprise acceptance gates.
+Depot is on the `0.15.x-preview` development line. The current `finance` branch contains the integrated Finance platform: foundation/master data, immutable General Ledger, Receivables, Payables, FIFO Inventory Accounting, Banking and Payments, Financial Reporting, and effective-dated Localization.
 
-Key current capabilities include first-run administrator bootstrap, hardened authentication and RBAC, privacy discovery/export, immutable business-record evidence, CRA technical evidence, Company legal-identity master data, enriched Item master data, immutable seller snapshots for posted invoices/credit notes, atomic Sales Invoice Buyer/XRechnung finalization with exact XML retention and SHA-256 integrity verification, posted-invoice XRechnung export, pinned KoSIT representative conformance validation, software-quality gates, accessibility static checks, SBOM/dependency audit, and release-integrity automation.
+## Finance capabilities
 
-Item master data now covers identification/classification, product family/model/revision, lifecycle dates and replacement references, customs/export classification, RoHS/REACH status, dangerous-goods/battery flags, GTIN uniqueness, intended traceability mode, and explicit logistics units (kg/mm). Serial/lot capture enforcement and automatic workflow restrictions/substitution based on type or lifecycle remain separate follow-up capabilities and are not claimed by the master-data fields alone.
+- **Finance Foundation:** legal entities, currencies/FX, fiscal calendars/periods, charts/accounts, accounting books, journals, dimensions, tax registrations and number sequences.
+- **General Ledger & Posting:** immutable balanced journals, reporting-currency snapshots, posting profiles, validation, idempotency, Audit evidence and linked reversals.
+- **Accounts Receivable:** customer open items, payments/allocations, write-offs, aging/statements, dunning and Sales integration.
+- **Accounts Payable:** supplier documents/open items, three-way matching, exception approval, payments/allocations/reversals, aging/statements and Purchasing integration.
+- **Inventory Accounting:** FIFO valuation, GRNI/COGS, inventory adjustments, purchase-price variance, landed cost, historical valuation and Inventory ↔ GL reconciliation.
+- **Banking and Payments:** bank accounts, immutable CSV/camt.053 statements, payment proposals/execution, AR/AP/GL reconciliation and cash position.
+- **Financial Reporting:** Trial Balance, GL detail, Balance Sheet, P&L, Cash Flow, AR/AP Aging, Tax Summary, historical Inventory Valuation, COGS, dimension filtering, mappings, deterministic CSV and immutable report snapshots.
+- **Finance Localization:** explicit effective-dated legal-entity assignments, built-in `GENERIC → EU → DE` references, custom pack extensibility, capability/configuration/procedure registry, RBAC and Audit evidence.
 
-Current electronic-invoice boundaries are explicit: zero-rated/exempt/reverse-charge commercial scenarios require persisted EN 16931 tax semantics before issuance, electronic credit-note Buyer/XML finalization remains follow-up work, and production recipient/channel validation remains a release/deployment gate.
+## Localization boundary
 
-Phase 8 enterprise readiness remains planned.
+`LegalEntity.CountryCode` is a validation attribute, not an activation switch. A legal entity remains jurisdiction-neutral until an authorized Finance user assigns an effective root localization pack. Active assignments for the same entity cannot overlap.
+
+Built-in `GENERIC`, `EU` and `DE` definitions and built-in registry rows are immutable. Custom regional/country packs can extend the hierarchy without another database schema change. Registry support levels describe technical capability and responsibility boundaries; they are not legal/compliance status flags.
+
+## Versions
+
+- Application: **0.15.x-preview** (`Directory.Build.props` is authoritative for the exact patch)
+- Core database schema: **29**
+- Sales feature schema: **8**
+- Finance feature schema: **9**
+- Help manifest: **1.17**
+
+Every commit increments `DepotVersionPatch`.
+
+## Validation boundary
+
+Release Build, win-x64 publish, repository regression tests, Release Integrity, Security Supply Chain and Software Quality gates are required on the final integration head. Provider-neutral Finance DDL exists for SQLite, SQL Server and MySQL/MariaDB. SQL placeholder normalization also normalizes provider parameter names so `$Name` abstractions remain valid when SQL Server/MySQL commands are rewritten to `@Name`. Live server migration, provider locking/concurrency/recovery, performance and organization-specific accounting/localization acceptance remain production gates.
+
+## Next steps
+
+The generic Finance platform has no additional mandatory feature milestone in the current roadmap. Remaining Finance work is production acceptance, deployment policy approval and demand-driven country/statutory extensions using the existing localization framework.

@@ -21,7 +21,7 @@ public sealed class SalesWorkflowIntegrationTests : IAsyncLifetime
 	public async Task OrderToCashHappyPathCompletesOrderAndReducesStockOnlyOnShipment()
 	{
 		var fixture = Fixture;
-		var customer = await fixture.Customers.SaveAsync(new Customer { Name = "Sales Integration Customer", BillingAddress = "Billing Street 1", ShippingAddress = "Shipping Street 2", Currency = "EUR", PaymentTermsDays = 30 });
+		var customer = await fixture.Customers.SaveAsync(InvoiceCustomer("Sales Integration Customer", "Billing Street 1", "Shipping Street 2"));
 		var draft = await fixture.Orders.SaveDraftAsync(new SalesOrder { CustomerId = customer.Id, BillingAddress = "Billing Street 1", ShippingAddress = "Shipping Street 2", OrderDate = DateTime.Today, RequestedDeliveryDate = DateTime.Today.AddDays(7), Lines = [new SalesOrderLine { ItemId = fixture.ItemId, Quantity = 10, UnitPrice = 25m, TaxRate = 19m }] });
 		Assert.Equal("Billing Street 1", draft.BillingAddress);
 		Assert.Equal("Shipping Street 2", draft.ShippingAddress);
@@ -68,7 +68,7 @@ public sealed class SalesWorkflowIntegrationTests : IAsyncLifetime
 		Assert.Equal(7, partiallyShipped.Lines[0].BackorderedQuantity);
 		var reReserved = await fixture.Orders.SetReservationsAsync(partiallyShipped.Id, partiallyShipped.Version, [new SalesReservationRequest(partiallyShipped.Lines[0].Id, fixture.InventoryId, 7)]);
 		var secondReservation = Assert.Single(await fixture.Orders.GetReservationsAsync(reReserved.Id), value => value.Status == InventoryReservationStatus.Active);
-		var secondShipment = await fixture.Shipments.CreateAsync(reReserved.Id, [new ShipmentLineRequest(secondReservation.Id, 7)]);
+		var secondShipment = await fixture.Shipments.CreateAsync(released.Id, [new ShipmentLineRequest(secondReservation.Id, 7)]);
 		await fixture.PackAndPostAsync(secondShipment);
 		var shipped = await fixture.Orders.GetByIdAsync(released.Id) ?? throw new InvalidOperationException();
 		Assert.Equal(SalesOrderStatus.Shipped, shipped.Status);
@@ -130,6 +130,23 @@ public sealed class SalesWorkflowIntegrationTests : IAsyncLifetime
 
 	private SalesFixture Fixture => _fixture ?? throw new InvalidOperationException("Sales fixture is not initialized.");
 
+	private static Customer InvoiceCustomer(string name, string billingAddress = "Billing Street 1", string? shippingAddress = null) => new()
+	{
+		Name = name,
+		BillingAddress = billingAddress,
+		ShippingAddress = shippingAddress,
+		Currency = "EUR",
+		PaymentTermsDays = 30,
+		TaxId = "DE123456789",
+		BuyerReference = "BUYER-REF",
+		EInvoiceEndpoint = "buyer@example.test",
+		EInvoiceEndpointScheme = "EM",
+		BillingStreet = billingAddress,
+		BillingPostalCode = "53111",
+		BillingCity = "Bonn",
+		BillingCountryCode = "DE"
+	};
+
 	private sealed class SalesFixture
 	{
 		private readonly DatabaseAccess _data;
@@ -153,6 +170,29 @@ public sealed class SalesWorkflowIntegrationTests : IAsyncLifetime
 			var users = new UserRepository(data);
 			var admin = await users.GetByEmailAsync("admin@depot.local", CancellationToken.None) ?? throw new InvalidOperationException("Default administrator missing.");
 			admin.Roles = await roles.GetUserRolesAsync(admin.Id, CancellationToken.None); admin.EffectivePermissions = PermissionCatalog.All; authorization.SignIn(admin, PermissionCatalog.All);
+			var company = new CompanyProfileService(data, DatabaseProvider.Local, authorization);
+			await company.SaveAsync(new CompanyProfile
+			{
+				LegalName = "Depot Sales Integration GmbH",
+				LegalForm = "GmbH",
+				Street = "Test Street 1",
+				PostalCode = "53111",
+				City = "Bonn",
+				CountryCode = "DE",
+				TaxResidenceCountryCode = "DE",
+				RegisteredOffice = "Bonn",
+				IsRegisteredEntity = true,
+				RegisterCourt = "Amtsgericht Bonn",
+				RegisterType = "HRB",
+				RegisterNumber = "12345",
+				ManagingDirectors = "Integration Test",
+				VatId = "DE111111111",
+				Email = "sales-integration@depot.test",
+				InvoiceEmail = "invoice-integration@depot.test",
+				Iban = "DE89370400440532013000",
+				DefaultCurrency = "EUR",
+				PaymentTermsDays = 14
+			});
 			var suffix = Guid.NewGuid().ToString("N");
 			var itemId = await data.InsertAsync("INSERT INTO Items (PartNumber,Description,IsActive) VALUES ($PartNumber,$Description,1);", CancellationToken.None, new DatabaseParameter("$PartNumber", $"SALES-{suffix}"), new DatabaseParameter("$Description", "Sales integration item"));
 			var purposeId = Convert.ToInt64(await data.ExecuteScalarAsync("SELECT MIN(Id) FROM Purposes;", CancellationToken.None));
@@ -181,7 +221,7 @@ public sealed class SalesWorkflowIntegrationTests : IAsyncLifetime
 		}
 		public async Task<Shipment> CreatePostedShipmentAsync(int quantity)
 		{
-			var customer = await Customers.SaveAsync(new Customer { Name = $"Shipment Customer {Guid.NewGuid():N}", Currency = "EUR" });
+			var customer = await Customers.SaveAsync(InvoiceCustomer($"Shipment Customer {Guid.NewGuid():N}"));
 			var draft = await Orders.SaveDraftAsync(new SalesOrder { CustomerId = customer.Id, Lines = [new SalesOrderLine { ItemId = ItemId, Quantity = quantity, UnitPrice = 15m, TaxRate = 19m }] });
 			var submitted = await Orders.SubmitAsync(draft.Id, draft.Version); var approved = await Orders.ApproveAsync(submitted.Id, submitted.Version);
 			var reserved = await Orders.SetReservationsAsync(approved.Id, approved.Version, [new SalesReservationRequest(approved.Lines[0].Id, InventoryId, quantity)]);

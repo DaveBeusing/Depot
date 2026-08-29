@@ -1,0 +1,198 @@
+<UserControl x:Class="Depot.Views.FinancePayablesView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:Depot.Controls">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="12"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <controls:PageHeader Title="Accounts Payable" Subtitle="Supplier documents, matching, approvals, settlements, aging, and controlled reversals.">
+            <controls:PageHeader.Actions>
+                <Button Command="{Binding RefreshCommand}" Content="Refresh" Style="{StaticResource PrimaryButtonStyle}"/>
+            </controls:PageHeader.Actions>
+        </controls:PageHeader>
+
+        <controls:FilterBar Grid.Row="1">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="16"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="16"/>
+                    <ColumnDefinition Width="150"/>
+                </Grid.ColumnDefinitions>
+                <controls:SearchBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" Placeholder="Supplier or reference" ToolTip="Search supplier documents and payable open items"/>
+                <CheckBox Grid.Column="2" VerticalAlignment="Center" Content="Include settled" IsChecked="{Binding IncludeSettled}"/>
+                <DatePicker Grid.Column="4" SelectedDate="{Binding AgingDate}" ToolTip="Aging reference date"/>
+            </Grid>
+        </controls:FilterBar>
+
+        <StackPanel Grid.Row="2">
+            <controls:OperationPanel ErrorText="{Binding OperationError}" HasError="{Binding HasOperationError}" IsBusy="{Binding IsBusy}" StatusText="{Binding StatusText}"/>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/><ColumnDefinition Width="10"/>
+                    <ColumnDefinition Width="*"/><ColumnDefinition Width="10"/>
+                    <ColumnDefinition Width="*"/><ColumnDefinition Width="10"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <controls:MetricCard Title="Open Payables" Value="{Binding TotalPayable}" ValueStringFormat="{}{0:N2}" SupportingText="Supplier invoice balances"/>
+                <controls:MetricCard Grid.Column="2" Title="Supplier Debits" Value="{Binding UnappliedDebits}" ValueStringFormat="{}{0:N2}" SupportingText="Credits and unapplied payments"/>
+                <controls:MetricCard Grid.Column="4" Title="Net Exposure" Value="{Binding NetExposure}" ValueStringFormat="{}{0:N2}" SupportingText="Payables less debits"/>
+                <controls:MetricCard Grid.Column="6" Title="Documents" Value="{Binding TotalCount}" SupportingText="Current document filter"/>
+            </Grid>
+        </StackPanel>
+
+        <TabControl Grid.Row="4">
+            <TabItem Header="Supplier Documents">
+                <Grid Margin="8">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="2*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="3*"/></Grid.ColumnDefinitions>
+                    <Grid>
+                        <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                        <DataGrid ItemsSource="{Binding Documents}" SelectedItem="{Binding SelectedDocument}" Style="{StaticResource AppDataGridStyle}" AutoGenerateColumns="False">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="70"/>
+                                <DataGridTextColumn Header="Supplier" Binding="{Binding SupplierName}" Width="*"/>
+                                <DataGridTextColumn Header="Kind" Binding="{Binding Kind}" Width="95"/>
+                                <DataGridTextColumn Header="Number" Binding="{Binding SupplierDocumentNumber}" Width="145"/>
+                                <DataGridTextColumn Header="Date" Binding="{Binding DocumentDate}" Width="105"/>
+                                <DataGridTextColumn Header="Gross" Binding="{Binding GrossAmount, StringFormat={}{0:N2}}" Width="105" ElementStyle="{StaticResource AppDataGridNumericTextStyle}"/>
+                                <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="120"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                        <controls:PaginationControl Grid.Row="1" Margin="0,10,0,0" PreviousCommand="{Binding PreviousPageCommand}" NextCommand="{Binding NextPageCommand}" PageText="{Binding PageDisplay}" Visibility="{Binding ShowPaging, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                    </Grid>
+
+                    <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto">
+                        <StackPanel>
+                            <controls:Card Margin="0,0,0,12">
+                                <controls:Card.Header><TextBlock Text="Supplier document editor" Style="{StaticResource SectionTitleStyle}"/></controls:Card.Header>
+                                <StackPanel>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="8"/><RowDefinition Height="Auto"/><RowDefinition Height="8"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                                        <StackPanel><TextBlock Text="Type"/><ComboBox ItemsSource="{Binding DocumentKinds}" SelectedItem="{Binding DraftKind}" Style="{StaticResource AppComboBoxStyle}"/></StackPanel>
+                                        <StackPanel Grid.Column="2"><TextBlock Text="Supplier ID"/><TextBox Text="{Binding DraftSupplierId}" Style="{StaticResource AppTextBoxStyle}"/></StackPanel>
+                                        <StackPanel Grid.Row="2"><TextBlock Text="Supplier document number"/><TextBox Text="{Binding DraftDocumentNumber}" Style="{StaticResource AppTextBoxStyle}"/></StackPanel>
+                                        <StackPanel Grid.Row="2" Grid.Column="2"><TextBlock Text="Internal reference"/><TextBox Text="{Binding DraftInternalReference}" Style="{StaticResource AppTextBoxStyle}"/></StackPanel>
+                                        <Grid Grid.Row="4" Grid.ColumnSpan="3">
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="8"/><ColumnDefinition Width="*"/><ColumnDefinition Width="8"/><ColumnDefinition Width="120"/></Grid.ColumnDefinitions>
+                                            <StackPanel><TextBlock Text="Document date"/><DatePicker SelectedDate="{Binding DraftDocumentDate}"/></StackPanel>
+                                            <StackPanel Grid.Column="2"><TextBlock Text="Due date"/><DatePicker SelectedDate="{Binding DraftDueDate}"/></StackPanel>
+                                            <StackPanel Grid.Column="4"><TextBlock Text="Currency"/><TextBox Text="{Binding DraftCurrency}" Style="{StaticResource AppTextBoxStyle}"/></StackPanel>
+                                        </Grid>
+                                    </Grid>
+                                    <DataGrid Margin="0,12,0,0" ItemsSource="{Binding DraftLines}" SelectedItem="{Binding SelectedDraftLine}" Style="{StaticResource AppDataGridStyle}" AutoGenerateColumns="False" CanUserAddRows="False">
+                                        <DataGrid.Columns>
+                                            <DataGridTextColumn Header="PO line ID" Binding="{Binding PurchaseOrderLineId, UpdateSourceTrigger=PropertyChanged}" Width="90"/>
+                                            <DataGridTextColumn Header="GR line ID" Binding="{Binding GoodsReceiptLineId, UpdateSourceTrigger=PropertyChanged}" Width="90"/>
+                                            <DataGridTextColumn Header="Description" Binding="{Binding Description, UpdateSourceTrigger=PropertyChanged}" Width="*"/>
+                                            <DataGridTextColumn Header="Qty" Binding="{Binding Quantity, UpdateSourceTrigger=PropertyChanged}" Width="70"/>
+                                            <DataGridTextColumn Header="Unit price" Binding="{Binding UnitPrice, UpdateSourceTrigger=PropertyChanged}" Width="90"/>
+                                            <DataGridTextColumn Header="Tax" Binding="{Binding TaxAmount, UpdateSourceTrigger=PropertyChanged}" Width="80"/>
+                                        </DataGrid.Columns>
+                                    </DataGrid>
+                                    <WrapPanel Margin="0,8,0,0" HorizontalAlignment="Right">
+                                        <Button Command="{Binding NewDraftCommand}" Content="New" Style="{StaticResource SecondaryButtonStyle}"/>
+                                        <Button Margin="8,0,0,0" Command="{Binding AddLineCommand}" Content="Add line" Style="{StaticResource SecondaryButtonStyle}"/>
+                                        <Button Margin="8,0,0,0" Command="{Binding RemoveLineCommand}" Content="Remove line" Style="{StaticResource SecondaryButtonStyle}"/>
+                                        <Button Margin="8,0,0,0" Command="{Binding SaveDraftCommand}" Content="Save draft" Style="{StaticResource PrimaryButtonStyle}"/>
+                                    </WrapPanel>
+                                </StackPanel>
+                            </controls:Card>
+
+                            <controls:Card>
+                                <controls:Card.Header><TextBlock Text="Approval and posting" Style="{StaticResource SectionTitleStyle}"/></controls:Card.Header>
+                                <StackPanel>
+                                    <TextBlock Text="Approval comment"/><TextBox Text="{Binding ApprovalComment}" Style="{StaticResource AppTextBoxStyle}"/>
+                                    <CheckBox Margin="0,10,0,0" Content="Approve current three-way match exception" IsChecked="{Binding ApproveMatchException}" Visibility="{Binding CanApproveMatchExceptions, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                    <TextBlock Margin="0,8,0,0" Text="Match exception reason" Visibility="{Binding CanApproveMatchExceptions, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                    <TextBox Text="{Binding MatchExceptionReason}" Style="{StaticResource AppTextBoxStyle}" Visibility="{Binding CanApproveMatchExceptions, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                    <WrapPanel Margin="0,12,0,0" HorizontalAlignment="Right">
+                                        <Button Command="{Binding SubmitCommand}" Content="Submit" Style="{StaticResource SecondaryButtonStyle}"/>
+                                        <Button Margin="8,0,0,0" Command="{Binding ApproveCommand}" Content="Approve" Style="{StaticResource PrimaryButtonStyle}"/>
+                                        <Button Margin="8,0,0,0" Command="{Binding RejectCommand}" Content="Reject" Style="{StaticResource SecondaryButtonStyle}"/>
+                                        <Button Margin="8,0,0,0" Command="{Binding PostCommand}" Content="Post" Style="{StaticResource PrimaryButtonStyle}"/>
+                                    </WrapPanel>
+                                    <Separator Margin="0,14,0,10"/>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="150"/><ColumnDefinition Width="10"/><ColumnDefinition Width="*"/><ColumnDefinition Width="10"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                        <DatePicker SelectedDate="{Binding DocumentReversalDate}"/>
+                                        <TextBox Grid.Column="2" Text="{Binding DocumentReversalReason}" Style="{StaticResource AppTextBoxStyle}" ToolTip="Reversal reason"/>
+                                        <Button Grid.Column="4" Command="{Binding ReverseDocumentCommand}" Content="Reverse document" Style="{StaticResource SecondaryButtonStyle}"/>
+                                    </Grid>
+                                </StackPanel>
+                            </controls:Card>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="Open Items &amp; Aging">
+                <Grid Margin="8">
+                    <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="12"/><RowDefinition Height="*"/><RowDefinition Height="12"/><RowDefinition Height="Auto"/><RowDefinition Height="12"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                    <DataGrid ItemsSource="{Binding OpenItems}" SelectedItem="{Binding SelectedOpenItem}" Style="{StaticResource AppDataGridStyle}" AutoGenerateColumns="False">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="70"/><DataGridTextColumn Header="Supplier" Binding="{Binding SupplierName}" Width="*"/><DataGridTextColumn Header="Kind" Binding="{Binding Kind}" Width="100"/><DataGridTextColumn Header="Reference" Binding="{Binding SourceReference}" Width="150"/><DataGridTextColumn Header="Due" Binding="{Binding DueDate}" Width="105"/><DataGridTextColumn Header="Currency" Binding="{Binding Currency}" Width="85"/><DataGridTextColumn Header="Original" Binding="{Binding OriginalAmount, StringFormat={}{0:N2}}" Width="105"/><DataGridTextColumn Header="Remaining" Binding="{Binding RemainingAmount, StringFormat={}{0:N2}}" Width="105"/><DataGridTextColumn Header="Status" Binding="{Binding SettlementStatus}" Width="110"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                    <DataGrid Grid.Row="2" ItemsSource="{Binding Aging}" Style="{StaticResource AppDataGridStyle}" AutoGenerateColumns="False">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Supplier" Binding="{Binding SupplierName}" Width="*"/><DataGridTextColumn Header="Currency" Binding="{Binding Currency}" Width="85"/><DataGridTextColumn Header="Current" Binding="{Binding Current, StringFormat={}{0:N2}}" Width="100"/><DataGridTextColumn Header="1-30" Binding="{Binding Days1To30, StringFormat={}{0:N2}}" Width="100"/><DataGridTextColumn Header="31-60" Binding="{Binding Days31To60, StringFormat={}{0:N2}}" Width="100"/><DataGridTextColumn Header="61-90" Binding="{Binding Days61To90, StringFormat={}{0:N2}}" Width="100"/><DataGridTextColumn Header="90+" Binding="{Binding DaysOver90, StringFormat={}{0:N2}}" Width="100"/><DataGridTextColumn Header="Debits" Binding="{Binding UnappliedDebits, StringFormat={}{0:N2}}" Width="100"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                    <Grid Grid.Row="4">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="150"/><ColumnDefinition Width="8"/><ColumnDefinition Width="100"/><ColumnDefinition Width="8"/><ColumnDefinition Width="150"/><ColumnDefinition Width="8"/><ColumnDefinition Width="150"/><ColumnDefinition Width="8"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                        <TextBox Text="{Binding StatementSupplierId}" Style="{StaticResource AppTextBoxStyle}" ToolTip="Supplier ID"/><TextBox Grid.Column="2" Text="{Binding StatementCurrency}" Style="{StaticResource AppTextBoxStyle}" ToolTip="Currency"/><DatePicker Grid.Column="4" SelectedDate="{Binding StatementFromDate}"/><DatePicker Grid.Column="6" SelectedDate="{Binding StatementToDate}"/><Button Grid.Column="8" Command="{Binding LoadStatementCommand}" Content="Load statement" Style="{StaticResource PrimaryButtonStyle}"/>
+                    </Grid>
+                    <DataGrid Grid.Row="6" ItemsSource="{Binding StatementRows}" Style="{StaticResource AppDataGridStyle}" AutoGenerateColumns="False">
+                        <DataGrid.Columns><DataGridTextColumn Header="Date" Binding="{Binding Date}" Width="105"/><DataGridTextColumn Header="Type" Binding="{Binding Type}" Width="110"/><DataGridTextColumn Header="Reference" Binding="{Binding Reference}" Width="150"/><DataGridTextColumn Header="Description" Binding="{Binding Description}" Width="*"/><DataGridTextColumn Header="Debit" Binding="{Binding Debit, StringFormat={}{0:N2}}" Width="100"/><DataGridTextColumn Header="Credit" Binding="{Binding Credit, StringFormat={}{0:N2}}" Width="100"/><DataGridTextColumn Header="Open" Binding="{Binding RemainingAmount, StringFormat={}{0:N2}}" Width="100"/></DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="Payments &amp; Allocation">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel Margin="8">
+                        <controls:Card Margin="0,0,0,12">
+                            <controls:Card.Header><TextBlock Text="Post supplier payment" Style="{StaticResource SectionTitleStyle}"/></controls:Card.Header>
+                            <StackPanel>
+                                <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="10"/><ColumnDefinition Width="*"/><ColumnDefinition Width="10"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="Supplier ID"/><TextBox Text="{Binding PaymentSupplierId}" Style="{StaticResource AppTextBoxStyle}"/></StackPanel><StackPanel Grid.Column="2"><TextBlock Text="Currency"/><TextBox Text="{Binding PaymentCurrency}" Style="{StaticResource AppTextBoxStyle}"/></StackPanel><StackPanel Grid.Column="4"><TextBlock Text="Payment date"/><DatePicker SelectedDate="{Binding PaymentDate}"/></StackPanel></Grid>
+                                <Grid Margin="0,8,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="10"/><ColumnDefinition Width="*"/><ColumnDefinition Width="10"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="Amount"/><TextBox Text="{Binding PaymentAmount}" Style="{StaticResource AppTextBoxStyle}"/></StackPanel><StackPanel Grid.Column="2"><TextBlock Text="Allocate to selected invoice"/><TextBox Text="{Binding PaymentAllocationAmount}" Style="{StaticResource AppTextBoxStyle}"/></StackPanel><StackPanel Grid.Column="4"><TextBlock Text="Reference"/><TextBox Text="{Binding PaymentReference}" Style="{StaticResource AppTextBoxStyle}"/></StackPanel></Grid>
+                                <TextBlock Margin="0,8,0,0" Text="Description"/><TextBox Text="{Binding PaymentDescription}" Style="{StaticResource AppTextBoxStyle}"/>
+                                <Button Margin="0,12,0,0" HorizontalAlignment="Right" Command="{Binding PostPaymentCommand}" Content="Post payment" Style="{StaticResource PrimaryButtonStyle}"/>
+                            </StackPanel>
+                        </controls:Card>
+                        <controls:Card Margin="0,0,0,12">
+                            <controls:Card.Header><TextBlock Text="Allocate existing supplier debit" Style="{StaticResource SectionTitleStyle}"/></controls:Card.Header>
+                            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="10"/><ColumnDefinition Width="*"/><ColumnDefinition Width="10"/><ColumnDefinition Width="*"/><ColumnDefinition Width="10"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="Debit open-item ID"/><TextBox Text="{Binding AllocationDebitOpenItemId}" Style="{StaticResource AppTextBoxStyle}"/></StackPanel><StackPanel Grid.Column="2"><TextBlock Text="Invoice open-item ID"/><TextBox Text="{Binding AllocationCreditOpenItemId}" Style="{StaticResource AppTextBoxStyle}"/></StackPanel><StackPanel Grid.Column="4"><TextBlock Text="Amount"/><TextBox Text="{Binding AllocationAmount}" Style="{StaticResource AppTextBoxStyle}"/></StackPanel><StackPanel Grid.Column="6"><TextBlock Text="Date"/><DatePicker SelectedDate="{Binding AllocationDate}"/><Button Margin="0,8,0,0" Command="{Binding AllocateDebitCommand}" Content="Allocate" Style="{StaticResource PrimaryButtonStyle}"/></StackPanel></Grid>
+                        </controls:Card>
+                        <controls:Card>
+                            <controls:Card.Header><TextBlock Text="Reverse supplier payment" Style="{StaticResource SectionTitleStyle}"/></controls:Card.Header>
+                            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="160"/><ColumnDefinition Width="10"/><ColumnDefinition Width="160"/><ColumnDefinition Width="10"/><ColumnDefinition Width="*"/><ColumnDefinition Width="10"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBox Text="{Binding PaymentReversalId}" Style="{StaticResource AppTextBoxStyle}" ToolTip="Payment ID"/><DatePicker Grid.Column="2" SelectedDate="{Binding PaymentReversalDate}"/><TextBox Grid.Column="4" Text="{Binding PaymentReversalReason}" Style="{StaticResource AppTextBoxStyle}" ToolTip="Reason"/><Button Grid.Column="6" Command="{Binding ReversePaymentCommand}" Content="Reverse payment" Style="{StaticResource SecondaryButtonStyle}"/></Grid>
+                        </controls:Card>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <TabItem Header="Configuration" Visibility="{Binding CanManage, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <StackPanel Margin="8">
+                    <controls:Card>
+                        <controls:Card.Header><TextBlock Text="Accounts Payable configuration" Style="{StaticResource SectionTitleStyle}"/></controls:Card.Header>
+                        <StackPanel>
+                            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="Legal entity ID"/><TextBox Text="{Binding ConfigurationLegalEntityId}" Style="{StaticResource AppTextBoxStyle}"/></StackPanel><StackPanel Grid.Column="2"><TextBlock Text="Fiscal calendar ID"/><TextBox Text="{Binding ConfigurationFiscalCalendarId}" Style="{StaticResource AppTextBoxStyle}"/></StackPanel></Grid>
+                            <Grid Margin="0,8,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="Invoice posting profile ID"/><TextBox Text="{Binding InvoiceProfileId}" Style="{StaticResource AppTextBoxStyle}"/></StackPanel><StackPanel Grid.Column="2"><TextBlock Text="Credit-note posting profile ID"/><TextBox Text="{Binding CreditNoteProfileId}" Style="{StaticResource AppTextBoxStyle}"/></StackPanel></Grid>
+                            <Grid Margin="0,8,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="Payment posting profile ID"/><TextBox Text="{Binding PaymentProfileId}" Style="{StaticResource AppTextBoxStyle}"/></StackPanel><CheckBox Grid.Column="2" VerticalAlignment="Bottom" Content="Active" IsChecked="{Binding ConfigurationIsActive}"/></Grid>
+                            <Button Margin="0,12,0,0" HorizontalAlignment="Right" Command="{Binding SaveConfigurationCommand}" Content="Save configuration" Style="{StaticResource PrimaryButtonStyle}"/>
+                        </StackPanel>
+                    </controls:Card>
+                </StackPanel>
+            </TabItem>
+        </TabControl>
+    </Grid>
+</UserControl>

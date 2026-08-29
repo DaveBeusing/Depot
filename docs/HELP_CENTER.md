@@ -1,60 +1,39 @@
 # Depot Help Center
 
-Depot ships an integrated offline Help Center using embedded Markdown and native WPF `FlowDocument` rendering. Help opens as a regular workspace tab; F1 resolves the current application context without replacing other open workspaces.
+Updated: 2026-08-28
 
-## Content structure
+Depot ships an embedded offline Markdown Help Center rendered natively in WPF. Help is permission-filtered, locally searchable, uses stable topic IDs, and opens in the normal workspace shell.
 
-Help content is versioned with the application under `src/Depot/Help`. The current manifest version is **1.7** and contains Getting Started, Inventory, Warehouse, Purchasing, Sales, Approvals, Reports, Administration, and Troubleshooting topics.
+## Current manifest
 
-`manifest.json` defines stable topic IDs, titles, categories, Markdown files, ordering, search keywords, optional required permissions, and related topics. IDs are application contracts and should not be renamed after use.
+Help manifest **1.17** contains eight Finance topics:
 
-## Current user guidance
+- `finance.foundation` — `Finance.View`
+- `finance.general-ledger` — `FinanceGeneralLedger.View`
+- `finance.receivables` — `FinanceReceivables.View`
+- `finance.payables` — `FinancePayables.View`
+- `finance.inventory-accounting` — `FinanceInventoryAccounting.View`
+- `finance.banking` — `FinanceBanking.View`
+- `finance.reporting` — `FinanceFinancialReporting.View`
+- `finance.localization` — `FinanceLocalization.View`
 
-Help must remain synchronized with current application behavior, especially security/compliance changes that affect normal operation:
+**Finance > Localization** resolves to `finance.localization`. The topic documents explicit effective-dated assignment, `GENERIC → EU → DE` hierarchy resolution, country validation, custom-pack extensibility, registry support levels, RBAC, retained Audit evidence and the legal/tax/compliance boundary.
 
-- a new database has no shared default administrator password; Depot requires first-run administrator creation
-- the login flow opens the tabless Welcome page after authentication
-- all workspace tabs are closeable; closing the final tab restores Welcome
-- `Ctrl+P` Quick Open, `Ctrl+Shift+P` Command Palette, tab/history shortcuts, and F1 context Help
-- remote SQL Server/MySQL/MariaDB configuration uses the supported encrypted-transport defaults
-- backup guidance documents validation, restore safety, automatic retention, and environment-specific recovery acceptance
-- Audit Log documentation includes filtered CSV export and structured business-record evidence export
-- Privacy Data documents person-related discovery/export without implying automatic legal erasure decisions
-- Item Help documents identification, lifecycle, trade/compliance and logistics master data, including the fixed kg/mm physical-unit contract and the operational boundary of tracking/type/lifecycle classifications
-- Sales invoice Help distinguishes current operational invoice/credit-note behavior from the EN 16931/XRechnung technical conformance foundation
-- Help must never document removed default credentials or imply legal certification from technical controls
+Help visibility never grants business access; service authorization remains authoritative.
 
-## Manifest 1.7 changes
+## Content rules
 
-Manifest 1.7 refreshes the existing `inventory.items` topic for the enriched item-master-data contract. Search keywords now include GTIN, model/revision/product family, lifecycle, customs/ECCN, dangerous goods/battery, RoHS/REACH, logistics measurements and replacement-item concepts. The topic explicitly distinguishes persisted master-data classifications from workflow capabilities that are not yet implemented, such as serial/lot capture enforcement.
+Help must not imply default credentials, jurisdiction, currency, tax rate, chart/account, accounting standard, matching tolerance, reporting classification, statutory filing conformance or legal certification when those are not explicitly configured/implemented.
 
-## Supported Markdown
-
-The native renderer supports headings, paragraphs, ordered/unordered lists, bold, italic, inline code, notes/warnings, images, `topic:` internal links, and simple pipe tables. HTML and arbitrary external links are not supported.
+Finance Localization Help must clearly state that legal-entity country does not activate a pack automatically; effective localization requires explicit assignment; support levels are responsibility labels rather than pass/fail compliance flags; built-in references are immutable; custom packs can extend the framework; executable statutory behavior still requires code when metadata/configuration is insufficient; and assigning a pack is not legal, tax, HGB, GoBD, XRechnung or other statutory certification.
 
 ## Updating Help
 
-1. Verify the current UI, ViewModels, services, permissions, and navigation routes before changing documentation.
-2. Create/update the Markdown topic in the appropriate category.
-3. Keep stable topic IDs and deterministic ordering in `manifest.json`.
-4. Add keywords for current terminology and shortcuts.
-5. Add only valid `topic:` links and existing permission codes.
-6. Increment the manifest version when the content contract changes materially.
-7. Run the Help Center regression tests; validation covers duplicate IDs, missing files, unknown permissions, and broken links.
-8. Verify first-run/security/privacy wording whenever authentication, data retention, audit, backup, or database configuration changes.
+1. Verify current UI, ViewModels, services, permissions and routes.
+2. Create/update the Markdown topic.
+3. Keep stable IDs and deterministic ordering.
+4. Use only valid central permission codes and `topic:` links.
+5. Increment the manifest version for material topic/permission/mapping changes.
+6. Run Help regression validation for duplicate IDs, missing files, unknown permissions and broken links.
 
-Do not document planned functionality as available.
-
-## Context Help
-
-Shell items and contextual pages carry a `HelpTopicId`. F1 resolves the current page and opens that topic. Missing/unavailable context falls back to `getting-started.first-login`.
-
-## Permissions
-
-`requiredPermission` uses the central permission catalog. `HelpService` filters topic lists, search, direct access, and related topics against effective permissions. Public Getting Started and Troubleshooting topics can omit a permission. Help visibility never grants business access.
-
-## Search and diagnostics
-
-Search is local and weighted across title, manifest keywords, headings, and body text. Related topics are permission-filtered.
-
-Selected operation-error panels can expose **Open Help** and **Copy diagnostics**. Diagnostic text passes through `DiagnosticsSanitizer` to mask credentials, connection strings, hashes, salts, secrets, tokens, encryption keys, protected configuration, and sensitive SQL parameter values.
+Help manifest **1.17** is the current documentation contract.

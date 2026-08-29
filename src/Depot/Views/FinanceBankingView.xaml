@@ -1,0 +1,77 @@
+<UserControl x:Class="Depot.Views.FinanceBankingView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:Depot.Controls">
+    <Grid>
+        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+        <controls:PageHeader Title="Banking and Payments" Subtitle="Bank accounts, statements, payment proposals, reconciliation, and cash position.">
+            <controls:PageHeader.Actions><Button Command="{Binding RefreshCommand}" Content="Refresh" Style="{StaticResource PrimaryButtonStyle}"/></controls:PageHeader.Actions>
+        </controls:PageHeader>
+        <controls:OperationPanel Grid.Row="1" ErrorText="{Binding OperationError}" HasError="{Binding HasOperationError}" IsBusy="{Binding IsBusy}" StatusText="{Binding StatusText}"/>
+        <TabControl Grid.Row="2">
+            <TabItem Header="Cash Position">
+                <DataGrid Margin="8" ItemsSource="{Binding CashPositions}" Style="{StaticResource AppDataGridStyle}" AutoGenerateColumns="False">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Bank account" Binding="{Binding BankAccountName}" Width="*"/>
+                        <DataGridTextColumn Header="Currency" Binding="{Binding Currency}" Width="90"/>
+                        <DataGridTextColumn Header="Statement date" Binding="{Binding StatementDate}" Width="120"/>
+                        <DataGridTextColumn Header="Statement balance" Binding="{Binding StatementBalance, StringFormat={}{0:N2}}" Width="140" ElementStyle="{StaticResource AppDataGridNumericTextStyle}"/>
+                        <DataGridTextColumn Header="GL balance" Binding="{Binding GeneralLedgerBalance, StringFormat={}{0:N2}}" Width="140" ElementStyle="{StaticResource AppDataGridNumericTextStyle}"/>
+                        <DataGridTextColumn Header="Difference" Binding="{Binding Difference, StringFormat={}{0:N2}}" Width="120" ElementStyle="{StaticResource AppDataGridNumericTextStyle}"/>
+                        <DataGridTextColumn Header="Unreconciled" Binding="{Binding UnreconciledLineCount}" Width="110"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </TabItem>
+            <TabItem Header="Bank Accounts">
+                <Grid Margin="8">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="2*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="3*"/></Grid.ColumnDefinitions>
+                    <DataGrid ItemsSource="{Binding BankAccounts}" SelectedItem="{Binding SelectedBankAccount}" Style="{StaticResource AppDataGridStyle}" AutoGenerateColumns="False">
+                        <DataGrid.Columns><DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*"/><DataGridTextColumn Header="Bank" Binding="{Binding BankName}" Width="*"/><DataGridTextColumn Header="Currency" Binding="{Binding Currency}" Width="90"/><DataGridCheckBoxColumn Header="Active" Binding="{Binding IsActive}" Width="70"/></DataGrid.Columns>
+                    </DataGrid>
+                    <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto">
+                        <StackPanel>
+                            <controls:Card>
+                                <controls:Card.Header><TextBlock Text="Bank account configuration" Style="{StaticResource SectionTitleStyle}"/></controls:Card.Header>
+                                <StackPanel>
+                                    <TextBlock Text="Name"/><TextBox Text="{Binding AccountName}" Style="{StaticResource AppTextBoxStyle}"/>
+                                    <TextBlock Margin="0,8,0,0" Text="Bank name"/><TextBox Text="{Binding BankName}" Style="{StaticResource AppTextBoxStyle}"/>
+                                    <Grid Margin="0,8,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="8"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="IBAN"/><TextBox Text="{Binding Iban}" Style="{StaticResource AppTextBoxStyle}"/></StackPanel><StackPanel Grid.Column="2"><TextBlock Text="BIC"/><TextBox Text="{Binding Bic}" Style="{StaticResource AppTextBoxStyle}"/></StackPanel></Grid>
+                                    <TextBlock Margin="0,8,0,0" Text="Local account number"/><TextBox Text="{Binding LocalAccountNumber}" Style="{StaticResource AppTextBoxStyle}"/>
+                                    <TextBlock Margin="0,8,0,0" Text="Legal entity ID"/><TextBox Text="{Binding LegalEntityId}" Style="{StaticResource AppTextBoxStyle}"/>
+                                    <TextBlock Margin="0,8,0,0" Text="Accounting book ID"/><TextBox Text="{Binding AccountingBookId}" Style="{StaticResource AppTextBoxStyle}"/>
+                                    <TextBlock Margin="0,8,0,0" Text="Bank GL account ID"/><TextBox Text="{Binding GeneralLedgerAccountId}" Style="{StaticResource AppTextBoxStyle}"/>
+                                    <TextBlock Margin="0,8,0,0" Text="Currency"/><TextBox Text="{Binding Currency}" Style="{StaticResource AppTextBoxStyle}"/>
+                                    <CheckBox Margin="0,8,0,0" Content="Active" IsChecked="{Binding AccountActive}"/>
+                                    <WrapPanel Margin="0,12,0,0" HorizontalAlignment="Right"><Button Command="{Binding NewBankAccountCommand}" Content="New" Style="{StaticResource SecondaryButtonStyle}"/><Button Margin="8,0,0,0" Command="{Binding SaveBankAccountCommand}" Content="Save" Style="{StaticResource PrimaryButtonStyle}"/></WrapPanel>
+                                </StackPanel>
+                            </controls:Card>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </TabItem>
+            <TabItem Header="Statements">
+                <Grid Margin="8">
+                    <Grid.RowDefinitions><RowDefinition Height="2*"/><RowDefinition Height="12"/><RowDefinition Height="3*"/></Grid.RowDefinitions>
+                    <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="2*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="3*"/></Grid.ColumnDefinitions>
+                        <DataGrid ItemsSource="{Binding Statements}" SelectedItem="{Binding SelectedStatement}" Style="{StaticResource AppDataGridStyle}" AutoGenerateColumns="False">
+                            <DataGrid.Columns><DataGridTextColumn Header="Reference" Binding="{Binding StatementReference}" Width="*"/><DataGridTextColumn Header="From" Binding="{Binding FromDate}" Width="105"/><DataGridTextColumn Header="To" Binding="{Binding ToDate}" Width="105"/><DataGridTextColumn Header="Closing" Binding="{Binding ClosingBalance, StringFormat={}{0:N2}}" Width="110"/></DataGrid.Columns>
+                        </DataGrid>
+                        <StackPanel Grid.Column="2"><TextBlock Text="Import format"/><ComboBox ItemsSource="{Binding StatementFormats}" SelectedItem="{Binding StatementFormat}" Style="{StaticResource AppComboBoxStyle}"/><TextBlock Margin="0,8,0,0" Text="Statement reference (CSV optional)"/><TextBox Text="{Binding StatementReference}" Style="{StaticResource AppTextBoxStyle}"/><TextBlock Margin="0,8,0,0" Text="Source filename"/><TextBox Text="{Binding StatementFileName}" Style="{StaticResource AppTextBoxStyle}"/><TextBlock Margin="0,8,0,0" Text="CSV or ISO 20022 camt.053 content"/><TextBox Text="{Binding StatementContent}" Height="110" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" Style="{StaticResource AppTextBoxStyle}"/><WrapPanel Margin="0,8,0,0" HorizontalAlignment="Right"><Button Command="{Binding LoadStatementCommand}" Content="Load lines" Style="{StaticResource SecondaryButtonStyle}"/><Button Margin="8,0,0,0" Command="{Binding ImportStatementCommand}" Content="Import" Style="{StaticResource PrimaryButtonStyle}"/></WrapPanel></StackPanel>
+                    </Grid>
+                    <Grid Grid.Row="2"><Grid.ColumnDefinitions><ColumnDefinition Width="2*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                        <DataGrid ItemsSource="{Binding StatementLines}" SelectedItem="{Binding SelectedStatementLine}" Style="{StaticResource AppDataGridStyle}" AutoGenerateColumns="False">
+                            <DataGrid.Columns><DataGridTextColumn Header="Date" Binding="{Binding BookingDate}" Width="105"/><DataGridTextColumn Header="Amount" Binding="{Binding Amount, StringFormat={}{0:N2}}" Width="110" ElementStyle="{StaticResource AppDataGridNumericTextStyle}"/><DataGridTextColumn Header="Reference" Binding="{Binding Reference}" Width="*"/><DataGridTextColumn Header="Counterparty" Binding="{Binding CounterpartyName}" Width="*"/><DataGridCheckBoxColumn Header="Matched" Binding="{Binding IsReconciled}" Width="75"/></DataGrid.Columns>
+                        </DataGrid>
+                        <controls:Card Grid.Column="2"><controls:Card.Header><TextBlock Text="Reconciliation" Style="{StaticResource SectionTitleStyle}"/></controls:Card.Header><StackPanel><TextBlock Text="Target"/><ComboBox ItemsSource="{Binding ReconciliationTargets}" SelectedItem="{Binding TargetKind}" Style="{StaticResource AppComboBoxStyle}"/><TextBlock Margin="0,8,0,0" Text="Target ID"/><TextBox Text="{Binding TargetId}" Style="{StaticResource AppTextBoxStyle}"/><Button Margin="0,10,0,0" Command="{Binding ReconcileCommand}" Content="Reconcile" Style="{StaticResource PrimaryButtonStyle}"/><TextBlock Margin="0,14,0,0" Text="Reversal reason"/><TextBox Text="{Binding ReversalReason}" Style="{StaticResource AppTextBoxStyle}"/><Button Margin="0,8,0,0" Command="{Binding ReverseReconciliationCommand}" Content="Reverse reconciliation" Style="{StaticResource SecondaryButtonStyle}"/></StackPanel></controls:Card>
+                    </Grid>
+                </Grid>
+            </TabItem>
+            <TabItem Header="Payment Runs">
+                <Grid Margin="8"><Grid.ColumnDefinitions><ColumnDefinition Width="2*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="3*"/></Grid.ColumnDefinitions>
+                    <Grid><Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="*"/></Grid.RowDefinitions><DataGrid ItemsSource="{Binding PaymentRuns}" SelectedItem="{Binding SelectedPaymentRun}" Style="{StaticResource AppDataGridStyle}" AutoGenerateColumns="False"><DataGrid.Columns><DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="70"/><DataGridTextColumn Header="Date" Binding="{Binding PaymentDate}" Width="105"/><DataGridTextColumn Header="Description" Binding="{Binding Description}" Width="*"/><DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="130"/></DataGrid.Columns></DataGrid><DataGrid Grid.Row="1" ItemsSource="{Binding PaymentRunLines}" SelectedItem="{Binding SelectedPaymentRunLine}" Style="{StaticResource AppDataGridStyle}" AutoGenerateColumns="False"><DataGrid.Columns><DataGridTextColumn Header="Open item" Binding="{Binding PayableOpenItemId}" Width="90"/><DataGridTextColumn Header="Supplier" Binding="{Binding SupplierId}" Width="90"/><DataGridTextColumn Header="Amount" Binding="{Binding Amount, StringFormat={}{0:N2}}" Width="110"/><DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="100"/><DataGridTextColumn Header="AP payment" Binding="{Binding PayablePaymentId}" Width="100"/></DataGrid.Columns></DataGrid></Grid>
+                    <StackPanel Grid.Column="2"><controls:Card Margin="0,0,0,12"><controls:Card.Header><TextBlock Text="New supplier payment proposal" Style="{StaticResource SectionTitleStyle}"/></controls:Card.Header><StackPanel><TextBlock Text="Payable open-item ID"/><TextBox Text="{Binding PayableOpenItemId}" Style="{StaticResource AppTextBoxStyle}"/><TextBlock Margin="0,8,0,0" Text="Amount"/><TextBox Text="{Binding PaymentAmount}" Style="{StaticResource AppTextBoxStyle}"/><TextBlock Margin="0,8,0,0" Text="Payment date"/><DatePicker SelectedDate="{Binding PaymentDate}"/><TextBlock Margin="0,8,0,0" Text="Reference"/><TextBox Text="{Binding PaymentReference}" Style="{StaticResource AppTextBoxStyle}"/><TextBlock Margin="0,8,0,0" Text="Description"/><TextBox Text="{Binding PaymentDescription}" Style="{StaticResource AppTextBoxStyle}"/><Button Margin="0,10,0,0" Command="{Binding CreatePaymentRunCommand}" Content="Create proposal" Style="{StaticResource PrimaryButtonStyle}"/></StackPanel></controls:Card><controls:Card><controls:Card.Header><TextBlock Text="Approval and execution" Style="{StaticResource SectionTitleStyle}"/></controls:Card.Header><StackPanel><TextBlock Text="Approval comment"/><TextBox Text="{Binding ApprovalComment}" Style="{StaticResource AppTextBoxStyle}"/><Button Margin="0,8,0,0" Command="{Binding ApprovePaymentRunCommand}" Content="Approve selected run" Style="{StaticResource SecondaryButtonStyle}"/><TextBlock Margin="0,12,0,0" Text="Execution reference"/><TextBox Text="{Binding ExecutionReference}" Style="{StaticResource AppTextBoxStyle}"/><Button Margin="0,8,0,0" Command="{Binding ExecutePaymentRunLineCommand}" Content="Execute selected line" Style="{StaticResource PrimaryButtonStyle}"/></StackPanel></controls:Card></StackPanel>
+                </Grid>
+            </TabItem>
+        </TabControl>
+    </Grid>
+</UserControl>

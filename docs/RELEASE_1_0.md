@@ -1,149 +1,80 @@
 # Depot Version 1.0 Release Checklist
 
+Updated: 2026-08-28
+
 ## Status
 
 - [ ] Ready for release
 
-Depot is currently on the `0.14.x-preview` line with core database schema **29** and Sales feature schema **8** for invoice finalization. Checked items mean the technical implementation/evidence exists; they do not replace environment-specific, legal, accessibility, provider, signing, tax-profile, routing, or operational acceptance.
+Depot is on the `0.15.x-preview` line with core database schema **29**, Sales feature schema **8**, Finance feature schema **9**, and Help manifest **1.17**. Checked items represent implemented technical controls/evidence only; they do not replace provider, legal, accounting, accessibility, signing, localization or deployment acceptance.
 
-## Implemented technical baseline
+## Implemented Finance baseline
 
-### Authentication and authorization
+- [x] legal entities, currencies/FX, fiscal calendars/periods, charts/accounts, books, journals, dimensions, tax registrations and number sequences
+- [x] immutable balanced journals, reporting-currency/FX snapshots, posting profiles, validation, idempotency, number allocation, Audit evidence and linked reversals
+- [x] Sales → Accounts Receivable → GL, open items, payments/allocations, write-offs/reversals, aging/statements and dunning
+- [x] supplier documents/open items, Accounts Payable → GL, three-way match, explicit exceptions, payments/reversals, aging/statements and segregation of duties
+- [x] FIFO valuation, GRNI/COGS, inventory adjustments, purchase-price variance, landed cost, historical valuation and Inventory ↔ GL reconciliation
+- [x] bank accounts, immutable CSV/camt.053 statements, payment proposals/execution, AR/AP/GL reconciliation and cash position
+- [x] Trial Balance, GL, Balance Sheet, P&L, Cash Flow, AR/AP Aging, Tax Summary, historical Inventory Valuation and COGS
+- [x] optional GL dimension filtering and explicit account mappings
+- [x] deterministic CSV export and immutable SHA-256-bound report snapshots
+- [x] provider-neutral localization packs, Legal Entity assignments and effective registry
+- [x] immutable built-in `GENERIC → EU → DE` reference hierarchy
+- [x] explicit effective-dated localization activation with country validation and overlap prevention
+- [x] software-capability/configuration/external-procedure/reference-only separation
+- [x] optimistic concurrency, Audit evidence and Finance RBAC
+- [x] Finance workspaces and contextual Help for Receivables, Payables, Inventory Accounting, Banking, Financial Reporting and Localization
 
-- [x] first-run administrator creation; no shared production default credentials
-- [x] password policy and login throttling
-- [x] versioned PBKDF2-HMAC-SHA256 password hashing
-- [x] database-backed multi-role RBAC
-- [x] service-layer authorization
-- [x] creator/approver separation and audited administrator overrides
+## Other implemented technical baseline
 
-### Data protection and audit
-
-- [x] DPAPI-protected persisted database secrets
-- [x] encrypted transport enforced by supported remote-provider settings
-- [x] Audit Log viewer, filters, paging, sanitized details, CSV export
-- [x] structured business-record evidence export
-- [x] Privacy Data discovery and machine-readable JSON export
-- [x] secret exclusion/redaction requirements
-
-### Business-record integrity
-
-- [x] immutable/final-state workflow rules for reviewed retained business records
-- [x] correction/reversal/return/credit workflows instead of destructive edits
-- [x] actor/UTC timestamp/state-transition evidence
-- [x] atomic business + audit persistence for reviewed retained workflows
-- [x] GoBD-oriented technical procedural-documentation baseline
-- [x] immutable historical seller snapshots for posted sales invoices and credit notes
-- [x] immutable buyer identity and exact issued XML retention for finalized sales invoices
-
-### Backup and recovery
-
-- [x] backup creation and archive validation
-- [x] restore with safety-backup behavior
-- [x] automatic backup scheduling and retention
-- [x] SQLite integrity check and compaction
-- [x] clean/corrupt/interrupted/unavailable-target regression coverage where automatable
-
-### Supply chain and release integrity
-
-- [x] NuGet locked restore
-- [x] direct/transitive vulnerability audit
-- [x] CycloneDX SBOM and dependency/license evidence
-- [x] CRA technical-evidence package
-- [x] source/tag binding and SHA-256 release manifest
-- [x] Authenticode/timestamp workflow support without private key in repository
-
-### Electronic invoicing
-
-- [x] EN 16931-oriented semantic invoice model
-- [x] XRechnung 3.0-oriented CII generation
-- [x] deterministic invoice/credit-note serialization in the semantic/generator layer
-- [x] application-level business-term validation
-- [x] pinned KoSIT representative conformance validation
-- [x] structured buyer master data for Buyer Reference, electronic endpoint/scheme, tax identity, and billing address
-- [x] atomic sales-invoice posting with seller snapshot, buyer snapshot, and XRechnung generation
-- [x] exact issued sales-invoice XML retained immutably with SHA-256 tamper detection
-- [x] posted Invoice workspace exports the verified persisted XRechnung XML instead of regenerating it
-- [x] fail-closed handling for incomplete identity and unsupported ambiguous tax scenarios
-
-### Software quality and accessibility
-
-- [x] release builds with warnings-as-errors in quality gates
-- [x] bounded regression suites
-- [x] Windows Server 2022/2025 CI quality matrix
-- [x] 100,000-record SQLite performance baseline
-- [x] static keyboard-focus regression check
-- [x] core 4.5:1 contrast checks
-- [x] shell automation names and textual status semantics
-- [x] accessibility/manual release matrix documented
+- [x] first-run administrator creation, hardened authentication and multi-role RBAC
+- [x] service-layer authorization and creator/approver controls where implemented
+- [x] immutable/correction-oriented retained business records and Audit evidence
+- [x] backup/recovery controls and privacy export
+- [x] dependency locks, NuGet audit, SBOM/evidence and release-integrity workflows
+- [x] Sales Invoice seller/buyer/XRechnung finalization and persisted XML integrity evidence
+- [x] bounded regression/quality/accessibility CI controls
 
 ## Required production acceptance before 1.0
 
-### Database providers
+### Providers and Finance
+- [ ] supported Windows/database versions finalized
+- [ ] live SQL Server Finance schema 9 migration, concurrency, locking, recovery and performance matrix
+- [ ] live MySQL/MariaDB Finance schema 9 migration, concurrency, locking, recovery and performance matrix
+- [ ] provider-specific AR/AP/FIFO/Banking/reporting/localization deadlock/retry acceptance
+- [ ] deployment Legal Entity/chart/book/calendar/posting-profile/inventory/bank/reporting/localization-policy approval
+- [ ] AR/AP/inventory/bank reconciliation and period-end reporting procedures
+- [ ] AP/payment-proposal segregation-of-duties review
+- [ ] accounting/report/localization evidence retention/export/backup/restore procedures
+- [ ] qualified review of each enabled country pack and every `ConfigurationRequired` / `ExternalProcedureRequired` item
+- [ ] jurisdiction-specific accounting/tax/localization acceptance
 
-- [ ] supported Windows desktop editions defined and tested
-- [ ] SQL Server supported-version clean-install and migration matrix
-- [ ] MySQL/MariaDB supported-version clean-install and migration matrix
-- [ ] live backup/restore/recovery drills for every advertised provider
-- [ ] live multi-client concurrency tests
-- [ ] representative network latency/load tests
-- [ ] Windows ACL-denied recovery scenario
+### UI/accessibility
+- [ ] keyboard-only critical-workflow walkthrough including all Finance workspaces
+- [ ] focus/no-keyboard-trap review
+- [ ] Narrator/Accessibility Insights baseline
+- [ ] 100/125/150/200% DPI acceptance
 
-### User interface/accessibility
-
-- [ ] keyboard-only critical-workflow walkthrough
-- [ ] focus-order/no-keyboard-trap verification
-- [ ] Accessibility Insights or equivalent scan across production screens
-- [ ] Windows Narrator baseline
-- [ ] 100%, 125%, 150%, and 200% DPI/scaling acceptance
-- [ ] manual disabled/hover/selected/error/warning/success state review
-- [ ] localization/formatting acceptance for supported cultures
-
-### Security and operations
-
-- [ ] production backup storage/ACL/encryption configuration accepted
-- [ ] production vulnerability-reporting channel operational
-- [ ] named incident/security owners and escalation path
-- [ ] security update/support period published for the release
-- [ ] final dependency/license review for release commit
-- [ ] no unresolved Critical vulnerability; High findings resolved or explicitly accepted under policy
-
-### Release engineering
-
-- [ ] all CI/security/quality/e-invoice workflows pass on release commit
-- [ ] production Authenticode signing identity configured
-- [ ] Authenticode signature verified on produced artifacts
-- [ ] production timestamp verified
-- [ ] installer/package tested
-- [ ] upgrade/rollback/uninstall tested
-- [ ] final application version/tag finalized
-- [ ] release notes, known limitations, hashes, SBOM, and support information published
+### Security/release engineering
+- [ ] production backup/security ownership and vulnerability-reporting process accepted
+- [ ] production Authenticode identity and timestamp verified
+- [ ] installer/package upgrade/rollback/uninstall accepted
+- [ ] final release notes, known limitations, hashes, SBOM and support information published
 
 ### Electronic invoicing
+- [ ] remaining EN 16931 special-tax semantics accepted
+- [ ] electronic credit-note finalization where advertised
+- [ ] recipient/channel routing acceptance
+- [ ] every advertised production scenario validated against applicable KoSIT/XRechnung release
+- [ ] PDF/A-3 before any ZUGFeRD/Factur-X claim
 
-- [x] sales-invoice model integrated into the persisted operational posting workflow
-- [x] issued sales-invoice XML retained immutably with invoice linkage and integrity verification
-- [x] seller identity and payment data sourced from the controlled Company master and frozen at posting
-- [x] buyer/customer identity and structured billing/tax data frozen at posting
-- [ ] explicit EN 16931 VAT-category and exemption/reason semantics persisted for zero-rated, exempt, and reverse-charge lines
-- [ ] electronic credit-note buyer/XML finalization implemented before advertising that channel
-- [ ] organization/recipient-specific electronic routing configuration validated
-- [ ] every advertised tax/profile/channel scenario validated against the applicable production KoSIT/XRechnung version
-- [ ] controlled remediation procedure approved for legacy posted invoices without historical finalization records
-- [ ] PDF/A-3 implemented and validated before any ZUGFeRD/Factur-X support claim
+### Legal/organizational
+- [ ] GDPR/DSGVO deployment assessment and retention procedures
+- [ ] organization-specific GoBD/accounting/reporting/localization procedures
+- [ ] final CRA applicability/classification/conformity work
+- [ ] qualified accounting/tax/legal review for each marketed Finance localization
 
-### Compliance/legal/organizational
+## Demand-driven extensions
 
-- [ ] final GDPR/DSGVO controller/deployment assessment
-- [ ] concrete retention periods and data-subject procedures approved
-- [ ] GoBD tax-relevance and organization-specific procedural documentation approved
-- [ ] final CRA scope/economic-operator/classification/conformity assessment completed
-- [ ] Declaration/CE/user/manufacturer information completed where applicable
-- [ ] regulatory incident-reporting/tabletop readiness completed where applicable
-
-## Out of 1.0 scope unless separately approved
-
-- barcode scanning/generation
-- label template design/printing
-- payment collection/accounts receivable/general ledger
-- enterprise MFA/Entra ID/OIDC/SAML unless Phase 8 scope is pulled forward
+Additional country/statutory packs are supported by the localization framework when metadata/configuration is sufficient. They must not be marketed as compliant/certified without separate qualified acceptance. Direct bank connectivity/payment initiation, jurisdiction-specific statutory filing implementations, additional costing methods and other executable behavior require separately scoped implementation.

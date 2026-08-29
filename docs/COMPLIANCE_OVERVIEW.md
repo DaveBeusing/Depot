@@ -1,11 +1,29 @@
 # Compliance overview
 
-Updated: 2026-08-23
+Updated: 2026-08-28
 
-Depot's compliance/security roadmap separates implemented technical controls from legal or deployment-specific claims. Phases 1-7 have technically implementable controls in place; remaining acceptance gates are tracked in `docs/SECURITY_ROADMAP.md`, `docs/RELEASE_1_0.md`, and the phase/status files under `docs/compliance`.
+Depot separates implemented technical controls from legal, accounting, tax, audit or certification claims. Security/compliance roadmap phases retain their technically implementable controls; remaining acceptance gates are tracked in the security, release, Finance and compliance documentation.
 
-Technical baselines currently cover software supply-chain security, authentication/RBAC hardening, privacy discovery/export, business-record integrity, CRA evidence/update/vulnerability processes, controlled Company/document identity, immutable issuer snapshots, atomic Sales Invoice Buyer/XRechnung finalization with exact issued XML retention and SHA-256 integrity verification, representative KoSIT XRechnung conformance validation, and software-quality/accessibility gates.
+## Finance technical baseline
 
-The electronic-invoice technical boundary is documented explicitly: special tax scenarios that require explicit EN 16931 category/exemption semantics, Buyer/XML finalization for electronic credit notes, recipient/channel configuration, and validation of every advertised production scenario remain acceptance or implementation work as applicable.
+Depot Finance provides explicit legal entities, currencies/exchange rates, periods, accounting books/charts/accounts, immutable balanced double-entry posting, customer and supplier subledgers, FIFO inventory valuation, Banking and Payments, configurable Financial Reporting and an effective-dated Localization framework.
 
-This documentation is engineering evidence and does not itself certify Depot against ISO, CRA, GDPR/DSGVO, GoBD, EN 16931, XRechnung, WCAG, or any other legal/standards framework. A stored SHA-256 fingerprint is an application integrity control, not a digital signature or independent authenticity proof.
+These capabilities improve traceability, repeatability, reconciliation, correction history, authorization and retry safety. They do not by themselves establish HGB, GoBD, IFRS, US-GAAP, VAT/GST/sales-tax, statutory retention, payment-services, audit or tax-filing conformity.
+
+GL-derived financial reports use persisted reporting-currency values and preserve posting-time FX evidence. AR/AP Aging remains in open-item transaction currency. Cash Flow and Tax Summary require explicit account mappings. Historical Inventory Valuation uses retained valuation evidence. `FinanceReportSnapshot` is immutable `AuditEvidence` containing report parameters, canonical CSV, hashes, creator and creation time.
+
+Localization requires explicit effective-dated assignment. The built-in `GENERIC → EU → DE` hierarchy and support-level registry distinguish software capability, deployment configuration, external procedures and reference-only information; assignment is not a compliance certification.
+
+## Current versions
+
+- Application: **0.15.42-preview**
+- Core database schema: **29**
+- Sales feature schema: **8**
+- Finance feature schema: **9**
+- Help manifest: **1.17**
+
+## Remaining acceptance
+
+Production use still requires live provider migration/concurrency/recovery/performance testing, deployment-specific accounting/reporting policy approval, reconciliation and period-end procedures, segregation-of-duties review, retention/export procedures, accessibility/signing/deployment acceptance and qualified organizational/legal/accounting validation.
+
+This document is engineering evidence and not a certification statement.

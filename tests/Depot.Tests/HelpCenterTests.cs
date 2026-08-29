@@ -23,7 +23,7 @@ public sealed class HelpCenterTests
 		await service.ValidateAsync();
 		var catalog = await service.GetCatalogAsync();
 
-		Assert.Equal("1.8", catalog.Version);
+		Assert.Equal("1.17", catalog.Version);
 		Assert.NotEmpty(catalog.Topics);
 		Assert.Equal(catalog.Topics.Count, catalog.Topics.Select(topic => topic.Id).Distinct(StringComparer.Ordinal).Count());
 	}
@@ -39,6 +39,7 @@ public sealed class HelpCenterTests
 		Assert.Contains(catalog.Topics, topic => topic.Id == "inventory.traceability");
 		Assert.Contains(catalog.Topics, topic => topic.Id == "approvals.queue");
 		Assert.DoesNotContain(catalog.Topics, topic => topic.Id == "sales.approvals");
+		Assert.DoesNotContain(catalog.Topics, topic => topic.Id == "finance.general-ledger");
 		Assert.Null(await service.GetTopicAsync("administration.database"));
 	}
 
@@ -52,11 +53,13 @@ public sealed class HelpCenterTests
 		var stocktake = await service.SearchAsync("stocktake");
 		var cancellation = await service.SearchAsync("cancellation");
 		var serial = await traceabilityService.SearchAsync("serial number");
+		var ledger = await service.SearchAsync("double entry");
 
 		Assert.Contains(relocation, topic => topic.Definition.Id == "warehouse.transfers");
 		Assert.Contains(stocktake, topic => topic.Definition.Id == "warehouse.inventory-counts");
 		Assert.Contains(cancellation, topic => topic.Definition.Id == "inventory.movements");
 		Assert.Contains(serial, topic => topic.Definition.Id == "inventory.traceability");
+		Assert.Contains(ledger, topic => topic.Definition.Id == "finance.general-ledger");
 	}
 
 	[Fact]

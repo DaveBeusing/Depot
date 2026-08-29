@@ -3,11 +3,7 @@
 
 namespace Depot.Models;
 
-public sealed record SystemRoleDefinition(
-	string Code,
-	string Name,
-	string Description,
-	IReadOnlySet<ApplicationPermission> Permissions);
+public sealed record SystemRoleDefinition(string Code, string Name, string Description, IReadOnlySet<ApplicationPermission> Permissions);
 
 public static class SystemRoleCatalog
 {
@@ -20,67 +16,29 @@ public static class SystemRoleCatalog
 	public const string FinanceCode = "FINANCE";
 	public const string UserCode = "USER";
 
-	private static readonly IReadOnlySet<ApplicationPermission> CommonViewPermissions = Set(
-		ApplicationPermission.DashboardView,
-		ApplicationPermission.InventoryView,
-		ApplicationPermission.ItemsView,
-		ApplicationPermission.StockMovementsView,
-		ApplicationPermission.ReportsView,
-		ApplicationPermission.StockTransfersView,
-		ApplicationPermission.InventoryCountsView);
+	private static readonly IReadOnlySet<ApplicationPermission> CommonViewPermissions = Set(ApplicationPermission.DashboardView, ApplicationPermission.InventoryView, ApplicationPermission.ItemsView, ApplicationPermission.StockMovementsView, ApplicationPermission.ReportsView, ApplicationPermission.StockTransfersView, ApplicationPermission.InventoryCountsView);
 
 	public static IReadOnlyList<SystemRoleDefinition> Definitions { get; } =
 	[
 		new(AdministratorCode, "Administrator", "Protected system role with every Depot permission.", PermissionCatalog.All),
-		new(PurchasingCode, "Purchasing", "Creates and manages suppliers and purchase orders.", Union(CommonViewPermissions,
-			ApplicationPermission.PurchasingView,
-			ApplicationPermission.PurchaseOrdersView, ApplicationPermission.PurchaseOrdersCreate,
-			ApplicationPermission.PurchaseOrdersEdit, ApplicationPermission.PurchaseOrdersSubmit,
-			ApplicationPermission.PurchaseOrdersOrder, ApplicationPermission.PurchaseOrdersClose,
-			ApplicationPermission.SuppliersView, ApplicationPermission.SuppliersManage,
-			ApplicationPermission.GoodsReceiptsView)),
-		new(ApproverCode, "Approver", "Reviews purchase orders while preserving creator/approver separation.", Union(CommonViewPermissions,
-			ApplicationPermission.PurchaseOrdersView, ApplicationPermission.PurchaseOrdersApprove)),
-		new(WarehouseOperatorCode, "Warehouse Operator", "Operates warehouse documents and stock workflows.", Union(CommonViewPermissions,
-			ApplicationPermission.PurchasingView,
-			ApplicationPermission.InventoryManage,
-			ApplicationPermission.StockMovementsCreate, ApplicationPermission.StockMovementsPost, ApplicationPermission.StockMovementsReverse,
-			ApplicationPermission.StockTransfersCreate, ApplicationPermission.StockTransfersEdit, ApplicationPermission.StockTransfersPost, ApplicationPermission.StockTransfersReverse,
-			ApplicationPermission.InventoryCountsCreate, ApplicationPermission.InventoryCountsEdit, ApplicationPermission.InventoryCountsPost, ApplicationPermission.InventoryCountsReverse,
-			ApplicationPermission.GoodsReceiptsView, ApplicationPermission.GoodsReceiptsCreate, ApplicationPermission.GoodsReceiptsPost, ApplicationPermission.GoodsReceiptsReverse,
-			ApplicationPermission.MaterialIssuesView, ApplicationPermission.MaterialIssuesCreate, ApplicationPermission.MaterialIssuesEdit, ApplicationPermission.MaterialIssuesPost, ApplicationPermission.MaterialIssuesReverse,
-			ApplicationPermission.MaterialReturnsView, ApplicationPermission.MaterialReturnsCreate, ApplicationPermission.MaterialReturnsEdit, ApplicationPermission.MaterialReturnsPost, ApplicationPermission.MaterialReturnsReverse,
-			ApplicationPermission.SupplierReturnsView, ApplicationPermission.SupplierReturnsCreate, ApplicationPermission.SupplierReturnsEdit, ApplicationPermission.SupplierReturnsPost, ApplicationPermission.SupplierReturnsReverse,
-			ApplicationPermission.SalesView, ApplicationPermission.SalesOrdersView,
-			ApplicationPermission.ShipmentsView, ApplicationPermission.ShipmentsCreate, ApplicationPermission.ShipmentsEdit, ApplicationPermission.ShipmentsPost, ApplicationPermission.ShipmentsReverse,
-			ApplicationPermission.CustomerReturnsView, ApplicationPermission.CustomerReturnsCreate, ApplicationPermission.CustomerReturnsPost)),
-		new(SalesUserCode, "Sales User", "Creates customer records, quotes and sales orders and submits them for approval.", Union(CommonViewPermissions,
-			ApplicationPermission.SalesView,
-			ApplicationPermission.CustomersView, ApplicationPermission.CustomersCreate, ApplicationPermission.CustomersEdit,
-			ApplicationPermission.SalesQuotesView, ApplicationPermission.SalesQuotesCreate, ApplicationPermission.SalesQuotesEdit, ApplicationPermission.SalesQuotesSend, ApplicationPermission.SalesQuotesConvert,
-			ApplicationPermission.SalesPricingView,
-			ApplicationPermission.SalesOrdersView, ApplicationPermission.SalesOrdersCreate, ApplicationPermission.SalesOrdersEdit,
-			ApplicationPermission.SalesOrdersSubmit)),
-		new(SalesManagerCode, "Sales Manager", "Manages quotes and pricing and approves and releases sales orders.", Union(CommonViewPermissions,
-			ApplicationPermission.SalesView,
-			ApplicationPermission.CustomersView, ApplicationPermission.CustomersCreate, ApplicationPermission.CustomersEdit,
-			ApplicationPermission.SalesQuotesView, ApplicationPermission.SalesQuotesCreate, ApplicationPermission.SalesQuotesEdit, ApplicationPermission.SalesQuotesSend, ApplicationPermission.SalesQuotesConvert,
-			ApplicationPermission.SalesPricingView, ApplicationPermission.SalesPricingManage,
-			ApplicationPermission.SalesOrdersView, ApplicationPermission.SalesOrdersCreate, ApplicationPermission.SalesOrdersEdit,
-			ApplicationPermission.SalesOrdersSubmit, ApplicationPermission.SalesOrdersApprove,
-			ApplicationPermission.SalesOrdersRelease, ApplicationPermission.SalesOrdersCancel,
-			ApplicationPermission.ShipmentsView,
-			ApplicationPermission.CustomerReturnsView,
-			ApplicationPermission.SalesInvoicesView, ApplicationPermission.CreditNotesView)),
-		new(FinanceCode, "Finance", "Creates, reviews, posts, and corrects customer sales invoices.", Union(CommonViewPermissions,
-			ApplicationPermission.SalesView,
-			ApplicationPermission.CustomersView,
-			ApplicationPermission.SalesPricingView,
-			ApplicationPermission.SalesOrdersView,
-			ApplicationPermission.ShipmentsView,
-			ApplicationPermission.CustomerReturnsView,
-			ApplicationPermission.SalesInvoicesView, ApplicationPermission.SalesInvoicesCreate, ApplicationPermission.SalesInvoicesPost,
-			ApplicationPermission.CreditNotesView, ApplicationPermission.CreditNotesCreate, ApplicationPermission.CreditNotesPost)),
+		new(PurchasingCode, "Purchasing", "Creates and manages suppliers and purchase orders.", Union(CommonViewPermissions, ApplicationPermission.PurchasingView, ApplicationPermission.PurchaseOrdersView, ApplicationPermission.PurchaseOrdersCreate, ApplicationPermission.PurchaseOrdersEdit, ApplicationPermission.PurchaseOrdersSubmit, ApplicationPermission.PurchaseOrdersOrder, ApplicationPermission.PurchaseOrdersClose, ApplicationPermission.SuppliersView, ApplicationPermission.SuppliersManage, ApplicationPermission.GoodsReceiptsView)),
+		new(ApproverCode, "Approver", "Reviews purchase orders, supplier invoices and payment proposals while preserving creator/approver separation.", Union(CommonViewPermissions, ApplicationPermission.PurchaseOrdersView, ApplicationPermission.PurchaseOrdersApprove, ApplicationPermission.FinancePayablesView, ApplicationPermission.FinanceSupplierInvoicesApprove, ApplicationPermission.FinanceBankingView, ApplicationPermission.FinancePaymentProposalsApprove)),
+		new(WarehouseOperatorCode, "Warehouse Operator", "Operates warehouse documents and stock workflows.", Union(CommonViewPermissions, ApplicationPermission.PurchasingView, ApplicationPermission.InventoryManage, ApplicationPermission.StockMovementsCreate, ApplicationPermission.StockMovementsPost, ApplicationPermission.StockMovementsReverse, ApplicationPermission.StockTransfersCreate, ApplicationPermission.StockTransfersEdit, ApplicationPermission.StockTransfersPost, ApplicationPermission.StockTransfersReverse, ApplicationPermission.InventoryCountsCreate, ApplicationPermission.InventoryCountsEdit, ApplicationPermission.InventoryCountsPost, ApplicationPermission.InventoryCountsReverse, ApplicationPermission.GoodsReceiptsView, ApplicationPermission.GoodsReceiptsCreate, ApplicationPermission.GoodsReceiptsPost, ApplicationPermission.GoodsReceiptsReverse, ApplicationPermission.MaterialIssuesView, ApplicationPermission.MaterialIssuesCreate, ApplicationPermission.MaterialIssuesEdit, ApplicationPermission.MaterialIssuesPost, ApplicationPermission.MaterialIssuesReverse, ApplicationPermission.MaterialReturnsView, ApplicationPermission.MaterialReturnsCreate, ApplicationPermission.MaterialReturnsEdit, ApplicationPermission.MaterialReturnsPost, ApplicationPermission.MaterialReturnsReverse, ApplicationPermission.SupplierReturnsView, ApplicationPermission.SupplierReturnsCreate, ApplicationPermission.SupplierReturnsEdit, ApplicationPermission.SupplierReturnsPost, ApplicationPermission.SupplierReturnsReverse, ApplicationPermission.SalesView, ApplicationPermission.SalesOrdersView, ApplicationPermission.ShipmentsView, ApplicationPermission.ShipmentsCreate, ApplicationPermission.ShipmentsEdit, ApplicationPermission.ShipmentsPost, ApplicationPermission.ShipmentsReverse, ApplicationPermission.CustomerReturnsView, ApplicationPermission.CustomerReturnsCreate, ApplicationPermission.CustomerReturnsPost)),
+		new(SalesUserCode, "Sales User", "Creates customer records, quotes and sales orders and submits them for approval.", Union(CommonViewPermissions, ApplicationPermission.SalesView, ApplicationPermission.CustomersView, ApplicationPermission.CustomersCreate, ApplicationPermission.CustomersEdit, ApplicationPermission.SalesQuotesView, ApplicationPermission.SalesQuotesCreate, ApplicationPermission.SalesQuotesEdit, ApplicationPermission.SalesQuotesSend, ApplicationPermission.SalesQuotesConvert, ApplicationPermission.SalesPricingView, ApplicationPermission.SalesOrdersView, ApplicationPermission.SalesOrdersCreate, ApplicationPermission.SalesOrdersEdit, ApplicationPermission.SalesOrdersSubmit)),
+		new(SalesManagerCode, "Sales Manager", "Manages quotes and pricing and approves and releases sales orders.", Union(CommonViewPermissions, ApplicationPermission.SalesView, ApplicationPermission.CustomersView, ApplicationPermission.CustomersCreate, ApplicationPermission.CustomersEdit, ApplicationPermission.SalesQuotesView, ApplicationPermission.SalesQuotesCreate, ApplicationPermission.SalesQuotesEdit, ApplicationPermission.SalesQuotesSend, ApplicationPermission.SalesQuotesConvert, ApplicationPermission.SalesPricingView, ApplicationPermission.SalesPricingManage, ApplicationPermission.SalesOrdersView, ApplicationPermission.SalesOrdersCreate, ApplicationPermission.SalesOrdersEdit, ApplicationPermission.SalesOrdersSubmit, ApplicationPermission.SalesOrdersApprove, ApplicationPermission.SalesOrdersRelease, ApplicationPermission.SalesOrdersCancel, ApplicationPermission.ShipmentsView, ApplicationPermission.CustomerReturnsView, ApplicationPermission.SalesInvoicesView, ApplicationPermission.CreditNotesView)),
+		new(FinanceCode, "Finance", "Manages financial documents, inventory accounting, banking, reporting, localization, subledgers, Finance configuration and controlled General Ledger posting.", Union(CommonViewPermissions,
+			ApplicationPermission.SalesView, ApplicationPermission.CustomersView, ApplicationPermission.SalesPricingView, ApplicationPermission.SalesOrdersView, ApplicationPermission.ShipmentsView, ApplicationPermission.CustomerReturnsView,
+			ApplicationPermission.SalesInvoicesView, ApplicationPermission.SalesInvoicesCreate, ApplicationPermission.SalesInvoicesPost, ApplicationPermission.CreditNotesView, ApplicationPermission.CreditNotesCreate, ApplicationPermission.CreditNotesPost,
+			ApplicationPermission.SuppliersView, ApplicationPermission.PurchaseOrdersView, ApplicationPermission.GoodsReceiptsView,
+			ApplicationPermission.FinanceView, ApplicationPermission.FinanceManage, ApplicationPermission.FinanceExchangeRatesView, ApplicationPermission.FinanceExchangeRatesManage, ApplicationPermission.FinancePeriodsView, ApplicationPermission.FinancePeriodsManage,
+			ApplicationPermission.FinanceAccountingBooksView, ApplicationPermission.FinanceAccountingBooksManage, ApplicationPermission.FinanceTaxConfigurationView, ApplicationPermission.FinanceTaxConfigurationManage, ApplicationPermission.FinanceNumberSequencesView, ApplicationPermission.FinanceNumberSequencesManage,
+			ApplicationPermission.FinanceGeneralLedgerView, ApplicationPermission.FinanceGeneralLedgerPost, ApplicationPermission.FinanceGeneralLedgerReverse, ApplicationPermission.FinancePostingProfilesView, ApplicationPermission.FinancePostingProfilesManage,
+			ApplicationPermission.FinanceReceivablesView, ApplicationPermission.FinanceReceivablesManage, ApplicationPermission.FinanceReceivablePaymentsPost, ApplicationPermission.FinanceReceivablePaymentsReverse, ApplicationPermission.FinanceDunningView, ApplicationPermission.FinanceDunningManage,
+			ApplicationPermission.FinancePayablesView, ApplicationPermission.FinancePayablesManage, ApplicationPermission.FinanceSupplierInvoicesCreate, ApplicationPermission.FinanceSupplierInvoicesSubmit, ApplicationPermission.FinanceSupplierInvoicesPost, ApplicationPermission.FinanceSupplierInvoicesReverse, ApplicationPermission.FinancePayablePaymentsPost, ApplicationPermission.FinancePayablePaymentsReverse,
+			ApplicationPermission.FinanceInventoryAccountingView, ApplicationPermission.FinanceInventoryAccountingManage,
+			ApplicationPermission.FinanceBankingView, ApplicationPermission.FinanceBankingManage, ApplicationPermission.FinanceBankStatementsCreate, ApplicationPermission.FinanceBankReconciliationManage, ApplicationPermission.FinancePaymentProposalsCreate, ApplicationPermission.FinancePaymentRunsPost, ApplicationPermission.FinanceCashPositionView,
+			ApplicationPermission.FinanceFinancialReportingView, ApplicationPermission.FinanceFinancialReportingManage, ApplicationPermission.FinanceFinancialReportingExport, ApplicationPermission.FinanceReportSnapshotsCreate,
+			ApplicationPermission.FinanceLocalizationView, ApplicationPermission.FinanceLocalizationManage)),
 		new(UserCode, "User", "Read-only access to standard operational views.", CommonViewPermissions)
 	];
 

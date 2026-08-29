@@ -1,21 +1,36 @@
-# User-facing hardening changes
+# User-facing changes
 
-Updated: 2026-08-25
+Updated: 2026-08-28
 
-- New databases no longer use shared default administrator credentials. Depot requires creation of the initial administrator during first-run setup.
-- Password policy and login throttling are enforced.
-- Remote SQL Server/MySQL/MariaDB configurations require encrypted transport through supported settings.
-- Administration includes Audit Log evidence export and Privacy Data discovery/export workflows.
-- Administration > Company is the authoritative legal seller/document identity for the current database.
-- Inventory > Items now provides enriched product master data including GTIN, model/revision/product family, lifecycle dates, origin/customs/ECCN, RoHS/REACH, dangerous-goods/battery data, explicit kg/mm logistics measurements, intended tracking mode and an active replacement-item selector.
-- GTIN checksum and uniqueness are validated; item replacement, physical values, dangerous-goods classification and lifecycle dates have consistency checks before saving.
-- Item activation/deactivation audit evidence retains the complete extended master-data snapshot.
-- Tracking mode, item type and lifecycle status are classifications; serial/lot capture enforcement and automatic transaction blocking/substitution are not implied unless a workflow explicitly implements those rules.
-- Automatic backup retention preserves the newest backups and ages older automatic backups according to the configured technical policy.
-- Posted/finalized business records use correction/reversal/credit workflows instead of destructive edits.
-- Posted Sales Invoices freeze seller and Buyer identity and persist the exact generated XRechnung XML with SHA-256 integrity verification in the posting transaction.
-- Customers provide a dedicated E-Invoice Identity area for Buyer Reference, electronic endpoint/scheme, tax identity, and structured billing data required by finalized electronic invoices.
-- Posted invoices expose **Export XRechnung**, which exports the verified issued XML instead of regenerating it from current Company or Customer master data.
-- Invoice posting fails closed when mandatory electronic-invoice identity is incomplete or when a zero-rated, exempt, or reverse-charge scenario cannot yet be represented explicitly by the commercial tax model.
-- Electronic credit-note Buyer/XML finalization and production recipient/channel acceptance remain separate follow-up/release gates.
-- Accessibility and software-quality gates run in CI.
+Depot's current `0.15.x-preview` line includes the integrated Finance platform.
+
+## Finance workspaces
+
+Finance provides permission-aware workspaces for **Receivables**, **Payables**, **Inventory Accounting**, **Banking**, **Financial Reporting**, and **Localization**. Financial posting consequences flow through the immutable General Ledger boundary.
+
+## Finance Localization
+
+Users with `FinanceLocalization.View` can select a Legal Entity and as-of date, resolve the effective localization profile, inspect the inherited pack chain and review capability/configuration/procedure references and warnings.
+
+Users with `FinanceLocalization.Manage` can create/close effective-dated assignments, create custom regional/country packs, add effective-dated registry entries and maintain custom metadata under optimistic concurrency and Audit controls.
+
+The built-in reference chain is `GENERIC → EU → DE`. A Germany Legal Entity does **not** automatically receive the Germany pack. Explicit assignment is required. Depot rejects country-pack assignments whose country does not match the Legal Entity and rejects overlapping active assignments.
+
+Built-in pack definitions and built-in registry rows are immutable. Additional country packs can use the existing data model without another schema change when new executable behavior is not required.
+
+## Compliance boundary
+
+Registry support levels are `SoftwareCapability`, `ConfigurationRequired`, `ExternalProcedureRequired` and `ReferenceOnly`. They are not legal/compliance pass/fail states. Depot does not automatically determine VAT rates, statutory chart mappings, tax return classifications, HGB/IFRS policy, filing eligibility or legal retention/signature obligations. Qualified deployment review remains required.
+
+## Permissions and evidence
+
+The default Finance system role includes `FinanceLocalization.View` and `FinanceLocalization.Manage`. Service-layer authorization remains authoritative regardless of UI visibility. Localization assignments and registry entries are retained `AuditEvidence`; custom changes create structured Audit records.
+
+## Current technical baseline
+
+- Application: **0.15.42-preview**
+- Finance schema: **9**
+- Help manifest: **1.17**
+- Provider-neutral schema/code: SQLite, SQL Server and MySQL/MariaDB
+
+Live remote-provider migration/concurrency/recovery/performance and organization-specific localization acceptance remain required before production-provider or jurisdiction-compliance support claims.

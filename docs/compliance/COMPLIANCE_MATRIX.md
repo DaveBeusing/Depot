@@ -1,67 +1,62 @@
 # Depot Compliance Matrix
 
+Updated: 2026-08-28
+
 ## Purpose
 
-This matrix tracks regulatory, standards, and assurance areas relevant or potentially relevant to Depot. It is a planning tool, not a declaration of compliance or legal opinion.
+This matrix tracks regulatory, standards and assurance areas potentially relevant to Depot. It is a planning/evidence tool, not a declaration of compliance, certification or legal opinion.
 
-| Area | Type | Relevance to Depot | Current direction | Priority |
-| --- | --- | --- | --- | --- |
-| EU Cyber Resilience Act | Regulation | Commercial software/product with digital elements may be in scope depending on distribution/use | Build CRA-ready security lifecycle, risk assessment, SBOM, vulnerability/update process and conformity evidence | Critical |
-| GDPR / DSGVO | Regulation | Depot can process user, customer, supplier/contact and audit personal data | Privacy by design, minimization, access control, retention, export/deletion/anonymization procedures | Critical |
-| GoBD | German administrative requirements | Relevant when Depot records/processes tax-relevant business transactions/data in Germany | Immutable posted records, traceable corrections, auditability, retention/export and procedural documentation | High |
-| EN 16931 / German e-invoicing profiles | Standard/regulatory ecosystem | Relevant to structured invoice exchange | Plan semantic invoice model, XRechnung and ZUGFeRD/Factur-X validation when in scope | High when invoicing is used accordingly |
-| ISO/IEC 27001 | Management-system standard | Customers may expect controls/evidence compatible with an ISMS | Align product controls and development evidence; certification applies to an organizational ISMS rather than Depot alone | High enterprise value |
-| ISO/IEC 27034 | Application-security standard | Directly relevant to secure application development | Use as Secure SDLC guidance | High |
-| ISO/IEC 25010 | Software quality model | Relevant to release quality | Map release gates to quality characteristics | High |
-| OWASP ASVS / SAMM | Industry guidance | Practical secure-development verification | Create control mapping and security tests | High |
-| WCAG 2.2 / EN 301 549 | Accessibility standards | Useful for enterprise/public-sector readiness and accessible operation | Integrate keyboard, focus, contrast, screen-reader and scaling acceptance | Medium/High |
-| NIS2 | Regulation affecting covered organizations | Depot is not automatically 'NIS2 certified'; customer supply-chain requirements may flow down | Provide security controls/evidence expected by regulated customers | Context-dependent |
-| ISO 9001 | Quality management system | Organizational/process value if Depot becomes a managed commercial product | Use disciplined requirements/change/release/customer-feedback processes; certify organization only if justified | Optional |
-| SOC 2 | Assurance framework | Primarily relevant if Depot evolves into a hosted/service offering | Reassess if SaaS/cloud service is introduced | Low currently |
-| BSI C5 | Cloud security criteria | Primarily relevant to cloud services | Reassess if Depot is offered as cloud service | Low currently |
+| Area | Type | Current technical direction | Priority |
+| --- | --- | --- | --- |
+| EU Cyber Resilience Act | Regulation | Secure lifecycle, SBOM, vulnerability/update process, release evidence | Critical |
+| GDPR / DSGVO | Regulation | Privacy by design, minimization, RBAC, audit, retention/export procedures | Critical |
+| GoBD | German administrative requirements | Immutable/correction-oriented records, traceable subledger/GL linkage, auditability, reproducible processing | High when Finance is used |
+| EN 16931 / German e-invoicing | Standard/regulatory ecosystem | Sales XRechnung finalization/integrity with explicit scope boundaries | High when applicable |
+| Accounting standards / statutory bookkeeping | Deployment/jurisdiction-specific | Jurisdiction-neutral Finance core with explicit localization and operator acceptance | High when Finance is used |
+| Receivables / dunning / collections | Deployment/jurisdiction-specific | Controlled AR/dunning evidence; legal wording/fees/escalation remain external | High when AR is used |
+| Payables / invoice approval / matching | Deployment/jurisdiction-specific | Controlled AP lifecycle, fail-closed matching, explicit exception approval, retained settlement/reversal evidence | High when AP is used |
+| ISO/IEC 27001 / 27034 | Management/application security | Product/development controls and evidence mapping | High enterprise value |
+| ISO/IEC 25010 | Software quality | Release/quality gates | High |
+| OWASP ASVS / SAMM | Industry guidance | Secure-development verification | High |
+| WCAG 2.2 / EN 301 549 | Accessibility | Keyboard/focus/contrast/screen-reader/scaling acceptance | Medium/High |
+| NIS2 | Customer/supply-chain context | Security evidence for regulated customers | Context-dependent |
 
 ## Evidence mapping
 
-| Control/evidence | CRA | GDPR | GoBD | ISO 27001/27034 | Enterprise |
+| Control/evidence | CRA | GDPR | GoBD | Security/enterprise | Accounting |
 | --- | :---: | :---: | :---: | :---: | :---: |
-| Threat model | X |  |  | X | X |
-| SBOM | X |  |  | X | X |
-| Vulnerability management | X |  |  | X | X |
-| Security update/support policy | X |  |  | X | X |
 | RBAC / least privilege | X | X | X | X | X |
 | Audit trail | X | X | X | X | X |
 | Immutable/correction transactions |  |  | X | X | X |
-| Data inventory |  | X | X | X | X |
-| Retention model | X | X | X | X | X |
+| Balanced double entry |  |  | X |  | X |
+| Source/operation idempotency |  |  | X | X | X |
+| Period/date/legal-entity validation |  |  | X |  | X |
+| Historical currency/FX snapshots |  |  | X |  | X |
+| Atomic number allocation + audit rollback |  |  | X | X | X |
+| AR/AP source/open-item/journal traceability |  | X | X | X | X |
+| Payment/allocation/reversal evidence |  | X | X | X | X |
+| Fail-closed PO/receipt/invoice matching |  |  | X | X | X |
+| Explicit match-exception approval/reason |  | X | X | X | X |
+| Segregated approval permissions |  |  | X | X | X |
 | Backup/recovery tests | X | X | X | X | X |
-| Release signing | X |  |  | X | X |
-| Secure configuration | X | X |  | X | X |
-| Accessibility evidence |  |  |  |  | X |
-| E-invoice validation |  |  | X |  | X |
+| SBOM/vulnerability management | X |  |  | X |  |
+| Release signing/evidence | X |  |  | X | X |
+| E-invoice validation/integrity |  |  | X |  | X |
+| Immutable report snapshots |  |  | X | X | X |
+| Effective-dated localization evidence |  |  | X | X | X |
 
-## Status vocabulary
+## Finance evidence boundary
 
-Future reviews should classify individual requirements as:
+The immutable General Ledger and subledger model preserves source, journal, settlement, matching and correction evidence. Supplier-document posting creates AP and GL evidence in controlled transactions. Matching uses explicit source facts and requires separately authorized exceptions where generic Finance cannot determine tolerance.
 
-- Not assessed
-- Not applicable
-- Planned
-- Partially implemented
-- Implemented
-- Verified
-- Risk accepted
+Inventory Accounting, Banking, Reporting and Localization add retained valuation, statement/reconciliation, report-snapshot and effective configuration evidence without replacing the General Ledger as accounting truth.
+
+These controls strengthen technical evidence for traceability, authorization, reconciliation and correction history. They do **not** determine tax deductibility, VAT/GST treatment, statutory inbound e-invoice compliance, payment-law requirements, retention periods or conformity with HGB/IFRS/US-GAAP/GoBD.
 
 ## Governance
 
-Before a production release, each Critical/High applicable area should have:
-
-1. an owner,
-2. applicability decision,
-3. mapped implementation controls,
-4. verification evidence,
-5. known gaps/risks,
-6. next review date.
+Before production release, each applicable Critical/High area should have an owner, applicability decision, mapped controls, verification evidence, known gaps/risks and review date. Finance governance should additionally identify Legal Entity, currency, chart/book/calendar/posting-profile owners, exchange-rate source, AR/AP configuration owners, reconciliation procedures, approvers, payment evidence and retention/localization responsibilities.
 
 ## Disclaimer
 
-Regulatory applicability depends on how and where Depot is distributed, sold, operated, and used. This matrix must be reviewed with qualified legal/compliance expertise before it is used as evidence of formal conformity or compliance.
+Regulatory applicability depends on how and where Depot is distributed, configured and used. This matrix must be reviewed with qualified legal/compliance/accounting expertise before use as evidence of formal conformity.

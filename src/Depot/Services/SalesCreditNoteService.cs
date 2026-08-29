@@ -16,8 +16,9 @@ public sealed class SalesCreditNoteService
 	private readonly AuditService _audit;
 	private readonly IAuthorizationService _authorization;
 	private readonly NotificationService _notifications;
+	private readonly FinanceAccountsReceivableService? _accountsReceivable;
 
-	public SalesCreditNoteService(IDatabaseTransactionRunner transactions, SalesCreditNoteRepository creditNotes, SalesInvoiceRepository invoices, AuditRepository auditEntries, AuditService audit, IAuthorizationService authorization, NotificationService notifications)
+	public SalesCreditNoteService(IDatabaseTransactionRunner transactions, SalesCreditNoteRepository creditNotes, SalesInvoiceRepository invoices, AuditRepository auditEntries, AuditService audit, IAuthorizationService authorization, NotificationService notifications, FinanceAccountsReceivableService? accountsReceivable = null)
 	{
 		_transactions = transactions;
 		_creditNotes = creditNotes;
@@ -26,6 +27,7 @@ public sealed class SalesCreditNoteService
 		_audit = audit;
 		_authorization = authorization;
 		_notifications = notifications;
+		_accountsReceivable = accountsReceivable;
 	}
 
 	public bool CanCreate => _authorization.HasPermission(ApplicationPermission.CreditNotesCreate);
@@ -72,6 +74,11 @@ public sealed class SalesCreditNoteService
 			if (!await _creditNotes.PostAsync(transaction, id, version, user.Id, postedAt, cancellationToken)) throw new ConcurrencyConflictException("sales credit note");
 			await DocumentIssuerSnapshotService.CaptureCurrentAsync(transaction, DocumentIssuerSnapshotType.SalesCreditNote, id, postedAt, cancellationToken);
 			var after = await _creditNotes.GetByIdAsync(transaction, id, cancellationToken) ?? throw new InvalidOperationException("Credit note could not be reloaded.");
+			if (_accountsReceivable is not null)
+			{
+				var invoice = await _invoices.GetByIdAsync(transaction, after.SalesInvoiceId, cancellationToken) ?? throw new InvalidOperationException("Source sales invoice was not found for Accounts Receivable posting.");
+				await _accountsReceivable.TryPostSalesCreditNoteAsync(transaction, after, invoice, user.Id, cancellationToken);
+			}
 			await _auditEntries.CreateAsync(transaction, _audit.CreateUpdatedEntry(id, before, after), cancellationToken);
 			return after;
 		}, token);
