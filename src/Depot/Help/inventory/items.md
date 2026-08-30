@@ -12,6 +12,17 @@ The item editor supports immutable part number and description; manufacturer, ca
 
 Tracking mode describes the intended traceability requirement. Serial/lot capture and enforcement in movements remains a separate operational capability.
 
+## Standard units and packaging
+New Depot databases include a standard reference-data baseline. Units of Measure are `EA`, `SET`, `PAIR`, `M`, `M2`, `M3`, `KG`, `G`, `L`, `ML`, `H` and `DAY`. `EA` means **Each** and is Depot's canonical built-in piece unit; `PCS` is intentionally not created as a second equivalent default.
+
+Standard Packaging Types are `UNIT`, `BAG`, `BOX`, `CARTON`, `CASE`, `PACK`, `BUNDLE`, `TRAY`, `REEL`, `ROLL`, `CRATE` and `PALLET`.
+
+Unit of Measure and Packaging are not interchangeable. UoM says how quantity is measured; Packaging says how an item is physically/logistically packaged. For example, cable may use `M` + `REEL`, while screws may use `EA` + `BOX`.
+
+Packaging does not imply a quantity. A `BOX` does not automatically mean 100 each and a `REEL` does not automatically mean 305 metres. Item-specific packaging quantities and unit conversions are separate future functionality.
+
+The Item editor loads these values from persisted reference data. Existing matching/custom values are preserved by initialization, and no hardcoded UI list is used. Packaging is never automatically assigned to new items.
+
 ## Cost build-up
 For an existing item, **Cost build-up** provides the purchasing-cost calculation used by Bulk Pricing.
 
@@ -39,7 +50,7 @@ Cost Components reject negative values, invalid validity ranges and invalid calc
 1. Open **Inventory > Items**, or use **Ctrl+Shift+P** and run **New Item** when you want to create a record directly.
 2. Search by part number, description, GTIN, model, revision, product family, origin, tariff number, ECCN, UN number, manufacturer, category or other indexed master-data text.
 3. Select an item to inspect it, or choose **New item** when permitted.
-4. Complete and save the core master-data fields.
+4. Complete and save the core master-data fields, selecting the appropriate persisted Unit of Measure and Packaging where applicable.
 5. For an existing item that participates in calculated pricing, set Cost currency and manage Cost Components in **Cost build-up**.
 
 ## Result
@@ -56,6 +67,7 @@ Depot detects changes in the active item editor. If you switch workspace or sect
 - A replacement item must exist, be active, and cannot reference the item itself.
 - Calculated Cost requires exactly one active preferred supplier purchase price and an explicit cost currency.
 - A Cost currency different from the target PriceList currency cannot be bulk-priced until controlled FX conversion exists.
+- Do not use Packaging Types as quantity conversions; Packaging only describes the container/grouping.
 
 ## Required permissions
 `Items.View`; core item changes additionally require `Items.Create` or `Items.Edit`. Cost Component maintenance uses existing item edit/manage permissions. Activation/deactivation uses the existing item-management permission.

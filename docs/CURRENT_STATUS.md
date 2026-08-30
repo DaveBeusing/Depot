@@ -1,12 +1,14 @@
 # Current project status
 
-Updated: 2026-08-29
+Updated: 2026-08-30
 
 Depot is on the `0.15.x-preview` development line. The repository contains the integrated Finance platform: foundation/master data, immutable General Ledger, Receivables, Payables, FIFO Inventory Accounting, Banking and Payments, Financial Reporting, and effective-dated Localization.
 
 Sales pricing supports Global, Regional and optional Customer scopes. The central resolver falls back Customer → Region → Global for each item and retains the selected price source on quote and order lines.
 
 Item Cost Build-up now derives a traceable commercial item cost from the active preferred supplier purchase price plus ordered Absolute/Percentage Cost Components. Percentage components explicitly use BaseCost or RunningTotal. Bulk Pricing consumes the same central calculation service, applies Percentage Markup, requires a Preview, supports All Active/Category/Manufacturer/Selected filters and applies through Replace/Only Increase/Only Missing modes to the existing scoped PriceList model.
+
+New installations also receive provider-neutral standard reference data for Units of Measure and Packaging. Depot seeds 12 UoMs (`EA`, `SET`, `PAIR`, `M`, `M2`, `M3`, `KG`, `G`, `L`, `ML`, `H`, `DAY`) and 12 Packaging Types (`UNIT`, `BAG`, `BOX`, `CARTON`, `CASE`, `PACK`, `BUNDLE`, `TRAY`, `REEL`, `ROLL`, `CRATE`, `PALLET`). `EA` is the canonical built-in piece unit; `PCS` is not seeded. The initializer is idempotent and preserves existing matching or custom values without changing descriptions, activation state or versions.
 
 ## Finance capabilities
 
@@ -29,6 +31,16 @@ Item Cost Build-up now derives a traceable commercial item cost from the active 
 - Bulk Apply is atomic, revalidates PriceList/entry/cost evidence and records batch Audit evidence.
 - Historical submitted/finalized Sales documents remain snapshot-based and are not rewritten by later Bulk Pricing.
 
+## Reference-data safeguards
+
+- Standard UoM and Packaging values reuse the existing `UnitsOfMeasure` and `Packagings` tables; no parallel schema or hardcoded UI list exists.
+- `EA` is the canonical piece unit. `PCS`, `PC` and `Piece` are not built-in equivalents.
+- UoM expresses how item quantity is measured; Packaging describes physical/logistical packaging.
+- Packaging Types contain no quantity, multiplier or conversion factor.
+- Case-insensitive natural-key checks make initialization idempotent across SQLite, SQL Server and MySQL/MariaDB.
+- Existing matching values and custom values are preserved exactly, including inactive records.
+- Technical seed creation is not emitted as repeated user Audit activity; later user maintenance still uses existing RBAC/Audit services.
+
 ## Versions
 
 - Application: **0.15.x-preview** (`Directory.Build.props` is authoritative for the exact patch)
@@ -41,8 +53,8 @@ Every commit increments `DepotVersionPatch`.
 
 ## Validation boundary
 
-Release Build, win-x64 publish, repository regression tests, Release Integrity, Security Supply Chain and Software Quality gates are required on the final integration head. Provider-neutral DDL exists for SQLite, SQL Server and MySQL/MariaDB. Optional live-provider tests exercise scoped pricing and Item Cost schema migration when server connection strings are configured.
+Release Build, win-x64 publish, repository regression tests, Release Integrity, Security Supply Chain and Software Quality gates are required on the final integration head. Provider-neutral DDL exists for SQLite, SQL Server and MySQL/MariaDB. Optional live-provider tests exercise scoped pricing, Item Cost schema migration and standard UoM/Packaging initialization when server connection strings are configured.
 
 ## Next steps
 
-Further pricing extensions are demand-driven: controlled FX conversion for cross-currency cost-to-price generation, additional explicit Base Cost source strategies, Target Gross Margin as a separate pricing rule, and commercial rounding strategies such as 0.05/0.10/0.50 or .99 endings. None of these are simulated by the current Markup implementation.
+Further pricing extensions are demand-driven: controlled FX conversion for cross-currency cost-to-price generation, additional explicit Base Cost source strategies, Target Gross Margin as a separate pricing rule, and commercial rounding strategies such as 0.05/0.10/0.50 or .99 endings. Item-specific packaging quantities and unit conversions remain a separate future capability; they are not encoded in global Packaging Types.

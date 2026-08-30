@@ -46,6 +46,7 @@ public static class DatabaseProviderFactory
 			_inner.Initialize();
 			ItemMasterDataSchema.Ensure(_connectionFactory);
 			ItemTraceabilitySchema.Ensure(_connectionFactory);
+			ItemReferenceDataDefaults.Ensure(_connectionFactory);
 		}
 	}
 }
