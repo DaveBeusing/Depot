@@ -78,7 +78,7 @@ Automated SQLite migration coverage is required. SQL Server and MySQL/MariaDB mi
 
 ## Creating a release
 
-1. Complete `docs/RELEASE_1_0.md` for the target release.
+1. Complete `docs/Release1.0.md` for the target release.
 2. Ensure the working tree contains the intended release changes only.
 3. Run the full build and automated test suite.
 4. Set the required version components in `Directory.Build.props`.

@@ -36,7 +36,7 @@ UI availability is not considered an integrity control by itself; service and pe
 
 The selected relational database provider stores business data, workflow state and audit entries. Referential relationships connect documents and dependent lines. Version columns support concurrency control. Audit entries contain UTC timestamp, actor, entity type, entity id, action and serialized before/after state where applicable.
 
-Database provider configuration and secrets are governed by `SECURE_CONFIGURATION.md`. Database access must follow least-privilege requirements.
+Database provider configuration and secrets are governed by `SecureConfiguration.md`. Database access must follow least-privilege requirements.
 
 ## Corrections
 
@@ -93,7 +93,7 @@ The source repository and version-control history are the authoritative technica
 
 ## Numbering and identity
 
-Permanent business document numbers use stable prefixes and database identities as documented in `BUSINESS_RECORD_INTEGRITY.md`. Gaps are acceptable. Numbers must not be recycled or silently reassigned to improve apparent sequence continuity.
+Permanent business document numbers use stable prefixes and database identities as documented in `BusinessRecordIntegrity.md`. Gaps are acceptable. Numbers must not be recycled or silently reassigned to improve apparent sequence continuity.
 
 ## Access control
 

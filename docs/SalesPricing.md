@@ -38,7 +38,7 @@ Item Cost Build-up is a separate upstream calculation concern and is implemented
 
 Cost Components support `Absolute` and `Percentage`. Percentage components explicitly choose `BaseCost` or `RunningTotal`. Active components valid on the effective date are evaluated by `Sequence`, then persisted component `Id` as a stable secondary sort key.
 
-Missing/ambiguous Base Cost and currency mismatches fail closed. Depot does not use zero as a substitute and does not assume 1:1 FX conversion. See `docs/ITEM_COSTING_AND_BULK_PRICING.md` for the full calculation contract.
+Missing/ambiguous Base Cost and currency mismatches fail closed. Depot does not use zero as a substitute and does not assume 1:1 FX conversion. See `docs/ItemCostingAndBulkPricing.md` for the full calculation contract.
 
 ## Bulk price generation
 

@@ -99,4 +99,4 @@ Finance schema evolution is sequential from foundation through General Ledger, s
 
 Localization supplies extension infrastructure and reference semantics. It does not provide a legal opinion, tax determination, statutory filing certification, automatic chart of accounts, VAT rate table, HGB/IFRS policy selection or organization-specific compliance procedure. A jurisdiction that needs new executable software behavior requires separately scoped implementation on top of this framework.
 
-See `FINANCE_LOCALIZATION.md` and `FINANCE_COMPLIANCE.md`.
+See `FinanceLocalization.md` and `FinanceCompliance.md`.

@@ -10,21 +10,21 @@ This status covers repository/application engineering controls that can be imple
 
 ## Implemented technical baseline
 
-- [x] CRA product classification has a documented technical preliminary assessment in `CRA_CLASSIFICATION.md`, including reassessment triggers and external acceptance gates.
-- [x] CRA-oriented cybersecurity risk assessment is maintained in `CRA_RISK_ASSESSMENT.md` and links risks to controls, tests/evidence and residual targets.
+- [x] CRA product classification has a documented technical preliminary assessment in `CraClassification.md`, including reassessment triggers and external acceptance gates.
+- [x] CRA-oriented cybersecurity risk assessment is maintained in `CraRiskAssessment.md` and links risks to controls, tests/evidence and residual targets.
 - [x] Direct/transitive dependencies are locked, audited and inventoried; CycloneDX SBOM evidence is generated automatically.
 - [x] Coordinated vulnerability disclosure policy is published in repository-root `SECURITY.md` with private-reporting guidance and public-disclosure safeguards.
 - [x] Vulnerability-management triage/remediation targets are defined by severity and overridden by active exploitation/regulatory escalation.
-- [x] Security update creation, validation, distribution, communication and rollback rules are defined in `SECURITY_UPDATE_LIFECYCLE.md`.
+- [x] Security update creation, validation, distribution, communication and rollback rules are defined in `SecurityUpdateLifecycle.md`.
 - [x] Production support planning uses a CRA-aligned default minimum five-year engineering floor and requires a published release-line end date and lifecycle factors.
 - [x] CRA vulnerability/severe-incident reporting runbook records the awareness timestamp and 24h/72h/final-report milestones.
-- [x] Secure-by-default controls are reviewed and documented in `SECURE_DEFAULTS_REVIEW.md`.
+- [x] Secure-by-default controls are reviewed and documented in `SecureDefaultsReview.md`.
 - [x] Security exceptions are machine-readable and validated in CI/release workflows.
 - [x] Critical vulnerabilities cannot use the normal release exception mechanism.
 - [x] Actively exploited vulnerabilities cannot use the normal release exception mechanism at any severity.
 - [x] High exceptions require explicit security review; all exceptions require owner, rationale, compensating controls, affected versions, approval and future expiry.
 - [x] Release restore runs NuGet audit with warnings-as-errors in addition to the separate security supply-chain audit.
-- [x] CRA technical documentation is indexed in `CRA_TECHNICAL_DOCUMENTATION.md`.
+- [x] CRA technical documentation is indexed in `CraTechnicalDocumentation.md`.
 - [x] CI builds a CRA technical-evidence artifact containing relevant documentation, risk register, risk acceptances and CycloneDX SBOM with SHA-256 evidence manifest and source commit/version.
 - [x] Release integrity captures source identity, risk-acceptance state, hashes and signing support.
 
@@ -74,14 +74,14 @@ Engineering planning currently assumes CRA reporting obligations apply from **11
 ## Evidence files
 
 - `SECURITY.md`
-- `docs/compliance/CRA_CLASSIFICATION.md`
-- `docs/compliance/CRA_RISK_ASSESSMENT.md`
-- `docs/compliance/CRA_INCIDENT_REPORTING.md`
-- `docs/compliance/CRA_TECHNICAL_DOCUMENTATION.md`
-- `docs/compliance/SECURITY_UPDATE_LIFECYCLE.md`
-- `docs/compliance/SECURE_DEFAULTS_REVIEW.md`
-- `docs/compliance/VULNERABILITY_MANAGEMENT.md`
-- `docs/compliance/SUPPORT_POLICY.md`
+- `docs/compliance/CraClassification.md`
+- `docs/compliance/CraRiskAssessment.md`
+- `docs/compliance/CraIncidentReporting.md`
+- `docs/compliance/CraTechnicalDocumentation.md`
+- `docs/compliance/SecurityUpdateLifecycle.md`
+- `docs/compliance/SecureDefaultsReview.md`
+- `docs/compliance/VulnerabilityManagement.md`
+- `docs/compliance/SupportPolicy.md`
 - `security/security-risk-acceptances.json`
 - `scripts/security/validate-risk-acceptances.ps1`
 - `scripts/security/build-cra-evidence.ps1`

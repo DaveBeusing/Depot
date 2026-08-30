@@ -15,7 +15,7 @@ This status describes the software controls and engineering evidence implemented
 - [x] Posted/finalized corrections use explicit cancellation, reversal, return, close or credit-note workflows instead of destructive rewriting in the reviewed core workflows.
 - [x] Original records remain retained when correction transactions are created.
 - [x] Historical before/after snapshots are preserved in audit entries for audited business-state changes.
-- [x] Permanent document-number families and no-reuse/no-renumber rules are defined in `BUSINESS_RECORD_INTEGRITY.md`.
+- [x] Permanent document-number families and no-reuse/no-renumber rules are defined in `BusinessRecordIntegrity.md`.
 - [x] Workflow attribution uses actor ids and UTC timestamps where the workflow requires attribution.
 - [x] Retained business mutations reviewed during Phase 4 write business changes and audit evidence through database transaction contexts.
 - [x] Sales-order draft persistence and its created/updated audit entry now commit atomically in one `IDatabaseTransactionRunner` transaction.
@@ -40,8 +40,8 @@ This status describes the software controls and engineering evidence implemented
 - `src/Depot/ViewModels/Administration/AuditLogViewModel.cs`
 - `src/Depot/Views/Administration/AuditLogView.xaml`
 - `tests/Depot.Tests/BusinessRecordIntegrityTests.cs`
-- `docs/compliance/BUSINESS_RECORD_INTEGRITY.md`
-- `docs/compliance/PROCEDURAL_DOCUMENTATION.md`
+- `docs/compliance/BusinessRecordIntegrity.md`
+- `docs/compliance/ProceduralDocumentation.md`
 
 ## Legal/organizational acceptance still required
 

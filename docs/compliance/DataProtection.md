@@ -6,7 +6,7 @@ This document establishes the technical privacy and data-protection baseline for
 
 ## Personal-data inventory
 
-The authoritative technical inventory is maintained in `DATA_INVENTORY.md`. It covers application users, customer and supplier/contact data, business documents, audit evidence, notifications, generated documents, exports, backups, protected settings, and diagnostics/logs.
+The authoritative technical inventory is maintained in `DataInventory.md`. It covers application users, customer and supplier/contact data, business documents, audit evidence, notifications, generated documents, exports, backups, protected settings, and diagnostics/logs.
 
 ## Principles
 
@@ -22,14 +22,14 @@ The authoritative technical inventory is maintained in `DATA_INVENTORY.md`. It c
 
 ### Data inventory and flows
 
-- [x] Identify personal-data fields/categories by entity and workflow (`DATA_INVENTORY.md`).
+- [x] Identify personal-data fields/categories by entity and workflow (`DataInventory.md`).
 - [x] Identify primary storage and derived copies including PDFs, spreadsheet/CSV exports, backups and diagnostics.
 - [x] Document purposes and typical propagation paths.
 - [x] Require inventory review when future telemetry/integrations are introduced.
 
 ### Lifecycle
 
-- [x] Distinguish deletion, deactivation, anonymization, archival, and legal/business retention (`RETENTION_POLICY.md`).
+- [x] Distinguish deletion, deactivation, anonymization, archival, and legal/business retention (`RetentionPolicy.md`).
 - [x] Prefer deactivation over destructive deletion when historical references exist.
 - [x] Keep posted/finalized business records and audit evidence outside blanket erasure workflows.
 - [x] Document backup expiry/restoration implications for prior erasure/restriction actions.
@@ -56,8 +56,8 @@ The discovery package is an administrative aid. A controller must still verify d
 
 ### Logs and backups
 
-Logs must not contain passwords, connection-string secrets, unnecessary full business-document content, or protected settings. Backup retention/access/encryption controls are defined in `AUDIT_AND_RECOVERY.md`; lifecycle interaction is defined in `RETENTION_POLICY.md`.
+Logs must not contain passwords, connection-string secrets, unnecessary full business-document content, or protected settings. Backup retention/access/encryption controls are defined in `AuditAndRecovery.md`; lifecycle interaction is defined in `RetentionPolicy.md`.
 
 ## Privacy review triggers
 
-`PRIVACY_BY_DESIGN.md` and `TELEMETRY_POLICY.md` require review before adding telemetry, cloud services, email providers, external identity, APIs/integrations, new person-related fields, analytics, crash upload, remote support, or other external/background transmission.
+`PrivacyByDesign.md` and `TelemetryPolicy.md` require review before adding telemetry, cloud services, email providers, external identity, APIs/integrations, new person-related fields, analytics, crash upload, remote support, or other external/background transmission.

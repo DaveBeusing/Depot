@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This is the CRA-oriented product cybersecurity risk assessment for Depot. It complements `THREAT_MODEL.md` and links product risks to concrete controls, tests, evidence and residual-risk decisions.
+This is the CRA-oriented product cybersecurity risk assessment for Depot. It complements `ThreatModel.md` and links product risks to concrete controls, tests, evidence and residual-risk decisions.
 
 ## Method
 

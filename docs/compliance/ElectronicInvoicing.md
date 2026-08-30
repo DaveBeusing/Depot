@@ -62,9 +62,9 @@ Historical invoice identity is deliberately separated from mutable Company/Custo
 
 ## Related evidence
 
-- `docs/compliance/INVOICE_FINALIZATION.md`
-- `docs/compliance/ISSUER_SNAPSHOTS.md`
-- `docs/compliance/COMPANY_MASTER_DATA.md`
+- `docs/compliance/InvoiceFinalization.md`
+- `docs/compliance/IssuerSnapshots.md`
+- `docs/compliance/CompanyMasterData.md`
 - `src/Depot/Services/SalesInvoiceFinalizationService.cs`
 - `tests/Depot.Tests/SalesInvoiceFinalizationTests.cs`
 - `.github/workflows/electronic-invoice-conformance.yml`
