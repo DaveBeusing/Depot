@@ -11,69 +11,70 @@ The single application-version source is `Directory.Build.props` in the reposito
 ## Current versions
 
 - Application development line: **0.15.x-preview**
-- Database schema version: **30**
+- Core database schema: **30**
+- Sales feature schema: **10**
+- Finance feature schema: **9**
 
-The application version and database schema version are independent. A patch application release can retain the same schema, while a schema migration can occur during a prerelease line.
+Application, core database and feature-schema versions are independent compatibility dimensions. Every repository commit increments `DepotVersionPatch`. A persistence change increments the schema version that owns that persistence contract.
 
 ## Application version components
 
 - `MAJOR` changes for incompatible stable releases.
 - `MINOR` changes for backward-compatible features. Before 1.0 it may also mark a significant preview milestone.
-- `PATCH` changes for backward-compatible fixes.
+- `PATCH` changes for repository commits on the current development line.
 - `PRERELEASE` identifies preview, beta, or release-candidate builds.
 - `BUILD` contributes revision metadata and does not change SemVer precedence.
 
-The MSBuild properties produce:
+The MSBuild properties produce `Version`/`InformationalVersion`, a stable `AssemblyVersion` within a major/minor line and numeric `FileVersion` in `MAJOR.MINOR.PATCH.BUILD` form. The About page reads built assembly information and displays application and database compatibility information.
 
-- `Version` and `InformationalVersion` from the SemVer components;
-- stable `AssemblyVersion` within a major/minor line;
-- numeric `FileVersion` in `MAJOR.MINOR.PATCH.BUILD` form;
-- source revision metadata in deterministic CI informational versions.
+## Core database schema versioning
 
-The About page reads the built assembly information and displays the application, file, informational, runtime, and database-schema versions.
+`src/Depot/Data/DatabaseVersion.cs` is the shared/core schema-version source. Core schema **30** remains the compatibility baseline used by SQLite, Microsoft SQL Server and MySQL/MariaDB.
 
-## Database schema versioning
+The core schema version changes when shared/core persistence owned by the provider initializers changes. Feature-local schemas use their own ordered migration ledgers and do not artificially increment the core version merely because a feature adds persistence.
 
-Schema version 30 is the core compatibility baseline for Sales feature schema 9. Sales schema 9 adds provider-neutral scoped price lists, optional Sales Regions on customers, scope/region constraints and indexes, and retained price-source metadata on quote and order lines. Existing price lists migrate to Customer scope while existing item prices and customer assignments remain unchanged.
+For every **core** schema change:
 
-Schema version 29 adds `Notifications` and `NotificationRecipients` for the private internal Notification Center. It includes unique materialized recipients, user-scoped unread/archive state, expiry handling, source indexes, stable inbox sorting, and provider-neutral migrations for SQLite, SQL Server, and MySQL/MariaDB. Initial purchase-order and inventory-count events join the existing workflow/audit transaction; scheduled backup failures create independent system notifications.
+1. add equivalent current-schema definitions for all three providers;
+2. add a forward migration from the previous supported core version;
+3. increment `DatabaseVersion.CurrentVersion` once;
+4. update backup/table definitions when persisted data changes;
+5. add/update migration and workflow tests;
+6. update architecture, status, roadmap and version documentation.
 
-Schema version 28 replaces fixed single-role authorization with provider-neutral database-backed RBAC. `Roles`, `Permissions`, `RolePermissions`, and `UserRoles` support multiple roles per user and effective-permission union. Protected system roles are seeded from the central permission catalog. Existing administrator, purchasing, approver, warehouse-operator, and standard users are assigned equivalent roles; legacy user columns remain only for compatibility and do not drive authorization.
+## Feature schema versioning
 
-Schema version 27 introduces the `WorkflowOperations` idempotency ledger for critical procurement and material-booking transitions. Operation IDs are unique across providers and are committed atomically with status, movements, and audit data, allowing clients to reconcile ambiguous network outcomes without repeating a booking.
+Feature schemas are tracked in `DepotFeatureVersions`. A feature persistence change increments that feature's `CurrentVersion` and adds a forward migration from the previous feature version for every supported provider.
 
-Schema version 26 adds fixed user roles and their provider-neutral permission mapping. Existing administrators migrate to Administrator, existing purchase approvers to Approver, and all other accounts to User. Purchasing and WarehouseOperator can then be assigned through user administration. The migration retains legacy flags for compatibility while `AuthorizationService` and workflow services use the fixed role matrix as the effective contract.
+### Sales schema 10
 
-Schema version 25 adds structured supplier-return documents and lines. Returns are tied to received positions, validate the remaining net-received quantity and current stock inside the posting transaction, create immutable negative movements, and retain receipt and purchase-order received quantities as historical facts. Reversal metadata allows counter-booked returns to be excluded from later net-return calculations across SQLite, SQL Server, and MySQL/MariaDB.
+Sales schema 9 introduced provider-neutral scoped PriceLists, optional Sales Regions, scope/region constraints/indexes and retained price-source metadata on quote/order lines.
 
-Schema version 24 adds independent material-return documents and lines. Returns optionally reference a posted material issue, create their own positive movement type, and remain distinct from reversal movements. Draft lifecycle, posting metadata, reason-code references, constraints, indexes, optimistic concurrency, and provider-specific document locking share the established transactional architecture.
+Sales schema **10** adds the Item Cost Build-up persistence contract:
 
-Schema version 23 adds structured material-issue documents and lines, including generated issue numbers, lifecycle status, responsible users and timestamps, required per-line reason-code references, optimistic-concurrency versions, constraints, and indexes. Posting and reversal use the shared provider-neutral transaction and movement infrastructure without direct stock updates.
+- `ItemCostProfiles` with an explicit Base Cost source, ISO currency and optimistic version;
+- `ItemCostComponents` with Absolute/Percentage calculation type, explicit percentage base, value, deterministic sequence, activity/validity and optimistic version;
+- deterministic item/sequence lookup ordering;
+- provider-equivalent SQLite, SQL Server and MySQL/MariaDB DDL.
 
-Schema version 22 adds explicit purchase-order closure metadata. A closure records the required reason, acting user, and UTC timestamp without altering received or remaining quantities. Closed orders reject further goods receipts; cancellation remains reserved for orders without posted receipts. The status change and audit entry share one transaction on every provider.
+The Sales 9 → 10 migration is additive. It does not rewrite existing PriceLists, PriceList entries, supplier purchase prices or historical Sales-document snapshots.
 
-Schema version 21 adds the purchase-order approval workflow. Purchase orders store creator, submission, and compact approval-decision metadata; users can receive the explicit `CanApprovePurchaseOrders` permission. Existing numeric status values remain stable for migration compatibility, while new approval, rejection, and closed states extend the workflow.
+### Finance schema 9
 
-`src/Depot/Data/DatabaseVersion.cs` is the schema-version source. All providers must use the same current version:
+Finance maintains an independent sequential feature schema through Finance schema 9. Finance feature migrations remain governed by their own current-version contract and tests.
 
-- SQLite: `DepotDatabase`
-- Microsoft SQL Server: `SqlServerDatabase`
-- MySQL/MariaDB: `MySqlDatabase`
+For every **feature** schema change:
 
-Schema version 20 introduces immutable movement reversals. `StockMovement.ReversalOfMovementId` is a unique optional self-reference and is accompanied by reversal reason, timestamp, and user metadata. Goods receipts, stock transfers, and inventory counts receive versioned reversal metadata so their business correction and audit entry can be committed with all counter-movements in one transaction. Original movements remain unchanged, duplicate full reversals and reversal chains are rejected, and all three providers share the same schema contract.
+1. add provider-equivalent schema definitions under the owning feature;
+2. add a forward migration from the previous feature version;
+3. increment the owning feature's schema version exactly once;
+4. preserve existing data unless the migration explicitly documents a controlled transformation;
+5. add SQLite migration coverage and supported live-provider coverage where infrastructure permits;
+6. update documentation that states the feature version or persistence contract.
 
-Schema version 19 adds inventory counts and inventory-count lines, including warehouse and inventory references, unique snapshot lines, status and counted-quantity constraints, indexes, audit-ready timestamps, and optimistic-concurrency versions. Starting a count creates its complete movement-derived warehouse snapshot atomically. Posting does not require another schema change: it preserves that snapshot and calculates each correction against the movement-derived current stock inside the posting transaction. Schema version 18 adds warehouse stock transfers, including transfer lines, foreign keys, uniqueness constraints, indexes, and optimistic-concurrency versions. The application posts transfers atomically as paired TransferOut/TransferIn movements while retaining the same schema version. Schema version 17 separates goods receipts from supplier invoices. It adds the supplier delivery-note number and receiving user, retains historical invoice columns as nullable legacy data, and preserves receipt-line references. Existing receipts receive deterministic `LEGACY-GR-…` delivery-note numbers and use the original audit user where available. Schema version 16 added immutable technical reason-code keys and system-code metadata.
+## Provider acceptance
 
-For every schema change:
-
-1. Add equivalent current-schema definitions for all three providers.
-2. Add a forward migration from the previous supported version for all three providers.
-3. Increment `DatabaseVersion.CurrentVersion` once.
-4. Update database-backup table definitions when persisted data changes.
-5. Add or update migration and core-workflow tests.
-6. Update README, Architecture, Roadmap, and release documentation.
-
-SQLite migrations are exercised by the automated integration suite. SQL Server and MySQL/MariaDB migration scripts must also be tested against live supported server versions before a stable release.
+Automated SQLite migration coverage is required. SQL Server and MySQL/MariaDB migrations use the same functional contract and optional live-provider suites. Provider-neutral implementation alone is not production certification; supported server versions still require live migration, locking/concurrency, recovery and performance acceptance before a stable release.
 
 ## Creating a release
 
@@ -91,4 +92,4 @@ Prerelease builds retain `DepotVersionSuffix`. Stable releases set `DepotStableR
 
 ## Release documentation rule
 
-Do not call a provider or workflow production-ready solely because its implementation compiles. Stable-release documentation requires automated coverage where practical and recorded manual acceptance for environment-dependent behavior such as server migrations, recovery, deployment, and multi-client operation.
+Do not call a provider or workflow production-ready solely because its implementation compiles. Stable-release documentation requires automated coverage where practical and recorded manual acceptance for environment-dependent behavior such as server migrations, recovery, deployment and multi-client operation.

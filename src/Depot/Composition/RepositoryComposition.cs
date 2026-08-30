@@ -11,6 +11,7 @@ internal sealed class RepositoryComposition
 	public RepositoryComposition(DatabaseAccess dataAccess)
 	{
 		Items = new ItemRepository(dataAccess);
+		ItemCosts = new ItemCostRepository(dataAccess);
 		ItemTraceability = new ItemTraceabilityRepository(dataAccess);
 		Purposes = new PurposeRepository(dataAccess);
 		ReasonCodes = new ReasonCodeRepository(dataAccess);
@@ -60,6 +61,7 @@ internal sealed class RepositoryComposition
 	}
 
 	public ItemRepository Items { get; }
+	public ItemCostRepository ItemCosts { get; }
 	public ItemTraceabilityRepository ItemTraceability { get; }
 	public PurposeRepository Purposes { get; }
 	public ReasonCodeRepository ReasonCodes { get; }

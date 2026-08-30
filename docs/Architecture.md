@@ -31,36 +31,62 @@ The shell is permission-aware and workspace-oriented. Finance exposes **Receivab
 
 Subledgers/accounting modules call the General Ledger boundary for postings rather than duplicating ledger invariants. Reporting reads existing evidence and does not create a second ledger. Localization does not post accounting entries.
 
-## Sales pricing authority
+## Costing and sales-pricing authority
 
-`SalesPricingService` is the single business boundary for item-price resolution. It resolves Customer → Region → Global independently for every item and returns source metadata with the price. Quotes and Sales Orders consume this result; Views and ViewModels do not reproduce fallback logic. Optional customer assignments and customer regions are stored through the existing Sales repositories, while document lines retain resolved-source snapshots.
+Commercial costing and sales-price resolution are separate but connected business boundaries:
+
+```text
+Preferred supplier purchase price
+        ↓
+ItemCostCalculationService
+        ↓ ordered Absolute / Percentage components
+Calculated Item Cost
+        ↓
+PriceListGenerationService
+        ↓ Percentage Markup + mandatory Preview
+existing scoped SalesPriceList
+        ↓
+SalesPricingService
+        ↓
+Customer → Region → Global resolution
+```
+
+`ItemCostCalculationService` is the single item-cost formula. Percentage components explicitly use `BaseCost` or `RunningTotal`, are ordered by `Sequence` plus persisted component identity, and return calculation evidence. `PriceListGenerationService` consumes that calculation; it does not reproduce it. Bulk Apply uses the established price-list repository and transaction infrastructure.
+
+`SalesPricingService` remains the single business boundary for runtime item-price resolution. It resolves Customer → Region → Global independently for every item and returns source metadata with the price. Quotes and Sales Orders consume this result; Views and ViewModels do not reproduce fallback logic. Historical document lines retain price-source snapshots.
 
 ## Schema versions
 
 - Core database schema: **30**
-- Sales feature schema: **9**
+- Sales feature schema: **10**
 - Finance feature schema: **9**
 - Application: **0.15.x-preview**
 - Help manifest: **1.18**
 
-Sales schema 9 adds scoped price lists, Sales Regions and quote/order price-source snapshots. Finance schema evolution is sequential: foundation (v1), General Ledger (v2), Receivables (v3), Payables (v4), inventory valuation (v5-v6), Banking (v7), Reporting (v8), Localization (v9).
+Core schema 30 remains the current shared compatibility baseline. Sales schema 9 introduced scoped price lists, Sales Regions and quote/order price-source snapshots. Sales schema 10 adds provider-neutral `ItemCostProfiles` and `ItemCostComponents`. Finance schema evolution remains independent through Finance schema 9.
+
+Feature schemas are versioned independently from the core schema. A feature-local persistence change increments its feature version; a shared/core schema change increments `DatabaseVersion.CurrentVersion`.
 
 ## Transaction, concurrency and evidence model
 
-Finance mutations use the existing transaction runner/database write transaction. Optimistic versions protect mutable configuration/workflow state. Operation IDs, request/content hashes and unique constraints protect retry-sensitive records. Required GL/subledger/valuation/banking/Audit effects commit or roll back together where they form one business transaction.
+Mutable configuration uses optimistic versions. Required business mutation and Audit evidence commit or roll back together where they form one transaction.
 
-Finalized accounting and operational evidence is not silently rewritten. Corrections use reversals or new compensating/assessment evidence. Report snapshots and localization assignment/registry evidence are retained under the business-record classification model.
+Bulk price Apply is all-or-nothing through the existing provider write transaction. Preview captures target PriceList/entry versions plus item-cost evidence. Apply reloads the current records, recalculates through `ItemCostCalculationService`, compares evidence and fails closed on a concurrent change. Preview and Apply therefore cannot diverge through separate formulas.
 
-## Reporting and localization
+Finalized accounting and operational evidence is not silently rewritten. Item Cost Build-up and Bulk Pricing modify current master/pricing configuration only; submitted/finalized Sales documents retain their stored snapshots.
 
-GL-derived reports query persisted reporting-currency journal lines. AR/AP aging reads subledgers in transaction currency. Historical Inventory Valuation reconstructs valuation evidence. Cash Flow, Tax Summary and COGS use explicit account mappings rather than account-name/number heuristics.
+## Currency and rounding boundary
 
-Localization never activates from country alone. An effective root-pack assignment is explicit, country packs are validated against the Legal Entity and active assignment ranges cannot overlap. Built-in `GENERIC → EU → DE` references are immutable; custom packs can extend the model without another schema migration when metadata/configuration is sufficient.
+Item Cost Profiles state the currency of the selected purchasing Base Cost because existing supplier purchase prices do not carry currency metadata. Costs in different currencies are never added or written to a target PriceList through an implicit 1:1 conversion. Until controlled FX conversion is explicitly integrated, mismatched currencies fail closed.
+
+Commercial cost and generated price amounts use deterministic decimal currency precision. More advanced commercial rounding remains an extension point rather than an implicit UI rule.
 
 ## RBAC and segregation of duties
 
-Service-layer permissions are authoritative. The Finance role receives normal Finance management rights; sensitive supplier/payment approvals remain independently controlled. Deployments can define stricter custom-role separation for configuration, posting, approval, reconciliation, reporting preparation and review.
+Service-layer permissions are authoritative. Item-cost visibility/maintenance reuses the existing Item permissions; Bulk Pricing reuses Sales Pricing permissions in combination with item-cost visibility. UI controls mirror these rights but do not replace service authorization.
+
+The Finance role receives normal Finance management rights; sensitive supplier/payment approvals remain independently controlled. Deployments can define stricter custom-role separation for configuration, posting, approval, reconciliation, reporting preparation and review.
 
 ## Provider acceptance
 
-Finance schema 9 DDL/code exists for SQLite, SQL Server and MySQL/MariaDB. Provider-neutral implementation is not equivalent to production certification. Live migration, locking, deadlock/retry, recovery, backup/restore, date/decimal behavior and representative performance/concurrency acceptance remain required for every advertised server/version matrix.
+Core persistence and Sales schema 10 DDL/code exist for SQLite, SQL Server and MySQL/MariaDB. Provider-neutral implementation is not equivalent to production certification. Live migration, locking, deadlock/retry, recovery, backup/restore, date/decimal behavior and representative performance/concurrency acceptance remain required for every advertised server/version matrix.

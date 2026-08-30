@@ -10,7 +10,7 @@ using Depot.ViewModels.Shared;
 
 namespace Depot.ViewModels;
 
-public sealed class ItemsViewModel : BaseViewModel, IDisposable
+public sealed partial class ItemsViewModel : BaseViewModel, IDisposable
 {
 	private const int PageSize = 100;
 	private readonly ItemService _itemService;
@@ -162,6 +162,7 @@ public sealed class ItemsViewModel : BaseViewModel, IDisposable
 				Fill(Categories, values[1]);
 				Fill(UnitsOfMeasure, values[2]);
 				Fill(Packagings, values[3]);
+				ApplyDefaultUnitOfMeasure();
 			}
 			if (ReplacementItems.Count == 0)
 			{
@@ -239,6 +240,7 @@ public sealed class ItemsViewModel : BaseViewModel, IDisposable
 		ClearError();
 		SelectedItem = null;
 		Editor.Clear();
+		ApplyDefaultUnitOfMeasure();
 		OnPropertyChanged(nameof(EditorStatus));
 		OnPropertyChanged(nameof(ActivationActionText));
 		DeactivateItemCommand.RaiseCanExecuteChanged();
@@ -275,6 +277,7 @@ public sealed class ItemsViewModel : BaseViewModel, IDisposable
 			UpdateItem(item);
 			UpdateReplacementCandidate(item);
 			Editor.Clear();
+			ApplyDefaultUnitOfMeasure();
 			SelectedItem = null;
 			CompleteOperation(Items.Count == 0, "Item saved");
 			RequestEditorFocus();
@@ -398,6 +401,13 @@ public sealed class ItemsViewModel : BaseViewModel, IDisposable
 			(item.Notes?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false);
 	}
 
+	private void ApplyDefaultUnitOfMeasure()
+	{
+		if (Editor.Id != 0 || Editor.UnitOfMeasure is not null) return;
+		Editor.UnitOfMeasure = UnitsOfMeasure.FirstOrDefault(value =>
+			string.Equals(value.Name, "EA", StringComparison.OrdinalIgnoreCase));
+	}
+
 	private void RaiseCollectionState()
 	{
 		OnPropertyChanged(nameof(HasItems));
@@ -426,5 +436,6 @@ public sealed class ItemsViewModel : BaseViewModel, IDisposable
 		DeactivateItemCommand.Dispose();
 		PreviousPageCommand.Dispose();
 		NextPageCommand.Dispose();
+		DisposeCosting();
 	}
 }

@@ -22,56 +22,62 @@ The existence of a higher-scope price list never suppresses fallback for an item
 
 ## Domain model
 
-`SalesPriceList.Scope` uses `Global`, `Region`, or `Customer`:
+`SalesPriceList.Scope` uses `Global`, `Region`, or `Customer`. Global has no region or customer binding; Region references an active `SalesRegion`; Customer uses the existing optional `CustomerPriceLists` assignment. An active Customer list requires at least one assignment.
 
-- **Global** — `RegionId` is null and the list is not assigned through `CustomerPriceLists`.
-- **Region** — `RegionId` references an active `SalesRegion` and the list is not assigned through `CustomerPriceLists`.
-- **Customer** — `RegionId` is null. An active list requires at least one binding through the existing `CustomerPriceLists` relation. An inactive list may be staged before assignment.
+`Customer.SalesRegionId` is optional. A customer without a region skips the regional step. A customer price-list assignment is also optional.
 
-`Customer.SalesRegionId` is optional. A customer without a region skips the regional step. A customer price-list assignment is also optional; the UI presents the absence of an assignment as automatic Region → Global or Global pricing rather than as a missing price list.
-
-`SalesPriceResult` retains the unit price, discount, source price-list identity and name, scope, currency, and optional region identity. Sales-order and quote lines persist the source identity, name, scope, and currency beside the established price and discount snapshots.
+`SalesPriceResult` retains the unit price, discount, source price-list identity and name, scope, currency, and optional region identity. Sales-order and quote lines persist price-source snapshots so later price-list changes do not rewrite historical documents.
 
 ## Validity rules
 
-The resolver retains the existing Sales pricing semantics:
+The resolver requires active customer/item/list state, an effective date inside the list validity window, matching currency and valid scope bindings. If no valid result exists, editors retain an explicitly entered manual value and automatic-source metadata is cleared.
 
-- customer and item must be active;
-- price list must be active;
-- the effective document date must be within `ValidFrom` / `ValidTo` when set;
-- list currency must equal the document currency;
-- a regional list requires an active region matching the customer's region;
-- a customer list must be the list assigned to that customer.
+## Item cost build-up
 
-Price-list entries currently have one unit price and discount per item. They do not have separate activity dates or quantity tiers in the current Depot model. Quantity is part of the central resolver contract so future tier rules can be added at the same business boundary without introducing another resolver.
+Item Cost Build-up is a separate upstream calculation concern and is implemented centrally by `ItemCostCalculationService`. The first Base Cost source is the active preferred `SupplierItem.PurchasePrice`, combined with an explicit Item Cost Profile currency because legacy supplier prices do not contain currency metadata.
 
-If no valid result exists, editors retain an explicitly entered manual value. Automatic-source metadata is cleared so the value is not presented as a resolved price.
+Cost Components support `Absolute` and `Percentage`. Percentage components explicitly choose `BaseCost` or `RunningTotal`. Active components valid on the effective date are evaluated by `Sequence`, then persisted component `Id` as a stable secondary sort key.
 
-## Defaults, concurrency, and transactions
+Missing/ambiguous Base Cost and currency mismatches fail closed. Depot does not use zero as a substitute and does not assume 1:1 FX conversion. See `docs/ITEM_COSTING_AND_BULK_PRICING.md` for the full calculation contract.
 
-At most one active Global default may exist. At most one active Region default may exist for a given region. `SalesPricingService` checks these rules inside the existing provider write transaction. SQLite uses an immediate write transaction; SQL Server and MySQL/MariaDB use serializable write transactions. Existing transient-conflict retry handling remains in force, so concurrent default activations cannot commit two contradictory defaults.
+## Bulk price generation
 
-Price-list, price-list-item, region, and customer-assignment mutations use the established optimistic `Version` contract where applicable. Adding, changing, and removing an item price records structured Audit evidence. The business mutation and its Audit entry commit or roll back together. `SalesPricing.View` and `SalesPricing.Manage` remain the authoritative RBAC permissions.
+`PriceListGenerationService` consumes `ItemCostCalculationService`; it does not contain a second cost formula. The first sales rule is **Percentage Markup**:
+
+```text
+SalesPrice = CalculatedCost × (1 + MarkupPercentage / 100)
+```
+
+Markup is deliberately distinct from Gross Margin. For Cost 100, 25% Markup produces 125. A 25% Gross Margin would produce 133.33 and is not represented by the current Markup UI.
+
+Bulk selection supports All Active Items, Category, Manufacturer and Selected Items. The target may be an existing PriceList or a newly staged Global, Region or Customer PriceList using the same existing scoped model.
+
+A Preview is mandatory before Apply. It shows Calculated Cost, current target-list price, rule, new price, absolute/percentage change and an action of `Create`, `Update`, `Skip` or `Error`. Selecting a row exposes the Cost Component evidence used by that calculation.
+
+Apply modes are Replace calculated prices, Only increase prices and Only create missing prices. Preview applies the selected mode before any write.
+
+## Concurrency, transactions and Audit
+
+Bulk Apply is all-or-nothing inside one existing provider write transaction. The Preview captures the target PriceList version, relevant PriceListEntry versions and cost evidence versions. Apply reloads and recalculates through the same cost service. A changed list, entry, supplier cost, Cost Profile or Cost Component causes an optimistic concurrency conflict and requires a fresh Preview.
+
+Cost Profile and Cost Component mutations use the existing Audit infrastructure. Successful bulk Apply writes one batch-level audit record containing the target list, Pricing Method, Markup, Apply Mode and Created/Updated/Skipped/Failed counts.
+
+Existing RBAC is reused: item costs use `ItemsView` plus `ItemsEdit`/`ItemsManage`; bulk Preview uses `SalesPricingView` and item-cost visibility; bulk Apply requires `SalesPricingManage`. Authorization is enforced in services.
+
+## Defaults and normal pricing concurrency
+
+At most one active Global default may exist. At most one active Region default may exist for a given region. `SalesPricingService` checks these rules inside the established provider write transaction. Price-list, entry, region and customer-assignment mutations continue to use optimistic `Version` checks.
 
 ## Schema and migration
 
-Core schema 30 and Sales feature schema 9 add:
+Core schema remains on its existing core migration line. Sales feature schema **10** contains the scoped pricing structures from Sales 9 plus `ItemCostProfiles` and `ItemCostComponents`, including the deterministic `(ItemId, Sequence, Id)` index. The Sales 9 → 10 migration is implemented for SQLite, SQL Server and MySQL/MariaDB through the existing provider abstraction.
 
-- `SalesRegions`;
-- `SalesPriceLists.Scope` and optional `RegionId`;
-- optional `Customers.SalesRegionId`;
-- scope/region, customer-region, and reverse assignment indexes;
-- price-source snapshot columns on `SalesOrderLines` and `SalesQuoteLines`;
-- equivalent foreign keys and scope checks for SQLite, SQL Server, and MySQL/MariaDB.
-
-The Sales 8 → 9 migration classifies every existing price list as `Customer`. Existing price-list items and `CustomerPriceLists` rows are retained unchanged, so established customer-specific pricing continues to resolve after upgrade. Previously active lists without any customer binding are deactivated because they had no resolving customer and would violate the active Customer-scope invariant; their items are retained. New databases receive the same schema through the ordered Sales migration chain.
+The Sales 8 → 9 migration still classifies legacy price lists as Customer scope without changing established item prices. The Sales 9 → 10 migration only adds item-cost structures and therefore does not rewrite existing PriceLists or historical document snapshots.
 
 ## Sales document behavior
 
-Quotes and Sales Orders call the central resolver when an item is added or a price is explicitly resolved. Saving a draft refreshes only lines carrying automatic source metadata, which covers changes to customer, region, assigned list, quantity, currency, or effective document date. Manually entered lines are not overwritten.
-
-Accepted quotes retain their price snapshots when converted to an order. Submitted and later Sales Orders cannot be edited through the draft-save path, and later price-list or customer-region changes do not rewrite their stored line prices.
+Quotes and Sales Orders call the central resolver when an item is added or a price is explicitly resolved. Saving a draft refreshes only lines carrying automatic source metadata. Manually entered lines are not overwritten. Accepted quotes and submitted or later Sales Orders retain their stored price/source snapshots.
 
 ## Validation
 
-Automated SQLite coverage includes per-item mixed-scope fallback, missing assignments and regions, currency and active-item rules, date/activity fallback, no-price results, cancellation, optimistic concurrency, concurrent default activation, RBAC, transactional Audit rollback, Sales 8 → 9 data preservation, and historical Sales Order snapshots. The existing optional live-provider test configuration runs the scoped fallback contract against SQL Server and MySQL/MariaDB when their test connection strings are present.
+SQLite regression coverage includes deterministic mixed component calculations, component validity/activity, rounding/currency guards, cancellation, Base Cost failure, markup generation, Category/Manufacturer/Selected filters, Apply Modes, missing costs, new scoped PriceList creation and Preview→Apply concurrency. Existing optional provider fixtures verify the Sales 10 item-cost migration on SQL Server and MySQL/MariaDB when their test connection strings are configured. Scoped Customer → Region → Global resolver regression tests remain unchanged.

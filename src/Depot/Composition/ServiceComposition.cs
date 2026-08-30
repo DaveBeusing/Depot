@@ -53,6 +53,8 @@ internal sealed class ServiceComposition
 		SupplierReturns = new SupplierReturnService(database.TransactionRunner, repositories.SupplierReturns, repositories.PurchaseOrders, repositories.GoodsReceipts, repositories.Inventories, repositories.StockMovements, repositories.ReasonCodes, repositories.Audit, audit, movementReversals, Authorization, ItemTraceability);
 		Customers = new CustomerService(repositories.Customers, audit, Authorization);
 		SalesPricing = new SalesPricingService(database.TransactionRunner, repositories.SalesPriceLists, repositories.Audit, audit, Authorization);
+		ItemCosts = new ItemCostCalculationService(database.TransactionRunner, repositories.ItemCosts, repositories.Audit, audit, Authorization);
+		PriceListGeneration = new PriceListGenerationService(database.TransactionRunner, repositories.ItemCosts, ItemCosts, repositories.SalesPriceLists, SalesPricing, repositories.Audit, audit, Authorization);
 		SalesTimeline = new SalesTimelineService(repositories.SalesTimeline, Authorization);
 		SalesOrders = new SalesOrderService(database.TransactionRunner, repositories.SalesOrders, repositories.Customers, repositories.Items, repositories.Inventories, repositories.InventoryReservations, repositories.StockMovements, repositories.Audit, audit, Authorization, Notifications, ItemTraceability, SalesPricing);
 		SalesQuotes = new SalesQuoteService(repositories.SalesQuotes, repositories.Customers, SalesOrders, audit, Authorization, SalesPricing);
@@ -79,7 +81,7 @@ internal sealed class ServiceComposition
 		Reports = new ReportService(Stock, Authorization);
 		var inventoryManagement = new InventoryManagementService(repositories.Inventories, audit);
 		Import = new ImportService(repositories.Items, Items, Purposes, Warehouses, StorageLocations, inventoryManagement, Movements, Authorization);
-		Sales = new SalesServices(Customers, SalesPricing, SalesTimeline, SalesOrders, SalesQuotes, Shipments, ShipmentPacking, SalesInvoices, CustomerReturns, SalesCreditNotes, Items, Authorization, SalesDocuments, SalesEmail, SalesInvoiceFinalizations);
+		Sales = new SalesServices(Customers, SalesPricing, SalesTimeline, SalesOrders, SalesQuotes, Shipments, ShipmentPacking, SalesInvoices, CustomerReturns, SalesCreditNotes, Items, Authorization, SalesDocuments, SalesEmail, SalesInvoiceFinalizations, ItemCosts, PriceListGeneration);
 	}
 
 	public AuthorizationService Authorization { get; }
@@ -102,6 +104,8 @@ internal sealed class ServiceComposition
 	public AuthenticationService Authentication { get; }
 	public SessionService Session { get; }
 	public ItemService Items { get; }
+	public ItemCostCalculationService ItemCosts { get; }
+	public PriceListGenerationService PriceListGeneration { get; }
 	public ItemTraceabilityService ItemTraceability { get; }
 	public PurposeService Purposes { get; }
 	public ReasonCodeService ReasonCodes { get; }

@@ -57,34 +57,43 @@ public sealed class SalesPricingService
 	{
 		_authorization.RequirePermission(ApplicationPermission.SalesPricingManage);
 		NormalizeAndValidate(value);
-		return await _transactions.ExecuteAsync(async (transaction, cancellationToken) =>
+		return await _transactions.ExecuteAsync(
+			(transaction, cancellationToken) => SaveInTransactionAsync(transaction, value, cancellationToken),
+			token);
+	}
+
+	internal async Task<SalesPriceList> SaveInTransactionAsync(
+		DatabaseTransactionContext transaction,
+		SalesPriceList value,
+		CancellationToken token)
+	{
+		_authorization.RequirePermission(ApplicationPermission.SalesPricingManage);
+		NormalizeAndValidate(value);
+		var before = value.Id == 0 ? null : await _prices.GetByIdAsync(transaction, value.Id, token) ?? throw new InvalidOperationException("Sales price list was not found.");
+		if (value.Scope == SalesPriceListScope.Region)
 		{
-			var before = value.Id == 0 ? null : await _prices.GetByIdAsync(transaction, value.Id, cancellationToken) ?? throw new InvalidOperationException("Sales price list was not found.");
-			if (value.Scope == SalesPriceListScope.Region)
+			var region = await _prices.GetRegionAsync(transaction, value.RegionId!.Value, token) ?? throw new InvalidOperationException("Sales region was not found.");
+			if (!region.IsActive) throw new InvalidOperationException("An inactive sales region cannot own a regional price list.");
+			value.RegionName = region.Name;
+		}
+		if (value.Scope != SalesPriceListScope.Customer && value.Id > 0 && await _prices.HasCustomerAssignmentsAsync(transaction, value.Id, token))
+			throw new InvalidOperationException("Clear all customer assignments before changing a customer price list to a default scope.");
+		if (value.IsActive && value.Scope == SalesPriceListScope.Customer && (value.Id == 0 || !await _prices.HasCustomerAssignmentsAsync(transaction, value.Id, token)))
+			throw new InvalidOperationException("An active customer price list requires at least one customer assignment. Save it as inactive, assign a customer, and then activate it.");
+		if (value.IsActive && value.Scope is SalesPriceListScope.Global or SalesPriceListScope.Region)
+		{
+			var conflict = await _prices.FindActiveDefaultAsync(transaction, value.Scope, value.RegionId, value.Id, token);
+			if (conflict is not null)
 			{
-				var region = await _prices.GetRegionAsync(transaction, value.RegionId!.Value, cancellationToken) ?? throw new InvalidOperationException("Sales region was not found.");
-				if (!region.IsActive) throw new InvalidOperationException("An inactive sales region cannot own a regional price list.");
-				value.RegionName = region.Name;
+				var scope = value.Scope == SalesPriceListScope.Global ? "global" : $"regional for {value.RegionName ?? value.RegionId?.ToString()}";
+				throw new InvalidOperationException($"Price list '{conflict.Name}' is already the active {scope} default.");
 			}
-			if (value.Scope != SalesPriceListScope.Customer && value.Id > 0 && await _prices.HasCustomerAssignmentsAsync(transaction, value.Id, cancellationToken))
-				throw new InvalidOperationException("Clear all customer assignments before changing a customer price list to a default scope.");
-			if (value.IsActive && value.Scope == SalesPriceListScope.Customer && (value.Id == 0 || !await _prices.HasCustomerAssignmentsAsync(transaction, value.Id, cancellationToken)))
-				throw new InvalidOperationException("An active customer price list requires at least one customer assignment. Save it as inactive, assign a customer, and then activate it.");
-			if (value.IsActive && value.Scope is SalesPriceListScope.Global or SalesPriceListScope.Region)
-			{
-				var conflict = await _prices.FindActiveDefaultAsync(transaction, value.Scope, value.RegionId, value.Id, cancellationToken);
-				if (conflict is not null)
-				{
-					var scope = value.Scope == SalesPriceListScope.Global ? "global" : $"regional for {value.RegionName ?? value.RegionId?.ToString()}";
-					throw new InvalidOperationException($"Price list '{conflict.Name}' is already the active {scope} default.");
-				}
-			}
-			await _prices.SaveAsync(transaction, value, cancellationToken);
-			var saved = await _prices.GetByIdAsync(transaction, value.Id, cancellationToken) ?? value;
-			var entry = before is null ? _audit.CreateCreatedEntry(saved.Id, saved) : _audit.CreateUpdatedEntry(saved.Id, before, saved);
-			await _auditEntries.CreateAsync(transaction, entry, cancellationToken);
-			return saved;
-		}, token);
+		}
+		await _prices.SaveAsync(transaction, value, token);
+		var saved = await _prices.GetByIdAsync(transaction, value.Id, token) ?? value;
+		var entry = before is null ? _audit.CreateCreatedEntry(saved.Id, saved) : _audit.CreateUpdatedEntry(saved.Id, before, saved);
+		await _auditEntries.CreateAsync(transaction, entry, token);
+		return saved;
 	}
 
 	public async Task<SalesPriceListItem> SaveItemAsync(SalesPriceListItem item, CancellationToken token = default)
@@ -190,7 +199,7 @@ public sealed class SalesPricingService
 		Items = value.Items
 	};
 
-	private static void NormalizeAndValidate(SalesPriceList value)
+	internal static void NormalizeAndValidate(SalesPriceList value)
 	{
 		value.Code = value.Code.Trim().ToUpperInvariant();
 		value.Name = value.Name.Trim();
