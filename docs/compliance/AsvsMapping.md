@@ -6,7 +6,7 @@ This document maps security verification themes from OWASP ASVS to Depot's deskt
 
 | Security area | Depot component/evidence | Current status | Next verification |
 | --- | --- | --- | --- |
-| Architecture and threat modeling | `THREAT_MODEL.md`, architecture docs | Partial | Complete risk records for high-priority scenarios |
+| Architecture and threat modeling | `ThreatModel.md`, architecture docs | Partial | Complete risk records for high-priority scenarios |
 | Authentication | User/authentication services, password hashing | Implemented / partial verification | First-run credentials, password policy, brute-force behavior |
 | Session management | `AuthorizationService` sign-in/session state | Partial | Verify sign-out/session switching clears effective permissions |
 | Access control | `AuthorizationService`, service-level permission checks | Implemented with tests | Expand negative-path coverage across all privileged workflows |

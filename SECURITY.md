@@ -14,11 +14,11 @@ If private vulnerability reporting is not available, create a public issue conta
 
 ## What to expect
 
-Reports are triaged according to `docs/compliance/VULNERABILITY_MANAGEMENT.md`. Depot aims to acknowledge and classify credible reports promptly, validate affected versions, coordinate remediation and regression testing, and disclose sufficient information for users to identify and install a fixed release without unnecessarily exposing exploit details before remediation is available.
+Reports are triaged according to `docs/compliance/VulnerabilityManagement.md`. Depot aims to acknowledge and classify credible reports promptly, validate affected versions, coordinate remediation and regression testing, and disclose sufficient information for users to identify and install a fixed release without unnecessarily exposing exploit details before remediation is available.
 
 ## Supported versions
 
-Preview builds are development builds and are not production-supported. Production support windows and end dates are governed by `docs/compliance/SUPPORT_POLICY.md` and must be published for commercially distributed release lines.
+Preview builds are development builds and are not production-supported. Production support windows and end dates are governed by `docs/compliance/SupportPolicy.md` and must be published for commercially distributed release lines.
 
 ## Scope
 

@@ -22,7 +22,7 @@ The repository/CI implementation for Phase 7 is complete. During final verificat
 
 ## Accessibility technical baseline
 
-- [x] WCAG 2.2 AA / EN 301 549 inspired engineering requirements are documented in `ACCESSIBILITY.md`.
+- [x] WCAG 2.2 AA / EN 301 549 inspired engineering requirements are documented in `Accessibility.md`.
 - [x] Static CI rejects disabled keyboard focus visuals (`FocusVisualStyle={x:Null}`).
 - [x] Shared button styles expose visible keyboard focus.
 - [x] Core shell icon actions expose explicit automation names.
@@ -35,8 +35,8 @@ The repository/CI implementation for Phase 7 is complete. During final verificat
 - `.github/workflows/quality-gates.yml`
 - `scripts/quality/test-accessibility.ps1`
 - `tests/Depot.Tests/Quality/PerformanceQualityGateTests.cs`
-- `docs/compliance/SOFTWARE_QUALITY.md`
-- `docs/compliance/ACCESSIBILITY.md`
+- `docs/compliance/SoftwareQuality.md`
+- `docs/compliance/Accessibility.md`
 - Windows 2022/2025 full regression execution with zero-warning build enforcement
 - existing CI, security, recovery, workflow-integrity and e-invoice conformance tests
 

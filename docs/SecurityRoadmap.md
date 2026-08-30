@@ -30,7 +30,7 @@ Depot is developed toward applicable requirements and principles from the EU Cyb
 
 Governance, security/compliance documentation, threat modelling, OWASP ASVS mapping, security review, cryptographic/logging requirements, CycloneDX SBOM generation, locked dependency restore, vulnerability scanning and dependency/license review are implemented.
 
-Primary evidence: `docs/compliance/SECURITY.md`, `THREAT_MODEL.md`, `DATA_PROTECTION.md`, `VULNERABILITY_MANAGEMENT.md`, `SUPPORT_POLICY.md`, `COMPLIANCE_MATRIX.md`, `GOVERNANCE.md`, `DEPENDENCY_POLICY.md`, `LICENSE_REVIEW.md`, `SECURITY_REVIEW.md`, `ASVS_MAPPING.md`, `CRYPTOGRAPHY.md`, `SECURITY_LOGGING.md` and the security supply-chain workflow.
+Primary evidence: `docs/compliance/Security.md`, `ThreatModel.md`, `DataProtection.md`, `VulnerabilityManagement.md`, `SupportPolicy.md`, `ComplianceMatrix.md`, `Governance.md`, `DependencyPolicy.md`, `LicenseReview.md`, `SecurityReview.md`, `AsvsMapping.md`, `Cryptography.md`, `SecurityLogging.md` and the security supply-chain workflow.
 
 ---
 
@@ -47,7 +47,7 @@ Implemented technical controls include first-run administrator bootstrap, passwo
 - [ ] Authenticode-sign production artifacts with the production certificate.
 - [ ] Validate production timestamping with the production signing identity.
 
-Primary evidence: `docs/compliance/AUTHENTICATION_SECURITY.md`, `SECURE_CONFIGURATION.md`, `AUDIT_AND_RECOVERY.md`, `RELEASE_INTEGRITY.md` and the release-integrity/security workflows.
+Primary evidence: `docs/compliance/AuthenticationSecurity.md`, `SecureConfiguration.md`, `AuditAndRecovery.md`, `ReleaseIntegrity.md` and the release-integrity/security workflows.
 
 ---
 
@@ -61,7 +61,7 @@ The technical privacy baseline includes data inventory, storage/purpose mapping,
 
 The controller or qualified adviser must determine lawful bases, notices, processor arrangements, concrete retention periods, data-subject procedures, international-transfer requirements and any overriding retention duties for the actual deployment.
 
-Primary evidence: `docs/compliance/DATA_INVENTORY.md`, `RETENTION_POLICY.md`, `PRIVACY_BY_DESIGN.md`, `TELEMETRY_POLICY.md` and `DataSubjectAccessService` tests/workflow.
+Primary evidence: `docs/compliance/DataInventory.md`, `RetentionPolicy.md`, `PrivacyByDesign.md`, `TelemetryPolicy.md` and `DataSubjectAccessService` tests/workflow.
 
 ---
 
@@ -77,7 +77,7 @@ Financial-document integrity now also includes an authoritative Company seller p
 
 The operator or qualified adviser must determine tax-relevant records, statutory retention periods, organization-specific procedural documentation, segregation of duties, external interfaces and required authority/export formats.
 
-Primary evidence: `docs/compliance/PHASE4_STATUS.md`, `BUSINESS_RECORD_INTEGRITY.md`, `PROCEDURAL_DOCUMENTATION.md`, `ISSUER_SNAPSHOTS.md`, `INVOICE_FINALIZATION.md`, `BusinessRecordCatalog`, audit evidence export and integrity tests.
+Primary evidence: `docs/compliance/Phase4Status.md`, `BusinessRecordIntegrity.md`, `ProceduralDocumentation.md`, `IssuerSnapshots.md`, `InvoiceFinalization.md`, `BusinessRecordCatalog`, audit evidence export and integrity tests.
 
 ---
 
@@ -91,7 +91,7 @@ Implemented repository/application controls include preliminary CRA classificati
 
 Complete final legal product/economic-operator classification, applicable conformity assessment, declaration/CE marking where required, release-specific user/manufacturer information and support end date, operational private vulnerability intake, named reporting roles, competent CSIRT/ENISA reporting setup and then-current harmonised-standard review.
 
-Primary evidence: `docs/compliance/PHASE5_STATUS.md`, `CRA_CLASSIFICATION.md`, `CRA_RISK_ASSESSMENT.md`, `CRA_INCIDENT_REPORTING.md`, `CRA_TECHNICAL_DOCUMENTATION.md`, `SECURITY_UPDATE_LIFECYCLE.md`, `SECURE_DEFAULTS_REVIEW.md`, root `SECURITY.md` and security evidence workflows.
+Primary evidence: `docs/compliance/Phase5Status.md`, `CraClassification.md`, `CraRiskAssessment.md`, `CraIncidentReporting.md`, `CraTechnicalDocumentation.md`, `SecurityUpdateLifecycle.md`, `SecureDefaultsReview.md`, root `SECURITY.md` and security evidence workflows.
 
 ---
 
@@ -113,7 +113,7 @@ Sales Invoice posting now atomically captures the immutable seller snapshot and 
 - [ ] Implement and validate a true PDF/A-3 pipeline before claiming ZUGFeRD/Factur-X support.
 - [ ] Complete deployment-specific tax/legal acceptance for the actual supported invoice scenarios.
 
-Primary evidence: `docs/compliance/ELECTRONIC_INVOICING.md`, `INVOICE_FINALIZATION.md`, `COMPANY_MASTER_DATA.md`, `ISSUER_SNAPSHOTS.md`, `PHASE6_STATUS.md`, `ElectronicInvoice`, `ElectronicInvoiceService`, `SalesInvoiceFinalizationService`, finalization/conformance tests and `.github/workflows/electronic-invoice-conformance.yml`.
+Primary evidence: `docs/compliance/ElectronicInvoicing.md`, `InvoiceFinalization.md`, `CompanyMasterData.md`, `IssuerSnapshots.md`, `Phase6Status.md`, `ElectronicInvoice`, `ElectronicInvoiceService`, `SalesInvoiceFinalizationService`, finalization/conformance tests and `.github/workflows/electronic-invoice-conformance.yml`.
 
 ---
 
@@ -145,7 +145,7 @@ Phase 7 repository/CI implementation is complete. The quality workflow builds wi
 - [ ] Real SQL Server/MySQL/MariaDB compatibility, performance and recovery acceptance for every advertised version.
 - [ ] Representative production sizing/load tests with expected concurrency, latency, reports/exports and realistic data distributions.
 
-Primary evidence: `docs/compliance/PHASE7_STATUS.md`, `SOFTWARE_QUALITY.md`, `ACCESSIBILITY.md`, `.github/workflows/quality-gates.yml`, `scripts/quality/test-accessibility.ps1`, `PerformanceQualityGateTests` and the regression/security/recovery suites.
+Primary evidence: `docs/compliance/Phase7Status.md`, `SoftwareQuality.md`, `Accessibility.md`, `.github/workflows/quality-gates.yml`, `scripts/quality/test-accessibility.ps1`, `PerformanceQualityGateTests` and the regression/security/recovery suites.
 
 ---
 

@@ -46,7 +46,7 @@ Current schema levels:
 - Finance feature schema: **9**
 - Help manifest: **1.18**
 
-See `docs/FINANCE_ARCHITECTURE.md`, `docs/FINANCE_LOCALIZATION.md`, `docs/FINANCE_REPORTING.md`, `docs/FINANCE_COMPLIANCE.md`, and `docs/Roadmap.md`.
+See `docs/FinanceArchitecture.md`, `docs/FinanceLocalization.md`, `docs/FinanceReporting.md`, `docs/FinanceCompliance.md`, and `docs/Roadmap.md`.
 
 ## Architecture
 
@@ -91,18 +91,18 @@ Major remaining items include live remote-provider acceptance, production code s
 ## Documentation
 
 - `docs/Architecture.md`
-- `docs/SALES_PRICING.md`
-- `docs/CURRENT_STATUS.md`
-- `docs/FINANCE_ARCHITECTURE.md`
-- `docs/FINANCE_LOCALIZATION.md`
-- `docs/FINANCE_REPORTING.md`
-- `docs/FINANCE_COMPLIANCE.md`
-- `docs/DOCUMENTATION_STATUS.md`
-- `docs/USER_FACING_CHANGES.md`
-- `docs/HELP_CENTER.md`
+- `docs/SalesPricing.md`
+- `docs/CurrentStatus.md`
+- `docs/FinanceArchitecture.md`
+- `docs/FinanceLocalization.md`
+- `docs/FinanceReporting.md`
+- `docs/FinanceCompliance.md`
+- `docs/DocumentationStatus.md`
+- `docs/UserFacingChanges.md`
+- `docs/HelpCenter.md`
 - `docs/Roadmap.md`
-- `docs/RELEASE_1_0.md`
-- `docs/SECURITY_ROADMAP.md`
+- `docs/Release1.0.md`
+- `docs/SecurityRoadmap.md`
 - `docs/compliance/`
 
 ## License

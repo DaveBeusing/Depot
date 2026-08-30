@@ -103,7 +103,7 @@ Only `StockItem` records may participate in physical stock movements. Service/no
 
 `None` requires no serial/lot allocation. `SerialNumber` requires one unique serial code per moved unit with allocation quantity 1. `LotNumber` requires the complete movement quantity to be allocated across one or more lot codes.
 
-Tracking identity and mutable quality state live in `ItemTrackingUnits`; signed movement allocations live in `StockMovementTracking`. Current tracked quantity/location is derived from those movements. See `ITEM_TRACEABILITY.md`.
+Tracking identity and mutable quality state live in `ItemTrackingUnits`; signed movement allocations live in `StockMovementTracking`. Current tracked quantity/location is derived from those movements. See `ItemTraceability.md`.
 
 ### Lifecycle
 

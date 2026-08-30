@@ -68,9 +68,9 @@ Security is part of normal design and review. Changes affecting authentication, 
 
 ## Related documents
 
-- `../SECURITY_ROADMAP.md`
-- `THREAT_MODEL.md`
-- `DATA_PROTECTION.md`
-- `VULNERABILITY_MANAGEMENT.md`
-- `SUPPORT_POLICY.md`
-- `COMPLIANCE_MATRIX.md`
+- `../SecurityRoadmap.md`
+- `ThreatModel.md`
+- `DataProtection.md`
+- `VulnerabilityManagement.md`
+- `SupportPolicy.md`
+- `ComplianceMatrix.md`

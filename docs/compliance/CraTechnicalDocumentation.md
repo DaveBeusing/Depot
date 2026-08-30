@@ -15,16 +15,16 @@ Provide a stable technical-documentation index for CRA readiness and evidence co
 ## Intended purpose and architecture
 
 - `README.md`
-- `docs/compliance/CRA_CLASSIFICATION.md`
-- `docs/compliance/THREAT_MODEL.md`
-- `docs/compliance/SECURE_CONFIGURATION.md`
+- `docs/compliance/CraClassification.md`
+- `docs/compliance/ThreatModel.md`
+- `docs/compliance/SecureConfiguration.md`
 - architecture/source under `src/Depot`
 
 ## Cybersecurity risk assessment
 
-- `docs/compliance/CRA_RISK_ASSESSMENT.md`
-- `docs/compliance/THREAT_MODEL.md`
-- `docs/compliance/ASVS_MAPPING.md`
+- `docs/compliance/CraRiskAssessment.md`
+- `docs/compliance/ThreatModel.md`
+- `docs/compliance/AsvsMapping.md`
 - Phase-specific status/evidence documents
 
 ## Essential-security implementation evidence
@@ -42,10 +42,10 @@ Provide a stable technical-documentation index for CRA readiness and evidence co
 ## Vulnerability handling and support
 
 - root `SECURITY.md`
-- `docs/compliance/VULNERABILITY_MANAGEMENT.md`
-- `docs/compliance/CRA_INCIDENT_REPORTING.md`
-- `docs/compliance/SECURITY_UPDATE_LIFECYCLE.md`
-- `docs/compliance/SUPPORT_POLICY.md`
+- `docs/compliance/VulnerabilityManagement.md`
+- `docs/compliance/CraIncidentReporting.md`
+- `docs/compliance/SecurityUpdateLifecycle.md`
+- `docs/compliance/SupportPolicy.md`
 - `security/security-risk-acceptances.json`
 
 ## Supply-chain evidence

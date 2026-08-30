@@ -110,3 +110,7 @@ ViewModels must not:
 - Update all provider and schema references when database capabilities change.
 - Distinguish implemented code, partial implementation, unstarted work, and release verification.
 - Do not describe a feature as production-ready without code, automated tests where practical, and required environment-specific acceptance testing.
+- Project-specific Markdown documents under `docs/` and its subdirectories use PascalCase / UpperCamelCase filenames (`PascalCase.md`); abbreviations are treated as normal PascalCase words.
+- Examples include `Architecture.md`, `FinanceArchitecture.md`, `ItemMasterData.md`, and `SecurityRoadmap.md`.
+- Repository- or tool-reserved ecosystem filenames such as root `README.md`, `LICENSE.md`, `SECURITY.md`, and other established reserved names remain unchanged.
+- Documentation directory names remain lowercase, for example `docs/` and `docs/compliance/`.

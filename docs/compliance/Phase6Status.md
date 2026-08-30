@@ -62,5 +62,5 @@ These versions are deliberate release inputs and must be updated through review 
 - `tests/Depot.Tests/Fixtures/ElectronicInvoice/xrechnung-cii-basic.xml`
 - `scripts/einvoice/validate-xrechnung.ps1`
 - `.github/workflows/electronic-invoice-conformance.yml`
-- `docs/compliance/ELECTRONIC_INVOICING.md`
-- `docs/compliance/INVOICE_FINALIZATION.md`
+- `docs/compliance/ElectronicInvoicing.md`
+- `docs/compliance/InvoiceFinalization.md`

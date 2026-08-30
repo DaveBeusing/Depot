@@ -14,9 +14,9 @@ Technical baseline reviewed for Phase 5. Deployment-specific OS/database hardeni
 | Authorization | service/business boundaries enforce permissions | authorization/RBAC tests |
 | Local secret storage | persisted connection secrets protected with Windows DPAPI CurrentUser | secure configuration implementation/docs |
 | Remote database transport | supported SQL Server/MySQL/MariaDB settings require encrypted transport | configuration validation/tests |
-| Least privilege | application roles and database least-privilege deployment guidance | RBAC and `SECURE_CONFIGURATION.md` |
+| Least privilege | application roles and database least-privilege deployment guidance | RBAC and `SecureConfiguration.md` |
 | Audit | sensitive fields sanitized; normal UI has no audit modification/deletion path | audit tests/viewer |
-| Telemetry/external transmission | no background telemetry/analytics/cloud upload enabled by default; future transmission is review-gated | `TELEMETRY_POLICY.md` |
+| Telemetry/external transmission | no background telemetry/analytics/cloud upload enabled by default; future transmission is review-gated | `TelemetryPolicy.md` |
 | Finalized business records | correction/reversal workflows replace destructive edits | Phase 4 controls/tests |
 | Release integrity | source-bound builds, hashes and signing support | release-integrity workflow |
 | Vulnerability exceptions | Critical prohibited; other exceptions structured, approved and expiring | risk-acceptance validator |

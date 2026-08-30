@@ -29,4 +29,4 @@ Every such change should document:
 
 ## Pull-request requirement
 
-The existing security/compliance review should treat a change as privacy-impacting when any rule above is triggered and update `DATA_INVENTORY.md`, `RETENTION_POLICY.md`, and the data-subject search/export implementation when necessary.
+The existing security/compliance review should treat a change as privacy-impacting when any rule above is triggered and update `DataInventory.md`, `RetentionPolicy.md`, and the data-subject search/export implementation when necessary.
