@@ -75,6 +75,6 @@ public sealed class BulkItemSelectionViewModel : BaseViewModel
 	private readonly Action _changed;
 	private bool _isSelected;
 	public BulkItemSelectionViewModel(long itemId,string partNumber,string description,Action changed){ItemId=itemId;PartNumber=partNumber;Description=description;_changed=changed;}
-	public long ItemId{get;} public string PartNumber{get;} public string Description{get;}
+	public long ItemId{get;} public string PartNumber{get;set;} public string Description{get;set;}
 	public bool IsSelected{get=>_isSelected;set{if(_isSelected==value)return;_isSelected=value;OnPropertyChanged();_changed();}}
 }
