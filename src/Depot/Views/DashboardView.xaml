@@ -19,10 +19,10 @@
 
         <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
             <StackPanel Margin="0,12,0,0">
-                <TextBlock Text="Needs attention" Style="{StaticResource WorkspaceSectionTitleStyle}" />
+                <TextBlock Text="Needs attention" Style="{DynamicResource WorkspaceSectionTitleStyle}" />
                 <UniformGrid Columns="3">
                     <Button automation:AutomationProperties.Name="Open purchasing attention"
-                            Style="{StaticResource DashboardActionCardStyle}"
+                            Style="{DynamicResource DashboardActionCardStyle}"
                             Tag="Purchasing"
                             Click="OnDashboardActionClick"
                             Visibility="{Binding HasPurchasingMetrics, Converter={StaticResource BooleanToVisibilityConverter}}">
@@ -36,7 +36,7 @@
                     </Button>
 
                     <Button automation:AutomationProperties.Name="Open warehouse work"
-                            Style="{StaticResource DashboardActionCardStyle}"
+                            Style="{DynamicResource DashboardActionCardStyle}"
                             Tag="Warehouse"
                             Click="OnDashboardActionClick"
                             Visibility="{Binding HasWarehouseMetrics, Converter={StaticResource BooleanToVisibilityConverter}}">
@@ -50,7 +50,7 @@
                     </Button>
 
                     <Button automation:AutomationProperties.Name="Open sales attention"
-                            Style="{StaticResource DashboardActionCardStyle}"
+                            Style="{DynamicResource DashboardActionCardStyle}"
                             Tag="Sales"
                             Click="OnDashboardActionClick"
                             Visibility="{Binding HasSalesMetrics, Converter={StaticResource BooleanToVisibilityConverter}}">
@@ -77,7 +77,7 @@
                     </Button>
 
                     <Button automation:AutomationProperties.Name="Open approvals"
-                            Style="{StaticResource DashboardActionCardStyle}"
+                            Style="{DynamicResource DashboardActionCardStyle}"
                             Tag="Approvals"
                             Click="OnDashboardActionClick"
                             Visibility="{Binding HasApprovalMetrics, Converter={StaticResource BooleanToVisibilityConverter}}">
@@ -91,10 +91,10 @@
                     </Button>
                 </UniformGrid>
 
-                <TextBlock Text="Key metrics and workspaces" Style="{StaticResource WorkspaceSectionTitleStyle}" Margin="0,8,0,10" />
+                <TextBlock Text="Key metrics and workspaces" Style="{DynamicResource WorkspaceSectionTitleStyle}" Margin="0,8,0,10" />
                 <UniformGrid Columns="3">
                     <Button automation:AutomationProperties.Name="Open inventory workspace"
-                            Style="{StaticResource DashboardActionCardStyle}"
+                            Style="{DynamicResource DashboardActionCardStyle}"
                             Tag="Inventory"
                             Click="OnDashboardActionClick"
                             Visibility="{Binding HasCoreInventoryMetrics, Converter={StaticResource BooleanToVisibilityConverter}}">
@@ -123,7 +123,7 @@
                     </Button>
 
                     <Button automation:AutomationProperties.Name="Open user administration"
-                            Style="{StaticResource DashboardActionCardStyle}"
+                            Style="{DynamicResource DashboardActionCardStyle}"
                             Tag="AdministrationUsers"
                             Click="OnDashboardActionClick"
                             Visibility="{Binding HasAdministrationMetrics, Converter={StaticResource BooleanToVisibilityConverter}}">
@@ -136,7 +136,7 @@
                     </Button>
 
                     <Button automation:AutomationProperties.Name="Open reports workspace"
-                            Style="{StaticResource DashboardActionCardStyle}"
+                            Style="{DynamicResource DashboardActionCardStyle}"
                             Tag="Reports"
                             Click="OnDashboardActionClick"
                             Visibility="{Binding HasAdministrationMetrics, Converter={StaticResource BooleanToVisibilityConverter}}">
@@ -149,7 +149,7 @@
                     </Button>
                 </UniformGrid>
 
-                <TextBlock Text="Recent activity" Style="{StaticResource WorkspaceSectionTitleStyle}" Margin="0,8,0,10" />
+                <TextBlock Text="Recent activity" Style="{DynamicResource WorkspaceSectionTitleStyle}" Margin="0,8,0,10" />
                 <controls:Card Style="{StaticResource WorkspaceCardStyle}" Margin="0,0,0,12">
                     <controls:Card.Header>
                         <Grid>
