@@ -8,18 +8,20 @@
         <Setter Property="VerticalAlignment" Value="Center"/>
         <Setter Property="Background" Value="{DynamicResource SurfaceAltBrush}"/>
         <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/>
-        <Setter Property="FontSize" Value="10"/>
+        <Setter Property="FontSize" Value="{DynamicResource FontSize.Caption}"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="{x:Type controls:StatusBadge}">
-                    <Border Background="{TemplateBinding Background}" CornerRadius="8" Padding="{TemplateBinding Padding}">
+                    <Border Background="{TemplateBinding Background}" CornerRadius="{DynamicResource Radius.L}" Padding="{TemplateBinding Padding}">
                         <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
                     </Border>
                     <ControlTemplate.Triggers>
+                        <Trigger Property="Variant" Value="Primary"><Setter Property="Background" Value="{DynamicResource NavigationSelectedBackgroundBrush}"/><Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/></Trigger>
                         <Trigger Property="Variant" Value="Success"><Setter Property="Background" Value="{DynamicResource SuccessBrush}"/><Setter Property="Foreground" Value="{DynamicResource SuccessForegroundBrush}"/></Trigger>
                         <Trigger Property="Variant" Value="Warning"><Setter Property="Background" Value="{DynamicResource WarningBrush}"/><Setter Property="Foreground" Value="{DynamicResource WarningForegroundBrush}"/></Trigger>
                         <Trigger Property="Variant" Value="Error"><Setter Property="Background" Value="{DynamicResource ErrorBrush}"/><Setter Property="Foreground" Value="{DynamicResource ErrorForegroundBrush}"/></Trigger>
+                        <Trigger Property="Variant" Value="Muted"><Setter Property="Background" Value="{DynamicResource SurfaceAltBrush}"/><Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/></Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
@@ -36,7 +38,7 @@
                         <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="8"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                         <Ellipse x:Name="StatusDot" Width="7" Height="7" VerticalAlignment="Center" Fill="{DynamicResource ErrorForegroundBrush}"/>
                         <StackPanel Grid.Column="2">
-                            <TextBlock Foreground="{TemplateBinding Foreground}" FontSize="11" FontWeight="SemiBold" Text="{TemplateBinding Status}"/>
+                            <TextBlock Foreground="{TemplateBinding Foreground}" FontSize="{DynamicResource FontSize.Caption}" FontWeight="SemiBold" Text="{TemplateBinding Status}"/>
                             <TextBlock x:Name="DetailText" Margin="0,2,0,0" Foreground="{TemplateBinding DetailForeground}" FontSize="10" Text="{TemplateBinding Detail}"/>
                         </StackPanel>
                     </Grid>
@@ -57,12 +59,12 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="{x:Type controls:OperationStatus}">
-                    <Border x:Name="Container" Padding="10,7" Background="{DynamicResource SurfaceAltBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="5">
+                    <Border x:Name="Container" Padding="10,7" Background="{DynamicResource SurfaceAltBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="{DynamicResource Radius.M}">
                         <Grid>
                             <Grid.ColumnDefinitions><ColumnDefinition Width="90"/><ColumnDefinition Width="10"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                             <ProgressBar x:Name="Progress" Height="2" VerticalAlignment="Center" IsIndeterminate="True"/>
-                            <TextBlock x:Name="Message" Grid.Column="2" VerticalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="11" Text="{TemplateBinding StatusText}"/>
-                            <TextBlock x:Name="Action" Grid.Column="3" Margin="12,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource PrimaryTextBrush}" FontSize="11" FontWeight="SemiBold" Text="{TemplateBinding ActionText}" Visibility="Collapsed"/>
+                            <TextBlock x:Name="Message" Grid.Column="2" VerticalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="{DynamicResource FontSize.Caption}" Text="{TemplateBinding StatusText}"/>
+                            <TextBlock x:Name="Action" Grid.Column="3" Margin="12,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource PrimaryTextBrush}" FontSize="{DynamicResource FontSize.Caption}" FontWeight="SemiBold" Text="{TemplateBinding ActionText}" Visibility="Collapsed"/>
                         </Grid>
                     </Border>
                     <ControlTemplate.Triggers>
