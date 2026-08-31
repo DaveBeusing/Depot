@@ -6,9 +6,11 @@ namespace Depot.Controls;
 public enum StatusBadgeVariant
 {
     Neutral,
+    Primary,
     Success,
     Warning,
-    Error
+    Error,
+    Muted
 }
 
 public class StatusBadge : ContentControl

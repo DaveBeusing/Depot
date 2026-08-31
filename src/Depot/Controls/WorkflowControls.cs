@@ -84,9 +84,11 @@ public sealed class DocumentStatusBadge : StatusBadge
 		var technicalStatus = new string(status.Where(char.IsLetterOrDigit).ToArray()).ToUpperInvariant();
 		badge.Variant = technicalStatus switch
 		{
-			"APPROVED" or "ORDERED" or "RECEIVED" or "POSTED" or "COMPLETED" or "CLOSED" => StatusBadgeVariant.Success,
-			"PENDINGAPPROVAL" or "PARTIALLYRECEIVED" or "COUNTING" or "REVIEW" => StatusBadgeVariant.Warning,
-			"REJECTED" or "CANCELLED" or "REVERSED" or "ERROR" => StatusBadgeVariant.Error,
+			"ACTIVE" or "INPROGRESS" or "OPEN" => StatusBadgeVariant.Primary,
+			"APPROVED" or "ORDERED" or "RECEIVED" or "POSTED" or "COMPLETED" or "CLOSED" or "PAID" => StatusBadgeVariant.Success,
+			"PENDING" or "PENDINGAPPROVAL" or "PARTIALLYRECEIVED" or "COUNTING" or "REVIEW" => StatusBadgeVariant.Warning,
+			"REJECTED" or "CANCELLED" or "REVERSED" or "ERROR" or "FAILED" or "BLOCKED" or "OVERDUE" => StatusBadgeVariant.Error,
+			"ARCHIVED" or "DISABLED" or "INACTIVE" => StatusBadgeVariant.Muted,
 			_ => StatusBadgeVariant.Neutral
 		};
 	}
@@ -152,6 +154,6 @@ public sealed class ActivationStatusBadge : StatusBadge
 	{
 		var badge = (ActivationStatusBadge)dependencyObject;
 		badge.Content = (bool)args.NewValue ? "Active" : "Inactive";
-		badge.Variant = (bool)args.NewValue ? StatusBadgeVariant.Success : StatusBadgeVariant.Neutral;
+		badge.Variant = (bool)args.NewValue ? StatusBadgeVariant.Primary : StatusBadgeVariant.Muted;
 	}
 }
