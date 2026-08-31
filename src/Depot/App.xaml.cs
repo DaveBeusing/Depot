@@ -78,6 +78,7 @@ public partial class App : Application
 			ShowMainWindow(composition);
 			if (!composition.Services.Session.LogoutRequestedByUser)
 			{
+				composition.Services.Session.CloseApplication();
 				Shutdown();
 				return;
 			}
@@ -122,6 +123,7 @@ public partial class App : Application
 
 	protected override void OnExit(ExitEventArgs e)
 	{
+		_composition?.Services.Session.CloseApplication();
 		_composition?.Dispose();
 		_composition = null;
 		base.OnExit(e);

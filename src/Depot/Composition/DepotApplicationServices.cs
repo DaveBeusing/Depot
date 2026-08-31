@@ -31,6 +31,11 @@ internal sealed class DepotApplicationServices : IDisposable
 			database = DatabaseComposition.Create();
 			var repositories = new RepositoryComposition(database.DataAccess);
 			var services = new ServiceComposition(database, repositories);
+			var version = applicationInformation.GetVersionInfo().InformationalVersion;
+			services.Session.Configure(
+				repositories.UserSessions,
+				new UserSessionClientInfo(Guid.NewGuid(), Environment.MachineName, version));
+			services.Authentication.ConfigureSession(services.Session);
 			var composition = new DepotApplicationServices(
 				database,
 				services,
@@ -45,5 +50,9 @@ internal sealed class DepotApplicationServices : IDisposable
 		}
 	}
 
-	public void Dispose() => Database.Dispose();
+	public void Dispose()
+	{
+		Services.Session.Dispose();
+		Database.Dispose();
+	}
 }

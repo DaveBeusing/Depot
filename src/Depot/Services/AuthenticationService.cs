@@ -12,6 +12,7 @@ public sealed class AuthenticationService
 	private readonly PasswordHasher _passwordHasher;
 	private readonly AuthorizationService _authorizationService;
 	private readonly LoginAttemptLimiter _attemptLimiter;
+	private SessionService? _sessionService;
 
 	public AuthenticationService(
 		UserRepository userRepository,
@@ -25,6 +26,13 @@ public sealed class AuthenticationService
 		_passwordHasher = passwordHasher;
 		_authorizationService = authorizationService;
 		_attemptLimiter = attemptLimiter ?? new LoginAttemptLimiter();
+	}
+
+	internal void ConfigureSession(SessionService sessionService)
+	{
+		ArgumentNullException.ThrowIfNull(sessionService);
+		if (_sessionService is not null) throw new InvalidOperationException("Authentication session integration is already configured.");
+		_sessionService = sessionService;
 	}
 
 	public async Task<bool> SignInAsync(string email, string password, CancellationToken cancellationToken)
@@ -43,6 +51,8 @@ public sealed class AuthenticationService
 		_attemptLimiter.RecordSuccess(normalizedEmail);
 		authentication!.User.Roles = await _roleRepository.GetUserRolesAsync(authentication.User.Id, cancellationToken);
 		authentication.User.EffectivePermissions = await _roleRepository.GetEffectivePermissionsAsync(authentication.User.Id, cancellationToken);
+		if (_sessionService is not null)
+			await _sessionService.StartAuthenticatedSessionAsync(authentication.User.Id, cancellationToken);
 		_authorizationService.SignIn(authentication.User, authentication.User.EffectivePermissions);
 		return true;
 	}
