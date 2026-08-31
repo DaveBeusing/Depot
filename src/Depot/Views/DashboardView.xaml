@@ -122,16 +122,24 @@
                         </StackPanel>
                     </Button>
 
-                    <Button automation:AutomationProperties.Name="Open user administration"
+                    <Button automation:AutomationProperties.Name="Open active user sessions"
                             Style="{DynamicResource DashboardActionCardStyle}"
-                            Tag="AdministrationUsers"
+                            Tag="AdministrationUserSessions"
                             Click="OnDashboardActionClick"
                             Visibility="{Binding HasAdministrationMetrics, Converter={StaticResource BooleanToVisibilityConverter}}">
                         <StackPanel>
-                            <TextBlock Text="Administration" Style="{StaticResource SectionTitleStyle}" />
-                            <TextBlock Text="Users, access and application administration" Style="{StaticResource CaptionStyle}" Margin="0,4,0,12" />
-                            <TextBlock Text="{Binding AdministrationMetrics.ActiveUsers, StringFormat={}{0:N0}}" Style="{StaticResource MetricLargeStyle}" />
-                            <TextBlock Text="Active users" Style="{StaticResource CaptionStyle}" />
+                            <TextBlock Text="User Presence" Style="{StaticResource SectionTitleStyle}" />
+                            <TextBlock Text="Authenticated users and heartbeat-active sessions" Style="{StaticResource CaptionStyle}" Margin="0,4,0,12" />
+                            <UniformGrid Columns="2">
+                                <StackPanel>
+                                    <TextBlock Text="{Binding AdministrationMetrics.OnlineUsers, StringFormat={}{0:N0}}" Style="{StaticResource MetricLargeStyle}" />
+                                    <TextBlock Text="Online Users" Style="{StaticResource CaptionStyle}" />
+                                </StackPanel>
+                                <StackPanel>
+                                    <TextBlock Text="{Binding AdministrationMetrics.ActiveSessions, StringFormat={}{0:N0}}" Style="{StaticResource MetricLargeStyle}" />
+                                    <TextBlock Text="Active Sessions" Style="{StaticResource CaptionStyle}" />
+                                </StackPanel>
+                            </UniformGrid>
                         </StackPanel>
                     </Button>
 

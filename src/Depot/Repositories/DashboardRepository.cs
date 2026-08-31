@@ -19,6 +19,7 @@ public sealed class DashboardRepository : DatabaseRepository
 		bool includeWarehouse,
 		bool includeSales,
 		bool includeAdministration,
+		DateTime presenceCutoffUtc,
 		CancellationToken cancellationToken)
 	{
 		var columns = new List<string>();
@@ -75,7 +76,12 @@ public sealed class DashboardRepository : DatabaseRepository
 				Parameter("$MonthStart", new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1))
 			]);
 		}
-		if (includeAdministration) columns.Add("(SELECT COUNT(*) FROM Users WHERE IsActive = 1)");
+		if (includeAdministration)
+		{
+			columns.Add("(SELECT COUNT(DISTINCT UserId) FROM UserSessions WHERE EndedUtc IS NULL AND LastSeenUtc >= $PresenceCutoff)");
+			columns.Add("(SELECT COUNT(*) FROM UserSessions WHERE EndedUtc IS NULL AND LastSeenUtc >= $PresenceCutoff)");
+			parameters.Add(Parameter("$PresenceCutoff", presenceCutoffUtc.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture)));
+		}
 		if (columns.Count == 0) return Task.FromResult<DashboardRoleMetrics?>(new DashboardRoleMetrics(null, null, null, null, null));
 
 		return Database.QuerySingleOrDefaultAsync(
@@ -97,7 +103,7 @@ public sealed class DashboardRepository : DatabaseRepository
 		if (includePurchasing) purchasing = new DashboardPurchasingMetrics(Long(reader, ordinal++), Long(reader, ordinal++), Long(reader, ordinal++), Long(reader, ordinal++));
 		if (includeWarehouse) warehouse = new DashboardWarehouseMetrics(Long(reader, ordinal++), Long(reader, ordinal++));
 		if (includeSales) sales = new DashboardSalesMetrics(Long(reader, ordinal++), Long(reader, ordinal++), Long(reader, ordinal++), Long(reader, ordinal++), Long(reader, ordinal++), Long(reader, ordinal++), Long(reader, ordinal++), Long(reader, ordinal++), Decimal(reader, ordinal++));
-		if (includeAdministration) administration = new DashboardAdministrationMetrics(Long(reader, ordinal));
+		if (includeAdministration) administration = new DashboardAdministrationMetrics(Long(reader, ordinal++), Long(reader, ordinal));
 		return new DashboardRoleMetrics(approvals, purchasing, warehouse, sales, administration);
 	}
 

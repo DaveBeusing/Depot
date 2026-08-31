@@ -50,9 +50,9 @@ public partial class DashboardView : UserControl
 			case "Sales": await NavigateModulePageAsync(viewModel, "Sales", "Overview"); break;
 			case "Reports": await NavigateTopLevelAsync(viewModel, "Reports"); break;
 			case "InventoryMovements": await NavigateModulePageAsync(viewModel, "Inventory", "Movements"); break;
-			case "AdministrationUsers":
+			case "AdministrationUserSessions":
 				await NavigateTopLevelAsync(viewModel, "Administration");
-				await viewModel.AdministrationViewModel.NavigateToAsync(AdministrationSection.Users);
+				await viewModel.AdministrationViewModel.NavigateToAsync(AdministrationSection.UserSessions);
 				break;
 		}
 	}

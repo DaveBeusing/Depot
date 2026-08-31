@@ -5,6 +5,7 @@ using System.Collections.ObjectModel;
 
 using Depot.Data;
 using Depot.Models;
+using Depot.Repositories;
 using Depot.Services;
 using Depot.Services.Help;
 using Depot.ViewModels.MasterData;
@@ -19,6 +20,7 @@ public sealed class AdministrationViewModel : BaseViewModel, IDisposable
 	private readonly ImportViewModel _importViewModel;
 	private readonly MasterDataViewModel _masterDataViewModel;
 	private readonly UserViewModel _userViewModel;
+	private readonly UserSessionsViewModel _userSessionsViewModel;
 	private readonly RoleViewModel _roleViewModel;
 	private readonly CompanyProfileViewModel _companyProfileViewModel;
 	private readonly DatabaseSettingsViewModel _databaseSettingsViewModel;
@@ -67,11 +69,14 @@ public sealed class AdministrationViewModel : BaseViewModel, IDisposable
 		_companyProfileViewModel = new CompanyProfileViewModel(new CompanyProfileService(companyDatabase, settingsService.CurrentSettings.Provider, authorization));
 		var privacyDatabase = new DatabaseAccess(DatabaseProviderFactory.CreateConnectionFactory(settingsService.CurrentSettings));
 		_privacyDataViewModel = new PrivacyDataViewModel(new DataSubjectAccessService(privacyDatabase, authorization), fileDialogService);
+		var sessionDatabase = new DatabaseAccess(DatabaseProviderFactory.CreateConnectionFactory(settingsService.CurrentSettings));
+		_userSessionsViewModel = new UserSessionsViewModel(new UserSessionAdministrationService(new UserSessionRepository(sessionDatabase), authorization));
 
 		AddIf(authorization, ApplicationPermission.MasterDataView, "Master Data", AdministrationSection.MasterData);
 		AddIf(authorization, ApplicationPermission.MasterDataView, "Warehouses & Locations", AdministrationSection.Warehouses);
 		AddIf(authorization, ApplicationPermission.SuppliersView, "Suppliers", AdministrationSection.Suppliers);
 		AddIf(authorization, ApplicationPermission.UsersView, "Users", AdministrationSection.Users);
+		AddIf(authorization, ApplicationPermission.UsersView, "User Sessions", AdministrationSection.UserSessions);
 		AddIf(authorization, ApplicationPermission.RolesView, "Roles", AdministrationSection.Roles);
 		AddIf(authorization, ApplicationPermission.SettingsView, "Company", AdministrationSection.Company);
 		AddIf(authorization, ApplicationPermission.ImportManage, "Import", AdministrationSection.Import);
@@ -161,6 +166,7 @@ public sealed class AdministrationViewModel : BaseViewModel, IDisposable
 		AdministrationSection.Warehouses => _masterDataViewModel.WarehouseStructureViewModel,
 		AdministrationSection.Suppliers => _masterDataViewModel.SupplierViewModel,
 		AdministrationSection.Users => _userViewModel,
+		AdministrationSection.UserSessions => _userSessionsViewModel,
 		AdministrationSection.Roles => _roleViewModel,
 		AdministrationSection.Company => _companyProfileViewModel,
 		AdministrationSection.Database => _databaseSettingsViewModel,
@@ -176,6 +182,7 @@ public sealed class AdministrationViewModel : BaseViewModel, IDisposable
 		WarehouseStructureViewModel warehouses => warehouses.LoadAsync(cancellationToken),
 		SupplierViewModel suppliers => suppliers.LoadAsync(cancellationToken),
 		UserViewModel users => users.LoadUsersAsync(cancellationToken),
+		UserSessionsViewModel sessions => sessions.LoadAsync(cancellationToken),
 		RoleViewModel roles => roles.LoadAsync(cancellationToken),
 		CompanyProfileViewModel company => company.LoadAsync(cancellationToken),
 		DatabaseSettingsViewModel database => database.LoadAsync(cancellationToken),
@@ -198,6 +205,7 @@ public sealed class AdministrationViewModel : BaseViewModel, IDisposable
 	private static string TopicFor(AdministrationSection section) => section switch
 	{
 		AdministrationSection.Users or AdministrationSection.Roles => "administration.users",
+		AdministrationSection.UserSessions => "administration.user-sessions",
 		AdministrationSection.Company => "administration.company",
 		AdministrationSection.Database => "administration.database",
 		AdministrationSection.AuditLog => "administration.audit-log",
@@ -215,6 +223,7 @@ public sealed class AdministrationViewModel : BaseViewModel, IDisposable
 		foreach (var state in _loadStates.Values) state.Dispose();
 		_masterDataViewModel.Dispose();
 		if (_userViewModel is IDisposable users) users.Dispose();
+		_userSessionsViewModel.Dispose();
 		if (_roleViewModel is IDisposable roles) roles.Dispose();
 		_companyProfileViewModel.Dispose();
 		if (_databaseSettingsViewModel is IDisposable database) database.Dispose();
