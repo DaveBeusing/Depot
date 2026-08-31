@@ -1,0 +1,48 @@
+// Copyright (c) 2026 David Beusing
+// Licensed under the MIT License.
+
+namespace Depot.Data;
+
+internal static class UserSessionSchema
+{
+	public static void Ensure(IDatabaseConnectionFactory connectionFactory)
+	{
+		using var connection = connectionFactory.CreateConnection();
+		connection.Open();
+		using var transaction = connectionFactory.BeginWriteTransaction(connection);
+		using var command = connection.CreateCommand();
+		command.Transaction = transaction;
+		var statements = connectionFactory.Provider switch
+		{
+			DatabaseProvider.Local => Sqlite,
+			DatabaseProvider.SqlServer => SqlServer,
+			DatabaseProvider.MySql => MySql,
+			_ => throw new NotSupportedException($"User session schema is not supported for provider '{connectionFactory.Provider}'.")
+		};
+		foreach (var statement in statements)
+		{
+			command.CommandText = statement;
+			command.ExecuteNonQuery();
+		}
+		transaction.Commit();
+	}
+
+	private static readonly string[] Sqlite =
+	[
+		"CREATE TABLE IF NOT EXISTS UserSessions (Id INTEGER PRIMARY KEY AUTOINCREMENT, SessionId TEXT NOT NULL UNIQUE, UserId INTEGER NOT NULL, StartedUtc TEXT NOT NULL, LastSeenUtc TEXT NOT NULL, LastActivityUtc TEXT NULL, EndedUtc TEXT NULL, EndReason INTEGER NULL, ClientInstanceId TEXT NOT NULL, MachineName TEXT NULL, AppVersion TEXT NULL, Version INTEGER NOT NULL DEFAULT 1, FOREIGN KEY(UserId) REFERENCES Users(Id));",
+		"CREATE INDEX IF NOT EXISTS IX_UserSessions_UserId ON UserSessions(UserId);",
+		"CREATE INDEX IF NOT EXISTS IX_UserSessions_Presence ON UserSessions(EndedUtc, LastSeenUtc);"
+	];
+
+	private static readonly string[] SqlServer =
+	[
+		"IF OBJECT_ID(N'UserSessions', N'U') IS NULL CREATE TABLE UserSessions (Id bigint IDENTITY(1,1) NOT NULL CONSTRAINT PK_UserSessions PRIMARY KEY, SessionId nvarchar(36) NOT NULL CONSTRAINT UQ_UserSessions_SessionId UNIQUE, UserId bigint NOT NULL, StartedUtc nvarchar(40) NOT NULL, LastSeenUtc nvarchar(40) NOT NULL, LastActivityUtc nvarchar(40) NULL, EndedUtc nvarchar(40) NULL, EndReason int NULL, ClientInstanceId nvarchar(36) NOT NULL, MachineName nvarchar(255) NULL, AppVersion nvarchar(100) NULL, Version bigint NOT NULL CONSTRAINT DF_UserSessions_Version DEFAULT 1, CONSTRAINT FK_UserSessions_Users FOREIGN KEY(UserId) REFERENCES Users(Id));",
+		"IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_UserSessions_UserId' AND object_id = OBJECT_ID(N'UserSessions')) CREATE INDEX IX_UserSessions_UserId ON UserSessions(UserId);",
+		"IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'IX_UserSessions_Presence' AND object_id = OBJECT_ID(N'UserSessions')) CREATE INDEX IX_UserSessions_Presence ON UserSessions(EndedUtc, LastSeenUtc);"
+	];
+
+	private static readonly string[] MySql =
+	[
+		"CREATE TABLE IF NOT EXISTS UserSessions (Id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY, SessionId VARCHAR(36) NOT NULL UNIQUE, UserId BIGINT NOT NULL, StartedUtc VARCHAR(40) NOT NULL, LastSeenUtc VARCHAR(40) NOT NULL, LastActivityUtc VARCHAR(40) NULL, EndedUtc VARCHAR(40) NULL, EndReason INT NULL, ClientInstanceId VARCHAR(36) NOT NULL, MachineName VARCHAR(255) NULL, AppVersion VARCHAR(100) NULL, Version BIGINT NOT NULL DEFAULT 1, INDEX IX_UserSessions_UserId(UserId), INDEX IX_UserSessions_Presence(EndedUtc, LastSeenUtc), CONSTRAINT FK_UserSessions_Users FOREIGN KEY(UserId) REFERENCES Users(Id)) ENGINE=InnoDB;"
+	];
+}

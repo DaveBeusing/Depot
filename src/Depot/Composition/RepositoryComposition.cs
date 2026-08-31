@@ -54,6 +54,7 @@ internal sealed class RepositoryComposition
 		StorageLocations = new StorageLocationRepository(dataAccess);
 		StockMovements = new StockMovementRepository(dataAccess);
 		Users = new UserRepository(dataAccess);
+		UserSessions = new UserSessionRepository(dataAccess);
 		Roles = new RoleRepository(dataAccess);
 		Audit = new AuditRepository(dataAccess);
 		Notifications = new NotificationRepository(dataAccess);
@@ -104,6 +105,7 @@ internal sealed class RepositoryComposition
 	public StorageLocationRepository StorageLocations { get; }
 	public StockMovementRepository StockMovements { get; }
 	public UserRepository Users { get; }
+	public UserSessionRepository UserSessions { get; }
 	public RoleRepository Roles { get; }
 	public AuditRepository Audit { get; }
 	public NotificationRepository Notifications { get; }
