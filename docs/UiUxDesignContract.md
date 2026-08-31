@@ -151,8 +151,8 @@ Prefer flat workspace sections for ordinary groups of form fields and dense busi
 - `Neutral`: draft, unknown or uncategorized;
 - `Primary`: active, open or in progress;
 - `Success`: completed, approved, posted, closed or paid;
-- `Warning`: pending, review, partially complete or overdue;
-- `Error`: rejected, failed, blocked, reversed or error;
+- `Warning`: pending, review or partially complete;
+- `Error`: rejected, failed, blocked, reversed, overdue or error;
 - `Muted`: archived, disabled or inactive.
 
 The displayed business status remains the source of truth. The visual mapping must never change domain state.

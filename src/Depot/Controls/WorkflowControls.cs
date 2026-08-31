@@ -86,8 +86,8 @@ public sealed class DocumentStatusBadge : StatusBadge
 		{
 			"ACTIVE" or "INPROGRESS" or "OPEN" => StatusBadgeVariant.Primary,
 			"APPROVED" or "ORDERED" or "RECEIVED" or "POSTED" or "COMPLETED" or "CLOSED" or "PAID" => StatusBadgeVariant.Success,
-			"PENDING" or "PENDINGAPPROVAL" or "PARTIALLYRECEIVED" or "COUNTING" or "REVIEW" or "OVERDUE" => StatusBadgeVariant.Warning,
-			"REJECTED" or "CANCELLED" or "REVERSED" or "ERROR" or "FAILED" or "BLOCKED" => StatusBadgeVariant.Error,
+			"PENDING" or "PENDINGAPPROVAL" or "PARTIALLYRECEIVED" or "COUNTING" or "REVIEW" => StatusBadgeVariant.Warning,
+			"REJECTED" or "CANCELLED" or "REVERSED" or "ERROR" or "FAILED" or "BLOCKED" or "OVERDUE" => StatusBadgeVariant.Error,
 			"ARCHIVED" or "DISABLED" or "INACTIVE" => StatusBadgeVariant.Muted,
 			_ => StatusBadgeVariant.Neutral
 		};
