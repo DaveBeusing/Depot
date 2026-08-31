@@ -16,6 +16,20 @@ Depot tracks failed attempts by normalized account key in process memory. Five f
 
 The current limiter is per application process. A future multi-node/server authentication architecture must move throttling to a shared trusted store or identity provider.
 
+## Authenticated sessions and presence
+
+A successful local authentication now creates a unique persistent `UserSession` before the authenticated identity is published to the application. Failed authentication creates no session. Multiple simultaneous sessions for the same user are allowed.
+
+Online presence is not stored as a boolean. It is derived only when the session has no `EndedUtc` value and `LastSeenUtc` is within the central 90-second presence timeout. Depot sends a heartbeat every 30 seconds while the session is authenticated. A heartbeat updates only a still-unended session, preventing a late heartbeat from reviving a session that logout has already ended.
+
+Normal logout records `LoggedOut`; a clean application exit records `ApplicationClosed` with a bounded shutdown write. Crashes, power loss, process termination, network loss and standby are handled by heartbeat expiry rather than relying on a logout callback.
+
+The administration session overview reuses the existing `Users.View` permission. The service layer enforces the permission independently of navigation visibility. Heartbeats are not Audit events and therefore do not create high-volume business-evidence noise.
+
+Session presence is deliberately data-minimal: user/session identifiers, timestamps, a generated client-instance identifier, display-only machine name, application version, end state and optimistic version. The feature does not collect MAC addresses, hardware fingerprints, key logging, operating-system activity, external-window activity, IP/geolocation data or similar telemetry.
+
+Remote logout, revocation enforcement, concurrent-session limits, suspicious-login detection and security alerts are not implemented in the current scope. Future end reasons are reserved in the session domain so those capabilities can be introduced without replacing the persistence model.
+
 ## Identity roadmap
 
 MFA and external identity providers (Microsoft Entra ID/OIDC and, where customer demand justifies it, SAML) are intentionally not coupled to the local authentication implementation during preview. Enterprise identity should be introduced behind an authentication-provider abstraction so local accounts remain usable for offline/recovery scenarios and external-provider policy can be centrally enforced.

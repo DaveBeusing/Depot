@@ -1,14 +1,29 @@
 # Current project status
 
-Updated: 2026-08-30
+Updated: 2026-08-31
 
 Depot is on the `0.15.x-preview` development line. The repository contains the integrated Finance platform: foundation/master data, immutable General Ledger, Receivables, Payables, FIFO Inventory Accounting, Banking and Payments, Financial Reporting, and effective-dated Localization.
+
+Depot now also has persistent authenticated user sessions and heartbeat-derived online presence. Every successful login creates a unique session; failed logins create none. Normal logout and clean application shutdown end the current session explicitly, while crash, power loss, network loss, standby and process termination age out automatically through the 90-second presence timeout. Multi-session per user is supported.
+
+Administrators with the existing `Users.View` permission can open **Administration → User Sessions** to see user, client, sign-in time, last-seen state and Depot version. The dashboard separates distinct **Online Users** from **Active Sessions** and links to the session overview. Heartbeats are technical liveness writes and are not emitted as Audit events.
 
 Sales pricing supports Global, Regional and optional Customer scopes. The central resolver falls back Customer → Region → Global for each item and retains the selected price source on quote and order lines.
 
 Item Cost Build-up now derives a traceable commercial item cost from the active preferred supplier purchase price plus ordered Absolute/Percentage Cost Components. Percentage components explicitly use BaseCost or RunningTotal. Bulk Pricing consumes the same central calculation service, applies Percentage Markup, requires a Preview, supports All Active/Category/Manufacturer/Selected filters and applies through Replace/Only Increase/Only Missing modes to the existing scoped PriceList model.
 
 New installations also receive provider-neutral standard reference data for Units of Measure and Packaging. Depot seeds 12 UoMs (`EA`, `SET`, `PAIR`, `M`, `M2`, `M3`, `KG`, `G`, `L`, `ML`, `H`, `DAY`) and 12 Packaging Types (`UNIT`, `BAG`, `BOX`, `CARTON`, `CASE`, `PACK`, `BUNDLE`, `TRAY`, `REEL`, `ROLL`, `CRATE`, `PALLET`). `EA` is the canonical built-in piece unit; `PCS` is not seeded. The initializer is idempotent and preserves existing matching or custom values without changing descriptions, activation state or versions.
+
+## Session and presence safeguards
+
+- `IsOnline` is not persisted; active presence is derived from `EndedUtc IS NULL` plus heartbeat freshness.
+- Heartbeat interval is 30 seconds and presence timeout is 90 seconds from central options.
+- Heartbeat updates only non-ended sessions, preventing logout/heartbeat races from reviving a session.
+- Temporary heartbeat database failures are contained; the next normal interval is attempted without an aggressive retry loop.
+- Clean shutdown uses a bounded database-write window.
+- Multiple active sessions per user are intentionally supported; there is no active-session uniqueness constraint on `UserId`.
+- The administration service enforces `Users.View`; UI visibility is not the access-control boundary.
+- Session presence stores no MAC address, hardware fingerprint, key logging, OS activity, external-window tracking, IP/geolocation data or similar telemetry.
 
 ## Finance capabilities
 
@@ -47,14 +62,17 @@ New installations also receive provider-neutral standard reference data for Unit
 - Core database schema: **30**
 - Sales feature schema: **10**
 - Finance feature schema: **9**
-- Help manifest: **1.18**
+- User Sessions feature schema: **1**
+- Help manifest: **1.19**
 
 Every commit increments `DepotVersionPatch`.
 
 ## Validation boundary
 
-Release Build, win-x64 publish, repository regression tests, Release Integrity, Security Supply Chain and Software Quality gates are required on the final integration head. Provider-neutral DDL exists for SQLite, SQL Server and MySQL/MariaDB. Optional live-provider tests exercise scoped pricing, Item Cost schema migration and standard UoM/Packaging initialization when server connection strings are configured.
+Release Build, win-x64 publish, repository regression tests, Release Integrity, Security Supply Chain and Software Quality gates are required on the final integration head. Provider-neutral DDL exists for SQLite, SQL Server and MySQL/MariaDB. Optional live-provider tests exercise scoped pricing, Item Cost schema migration, standard UoM/Packaging initialization and User Sessions persistence when server connection strings are configured.
 
 ## Next steps
+
+Session-security extensions remain explicitly out of scope for the current feature: remote/force logout, session revocation UI, single-session enforcement, concurrent-session limits, role-specific limits, suspicious-login detection, IP/geolocation tracking, full session-history UI and security alerts.
 
 Further pricing extensions are demand-driven: controlled FX conversion for cross-currency cost-to-price generation, additional explicit Base Cost source strategies, Target Gross Margin as a separate pricing rule, and commercial rounding strategies such as 0.05/0.10/0.50 or .99 endings. Item-specific packaging quantities and unit conversions remain a separate future capability; they are not encoded in global Packaging Types.
