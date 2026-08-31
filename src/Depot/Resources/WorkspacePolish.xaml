@@ -11,11 +11,16 @@
 		<Setter Property="Padding" Value="{DynamicResource Workspace.Toolbar.Padding}" />
 	</Style>
 
-	<Style x:Key="WorkspaceTitleStyle" TargetType="TextBlock" BasedOn="{StaticResource PageTitleStyle}" />
+	<Style x:Key="WorkspaceTitleStyle" TargetType="TextBlock">
+		<Setter Property="FontSize" Value="{DynamicResource FontSize.PageTitle}" />
+		<Setter Property="FontWeight" Value="SemiBold" />
+		<Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+	</Style>
 
-	<Style x:Key="WorkspaceSubtitleStyle" TargetType="TextBlock" BasedOn="{StaticResource CaptionStyle}">
+	<Style x:Key="WorkspaceSubtitleStyle" TargetType="TextBlock">
 		<Setter Property="Margin" Value="0,4,0,0" />
 		<Setter Property="FontSize" Value="{DynamicResource FontSize.Body}" />
+		<Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}" />
 		<Setter Property="TextWrapping" Value="Wrap" />
 	</Style>
 
@@ -28,7 +33,9 @@
 		<Setter Property="VerticalContentAlignment" Value="Stretch" />
 	</Style>
 
-	<Style x:Key="WorkspaceSectionHeaderStyle" TargetType="TextBlock" BasedOn="{StaticResource CaptionStyle}">
+	<Style x:Key="WorkspaceSectionHeaderStyle" TargetType="TextBlock">
+		<Setter Property="FontSize" Value="{DynamicResource FontSize.Caption}" />
+		<Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}" />
 		<Setter Property="FontWeight" Value="SemiBold" />
 		<Setter Property="TextOptions.TextFormattingMode" Value="Display" />
 	</Style>

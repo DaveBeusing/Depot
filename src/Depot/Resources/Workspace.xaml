@@ -19,7 +19,10 @@
         <Setter Property="BorderThickness" Value="0,0,0,1" />
     </Style>
 
-    <Style x:Key="WorkspaceSectionTitleStyle" TargetType="TextBlock" BasedOn="{StaticResource SectionTitleStyle}">
+    <Style x:Key="WorkspaceSectionTitleStyle" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="{DynamicResource FontSize.Section}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
         <Setter Property="Margin" Value="{DynamicResource Workspace.Section.Header.Margin}" />
     </Style>
 
