@@ -130,30 +130,42 @@
                         <StackPanel>
                             <TextBlock Text="User Presence" Style="{StaticResource SectionTitleStyle}" />
                             <TextBlock Text="Authenticated users, active clients and today's session events" Style="{StaticResource CaptionStyle}" Margin="0,4,0,12" />
-                            <UniformGrid Columns="2">
-                                <StackPanel>
-                                    <TextBlock Text="{Binding AdministrationMetrics.OnlineUsers, StringFormat={}{0:N0}}" Style="{StaticResource MetricLargeStyle}" />
-                                    <TextBlock Text="Online Users" Style="{StaticResource CaptionStyle}" />
-                                </StackPanel>
-                                <StackPanel>
-                                    <TextBlock Text="{Binding AdministrationMetrics.ActiveSessions, StringFormat={}{0:N0}}" Style="{StaticResource MetricLargeStyle}" />
-                                    <TextBlock Text="Active Sessions" Style="{StaticResource CaptionStyle}" />
-                                </StackPanel>
-                            </UniformGrid>
-                            <UniformGrid Columns="3" Margin="0,12,0,0">
-                                <StackPanel>
-                                    <TextBlock Text="{Binding AdministrationMetrics.SessionsToday, StringFormat={}{0:N0}}" Style="{StaticResource MetricStyle}" />
-                                    <TextBlock Text="Sessions Today" Style="{StaticResource CaptionStyle}" TextWrapping="Wrap" />
-                                </StackPanel>
-                                <StackPanel>
-                                    <TextBlock Text="{Binding AdministrationMetrics.AdministrativeLogoutsToday, StringFormat={}{0:N0}}" Style="{StaticResource MetricStyle}" />
-                                    <TextBlock Text="Admin Logouts" Style="{StaticResource CaptionStyle}" TextWrapping="Wrap" />
-                                </StackPanel>
-                                <StackPanel>
-                                    <TextBlock Text="{Binding AdministrationMetrics.RevokedSessionsToday, StringFormat={}{0:N0}}" Style="{StaticResource MetricStyle}" />
-                                    <TextBlock Text="Revoked Today" Style="{StaticResource CaptionStyle}" TextWrapping="Wrap" />
-                                </StackPanel>
-                            </UniformGrid>
+
+                            <TextBlock Text="Live now" Style="{StaticResource CaptionStyle}" FontWeight="SemiBold" Margin="0,0,0,6" />
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Online users" Style="{StaticResource CaptionStyle}" VerticalAlignment="Center" />
+                                <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding AdministrationMetrics.OnlineUsers, StringFormat={}{0:N0}}" Style="{StaticResource MetricLargeStyle}" HorizontalAlignment="Right" />
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Active sessions" Style="{StaticResource CaptionStyle}" VerticalAlignment="Center" Margin="0,6,0,0" />
+                                <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding AdministrationMetrics.ActiveSessions, StringFormat={}{0:N0}}" Style="{StaticResource MetricLargeStyle}" HorizontalAlignment="Right" Margin="16,6,0,0" />
+                            </Grid>
+
+                            <Border Height="1" Background="{DynamicResource BorderBrush}" Margin="0,12,0,10" />
+                            <TextBlock Text="Today" Style="{StaticResource CaptionStyle}" FontWeight="SemiBold" Margin="0,0,0,6" />
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Sessions started" Style="{StaticResource CaptionStyle}" VerticalAlignment="Center" />
+                                <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding AdministrationMetrics.SessionsToday, StringFormat={}{0:N0}}" Style="{StaticResource MetricStyle}" HorizontalAlignment="Right" />
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Administrative logouts" Style="{StaticResource CaptionStyle}" VerticalAlignment="Center" Margin="0,6,0,0" />
+                                <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding AdministrationMetrics.AdministrativeLogoutsToday, StringFormat={}{0:N0}}" Style="{StaticResource MetricStyle}" HorizontalAlignment="Right" Margin="16,6,0,0" />
+                                <TextBlock Grid.Row="2" Grid.Column="0" Text="Revoked sessions" Style="{StaticResource CaptionStyle}" VerticalAlignment="Center" Margin="0,6,0,0" />
+                                <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding AdministrationMetrics.RevokedSessionsToday, StringFormat={}{0:N0}}" Style="{StaticResource MetricStyle}" HorizontalAlignment="Right" Margin="16,6,0,0" />
+                            </Grid>
                         </StackPanel>
                     </Button>
 
