@@ -7,6 +7,9 @@
         <Style x:Key="UserSessionLastSeenTextStyle" TargetType="TextBlock" BasedOn="{StaticResource AppDataGridTextStyle}">
             <Setter Property="ToolTip" Value="{Binding LastSeenLocalText}" />
         </Style>
+        <Style x:Key="UserSessionOnlineSinceTextStyle" TargetType="TextBlock" BasedOn="{StaticResource AppDataGridTextStyle}">
+            <Setter Property="ToolTip" Value="{Binding StartedLocalText}" />
+        </Style>
     </UserControl.Resources>
     <Grid>
         <Grid.RowDefinitions>
@@ -17,7 +20,7 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <controls:PageHeader Title="User Sessions" Subtitle="Live authenticated sessions derived from heartbeat presence." />
+        <controls:PageHeader Title="User Sessions" Subtitle="Who is online now, on which client, and since when." />
         <controls:OperationPanel Grid.Row="1"
                                  IsBusy="{Binding IsBusy}"
                                  HasError="{Binding HasOperationError}"
@@ -29,14 +32,14 @@
                 <StackPanel>
                     <TextBlock Text="Online Users" Style="{StaticResource SectionTitleStyle}" />
                     <TextBlock Text="{Binding OnlineUsers, StringFormat={}{0:N0}}" Style="{StaticResource MetricLargeStyle}" Margin="0,8,0,0" />
-                    <TextBlock Text="Distinct users with at least one active session" Style="{StaticResource CaptionStyle}" Margin="0,4,0,0" />
+                    <TextBlock Text="Distinct users currently within the presence timeout" Style="{StaticResource CaptionStyle}" Margin="0,4,0,0" />
                 </StackPanel>
             </controls:Card>
             <controls:Card Margin="6,0,0,0">
                 <StackPanel>
                     <TextBlock Text="Active Sessions" Style="{StaticResource SectionTitleStyle}" />
                     <TextBlock Text="{Binding ActiveSessions, StringFormat={}{0:N0}}" Style="{StaticResource MetricLargeStyle}" Margin="0,8,0,0" />
-                    <TextBlock Text="Heartbeat-active authenticated client sessions" Style="{StaticResource CaptionStyle}" Margin="0,4,0,0" />
+                    <TextBlock Text="One row per online user/client login" Style="{StaticResource CaptionStyle}" Margin="0,4,0,0" />
                 </StackPanel>
             </controls:Card>
         </UniformGrid>
@@ -49,21 +52,22 @@
 
         <controls:Card Grid.Row="4" Style="{StaticResource WorkspaceCardStyle}">
             <Grid>
-                <DataGrid automation:AutomationProperties.Name="Active user sessions"
+                <DataGrid automation:AutomationProperties.Name="Currently online users and sessions"
                           ItemsSource="{Binding Sessions}"
                           Style="{StaticResource AppDataGridStyle}"
                           Visibility="{Binding HasSessions, Converter={StaticResource BooleanToVisibilityConverter}}">
                     <DataGrid.Columns>
-                        <DataGridTextColumn Header="User" Binding="{Binding UserDisplayName}" Width="1.4*" ElementStyle="{StaticResource AppDataGridTextStyle}" />
-                        <DataGridTextColumn Header="Email" Binding="{Binding UserEmail}" Width="1.8*" ElementStyle="{StaticResource AppDataGridTextStyle}" />
-                        <DataGridTextColumn Header="Client" Binding="{Binding MachineName}" Width="1.2*" ElementStyle="{StaticResource AppDataGridTextStyle}" />
-                        <DataGridTextColumn Header="Signed In" Binding="{Binding StartedLocal, StringFormat={}{0:g}}" Width="130" ElementStyle="{StaticResource AppDataGridTextStyle}" />
+                        <DataGridTextColumn Header="User" Binding="{Binding UserDisplayName}" Width="1.35*" ElementStyle="{StaticResource AppDataGridTextStyle}" />
+                        <DataGridTextColumn Header="Email" Binding="{Binding UserEmail}" Width="1.65*" ElementStyle="{StaticResource AppDataGridTextStyle}" />
+                        <DataGridTextColumn Header="Client" Binding="{Binding MachineName}" Width="1.15*" ElementStyle="{StaticResource AppDataGridTextStyle}" />
+                        <DataGridTextColumn Header="Online Since" Binding="{Binding OnlineSince}" Width="135" ElementStyle="{StaticResource UserSessionOnlineSinceTextStyle}" />
+                        <DataGridTextColumn Header="Online For" Binding="{Binding OnlineFor}" Width="100" ElementStyle="{StaticResource AppDataGridTextStyle}" />
                         <DataGridTextColumn Header="Last Seen" Binding="{Binding LastSeen}" Width="110" ElementStyle="{StaticResource UserSessionLastSeenTextStyle}" />
-                        <DataGridTextColumn Header="Version" Binding="{Binding AppVersion}" Width="120" ElementStyle="{StaticResource AppDataGridTextStyle}" />
+                        <DataGridTextColumn Header="Version" Binding="{Binding AppVersion}" Width="110" ElementStyle="{StaticResource AppDataGridTextStyle}" />
                     </DataGrid.Columns>
                 </DataGrid>
-                <controls:EmptyState Title="No active sessions"
-                                     Description="Authenticated sessions appear here while their heartbeat remains within the presence timeout."
+                <controls:EmptyState Title="Nobody is online"
+                                     Description="Users appear here after successful login while their heartbeat remains within the presence timeout."
                                      Visibility="{Binding HasNoSessions, Converter={StaticResource BooleanToVisibilityConverter}}" />
             </Grid>
         </controls:Card>

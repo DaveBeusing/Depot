@@ -138,6 +138,8 @@ public sealed class UserSessionRowViewModel
 		AppVersion = string.IsNullOrWhiteSpace(session.AppVersion) ? "Unknown" : session.AppVersion;
 		StartedLocal = session.StartedUtc.ToLocalTime();
 		LastSeenLocal = session.LastSeenUtc.ToLocalTime();
+		OnlineSince = StartedLocal.ToString("g");
+		OnlineFor = FormatDuration(session.StartedUtc, asOfUtc);
 		LastSeen = RelativeTime(session.LastSeenUtc, asOfUtc);
 		SessionId = session.SessionId;
 		ClientInstanceId = session.ClientInstanceId;
@@ -149,10 +151,23 @@ public sealed class UserSessionRowViewModel
 	public string AppVersion { get; }
 	public DateTime StartedLocal { get; }
 	public DateTime LastSeenLocal { get; }
+	public string OnlineSince { get; }
+	public string OnlineFor { get; }
 	public string LastSeen { get; }
 	public Guid SessionId { get; }
 	public Guid ClientInstanceId { get; }
+	public string StartedLocalText => StartedLocal.ToString("F");
 	public string LastSeenLocalText => LastSeenLocal.ToString("F");
+
+	private static string FormatDuration(DateTime startedUtc, DateTime asOfUtc)
+	{
+		var elapsed = asOfUtc - startedUtc;
+		if (elapsed < TimeSpan.Zero) elapsed = TimeSpan.Zero;
+		if (elapsed.TotalMinutes < 1) return "< 1 min";
+		if (elapsed.TotalHours < 1) return $"{Math.Max(1, (int)elapsed.TotalMinutes)} min";
+		if (elapsed.TotalDays < 1) return $"{(int)elapsed.TotalHours}h {elapsed.Minutes}m";
+		return $"{(int)elapsed.TotalDays}d {elapsed.Hours}h {elapsed.Minutes}m";
+	}
 
 	private static string RelativeTime(DateTime lastSeenUtc, DateTime asOfUtc)
 	{

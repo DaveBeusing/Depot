@@ -35,6 +35,8 @@ public sealed class UserSessionAdministrationTests : IDisposable
 		var viewModel = new UserSessionsViewModel(context.Service);
 		await viewModel.LoadAsync();
 		Assert.Equal(2, viewModel.Sessions.Count);
+		Assert.All(viewModel.Sessions, row => Assert.False(string.IsNullOrWhiteSpace(row.OnlineSince)));
+		Assert.All(viewModel.Sessions, row => Assert.False(string.IsNullOrWhiteSpace(row.OnlineFor)));
 		viewModel.SearchText = "NOTEBOOK";
 		Assert.Single(viewModel.Sessions);
 		viewModel.StartPolling();
@@ -42,6 +44,33 @@ public sealed class UserSessionAdministrationTests : IDisposable
 		viewModel.StopPolling();
 		Assert.False(viewModel.IsPolling);
 		viewModel.Dispose();
+	}
+
+	[Fact]
+	public void SessionRowShowsConcreteOnlineDurationAndLocalStartTime()
+	{
+		var asOfUtc = new DateTime(2026, 9, 1, 14, 49, 0, DateTimeKind.Utc);
+		var startedUtc = asOfUtc.AddHours(-2).AddMinutes(-14);
+		var session = new ActiveUserSession(
+			1,
+			Guid.NewGuid(),
+			42,
+			"anna@example.com",
+			"Anna Müller",
+			startedUtc,
+			asOfUtc.AddSeconds(-8),
+			null,
+			Guid.NewGuid(),
+			"OFFICE-PC",
+			"0.15.83-preview",
+			1);
+
+		var row = new UserSessionRowViewModel(session, asOfUtc);
+
+		Assert.Equal("2h 14m", row.OnlineFor);
+		Assert.Equal(startedUtc.ToLocalTime(), row.StartedLocal);
+		Assert.False(string.IsNullOrWhiteSpace(row.OnlineSince));
+		Assert.Equal("8 sec ago", row.LastSeen);
 	}
 
 	[Fact]
