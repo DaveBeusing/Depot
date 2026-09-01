@@ -129,7 +129,7 @@
                             Visibility="{Binding HasAdministrationMetrics, Converter={StaticResource BooleanToVisibilityConverter}}">
                         <StackPanel>
                             <TextBlock Text="User Presence" Style="{StaticResource SectionTitleStyle}" />
-                            <TextBlock Text="Authenticated users and heartbeat-active sessions" Style="{StaticResource CaptionStyle}" Margin="0,4,0,12" />
+                            <TextBlock Text="Authenticated users, active clients and today's session events" Style="{StaticResource CaptionStyle}" Margin="0,4,0,12" />
                             <UniformGrid Columns="2">
                                 <StackPanel>
                                     <TextBlock Text="{Binding AdministrationMetrics.OnlineUsers, StringFormat={}{0:N0}}" Style="{StaticResource MetricLargeStyle}" />
@@ -140,6 +140,20 @@
                                     <TextBlock Text="Active Sessions" Style="{StaticResource CaptionStyle}" />
                                 </StackPanel>
                             </UniformGrid>
+                            <UniformGrid Columns="3" Margin="0,12,0,0">
+                                <StackPanel>
+                                    <TextBlock Text="{Binding AdministrationMetrics.SessionsToday, StringFormat={}{0:N0}}" Style="{StaticResource MetricStyle}" />
+                                    <TextBlock Text="Sessions Today" Style="{StaticResource CaptionStyle}" TextWrapping="Wrap" />
+                                </StackPanel>
+                                <StackPanel>
+                                    <TextBlock Text="{Binding AdministrationMetrics.AdministrativeLogoutsToday, StringFormat={}{0:N0}}" Style="{StaticResource MetricStyle}" />
+                                    <TextBlock Text="Admin Logouts" Style="{StaticResource CaptionStyle}" TextWrapping="Wrap" />
+                                </StackPanel>
+                                <StackPanel>
+                                    <TextBlock Text="{Binding AdministrationMetrics.RevokedSessionsToday, StringFormat={}{0:N0}}" Style="{StaticResource MetricStyle}" />
+                                    <TextBlock Text="Revoked Today" Style="{StaticResource CaptionStyle}" TextWrapping="Wrap" />
+                                </StackPanel>
+                            </UniformGrid>
                         </StackPanel>
                     </Button>
 
@@ -147,7 +161,7 @@
                             Style="{DynamicResource DashboardActionCardStyle}"
                             Tag="Reports"
                             Click="OnDashboardActionClick"
-                            Visibility="{Binding HasAdministrationMetrics, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            Visibility="{Binding HasReportsAccess, Converter={StaticResource BooleanToVisibilityConverter}}">
                         <StackPanel>
                             <TextBlock Text="Reports" Style="{StaticResource SectionTitleStyle}" />
                             <TextBlock Text="Inventory value and stock distribution reporting" Style="{StaticResource CaptionStyle}" Margin="0,4,0,12" />

@@ -92,7 +92,7 @@ There is no uniqueness constraint on `UserId`; multiple simultaneous sessions fo
 
 Indexes cover the unique session identifier, `UserId`, and the presence predicate `(EndedUtc, LastSeenUtc)`. Provider-specific DDL remains inside the existing database abstraction and is available for SQLite, SQL Server and MySQL/MariaDB.
 
-The shared core database schema remains version 30. Session persistence is a feature-local schema with `UserSessionSchemaMigration.CurrentVersion = 1`, tracked through `DepotFeatureVersions`. Session history and revocation reuse the original columns and therefore do not require another schema migration.
+The shared core database schema remains version 30. Session persistence is a feature-local schema with `UserSessionSchemaMigration.CurrentVersion = 1`, tracked through `DepotFeatureVersions`. Session history, revocation and dashboard session-event KPIs reuse the original columns and therefore do not require another schema migration.
 
 ## Administration UI
 
@@ -109,14 +109,19 @@ While the view is loaded it polls approximately every 20 seconds. A semaphore pr
 
 ## Dashboard metrics
 
-Dashboard presence metrics use the same heartbeat cutoff rule:
+The **User Presence** dashboard card uses the same session source of truth and exposes five metrics:
 
 ```text
-Online Users    = COUNT(DISTINCT UserId) over active sessions
-Active Sessions = COUNT(*) over active sessions
+Online Users          = COUNT(DISTINCT UserId) over heartbeat-active sessions
+Active Sessions       = COUNT(*) over heartbeat-active sessions
+Sessions Today        = sessions whose StartedUtc falls within the current local calendar day
+Admin Logouts Today   = sessions ended today with AdministrativeLogout
+Revoked Sessions Today= sessions ended today with Revoked
 ```
 
-A user logged in on an office PC and a notebook therefore contributes one online user and two active sessions. The dashboard administration card exposes both values and navigates to User Sessions for authorized users.
+The current client's local midnight is translated to UTC before querying the UTC session timestamps. A user logged in on an office PC and a notebook therefore contributes one online user and two active sessions, while both logins contribute to `Sessions Today` when they started during the same local day.
+
+The card remains visible only to administrators or users with `Users.View` and navigates to User Sessions. The separate Reports dashboard card is permissioned independently through `Reports.View`; Reports visibility is not coupled to user-session administration.
 
 ## Audit behavior
 

@@ -20,6 +20,7 @@ public sealed class DashboardRepository : DatabaseRepository
 		bool includeSales,
 		bool includeAdministration,
 		DateTime presenceCutoffUtc,
+		DateTime sessionDayStartUtc,
 		CancellationToken cancellationToken)
 	{
 		var columns = new List<string>();
@@ -80,7 +81,15 @@ public sealed class DashboardRepository : DatabaseRepository
 		{
 			columns.Add("(SELECT COUNT(DISTINCT UserId) FROM UserSessions WHERE EndedUtc IS NULL AND LastSeenUtc >= $PresenceCutoff)");
 			columns.Add("(SELECT COUNT(*) FROM UserSessions WHERE EndedUtc IS NULL AND LastSeenUtc >= $PresenceCutoff)");
-			parameters.Add(Parameter("$PresenceCutoff", presenceCutoffUtc.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture)));
+			columns.Add("(SELECT COUNT(*) FROM UserSessions WHERE StartedUtc >= $SessionDayStart)");
+			columns.Add("(SELECT COUNT(*) FROM UserSessions WHERE EndedUtc >= $SessionDayStart AND EndReason = $AdministrativeLogout)");
+			columns.Add("(SELECT COUNT(*) FROM UserSessions WHERE EndedUtc >= $SessionDayStart AND EndReason = $Revoked)");
+			parameters.AddRange([
+				Parameter("$PresenceCutoff", FormatUtc(presenceCutoffUtc)),
+				Parameter("$SessionDayStart", FormatUtc(sessionDayStartUtc)),
+				Parameter("$AdministrativeLogout", (int)UserSessionEndReason.AdministrativeLogout),
+				Parameter("$Revoked", (int)UserSessionEndReason.Revoked)
+			]);
 		}
 		if (columns.Count == 0) return Task.FromResult<DashboardRoleMetrics?>(new DashboardRoleMetrics(null, null, null, null, null));
 
@@ -103,10 +112,11 @@ public sealed class DashboardRepository : DatabaseRepository
 		if (includePurchasing) purchasing = new DashboardPurchasingMetrics(Long(reader, ordinal++), Long(reader, ordinal++), Long(reader, ordinal++), Long(reader, ordinal++));
 		if (includeWarehouse) warehouse = new DashboardWarehouseMetrics(Long(reader, ordinal++), Long(reader, ordinal++));
 		if (includeSales) sales = new DashboardSalesMetrics(Long(reader, ordinal++), Long(reader, ordinal++), Long(reader, ordinal++), Long(reader, ordinal++), Long(reader, ordinal++), Long(reader, ordinal++), Long(reader, ordinal++), Long(reader, ordinal++), Decimal(reader, ordinal++));
-		if (includeAdministration) administration = new DashboardAdministrationMetrics(Long(reader, ordinal++), Long(reader, ordinal));
+		if (includeAdministration) administration = new DashboardAdministrationMetrics(Long(reader, ordinal++), Long(reader, ordinal++), Long(reader, ordinal++), Long(reader, ordinal++), Long(reader, ordinal));
 		return new DashboardRoleMetrics(approvals, purchasing, warehouse, sales, administration);
 	}
 
+	private static string FormatUtc(DateTime value) => value.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture);
 	private static long Long(DbDataReader reader, int ordinal) => reader.IsDBNull(ordinal) ? 0 : Convert.ToInt64(reader.GetValue(ordinal), CultureInfo.InvariantCulture);
 	private static decimal Decimal(DbDataReader reader, int ordinal) => reader.IsDBNull(ordinal) ? 0 : Convert.ToDecimal(reader.GetValue(ordinal), CultureInfo.InvariantCulture);
 	private static DateTime? Utc(DbDataReader reader, int ordinal)

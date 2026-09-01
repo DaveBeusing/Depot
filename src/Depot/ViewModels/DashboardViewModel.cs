@@ -38,6 +38,7 @@ public sealed class DashboardViewModel : BaseViewModel, IDisposable
 	public bool HasWarehouseMetrics => WarehouseMetrics is not null;
 	public bool HasSalesMetrics => SalesMetrics is not null;
 	public bool HasAdministrationMetrics => AdministrationMetrics is not null;
+	public bool HasReportsAccess => _dashboardService.CanViewReports;
 	public bool HasCoreInventoryMetrics { get; private set; }
 	public long PurchasingAttentionCount => PurchasingMetrics is null ? 0 : PurchasingMetrics.PendingOrApprovedOrders + PurchasingMetrics.PartiallyReceivedOrders + PurchasingMetrics.OverdueDeliveries + PurchasingMetrics.SupplierReturnsRequiringAttention;
 	public long WarehouseWorkCount => WarehouseMetrics is null ? 0 : WarehouseMetrics.InventoryCountsAwaitingReviewOrPosting + WarehouseMetrics.OpenTransfers;
@@ -64,6 +65,7 @@ public sealed class DashboardViewModel : BaseViewModel, IDisposable
 			var summary = data?.Summary ?? new DashboardSummary();
 			HasCoreInventoryMetrics = data is not null;
 			OnPropertyChanged(nameof(HasCoreInventoryMetrics));
+			OnPropertyChanged(nameof(HasReportsAccess));
 			TotalItems = summary.TotalItems;
 			TotalStockQuantity = summary.TotalStockQuantity;
 			TotalInventoryValue = summary.TotalInventoryValue;

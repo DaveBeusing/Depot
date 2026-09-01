@@ -31,4 +31,9 @@ public sealed record DashboardSalesMetrics(
 	long CreditNotesThisMonth,
 	decimal NetSalesThisMonth);
 
-public sealed record DashboardAdministrationMetrics(long OnlineUsers, long ActiveSessions);
+public sealed record DashboardAdministrationMetrics(
+	long OnlineUsers,
+	long ActiveSessions,
+	long SessionsToday,
+	long AdministrativeLogoutsToday,
+	long RevokedSessionsToday);
