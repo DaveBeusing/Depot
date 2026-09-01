@@ -39,6 +39,45 @@ public sealed class UserSessionLifecycleTests : IDisposable
 	}
 
 	[Fact]
+	public async Task SynchronousLogoutDoesNotDeadlockWithUiStyleSynchronizationContext()
+	{
+		var context = await CreateContextAsync();
+		Assert.True(await context.Authentication.SignInAsync(context.Email, "Correct-Password-42!", CancellationToken.None));
+		var sessionId = Assert.IsType<Guid>(context.Session.CurrentSessionId);
+		Exception? failure = null;
+		using var completed = new ManualResetEventSlim();
+		var thread = new Thread(() =>
+		{
+			SynchronizationContext.SetSynchronizationContext(new NonPumpingSynchronizationContext());
+			try
+			{
+				context.Session.Logout();
+			}
+			catch (Exception exception)
+			{
+				failure = exception;
+			}
+			finally
+			{
+				completed.Set();
+			}
+		})
+		{
+			IsBackground = true
+		};
+
+		thread.Start();
+		Assert.True(completed.Wait(TimeSpan.FromSeconds(5)), "Synchronous logout must not wait for a UI synchronization-context continuation.");
+		Assert.Null(failure);
+		Assert.True(thread.Join(TimeSpan.FromSeconds(1)));
+		var ended = await context.Repository.GetBySessionIdAsync(sessionId, CancellationToken.None);
+		Assert.Equal(UserSessionEndReason.LoggedOut, ended!.EndReason);
+		Assert.NotNull(ended.EndedUtc);
+		Assert.Null(context.Session.CurrentSessionId);
+		context.Session.Dispose();
+	}
+
+	[Fact]
 	public async Task FailedLoginCreatesNoSessionAndGracefulShutdownEndsSuccessfulSession()
 	{
 		var context = await CreateContextAsync();
@@ -114,7 +153,7 @@ public sealed class UserSessionLifecycleTests : IDisposable
 		var authorization = new AuthorizationService();
 		var clock = new MutableTimeProvider { UtcNow = new DateTime(2026, 8, 31, 20, 0, 0, DateTimeKind.Utc) };
 		var session = new SessionService(authorization);
-		session.Configure(sessions, new UserSessionClientInfo(Guid.NewGuid(), "TEST-CLIENT", "0.15.86-preview"), clock);
+		session.Configure(sessions, new UserSessionClientInfo(Guid.NewGuid(), "TEST-CLIENT", "0.15.92-preview"), clock);
 		var authentication = new AuthenticationService(users, roles, passwordHasher, authorization);
 		authentication.ConfigureSession(session);
 		return new TestContext(email, authentication, session, sessions, clock);
@@ -144,5 +183,13 @@ public sealed class UserSessionLifecycleTests : IDisposable
 	{
 		public DateTime UtcNow { get; set; }
 		public override DateTimeOffset GetUtcNow() => new(UtcNow, TimeSpan.Zero);
+	}
+
+	private sealed class NonPumpingSynchronizationContext : SynchronizationContext
+	{
+		public override void Post(SendOrPostCallback callback, object? state)
+		{
+			// Deliberately do not dispatch continuations. A synchronous UI caller must not depend on this context.
+		}
 	}
 }

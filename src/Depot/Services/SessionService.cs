@@ -148,18 +148,23 @@ public sealed class SessionService : IDisposable
 
 	public void Logout()
 	{
+		LogoutRequestedByUser = true;
 		using var cancellation = new CancellationTokenSource(_options.ShutdownWriteTimeout);
 		try
 		{
-			LogoutAsync(cancellation.Token).GetAwaiter().GetResult();
+			Task.Run(
+				() => EndCurrentSessionAsync(UserSessionEndReason.LoggedOut, cancellation.Token),
+				cancellation.Token).GetAwaiter().GetResult();
 		}
 		catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
 		{
-			_authorizationService.SignOut();
 		}
 		catch (Exception exception)
 		{
 			StartupDiagnostics.LogException(exception);
+		}
+		finally
+		{
 			_authorizationService.SignOut();
 		}
 	}
@@ -181,15 +186,19 @@ public sealed class SessionService : IDisposable
 		using var cancellation = new CancellationTokenSource(_options.ShutdownWriteTimeout);
 		try
 		{
-			CloseApplicationAsync(cancellation.Token).GetAwaiter().GetResult();
+			Task.Run(
+				() => EndCurrentSessionAsync(UserSessionEndReason.ApplicationClosed, cancellation.Token),
+				cancellation.Token).GetAwaiter().GetResult();
 		}
 		catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
 		{
-			_authorizationService.SignOut();
 		}
 		catch (Exception exception)
 		{
 			StartupDiagnostics.LogException(exception);
+		}
+		finally
+		{
 			_authorizationService.SignOut();
 		}
 	}
@@ -237,7 +246,7 @@ public sealed class SessionService : IDisposable
 		{
 			if (heartbeatTask is not null)
 			{
-				try { await heartbeatTask; }
+				try { await heartbeatTask.ConfigureAwait(false); }
 				catch (OperationCanceledException) when (heartbeatCancellation?.IsCancellationRequested == true) { }
 			}
 			heartbeatCancellation?.Dispose();
@@ -249,11 +258,11 @@ public sealed class SessionService : IDisposable
 		using var timer = new PeriodicTimer(_options.HeartbeatInterval, _timeProvider);
 		try
 		{
-			while (await timer.WaitForNextTickAsync(cancellationToken))
+			while (await timer.WaitForNextTickAsync(cancellationToken).ConfigureAwait(false))
 			{
 				try
 				{
-					var active = await repository.UpdateHeartbeatAsync(sessionId, _timeProvider.GetUtcNow().UtcDateTime, cancellationToken);
+					var active = await repository.UpdateHeartbeatAsync(sessionId, _timeProvider.GetUtcNow().UtcDateTime, cancellationToken).ConfigureAwait(false);
 					if (!active)
 					{
 						HandleRemoteRevocation(sessionId);
