@@ -11,67 +11,45 @@ namespace Depot.Repositories;
 
 public sealed class UserSessionRepository : DatabaseRepository
 {
-	private const string SessionColumns =
-		"Id, SessionId, UserId, StartedUtc, LastSeenUtc, LastActivityUtc, EndedUtc, EndReason, ClientInstanceId, MachineName, AppVersion, Version";
-	private const string PolicyColumns = "Id, IdleTimeoutMinutes, MaximumSessionAgeHours, UpdatedUtc, Version";
+	private const string SessionColumns = "Id, SessionId, UserId, StartedUtc, LastSeenUtc, LastActivityUtc, EndedUtc, EndReason, ClientInstanceId, MachineName, AppVersion, Version";
+	private const string PolicyColumns = "Id, IdleTimeoutMinutes, MaximumSessionAgeHours, ConcurrentSessionMode, MaximumConcurrentSessions, ConcurrentSessionLimitAction, SessionHistoryRetentionDays, UpdatedUtc, Version";
+	private const string InsertSessionSql = "INSERT INTO UserSessions (SessionId, UserId, StartedUtc, LastSeenUtc, LastActivityUtc, EndedUtc, EndReason, ClientInstanceId, MachineName, AppVersion, Version) VALUES ($SessionId, $UserId, $StartedUtc, $LastSeenUtc, $LastActivityUtc, NULL, NULL, $ClientInstanceId, $MachineName, $AppVersion, 1);";
+	private const string PolicyUpdateSql = "UPDATE UserSessionPolicy SET IdleTimeoutMinutes=$IdleTimeoutMinutes, MaximumSessionAgeHours=$MaximumSessionAgeHours, ConcurrentSessionMode=$ConcurrentSessionMode, MaximumConcurrentSessions=$MaximumConcurrentSessions, ConcurrentSessionLimitAction=$ConcurrentSessionLimitAction, SessionHistoryRetentionDays=$SessionHistoryRetentionDays, UpdatedUtc=$UpdatedUtc, Version=Version+1 WHERE Id=1 AND Version=$ExpectedVersion;";
+	private const string ExpireByPolicySql = "UPDATE UserSessions SET EndedUtc=$EndedUtc, EndReason=$EndReason, Version=Version+1 WHERE EndedUtc IS NULL AND (StartedUtc <= $MaximumAgeCutoff OR COALESCE(LastActivityUtc, LastSeenUtc, StartedUtc) <= $IdleCutoff);";
 
-	public UserSessionRepository(DatabaseAccess database) : base(database)
-	{
-	}
+	public UserSessionRepository(DatabaseAccess database) : base(database) { }
 
-	public Task<long> CreateAsync(UserSession session, CancellationToken cancellationToken) =>
-		Database.InsertAsync(
-			"""
-			INSERT INTO UserSessions
-			(SessionId, UserId, StartedUtc, LastSeenUtc, LastActivityUtc, EndedUtc, EndReason, ClientInstanceId, MachineName, AppVersion, Version)
-			VALUES
-			($SessionId, $UserId, $StartedUtc, $LastSeenUtc, $LastActivityUtc, NULL, NULL, $ClientInstanceId, $MachineName, $AppVersion, 1);
-			""",
-			cancellationToken,
-			Parameter("$SessionId", Format(session.SessionId)), Parameter("$UserId", session.UserId),
-			Parameter("$StartedUtc", Format(session.StartedUtc)), Parameter("$LastSeenUtc", Format(session.LastSeenUtc)),
-			Parameter("$LastActivityUtc", Format(session.LastActivityUtc)), Parameter("$ClientInstanceId", Format(session.ClientInstanceId)),
-			Parameter("$MachineName", session.MachineName), Parameter("$AppVersion", session.AppVersion));
+	public Task<long> CreateAsync(UserSession session, CancellationToken cancellationToken) => Database.InsertAsync(InsertSessionSql, cancellationToken, SessionInsertParameters(session));
+	public static Task<long> CreateAsync(DatabaseTransactionContext transaction, UserSession session, CancellationToken cancellationToken) => transaction.Session.InsertAsync(InsertSessionSql, cancellationToken, SessionInsertParameters(session));
 
-	public Task<bool> UpdateHeartbeatAsync(Guid sessionId, DateTime lastSeenUtc, CancellationToken cancellationToken) =>
-		UpdateHeartbeatAsync(sessionId, lastSeenUtc, null, cancellationToken);
-
+	public Task<bool> UpdateHeartbeatAsync(Guid sessionId, DateTime lastSeenUtc, CancellationToken cancellationToken) => UpdateHeartbeatAsync(sessionId, lastSeenUtc, null, cancellationToken);
 	public async Task<bool> UpdateHeartbeatAsync(Guid sessionId, DateTime lastSeenUtc, DateTime? lastActivityUtc, CancellationToken cancellationToken) =>
-		await Database.ExecuteAsync(
-			"UPDATE UserSessions SET LastSeenUtc = $LastSeenUtc, LastActivityUtc = COALESCE($LastActivityUtc, LastActivityUtc), Version = Version + 1 WHERE SessionId = $SessionId AND EndedUtc IS NULL;",
-			cancellationToken, Parameter("$LastSeenUtc", Format(lastSeenUtc)), Parameter("$LastActivityUtc", Format(lastActivityUtc)), Parameter("$SessionId", Format(sessionId))) == 1;
+		await Database.ExecuteAsync("UPDATE UserSessions SET LastSeenUtc=$LastSeenUtc, LastActivityUtc=COALESCE($LastActivityUtc,LastActivityUtc), Version=Version+1 WHERE SessionId=$SessionId AND EndedUtc IS NULL;", cancellationToken, Parameter("$LastSeenUtc", Format(lastSeenUtc)), Parameter("$LastActivityUtc", Format(lastActivityUtc)), Parameter("$SessionId", Format(sessionId))) == 1;
 
 	public async Task<bool> EndAsync(Guid sessionId, DateTime endedUtc, UserSessionEndReason reason, CancellationToken cancellationToken) =>
-		await Database.ExecuteAsync(
-			"UPDATE UserSessions SET EndedUtc = $EndedUtc, EndReason = $EndReason, Version = Version + 1 WHERE SessionId = $SessionId AND EndedUtc IS NULL;",
-			cancellationToken, Parameter("$EndedUtc", Format(endedUtc)), Parameter("$EndReason", (int)reason), Parameter("$SessionId", Format(sessionId))) == 1;
+		await Database.ExecuteAsync("UPDATE UserSessions SET EndedUtc=$EndedUtc, EndReason=$EndReason, Version=Version+1 WHERE SessionId=$SessionId AND EndedUtc IS NULL;", cancellationToken, Parameter("$EndedUtc", Format(endedUtc)), Parameter("$EndReason", (int)reason), Parameter("$SessionId", Format(sessionId))) == 1;
 
-	public Task<int> EndActiveSessionsForUserAsync(long userId, DateTime endedUtc, UserSessionEndReason reason, CancellationToken cancellationToken) =>
-		Database.ExecuteAsync(
-			"UPDATE UserSessions SET EndedUtc = $EndedUtc, EndReason = $EndReason, Version = Version + 1 WHERE UserId = $UserId AND EndedUtc IS NULL;",
-			cancellationToken, Parameter("$EndedUtc", Format(endedUtc)), Parameter("$EndReason", (int)reason), Parameter("$UserId", userId));
+	public Task<int> EndActiveSessionsForUserAsync(long userId, DateTime endedUtc, UserSessionEndReason reason, CancellationToken cancellationToken) => Database.ExecuteAsync("UPDATE UserSessions SET EndedUtc=$EndedUtc, EndReason=$EndReason, Version=Version+1 WHERE UserId=$UserId AND EndedUtc IS NULL;", cancellationToken, Parameter("$EndedUtc", Format(endedUtc)), Parameter("$EndReason", (int)reason), Parameter("$UserId", userId));
 
 	public static async Task<bool> EndAsync(DatabaseTransactionContext transaction, Guid sessionId, DateTime endedUtc, UserSessionEndReason reason, CancellationToken cancellationToken) =>
-		await transaction.Session.ExecuteAsync(
-			"UPDATE UserSessions SET EndedUtc = $EndedUtc, EndReason = $EndReason, Version = Version + 1 WHERE SessionId = $SessionId AND EndedUtc IS NULL;",
-			cancellationToken, Parameter("$EndedUtc", Format(endedUtc)), Parameter("$EndReason", (int)reason), Parameter("$SessionId", Format(sessionId))) == 1;
+		await transaction.Session.ExecuteAsync("UPDATE UserSessions SET EndedUtc=$EndedUtc, EndReason=$EndReason, Version=Version+1 WHERE SessionId=$SessionId AND EndedUtc IS NULL;", cancellationToken, Parameter("$EndedUtc", Format(endedUtc)), Parameter("$EndReason", (int)reason), Parameter("$SessionId", Format(sessionId))) == 1;
 
-	public static Task<int> EndActiveSessionsForUserAsync(DatabaseTransactionContext transaction, long userId, DateTime endedUtc, UserSessionEndReason reason, CancellationToken cancellationToken) =>
-		transaction.Session.ExecuteAsync(
-			"UPDATE UserSessions SET EndedUtc = $EndedUtc, EndReason = $EndReason, Version = Version + 1 WHERE UserId = $UserId AND EndedUtc IS NULL;",
-			cancellationToken, Parameter("$EndedUtc", Format(endedUtc)), Parameter("$EndReason", (int)reason), Parameter("$UserId", userId));
+	public static Task<int> EndActiveSessionsForUserAsync(DatabaseTransactionContext transaction, long userId, DateTime endedUtc, UserSessionEndReason reason, CancellationToken cancellationToken) => transaction.Session.ExecuteAsync("UPDATE UserSessions SET EndedUtc=$EndedUtc, EndReason=$EndReason, Version=Version+1 WHERE UserId=$UserId AND EndedUtc IS NULL;", cancellationToken, Parameter("$EndedUtc", Format(endedUtc)), Parameter("$EndReason", (int)reason), Parameter("$UserId", userId));
 
-	public Task<UserSession?> GetBySessionIdAsync(Guid sessionId, CancellationToken cancellationToken) =>
-		Database.QuerySingleOrDefaultAsync($"SELECT {SessionColumns} FROM UserSessions WHERE SessionId = $SessionId;", ReadSession, cancellationToken, Parameter("$SessionId", Format(sessionId)));
+	public static Task<int> EndActiveSessionsForUserExceptAsync(DatabaseTransactionContext transaction, long userId, Guid? excludedSessionId, DateTime endedUtc, UserSessionEndReason reason, CancellationToken cancellationToken)
+	{
+		var exclusion = excludedSessionId is null ? string.Empty : " AND SessionId<>$ExcludedSessionId";
+		var parameters = new List<DatabaseParameter> { Parameter("$EndedUtc", Format(endedUtc)), Parameter("$EndReason", (int)reason), Parameter("$UserId", userId) };
+		if (excludedSessionId is not null) parameters.Add(Parameter("$ExcludedSessionId", Format(excludedSessionId.Value)));
+		return transaction.Session.ExecuteAsync($"UPDATE UserSessions SET EndedUtc=$EndedUtc, EndReason=$EndReason, Version=Version+1 WHERE UserId=$UserId AND EndedUtc IS NULL{exclusion};", cancellationToken, parameters.ToArray());
+	}
 
-	public static Task<UserSession?> GetBySessionIdAsync(DatabaseTransactionContext transaction, Guid sessionId, CancellationToken cancellationToken) =>
-		transaction.Session.QuerySingleOrDefaultAsync($"SELECT {SessionColumns} FROM UserSessions WHERE SessionId = $SessionId;", ReadSession, cancellationToken, Parameter("$SessionId", Format(sessionId)));
+	public Task<UserSession?> GetBySessionIdAsync(Guid sessionId, CancellationToken cancellationToken) => Database.QuerySingleOrDefaultAsync($"SELECT {SessionColumns} FROM UserSessions WHERE SessionId=$SessionId;", ReadSession, cancellationToken, Parameter("$SessionId", Format(sessionId)));
+	public static Task<UserSession?> GetBySessionIdAsync(DatabaseTransactionContext transaction, Guid sessionId, CancellationToken cancellationToken) => transaction.Session.QuerySingleOrDefaultAsync($"SELECT {SessionColumns} FROM UserSessions WHERE SessionId=$SessionId;", ReadSession, cancellationToken, Parameter("$SessionId", Format(sessionId)));
+	public Task<IReadOnlyList<UserSession>> GetOpenSessionsForUserAsync(long userId, CancellationToken cancellationToken) => Database.QueryAsync($"SELECT {SessionColumns} FROM UserSessions WHERE UserId=$UserId AND EndedUtc IS NULL ORDER BY StartedUtc DESC,Id DESC;", ReadSession, cancellationToken, Parameter("$UserId", userId));
+	public static Task<IReadOnlyList<UserSession>> GetOpenSessionsForUserAsync(DatabaseTransactionContext transaction, long userId, CancellationToken cancellationToken) => transaction.Session.QueryAsync($"SELECT {SessionColumns} FROM UserSessions WHERE UserId=$UserId AND EndedUtc IS NULL ORDER BY StartedUtc DESC,Id DESC;", ReadSession, cancellationToken, Parameter("$UserId", userId));
 
-	public Task<IReadOnlyList<UserSession>> GetOpenSessionsForUserAsync(long userId, CancellationToken cancellationToken) =>
-		Database.QueryAsync($"SELECT {SessionColumns} FROM UserSessions WHERE UserId = $UserId AND EndedUtc IS NULL ORDER BY StartedUtc DESC, Id DESC;", ReadSession, cancellationToken, Parameter("$UserId", userId));
-
-	public static Task<IReadOnlyList<UserSession>> GetOpenSessionsForUserAsync(DatabaseTransactionContext transaction, long userId, CancellationToken cancellationToken) =>
-		transaction.Session.QueryAsync($"SELECT {SessionColumns} FROM UserSessions WHERE UserId = $UserId AND EndedUtc IS NULL ORDER BY StartedUtc DESC, Id DESC;", ReadSession, cancellationToken, Parameter("$UserId", userId));
+	public static Task<int> AcquirePolicyLockAsync(DatabaseTransactionContext transaction, CancellationToken cancellationToken) => transaction.Session.ExecuteAsync("UPDATE UserSessionPolicy SET Version=Version WHERE Id=1;", cancellationToken);
 
 	public Task<IReadOnlyList<ActiveUserSession>> GetActiveSessionsAsync(DateTime presenceCutoffUtc, string? searchText, CancellationToken cancellationToken)
 	{
@@ -80,114 +58,40 @@ public sealed class UserSessionRepository : DatabaseRepository
 		var filter = hasSearch ? " AND (u.DisplayName LIKE $Search OR u.Email LIKE $Search OR s.MachineName LIKE $Search)" : string.Empty;
 		var parameters = new List<DatabaseParameter> { Parameter("$PresenceCutoff", Format(presenceCutoffUtc)) };
 		if (hasSearch) parameters.Add(Parameter("$Search", $"%{search}%"));
-		return Database.QueryAsync(
-			$"""
-			SELECT s.Id, s.SessionId, s.UserId, u.Email, u.DisplayName, s.StartedUtc, s.LastSeenUtc, s.LastActivityUtc,
-			       s.ClientInstanceId, s.MachineName, s.AppVersion, s.Version
-			FROM UserSessions s
-			INNER JOIN Users u ON u.Id = s.UserId
-			WHERE s.EndedUtc IS NULL AND s.LastSeenUtc >= $PresenceCutoff{filter}
-			ORDER BY s.LastSeenUtc DESC, s.Id DESC;
-			""",
-			ReadActiveSession, cancellationToken, parameters.ToArray());
+		return Database.QueryAsync($"SELECT s.Id,s.SessionId,s.UserId,u.Email,u.DisplayName,s.StartedUtc,s.LastSeenUtc,s.LastActivityUtc,s.ClientInstanceId,s.MachineName,s.AppVersion,s.Version FROM UserSessions s INNER JOIN Users u ON u.Id=s.UserId WHERE s.EndedUtc IS NULL AND s.LastSeenUtc >= $PresenceCutoff{filter} ORDER BY s.LastSeenUtc DESC,s.Id DESC;", ReadActiveSession, cancellationToken, parameters.ToArray());
 	}
 
 	public Task<IReadOnlyList<EndedUserSession>> GetRecentEndedSessionsAsync(int count, CancellationToken cancellationToken)
 	{
 		if (count < 1) throw new ArgumentOutOfRangeException(nameof(count));
-		return Database.QuerySliceAsync(
-			"""
-			SELECT s.Id, s.SessionId, s.UserId, u.Email, u.DisplayName, s.StartedUtc, s.LastSeenUtc, s.EndedUtc, s.EndReason,
-			       s.ClientInstanceId, s.MachineName, s.AppVersion, s.Version
-			FROM UserSessions s
-			INNER JOIN Users u ON u.Id = s.UserId
-			WHERE s.EndedUtc IS NOT NULL
-			ORDER BY s.EndedUtc DESC, s.Id DESC
-			""",
-			ReadEndedSession, 0, count, cancellationToken);
+		return Database.QuerySliceAsync("SELECT s.Id,s.SessionId,s.UserId,u.Email,u.DisplayName,s.StartedUtc,s.LastSeenUtc,s.EndedUtc,s.EndReason,s.ClientInstanceId,s.MachineName,s.AppVersion,s.Version FROM UserSessions s INNER JOIN Users u ON u.Id=s.UserId WHERE s.EndedUtc IS NOT NULL ORDER BY s.EndedUtc DESC,s.Id DESC", ReadEndedSession, 0, count, cancellationToken);
 	}
 
-	public async Task<long> CountActiveSessionsAsync(DateTime presenceCutoffUtc, CancellationToken cancellationToken) =>
-		Convert.ToInt64(await Database.ExecuteScalarAsync("SELECT COUNT(*) FROM UserSessions WHERE EndedUtc IS NULL AND LastSeenUtc >= $PresenceCutoff;", cancellationToken, Parameter("$PresenceCutoff", Format(presenceCutoffUtc))), CultureInfo.InvariantCulture);
+	public async Task<long> CountActiveSessionsAsync(DateTime presenceCutoffUtc, CancellationToken cancellationToken) => Convert.ToInt64(await Database.ExecuteScalarAsync("SELECT COUNT(*) FROM UserSessions WHERE EndedUtc IS NULL AND LastSeenUtc >= $PresenceCutoff;", cancellationToken, Parameter("$PresenceCutoff", Format(presenceCutoffUtc))), CultureInfo.InvariantCulture);
+	public async Task<long> CountDistinctOnlineUsersAsync(DateTime presenceCutoffUtc, CancellationToken cancellationToken) => Convert.ToInt64(await Database.ExecuteScalarAsync("SELECT COUNT(DISTINCT UserId) FROM UserSessions WHERE EndedUtc IS NULL AND LastSeenUtc >= $PresenceCutoff;", cancellationToken, Parameter("$PresenceCutoff", Format(presenceCutoffUtc))), CultureInfo.InvariantCulture);
+	public Task<UserSessionPresenceMetrics?> GetPresenceMetricsAsync(DateTime presenceCutoffUtc, CancellationToken cancellationToken) => Database.QuerySingleOrDefaultAsync("SELECT COUNT(DISTINCT UserId),COUNT(*) FROM UserSessions WHERE EndedUtc IS NULL AND LastSeenUtc >= $PresenceCutoff;", reader => new UserSessionPresenceMetrics(Convert.ToInt64(reader.GetValue(0), CultureInfo.InvariantCulture), Convert.ToInt64(reader.GetValue(1), CultureInfo.InvariantCulture)), cancellationToken, Parameter("$PresenceCutoff", Format(presenceCutoffUtc)));
 
-	public async Task<long> CountDistinctOnlineUsersAsync(DateTime presenceCutoffUtc, CancellationToken cancellationToken) =>
-		Convert.ToInt64(await Database.ExecuteScalarAsync("SELECT COUNT(DISTINCT UserId) FROM UserSessions WHERE EndedUtc IS NULL AND LastSeenUtc >= $PresenceCutoff;", cancellationToken, Parameter("$PresenceCutoff", Format(presenceCutoffUtc))), CultureInfo.InvariantCulture);
+	public async Task<UserSessionPolicy> GetPolicyAsync(CancellationToken cancellationToken) => await Database.QuerySingleOrDefaultAsync($"SELECT {PolicyColumns} FROM UserSessionPolicy WHERE Id=1;", ReadPolicy, cancellationToken) ?? DefaultPolicy();
+	public static async Task<UserSessionPolicy> GetPolicyAsync(DatabaseTransactionContext transaction, CancellationToken cancellationToken) => await transaction.Session.QuerySingleOrDefaultAsync($"SELECT {PolicyColumns} FROM UserSessionPolicy WHERE Id=1;", ReadPolicy, cancellationToken) ?? DefaultPolicy();
+	public async Task<bool> UpdatePolicyAsync(UserSessionPolicy policy, long expectedVersion, CancellationToken cancellationToken) => await Database.ExecuteAsync(PolicyUpdateSql, cancellationToken, PolicyUpdateParameters(policy, expectedVersion)) == 1;
+	public static async Task<bool> UpdatePolicyAsync(DatabaseTransactionContext transaction, UserSessionPolicy policy, long expectedVersion, CancellationToken cancellationToken) => await transaction.Session.ExecuteAsync(PolicyUpdateSql, cancellationToken, PolicyUpdateParameters(policy, expectedVersion)) == 1;
 
-	public Task<UserSessionPresenceMetrics?> GetPresenceMetricsAsync(DateTime presenceCutoffUtc, CancellationToken cancellationToken) =>
-		Database.QuerySingleOrDefaultAsync(
-			"SELECT COUNT(DISTINCT UserId), COUNT(*) FROM UserSessions WHERE EndedUtc IS NULL AND LastSeenUtc >= $PresenceCutoff;",
-			reader => new UserSessionPresenceMetrics(Convert.ToInt64(reader.GetValue(0), CultureInfo.InvariantCulture), Convert.ToInt64(reader.GetValue(1), CultureInfo.InvariantCulture)),
-			cancellationToken, Parameter("$PresenceCutoff", Format(presenceCutoffUtc)));
+	public async Task<bool> ExpireSessionIfPolicyExceededAsync(Guid sessionId, DateTime nowUtc, UserSessionPolicy policy, CancellationToken cancellationToken) => await Database.ExecuteAsync("UPDATE UserSessions SET EndedUtc=$EndedUtc,EndReason=$EndReason,Version=Version+1 WHERE SessionId=$SessionId AND EndedUtc IS NULL AND (StartedUtc <= $MaximumAgeCutoff OR COALESCE(LastActivityUtc,LastSeenUtc,StartedUtc) <= $IdleCutoff);", cancellationToken, Parameter("$EndedUtc", Format(nowUtc)), Parameter("$EndReason", (int)UserSessionEndReason.Expired), Parameter("$SessionId", Format(sessionId)), Parameter("$MaximumAgeCutoff", Format(nowUtc-policy.MaximumSessionAge)), Parameter("$IdleCutoff", Format(nowUtc-policy.IdleTimeout))) == 1;
+	public Task<int> ExpireSessionsByPolicyAsync(DateTime nowUtc, UserSessionPolicy policy, CancellationToken cancellationToken) => Database.ExecuteAsync(ExpireByPolicySql, cancellationToken, ExpireByPolicyParameters(nowUtc, policy));
+	public static Task<int> ExpireSessionsByPolicyAsync(DatabaseTransactionContext transaction, DateTime nowUtc, UserSessionPolicy policy, CancellationToken cancellationToken) => transaction.Session.ExecuteAsync(ExpireByPolicySql, cancellationToken, ExpireByPolicyParameters(nowUtc, policy));
 
-	public async Task<UserSessionPolicy> GetPolicyAsync(CancellationToken cancellationToken) =>
-		await Database.QuerySingleOrDefaultAsync($"SELECT {PolicyColumns} FROM UserSessionPolicy WHERE Id = 1;", ReadPolicy, cancellationToken)
-		?? new UserSessionPolicy { UpdatedUtc = DateTime.UnixEpoch, Version = 1 };
+	private static DatabaseParameter[] SessionInsertParameters(UserSession session) => [Parameter("$SessionId",Format(session.SessionId)),Parameter("$UserId",session.UserId),Parameter("$StartedUtc",Format(session.StartedUtc)),Parameter("$LastSeenUtc",Format(session.LastSeenUtc)),Parameter("$LastActivityUtc",Format(session.LastActivityUtc)),Parameter("$ClientInstanceId",Format(session.ClientInstanceId)),Parameter("$MachineName",session.MachineName),Parameter("$AppVersion",session.AppVersion)];
+	private static DatabaseParameter[] PolicyUpdateParameters(UserSessionPolicy policy,long expectedVersion) => [Parameter("$IdleTimeoutMinutes",policy.IdleTimeoutMinutes),Parameter("$MaximumSessionAgeHours",policy.MaximumSessionAgeHours),Parameter("$ConcurrentSessionMode",(int)policy.ConcurrentSessionMode),Parameter("$MaximumConcurrentSessions",policy.MaximumConcurrentSessions),Parameter("$ConcurrentSessionLimitAction",(int)policy.ConcurrentSessionLimitAction),Parameter("$SessionHistoryRetentionDays",policy.SessionHistoryRetentionDays),Parameter("$UpdatedUtc",Format(policy.UpdatedUtc)),Parameter("$ExpectedVersion",expectedVersion)];
+	private static DatabaseParameter[] ExpireByPolicyParameters(DateTime nowUtc,UserSessionPolicy policy) => [Parameter("$EndedUtc",Format(nowUtc)),Parameter("$EndReason",(int)UserSessionEndReason.Expired),Parameter("$MaximumAgeCutoff",Format(nowUtc-policy.MaximumSessionAge)),Parameter("$IdleCutoff",Format(nowUtc-policy.IdleTimeout))];
 
-	public static async Task<UserSessionPolicy> GetPolicyAsync(DatabaseTransactionContext transaction, CancellationToken cancellationToken) =>
-		await transaction.Session.QuerySingleOrDefaultAsync($"SELECT {PolicyColumns} FROM UserSessionPolicy WHERE Id = 1;", ReadPolicy, cancellationToken)
-		?? new UserSessionPolicy { UpdatedUtc = DateTime.UnixEpoch, Version = 1 };
-
-	public async Task<bool> UpdatePolicyAsync(UserSessionPolicy policy, long expectedVersion, CancellationToken cancellationToken) =>
-		await Database.ExecuteAsync(PolicyUpdateSql, cancellationToken, PolicyUpdateParameters(policy, expectedVersion)) == 1;
-
-	public static async Task<bool> UpdatePolicyAsync(DatabaseTransactionContext transaction, UserSessionPolicy policy, long expectedVersion, CancellationToken cancellationToken) =>
-		await transaction.Session.ExecuteAsync(PolicyUpdateSql, cancellationToken, PolicyUpdateParameters(policy, expectedVersion)) == 1;
-
-	public async Task<bool> ExpireSessionIfPolicyExceededAsync(Guid sessionId, DateTime nowUtc, UserSessionPolicy policy, CancellationToken cancellationToken)
-	{
-		var idleCutoffUtc = nowUtc - policy.IdleTimeout;
-		var maximumAgeCutoffUtc = nowUtc - policy.MaximumSessionAge;
-		return await Database.ExecuteAsync(
-			"UPDATE UserSessions SET EndedUtc = $EndedUtc, EndReason = $EndReason, Version = Version + 1 WHERE SessionId = $SessionId AND EndedUtc IS NULL AND (StartedUtc <= $MaximumAgeCutoff OR COALESCE(LastActivityUtc, LastSeenUtc, StartedUtc) <= $IdleCutoff);",
-			cancellationToken, Parameter("$EndedUtc", Format(nowUtc)), Parameter("$EndReason", (int)UserSessionEndReason.Expired),
-			Parameter("$SessionId", Format(sessionId)), Parameter("$MaximumAgeCutoff", Format(maximumAgeCutoffUtc)), Parameter("$IdleCutoff", Format(idleCutoffUtc))) == 1;
-	}
-
-	public Task<int> ExpireSessionsByPolicyAsync(DateTime nowUtc, UserSessionPolicy policy, CancellationToken cancellationToken) =>
-		Database.ExecuteAsync(ExpireByPolicySql, cancellationToken, ExpireByPolicyParameters(nowUtc, policy));
-
-	public static Task<int> ExpireSessionsByPolicyAsync(DatabaseTransactionContext transaction, DateTime nowUtc, UserSessionPolicy policy, CancellationToken cancellationToken) =>
-		transaction.Session.ExecuteAsync(ExpireByPolicySql, cancellationToken, ExpireByPolicyParameters(nowUtc, policy));
-
-	private const string PolicyUpdateSql = "UPDATE UserSessionPolicy SET IdleTimeoutMinutes = $IdleTimeoutMinutes, MaximumSessionAgeHours = $MaximumSessionAgeHours, UpdatedUtc = $UpdatedUtc, Version = Version + 1 WHERE Id = 1 AND Version = $ExpectedVersion;";
-	private const string ExpireByPolicySql = "UPDATE UserSessions SET EndedUtc = $EndedUtc, EndReason = $EndReason, Version = Version + 1 WHERE EndedUtc IS NULL AND (StartedUtc <= $MaximumAgeCutoff OR COALESCE(LastActivityUtc, LastSeenUtc, StartedUtc) <= $IdleCutoff);";
-
-	private static DatabaseParameter[] PolicyUpdateParameters(UserSessionPolicy policy, long expectedVersion) =>
-	[
-		Parameter("$IdleTimeoutMinutes", policy.IdleTimeoutMinutes), Parameter("$MaximumSessionAgeHours", policy.MaximumSessionAgeHours),
-		Parameter("$UpdatedUtc", Format(policy.UpdatedUtc)), Parameter("$ExpectedVersion", expectedVersion)
-	];
-
-	private static DatabaseParameter[] ExpireByPolicyParameters(DateTime nowUtc, UserSessionPolicy policy) =>
-	[
-		Parameter("$EndedUtc", Format(nowUtc)), Parameter("$EndReason", (int)UserSessionEndReason.Expired),
-		Parameter("$MaximumAgeCutoff", Format(nowUtc - policy.MaximumSessionAge)), Parameter("$IdleCutoff", Format(nowUtc - policy.IdleTimeout))
-	];
-
-	private static UserSession ReadSession(DbDataReader reader) => new()
-	{
-		Id = reader.GetInt64(0), SessionId = Guid.Parse(reader.GetString(1)), UserId = reader.GetInt64(2), StartedUtc = ReadUtc(reader, 3), LastSeenUtc = ReadUtc(reader, 4),
-		LastActivityUtc = ReadNullableUtc(reader, 5), EndedUtc = ReadNullableUtc(reader, 6), EndReason = reader.IsDBNull(7) ? null : (UserSessionEndReason)reader.GetInt32(7),
-		ClientInstanceId = Guid.Parse(reader.GetString(8)), MachineName = reader.IsDBNull(9) ? null : reader.GetString(9), AppVersion = reader.IsDBNull(10) ? null : reader.GetString(10), Version = reader.GetInt64(11)
-	};
-
-	private static ActiveUserSession ReadActiveSession(DbDataReader reader) => new(
-		reader.GetInt64(0), Guid.Parse(reader.GetString(1)), reader.GetInt64(2), reader.GetString(3), reader.GetString(4), ReadUtc(reader, 5), ReadUtc(reader, 6), ReadNullableUtc(reader, 7),
-		Guid.Parse(reader.GetString(8)), reader.IsDBNull(9) ? null : reader.GetString(9), reader.IsDBNull(10) ? null : reader.GetString(10), reader.GetInt64(11));
-
-	private static EndedUserSession ReadEndedSession(DbDataReader reader) => new(
-		reader.GetInt64(0), Guid.Parse(reader.GetString(1)), reader.GetInt64(2), reader.GetString(3), reader.GetString(4), ReadUtc(reader, 5), ReadUtc(reader, 6), ReadUtc(reader, 7),
-		(UserSessionEndReason)reader.GetInt32(8), Guid.Parse(reader.GetString(9)), reader.IsDBNull(10) ? null : reader.GetString(10), reader.IsDBNull(11) ? null : reader.GetString(11), reader.GetInt64(12));
-
-	private static UserSessionPolicy ReadPolicy(DbDataReader reader) => new()
-	{
-		Id = reader.GetInt64(0), IdleTimeoutMinutes = Convert.ToInt32(reader.GetValue(1), CultureInfo.InvariantCulture), MaximumSessionAgeHours = Convert.ToInt32(reader.GetValue(2), CultureInfo.InvariantCulture),
-		UpdatedUtc = ReadUtc(reader, 3), Version = reader.GetInt64(4)
-	};
-
-	private static string Format(Guid value) => value.ToString("D", CultureInfo.InvariantCulture);
-	private static string Format(DateTime value) => value.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture);
-	private static string? Format(DateTime? value) => value?.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture);
-	private static DateTime ReadUtc(DbDataReader reader, int ordinal) => DateTime.Parse(Convert.ToString(reader.GetValue(ordinal), CultureInfo.InvariantCulture) ?? string.Empty, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind).ToUniversalTime();
-	private static DateTime? ReadNullableUtc(DbDataReader reader, int ordinal) => reader.IsDBNull(ordinal) ? null : ReadUtc(reader, ordinal);
+	private static UserSession ReadSession(DbDataReader reader) => new() { Id=reader.GetInt64(0),SessionId=Guid.Parse(reader.GetString(1)),UserId=reader.GetInt64(2),StartedUtc=ReadUtc(reader,3),LastSeenUtc=ReadUtc(reader,4),LastActivityUtc=ReadNullableUtc(reader,5),EndedUtc=ReadNullableUtc(reader,6),EndReason=reader.IsDBNull(7)?null:(UserSessionEndReason)reader.GetInt32(7),ClientInstanceId=Guid.Parse(reader.GetString(8)),MachineName=reader.IsDBNull(9)?null:reader.GetString(9),AppVersion=reader.IsDBNull(10)?null:reader.GetString(10),Version=reader.GetInt64(11) };
+	private static ActiveUserSession ReadActiveSession(DbDataReader reader) => new(reader.GetInt64(0),Guid.Parse(reader.GetString(1)),reader.GetInt64(2),reader.GetString(3),reader.GetString(4),ReadUtc(reader,5),ReadUtc(reader,6),ReadNullableUtc(reader,7),Guid.Parse(reader.GetString(8)),reader.IsDBNull(9)?null:reader.GetString(9),reader.IsDBNull(10)?null:reader.GetString(10),reader.GetInt64(11));
+	private static EndedUserSession ReadEndedSession(DbDataReader reader) => new(reader.GetInt64(0),Guid.Parse(reader.GetString(1)),reader.GetInt64(2),reader.GetString(3),reader.GetString(4),ReadUtc(reader,5),ReadUtc(reader,6),ReadUtc(reader,7),(UserSessionEndReason)reader.GetInt32(8),Guid.Parse(reader.GetString(9)),reader.IsDBNull(10)?null:reader.GetString(10),reader.IsDBNull(11)?null:reader.GetString(11),reader.GetInt64(12));
+	private static UserSessionPolicy ReadPolicy(DbDataReader reader) => new() { Id=reader.GetInt64(0),IdleTimeoutMinutes=Convert.ToInt32(reader.GetValue(1),CultureInfo.InvariantCulture),MaximumSessionAgeHours=Convert.ToInt32(reader.GetValue(2),CultureInfo.InvariantCulture),ConcurrentSessionMode=(ConcurrentSessionMode)Convert.ToInt32(reader.GetValue(3),CultureInfo.InvariantCulture),MaximumConcurrentSessions=Convert.ToInt32(reader.GetValue(4),CultureInfo.InvariantCulture),ConcurrentSessionLimitAction=(ConcurrentSessionLimitAction)Convert.ToInt32(reader.GetValue(5),CultureInfo.InvariantCulture),SessionHistoryRetentionDays=Convert.ToInt32(reader.GetValue(6),CultureInfo.InvariantCulture),UpdatedUtc=ReadUtc(reader,7),Version=reader.GetInt64(8) };
+	private static UserSessionPolicy DefaultPolicy() => new() { UpdatedUtc=DateTime.UnixEpoch,Version=1 };
+	private static string Format(Guid value)=>value.ToString("D",CultureInfo.InvariantCulture);
+	private static string Format(DateTime value)=>value.ToUniversalTime().ToString("O",CultureInfo.InvariantCulture);
+	private static string? Format(DateTime? value)=>value?.ToUniversalTime().ToString("O",CultureInfo.InvariantCulture);
+	private static DateTime ReadUtc(DbDataReader reader,int ordinal)=>DateTime.Parse(Convert.ToString(reader.GetValue(ordinal),CultureInfo.InvariantCulture)??string.Empty,CultureInfo.InvariantCulture,DateTimeStyles.RoundtripKind).ToUniversalTime();
+	private static DateTime? ReadNullableUtc(DbDataReader reader,int ordinal)=>reader.IsDBNull(ordinal)?null:ReadUtc(reader,ordinal);
 }

@@ -7,7 +7,7 @@ namespace Depot.Data;
 
 public static class UserSessionSchemaMigration
 {
-	public const int CurrentVersion = 2;
+	public const int CurrentVersion = 3;
 	private const string FeatureName = "UserSessions";
 
 	public static void Migrate(IDatabaseConnectionFactory connectionFactory)
@@ -26,27 +26,33 @@ public static class UserSessionSchemaMigration
 
 		if (version == 1)
 		{
-			MigratePolicy(connectionFactory);
+			Migrate(connectionFactory, UserSessionSchema.GetPolicyMigrationStatements(connectionFactory.Provider), 2);
 			version = 2;
+		}
+
+		if (version == 2)
+		{
+			Migrate(connectionFactory, UserSessionSchema.GetPolicyV3MigrationStatements(connectionFactory.Provider), 3);
+			version = 3;
 		}
 
 		if (version != CurrentVersion)
 			throw new InvalidOperationException($"User session schema version '{version}' is not supported. Expected '{CurrentVersion}'.");
 	}
 
-	private static void MigratePolicy(IDatabaseConnectionFactory connectionFactory)
+	private static void Migrate(IDatabaseConnectionFactory connectionFactory, IReadOnlyList<string> statements, int targetVersion)
 	{
 		using var connection = connectionFactory.CreateConnection();
 		connection.Open();
 		using var transaction = connectionFactory.BeginWriteTransaction(connection);
 		using var command = connection.CreateCommand();
 		command.Transaction = transaction;
-		foreach (var statement in UserSessionSchema.GetPolicyMigrationStatements(connectionFactory.Provider))
+		foreach (var statement in statements)
 		{
 			command.CommandText = statement;
 			command.ExecuteNonQuery();
 		}
-		command.CommandText = VersionUpsertSql(connectionFactory.Provider, 2);
+		command.CommandText = VersionUpsertSql(connectionFactory.Provider, targetVersion);
 		command.ExecuteNonQuery();
 		transaction.Commit();
 	}

@@ -35,6 +35,14 @@ internal static class UserSessionSchema
 		_ => throw new NotSupportedException($"User session policy schema is not supported for provider '{provider}'.")
 	};
 
+	public static IReadOnlyList<string> GetPolicyV3MigrationStatements(DatabaseProvider provider) => provider switch
+	{
+		DatabaseProvider.Local => SqlitePolicyV3,
+		DatabaseProvider.SqlServer => SqlServerPolicyV3,
+		DatabaseProvider.MySql => MySqlPolicyV3,
+		_ => throw new NotSupportedException($"User session policy v3 schema is not supported for provider '{provider}'.")
+	};
+
 	private static readonly string[] Sqlite =
 	[
 		"CREATE TABLE IF NOT EXISTS UserSessions (Id INTEGER PRIMARY KEY AUTOINCREMENT, SessionId TEXT NOT NULL UNIQUE, UserId INTEGER NOT NULL, StartedUtc TEXT NOT NULL, LastSeenUtc TEXT NOT NULL, LastActivityUtc TEXT NULL, EndedUtc TEXT NULL, EndReason INTEGER NULL, ClientInstanceId TEXT NOT NULL, MachineName TEXT NULL, AppVersion TEXT NULL, Version INTEGER NOT NULL DEFAULT 1, FOREIGN KEY(UserId) REFERENCES Users(Id));",
@@ -70,5 +78,29 @@ internal static class UserSessionSchema
 	[
 		"CREATE TABLE IF NOT EXISTS UserSessionPolicy (Id BIGINT NOT NULL PRIMARY KEY, IdleTimeoutMinutes INT NOT NULL, MaximumSessionAgeHours INT NOT NULL, UpdatedUtc VARCHAR(40) NOT NULL, Version BIGINT NOT NULL DEFAULT 1, CONSTRAINT CK_UserSessionPolicy_Singleton CHECK (Id = 1)) ENGINE=InnoDB;",
 		"INSERT IGNORE INTO UserSessionPolicy (Id, IdleTimeoutMinutes, MaximumSessionAgeHours, UpdatedUtc, Version) VALUES (1, 30, 12, '1970-01-01T00:00:00.0000000Z', 1);"
+	];
+
+	private static readonly string[] SqlitePolicyV3 =
+	[
+		"ALTER TABLE UserSessionPolicy ADD COLUMN ConcurrentSessionMode INTEGER NOT NULL DEFAULT 1;",
+		"ALTER TABLE UserSessionPolicy ADD COLUMN MaximumConcurrentSessions INTEGER NOT NULL DEFAULT 3;",
+		"ALTER TABLE UserSessionPolicy ADD COLUMN ConcurrentSessionLimitAction INTEGER NOT NULL DEFAULT 1;",
+		"ALTER TABLE UserSessionPolicy ADD COLUMN SessionHistoryRetentionDays INTEGER NOT NULL DEFAULT 180;"
+	];
+
+	private static readonly string[] SqlServerPolicyV3 =
+	[
+		"ALTER TABLE UserSessionPolicy ADD ConcurrentSessionMode int NOT NULL CONSTRAINT DF_UserSessionPolicy_ConcurrentSessionMode DEFAULT 1;",
+		"ALTER TABLE UserSessionPolicy ADD MaximumConcurrentSessions int NOT NULL CONSTRAINT DF_UserSessionPolicy_MaximumConcurrentSessions DEFAULT 3;",
+		"ALTER TABLE UserSessionPolicy ADD ConcurrentSessionLimitAction int NOT NULL CONSTRAINT DF_UserSessionPolicy_ConcurrentSessionLimitAction DEFAULT 1;",
+		"ALTER TABLE UserSessionPolicy ADD SessionHistoryRetentionDays int NOT NULL CONSTRAINT DF_UserSessionPolicy_SessionHistoryRetentionDays DEFAULT 180;"
+	];
+
+	private static readonly string[] MySqlPolicyV3 =
+	[
+		"ALTER TABLE UserSessionPolicy ADD COLUMN ConcurrentSessionMode INT NOT NULL DEFAULT 1;",
+		"ALTER TABLE UserSessionPolicy ADD COLUMN MaximumConcurrentSessions INT NOT NULL DEFAULT 3;",
+		"ALTER TABLE UserSessionPolicy ADD COLUMN ConcurrentSessionLimitAction INT NOT NULL DEFAULT 1;",
+		"ALTER TABLE UserSessionPolicy ADD COLUMN SessionHistoryRetentionDays INT NOT NULL DEFAULT 180;"
 	];
 }

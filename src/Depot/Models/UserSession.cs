@@ -10,7 +10,21 @@ public enum UserSessionEndReason
 	Revoked = 3,
 	Expired = 4,
 	Superseded = 5,
-	AdministrativeLogout = 6
+	AdministrativeLogout = 6,
+	CredentialsChanged = 7
+}
+
+public enum ConcurrentSessionMode
+{
+	Unlimited = 1,
+	MaximumSessions = 2,
+	SingleSession = 3
+}
+
+public enum ConcurrentSessionLimitAction
+{
+	RejectNewSession = 1,
+	SupersedeOldestSession = 2
 }
 
 public sealed class UserSession
@@ -33,19 +47,30 @@ public sealed class UserSessionPolicy
 {
 	public const int DefaultIdleTimeoutMinutes = 30;
 	public const int DefaultMaximumSessionAgeHours = 12;
+	public const int DefaultMaximumConcurrentSessions = 3;
+	public const int DefaultSessionHistoryRetentionDays = 180;
 	public const int MinimumIdleTimeoutMinutes = 5;
 	public const int MaximumIdleTimeoutMinutes = 480;
 	public const int MinimumMaximumSessionAgeHours = 1;
 	public const int MaximumMaximumSessionAgeHours = 168;
+	public const int MinimumConcurrentSessions = 1;
+	public const int MaximumConcurrentSessions = 20;
+	public const int MinimumSessionHistoryRetentionDays = 30;
+	public const int MaximumSessionHistoryRetentionDays = 3650;
 
 	public long Id { get; set; } = 1;
 	public int IdleTimeoutMinutes { get; set; } = DefaultIdleTimeoutMinutes;
 	public int MaximumSessionAgeHours { get; set; } = DefaultMaximumSessionAgeHours;
+	public ConcurrentSessionMode ConcurrentSessionMode { get; set; } = ConcurrentSessionMode.Unlimited;
+	public int MaximumConcurrentSessions { get; set; } = DefaultMaximumConcurrentSessions;
+	public ConcurrentSessionLimitAction ConcurrentSessionLimitAction { get; set; } = ConcurrentSessionLimitAction.RejectNewSession;
+	public int SessionHistoryRetentionDays { get; set; } = DefaultSessionHistoryRetentionDays;
 	public DateTime UpdatedUtc { get; set; }
 	public long Version { get; set; } = 1;
 
 	public TimeSpan IdleTimeout => TimeSpan.FromMinutes(IdleTimeoutMinutes);
 	public TimeSpan MaximumSessionAge => TimeSpan.FromHours(MaximumSessionAgeHours);
+	public int EffectiveMaximumConcurrentSessions => ConcurrentSessionMode == ConcurrentSessionMode.SingleSession ? 1 : MaximumConcurrentSessions;
 }
 
 public sealed record ActiveUserSession(

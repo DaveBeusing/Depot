@@ -13,7 +13,10 @@ public enum SecurityEventType
 	SessionExpired = 6,
 	SessionRevoked = 7,
 	AdministrativeSessionTermination = 8,
-	SessionPolicyChanged = 9
+	SessionPolicyChanged = 9,
+	CredentialsChanged = 10,
+	SessionSuperseded = 11,
+	AuthenticationSecurityPolicyChanged = 12
 }
 
 public enum SecurityEventSeverity
@@ -33,6 +36,7 @@ public sealed class SecurityEvent
 	public long? UserId { get; set; }
 	public string? AccountIdentifier { get; set; }
 	public Guid? SessionId { get; set; }
+	public Guid? ClientInstanceId { get; set; }
 	public string? MachineName { get; set; }
 	public string Summary { get; set; } = string.Empty;
 	public string? Details { get; set; }
@@ -40,10 +44,6 @@ public sealed class SecurityEvent
 	public long? ReviewedByUserId { get; set; }
 	public long Version { get; set; } = 1;
 }
-
-public sealed record SecurityCenterMetrics(long Events24Hours, long Suspicious24Hours, long HighRiskOpen, long Blocked24Hours);
-
-public sealed record SecurityEventFilter(string? SearchText, SecurityEventSeverity? MinimumSeverity, bool? Reviewed);
 
 public sealed class SecurityEventListItem
 {
@@ -54,14 +54,17 @@ public sealed class SecurityEventListItem
 	public long? UserId { get; init; }
 	public string? AccountIdentifier { get; init; }
 	public Guid? SessionId { get; init; }
+	public Guid? ClientInstanceId { get; init; }
 	public string? MachineName { get; init; }
 	public string Summary { get; init; } = string.Empty;
 	public string? Details { get; init; }
-	public DateTime? ReviewedUtc { get; init; }
-	public long? ReviewedByUserId { get; init; }
-	public long Version { get; init; }
-	public DateTime TimestampLocal => TimestampUtc.ToLocalTime();
+	public DateTime? ReviewedUtc { get; set; }
+	public long? ReviewedByUserId { get; set; }
+	public long Version { get; set; }
 	public bool IsReviewed => ReviewedUtc is not null;
+	public DateTime TimestampLocal => TimestampUtc.ToLocalTime();
 }
 
+public sealed record SecurityEventFilter(string? SearchText, SecurityEventSeverity? MinimumSeverity, bool? Reviewed);
+public sealed record SecurityCenterMetrics(long Events24Hours, long Suspicious24Hours, long OpenHighRisk, long Blocked24Hours);
 public sealed record LoginAttemptStatus(int FailureCount, bool IsBlocked, TimeSpan RetryAfter);
