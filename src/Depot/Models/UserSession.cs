@@ -54,7 +54,7 @@ public sealed class UserSessionPolicy
 	public const int MinimumMaximumSessionAgeHours = 1;
 	public const int MaximumMaximumSessionAgeHours = 168;
 	public const int MinimumConcurrentSessions = 1;
-	public const int MaximumConcurrentSessions = 20;
+	public const int MaximumAllowedConcurrentSessions = 20;
 	public const int MinimumSessionHistoryRetentionDays = 30;
 	public const int MaximumSessionHistoryRetentionDays = 3650;
 
