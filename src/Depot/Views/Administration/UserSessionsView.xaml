@@ -3,14 +3,6 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:automation="clr-namespace:System.Windows.Automation;assembly=PresentationCore"
              xmlns:controls="clr-namespace:Depot.Controls">
-    <UserControl.Resources>
-        <Style x:Key="UserSessionLastSeenTextStyle" TargetType="TextBlock" BasedOn="{StaticResource AppDataGridTextStyle}">
-            <Setter Property="ToolTip" Value="{Binding LastSeenLocalText}" />
-        </Style>
-        <Style x:Key="UserSessionOnlineSinceTextStyle" TargetType="TextBlock" BasedOn="{StaticResource AppDataGridTextStyle}">
-            <Setter Property="ToolTip" Value="{Binding StartedLocalText}" />
-        </Style>
-    </UserControl.Resources>
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -20,8 +12,12 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <controls:PageHeader Title="User Sessions" Subtitle="Who is online now, on which client, and since when." />
+        <controls:WorkflowHeader Title="User Sessions"
+                                 Subtitle="Who is online now, on which client, and since when."
+                                 Status="{Binding ActiveSessions, StringFormat={}{0:N0} active}" />
+
         <controls:OperationPanel Grid.Row="1"
+                                 Margin="0,10,0,0"
                                  IsBusy="{Binding IsBusy}"
                                  HasError="{Binding HasOperationError}"
                                  StatusText="{Binding StatusText}"
@@ -50,8 +46,8 @@
                                 Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
         </controls:FilterBar>
 
-        <controls:Card Grid.Row="4" Style="{StaticResource WorkspaceCardStyle}">
-            <Grid>
+        <controls:Card Grid.Row="4">
+            <Grid MinHeight="220">
                 <DataGrid automation:AutomationProperties.Name="Currently online users and sessions"
                           ItemsSource="{Binding Sessions}"
                           Style="{StaticResource AppDataGridStyle}"
@@ -60,14 +56,15 @@
                         <DataGridTextColumn Header="User" Binding="{Binding UserDisplayName}" Width="1.35*" ElementStyle="{StaticResource AppDataGridTextStyle}" />
                         <DataGridTextColumn Header="Email" Binding="{Binding UserEmail}" Width="1.65*" ElementStyle="{StaticResource AppDataGridTextStyle}" />
                         <DataGridTextColumn Header="Client" Binding="{Binding MachineName}" Width="1.15*" ElementStyle="{StaticResource AppDataGridTextStyle}" />
-                        <DataGridTextColumn Header="Online Since" Binding="{Binding OnlineSince}" Width="135" ElementStyle="{StaticResource UserSessionOnlineSinceTextStyle}" />
+                        <DataGridTextColumn Header="Online Since" Binding="{Binding OnlineSince}" Width="135" ElementStyle="{StaticResource AppDataGridTextStyle}" />
                         <DataGridTextColumn Header="Online For" Binding="{Binding OnlineFor}" Width="100" ElementStyle="{StaticResource AppDataGridTextStyle}" />
-                        <DataGridTextColumn Header="Last Seen" Binding="{Binding LastSeen}" Width="110" ElementStyle="{StaticResource UserSessionLastSeenTextStyle}" />
+                        <DataGridTextColumn Header="Last Seen" Binding="{Binding LastSeen}" Width="110" ElementStyle="{StaticResource AppDataGridTextStyle}" />
                         <DataGridTextColumn Header="Version" Binding="{Binding AppVersion}" Width="110" ElementStyle="{StaticResource AppDataGridTextStyle}" />
                     </DataGrid.Columns>
                 </DataGrid>
+
                 <controls:EmptyState Title="Nobody is online"
-                                     Description="Users appear here after successful login while their heartbeat remains within the presence timeout."
+                                     Description="No heartbeat-active authenticated session is currently available. Users appear here immediately after a successful login."
                                      Visibility="{Binding HasNoSessions, Converter={StaticResource BooleanToVisibilityConverter}}" />
             </Grid>
         </controls:Card>
