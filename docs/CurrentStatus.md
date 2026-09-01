@@ -4,41 +4,39 @@ Updated: 2026-09-01
 
 Depot is on the `0.15.x-preview` development line. The repository contains the integrated Finance platform: foundation/master data, immutable General Ledger, Receivables, Payables, FIFO Inventory Accounting, Banking and Payments, Financial Reporting, and effective-dated Localization.
 
-Depot also has persistent authenticated user sessions, heartbeat-derived online presence, configurable session lifetime policy, administrative revocation and recent session history. Every successful login creates a unique session; failed logins create none. Normal logout and clean application shutdown end the current session explicitly, while crash, power loss, network loss, standby and process termination age out automatically through the 90-second presence timeout. Multi-session per user is supported.
+Depot also has persistent authenticated user sessions, heartbeat-derived online presence, configurable session lifetime policy, administrative revocation, recent session history, suspicious-authentication monitoring and a reviewable Security Center. Every successful login creates a unique session; failed logins create none. Normal logout and clean application shutdown end the current session explicitly, while crash, power loss, network loss, standby and process termination age out automatically through the 90-second presence timeout. Multi-session per user is supported.
 
 The central session policy defaults to a 30-minute idle timeout and 12-hour maximum session age. Idle activity is derived only from keyboard, mouse or touch input inside the Depot main window; the application stores the latest activity timestamp rather than input content. Running sessions that exceed either policy are ended with `Expired` and return to sign-in. Maximum session age is absolute even if activity continues.
 
-Administrators with `Users.View` can open **Administration → User Sessions** to review active sessions, Online Users/Active Sessions metrics, the central session policy and the 200 most recently ended sessions. Users with the additional `UserSessions.Terminate` permission can terminate one active session or all open sessions for the selected user. Users with `Settings.Manage` can change idle timeout and maximum session age. Administrative termination uses `AdministrativeLogout`, is confirmed and audited, and affected clients return to sign-in after the next heartbeat detects the ended server-side session.
+Authentication risk monitoring reuses the existing 15-minute throttling window. Repeated failed attempts escalate deterministically from informational events to Warning/High suspicious events and finally a Critical lockout event. Successful authentication after recent failures is retained as a separate Security Event rather than erasing the risk trail. High/Critical events are surfaced through the Notification Center.
 
-Deactivating a user revokes every open session for that user with `Revoked` in the same database transaction as the account deactivation and its Audit evidence. Heartbeats remain technical liveness writes and are not emitted as Audit events. Session-policy changes are audit-relevant administration changes.
+Administrators with `Users.View` can open **Administration → User Sessions** to review active sessions, Online Users/Active Sessions metrics, the central session policy and the 200 most recently ended sessions. Users with `UserSessions.Terminate` can terminate one active session or all open sessions for a selected user. Users with `Settings.Manage` can change idle timeout and maximum session age.
+
+Users with `SecurityEvents.View` can open **Administration → Security Center** to review the latest security events and 24-hour metrics for total events, suspicious authentication, open High/Critical events and lockout activity. `SecurityEvents.Manage` additionally permits marking events reviewed. Review metadata is mutable; original event fields remain unchanged through normal application workflows.
+
+Deactivating a user revokes every open session for that user with `Revoked` in the same database transaction as the account deactivation and its Audit evidence. Heartbeats remain technical liveness writes and are not emitted as Audit events. Session-policy changes and administrative termination remain Audit-relevant and also generate Security Events.
 
 Sales pricing supports Global, Regional and optional Customer scopes. The central resolver falls back Customer → Region → Global for each item and retains the selected price source on quote and order lines.
 
 Item Cost Build-up derives a traceable commercial item cost from the active preferred supplier purchase price plus ordered Absolute/Percentage Cost Components. Percentage components explicitly use BaseCost or RunningTotal. Bulk Pricing consumes the same central calculation service, applies Percentage Markup, requires a Preview, supports All Active/Category/Manufacturer/Selected filters and applies through Replace/Only Increase/Only Missing modes to the existing scoped PriceList model.
 
-New installations also receive provider-neutral standard reference data for Units of Measure and Packaging. Depot seeds 12 UoMs (`EA`, `SET`, `PAIR`, `M`, `M2`, `M3`, `KG`, `G`, `L`, `ML`, `H`, `DAY`) and 12 Packaging Types (`UNIT`, `BAG`, `BOX`, `CARTON`, `CASE`, `PACK`, `BUNDLE`, `TRAY`, `REEL`, `ROLL`, `CRATE`, `PALLET`). `EA` is the canonical built-in piece unit; `PCS` is not seeded. The initializer is idempotent and preserves existing matching or custom values without changing descriptions, activation state or versions.
+New installations also receive provider-neutral standard reference data for Units of Measure and Packaging. Depot seeds 12 UoMs (`EA`, `SET`, `PAIR`, `M`, `M2`, `M3`, `KG`, `G`, `L`, `ML`, `H`, `DAY`) and 12 Packaging Types (`UNIT`, `BAG`, `BOX`, `CARTON`, `CASE`, `PACK`, `BUNDLE`, `TRAY`, `REEL`, `ROLL`, `CRATE`, `PALLET`). `EA` is the canonical built-in piece unit; `PCS` is not seeded.
 
-## Session and presence safeguards
+## Session and security safeguards
 
 - `IsOnline` is not persisted; active presence is derived from `EndedUtc IS NULL` plus heartbeat freshness.
-- Heartbeat interval is 30 seconds and presence timeout is 90 seconds from central runtime options.
+- Heartbeat interval is 30 seconds and presence timeout is 90 seconds.
 - Central database policy defaults to 30 minutes idle timeout and 12 hours maximum session age.
-- Policy ranges are 5–480 idle minutes and 1–168 maximum-session-age hours.
-- User activity is captured only inside Depot, throttled in memory and persisted as `LastActivityUtc` with the normal heartbeat; typed text, key values and mouse coordinates are not stored.
-- The heartbeat persists the latest activity before evaluating policy, preventing a boundary race from expiring a recently active session.
-- Policy expiration writes `Expired`; the client clears authorization and returns to sign-in on heartbeat detection.
-- Maximum session age is absolute and applies even when the user remains active.
-- Saving a stricter policy immediately evaluates all open sessions against the new limits.
-- Session-policy updates use optimistic Version checks; viewing requires `Users.View`, editing additionally requires `Settings.Manage`.
-- Heartbeat updates only non-ended sessions, preventing logout/revocation/expiration races from reviving a session.
-- Temporary heartbeat database failures are contained and are not automatically treated as revocation or expiration.
-- Clean shutdown uses a bounded database-write window and does not synchronously depend on the WPF synchronization context.
-- Multiple active sessions per user are intentionally supported; there is no active-session uniqueness constraint on `UserId`.
-- Destructive session control additionally requires `UserSessions.Terminate` in the service layer.
-- Single-session and bulk user-session termination use `AdministrativeLogout` and Audit evidence.
-- User deactivation atomically ends every open session for that user with `Revoked`.
-- Administration exposes Active and History tabs; History contains the 200 most recently ended sessions with duration and end reason.
-- Session presence stores no MAC address, hardware fingerprint, key content, OS activity, external-window tracking, IP/geolocation data or similar telemetry.
+- User activity is persisted only as `LastActivityUtc`; typed text, key values and mouse coordinates are not stored.
+- Policy expiration writes `Expired`; maximum session age is absolute.
+- Session-policy updates use optimistic Version checks; viewing requires `Users.View`, editing requires `Settings.Manage`.
+- Administrative session termination requires `UserSessions.Terminate` and writes `AdministrativeLogout`.
+- User deactivation atomically ends open sessions with `Revoked`.
+- Authentication failures are tracked in Security Events using deterministic escalation in the existing 15-minute throttle window.
+- High/Critical security events notify `SecurityEvents.View` holders through the existing Notification Center.
+- Security Center review requires `SecurityEvents.Manage` and changes review metadata only.
+- Security Events are operational security telemetry and do not replace the immutable business Audit Log.
+- The security feature does not collect source IP, geolocation, MAC address, hardware fingerprint, key content, mouse coordinates or external-window activity.
 
 ## Finance capabilities
 
@@ -61,33 +59,24 @@ New installations also receive provider-neutral standard reference data for Unit
 - Bulk Apply is atomic, revalidates PriceList/entry/cost evidence and records batch Audit evidence.
 - Historical submitted/finalized Sales documents remain snapshot-based and are not rewritten by later Bulk Pricing.
 
-## Reference-data safeguards
-
-- Standard UoM and Packaging values reuse the existing `UnitsOfMeasure` and `Packagings` tables; no parallel schema or hardcoded UI list exists.
-- `EA` is the canonical piece unit. `PCS`, `PC` and `Piece` are not built-in equivalents.
-- UoM expresses how item quantity is measured; Packaging describes physical/logistical packaging.
-- Packaging Types contain no quantity, multiplier or conversion factor.
-- Case-insensitive natural-key checks make initialization idempotent across SQLite, SQL Server and MySQL/MariaDB.
-- Existing matching values and custom values are preserved exactly, including inactive records.
-- Technical seed creation is not emitted as repeated user Audit activity; later user maintenance still uses existing RBAC/Audit services.
-
 ## Versions
 
-- Application: **0.15.x-preview** (`Directory.Build.props` is authoritative for the exact patch; this change advances it to **0.15.93-preview**)
+- Application: **0.15.94-preview**
 - Core database schema: **30**
 - Sales feature schema: **10**
 - Finance feature schema: **9**
 - User Sessions feature schema: **2**
-- Help manifest: **1.20**
+- Security Events feature schema: **1**
+- Help manifest: **1.21**
 
 Every commit increments `DepotVersionPatch`.
 
 ## Validation boundary
 
-Release Build, win-x64 publish, repository regression tests, Release Integrity, Security Supply Chain and Software Quality gates are required on the final integration head. Provider-neutral DDL exists for SQLite, SQL Server and MySQL/MariaDB. Optional live-provider tests exercise scoped pricing, Item Cost schema migration, standard UoM/Packaging initialization and User Sessions persistence when server connection strings are configured.
+Release Build, win-x64 publish, repository regression tests, Release Integrity, Security Supply Chain and Software Quality gates are required on the final integration head. Provider-neutral Security Events DDL exists for SQLite, SQL Server and MySQL/MariaDB; live-provider acceptance remains a separate production gate.
 
 ## Next steps
 
-Session-security follow-up is now narrowed to password-change session policy, concurrent-session limits, retention/archival of historical sessions, suspicious-login/security-event monitoring, MFA/external identity integration and a broader Security Center. Configurable idle timeout and maximum session age are implemented.
+Security follow-up is now narrowed to password-change session invalidation, concurrent-session limits, retention/archival of historical sessions and Security Events, shared-store throttling for multi-node deployments, richer alert routing, MFA/external identity integration and explicit privacy design before any IP/geolocation/device-trust signals are added.
 
-Further pricing extensions are demand-driven: controlled FX conversion for cross-currency cost-to-price generation, additional explicit Base Cost source strategies, Target Gross Margin as a separate pricing rule, and commercial rounding strategies such as 0.05/0.10/0.50 or .99 endings. Item-specific packaging quantities and unit conversions remain a separate future capability; they are not encoded in global Packaging Types.
+Further pricing extensions remain demand-driven: controlled FX conversion for cross-currency cost-to-price generation, additional explicit Base Cost source strategies, Target Gross Margin as a separate pricing rule, and commercial rounding strategies.

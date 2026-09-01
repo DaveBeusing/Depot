@@ -12,11 +12,22 @@ The work factor must be benchmarked on supported production hardware before 1.0 
 
 New/changed passwords require 12-128 characters plus uppercase, lowercase, numeric and symbol characters, and may not contain a meaningful account-name component. Passwords are never logged or stored outside the password hash.
 
-## Login throttling
+## Login throttling and suspicious-authentication monitoring
 
-Depot tracks failed attempts by normalized account key in process memory. Five failures inside a 15-minute window cause a 15-minute lockout. A successful authentication clears the failure state. This limits online guessing without creating a persistent denial-of-service flag in the user record.
+Depot tracks failed attempts by normalized account key in process memory. Five failures inside a 15-minute window cause a 15-minute lockout. A successful authentication clears the active throttling state.
 
-The current limiter is per application process. A future multi-node/server authentication architecture must move throttling to a shared trusted store or identity provider.
+The same window now feeds a deterministic Security Event model:
+
+- failures 1–2: informational authentication failures;
+- failure 3: suspicious authentication pattern, Warning;
+- failure 4: suspicious authentication pattern, High;
+- failure 5: Critical lockout event;
+- attempts while lockout remains active: Critical;
+- successful authentication after recent failures: separately recorded and elevated according to the preceding failure count.
+
+The rules are triage signals rather than proof that an account is compromised. Authentication-event persistence is best-effort: a temporary telemetry failure is logged diagnostically but does not make a valid login fail solely because the event could not be stored.
+
+The current limiter remains per application process. A future multi-node/server authentication architecture must move throttling to a shared trusted store or identity provider.
 
 ## Authenticated sessions, presence and lifetime policy
 
@@ -24,7 +35,7 @@ A successful local authentication creates a unique persistent `UserSession` befo
 
 Online presence is derived only when the session has no `EndedUtc` value and `LastSeenUtc` is within the central 90-second presence timeout. Depot sends a heartbeat every 30 seconds while the session is authenticated. Heartbeat updates only still-unended sessions, preventing a late heartbeat from reviving a session that logout, expiration or revocation already ended.
 
-Depot also persists one central `UserSessionPolicy` shared by all clients. Defaults are a 30-minute idle timeout and 12-hour maximum session age. Supported ranges are 5–480 idle minutes and 1–168 maximum-age hours. `Users.View` permits reading this policy; `Settings.Manage` is required to modify it.
+Depot persists one central `UserSessionPolicy` shared by all clients. Defaults are a 30-minute idle timeout and 12-hour maximum session age. Supported ranges are 5–480 idle minutes and 1–168 maximum-age hours. `Users.View` permits reading this policy; `Settings.Manage` is required to modify it.
 
 The main window detects keyboard, mouse and touch activity only to maintain a latest-activity timestamp. Activity is throttled in memory and persisted with the normal heartbeat; Depot does not persist typed text, key values, mouse coordinates or a stream of input events. The heartbeat writes the latest activity before applying the current policy.
 
@@ -44,26 +55,32 @@ Policy changes use optimistic Version checks. Administrative termination uses `E
 
 Deactivating a user revokes every still-open session for that user with `EndReason = Revoked` in the same database transaction as the account deactivation and user Audit evidence. This ensures deactivation affects already-authenticated clients rather than only future login attempts.
 
-The administration view also exposes the 200 most recently ended sessions, including lifecycle duration and end reason such as `Expired`, `AdministrativeLogout` or `Revoked`. This operational history is stored in `UserSessions`; it does not replace the immutable business Audit log.
+## Security Center
+
+`SecurityEvents.View` grants access to **Administration → Security Center** and its recent-event metrics. `SecurityEvents.Manage` additionally permits marking events reviewed.
+
+Security Events are an operational security stream separate from the immutable business Audit Log. Events include authentication outcomes, suspicious failure escalation, lockout activity, successful authentication after failures, administrative session termination and session-policy changes. High and Critical events are additionally surfaced through the existing Notification Center to active `SecurityEvents.View` holders.
+
+Review changes only review metadata and optimistic Version. Original event type, timestamp, severity, account/session context, summary and details are not edited through normal application workflows.
 
 ## Persistence and migration
 
-User-session persistence is feature-versioned independently from the core schema. User Sessions feature schema version 2 adds the provider-neutral `UserSessionPolicy` singleton for SQLite, SQL Server and MySQL/MariaDB. The v1→v2 table creation, default seed and feature-version update execute within one provider write transaction.
+User Sessions feature schema version 2 contains the provider-neutral `UserSessionPolicy` singleton. Security Events use an independent provider-neutral feature schema `SecurityEvents` version 1. Core schema remains 30. Both feature schemas support SQLite, SQL Server and MySQL/MariaDB.
 
 ## Audit behavior
 
-Heartbeats and raw activity events are deliberately excluded from Audit because they are high-volume technical liveness signals. Administrative session termination and session-policy changes are audit-relevant actions. Account deactivation remains audited through the existing user-management transaction and atomically revokes the user's open sessions.
+Heartbeats and raw activity events are deliberately excluded from Audit because they are high-volume technical liveness signals. Administrative session termination and session-policy changes remain Audit-relevant actions and also produce Security Events. Security Events complement rather than replace Audit evidence.
 
 The current administration-service policy update and its Audit write are not yet one shared database transaction; this remains a transaction-composition hardening item and must not be described as atomic evidence.
 
 ## Privacy boundary
 
-Session data is deliberately minimal: user/session identifiers, timestamps, generated client-instance identifier, display-only machine name, application version, end state, central lifetime-policy values and optimistic versions. User activity tracking stores only the latest time input occurred inside Depot.
+Session/security data remains deliberately scoped. Security Events may store a normalized account identifier and existing session machine name where available. The feature does not collect typed text, key values, mouse coordinates, MAC addresses, hardware fingerprints, operating-system activity, external-window activity, source IP addresses or geolocation.
 
-The feature does not collect typed text, key values, mouse coordinates, MAC addresses, hardware fingerprints, operating-system activity, external-window activity, IP addresses, geolocation or similar telemetry.
+IP/geolocation or device-trust risk signals require an explicit privacy/security design before implementation.
 
 ## Current security gaps / roadmap
 
-The current session architecture supports server-side revocation, configurable idle timeout and maximum session age. Remaining security work includes concurrent-session limits, password-change session policy, suspicious-login/security-event monitoring, historical-session retention/archival and a broader Security Center.
+Implemented session/security controls now include server-side revocation, configurable idle timeout and maximum session age, suspicious-login monitoring, Security Events, High/Critical notifications and a reviewable Security Center.
 
-MFA and external identity providers (Microsoft Entra ID/OIDC and, where customer demand justifies it, SAML) remain roadmap items. Enterprise identity should be introduced behind an authentication-provider abstraction so local accounts remain usable for offline/recovery scenarios and external-provider policy can be centrally enforced.
+Remaining security work includes concurrent-session limits, password-change session invalidation, persistence/shared-store throttling for multi-node deployments, retention/archival for historical sessions and Security Events, richer alert routing, MFA and external identity providers (Microsoft Entra ID/OIDC and, where customer demand justifies it, SAML).

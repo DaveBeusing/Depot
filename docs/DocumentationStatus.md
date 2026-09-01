@@ -6,81 +6,48 @@ This document identifies the documentation baseline for the current development 
 
 ## Current baseline
 
-- Application: `0.15.93-preview`
-- Help manifest: `1.20`
+- Application: `0.15.94-preview`
+- Help manifest: `1.21`
 - Core database schema: `30`
 - Sales feature schema: `10`
 - Finance feature schema: `9`
 - User Sessions feature schema: `2`
+- Security Events feature schema: `1`
 - Finance foundation, General Ledger, Receivables, Payables, Inventory Accounting, Banking, Financial Reporting and Localization are implemented.
-- User Sessions include persistent login sessions, heartbeat-derived presence, configurable idle/max-age policy, active/history administration, administrative termination, bulk user-session termination and revocation on account deactivation.
+- User Sessions include persistent login sessions, heartbeat-derived presence, configurable idle/max-age policy, active/history administration, administrative termination, bulk termination and revocation on account deactivation.
+- Security Events include deterministic suspicious-authentication escalation, lockout events, success-after-failure correlation, administrative session events, High/Critical notifications and a reviewable Security Center.
 
-## Session documentation invariants
+## Session and security documentation invariants
 
 Documentation must state that:
 
 - online presence is derived from `EndedUtc IS NULL` plus heartbeat freshness; no persisted `IsOnline` is authoritative;
-- the default heartbeat interval is 30 seconds and the default presence timeout is 90 seconds;
-- the central session policy defaults to 30 minutes idle timeout and 12 hours maximum session age;
-- supported session-policy ranges are 5–480 idle minutes and 1–168 maximum-age hours;
+- the default heartbeat interval is 30 seconds and presence timeout is 90 seconds;
+- central session policy defaults to 30 minutes idle timeout and 12 hours maximum session age;
 - Depot records only the latest timestamp of keyboard/mouse/touch activity inside the main window; typed text, key values, mouse coordinates and external OS/window activity are not collected;
-- activity is persisted with the normal heartbeat before policy evaluation rather than through a database write per input event;
-- policy expiration uses `Expired`, returns the affected client to sign-in and applies maximum session age even while activity continues;
-- saving a stricter policy evaluates already-open sessions immediately;
-- session-policy changes require `Settings.Manage` and use optimistic Version checks;
-- multiple concurrent sessions per user are supported;
-- `Users.View` protects session visibility and `UserSessions.Terminate` separately protects destructive session actions;
-- terminating one session or all open sessions for a user uses `AdministrativeLogout` and the affected client returns to sign-in after heartbeat detection;
-- deactivating a user atomically revokes all still-open sessions with `Revoked`;
-- heartbeats and raw activity events are not Audit events, while administrative termination and policy changes are audit-relevant actions;
-- the History view shows the 200 most recently ended sessions and is operational lifecycle history rather than a replacement for the Audit log;
-- User Sessions schema version 2 adds the central `UserSessionPolicy` singleton through a provider-neutral migration;
-- session data collection remains minimal and does not include MAC addresses, hardware fingerprinting, IP/geolocation, key content or OS/window activity tracking;
-- password-change policy, concurrent-session policy, session-history retention, MFA/external identity and security-event monitoring remain future work.
+- policy expiration uses `Expired`, and maximum session age applies even while activity continues;
+- `Users.View`, `Settings.Manage` and `UserSessions.Terminate` remain separate session permissions;
+- suspicious-login monitoring is deterministic and reuses the existing in-process 15-minute authentication throttle window;
+- failures 1–2 are informational, failure 3 is Warning, failure 4 is High, failure 5/active lockout is Critical, and successful authentication after recent failures is retained as a separate event;
+- suspicious events are triage signals rather than proof of compromise;
+- `SecurityEvents.View` protects Security Center visibility and `SecurityEvents.Manage` protects review actions;
+- Security Event review changes only review metadata/Version and not the original event contents;
+- High/Critical Security Events may generate Notification Center alerts for `SecurityEvents.View` holders;
+- Security Events complement rather than replace the business Audit Log;
+- Security Events schema version 1 is provider-neutral and independent from User Sessions schema version 2;
+- the current implementation does not collect source IP, geolocation, MAC address, hardware fingerprint, typed input, mouse coordinates or external-window activity;
+- password-change invalidation, concurrent-session policy, retention/archival, shared throttling for multi-node deployments, MFA/external identity and any future IP/geo/device-trust signals remain future work.
 
 ## Finance documentation invariants
 
-Documentation must state that:
-
-- the General Ledger is the authoritative immutable accounting ledger;
-- Financial Reporting does not maintain a parallel ledger;
-- Localization does not post journals;
-- `LegalEntity.CountryCode` does not automatically activate localization;
-- effective localization requires an explicit effective-dated assignment;
-- the built-in Germany reference hierarchy resolves `GENERIC → EU → DE`;
-- country packs are validated against Legal Entity country and active assignment ranges cannot overlap;
-- built-in pack and registry definitions are immutable;
-- custom regional/country packs can be added without another schema change when metadata/configuration is sufficient;
-- support levels distinguish software capability, required configuration, external procedure and reference-only information;
-- support levels are not legal/compliance status flags;
-- Depot does not invent tax rates, statutory charts, filing classifications or accounting-policy choices;
-- localization assignments and registry entries are retained Audit evidence;
-- provider-neutral schema/code is not live-provider certification.
+Documentation must state that the General Ledger is authoritative, reporting does not maintain a parallel ledger, Localization does not post journals, effective localization requires explicit assignment, provider-neutral code is not certification, and Depot does not invent jurisdiction-specific statutory configuration.
 
 ## Sales pricing documentation invariants
 
-Documentation must state that:
-
-- Sales pricing fallback is Customer → Region → Global and is evaluated independently for every item;
-- Customer price-list assignments and Sales Regions are optional;
-- automatically sourced draft pricing and finalized document snapshots remain distinct;
-- a higher-scope list never suppresses fallback for an item absent at that scope.
+Documentation must state that Sales pricing fallback is Customer → Region → Global per item, optional scopes do not suppress fallback, and historical finalized document snapshots remain distinct from mutable current pricing.
 
 ## Documentation rules
 
-Documentation must not:
+Documentation must not describe implemented session expiry or Security Center features as future-only work, imply suspicious-login events prove compromise, imply that Security Events replace Audit evidence, or claim that IP/geolocation/device fingerprinting exists in this version.
 
-- document removed/default credentials;
-- reconstruct historical accounting evidence from mutable current master data;
-- describe technical compliance controls as legal/statutory certification;
-- imply an unconfigured jurisdiction, currency, tax rate, chart/account, accounting standard or reporting classification;
-- claim weighted-average, standard cost, LIFO, impairment/NRV or manufacturing costing as implemented;
-- claim configurable reports are automatically jurisdiction-specific statutory filings;
-- claim assigning a country pack makes a deployment legally/tax/statutorily compliant;
-- claim all possible country packs are implemented merely because the framework can host them;
-- describe remote session revocation, session history, bulk session termination, idle timeout or maximum session age as future-only features now that they are implemented;
-- imply that stale open sessions caused by crash/network loss are equivalent to explicitly ended historical sessions;
-- imply that Depot records input content merely because it tracks a last-activity timestamp;
-- hide repository failures by attributing them to unrelated Finance changes.
-
-Help manifest **1.20** includes the `administration.user-sessions` topic with active/history guidance, session termination, bulk termination and session-policy behavior, plus cross-links from Users, Dashboard and Audit Log. The topic is visible with `Users.View`; destructive session actions remain independently guarded by `UserSessions.Terminate` and policy edits by `Settings.Manage` in application services.
+Help manifest **1.21** includes `administration.user-sessions` and the new `administration.security-center` topic. The Security Center topic requires `SecurityEvents.View`; review remains independently guarded by `SecurityEvents.Manage` in application services.

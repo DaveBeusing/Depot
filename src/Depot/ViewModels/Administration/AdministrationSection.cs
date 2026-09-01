@@ -11,6 +11,7 @@ public enum AdministrationSection
 	Suppliers,
 	Users,
 	UserSessions,
+	SecurityCenter,
 	Roles,
 	Company,
 	Database,

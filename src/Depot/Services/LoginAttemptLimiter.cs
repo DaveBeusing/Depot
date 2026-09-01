@@ -3,6 +3,8 @@
 
 using System.Collections.Concurrent;
 
+using Depot.Models;
+
 namespace Depot.Services;
 
 public sealed class LoginAttemptLimiter
@@ -18,22 +20,23 @@ public sealed class LoginAttemptLimiter
 	public bool IsBlocked(string accountKey, out TimeSpan retryAfter)
 	{
 		retryAfter = TimeSpan.Zero;
-		if (!_attempts.TryGetValue(Normalize(accountKey), out var state)) return false;
+		var key = Normalize(accountKey);
+		if (!_attempts.TryGetValue(key, out var state)) return false;
 		var now = _timeProvider.GetUtcNow();
 		if (state.BlockedUntil is { } blockedUntil && blockedUntil > now)
 		{
 			retryAfter = blockedUntil - now;
 			return true;
 		}
-		if (state.BlockedUntil is not null || now - state.FirstFailure >= FailureWindow) _attempts.TryRemove(Normalize(accountKey), out _);
+		if (state.BlockedUntil is not null || now - state.FirstFailure >= FailureWindow) _attempts.TryRemove(key, out _);
 		return false;
 	}
 
-	public void RecordFailure(string accountKey)
+	public LoginAttemptStatus RecordFailure(string accountKey)
 	{
 		var key = Normalize(accountKey);
 		var now = _timeProvider.GetUtcNow();
-		_attempts.AddOrUpdate(key,
+		var state = _attempts.AddOrUpdate(key,
 			_ => new AttemptState(now, 1, null),
 			(_, existing) =>
 			{
@@ -41,6 +44,21 @@ public sealed class LoginAttemptLimiter
 				var failures = existing.Failures + 1;
 				return new AttemptState(existing.FirstFailure, failures, failures >= MaximumFailures ? now + LockoutDuration : existing.BlockedUntil);
 			});
+		var retryAfter = state.BlockedUntil is { } blockedUntil && blockedUntil > now ? blockedUntil - now : TimeSpan.Zero;
+		return new LoginAttemptStatus(state.Failures, retryAfter > TimeSpan.Zero, retryAfter);
+	}
+
+	public int GetFailureCount(string accountKey)
+	{
+		var key = Normalize(accountKey);
+		if (!_attempts.TryGetValue(key, out var state)) return 0;
+		var now = _timeProvider.GetUtcNow();
+		if (now - state.FirstFailure >= FailureWindow)
+		{
+			_attempts.TryRemove(key, out _);
+			return 0;
+		}
+		return state.Failures;
 	}
 
 	public void RecordSuccess(string accountKey) => _attempts.TryRemove(Normalize(accountKey), out _);

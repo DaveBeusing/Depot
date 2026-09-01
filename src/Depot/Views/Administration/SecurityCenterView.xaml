@@ -1,0 +1,71 @@
+<UserControl x:Class="Depot.Views.Administration.SecurityCenterView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:automation="clr-namespace:System.Windows.Automation;assembly=PresentationCore"
+             xmlns:controls="clr-namespace:Depot.Controls">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <controls:WorkflowHeader Title="Security Center"
+                                 Subtitle="Monitor authentication risk, lockouts, session security events and review status."
+                                 Status="{Binding HighRiskOpen, StringFormat={}{0:N0} high-risk open}" />
+
+        <controls:OperationPanel Grid.Row="1" Margin="0,10,0,0"
+                                 IsBusy="{Binding IsBusy}" HasError="{Binding HasOperationError}"
+                                 StatusText="{Binding StatusText}" ErrorText="{Binding OperationError}" />
+
+        <UniformGrid Grid.Row="2" Columns="4" Margin="0,12,0,12">
+            <controls:Card Margin="0,0,6,0"><StackPanel><TextBlock Text="Events 24h" Style="{StaticResource SectionTitleStyle}" /><TextBlock Text="{Binding Events24Hours, StringFormat={}{0:N0}}" Style="{StaticResource MetricLargeStyle}" Margin="0,8,0,0" /></StackPanel></controls:Card>
+            <controls:Card Margin="6,0,6,0"><StackPanel><TextBlock Text="Suspicious 24h" Style="{StaticResource SectionTitleStyle}" /><TextBlock Text="{Binding Suspicious24Hours, StringFormat={}{0:N0}}" Style="{StaticResource MetricLargeStyle}" Margin="0,8,0,0" /></StackPanel></controls:Card>
+            <controls:Card Margin="6,0,6,0"><StackPanel><TextBlock Text="High Risk Open" Style="{StaticResource SectionTitleStyle}" /><TextBlock Text="{Binding HighRiskOpen, StringFormat={}{0:N0}}" Style="{StaticResource MetricLargeStyle}" Margin="0,8,0,0" /></StackPanel></controls:Card>
+            <controls:Card Margin="6,0,0,0"><StackPanel><TextBlock Text="Blocked 24h" Style="{StaticResource SectionTitleStyle}" /><TextBlock Text="{Binding Blocked24Hours, StringFormat={}{0:N0}}" Style="{StaticResource MetricLargeStyle}" Margin="0,8,0,0" /></StackPanel></controls:Card>
+        </UniformGrid>
+
+        <controls:FilterBar Grid.Row="3" Margin="0,0,0,12">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="180" />
+                    <ColumnDefinition Width="12" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="8" />
+                    <ColumnDefinition Width="Auto" /><ColumnDefinition Width="8" /><ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <controls:SearchBox automation:AutomationProperties.Name="Search security events" Placeholder="Search account, client, summary or details" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
+                <ComboBox Grid.Column="2" ItemsSource="{Binding SeverityOptions}" SelectedItem="{Binding MinimumSeverity}" Style="{StaticResource AppComboBoxStyle}" ToolTip="Minimum severity" />
+                <CheckBox Grid.Column="4" VerticalAlignment="Center" Content="Only unreviewed" IsChecked="{Binding OnlyUnreviewed}" Style="{StaticResource AppCheckBoxStyle}" />
+                <Button Grid.Column="6" Command="{Binding RefreshCommand}" Content="Refresh" Style="{StaticResource SecondaryButtonStyle}" />
+                <Button Grid.Column="8" automation:AutomationProperties.Name="Mark selected security event reviewed" Command="{Binding MarkReviewedCommand}" Content="Mark reviewed" Style="{StaticResource PrimaryButtonStyle}" Visibility="{Binding CanManage, Converter={StaticResource BooleanToVisibilityConverter}}" />
+            </Grid>
+        </controls:FilterBar>
+
+        <controls:Card Grid.Row="4">
+            <Grid MinHeight="260">
+                <DataGrid automation:AutomationProperties.Name="Security events" ItemsSource="{Binding Events}" SelectedItem="{Binding SelectedEvent}" Style="{StaticResource AppDataGridStyle}" Visibility="{Binding HasEvents, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Time" Binding="{Binding TimestampLocal, StringFormat={}{0:g}}" Width="135" ElementStyle="{StaticResource AppDataGridTextStyle}" />
+                        <DataGridTextColumn Header="Severity" Binding="{Binding Severity}" Width="90" ElementStyle="{StaticResource AppDataGridTextStyle}" />
+                        <DataGridTextColumn Header="Event" Binding="{Binding EventType}" Width="1.25*" ElementStyle="{StaticResource AppDataGridTextStyle}" />
+                        <DataGridTextColumn Header="Account" Binding="{Binding Account}" Width="1.25*" ElementStyle="{StaticResource AppDataGridTextStyle}" />
+                        <DataGridTextColumn Header="Client" Binding="{Binding MachineName}" Width="1*" ElementStyle="{StaticResource AppDataGridTextStyle}" />
+                        <DataGridTextColumn Header="Summary" Binding="{Binding Summary}" Width="2*" ElementStyle="{StaticResource AppDataGridTextStyle}" />
+                        <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="90" ElementStyle="{StaticResource AppDataGridTextStyle}" />
+                    </DataGrid.Columns>
+                </DataGrid>
+                <controls:EmptyState Title="No matching security events" Description="No security events match the current filters." Visibility="{Binding HasNoEvents, Converter={StaticResource BooleanToVisibilityConverter}}" />
+            </Grid>
+        </controls:Card>
+
+        <controls:Card Grid.Row="5" Margin="0,12,0,0">
+            <StackPanel>
+                <TextBlock Text="Selected event" Style="{StaticResource CardTitleStyle}" />
+                <TextBlock Text="{Binding SelectedEvent.Summary}" Style="{StaticResource SectionTitleStyle}" Margin="0,8,0,0" TextWrapping="Wrap" />
+                <TextBlock Text="{Binding SelectedEvent.Details}" Style="{StaticResource CaptionStyle}" Margin="0,6,0,0" TextWrapping="Wrap" />
+            </StackPanel>
+        </controls:Card>
+    </Grid>
+</UserControl>

@@ -4,10 +4,10 @@ Use **Administration → User Sessions** to review authenticated Depot clients, 
 
 ## Permissions
 
-- `Users.View` is required to open the session overview and read active/history data and the current policy.
+- `Users.View` is required to read active/history data and the current policy.
 - `UserSessions.Terminate` is additionally required to terminate one session or all open sessions for a selected user.
-- `Settings.Manage` is required to change the idle timeout or maximum session age.
-- Hiding or disabling a control is not the security boundary; the service layer enforces the permissions.
+- `Settings.Manage` is required to change idle timeout or maximum session age.
+- UI visibility is not the security boundary; service-layer permissions are authoritative.
 
 ## Definitions
 
@@ -20,82 +20,45 @@ Use **Administration → User Sessions** to review authenticated Depot clients, 
 
 ## Session policy
 
-The **Session policy** card shows the centrally stored limits used by every Depot client.
+The **Session policy** card shows the centrally stored limits used by every Depot client. Defaults are 30 minutes idle timeout and 12 hours maximum session age. Supported ranges are 5–480 minutes and 1–168 hours respectively.
 
-Default values are:
+With `Settings.Manage`, enter the required limits and choose **Save policy**. Depot uses optimistic concurrency and evaluates all still-open sessions against the new limits. A stricter policy can immediately mark existing sessions `Expired`; affected clients return to sign-in after heartbeat detection.
 
-- **Idle timeout:** 30 minutes.
-- **Maximum session age:** 12 hours.
+Depot remembers only the latest in-application activity timestamp and sends it with the normal heartbeat. Typed text, key values and mouse coordinates are not stored.
 
-Supported ranges are 5–480 minutes for idle timeout and 1–168 hours for maximum session age.
+## Active and History tabs
 
-If you have `Settings.Manage`:
+The **Active** tab shows one row per currently present login instance with user, email, client, Online Since, Online For, Last Seen and Depot version. **Online Users** counts distinct users while **Active Sessions** counts login instances.
 
-1. Enter the required idle timeout in minutes.
-2. Enter the required maximum session age in hours.
-3. Choose **Save policy**.
-4. Confirm the change.
-5. Depot saves the policy with optimistic concurrency control and evaluates all still-open sessions against the new limits.
+The **History** tab shows the 200 most recently ended sessions with user, email, client, Signed In, Duration, Ended, End Reason and Depot version. Common reasons are `LoggedOut`, `ApplicationClosed`, `Expired`, `AdministrativeLogout` and `Revoked`.
 
-A stricter policy can immediately mark existing sessions `Expired`. Affected running clients return to sign-in when they detect the ended session on their next heartbeat.
+## Administrative termination
 
-Depot does not write every input event to the database. It remembers only the latest in-application activity timestamp and sends it with the normal heartbeat. Typed text, key values and mouse coordinates are not stored.
+With `UserSessions.Terminate`, select a session and choose **Terminate session**, or use **Terminate all for user**. Depot ends affected sessions with `AdministrativeLogout`; the clients return to sign-in after heartbeat detection. These actions remain Audit-relevant administration changes and also create operational Security Events.
 
-## Active tab
+Deactivating a user from **Administration → Users** is separate: it revokes still-open sessions with `Revoked` in the same transaction as the account-state change.
 
-The **Active** tab shows one row per currently present login instance with user, email, client, Online Since, Online For, Last Seen and Depot version.
+## Security Center relationship
 
-The KPI cards use different counts:
+Authentication failures, suspicious repeated failures, lockouts and successful login after recent failures are monitored by the separate Security Events feature. Session-policy changes and administrative session termination also create Security Events.
 
-- **Online Users** counts distinct users.
-- **Active Sessions** counts login instances, so one user on two clients contributes one online user and two active sessions.
+Use **Administration → Security Center** with `SecurityEvents.View` to investigate those events. High/Critical authentication events are additionally surfaced in the Notification Center. `SecurityEvents.Manage` permits marking an event reviewed.
 
-Use the search box to filter by user name, email or client machine.
-
-## Terminate a session
-
-If you have `UserSessions.Terminate`:
-
-1. Select an active session.
-2. Choose **Terminate session**.
-3. Confirm the destructive action.
-4. Depot ends the server-side session with `AdministrativeLogout` and records Audit evidence.
-5. The affected client detects the ended session on its next heartbeat, clears its local authenticated state and returns to sign-in.
-
-## Terminate all sessions for a user
-
-If the selected user has more than one open session, choose **Terminate all for user** and confirm. Depot ends every still-open session for that user with `AdministrativeLogout`. Each affected client is returned to sign-in after heartbeat detection.
-
-Deactivating a user from **Administration → Users** is a separate account action. Deactivation revokes all still-open sessions with `Revoked` in the same transaction as the account-state change.
-
-## History tab
-
-The **History** tab shows the 200 most recently ended sessions with user, email, client, Signed In, Duration, Ended, End Reason and Depot version.
-
-Common end reasons are:
-
-- `LoggedOut` — normal user logout.
-- `ApplicationClosed` — clean application exit.
-- `Expired` — idle timeout or maximum session age was reached.
-- `AdministrativeLogout` — administrator terminated one or more sessions.
-- `Revoked` — the account was deactivated while sessions were still open.
-
-History is session lifecycle information. It does not replace the immutable business Audit Log.
+Security Events do not replace the business Audit Log and suspicious-login rules do not prove an account compromise.
 
 ## Presence and expiration behavior
 
-If a client crashes, loses power, loses connectivity, enters standby or is killed, no explicit end callback is guaranteed. Its last heartbeat becomes stale and it disappears from the Active view after the presence timeout. Such a stale open row is not automatically rewritten as a specific logout reason.
+Crash, power loss, connectivity loss, standby or hard termination may prevent an explicit end callback. The last heartbeat becomes stale and the session disappears from Active after the presence timeout. A stale open row is not automatically rewritten as a specific logout reason.
 
-For a running client, the heartbeat first persists the latest Depot activity timestamp and then checks the central policy. This prevents recent input from being lost at the idle-timeout boundary. Maximum session age always wins regardless of activity.
-
-Temporary heartbeat database failures are contained and retried on the next normal interval; they are not automatically treated as proof that the session was revoked or expired.
+For a running client, heartbeat persists the latest activity before checking policy. Maximum session age applies regardless of activity. Temporary heartbeat database failures are contained and are not automatically treated as proof of revocation or expiration.
 
 ## Privacy
 
-Session data is limited to authenticated user/session identifiers, timestamps, a generated client-instance identifier, display-only machine name, Depot version, end state, policy values and optimistic versions. Activity tracking stores only the time when input occurred inside Depot. Depot does not collect typed text, key values, mouse coordinates, MAC addresses, hardware fingerprints, OS/window activity, IP addresses or geolocation for this feature.
+Session/security monitoring does not collect typed text, key values, mouse coordinates, MAC addresses, hardware fingerprints, OS/window activity, source IP addresses or geolocation. Any future IP/geolocation/device-trust signals require a separate privacy/security design.
 
 ## Related topics
 
+- [Security Center](topic:administration.security-center)
 - [Users and Roles](topic:administration.users)
 - [Audit Log](topic:administration.audit-log)
 - [Dashboard](topic:getting-started.dashboard)

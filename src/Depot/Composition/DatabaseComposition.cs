@@ -42,6 +42,7 @@ internal sealed class DatabaseComposition : IDisposable
 		SalesSchemaMigration.Migrate(connectionFactory);
 		FinanceInventoryAccountingSchemaMigration.Migrate(connectionFactory);
 		UserSessionSchemaMigration.Migrate(connectionFactory);
+		SecurityEventSchemaMigration.Migrate(connectionFactory);
 		connectionStatus.SetConnected(connectionSettings);
 		var management = new DatabaseManagementService(connectionFactory, settings);
 		return new DatabaseComposition(dataAccess, new DatabaseTransactionRunner(dataAccess), settings, connectionStatus, new DatabaseConnectionTester(), management, new DatabaseBackupScheduler(management, settings));

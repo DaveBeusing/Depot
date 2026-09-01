@@ -28,25 +28,16 @@ public sealed class SessionService : IDisposable
 	private DateTime? _lastActivityUtc;
 	private bool _disposed;
 
-	public SessionService(AuthorizationService authorizationService)
-	{
-		_authorizationService = authorizationService;
-	}
+	public SessionService(AuthorizationService authorizationService) => _authorizationService = authorizationService;
 
 	public event EventHandler? SessionRevoked;
 	public bool LogoutRequestedByUser { get; private set; }
 	public bool ReauthenticationRequested { get; private set; }
 	public bool RestartLoginRequested => LogoutRequestedByUser || ReauthenticationRequested;
-	public Guid? CurrentSessionId
-	{
-		get { lock (_stateGate) return _currentSessionId; }
-	}
+	public Guid? CurrentSessionId { get { lock (_stateGate) return _currentSessionId; } }
+	public string? CurrentMachineName { get { lock (_stateGate) return _clientInfo?.MachineName; } }
 
-	internal void Configure(
-		UserSessionRepository repository,
-		UserSessionClientInfo clientInfo,
-		TimeProvider? timeProvider = null,
-		UserSessionPresenceOptions? options = null)
+	internal void Configure(UserSessionRepository repository, UserSessionClientInfo clientInfo, TimeProvider? timeProvider = null, UserSessionPresenceOptions? options = null)
 	{
 		ObjectDisposedException.ThrowIf(_disposed, this);
 		ArgumentNullException.ThrowIfNull(repository);
@@ -66,48 +57,27 @@ public sealed class SessionService : IDisposable
 		ObjectDisposedException.ThrowIf(_disposed, this);
 		UserSessionRepository? repository;
 		UserSessionClientInfo? clientInfo;
-		lock (_stateGate)
-		{
-			repository = _repository;
-			clientInfo = _clientInfo;
-		}
+		lock (_stateGate) { repository = _repository; clientInfo = _clientInfo; }
 		if (repository is null || clientInfo is null) return;
-
 		await _lifecycleGate.WaitAsync(cancellationToken);
 		try
 		{
-			lock (_stateGate)
-			{
-				if (_currentSessionId is not null) throw new InvalidOperationException("An authenticated user session is already active.");
-			}
-
+			lock (_stateGate) if (_currentSessionId is not null) throw new InvalidOperationException("An authenticated user session is already active.");
 			var now = _timeProvider.GetUtcNow().UtcDateTime;
 			var session = new UserSession
 			{
-				SessionId = Guid.NewGuid(),
-				UserId = userId,
-				StartedUtc = now,
-				LastSeenUtc = now,
-				LastActivityUtc = now,
-				ClientInstanceId = clientInfo.ClientInstanceId,
-				MachineName = clientInfo.MachineName,
-				AppVersion = clientInfo.AppVersion
+				SessionId = Guid.NewGuid(), UserId = userId, StartedUtc = now, LastSeenUtc = now, LastActivityUtc = now,
+				ClientInstanceId = clientInfo.ClientInstanceId, MachineName = clientInfo.MachineName, AppVersion = clientInfo.AppVersion
 			};
 			await repository.CreateAsync(session, cancellationToken);
-
 			var heartbeatCancellation = new CancellationTokenSource();
 			lock (_stateGate)
 			{
-				_currentSessionId = session.SessionId;
-				_lastActivityUtc = now;
-				_heartbeatCancellation = heartbeatCancellation;
+				_currentSessionId = session.SessionId; _lastActivityUtc = now; _heartbeatCancellation = heartbeatCancellation;
 				_heartbeatTask = RunHeartbeatAsync(repository, session.SessionId, heartbeatCancellation.Token);
 			}
 		}
-		finally
-		{
-			_lifecycleGate.Release();
-		}
+		finally { _lifecycleGate.Release(); }
 	}
 
 	public void RecordActivity()
@@ -124,164 +94,84 @@ public sealed class SessionService : IDisposable
 
 	public async Task<bool> TrySendHeartbeatAsync(CancellationToken cancellationToken = default)
 	{
-		UserSessionRepository? repository;
-		Guid? sessionId;
-		lock (_stateGate)
-		{
-			repository = _repository;
-			sessionId = _currentSessionId;
-		}
+		UserSessionRepository? repository; Guid? sessionId;
+		lock (_stateGate) { repository = _repository; sessionId = _currentSessionId; }
 		if (repository is null || sessionId is null) return false;
-		try
-		{
-			return await SendHeartbeatAsync(repository, sessionId.Value, cancellationToken).ConfigureAwait(false);
-		}
-		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-		{
-			return false;
-		}
-		catch (Exception exception)
-		{
-			StartupDiagnostics.LogException(exception);
-			return false;
-		}
+		try { return await SendHeartbeatAsync(repository, sessionId.Value, cancellationToken).ConfigureAwait(false); }
+		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { return false; }
+		catch (Exception exception) { StartupDiagnostics.LogException(exception); return false; }
 	}
 
 	public async Task LogoutAsync(CancellationToken cancellationToken = default)
 	{
 		LogoutRequestedByUser = true;
-		try
-		{
-			await EndCurrentSessionAsync(UserSessionEndReason.LoggedOut, cancellationToken);
-		}
-		finally
-		{
-			_authorizationService.SignOut();
-		}
+		try { await EndCurrentSessionAsync(UserSessionEndReason.LoggedOut, cancellationToken); }
+		finally { _authorizationService.SignOut(); }
 	}
 
 	public void Logout()
 	{
 		LogoutRequestedByUser = true;
 		using var cancellation = new CancellationTokenSource(_options.ShutdownWriteTimeout);
-		try
-		{
-			Task.Run(
-				() => EndCurrentSessionAsync(UserSessionEndReason.LoggedOut, cancellation.Token),
-				cancellation.Token).GetAwaiter().GetResult();
-		}
-		catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
-		{
-		}
-		catch (Exception exception)
-		{
-			StartupDiagnostics.LogException(exception);
-		}
-		finally
-		{
-			_authorizationService.SignOut();
-		}
+		try { Task.Run(() => EndCurrentSessionAsync(UserSessionEndReason.LoggedOut, cancellation.Token), cancellation.Token).GetAwaiter().GetResult(); }
+		catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { }
+		catch (Exception exception) { StartupDiagnostics.LogException(exception); }
+		finally { _authorizationService.SignOut(); }
 	}
 
 	public async Task CloseApplicationAsync(CancellationToken cancellationToken = default)
 	{
-		try
-		{
-			await EndCurrentSessionAsync(UserSessionEndReason.ApplicationClosed, cancellationToken);
-		}
-		finally
-		{
-			_authorizationService.SignOut();
-		}
+		try { await EndCurrentSessionAsync(UserSessionEndReason.ApplicationClosed, cancellationToken); }
+		finally { _authorizationService.SignOut(); }
 	}
 
 	public void CloseApplication()
 	{
 		using var cancellation = new CancellationTokenSource(_options.ShutdownWriteTimeout);
-		try
-		{
-			Task.Run(
-				() => EndCurrentSessionAsync(UserSessionEndReason.ApplicationClosed, cancellation.Token),
-				cancellation.Token).GetAwaiter().GetResult();
-		}
-		catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
-		{
-		}
-		catch (Exception exception)
-		{
-			StartupDiagnostics.LogException(exception);
-		}
-		finally
-		{
-			_authorizationService.SignOut();
-		}
+		try { Task.Run(() => EndCurrentSessionAsync(UserSessionEndReason.ApplicationClosed, cancellation.Token), cancellation.Token).GetAwaiter().GetResult(); }
+		catch (OperationCanceledException) when (cancellation.IsCancellationRequested) { }
+		catch (Exception exception) { StartupDiagnostics.LogException(exception); }
+		finally { _authorizationService.SignOut(); }
 	}
 
 	public void Reset()
 	{
 		ObjectDisposedException.ThrowIf(_disposed, this);
-		LogoutRequestedByUser = false;
-		ReauthenticationRequested = false;
+		LogoutRequestedByUser = false; ReauthenticationRequested = false;
 	}
 
 	private async Task<bool> SendHeartbeatAsync(UserSessionRepository repository, Guid sessionId, CancellationToken cancellationToken)
 	{
 		DateTime? lastActivityUtc;
-		lock (_stateGate)
-		{
-			if (_currentSessionId != sessionId) return false;
-			lastActivityUtc = _lastActivityUtc;
-		}
-
+		lock (_stateGate) { if (_currentSessionId != sessionId) return false; lastActivityUtc = _lastActivityUtc; }
 		var now = _timeProvider.GetUtcNow().UtcDateTime;
 		var active = await repository.UpdateHeartbeatAsync(sessionId, now, lastActivityUtc, cancellationToken).ConfigureAwait(false);
-		if (!active)
-		{
-			HandleRemoteTermination(sessionId, false);
-			return false;
-		}
-
+		if (!active) { HandleRemoteTermination(sessionId, false); return false; }
 		var policy = await repository.GetPolicyAsync(cancellationToken).ConfigureAwait(false);
 		if (await repository.ExpireSessionIfPolicyExceededAsync(sessionId, now, policy, cancellationToken).ConfigureAwait(false))
 		{
-			HandleRemoteTermination(sessionId, true);
-			return false;
+			HandleRemoteTermination(sessionId, true); return false;
 		}
 		return true;
 	}
 
 	private async Task EndCurrentSessionAsync(UserSessionEndReason reason, CancellationToken cancellationToken)
 	{
-		UserSessionRepository? repository;
-		Guid? sessionId;
-		CancellationTokenSource? heartbeatCancellation;
-		Task? heartbeatTask;
-
+		UserSessionRepository? repository; Guid? sessionId; CancellationTokenSource? heartbeatCancellation; Task? heartbeatTask;
 		await _lifecycleGate.WaitAsync(cancellationToken);
 		try
 		{
 			lock (_stateGate)
 			{
-				repository = _repository;
-				sessionId = _currentSessionId;
-				heartbeatCancellation = _heartbeatCancellation;
-				heartbeatTask = _heartbeatTask;
-				_currentSessionId = null;
-				_lastActivityUtc = null;
-				_heartbeatCancellation = null;
-				_heartbeatTask = null;
+				repository = _repository; sessionId = _currentSessionId; heartbeatCancellation = _heartbeatCancellation; heartbeatTask = _heartbeatTask;
+				_currentSessionId = null; _lastActivityUtc = null; _heartbeatCancellation = null; _heartbeatTask = null;
 			}
 			heartbeatCancellation?.Cancel();
 		}
-		finally
-		{
-			_lifecycleGate.Release();
-		}
-
+		finally { _lifecycleGate.Release(); }
 		try
 		{
-			if (repository is not null && sessionId is not null)
-				await repository.EndAsync(sessionId.Value, _timeProvider.GetUtcNow().UtcDateTime, reason, cancellationToken);
+			if (repository is not null && sessionId is not null) await repository.EndAsync(sessionId.Value, _timeProvider.GetUtcNow().UtcDateTime, reason, cancellationToken);
 		}
 		finally
 		{
@@ -301,23 +191,12 @@ public sealed class SessionService : IDisposable
 		{
 			while (await timer.WaitForNextTickAsync(cancellationToken).ConfigureAwait(false))
 			{
-				try
-				{
-					if (!await SendHeartbeatAsync(repository, sessionId, cancellationToken).ConfigureAwait(false)) break;
-				}
-				catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-				{
-					break;
-				}
-				catch (Exception exception)
-				{
-					StartupDiagnostics.LogException(exception);
-				}
+				try { if (!await SendHeartbeatAsync(repository, sessionId, cancellationToken).ConfigureAwait(false)) break; }
+				catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { break; }
+				catch (Exception exception) { StartupDiagnostics.LogException(exception); }
 			}
 		}
-		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-		{
-		}
+		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
 	}
 
 	private void HandleRemoteTermination(Guid sessionId, bool expired)
@@ -326,19 +205,10 @@ public sealed class SessionService : IDisposable
 		lock (_stateGate)
 		{
 			if (_currentSessionId != sessionId) return;
-			_currentSessionId = null;
-			_lastActivityUtc = null;
-			cancellation = _heartbeatCancellation;
-			_heartbeatCancellation = null;
-			_heartbeatTask = null;
-			ReauthenticationRequested = true;
+			_currentSessionId = null; _lastActivityUtc = null; cancellation = _heartbeatCancellation; _heartbeatCancellation = null; _heartbeatTask = null; ReauthenticationRequested = true;
 		}
-		cancellation?.Cancel();
-		cancellation?.Dispose();
-		_authorizationService.SignOut();
-		StartupDiagnostics.Log(expired
-			? "Authenticated session expired under the active session policy. Returning to login."
-			: "Authenticated session was revoked remotely. Returning to login.");
+		cancellation?.Cancel(); cancellation?.Dispose(); _authorizationService.SignOut();
+		StartupDiagnostics.Log(expired ? "Authenticated session expired under the active session policy. Returning to login." : "Authenticated session was revoked remotely. Returning to login.");
 		SessionRevoked?.Invoke(this, EventArgs.Empty);
 	}
 
@@ -349,14 +219,8 @@ public sealed class SessionService : IDisposable
 		CancellationTokenSource? cancellation;
 		lock (_stateGate)
 		{
-			cancellation = _heartbeatCancellation;
-			_heartbeatCancellation = null;
-			_heartbeatTask = null;
-			_currentSessionId = null;
-			_lastActivityUtc = null;
+			cancellation = _heartbeatCancellation; _heartbeatCancellation = null; _heartbeatTask = null; _currentSessionId = null; _lastActivityUtc = null;
 		}
-		cancellation?.Cancel();
-		cancellation?.Dispose();
-		_lifecycleGate.Dispose();
+		cancellation?.Cancel(); cancellation?.Dispose(); _lifecycleGate.Dispose();
 	}
 }
