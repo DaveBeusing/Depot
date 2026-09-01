@@ -35,6 +35,8 @@ public sealed class AuthenticationSecurityService
 		_timeProvider = timeProvider ?? TimeProvider.System;
 	}
 
+	public bool CanManagePolicy => _authorization.HasPermission(ApplicationPermission.SettingsManage);
+
 	public Task<AuthenticationSecurityPolicy> GetPolicyAsync(CancellationToken cancellationToken) => _repository.GetPolicyAsync(cancellationToken);
 
 	public Task<AuthenticationThrottleSnapshot> GetStatusAsync(string accountKey, CancellationToken cancellationToken) =>
@@ -84,7 +86,13 @@ public sealed class AuthenticationSecurityService
 			return snapshot.FailureCount;
 		}, cancellationToken);
 
-	public async Task<AuthenticationSecurityPolicy> SavePolicyAsync(int failureWindowMinutes, int lockoutThreshold, int lockoutDurationMinutes, int securityEventRetentionDays, long expectedVersion, CancellationToken cancellationToken)
+	public async Task<AuthenticationSecurityPolicy> SavePolicyAsync(
+		int failureWindowMinutes,
+		int lockoutThreshold,
+		int lockoutDurationMinutes,
+		int securityEventRetentionDays,
+		long expectedVersion,
+		CancellationToken cancellationToken)
 	{
 		_authorization.RequirePermission(ApplicationPermission.SettingsManage);
 		ValidatePolicy(failureWindowMinutes, lockoutThreshold, lockoutDurationMinutes, securityEventRetentionDays);
@@ -103,7 +111,8 @@ public sealed class AuthenticationSecurityService
 				UpdatedUtc = _timeProvider.GetUtcNow().UtcDateTime,
 				Version = before.Version + 1
 			};
-			if (!await AuthenticationSecurityRepository.UpdatePolicyAsync(transaction, after, expectedVersion, token)) throw new ConcurrencyConflictException("authentication security policy");
+			if (!await AuthenticationSecurityRepository.UpdatePolicyAsync(transaction, after, expectedVersion, token))
+				throw new ConcurrencyConflictException("authentication security policy");
 			await _auditEntries.CreateAsync(transaction, _audit.CreateActionEntry(after.Id, "UpdateAuthenticationSecurityPolicy", before, after), token);
 			var securityEvent = _securityEvents.CreateAuthenticationPolicyChangedEvent(before, after);
 			securityEvent.Id = await SecurityEventRepository.CreateAsync(transaction, securityEvent, token);
@@ -113,7 +122,12 @@ public sealed class AuthenticationSecurityService
 		return result.Policy;
 	}
 
-	private static async Task<AuthenticationThrottleSnapshot> NormalizeStateAsync(DatabaseTransactionContext transaction, AuthenticationThrottleState? state, AuthenticationSecurityPolicy policy, DateTime now, CancellationToken cancellationToken)
+	private static async Task<AuthenticationThrottleSnapshot> NormalizeStateAsync(
+		DatabaseTransactionContext transaction,
+		AuthenticationThrottleState? state,
+		AuthenticationSecurityPolicy policy,
+		DateTime now,
+		CancellationToken cancellationToken)
 	{
 		if (state is null) return new AuthenticationThrottleSnapshot(0, false, TimeSpan.Zero);
 		if (state.BlockedUntilUtc is { } blockedUntil && blockedUntil > now)
@@ -128,10 +142,14 @@ public sealed class AuthenticationSecurityService
 
 	private static void ValidatePolicy(int failureWindowMinutes, int lockoutThreshold, int lockoutDurationMinutes, int retentionDays)
 	{
-		if (failureWindowMinutes is < AuthenticationSecurityPolicy.MinimumFailureWindowMinutes or > AuthenticationSecurityPolicy.MaximumFailureWindowMinutes) throw new ArgumentOutOfRangeException(nameof(failureWindowMinutes));
-		if (lockoutThreshold is < AuthenticationSecurityPolicy.MinimumLockoutThreshold or > AuthenticationSecurityPolicy.MaximumLockoutThreshold) throw new ArgumentOutOfRangeException(nameof(lockoutThreshold));
-		if (lockoutDurationMinutes is < AuthenticationSecurityPolicy.MinimumLockoutDurationMinutes or > AuthenticationSecurityPolicy.MaximumLockoutDurationMinutes) throw new ArgumentOutOfRangeException(nameof(lockoutDurationMinutes));
-		if (retentionDays is < AuthenticationSecurityPolicy.MinimumSecurityEventRetentionDays or > AuthenticationSecurityPolicy.MaximumSecurityEventRetentionDays) throw new ArgumentOutOfRangeException(nameof(retentionDays));
+		if (failureWindowMinutes is < AuthenticationSecurityPolicy.MinimumFailureWindowMinutes or > AuthenticationSecurityPolicy.MaximumFailureWindowMinutes)
+			throw new ArgumentOutOfRangeException(nameof(failureWindowMinutes));
+		if (lockoutThreshold is < AuthenticationSecurityPolicy.MinimumLockoutThreshold or > AuthenticationSecurityPolicy.MaximumLockoutThreshold)
+			throw new ArgumentOutOfRangeException(nameof(lockoutThreshold));
+		if (lockoutDurationMinutes is < AuthenticationSecurityPolicy.MinimumLockoutDurationMinutes or > AuthenticationSecurityPolicy.MaximumLockoutDurationMinutes)
+			throw new ArgumentOutOfRangeException(nameof(lockoutDurationMinutes));
+		if (retentionDays is < AuthenticationSecurityPolicy.MinimumSecurityEventRetentionDays or > AuthenticationSecurityPolicy.MaximumSecurityEventRetentionDays)
+			throw new ArgumentOutOfRangeException(nameof(retentionDays));
 	}
 
 	private static string Normalize(string accountKey) => accountKey.Trim().ToLowerInvariant();

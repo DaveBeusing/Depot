@@ -2,79 +2,72 @@
 
 Updated: 2026-09-01
 
-Depot now maintains an operational security-event stream for authentication and session-security administration. The stream is intentionally separate from the business Audit Log: Audit remains the retained business/change evidence source, while `SecurityEvents` captures security observations, risk signals and review workflow.
+Depot maintains a provider-neutral operational `SecurityEvents` stream for authentication and session-security observations. Security Events complement the business Audit Log; they do not replace required Audit evidence for administrative changes.
 
-## Architecture
+## Authentication architecture
 
-```text
-Authentication / Session Administration
-            ↓
-     SecurityEventService
-            ↓
-   SecurityEventRepository
-            ↓
-      SecurityEvents
-            ↓
-SQLite / SQL Server / MySQL-MariaDB
-```
+Local credentials are accessed through `IAuthenticationProvider`; the built-in `LocalAuthenticationProvider` is the current implementation. This preserves a clean boundary for future OIDC/SSO providers without changing session or authorization semantics.
 
-`SecurityEventService` is the policy boundary. Views and ViewModels never write security events directly. Authentication telemetry is best-effort so a valid login is not rejected solely because the security-event store or notification path is temporarily unavailable.
+Failed-login throttling is persisted in the shared database rather than process-local memory in the production composition. `AuthenticationSecurityPolicy` controls:
 
-## Deterministic suspicious-login rules
+- failure window: default **15 minutes**, range 1–1440;
+- lockout threshold: default **5**, range 3–20;
+- lockout duration: default **15 minutes**, range 1–1440;
+- Security Event retention: default **365 days**, range 30–3650.
 
-Depot does not use opaque scoring. It reuses the existing in-process 15-minute login-throttling window:
+The policy is optimistic-versioned and requires `Settings.Manage` to change. Authentication operations serialize through the singleton policy row before reading/updating the account throttle state, so separate Depot clients share the same failure count and lockout decision.
 
-- failures 1–2: `AuthenticationFailed`, Information;
-- failure 3: `SuspiciousAuthenticationFailures`, Warning;
-- failure 4: `SuspiciousAuthenticationFailures`, High;
-- failure 5: `AuthenticationBlocked`, Critical and the existing 15-minute lockout begins;
-- attempts during an active lockout: `AuthenticationBlocked`, Critical;
-- successful login after recent failures: `AuthenticationSucceededAfterFailures`, Warning or High depending on the preceding count;
-- ordinary successful login: `AuthenticationSucceeded`, Information.
+Risk escalation remains deterministic: ordinary failures are informational, repeated failures escalate to Warning/High, and a lockout is Critical. Successful login after recent failures is retained as a separate event. These signals are triage evidence, not proof of compromise.
 
-A suspicious event is a triage signal, not proof of compromise.
+## Security Center
 
-## Session-security events
+**Administration → Security Center** requires `SecurityEvents.View`. It exposes six operational KPIs:
 
-Administration also emits Security Events when an administrator terminates a session or changes the central idle/max-age policy. These events complement, rather than replace, the existing Audit evidence for administrative changes.
-
-## Security Center UI
-
-**Administration → Security Center** requires `SecurityEvents.View` and shows:
-
-- Events in the last 24 hours;
+- events in the last 24 hours;
 - suspicious authentication events in the last 24 hours;
-- unreviewed High/Critical events;
-- lockout events in the last 24 hours;
-- the 250 most recent matching events with time, severity, type, account/client context, summary and review state.
+- open unreviewed High/Critical events;
+- blocked authentication events in the last 24 hours;
+- events reviewed in the last 24 hours;
+- all currently open unreviewed events.
 
-Filtering supports free-text search, minimum severity and an unreviewed-only mode.
+Filtering supports search, minimum severity and unreviewed-only mode. `SecurityEvents.Manage` permits marking an event reviewed. Review changes only review metadata and optimistic `Version`; original event content is not rewritten.
 
-`SecurityEvents.Manage` additionally permits **Mark reviewed**. Review updates only `ReviewedUtc`, `ReviewedByUserId` and optimistic `Version`; the original event fields are immutable through normal application workflows.
+## Investigation context
 
-## Notifications
+Selecting an event loads related events by existing `UserId`, normalized account identifier, `SessionId` or generated `ClientInstanceId`. When the viewer also has the relevant user/session permission, Depot resolves the account and its currently open sessions. Correlation therefore uses identifiers already present in authentication/session records; it does not introduce IP, geolocation or hardware fingerprinting.
 
-High and Critical events are also published through the existing Notification Center to active users holding `SecurityEvents.View`. The Security Center remains the detailed source for investigation and review.
+## Response actions
+
+The Security Center does not implement parallel mutation logic. It delegates to established authorized services:
+
+- **Terminate session** → `UserSessionAdministrationService` and `UserSessions.Terminate`;
+- **Terminate all sessions** → `UserSessionAdministrationService` and `UserSessions.Terminate`;
+- **Deactivate user** → `UserService` and `Users.Manage`.
+
+These paths retain their existing transaction, Audit, optimistic-concurrency and session-revocation semantics. Destructive UI actions require confirmation.
+
+## Notifications and alert boundary
+
+`SecurityAlertPolicy` defines the notification threshold separately from event persistence. The current default routes High and Critical events to active holders of `SecurityEvents.View` through the existing Notification Center; Critical maps to an Error notification and High to Warning. Changing future delivery channels does not require changing the Security Event persistence model.
+
+## Retention and maintenance
+
+A bounded background maintenance service enforces `SecurityEventRetentionDays` and cleans stale authentication-throttle rows. Each data class is processed in batches of 250, with at most four batches per run. Deletion is repeated under the relevant policy lock and with the cutoff predicate inside the transaction, making concurrent maintenance attempts idempotent and safe across multiple Depot clients.
+
+Security Event retention affects the operational event store only. It does not delete or shorten the separate business Audit Log.
 
 ## Persistence and schema
 
-Security Events use a dedicated feature schema:
+- Core database schema: **30**
+- User Sessions feature schema: **3**
+- Security Events feature schema: **2**
 
-- feature name: `SecurityEvents`
-- current feature schema: **1**
-- core schema remains **30**
-- User Sessions feature schema remains **2**
-
-The schema is provider-neutral for SQLite, SQL Server and MySQL/MariaDB. Indexes cover timestamp/severity, user and review-state queries.
+Security Events schema 1 introduced event/review persistence. Schema 2 adds `ClientInstanceId`, the central authentication-security policy and the shared authentication-throttle store. Provider DDL exists for SQLite, SQL Server and MySQL/MariaDB.
 
 ## Privacy boundary
 
-The initial Security Center deliberately avoids IP/geolocation-based scoring because Depot does not yet have a controlled network-identity collection contract. This implementation does not add source IP, geolocation, MAC address, hardware fingerprint, typed text, key values, mouse coordinates or external-window activity.
+The feature does not collect source IP, geolocation, MAC address, hardware fingerprint, typed text, key values, mouse coordinates or external-window activity. Machine name and process-generated `ClientInstanceId` are used only where they already belong to a Depot session.
 
-Normalized account identifiers are stored to correlate authentication attempts. Machine name is included only for events originating from session administration where that information already exists in the session record.
+## Extension boundary
 
-## Current extension boundary
-
-Implemented now: authentication failures, suspicious failure escalation, lockout events, success-after-failure correlation, administrative session-termination events, session-policy-change events, High/Critical notifications, Security Center metrics/filtering and review workflow.
-
-Future security work includes password-change session invalidation, concurrent-session policy, persistence/shared-store throttling for multi-node deployments, session/security-event retention and archival, richer alert routing, MFA and external identity providers. IP/geolocation or device-trust signals require an explicit privacy/security design before implementation.
+Remaining work is external identity/MFA integration and, where a deployment requires it, configurable delivery-channel/routing implementations behind the alert boundary. IP/geolocation/device-trust signals remain out of scope until an explicit privacy and threat-model design exists.

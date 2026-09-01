@@ -14,7 +14,7 @@
         </Grid.RowDefinitions>
 
         <controls:WorkflowHeader Title="User Sessions"
-                                 Subtitle="Review active clients, security policy, recent session history, and administrative revocation."
+                                 Subtitle="Review active clients, session lifetime and concurrency policy, history retention, and administrative revocation."
                                  Status="{Binding ActiveSessions, StringFormat={}{0:N0} active}" />
 
         <controls:OperationPanel Grid.Row="1" Margin="0,10,0,0"
@@ -35,37 +35,47 @@
         </UniformGrid>
 
         <controls:Card Grid.Row="3" Margin="0,0,0,12">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="20" />
-                    <ColumnDefinition Width="220" />
-                    <ColumnDefinition Width="16" />
-                    <ColumnDefinition Width="220" />
-                    <ColumnDefinition Width="16" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-                <StackPanel>
-                    <TextBlock Text="Session policy" Style="{StaticResource SectionTitleStyle}" />
-                    <TextBlock Text="Idle sessions and sessions beyond the maximum lifetime are ended with reason Expired and return to sign-in." Style="{StaticResource CaptionStyle}" Margin="0,4,0,0" TextWrapping="Wrap" />
-                    <TextBlock Text="{Binding PolicyRangeHint}" Style="{StaticResource HintStyle}" Margin="0,6,0,0" />
-                </StackPanel>
-                <StackPanel Grid.Column="2">
-                    <TextBlock Text="Idle timeout (minutes)" Style="{StaticResource FormLabelStyle}" />
-                    <TextBox Margin="0,4,0,0" Style="{StaticResource AppTextBoxStyle}" Text="{Binding IdleTimeoutMinutes, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding CanManagePolicy}" />
-                </StackPanel>
-                <StackPanel Grid.Column="4">
-                    <TextBlock Text="Maximum session age (hours)" Style="{StaticResource FormLabelStyle}" />
-                    <TextBox Margin="0,4,0,0" Style="{StaticResource AppTextBoxStyle}" Text="{Binding MaximumSessionAgeHours, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding CanManagePolicy}" />
-                </StackPanel>
-                <Button Grid.Column="6"
-                        VerticalAlignment="Bottom"
-                        automation:AutomationProperties.Name="Save user session policy"
-                        Command="{Binding SavePolicyCommand}"
-                        Content="Save policy"
-                        Style="{StaticResource PrimaryButtonStyle}"
-                        Visibility="{Binding CanManagePolicy, Converter={StaticResource BooleanToVisibilityConverter}}" />
-            </Grid>
+            <StackPanel>
+                <Grid>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                    <StackPanel>
+                        <TextBlock Text="Session policy" Style="{StaticResource SectionTitleStyle}" />
+                        <TextBlock Text="Lifetime, concurrent-login behavior and session-history retention are centrally enforced for every Depot client." Style="{StaticResource CaptionStyle}" Margin="0,4,0,0" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding PolicyRangeHint}" Style="{StaticResource HintStyle}" Margin="0,6,0,0" TextWrapping="Wrap" />
+                    </StackPanel>
+                    <Button Grid.Column="1" VerticalAlignment="Top" Margin="16,0,0,0"
+                            automation:AutomationProperties.Name="Save user session policy"
+                            Command="{Binding SavePolicyCommand}" Content="Save policy"
+                            Style="{StaticResource PrimaryButtonStyle}"
+                            Visibility="{Binding CanManagePolicy, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                </Grid>
+                <UniformGrid Columns="3" Margin="0,12,0,0">
+                    <StackPanel Margin="0,0,12,10">
+                        <TextBlock Text="Idle timeout (minutes)" Style="{StaticResource FormLabelStyle}" />
+                        <TextBox Margin="0,4,0,0" Style="{StaticResource AppTextBoxStyle}" Text="{Binding IdleTimeoutMinutes, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding CanManagePolicy}" />
+                    </StackPanel>
+                    <StackPanel Margin="0,0,12,10">
+                        <TextBlock Text="Maximum lifetime (hours)" Style="{StaticResource FormLabelStyle}" />
+                        <TextBox Margin="0,4,0,0" Style="{StaticResource AppTextBoxStyle}" Text="{Binding MaximumSessionAgeHours, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding CanManagePolicy}" />
+                    </StackPanel>
+                    <StackPanel Margin="0,0,0,10">
+                        <TextBlock Text="Concurrent session mode" Style="{StaticResource FormLabelStyle}" />
+                        <ComboBox Margin="0,4,0,0" Style="{StaticResource AppComboBoxStyle}" ItemsSource="{Binding ConcurrentSessionModeOptions}" SelectedItem="{Binding ConcurrentSessionMode}" IsEnabled="{Binding CanManagePolicy}" />
+                    </StackPanel>
+                    <StackPanel Margin="0,0,12,0">
+                        <TextBlock Text="Maximum concurrent sessions" Style="{StaticResource FormLabelStyle}" />
+                        <TextBox Margin="0,4,0,0" Style="{StaticResource AppTextBoxStyle}" Text="{Binding MaximumConcurrentSessions, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding IsMaximumConcurrentSessionsEnabled}" />
+                    </StackPanel>
+                    <StackPanel Margin="0,0,12,0">
+                        <TextBlock Text="When limit is reached" Style="{StaticResource FormLabelStyle}" />
+                        <ComboBox Margin="0,4,0,0" Style="{StaticResource AppComboBoxStyle}" ItemsSource="{Binding ConcurrentSessionLimitActionOptions}" SelectedItem="{Binding ConcurrentSessionLimitAction}" IsEnabled="{Binding CanManagePolicy}" />
+                    </StackPanel>
+                    <StackPanel>
+                        <TextBlock Text="History retention (days)" Style="{StaticResource FormLabelStyle}" />
+                        <TextBox Margin="0,4,0,0" Style="{StaticResource AppTextBoxStyle}" Text="{Binding SessionHistoryRetentionDays, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding CanManagePolicy}" />
+                    </StackPanel>
+                </UniformGrid>
+            </StackPanel>
         </controls:Card>
 
         <controls:FilterBar Grid.Row="4" Margin="0,0,0,12">
@@ -105,10 +115,9 @@
                             <DataGridTextColumn Header="Duration" Binding="{Binding Duration}" Width="100" ElementStyle="{StaticResource AppDataGridTextStyle}" />
                             <DataGridTextColumn Header="Ended" Binding="{Binding Ended}" Width="135" ElementStyle="{StaticResource AppDataGridTextStyle}" />
                             <DataGridTextColumn Header="Reason" Binding="{Binding EndReason}" Width="150" ElementStyle="{StaticResource AppDataGridTextStyle}" />
-                            <DataGridTextColumn Header="Version" Binding="{Binding AppVersion}" Width="110" ElementStyle="{StaticResource AppDataGridTextStyle}" />
                         </DataGrid.Columns>
                     </DataGrid>
-                    <controls:EmptyState Title="No session history" Description="Ended sessions will appear here. The view shows the 200 most recent entries." Visibility="{Binding HasNoHistory, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                    <controls:EmptyState Title="No session history" Description="Ended sessions appear here until the configured history-retention period removes them." Visibility="{Binding HasNoHistory, Converter={StaticResource BooleanToVisibilityConverter}}" />
                 </Grid></controls:Card>
             </TabItem>
         </TabControl>

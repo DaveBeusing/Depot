@@ -72,7 +72,7 @@ public sealed class AdministrationViewModel : BaseViewModel, IDisposable
 		var privacyDatabase = new DatabaseAccess(DatabaseProviderFactory.CreateConnectionFactory(settingsService.CurrentSettings));
 		_privacyDataViewModel = new PrivacyDataViewModel(new DataSubjectAccessService(privacyDatabase, authorization), fileDialogService);
 		_userSessionsViewModel = new UserSessionsViewModel(userSessionAdministrationService, fileDialogService);
-		_securityCenterViewModel = new SecurityCenterViewModel(securityEventService);
+		_securityCenterViewModel = new SecurityCenterViewModel(securityEventService, fileDialogService);
 
 		AddIf(authorization, ApplicationPermission.MasterDataView, "Master Data", AdministrationSection.MasterData);
 		AddIf(authorization, ApplicationPermission.MasterDataView, "Warehouses & Locations", AdministrationSection.Warehouses);

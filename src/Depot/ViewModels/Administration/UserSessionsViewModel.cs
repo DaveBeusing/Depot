@@ -25,6 +25,10 @@ public sealed class UserSessionsViewModel : BaseViewModel, IDisposable
 	private DateTime _asOfUtc;
 	private int _idleTimeoutMinutes = UserSessionPolicy.DefaultIdleTimeoutMinutes;
 	private int _maximumSessionAgeHours = UserSessionPolicy.DefaultMaximumSessionAgeHours;
+	private ConcurrentSessionMode _concurrentSessionMode = ConcurrentSessionMode.Unlimited;
+	private int _maximumConcurrentSessions = UserSessionPolicy.DefaultMaximumConcurrentSessions;
+	private ConcurrentSessionLimitAction _concurrentSessionLimitAction = ConcurrentSessionLimitAction.RejectNewSession;
+	private int _sessionHistoryRetentionDays = UserSessionPolicy.DefaultSessionHistoryRetentionDays;
 	private long _policyVersion = 1;
 	private bool _policyDirty;
 	private bool _loadingPolicy;
@@ -47,12 +51,17 @@ public sealed class UserSessionsViewModel : BaseViewModel, IDisposable
 	public AsyncRelayCommand SavePolicyCommand { get; }
 	public bool CanTerminateSessions => _service.CanTerminateSessions;
 	public bool CanManagePolicy => _service.CanManagePolicy;
-	public string PolicyRangeHint => $"Idle {UserSessionPolicy.MinimumIdleTimeoutMinutes}-{UserSessionPolicy.MaximumIdleTimeoutMinutes} min · Maximum age {UserSessionPolicy.MinimumMaximumSessionAgeHours}-{UserSessionPolicy.MaximumMaximumSessionAgeHours} h";
+	public IReadOnlyList<ConcurrentSessionMode> ConcurrentSessionModeOptions { get; } = Enum.GetValues<ConcurrentSessionMode>();
+	public IReadOnlyList<ConcurrentSessionLimitAction> ConcurrentSessionLimitActionOptions { get; } = Enum.GetValues<ConcurrentSessionLimitAction>();
+	public string PolicyRangeHint => $"Idle {UserSessionPolicy.MinimumIdleTimeoutMinutes}-{UserSessionPolicy.MaximumIdleTimeoutMinutes} min · lifetime {UserSessionPolicy.MinimumMaximumSessionAgeHours}-{UserSessionPolicy.MaximumMaximumSessionAgeHours} h · concurrent {UserSessionPolicy.MinimumConcurrentSessions}-{UserSessionPolicy.MaximumAllowedConcurrentSessions} · history {UserSessionPolicy.MinimumSessionHistoryRetentionDays}-{UserSessionPolicy.MaximumSessionHistoryRetentionDays} days";
+	public bool IsMaximumConcurrentSessionsEnabled => ConcurrentSessionMode == ConcurrentSessionMode.MaximumSessions;
+
 	public string SearchText
 	{
 		get => _searchText;
 		set { if (_searchText == value) return; _searchText = value; OnPropertyChanged(); ApplyFilter(); }
 	}
+
 	public UserSessionRowViewModel? SelectedSession
 	{
 		get => _selectedSession;
@@ -65,30 +74,53 @@ public sealed class UserSessionsViewModel : BaseViewModel, IDisposable
 			TerminateUserSessionsCommand.RaiseCanExecuteChanged();
 		}
 	}
+
 	public long OnlineUsers { get => _onlineUsers; private set { _onlineUsers = value; OnPropertyChanged(); } }
 	public long ActiveSessions { get => _activeSessions; private set { _activeSessions = value; OnPropertyChanged(); } }
+
 	public int IdleTimeoutMinutes
 	{
 		get => _idleTimeoutMinutes;
-		set
-		{
-			if (_idleTimeoutMinutes == value) return;
-			_idleTimeoutMinutes = value;
-			OnPropertyChanged();
-			MarkPolicyDirty();
-		}
+		set { if (_idleTimeoutMinutes == value) return; _idleTimeoutMinutes = value; OnPropertyChanged(); MarkPolicyDirty(); }
 	}
+
 	public int MaximumSessionAgeHours
 	{
 		get => _maximumSessionAgeHours;
+		set { if (_maximumSessionAgeHours == value) return; _maximumSessionAgeHours = value; OnPropertyChanged(); MarkPolicyDirty(); }
+	}
+
+	public ConcurrentSessionMode ConcurrentSessionMode
+	{
+		get => _concurrentSessionMode;
 		set
 		{
-			if (_maximumSessionAgeHours == value) return;
-			_maximumSessionAgeHours = value;
+			if (_concurrentSessionMode == value) return;
+			_concurrentSessionMode = value;
 			OnPropertyChanged();
+			OnPropertyChanged(nameof(IsMaximumConcurrentSessionsEnabled));
 			MarkPolicyDirty();
 		}
 	}
+
+	public int MaximumConcurrentSessions
+	{
+		get => _maximumConcurrentSessions;
+		set { if (_maximumConcurrentSessions == value) return; _maximumConcurrentSessions = value; OnPropertyChanged(); MarkPolicyDirty(); }
+	}
+
+	public ConcurrentSessionLimitAction ConcurrentSessionLimitAction
+	{
+		get => _concurrentSessionLimitAction;
+		set { if (_concurrentSessionLimitAction == value) return; _concurrentSessionLimitAction = value; OnPropertyChanged(); MarkPolicyDirty(); }
+	}
+
+	public int SessionHistoryRetentionDays
+	{
+		get => _sessionHistoryRetentionDays;
+		set { if (_sessionHistoryRetentionDays == value) return; _sessionHistoryRetentionDays = value; OnPropertyChanged(); MarkPolicyDirty(); }
+	}
+
 	public bool IsPolicyDirty
 	{
 		get => _policyDirty;
@@ -100,6 +132,7 @@ public sealed class UserSessionsViewModel : BaseViewModel, IDisposable
 			SavePolicyCommand.RaiseCanExecuteChanged();
 		}
 	}
+
 	public bool HasSessions => Sessions.Count > 0;
 	public bool HasNoSessions => !HasSessions;
 	public bool HasHistory => History.Count > 0;
@@ -151,13 +184,21 @@ public sealed class UserSessionsViewModel : BaseViewModel, IDisposable
 		if (!CanManagePolicy || !IsPolicyDirty) return;
 		if (_dialogs is not null && !_dialogs.Confirm(new ConfirmationDialogRequest(
 			"Save session policy?",
-			"Apply the new idle timeout and maximum session age? Active sessions already beyond the new limits will be expired and returned to sign-in on their next heartbeat.",
+			"Apply the new lifetime, concurrent-session and history-retention policy? Stricter limits may expire, reject or supersede sessions.",
 			true))) return;
 
 		BeginOperation("Saving session policy");
 		try
 		{
-			var saved = await _service.SavePolicyAsync(IdleTimeoutMinutes, MaximumSessionAgeHours, _policyVersion, cancellationToken);
+			var saved = await _service.SavePolicyAsync(
+				IdleTimeoutMinutes,
+				MaximumSessionAgeHours,
+				ConcurrentSessionMode,
+				MaximumConcurrentSessions,
+				ConcurrentSessionLimitAction,
+				SessionHistoryRetentionDays,
+				_policyVersion,
+				cancellationToken);
 			ApplyPolicy(saved);
 			await LoadAsync(cancellationToken);
 			CompleteOperation(Sessions.Count == 0, "Session policy saved");
@@ -170,7 +211,7 @@ public sealed class UserSessionsViewModel : BaseViewModel, IDisposable
 	{
 		var selected = SelectedSession;
 		if (selected is null || !CanTerminateSessions) return;
-		if (_dialogs is not null && !_dialogs.Confirm(new ConfirmationDialogRequest("Terminate session?", $"End the active session for {selected.UserDisplayName} on {selected.MachineName}? The client will be returned to sign-in on its next heartbeat.", true))) return;
+		if (_dialogs is not null && !_dialogs.Confirm(new ConfirmationDialogRequest("Terminate session?", $"End the active session for {selected.UserDisplayName} on {selected.MachineName}?", true))) return;
 		await ExecuteTerminationAsync(() => _service.TerminateSessionAsync(selected.SessionId, cancellationToken), "Session terminated", cancellationToken);
 	}
 
@@ -178,7 +219,7 @@ public sealed class UserSessionsViewModel : BaseViewModel, IDisposable
 	{
 		var selected = SelectedSession;
 		if (selected is null || !CanTerminateSessions) return;
-		if (_dialogs is not null && !_dialogs.Confirm(new ConfirmationDialogRequest("Terminate all user sessions?", $"End every open session for {selected.UserDisplayName}? All affected clients will be returned to sign-in on their next heartbeat.", true))) return;
+		if (_dialogs is not null && !_dialogs.Confirm(new ConfirmationDialogRequest("Terminate all user sessions?", $"End every open session for {selected.UserDisplayName}?", true))) return;
 		BeginOperation("Terminating user sessions");
 		try
 		{
@@ -225,6 +266,10 @@ public sealed class UserSessionsViewModel : BaseViewModel, IDisposable
 			_policyVersion = policy.Version;
 			IdleTimeoutMinutes = policy.IdleTimeoutMinutes;
 			MaximumSessionAgeHours = policy.MaximumSessionAgeHours;
+			ConcurrentSessionMode = policy.ConcurrentSessionMode;
+			MaximumConcurrentSessions = policy.MaximumConcurrentSessions;
+			ConcurrentSessionLimitAction = policy.ConcurrentSessionLimitAction;
+			SessionHistoryRetentionDays = policy.SessionHistoryRetentionDays;
 			IsPolicyDirty = false;
 		}
 		finally { _loadingPolicy = false; }
@@ -243,7 +288,10 @@ public sealed class UserSessionsViewModel : BaseViewModel, IDisposable
 		var historyRows = _allHistory.Where(session => Matches(search, session.UserDisplayName, session.UserEmail, session.MachineName)).Select(session => new UserSessionHistoryRowViewModel(session)).ToArray();
 		CollectionSynchronizer.Replace(Sessions, activeRows);
 		CollectionSynchronizer.Replace(History, historyRows);
-		OnPropertyChanged(nameof(HasSessions)); OnPropertyChanged(nameof(HasNoSessions)); OnPropertyChanged(nameof(HasHistory)); OnPropertyChanged(nameof(HasNoHistory));
+		OnPropertyChanged(nameof(HasSessions));
+		OnPropertyChanged(nameof(HasNoSessions));
+		OnPropertyChanged(nameof(HasHistory));
+		OnPropertyChanged(nameof(HasNoHistory));
 	}
 
 	private static bool Matches(string search, string name, string email, string? machine) => string.IsNullOrEmpty(search)
@@ -267,12 +315,18 @@ public sealed class UserSessionRowViewModel
 {
 	public UserSessionRowViewModel(ActiveUserSession session, DateTime asOfUtc)
 	{
-		UserId = session.UserId; UserDisplayName = session.UserDisplayName; UserEmail = session.UserEmail;
+		UserId = session.UserId;
+		UserDisplayName = session.UserDisplayName;
+		UserEmail = session.UserEmail;
 		MachineName = string.IsNullOrWhiteSpace(session.MachineName) ? "Unknown client" : session.MachineName;
 		AppVersion = string.IsNullOrWhiteSpace(session.AppVersion) ? "Unknown" : session.AppVersion;
-		StartedLocal = session.StartedUtc.ToLocalTime(); LastSeenLocal = session.LastSeenUtc.ToLocalTime();
-		OnlineSince = StartedLocal.ToString("g"); OnlineFor = FormatDuration(session.StartedUtc, asOfUtc); LastSeen = RelativeTime(session.LastSeenUtc, asOfUtc);
-		SessionId = session.SessionId; ClientInstanceId = session.ClientInstanceId;
+		StartedLocal = session.StartedUtc.ToLocalTime();
+		LastSeenLocal = session.LastSeenUtc.ToLocalTime();
+		OnlineSince = StartedLocal.ToString("g");
+		OnlineFor = FormatDuration(session.StartedUtc, asOfUtc);
+		LastSeen = RelativeTime(session.LastSeenUtc, asOfUtc);
+		SessionId = session.SessionId;
+		ClientInstanceId = session.ClientInstanceId;
 	}
 	public long UserId { get; }
 	public string UserDisplayName { get; }
@@ -290,7 +344,8 @@ public sealed class UserSessionRowViewModel
 	public string LastSeenLocalText => LastSeenLocal.ToString("F");
 	internal static string FormatDuration(DateTime startedUtc, DateTime asOfUtc)
 	{
-		var elapsed = asOfUtc - startedUtc; if (elapsed < TimeSpan.Zero) elapsed = TimeSpan.Zero;
+		var elapsed = asOfUtc - startedUtc;
+		if (elapsed < TimeSpan.Zero) elapsed = TimeSpan.Zero;
 		if (elapsed.TotalMinutes < 1) return "< 1 min";
 		if (elapsed.TotalHours < 1) return $"{Math.Max(1, (int)elapsed.TotalMinutes)} min";
 		if (elapsed.TotalDays < 1) return $"{(int)elapsed.TotalHours}h {elapsed.Minutes}m";
@@ -298,7 +353,8 @@ public sealed class UserSessionRowViewModel
 	}
 	private static string RelativeTime(DateTime lastSeenUtc, DateTime asOfUtc)
 	{
-		var elapsed = asOfUtc - lastSeenUtc; if (elapsed < TimeSpan.Zero) elapsed = TimeSpan.Zero;
+		var elapsed = asOfUtc - lastSeenUtc;
+		if (elapsed < TimeSpan.Zero) elapsed = TimeSpan.Zero;
 		if (elapsed.TotalSeconds < 60) return $"{Math.Max(0, (int)elapsed.TotalSeconds)} sec ago";
 		if (elapsed.TotalMinutes < 60) return $"{Math.Max(1, (int)elapsed.TotalMinutes)} min ago";
 		return $"{Math.Max(1, (int)elapsed.TotalHours)} hr ago";
@@ -309,11 +365,15 @@ public sealed class UserSessionHistoryRowViewModel
 {
 	public UserSessionHistoryRowViewModel(EndedUserSession session)
 	{
-		UserDisplayName = session.UserDisplayName; UserEmail = session.UserEmail;
+		UserDisplayName = session.UserDisplayName;
+		UserEmail = session.UserEmail;
 		MachineName = string.IsNullOrWhiteSpace(session.MachineName) ? "Unknown client" : session.MachineName;
 		AppVersion = string.IsNullOrWhiteSpace(session.AppVersion) ? "Unknown" : session.AppVersion;
-		StartedLocal = session.StartedUtc.ToLocalTime(); EndedLocal = session.EndedUtc.ToLocalTime();
-		Started = StartedLocal.ToString("g"); Ended = EndedLocal.ToString("g"); Duration = UserSessionRowViewModel.FormatDuration(session.StartedUtc, session.EndedUtc);
+		StartedLocal = session.StartedUtc.ToLocalTime();
+		EndedLocal = session.EndedUtc.ToLocalTime();
+		Started = StartedLocal.ToString("g");
+		Ended = EndedLocal.ToString("g");
+		Duration = UserSessionRowViewModel.FormatDuration(session.StartedUtc, session.EndedUtc);
 		EndReason = session.EndReason.ToString();
 	}
 	public string UserDisplayName { get; }

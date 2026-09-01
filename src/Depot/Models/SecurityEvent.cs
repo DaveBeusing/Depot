@@ -66,5 +66,5 @@ public sealed class SecurityEventListItem
 }
 
 public sealed record SecurityEventFilter(string? SearchText, SecurityEventSeverity? MinimumSeverity, bool? Reviewed);
-public sealed record SecurityCenterMetrics(long Events24Hours, long Suspicious24Hours, long OpenHighRisk, long Blocked24Hours);
+public sealed record SecurityCenterMetrics(long Events24Hours, long Suspicious24Hours, long OpenHighRisk, long Blocked24Hours, long Reviewed24Hours, long OpenUnreviewed);
 public sealed record LoginAttemptStatus(int FailureCount, bool IsBlocked, TimeSpan RetryAfter);

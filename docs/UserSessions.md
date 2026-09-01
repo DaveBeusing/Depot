@@ -2,119 +2,63 @@
 
 Updated: 2026-09-01
 
-Depot persists one `UserSession` for every successful authenticated login and derives online presence from heartbeat freshness. The feature follows the existing application layering:
+Depot persists one `UserSession` for every successful authenticated login and derives online presence from heartbeat freshness. The feature follows the application layering `Views → ViewModels → Services → Repositories → DatabaseAccess` and remains provider-neutral for SQLite, SQL Server and MySQL/MariaDB.
 
-```text
-Views → ViewModels → Services → Repositories → DatabaseAccess
-                                      ↓
-                    SQLite / SQL Server / MySQL-MariaDB
-```
+## Presence and lifecycle
 
-`AuthenticationService` remains the login boundary, `AuthorizationService` remains the current identity/RBAC boundary, and `SessionService` owns authenticated-session lifecycle, heartbeat, activity timestamp and client-side termination response.
+An active session is an open row (`EndedUtc IS NULL`) whose `LastSeenUtc` is within the 90-second presence timeout. There is no persisted `IsOnline` source of truth. The heartbeat runs every 30 seconds and updates only still-open sessions. User activity is represented only by the latest keyboard/mouse/touch timestamp received inside Depot; typed input, key values, coordinates and external-window activity are not retained.
 
-## Terminology and presence
+Normal logout records `LoggedOut`, clean shutdown records `ApplicationClosed`, policy expiration records `Expired`, administrative termination records `AdministrativeLogout`, account deactivation records `Revoked`, credential changes may record `CredentialsChanged`, and a concurrent-session replacement records `Superseded`.
 
-- **User Session** — one authenticated Depot login instance.
-- **Active Session** — `EndedUtc IS NULL` and a fresh `LastSeenUtc`.
-- **Online User** — a user with at least one active session.
-- **Heartbeat** — technical liveness update; not a business Audit event.
-- **User activity** — keyboard, mouse or touch input received by Depot; only the latest timestamp is retained.
-- **Idle timeout** — maximum time without Depot input before expiration.
-- **Maximum session age** — absolute lifetime regardless of continuing activity.
-- **Revocation** — server-side termination detected by the running client, which then returns to sign-in.
+## Central session policy
 
-There is deliberately no persisted `IsOnline` source of truth:
+`UserSessionPolicy` is shared by every Depot client and is optimistic-versioned. Defaults are:
 
-```text
-active = EndedUtc IS NULL
-         AND LastSeenUtc >= UtcNow - PresenceTimeout
-```
+- idle timeout: **30 minutes** (5–480);
+- maximum session age: **12 hours** (1–168);
+- concurrent mode: **Unlimited**;
+- configured maximum concurrent sessions: **3** (1–20 when `MaximumSessions` is selected);
+- limit action: **RejectNewSession**;
+- ended-session history retention: **180 days** (30–3650).
 
-Runtime defaults are a 30-second heartbeat, 90-second presence timeout, 20-second administration refresh and a bounded three-second shutdown write window.
+Concurrent modes are `Unlimited`, `MaximumSessions` and `SingleSession`. When a finite limit is reached, Depot either rejects the new login or atomically ends the oldest open session as `Superseded` before creating the new session. The session-policy row is used as the serialization point so competing clients cannot independently exceed the configured limit.
 
-## Authentication and lifecycle
+Idle and maximum-age expiration remain independent. Maximum age is absolute even while activity continues. The heartbeat persists the newest activity timestamp before applying policy predicates, preventing a recent input event from being lost at the idle boundary.
 
-A successful login loads roles/effective permissions, creates the session with `LastActivityUtc = UtcNow`, starts the heartbeat and then publishes the authenticated identity. Failed authentication creates no session.
+`Users.View` permits session visibility, `Settings.Manage` permits policy changes, and `UserSessions.Terminate` permits destructive session control.
 
-Normal logout records `LoggedOut`; clean application shutdown records `ApplicationClosed`. Crash, power loss, network loss, standby or hard termination cause the persisted heartbeat to become stale. Heartbeat updates require `EndedUtc IS NULL`, so a late heartbeat cannot revive an explicitly ended session.
+## Credential changes and account state
 
-## Configurable session policy
+Changing a password invalidates other open sessions for the target account in the same transaction as the credential update and Audit evidence. A self-service change retains the current session and ends the other sessions as `CredentialsChanged`; an administrative reset invalidates all open sessions for the target user.
 
-The central `UserSessionPolicy` is shared by all clients and contains `IdleTimeoutMinutes`, `MaximumSessionAgeHours`, `UpdatedUtc` and optimistic `Version`.
+Deactivating an account ends all open sessions as `Revoked` in the same transaction as the account-state change and Audit record. The currently authenticated administrator cannot deactivate their own account through this workflow.
 
-Defaults and supported ranges:
+## Administration and retention
 
-```text
-Idle timeout:        30 minutes   (5–480)
-Maximum session age: 12 hours     (1–168)
-```
+**Administration → User Sessions** exposes Online Users, Active Sessions, the complete central policy, Active/History tabs, search, single-session termination and terminate-all-for-user actions. Policy changes are optimistic-versioned and Audit-relevant.
 
-`Users.View` permits reading the policy. `Settings.Manage` is required to modify it. Input activity is throttled in memory and persisted only with the normal heartbeat, not as one database write per event. Depot does not retain typed text, key values or mouse coordinates.
+A bounded background maintenance service enforces `SessionHistoryRetentionDays`. Each run deletes only ended sessions older than the current cutoff, in fixed batches of 250 and no more than four batches per run. Deletes repeat the cutoff predicate inside the write transaction and use the session-policy lock, so concurrent Depot clients can run maintenance safely and idempotently.
 
-A session expires when either condition becomes true:
-
-```text
-UtcNow - LastActivityUtc >= IdleTimeout
-OR
-UtcNow - StartedUtc >= MaximumSessionAge
-```
-
-The heartbeat writes the current activity timestamp before policy evaluation. Expiration uses `EndReason = Expired` and returns the affected client to sign-in. Maximum session age is absolute. Saving a stricter policy immediately evaluates still-open sessions against the new limits.
-
-## Administrative session control
-
-`UserSessionAdministrationService` keeps visibility, policy maintenance and destructive actions separate:
-
-- `Users.View` — active sessions, history, metrics and current policy.
-- `Settings.Manage` — idle/max-age policy changes.
-- `UserSessions.Terminate` — terminate one session or all open sessions for a selected user.
-
-Administrative termination records `AdministrativeLogout`. Deactivating a user ends all open sessions with `Revoked` in the same database transaction as the account-state change and its Audit evidence. Affected running clients detect the ended session on heartbeat and return to sign-in.
+History displays the 200 most recent retained ended sessions; retention controls persistence, not only UI visibility.
 
 ## Security-event integration
 
-Authentication risk monitoring and security review are implemented in the separate `SecurityEvents` feature rather than inside `UserSessions`. This keeps session state and security observations as distinct sources of truth.
+Session administration, policy changes, credential invalidation, revocation and supersession can produce correlated Security Events in addition to required Audit evidence. Security Events carry the existing session identifier, generated process-level `ClientInstanceId` and machine display name where available. This is correlation metadata, not hardware fingerprinting.
 
-Administrative session termination and session-policy changes emit Security Events in addition to their existing Audit-relevant behavior. Authentication failures, suspicious failure escalation, lockouts and successful login after recent failures are generated by the authentication boundary and reviewed in **Administration → Security Center**.
+Authentication failures, shared throttling, lockouts and investigation are documented in [Security Center and Authentication Risk Monitoring](SecurityCenter.md).
 
-- `SecurityEvents.View` — Security Center visibility and metrics.
-- `SecurityEvents.Manage` — mark events reviewed.
-- High/Critical authentication events are also surfaced through the Notification Center to active `SecurityEvents.View` holders.
+## Schema
 
-Security monitoring is deterministic and currently does not use IP, geolocation or device-fingerprint scoring. See [Security Center and Authentication Risk Monitoring](SecurityCenter.md).
+- Core database schema: **30**
+- User Sessions feature schema: **3**
+- Security Events feature schema: **2**
 
-## Persistence and schema
+User Sessions schema 1 introduced session persistence and presence indexes, schema 2 introduced lifetime policy, and schema 3 adds concurrent-session mode/action/limit and session-history retention. No schema change is required for the bounded maintenance implementation.
 
-`UserSessions` stores session/user identifiers, `StartedUtc`, `LastSeenUtc`, nullable `LastActivityUtc`, end state, generated `ClientInstanceId`, display-only `MachineName`, application version and optimistic version. Multiple simultaneous sessions per user are intentional.
+## Privacy boundary
 
-The shared core schema remains 30. User Sessions is feature-schema **2**: schema 1 introduced session persistence and presence indexes; schema 2 added the central `UserSessionPolicy`. Security Events are independently feature-versioned and do not change the session schema.
+Depot does not collect source IP, geolocation, MAC address, hardware fingerprint, typed text, key values, mouse coordinates, external-window activity or operating-system activity as part of this feature.
 
-## Administration UI
+## Extension boundary
 
-**Administration → User Sessions** includes Online Users and Active Sessions metrics, the central policy editor, Active and History tabs, local search and single/bulk termination. History shows the 200 most recently ended sessions with duration and end reason, including `Expired`, `AdministrativeLogout` and `Revoked`.
-
-## Dashboard metrics
-
-The **User Presence** dashboard card exposes:
-
-```text
-Online Users           = distinct heartbeat-active users
-Active Sessions        = heartbeat-active session rows
-Sessions Today         = sessions started during the current local calendar day
-Admin Logouts Today    = AdministrativeLogout ends today
-Revoked Sessions Today = Revoked ends today
-```
-
-The Reports dashboard card remains independently permissioned through `Reports.View`.
-
-## Audit, privacy and security boundary
-
-Heartbeats and raw input events are intentionally not Audit events. Administrative session termination and policy changes remain Audit-relevant actions. Security Events complement rather than replace Audit.
-
-The feature does not collect typed text, key values, mouse coordinates, source IP, geolocation, MAC addresses, hardware fingerprints, external-window activity or operating-system activity.
-
-## Current extension boundary
-
-Implemented session end reasons include normal logout, clean application close, policy expiration, administrative logout and revocation; `Superseded` remains reserved for future concurrent-session policy work.
-
-Remaining work includes concurrent-session limits, password-change session invalidation, retention/archival for historical sessions and Security Events, shared throttling for multi-node deployments, MFA/external identity-provider integration and an explicit privacy/security design before IP/geolocation/device-trust signals are introduced.
+Remaining identity/security extensions are MFA, OIDC/SSO/external identity providers, optional deployment-specific alert routing, and any future IP/geolocation/device-trust design only after an explicit privacy and threat-model decision.

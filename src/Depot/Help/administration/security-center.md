@@ -1,60 +1,38 @@
 # Security Center
 
-Use **Administration → Security Center** to monitor authentication risk, lockouts, session-security administration events, and review status.
+Use **Administration → Security Center** to investigate authentication/session risk, review events, maintain authentication policy and apply controlled response actions.
 
 ## Permissions
 
-- `SecurityEvents.View` is required to open the Security Center and read events and metrics.
-- `SecurityEvents.Manage` is additionally required to mark events as reviewed.
-- Service-layer authorization is authoritative; hiding UI controls does not grant or revoke access.
+- `SecurityEvents.View` — open Security Center, metrics and investigation events.
+- `SecurityEvents.Manage` — mark events reviewed.
+- `Settings.Manage` — change authentication failure/lockout/retention policy.
+- `UserSessions.Terminate` — terminate one or all sessions for a resolved user.
+- `Users.Manage` — deactivate a resolved user.
 
-## What Depot records
+Service-layer authorization is authoritative.
 
-Security Events are an append-only operational security stream separate from the business Audit Log. Events can include:
+## Shared authentication policy
 
-- successful authentication;
-- failed authentication;
-- repeated failures that cross the suspicious threshold;
-- account-key lockout and attempts made while lockout is active;
-- successful authentication after recent failures;
-- administrative session termination;
-- session-policy changes.
+Production failed-login throttling is shared through the Depot database. The policy controls failure window, lockout threshold, lockout duration and Security Event retention. Defaults are 15 minutes, 5 failures, 15 minutes and 365 days respectively.
 
-The event stores the time, event type, severity, optional user/account reference, optional session/client context, summary, details, and review state.
+## Investigation and response
 
-## Suspicious authentication rules
+Select an event to see its session/client identifiers, related events and any open sessions that your permissions allow Depot to resolve. Correlation uses existing `UserId`, normalized account, `SessionId` and generated `ClientInstanceId` values.
 
-Depot uses deterministic rules rather than opaque risk scoring:
+Available response actions are **Terminate session**, **Terminate all sessions** and **Deactivate user**. Depot delegates these actions to the existing session/user services, so Audit, RBAC, concurrency and revocation rules remain unchanged. Destructive actions require confirmation.
 
-- failures 1–2: informational authentication failures;
-- failure 3 in the active 15-minute window: suspicious pattern, Warning;
-- failure 4: High severity;
-- failure 5: Critical lockout event;
-- attempts while the account key remains blocked: Critical;
-- a successful login after recent failures is recorded separately, with elevated severity when the preceding failure count was high.
+## Metrics and review
 
-These rules reuse the same in-process 15-minute authentication-throttling window. They do not claim that a suspicious event proves account compromise.
+The cards show Events 24h, Suspicious 24h, High Risk Open, Blocked 24h, Reviewed 24h and Open Unreviewed. Use search, minimum severity and **Only unreviewed** to filter. Marking reviewed changes only review metadata and version.
 
-## Metrics
+## Retention and notifications
 
-The top cards summarize the last 24 hours:
-
-- **Events 24h** — all security events.
-- **Suspicious 24h** — suspicious-failure, blocked-login, and success-after-failures events.
-- **High Risk Open** — unreviewed events at High or Critical severity.
-- **Blocked 24h** — lockout-related events.
-
-## Review workflow
-
-Use search, minimum severity, and **Only unreviewed** to narrow the list. Users with `SecurityEvents.Manage` can select an open event and choose **Mark reviewed**. Review changes only the review metadata and optimistic version; it does not rewrite the original event.
-
-## Notifications
-
-High and Critical security events also create a system notification for active users who hold `SecurityEvents.View`. Security-event persistence is best-effort relative to authentication: a temporary telemetry failure is logged diagnostically but does not make a valid user login fail solely because the event could not be stored.
+High and Critical events are routed through the Security Alert policy to `SecurityEvents.View` holders. A bounded maintenance process enforces the configured Security Event retention and stale-throttle cleanup. Business Audit records are separate and are not deleted by Security Event retention.
 
 ## Privacy boundary
 
-This version does not collect source IP addresses, geolocation, MAC addresses, hardware fingerprints, typed text, key values, or mouse coordinates. Account identifiers are normalized for correlation; machine name is stored only when an existing session administration action already provides it.
+Depot does not collect source IP, geolocation, MAC address, hardware fingerprint, typed text, key values, mouse coordinates or external-window activity for this feature. `ClientInstanceId` is a generated Depot process correlation ID, not a device fingerprint.
 
 ## Related topics
 
