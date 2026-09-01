@@ -3,6 +3,7 @@
 
 using System.Collections.ObjectModel;
 
+using Depot.Commands;
 using Depot.Models;
 using Depot.Services;
 
@@ -11,24 +12,30 @@ namespace Depot.ViewModels.Administration;
 public sealed class UserSessionsViewModel : BaseViewModel, IDisposable
 {
 	private readonly UserSessionAdministrationService _service;
+	private readonly IFileDialogService? _dialogs;
 	private readonly UserSessionPresenceOptions _options;
 	private readonly SemaphoreSlim _refreshGate = new(1, 1);
 	private IReadOnlyList<ActiveUserSession> _allSessions = [];
 	private CancellationTokenSource? _pollingCancellation;
 	private Task? _pollingTask;
 	private string _searchText = string.Empty;
+	private UserSessionRowViewModel? _selectedSession;
 	private long _onlineUsers;
 	private long _activeSessions;
 	private DateTime _asOfUtc;
 	private bool _disposed;
 
-	public UserSessionsViewModel(UserSessionAdministrationService service, UserSessionPresenceOptions? options = null)
+	public UserSessionsViewModel(UserSessionAdministrationService service, IFileDialogService? dialogs = null, UserSessionPresenceOptions? options = null)
 	{
 		_service = service;
+		_dialogs = dialogs;
 		_options = options ?? UserSessionPresenceOptions.Default;
+		TerminateSessionCommand = new AsyncRelayCommand(TerminateSelectedSessionAsync, CanTerminateSelectedSession);
 	}
 
 	public ObservableCollection<UserSessionRowViewModel> Sessions { get; } = [];
+	public AsyncRelayCommand TerminateSessionCommand { get; }
+	public bool CanTerminateSessions => _service.CanTerminateSessions;
 	public string SearchText
 	{
 		get => _searchText;
@@ -38,6 +45,17 @@ public sealed class UserSessionsViewModel : BaseViewModel, IDisposable
 			_searchText = value;
 			OnPropertyChanged();
 			ApplyFilter();
+		}
+	}
+	public UserSessionRowViewModel? SelectedSession
+	{
+		get => _selectedSession;
+		set
+		{
+			if (_selectedSession == value) return;
+			_selectedSession = value;
+			OnPropertyChanged();
+			TerminateSessionCommand.RaiseCanExecuteChanged();
 		}
 	}
 	public long OnlineUsers { get => _onlineUsers; private set { _onlineUsers = value; OnPropertyChanged(); } }
@@ -53,6 +71,7 @@ public sealed class UserSessionsViewModel : BaseViewModel, IDisposable
 		BeginOperation("Refreshing user sessions");
 		try
 		{
+			var selectedId = SelectedSession?.SessionId;
 			var snapshot = await _service.GetSnapshotAsync(cancellationToken);
 			if (_disposed || cancellationToken.IsCancellationRequested) return;
 			_allSessions = snapshot.Sessions;
@@ -60,6 +79,7 @@ public sealed class UserSessionsViewModel : BaseViewModel, IDisposable
 			OnlineUsers = snapshot.Metrics.OnlineUsers;
 			ActiveSessions = snapshot.Metrics.ActiveSessions;
 			ApplyFilter();
+			SelectedSession = selectedId is null ? null : Sessions.FirstOrDefault(row => row.SessionId == selectedId);
 			CompleteOperation(Sessions.Count == 0, "User sessions refreshed");
 		}
 		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -91,6 +111,31 @@ public sealed class UserSessionsViewModel : BaseViewModel, IDisposable
 		_pollingCancellation = null;
 		_pollingTask = null;
 	}
+
+	private async Task TerminateSelectedSessionAsync(CancellationToken cancellationToken)
+	{
+		var selected = SelectedSession;
+		if (selected is null || !CanTerminateSessions) return;
+		if (_dialogs is not null && !_dialogs.Confirm(new ConfirmationDialogRequest(
+			"Terminate session?",
+			$"End the active session for {selected.UserDisplayName} on {selected.MachineName}? The client will be returned to sign-in on its next heartbeat.",
+			true))) return;
+
+		BeginOperation("Terminating user session");
+		try
+		{
+			var terminated = await _service.TerminateSessionAsync(selected.SessionId, cancellationToken);
+			SelectedSession = null;
+			await LoadAsync(cancellationToken);
+			CompleteOperation(Sessions.Count == 0, terminated ? "Session terminated" : "Session was already ended");
+		}
+		catch (Exception exception) when (exception is not OperationCanceledException)
+		{
+			FailOperation(exception, "Session could not be terminated");
+		}
+	}
+
+	private bool CanTerminateSelectedSession() => SelectedSession is not null && CanTerminateSessions;
 
 	private async Task RunPollingAsync(CancellationToken cancellationToken)
 	{
@@ -125,6 +170,7 @@ public sealed class UserSessionsViewModel : BaseViewModel, IDisposable
 		if (_disposed) return;
 		_disposed = true;
 		StopPolling();
+		TerminateSessionCommand.Dispose();
 	}
 }
 

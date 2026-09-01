@@ -41,15 +41,29 @@
         </UniformGrid>
 
         <controls:FilterBar Grid.Row="3" Margin="0,0,0,12">
-            <controls:SearchBox automation:AutomationProperties.Name="Search active user sessions"
-                                Placeholder="Search user, email or client"
-                                Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="12" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <controls:SearchBox automation:AutomationProperties.Name="Search active user sessions"
+                                    Placeholder="Search user, email or client"
+                                    Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
+                <Button Grid.Column="2"
+                        automation:AutomationProperties.Name="Terminate selected user session"
+                        Command="{Binding TerminateSessionCommand}"
+                        Content="Terminate session"
+                        Style="{StaticResource DangerButtonStyle}"
+                        Visibility="{Binding CanTerminateSessions, Converter={StaticResource BooleanToVisibilityConverter}}" />
+            </Grid>
         </controls:FilterBar>
 
         <controls:Card Grid.Row="4">
             <Grid MinHeight="220">
                 <DataGrid automation:AutomationProperties.Name="Currently online users and sessions"
                           ItemsSource="{Binding Sessions}"
+                          SelectedItem="{Binding SelectedSession}"
                           Style="{StaticResource AppDataGridStyle}"
                           Visibility="{Binding HasSessions, Converter={StaticResource BooleanToVisibilityConverter}}">
                     <DataGrid.Columns>

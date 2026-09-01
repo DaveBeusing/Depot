@@ -17,18 +17,23 @@ public sealed class UserSessionAdministrationService
 	private readonly IAuthorizationService _authorization;
 	private readonly TimeProvider _timeProvider;
 	private readonly UserSessionPresenceOptions _options;
+	private readonly AuditService? _audit;
 
 	public UserSessionAdministrationService(
 		UserSessionRepository repository,
 		IAuthorizationService authorization,
 		TimeProvider? timeProvider = null,
-		UserSessionPresenceOptions? options = null)
+		UserSessionPresenceOptions? options = null,
+		AuditService? audit = null)
 	{
 		_repository = repository;
 		_authorization = authorization;
 		_timeProvider = timeProvider ?? TimeProvider.System;
 		_options = options ?? UserSessionPresenceOptions.Default;
+		_audit = audit;
 	}
+
+	public bool CanTerminateSessions => _authorization.HasPermission(ApplicationPermission.UserSessionsTerminate);
 
 	public async Task<UserSessionPresenceSnapshot> GetSnapshotAsync(CancellationToken cancellationToken)
 	{
@@ -43,4 +48,41 @@ public sealed class UserSessionAdministrationService
 			await metricsTask ?? new UserSessionPresenceMetrics(0, 0),
 			now);
 	}
+
+	public async Task<bool> TerminateSessionAsync(Guid sessionId, CancellationToken cancellationToken)
+	{
+		_authorization.RequirePermission(ApplicationPermission.UserSessionsTerminate);
+		var before = await _repository.GetBySessionIdAsync(sessionId, cancellationToken)
+			?? throw new InvalidOperationException("The session was not found.");
+		if (before.EndedUtc is not null) return false;
+
+		var endedUtc = _timeProvider.GetUtcNow().UtcDateTime;
+		if (!await _repository.EndAsync(sessionId, endedUtc, UserSessionEndReason.AdministrativeLogout, cancellationToken)) return false;
+
+		if (_audit is not null)
+		{
+			var after = Copy(before);
+			after.EndedUtc = endedUtc;
+			after.EndReason = UserSessionEndReason.AdministrativeLogout;
+			after.Version++;
+			await _audit.RecordActionAsync(before.Id, "AdministrativeLogout", before, after, cancellationToken);
+		}
+		return true;
+	}
+
+	private static UserSession Copy(UserSession session) => new()
+	{
+		Id = session.Id,
+		SessionId = session.SessionId,
+		UserId = session.UserId,
+		StartedUtc = session.StartedUtc,
+		LastSeenUtc = session.LastSeenUtc,
+		LastActivityUtc = session.LastActivityUtc,
+		EndedUtc = session.EndedUtc,
+		EndReason = session.EndReason,
+		ClientInstanceId = session.ClientInstanceId,
+		MachineName = session.MachineName,
+		AppVersion = session.AppVersion,
+		Version = session.Version
+	};
 }

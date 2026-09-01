@@ -44,6 +44,9 @@ public sealed class AuditService
 	public AuditEntry CreateActionEntry<T>(long entityId, string action, T? before, T? after) where T : class =>
 		CreateEntry(typeof(T).Name, entityId, string.IsNullOrWhiteSpace(action) ? throw new ArgumentException("Audit action is required.", nameof(action)) : action.Trim(), before, after);
 
+	public Task RecordActionAsync<T>(long entityId, string action, T? before, T? after, CancellationToken cancellationToken) where T : class =>
+		RecordAsync(typeof(T).Name, entityId, string.IsNullOrWhiteSpace(action) ? throw new ArgumentException("Audit action is required.", nameof(action)) : action.Trim(), before, after, cancellationToken);
+
 	public long? CurrentUserId => _authorizationService.CurrentUser?.Id;
 	public bool HasPermission(ApplicationPermission permission) => _authorizationService.HasPermission(permission);
 	public void RequirePermission(ApplicationPermission permission) => _authorizationService.RequirePermission(permission);

@@ -82,6 +82,40 @@ public sealed class UserSessionAdministrationTests : IDisposable
 	}
 
 	[Fact]
+	public async Task AdministratorWithTerminatePermissionMayEndActiveSession()
+	{
+		var context = await CreateContextAsync();
+		context.Authorization.SignIn(
+			new User { Id = 1, DisplayName = "Admin", IsActive = true },
+			new HashSet<ApplicationPermission> { ApplicationPermission.UsersView, ApplicationPermission.UserSessionsTerminate });
+		var session = NewSession(context.UserId, context.Clock.UtcNow, "OFFICE-PC");
+		await context.Repository.CreateAsync(session, CancellationToken.None);
+
+		Assert.True(context.Service.CanTerminateSessions);
+		Assert.True(await context.Service.TerminateSessionAsync(session.SessionId, CancellationToken.None));
+
+		var ended = await context.Repository.GetBySessionIdAsync(session.SessionId, CancellationToken.None);
+		Assert.NotNull(ended);
+		Assert.Equal(UserSessionEndReason.AdministrativeLogout, ended.EndReason);
+		Assert.NotNull(ended.EndedUtc);
+		var snapshot = await context.Service.GetSnapshotAsync(CancellationToken.None);
+		Assert.Empty(snapshot.Sessions);
+		Assert.Equal(0, snapshot.Metrics.ActiveSessions);
+	}
+
+	[Fact]
+	public async Task TerminateSessionRequiresDedicatedPermission()
+	{
+		var context = await CreateContextAsync();
+		context.Authorization.SignIn(new User { Id = 1, DisplayName = "Admin", IsActive = true }, new HashSet<ApplicationPermission> { ApplicationPermission.UsersView });
+		var session = NewSession(context.UserId, context.Clock.UtcNow, "OFFICE-PC");
+		await context.Repository.CreateAsync(session, CancellationToken.None);
+
+		Assert.False(context.Service.CanTerminateSessions);
+		await Assert.ThrowsAsync<UnauthorizedAccessException>(() => context.Service.TerminateSessionAsync(session.SessionId, CancellationToken.None));
+	}
+
+	[Fact]
 	public async Task TwoUsersWithOneSessionEachProduceTwoOnlineUsersAndTwoSessions()
 	{
 		var context = await CreateContextAsync();
@@ -116,7 +150,7 @@ public sealed class UserSessionAdministrationTests : IDisposable
 	private static UserSession NewSession(long userId, DateTime now, string machineName) => new()
 	{
 		SessionId = Guid.NewGuid(), UserId = userId, StartedUtc = now, LastSeenUtc = now,
-		ClientInstanceId = Guid.NewGuid(), MachineName = machineName, AppVersion = "0.15.81-preview"
+		ClientInstanceId = Guid.NewGuid(), MachineName = machineName, AppVersion = "0.15.87-preview"
 	};
 
 	public void Dispose()
