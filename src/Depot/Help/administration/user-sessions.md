@@ -1,31 +1,72 @@
 # User Sessions
 
-Use **Administration → User Sessions** to review authenticated Depot clients, recently ended sessions, and administrative revocation. Viewing requires `Users.View`; destructive session actions additionally require `UserSessions.Terminate`. Both are enforced in the service layer.
+Use **Administration → User Sessions** to review authenticated Depot clients, recent session history and administrative session termination.
+
+## Permissions
+
+- `Users.View` is required to open the session overview and read active/history data.
+- `UserSessions.Terminate` is additionally required to terminate one session or all open sessions for a selected user.
+- Hiding a button is not the security boundary; the service layer enforces both permissions.
 
 ## Definitions
 
-- **User Session** — one authenticated Depot login instance.
-- **Active Session** — a session with no end timestamp whose `LastSeenUtc` is within the configured presence timeout.
+- **Active Session** — no `EndedUtc` value and the last heartbeat is within the 90-second presence timeout.
 - **Online User** — a user with at least one active session.
-- **Heartbeat** — the technical presence signal that advances `LastSeenUtc`; it is not a business audit event.
-- **Multi-Session** — one user may have multiple simultaneous Depot sessions, for example an office PC and a notebook.
+- **Heartbeat** — a 30-second technical liveness update; it is not an Audit event.
+- **History** — the 200 most recently ended sessions.
 
-## Active sessions
+## Active tab
 
-The **Active** tab displays each currently present session as its own row with user, email, client machine, sign-in time, online duration, relative last-seen time, and Depot version. **Online Users** counts distinct users while **Active Sessions** counts individual login instances.
+The **Active** tab shows one row per currently present login instance with user, email, client, Online Since, Online For, Last Seen and Depot version.
 
-Administrators with `UserSessions.Terminate` can terminate the selected session or terminate every open session for the selected user. Destructive actions require confirmation and use `AdministrativeLogout`. Affected clients are returned to sign-in when their next heartbeat detects that the server-side session has ended.
+The KPI cards use different counts:
 
-## History
+- **Online Users** counts distinct users.
+- **Active Sessions** counts login instances, so one user on two clients contributes one online user and two active sessions.
 
-The **History** tab shows the 200 most recently ended sessions. It includes the user, client, sign-in time, duration, end time, Depot version, and end reason such as `LoggedOut`, `ApplicationClosed`, `Revoked`, or `AdministrativeLogout`. Search filters both active sessions and history locally by user, email, or client.
+Use the search box to filter by user name, email or client machine.
+
+## Terminate a session
+
+If you have `UserSessions.Terminate`:
+
+1. Select an active session.
+2. Choose **Terminate session**.
+3. Confirm the destructive action.
+4. Depot ends the server-side session with `AdministrativeLogout` and records Audit evidence.
+5. The affected client detects the ended session on its next heartbeat, clears its local authenticated state and returns to sign-in.
+
+## Terminate all sessions for a user
+
+If the selected user has more than one open session, choose **Terminate all for user** and confirm. Depot ends every still-open session for that user with `AdministrativeLogout`. Each affected client is returned to sign-in after heartbeat detection.
+
+Deactivating a user from **Administration → Users** is a separate account action. Deactivation revokes all still-open sessions with `Revoked` in the same transaction as the account-state change.
+
+## History tab
+
+The **History** tab shows the 200 most recently ended sessions with user, email, client, Signed In, Duration, Ended, End Reason and Depot version.
+
+Common end reasons are:
+
+- `LoggedOut` — normal user logout.
+- `ApplicationClosed` — clean application exit.
+- `AdministrativeLogout` — administrator terminated one or more sessions.
+- `Revoked` — the account was deactivated while sessions were still open.
+
+History is session lifecycle information. It does not replace the immutable business Audit Log.
 
 ## Presence behavior
 
-Depot sends a heartbeat every 30 seconds. A session is considered active only while its last heartbeat is within the 90-second presence timeout. A normal logout records `LoggedOut`; a clean application exit records `ApplicationClosed`. If a client crashes, loses power, loses its network connection, enters standby, or is terminated, the stale session automatically disappears from the online view after the timeout.
+If a client crashes, loses power, loses connectivity, enters standby or is killed, no explicit end callback is guaranteed. Its last heartbeat becomes stale and it disappears from the Active view after the presence timeout. Such a stale open row is not automatically rewritten as a specific logout reason.
 
-The historical session row remains stored. Heartbeats are not written to the audit log. Administrative session termination is audited.
+Temporary heartbeat database failures are contained and retried on the next normal interval; they are not automatically treated as proof that the session was revoked.
 
 ## Privacy
 
-Session presence stores only the authenticated user identifier, generated session identifier, timestamps, generated client-instance identifier, display-only machine name, Depot version, end state, and optimistic-concurrency version. Depot does not collect MAC addresses, hardware fingerprints, key logging, operating-system activity, external-window tracking, IP addresses, or geolocation for this feature.
+Session data is limited to authenticated user/session identifiers, timestamps, a generated client-instance identifier, display-only machine name, Depot version, end state and optimistic version. Depot does not collect MAC addresses, hardware fingerprints, key logging, OS/window activity, IP addresses or geolocation for this feature.
+
+## Related topics
+
+- [Users and Roles](topic:administration.users)
+- [Audit Log](topic:administration.audit-log)
+- [Dashboard](topic:getting-started.dashboard)

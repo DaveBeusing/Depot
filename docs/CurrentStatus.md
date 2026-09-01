@@ -1,16 +1,18 @@
 # Current project status
 
-Updated: 2026-08-31
+Updated: 2026-09-01
 
 Depot is on the `0.15.x-preview` development line. The repository contains the integrated Finance platform: foundation/master data, immutable General Ledger, Receivables, Payables, FIFO Inventory Accounting, Banking and Payments, Financial Reporting, and effective-dated Localization.
 
-Depot now also has persistent authenticated user sessions and heartbeat-derived online presence. Every successful login creates a unique session; failed logins create none. Normal logout and clean application shutdown end the current session explicitly, while crash, power loss, network loss, standby and process termination age out automatically through the 90-second presence timeout. Multi-session per user is supported.
+Depot also has persistent authenticated user sessions, heartbeat-derived online presence, administrative revocation and recent session history. Every successful login creates a unique session; failed logins create none. Normal logout and clean application shutdown end the current session explicitly, while crash, power loss, network loss, standby and process termination age out automatically through the 90-second presence timeout. Multi-session per user is supported.
 
-Administrators with the existing `Users.View` permission can open **Administration → User Sessions** to see user, client, sign-in time, last-seen state and Depot version. The dashboard separates distinct **Online Users** from **Active Sessions** and links to the session overview. Heartbeats are technical liveness writes and are not emitted as Audit events.
+Administrators with `Users.View` can open **Administration → User Sessions** to review active sessions, Online Users/Active Sessions metrics and the 200 most recently ended sessions. Users with the additional `UserSessions.Terminate` permission can terminate one active session or all open sessions for the selected user. Administrative termination uses `AdministrativeLogout`, is confirmed and audited, and affected clients return to sign-in after the next heartbeat detects the ended server-side session.
+
+Deactivating a user now revokes every open session for that user with `Revoked` in the same database transaction as the account deactivation and its Audit evidence. Heartbeats remain technical liveness writes and are not emitted as Audit events.
 
 Sales pricing supports Global, Regional and optional Customer scopes. The central resolver falls back Customer → Region → Global for each item and retains the selected price source on quote and order lines.
 
-Item Cost Build-up now derives a traceable commercial item cost from the active preferred supplier purchase price plus ordered Absolute/Percentage Cost Components. Percentage components explicitly use BaseCost or RunningTotal. Bulk Pricing consumes the same central calculation service, applies Percentage Markup, requires a Preview, supports All Active/Category/Manufacturer/Selected filters and applies through Replace/Only Increase/Only Missing modes to the existing scoped PriceList model.
+Item Cost Build-up derives a traceable commercial item cost from the active preferred supplier purchase price plus ordered Absolute/Percentage Cost Components. Percentage components explicitly use BaseCost or RunningTotal. Bulk Pricing consumes the same central calculation service, applies Percentage Markup, requires a Preview, supports All Active/Category/Manufacturer/Selected filters and applies through Replace/Only Increase/Only Missing modes to the existing scoped PriceList model.
 
 New installations also receive provider-neutral standard reference data for Units of Measure and Packaging. Depot seeds 12 UoMs (`EA`, `SET`, `PAIR`, `M`, `M2`, `M3`, `KG`, `G`, `L`, `ML`, `H`, `DAY`) and 12 Packaging Types (`UNIT`, `BAG`, `BOX`, `CARTON`, `CASE`, `PACK`, `BUNDLE`, `TRAY`, `REEL`, `ROLL`, `CRATE`, `PALLET`). `EA` is the canonical built-in piece unit; `PCS` is not seeded. The initializer is idempotent and preserves existing matching or custom values without changing descriptions, activation state or versions.
 
@@ -18,11 +20,15 @@ New installations also receive provider-neutral standard reference data for Unit
 
 - `IsOnline` is not persisted; active presence is derived from `EndedUtc IS NULL` plus heartbeat freshness.
 - Heartbeat interval is 30 seconds and presence timeout is 90 seconds from central options.
-- Heartbeat updates only non-ended sessions, preventing logout/heartbeat races from reviving a session.
-- Temporary heartbeat database failures are contained; the next normal interval is attempted without an aggressive retry loop.
+- Heartbeat updates only non-ended sessions, preventing logout/revocation races from reviving a session.
+- Temporary heartbeat database failures are contained and are not automatically treated as revocation.
 - Clean shutdown uses a bounded database-write window.
 - Multiple active sessions per user are intentionally supported; there is no active-session uniqueness constraint on `UserId`.
-- The administration service enforces `Users.View`; UI visibility is not the access-control boundary.
+- Session viewing requires `Users.View`; destructive session control additionally requires `UserSessions.Terminate` in the service layer.
+- Single-session and bulk user-session termination use `AdministrativeLogout` and Audit evidence.
+- User deactivation atomically ends every open session for that user with `Revoked`.
+- The client responds to server-side revocation by clearing local authorization and returning to sign-in after heartbeat detection.
+- Administration exposes Active and History tabs; History contains the 200 most recently ended sessions with duration and end reason.
 - Session presence stores no MAC address, hardware fingerprint, key logging, OS activity, external-window tracking, IP/geolocation data or similar telemetry.
 
 ## Finance capabilities
@@ -58,12 +64,12 @@ New installations also receive provider-neutral standard reference data for Unit
 
 ## Versions
 
-- Application: **0.15.x-preview** (`Directory.Build.props` is authoritative for the exact patch)
+- Application: **0.15.x-preview** (`Directory.Build.props` is authoritative for the exact patch; this documentation update advances it to **0.15.89-preview**)
 - Core database schema: **30**
 - Sales feature schema: **10**
 - Finance feature schema: **9**
 - User Sessions feature schema: **1**
-- Help manifest: **1.19**
+- Help manifest: **1.20**
 
 Every commit increments `DepotVersionPatch`.
 
@@ -73,6 +79,6 @@ Release Build, win-x64 publish, repository regression tests, Release Integrity, 
 
 ## Next steps
 
-Session-security extensions remain explicitly out of scope for the current feature: remote/force logout, session revocation UI, single-session enforcement, concurrent-session limits, role-specific limits, suspicious-login detection, IP/geolocation tracking, full session-history UI and security alerts.
+Session-security follow-up is now narrowed to policy and monitoring features rather than basic revocation: configurable idle timeout, maximum session age, password-change session policy, concurrent-session limits, retention/archival of historical sessions, suspicious-login/security-event monitoring, MFA/external identity integration and a broader Security Center.
 
 Further pricing extensions are demand-driven: controlled FX conversion for cross-currency cost-to-price generation, additional explicit Base Cost source strategies, Target Gross Margin as a separate pricing rule, and commercial rounding strategies such as 0.05/0.10/0.50 or .99 endings. Item-specific packaging quantities and unit conversions remain a separate future capability; they are not encoded in global Packaging Types.
