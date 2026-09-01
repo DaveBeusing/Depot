@@ -31,7 +31,10 @@ public sealed class SessionService : IDisposable
 		_authorizationService = authorizationService;
 	}
 
+	public event EventHandler? SessionRevoked;
 	public bool LogoutRequestedByUser { get; private set; }
+	public bool ReauthenticationRequested { get; private set; }
+	public bool RestartLoginRequested => LogoutRequestedByUser || ReauthenticationRequested;
 	public Guid? CurrentSessionId
 	{
 		get { lock (_stateGate) return _currentSessionId; }
@@ -115,7 +118,9 @@ public sealed class SessionService : IDisposable
 		if (repository is null || sessionId is null) return false;
 		try
 		{
-			return await repository.UpdateHeartbeatAsync(sessionId.Value, _timeProvider.GetUtcNow().UtcDateTime, cancellationToken);
+			var active = await repository.UpdateHeartbeatAsync(sessionId.Value, _timeProvider.GetUtcNow().UtcDateTime, cancellationToken);
+			if (!active) HandleRemoteRevocation(sessionId.Value);
+			return active;
 		}
 		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
 		{
@@ -193,6 +198,7 @@ public sealed class SessionService : IDisposable
 	{
 		ObjectDisposedException.ThrowIf(_disposed, this);
 		LogoutRequestedByUser = false;
+		ReauthenticationRequested = false;
 	}
 
 	private async Task EndCurrentSessionAsync(UserSessionEndReason reason, CancellationToken cancellationToken)
@@ -247,7 +253,12 @@ public sealed class SessionService : IDisposable
 			{
 				try
 				{
-					await repository.UpdateHeartbeatAsync(sessionId, _timeProvider.GetUtcNow().UtcDateTime, cancellationToken);
+					var active = await repository.UpdateHeartbeatAsync(sessionId, _timeProvider.GetUtcNow().UtcDateTime, cancellationToken);
+					if (!active)
+					{
+						HandleRemoteRevocation(sessionId);
+						break;
+					}
 				}
 				catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
 				{
@@ -262,6 +273,25 @@ public sealed class SessionService : IDisposable
 		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
 		{
 		}
+	}
+
+	private void HandleRemoteRevocation(Guid sessionId)
+	{
+		CancellationTokenSource? cancellation;
+		lock (_stateGate)
+		{
+			if (_currentSessionId != sessionId) return;
+			_currentSessionId = null;
+			cancellation = _heartbeatCancellation;
+			_heartbeatCancellation = null;
+			_heartbeatTask = null;
+			ReauthenticationRequested = true;
+		}
+		cancellation?.Cancel();
+		cancellation?.Dispose();
+		_authorizationService.SignOut();
+		StartupDiagnostics.Log("Authenticated session was revoked remotely. Returning to login.");
+		SessionRevoked?.Invoke(this, EventArgs.Empty);
 	}
 
 	public void Dispose()

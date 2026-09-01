@@ -55,6 +55,26 @@ public sealed class UserSessionLifecycleTests : IDisposable
 	}
 
 	[Fact]
+	public async Task RemoteSessionRevocationRequestsReauthenticationOnNextHeartbeat()
+	{
+		var context = await CreateContextAsync();
+		Assert.True(await context.Authentication.SignInAsync(context.Email, "Correct-Password-42!", CancellationToken.None));
+		var sessionId = Assert.IsType<Guid>(context.Session.CurrentSessionId);
+		var eventRaised = false;
+		context.Session.SessionRevoked += (_, _) => eventRaised = true;
+
+		context.Clock.UtcNow = context.Clock.UtcNow.AddSeconds(10);
+		Assert.True(await context.Repository.EndAsync(sessionId, context.Clock.UtcNow, UserSessionEndReason.AdministrativeLogout, CancellationToken.None));
+		Assert.False(await context.Session.TrySendHeartbeatAsync());
+
+		Assert.True(eventRaised);
+		Assert.True(context.Session.ReauthenticationRequested);
+		Assert.True(context.Session.RestartLoginRequested);
+		Assert.Null(context.Session.CurrentSessionId);
+		context.Session.Dispose();
+	}
+
+	[Fact]
 	public async Task HeartbeatDatabaseFailureIsContained()
 	{
 		var context = await CreateContextAsync();
@@ -67,6 +87,7 @@ public sealed class UserSessionLifecycleTests : IDisposable
 		}
 
 		Assert.False(await context.Session.TrySendHeartbeatAsync());
+		Assert.False(context.Session.ReauthenticationRequested);
 		context.Session.Dispose();
 	}
 
@@ -93,7 +114,7 @@ public sealed class UserSessionLifecycleTests : IDisposable
 		var authorization = new AuthorizationService();
 		var clock = new MutableTimeProvider { UtcNow = new DateTime(2026, 8, 31, 20, 0, 0, DateTimeKind.Utc) };
 		var session = new SessionService(authorization);
-		session.Configure(sessions, new UserSessionClientInfo(Guid.NewGuid(), "TEST-CLIENT", "0.15.80-preview"), clock);
+		session.Configure(sessions, new UserSessionClientInfo(Guid.NewGuid(), "TEST-CLIENT", "0.15.86-preview"), clock);
 		var authentication = new AuthenticationService(users, roles, passwordHasher, authorization);
 		authentication.ConfigureSession(session);
 		return new TestContext(email, authentication, session, sessions, clock);
