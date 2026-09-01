@@ -24,6 +24,7 @@ public sealed class UserSessionLifecycleTests : IDisposable
 		var sessionId = Assert.IsType<Guid>(context.Session.CurrentSessionId);
 		var created = await context.Repository.GetBySessionIdAsync(sessionId, CancellationToken.None);
 		Assert.NotNull(created);
+		Assert.Equal(context.Clock.UtcNow, created!.LastActivityUtc);
 
 		context.Clock.UtcNow = context.Clock.UtcNow.AddSeconds(30);
 		Assert.True(await context.Session.TrySendHeartbeatAsync());
@@ -36,6 +37,64 @@ public sealed class UserSessionLifecycleTests : IDisposable
 		Assert.NotNull(ended.EndedUtc);
 		Assert.False(await context.Session.TrySendHeartbeatAsync());
 		context.Session.Dispose();
+	}
+
+	[Fact]
+	public async Task IdleTimeoutUsesRecordedUserActivityAndExpiresSession()
+	{
+		var context = await CreateContextAsync();
+		await SetPolicyAsync(context, 5, 12);
+		Assert.True(await context.Authentication.SignInAsync(context.Email, "Correct-Password-42!", CancellationToken.None));
+		var sessionId = Assert.IsType<Guid>(context.Session.CurrentSessionId);
+
+		context.Clock.UtcNow = context.Clock.UtcNow.AddMinutes(4);
+		context.Session.RecordActivity();
+		context.Clock.UtcNow = context.Clock.UtcNow.AddMinutes(4);
+		Assert.True(await context.Session.TrySendHeartbeatAsync());
+		var active = await context.Repository.GetBySessionIdAsync(sessionId, CancellationToken.None);
+		Assert.Null(active!.EndedUtc);
+		Assert.Equal(context.Clock.UtcNow.AddMinutes(-4), active.LastActivityUtc);
+
+		context.Clock.UtcNow = context.Clock.UtcNow.AddMinutes(2);
+		Assert.False(await context.Session.TrySendHeartbeatAsync());
+		var expired = await context.Repository.GetBySessionIdAsync(sessionId, CancellationToken.None);
+		Assert.Equal(UserSessionEndReason.Expired, expired!.EndReason);
+		Assert.NotNull(expired.EndedUtc);
+		Assert.True(context.Session.ReauthenticationRequested);
+		Assert.Null(context.Session.CurrentSessionId);
+		context.Session.Dispose();
+	}
+
+	[Fact]
+	public async Task MaximumSessionAgeExpiresEvenWhenUserRemainsActive()
+	{
+		var context = await CreateContextAsync();
+		await SetPolicyAsync(context, 480, 1);
+		Assert.True(await context.Authentication.SignInAsync(context.Email, "Correct-Password-42!", CancellationToken.None));
+		var sessionId = Assert.IsType<Guid>(context.Session.CurrentSessionId);
+
+		context.Clock.UtcNow = context.Clock.UtcNow.AddMinutes(59);
+		context.Session.RecordActivity();
+		Assert.True(await context.Session.TrySendHeartbeatAsync());
+		context.Clock.UtcNow = context.Clock.UtcNow.AddMinutes(2);
+		context.Session.RecordActivity();
+		Assert.False(await context.Session.TrySendHeartbeatAsync());
+
+		var expired = await context.Repository.GetBySessionIdAsync(sessionId, CancellationToken.None);
+		Assert.Equal(UserSessionEndReason.Expired, expired!.EndReason);
+		Assert.True(context.Session.ReauthenticationRequested);
+		Assert.Null(context.Session.CurrentSessionId);
+		context.Session.Dispose();
+	}
+
+	[Fact]
+	public async Task SessionPolicyDefaultsAreCreatedByFeatureMigration()
+	{
+		var context = await CreateContextAsync();
+		var policy = await context.Repository.GetPolicyAsync(CancellationToken.None);
+		Assert.Equal(UserSessionPolicy.DefaultIdleTimeoutMinutes, policy.IdleTimeoutMinutes);
+		Assert.Equal(UserSessionPolicy.DefaultMaximumSessionAgeHours, policy.MaximumSessionAgeHours);
+		Assert.Equal(1, policy.Version);
 	}
 
 	[Fact]
@@ -130,6 +189,15 @@ public sealed class UserSessionLifecycleTests : IDisposable
 		context.Session.Dispose();
 	}
 
+	private static async Task SetPolicyAsync(TestContext context, int idleMinutes, int maximumAgeHours)
+	{
+		var policy = await context.Repository.GetPolicyAsync(CancellationToken.None);
+		policy.IdleTimeoutMinutes = idleMinutes;
+		policy.MaximumSessionAgeHours = maximumAgeHours;
+		policy.UpdatedUtc = context.Clock.UtcNow;
+		Assert.True(await context.Repository.UpdatePolicyAsync(policy, policy.Version, CancellationToken.None));
+	}
+
 	private async Task<TestContext> CreateContextAsync()
 	{
 		var factory = new SqliteConnectionFactory(_path);
@@ -153,7 +221,7 @@ public sealed class UserSessionLifecycleTests : IDisposable
 		var authorization = new AuthorizationService();
 		var clock = new MutableTimeProvider { UtcNow = new DateTime(2026, 8, 31, 20, 0, 0, DateTimeKind.Utc) };
 		var session = new SessionService(authorization);
-		session.Configure(sessions, new UserSessionClientInfo(Guid.NewGuid(), "TEST-CLIENT", "0.15.92-preview"), clock);
+		session.Configure(sessions, new UserSessionClientInfo(Guid.NewGuid(), "TEST-CLIENT", "0.15.93-preview"), clock);
 		var authentication = new AuthenticationService(users, roles, passwordHasher, authorization);
 		authentication.ConfigureSession(session);
 		return new TestContext(email, authentication, session, sessions, clock);

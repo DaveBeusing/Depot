@@ -10,6 +10,7 @@ public sealed record UserSessionPresenceSnapshot(
 	IReadOnlyList<ActiveUserSession> Sessions,
 	IReadOnlyList<EndedUserSession> History,
 	UserSessionPresenceMetrics Metrics,
+	UserSessionPolicy Policy,
 	DateTime AsOfUtc);
 
 public sealed class UserSessionAdministrationService
@@ -36,11 +37,14 @@ public sealed class UserSessionAdministrationService
 	}
 
 	public bool CanTerminateSessions => _authorization.HasPermission(ApplicationPermission.UserSessionsTerminate);
+	public bool CanManagePolicy => _authorization.HasPermission(ApplicationPermission.SettingsManage);
 
 	public async Task<UserSessionPresenceSnapshot> GetSnapshotAsync(CancellationToken cancellationToken)
 	{
 		_authorization.RequirePermission(ApplicationPermission.UsersView);
 		var now = _timeProvider.GetUtcNow().UtcDateTime;
+		var policy = await _repository.GetPolicyAsync(cancellationToken);
+		await _repository.ExpireSessionsByPolicyAsync(now, policy, cancellationToken);
 		var cutoff = now - _options.PresenceTimeout;
 		var sessionsTask = _repository.GetActiveSessionsAsync(cutoff, null, cancellationToken);
 		var historyTask = _repository.GetRecentEndedSessionsAsync(HistoryLimit, cancellationToken);
@@ -50,7 +54,33 @@ public sealed class UserSessionAdministrationService
 			await sessionsTask,
 			await historyTask,
 			await metricsTask ?? new UserSessionPresenceMetrics(0, 0),
+			policy,
 			now);
+	}
+
+	public async Task<UserSessionPolicy> SavePolicyAsync(
+		int idleTimeoutMinutes,
+		int maximumSessionAgeHours,
+		long expectedVersion,
+		CancellationToken cancellationToken)
+	{
+		_authorization.RequirePermission(ApplicationPermission.SettingsManage);
+		ValidatePolicy(idleTimeoutMinutes, maximumSessionAgeHours);
+		var before = await _repository.GetPolicyAsync(cancellationToken);
+		if (before.Version != expectedVersion) throw new ConcurrencyConflictException("user session policy");
+
+		var after = CopyPolicy(before);
+		after.IdleTimeoutMinutes = idleTimeoutMinutes;
+		after.MaximumSessionAgeHours = maximumSessionAgeHours;
+		after.UpdatedUtc = _timeProvider.GetUtcNow().UtcDateTime;
+		if (!await _repository.UpdatePolicyAsync(after, expectedVersion, cancellationToken))
+			throw new ConcurrencyConflictException("user session policy");
+		after.Version = expectedVersion + 1;
+
+		await _repository.ExpireSessionsByPolicyAsync(after.UpdatedUtc, after, cancellationToken);
+		if (_audit is not null)
+			await _audit.RecordActionAsync(after.Id, "UpdateSessionPolicy", before, after, cancellationToken);
+		return after;
 	}
 
 	public async Task<bool> TerminateSessionAsync(Guid sessionId, CancellationToken cancellationToken)
@@ -83,6 +113,14 @@ public sealed class UserSessionAdministrationService
 		return ended;
 	}
 
+	private static void ValidatePolicy(int idleTimeoutMinutes, int maximumSessionAgeHours)
+	{
+		if (idleTimeoutMinutes is < UserSessionPolicy.MinimumIdleTimeoutMinutes or > UserSessionPolicy.MaximumIdleTimeoutMinutes)
+			throw new ArgumentOutOfRangeException(nameof(idleTimeoutMinutes), $"Idle timeout must be between {UserSessionPolicy.MinimumIdleTimeoutMinutes} and {UserSessionPolicy.MaximumIdleTimeoutMinutes} minutes.");
+		if (maximumSessionAgeHours is < UserSessionPolicy.MinimumMaximumSessionAgeHours or > UserSessionPolicy.MaximumMaximumSessionAgeHours)
+			throw new ArgumentOutOfRangeException(nameof(maximumSessionAgeHours), $"Maximum session age must be between {UserSessionPolicy.MinimumMaximumSessionAgeHours} and {UserSessionPolicy.MaximumMaximumSessionAgeHours} hours.");
+	}
+
 	private async Task AuditEndedSessionAsync(UserSession before, DateTime endedUtc, string action, CancellationToken cancellationToken)
 	{
 		if (_audit is null) return;
@@ -99,5 +137,14 @@ public sealed class UserSessionAdministrationService
 		LastSeenUtc = session.LastSeenUtc, LastActivityUtc = session.LastActivityUtc, EndedUtc = session.EndedUtc,
 		EndReason = session.EndReason, ClientInstanceId = session.ClientInstanceId, MachineName = session.MachineName,
 		AppVersion = session.AppVersion, Version = session.Version
+	};
+
+	private static UserSessionPolicy CopyPolicy(UserSessionPolicy policy) => new()
+	{
+		Id = policy.Id,
+		IdleTimeoutMinutes = policy.IdleTimeoutMinutes,
+		MaximumSessionAgeHours = policy.MaximumSessionAgeHours,
+		UpdatedUtc = policy.UpdatedUtc,
+		Version = policy.Version
 	};
 }

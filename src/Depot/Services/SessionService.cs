@@ -14,6 +14,7 @@ public sealed record UserSessionClientInfo(Guid ClientInstanceId, string? Machin
 /// </summary>
 public sealed class SessionService : IDisposable
 {
+	private static readonly TimeSpan ActivityUpdateGranularity = TimeSpan.FromSeconds(2);
 	private readonly AuthorizationService _authorizationService;
 	private readonly SemaphoreSlim _lifecycleGate = new(1, 1);
 	private readonly object _stateGate = new();
@@ -24,6 +25,7 @@ public sealed class SessionService : IDisposable
 	private CancellationTokenSource? _heartbeatCancellation;
 	private Task? _heartbeatTask;
 	private Guid? _currentSessionId;
+	private DateTime? _lastActivityUtc;
 	private bool _disposed;
 
 	public SessionService(AuthorizationService authorizationService)
@@ -86,6 +88,7 @@ public sealed class SessionService : IDisposable
 				UserId = userId,
 				StartedUtc = now,
 				LastSeenUtc = now,
+				LastActivityUtc = now,
 				ClientInstanceId = clientInfo.ClientInstanceId,
 				MachineName = clientInfo.MachineName,
 				AppVersion = clientInfo.AppVersion
@@ -96,6 +99,7 @@ public sealed class SessionService : IDisposable
 			lock (_stateGate)
 			{
 				_currentSessionId = session.SessionId;
+				_lastActivityUtc = now;
 				_heartbeatCancellation = heartbeatCancellation;
 				_heartbeatTask = RunHeartbeatAsync(repository, session.SessionId, heartbeatCancellation.Token);
 			}
@@ -103,6 +107,18 @@ public sealed class SessionService : IDisposable
 		finally
 		{
 			_lifecycleGate.Release();
+		}
+	}
+
+	public void RecordActivity()
+	{
+		if (_disposed) return;
+		var now = _timeProvider.GetUtcNow().UtcDateTime;
+		lock (_stateGate)
+		{
+			if (_currentSessionId is null) return;
+			if (_lastActivityUtc is { } last && now - last < ActivityUpdateGranularity) return;
+			_lastActivityUtc = now;
 		}
 	}
 
@@ -118,9 +134,7 @@ public sealed class SessionService : IDisposable
 		if (repository is null || sessionId is null) return false;
 		try
 		{
-			var active = await repository.UpdateHeartbeatAsync(sessionId.Value, _timeProvider.GetUtcNow().UtcDateTime, cancellationToken);
-			if (!active) HandleRemoteRevocation(sessionId.Value);
-			return active;
+			return await SendHeartbeatAsync(repository, sessionId.Value, cancellationToken).ConfigureAwait(false);
 		}
 		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
 		{
@@ -210,6 +224,32 @@ public sealed class SessionService : IDisposable
 		ReauthenticationRequested = false;
 	}
 
+	private async Task<bool> SendHeartbeatAsync(UserSessionRepository repository, Guid sessionId, CancellationToken cancellationToken)
+	{
+		DateTime? lastActivityUtc;
+		lock (_stateGate)
+		{
+			if (_currentSessionId != sessionId) return false;
+			lastActivityUtc = _lastActivityUtc;
+		}
+
+		var now = _timeProvider.GetUtcNow().UtcDateTime;
+		var active = await repository.UpdateHeartbeatAsync(sessionId, now, lastActivityUtc, cancellationToken).ConfigureAwait(false);
+		if (!active)
+		{
+			HandleRemoteTermination(sessionId, false);
+			return false;
+		}
+
+		var policy = await repository.GetPolicyAsync(cancellationToken).ConfigureAwait(false);
+		if (await repository.ExpireSessionIfPolicyExceededAsync(sessionId, now, policy, cancellationToken).ConfigureAwait(false))
+		{
+			HandleRemoteTermination(sessionId, true);
+			return false;
+		}
+		return true;
+	}
+
 	private async Task EndCurrentSessionAsync(UserSessionEndReason reason, CancellationToken cancellationToken)
 	{
 		UserSessionRepository? repository;
@@ -227,6 +267,7 @@ public sealed class SessionService : IDisposable
 				heartbeatCancellation = _heartbeatCancellation;
 				heartbeatTask = _heartbeatTask;
 				_currentSessionId = null;
+				_lastActivityUtc = null;
 				_heartbeatCancellation = null;
 				_heartbeatTask = null;
 			}
@@ -262,12 +303,7 @@ public sealed class SessionService : IDisposable
 			{
 				try
 				{
-					var active = await repository.UpdateHeartbeatAsync(sessionId, _timeProvider.GetUtcNow().UtcDateTime, cancellationToken).ConfigureAwait(false);
-					if (!active)
-					{
-						HandleRemoteRevocation(sessionId);
-						break;
-					}
+					if (!await SendHeartbeatAsync(repository, sessionId, cancellationToken).ConfigureAwait(false)) break;
 				}
 				catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
 				{
@@ -284,13 +320,14 @@ public sealed class SessionService : IDisposable
 		}
 	}
 
-	private void HandleRemoteRevocation(Guid sessionId)
+	private void HandleRemoteTermination(Guid sessionId, bool expired)
 	{
 		CancellationTokenSource? cancellation;
 		lock (_stateGate)
 		{
 			if (_currentSessionId != sessionId) return;
 			_currentSessionId = null;
+			_lastActivityUtc = null;
 			cancellation = _heartbeatCancellation;
 			_heartbeatCancellation = null;
 			_heartbeatTask = null;
@@ -299,7 +336,9 @@ public sealed class SessionService : IDisposable
 		cancellation?.Cancel();
 		cancellation?.Dispose();
 		_authorizationService.SignOut();
-		StartupDiagnostics.Log("Authenticated session was revoked remotely. Returning to login.");
+		StartupDiagnostics.Log(expired
+			? "Authenticated session expired under the active session policy. Returning to login."
+			: "Authenticated session was revoked remotely. Returning to login.");
 		SessionRevoked?.Invoke(this, EventArgs.Empty);
 	}
 
@@ -314,6 +353,7 @@ public sealed class SessionService : IDisposable
 			_heartbeatCancellation = null;
 			_heartbeatTask = null;
 			_currentSessionId = null;
+			_lastActivityUtc = null;
 		}
 		cancellation?.Cancel();
 		cancellation?.Dispose();

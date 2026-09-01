@@ -36,11 +36,15 @@ public sealed class UserSessionRepository : DatabaseRepository
 			Parameter("$MachineName", session.MachineName),
 			Parameter("$AppVersion", session.AppVersion));
 
-	public async Task<bool> UpdateHeartbeatAsync(Guid sessionId, DateTime lastSeenUtc, CancellationToken cancellationToken) =>
+	public Task<bool> UpdateHeartbeatAsync(Guid sessionId, DateTime lastSeenUtc, CancellationToken cancellationToken) =>
+		UpdateHeartbeatAsync(sessionId, lastSeenUtc, null, cancellationToken);
+
+	public async Task<bool> UpdateHeartbeatAsync(Guid sessionId, DateTime lastSeenUtc, DateTime? lastActivityUtc, CancellationToken cancellationToken) =>
 		await Database.ExecuteAsync(
-			"UPDATE UserSessions SET LastSeenUtc = $LastSeenUtc, Version = Version + 1 WHERE SessionId = $SessionId AND EndedUtc IS NULL;",
+			"UPDATE UserSessions SET LastSeenUtc = $LastSeenUtc, LastActivityUtc = COALESCE($LastActivityUtc, LastActivityUtc), Version = Version + 1 WHERE SessionId = $SessionId AND EndedUtc IS NULL;",
 			cancellationToken,
 			Parameter("$LastSeenUtc", Format(lastSeenUtc)),
+			Parameter("$LastActivityUtc", Format(lastActivityUtc)),
 			Parameter("$SessionId", Format(sessionId))) == 1;
 
 	public async Task<bool> EndAsync(Guid sessionId, DateTime endedUtc, UserSessionEndReason reason, CancellationToken cancellationToken) =>
@@ -149,6 +153,66 @@ public sealed class UserSessionRepository : DatabaseRepository
 			cancellationToken,
 			Parameter("$PresenceCutoff", Format(presenceCutoffUtc)));
 
+	public async Task<UserSessionPolicy> GetPolicyAsync(CancellationToken cancellationToken)
+	{
+		var policy = await Database.QuerySingleOrDefaultAsync(
+			"SELECT Id, IdleTimeoutMinutes, MaximumSessionAgeHours, UpdatedUtc, Version FROM UserSessionPolicy WHERE Id = 1;",
+			ReadPolicy,
+			cancellationToken);
+		return policy ?? new UserSessionPolicy
+		{
+			UpdatedUtc = DateTime.UnixEpoch,
+			Version = 1
+		};
+	}
+
+	public async Task<bool> UpdatePolicyAsync(UserSessionPolicy policy, long expectedVersion, CancellationToken cancellationToken) =>
+		await Database.ExecuteAsync(
+			"UPDATE UserSessionPolicy SET IdleTimeoutMinutes = $IdleTimeoutMinutes, MaximumSessionAgeHours = $MaximumSessionAgeHours, UpdatedUtc = $UpdatedUtc, Version = Version + 1 WHERE Id = 1 AND Version = $ExpectedVersion;",
+			cancellationToken,
+			Parameter("$IdleTimeoutMinutes", policy.IdleTimeoutMinutes),
+			Parameter("$MaximumSessionAgeHours", policy.MaximumSessionAgeHours),
+			Parameter("$UpdatedUtc", Format(policy.UpdatedUtc)),
+			Parameter("$ExpectedVersion", expectedVersion)) == 1;
+
+	public async Task<bool> ExpireSessionIfPolicyExceededAsync(Guid sessionId, DateTime nowUtc, UserSessionPolicy policy, CancellationToken cancellationToken)
+	{
+		var idleCutoffUtc = nowUtc - policy.IdleTimeout;
+		var maximumAgeCutoffUtc = nowUtc - policy.MaximumSessionAge;
+		return await Database.ExecuteAsync(
+			"""
+			UPDATE UserSessions
+			SET EndedUtc = $EndedUtc, EndReason = $EndReason, Version = Version + 1
+			WHERE SessionId = $SessionId
+			  AND EndedUtc IS NULL
+			  AND (StartedUtc <= $MaximumAgeCutoff OR COALESCE(LastActivityUtc, LastSeenUtc, StartedUtc) <= $IdleCutoff);
+			""",
+			cancellationToken,
+			Parameter("$EndedUtc", Format(nowUtc)),
+			Parameter("$EndReason", (int)UserSessionEndReason.Expired),
+			Parameter("$SessionId", Format(sessionId)),
+			Parameter("$MaximumAgeCutoff", Format(maximumAgeCutoffUtc)),
+			Parameter("$IdleCutoff", Format(idleCutoffUtc))) == 1;
+	}
+
+	public Task<int> ExpireSessionsByPolicyAsync(DateTime nowUtc, UserSessionPolicy policy, CancellationToken cancellationToken)
+	{
+		var idleCutoffUtc = nowUtc - policy.IdleTimeout;
+		var maximumAgeCutoffUtc = nowUtc - policy.MaximumSessionAge;
+		return Database.ExecuteAsync(
+			"""
+			UPDATE UserSessions
+			SET EndedUtc = $EndedUtc, EndReason = $EndReason, Version = Version + 1
+			WHERE EndedUtc IS NULL
+			  AND (StartedUtc <= $MaximumAgeCutoff OR COALESCE(LastActivityUtc, LastSeenUtc, StartedUtc) <= $IdleCutoff);
+			""",
+			cancellationToken,
+			Parameter("$EndedUtc", Format(nowUtc)),
+			Parameter("$EndReason", (int)UserSessionEndReason.Expired),
+			Parameter("$MaximumAgeCutoff", Format(maximumAgeCutoffUtc)),
+			Parameter("$IdleCutoff", Format(idleCutoffUtc)));
+	}
+
 	private static UserSession ReadSession(DbDataReader reader) => new()
 	{
 		Id = reader.GetInt64(0), SessionId = Guid.Parse(reader.GetString(1)), UserId = reader.GetInt64(2),
@@ -168,6 +232,15 @@ public sealed class UserSessionRepository : DatabaseRepository
 		ReadUtc(reader, 5), ReadUtc(reader, 6), ReadUtc(reader, 7), (UserSessionEndReason)reader.GetInt32(8),
 		Guid.Parse(reader.GetString(9)), reader.IsDBNull(10) ? null : reader.GetString(10),
 		reader.IsDBNull(11) ? null : reader.GetString(11), reader.GetInt64(12));
+
+	private static UserSessionPolicy ReadPolicy(DbDataReader reader) => new()
+	{
+		Id = reader.GetInt64(0),
+		IdleTimeoutMinutes = Convert.ToInt32(reader.GetValue(1), CultureInfo.InvariantCulture),
+		MaximumSessionAgeHours = Convert.ToInt32(reader.GetValue(2), CultureInfo.InvariantCulture),
+		UpdatedUtc = ReadUtc(reader, 3),
+		Version = reader.GetInt64(4)
+	};
 
 	private static string Format(Guid value) => value.ToString("D", CultureInfo.InvariantCulture);
 	private static string Format(DateTime value) => value.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture);

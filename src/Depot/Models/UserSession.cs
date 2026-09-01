@@ -29,6 +29,25 @@ public sealed class UserSession
 	public long Version { get; set; } = 1;
 }
 
+public sealed class UserSessionPolicy
+{
+	public const int DefaultIdleTimeoutMinutes = 30;
+	public const int DefaultMaximumSessionAgeHours = 12;
+	public const int MinimumIdleTimeoutMinutes = 5;
+	public const int MaximumIdleTimeoutMinutes = 480;
+	public const int MinimumMaximumSessionAgeHours = 1;
+	public const int MaximumMaximumSessionAgeHours = 168;
+
+	public long Id { get; set; } = 1;
+	public int IdleTimeoutMinutes { get; set; } = DefaultIdleTimeoutMinutes;
+	public int MaximumSessionAgeHours { get; set; } = DefaultMaximumSessionAgeHours;
+	public DateTime UpdatedUtc { get; set; }
+	public long Version { get; set; } = 1;
+
+	public TimeSpan IdleTimeout => TimeSpan.FromMinutes(IdleTimeoutMinutes);
+	public TimeSpan MaximumSessionAge => TimeSpan.FromHours(MaximumSessionAgeHours);
+}
+
 public sealed record ActiveUserSession(
 	long Id,
 	Guid SessionId,

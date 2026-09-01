@@ -104,6 +104,11 @@ public partial class App : Application
 		StartupDiagnostics.Log("MainWindow created.");
 		mainViewModel.LogoutRequested += OnLogoutRequested;
 		composition.Services.Session.SessionRevoked += OnSessionRevoked;
+		mainWindow.PreviewKeyDown += (_, _) => composition.Services.Session.RecordActivity();
+		mainWindow.PreviewMouseDown += (_, _) => composition.Services.Session.RecordActivity();
+		mainWindow.PreviewMouseMove += (_, _) => composition.Services.Session.RecordActivity();
+		mainWindow.PreviewMouseWheel += (_, _) => composition.Services.Session.RecordActivity();
+		mainWindow.PreviewTouchDown += (_, _) => composition.Services.Session.RecordActivity();
 		try { mainWindow.ShowDialog(); }
 		finally
 		{

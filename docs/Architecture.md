@@ -18,9 +18,9 @@ Composition classes create database infrastructure, repositories, services and r
 
 The shell is permission-aware and workspace-oriented. Finance exposes **Receivables**, **Payables**, **Inventory Accounting**, **Banking**, **Financial Reporting** and **Localization**. UI visibility improves usability only; service authorization is authoritative.
 
-## Authentication sessions, presence and revocation
+## Authentication sessions, presence and policy enforcement
 
-`AuthenticationService` remains the successful-login boundary and `AuthorizationService` remains the current identity/RBAC source. `SessionService` extends that flow with one persistent `UserSession` per successful login, a single non-overlapping heartbeat loop and client-side response to server-side session revocation. Failed logins never create sessions.
+`AuthenticationService` remains the successful-login boundary and `AuthorizationService` remains the current identity/RBAC source. `SessionService` extends that flow with one persistent `UserSession` per successful login, a single non-overlapping heartbeat loop, in-application activity timestamping and client-side response to server-side session termination. Failed logins never create sessions.
 
 Presence is derived rather than stored:
 
@@ -29,13 +29,26 @@ EndedUtc IS NULL
 AND LastSeenUtc >= UtcNow - PresenceTimeout
 ```
 
-The central defaults are a 30-second heartbeat and a 90-second presence timeout. Normal logout ends a session as `LoggedOut`; clean application shutdown uses `ApplicationClosed` with a bounded write. Crashes, power loss, network loss, standby and process termination require no explicit cleanup because stale heartbeats naturally age out. Heartbeat updates include `EndedUtc IS NULL`, so a delayed heartbeat cannot reactivate an ended session.
+The central runtime defaults are a 30-second heartbeat and a 90-second presence timeout. Normal logout ends a session as `LoggedOut`; clean application shutdown uses `ApplicationClosed` with a bounded write. Crashes, power loss, network loss, standby and process termination require no explicit cleanup because stale heartbeats naturally age out. Heartbeat updates include `EndedUtc IS NULL`, so a delayed heartbeat cannot reactivate an ended session.
 
-Session administration has two authorization levels. `Users.View` permits active-session, presence-metric and recent-history reads. `UserSessions.Terminate` additionally permits destructive session control. Administrators can terminate one active session or all open sessions for a selected user. Those actions use `AdministrativeLogout`, are confirmed in the UI and are audited. The affected client detects the ended row on a later heartbeat, clears its local authorization context and returns to the sign-in flow.
+A centrally persisted `UserSessionPolicy` adds two independent security limits:
+
+```text
+Idle timeout default:        30 minutes
+Maximum session age default: 12 hours
+```
+
+The supported ranges are 5–480 idle minutes and 1–168 maximum-age hours. Keyboard, mouse and touch input received by the Depot main window updates an in-memory activity timestamp with a small throttle. The timestamp is persisted only with the normal heartbeat; input content is never recorded. The heartbeat writes the latest activity before policy evaluation, preventing a recent user action from being lost at the idle boundary.
+
+Policy enforcement ends a still-open session with `Expired` when either `UtcNow - LastActivityUtc >= IdleTimeout` or `UtcNow - StartedUtc >= MaximumSessionAge`. Maximum session age is absolute even while the user remains active. Saving a stricter policy also evaluates all currently open sessions immediately. Affected clients detect the ended row on their next heartbeat, clear local authorization and return to sign-in.
+
+Session administration has three authorization levels. `Users.View` permits active-session, presence-metric, recent-history and policy reads. `UserSessions.Terminate` additionally permits destructive session control. `Settings.Manage` permits changes to idle timeout and maximum session age. Policy updates are optimistic-versioned and are Audit-relevant administration changes when `AuditService` is present.
+
+Administrators can terminate one active session or all open sessions for a selected user. Those actions use `AdministrativeLogout`, are confirmed in the UI and are audited. The affected client detects the ended row on a later heartbeat, clears its local authorization context and returns to the sign-in flow.
 
 User deactivation is integrated with the same lifecycle. `UserService` ends every open session for the deactivated user with `Revoked` in the same transaction as the account-state change and Audit evidence. Thus deactivation applies to already-authenticated clients, not only future authentication attempts.
 
-**Administration → User Sessions** exposes Active and History views. Active rows show the concrete login instance; History shows the 200 most recently ended sessions with duration and end reason. Multiple sessions per user remain intentional. Dashboard presence distinguishes `COUNT(DISTINCT UserId)` online users from active session rows. Heartbeats remain technical liveness writes and are not Audit events.
+**Administration → User Sessions** exposes the current policy plus Active and History views. Active rows show the concrete login instance; History shows the 200 most recently ended sessions with duration and end reason, including `Expired`. Multiple sessions per user remain intentional. Dashboard presence distinguishes `COUNT(DISTINCT UserId)` online users from active session rows. Heartbeats and raw input events remain technical liveness signals and are not Audit events.
 
 See [User Sessions and Online Presence](UserSessions.md) for the persistence, lifecycle, privacy and security contract.
 
@@ -81,11 +94,11 @@ Customer → Region → Global resolution
 - Core database schema: **30**
 - Sales feature schema: **10**
 - Finance feature schema: **9**
-- User Sessions feature schema: **1**
+- User Sessions feature schema: **2**
 - Application: **0.15.x-preview**
 - Help manifest: **1.20**
 
-Core schema 30 remains the current shared compatibility baseline. Sales schema 9 introduced scoped price lists, Sales Regions and quote/order price-source snapshots. Sales schema 10 adds provider-neutral `ItemCostProfiles` and `ItemCostComponents`. Finance schema evolution remains independent through Finance schema 9. User Sessions schema 1 adds provider-neutral persistent authenticated sessions and presence indexes; revocation, bulk termination and history reuse that schema without another migration.
+Core schema 30 remains the current shared compatibility baseline. Sales schema 9 introduced scoped price lists, Sales Regions and quote/order price-source snapshots. Sales schema 10 adds provider-neutral `ItemCostProfiles` and `ItemCostComponents`. Finance schema evolution remains independent through Finance schema 9. User Sessions schema 1 introduced provider-neutral persistent authenticated sessions and presence indexes; schema 2 adds the centrally persisted `UserSessionPolicy` singleton. The 1→2 policy migration, seed and feature-version update execute in one provider write transaction.
 
 Feature schemas are versioned independently from the core schema. A feature-local persistence change increments its feature version; a shared/core schema change increments `DatabaseVersion.CurrentVersion`.
 
@@ -93,7 +106,7 @@ Feature schemas are versioned independently from the core schema. A feature-loca
 
 Mutable configuration uses optimistic versions. Required business mutation and Audit evidence commit or roll back together where they form one transaction.
 
-Session heartbeat/logout/revocation concurrency is protected by lifecycle coordination and repository predicates that update heartbeats only while `EndedUtc IS NULL`. Presence therefore cannot be revived by a late write after logout or administrative termination. User deactivation and revocation of that user's open sessions share one database transaction.
+Session heartbeat/logout/revocation/expiration concurrency is protected by lifecycle coordination and repository predicates that update heartbeats only while `EndedUtc IS NULL`. Presence therefore cannot be revived by a late write after logout, policy expiration or administrative termination. The heartbeat persists the current activity timestamp before applying idle/max-age predicates, avoiding a boundary race. User deactivation and revocation of that user's open sessions share one database transaction. Session-policy writes use an expected Version and reject stale edits.
 
 Bulk price Apply is all-or-nothing through the existing provider write transaction. Preview captures target PriceList/entry versions plus item-cost evidence. Apply reloads the current records, recalculates through `ItemCostCalculationService`, compares evidence and fails closed on a concurrent change. Preview and Apply therefore cannot diverge through separate formulas.
 
@@ -107,10 +120,10 @@ Commercial cost and generated price amounts use deterministic decimal currency p
 
 ## RBAC and segregation of duties
 
-Service-layer permissions are authoritative. Item-cost visibility/maintenance reuses the existing Item permissions; Bulk Pricing reuses Sales Pricing permissions in combination with item-cost visibility. User-session reads require `Users.View`; administrative termination additionally requires `UserSessions.Terminate`. UI controls mirror these rights but do not replace service authorization.
+Service-layer permissions are authoritative. Item-cost visibility/maintenance reuses the existing Item permissions; Bulk Pricing reuses Sales Pricing permissions in combination with item-cost visibility. User-session reads require `Users.View`; administrative termination additionally requires `UserSessions.Terminate`; session-policy changes additionally require `Settings.Manage`. UI controls mirror these rights but do not replace service authorization.
 
 The Finance role receives normal Finance management rights; sensitive supplier/payment approvals remain independently controlled. Deployments can define stricter custom-role separation for configuration, posting, approval, reconciliation, reporting preparation and review.
 
 ## Provider acceptance
 
-Core persistence, Sales schema 10 and User Sessions schema 1 DDL/code exist for SQLite, SQL Server and MySQL/MariaDB. Provider-neutral implementation is not equivalent to production certification. Live migration, locking, deadlock/retry, recovery, backup/restore, date/decimal behavior and representative performance/concurrency acceptance remain required for every advertised server/version matrix.
+Core persistence, Sales schema 10 and User Sessions schema 2 DDL/code exist for SQLite, SQL Server and MySQL/MariaDB. Provider-neutral implementation is not equivalent to production certification. Live migration, locking, deadlock/retry, recovery, backup/restore, date/decimal behavior and representative performance/concurrency acceptance remain required for every advertised server/version matrix.

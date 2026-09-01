@@ -7,7 +7,7 @@ namespace Depot.Data;
 
 public static class UserSessionSchemaMigration
 {
-	public const int CurrentVersion = 1;
+	public const int CurrentVersion = 2;
 	private const string FeatureName = "UserSessions";
 
 	public static void Migrate(IDatabaseConnectionFactory connectionFactory)
@@ -24,8 +24,31 @@ public static class UserSessionSchemaMigration
 			version = 1;
 		}
 
+		if (version == 1)
+		{
+			MigratePolicy(connectionFactory);
+			version = 2;
+		}
+
 		if (version != CurrentVersion)
 			throw new InvalidOperationException($"User session schema version '{version}' is not supported. Expected '{CurrentVersion}'.");
+	}
+
+	private static void MigratePolicy(IDatabaseConnectionFactory connectionFactory)
+	{
+		using var connection = connectionFactory.CreateConnection();
+		connection.Open();
+		using var transaction = connectionFactory.BeginWriteTransaction(connection);
+		using var command = connection.CreateCommand();
+		command.Transaction = transaction;
+		foreach (var statement in UserSessionSchema.GetPolicyMigrationStatements(connectionFactory.Provider))
+		{
+			command.CommandText = statement;
+			command.ExecuteNonQuery();
+		}
+		command.CommandText = VersionUpsertSql(connectionFactory.Provider, 2);
+		command.ExecuteNonQuery();
+		transaction.Commit();
 	}
 
 	private static void EnsureVersionTable(IDatabaseConnectionFactory connectionFactory)
@@ -58,13 +81,15 @@ public static class UserSessionSchemaMigration
 		using var connection = connectionFactory.CreateConnection();
 		connection.Open();
 		using var command = connection.CreateCommand();
-		command.CommandText = connectionFactory.Provider switch
-		{
-			DatabaseProvider.Local => $"INSERT INTO DepotFeatureVersions (Name, Version) VALUES ('{FeatureName}', {version}) ON CONFLICT(Name) DO UPDATE SET Version=excluded.Version;",
-			DatabaseProvider.SqlServer => $"IF EXISTS (SELECT 1 FROM DepotFeatureVersions WHERE Name=N'{FeatureName}') UPDATE DepotFeatureVersions SET Version={version} WHERE Name=N'{FeatureName}'; ELSE INSERT INTO DepotFeatureVersions (Name, Version) VALUES (N'{FeatureName}', {version});",
-			DatabaseProvider.MySql => $"INSERT INTO DepotFeatureVersions (Name, Version) VALUES ('{FeatureName}', {version}) ON DUPLICATE KEY UPDATE Version=VALUES(Version);",
-			_ => throw new NotSupportedException($"User session migrations are not supported for provider '{connectionFactory.Provider}'.")
-		};
+		command.CommandText = VersionUpsertSql(connectionFactory.Provider, version);
 		command.ExecuteNonQuery();
 	}
+
+	private static string VersionUpsertSql(DatabaseProvider provider, int version) => provider switch
+	{
+		DatabaseProvider.Local => $"INSERT INTO DepotFeatureVersions (Name, Version) VALUES ('{FeatureName}', {version}) ON CONFLICT(Name) DO UPDATE SET Version=excluded.Version;",
+		DatabaseProvider.SqlServer => $"IF EXISTS (SELECT 1 FROM DepotFeatureVersions WHERE Name=N'{FeatureName}') UPDATE DepotFeatureVersions SET Version={version} WHERE Name=N'{FeatureName}'; ELSE INSERT INTO DepotFeatureVersions (Name, Version) VALUES (N'{FeatureName}', {version});",
+		DatabaseProvider.MySql => $"INSERT INTO DepotFeatureVersions (Name, Version) VALUES ('{FeatureName}', {version}) ON DUPLICATE KEY UPDATE Version=VALUES(Version);",
+		_ => throw new NotSupportedException($"User session migrations are not supported for provider '{provider}'.")
+	};
 }

@@ -23,6 +23,11 @@ public sealed class UserSessionsViewModel : BaseViewModel, IDisposable
 	private long _onlineUsers;
 	private long _activeSessions;
 	private DateTime _asOfUtc;
+	private int _idleTimeoutMinutes = UserSessionPolicy.DefaultIdleTimeoutMinutes;
+	private int _maximumSessionAgeHours = UserSessionPolicy.DefaultMaximumSessionAgeHours;
+	private long _policyVersion = 1;
+	private bool _policyDirty;
+	private bool _loadingPolicy;
 	private bool _disposed;
 
 	public UserSessionsViewModel(UserSessionAdministrationService service, IFileDialogService? dialogs = null, UserSessionPresenceOptions? options = null)
@@ -32,13 +37,17 @@ public sealed class UserSessionsViewModel : BaseViewModel, IDisposable
 		_options = options ?? UserSessionPresenceOptions.Default;
 		TerminateSessionCommand = new AsyncRelayCommand(TerminateSelectedSessionAsync, CanTerminateSelectedSession);
 		TerminateUserSessionsCommand = new AsyncRelayCommand(TerminateSelectedUserSessionsAsync, CanTerminateSelectedSession);
+		SavePolicyCommand = new AsyncRelayCommand(SavePolicyAsync, CanSavePolicy);
 	}
 
 	public ObservableCollection<UserSessionRowViewModel> Sessions { get; } = [];
 	public ObservableCollection<UserSessionHistoryRowViewModel> History { get; } = [];
 	public AsyncRelayCommand TerminateSessionCommand { get; }
 	public AsyncRelayCommand TerminateUserSessionsCommand { get; }
+	public AsyncRelayCommand SavePolicyCommand { get; }
 	public bool CanTerminateSessions => _service.CanTerminateSessions;
+	public bool CanManagePolicy => _service.CanManagePolicy;
+	public string PolicyRangeHint => $"Idle {UserSessionPolicy.MinimumIdleTimeoutMinutes}-{UserSessionPolicy.MaximumIdleTimeoutMinutes} min · Maximum age {UserSessionPolicy.MinimumMaximumSessionAgeHours}-{UserSessionPolicy.MaximumMaximumSessionAgeHours} h";
 	public string SearchText
 	{
 		get => _searchText;
@@ -58,6 +67,39 @@ public sealed class UserSessionsViewModel : BaseViewModel, IDisposable
 	}
 	public long OnlineUsers { get => _onlineUsers; private set { _onlineUsers = value; OnPropertyChanged(); } }
 	public long ActiveSessions { get => _activeSessions; private set { _activeSessions = value; OnPropertyChanged(); } }
+	public int IdleTimeoutMinutes
+	{
+		get => _idleTimeoutMinutes;
+		set
+		{
+			if (_idleTimeoutMinutes == value) return;
+			_idleTimeoutMinutes = value;
+			OnPropertyChanged();
+			MarkPolicyDirty();
+		}
+	}
+	public int MaximumSessionAgeHours
+	{
+		get => _maximumSessionAgeHours;
+		set
+		{
+			if (_maximumSessionAgeHours == value) return;
+			_maximumSessionAgeHours = value;
+			OnPropertyChanged();
+			MarkPolicyDirty();
+		}
+	}
+	public bool IsPolicyDirty
+	{
+		get => _policyDirty;
+		private set
+		{
+			if (_policyDirty == value) return;
+			_policyDirty = value;
+			OnPropertyChanged();
+			SavePolicyCommand.RaiseCanExecuteChanged();
+		}
+	}
 	public bool HasSessions => Sessions.Count > 0;
 	public bool HasNoSessions => !HasSessions;
 	public bool HasHistory => History.Count > 0;
@@ -79,6 +121,7 @@ public sealed class UserSessionsViewModel : BaseViewModel, IDisposable
 			_asOfUtc = snapshot.AsOfUtc;
 			OnlineUsers = snapshot.Metrics.OnlineUsers;
 			ActiveSessions = snapshot.Metrics.ActiveSessions;
+			if (!IsPolicyDirty) ApplyPolicy(snapshot.Policy);
 			ApplyFilter();
 			SelectedSession = selectedId is null ? null : Sessions.FirstOrDefault(row => row.SessionId == selectedId);
 			CompleteOperation(Sessions.Count == 0, "User sessions refreshed");
@@ -101,6 +144,26 @@ public sealed class UserSessionsViewModel : BaseViewModel, IDisposable
 		_pollingCancellation?.Cancel();
 		_pollingCancellation?.Dispose();
 		_pollingCancellation = null;
+	}
+
+	private async Task SavePolicyAsync(CancellationToken cancellationToken)
+	{
+		if (!CanManagePolicy || !IsPolicyDirty) return;
+		if (_dialogs is not null && !_dialogs.Confirm(new ConfirmationDialogRequest(
+			"Save session policy?",
+			"Apply the new idle timeout and maximum session age? Active sessions already beyond the new limits will be expired and returned to sign-in on their next heartbeat.",
+			true))) return;
+
+		BeginOperation("Saving session policy");
+		try
+		{
+			var saved = await _service.SavePolicyAsync(IdleTimeoutMinutes, MaximumSessionAgeHours, _policyVersion, cancellationToken);
+			ApplyPolicy(saved);
+			await LoadAsync(cancellationToken);
+			CompleteOperation(Sessions.Count == 0, "Session policy saved");
+		}
+		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
+		catch (Exception exception) { FailOperation(exception, "Session policy could not be saved"); }
 	}
 
 	private async Task TerminateSelectedSessionAsync(CancellationToken cancellationToken)
@@ -141,6 +204,7 @@ public sealed class UserSessionsViewModel : BaseViewModel, IDisposable
 	}
 
 	private bool CanTerminateSelectedSession() => SelectedSession is not null && CanTerminateSessions;
+	private bool CanSavePolicy() => CanManagePolicy && IsPolicyDirty;
 
 	private async Task RunPollingAsync(CancellationToken cancellationToken)
 	{
@@ -151,6 +215,25 @@ public sealed class UserSessionsViewModel : BaseViewModel, IDisposable
 			while (await timer.WaitForNextTickAsync(cancellationToken)) await LoadAsync(cancellationToken);
 		}
 		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
+	}
+
+	private void ApplyPolicy(UserSessionPolicy policy)
+	{
+		_loadingPolicy = true;
+		try
+		{
+			_policyVersion = policy.Version;
+			IdleTimeoutMinutes = policy.IdleTimeoutMinutes;
+			MaximumSessionAgeHours = policy.MaximumSessionAgeHours;
+			IsPolicyDirty = false;
+		}
+		finally { _loadingPolicy = false; }
+	}
+
+	private void MarkPolicyDirty()
+	{
+		if (_loadingPolicy) return;
+		IsPolicyDirty = true;
 	}
 
 	private void ApplyFilter()
@@ -175,6 +258,7 @@ public sealed class UserSessionsViewModel : BaseViewModel, IDisposable
 		StopPolling();
 		TerminateSessionCommand.Dispose();
 		TerminateUserSessionsCommand.Dispose();
+		SavePolicyCommand.Dispose();
 		_refreshGate.Dispose();
 	}
 }

@@ -4,11 +4,13 @@ Updated: 2026-09-01
 
 Depot is on the `0.15.x-preview` development line. The repository contains the integrated Finance platform: foundation/master data, immutable General Ledger, Receivables, Payables, FIFO Inventory Accounting, Banking and Payments, Financial Reporting, and effective-dated Localization.
 
-Depot also has persistent authenticated user sessions, heartbeat-derived online presence, administrative revocation and recent session history. Every successful login creates a unique session; failed logins create none. Normal logout and clean application shutdown end the current session explicitly, while crash, power loss, network loss, standby and process termination age out automatically through the 90-second presence timeout. Multi-session per user is supported.
+Depot also has persistent authenticated user sessions, heartbeat-derived online presence, configurable session lifetime policy, administrative revocation and recent session history. Every successful login creates a unique session; failed logins create none. Normal logout and clean application shutdown end the current session explicitly, while crash, power loss, network loss, standby and process termination age out automatically through the 90-second presence timeout. Multi-session per user is supported.
 
-Administrators with `Users.View` can open **Administration → User Sessions** to review active sessions, Online Users/Active Sessions metrics and the 200 most recently ended sessions. Users with the additional `UserSessions.Terminate` permission can terminate one active session or all open sessions for the selected user. Administrative termination uses `AdministrativeLogout`, is confirmed and audited, and affected clients return to sign-in after the next heartbeat detects the ended server-side session.
+The central session policy defaults to a 30-minute idle timeout and 12-hour maximum session age. Idle activity is derived only from keyboard, mouse or touch input inside the Depot main window; the application stores the latest activity timestamp rather than input content. Running sessions that exceed either policy are ended with `Expired` and return to sign-in. Maximum session age is absolute even if activity continues.
 
-Deactivating a user now revokes every open session for that user with `Revoked` in the same database transaction as the account deactivation and its Audit evidence. Heartbeats remain technical liveness writes and are not emitted as Audit events.
+Administrators with `Users.View` can open **Administration → User Sessions** to review active sessions, Online Users/Active Sessions metrics, the central session policy and the 200 most recently ended sessions. Users with the additional `UserSessions.Terminate` permission can terminate one active session or all open sessions for the selected user. Users with `Settings.Manage` can change idle timeout and maximum session age. Administrative termination uses `AdministrativeLogout`, is confirmed and audited, and affected clients return to sign-in after the next heartbeat detects the ended server-side session.
+
+Deactivating a user revokes every open session for that user with `Revoked` in the same database transaction as the account deactivation and its Audit evidence. Heartbeats remain technical liveness writes and are not emitted as Audit events. Session-policy changes are audit-relevant administration changes.
 
 Sales pricing supports Global, Regional and optional Customer scopes. The central resolver falls back Customer → Region → Global for each item and retains the selected price source on quote and order lines.
 
@@ -19,17 +21,24 @@ New installations also receive provider-neutral standard reference data for Unit
 ## Session and presence safeguards
 
 - `IsOnline` is not persisted; active presence is derived from `EndedUtc IS NULL` plus heartbeat freshness.
-- Heartbeat interval is 30 seconds and presence timeout is 90 seconds from central options.
-- Heartbeat updates only non-ended sessions, preventing logout/revocation races from reviving a session.
-- Temporary heartbeat database failures are contained and are not automatically treated as revocation.
-- Clean shutdown uses a bounded database-write window.
+- Heartbeat interval is 30 seconds and presence timeout is 90 seconds from central runtime options.
+- Central database policy defaults to 30 minutes idle timeout and 12 hours maximum session age.
+- Policy ranges are 5–480 idle minutes and 1–168 maximum-session-age hours.
+- User activity is captured only inside Depot, throttled in memory and persisted as `LastActivityUtc` with the normal heartbeat; typed text, key values and mouse coordinates are not stored.
+- The heartbeat persists the latest activity before evaluating policy, preventing a boundary race from expiring a recently active session.
+- Policy expiration writes `Expired`; the client clears authorization and returns to sign-in on heartbeat detection.
+- Maximum session age is absolute and applies even when the user remains active.
+- Saving a stricter policy immediately evaluates all open sessions against the new limits.
+- Session-policy updates use optimistic Version checks; viewing requires `Users.View`, editing additionally requires `Settings.Manage`.
+- Heartbeat updates only non-ended sessions, preventing logout/revocation/expiration races from reviving a session.
+- Temporary heartbeat database failures are contained and are not automatically treated as revocation or expiration.
+- Clean shutdown uses a bounded database-write window and does not synchronously depend on the WPF synchronization context.
 - Multiple active sessions per user are intentionally supported; there is no active-session uniqueness constraint on `UserId`.
-- Session viewing requires `Users.View`; destructive session control additionally requires `UserSessions.Terminate` in the service layer.
+- Destructive session control additionally requires `UserSessions.Terminate` in the service layer.
 - Single-session and bulk user-session termination use `AdministrativeLogout` and Audit evidence.
 - User deactivation atomically ends every open session for that user with `Revoked`.
-- The client responds to server-side revocation by clearing local authorization and returning to sign-in after heartbeat detection.
 - Administration exposes Active and History tabs; History contains the 200 most recently ended sessions with duration and end reason.
-- Session presence stores no MAC address, hardware fingerprint, key logging, OS activity, external-window tracking, IP/geolocation data or similar telemetry.
+- Session presence stores no MAC address, hardware fingerprint, key content, OS activity, external-window tracking, IP/geolocation data or similar telemetry.
 
 ## Finance capabilities
 
@@ -64,11 +73,11 @@ New installations also receive provider-neutral standard reference data for Unit
 
 ## Versions
 
-- Application: **0.15.x-preview** (`Directory.Build.props` is authoritative for the exact patch; this documentation update advances it to **0.15.89-preview**)
+- Application: **0.15.x-preview** (`Directory.Build.props` is authoritative for the exact patch; this change advances it to **0.15.93-preview**)
 - Core database schema: **30**
 - Sales feature schema: **10**
 - Finance feature schema: **9**
-- User Sessions feature schema: **1**
+- User Sessions feature schema: **2**
 - Help manifest: **1.20**
 
 Every commit increments `DepotVersionPatch`.
@@ -79,6 +88,6 @@ Release Build, win-x64 publish, repository regression tests, Release Integrity, 
 
 ## Next steps
 
-Session-security follow-up is now narrowed to policy and monitoring features rather than basic revocation: configurable idle timeout, maximum session age, password-change session policy, concurrent-session limits, retention/archival of historical sessions, suspicious-login/security-event monitoring, MFA/external identity integration and a broader Security Center.
+Session-security follow-up is now narrowed to password-change session policy, concurrent-session limits, retention/archival of historical sessions, suspicious-login/security-event monitoring, MFA/external identity integration and a broader Security Center. Configurable idle timeout and maximum session age are implemented.
 
 Further pricing extensions are demand-driven: controlled FX conversion for cross-currency cost-to-price generation, additional explicit Base Cost source strategies, Target Gross Margin as a separate pricing rule, and commercial rounding strategies such as 0.05/0.10/0.50 or .99 endings. Item-specific packaging quantities and unit conversions remain a separate future capability; they are not encoded in global Packaging Types.
