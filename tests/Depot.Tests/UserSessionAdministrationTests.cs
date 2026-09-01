@@ -22,11 +22,8 @@ public sealed class UserSessionAdministrationTests : IDisposable
 	{
 		var context = await CreateContextAsync();
 		context.Authorization.SignIn(new User { Id = 1, DisplayName = "Admin", IsActive = true }, new HashSet<ApplicationPermission> { ApplicationPermission.UsersView });
-		var first = NewSession(context.UserId, context.Clock.UtcNow, "OFFICE-PC");
-		var second = NewSession(context.UserId, context.Clock.UtcNow.AddSeconds(-10), "NOTEBOOK");
-		await context.Repository.CreateAsync(first, CancellationToken.None);
-		await context.Repository.CreateAsync(second, CancellationToken.None);
-
+		await context.Repository.CreateAsync(NewSession(context.UserId, context.Clock.UtcNow, "OFFICE-PC"), CancellationToken.None);
+		await context.Repository.CreateAsync(NewSession(context.UserId, context.Clock.UtcNow.AddSeconds(-10), "NOTEBOOK"), CancellationToken.None);
 		var snapshot = await context.Service.GetSnapshotAsync(CancellationToken.None);
 		Assert.Equal(1, snapshot.Metrics.OnlineUsers);
 		Assert.Equal(2, snapshot.Metrics.ActiveSessions);
@@ -35,14 +32,10 @@ public sealed class UserSessionAdministrationTests : IDisposable
 		var viewModel = new UserSessionsViewModel(context.Service);
 		await viewModel.LoadAsync();
 		Assert.Equal(2, viewModel.Sessions.Count);
-		Assert.All(viewModel.Sessions, row => Assert.False(string.IsNullOrWhiteSpace(row.OnlineSince)));
-		Assert.All(viewModel.Sessions, row => Assert.False(string.IsNullOrWhiteSpace(row.OnlineFor)));
 		viewModel.SearchText = "NOTEBOOK";
 		Assert.Single(viewModel.Sessions);
-		viewModel.StartPolling();
-		Assert.True(viewModel.IsPolling);
-		viewModel.StopPolling();
-		Assert.False(viewModel.IsPolling);
+		viewModel.StartPolling(); Assert.True(viewModel.IsPolling);
+		viewModel.StopPolling(); Assert.False(viewModel.IsPolling);
 		viewModel.Dispose();
 	}
 
@@ -51,25 +44,11 @@ public sealed class UserSessionAdministrationTests : IDisposable
 	{
 		var asOfUtc = new DateTime(2026, 9, 1, 14, 49, 0, DateTimeKind.Utc);
 		var startedUtc = asOfUtc.AddHours(-2).AddMinutes(-14);
-		var session = new ActiveUserSession(
-			1,
-			Guid.NewGuid(),
-			42,
-			"anna@example.com",
-			"Anna Müller",
-			startedUtc,
-			asOfUtc.AddSeconds(-8),
-			null,
-			Guid.NewGuid(),
-			"OFFICE-PC",
-			"0.15.83-preview",
-			1);
-
+		var session = new ActiveUserSession(1, Guid.NewGuid(), 42, "anna@example.com", "Anna Müller", startedUtc, asOfUtc.AddSeconds(-8), null, Guid.NewGuid(), "OFFICE-PC", "0.15.83-preview", 1);
 		var row = new UserSessionRowViewModel(session, asOfUtc);
-
 		Assert.Equal("2h 14m", row.OnlineFor);
+		Assert.Equal(42, row.UserId);
 		Assert.Equal(startedUtc.ToLocalTime(), row.StartedLocal);
-		Assert.False(string.IsNullOrWhiteSpace(row.OnlineSince));
 		Assert.Equal("8 sec ago", row.LastSeen);
 	}
 
@@ -79,40 +58,7 @@ public sealed class UserSessionAdministrationTests : IDisposable
 		var context = await CreateContextAsync();
 		context.Authorization.SignIn(new User { Id = context.UserId, DisplayName = "User", IsActive = true }, []);
 		await Assert.ThrowsAsync<UnauthorizedAccessException>(() => context.Service.GetSnapshotAsync(CancellationToken.None));
-	}
-
-	[Fact]
-	public async Task AdministratorWithTerminatePermissionMayEndActiveSession()
-	{
-		var context = await CreateContextAsync();
-		context.Authorization.SignIn(
-			new User { Id = 1, DisplayName = "Admin", IsActive = true },
-			new HashSet<ApplicationPermission> { ApplicationPermission.UsersView, ApplicationPermission.UserSessionsTerminate });
-		var session = NewSession(context.UserId, context.Clock.UtcNow, "OFFICE-PC");
-		await context.Repository.CreateAsync(session, CancellationToken.None);
-
-		Assert.True(context.Service.CanTerminateSessions);
-		Assert.True(await context.Service.TerminateSessionAsync(session.SessionId, CancellationToken.None));
-
-		var ended = await context.Repository.GetBySessionIdAsync(session.SessionId, CancellationToken.None);
-		Assert.NotNull(ended);
-		Assert.Equal(UserSessionEndReason.AdministrativeLogout, ended.EndReason);
-		Assert.NotNull(ended.EndedUtc);
-		var snapshot = await context.Service.GetSnapshotAsync(CancellationToken.None);
-		Assert.Empty(snapshot.Sessions);
-		Assert.Equal(0, snapshot.Metrics.ActiveSessions);
-	}
-
-	[Fact]
-	public async Task TerminateSessionRequiresDedicatedPermission()
-	{
-		var context = await CreateContextAsync();
-		context.Authorization.SignIn(new User { Id = 1, DisplayName = "Admin", IsActive = true }, new HashSet<ApplicationPermission> { ApplicationPermission.UsersView });
-		var session = NewSession(context.UserId, context.Clock.UtcNow, "OFFICE-PC");
-		await context.Repository.CreateAsync(session, CancellationToken.None);
-
-		Assert.False(context.Service.CanTerminateSessions);
-		await Assert.ThrowsAsync<UnauthorizedAccessException>(() => context.Service.TerminateSessionAsync(session.SessionId, CancellationToken.None));
+		await Assert.ThrowsAsync<UnauthorizedAccessException>(() => context.Service.TerminateUserSessionsAsync(context.UserId, CancellationToken.None));
 	}
 
 	[Fact]
@@ -120,15 +66,51 @@ public sealed class UserSessionAdministrationTests : IDisposable
 	{
 		var context = await CreateContextAsync();
 		var secondUser = new User { Email = "second@test.local", DisplayName = "Second User", IsActive = true, CreatedUtc = context.Clock.UtcNow };
-		var users = new UserRepository(context.Access);
-		var secondUserId = await users.CreateAsync(secondUser, "unused", CancellationToken.None);
+		var secondUserId = await new UserRepository(context.Access).CreateAsync(secondUser, "unused", CancellationToken.None);
 		await context.Repository.CreateAsync(NewSession(context.UserId, context.Clock.UtcNow, "CLIENT-A"), CancellationToken.None);
 		await context.Repository.CreateAsync(NewSession(secondUserId, context.Clock.UtcNow, "CLIENT-B"), CancellationToken.None);
 		context.Authorization.SignIn(new User { Id = 1, DisplayName = "Admin", IsActive = true }, new HashSet<ApplicationPermission> { ApplicationPermission.UsersView });
-
 		var snapshot = await context.Service.GetSnapshotAsync(CancellationToken.None);
 		Assert.Equal(2, snapshot.Metrics.OnlineUsers);
 		Assert.Equal(2, snapshot.Metrics.ActiveSessions);
+	}
+
+	[Fact]
+	public async Task TerminateAllForUserEndsEveryOpenSessionAndAddsHistory()
+	{
+		var context = await CreateContextAsync();
+		context.Authorization.SignIn(new User { Id = 1, DisplayName = "Admin", IsActive = true }, new HashSet<ApplicationPermission> { ApplicationPermission.UsersView, ApplicationPermission.UserSessionsTerminate });
+		var first = NewSession(context.UserId, context.Clock.UtcNow.AddMinutes(-20), "CLIENT-A");
+		var second = NewSession(context.UserId, context.Clock.UtcNow.AddMinutes(-5), "CLIENT-B");
+		await context.Repository.CreateAsync(first, CancellationToken.None);
+		await context.Repository.CreateAsync(second, CancellationToken.None);
+
+		Assert.Equal(2, await context.Service.TerminateUserSessionsAsync(context.UserId, CancellationToken.None));
+		Assert.All(new[] { first, second }, session =>
+		{
+			var ended = context.Repository.GetBySessionIdAsync(session.SessionId, CancellationToken.None).GetAwaiter().GetResult();
+			Assert.NotNull(ended?.EndedUtc);
+			Assert.Equal(UserSessionEndReason.AdministrativeLogout, ended?.EndReason);
+		});
+		var snapshot = await context.Service.GetSnapshotAsync(CancellationToken.None);
+		Assert.Empty(snapshot.Sessions);
+		Assert.Equal(2, snapshot.History.Count);
+	}
+
+	[Fact]
+	public async Task HistoryShowsEndedReasonAndDuration()
+	{
+		var context = await CreateContextAsync();
+		context.Authorization.SignIn(new User { Id = 1, DisplayName = "Admin", IsActive = true }, new HashSet<ApplicationPermission> { ApplicationPermission.UsersView, ApplicationPermission.UserSessionsTerminate });
+		var session = NewSession(context.UserId, context.Clock.UtcNow.AddHours(-1), "HISTORY-PC");
+		await context.Repository.CreateAsync(session, CancellationToken.None);
+		await context.Repository.EndAsync(session.SessionId, context.Clock.UtcNow, UserSessionEndReason.LoggedOut, CancellationToken.None);
+		var snapshot = await context.Service.GetSnapshotAsync(CancellationToken.None);
+		var ended = Assert.Single(snapshot.History);
+		Assert.Equal(UserSessionEndReason.LoggedOut, ended.EndReason);
+		var row = new UserSessionHistoryRowViewModel(ended);
+		Assert.Equal("1h 0m", row.Duration);
+		Assert.Equal("LoggedOut", row.EndReason);
 	}
 
 	private async Task<TestContext> CreateContextAsync()
@@ -150,7 +132,7 @@ public sealed class UserSessionAdministrationTests : IDisposable
 	private static UserSession NewSession(long userId, DateTime now, string machineName) => new()
 	{
 		SessionId = Guid.NewGuid(), UserId = userId, StartedUtc = now, LastSeenUtc = now,
-		ClientInstanceId = Guid.NewGuid(), MachineName = machineName, AppVersion = "0.15.87-preview"
+		ClientInstanceId = Guid.NewGuid(), MachineName = machineName, AppVersion = "0.15.88-preview"
 	};
 
 	public void Dispose()

@@ -16,8 +16,8 @@ public sealed class UserSessionsViewModel : BaseViewModel, IDisposable
 	private readonly UserSessionPresenceOptions _options;
 	private readonly SemaphoreSlim _refreshGate = new(1, 1);
 	private IReadOnlyList<ActiveUserSession> _allSessions = [];
+	private IReadOnlyList<EndedUserSession> _allHistory = [];
 	private CancellationTokenSource? _pollingCancellation;
-	private Task? _pollingTask;
 	private string _searchText = string.Empty;
 	private UserSessionRowViewModel? _selectedSession;
 	private long _onlineUsers;
@@ -31,21 +31,18 @@ public sealed class UserSessionsViewModel : BaseViewModel, IDisposable
 		_dialogs = dialogs;
 		_options = options ?? UserSessionPresenceOptions.Default;
 		TerminateSessionCommand = new AsyncRelayCommand(TerminateSelectedSessionAsync, CanTerminateSelectedSession);
+		TerminateUserSessionsCommand = new AsyncRelayCommand(TerminateSelectedUserSessionsAsync, CanTerminateSelectedSession);
 	}
 
 	public ObservableCollection<UserSessionRowViewModel> Sessions { get; } = [];
+	public ObservableCollection<UserSessionHistoryRowViewModel> History { get; } = [];
 	public AsyncRelayCommand TerminateSessionCommand { get; }
+	public AsyncRelayCommand TerminateUserSessionsCommand { get; }
 	public bool CanTerminateSessions => _service.CanTerminateSessions;
 	public string SearchText
 	{
 		get => _searchText;
-		set
-		{
-			if (_searchText == value) return;
-			_searchText = value;
-			OnPropertyChanged();
-			ApplyFilter();
-		}
+		set { if (_searchText == value) return; _searchText = value; OnPropertyChanged(); ApplyFilter(); }
 	}
 	public UserSessionRowViewModel? SelectedSession
 	{
@@ -56,12 +53,15 @@ public sealed class UserSessionsViewModel : BaseViewModel, IDisposable
 			_selectedSession = value;
 			OnPropertyChanged();
 			TerminateSessionCommand.RaiseCanExecuteChanged();
+			TerminateUserSessionsCommand.RaiseCanExecuteChanged();
 		}
 	}
 	public long OnlineUsers { get => _onlineUsers; private set { _onlineUsers = value; OnPropertyChanged(); } }
 	public long ActiveSessions { get => _activeSessions; private set { _activeSessions = value; OnPropertyChanged(); } }
 	public bool HasSessions => Sessions.Count > 0;
 	public bool HasNoSessions => !HasSessions;
+	public bool HasHistory => History.Count > 0;
+	public bool HasNoHistory => !HasHistory;
 	internal bool IsPolling => _pollingCancellation is not null;
 
 	public async Task LoadAsync(CancellationToken cancellationToken = default)
@@ -75,6 +75,7 @@ public sealed class UserSessionsViewModel : BaseViewModel, IDisposable
 			var snapshot = await _service.GetSnapshotAsync(cancellationToken);
 			if (_disposed || cancellationToken.IsCancellationRequested) return;
 			_allSessions = snapshot.Sessions;
+			_allHistory = snapshot.History;
 			_asOfUtc = snapshot.AsOfUtc;
 			OnlineUsers = snapshot.Metrics.OnlineUsers;
 			ActiveSessions = snapshot.Metrics.ActiveSessions;
@@ -82,18 +83,9 @@ public sealed class UserSessionsViewModel : BaseViewModel, IDisposable
 			SelectedSession = selectedId is null ? null : Sessions.FirstOrDefault(row => row.SessionId == selectedId);
 			CompleteOperation(Sessions.Count == 0, "User sessions refreshed");
 		}
-		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-		{
-			if (!_disposed) CompleteOperation(Sessions.Count == 0);
-		}
-		catch (Exception exception)
-		{
-			if (!_disposed) FailOperation(exception, "User sessions could not be loaded");
-		}
-		finally
-		{
-			_refreshGate.Release();
-		}
+		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { if (!_disposed) CompleteOperation(Sessions.Count == 0); }
+		catch (Exception exception) { if (!_disposed) FailOperation(exception, "User sessions could not be loaded"); }
+		finally { _refreshGate.Release(); }
 	}
 
 	public void StartPolling()
@@ -101,7 +93,7 @@ public sealed class UserSessionsViewModel : BaseViewModel, IDisposable
 		ObjectDisposedException.ThrowIf(_disposed, this);
 		StopPolling();
 		_pollingCancellation = new CancellationTokenSource();
-		_pollingTask = RunPollingAsync(_pollingCancellation.Token);
+		_ = RunPollingAsync(_pollingCancellation.Token);
 	}
 
 	public void StopPolling()
@@ -109,30 +101,43 @@ public sealed class UserSessionsViewModel : BaseViewModel, IDisposable
 		_pollingCancellation?.Cancel();
 		_pollingCancellation?.Dispose();
 		_pollingCancellation = null;
-		_pollingTask = null;
 	}
 
 	private async Task TerminateSelectedSessionAsync(CancellationToken cancellationToken)
 	{
 		var selected = SelectedSession;
 		if (selected is null || !CanTerminateSessions) return;
-		if (_dialogs is not null && !_dialogs.Confirm(new ConfirmationDialogRequest(
-			"Terminate session?",
-			$"End the active session for {selected.UserDisplayName} on {selected.MachineName}? The client will be returned to sign-in on its next heartbeat.",
-			true))) return;
+		if (_dialogs is not null && !_dialogs.Confirm(new ConfirmationDialogRequest("Terminate session?", $"End the active session for {selected.UserDisplayName} on {selected.MachineName}? The client will be returned to sign-in on its next heartbeat.", true))) return;
+		await ExecuteTerminationAsync(() => _service.TerminateSessionAsync(selected.SessionId, cancellationToken), "Session terminated", cancellationToken);
+	}
 
+	private async Task TerminateSelectedUserSessionsAsync(CancellationToken cancellationToken)
+	{
+		var selected = SelectedSession;
+		if (selected is null || !CanTerminateSessions) return;
+		if (_dialogs is not null && !_dialogs.Confirm(new ConfirmationDialogRequest("Terminate all user sessions?", $"End every open session for {selected.UserDisplayName}? All affected clients will be returned to sign-in on their next heartbeat.", true))) return;
+		BeginOperation("Terminating user sessions");
+		try
+		{
+			var count = await _service.TerminateUserSessionsAsync(selected.UserId, cancellationToken);
+			SelectedSession = null;
+			await LoadAsync(cancellationToken);
+			CompleteOperation(Sessions.Count == 0, count == 0 ? "No open sessions remained" : $"{count:N0} sessions terminated");
+		}
+		catch (Exception exception) when (exception is not OperationCanceledException) { FailOperation(exception, "User sessions could not be terminated"); }
+	}
+
+	private async Task ExecuteTerminationAsync(Func<Task<bool>> terminate, string successText, CancellationToken cancellationToken)
+	{
 		BeginOperation("Terminating user session");
 		try
 		{
-			var terminated = await _service.TerminateSessionAsync(selected.SessionId, cancellationToken);
+			var terminated = await terminate();
 			SelectedSession = null;
 			await LoadAsync(cancellationToken);
-			CompleteOperation(Sessions.Count == 0, terminated ? "Session terminated" : "Session was already ended");
+			CompleteOperation(Sessions.Count == 0, terminated ? successText : "Session was already ended");
 		}
-		catch (Exception exception) when (exception is not OperationCanceledException)
-		{
-			FailOperation(exception, "Session could not be terminated");
-		}
+		catch (Exception exception) when (exception is not OperationCanceledException) { FailOperation(exception, "Session could not be terminated"); }
 	}
 
 	private bool CanTerminateSelectedSession() => SelectedSession is not null && CanTerminateSessions;
@@ -145,25 +150,23 @@ public sealed class UserSessionsViewModel : BaseViewModel, IDisposable
 			await LoadAsync(cancellationToken);
 			while (await timer.WaitForNextTickAsync(cancellationToken)) await LoadAsync(cancellationToken);
 		}
-		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-		{
-		}
+		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
 	}
 
 	private void ApplyFilter()
 	{
 		var search = SearchText.Trim();
-		var rows = _allSessions
-			.Where(session => string.IsNullOrEmpty(search)
-				|| session.UserDisplayName.Contains(search, StringComparison.OrdinalIgnoreCase)
-				|| session.UserEmail.Contains(search, StringComparison.OrdinalIgnoreCase)
-				|| (session.MachineName?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false))
-			.Select(session => new UserSessionRowViewModel(session, _asOfUtc))
-			.ToArray();
-		CollectionSynchronizer.Replace(Sessions, rows);
-		OnPropertyChanged(nameof(HasSessions));
-		OnPropertyChanged(nameof(HasNoSessions));
+		var activeRows = _allSessions.Where(session => Matches(search, session.UserDisplayName, session.UserEmail, session.MachineName)).Select(session => new UserSessionRowViewModel(session, _asOfUtc)).ToArray();
+		var historyRows = _allHistory.Where(session => Matches(search, session.UserDisplayName, session.UserEmail, session.MachineName)).Select(session => new UserSessionHistoryRowViewModel(session)).ToArray();
+		CollectionSynchronizer.Replace(Sessions, activeRows);
+		CollectionSynchronizer.Replace(History, historyRows);
+		OnPropertyChanged(nameof(HasSessions)); OnPropertyChanged(nameof(HasNoSessions)); OnPropertyChanged(nameof(HasHistory)); OnPropertyChanged(nameof(HasNoHistory));
 	}
+
+	private static bool Matches(string search, string name, string email, string? machine) => string.IsNullOrEmpty(search)
+		|| name.Contains(search, StringComparison.OrdinalIgnoreCase)
+		|| email.Contains(search, StringComparison.OrdinalIgnoreCase)
+		|| (machine?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false);
 
 	public void Dispose()
 	{
@@ -171,6 +174,8 @@ public sealed class UserSessionsViewModel : BaseViewModel, IDisposable
 		_disposed = true;
 		StopPolling();
 		TerminateSessionCommand.Dispose();
+		TerminateUserSessionsCommand.Dispose();
+		_refreshGate.Dispose();
 	}
 }
 
@@ -178,19 +183,14 @@ public sealed class UserSessionRowViewModel
 {
 	public UserSessionRowViewModel(ActiveUserSession session, DateTime asOfUtc)
 	{
-		UserDisplayName = session.UserDisplayName;
-		UserEmail = session.UserEmail;
+		UserId = session.UserId; UserDisplayName = session.UserDisplayName; UserEmail = session.UserEmail;
 		MachineName = string.IsNullOrWhiteSpace(session.MachineName) ? "Unknown client" : session.MachineName;
 		AppVersion = string.IsNullOrWhiteSpace(session.AppVersion) ? "Unknown" : session.AppVersion;
-		StartedLocal = session.StartedUtc.ToLocalTime();
-		LastSeenLocal = session.LastSeenUtc.ToLocalTime();
-		OnlineSince = StartedLocal.ToString("g");
-		OnlineFor = FormatDuration(session.StartedUtc, asOfUtc);
-		LastSeen = RelativeTime(session.LastSeenUtc, asOfUtc);
-		SessionId = session.SessionId;
-		ClientInstanceId = session.ClientInstanceId;
+		StartedLocal = session.StartedUtc.ToLocalTime(); LastSeenLocal = session.LastSeenUtc.ToLocalTime();
+		OnlineSince = StartedLocal.ToString("g"); OnlineFor = FormatDuration(session.StartedUtc, asOfUtc); LastSeen = RelativeTime(session.LastSeenUtc, asOfUtc);
+		SessionId = session.SessionId; ClientInstanceId = session.ClientInstanceId;
 	}
-
+	public long UserId { get; }
 	public string UserDisplayName { get; }
 	public string UserEmail { get; }
 	public string MachineName { get; }
@@ -204,23 +204,42 @@ public sealed class UserSessionRowViewModel
 	public Guid ClientInstanceId { get; }
 	public string StartedLocalText => StartedLocal.ToString("F");
 	public string LastSeenLocalText => LastSeenLocal.ToString("F");
-
-	private static string FormatDuration(DateTime startedUtc, DateTime asOfUtc)
+	internal static string FormatDuration(DateTime startedUtc, DateTime asOfUtc)
 	{
-		var elapsed = asOfUtc - startedUtc;
-		if (elapsed < TimeSpan.Zero) elapsed = TimeSpan.Zero;
+		var elapsed = asOfUtc - startedUtc; if (elapsed < TimeSpan.Zero) elapsed = TimeSpan.Zero;
 		if (elapsed.TotalMinutes < 1) return "< 1 min";
 		if (elapsed.TotalHours < 1) return $"{Math.Max(1, (int)elapsed.TotalMinutes)} min";
 		if (elapsed.TotalDays < 1) return $"{(int)elapsed.TotalHours}h {elapsed.Minutes}m";
 		return $"{(int)elapsed.TotalDays}d {elapsed.Hours}h {elapsed.Minutes}m";
 	}
-
 	private static string RelativeTime(DateTime lastSeenUtc, DateTime asOfUtc)
 	{
-		var elapsed = asOfUtc - lastSeenUtc;
-		if (elapsed < TimeSpan.Zero) elapsed = TimeSpan.Zero;
+		var elapsed = asOfUtc - lastSeenUtc; if (elapsed < TimeSpan.Zero) elapsed = TimeSpan.Zero;
 		if (elapsed.TotalSeconds < 60) return $"{Math.Max(0, (int)elapsed.TotalSeconds)} sec ago";
 		if (elapsed.TotalMinutes < 60) return $"{Math.Max(1, (int)elapsed.TotalMinutes)} min ago";
 		return $"{Math.Max(1, (int)elapsed.TotalHours)} hr ago";
 	}
+}
+
+public sealed class UserSessionHistoryRowViewModel
+{
+	public UserSessionHistoryRowViewModel(EndedUserSession session)
+	{
+		UserDisplayName = session.UserDisplayName; UserEmail = session.UserEmail;
+		MachineName = string.IsNullOrWhiteSpace(session.MachineName) ? "Unknown client" : session.MachineName;
+		AppVersion = string.IsNullOrWhiteSpace(session.AppVersion) ? "Unknown" : session.AppVersion;
+		StartedLocal = session.StartedUtc.ToLocalTime(); EndedLocal = session.EndedUtc.ToLocalTime();
+		Started = StartedLocal.ToString("g"); Ended = EndedLocal.ToString("g"); Duration = UserSessionRowViewModel.FormatDuration(session.StartedUtc, session.EndedUtc);
+		EndReason = session.EndReason.ToString();
+	}
+	public string UserDisplayName { get; }
+	public string UserEmail { get; }
+	public string MachineName { get; }
+	public string AppVersion { get; }
+	public DateTime StartedLocal { get; }
+	public DateTime EndedLocal { get; }
+	public string Started { get; }
+	public string Ended { get; }
+	public string Duration { get; }
+	public string EndReason { get; }
 }

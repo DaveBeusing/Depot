@@ -51,6 +51,14 @@ public sealed class UserSessionRepository : DatabaseRepository
 			Parameter("$EndReason", (int)reason),
 			Parameter("$SessionId", Format(sessionId))) == 1;
 
+	public Task<int> EndActiveSessionsForUserAsync(long userId, DateTime endedUtc, UserSessionEndReason reason, CancellationToken cancellationToken) =>
+		Database.ExecuteAsync(
+			"UPDATE UserSessions SET EndedUtc = $EndedUtc, EndReason = $EndReason, Version = Version + 1 WHERE UserId = $UserId AND EndedUtc IS NULL;",
+			cancellationToken,
+			Parameter("$EndedUtc", Format(endedUtc)),
+			Parameter("$EndReason", (int)reason),
+			Parameter("$UserId", userId));
+
 	public static async Task<bool> EndAsync(DatabaseTransactionContext transaction, Guid sessionId, DateTime endedUtc, UserSessionEndReason reason, CancellationToken cancellationToken) =>
 		await transaction.Session.ExecuteAsync(
 			"UPDATE UserSessions SET EndedUtc = $EndedUtc, EndReason = $EndReason, Version = Version + 1 WHERE SessionId = $SessionId AND EndedUtc IS NULL;",
@@ -74,22 +82,20 @@ public sealed class UserSessionRepository : DatabaseRepository
 			cancellationToken,
 			Parameter("$SessionId", Format(sessionId)));
 
-	public Task<IReadOnlyList<ActiveUserSession>> GetActiveSessionsAsync(
-		DateTime presenceCutoffUtc,
-		string? searchText,
-		CancellationToken cancellationToken)
+	public Task<IReadOnlyList<UserSession>> GetOpenSessionsForUserAsync(long userId, CancellationToken cancellationToken) =>
+		Database.QueryAsync(
+			$"SELECT {SessionColumns} FROM UserSessions WHERE UserId = $UserId AND EndedUtc IS NULL ORDER BY StartedUtc DESC, Id DESC;",
+			ReadSession,
+			cancellationToken,
+			Parameter("$UserId", userId));
+
+	public Task<IReadOnlyList<ActiveUserSession>> GetActiveSessionsAsync(DateTime presenceCutoffUtc, string? searchText, CancellationToken cancellationToken)
 	{
 		var search = searchText?.Trim();
 		var hasSearch = !string.IsNullOrWhiteSpace(search);
-		var filter = hasSearch
-			? " AND (u.DisplayName LIKE $Search OR u.Email LIKE $Search OR s.MachineName LIKE $Search)"
-			: string.Empty;
-		var parameters = new List<DatabaseParameter>
-		{
-			Parameter("$PresenceCutoff", Format(presenceCutoffUtc))
-		};
+		var filter = hasSearch ? " AND (u.DisplayName LIKE $Search OR u.Email LIKE $Search OR s.MachineName LIKE $Search)" : string.Empty;
+		var parameters = new List<DatabaseParameter> { Parameter("$PresenceCutoff", Format(presenceCutoffUtc)) };
 		if (hasSearch) parameters.Add(Parameter("$Search", $"%{search}%"));
-
 		return Database.QueryAsync(
 			$"""
 			SELECT s.Id, s.SessionId, s.UserId, u.Email, u.DisplayName, s.StartedUtc, s.LastSeenUtc, s.LastActivityUtc,
@@ -102,6 +108,24 @@ public sealed class UserSessionRepository : DatabaseRepository
 			ReadActiveSession,
 			cancellationToken,
 			parameters.ToArray());
+	}
+
+	public Task<IReadOnlyList<EndedUserSession>> GetRecentEndedSessionsAsync(int count, CancellationToken cancellationToken)
+	{
+		if (count < 1) throw new ArgumentOutOfRangeException(nameof(count));
+		return Database.QuerySliceAsync(
+			"""
+			SELECT s.Id, s.SessionId, s.UserId, u.Email, u.DisplayName, s.StartedUtc, s.LastSeenUtc, s.EndedUtc, s.EndReason,
+			       s.ClientInstanceId, s.MachineName, s.AppVersion, s.Version
+			FROM UserSessions s
+			INNER JOIN Users u ON u.Id = s.UserId
+			WHERE s.EndedUtc IS NOT NULL
+			ORDER BY s.EndedUtc DESC, s.Id DESC
+			""",
+			ReadEndedSession,
+			0,
+			count,
+			cancellationToken);
 	}
 
 	public async Task<long> CountActiveSessionsAsync(DateTime presenceCutoffUtc, CancellationToken cancellationToken) =>
@@ -127,33 +151,23 @@ public sealed class UserSessionRepository : DatabaseRepository
 
 	private static UserSession ReadSession(DbDataReader reader) => new()
 	{
-		Id = reader.GetInt64(0),
-		SessionId = Guid.Parse(reader.GetString(1)),
-		UserId = reader.GetInt64(2),
-		StartedUtc = ReadUtc(reader, 3),
-		LastSeenUtc = ReadUtc(reader, 4),
-		LastActivityUtc = ReadNullableUtc(reader, 5),
-		EndedUtc = ReadNullableUtc(reader, 6),
-		EndReason = reader.IsDBNull(7) ? null : (UserSessionEndReason)reader.GetInt32(7),
-		ClientInstanceId = Guid.Parse(reader.GetString(8)),
-		MachineName = reader.IsDBNull(9) ? null : reader.GetString(9),
-		AppVersion = reader.IsDBNull(10) ? null : reader.GetString(10),
-		Version = reader.GetInt64(11)
+		Id = reader.GetInt64(0), SessionId = Guid.Parse(reader.GetString(1)), UserId = reader.GetInt64(2),
+		StartedUtc = ReadUtc(reader, 3), LastSeenUtc = ReadUtc(reader, 4), LastActivityUtc = ReadNullableUtc(reader, 5),
+		EndedUtc = ReadNullableUtc(reader, 6), EndReason = reader.IsDBNull(7) ? null : (UserSessionEndReason)reader.GetInt32(7),
+		ClientInstanceId = Guid.Parse(reader.GetString(8)), MachineName = reader.IsDBNull(9) ? null : reader.GetString(9),
+		AppVersion = reader.IsDBNull(10) ? null : reader.GetString(10), Version = reader.GetInt64(11)
 	};
 
 	private static ActiveUserSession ReadActiveSession(DbDataReader reader) => new(
-		reader.GetInt64(0),
-		Guid.Parse(reader.GetString(1)),
-		reader.GetInt64(2),
-		reader.GetString(3),
-		reader.GetString(4),
-		ReadUtc(reader, 5),
-		ReadUtc(reader, 6),
-		ReadNullableUtc(reader, 7),
-		Guid.Parse(reader.GetString(8)),
-		reader.IsDBNull(9) ? null : reader.GetString(9),
-		reader.IsDBNull(10) ? null : reader.GetString(10),
-		reader.GetInt64(11));
+		reader.GetInt64(0), Guid.Parse(reader.GetString(1)), reader.GetInt64(2), reader.GetString(3), reader.GetString(4),
+		ReadUtc(reader, 5), ReadUtc(reader, 6), ReadNullableUtc(reader, 7), Guid.Parse(reader.GetString(8)),
+		reader.IsDBNull(9) ? null : reader.GetString(9), reader.IsDBNull(10) ? null : reader.GetString(10), reader.GetInt64(11));
+
+	private static EndedUserSession ReadEndedSession(DbDataReader reader) => new(
+		reader.GetInt64(0), Guid.Parse(reader.GetString(1)), reader.GetInt64(2), reader.GetString(3), reader.GetString(4),
+		ReadUtc(reader, 5), ReadUtc(reader, 6), ReadUtc(reader, 7), (UserSessionEndReason)reader.GetInt32(8),
+		Guid.Parse(reader.GetString(9)), reader.IsDBNull(10) ? null : reader.GetString(10),
+		reader.IsDBNull(11) ? null : reader.GetString(11), reader.GetInt64(12));
 
 	private static string Format(Guid value) => value.ToString("D", CultureInfo.InvariantCulture);
 	private static string Format(DateTime value) => value.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture);

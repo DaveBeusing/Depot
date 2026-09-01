@@ -43,4 +43,19 @@ public sealed record ActiveUserSession(
 	string? AppVersion,
 	long Version);
 
+public sealed record EndedUserSession(
+	long Id,
+	Guid SessionId,
+	long UserId,
+	string UserEmail,
+	string UserDisplayName,
+	DateTime StartedUtc,
+	DateTime LastSeenUtc,
+	DateTime EndedUtc,
+	UserSessionEndReason EndReason,
+	Guid ClientInstanceId,
+	string? MachineName,
+	string? AppVersion,
+	long Version);
+
 public sealed record UserSessionPresenceMetrics(long OnlineUsers, long ActiveSessions);
