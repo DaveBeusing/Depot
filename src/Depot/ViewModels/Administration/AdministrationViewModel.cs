@@ -5,7 +5,6 @@ using System.Collections.ObjectModel;
 
 using Depot.Data;
 using Depot.Models;
-using Depot.Repositories;
 using Depot.Services;
 using Depot.Services.Help;
 using Depot.ViewModels.MasterData;
@@ -55,6 +54,8 @@ public sealed class AdministrationViewModel : BaseViewModel, IDisposable
 		DatabaseConnectionTester databaseConnectionTester,
 		DatabaseManagementService databaseManagementService,
 		AuditLogService auditLogService,
+		UserSessionAdministrationService userSessionAdministrationService,
+		SecurityEventService securityEventService,
 		IFileDialogService fileDialogService,
 		ApplicationInformationService applicationInformationService)
 	{
@@ -70,13 +71,8 @@ public sealed class AdministrationViewModel : BaseViewModel, IDisposable
 		_companyProfileViewModel = new CompanyProfileViewModel(new CompanyProfileService(companyDatabase, settingsService.CurrentSettings.Provider, authorization));
 		var privacyDatabase = new DatabaseAccess(DatabaseProviderFactory.CreateConnectionFactory(settingsService.CurrentSettings));
 		_privacyDataViewModel = new PrivacyDataViewModel(new DataSubjectAccessService(privacyDatabase, authorization), fileDialogService);
-		var securityDatabase = new DatabaseAccess(DatabaseProviderFactory.CreateConnectionFactory(settingsService.CurrentSettings));
-		var securityEvents = new SecurityEventService(new SecurityEventRepository(securityDatabase), authorization);
-		var sessionAudit = new AuditService(new AuditRepository(securityDatabase), authorization);
-		_userSessionsViewModel = new UserSessionsViewModel(
-			new UserSessionAdministrationService(new UserSessionRepository(securityDatabase), authorization, audit: sessionAudit, securityEvents: securityEvents),
-			fileDialogService);
-		_securityCenterViewModel = new SecurityCenterViewModel(securityEvents);
+		_userSessionsViewModel = new UserSessionsViewModel(userSessionAdministrationService, fileDialogService);
+		_securityCenterViewModel = new SecurityCenterViewModel(securityEventService);
 
 		AddIf(authorization, ApplicationPermission.MasterDataView, "Master Data", AdministrationSection.MasterData);
 		AddIf(authorization, ApplicationPermission.MasterDataView, "Warehouses & Locations", AdministrationSection.Warehouses);

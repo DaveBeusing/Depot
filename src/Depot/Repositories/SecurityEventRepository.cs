@@ -12,18 +12,15 @@ namespace Depot.Repositories;
 public sealed class SecurityEventRepository : DatabaseRepository
 {
 	private const string SelectColumns = "Id, TimestampUtc, EventType, Severity, UserId, AccountIdentifier, SessionId, MachineName, Summary, Details, ReviewedUtc, ReviewedByUserId, Version";
+	private const string InsertSql = "INSERT INTO SecurityEvents (TimestampUtc, EventType, Severity, UserId, AccountIdentifier, SessionId, MachineName, Summary, Details, ReviewedUtc, ReviewedByUserId, Version) VALUES ($TimestampUtc, $EventType, $Severity, $UserId, $AccountIdentifier, $SessionId, $MachineName, $Summary, $Details, NULL, NULL, 1);";
 
 	public SecurityEventRepository(DatabaseAccess database) : base(database) { }
 
 	public Task<long> CreateAsync(SecurityEvent securityEvent, CancellationToken cancellationToken) =>
-		Database.InsertAsync(
-			"INSERT INTO SecurityEvents (TimestampUtc, EventType, Severity, UserId, AccountIdentifier, SessionId, MachineName, Summary, Details, ReviewedUtc, ReviewedByUserId, Version) VALUES ($TimestampUtc, $EventType, $Severity, $UserId, $AccountIdentifier, $SessionId, $MachineName, $Summary, $Details, NULL, NULL, 1);",
-			cancellationToken,
-			Parameter("$TimestampUtc", Format(securityEvent.TimestampUtc)),
-			Parameter("$EventType", (int)securityEvent.EventType), Parameter("$Severity", (int)securityEvent.Severity),
-			Parameter("$UserId", securityEvent.UserId), Parameter("$AccountIdentifier", securityEvent.AccountIdentifier),
-			Parameter("$SessionId", securityEvent.SessionId?.ToString("D", CultureInfo.InvariantCulture)), Parameter("$MachineName", securityEvent.MachineName),
-			Parameter("$Summary", securityEvent.Summary), Parameter("$Details", securityEvent.Details));
+		Database.InsertAsync(InsertSql, cancellationToken, Parameters(securityEvent));
+
+	public static Task<long> CreateAsync(DatabaseTransactionContext transaction, SecurityEvent securityEvent, CancellationToken cancellationToken) =>
+		transaction.Session.InsertAsync(InsertSql, cancellationToken, Parameters(securityEvent));
 
 	public Task<IReadOnlyList<SecurityEventListItem>> GetRecentAsync(SecurityEventFilter filter, int count, CancellationToken cancellationToken)
 	{
@@ -51,6 +48,15 @@ public sealed class SecurityEventRepository : DatabaseRepository
 			cancellationToken,
 			Parameter("$ReviewedUtc", Format(reviewedUtc)), Parameter("$ReviewedByUserId", reviewedByUserId),
 			Parameter("$Id", id), Parameter("$Version", expectedVersion)) == 1;
+
+	private static DatabaseParameter[] Parameters(SecurityEvent securityEvent) =>
+	[
+		Parameter("$TimestampUtc", Format(securityEvent.TimestampUtc)),
+		Parameter("$EventType", (int)securityEvent.EventType), Parameter("$Severity", (int)securityEvent.Severity),
+		Parameter("$UserId", securityEvent.UserId), Parameter("$AccountIdentifier", securityEvent.AccountIdentifier),
+		Parameter("$SessionId", securityEvent.SessionId?.ToString("D", CultureInfo.InvariantCulture)), Parameter("$MachineName", securityEvent.MachineName),
+		Parameter("$Summary", securityEvent.Summary), Parameter("$Details", securityEvent.Details)
+	];
 
 	private static (string Where, DatabaseParameter[] Parameters) BuildFilter(SecurityEventFilter filter)
 	{

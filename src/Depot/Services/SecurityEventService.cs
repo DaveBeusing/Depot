@@ -83,32 +83,53 @@ public sealed class SecurityEventService
 	}
 
 	public Task RecordSessionEventAsync(UserSession session, SecurityEventType type, SecurityEventSeverity severity, string summary, string? details, CancellationToken cancellationToken) =>
-		RecordAsync(new SecurityEvent
-		{
-			TimestampUtc = _timeProvider.GetUtcNow().UtcDateTime, EventType = type, Severity = severity, UserId = session.UserId,
-			SessionId = session.SessionId, MachineName = NormalizeMachine(session.MachineName), Summary = summary, Details = details
-		}, cancellationToken);
+		RecordAsync(CreateSessionEvent(session, type, severity, summary, details), cancellationToken);
 
 	public Task RecordPolicyChangedAsync(UserSessionPolicy before, UserSessionPolicy after, CancellationToken cancellationToken) =>
-		RecordAsync(new SecurityEvent
+		RecordAsync(CreatePolicyChangedEvent(before, after), cancellationToken);
+
+	internal SecurityEvent CreateSessionEvent(UserSession session, SecurityEventType type, SecurityEventSeverity severity, string summary, string? details) => new()
+	{
+		TimestampUtc = _timeProvider.GetUtcNow().UtcDateTime,
+		EventType = type,
+		Severity = severity,
+		UserId = session.UserId,
+		SessionId = session.SessionId,
+		MachineName = NormalizeMachine(session.MachineName),
+		Summary = summary,
+		Details = details
+	};
+
+	internal SecurityEvent CreatePolicyChangedEvent(UserSessionPolicy before, UserSessionPolicy after) => new()
+	{
+		TimestampUtc = _timeProvider.GetUtcNow().UtcDateTime,
+		EventType = SecurityEventType.SessionPolicyChanged,
+		Severity = SecurityEventSeverity.Warning,
+		UserId = _authorization.CurrentUser?.Id,
+		AccountIdentifier = _authorization.CurrentUser?.Email,
+		Summary = "Session security policy changed",
+		Details = $"Idle timeout {before.IdleTimeoutMinutes}→{after.IdleTimeoutMinutes} minutes; maximum age {before.MaximumSessionAgeHours}→{after.MaximumSessionAgeHours} hours."
+	};
+
+	internal async Task NotifyPersistedAsync(SecurityEvent securityEvent, CancellationToken cancellationToken)
+	{
+		if (_notifications is null || securityEvent.Severity < SecurityEventSeverity.High) return;
+		try
 		{
-			TimestampUtc = _timeProvider.GetUtcNow().UtcDateTime, EventType = SecurityEventType.SessionPolicyChanged, Severity = SecurityEventSeverity.Warning,
-			UserId = _authorization.CurrentUser?.Id, AccountIdentifier = _authorization.CurrentUser?.Email,
-			Summary = "Session security policy changed",
-			Details = $"Idle timeout {before.IdleTimeoutMinutes}→{after.IdleTimeoutMinutes} minutes; maximum age {before.MaximumSessionAgeHours}→{after.MaximumSessionAgeHours} hours."
-		}, cancellationToken);
+			await _notifications.NotifyPermissionHoldersAsync(
+				new NotificationRequest(NotificationType.System, NotificationSeverity.Warning, "Security event", securityEvent.Summary, SourceId: securityEvent.Id),
+				ApplicationPermission.SecurityEventsView, cancellationToken: cancellationToken);
+		}
+		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
+		catch (Exception exception) { StartupDiagnostics.LogException(exception); }
+	}
 
 	private async Task RecordAsync(SecurityEvent securityEvent, CancellationToken cancellationToken)
 	{
 		try
 		{
 			securityEvent.Id = await _repository.CreateAsync(securityEvent, cancellationToken);
-			if (_notifications is not null && securityEvent.Severity >= SecurityEventSeverity.High)
-			{
-				await _notifications.NotifyPermissionHoldersAsync(
-					new NotificationRequest(NotificationType.System, NotificationSeverity.Warning, "Security event", securityEvent.Summary, SourceId: securityEvent.Id),
-					ApplicationPermission.SecurityEventsView, cancellationToken: cancellationToken);
-			}
+			await NotifyPersistedAsync(securityEvent, cancellationToken);
 		}
 		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
 		catch (Exception exception)

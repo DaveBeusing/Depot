@@ -26,8 +26,6 @@ internal sealed class DepotApplicationServices : IDisposable
 			database = DatabaseComposition.Create();
 			var repositories = new RepositoryComposition(database.DataAccess);
 			var services = new ServiceComposition(database, repositories);
-			var securityEvents = new SecurityEventService(repositories.SecurityEvents, services.Authorization, services.Notifications);
-			services.Authentication.ConfigureSecurityEvents(securityEvents);
 			var version = applicationInformation.GetVersionInfo().InformationalVersion;
 			services.Session.Configure(repositories.UserSessions, new UserSessionClientInfo(Guid.NewGuid(), Environment.MachineName, version));
 			services.Authentication.ConfigureSession(services.Session);

@@ -21,6 +21,8 @@ internal sealed class ServiceComposition
 		AuditLog = new AuditLogService(repositories.Audit, Authorization, new AuditJsonSanitizer());
 		DataSubjectAccess = new DataSubjectAccessService(database.DataAccess, Authorization);
 		var audit = new AuditService(repositories.Audit, Authorization);
+		SecurityEvents = new SecurityEventService(repositories.SecurityEvents, Authorization, Notifications);
+		UserSessionAdministration = new UserSessionAdministrationService(database.TransactionRunner, repositories.UserSessions, repositories.Audit, Authorization, audit, SecurityEvents);
 		FinanceGeneralLedger = new FinanceGeneralLedgerService(database.TransactionRunner, repositories.FinanceGeneralLedger, repositories.FinancePostingProfiles, repositories.Audit, audit, Authorization);
 		AccountsReceivable = new FinanceAccountsReceivableService(database.TransactionRunner, repositories.FinanceAccountsReceivable, FinanceGeneralLedger, repositories.Audit, audit, Authorization);
 		InventoryAccounting = new FinanceInventoryAccountingService(database.TransactionRunner, repositories.FinanceInventoryAccounting, FinanceGeneralLedger, repositories.Audit, audit, Authorization);
@@ -33,7 +35,7 @@ internal sealed class ServiceComposition
 		var passwordHasher = new PasswordHasher();
 		ItemTraceability = new ItemTraceabilityService(repositories.ItemTraceability, audit);
 		var movementReversals = new StockMovementReversalService(database.TransactionRunner, repositories.Inventories, repositories.StockMovements, repositories.ReasonCodes, repositories.Audit, audit, ItemTraceability);
-		Authentication = new AuthenticationService(repositories.Users, repositories.Roles, passwordHasher, Authorization);
+		Authentication = new AuthenticationService(repositories.Users, repositories.Roles, passwordHasher, Authorization, securityEvents: SecurityEvents);
 		Session = new SessionService(Authorization);
 		Manufacturers = new ManufacturerService(repositories.Manufacturers, audit);
 		Categories = new CategoryService(repositories.Categories, audit);
@@ -92,6 +94,8 @@ internal sealed class ServiceComposition
 	public HelpMarkdownRenderer HelpRenderer { get; }
 	public AuditLogService AuditLog { get; }
 	public DataSubjectAccessService DataSubjectAccess { get; }
+	public SecurityEventService SecurityEvents { get; }
+	public UserSessionAdministrationService UserSessionAdministration { get; }
 	public FinanceGeneralLedgerService FinanceGeneralLedger { get; }
 	public FinanceAccountsReceivableService AccountsReceivable { get; }
 	public FinanceAccountsPayableService AccountsPayable { get; }
