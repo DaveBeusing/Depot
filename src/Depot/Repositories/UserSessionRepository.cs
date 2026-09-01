@@ -51,6 +51,22 @@ public sealed class UserSessionRepository : DatabaseRepository
 			Parameter("$EndReason", (int)reason),
 			Parameter("$SessionId", Format(sessionId))) == 1;
 
+	public static async Task<bool> EndAsync(DatabaseTransactionContext transaction, Guid sessionId, DateTime endedUtc, UserSessionEndReason reason, CancellationToken cancellationToken) =>
+		await transaction.Session.ExecuteAsync(
+			"UPDATE UserSessions SET EndedUtc = $EndedUtc, EndReason = $EndReason, Version = Version + 1 WHERE SessionId = $SessionId AND EndedUtc IS NULL;",
+			cancellationToken,
+			Parameter("$EndedUtc", Format(endedUtc)),
+			Parameter("$EndReason", (int)reason),
+			Parameter("$SessionId", Format(sessionId))) == 1;
+
+	public static Task<int> EndActiveSessionsForUserAsync(DatabaseTransactionContext transaction, long userId, DateTime endedUtc, UserSessionEndReason reason, CancellationToken cancellationToken) =>
+		transaction.Session.ExecuteAsync(
+			"UPDATE UserSessions SET EndedUtc = $EndedUtc, EndReason = $EndReason, Version = Version + 1 WHERE UserId = $UserId AND EndedUtc IS NULL;",
+			cancellationToken,
+			Parameter("$EndedUtc", Format(endedUtc)),
+			Parameter("$EndReason", (int)reason),
+			Parameter("$UserId", userId));
+
 	public Task<UserSession?> GetBySessionIdAsync(Guid sessionId, CancellationToken cancellationToken) =>
 		Database.QuerySingleOrDefaultAsync(
 			$"SELECT {SessionColumns} FROM UserSessions WHERE SessionId = $SessionId;",

@@ -118,6 +118,8 @@ public sealed class UserService
 		await _transactions.ExecuteAsync(async (transaction, token) =>
 		{
 			if (!await UserRepository.SetActiveAsync(transaction, id, isActive, expectedVersion, token)) throw new ConcurrencyConflictException("user");
+			if (!isActive)
+				await UserSessionRepository.EndActiveSessionsForUserAsync(transaction, id, DateTime.UtcNow, UserSessionEndReason.Revoked, token);
 			after.Version++;
 			await _auditEntries.CreateAsync(transaction, isActive ? _audit.CreateUpdatedEntry(id, before, after) : CreateDeactivatedEntry(id, before, after), token);
 			return true;
