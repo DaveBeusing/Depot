@@ -13,7 +13,7 @@
 
         <controls:PageHeader Title="Accounts Payable" Subtitle="Supplier documents, matching, approvals, settlements, aging, and controlled reversals.">
             <controls:PageHeader.Actions>
-                <Button Command="{Binding RefreshCommand}" Content="Refresh" Style="{StaticResource PrimaryButtonStyle}"/>
+                <Button Command="{Binding RefreshCommand}" Content="Refresh" Style="{StaticResource SecondaryButtonStyle}"/>
             </controls:PageHeader.Actions>
         </controls:PageHeader>
 
@@ -48,13 +48,13 @@
             </Grid>
         </StackPanel>
 
-        <TabControl Grid.Row="4">
+        <TabControl Grid.Row="4" Style="{StaticResource AppTabControlStyle}">
             <TabItem Header="Supplier Documents">
                 <Grid Margin="8">
                     <Grid.ColumnDefinitions><ColumnDefinition Width="2*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="3*"/></Grid.ColumnDefinitions>
                     <Grid>
                         <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-                        <DataGrid ItemsSource="{Binding Documents}" SelectedItem="{Binding SelectedDocument}" Style="{StaticResource AppDataGridStyle}" AutoGenerateColumns="False">
+                        <DataGrid ItemsSource="{Binding Documents}" SelectedItem="{Binding SelectedDocument}" Style="{StaticResource AppDataGridCompactStyle}" AutoGenerateColumns="False">
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="70"/>
                                 <DataGridTextColumn Header="Supplier" Binding="{Binding SupplierName}" Width="*"/>
@@ -87,14 +87,14 @@
                                             <StackPanel Grid.Column="4"><TextBlock Text="Currency"/><TextBox Text="{Binding DraftCurrency}" Style="{StaticResource AppTextBoxStyle}"/></StackPanel>
                                         </Grid>
                                     </Grid>
-                                    <DataGrid Margin="0,12,0,0" ItemsSource="{Binding DraftLines}" SelectedItem="{Binding SelectedDraftLine}" Style="{StaticResource AppDataGridStyle}" AutoGenerateColumns="False" CanUserAddRows="False">
+                                    <DataGrid Margin="0,12,0,0" ItemsSource="{Binding DraftLines}" SelectedItem="{Binding SelectedDraftLine}" Style="{StaticResource AppDataGridCompactStyle}" AutoGenerateColumns="False" CanUserAddRows="False">
                                         <DataGrid.Columns>
                                             <DataGridTextColumn Header="PO line ID" Binding="{Binding PurchaseOrderLineId, UpdateSourceTrigger=PropertyChanged}" Width="90"/>
                                             <DataGridTextColumn Header="GR line ID" Binding="{Binding GoodsReceiptLineId, UpdateSourceTrigger=PropertyChanged}" Width="90"/>
                                             <DataGridTextColumn Header="Description" Binding="{Binding Description, UpdateSourceTrigger=PropertyChanged}" Width="*"/>
-                                            <DataGridTextColumn Header="Qty" Binding="{Binding Quantity, UpdateSourceTrigger=PropertyChanged}" Width="70"/>
-                                            <DataGridTextColumn Header="Unit price" Binding="{Binding UnitPrice, UpdateSourceTrigger=PropertyChanged}" Width="90"/>
-                                            <DataGridTextColumn Header="Tax" Binding="{Binding TaxAmount, UpdateSourceTrigger=PropertyChanged}" Width="80"/>
+                                            <DataGridTextColumn Header="Qty" Binding="{Binding Quantity, UpdateSourceTrigger=PropertyChanged}" Width="70" ElementStyle="{StaticResource AppDataGridNumericTextStyle}"/>
+                                            <DataGridTextColumn Header="Unit price" Binding="{Binding UnitPrice, UpdateSourceTrigger=PropertyChanged}" Width="90" ElementStyle="{StaticResource AppDataGridNumericTextStyle}"/>
+                                            <DataGridTextColumn Header="Tax" Binding="{Binding TaxAmount, UpdateSourceTrigger=PropertyChanged}" Width="80" ElementStyle="{StaticResource AppDataGridNumericTextStyle}"/>
                                         </DataGrid.Columns>
                                     </DataGrid>
                                     <WrapPanel Margin="0,8,0,0" HorizontalAlignment="Right">
@@ -116,7 +116,7 @@
                                     <WrapPanel Margin="0,12,0,0" HorizontalAlignment="Right">
                                         <Button Command="{Binding SubmitCommand}" Content="Submit" Style="{StaticResource SecondaryButtonStyle}"/>
                                         <Button Margin="8,0,0,0" Command="{Binding ApproveCommand}" Content="Approve" Style="{StaticResource PrimaryButtonStyle}"/>
-                                        <Button Margin="8,0,0,0" Command="{Binding RejectCommand}" Content="Reject" Style="{StaticResource SecondaryButtonStyle}"/>
+                                        <Button Margin="8,0,0,0" Command="{Binding RejectCommand}" Content="Reject" Style="{StaticResource DangerButtonStyle}"/>
                                         <Button Margin="8,0,0,0" Command="{Binding PostCommand}" Content="Post" Style="{StaticResource PrimaryButtonStyle}"/>
                                     </WrapPanel>
                                     <Separator Margin="0,14,0,10"/>
@@ -124,7 +124,7 @@
                                         <Grid.ColumnDefinitions><ColumnDefinition Width="150"/><ColumnDefinition Width="10"/><ColumnDefinition Width="*"/><ColumnDefinition Width="10"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                         <DatePicker SelectedDate="{Binding DocumentReversalDate}"/>
                                         <TextBox Grid.Column="2" Text="{Binding DocumentReversalReason}" Style="{StaticResource AppTextBoxStyle}" ToolTip="Reversal reason"/>
-                                        <Button Grid.Column="4" Command="{Binding ReverseDocumentCommand}" Content="Reverse document" Style="{StaticResource SecondaryButtonStyle}"/>
+                                        <Button Grid.Column="4" Command="{Binding ReverseDocumentCommand}" Content="Reverse document" Style="{StaticResource DangerButtonStyle}"/>
                                     </Grid>
                                 </StackPanel>
                             </controls:Card>
@@ -136,22 +136,22 @@
             <TabItem Header="Open Items &amp; Aging">
                 <Grid Margin="8">
                     <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="12"/><RowDefinition Height="*"/><RowDefinition Height="12"/><RowDefinition Height="Auto"/><RowDefinition Height="12"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-                    <DataGrid ItemsSource="{Binding OpenItems}" SelectedItem="{Binding SelectedOpenItem}" Style="{StaticResource AppDataGridStyle}" AutoGenerateColumns="False">
+                    <DataGrid ItemsSource="{Binding OpenItems}" SelectedItem="{Binding SelectedOpenItem}" Style="{StaticResource AppDataGridCompactStyle}" AutoGenerateColumns="False">
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="70"/><DataGridTextColumn Header="Supplier" Binding="{Binding SupplierName}" Width="*"/><DataGridTextColumn Header="Kind" Binding="{Binding Kind}" Width="100"/><DataGridTextColumn Header="Reference" Binding="{Binding SourceReference}" Width="150"/><DataGridTextColumn Header="Due" Binding="{Binding DueDate}" Width="105"/><DataGridTextColumn Header="Currency" Binding="{Binding Currency}" Width="85"/><DataGridTextColumn Header="Original" Binding="{Binding OriginalAmount, StringFormat={}{0:N2}}" Width="105"/><DataGridTextColumn Header="Remaining" Binding="{Binding RemainingAmount, StringFormat={}{0:N2}}" Width="105"/><DataGridTextColumn Header="Status" Binding="{Binding SettlementStatus}" Width="110"/>
+                            <DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="70"/><DataGridTextColumn Header="Supplier" Binding="{Binding SupplierName}" Width="*"/><DataGridTextColumn Header="Kind" Binding="{Binding Kind}" Width="100"/><DataGridTextColumn Header="Reference" Binding="{Binding SourceReference}" Width="150"/><DataGridTextColumn Header="Due" Binding="{Binding DueDate}" Width="105"/><DataGridTextColumn Header="Currency" Binding="{Binding Currency}" Width="85"/><DataGridTextColumn Header="Original" Binding="{Binding OriginalAmount, StringFormat={}{0:N2}}" Width="105" ElementStyle="{StaticResource AppDataGridNumericTextStyle}"/><DataGridTextColumn Header="Remaining" Binding="{Binding RemainingAmount, StringFormat={}{0:N2}}" Width="105" ElementStyle="{StaticResource AppDataGridNumericTextStyle}"/><DataGridTextColumn Header="Status" Binding="{Binding SettlementStatus}" Width="110"/>
                         </DataGrid.Columns>
                     </DataGrid>
-                    <DataGrid Grid.Row="2" ItemsSource="{Binding Aging}" Style="{StaticResource AppDataGridStyle}" AutoGenerateColumns="False">
+                    <DataGrid Grid.Row="2" ItemsSource="{Binding Aging}" Style="{StaticResource AppDataGridCompactStyle}" AutoGenerateColumns="False">
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="Supplier" Binding="{Binding SupplierName}" Width="*"/><DataGridTextColumn Header="Currency" Binding="{Binding Currency}" Width="85"/><DataGridTextColumn Header="Current" Binding="{Binding Current, StringFormat={}{0:N2}}" Width="100"/><DataGridTextColumn Header="1-30" Binding="{Binding Days1To30, StringFormat={}{0:N2}}" Width="100"/><DataGridTextColumn Header="31-60" Binding="{Binding Days31To60, StringFormat={}{0:N2}}" Width="100"/><DataGridTextColumn Header="61-90" Binding="{Binding Days61To90, StringFormat={}{0:N2}}" Width="100"/><DataGridTextColumn Header="90+" Binding="{Binding DaysOver90, StringFormat={}{0:N2}}" Width="100"/><DataGridTextColumn Header="Debits" Binding="{Binding UnappliedDebits, StringFormat={}{0:N2}}" Width="100"/>
+                            <DataGridTextColumn Header="Supplier" Binding="{Binding SupplierName}" Width="*"/><DataGridTextColumn Header="Currency" Binding="{Binding Currency}" Width="85"/><DataGridTextColumn Header="Current" Binding="{Binding Current, StringFormat={}{0:N2}}" Width="100" ElementStyle="{StaticResource AppDataGridNumericTextStyle}"/><DataGridTextColumn Header="1-30" Binding="{Binding Days1To30, StringFormat={}{0:N2}}" Width="100" ElementStyle="{StaticResource AppDataGridNumericTextStyle}"/><DataGridTextColumn Header="31-60" Binding="{Binding Days31To60, StringFormat={}{0:N2}}" Width="100" ElementStyle="{StaticResource AppDataGridNumericTextStyle}"/><DataGridTextColumn Header="61-90" Binding="{Binding Days61To90, StringFormat={}{0:N2}}" Width="100" ElementStyle="{StaticResource AppDataGridNumericTextStyle}"/><DataGridTextColumn Header="90+" Binding="{Binding DaysOver90, StringFormat={}{0:N2}}" Width="100" ElementStyle="{StaticResource AppDataGridNumericTextStyle}"/><DataGridTextColumn Header="Debits" Binding="{Binding UnappliedDebits, StringFormat={}{0:N2}}" Width="100" ElementStyle="{StaticResource AppDataGridNumericTextStyle}"/>
                         </DataGrid.Columns>
                     </DataGrid>
                     <Grid Grid.Row="4">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="150"/><ColumnDefinition Width="8"/><ColumnDefinition Width="100"/><ColumnDefinition Width="8"/><ColumnDefinition Width="150"/><ColumnDefinition Width="8"/><ColumnDefinition Width="150"/><ColumnDefinition Width="8"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                        <TextBox Text="{Binding StatementSupplierId}" Style="{StaticResource AppTextBoxStyle}" ToolTip="Supplier ID"/><TextBox Grid.Column="2" Text="{Binding StatementCurrency}" Style="{StaticResource AppTextBoxStyle}" ToolTip="Currency"/><DatePicker Grid.Column="4" SelectedDate="{Binding StatementFromDate}"/><DatePicker Grid.Column="6" SelectedDate="{Binding StatementToDate}"/><Button Grid.Column="8" Command="{Binding LoadStatementCommand}" Content="Load statement" Style="{StaticResource PrimaryButtonStyle}"/>
+                        <TextBox Text="{Binding StatementSupplierId}" Style="{StaticResource AppTextBoxStyle}" ToolTip="Supplier ID"/><TextBox Grid.Column="2" Text="{Binding StatementCurrency}" Style="{StaticResource AppTextBoxStyle}" ToolTip="Currency"/><DatePicker Grid.Column="4" SelectedDate="{Binding StatementFromDate}"/><DatePicker Grid.Column="6" SelectedDate="{Binding StatementToDate}"/><Button Grid.Column="8" Command="{Binding LoadStatementCommand}" Content="Load statement" Style="{StaticResource SecondaryButtonStyle}"/>
                     </Grid>
-                    <DataGrid Grid.Row="6" ItemsSource="{Binding StatementRows}" Style="{StaticResource AppDataGridStyle}" AutoGenerateColumns="False">
-                        <DataGrid.Columns><DataGridTextColumn Header="Date" Binding="{Binding Date}" Width="105"/><DataGridTextColumn Header="Type" Binding="{Binding Type}" Width="110"/><DataGridTextColumn Header="Reference" Binding="{Binding Reference}" Width="150"/><DataGridTextColumn Header="Description" Binding="{Binding Description}" Width="*"/><DataGridTextColumn Header="Debit" Binding="{Binding Debit, StringFormat={}{0:N2}}" Width="100"/><DataGridTextColumn Header="Credit" Binding="{Binding Credit, StringFormat={}{0:N2}}" Width="100"/><DataGridTextColumn Header="Open" Binding="{Binding RemainingAmount, StringFormat={}{0:N2}}" Width="100"/></DataGrid.Columns>
+                    <DataGrid Grid.Row="6" ItemsSource="{Binding StatementRows}" Style="{StaticResource AppDataGridCompactStyle}" AutoGenerateColumns="False">
+                        <DataGrid.Columns><DataGridTextColumn Header="Date" Binding="{Binding Date}" Width="105"/><DataGridTextColumn Header="Type" Binding="{Binding Type}" Width="110"/><DataGridTextColumn Header="Reference" Binding="{Binding Reference}" Width="150"/><DataGridTextColumn Header="Description" Binding="{Binding Description}" Width="*"/><DataGridTextColumn Header="Debit" Binding="{Binding Debit, StringFormat={}{0:N2}}" Width="100" ElementStyle="{StaticResource AppDataGridNumericTextStyle}"/><DataGridTextColumn Header="Credit" Binding="{Binding Credit, StringFormat={}{0:N2}}" Width="100" ElementStyle="{StaticResource AppDataGridNumericTextStyle}"/><DataGridTextColumn Header="Open" Binding="{Binding RemainingAmount, StringFormat={}{0:N2}}" Width="100" ElementStyle="{StaticResource AppDataGridNumericTextStyle}"/></DataGrid.Columns>
                     </DataGrid>
                 </Grid>
             </TabItem>
@@ -174,7 +174,7 @@
                         </controls:Card>
                         <controls:Card>
                             <controls:Card.Header><TextBlock Text="Reverse supplier payment" Style="{StaticResource SectionTitleStyle}"/></controls:Card.Header>
-                            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="160"/><ColumnDefinition Width="10"/><ColumnDefinition Width="160"/><ColumnDefinition Width="10"/><ColumnDefinition Width="*"/><ColumnDefinition Width="10"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBox Text="{Binding PaymentReversalId}" Style="{StaticResource AppTextBoxStyle}" ToolTip="Payment ID"/><DatePicker Grid.Column="2" SelectedDate="{Binding PaymentReversalDate}"/><TextBox Grid.Column="4" Text="{Binding PaymentReversalReason}" Style="{StaticResource AppTextBoxStyle}" ToolTip="Reason"/><Button Grid.Column="6" Command="{Binding ReversePaymentCommand}" Content="Reverse payment" Style="{StaticResource SecondaryButtonStyle}"/></Grid>
+                            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="160"/><ColumnDefinition Width="10"/><ColumnDefinition Width="160"/><ColumnDefinition Width="10"/><ColumnDefinition Width="*"/><ColumnDefinition Width="10"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBox Text="{Binding PaymentReversalId}" Style="{StaticResource AppTextBoxStyle}" ToolTip="Payment ID"/><DatePicker Grid.Column="2" SelectedDate="{Binding PaymentReversalDate}"/><TextBox Grid.Column="4" Text="{Binding PaymentReversalReason}" Style="{StaticResource AppTextBoxStyle}" ToolTip="Reason"/><Button Grid.Column="6" Command="{Binding ReversePaymentCommand}" Content="Reverse payment" Style="{StaticResource DangerButtonStyle}"/></Grid>
                         </controls:Card>
                     </StackPanel>
                 </ScrollViewer>
