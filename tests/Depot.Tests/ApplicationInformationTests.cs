@@ -2,6 +2,8 @@
 // Licensed under the MIT License.
 
 using System.Text.RegularExpressions;
+using System.Threading;
+using System.Windows;
 
 using Depot.Data;
 using Depot.Services;
@@ -31,6 +33,34 @@ public sealed class ApplicationInformationTests
 		Assert.Equal(DatabaseVersion.CurrentVersion, information.DatabaseSchemaVersion);
 		Assert.Equal("MIT", information.License);
 		Assert.Equal("https://github.com/DaveBeusing/Depot", information.RepositoryUrl);
+	}
+
+	[Fact]
+	public void CheckboxResourceDictionaryLoadsWithoutMissingStaticResources()
+	{
+		Exception? failure = null;
+		var thread = new Thread(() =>
+		{
+			try
+			{
+				var dictionary = (ResourceDictionary)Application.LoadComponent(
+					new Uri("/Depot;component/Resources/CheckBox.xaml", UriKind.Relative));
+
+				Assert.True(dictionary.Contains("AppCheckBoxControlStyle"));
+				Assert.True(dictionary.Contains("AppDataGridCheckBoxElementStyle"));
+				Assert.True(dictionary.Contains("AppDataGridCheckBoxEditingElementStyle"));
+			}
+			catch (Exception exception)
+			{
+				failure = exception;
+			}
+		});
+
+		thread.SetApartmentState(ApartmentState.STA);
+		thread.Start();
+		thread.Join();
+
+		Assert.Null(failure);
 	}
 
 	[Theory]
