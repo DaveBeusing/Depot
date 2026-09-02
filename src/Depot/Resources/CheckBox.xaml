@@ -3,9 +3,113 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="clr-namespace:Depot.Controls">
 
-    <!-- Framework-generated checkbox instances, including DataGridCheckBoxColumn cells. -->
-    <Style TargetType="{x:Type CheckBox}" BasedOn="{StaticResource AppCheckBoxStyle}" />
+    <!-- Canonical visual grammar for all application checkboxes. -->
+    <Style x:Key="AppCheckBoxControlStyle" TargetType="{x:Type CheckBox}" BasedOn="{StaticResource AppCheckBoxStyle}">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Setter Property="HorizontalContentAlignment" Value="Left" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type CheckBox}">
+                    <Grid SnapsToDevicePixels="True">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Border x:Name="CheckBorder"
+                                Width="18"
+                                Height="18"
+                                HorizontalAlignment="Left"
+                                VerticalAlignment="Center"
+                                Background="{DynamicResource SurfaceBrush}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="3">
+                            <Grid>
+                                <Path x:Name="CheckGlyph"
+                                      Width="10"
+                                      Height="8"
+                                      Data="M 1,4 L 4,7 L 9,1"
+                                      Stroke="{DynamicResource PrimaryForegroundBrush}"
+                                      StrokeEndLineCap="Round"
+                                      StrokeLineJoin="Round"
+                                      StrokeThickness="1.8"
+                                      Stretch="Fill"
+                                      Visibility="Collapsed" />
+                                <Border x:Name="IndeterminateGlyph"
+                                        Width="8"
+                                        Height="2"
+                                        HorizontalAlignment="Center"
+                                        VerticalAlignment="Center"
+                                        Background="{DynamicResource PrimaryForegroundBrush}"
+                                        CornerRadius="1"
+                                        Visibility="Collapsed" />
+                            </Grid>
+                        </Border>
+                        <ContentPresenter x:Name="ContentPresenter"
+                                          Grid.Column="1"
+                                          Margin="8,0,0,0"
+                                          HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                          VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                          Content="{TemplateBinding Content}"
+                                          ContentStringFormat="{TemplateBinding ContentStringFormat}"
+                                          ContentTemplate="{TemplateBinding ContentTemplate}"
+                                          ContentTemplateSelector="{TemplateBinding ContentTemplateSelector}"
+                                          RecognizesAccessKey="True" />
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="Content" Value="{x:Null}">
+                            <Setter TargetName="ContentPresenter" Property="Margin" Value="0" />
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="CheckBorder" Property="Background" Value="{DynamicResource PrimaryBrush}" />
+                            <Setter TargetName="CheckBorder" Property="BorderBrush" Value="{DynamicResource PrimaryBrush}" />
+                            <Setter TargetName="CheckGlyph" Property="Visibility" Value="Visible" />
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="{x:Null}">
+                            <Setter TargetName="CheckBorder" Property="Background" Value="{DynamicResource PrimaryBrush}" />
+                            <Setter TargetName="CheckBorder" Property="BorderBrush" Value="{DynamicResource PrimaryBrush}" />
+                            <Setter TargetName="IndeterminateGlyph" Property="Visibility" Value="Visible" />
+                        </Trigger>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="CheckBorder" Property="BorderBrush" Value="{DynamicResource PrimaryHoverBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="CheckBorder" Property="BorderBrush" Value="{DynamicResource NavigationAccentBrush}" />
+                            <Setter TargetName="CheckBorder" Property="BorderThickness" Value="2" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.45" />
+                            <Setter Property="Cursor" Value="Arrow" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
 
     <!-- Canonical checkbox component for application views. -->
-    <Style TargetType="{x:Type controls:AppCheckBox}" BasedOn="{StaticResource AppCheckBoxStyle}" />
+    <Style TargetType="{x:Type controls:AppCheckBox}" BasedOn="{StaticResource AppCheckBoxControlStyle}" />
+
+    <!-- Native checkbox fallback for framework-owned checkbox instances. -->
+    <Style TargetType="{x:Type CheckBox}" BasedOn="{StaticResource AppCheckBoxControlStyle}" />
+
+    <!-- DataGridCheckBoxColumn display elements remain non-interactive in read-only grids. -->
+    <Style x:Key="AppDataGridCheckBoxElementStyle" TargetType="{x:Type CheckBox}" BasedOn="{StaticResource AppCheckBoxControlStyle}">
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="IsHitTestVisible" Value="False" />
+    </Style>
+
+    <!-- Editing style preserves native checkbox editing behavior when an editable grid opts in. -->
+    <Style x:Key="AppDataGridCheckBoxEditingElementStyle" TargetType="{x:Type CheckBox}" BasedOn="{StaticResource AppCheckBoxControlStyle}">
+        <Setter Property="HorizontalAlignment" Value="Center" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Focusable" Value="True" />
+        <Setter Property="IsHitTestVisible" Value="True" />
+    </Style>
 </ResourceDictionary>
