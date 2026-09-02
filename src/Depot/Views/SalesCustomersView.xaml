@@ -3,25 +3,34 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="clr-namespace:Depot.Controls">
     <Grid>
-        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-        <controls:OperationPanel ErrorText="{Binding Workspace.OperationError}" HasError="{Binding Workspace.HasOperationError}" IsBusy="{Binding Workspace.IsBusy}" StatusText="{Binding Workspace.StatusText}" />
-        <controls:MasterDetailGrid Grid.Row="1">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="12"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        <controls:PageHeader Title="Customers" Subtitle="Maintain customer identity, contacts, destinations, scoped pricing and electronic-invoice identity."/>
+        <controls:OperationPanel Grid.Row="1" ErrorText="{Binding Workspace.OperationError}" HasError="{Binding Workspace.HasOperationError}" IsBusy="{Binding Workspace.IsBusy}" StatusText="{Binding Workspace.StatusText}" />
+        <controls:MasterDetailGrid Grid.Row="3">
             <controls:MasterDetailGrid.Master>
-                <controls:Card>
+                <Border Style="{StaticResource WorkspaceSectionStyle}">
                     <Grid>
                         <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-                        <controls:SearchBox Placeholder="Search customers" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
-                        <ListBox Grid.Row="1" Margin="0,10,0,0" ItemsSource="{Binding Workspace.Customers}" SelectedItem="{Binding SelectedCustomer}" Style="{StaticResource MasterDataListBoxStyle}" ItemContainerStyle="{StaticResource MasterDataListBoxItemStyle}">
-                            <ListBox.ItemTemplate><DataTemplate><StackPanel><TextBlock Text="{Binding Name}" FontWeight="SemiBold"/><TextBlock Style="{StaticResource CaptionStyle}"><Run Text="{Binding CustomerNumber}"/><Run Text=" · "/><Run Text="{Binding SalesRegionName, TargetNullValue=Global pricing}"/></TextBlock></StackPanel></DataTemplate></ListBox.ItemTemplate>
-                        </ListBox>
-                        <Button Grid.Row="2" Margin="0,10,0,0" HorizontalAlignment="Right" Command="{Binding NewCustomerCommand}" Content="New customer" Style="{StaticResource PrimaryButtonStyle}" />
+                        <controls:FilterBar><controls:SearchBox Placeholder="Search customers" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" /></controls:FilterBar>
+                        <Grid Grid.Row="1">
+                            <ListBox ItemsSource="{Binding Workspace.Customers}" SelectedItem="{Binding SelectedCustomer}" Style="{StaticResource MasterDataListBoxStyle}" ItemContainerStyle="{StaticResource MasterDataListBoxItemStyle}">
+                                <ListBox.ItemTemplate><DataTemplate><StackPanel><TextBlock Text="{Binding Name}" FontWeight="SemiBold"/><TextBlock Style="{StaticResource CaptionStyle}"><Run Text="{Binding CustomerNumber}"/><Run Text=" · "/><Run Text="{Binding SalesRegionName, TargetNullValue=Global pricing}"/></TextBlock></StackPanel></DataTemplate></ListBox.ItemTemplate>
+                            </ListBox>
+                            <controls:WorkflowListState ItemCount="{Binding Workspace.Customers.Count}" SearchText="{Binding SearchText}" IsBusy="{Binding Workspace.IsBusy}" HasError="{Binding Workspace.HasOperationError}" ErrorText="{Binding Workspace.OperationError}"/>
+                        </Grid>
+                        <Button Grid.Row="2" Margin="0,10,0,0" HorizontalAlignment="Right" Command="{Binding NewCustomerCommand}" Content="New customer" Style="{StaticResource SecondaryButtonStyle}" />
                     </Grid>
-                </controls:Card>
+                </Border>
             </controls:MasterDetailGrid.Master>
             <controls:MasterDetailGrid.Detail>
                 <Grid>
                     <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="12"/><RowDefinition Height="1.15*"/></Grid.RowDefinitions>
-                    <controls:Card>
+                    <Border Style="{StaticResource WorkspaceSectionStyle}">
                         <Grid>
                             <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                             <controls:WorkflowHeader Title="Customer" Subtitle="Contact and commercial master data" Status="{Binding Workspace.CustomerDraft.CustomerNumber}" />
@@ -39,9 +48,9 @@
                             </ScrollViewer>
                             <controls:WorkflowActionBar Grid.Row="2"><controls:WorkflowActionBar.PrimaryAction><Button Command="{Binding SaveCustomerCommand}" Content="Save customer" Style="{StaticResource PrimaryButtonStyle}"/></controls:WorkflowActionBar.PrimaryAction></controls:WorkflowActionBar>
                         </Grid>
-                    </controls:Card>
-                    <controls:Card Grid.Row="2">
-                        <TabControl>
+                    </Border>
+                    <Border Grid.Row="2" Style="{StaticResource WorkspaceSectionStyle}">
+                        <TabControl Style="{StaticResource AppTabControlStyle}">
                             <TabItem Header="Addresses">
                                 <Grid Margin="0,10,0,0">
                                     <Grid.ColumnDefinitions><ColumnDefinition Width="1.1*"/><ColumnDefinition Width="14"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
@@ -95,9 +104,7 @@
                                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                                     <Grid Margin="0,10,0,0">
                                         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="14"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                        <Grid.RowDefinitions>
-                                            <RowDefinition Height="Auto"/><RowDefinition Height="12"/><RowDefinition Height="Auto"/><RowDefinition Height="12"/><RowDefinition Height="Auto"/><RowDefinition Height="12"/><RowDefinition Height="Auto"/><RowDefinition Height="12"/><RowDefinition Height="Auto"/>
-                                        </Grid.RowDefinitions>
+                                        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="12"/><RowDefinition Height="Auto"/><RowDefinition Height="12"/><RowDefinition Height="Auto"/><RowDefinition Height="12"/><RowDefinition Height="Auto"/><RowDefinition Height="12"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                                         <StackPanel Grid.ColumnSpan="3">
                                             <TextBlock Text="Electronic invoice buyer identity" FontWeight="SemiBold"/>
                                             <TextBlock Text="These structured fields are frozen together with the billing-address snapshot when an invoice is posted. Complete data is required for XRechnung finalization." Style="{StaticResource CaptionStyle}" Margin="0,3,0,0" TextWrapping="Wrap"/>
@@ -117,7 +124,7 @@
                                 </ScrollViewer>
                             </TabItem>
                         </TabControl>
-                    </controls:Card>
+                    </Border>
                 </Grid>
             </controls:MasterDetailGrid.Detail>
         </controls:MasterDetailGrid>
