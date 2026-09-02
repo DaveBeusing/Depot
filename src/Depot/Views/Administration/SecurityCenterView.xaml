@@ -12,9 +12,8 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <controls:WorkflowHeader Title="Security Center"
-                                 Subtitle="Investigate authentication and session risk, apply controlled response actions, and manage authentication security policy."
-                                 Status="{Binding HighRiskOpen, StringFormat={}{0:N0} high-risk open}" />
+        <controls:PageHeader Title="Security Center"
+                             Subtitle="Investigate authentication and session risk, apply controlled response actions, and manage authentication security policy." />
 
         <controls:OperationPanel Grid.Row="1" Margin="0,10,0,0"
                                  IsBusy="{Binding IsBusy}" HasError="{Binding HasOperationError}"
@@ -47,9 +46,9 @@
             <TabItem Header="Events &amp; Response">
                 <Grid Margin="0,10,0,0">
                     <Grid.ColumnDefinitions><ColumnDefinition Width="1.65*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="1*" /></Grid.ColumnDefinitions>
-                    <controls:Card>
+                    <Border Style="{StaticResource WorkspaceSectionStyle}">
                         <Grid MinHeight="420">
-                            <DataGrid automation:AutomationProperties.Name="Security events" ItemsSource="{Binding Events}" SelectedItem="{Binding SelectedEvent}" Style="{StaticResource AppDataGridStyle}" Visibility="{Binding HasEvents, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <DataGrid automation:AutomationProperties.Name="Security events" ItemsSource="{Binding Events}" SelectedItem="{Binding SelectedEvent}" Style="{StaticResource AppDataGridCompactStyle}" Visibility="{Binding HasEvents, Converter={StaticResource BooleanToVisibilityConverter}}">
                                 <DataGrid.Columns>
                                     <DataGridTextColumn Header="Time" Binding="{Binding TimestampLocal, StringFormat={}{0:g}}" Width="135" ElementStyle="{StaticResource AppDataGridTextStyle}" />
                                     <DataGridTextColumn Header="Severity" Binding="{Binding Severity}" Width="90" ElementStyle="{StaticResource AppDataGridTextStyle}" />
@@ -62,13 +61,13 @@
                             </DataGrid>
                             <controls:EmptyState Title="No matching security events" Description="No security events match the current filters." Visibility="{Binding HasNoEvents, Converter={StaticResource BooleanToVisibilityConverter}}" />
                         </Grid>
-                    </controls:Card>
+                    </Border>
 
                     <ScrollViewer Grid.Column="2" VerticalScrollBarVisibility="Auto">
                         <StackPanel>
-                            <controls:Card>
+                            <Border Style="{StaticResource WorkspaceSectionStyle}">
                                 <StackPanel>
-                                    <TextBlock Text="Selected event" Style="{StaticResource CardTitleStyle}" />
+                                    <TextBlock Text="Selected event" Style="{StaticResource WorkspaceSectionTitleStyle}" />
                                     <TextBlock Text="{Binding SelectedEvent.Summary}" Style="{StaticResource SectionTitleStyle}" Margin="0,8,0,0" TextWrapping="Wrap" />
                                     <TextBlock Text="{Binding SelectedEvent.Details}" Style="{StaticResource CaptionStyle}" Margin="0,6,0,0" TextWrapping="Wrap" />
                                     <TextBlock Text="Session" Style="{StaticResource FormLabelStyle}" Margin="0,12,0,0" />
@@ -77,7 +76,7 @@
                                     <TextBlock Text="{Binding SelectedEvent.ClientInstanceId}" Style="{StaticResource CaptionStyle}" TextWrapping="Wrap" />
                                     <Button Margin="0,12,0,0" automation:AutomationProperties.Name="Mark selected security event reviewed" Command="{Binding MarkReviewedCommand}" Content="Mark reviewed" Style="{StaticResource PrimaryButtonStyle}" Visibility="{Binding CanManage, Converter={StaticResource BooleanToVisibilityConverter}}" />
                                 </StackPanel>
-                            </controls:Card>
+                            </Border>
 
                             <controls:Card Margin="0,12,0,0">
                                 <StackPanel>
@@ -105,12 +104,12 @@
             </TabItem>
 
             <TabItem Header="Authentication Policy">
-                <controls:Card Margin="0,10,0,0">
+                <Border Margin="0,10,0,0" Style="{StaticResource WorkspaceSectionStyle}">
                     <StackPanel>
                         <Grid>
                             <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                             <StackPanel>
-                                <TextBlock Text="Authentication security policy" Style="{StaticResource SectionTitleStyle}" />
+                                <TextBlock Text="Authentication security policy" Style="{StaticResource WorkspaceSectionTitleStyle}" />
                                 <TextBlock Text="Controls shared failed-login throttling, lockout and Security Event retention across all Depot clients." Style="{StaticResource CaptionStyle}" Margin="0,4,0,0" TextWrapping="Wrap" />
                                 <TextBlock Text="{Binding AuthenticationPolicyRangeHint}" Style="{StaticResource HintStyle}" Margin="0,6,0,0" TextWrapping="Wrap" />
                             </StackPanel>
@@ -123,7 +122,7 @@
                             <StackPanel><TextBlock Text="Security Event retention (days)" Style="{StaticResource FormLabelStyle}" /><TextBox Margin="0,4,0,0" Style="{StaticResource AppTextBoxStyle}" Text="{Binding SecurityEventRetentionDays, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding CanManageAuthenticationPolicy}" /></StackPanel>
                         </UniformGrid>
                     </StackPanel>
-                </controls:Card>
+                </Border>
             </TabItem>
         </TabControl>
     </Grid>
