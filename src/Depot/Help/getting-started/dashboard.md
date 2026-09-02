@@ -18,8 +18,12 @@ The Dashboard can show the following existing information:
 - **Warehouse** — Inventory Counts awaiting review or posting and open Stock Transfers.
 - **Sales** — pending approvals, orders awaiting reservation, backorders, orders ready to ship, draft shipments, draft invoices, returns this month, credit notes this month, and net sales this month.
 - **Approvals** — open Purchase Order approvals, oldest submission information, and approval amount summary when available.
-- **Administration** — active-user count.
-- **Reports** — direct access to the existing Reports workspace.
+- **Administration** — distinct **Online Users**, total **Active Sessions**, **Sessions Today**, **Admin Logouts**, and **Revoked Today**. Online presence uses the same heartbeat rule as User Sessions; the three daily counters use the current client's local calendar day translated to UTC storage timestamps.
+- **Reports** — direct access to the Reports workspace only when the signed-in account has `Reports.View` (or is an administrator).
+
+A user signed in on two clients contributes one Online User and two Active Sessions. **Sessions Today** counts session starts during the current local day. **Admin Logouts** counts sessions ended with `AdministrativeLogout` during that day. **Revoked Today** counts sessions ended with `Revoked`, for example because an account was deactivated.
+
+The Administration presence card navigates to **Administration > User Sessions** when the signed-in account is allowed to view user sessions. The Reports card is permission-independent from user-session administration and does not require `Users.View`.
 
 The Dashboard also retains **Recent activity** for the latest inventory movements.
 
@@ -27,7 +31,9 @@ The Dashboard also retains **Recent activity** for the latest inventory movement
 1. Open **Dashboard** from the activity bar.
 2. Review the module overview cards available to your account.
 3. Select a module card to open its corresponding workspace.
-4. Use **Recent activity** to review the latest inventory movements or open the Inventory movements workspace.
+4. Use the Administration presence card to open **User Sessions** and review active clients or recent session history.
+5. Use the Reports card when your account has `Reports.View`.
+6. Use **Recent activity** to review the latest inventory movements or open the Inventory movements workspace.
 
 ## Result
 The Dashboard acts as an operational starting point rather than only an inventory summary. Administrators can review the available cross-module overview in one place and then navigate directly to the relevant workspace.
@@ -35,11 +41,13 @@ The Dashboard acts as an operational starting point rather than only an inventor
 ## Common problems
 - A module overview is hidden when the signed-in user lacks the corresponding permission.
 - Administrators receive all currently implemented dashboard role metrics.
-- The Reports card is an entry point; detailed report results remain in the Reports workspace.
+- Online presence is heartbeat-derived; a crashed or disconnected client may remain visible only until the configured presence timeout expires.
+- Daily session KPIs reset by calendar day; they are not all-time counters.
+- The Reports card requires `Reports.View`; it is no longer coupled to Administration/User Session visibility.
 - Dashboard figures reflect the metrics implemented by the corresponding services and repositories; the Dashboard does not create separate business data.
 
 ## Required permissions
-Dashboard content is permission-aware. Administrator accounts receive all available module overview metrics.
+Dashboard content is permission-aware. Viewing User Sessions requires `Users.View`; terminating sessions requires `UserSessions.Terminate`; opening Reports requires `Reports.View`.
 
 ## Related topics
 - [Inventory Overview](topic:inventory.overview)
@@ -49,3 +57,4 @@ Dashboard content is permission-aware. Administrator accounts receive all availa
 - [Approvals](topic:approvals.queue)
 - [Reports](topic:reports.overview)
 - [Users and Roles](topic:administration.users)
+- [User Sessions](topic:administration.user-sessions)

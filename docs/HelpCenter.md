@@ -1,31 +1,32 @@
 # Depot Help Center
 
-Updated: 2026-08-29
+Updated: 2026-09-01
 
 Depot ships an embedded offline Markdown Help Center rendered natively in WPF. Help is permission-filtered, locally searchable, uses stable topic IDs, and opens in the normal workspace shell.
 
 ## Current manifest
 
-Help manifest **1.18** contains scoped Sales pricing guidance and eight Finance topics:
+Help manifest **1.21** contains Inventory, Warehouse, Purchasing, Sales, Approvals, Reports, Finance, Administration and Troubleshooting topics plus the current User Sessions and Security Center guidance.
 
-- `finance.foundation` — `Finance.View`
-- `finance.general-ledger` — `FinanceGeneralLedger.View`
-- `finance.receivables` — `FinanceReceivables.View`
-- `finance.payables` — `FinancePayables.View`
-- `finance.inventory-accounting` — `FinanceInventoryAccounting.View`
-- `finance.banking` — `FinanceBanking.View`
-- `finance.reporting` — `FinanceFinancialReporting.View`
-- `finance.localization` — `FinanceLocalization.View`
+The session/security help contract includes:
 
-**Finance > Localization** resolves to `finance.localization`. The topic documents explicit effective-dated assignment, `GENERIC → EU → DE` hierarchy resolution, country validation, custom-pack extensibility, registry support levels, RBAC, retained Audit evidence and the legal/tax/compliance boundary.
+- `administration.user-sessions` — visible with `Users.View`; documents Active/History views, Online Users/Active Sessions metrics, heartbeat presence, central idle/max-age policy, `Expired` behavior, session termination, revocation and privacy boundaries. Policy editing requires `Settings.Manage`; destructive session control requires `UserSessions.Terminate`.
+- `administration.security-center` — visible with `SecurityEvents.View`; documents deterministic suspicious-login rules, lockouts, 24-hour security metrics, High/Critical notifications, filtering, review workflow and privacy boundaries. Marking events reviewed additionally requires `SecurityEvents.Manage`.
+- `administration.users` — documents that deactivating a user revokes still-open sessions.
+- `administration.audit-log` — documents the distinction between business Audit evidence and operational Security Events.
+- `getting-started.dashboard` — documents distinct Online Users and Active Sessions metrics and navigation to User Sessions.
 
-Help visibility never grants business access; service authorization remains authoritative.
+Help visibility never grants business/security mutations; service authorization remains authoritative.
 
 ## Content rules
 
-Help must not imply default credentials, jurisdiction, currency, tax rate, chart/account, accounting standard, matching tolerance, reporting classification, statutory filing conformance or legal certification when those are not explicitly configured/implemented.
+Help must not imply default credentials, legal/statutory certification, unconfigured jurisdiction-specific behavior, or security telemetry that Depot does not actually collect.
 
-Finance Localization Help must clearly state that legal-entity country does not activate a pack automatically; effective localization requires explicit assignment; support levels are responsibility labels rather than pass/fail compliance flags; built-in references are immutable; custom packs can extend the framework; executable statutory behavior still requires code when metadata/configuration is insufficient; and assigning a pack is not legal, tax, HGB, GoBD, XRechnung or other statutory certification.
+Session Help must distinguish presence, explicit end state and policy expiration. It must not present heartbeats or raw activity signals as Audit records and must distinguish `Users.View`, `Settings.Manage` and `UserSessions.Terminate`.
+
+Security Center Help must describe suspicious-login detection as deterministic triage rules rather than proof of compromise. It must distinguish Security Events from the business Audit Log and must not claim IP, geolocation, device fingerprinting, typed-input capture or external-window monitoring in this version.
+
+Finance Localization Help must continue to distinguish software capability, required configuration, external procedure and reference-only information from legal compliance certification.
 
 ## Updating Help
 
@@ -36,4 +37,4 @@ Finance Localization Help must clearly state that legal-entity country does not 
 5. Increment the manifest version for material topic/permission/mapping changes.
 6. Run Help regression validation for duplicate IDs, missing files, unknown permissions and broken links.
 
-Help manifest **1.18** is the current documentation contract.
+Help manifest **1.21** is the current documentation contract.

@@ -19,6 +19,8 @@ public sealed class AdministrationViewModel : BaseViewModel, IDisposable
 	private readonly ImportViewModel _importViewModel;
 	private readonly MasterDataViewModel _masterDataViewModel;
 	private readonly UserViewModel _userViewModel;
+	private readonly UserSessionsViewModel _userSessionsViewModel;
+	private readonly SecurityCenterViewModel _securityCenterViewModel;
 	private readonly RoleViewModel _roleViewModel;
 	private readonly CompanyProfileViewModel _companyProfileViewModel;
 	private readonly DatabaseSettingsViewModel _databaseSettingsViewModel;
@@ -52,6 +54,8 @@ public sealed class AdministrationViewModel : BaseViewModel, IDisposable
 		DatabaseConnectionTester databaseConnectionTester,
 		DatabaseManagementService databaseManagementService,
 		AuditLogService auditLogService,
+		UserSessionAdministrationService userSessionAdministrationService,
+		SecurityEventService securityEventService,
 		IFileDialogService fileDialogService,
 		ApplicationInformationService applicationInformationService)
 	{
@@ -67,11 +71,15 @@ public sealed class AdministrationViewModel : BaseViewModel, IDisposable
 		_companyProfileViewModel = new CompanyProfileViewModel(new CompanyProfileService(companyDatabase, settingsService.CurrentSettings.Provider, authorization));
 		var privacyDatabase = new DatabaseAccess(DatabaseProviderFactory.CreateConnectionFactory(settingsService.CurrentSettings));
 		_privacyDataViewModel = new PrivacyDataViewModel(new DataSubjectAccessService(privacyDatabase, authorization), fileDialogService);
+		_userSessionsViewModel = new UserSessionsViewModel(userSessionAdministrationService, fileDialogService);
+		_securityCenterViewModel = new SecurityCenterViewModel(securityEventService, fileDialogService);
 
 		AddIf(authorization, ApplicationPermission.MasterDataView, "Master Data", AdministrationSection.MasterData);
 		AddIf(authorization, ApplicationPermission.MasterDataView, "Warehouses & Locations", AdministrationSection.Warehouses);
 		AddIf(authorization, ApplicationPermission.SuppliersView, "Suppliers", AdministrationSection.Suppliers);
 		AddIf(authorization, ApplicationPermission.UsersView, "Users", AdministrationSection.Users);
+		AddIf(authorization, ApplicationPermission.UsersView, "User Sessions", AdministrationSection.UserSessions);
+		AddIf(authorization, ApplicationPermission.SecurityEventsView, "Security Center", AdministrationSection.SecurityCenter);
 		AddIf(authorization, ApplicationPermission.RolesView, "Roles", AdministrationSection.Roles);
 		AddIf(authorization, ApplicationPermission.SettingsView, "Company", AdministrationSection.Company);
 		AddIf(authorization, ApplicationPermission.ImportManage, "Import", AdministrationSection.Import);
@@ -161,6 +169,8 @@ public sealed class AdministrationViewModel : BaseViewModel, IDisposable
 		AdministrationSection.Warehouses => _masterDataViewModel.WarehouseStructureViewModel,
 		AdministrationSection.Suppliers => _masterDataViewModel.SupplierViewModel,
 		AdministrationSection.Users => _userViewModel,
+		AdministrationSection.UserSessions => _userSessionsViewModel,
+		AdministrationSection.SecurityCenter => _securityCenterViewModel,
 		AdministrationSection.Roles => _roleViewModel,
 		AdministrationSection.Company => _companyProfileViewModel,
 		AdministrationSection.Database => _databaseSettingsViewModel,
@@ -176,6 +186,8 @@ public sealed class AdministrationViewModel : BaseViewModel, IDisposable
 		WarehouseStructureViewModel warehouses => warehouses.LoadAsync(cancellationToken),
 		SupplierViewModel suppliers => suppliers.LoadAsync(cancellationToken),
 		UserViewModel users => users.LoadUsersAsync(cancellationToken),
+		UserSessionsViewModel sessions => sessions.LoadAsync(cancellationToken),
+		SecurityCenterViewModel security => security.LoadAsync(cancellationToken),
 		RoleViewModel roles => roles.LoadAsync(cancellationToken),
 		CompanyProfileViewModel company => company.LoadAsync(cancellationToken),
 		DatabaseSettingsViewModel database => database.LoadAsync(cancellationToken),
@@ -198,6 +210,8 @@ public sealed class AdministrationViewModel : BaseViewModel, IDisposable
 	private static string TopicFor(AdministrationSection section) => section switch
 	{
 		AdministrationSection.Users or AdministrationSection.Roles => "administration.users",
+		AdministrationSection.UserSessions => "administration.user-sessions",
+		AdministrationSection.SecurityCenter => "administration.security-center",
 		AdministrationSection.Company => "administration.company",
 		AdministrationSection.Database => "administration.database",
 		AdministrationSection.AuditLog => "administration.audit-log",
@@ -215,6 +229,8 @@ public sealed class AdministrationViewModel : BaseViewModel, IDisposable
 		foreach (var state in _loadStates.Values) state.Dispose();
 		_masterDataViewModel.Dispose();
 		if (_userViewModel is IDisposable users) users.Dispose();
+		_userSessionsViewModel.Dispose();
+		_securityCenterViewModel.Dispose();
 		if (_roleViewModel is IDisposable roles) roles.Dispose();
 		_companyProfileViewModel.Dispose();
 		if (_databaseSettingsViewModel is IDisposable database) database.Dispose();

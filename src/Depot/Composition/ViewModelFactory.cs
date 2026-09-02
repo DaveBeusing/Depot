@@ -70,6 +70,8 @@ internal sealed class ViewModelFactory
 			_database.ConnectionTester,
 			_database.Management,
 			_services.AuditLog,
+			_services.UserSessionAdministration,
+			_services.SecurityEvents,
 			_applicationInformation,
 			_services.Help,
 			_services.HelpRenderer,

@@ -1,58 +1,39 @@
 # Documentation status
 
-Updated: 2026-08-29
+Updated: 2026-09-01
 
-This document identifies the documentation baseline for the current development state. User-facing and engineering documentation must distinguish implemented technical controls from production/legal acceptance gates and must describe finalized financial records from persisted historical evidence rather than mutable current master data.
+This document identifies the documentation baseline for the current development state. Implemented technical controls must remain distinct from production/legal acceptance gates.
 
 ## Current baseline
 
-- Application: `0.15.x-preview`
-- Help manifest: `1.18`
+- Application: `0.15.98-preview`
+- Help manifest: `1.21`
 - Core database schema: `30`
-- Sales feature schema: `9`
+- Sales feature schema: `10`
 - Finance feature schema: `9`
-- Finance foundation, General Ledger, Receivables, Payables, Inventory Accounting, Banking, Financial Reporting and Localization are implemented on `finance`.
+- User Sessions feature schema: `3`
+- Security Events feature schema: `2`
 
-## Finance documentation invariants
+## Session and authentication invariants
 
-Documentation must state that:
+Documentation must state that online presence is derived from an open session plus heartbeat freshness; no persisted `IsOnline` is authoritative. The runtime heartbeat is 30 seconds and presence timeout is 90 seconds. Activity stores only the latest in-Depot keyboard/mouse/touch timestamp, never typed input or coordinates.
 
-- the General Ledger is the authoritative immutable accounting ledger;
-- Financial Reporting does not maintain a parallel ledger;
-- Localization does not post journals;
-- `LegalEntity.CountryCode` does not automatically activate localization;
-- effective localization requires an explicit effective-dated assignment;
-- the built-in Germany reference hierarchy resolves `GENERIC → EU → DE`;
-- country packs are validated against Legal Entity country and active assignment ranges cannot overlap;
-- built-in pack and registry definitions are immutable;
-- custom regional/country packs can be added without another schema change when metadata/configuration is sufficient;
-- support levels distinguish software capability, required configuration, external procedure and reference-only information;
-- support levels are not legal/compliance status flags;
-- Depot does not invent tax rates, statutory charts, filing classifications or accounting-policy choices;
-- localization assignments and registry entries are retained Audit evidence;
-- provider-neutral schema/code is not live-provider certification.
+The shared User Session policy covers idle timeout, maximum lifetime, concurrent-session mode/limit/action and ended-session history retention. Finite limits are serialized through the policy row and may reject a login or supersede the oldest open session. Password changes invalidate other sessions with `CredentialsChanged`; user deactivation revokes open sessions with `Revoked`.
 
-## Sales pricing documentation invariants
+Production authentication throttling is persisted in the shared database and governed by `AuthenticationSecurityPolicy`; documentation must not call it process-local. The current local credential implementation is behind `IAuthenticationProvider` / `LocalAuthenticationProvider` to preserve the external-identity extension boundary.
 
-Documentation must state that:
+Security Center investigation correlates only identifiers already present in Depot authentication/session data. Response actions delegate to the established session/user services. `SecurityEvents.View`, `SecurityEvents.Manage`, `UserSessions.Terminate`, `Users.Manage` and `Settings.Manage` remain separate permissions.
 
-- Sales pricing fallback is Customer → Region → Global and is evaluated independently for every item;
-- Customer price-list assignments and Sales Regions are optional;
-- automatically sourced draft pricing and finalized document snapshots remain distinct;
-- a higher-scope list never suppresses fallback for an item absent at that scope.
+Session history and Security Event retention are actively enforced by bounded background maintenance. Security Event retention never deletes business Audit evidence. High/Critical notification behavior is behind `SecurityAlertPolicy`; the current default threshold is High.
+
+Security Events schema 2 and User Sessions schema 3 are provider-neutral implementation baselines, not live-provider production certification.
+
+## Privacy invariants
+
+The current security implementation does not collect source IP, geolocation, MAC address, hardware fingerprint, typed input, key values, mouse coordinates or external-window activity. `ClientInstanceId` is a generated Depot process/session correlation identifier, not a device fingerprint.
 
 ## Documentation rules
 
-Documentation must not:
+Do not describe password-change invalidation, concurrent-session policy, shared database throttling, investigation/response or retention as future-only work. Remaining identity extensions are MFA/OIDC/SSO and any privacy-approved IP/geolocation/device-trust work.
 
-- document removed/default credentials;
-- reconstruct historical accounting evidence from mutable current master data;
-- describe technical compliance controls as legal/statutory certification;
-- imply an unconfigured jurisdiction, currency, tax rate, chart/account, accounting standard or reporting classification;
-- claim weighted-average, standard cost, LIFO, impairment/NRV or manufacturing costing as implemented;
-- claim configurable reports are automatically jurisdiction-specific statutory filings;
-- claim assigning a country pack makes a deployment legally/tax/statutorily compliant;
-- claim all possible country packs are implemented merely because the framework can host them;
-- hide repository failures by attributing them to unrelated Finance changes.
-
-Help manifest **1.18** includes scoped pricing guidance in the stable Sales topics and retains `finance.localization`, guarded by `FinanceLocalization.View`.
+Help manifest **1.21** contains `administration.user-sessions` and `administration.security-center`; topic IDs and routing are unchanged by this documentation update.

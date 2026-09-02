@@ -106,6 +106,8 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		DatabaseConnectionTester databaseConnectionTester,
 		DatabaseManagementService databaseManagementService,
 		AuditLogService auditLogService,
+		UserSessionAdministrationService userSessionAdministrationService,
+		SecurityEventService securityEventService,
 		ApplicationInformationService applicationInformationService,
 		IHelpService helpService,
 		HelpMarkdownRenderer helpRenderer,
@@ -155,7 +157,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		_financeFinancialReporting = new(() => new FinanceFinancialReportingViewModel(financeFinancialReportingService, fileDialogService));
 		_reports = new(() => new ReportsViewModel(reportService, fileDialogService));
 		_import = new(() => new ImportViewModel(importService, fileDialogService));
-		_administration = new(() => new AdministrationViewModel(_import.Value, itemService, purposeService, reasonCodeService, manufacturerService, categoryService, unitOfMeasureService, packagingService, supplierCategoryService, supplierService, supplierItemService, warehouseService, storageLocationService, userService, roleService, authorizationService, settingsService, connectionStatusService, databaseConnectionTester, databaseManagementService, auditLogService, fileDialogService, applicationInformationService));
+		_administration = new(() => new AdministrationViewModel(_import.Value, itemService, purposeService, reasonCodeService, manufacturerService, categoryService, unitOfMeasureService, packagingService, supplierCategoryService, supplierService, supplierItemService, warehouseService, storageLocationService, userService, roleService, authorizationService, settingsService, connectionStatusService, databaseConnectionTester, databaseManagementService, auditLogService, userSessionAdministrationService, securityEventService, fileDialogService, applicationInformationService));
 		_help = new(() => CreateHelpViewModel(helpService, helpRenderer));
 		_notificationCenter = new(() => CreateNotificationCenterViewModel(notificationService, notificationNavigationService));
 
@@ -257,7 +259,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 	private void AddModule(string name,string icon,string subtitle,IReadOnlyCollection<SecondaryNavigationItem> pages,bool isSeparated=false) { if(pages.Count==0)return; NavigationItems.Add(new ShellNavigationItem(name,icon,()=>CreateModule(name,subtitle,pages),(viewModel,token)=>((ShellModuleViewModel)viewModel).ActivateAsync(token),pages.First().HelpTopicId,isSeparated,false,(viewModel,token)=>((ShellModuleViewModel)viewModel).RefreshAsync(token))); }
 	private ShellModuleViewModel CreateModule(string name,string subtitle,IEnumerable<SecondaryNavigationItem> pages) { var module=new ShellModuleViewModel(name,subtitle,pages){NavigationGuard=ConfirmDiscardChanges}; module.NavigationRequested+=OnModuleNavigationRequested; return module; }
 	private async void OnModuleNavigationRequested(object? sender,EventArgs e){if(sender is not ShellModuleViewModel module)return;var item=NavigationItems.FirstOrDefault(candidate=>candidate.IsContentCreated&&ReferenceEquals(candidate.Content,module));if(item is not null)await NavigateAsync(item);}
-	private bool HasAdministrationPages()=>_authorization.HasAnyPermission(ApplicationPermission.MasterDataView,ApplicationPermission.SuppliersView,ApplicationPermission.UsersView,ApplicationPermission.RolesView,ApplicationPermission.ImportManage,ApplicationPermission.AuditLogView,ApplicationPermission.DatabaseView,ApplicationPermission.AdministrationView);
+	private bool HasAdministrationPages()=>_authorization.HasAnyPermission(ApplicationPermission.MasterDataView,ApplicationPermission.SuppliersView,ApplicationPermission.UsersView,ApplicationPermission.RolesView,ApplicationPermission.ImportManage,ApplicationPermission.AuditLogView,ApplicationPermission.SecurityEventsView,ApplicationPermission.DatabaseView,ApplicationPermission.AdministrationView);
 	private void MarkInventoryPagesStale(){MarkModulePageStale("Inventory","Overview");MarkModulePageStale("Inventory","Movements");}
 	private void MarkPurchasingPagesStale(){MarkModulePageStale("Purchasing","Overview");MarkModulePageStale("Purchasing","Purchase Orders");MarkModulePageStale("Purchasing","Goods Receipts");}
 	private void MarkModulePageStale(string moduleName,string pageName){var moduleItem=NavigationItems.FirstOrDefault(item=>item.Name==moduleName);if(moduleItem?.IsContentCreated!=true||moduleItem.Content is not ShellModuleViewModel module)return;module.Pages.FirstOrDefault(page=>page.Name==pageName)?.MarkStale();}

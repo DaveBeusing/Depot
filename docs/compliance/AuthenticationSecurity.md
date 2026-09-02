@@ -1,21 +1,51 @@
 # Depot Authentication Security
 
-## Password hashing
+Updated: 2026-09-01
 
-New Depot password hashes use PBKDF2-HMAC-SHA256 with a per-password 128-bit random salt, a 256-bit derived key and a current work factor of 600,000 iterations. The encoded format contains the algorithm and iteration count, allowing older hashes to remain verifiable while being identifiable for later upgrade.
+## Passwords and provider boundary
 
-The work factor must be benchmarked on supported production hardware before 1.0 and reviewed at least annually. It may be raised without invalidating existing hashes because verification uses the encoded iteration count.
+New Depot password hashes use PBKDF2-HMAC-SHA256 with per-password random salt, a 256-bit derived key and the encoded work factor. New/changed passwords require the existing 12–128 character complexity policy and are never logged.
 
-## Password policy
+Authentication now depends on `IAuthenticationProvider`. `LocalAuthenticationProvider` is the built-in credential provider; this keeps MFA/OIDC/SSO integration behind an explicit identity boundary rather than coupling external identity logic to session/RBAC code.
 
-New/changed passwords require 12-128 characters plus uppercase, lowercase, numeric and symbol characters, and may not contain a meaningful account-name component. Passwords are never logged or stored outside the password hash.
+## Shared login throttling
 
-## Login throttling
+Production failed-login state is persisted in the database and shared by Depot clients. `AuthenticationSecurityPolicy` defaults to a 15-minute failure window, 5-failure lockout threshold, 15-minute lockout duration and 365-day Security Event retention. `Settings.Manage` is required to modify the policy, and optimistic versioning prevents stale updates.
 
-Depot tracks failed attempts by normalized account key in process memory. Five failures inside a 15-minute window cause a 15-minute lockout. A successful authentication clears the failure state. This limits online guessing without creating a persistent denial-of-service flag in the user record.
+Throttle mutations serialize through the singleton policy row. Separate clients therefore share the same failure count and lockout state. Suspicious-event escalation remains deterministic and is triage evidence rather than proof of compromise.
 
-The current limiter is per application process. A future multi-node/server authentication architecture must move throttling to a shared trusted store or identity provider.
+## Sessions and concurrent policy
 
-## Identity roadmap
+Successful authentication creates a persistent session before authorization is published. Heartbeat is 30 seconds and presence timeout 90 seconds. The central session policy defaults to 30 minutes idle, 12 hours maximum age, Unlimited concurrent sessions, configured maximum 3, RejectNewSession, and 180-day ended-session retention.
 
-MFA and external identity providers (Microsoft Entra ID/OIDC and, where customer demand justifies it, SAML) are intentionally not coupled to the local authentication implementation during preview. Enterprise identity should be introduced behind an authentication-provider abstraction so local accounts remain usable for offline/recovery scenarios and external-provider policy can be centrally enforced.
+Finite limits support `MaximumSessions` or `SingleSession` and either reject the new login or atomically supersede the oldest open session. Policy-row serialization prevents competing clients from independently exceeding the finite limit.
+
+Password changes invalidate other target-user sessions as `CredentialsChanged`; administrative resets invalidate all target sessions. User deactivation atomically ends open sessions as `Revoked`. Administrative session termination remains separately permissioned through `UserSessions.Terminate`.
+
+## Security Center and response
+
+`SecurityEvents.View` permits Security Center visibility and investigation; `SecurityEvents.Manage` permits review. Investigation correlates existing `UserId`, account, `SessionId` and generated `ClientInstanceId`. Response actions delegate to authorized `UserSessionAdministrationService` and `UserService` paths for session termination and user deactivation.
+
+Session-policy changes, administrative termination and authentication-policy changes write Audit plus Security Event evidence through transaction-aware paths. High/Critical notification routing is separated by `SecurityAlertPolicy`.
+
+## Retention
+
+A bounded maintenance service actively enforces ended-session history retention and Security Event retention and removes stale authentication-throttle rows. It uses fixed 250-row batches, a maximum of four batches per data class per run, policy locks and cutoff predicates repeated in the delete transaction. Concurrent maintenance attempts are therefore restart-safe and idempotent.
+
+Security Event retention does not affect the separate business Audit Log.
+
+## Persistence
+
+- Core schema: **30**
+- User Sessions feature schema: **3**
+- Security Events feature schema: **2**
+
+Provider DDL exists for SQLite, SQL Server and MySQL/MariaDB. Provider-neutral implementation is not production certification; live migration, lock/deadlock, recovery and representative load acceptance remain required.
+
+## Privacy boundary
+
+Depot does not collect source IP, geolocation, MAC address, hardware fingerprint, typed text, key values, mouse coordinates, OS activity or external-window activity for these controls. `ClientInstanceId` is a generated Depot process correlation identifier, not a hardware/device fingerprint.
+
+## Remaining roadmap
+
+Remaining identity/security work is MFA, OIDC/SSO/external identity providers, deployment-specific alert delivery/routing where required, and an explicit privacy/threat-model design before any IP/geolocation/device-trust signals are considered.

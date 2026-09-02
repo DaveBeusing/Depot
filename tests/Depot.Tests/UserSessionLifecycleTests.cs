@@ -1,0 +1,263 @@
+// Copyright (c) 2026 David Beusing
+// Licensed under the MIT License.
+
+using Depot.Data;
+using Depot.Models;
+using Depot.Repositories;
+using Depot.Services;
+
+using Microsoft.Data.Sqlite;
+
+using Xunit;
+
+namespace Depot.Tests;
+
+public sealed class UserSessionLifecycleTests : IDisposable
+{
+	private readonly string _path = Path.Combine(Path.GetTempPath(), $"depot-user-session-lifecycle-{Guid.NewGuid():N}.db");
+
+	[Fact]
+	public async Task SuccessfulLoginCreatesSessionHeartbeatAdvancesAndLogoutEndsIt()
+	{
+		var context = await CreateContextAsync();
+		Assert.True(await context.Authentication.SignInAsync(context.Email, "Correct-Password-42!", CancellationToken.None));
+		var sessionId = Assert.IsType<Guid>(context.Session.CurrentSessionId);
+		var created = await context.Repository.GetBySessionIdAsync(sessionId, CancellationToken.None);
+		Assert.NotNull(created);
+		Assert.Equal(context.Clock.UtcNow, created!.LastActivityUtc);
+
+		context.Clock.UtcNow = context.Clock.UtcNow.AddSeconds(30);
+		Assert.True(await context.Session.TrySendHeartbeatAsync());
+		var heartbeat = await context.Repository.GetBySessionIdAsync(sessionId, CancellationToken.None);
+		Assert.Equal(context.Clock.UtcNow, heartbeat!.LastSeenUtc);
+
+		await context.Session.LogoutAsync();
+		var ended = await context.Repository.GetBySessionIdAsync(sessionId, CancellationToken.None);
+		Assert.Equal(UserSessionEndReason.LoggedOut, ended!.EndReason);
+		Assert.NotNull(ended.EndedUtc);
+		Assert.False(await context.Session.TrySendHeartbeatAsync());
+		context.Session.Dispose();
+	}
+
+	[Fact]
+	public async Task IdleTimeoutUsesRecordedUserActivityAndExpiresSession()
+	{
+		var context = await CreateContextAsync();
+		await SetPolicyAsync(context, 5, 12);
+		Assert.True(await context.Authentication.SignInAsync(context.Email, "Correct-Password-42!", CancellationToken.None));
+		var sessionId = Assert.IsType<Guid>(context.Session.CurrentSessionId);
+
+		context.Clock.UtcNow = context.Clock.UtcNow.AddMinutes(4);
+		context.Session.RecordActivity();
+		context.Clock.UtcNow = context.Clock.UtcNow.AddMinutes(4);
+		Assert.True(await context.Session.TrySendHeartbeatAsync());
+		var active = await context.Repository.GetBySessionIdAsync(sessionId, CancellationToken.None);
+		Assert.Null(active!.EndedUtc);
+		Assert.Equal(context.Clock.UtcNow.AddMinutes(-4), active.LastActivityUtc);
+
+		context.Clock.UtcNow = context.Clock.UtcNow.AddMinutes(2);
+		Assert.False(await context.Session.TrySendHeartbeatAsync());
+		var expired = await context.Repository.GetBySessionIdAsync(sessionId, CancellationToken.None);
+		Assert.Equal(UserSessionEndReason.Expired, expired!.EndReason);
+		Assert.NotNull(expired.EndedUtc);
+		Assert.True(context.Session.ReauthenticationRequested);
+		Assert.Null(context.Session.CurrentSessionId);
+		context.Session.Dispose();
+	}
+
+	[Fact]
+	public async Task MaximumSessionAgeExpiresEvenWhenUserRemainsActive()
+	{
+		var context = await CreateContextAsync();
+		await SetPolicyAsync(context, 480, 1);
+		Assert.True(await context.Authentication.SignInAsync(context.Email, "Correct-Password-42!", CancellationToken.None));
+		var sessionId = Assert.IsType<Guid>(context.Session.CurrentSessionId);
+
+		context.Clock.UtcNow = context.Clock.UtcNow.AddMinutes(59);
+		context.Session.RecordActivity();
+		Assert.True(await context.Session.TrySendHeartbeatAsync());
+		context.Clock.UtcNow = context.Clock.UtcNow.AddMinutes(2);
+		context.Session.RecordActivity();
+		Assert.False(await context.Session.TrySendHeartbeatAsync());
+
+		var expired = await context.Repository.GetBySessionIdAsync(sessionId, CancellationToken.None);
+		Assert.Equal(UserSessionEndReason.Expired, expired!.EndReason);
+		Assert.True(context.Session.ReauthenticationRequested);
+		Assert.Null(context.Session.CurrentSessionId);
+		context.Session.Dispose();
+	}
+
+	[Fact]
+	public async Task SessionPolicyDefaultsAreCreatedByFeatureMigration()
+	{
+		var context = await CreateContextAsync();
+		var policy = await context.Repository.GetPolicyAsync(CancellationToken.None);
+		Assert.Equal(UserSessionPolicy.DefaultIdleTimeoutMinutes, policy.IdleTimeoutMinutes);
+		Assert.Equal(UserSessionPolicy.DefaultMaximumSessionAgeHours, policy.MaximumSessionAgeHours);
+		Assert.Equal(1, policy.Version);
+	}
+
+	[Fact]
+	public async Task SynchronousLogoutDoesNotDeadlockWithUiStyleSynchronizationContext()
+	{
+		var context = await CreateContextAsync();
+		Assert.True(await context.Authentication.SignInAsync(context.Email, "Correct-Password-42!", CancellationToken.None));
+		var sessionId = Assert.IsType<Guid>(context.Session.CurrentSessionId);
+		Exception? failure = null;
+		using var completed = new ManualResetEventSlim();
+		var thread = new Thread(() =>
+		{
+			SynchronizationContext.SetSynchronizationContext(new NonPumpingSynchronizationContext());
+			try
+			{
+				context.Session.Logout();
+			}
+			catch (Exception exception)
+			{
+				failure = exception;
+			}
+			finally
+			{
+				completed.Set();
+			}
+		})
+		{
+			IsBackground = true
+		};
+
+		thread.Start();
+		Assert.True(completed.Wait(TimeSpan.FromSeconds(5)), "Synchronous logout must not wait for a UI synchronization-context continuation.");
+		Assert.Null(failure);
+		Assert.True(thread.Join(TimeSpan.FromSeconds(1)));
+		var ended = await context.Repository.GetBySessionIdAsync(sessionId, CancellationToken.None);
+		Assert.Equal(UserSessionEndReason.LoggedOut, ended!.EndReason);
+		Assert.NotNull(ended.EndedUtc);
+		Assert.Null(context.Session.CurrentSessionId);
+		context.Session.Dispose();
+	}
+
+	[Fact]
+	public async Task FailedLoginCreatesNoSessionAndGracefulShutdownEndsSuccessfulSession()
+	{
+		var context = await CreateContextAsync();
+		Assert.False(await context.Authentication.SignInAsync(context.Email, "wrong", CancellationToken.None));
+		Assert.Null(context.Session.CurrentSessionId);
+		Assert.Equal(0, await context.Repository.CountActiveSessionsAsync(context.Clock.UtcNow.AddMinutes(-5), CancellationToken.None));
+
+		Assert.True(await context.Authentication.SignInAsync(context.Email, "Correct-Password-42!", CancellationToken.None));
+		var sessionId = Assert.IsType<Guid>(context.Session.CurrentSessionId);
+		await context.Session.CloseApplicationAsync();
+		var ended = await context.Repository.GetBySessionIdAsync(sessionId, CancellationToken.None);
+		Assert.Equal(UserSessionEndReason.ApplicationClosed, ended!.EndReason);
+		context.Session.Dispose();
+	}
+
+	[Fact]
+	public async Task RemoteSessionRevocationRequestsReauthenticationOnNextHeartbeat()
+	{
+		var context = await CreateContextAsync();
+		Assert.True(await context.Authentication.SignInAsync(context.Email, "Correct-Password-42!", CancellationToken.None));
+		var sessionId = Assert.IsType<Guid>(context.Session.CurrentSessionId);
+		var eventRaised = false;
+		context.Session.SessionRevoked += (_, _) => eventRaised = true;
+
+		context.Clock.UtcNow = context.Clock.UtcNow.AddSeconds(10);
+		Assert.True(await context.Repository.EndAsync(sessionId, context.Clock.UtcNow, UserSessionEndReason.AdministrativeLogout, CancellationToken.None));
+		Assert.False(await context.Session.TrySendHeartbeatAsync());
+
+		Assert.True(eventRaised);
+		Assert.True(context.Session.ReauthenticationRequested);
+		Assert.True(context.Session.RestartLoginRequested);
+		Assert.Null(context.Session.CurrentSessionId);
+		context.Session.Dispose();
+	}
+
+	[Fact]
+	public async Task HeartbeatDatabaseFailureIsContained()
+	{
+		var context = await CreateContextAsync();
+		Assert.True(await context.Authentication.SignInAsync(context.Email, "Correct-Password-42!", CancellationToken.None));
+		using (var connection = Open())
+		{
+			using var command = connection.CreateCommand();
+			command.CommandText = "DROP TABLE UserSessions;";
+			command.ExecuteNonQuery();
+		}
+
+		Assert.False(await context.Session.TrySendHeartbeatAsync());
+		Assert.False(context.Session.ReauthenticationRequested);
+		context.Session.Dispose();
+	}
+
+	private static async Task SetPolicyAsync(TestContext context, int idleMinutes, int maximumAgeHours)
+	{
+		var policy = await context.Repository.GetPolicyAsync(CancellationToken.None);
+		policy.IdleTimeoutMinutes = idleMinutes;
+		policy.MaximumSessionAgeHours = maximumAgeHours;
+		policy.UpdatedUtc = context.Clock.UtcNow;
+		Assert.True(await context.Repository.UpdatePolicyAsync(policy, policy.Version, CancellationToken.None));
+	}
+
+	private async Task<TestContext> CreateContextAsync()
+	{
+		var factory = new SqliteConnectionFactory(_path);
+		new DepotDatabase(factory).Initialize();
+		UserSessionSchemaMigration.Migrate(factory);
+		var access = new DatabaseAccess(factory);
+		var users = new UserRepository(access);
+		var roles = new RoleRepository(access);
+		var sessions = new UserSessionRepository(access);
+		var passwordHasher = new PasswordHasher();
+		var email = $"session-{Guid.NewGuid():N}@test.local";
+		var user = new User
+		{
+			Email = email,
+			DisplayName = "Session Test User",
+			IsActive = true,
+			CreatedUtc = new DateTime(2026, 8, 31, 20, 0, 0, DateTimeKind.Utc)
+		};
+		await users.CreateAsync(user, passwordHasher.Hash("Correct-Password-42!"), CancellationToken.None);
+
+		var authorization = new AuthorizationService();
+		var clock = new MutableTimeProvider { UtcNow = new DateTime(2026, 8, 31, 20, 0, 0, DateTimeKind.Utc) };
+		var session = new SessionService(authorization);
+		session.Configure(sessions, new UserSessionClientInfo(Guid.NewGuid(), "TEST-CLIENT", "0.15.93-preview"), clock);
+		var authentication = new AuthenticationService(users, roles, passwordHasher, authorization);
+		authentication.ConfigureSession(session);
+		return new TestContext(email, authentication, session, sessions, clock);
+	}
+
+	private SqliteConnection Open()
+	{
+		var connection = new SqliteConnection($"Data Source={_path}");
+		connection.Open();
+		return connection;
+	}
+
+	public void Dispose()
+	{
+		SqliteConnection.ClearAllPools();
+		if (File.Exists(_path)) File.Delete(_path);
+	}
+
+	private sealed record TestContext(
+		string Email,
+		AuthenticationService Authentication,
+		SessionService Session,
+		UserSessionRepository Repository,
+		MutableTimeProvider Clock);
+
+	private sealed class MutableTimeProvider : TimeProvider
+	{
+		public DateTime UtcNow { get; set; }
+		public override DateTimeOffset GetUtcNow() => new(UtcNow, TimeSpan.Zero);
+	}
+
+	private sealed class NonPumpingSynchronizationContext : SynchronizationContext
+	{
+		public override void Post(SendOrPostCallback callback, object? state)
+		{
+			// Deliberately do not dispatch continuations. A synchronous UI caller must not depend on this context.
+		}
+	}
+}

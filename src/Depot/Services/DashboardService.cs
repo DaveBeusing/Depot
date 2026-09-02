@@ -19,16 +19,23 @@ public sealed class DashboardService
 		_authorization = authorization;
 	}
 
+	public bool CanViewReports => _authorization.CurrentUser?.IsAdministrator == true || _authorization.HasPermission(ApplicationPermission.ReportsView);
+
 	public async Task<(DashboardData? Inventory, DashboardRoleMetrics Roles)> GetAsync(CancellationToken cancellationToken)
 	{
 		var isAdministrator = _authorization.CurrentUser?.IsAdministrator == true;
+		var includeAdministration = isAdministrator || _authorization.HasPermission(ApplicationPermission.UsersView);
 		Task<DashboardData?> inventoryTask = isAdministrator || HasCoreInventoryPermission() ? GetInventoryAsync(cancellationToken) : Task.FromResult<DashboardData?>(null);
+		var presenceCutoffUtc = DateTime.UtcNow - UserSessionPresenceOptions.Default.PresenceTimeout;
+		var sessionDayStartUtc = DateTime.Today.ToUniversalTime();
 		var rolesTask = _dashboard.GetRoleMetricsAsync(
 			isAdministrator || _authorization.HasPermission(ApplicationPermission.PurchaseOrdersApprove),
 			isAdministrator || _authorization.HasAnyPermission(ApplicationPermission.PurchaseOrdersView, ApplicationPermission.SupplierReturnsView),
 			isAdministrator || _authorization.HasAnyPermission(ApplicationPermission.InventoryCountsView, ApplicationPermission.StockTransfersView),
 			isAdministrator || _authorization.HasAnyPermission(ApplicationPermission.SalesOrdersView, ApplicationPermission.SalesOrdersApprove, ApplicationPermission.ShipmentsView, ApplicationPermission.SalesInvoicesView),
-			isAdministrator || _authorization.HasPermission(ApplicationPermission.UsersView),
+			includeAdministration,
+			presenceCutoffUtc,
+			sessionDayStartUtc,
 			cancellationToken);
 		await Task.WhenAll(inventoryTask, rolesTask);
 		return (await inventoryTask, await rolesTask ?? new DashboardRoleMetrics(null, null, null, null, null));

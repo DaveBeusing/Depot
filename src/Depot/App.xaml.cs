@@ -76,8 +76,9 @@ public partial class App : Application
 				return;
 			}
 			ShowMainWindow(composition);
-			if (!composition.Services.Session.LogoutRequestedByUser)
+			if (!composition.Services.Session.RestartLoginRequested)
 			{
+				composition.Services.Session.CloseApplication();
 				Shutdown();
 				return;
 			}
@@ -102,10 +103,22 @@ public partial class App : Application
 		MainWindow = mainWindow;
 		StartupDiagnostics.Log("MainWindow created.");
 		mainViewModel.LogoutRequested += OnLogoutRequested;
+		composition.Services.Session.SessionRevoked += OnSessionRevoked;
+		mainWindow.PreviewKeyDown += (_, _) => composition.Services.Session.RecordActivity();
+		mainWindow.PreviewMouseDown += (_, _) => composition.Services.Session.RecordActivity();
+		mainWindow.PreviewMouseMove += (_, _) => composition.Services.Session.RecordActivity();
+		mainWindow.PreviewMouseWheel += (_, _) => composition.Services.Session.RecordActivity();
+		mainWindow.PreviewTouchDown += (_, _) => composition.Services.Session.RecordActivity();
 		try { mainWindow.ShowDialog(); }
-		finally { mainViewModel.LogoutRequested -= OnLogoutRequested; mainViewModel.Dispose(); }
+		finally
+		{
+			composition.Services.Session.SessionRevoked -= OnSessionRevoked;
+			mainViewModel.LogoutRequested -= OnLogoutRequested;
+			mainViewModel.Dispose();
+		}
 		StartupDiagnostics.Log("MainWindow closed.");
 		void OnLogoutRequested(object? sender, EventArgs e) => mainWindow.Close();
+		void OnSessionRevoked(object? sender, EventArgs e) => mainWindow.Dispatcher.BeginInvoke(new Action(mainWindow.Close));
 	}
 
 	private static void OnWindowLoaded(object sender, RoutedEventArgs e)
@@ -122,6 +135,7 @@ public partial class App : Application
 
 	protected override void OnExit(ExitEventArgs e)
 	{
+		_composition?.Services.Session.CloseApplication();
 		_composition?.Dispose();
 		_composition = null;
 		base.OnExit(e);

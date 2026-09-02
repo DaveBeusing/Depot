@@ -10,6 +10,8 @@ public enum AdministrationSection
 	Warehouses,
 	Suppliers,
 	Users,
+	UserSessions,
+	SecurityCenter,
 	Roles,
 	Company,
 	Database,

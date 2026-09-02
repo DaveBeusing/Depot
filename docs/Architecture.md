@@ -1,6 +1,6 @@
 # Depot Architecture
 
-Updated: 2026-08-29
+Updated: 2026-09-01
 
 ## Overview
 
@@ -14,9 +14,38 @@ Views → ViewModels → Services → Repositories → DatabaseAccess
 
 Composition classes create database infrastructure, repositories, services and root ViewModels. Views/ViewModels do not contain SQL. Services are the business/security boundary. Repositories own persistence/query SQL and row mapping. Provider-specific behavior remains behind established data-access abstractions.
 
-## Application shell
+## Authentication sessions, presence and policy enforcement
 
-The shell is permission-aware and workspace-oriented. Finance exposes **Receivables**, **Payables**, **Inventory Accounting**, **Banking**, **Financial Reporting** and **Localization**. UI visibility improves usability only; service authorization is authoritative.
+`AuthenticationService` remains the successful-login boundary and `AuthorizationService` remains the current identity/RBAC source. `SessionService` owns one persistent `UserSession` per successful login, a non-overlapping heartbeat, activity timestamping and client response to server-side termination. Failed logins never create sessions.
+
+Presence is derived from `EndedUtc IS NULL` and heartbeat freshness. Runtime defaults are a 30-second heartbeat and 90-second presence timeout. Heartbeat writes only still-open sessions, so logout, expiration and revocation cannot be undone by a late liveness update.
+
+The central `UserSessionPolicy` defaults to a 30-minute idle timeout and 12-hour absolute maximum session age. Input activity inside Depot updates only a throttled timestamp, persisted with the normal heartbeat before policy evaluation. Expiration records `Expired`; stricter policy changes evaluate already-open sessions immediately.
+
+Session administration separates `Users.View`, `Settings.Manage` and `UserSessions.Terminate`. User deactivation and revocation of that user's open sessions remain one database transaction.
+
+## Security-event and Security Center architecture
+
+Security observations are deliberately separate from session state and from the business Audit Log:
+
+```text
+AuthenticationService ─┐
+                       ├→ SecurityEventService → SecurityEventRepository → SecurityEvents
+Session Administration ┘                                      ↓
+                                                SQLite / SQL Server / MySQL-MariaDB
+```
+
+Authentication uses deterministic signals from the existing 15-minute throttling window. Failures 1–2 are informational; failure 3 becomes Warning, failure 4 High, and failure 5/active lockout Critical. Successful authentication after recent failures is retained as a separate event. These rules are triage signals, not proof of compromise.
+
+`SecurityEventService` is the security-event policy boundary. Authentication telemetry is best-effort: failures to persist telemetry or deliver a notification are diagnosed but do not make a valid authentication fail solely because monitoring infrastructure was unavailable.
+
+High/Critical events are published through the existing Notification Center to active users holding `SecurityEvents.View`. **Administration → Security Center** reads the same persisted event source and exposes 24-hour metrics plus the most recent matching events. `SecurityEvents.Manage` permits marking an event reviewed. Review modifies only review metadata and optimistic `Version`; original event content remains unchanged through normal application workflows.
+
+Security Events complement rather than replace Audit. Administrative session termination and session-policy changes can produce both the existing Audit-relevant evidence and an operational Security Event.
+
+The current monitoring boundary intentionally excludes source IP, geolocation and device fingerprinting. Such signals require a separate privacy/security contract before they can become risk inputs.
+
+See [User Sessions and Online Presence](UserSessions.md) and [Security Center and Authentication Risk Monitoring](SecurityCenter.md).
 
 ## Finance authority split
 
@@ -32,8 +61,6 @@ The shell is permission-aware and workspace-oriented. Finance exposes **Receivab
 Subledgers/accounting modules call the General Ledger boundary for postings rather than duplicating ledger invariants. Reporting reads existing evidence and does not create a second ledger. Localization does not post accounting entries.
 
 ## Costing and sales-pricing authority
-
-Commercial costing and sales-price resolution are separate but connected business boundaries:
 
 ```text
 Preferred supplier purchase price
@@ -51,42 +78,40 @@ SalesPricingService
 Customer → Region → Global resolution
 ```
 
-`ItemCostCalculationService` is the single item-cost formula. Percentage components explicitly use `BaseCost` or `RunningTotal`, are ordered by `Sequence` plus persisted component identity, and return calculation evidence. `PriceListGenerationService` consumes that calculation; it does not reproduce it. Bulk Apply uses the established price-list repository and transaction infrastructure.
-
-`SalesPricingService` remains the single business boundary for runtime item-price resolution. It resolves Customer → Region → Global independently for every item and returns source metadata with the price. Quotes and Sales Orders consume this result; Views and ViewModels do not reproduce fallback logic. Historical document lines retain price-source snapshots.
+`ItemCostCalculationService` is the single item-cost formula. `PriceListGenerationService` consumes that calculation rather than reproducing it. `SalesPricingService` remains the single runtime price-resolution boundary and historical document lines retain source snapshots.
 
 ## Schema versions
 
 - Core database schema: **30**
 - Sales feature schema: **10**
 - Finance feature schema: **9**
-- Application: **0.15.x-preview**
-- Help manifest: **1.18**
+- User Sessions feature schema: **2**
+- Security Events feature schema: **1**
+- Application: **0.15.94-preview**
+- Help manifest: **1.21**
 
-Core schema 30 remains the current shared compatibility baseline. Sales schema 9 introduced scoped price lists, Sales Regions and quote/order price-source snapshots. Sales schema 10 adds provider-neutral `ItemCostProfiles` and `ItemCostComponents`. Finance schema evolution remains independent through Finance schema 9.
-
-Feature schemas are versioned independently from the core schema. A feature-local persistence change increments its feature version; a shared/core schema change increments `DatabaseVersion.CurrentVersion`.
+Feature schemas evolve independently. User Sessions schema 2 contains the central lifetime policy. Security Events schema 1 introduces the provider-neutral event/review store and its timestamp/severity, user and review indexes. Neither requires a Core schema increment.
 
 ## Transaction, concurrency and evidence model
 
-Mutable configuration uses optimistic versions. Required business mutation and Audit evidence commit or roll back together where they form one transaction.
+Mutable configuration uses optimistic versions. Session lifecycle uses repository predicates and lifecycle coordination to prevent late heartbeat resurrection. User deactivation plus session revocation is atomic. Security Event review uses expected `Version`; original security-event fields are append-only through normal application paths.
 
-Bulk price Apply is all-or-nothing through the existing provider write transaction. Preview captures target PriceList/entry versions plus item-cost evidence. Apply reloads the current records, recalculates through `ItemCostCalculationService`, compares evidence and fails closed on a concurrent change. Preview and Apply therefore cannot diverge through separate formulas.
+Session-policy update plus its Audit record is not yet one shared database transaction and must not be represented as atomic evidence. Likewise, Security Events are operational evidence complementary to, not a substitute for, required business Audit transactions.
 
-Finalized accounting and operational evidence is not silently rewritten. Item Cost Build-up and Bulk Pricing modify current master/pricing configuration only; submitted/finalized Sales documents retain their stored snapshots.
-
-## Currency and rounding boundary
-
-Item Cost Profiles state the currency of the selected purchasing Base Cost because existing supplier purchase prices do not carry currency metadata. Costs in different currencies are never added or written to a target PriceList through an implicit 1:1 conversion. Until controlled FX conversion is explicitly integrated, mismatched currencies fail closed.
-
-Commercial cost and generated price amounts use deterministic decimal currency precision. More advanced commercial rounding remains an extension point rather than an implicit UI rule.
+Bulk pricing Apply remains all-or-nothing through the provider transaction abstraction, with preview evidence revalidated before mutation.
 
 ## RBAC and segregation of duties
 
-Service-layer permissions are authoritative. Item-cost visibility/maintenance reuses the existing Item permissions; Bulk Pricing reuses Sales Pricing permissions in combination with item-cost visibility. UI controls mirror these rights but do not replace service authorization.
+Service-layer authorization is authoritative. Relevant security permissions are:
 
-The Finance role receives normal Finance management rights; sensitive supplier/payment approvals remain independently controlled. Deployments can define stricter custom-role separation for configuration, posting, approval, reconciliation, reporting preparation and review.
+- `Users.View` — session visibility/policy read.
+- `Settings.Manage` — session lifetime-policy maintenance.
+- `UserSessions.Terminate` — destructive session termination.
+- `SecurityEvents.View` — Security Center/event visibility and security notifications.
+- `SecurityEvents.Manage` — security-event review workflow.
+
+UI visibility mirrors these rights but never replaces service authorization.
 
 ## Provider acceptance
 
-Core persistence and Sales schema 10 DDL/code exist for SQLite, SQL Server and MySQL/MariaDB. Provider-neutral implementation is not equivalent to production certification. Live migration, locking, deadlock/retry, recovery, backup/restore, date/decimal behavior and representative performance/concurrency acceptance remain required for every advertised server/version matrix.
+Core persistence, Sales schema 10, User Sessions schema 2 and Security Events schema 1 DDL/code exist for SQLite, SQL Server and MySQL/MariaDB. Provider-neutral implementation is not production certification; live migration, locking, recovery, backup/restore, date behavior and representative load/concurrency acceptance remain required for advertised server/version matrices.

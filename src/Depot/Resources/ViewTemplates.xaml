@@ -38,9 +38,9 @@
 	<DataTemplate DataType="{x:Type viewModels:PurchaseOrderApprovalsViewModel}"><views:PurchaseOrderApprovalsView /></DataTemplate>
 	<DataTemplate DataType="{x:Type viewModels:SalesViewModel}"><views:SalesView /></DataTemplate>
 	<DataTemplate DataType="{x:Type viewModels:SalesOverviewViewModel}"><views:SalesView DataContext="{Binding Workspace}" /></DataTemplate>
-	<DataTemplate DataType="{x:Type viewModels:CustomersViewModel}"><views:SalesCustomersView /></DataTemplate>
 	<DataTemplate DataType="{x:Type viewModels:SalesQuotesViewModel}"><views:SalesQuotesView /></DataTemplate>
 	<DataTemplate DataType="{x:Type viewModels:SalesPricingViewModel}"><views:SalesPricingView /></DataTemplate>
+	<DataTemplate DataType="{x:Type viewModels:CustomersViewModel}"><views:SalesCustomersView /></DataTemplate>
 	<DataTemplate DataType="{x:Type viewModels:SalesOrdersViewModel}"><views:SalesOrdersView /></DataTemplate>
 	<DataTemplate DataType="{x:Type viewModels:SalesApprovalsViewModel}"><views:SalesApprovalsView /></DataTemplate>
 	<DataTemplate DataType="{x:Type viewModels:ShippingViewModel}"><views:SalesShippingView /></DataTemplate>
@@ -62,6 +62,8 @@
 	<DataTemplate DataType="{x:Type administrationViewModels:AboutViewModel}"><administrationViews:AboutView /></DataTemplate>
 	<DataTemplate DataType="{x:Type administrationViewModels:AuditLogViewModel}"><administrationViews:AuditLogView /></DataTemplate>
 	<DataTemplate DataType="{x:Type administrationViewModels:PrivacyDataViewModel}"><administrationViews:PrivacyDataView /></DataTemplate>
+	<DataTemplate DataType="{x:Type administrationViewModels:UserSessionsViewModel}"><administrationViews:UserSessionsView /></DataTemplate>
+	<DataTemplate DataType="{x:Type administrationViewModels:SecurityCenterViewModel}"><administrationViews:SecurityCenterView /></DataTemplate>
 	<DataTemplate DataType="{x:Type sharedViewModels:PlaceholderViewModel}"><sharedViews:PlaceholderView /></DataTemplate>
 	<DataTemplate DataType="{x:Type masterDataViewModels:MasterDataViewModel}"><masterDataViews:MasterDataView /></DataTemplate>
 	<DataTemplate DataType="{x:Type purposeViewModels:PurposeViewModel}"><purposeViews:PurposesView /></DataTemplate>

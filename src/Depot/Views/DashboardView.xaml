@@ -122,16 +122,50 @@
                         </StackPanel>
                     </Button>
 
-                    <Button automation:AutomationProperties.Name="Open user administration"
+                    <Button automation:AutomationProperties.Name="Open active user sessions"
                             Style="{DynamicResource DashboardActionCardStyle}"
-                            Tag="AdministrationUsers"
+                            Tag="AdministrationUserSessions"
                             Click="OnDashboardActionClick"
                             Visibility="{Binding HasAdministrationMetrics, Converter={StaticResource BooleanToVisibilityConverter}}">
                         <StackPanel>
-                            <TextBlock Text="Administration" Style="{StaticResource SectionTitleStyle}" />
-                            <TextBlock Text="Users, access and application administration" Style="{StaticResource CaptionStyle}" Margin="0,4,0,12" />
-                            <TextBlock Text="{Binding AdministrationMetrics.ActiveUsers, StringFormat={}{0:N0}}" Style="{StaticResource MetricLargeStyle}" />
-                            <TextBlock Text="Active users" Style="{StaticResource CaptionStyle}" />
+                            <TextBlock Text="User Presence" Style="{StaticResource SectionTitleStyle}" />
+                            <TextBlock Text="Authenticated users, active clients and today's session events" Style="{StaticResource CaptionStyle}" Margin="0,4,0,12" />
+
+                            <TextBlock Text="Live now" Style="{StaticResource CaptionStyle}" FontWeight="SemiBold" Margin="0,0,0,6" />
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Online users" Style="{StaticResource CaptionStyle}" VerticalAlignment="Center" />
+                                <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding AdministrationMetrics.OnlineUsers, StringFormat={}{0:N0}}" Style="{StaticResource MetricLargeStyle}" HorizontalAlignment="Right" />
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Active sessions" Style="{StaticResource CaptionStyle}" VerticalAlignment="Center" Margin="0,6,0,0" />
+                                <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding AdministrationMetrics.ActiveSessions, StringFormat={}{0:N0}}" Style="{StaticResource MetricLargeStyle}" HorizontalAlignment="Right" Margin="16,6,0,0" />
+                            </Grid>
+
+                            <Border Height="1" Background="{DynamicResource BorderBrush}" Margin="0,12,0,10" />
+                            <TextBlock Text="Today" Style="{StaticResource CaptionStyle}" FontWeight="SemiBold" Margin="0,0,0,6" />
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Sessions started" Style="{StaticResource CaptionStyle}" VerticalAlignment="Center" />
+                                <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding AdministrationMetrics.SessionsToday, StringFormat={}{0:N0}}" Style="{StaticResource MetricStyle}" HorizontalAlignment="Right" />
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Administrative logouts" Style="{StaticResource CaptionStyle}" VerticalAlignment="Center" Margin="0,6,0,0" />
+                                <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding AdministrationMetrics.AdministrativeLogoutsToday, StringFormat={}{0:N0}}" Style="{StaticResource MetricStyle}" HorizontalAlignment="Right" Margin="16,6,0,0" />
+                                <TextBlock Grid.Row="2" Grid.Column="0" Text="Revoked sessions" Style="{StaticResource CaptionStyle}" VerticalAlignment="Center" Margin="0,6,0,0" />
+                                <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding AdministrationMetrics.RevokedSessionsToday, StringFormat={}{0:N0}}" Style="{StaticResource MetricStyle}" HorizontalAlignment="Right" Margin="16,6,0,0" />
+                            </Grid>
                         </StackPanel>
                     </Button>
 
@@ -139,7 +173,7 @@
                             Style="{DynamicResource DashboardActionCardStyle}"
                             Tag="Reports"
                             Click="OnDashboardActionClick"
-                            Visibility="{Binding HasAdministrationMetrics, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            Visibility="{Binding HasReportsAccess, Converter={StaticResource BooleanToVisibilityConverter}}">
                         <StackPanel>
                             <TextBlock Text="Reports" Style="{StaticResource SectionTitleStyle}" />
                             <TextBlock Text="Inventory value and stock distribution reporting" Style="{StaticResource CaptionStyle}" Margin="0,4,0,12" />
