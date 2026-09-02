@@ -7,98 +7,96 @@
 	<Grid>
 		<Grid.RowDefinitions>
 			<RowDefinition Height="Auto" />
+			<RowDefinition Height="Auto" />
 			<RowDefinition Height="8" />
 			<RowDefinition Height="*" />
 		</Grid.RowDefinitions>
 
-		<Grid>
-			<Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-			<controls:OperationPanel
-				ErrorText="{Binding OperationError}"
-				HasError="{Binding HasOperationError}"
-				HelpTopicId="troubleshooting.database-connection-failures"
-				IsBusy="{Binding IsBusy}"
-				StatusText="{Binding StatusText}" />
-			<StackPanel Grid.Column="1" Orientation="Horizontal">
-				<Button MinWidth="{DynamicResource Help.ContextButton.MinWidth}" AutomationProperties.Name="Open database configuration help" Command="{x:Static commands:HelpCommands.OpenTopic}" CommandParameter="administration.database" Content="Help" Style="{DynamicResource SecondaryButtonStyle}" />
-				<Button MinWidth="{DynamicResource Help.ContextButton.MinWidth}" Margin="{DynamicResource Button.Margin}" AutomationProperties.Name="Open backup and restore help" Command="{x:Static commands:HelpCommands.OpenTopic}" CommandParameter="administration.backup-restore" Content="Backup Help" Style="{DynamicResource SecondaryButtonStyle}" />
-			</StackPanel>
-		</Grid>
+		<controls:PageHeader Title="Database" Subtitle="Configure database connectivity, verify provider health, and manage backup and recovery operations.">
+			<controls:PageHeader.Actions>
+				<StackPanel Orientation="Horizontal">
+					<Button MinWidth="{DynamicResource Help.ContextButton.MinWidth}" AutomationProperties.Name="Open database configuration help" Command="{x:Static commands:HelpCommands.OpenTopic}" CommandParameter="administration.database" Content="Help" Style="{DynamicResource SecondaryButtonStyle}" />
+					<Button MinWidth="{DynamicResource Help.ContextButton.MinWidth}" Margin="{DynamicResource Button.Margin}" AutomationProperties.Name="Open backup and restore help" Command="{x:Static commands:HelpCommands.OpenTopic}" CommandParameter="administration.backup-restore" Content="Backup Help" Style="{DynamicResource SecondaryButtonStyle}" />
+				</StackPanel>
+			</controls:PageHeader.Actions>
+		</controls:PageHeader>
 
-		<TabControl Grid.Row="2" Style="{StaticResource AppTabControlStyle}">
+		<controls:OperationPanel Grid.Row="1"
+			ErrorText="{Binding OperationError}"
+			HasError="{Binding HasOperationError}"
+			HelpTopicId="troubleshooting.database-connection-failures"
+			IsBusy="{Binding IsBusy}"
+			StatusText="{Binding StatusText}" />
+
+		<TabControl Grid.Row="3" Style="{StaticResource AppTabControlStyle}">
 			<TabItem Header="Connection">
 				<Grid>
 					<Grid.RowDefinitions><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
-				<ScrollViewer HorizontalContentAlignment="Stretch" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-					<StackPanel HorizontalAlignment="Stretch">
-						<controls:ConnectionStatusIndicator
-							Margin="0,0,0,16"
-							State="{Binding ConnectionStatus.State}"
-							Status="{Binding ConnectionStatus.Status}"
-							Detail="{Binding ConnectionStatus.Detail}" />
+					<ScrollViewer HorizontalContentAlignment="Stretch" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+						<StackPanel HorizontalAlignment="Stretch">
+							<controls:ConnectionStatusIndicator Margin="0,0,0,16" State="{Binding ConnectionStatus.State}" Status="{Binding ConnectionStatus.Status}" Detail="{Binding ConnectionStatus.Detail}" />
 
-						<controls:FilterBar>
-							<WrapPanel>
-								<RadioButton Content="Local database" GroupName="DatabaseProvider" IsChecked="{Binding UseLocalDatabase}" Style="{StaticResource OptionRadioButtonStyle}" />
-								<RadioButton Margin="{DynamicResource Button.Margin}" Content="SQL Server" GroupName="DatabaseProvider" IsChecked="{Binding UseSqlServer}" Style="{StaticResource OptionRadioButtonStyle}" />
-								<RadioButton Margin="{DynamicResource Button.Margin}" Content="MySQL / MariaDB" GroupName="DatabaseProvider" IsChecked="{Binding UseMySql}" Style="{StaticResource OptionRadioButtonStyle}" />
-							</WrapPanel>
-						</controls:FilterBar>
+							<controls:FilterBar>
+								<WrapPanel>
+									<RadioButton Content="Local database" GroupName="DatabaseProvider" IsChecked="{Binding UseLocalDatabase}" Style="{StaticResource OptionRadioButtonStyle}" />
+									<RadioButton Margin="{DynamicResource Button.Margin}" Content="SQL Server" GroupName="DatabaseProvider" IsChecked="{Binding UseSqlServer}" Style="{StaticResource OptionRadioButtonStyle}" />
+									<RadioButton Margin="{DynamicResource Button.Margin}" Content="MySQL / MariaDB" GroupName="DatabaseProvider" IsChecked="{Binding UseMySql}" Style="{StaticResource OptionRadioButtonStyle}" />
+								</WrapPanel>
+							</controls:FilterBar>
 
-						<controls:Card Visibility="{Binding UseLocalDatabase, Converter={StaticResource BooleanToVisibilityConverter}}">
-							<StackPanel>
-								<TextBlock Text="Local SQLite database" Style="{StaticResource CardTitleStyle}" />
-								<TextBlock Margin="{DynamicResource Control.Margin.Large}" Text="Database file" Style="{StaticResource FormLabelStyle}" />
-								<TextBox Style="{StaticResource AppTextBoxStyle}" Text="{Binding LocalDatabasePath}" />
-								<TextBlock Margin="{DynamicResource Control.Margin}" Text="Used on first installation and as the current fallback database." Style="{StaticResource HintStyle}" />
-							</StackPanel>
-						</controls:Card>
+							<Border Style="{StaticResource WorkspaceSectionStyle}" Visibility="{Binding UseLocalDatabase, Converter={StaticResource BooleanToVisibilityConverter}}">
+								<StackPanel>
+									<TextBlock Text="Local SQLite database" Style="{StaticResource SectionTitleStyle}" />
+									<TextBlock Margin="{DynamicResource Control.Margin.Large}" Text="Database file" Style="{StaticResource FormLabelStyle}" />
+									<TextBox Style="{StaticResource AppTextBoxStyle}" Text="{Binding LocalDatabasePath}" />
+									<TextBlock Margin="{DynamicResource Control.Margin}" Text="Used on first installation and as the current fallback database." Style="{StaticResource HintStyle}" />
+								</StackPanel>
+							</Border>
 
-						<controls:Card Visibility="{Binding IsMySqlSelected, Converter={StaticResource BooleanToVisibilityConverter}}">
-							<StackPanel>
-								<TextBlock Text="MySQL / MariaDB connection" Style="{StaticResource CardTitleStyle}" />
-								<Grid Margin="{DynamicResource Control.Margin.Large}">
-									<Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="180" /></Grid.ColumnDefinitions>
-									<Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="4" /><RowDefinition Height="Auto" /><RowDefinition Height="12" /><RowDefinition Height="Auto" /><RowDefinition Height="4" /><RowDefinition Height="Auto" /><RowDefinition Height="12" /><RowDefinition Height="Auto" /><RowDefinition Height="4" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
-									<TextBlock Text="Server" Style="{StaticResource FormLabelStyle}" /><TextBlock Grid.Column="2" Text="Port" Style="{StaticResource FormLabelStyle}" />
-									<TextBox Grid.Row="2" Style="{StaticResource AppTextBoxStyle}" Text="{Binding MySqlHost}" /><TextBox Grid.Row="2" Grid.Column="2" Style="{StaticResource AppTextBoxStyle}" Text="{Binding MySqlPort}" />
-									<TextBlock Grid.Row="4" Text="Database" Style="{StaticResource FormLabelStyle}" /><TextBlock Grid.Row="4" Grid.Column="2" Text="User name" Style="{StaticResource FormLabelStyle}" />
-									<TextBox Grid.Row="6" Style="{StaticResource AppTextBoxStyle}" Text="{Binding MySqlDatabase}" /><TextBox Grid.Row="6" Grid.Column="2" Style="{StaticResource AppTextBoxStyle}" Text="{Binding MySqlUserName}" />
-									<TextBlock Grid.Row="8" Text="Password" Style="{StaticResource FormLabelStyle}" />
-									<controls:PasswordInput Grid.Row="10" PasswordValue="{Binding MySqlPassword, UpdateSourceTrigger=PropertyChanged}" />
-									<CheckBox Grid.Row="10" Grid.Column="2" VerticalAlignment="Center" Content="Require TLS encryption" IsChecked="{Binding UseMySqlTls}" Style="{StaticResource AppCheckBoxStyle}" />
-								</Grid>
-							</StackPanel>
-						</controls:Card>
+							<Border Style="{StaticResource WorkspaceSectionStyle}" Visibility="{Binding IsMySqlSelected, Converter={StaticResource BooleanToVisibilityConverter}}">
+								<StackPanel>
+									<TextBlock Text="MySQL / MariaDB connection" Style="{StaticResource SectionTitleStyle}" />
+									<Grid Margin="{DynamicResource Control.Margin.Large}">
+										<Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="180" /></Grid.ColumnDefinitions>
+										<Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="4" /><RowDefinition Height="Auto" /><RowDefinition Height="12" /><RowDefinition Height="Auto" /><RowDefinition Height="4" /><RowDefinition Height="Auto" /><RowDefinition Height="12" /><RowDefinition Height="Auto" /><RowDefinition Height="4" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+										<TextBlock Text="Server" Style="{StaticResource FormLabelStyle}" /><TextBlock Grid.Column="2" Text="Port" Style="{StaticResource FormLabelStyle}" />
+										<TextBox Grid.Row="2" Style="{StaticResource AppTextBoxStyle}" Text="{Binding MySqlHost}" /><TextBox Grid.Row="2" Grid.Column="2" Style="{StaticResource AppTextBoxStyle}" Text="{Binding MySqlPort}" />
+										<TextBlock Grid.Row="4" Text="Database" Style="{StaticResource FormLabelStyle}" /><TextBlock Grid.Row="4" Grid.Column="2" Text="User name" Style="{StaticResource FormLabelStyle}" />
+										<TextBox Grid.Row="6" Style="{StaticResource AppTextBoxStyle}" Text="{Binding MySqlDatabase}" /><TextBox Grid.Row="6" Grid.Column="2" Style="{StaticResource AppTextBoxStyle}" Text="{Binding MySqlUserName}" />
+										<TextBlock Grid.Row="8" Text="Password" Style="{StaticResource FormLabelStyle}" />
+										<controls:PasswordInput Grid.Row="10" PasswordValue="{Binding MySqlPassword, UpdateSourceTrigger=PropertyChanged}" />
+										<CheckBox Grid.Row="10" Grid.Column="2" VerticalAlignment="Center" Content="Require TLS encryption" IsChecked="{Binding UseMySqlTls}" Style="{StaticResource AppCheckBoxStyle}" />
+									</Grid>
+								</StackPanel>
+							</Border>
 
-						<controls:Card Visibility="{Binding IsSqlServerSelected, Converter={StaticResource BooleanToVisibilityConverter}}">
-							<StackPanel>
-								<TextBlock Text="SQL Server connection" Style="{StaticResource CardTitleStyle}" />
-								<Grid Margin="{DynamicResource Control.Margin.Large}">
-									<Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="180" /></Grid.ColumnDefinitions>
-									<Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="4" /><RowDefinition Height="Auto" /><RowDefinition Height="12" /><RowDefinition Height="Auto" /><RowDefinition Height="4" /><RowDefinition Height="Auto" /><RowDefinition Height="12" /><RowDefinition Height="Auto" /><RowDefinition Height="4" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
-									<TextBlock Text="Server" Style="{StaticResource FormLabelStyle}" /><TextBlock Grid.Column="2" Text="Port" Style="{StaticResource FormLabelStyle}" />
-									<TextBox Grid.Row="2" Style="{StaticResource AppTextBoxStyle}" Text="{Binding SqlServerHost}" /><TextBox Grid.Row="2" Grid.Column="2" Style="{StaticResource AppTextBoxStyle}" Text="{Binding SqlServerPort}" />
-									<TextBlock Grid.Row="4" Text="Database" Style="{StaticResource FormLabelStyle}" /><TextBlock Grid.Row="4" Grid.Column="2" Text="User name" Style="{StaticResource FormLabelStyle}" />
-									<TextBox Grid.Row="6" Style="{StaticResource AppTextBoxStyle}" Text="{Binding SqlServerDatabase}" /><TextBox Grid.Row="6" Grid.Column="2" Style="{StaticResource AppTextBoxStyle}" Text="{Binding SqlServerUserName}" />
-									<TextBlock Grid.Row="8" Text="Password" Style="{StaticResource FormLabelStyle}" />
-									<controls:PasswordInput Grid.Row="10" PasswordValue="{Binding SqlServerPassword, UpdateSourceTrigger=PropertyChanged}" />
-									<StackPanel Grid.Row="10" Grid.Column="2"><CheckBox Content="Encrypt connection" IsChecked="{Binding EncryptSqlServerConnection}" Style="{StaticResource AppCheckBoxStyle}" /><CheckBox Margin="{DynamicResource Control.Margin}" Content="Trust server certificate" IsChecked="{Binding TrustSqlServerCertificate}" Style="{StaticResource AppCheckBoxStyle}" /></StackPanel>
-								</Grid>
-							</StackPanel>
-						</controls:Card>
+							<Border Style="{StaticResource WorkspaceSectionStyle}" Visibility="{Binding IsSqlServerSelected, Converter={StaticResource BooleanToVisibilityConverter}}">
+								<StackPanel>
+									<TextBlock Text="SQL Server connection" Style="{StaticResource SectionTitleStyle}" />
+									<Grid Margin="{DynamicResource Control.Margin.Large}">
+										<Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="180" /></Grid.ColumnDefinitions>
+										<Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="4" /><RowDefinition Height="Auto" /><RowDefinition Height="12" /><RowDefinition Height="Auto" /><RowDefinition Height="4" /><RowDefinition Height="Auto" /><RowDefinition Height="12" /><RowDefinition Height="Auto" /><RowDefinition Height="4" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+										<TextBlock Text="Server" Style="{StaticResource FormLabelStyle}" /><TextBlock Grid.Column="2" Text="Port" Style="{StaticResource FormLabelStyle}" />
+										<TextBox Grid.Row="2" Style="{StaticResource AppTextBoxStyle}" Text="{Binding SqlServerHost}" /><TextBox Grid.Row="2" Grid.Column="2" Style="{StaticResource AppTextBoxStyle}" Text="{Binding SqlServerPort}" />
+										<TextBlock Grid.Row="4" Text="Database" Style="{StaticResource FormLabelStyle}" /><TextBlock Grid.Row="4" Grid.Column="2" Text="User name" Style="{StaticResource FormLabelStyle}" />
+										<TextBox Grid.Row="6" Style="{StaticResource AppTextBoxStyle}" Text="{Binding SqlServerDatabase}" /><TextBox Grid.Row="6" Grid.Column="2" Style="{StaticResource AppTextBoxStyle}" Text="{Binding SqlServerUserName}" />
+										<TextBlock Grid.Row="8" Text="Password" Style="{StaticResource FormLabelStyle}" />
+										<controls:PasswordInput Grid.Row="10" PasswordValue="{Binding SqlServerPassword, UpdateSourceTrigger=PropertyChanged}" />
+										<StackPanel Grid.Row="10" Grid.Column="2"><CheckBox Content="Encrypt connection" IsChecked="{Binding EncryptSqlServerConnection}" Style="{StaticResource AppCheckBoxStyle}" /><CheckBox Margin="{DynamicResource Control.Margin}" Content="Trust server certificate" IsChecked="{Binding TrustSqlServerCertificate}" Style="{StaticResource AppCheckBoxStyle}" /></StackPanel>
+									</Grid>
+								</StackPanel>
+							</Border>
 
-						<Border Margin="{DynamicResource Control.Margin.Large}" Padding="{DynamicResource Card.Padding}" Background="{StaticResource WarningBrush}" CornerRadius="{StaticResource CornerRadius.Small}">
-							<TextBlock Foreground="{StaticResource WarningForegroundBrush}" Text="Provider changes are verified before saving and become active after restarting Depot. Server credentials remain encrypted in depot.settings." TextWrapping="Wrap" />
-						</Border>
+							<Border Margin="{DynamicResource Control.Margin.Large}" Padding="{DynamicResource Card.Padding}" Background="{StaticResource WarningBrush}" CornerRadius="{StaticResource CornerRadius.Small}">
+								<TextBlock Foreground="{StaticResource WarningForegroundBrush}" Text="Provider changes are verified before saving and become active after restarting Depot. Server credentials remain encrypted in depot.settings." TextWrapping="Wrap" />
+							</Border>
 
-						<Grid Margin="{DynamicResource Control.Margin.Large}">
-							<Border Padding="{DynamicResource Card.Padding}" Background="{StaticResource SuccessBrush}" CornerRadius="{StaticResource CornerRadius.Small}" Visibility="{Binding HasSuccessMessage, Converter={StaticResource BooleanToVisibilityConverter}}"><TextBlock Foreground="{StaticResource SuccessForegroundBrush}" Text="{Binding Message}" TextWrapping="Wrap" /></Border>
-							<Border Padding="{DynamicResource Card.Padding}" Background="{StaticResource ErrorBrush}" CornerRadius="{StaticResource CornerRadius.Small}" Visibility="{Binding HasError, Converter={StaticResource BooleanToVisibilityConverter}}"><TextBlock Foreground="{StaticResource ErrorForegroundBrush}" Text="{Binding Message}" TextWrapping="Wrap" /></Border>
-						</Grid>
-
-					</StackPanel>
-				</ScrollViewer>
+							<Grid Margin="{DynamicResource Control.Margin.Large}">
+								<Border Padding="{DynamicResource Card.Padding}" Background="{StaticResource SuccessBrush}" CornerRadius="{StaticResource CornerRadius.Small}" Visibility="{Binding HasSuccessMessage, Converter={StaticResource BooleanToVisibilityConverter}}"><TextBlock Foreground="{StaticResource SuccessForegroundBrush}" Text="{Binding Message}" TextWrapping="Wrap" /></Border>
+								<Border Padding="{DynamicResource Card.Padding}" Background="{StaticResource ErrorBrush}" CornerRadius="{StaticResource CornerRadius.Small}" Visibility="{Binding HasError, Converter={StaticResource BooleanToVisibilityConverter}}"><TextBlock Foreground="{StaticResource ErrorForegroundBrush}" Text="{Binding Message}" TextWrapping="Wrap" /></Border>
+							</Grid>
+						</StackPanel>
+					</ScrollViewer>
 					<controls:WorkflowActionBar Grid.Row="1">
 						<controls:WorkflowActionBar.SecondaryActions><Button Command="{Binding TestConnectionCommand}" Content="Test connection" Style="{StaticResource SecondaryButtonStyle}" /></controls:WorkflowActionBar.SecondaryActions>
 						<controls:WorkflowActionBar.PrimaryAction><Button Command="{Binding SaveCommand}" Content="Save settings" Style="{StaticResource PrimaryButtonStyle}" /></controls:WorkflowActionBar.PrimaryAction>
@@ -111,19 +109,21 @@
 					<StackPanel HorizontalAlignment="Stretch">
 						<ProgressBar Height="4" Margin="0,0,0,16" Maximum="100" Value="{Binding OperationProgress, Mode=OneWay}" Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}" />
 
-						<controls:Card>
-							<controls:Card.Header><TextBlock Text="Database overview" Style="{StaticResource SectionTitleStyle}" /></controls:Card.Header>
-							<Grid>
-								<Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="24" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-								<Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="8" /><RowDefinition Height="Auto" /><RowDefinition Height="16" /><RowDefinition Height="Auto" /><RowDefinition Height="8" /><RowDefinition Height="Auto" /><RowDefinition Height="16" /><RowDefinition Height="Auto" /><RowDefinition Height="8" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
-								<TextBlock Text="Provider" Style="{StaticResource FormLabelStyle}" /><TextBlock Grid.Column="2" Text="Schema version" Style="{StaticResource FormLabelStyle}" />
-								<TextBlock Grid.Row="2" Text="{Binding ProviderDisplay}" Style="{StaticResource CardTitleStyle}" /><TextBlock Grid.Row="2" Grid.Column="2" Text="{Binding SchemaVersionDisplay}" Style="{StaticResource CardTitleStyle}" />
-								<TextBlock Grid.Row="4" Text="Active connection" Style="{StaticResource FormLabelStyle}" /><TextBlock Grid.Row="4" Grid.Column="2" Text="Database size" Style="{StaticResource FormLabelStyle}" />
-								<TextBox Grid.Row="6" Text="{Binding ConnectionDisplay, Mode=OneWay}" ToolTip="{Binding ConnectionDisplay}" Style="{StaticResource CopyableTextStyle}" /><TextBlock Grid.Row="6" Grid.Column="2" Text="{Binding DatabaseSizeDisplay}" />
-								<TextBlock Grid.Row="8" Text="Last successful backup" Style="{StaticResource FormLabelStyle}" /><TextBlock Grid.Row="8" Grid.Column="2" Text="Next scheduled backup" Style="{StaticResource FormLabelStyle}" />
-								<TextBlock Grid.Row="10" Text="{Binding LastBackupDisplay}" /><TextBlock Grid.Row="10" Grid.Column="2" Text="{Binding NextBackupDisplay}" />
-							</Grid>
-						</controls:Card>
+						<Border Style="{StaticResource WorkspaceSectionStyle}">
+							<StackPanel>
+								<TextBlock Text="Database overview" Style="{StaticResource SectionTitleStyle}" />
+								<Grid Margin="0,12,0,0">
+									<Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="24" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+									<Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="8" /><RowDefinition Height="Auto" /><RowDefinition Height="16" /><RowDefinition Height="Auto" /><RowDefinition Height="8" /><RowDefinition Height="Auto" /><RowDefinition Height="16" /><RowDefinition Height="Auto" /><RowDefinition Height="8" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+									<TextBlock Text="Provider" Style="{StaticResource FormLabelStyle}" /><TextBlock Grid.Column="2" Text="Schema version" Style="{StaticResource FormLabelStyle}" />
+									<TextBlock Grid.Row="2" Text="{Binding ProviderDisplay}" Style="{StaticResource CardTitleStyle}" /><TextBlock Grid.Row="2" Grid.Column="2" Text="{Binding SchemaVersionDisplay}" Style="{StaticResource CardTitleStyle}" />
+									<TextBlock Grid.Row="4" Text="Active connection" Style="{StaticResource FormLabelStyle}" /><TextBlock Grid.Row="4" Grid.Column="2" Text="Database size" Style="{StaticResource FormLabelStyle}" />
+									<TextBox Grid.Row="6" Text="{Binding ConnectionDisplay, Mode=OneWay}" ToolTip="{Binding ConnectionDisplay}" Style="{StaticResource CopyableTextStyle}" /><TextBlock Grid.Row="6" Grid.Column="2" Text="{Binding DatabaseSizeDisplay}" />
+									<TextBlock Grid.Row="8" Text="Last successful backup" Style="{StaticResource FormLabelStyle}" /><TextBlock Grid.Row="8" Grid.Column="2" Text="Next scheduled backup" Style="{StaticResource FormLabelStyle}" />
+									<TextBlock Grid.Row="10" Text="{Binding LastBackupDisplay}" /><TextBlock Grid.Row="10" Grid.Column="2" Text="{Binding NextBackupDisplay}" />
+								</Grid>
+							</StackPanel>
+						</Border>
 
 						<Grid Margin="{DynamicResource Control.Margin.Large}">
 							<Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
@@ -151,11 +151,11 @@
 							</controls:Card>
 						</Grid>
 
-						<controls:Card Margin="{DynamicResource Control.Margin.Large}">
-							<controls:Card.Header><TextBlock Text="Available backups" Style="{StaticResource SectionTitleStyle}" /></controls:Card.Header>
+						<Border Margin="{DynamicResource Control.Margin.Large}" Style="{StaticResource WorkspaceSectionStyle}">
 							<Grid>
-								<Grid.RowDefinitions><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
-								<DataGrid MinHeight="220" ItemsSource="{Binding Backups}" SelectedItem="{Binding SelectedBackup}" Style="{StaticResource AppDataGridStyle}">
+								<Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="12" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+								<TextBlock Text="Available backups" Style="{StaticResource SectionTitleStyle}" />
+								<DataGrid Grid.Row="2" MinHeight="220" ItemsSource="{Binding Backups}" SelectedItem="{Binding SelectedBackup}" Style="{StaticResource AppDataGridCompactStyle}">
 									<DataGrid.Columns>
 										<DataGridTextColumn Width="145" Binding="{Binding CreatedDisplay}" Header="Created" ElementStyle="{StaticResource AppDataGridTextStyle}" />
 										<DataGridTextColumn Width="90" Binding="{Binding SizeDisplay}" Header="Size" ElementStyle="{StaticResource AppDataGridNumericTextStyle}" />
@@ -164,9 +164,9 @@
 										<DataGridTextColumn Width="*" Binding="{Binding FilePath}" Header="Path" ElementStyle="{StaticResource AppDataGridTextStyle}" />
 									</DataGrid.Columns>
 								</DataGrid>
-								<TextBlock Grid.Row="1" Margin="{DynamicResource Control.Margin}" Text="{Binding SelectedBackup.ValidationMessage}" TextWrapping="Wrap" Style="{StaticResource CaptionStyle}" />
+								<TextBlock Grid.Row="3" Margin="{DynamicResource Control.Margin}" Text="{Binding SelectedBackup.ValidationMessage}" TextWrapping="Wrap" Style="{StaticResource CaptionStyle}" />
 							</Grid>
-						</controls:Card>
+						</Border>
 					</StackPanel>
 				</ScrollViewer>
 			</TabItem>
