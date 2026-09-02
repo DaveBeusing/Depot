@@ -1,17 +1,17 @@
 <UserControl x:Class="Depot.Views.SalesCommercialHubView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:Depot.Controls"
              xmlns:views="clr-namespace:Depot.Views">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
-        <StackPanel Margin="0,0,0,12">
-            <TextBlock Text="Sales Commercial Hub" FontSize="20" FontWeight="SemiBold"/>
-            <TextBlock Margin="0,4,0,0" Text="Monitor sales execution, prepare quotes, and manage customer pricing from one workspace." Style="{StaticResource CaptionStyle}"/>
-        </StackPanel>
-        <TabControl Grid.Row="1" SelectedIndex="{Binding SelectedCommercialTab}">
+        <controls:PageHeader
+            Title="Sales Commercial Hub"
+            Subtitle="Monitor sales execution, prepare quotes, and manage customer pricing from one workspace." />
+        <TabControl Grid.Row="1" SelectedIndex="{Binding SelectedCommercialTab}" Style="{StaticResource AppTabControlStyle}">
             <TabItem Header="Overview">
                 <views:SalesView DataContext="{Binding Workspace}"/>
             </TabItem>
