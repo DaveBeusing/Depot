@@ -6,41 +6,44 @@
 	xmlns:commands="clr-namespace:Depot.Commands">
 
 	<Grid>
-		<Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="16" /><RowDefinition Height="Auto" /><RowDefinition Height="16" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+		<Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="16" /><RowDefinition Height="Auto" /><RowDefinition Height="16" /><RowDefinition Height="*" /></Grid.RowDefinitions>
 		<controls:PageHeader Title="Approvals" Subtitle="Review and decide submitted purchase orders.">
-			<controls:PageHeader.Actions><StackPanel Orientation="Horizontal"><controls:OperationPanel ErrorText="{Binding OperationError}" HasError="{Binding HasOperationError}" HelpTopicId="approvals.queue" IsBusy="{Binding IsBusy}" StatusText="{Binding StatusText}" /><Button MinWidth="{DynamicResource Help.ContextButton.MinWidth}" Margin="{DynamicResource Button.Margin}" AutomationProperties.Name="Open approvals help" Command="{x:Static commands:HelpCommands.OpenTopic}" CommandParameter="approvals.queue" Content="Help" Style="{DynamicResource SecondaryButtonStyle}" /></StackPanel></controls:PageHeader.Actions>
+			<controls:PageHeader.Actions><Button MinWidth="{DynamicResource Help.ContextButton.MinWidth}" AutomationProperties.Name="Open approvals help" Command="{x:Static commands:HelpCommands.OpenTopic}" CommandParameter="approvals.queue" Content="Help" Style="{DynamicResource SecondaryButtonStyle}" /></controls:PageHeader.Actions>
 		</controls:PageHeader>
+		<controls:OperationPanel Grid.Row="1" ErrorText="{Binding OperationError}" HasError="{Binding HasOperationError}" HelpTopicId="approvals.queue" IsBusy="{Binding IsBusy}" StatusText="{Binding StatusText}" />
 
-		<Grid Grid.Row="2">
+		<Grid Grid.Row="3">
 			<Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
 			<controls:Card><StackPanel><TextBlock Text="Open approvals" Style="{StaticResource CardTitleStyle}" /><TextBlock Margin="0,6,0,0" Text="{Binding Summary.OpenCount, StringFormat={}{0:N0}}" Style="{StaticResource PageTitleStyle}" /></StackPanel></controls:Card>
 			<controls:Card Grid.Column="2"><StackPanel><TextBlock Text="Oldest submission" Style="{StaticResource CardTitleStyle}" /><TextBlock Margin="0,6,0,0" Text="{Binding Summary.OldestSubmittedAtLocal, StringFormat={}{0:g}, TargetNullValue=—}" Style="{StaticResource SectionTitleStyle}" /></StackPanel></controls:Card>
 			<controls:Card Grid.Column="4"><StackPanel><TextBlock Text="Open order value" Style="{StaticResource CardTitleStyle}" /><TextBlock Margin="0,6,0,0" Text="{Binding Summary.TotalAmount, StringFormat={}{0:C2}}" Style="{StaticResource SectionTitleStyle}" /></StackPanel></controls:Card>
 		</Grid>
 
-		<controls:MasterDetailGrid Grid.Row="4">
+		<controls:MasterDetailGrid Grid.Row="5">
 			<controls:MasterDetailGrid.Master>
-				<Grid>
-					<Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="12" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
-					<controls:FilterBar>
-						<StackPanel>
-							<controls:SearchBox Placeholder="Search orders, suppliers, creators or notes" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
-							<Grid Margin="0,8,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="8" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><controls:TextInput Text="{Binding SupplierFilter, UpdateSourceTrigger=PropertyChanged}" ToolTip="Supplier" /><controls:TextInput Grid.Column="2" Text="{Binding CreatorFilter, UpdateSourceTrigger=PropertyChanged}" ToolTip="Creator" /></Grid>
-							<Grid Margin="0,8,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="8" /><ColumnDefinition Width="*" /><ColumnDefinition Width="8" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><DatePicker SelectedDate="{Binding FromDate}" Style="{StaticResource AppDatePickerStyle}" ToolTip="Submitted from" /><DatePicker Grid.Column="2" SelectedDate="{Binding ToDate}" Style="{StaticResource AppDatePickerStyle}" ToolTip="Submitted to" /><Button Grid.Column="4" Command="{Binding ClearFiltersCommand}" Content="Clear" Style="{StaticResource SecondaryButtonStyle}" /></Grid>
-						</StackPanel>
-					</controls:FilterBar>
-					<Grid Grid.Row="1">
-						<ListBox ItemsSource="{Binding Approvals}" SelectedItem="{Binding SelectedApproval}" Style="{StaticResource MasterDataListBoxStyle}" ItemContainerStyle="{StaticResource MasterDataListBoxItemStyle}">
-							<ListBox.ItemTemplate><DataTemplate><Grid Margin="4"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><StackPanel><TextBlock FontWeight="SemiBold" Text="{Binding OrderNumber}" /><TextBlock Text="{Binding SupplierName}" Style="{StaticResource CaptionStyle}" TextTrimming="CharacterEllipsis" /><TextBlock Text="{Binding CreatorDisplayName, StringFormat=Created by {0}}" Style="{StaticResource CaptionStyle}" TextTrimming="CharacterEllipsis" /></StackPanel><StackPanel Grid.Column="1" Margin="8,0,0,0" HorizontalAlignment="Right"><TextBlock HorizontalAlignment="Right" Text="{Binding TotalAmount, StringFormat={}{0:C2}}" FontWeight="SemiBold" /><TextBlock HorizontalAlignment="Right" Text="{Binding SubmittedAtLocal, StringFormat={}{0:g}}" Style="{StaticResource CaptionStyle}" /></StackPanel></Grid></DataTemplate></ListBox.ItemTemplate>
-						</ListBox>
-						<controls:WorkflowListState ItemCount="{Binding Approvals.Count}" SearchText="{Binding SearchText}" IsBusy="{Binding IsBusy}" HasError="{Binding HasOperationError}" ErrorText="{Binding OperationError}" />
+				<Border Style="{StaticResource WorkspaceSectionStyle}">
+					<Grid>
+						<Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="12" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+						<controls:FilterBar>
+							<StackPanel>
+								<controls:SearchBox Placeholder="Search orders, suppliers, creators or notes" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
+								<Grid Margin="0,8,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="8" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><controls:TextInput Text="{Binding SupplierFilter, UpdateSourceTrigger=PropertyChanged}" ToolTip="Supplier" /><controls:TextInput Grid.Column="2" Text="{Binding CreatorFilter, UpdateSourceTrigger=PropertyChanged}" ToolTip="Creator" /></Grid>
+								<Grid Margin="0,8,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="8" /><ColumnDefinition Width="*" /><ColumnDefinition Width="8" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><DatePicker SelectedDate="{Binding FromDate}" Style="{StaticResource AppDatePickerStyle}" ToolTip="Submitted from" /><DatePicker Grid.Column="2" SelectedDate="{Binding ToDate}" Style="{StaticResource AppDatePickerStyle}" ToolTip="Submitted to" /><Button Grid.Column="4" Command="{Binding ClearFiltersCommand}" Content="Clear" Style="{StaticResource SecondaryButtonStyle}" /></Grid>
+							</StackPanel>
+						</controls:FilterBar>
+						<Grid Grid.Row="1">
+							<ListBox ItemsSource="{Binding Approvals}" SelectedItem="{Binding SelectedApproval}" Style="{StaticResource MasterDataListBoxStyle}" ItemContainerStyle="{StaticResource MasterDataListBoxItemStyle}">
+								<ListBox.ItemTemplate><DataTemplate><Grid Margin="4"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><StackPanel><TextBlock FontWeight="SemiBold" Text="{Binding OrderNumber}" /><TextBlock Text="{Binding SupplierName}" Style="{StaticResource CaptionStyle}" TextTrimming="CharacterEllipsis" /><TextBlock Text="{Binding CreatorDisplayName, StringFormat=Created by {0}}" Style="{StaticResource CaptionStyle}" TextTrimming="CharacterEllipsis" /></StackPanel><StackPanel Grid.Column="1" Margin="8,0,0,0" HorizontalAlignment="Right"><TextBlock HorizontalAlignment="Right" Text="{Binding TotalAmount, StringFormat={}{0:C2}}" FontWeight="SemiBold" /><TextBlock HorizontalAlignment="Right" Text="{Binding SubmittedAtLocal, StringFormat={}{0:g}}" Style="{StaticResource CaptionStyle}" /></StackPanel></Grid></DataTemplate></ListBox.ItemTemplate>
+							</ListBox>
+							<controls:WorkflowListState ItemCount="{Binding Approvals.Count}" SearchText="{Binding SearchText}" IsBusy="{Binding IsBusy}" HasError="{Binding HasOperationError}" ErrorText="{Binding OperationError}" />
+						</Grid>
+						<controls:PaginationControl Grid.Row="3" PreviousCommand="{Binding PreviousPageCommand}" NextCommand="{Binding NextPageCommand}" PageText="{Binding PageDisplay}" />
 					</Grid>
-					<controls:PaginationControl Grid.Row="3" PreviousCommand="{Binding PreviousPageCommand}" NextCommand="{Binding NextPageCommand}" PageText="{Binding PageDisplay}" />
-				</Grid>
+				</Border>
 			</controls:MasterDetailGrid.Master>
 
 			<controls:MasterDetailGrid.Detail>
-				<controls:Card>
+				<Border Style="{StaticResource WorkspaceSectionStyle}">
 					<Grid>
 						<controls:EmptyState Title="No purchase order selected" Description="Select an order from the approval queue to review its details." Visibility="{Binding HasNoDetails, Converter={StaticResource BooleanToVisibilityConverter}}" />
 						<Grid Visibility="{Binding HasDetails, Converter={StaticResource BooleanToVisibilityConverter}}">
@@ -50,19 +53,19 @@
 								<TabItem Header="Order">
 									<Grid Margin="0,12,0,0"><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="12" /><RowDefinition Height="*" /></Grid.RowDefinitions>
 										<Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><StackPanel><TextBlock Text="Created by" Style="{StaticResource FormLabelStyle}" /><TextBlock Text="{Binding Details.Order.CreatedByUserDisplay}" Style="{StaticResource BodyStyle}" TextTrimming="CharacterEllipsis" /></StackPanel><StackPanel Grid.Column="2"><TextBlock Text="Order date" Style="{StaticResource FormLabelStyle}" /><TextBlock Text="{Binding Details.Order.OrderDate, StringFormat={}{0:d}}" Style="{StaticResource BodyStyle}" /></StackPanel><StackPanel Grid.Column="4"><TextBlock Text="Expected delivery" Style="{StaticResource FormLabelStyle}" /><TextBlock Text="{Binding Details.Order.ExpectedDeliveryDate, StringFormat={}{0:d}}" Style="{StaticResource BodyStyle}" /></StackPanel></Grid>
-										<DataGrid Grid.Row="2" ItemsSource="{Binding Details.Order.Lines}" IsReadOnly="True" AutoGenerateColumns="False" Style="{StaticResource AppDataGridStyle}"><DataGrid.Columns><DataGridTextColumn Header="#" Binding="{Binding LineNumber}" Width="45" /><DataGridTextColumn Header="Item" Binding="{Binding ItemPartNumber}" Width="120" /><DataGridTextColumn Header="Description" Binding="{Binding ItemDescription}" Width="*" /><DataGridTextColumn Header="Quantity" Binding="{Binding Quantity, StringFormat={}{0:N2}}" Width="90" /><DataGridTextColumn Header="Unit price" Binding="{Binding UnitPrice, StringFormat={}{0:C2}}" Width="110" /><DataGridTextColumn Header="Line total" Binding="{Binding LineTotal, StringFormat={}{0:C2}}" Width="120" /></DataGrid.Columns></DataGrid>
+										<DataGrid Grid.Row="2" ItemsSource="{Binding Details.Order.Lines}" IsReadOnly="True" AutoGenerateColumns="False" Style="{StaticResource AppDataGridCompactStyle}"><DataGrid.Columns><DataGridTextColumn Header="#" Binding="{Binding LineNumber}" Width="45" /><DataGridTextColumn Header="Item" Binding="{Binding ItemPartNumber}" Width="120" /><DataGridTextColumn Header="Description" Binding="{Binding ItemDescription}" Width="*" /><DataGridTextColumn Header="Quantity" Binding="{Binding Quantity, StringFormat={}{0:N2}}" Width="90" ElementStyle="{StaticResource AppDataGridNumericTextStyle}" /><DataGridTextColumn Header="Unit price" Binding="{Binding UnitPrice, StringFormat={}{0:C2}}" Width="110" ElementStyle="{StaticResource AppDataGridNumericTextStyle}" /><DataGridTextColumn Header="Line total" Binding="{Binding LineTotal, StringFormat={}{0:C2}}" Width="120" ElementStyle="{StaticResource AppDataGridNumericTextStyle}" /></DataGrid.Columns></DataGrid>
 									</Grid>
 								</TabItem>
 								<TabItem Header="Notes"><TextBlock Margin="0,12,0,0" Text="{Binding Details.Order.Notes, TargetNullValue=No notes provided.}" TextWrapping="Wrap" Style="{StaticResource BodyStyle}" /></TabItem>
 								<TabItem Header="Status history"><ListBox Margin="0,12,0,0" ItemsSource="{Binding Details.History}" Style="{StaticResource AppListBoxStyle}"><ListBox.ItemTemplate><DataTemplate><Grid Margin="0,5"><Grid.ColumnDefinitions><ColumnDefinition Width="145" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Text="{Binding TimestampLocal, StringFormat={}{0:g}}" Style="{StaticResource CaptionStyle}" /><StackPanel Grid.Column="1"><TextBlock Text="{Binding StatusChange}" FontWeight="SemiBold" /><TextBlock Text="{Binding UserEmail}" Style="{StaticResource CaptionStyle}" /></StackPanel></Grid></DataTemplate></ListBox.ItemTemplate></ListBox></TabItem>
 							</TabControl>
 							<controls:WorkflowActionBar Grid.Row="2">
-								<controls:WorkflowActionBar.SecondaryActions><StackPanel Orientation="Horizontal"><Button Command="{Binding RejectCommand}" Content="Reject" Style="{StaticResource DangerButtonStyle}" /></StackPanel></controls:WorkflowActionBar.SecondaryActions>
+								<controls:WorkflowActionBar.SecondaryActions><Button Command="{Binding RejectCommand}" Content="Reject" Style="{StaticResource DangerButtonStyle}" /></controls:WorkflowActionBar.SecondaryActions>
 								<controls:WorkflowActionBar.PrimaryAction><StackPanel><TextBlock Text="Decision comment (optional)" Style="{StaticResource FormLabelStyle}" /><TextBox Width="360" MinHeight="48" AcceptsReturn="True" Text="{Binding DecisionComment, UpdateSourceTrigger=PropertyChanged}" TextWrapping="Wrap" Style="{StaticResource MultilineTextBoxStyle}" /><Button Margin="0,8,0,0" HorizontalAlignment="Right" Command="{Binding ApproveCommand}" Content="Approve" Style="{StaticResource PrimaryButtonStyle}" /></StackPanel></controls:WorkflowActionBar.PrimaryAction>
 							</controls:WorkflowActionBar>
 						</Grid>
 					</Grid>
-				</controls:Card>
+				</Border>
 			</controls:MasterDetailGrid.Detail>
 		</controls:MasterDetailGrid>
 	</Grid>
