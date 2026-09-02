@@ -10,6 +10,11 @@
     <sys:Double x:Key="FontSize.Metric">22</sys:Double>
     <sys:Double x:Key="FontSize.MetricLarge">26</sys:Double>
 
+    <!-- Prevent unstyled TextBlock instances from falling back to WPF's black default foreground. -->
+    <Style TargetType="{x:Type TextBlock}">
+        <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+    </Style>
+
     <Style x:Key="PageTitleStyle" TargetType="TextBlock">
         <Setter Property="FontSize" Value="{DynamicResource FontSize.PageTitle}" />
         <Setter Property="FontWeight" Value="SemiBold" />
