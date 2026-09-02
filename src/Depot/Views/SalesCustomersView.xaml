@@ -63,7 +63,7 @@
                                         <TextBlock Text="Type" Style="{StaticResource FormLabelStyle}"/><ComboBox ItemsSource="{Binding AddressTypes}" SelectedItem="{Binding AddressDraft.Type}" Style="{StaticResource AppComboBoxStyle}"/>
                                         <TextBlock Text="Name" Style="{StaticResource FormLabelStyle}" Margin="0,10,0,0"/><controls:TextInput Text="{Binding AddressDraft.Name, UpdateSourceTrigger=PropertyChanged}"/>
                                         <TextBlock Text="Address *" Style="{StaticResource FormLabelStyle}" Margin="0,10,0,0"/><TextBox MinHeight="76" AcceptsReturn="True" TextWrapping="Wrap" Style="{StaticResource MultilineTextBoxStyle}" Text="{Binding AddressDraft.Address, UpdateSourceTrigger=PropertyChanged}"/>
-                                        <CheckBox Margin="0,10,0,0" Content="Use as default for this address type" IsChecked="{Binding AddressDraft.IsDefault}"/>
+                                        <controls:AppCheckBox Margin="0,10,0,0" Content="Use as default for this address type" IsChecked="{Binding AddressDraft.IsDefault}"/>
                                         <Button Margin="0,12,0,0" HorizontalAlignment="Right" Command="{Binding SaveAddressCommand}" Content="Save address" Style="{StaticResource PrimaryButtonStyle}"/>
                                     </StackPanel>
                                 </Grid>
@@ -82,7 +82,7 @@
                                         <TextBlock Text="Department" Style="{StaticResource FormLabelStyle}" Margin="0,8,0,0"/><controls:TextInput Text="{Binding ContactDraft.Department, UpdateSourceTrigger=PropertyChanged}"/>
                                         <TextBlock Text="Email" Style="{StaticResource FormLabelStyle}" Margin="0,8,0,0"/><controls:TextInput Text="{Binding ContactDraft.Email, UpdateSourceTrigger=PropertyChanged}"/>
                                         <Grid Margin="0,8,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="10"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="Phone" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding ContactDraft.Phone, UpdateSourceTrigger=PropertyChanged}"/></StackPanel><StackPanel Grid.Column="2"><TextBlock Text="Mobile" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding ContactDraft.Mobile, UpdateSourceTrigger=PropertyChanged}"/></StackPanel></Grid>
-                                        <CheckBox Margin="0,8,0,0" Content="Primary contact" IsChecked="{Binding ContactDraft.IsPrimary}"/>
+                                        <controls:AppCheckBox Margin="0,8,0,0" Content="Primary contact" IsChecked="{Binding ContactDraft.IsPrimary}"/>
                                         <Button Margin="0,10,0,0" HorizontalAlignment="Right" Command="{Binding SaveContactCommand}" Content="Save contact" Style="{StaticResource PrimaryButtonStyle}"/>
                                     </StackPanel></ScrollViewer>
                                 </Grid>

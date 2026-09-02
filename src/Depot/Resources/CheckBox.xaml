@@ -1,0 +1,11 @@
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="clr-namespace:Depot.Controls">
+
+    <!-- Framework-generated checkbox instances, including DataGridCheckBoxColumn cells. -->
+    <Style TargetType="{x:Type CheckBox}" BasedOn="{StaticResource AppCheckBoxStyle}" />
+
+    <!-- Canonical checkbox component for application views. -->
+    <Style TargetType="{x:Type controls:AppCheckBox}" BasedOn="{StaticResource AppCheckBoxStyle}" />
+</ResourceDictionary>

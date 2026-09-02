@@ -27,7 +27,7 @@
                     <ColumnDefinition Width="150"/>
                 </Grid.ColumnDefinitions>
                 <controls:SearchBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" Placeholder="Supplier or reference" ToolTip="Search supplier documents and payable open items"/>
-                <CheckBox Grid.Column="2" VerticalAlignment="Center" Content="Include settled" IsChecked="{Binding IncludeSettled}"/>
+                <controls:AppCheckBox Grid.Column="2" VerticalAlignment="Center" Content="Include settled" IsChecked="{Binding IncludeSettled}"/>
                 <DatePicker Grid.Column="4" SelectedDate="{Binding AgingDate}" ToolTip="Aging reference date"/>
             </Grid>
         </controls:FilterBar>
@@ -110,7 +110,7 @@
                                 <controls:Card.Header><TextBlock Text="Approval and posting" Style="{StaticResource SectionTitleStyle}"/></controls:Card.Header>
                                 <StackPanel>
                                     <TextBlock Text="Approval comment"/><TextBox Text="{Binding ApprovalComment}" Style="{StaticResource AppTextBoxStyle}"/>
-                                    <CheckBox Margin="0,10,0,0" Content="Approve current three-way match exception" IsChecked="{Binding ApproveMatchException}" Visibility="{Binding CanApproveMatchExceptions, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                    <controls:AppCheckBox Margin="0,10,0,0" Content="Approve current three-way match exception" IsChecked="{Binding ApproveMatchException}" Visibility="{Binding CanApproveMatchExceptions, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                                     <TextBlock Margin="0,8,0,0" Text="Match exception reason" Visibility="{Binding CanApproveMatchExceptions, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                                     <TextBox Text="{Binding MatchExceptionReason}" Style="{StaticResource AppTextBoxStyle}" Visibility="{Binding CanApproveMatchExceptions, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                                     <WrapPanel Margin="0,12,0,0" HorizontalAlignment="Right">
@@ -187,7 +187,7 @@
                         <StackPanel>
                             <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="Legal entity ID"/><TextBox Text="{Binding ConfigurationLegalEntityId}" Style="{StaticResource AppTextBoxStyle}"/></StackPanel><StackPanel Grid.Column="2"><TextBlock Text="Fiscal calendar ID"/><TextBox Text="{Binding ConfigurationFiscalCalendarId}" Style="{StaticResource AppTextBoxStyle}"/></StackPanel></Grid>
                             <Grid Margin="0,8,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="Invoice posting profile ID"/><TextBox Text="{Binding InvoiceProfileId}" Style="{StaticResource AppTextBoxStyle}"/></StackPanel><StackPanel Grid.Column="2"><TextBlock Text="Credit-note posting profile ID"/><TextBox Text="{Binding CreditNoteProfileId}" Style="{StaticResource AppTextBoxStyle}"/></StackPanel></Grid>
-                            <Grid Margin="0,8,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="Payment posting profile ID"/><TextBox Text="{Binding PaymentProfileId}" Style="{StaticResource AppTextBoxStyle}"/></StackPanel><CheckBox Grid.Column="2" VerticalAlignment="Bottom" Content="Active" IsChecked="{Binding ConfigurationIsActive}"/></Grid>
+                            <Grid Margin="0,8,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="Payment posting profile ID"/><TextBox Text="{Binding PaymentProfileId}" Style="{StaticResource AppTextBoxStyle}"/></StackPanel><controls:AppCheckBox Grid.Column="2" VerticalAlignment="Bottom" Content="Active" IsChecked="{Binding ConfigurationIsActive}"/></Grid>
                             <Button Margin="0,12,0,0" HorizontalAlignment="Right" Command="{Binding SaveConfigurationCommand}" Content="Save configuration" Style="{StaticResource PrimaryButtonStyle}"/>
                         </StackPanel>
                     </controls:Card>

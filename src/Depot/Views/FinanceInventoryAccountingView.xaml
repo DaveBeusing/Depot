@@ -51,7 +51,7 @@
                                 <TextBlock Margin="0,8,0,0" Text="Valuation method" Style="{StaticResource FormLabelStyle}"/><ComboBox ItemsSource="{Binding ValuationMethods}" SelectedItem="{Binding ValuationMethod}" Style="{StaticResource AppComboBoxStyle}"/>
                                 <TextBlock Margin="0,8,0,0" Text="Goods-receipt / GRNI profile ID" Style="{StaticResource FormLabelStyle}"/><TextBox Text="{Binding GoodsReceiptProfileId}" Style="{StaticResource AppTextBoxStyle}"/>
                                 <TextBlock Margin="0,8,0,0" Text="Sales issue / COGS profile ID" Style="{StaticResource FormLabelStyle}"/><TextBox Text="{Binding SalesIssueProfileId}" Style="{StaticResource AppTextBoxStyle}"/>
-                                <CheckBox Margin="0,10,0,0" Content="Configuration active" IsChecked="{Binding ConfigurationActive}"/>
+                                <controls:AppCheckBox Margin="0,10,0,0" Content="Configuration active" IsChecked="{Binding ConfigurationActive}"/>
                                 <Button Margin="0,12,0,0" HorizontalAlignment="Right" Command="{Binding SaveConfigurationCommand}" Content="Save configuration" Style="{StaticResource PrimaryButtonStyle}"/>
                             </StackPanel>
                         </Border>
@@ -62,7 +62,7 @@
                                 <TextBlock Margin="0,8,0,0" Text="Inventory-adjustment profile ID" Style="{StaticResource FormLabelStyle}"/><TextBox Text="{Binding AdjustmentProfileId}" Style="{StaticResource AppTextBoxStyle}"/>
                                 <TextBlock Margin="0,8,0,0" Text="Purchase-variance profile ID" Style="{StaticResource FormLabelStyle}"/><TextBox Text="{Binding PurchaseVarianceProfileId}" Style="{StaticResource AppTextBoxStyle}"/>
                                 <TextBlock Margin="0,8,0,0" Text="Landed-cost profile ID" Style="{StaticResource FormLabelStyle}"/><TextBox Text="{Binding LandedCostProfileId}" Style="{StaticResource AppTextBoxStyle}"/>
-                                <CheckBox Margin="0,10,0,0" Content="Policy active" IsChecked="{Binding PolicyActive}"/>
+                                <controls:AppCheckBox Margin="0,10,0,0" Content="Policy active" IsChecked="{Binding PolicyActive}"/>
                                 <Button Margin="0,12,0,0" HorizontalAlignment="Right" Command="{Binding SavePolicyCommand}" Content="Save policy" Style="{StaticResource PrimaryButtonStyle}"/>
                             </StackPanel>
                         </Border>

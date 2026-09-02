@@ -65,7 +65,7 @@
 										<TextBox Grid.Row="6" Style="{StaticResource AppTextBoxStyle}" Text="{Binding MySqlDatabase}" /><TextBox Grid.Row="6" Grid.Column="2" Style="{StaticResource AppTextBoxStyle}" Text="{Binding MySqlUserName}" />
 										<TextBlock Grid.Row="8" Text="Password" Style="{StaticResource FormLabelStyle}" />
 										<controls:PasswordInput Grid.Row="10" PasswordValue="{Binding MySqlPassword, UpdateSourceTrigger=PropertyChanged}" />
-										<CheckBox Grid.Row="10" Grid.Column="2" VerticalAlignment="Center" Content="Require TLS encryption" IsChecked="{Binding UseMySqlTls}" Style="{StaticResource AppCheckBoxStyle}" />
+										<controls:AppCheckBox Grid.Row="10" Grid.Column="2" VerticalAlignment="Center" Content="Require TLS encryption" IsChecked="{Binding UseMySqlTls}" />
 									</Grid>
 								</StackPanel>
 							</Border>
@@ -82,7 +82,7 @@
 										<TextBox Grid.Row="6" Style="{StaticResource AppTextBoxStyle}" Text="{Binding SqlServerDatabase}" /><TextBox Grid.Row="6" Grid.Column="2" Style="{StaticResource AppTextBoxStyle}" Text="{Binding SqlServerUserName}" />
 										<TextBlock Grid.Row="8" Text="Password" Style="{StaticResource FormLabelStyle}" />
 										<controls:PasswordInput Grid.Row="10" PasswordValue="{Binding SqlServerPassword, UpdateSourceTrigger=PropertyChanged}" />
-										<StackPanel Grid.Row="10" Grid.Column="2"><CheckBox Content="Encrypt connection" IsChecked="{Binding EncryptSqlServerConnection}" Style="{StaticResource AppCheckBoxStyle}" /><CheckBox Margin="{DynamicResource Control.Margin}" Content="Trust server certificate" IsChecked="{Binding TrustSqlServerCertificate}" Style="{StaticResource AppCheckBoxStyle}" /></StackPanel>
+										<StackPanel Grid.Row="10" Grid.Column="2"><controls:AppCheckBox Content="Encrypt connection" IsChecked="{Binding EncryptSqlServerConnection}" /><controls:AppCheckBox Margin="{DynamicResource Control.Margin}" Content="Trust server certificate" IsChecked="{Binding TrustSqlServerCertificate}" /></StackPanel>
 									</Grid>
 								</StackPanel>
 							</Border>
@@ -130,7 +130,7 @@
 							<controls:Card>
 								<StackPanel>
 									<TextBlock Text="Automatic backups" Style="{StaticResource CardTitleStyle}" />
-									<CheckBox Margin="{DynamicResource Control.Margin.Large}" Content="Create backups automatically" IsChecked="{Binding AutomaticBackupsEnabled}" Style="{StaticResource AppCheckBoxStyle}" />
+									<controls:AppCheckBox Margin="{DynamicResource Control.Margin.Large}" Content="Create backups automatically" IsChecked="{Binding AutomaticBackupsEnabled}" />
 									<TextBlock Margin="{DynamicResource Control.Margin.Large}" Text="Backup directory" Style="{StaticResource FormLabelStyle}" /><TextBox Style="{StaticResource AppTextBoxStyle}" Text="{Binding BackupDirectory}" />
 									<TextBlock Margin="{DynamicResource Control.Margin.Large}" Text="Interval in days" Style="{StaticResource FormLabelStyle}" /><TextBox Style="{StaticResource AppTextBoxStyle}" Text="{Binding BackupIntervalDays}" />
 									<TextBlock Margin="{DynamicResource Control.Margin}" Text="The encrypted depot.settings file stores the schedule. Due backups resume automatically after a restart." Style="{StaticResource HintStyle}" TextWrapping="Wrap" />

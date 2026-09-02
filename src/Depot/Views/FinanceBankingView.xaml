@@ -40,7 +40,7 @@
                                 <TextBlock Margin="0,8,0,0" Text="Accounting book ID" Style="{StaticResource FormLabelStyle}"/><TextBox Text="{Binding AccountingBookId}" Style="{StaticResource AppTextBoxStyle}"/>
                                 <TextBlock Margin="0,8,0,0" Text="Bank GL account ID" Style="{StaticResource FormLabelStyle}"/><TextBox Text="{Binding GeneralLedgerAccountId}" Style="{StaticResource AppTextBoxStyle}"/>
                                 <TextBlock Margin="0,8,0,0" Text="Currency" Style="{StaticResource FormLabelStyle}"/><TextBox Text="{Binding Currency}" Style="{StaticResource AppTextBoxStyle}"/>
-                                <CheckBox Margin="0,8,0,0" Content="Active" IsChecked="{Binding AccountActive}"/>
+                                <controls:AppCheckBox Margin="0,8,0,0" Content="Active" IsChecked="{Binding AccountActive}"/>
                                 <WrapPanel Margin="0,12,0,0" HorizontalAlignment="Right"><Button Command="{Binding NewBankAccountCommand}" Content="New" Style="{StaticResource SecondaryButtonStyle}"/><Button Margin="8,0,0,0" Command="{Binding SaveBankAccountCommand}" Content="Save" Style="{StaticResource PrimaryButtonStyle}"/></WrapPanel>
                             </StackPanel>
                         </Border>

@@ -37,7 +37,7 @@
                 </Grid.ColumnDefinitions>
                 <controls:SearchBox automation:AutomationProperties.Name="Search security events" Placeholder="Search account, client, summary or details" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
                 <ComboBox Grid.Column="2" ItemsSource="{Binding SeverityOptions}" SelectedItem="{Binding MinimumSeverity}" Style="{StaticResource AppComboBoxStyle}" ToolTip="Minimum severity" />
-                <CheckBox Grid.Column="4" VerticalAlignment="Center" Content="Only unreviewed" IsChecked="{Binding OnlyUnreviewed}" Style="{StaticResource AppCheckBoxStyle}" />
+                <controls:AppCheckBox Grid.Column="4" VerticalAlignment="Center" Content="Only unreviewed" IsChecked="{Binding OnlyUnreviewed}" />
                 <Button Grid.Column="6" Command="{Binding RefreshCommand}" Content="Refresh" Style="{StaticResource SecondaryButtonStyle}" />
             </Grid>
         </controls:FilterBar>
