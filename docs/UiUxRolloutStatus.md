@@ -2,115 +2,124 @@
 
 Updated: 2026-09-02
 
-This document records the verified state of the repository-wide workspace migration against `UiUxDesignContract.md`. A module is not marked complete while material productive workspaces still require migration or review.
+The repository-wide presentation rollout against `UiUxDesignContract.md` is implementation-complete for the productive Inventory, Purchasing, Warehouse, Sales, Finance and Administration workspaces. Every material production surface in these modules was either migrated during this branch or explicitly reviewed as already compliant with the shared workspace grammar.
 
-| Module | Status | Current position |
+| Module | Status | Verified position |
 | --- | --- | --- |
-| Inventory | Partial | Core inventory, traceability and movement workspaces migrated; item/master-data follow-up remains. |
-| Purchasing | Partial | Overview, receipt/return processes and supplier master migrated/reviewed; purchase-order/approval detail pass remains. |
-| Warehouse | Partial | Transfer, issue, return and physical-count processes migrated; warehouse master-data and desktop-width review remain. |
-| Sales | Partial | Commercial hub plus six execution workspaces migrated; Customer and large Sales overview remain. |
-| Finance | Partial | Reporting, Banking, Inventory Accounting and Localization migrated; AR/AP need final consistency pass. |
-| Administration | Partial | Sessions, Users, Roles, Audit and Security Center migrated; Database/Company/Privacy/About remain. |
+| Inventory | Complete | Inventory, items, movements, reports and shared item-reference workspaces migrated/reviewed. |
+| Purchasing | Complete | Overview, purchase orders, approvals, receipts, returns and supplier master migrated/reviewed. |
+| Warehouse | Complete | Transfers, issues, returns, counts and warehouse/location master migrated/reviewed. |
+| Sales | Complete | Commercial hub, overview, customers and all execution workspaces migrated/reviewed. |
+| Finance | Complete | Reporting, AR, AP, Banking, Inventory Accounting and Localization migrated/reviewed. |
+| Administration | Complete | Users, roles, sessions, security, audit, database, company, privacy, about, import and master-data surfaces migrated/reviewed. |
 
-## Inventory — Partial
+## Inventory — Complete
 
-### Migrated / reviewed
-- `InventoryView`: canonical `PageHeader` / `OperationPanel` ordering, flat workspace sections for inventory and traceability collections, shared grids, numeric alignment, explicit empty states and master/detail inspection.
-- `MovementsView`: canonical page hierarchy, flat movement-history and creation sections, compact movement history and existing explicit reversal workflow retained.
-- `ItemsView`: reviewed as an existing reference implementation using SearchBox, status filtering, shared grids, pagination, `WorkflowListState`, master/detail editing and permission-aware item-cost actions.
+### Migrated
+- `InventoryView`: canonical `PageHeader → OperationPanel → content` hierarchy, flat inventory/traceability workspaces and explicit collection states.
+- `MovementsView`: flat movement history/creation surfaces, compact movement evidence and explicit reversal workflow.
+- `MasterData/ItemReferenceDataView`: canonical page/status hierarchy and flat reference-data master/detail workspace.
+- `ReportsView`: secondary export action, flat report result section and compact numeric report grids.
 
-### Open UX work
-- Complete the item-master follow-up where oversized data groups can safely move to semantic workspace sections.
-- Review remaining item/reference-data and warehouse-master surfaces.
-- Differentiate search/filter empty-state wording where a view still relies on a generic shared list state.
+### Reviewed — already compliant
+- `ItemsView`: shared search/filter controls, grid/pagination/list-state handling, master/detail editing and permission-aware costing actions.
+- `MasterData/MasterDataView`: shell-level secondary navigation wrapper; intentionally does not duplicate child `PageHeader` controls.
 
-## Purchasing — Partial
+## Purchasing — Complete
 
-### Migrated / reviewed
-- `PurchaseOverviewView`: canonical page header and operational KPI hierarchy.
-- `GoodsReceiptsView`: canonical process hierarchy, flat master/detail workspaces and compact receipt/movement evidence tables.
-- `SupplierReturnsView`: canonical process hierarchy, flat draft workspace, compact lines/evidence and explicit counter-booking block.
-- `SuppliersView`: canonical page header, flat master/detail surfaces, compact supplier-item table and preserved activation behavior.
-- `PurchaseOrdersView`: reviewed; existing search/status filters, workflow badges, pagination, document editor, immutable history and workflow action bar already use shared primitives.
-- `PurchaseOrderApprovalsView`: reviewed for existing permission-aware approval behavior.
+### Migrated
+- `PurchaseOverviewView`: canonical header and operational KPI hierarchy.
+- `PurchaseOrdersView`: canonical page/status hierarchy, flat collection/editor surfaces, compact order/history tables and preserved workflow actions.
+- `PurchaseOrderApprovalsView`: PageHeader actions separated from operational status, flat approval queue/detail and compact numeric order comparison.
+- `GoodsReceiptsView`: canonical process hierarchy, flat master/detail workspaces and compact receipt/movement evidence.
+- `SupplierReturnsView`: flat draft/process workspace, compact lines/evidence and explicit correction treatment.
+- `Suppliers/SuppliersView`: canonical supplier master/detail hierarchy and compact supplier-item evidence.
 
-### Open UX work
-- Final consistency pass on Purchase Orders and Purchase Approvals, especially collection comparison density and ordinary data containers.
-- Verify supplier/purchasing process layouts at supported desktop widths.
+All purchasing posting, approval, receipt, return and audit semantics remain unchanged.
 
-## Warehouse — Partial
+## Warehouse — Complete
 
-### Migrated / reviewed
-- `StockTransfersView`: canonical workspace header, flat collection/process sections, validation and workflow action hierarchy retained, posted-movement and reversal blocks visually distinct.
-- `MaterialIssuesView`: canonical page hierarchy, flat collection/editor areas, compact line/movement tables and explicit reversal controls.
-- `MaterialReturnsView`: canonical page hierarchy, flat collection/editor areas, compact line/movement tables and explicit counter-booking correction controls.
-- `InventoryCountsView`: canonical page hierarchy, flat count editor/position workspace and compact count-position table while retaining draft/counting/review/post transitions.
+### Migrated
+- `StockTransfersView`
+- `MaterialIssuesView`
+- `MaterialReturnsView`
+- `InventoryCountsView`
+- `Warehouses/WarehouseStructureView`
 
-### Open UX work
-- Review warehouse/location master-data workspaces against the same collection/entity grammar.
-- Perform a final desktop-width pass for source/destination, quantity and commit-action prominence.
+The warehouse set now consistently uses shared page/status hierarchy, flat productive sections, explicit primary vs. correction actions and compact movement/count evidence where density benefits operators. Warehouse/location dependency and activation behavior is unchanged.
 
-## Sales — Partial
+## Sales — Complete
 
-### Migrated / reviewed
-- `SalesCommercialHubView`: shared `PageHeader` and `AppTabControlStyle`; permission-aware tabs retained.
-- `SalesOrdersView`: canonical page hierarchy, flat order master/editor surfaces, compact commercial line comparison and unchanged reservation/release commands.
-- `SalesQuotesView`: canonical collection/editor hierarchy, compact quote lines and preserved quote lifecycle/conversion actions.
-- `SalesInvoicesView`: canonical page/operation hierarchy, flat invoice workspace, compact invoice/credit-note evidence and clear posted-correction separation.
-- `SalesShippingView`: canonical page/operation hierarchy, flat shipment workspace, compact pick/return tables and preserved posting/reversal/customer-return behavior.
-- `SalesApprovalsView`: canonical page hierarchy, operational KPI cards retained, flat approval queue/detail and compact order lines.
-- `SalesPricingView`: canonical page hierarchy, flat price-list/item/bulk/region sections, compact price/cost evidence tables and unchanged Customer → Region → Global pricing semantics.
+### Migrated
+- `SalesCommercialHubView`
+- `SalesView`
+- `SalesCustomersView`
+- `SalesOrdersView`
+- `SalesQuotesView`
+- `SalesInvoicesView`
+- `SalesShippingView`
+- `SalesApprovalsView`
+- `SalesPricingView`
 
-### Open UX work
-- `SalesCustomersView`: migrate the complete Customer master including Addresses, Contacts, Pricing and E-Invoice Identity as one atomic change.
-- `SalesView`: final pass on the large commercial overview/workspace.
-- Final review of commercial empty states and comparison columns after Customer/overview migration.
+`SalesView` remains an embedded hub workspace and therefore intentionally does not introduce a second `PageHeader`. Its operational status and selected workspace now occupy distinct grid rows instead of overlapping.
 
-## Finance — Partial
+Customer Addresses, Contacts, Pricing and E-Invoice Identity are retained in one atomic customer workspace. Customer → Region → Global pricing fallback, reservation/release behavior, shipment posting, invoice/credit-note immutability and approval permissions are unchanged.
 
-### Migrated / reviewed
-- `FinanceFinancialReportingView`: secondary Refresh/Export actions, primary Generate, shared toolbar, flat mapping section and numeric alignment.
-- `FinanceBankingView`: secondary Refresh, shared tabs, compact cash/statement/payment-run tables and flat account/import/reconciliation/payment sections.
-- `FinanceInventoryAccountingView`: secondary Refresh, shared tabs, compact valuation/reconciliation tables, flat configuration/variance/landed-cost workspaces and explicit destructive reversal treatment.
-- `FinanceLocalizationView`: secondary Refresh, shared tabs, toolbar-based effective-profile resolution, compact registries and flat assignment/catalog/registry editors.
-- `FinanceReceivablesView` and `FinancePayablesView`: reviewed; both already use PageHeader, FilterBar, OperationPanel, KPI metrics and shared numeric grid alignment.
+## Finance — Complete
 
-### Open UX work
-- Final AR/AP consistency pass: shared tab style, secondary Refresh treatment, ordinary form-card reduction and dense evidence-table review where safe.
-- Continue auditing posted/immutable evidence presentation so booked data is never visually confused with editable draft state.
-- Retain General Ledger authority and existing Finance posting/subledger invariants.
+### Migrated
+- `FinanceFinancialReportingView`
+- `FinanceReceivablesView`
+- `FinancePayablesView`
+- `FinanceBankingView`
+- `FinanceInventoryAccountingView`
+- `FinanceLocalizationView`
 
-## Administration — Partial
+Finance uses secondary Refresh/Load/Export actions, shared tabs, right-aligned numeric columns and compact evidence-oriented tables. Reversal/write-off actions are visually destructive while normal posting/approval/settlement actions retain their existing command semantics.
 
-### Migrated / reviewed
-- `UserSessionsView`: canonical page header, KPI cards retained, flat policy and session/history collection surfaces, RBAC-gated termination/policy commands retained.
-- `UsersView`: flat user collection/editor sections while retaining local password-validation styles and audited role assignment behavior.
-- `RolesView`: flat role collection/editor sections and preserved protected-role/permission behavior.
-- `AuditLogView`: canonical page header, compact audit/change evidence grids, flat master/detail surfaces and unchanged sanitized evidence/export behavior.
-- `SecurityCenterView`: canonical page header, compact event grid, flat event/policy surfaces and preserved RBAC-gated response actions.
+General Ledger authority, subledger ownership, posting rules, fiscal-period logic, valuation, GRNI/COGS, tax and localization behavior are unchanged.
 
-### Open UX work
-- `DatabaseSettingsView`: full connection/maintenance/backup surface requires an atomic follow-up pass because provider and recovery controls are tightly coupled.
-- `CompanyProfileView`, `PrivacyDataView` and `AboutView`: final form/read-only information standardization.
-- Review remaining Administration settings/system-information surfaces and keep security-sensitive confirmations unchanged.
+## Administration — Complete
+
+### Migrated
+- `Administration/UserSessionsView`
+- `Users/UsersView`
+- `Users/RolesView`
+- `Administration/AuditLogView`
+- `Administration/SecurityCenterView`
+- `Administration/DatabaseSettingsView`
+- `Administration/PrivacyDataView`
+- `Administration/AboutView`
+
+### Reviewed — already compliant or intentionally specialized
+- `Administration/CompanyProfileView`: already uses `PageHeader`, `OperationPanel`, shared form styles and `WorkflowActionBar`; Legal, Tax, Trade, Regulatory, Payment and Document Default cards are retained as genuinely self-contained configuration groups.
+- `ImportView`: canonical process page with validated preview, explicit result state, numeric grid alignment and final workflow action.
+- `Administration/AdministrationView`: shell content wrapper only; child workspaces own their page grammar.
+
+Database provider behavior for SQLite, SQL Server and MySQL/MariaDB, credential protection, backup/restore behavior, RBAC, privacy evidence, session/security response and audit semantics are unchanged.
 
 ## Shared ERP grid productivity
 
-The central DataGrid resources now:
+The central DataGrid resources:
 
 - retain row and column virtualization plus recycling;
-- use semantic control-height tokens instead of per-grid row/header magic numbers;
-- retain shared text and numeric alignment styles;
-- retain keyboard-focus and selection treatment;
-- expose `AppDataGridCompactStyle` as a reusable high-density variant using `ControlHeight.M` rows;
-- keep `AppDataGridStyle` as the default surface.
+- use semantic control-height tokens;
+- expose `AppDataGridStyle` as the normal collection surface;
+- expose `AppDataGridCompactStyle` for deliberately dense operational/evidence data;
+- use `AppDataGridNumericTextStyle` for quantities, prices, costs, percentages, tax, debit/credit, balances and other numeric evidence;
+- preserve keyboard focus, selection and horizontal scrolling behavior.
 
-Compact density is now deliberately used on high-density operational/evidence tables in Warehouse, Purchasing, Sales, Finance, Inventory and Administration. It does not introduce persisted user preferences.
+Compact density is deliberately used for operational lines, movements, financial evidence, pricing previews, audit/security evidence, backups and reports. It does not add persisted user preferences.
+
+## Cross-module review
+
+- `DashboardView` was reviewed as already compliant: canonical page/status hierarchy and intentional action/KPI cards.
+- `CurrentUserView` was reviewed as a specialized account-information surface; its cards are self-contained account/authorization/permission groups rather than general ERP collection containers.
+- shell/navigation wrapper views intentionally do not duplicate child page headers.
 
 ## Deliberately deferred
 
-The following remain a separate architecture package rather than presentation-only rollout work:
+The following require persisted preference/state architecture and are not part of this presentation-only rollout:
 
 - persistent Saved Views;
 - user-specific filter state;
@@ -124,4 +133,9 @@ These belong to `ERP Productivity – Saved Views, User Preferences & Advanced G
 
 ## Architecture and data boundaries
 
-This rollout does not introduce a database-schema change. No business process, provider-specific data path, RBAC decision, audit operation, transaction guarantee or concurrency/cancellation contract is intentionally changed by the UI migration.
+- Database schema: unchanged (`DatabaseVersion.CurrentVersion = 30`).
+- Business logic: unchanged.
+- `Views → ViewModels → Services → Repositories → DatabaseAccess`: preserved.
+- RBAC, audit, transaction, immutable-history, concurrency and cancellation contracts: preserved.
+
+Build, regression, accessibility, release-integrity and security-supply-chain verification for the final branch head is tracked by PR #15 and its GitHub Actions checks.
