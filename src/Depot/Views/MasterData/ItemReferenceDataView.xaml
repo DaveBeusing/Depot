@@ -1,19 +1,20 @@
 <UserControl x:Class="Depot.Views.MasterData.ItemReferenceDataView" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:controls="clr-namespace:Depot.Controls">
 	<Grid>
-		<Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="16" /><RowDefinition Height="*" /></Grid.RowDefinitions>
-		<controls:PageHeader Title="{Binding Title}" Subtitle="{Binding Subtitle}"><controls:PageHeader.Actions><controls:OperationPanel ErrorText="{Binding OperationError}" HasError="{Binding HasOperationError}" IsBusy="{Binding IsBusy}" StatusText="{Binding StatusText}" /></controls:PageHeader.Actions></controls:PageHeader>
-		<controls:MasterDetailGrid Grid.Row="2">
-			<controls:MasterDetailGrid.Master><Grid><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="12" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+		<Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="16" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+		<controls:PageHeader Title="{Binding Title}" Subtitle="{Binding Subtitle}" />
+		<controls:OperationPanel Grid.Row="1" ErrorText="{Binding OperationError}" HasError="{Binding HasOperationError}" IsBusy="{Binding IsBusy}" StatusText="{Binding StatusText}" />
+		<controls:MasterDetailGrid Grid.Row="3">
+			<controls:MasterDetailGrid.Master><Border Style="{StaticResource WorkspaceSectionStyle}"><Grid><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="12" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
 				<controls:FilterBar><Grid><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="8" /><RowDefinition Height="Auto" /></Grid.RowDefinitions><controls:SearchBox Placeholder="{Binding SearchPlaceholder}" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" /><ComboBox Grid.Row="2" ItemsSource="{Binding ActivationFilters}" SelectedItem="{Binding SelectedActivationFilter}" DisplayMemberPath="Name" Style="{StaticResource AppComboBoxStyle}" /></Grid></controls:FilterBar>
 				<Grid Grid.Row="1"><DataGrid ItemsSource="{Binding Items}" SelectedItem="{Binding SelectedItem}" Style="{StaticResource AppDataGridStyle}"><DataGrid.Columns><DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*" /><DataGridTemplateColumn Header="Status" Width="90"><DataGridTemplateColumn.CellTemplate><DataTemplate><controls:ActivationStatusBadge IsActive="{Binding IsActive}" /></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn></DataGrid.Columns></DataGrid><controls:WorkflowListState ItemCount="{Binding Items.Count}" SearchText="{Binding SearchText}" IsBusy="{Binding IsBusy}" HasError="{Binding HasOperationError}" ErrorText="{Binding OperationError}" /></Grid>
-				<Button Grid.Row="3" Command="{Binding NewCommand}" Content="New" Style="{StaticResource PrimaryButtonStyle}" />
-			</Grid></controls:MasterDetailGrid.Master>
-			<controls:MasterDetailGrid.Detail><controls:Card><Grid><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="16" /><RowDefinition Height="Auto" /><RowDefinition Height="12" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+				<Button Grid.Row="3" Command="{Binding NewCommand}" Content="New" Style="{StaticResource SecondaryButtonStyle}" />
+			</Grid></Border></controls:MasterDetailGrid.Master>
+			<controls:MasterDetailGrid.Detail><Border Style="{StaticResource WorkspaceSectionStyle}"><Grid><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="16" /><RowDefinition Height="Auto" /><RowDefinition Height="12" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
 				<controls:WorkflowHeader Title="{Binding EditorTitle}" Subtitle="Reusable master data" Status="{Binding EditorStatus}" />
 				<StackPanel Grid.Row="2"><TextBlock Text="Name *" Style="{StaticResource FormLabelStyle}" /><TextBox x:Name="NameInput" controls:FocusRequest.RequestId="{Binding EditorFocusRequest}" MaxLength="200" Style="{StaticResource AppTextBoxStyle}" Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" /></StackPanel>
 				<StackPanel Grid.Row="4"><TextBlock Text="Description" Style="{StaticResource FormLabelStyle}" /><TextBox MinHeight="96" MaxLength="500" AcceptsReturn="True" Style="{StaticResource MultilineTextBoxStyle}" Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}" TextWrapping="Wrap" /><TextBlock Margin="0,8,0,0" Text="Referenced records cannot be deactivated." Style="{StaticResource CaptionStyle}" /></StackPanel>
 				<controls:WorkflowActionBar Grid.Row="6"><controls:WorkflowActionBar.SecondaryActions><StackPanel Orientation="Horizontal"><Button Command="{Binding NewCommand}" Content="Cancel" Style="{StaticResource SecondaryButtonStyle}" /><Button Margin="{StaticResource Button.Margin}" Command="{Binding ToggleActiveCommand}" Content="{Binding ActionText}" Style="{StaticResource SecondaryButtonStyle}" /></StackPanel></controls:WorkflowActionBar.SecondaryActions><controls:WorkflowActionBar.PrimaryAction><Button Command="{Binding SaveCommand}" Content="Save" IsDefault="True" Style="{StaticResource PrimaryButtonStyle}" /></controls:WorkflowActionBar.PrimaryAction></controls:WorkflowActionBar>
-			</Grid></controls:Card></controls:MasterDetailGrid.Detail>
+			</Grid></Border></controls:MasterDetailGrid.Detail>
 		</controls:MasterDetailGrid>
 	</Grid>
 	<UserControl.InputBindings><KeyBinding Key="Escape" Command="{Binding NewCommand}" /></UserControl.InputBindings>

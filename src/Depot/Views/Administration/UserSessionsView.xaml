@@ -13,9 +13,8 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <controls:WorkflowHeader Title="User Sessions"
-                                 Subtitle="Review active clients, session lifetime and concurrency policy, history retention, and administrative revocation."
-                                 Status="{Binding ActiveSessions, StringFormat={}{0:N0} active}" />
+        <controls:PageHeader Title="User Sessions"
+                             Subtitle="Review active clients, session lifetime and concurrency policy, history retention, and administrative revocation." />
 
         <controls:OperationPanel Grid.Row="1" Margin="0,10,0,0"
                                  IsBusy="{Binding IsBusy}" HasError="{Binding HasOperationError}"
@@ -34,12 +33,12 @@
             </StackPanel></controls:Card>
         </UniformGrid>
 
-        <controls:Card Grid.Row="3" Margin="0,0,0,12">
+        <Border Grid.Row="3" Margin="0,0,0,12" Style="{StaticResource WorkspaceSectionStyle}">
             <StackPanel>
                 <Grid>
                     <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                     <StackPanel>
-                        <TextBlock Text="Session policy" Style="{StaticResource SectionTitleStyle}" />
+                        <TextBlock Text="Session policy" Style="{StaticResource WorkspaceSectionTitleStyle}" />
                         <TextBlock Text="Lifetime, concurrent-login behavior and session-history retention are centrally enforced for every Depot client." Style="{StaticResource CaptionStyle}" Margin="0,4,0,0" TextWrapping="Wrap" />
                         <TextBlock Text="{Binding PolicyRangeHint}" Style="{StaticResource HintStyle}" Margin="0,6,0,0" TextWrapping="Wrap" />
                     </StackPanel>
@@ -76,7 +75,7 @@
                     </StackPanel>
                 </UniformGrid>
             </StackPanel>
-        </controls:Card>
+        </Border>
 
         <controls:FilterBar Grid.Row="4" Margin="0,0,0,12">
             <Grid>
@@ -89,7 +88,7 @@
 
         <TabControl Grid.Row="5" Style="{StaticResource AppTabControlStyle}">
             <TabItem Header="Active">
-                <controls:Card Margin="0,10,0,0"><Grid MinHeight="220">
+                <Border Margin="0,10,0,0" Style="{StaticResource WorkspaceSectionStyle}"><Grid MinHeight="220">
                     <DataGrid automation:AutomationProperties.Name="Currently online users and sessions" ItemsSource="{Binding Sessions}" SelectedItem="{Binding SelectedSession}" Style="{StaticResource AppDataGridStyle}" Visibility="{Binding HasSessions, Converter={StaticResource BooleanToVisibilityConverter}}">
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="User" Binding="{Binding UserDisplayName}" Width="1.35*" ElementStyle="{StaticResource AppDataGridTextStyle}" />
@@ -102,10 +101,10 @@
                         </DataGrid.Columns>
                     </DataGrid>
                     <controls:EmptyState Title="Nobody is online" Description="No heartbeat-active authenticated session is currently available." Visibility="{Binding HasNoSessions, Converter={StaticResource BooleanToVisibilityConverter}}" />
-                </Grid></controls:Card>
+                </Grid></Border>
             </TabItem>
             <TabItem Header="History">
-                <controls:Card Margin="0,10,0,0"><Grid MinHeight="220">
+                <Border Margin="0,10,0,0" Style="{StaticResource WorkspaceSectionStyle}"><Grid MinHeight="220">
                     <DataGrid automation:AutomationProperties.Name="Recent ended user sessions" ItemsSource="{Binding History}" Style="{StaticResource AppDataGridStyle}" Visibility="{Binding HasHistory, Converter={StaticResource BooleanToVisibilityConverter}}">
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="User" Binding="{Binding UserDisplayName}" Width="1.25*" ElementStyle="{StaticResource AppDataGridTextStyle}" />
@@ -118,7 +117,7 @@
                         </DataGrid.Columns>
                     </DataGrid>
                     <controls:EmptyState Title="No session history" Description="Ended sessions appear here until the configured history-retention period removes them." Visibility="{Binding HasNoHistory, Converter={StaticResource BooleanToVisibilityConverter}}" />
-                </Grid></controls:Card>
+                </Grid></Border>
             </TabItem>
         </TabControl>
     </Grid>

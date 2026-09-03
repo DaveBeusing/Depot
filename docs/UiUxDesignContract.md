@@ -117,7 +117,9 @@ Low-frequency actions such as Duplicate, Archive, History and advanced operation
 
 ## Data grids and lists
 
-`AppDataGridStyle` is the standard ERP grid surface. New collection views should use the existing shared grid styles for headers, text, numeric alignment, selection and state behavior.
+`AppDataGridStyle` is the standard ERP grid surface. New collection views should use the existing shared grid styles for headers, text, numeric alignment, selection and state behavior. Its standard row/header height is based on the semantic `ControlHeight.L` token rather than per-view magic numbers.
+
+`AppDataGridCompactStyle` is the shared high-density variant. Use it only where a materially denser business table improves productivity and the content remains readable and keyboard-accessible. It inherits the standard selection, focus, scrolling, virtualization and recycling behavior and uses `ControlHeight.M` rows. Do not create view-local compact grid styles or silently use compact density as a substitute for sensible column design.
 
 Guidelines:
 

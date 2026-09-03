@@ -13,7 +13,7 @@
 
         <controls:PageHeader Title="Inventory Accounting" Subtitle="FIFO valuation, COGS, GRNI, purchase variances, landed cost, inventory adjustments, and period-end reconciliation.">
             <controls:PageHeader.Actions>
-                <Button Command="{Binding RefreshCommand}" Content="Refresh" Style="{StaticResource PrimaryButtonStyle}"/>
+                <Button Command="{Binding RefreshCommand}" Content="Refresh" Style="{StaticResource SecondaryButtonStyle}"/>
             </controls:PageHeader.Actions>
         </controls:PageHeader>
 
@@ -26,9 +26,9 @@
             <controls:MetricCard Grid.Column="4" Title="Reconciliations" Value="{Binding Reconciliations.Count}" SupportingText="Retained close snapshots"/>
         </Grid>
 
-        <TabControl Grid.Row="4">
+        <TabControl Grid.Row="4" Style="{StaticResource AppTabControlStyle}">
             <TabItem Header="Valuation">
-                <DataGrid Margin="8" ItemsSource="{Binding Valuation}" Style="{StaticResource AppDataGridStyle}" AutoGenerateColumns="False" IsReadOnly="True">
+                <DataGrid Margin="8" ItemsSource="{Binding Valuation}" Style="{StaticResource AppDataGridCompactStyle}" AutoGenerateColumns="False" IsReadOnly="True">
                     <DataGrid.Columns>
                         <DataGridTextColumn Header="Item ID" Binding="{Binding ItemId}" Width="120"/>
                         <DataGridTextColumn Header="Quantity" Binding="{Binding Quantity}" Width="120" ElementStyle="{StaticResource AppDataGridNumericTextStyle}"/>
@@ -42,30 +42,30 @@
                 <ScrollViewer VerticalScrollBarVisibility="Auto">
                     <Grid Margin="8">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                        <controls:Card>
-                            <controls:Card.Header><TextBlock Text="Valuation configuration" Style="{StaticResource SectionTitleStyle}"/></controls:Card.Header>
+                        <Border Style="{StaticResource WorkspaceSectionStyle}">
                             <StackPanel>
-                                <TextBlock Text="Legal entity ID"/><TextBox Text="{Binding LegalEntityId}" Style="{StaticResource AppTextBoxStyle}"/>
-                                <TextBlock Margin="0,8,0,0" Text="Fiscal calendar ID"/><TextBox Text="{Binding FiscalCalendarId}" Style="{StaticResource AppTextBoxStyle}"/>
-                                <TextBlock Margin="0,8,0,0" Text="PO valuation currency"/><TextBox Text="{Binding Currency}" Style="{StaticResource AppTextBoxStyle}"/>
-                                <TextBlock Margin="0,8,0,0" Text="Valuation method"/><ComboBox ItemsSource="{Binding ValuationMethods}" SelectedItem="{Binding ValuationMethod}" Style="{StaticResource AppComboBoxStyle}"/>
-                                <TextBlock Margin="0,8,0,0" Text="Goods-receipt / GRNI profile ID"/><TextBox Text="{Binding GoodsReceiptProfileId}" Style="{StaticResource AppTextBoxStyle}"/>
-                                <TextBlock Margin="0,8,0,0" Text="Sales issue / COGS profile ID"/><TextBox Text="{Binding SalesIssueProfileId}" Style="{StaticResource AppTextBoxStyle}"/>
-                                <CheckBox Margin="0,10,0,0" Content="Configuration active" IsChecked="{Binding ConfigurationActive}"/>
+                                <TextBlock Text="Valuation configuration" Style="{StaticResource WorkspaceSectionTitleStyle}"/>
+                                <TextBlock Margin="0,10,0,0" Text="Legal entity ID" Style="{StaticResource FormLabelStyle}"/><TextBox Text="{Binding LegalEntityId}" Style="{StaticResource AppTextBoxStyle}"/>
+                                <TextBlock Margin="0,8,0,0" Text="Fiscal calendar ID" Style="{StaticResource FormLabelStyle}"/><TextBox Text="{Binding FiscalCalendarId}" Style="{StaticResource AppTextBoxStyle}"/>
+                                <TextBlock Margin="0,8,0,0" Text="PO valuation currency" Style="{StaticResource FormLabelStyle}"/><TextBox Text="{Binding Currency}" Style="{StaticResource AppTextBoxStyle}"/>
+                                <TextBlock Margin="0,8,0,0" Text="Valuation method" Style="{StaticResource FormLabelStyle}"/><ComboBox ItemsSource="{Binding ValuationMethods}" SelectedItem="{Binding ValuationMethod}" Style="{StaticResource AppComboBoxStyle}"/>
+                                <TextBlock Margin="0,8,0,0" Text="Goods-receipt / GRNI profile ID" Style="{StaticResource FormLabelStyle}"/><TextBox Text="{Binding GoodsReceiptProfileId}" Style="{StaticResource AppTextBoxStyle}"/>
+                                <TextBlock Margin="0,8,0,0" Text="Sales issue / COGS profile ID" Style="{StaticResource FormLabelStyle}"/><TextBox Text="{Binding SalesIssueProfileId}" Style="{StaticResource AppTextBoxStyle}"/>
+                                <controls:AppCheckBox Margin="0,10,0,0" Content="Configuration active" IsChecked="{Binding ConfigurationActive}"/>
                                 <Button Margin="0,12,0,0" HorizontalAlignment="Right" Command="{Binding SaveConfigurationCommand}" Content="Save configuration" Style="{StaticResource PrimaryButtonStyle}"/>
                             </StackPanel>
-                        </controls:Card>
-                        <controls:Card Grid.Column="2">
-                            <controls:Card.Header><TextBlock Text="Close and variance policy" Style="{StaticResource SectionTitleStyle}"/></controls:Card.Header>
+                        </Border>
+                        <Border Grid.Column="2" Style="{StaticResource WorkspaceSectionStyle}">
                             <StackPanel>
-                                <TextBlock Text="Inventory control account ID"/><TextBox Text="{Binding InventoryControlAccountId}" Style="{StaticResource AppTextBoxStyle}"/>
-                                <TextBlock Margin="0,8,0,0" Text="Inventory-adjustment profile ID"/><TextBox Text="{Binding AdjustmentProfileId}" Style="{StaticResource AppTextBoxStyle}"/>
-                                <TextBlock Margin="0,8,0,0" Text="Purchase-variance profile ID"/><TextBox Text="{Binding PurchaseVarianceProfileId}" Style="{StaticResource AppTextBoxStyle}"/>
-                                <TextBlock Margin="0,8,0,0" Text="Landed-cost profile ID"/><TextBox Text="{Binding LandedCostProfileId}" Style="{StaticResource AppTextBoxStyle}"/>
-                                <CheckBox Margin="0,10,0,0" Content="Policy active" IsChecked="{Binding PolicyActive}"/>
+                                <TextBlock Text="Close and variance policy" Style="{StaticResource WorkspaceSectionTitleStyle}"/>
+                                <TextBlock Margin="0,10,0,0" Text="Inventory control account ID" Style="{StaticResource FormLabelStyle}"/><TextBox Text="{Binding InventoryControlAccountId}" Style="{StaticResource AppTextBoxStyle}"/>
+                                <TextBlock Margin="0,8,0,0" Text="Inventory-adjustment profile ID" Style="{StaticResource FormLabelStyle}"/><TextBox Text="{Binding AdjustmentProfileId}" Style="{StaticResource AppTextBoxStyle}"/>
+                                <TextBlock Margin="0,8,0,0" Text="Purchase-variance profile ID" Style="{StaticResource FormLabelStyle}"/><TextBox Text="{Binding PurchaseVarianceProfileId}" Style="{StaticResource AppTextBoxStyle}"/>
+                                <TextBlock Margin="0,8,0,0" Text="Landed-cost profile ID" Style="{StaticResource FormLabelStyle}"/><TextBox Text="{Binding LandedCostProfileId}" Style="{StaticResource AppTextBoxStyle}"/>
+                                <controls:AppCheckBox Margin="0,10,0,0" Content="Policy active" IsChecked="{Binding PolicyActive}"/>
                                 <Button Margin="0,12,0,0" HorizontalAlignment="Right" Command="{Binding SavePolicyCommand}" Content="Save policy" Style="{StaticResource PrimaryButtonStyle}"/>
                             </StackPanel>
-                        </controls:Card>
+                        </Border>
                     </Grid>
                 </ScrollViewer>
             </TabItem>
@@ -73,63 +73,63 @@
             <TabItem Header="Adjustments &amp; Variances">
                 <Grid Margin="8">
                     <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                    <controls:Card>
-                        <controls:Card.Header><TextBlock Text="Inventory count valuation" Style="{StaticResource SectionTitleStyle}"/></controls:Card.Header>
+                    <Border Style="{StaticResource WorkspaceSectionStyle}">
                         <StackPanel>
-                            <TextBlock Text="Inventory count reference"/><TextBox Text="{Binding InventoryCountReference}" Style="{StaticResource AppTextBoxStyle}" ToolTip="Example: IC-000123"/>
+                            <TextBlock Text="Inventory count valuation" Style="{StaticResource WorkspaceSectionTitleStyle}"/>
+                            <TextBlock Margin="0,10,0,0" Text="Inventory count reference" Style="{StaticResource FormLabelStyle}"/><TextBox Text="{Binding InventoryCountReference}" Style="{StaticResource AppTextBoxStyle}" ToolTip="Example: IC-000123"/>
                             <TextBlock Margin="0,8,0,0" TextWrapping="Wrap" Opacity="0.75" Text="Processes unvalued correction movements and their reversals idempotently. Normal goods-receipt and shipment valuation remains transaction-coupled."/>
                             <Button Margin="0,12,0,0" HorizontalAlignment="Right" Command="{Binding ProcessInventoryCountCommand}" Content="Process count valuation" Style="{StaticResource PrimaryButtonStyle}"/>
                         </StackPanel>
-                    </controls:Card>
-                    <controls:Card Grid.Column="2">
-                        <controls:Card.Header><TextBlock Text="Purchase-price variance" Style="{StaticResource SectionTitleStyle}"/></controls:Card.Header>
+                    </Border>
+                    <Border Grid.Column="2" Style="{StaticResource WorkspaceSectionStyle}">
                         <StackPanel>
-                            <TextBlock Text="Posted supplier document ID"/><TextBox Text="{Binding SupplierDocumentId}" Style="{StaticResource AppTextBoxStyle}"/>
+                            <TextBlock Text="Purchase-price variance" Style="{StaticResource WorkspaceSectionTitleStyle}"/>
+                            <TextBlock Margin="0,10,0,0" Text="Posted supplier document ID" Style="{StaticResource FormLabelStyle}"/><TextBox Text="{Binding SupplierDocumentId}" Style="{StaticResource AppTextBoxStyle}"/>
                             <Button Margin="0,12,0,0" HorizontalAlignment="Right" Command="{Binding ProcessPurchaseVarianceCommand}" Content="Process variance" Style="{StaticResource PrimaryButtonStyle}"/>
                             <Separator Margin="0,14"/>
-                            <TextBlock Text="Reversal date"/><DatePicker SelectedDate="{Binding VarianceReversalDate}"/>
-                            <TextBlock Margin="0,8,0,0" Text="Reversal reason"/><TextBox Text="{Binding VarianceReversalReason}" Style="{StaticResource AppTextBoxStyle}"/>
-                            <Button Margin="0,12,0,0" HorizontalAlignment="Right" Command="{Binding ReversePurchaseVarianceCommand}" Content="Reverse variance" Style="{StaticResource SecondaryButtonStyle}"/>
+                            <TextBlock Text="Reversal date" Style="{StaticResource FormLabelStyle}"/><DatePicker SelectedDate="{Binding VarianceReversalDate}"/>
+                            <TextBlock Margin="0,8,0,0" Text="Reversal reason" Style="{StaticResource FormLabelStyle}"/><TextBox Text="{Binding VarianceReversalReason}" Style="{StaticResource AppTextBoxStyle}"/>
+                            <Button Margin="0,12,0,0" HorizontalAlignment="Right" Command="{Binding ReversePurchaseVarianceCommand}" Content="Reverse variance" Style="{StaticResource DangerButtonStyle}"/>
                         </StackPanel>
-                    </controls:Card>
+                    </Border>
                 </Grid>
             </TabItem>
 
             <TabItem Header="Landed Cost">
                 <Grid Margin="8">
                     <Grid.ColumnDefinitions><ColumnDefinition Width="2*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                    <controls:Card>
-                        <controls:Card.Header><TextBlock Text="Allocate landed cost" Style="{StaticResource SectionTitleStyle}"/></controls:Card.Header>
+                    <Border Style="{StaticResource WorkspaceSectionStyle}">
                         <StackPanel>
-                            <TextBlock Text="Valuation layer IDs"/><TextBox Text="{Binding LandedCostLayerIds}" Style="{StaticResource AppTextBoxStyle}" ToolTip="Comma-separated layer IDs"/>
+                            <TextBlock Text="Allocate landed cost" Style="{StaticResource WorkspaceSectionTitleStyle}"/>
+                            <TextBlock Margin="0,10,0,0" Text="Valuation layer IDs" Style="{StaticResource FormLabelStyle}"/><TextBox Text="{Binding LandedCostLayerIds}" Style="{StaticResource AppTextBoxStyle}" ToolTip="Comma-separated layer IDs"/>
                             <Grid Margin="0,8,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="8"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                <StackPanel><TextBlock Text="Posting date"/><DatePicker SelectedDate="{Binding LandedCostDate}"/></StackPanel>
-                                <StackPanel Grid.Column="2"><TextBlock Text="Currency"/><TextBox Text="{Binding LandedCostCurrency}" Style="{StaticResource AppTextBoxStyle}"/></StackPanel>
+                                <StackPanel><TextBlock Text="Posting date" Style="{StaticResource FormLabelStyle}"/><DatePicker SelectedDate="{Binding LandedCostDate}"/></StackPanel>
+                                <StackPanel Grid.Column="2"><TextBlock Text="Currency" Style="{StaticResource FormLabelStyle}"/><TextBox Text="{Binding LandedCostCurrency}" Style="{StaticResource AppTextBoxStyle}"/></StackPanel>
                             </Grid>
                             <Grid Margin="0,8,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="8"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                <StackPanel><TextBlock Text="Amount"/><TextBox Text="{Binding LandedCostAmount}" Style="{StaticResource AppTextBoxStyle}"/></StackPanel>
-                                <StackPanel Grid.Column="2"><TextBlock Text="Allocation method"/><ComboBox ItemsSource="{Binding LandedCostMethods}" SelectedItem="{Binding LandedCostMethod}" Style="{StaticResource AppComboBoxStyle}"/></StackPanel>
+                                <StackPanel><TextBlock Text="Amount" Style="{StaticResource FormLabelStyle}"/><TextBox Text="{Binding LandedCostAmount}" Style="{StaticResource AppTextBoxStyle}"/></StackPanel>
+                                <StackPanel Grid.Column="2"><TextBlock Text="Allocation method" Style="{StaticResource FormLabelStyle}"/><ComboBox ItemsSource="{Binding LandedCostMethods}" SelectedItem="{Binding LandedCostMethod}" Style="{StaticResource AppComboBoxStyle}"/></StackPanel>
                             </Grid>
-                            <TextBlock Margin="0,8,0,0" Text="Reference"/><TextBox Text="{Binding LandedCostReference}" Style="{StaticResource AppTextBoxStyle}"/>
+                            <TextBlock Margin="0,8,0,0" Text="Reference" Style="{StaticResource FormLabelStyle}"/><TextBox Text="{Binding LandedCostReference}" Style="{StaticResource AppTextBoxStyle}"/>
                             <Button Margin="0,12,0,0" HorizontalAlignment="Right" Command="{Binding AllocateLandedCostCommand}" Content="Allocate landed cost" Style="{StaticResource PrimaryButtonStyle}"/>
                         </StackPanel>
-                    </controls:Card>
-                    <controls:Card Grid.Column="2">
-                        <controls:Card.Header><TextBlock Text="Reverse landed cost" Style="{StaticResource SectionTitleStyle}"/></controls:Card.Header>
+                    </Border>
+                    <Border Grid.Column="2" Style="{StaticResource WorkspaceSectionStyle}">
                         <StackPanel>
-                            <TextBlock Text="Operation ID"/><TextBox Text="{Binding LandedCostReversalId}" Style="{StaticResource AppTextBoxStyle}"/>
-                            <TextBlock Margin="0,8,0,0" Text="Posting date"/><DatePicker SelectedDate="{Binding LandedCostReversalDate}"/>
-                            <TextBlock Margin="0,8,0,0" Text="Reason"/><TextBox Text="{Binding LandedCostReversalReason}" Style="{StaticResource AppTextBoxStyle}"/>
-                            <Button Margin="0,12,0,0" HorizontalAlignment="Right" Command="{Binding ReverseLandedCostCommand}" Content="Reverse" Style="{StaticResource SecondaryButtonStyle}"/>
+                            <TextBlock Text="Reverse landed cost" Style="{StaticResource WorkspaceSectionTitleStyle}"/>
+                            <TextBlock Margin="0,10,0,0" Text="Operation ID" Style="{StaticResource FormLabelStyle}"/><TextBox Text="{Binding LandedCostReversalId}" Style="{StaticResource AppTextBoxStyle}"/>
+                            <TextBlock Margin="0,8,0,0" Text="Posting date" Style="{StaticResource FormLabelStyle}"/><DatePicker SelectedDate="{Binding LandedCostReversalDate}"/>
+                            <TextBlock Margin="0,8,0,0" Text="Reason" Style="{StaticResource FormLabelStyle}"/><TextBox Text="{Binding LandedCostReversalReason}" Style="{StaticResource AppTextBoxStyle}"/>
+                            <Button Margin="0,12,0,0" HorizontalAlignment="Right" Command="{Binding ReverseLandedCostCommand}" Content="Reverse" Style="{StaticResource DangerButtonStyle}"/>
                         </StackPanel>
-                    </controls:Card>
+                    </Border>
                 </Grid>
             </TabItem>
 
             <TabItem Header="Reconciliation">
                 <Grid Margin="8">
                     <Grid.ColumnDefinitions><ColumnDefinition Width="2*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                    <DataGrid ItemsSource="{Binding Reconciliations}" SelectedItem="{Binding SelectedReconciliation}" Style="{StaticResource AppDataGridStyle}" AutoGenerateColumns="False" IsReadOnly="True">
+                    <DataGrid ItemsSource="{Binding Reconciliations}" SelectedItem="{Binding SelectedReconciliation}" Style="{StaticResource AppDataGridCompactStyle}" AutoGenerateColumns="False" IsReadOnly="True">
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="As of" Binding="{Binding AsOfDate}" Width="110"/>
                             <DataGridTextColumn Header="Currency" Binding="{Binding ReportingCurrency.Value}" Width="90"/>
@@ -140,13 +140,13 @@
                         </DataGrid.Columns>
                     </DataGrid>
                     <StackPanel Grid.Column="2">
-                        <controls:Card Margin="0,0,0,12">
-                            <controls:Card.Header><TextBlock Text="Period-end reconciliation" Style="{StaticResource SectionTitleStyle}"/></controls:Card.Header>
+                        <Border Margin="0,0,0,12" Style="{StaticResource WorkspaceSectionStyle}">
                             <StackPanel>
-                                <TextBlock Text="As-of date"/><DatePicker SelectedDate="{Binding ReconciliationDate}"/>
+                                <TextBlock Text="Period-end reconciliation" Style="{StaticResource WorkspaceSectionTitleStyle}"/>
+                                <TextBlock Margin="0,10,0,0" Text="As-of date" Style="{StaticResource FormLabelStyle}"/><DatePicker SelectedDate="{Binding ReconciliationDate}"/>
                                 <Button Margin="0,12,0,0" HorizontalAlignment="Right" Command="{Binding ReconcileCommand}" Content="Run reconciliation" Style="{StaticResource PrimaryButtonStyle}"/>
                             </StackPanel>
-                        </controls:Card>
+                        </Border>
                         <controls:Card>
                             <controls:Card.Header><TextBlock Text="Selected snapshot" Style="{StaticResource SectionTitleStyle}"/></controls:Card.Header>
                             <StackPanel>

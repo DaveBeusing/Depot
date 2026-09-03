@@ -5,21 +5,27 @@
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
+        <controls:PageHeader
+            Title="Inventory"
+            Subtitle="Stock availability, valuation and serial / lot traceability" />
+
         <controls:OperationPanel
+            Grid.Row="1"
             IsBusy="{Binding IsBusy}"
             HasError="{Binding HasOperationError}"
             StatusText="{Binding StatusText}"
             ErrorText="{Binding OperationError}"
             HelpTopicId="inventory.overview" />
 
-        <TabControl Grid.Row="1" Style="{StaticResource AppTabControlStyle}">
+        <TabControl Grid.Row="2" Style="{StaticResource AppTabControlStyle}">
             <TabItem Header="Inventory overview">
                 <controls:MasterDetailGrid>
                     <controls:MasterDetailGrid.Master>
-                        <controls:Card>
+                        <Border Style="{StaticResource WorkspaceSectionStyle}">
                             <Grid>
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
@@ -41,11 +47,11 @@
                                 </Grid>
                                 <controls:PaginationControl Grid.Row="2" Margin="0,10,0,0" PreviousCommand="{Binding PreviousPageCommand}" NextCommand="{Binding NextPageCommand}" PageText="{Binding PageNumber, StringFormat=Page {0}}" />
                             </Grid>
-                        </controls:Card>
+                        </Border>
                     </controls:MasterDetailGrid.Master>
 
                     <controls:MasterDetailGrid.Detail>
-                        <controls:Card>
+                        <Border Style="{StaticResource WorkspaceSectionStyle}">
                             <Grid>
                                 <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
                                 <controls:WorkflowHeader Title="Inventory details" Subtitle="Stock is calculated from immutable movements." />
@@ -83,7 +89,7 @@
                                     </ScrollViewer>
                                 </Grid>
                             </Grid>
-                        </controls:Card>
+                        </Border>
                     </controls:MasterDetailGrid.Detail>
                 </controls:MasterDetailGrid>
             </TabItem>
@@ -91,7 +97,7 @@
             <TabItem Header="Serial / lot traceability">
                 <controls:MasterDetailGrid>
                     <controls:MasterDetailGrid.Master>
-                        <controls:Card>
+                        <Border Style="{StaticResource WorkspaceSectionStyle}">
                             <Grid>
                                 <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                                 <controls:FilterBar>
@@ -115,28 +121,31 @@
                                 </Grid>
                                 <controls:PaginationControl Grid.Row="2" Margin="0,10,0,0" PreviousCommand="{Binding PreviousTraceabilityPageCommand}" NextCommand="{Binding NextTraceabilityPageCommand}" PageText="{Binding TraceabilityPageNumber, StringFormat=Page {0}}" />
                             </Grid>
-                        </controls:Card>
+                        </Border>
                     </controls:MasterDetailGrid.Master>
 
                     <controls:MasterDetailGrid.Detail>
                         <ScrollViewer VerticalScrollBarVisibility="Auto">
                             <StackPanel>
-                                <controls:Card>
-                                    <controls:Card.Header><controls:WorkflowHeader Title="Traceability history" Subtitle="{Binding SelectedTraceability.Code}" /></controls:Card.Header>
-                                    <Grid MinHeight="260">
-                                        <DataGrid ItemsSource="{Binding TraceabilityHistory}" Style="{StaticResource AppDataGridStyle}" Visibility="{Binding HasTraceabilityHistory, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                            <DataGrid.Columns>
-                                                <DataGridTextColumn Header="Time" Binding="{Binding TimestampUtc, StringFormat={}{0:g}}" Width="130" />
-                                                <DataGridTextColumn Header="Type" Binding="{Binding MovementType}" Width="110" />
-                                                <DataGridTextColumn Header="Qty" Binding="{Binding Quantity, StringFormat={}{0:N0}}" Width="60" ElementStyle="{StaticResource AppDataGridNumericTextStyle}" />
-                                                <DataGridTextColumn Header="Warehouse" Binding="{Binding Warehouse}" Width="110" />
-                                                <DataGridTextColumn Header="Location" Binding="{Binding StorageLocation}" Width="100" />
-                                                <DataGridTextColumn Header="Reference" Binding="{Binding Reference}" Width="*" />
-                                            </DataGrid.Columns>
-                                        </DataGrid>
-                                        <controls:EmptyState Title="No tracking history selected" Description="Select a serial or lot balance to see its complete movement history." Visibility="{Binding HasNoTraceabilityHistory, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                <Border Style="{StaticResource WorkspaceSectionStyle}">
+                                    <Grid>
+                                        <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+                                        <controls:WorkflowHeader Title="Traceability history" Subtitle="{Binding SelectedTraceability.Code}" />
+                                        <Grid Grid.Row="1" MinHeight="260" Margin="0,12,0,0">
+                                            <DataGrid ItemsSource="{Binding TraceabilityHistory}" Style="{StaticResource AppDataGridStyle}" Visibility="{Binding HasTraceabilityHistory, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                <DataGrid.Columns>
+                                                    <DataGridTextColumn Header="Time" Binding="{Binding TimestampUtc, StringFormat={}{0:g}}" Width="130" />
+                                                    <DataGridTextColumn Header="Type" Binding="{Binding MovementType}" Width="110" />
+                                                    <DataGridTextColumn Header="Qty" Binding="{Binding Quantity, StringFormat={}{0:N0}}" Width="60" ElementStyle="{StaticResource AppDataGridNumericTextStyle}" />
+                                                    <DataGridTextColumn Header="Warehouse" Binding="{Binding Warehouse}" Width="110" />
+                                                    <DataGridTextColumn Header="Location" Binding="{Binding StorageLocation}" Width="100" />
+                                                    <DataGridTextColumn Header="Reference" Binding="{Binding Reference}" Width="*" />
+                                                </DataGrid.Columns>
+                                            </DataGrid>
+                                            <controls:EmptyState Title="No tracking history selected" Description="Select a serial or lot balance to see its complete movement history." Visibility="{Binding HasNoTraceabilityHistory, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                        </Grid>
                                     </Grid>
-                                </controls:Card>
+                                </Border>
                                 <controls:Card Margin="0,12,0,0" Visibility="{Binding CanManageTraceability, Converter={StaticResource BooleanToVisibilityConverter}}">
                                     <controls:Card.Header><TextBlock Text="Stock control" Style="{StaticResource SectionTitleStyle}" /></controls:Card.Header>
                                     <Grid>

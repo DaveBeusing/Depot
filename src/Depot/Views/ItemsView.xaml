@@ -68,8 +68,8 @@
                             <StackPanel Grid.Row="2" Grid.Column="2"><TextBlock Text="Tracking mode" Style="{StaticResource FormLabelStyle}" /><ComboBox automation:AutomationProperties.Name="Tracking mode" ItemsSource="{Binding TrackingModes}" SelectedItem="{Binding Editor.TrackingMode}" Style="{StaticResource AppComboBoxStyle}" /></StackPanel>
                             <StackPanel Grid.Row="4"><TextBlock Text="RoHS status" Style="{StaticResource FormLabelStyle}" /><ComboBox automation:AutomationProperties.Name="RoHS status" ItemsSource="{Binding ComplianceStatuses}" SelectedItem="{Binding Editor.RohsStatus}" Style="{StaticResource AppComboBoxStyle}" /></StackPanel>
                             <StackPanel Grid.Row="4" Grid.Column="2"><TextBlock Text="REACH status" Style="{StaticResource FormLabelStyle}" /><ComboBox automation:AutomationProperties.Name="REACH status" ItemsSource="{Binding ComplianceStatuses}" SelectedItem="{Binding Editor.ReachStatus}" Style="{StaticResource AppComboBoxStyle}" /></StackPanel>
-                            <StackPanel Grid.Row="6"><CheckBox automation:AutomationProperties.Name="Dangerous goods" Content="Dangerous goods" IsChecked="{Binding Editor.IsDangerousGoods}" /></StackPanel>
-                            <StackPanel Grid.Row="6" Grid.Column="2"><CheckBox automation:AutomationProperties.Name="Contains battery" Content="Contains battery" IsChecked="{Binding Editor.ContainsBattery}" /></StackPanel>
+                            <StackPanel Grid.Row="6"><controls:AppCheckBox automation:AutomationProperties.Name="Dangerous goods" Content="Dangerous goods" IsChecked="{Binding Editor.IsDangerousGoods}" /></StackPanel>
+                            <StackPanel Grid.Row="6" Grid.Column="2"><controls:AppCheckBox automation:AutomationProperties.Name="Contains battery" Content="Contains battery" IsChecked="{Binding Editor.ContainsBattery}" /></StackPanel>
                         </Grid>
 
                         <TextBlock Text="Logistics" FontSize="14" FontWeight="SemiBold" Margin="0,20,0,10" />
@@ -104,7 +104,7 @@
                         </Grid>
                         <Grid Margin="0,8,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="8" /><ColumnDefinition Width="*" /><ColumnDefinition Width="8" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="8" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="8" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                             <StackPanel><TextBlock Text="Valid from" Style="{StaticResource FormLabelStyle}" /><DatePicker SelectedDate="{Binding CostValidFrom}" /></StackPanel><StackPanel Grid.Column="2"><TextBlock Text="Valid until" Style="{StaticResource FormLabelStyle}" /><DatePicker SelectedDate="{Binding CostValidUntil}" /></StackPanel>
-                            <CheckBox Grid.Column="4" VerticalAlignment="Bottom" Content="Active" IsChecked="{Binding CostIsActive}" />
+                            <controls:AppCheckBox Grid.Column="4" VerticalAlignment="Bottom" Content="Active" IsChecked="{Binding CostIsActive}" />
                             <Button Grid.Column="6" VerticalAlignment="Bottom" Command="{Binding NewCostComponentCommand}" Content="New component" Style="{StaticResource SecondaryButtonStyle}" /><Button Grid.Column="8" VerticalAlignment="Bottom" Command="{Binding SaveCostComponentCommand}" Content="Save component" Style="{StaticResource PrimaryButtonStyle}" />
                         </Grid>
                         <Button Margin="0,8,0,0" HorizontalAlignment="Right" Command="{Binding ToggleCostComponentCommand}" Content="Activate / deactivate selected component" Style="{StaticResource SecondaryButtonStyle}" />

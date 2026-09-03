@@ -34,7 +34,7 @@
 
 				<controls:Card Margin="0,0,0,16"><StackPanel>
 					<TextBlock Text="Registration and corporate representation" Style="{StaticResource SectionTitleStyle}" />
-					<CheckBox Margin="0,12,0,0" Content="Entity is registered in a company/commercial/public register" IsChecked="{Binding IsRegisteredEntity}" Style="{StaticResource AppCheckBoxStyle}" />
+					<controls:AppCheckBox Margin="0,12,0,0" Content="Entity is registered in a company/commercial/public register" IsChecked="{Binding IsRegisteredEntity}" />
 					<Grid Margin="0,12,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="140" /><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
 						<StackPanel><TextBlock Text="Registration authority / court" Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding RegisterCourt, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
 						<StackPanel Grid.Column="2"><TextBlock Text="Register type" Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding RegisterType, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
@@ -46,16 +46,16 @@
 						<StackPanel Grid.Column="2"><TextBlock Text="GLN" Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding Gln, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
 						<StackPanel Grid.Column="4"><TextBlock Text="D-U-N-S" Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding DunsNumber, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
 					</Grid>
-					<CheckBox Margin="0,16,0,0" Content="Company has a supervisory board" IsChecked="{Binding HasSupervisoryBoard}" Style="{StaticResource AppCheckBoxStyle}" />
+					<controls:AppCheckBox Margin="0,16,0,0" Content="Company has a supervisory board" IsChecked="{Binding HasSupervisoryBoard}" />
 					<StackPanel Margin="0,8,0,0"><TextBlock Text="Supervisory board chair" Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding SupervisoryBoardChair, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
-					<CheckBox Margin="0,16,0,0" Content="Business documents disclose share / registered capital" IsChecked="{Binding PublishesShareCapital}" Style="{StaticResource AppCheckBoxStyle}" />
+					<controls:AppCheckBox Margin="0,16,0,0" Content="Business documents disclose share / registered capital" IsChecked="{Binding PublishesShareCapital}" />
 					<Grid Margin="0,8,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
 						<StackPanel><TextBlock Text="Share / registered capital" Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding ShareCapital, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
 						<StackPanel Grid.Column="2"><TextBlock Text="Outstanding capital contributions" Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding OutstandingCapital, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
 					</Grid>
-					<CheckBox Margin="0,16,0,0" Content="Company is in liquidation / winding-up" IsChecked="{Binding IsInLiquidation}" Style="{StaticResource AppCheckBoxStyle}" />
+					<controls:AppCheckBox Margin="0,16,0,0" Content="Company is in liquidation / winding-up" IsChecked="{Binding IsInLiquidation}" />
 					<StackPanel Margin="0,8,0,0"><TextBlock Text="Liquidator(s)" Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding Liquidators, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
-					<CheckBox Margin="0,16,0,0" Content="This Depot installation represents a registered branch" IsChecked="{Binding IsBranch}" Style="{StaticResource AppCheckBoxStyle}" />
+					<controls:AppCheckBox Margin="0,16,0,0" Content="This Depot installation represents a registered branch" IsChecked="{Binding IsBranch}" />
 					<Grid Margin="0,8,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
 						<StackPanel><TextBlock Text="Branch name" Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding BranchName, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
 						<StackPanel Grid.Column="2"><TextBlock Text="Branch registration authority" Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding BranchRegistrationAuthority, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
@@ -75,7 +75,7 @@
 						<StackPanel><TextBlock Text="OSS registration / member state" Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding OssRegistration, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
 						<StackPanel Grid.Column="2"><TextBlock Text="IOSS identification number" Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding IossIdentificationNumber, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /><TextBlock Margin="0,4,0,0" Text="Treat IOSS identifiers as restricted data; do not print on ordinary commercial documents." Style="{StaticResource HintStyle}" /></StackPanel>
 					</Grid>
-					<CheckBox Margin="0,16,0,0" Content="A fiscal/tax representative must be disclosed" IsChecked="{Binding HasFiscalRepresentative}" Style="{StaticResource AppCheckBoxStyle}" />
+					<controls:AppCheckBox Margin="0,16,0,0" Content="A fiscal/tax representative must be disclosed" IsChecked="{Binding HasFiscalRepresentative}" />
 					<Grid Margin="0,8,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
 						<StackPanel><TextBlock Text="Fiscal representative name" Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding FiscalRepresentativeName, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
 						<StackPanel Grid.Column="2"><TextBlock Text="Fiscal representative VAT ID" Style="{StaticResource FormLabelStyle}" /><TextBox Text="{Binding FiscalRepresentativeVatId, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource AppTextBoxStyle}" /></StackPanel>
