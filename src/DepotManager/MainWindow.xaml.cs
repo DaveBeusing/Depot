@@ -7,6 +7,7 @@ using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using Depot.Models;
 
 namespace DepotManager;
 
@@ -156,6 +157,10 @@ public partial class MainWindow : Window
 				service.Deploy(temp, release.Version, installed is not null);
 				service.CopyManagerToInstallLocation();
 				service.RegisterInstalledApp(release.Version);
+				if (installed is null && CreateDesktopShortcutBox.IsChecked == true)
+				{
+					service.CreateDesktopShortcut();
+				}
 				Progress.Value = 100;
 			}
 			finally
@@ -201,8 +206,8 @@ public partial class MainWindow : Window
 		if (_selectedProvider < 0) return;
 		var local = ManagerDatabaseProviderSelection.RequiresAdministratorStep(_selectedProvider);
 		SelectedDatabaseText.Text = local
-			? "Lokal (sqlite3) · choose the local database file and test access before continuing."
-			: $"{SelectedProviderName()} · enter the server connection details and test the connection before continuing.";
+			? "Lokal (sqlite3) · choose the local database file and validate access before continuing."
+			: $"{SelectedProviderName()} · enter the server connection details and validate the connection before continuing.";
 		LocalDatabasePanel.Visibility = local ? Visibility.Visible : Visibility.Collapsed;
 		RemoteDatabasePanel.Visibility = local ? Visibility.Collapsed : Visibility.Visible;
 		Step4Text.Visibility = local ? Visibility.Visible : Visibility.Collapsed;
@@ -222,25 +227,25 @@ public partial class MainWindow : Window
 		if (ConnectionResultBorder is not null) ConnectionResultBorder.Visibility = Visibility.Collapsed;
 	}
 
-	private async void TestConnection_Click(object sender, RoutedEventArgs e)
+	private async void ValidateConnection_Click(object sender, RoutedEventArgs e)
 	{
 		try
 		{
 			if (_selectedProvider < 0) throw new InvalidOperationException("Choose a database type first.");
 			SetBusy(true);
 			PrepareDatabaseTarget();
-			await InvokeDepotManagerModeAsync("--manager-test-database", false, clearDatabasePassword: false);
+			await new ManagerDatabaseConnectionValidator().ValidateAsync(BuildDatabaseSettings(), _operation!.Token);
 			_validatedDatabaseFingerprint = CreateDatabaseFingerprint();
 			ConfigurationNextButton.IsEnabled = true;
 			ShowConnectionFeedback(true, $"Connection successful · {DescribeDatabaseTarget()}");
-			Log($"Database connection test succeeded for {DescribeDatabaseTarget()}.");
+			Log($"Database connection validation succeeded for {DescribeDatabaseTarget()}.");
 		}
 		catch (Exception ex)
 		{
 			_validatedDatabaseFingerprint = null;
 			ConfigurationNextButton.IsEnabled = false;
 			ShowConnectionFeedback(false, $"Connection failed · {ex.Message}");
-			Log($"Database connection test failed: {ex.Message}");
+			Log($"Database connection validation failed: {ex.Message}");
 		}
 		finally
 		{
@@ -262,7 +267,7 @@ public partial class MainWindow : Window
 		if (!ConnectionIsStillValidated())
 		{
 			ConfigurationNextButton.IsEnabled = false;
-			ShowConnectionFeedback(false, "The connection details changed. Test the connection again before continuing.");
+			ShowConnectionFeedback(false, "The connection details changed. Validate the connection again before continuing.");
 			return;
 		}
 
@@ -281,7 +286,7 @@ public partial class MainWindow : Window
 		try
 		{
 			ValidateAdministratorInputs();
-			if (!ConnectionIsStillValidated()) throw new InvalidOperationException("The database connection must still match the successfully tested connection.");
+			if (!ConnectionIsStillValidated()) throw new InvalidOperationException("The database connection must still match the successfully validated connection.");
 			PrepareSummary(AdminEmailBox.Text.Trim());
 			ShowStep(4);
 		}
@@ -316,7 +321,7 @@ public partial class MainWindow : Window
 		try
 		{
 			if (_selectedProvider < 0) throw new InvalidOperationException("Choose a database type first.");
-			if (!ConnectionIsStillValidated()) throw new InvalidOperationException("Test the current database connection successfully before continuing.");
+			if (!ConnectionIsStillValidated()) throw new InvalidOperationException("Validate the current database connection successfully before continuing.");
 			ValidateAdministratorInputs();
 
 			SetBusy(true);
@@ -404,28 +409,28 @@ public partial class MainWindow : Window
 		}
 	}
 
-	private object BuildDatabaseSettings()
+	private DatabaseConnectionSettings BuildDatabaseSettings()
 	{
 		if (_selectedProvider < 0) throw new InvalidOperationException("Choose a database type first.");
-		var provider = ManagerDatabaseProviderSelection.ToDepotProviderIndex(_selectedProvider);
+		var provider = (DatabaseProvider)ManagerDatabaseProviderSelection.ToDepotProviderIndex(_selectedProvider);
 		int.TryParse(PortBox.Text, out var port);
 		var requireTls = TlsBox.IsChecked == true;
-		return new
+		return new DatabaseConnectionSettings
 		{
 			Provider = provider,
 			LocalDatabasePath = SqlitePathBox.Text.Trim(),
-			SqlServerHost = provider == 1 ? HostBox.Text.Trim() : string.Empty,
-			SqlServerPort = provider == 1 ? (port == 0 ? 1433 : port) : 1433,
-			SqlServerDatabase = provider == 1 ? DatabaseBox.Text.Trim() : string.Empty,
-			SqlServerUserName = provider == 1 ? UserBox.Text.Trim() : string.Empty,
-			SqlServerPassword = provider == 1 ? DatabasePasswordBox.PasswordValue : string.Empty,
+			SqlServerHost = provider == DatabaseProvider.SqlServer ? HostBox.Text.Trim() : string.Empty,
+			SqlServerPort = provider == DatabaseProvider.SqlServer ? (port == 0 ? 1433 : port) : 1433,
+			SqlServerDatabase = provider == DatabaseProvider.SqlServer ? DatabaseBox.Text.Trim() : string.Empty,
+			SqlServerUserName = provider == DatabaseProvider.SqlServer ? UserBox.Text.Trim() : string.Empty,
+			SqlServerPassword = provider == DatabaseProvider.SqlServer ? DatabasePasswordBox.PasswordValue : string.Empty,
 			EncryptSqlServerConnection = requireTls,
 			TrustSqlServerCertificate = false,
-			MySqlHost = provider == 2 ? HostBox.Text.Trim() : string.Empty,
-			MySqlPort = provider == 2 ? (port == 0 ? 3306 : port) : 3306,
-			MySqlDatabase = provider == 2 ? DatabaseBox.Text.Trim() : string.Empty,
-			MySqlUserName = provider == 2 ? UserBox.Text.Trim() : string.Empty,
-			MySqlPassword = provider == 2 ? DatabasePasswordBox.PasswordValue : string.Empty,
+			MySqlHost = provider == DatabaseProvider.MySql ? HostBox.Text.Trim() : string.Empty,
+			MySqlPort = provider == DatabaseProvider.MySql ? (port == 0 ? 3306 : port) : 3306,
+			MySqlDatabase = provider == DatabaseProvider.MySql ? DatabaseBox.Text.Trim() : string.Empty,
+			MySqlUserName = provider == DatabaseProvider.MySql ? UserBox.Text.Trim() : string.Empty,
+			MySqlPassword = provider == DatabaseProvider.MySql ? DatabasePasswordBox.PasswordValue : string.Empty,
 			UseMySqlTls = requireTls,
 			AutomaticBackupsEnabled = false,
 			BackupDirectory = "Backups",

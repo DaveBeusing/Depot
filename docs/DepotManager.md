@@ -24,7 +24,7 @@ The installed application directory contains `Depot.exe`, `DepotManager.exe`, an
 
 ## First installation
 
-1. Discover the latest eligible published GitHub Release and install its exact `Depot-<version>.exe` asset.
+1. Discover the latest eligible published GitHub Release, choose the installation location, optionally select `Create desktop shortcut`, and install the exact `Depot-<version>.exe` asset. The Start menu shortcut is always created; the desktop shortcut is created only when selected during the first installation.
 2. Choose one database type from the three manager cards: `Lokal (sqlite3)`, `Remote (MySQL/MariaDB)`, or `Remote (SQL)`. Selecting a card immediately advances to connection configuration.
 3. Enter the connection details and run `Validate`. Connection validation is executed completely inside `DepotManager.exe`; Depot is not launched for this step. The manager opens the selected SQLite, MySQL/MariaDB, or SQL Server connection itself, executes a lightweight `SELECT 1` validation, and always shows an inline success or failure result. Changing any validated connection value invalidates that result and requires another validation.
 4. For `Lokal (sqlite3)`, enter the initial administrator details in Depot Manager. Remote databases skip this step and must already contain a valid Depot administrator.
@@ -46,17 +46,17 @@ Update compares the installed executable's product/file version with the latest 
 
 Before update or repair Depot must be closed normally. The manager does not kill the application by default. The current executable is copied to `Backup\Depot-<previous-version>.exe`; file-version revision metadata such as `.0` is not added to the release-style backup name. Older executable backups are removed so only one backup is retained. Business data, database content, audit history, and user preferences are not included in executable backup or rollback behavior.
 
-Repair replaces the application binary without resetting configuration or data. The backup executable is a recovery artifact only; schema downgrade and automatic database rollback are deliberately unsupported.
+Repair replaces the application binary without resetting configuration or data. The backup executable is a recovery artifact only; schema downgrade and automatic database rollback are deliberately unsupported. Update and repair do not add, remove, or otherwise change an existing desktop shortcut.
 
 ## Uninstall
 
 Uninstall offers three explicit outcomes: cancel, remove only the application while retaining local data, or remove the application together with all local Depot data. The full local-data option removes `depot.settings`, `%LOCALAPPDATA%\Depot` including logs and the default SQLite database, and a configured SQLite database stored outside that folder together with its SQLite `-wal`, `-shm`, and `-journal` sidecars.
 
-Remote MySQL/MariaDB and SQL Server databases are never deleted by Depot Manager. Application-only uninstall remains suitable when the local configuration or data should be retained for a later reinstall.
+Remote MySQL/MariaDB and SQL Server databases are never deleted by Depot Manager. Application-only uninstall remains suitable when the local configuration or data should be retained for a later reinstall. Both the Start menu shortcut and a previously created desktop shortcut are removed during uninstall.
 
 ## Windows integration
 
-Depot Manager registers Depot under the current user's Windows `Installed Apps`/Uninstall registry key with the installed version, install location, icon, and manager as the modify/uninstall entry point. A Start menu shortcut launches `Depot.exe`. Multiple concurrent manager instances are blocked by a named Windows mutex.
+Depot Manager registers Depot under the current user's Windows `Installed Apps`/Uninstall registry key with the installed version, install location, icon, and manager as the modify/uninstall entry point. A Start menu shortcut launches `Depot.exe`. During the initial installation the user may additionally request a desktop shortcut; it points to the same installed `Depot.exe`, uses the installation directory as working directory, and uses the Depot application icon. Multiple concurrent manager instances are blocked by a named Windows mutex.
 
 ## Logging
 

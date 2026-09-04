@@ -46,6 +46,7 @@
               <TextBlock Text="Depot is installed per user and does not require a separate runtime installation." Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,6,0,18" TextWrapping="Wrap"/>
               <TextBlock Text="Install location" Style="{StaticResource ManagerLabelStyle}"/>
               <TextBox x:Name="InstallPathBox" Style="{StaticResource AppTextBoxStyle}"/>
+              <CheckBox x:Name="CreateDesktopShortcutBox" Content="Create desktop shortcut" Margin="0,14,0,0"/>
               <ProgressBar x:Name="Progress" Style="{StaticResource ManagerProgressBarStyle}" Height="6" Margin="0,18,0,0" Minimum="0" Maximum="100"/>
               <Button Content="Install" Style="{StaticResource PrimaryButtonStyle}" HorizontalAlignment="Right" Margin="0,24,0,0" Click="Install_Click"/>
             </StackPanel>

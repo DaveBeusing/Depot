@@ -171,6 +171,19 @@ public sealed class InstallationService(string installDirectory, Action<string> 
 		catch (Exception exception) { log($"Start menu shortcut could not be created: {exception.Message}"); }
 	}
 
+	public void CreateDesktopShortcut()
+	{
+		try
+		{
+			CreateShortcut(GetDesktopShortcutPath());
+			log("Desktop shortcut created.");
+		}
+		catch (Exception exception)
+		{
+			log($"Desktop shortcut could not be created: {exception.Message}");
+		}
+	}
+
 	public void StartDepot()
 	{
 		if (!IsProvisioned) throw new InvalidOperationException("Complete database and administrator provisioning before the first Depot start.");
@@ -187,8 +200,10 @@ public sealed class InstallationService(string installDirectory, Action<string> 
 		if (Directory.Exists(BackupDirectory)) Directory.Delete(BackupDirectory, true);
 		if (removeConfiguration && File.Exists(SettingsPath)) File.Delete(SettingsPath);
 		Registry.CurrentUser.DeleteSubKeyTree(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\Depot", false);
-		var shortcut = GetStartMenuShortcutPath();
-		if (File.Exists(shortcut)) File.Delete(shortcut);
+		var startMenuShortcut = GetStartMenuShortcutPath();
+		if (File.Exists(startMenuShortcut)) File.Delete(startMenuShortcut);
+		var desktopShortcut = GetDesktopShortcutPath();
+		if (File.Exists(desktopShortcut)) File.Delete(desktopShortcut);
 		if (File.Exists(ManagerPath) && string.Equals(Path.GetFullPath(Environment.ProcessPath ?? string.Empty), ManagerPath, StringComparison.OrdinalIgnoreCase))
 		{
 			if (!MoveFileEx(ManagerPath, null, MoveFileDelayUntilReboot)) log("DepotManager.exe could not be scheduled for removal; the application data remains untouched.");
@@ -196,12 +211,13 @@ public sealed class InstallationService(string installDirectory, Action<string> 
 		else if (File.Exists(ManagerPath)) File.Delete(ManagerPath);
 	}
 
-	private void CreateStartMenuShortcut()
+	private void CreateStartMenuShortcut() => CreateShortcut(GetStartMenuShortcutPath());
+
+	private void CreateShortcut(string path)
 	{
-		var path = GetStartMenuShortcutPath();
 		Directory.CreateDirectory(Path.GetDirectoryName(path)!);
 		var shellType = Type.GetTypeFromProgID("WScript.Shell");
-		if (shellType is null) return;
+		if (shellType is null) throw new InvalidOperationException("Windows shortcut support is unavailable.");
 		dynamic shell = Activator.CreateInstance(shellType)!;
 		dynamic shortcut = shell.CreateShortcut(path);
 		shortcut.TargetPath = DepotPath;
@@ -212,6 +228,7 @@ public sealed class InstallationService(string installDirectory, Action<string> 
 	}
 
 	private static string GetStartMenuShortcutPath() => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.StartMenu), "Programs", "Depot.lnk");
+	private static string GetDesktopShortcutPath() => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "Depot.lnk");
 
 	[DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
 	private static extern bool MoveFileEx(string existingFileName, string? newFileName, int flags);
