@@ -1,13 +1,13 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <Style x:Key="ManagerSuccessButtonStyle" TargetType="Button" BasedOn="{StaticResource AppButtonBaseStyle}">
-    <Setter Property="Background" Value="{DynamicResource SuccessForegroundBrush}"/>
-    <Setter Property="Foreground" Value="{DynamicResource BackgroundBrush}"/>
+    <Setter Property="Background" Value="{DynamicResource SuccessBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource SuccessForegroundBrush}"/>
     <Setter Property="BorderBrush" Value="{DynamicResource SuccessForegroundBrush}"/>
   </Style>
 
   <Style x:Key="ManagerWarningButtonStyle" TargetType="Button" BasedOn="{StaticResource AppButtonBaseStyle}">
-    <Setter Property="Background" Value="{DynamicResource WarningForegroundBrush}"/>
-    <Setter Property="Foreground" Value="{DynamicResource BackgroundBrush}"/>
+    <Setter Property="Background" Value="{DynamicResource WarningBrush}"/>
+    <Setter Property="Foreground" Value="{DynamicResource WarningForegroundBrush}"/>
     <Setter Property="BorderBrush" Value="{DynamicResource WarningForegroundBrush}"/>
   </Style>
 

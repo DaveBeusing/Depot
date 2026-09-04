@@ -5,6 +5,7 @@ using System.Net.Http.Headers;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text.Json;
+using System.Windows;
 using Microsoft.Win32;
 
 namespace DepotManager;
@@ -174,6 +175,9 @@ public sealed class InstallationService(string installDirectory, Action<string> 
 	{
 		if (!IsProvisioned) throw new InvalidOperationException("Complete database and administrator provisioning before the first Depot start.");
 		Process.Start(new ProcessStartInfo(DepotPath) { WorkingDirectory = InstallDirectory, UseShellExecute = true });
+		log("Depot started. Closing Depot Manager.");
+		var application = Application.Current;
+		if (application is not null) application.Dispatcher.BeginInvoke(new Action(application.Shutdown));
 	}
 
 	public void Uninstall(bool removeConfiguration)
