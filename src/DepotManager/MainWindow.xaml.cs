@@ -107,7 +107,6 @@ public partial class MainWindow : Window
 		try
 		{
 			if (AdminPasswordBox.Password != AdminConfirmBox.Password) throw new InvalidOperationException("Administrator passwords do not match.");
-			if (string.IsNullOrWhiteSpace(AdminPasswordBox.Password)) throw new InvalidOperationException("Administrator password is required.");
 			if (!string.Equals(_validatedDatabaseFingerprint, CreateDatabaseFingerprint(), StringComparison.Ordinal))
 				throw new InvalidOperationException("Test the current database connection successfully before provisioning.");
 			SetBusy(true);
@@ -117,9 +116,10 @@ public partial class MainWindow : Window
 			_validatedDatabaseFingerprint = null;
 			var service = Installation;
 			var installedVersionText = service.InstalledVersion is { } installedVersion ? VersionRules.VersionText(installedVersion) : "Unknown";
-			SummaryText.Text = $"Depot successfully installed\n\nVersion: {installedVersionText}\nDatabase: {SelectedProviderName()}\nAdministrator: {AdminEmailBox.Text.Trim()}";
+			var administratorText = string.IsNullOrWhiteSpace(AdminEmailBox.Text) ? "Existing database administrator" : AdminEmailBox.Text.Trim();
+			SummaryText.Text = $"Depot successfully installed\n\nVersion: {installedVersionText}\nDatabase: {SelectedProviderName()}\nAdministrator: {administratorText}";
 			Wizard.SelectedIndex = 3;
-			Log("Database initialization and initial administrator provisioning completed successfully.");
+			Log("Database initialization and administrator provisioning check completed successfully.");
 		}
 		catch (Exception ex) { ShowError(ex); }
 		finally { SetBusy(false); }
