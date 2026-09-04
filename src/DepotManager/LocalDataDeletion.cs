@@ -15,4 +15,15 @@ internal static class LocalDataDeletion
 		var fullPath = Path.GetFullPath(localDataDirectory);
 		if (Directory.Exists(fullPath)) Directory.Delete(fullPath, true);
 	}
+
+	public static void DeleteSqliteDatabaseFiles(string? databasePath)
+	{
+		if (string.IsNullOrWhiteSpace(databasePath)) return;
+
+		var fullPath = Path.GetFullPath(databasePath);
+		foreach (var path in new[] { fullPath, fullPath + "-wal", fullPath + "-shm", fullPath + "-journal" })
+		{
+			if (File.Exists(path)) File.Delete(path);
+		}
+	}
 }

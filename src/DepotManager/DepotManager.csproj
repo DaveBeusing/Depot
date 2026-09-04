@@ -22,5 +22,8 @@
     <Compile Include="..\Depot\Controls\TextInput.cs" Link="Controls\TextInput.cs" />
     <Compile Include="..\Depot\Controls\PasswordInput.cs" Link="Controls\PasswordInput.cs" />
     <Compile Include="..\Depot\Controls\SearchBox.cs" Link="Controls\SearchBox.cs" />
+    <Compile Include="..\Depot\Models\DatabaseProvider.cs" Link="Shared\DatabaseProvider.cs" />
+    <Compile Include="..\Depot\Models\DatabaseConnectionSettings.cs" Link="Shared\DatabaseConnectionSettings.cs" />
+    <Compile Include="..\Depot\Repositories\SettingsRepository.cs" Link="Shared\SettingsRepository.cs" />
   </ItemGroup>
 </Project>
