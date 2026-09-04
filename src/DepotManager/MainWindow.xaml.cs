@@ -15,12 +15,15 @@ public partial class MainWindow : Window
 	private readonly ManagerMutex _mutex = new();
 	private CancellationTokenSource? _operation;
 	private string? _validatedDatabaseFingerprint;
+	private int _currentStep;
+	private bool _setupInProgress;
 	private InstallationService Installation => new(InstallPathBox.Text, Log);
 
 	public MainWindow()
 	{
 		InitializeComponent();
 		InstallPathBox.Text = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", "Depot");
+		MaintenancePathBox.Text = InstallPathBox.Text;
 		SqlitePathBox.Text = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Depot", "Data", "depot.db");
 		if (!_mutex.Acquired)
 		{
@@ -38,9 +41,61 @@ public partial class MainWindow : Window
 	private void RefreshStatus()
 	{
 		var service = Installation;
-		StatusText.Text = service.InstalledVersion is { } version
-			? $"Installed version: {VersionRules.VersionText(version)}"
-			: "Depot is not installed at this location.";
+		if (service.InstalledVersion is { } version)
+		{
+			StatusText.Text = $"Installed · {VersionRules.VersionText(version)}";
+			MaintenancePathBox.Text = service.InstallDirectory;
+			if (!service.IsProvisioned)
+			{
+				_setupInProgress = true;
+				ShowInstallation();
+				ShowStep(1);
+			}
+			else if (_setupInProgress)
+			{
+				ShowInstallation();
+			}
+			else
+			{
+				ShowMaintenance();
+			}
+		}
+		else
+		{
+			StatusText.Text = "Not installed";
+			_setupInProgress = false;
+			ShowInstallation();
+			ShowStep(0);
+		}
+	}
+
+	private void ShowInstallation()
+	{
+		InstallationWizard.Visibility = Visibility.Visible;
+		MaintenancePanel.Visibility = Visibility.Collapsed;
+	}
+
+	private void ShowMaintenance()
+	{
+		InstallationWizard.Visibility = Visibility.Collapsed;
+		MaintenancePanel.Visibility = Visibility.Visible;
+	}
+
+	private void ShowStep(int step)
+	{
+		_currentStep = Math.Clamp(step, 0, 3);
+		Step1Panel.Visibility = _currentStep == 0 ? Visibility.Visible : Visibility.Collapsed;
+		Step2Panel.Visibility = _currentStep == 1 ? Visibility.Visible : Visibility.Collapsed;
+		Step3Panel.Visibility = _currentStep == 2 ? Visibility.Visible : Visibility.Collapsed;
+		Step4Panel.Visibility = _currentStep == 3 ? Visibility.Visible : Visibility.Collapsed;
+		var steps = new[] { Step1Text, Step2Text, Step3Text, Step4Text };
+		for (var index = 0; index < steps.Length; index++)
+		{
+			steps[index].Foreground = index == _currentStep
+				? (System.Windows.Media.Brush)FindResource("PrimaryTextBrush")
+				: (System.Windows.Media.Brush)FindResource("SecondaryTextBrush");
+			steps[index].FontWeight = index == _currentStep ? FontWeights.SemiBold : FontWeights.Normal;
+		}
 	}
 
 	private async void Install_Click(object sender, RoutedEventArgs e) => await InstallOrUpdateAsync(false, false);
@@ -76,9 +131,19 @@ public partial class MainWindow : Window
 				service.RegisterInstalledApp(release.Version);
 			}
 			finally { if (File.Exists(temp)) File.Delete(temp); }
-			RefreshStatus();
-			Wizard.SelectedIndex = installed is null ? 1 : 0;
-			Log(repair ? "Repair completed." : installed is null ? "Depot installed. Configure the database and administrator before first start." : "Update completed.");
+
+			if (installed is null)
+			{
+				_setupInProgress = true;
+				RefreshStatus();
+				ShowStep(1);
+				Log("Depot installed. Continue with database configuration.");
+			}
+			else
+			{
+				RefreshStatus();
+				Log(repair ? "Repair completed." : "Update completed.");
+			}
 		}
 		catch (Exception ex) { ShowError(ex); }
 		finally { SetBusy(false); }
@@ -92,14 +157,32 @@ public partial class MainWindow : Window
 			PrepareDatabaseTarget();
 			await InvokeDepotManagerModeAsync("--manager-test-database", false, clearDatabasePassword: false);
 			_validatedDatabaseFingerprint = CreateDatabaseFingerprint();
+			DatabaseNextButton.IsEnabled = true;
 			Log($"Database connection test succeeded for {DescribeDatabaseTarget()}.");
 		}
 		catch (Exception ex)
 		{
 			_validatedDatabaseFingerprint = null;
+			DatabaseNextButton.IsEnabled = false;
 			ShowError(ex);
 		}
 		finally { SetBusy(false); }
+	}
+
+	private void DatabaseNext_Click(object sender, RoutedEventArgs e)
+	{
+		if (!string.Equals(_validatedDatabaseFingerprint, CreateDatabaseFingerprint(), StringComparison.Ordinal))
+		{
+			DatabaseNextButton.IsEnabled = false;
+			ShowError(new InvalidOperationException("Test the current database connection successfully before continuing."));
+			return;
+		}
+		ShowStep(2);
+	}
+
+	private void Back_Click(object sender, RoutedEventArgs e)
+	{
+		if (_currentStep > 1) ShowStep(_currentStep - 1);
 	}
 
 	private async void Provision_Click(object sender, RoutedEventArgs e)
@@ -117,8 +200,8 @@ public partial class MainWindow : Window
 			var service = Installation;
 			var installedVersionText = service.InstalledVersion is { } installedVersion ? VersionRules.VersionText(installedVersion) : "Unknown";
 			var administratorText = string.IsNullOrWhiteSpace(AdminEmailBox.Text) ? "Existing database administrator" : AdminEmailBox.Text.Trim();
-			SummaryText.Text = $"Depot successfully installed\n\nVersion: {installedVersionText}\nDatabase: {SelectedProviderName()}\nAdministrator: {administratorText}";
-			Wizard.SelectedIndex = 3;
+			SummaryText.Text = $"Version {installedVersionText}\n{SelectedProviderName()}\nAdministrator: {administratorText}";
+			ShowStep(3);
 			Log("Database initialization and administrator provisioning check completed successfully.");
 		}
 		catch (Exception ex) { ShowError(ex); }
@@ -176,6 +259,7 @@ public partial class MainWindow : Window
 	{
 		var provider = ProviderBox.SelectedIndex;
 		int.TryParse(PortBox.Text, out var port);
+		var requireTls = TlsBox.IsChecked == true;
 		return new
 		{
 			Provider = provider == 0 ? 0 : provider == 1 ? 1 : 2,
@@ -185,14 +269,14 @@ public partial class MainWindow : Window
 			SqlServerDatabase = provider == 1 ? DatabaseBox.Text.Trim() : string.Empty,
 			SqlServerUserName = provider == 1 ? UserBox.Text.Trim() : string.Empty,
 			SqlServerPassword = provider == 1 ? DatabasePasswordBox.Password : string.Empty,
-			EncryptSqlServerConnection = true,
+			EncryptSqlServerConnection = requireTls,
 			TrustSqlServerCertificate = false,
 			MySqlHost = provider == 2 ? HostBox.Text.Trim() : string.Empty,
 			MySqlPort = provider == 2 ? (port == 0 ? 3306 : port) : 3306,
 			MySqlDatabase = provider == 2 ? DatabaseBox.Text.Trim() : string.Empty,
 			MySqlUserName = provider == 2 ? UserBox.Text.Trim() : string.Empty,
 			MySqlPassword = provider == 2 ? DatabasePasswordBox.Password : string.Empty,
-			UseMySqlTls = true,
+			UseMySqlTls = requireTls,
 			AutomaticBackupsEnabled = false,
 			BackupDirectory = "Backups",
 			BackupIntervalDays = 1
@@ -233,6 +317,7 @@ public partial class MainWindow : Window
 	private void Provider_Changed(object sender, SelectionChangedEventArgs e)
 	{
 		_validatedDatabaseFingerprint = null;
+		if (DatabaseNextButton is not null) DatabaseNextButton.IsEnabled = false;
 		if (PortBox is null) return;
 		PortBox.Text = ProviderBox.SelectedIndex == 2 ? "3306" : "1433";
 	}
@@ -245,12 +330,21 @@ public partial class MainWindow : Window
 		{
 			if (MessageBox.Show("Remove Depot application files? Database and business data will not be deleted.", "Depot Manager", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
 			Installation.Uninstall(false);
+			_setupInProgress = false;
 			RefreshStatus();
 			Log("Depot application files removed. Configuration and data were preserved.");
 		}
 		catch (Exception ex) { ShowError(ex); }
 	}
-	private void SetBusy(bool busy) { if (busy) _operation = new CancellationTokenSource(); else { _operation?.Dispose(); _operation = null; } Wizard.IsEnabled = !busy; }
+
+	private void SetBusy(bool busy)
+	{
+		if (busy) _operation = new CancellationTokenSource();
+		else { _operation?.Dispose(); _operation = null; }
+		InstallationWizard.IsEnabled = !busy;
+		MaintenancePanel.IsEnabled = !busy;
+	}
+
 	private void Log(string text)
 	{
 		DetailText.Text = text;
@@ -262,6 +356,7 @@ public partial class MainWindow : Window
 		}
 		catch { }
 	}
+
 	private void ShowError(Exception ex) { Log($"Operation failed: {ex.Message}"); MessageBox.Show(ex.Message, "Depot Manager", MessageBoxButton.OK, MessageBoxImage.Error); }
 	protected override void OnClosed(EventArgs e) { _operation?.Cancel(); _operation?.Dispose(); _mutex.Dispose(); _http.Dispose(); base.OnClosed(e); }
 }

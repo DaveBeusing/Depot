@@ -1,0 +1,15 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Style x:Key="ManagerTextBoxStyle" TargetType="TextBox">
+    <Setter Property="MinHeight" Value="36"/><Setter Property="Padding" Value="10,6"/><Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/><Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/><Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/><Setter Property="BorderThickness" Value="1"/><Setter Property="CaretBrush" Value="{DynamicResource PrimaryTextBrush}"/><Setter Property="SelectionBrush" Value="{DynamicResource PrimaryBrush}"/><Setter Property="VerticalContentAlignment" Value="Center"/>
+    <Style.Triggers><Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/></Trigger><Trigger Property="IsMouseOver" Value="True"><Setter Property="BorderBrush" Value="{DynamicResource SecondaryTextBrush}"/></Trigger><Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.5"/></Trigger></Style.Triggers>
+  </Style>
+  <Style x:Key="ManagerPasswordBoxStyle" TargetType="PasswordBox">
+    <Setter Property="MinHeight" Value="36"/><Setter Property="Padding" Value="10,6"/><Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/><Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/><Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/><Setter Property="BorderThickness" Value="1"/><Setter Property="VerticalContentAlignment" Value="Center"/>
+    <Style.Triggers><Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter Property="BorderBrush" Value="{DynamicResource PrimaryBrush}"/></Trigger><Trigger Property="IsMouseOver" Value="True"><Setter Property="BorderBrush" Value="{DynamicResource SecondaryTextBrush}"/></Trigger></Style.Triggers>
+  </Style>
+  <Style x:Key="ManagerComboBoxStyle" TargetType="ComboBox">
+    <Setter Property="MinHeight" Value="36"/><Setter Property="Padding" Value="8,4"/><Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/><Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}"/><Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/><Setter Property="BorderThickness" Value="1"/>
+  </Style>
+  <Style x:Key="ManagerStepTextStyle" TargetType="TextBlock"><Setter Property="FontSize" Value="13"/><Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/><Setter Property="VerticalAlignment" Value="Center"/></Style>
+  <Style x:Key="ManagerLabelStyle" TargetType="TextBlock"><Setter Property="Margin" Value="0,12,0,6"/><Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}"/><Setter Property="FontSize" Value="12"/></Style>
+</ResourceDictionary>
