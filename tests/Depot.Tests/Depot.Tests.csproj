@@ -18,6 +18,13 @@
 		<ProjectReference Include="..\..\src\Depot\Depot.csproj" />
 	</ItemGroup>
 	<ItemGroup>
+		<Compile Include="..\..\src\DepotManager\VersionRules.cs" Link="DepotManager\VersionRules.cs" />
+		<Compile Include="..\..\src\DepotManager\ExecutableDeployment.cs" Link="DepotManager\ExecutableDeployment.cs" />
+		<Compile Include="..\..\src\DepotManager\DatabaseProviderSelection.cs" Link="DepotManager\DatabaseProviderSelection.cs" />
+		<Compile Include="..\..\src\DepotManager\PortableExecutableValidator.cs" Link="DepotManager\PortableExecutableValidator.cs" />
+		<Compile Include="..\..\src\DepotManager\LocalDataDeletion.cs" Link="DepotManager\LocalDataDeletion.cs" />
+		<Compile Include="..\..\src\DepotManager\InstalledSettingsInspector.cs" Link="DepotManager\InstalledSettingsInspector.cs" />
+		<Compile Include="..\..\src\DepotManager\ManagerDatabaseConnectionValidator.cs" Link="DepotManager\ManagerDatabaseConnectionValidator.cs" />
 		<None Include="Fixtures\ElectronicInvoice\**\*" CopyToOutputDirectory="PreserveNewest" />
 	</ItemGroup>
 </Project>

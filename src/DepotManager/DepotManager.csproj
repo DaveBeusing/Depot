@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="DepotManager.Version.props" />
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>DepotManager</AssemblyName>
+    <ApplicationIcon>..\Depot\Resources\Images\Depot.ico</ApplicationIcon>
+    <Product>Depot Manager</Product>
+    <PublishTrimmed>false</PublishTrimmed>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="7.0.2" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.10" />
+    <PackageReference Include="MySqlConnector" Version="2.6.1" />
+    <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" Version="2.1.12" />
+  </ItemGroup>
+  <ItemGroup>
+    <Page Include="..\Depot\Resources\Colors.xaml" Link="Resources\Colors.xaml" />
+    <Page Include="..\Depot\Resources\Typography.xaml" Link="Resources\Typography.xaml" />
+    <Page Include="..\Depot\Resources\Spacing.xaml" Link="Resources\Spacing.xaml" />
+    <Page Include="..\Depot\Resources\Buttons.xaml" Link="Resources\Buttons.xaml" />
+    <Page Include="..\Depot\Resources\Inputs.xaml" Link="Resources\Inputs.xaml" />
+    <Page Include="..\Depot\Resources\ScrollBars.xaml" Link="Resources\ScrollBars.xaml" />
+    <Resource Include="..\Depot\Resources\Images\Depot.ico" Link="Resources\Images\Depot.ico" />
+    <Compile Include="..\Depot\Controls\TextInput.cs" Link="Controls\TextInput.cs" />
+    <Compile Include="..\Depot\Controls\PasswordInput.cs" Link="Controls\PasswordInput.cs" />
+    <Compile Include="..\Depot\Controls\SearchBox.cs" Link="Controls\SearchBox.cs" />
+    <Compile Include="..\Depot\Models\DatabaseProvider.cs" Link="Shared\DatabaseProvider.cs" />
+    <Compile Include="..\Depot\Models\DatabaseConnectionSettings.cs" Link="Shared\DatabaseConnectionSettings.cs" />
+    <Compile Include="..\Depot\Repositories\SettingsRepository.cs" Link="Shared\SettingsRepository.cs" />
+    <Compile Include="..\Depot\Diagnostics\DatabaseErrorMessages.cs" Link="Shared\DatabaseErrorMessages.cs" />
+  </ItemGroup>
+</Project>

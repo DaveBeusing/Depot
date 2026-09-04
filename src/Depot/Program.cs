@@ -4,16 +4,23 @@
 using System.Windows;
 
 using Depot.Diagnostics;
+using Depot.Provisioning;
 
 namespace Depot;
 
 public static class Program
 {
 	[STAThread]
-	public static void Main()
+	public static void Main(string[] args)
 	{
 		try
 		{
+			if (DepotManagerCommand.TryRun(args, out var exitCode))
+			{
+				Environment.ExitCode = exitCode;
+				return;
+			}
+
 			StartupDiagnostics.Log("Program.Main entered.");
 			var app = new App();
 			StartupDiagnostics.Log("App instance created.");
@@ -25,6 +32,7 @@ public static class Program
 		{
 			StartupDiagnostics.LogException(ex);
 			StartupDiagnostics.ShowStartupError(ex);
+			Environment.ExitCode = 1;
 		}
 	}
 }
