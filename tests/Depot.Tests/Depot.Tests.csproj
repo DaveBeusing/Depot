@@ -20,6 +20,7 @@
 	<ItemGroup>
 		<Compile Include="..\..\src\DepotManager\VersionRules.cs" Link="DepotManager\VersionRules.cs" />
 		<Compile Include="..\..\src\DepotManager\ExecutableDeployment.cs" Link="DepotManager\ExecutableDeployment.cs" />
+		<Compile Include="..\..\src\DepotManager\PortableExecutableValidator.cs" Link="DepotManager\PortableExecutableValidator.cs" />
 		<None Include="Fixtures\ElectronicInvoice\**\*" CopyToOutputDirectory="PreserveNewest" />
 	</ItemGroup>
 </Project>

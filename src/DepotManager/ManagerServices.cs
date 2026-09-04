@@ -2,7 +2,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
 using System.Net.Http.Headers;
-using System.Reflection.PortableExecutable;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text.Json;
@@ -65,7 +64,7 @@ public sealed class GitHubReleaseClient(HttpClient httpClient)
 			if (total <= 0 || total != release.Size) throw new InvalidOperationException("The downloaded Depot asset is incomplete.");
 		}
 
-		ValidatePortableExecutable(destination);
+		PortableExecutableValidator.ValidateWindowsExecutable(destination);
 		if (!string.IsNullOrWhiteSpace(release.Sha256))
 		{
 			await using var stream = File.OpenRead(destination);
@@ -102,14 +101,6 @@ public sealed class GitHubReleaseClient(HttpClient httpClient)
 			return true;
 		}
 		return false;
-	}
-
-	private static void ValidatePortableExecutable(string path)
-	{
-		using var stream = File.OpenRead(path);
-		using var reader = new PEReader(stream);
-		if (!reader.HasMetadata || reader.PEHeaders.PEHeader is null)
-			throw new InvalidOperationException("The downloaded asset is not a valid managed Windows executable.");
 	}
 }
 
