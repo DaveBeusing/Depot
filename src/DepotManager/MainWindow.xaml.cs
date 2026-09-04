@@ -496,13 +496,38 @@ public partial class MainWindow : Window
 	{
 		try
 		{
-			if (MessageBox.Show("Remove Depot application files? Database and business data will not be deleted.", "Depot Manager", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
-			Installation.Uninstall(false);
+			var result = MessageBox.Show(
+				"Uninstall Depot?\n\n" +
+				"Yes: Remove Depot and permanently delete all local Depot data, including the SQLite database, settings and the %LOCALAPPDATA%\\Depot folder.\n\n" +
+				"No: Remove only the application and keep local data for a later installation.\n\n" +
+				"Cancel: Do nothing.\n\n" +
+				"Remote MySQL/MariaDB and SQL Server databases are never deleted.",
+				"Depot Manager",
+				MessageBoxButton.YesNoCancel,
+				MessageBoxImage.Warning);
+
+			if (result == MessageBoxResult.Cancel) return;
+
+			var removeLocalData = result == MessageBoxResult.Yes;
+			Installation.Uninstall(removeLocalData);
 			_setupInProgress = false;
 			_selectedProvider = -1;
 			InvalidateConnectionValidation();
+
+			if (removeLocalData)
+			{
+				LocalDataDeletion.DeleteDirectory(LocalDataDeletion.DefaultLocalDataDirectory);
+				MessageBox.Show(
+					"Depot and all local Depot data were removed. Remote databases were not changed.",
+					"Depot Manager",
+					MessageBoxButton.OK,
+					MessageBoxImage.Information);
+				Close();
+				return;
+			}
+
 			RefreshStatus();
-			Log("Depot application files removed. Configuration and data were preserved.");
+			Log("Depot application files removed. Local configuration and data were preserved.");
 		}
 		catch (Exception ex)
 		{
