@@ -50,18 +50,22 @@ public sealed class GitHubReleaseClient(HttpClient httpClient)
 		using var response = await _http.GetAsync(release.DownloadUri, HttpCompletionOption.ResponseHeadersRead, token);
 		response.EnsureSuccessStatusCode();
 		await using var source = await response.Content.ReadAsStreamAsync(token);
-		await using var target = new FileStream(destination, FileMode.Create, FileAccess.Write, FileShare.None, 1024 * 1024, true);
-		var buffer = new byte[1024 * 1024];
-		long total = 0;
-		int read;
-		while ((read = await source.ReadAsync(buffer, token)) > 0)
+		await using (var target = new FileStream(destination, FileMode.Create, FileAccess.Write, FileShare.None, 1024 * 1024, true))
 		{
-			await target.WriteAsync(buffer.AsMemory(0, read), token);
-			total += read;
-			progress?.Report((int)Math.Min(100, total * 100 / release.Size));
+			var buffer = new byte[1024 * 1024];
+			long total = 0;
+			int read;
+			while ((read = await source.ReadAsync(buffer, token)) > 0)
+			{
+				await target.WriteAsync(buffer.AsMemory(0, read), token);
+				total += read;
+				progress?.Report((int)Math.Min(100, total * 100 / release.Size));
+			}
+			await target.FlushAsync(token);
+			if (total <= 0 || total != release.Size) throw new InvalidOperationException("The downloaded Depot asset is incomplete.");
 		}
-		await target.FlushAsync(token);
-		if (total <= 0 || total != release.Size) throw new InvalidOperationException("The downloaded Depot asset is incomplete.");
+
+		// Close the download stream before reopening the file for PE/hash validation.
 		ValidatePortableExecutable(destination);
 		if (!string.IsNullOrWhiteSpace(release.Sha256))
 		{
