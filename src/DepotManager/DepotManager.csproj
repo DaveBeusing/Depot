@@ -14,8 +14,6 @@
     <Page Include="..\Depot\Resources\Typography.xaml" Link="Resources\Typography.xaml" />
     <Page Include="..\Depot\Resources\Spacing.xaml" Link="Resources\Spacing.xaml" />
     <Page Include="..\Depot\Resources\Buttons.xaml" Link="Resources\Buttons.xaml" />
-    <Page Include="..\Depot\Resources\Cards.xaml" Link="Resources\Cards.xaml" />
-    <Page Include="..\Depot\Resources\CheckBox.xaml" Link="Resources\CheckBox.xaml" />
     <Page Include="..\Depot\Resources\ScrollBars.xaml" Link="Resources\ScrollBars.xaml" />
   </ItemGroup>
 </Project>
