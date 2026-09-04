@@ -6,6 +6,7 @@
         <ResourceDictionary Source="Resources/Typography.xaml" />
         <ResourceDictionary Source="Resources/Spacing.xaml" />
         <ResourceDictionary Source="Resources/Buttons.xaml" />
+        <ResourceDictionary Source="Resources/Inputs.xaml" />
         <ResourceDictionary Source="Resources/ScrollBars.xaml" />
         <ResourceDictionary Source="ManagerTheme.xaml" />
       </ResourceDictionary.MergedDictionaries>

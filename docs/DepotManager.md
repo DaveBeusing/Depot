@@ -24,21 +24,23 @@ The installed application directory contains `Depot.exe`, `DepotManager.exe`, an
 
 ## First installation
 
-1. Discover the latest eligible published GitHub Release.
-2. Download its exact `Depot-<version>.exe` release asset.
-3. Select SQLite, Microsoft SQL Server, or MySQL/MariaDB.
-4. Test the connection before provisioning. The manager binds the successful test to the exact current provider/host/database/credential selection and requires another test if those values change.
-5. Provision the database through the same `DatabaseProvisioningService` used by normal Depot startup. It invokes Depot's existing provider initializer and migration classes; the manager contains no schema or migration copy.
-6. Create the initial administrator through `AdministratorBootstrapService`, which applies the existing password policy, RBAC Administrator role, legacy-admin retirement, transaction handling, and audit behavior.
-7. Start Depot and sign in through the normal login window.
+1. Discover the latest eligible published GitHub Release and install its exact `Depot-<version>.exe` asset.
+2. Choose one database type from the three manager cards: `Lokal (sqlite3)`, `Remote (MySQL/MariaDB)`, or `Remote (SQL)`. Selecting a card immediately advances to connection configuration.
+3. Enter the connection details and run `Test connection`. The test runs through Depot's non-UI manager command path with no Depot application window. Depot Manager always shows an inline success or failure result. Changing any tested connection value invalidates that result and requires another test.
+4. For `Lokal (sqlite3)`, enter the initial administrator details in Depot Manager. Remote databases skip this step and must already contain a valid Depot administrator.
+5. Review the resulting configuration. Only the final `Continue` action provisions/saves the database configuration, closes Depot Manager, and starts Depot. If provisioning or administrator validation fails, Depot is not started and Depot Manager remains open.
 
 For SQLite the manager creates the selected parent directory if necessary and verifies that it is writable before testing the database connection. SQL Server and MySQL/MariaDB fields follow the authentication and TLS capabilities currently supported by Depot. SQL Server Windows Authentication is not exposed because the current Depot settings model supports SQL credentials rather than integrated authentication. No provider-specific schema copy exists in Depot Manager.
 
 Database and administrator credentials are sent to the short-lived provisioning subprocess over redirected standard input. They are never written to the manager log or a plaintext request file. Persistent database settings are saved only by Depot's existing `SettingsRepository`, which protects the settings payload with Windows DPAPI for the current user.
 
+## UI consistency
+
+Depot Manager uses the same Depot application icon, dark Windows title-bar handling, shared color/spacing/button resources, and the actual Depot `Inputs.xaml` resource dictionary. The manager compiles the same shared `TextInput`, `PasswordInput`, and `SearchBox` control sources needed by that dictionary, so its text and password inputs use the same templates and interaction states as Depot without introducing a runtime dependency on `Depot.exe`.
+
 ## Updates and repair
 
-Depot Manager reads published GitHub releases, validates semantic release tags and the exact `Depot-<version>.exe` asset name, checks HTTP success and file length, validates the PE/managed executable structure, and verifies the GitHub-provided SHA-256 digest when present. The downloaded executable version is checked before any installed executable is replaced.
+Depot Manager reads published GitHub releases, validates semantic release tags and the exact `Depot-<version>.exe` asset name, checks HTTP success and file length, validates the Windows PE executable structure, and verifies the GitHub-provided SHA-256 digest when present. The downloaded executable version is checked before any installed executable is replaced.
 
 Update compares the installed executable's product/file version with the latest eligible stable GitHub Release. Repair deliberately resolves the exact currently installed release and obtains that same published version again; repair therefore cannot silently turn into an update.
 

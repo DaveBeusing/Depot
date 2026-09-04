@@ -16,7 +16,11 @@
     <Page Include="..\Depot\Resources\Typography.xaml" Link="Resources\Typography.xaml" />
     <Page Include="..\Depot\Resources\Spacing.xaml" Link="Resources\Spacing.xaml" />
     <Page Include="..\Depot\Resources\Buttons.xaml" Link="Resources\Buttons.xaml" />
+    <Page Include="..\Depot\Resources\Inputs.xaml" Link="Resources\Inputs.xaml" />
     <Page Include="..\Depot\Resources\ScrollBars.xaml" Link="Resources\ScrollBars.xaml" />
     <Resource Include="..\Depot\Resources\Images\Depot.ico" Link="Resources\Images\Depot.ico" />
+    <Compile Include="..\Depot\Controls\TextInput.cs" Link="Controls\TextInput.cs" />
+    <Compile Include="..\Depot\Controls\PasswordInput.cs" Link="Controls\PasswordInput.cs" />
+    <Compile Include="..\Depot\Controls\SearchBox.cs" Link="Controls\SearchBox.cs" />
   </ItemGroup>
 </Project>
