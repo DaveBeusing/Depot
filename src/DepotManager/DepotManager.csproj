@@ -7,8 +7,6 @@
     <UseWPF>true</UseWPF>
     <AssemblyName>DepotManager</AssemblyName>
     <Product>Depot Manager</Product>
-    <PublishSingleFile>true</PublishSingleFile>
-    <SelfContained>true</SelfContained>
     <PublishTrimmed>false</PublishTrimmed>
   </PropertyGroup>
 </Project>

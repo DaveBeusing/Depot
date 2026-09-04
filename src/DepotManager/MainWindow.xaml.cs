@@ -89,7 +89,8 @@ public partial class MainWindow : Window
 			SetBusy(true);
 			await InvokeDepotManagerModeAsync("--manager-provision", true);
 			var service = Installation;
-			SummaryText.Text = $"Depot successfully installed\n\nVersion: {service.InstalledVersion is { } version ? VersionRules.VersionText(version) : "Unknown"}\nDatabase: {SelectedProviderName()}\nAdministrator: {AdminEmailBox.Text.Trim()}";
+			var installedVersionText = service.InstalledVersion is { } installedVersion ? VersionRules.VersionText(installedVersion) : "Unknown";
+			SummaryText.Text = $"Depot successfully installed\n\nVersion: {installedVersionText}\nDatabase: {SelectedProviderName()}\nAdministrator: {AdminEmailBox.Text.Trim()}";
 			Wizard.SelectedIndex = 3;
 			Log("Database and initial administrator provisioned successfully.");
 		}
