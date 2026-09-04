@@ -140,18 +140,10 @@ public sealed class InstallationService(string installDirectory, Action<string> 
 		EnsureDepotStopped();
 		if (createBackup && File.Exists(DepotPath))
 		{
-			foreach (var old in Directory.EnumerateFiles(BackupDirectory, "Depot-*.exe")) File.Delete(old);
 			var current = InstalledVersion ?? new Version(0, 0, 0);
-			File.Copy(DepotPath, Path.Combine(BackupDirectory, VersionRules.BackupName(current)), true);
+			ExecutableDeployment.BackupCurrent(DepotPath, BackupDirectory, current);
 		}
-		var staged = DepotPath + ".new";
-		File.Copy(downloadedFile, staged, true);
-		try { File.Move(staged, DepotPath, true); }
-		catch
-		{
-			if (File.Exists(staged)) File.Delete(staged);
-			throw;
-		}
+		ExecutableDeployment.Replace(downloadedFile, DepotPath);
 		log($"Deployed Depot {VersionRules.VersionText(targetVersion)}.");
 	}
 

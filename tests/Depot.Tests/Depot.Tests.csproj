@@ -19,6 +19,7 @@
 	</ItemGroup>
 	<ItemGroup>
 		<Compile Include="..\..\src\DepotManager\VersionRules.cs" Link="DepotManager\VersionRules.cs" />
+		<Compile Include="..\..\src\DepotManager\ExecutableDeployment.cs" Link="DepotManager\ExecutableDeployment.cs" />
 		<None Include="Fixtures\ElectronicInvoice\**\*" CopyToOutputDirectory="PreserveNewest" />
 	</ItemGroup>
 </Project>

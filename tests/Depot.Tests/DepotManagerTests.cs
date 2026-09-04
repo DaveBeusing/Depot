@@ -1,3 +1,4 @@
+using System.IO;
 using DepotManager;
 using Xunit;
 
@@ -37,5 +38,72 @@ public sealed class DepotManagerTests
 		Assert.True(VersionRules.IsUpdate(new Version(0, 13, 27, 0), new Version(0, 13, 28)));
 		Assert.False(VersionRules.IsUpdate(new Version(0, 13, 28, 0), new Version(0, 13, 28)));
 		Assert.False(VersionRules.IsUpdate(new Version(0, 13, 28, 0), new Version(0, 13, 27)));
+	}
+
+	[Fact]
+	public void BackupCurrent_KeepsOnlyPreviousExecutableAndLeavesDataUntouched()
+	{
+		var root = CreateTempDirectory();
+		try
+		{
+			var depot = Path.Combine(root, "Depot.exe");
+			var backup = Path.Combine(root, "Backup");
+			var settings = Path.Combine(root, "depot.settings");
+			var businessData = Path.Combine(root, "business.db");
+			File.WriteAllText(depot, "version-27");
+			Directory.CreateDirectory(backup);
+			File.WriteAllText(Path.Combine(backup, "Depot-0.13.26.exe"), "old-backup");
+			File.WriteAllText(settings, "protected-settings");
+			File.WriteAllText(businessData, "business-data");
+
+			ExecutableDeployment.BackupCurrent(depot, backup, new Version(0, 13, 27, 0));
+
+			Assert.Equal(["Depot-0.13.27.exe"], Directory.EnumerateFiles(backup).Select(Path.GetFileName).ToArray());
+			Assert.Equal("version-27", File.ReadAllText(Path.Combine(backup, "Depot-0.13.27.exe")));
+			Assert.Equal("protected-settings", File.ReadAllText(settings));
+			Assert.Equal("business-data", File.ReadAllText(businessData));
+		}
+		finally { Directory.Delete(root, true); }
+	}
+
+	[Fact]
+	public void Replace_MissingDownloadLeavesInstalledExecutableUntouched()
+	{
+		var root = CreateTempDirectory();
+		try
+		{
+			var depot = Path.Combine(root, "Depot.exe");
+			File.WriteAllText(depot, "current");
+			Assert.Throws<FileNotFoundException>(() => ExecutableDeployment.Replace(Path.Combine(root, "missing.exe"), depot));
+			Assert.Equal("current", File.ReadAllText(depot));
+			Assert.False(File.Exists(depot + ".new"));
+		}
+		finally { Directory.Delete(root, true); }
+	}
+
+	[Fact]
+	public void Replace_StagesAndReplacesExecutable()
+	{
+		var root = CreateTempDirectory();
+		try
+		{
+			var depot = Path.Combine(root, "Depot.exe");
+			var download = Path.Combine(root, "download.exe");
+			File.WriteAllText(depot, "current");
+			File.WriteAllText(download, "new");
+
+			ExecutableDeployment.Replace(download, depot);
+
+			Assert.Equal("new", File.ReadAllText(depot));
+			Assert.False(File.Exists(depot + ".new"));
+		}
+		finally { Directory.Delete(root, true); }
+	}
+
+	private static string CreateTempDirectory()
+	{
+		var path = Path.Combine(Path.GetTempPath(), "DepotManagerTests", Guid.NewGuid().ToString("N"));
+		Directory.CreateDirectory(path);
+		return path;
 	}
 }
