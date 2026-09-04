@@ -58,7 +58,9 @@ public sealed class DepotManagerTests
 
 			ExecutableDeployment.BackupCurrent(depot, backup, new Version(0, 13, 27, 0));
 
-			Assert.Equal(["Depot-0.13.27.exe"], Directory.EnumerateFiles(backup).Select(Path.GetFileName).ToArray());
+			var backupNames = Directory.EnumerateFiles(backup).Select(Path.GetFileName).ToArray();
+			Assert.Single(backupNames);
+			Assert.Equal("Depot-0.13.27.exe", backupNames[0]);
 			Assert.Equal("version-27", File.ReadAllText(Path.Combine(backup, "Depot-0.13.27.exe")));
 			Assert.Equal("protected-settings", File.ReadAllText(settings));
 			Assert.Equal("business-data", File.ReadAllText(businessData));
