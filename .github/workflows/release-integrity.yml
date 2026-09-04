@@ -8,8 +8,8 @@ on:
     paths:
       - '.github/workflows/release-integrity.yml'
       - 'src/Depot/**'
+      - 'src/DepotManager/**'
       - 'Directory.Build.props'
-      - 'src/Depot/packages.lock.json'
       - 'security/security-risk-acceptances.json'
       - 'scripts/security/validate-risk-acceptances.ps1'
   workflow_dispatch:
@@ -47,21 +47,21 @@ jobs:
       - name: Restore locked dependencies
         run: dotnet restore Depot.slnx --locked-mode -p:AuditPipeline=true
 
-      - name: Restore win-x64 runtime
-        run: dotnet restore src/Depot/Depot.csproj --runtime win-x64 -p:AuditPipeline=true
+      - name: Restore win-x64 runtimes
+        shell: pwsh
+        run: |
+          dotnet restore src/Depot/Depot.csproj --runtime win-x64 -p:AuditPipeline=true
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet restore src/DepotManager/DepotManager.csproj --runtime win-x64 -p:AuditPipeline=true
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - name: Publish release artifact
-        run: >-
-          dotnet publish src/Depot/Depot.csproj
-          --configuration Release
-          --runtime win-x64
-          --self-contained true
-          --no-restore
-          -p:PublishSingleFile=true
-          -p:IncludeNativeLibrariesForSelfExtract=true
-          -p:DebugType=None
-          -p:DebugSymbols=false
-          -o artifacts/release/win-x64
+      - name: Publish release artifacts
+        shell: pwsh
+        run: |
+          dotnet publish src/Depot/Depot.csproj --configuration Release --runtime win-x64 --self-contained true --no-restore -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false -o artifacts/release/depot
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet publish src/DepotManager/DepotManager.csproj --configuration Release --runtime win-x64 --self-contained true --no-restore -p:PublishSingleFile=true -p:DebugType=None -p:DebugSymbols=false -o artifacts/release/manager
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Require signing credentials for tagged releases
         if: startsWith(github.ref, 'refs/tags/')
@@ -70,11 +70,9 @@ jobs:
           SIGNING_PFX: ${{ secrets.DEPOT_SIGNING_PFX_BASE64 }}
           SIGNING_PASSWORD: ${{ secrets.DEPOT_SIGNING_PASSWORD }}
         run: |
-          if ([string]::IsNullOrWhiteSpace($env:SIGNING_PFX) -or [string]::IsNullOrWhiteSpace($env:SIGNING_PASSWORD)) {
-            throw 'Tagged production releases require DEPOT_SIGNING_PFX_BASE64 and DEPOT_SIGNING_PASSWORD repository secrets.'
-          }
+          if ([string]::IsNullOrWhiteSpace($env:SIGNING_PFX) -or [string]::IsNullOrWhiteSpace($env:SIGNING_PASSWORD)) { throw 'Tagged production releases require DEPOT_SIGNING_PFX_BASE64 and DEPOT_SIGNING_PASSWORD repository secrets.' }
 
-      - name: Authenticode sign executable
+      - name: Authenticode sign executables
         if: startsWith(github.ref, 'refs/tags/')
         shell: pwsh
         env:
@@ -84,19 +82,16 @@ jobs:
           $certificate = Join-Path $env:RUNNER_TEMP 'depot-signing.pfx'
           [IO.File]::WriteAllBytes($certificate, [Convert]::FromBase64String($env:SIGNING_PFX))
           try {
-            $signtool = Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\bin' -Filter signtool.exe -Recurse |
-              Where-Object { $_.FullName -match '\\x64\\signtool\.exe$' } |
-              Sort-Object FullName -Descending |
-              Select-Object -First 1
+            $signtool = Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\bin' -Filter signtool.exe -Recurse | Where-Object { $_.FullName -match '\\x64\\signtool\.exe$' } | Sort-Object FullName -Descending | Select-Object -First 1
             if ($null -eq $signtool) { throw 'signtool.exe was not found on the runner.' }
-            & $signtool.FullName sign /fd SHA256 /f $certificate /p $env:SIGNING_PASSWORD /tr http://timestamp.digicert.com /td SHA256 'artifacts\release\win-x64\Depot.exe'
-            if ($LASTEXITCODE -ne 0) { throw 'Authenticode signing failed.' }
-            & $signtool.FullName verify /pa /v 'artifacts\release\win-x64\Depot.exe'
-            if ($LASTEXITCODE -ne 0) { throw 'Authenticode verification failed.' }
+            foreach ($file in @('artifacts\release\depot\Depot.exe','artifacts\release\manager\DepotManager.exe')) {
+              & $signtool.FullName sign /fd SHA256 /f $certificate /p $env:SIGNING_PASSWORD /tr http://timestamp.digicert.com /td SHA256 $file
+              if ($LASTEXITCODE -ne 0) { throw "Authenticode signing failed for $file." }
+              & $signtool.FullName verify /pa /v $file
+              if ($LASTEXITCODE -ne 0) { throw "Authenticode verification failed for $file." }
+            }
           }
-          finally {
-            Remove-Item $certificate -Force -ErrorAction SilentlyContinue
-          }
+          finally { Remove-Item $certificate -Force -ErrorAction SilentlyContinue }
 
       - name: Create integrity manifest
         shell: pwsh
@@ -104,9 +99,9 @@ jobs:
           New-Item -ItemType Directory -Force artifacts/release | Out-Null
           Copy-Item artifacts-source.txt artifacts/release/source.txt
           Copy-Item security/security-risk-acceptances.json artifacts/release/security-risk-acceptances.json
-          Get-ChildItem artifacts/release/win-x64 -File | Sort-Object Name | ForEach-Object {
+          Get-ChildItem artifacts/release/depot,artifacts/release/manager -File | Sort-Object FullName | ForEach-Object {
             $hash = Get-FileHash $_.FullName -Algorithm SHA256
-            "$($hash.Hash.ToLowerInvariant()) *win-x64/$($_.Name)"
+            "$($hash.Hash.ToLowerInvariant()) *$($_.Directory.Name)/$($_.Name)"
           } | Out-File artifacts/release/SHA256SUMS.txt -Encoding ascii
 
       - name: Upload release integrity evidence

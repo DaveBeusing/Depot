@@ -70,17 +70,18 @@ public partial class MainWindow : Window
 	{
 		var service = Installation; if (!File.Exists(service.DepotPath)) throw new InvalidOperationException("Install Depot before database configuration.");
 		Directory.CreateDirectory(service.InstallDirectory);
-		var requestPath = Path.Combine(Path.GetTempPath(), $"depot-provision-{Guid.NewGuid():N}.json"); var responsePath = requestPath + ".response";
-		var request = new { Database = BuildDatabaseSettings(), Administrator = new { DisplayName = includeAdministrator ? AdminNameBox.Text.Trim() : string.Empty, Email = includeAdministrator ? AdminEmailBox.Text.Trim() : string.Empty, Password = includeAdministrator ? AdminPasswordBox.Password : string.Empty }, ResponsePath = responsePath };
+		var responsePath = Path.Combine(Path.GetTempPath(), $"depot-provision-{Guid.NewGuid():N}.response.json");
+		var request = new { Database = BuildDatabaseSettings(), Administrator = new { DisplayName = includeAdministrator ? AdminNameBox.Text.Trim() : string.Empty, Email = includeAdministrator ? AdminEmailBox.Text.Trim() : string.Empty, Password = includeAdministrator ? AdminPasswordBox.Password : string.Empty } };
 		try
 		{
-			await File.WriteAllTextAsync(requestPath, JsonSerializer.Serialize(request));
-			using var process = Process.Start(new ProcessStartInfo(service.DepotPath, $"{mode} \"{requestPath}\"") { WorkingDirectory = service.InstallDirectory, UseShellExecute = false, CreateNoWindow = true }) ?? throw new InvalidOperationException("Depot provisioning process could not be started.");
+			var startInfo = new ProcessStartInfo(service.DepotPath, $"{mode} \"{responsePath}\"") { WorkingDirectory = service.InstallDirectory, UseShellExecute = false, CreateNoWindow = true, RedirectStandardInput = true };
+			using var process = Process.Start(startInfo) ?? throw new InvalidOperationException("Depot provisioning process could not be started.");
+			await process.StandardInput.WriteAsync(JsonSerializer.Serialize(request)); process.StandardInput.Close();
 			await process.WaitForExitAsync(_operation!.Token);
 			if (!File.Exists(responsePath)) throw new InvalidOperationException("Depot provisioning did not return a result.");
 			using var document = JsonDocument.Parse(await File.ReadAllTextAsync(responsePath)); var success = document.RootElement.GetProperty("Success").GetBoolean(); var message = document.RootElement.GetProperty("Message").GetString() ?? "Unknown provisioning result."; if (!success || process.ExitCode != 0) throw new InvalidOperationException(message);
 		}
-		finally { if (File.Exists(requestPath)) File.Delete(requestPath); if (File.Exists(responsePath)) File.Delete(responsePath); AdminPasswordBox.Password = string.Empty; AdminConfirmBox.Password = string.Empty; DatabasePasswordBox.Password = string.Empty; }
+		finally { if (File.Exists(responsePath)) File.Delete(responsePath); AdminPasswordBox.Password = string.Empty; AdminConfirmBox.Password = string.Empty; DatabasePasswordBox.Password = string.Empty; }
 	}
 
 	private object BuildDatabaseSettings()

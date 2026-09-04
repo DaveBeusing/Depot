@@ -11,8 +11,13 @@ public sealed record ReleaseInfo(Version Version, string Tag, string AssetName, 
 
 public static class VersionRules
 {
-	public static bool TryParseReleaseTag(string tag, out Version version) => Version.TryParse(tag.Trim().TrimStart('v'), out version!);
+	public static bool TryParseReleaseTag(string tag, out Version version)
+	{
+		if (Version.TryParse(tag.Trim().TrimStart('v'), out var parsed) && parsed is not null) { version = parsed; return true; }
+		version = new Version(0, 0); return false;
+	}
 	public static string AssetName(Version version) => $"Depot-{version}.exe";
+	public static string BackupName(Version version) => $"Depot-{version}.exe";
 	public static bool IsUpdate(Version installed, Version remote) => remote > installed;
 }
 
@@ -84,19 +89,25 @@ public sealed class InstallationService(string installDirectory, Action<string> 
 
 	public void Deploy(string downloadedFile, Version targetVersion, bool createBackup)
 	{
+		ValidateTargetVersion(downloadedFile, targetVersion);
 		Directory.CreateDirectory(InstallDirectory); Directory.CreateDirectory(BackupDirectory); EnsureDepotStopped();
 		if (createBackup && File.Exists(DepotPath))
 		{
 			foreach (var old in Directory.EnumerateFiles(BackupDirectory, "Depot-*.exe")) File.Delete(old);
 			var current = InstalledVersion ?? new Version(0,0,0,0);
-			File.Copy(DepotPath, Path.Combine(BackupDirectory, $"Depot-{current}.exe"), true);
+			File.Copy(DepotPath, Path.Combine(BackupDirectory, VersionRules.BackupName(current)), true);
 		}
 		var staged = DepotPath + ".new"; File.Copy(downloadedFile, staged, true);
 		try { File.Move(staged, DepotPath, true); }
 		catch { if (File.Exists(staged)) File.Delete(staged); throw; }
-		var installed = InstalledVersion;
-		if (installed is null || installed.Major != targetVersion.Major || installed.Minor != targetVersion.Minor || installed.Build != targetVersion.Build) throw new InvalidOperationException("The installed Depot executable does not match the target release version.");
 		log($"Deployed Depot {targetVersion}.");
+	}
+
+	public static void ValidateTargetVersion(string file, Version target)
+	{
+		var text = FileVersionInfo.GetVersionInfo(file).FileVersion;
+		if (!Version.TryParse(text, out var actual) || actual.Major != target.Major || actual.Minor != target.Minor || actual.Build != target.Build)
+			throw new InvalidOperationException("The downloaded executable version does not match the selected release.");
 	}
 
 	public void CopyManagerToInstallLocation()
