@@ -33,8 +33,8 @@ internal static class DepotManagerCommand
 			if (args[0] == ProvisionArgument)
 			{
 				settingsService.Save(settings);
-				InitializeDatabase(settings);
-				CreateAdministratorIfRequired(settings, request.Administrator);
+				var factory = DatabaseProvisioningService.Initialize(settings);
+				CreateAdministratorIfRequired(factory, request.Administrator);
 			}
 
 			WriteResponse(responsePath, true, args[0] == ProvisionArgument ? "Provisioning completed." : "Connection successful.");
@@ -48,19 +48,8 @@ internal static class DepotManagerCommand
 		}
 	}
 
-	private static void InitializeDatabase(DatabaseConnectionSettings settings)
+	private static void CreateAdministratorIfRequired(IDatabaseConnectionFactory factory, InitialAdministrator administrator)
 	{
-		var factory = DatabaseProviderFactory.CreateConnectionFactory(settings);
-		DatabaseProviderFactory.CreateInitializer(factory).Initialize();
-		SalesSchemaMigration.Migrate(factory);
-		FinanceInventoryAccountingSchemaMigration.Migrate(factory);
-		UserSessionSchemaMigration.Migrate(factory);
-		SecurityEventSchemaMigration.Migrate(factory);
-	}
-
-	private static void CreateAdministratorIfRequired(DatabaseConnectionSettings settings, InitialAdministrator administrator)
-	{
-		var factory = DatabaseProviderFactory.CreateConnectionFactory(settings);
 		var data = new DatabaseAccess(factory);
 		var bootstrap = new AdministratorBootstrapService(data, new DatabaseTransactionRunner(data), new AuthorizationService());
 		if (!bootstrap.RequiresSetupAsync(CancellationToken.None).GetAwaiter().GetResult()) return;

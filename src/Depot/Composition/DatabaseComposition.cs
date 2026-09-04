@@ -2,7 +2,6 @@
 // Licensed under the MIT License.
 
 using Depot.Data;
-using Depot.Models;
 using Depot.Repositories;
 using Depot.Services;
 
@@ -35,14 +34,8 @@ internal sealed class DatabaseComposition : IDisposable
 		var settings = new SettingsService(settingsRepository);
 		var connectionStatus = new ConnectionStatusService();
 		var connectionSettings = settings.LoadOrCreate();
-		var connectionFactory = DatabaseProviderFactory.CreateConnectionFactory(connectionSettings);
+		var connectionFactory = DatabaseProvisioningService.Initialize(connectionSettings);
 		var dataAccess = new DatabaseAccess(connectionFactory);
-		var database = DatabaseProviderFactory.CreateInitializer(connectionFactory);
-		database.Initialize();
-		SalesSchemaMigration.Migrate(connectionFactory);
-		FinanceInventoryAccountingSchemaMigration.Migrate(connectionFactory);
-		UserSessionSchemaMigration.Migrate(connectionFactory);
-		SecurityEventSchemaMigration.Migrate(connectionFactory);
 		connectionStatus.SetConnected(connectionSettings);
 		var management = new DatabaseManagementService(connectionFactory, settings);
 		return new DatabaseComposition(dataAccess, new DatabaseTransactionRunner(dataAccess), settings, connectionStatus, new DatabaseConnectionTester(), management, new DatabaseBackupScheduler(management, settings));

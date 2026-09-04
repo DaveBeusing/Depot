@@ -1,5 +1,7 @@
 using System.Diagnostics;
 using System.Net.Http;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
@@ -11,20 +13,25 @@ public partial class MainWindow : Window
 	private readonly HttpClient _http = new();
 	private readonly ManagerMutex _mutex = new();
 	private CancellationTokenSource? _operation;
+	private string? _validatedDatabaseFingerprint;
 	private InstallationService Installation => new(InstallPathBox.Text, Log);
 
 	public MainWindow()
 	{
 		InitializeComponent();
 		InstallPathBox.Text = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", "Depot");
-		SqlitePathBox.Text = Path.Combine(InstallPathBox.Text, "depot.db");
+		SqlitePathBox.Text = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Depot", "Data", "depot.db");
 		if (!_mutex.Acquired)
 		{
 			MessageBox.Show("Another Depot Manager instance is already changing this installation.", "Depot Manager");
 			Close();
 			return;
 		}
-		Loaded += (_, _) => RefreshStatus();
+		Loaded += (_, _) =>
+		{
+			RefreshStatus();
+			Log($"Depot Manager {GetManagerVersion()} started.");
+		};
 	}
 
 	private void RefreshStatus()
@@ -51,6 +58,7 @@ public partial class MainWindow : Window
 			var release = repair
 				? await client.GetAsync(installed!, _operation!.Token)
 				: await client.GetLatestAsync(_operation!.Token);
+			Log($"{(repair ? "Repair" : installed is null ? "Install" : "Update")} requested. Source: {(installed is null ? "none" : VersionRules.VersionText(installed))}; target: {VersionRules.VersionText(release.Version)}.");
 			if (!repair && installed is not null && !VersionRules.IsUpdate(installed, release.Version))
 			{
 				Log("The installed Depot version is already current.");
@@ -61,6 +69,7 @@ public partial class MainWindow : Window
 			try
 			{
 				await client.DownloadAsync(release, temp, new Progress<int>(v => Progress.Value = v), _operation.Token);
+				Log("Release download and validation completed.");
 				service.Deploy(temp, release.Version, installed is not null);
 				service.CopyManagerToInstallLocation();
 				service.RegisterInstalledApp(release.Version);
@@ -76,8 +85,19 @@ public partial class MainWindow : Window
 
 	private async void TestConnection_Click(object sender, RoutedEventArgs e)
 	{
-		try { SetBusy(true); await InvokeDepotManagerModeAsync("--manager-test-database", false); Log("Database connection test succeeded."); }
-		catch (Exception ex) { ShowError(ex); }
+		try
+		{
+			SetBusy(true);
+			PrepareDatabaseTarget();
+			await InvokeDepotManagerModeAsync("--manager-test-database", false, clearDatabasePassword: false);
+			_validatedDatabaseFingerprint = CreateDatabaseFingerprint();
+			Log($"Database connection test succeeded for {DescribeDatabaseTarget()}.");
+		}
+		catch (Exception ex)
+		{
+			_validatedDatabaseFingerprint = null;
+			ShowError(ex);
+		}
 		finally { SetBusy(false); }
 	}
 
@@ -87,19 +107,24 @@ public partial class MainWindow : Window
 		{
 			if (AdminPasswordBox.Password != AdminConfirmBox.Password) throw new InvalidOperationException("Administrator passwords do not match.");
 			if (string.IsNullOrWhiteSpace(AdminPasswordBox.Password)) throw new InvalidOperationException("Administrator password is required.");
+			if (!string.Equals(_validatedDatabaseFingerprint, CreateDatabaseFingerprint(), StringComparison.Ordinal))
+				throw new InvalidOperationException("Test the current database connection successfully before provisioning.");
 			SetBusy(true);
-			await InvokeDepotManagerModeAsync("--manager-provision", true);
+			PrepareDatabaseTarget();
+			Log($"Provisioning {SelectedProviderName()} target {DescribeDatabaseTarget()}.");
+			await InvokeDepotManagerModeAsync("--manager-provision", true, clearDatabasePassword: true);
+			_validatedDatabaseFingerprint = null;
 			var service = Installation;
 			var installedVersionText = service.InstalledVersion is { } installedVersion ? VersionRules.VersionText(installedVersion) : "Unknown";
 			SummaryText.Text = $"Depot successfully installed\n\nVersion: {installedVersionText}\nDatabase: {SelectedProviderName()}\nAdministrator: {AdminEmailBox.Text.Trim()}";
 			Wizard.SelectedIndex = 3;
-			Log("Database and initial administrator provisioned successfully.");
+			Log("Database initialization and initial administrator provisioning completed successfully.");
 		}
 		catch (Exception ex) { ShowError(ex); }
 		finally { SetBusy(false); }
 	}
 
-	private async Task InvokeDepotManagerModeAsync(string mode, bool includeAdministrator)
+	private async Task InvokeDepotManagerModeAsync(string mode, bool includeAdministrator, bool clearDatabasePassword)
 	{
 		var service = Installation;
 		if (!File.Exists(service.DepotPath)) throw new InvalidOperationException("Install Depot before database configuration.");
@@ -137,9 +162,12 @@ public partial class MainWindow : Window
 		finally
 		{
 			if (File.Exists(responsePath)) File.Delete(responsePath);
-			AdminPasswordBox.Password = string.Empty;
-			AdminConfirmBox.Password = string.Empty;
-			DatabasePasswordBox.Password = string.Empty;
+			if (includeAdministrator)
+			{
+				AdminPasswordBox.Password = string.Empty;
+				AdminConfirmBox.Password = string.Empty;
+			}
+			if (clearDatabasePassword) DatabasePasswordBox.Password = string.Empty;
 		}
 	}
 
@@ -170,8 +198,40 @@ public partial class MainWindow : Window
 		};
 	}
 
+	private string CreateDatabaseFingerprint()
+	{
+		var material = string.Join("\u001f", ProviderBox.SelectedIndex, SqlitePathBox.Text.Trim(), HostBox.Text.Trim(), PortBox.Text.Trim(), DatabaseBox.Text.Trim(), UserBox.Text.Trim(), DatabasePasswordBox.Password, TlsBox.IsChecked == true);
+		return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(material)));
+	}
+
+	private void PrepareDatabaseTarget()
+	{
+		if (ProviderBox.SelectedIndex != 0) return;
+		var path = Path.GetFullPath(SqlitePathBox.Text.Trim());
+		var directory = Path.GetDirectoryName(path) ?? throw new InvalidOperationException("Choose a valid SQLite database file.");
+		Directory.CreateDirectory(directory);
+		var probe = Path.Combine(directory, $".depot-write-{Guid.NewGuid():N}.tmp");
+		try { File.WriteAllBytes(probe, []); }
+		catch (Exception exception) { throw new InvalidOperationException("Depot cannot write to the selected SQLite database directory.", exception); }
+		finally { if (File.Exists(probe)) File.Delete(probe); }
+	}
+
+	private string DescribeDatabaseTarget() => ProviderBox.SelectedIndex switch
+	{
+		1 => $"{HostBox.Text.Trim()} / {DatabaseBox.Text.Trim()}",
+		2 => $"{HostBox.Text.Trim()}:{PortBox.Text.Trim()} / {DatabaseBox.Text.Trim()}",
+		_ => Path.GetFullPath(SqlitePathBox.Text.Trim())
+	};
+
+	private static string GetManagerVersion()
+	{
+		var fileVersion = FileVersionInfo.GetVersionInfo(Environment.ProcessPath ?? string.Empty).FileVersion;
+		return Version.TryParse(fileVersion, out var version) ? VersionRules.VersionText(version) : "unknown";
+	}
+
 	private void Provider_Changed(object sender, SelectionChangedEventArgs e)
 	{
+		_validatedDatabaseFingerprint = null;
 		if (PortBox is null) return;
 		PortBox.Text = ProviderBox.SelectedIndex == 2 ? "3306" : "1433";
 	}
