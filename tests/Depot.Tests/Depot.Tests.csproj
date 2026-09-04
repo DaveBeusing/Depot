@@ -16,9 +16,9 @@
 	</ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\..\src\Depot\Depot.csproj" />
-		<ProjectReference Include="..\..\src\DepotManager\DepotManager.csproj" />
 	</ItemGroup>
 	<ItemGroup>
+		<Compile Include="..\..\src\DepotManager\VersionRules.cs" Link="DepotManager\VersionRules.cs" />
 		<None Include="Fixtures\ElectronicInvoice\**\*" CopyToOutputDirectory="PreserveNewest" />
 	</ItemGroup>
 </Project>
