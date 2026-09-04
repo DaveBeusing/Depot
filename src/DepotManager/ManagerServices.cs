@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Reflection.PortableExecutable;
 using System.Runtime.InteropServices;
@@ -70,7 +71,7 @@ public sealed class GitHubReleaseClient(HttpClient httpClient)
 		}
 	}
 
-	private HttpRequestMessage CreateRequest(string uri)
+	private static HttpRequestMessage CreateRequest(string uri)
 	{
 		var request = new HttpRequestMessage(HttpMethod.Get, uri);
 		request.Headers.UserAgent.Add(new ProductInfoHeaderValue("DepotManager", "1.0"));

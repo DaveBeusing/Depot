@@ -1,4 +1,5 @@
 using DepotManager;
+using Xunit;
 
 namespace Depot.Tests;
 
