@@ -2,7 +2,7 @@ name: Release integrity
 
 on:
   push:
-    tags: [ 'v*' ]
+    tags: [ 'v*', '[0-9]*' ]
   pull_request:
     branches: [ master ]
     paths:
@@ -93,15 +93,26 @@ jobs:
           }
           finally { Remove-Item $certificate -Force -ErrorAction SilentlyContinue }
 
+      - name: Stage named release assets
+        shell: pwsh
+        run: |
+          $version = '${{ github.ref_name }}'.TrimStart('v')
+          if ([string]::IsNullOrWhiteSpace($version) -or $version -eq '${{ github.ref_name }}' -and '${{ github.event_name }}' -eq 'pull_request') {
+            $version = (Get-Content Directory.Build.props | Select-String '<VersionPrefix>').Line -replace '.*<VersionPrefix>|</VersionPrefix>.*',''
+            if ($version -like '*$(*') { $version = 'ci' }
+          }
+          New-Item -ItemType Directory -Force artifacts/release/assets | Out-Null
+          Copy-Item artifacts/release/depot/Depot.exe "artifacts/release/assets/Depot-$version.exe"
+          Copy-Item artifacts/release/manager/DepotManager.exe artifacts/release/assets/DepotManager.exe
+
       - name: Create integrity manifest
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force artifacts/release | Out-Null
           Copy-Item artifacts-source.txt artifacts/release/source.txt
           Copy-Item security/security-risk-acceptances.json artifacts/release/security-risk-acceptances.json
-          Get-ChildItem artifacts/release/depot,artifacts/release/manager -File | Sort-Object FullName | ForEach-Object {
+          Get-ChildItem artifacts/release/assets -File | Sort-Object Name | ForEach-Object {
             $hash = Get-FileHash $_.FullName -Algorithm SHA256
-            "$($hash.Hash.ToLowerInvariant()) *$($_.Directory.Name)/$($_.Name)"
+            "$($hash.Hash.ToLowerInvariant()) *assets/$($_.Name)"
           } | Out-File artifacts/release/SHA256SUMS.txt -Encoding ascii
 
       - name: Upload release integrity evidence

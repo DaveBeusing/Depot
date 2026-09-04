@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Net.Http.Headers;
 using System.Reflection.PortableExecutable;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text.Json;
 using Microsoft.Win32;
@@ -74,12 +75,15 @@ public sealed class GitHubReleaseClient(HttpClient httpClient)
 
 public sealed class InstallationService(string installDirectory, Action<string> log)
 {
+	private const int MoveFileDelayUntilReboot = 0x4;
 	public string InstallDirectory { get; } = Path.GetFullPath(installDirectory);
 	public string DepotPath => Path.Combine(InstallDirectory, "Depot.exe");
 	public string ManagerPath => Path.Combine(InstallDirectory, "DepotManager.exe");
 	public string BackupDirectory => Path.Combine(InstallDirectory, "Backup");
+	public string SettingsPath => Path.Combine(InstallDirectory, "depot.settings");
 	public string? InstalledVersionText => File.Exists(DepotPath) ? FileVersionInfo.GetVersionInfo(DepotPath).FileVersion : null;
 	public Version? InstalledVersion => Version.TryParse(InstalledVersionText, out var version) ? version : null;
+	public bool IsProvisioned => File.Exists(SettingsPath);
 
 	public void EnsureDepotStopped()
 	{
@@ -120,16 +124,37 @@ public sealed class InstallationService(string installDirectory, Action<string> 
 	{
 		using var key = Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\Depot");
 		key.SetValue("DisplayName", "Depot"); key.SetValue("DisplayVersion", version.ToString(3)); key.SetValue("Publisher", "David Beusing"); key.SetValue("InstallLocation", InstallDirectory); key.SetValue("DisplayIcon", DepotPath); key.SetValue("UninstallString", $"\"{ManagerPath}\""); key.SetValue("ModifyPath", $"\"{ManagerPath}\""); key.SetValue("NoModify", 0, RegistryValueKind.DWord); key.SetValue("NoRepair", 0, RegistryValueKind.DWord);
+		CreateStartMenuShortcut();
 	}
 
-	public void StartDepot() => Process.Start(new ProcessStartInfo(DepotPath) { WorkingDirectory = InstallDirectory, UseShellExecute = true });
+	public void StartDepot()
+	{
+		if (!IsProvisioned) throw new InvalidOperationException("Complete database and administrator provisioning before the first Depot start.");
+		Process.Start(new ProcessStartInfo(DepotPath) { WorkingDirectory = InstallDirectory, UseShellExecute = true });
+	}
+
 	public void Uninstall(bool removeConfiguration)
 	{
 		EnsureDepotStopped();
 		if (File.Exists(DepotPath)) File.Delete(DepotPath); if (Directory.Exists(BackupDirectory)) Directory.Delete(BackupDirectory, true);
-		if (removeConfiguration) { var settings = Path.Combine(InstallDirectory, "depot.settings"); if (File.Exists(settings)) File.Delete(settings); }
+		if (removeConfiguration && File.Exists(SettingsPath)) File.Delete(SettingsPath);
 		Registry.CurrentUser.DeleteSubKeyTree(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\Depot", false);
+		var shortcut = GetStartMenuShortcutPath(); if (File.Exists(shortcut)) File.Delete(shortcut);
+		if (File.Exists(ManagerPath) && string.Equals(Path.GetFullPath(Environment.ProcessPath ?? string.Empty), ManagerPath, StringComparison.OrdinalIgnoreCase)) MoveFileEx(ManagerPath, null, MoveFileDelayUntilReboot);
+		else if (File.Exists(ManagerPath)) File.Delete(ManagerPath);
 	}
+
+	private void CreateStartMenuShortcut()
+	{
+		var path = GetStartMenuShortcutPath(); Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+		var shellType = Type.GetTypeFromProgID("WScript.Shell"); if (shellType is null) return;
+		dynamic shell = Activator.CreateInstance(shellType)!; dynamic shortcut = shell.CreateShortcut(path); shortcut.TargetPath = DepotPath; shortcut.WorkingDirectory = InstallDirectory; shortcut.IconLocation = DepotPath + ",0"; shortcut.Description = "Depot ERP"; shortcut.Save();
+	}
+
+	private static string GetStartMenuShortcutPath() => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.StartMenu), "Programs", "Depot.lnk");
+
+	[DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+	private static extern bool MoveFileEx(string existingFileName, string? newFileName, int flags);
 }
 
 public sealed class ManagerMutex : IDisposable
