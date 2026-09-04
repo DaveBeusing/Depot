@@ -26,13 +26,13 @@ The installed application directory contains `Depot.exe`, `DepotManager.exe`, an
 
 1. Discover the latest eligible published GitHub Release and install its exact `Depot-<version>.exe` asset.
 2. Choose one database type from the three manager cards: `Lokal (sqlite3)`, `Remote (MySQL/MariaDB)`, or `Remote (SQL)`. Selecting a card immediately advances to connection configuration.
-3. Enter the connection details and run `Test connection`. The test runs through Depot's non-UI manager command path with no Depot application window. Depot Manager always shows an inline success or failure result. Changing any tested connection value invalidates that result and requires another test.
+3. Enter the connection details and run `Validate`. Connection validation is executed completely inside `DepotManager.exe`; Depot is not launched for this step. The manager opens the selected SQLite, MySQL/MariaDB, or SQL Server connection itself, executes a lightweight `SELECT 1` validation, and always shows an inline success or failure result. Changing any validated connection value invalidates that result and requires another validation.
 4. For `Lokal (sqlite3)`, enter the initial administrator details in Depot Manager. Remote databases skip this step and must already contain a valid Depot administrator.
 5. Review the resulting configuration. Only the final `Continue` action provisions/saves the database configuration, closes Depot Manager, and starts Depot. If provisioning or administrator validation fails, Depot is not started and Depot Manager remains open.
 
-For SQLite the manager creates the selected parent directory if necessary and verifies that it is writable before testing the database connection. SQL Server and MySQL/MariaDB fields follow the authentication and TLS capabilities currently supported by Depot. SQL Server Windows Authentication is not exposed because the current Depot settings model supports SQL credentials rather than integrated authentication. No provider-specific schema copy exists in Depot Manager.
+For SQLite the manager creates the selected parent directory if necessary and verifies that it is writable before validating the database connection. SQL Server and MySQL/MariaDB fields follow the authentication and TLS capabilities currently supported by Depot. SQL Server Windows Authentication is not exposed because the current Depot settings model supports SQL credentials rather than integrated authentication. No provider-specific schema copy exists in Depot Manager.
 
-Database and administrator credentials are sent to the short-lived provisioning subprocess over redirected standard input. They are never written to the manager log or a plaintext request file. Persistent database settings are saved only by Depot's existing `SettingsRepository`, which protects the settings payload with Windows DPAPI for the current user.
+Connection validation credentials remain in the Depot Manager process and are not sent to `Depot.exe`. Only the final provisioning operation uses Depot's controlled manager command path; database and administrator credentials for that operation are sent over redirected standard input. They are never written to the manager log or a plaintext request file. Persistent database settings are saved only by Depot's existing `SettingsRepository`, which protects the settings payload with Windows DPAPI for the current user.
 
 ## UI consistency
 
@@ -50,7 +50,9 @@ Repair replaces the application binary without resetting configuration or data. 
 
 ## Uninstall
 
-Normal uninstall removes application binaries, the executable backup, Start menu integration, and the per-user Installed Apps registration. It does not delete the database, remote SQL Server/MySQL/MariaDB data, audit history, or Depot configuration. Data removal is intentionally not part of the normal uninstall path.
+Uninstall offers three explicit outcomes: cancel, remove only the application while retaining local data, or remove the application together with all local Depot data. The full local-data option removes `depot.settings`, `%LOCALAPPDATA%\Depot` including logs and the default SQLite database, and a configured SQLite database stored outside that folder together with its SQLite `-wal`, `-shm`, and `-journal` sidecars.
+
+Remote MySQL/MariaDB and SQL Server databases are never deleted by Depot Manager. Application-only uninstall remains suitable when the local configuration or data should be retained for a later reinstall.
 
 ## Windows integration
 
