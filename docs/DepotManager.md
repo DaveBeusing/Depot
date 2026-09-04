@@ -2,6 +2,12 @@
 
 `DepotManager.exe` is Depot's Windows installation, update, repair, uninstall, and first-configuration application. `Depot.exe` remains the normal ERP runtime.
 
+## Versioning
+
+Depot Manager is versioned independently from the Depot application. Its version is defined in `src/DepotManager/DepotManager.Version.props` through `DepotManagerVersionMajor`, `DepotManagerVersionMinor`, and `DepotManagerVersionPatch` and is applied to the manager's package, assembly, and file metadata. The initial independent manager version is `0.1.0-preview`.
+
+A Depot application version change therefore does not imply a Depot Manager version change, and a Depot Manager release can advance independently from `DepotVersionMajor`, `DepotVersionMinor`, and `DepotVersionPatch`. Release-integrity CI validates that the produced `DepotManager.exe` file version matches the manager version file and stages a versioned `DepotManager-<manager-version>.exe` asset in addition to the stable `DepotManager.exe` distribution name.
+
 ## Installation model
 
 The default per-user installation location is `%LOCALAPPDATA%\Programs\Depot`. Application data is kept separate: new SQLite installations default to `%LOCALAPPDATA%\Depot\Data\depot.db`. Existing installations may continue to use their current database and location; the manager does not move databases or business data.
@@ -52,7 +58,7 @@ Tag:   <version>
 Asset: Depot-<version>.exe
 ```
 
-`DepotManager.exe` is built as a self-contained, untrimmed `win-x64` single-file executable in release-integrity CI so it can be distributed beside the Depot release asset without introducing ZIP, MSI, MSIX, or another package format. The `win-x64` runtime is selected by the publish workflow rather than fixed into ordinary project restore, keeping normal locked solution restores runtime-neutral.
+Depot Manager is built as a self-contained, untrimmed `win-x64` single-file executable. Release-integrity CI emits both `DepotManager.exe` as the stable distribution filename and `DepotManager-<manager-version>.exe` as the version-explicit artifact. The manager version is not derived from the Depot release tag.
 
 ## Schema version
 

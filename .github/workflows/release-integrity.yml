@@ -63,6 +63,16 @@ jobs:
           dotnet publish src/DepotManager/DepotManager.csproj --configuration Release --runtime win-x64 --self-contained true --no-restore -p:PublishSingleFile=true -p:DebugType=None -p:DebugSymbols=false -o artifacts/release/manager
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Validate independent Depot Manager version
+        shell: pwsh
+        run: |
+          [xml]$managerVersionProps = Get-Content src/DepotManager/DepotManager.Version.props
+          $properties = $managerVersionProps.Project.PropertyGroup
+          $managerVersion = "$($properties.DepotManagerVersionMajor).$($properties.DepotManagerVersionMinor).$($properties.DepotManagerVersionPatch)"
+          $fileVersion = [Diagnostics.FileVersionInfo]::GetVersionInfo((Resolve-Path 'artifacts/release/manager/DepotManager.exe')).FileVersion
+          if ([Version]$fileVersion -ne [Version]"$managerVersion.0") { throw "DepotManager.exe file version $fileVersion does not match configured Depot Manager version $managerVersion." }
+          "managerVersion=$managerVersion" | Add-Content artifacts-source.txt -Encoding ascii
+
       - name: Require signing credentials for tagged releases
         if: startsWith(github.ref, 'refs/tags/')
         shell: pwsh
@@ -101,9 +111,13 @@ jobs:
             $version = (Get-Content Directory.Build.props | Select-String '<VersionPrefix>').Line -replace '.*<VersionPrefix>|</VersionPrefix>.*',''
             if ($version -like '*$(*') { $version = 'ci' }
           }
+          [xml]$managerVersionProps = Get-Content src/DepotManager/DepotManager.Version.props
+          $properties = $managerVersionProps.Project.PropertyGroup
+          $managerVersion = "$($properties.DepotManagerVersionMajor).$($properties.DepotManagerVersionMinor).$($properties.DepotManagerVersionPatch)"
           New-Item -ItemType Directory -Force artifacts/release/assets | Out-Null
           Copy-Item artifacts/release/depot/Depot.exe "artifacts/release/assets/Depot-$version.exe"
           Copy-Item artifacts/release/manager/DepotManager.exe artifacts/release/assets/DepotManager.exe
+          Copy-Item artifacts/release/manager/DepotManager.exe "artifacts/release/assets/DepotManager-$managerVersion.exe"
 
       - name: Create integrity manifest
         shell: pwsh
