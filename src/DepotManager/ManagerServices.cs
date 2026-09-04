@@ -27,7 +27,7 @@ public sealed class GitHubReleaseClient(HttpClient httpClient)
 			if (TryReadRelease(release, null, out var result)) return result;
 		}
 
-		throw new InvalidOperationException("No valid Depot release with the expected single-file asset was found.");
+		throw new InvalidOperationException("No installable published Depot release with the expected single-file asset was found.");
 	}
 
 	public async Task<ReleaseInfo> GetAsync(Version version, CancellationToken token)
@@ -37,11 +37,11 @@ public sealed class GitHubReleaseClient(HttpClient httpClient)
 		using var request = CreateRequest($"https://api.github.com/repos/DaveBeusing/Depot/releases/tags/{Uri.EscapeDataString(tag)}");
 		using var response = await _http.SendAsync(request, token);
 		if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
-			throw new InvalidOperationException($"The GitHub release for installed Depot version {tag} was not found.");
+			throw new InvalidOperationException($"The published GitHub release for installed Depot version {tag} was not found.");
 		response.EnsureSuccessStatusCode();
 		using var document = JsonDocument.Parse(await response.Content.ReadAsStreamAsync(token));
 		if (!TryReadRelease(document.RootElement, requested, out var result))
-			throw new InvalidOperationException($"Release {tag} does not contain a valid {VersionRules.AssetName(requested)} asset.");
+			throw new InvalidOperationException($"Release {tag} is not an installable stable Depot release with a valid {VersionRules.AssetName(requested)} asset.");
 		return result;
 	}
 
@@ -65,7 +65,6 @@ public sealed class GitHubReleaseClient(HttpClient httpClient)
 			if (total <= 0 || total != release.Size) throw new InvalidOperationException("The downloaded Depot asset is incomplete.");
 		}
 
-		// Close the download stream before reopening the file for PE/hash validation.
 		ValidatePortableExecutable(destination);
 		if (!string.IsNullOrWhiteSpace(release.Sha256))
 		{
