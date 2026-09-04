@@ -7,6 +7,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <AssemblyName>DepotManager</AssemblyName>
+    <ApplicationIcon>..\Depot\Resources\Images\Depot.ico</ApplicationIcon>
     <Product>Depot Manager</Product>
     <PublishTrimmed>false</PublishTrimmed>
   </PropertyGroup>
@@ -16,5 +17,6 @@
     <Page Include="..\Depot\Resources\Spacing.xaml" Link="Resources\Spacing.xaml" />
     <Page Include="..\Depot\Resources\Buttons.xaml" Link="Resources\Buttons.xaml" />
     <Page Include="..\Depot\Resources\ScrollBars.xaml" Link="Resources\ScrollBars.xaml" />
+    <Resource Include="..\Depot\Resources\Images\Depot.ico" Link="Resources\Images\Depot.ico" />
   </ItemGroup>
 </Project>

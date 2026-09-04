@@ -6,6 +6,7 @@ using System.Text;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 
 namespace DepotManager;
 
@@ -25,6 +26,7 @@ public partial class MainWindow : Window
 		InstallPathBox.Text = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", "Depot");
 		MaintenancePathBox.Text = InstallPathBox.Text;
 		SqlitePathBox.Text = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Depot", "Data", "depot.db");
+		ConfigureWizardForProvider();
 		if (!_mutex.Acquired)
 		{
 			MessageBox.Show("Another Depot Manager instance is already changing this installation.", "Depot Manager");
@@ -44,6 +46,7 @@ public partial class MainWindow : Window
 		if (service.InstalledVersion is { } version)
 		{
 			StatusText.Text = $"Installed · {VersionRules.VersionText(version)}";
+			ApplyInstalledStatus(true);
 			MaintenancePathBox.Text = service.InstallDirectory;
 			if (!service.IsProvisioned)
 			{
@@ -63,10 +66,18 @@ public partial class MainWindow : Window
 		else
 		{
 			StatusText.Text = "Not installed";
+			ApplyInstalledStatus(false);
 			_setupInProgress = false;
 			ShowInstallation();
 			ShowStep(0);
 		}
+	}
+
+	private void ApplyInstalledStatus(bool installed)
+	{
+		StatusBadge.Background = (Brush)FindResource(installed ? "SuccessBrush" : "ErrorBrush");
+		StatusBadge.BorderBrush = (Brush)FindResource(installed ? "SuccessForegroundBrush" : "ErrorForegroundBrush");
+		StatusText.Foreground = (Brush)FindResource(installed ? "SuccessForegroundBrush" : "ErrorForegroundBrush");
 	}
 
 	private void ShowInstallation()
@@ -91,9 +102,10 @@ public partial class MainWindow : Window
 		var steps = new[] { Step1Text, Step2Text, Step3Text, Step4Text };
 		for (var index = 0; index < steps.Length; index++)
 		{
+			if (steps[index].Visibility != Visibility.Visible) continue;
 			steps[index].Foreground = index == _currentStep
-				? (System.Windows.Media.Brush)FindResource("PrimaryTextBrush")
-				: (System.Windows.Media.Brush)FindResource("SecondaryTextBrush");
+				? (Brush)FindResource("PrimaryTextBrush")
+				: (Brush)FindResource("SecondaryTextBrush");
 			steps[index].FontWeight = index == _currentStep ? FontWeights.SemiBold : FontWeights.Normal;
 		}
 	}
@@ -121,6 +133,7 @@ public partial class MainWindow : Window
 				return;
 			}
 
+			Progress.Value = 0;
 			var temp = Path.Combine(Path.GetTempPath(), $"Depot-{VersionRules.VersionText(release.Version)}-{Guid.NewGuid():N}.exe");
 			try
 			{
@@ -129,6 +142,7 @@ public partial class MainWindow : Window
 				service.Deploy(temp, release.Version, installed is not null);
 				service.CopyManagerToInstallLocation();
 				service.RegisterInstalledApp(release.Version);
+				Progress.Value = 100;
 			}
 			finally { if (File.Exists(temp)) File.Delete(temp); }
 
@@ -169,7 +183,7 @@ public partial class MainWindow : Window
 		finally { SetBusy(false); }
 	}
 
-	private void DatabaseNext_Click(object sender, RoutedEventArgs e)
+	private async void DatabaseNext_Click(object sender, RoutedEventArgs e)
 	{
 		if (!string.Equals(_validatedDatabaseFingerprint, CreateDatabaseFingerprint(), StringComparison.Ordinal))
 		{
@@ -177,32 +191,65 @@ public partial class MainWindow : Window
 			ShowError(new InvalidOperationException("Test the current database connection successfully before continuing."));
 			return;
 		}
-		ShowStep(2);
+
+		if (ManagerDatabaseProviderSelection.RequiresAdministratorStep(ProviderBox.SelectedIndex))
+		{
+			ShowStep(2);
+			return;
+		}
+
+		await CompleteRemoteProvisioningAsync();
 	}
 
 	private void Back_Click(object sender, RoutedEventArgs e)
 	{
-		if (_currentStep > 1) ShowStep(_currentStep - 1);
+		if (_currentStep == 2) ShowStep(1);
+	}
+
+	private async Task CompleteRemoteProvisioningAsync()
+	{
+		try
+		{
+			SetBusy(true);
+			PrepareDatabaseTarget();
+			Log($"Provisioning {SelectedProviderName()} target {DescribeDatabaseTarget()} using the existing remote administrator state.");
+			await InvokeDepotManagerModeAsync("--manager-provision", false, clearDatabasePassword: true);
+			_validatedDatabaseFingerprint = null;
+			var service = Installation;
+			var installedVersionText = service.InstalledVersion is { } installedVersion ? VersionRules.VersionText(installedVersion) : "Unknown";
+			SummaryText.Text = $"Version {installedVersionText}\n{SelectedProviderName()}\nAdministrator: existing remote administrator";
+			ShowStep(3);
+			Log("Remote database configuration completed successfully. Depot is ready to start.");
+		}
+		catch (Exception ex)
+		{
+			ShowError(new InvalidOperationException("The remote database must already contain a valid Depot administrator. " + ex.Message, ex));
+		}
+		finally { SetBusy(false); }
 	}
 
 	private async void Provision_Click(object sender, RoutedEventArgs e)
 	{
 		try
 		{
+			if (!ManagerDatabaseProviderSelection.RequiresAdministratorStep(ProviderBox.SelectedIndex))
+				throw new InvalidOperationException("The administrator step is only available for a local database.");
+			if (string.IsNullOrWhiteSpace(AdminNameBox.Text) || string.IsNullOrWhiteSpace(AdminEmailBox.Text) || string.IsNullOrWhiteSpace(AdminPasswordBox.Password))
+				throw new InvalidOperationException("Enter the administrator name, e-mail / username and password.");
 			if (AdminPasswordBox.Password != AdminConfirmBox.Password) throw new InvalidOperationException("Administrator passwords do not match.");
 			if (!string.Equals(_validatedDatabaseFingerprint, CreateDatabaseFingerprint(), StringComparison.Ordinal))
 				throw new InvalidOperationException("Test the current database connection successfully before provisioning.");
 			SetBusy(true);
 			PrepareDatabaseTarget();
 			Log($"Provisioning {SelectedProviderName()} target {DescribeDatabaseTarget()}.");
+			var administratorText = AdminEmailBox.Text.Trim();
 			await InvokeDepotManagerModeAsync("--manager-provision", true, clearDatabasePassword: true);
 			_validatedDatabaseFingerprint = null;
 			var service = Installation;
 			var installedVersionText = service.InstalledVersion is { } installedVersion ? VersionRules.VersionText(installedVersion) : "Unknown";
-			var administratorText = string.IsNullOrWhiteSpace(AdminEmailBox.Text) ? "Existing database administrator" : AdminEmailBox.Text.Trim();
 			SummaryText.Text = $"Version {installedVersionText}\n{SelectedProviderName()}\nAdministrator: {administratorText}";
 			ShowStep(3);
-			Log("Database initialization and administrator provisioning check completed successfully.");
+			Log("Local database and administrator provisioning completed successfully. Depot is ready to start.");
 		}
 		catch (Exception ex) { ShowError(ex); }
 		finally { SetBusy(false); }
@@ -257,12 +304,13 @@ public partial class MainWindow : Window
 
 	private object BuildDatabaseSettings()
 	{
-		var provider = ProviderBox.SelectedIndex;
+		var selection = ProviderBox.SelectedIndex;
+		var provider = ManagerDatabaseProviderSelection.ToDepotProviderIndex(selection);
 		int.TryParse(PortBox.Text, out var port);
 		var requireTls = TlsBox.IsChecked == true;
 		return new
 		{
-			Provider = provider == 0 ? 0 : provider == 1 ? 1 : 2,
+			Provider = provider,
 			LocalDatabasePath = SqlitePathBox.Text.Trim(),
 			SqlServerHost = provider == 1 ? HostBox.Text.Trim() : string.Empty,
 			SqlServerPort = provider == 1 ? (port == 0 ? 1433 : port) : 1433,
@@ -291,22 +339,26 @@ public partial class MainWindow : Window
 
 	private void PrepareDatabaseTarget()
 	{
-		if (ProviderBox.SelectedIndex != 0) return;
+		if (!ManagerDatabaseProviderSelection.RequiresAdministratorStep(ProviderBox.SelectedIndex)) return;
 		var path = Path.GetFullPath(SqlitePathBox.Text.Trim());
-		var directory = Path.GetDirectoryName(path) ?? throw new InvalidOperationException("Choose a valid SQLite database file.");
+		var directory = Path.GetDirectoryName(path) ?? throw new InvalidOperationException("Choose a valid local database file.");
 		Directory.CreateDirectory(directory);
 		var probe = Path.Combine(directory, $".depot-write-{Guid.NewGuid():N}.tmp");
 		try { File.WriteAllBytes(probe, []); }
-		catch (Exception exception) { throw new InvalidOperationException("Depot cannot write to the selected SQLite database directory.", exception); }
+		catch (Exception exception) { throw new InvalidOperationException("Depot cannot write to the selected local database directory.", exception); }
 		finally { if (File.Exists(probe)) File.Delete(probe); }
 	}
 
-	private string DescribeDatabaseTarget() => ProviderBox.SelectedIndex switch
+	private string DescribeDatabaseTarget()
 	{
-		1 => $"{HostBox.Text.Trim()} / {DatabaseBox.Text.Trim()}",
-		2 => $"{HostBox.Text.Trim()}:{PortBox.Text.Trim()} / {DatabaseBox.Text.Trim()}",
-		_ => Path.GetFullPath(SqlitePathBox.Text.Trim())
-	};
+		var provider = ManagerDatabaseProviderSelection.ToDepotProviderIndex(ProviderBox.SelectedIndex);
+		return provider switch
+		{
+			1 => $"{HostBox.Text.Trim()}:{PortBox.Text.Trim()} / {DatabaseBox.Text.Trim()}",
+			2 => $"{HostBox.Text.Trim()}:{PortBox.Text.Trim()} / {DatabaseBox.Text.Trim()}",
+			_ => Path.GetFullPath(SqlitePathBox.Text.Trim())
+		};
+	}
 
 	private static string GetManagerVersion()
 	{
@@ -318,11 +370,23 @@ public partial class MainWindow : Window
 	{
 		_validatedDatabaseFingerprint = null;
 		if (DatabaseNextButton is not null) DatabaseNextButton.IsEnabled = false;
+		ConfigureWizardForProvider();
 		if (PortBox is null) return;
-		PortBox.Text = ProviderBox.SelectedIndex == 2 ? "3306" : "1433";
+		var port = ManagerDatabaseProviderSelection.DefaultPort(ProviderBox.SelectedIndex);
+		PortBox.Text = port == 0 ? string.Empty : port.ToString();
 	}
 
-	private string SelectedProviderName() => ProviderBox.SelectedIndex switch { 1 => "Microsoft SQL Server", 2 => "MySQL / MariaDB", _ => "SQLite" };
+	private void ConfigureWizardForProvider()
+	{
+		if (ProviderBox is null || Step3Text is null || Step4Text is null) return;
+		var local = ManagerDatabaseProviderSelection.RequiresAdministratorStep(ProviderBox.SelectedIndex);
+		Step3Text.Visibility = local ? Visibility.Visible : Visibility.Collapsed;
+		Step4Text.Text = local ? "4   Ready" : "3   Ready";
+		if (LocalDatabasePanel is not null) LocalDatabasePanel.Visibility = local ? Visibility.Visible : Visibility.Collapsed;
+		if (RemoteDatabasePanel is not null) RemoteDatabasePanel.Visibility = local ? Visibility.Collapsed : Visibility.Visible;
+	}
+
+	private string SelectedProviderName() => ManagerDatabaseProviderSelection.DisplayName(ProviderBox.SelectedIndex);
 	private void Start_Click(object sender, RoutedEventArgs e) { try { Installation.StartDepot(); } catch (Exception ex) { ShowError(ex); } }
 	private void Uninstall_Click(object sender, RoutedEventArgs e)
 	{

@@ -40,6 +40,18 @@ public sealed class DepotManagerTests
 		Assert.False(VersionRules.IsUpdate(new Version(0, 13, 28, 0), new Version(0, 13, 27)));
 	}
 
+	[Theory]
+	[InlineData(0, 0, 0, true, "Lokal (sqlite3)")]
+	[InlineData(1, 2, 3306, false, "Remote (MySQL/MariaDB)")]
+	[InlineData(2, 1, 1433, false, "Remote (SQL)")]
+	public void DatabaseSelection_MapsManagerChoicesToDepotProviders(int selection, int provider, int port, bool requiresAdministrator, string displayName)
+	{
+		Assert.Equal(provider, ManagerDatabaseProviderSelection.ToDepotProviderIndex(selection));
+		Assert.Equal(port, ManagerDatabaseProviderSelection.DefaultPort(selection));
+		Assert.Equal(requiresAdministrator, ManagerDatabaseProviderSelection.RequiresAdministratorStep(selection));
+		Assert.Equal(displayName, ManagerDatabaseProviderSelection.DisplayName(selection));
+	}
+
 	[Fact]
 	public void BackupCurrent_KeepsOnlyPreviousExecutableAndLeavesDataUntouched()
 	{
