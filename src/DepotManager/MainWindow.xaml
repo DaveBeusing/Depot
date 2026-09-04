@@ -175,8 +175,8 @@
           <TextBlock Text="The installed Depot version can be started, updated, repaired or removed." Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,6,0,22"/>
           <WrapPanel>
             <Button Content="Start Depot" Style="{StaticResource PrimaryButtonStyle}" Margin="0,0,10,10" Click="Start_Click"/>
-            <Button Content="Check for updates" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,10,10" Click="Update_Click"/>
-            <Button Content="Repair" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,10,10" Click="Repair_Click"/>
+            <Button Content="Update" Style="{StaticResource ManagerSuccessButtonStyle}" Margin="0,0,10,10" Click="Update_Click"/>
+            <Button Content="Repair" Style="{StaticResource ManagerWarningButtonStyle}" Margin="0,0,10,10" Click="Repair_Click"/>
             <Button Content="Uninstall" Style="{StaticResource DangerButtonStyle}" Margin="0,0,10,10" Click="Uninstall_Click"/>
           </WrapPanel>
           <TextBlock Text="Installation location" Style="{StaticResource ManagerLabelStyle}"/>
