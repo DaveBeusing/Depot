@@ -90,6 +90,16 @@ Current schema levels:
 
 For implementation and release status, see [Current Status](docs/CurrentStatus.md), [Documentation Status](docs/DocumentationStatus.md), [User-Facing Changes](docs/UserFacingChanges.md) and [Release 1.0](docs/Release1.0.md).
 
+## Installation, update and repair
+
+Depot uses two Windows executables with separate responsibilities: `Depot.exe` is the normal ERP runtime and `DepotManager.exe` owns installation, first configuration, updates, repair and uninstall.
+
+For a new installation, Depot Manager installs the latest valid single-file GitHub release, lets the user select SQLite, SQL Server or MySQL/MariaDB, requires a successful connection test, initializes/migrates the database through Depot's central provider-neutral provisioning path and creates the initial administrator through the existing RBAC/password/audit bootstrap. An already provisioned database can be adopted without creating a second administrator. After setup, the first normal Depot start goes directly to the login flow.
+
+Updates retain only the immediately previous `Depot.exe` in `Backup\Depot-<version>.exe`. Database, audit, business and preference data are not rolled back or replaced by update/repair. Repair reacquires the exact installed release. Normal uninstall removes application integration and binaries but preserves configuration and business data.
+
+See [Depot Manager](docs/DepotManager.md) for installation paths, credential protection, release validation, repair, uninstall, logging and Windows integration.
+
 ## Build and publish
 
 ```powershell
@@ -136,6 +146,7 @@ Track the path through the [Roadmap](docs/Roadmap.md) and [Release 1.0 plan](doc
 - [Documentation Status](docs/DocumentationStatus.md)
 - [User-Facing Changes](docs/UserFacingChanges.md)
 - [Help Center](docs/HelpCenter.md)
+- [Depot Manager](docs/DepotManager.md)
 - [Roadmap](docs/Roadmap.md)
 - [Release 1.0](docs/Release1.0.md)
 
