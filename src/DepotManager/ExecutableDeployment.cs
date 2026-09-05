@@ -27,4 +27,23 @@ public static class ExecutableDeployment
 			throw;
 		}
 	}
+
+	public static void InstallManagerCopy(string sourceManagerPath, string installedManagerPath)
+	{
+		ArgumentException.ThrowIfNullOrWhiteSpace(sourceManagerPath);
+		ArgumentException.ThrowIfNullOrWhiteSpace(installedManagerPath);
+
+		var source = Path.GetFullPath(sourceManagerPath);
+		var target = Path.GetFullPath(installedManagerPath);
+		if (string.Equals(source, target, StringComparison.OrdinalIgnoreCase)) return;
+		if (!File.Exists(source)) throw new FileNotFoundException("The running Depot Manager executable could not be found.", source);
+
+		var targetDirectory = Path.GetDirectoryName(target)
+			?? throw new InvalidOperationException("The Depot Manager installation directory is invalid.");
+		Directory.CreateDirectory(targetDirectory);
+		Replace(source, target);
+
+		if (!File.Exists(target))
+			throw new IOException("Depot Manager could not be copied into the Depot installation directory.");
+	}
 }

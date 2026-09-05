@@ -114,6 +114,46 @@ public sealed class DepotManagerTests
 		finally { Directory.Delete(root, true); }
 	}
 
+	[Fact]
+	public void InstallManagerCopy_MakesInstalledManagerIndependentFromDownloadLocation()
+	{
+		var root = CreateTempDirectory();
+		try
+		{
+			var downloadDirectory = Path.Combine(root, "Downloads");
+			var installDirectory = Path.Combine(root, "Depot");
+			Directory.CreateDirectory(downloadDirectory);
+			var downloadedManager = Path.Combine(downloadDirectory, "DepotManager.exe");
+			var installedManager = Path.Combine(installDirectory, "DepotManager.exe");
+			File.WriteAllText(downloadedManager, "manager-binary");
+
+			ExecutableDeployment.InstallManagerCopy(downloadedManager, installedManager);
+			File.Delete(downloadedManager);
+
+			Assert.False(File.Exists(downloadedManager));
+			Assert.Equal("manager-binary", File.ReadAllText(installedManager));
+			Assert.False(File.Exists(installedManager + ".new"));
+		}
+		finally { Directory.Delete(root, true); }
+	}
+
+	[Fact]
+	public void InstallManagerCopy_WhenAlreadyInstalled_DoesNotRewriteRunningPath()
+	{
+		var root = CreateTempDirectory();
+		try
+		{
+			var installedManager = Path.Combine(root, "DepotManager.exe");
+			File.WriteAllText(installedManager, "manager-binary");
+
+			ExecutableDeployment.InstallManagerCopy(installedManager, installedManager);
+
+			Assert.Equal("manager-binary", File.ReadAllText(installedManager));
+			Assert.False(File.Exists(installedManager + ".new"));
+		}
+		finally { Directory.Delete(root, true); }
+	}
+
 	private static string CreateTempDirectory()
 	{
 		var path = Path.Combine(Path.GetTempPath(), "DepotManagerTests", Guid.NewGuid().ToString("N"));

@@ -152,11 +152,15 @@ public sealed class InstallationService(string installDirectory, Action<string> 
 	public void CopyManagerToInstallLocation()
 	{
 		var source = Environment.ProcessPath ?? throw new InvalidOperationException("Manager executable path is unavailable.");
-		if (!string.Equals(Path.GetFullPath(source), ManagerPath, StringComparison.OrdinalIgnoreCase)) File.Copy(source, ManagerPath, true);
+		ExecutableDeployment.InstallManagerCopy(source, ManagerPath);
+		log($"Depot Manager installed at {ManagerPath}. The original download location is no longer required.");
 	}
 
 	public void RegisterInstalledApp(Version version)
 	{
+		if (!File.Exists(ManagerPath))
+			throw new InvalidOperationException("Depot Manager must be installed in the Depot application directory before Windows integration is registered.");
+
 		using var key = Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\Depot");
 		key.SetValue("DisplayName", "Depot");
 		key.SetValue("DisplayVersion", VersionRules.VersionText(version));
