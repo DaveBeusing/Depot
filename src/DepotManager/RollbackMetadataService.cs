@@ -13,7 +13,7 @@ public sealed record RollbackCandidate(
 
 public static class RollbackMetadataService
 {
-    private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
+    private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true, PropertyNameCaseInsensitive = true };
 
     public static string Write(string backupDirectory, Version version, int supportedSchemaVersion)
     {
@@ -34,8 +34,11 @@ public static class RollbackMetadataService
     public static RollbackCandidate? Read(string backupDirectory)
     {
         if (!Directory.Exists(backupDirectory)) return null;
-        var executable = Directory.EnumerateFiles(backupDirectory, "Depot-*.exe").SingleOrDefault();
-        if (executable is null) return null;
+        var executables = Directory.EnumerateFiles(backupDirectory, "Depot-*.exe").ToArray();
+        if (executables.Length == 0) return null;
+        if (executables.Length != 1)
+            return Invalid(executables[0], new Version(0, 0), "Rollback is disabled because more than one executable backup exists.");
+        var executable = executables[0];
 
         try
         {
@@ -65,7 +68,7 @@ public static class RollbackMetadataService
     {
         ArgumentNullException.ThrowIfNull(candidate);
         if (!candidate.IsValid) throw new InvalidOperationException(candidate.Message);
-        if (currentSchemaVersion != candidate.SupportedSchemaVersion)
+        if (!RollbackCompatibility.IsCompatible(currentSchemaVersion, candidate.SupportedSchemaVersion))
             throw new InvalidOperationException(
                 $"Rollback unavailable because database schema {currentSchemaVersion} does not match schema {candidate.SupportedSchemaVersion} supported by Depot {VersionRules.VersionText(candidate.Version)}.");
     }

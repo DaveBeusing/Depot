@@ -4,10 +4,11 @@
         xmlns:controls="clr-namespace:Depot.Controls"
         Title="Depot Manager"
         Icon="Resources/Images/Depot.ico"
-        Width="900" Height="720" MinWidth="820" MinHeight="650"
+        Width="960" Height="760" MinWidth="860" MinHeight="680"
         Background="{DynamicResource BackgroundBrush}"
         Foreground="{DynamicResource PrimaryTextBrush}"
-        WindowStartupLocation="CenterScreen">
+        WindowStartupLocation="CenterScreen"
+        Loaded="HardeningWindow_Loaded">
   <Grid>
     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
 
@@ -16,10 +17,10 @@
         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
         <StackPanel>
           <TextBlock Text="Depot Manager" FontSize="28" FontWeight="SemiBold"/>
-          <TextBlock Text="Install and maintain Depot" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,4,0,0"/>
+          <TextBlock Text="Install, maintain and recover Depot" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,4,0,0"/>
         </StackPanel>
-        <Border x:Name="StatusBadge" Grid.Column="1" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="12,8" VerticalAlignment="Center">
-          <TextBlock x:Name="StatusText" Text="Checking installation…"/>
+        <Border x:Name="StatusBadge" Grid.Column="1" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="12,8" VerticalAlignment="Center" MaxWidth="420">
+          <TextBlock x:Name="StatusText" Text="Checking installation…" TextWrapping="Wrap"/>
         </Border>
       </Grid>
     </Border>
@@ -45,10 +46,14 @@
               <TextBlock Text="Choose where Depot should be installed" FontSize="22" FontWeight="SemiBold"/>
               <TextBlock Text="Depot is installed per user and does not require a separate runtime installation." Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,6,0,18" TextWrapping="Wrap"/>
               <TextBlock Text="Install location" Style="{StaticResource ManagerLabelStyle}"/>
-              <TextBox x:Name="InstallPathBox" Style="{StaticResource AppTextBoxStyle}"/>
+              <Grid>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                <TextBox x:Name="InstallPathBox" Style="{StaticResource AppTextBoxStyle}"/>
+                <Button Grid.Column="1" Content="Browse…" Style="{StaticResource SecondaryButtonStyle}" Margin="8,0,0,0" Click="BrowseInstallLocation_Click"/>
+              </Grid>
               <CheckBox x:Name="CreateDesktopShortcutBox" Content="Create desktop shortcut" Margin="0,14,0,0"/>
               <ProgressBar x:Name="Progress" Style="{StaticResource ManagerProgressBarStyle}" Height="6" Margin="0,18,0,0" Minimum="0" Maximum="100"/>
-              <Button Content="Install" Style="{StaticResource PrimaryButtonStyle}" HorizontalAlignment="Right" Margin="0,24,0,0" Click="Install_Click"/>
+              <Button Content="Install" Style="{StaticResource PrimaryButtonStyle}" HorizontalAlignment="Right" Margin="0,24,0,0" Click="InstallHardening_Click"/>
             </StackPanel>
           </Border>
 
@@ -100,7 +105,11 @@
 
                 <StackPanel x:Name="LocalDatabasePanel">
                   <TextBlock Text="Local database file" Style="{StaticResource ManagerLabelStyle}"/>
-                  <TextBox x:Name="SqlitePathBox" Style="{StaticResource AppTextBoxStyle}" TextChanged="ConnectionInput_Changed"/>
+                  <Grid>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                    <TextBox x:Name="SqlitePathBox" Style="{StaticResource AppTextBoxStyle}" TextChanged="ConnectionInput_Changed"/>
+                    <Button Grid.Column="1" Content="Browse…" Style="{StaticResource SecondaryButtonStyle}" Margin="8,0,0,0" Click="BrowseSqlitePath_Click"/>
+                  </Grid>
                 </StackPanel>
 
                 <StackPanel x:Name="RemoteDatabasePanel" Visibility="Collapsed">
@@ -171,23 +180,72 @@
       </Grid>
 
       <Border x:Name="MaintenancePanel" Visibility="Collapsed" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="8" Padding="28">
-        <StackPanel>
-          <TextBlock Text="Depot maintenance" FontSize="22" FontWeight="SemiBold"/>
-          <TextBlock Text="The installed Depot version can be started, updated, repaired or removed." Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,6,0,22"/>
-          <WrapPanel>
-            <Button Content="Start Depot" Style="{StaticResource PrimaryButtonStyle}" Margin="0,0,10,10" Click="Start_Click"/>
-            <Button Content="Update" Style="{StaticResource ManagerSuccessButtonStyle}" Margin="0,0,10,10" Click="Update_Click"/>
-            <Button Content="Repair" Style="{StaticResource ManagerWarningButtonStyle}" Margin="0,0,10,10" Click="Repair_Click"/>
-            <Button Content="Uninstall" Style="{StaticResource DangerButtonStyle}" Margin="0,0,10,10" Click="Uninstall_Click"/>
-          </WrapPanel>
-          <TextBlock Text="Installation location" Style="{StaticResource ManagerLabelStyle}"/>
-          <TextBox x:Name="MaintenancePathBox" IsReadOnly="True" Style="{StaticResource AppTextBoxStyle}"/>
-        </StackPanel>
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel>
+            <Grid>
+              <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+              <StackPanel>
+                <TextBlock Text="Depot maintenance" FontSize="22" FontWeight="SemiBold"/>
+                <TextBlock Text="Update, repair, recover and diagnose this Depot installation." Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,6,0,0"/>
+              </StackPanel>
+              <Button Grid.Column="1" Content="Refresh" Style="{StaticResource SecondaryButtonStyle}" Click="RefreshMaintenance_Click"/>
+            </Grid>
+
+            <Border Background="{DynamicResource NavigationBackgroundBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="16" Margin="0,20,0,16">
+              <Grid>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="160"/><ColumnDefinition Width="*"/><ColumnDefinition Width="160"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                <TextBlock Text="Installed Depot" Foreground="{DynamicResource SecondaryTextBrush}"/>
+                <TextBlock x:Name="InstalledDepotVersionText" Grid.Column="1" FontWeight="SemiBold"/>
+                <TextBlock Grid.Column="2" Text="Available Depot" Foreground="{DynamicResource SecondaryTextBrush}"/>
+                <TextBlock x:Name="AvailableDepotVersionText" Grid.Column="3" FontWeight="SemiBold"/>
+
+                <TextBlock Grid.Row="1" Text="Installed Manager" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,8,0,0"/>
+                <TextBlock x:Name="InstalledManagerVersionText" Grid.Row="1" Grid.Column="1" FontWeight="SemiBold" Margin="0,8,0,0"/>
+                <TextBlock Grid.Row="1" Grid.Column="2" Text="Available Manager" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,8,0,0"/>
+                <TextBlock x:Name="AvailableManagerVersionText" Grid.Row="1" Grid.Column="3" FontWeight="SemiBold" Margin="0,8,0,0"/>
+
+                <TextBlock Grid.Row="2" Text="Database schema" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,8,0,0"/>
+                <TextBlock x:Name="DatabaseSchemaText" Grid.Row="2" Grid.Column="1" FontWeight="SemiBold" Margin="0,8,0,0"/>
+                <TextBlock Grid.Row="2" Grid.Column="2" Text="Health" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,8,0,0"/>
+                <TextBlock x:Name="InstallationHealthText" Grid.Row="2" Grid.Column="3" Margin="0,8,0,0" TextWrapping="Wrap"/>
+              </Grid>
+            </Border>
+
+            <TextBlock x:Name="ReleaseInfoText" Foreground="{DynamicResource SecondaryTextBrush}" TextWrapping="Wrap" Margin="0,0,0,12"/>
+            <TextBlock x:Name="RollbackInfoText" Foreground="{DynamicResource SecondaryTextBrush}" TextWrapping="Wrap" Margin="0,0,0,14"/>
+
+            <WrapPanel>
+              <Button x:Name="StartDepotButton" Content="Start Depot" Style="{StaticResource PrimaryButtonStyle}" Margin="0,0,10,10" Click="Start_Click"/>
+              <Button x:Name="UpdateHardeningButton" Content="Update" Style="{StaticResource ManagerSuccessButtonStyle}" Margin="0,0,10,10" Click="UpdateHardening_Click"/>
+              <Button x:Name="ManagerUpdateButton" Content="Update Manager" Style="{StaticResource ManagerSuccessButtonStyle}" Margin="0,0,10,10" Click="UpdateManager_Click"/>
+              <Button x:Name="RepairHardeningButton" Content="Repair" Style="{StaticResource ManagerWarningButtonStyle}" Margin="0,0,10,10" Click="RepairHardening_Click"/>
+              <Button x:Name="RollbackButton" Content="Rollback" Style="{StaticResource ManagerWarningButtonStyle}" Margin="0,0,10,10" Click="Rollback_Click"/>
+              <Button Content="Uninstall" Style="{StaticResource DangerButtonStyle}" Margin="0,0,10,10" Click="Uninstall_Click"/>
+            </WrapPanel>
+
+            <TextBlock Text="Installation location" Style="{StaticResource ManagerLabelStyle}" Margin="0,8,0,0"/>
+            <TextBox x:Name="MaintenancePathBox" IsReadOnly="True" Style="{StaticResource AppTextBoxStyle}"/>
+
+            <Separator Margin="0,20,0,16" Background="{DynamicResource BorderBrush}"/>
+            <TextBlock Text="Diagnostics &amp; support" FontSize="16" FontWeight="SemiBold"/>
+            <TextBlock Text="Support information is generated without passwords, tokens or complete connection strings." Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,4,0,12" TextWrapping="Wrap"/>
+            <WrapPanel>
+              <Button Content="Open log folder" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,10,10" Click="OpenLogs_Click"/>
+              <Button Content="Copy diagnostics" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,10,10" Click="CopyDiagnostics_Click"/>
+              <Button Content="Create support package" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,10,10" Click="CreateSupportPackage_Click"/>
+            </WrapPanel>
+          </StackPanel>
+        </ScrollViewer>
       </Border>
     </Grid>
 
     <Border Grid.Row="2" Background="{DynamicResource NavigationBackgroundBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0" Padding="28,12">
-      <TextBlock x:Name="DetailText" Foreground="{DynamicResource SecondaryTextBrush}" TextWrapping="Wrap"/>
+      <Grid>
+        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+        <TextBlock x:Name="DetailText" Foreground="{DynamicResource SecondaryTextBrush}" TextWrapping="Wrap"/>
+        <TextBlock x:Name="ManagerVersionText" Grid.Column="1" Foreground="{DynamicResource SecondaryTextBrush}" Margin="20,0,0,0"/>
+      </Grid>
     </Border>
   </Grid>
 </Window>

@@ -108,16 +108,26 @@ jobs:
         run: |
           $version = '${{ github.ref_name }}'.TrimStart('v')
           if ([string]::IsNullOrWhiteSpace($version) -or $version -eq '${{ github.ref_name }}' -and '${{ github.event_name }}' -eq 'pull_request') {
-            $version = (Get-Content Directory.Build.props | Select-String '<VersionPrefix>').Line -replace '.*<VersionPrefix>|</VersionPrefix>.*',''
-            if ($version -like '*$(*') { $version = 'ci' }
+            [xml]$depotVersionProps = Get-Content Directory.Build.props
+            $depotProperties = $depotVersionProps.Project.PropertyGroup
+            $version = "$($depotProperties.DepotVersionMajor).$($depotProperties.DepotVersionMinor).$($depotProperties.DepotVersionPatch)"
           }
           [xml]$managerVersionProps = Get-Content src/DepotManager/DepotManager.Version.props
           $properties = $managerVersionProps.Project.PropertyGroup
           $managerVersion = "$($properties.DepotManagerVersionMajor).$($properties.DepotManagerVersionMinor).$($properties.DepotManagerVersionPatch)"
+          $schemaMatch = Select-String -Path src/Depot/Data/DatabaseVersion.cs -Pattern 'CurrentVersion\s*=\s*(\d+)' | Select-Object -First 1
+          if ($null -eq $schemaMatch -or $schemaMatch.Matches.Count -eq 0) { throw 'DatabaseVersion.CurrentVersion could not be determined for release metadata.' }
+          $schemaVersion = [int]$schemaMatch.Matches[0].Groups[1].Value
           New-Item -ItemType Directory -Force artifacts/release/assets | Out-Null
           Copy-Item artifacts/release/depot/Depot.exe "artifacts/release/assets/Depot-$version.exe"
           Copy-Item artifacts/release/manager/DepotManager.exe artifacts/release/assets/DepotManager.exe
           Copy-Item artifacts/release/manager/DepotManager.exe "artifacts/release/assets/DepotManager-$managerVersion.exe"
+          [ordered]@{
+            depotVersion = $version
+            depotManagerVersion = $managerVersion
+            databaseSchemaVersion = $schemaVersion
+            managerCommandProtocol = 1
+          } | ConvertTo-Json | Out-File "artifacts/release/assets/Depot-$version.manifest.json" -Encoding utf8
 
       - name: Create integrity manifest
         shell: pwsh

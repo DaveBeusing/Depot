@@ -25,6 +25,13 @@
 		<Compile Include="..\..\src\DepotManager\LocalDataDeletion.cs" Link="DepotManager\LocalDataDeletion.cs" />
 		<Compile Include="..\..\src\DepotManager\InstalledSettingsInspector.cs" Link="DepotManager\InstalledSettingsInspector.cs" />
 		<Compile Include="..\..\src\DepotManager\ManagerDatabaseConnectionValidator.cs" Link="DepotManager\ManagerDatabaseConnectionValidator.cs" />
+		<Compile Include="..\..\src\DepotManager\InstallationHealthState.cs" Link="DepotManager\InstallationHealthState.cs" />
+		<Compile Include="..\..\src\DepotManager\InstallationState.cs" Link="DepotManager\InstallationState.cs" />
+		<Compile Include="..\..\src\DepotManager\ManagerReleaseClient.cs" Link="DepotManager\ManagerReleaseClient.cs" />
+		<Compile Include="..\..\src\DepotManager\RollbackCompatibility.cs" Link="DepotManager\RollbackCompatibility.cs" />
+		<Compile Include="..\..\src\DepotManager\ManagerDiagnosticsService.cs" Link="DepotManager\ManagerDiagnosticsService.cs" />
+		<Compile Include="..\..\src\DepotManager\MigrationSafetyService.cs" Link="DepotManager\MigrationSafetyService.cs" />
+		<Compile Include="..\..\src\DepotManager\DatabaseSchemaInspector.cs" Link="DepotManager\DatabaseSchemaInspector.cs" />
 		<None Include="Fixtures\ElectronicInvoice\**\*" CopyToOutputDirectory="PreserveNewest" />
 	</ItemGroup>
 </Project>
