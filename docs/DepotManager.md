@@ -1,78 +1,170 @@
 # Depot Manager
 
-`DepotManager.exe` is Depot's Windows installation, update, repair, uninstall, and first-configuration application. `Depot.exe` remains the normal ERP runtime.
+`DepotManager.exe` is Depot's Windows installation, update, repair, recovery, diagnostics, uninstall, and first-configuration application. `Depot.exe` remains the normal ERP runtime.
 
 ## Versioning
 
-Depot Manager is versioned independently from the Depot application. Its version is defined in `src/DepotManager/DepotManager.Version.props` through `DepotManagerVersionMajor`, `DepotManagerVersionMinor`, and `DepotManagerVersionPatch` and is applied to the manager's package, assembly, and file metadata.
+Depot Manager is versioned independently from Depot through `src/DepotManager/DepotManager.Version.props`. Manager-only changes increment only `DepotManagerVersion*`. Depot changes increment `DepotVersion*` in `Directory.Build.props`. `DatabaseVersion.CurrentVersion` changes only when the database schema actually changes.
 
-A change that affects only Depot Manager increments only `DepotManagerVersion*`. It must not increment `DepotVersionMajor`, `DepotVersionMinor`, or `DepotVersionPatch` in `Directory.Build.props`. The Depot application version changes only when the Depot application itself changes. Database schema version changes remain tied exclusively to actual schema changes.
-
-Release-integrity CI validates that the produced `DepotManager.exe` file version matches the manager version file and stages a versioned `DepotManager-<manager-version>.exe` asset in addition to the stable `DepotManager.exe` distribution name.
-
-## Installable Depot releases
-
-Depot Manager never treats the current source-tree version of Depot as an installable release. `Directory.Build.props`, the current branch, commits, pull requests, and other in-development versions are not installation sources.
-
-Installable Depot versions are discovered exclusively from published GitHub Releases in `DaveBeusing/Depot`. A release is eligible only when it is not a draft, is not marked as a prerelease, has a valid semantic release tag, and contains the exact `Depot-<version>.exe` asset. The asset is then validated before deployment. If a version exists only in source control and has not been published as such a GitHub Release, Depot Manager must not offer or install it.
+The running manager version is shown permanently in the footer. Maintenance mode distinguishes the installed Depot version, latest published Depot version, installed manager version, latest published manager version, and database schema version.
 
 ## Installation model
 
-The default per-user installation location is `%LOCALAPPDATA%\Programs\Depot`. Application data is kept separate: new SQLite installations default to `%LOCALAPPDATA%\Depot\Data\depot.db`. Existing installations may continue to use their current database and location; the manager does not move databases or business data.
+The default per-user install location is `%LOCALAPPDATA%\Programs\Depot`. The installed directory contains at least:
 
-The installed application directory contains `Depot.exe`, `DepotManager.exe`, and `Backup\`. Depot's existing `depot.settings` configuration remains authoritative so existing installations are not silently migrated to a second configuration mechanism.
+```text
+Depot.exe
+DepotManager.exe
+Backup\
+```
+
+The canonical manager copy in the Depot directory is used by Windows Installed Apps, Modify, and Uninstall. Application data remains separate. New SQLite installations default to `%LOCALAPPDATA%\Depot\Data\depot.db`; existing custom paths remain authoritative. Native Browse dialogs are available for the install directory and local database path.
 
 ## First installation
 
-1. Discover the latest eligible published GitHub Release, choose the installation location, optionally select `Create desktop shortcut`, and install the exact `Depot-<version>.exe` asset. The Start menu shortcut is always created; the desktop shortcut is created only when selected during the first installation.
-2. Choose one database type from the three manager cards: `Lokal (sqlite3)`, `Remote (MySQL/MariaDB)`, or `Remote (SQL)`. Selecting a card immediately advances to connection configuration.
-3. Enter the connection details and run `Validate`. Connection validation is executed completely inside `DepotManager.exe`; Depot is not launched for this step. The manager opens the selected SQLite, MySQL/MariaDB, or SQL Server connection itself, executes a lightweight `SELECT 1` validation, and always shows an inline success or failure result. Changing any validated connection value invalidates that result and requires another validation.
-4. For `Lokal (sqlite3)`, enter the initial administrator details in Depot Manager. Remote databases skip this step and must already contain a valid Depot administrator.
-5. Review the resulting configuration. Only the final `Continue` action provisions/saves the database configuration, closes Depot Manager, and starts Depot. If provisioning or administrator validation fails, Depot is not started and Depot Manager remains open.
+1. Discover the latest eligible stable GitHub Release and validate its exact `Depot-<version>.exe` asset.
+2. Select `Lokal (sqlite3)`, `Remote (MySQL/MariaDB)`, or `Remote (SQL)`.
+3. Configure the database and run `Validate`. Validation runs inside Depot Manager without opening the normal Depot UI.
+4. Local SQLite installations create the initial administrator in the manager. Remote databases must already contain a valid Depot administrator.
+5. `Continue` performs controlled provisioning and starts Depot only after the complete configuration succeeds.
 
-For SQLite the manager creates the selected parent directory if necessary and verifies that it is writable before validating the database connection. SQL Server and MySQL/MariaDB fields follow the authentication and TLS capabilities currently supported by Depot. SQL Server Windows Authentication is not exposed because the current Depot settings model supports SQL credentials rather than integrated authentication. No provider-specific schema copy exists in Depot Manager.
+Passwords are not written to manager logs or plaintext request files. Persistent settings remain protected by Depot's DPAPI `SettingsRepository`.
 
-Connection validation credentials remain in the Depot Manager process and are not sent to `Depot.exe`. Only the final provisioning operation uses Depot's controlled manager command path; database and administrator credentials for that operation are sent over redirected standard input. They are never written to the manager log or a plaintext request file. Persistent database settings are saved only by Depot's existing `SettingsRepository`, which protects the settings payload with Windows DPAPI for the current user.
+## Installation health states
 
-## UI consistency
+Installation state is determined centrally rather than from a single file check. The manager distinguishes:
 
-Depot Manager uses the same Depot application icon, dark Windows title-bar handling, shared color/spacing/button resources, and the actual Depot `Inputs.xaml` resource dictionary. The manager compiles the same shared `TextInput`, `PasswordInput`, and `SearchBox` control sources needed by that dictionary, so its text and password inputs use the same templates and interaction states as Depot without introducing a runtime dependency on `Depot.exe`.
+```text
+NotInstalled
+InstallationIncomplete
+InstalledHealthy
+RepairRecommended
+InstallationDamaged
+ProvisioningIncomplete
+ConfigurationDamaged
+DatabaseUnavailable
+DatabaseMigrationRequired
+RecoveryRequired
+```
 
-## Updates and repair
+Inspection covers Depot and manager executables, protected settings, database connectivity, database schema, Windows uninstall registration, Start Menu integration, and the persisted Desktop shortcut preference. Database outages remain distinct from damaged application files.
 
-Depot Manager reads published GitHub releases, validates semantic release tags and the exact `Depot-<version>.exe` asset name, checks HTTP success and file length, validates the Windows PE executable structure, and verifies the GitHub-provided SHA-256 digest when present. The downloaded executable version is checked before any installed executable is replaced.
+## Published update information
 
-Update compares the installed executable's product/file version with the latest eligible stable GitHub Release. Repair deliberately resolves the exact currently installed release and obtains that same published version again; repair therefore cannot silently turn into an update.
+Depot and manager updates are discovered only from published, non-draft, non-prerelease GitHub Releases with semantic Depot release tags. Source-tree versions, branches, pull requests, and `Directory.Build.props` are never installable versions.
 
-Before update or repair Depot must be closed normally. The manager does not kill the application by default. The current executable is copied to `Backup\Depot-<previous-version>.exe`; file-version revision metadata such as `.0` is not added to the release-style backup name. Older executable backups are removed so only one backup is retained. Business data, database content, audit history, and user preferences are not included in executable backup or rollback behavior.
+Depot release metadata is carried by:
 
-Repair replaces the application binary without resetting configuration or data. The backup executable is a recovery artifact only; schema downgrade and automatic database rollback are deliberately unsupported. Update and repair do not add, remove, or otherwise change an existing desktop shortcut.
+```text
+Depot-<version>.manifest.json
+```
+
+The manifest declares the target database schema and manager command protocol. A migration-sensitive update fails closed when compatibility cannot be proven.
+
+## Download and signature validation
+
+Manager self-update assets use the exact name:
+
+```text
+DepotManager-<manager-version>.exe
+```
+
+Before a manager update can execute, Depot Manager validates HTTPS transport, published asset size, the Windows PE structure, the published file version, the GitHub SHA-256 digest when supplied, and the Windows Authenticode trust chain through `WinVerifyTrust`. An unsigned, tampered, expired/untrusted, or otherwise invalidly signed manager executable is rejected before it can become the update helper.
+
+The release workflow signs tagged Depot and Depot Manager executables before release assets are staged. No certificate identity is invented or hard-coded in the client; Windows Authenticode trust is the signature authority while GitHub release metadata and SHA-256 provide independent artifact-integrity checks.
+
+## Depot Manager self-update
+
+A running manager is never overwritten in place. The new manager is staged beside the canonical executable as `DepotManager.update.exe`, so Windows can execute the helper normally. The helper waits for the original process to exit, preserves the prior manager as `DepotManager.previous.exe`, validates its own signed executable again, and atomically replaces the canonical manager.
+
+The replacement is not considered successful merely because `Process.Start` succeeds. The canonical updated manager is launched with a scoped one-time readiness marker. Only after the WPF `MainWindow` has reached its Loaded state does the new manager acknowledge startup. The helper waits for that acknowledgement and a short post-start stability interval. If startup is not acknowledged, or the new manager exits immediately, the helper terminates the failed process, restores the previous manager executable, and attempts to relaunch it. Previous/helper artifacts are deleted only after a verified successful startup; delayed Windows deletion is used only as a cleanup fallback.
+
+Self-update command-line paths are constrained to the expected canonical manager directory and generated marker naming convention so the maintenance bootstrap cannot be repurposed to delete arbitrary files.
+
+## Cancellable operations and critical sections
+
+Long-running manager work exposes a visible `Cancel` action in the footer while the installation/maintenance panels are busy. Cancellation propagates through the existing operation `CancellationTokenSource`; after cancellation or a normal failure the controls are re-enabled so the user can retry.
+
+Database migration and the post-replacement compatibility check are intentionally a non-cancellable critical section. Immediately before executable replacement the manager checks for a pending cancellation request, then disables cancellation and completes replacement, migration, health validation, and recovery deterministically. This prevents user cancellation from leaving the application binary and database schema at different compatibility levels.
+
+## Depot update and migration safety
+
+Before updating Depot, the manager determines:
+
+```text
+Installed Depot version
+Target Depot version
+Current database schema
+Target database schema
+Migration required: yes/no
+```
+
+A target schema older than the current database is blocked.
+
+For SQLite, a required migration first creates a consistent snapshot beneath `Backups\Database`. The snapshot uses SQLite's backup API rather than copying only the main database file, so WAL state is included consistently. The backup is integrity-checked and retained after migration or health-check failures.
+
+For SQL Server and MySQL/MariaDB, Depot Manager does not assume server backup privileges. A schema-changing update requires explicit confirmation that a current server-side backup exists. Declining the confirmation aborts the update. Remote databases are never deleted, restored, or downgraded automatically.
+
+Schema migration runs only through Depot's authoritative `DatabaseProvisioningService` and existing provider/migration pipeline. Depot Manager contains no duplicate schema implementation.
+
+## Post-update health check and automatic binary recovery
+
+Depot releases expose non-UI manager commands intercepted before WPF startup:
+
+```text
+--manager-migrate
+--manager-health-check
+```
+
+An update is not reported as successful until the health command validates protected settings, database connectivity, exact schema compatibility, and completed administrator bootstrap.
+
+If a failure occurs after the new Depot executable has been deployed, Depot Manager inspects the database again before attempting executable recovery. The previous executable is restored automatically only when the current database schema is known and exactly matches the schema recorded for that previous executable. If migration already advanced the schema, database connectivity is unavailable, or compatibility cannot be proven, the new binary is left in place and recovery is reported instead of risking an incompatible binary downgrade. Database schema downgrade is never automatic.
+
+## Repair
+
+Repair determines the intended installed version from a valid executable or Windows registration, downloads the exact stable release where possible, restores `Depot.exe`, ensures the canonical `DepotManager.exe` exists, repairs Windows Installed Apps registration, recreates the Start Menu shortcut, and recreates the Desktop shortcut when its persisted preference is enabled.
+
+Repair does not reset `depot.settings`, user accounts, or business data. After binary/Windows integration repair the installation is inspected again; unreadable settings, unavailable databases, incompatible schemas, and incomplete provisioning remain visible as separate health states.
+
+## Rollback
+
+Before an update replaces Depot, the previous executable is kept under `Backup\Depot-<version>.exe` with rollback metadata recording the schema it supported. Manual rollback is offered only when the executable is valid, its version matches the metadata, and the current database schema exactly matches the recorded schema. No database downgrade is performed.
+
+## Diagnostics and support
+
+Maintenance mode provides:
+
+```text
+Open log folder
+Copy diagnostics
+Create support package
+```
+
+Diagnostics include manager/Depot versions, available release versions, install directory, OS/process architecture, database provider, non-secret database target, current and target database schema, last successful backup timestamp when readable, release publication metadata, rollback availability, and installation health. Support packages contain `Diagnostics.json`, `InstallationState.txt`, and a limited set of sanitized logs.
+
+Log export redacts lines containing password, token, authorization, connection-string, username, e-mail, API-key, cookie, bearer, access-key, private-key, SAS, or similar credential markers. The support package never intentionally contains decrypted DPAPI secrets, administrator/database passwords, session tokens, or complete secret-bearing connection strings.
 
 ## Uninstall
 
-Uninstall offers three explicit outcomes: cancel, remove only the application while retaining local data, or remove the application together with all local Depot data. The full local-data option removes `depot.settings`, `%LOCALAPPDATA%\Depot` including logs and the default SQLite database, and a configured SQLite database stored outside that folder together with its SQLite `-wal`, `-shm`, and `-journal` sidecars.
+Uninstall offers cancel, application-only removal, or application plus all local Depot data. Full local removal deletes `depot.settings`, `%LOCALAPPDATA%\Depot`, the configured local SQLite database even when stored elsewhere, and its `-wal`, `-shm`, and `-journal` sidecars. Remote SQL Server and MySQL/MariaDB databases are never deleted.
 
-Remote MySQL/MariaDB and SQL Server databases are never deleted by Depot Manager. Application-only uninstall remains suitable when the local configuration or data should be retained for a later reinstall. Both the Start menu shortcut and a previously created desktop shortcut are removed during uninstall.
+## UI consistency
 
-## Windows integration
-
-Depot Manager registers Depot under the current user's Windows `Installed Apps`/Uninstall registry key with the installed version, install location, icon, and manager as the modify/uninstall entry point. A Start menu shortcut launches `Depot.exe`. During the initial installation the user may additionally request a desktop shortcut; it points to the same installed `Depot.exe`, uses the installation directory as working directory, and uses the Depot application icon. Multiple concurrent manager instances are blocked by a named Windows mutex.
-
-## Logging
-
-Manager operational logs are written beneath `%LOCALAPPDATA%\Depot\Logs\DepotManager.log`. Logs contain the manager version, source/target Depot versions, selected provider, non-sensitive database target information, download/validation status, deployment/provisioning results, and actionable failures. Passwords, usernames, and complete connection strings are never logged.
+Depot Manager uses the Depot icon, dark title bar, shared colors, typography, spacing, button resources, and the actual Depot `Inputs.xaml` dictionary. Text/password controls therefore share Depot templates and interaction behavior. Status and operation states use the existing semantic brushes and button styles.
 
 ## Release assets
 
-Depot retains the existing single-file release convention:
+Release-integrity CI produces:
 
 ```text
-Tag:   <version>
-Asset: Depot-<version>.exe
+Depot-<depot-version>.exe
+Depot-<depot-version>.manifest.json
+DepotManager.exe
+DepotManager-<manager-version>.exe
 ```
 
-Depot Manager is built as a self-contained, untrimmed `win-x64` single-file executable. Release-integrity CI emits both `DepotManager.exe` as the stable distribution filename and `DepotManager-<manager-version>.exe` as the version-explicit artifact. The manager version is not derived from the Depot release tag.
+The manifest records Depot version, independently versioned manager version, database schema version, and manager command protocol. Tagged release executables remain Authenticode-signed and SHA-256 integrity evidence is generated by CI.
 
-## Schema version
+## Schema authority
 
-This implementation introduces no database schema changes. `DatabaseVersion.CurrentVersion` therefore remains unchanged. Depot's existing database initializers and migrations remain the only schema authority.
+This hardening work introduces no database schema change. `DatabaseVersion.CurrentVersion` remains the core schema authority, and Depot's existing initializers/migrations remain the only code allowed to advance it.
