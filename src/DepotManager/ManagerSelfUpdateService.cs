@@ -159,12 +159,14 @@ public static class ManagerSelfUpdateBootstrap
         {
             StopProcess(updatedProcess);
             DeleteWithFallback(markerPath);
+            var recovered = false;
             if (hadPrevious && File.Exists(previousPath))
             {
                 ExecutableDeployment.Replace(previousPath, targetPath);
-                TryStartRecoveredManager(targetPath, targetDirectory);
+                recovered = TryStartRecoveredManager(targetPath, targetDirectory);
             }
             MoveFileEx(helperPath, null, MoveFileDelayUntilReboot);
+            if (recovered) return;
             throw;
         }
         finally
@@ -230,19 +232,20 @@ public static class ManagerSelfUpdateBootstrap
         catch (System.ComponentModel.Win32Exception) { }
     }
 
-    private static void TryStartRecoveredManager(string targetPath, string targetDirectory)
+    private static bool TryStartRecoveredManager(string targetPath, string targetDirectory)
     {
         try
         {
-            Process.Start(new ProcessStartInfo(targetPath)
+            return Process.Start(new ProcessStartInfo(targetPath)
             {
                 UseShellExecute = true,
                 WorkingDirectory = targetDirectory
-            });
+            }) is not null;
         }
         catch
         {
             // Preserve the restored executable for a manual restart or repair.
+            return false;
         }
     }
 
