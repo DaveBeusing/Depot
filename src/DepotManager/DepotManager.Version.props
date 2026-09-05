@@ -1,0 +1,15 @@
+<Project>
+  <PropertyGroup>
+    <DepotManagerVersionMajor>0</DepotManagerVersionMajor>
+    <DepotManagerVersionMinor>1</DepotManagerVersionMinor>
+    <DepotManagerVersionPatch>16</DepotManagerVersionPatch>
+    <DepotManagerVersionBuild Condition="'$(DepotManagerVersionBuild)' == ''">0</DepotManagerVersionBuild>
+    <DepotManagerVersionSuffix Condition="'$(DepotManagerVersionSuffix)' == ''">preview</DepotManagerVersionSuffix>
+    <DepotManagerVersionPrefix>$(DepotManagerVersionMajor).$(DepotManagerVersionMinor).$(DepotManagerVersionPatch)</DepotManagerVersionPrefix>
+    <VersionPrefix>$(DepotManagerVersionPrefix)</VersionPrefix>
+    <VersionSuffix Condition="'$(DepotManagerStableRelease)' != 'true'">$(DepotManagerVersionSuffix)</VersionSuffix>
+    <AssemblyVersion>$(DepotManagerVersionMajor).$(DepotManagerVersionMinor).0.0</AssemblyVersion>
+    <FileVersion>$(DepotManagerVersionMajor).$(DepotManagerVersionMinor).$(DepotManagerVersionPatch).$(DepotManagerVersionBuild)</FileVersion>
+    <Product>Depot Manager</Product>
+  </PropertyGroup>
+</Project>
