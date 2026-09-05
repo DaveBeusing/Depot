@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+
 using Depot.Models;
 using DepotManager;
 using Microsoft.Data.Sqlite;
@@ -37,9 +39,42 @@ public sealed class DepotManagerHardeningTests
     [Fact]
     public void ManagerUpdateComparison_OnlyAcceptsNewerVersion()
     {
-        Assert.True(ManagerReleaseClient.IsUpdateAvailable(new Version(0, 1, 17, 0), new Version(0, 1, 18)));
-        Assert.False(ManagerReleaseClient.IsUpdateAvailable(new Version(0, 1, 18, 0), new Version(0, 1, 18)));
-        Assert.False(ManagerReleaseClient.IsUpdateAvailable(new Version(0, 1, 18, 0), new Version(0, 1, 17)));
+        Assert.True(ManagerReleaseClient.IsUpdateAvailable(new Version(0, 1, 20, 0), new Version(0, 1, 21)));
+        Assert.False(ManagerReleaseClient.IsUpdateAvailable(new Version(0, 1, 21, 0), new Version(0, 1, 21)));
+        Assert.False(ManagerReleaseClient.IsUpdateAvailable(new Version(0, 1, 21, 0), new Version(0, 1, 20)));
+    }
+
+    [Fact]
+    public void ManagerSelfUpdatePaths_UseExecutableHelperAndScopedMarker()
+    {
+        var root = CreateTempDirectory();
+        try
+        {
+            var manager = Path.Combine(root, "DepotManager.exe");
+            var staged = ManagerSelfUpdatePaths.GetStagedPath(manager);
+            var previous = ManagerSelfUpdatePaths.GetPreviousPath(manager);
+            var marker = ManagerSelfUpdatePaths.CreateReadyMarkerPath(manager);
+
+            Assert.EndsWith("DepotManager.update.exe", staged, StringComparison.OrdinalIgnoreCase);
+            Assert.EndsWith("DepotManager.previous.exe", previous, StringComparison.OrdinalIgnoreCase);
+            Assert.True(ManagerSelfUpdatePaths.IsExpectedStagedHelper(manager, staged));
+            Assert.True(ManagerSelfUpdatePaths.IsReadyMarkerForTarget(manager, marker));
+            Assert.False(ManagerSelfUpdatePaths.IsReadyMarkerForTarget(manager, Path.Combine(Path.GetTempPath(), "foreign.marker")));
+        }
+        finally
+        {
+            Directory.Delete(root, true);
+        }
+    }
+
+    [Fact]
+    public void UpdateRecovery_RequiresExactKnownSchemaMatch()
+    {
+        Assert.True(UpdateRecoveryRules.CanRestorePreviousExecutable(30, 30));
+        Assert.False(UpdateRecoveryRules.CanRestorePreviousExecutable(31, 30));
+        Assert.False(UpdateRecoveryRules.CanRestorePreviousExecutable(29, 30));
+        Assert.False(UpdateRecoveryRules.CanRestorePreviousExecutable(null, 30));
+        Assert.False(UpdateRecoveryRules.CanRestorePreviousExecutable(30, null));
     }
 
     [Fact]
@@ -53,12 +88,30 @@ public sealed class DepotManagerHardeningTests
     [Fact]
     public void DiagnosticsSanitizer_RemovesCredentialBearingLines()
     {
-        var input = "normal line\nPassword=secret\nUser ID=admin;Server=db\nnormal end\n";
+        var input = "normal line\nPassword=secret\nUser ID=admin;Server=db\nAuthorization: Bearer abc\napi-key=123\nnormal end\n";
         var sanitized = ManagerDiagnosticsService.SanitizeLog(input);
         Assert.Contains("normal line", sanitized, StringComparison.Ordinal);
         Assert.Contains("normal end", sanitized, StringComparison.Ordinal);
         Assert.DoesNotContain("secret", sanitized, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("admin", sanitized, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("Bearer abc", sanitized, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("api-key=123", sanitized, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void AuthenticodeVerifier_RejectsUnsignedFile()
+    {
+        var root = CreateTempDirectory();
+        try
+        {
+            var file = Path.Combine(root, "unsigned.exe");
+            File.WriteAllText(file, "not signed");
+            Assert.Throws<CryptographicException>(() => AuthenticodeVerifier.ValidateTrustedSignature(file));
+        }
+        finally
+        {
+            Directory.Delete(root, true);
+        }
     }
 
     [Fact]

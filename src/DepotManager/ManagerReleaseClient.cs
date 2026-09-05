@@ -27,6 +27,8 @@ public sealed partial class ManagerReleaseClient
         {
             if (release.GetProperty("draft").GetBoolean() || release.GetProperty("prerelease").GetBoolean()) continue;
             var tag = release.GetProperty("tag_name").GetString() ?? string.Empty;
+            if (!VersionRules.TryParseReleaseTag(tag, out _)) continue;
+
             foreach (var asset in release.GetProperty("assets").EnumerateArray())
             {
                 var name = asset.GetProperty("name").GetString() ?? string.Empty;
@@ -46,6 +48,12 @@ public sealed partial class ManagerReleaseClient
 
     public async Task DownloadAsync(ManagerReleaseInfo release, string destination, IProgress<int>? progress, CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(release);
+        ArgumentException.ThrowIfNullOrWhiteSpace(destination);
+        if (release.DownloadUri.Scheme != Uri.UriSchemeHttps)
+            throw new InvalidOperationException("Depot Manager updates require an HTTPS release asset URL.");
+        if (release.Size <= 0) throw new InvalidOperationException("The published Depot Manager asset size is invalid.");
+
         using var response = await _http.GetAsync(release.DownloadUri, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
         response.EnsureSuccessStatusCode();
         await using var source = await response.Content.ReadAsStreamAsync(cancellationToken);
@@ -65,9 +73,6 @@ public sealed partial class ManagerReleaseClient
         }
 
         PortableExecutableValidator.ValidateWindowsExecutable(destination);
-        var fileVersion = FileVersionInfo.GetVersionInfo(destination).FileVersion;
-        if (!Version.TryParse(fileVersion, out var actual) || VersionRules.ReleaseVersion(actual) != release.Version)
-            throw new InvalidOperationException("The downloaded Depot Manager file version does not match the published manager asset.");
         if (!string.IsNullOrWhiteSpace(release.Sha256))
         {
             await using var stream = File.OpenRead(destination);
@@ -75,6 +80,11 @@ public sealed partial class ManagerReleaseClient
             if (!hash.Equals(release.Sha256, StringComparison.OrdinalIgnoreCase))
                 throw new InvalidOperationException("The downloaded Depot Manager asset failed SHA-256 validation.");
         }
+
+        AuthenticodeVerifier.ValidateTrustedSignature(destination);
+        var fileVersion = FileVersionInfo.GetVersionInfo(destination).FileVersion;
+        if (!Version.TryParse(fileVersion, out var actual) || VersionRules.ReleaseVersion(actual) != release.Version)
+            throw new InvalidOperationException("The downloaded Depot Manager file version does not match the published manager asset.");
     }
 
     public static bool IsUpdateAvailable(Version runningVersion, Version availableVersion) =>
