@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.IO;
 using System.Runtime.InteropServices;
 
 namespace DepotManager;
@@ -24,7 +25,8 @@ public sealed class ManagerSelfUpdateService
             startInfo.ArgumentList.Add("--apply-manager-update");
             startInfo.ArgumentList.Add(target);
             startInfo.ArgumentList.Add(Environment.ProcessId.ToString(System.Globalization.CultureInfo.InvariantCulture));
-            Process.Start(startInfo) ?? throw new InvalidOperationException("The Depot Manager update helper could not be started.");
+            if (Process.Start(startInfo) is null)
+                throw new InvalidOperationException("The Depot Manager update helper could not be started.");
         }
         catch
         {
@@ -74,7 +76,8 @@ public static class ManagerSelfUpdateBootstrap
             startInfo.ArgumentList.Add(helperPath);
             startInfo.ArgumentList.Add(Environment.ProcessId.ToString(System.Globalization.CultureInfo.InvariantCulture));
             startInfo.ArgumentList.Add(previousPath);
-            Process.Start(startInfo) ?? throw new InvalidOperationException("The updated Depot Manager could not be started.");
+            if (Process.Start(startInfo) is null)
+                throw new InvalidOperationException("The updated Depot Manager could not be started.");
         }
         catch
         {

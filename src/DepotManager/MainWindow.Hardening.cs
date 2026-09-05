@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.IO;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Media;
@@ -72,23 +73,24 @@ public partial class MainWindow
         try
         {
             SetBusy(true);
+            var operationToken = _operation!.Token;
             var service = Installation;
             var installed = service.InstalledVersion ?? throw new InvalidOperationException("No existing Depot installation was found.");
             var releaseClient = new GitHubReleaseClient(_http);
-            var release = _latestDepotRelease ?? await releaseClient.GetLatestAsync(_operation!.Token);
+            var release = _latestDepotRelease ?? await releaseClient.GetLatestAsync(operationToken);
             if (!VersionRules.IsUpdate(installed, release.Version))
             {
                 Log("The installed Depot version is already current.");
                 return;
             }
 
-            var metadata = await new DepotReleaseMetadataClient(_http).GetAsync(release, _operation!.Token);
+            var metadata = await new DepotReleaseMetadataClient(_http).GetAsync(release, operationToken);
             if (metadata.ManagerCommandProtocol < 1)
                 throw new InvalidOperationException("The selected Depot release does not declare the required manager health-check protocol.");
 
             var settings = LoadInstalledSettings(service);
-            await new ManagerDatabaseConnectionValidator().ValidateAsync(settings, _operation.Token);
-            var currentSchema = await new DatabaseSchemaInspector().ReadSchemaVersionAsync(settings, _operation.Token);
+            await new ManagerDatabaseConnectionValidator().ValidateAsync(settings, operationToken);
+            var currentSchema = await new DatabaseSchemaInspector().ReadSchemaVersionAsync(settings, operationToken);
             if (metadata.DatabaseSchemaVersion < currentSchema)
                 throw new InvalidOperationException($"Update blocked because release schema {metadata.DatabaseSchemaVersion} is older than database schema {currentSchema}.");
 
@@ -97,7 +99,7 @@ public partial class MainWindow
                 if (settings.Provider == DatabaseProvider.Local)
                 {
                     safetyBackup = await new MigrationSafetyService().CreateSqliteSafetyBackupAsync(
-                        settings, service.InstallDirectory, installed, currentSchema, _operation.Token);
+                        settings, service.InstallDirectory, installed, currentSchema, operationToken);
                     Log($"SQLite migration safety backup created: {safetyBackup}");
                 }
                 else
@@ -125,12 +127,12 @@ public partial class MainWindow
             var temp = Path.Combine(Path.GetTempPath(), $"Depot-{VersionRules.VersionText(release.Version)}-{Guid.NewGuid():N}.exe");
             try
             {
-                await releaseClient.DownloadAsync(release, temp, new Progress<int>(value => Progress.Value = value), _operation.Token);
+                await releaseClient.DownloadAsync(release, temp, new Progress<int>(value => Progress.Value = value), operationToken);
                 service.Deploy(temp, release.Version, createBackup: true);
                 RollbackMetadataService.Write(service.BackupDirectory, installed, currentSchema);
                 if (metadata.DatabaseSchemaVersion > currentSchema)
-                    await InvokeDepotMaintenanceModeAsync("--manager-migrate", _operation.Token);
-                await InvokeDepotMaintenanceModeAsync("--manager-health-check", _operation.Token);
+                    await InvokeDepotMaintenanceModeAsync("--manager-migrate", operationToken);
+                await InvokeDepotMaintenanceModeAsync("--manager-health-check", operationToken);
                 service.CopyManagerToInstallLocation();
                 new WindowsIntegrationService().Repair(service, release.Version);
                 Progress.Value = 100;
@@ -159,8 +161,9 @@ public partial class MainWindow
         try
         {
             SetBusy(true);
+            var operationToken = _operation!.Token;
             var inspector = new InstallationInspector();
-            var snapshot = await inspector.InspectAsync(InstallPathBox.Text, _operation!.Token);
+            var snapshot = await inspector.InspectAsync(InstallPathBox.Text, operationToken);
             if (!string.Equals(snapshot.InstallDirectory, InstallPathBox.Text, StringComparison.OrdinalIgnoreCase))
             {
                 InstallPathBox.Text = snapshot.InstallDirectory;
@@ -173,7 +176,7 @@ public partial class MainWindow
             ReleaseInfo release;
             if (targetVersion is null)
             {
-                release = await releaseClient.GetLatestAsync(_operation.Token);
+                release = await releaseClient.GetLatestAsync(operationToken);
                 if (MessageBox.Show(
                     $"The installed Depot version cannot be determined. Repair can restore the latest stable release {VersionRules.VersionText(release.Version)}. Continue?",
                     "Depot repair",
@@ -182,13 +185,13 @@ public partial class MainWindow
             }
             else
             {
-                release = await releaseClient.GetAsync(targetVersion, _operation.Token);
+                release = await releaseClient.GetAsync(targetVersion, operationToken);
             }
 
             var temp = Path.Combine(Path.GetTempPath(), $"Depot-repair-{Guid.NewGuid():N}.exe");
             try
             {
-                await releaseClient.DownloadAsync(release, temp, new Progress<int>(value => Progress.Value = value), _operation.Token);
+                await releaseClient.DownloadAsync(release, temp, new Progress<int>(value => Progress.Value = value), operationToken);
                 service.Deploy(temp, release.Version, createBackup: false);
                 service.CopyManagerToInstallLocation();
                 integration.Repair(service, release.Version);
@@ -198,7 +201,7 @@ public partial class MainWindow
                 if (File.Exists(temp)) File.Delete(temp);
             }
 
-            var repaired = await inspector.InspectAsync(service.InstallDirectory, _operation.Token);
+            var repaired = await inspector.InspectAsync(service.InstallDirectory, operationToken);
             if (repaired.State is InstallationHealthState.InstalledHealthy or InstallationHealthState.RepairRecommended)
             {
                 Log("Repair completed and the installation health check passed.");
@@ -225,7 +228,8 @@ public partial class MainWindow
         try
         {
             SetBusy(true);
-            var snapshot = _lastSnapshot ?? await new InstallationInspector().InspectAsync(InstallPathBox.Text, _operation!.Token);
+            var operationToken = _operation!.Token;
+            var snapshot = _lastSnapshot ?? await new InstallationInspector().InspectAsync(InstallPathBox.Text, operationToken);
             if (snapshot.DatabaseSchemaVersion is null) throw new InvalidOperationException("Rollback is unavailable because the current database schema cannot be determined.");
             var candidate = RollbackMetadataService.Read(Installation.BackupDirectory)
                 ?? throw new InvalidOperationException("No previous Depot executable backup is available.");
@@ -237,7 +241,7 @@ public partial class MainWindow
                 MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
             RollbackMetadataService.Apply(Installation, candidate, snapshot.DatabaseSchemaVersion.Value);
             var settings = LoadInstalledSettings(Installation);
-            await new ManagerDatabaseConnectionValidator().ValidateAsync(settings, _operation.Token);
+            await new ManagerDatabaseConnectionValidator().ValidateAsync(settings, operationToken);
             Log($"Depot rolled back to {VersionRules.VersionText(candidate.Version)}. Database connectivity check passed.");
         }
         catch (Exception exception)
@@ -256,8 +260,9 @@ public partial class MainWindow
         try
         {
             SetBusy(true);
+            var operationToken = _operation!.Token;
             var client = new ManagerReleaseClient(_http);
-            var release = _latestManagerRelease ?? await client.GetLatestAsync(_operation!.Token);
+            var release = _latestManagerRelease ?? await client.GetLatestAsync(operationToken);
             var running = GetRunningManagerVersion();
             if (!ManagerReleaseClient.IsUpdateAvailable(running, release.Version))
             {
@@ -273,7 +278,7 @@ public partial class MainWindow
             var service = Installation;
             if (!File.Exists(service.ManagerPath)) service.CopyManagerToInstallLocation();
             await new ManagerSelfUpdateService().StageAndLaunchAsync(
-                client, release, service.ManagerPath, new Progress<int>(value => Progress.Value = value), _operation.Token);
+                client, release, service.ManagerPath, new Progress<int>(value => Progress.Value = value), operationToken);
             Log($"Depot Manager {VersionRules.VersionText(release.Version)} staged. Restarting.");
             Application.Current.Shutdown();
         }
