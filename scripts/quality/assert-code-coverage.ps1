@@ -1,29 +1,49 @@
 param(
     [Parameter(Mandatory = $true)]
     [string]$CoveragePath,
-    [double]$MinimumLinePercent = 0,
-    [double]$MinimumBranchPercent = 0,
+    [Parameter(Mandatory = $true)]
+    [ValidateRange(0, 100)]
+    [double]$MinimumLinePercent,
+    [Parameter(Mandatory = $true)]
+    [ValidateRange(0, 100)]
+    [double]$MinimumBranchPercent,
+    [ValidateRange(0, 100)]
     [double]$MinimumMethodPercent = 0,
-    [double]$MinimumDepotManagerLinePercent = 0,
-    [double]$MinimumDepotManagerBranchPercent = 0
+    [Parameter(Mandatory = $true)]
+    [ValidateRange(0, 100)]
+    [double]$MinimumDepotManagerLinePercent,
+    [Parameter(Mandatory = $true)]
+    [ValidateRange(0, 100)]
+    [double]$MinimumDepotManagerBranchPercent
 )
 
 $ErrorActionPreference = 'Stop'
 $culture = [System.Globalization.CultureInfo]::InvariantCulture
 
-if (-not (Test-Path -LiteralPath $CoveragePath -PathType Leaf)) {
-    throw "Coverage report '$CoveragePath' was not found."
+if (-not (Test-Path -LiteralPath $CoveragePath)) {
+    throw "Coverage path '$CoveragePath' was not found."
 }
 
-[xml]$report = Get-Content -LiteralPath $CoveragePath -Raw
-$classNodes = @($report.SelectNodes('//class'))
-if ($classNodes.Count -eq 0) {
-    throw 'Coverage report does not contain any classes.'
+$coverageFiles = if (Test-Path -LiteralPath $CoveragePath -PathType Leaf) {
+    @(Get-Item -LiteralPath $CoveragePath)
+} else {
+    @(Get-ChildItem -LiteralPath $CoveragePath -Recurse -File -Filter '*.cobertura.xml')
+}
+
+if ($coverageFiles.Count -eq 0) {
+    throw "Coverage path '$CoveragePath' does not contain any Cobertura reports."
 }
 
 function Get-ProductionArea([System.Xml.XmlElement]$classNode) {
+    $package = $classNode.ParentNode.ParentNode
+    $moduleName = if ($package -is [System.Xml.XmlElement]) { [string]$package.GetAttribute('name') } else { '' }
+
+    if ($moduleName -match '(^|[\\/])DepotManager(\.dll)?$' -or $moduleName -eq 'DepotManager') { return 'DepotManager' }
+    if ($moduleName -match '(^|[\\/])Depot(\.dll)?$' -or $moduleName -eq 'Depot') { return 'Depot' }
+
     $name = [string]$classNode.GetAttribute('name')
-    if ($name.StartsWith('Depot.Tests.', [StringComparison]::Ordinal)) { return $null }
+    if ($name.StartsWith('Depot.Tests.', [StringComparison]::Ordinal) -or
+        $name.StartsWith('DepotManager.Tests.', [StringComparison]::Ordinal)) { return $null }
     if ($name.StartsWith('DepotManager.', [StringComparison]::Ordinal)) { return 'DepotManager' }
     if ($name.StartsWith('Depot.', [StringComparison]::Ordinal)) { return 'Depot' }
     return $null
@@ -76,15 +96,19 @@ function Get-CoverageStats([object[]]$classes) {
 
 $depotClasses = @()
 $managerClasses = @()
-foreach ($class in $classNodes) {
-    switch (Get-ProductionArea $class) {
-        'Depot' { $depotClasses += $class }
-        'DepotManager' { $managerClasses += $class }
+foreach ($coverageFile in $coverageFiles) {
+    [xml]$report = Get-Content -LiteralPath $coverageFile.FullName -Raw
+    $classNodes = @($report.SelectNodes('//class'))
+    foreach ($class in $classNodes) {
+        switch (Get-ProductionArea $class) {
+            'Depot' { $depotClasses += $class }
+            'DepotManager' { $managerClasses += $class }
+        }
     }
 }
 
-if ($depotClasses.Count -eq 0) { throw 'Coverage report does not contain Depot production classes.' }
-if ($managerClasses.Count -eq 0) { throw 'Coverage report does not contain DepotManager production classes.' }
+if ($depotClasses.Count -eq 0) { throw 'Coverage reports do not contain Depot production classes.' }
+if ($managerClasses.Count -eq 0) { throw 'Coverage reports do not contain DepotManager production classes.' }
 
 $depot = Get-CoverageStats $depotClasses
 $manager = Get-CoverageStats $managerClasses
@@ -104,6 +128,7 @@ $rows = @(
     [pscustomobject]@{ Area = 'Combined'; Lines = "$(Format-Percent $total.LinePercent)% ($(Format-Ratio $total.LineCovered $total.LineTotal))"; Branches = "$(Format-Percent $total.BranchPercent)% ($(Format-Ratio $total.BranchCovered $total.BranchTotal))"; Methods = "$(Format-Percent $total.MethodPercent)% ($(Format-Ratio $total.MethodCovered $total.MethodTotal))" }
 )
 
+Write-Host "Coverage reports: $($coverageFiles.Count)"
 $rows | Format-Table -AutoSize | Out-String | Write-Host
 
 if ($env:GITHUB_STEP_SUMMARY) {
