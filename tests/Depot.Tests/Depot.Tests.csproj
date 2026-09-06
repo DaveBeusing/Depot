@@ -3,9 +3,11 @@
 		<TargetFramework>net10.0-windows</TargetFramework>
 		<Nullable>enable</Nullable>
 		<ImplicitUsings>enable</ImplicitUsings>
+		<UseWPF>true</UseWPF>
 		<IsPackable>false</IsPackable>
 		<IsTestProject>true</IsTestProject>
 	</PropertyGroup>
+
 	<ItemGroup>
 		<PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
 		<PackageReference Include="xunit" Version="2.9.3" />
@@ -14,9 +16,11 @@
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
 	</ItemGroup>
+
 	<ItemGroup>
 		<ProjectReference Include="..\..\src\Depot\Depot.csproj" />
 	</ItemGroup>
+
 	<ItemGroup>
 		<Compile Include="..\..\src\DepotManager\VersionRules.cs" Link="DepotManager\VersionRules.cs" />
 		<Compile Include="..\..\src\DepotManager\ExecutableDeployment.cs" Link="DepotManager\ExecutableDeployment.cs" />
@@ -35,6 +39,12 @@
 		<Compile Include="..\..\src\DepotManager\ManagerDiagnosticsService.cs" Link="DepotManager\ManagerDiagnosticsService.cs" />
 		<Compile Include="..\..\src\DepotManager\MigrationSafetyService.cs" Link="DepotManager\MigrationSafetyService.cs" />
 		<Compile Include="..\..\src\DepotManager\DatabaseSchemaInspector.cs" Link="DepotManager\DatabaseSchemaInspector.cs" />
+		<Compile Include="..\..\src\DepotManager\ManagerServices.cs" Link="DepotManager\ManagerServices.cs" />
+		<Compile Include="..\..\src\DepotManager\DepotReleaseMetadataClient.cs" Link="DepotManager\DepotReleaseMetadataClient.cs" />
+		<Compile Include="..\..\src\DepotManager\InstallationInspector.cs" Link="DepotManager\InstallationInspector.cs" />
+		<Compile Include="..\..\src\DepotManager\ManagerSelfUpdateService.cs" Link="DepotManager\ManagerSelfUpdateService.cs" />
+		<Compile Include="..\..\src\DepotManager\RollbackMetadataService.cs" Link="DepotManager\RollbackMetadataService.cs" />
+		<Compile Include="..\..\src\DepotManager\WindowsIntegrationService.cs" Link="DepotManager\WindowsIntegrationService.cs" />
 		<None Include="Fixtures\ElectronicInvoice\**\*" CopyToOutputDirectory="PreserveNewest" />
 	</ItemGroup>
 </Project>
