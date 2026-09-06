@@ -11,27 +11,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  dependency-lock-calibration:
-    name: Calibrate DepotManager test lock
-    runs-on: windows-2025
-    timeout-minutes: 10
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: 10.0.x
-
-      - name: Regenerate and print DepotManager test lock
-        shell: pwsh
-        run: |
-          dotnet restore tests/DepotManager.Tests/DepotManager.Tests.csproj --force-evaluate
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $bytes = [IO.File]::ReadAllBytes((Resolve-Path 'tests/DepotManager.Tests/packages.lock.json'))
-          Write-Host "LOCK_BASE64=$([Convert]::ToBase64String($bytes))"
-
   build-publish:
     name: Build and publish
     runs-on: windows-2025
