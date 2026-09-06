@@ -134,15 +134,15 @@ jobs:
           path: TestResults/Coverage
           merge-multiple: true
 
-      - name: Evaluate code coverage baseline
+      - name: Enforce production code coverage
         shell: pwsh
         run: >-
           ./scripts/quality/assert-code-coverage.ps1
           -CoveragePath TestResults/Coverage
-          -MinimumLinePercent 0
-          -MinimumBranchPercent 0
-          -MinimumDepotManagerLinePercent 0
-          -MinimumDepotManagerBranchPercent 0
+          -MinimumLinePercent 38
+          -MinimumBranchPercent 39
+          -MinimumDepotManagerLinePercent 22
+          -MinimumDepotManagerBranchPercent 25
 
       - name: Require all coverage regressions to pass
         shell: pwsh
