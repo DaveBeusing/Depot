@@ -89,6 +89,8 @@ jobs:
             project: tests/Depot.Tests/Depot.Tests.csproj
           - area: Inventory-Warehouse
             project: tests/Depot.Tests/Depot.Tests.csproj
+          - area: Inventory-Operations
+            project: tests/Depot.Tests/Depot.Tests.csproj
           - area: Shell-UX
             project: tests/Depot.Tests/Depot.Tests.csproj
     steps:

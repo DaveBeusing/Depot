@@ -10,6 +10,7 @@ param(
         'Sales',
         'Purchasing',
         'Inventory-Warehouse',
+        'Inventory-Operations',
         'Shell-UX'
     )]
     [string]$Area,
@@ -147,16 +148,20 @@ $filter = switch ($Area) {
     'Inventory-Warehouse' {
         '(' + (Join-FilterOr @(
             'Inventory',
-            'StockTransfer',
-            'MaterialIssue',
-            'MaterialReturn',
-            'MovementReversal',
             'Warehouse',
             'ItemCost',
             'ItemMaster',
             'ItemReference',
             'ReasonCode'
         )) + '&FullyQualifiedName!~Finance)'
+    }
+    'Inventory-Operations' {
+        Join-FilterOr @(
+            'StockTransfer',
+            'MaterialIssue',
+            'MaterialReturn',
+            'MovementReversal'
+        )
     }
     'Shell-UX' {
         Join-FilterOr @(
