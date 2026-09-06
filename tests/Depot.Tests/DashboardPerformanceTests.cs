@@ -17,6 +17,7 @@ public sealed class DashboardPerformanceTests
 	{
 		await using var context = await ProcurementTestContext.CreateSqliteAsync();
 		SalesSchemaMigration.Migrate(context.ConnectionFactory);
+		UserSessionSchemaMigration.Migrate(context.ConnectionFactory);
 		context.SignInAdministrator();
 		var user = context.Authorization.CurrentUser ?? throw new InvalidOperationException("The test user is not signed in.");
 		var service = new DashboardService(
