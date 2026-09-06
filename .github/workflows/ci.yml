@@ -81,11 +81,17 @@ jobs:
             project: tests/Depot.Tests/Depot.Tests.csproj
           - area: Sessions-Audit
             project: tests/Depot.Tests/Depot.Tests.csproj
+          - area: Audit-Integrity
+            project: tests/Depot.Tests/Depot.Tests.csproj
           - area: DepotManager
             project: tests/DepotManager.Tests/DepotManager.Tests.csproj
           - area: Sales
             project: tests/Depot.Tests/Depot.Tests.csproj
           - area: Purchasing
+            project: tests/Depot.Tests/Depot.Tests.csproj
+          - area: Procurement-Receiving
+            project: tests/Depot.Tests/Depot.Tests.csproj
+          - area: Supplier-Returns
             project: tests/Depot.Tests/Depot.Tests.csproj
           - area: Inventory-Warehouse
             project: tests/Depot.Tests/Depot.Tests.csproj

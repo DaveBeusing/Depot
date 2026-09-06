@@ -6,9 +6,12 @@ param(
         'Finance',
         'Security-Auth',
         'Sessions-Audit',
+        'Audit-Integrity',
         'DepotManager',
         'Sales',
         'Purchasing',
+        'Procurement-Receiving',
+        'Supplier-Returns',
         'Inventory-Warehouse',
         'Inventory-Operations',
         'Shell-UX'
@@ -116,7 +119,11 @@ $filter = switch ($Area) {
     'Sessions-Audit' {
         Join-FilterOr @(
             'UserSession',
-            'SessionSecurity',
+            'SessionSecurity'
+        )
+    }
+    'Audit-Integrity' {
+        Join-FilterOr @(
             'Audit',
             'SecurityEvent',
             'DataSubjectAccess',
@@ -137,11 +144,17 @@ $filter = switch ($Area) {
         )
     }
     'Purchasing' {
+        'FullyQualifiedName~Purchase'
+    }
+    'Procurement-Receiving' {
         Join-FilterOr @(
-            'Purchase',
             'GoodsReceipt',
+            'Procurement'
+        )
+    }
+    'Supplier-Returns' {
+        Join-FilterOr @(
             'SupplierReturn',
-            'Procurement',
             'SupplierManagement'
         )
     }
