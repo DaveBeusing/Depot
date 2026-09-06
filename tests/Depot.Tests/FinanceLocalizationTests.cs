@@ -120,13 +120,6 @@ public sealed class FinanceLocalizationTests
 			var path=Path.Combine(Path.GetTempPath(),$"depot-finance-localization-{Guid.NewGuid():N}.db");
 			var factory=new SqliteConnectionFactory(path);
 			new DepotDatabase(factory).Initialize();
-			using(var connection=new SqliteConnection($"Data Source={path}"))
-			{
-				connection.Open();
-				using var command=connection.CreateCommand();
-				command.CommandText="CREATE TABLE IF NOT EXISTS DepotFeatureVersions (Name TEXT PRIMARY KEY, Version INTEGER NOT NULL); INSERT INTO DepotFeatureVersions (Name,Version) VALUES ('Finance',8) ON CONFLICT(Name) DO UPDATE SET Version=8;";
-				command.ExecuteNonQuery();
-			}
 			FinanceInventoryAccountingSchemaMigration.Migrate(factory);
 			var database=new DatabaseAccess(factory);
 			var userId=database.Insert("INSERT INTO Users (Email,DisplayName,PasswordHash,IsAdministrator,CanApprovePurchaseOrders,Role,IsActive,CreatedUtc) VALUES ('localization@depot.test','Localization','test',0,0,0,1,'2026-08-28T00:00:00.0000000Z');");
