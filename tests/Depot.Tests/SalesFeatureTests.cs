@@ -72,7 +72,7 @@ public sealed class SalesFeatureTests : IDisposable
 
 		using var migrated = new SqliteConnection($"Data Source={_databasePath}");
 		migrated.Open();
-		Assert.Equal(9L, Scalar(migrated, "SELECT Version FROM DepotFeatureVersions WHERE Name='Sales';"));
+		Assert.Equal((long)SalesSchemaMigration.CurrentVersion, Scalar(migrated, "SELECT Version FROM DepotFeatureVersions WHERE Name='Sales';"));
 		Assert.Equal((long)SalesPriceListScope.Customer, Scalar(migrated, "SELECT Scope FROM SalesPriceLists WHERE Id=51;"));
 		Assert.Equal(1L, Scalar(migrated, "SELECT IsActive FROM SalesPriceLists WHERE Id=51;"));
 		Assert.Equal(0L, Scalar(migrated, "SELECT IsActive FROM SalesPriceLists WHERE Id=52;"));

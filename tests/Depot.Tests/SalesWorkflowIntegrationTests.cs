@@ -189,6 +189,7 @@ public sealed class SalesWorkflowIntegrationTests : IAsyncLifetime
 				VatId = "DE111111111",
 				Email = "sales-integration@depot.test",
 				InvoiceEmail = "invoice-integration@depot.test",
+				Phone = "+49 228 000000",
 				Iban = "DE89370400440532013000",
 				DefaultCurrency = "EUR",
 				PaymentTermsDays = 14
