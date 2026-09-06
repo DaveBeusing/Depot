@@ -124,7 +124,7 @@ public sealed class FinanceLocalizationTests
 			{
 				connection.Open();
 				using var command=connection.CreateCommand();
-				command.CommandText="INSERT INTO DepotFeatureVersions (Name,Version) VALUES ('Finance',8) ON CONFLICT(Name) DO UPDATE SET Version=8;";
+				command.CommandText="CREATE TABLE IF NOT EXISTS DepotFeatureVersions (Name TEXT PRIMARY KEY, Version INTEGER NOT NULL); INSERT INTO DepotFeatureVersions (Name,Version) VALUES ('Finance',8) ON CONFLICT(Name) DO UPDATE SET Version=8;";
 				command.ExecuteNonQuery();
 			}
 			FinanceInventoryAccountingSchemaMigration.Migrate(factory);
