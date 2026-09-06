@@ -1,5 +1,6 @@
 using Depot.Models;
 using DepotManager;
+using Microsoft.Data.Sqlite;
 using Xunit;
 
 namespace Depot.Tests;
@@ -28,6 +29,7 @@ public sealed class ManagerDatabaseConnectionValidatorTests
 		}
 		finally
 		{
+			SqliteConnection.ClearAllPools();
 			if (Directory.Exists(directory)) Directory.Delete(directory, true);
 		}
 	}

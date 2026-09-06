@@ -15,10 +15,10 @@ public sealed class ManagerSelfUpdateService
         ArgumentNullException.ThrowIfNull(client);
         var target = Path.GetFullPath(canonicalManagerPath);
         var staged = ManagerSelfUpdatePaths.GetStagedPath(target);
-        var marker = ManagerSelfUpdatePaths.CreateReadyMarkerPath(target);
         Directory.CreateDirectory(Path.GetDirectoryName(target)!);
         DeleteIfExists(staged);
-        DeleteIfExists(marker);
+        DeleteReadyMarkers(target);
+        var marker = ManagerSelfUpdatePaths.CreateReadyMarkerPath(target);
 
         try
         {
@@ -43,6 +43,16 @@ public sealed class ManagerSelfUpdateService
             DeleteIfExists(staged);
             DeleteIfExists(marker);
             throw;
+        }
+    }
+
+    private static void DeleteReadyMarkers(string target)
+    {
+        var directory = Path.GetDirectoryName(target)!;
+        var pattern = $"{Path.GetFileNameWithoutExtension(target)}.update.ready.*.marker";
+        foreach (var candidate in Directory.EnumerateFiles(directory, pattern, SearchOption.TopDirectoryOnly))
+        {
+            if (ManagerSelfUpdatePaths.IsReadyMarkerForTarget(target, candidate)) DeleteIfExists(candidate);
         }
     }
 
