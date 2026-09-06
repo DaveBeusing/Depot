@@ -29,7 +29,26 @@ jobs:
       - name: Build with zero warnings
         run: dotnet build Depot.slnx --configuration Release --no-restore -warnaserror
       - name: Run regression suite
+        if: matrix.os == 'windows-2022'
         run: dotnet test tests/Depot.Tests/Depot.Tests.csproj --configuration Release --no-build --filter "QualityGate!=Performance" --blame-hang --blame-hang-timeout 8m --logger "console;verbosity=normal"
+      - name: Run regression suite with code coverage
+        if: matrix.os == 'windows-2025'
+        run: dotnet test tests/Depot.Tests/Depot.Tests.csproj --configuration Release --no-build --filter "QualityGate!=Performance" --blame-hang --blame-hang-timeout 8m --logger "console;verbosity=normal" --settings tests/coverage.runsettings --collect:"Code Coverage;Format=Cobertura" --results-directory TestResults/Coverage
+      - name: Evaluate code coverage
+        if: matrix.os == 'windows-2025'
+        shell: pwsh
+        run: |
+          $coverage = Get-ChildItem 'TestResults/Coverage' -Recurse -Filter '*.cobertura.xml' | Select-Object -First 1
+          if (-not $coverage) { throw 'Cobertura coverage report was not produced.' }
+          ./scripts/quality/assert-code-coverage.ps1 -CoveragePath $coverage.FullName
+      - name: Upload code coverage report
+        if: ${{ always() && matrix.os == 'windows-2025' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: code-coverage-cobertura
+          path: TestResults/Coverage/**/*.cobertura.xml
+          if-no-files-found: error
+          retention-days: 14
       - name: Run 100k performance baseline
         run: dotnet test tests/Depot.Tests/Depot.Tests.csproj --configuration Release --no-build --filter "QualityGate=Performance" --logger "console;verbosity=normal"
 

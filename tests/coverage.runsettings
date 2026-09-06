@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="Code Coverage">
+        <Configuration>
+          <Format>Cobertura</Format>
+          <IncludeTestAssembly>True</IncludeTestAssembly>
+          <CodeCoverage>
+            <ModulePaths>
+              <Include>
+                <ModulePath>.*\Depot\.dll$</ModulePath>
+                <ModulePath>.*\Depot\.Tests\.dll$</ModulePath>
+              </Include>
+            </ModulePaths>
+            <Sources>
+              <Exclude>
+                <Source>.*\tests\Depot\.Tests\.*</Source>
+                <Source>.*\obj\.*</Source>
+              </Exclude>
+            </Sources>
+          </CodeCoverage>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>
