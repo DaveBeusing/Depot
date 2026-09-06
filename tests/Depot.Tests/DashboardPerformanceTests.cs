@@ -20,6 +20,9 @@ public sealed class DashboardPerformanceTests
 		UserSessionSchemaMigration.Migrate(context.ConnectionFactory);
 		context.SignInAdministrator();
 		var user = context.Authorization.CurrentUser ?? throw new InvalidOperationException("The test user is not signed in.");
+		user.IsAdministrator = false;
+		user.Role = UserRole.User;
+		user.Roles = [];
 		var service = new DashboardService(
 			new StockService(new InventoryRepository(context.Data), new StockMovementRepository(context.Data)),
 			new DashboardRepository(context.Data),
