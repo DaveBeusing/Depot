@@ -5,21 +5,19 @@
       <DataCollector friendlyName="Code Coverage">
         <Configuration>
           <Format>Cobertura</Format>
-          <IncludeTestAssembly>True</IncludeTestAssembly>
-          <CodeCoverage>
-            <ModulePaths>
-              <Include>
-                <ModulePath>.*\Depot\.dll$</ModulePath>
-                <ModulePath>.*\Depot\.Tests\.dll$</ModulePath>
-              </Include>
-            </ModulePaths>
-            <Sources>
-              <Exclude>
-                <Source>.*\tests\Depot\.Tests\.*</Source>
-                <Source>.*\obj\.*</Source>
-              </Exclude>
-            </Sources>
-          </CodeCoverage>
+          <IncludeTestAssembly>False</IncludeTestAssembly>
+          <ModulePaths>
+            <Include>
+              <ModulePath>.*Depot\.dll$</ModulePath>
+              <ModulePath>.*DepotManager\.dll$</ModulePath>
+            </Include>
+          </ModulePaths>
+          <Sources>
+            <Exclude>
+              <Source>.*\tests\.*</Source>
+              <Source>.*\obj\.*</Source>
+            </Exclude>
+          </Sources>
         </Configuration>
       </DataCollector>
     </DataCollectors>

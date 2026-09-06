@@ -63,7 +63,7 @@ public sealed class DepotManagerHardeningTests
         }
         finally
         {
-            Directory.Delete(root, true);
+            DeleteTempDirectory(root);
         }
     }
 
@@ -110,7 +110,7 @@ public sealed class DepotManagerHardeningTests
         }
         finally
         {
-            Directory.Delete(root, true);
+            DeleteTempDirectory(root);
         }
     }
 
@@ -142,7 +142,7 @@ public sealed class DepotManagerHardeningTests
         }
         finally
         {
-            if (Directory.Exists(root)) Directory.Delete(root, true);
+            DeleteTempDirectory(root);
         }
     }
 
@@ -165,7 +165,7 @@ public sealed class DepotManagerHardeningTests
         }
         finally
         {
-            if (Directory.Exists(root)) Directory.Delete(root, true);
+            DeleteTempDirectory(root);
         }
     }
 
@@ -174,5 +174,11 @@ public sealed class DepotManagerHardeningTests
         var path = Path.Combine(Path.GetTempPath(), "DepotManagerHardeningTests", Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(path);
         return path;
+    }
+
+    private static void DeleteTempDirectory(string path)
+    {
+        SqliteConnection.ClearAllPools();
+        if (Directory.Exists(path)) Directory.Delete(path, true);
     }
 }

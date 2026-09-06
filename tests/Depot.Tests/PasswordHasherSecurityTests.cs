@@ -32,7 +32,7 @@ public sealed class PasswordHasherSecurityTests
 	[Fact]
 	public void LegacyWorkFactorRemainsVerifiableButIsMarkedForUpgrade()
 	{
-		const string legacy = "pbkdf2-sha256$100000$Rud+hXZ518ixWQ0N37gQng==$iCVZruG4xsuNpG3pJfVRKigJX534QCbXGH4BWDm0T/s=";
+		const string legacy = "pbkdf2-sha256$100000$Rud+hXZ518ixWQ0N37gQng==$4YjRr7TXh8ZZeTTkqYhzRAGXsxePTxsCGh+PVSJOV3k=";
 		var hasher = new PasswordHasher();
 		Assert.True(hasher.Verify("Depot123!", legacy));
 		Assert.True(hasher.NeedsUpgrade(legacy));

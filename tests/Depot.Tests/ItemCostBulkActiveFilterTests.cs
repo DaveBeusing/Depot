@@ -19,6 +19,7 @@ public sealed class ItemCostBulkActiveFilterTests : IDisposable
 	{
 		var factory = new SqliteConnectionFactory(_databasePath);
 		new DepotDatabase(factory).Initialize();
+		ItemMasterDataSchema.Ensure(factory);
 		SalesSchemaMigration.Migrate(factory);
 		var data = new DatabaseAccess(factory);
 		var active = await InsertItemAsync(data, "ACTIVE", true, ItemLifecycleStatus.Active);

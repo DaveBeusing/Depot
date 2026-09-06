@@ -51,10 +51,16 @@ public sealed class BusinessRecordIntegrityTests : IDisposable
 	{
 		var authorization = Authorized(ApplicationPermission.AuditLogView, ApplicationPermission.AuditLogExport);
 		var repository = new AuditRepository(_database);
+		var accountingUserId = await _database.InsertAsync(
+			"INSERT INTO Users (Email,DisplayName,PasswordHash,IsAdministrator,CanApprovePurchaseOrders,Role,IsActive,CreatedUtc) VALUES ('accounting@depot.test','Accounting','test',0,0,0,1,'2026-08-22T00:00:00.0000000Z');",
+			CancellationToken.None);
+		var posterUserId = await _database.InsertAsync(
+			"INSERT INTO Users (Email,DisplayName,PasswordHash,IsAdministrator,CanApprovePurchaseOrders,Role,IsActive,CreatedUtc) VALUES ('poster@depot.test','Poster','test',0,0,0,1,'2026-08-22T00:00:00.0000000Z');",
+			CancellationToken.None);
 		await repository.CreateAsync(new AuditEntry
 		{
 			TimestampUtc = new DateTime(2026, 8, 22, 10, 0, 0, DateTimeKind.Utc),
-			UserId = 7,
+			UserId = accountingUserId,
 			UserEmail = "accounting@depot.test",
 			EntityType = nameof(SalesInvoice),
 			EntityId = 42,
@@ -64,7 +70,7 @@ public sealed class BusinessRecordIntegrityTests : IDisposable
 		await repository.CreateAsync(new AuditEntry
 		{
 			TimestampUtc = new DateTime(2026, 8, 22, 11, 0, 0, DateTimeKind.Utc),
-			UserId = 8,
+			UserId = posterUserId,
 			UserEmail = "poster@depot.test",
 			EntityType = nameof(SalesInvoice),
 			EntityId = 42,

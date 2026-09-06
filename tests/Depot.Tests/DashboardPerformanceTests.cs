@@ -16,8 +16,13 @@ public sealed class DashboardPerformanceTests
 	public async Task DashboardLoadsOnlyAggregatesAllowedByEffectivePermissions()
 	{
 		await using var context = await ProcurementTestContext.CreateSqliteAsync();
+		SalesSchemaMigration.Migrate(context.ConnectionFactory);
+		UserSessionSchemaMigration.Migrate(context.ConnectionFactory);
 		context.SignInAdministrator();
 		var user = context.Authorization.CurrentUser ?? throw new InvalidOperationException("The test user is not signed in.");
+		user.IsAdministrator = false;
+		user.Role = UserRole.User;
+		user.Roles = [];
 		var service = new DashboardService(
 			new StockService(new InventoryRepository(context.Data), new StockMovementRepository(context.Data)),
 			new DashboardRepository(context.Data),

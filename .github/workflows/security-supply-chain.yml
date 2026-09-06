@@ -16,9 +16,19 @@ concurrency:
 
 jobs:
   security-tests:
-    name: Authentication, authorization, privacy and record-integrity tests
-    runs-on: windows-latest
-    timeout-minutes: 15
+    name: Security tests - ${{ matrix.area }}
+    runs-on: windows-2025
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - area: Authentication-Authorization
+            filter: FullyQualifiedName~PasswordHasherSecurityTests|FullyQualifiedName~AuthenticationHardeningTests|FullyQualifiedName~AuthorizationServiceTests|FullyQualifiedName~RbacTests|FullyQualifiedName~PasswordPolicyEvaluationTests|FullyQualifiedName~SecurityAdministrationCompletionTests|FullyQualifiedName~SecurityConfigurationTests|FullyQualifiedName~AdministratorBootstrapTests|FullyQualifiedName~LegacyAdministratorRetirementTests|FullyQualifiedName~UserEditorPasswordValidationTests
+          - area: Audit-Privacy-Sessions
+            filter: FullyQualifiedName~AuditLogTests|FullyQualifiedName~DataSubjectAccessServiceTests|FullyQualifiedName~SecurityEventTests|FullyQualifiedName~SessionSecurityFoundationTests|FullyQualifiedName~UserSession
+          - area: Record-Integrity-Approval
+            filter: FullyQualifiedName~BusinessRecordIntegrityTests|FullyQualifiedName~PurchaseOrderApprovalServiceTests|FullyQualifiedName~PurchaseOrderApprovalMigrationTests
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -32,10 +42,18 @@ jobs:
         run: dotnet restore Depot.slnx --locked-mode
 
       - name: Build security tests
-        run: dotnet build tests/Depot.Tests/Depot.Tests.csproj --configuration Release --no-restore
+        run: dotnet build tests/Depot.Tests/Depot.Tests.csproj --configuration Release --no-restore -warnaserror
 
-      - name: Run security, privacy and record-integrity boundary tests
-        run: dotnet test tests/Depot.Tests/Depot.Tests.csproj --configuration Release --no-build --filter "FullyQualifiedName~PasswordHasherSecurityTests|FullyQualifiedName~AuthorizationServiceTests|FullyQualifiedName~RbacTests|FullyQualifiedName~PurchaseOrderApprovalServiceTests|FullyQualifiedName~AuditLogTests|FullyQualifiedName~DataSubjectAccessServiceTests|FullyQualifiedName~BusinessRecordIntegrityTests" --logger "console;verbosity=normal"
+      - name: Run security boundary tests
+        run: >-
+          dotnet test tests/Depot.Tests/Depot.Tests.csproj
+          --configuration Release
+          --no-build
+          --no-restore
+          --filter "${{ matrix.filter }}"
+          --blame-hang
+          --blame-hang-timeout 8m
+          --logger "console;verbosity=normal"
 
   risk-acceptance-policy:
     name: Validate security risk acceptances

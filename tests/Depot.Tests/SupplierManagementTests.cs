@@ -87,6 +87,7 @@ public sealed class SupplierManagementTests : IDisposable
 	{
 		var factory = new SqliteConnectionFactory(_databasePath);
 		new DepotDatabase(factory).Initialize();
+		ItemMasterDataSchema.Ensure(factory);
 		var database = new DatabaseAccess(factory);
 		var authorization = new AuthorizationService();
 		var administrator = new UserRepository(database).GetByEmail("admin@depot.local")

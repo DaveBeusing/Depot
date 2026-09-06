@@ -13,8 +13,8 @@ concurrency:
 jobs:
   build-publish:
     name: Build and publish
-    runs-on: windows-latest
-    timeout-minutes: 20
+    runs-on: windows-2025
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -28,12 +28,17 @@ jobs:
         run: dotnet restore Depot.slnx --locked-mode
 
       - name: Build
-        run: dotnet build Depot.slnx --configuration Release --no-restore
+        run: dotnet build Depot.slnx --configuration Release --no-restore -warnaserror
 
-      - name: Restore win-x64 runtime
-        run: dotnet restore src/Depot/Depot.csproj --runtime win-x64
+      - name: Restore win-x64 runtimes
+        shell: pwsh
+        run: |
+          dotnet restore src/Depot/Depot.csproj --runtime win-x64
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet restore src/DepotManager/DepotManager.csproj --runtime win-x64
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - name: Release single-file publish
+      - name: Publish Depot
         run: >-
           dotnet publish src/Depot/Depot.csproj
           --configuration Release
@@ -44,26 +49,56 @@ jobs:
           -p:IncludeNativeLibrariesForSelfExtract=true
           -p:DebugType=None
           -p:DebugSymbols=false
-          -o artifacts/publish/win-x64
+          -o artifacts/publish/depot
+
+      - name: Publish DepotManager
+        run: >-
+          dotnet publish src/DepotManager/DepotManager.csproj
+          --configuration Release
+          --runtime win-x64
+          --self-contained true
+          --no-restore
+          -p:PublishSingleFile=true
+          -p:DebugType=None
+          -p:DebugSymbols=false
+          -o artifacts/publish/manager
 
   test:
-    name: Tests - ${{ matrix.name }}
-    runs-on: windows-latest
+    name: Tests - ${{ matrix.area }}
+    runs-on: windows-2025
     timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
         include:
-          - name: Sales
-            filter: FullyQualifiedName~Sales
-          - name: Inventory-Warehouse
-            filter: FullyQualifiedName~Inventory|FullyQualifiedName~StockTransfer|FullyQualifiedName~MaterialIssue|FullyQualifiedName~MaterialReturn|FullyQualifiedName~Shipment
-          - name: Purchasing
-            filter: FullyQualifiedName~Purchase|FullyQualifiedName~GoodsReceipt|FullyQualifiedName~SupplierReturn|FullyQualifiedName~Procurement
-          - name: Shell-UX
-            filter: FullyQualifiedName~Shell|FullyQualifiedName~Navigation|FullyQualifiedName~Help|FullyQualifiedName~Notification|FullyQualifiedName~ApplicationInformation
-          - name: Core-Persistence
-            filter: FullyQualifiedName!~Sales&FullyQualifiedName!~Inventory&FullyQualifiedName!~StockTransfer&FullyQualifiedName!~MaterialIssue&FullyQualifiedName!~MaterialReturn&FullyQualifiedName!~Shipment&FullyQualifiedName!~Purchase&FullyQualifiedName!~GoodsReceipt&FullyQualifiedName!~SupplierReturn&FullyQualifiedName!~Procurement&FullyQualifiedName!~Shell&FullyQualifiedName!~Navigation&FullyQualifiedName!~Help&FullyQualifiedName!~Notification&FullyQualifiedName!~ApplicationInformation
+          - area: Core
+            project: tests/Depot.Tests/Depot.Tests.csproj
+          - area: Persistence
+            project: tests/Depot.Tests/Depot.Tests.csproj
+          - area: Finance
+            project: tests/Depot.Tests/Depot.Tests.csproj
+          - area: Security-Auth
+            project: tests/Depot.Tests/Depot.Tests.csproj
+          - area: Sessions-Audit
+            project: tests/Depot.Tests/Depot.Tests.csproj
+          - area: Audit-Integrity
+            project: tests/Depot.Tests/Depot.Tests.csproj
+          - area: DepotManager
+            project: tests/DepotManager.Tests/DepotManager.Tests.csproj
+          - area: Sales
+            project: tests/Depot.Tests/Depot.Tests.csproj
+          - area: Purchasing
+            project: tests/Depot.Tests/Depot.Tests.csproj
+          - area: Procurement-Receiving
+            project: tests/Depot.Tests/Depot.Tests.csproj
+          - area: Supplier-Returns
+            project: tests/Depot.Tests/Depot.Tests.csproj
+          - area: Inventory-Warehouse
+            project: tests/Depot.Tests/Depot.Tests.csproj
+          - area: Inventory-Operations
+            project: tests/Depot.Tests/Depot.Tests.csproj
+          - area: Shell-UX
+            project: tests/Depot.Tests/Depot.Tests.csproj
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -76,8 +111,9 @@ jobs:
       - name: Restore locked dependencies
         run: dotnet restore Depot.slnx --locked-mode
 
-      - name: Build tests
-        run: dotnet build tests/Depot.Tests/Depot.Tests.csproj --configuration Release --no-restore
+      - name: Build test area
+        run: dotnet build ${{ matrix.project }} --configuration Release --no-restore -warnaserror
 
-      - name: Run tests
-        run: dotnet test tests/Depot.Tests/Depot.Tests.csproj --configuration Release --no-build --filter "${{ matrix.filter }}" --blame-hang --blame-hang-timeout 8m --logger "console;verbosity=normal"
+      - name: Run regression area
+        shell: pwsh
+        run: ./scripts/quality/run-test-area.ps1 -Area '${{ matrix.area }}' -Configuration Release -NoBuild

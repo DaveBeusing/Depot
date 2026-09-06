@@ -127,7 +127,7 @@ public sealed class RbacTests : IDisposable
 		var userService = new UserService(new DatabaseTransactionRunner(_data), new UserRepository(_data), roleRepository, auditRepository, new PasswordHasher(), authorization, new AuditService(auditRepository, authorization));
 		var purchasing = await roleRepository.GetByCodeAsync(SystemRoleCatalog.PurchasingCode, CancellationToken.None) ?? throw new InvalidOperationException();
 		var approver = await roleRepository.GetByCodeAsync(SystemRoleCatalog.ApproverCode, CancellationToken.None) ?? throw new InvalidOperationException();
-		var user = await userService.CreateUserAsync("multi-role@depot.test", "Multi Role", "Depot123!", [purchasing.Id, approver.Id], CancellationToken.None);
+		var user = await userService.CreateUserAsync("multi-role@depot.test", "Multi Role", "DepotMultiRole123!", [purchasing.Id, approver.Id], CancellationToken.None);
 		Assert.Equal(2, user.Roles.Count);
 		Assert.Contains(ApplicationPermission.PurchaseOrdersCreate, user.EffectivePermissions);
 		Assert.Contains(ApplicationPermission.PurchaseOrdersApprove, user.EffectivePermissions);

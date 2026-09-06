@@ -119,7 +119,7 @@ public sealed class CompanyProfileTests
 	public void InternationalIdentifiersAndPaymentDataAreValidated()
 	{
 		var profile = CreateCompleteProfile();
-		profile.EoriNumber = "BAD";
+		profile.EoriNumber = "1BAD";
 		profile.LegalEntityIdentifier = "123";
 		profile.Gln = "12";
 		profile.DunsNumber = "123";
