@@ -8,8 +8,8 @@
           <IncludeTestAssembly>False</IncludeTestAssembly>
           <ModulePaths>
             <Include>
-              <ModulePath>.*\Depot\.dll$</ModulePath>
-              <ModulePath>.*\DepotManager\.dll$</ModulePath>
+              <ModulePath>.*Depot\.dll$</ModulePath>
+              <ModulePath>.*DepotManager\.dll$</ModulePath>
             </Include>
           </ModulePaths>
           <Sources>

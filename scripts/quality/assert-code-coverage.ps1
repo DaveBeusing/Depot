@@ -49,39 +49,101 @@ function Get-ProductionArea([System.Xml.XmlElement]$classNode) {
     return $null
 }
 
-function Get-CoverageStats([object[]]$classes) {
-    $lineTotal = 0
-    $lineCovered = 0
-    $branchTotal = 0
-    $branchCovered = 0
-    $methodTotal = 0
-    $methodCovered = 0
+function New-CoverageAccumulator {
+    return [pscustomobject]@{
+        Lines = @{}
+        BranchLines = @{}
+        Methods = @{}
+    }
+}
 
-    foreach ($class in $classes) {
+$areas = @{
+    Depot = New-CoverageAccumulator
+    DepotManager = New-CoverageAccumulator
+}
+
+foreach ($coverageFile in $coverageFiles) {
+    [xml]$report = Get-Content -LiteralPath $coverageFile.FullName -Raw
+    foreach ($class in @($report.SelectNodes('//class'))) {
+        $area = Get-ProductionArea $class
+        if (-not $area) { continue }
+
+        $data = $areas[$area]
+        $package = $class.ParentNode.ParentNode
+        $moduleName = if ($package -is [System.Xml.XmlElement]) { [string]$package.GetAttribute('name') } else { '' }
+        $classKey = "$moduleName|$($class.GetAttribute('name'))|$($class.GetAttribute('filename'))"
+
         foreach ($line in @($class.SelectNodes('./lines/line'))) {
-            $lineTotal++
-            if ([int]$line.GetAttribute('hits') -gt 0) { $lineCovered++ }
+            $lineKey = "$classKey|$($line.GetAttribute('number'))"
+            if (-not $data.Lines.ContainsKey($lineKey)) { $data.Lines[$lineKey] = $false }
+            if ([int]$line.GetAttribute('hits') -gt 0) { $data.Lines[$lineKey] = $true }
 
-            if ($line.GetAttribute('branch') -eq 'true') {
-                $conditionCoverage = $line.GetAttribute('condition-coverage')
+            if ($line.GetAttribute('branch') -ne 'true') { continue }
+            if (-not $data.BranchLines.ContainsKey($lineKey)) {
+                $data.BranchLines[$lineKey] = [pscustomobject]@{
+                    Conditions = @{}
+                    FallbackCovered = 0
+                    FallbackTotal = 0
+                }
+            }
+
+            $branchLine = $data.BranchLines[$lineKey]
+            $conditions = @($line.SelectNodes('./conditions/condition'))
+            if ($conditions.Count -gt 0) {
+                for ($conditionIndex = 0; $conditionIndex -lt $conditions.Count; $conditionIndex++) {
+                    $condition = $conditions[$conditionIndex]
+                    $conditionKey = "$($condition.GetAttribute('number'))|$($condition.GetAttribute('type'))|$conditionIndex"
+                    if (-not $branchLine.Conditions.ContainsKey($conditionKey)) {
+                        $branchLine.Conditions[$conditionKey] = $false
+                    }
+                    $coverage = [string]$condition.GetAttribute('coverage')
+                    if ($coverage -match '^([0-9]+(?:\.[0-9]+)?)%') {
+                        if ([double]::Parse($Matches[1], $culture) -gt 0) {
+                            $branchLine.Conditions[$conditionKey] = $true
+                        }
+                    }
+                }
+            } else {
+                $conditionCoverage = [string]$line.GetAttribute('condition-coverage')
                 if ($conditionCoverage -match '\((\d+)\s*/\s*(\d+)\)') {
-                    $branchCovered += [int]$Matches[1]
-                    $branchTotal += [int]$Matches[2]
+                    $branchLine.FallbackCovered = [Math]::Max($branchLine.FallbackCovered, [int]$Matches[1])
+                    $branchLine.FallbackTotal = [Math]::Max($branchLine.FallbackTotal, [int]$Matches[2])
                 }
             }
         }
 
         foreach ($method in @($class.SelectNodes('./methods/method'))) {
-            $methodTotal++
-            $coveredLines = @($method.SelectNodes('./lines/line') | Where-Object { [int]$_.GetAttribute('hits') -gt 0 })
-            if ($coveredLines.Count -gt 0) { $methodCovered++ }
+            $methodKey = "$classKey|$($method.GetAttribute('name'))|$($method.GetAttribute('signature'))"
+            if (-not $data.Methods.ContainsKey($methodKey)) { $data.Methods[$methodKey] = $false }
+            if (@($method.SelectNodes('./lines/line') | Where-Object { [int]$_.GetAttribute('hits') -gt 0 }).Count -gt 0) {
+                $data.Methods[$methodKey] = $true
+            }
+        }
+    }
+}
+
+function Get-CoverageStats($data) {
+    $lineTotal = $data.Lines.Count
+    $lineCovered = @($data.Lines.Values | Where-Object { $_ }).Count
+    $branchTotal = 0
+    $branchCovered = 0
+    $methodTotal = $data.Methods.Count
+    $methodCovered = @($data.Methods.Values | Where-Object { $_ }).Count
+
+    foreach ($branchLine in $data.BranchLines.Values) {
+        if ($branchLine.Conditions.Count -gt 0) {
+            $branchTotal += $branchLine.Conditions.Count
+            $branchCovered += @($branchLine.Conditions.Values | Where-Object { $_ }).Count
+        } else {
+            $branchTotal += $branchLine.FallbackTotal
+            $branchCovered += $branchLine.FallbackCovered
         }
     }
 
     if ($lineTotal -eq 0) { throw 'Coverage scope does not contain any executable production lines.' }
     if ($methodTotal -eq 0) { throw 'Coverage scope does not contain any production methods.' }
 
-    [pscustomobject]@{
+    return [pscustomobject]@{
         LineCovered = $lineCovered
         LineTotal = $lineTotal
         LinePercent = 100.0 * $lineCovered / $lineTotal
@@ -94,25 +156,19 @@ function Get-CoverageStats([object[]]$classes) {
     }
 }
 
-$depotClasses = @()
-$managerClasses = @()
-foreach ($coverageFile in $coverageFiles) {
-    [xml]$report = Get-Content -LiteralPath $coverageFile.FullName -Raw
-    $classNodes = @($report.SelectNodes('//class'))
-    foreach ($class in $classNodes) {
-        switch (Get-ProductionArea $class) {
-            'Depot' { $depotClasses += $class }
-            'DepotManager' { $managerClasses += $class }
-        }
-    }
+$depot = Get-CoverageStats $areas.Depot
+$manager = Get-CoverageStats $areas.DepotManager
+$total = [pscustomobject]@{
+    LineCovered = $depot.LineCovered + $manager.LineCovered
+    LineTotal = $depot.LineTotal + $manager.LineTotal
+    BranchCovered = $depot.BranchCovered + $manager.BranchCovered
+    BranchTotal = $depot.BranchTotal + $manager.BranchTotal
+    MethodCovered = $depot.MethodCovered + $manager.MethodCovered
+    MethodTotal = $depot.MethodTotal + $manager.MethodTotal
 }
-
-if ($depotClasses.Count -eq 0) { throw 'Coverage reports do not contain Depot production classes.' }
-if ($managerClasses.Count -eq 0) { throw 'Coverage reports do not contain DepotManager production classes.' }
-
-$depot = Get-CoverageStats $depotClasses
-$manager = Get-CoverageStats $managerClasses
-$total = Get-CoverageStats @($depotClasses + $managerClasses)
+$total | Add-Member -NotePropertyName LinePercent -NotePropertyValue (100.0 * $total.LineCovered / $total.LineTotal)
+$total | Add-Member -NotePropertyName BranchPercent -NotePropertyValue $(if ($total.BranchTotal -eq 0) { 100.0 } else { 100.0 * $total.BranchCovered / $total.BranchTotal })
+$total | Add-Member -NotePropertyName MethodPercent -NotePropertyValue (100.0 * $total.MethodCovered / $total.MethodTotal)
 
 function Format-Percent([double]$value) {
     return $value.ToString('0.00', $culture)

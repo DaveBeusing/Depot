@@ -11,14 +11,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  compatibility:
-    name: Windows compatibility - ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [windows-2022, windows-2025]
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
+  compatibility-windows-2022:
+    name: Windows Server 2022 compatibility smoke
+    runs-on: windows-2022
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -31,8 +27,7 @@ jobs:
       - name: Build with zero warnings
         run: dotnet build Depot.slnx --configuration Release --no-restore -warnaserror
 
-      - name: Windows Server 2022 compatibility smoke - Depot
-        if: matrix.os == 'windows-2022'
+      - name: Compatibility smoke - Depot
         run: >-
           dotnet test tests/Depot.Tests/Depot.Tests.csproj
           --configuration Release
@@ -43,8 +38,7 @@ jobs:
           --blame-hang-timeout 8m
           --logger "console;verbosity=normal"
 
-      - name: Windows Server 2022 compatibility smoke - DepotManager
-        if: matrix.os == 'windows-2022'
+      - name: Compatibility smoke - DepotManager
         run: >-
           dotnet test tests/DepotManager.Tests/DepotManager.Tests.csproj
           --configuration Release
@@ -55,10 +49,10 @@ jobs:
           --blame-hang-timeout 8m
           --logger "console;verbosity=normal"
 
-  regression:
-    name: Regression - ${{ matrix.area }}
+  coverage:
+    name: Coverage regression - ${{ matrix.area }}
     runs-on: windows-2025
-    timeout-minutes: 45
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
@@ -95,39 +89,42 @@ jobs:
       - name: Build test area
         run: dotnet build ${{ matrix.project }} --configuration Release --no-restore -warnaserror
 
-      - name: Run regression area
+      - name: Run regression area with production coverage
         shell: pwsh
-        run: ./scripts/quality/run-test-area.ps1 -Area '${{ matrix.area }}' -Configuration Release -NoBuild
+        run: >-
+          ./scripts/quality/run-test-area.ps1
+          -Area '${{ matrix.area }}'
+          -Configuration Release
+          -NoBuild
+          -Coverage
+          -ResultsDirectory 'TestResults/Coverage/${{ matrix.area }}'
 
-  coverage:
-    name: Production code coverage
+      - name: Upload area coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: code-coverage-${{ matrix.area }}
+          path: TestResults/Coverage/${{ matrix.area }}/**/*.cobertura.xml
+          if-no-files-found: error
+          retention-days: 14
+
+  coverage-gate:
+    name: Production coverage gate
     runs-on: windows-2025
-    timeout-minutes: 90
+    timeout-minutes: 10
+    needs: coverage
+    if: always()
+    env:
+      COVERAGE_MATRIX_RESULT: ${{ needs.coverage.result }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+
+      - name: Download coverage reports
+        uses: actions/download-artifact@v4
         with:
-          dotnet-version: 10.0.x
-
-      - name: Restore locked dependencies
-        run: dotnet restore Depot.slnx --locked-mode
-
-      - name: Build with zero warnings
-        run: dotnet build Depot.slnx --configuration Release --no-restore -warnaserror
-
-      - name: Run regression suite with production coverage
-        run: >-
-          dotnet test Depot.slnx
-          --configuration Release
-          --no-build
-          --no-restore
-          --filter "QualityGate!=Performance"
-          --blame-hang
-          --blame-hang-timeout 10m
-          --logger "console;verbosity=normal"
-          --settings tests/coverage.runsettings
-          --collect "Code Coverage"
-          --results-directory TestResults/Coverage
+          pattern: code-coverage-*
+          path: TestResults/Coverage
+          merge-multiple: true
 
       - name: Evaluate code coverage baseline
         shell: pwsh
@@ -139,14 +136,12 @@ jobs:
           -MinimumDepotManagerLinePercent 0
           -MinimumDepotManagerBranchPercent 0
 
-      - name: Upload code coverage reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: code-coverage-cobertura
-          path: TestResults/Coverage/**/*.cobertura.xml
-          if-no-files-found: error
-          retention-days: 14
+      - name: Require all coverage regressions to pass
+        shell: pwsh
+        run: |
+          if ($env:COVERAGE_MATRIX_RESULT -ne 'success') {
+            throw "Coverage regression matrix result was '$env:COVERAGE_MATRIX_RESULT'."
+          }
 
   performance:
     name: 100k performance baseline

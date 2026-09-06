@@ -15,7 +15,9 @@ param(
     [string]$Area,
     [ValidateSet('Debug', 'Release')]
     [string]$Configuration = 'Release',
-    [switch]$NoBuild
+    [switch]$NoBuild,
+    [switch]$Coverage,
+    [string]$ResultsDirectory
 )
 
 $ErrorActionPreference = 'Stop'
@@ -194,9 +196,23 @@ if ($filter) {
     $arguments += @('--filter', $filter)
 }
 
+if ($Coverage) {
+    if ([string]::IsNullOrWhiteSpace($ResultsDirectory)) {
+        $ResultsDirectory = Join-Path 'TestResults/Coverage' $Area
+    }
+    $arguments += @(
+        '--settings', 'tests/coverage.runsettings',
+        '--collect', 'Code Coverage',
+        '--results-directory', $ResultsDirectory
+    )
+}
+
 Write-Host "Running regression area '$Area' from '$project'."
 if ($filter) {
     Write-Host "Filter: $filter"
+}
+if ($Coverage) {
+    Write-Host "Production coverage: $ResultsDirectory"
 }
 
 & dotnet @arguments
