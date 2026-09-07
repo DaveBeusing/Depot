@@ -12,9 +12,11 @@ using Xunit;
 namespace Depot.Tests;
 
 [Collection("Provider database")]
+[Trait("Acceptance", "DatabaseProvider")]
 public sealed class ProcurementProviderTests
 {
 	[SqlServerProcurementFact]
+	[Trait("Provider", "SqlServer")]
 	public async Task SqlServerExecutesAtomicConcurrentGoodsReceiptContract()
 	{
 		var settings = ProcurementProviderConfiguration.GetSqlServerSettings();
@@ -22,8 +24,18 @@ public sealed class ProcurementProviderTests
 		await VerifyProviderContractAsync(factory, new SqlServerDatabase(factory));
 	}
 
+	[MariaDbProcurementFact]
+	[Trait("Provider", "MariaDB")]
+	public async Task MariaDbExecutesAtomicConcurrentGoodsReceiptContract()
+	{
+		var settings = ProcurementProviderConfiguration.GetMariaDbSettings();
+		var factory = new MySqlConnectionFactory(settings);
+		await VerifyProviderContractAsync(factory, new MySqlDatabase(factory));
+	}
+
 	[MySqlProcurementFact]
-	public async Task MySqlOrMariaDbExecutesAtomicConcurrentGoodsReceiptContract()
+	[Trait("Provider", "MySQL")]
+	public async Task MySqlExecutesAtomicConcurrentGoodsReceiptContract()
 	{
 		var settings = ProcurementProviderConfiguration.GetMySqlSettings();
 		var factory = new MySqlConnectionFactory(settings);
@@ -125,27 +137,27 @@ public sealed class ProcurementProviderTests
 
 public sealed class SqlServerProcurementFactAttribute : FactAttribute
 {
-	public SqlServerProcurementFactAttribute()
-	{
-		Skip = ProcurementProviderConfiguration.GetSqlServerSkipReason();
-	}
+	public SqlServerProcurementFactAttribute() => Skip = ProcurementProviderConfiguration.GetSqlServerSkipReason();
+}
+
+public sealed class MariaDbProcurementFactAttribute : FactAttribute
+{
+	public MariaDbProcurementFactAttribute() => Skip = ProcurementProviderConfiguration.GetMariaDbSkipReason();
 }
 
 public sealed class MySqlProcurementFactAttribute : FactAttribute
 {
-	public MySqlProcurementFactAttribute()
-	{
-		Skip = ProcurementProviderConfiguration.GetMySqlSkipReason();
-	}
+	public MySqlProcurementFactAttribute() => Skip = ProcurementProviderConfiguration.GetMySqlSkipReason();
 }
 
 internal static class ProcurementProviderConfiguration
 {
 	internal const string SqlServerEnvironmentVariable = "DEPOT_TEST_SQLSERVER_CONNECTION_STRING";
+	internal const string MariaDbEnvironmentVariable = "DEPOT_TEST_MARIADB_CONNECTION_STRING";
 	internal const string MySqlEnvironmentVariable = "DEPOT_TEST_MYSQL_CONNECTION_STRING";
 
 	public static string? GetSqlServerSkipReason() => GetSkipReason(SqlServerEnvironmentVariable, GetSqlServerSettings);
-
+	public static string? GetMariaDbSkipReason() => GetSkipReason(MariaDbEnvironmentVariable, GetMariaDbSettings);
 	public static string? GetMySqlSkipReason() => GetSkipReason(MySqlEnvironmentVariable, GetMySqlSettings);
 
 	public static DatabaseConnectionSettings GetSqlServerSettings()
@@ -167,13 +179,16 @@ internal static class ProcurementProviderConfiguration
 		};
 	}
 
-	public static DatabaseConnectionSettings GetMySqlSettings()
+	public static DatabaseConnectionSettings GetMariaDbSettings() => GetMySqlFamilySettings(MariaDbEnvironmentVariable);
+	public static DatabaseConnectionSettings GetMySqlSettings() => GetMySqlFamilySettings(MySqlEnvironmentVariable);
+
+	private static DatabaseConnectionSettings GetMySqlFamilySettings(string environmentVariable)
 	{
-		var values = ReadConnectionString(MySqlEnvironmentVariable);
+		var values = ReadConnectionString(environmentVariable);
 		var (host, endpointPort) = ParseEndpoint(GetRequired(values, "Server", "Host"), 3306, ':');
 		var port = GetInt32(values, endpointPort, "Port");
 		var database = GetRequired(values, "Database", "Initial Catalog");
-		EnsureTestDatabase(database, MySqlEnvironmentVariable);
+		EnsureTestDatabase(database, environmentVariable);
 		var sslMode = GetOptional(values, "SSL Mode", "SslMode");
 		return new DatabaseConnectionSettings
 		{
@@ -187,9 +202,7 @@ internal static class ProcurementProviderConfiguration
 		};
 	}
 
-	private static string? GetSkipReason(
-		string environmentVariable,
-		Func<DatabaseConnectionSettings> parse)
+	private static string? GetSkipReason(string environmentVariable, Func<DatabaseConnectionSettings> parse)
 	{
 		if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(environmentVariable)))
 			return $"Set {environmentVariable} to run this optional server integration test.";

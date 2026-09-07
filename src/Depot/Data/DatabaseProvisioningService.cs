@@ -18,6 +18,7 @@ public static class DatabaseProvisioningService
 	public static void Initialize(IDatabaseConnectionFactory connectionFactory)
 	{
 		ArgumentNullException.ThrowIfNull(connectionFactory);
+		using var provisioningLock = DatabaseProvisioningLock.Acquire(connectionFactory);
 		DatabaseProviderFactory.CreateInitializer(connectionFactory).Initialize();
 		SalesSchemaMigration.Migrate(connectionFactory);
 		FinanceInventoryAccountingSchemaMigration.Migrate(connectionFactory);
