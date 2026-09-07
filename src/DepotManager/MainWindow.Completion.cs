@@ -96,8 +96,7 @@ public partial class MainWindow
             var settings = LoadInstalledSettings(installation);
             await new ManagerDatabaseConnectionValidator().ValidateAsync(settings, operationToken);
             var currentSchema = await new DatabaseSchemaInspector().ReadSchemaVersionAsync(settings, operationToken);
-            if (metadata.DatabaseSchemaVersion < currentSchema)
-                throw new InvalidOperationException($"Update blocked because release schema {metadata.DatabaseSchemaVersion} is older than database schema {currentSchema}.");
+            MigrationBackupGate.EnsureTargetSchemaIsNotOlder(currentSchema, metadata.DatabaseSchemaVersion);
 
             if (metadata.DatabaseSchemaVersion > currentSchema)
             {
@@ -105,6 +104,7 @@ public partial class MainWindow
                 {
                     safetyBackup = await new MigrationSafetyService().CreateSqliteSafetyBackupAsync(
                         settings, installation.InstallDirectory, installed, currentSchema, operationToken);
+                    safetyBackup = MigrationBackupGate.EnsureVerifiedSqliteBackup(safetyBackup);
                     Log($"SQLite migration safety backup created: {safetyBackup}");
                 }
                 else
@@ -114,12 +114,13 @@ public partial class MainWindow
                         "For remote SQL Server or MySQL/MariaDB databases, Depot Manager does not assume server backup privileges. Confirm that a current server-side backup exists before continuing.",
                         "Database backup required",
                         MessageBoxButton.YesNo,
-                        MessageBoxImage.Warning);
-                    if (remoteBackupConfirmed != MessageBoxResult.Yes)
+                        MessageBoxImage.Warning) == MessageBoxResult.Yes;
+                    if (!remoteBackupConfirmed)
                     {
                         Log("Update cancelled because a required remote database backup was not confirmed.");
                         return;
                     }
+                    MigrationBackupGate.EnsureExternalBackupConfirmed(remoteBackupConfirmed);
                 }
             }
 

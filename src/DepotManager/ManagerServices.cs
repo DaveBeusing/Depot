@@ -197,22 +197,32 @@ public sealed class InstallationService(string installDirectory, Action<string> 
 		if (application is not null) application.Dispatcher.BeginInvoke(new Action(application.Shutdown));
 	}
 
-	public void Uninstall(bool removeConfiguration)
+	public void RemoveApplicationFiles(bool removeConfiguration)
 	{
 		EnsureDepotStopped();
 		if (File.Exists(DepotPath)) File.Delete(DepotPath);
 		if (Directory.Exists(BackupDirectory)) Directory.Delete(BackupDirectory, true);
 		if (removeConfiguration && File.Exists(SettingsPath)) File.Delete(SettingsPath);
-		Registry.CurrentUser.DeleteSubKeyTree(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\Depot", false);
-		var startMenuShortcut = GetStartMenuShortcutPath();
-		if (File.Exists(startMenuShortcut)) File.Delete(startMenuShortcut);
-		var desktopShortcut = GetDesktopShortcutPath();
-		if (File.Exists(desktopShortcut)) File.Delete(desktopShortcut);
 		if (File.Exists(ManagerPath) && string.Equals(Path.GetFullPath(Environment.ProcessPath ?? string.Empty), ManagerPath, StringComparison.OrdinalIgnoreCase))
 		{
 			if (!MoveFileEx(ManagerPath, null, MoveFileDelayUntilReboot)) log("DepotManager.exe could not be scheduled for removal; the application data remains untouched.");
 		}
 		else if (File.Exists(ManagerPath)) File.Delete(ManagerPath);
+	}
+
+	public void RemoveWindowsIntegration()
+	{
+		Registry.CurrentUser.DeleteSubKeyTree(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\Depot", false);
+		var startMenuShortcut = GetStartMenuShortcutPath();
+		if (File.Exists(startMenuShortcut)) File.Delete(startMenuShortcut);
+		var desktopShortcut = GetDesktopShortcutPath();
+		if (File.Exists(desktopShortcut)) File.Delete(desktopShortcut);
+	}
+
+	public void Uninstall(bool removeConfiguration)
+	{
+		RemoveApplicationFiles(removeConfiguration);
+		RemoveWindowsIntegration();
 	}
 
 	private void CreateStartMenuShortcut() => CreateShortcut(GetStartMenuShortcutPath());

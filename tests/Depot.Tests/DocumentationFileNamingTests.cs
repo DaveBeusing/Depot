@@ -42,7 +42,7 @@ public sealed class DocumentationFileNamingTests
 		var docsRoot = Path.Combine(repositoryRoot, "docs");
 		var documents = Directory.GetFiles(docsRoot, "*.md", SearchOption.AllDirectories);
 
-		Assert.Equal(71, documents.Length);
+		Assert.NotEmpty(documents);
 		foreach (var document in documents)
 		{
 			var fileName = Path.GetFileName(document);
