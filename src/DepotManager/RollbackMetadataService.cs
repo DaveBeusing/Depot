@@ -73,13 +73,18 @@ public static class RollbackMetadataService
                 $"Rollback unavailable because database schema {currentSchemaVersion} does not match schema {candidate.SupportedSchemaVersion} supported by Depot {VersionRules.VersionText(candidate.Version)}.");
     }
 
-    public static void Apply(InstallationService installation, RollbackCandidate candidate, int currentSchemaVersion)
+    public static void RestoreExecutable(InstallationService installation, RollbackCandidate candidate, int currentSchemaVersion)
     {
         ArgumentNullException.ThrowIfNull(installation);
         EnsureCompatible(candidate, currentSchemaVersion);
         installation.EnsureDepotStopped();
         InstallationService.ValidateTargetVersion(candidate.ExecutablePath, candidate.Version);
         ExecutableDeployment.Replace(candidate.ExecutablePath, installation.DepotPath);
+    }
+
+    public static void Apply(InstallationService installation, RollbackCandidate candidate, int currentSchemaVersion)
+    {
+        RestoreExecutable(installation, candidate, currentSchemaVersion);
         installation.RegisterInstalledApp(candidate.Version);
     }
 

@@ -7,6 +7,7 @@ on:
     branches: [ master ]
     paths:
       - '.github/workflows/release-integrity.yml'
+      - 'scripts/publish-packaged-artifacts.ps1'
       - 'src/Depot/**'
       - 'src/DepotManager/**'
       - 'Directory.Build.props'
@@ -57,11 +58,7 @@ jobs:
 
       - name: Publish release artifacts
         shell: pwsh
-        run: |
-          dotnet publish src/Depot/Depot.csproj --configuration Release --runtime win-x64 --self-contained true --no-restore -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:DebugType=None -p:DebugSymbols=false -o artifacts/release/depot
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          dotnet publish src/DepotManager/DepotManager.csproj --configuration Release --runtime win-x64 --self-contained true --no-restore -p:PublishSingleFile=true -p:DebugType=None -p:DebugSymbols=false -o artifacts/release/manager
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        run: ./scripts/publish-packaged-artifacts.ps1 -OutputRoot artifacts/release -NoRestore
 
       - name: Validate independent Depot Manager version
         shell: pwsh

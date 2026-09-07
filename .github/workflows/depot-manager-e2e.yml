@@ -1,0 +1,234 @@
+name: DepotManager packaged E2E
+
+on:
+  pull_request:
+    branches: [ master ]
+    paths:
+      - '.github/workflows/depot-manager-e2e.yml'
+      - '.github/workflows/release-integrity.yml'
+      - 'scripts/publish-packaged-artifacts.ps1'
+      - 'src/Depot/**'
+      - 'src/DepotManager/**'
+      - 'tests/DepotManager.Tests/**'
+      - 'Directory.Build.props'
+  push:
+    branches: [ master ]
+    paths:
+      - '.github/workflows/depot-manager-e2e.yml'
+      - '.github/workflows/release-integrity.yml'
+      - 'scripts/publish-packaged-artifacts.ps1'
+      - 'src/Depot/**'
+      - 'src/DepotManager/**'
+      - 'tests/DepotManager.Tests/**'
+      - 'Directory.Build.props'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: depot-manager-packaged-e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  packaged-e2e:
+    name: Packaged E2E (${{ github.event_name == 'pull_request' && 'Smoke' || 'Full' }})
+    runs-on: windows-2025
+    timeout-minutes: 45
+    steps:
+      - name: Checkout exact source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify source identity and tier
+        shell: pwsh
+        run: |
+          $head = git rev-parse HEAD
+          if ($head -ne '${{ github.sha }}') { throw "Checkout SHA $head does not match workflow SHA ${{ github.sha }}" }
+          $tier = if ('${{ github.event_name }}' -eq 'pull_request') { 'Smoke' } else { 'Full' }
+          "DEPOT_PACKAGED_E2E_TIER=$tier" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          New-Item -ItemType Directory -Force artifacts/packaged, artifacts/test-results | Out-Null
+          "current=$head" | Out-File artifacts/packaged/source.txt -Encoding ascii
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore locked dependencies
+        shell: pwsh
+        run: |
+          dotnet restore Depot.slnx --locked-mode -p:AuditPipeline=true
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet restore src/Depot/Depot.csproj --runtime win-x64 -p:AuditPipeline=true
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet restore src/DepotManager/DepotManager.csproj --runtime win-x64 -p:AuditPipeline=true
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Build Release warning-free
+        shell: pwsh
+        run: |
+          dotnet build Depot.slnx --configuration Release --no-restore -warnaserror -p:AuditPipeline=true
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Run existing DepotManager tests
+        shell: pwsh
+        run: |
+          dotnet test tests/DepotManager.Tests/DepotManager.Tests.csproj --configuration Release --no-build --logger "trx;LogFileName=DepotManager.Tests.trx" --results-directory artifacts/test-results
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Publish current packaged artifacts
+        shell: pwsh
+        run: ./scripts/publish-packaged-artifacts.ps1 -OutputRoot artifacts/packaged/current -NoRestore
+
+      - name: Publish previous packaged artifacts from real base source
+        shell: pwsh
+        run: |
+          if ('${{ github.event_name }}' -eq 'pull_request') {
+            $previousRef = '${{ github.event.pull_request.base.sha }}'
+          }
+          else {
+            $previousRef = (git rev-parse HEAD^).Trim()
+          }
+          if ([string]::IsNullOrWhiteSpace($previousRef)) { throw 'Previous source ref could not be determined.' }
+          "previous=$previousRef" | Add-Content artifacts/packaged/source.txt -Encoding ascii
+          $previousTree = Join-Path $env:RUNNER_TEMP 'DepotPreviousSource'
+          if (Test-Path $previousTree) { Remove-Item $previousTree -Recurse -Force }
+          git worktree add --detach $previousTree $previousRef
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          try {
+            ./scripts/publish-packaged-artifacts.ps1 -SourceRoot $previousTree -OutputRoot artifacts/packaged/previous
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+          finally {
+            git worktree remove --force $previousTree
+          }
+
+      - name: Sign manager artifacts with ephemeral runner trust
+        timeout-minutes: 5
+        shell: pwsh
+        run: |
+          $subject = "CN=Depot Packaged E2E ${{ github.run_id }}"
+          $pfxPassword = 'Depot-Packaged-E2E-Only'
+          $pfxPath = Join-Path $env:RUNNER_TEMP 'depot-packaged-e2e.pfx'
+          $cerPath = Join-Path $env:RUNNER_TEMP 'depot-packaged-e2e.cer'
+
+          Write-Host 'Creating ephemeral code-signing certificate with .NET CertificateRequest.'
+          $rsa = [System.Security.Cryptography.RSA]::Create(3072)
+          $request = [System.Security.Cryptography.X509Certificates.CertificateRequest]::new(
+            $subject,
+            $rsa,
+            [System.Security.Cryptography.HashAlgorithmName]::SHA256,
+            [System.Security.Cryptography.RSASignaturePadding]::Pkcs1)
+          $request.CertificateExtensions.Add(
+            [System.Security.Cryptography.X509Certificates.X509KeyUsageExtension]::new(
+              [System.Security.Cryptography.X509Certificates.X509KeyUsageFlags]::DigitalSignature,
+              $true))
+          $eku = [System.Security.Cryptography.OidCollection]::new()
+          [void]$eku.Add([System.Security.Cryptography.Oid]::new('1.3.6.1.5.5.7.3.3'))
+          $request.CertificateExtensions.Add(
+            [System.Security.Cryptography.X509Certificates.X509EnhancedKeyUsageExtension]::new($eku, $false))
+
+          $certificate = $request.CreateSelfSigned((Get-Date).AddMinutes(-5), (Get-Date).AddDays(2))
+          [System.IO.File]::WriteAllBytes(
+            $pfxPath,
+            $certificate.Export([System.Security.Cryptography.X509Certificates.X509ContentType]::Pkcs12, $pfxPassword))
+          [System.IO.File]::WriteAllBytes(
+            $cerPath,
+            $certificate.Export([System.Security.Cryptography.X509Certificates.X509ContentType]::Cert))
+          "DEPOT_PACKAGED_E2E_CERT_THUMBPRINT=$($certificate.Thumbprint)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          Write-Host "Ephemeral certificate created: $($certificate.Thumbprint)"
+
+          $trustCertificate = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new($cerPath)
+          foreach ($storeName in @('Root', 'TrustedPublisher')) {
+            Write-Host "Adding ephemeral certificate to CurrentUser/$storeName."
+            $store = [System.Security.Cryptography.X509Certificates.X509Store]::new(
+              $storeName,
+              [System.Security.Cryptography.X509Certificates.StoreLocation]::CurrentUser)
+            try {
+              $store.Open([System.Security.Cryptography.X509Certificates.OpenFlags]::ReadWrite)
+              $store.Add($trustCertificate)
+            }
+            finally {
+              $store.Close()
+            }
+          }
+
+          $signtool = Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\bin' -Filter signtool.exe -Recurse |
+            Where-Object { $_.FullName -match '\\x64\\signtool\.exe$' } |
+            Sort-Object FullName -Descending |
+            Select-Object -First 1
+          if ($null -eq $signtool) { throw 'signtool.exe was not found on the runner.' }
+          Write-Host "Using signtool: $($signtool.FullName)"
+
+          $managerFiles = @(
+            'artifacts/packaged/current/manager/DepotManager.exe',
+            'artifacts/packaged/previous/manager/DepotManager.exe'
+          )
+          foreach ($file in $managerFiles) {
+            Write-Host "Signing $file"
+            & $signtool.FullName sign /fd SHA256 /f $pfxPath /p $pfxPassword $file
+            if ($LASTEXITCODE -ne 0) { throw "Authenticode signing failed for ${file}." }
+            Write-Host "Verifying $file"
+            & $signtool.FullName verify /pa /v $file
+            if ($LASTEXITCODE -ne 0) { throw "Authenticode verification failed for ${file}." }
+          }
+
+      - name: Run packaged E2E acceptance
+        shell: pwsh
+        env:
+          DEPOT_PACKAGED_E2E: '1'
+          DEPOT_PACKAGED_E2E_CURRENT_ROOT: ${{ github.workspace }}\artifacts\packaged\current
+          DEPOT_PACKAGED_E2E_PREVIOUS_ROOT: ${{ github.workspace }}\artifacts\packaged\previous
+          DEPOT_PACKAGED_E2E_WORK_ROOT: ${{ runner.temp }}\DepotPackagedE2E
+        run: |
+          New-Item -ItemType Directory -Force $env:DEPOT_PACKAGED_E2E_WORK_ROOT | Out-Null
+          dotnet test tests/DepotManager.Tests/DepotManager.Tests.csproj --configuration Release --no-build --filter "Category=PackagedE2E" --logger "trx;LogFileName=DepotManager.PackagedE2E.$env:DEPOT_PACKAGED_E2E_TIER.trx" --results-directory artifacts/test-results
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Retain failure evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: depot-manager-packaged-e2e-failure-${{ github.sha }}
+          path: |
+            artifacts/packaged/
+            artifacts/test-results/
+            ${{ runner.temp }}/DepotPackagedE2E/
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Upload packaged E2E test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: depot-manager-packaged-e2e-results-${{ github.sha }}
+          path: |
+            artifacts/packaged/source.txt
+            artifacts/test-results/
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Remove ephemeral signing trust
+        if: always()
+        shell: pwsh
+        run: |
+          $thumbprint = $env:DEPOT_PACKAGED_E2E_CERT_THUMBPRINT
+          if ([string]::IsNullOrWhiteSpace($thumbprint)) { exit 0 }
+          foreach ($storeName in @('Root', 'TrustedPublisher')) {
+            $store = [System.Security.Cryptography.X509Certificates.X509Store]::new(
+              $storeName,
+              [System.Security.Cryptography.X509Certificates.StoreLocation]::CurrentUser)
+            try {
+              $store.Open([System.Security.Cryptography.X509Certificates.OpenFlags]::ReadWrite)
+              $matches = $store.Certificates.Find(
+                [System.Security.Cryptography.X509Certificates.X509FindType]::FindByThumbprint,
+                $thumbprint,
+                $false)
+              foreach ($match in $matches) { $store.Remove($match) }
+            }
+            finally {
+              $store.Close()
+            }
+          }

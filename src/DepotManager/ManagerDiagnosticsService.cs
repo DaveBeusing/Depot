@@ -44,8 +44,14 @@ public sealed class ManagerDiagnosticsService
         "connection string", "user id=", "userid=", "uid=", "username", "email=", "apikey",
         "api-key", "api key", "cookie", "bearer ", "access_key", "access key", "private key", "sas="
     ];
+    private readonly string? _logDirectory;
 
-    public string LogDirectory => Path.Combine(
+    public ManagerDiagnosticsService(string? logDirectory = null)
+    {
+        _logDirectory = string.IsNullOrWhiteSpace(logDirectory) ? null : Path.GetFullPath(logDirectory);
+    }
+
+    public string LogDirectory => _logDirectory ?? Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
         "Depot",
         "Logs");
