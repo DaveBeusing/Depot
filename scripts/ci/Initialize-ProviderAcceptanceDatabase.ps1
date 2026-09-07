@@ -39,6 +39,7 @@ $runId = if ($env:GITHUB_RUN_ID) { $env:GITHUB_RUN_ID } else { [DateTimeOffset]:
 $attempt = if ($env:GITHUB_RUN_ATTEMPT) { $env:GITHUB_RUN_ATTEMPT } else { '1' }
 $databaseName = ("depot_test_{0}_{1}_{2}" -f $Provider.ToLowerInvariant(), $runId, $attempt) -replace '[^a-zA-Z0-9_]', '_'
 $password = "D3pot!$([Guid]::NewGuid().ToString('N'))aA1"
+if (-not [string]::IsNullOrWhiteSpace($env:GITHUB_ACTIONS)) { Write-Output "::add-mask::$password" }
 $port = 3306
 $serviceName = $null
 $client = $null
@@ -92,13 +93,43 @@ UPDATEENABLED="False"
         $connectionString = "Server=127.0.0.1,1433;Database=$databaseName;User ID=sa;Password=$password;Encrypt=False;TrustServerCertificate=True"
     }
     'MySQL' {
+        $mysqlVersion = '8.4.11'
         $serviceName = 'DepotMySQL'
-        $dataLocation = Join-Path $env:RUNNER_TEMP 'mysql-provider-data'
-        & choco install mysql --version 8.4.6 -y --no-progress --params="'/port:3306 /serviceName:$serviceName /dataLocation:$dataLocation'"
-        if ($LASTEXITCODE -notin @(0, 3010, 1641)) { throw "MySQL installation failed with exit code $LASTEXITCODE." }
+        $archivePath = Join-Path $env:RUNNER_TEMP "mysql-$mysqlVersion-winx64.zip"
+        $extractRoot = Join-Path $env:RUNNER_TEMP "mysql-$mysqlVersion-provider"
+        $downloadUri = "https://cdn.mysql.com/Downloads/MySQL-8.4/mysql-$mysqlVersion-winx64.zip"
+        Invoke-WebRequest -Uri $downloadUri -OutFile $archivePath -UseBasicParsing
+        if (Test-Path $extractRoot) { Remove-Item $extractRoot -Recurse -Force }
+        Expand-Archive -Path $archivePath -DestinationPath $extractRoot -Force
+        Remove-Item $archivePath -Force
+        $baseDirectory = Join-Path $extractRoot "mysql-$mysqlVersion-winx64"
+        $mysqld = Join-Path $baseDirectory 'bin\mysqld.exe'
+        $client = Join-Path $baseDirectory 'bin\mysql.exe'
+        $dumpClient = Join-Path $baseDirectory 'bin\mysqldump.exe'
+        foreach ($executable in @($mysqld, $client, $dumpClient)) {
+            if (-not (Test-Path $executable)) { throw "MySQL $mysqlVersion archive did not contain expected executable '$executable'." }
+        }
+        $dataLocation = Join-Path $extractRoot 'data'
+        $configurationPath = Join-Path $extractRoot 'my.ini'
+        $baseOption = $baseDirectory.Replace('\', '/')
+        $dataOption = $dataLocation.Replace('\', '/')
+        @"
+[mysqld]
+basedir=$baseOption
+datadir=$dataOption
+port=3306
+bind-address=127.0.0.1
+character-set-server=utf8mb4
+collation-server=utf8mb4_unicode_ci
+log-error=$($extractRoot.Replace('\', '/'))/mysql-error.log
+"@ | Set-Content -Path $configurationPath -Encoding ascii
+
+        & $mysqld "--defaults-file=$configurationPath" --initialize-insecure
+        if ($LASTEXITCODE -ne 0) { throw "MySQL $mysqlVersion data-directory initialization failed with exit code $LASTEXITCODE." }
+        & $mysqld --install $serviceName "--defaults-file=$configurationPath"
+        if ($LASTEXITCODE -ne 0) { throw "MySQL $mysqlVersion service installation failed with exit code $LASTEXITCODE." }
+        Start-Service -Name $serviceName
         Wait-TcpPort -Port $port
-        $client = Find-Executable -Roots @('C:\tools', $env:ProgramFiles) -Names @('mysql.exe')
-        $dumpClient = Find-Executable -Roots @('C:\tools', $env:ProgramFiles) -Names @('mysqldump.exe')
         $sql = "ALTER USER 'root'@'localhost' IDENTIFIED BY '$password'; CREATE USER 'depot'@'%' IDENTIFIED BY '$password'; GRANT ALL PRIVILEGES ON *.* TO 'depot'@'%' WITH GRANT OPTION; FLUSH PRIVILEGES;"
         & $client --protocol=TCP --host=127.0.0.1 --port=3306 --user=root --execute=$sql
         if ($LASTEXITCODE -ne 0) { throw "MySQL test-account provisioning failed with exit code $LASTEXITCODE." }
@@ -129,4 +160,4 @@ Write-CiEnvironment -Name 'DEPOT_TEST_DATABASE_PORT' -Value $port.ToString()
 Write-CiEnvironment -Name 'DEPOT_TEST_DATABASE_CLIENT' -Value $client
 Write-CiEnvironment -Name 'DEPOT_TEST_DATABASE_DUMP_CLIENT' -Value $dumpClient
 
-Write-Host "Prepared isolated $Provider acceptance server on 127.0.0.1:$port with database '$databaseName'. Credentials were written only to the runner environment."
+Write-Host "Prepared isolated $Provider acceptance server on 127.0.0.1:$port with database '$databaseName'. Credentials were written only to the masked runner environment."

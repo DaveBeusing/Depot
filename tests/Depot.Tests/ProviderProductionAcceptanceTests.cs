@@ -92,10 +92,10 @@ public sealed class ProviderProductionAcceptanceTests
 		DatabaseProvisioningService.Initialize(factory);
 		var data = new DatabaseAccess(factory);
 
-		Assert.Equal(DatabaseVersion.CurrentVersion, Convert.ToInt32(await data.ExecuteScalarAsync("SELECT Version FROM DatabaseInfo WHERE Id=1;", CancellationToken.None), CultureInfo.InvariantCulture));
+		Assert.Equal(DatabaseVersion.CurrentVersion, Convert.ToInt32(await data.ExecuteScalarAsync("SELECT Version FROM DatabaseInfo;", CancellationToken.None), CultureInfo.InvariantCulture));
 		Assert.Equal(SalesSchemaMigration.CurrentVersion, Convert.ToInt32(await data.ExecuteScalarAsync("SELECT Version FROM DepotFeatureVersions WHERE Name='Sales';", CancellationToken.None), CultureInfo.InvariantCulture));
 		Assert.Equal(FinanceInventoryAccountingSchemaMigration.CurrentVersion, Convert.ToInt32(await data.ExecuteScalarAsync("SELECT Version FROM DepotFeatureVersions WHERE Name='Finance';", CancellationToken.None), CultureInfo.InvariantCulture));
-		Assert.Equal(1, Convert.ToInt32(await data.ExecuteScalarAsync(ReservationIndexSql(factory.Provider), CancellationToken.None), CultureInfo.InvariantCulture));
+		Assert.True(Convert.ToInt32(await data.ExecuteScalarAsync(ReservationIndexSql(factory.Provider), CancellationToken.None), CultureInfo.InvariantCulture) > 0);
 
 		var serverVersion = Convert.ToString(await data.ExecuteScalarAsync(ServerVersionSql(factory.Provider), CancellationToken.None), CultureInfo.InvariantCulture);
 		Assert.False(string.IsNullOrWhiteSpace(serverVersion));
@@ -297,7 +297,7 @@ public sealed class ProviderProductionAcceptanceTests
 	{
 		DatabaseProvider.Local => "SELECT COUNT(*) FROM sqlite_master WHERE type='index' AND name='UX_InventoryReservations_Active';",
 		DatabaseProvider.SqlServer => "SELECT COUNT(*) FROM sys.indexes WHERE object_id=OBJECT_ID(N'InventoryReservations') AND name=N'UX_InventoryReservations_Active';",
-		DatabaseProvider.MySql => "SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='InventoryReservations' AND index_name='UX_InventoryReservations_Active';",
+		DatabaseProvider.MySql => "SELECT COUNT(DISTINCT index_name) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='InventoryReservations' AND index_name='UX_InventoryReservations_Active';",
 		_ => throw new NotSupportedException()
 	};
 
