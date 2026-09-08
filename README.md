@@ -99,7 +99,7 @@ Explore [Finance Architecture](docs/FinanceArchitecture.md), [Finance Banking](d
 
 Current baseline:
 
-- Application: **0.15.168-preview**
+- Application: **0.15.169-preview**
 - Core database schema: **30**
 - Sales feature schema: **11**
 - Finance feature schema: **9**

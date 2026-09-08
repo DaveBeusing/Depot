@@ -6,7 +6,7 @@ This document identifies the documentation baseline for the current development 
 
 ## Current baseline
 
-- Application: `0.15.168-preview`
+- Application: `0.15.169-preview`
 - Help manifest: `1.21`
 - Core database schema: `30`
 - Sales feature schema: `11`

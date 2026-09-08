@@ -44,7 +44,7 @@ public sealed class ProviderParameterNormalizationTests
 		parameter.Value = "Finance";
 		command.Parameters.Add(parameter);
 
-		var normalize = command.GetType().GetMethod("NormalizeParameterNames", BindingFlags.Instance | BindingFlags.NonPublic);
+		var normalize = command.GetType().GetMethod("NormalizeParameters", BindingFlags.Instance | BindingFlags.NonPublic);
 		Assert.NotNull(normalize);
 		normalize.Invoke(command, null);
 

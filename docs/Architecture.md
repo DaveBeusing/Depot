@@ -93,7 +93,7 @@ Customer → Region → Global resolution
 - Finance feature schema: **9**
 - User Sessions feature schema: **3**
 - Security Events feature schema: **2**
-- Application: **0.15.168-preview**
+- Application: **0.15.169-preview**
 - Help manifest: **1.21**
 
 Feature schemas evolve independently. Sales schema 11 is a provider-parity/data-integrity correction and therefore does not increment Core schema 30.

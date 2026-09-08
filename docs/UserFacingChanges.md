@@ -49,7 +49,7 @@ The default Finance system role includes operational Finance permissions accordi
 
 ## Current technical baseline
 
-- Application: **0.15.168-preview**
+- Application: **0.15.169-preview**
 - Core database schema: **30**
 - Sales schema: **11**
 - Finance schema: **9**
