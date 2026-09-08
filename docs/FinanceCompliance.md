@@ -1,6 +1,6 @@
 # Finance Compliance and Control Boundaries
 
-Updated: 2026-08-28
+Updated: 2026-09-08
 
 ## Status and intent
 
@@ -37,6 +37,8 @@ The General Ledger validates balanced debit/credit totals, transaction/reporting
 
 Finance mutations persist Audit evidence where required. Retry-sensitive operations use operation IDs, immutable source identities, request/content hashes or uniqueness constraints. Reusing an operation ID with incompatible content is rejected. Localization configuration writes use optimistic concurrency; active assignments cannot overlap for one Legal Entity; built-in pack/registry rows reject mutation.
 
+Provider write retries are restricted to known transient lock/deadlock/write-conflict failures. Retried operations recreate the connection transaction and use bounded exponential backoff with jitter; non-transient constraint/business failures are not retried.
+
 ### Subledgers, inventory, banking and reporting
 
 Accounts Receivable provides customer open items, allocations, payments, write-offs, aging/statements and dunning. Accounts Payable provides supplier documents/open items, payments/allocations/reversal, aging/statements and fail-closed PO/goods-receipt/invoice matching with separately authorized exceptions.
@@ -61,12 +63,16 @@ UI visibility is not an authorization boundary. Finance operations are enforced 
 
 ## Provider and operational acceptance
 
-Finance schema 9 has provider-specific DDL for SQLite, SQL Server and MySQL/MariaDB. Production support requires live acceptance for fresh install/upgrades, transaction/locking/deadlock/retry behavior, backup/restore/recovery, date/decimal semantics, representative statement/reconciliation/reporting volumes, localization concurrency, rollback behavior and evidence-retention procedures.
+Finance schema 9 is technically accepted on the database baselines listed in [Database Provider Production Support Matrix](DatabaseProviderSupportMatrix.md): Depot's bundled SQLite runtime, SQL Server 2022 engine 16.x, MariaDB 11.8.9 LTS and MySQL 8.4.11 LTS.
+
+The real-provider suite covers provisioning/migration, decimal/date/timestamp behavior, rollback, constraints, concurrency/deadlock/retry, GL/AR/AP/FIFO flows, Banking/reconciliation, Financial Reporting/snapshots, restart/re-entry, provider-native remote backup/restore and representative 100k indexed lookup performance. This closes the database-provider technical acceptance gate for those exact baselines.
+
+It does **not** close deployment-specific accounting/reporting policy approval, period-end procedures, reconciliation ownership, segregation-of-duties review, retention/export/restore procedures, direct-bank integration, statutory filing, tax, localization or legal acceptance.
 
 Depending on deployment, these controls may contribute evidence toward ISO 27001, SOC-style controls, OWASP ASVS, EU CRA security obligations, GDPR accountability and accounting-control expectations. Applicability and conformity must be assessed separately by qualified organizational/legal/accounting stakeholders.
 
 ## Current gaps and extensions
 
-Remaining work is production/provider/legal/organizational acceptance and demand-driven jurisdiction extensions. Other potential extensions include costing methods beyond FIFO, impairment/NRV, manufacturing/WIP costing, direct bank connectivity and jurisdiction-specific statutory filing implementations.
+Remaining work is legal/organizational/deployment acceptance and demand-driven jurisdiction extensions, not generic provider compatibility for the certified database baselines. Other potential extensions include costing methods beyond FIFO, impairment/NRV, manufacturing/WIP costing, direct bank connectivity and jurisdiction-specific statutory filing implementations.
 
-No repository feature or localization pack should be described externally as certified or legally compliant solely because these controls exist.
+No repository feature, provider baseline or localization pack should be described externally as legally certified or jurisdiction-compliant solely because these engineering controls and provider tests pass.

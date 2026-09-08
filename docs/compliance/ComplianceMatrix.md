@@ -1,6 +1,6 @@
 # Depot Compliance Matrix
 
-Updated: 2026-08-28
+Updated: 2026-09-08
 
 ## Purpose
 
@@ -15,8 +15,9 @@ This matrix tracks regulatory, standards and assurance areas potentially relevan
 | Accounting standards / statutory bookkeeping | Deployment/jurisdiction-specific | Jurisdiction-neutral Finance core with explicit localization and operator acceptance | High when Finance is used |
 | Receivables / dunning / collections | Deployment/jurisdiction-specific | Controlled AR/dunning evidence; legal wording/fees/escalation remain external | High when AR is used |
 | Payables / invoice approval / matching | Deployment/jurisdiction-specific | Controlled AP lifecycle, fail-closed matching, explicit exception approval, retained settlement/reversal evidence | High when AP is used |
+| Database provider production acceptance | Engineering/runtime assurance | Real SQLite, SQL Server 2022, MariaDB 11.8.9 and MySQL 8.4.11 migration/concurrency/recovery/business-flow acceptance | High |
 | ISO/IEC 27001 / 27034 | Management/application security | Product/development controls and evidence mapping | High enterprise value |
-| ISO/IEC 25010 | Software quality | Release/quality gates | High |
+| ISO/IEC 25010 | Software quality | Release/quality gates and real-provider regression evidence | High |
 | OWASP ASVS / SAMM | Industry guidance | Secure-development verification | High |
 | WCAG 2.2 / EN 301 549 | Accessibility | Keyboard/focus/contrast/screen-reader/scaling acceptance | Medium/High |
 | NIS2 | Customer/supply-chain context | Security evidence for regulated customers | Context-dependent |
@@ -38,12 +39,21 @@ This matrix tracks regulatory, standards and assurance areas potentially relevan
 | Fail-closed PO/receipt/invoice matching |  |  | X | X | X |
 | Explicit match-exception approval/reason |  | X | X | X | X |
 | Segregated approval permissions |  |  | X | X | X |
-| Backup/recovery tests | X | X | X | X | X |
+| Real-provider migration/concurrency/retry acceptance | X |  | X | X | X |
+| Provider-native backup/restore boundary tests | X | X | X | X | X |
 | SBOM/vulnerability management | X |  |  | X |  |
 | Release signing/evidence | X |  |  | X | X |
 | E-invoice validation/integrity |  |  | X |  | X |
 | Immutable report snapshots |  |  | X | X | X |
 | Effective-dated localization evidence |  |  | X | X | X |
+
+## Database provider evidence boundary
+
+The production database-provider matrix is complete for the exact baselines documented in [Database Provider Production Support Matrix](../DatabaseProviderSupportMatrix.md): the Depot-bundled SQLite runtime, SQL Server 2022 / engine 16.x, MariaDB 11.8.9 LTS and MySQL 8.4.11 LTS.
+
+The matrix validates provisioning/migration, provider SQL/types/constraints, rollback, concurrency/deadlock/write-conflict retry, representative Sales/Procurement/session/Finance flows, Banking/reconciliation, Financial Reporting/snapshots, server restart, native remote backup/restore and representative 100,000-row indexed access.
+
+This evidence demonstrates the technical database/runtime boundary only. It does not convert a database provider, Finance module, localization pack, report, tax treatment or deployment into a legal/regulatory certification.
 
 ## Finance evidence boundary
 
@@ -56,6 +66,8 @@ These controls strengthen technical evidence for traceability, authorization, re
 ## Governance
 
 Before production release, each applicable Critical/High area should have an owner, applicability decision, mapped controls, verification evidence, known gaps/risks and review date. Finance governance should additionally identify Legal Entity, currency, chart/book/calendar/posting-profile owners, exchange-rate source, AR/AP configuration owners, reconciliation procedures, approvers, payment evidence and retention/localization responsibilities.
+
+Remote database operators remain responsible for production backup scheduling, retention, off-host copies, encryption where required and restore drills even though the automated matrix proves the provider-native restore/re-entry boundary.
 
 ## Disclaimer
 

@@ -102,7 +102,11 @@ Supplier documents, AP open items and supplier payments are classified as accoun
 
 ## Provider support
 
-Finance feature schema 4 contains the Accounts Payable tables and is implemented for SQLite, SQL Server, and MySQL/MariaDB. Live provider migration, concurrency, recovery and performance acceptance remain deployment/release gates; provider-neutral code does not by itself constitute production certification for every server/version combination.
+Accounts Payable is part of the current Finance feature schema **9** and its real service/repository path is included in Depot's production database-provider acceptance matrix. The certified technical baselines are the bundled SQLite runtime, SQL Server 2022 / engine 16.x, MariaDB 11.8.9 LTS, and MySQL 8.4.11 LTS.
+
+Live acceptance covers supplier-document posting, General Ledger handoff, AP open items, payment/allocation/reversal, Three-Way-Match exception authorization, transaction rollback, provider concurrency/retry behavior, restart/re-entry, and provider-native remote backup/restore boundaries. Versions outside the documented support matrix are not implicitly certified.
+
+Database-provider certification is a technical persistence/runtime statement. It does not certify jurisdiction-specific supplier-invoice, tax, payment, retention, or accounting procedures.
 
 ## Scope boundary
 

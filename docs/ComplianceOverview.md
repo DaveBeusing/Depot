@@ -1,6 +1,6 @@
 # Compliance overview
 
-Updated: 2026-08-29
+Updated: 2026-09-08
 
 Depot separates implemented technical controls from legal, accounting, tax, audit or certification claims. Security/compliance roadmap phases retain their technically implementable controls; remaining acceptance gates are tracked in the security, release, Finance and compliance documentation.
 
@@ -16,14 +16,24 @@ Localization requires explicit effective-dated assignment. The built-in `GENERIC
 
 ## Current versions
 
-- Application: **0.15.x-preview**
+- Application: **0.15.168-preview**
 - Core database schema: **30**
-- Sales feature schema: **9**
+- Sales feature schema: **11**
 - Finance feature schema: **9**
-- Help manifest: **1.18**
+- User Sessions feature schema: **3**
+- Security Events feature schema: **2**
+- Help manifest: **1.21**
+
+## Database-provider acceptance
+
+The database-provider technical gate is complete for the exact baselines documented in [Database Provider Production Support Matrix](DatabaseProviderSupportMatrix.md): Depot's bundled SQLite runtime, SQL Server 2022 engine 16.x, MariaDB 11.8.9 LTS and MySQL 8.4.11 LTS.
+
+The real-provider matrix covers provisioning/migration, locking/deadlock/retry, rollback, constraints, date/decimal/timestamp handling, representative Finance/Sales/Procurement/session workflows, Banking/reconciliation, Financial Reporting/snapshots, remote restart and provider-native backup/restore boundaries plus representative 100k indexed access.
+
+Database-provider certification is an engineering/runtime statement. It does not establish jurisdiction-specific accounting, tax, legal, accessibility, operating-system, banking-network or regulatory certification.
 
 ## Remaining acceptance
 
-Production use still requires live provider migration/concurrency/recovery/performance testing, deployment-specific accounting/reporting policy approval, reconciliation and period-end procedures, segregation-of-duties review, retention/export procedures, accessibility/signing/deployment acceptance and qualified organizational/legal/accounting validation.
+Production use still requires deployment-specific accounting/reporting policy approval, reconciliation and period-end procedures, segregation-of-duties review, retention/export/restore procedures, realistic customer-specific sizing, accessibility/signing/deployment acceptance and qualified organizational/legal/accounting validation.
 
 This document is engineering evidence and not a certification statement.

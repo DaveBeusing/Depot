@@ -43,6 +43,14 @@ Registry entries are effective-dated and audit-retained. Built-in registry rows 
 
 Viewing requires `FinanceLocalization.View`; changing assignments, packs, or registry entries requires `FinanceLocalization.Manage`. The Finance system role includes both permissions. Assignments and registry entries are retained as Audit Evidence, and changes use optimistic concurrency and structured audit records.
 
+## Database provider support
+
+Finance schema 9, including the Localization persistence layer and migration chain, is technically accepted on Depot's certified database baselines: the bundled SQLite runtime, SQL Server 2022 / engine 16.x, MariaDB 11.8.9 LTS, and MySQL 8.4.11 LTS.
+
+The real-provider matrix validates provisioning/migration, transaction/constraint behavior, concurrency/retry, restart/re-entry, and provider-native remote backup/restore boundaries for those exact baselines. Newer or older database releases are not automatically certified.
+
 ## Deployment responsibility
 
-Before production use, qualified Finance/tax/legal owners must approve the configured localization profile and the external procedures relevant to the operating entity. Live provider migration and organization-specific acceptance remain deployment gates.
+Database-provider acceptance closes the generic persistence/runtime gate only. Before production use, qualified Finance/tax/legal owners must approve the configured localization profile, mappings, external procedures, and jurisdiction-specific accounting/tax/legal requirements for the operating entity.
+
+A localization pack is engineering/reference infrastructure, not a statutory or legal certification.
