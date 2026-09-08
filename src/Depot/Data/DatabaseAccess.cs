@@ -242,7 +242,7 @@ public sealed class DatabaseAccess
 		{
 			SqlException sql => sql.Number is 1205 or 3960,
 			SqliteException sqlite => sqlite.SqliteErrorCode is 5 or 6,
-			MySqlException mySql => mySql.Number is 1205 or 1213,
+			MySqlException mySql => mySql.Number is 1020 or 1205 or 1213,
 			_ => false
 		};
 

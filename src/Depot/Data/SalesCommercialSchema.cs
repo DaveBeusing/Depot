@@ -24,6 +24,13 @@ internal static class SalesCommercialSchema
 			command.CommandText = statement;
 			command.ExecuteNonQuery();
 		}
+
+		if (connectionFactory.Provider == DatabaseProvider.MySql)
+		{
+			MySqlSchemaCompatibility.EnsureColumn(connection, "Shipments", "PackingStatus", "INT NOT NULL DEFAULT 1");
+			MySqlSchemaCompatibility.EnsureColumn(connection, "Shipments", "PackedAtUtc", "VARCHAR(40) NULL");
+			MySqlSchemaCompatibility.EnsureColumn(connection, "Shipments", "PackedByUserId", "BIGINT NULL");
+		}
 	}
 
 	private static readonly string[] Sqlite =
@@ -62,7 +69,6 @@ internal static class SalesCommercialSchema
 		"CREATE TABLE IF NOT EXISTS SalesPriceListItems (Id BIGINT AUTO_INCREMENT PRIMARY KEY, SalesPriceListId BIGINT NOT NULL, ItemId BIGINT NOT NULL, UnitPrice DECIMAL(18,4) NOT NULL, DiscountPercent DECIMAL(9,4) NOT NULL DEFAULT 0, Version BIGINT NOT NULL DEFAULT 1, UNIQUE KEY UQ_SalesPriceListItems(SalesPriceListId,ItemId), FOREIGN KEY(SalesPriceListId) REFERENCES SalesPriceLists(Id), FOREIGN KEY(ItemId) REFERENCES Items(Id));",
 		"CREATE TABLE IF NOT EXISTS CustomerPriceLists (CustomerId BIGINT PRIMARY KEY, SalesPriceListId BIGINT NOT NULL, FOREIGN KEY(CustomerId) REFERENCES Customers(Id), FOREIGN KEY(SalesPriceListId) REFERENCES SalesPriceLists(Id));",
 		"CREATE TABLE IF NOT EXISTS SalesQuotes (Id BIGINT AUTO_INCREMENT PRIMARY KEY, QuoteNumber VARCHAR(100) NOT NULL UNIQUE, CustomerId BIGINT NOT NULL, BillingAddress TEXT NULL, ShippingAddress TEXT NULL, ContactId BIGINT NULL, ContactName VARCHAR(250) NULL, QuoteDate DATE NOT NULL, ValidUntil DATE NOT NULL, Currency VARCHAR(3) NOT NULL, CustomerReference VARCHAR(250) NULL, Notes TEXT NULL, Status INT NOT NULL, CreatedByUserId BIGINT NOT NULL, CreatedAtUtc VARCHAR(40) NOT NULL, ConvertedSalesOrderId BIGINT NULL, ConvertedAtUtc VARCHAR(40) NULL, Version BIGINT NOT NULL DEFAULT 1, FOREIGN KEY(CustomerId) REFERENCES Customers(Id), FOREIGN KEY(ContactId) REFERENCES CustomerContacts(Id), FOREIGN KEY(ConvertedSalesOrderId) REFERENCES SalesOrders(Id));",
-		"CREATE TABLE IF NOT EXISTS SalesQuoteLines (Id BIGINT AUTO_INCREMENT PRIMARY KEY, SalesQuoteId BIGINT NOT NULL, LineNumber INT NOT NULL, ItemId BIGINT NOT NULL, PartNumber VARCHAR(100) NOT NULL, Description VARCHAR(1000) NOT NULL, Quantity INT NOT NULL, UnitPrice DECIMAL(18,4) NOT NULL, DiscountPercent DECIMAL(9,4) NOT NULL DEFAULT 0, TaxRate DECIMAL(9,4) NOT NULL DEFAULT 19, Version BIGINT NOT NULL DEFAULT 1, FOREIGN KEY(SalesQuoteId) REFERENCES SalesQuotes(Id), FOREIGN KEY(ItemId) REFERENCES Items(Id));",
-		"ALTER TABLE Shipments ADD COLUMN IF NOT EXISTS PackingStatus INT NOT NULL DEFAULT 1, ADD COLUMN IF NOT EXISTS PackedAtUtc VARCHAR(40) NULL, ADD COLUMN IF NOT EXISTS PackedByUserId BIGINT NULL;"
+		"CREATE TABLE IF NOT EXISTS SalesQuoteLines (Id BIGINT AUTO_INCREMENT PRIMARY KEY, SalesQuoteId BIGINT NOT NULL, LineNumber INT NOT NULL, ItemId BIGINT NOT NULL, PartNumber VARCHAR(100) NOT NULL, Description VARCHAR(1000) NOT NULL, Quantity INT NOT NULL, UnitPrice DECIMAL(18,4) NOT NULL, DiscountPercent DECIMAL(9,4) NOT NULL DEFAULT 0, TaxRate DECIMAL(9,4) NOT NULL DEFAULT 19, Version BIGINT NOT NULL DEFAULT 1, FOREIGN KEY(SalesQuoteId) REFERENCES SalesQuotes(Id), FOREIGN KEY(ItemId) REFERENCES Items(Id));"
 	];
 }

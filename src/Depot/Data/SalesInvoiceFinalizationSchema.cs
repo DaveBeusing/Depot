@@ -11,6 +11,19 @@ public static class SalesInvoiceFinalizationSchema
 	{
 		using var connection = connectionFactory.CreateConnection();
 		connection.Open();
+		if (connectionFactory.Provider == DatabaseProvider.MySql)
+		{
+			MySqlSchemaCompatibility.EnsureColumn(connection, "Customers", "VatId", "VARCHAR(100) NULL");
+			MySqlSchemaCompatibility.EnsureColumn(connection, "Customers", "BuyerReference", "VARCHAR(250) NULL");
+			MySqlSchemaCompatibility.EnsureColumn(connection, "Customers", "EInvoiceEndpoint", "VARCHAR(250) NULL");
+			MySqlSchemaCompatibility.EnsureColumn(connection, "Customers", "EInvoiceEndpointScheme", "VARCHAR(50) NULL");
+			MySqlSchemaCompatibility.EnsureColumn(connection, "Customers", "BillingStreet", "VARCHAR(250) NULL");
+			MySqlSchemaCompatibility.EnsureColumn(connection, "Customers", "BillingAddressLine2", "VARCHAR(250) NULL");
+			MySqlSchemaCompatibility.EnsureColumn(connection, "Customers", "BillingPostalCode", "VARCHAR(50) NULL");
+			MySqlSchemaCompatibility.EnsureColumn(connection, "Customers", "BillingCity", "VARCHAR(250) NULL");
+			MySqlSchemaCompatibility.EnsureColumn(connection, "Customers", "BillingCountryCode", "VARCHAR(2) NULL");
+		}
+
 		using var command = connection.CreateCommand();
 		var statements = connectionFactory.Provider switch
 		{
@@ -56,7 +69,6 @@ public static class SalesInvoiceFinalizationSchema
 
 	private static readonly string[] MySql =
 	[
-		"ALTER TABLE Customers ADD COLUMN IF NOT EXISTS VatId VARCHAR(100) NULL, ADD COLUMN IF NOT EXISTS BuyerReference VARCHAR(250) NULL, ADD COLUMN IF NOT EXISTS EInvoiceEndpoint VARCHAR(250) NULL, ADD COLUMN IF NOT EXISTS EInvoiceEndpointScheme VARCHAR(50) NULL, ADD COLUMN IF NOT EXISTS BillingStreet VARCHAR(250) NULL, ADD COLUMN IF NOT EXISTS BillingAddressLine2 VARCHAR(250) NULL, ADD COLUMN IF NOT EXISTS BillingPostalCode VARCHAR(50) NULL, ADD COLUMN IF NOT EXISTS BillingCity VARCHAR(250) NULL, ADD COLUMN IF NOT EXISTS BillingCountryCode VARCHAR(2) NULL;",
 		"CREATE TABLE IF NOT EXISTS SalesInvoiceFinalizations (SalesInvoiceId BIGINT NOT NULL PRIMARY KEY, BuyerPayload LONGTEXT NOT NULL, XRechnungXml LONGTEXT NOT NULL, XRechnungSha256 CHAR(64) NOT NULL, FinalizedAtUtc VARCHAR(40) NOT NULL, FOREIGN KEY(SalesInvoiceId) REFERENCES SalesInvoices(Id)) ENGINE=InnoDB;"
 	];
 }
