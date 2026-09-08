@@ -18,17 +18,20 @@ internal sealed class NormalizingSqlConnection : DbConnection
 	private readonly DatabaseProvider _provider;
 	private readonly string _target;
 	private readonly Func<string, string> _normalize;
+	private readonly Action<DbCommand>? _normalizeParameters;
 
 	public NormalizingSqlConnection(
 		DbConnection inner,
 		DatabaseProvider provider,
 		string target,
-		Func<string, string>? normalize = null)
+		Func<string, string>? normalize = null,
+		Action<DbCommand>? normalizeParameters = null)
 	{
 		_inner = inner;
 		_provider = provider;
 		_target = target;
 		_normalize = normalize ?? (sql => sql);
+		_normalizeParameters = normalizeParameters;
 	}
 
 	[AllowNull]
@@ -89,7 +92,7 @@ internal sealed class NormalizingSqlConnection : DbConnection
 		new NormalizingSqlTransaction(_inner.BeginTransaction(isolationLevel), this);
 
 	protected override DbCommand CreateDbCommand() =>
-		new NormalizingSqlCommand(_inner.CreateCommand(), this, _normalize);
+		new NormalizingSqlCommand(_inner.CreateCommand(), this, _normalize, _normalizeParameters);
 
 	protected override void Dispose(bool disposing)
 	{
@@ -128,13 +131,15 @@ internal sealed class NormalizingSqlCommand : DbCommand
 	private readonly DbCommand _inner;
 	private readonly DbConnection _connection;
 	private readonly Func<string, string> _normalize;
+	private readonly Action<DbCommand>? _normalizeParameters;
 	private DbTransaction? _transaction;
 
-	public NormalizingSqlCommand(DbCommand inner, DbConnection connection, Func<string, string> normalize)
+	public NormalizingSqlCommand(DbCommand inner, DbConnection connection, Func<string, string> normalize, Action<DbCommand>? normalizeParameters)
 	{
 		_inner = inner;
 		_connection = connection;
 		_normalize = normalize;
+		_normalizeParameters = normalizeParameters;
 	}
 
 	[AllowNull]
@@ -157,26 +162,27 @@ internal sealed class NormalizingSqlCommand : DbCommand
 	}
 
 	public override void Cancel() => _inner.Cancel();
-	public override int ExecuteNonQuery() { NormalizeParameterNames(); return _inner.ExecuteNonQuery(); }
-	public override object? ExecuteScalar() { NormalizeParameterNames(); return _inner.ExecuteScalar(); }
-	public override Task<int> ExecuteNonQueryAsync(CancellationToken cancellationToken) { NormalizeParameterNames(); return _inner.ExecuteNonQueryAsync(cancellationToken); }
-	public override Task<object?> ExecuteScalarAsync(CancellationToken cancellationToken) { NormalizeParameterNames(); return _inner.ExecuteScalarAsync(cancellationToken); }
-	public override void Prepare() { NormalizeParameterNames(); _inner.Prepare(); }
+	public override int ExecuteNonQuery() { NormalizeParameters(); return _inner.ExecuteNonQuery(); }
+	public override object? ExecuteScalar() { NormalizeParameters(); return _inner.ExecuteScalar(); }
+	public override Task<int> ExecuteNonQueryAsync(CancellationToken cancellationToken) { NormalizeParameters(); return _inner.ExecuteNonQueryAsync(cancellationToken); }
+	public override Task<object?> ExecuteScalarAsync(CancellationToken cancellationToken) { NormalizeParameters(); return _inner.ExecuteScalarAsync(cancellationToken); }
+	public override void Prepare() { NormalizeParameters(); _inner.Prepare(); }
 	protected override DbParameter CreateDbParameter() => _inner.CreateParameter();
-	protected override DbDataReader ExecuteDbDataReader(CommandBehavior behavior) { NormalizeParameterNames(); return _inner.ExecuteReader(behavior); }
+	protected override DbDataReader ExecuteDbDataReader(CommandBehavior behavior) { NormalizeParameters(); return _inner.ExecuteReader(behavior); }
 	protected override Task<DbDataReader> ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken)
 	{
-		NormalizeParameterNames();
+		NormalizeParameters();
 		return _inner.ExecuteReaderAsync(behavior, cancellationToken);
 	}
 
-	private void NormalizeParameterNames()
+	private void NormalizeParameters()
 	{
 		foreach (DbParameter parameter in _inner.Parameters)
 		{
 			if (!string.IsNullOrEmpty(parameter.ParameterName))
 				parameter.ParameterName = _normalize(parameter.ParameterName);
 		}
+		_normalizeParameters?.Invoke(_inner);
 	}
 
 	protected override void Dispose(bool disposing) { if (disposing) _inner.Dispose(); base.Dispose(disposing); }
