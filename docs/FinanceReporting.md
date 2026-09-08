@@ -1,6 +1,6 @@
 # Finance Financial Reporting
 
-Updated: 2026-08-28
+Updated: 2026-09-08
 
 ## Scope
 
@@ -48,8 +48,12 @@ CSV export is deterministic and culture-invariant. Export permission is separate
 
 UI visibility is not an authorization boundary.
 
-## Provider and compliance boundary
+## Provider production acceptance
 
-Finance reporting schema is part of Finance schema **9** and has DDL for SQLite, SQL Server and MySQL/MariaDB. Automated regression coverage verifies migration/schema, reporting-currency/cutoff behavior, explicit mapping, RBAC, snapshot retention/idempotency/content binding and deterministic CSV.
+Financial Reporting remains part of Finance schema **9**. Real-provider acceptance now runs on the certified SQLite, SQL Server 2022, MariaDB 11.8.9 and MySQL 8.4.11 baselines.
 
-Live provider migration/concurrency/recovery and representative production report-load testing remain acceptance activities. Financial reports and snapshots do not by themselves claim HGB/IFRS/US-GAAP certification, tax-return correctness, GoBD certification or jurisdiction-specific filing acceptance.
+The service-backed live scenario generates a Trial Balance from a real General Ledger entry, validates balanced debit/credit results, exports deterministic CSV, creates an immutable SHA-256-bound report snapshot, verifies operation-idempotent snapshot replay and reloads the persisted snapshot. The provider matrix additionally covers Finance GL/AR/AP/FIFO flows, restart/re-entry, native remote backup/restore and a representative 100,000-row indexed performance guard.
+
+This technical provider certification does not make report mappings, layouts or outputs HGB/IFRS/US-GAAP certified and does not prove tax-return, statutory-filing or organization-specific reporting correctness. Large deployment-specific report/export volumes and accounting mappings still require sizing and qualified acceptance.
+
+See [Database Provider Production Support Matrix](DatabaseProviderSupportMatrix.md) for exact provider baselines.

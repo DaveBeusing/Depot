@@ -69,7 +69,14 @@ public sealed class CustomerRepository : DatabaseRepository
 
 	private async Task SyncDefaultAddressAsync(long customerId, CustomerAddressType type, string? value, CancellationToken cancellationToken)
 	{
-		var current = await Database.QuerySingleOrDefaultAsync("SELECT Id,CustomerId,Type,Name,Address,IsDefault,IsActive,Version FROM CustomerAddresses WHERE CustomerId=$CustomerId AND Type=$Type AND IsDefault=1 ORDER BY Id LIMIT 1;", ReadAddress, cancellationToken, Parameter("$CustomerId", customerId), Parameter("$Type", (int)type));
+		var current = (await Database.QuerySliceAsync(
+			"SELECT Id,CustomerId,Type,Name,Address,IsDefault,IsActive,Version FROM CustomerAddresses WHERE CustomerId=$CustomerId AND Type=$Type AND IsDefault=1 ORDER BY Id",
+			ReadAddress,
+			0,
+			1,
+			cancellationToken,
+			Parameter("$CustomerId", customerId),
+			Parameter("$Type", (int)type))).SingleOrDefault();
 		if (string.IsNullOrWhiteSpace(value)) { if (current is not null) await Database.ExecuteAsync("UPDATE CustomerAddresses SET IsActive=0,Version=Version+1 WHERE Id=$Id AND Version=$Version;", cancellationToken, Parameter("$Id", current.Id), Parameter("$Version", current.Version)); return; }
 		if (current is null) { await SaveAddressAsync(new CustomerAddress { CustomerId = customerId, Type = type, Address = value.Trim(), IsDefault = true, IsActive = true }, cancellationToken); return; }
 		if (string.Equals(current.Address, value.Trim(), StringComparison.Ordinal) && current.IsActive) return; current.Address = value.Trim(); current.IsActive = true; current.IsDefault = true; await SaveAddressAsync(current, cancellationToken);

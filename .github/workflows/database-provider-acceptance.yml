@@ -1,0 +1,141 @@
+name: Database Provider Acceptance
+
+on:
+  pull_request:
+    branches: [ master ]
+  push:
+    branches:
+      - master
+      - 'database-provider-*'
+  workflow_dispatch:
+
+concurrency:
+  group: provider-acceptance-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sqlite:
+    name: SQLite reference baseline
+    runs-on: windows-2025
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore locked dependencies
+        run: dotnet restore Depot.slnx --locked-mode
+
+      - name: Release build
+        run: dotnet build Depot.slnx --configuration Release --no-restore -warnaserror
+
+      - name: Run SQLite provider acceptance
+        shell: pwsh
+        run: >-
+          dotnet test tests/Depot.Tests/Depot.Tests.csproj
+          --configuration Release
+          --no-build
+          --no-restore
+          --filter "Acceptance=DatabaseProvider&Provider=SQLite"
+          --logger "console;verbosity=normal"
+
+  remote:
+    name: ${{ matrix.name }} - ${{ github.event_name == 'pull_request' && 'Smoke' || 'Full' }}
+    runs-on: windows-2025
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - provider: SqlServer
+            trait: SqlServer
+            name: SQL Server 2022 Express
+          - provider: MariaDB
+            trait: MariaDB
+            name: MariaDB 11.8 LTS
+          - provider: MySQL
+            trait: MySQL
+            name: MySQL 8.4 LTS
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore locked dependencies
+        run: dotnet restore Depot.slnx --locked-mode
+
+      - name: Release build
+        run: dotnet build Depot.slnx --configuration Release --no-restore -warnaserror
+
+      - name: Provision real ${{ matrix.name }} server
+        shell: pwsh
+        run: ./scripts/ci/Initialize-ProviderAcceptanceDatabase.ps1 -Provider '${{ matrix.provider }}'
+
+      - name: Run critical provider smoke
+        shell: pwsh
+        run: |
+          $filter = "Acceptance=DatabaseProvider&Provider=${{ matrix.trait }}&(AcceptanceLevel=Smoke|FullyQualifiedName~ProcurementProviderTests)"
+          dotnet test tests/Depot.Tests/Depot.Tests.csproj `
+            --configuration Release `
+            --no-build `
+            --no-restore `
+            --filter $filter `
+            --logger "console;verbosity=normal"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Restart database server
+        if: github.event_name != 'pull_request'
+        shell: pwsh
+        run: ./scripts/ci/Restart-ProviderAcceptanceDatabase.ps1
+
+      - name: Verify recovery after server restart
+        if: github.event_name != 'pull_request'
+        shell: pwsh
+        run: |
+          $filter = "Acceptance=DatabaseProvider&Provider=${{ matrix.trait }}&AcceptanceLevel=Smoke"
+          dotnet test tests/Depot.Tests/Depot.Tests.csproj `
+            --configuration Release `
+            --no-build `
+            --no-restore `
+            --filter $filter `
+            --logger "console;verbosity=normal"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Native backup and restore boundary
+        if: github.event_name != 'pull_request'
+        shell: pwsh
+        run: ./scripts/ci/Invoke-ProviderRestoreAcceptance.ps1 -Provider '${{ matrix.provider }}'
+
+      - name: Verify Depot recognizes restored database
+        if: github.event_name != 'pull_request'
+        shell: pwsh
+        run: |
+          $filter = "Acceptance=DatabaseProvider&Provider=${{ matrix.trait }}&AcceptanceLevel=Smoke"
+          dotnet test tests/Depot.Tests/Depot.Tests.csproj `
+            --configuration Release `
+            --no-build `
+            --no-restore `
+            --filter $filter `
+            --logger "console;verbosity=normal"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Run full provider production matrix
+        if: github.event_name != 'pull_request'
+        shell: pwsh
+        run: |
+          $filter = "Acceptance=DatabaseProvider&Provider=${{ matrix.trait }}"
+          dotnet test tests/Depot.Tests/Depot.Tests.csproj `
+            --configuration Release `
+            --no-build `
+            --no-restore `
+            --filter $filter `
+            --logger "console;verbosity=normal"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

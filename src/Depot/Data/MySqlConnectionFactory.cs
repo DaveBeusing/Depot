@@ -3,6 +3,7 @@
 
 using System.Data;
 using System.Data.Common;
+using System.Globalization;
 
 using Depot.Models;
 
@@ -12,6 +13,22 @@ namespace Depot.Data;
 
 public sealed class MySqlConnectionFactory : IDatabaseConnectionFactory
 {
+	private static readonly HashSet<string> FinanceDateTimeParameterNames = new(StringComparer.OrdinalIgnoreCase)
+	{
+		"At",
+		"Created",
+		"Reversed",
+		"Imported",
+		"Updated",
+		"Approved",
+		"Completed",
+		"Executed",
+		"Posted",
+		"Effective",
+		"Generated",
+		"Cutoff"
+	};
+
 	private readonly string _connectionString;
 	private readonly string _serverConnectionString;
 
@@ -46,14 +63,16 @@ public sealed class MySqlConnectionFactory : IDatabaseConnectionFactory
 			new MySqlConnection(_connectionString),
 			Provider,
 			$"{DatabaseName}@MySQL/MariaDB",
-			NormalizeSql);
+			NormalizeSql,
+			NormalizeParameters);
 
 	internal DbConnection CreateServerConnection() =>
 		new NormalizingSqlConnection(
 			new MySqlConnection(_serverConnectionString),
 			Provider,
 			"server@MySQL/MariaDB",
-			NormalizeSql);
+			NormalizeSql,
+			NormalizeParameters);
 
 	public DbTransaction BeginWriteTransaction(DbConnection connection) =>
 		connection.BeginTransaction(IsolationLevel.Serializable);
@@ -93,4 +112,36 @@ public sealed class MySqlConnectionFactory : IDatabaseConnectionFactory
 			.Replace("$", "@", StringComparison.Ordinal)
 			.Replace("SELECT last_insert_rowid();", "SELECT LAST_INSERT_ID();", StringComparison.OrdinalIgnoreCase)
 			.Replace(" COLLATE NOCASE", string.Empty, StringComparison.OrdinalIgnoreCase);
+
+	private static void NormalizeParameters(DbCommand command)
+	{
+		if (!command.CommandText.Contains("Finance", StringComparison.OrdinalIgnoreCase)) return;
+
+		foreach (DbParameter parameter in command.Parameters)
+		{
+			if (parameter.Value is not string value || !LooksLikeRoundtripTimestamp(value)) continue;
+			var name = parameter.ParameterName.TrimStart('@', '$');
+			if (!name.EndsWith("Utc", StringComparison.OrdinalIgnoreCase) &&
+				!name.EndsWith("At", StringComparison.OrdinalIgnoreCase) &&
+				!FinanceDateTimeParameterNames.Contains(name)) continue;
+			if (!DateTime.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var parsed)) continue;
+
+			var utc = parsed.Kind switch
+			{
+				DateTimeKind.Utc => parsed,
+				DateTimeKind.Local => parsed.ToUniversalTime(),
+				_ => DateTime.SpecifyKind(parsed, DateTimeKind.Utc)
+			};
+			parameter.Value = DateTime.SpecifyKind(utc, DateTimeKind.Unspecified);
+		}
+	}
+
+	private static bool LooksLikeRoundtripTimestamp(string value)
+	{
+		if (value.Length < 20 || value.IndexOf('T') < 0) return false;
+		if (value.EndsWith('Z')) return true;
+		if (value.Length < 6) return false;
+		var offsetStart = value.Length - 6;
+		return (value[offsetStart] == '+' || value[offsetStart] == '-') && value[^3] == ':';
+	}
 }

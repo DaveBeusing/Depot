@@ -1,5 +1,7 @@
 # Depot Data-Access Audit
 
+Updated: 2026-09-08
+
 This audit records the productive read paths after removal of unbounded remote-database `GetAll()` usage. The obsolete repository and service `GetAll()` APIs were removed; legacy synchronous write adapters use only key-based reads.
 
 ## Classification
@@ -27,4 +29,11 @@ This audit records the productive read paths after removal of unbounded remote-d
 - Search initiated by text input uses a 300 ms debounce.
 - Report totals are independent database aggregates and are not calculated from a partial UI page.
 - Export memory is bounded with respect to database materialization. ClosedXML still owns the generated workbook in memory, which is a library constraint and must be considered in very large export acceptance tests.
-- SQL Server and MySQL/MariaDB live performance and query-plan verification remains required before version 1.0.
+
+## Provider performance evidence
+
+The production database provider matrix now runs a representative **100,000-row indexed lookup** guard on the bundled SQLite baseline, SQL Server 2022, MariaDB 11.8.9 and MySQL 8.4.11. It is intended to detect severe provider/query regressions and to prove that supported providers can execute the representative indexed access path at meaningful scale.
+
+This synthetic guard is not a workload-specific SLA and does not replace screen/report-specific query-plan review, realistic network latency, concurrent-user sizing, large export/report tests or customer data-distribution analysis. Those remain deployment/performance-engineering activities.
+
+See [Database Provider Production Support Matrix](DatabaseProviderSupportMatrix.md) for exact provider baselines.

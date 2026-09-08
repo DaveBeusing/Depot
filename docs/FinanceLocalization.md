@@ -1,6 +1,6 @@
 # Finance Localization Framework
 
-Updated: 2026-08-28
+Updated: 2026-09-08
 
 ## Scope
 
@@ -26,7 +26,7 @@ Finance schema **9** contains:
 - `FinanceLocalizationAssignments`
 - `FinanceLocalizationRegistryEntries`
 
-DDL exists for SQLite, SQL Server and MySQL/MariaDB.
+Provider-specific DDL exists through Depot's persistence layer for SQLite, SQL Server and the MariaDB/MySQL connector family. The Finance schema 9 migration chain is exercised on every database baseline listed in [Database Provider Production Support Matrix](DatabaseProviderSupportMatrix.md).
 
 ### Localization packs
 
@@ -67,4 +67,6 @@ These are not legal/compliance pass/fail states.
 
 Additional regional/country packs do not require a schema migration when metadata/configuration is sufficient. New executable statutory behavior still requires separately scoped code.
 
-Before production use, qualified Finance/tax/legal owners must approve configured profiles and external procedures. Live provider migration/concurrency/recovery and organization-specific acceptance remain deployment gates. The localization framework is engineering infrastructure and reference evidence, not certification, legal advice or a statutory compliance opinion.
+The certified provider matrix closes the generic database/migration/runtime gate for Finance schema 9 on its exact database baselines. It does **not** certify a localization pack, tax treatment, filing procedure or jurisdiction. Before production use, qualified Finance/tax/legal owners must approve configured profiles, mappings, controls and external procedures for each deployed legal entity.
+
+The localization framework is engineering infrastructure and reference evidence, not certification, legal advice or a statutory compliance opinion.

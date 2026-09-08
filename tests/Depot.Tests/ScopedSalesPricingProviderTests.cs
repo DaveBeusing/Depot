@@ -11,9 +11,12 @@ using Xunit;
 namespace Depot.Tests;
 
 [Collection("Provider database")]
+[Trait("Acceptance", "DatabaseProvider")]
+[Trait("AcceptanceLevel", "Full")]
 public sealed class ScopedSalesPricingProviderTests
 {
 	[SqlServerProcurementFact]
+	[Trait("Provider", "SqlServer")]
 	public Task SqlServerResolvesScopedPriceFallback()
 	{
 		var settings = ProcurementProviderConfiguration.GetSqlServerSettings();
@@ -21,8 +24,18 @@ public sealed class ScopedSalesPricingProviderTests
 		return VerifyScopedResolutionAsync(factory, new SqlServerDatabase(factory));
 	}
 
+	[MariaDbProcurementFact]
+	[Trait("Provider", "MariaDB")]
+	public Task MariaDbResolvesScopedPriceFallback()
+	{
+		var settings = ProcurementProviderConfiguration.GetMariaDbSettings();
+		var factory = new MySqlConnectionFactory(settings);
+		return VerifyScopedResolutionAsync(factory, new MySqlDatabase(factory));
+	}
+
 	[MySqlProcurementFact]
-	public Task MySqlOrMariaDbResolvesScopedPriceFallback()
+	[Trait("Provider", "MySQL")]
+	public Task MySqlResolvesScopedPriceFallback()
 	{
 		var settings = ProcurementProviderConfiguration.GetMySqlSettings();
 		var factory = new MySqlConnectionFactory(settings);
@@ -59,10 +72,8 @@ public sealed class ScopedSalesPricingProviderTests
 		await pricing.SaveItemAsync(new SalesPriceListItem { SalesPriceListId = regional.Id, ItemId = itemWithRegionalPrice, UnitPrice = 81m });
 		await pricing.SaveItemAsync(new SalesPriceListItem { SalesPriceListId = global.Id, ItemId = itemWithRegionalPrice, UnitPrice = 91m });
 		await pricing.SaveItemAsync(new SalesPriceListItem { SalesPriceListId = global.Id, ItemId = itemWithGlobalPrice, UnitPrice = 101m });
-
 		var regionalResult = await pricing.ResolveAsync(customer.Id, itemWithRegionalPrice, 1, DateTime.Today, "EUR");
 		var globalResult = await pricing.ResolveAsync(customer.Id, itemWithGlobalPrice, 1, DateTime.Today, "EUR");
-
 		Assert.NotNull(regionalResult);
 		Assert.Equal(81m, regionalResult.UnitPrice);
 		Assert.Equal(SalesPriceListScope.Region, regionalResult.Scope);

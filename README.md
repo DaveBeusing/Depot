@@ -6,7 +6,7 @@ Depot is a modern Windows business platform that brings **Sales, Purchasing, Inv
 
 > **One platform. One source of truth. Complete control.**
 
-Depot is currently in active **0.15.x-preview** development. The repository already contains substantial operational, accounting, security, audit and compliance capabilities, but preview status matters: implemented engineering controls are not a claim of production, legal, tax, accessibility, provider or organization-specific certification. See [Current Status](docs/CurrentStatus.md) and the [Roadmap](docs/Roadmap.md) for the current product boundary.
+Depot is currently in active **0.15.x-preview** development. The repository contains substantial operational, accounting, security, audit and compliance capabilities. Preview status still matters: implemented engineering controls and database-provider certification are not claims of jurisdiction-specific legal, tax, accessibility, banking-network or organizational certification. See [Current Status](docs/CurrentStatus.md), [Database Provider Production Support Matrix](docs/DatabaseProviderSupportMatrix.md) and the [Roadmap](docs/Roadmap.md).
 
 ## Why Depot
 
@@ -15,22 +15,28 @@ Business software should make operations easier to understand, not add another l
 - **Simple** — one coherent desktop workspace with consistent navigation, contextual Help and predictable workflows.
 - **Connected** — Sales, Purchasing, Inventory, Warehouse and Finance share the same operational data and business rules instead of becoming separate islands.
 - **Controlled** — permissions, approvals, audit evidence, immutable business records and accounting controls are part of the architecture rather than afterthoughts.
-- **Adaptable** — provider-neutral persistence and jurisdiction-aware Finance foundations are designed to support different infrastructures, organizations and markets.
-
-**Built for businesses, not borders.** Depot separates core business capabilities from jurisdiction-specific configuration so the product can evolve internationally without hard-wiring one national operating model into the platform.
+- **Adaptable** — provider-neutral persistence and jurisdiction-aware Finance foundations support different infrastructures, organizations and markets without hard-wiring one national operating model into the product.
 
 ## What Depot brings together
 
 - **Sales & Pricing** — scoped per-item pricing with Customer → Region → Global fallback, retained document-price sources and controlled pricing workflows.
 - **Purchasing** — supplier and purchasing workflows connected to inventory, approvals and financial consequences.
 - **Inventory & Warehouse** — enriched item master data, serial/lot traceability, reversal-safe movement history and inventory accounting.
-- **Finance** — legal entities, currencies, periods, General Ledger, Accounts Receivable, Accounts Payable, inventory accounting, banking, reconciliation and financial reporting.
-- **Operations & Control** — approvals, reporting, administration, RBAC, audit evidence and retained business records.
+- **Finance** — legal entities, currencies, periods, General Ledger, Accounts Receivable, Accounts Payable, FIFO inventory accounting, banking, reconciliation and financial reporting.
+- **Operations & Control** — approvals, reporting, administration, RBAC, audit evidence, persistent sessions and retained business records.
 - **Integrated Help** — contextual offline Help follows central permissions and supports users directly inside the application.
 
 ## Product foundation
 
-Depot is a native Windows desktop application built with **.NET 10, WPF and MVVM**. Its persistence architecture is provider-neutral and currently supports **SQLite, SQL Server and MySQL/MariaDB** implementations.
+Depot is a native Windows desktop application built with **.NET 10, WPF and MVVM**.
+
+```text
+Views → ViewModels → Services → Repositories → DatabaseAccess
+                                      ↓
+               SQLite / SQL Server / MariaDB / MySQL
+```
+
+Views contain presentation only. ViewModels own UI state, commands, cancellation and stale-request protection. Services own permissions, business/accounting invariants, state transitions and transaction orchestration. Repositories own SQL and row mapping. Provider-specific behavior stays behind data-access/provider abstractions.
 
 The product foundation includes:
 
@@ -45,8 +51,30 @@ The product foundation includes:
 - Banking and Payments with statement import, payment runs, reconciliation and cash position
 - Financial Reporting with mappings, deterministic CSV and immutable report snapshots
 - effective-dated Finance Localization with built-in `GENERIC → EU → DE` references and extensible custom packs
+- persistent User Sessions and operational Security Center evidence
 
-For the architectural model, see [Architecture](docs/Architecture.md).
+Read the full [Architecture](docs/Architecture.md) and [Coding Standard](docs/CodingStandard.md).
+
+## Production database support
+
+Depot now certifies database providers through real-server acceptance rather than treating provider-neutral code as proof of production readiness.
+
+Current technical certification baselines:
+
+| Provider | Baseline | Status |
+| --- | --- | --- |
+| SQLite | runtime bundled with the Depot release | **Supported** |
+| SQL Server | SQL Server 2022 / engine 16.x; CI uses SQL Server 2022 Express | **Supported** |
+| MariaDB | 11.8.9 LTS | **Supported** |
+| MySQL | 8.4.11 LTS | **Supported** |
+
+The full provider workflow validates provisioning and migrations, SQL/type/constraint/date/decimal behavior, rollback, concurrent writes, deadlock/write-conflict retry, Sales, Procurement, persistent sessions, Finance GL/AR/AP/FIFO, Banking/reconciliation, Financial Reporting/snapshots, server restart, provider-native remote backup/restore and a representative 100,000-row indexed lookup guard.
+
+MariaDB and MySQL are tested independently. Newer/older versions are not automatically supported because another version in the family is green.
+
+SQLite uses dynamic `NUMERIC` affinity and therefore does not guarantee the full fixed `DECIMAL(28,9)` magnitude/precision range available on the server providers. Remote production backup scheduling/retention/off-host copies remain operator responsibilities even though CI validates provider-native restore/re-entry.
+
+See the authoritative [Database Provider Production Support Matrix](docs/DatabaseProviderSupportMatrix.md).
 
 ## Finance
 
@@ -67,26 +95,19 @@ Localization support levels (`SoftwareCapability`, `ConfigurationRequired`, `Ext
 
 Explore [Finance Architecture](docs/FinanceArchitecture.md), [Finance Banking](docs/FinanceBanking.md), [Finance Localization](docs/FinanceLocalization.md), [Finance Reporting](docs/FinanceReporting.md) and [Finance Compliance](docs/FinanceCompliance.md).
 
-## Architecture
-
-```text
-Views → ViewModels → Services → Repositories → DatabaseAccess
-                                      ↓
-                    SQLite / SQL Server / MySQL or MariaDB
-```
-
-Views contain presentation only. ViewModels own UI state, commands, cancellation and stale-request protection. Services own permissions, business/accounting invariants, state transitions and transaction orchestration. Repositories own SQL and row mapping. Provider-specific behavior stays behind data-access/provider abstractions.
-
-Read the full [Architecture](docs/Architecture.md) and [Coding Standard](docs/CodingStandard.md).
-
 ## Current engineering status
 
-Current schema levels:
+Current baseline:
 
-- core database schema: **30**
-- Sales feature schema: **9**
+- Application: **0.15.169-preview**
+- Core database schema: **30**
+- Sales feature schema: **11**
 - Finance feature schema: **9**
-- Help manifest: **1.18**
+- User Sessions feature schema: **3**
+- Security Events feature schema: **2**
+- Help manifest: **1.21**
+
+Sales schema 11 establishes the provider-equivalent active-reservation uniqueness invariant. This does not increment Core schema 30.
 
 For implementation and release status, see [Current Status](docs/CurrentStatus.md), [Documentation Status](docs/DocumentationStatus.md), [User-Facing Changes](docs/UserFacingChanges.md) and [Release 1.0](docs/Release1.0.md).
 
@@ -94,9 +115,11 @@ For implementation and release status, see [Current Status](docs/CurrentStatus.m
 
 Depot uses two Windows executables with separate responsibilities: `Depot.exe` is the normal ERP runtime and `DepotManager.exe` owns installation, first configuration, updates, repair and uninstall.
 
-For a new installation, Depot Manager installs the latest valid single-file GitHub release, lets the user select SQLite, SQL Server or MySQL/MariaDB, requires a successful connection test, initializes/migrates the database through Depot's central provider-neutral provisioning path and creates the initial administrator through the existing RBAC/password/audit bootstrap. An already provisioned database can be adopted without creating a second administrator. After setup, the first normal Depot start goes directly to the login flow.
+For a new installation, Depot Manager installs a valid release, lets the user select SQLite, SQL Server or MySQL/MariaDB, validates database connectivity, initializes/migrates through Depot's authoritative provider provisioning path and completes administrator bootstrap according to the installation model.
 
-Updates retain only the immediately previous `Depot.exe` in `Backup\Depot-<version>.exe`. Database, audit, business and preference data are not rolled back or replaced by update/repair. Repair reacquires the exact installed release. Normal uninstall removes application integration and binaries but preserves configuration and business data.
+Updates retain only the immediately previous `Depot.exe` in `Backup\Depot-<version>.exe`. Database, audit, business and preference data are not rolled back or replaced by update/repair. Remote database downgrade/restore is never automatic.
+
+For remote providers, production operators must maintain provider-native backup/restore procedures. DepotManager requires explicit remote backup confirmation before migration-sensitive updates rather than assuming backup privileges.
 
 See [Depot Manager](docs/DepotManager.md) for installation paths, credential protection, release validation, repair, uninstall, logging and Windows integration.
 
@@ -118,21 +141,21 @@ Runtime data remains external. Do not enable WPF trimming without dedicated vali
 
 ## CI, security and assurance
 
-CI includes Release build/publish, bounded regression suites, software-quality/accessibility checks, dependency locks, NuGet vulnerability audit, SBOM/evidence generation, release-integrity checks and electronic-invoice conformance. Test matrices have sufficient job budgets for the current repository breadth while individual hangs remain bounded.
+CI includes Release build/publish, bounded regression suites, code-coverage gates, software-quality/accessibility checks, dependency locks, NuGet vulnerability audit, SBOM/evidence generation, release-integrity checks and electronic-invoice conformance.
 
-Provider-neutral Finance schema 9 exists for SQLite, SQL Server and MySQL/MariaDB. Live server migration, locking, deadlock/retry, backup/recovery, concurrency and representative Finance/localization acceptance remain production gates.
+The separate database-provider acceptance workflow adds real SQLite/SQL Server/MariaDB/MySQL migration, locking, retry, business-flow, restart, native restore and performance evidence. Pull requests use fast remote smoke coverage; certification branches, `master` and manual full runs execute the complete matrix.
 
-Security and compliance work is documented transparently rather than presented as certification that has not yet been achieved. Start with the [Security Roadmap](docs/SecurityRoadmap.md), [Compliance Overview](docs/ComplianceOverview.md) and [Compliance Matrix](docs/compliance/ComplianceMatrix.md).
+Security and compliance work is documented transparently rather than presented as certification that has not been achieved. Start with the [Security Roadmap](docs/SecurityRoadmap.md), [Compliance Overview](docs/ComplianceOverview.md) and [Compliance Matrix](docs/compliance/ComplianceMatrix.md).
 
 ## Offline Help
 
-Embedded Help manifest **1.18** contains scoped Sales pricing guidance plus Finance Foundation, General Ledger, Accounts Receivable, Accounts Payable, Inventory Accounting, Banking, Financial Reporting and Finance Localization topics. Help visibility follows central permissions and never grants business access.
+Embedded Help manifest **1.21** includes contextual Sales, Finance, User Sessions and Security Center guidance. Help visibility follows central permissions and never grants business access.
 
 See the [Help Center documentation](docs/HelpCenter.md).
 
 ## Road to 1.0
 
-Major remaining items include live remote-provider acceptance, production code signing, accessibility/manual desktop acceptance, organization-specific accounting/tax/retention/valuation/reporting/localization procedures, remaining electronic-invoice scenarios and installer/upgrade acceptance. Additional jurisdiction packs are demand-driven extensions of the localization framework.
+The generic database-provider technical gate is complete for the certified support matrix. Major remaining 1.0 items include production code signing, accessibility/manual desktop acceptance, organization-specific accounting/tax/retention/valuation/reporting/localization procedures, remaining electronic-invoice scenarios, production backup ownership and installer/upgrade acceptance.
 
 Track the path through the [Roadmap](docs/Roadmap.md) and [Release 1.0 plan](docs/Release1.0.md).
 
@@ -144,6 +167,8 @@ Track the path through the [Roadmap](docs/Roadmap.md) and [Release 1.0 plan](doc
 - [Coding Standard](docs/CodingStandard.md)
 - [Current Status](docs/CurrentStatus.md)
 - [Documentation Status](docs/DocumentationStatus.md)
+- [Database Provider Production Support Matrix](docs/DatabaseProviderSupportMatrix.md)
+- [Versioning and Schema Evolution](docs/Versioning.md)
 - [User-Facing Changes](docs/UserFacingChanges.md)
 - [Help Center](docs/HelpCenter.md)
 - [Depot Manager](docs/DepotManager.md)
@@ -171,13 +196,13 @@ Track the path through the [Roadmap](docs/Roadmap.md) and [Release 1.0 plan](doc
 - [Compliance Overview](docs/ComplianceOverview.md)
 - [Security Roadmap](docs/SecurityRoadmap.md)
 - [Compliance Matrix](docs/compliance/ComplianceMatrix.md)
+- [Software Quality](docs/compliance/SoftwareQuality.md)
 - [Security](docs/compliance/Security.md)
 - [Threat Model](docs/compliance/ThreatModel.md)
 - [Vulnerability Management](docs/compliance/VulnerabilityManagement.md)
 - [Data Protection](docs/compliance/DataProtection.md)
 - [Business Record Integrity](docs/compliance/BusinessRecordIntegrity.md)
 - [Release Integrity](docs/compliance/ReleaseIntegrity.md)
-- [Software Quality](docs/compliance/SoftwareQuality.md)
 - [Full compliance documentation](docs/compliance/)
 
 ## License

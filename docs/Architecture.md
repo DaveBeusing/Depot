@@ -1,6 +1,6 @@
 # Depot Architecture
 
-Updated: 2026-09-01
+Updated: 2026-09-08
 
 ## Overview
 
@@ -9,10 +9,22 @@ Depot is a .NET 10 WPF application using MVVM, service-layer business rules, rep
 ```text
 Views → ViewModels → Services → Repositories → DatabaseAccess
                                       ↓
-                    SQLite / SQL Server / MySQL-MariaDB
+               SQLite / SQL Server / MariaDB / MySQL
 ```
 
 Composition classes create database infrastructure, repositories, services and root ViewModels. Views/ViewModels do not contain SQL. Services are the business/security boundary. Repositories own persistence/query SQL and row mapping. Provider-specific behavior remains behind established data-access abstractions.
+
+## Database-provider architecture
+
+Provider-neutral code is not itself a support claim. Production database support is controlled by the real-provider acceptance workflow and [Database Provider Production Support Matrix](DatabaseProviderSupportMatrix.md).
+
+Current certified baselines are the Depot-bundled SQLite runtime, SQL Server 2022 engine 16.x, MariaDB 11.8.9 LTS and MySQL 8.4.11 LTS. MariaDB and MySQL share `MySqlConnector` infrastructure but are accepted independently.
+
+Remote provisioning serializes the complete global/feature migration sequence with provider-native locks: SQL Server uses `sp_getapplock`; MariaDB/MySQL use `GET_LOCK`. Write transactions are serializable on remote providers. Business serialization uses provider-specific row locking behind the data layer.
+
+Known transient deadlock/write-conflict errors use bounded exponential retry with jitter and complete transaction recreation. Non-transient business/constraint failures are not retried. MySQL/MariaDB Finance UTC timestamps are normalized to real `DATETIME(6)` parameters at the provider boundary rather than leaking provider rules into Services/Repositories.
+
+Sales schema 11 enforces the active reservation uniqueness invariant on every supported provider. SQLite and SQL Server use partial/filtered unique indexes; MariaDB/MySQL use an active generated inventory key plus a unique compound index.
 
 ## Authentication sessions, presence and policy enforcement
 
@@ -20,7 +32,7 @@ Composition classes create database infrastructure, repositories, services and r
 
 Presence is derived from `EndedUtc IS NULL` and heartbeat freshness. Runtime defaults are a 30-second heartbeat and 90-second presence timeout. Heartbeat writes only still-open sessions, so logout, expiration and revocation cannot be undone by a late liveness update.
 
-The central `UserSessionPolicy` defaults to a 30-minute idle timeout and 12-hour absolute maximum session age. Input activity inside Depot updates only a throttled timestamp, persisted with the normal heartbeat before policy evaluation. Expiration records `Expired`; stricter policy changes evaluate already-open sessions immediately.
+The central `UserSessionPolicy` defaults to a 30-minute idle timeout and 12-hour absolute maximum session age. Finite concurrent-session limits serialize admission through the shared database and can reject a new session or supersede the oldest one.
 
 Session administration separates `Users.View`, `Settings.Manage` and `UserSessions.Terminate`. User deactivation and revocation of that user's open sessions remain one database transaction.
 
@@ -32,16 +44,10 @@ Security observations are deliberately separate from session state and from the 
 AuthenticationService ─┐
                        ├→ SecurityEventService → SecurityEventRepository → SecurityEvents
 Session Administration ┘                                      ↓
-                                                SQLite / SQL Server / MySQL-MariaDB
+                                      provider-neutral DatabaseAccess
 ```
 
-Authentication uses deterministic signals from the existing 15-minute throttling window. Failures 1–2 are informational; failure 3 becomes Warning, failure 4 High, and failure 5/active lockout Critical. Successful authentication after recent failures is retained as a separate event. These rules are triage signals, not proof of compromise.
-
-`SecurityEventService` is the security-event policy boundary. Authentication telemetry is best-effort: failures to persist telemetry or deliver a notification are diagnosed but do not make a valid authentication fail solely because monitoring infrastructure was unavailable.
-
-High/Critical events are published through the existing Notification Center to active users holding `SecurityEvents.View`. **Administration → Security Center** reads the same persisted event source and exposes 24-hour metrics plus the most recent matching events. `SecurityEvents.Manage` permits marking an event reviewed. Review modifies only review metadata and optimistic `Version`; original event content remains unchanged through normal application workflows.
-
-Security Events complement rather than replace Audit. Administrative session termination and session-policy changes can produce both the existing Audit-relevant evidence and an operational Security Event.
+`SecurityEventService` is the operational security-event policy boundary. Security Events complement rather than replace Audit. Administrative session termination and session-policy changes can produce both Audit-relevant evidence and operational Security Events.
 
 The current monitoring boundary intentionally excludes source IP, geolocation and device fingerprinting. Such signals require a separate privacy/security contract before they can become risk inputs.
 
@@ -83,35 +89,27 @@ Customer → Region → Global resolution
 ## Schema versions
 
 - Core database schema: **30**
-- Sales feature schema: **10**
+- Sales feature schema: **11**
 - Finance feature schema: **9**
-- User Sessions feature schema: **2**
-- Security Events feature schema: **1**
-- Application: **0.15.94-preview**
+- User Sessions feature schema: **3**
+- Security Events feature schema: **2**
+- Application: **0.15.169-preview**
 - Help manifest: **1.21**
 
-Feature schemas evolve independently. User Sessions schema 2 contains the central lifetime policy. Security Events schema 1 introduces the provider-neutral event/review store and its timestamp/severity, user and review indexes. Neither requires a Core schema increment.
+Feature schemas evolve independently. Sales schema 11 is a provider-parity/data-integrity correction and therefore does not increment Core schema 30.
 
 ## Transaction, concurrency and evidence model
 
 Mutable configuration uses optimistic versions. Session lifecycle uses repository predicates and lifecycle coordination to prevent late heartbeat resurrection. User deactivation plus session revocation is atomic. Security Event review uses expected `Version`; original security-event fields are append-only through normal application paths.
 
-Session-policy update plus its Audit record is not yet one shared database transaction and must not be represented as atomic evidence. Likewise, Security Events are operational evidence complementary to, not a substitute for, required business Audit transactions.
-
-Bulk pricing Apply remains all-or-nothing through the provider transaction abstraction, with preview evidence revalidated before mutation.
+Bulk pricing Apply remains all-or-nothing through the provider transaction abstraction, with preview evidence revalidated before mutation. Provider retries are limited to known transient database conflicts so application/business failures cannot be repeated silently.
 
 ## RBAC and segregation of duties
 
-Service-layer authorization is authoritative. Relevant security permissions are:
+Service-layer authorization is authoritative. UI visibility mirrors permissions but never replaces service authorization. Finance posting, payment, exception-approval and configuration responsibilities remain distinct according to their established permissions and deployment role design.
 
-- `Users.View` — session visibility/policy read.
-- `Settings.Manage` — session lifetime-policy maintenance.
-- `UserSessions.Terminate` — destructive session termination.
-- `SecurityEvents.View` — Security Center/event visibility and security notifications.
-- `SecurityEvents.Manage` — security-event review workflow.
+## Provider production acceptance
 
-UI visibility mirrors these rights but never replaces service authorization.
+The full provider workflow exercises real database/runtime paths through provisioning, migrations, repositories and services. It covers SQL/type/constraint/date/decimal behavior, rollback, concurrency/deadlock/retry, Sales, Procurement, sessions, GL/AR/AP/FIFO, Banking/reconciliation, Financial Reporting/snapshots, remote restart, provider-native backup/restore and a representative 100k indexed lookup guard.
 
-## Provider acceptance
-
-Core persistence, Sales schema 10, User Sessions schema 2 and Security Events schema 1 DDL/code exist for SQLite, SQL Server and MySQL/MariaDB. Provider-neutral implementation is not production certification; live migration, locking, recovery, backup/restore, date behavior and representative load/concurrency acceptance remain required for advertised server/version matrices.
+This closes the technical database-provider acceptance gate for the exact baselines in the support matrix. It does not claim jurisdiction-specific accounting/legal certification or replace deployment-specific sizing, backup operations, accessibility, signing or organization-control acceptance.

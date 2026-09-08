@@ -12,9 +12,11 @@ using Xunit;
 namespace Depot.Tests;
 
 [Collection("Provider database")]
+[Trait("Acceptance", "DatabaseProvider")]
 public sealed class ProcurementProviderTests
 {
 	[SqlServerProcurementFact]
+	[Trait("Provider", "SqlServer")]
 	public async Task SqlServerExecutesAtomicConcurrentGoodsReceiptContract()
 	{
 		var settings = ProcurementProviderConfiguration.GetSqlServerSettings();
@@ -22,130 +24,157 @@ public sealed class ProcurementProviderTests
 		await VerifyProviderContractAsync(factory, new SqlServerDatabase(factory));
 	}
 
+	[MariaDbProcurementFact]
+	[Trait("Provider", "MariaDB")]
+	public async Task MariaDbExecutesAtomicConcurrentGoodsReceiptContract()
+	{
+		var settings = ProcurementProviderConfiguration.GetMariaDbSettings();
+		var factory = new MySqlConnectionFactory(settings);
+		await VerifyProviderContractAsync(factory, new MySqlDatabase(factory));
+	}
+
 	[MySqlProcurementFact]
-	public async Task MySqlOrMariaDbExecutesAtomicConcurrentGoodsReceiptContract()
+	[Trait("Provider", "MySQL")]
+	public async Task MySqlExecutesAtomicConcurrentGoodsReceiptContract()
 	{
 		var settings = ProcurementProviderConfiguration.GetMySqlSettings();
 		var factory = new MySqlConnectionFactory(settings);
 		await VerifyProviderContractAsync(factory, new MySqlDatabase(factory));
 	}
 
-	private static async Task VerifyProviderContractAsync(
-		IDatabaseConnectionFactory factory,
-		IDatabaseInitializer initializer)
+	private static async Task VerifyProviderContractAsync(IDatabaseConnectionFactory factory, IDatabaseInitializer initializer)
 	{
 		await using var context = await ProcurementTestContext.CreateServerAsync(factory, initializer);
-		var order = await context.Orders.SaveDraftAsync(context.NewOrder(quantity: 5));
-		Assert.Equal(PurchaseOrderStatus.Draft, order.Status);
-		order = await context.ApproveAndOrderAsync(order);
-
-		var results = await Task.WhenAll(AttemptAsync("A"), AttemptAsync("B"));
-
-		Assert.Single(results, result => result);
-		var updated = await context.Orders.GetByIdAsync(order.Id) ?? throw new InvalidOperationException();
-		Assert.Equal(PurchaseOrderStatus.PartiallyReceived, updated.Status);
-		Assert.Equal(4, updated.Lines[0].ReceivedQuantity);
-		Assert.Equal(1, await context.ScalarAsync(
-			"SELECT COUNT(*) FROM StockMovements WHERE InventoryId = $InventoryId;",
-			new DatabaseParameter("$InventoryId", context.InventoryId)));
-		Assert.Equal(1, await context.ScalarAsync(
-			"SELECT COUNT(*) FROM AuditEntries WHERE EntityType = 'GoodsReceipt' AND EntityId IN (SELECT Id FROM GoodsReceipts WHERE PurchaseOrderId = $PurchaseOrderId);",
-			new DatabaseParameter("$PurchaseOrderId", order.Id)));
-		var receiptOption = (await context.SupplierReturns.SearchReceiptOptionsAsync(null, context.SupplierId))
-			.Single(option => option.PurchaseOrderId == order.Id);
-		var returnableLine = Assert.Single(await context.SupplierReturns.GetReturnableLinesAsync(receiptOption.GoodsReceiptId));
-		var reasonCodeId = Convert.ToInt64(await context.Data.ExecuteScalarAsync(
-			"SELECT Id FROM ReasonCodes WHERE Code = $Code;",
-			CancellationToken.None,
-			new DatabaseParameter("$Code", ReasonCodeSystemCodes.Returned)));
-		var supplierReturn = await context.SupplierReturns.SaveDraftAsync(new SupplierReturn
+		try
 		{
-			SupplierId = context.SupplierId,
-			PurchaseOrderId = order.Id,
-			GoodsReceiptId = receiptOption.GoodsReceiptId,
-			ReturnDate = DateTime.Today,
-			Notes = "Provider contract supplier return",
-			Lines =
-			[
-				new SupplierReturnLine
+			var order = await context.Orders.SaveDraftAsync(context.NewOrder(quantity: 5));
+			Assert.Equal(PurchaseOrderStatus.Draft, order.Status);
+			order = await context.ApproveAndOrderAsync(order);
+
+			var results = await Task.WhenAll(AttemptAsync("A"), AttemptAsync("B"));
+			Assert.Single(results, result => result);
+			var updated = await context.Orders.GetByIdAsync(order.Id) ?? throw new InvalidOperationException();
+			Assert.Equal(PurchaseOrderStatus.PartiallyReceived, updated.Status);
+			Assert.Equal(4, updated.Lines[0].ReceivedQuantity);
+			Assert.Equal(1, await context.ScalarAsync(
+				"SELECT COUNT(*) FROM StockMovements WHERE InventoryId = $InventoryId;",
+				new DatabaseParameter("$InventoryId", context.InventoryId)));
+			Assert.Equal(1, await context.ScalarAsync(
+				"SELECT COUNT(*) FROM AuditEntries WHERE EntityType = 'GoodsReceipt' AND EntityId IN (SELECT Id FROM GoodsReceipts WHERE PurchaseOrderId = $PurchaseOrderId);",
+				new DatabaseParameter("$PurchaseOrderId", order.Id)));
+
+			var receiptOption = (await context.SupplierReturns.SearchReceiptOptionsAsync(null, context.SupplierId))
+				.Single(option => option.PurchaseOrderId == order.Id);
+			var returnableLine = Assert.Single(await context.SupplierReturns.GetReturnableLinesAsync(receiptOption.GoodsReceiptId));
+			var reasonCodeId = Convert.ToInt64(await context.Data.ExecuteScalarAsync(
+				"SELECT Id FROM ReasonCodes WHERE Code = $Code;",
+				CancellationToken.None,
+				new DatabaseParameter("$Code", ReasonCodeSystemCodes.Returned)));
+			var supplierReturn = await context.SupplierReturns.SaveDraftAsync(new SupplierReturn
+			{
+				SupplierId = context.SupplierId,
+				PurchaseOrderId = order.Id,
+				GoodsReceiptId = receiptOption.GoodsReceiptId,
+				ReturnDate = DateTime.Today,
+				Notes = "Provider contract supplier return",
+				Lines =
+				[
+					new SupplierReturnLine
+					{
+						GoodsReceiptLineId = returnableLine.GoodsReceiptLineId,
+						InventoryId = returnableLine.InventoryId,
+						ItemId = returnableLine.ItemId,
+						Quantity = 1,
+						ReasonCodeId = reasonCodeId
+					}
+				]
+			});
+			await context.SupplierReturns.PostSupplierReturnAsync(supplierReturn.Id, supplierReturn.Version);
+			Assert.Equal(1, await context.ScalarAsync(
+				"SELECT COUNT(*) FROM StockMovements WHERE Reference = $Reference AND MovementType = $MovementType AND Quantity = -1;",
+				new DatabaseParameter("$Reference", $"Supplier Return {supplierReturn.ReturnNumber}"),
+				new DatabaseParameter("$MovementType", (int)StockMovementType.SupplierReturn)));
+
+			var orderCountBeforeAuditFailure = await context.ScalarAsync(
+				"SELECT COUNT(*) FROM PurchaseOrders WHERE SupplierId = $SupplierId;",
+				new DatabaseParameter("$SupplierId", context.SupplierId));
+			var auditCountBeforeAuditFailure = await context.ScalarAsync(
+				"SELECT COUNT(*) FROM AuditEntries WHERE EntityType = 'PurchaseOrder' AND EntityId IN (SELECT Id FROM PurchaseOrders WHERE SupplierId = $SupplierId);",
+				new DatabaseParameter("$SupplierId", context.SupplierId));
+			context.Authorization.SignIn(new User
+			{
+				Id = long.MaxValue,
+				Email = "missing-provider-audit-user@depot.test",
+				DisplayName = "Missing provider audit user",
+				IsActive = true
+			}, PermissionCatalog.All);
+			var auditFailure = await Record.ExceptionAsync(() => context.Orders.SaveDraftAsync(context.NewOrder(quantity: 1)));
+			Assert.NotNull(auditFailure);
+			Assert.Equal(orderCountBeforeAuditFailure, await context.ScalarAsync(
+				"SELECT COUNT(*) FROM PurchaseOrders WHERE SupplierId = $SupplierId;",
+				new DatabaseParameter("$SupplierId", context.SupplierId)));
+			Assert.Equal(auditCountBeforeAuditFailure, await context.ScalarAsync(
+				"SELECT COUNT(*) FROM AuditEntries WHERE EntityType = 'PurchaseOrder' AND EntityId IN (SELECT Id FROM PurchaseOrders WHERE SupplierId = $SupplierId);",
+				new DatabaseParameter("$SupplierId", context.SupplierId)));
+
+			async Task<bool> AttemptAsync(string suffix)
+			{
+				try
 				{
-					GoodsReceiptLineId = returnableLine.GoodsReceiptLineId,
-					InventoryId = returnableLine.InventoryId,
-					ItemId = returnableLine.ItemId,
-					Quantity = 1,
-					ReasonCodeId = reasonCodeId
+					var receipt = context.NewReceipt(order, 4);
+					receipt.SupplierDeliveryNoteNumber = $"DN-{factory.Provider}-{suffix}-{Guid.NewGuid():N}";
+					await context.Receipts.PostGoodsReceiptAsync(receipt);
+					return true;
 				}
-			]
-		});
-		await context.SupplierReturns.PostSupplierReturnAsync(supplierReturn.Id, supplierReturn.Version);
-		Assert.Equal(1, await context.ScalarAsync(
-			"SELECT COUNT(*) FROM StockMovements WHERE Reference = $Reference AND MovementType = $MovementType AND Quantity = -1;",
-			new DatabaseParameter("$Reference", $"Supplier Return {supplierReturn.ReturnNumber}"),
-			new DatabaseParameter("$MovementType", (int)StockMovementType.SupplierReturn)));
-
-		var orderCountBeforeAuditFailure = await context.ScalarAsync(
-			"SELECT COUNT(*) FROM PurchaseOrders WHERE SupplierId = $SupplierId;",
-			new DatabaseParameter("$SupplierId", context.SupplierId));
-		var auditCountBeforeAuditFailure = await context.ScalarAsync(
-			"SELECT COUNT(*) FROM AuditEntries WHERE EntityType = 'PurchaseOrder' AND EntityId IN (SELECT Id FROM PurchaseOrders WHERE SupplierId = $SupplierId);",
-			new DatabaseParameter("$SupplierId", context.SupplierId));
-		context.Authorization.SignIn(new User
-		{
-			Id = long.MaxValue,
-			Email = "missing-provider-audit-user@depot.test",
-			DisplayName = "Missing provider audit user",
-			IsActive = true
-		}, PermissionCatalog.All);
-		var auditFailure = await Record.ExceptionAsync(() =>
-			context.Orders.SaveDraftAsync(context.NewOrder(quantity: 1)));
-		Assert.NotNull(auditFailure);
-		Assert.Equal(orderCountBeforeAuditFailure, await context.ScalarAsync(
-			"SELECT COUNT(*) FROM PurchaseOrders WHERE SupplierId = $SupplierId;",
-			new DatabaseParameter("$SupplierId", context.SupplierId)));
-		Assert.Equal(auditCountBeforeAuditFailure, await context.ScalarAsync(
-			"SELECT COUNT(*) FROM AuditEntries WHERE EntityType = 'PurchaseOrder' AND EntityId IN (SELECT Id FROM PurchaseOrders WHERE SupplierId = $SupplierId);",
-			new DatabaseParameter("$SupplierId", context.SupplierId)));
-
-		async Task<bool> AttemptAsync(string suffix)
-		{
-			try
-			{
-				var receipt = context.NewReceipt(order, 4);
-				receipt.SupplierDeliveryNoteNumber = $"DN-{factory.Provider}-{suffix}-{Guid.NewGuid():N}";
-				await context.Receipts.PostGoodsReceiptAsync(receipt);
-				return true;
-			}
-			catch (InvalidOperationException)
-			{
-				return false;
+				catch (InvalidOperationException)
+				{
+					return false;
+				}
 			}
 		}
+		finally
+		{
+			await RemoveNotificationReferencesAsync(context);
+		}
+	}
+
+	private static async Task RemoveNotificationReferencesAsync(ProcurementTestContext context)
+	{
+		var userId = context.ApproverUserId;
+		await context.Data.ExecuteAsync(
+			"DELETE FROM NotificationRecipients WHERE UserId=$UserId OR NotificationId IN (SELECT Id FROM Notifications WHERE CreatedByUserId=$UserId);",
+			CancellationToken.None,
+			new DatabaseParameter("$UserId", userId));
+		await context.Data.ExecuteAsync(
+			"DELETE FROM Notifications WHERE CreatedByUserId=$UserId;",
+			CancellationToken.None,
+			new DatabaseParameter("$UserId", userId));
 	}
 }
 
 public sealed class SqlServerProcurementFactAttribute : FactAttribute
 {
-	public SqlServerProcurementFactAttribute()
-	{
-		Skip = ProcurementProviderConfiguration.GetSqlServerSkipReason();
-	}
+	public SqlServerProcurementFactAttribute() => Skip = ProcurementProviderConfiguration.GetSqlServerSkipReason();
+}
+
+public sealed class MariaDbProcurementFactAttribute : FactAttribute
+{
+	public MariaDbProcurementFactAttribute() => Skip = ProcurementProviderConfiguration.GetMariaDbSkipReason();
 }
 
 public sealed class MySqlProcurementFactAttribute : FactAttribute
 {
-	public MySqlProcurementFactAttribute()
-	{
-		Skip = ProcurementProviderConfiguration.GetMySqlSkipReason();
-	}
+	public MySqlProcurementFactAttribute() => Skip = ProcurementProviderConfiguration.GetMySqlSkipReason();
 }
 
 internal static class ProcurementProviderConfiguration
 {
 	internal const string SqlServerEnvironmentVariable = "DEPOT_TEST_SQLSERVER_CONNECTION_STRING";
+	internal const string MariaDbEnvironmentVariable = "DEPOT_TEST_MARIADB_CONNECTION_STRING";
 	internal const string MySqlEnvironmentVariable = "DEPOT_TEST_MYSQL_CONNECTION_STRING";
 
 	public static string? GetSqlServerSkipReason() => GetSkipReason(SqlServerEnvironmentVariable, GetSqlServerSettings);
-
+	public static string? GetMariaDbSkipReason() => GetSkipReason(MariaDbEnvironmentVariable, GetMariaDbSettings);
 	public static string? GetMySqlSkipReason() => GetSkipReason(MySqlEnvironmentVariable, GetMySqlSettings);
 
 	public static DatabaseConnectionSettings GetSqlServerSettings()
@@ -167,13 +196,16 @@ internal static class ProcurementProviderConfiguration
 		};
 	}
 
-	public static DatabaseConnectionSettings GetMySqlSettings()
+	public static DatabaseConnectionSettings GetMariaDbSettings() => GetMySqlFamilySettings(MariaDbEnvironmentVariable);
+	public static DatabaseConnectionSettings GetMySqlSettings() => GetMySqlFamilySettings(MySqlEnvironmentVariable);
+
+	private static DatabaseConnectionSettings GetMySqlFamilySettings(string environmentVariable)
 	{
-		var values = ReadConnectionString(MySqlEnvironmentVariable);
+		var values = ReadConnectionString(environmentVariable);
 		var (host, endpointPort) = ParseEndpoint(GetRequired(values, "Server", "Host"), 3306, ':');
 		var port = GetInt32(values, endpointPort, "Port");
 		var database = GetRequired(values, "Database", "Initial Catalog");
-		EnsureTestDatabase(database, MySqlEnvironmentVariable);
+		EnsureTestDatabase(database, environmentVariable);
 		var sslMode = GetOptional(values, "SSL Mode", "SslMode");
 		return new DatabaseConnectionSettings
 		{
@@ -187,9 +219,7 @@ internal static class ProcurementProviderConfiguration
 		};
 	}
 
-	private static string? GetSkipReason(
-		string environmentVariable,
-		Func<DatabaseConnectionSettings> parse)
+	private static string? GetSkipReason(string environmentVariable, Func<DatabaseConnectionSettings> parse)
 	{
 		if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(environmentVariable)))
 			return $"Set {environmentVariable} to run this optional server integration test.";

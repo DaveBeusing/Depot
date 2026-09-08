@@ -4,15 +4,17 @@
 using Depot.Data;
 using Depot.Models;
 using Depot.Repositories;
-
 using Xunit;
 
 namespace Depot.Tests;
 
 [Collection("Provider database")]
+[Trait("Acceptance", "DatabaseProvider")]
+[Trait("AcceptanceLevel", "Smoke")]
 public sealed class UserSessionProviderTests
 {
 	[SqlServerProcurementFact]
+	[Trait("Provider", "SqlServer")]
 	public async Task SqlServerMigratesAndPersistsUserSessions()
 	{
 		var settings = ProcurementProviderConfiguration.GetSqlServerSettings();
@@ -20,17 +22,25 @@ public sealed class UserSessionProviderTests
 		await VerifyProviderContractAsync(factory, new SqlServerDatabase(factory));
 	}
 
+	[MariaDbProcurementFact]
+	[Trait("Provider", "MariaDB")]
+	public async Task MariaDbMigratesAndPersistsUserSessions()
+	{
+		var settings = ProcurementProviderConfiguration.GetMariaDbSettings();
+		var factory = new MySqlConnectionFactory(settings);
+		await VerifyProviderContractAsync(factory, new MySqlDatabase(factory));
+	}
+
 	[MySqlProcurementFact]
-	public async Task MySqlOrMariaDbMigratesAndPersistsUserSessions()
+	[Trait("Provider", "MySQL")]
+	public async Task MySqlMigratesAndPersistsUserSessions()
 	{
 		var settings = ProcurementProviderConfiguration.GetMySqlSettings();
 		var factory = new MySqlConnectionFactory(settings);
 		await VerifyProviderContractAsync(factory, new MySqlDatabase(factory));
 	}
 
-	private static async Task VerifyProviderContractAsync(
-		IDatabaseConnectionFactory factory,
-		IDatabaseInitializer initializer)
+	private static async Task VerifyProviderContractAsync(IDatabaseConnectionFactory factory, IDatabaseInitializer initializer)
 	{
 		initializer.Initialize();
 		UserSessionSchemaMigration.Migrate(factory);
@@ -40,7 +50,7 @@ public sealed class UserSessionProviderTests
 		var now = new DateTime(2026, 8, 31, 20, 0, 0, DateTimeKind.Utc);
 		var user = new User
 		{
-			Email = $"session-provider-{factory.Provider}-{Guid.NewGuid():N}@test.local",
+			Email = $"session-provider-{Guid.NewGuid():N}@test.local",
 			DisplayName = "Provider Session Test",
 			IsActive = true,
 			CreatedUtc = now
@@ -48,21 +58,14 @@ public sealed class UserSessionProviderTests
 		var userId = await users.CreateAsync(user, "unused", CancellationToken.None);
 		var session = new UserSession
 		{
-			SessionId = Guid.NewGuid(),
-			UserId = userId,
-			StartedUtc = now,
-			LastSeenUtc = now,
-			ClientInstanceId = Guid.NewGuid(),
-			MachineName = $"{factory.Provider}-CLIENT",
-			AppVersion = "0.15.82-preview"
+			SessionId = Guid.NewGuid(), UserId = userId, StartedUtc = now, LastSeenUtc = now,
+			ClientInstanceId = Guid.NewGuid(), MachineName = $"{factory.Provider}-CLIENT", AppVersion = "provider-acceptance"
 		};
-
 		await sessions.CreateAsync(session, CancellationToken.None);
 		var persisted = await sessions.GetBySessionIdAsync(session.SessionId, CancellationToken.None);
 		Assert.NotNull(persisted);
 		Assert.Equal(session.SessionId, persisted!.SessionId);
 		Assert.Equal(userId, persisted.UserId);
-
 		Assert.True(await sessions.UpdateHeartbeatAsync(session.SessionId, now.AddSeconds(30), CancellationToken.None));
 		Assert.True(await sessions.EndAsync(session.SessionId, now.AddSeconds(40), UserSessionEndReason.LoggedOut, CancellationToken.None));
 		Assert.False(await sessions.UpdateHeartbeatAsync(session.SessionId, now.AddSeconds(60), CancellationToken.None));

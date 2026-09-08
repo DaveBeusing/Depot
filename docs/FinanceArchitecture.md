@@ -1,6 +1,6 @@
 # Finance Architecture
 
-Updated: 2026-08-29
+Updated: 2026-09-08
 
 ## Purpose
 
@@ -85,18 +85,26 @@ Administrator receives the complete permission catalog. UI visibility is not an 
 
 ## Provider and schema model
 
-Provider-neutral Finance DDL exists for SQLite, SQL Server and MySQL/MariaDB.
-
 Current schema baseline:
 
 - Core database schema: **30**
-- Sales feature schema: **9**
+- Sales feature schema: **11**
 - Finance feature schema: **9**
 
-Finance schema evolution is sequential from foundation through General Ledger, subledgers, inventory accounting, banking, reporting and localization. Provider neutrality is a code/design property, not a production certification claim. Live SQL Server/MySQL-MariaDB migration, concurrency, recovery and representative Finance/localization acceptance remain deployment gates.
+Finance schema evolution is sequential from foundation through General Ledger, subledgers, inventory accounting, banking, reporting and localization.
+
+The Finance persistence/runtime path is technically accepted on the database baselines in [Database Provider Production Support Matrix](DatabaseProviderSupportMatrix.md): bundled SQLite, SQL Server 2022 engine 16.x, MariaDB 11.8.9 LTS and MySQL 8.4.11 LTS.
+
+Live acceptance traverses real repositories/services for GL, AR, AP and FIFO/inventory accounting. It additionally persists/imports/reconciles/reverses Banking evidence and generates/exports/snapshots Financial Reporting evidence. The same jobs validate migrations, concurrency/deadlock/retry, restart/re-entry, native remote backup/restore and representative provider load.
+
+MySQL/MariaDB Finance UTC timestamps are normalized as provider-native `DATETIME(6)` values at the data-access boundary; Services and Repositories retain the common UTC contract.
+
+SQLite's dynamic `NUMERIC` affinity does not guarantee the full server-style fixed `DECIMAL(28,9)` magnitude/precision range. The support matrix documents this provider-specific boundary.
 
 ## Jurisdiction/compliance boundary
 
-Localization supplies extension infrastructure and reference semantics. It does not provide a legal opinion, tax determination, statutory filing certification, automatic chart of accounts, VAT rate table, HGB/IFRS policy selection or organization-specific compliance procedure. A jurisdiction that needs new executable software behavior requires separately scoped implementation on top of this framework.
+Database-provider technical acceptance is not accounting/legal certification. Localization supplies extension infrastructure and reference semantics; it does not provide a legal opinion, tax determination, statutory filing certification, automatic chart of accounts, VAT rate table, HGB/IFRS policy selection or organization-specific compliance procedure.
 
-See `FinanceLocalization.md` and `FinanceCompliance.md`.
+Deployments still require accounting-book/chart/calendar/posting-profile/valuation/reporting policy approval, reconciliation/period-end procedures, retention/backup operating procedures and qualified jurisdiction-specific review.
+
+See [Finance Localization](FinanceLocalization.md), [Finance Compliance](FinanceCompliance.md), [Finance Banking](FinanceBanking.md) and [Finance Reporting](FinanceReporting.md).

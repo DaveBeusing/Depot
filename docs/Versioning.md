@@ -1,95 +1,98 @@
-# Depot Versioning
+# Versioning and schema evolution
 
-Depot uses [Semantic Versioning](https://semver.org/) for application releases:
+Updated: 2026-09-08
 
-```text
-MAJOR.MINOR.PATCH[-PRERELEASE][+BUILD]
-```
+## Current baselines
 
-The single application-version source is `Directory.Build.props` in the repository root.
-
-## Current versions
-
-- Application development line: **0.15.x-preview**
+- Application development line: **0.15.169-preview**
 - Core database schema: **30**
-- Sales feature schema: **10**
+- Sales feature schema: **11**
 - Finance feature schema: **9**
+- User Sessions feature schema: **3**
+- Security Events feature schema: **2**
+- Help manifest: **1.21**
 
-Application, core database and feature-schema versions are independent compatibility dimensions. Every repository commit increments `DepotVersionPatch`. A persistence change increments the schema version that owns that persistence contract.
+Application, Core database and feature-schema versions are independent compatibility dimensions.
 
-## Application version components
+Every repository commit increments `DepotVersionPatch` in `Directory.Build.props`. Database schema versions change only when the corresponding persisted schema contract changes.
 
-- `MAJOR` changes for incompatible stable releases.
-- `MINOR` changes for backward-compatible features. Before 1.0 it may also mark a significant preview milestone.
-- `PATCH` changes for repository commits on the current development line.
-- `PRERELEASE` identifies preview, beta, or release-candidate builds.
-- `BUILD` contributes revision metadata and does not change SemVer precedence.
+## Core database schema
 
-The MSBuild properties produce `Version`/`InformationalVersion`, a stable `AssemblyVersion` within a major/minor line and numeric `FileVersion` in `MAJOR.MINOR.PATCH.BUILD` form. The About page reads built assembly information and displays application and database compatibility information.
+`DatabaseVersion.CurrentVersion` is the authoritative Core database schema version. The provider-certification work does not change the Core database schema; it remains **30**.
 
-## Core database schema versioning
+Core migrations must:
 
-`src/Depot/Data/DatabaseVersion.cs` is the shared/core schema-version source. Core schema **30** remains the compatibility baseline used by SQLite, Microsoft SQL Server and MySQL/MariaDB.
+1. be deterministic and forward-only;
+2. preserve existing data unless a controlled transformation is explicitly required;
+3. execute through the provider/database initialization path rather than a UI-specific implementation;
+4. remain idempotent where initialization can be repeated safely;
+5. update Core schema tests and the live-provider acceptance path;
+6. update documentation that states the Core schema version or persistence contract.
 
-The core schema version changes when shared/core persistence owned by the provider initializers changes. Feature-local schemas use their own ordered migration ledgers and do not artificially increment the core version merely because a feature adds persistence.
+## Feature schemas
 
-For every **core** schema change:
-
-1. add equivalent current-schema definitions for all three providers;
-2. add a forward migration from the previous supported core version;
-3. increment `DatabaseVersion.CurrentVersion` once;
-4. update backup/table definitions when persisted data changes;
-5. add/update migration and workflow tests;
-6. update architecture, status, roadmap and version documentation.
-
-## Feature schema versioning
-
-Feature schemas are tracked in `DepotFeatureVersions`. A feature persistence change increments that feature's `CurrentVersion` and adds a forward migration from the previous feature version for every supported provider.
+Feature schemas are tracked independently through `DepotFeatureVersions`. A feature migration does not increment Core schema unless it also changes the Core schema contract.
 
 ### Sales schema 10
 
-Sales schema 9 introduced provider-neutral scoped PriceLists, optional Sales Regions, scope/region constraints/indexes and retained price-source metadata on quote/order lines.
+Sales schema **10** introduced Item Cost Build-up persistence:
 
-Sales schema **10** adds the Item Cost Build-up persistence contract:
-
-- `ItemCostProfiles` with an explicit Base Cost source, ISO currency and optimistic version;
+- `ItemCostProfiles` with explicit Base Cost source, ISO currency and optimistic version;
 - `ItemCostComponents` with Absolute/Percentage calculation type, explicit percentage base, value, deterministic sequence, activity/validity and optimistic version;
-- deterministic item/sequence lookup ordering;
-- provider-equivalent SQLite, SQL Server and MySQL/MariaDB DDL.
+- deterministic item/component ordering and lookup indexes.
 
-The Sales 9 → 10 migration is additive. It does not rewrite existing PriceLists, PriceList entries, supplier purchase prices or historical Sales-document snapshots.
+### Sales schema 11
+
+Sales schema **11** establishes the active inventory-reservation uniqueness invariant consistently across all supported database providers.
+
+- SQLite uses a partial unique index for active reservations.
+- SQL Server uses a filtered unique index for active reservations.
+- MariaDB/MySQL use generated `ActiveInventoryId` semantics plus a unique `(SalesOrderLineId, ActiveInventoryId)` index so released reservations may coexist while active duplicates are rejected.
+
+The migration also reconciles databases that had previously advanced the Sales feature version while the remote-provider invariant was not physically present. This is a Sales feature-schema/data-integrity correction; **Core schema remains 30**.
 
 ### Finance schema 9
 
-Finance maintains an independent sequential feature schema through Finance schema 9. Finance feature migrations remain governed by their own current-version contract and tests.
+Finance schema **9** is the current Finance persistence baseline and contains the sequential foundation, General Ledger, Accounts Receivable/Payable, Inventory Accounting, Banking, Financial Reporting and Localization structures.
 
-For every **feature** schema change:
+### User Sessions schema 3
 
-1. add provider-equivalent schema definitions under the owning feature;
-2. add a forward migration from the previous feature version;
-3. increment the owning feature's schema version exactly once;
-4. preserve existing data unless the migration explicitly documents a controlled transformation;
-5. add SQLite migration coverage and supported live-provider coverage where infrastructure permits;
-6. update documentation that states the feature version or persistence contract.
+User Sessions schema **3** is the current persistent session/policy/history baseline.
 
-## Provider acceptance
+### Security Events schema 2
 
-Automated SQLite migration coverage is required. SQL Server and MySQL/MariaDB migrations use the same functional contract and optional live-provider suites. Provider-neutral implementation alone is not production certification; supported server versions still require live migration, locking/concurrency, recovery and performance acceptance before a stable release.
+Security Events schema **2** is the current authentication-security event/policy/throttle baseline.
 
-## Creating a release
+## Provider compatibility and certification
 
-1. Complete `docs/Release1.0.md` for the target release.
-2. Ensure the working tree contains the intended release changes only.
-3. Run the full build and automated test suite.
-4. Set the required version components in `Directory.Build.props`.
-5. For a stable build, publish with:
+Provider-neutral DDL/code is an implementation property, not a support decision. Production provider support is governed by `.github/workflows/database-provider-acceptance.yml` and [Database Provider Production Support Matrix](DatabaseProviderSupportMatrix.md).
 
-```powershell
-dotnet publish src\Depot\Depot.csproj -c Release -p:DepotStableRelease=true -p:DepotVersionBuild=1
-```
+Current certified database baselines are:
 
-Prerelease builds retain `DepotVersionSuffix`. Stable releases set `DepotStableRelease=true` so the suffix is omitted.
+- Depot-bundled SQLite runtime;
+- SQL Server 2022 / engine 16.x, certified in CI with SQL Server 2022 Express;
+- MariaDB 11.8.9 LTS;
+- MySQL 8.4.11 LTS.
 
-## Release documentation rule
+MariaDB and MySQL are accepted independently even though both use `MySqlConnector`.
 
-Do not call a provider or workflow production-ready solely because its implementation compiles. Stable-release documentation requires automated coverage where practical and recorded manual acceptance for environment-dependent behavior such as server migrations, recovery, deployment and multi-client operation.
+A schema/feature change that affects provider persistence must include live-provider migration/behavior coverage before the corresponding provider/version remains production-supported.
+
+## Migration concurrency
+
+Remote provisioning serializes the entire authoritative provisioning sequence, not only the initial Core initializer:
+
+- SQL Server: `sp_getapplock` session lock scoped to the Depot database;
+- MariaDB/MySQL: `GET_LOCK` advisory lock scoped to the Depot database.
+
+The lock covers Core initialization plus Sales, Finance, User Sessions and Security Events feature migrations so parallel startup cannot independently advance the same database.
+
+## Retry compatibility
+
+Write-transaction retry is restricted to known transient provider failures. Retries recreate the complete connection/transaction and use bounded exponential backoff with jitter. Business errors and ordinary unique/FK/validation failures are never treated as transient.
+
+## Release compatibility
+
+DepotManager release metadata continues to record the target Core database schema. A target release cannot be treated as compatible solely because its application version is newer; the manager validates the Core schema contract and uses Depot's authoritative provisioning path for migrations.
+
+Remote database rollback/downgrade is never automatic. Provider-native backup responsibility and exact supported baselines are documented separately in the support matrix.

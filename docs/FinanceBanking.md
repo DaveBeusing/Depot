@@ -1,6 +1,6 @@
 # Finance Banking and Payments
 
-Updated: 2026-08-28
+Updated: 2026-09-08
 
 ## Scope
 
@@ -59,6 +59,12 @@ Cash Position compares the latest imported statement closing balance with the co
 
 The standard Finance role receives operational Banking rights but not Payment Proposal approval; the Approver role receives the approval permission.
 
-## Production boundary
+## Provider production acceptance
 
-Provider-neutral DDL exists for SQLite, SQL Server and MySQL/MariaDB. Production acceptance still requires live migration, locking, retry, backup/recovery and load testing. Direct bank connectivity, EBICS, PSD2/open-banking conformance, payment-initiation certification, sanctions/AML/KYC decisioning and country/bank-specific payment profiles are separate integration and organizational responsibilities.
+Finance schema 9 Banking DDL and service behavior are now exercised in the real provider matrix for the certified SQLite, SQL Server 2022, MariaDB 11.8.9 and MySQL 8.4.11 baselines.
+
+The live acceptance creates a real Finance bank account, imports and idempotently replays a CSV statement, reconciles a statement line to a General Ledger entry and reverses that reconciliation. The same provider jobs also exercise restart/re-entry and provider-native backup/restore for remote databases.
+
+This proves the Depot database/runtime boundary; it does **not** certify direct bank connectivity, EBICS, PSD2/open-banking APIs, payment initiation, sanctions/AML/KYC decisioning, bank-specific `camt.053` profiles or jurisdiction-specific payment procedures. Those remain separate integration and organizational responsibilities.
+
+See [Database Provider Production Support Matrix](DatabaseProviderSupportMatrix.md) for the exact supported database baselines and recovery boundary.
