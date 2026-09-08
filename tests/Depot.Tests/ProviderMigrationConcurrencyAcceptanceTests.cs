@@ -71,6 +71,12 @@ public sealed class ProviderMigrationConcurrencyAcceptanceTests
 				await data.ExecuteAsync("IF EXISTS (SELECT 1 FROM sys.indexes WHERE object_id=OBJECT_ID(N'InventoryReservations') AND name=N'UX_InventoryReservations_Active') DROP INDEX UX_InventoryReservations_Active ON InventoryReservations;", CancellationToken.None);
 				break;
 			case DatabaseProvider.MySql:
+				if (Convert.ToInt32(await data.ExecuteScalarAsync(
+					"SELECT COUNT(DISTINCT index_name) FROM information_schema.statistics WHERE table_schema=DATABASE() AND table_name='InventoryReservations' AND index_name='IX_InventoryReservations_SalesOrderLineId';",
+					CancellationToken.None), CultureInfo.InvariantCulture) == 0)
+				{
+					await data.ExecuteAsync("CREATE INDEX IX_InventoryReservations_SalesOrderLineId ON InventoryReservations(SalesOrderLineId);", CancellationToken.None);
+				}
 				if (Convert.ToInt32(await data.ExecuteScalarAsync(ReservationIndexSql(provider), CancellationToken.None), CultureInfo.InvariantCulture) > 0)
 					await data.ExecuteAsync("DROP INDEX UX_InventoryReservations_Active ON InventoryReservations;", CancellationToken.None);
 				if (Convert.ToInt32(await data.ExecuteScalarAsync("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='InventoryReservations' AND column_name='ActiveInventoryId';", CancellationToken.None), CultureInfo.InvariantCulture) > 0)

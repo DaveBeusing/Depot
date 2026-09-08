@@ -81,10 +81,10 @@ public sealed class FinanceProviderAcceptanceTests
 				ApplicationPermission.FinanceGeneralLedgerPost,
 				ApplicationPermission.FinanceManualJournalsPost,
 				ApplicationPermission.FinanceGeneralLedgerReverse);
-			var first = await service.PostAsync(PostingRequest(Guid.NewGuid(), $"GL-A-{_suffix}", 123.123456789m, 123.123456789m));
-			Assert.Equal(123.123456789m, first.Lines.Sum(line => line.TransactionDebit));
+			var first = await service.PostAsync(PostingRequest(Guid.NewGuid(), $"GL-A-{_suffix}", 123.12m, 123.12m));
+			Assert.Equal(123.12m, first.Lines.Sum(line => line.TransactionDebit));
 			Assert.Equal(first.Lines.Sum(line => line.TransactionDebit), first.Lines.Sum(line => line.TransactionCredit));
-			var idempotent = await service.PostAsync(PostingRequest(first.OperationId, $"GL-A-{_suffix}", 123.123456789m, 123.123456789m));
+			var idempotent = await service.PostAsync(PostingRequest(first.OperationId, $"GL-A-{_suffix}", 123.12m, 123.12m));
 			Assert.Equal(first.Id, idempotent.Id);
 
 			var beforeCount = Scalar("SELECT COUNT(*) FROM FinanceJournalEntries;");

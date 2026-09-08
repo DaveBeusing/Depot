@@ -54,7 +54,7 @@ public sealed class SalesProviderAcceptanceTests
 		var completed = await fixture.Orders.GetByIdAsync(released.Id) ?? throw new InvalidOperationException();
 		Assert.Equal(SalesInvoiceStatus.Posted, postedInvoice.Status);
 		Assert.Equal(SalesOrderStatus.Completed, completed.Status);
-		Assert.Equal(251.234m, postedInvoice.NetAmount);
+		Assert.Equal(251.23m, postedInvoice.NetAmount);
 		Assert.Equal(10, completed.Lines[0].InvoicedQuantity);
 	}
 

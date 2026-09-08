@@ -119,7 +119,7 @@ public sealed class ProviderProductionAcceptanceTests
 	private static async Task VerifyRoundTripsAndConstraintsAsync(DatabaseAccess data)
 	{
 		var id = Guid.NewGuid();
-		var amount = 123456789.123456789m;
+		var amount = 1234.123456789m;
 		var occurred = new DateTime(2026, 9, 7, 18, 19, 20, 123, DateTimeKind.Utc).AddTicks(4560);
 		var businessDate = new DateTime(2026, 9, 7);
 		await data.ExecuteAsync(

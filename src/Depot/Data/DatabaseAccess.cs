@@ -16,6 +16,7 @@ namespace Depot.Data;
 
 public sealed class DatabaseAccess
 {
+	private const int MaxWriteTransactionAttempts = 8;
 	private readonly IDatabaseConnectionFactory _connectionFactory;
 
 	public DatabaseAccess(IDatabaseConnectionFactory connectionFactory)
@@ -187,9 +188,9 @@ public sealed class DatabaseAccess
 			{
 				return ExecuteInWriteTransactionCore(operation);
 			}
-			catch (Exception exception) when (attempt < 3 && IsTransientWriteConflict(exception))
+			catch (Exception exception) when (attempt < MaxWriteTransactionAttempts && IsTransientWriteConflict(exception))
 			{
-				Thread.Sleep(50 * attempt);
+				Thread.Sleep(GetRetryDelay(attempt));
 			}
 		}
 	}
@@ -204,9 +205,9 @@ public sealed class DatabaseAccess
 			{
 				return await ExecuteInWriteTransactionCoreAsync(operation, cancellationToken);
 			}
-			catch (Exception exception) when (attempt < 3 && IsTransientWriteConflict(exception))
+			catch (Exception exception) when (attempt < MaxWriteTransactionAttempts && IsTransientWriteConflict(exception))
 			{
-				await Task.Delay(50 * attempt, cancellationToken);
+				await Task.Delay(GetRetryDelay(attempt), cancellationToken);
 			}
 		}
 	}
@@ -235,6 +236,12 @@ public sealed class DatabaseAccess
 		var result = await operation(session, cancellationToken);
 		await transaction.CommitAsync(cancellationToken);
 		return result;
+	}
+
+	private static TimeSpan GetRetryDelay(int attempt)
+	{
+		var exponentialMilliseconds = Math.Min(1000, 50 * (1 << Math.Min(attempt - 1, 4)));
+		return TimeSpan.FromMilliseconds(exponentialMilliseconds + Random.Shared.Next(0, 51));
 	}
 
 	private static bool IsTransientWriteConflict(Exception exception) =>
