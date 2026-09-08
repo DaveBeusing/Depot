@@ -121,7 +121,9 @@ public sealed class MySqlConnectionFactory : IDatabaseConnectionFactory
 		{
 			if (parameter.Value is not string value || !LooksLikeRoundtripTimestamp(value)) continue;
 			var name = parameter.ParameterName.TrimStart('@', '$');
-			if (!name.EndsWith("Utc", StringComparison.OrdinalIgnoreCase) && !FinanceDateTimeParameterNames.Contains(name)) continue;
+			if (!name.EndsWith("Utc", StringComparison.OrdinalIgnoreCase) &&
+				!name.EndsWith("At", StringComparison.OrdinalIgnoreCase) &&
+				!FinanceDateTimeParameterNames.Contains(name)) continue;
 			if (!DateTime.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var parsed)) continue;
 
 			var utc = parsed.Kind switch
