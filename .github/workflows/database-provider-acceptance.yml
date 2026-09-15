@@ -139,3 +139,25 @@ jobs:
             --filter $filter `
             --logger "console;verbosity=normal"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+  required:
+    name: Database Provider Required Gate
+    if: always()
+    needs:
+      - sqlite
+      - remote
+    runs-on: windows-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require provider acceptance to pass
+        shell: pwsh
+        env:
+          SQLITE_RESULT: ${{ needs.sqlite.result }}
+          REMOTE_RESULT: ${{ needs.remote.result }}
+        run: |
+          $failed = @()
+          if ($env:SQLITE_RESULT -ne 'success') { $failed += "sqlite=$env:SQLITE_RESULT" }
+          if ($env:REMOTE_RESULT -ne 'success') { $failed += "remote=$env:REMOTE_RESULT" }
+          if ($failed.Count -gt 0) {
+            throw "Database provider required gate failed: $($failed -join ', ')."
+          }

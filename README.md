@@ -99,7 +99,7 @@ Explore [Finance Architecture](docs/FinanceArchitecture.md), [Finance Banking](d
 
 Current baseline:
 
-- Application: **0.15.169-preview**
+- Application: **0.15.170-preview**
 - Core database schema: **30**
 - Sales feature schema: **11**
 - Finance feature schema: **9**
@@ -143,6 +143,8 @@ Runtime data remains external. Do not enable WPF trimming without dedicated vali
 
 CI includes Release build/publish, bounded regression suites, code-coverage gates, software-quality/accessibility checks, dependency locks, NuGet vulnerability audit, SBOM/evidence generation, release-integrity checks and electronic-invoice conformance.
 
+Repository governance exposes five stable aggregate status checks for CI, quality, security, packaged DepotManager E2E and database-provider acceptance. These are the only checks intended to be bound to the `master` ruleset; see [Repository Governance](docs/RepositoryGovernance.md) for the exact names and protection policy.
+
 The separate database-provider acceptance workflow adds real SQLite/SQL Server/MariaDB/MySQL migration, locking, retry, business-flow, restart, native restore and performance evidence. Pull requests use fast remote smoke coverage; certification branches, `master` and manual full runs execute the complete matrix.
 
 Security and compliance work is documented transparently rather than presented as certification that has not been achieved. Start with the [Security Roadmap](docs/SecurityRoadmap.md), [Compliance Overview](docs/ComplianceOverview.md) and [Compliance Matrix](docs/compliance/ComplianceMatrix.md).
@@ -167,6 +169,7 @@ Track the path through the [Roadmap](docs/Roadmap.md) and [Release 1.0 plan](doc
 - [Coding Standard](docs/CodingStandard.md)
 - [Current Status](docs/CurrentStatus.md)
 - [Documentation Status](docs/DocumentationStatus.md)
+- [Repository Governance](docs/RepositoryGovernance.md)
 - [Database Provider Production Support Matrix](docs/DatabaseProviderSupportMatrix.md)
 - [Versioning and Schema Evolution](docs/Versioning.md)
 - [User-Facing Changes](docs/UserFacingChanges.md)

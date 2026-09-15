@@ -3,14 +3,6 @@ name: DepotManager packaged E2E
 on:
   pull_request:
     branches: [ master ]
-    paths:
-      - '.github/workflows/depot-manager-e2e.yml'
-      - '.github/workflows/release-integrity.yml'
-      - 'scripts/publish-packaged-artifacts.ps1'
-      - 'src/Depot/**'
-      - 'src/DepotManager/**'
-      - 'tests/DepotManager.Tests/**'
-      - 'Directory.Build.props'
   push:
     branches: [ master ]
     paths:
@@ -231,4 +223,21 @@ jobs:
             finally {
               $store.Close()
             }
+          }
+
+  required:
+    name: Packaged E2E Required Gate
+    if: always()
+    needs:
+      - packaged-e2e
+    runs-on: windows-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require packaged E2E acceptance to pass
+        shell: pwsh
+        env:
+          PACKAGED_E2E_RESULT: ${{ needs.packaged-e2e.result }}
+        run: |
+          if ($env:PACKAGED_E2E_RESULT -ne 'success') {
+            throw "Packaged E2E required gate failed: packaged-e2e=$env:PACKAGED_E2E_RESULT."
           }

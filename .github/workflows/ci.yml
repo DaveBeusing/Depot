@@ -117,3 +117,25 @@ jobs:
       - name: Run regression area
         shell: pwsh
         run: ./scripts/quality/run-test-area.ps1 -Area '${{ matrix.area }}' -Configuration Release -NoBuild
+
+  required:
+    name: CI Required Gate
+    if: always()
+    needs:
+      - build-publish
+      - test
+    runs-on: windows-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require all CI jobs to pass
+        shell: pwsh
+        env:
+          BUILD_PUBLISH_RESULT: ${{ needs.build-publish.result }}
+          TEST_RESULT: ${{ needs.test.result }}
+        run: |
+          $failed = @()
+          if ($env:BUILD_PUBLISH_RESULT -ne 'success') { $failed += "build-publish=$env:BUILD_PUBLISH_RESULT" }
+          if ($env:TEST_RESULT -ne 'success') { $failed += "test=$env:TEST_RESULT" }
+          if ($failed.Count -gt 0) {
+            throw "CI required gate failed: $($failed -join ', ')."
+          }

@@ -149,3 +149,34 @@ jobs:
           path: artifacts/cra-evidence/
           if-no-files-found: error
           retention-days: 90
+
+  required:
+    name: Security Required Gate
+    if: always()
+    needs:
+      - security-tests
+      - risk-acceptance-policy
+      - vulnerability-audit
+      - dependency-locks
+      - sbom
+    runs-on: windows-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require all security gates to pass
+        shell: pwsh
+        env:
+          SECURITY_TESTS_RESULT: ${{ needs.security-tests.result }}
+          RISK_ACCEPTANCE_RESULT: ${{ needs.risk-acceptance-policy.result }}
+          VULNERABILITY_AUDIT_RESULT: ${{ needs.vulnerability-audit.result }}
+          DEPENDENCY_LOCKS_RESULT: ${{ needs.dependency-locks.result }}
+          SBOM_RESULT: ${{ needs.sbom.result }}
+        run: |
+          $failed = @()
+          if ($env:SECURITY_TESTS_RESULT -ne 'success') { $failed += "security-tests=$env:SECURITY_TESTS_RESULT" }
+          if ($env:RISK_ACCEPTANCE_RESULT -ne 'success') { $failed += "risk-acceptance=$env:RISK_ACCEPTANCE_RESULT" }
+          if ($env:VULNERABILITY_AUDIT_RESULT -ne 'success') { $failed += "vulnerability-audit=$env:VULNERABILITY_AUDIT_RESULT" }
+          if ($env:DEPENDENCY_LOCKS_RESULT -ne 'success') { $failed += "dependency-locks=$env:DEPENDENCY_LOCKS_RESULT" }
+          if ($env:SBOM_RESULT -ne 'success') { $failed += "sbom=$env:SBOM_RESULT" }
+          if ($failed.Count -gt 0) {
+            throw "Security required gate failed: $($failed -join ', ')."
+          }
