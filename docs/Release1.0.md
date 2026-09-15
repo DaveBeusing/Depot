@@ -1,6 +1,6 @@
 # Depot Version 1.0 Release Checklist
 
-Updated: 2026-09-08
+Updated: 2026-09-16
 
 ## Status
 
@@ -36,6 +36,12 @@ Depot is on the `0.15.x-preview` line with Core database schema **30**, Sales fe
 - [x] centralized per-item Customer → Region → Global Sales pricing with optional customer assignment and retained document source snapshots
 - [x] Sales Invoice seller/buyer/XRechnung finalization and persisted XML integrity evidence
 - [x] bounded regression/quality/accessibility CI controls
+- [x] repository governance with stable aggregate CI/quality/security/packaged-E2E/provider gates
+- [x] one authoritative Source-to-Release workflow
+- [x] explicit Preview/Stable GitHub Release channels with tag/version consistency
+- [x] release manifest records versions, Core/feature schema versions, source SHA, channel and final artifact hashes
+- [x] release publication reuses the exact tested workflow artifact rather than rebuilding
+- [x] Stable publication fails closed when Authenticode signing credentials are unavailable
 
 ## Database provider production acceptance
 
@@ -79,8 +85,11 @@ Versions outside these baselines are not implicitly supported. The provider gate
 
 ### Security/release engineering
 
+- [x] single authoritative release pipeline and explicit Preview/Stable channel policy
+- [x] source SHA, versions, schema versions and final hashes retained in release evidence
 - [ ] production backup/security ownership and vulnerability-reporting process accepted
-- [ ] production Authenticode identity and timestamp verified
+- [ ] production Authenticode publisher identity and timestamp verified with a real Stable release candidate
+- [ ] certificate expiry/rotation and signing-recovery procedure accepted
 - [ ] installer/package upgrade/rollback/uninstall accepted
 - [ ] final release notes, known limitations, hashes, SBOM and support information published
 

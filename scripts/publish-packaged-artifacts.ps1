@@ -1,6 +1,8 @@
 param(
     [string]$SourceRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path,
     [string]$OutputRoot = (Join-Path (Resolve-Path (Join-Path $PSScriptRoot '..')).Path 'artifacts\packaged'),
+    [ValidateSet('Preview', 'Stable')]
+    [string]$Channel = 'Preview',
     [switch]$NoRestore
 )
 
@@ -35,9 +37,16 @@ $publishProperties = @(
     '-p:DebugSymbols=false'
 )
 
-& dotnet publish $depotProject @publishProperties -o $depotOutput
+$depotPublishProperties = @($publishProperties)
+$managerPublishProperties = @($publishProperties)
+if ($Channel -eq 'Stable') {
+    $depotPublishProperties += '-p:DepotStableRelease=true'
+    $managerPublishProperties += '-p:DepotManagerStableRelease=true'
+}
+
+& dotnet publish $depotProject @depotPublishProperties -o $depotOutput
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-& dotnet publish $managerProject @publishProperties -o $managerOutput
+& dotnet publish $managerProject @managerPublishProperties -o $managerOutput
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 $expected = @(
@@ -55,5 +64,6 @@ foreach ($directory in @($depotOutput, $managerOutput)) {
     }
 }
 
+Write-Host "Packaged release channel: $Channel"
 Write-Host "Packaged Depot artifact: $($expected[0])"
 Write-Host "Packaged Depot Manager artifact: $($expected[1])"
