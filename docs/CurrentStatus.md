@@ -6,7 +6,7 @@ Depot is on the `0.15.x-preview` development line. Finance, inventory, purchasin
 
 ## Repository governance
 
-Repository governance now exposes five stable aggregate GitHub Actions checks intended for `master` protection:
+Repository governance exposes five stable aggregate GitHub Actions checks intended for `master` protection:
 
 - `CI Required Gate`;
 - `Quality Required Gate`;
@@ -14,13 +14,30 @@ Repository governance now exposes five stable aggregate GitHub Actions checks in
 - `Packaged E2E Required Gate`;
 - `Database Provider Required Gate`.
 
-Each aggregate check fails unless every underlying workflow dependency succeeds. The packaged DepotManager E2E workflow now runs its Smoke tier on every pull request targeting `master`, preventing required-check deadlocks caused by pull-request path filtering.
+Each aggregate check fails unless every underlying workflow dependency succeeds. The packaged DepotManager E2E workflow runs its Smoke tier on every pull request targeting `master`, preventing required-check deadlocks caused by pull-request path filtering.
 
 The target `master` policy requires pull requests, blocks force pushes and branch deletion, requires the five aggregate checks, requires zero external approvals for the current one-person project and does not require branches to be up to date before merging. The source-controlled ruleset template is `.github/rulesets/MasterGovernance.json`; repository-setting activation is documented in [Repository Governance](RepositoryGovernance.md).
 
+## Release pipeline
+
+`.github/workflows/release-integrity.yml` is the single authoritative Source-to-Release path.
+
+The workflow performs locked restore, Release `-warnaserror` build, Depot and DepotManager regression tests, shared packaged publishing, channel validation, signing policy, manifest/hash/evidence generation and GitHub Release publication from the exact validated artifact.
+
+Release channels are explicit:
+
+- **Preview** uses `<version>-preview`, retains the preview product-version suffix and publishes with `prerelease=true`. Preview may remain unsigned until production signing is available.
+- **Stable** uses the exact numeric version, removes the preview suffix and publishes with `prerelease=false`. Stable fails closed unless both executables are Authenticode-signed and verified.
+
+`scripts/release.ps1` is only a dispatcher for the authoritative workflow and no longer creates a local independent release.
+
+DepotManager installation/update/repair discovery remains a Stable-channel consumer and ignores `prerelease=true` releases, preventing Preview releases from entering the production update path.
+
+See [Release Pipeline](ReleasePipeline.md) and [Release Integrity](compliance/ReleaseIntegrity.md).
+
 ## Database provider production status
 
-Depot now has a dedicated real-provider production acceptance matrix in `.github/workflows/database-provider-acceptance.yml`.
+Depot has a dedicated real-provider production acceptance matrix in `.github/workflows/database-provider-acceptance.yml`.
 
 The following database baselines are technically **Supported** when shipped with a release whose full provider matrix is green:
 
@@ -51,7 +68,8 @@ The security feature does not collect source IP, geolocation, MAC address, hardw
 
 ## Versions
 
-- Application: **0.15.170-preview**
+- Application: **0.15.171-preview**
+- DepotManager: **0.1.23-preview**
 - Core database schema: **30**
 - Sales feature schema: **11**
 - Finance feature schema: **9**
@@ -61,13 +79,15 @@ The security feature does not collect source IP, geolocation, MAC address, hardw
 
 Every commit increments `DepotVersionPatch`.
 
-Sales schema 11 restores/enforces the active inventory-reservation uniqueness invariant for every supported provider. This feature-schema correction does not change Core database schema 30.
+Sales schema 11 restores/enforces the active inventory-reservation uniqueness invariant for every supported provider. This feature-schema correction does not change Core schema 30.
 
 ## Validation boundary
 
-Release build with `-warnaserror`, repository regression suites, Release Integrity, Security Supply Chain and Software Quality remain release gates. Database-provider support is additionally governed by the full real-provider acceptance workflow and its exact version matrix.
+Release build with `-warnaserror`, repository regression suites, Security Supply Chain and Software Quality remain release gates. Database-provider support is additionally governed by the full real-provider acceptance workflow and its exact version matrix.
 
 The five stable aggregate status checks are the intended repository-level merge contract for `master`; detailed matrix jobs remain implementation details behind those aggregates.
+
+The release workflow controls artifact provenance and release-channel publication, but it does not by itself establish a production signing identity. Production Authenticode acceptance remains a separate 1.0 gate.
 
 Provider support does not replace deployment-specific accounting/tax/legal, accessibility, signing, OS/client, performance-sizing, backup-retention or organizational acceptance.
 
@@ -75,4 +95,4 @@ Provider support does not replace deployment-specific accounting/tax/legal, acce
 
 Remaining authentication roadmap items include MFA, OIDC/SSO/external identity providers, optional deployment-specific alert delivery/routing implementations, and explicit privacy/threat-model work before IP/geolocation/device-trust signals are considered.
 
-For the wider 1.0 path, the database-provider technical gate is closed for the certified baselines. Remaining release work includes signing, accessibility/manual desktop acceptance, deployment procedures, accounting/tax/localization review and other items tracked in [Release 1.0](Release1.0.md) and the [Roadmap](Roadmap.md).
+For the wider 1.0 path, repository governance, the single release pipeline and the generic database-provider technical gate are implemented. Remaining Track A work includes production signing acceptance, production operations/disaster recovery and accessibility/manual desktop acceptance, together with the wider accounting/tax/localization and legal items tracked in [Release 1.0](Release1.0.md) and the [Roadmap](Roadmap.md).
