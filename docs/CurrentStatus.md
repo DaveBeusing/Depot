@@ -26,14 +26,27 @@ The workflow performs locked restore, Release `-warnaserror` build, Depot and De
 
 Release channels are explicit:
 
-- **Preview** uses `<version>-preview`, retains the preview product-version suffix and publishes with `prerelease=true`. Preview may remain unsigned until production signing is available.
-- **Stable** uses the exact numeric version, removes the preview suffix and publishes with `prerelease=false`. Stable fails closed unless both executables are Authenticode-signed and verified.
+- **Preview** uses `<version>-preview`, retains the preview product-version suffix and publishes with `prerelease=true`. Preview may remain unsigned.
+- **Stable** uses the exact numeric version, removes the preview suffix and publishes with `prerelease=false`. Stable requires production signing acceptance to report `PASS` before publication.
 
-`scripts/release.ps1` is only a dispatcher for the authoritative workflow and no longer creates a local independent release.
+`scripts/release.ps1` remains only a dispatcher for the authoritative workflow. It now also supports `-Channel Stable -AcceptanceOnly`, which executes the production-signed Stable RC path without creating a GitHub Release.
 
-DepotManager installation/update/repair discovery remains a Stable-channel consumer and ignores `prerelease=true` releases, preventing Preview releases from entering the production update path.
+DepotManager installation/update/repair discovery remains a Stable-channel consumer and ignores `prerelease=true` releases.
 
-See [Release Pipeline](ReleasePipeline.md) and [Release Integrity](compliance/ReleaseIntegrity.md).
+See [Release Pipeline](ReleasePipeline.md), [Production Signing Acceptance](ProductionSigningAcceptance.md) and [Release Integrity](compliance/ReleaseIntegrity.md).
+
+## Production signing acceptance
+
+The technical H3 signing boundary is implemented:
+
+- Stable requires the production PFX/password plus exact `DEPOT_SIGNING_PUBLISHER_SUBJECT`;
+- the production certificate is preflight-checked for private key, validity period, publisher subject and Code Signing EKU;
+- both `Depot.exe` and `DepotManager.exe` are SHA-256 Authenticode signed and RFC 3161 timestamped;
+- Stable acceptance verifies Windows trust, exact publisher identity, Code Signing EKU, timestamp certificate evidence and one signer certificate for both executables;
+- a production-signed packaged RC E2E runs before Stable evidence is finalized;
+- Stable DepotManager update and self-update paths enforce publisher continuity against the trusted signer of the running Stable manager.
+
+**Production acceptance remains BLOCKED until a real production-signed Stable acceptance-only run on current `master` completes successfully and retained evidence reports `PASS`.** Ephemeral Packaged-E2E certificates do not satisfy this gate.
 
 ## Database provider production status
 
@@ -68,7 +81,7 @@ The security feature does not collect source IP, geolocation, MAC address, hardw
 
 ## Versions
 
-- Application: **0.15.171-preview**
+- Application: **0.15.172-preview**
 - DepotManager: **0.1.23-preview**
 - Core database schema: **30**
 - Sales feature schema: **11**
@@ -87,12 +100,12 @@ Release build with `-warnaserror`, repository regression suites, Security Supply
 
 The five stable aggregate status checks are the intended repository-level merge contract for `master`; detailed matrix jobs remain implementation details behind those aggregates.
 
-The release workflow controls artifact provenance and release-channel publication, but it does not by itself establish a production signing identity. Production Authenticode acceptance remains a separate 1.0 gate.
+The release workflow now contains the complete technical production-signing acceptance path, but repository implementation is not itself evidence that the real production certificate has passed RC acceptance. That external evidence must exist before H3 can be marked production-accepted.
 
-Provider support does not replace deployment-specific accounting/tax/legal, accessibility, signing, OS/client, performance-sizing, backup-retention or organizational acceptance.
+Provider support does not replace deployment-specific accounting/tax/legal, accessibility, OS/client, performance-sizing, backup-retention or organizational acceptance.
 
 ## Next steps
 
 Remaining authentication roadmap items include MFA, OIDC/SSO/external identity providers, optional deployment-specific alert delivery/routing implementations, and explicit privacy/threat-model work before IP/geolocation/device-trust signals are considered.
 
-For the wider 1.0 path, repository governance, the single release pipeline and the generic database-provider technical gate are implemented. Remaining Track A work includes production signing acceptance, production operations/disaster recovery and accessibility/manual desktop acceptance, together with the wider accounting/tax/localization and legal items tracked in [Release 1.0](Release1.0.md) and the [Roadmap](Roadmap.md).
+For Track A, repository governance and the single release pipeline are implemented; the production-signing implementation is technically complete but production acceptance remains blocked pending a real signed RC run. The remaining implementation packages are production operations/disaster recovery and accessibility/manual desktop acceptance, together with the wider accounting/tax/localization and legal items tracked in [Release 1.0](Release1.0.md) and the [Roadmap](Roadmap.md).

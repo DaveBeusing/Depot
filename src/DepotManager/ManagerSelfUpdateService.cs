@@ -25,6 +25,7 @@ public sealed class ManagerSelfUpdateService
             await client.DownloadAsync(release, staged, progress, cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
             AuthenticodeVerifier.ValidateTrustedSignature(staged);
+            ProductionSigningPolicy.ValidateStableArtifactPublisher(staged);
 
             var startInfo = new ProcessStartInfo(staged)
             {
@@ -145,6 +146,7 @@ public static class ManagerSelfUpdateBootstrap
         {
             PortableExecutableValidator.ValidateWindowsExecutable(helperPath);
             AuthenticodeVerifier.ValidateTrustedSignature(helperPath);
+            ProductionSigningPolicy.ValidateStableArtifactPublisher(helperPath);
             ExecutableDeployment.Replace(helperPath, targetPath);
 
             var startInfo = new ProcessStartInfo(targetPath)

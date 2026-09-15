@@ -82,6 +82,7 @@ public sealed partial class ManagerReleaseClient
         }
 
         AuthenticodeVerifier.ValidateTrustedSignature(destination);
+        ProductionSigningPolicy.ValidateStableArtifactPublisher(destination);
         var fileVersion = FileVersionInfo.GetVersionInfo(destination).FileVersion;
         if (!Version.TryParse(fileVersion, out var actual) || VersionRules.ReleaseVersion(actual) != release.Version)
             throw new InvalidOperationException("The downloaded Depot Manager file version does not match the published manager asset.");

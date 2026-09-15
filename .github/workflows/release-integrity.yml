@@ -7,6 +7,7 @@ on:
       - '.github/workflows/release-integrity.yml'
       - 'scripts/publish-packaged-artifacts.ps1'
       - 'scripts/release.ps1'
+      - 'scripts/signing/**'
       - 'src/Depot/**'
       - 'src/DepotManager/**'
       - 'tests/DepotManager.Tests/**'
@@ -22,6 +23,11 @@ on:
         options:
           - Preview
           - Stable
+      publish_release:
+        description: Publish the validated candidate as a GitHub Release
+        required: true
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -34,7 +40,7 @@ jobs:
   release-candidate:
     name: Build release candidate
     runs-on: windows-2025
-    timeout-minutes: 90
+    timeout-minutes: 120
     outputs:
       channel: ${{ steps.identity.outputs.channel }}
       tag: ${{ steps.identity.outputs.tag }}
@@ -56,7 +62,7 @@ jobs:
 
           if ('${{ github.event_name }}' -eq 'workflow_dispatch') {
             if ('${{ github.ref }}' -ne 'refs/heads/master') {
-              throw 'Release publication is allowed only from master.'
+              throw 'Release publication and production acceptance are allowed only from master.'
             }
             git fetch origin master --no-tags
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -93,11 +99,60 @@ jobs:
           "DEPOT_VERSION=$depotVersion" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
           "DEPOT_MANAGER_VERSION=$managerVersion" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
           "DEPOT_RELEASE_TAG=$tag" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          'DEPOT_PRODUCTION_SIGNING_ACCEPTANCE=NOT_APPLICABLE' | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
 
           "channel=$channel" | Out-File $env:GITHUB_OUTPUT -Encoding utf8 -Append
           "tag=$tag" | Out-File $env:GITHUB_OUTPUT -Encoding utf8 -Append
           "depot-version=$depotVersion" | Out-File $env:GITHUB_OUTPUT -Encoding utf8 -Append
           "manager-version=$managerVersion" | Out-File $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+      - name: Validate production signing configuration
+        if: github.event_name == 'workflow_dispatch' && inputs.channel == 'Stable'
+        shell: pwsh
+        env:
+          SIGNING_PFX: ${{ secrets.DEPOT_SIGNING_PFX_BASE64 }}
+          SIGNING_PASSWORD: ${{ secrets.DEPOT_SIGNING_PASSWORD }}
+          EXPECTED_PUBLISHER_SUBJECT: ${{ vars.DEPOT_SIGNING_PUBLISHER_SUBJECT }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:SIGNING_PFX) -or
+              [string]::IsNullOrWhiteSpace($env:SIGNING_PASSWORD) -or
+              [string]::IsNullOrWhiteSpace($env:EXPECTED_PUBLISHER_SUBJECT)) {
+            throw 'Production signing acceptance is BLOCKED. Stable requires DEPOT_SIGNING_PFX_BASE64, DEPOT_SIGNING_PASSWORD and DEPOT_SIGNING_PUBLISHER_SUBJECT.'
+          }
+
+          $certificatePath = Join-Path $env:RUNNER_TEMP 'depot-signing-preflight.pfx'
+          [IO.File]::WriteAllBytes($certificatePath, [Convert]::FromBase64String($env:SIGNING_PFX))
+          try {
+            $flags = [System.Security.Cryptography.X509Certificates.X509KeyStorageFlags]::EphemeralKeySet
+            $certificate = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new(
+              $certificatePath,
+              $env:SIGNING_PASSWORD,
+              $flags)
+            try {
+              if (-not $certificate.HasPrivateKey) { throw 'The production signing certificate does not expose a private key.' }
+              if (-not [string]::Equals($certificate.Subject, $env:EXPECTED_PUBLISHER_SUBJECT, [StringComparison]::OrdinalIgnoreCase)) {
+                throw "Configured production publisher '$env:EXPECTED_PUBLISHER_SUBJECT' does not match certificate subject '$($certificate.Subject)'."
+              }
+              $now = [DateTime]::UtcNow
+              if ($now -lt $certificate.NotBefore.ToUniversalTime() -or $now -gt $certificate.NotAfter.ToUniversalTime()) {
+                throw 'The production signing certificate is not currently within its validity period.'
+              }
+              $hasCodeSigning = $false
+              foreach ($extension in $certificate.Extensions) {
+                if ($extension -is [System.Security.Cryptography.X509Certificates.X509EnhancedKeyUsageExtension]) {
+                  foreach ($oid in $extension.EnhancedKeyUsages) {
+                    if ($oid.Value -eq '1.3.6.1.5.5.7.3.3') { $hasCodeSigning = $true; break }
+                  }
+                }
+                if ($hasCodeSigning) { break }
+              }
+              if (-not $hasCodeSigning) { throw 'The production certificate does not contain the Code Signing EKU.' }
+              "DEPOT_SIGNING_PUBLISHER_SUBJECT=$($certificate.Subject)" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+              "DEPOT_SIGNING_CERT_THUMBPRINT=$($certificate.Thumbprint)" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+            }
+            finally { $certificate.Dispose() }
+          }
+          finally { Remove-Item $certificatePath -Force -ErrorAction SilentlyContinue }
 
       - name: Validate security risk acceptances
         shell: pwsh
@@ -205,7 +260,7 @@ jobs:
             foreach ($file in @('artifacts\release\depot\Depot.exe', 'artifacts\release\manager\DepotManager.exe')) {
               & $signtool.FullName sign /fd SHA256 /f $certificate /p $env:SIGNING_PASSWORD /tr http://timestamp.digicert.com /td SHA256 $file
               if ($LASTEXITCODE -ne 0) { throw "Authenticode signing failed for $file." }
-              & $signtool.FullName verify /pa /v $file
+              & $signtool.FullName verify /pa /all /v $file
               if ($LASTEXITCODE -ne 0) { throw "Authenticode verification failed for $file." }
             }
           }
@@ -214,6 +269,63 @@ jobs:
           }
 
           'DEPOT_RELEASE_SIGNED=true' | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Validate production signing acceptance
+        if: github.event_name == 'workflow_dispatch' && inputs.channel == 'Stable'
+        shell: pwsh
+        run: |
+          ./scripts/signing/Test-ProductionSigningAcceptance.ps1 `
+            -DepotPath 'artifacts/release/depot/Depot.exe' `
+            -DepotManagerPath 'artifacts/release/manager/DepotManager.exe' `
+            -ExpectedPublisherSubject $env:DEPOT_SIGNING_PUBLISHER_SUBJECT `
+            -SourceSha '${{ github.sha }}' `
+            -ReleaseTag $env:DEPOT_RELEASE_TAG `
+            -OutputPath 'artifacts/release/ProductionSigningAcceptance.json'
+          'DEPOT_PRODUCTION_SIGNING_ACCEPTANCE=PASS' | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Build previous packaged baseline for signed RC E2E
+        if: github.event_name == 'workflow_dispatch' && inputs.channel == 'Stable'
+        shell: pwsh
+        run: |
+          $previousRef = (git rev-parse HEAD^1).Trim()
+          if ([string]::IsNullOrWhiteSpace($previousRef)) { throw 'Previous source revision could not be determined.' }
+          $previousTree = Join-Path $env:RUNNER_TEMP 'DepotPreviousReleaseSource'
+          $previousOutput = Join-Path $env:GITHUB_WORKSPACE 'artifacts\release-previous'
+          if (Test-Path $previousTree) { Remove-Item $previousTree -Recurse -Force }
+          if (Test-Path $previousOutput) { Remove-Item $previousOutput -Recurse -Force }
+          git worktree add --detach $previousTree $previousRef
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          try {
+            & (Join-Path $previousTree 'scripts\publish-packaged-artifacts.ps1') `
+              -SourceRoot $previousTree `
+              -OutputRoot $previousOutput `
+              -Channel Stable
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+          finally {
+            git worktree remove --force $previousTree
+          }
+
+      - name: Run production-signed packaged RC E2E
+        if: github.event_name == 'workflow_dispatch' && inputs.channel == 'Stable'
+        shell: pwsh
+        env:
+          DEPOT_PACKAGED_E2E: '1'
+          DEPOT_PACKAGED_E2E_TIER: 'Full'
+          DEPOT_PACKAGED_E2E_CURRENT_ROOT: ${{ github.workspace }}\artifacts\release
+          DEPOT_PACKAGED_E2E_PREVIOUS_ROOT: ${{ github.workspace }}\artifacts\release-previous
+          DEPOT_PACKAGED_E2E_WORK_ROOT: ${{ runner.temp }}\DepotProductionSignedRcE2E
+        run: |
+          New-Item -ItemType Directory -Force $env:DEPOT_PACKAGED_E2E_WORK_ROOT | Out-Null
+          $filter = 'FullyQualifiedName~CleanInstall_NormalUpdate_AndRepair_PreserveProvisionedData|FullyQualifiedName~ArtifactAndManifestValidation_FailsClosed|FullyQualifiedName~HistoricalSchema29_MigratesTo30_OnlyAfterVerifiedSqliteBackup_AndIsIdempotent'
+          dotnet test tests/DepotManager.Tests/DepotManager.Tests.csproj `
+            --configuration Release `
+            --no-build `
+            --no-restore `
+            --filter $filter `
+            --logger "trx;LogFileName=DepotManager.ProductionSignedRC.trx" `
+            --results-directory artifacts/test-results
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Stage manifest, hashes and release evidence
         shell: pwsh
@@ -241,6 +353,9 @@ jobs:
           $manifestName = "Depot-$env:DEPOT_VERSION.manifest.json"
           Copy-Item 'artifacts/release/depot/Depot.exe' (Join-Path $assets $depotName)
           Copy-Item 'artifacts/release/manager/DepotManager.exe' (Join-Path $assets $managerName)
+          if (Test-Path 'artifacts/release/ProductionSigningAcceptance.json') {
+            Copy-Item 'artifacts/release/ProductionSigningAcceptance.json' (Join-Path $assets 'ProductionSigningAcceptance.json')
+          }
 
           $depotFile = Get-Item (Join-Path $assets $depotName)
           $managerFile = Get-Item (Join-Path $assets $managerName)
@@ -248,9 +363,10 @@ jobs:
           $managerHash = (Get-FileHash $managerFile.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
           $signed = $env:DEPOT_RELEASE_SIGNED -eq 'true'
           $channelText = $env:DEPOT_RELEASE_CHANNEL.ToLowerInvariant()
+          $publisherSubject = if ($channelText -eq 'stable') { $env:DEPOT_SIGNING_PUBLISHER_SUBJECT } else { $null }
 
           $manifest = [ordered]@{
-            formatVersion = 2
+            formatVersion = 3
             releaseChannel = $channelText
             releaseTag = $env:DEPOT_RELEASE_TAG
             sourceSha = '${{ github.sha }}'
@@ -259,6 +375,8 @@ jobs:
             databaseSchemaVersion = $schemas.core
             schemaVersions = $schemas
             managerCommandProtocol = 1
+            productionSigningAcceptance = $env:DEPOT_PRODUCTION_SIGNING_ACCEPTANCE
+            publisherSubject = $publisherSubject
             artifacts = [ordered]@{
               depot = [ordered]@{
                 file = $depotName
@@ -277,7 +395,7 @@ jobs:
           $manifest | ConvertTo-Json -Depth 8 | Out-File (Join-Path $assets $manifestName) -Encoding utf8
 
           $evidence = [ordered]@{
-            formatVersion = 1
+            formatVersion = 2
             sourceSha = '${{ github.sha }}'
             sourceRef = '${{ github.ref }}'
             workflowRunId = '${{ github.run_id }}'
@@ -287,6 +405,9 @@ jobs:
             depotManagerVersion = $env:DEPOT_MANAGER_VERSION
             schemaVersions = $schemas
             authenticodeSigned = $signed
+            productionSigningAcceptance = $env:DEPOT_PRODUCTION_SIGNING_ACCEPTANCE
+            publisherSubject = $publisherSubject
+            signingCertificateThumbprint = if ($channelText -eq 'stable') { $env:DEPOT_SIGNING_CERT_THUMBPRINT } else { $null }
             artifactHashes = [ordered]@{
               $depotName = $depotHash
               $managerName = $managerHash
@@ -323,7 +444,7 @@ jobs:
   publish-release:
     name: Publish GitHub release
     needs: release-candidate
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' && inputs.publish_release
     runs-on: windows-2025
     timeout-minutes: 15
     permissions:
@@ -347,6 +468,9 @@ jobs:
           }
           if ($evidence.releaseChannel -ne '${{ needs.release-candidate.outputs.channel }}'.ToLowerInvariant()) {
             throw 'Release evidence channel does not match the requested release channel.'
+          }
+          if ($evidence.releaseChannel -eq 'stable' -and $evidence.productionSigningAcceptance -ne 'PASS') {
+            throw 'Stable publication requires PASS production signing acceptance evidence.'
           }
 
       - name: Ensure tag and release do not already exist
