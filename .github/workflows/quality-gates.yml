@@ -187,3 +187,31 @@ jobs:
       - name: Verify desktop accessibility baseline
         shell: pwsh
         run: ./scripts/quality/test-accessibility.ps1
+
+  required:
+    name: Quality Required Gate
+    if: always()
+    needs:
+      - compatibility-windows-2022
+      - coverage-gate
+      - performance
+      - accessibility-static
+    runs-on: windows-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require all quality gates to pass
+        shell: pwsh
+        env:
+          COMPATIBILITY_RESULT: ${{ needs.compatibility-windows-2022.result }}
+          COVERAGE_RESULT: ${{ needs.coverage-gate.result }}
+          PERFORMANCE_RESULT: ${{ needs.performance.result }}
+          ACCESSIBILITY_RESULT: ${{ needs.accessibility-static.result }}
+        run: |
+          $failed = @()
+          if ($env:COMPATIBILITY_RESULT -ne 'success') { $failed += "compatibility=$env:COMPATIBILITY_RESULT" }
+          if ($env:COVERAGE_RESULT -ne 'success') { $failed += "coverage=$env:COVERAGE_RESULT" }
+          if ($env:PERFORMANCE_RESULT -ne 'success') { $failed += "performance=$env:PERFORMANCE_RESULT" }
+          if ($env:ACCESSIBILITY_RESULT -ne 'success') { $failed += "accessibility-static=$env:ACCESSIBILITY_RESULT" }
+          if ($failed.Count -gt 0) {
+            throw "Quality required gate failed: $($failed -join ', ')."
+          }

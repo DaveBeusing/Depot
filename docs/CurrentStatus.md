@@ -1,8 +1,22 @@
 # Current project status
 
-Updated: 2026-09-08
+Updated: 2026-09-16
 
 Depot is on the `0.15.x-preview` development line. Finance, inventory, purchasing, sales, reporting, localization, notifications, Audit, persistent user sessions and operational security monitoring are integrated in the repository.
+
+## Repository governance
+
+Repository governance now exposes five stable aggregate GitHub Actions checks intended for `master` protection:
+
+- `CI Required Gate`;
+- `Quality Required Gate`;
+- `Security Required Gate`;
+- `Packaged E2E Required Gate`;
+- `Database Provider Required Gate`.
+
+Each aggregate check fails unless every underlying workflow dependency succeeds. The packaged DepotManager E2E workflow now runs its Smoke tier on every pull request targeting `master`, preventing required-check deadlocks caused by pull-request path filtering.
+
+The target `master` policy requires pull requests, blocks force pushes and branch deletion, requires the five aggregate checks, requires zero external approvals for the current one-person project and does not require branches to be up to date before merging. The source-controlled ruleset template is `.github/rulesets/MasterGovernance.json`; repository-setting activation is documented in [Repository Governance](RepositoryGovernance.md).
 
 ## Database provider production status
 
@@ -37,7 +51,7 @@ The security feature does not collect source IP, geolocation, MAC address, hardw
 
 ## Versions
 
-- Application: **0.15.169-preview**
+- Application: **0.15.170-preview**
 - Core database schema: **30**
 - Sales feature schema: **11**
 - Finance feature schema: **9**
@@ -52,6 +66,8 @@ Sales schema 11 restores/enforces the active inventory-reservation uniqueness in
 ## Validation boundary
 
 Release build with `-warnaserror`, repository regression suites, Release Integrity, Security Supply Chain and Software Quality remain release gates. Database-provider support is additionally governed by the full real-provider acceptance workflow and its exact version matrix.
+
+The five stable aggregate status checks are the intended repository-level merge contract for `master`; detailed matrix jobs remain implementation details behind those aggregates.
 
 Provider support does not replace deployment-specific accounting/tax/legal, accessibility, signing, OS/client, performance-sizing, backup-retention or organizational acceptance.
 
