@@ -11,9 +11,6 @@ using Depot.Models;
 
 using PdfSharp.Drawing;
 using PdfSharp.Pdf;
-using PdfSharp.Pdf.Attachments;
-using PdfSharp.Pdf.Metadata;
-using PdfSharp.Pdf.PdfA;
 
 namespace Depot.Services;
 
@@ -88,33 +85,16 @@ public sealed class ZugferdFacturXService
 			throw new InvalidOperationException("The XRechnung payload does not match its finalized SHA-256 evidence.");
 
 		using var document = new PdfDocument();
-		document.SetPdfA(PdfAFormats.PdfA_3b);
 		document.Info.Title = $"{invoice.Seller.Name} - {(invoice.TypeCode == ElectronicInvoiceTypeCode.CreditNote ? "Credit Note" : "Invoice")} {invoice.InvoiceNumber}";
 		document.Info.Subject = invoice.InvoiceNumber;
 		document.Info.Author = invoice.Seller.Name;
 		document.Info.Creator = "Depot";
-
-		var metadataManager = MetadataManager.ForDocument(document);
-		metadataManager.Strategy = DocumentMetadataStrategy.UserGenerated;
-		document.Events.CreateDocumentMetadata += (_, args) => args.Metadata.SetMetadata(BuildXmp(invoice, createdAtUtc));
+		document.Info.CreationDate = createdAtUtc;
 
 		var xmlBytes = new UTF8Encoding(false).GetBytes(xRechnungXml);
-		EmbeddedFilesManager.ForDocument(document).AddFile(new EmbeddedFileInfo
-		{
-			NamesKey = ZugferdFacturXConformance.XmlFileName,
-			FileName = ZugferdFacturXConformance.XmlFileName,
-			FileType = "text/xml",
-			Description = "XRechnung invoice data",
-			CreationTime = new DateTimeOffset(createdAtUtc),
-			ModificationTime = new DateTimeOffset(createdAtUtc),
-			Data = xmlBytes,
-			AFRelationship = PdfAFRelationship.Alternative
-		});
-
+		PdfSharpFacturXCompatibility.Configure(document, xmlBytes, createdAtUtc);
 		RenderInvoice(document, invoice);
-		using var stream = new MemoryStream();
-		document.Save(stream, false);
-		var pdfBytes = stream.ToArray();
+		var pdfBytes = PdfSharpFacturXCompatibility.SaveWithXmp(document, BuildXmp(invoice, createdAtUtc));
 		return new HybridElectronicInvoiceArtifact(
 			documentType,
 			documentId,
@@ -247,7 +227,7 @@ public sealed class ZugferdFacturXService
 		var title = Escape($"{(invoice.TypeCode == ElectronicInvoiceTypeCode.CreditNote ? "Credit Note" : "Invoice")} {invoice.InvoiceNumber}");
 		var creator = Escape(invoice.Seller.Name);
 		return $"""
-<?xpacket begin="" id="W5M0MpCehiHzreSzNTczkc9d"?>
+<?xpacket begin="﻿" id="W5M0MpCehiHzreSzNTczkc9d"?>
 <x:xmpmeta xmlns:x="adobe:ns:meta/">
   <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
     <rdf:Description rdf:about=""
