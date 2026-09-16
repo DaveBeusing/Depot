@@ -11,13 +11,36 @@ public static class PortableExecutableValidator
 		{
 			using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
 			using var reader = new PEReader(stream);
-			var peHeader = reader.PEHeaders.PEHeader;
+			var headers = reader.PEHeaders;
+			var peHeader = headers.PEHeader;
 			if (peHeader is null || peHeader.Subsystem is not (Subsystem.WindowsGui or Subsystem.WindowsCui))
-				throw new InvalidOperationException("The downloaded asset is not a valid Windows executable.");
+				throw InvalidExecutable();
+
+			if (peHeader.SizeOfHeaders <= 0 || peHeader.SizeOfHeaders > stream.Length)
+				throw InvalidExecutable();
+
+			foreach (var section in headers.SectionHeaders)
+			{
+				if (section.PointerToRawData < 0 || section.SizeOfRawData < 0)
+					throw InvalidExecutable();
+				if (section.SizeOfRawData == 0)
+					continue;
+
+				var sectionEnd = (long)section.PointerToRawData + section.SizeOfRawData;
+				if (section.PointerToRawData < peHeader.SizeOfHeaders || sectionEnd > stream.Length)
+					throw InvalidExecutable();
+			}
 		}
 		catch (BadImageFormatException exception)
 		{
-			throw new InvalidOperationException("The downloaded asset is not a valid Windows executable.", exception);
+			throw InvalidExecutable(exception);
+		}
+		catch (EndOfStreamException exception)
+		{
+			throw InvalidExecutable(exception);
 		}
 	}
+
+	private static InvalidOperationException InvalidExecutable(Exception? innerException = null) =>
+		new("The downloaded asset is not a valid Windows executable.", innerException);
 }
