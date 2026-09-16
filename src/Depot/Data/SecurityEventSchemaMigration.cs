@@ -7,7 +7,7 @@ namespace Depot.Data;
 
 public static class SecurityEventSchemaMigration
 {
-	public const int CurrentVersion = 2;
+	public const int CurrentVersion = 3;
 	private const string FeatureName = "SecurityEvents";
 
 	public static void Migrate(IDatabaseConnectionFactory connectionFactory)
@@ -17,6 +17,7 @@ public static class SecurityEventSchemaMigration
 		if (version > CurrentVersion) throw new InvalidOperationException($"Security event schema version '{version}' is newer than the supported version '{CurrentVersion}'.");
 		if (version == 0) { Migrate(connectionFactory, Version1Statements(connectionFactory.Provider), 1); version = 1; }
 		if (version == 1) { Migrate(connectionFactory, Version2Statements(connectionFactory.Provider), 2); version = 2; }
+		if (version == 2) { Migrate(connectionFactory, Version3Statements(connectionFactory.Provider), 3); version = 3; }
 		if (version != CurrentVersion) throw new InvalidOperationException($"Security event schema version '{version}' is not supported. Expected '{CurrentVersion}'.");
 	}
 
@@ -47,6 +48,14 @@ public static class SecurityEventSchemaMigration
 		DatabaseProvider.SqlServer => SqlServerV2,
 		DatabaseProvider.MySql => MySqlV2,
 		_ => throw new NotSupportedException($"Security event schema v2 is not supported for provider '{provider}'.")
+	};
+
+	private static IReadOnlyList<string> Version3Statements(DatabaseProvider provider) => provider switch
+	{
+		DatabaseProvider.Local => SqliteV3,
+		DatabaseProvider.SqlServer => SqlServerV3,
+		DatabaseProvider.MySql => MySqlV3,
+		_ => throw new NotSupportedException($"Security event schema v3 is not supported for provider '{provider}'.")
 	};
 
 	private static void EnsureVersionTable(IDatabaseConnectionFactory connectionFactory)
@@ -130,5 +139,25 @@ public static class SecurityEventSchemaMigration
 		"CREATE TABLE AuthenticationSecurityPolicy (Id BIGINT NOT NULL PRIMARY KEY, FailureWindowMinutes INT NOT NULL, LockoutThreshold INT NOT NULL, LockoutDurationMinutes INT NOT NULL, SecurityEventRetentionDays INT NOT NULL, UpdatedUtc VARCHAR(40) NOT NULL, Version BIGINT NOT NULL DEFAULT 1, CONSTRAINT CK_AuthenticationSecurityPolicy_Singleton CHECK (Id=1)) ENGINE=InnoDB;",
 		"INSERT INTO AuthenticationSecurityPolicy (Id, FailureWindowMinutes, LockoutThreshold, LockoutDurationMinutes, SecurityEventRetentionDays, UpdatedUtc, Version) VALUES (1,15,5,15,365,'1970-01-01T00:00:00.0000000Z',1);",
 		"CREATE TABLE AuthenticationThrottle (AccountKey VARCHAR(320) NOT NULL PRIMARY KEY, FirstFailureUtc VARCHAR(40) NOT NULL, FailureCount INT NOT NULL, BlockedUntilUtc VARCHAR(40) NULL, UpdatedUtc VARCHAR(40) NOT NULL, Version BIGINT NOT NULL DEFAULT 1, INDEX IX_AuthenticationThrottle_Updated(UpdatedUtc)) ENGINE=InnoDB;"
+	];
+
+	private static readonly string[] SqliteV3 =
+	[
+		"CREATE TABLE SecurityEventExportTargets (Id INTEGER PRIMARY KEY AUTOINCREMENT, Code TEXT NOT NULL UNIQUE, SinkCode TEXT NOT NULL, EndpointUri TEXT NOT NULL, MinimumSeverity INTEGER NOT NULL, EventTypesCsv TEXT NOT NULL, BatchSize INTEGER NOT NULL, IsEnabled INTEGER NOT NULL, CreatedUtc TEXT NOT NULL, UpdatedUtc TEXT NOT NULL, Version INTEGER NOT NULL DEFAULT 1);",
+		"CREATE TABLE SecurityEventExportDeliveryState (TargetId INTEGER PRIMARY KEY, LastEventId INTEGER NOT NULL DEFAULT 0, FilterSha256 TEXT NOT NULL, PendingSnapshotUpperBoundId INTEGER NULL, PendingStartedUtc TEXT NULL, ConsecutiveFailures INTEGER NOT NULL DEFAULT 0, NextAttemptUtc TEXT NULL, LastAttemptUtc TEXT NULL, LastSuccessUtc TEXT NULL, LastFailureKind INTEGER NULL, LastFailureCode TEXT NULL, LastFailureMessage TEXT NULL, IsSuspended INTEGER NOT NULL DEFAULT 0, LeaseToken TEXT NULL, LeaseUntilUtc TEXT NULL, UpdatedUtc TEXT NOT NULL, Version INTEGER NOT NULL DEFAULT 1, FOREIGN KEY(TargetId) REFERENCES SecurityEventExportTargets(Id) ON DELETE CASCADE);",
+		"CREATE INDEX IX_SecurityEventExportDeliveryState_Due ON SecurityEventExportDeliveryState(IsSuspended, NextAttemptUtc, LeaseUntilUtc);"
+	];
+
+	private static readonly string[] SqlServerV3 =
+	[
+		"CREATE TABLE SecurityEventExportTargets (Id bigint IDENTITY(1,1) NOT NULL CONSTRAINT PK_SecurityEventExportTargets PRIMARY KEY, Code nvarchar(100) NOT NULL CONSTRAINT UQ_SecurityEventExportTargets_Code UNIQUE, SinkCode nvarchar(100) NOT NULL, EndpointUri nvarchar(2048) NOT NULL, MinimumSeverity int NOT NULL, EventTypesCsv nvarchar(1000) NOT NULL, BatchSize int NOT NULL, IsEnabled bit NOT NULL, CreatedUtc nvarchar(40) NOT NULL, UpdatedUtc nvarchar(40) NOT NULL, Version bigint NOT NULL CONSTRAINT DF_SecurityEventExportTargets_Version DEFAULT 1);",
+		"CREATE TABLE SecurityEventExportDeliveryState (TargetId bigint NOT NULL CONSTRAINT PK_SecurityEventExportDeliveryState PRIMARY KEY, LastEventId bigint NOT NULL CONSTRAINT DF_SecurityEventExportDeliveryState_LastEventId DEFAULT 0, FilterSha256 varchar(64) NOT NULL, PendingSnapshotUpperBoundId bigint NULL, PendingStartedUtc nvarchar(40) NULL, ConsecutiveFailures int NOT NULL CONSTRAINT DF_SecurityEventExportDeliveryState_Failures DEFAULT 0, NextAttemptUtc nvarchar(40) NULL, LastAttemptUtc nvarchar(40) NULL, LastSuccessUtc nvarchar(40) NULL, LastFailureKind int NULL, LastFailureCode nvarchar(100) NULL, LastFailureMessage nvarchar(1000) NULL, IsSuspended bit NOT NULL CONSTRAINT DF_SecurityEventExportDeliveryState_Suspended DEFAULT 0, LeaseToken nvarchar(36) NULL, LeaseUntilUtc nvarchar(40) NULL, UpdatedUtc nvarchar(40) NOT NULL, Version bigint NOT NULL CONSTRAINT DF_SecurityEventExportDeliveryState_Version DEFAULT 1, CONSTRAINT FK_SecurityEventExportDeliveryState_Target FOREIGN KEY(TargetId) REFERENCES SecurityEventExportTargets(Id) ON DELETE CASCADE);",
+		"CREATE INDEX IX_SecurityEventExportDeliveryState_Due ON SecurityEventExportDeliveryState(IsSuspended, NextAttemptUtc, LeaseUntilUtc);"
+	];
+
+	private static readonly string[] MySqlV3 =
+	[
+		"CREATE TABLE SecurityEventExportTargets (Id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY, Code VARCHAR(100) NOT NULL UNIQUE, SinkCode VARCHAR(100) NOT NULL, EndpointUri VARCHAR(2048) NOT NULL, MinimumSeverity INT NOT NULL, EventTypesCsv VARCHAR(1000) NOT NULL, BatchSize INT NOT NULL, IsEnabled TINYINT(1) NOT NULL, CreatedUtc VARCHAR(40) NOT NULL, UpdatedUtc VARCHAR(40) NOT NULL, Version BIGINT NOT NULL DEFAULT 1) ENGINE=InnoDB;",
+		"CREATE TABLE SecurityEventExportDeliveryState (TargetId BIGINT NOT NULL PRIMARY KEY, LastEventId BIGINT NOT NULL DEFAULT 0, FilterSha256 VARCHAR(64) NOT NULL, PendingSnapshotUpperBoundId BIGINT NULL, PendingStartedUtc VARCHAR(40) NULL, ConsecutiveFailures INT NOT NULL DEFAULT 0, NextAttemptUtc VARCHAR(40) NULL, LastAttemptUtc VARCHAR(40) NULL, LastSuccessUtc VARCHAR(40) NULL, LastFailureKind INT NULL, LastFailureCode VARCHAR(100) NULL, LastFailureMessage VARCHAR(1000) NULL, IsSuspended TINYINT(1) NOT NULL DEFAULT 0, LeaseToken VARCHAR(36) NULL, LeaseUntilUtc VARCHAR(40) NULL, UpdatedUtc VARCHAR(40) NOT NULL, Version BIGINT NOT NULL DEFAULT 1, INDEX IX_SecurityEventExportDeliveryState_Due(IsSuspended, NextAttemptUtc, LeaseUntilUtc), CONSTRAINT FK_SecurityEventExportDeliveryState_Target FOREIGN KEY(TargetId) REFERENCES SecurityEventExportTargets(Id) ON DELETE CASCADE) ENGINE=InnoDB;"
 	];
 }

@@ -56,6 +56,8 @@ internal sealed class RepositoryComposition
 		Users = new UserRepository(dataAccess);
 		UserSessions = new UserSessionRepository(dataAccess);
 		SecurityEvents = new SecurityEventRepository(dataAccess);
+		SecurityEventExports = new SecurityEventExportRepository(dataAccess);
+		SecurityEventDelivery = new SecurityEventDeliveryRepository(dataAccess);
 		AuthenticationSecurity = new AuthenticationSecurityRepository(dataAccess);
 		EnterpriseIdentity = new EnterpriseIdentityRepository(dataAccess);
 		Roles = new RoleRepository(dataAccess);
@@ -110,6 +112,8 @@ internal sealed class RepositoryComposition
 	public UserRepository Users { get; }
 	public UserSessionRepository UserSessions { get; }
 	public SecurityEventRepository SecurityEvents { get; }
+	public SecurityEventExportRepository SecurityEventExports { get; }
+	public SecurityEventDeliveryRepository SecurityEventDelivery { get; }
 	public AuthenticationSecurityRepository AuthenticationSecurity { get; }
 	public EnterpriseIdentityRepository EnterpriseIdentity { get; }
 	public RoleRepository Roles { get; }
