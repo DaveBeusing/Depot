@@ -1,6 +1,7 @@
 // Copyright (c) 2026 David Beusing
 // Licensed under the MIT License.
 
+using Depot.Repositories;
 using Depot.Services;
 
 namespace Depot.Composition;
@@ -10,6 +11,7 @@ internal sealed class DepotApplicationServices : IDisposable
 	private DepotApplicationServices(
 		DatabaseComposition database,
 		ServiceComposition services,
+		WorkspaceViewService workspaceViews,
 		AuthenticationSecurityService authenticationSecurity,
 		SecurityAdministrationService securityAdministration,
 		SecurityMaintenanceService securityMaintenance,
@@ -17,6 +19,7 @@ internal sealed class DepotApplicationServices : IDisposable
 	{
 		Database = database;
 		Services = services;
+		WorkspaceViews = workspaceViews;
 		AuthenticationSecurity = authenticationSecurity;
 		SecurityAdministration = securityAdministration;
 		SecurityMaintenance = securityMaintenance;
@@ -25,6 +28,7 @@ internal sealed class DepotApplicationServices : IDisposable
 
 	public DatabaseComposition Database { get; }
 	public ServiceComposition Services { get; }
+	public WorkspaceViewService WorkspaceViews { get; }
 	public AuthenticationSecurityService AuthenticationSecurity { get; }
 	public SecurityAdministrationService SecurityAdministration { get; }
 	public SecurityMaintenanceService SecurityMaintenance { get; }
@@ -38,6 +42,11 @@ internal sealed class DepotApplicationServices : IDisposable
 			database = DatabaseComposition.Create();
 			var repositories = new RepositoryComposition(database.DataAccess);
 			var services = new ServiceComposition(database, repositories);
+			var workspaceViews = new WorkspaceViewService(
+				database.TransactionRunner,
+				new WorkspaceViewRepository(database.DataAccess),
+				services.Authorization);
+			WorkspaceViewRuntime.Configure(workspaceViews);
 			var audit = new AuditService(repositories.Audit, services.Authorization);
 			var authenticationSecurity = new AuthenticationSecurityService(
 				database.TransactionRunner,
@@ -76,6 +85,7 @@ internal sealed class DepotApplicationServices : IDisposable
 			var composition = new DepotApplicationServices(
 				database,
 				services,
+				workspaceViews,
 				authenticationSecurity,
 				securityAdministration,
 				securityMaintenance,
@@ -93,6 +103,7 @@ internal sealed class DepotApplicationServices : IDisposable
 
 	public void Dispose()
 	{
+		WorkspaceViewRuntime.Clear(WorkspaceViews);
 		SecurityMaintenance.Dispose();
 		Services.Session.Dispose();
 		Database.Dispose();

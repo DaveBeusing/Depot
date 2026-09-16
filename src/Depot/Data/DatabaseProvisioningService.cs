@@ -24,5 +24,6 @@ public static class DatabaseProvisioningService
 		FinanceInventoryAccountingSchemaMigration.Migrate(connectionFactory);
 		UserSessionSchemaMigration.Migrate(connectionFactory);
 		SecurityEventSchemaMigration.Migrate(connectionFactory);
+		UserPreferenceSchemaMigration.Migrate(connectionFactory);
 	}
 }

@@ -33,14 +33,20 @@
                                     <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
                                 <controls:FilterBar>
-                                    <controls:SearchBox Placeholder="Search inventory" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" ToolTip="Search by item, purpose, warehouse, or storage location" />
+                                    <StackPanel>
+                                        <controls:SearchBox Placeholder="Search inventory" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" ToolTip="Search by item, purpose, warehouse, or storage location"
+                                                            controls:WorkspaceViewPersistence.WorkspaceId="inventory.overview"
+                                                            controls:WorkspaceViewPersistence.FilterId="inventory.search" />
+                                        <controls:WorkspaceViewBar WorkspaceId="inventory.overview" />
+                                    </StackPanel>
                                 </controls:FilterBar>
                                 <Grid Grid.Row="1">
-                                    <DataGrid ItemsSource="{Binding Items}" SelectedItem="{Binding SelectedItem}" Style="{StaticResource AppDataGridStyle}">
+                                    <DataGrid ItemsSource="{Binding Items}" SelectedItem="{Binding SelectedItem}" Style="{StaticResource AppDataGridStyle}"
+                                              controls:WorkspaceViewPersistence.WorkspaceId="inventory.overview">
                                         <DataGrid.Columns>
-                                            <DataGridTextColumn Header="Part number" Binding="{Binding PartNumber}" Width="120" ElementStyle="{StaticResource AppDataGridTextStyle}" />
-                                            <DataGridTextColumn Header="Description" Binding="{Binding Description}" Width="*" ElementStyle="{StaticResource AppDataGridTextStyle}" />
-                                            <DataGridTextColumn Header="Stock" Binding="{Binding CurrentStock, StringFormat={}{0:N2}}" Width="82" ElementStyle="{StaticResource AppDataGridNumericTextStyle}" />
+                                            <DataGridTextColumn Header="Part number" Binding="{Binding PartNumber}" SortMemberPath="PartNumber" Width="120" ElementStyle="{StaticResource AppDataGridTextStyle}" controls:WorkspaceViewPersistence.ColumnId="inventory.part-number" />
+                                            <DataGridTextColumn Header="Description" Binding="{Binding Description}" SortMemberPath="Description" Width="*" ElementStyle="{StaticResource AppDataGridTextStyle}" controls:WorkspaceViewPersistence.ColumnId="inventory.description" />
+                                            <DataGridTextColumn Header="Stock" Binding="{Binding CurrentStock, StringFormat={}{0:N2}}" SortMemberPath="CurrentStock" Width="82" ElementStyle="{StaticResource AppDataGridNumericTextStyle}" controls:WorkspaceViewPersistence.ColumnId="inventory.stock" />
                                         </DataGrid.Columns>
                                     </DataGrid>
                                     <controls:EmptyState Title="No inventory positions yet" Description="Inventory positions are created when stock is received, issued, returned, transferred, or otherwise moved into a storage location." Visibility="{Binding HasNoItems, Converter={StaticResource BooleanToVisibilityConverter}}" />
@@ -101,20 +107,26 @@
                             <Grid>
                                 <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                                 <controls:FilterBar>
-                                    <controls:SearchBox Placeholder="Search serial, lot, item, warehouse or location" Text="{Binding TraceabilitySearchText, UpdateSourceTrigger=PropertyChanged}" />
+                                    <StackPanel>
+                                        <controls:SearchBox Placeholder="Search serial, lot, item, warehouse or location" Text="{Binding TraceabilitySearchText, UpdateSourceTrigger=PropertyChanged}"
+                                                            controls:WorkspaceViewPersistence.WorkspaceId="inventory.traceability"
+                                                            controls:WorkspaceViewPersistence.FilterId="traceability.search" />
+                                        <controls:WorkspaceViewBar WorkspaceId="inventory.traceability" />
+                                    </StackPanel>
                                 </controls:FilterBar>
                                 <Grid Grid.Row="1">
-                                    <DataGrid ItemsSource="{Binding TraceabilityBalances}" SelectedItem="{Binding SelectedTraceability}" Style="{StaticResource AppDataGridStyle}">
+                                    <DataGrid ItemsSource="{Binding TraceabilityBalances}" SelectedItem="{Binding SelectedTraceability}" Style="{StaticResource AppDataGridStyle}"
+                                              controls:WorkspaceViewPersistence.WorkspaceId="inventory.traceability">
                                         <DataGrid.Columns>
-                                            <DataGridTextColumn Header="Part number" Binding="{Binding PartNumber}" Width="115" />
-                                            <DataGridTextColumn Header="Mode" Binding="{Binding TrackingMode}" Width="85" />
-                                            <DataGridTextColumn Header="Serial / lot" Binding="{Binding Code}" Width="150" />
-                                            <DataGridTextColumn Header="Qty" Binding="{Binding Quantity, StringFormat={}{0:N0}}" Width="55" ElementStyle="{StaticResource AppDataGridNumericTextStyle}" />
-                                            <DataGridTextColumn Header="Warehouse" Binding="{Binding Warehouse}" Width="110" />
-                                            <DataGridTextColumn Header="Location" Binding="{Binding StorageLocation}" Width="100" />
-                                            <DataGridTextColumn Header="Purpose" Binding="{Binding Purpose}" Width="100" />
-                                            <DataGridTextColumn Header="Expiry" Binding="{Binding ExpiryDate, StringFormat={}{0:d}}" Width="90" />
-                                            <DataGridCheckBoxColumn Header="Blocked" Binding="{Binding IsBlocked}" Width="65" />
+                                            <DataGridTextColumn Header="Part number" Binding="{Binding PartNumber}" SortMemberPath="PartNumber" Width="115" controls:WorkspaceViewPersistence.ColumnId="traceability.part-number" />
+                                            <DataGridTextColumn Header="Mode" Binding="{Binding TrackingMode}" SortMemberPath="TrackingMode" Width="85" controls:WorkspaceViewPersistence.ColumnId="traceability.mode" />
+                                            <DataGridTextColumn Header="Serial / lot" Binding="{Binding Code}" SortMemberPath="Code" Width="150" controls:WorkspaceViewPersistence.ColumnId="traceability.code" />
+                                            <DataGridTextColumn Header="Qty" Binding="{Binding Quantity, StringFormat={}{0:N0}}" SortMemberPath="Quantity" Width="55" ElementStyle="{StaticResource AppDataGridNumericTextStyle}" controls:WorkspaceViewPersistence.ColumnId="traceability.quantity" />
+                                            <DataGridTextColumn Header="Warehouse" Binding="{Binding Warehouse}" SortMemberPath="Warehouse" Width="110" controls:WorkspaceViewPersistence.ColumnId="traceability.warehouse" />
+                                            <DataGridTextColumn Header="Location" Binding="{Binding StorageLocation}" SortMemberPath="StorageLocation" Width="100" controls:WorkspaceViewPersistence.ColumnId="traceability.location" />
+                                            <DataGridTextColumn Header="Purpose" Binding="{Binding Purpose}" SortMemberPath="Purpose" Width="100" controls:WorkspaceViewPersistence.ColumnId="traceability.purpose" />
+                                            <DataGridTextColumn Header="Expiry" Binding="{Binding ExpiryDate, StringFormat={}{0:d}}" SortMemberPath="ExpiryDate" Width="90" controls:WorkspaceViewPersistence.ColumnId="traceability.expiry" />
+                                            <DataGridCheckBoxColumn Header="Blocked" Binding="{Binding IsBlocked}" SortMemberPath="IsBlocked" Width="65" controls:WorkspaceViewPersistence.ColumnId="traceability.blocked" />
                                         </DataGrid.Columns>
                                     </DataGrid>
                                     <controls:EmptyState Title="No tracked stock" Description="Serial- and lot-tracked stock appears here after a tracked inbound movement has been posted." Visibility="{Binding HasNoTraceabilityBalances, Converter={StaticResource BooleanToVisibilityConverter}}" />
