@@ -1,5 +1,7 @@
 using System.Windows;
 
+using Depot.Services;
+
 namespace DepotManager;
 
 public partial class App : Application
@@ -11,6 +13,7 @@ public partial class App : Application
     static App()
     {
         EventManager.RegisterClassHandler(typeof(Window), FrameworkElement.LoadedEvent, new RoutedEventHandler(OnWindowLoaded));
+        DesktopAccessibilityRuntime.Register();
     }
 
     protected override void OnStartup(StartupEventArgs e)

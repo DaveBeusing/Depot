@@ -8,6 +8,7 @@
     <UseWPF>true</UseWPF>
     <StartupObject>Depot.Program</StartupObject>
     <ApplicationIcon>Resources\Images\Depot.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
 
   <ItemGroup>

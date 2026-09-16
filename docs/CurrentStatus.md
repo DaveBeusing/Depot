@@ -56,14 +56,32 @@ The H4 technical operating boundary is implemented around the existing provider-
 - `scripts/operations/Test-DisasterRecoveryProfile.ps1` requires explicit RPO, RTO, retention, off-host copies, encryption, monitoring, restore-drill age and named ownership.
 - CI validates the DR-profile contract as part of `CI Required Gate`.
 - SQLite recovery acceptance restores a verified backup into an isolated target, compares SHA-256, runs `PRAGMA integrity_check` and validates Depot schema metadata.
-- SQL Server, MariaDB and MySQL run their provider-native backup/restore drill on pull requests as part of `Database Provider Required Gate`, rather than only on post-merge full certification runs.
+- SQL Server, MariaDB and MySQL run their provider-native backup/restore drill on pull requests as part of `Database Provider Required Gate`.
 - provider recovery drills retain structured JSON evidence without database identity or credentials.
 - DepotManager support packages include `RecoveryReadiness.json`; log-collection ACL/I/O failures no longer prevent support-package creation and are represented with sanitized recovery guidance.
-- access denied, missing resource, disk-full/file-I/O and SQLite lock failures have explicit recovery classifications/guidance.
 
 The authoritative operating model and provider runbooks are in [Production Operations & Disaster Recovery](ProductionOperationsDisasterRecovery.md).
 
 **A specific deployment is not production-DR-accepted merely because repository CI is green. It remains operationally BLOCKED until an ACTIVE deployment DR profile is validated and its real backup infrastructure has passed an isolated restore drill within the accepted RPO/RTO.**
+
+## Accessibility and desktop production acceptance
+
+The H5 technical desktop-accessibility boundary is implemented without treating automation as a substitute for human desktop acceptance.
+
+- `DesktopAccessibilityRuntime` supplies a shared visible keyboard-focus fallback when a focusable WPF control resolves a null `FocusVisualStyle`, including legacy shared styles.
+- the accessibility static gate now detects both direct and Setter-based focus suppression and rejects unsafe suppression outside controlled shared resources.
+- cyclic Tab-navigation declarations are rejected by the quality gate.
+- `TextInput` and `PasswordInput` forward UI Automation labels, required-field state and related metadata to the native inner keyboard focus target.
+- Login and first-run administrator inputs expose explicit label and required-field semantics.
+- `OperationStatus` and `ConnectionStatusIndicator` raise UI Automation notifications for meaningful dynamic status/error changes.
+- standard file/message dialog flows capture and restore keyboard focus.
+- Depot and DepotManager explicitly declare Per-Monitor-V2 DPI awareness.
+- `Accessibility technical baseline` retains `TechnicalAccessibilityEvidence.json` as part of `Quality Required Gate`.
+- `operations/AccessibilityAcceptance.example.json` and `scripts/operations/Test-AccessibilityAcceptance.ps1` define the exact-RC manual acceptance/evidence contract.
+
+The procedure is documented in [Accessibility & Desktop Production Acceptance](AccessibilityProductionAcceptance.md) and [Desktop Accessibility Baseline](compliance/Accessibility.md).
+
+**Desktop production accessibility acceptance remains `MANUAL_REQUIRED` until the exact packaged release candidate has passed keyboard-only, focus/no-trap, Narrator, Accessibility Insights and 100/125/150/200% DPI acceptance and retained evidence passes `Test-AccessibilityAcceptance.ps1 -RequirePass`.**
 
 ## Database provider production status
 
@@ -76,7 +94,7 @@ The following database baselines are technically **Supported** when shipped with
 - MariaDB 11.8.9 LTS;
 - MySQL 8.4.11 LTS.
 
-The matrix validates fresh/idempotent provisioning, Core 29→30 and Sales 10→11 migrations, concurrent provisioning, SQL/type/constraint/date/decimal behavior, transactional rollback, concurrency/deadlock/retry behavior, Sales, Procurement, sessions, Finance GL/AR/AP/FIFO, Banking/reconciliation, Financial Reporting/snapshots, server restart, native remote backup/restore and representative 100k indexed access. Pull requests now include provider recovery drills and retained recovery evidence for every supported provider family.
+The matrix validates fresh/idempotent provisioning, Core 29→30 and Sales 10→11 migrations, concurrent provisioning, SQL/type/constraint/date/decimal behavior, transactional rollback, concurrency/deadlock/retry behavior, Sales, Procurement, sessions, Finance GL/AR/AP/FIFO, Banking/reconciliation, Financial Reporting/snapshots, server restart, native remote backup/restore and representative 100k indexed access. Pull requests include provider recovery drills and retained recovery evidence for every supported provider family.
 
 MariaDB and MySQL are independently certified; support for one never implies support for the other. Versions outside the listed baselines remain untested/best-effort until explicitly added to the matrix.
 
@@ -98,7 +116,7 @@ The security feature does not collect source IP, geolocation, MAC address, hardw
 
 ## Versions
 
-- Application: **0.15.173-preview**
+- Application: **0.15.176-preview**
 - DepotManager: **0.1.23-preview**
 - Core database schema: **30**
 - Sales feature schema: **11**
@@ -109,22 +127,22 @@ The security feature does not collect source IP, geolocation, MAC address, hardw
 
 Every commit increments `DepotVersionPatch`.
 
-Sales schema 11 restores/enforces the active inventory-reservation uniqueness invariant for every supported provider. This feature-schema correction does not change Core schema 30.
-
 ## Validation boundary
 
-Release build with `-warnaserror`, repository regression suites, Security Supply Chain and Software Quality remain release gates. Database-provider support is additionally governed by the real-provider acceptance workflow and its exact version matrix, now including restore-drill evidence in the required pull-request gate.
+Release build with `-warnaserror`, repository regression suites, Security Supply Chain and Software Quality remain release gates. Database-provider support is additionally governed by the real-provider acceptance workflow and its exact version matrix, including restore-drill evidence in the required pull-request gate.
 
 The five stable aggregate status checks remain the intended repository-level merge contract for `master`; detailed matrix jobs remain implementation details behind those aggregates.
 
-The release workflow contains the complete technical production-signing acceptance path, but repository implementation is not itself evidence that the real production certificate has passed RC acceptance. That external evidence must exist before H3 can be marked production-accepted.
-
-Likewise, repository recovery evidence is generic product/provider evidence, not a customer's accepted backup schedule, retention policy or restore drill.
+Repository implementation does not itself prove the external/manual acceptance gates: production signing still requires a real signed RC, real deployments require their own DR profile/restore drill, and desktop accessibility requires exact-RC manual evidence.
 
 Provider support does not replace deployment-specific accounting/tax/legal, accessibility, OS/client, performance-sizing, backup-retention or organizational acceptance.
 
 ## Next steps
 
-Remaining authentication roadmap items include MFA, OIDC/SSO/external identity providers, optional deployment-specific alert delivery/routing implementations, and explicit privacy/threat-model work before IP/geolocation/device-trust signals are considered.
+All five Track A implementation packages now have repository implementations. Track A closure is therefore an acceptance/administration phase rather than another implementation package:
 
-For Track A, H1/H2 are implemented, H3 is technically implemented but production acceptance remains blocked pending a real signed RC, and H4 provides the technical/operational DR contract while each real deployment still requires its own accepted profile and drill. The remaining implementation package is accessibility/manual desktop production acceptance. Wider accounting/tax/localization and legal items remain tracked in [Release 1.0](Release1.0.md) and the [Roadmap](Roadmap.md).
+- activate the source-controlled `master` repository ruleset in GitHub;
+- complete a real production-signed Stable RC acceptance run;
+- complete deployment-specific DR profile/restore-drill acceptance where production deployment is intended;
+- complete and retain exact-RC desktop accessibility acceptance evidence;
+- close remaining wider accounting/tax/localization/legal and release-readiness items tracked in [Release 1.0](Release1.0.md) and the [Roadmap](Roadmap.md).

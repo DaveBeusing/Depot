@@ -64,6 +64,7 @@ public sealed class PasswordInput : Control
 			return;
 		}
 
+		AccessibilityAutomation.ForwardInputProperties(this, _passwordBox);
 		SynchronizePasswordBox(PasswordValue);
 		_passwordBox.PasswordChanged += OnPasswordChanged;
 	}
@@ -74,6 +75,7 @@ public sealed class PasswordInput : Control
 
 		if (ReferenceEquals(e.NewFocus, this) && _passwordBox is not null)
 		{
+			AccessibilityAutomation.ForwardInputProperties(this, _passwordBox);
 			_passwordBox.Focus();
 		}
 	}

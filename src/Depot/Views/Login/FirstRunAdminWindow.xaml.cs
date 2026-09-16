@@ -4,6 +4,7 @@
 using System.Windows;
 using System.Windows.Controls;
 
+using Depot.Controls;
 using Depot.Services;
 
 namespace Depot.Views.Login;
@@ -95,5 +96,6 @@ public partial class FirstRunAdminWindow : Window
 	{
 		ErrorText.Text = message;
 		ErrorPanel.Visibility = Visibility.Visible;
+		AccessibilityAutomation.Announce(ErrorPanel, message, important: true, activityId: "Depot.FirstRunAdmin.Error");
 	}
 }

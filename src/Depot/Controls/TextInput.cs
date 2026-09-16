@@ -51,6 +51,7 @@ public sealed class TextInput : Control
 	{
 		base.OnApplyTemplate();
 		_textBox = FindVisualChild<TextBox>(this);
+		if (_textBox is not null) AccessibilityAutomation.ForwardInputProperties(this, _textBox);
 	}
 
 	protected override void OnGotKeyboardFocus(KeyboardFocusChangedEventArgs e)
@@ -59,6 +60,7 @@ public sealed class TextInput : Control
 
 		if (ReferenceEquals(e.NewFocus, this) && _textBox is not null)
 		{
+			AccessibilityAutomation.ForwardInputProperties(this, _textBox);
 			_textBox.Focus();
 		}
 	}

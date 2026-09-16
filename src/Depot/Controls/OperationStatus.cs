@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 using System.Windows;
+using System.Windows.Automation.Peers;
 using System.Windows.Controls;
 
 using Depot.ViewModels;
@@ -24,7 +25,7 @@ public sealed class OperationStatus : Control
 	}
 
 	public static readonly DependencyProperty IsBusyProperty =
-		DependencyProperty.Register(nameof(IsBusy), typeof(bool), typeof(OperationStatus), new PropertyMetadata(false));
+		DependencyProperty.Register(nameof(IsBusy), typeof(bool), typeof(OperationStatus), new PropertyMetadata(false, OnAnnouncementPropertyChanged));
 
 	public string StatusText
 	{
@@ -33,7 +34,7 @@ public sealed class OperationStatus : Control
 	}
 
 	public static readonly DependencyProperty StatusTextProperty =
-		DependencyProperty.Register(nameof(StatusText), typeof(string), typeof(OperationStatus), new PropertyMetadata(string.Empty));
+		DependencyProperty.Register(nameof(StatusText), typeof(string), typeof(OperationStatus), new PropertyMetadata(string.Empty, OnAnnouncementPropertyChanged));
 
 	public string? ErrorText
 	{
@@ -42,7 +43,7 @@ public sealed class OperationStatus : Control
 	}
 
 	public static readonly DependencyProperty ErrorTextProperty =
-		DependencyProperty.Register(nameof(ErrorText), typeof(string), typeof(OperationStatus), new PropertyMetadata(null));
+		DependencyProperty.Register(nameof(ErrorText), typeof(string), typeof(OperationStatus), new PropertyMetadata(null, OnAnnouncementPropertyChanged));
 
 	public bool HasError
 	{
@@ -51,7 +52,7 @@ public sealed class OperationStatus : Control
 	}
 
 	public static readonly DependencyProperty HasErrorProperty =
-		DependencyProperty.Register(nameof(HasError), typeof(bool), typeof(OperationStatus), new PropertyMetadata(false));
+		DependencyProperty.Register(nameof(HasError), typeof(bool), typeof(OperationStatus), new PropertyMetadata(false, OnAnnouncementPropertyChanged));
 
 	public OperationSeverity Severity
 	{
@@ -60,7 +61,7 @@ public sealed class OperationStatus : Control
 	}
 
 	public static readonly DependencyProperty SeverityProperty =
-		DependencyProperty.Register(nameof(Severity), typeof(OperationSeverity), typeof(OperationStatus), new PropertyMetadata(OperationSeverity.None));
+		DependencyProperty.Register(nameof(Severity), typeof(OperationSeverity), typeof(OperationStatus), new PropertyMetadata(OperationSeverity.None, OnAnnouncementPropertyChanged));
 
 	public string? ActionText
 	{
@@ -70,4 +71,16 @@ public sealed class OperationStatus : Control
 
 	public static readonly DependencyProperty ActionTextProperty =
 		DependencyProperty.Register(nameof(ActionText), typeof(string), typeof(OperationStatus), new PropertyMetadata(null));
+
+	protected override AutomationPeer OnCreateAutomationPeer() => new FrameworkElementAutomationPeer(this);
+
+	private static void OnAnnouncementPropertyChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs e)
+	{
+		var status = (OperationStatus)dependencyObject;
+		var message = status.HasError && !string.IsNullOrWhiteSpace(status.ErrorText)
+			? status.ErrorText
+			: status.StatusText;
+		var important = status.HasError || status.Severity == OperationSeverity.Warning;
+		AccessibilityAutomation.Announce(status, message, important, "Depot.OperationStatus");
+	}
 }

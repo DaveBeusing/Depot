@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 using System.Windows;
+using System.Windows.Automation.Peers;
 using System.Windows.Controls;
 using System.Windows.Media;
 
@@ -15,19 +16,19 @@ public sealed class ConnectionStatusIndicator : Control
 		nameof(State),
 		typeof(ConnectionState),
 		typeof(ConnectionStatusIndicator),
-		new PropertyMetadata(ConnectionState.Disconnected));
+		new PropertyMetadata(ConnectionState.Disconnected, OnAnnouncementPropertyChanged));
 
 	public static readonly DependencyProperty StatusProperty = DependencyProperty.Register(
 		nameof(Status),
 		typeof(string),
 		typeof(ConnectionStatusIndicator),
-		new PropertyMetadata(string.Empty));
+		new PropertyMetadata(string.Empty, OnAnnouncementPropertyChanged));
 
 	public static readonly DependencyProperty DetailProperty = DependencyProperty.Register(
 		nameof(Detail),
 		typeof(string),
 		typeof(ConnectionStatusIndicator),
-		new PropertyMetadata(string.Empty));
+		new PropertyMetadata(string.Empty, OnAnnouncementPropertyChanged));
 
 	public static readonly DependencyProperty DetailForegroundProperty = DependencyProperty.Register(
 		nameof(DetailForeground),
@@ -76,5 +77,20 @@ public sealed class ConnectionStatusIndicator : Control
 	{
 		get => (bool)GetValue(CompactProperty);
 		set => SetValue(CompactProperty, value);
+	}
+
+	protected override AutomationPeer OnCreateAutomationPeer() => new FrameworkElementAutomationPeer(this);
+
+	private static void OnAnnouncementPropertyChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs e)
+	{
+		var indicator = (ConnectionStatusIndicator)dependencyObject;
+		var message = string.IsNullOrWhiteSpace(indicator.Detail)
+			? indicator.Status
+			: $"{indicator.Status}. {indicator.Detail}";
+		AccessibilityAutomation.Announce(
+			indicator,
+			message,
+			indicator.State == ConnectionState.Disconnected,
+			"Depot.ConnectionStatus");
 	}
 }

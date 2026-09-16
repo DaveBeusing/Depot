@@ -46,6 +46,11 @@ Depot is on the `0.15.x-preview` line with Core database schema **30**, Sales fe
 - [x] provider-specific SQLite/SQL Server/MariaDB/MySQL restore runbooks
 - [x] pull-request recovery drills and retained credential-free provider recovery evidence
 - [x] DepotManager recovery-readiness support evidence and sanitized ACL/I/O recovery diagnostics
+- [x] runtime keyboard-focus fallback plus hardened focus-suppression quality checks
+- [x] custom input UI Automation label/required-state forwarding to native focus targets
+- [x] UI Automation notifications for operation/error/connection status changes
+- [x] explicit Per-Monitor-V2 DPI manifests for Depot and DepotManager
+- [x] reproducible exact-RC accessibility acceptance/evidence contract
 
 ## Database provider production acceptance
 
@@ -87,16 +92,21 @@ Versions outside these baselines are not implicitly supported. The provider gate
 
 ### UI/accessibility
 
-- [ ] keyboard-only critical-workflow walkthrough including all Finance workspaces
-- [ ] focus/no-keyboard-trap review
-- [ ] Narrator/Accessibility Insights baseline
-- [ ] 100/125/150/200% DPI acceptance
+Technical controls and the evidence contract are implemented. The exact release candidate still requires human desktop acceptance:
+
+- [ ] keyboard-only critical-workflow walkthrough including Login, first-run admin, shell/workspaces, Finance and DepotManager
+- [ ] logical focus order, visible focus, no-keyboard-trap and focus-restoration review
+- [ ] Narrator baseline for inputs, grids, dialogs, validation/errors and dynamic status updates
+- [ ] Accessibility Insights baseline with no unresolved blocking findings
+- [ ] 100/125/150/200% DPI acceptance with retained evidence for each scale
+- [ ] `Test-AccessibilityAcceptance.ps1 -RequirePass` succeeds for the exact release-candidate source SHA
 
 ### Security/release engineering
 
 - [x] single authoritative release pipeline and explicit Preview/Stable channel policy
 - [x] source SHA, versions, schema versions and final hashes retained in release evidence
 - [x] production DR runbook/profile/recovery-evidence technical boundary implemented
+- [x] desktop accessibility technical/evidence boundary implemented
 - [ ] production backup/security ownership and vulnerability-reporting process accepted for the deployment
 - [ ] production Authenticode publisher identity and timestamp verified with a real Stable release candidate
 - [ ] certificate expiry/rotation and signing-recovery procedure accepted
@@ -117,6 +127,12 @@ Versions outside these baselines are not implicitly supported. The provider gate
 - [ ] organization-specific GoBD/accounting/reporting/localization procedures
 - [ ] final CRA applicability/classification/conformity work
 - [ ] qualified accounting/tax/legal review for each marketed Finance localization
+
+## Track A implementation status
+
+All five Track A repository implementation packages have been addressed: repository governance, release pipeline/channels, production-signing acceptance path, production operations/disaster recovery, and accessibility/desktop production acceptance.
+
+Track A is not fully production-accepted until the remaining administrative/external evidence is closed: active GitHub master governance, a real production-signed Stable RC, deployment-specific DR acceptance where applicable, and exact-RC manual desktop accessibility acceptance.
 
 ## Demand-driven extensions
 

@@ -6,6 +6,7 @@
         <ResourceDictionary Source="Colors.xaml" />
         <ResourceDictionary Source="Typography.xaml" />
         <ResourceDictionary Source="Spacing.xaml" />
+        <ResourceDictionary Source="Accessibility.xaml" />
 
         <!-- Controls -->
         <ResourceDictionary Source="Buttons.xaml" />

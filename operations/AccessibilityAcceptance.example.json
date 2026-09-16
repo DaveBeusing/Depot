@@ -1,0 +1,51 @@
+{
+  "formatVersion": 1,
+  "status": "MANUAL_REQUIRED",
+  "depotVersion": "UNSET",
+  "sourceSha": "UNSET",
+  "testedAtUtc": null,
+  "tester": "UNSET",
+  "environment": {
+    "windowsVersion": "UNSET",
+    "displayResolution": "UNSET",
+    "graphicsAdapter": "UNSET",
+    "inputMethod": "keyboard-and-mouse",
+    "screenReader": "Windows Narrator",
+    "accessibilityInspector": "Accessibility Insights for Windows"
+  },
+  "keyboardOnly": [
+    { "scenario": "Login", "status": "MANUAL_REQUIRED", "evidence": "UNSET" },
+    { "scenario": "First-run administrator", "status": "MANUAL_REQUIRED", "evidence": "UNSET" },
+    { "scenario": "Shell, navigation and workspace tabs", "status": "MANUAL_REQUIRED", "evidence": "UNSET" },
+    { "scenario": "Critical CRUD and workflow dialogs", "status": "MANUAL_REQUIRED", "evidence": "UNSET" },
+    { "scenario": "Finance workspaces and approval actions", "status": "MANUAL_REQUIRED", "evidence": "UNSET" },
+    { "scenario": "Audit, privacy and export flows", "status": "MANUAL_REQUIRED", "evidence": "UNSET" },
+    { "scenario": "DepotManager install, update, repair and diagnostics", "status": "MANUAL_REQUIRED", "evidence": "UNSET" }
+  ],
+  "focus": [
+    { "scenario": "Logical Tab and Shift+Tab order", "status": "MANUAL_REQUIRED", "evidence": "UNSET" },
+    { "scenario": "No keyboard traps", "status": "MANUAL_REQUIRED", "evidence": "UNSET" },
+    { "scenario": "Focus restoration after modal dialogs", "status": "MANUAL_REQUIRED", "evidence": "UNSET" },
+    { "scenario": "Visible keyboard focus at every actionable control", "status": "MANUAL_REQUIRED", "evidence": "UNSET" }
+  ],
+  "narrator": [
+    { "scenario": "Input labels and required fields", "status": "MANUAL_REQUIRED", "evidence": "UNSET" },
+    { "scenario": "Data grids, selected rows and available actions", "status": "MANUAL_REQUIRED", "evidence": "UNSET" },
+    { "scenario": "Validation and error announcements", "status": "MANUAL_REQUIRED", "evidence": "UNSET" },
+    { "scenario": "Operation and connection status announcements", "status": "MANUAL_REQUIRED", "evidence": "UNSET" },
+    { "scenario": "Dialogs and focus return", "status": "MANUAL_REQUIRED", "evidence": "UNSET" }
+  ],
+  "accessibilityInsights": {
+    "status": "MANUAL_REQUIRED",
+    "evidence": "UNSET",
+    "blockingFindings": []
+  },
+  "dpi": [
+    { "scalePercent": 100, "status": "MANUAL_REQUIRED", "evidence": "UNSET" },
+    { "scalePercent": 125, "status": "MANUAL_REQUIRED", "evidence": "UNSET" },
+    { "scalePercent": 150, "status": "MANUAL_REQUIRED", "evidence": "UNSET" },
+    { "scalePercent": 200, "status": "MANUAL_REQUIRED", "evidence": "UNSET" }
+  ],
+  "knownBlockingIssues": [],
+  "notes": "Replace MANUAL_REQUIRED and UNSET values only with evidence from the exact packaged release candidate being accepted."
+}

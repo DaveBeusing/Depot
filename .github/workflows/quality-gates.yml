@@ -179,14 +179,28 @@ jobs:
           --logger "console;verbosity=normal"
 
   accessibility-static:
-    name: Accessibility static baseline
+    name: Accessibility technical baseline
     runs-on: windows-2025
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - name: Verify desktop accessibility baseline
+
+      - name: Verify desktop accessibility technical baseline
         shell: pwsh
-        run: ./scripts/quality/test-accessibility.ps1
+        run: ./scripts/quality/test-accessibility.ps1 -EvidencePath artifacts/accessibility/TechnicalAccessibilityEvidence.json
+
+      - name: Validate manual acceptance evidence contract
+        shell: pwsh
+        run: ./scripts/operations/Test-AccessibilityAcceptance.ps1
+
+      - name: Upload accessibility technical evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: accessibility-technical-evidence
+          path: artifacts/accessibility/TechnicalAccessibilityEvidence.json
+          if-no-files-found: warn
+          retention-days: 30
 
   required:
     name: Quality Required Gate
