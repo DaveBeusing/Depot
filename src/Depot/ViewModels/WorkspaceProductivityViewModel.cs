@@ -39,7 +39,7 @@ public sealed class WorkspaceProductivityViewModel : BaseViewModel
 	public bool HasFavorites => Favorites.Count > 0;
 	public bool HasRecents => Recents.Count > 0;
 	public bool HasQuickActions => QuickActions.Count > 0;
-	public string StatusText { get => _statusText; private set { if (_statusText == value) return; _statusText = value; OnPropertyChanged(); } }
+	public new string StatusText { get => _statusText; private set { if (_statusText == value) return; _statusText = value; OnPropertyChanged(); } }
 	public string DefaultLandingLabel => ResolveDescriptor(_defaultLandingRoute)?.Title ?? "Dashboard (fallback)";
 
 	public async Task InitializeAsync(CancellationToken cancellationToken = default)

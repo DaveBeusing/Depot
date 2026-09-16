@@ -62,7 +62,7 @@ public sealed class TrackBProductivityReadinessTests
 	{
 		var provider = new EmbeddedHelpContentProvider(typeof(App).Assembly);
 		var manifest = await provider.LoadManifestAsync();
-		var definition = Assert.Single(manifest.Topics.Where(topic => string.Equals(topic.Id, topicId, StringComparison.Ordinal)));
+		var definition = Assert.Single(manifest.Topics, topic => string.Equals(topic.Id, topicId, StringComparison.Ordinal));
 		return await provider.LoadContentAsync(definition);
 	}
 }

@@ -13,7 +13,10 @@ public sealed partial class ItemsViewModel
 {
 	private ItemCostCalculationService? _itemCosts;
 	private ItemCostComponent? _selectedCostComponent;
+	private ItemCostBaseSource _costBaseSource=ItemCostBaseSource.PreferredSupplierPurchasePrice;
 	private string _costCurrency=string.Empty;
+	private decimal? _manualStandardCost;
+	private decimal? _inventoryCostReference;
 	private string _costComponentName=string.Empty;
 	private ItemCostCalculationType _costCalculationType;
 	private ItemCostCalculationBase _costCalculationBase;
@@ -31,11 +34,12 @@ public sealed partial class ItemsViewModel
 	{
 		_itemService=itemService;_referenceServices=[manufacturerService,categoryService,unitOfMeasureService,packagingService];_itemCosts=itemCosts;
 		Editor=new ItemEditorViewModel();NewItemCommand=new RelayCommand(NewItem);ClearReplacementCommand=new RelayCommand(()=>Editor.ReplacementItemId=null);SaveItemCommand=new AsyncRelayCommand(SaveItemAsync);DeactivateItemCommand=new AsyncRelayCommand(DeactivateItemAsync,CanDeactivateItem);PreviousPageCommand=new AsyncRelayCommand(PreviousPageAsync,()=>PageNumber>1);NextPageCommand=new AsyncRelayCommand(NextPageAsync,()=>HasNextPage);
-		NewCostComponentCommand=new RelayCommand(NewCostComponent,()=>SelectedItem is not null&&itemCosts.CanManage);SaveCostProfileCommand=new AsyncRelayCommand(SaveCostProfileAsync,()=>SelectedItem is not null&&itemCosts.CanManage&&!string.IsNullOrWhiteSpace(CostCurrency));SaveCostComponentCommand=new AsyncRelayCommand(SaveCostComponentAsync,()=>SelectedItem is not null&&itemCosts.CanManage&&!string.IsNullOrWhiteSpace(CostComponentName)&&CostValue>=0&&CostSequence>=0);ToggleCostComponentCommand=new AsyncRelayCommand(ToggleCostComponentAsync,()=>SelectedCostComponent is not null&&itemCosts.CanManage);
+		NewCostComponentCommand=new RelayCommand(NewCostComponent,()=>SelectedItem is not null&&itemCosts.CanManage);SaveCostProfileCommand=new AsyncRelayCommand(SaveCostProfileAsync,CanSaveCostProfile);SaveCostComponentCommand=new AsyncRelayCommand(SaveCostComponentAsync,()=>SelectedItem is not null&&itemCosts.CanManage&&!string.IsNullOrWhiteSpace(CostComponentName)&&CostValue>=0&&CostSequence>=0);ToggleCostComponentCommand=new AsyncRelayCommand(ToggleCostComponentAsync,()=>SelectedCostComponent is not null&&itemCosts.CanManage);
 		PropertyChanged+=OnCostingPropertyChanged;
 	}
 
 	public ObservableCollection<ItemCostComponent> CostComponents{get;}=[];
+	public IReadOnlyList<ItemCostBaseSource> CostBaseSources{get;}=Enum.GetValues<ItemCostBaseSource>();
 	public IReadOnlyList<ItemCostCalculationType> CostCalculationTypes{get;}=Enum.GetValues<ItemCostCalculationType>();
 	public IReadOnlyList<ItemCostCalculationBase> CostCalculationBases{get;}=Enum.GetValues<ItemCostCalculationBase>();
 	public RelayCommand? NewCostComponentCommand{get;private set;}
@@ -44,9 +48,14 @@ public sealed partial class ItemsViewModel
 	public AsyncRelayCommand? ToggleCostComponentCommand{get;private set;}
 	public bool CanManageItemCosts=>_itemCosts?.CanManage==true;
 	public bool IsPercentageCost=>CostCalculationType==ItemCostCalculationType.Percentage;
+	public bool IsManualStandardCost=>CostBaseSource==ItemCostBaseSource.ManualStandard;
+	public bool IsInventoryCostReference=>CostBaseSource==ItemCostBaseSource.InventoryCostReference;
 	public string BaseCostDisplay{get=>_baseCostDisplay;private set{if(_baseCostDisplay==value)return;_baseCostDisplay=value;OnPropertyChanged();}}
 	public string CalculatedCostDisplay{get=>_calculatedCostDisplay;private set{if(_calculatedCostDisplay==value)return;_calculatedCostDisplay=value;OnPropertyChanged();}}
+	public ItemCostBaseSource CostBaseSource{get=>_costBaseSource;set{if(_costBaseSource==value)return;_costBaseSource=value;OnPropertyChanged();OnPropertyChanged(nameof(IsManualStandardCost));OnPropertyChanged(nameof(IsInventoryCostReference));SaveCostProfileCommand?.RaiseCanExecuteChanged();}}
 	public string CostCurrency{get=>_costCurrency;set{if(_costCurrency==value)return;_costCurrency=value;OnPropertyChanged();SaveCostProfileCommand?.RaiseCanExecuteChanged();}}
+	public decimal? ManualStandardCost{get=>_manualStandardCost;set{if(_manualStandardCost==value)return;_manualStandardCost=value;OnPropertyChanged();SaveCostProfileCommand?.RaiseCanExecuteChanged();}}
+	public decimal? InventoryCostReference{get=>_inventoryCostReference;set{if(_inventoryCostReference==value)return;_inventoryCostReference=value;OnPropertyChanged();SaveCostProfileCommand?.RaiseCanExecuteChanged();}}
 	public string CostComponentName{get=>_costComponentName;set{if(_costComponentName==value)return;_costComponentName=value;OnPropertyChanged();SaveCostComponentCommand?.RaiseCanExecuteChanged();}}
 	public ItemCostCalculationType CostCalculationType{get=>_costCalculationType;set{if(_costCalculationType==value)return;_costCalculationType=value;OnPropertyChanged();OnPropertyChanged(nameof(IsPercentageCost));SaveCostComponentCommand?.RaiseCanExecuteChanged();}}
 	public ItemCostCalculationBase CostCalculationBase{get=>_costCalculationBase;set{if(_costCalculationBase==value)return;_costCalculationBase=value;OnPropertyChanged();}}
@@ -57,12 +66,13 @@ public sealed partial class ItemsViewModel
 	public bool CostIsActive{get=>_costIsActive;set{if(_costIsActive==value)return;_costIsActive=value;OnPropertyChanged();}}
 	public ItemCostComponent? SelectedCostComponent{get=>_selectedCostComponent;set{if(_selectedCostComponent==value)return;_selectedCostComponent=value;OnPropertyChanged();LoadCostComponentDraft(value);ToggleCostComponentCommand?.RaiseCanExecuteChanged();}}
 
+	private bool CanSaveCostProfile()=>SelectedItem is not null&&_itemCosts?.CanManage==true&&!string.IsNullOrWhiteSpace(CostCurrency)&&(CostBaseSource!=ItemCostBaseSource.ManualStandard||ManualStandardCost is >=0m)&&(CostBaseSource!=ItemCostBaseSource.InventoryCostReference||InventoryCostReference is >=0m);
 	private void OnCostingPropertyChanged(object? sender,PropertyChangedEventArgs e){if(e.PropertyName!=nameof(SelectedItem))return;NewCostComponentCommand?.RaiseCanExecuteChanged();SaveCostProfileCommand?.RaiseCanExecuteChanged();SaveCostComponentCommand?.RaiseCanExecuteChanged();_ = LoadCostBuildUpAsync();}
 	private async Task LoadCostBuildUpAsync(CancellationToken token=default)
 	{
-		CostComponents.Clear();BaseCostDisplay="—";CalculatedCostDisplay="—";if(SelectedItem is null||_itemCosts is null)return;try{var profile=await _itemCosts.GetProfileAsync(SelectedItem.Id,token);CostCurrency=profile?.Currency??string.Empty;foreach(var component in await _itemCosts.ListComponentsAsync(SelectedItem.Id,token))CostComponents.Add(component);var result=await _itemCosts.CalculateAsync(SelectedItem.Id,DateTime.Today,null,token);if(result.IsSuccess){BaseCostDisplay=$"{result.Currency} {result.BaseCost:N2}";CalculatedCostDisplay=$"{result.Currency} {result.CalculatedCost:N2}";}else CalculatedCostDisplay=result.Error??"Not calculable";}catch(OperationCanceledException)when(token.IsCancellationRequested){}catch(Exception ex){CalculatedCostDisplay=ex.Message;}
+		CostComponents.Clear();BaseCostDisplay="—";CalculatedCostDisplay="—";if(SelectedItem is null||_itemCosts is null)return;try{var profile=await _itemCosts.GetProfileAsync(SelectedItem.Id,token);CostBaseSource=profile?.BaseCostSource??ItemCostBaseSource.PreferredSupplierPurchasePrice;CostCurrency=profile?.Currency??string.Empty;ManualStandardCost=profile?.ManualStandardCost;InventoryCostReference=profile?.InventoryCostReference;foreach(var component in await _itemCosts.ListComponentsAsync(SelectedItem.Id,token))CostComponents.Add(component);var result=await _itemCosts.CalculateAsync(SelectedItem.Id,DateTime.Today,null,token);if(result.IsSuccess){BaseCostDisplay=$"{result.Currency} {result.BaseCost:N2} · {result.BaseCostSource}";CalculatedCostDisplay=$"{result.Currency} {result.CalculatedCost:N2}";}else CalculatedCostDisplay=result.Error??"Not calculable";}catch(OperationCanceledException)when(token.IsCancellationRequested){}catch(Exception ex){CalculatedCostDisplay=ex.Message;}
 	}
-	private async Task SaveCostProfileAsync(CancellationToken token){if(SelectedItem is null||_itemCosts is null)return;var existing=await _itemCosts.GetProfileAsync(SelectedItem.Id,token);await _itemCosts.SaveProfileAsync(new ItemCostProfile{Id=existing?.Id??0,ItemId=SelectedItem.Id,BaseCostSource=ItemCostBaseSource.PreferredSupplierPurchasePrice,Currency=CostCurrency,Version=existing?.Version??1},token);await LoadCostBuildUpAsync(token);}
+	private async Task SaveCostProfileAsync(CancellationToken token){if(SelectedItem is null||_itemCosts is null)return;var existing=await _itemCosts.GetProfileAsync(SelectedItem.Id,token);await _itemCosts.SaveProfileAsync(new ItemCostProfile{Id=existing?.Id??0,ItemId=SelectedItem.Id,BaseCostSource=CostBaseSource,Currency=CostCurrency,ManualStandardCost=ManualStandardCost,InventoryCostReference=InventoryCostReference,Version=existing?.Version??1},token);await LoadCostBuildUpAsync(token);}
 	private async Task SaveCostComponentAsync(CancellationToken token){if(SelectedItem is null||_itemCosts is null)return;await _itemCosts.SaveComponentAsync(new ItemCostComponent{Id=_costComponentId,ItemId=SelectedItem.Id,Name=CostComponentName,CalculationType=CostCalculationType,CalculationBase=CostCalculationBase,Value=CostValue,Sequence=CostSequence,IsActive=CostIsActive,ValidFrom=CostValidFrom,ValidUntil=CostValidUntil,Version=_costComponentVersion},token);NewCostComponent();await LoadCostBuildUpAsync(token);}
 	private async Task ToggleCostComponentAsync(CancellationToken token){if(SelectedCostComponent is null||_itemCosts is null)return;await _itemCosts.SetComponentActiveAsync(SelectedCostComponent,!SelectedCostComponent.IsActive,token);NewCostComponent();await LoadCostBuildUpAsync(token);}
 	private void NewCostComponent(){SelectedCostComponent=null;_costComponentId=0;_costComponentVersion=1;CostComponentName=string.Empty;CostCalculationType=ItemCostCalculationType.Absolute;CostCalculationBase=ItemCostCalculationBase.BaseCost;CostValue=0m;CostSequence=CostComponents.Count==0?10:CostComponents.Max(c=>c.Sequence)+10;CostValidFrom=null;CostValidUntil=null;CostIsActive=true;}

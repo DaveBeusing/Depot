@@ -3,9 +3,17 @@
 
 namespace Depot.Models;
 
-public enum ItemCostBaseSource { PreferredSupplierPurchasePrice = 0 }
+public enum ItemCostBaseSource
+{
+	PreferredSupplierPurchasePrice = 0,
+	LastPurchase = 1,
+	ManualStandard = 2,
+	InventoryCostReference = 3
+}
 public enum ItemCostCalculationType { Absolute = 0, Percentage = 1 }
 public enum ItemCostCalculationBase { BaseCost = 0, RunningTotal = 1 }
+public enum BulkPricePricingMethod { PercentageMarkup = 0, TargetGrossMargin = 1 }
+public enum CommercialRoundingStrategy { CurrencyPrecision = 0, Nearest0_01 = 1, Nearest0_05 = 2, Nearest0_10 = 3, Nearest0_50 = 4, Ending99 = 5 }
 
 public sealed class ItemCostProfile
 {
@@ -13,6 +21,8 @@ public sealed class ItemCostProfile
 	public long ItemId { get; set; }
 	public ItemCostBaseSource BaseCostSource { get; set; } = ItemCostBaseSource.PreferredSupplierPurchasePrice;
 	public string Currency { get; set; } = string.Empty;
+	public decimal? ManualStandardCost { get; set; }
+	public decimal? InventoryCostReference { get; set; }
 	public long Version { get; set; } = 1;
 }
 
@@ -31,7 +41,7 @@ public sealed class ItemCostComponent
 	public long Version { get; set; } = 1;
 }
 
-public sealed record ItemCostBaseValue(long SupplierItemId, decimal Amount, long Version);
+public sealed record ItemCostBaseValue(long EvidenceId,decimal Amount,long Version,string EvidenceType);
 public sealed record ItemCostComponentResult(long ComponentId,string Name,ItemCostCalculationType CalculationType,ItemCostCalculationBase CalculationBase,decimal ConfiguredValue,decimal CalculationBasisAmount,decimal AppliedAmount,decimal RunningTotal,int Sequence,long Version);
 
 public sealed class ItemCostCalculationResult
@@ -44,9 +54,24 @@ public sealed class ItemCostCalculationResult
 	public string Currency { get; init; } = string.Empty;
 	public DateTime CalculationDate { get; init; }
 	public ItemCostBaseSource BaseCostSource { get; init; }
+	public string BaseCostEvidenceType { get; init; } = string.Empty;
+	public long? BaseCostEvidenceId { get; init; }
 	public string EvidenceVersion { get; init; } = string.Empty;
 	public IReadOnlyList<ItemCostComponentResult> Components { get; init; } = [];
 }
+
+public sealed class PricingExchangeRate
+{
+	public long Id { get; set; }
+	public string SourceCurrency { get; set; } = string.Empty;
+	public string TargetCurrency { get; set; } = string.Empty;
+	public DateTime EffectiveDate { get; set; } = DateTime.Today;
+	public string RateSource { get; set; } = string.Empty;
+	public decimal Rate { get; set; }
+	public long Version { get; set; } = 1;
+}
+
+public sealed record PricingExchangeRateEvidence(long? RateId,string RateSource,DateTime EffectiveDate,decimal Rate,string SourceCurrency,string TargetCurrency,long Version);
 
 public sealed record ItemCostCandidate(long ItemId,string PartNumber,string Description,long? CategoryId,long? ManufacturerId);
 public enum BulkPriceFilterType { AllActiveItems = 0, Category = 1, Manufacturer = 2, SelectedItems = 3 }
@@ -60,9 +85,13 @@ public sealed class PriceListGenerationRequest
 	public BulkPriceFilterType FilterType { get; init; } = BulkPriceFilterType.AllActiveItems;
 	public long? FilterId { get; init; }
 	public IReadOnlyList<long> SelectedItemIds { get; init; } = [];
+	public BulkPricePricingMethod PricingMethod { get; init; } = BulkPricePricingMethod.PercentageMarkup;
 	public decimal MarkupPercentage { get; init; }
+	public decimal GrossMarginPercentage { get; init; }
+	public CommercialRoundingStrategy RoundingStrategy { get; init; } = CommercialRoundingStrategy.CurrencyPrecision;
 	public BulkPriceApplyMode ApplyMode { get; init; } = BulkPriceApplyMode.ReplaceCalculatedPrices;
 	public DateTime EffectiveDate { get; init; } = DateTime.Today;
+	public decimal PricingPercentage => PricingMethod == BulkPricePricingMethod.TargetGrossMargin ? GrossMarginPercentage : MarkupPercentage;
 }
 
 public sealed class BulkPricePreviewRow
@@ -72,16 +101,29 @@ public sealed class BulkPricePreviewRow
 	public string Description { get; init; } = string.Empty;
 	public bool IsCalculable { get; init; }
 	public string? Error { get; init; }
+	public ItemCostBaseSource BaseCostSource { get; init; }
+	public decimal? BaseCost { get; init; }
 	public decimal? CalculatedCost { get; init; }
+	public string SourceCurrency { get; init; } = string.Empty;
+	public PricingExchangeRateEvidence? ExchangeRate { get; init; }
+	public decimal? ConvertedCost { get; init; }
+	public string TargetCurrency { get; init; } = string.Empty;
+	public BulkPricePricingMethod PricingMethod { get; init; }
+	public decimal MarkupPercentage { get; init; }
+	public decimal GrossMarginPercentage { get; init; }
+	public decimal PricingPercentage { get; init; }
+	public decimal? UnroundedPrice { get; init; }
+	public CommercialRoundingStrategy RoundingStrategy { get; init; }
+	public decimal? RoundingAdjustment { get; init; }
 	public decimal? CurrentPrice { get; init; }
 	public decimal? CalculatedNewPrice { get; init; }
 	public decimal? AbsoluteChange { get; init; }
 	public decimal? PercentageChange { get; init; }
-	public decimal MarkupPercentage { get; init; }
 	public BulkPricePreviewAction Action { get; init; }
 	public long? ExistingPriceItemId { get; init; }
 	public long? ExistingPriceItemVersion { get; init; }
 	public string CostEvidenceVersion { get; init; } = string.Empty;
+	public string PricingEvidenceVersion { get; init; } = string.Empty;
 	public IReadOnlyList<ItemCostComponentResult> CostComponents { get; init; } = [];
 }
 
@@ -104,9 +146,14 @@ public sealed class PriceListGenerationAuditRecord
 {
 	public long PriceListId { get; init; }
 	public string PriceListName { get; init; } = string.Empty;
-	public string PricingMethod { get; init; } = "PercentageMarkup";
+	public string PricingMethod { get; init; } = nameof(BulkPricePricingMethod.PercentageMarkup);
+	public decimal PricingPercentage { get; init; }
 	public decimal MarkupPercentage { get; init; }
+	public decimal GrossMarginPercentage { get; init; }
+	public CommercialRoundingStrategy RoundingStrategy { get; init; }
 	public BulkPriceApplyMode ApplyMode { get; init; }
+	public DateTime EffectiveDate { get; init; }
+	public IReadOnlyList<PricingExchangeRateEvidence> ExchangeRates { get; init; } = [];
 	public int Created { get; init; }
 	public int Updated { get; init; }
 	public int Skipped { get; init; }
