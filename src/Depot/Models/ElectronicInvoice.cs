@@ -9,6 +9,26 @@ public enum ElectronicInvoiceTypeCode
 	CreditNote = 381
 }
 
+public static class ElectronicInvoiceTaxCategories
+{
+	public const string StandardRated = "S";
+	public const string ZeroRated = "Z";
+	public const string Exempt = "E";
+	public const string ReverseCharge = "AE";
+
+	public static bool RequiresZeroRate(string categoryCode) => categoryCode is ZeroRated or Exempt or ReverseCharge;
+	public static bool RequiresExemptionReason(string categoryCode) => categoryCode is Exempt or ReverseCharge;
+	public static bool IsSupported(string categoryCode) => categoryCode is StandardRated or ZeroRated or Exempt or ReverseCharge;
+}
+
+public static class ElectronicInvoiceConformanceMatrix
+{
+	public const string XRechnungVersion = "3.0";
+	public const string GuidelineId = "urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0";
+	public const string ValidatorProfile = "KoSIT-XRechnung-3.0-CII";
+	public const string RoutingChannel = "XRechnung-CII";
+}
+
 public sealed class ElectronicInvoice
 {
 	public string InvoiceNumber { get; init; } = string.Empty;
@@ -67,7 +87,9 @@ public sealed class ElectronicInvoiceLine
 	public decimal UnitPrice { get; init; }
 	public decimal DiscountPercent { get; init; }
 	public decimal TaxRate { get; init; } = 19m;
-	public string TaxCategoryCode { get; init; } = "S";
+	public string TaxCategoryCode { get; init; } = ElectronicInvoiceTaxCategories.StandardRated;
+	public string? TaxExemptionReasonCode { get; init; }
+	public string? TaxExemptionReason { get; init; }
 	public string? SellerItemIdentifier { get; init; }
 	public string? BuyerItemIdentifier { get; init; }
 }
