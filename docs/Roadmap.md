@@ -1,6 +1,6 @@
 # Depot Roadmap
 
-Updated: 2026-09-08
+Updated: 2026-09-16
 
 This roadmap describes product capabilities and acceptance work without coupling the repository to historical implementation tranche names.
 
@@ -20,18 +20,22 @@ This roadmap describes product capabilities and acceptance work without coupling
 ### Costing and sales pricing
 
 - [x] scoped Global, Region and Customer PriceLists with Customer → Region → Global item resolution
-- [x] preferred-supplier Purchase Price as explicit first Base Cost source
-- [x] explicit Item Cost currency with fail-closed cross-currency handling
+- [x] explicit Base Cost sources: Preferred Supplier, Last Purchase, Manual Standard and Inventory Cost Reference
+- [x] explicit Item Cost currency and versioned calculation evidence
 - [x] Absolute and Percentage Cost Components
 - [x] Percentage bases `BaseCost` and `RunningTotal`
 - [x] deterministic Sequence + persisted identity calculation order
 - [x] effective-dated and active/inactive Cost Components
 - [x] central `ItemCostCalculationService` with calculation evidence
-- [x] Percentage Markup bulk generation without conflating Markup and Gross Margin
+- [x] Percentage Markup as an explicit pricing method
+- [x] Target Gross Margin as a distinct formula with `< 100%` validation
+- [x] controlled direct Cost Currency → PriceList Currency FX with effective date, source and version evidence
+- [x] fail-closed behavior for missing FX data without inversion, triangulation or implicit 1:1 fallback
+- [x] deterministic commercial rounding: currency precision, 0.01, 0.05, 0.10, 0.50 and `.99` ending
 - [x] All Active, Category, Manufacturer and Selected Item bulk filters
-- [x] mandatory Preview with Create/Update/Skip/Error decisions and calculation evidence
+- [x] mandatory Preview with Base Cost, FX, converted cost, formula and rounding intermediates
 - [x] Replace, Only Increase and Only Missing Apply modes
-- [x] atomic Bulk Apply with optimistic concurrency, Audit and service-layer RBAC
+- [x] atomic Bulk Apply with optimistic concurrency across PriceList, cost and FX evidence, Audit and service-layer RBAC
 - [x] historical Sales-document price snapshots remain immutable
 
 ### Finance
@@ -100,7 +104,7 @@ This does not certify versions outside the support matrix and does not close dep
 
 ## Demand-driven extensions
 
-Pricing extensions should build on the current service boundaries rather than introduce parallel formulas. Planned extension points include controlled FX conversion for cost-to-price generation, additional explicit Base Cost source strategies, Target Gross Margin as a distinct pricing method, and commercial rounding strategies such as 0.05/0.10/0.50 or .99 endings.
+Future pricing extensions should continue to use the current cost, FX and bulk-pricing boundaries. Plausible demand-driven additions include controlled automated rate ingestion with source governance, further explicit costing references backed by qualified accounting evidence, customer-contract pricing mechanics and additional market-specific commercial rounding policies.
 
 The existing Finance architecture can host additional regional/country localization packs without a schema change when requirements are metadata/configuration only. Jurisdictions that require new executable workflows, statutory filing formats, additional costing methods, direct bank connectivity or other missing behavior require separately scoped implementation and qualified acceptance.
 

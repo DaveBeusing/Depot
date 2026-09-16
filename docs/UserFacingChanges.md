@@ -1,14 +1,23 @@
 # User-facing changes
 
-Updated: 2026-09-08
+Updated: 2026-09-16
 
-Depot's current `0.15.x-preview` line includes the integrated Finance platform, persistent session/security administration and a production-tested database-provider matrix.
+Depot's current `0.15.x-preview` line includes the integrated Finance platform, persistent session/security administration, production-tested database-provider support and advanced commercial price generation.
 
-## Scoped Sales pricing
+## Scoped and advanced Sales pricing
 
 Sales price lists use Global, Regional or optional Customer scope. Price resolution falls back Customer → Region → Global independently for each item, so special and regional lists only need to contain exceptions. Customer-specific price-list assignments and Sales Regions are optional. Quotes and Sales Orders display the resolved source and preserve submitted/finalized pricing snapshots.
 
-Sales feature schema **11** preserves the pricing structures introduced through schema 10 and adds the provider-equivalent active inventory-reservation uniqueness invariant required by the order-to-cash path.
+Sales feature schema **12** retains the provider-equivalent active inventory-reservation uniqueness invariant from schema 11 and extends controlled bulk pricing with:
+
+- explicit Percentage Markup and Target Gross Margin methods;
+- direct effective-dated Cost Currency → PriceList Currency FX rates with source and version evidence;
+- fail-closed behavior when required FX evidence is missing;
+- deterministic commercial rounding to currency precision, 0.01, 0.05, 0.10, 0.50 or `.99` endings where applicable;
+- explicit Preferred Supplier, Last Purchase, Manual Standard and Inventory Cost Reference base-cost strategies;
+- Preview columns showing cost, FX, pricing-formula and rounding intermediates before Apply.
+
+Advanced bulk Apply remains atomic and revalidates target-list, cost and FX evidence. Historical Sales documents are not repriced.
 
 ## Finance workspaces
 
@@ -26,7 +35,7 @@ Built-in pack definitions and built-in registry rows are immutable. Additional c
 
 ## Database provider production support
 
-The production database path is now accepted on the exact baselines in [Database Provider Production Support Matrix](DatabaseProviderSupportMatrix.md):
+The production database path is accepted on the exact baselines in [Database Provider Production Support Matrix](DatabaseProviderSupportMatrix.md):
 
 - bundled SQLite runtime;
 - SQL Server 2022 / engine 16.x;
@@ -35,7 +44,7 @@ The production database path is now accepted on the exact baselines in [Database
 
 The matrix uses real providers and exercises migration, transaction/concurrency/retry behavior, Sales and Procurement, Finance GL/AR/AP/FIFO, Banking/reconciliation, Financial Reporting/snapshots, persistent sessions, server restart, provider-native remote backup/restore and representative 100k indexed access.
 
-This changes the technical support status from “provider-neutral implementation only” to a defined certified baseline. It does not change the jurisdiction/compliance boundary and does not automatically certify newer/older database versions.
+This technical support status does not change the jurisdiction/compliance boundary and does not automatically certify newer/older database versions.
 
 ## Compliance boundary
 
@@ -47,11 +56,13 @@ Provider-native remote backup scheduling/retention and disaster recovery remain 
 
 The default Finance system role includes operational Finance permissions according to the existing role definitions. Service-layer authorization remains authoritative regardless of UI visibility. Localization assignments and registry entries are retained `AuditEvidence`; custom changes create structured Audit records.
 
+Advanced pricing uses existing Item and Sales Pricing permissions. FX-rate maintenance and bulk Apply require Sales Pricing management permission; item-cost maintenance requires Item edit/manage permission.
+
 ## Current technical baseline
 
-- Application: **0.15.169-preview**
+- Application: **0.15.186-preview**
 - Core database schema: **30**
-- Sales schema: **11**
+- Sales schema: **12**
 - Finance schema: **9**
 - User Sessions schema: **3**
 - Security Events schema: **2**

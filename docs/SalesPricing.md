@@ -1,6 +1,6 @@
 # Sales Pricing
 
-Updated: 2026-09-08
+Updated: 2026-09-16
 
 ## Scope
 
@@ -18,13 +18,7 @@ A Customer or Region list therefore only needs to contain exceptions. Missing en
 
 ## Scope model
 
-PriceLists support:
-
-- `Global`
-- `Region`
-- `Customer`
-
-Customer-specific assignment is optional. A customer can also be assigned to a Sales Region. Existing Global lists remain valid and remain the final fallback.
+PriceLists support `Global`, `Region` and `Customer`. Customer-specific assignment is optional. A customer can also be assigned to a Sales Region. Existing Global lists remain valid and remain the final fallback.
 
 The resolver is centralized in `SalesPricingService`; Views, ViewModels and document services do not implement their own fallback algorithms.
 
@@ -34,74 +28,122 @@ Quotes and Sales Orders retain the resolved price source at the point where the 
 
 Finalized invoices continue to retain their own document-line monetary evidence and issuer/buyer finalization snapshots.
 
-## Item cost and bulk price generation
+## Item cost and advanced bulk price generation
 
-Item Cost Build-up was introduced in Sales schema 10 and remains the calculation source for controlled bulk price generation. The central flow is:
+Sales schema 12 extends the existing Item Cost Build-up without creating a parallel pricing engine. The central flow is:
 
 ```text
-Preferred supplier PurchasePrice
+Explicit Base Cost Source
         ↓
 ItemCostCalculationService
         ↓
-ordered cost components
+ordered Cost Components
         ↓
-Calculated Cost
+Calculated Cost + Cost Currency
         ↓
-PriceListGenerationService
+direct effective-dated FX when required
         ↓
-Markup + mandatory Preview
+Converted Cost in PriceList Currency
+        ↓
+Percentage Markup OR Target Gross Margin
+        ↓
+Commercial Rounding
+        ↓
+mandatory Preview with full intermediates
         ↓
 atomic Apply to one scoped PriceList
 ```
 
 Bulk pricing never bypasses `SalesPricingService` for runtime resolution and never rewrites historical Sales documents.
 
+### Explicit Base Cost strategies
+
+- Preferred Supplier Purchase Price;
+- Last Purchase backed by an actual Goods Receipt on or before the effective date;
+- Manual Standard;
+- Inventory Cost Reference.
+
+No strategy silently falls back to another strategy.
+
+### Pricing methods
+
+Percentage Markup:
+
+```text
+SalesPriceRaw = ConvertedCost × (1 + MarkupPercent / 100)
+```
+
+Target Gross Margin:
+
+```text
+SalesPriceRaw = ConvertedCost / (1 - GrossMarginPercent / 100)
+```
+
+Gross Margin must remain below 100%. It is not treated as another label for Markup.
+
+### Controlled FX
+
+`PricingExchangeRates` are directional and effective-dated. Resolution requires an exact Source Currency → Target Currency pair and chooses the newest record effective on or before the pricing date.
+
+Evidence includes rate source, effective date, rate, source/target currencies and row version. Depot does not invert, triangulate or assume missing rates. Missing FX data is a Preview error.
+
+### Commercial rounding
+
+The bulk request selects one deterministic strategy:
+
+- normal target-currency precision;
+- nearest 0.01;
+- nearest 0.05;
+- nearest 0.10;
+- nearest 0.50;
+- `.99` ending for two-decimal currencies.
+
+Preview exposes both raw and rounded prices plus the rounding adjustment.
+
 ## Schema and migration
 
-The **current Sales feature schema is 11**.
+The **current Sales feature schema is 12**.
 
-Sales schema **10** introduced:
+Sales schema **10** introduced Item Cost profiles/components and deterministic cost-component ordering.
 
-- scoped pricing structures from the previous Sales schema;
-- `ItemCostProfiles`;
-- `ItemCostComponents`;
-- deterministic `(ItemId, Sequence, Id)` cost-component lookup/order indexing.
+Sales schema **11** reconciled the cross-provider active inventory-reservation uniqueness invariant.
 
-Sales schema **11** adds/reconciles the cross-provider active inventory-reservation uniqueness invariant. It does not change the pricing formula or rewrite PriceLists, Item Cost evidence, Quotes, Sales Orders, Shipments or Invoices.
+Sales schema **12**:
 
-The reservation invariant is provider-equivalent rather than syntax-identical:
-
-- SQLite: partial unique index;
-- SQL Server: filtered unique index;
-- MariaDB/MySQL: generated `ActiveInventoryId` plus unique `(SalesOrderLineId, ActiveInventoryId)` index.
+- expands `ItemCostProfiles.BaseCostSource` to four explicit strategies;
+- adds `ManualStandardCost` and `InventoryCostReference` values;
+- adds versioned `PricingExchangeRates` with directional/effective uniqueness and lookup indexing.
 
 Core database schema remains **30**.
 
 ## Provider production acceptance
 
-Sales pricing and the order-to-cash path are included in the real production provider matrix for the supported SQLite, SQL Server 2022, MariaDB 11.8.9 and MySQL 8.4.11 baselines.
+Sales pricing and the order-to-cash path remain part of the production provider matrix for the supported SQLite, SQL Server 2022, MariaDB 11.8.9 and MySQL 8.4.11 baselines.
 
-Provider acceptance verifies:
-
-- scoped PriceList fallback behavior;
-- Sales feature 10→11 migration and reservation uniqueness;
-- Sales order approval/reservation/release;
-- shipment posting and stock impact;
-- invoice creation/posting and order completion;
-- provider transaction/constraint behavior.
+The schema-12 migration and runtime SQL are provider-neutral at the service/repository boundary and have provider-specific DDL only in the schema layer.
 
 MariaDB and MySQL are executed as separate jobs with separate connection settings and provider traits. They are never inferred from one another.
 
 See [Database Provider Production Support Matrix](DatabaseProviderSupportMatrix.md) for the exact certified database versions and recovery/performance boundary.
 
-## Concurrency and authorization
+## Concurrency, Audit and authorization
 
-PriceList mutations and bulk generation continue to use optimistic concurrency and service-layer authorization. Bulk Apply executes as one provider write transaction and revalidates preview evidence before changing target entries.
+PriceList mutations and bulk generation use optimistic concurrency and service-layer authorization. Bulk Apply executes as one provider write transaction and recalculates/revalidates:
+
+- PriceList version;
+- target entry version;
+- Cost evidence;
+- FX rate/version evidence;
+- formula result;
+- rounding result;
+- Apply Mode decision.
+
+Any drift requires a new Preview. The batch Audit record retains the pricing method, percentage, rounding strategy, effective date and actual FX evidence used.
 
 UI visibility is not an authorization boundary.
 
 ## Known boundaries
 
-Current bulk generation supports Percentage Markup, not Target Gross Margin, and fails closed when cost/list currencies differ. Controlled FX conversion and additional pricing methods remain separate extensions.
+Advanced pricing deliberately does not introduce automated market-rate ingestion, implicit FX inversion/triangulation, a separate live inventory-valuation source, or retroactive repricing of historical Sales documents.
 
 Database-provider certification does not imply market/jurisdiction-specific pricing, tax or invoicing compliance.
