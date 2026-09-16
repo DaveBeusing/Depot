@@ -53,6 +53,12 @@ Open **Inventory > Overview > Serial / lot traceability**. Search by part number
 
 Select a balance to see its movement history with movement type, quantity, warehouse/location and document reference.
 
+### Saved Views
+
+The traceability browser supports the same user-specific Saved Views framework as Inventory Overview under the semantic `inventory.traceability` workspace identifier. Save supported filters, column layout, sorting and grid density when you repeatedly investigate the same traceability perspective. A default view can be selected for this user/workspace, and **Reset** restores the canonical presentation.
+
+Saved Views contain presentation state only. They do not bypass `Items.View`, do not change tracking balances and do not query a separate data path. Stale or unsupported saved state is ignored so an old preference cannot prevent traceability from opening after an application upgrade.
+
 ## Blocking a serial number or lot
 
 Users with item-management permission can select a traceability balance, enter a block reason and choose **Block unit**. Blocking does not change stock quantity; it prevents outbound use. **Unblock** removes the control state. Both transitions use optimistic concurrency and are audited.
