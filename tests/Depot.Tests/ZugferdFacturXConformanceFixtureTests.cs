@@ -69,7 +69,8 @@ public sealed class ZugferdFacturXConformanceFixtureTests
 				var inspection = PdfSharpFacturXCompatibility.Inspect(artifact.PdfBytes);
 				Assert.Equal(ZugferdFacturXConformance.XmlFileName, inspection.FileName);
 				Assert.Equal("/Alternative", inspection.AfRelationship);
-				Assert.Equal("/text#2Fxml", inspection.MimeSubtype);
+				Assert.Equal("/text/xml", inspection.MimeSubtype);
+				Assert.True(FinalTrailerContainsDocumentId(artifact.PdfBytes));
 				Assert.Equal(xmlBytes, inspection.EmbeddedXml);
 				Assert.Contains("<pdfaid:part>3</pdfaid:part>", inspection.Xmp, StringComparison.Ordinal);
 				Assert.Contains("<pdfaid:conformance>B</pdfaid:conformance>", inspection.Xmp, StringComparison.Ordinal);
@@ -100,6 +101,13 @@ public sealed class ZugferdFacturXConformanceFixtureTests
 
 	private static string Normalize(string xml) => XDocument.Parse(xml).ToString(SaveOptions.DisableFormatting);
 	private static string Hash(byte[] bytes) => Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
+
+	private static bool FinalTrailerContainsDocumentId(byte[] pdfBytes)
+	{
+		var text = Encoding.ASCII.GetString(pdfBytes);
+		var trailer = text.LastIndexOf("trailer", StringComparison.Ordinal);
+		return trailer >= 0 && text.IndexOf("/ID", trailer, StringComparison.Ordinal) >= 0;
+	}
 
 	private sealed record ConformanceCase(
 		string PdfFileName,
