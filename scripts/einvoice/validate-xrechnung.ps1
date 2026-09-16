@@ -1,6 +1,7 @@
 param(
-    [string]$InvoicePath = "tests/Depot.Tests/Fixtures/ElectronicInvoice/xrechnung-cii-basic.xml",
-    [string]$WorkDir = "$PSScriptRoot/.kosit"
+	[string[]]$InvoicePath,
+	[string]$FixtureDirectory = "tests/Depot.Tests/Fixtures/ElectronicInvoice",
+	[string]$WorkDir = "$PSScriptRoot/.kosit"
 )
 
 $ErrorActionPreference = "Stop"
@@ -14,18 +15,42 @@ $configZip = Join-Path $WorkDir "validator-config.zip"
 $configDir = Join-Path $WorkDir "config"
 
 if (-not (Test-Path $validatorJar)) {
-    Invoke-WebRequest "https://github.com/itplr-kosit/validator/releases/download/v$validatorVersion/validator-$validatorVersion-standalone.jar" -OutFile $validatorJar
+	Invoke-WebRequest "https://github.com/itplr-kosit/validator/releases/download/v$validatorVersion/validator-$validatorVersion-standalone.jar" -OutFile $validatorJar
 }
 if (-not (Test-Path $configDir)) {
-    Invoke-WebRequest "https://github.com/itplr-kosit/validator-configuration-xrechnung/releases/download/v$configRelease/xrechnung-$configVersion-validator-configuration-$configRelease.zip" -OutFile $configZip
-    Expand-Archive $configZip -DestinationPath $configDir -Force
+	Invoke-WebRequest "https://github.com/itplr-kosit/validator-configuration-xrechnung/releases/download/v$configRelease/xrechnung-$configVersion-validator-configuration-$configRelease.zip" -OutFile $configZip
+	Expand-Archive $configZip -DestinationPath $configDir -Force
 }
 
 $scenario = Get-ChildItem -Path $configDir -Filter "scenarios.xml" -Recurse | Select-Object -First 1
-if (-not (Test-Path $validatorJar) -or -not $scenario) { throw "KoSIT validator assets are incomplete." }
+if (-not (Test-Path $validatorJar) -or -not $scenario) {
+	throw "KoSIT validator assets are incomplete."
+}
 
-$invoiceFull = (Resolve-Path $InvoicePath).Path
-& java -jar $validatorJar -s $scenario.FullName -r $scenario.DirectoryName -h $invoiceFull
-if ($LASTEXITCODE -ne 0) { throw "KoSIT validation failed with exit code $LASTEXITCODE." }
+if ($InvoicePath) {
+	$invoiceFiles = @(
+		$InvoicePath | ForEach-Object {
+			Get-Item (Resolve-Path $_).Path
+		}
+	)
+}
+else {
+	$invoiceFiles = @(
+		Get-ChildItem -Path $FixtureDirectory -Filter "xrechnung-cii-*.xml" -File |
+			Sort-Object Name
+	)
+}
 
-Write-Host "XRechnung validation succeeded for $invoiceFull with KoSIT Validator $validatorVersion / XRechnung $configVersion ($configRelease)."
+if ($invoiceFiles.Count -eq 0) {
+	throw "No XRechnung conformance fixtures were found."
+}
+
+foreach ($invoice in $invoiceFiles) {
+	Write-Host "Validating XRechnung conformance fixture: $($invoice.Name)"
+	& java -jar $validatorJar -s $scenario.FullName -r $scenario.DirectoryName -h $invoice.FullName
+	if ($LASTEXITCODE -ne 0) {
+		throw "KoSIT validation failed for $($invoice.Name) with exit code $LASTEXITCODE."
+	}
+}
+
+Write-Host "XRechnung conformance matrix succeeded for $($invoiceFiles.Count) fixture(s) with KoSIT Validator $validatorVersion / XRechnung $configVersion ($configRelease)."

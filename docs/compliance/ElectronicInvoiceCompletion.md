@@ -34,6 +34,20 @@ The F2 production path explicitly targets:
 - guideline `urn:cen.eu:en16931:2017#compliant#urn:xeinkauf.de:kosit:xrechnung_3.0`
 - validator evidence profile `KoSIT-XRechnung-3.0-CII`
 
+Automated external conformance covers the complete bounded F2 issuance matrix:
+
+| Fixture | Document | VAT semantics |
+| --- | --- | --- |
+| `xrechnung-cii-basic.xml` | Invoice | Standard rated (`S`) |
+| `xrechnung-cii-zero-rated.xml` | Invoice | Zero rated (`Z`) |
+| `xrechnung-cii-exempt.xml` | Invoice | Exempt (`E`) with exemption evidence |
+| `xrechnung-cii-reverse-charge.xml` | Invoice | Reverse charge (`AE`) with exemption evidence |
+| `xrechnung-cii-credit-note.xml` | Credit Note | Standard rated (`S`) |
+
+`ElectronicInvoiceConformanceFixtureTests` regenerates every matrix case through `ElectronicInvoiceService` and requires normalized XML equality with the retained fixture. The GitHub conformance workflow then validates every retained fixture with the pinned KoSIT Validator and XRechnung configuration. A hand-edited validator fixture therefore cannot become acceptance evidence unless it still matches Depot's production generator output.
+
+The fixtures also contain the XRechnung BuyerReference and seller/buyer electronic endpoint evidence used by the generator. Recipient/routing persistence remains separately covered by Sales finalization tests because F2 does not perform external message transport.
+
 A future XRechnung release must update the explicit conformance constants and validator evidence; it is not accepted implicitly.
 
 ## Legacy remediation
