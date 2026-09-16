@@ -1,4 +1,2 @@
-// Copyright (c) 2026 David Beusing
-// Licensed under the MIT License.
-
+global using System.IO;
 global using System.Net.Http;
