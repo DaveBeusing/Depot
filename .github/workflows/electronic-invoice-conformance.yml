@@ -7,6 +7,7 @@ on:
       - 'src/Depot/Models/ElectronicInvoice.cs'
       - 'src/Depot/Services/ElectronicInvoiceService.cs'
       - 'tests/Depot.Tests/ElectronicInvoiceTests.cs'
+      - 'tests/Depot.Tests/ElectronicInvoiceConformanceFixtureTests.cs'
       - 'tests/Depot.Tests/SalesInvoiceFinalizationTests.cs'
       - 'tests/Depot.Tests/SalesFeatureTests.cs'
       - 'tests/Depot.Tests/Fixtures/ElectronicInvoice/**'
@@ -17,6 +18,7 @@ on:
       - 'src/Depot/Models/ElectronicInvoice.cs'
       - 'src/Depot/Services/ElectronicInvoiceService.cs'
       - 'tests/Depot.Tests/ElectronicInvoiceTests.cs'
+      - 'tests/Depot.Tests/ElectronicInvoiceConformanceFixtureTests.cs'
       - 'tests/Depot.Tests/SalesInvoiceFinalizationTests.cs'
       - 'tests/Depot.Tests/SalesFeatureTests.cs'
       - 'tests/Depot.Tests/Fixtures/ElectronicInvoice/**'
@@ -35,6 +37,15 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - name: Validate representative XRechnung CII fixture
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Restore locked dependencies
+        shell: pwsh
+        run: dotnet restore tests/Depot.Tests/Depot.Tests.csproj --locked-mode -p:AuditPipeline=true
+      - name: Verify generator-bound conformance fixtures
+        shell: pwsh
+        run: dotnet test tests/Depot.Tests/Depot.Tests.csproj --configuration Release --no-restore --filter "FullyQualifiedName~ElectronicInvoiceConformanceFixtureTests" -warnaserror
+      - name: Validate advertised XRechnung CII matrix
         shell: pwsh
         run: ./scripts/einvoice/validate-xrechnung.ps1
