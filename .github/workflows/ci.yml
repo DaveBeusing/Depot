@@ -30,6 +30,10 @@ jobs:
       - name: Build
         run: dotnet build Depot.slnx --configuration Release --no-restore -warnaserror
 
+      - name: Validate disaster recovery profile contract
+        shell: pwsh
+        run: ./scripts/operations/Test-DisasterRecoveryProfile.ps1 -ProfilePath operations/DisasterRecoveryProfile.example.json -AllowTemplate -EvidencePath artifacts/operations/DisasterRecoveryProfile.validation.json
+
       - name: Restore win-x64 runtimes
         shell: pwsh
         run: |
@@ -62,6 +66,14 @@ jobs:
           -p:DebugType=None
           -p:DebugSymbols=false
           -o artifacts/publish/manager
+
+      - name: Upload DR profile contract evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: disaster-recovery-profile-contract-${{ github.sha }}
+          path: artifacts/operations/DisasterRecoveryProfile.validation.json
+          if-no-files-found: error
+          retention-days: 90
 
   test:
     name: Tests - ${{ matrix.area }}

@@ -29,7 +29,7 @@ Release channels are explicit:
 - **Preview** uses `<version>-preview`, retains the preview product-version suffix and publishes with `prerelease=true`. Preview may remain unsigned.
 - **Stable** uses the exact numeric version, removes the preview suffix and publishes with `prerelease=false`. Stable requires production signing acceptance to report `PASS` before publication.
 
-`scripts/release.ps1` remains only a dispatcher for the authoritative workflow. It now also supports `-Channel Stable -AcceptanceOnly`, which executes the production-signed Stable RC path without creating a GitHub Release.
+`scripts/release.ps1` remains only a dispatcher for the authoritative workflow. It also supports `-Channel Stable -AcceptanceOnly`, which executes the production-signed Stable RC path without creating a GitHub Release.
 
 DepotManager installation/update/repair discovery remains a Stable-channel consumer and ignores `prerelease=true` releases.
 
@@ -48,6 +48,23 @@ The technical H3 signing boundary is implemented:
 
 **Production acceptance remains BLOCKED until a real production-signed Stable acceptance-only run on current `master` completes successfully and retained evidence reports `PASS`.** Ephemeral Packaged-E2E certificates do not satisfy this gate.
 
+## Production operations and disaster recovery
+
+The H4 technical operating boundary is implemented around the existing provider-native recovery capabilities rather than adding a second backup engine.
+
+- `operations/DisasterRecoveryProfile.example.json` defines the deployment DR contract.
+- `scripts/operations/Test-DisasterRecoveryProfile.ps1` requires explicit RPO, RTO, retention, off-host copies, encryption, monitoring, restore-drill age and named ownership.
+- CI validates the DR-profile contract as part of `CI Required Gate`.
+- SQLite recovery acceptance restores a verified backup into an isolated target, compares SHA-256, runs `PRAGMA integrity_check` and validates Depot schema metadata.
+- SQL Server, MariaDB and MySQL run their provider-native backup/restore drill on pull requests as part of `Database Provider Required Gate`, rather than only on post-merge full certification runs.
+- provider recovery drills retain structured JSON evidence without database identity or credentials.
+- DepotManager support packages include `RecoveryReadiness.json`; log-collection ACL/I/O failures no longer prevent support-package creation and are represented with sanitized recovery guidance.
+- access denied, missing resource, disk-full/file-I/O and SQLite lock failures have explicit recovery classifications/guidance.
+
+The authoritative operating model and provider runbooks are in [Production Operations & Disaster Recovery](ProductionOperationsDisasterRecovery.md).
+
+**A specific deployment is not production-DR-accepted merely because repository CI is green. It remains operationally BLOCKED until an ACTIVE deployment DR profile is validated and its real backup infrastructure has passed an isolated restore drill within the accepted RPO/RTO.**
+
 ## Database provider production status
 
 Depot has a dedicated real-provider production acceptance matrix in `.github/workflows/database-provider-acceptance.yml`.
@@ -59,7 +76,7 @@ The following database baselines are technically **Supported** when shipped with
 - MariaDB 11.8.9 LTS;
 - MySQL 8.4.11 LTS.
 
-The full matrix validates fresh/idempotent provisioning, Core 29→30 and Sales 10→11 migrations, concurrent provisioning, SQL/type/constraint/date/decimal behavior, transactional rollback, concurrency/deadlock/retry behavior, Sales, Procurement, sessions, Finance GL/AR/AP/FIFO, Banking/reconciliation, Financial Reporting/snapshots, server restart, native remote backup/restore and representative 100k indexed access.
+The matrix validates fresh/idempotent provisioning, Core 29→30 and Sales 10→11 migrations, concurrent provisioning, SQL/type/constraint/date/decimal behavior, transactional rollback, concurrency/deadlock/retry behavior, Sales, Procurement, sessions, Finance GL/AR/AP/FIFO, Banking/reconciliation, Financial Reporting/snapshots, server restart, native remote backup/restore and representative 100k indexed access. Pull requests now include provider recovery drills and retained recovery evidence for every supported provider family.
 
 MariaDB and MySQL are independently certified; support for one never implies support for the other. Versions outside the listed baselines remain untested/best-effort until explicitly added to the matrix.
 
@@ -81,7 +98,7 @@ The security feature does not collect source IP, geolocation, MAC address, hardw
 
 ## Versions
 
-- Application: **0.15.172-preview**
+- Application: **0.15.173-preview**
 - DepotManager: **0.1.23-preview**
 - Core database schema: **30**
 - Sales feature schema: **11**
@@ -96,11 +113,13 @@ Sales schema 11 restores/enforces the active inventory-reservation uniqueness in
 
 ## Validation boundary
 
-Release build with `-warnaserror`, repository regression suites, Security Supply Chain and Software Quality remain release gates. Database-provider support is additionally governed by the full real-provider acceptance workflow and its exact version matrix.
+Release build with `-warnaserror`, repository regression suites, Security Supply Chain and Software Quality remain release gates. Database-provider support is additionally governed by the real-provider acceptance workflow and its exact version matrix, now including restore-drill evidence in the required pull-request gate.
 
-The five stable aggregate status checks are the intended repository-level merge contract for `master`; detailed matrix jobs remain implementation details behind those aggregates.
+The five stable aggregate status checks remain the intended repository-level merge contract for `master`; detailed matrix jobs remain implementation details behind those aggregates.
 
-The release workflow now contains the complete technical production-signing acceptance path, but repository implementation is not itself evidence that the real production certificate has passed RC acceptance. That external evidence must exist before H3 can be marked production-accepted.
+The release workflow contains the complete technical production-signing acceptance path, but repository implementation is not itself evidence that the real production certificate has passed RC acceptance. That external evidence must exist before H3 can be marked production-accepted.
+
+Likewise, repository recovery evidence is generic product/provider evidence, not a customer's accepted backup schedule, retention policy or restore drill.
 
 Provider support does not replace deployment-specific accounting/tax/legal, accessibility, OS/client, performance-sizing, backup-retention or organizational acceptance.
 
@@ -108,4 +127,4 @@ Provider support does not replace deployment-specific accounting/tax/legal, acce
 
 Remaining authentication roadmap items include MFA, OIDC/SSO/external identity providers, optional deployment-specific alert delivery/routing implementations, and explicit privacy/threat-model work before IP/geolocation/device-trust signals are considered.
 
-For Track A, repository governance and the single release pipeline are implemented; the production-signing implementation is technically complete but production acceptance remains blocked pending a real signed RC run. The remaining implementation packages are production operations/disaster recovery and accessibility/manual desktop acceptance, together with the wider accounting/tax/localization and legal items tracked in [Release 1.0](Release1.0.md) and the [Roadmap](Roadmap.md).
+For Track A, H1/H2 are implemented, H3 is technically implemented but production acceptance remains blocked pending a real signed RC, and H4 provides the technical/operational DR contract while each real deployment still requires its own accepted profile and drill. The remaining implementation package is accessibility/manual desktop production acceptance. Wider accounting/tax/localization and legal items remain tracked in [Release 1.0](Release1.0.md) and the [Roadmap](Roadmap.md).
