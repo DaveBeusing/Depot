@@ -14,24 +14,22 @@ Repository governance exposes five stable aggregate GitHub Actions checks intend
 - `Packaged E2E Required Gate`;
 - `Database Provider Required Gate`.
 
-Each aggregate check fails unless every underlying workflow dependency succeeds. The packaged DepotManager E2E workflow runs its Smoke tier on every pull request targeting `master`, preventing required-check deadlocks caused by pull-request path filtering.
+Each aggregate check fails unless every underlying workflow dependency succeeds. The source-controlled ruleset template is `.github/rulesets/MasterGovernance.json` and the activation procedure is documented in [Repository Governance](RepositoryGovernance.md).
 
-The target `master` policy requires pull requests, blocks force pushes and branch deletion, requires the five aggregate checks, requires zero external approvals for the current one-person project and does not require branches to be up to date before merging. The source-controlled ruleset template is `.github/rulesets/MasterGovernance.json`; repository-setting activation is documented in [Repository Governance](RepositoryGovernance.md).
+**Administrative H1 closure is still required.** A live repository check on 2026-09-16 showed no active repository ruleset and `master` was not protected. The template must be activated in GitHub and the active ruleset ID/settings evidence retained before H1 can be marked `PASS` in Track A closure.
 
 ## Release pipeline
 
-`.github/workflows/release-integrity.yml` is the single authoritative Source-to-Release path.
-
-The workflow performs locked restore, Release `-warnaserror` build, Depot and DepotManager regression tests, shared packaged publishing, channel validation, signing policy, manifest/hash/evidence generation and GitHub Release publication from the exact validated artifact.
+`.github/workflows/release-integrity.yml` is the single authoritative Source-to-Release path. It performs locked restore, Release `-warnaserror` build, Depot and DepotManager regression tests, shared packaged publishing, channel validation, signing policy, manifest/hash/evidence generation and GitHub Release publication from the exact validated artifact.
 
 Release channels are explicit:
 
 - **Preview** uses `<version>-preview`, retains the preview product-version suffix and publishes with `prerelease=true`. Preview may remain unsigned.
 - **Stable** uses the exact numeric version, removes the preview suffix and publishes with `prerelease=false`. Stable requires production signing acceptance to report `PASS` before publication.
 
-`scripts/release.ps1` remains only a dispatcher for the authoritative workflow. It also supports `-Channel Stable -AcceptanceOnly`, which executes the production-signed Stable RC path without creating a GitHub Release.
+`scripts/release.ps1` remains only a dispatcher for the authoritative workflow. It supports `-Channel Stable -AcceptanceOnly`, which executes the production-signed Stable RC path without creating a GitHub Release. DepotManager installation/update/repair discovery remains a Stable-channel consumer and ignores `prerelease=true` releases.
 
-DepotManager installation/update/repair discovery remains a Stable-channel consumer and ignores `prerelease=true` releases.
+The Track A closure review corrected a release-identity defect exposed by the H5 PR workflow: the conditioned XML node for `DepotVersionSuffix` was being read by PowerShell as `System.Xml.XmlElement`, producing an invalid Preview tag. The suffix is now a fixed repository property so release/evidence readers resolve the literal `preview` value.
 
 See [Release Pipeline](ReleasePipeline.md), [Production Signing Acceptance](ProductionSigningAcceptance.md) and [Release Integrity](compliance/ReleaseIntegrity.md).
 
@@ -46,7 +44,7 @@ The technical H3 signing boundary is implemented:
 - a production-signed packaged RC E2E runs before Stable evidence is finalized;
 - Stable DepotManager update and self-update paths enforce publisher continuity against the trusted signer of the running Stable manager.
 
-**Production acceptance remains BLOCKED until a real production-signed Stable acceptance-only run on current `master` completes successfully and retained evidence reports `PASS`.** Ephemeral Packaged-E2E certificates do not satisfy this gate.
+**Production acceptance remains `PRODUCTION_RC_REQUIRED` until a real production-signed Stable acceptance-only run on current `master` completes successfully and retained evidence reports `PASS`.** Ephemeral Packaged-E2E certificates do not satisfy this gate.
 
 ## Production operations and disaster recovery
 
@@ -60,16 +58,18 @@ The H4 technical operating boundary is implemented around the existing provider-
 - provider recovery drills retain structured JSON evidence without database identity or credentials.
 - DepotManager support packages include `RecoveryReadiness.json`; log-collection ACL/I/O failures no longer prevent support-package creation and are represented with sanitized recovery guidance.
 
+The Track A closure review found that SQLite migration-safety backup validation could leave a pooled provider handle on the generated backup, causing the immediate recovery drill to fail with a file-sharing violation. The closure fix disables pooling for these short-lived backup/validation connections and adds an exclusive-open regression assertion before the restore drill.
+
 The authoritative operating model and provider runbooks are in [Production Operations & Disaster Recovery](ProductionOperationsDisasterRecovery.md).
 
-**A specific deployment is not production-DR-accepted merely because repository CI is green. It remains operationally BLOCKED until an ACTIVE deployment DR profile is validated and its real backup infrastructure has passed an isolated restore drill within the accepted RPO/RTO.**
+**A specific deployment remains `DEPLOYMENT_REQUIRED` until an ACTIVE deployment DR profile is validated and its real backup infrastructure has passed an isolated restore drill within the accepted RPO/RTO.**
 
 ## Accessibility and desktop production acceptance
 
 The H5 technical desktop-accessibility boundary is implemented without treating automation as a substitute for human desktop acceptance.
 
 - `DesktopAccessibilityRuntime` supplies a shared visible keyboard-focus fallback when a focusable WPF control resolves a null `FocusVisualStyle`, including legacy shared styles.
-- the accessibility static gate now detects both direct and Setter-based focus suppression and rejects unsafe suppression outside controlled shared resources.
+- the accessibility static gate detects direct and Setter-based focus suppression and rejects unsafe suppression outside controlled shared resources.
 - cyclic Tab-navigation declarations are rejected by the quality gate.
 - `TextInput` and `PasswordInput` forward UI Automation labels, required-field state and related metadata to the native inner keyboard focus target.
 - Login and first-run administrator inputs expose explicit label and required-field semantics.
@@ -82,6 +82,20 @@ The H5 technical desktop-accessibility boundary is implemented without treating 
 The procedure is documented in [Accessibility & Desktop Production Acceptance](AccessibilityProductionAcceptance.md) and [Desktop Accessibility Baseline](compliance/Accessibility.md).
 
 **Desktop production accessibility acceptance remains `MANUAL_REQUIRED` until the exact packaged release candidate has passed keyboard-only, focus/no-trap, Narrator, Accessibility Insights and 100/125/150/200% DPI acceptance and retained evidence passes `Test-AccessibilityAcceptance.ps1 -RequirePass`.**
+
+## Track A final acceptance closure
+
+All five Track A implementation packages are present in the repository. `operations/TrackAAcceptance.example.json` and `scripts/operations/Test-TrackAAcceptance.ps1` now provide one explicit closure/evidence contract, documented in [Track A – Final Acceptance Closure](TrackAAcceptanceClosure.md).
+
+Current closure states are:
+
+- H1 Repository Governance: `ADMIN_REQUIRED`;
+- H2 Release Pipeline & Channels: `PASS` at the repository implementation boundary;
+- H3 Production Signing: `PRODUCTION_RC_REQUIRED`;
+- H4 Production Operations & DR: `DEPLOYMENT_REQUIRED`;
+- H5 Accessibility & Desktop Acceptance: `MANUAL_REQUIRED`.
+
+The template therefore remains top-level `BLOCKED`. `Test-TrackAAcceptance.ps1 -RequirePass` fails closed unless H1 through H5 all contain concrete evidence, the exact Stable source/version is recorded and no blocking issues remain. CI validates the shape of the closure contract but deliberately does not manufacture production acceptance.
 
 ## Database provider production status
 
@@ -116,7 +130,7 @@ The security feature does not collect source IP, geolocation, MAC address, hardw
 
 ## Versions
 
-- Application: **0.15.176-preview**
+- Application: **0.15.177-preview**
 - DepotManager: **0.1.23-preview**
 - Core database schema: **30**
 - Sales feature schema: **11**
@@ -129,20 +143,14 @@ Every commit increments `DepotVersionPatch`.
 
 ## Validation boundary
 
-Release build with `-warnaserror`, repository regression suites, Security Supply Chain and Software Quality remain release gates. Database-provider support is additionally governed by the real-provider acceptance workflow and its exact version matrix, including restore-drill evidence in the required pull-request gate.
+Release build with `-warnaserror`, repository regression suites, Security Supply Chain, Software Quality, Packaged E2E and Database Provider acceptance remain technical gates. CI additionally validates the Track A closure evidence contract and retains its validation result.
 
-The five stable aggregate status checks remain the intended repository-level merge contract for `master`; detailed matrix jobs remain implementation details behind those aggregates.
-
-Repository implementation does not itself prove the external/manual acceptance gates: production signing still requires a real signed RC, real deployments require their own DR profile/restore drill, and desktop accessibility requires exact-RC manual evidence.
+Repository implementation does not itself prove the external/manual acceptance gates: H1 requires active GitHub settings evidence, H3 requires a real signed Stable RC, H4 requires deployment-specific DR evidence and H5 requires exact-RC human desktop evidence.
 
 Provider support does not replace deployment-specific accounting/tax/legal, accessibility, OS/client, performance-sizing, backup-retention or organizational acceptance.
 
 ## Next steps
 
-All five Track A implementation packages now have repository implementations. Track A closure is therefore an acceptance/administration phase rather than another implementation package:
+Finish the four real Track A closure actions and validate the resulting controlled evidence with `Test-TrackAAcceptance.ps1 -RequirePass`. Track A closure remains a prerequisite rather than the whole Depot 1.0 decision.
 
-- activate the source-controlled `master` repository ruleset in GitHub;
-- complete a real production-signed Stable RC acceptance run;
-- complete deployment-specific DR profile/restore-drill acceptance where production deployment is intended;
-- complete and retain exact-RC desktop accessibility acceptance evidence;
-- close remaining wider accounting/tax/localization/legal and release-readiness items tracked in [Release 1.0](Release1.0.md) and the [Roadmap](Roadmap.md).
+Remaining 1.0 work outside Track A is tracked in [Release 1.0](Release1.0.md) and the [Roadmap](Roadmap.md), including deployment/accounting procedure acceptance, customer-specific production sizing, remaining electronic-invoice scenarios and qualified GDPR/CRA/legal review.

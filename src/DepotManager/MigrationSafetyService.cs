@@ -27,8 +27,18 @@ public sealed class MigrationSafetyService
             $"Depot-{versionText}-Schema{schemaVersion}-{DateTimeOffset.UtcNow:yyyyMMdd-HHmmss}.db");
 
         cancellationToken.ThrowIfCancellationRequested();
-        var sourceBuilder = new SqliteConnectionStringBuilder { DataSource = sourcePath, Mode = SqliteOpenMode.ReadWrite };
-        var destinationBuilder = new SqliteConnectionStringBuilder { DataSource = backupPath, Mode = SqliteOpenMode.ReadWriteCreate };
+        var sourceBuilder = new SqliteConnectionStringBuilder
+        {
+            DataSource = sourcePath,
+            Mode = SqliteOpenMode.ReadWrite,
+            Pooling = false
+        };
+        var destinationBuilder = new SqliteConnectionStringBuilder
+        {
+            DataSource = backupPath,
+            Mode = SqliteOpenMode.ReadWriteCreate,
+            Pooling = false
+        };
         await using var source = new SqliteConnection(sourceBuilder.ConnectionString);
         await using var destination = new SqliteConnection(destinationBuilder.ConnectionString);
         await source.OpenAsync(cancellationToken);
@@ -41,7 +51,13 @@ public sealed class MigrationSafetyService
         if (!File.Exists(backupPath) || new FileInfo(backupPath).Length == 0)
             throw new InvalidOperationException("The SQLite migration safety backup could not be validated.");
 
-        await using var validation = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = backupPath, Mode = SqliteOpenMode.ReadOnly }.ConnectionString);
+        var validationBuilder = new SqliteConnectionStringBuilder
+        {
+            DataSource = backupPath,
+            Mode = SqliteOpenMode.ReadOnly,
+            Pooling = false
+        };
+        await using var validation = new SqliteConnection(validationBuilder.ConnectionString);
         await validation.OpenAsync(cancellationToken);
         await using var command = validation.CreateCommand();
         command.CommandText = "PRAGMA integrity_check;";
@@ -49,6 +65,7 @@ public sealed class MigrationSafetyService
         if (!string.Equals(result, "ok", StringComparison.OrdinalIgnoreCase))
             throw new InvalidOperationException($"The SQLite migration safety backup failed integrity validation: {result}");
 
+        await validation.CloseAsync();
         return backupPath;
     }
 }

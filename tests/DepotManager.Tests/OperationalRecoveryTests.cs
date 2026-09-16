@@ -31,9 +31,14 @@ public sealed class OperationalRecoveryTests
             var backup = await new MigrationSafetyService().CreateSqliteSafetyBackupAsync(
                 settings,
                 root,
-                new Version(0, 15, 172),
+                new Version(0, 15, 177),
                 30,
                 CancellationToken.None);
+
+            using (var exclusiveRead = new FileStream(backup, FileMode.Open, FileAccess.Read, FileShare.None))
+            {
+                Assert.True(exclusiveRead.Length > 0);
+            }
 
             var evidence = await new SqliteRecoveryDrillService().ValidateBackupAsync(
                 backup,
