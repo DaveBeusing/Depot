@@ -37,6 +37,9 @@ public sealed class SalesCreditNoteLine
 	public decimal UnitPrice { get; set; }
 	public decimal DiscountPercent { get; set; }
 	public decimal TaxRate { get; set; }
+	public string TaxCategoryCode { get; set; } = ElectronicInvoiceTaxCategories.StandardRated;
+	public string? TaxExemptionReasonCode { get; set; }
+	public string? TaxExemptionReason { get; set; }
 	public decimal NetAmount => Math.Round(Quantity * UnitPrice * (1m - DiscountPercent / 100m), 2, MidpointRounding.AwayFromZero);
 	public decimal TaxAmount => Math.Round(NetAmount * TaxRate / 100m, 2, MidpointRounding.AwayFromZero);
 	public decimal GrossAmount => NetAmount + TaxAmount;

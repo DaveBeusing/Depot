@@ -67,8 +67,6 @@ public sealed class SalesInvoiceFinalizationService
 		if (Convert.ToInt32(existing, CultureInfo.InvariantCulture) != 0)
 			throw new InvalidOperationException("This sales invoice is already finalized and its buyer/XRechnung identity cannot be replaced.");
 		if (invoice.Lines.Count == 0) throw new InvalidOperationException("A finalized invoice requires at least one invoice line.");
-		if (invoice.Lines.Any(line => line.TaxRate <= 0m))
-			throw new InvalidOperationException("Electronic invoice finalization currently requires a positive standard VAT rate on every line. Zero-rated, exempt and reverse-charge lines require an explicit EN 16931 tax category and exemption reason before they can be issued safely.");
 		if (string.IsNullOrWhiteSpace(issuer.Iban))
 			throw new InvalidOperationException("Company IBAN is required before an invoice can be finalized for electronic payment.");
 
@@ -139,7 +137,9 @@ public sealed class SalesInvoiceFinalizationService
 				UnitPrice = line.UnitPrice,
 				DiscountPercent = line.DiscountPercent,
 				TaxRate = line.TaxRate,
-				TaxCategoryCode = "S",
+				TaxCategoryCode = line.TaxCategoryCode,
+				TaxExemptionReasonCode = line.TaxExemptionReasonCode,
+				TaxExemptionReason = line.TaxExemptionReason,
 				SellerItemIdentifier = line.PartNumber
 			}).ToArray(),
 			Note = invoice.Notes
@@ -156,6 +156,7 @@ public sealed class SalesInvoiceFinalizationService
 			new DatabaseParameter("$Xml", xml),
 			new DatabaseParameter("$Hash", hash),
 			new DatabaseParameter("$At", finalizedAtUtc.ToString("O", CultureInfo.InvariantCulture)));
+		await SalesCreditNoteFinalizationService.InsertRoutingEvidenceAsync(transaction, "Invoice", invoice.Id, buyer, finalizedAtUtc, cancellationToken);
 		return new SalesInvoiceFinalization(invoice.Id, buyer, xml, hash, finalizedAtUtc);
 	}
 
