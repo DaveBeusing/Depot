@@ -25,7 +25,7 @@ internal static class PdfSharpFacturXCompatibility
 	private const string MetadataKey = "/Metadata";
 	private const string EmbeddedFilesKey = "/EmbeddedFiles";
 	private const string AssociatedFilesKey = "/AF";
-	private const string XmlMimeName = "/text#2Fxml";
+	private const string XmlMimeName = "/text/xml";
 
 	public static void Configure(PdfDocument document, byte[] xmlBytes, DateTime createdAtUtc)
 	{
@@ -165,8 +165,9 @@ internal static class PdfSharpFacturXCompatibility
 		}
 
 		var previousXref = FindPreviousXref(pdfBytes);
+		var documentIdEntry = FindDocumentIdEntry(pdfBytes);
 		var xmpBytes = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false).GetBytes(xmp);
-		using var output = new MemoryStream(pdfBytes.Length + xmpBytes.Length + 512);
+		using var output = new MemoryStream(pdfBytes.Length + xmpBytes.Length + 768);
 		output.Write(pdfBytes);
 		var metadataOffset = output.Position;
 		WriteAscii(output, $"\n{metadataObjectNumber} {metadataGeneration} obj\n<< /Type /Metadata /Subtype /XML /Length {xmpBytes.Length.ToString(CultureInfo.InvariantCulture)} >>\nstream\n");
@@ -175,7 +176,7 @@ internal static class PdfSharpFacturXCompatibility
 		var xrefOffset = output.Position;
 		WriteAscii(output,
 			$"xref\n{metadataObjectNumber} 1\n{metadataOffset:0000000000} {metadataGeneration:00000} n \n" +
-			$"trailer\n<< /Size {size} /Root {catalogObjectNumber} {catalogGeneration} R /Prev {previousXref} >>\nstartxref\n{xrefOffset}\n%%EOF\n");
+			$"trailer\n<< /Size {size} /Root {catalogObjectNumber} {catalogGeneration} R /Prev {previousXref} {documentIdEntry} >>\nstartxref\n{xrefOffset}\n%%EOF\n");
 		return output.ToArray();
 	}
 
@@ -191,6 +192,23 @@ internal static class PdfSharpFacturXCompatibility
 		if (start == index || !long.TryParse(text.AsSpan(start, index - start), NumberStyles.None, CultureInfo.InvariantCulture, out var offset))
 			throw new InvalidOperationException("PDF startxref value is invalid.");
 		return offset;
+	}
+
+	private static string FindDocumentIdEntry(byte[] pdfBytes)
+	{
+		var text = Encoding.ASCII.GetString(pdfBytes);
+		var trailer = text.LastIndexOf("trailer", StringComparison.Ordinal);
+		if (trailer < 0) throw new InvalidOperationException("PDF does not contain a trailer dictionary.");
+		var idStart = text.IndexOf("/ID", trailer, StringComparison.Ordinal);
+		if (idStart < 0) throw new InvalidOperationException("PDFsharp did not create document file identifiers required for PDF/A.");
+		var arrayStart = text.IndexOf('[', idStart);
+		var arrayEnd = arrayStart < 0 ? -1 : text.IndexOf(']', arrayStart + 1);
+		if (arrayStart < 0 || arrayEnd < 0)
+			throw new InvalidOperationException("PDF document file identifiers are malformed.");
+		var entry = text[idStart..(arrayEnd + 1)];
+		if (!entry.Contains('<', StringComparison.Ordinal) || !entry.Contains('>', StringComparison.Ordinal))
+			throw new InvalidOperationException("PDF document file identifiers are empty or malformed.");
+		return entry;
 	}
 
 	private static PdfObject? Dereference(PdfItem? item) => item is PdfReference reference ? reference.Value : item as PdfObject;
