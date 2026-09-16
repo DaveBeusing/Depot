@@ -18,6 +18,7 @@ public sealed class SecurityMaintenanceService : IDisposable
 	private readonly UserSessionRepository _sessions;
 	private readonly SecurityEventRepository _securityEvents;
 	private readonly AuthenticationSecurityRepository _authenticationSecurity;
+	private readonly SecurityEventDeliveryRepository? _securityEventDelivery;
 	private readonly TimeProvider _timeProvider;
 	private readonly SemaphoreSlim _runGate = new(1, 1);
 	private CancellationTokenSource? _cancellation;
@@ -25,11 +26,17 @@ public sealed class SecurityMaintenanceService : IDisposable
 	private bool _disposed;
 
 	public SecurityMaintenanceService(IDatabaseTransactionRunner transactions, UserSessionRepository sessions, SecurityEventRepository securityEvents, AuthenticationSecurityRepository authenticationSecurity, TimeProvider? timeProvider = null)
+		: this(transactions, sessions, securityEvents, authenticationSecurity, timeProvider, null)
+	{
+	}
+
+	internal SecurityMaintenanceService(IDatabaseTransactionRunner transactions, UserSessionRepository sessions, SecurityEventRepository securityEvents, AuthenticationSecurityRepository authenticationSecurity, TimeProvider? timeProvider, SecurityEventDeliveryRepository? securityEventDelivery)
 	{
 		_transactions = transactions;
 		_sessions = sessions;
 		_securityEvents = securityEvents;
 		_authenticationSecurity = authenticationSecurity;
+		_securityEventDelivery = securityEventDelivery;
 		_timeProvider = timeProvider ?? TimeProvider.System;
 	}
 
@@ -79,10 +86,15 @@ public sealed class SecurityMaintenanceService : IDisposable
 
 	private async Task<int> PurgeSecurityEventsAsync(DateTime cutoffUtc, CancellationToken cancellationToken)
 	{
+		var maximumId = _securityEventDelivery is null
+			? long.MaxValue
+			: await _securityEventDelivery.GetRetentionCheckpointAsync(cancellationToken) ?? long.MaxValue;
+		if (maximumId <= 0) return 0;
+
 		var total = 0;
 		for (var batch = 0; batch < MaximumBatchesPerRun; batch++)
 		{
-			var ids = await _securityEvents.GetIdsBeforeAsync(cutoffUtc, BatchSize, cancellationToken);
+			var ids = await _securityEvents.GetIdsBeforeAsync(cutoffUtc, maximumId, BatchSize, cancellationToken);
 			if (ids.Count == 0) break;
 			var deleted = await _transactions.ExecuteAsync(async (transaction, token) =>
 			{

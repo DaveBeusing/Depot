@@ -34,10 +34,18 @@ internal sealed class SecurityEventExportService : ISecurityEventExportSource
 		_repository = repository;
 	}
 
-	public async Task<SecurityEventExportBatch> ReadBatchAsync(
+	public Task<SecurityEventExportBatch> ReadBatchAsync(
 		SecurityEventExportFilter filter,
 		SecurityEventExportCheckpoint? checkpoint,
 		int batchSize,
+		CancellationToken cancellationToken) =>
+		ReadBatchAsync(filter, checkpoint, batchSize, null, cancellationToken);
+
+	internal async Task<SecurityEventExportBatch> ReadBatchAsync(
+		SecurityEventExportFilter filter,
+		SecurityEventExportCheckpoint? checkpoint,
+		int batchSize,
+		long? fixedSnapshotUpperBoundId,
 		CancellationToken cancellationToken)
 	{
 		if (batchSize is < 1 or > MaximumBatchSize) throw new ArgumentOutOfRangeException(nameof(batchSize));
@@ -46,7 +54,10 @@ internal sealed class SecurityEventExportService : ISecurityEventExportSource
 		var start = checkpoint ?? new SecurityEventExportCheckpoint(0, fingerprint);
 		ValidateCheckpoint(start, fingerprint);
 
-		var snapshotUpperBoundId = await _repository.GetLatestIdAsync(cancellationToken);
+		var latestId = await _repository.GetLatestIdAsync(cancellationToken);
+		var snapshotUpperBoundId = fixedSnapshotUpperBoundId ?? latestId;
+		if (snapshotUpperBoundId < 0 || snapshotUpperBoundId > latestId)
+			throw new InvalidOperationException("Security-event export snapshot upper bound is outside the available source range.");
 		if (snapshotUpperBoundId <= start.LastEventId)
 			return new SecurityEventExportBatch(
 				SecurityEventExportBatch.CurrentFormatVersion,

@@ -18,6 +18,7 @@ internal sealed class DepotApplicationServices : IDisposable
 		AuthenticationSecurityService authenticationSecurity,
 		SecurityAdministrationService securityAdministration,
 		SecurityMaintenanceService securityMaintenance,
+		SecurityEventDeliveryService securityEventDelivery,
 		ViewModelFactory viewModels)
 	{
 		Database = database;
@@ -29,6 +30,7 @@ internal sealed class DepotApplicationServices : IDisposable
 		AuthenticationSecurity = authenticationSecurity;
 		SecurityAdministration = securityAdministration;
 		SecurityMaintenance = securityMaintenance;
+		SecurityEventDelivery = securityEventDelivery;
 		ViewModels = viewModels;
 	}
 
@@ -41,6 +43,7 @@ internal sealed class DepotApplicationServices : IDisposable
 	public AuthenticationSecurityService AuthenticationSecurity { get; }
 	public SecurityAdministrationService SecurityAdministration { get; }
 	public SecurityMaintenanceService SecurityMaintenance { get; }
+	public SecurityEventDeliveryService SecurityEventDelivery { get; }
 	public ViewModelFactory ViewModels { get; }
 
 	public static DepotApplicationServices Create(IFileDialogService fileDialogs, ApplicationInformationService applicationInformation)
@@ -51,66 +54,40 @@ internal sealed class DepotApplicationServices : IDisposable
 			database = DatabaseComposition.Create();
 			var repositories = new RepositoryComposition(database.DataAccess);
 			var services = new ServiceComposition(database, repositories);
-			var workspaceViews = new WorkspaceViewService(
-				database.TransactionRunner,
-				new WorkspaceViewRepository(database.DataAccess),
-				services.Authorization);
+			var workspaceViews = new WorkspaceViewService(database.TransactionRunner, new WorkspaceViewRepository(database.DataAccess), services.Authorization);
 			WorkspaceViewRuntime.Configure(workspaceViews);
-			var workspaceProductivity = new WorkspaceProductivityService(
-				database.TransactionRunner,
-				new WorkspaceProductivityRepository(database.DataAccess),
-				services.Authorization);
+			var workspaceProductivity = new WorkspaceProductivityService(database.TransactionRunner, new WorkspaceProductivityRepository(database.DataAccess), services.Authorization);
 			WorkspaceProductivityRuntime.Configure(workspaceProductivity);
 			var audit = new AuditService(repositories.Audit, services.Authorization);
-			var enterpriseIdentity = new EnterpriseIdentityService(
-				database.TransactionRunner,
-				repositories.EnterpriseIdentity,
-				repositories.Users,
-				repositories.Roles,
-				repositories.Audit,
-				audit,
-				services.Authorization);
-			var authenticationSecurity = new AuthenticationSecurityService(
-				database.TransactionRunner,
-				repositories.AuthenticationSecurity,
-				repositories.Audit,
-				audit,
-				services.SecurityEvents,
-				services.Authorization);
+			var enterpriseIdentity = new EnterpriseIdentityService(database.TransactionRunner, repositories.EnterpriseIdentity, repositories.Users, repositories.Roles, repositories.Audit, audit, services.Authorization);
+			var authenticationSecurity = new AuthenticationSecurityService(database.TransactionRunner, repositories.AuthenticationSecurity, repositories.Audit, audit, services.SecurityEvents, services.Authorization);
 			services.Authentication.ConfigureAuthenticationSecurity(authenticationSecurity);
 
 			var version = applicationInformation.GetVersionInfo().InformationalVersion;
-			services.Session.Configure(
-				database.TransactionRunner,
-				repositories.UserSessions,
-				services.SecurityEvents,
-				new UserSessionClientInfo(Guid.NewGuid(), Environment.MachineName, version));
+			services.Session.Configure(database.TransactionRunner, repositories.UserSessions, services.SecurityEvents, new UserSessionClientInfo(Guid.NewGuid(), Environment.MachineName, version));
 			services.Authentication.ConfigureSession(services.Session);
 			services.Users.ConfigureSessionSecurity(services.Session, services.SecurityEvents);
 
-			var enterpriseAuthentication = new EnterpriseAuthenticationService(
-				repositories.EnterpriseIdentity,
-				enterpriseIdentity,
-				services.Session,
-				services.Authorization,
-				services.SecurityEvents,
-				repositories.SecurityEvents);
-
-			var securityAdministration = new SecurityAdministrationService(
-				services.SecurityEvents,
-				authenticationSecurity,
-				services.UserSessionAdministration,
-				repositories.UserSessions,
-				repositories.Users,
-				services.Users,
-				services.Authorization);
+			var enterpriseAuthentication = new EnterpriseAuthenticationService(repositories.EnterpriseIdentity, enterpriseIdentity, services.Session, services.Authorization, services.SecurityEvents, repositories.SecurityEvents);
+			var securityAdministration = new SecurityAdministrationService(services.SecurityEvents, authenticationSecurity, services.UserSessionAdministration, repositories.UserSessions, repositories.Users, services.Users, services.Authorization);
 			services.SecurityEvents.ConfigureAdministration(securityAdministration);
 
+			var securityEventExport = new SecurityEventExportService(repositories.SecurityEventExports);
+			var securityEventDelivery = new SecurityEventDeliveryService(
+				database.TransactionRunner,
+				repositories.SecurityEventDelivery,
+				securityEventExport,
+				repositories.Audit,
+				audit,
+				services.Authorization,
+				new HttpJsonSecurityEventExportSinkFactory());
 			var securityMaintenance = new SecurityMaintenanceService(
 				database.TransactionRunner,
 				repositories.UserSessions,
 				repositories.SecurityEvents,
-				repositories.AuthenticationSecurity);
+				repositories.AuthenticationSecurity,
+				timeProvider: null,
+				securityEventDelivery: repositories.SecurityEventDelivery);
 
 			var composition = new DepotApplicationServices(
 				database,
@@ -122,8 +99,10 @@ internal sealed class DepotApplicationServices : IDisposable
 				authenticationSecurity,
 				securityAdministration,
 				securityMaintenance,
+				securityEventDelivery,
 				new ViewModelFactory(database, services, enterpriseAuthentication, fileDialogs, applicationInformation));
 			database.StartBackgroundServices();
+			securityEventDelivery.Start();
 			securityMaintenance.Start();
 			return composition;
 		}
@@ -138,6 +117,7 @@ internal sealed class DepotApplicationServices : IDisposable
 	{
 		WorkspaceProductivityRuntime.Clear(WorkspaceProductivity);
 		WorkspaceViewRuntime.Clear(WorkspaceViews);
+		SecurityEventDelivery.Dispose();
 		SecurityMaintenance.Dispose();
 		Services.Session.Dispose();
 		Database.Dispose();

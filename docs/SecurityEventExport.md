@@ -1,81 +1,97 @@
-# Security Event Export Foundation
+# Security Event Export and Delivery
 
 Updated: 2026-09-16
 
 ## Scope
 
-F5A defines the provider-neutral source contract for exporting Depot Security Events to external security tooling. It deliberately does not implement background delivery, retry scheduling, durable sink configuration or persistent delivery checkpoints; those concerns belong to F5B.
+F5A defines the provider-neutral source contract for exporting Depot Security Events. F5B adds durable target configuration, delivery state, retry/suspension semantics and the first concrete HTTPS JSON sink.
 
-The export foundation reads the existing `SecurityEvents` evidence. It does not create a parallel event log and does not mutate source rows while exporting them.
+The implementation continues to read the existing `SecurityEvents` evidence. Delivery state is stored separately and never mutates source Security Event rows.
 
 ## Export contract
 
-`SecurityEventExportBatch` format version `1` contains a bounded, ascending sequence of `SecurityEventExportRecord` values. The exported event projection contains only event-time evidence that is stable after creation:
+`SecurityEventExportBatch` format version `1` contains a bounded, ascending sequence of immutable event-time `SecurityEventExportRecord` values. Security Center review metadata and the mutable database row version are excluded from exported event meaning.
 
-- source Security Event ID;
-- UTC timestamp;
-- event type and severity;
-- optional local user, account, session, client-instance and machine correlation identifiers;
-- summary and controlled details.
+The filter contains minimum severity plus an optional Security Event type allow-list. It is normalized and bound to a canonical SHA-256 fingerprint. `SecurityEventExportCheckpoint` combines the last consumed source ID with that fingerprint, so a cursor cannot silently cross filter semantics.
 
-Security Center review metadata (`ReviewedUtc`, `ReviewedByUserId`) and the mutable database row `Version` are intentionally excluded from the export record. Reviewing an event therefore does not rewrite the externally exported security-event meaning.
+Reads are ordered by monotonic Security Event ID and capture a source snapshot upper bound. F5B can also request a previously persisted fixed snapshot upper bound, allowing an interrupted delivery to reproduce the same batch even if newer Security Events arrive before the retry.
 
-## Filters
+## Durable delivery state
 
-F5A supports a bounded source filter consisting of:
+Security Events feature schema `3` adds two provider-neutral tables:
 
-- minimum severity;
-- an optional allow-list of Security Event types.
+- `SecurityEventExportTargets` for stable target code, sink code, HTTPS endpoint, normalized filter, batch size and enabled state;
+- `SecurityEventExportDeliveryState` for durable checkpoint, in-flight snapshot, retry/suspension evidence, last attempt/success/failure state and a bounded worker lease.
 
-The filter is normalized before use: event types are deduplicated and ordered. A canonical SHA-256 fingerprint is calculated over the normalized filter contract.
+Target configuration and source evidence are deliberately separate. No delivery metadata is written into `SecurityEvents`.
 
-## Checkpoints
+A filter change resets that target's checkpoint to the beginning under the new filter fingerprint. Depot chooses replay over silently skipping historical source evidence under changed selection semantics. Endpoint changes do not implicitly reinterpret the source cursor.
 
-`SecurityEventExportCheckpoint` contains:
+## Delivery guarantee
 
-- the last consumed Security Event ID;
-- the SHA-256 fingerprint of the filter that produced the cursor.
+F5B provides an at-least-once delivery boundary:
 
-A checkpoint cannot be reused with another filter. Filter mismatch fails closed instead of silently skipping or replaying events under different selection semantics.
+1. acquire a short database-backed worker lease;
+2. read or reconstruct the bounded batch;
+3. persist the batch snapshot upper bound before invoking the sink;
+4. invoke the sink;
+5. advance the durable checkpoint only after the sink reports success;
+6. clear the in-flight snapshot only together with successful checkpoint advancement.
 
-Security Event IDs, rather than timestamps, are the ordering/cursor boundary. Each read captures the current maximum source ID before querying. A batch reads only IDs greater than the incoming checkpoint and less than or equal to that snapshot boundary.
+If the process stops after the receiver accepted a request but before Depot commits the checkpoint, the same batch can be delivered again. This intentional duplicate possibility avoids event loss. Receivers should deduplicate using `X-Depot-Delivery-Id`, which is deterministic for target, filter, start checkpoint, next checkpoint and snapshot.
 
-If more matching events exist than the requested batch size, the next checkpoint advances to the last returned event. If the snapshot is exhausted, the next checkpoint advances to the captured source maximum even when trailing source events were excluded by the filter. This prevents repeated rescanning of permanently excluded rows while ensuring events inserted after the snapshot are left for the next read.
+An empty filtered batch has no external side effect and may advance its source checkpoint directly to the exhausted snapshot.
 
-## Batching
+## Retry and suspension
 
-The source batch size is bounded to 500 events. F5A never returns an unbounded Security Event export query.
+Transient failures keep the in-flight snapshot and schedule deterministic bounded backoff:
 
-The source repository uses ascending source ID order. This deterministic order is independent of UI ordering, review state and local-time presentation.
+- first failure: 30 seconds;
+- second: 2 minutes;
+- third: 10 minutes;
+- fourth: 30 minutes;
+- later failures: 2 hours.
 
-## Sink boundary
+HTTP 408, 429, 5xx, transport failures and request timeout are transient. Other non-success 4xx responses are permanent configuration/protocol failures and suspend automatic delivery until an administrator resumes the target after correcting configuration.
 
-`ISecurityEventExportSink` defines the delivery adapter boundary without implementing delivery policy. A sink receives an already bounded `SecurityEventExportBatch`; F5A does not advance a durable checkpoint simply because a sink was invoked.
+Failure state stores only bounded operational diagnostics: classification, controlled code and truncated message. HTTP response bodies, credentials, tokens and secrets are not persisted.
 
-F5B will own delivery orchestration, retry classification, durable checkpoint advancement and concrete sink implementations. A durable checkpoint may advance only after the corresponding batch has satisfied the F5B delivery contract.
+## HTTPS JSON sink
 
-## Persistence and schema
+F5B introduces sink code `http-json-v1`.
 
-F5A adds no persisted tables or columns and does not change Security Events feature schema `2`.
+The endpoint must be an absolute HTTPS URI and must not contain embedded user information. The request body contains export format version, target code, snapshot/checkpoints and the bounded event array. `X-Depot-Delivery-Id` supplies the deterministic retry identity and `X-Depot-Export-Format` identifies the payload contract version.
 
-Durable export configuration/checkpoint state is intentionally deferred to F5B so the persisted schema is introduced together with the exact delivery and retry invariants it must protect.
+This package does not persist API keys, bearer tokens, client certificates or other sink credentials. Deployment-specific authenticated transports require a separately controlled credential/integration boundary rather than secrets in Depot's delivery tables.
 
-## Privacy and authorization boundary
+## Concurrency and retention
 
-The export contract contains only fields already present in Depot Security Events. It does not add source IP, geolocation, device fingerprint, typed input, external-window activity, authentication tokens or external identity-provider secrets.
+A database-backed lease prevents normal concurrent Depot workers from processing the same target at the same time. Expired leases are recoverable after process failure.
 
-The F5A source service is an internal infrastructure boundary. User-facing export administration and background-delivery authorization are not introduced by this package.
+Security-event retention observes the lowest checkpoint of enabled export targets. Events that an active target has not consumed are therefore not removed by the normal Security Event retention worker. Disabling a target removes it from this retention floor; operators should treat disabling as suspending the delivery guarantee for source data that later ages out under the configured retention policy.
+
+## Administration and Audit
+
+Viewing configured export status reuses `SecurityEventsView`. Creating/updating targets and resuming a suspended target require `SecurityEventsManage`.
+
+Target create/update operations are recorded through the existing Audit boundary in the same transaction as the configuration mutation. Target codes are stable after creation. Changing filter semantics resets the durable cursor deliberately and transactionally.
+
+## Privacy boundary
+
+Export includes only fields already present in Depot Security Events. It does not add source IP, geolocation, device fingerprint, typed input, external-window activity, authentication tokens, identity-provider tokens or sink secrets.
 
 ## Acceptance boundary
 
-F5A acceptance requires repository tests proving:
+F5B repository acceptance requires evidence for:
 
-- deterministic ascending batches;
-- bounded reads;
-- snapshot-safe cursor advancement;
-- canonical filter fingerprints;
-- fail-closed filter/checkpoint mismatch;
-- stable exported event content across later Security Center review changes;
-- no Security Event schema change.
+- schema `2` to `3` migration and idempotence;
+- target/state persistence on SQLite, SQL Server, MariaDB and MySQL;
+- checkpoint advancement only after sink success;
+- exact fixed-snapshot retry after a transient failure while newer events arrive;
+- permanent-failure suspension;
+- transient/permanent HTTP classification;
+- bounded batch and retry behavior;
+- retention protection for unconsumed events;
+- permission, optimistic-concurrency and Audit boundaries for administration.
 
-F5A alone is not a reliable-delivery or SIEM-integration claim. That requires F5B.
+F5B provides the durable delivery mechanism and a generic HTTPS JSON adapter. It does not certify any third-party SIEM product or deployment-specific authentication configuration.
