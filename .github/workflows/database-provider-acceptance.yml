@@ -7,6 +7,7 @@ on:
     branches:
       - master
       - 'database-provider-*'
+      - 'production-operations-*'
   workflow_dispatch:
 
 concurrency:
@@ -43,8 +44,44 @@ jobs:
           --filter "Acceptance=DatabaseProvider&Provider=SQLite"
           --logger "console;verbosity=normal"
 
+      - name: Run isolated SQLite recovery drill
+        id: sqlite-recovery
+        shell: pwsh
+        run: >-
+          dotnet test tests/DepotManager.Tests/DepotManager.Tests.csproj
+          --configuration Release
+          --no-build
+          --no-restore
+          --filter "FullyQualifiedName~OperationalRecoveryTests.SqliteRecoveryDrill_RestoresVerifiedCopyAndReportsSchema"
+          --logger "console;verbosity=normal"
+
+      - name: Record SQLite recovery evidence
+        if: always()
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force artifacts/recovery | Out-Null
+          [ordered]@{
+            formatVersion = 1
+            provider = 'SQLite'
+            result = if ('${{ steps.sqlite-recovery.outcome }}' -eq 'success') { 'PASS' } else { 'FAIL' }
+            drill = 'isolated backup copy + SHA-256 + PRAGMA integrity_check + Depot schema metadata'
+            sourceSha = '${{ github.sha }}'
+            databaseIdentityRetained = $false
+            credentialsRetained = $false
+            generatedUtc = [DateTimeOffset]::UtcNow.ToString('O')
+          } | ConvertTo-Json | Set-Content artifacts/recovery/SQLite.json -Encoding utf8
+
+      - name: Upload SQLite recovery evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: recovery-drill-sqlite-${{ github.sha }}
+          path: artifacts/recovery/SQLite.json
+          if-no-files-found: error
+          retention-days: 90
+
   remote:
-    name: ${{ matrix.name }} - ${{ github.event_name == 'pull_request' && 'Smoke' || 'Full' }}
+    name: ${{ matrix.name }} - ${{ github.event_name == 'pull_request' && 'Smoke+Recovery' || 'Full' }}
     runs-on: windows-2025
     timeout-minutes: 90
     strategy:
@@ -109,13 +146,21 @@ jobs:
             --logger "console;verbosity=normal"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - name: Native backup and restore boundary
-        if: github.event_name != 'pull_request'
+      - name: Native backup and restore drill
+        id: remote-recovery
         shell: pwsh
-        run: ./scripts/ci/Invoke-ProviderRestoreAcceptance.ps1 -Provider '${{ matrix.provider }}'
+        run: ./scripts/ci/Invoke-ProviderRestoreAcceptance.ps1 -Provider '${{ matrix.provider }}' -EvidencePath 'artifacts/recovery/${{ matrix.provider }}.json'
+
+      - name: Upload provider recovery evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: recovery-drill-${{ matrix.provider }}-${{ github.sha }}
+          path: artifacts/recovery/${{ matrix.provider }}.json
+          if-no-files-found: error
+          retention-days: 90
 
       - name: Verify Depot recognizes restored database
-        if: github.event_name != 'pull_request'
         shell: pwsh
         run: |
           $filter = "Acceptance=DatabaseProvider&Provider=${{ matrix.trait }}&AcceptanceLevel=Smoke"

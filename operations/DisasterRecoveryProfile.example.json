@@ -1,0 +1,27 @@
+{
+  "formatVersion": 1,
+  "status": "TEMPLATE",
+  "deploymentId": "example-deployment",
+  "provider": "SQLite",
+  "objectives": {
+    "rpoMinutes": 60,
+    "rtoMinutes": 240,
+    "contractualCommitment": false
+  },
+  "backupPolicy": {
+    "retentionDays": 30,
+    "minimumOffHostCopies": 1,
+    "encryptionAtRestRequired": true,
+    "backupMonitoringRequired": true
+  },
+  "restoreDrill": {
+    "maximumAgeDays": 90,
+    "isolatedTargetRequired": true
+  },
+  "ownership": {
+    "backupOwner": "Database Operations",
+    "restoreOwner": "Database Operations",
+    "applicationSupportOwner": "Depot Application Support",
+    "escalationOwner": "Service Owner"
+  }
+}

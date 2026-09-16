@@ -42,6 +42,10 @@ Depot is on the `0.15.x-preview` line with Core database schema **30**, Sales fe
 - [x] release manifest records versions, Core/feature schema versions, source SHA, channel and final artifact hashes
 - [x] release publication reuses the exact tested workflow artifact rather than rebuilding
 - [x] Stable publication fails closed when Authenticode signing credentials are unavailable
+- [x] deployment DR profile contract with explicit RPO/RTO, retention, off-host, encryption, monitoring, ownership and drill cadence
+- [x] provider-specific SQLite/SQL Server/MariaDB/MySQL restore runbooks
+- [x] pull-request recovery drills and retained credential-free provider recovery evidence
+- [x] DepotManager recovery-readiness support evidence and sanitized ACL/I/O recovery diagnostics
 
 ## Database provider production acceptance
 
@@ -60,6 +64,8 @@ The generic technical provider gate is complete for the exact baselines in [Data
 - [x] Finance Financial Reporting/export/snapshot live provider business acceptance
 - [x] remote service restart and Depot re-entry acceptance
 - [x] provider-native remote backup/restore and post-restore recognition boundary
+- [x] isolated SQLite backup-copy/hash/integrity/schema restore drill
+- [x] structured recovery evidence retained for every supported provider family
 - [x] representative 100,000-row indexed provider performance guard
 
 Versions outside these baselines are not implicitly supported. The provider gate is a database/runtime certification only.
@@ -72,6 +78,9 @@ Versions outside these baselines are not implicitly supported. The provider gate
 - [ ] AR/AP/inventory/bank reconciliation and period-end reporting procedures
 - [ ] AP/payment-proposal segregation-of-duties review
 - [ ] accounting/report/localization evidence retention/export/backup/restore operating procedures
+- [ ] ACTIVE deployment DR profile accepted with explicit RPO/RTO and named ownership
+- [ ] real deployment backup infrastructure proves retention, encryption, monitoring and off-host copies
+- [ ] real isolated restore drill completes within accepted RPO/RTO and evidence is retained
 - [ ] qualified review of each enabled country pack and every `ConfigurationRequired` / `ExternalProcedureRequired` item
 - [ ] jurisdiction-specific accounting/tax/localization acceptance
 - [ ] customer-specific volume/network/concurrency sizing beyond the generic provider regression guard
@@ -87,7 +96,8 @@ Versions outside these baselines are not implicitly supported. The provider gate
 
 - [x] single authoritative release pipeline and explicit Preview/Stable channel policy
 - [x] source SHA, versions, schema versions and final hashes retained in release evidence
-- [ ] production backup/security ownership and vulnerability-reporting process accepted
+- [x] production DR runbook/profile/recovery-evidence technical boundary implemented
+- [ ] production backup/security ownership and vulnerability-reporting process accepted for the deployment
 - [ ] production Authenticode publisher identity and timestamp verified with a real Stable release candidate
 - [ ] certificate expiry/rotation and signing-recovery procedure accepted
 - [ ] installer/package upgrade/rollback/uninstall accepted
