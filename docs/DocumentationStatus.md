@@ -14,6 +14,7 @@ This document identifies the documentation baseline for the current development 
 - User Sessions feature schema: `3`
 - Security Events feature schema: `2`
 - User Preferences feature schema: `2`
+- Enterprise Identity feature schema: `1`
 
 `Directory.Build.props` is the authoritative source for the exact application patch/version. Canonical documentation records the moving preview line as `0.15.x-preview`; exact patch numbers belong in source/release evidence, not manually duplicated baseline text.
 
@@ -30,7 +31,7 @@ Current certified technical baselines are:
 
 Documentation must not infer provider support from shared abstractions or from a different product in the same connector family. MariaDB and MySQL are independently tested. Newer/older versions remain untested/best-effort until their own full acceptance evidence exists.
 
-The full provider matrix validates provisioning/migration, provider SQL/types/constraints, rollback, concurrency/deadlock/retry, representative Sales/Procurement/session/Finance flows, Banking/reconciliation, Financial Reporting/snapshots, remote restart, provider-native backup/restore and 100k indexed access.
+The full provider matrix validates provisioning/migration, provider SQL/types/constraints, rollback, concurrency/deadlock/retry, representative Sales/Procurement/session/Finance flows, Banking/reconciliation, Financial Reporting/snapshots, remote restart, provider-native backup/restore and 100k indexed access. Enterprise Identity schema 1 has explicit SQLite/SQL Server/MariaDB/MySQL smoke coverage for migration and external-identity persistence.
 
 SQLite documentation must preserve its dynamic `NUMERIC` precision boundary; it must not claim full fixed `DECIMAL(28,9)` range equivalence with the server providers.
 
@@ -44,7 +45,9 @@ Documentation must state that online presence is derived from an open session pl
 
 The shared User Session policy covers idle timeout, maximum lifetime, concurrent-session mode/limit/action and ended-session history retention. Finite limits are serialized through the policy row and may reject a login or supersede the oldest open session. Password changes invalidate other sessions with `CredentialsChanged`; user deactivation revokes open sessions with `Revoked`.
 
-Production authentication throttling is persisted in the shared database and governed by `AuthenticationSecurityPolicy`; documentation must not call it process-local. The current local credential implementation is behind `IAuthenticationProvider` / `LocalAuthenticationProvider` to preserve the external-identity extension boundary.
+Production authentication throttling is persisted in the shared database and governed by `AuthenticationSecurityPolicy`; documentation must not call it process-local. Local credentials remain behind `IAuthenticationProvider` / `LocalAuthenticationProvider`.
+
+Enterprise Identity schema 1 provides provider configuration and exact provider/issuer/subject links to existing local Depot users. Documentation must not describe F4A as a completed OIDC or Entra sign-in flow. `IEnterpriseIdentityResolver` accepts identities only after protocol validation by a future external authentication provider, and local Depot RBAC remains the only source of roles and effective permissions. External token roles/groups/permissions are not authorization inputs.
 
 Security Center investigation correlates only identifiers already present in Depot authentication/session data. Response actions delegate to the established session/user services. `SecurityEvents.View`, `SecurityEvents.Manage`, `UserSessions.Terminate`, `Users.Manage` and `Settings.Manage` remain separate permissions.
 
@@ -53,6 +56,8 @@ Session history and Security Event retention are actively enforced by bounded ba
 ## Privacy invariants
 
 The current security implementation does not collect source IP, geolocation, MAC address, hardware fingerprint, typed input, key values, mouse coordinates or external-window activity. `ClientInstanceId` is a generated Depot process/session correlation identifier, not a device fingerprint.
+
+Enterprise Identity may retain issuer/subject plus optional observed tenant, email and display name because these are required identity-link evidence. It does not retain external passwords, access tokens, refresh tokens, ID tokens, authorization codes or device fingerprints.
 
 ## Documentation rules
 

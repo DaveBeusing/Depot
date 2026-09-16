@@ -13,6 +13,7 @@ internal sealed class DepotApplicationServices : IDisposable
 		ServiceComposition services,
 		WorkspaceViewService workspaceViews,
 		WorkspaceProductivityService workspaceProductivity,
+		EnterpriseIdentityService enterpriseIdentity,
 		AuthenticationSecurityService authenticationSecurity,
 		SecurityAdministrationService securityAdministration,
 		SecurityMaintenanceService securityMaintenance,
@@ -22,6 +23,7 @@ internal sealed class DepotApplicationServices : IDisposable
 		Services = services;
 		WorkspaceViews = workspaceViews;
 		WorkspaceProductivity = workspaceProductivity;
+		EnterpriseIdentity = enterpriseIdentity;
 		AuthenticationSecurity = authenticationSecurity;
 		SecurityAdministration = securityAdministration;
 		SecurityMaintenance = securityMaintenance;
@@ -32,6 +34,7 @@ internal sealed class DepotApplicationServices : IDisposable
 	public ServiceComposition Services { get; }
 	public WorkspaceViewService WorkspaceViews { get; }
 	public WorkspaceProductivityService WorkspaceProductivity { get; }
+	public EnterpriseIdentityService EnterpriseIdentity { get; }
 	public AuthenticationSecurityService AuthenticationSecurity { get; }
 	public SecurityAdministrationService SecurityAdministration { get; }
 	public SecurityMaintenanceService SecurityMaintenance { get; }
@@ -56,6 +59,14 @@ internal sealed class DepotApplicationServices : IDisposable
 				services.Authorization);
 			WorkspaceProductivityRuntime.Configure(workspaceProductivity);
 			var audit = new AuditService(repositories.Audit, services.Authorization);
+			var enterpriseIdentity = new EnterpriseIdentityService(
+				database.TransactionRunner,
+				repositories.EnterpriseIdentity,
+				repositories.Users,
+				repositories.Roles,
+				repositories.Audit,
+				audit,
+				services.Authorization);
 			var authenticationSecurity = new AuthenticationSecurityService(
 				database.TransactionRunner,
 				repositories.AuthenticationSecurity,
@@ -95,6 +106,7 @@ internal sealed class DepotApplicationServices : IDisposable
 				services,
 				workspaceViews,
 				workspaceProductivity,
+				enterpriseIdentity,
 				authenticationSecurity,
 				securityAdministration,
 				securityMaintenance,

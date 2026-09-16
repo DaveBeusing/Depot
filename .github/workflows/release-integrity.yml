@@ -344,6 +344,8 @@ jobs:
             finance = Read-CurrentVersion 'src/Depot/Data/FinanceInventoryAccountingSchemaMigration.cs'
             userSessions = Read-CurrentVersion 'src/Depot/Data/UserSessionSchemaMigration.cs'
             securityEvents = Read-CurrentVersion 'src/Depot/Data/SecurityEventSchemaMigration.cs'
+            userPreferences = Read-CurrentVersion 'src/Depot/Data/UserPreferenceSchemaMigration.cs'
+            enterpriseIdentity = Read-CurrentVersion 'src/Depot/Data/EnterpriseIdentitySchemaMigration.cs'
           }
 
           $assets = 'artifacts/release/assets'

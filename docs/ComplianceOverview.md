@@ -23,22 +23,27 @@ Localization requires explicit effective-dated assignment. The built-in `GENERIC
 - User Sessions feature schema: **3**
 - Security Events feature schema: **2**
 - User Preferences feature schema: **2**
+- Enterprise Identity feature schema: **1**
 - Help manifest: **1.21**
 
 `Directory.Build.props` is authoritative for the exact application patch/version. Compliance documentation records the development line and stable schema/help contracts instead of duplicating the moving preview patch number.
 
 Sales schema 14 adds retained ZUGFeRD 2.5.2 / Factur-X 1.09.2 XRECHNUNG-profile hybrid artifacts. This is an engineering capability statement only. A product conformance claim remains gated by independent PDF/A-3 validation plus the established KoSIT/XRechnung validation and release evidence.
 
+Enterprise Identity schema 1 adds non-secret provider configuration and exact external-identity links to existing local users. This is an identity-resolution capability, not an OIDC/Entra authentication-compliance claim. External groups, roles and permission claims do not grant Depot authorization; local Depot RBAC remains authoritative.
+
 ## Database-provider acceptance
 
 The database-provider technical gate is complete for the exact baselines documented in [Database Provider Production Support Matrix](DatabaseProviderSupportMatrix.md): Depot's bundled SQLite runtime, SQL Server 2022 engine 16.x, MariaDB 11.8.9 LTS and MySQL 8.4.11 LTS.
 
-The real-provider matrix covers provisioning/migration, locking/deadlock/retry, rollback, constraints, date/decimal/timestamp handling, representative Finance/Sales/Procurement/session workflows, Banking/reconciliation, Financial Reporting/snapshots, remote restart and provider-native backup/restore boundaries plus representative 100k indexed access.
+The real-provider matrix covers provisioning/migration, locking/deadlock/retry, rollback, constraints, date/decimal/timestamp handling, representative Finance/Sales/Procurement/session workflows, Banking/reconciliation, Financial Reporting/snapshots, remote restart and provider-native backup/restore boundaries plus representative 100k indexed access. Enterprise Identity schema 1 adds explicit migration/persistence smoke coverage on all four provider families.
 
 Database-provider certification is an engineering/runtime statement. It does not establish jurisdiction-specific accounting, tax, legal, accessibility, operating-system, banking-network or regulatory certification.
 
 ## Remaining acceptance
 
 Production use still requires deployment-specific accounting/reporting policy approval, reconciliation and period-end procedures, segregation-of-duties review, retention/export/restore procedures, realistic customer-specific sizing, accessibility/signing/deployment acceptance and qualified organizational/legal/accounting validation.
+
+Enterprise external authentication additionally requires the F4B protocol implementation and deployment-specific identity-provider configuration/acceptance before it can be advertised as working SSO.
 
 This document is engineering evidence and not a certification statement.
