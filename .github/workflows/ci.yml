@@ -34,6 +34,10 @@ jobs:
         shell: pwsh
         run: ./scripts/operations/Test-DisasterRecoveryProfile.ps1 -ProfilePath operations/DisasterRecoveryProfile.example.json -AllowTemplate -EvidencePath artifacts/operations/DisasterRecoveryProfile.validation.json
 
+      - name: Validate Track A acceptance closure contract
+        shell: pwsh
+        run: ./scripts/operations/Test-TrackAAcceptance.ps1 -Path operations/TrackAAcceptance.example.json -EvidencePath artifacts/operations/TrackAAcceptance.validation.json
+
       - name: Restore win-x64 runtimes
         shell: pwsh
         run: |
@@ -72,6 +76,14 @@ jobs:
         with:
           name: disaster-recovery-profile-contract-${{ github.sha }}
           path: artifacts/operations/DisasterRecoveryProfile.validation.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Upload Track A closure contract evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: track-a-closure-contract-${{ github.sha }}
+          path: artifacts/operations/TrackAAcceptance.validation.json
           if-no-files-found: error
           retention-days: 90
 

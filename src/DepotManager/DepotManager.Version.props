@@ -4,7 +4,7 @@
     <DepotManagerVersionMinor>1</DepotManagerVersionMinor>
     <DepotManagerVersionPatch>23</DepotManagerVersionPatch>
     <DepotManagerVersionBuild Condition="'$(DepotManagerVersionBuild)' == ''">0</DepotManagerVersionBuild>
-    <DepotManagerVersionSuffix Condition="'$(DepotManagerVersionSuffix)' == ''">preview</DepotManagerVersionSuffix>
+    <DepotManagerVersionSuffix>preview</DepotManagerVersionSuffix>
     <DepotManagerVersionPrefix>$(DepotManagerVersionMajor).$(DepotManagerVersionMinor).$(DepotManagerVersionPatch)</DepotManagerVersionPrefix>
     <VersionPrefix>$(DepotManagerVersionPrefix)</VersionPrefix>
     <VersionSuffix Condition="'$(DepotManagerStableRelease)' != 'true'">$(DepotManagerVersionSuffix)</VersionSuffix>

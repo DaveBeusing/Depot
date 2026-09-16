@@ -1,0 +1,59 @@
+{
+  "formatVersion": 1,
+  "track": "A",
+  "status": "BLOCKED",
+  "sourceSha": "UNSET",
+  "depotVersion": "UNSET",
+  "acceptedBy": "UNSET",
+  "acceptedAtUtc": "UNSET",
+  "packages": {
+    "H1": {
+      "name": "Repository Governance & Required Gates",
+      "status": "ADMIN_REQUIRED",
+      "evidenceReference": ".github/rulesets/MasterGovernance.json",
+      "verifiedBy": "UNSET",
+      "verifiedAtUtc": "UNSET",
+      "rulesetId": null
+    },
+    "H2": {
+      "name": "Single Release Pipeline & Release Channels",
+      "status": "PASS",
+      "evidenceReference": "https://github.com/DaveBeusing/Depot/pull/25",
+      "verifiedBy": "repository-history",
+      "verifiedAtUtc": "2026-09-15T22:49:13Z"
+    },
+    "H3": {
+      "name": "Production Signing & Release Candidate Acceptance",
+      "status": "PRODUCTION_RC_REQUIRED",
+      "evidenceReference": "docs/ProductionSigningAcceptance.md",
+      "verifiedBy": "UNSET",
+      "verifiedAtUtc": "UNSET",
+      "releaseTag": "UNSET",
+      "productionSigningEvidenceReference": "UNSET"
+    },
+    "H4": {
+      "name": "Production Operations & Disaster Recovery",
+      "status": "DEPLOYMENT_REQUIRED",
+      "evidenceReference": "docs/ProductionOperationsDisasterRecovery.md",
+      "verifiedBy": "UNSET",
+      "verifiedAtUtc": "UNSET",
+      "deploymentId": "UNSET",
+      "disasterRecoveryProfileEvidenceReference": "UNSET",
+      "restoreDrillEvidenceReference": "UNSET"
+    },
+    "H5": {
+      "name": "Accessibility & Desktop Production Acceptance",
+      "status": "MANUAL_REQUIRED",
+      "evidenceReference": "docs/AccessibilityProductionAcceptance.md",
+      "verifiedBy": "UNSET",
+      "verifiedAtUtc": "UNSET",
+      "accessibilityEvidenceReference": "UNSET"
+    }
+  },
+  "knownBlockingIssues": [
+    "Activate and verify the master repository ruleset in GitHub.",
+    "Complete a real production-signed Stable release-candidate acceptance run.",
+    "Complete deployment-specific disaster-recovery acceptance for the intended production deployment.",
+    "Complete exact-release-candidate manual desktop accessibility acceptance."
+  ]
+}

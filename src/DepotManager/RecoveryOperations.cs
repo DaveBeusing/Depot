@@ -74,8 +74,13 @@ public sealed class SqliteRecoveryDrillService
             if (!sourceHash.Equals(restoredHash, StringComparison.OrdinalIgnoreCase))
                 throw new InvalidOperationException("The isolated SQLite restore copy does not match the selected backup SHA-256 hash.");
 
-            await using var validation = new SqliteConnection(
-                new SqliteConnectionStringBuilder { DataSource = restorePath, Mode = SqliteOpenMode.ReadOnly }.ConnectionString);
+            var validationBuilder = new SqliteConnectionStringBuilder
+            {
+                DataSource = restorePath,
+                Mode = SqliteOpenMode.ReadOnly,
+                Pooling = false
+            };
+            await using var validation = new SqliteConnection(validationBuilder.ConnectionString);
             await validation.OpenAsync(cancellationToken);
 
             await using (var integrity = validation.CreateCommand())
@@ -99,6 +104,7 @@ public sealed class SqliteRecoveryDrillService
                     throw new InvalidOperationException("The restored database contains an invalid Depot schema version.");
             }
 
+            await validation.CloseAsync();
             var completed = DateTimeOffset.UtcNow;
             return new RecoveryDrillEvidence(
                 "SQLite",

@@ -51,6 +51,7 @@ Depot is on the `0.15.x-preview` line with Core database schema **30**, Sales fe
 - [x] UI Automation notifications for operation/error/connection status changes
 - [x] explicit Per-Monitor-V2 DPI manifests for Depot and DepotManager
 - [x] reproducible exact-RC accessibility acceptance/evidence contract
+- [x] centralized fail-closed Track A H1–H5 production-closure evidence contract
 
 ## Database provider production acceptance
 
@@ -107,10 +108,13 @@ Technical controls and the evidence contract are implemented. The exact release 
 - [x] source SHA, versions, schema versions and final hashes retained in release evidence
 - [x] production DR runbook/profile/recovery-evidence technical boundary implemented
 - [x] desktop accessibility technical/evidence boundary implemented
+- [x] Track A closure validator rejects incomplete H1–H5 evidence
+- [ ] active GitHub `master` governance/ruleset evidence retained
 - [ ] production backup/security ownership and vulnerability-reporting process accepted for the deployment
 - [ ] production Authenticode publisher identity and timestamp verified with a real Stable release candidate
 - [ ] certificate expiry/rotation and signing-recovery procedure accepted
 - [ ] installer/package upgrade/rollback/uninstall accepted
+- [ ] exact-RC Track A closure evidence passes `Test-TrackAAcceptance.ps1 -RequirePass`
 - [ ] final release notes, known limitations, hashes, SBOM and support information published
 
 ### Electronic invoicing
@@ -128,11 +132,13 @@ Technical controls and the evidence contract are implemented. The exact release 
 - [ ] final CRA applicability/classification/conformity work
 - [ ] qualified accounting/tax/legal review for each marketed Finance localization
 
-## Track A implementation status
+## Track A implementation and closure status
 
 All five Track A repository implementation packages have been addressed: repository governance, release pipeline/channels, production-signing acceptance path, production operations/disaster recovery, and accessibility/desktop production acceptance.
 
-Track A is not fully production-accepted until the remaining administrative/external evidence is closed: active GitHub master governance, a real production-signed Stable RC, deployment-specific DR acceptance where applicable, and exact-RC manual desktop accessibility acceptance.
+The unified closure procedure is documented in [Track A – Final Acceptance Closure](TrackAAcceptanceClosure.md). The repository template intentionally remains top-level `BLOCKED`: H1 is `ADMIN_REQUIRED`, H2 is repository-level `PASS`, H3 is `PRODUCTION_RC_REQUIRED`, H4 is `DEPLOYMENT_REQUIRED`, and H5 is `MANUAL_REQUIRED`.
+
+Track A becomes production-accepted only after a controlled evidence file for the exact Stable RC passes `Test-TrackAAcceptance.ps1 -RequirePass`. Repository CI validates the contract structure but never promotes missing external/manual evidence to `PASS`.
 
 ## Demand-driven extensions
 
