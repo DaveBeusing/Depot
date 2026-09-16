@@ -23,6 +23,7 @@ public partial class App : Application
 	{
 		FrameworkElement.LanguageProperty.OverrideMetadata(typeof(FrameworkElement), new FrameworkPropertyMetadata(XmlLanguage.GetLanguage("de-DE")));
 		EventManager.RegisterClassHandler(typeof(Window), FrameworkElement.LoadedEvent, new RoutedEventHandler(OnWindowLoaded));
+		DesktopAccessibilityRuntime.Register();
 		TrackingCaptureBehavior.Register();
 	}
 

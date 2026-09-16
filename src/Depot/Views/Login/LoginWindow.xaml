@@ -2,6 +2,7 @@
 	x:Class="Depot.Views.Login.LoginWindow"
 	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
 	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:automation="clr-namespace:System.Windows.Automation;assembly=PresentationFramework"
 	xmlns:controls="clr-namespace:Depot.Controls"
 	Title="Sign in to Depot"
 	Icon="/Resources/Images/Depot.ico"
@@ -11,14 +12,14 @@
 	<Border Padding="24" Background="{DynamicResource BackgroundBrush}">
 		<controls:Card Width="380">
 			<StackPanel>
-				<Image Width="64" Height="56" HorizontalAlignment="Center" Margin="0,0,0,16" Source="/Resources/Images/Depot.png" />
+				<Image Width="64" Height="56" HorizontalAlignment="Center" Margin="0,0,0,16" Source="/Resources/Images/Depot.png" automation:AutomationProperties.AccessibilityView="Raw" />
 				<TextBlock HorizontalAlignment="Center" Text="Sign in to Depot" TextAlignment="Center" Style="{StaticResource PageTitleStyle}" />
 				<TextBlock Margin="0,4,0,20" HorizontalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}" Text="Use your Depot account to continue." TextAlignment="Center" Style="{StaticResource BodyStyle}" />
-				<TextBlock Text="Email" Style="{StaticResource FormLabelStyle}" />
-				<controls:TextInput Text="{Binding Email, UpdateSourceTrigger=PropertyChanged}" />
-				<TextBlock Margin="0,12,0,4" Text="Password" Style="{StaticResource FormLabelStyle}" />
-				<controls:PasswordInput PasswordValue="{Binding Password, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource RoundedPasswordInputStyle}" />
-				<Border Margin="0,12,0,0" Padding="10,8" Background="{DynamicResource ErrorBrush}" BorderBrush="{DynamicResource ErrorForegroundBrush}" BorderThickness="1" CornerRadius="{DynamicResource CornerRadius.Medium}" Visibility="{Binding HasErrorMessage, Converter={StaticResource BooleanToVisibilityConverter}}"><TextBlock Foreground="{DynamicResource ErrorForegroundBrush}" Text="{Binding ErrorMessage}" TextWrapping="Wrap" Style="{StaticResource CaptionStyle}" /></Border>
+				<TextBlock x:Name="EmailLabel" Text="Email" Style="{StaticResource FormLabelStyle}" />
+				<controls:TextInput automation:AutomationProperties.LabeledBy="{Binding ElementName=EmailLabel}" automation:AutomationProperties.IsRequiredForForm="True" Text="{Binding Email, UpdateSourceTrigger=PropertyChanged}" />
+				<TextBlock x:Name="PasswordLabel" Margin="0,12,0,4" Text="Password" Style="{StaticResource FormLabelStyle}" />
+				<controls:PasswordInput automation:AutomationProperties.LabeledBy="{Binding ElementName=PasswordLabel}" automation:AutomationProperties.IsRequiredForForm="True" PasswordValue="{Binding Password, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource RoundedPasswordInputStyle}" />
+				<Border Margin="0,12,0,0" Padding="10,8" Background="{DynamicResource ErrorBrush}" BorderBrush="{DynamicResource ErrorForegroundBrush}" BorderThickness="1" CornerRadius="{DynamicResource CornerRadius.Medium}" Visibility="{Binding HasErrorMessage, Converter={StaticResource BooleanToVisibilityConverter}}" automation:AutomationProperties.LiveSetting="Assertive" automation:AutomationProperties.Name="{Binding ErrorMessage}"><TextBlock Foreground="{DynamicResource ErrorForegroundBrush}" Text="{Binding ErrorMessage}" TextWrapping="Wrap" Style="{StaticResource CaptionStyle}" /></Border>
 				<controls:OperationStatus Margin="0,12,0,0" IsBusy="{Binding IsBusy}" HasError="{Binding HasOperationError}" StatusText="{Binding StatusText}" ErrorText="{Binding OperationError}" />
 				<Button Margin="0,20,0,0" HorizontalAlignment="Stretch" Command="{Binding LoginCommand}" Content="Sign in" IsDefault="True" Style="{StaticResource PrimaryButtonStyle}" />
 				<controls:ConnectionStatusIndicator Margin="0,16,0,0" HorizontalAlignment="Center" Compact="True" Foreground="{DynamicResource SecondaryTextBrush}" State="{Binding ConnectionStatus.CompactState}" Status="{Binding ConnectionStatus.DatabaseStatus}" />

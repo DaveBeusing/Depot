@@ -8,6 +8,7 @@
     <UseWPF>true</UseWPF>
     <AssemblyName>DepotManager</AssemblyName>
     <ApplicationIcon>..\Depot\Resources\Images\Depot.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
     <Product>Depot Manager</Product>
     <PublishTrimmed>false</PublishTrimmed>
   </PropertyGroup>
@@ -21,13 +22,16 @@
     <Page Include="..\Depot\Resources\Colors.xaml" Link="Resources\Colors.xaml" />
     <Page Include="..\Depot\Resources\Typography.xaml" Link="Resources\Typography.xaml" />
     <Page Include="..\Depot\Resources\Spacing.xaml" Link="Resources\Spacing.xaml" />
+    <Page Include="..\Depot\Resources\Accessibility.xaml" Link="Resources\Accessibility.xaml" />
     <Page Include="..\Depot\Resources\Buttons.xaml" Link="Resources\Buttons.xaml" />
     <Page Include="..\Depot\Resources\Inputs.xaml" Link="Resources\Inputs.xaml" />
     <Page Include="..\Depot\Resources\ScrollBars.xaml" Link="Resources\ScrollBars.xaml" />
     <Resource Include="..\Depot\Resources\Images\Depot.ico" Link="Resources\Images\Depot.ico" />
+    <Compile Include="..\Depot\Controls\AccessibilityAutomation.cs" Link="Controls\AccessibilityAutomation.cs" />
     <Compile Include="..\Depot\Controls\TextInput.cs" Link="Controls\TextInput.cs" />
     <Compile Include="..\Depot\Controls\PasswordInput.cs" Link="Controls\PasswordInput.cs" />
     <Compile Include="..\Depot\Controls\SearchBox.cs" Link="Controls\SearchBox.cs" />
+    <Compile Include="..\Depot\Services\DesktopAccessibilityRuntime.cs" Link="Services\DesktopAccessibilityRuntime.cs" />
     <Compile Include="..\Depot\Models\DatabaseProvider.cs" Link="Shared\DatabaseProvider.cs" />
     <Compile Include="..\Depot\Models\DatabaseConnectionSettings.cs" Link="Shared\DatabaseConnectionSettings.cs" />
     <Compile Include="..\Depot\Repositories\SettingsRepository.cs" Link="Shared\SettingsRepository.cs" />

@@ -33,6 +33,7 @@ public sealed class FileDialogService : IFileDialogService
 
     public bool Confirm(ConfirmationDialogRequest request)
     {
+        using var focus = FocusRestorationScope.Capture();
         var owner = Application.Current?.MainWindow;
         var image = request.IsDestructive ? MessageBoxImage.Warning : MessageBoxImage.Question;
         var result = owner is null
@@ -43,6 +44,7 @@ public sealed class FileDialogService : IFileDialogService
 
     private static bool ShowDialog(CommonDialog dialog)
     {
+        using var focus = FocusRestorationScope.Capture();
         var owner = Application.Current?.MainWindow;
         return owner is null
             ? dialog.ShowDialog() == true
