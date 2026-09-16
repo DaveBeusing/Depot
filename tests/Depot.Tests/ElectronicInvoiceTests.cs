@@ -52,6 +52,67 @@ public sealed class ElectronicInvoiceTests
 		Assert.Contains("<ram:TypeCode>381</ram:TypeCode>", xml);
 	}
 
+	[Theory]
+	[InlineData(ElectronicInvoiceTaxCategories.ZeroRated)]
+	[InlineData(ElectronicInvoiceTaxCategories.Exempt)]
+	[InlineData(ElectronicInvoiceTaxCategories.ReverseCharge)]
+	public void Validate_ZeroVatCategoriesRequireZeroRate(string category)
+	{
+		var invoice = CreateInvoice();
+		invoice = CopyWithLine(invoice, new ElectronicInvoiceLine { Id = "1", Name = "Item A", Quantity = 1m, UnitPrice = 100m, TaxRate = 19m, TaxCategoryCode = category, TaxExemptionReason = category == ElectronicInvoiceTaxCategories.ZeroRated ? null : "Legal exemption" });
+		var result = new ElectronicInvoiceService().Validate(invoice);
+		Assert.False(result.IsValid);
+		Assert.Contains(result.Issues, issue => issue.Code.StartsWith("BT-152", StringComparison.Ordinal));
+	}
+
+	[Theory]
+	[InlineData(ElectronicInvoiceTaxCategories.Exempt)]
+	[InlineData(ElectronicInvoiceTaxCategories.ReverseCharge)]
+	public void Validate_ExemptTreatmentRequiresReason(string category)
+	{
+		var invoice = CopyWithLine(CreateInvoice(), new ElectronicInvoiceLine { Id = "1", Name = "Item A", Quantity = 1m, UnitPrice = 100m, TaxRate = 0m, TaxCategoryCode = category });
+		var result = new ElectronicInvoiceService().Validate(invoice);
+		Assert.False(result.IsValid);
+		Assert.Contains(result.Issues, issue => issue.Code.StartsWith("BT-120", StringComparison.Ordinal));
+	}
+
+	[Fact]
+	public void CreateXRechnung_EmitsReverseChargeEvidence()
+	{
+		var invoice = CopyWithLine(CreateInvoice(), new ElectronicInvoiceLine { Id = "1", Name = "Consulting", Quantity = 1m, UnitPrice = 100m, TaxRate = 0m, TaxCategoryCode = ElectronicInvoiceTaxCategories.ReverseCharge, TaxExemptionReasonCode = "VATEX-EU-AE", TaxExemptionReason = "Reverse charge" });
+		var xml = new ElectronicInvoiceService().CreateXRechnungXml(invoice);
+		Assert.Contains("<ram:CategoryCode>AE</ram:CategoryCode>", xml);
+		Assert.Contains("<ram:ExemptionReasonCode>VATEX-EU-AE</ram:ExemptionReasonCode>", xml);
+		Assert.Contains("<ram:ExemptionReason>Reverse charge</ram:ExemptionReason>", xml);
+		Assert.Contains("<ram:RateApplicablePercent>0</ram:RateApplicablePercent>", xml);
+	}
+
+	[Fact]
+	public void ConformanceMatrix_IsReleaseSpecific()
+	{
+		Assert.Equal("3.0", ElectronicInvoiceConformanceMatrix.XRechnungVersion);
+		Assert.Contains("xrechnung_3.0", ElectronicInvoiceConformanceMatrix.GuidelineId, StringComparison.OrdinalIgnoreCase);
+		Assert.Equal("KoSIT-XRechnung-3.0-CII", ElectronicInvoiceConformanceMatrix.ValidatorProfile);
+	}
+
+	private static ElectronicInvoice CopyWithLine(ElectronicInvoice source, ElectronicInvoiceLine line) => new()
+	{
+		InvoiceNumber = source.InvoiceNumber,
+		TypeCode = source.TypeCode,
+		IssueDate = source.IssueDate,
+		DueDate = source.DueDate,
+		ActualDeliveryDate = source.ActualDeliveryDate,
+		Currency = source.Currency,
+		BuyerReference = source.BuyerReference,
+		BusinessProcessId = source.BusinessProcessId,
+		PurchaseOrderReference = source.PurchaseOrderReference,
+		Seller = source.Seller,
+		Buyer = source.Buyer,
+		Payment = source.Payment,
+		Lines = [line],
+		Note = source.Note
+	};
+
 	private static string Normalize(string xml) => System.Xml.Linq.XDocument.Parse(xml).ToString(System.Xml.Linq.SaveOptions.DisableFormatting);
 
 	private static ElectronicInvoice CreateInvoice(ElectronicInvoiceTypeCode typeCode = ElectronicInvoiceTypeCode.Invoice) => new()
