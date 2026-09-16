@@ -114,7 +114,26 @@ public sealed class SalesInvoiceFinalizationTests : IDisposable
 			(transaction, token) => SalesInvoiceFinalizationService.FinalizeAsync(transaction, invoice, Issuer(), DateTime.UtcNow, token),
 			CancellationToken.None));
 
-		Assert.Contains("explicit EN 16931 tax category", exception.Message, StringComparison.OrdinalIgnoreCase);
+		Assert.Contains("BR-S-05", exception.Message, StringComparison.Ordinal);
+		Assert.Null(new SalesInvoiceFinalizationService(_database).TryLoad(invoice.Id));
+	}
+
+	[Fact]
+	public async Task FinalizationAcceptsExplicitZeroRatedCategoryAndRetainsRoutingEvidence()
+	{
+		var invoice = Invoice();
+		invoice.Lines[0].TaxRate = 0m;
+		invoice.Lines[0].TaxCategoryCode = "Z";
+		var runner = new DatabaseTransactionRunner(_database);
+		var created = await runner.ExecuteAsync(
+			(transaction, token) => SalesInvoiceFinalizationService.FinalizeAsync(transaction, invoice, Issuer(), DateTime.UtcNow, token),
+			CancellationToken.None);
+
+		Assert.Contains("<ram:CategoryCode>Z</ram:CategoryCode>", created.XRechnungXml, StringComparison.Ordinal);
+		Assert.Equal(created.XRechnungXml, new SalesInvoiceFinalizationService(_database).LoadRequired(invoice.Id).XRechnungXml);
+		Assert.Equal(1L, Convert.ToInt64(await _database.ExecuteScalarAsync(
+			"SELECT COUNT(*) FROM SalesElectronicInvoiceEvidence WHERE DocumentType='Invoice' AND DocumentId=42;",
+			CancellationToken.None)));
 	}
 
 	private void SeedFinalizableInvoice()

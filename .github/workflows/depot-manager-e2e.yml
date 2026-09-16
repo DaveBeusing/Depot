@@ -134,10 +134,12 @@ jobs:
 
           $trustCertificate = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new($cerPath)
           foreach ($storeName in @('Root', 'TrustedPublisher')) {
-            Write-Host "Adding ephemeral certificate to CurrentUser/$storeName."
+            # The hosted runner is disposable and elevated. LocalMachine avoids the
+            # interactive CurrentUser root-trust prompt in an unattended job.
+            Write-Host "Adding ephemeral certificate to LocalMachine/$storeName."
             $store = [System.Security.Cryptography.X509Certificates.X509Store]::new(
               $storeName,
-              [System.Security.Cryptography.X509Certificates.StoreLocation]::CurrentUser)
+              [System.Security.Cryptography.X509Certificates.StoreLocation]::LocalMachine)
             try {
               $store.Open([System.Security.Cryptography.X509Certificates.OpenFlags]::ReadWrite)
               $store.Add($trustCertificate)
@@ -211,7 +213,7 @@ jobs:
           foreach ($storeName in @('Root', 'TrustedPublisher')) {
             $store = [System.Security.Cryptography.X509Certificates.X509Store]::new(
               $storeName,
-              [System.Security.Cryptography.X509Certificates.StoreLocation]::CurrentUser)
+              [System.Security.Cryptography.X509Certificates.StoreLocation]::LocalMachine)
             try {
               $store.Open([System.Security.Cryptography.X509Certificates.OpenFlags]::ReadWrite)
               $matches = $store.Certificates.Find(
