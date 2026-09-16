@@ -84,6 +84,14 @@ internal sealed class ServiceComposition
 		var inventoryManagement = new InventoryManagementService(repositories.Inventories, audit);
 		Import = new ImportService(repositories.Items, Items, Purposes, Warehouses, StorageLocations, inventoryManagement, Movements, Authorization);
 		Sales = new SalesServices(Customers, SalesPricing, SalesTimeline, SalesOrders, SalesQuotes, Shipments, ShipmentPacking, SalesInvoices, CustomerReturns, SalesCreditNotes, Items, Authorization, SalesDocuments, SalesEmail, SalesInvoiceFinalizations, ItemCosts, PriceListGeneration);
+		GlobalSearch = new GlobalSearchService(
+		[
+			new ItemGlobalSearchProvider(Items, Authorization),
+			new SupplierGlobalSearchProvider(Suppliers, Authorization),
+			new PurchaseOrderGlobalSearchProvider(PurchaseOrders, Authorization),
+			new SalesGlobalSearchProvider(Sales, Authorization),
+			new FinanceJournalGlobalSearchProvider(FinanceGeneralLedger, Authorization)
+		]);
 	}
 
 	public AuthorizationService Authorization { get; }
@@ -145,6 +153,7 @@ internal sealed class ServiceComposition
 	public SalesDocumentService SalesDocuments { get; }
 	public SalesDocumentEmailService SalesEmail { get; }
 	public SalesServices Sales { get; }
+	public GlobalSearchService GlobalSearch { get; }
 	public WarehouseService Warehouses { get; }
 	public StorageLocationService StorageLocations { get; }
 	public UserService Users { get; }
