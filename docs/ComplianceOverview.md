@@ -23,27 +23,35 @@ Localization requires explicit effective-dated assignment. The built-in `GENERIC
 - User Sessions feature schema: **3**
 - Security Events feature schema: **2**
 - User Preferences feature schema: **2**
-- Enterprise Identity feature schema: **1**
+- Enterprise Identity feature schema: **2**
 - Help manifest: **1.21**
 
 `Directory.Build.props` is authoritative for the exact application patch/version. Compliance documentation records the development line and stable schema/help contracts instead of duplicating the moving preview patch number.
 
 Sales schema 14 adds retained ZUGFeRD 2.5.2 / Factur-X 1.09.2 XRECHNUNG-profile hybrid artifacts. This is an engineering capability statement only. A product conformance claim remains gated by independent PDF/A-3 validation plus the established KoSIT/XRechnung validation and release evidence.
 
-Enterprise Identity schema 1 adds non-secret provider configuration and exact external-identity links to existing local users. This is an identity-resolution capability, not an OIDC/Entra authentication-compliance claim. External groups, roles and permission claims do not grant Depot authorization; local Depot RBAC remains authoritative.
+Enterprise Identity schema 2 adds non-secret provider configuration, exact external-identity links and optional provider-bound `amr`/`acr`/authentication-age requirements. OIDC/Entra protocol and assurance validation are technical authentication controls, not an identity-provider certification. External groups, roles and permission claims do not grant Depot authorization; local Depot RBAC remains authoritative.
 
 ## Database-provider acceptance
 
 The database-provider technical gate is complete for the exact baselines documented in [Database Provider Production Support Matrix](DatabaseProviderSupportMatrix.md): Depot's bundled SQLite runtime, SQL Server 2022 engine 16.x, MariaDB 11.8.9 LTS and MySQL 8.4.11 LTS.
 
-The real-provider matrix covers provisioning/migration, locking/deadlock/retry, rollback, constraints, date/decimal/timestamp handling, representative Finance/Sales/Procurement/session workflows, Banking/reconciliation, Financial Reporting/snapshots, remote restart and provider-native backup/restore boundaries plus representative 100k indexed access. Enterprise Identity schema 1 adds explicit migration/persistence smoke coverage on all four provider families.
+The real-provider matrix covers provisioning/migration, locking/deadlock/retry, rollback, constraints, date/decimal/timestamp handling, representative Finance/Sales/Procurement/session workflows, Banking/reconciliation, Financial Reporting/snapshots, remote restart and provider-native backup/restore boundaries plus representative 100k indexed access. Enterprise Identity schema 2 extends the provider migration/persistence boundary with assurance-policy fields while preserving existing schema-1 provider/link identity data.
 
 Database-provider certification is an engineering/runtime statement. It does not establish jurisdiction-specific accounting, tax, legal, accessibility, operating-system, banking-network or regulatory certification.
+
+## External authentication boundary
+
+Depot's external authentication implementation uses OIDC Authorization Code + PKCE and validates signature, issuer, audience, lifetime, nonce, tenant boundary and configured external assurance evidence before local identity resolution. Required `amr`/`acr` values are explicit administrator-selected provider contracts; Depot does not assign universal MFA semantics to arbitrary claim strings.
+
+For Microsoft Entra deployments, Conditional Access and Authentication Strength remain deployment-side controls operated in the tenant. Depot's application-side claim checks do not replace those controls, certify their configuration or prove an organization's MFA policy is adequate.
+
+Depot does not persist protocol tokens or raw `amr`, `acr`, `auth_time` or `azp` evidence and does not implement its own TOTP/MFA secret store in this package.
 
 ## Remaining acceptance
 
 Production use still requires deployment-specific accounting/reporting policy approval, reconciliation and period-end procedures, segregation-of-duties review, retention/export/restore procedures, realistic customer-specific sizing, accessibility/signing/deployment acceptance and qualified organizational/legal/accounting validation.
 
-Enterprise external authentication additionally requires the F4B protocol implementation and deployment-specific identity-provider configuration/acceptance before it can be advertised as working SSO.
+Enterprise external authentication additionally requires deployment-specific identity-provider configuration, redirect/application registration and Conditional Access / Authentication Strength or equivalent provider-policy acceptance before it can be advertised as an accepted customer SSO/MFA deployment.
 
 This document is engineering evidence and not a certification statement.

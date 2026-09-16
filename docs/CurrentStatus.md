@@ -2,7 +2,7 @@
 
 Updated: 2026-09-16
 
-Depot is on the `0.15.x-preview` development line. Finance, inventory, purchasing, sales, reporting, localization, notifications, Audit, persistent user sessions, operational security monitoring and the enterprise-identity persistence foundation are integrated in the repository.
+Depot is on the `0.15.x-preview` development line. Finance, inventory, purchasing, sales, reporting, localization, notifications, Audit, persistent user sessions, operational security monitoring and enterprise identity/authentication are integrated in the repository.
 
 ## Repository governance
 
@@ -31,7 +31,7 @@ Release channels are explicit:
 
 The Track A closure review corrected a release-identity defect exposed by the H5 PR workflow: the conditioned XML node for `DepotVersionSuffix` was being read by PowerShell as `System.Xml.XmlElement`, producing an invalid Preview tag. The suffix is now a fixed repository property so release/evidence readers resolve the literal `preview` value.
 
-Release manifest/evidence records Core plus the current feature-schema compatibility dimensions; F4A closes the prior omission of User Preferences and adds Enterprise Identity schema evidence.
+Release manifest/evidence records Core plus the current feature-schema compatibility dimensions, including User Preferences and Enterprise Identity.
 
 See [Release Pipeline](ReleasePipeline.md), [Production Signing Acceptance](ProductionSigningAcceptance.md) and [Release Integrity](compliance/ReleaseIntegrity.md).
 
@@ -87,7 +87,7 @@ The procedure is documented in [Accessibility & Desktop Production Acceptance](A
 
 ## Track A final acceptance closure
 
-All five Track A implementation packages are present in the repository. `operations/TrackAAcceptance.example.json` and `scripts/operations/Test-TrackAAcceptance.ps1` now provide one explicit closure/evidence contract, documented in [Track A – Final Acceptance Closure](TrackAAcceptanceClosure.md).
+All five Track A implementation packages are present in the repository. `operations/TrackAAcceptance.example.json` and `scripts/operations/Test-TrackAAcceptance.ps1` provide one explicit closure/evidence contract, documented in [Track A – Final Acceptance Closure](TrackAAcceptanceClosure.md).
 
 Current closure states are:
 
@@ -110,7 +110,7 @@ The following database baselines are technically **Supported** when shipped with
 - MariaDB 11.8.9 LTS;
 - MySQL 8.4.11 LTS.
 
-The matrix validates fresh/idempotent provisioning, Core 29→30 and legacy Sales migrations through the current Sales feature schema, concurrent provisioning, SQL/type/constraint/date/decimal behavior, transactional rollback, concurrency/deadlock/retry behavior, Sales, Procurement, sessions, Finance GL/AR/AP/FIFO, Banking/reconciliation, Financial Reporting/snapshots, server restart, native remote backup/restore and representative 100k indexed access. Pull requests include provider recovery drills and retained recovery evidence for every supported provider family. Enterprise Identity schema 1 adds provider-smoke coverage for SQLite, SQL Server, MariaDB and MySQL migration/persistence behavior.
+The matrix validates fresh/idempotent provisioning, Core 29→30 and legacy Sales migrations through the current Sales feature schema, concurrent provisioning, SQL/type/constraint/date/decimal behavior, transactional rollback, concurrency/deadlock/retry behavior, Sales, Procurement, sessions, Finance GL/AR/AP/FIFO, Banking/reconciliation, Financial Reporting/snapshots, server restart, native remote backup/restore and representative 100k indexed access. Pull requests include provider recovery drills and retained recovery evidence for every supported provider family. Enterprise Identity schema 2 adds provider-smoke coverage for the provider-level assurance-policy migration/persistence boundary in addition to the external-identity foundation.
 
 MariaDB and MySQL are independently certified; support for one never implies support for the other. Versions outside the listed baselines remain untested/best-effort until explicitly added to the matrix.
 
@@ -130,21 +130,23 @@ A bounded maintenance service enforces ended-session history retention, Security
 
 The security feature does not collect source IP, geolocation, MAC address, hardware fingerprint, typed text, key values, mouse coordinates or external-window activity.
 
-## Enterprise identity foundation
+## Enterprise identity and authentication
 
-Enterprise Identity schema **1** introduces the provider-neutral persistence and resolution boundary for future OpenID Connect / Microsoft Entra ID authentication. Non-secret provider configuration is stored separately from exact external provider/issuer/subject links to existing local Depot users.
+Enterprise Identity schema **2** is the current provider-neutral external-identity and authentication-assurance boundary. Schema 1 established non-secret provider configuration plus exact provider/issuer/subject links to existing local Depot users. F4B added Authorization Code + PKCE, system-browser sign-in, loopback callback handling, discovery/signing-key validation, issuer/audience/lifetime/nonce validation and tenant-bound Microsoft Entra ID.
 
-The external identity tuple is bound through a deterministic SHA-256 key so exact issuer/subject identity remains provider-neutral even on case-insensitive SQL collations. Optional observed tenant, email and display name are identity evidence only and never overwrite the local user.
+F4C adds nullable provider-level `RequiredAmr`, `RequiredAcr` and `MaximumAuthenticationAgeMinutes` policy. Required context/freshness is requested through `acr_values`/`max_age` and independently verified against the validated ID-token evidence before identity resolution or session creation. `azp` is checked against the configured client ID when present and is required for multi-audience tokens.
 
-`IEnterpriseIdentityResolver` returns an active local user with roles and effective permissions reloaded exclusively from Depot's own RBAC tables. External roles, groups and permission claims are not authorization inputs. Provider/link administration reuses `UsersView` / `UsersManage` and writes administrative mutations with Audit evidence.
+The external identity tuple remains bound through a deterministic SHA-256 key so exact issuer/subject identity is provider-neutral even on case-insensitive SQL collations. Authentication-method/context/time claims remain runtime-only and are not stored on identity links.
 
-F4A deliberately does not implement browser OIDC, PKCE/state/nonce, token validation, Entra token acquisition, automatic user provisioning or external MFA interpretation. See [Enterprise Identity Foundation](EnterpriseIdentity.md).
+`IEnterpriseIdentityResolver` returns an active local user with roles and effective permissions reloaded exclusively from Depot's own RBAC tables. External roles, groups and permission claims are not authorization inputs. Provider/link/assurance-policy administration reuses `UsersView` / `UsersManage` and writes administrative mutations with Audit evidence.
+
+Depot does not implement its own TOTP/MFA secret store in F4C. For Entra deployments, Conditional Access and Authentication Strength remain the primary tenant-side policy; Depot verifies only the explicitly configured provider evidence contract. See [Enterprise Identity and OpenID Connect](EnterpriseIdentity.md).
 
 ## Electronic invoicing status
 
 The bounded F2 XRechnung 3.0 CII implementation is merged. Sales schema 13 persists explicit `S`, `Z`, `E` and `AE` VAT semantics, immutable finalized XML/integrity evidence, recipient/routing evidence and electronic Sales Credit Note finalization. The conformance closure binds retained fixtures to production generator output and validates the advertised XML matrix through KoSIT.
 
-The product decision now includes ZUGFeRD/Factur-X. F3A introduced Sales schema 14 and the hybrid-artifact boundary for ZUGFeRD 2.5.2 / Factur-X 1.09.2 XRECHNUNG-profile documents. F3B is merged and adds the pinned veraPDF 1.30.2 PDF/A-3B acceptance path for the advertised hybrid matrix.
+The product decision includes ZUGFeRD/Factur-X. F3A introduced Sales schema 14 and the hybrid-artifact boundary for ZUGFeRD 2.5.2 / Factur-X 1.09.2 XRECHNUNG-profile documents. F3B adds the pinned veraPDF 1.30.2 PDF/A-3B acceptance path for the advertised hybrid matrix.
 
 F2/F3 final acceptance remains evidence-dependent until the corresponding candidate workflows actually complete successfully; implementation/merge presence does not manufacture KoSIT or veraPDF acceptance evidence.
 
@@ -158,7 +160,7 @@ F2/F3 final acceptance remains evidence-dependent until the corresponding candid
 - User Sessions feature schema: **3**
 - Security Events feature schema: **2**
 - User Preferences feature schema: **2**
-- Enterprise Identity feature schema: **1**
+- Enterprise Identity feature schema: **2**
 - Help manifest: **1.21**
 
 `Directory.Build.props` is authoritative for the exact Depot application patch/version; `src/DepotManager/DepotManager.Version.props` is authoritative for the DepotManager version. Schema migration constants and `src/Depot/Help/manifest.json` are authoritative for the other baseline values. Every repository commit increments `DepotVersionPatch`.
@@ -175,4 +177,4 @@ Provider support does not replace deployment-specific accounting/tax/legal, acce
 
 Finish the four real Track A closure actions and validate the resulting controlled evidence with `Test-TrackAAcceptance.ps1 -RequirePass`. Track A closure remains a prerequisite rather than the whole Depot 1.0 decision.
 
-The next enterprise-identity implementation package is F4B OpenID Connect / Microsoft Entra ID authentication on top of this persistence foundation, followed by F4C external MFA claims and identity hardening. Remaining 1.0 work outside Track A is tracked in [Release 1.0](Release1.0.md) and the [Roadmap](Roadmap.md).
+After F4C passes its repository gates, the next Track C implementation package is F5A Security Event Export Contract, followed by F5B Security Event Delivery & Checkpointing. Remaining 1.0 work outside Track A is tracked in [Release 1.0](Release1.0.md) and the [Roadmap](Roadmap.md).

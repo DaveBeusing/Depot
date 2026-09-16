@@ -14,7 +14,7 @@ This document identifies the documentation baseline for the current development 
 - User Sessions feature schema: `3`
 - Security Events feature schema: `2`
 - User Preferences feature schema: `2`
-- Enterprise Identity feature schema: `1`
+- Enterprise Identity feature schema: `2`
 
 `Directory.Build.props` is the authoritative source for the exact application patch/version. Canonical documentation records the moving preview line as `0.15.x-preview`; exact patch numbers belong in source/release evidence, not manually duplicated baseline text.
 
@@ -31,7 +31,7 @@ Current certified technical baselines are:
 
 Documentation must not infer provider support from shared abstractions or from a different product in the same connector family. MariaDB and MySQL are independently tested. Newer/older versions remain untested/best-effort until their own full acceptance evidence exists.
 
-The full provider matrix validates provisioning/migration, provider SQL/types/constraints, rollback, concurrency/deadlock/retry, representative Sales/Procurement/session/Finance flows, Banking/reconciliation, Financial Reporting/snapshots, remote restart, provider-native backup/restore and 100k indexed access. Enterprise Identity schema 1 has explicit SQLite/SQL Server/MariaDB/MySQL smoke coverage for migration and external-identity persistence.
+The full provider matrix validates provisioning/migration, provider SQL/types/constraints, rollback, concurrency/deadlock/retry, representative Sales/Procurement/session/Finance flows, Banking/reconciliation, Financial Reporting/snapshots, remote restart, provider-native backup/restore and 100k indexed access. Enterprise Identity schema 2 includes provider-level assurance-policy migration/persistence in the external-identity provider boundary.
 
 SQLite documentation must preserve its dynamic `NUMERIC` precision boundary; it must not claim full fixed `DECIMAL(28,9)` range equivalence with the server providers.
 
@@ -47,7 +47,9 @@ The shared User Session policy covers idle timeout, maximum lifetime, concurrent
 
 Production authentication throttling is persisted in the shared database and governed by `AuthenticationSecurityPolicy`; documentation must not call it process-local. Local credentials remain behind `IAuthenticationProvider` / `LocalAuthenticationProvider`.
 
-Enterprise Identity schema 1 provides provider configuration and exact provider/issuer/subject links to existing local Depot users. Documentation must not describe F4A as a completed OIDC or Entra sign-in flow. `IEnterpriseIdentityResolver` accepts identities only after protocol validation by a future external authentication provider, and local Depot RBAC remains the only source of roles and effective permissions. External token roles/groups/permissions are not authorization inputs.
+Enterprise Identity schema 2 provides provider configuration, exact provider/issuer/subject links and optional provider-bound external assurance requirements. OIDC/Entra sign-in uses Authorization Code + PKCE, validates the ID token and any configured `amr`, `acr`, `auth_time` and `azp` assurance boundary before local identity resolution. Authentication-assurance claim values are runtime evidence and are not persisted on identity links.
+
+Local Depot RBAC remains the only source of roles and effective permissions. External token roles/groups/permissions are not authorization inputs. Documentation must not present a matching `amr` string as universal MFA semantics; assurance values are explicit provider contracts, and Entra Conditional Access / Authentication Strength remains a deployment-side control.
 
 Security Center investigation correlates only identifiers already present in Depot authentication/session data. Response actions delegate to the established session/user services. `SecurityEvents.View`, `SecurityEvents.Manage`, `UserSessions.Terminate`, `Users.Manage` and `Settings.Manage` remain separate permissions.
 
@@ -57,11 +59,11 @@ Session history and Security Event retention are actively enforced by bounded ba
 
 The current security implementation does not collect source IP, geolocation, MAC address, hardware fingerprint, typed input, key values, mouse coordinates or external-window activity. `ClientInstanceId` is a generated Depot process/session correlation identifier, not a device fingerprint.
 
-Enterprise Identity may retain issuer/subject plus optional observed tenant, email and display name because these are required identity-link evidence. It does not retain external passwords, access tokens, refresh tokens, ID tokens, authorization codes or device fingerprints.
+Enterprise Identity may retain issuer/subject plus optional observed tenant, email and display name because these are required identity-link evidence. It may persist administrator-selected assurance requirements, but it does not retain raw `amr`, `acr`, `auth_time`, `azp`, external passwords, access tokens, refresh tokens, ID tokens, authorization codes or device fingerprints.
 
 ## Documentation rules
 
-Do not describe password-change invalidation, concurrent-session policy, shared database throttling, provider certification, investigation/response or retention as future-only work.
+Do not describe password-change invalidation, concurrent-session policy, shared database throttling, provider certification, investigation/response, retention, OIDC sign-in or provider-bound assurance validation as future-only work.
 
 Do not describe database-provider technical support as jurisdiction-specific accounting, tax, legal, accessibility, bank-network or regulatory certification. Remote backup scheduling, retention, off-host copies and restore procedures remain operator responsibilities even though the CI matrix validates a provider-native restore boundary.
 

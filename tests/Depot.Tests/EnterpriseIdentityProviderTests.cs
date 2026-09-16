@@ -88,6 +88,9 @@ public sealed class EnterpriseIdentityProviderTests
 			DisplayName = "Provider Acceptance",
 			Authority = "https://identity.example.test",
 			ClientId = $"client-{nonce}",
+			RequiredAmr = "mfa",
+			RequiredAcr = "urn:depot:test:loa:2",
+			MaximumAuthenticationAgeMinutes = 45,
 			IsEnabled = true,
 			CreatedUtc = DateTime.UtcNow,
 			UpdatedUtc = DateTime.UtcNow
@@ -124,6 +127,9 @@ public sealed class EnterpriseIdentityProviderTests
 		Assert.NotNull(storedProvider);
 		Assert.Equal(provider.Id, storedProvider!.Id);
 		Assert.True(storedProvider.IsEnabled);
+		Assert.Equal("mfa", storedProvider.RequiredAmr);
+		Assert.Equal("urn:depot:test:loa:2", storedProvider.RequiredAcr);
+		Assert.Equal(45, storedProvider.MaximumAuthenticationAgeMinutes);
 		Assert.NotNull(storedLink);
 		Assert.Equal(link.Id, storedLink!.Id);
 		Assert.Equal(userId, storedLink.UserId);

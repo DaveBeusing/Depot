@@ -12,7 +12,7 @@ namespace Depot.Repositories;
 public sealed class EnterpriseIdentityRepository : DatabaseRepository
 {
 	private const string ProviderColumns =
-		"Id, Code, Kind, DisplayName, Authority, ClientId, TenantId, IsEnabled, CreatedUtc, UpdatedUtc, Version";
+		"Id, Code, Kind, DisplayName, Authority, ClientId, TenantId, RequiredAmr, RequiredAcr, MaximumAuthenticationAgeMinutes, IsEnabled, CreatedUtc, UpdatedUtc, Version";
 	private const string LinkColumns =
 		"l.Id, l.ProviderId, p.Code, l.UserId, l.Issuer, l.Subject, l.IdentityKeySha256, l.TenantId, l.Email, l.DisplayName, l.LinkedUtc, l.LastSeenUtc, l.Version";
 
@@ -68,8 +68,8 @@ public sealed class EnterpriseIdentityRepository : DatabaseRepository
 		transaction.Session.InsertAsync(
 			"""
 			INSERT INTO EnterpriseIdentityProviders
-			(Code, Kind, DisplayName, Authority, ClientId, TenantId, IsEnabled, CreatedUtc, UpdatedUtc, Version)
-			VALUES ($Code, $Kind, $DisplayName, $Authority, $ClientId, $TenantId, $IsEnabled, $CreatedUtc, $UpdatedUtc, 1);
+			(Code, Kind, DisplayName, Authority, ClientId, TenantId, RequiredAmr, RequiredAcr, MaximumAuthenticationAgeMinutes, IsEnabled, CreatedUtc, UpdatedUtc, Version)
+			VALUES ($Code, $Kind, $DisplayName, $Authority, $ClientId, $TenantId, $RequiredAmr, $RequiredAcr, $MaximumAuthenticationAgeMinutes, $IsEnabled, $CreatedUtc, $UpdatedUtc, 1);
 			""",
 			cancellationToken,
 			ProviderParameters(provider));
@@ -83,6 +83,7 @@ public sealed class EnterpriseIdentityRepository : DatabaseRepository
 			"""
 			UPDATE EnterpriseIdentityProviders
 			SET DisplayName = $DisplayName, Authority = $Authority, ClientId = $ClientId, TenantId = $TenantId,
+			    RequiredAmr = $RequiredAmr, RequiredAcr = $RequiredAcr, MaximumAuthenticationAgeMinutes = $MaximumAuthenticationAgeMinutes,
 			    IsEnabled = $IsEnabled, UpdatedUtc = $UpdatedUtc, Version = Version + 1
 			WHERE Id = $Id AND Version = $ExpectedVersion;
 			""",
@@ -92,6 +93,9 @@ public sealed class EnterpriseIdentityRepository : DatabaseRepository
 			Parameter("$Authority", provider.Authority),
 			Parameter("$ClientId", provider.ClientId),
 			Parameter("$TenantId", provider.TenantId),
+			Parameter("$RequiredAmr", provider.RequiredAmr),
+			Parameter("$RequiredAcr", provider.RequiredAcr),
+			Parameter("$MaximumAuthenticationAgeMinutes", provider.MaximumAuthenticationAgeMinutes),
 			Parameter("$IsEnabled", provider.IsEnabled),
 			Parameter("$UpdatedUtc", Format(provider.UpdatedUtc)),
 			Parameter("$ExpectedVersion", expectedVersion)) == 1;
@@ -147,6 +151,9 @@ public sealed class EnterpriseIdentityRepository : DatabaseRepository
 		Parameter("$Authority", provider.Authority),
 		Parameter("$ClientId", provider.ClientId),
 		Parameter("$TenantId", provider.TenantId),
+		Parameter("$RequiredAmr", provider.RequiredAmr),
+		Parameter("$RequiredAcr", provider.RequiredAcr),
+		Parameter("$MaximumAuthenticationAgeMinutes", provider.MaximumAuthenticationAgeMinutes),
 		Parameter("$IsEnabled", provider.IsEnabled),
 		Parameter("$CreatedUtc", Format(provider.CreatedUtc)),
 		Parameter("$UpdatedUtc", Format(provider.UpdatedUtc))
@@ -175,10 +182,13 @@ public sealed class EnterpriseIdentityRepository : DatabaseRepository
 		Authority = reader.GetString(4),
 		ClientId = reader.GetString(5),
 		TenantId = reader.IsDBNull(6) ? null : reader.GetString(6),
-		IsEnabled = reader.GetBoolean(7),
-		CreatedUtc = ReadDateTime(reader, 8),
-		UpdatedUtc = ReadDateTime(reader, 9),
-		Version = reader.GetInt64(10)
+		RequiredAmr = reader.IsDBNull(7) ? null : reader.GetString(7),
+		RequiredAcr = reader.IsDBNull(8) ? null : reader.GetString(8),
+		MaximumAuthenticationAgeMinutes = reader.IsDBNull(9) ? null : reader.GetInt32(9),
+		IsEnabled = reader.GetBoolean(10),
+		CreatedUtc = ReadDateTime(reader, 11),
+		UpdatedUtc = ReadDateTime(reader, 12),
+		Version = reader.GetInt64(13)
 	};
 
 	private static ExternalIdentityLink ReadLink(DbDataReader reader) => new()

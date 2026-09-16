@@ -7,7 +7,7 @@ namespace Depot.Data;
 
 public static class EnterpriseIdentitySchemaMigration
 {
-	public const int CurrentVersion = 1;
+	public const int CurrentVersion = 2;
 	private const string FeatureName = "EnterpriseIdentity";
 
 	public static void Migrate(IDatabaseConnectionFactory connectionFactory)
@@ -23,6 +23,13 @@ public static class EnterpriseIdentitySchemaMigration
 			EnterpriseIdentitySchema.Ensure(connectionFactory);
 			WriteVersion(connectionFactory, CurrentVersion);
 			version = CurrentVersion;
+		}
+
+		if (version == 1)
+		{
+			EnterpriseIdentitySchema.EnsureAssurancePolicyColumns(connectionFactory);
+			WriteVersion(connectionFactory, 2);
+			version = 2;
 		}
 
 		if (version != CurrentVersion)

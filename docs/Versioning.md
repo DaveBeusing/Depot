@@ -11,7 +11,7 @@ Updated: 2026-09-16
 - User Sessions feature schema: **3**
 - Security Events feature schema: **2**
 - User Preferences feature schema: **2**
-- Enterprise Identity feature schema: **1**
+- Enterprise Identity feature schema: **2**
 - Help manifest: **1.21**
 
 Application, Core database and feature-schema versions are independent compatibility dimensions. `Directory.Build.props` is the authoritative source for the exact application patch/version; long-lived documentation records the development line rather than duplicating the moving patch number.
@@ -81,9 +81,15 @@ Security Events schema **2** is the current authentication-security event/policy
 
 User Preferences schema **2** is the current persistent workspace/default-view preference baseline.
 
-### Enterprise Identity schema 1
+### Enterprise Identity schema 2
 
-Enterprise Identity schema **1** is the current external-identity foundation. It stores non-secret enterprise identity-provider configuration plus exact external provider/issuer/subject links to existing local Depot users.
+Enterprise Identity schema **2** is the current external-identity and provider-assurance baseline. It retains the schema-1 non-secret provider configuration and exact external provider/issuer/subject links to existing local Depot users, and adds nullable provider-level assurance requirements:
+
+- `RequiredAmr` for one exact OIDC authentication-method reference value;
+- `RequiredAcr` for one exact OIDC authentication-context reference value;
+- `MaximumAuthenticationAgeMinutes` for bounded `auth_time` freshness.
+
+Schema 1 migrates forward without changing provider/link identity data and initializes the new assurance requirements to null. Authentication-method/context/time evidence remains runtime-only and is never persisted on `ExternalIdentityLinks`.
 
 The schema deliberately does not persist external roles, groups or permission grants. External identity proves account identity only; local Depot roles and permissions remain authoritative. Provider/issuer/subject uniqueness is represented by a deterministic SHA-256 identity key so the invariant is consistent even when a server provider uses a case-insensitive default collation.
 
