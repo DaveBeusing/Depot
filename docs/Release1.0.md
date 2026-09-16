@@ -6,7 +6,7 @@ Updated: 2026-09-16
 
 - [ ] Ready for release
 
-Depot is on the `0.15.x-preview` line with Core database schema **30**, Sales feature schema **11**, Finance feature schema **9**, User Sessions schema **3**, Security Events schema **2**, and Help manifest **1.21**. Checked items represent implemented technical controls/evidence only; they do not replace legal, accounting, accessibility, signing, localization or deployment acceptance.
+Depot is on the `0.15.x-preview` line with Core database schema **30**, Sales feature schema **13**, Finance feature schema **9**, User Sessions schema **3**, Security Events schema **2**, User Preferences schema **2**, and Help manifest **1.21**. `Directory.Build.props` is authoritative for the exact application patch/version. Checked items represent implemented technical controls/evidence only; they do not replace legal, accounting, accessibility, signing, localization or deployment acceptance.
 
 ## Implemented Finance baseline
 
@@ -118,6 +118,8 @@ Technical controls and the evidence contract are implemented. The exact release 
 - [ ] final release notes, known limitations, hashes, SBOM and support information published
 
 ### Electronic invoicing
+
+F2 implementation is merged and the bounded XRechnung 3.0 CII matrix is present. Production acceptance remains evidence-driven until the required repository/conformance gates for the accepted release candidate are green.
 
 - [ ] remaining EN 16931 special-tax semantics accepted
 - [ ] electronic credit-note finalization where advertised

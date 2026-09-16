@@ -1,6 +1,6 @@
 # Depot Architecture
 
-Updated: 2026-09-08
+Updated: 2026-09-16
 
 ## Overview
 
@@ -24,7 +24,7 @@ Remote provisioning serializes the complete global/feature migration sequence wi
 
 Known transient deadlock/write-conflict errors use bounded exponential retry with jitter and complete transaction recreation. Non-transient business/constraint failures are not retried. MySQL/MariaDB Finance UTC timestamps are normalized to real `DATETIME(6)` parameters at the provider boundary rather than leaking provider rules into Services/Repositories.
 
-Sales schema 11 enforces the active reservation uniqueness invariant on every supported provider. SQLite and SQL Server use partial/filtered unique indexes; MariaDB/MySQL use an active generated inventory key plus a unique compound index.
+Sales schema 11 introduced the active reservation uniqueness invariant on every supported provider. SQLite and SQL Server use partial/filtered unique indexes; MariaDB/MySQL use an active generated inventory key plus a unique compound index. Subsequent Sales schemas build on that provider-parity baseline; the current Sales feature schema is 13.
 
 ## Authentication sessions, presence and policy enforcement
 
@@ -89,14 +89,17 @@ Customer → Region → Global resolution
 ## Schema versions
 
 - Core database schema: **30**
-- Sales feature schema: **11**
+- Sales feature schema: **13**
 - Finance feature schema: **9**
 - User Sessions feature schema: **3**
 - Security Events feature schema: **2**
-- Application: **0.15.169-preview**
+- User Preferences feature schema: **2**
+- Application: **0.15.x-preview**
 - Help manifest: **1.21**
 
-Feature schemas evolve independently. Sales schema 11 is a provider-parity/data-integrity correction and therefore does not increment Core schema 30.
+`Directory.Build.props` is authoritative for the exact application patch/version. Feature schema constants remain authoritative in their migration classes; this architecture document records the compatibility baselines rather than duplicating a moving preview patch.
+
+Feature schemas evolve independently. Sales schema 11 remains the provider-parity/data-integrity correction; schema 12 introduced Advanced Pricing persistence and schema 13 adds bounded electronic-invoice finalization/evidence. None of these changes increments Core schema 30.
 
 ## Transaction, concurrency and evidence model
 
