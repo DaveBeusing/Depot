@@ -1,0 +1,82 @@
+<UserControl x:Class="Depot.Views.WorkspaceProductivityPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Border DataContext="{Binding RelativeSource={RelativeSource AncestorType={x:Type Window}}, Path=WorkspaceProductivity}"
+            Background="{DynamicResource SurfaceBrush}"
+            BorderBrush="{DynamicResource BorderBrush}"
+            BorderThickness="1"
+            CornerRadius="8"
+            Padding="16"
+            Margin="0,0,0,16">
+        <StackPanel>
+            <Grid Margin="0,0,0,12">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                <StackPanel>
+                    <TextBlock Text="My workspace" Style="{DynamicResource WorkspaceSectionTitleStyle}" />
+                    <TextBlock Text="Favorites, recent workspaces and personal landing behavior." Style="{StaticResource CaptionStyle}" Margin="0,3,0,0" />
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="Landing:" Style="{StaticResource CaptionStyle}" VerticalAlignment="Center" Margin="0,0,6,0" />
+                    <TextBlock Text="{Binding DefaultLandingLabel}" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,8,0" />
+                    <Button Content="Reset landing" Click="OnClearDefaultClick" Style="{StaticResource SecondaryButtonStyle}" />
+                </StackPanel>
+            </Grid>
+
+            <UniformGrid Columns="3">
+                <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="12" Margin="0,0,8,0">
+                    <StackPanel>
+                        <TextBlock Text="Favorites" Style="{StaticResource SectionTitleStyle}" />
+                        <TextBlock Text="Pinned workspaces stay one click away." Style="{StaticResource CaptionStyle}" Margin="0,2,0,8" />
+                        <ItemsControl ItemsSource="{Binding Favorites}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="0,0,0,6">
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                        <Button Content="{Binding Title}" Click="OnOpenClick" Style="{StaticResource SecondaryButtonStyle}" HorizontalContentAlignment="Left" />
+                                        <Button Grid.Column="1" Content="Default" Click="OnSetDefaultClick" Style="{StaticResource SecondaryButtonStyle}" Margin="6,0,0,0" />
+                                        <Button Grid.Column="2" Content="Unpin" Click="OnToggleFavoriteClick" Style="{StaticResource SecondaryButtonStyle}" Margin="6,0,0,0" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+
+                <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="12" Margin="4,0">
+                    <StackPanel>
+                        <TextBlock Text="Recent" Style="{StaticResource SectionTitleStyle}" />
+                        <TextBlock Text="Your latest permitted workspaces." Style="{StaticResource CaptionStyle}" Margin="0,2,0,8" />
+                        <ItemsControl ItemsSource="{Binding Recents}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="0,0,0,6">
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                                        <Button Content="{Binding Title}" Click="OnOpenClick" Style="{StaticResource SecondaryButtonStyle}" HorizontalContentAlignment="Left" />
+                                        <Button Grid.Column="1" Content="Default" Click="OnSetDefaultClick" Style="{StaticResource SecondaryButtonStyle}" Margin="6,0,0,0" />
+                                        <Button Grid.Column="2" Content="Pin / Unpin" Click="OnToggleFavoriteClick" Style="{StaticResource SecondaryButtonStyle}" Margin="6,0,0,0" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+
+                <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="12" Margin="8,0,0,0">
+                    <StackPanel>
+                        <TextBlock Text="Quick actions" Style="{StaticResource SectionTitleStyle}" />
+                        <TextBlock Text="Favorites first, then commonly used permitted workspaces." Style="{StaticResource CaptionStyle}" Margin="0,2,0,8" />
+                        <ItemsControl ItemsSource="{Binding QuickActions}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Button Content="{Binding Title}" Click="OnOpenClick" Style="{StaticResource SecondaryButtonStyle}" HorizontalContentAlignment="Left" Margin="0,0,0,6" />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+            </UniformGrid>
+
+            <TextBlock Text="{Binding StatusText}" Style="{StaticResource CaptionStyle}" Margin="0,10,0,0" />
+        </StackPanel>
+    </Border>
+</UserControl>
