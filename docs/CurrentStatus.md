@@ -116,7 +116,7 @@ The security feature does not collect source IP, geolocation, MAC address, hardw
 
 ## Versions
 
-- Application: **0.15.174-preview**
+- Application: **0.15.175-preview**
 - DepotManager: **0.1.23-preview**
 - Core database schema: **30**
 - Sales feature schema: **11**

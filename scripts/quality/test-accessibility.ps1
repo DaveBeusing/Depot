@@ -129,7 +129,7 @@ if ($violations.Count -gt 0) {
 
 if (-not [string]::IsNullOrWhiteSpace($EvidencePath)) {
     $fullEvidencePath = [IO.Path]::GetFullPath((Join-Path $root $EvidencePath))
-    Directory.CreateDirectory((Split-Path $fullEvidencePath -Parent)) | Out-Null
+    [IO.Directory]::CreateDirectory((Split-Path $fullEvidencePath -Parent)) | Out-Null
     $evidence = [ordered]@{
         formatVersion = 1
         status = 'PASS'

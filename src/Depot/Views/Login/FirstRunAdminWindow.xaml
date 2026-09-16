@@ -13,7 +13,7 @@
 	<Border Padding="24" Background="{DynamicResource BackgroundBrush}">
 		<controls:Card Width="420">
 			<StackPanel>
-				<Image Width="64" Height="56" HorizontalAlignment="Center" Margin="0,0,0,16" Source="/Resources/Images/Depot.png" automation:AutomationProperties.AccessibilityView="Raw" />
+				<Image Width="64" Height="56" HorizontalAlignment="Center" Margin="0,0,0,16" Source="/Resources/Images/Depot.png" />
 				<TextBlock HorizontalAlignment="Center" Text="Create the first administrator" TextAlignment="Center" Style="{StaticResource PageTitleStyle}" />
 				<TextBlock Margin="0,4,0,20" HorizontalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}" Text="Secure this database with an individual administrator account before continuing." TextAlignment="Center" TextWrapping="Wrap" Style="{StaticResource BodyStyle}" />
 

@@ -12,7 +12,7 @@
 	<Border Padding="24" Background="{DynamicResource BackgroundBrush}">
 		<controls:Card Width="380">
 			<StackPanel>
-				<Image Width="64" Height="56" HorizontalAlignment="Center" Margin="0,0,0,16" Source="/Resources/Images/Depot.png" automation:AutomationProperties.AccessibilityView="Raw" />
+				<Image Width="64" Height="56" HorizontalAlignment="Center" Margin="0,0,0,16" Source="/Resources/Images/Depot.png" />
 				<TextBlock HorizontalAlignment="Center" Text="Sign in to Depot" TextAlignment="Center" Style="{StaticResource PageTitleStyle}" />
 				<TextBlock Margin="0,4,0,20" HorizontalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}" Text="Use your Depot account to continue." TextAlignment="Center" Style="{StaticResource BodyStyle}" />
 				<TextBlock x:Name="EmailLabel" Text="Email" Style="{StaticResource FormLabelStyle}" />

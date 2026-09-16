@@ -46,8 +46,7 @@ public static class AuthenticodeVerifier
 
         ValidateWinTrust(fullPath);
 
-        using var signer = X509Certificate.CreateFromSignedFile(fullPath);
-        using var certificate = X509CertificateLoader.LoadCertificate(signer.GetRawCertData());
+        using var certificate = LoadAuthenticodeSigner(fullPath);
         EnsureCodeSigningEnhancedKeyUsage(certificate);
 
         if (!string.IsNullOrWhiteSpace(expectedPublisherSubject) &&
@@ -63,6 +62,19 @@ public static class AuthenticodeVerifier
             certificate.Thumbprint,
             certificate.NotBefore,
             certificate.NotAfter);
+    }
+
+    private static X509Certificate2 LoadAuthenticodeSigner(string fullPath)
+    {
+        if (X509Certificate2.GetCertContentType(fullPath) != X509ContentType.Authenticode)
+            throw new CryptographicException("The executable does not contain an Authenticode signer certificate.");
+
+        // .NET 10 has no non-obsolete built-in API that extracts the signer certificate from an Authenticode PE.
+        // Keep the legacy extraction narrowly isolated after validating the content type; all trust decisions remain in WinVerifyTrust.
+#pragma warning disable SYSLIB0057
+        using var signer = X509Certificate.CreateFromSignedFile(fullPath);
+#pragma warning restore SYSLIB0057
+        return X509CertificateLoader.LoadCertificate(signer.GetRawCertData());
     }
 
     private static void EnsureCodeSigningEnhancedKeyUsage(X509Certificate2 certificate)
