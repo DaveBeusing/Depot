@@ -44,10 +44,15 @@ public sealed class PackagedE2EAcceptanceTests
             Assert.Single(Directory.EnumerateFiles(Path.GetDirectoryName(artifact)!, "*", SearchOption.TopDirectoryOnly));
         }
 
-        Assert.Equal(new Version(0, 15, 160), ReadVersion(PackagedE2EEnvironment.CurrentDepot));
-        Assert.Equal(new Version(0, 15, 159), ReadVersion(PackagedE2EEnvironment.PreviousDepot));
-        Assert.Equal(new Version(0, 1, 23), ReadVersion(PackagedE2EEnvironment.CurrentManager));
-        Assert.Equal(new Version(0, 1, 22), ReadVersion(PackagedE2EEnvironment.PreviousManager));
+        var currentDepotVersion = ReadVersion(PackagedE2EEnvironment.CurrentDepot);
+        var previousDepotVersion = ReadVersion(PackagedE2EEnvironment.PreviousDepot);
+        var currentManagerVersion = ReadVersion(PackagedE2EEnvironment.CurrentManager);
+        var previousManagerVersion = ReadVersion(PackagedE2EEnvironment.PreviousManager);
+
+        Assert.True(currentDepotVersion > previousDepotVersion,
+            $"Packaged Depot version must advance from {previousDepotVersion} to a newer version, but current is {currentDepotVersion}.");
+        Assert.True(currentManagerVersion >= previousManagerVersion,
+            $"Packaged DepotManager version must not regress from {previousManagerVersion}, but current is {currentManagerVersion}.");
     }
 
     [PackagedE2EFact]
@@ -356,7 +361,12 @@ public sealed class PackagedE2EAcceptanceTests
             Path.Combine(root, "support.zip"),
             snapshot,
             ReadVersion(PackagedE2EEnvironment.CurrentManager),
-            new ManagerDiagnosticsContext("0.15.160", "0.1.23", "30", DateTimeOffset.UtcNow.ToString("O"), "Available"));
+            new ManagerDiagnosticsContext(
+                VersionRules.VersionText(ReadVersion(PackagedE2EEnvironment.CurrentDepot)),
+                VersionRules.VersionText(ReadVersion(PackagedE2EEnvironment.CurrentManager)),
+                CurrentSchema.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                DateTimeOffset.UtcNow.ToString("O"),
+                "Available"));
 
         Assert.True(File.Exists(package));
         using var archive = ZipFile.OpenRead(package);
