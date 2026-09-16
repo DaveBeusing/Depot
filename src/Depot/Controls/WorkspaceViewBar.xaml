@@ -1,0 +1,28 @@
+<UserControl x:Class="Depot.Controls.WorkspaceViewBar"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:automation="clr-namespace:System.Windows.Automation;assembly=PresentationCore"
+             xmlns:controls="clr-namespace:Depot.Controls">
+    <StackPanel Margin="0,8,0,0">
+        <WrapPanel>
+            <ComboBox Width="160" Margin="0,0,6,6" automation:AutomationProperties.Name="Saved views"
+                      ItemsSource="{Binding Views}" SelectedItem="{Binding SelectedView}" DisplayMemberPath="Name"
+                      Style="{StaticResource AppComboBoxStyle}" ToolTip="Saved views for this workspace" />
+            <Button Margin="0,0,6,6" Command="{Binding ApplyViewCommand}" Content="Apply" Style="{StaticResource SecondaryButtonStyle}" />
+            <Button Margin="0,0,6,6" Command="{Binding SetDefaultCommand}" Content="Set default" Style="{StaticResource SecondaryButtonStyle}" />
+            <Button Margin="0,0,12,6" Command="{Binding DeleteViewCommand}" Content="Delete" Style="{StaticResource SecondaryButtonStyle}" />
+            <controls:TextInput Width="150" Margin="0,0,6,6" automation:AutomationProperties.Name="Saved view name"
+                                Text="{Binding ViewName, UpdateSourceTrigger=PropertyChanged}" ToolTip="Name for a new or selected saved view" />
+            <ComboBox Width="115" Margin="0,0,6,6" automation:AutomationProperties.Name="Grid density"
+                      ItemsSource="{Binding DensityOptions}" SelectedItem="{Binding SelectedDensity}"
+                      SelectionChanged="OnDensitySelectionChanged"
+                      Style="{StaticResource AppComboBoxStyle}" ToolTip="Grid density stored with the view" />
+            <Button Margin="0,0,6,6" Click="OnColumnsClick" Content="Columns" Style="{StaticResource SecondaryButtonStyle}" ToolTip="Choose visible columns" />
+            <Button Margin="0,0,6,6" Command="{Binding NewViewCommand}" Content="New" Style="{StaticResource SecondaryButtonStyle}" />
+            <Button Margin="0,0,6,6" Command="{Binding SaveViewCommand}" Content="Save view" Style="{StaticResource SecondaryButtonStyle}" />
+            <Button Margin="0,0,0,6" Command="{Binding ResetCommand}" Content="Reset" Style="{StaticResource SecondaryButtonStyle}" ToolTip="Restore the canonical workspace layout" />
+        </WrapPanel>
+        <TextBlock x:Name="StatusText" Text="{Binding Message}" TextTrimming="CharacterEllipsis"
+                   Foreground="{DynamicResource SecondaryTextBrush}" Visibility="{Binding HasMessage, Converter={StaticResource BooleanToVisibilityConverter}}" />
+    </StackPanel>
+</UserControl>
