@@ -102,7 +102,7 @@ Preview exposes both raw and rounded prices plus the rounding adjustment.
 
 ## Schema and migration
 
-The **current Sales feature schema is 12**.
+The **current Sales feature schema is 13**.
 
 Sales schema **10** introduced Item Cost profiles/components and deterministic cost-component ordering.
 
@@ -114,13 +114,15 @@ Sales schema **12**:
 - adds `ManualStandardCost` and `InventoryCostReference` values;
 - adds versioned `PricingExchangeRates` with directional/effective uniqueness and lookup indexing.
 
+Sales schema **13** adds the electronic-invoice finalization/evidence persistence used by the bounded XRechnung 3.0 CII production path. It does not change the Advanced Pricing formulas or runtime resolution contract described here.
+
 Core database schema remains **30**.
 
 ## Provider production acceptance
 
 Sales pricing and the order-to-cash path remain part of the production provider matrix for the supported SQLite, SQL Server 2022, MariaDB 11.8.9 and MySQL 8.4.11 baselines.
 
-The schema-12 migration and runtime SQL are provider-neutral at the service/repository boundary and have provider-specific DDL only in the schema layer.
+The schema-12 pricing migration and runtime SQL are provider-neutral at the service/repository boundary and have provider-specific DDL only in the schema layer. Subsequent Sales migrations continue through the same feature-version path to the current schema.
 
 MariaDB and MySQL are executed as separate jobs with separate connection settings and provider traits. They are never inferred from one another.
 

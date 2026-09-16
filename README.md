@@ -99,15 +99,18 @@ Explore [Finance Architecture](docs/FinanceArchitecture.md), [Finance Banking](d
 
 Current baseline:
 
-- Application: **0.15.170-preview**
+- Application: **0.15.x-preview**
 - Core database schema: **30**
-- Sales feature schema: **11**
+- Sales feature schema: **13**
 - Finance feature schema: **9**
 - User Sessions feature schema: **3**
 - Security Events feature schema: **2**
+- User Preferences feature schema: **2**
 - Help manifest: **1.21**
 
-Sales schema 11 establishes the provider-equivalent active-reservation uniqueness invariant. This does not increment Core schema 30.
+`Directory.Build.props` is authoritative for the exact application patch/version. The documentation baseline intentionally records the development line instead of duplicating the moving preview patch number.
+
+Sales schema 11 introduced the provider-equivalent active-reservation uniqueness invariant, schema 12 introduced Advanced Pricing persistence, and schema 13 adds the bounded electronic-invoice finalization/evidence contract. These feature migrations do not increment Core schema 30.
 
 For implementation and release status, see [Current Status](docs/CurrentStatus.md), [Documentation Status](docs/DocumentationStatus.md), [User-Facing Changes](docs/UserFacingChanges.md) and [Release 1.0](docs/Release1.0.md).
 
@@ -157,7 +160,7 @@ See the [Help Center documentation](docs/HelpCenter.md).
 
 ## Road to 1.0
 
-The generic database-provider technical gate is complete for the certified support matrix. Major remaining 1.0 items include production code signing, accessibility/manual desktop acceptance, organization-specific accounting/tax/retention/valuation/reporting/localization procedures, remaining electronic-invoice scenarios, production backup ownership and installer/upgrade acceptance.
+The generic database-provider technical gate is complete for the certified support matrix. Major remaining 1.0 items include production code signing, accessibility/manual desktop acceptance, organization-specific accounting/tax/retention/valuation/reporting/localization procedures, F2 electronic-invoice acceptance evidence, the explicit ZUGFeRD/Factur-X product decision before any F3 claim, production backup ownership and installer/upgrade acceptance.
 
 Track the path through the [Roadmap](docs/Roadmap.md) and [Release 1.0 plan](docs/Release1.0.md).
 

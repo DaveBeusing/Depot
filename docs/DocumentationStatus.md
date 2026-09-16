@@ -1,18 +1,21 @@
 # Documentation status
 
-Updated: 2026-09-08
+Updated: 2026-09-16
 
 This document identifies the documentation baseline for the current development state. Implemented technical controls must remain distinct from production/legal acceptance gates.
 
 ## Current baseline
 
-- Application: `0.15.169-preview`
+- Application: `0.15.x-preview`
 - Help manifest: `1.21`
 - Core database schema: `30`
-- Sales feature schema: `11`
+- Sales feature schema: `13`
 - Finance feature schema: `9`
 - User Sessions feature schema: `3`
 - Security Events feature schema: `2`
+- User Preferences feature schema: `2`
+
+`Directory.Build.props` is the authoritative source for the exact application patch/version. Canonical documentation records the moving preview line as `0.15.x-preview`; exact patch numbers belong in source/release evidence, not manually duplicated baseline text.
 
 ## Database provider baseline
 
@@ -52,5 +55,7 @@ The current security implementation does not collect source IP, geolocation, MAC
 Do not describe password-change invalidation, concurrent-session policy, shared database throttling, provider certification, investigation/response or retention as future-only work.
 
 Do not describe database-provider technical support as jurisdiction-specific accounting, tax, legal, accessibility, bank-network or regulatory certification. Remote backup scheduling, retention, off-host copies and restore procedures remain operator responsibilities even though the CI matrix validates a provider-native restore boundary.
+
+Do not pin an exact preview patch version in canonical baseline documents. Use the development line and link exact build/release identity to `Directory.Build.props` and release evidence.
 
 Help manifest **1.21** contains `administration.user-sessions` and `administration.security-center`; topic IDs and routing are unchanged by this documentation update.

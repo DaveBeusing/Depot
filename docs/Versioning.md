@@ -1,18 +1,19 @@
 # Versioning and schema evolution
 
-Updated: 2026-09-08
+Updated: 2026-09-16
 
 ## Current baselines
 
-- Application development line: **0.15.169-preview**
+- Application: **0.15.x-preview**
 - Core database schema: **30**
-- Sales feature schema: **11**
+- Sales feature schema: **13**
 - Finance feature schema: **9**
 - User Sessions feature schema: **3**
 - Security Events feature schema: **2**
+- User Preferences feature schema: **2**
 - Help manifest: **1.21**
 
-Application, Core database and feature-schema versions are independent compatibility dimensions.
+Application, Core database and feature-schema versions are independent compatibility dimensions. `Directory.Build.props` is the authoritative source for the exact application patch/version; long-lived documentation records the development line rather than duplicating the moving patch number.
 
 Every repository commit increments `DepotVersionPatch` in `Directory.Build.props`. Database schema versions change only when the corresponding persisted schema contract changes.
 
@@ -51,6 +52,14 @@ Sales schema **11** establishes the active inventory-reservation uniqueness inva
 
 The migration also reconciles databases that had previously advanced the Sales feature version while the remote-provider invariant was not physically present. This is a Sales feature-schema/data-integrity correction; **Core schema remains 30**.
 
+### Sales schema 12
+
+Sales schema **12** introduced Advanced Pricing persistence and expanded Item Cost Build-up with explicit base-cost strategies plus versioned, directional, effective-dated `PricingExchangeRates`. Runtime Sales pricing still resolves through the established pricing service and historical commercial evidence remains immutable.
+
+### Sales schema 13
+
+Sales schema **13** is the current Sales persistence baseline. It adds the production electronic-invoice evidence required by the bounded XRechnung 3.0 CII path, including explicit VAT treatment, retained recipient/routing evidence, immutable finalization records and electronic Sales Credit Note evidence.
+
 ### Finance schema 9
 
 Finance schema **9** is the current Finance persistence baseline and contains the sequential foundation, General Ledger, Accounts Receivable/Payable, Inventory Accounting, Banking, Financial Reporting and Localization structures.
@@ -62,6 +71,10 @@ User Sessions schema **3** is the current persistent session/policy/history base
 ### Security Events schema 2
 
 Security Events schema **2** is the current authentication-security event/policy/throttle baseline.
+
+### User Preferences schema 2
+
+User Preferences schema **2** is the current persistent workspace/default-view preference baseline.
 
 ## Provider compatibility and certification
 
@@ -85,7 +98,7 @@ Remote provisioning serializes the entire authoritative provisioning sequence, n
 - SQL Server: `sp_getapplock` session lock scoped to the Depot database;
 - MariaDB/MySQL: `GET_LOCK` advisory lock scoped to the Depot database.
 
-The lock covers Core initialization plus Sales, Finance, User Sessions and Security Events feature migrations so parallel startup cannot independently advance the same database.
+The lock covers Core initialization plus Sales, Finance, User Sessions, Security Events and User Preferences feature migrations so parallel startup cannot independently advance the same database.
 
 ## Retry compatibility
 

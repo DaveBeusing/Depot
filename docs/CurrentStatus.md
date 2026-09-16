@@ -108,7 +108,7 @@ The following database baselines are technically **Supported** when shipped with
 - MariaDB 11.8.9 LTS;
 - MySQL 8.4.11 LTS.
 
-The matrix validates fresh/idempotent provisioning, Core 29→30 and Sales 10→11 migrations, concurrent provisioning, SQL/type/constraint/date/decimal behavior, transactional rollback, concurrency/deadlock/retry behavior, Sales, Procurement, sessions, Finance GL/AR/AP/FIFO, Banking/reconciliation, Financial Reporting/snapshots, server restart, native remote backup/restore and representative 100k indexed access. Pull requests include provider recovery drills and retained recovery evidence for every supported provider family.
+The matrix validates fresh/idempotent provisioning, Core 29→30 and legacy Sales migrations through the current Sales feature schema, concurrent provisioning, SQL/type/constraint/date/decimal behavior, transactional rollback, concurrency/deadlock/retry behavior, Sales, Procurement, sessions, Finance GL/AR/AP/FIFO, Banking/reconciliation, Financial Reporting/snapshots, server restart, native remote backup/restore and representative 100k indexed access. Pull requests include provider recovery drills and retained recovery evidence for every supported provider family.
 
 MariaDB and MySQL are independently certified; support for one never implies support for the other. Versions outside the listed baselines remain untested/best-effort until explicitly added to the matrix.
 
@@ -128,18 +128,25 @@ A bounded maintenance service enforces ended-session history retention, Security
 
 The security feature does not collect source IP, geolocation, MAC address, hardware fingerprint, typed text, key values, mouse coordinates or external-window activity.
 
+## Electronic invoicing status
+
+The bounded F2 XRechnung 3.0 CII implementation is merged. Sales schema 13 persists explicit `S`, `Z`, `E` and `AE` VAT semantics, immutable finalized XML/integrity evidence, recipient/routing evidence and electronic Sales Credit Note finalization. The conformance closure binds retained fixtures to production generator output and validates the advertised matrix through KoSIT.
+
+F2 remains acceptance-evidence dependent until the required CI/quality/security/provider/release/packaged-E2E/conformance results for the accepted candidate are green. ZUGFeRD/Factur-X remains outside the current product claim; F3 requires an explicit product decision plus PDF/A-3/embedded-XML/integrity/independent-validator evidence.
+
 ## Versions
 
-- Application: **0.15.177-preview**
+- Application: **0.15.x-preview**
 - DepotManager: **0.1.23-preview**
 - Core database schema: **30**
-- Sales feature schema: **11**
+- Sales feature schema: **13**
 - Finance feature schema: **9**
 - User Sessions feature schema: **3**
 - Security Events feature schema: **2**
+- User Preferences feature schema: **2**
 - Help manifest: **1.21**
 
-Every commit increments `DepotVersionPatch`.
+`Directory.Build.props` is authoritative for the exact Depot application patch/version; `src/DepotManager/DepotManager.Version.props` is authoritative for the DepotManager version. Schema migration constants and `src/Depot/Help/manifest.json` are authoritative for the other baseline values. Every repository commit increments `DepotVersionPatch`.
 
 ## Validation boundary
 
@@ -153,4 +160,4 @@ Provider support does not replace deployment-specific accounting/tax/legal, acce
 
 Finish the four real Track A closure actions and validate the resulting controlled evidence with `Test-TrackAAcceptance.ps1 -RequirePass`. Track A closure remains a prerequisite rather than the whole Depot 1.0 decision.
 
-Remaining 1.0 work outside Track A is tracked in [Release 1.0](Release1.0.md) and the [Roadmap](Roadmap.md), including deployment/accounting procedure acceptance, customer-specific production sizing, remaining electronic-invoice scenarios and qualified GDPR/CRA/legal review.
+Remaining 1.0 work outside Track A is tracked in [Release 1.0](Release1.0.md) and the [Roadmap](Roadmap.md), including deployment/accounting procedure acceptance, customer-specific production sizing, F2 electronic-invoice acceptance evidence, the explicit F3 ZUGFeRD/Factur-X product decision and qualified GDPR/CRA/legal review.

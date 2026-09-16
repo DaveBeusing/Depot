@@ -1,6 +1,6 @@
 # Finance Architecture
 
-Updated: 2026-09-08
+Updated: 2026-09-16
 
 ## Purpose
 
@@ -88,10 +88,10 @@ Administrator receives the complete permission catalog. UI visibility is not an 
 Current schema baseline:
 
 - Core database schema: **30**
-- Sales feature schema: **11**
+- Sales feature schema: **13**
 - Finance feature schema: **9**
 
-Finance schema evolution is sequential from foundation through General Ledger, subledgers, inventory accounting, banking, reporting and localization.
+Finance schema evolution is sequential from foundation through General Ledger, subledgers, inventory accounting, banking, reporting and localization. Sales is listed because Finance/provider acceptance crosses order-to-cash and related feature migrations; its current persistence baseline is maintained independently from Finance.
 
 The Finance persistence/runtime path is technically accepted on the database baselines in [Database Provider Production Support Matrix](DatabaseProviderSupportMatrix.md): bundled SQLite, SQL Server 2022 engine 16.x, MariaDB 11.8.9 LTS and MySQL 8.4.11 LTS.
 
