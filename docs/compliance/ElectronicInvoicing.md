@@ -1,70 +1,109 @@
 # Electronic invoicing technical baseline
 
+Updated: 2026-09-16
+
 ## Scope
 
-Depot provides an EN 16931-oriented semantic invoice model and a deterministic UN/CEFACT Cross Industry Invoice (CII) XML generator targeted at the German XRechnung profile. The operational Sales Invoice workflow now uses that foundation during posting. This remains a technical implementation baseline, not a statement that every possible document, tax treatment, recipient channel, or future XRechnung release is legally/profile-conformant.
+Depot implements a bounded electronic-invoicing path based on EN 16931 semantics, UN/CEFACT Cross Industry Invoice (CII), the German XRechnung 3.0 profile and a ZUGFeRD 2.5.2 / Factur-X 1.09.2 hybrid-document path using the `XRECHNUNG` reference profile.
+
+The advertised technical issuance matrix currently covers Standard-rated (`S`), Zero-rated (`Z`), Exempt (`E`) and Reverse-charge (`AE`) invoices plus Standard-rated electronic Credit Notes (`381`). Invalid or incomplete tax/profile combinations fail closed instead of being inferred from a numeric tax rate alone.
+
+These are engineering/product capabilities. Production acceptance remains tied to the exact externally validated candidate and does not by itself establish legal, tax, recipient-network or organization-specific compliance.
 
 ## Authoritative and historical data
 
-For a finalized Sales Invoice, the authoritative electronic representation is the exact structured XML generated at posting and stored in `SalesInvoiceFinalizations`. Human-readable PDF is a related representation; neither PDF regeneration nor mutable current Company/Customer master data replaces the stored issued XML.
+For a finalized Sales Invoice or electronic Sales Credit Note, the authoritative structured representation is the exact CII XML generated during finalization and retained with its SHA-256 digest. Depot does not regenerate an issued XML document later from mutable Company or Customer master data.
 
-Posting combines three historical data groups:
+Finalization uses immutable issuance evidence:
 
-- the immutable seller `DocumentIssuerProfile` captured from Administration > Company;
+- the seller `DocumentIssuerProfile` captured for the issued document;
 - the immutable `DocumentBuyerProfile` containing the Buyer identity actually used for issuance;
-- the posted invoice transaction data and lines.
+- the posted document transaction data and lines;
+- explicit VAT category and exemption evidence where applicable.
 
-The Buyer snapshot includes Customer Number/name, Buyer Reference (BT-10), electronic endpoint (BT-49) and scheme, tax identifiers, free-form billing-address snapshot, structured billing address, country, and contact data. The exact XML is stored with a SHA-256 fingerprint. Loading/export verifies that fingerprint before the document is returned.
+The Buyer snapshot retains Buyer Reference, electronic endpoint/scheme, structured billing address, country, tax identifiers and contact data. Sales Credit Notes reuse the immutable Buyer evidence of their source invoice rather than rebuilding the Buyer from current Customer data.
 
-The SHA-256 value is an application integrity/tamper-detection control. It is not a digital signature and must not be described as independent authenticity or non-repudiation evidence.
+SHA-256 is an application integrity/tamper-detection control. It is not a digital signature and must not be described as independent authenticity or non-repudiation evidence.
 
 ## XRechnung generation and posting
 
-`ElectronicInvoiceService` creates UN/CEFACT CII XML and identifies the XRechnung 3.0 guideline in the document context. The service performs application-level pre-validation of mandatory semantic terms and numeric invariants before XML generation.
+`ElectronicInvoiceService` is the single CII generator for the bounded production path. Invoice and Credit Note finalization both use this generator; the hybrid ZUGFeRD/Factur-X path embeds the same finalized output rather than maintaining a second XML implementation.
 
-`SalesInvoiceService.PostAsync` is the operational finalization boundary. Invoice posting, Sales Order quantity effects, seller snapshot, Buyer/XML finalization, order completion where applicable, and audit persistence share one database transaction. If mandatory identity is missing or XML generation fails, the transaction rolls back and the invoice remains unposted.
+Posting/finalization is transactional. If required seller/buyer identity, tax semantics, XML generation, routing evidence or hybrid-artifact generation fails, the transaction fails rather than leaving a partially issued electronic document.
 
-The current finalization path requires a configured seller IBAN because it issues bank-transfer payment information. It also requires Buyer Reference, electronic endpoint/scheme, structured Buyer billing address, ISO alpha-2 country-code syntax, and at least one Buyer tax identifier.
-
-## Export and immutability
-
-The Invoice workspace exposes **Export XRechnung** only for a posted invoice. The command delegates through `SalesDocumentService` to `SalesInvoiceFinalizationService`, which loads the finalized record, checks its SHA-256 digest and writes the persisted XML as UTF-8 without regeneration.
-
-A posted legacy invoice with no historical finalization record fails closed. Depot does not silently manufacture an electronic invoice later from today's Company or Customer data.
-
-## Validation boundary
-
-Application-level validation is intentionally not described as complete production KoSIT validation. Representative generated XML is validated in CI against pinned KoSIT/XRechnung assets. Runtime posting does not execute the external KoSIT validator.
-
-Before production electronic exchange, every advertised tax/profile/channel scenario must additionally be validated against the then-applicable XRechnung configuration and recipient/channel requirements. Routing requirements such as Leitweg-ID, electronic-address schemes, and Peppol rules remain organization/recipient-specific.
+The current transfer-payment path requires the applicable payment and Buyer identity data. Recipient/routing evidence is retained separately from the immutable XML so later transport/channel handling cannot silently change what was issued.
 
 ## Tax scenarios
 
-The current commercial Sales Invoice line model stores a numeric tax rate but does not yet persist an explicit EN 16931 VAT category plus exemption/reason semantics. Finalization therefore accepts positive taxable rates under category `S` and fails closed for zero-rated, exempt, or reverse-charge lines rather than guessing `Z`, `E`, or `AE` from `0%`.
+Depot explicitly persists the EN 16931 VAT category needed by the advertised bounded matrix.
 
-Support for those scenarios requires explicit commercial tax semantics and corresponding conformance fixtures before they are advertised.
+- `S` — Standard Rated with a positive tax rate;
+- `Z` — Zero Rated with a zero tax rate;
+- `E` — Exempt with explicit exemption evidence;
+- `AE` — Reverse Charge with explicit reverse-charge/exemption evidence.
 
-## Corrections and credit notes
+Generator validation rejects contradictory combinations rather than deriving categories from `0%`. Conformance fixtures cover each advertised invoice tax case and bind retained XML to production generator output before external validation.
 
-Posted invoices are immutable and corrections use explicit Credit Notes. The electronic semantic/generator layer supports a credit-note type code, and posted Sales Credit Notes capture their own immutable seller snapshot.
+## Corrections and electronic Credit Notes
 
-Equivalent Buyer snapshot, exact issued XML retention, hash verification, and production tax/profile handling for electronic credit-note issuance are not yet implemented. Depot must not advertise fully finalized electronic credit-note issuance until that path reaches the same historical-evidence standard as Sales Invoices.
+Posted invoices remain immutable and corrections use explicit Credit Notes. Electronic Sales Credit Note finalization is implemented with its own finalized CII XML, SHA-256 integrity evidence, routing evidence and ZUGFeRD/Factur-X hybrid artifact.
 
-## ZUGFeRD / Factur-X
+Credit Note Buyer identity is derived from the immutable source-invoice finalization. A source invoice without that historical evidence fails closed; Depot does not backfill proof from mutable current customer data.
 
-ZUGFeRD/Factur-X is a hybrid PDF/A-3 plus embedded structured XML format. Depot's semantic model and CII generator provide the structured-data foundation. A conforming PDF/A-3 container, embedded XML metadata, and profile-specific end-to-end validation are still required before any ZUGFeRD/Factur-X claim. A normal PDF with an XML attachment must not be labelled ZUGFeRD/Factur-X.
+## ZUGFeRD / Factur-X hybrid artifacts
+
+Sales feature schema 14 adds immutable hybrid-artifact persistence. `ZugferdFacturXService` creates a new PDF/A-3B document during finalization, embeds exactly one structured payload named `xrechnung.xml`, uses `AFRelationship=Alternative`, writes the Factur-X/XRECHNUNG XMP contract and retains the exact PDF bytes.
+
+The persisted hybrid evidence includes:
+
+- ZUGFeRD/Factur-X standard/profile metadata;
+- PDF/A conformance declaration;
+- embedded XML filename;
+- finalized XML SHA-256;
+- PDF SHA-256;
+- exact PDF bytes;
+- creation timestamp.
+
+Loading/export verifies the retained PDF digest and links the artifact back to the finalized XML digest. Legacy posted records without this evidence are not reconstructed from mutable master data.
+
+## Independent validation boundary
+
+Application-level checks and PDFsharp structural tests are not treated as independent conformance evidence.
+
+The electronic-invoice conformance workflow uses two external validation boundaries:
+
+1. the retained five-case XRechnung CII matrix is validated through the pinned KoSIT Validator/XRechnung configuration;
+2. the corresponding five production-generated hybrid PDFs are validated independently as PDF/A-3B using pinned veraPDF `1.30.2`.
+
+The veraPDF installer is downloaded from the official release location and checked against the pinned SHA-256 `6cc6341cb1af644044054b81f00a6590a7918abb18f762243de115258bcad838`. The CLI version is checked before use. Validation runs with an explicit PDF/A-3B flavour and the machine-readable report is parsed fail-closed: missing reports, non-compliant results, parse/encryption/validator exceptions or process failures reject the candidate.
+
+The same test data binds both layers: each hybrid artifact is generated only after its CII output matches the corresponding retained KoSIT-bound XML fixture. PDF/A success therefore cannot hide XML/profile drift, and KoSIT success cannot substitute for PDF/A acceptance.
+
+Generated PDFs, a generator manifest, per-document veraPDF reports/logs and the validator summary are retained as CI evidence. Runtime document posting does not invoke KoSIT or veraPDF; external validators are acceptance/build evidence rather than runtime dependencies.
+
+## Export and immutability
+
+Posted XRechnung export writes the verified retained XML. ZUGFeRD/Factur-X export writes the verified retained PDF bytes. Neither export path regenerates an issued representation from current Company or Customer master data.
+
+Historical remediation must use independently verified historical evidence and a controlled process. It must not manufacture an issued-document record from present-day values.
 
 ## Security, privacy and retention
 
-Electronic invoice XML can contain personal/contact, tax, and financial data. Existing Depot privacy, access-control, audit, backup, retention, and export requirements apply to the finalization record and every exported representation.
+Electronic invoice XML and hybrid PDFs can contain personal/contact, tax, banking and commercial data. Existing Depot authorization, Audit, backup, retention, privacy-export and recovery requirements apply to finalization records and exported representations.
 
-Historical invoice identity is deliberately separated from mutable Company/Customer master data. Legacy remediation or migration must use independently verified historical source information and a controlled process; it must not backfill proof from current values alone.
+Integrity hashes detect application-level tampering but do not replace signing, qualified archival, recipient acknowledgement or jurisdiction-specific retention requirements where those are independently required.
 
 ## Related evidence
 
+- `docs/TrackCStatus.md`
+- `docs/compliance/ElectronicInvoiceCompletion.md`
 - `docs/compliance/InvoiceFinalization.md`
-- `docs/compliance/IssuerSnapshots.md`
-- `docs/compliance/CompanyMasterData.md`
+- `src/Depot/Services/ElectronicInvoiceService.cs`
 - `src/Depot/Services/SalesInvoiceFinalizationService.cs`
-- `tests/Depot.Tests/SalesInvoiceFinalizationTests.cs`
+- `src/Depot/Services/SalesCreditNoteFinalizationService.cs`
+- `src/Depot/Services/ZugferdFacturXService.cs`
+- `tests/Depot.Tests/ElectronicInvoiceConformanceFixtureTests.cs`
+- `tests/Depot.Tests/ZugferdFacturXConformanceFixtureTests.cs`
+- `scripts/einvoice/validate-xrechnung.ps1`
+- `scripts/einvoice/validate-zugferd-facturx.ps1`
 - `.github/workflows/electronic-invoice-conformance.yml`

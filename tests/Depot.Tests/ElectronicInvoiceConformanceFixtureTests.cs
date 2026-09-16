@@ -40,7 +40,7 @@ public sealed class ElectronicInvoiceConformanceFixtureTests
 	private static string Normalize(string xml) =>
 		System.Xml.Linq.XDocument.Parse(xml).ToString(System.Xml.Linq.SaveOptions.DisableFormatting);
 
-	private static ElectronicInvoice CreateInvoice(
+	internal static ElectronicInvoice CreateInvoice(
 		ElectronicInvoiceTypeCode typeCode,
 		string taxCategory,
 		decimal taxRate,

@@ -15,6 +15,7 @@ on:
       - 'tests/Depot.Tests/ElectronicInvoiceTests.cs'
       - 'tests/Depot.Tests/ElectronicInvoiceConformanceFixtureTests.cs'
       - 'tests/Depot.Tests/ZugferdFacturXTests.cs'
+      - 'tests/Depot.Tests/ZugferdFacturXConformanceFixtureTests.cs'
       - 'tests/Depot.Tests/SalesInvoiceFinalizationTests.cs'
       - 'tests/Depot.Tests/SalesFeatureTests.cs'
       - 'tests/Depot.Tests/Fixtures/ElectronicInvoice/**'
@@ -33,6 +34,7 @@ on:
       - 'tests/Depot.Tests/ElectronicInvoiceTests.cs'
       - 'tests/Depot.Tests/ElectronicInvoiceConformanceFixtureTests.cs'
       - 'tests/Depot.Tests/ZugferdFacturXTests.cs'
+      - 'tests/Depot.Tests/ZugferdFacturXConformanceFixtureTests.cs'
       - 'tests/Depot.Tests/SalesInvoiceFinalizationTests.cs'
       - 'tests/Depot.Tests/SalesFeatureTests.cs'
       - 'tests/Depot.Tests/Fixtures/ElectronicInvoice/**'
@@ -63,6 +65,21 @@ jobs:
       - name: Verify ZUGFeRD/Factur-X hybrid packaging contract
         shell: pwsh
         run: dotnet test tests/Depot.Tests/Depot.Tests.csproj --configuration Release --no-restore --filter "FullyQualifiedName~ZugferdFacturXTests" -warnaserror
+      - name: Generate ZUGFeRD/Factur-X conformance matrix
+        shell: pwsh
+        env:
+          DEPOT_ZUGFERD_CONFORMANCE_DIR: ${{ github.workspace }}\artifacts\einvoice\zugferd
+        run: dotnet test tests/Depot.Tests/Depot.Tests.csproj --configuration Release --no-restore --filter "FullyQualifiedName~ZugferdFacturXConformanceFixtureTests" -warnaserror
       - name: Validate advertised XRechnung CII matrix
         shell: pwsh
         run: ./scripts/einvoice/validate-xrechnung.ps1
+      - name: Validate ZUGFeRD/Factur-X PDF/A-3B matrix
+        shell: pwsh
+        run: ./scripts/einvoice/validate-zugferd-facturx.ps1
+      - name: Retain electronic invoice conformance evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: electronic-invoice-conformance-evidence
+          path: artifacts/einvoice
+          if-no-files-found: error
