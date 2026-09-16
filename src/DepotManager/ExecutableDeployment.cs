@@ -1,9 +1,12 @@
 using System.IO;
+using System.Threading;
 
 namespace DepotManager;
 
 public static class ExecutableDeployment
 {
+	private static readonly int[] ReplacementRetryDelaysMilliseconds = [50, 100, 200, 400, 800, 1000];
+
 	public static void BackupCurrent(string depotPath, string backupDirectory, Version currentVersion)
 	{
 		ArgumentException.ThrowIfNullOrWhiteSpace(depotPath);
@@ -20,7 +23,7 @@ public static class ExecutableDeployment
 		ArgumentException.ThrowIfNullOrWhiteSpace(depotPath);
 		var staged = depotPath + ".new";
 		File.Copy(downloadedFile, staged, true);
-		try { File.Move(staged, depotPath, true); }
+		try { MoveStagedExecutable(staged, depotPath); }
 		catch
 		{
 			if (File.Exists(staged)) File.Delete(staged);
@@ -46,4 +49,23 @@ public static class ExecutableDeployment
 		if (!File.Exists(target))
 			throw new IOException("Depot Manager could not be copied into the Depot installation directory.");
 	}
+
+	private static void MoveStagedExecutable(string staged, string depotPath)
+	{
+		for (var attempt = 0; ; attempt++)
+		{
+			try
+			{
+				File.Move(staged, depotPath, true);
+				return;
+			}
+			catch (Exception ex) when (IsRetryableReplacementFailure(ex) && attempt < ReplacementRetryDelaysMilliseconds.Length)
+			{
+				Thread.Sleep(ReplacementRetryDelaysMilliseconds[attempt]);
+			}
+		}
+	}
+
+	private static bool IsRetryableReplacementFailure(Exception exception) =>
+		exception is IOException or UnauthorizedAccessException;
 }
