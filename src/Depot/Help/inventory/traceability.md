@@ -57,7 +57,7 @@ Select a balance to see its movement history with movement type, quantity, wareh
 
 The traceability browser supports the same user-specific Saved Views framework as Inventory Overview under the semantic `inventory.traceability` workspace identifier. Save supported filters, column layout, sorting and grid density when you repeatedly investigate the same traceability perspective. A default view can be selected for this user/workspace, and **Reset** restores the canonical presentation.
 
-Saved Views contain presentation state only. They do not bypass `Items.View`, do not change tracking balances and do not query a separate data path. Stale or unsupported saved state is ignored so an old preference cannot prevent traceability from opening after an application upgrade.
+Saved Views contain presentation state only. They do not bypass the `Items.View` permission boundary, do not change tracking balances and do not query a separate data path. Stale or unsupported saved state is ignored so an old preference cannot prevent traceability from opening after an application upgrade.
 
 ## Blocking a serial number or lot
 

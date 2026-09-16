@@ -113,7 +113,7 @@ Authorization continues through the existing service boundaries and command stat
 This closeout changes documentation and integration tests only.
 
 ```text
-Depot: 0.15.182-preview
+Depot: 0.15.183-preview
 Core database schema: 30
 Sales feature schema: 11
 Finance feature schema: 9
