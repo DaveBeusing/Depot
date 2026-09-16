@@ -9,7 +9,7 @@ This document identifies the documentation baseline for the current development 
 - Application: `0.15.x-preview`
 - Help manifest: `1.21`
 - Core database schema: `30`
-- Sales feature schema: `13`
+- Sales feature schema: `14`
 - Finance feature schema: `9`
 - User Sessions feature schema: `3`
 - Security Events feature schema: `2`
@@ -33,6 +33,10 @@ Documentation must not infer provider support from shared abstractions or from a
 The full provider matrix validates provisioning/migration, provider SQL/types/constraints, rollback, concurrency/deadlock/retry, representative Sales/Procurement/session/Finance flows, Banking/reconciliation, Financial Reporting/snapshots, remote restart, provider-native backup/restore and 100k indexed access.
 
 SQLite documentation must preserve its dynamic `NUMERIC` precision boundary; it must not claim full fixed `DECIMAL(28,9)` range equivalence with the server providers.
+
+## Electronic-invoice documentation invariant
+
+Sales schema 14 retains ZUGFeRD 2.5.2 / Factur-X 1.09.2 XRECHNUNG-profile hybrid artifacts as exact PDF/A-3B bytes linked to the finalized XRechnung XML SHA-256. Documentation must not describe the hybrid PDF as a later reconstruction from customer or company master data. Independent PDF/A validation remains an acceptance gate until retained veraPDF evidence is green.
 
 ## Session and authentication invariants
 

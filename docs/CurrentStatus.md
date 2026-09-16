@@ -130,16 +130,18 @@ The security feature does not collect source IP, geolocation, MAC address, hardw
 
 ## Electronic invoicing status
 
-The bounded F2 XRechnung 3.0 CII implementation is merged. Sales schema 13 persists explicit `S`, `Z`, `E` and `AE` VAT semantics, immutable finalized XML/integrity evidence, recipient/routing evidence and electronic Sales Credit Note finalization. The conformance closure binds retained fixtures to production generator output and validates the advertised matrix through KoSIT.
+The bounded F2 XRechnung 3.0 CII implementation is merged. Sales schema 13 persists explicit `S`, `Z`, `E` and `AE` VAT semantics, immutable finalized XML/integrity evidence, recipient/routing evidence and electronic Sales Credit Note finalization. The conformance closure binds retained fixtures to production generator output and validates the advertised XML matrix through KoSIT.
 
-F2 remains acceptance-evidence dependent until the required CI/quality/security/provider/release/packaged-E2E/conformance results for the accepted candidate are green. ZUGFeRD/Factur-X remains outside the current product claim; F3 requires an explicit product decision plus PDF/A-3/embedded-XML/integrity/independent-validator evidence.
+The product decision now includes ZUGFeRD/Factur-X. F3A introduces Sales schema 14 and the hybrid-artifact boundary for ZUGFeRD 2.5.2 / Factur-X 1.09.2 XRECHNUNG-profile documents: a new PDF/A-3B is created during finalization, the exact finalized `xrechnung.xml` is embedded with Factur-X XMP metadata, and PDF/XML SHA-256 evidence plus the exact PDF bytes are persisted atomically for invoice and credit-note export.
+
+F2 and F3 remain acceptance-evidence dependent until their required repository/conformance gates are green. F3 additionally requires independent PDF/A-3 validation; implementation presence does not manufacture veraPDF acceptance evidence.
 
 ## Versions
 
 - Application: **0.15.x-preview**
 - DepotManager: **0.1.23-preview**
 - Core database schema: **30**
-- Sales feature schema: **13**
+- Sales feature schema: **14**
 - Finance feature schema: **9**
 - User Sessions feature schema: **3**
 - Security Events feature schema: **2**
@@ -160,4 +162,4 @@ Provider support does not replace deployment-specific accounting/tax/legal, acce
 
 Finish the four real Track A closure actions and validate the resulting controlled evidence with `Test-TrackAAcceptance.ps1 -RequirePass`. Track A closure remains a prerequisite rather than the whole Depot 1.0 decision.
 
-Remaining 1.0 work outside Track A is tracked in [Release 1.0](Release1.0.md) and the [Roadmap](Roadmap.md), including deployment/accounting procedure acceptance, customer-specific production sizing, F2 electronic-invoice acceptance evidence, the explicit F3 ZUGFeRD/Factur-X product decision and qualified GDPR/CRA/legal review.
+Remaining 1.0 work outside Track A is tracked in [Release 1.0](Release1.0.md) and the [Roadmap](Roadmap.md), including deployment/accounting procedure acceptance, customer-specific production sizing, F2/F3 electronic-invoice acceptance evidence including independent PDF/A-3 validation, and qualified GDPR/CRA/legal review.

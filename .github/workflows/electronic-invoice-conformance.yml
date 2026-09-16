@@ -5,9 +5,16 @@ on:
     branches: [ master, compliance ]
     paths:
       - 'src/Depot/Models/ElectronicInvoice.cs'
+      - 'src/Depot/Models/HybridElectronicInvoice.cs'
+      - 'src/Depot/Data/SalesSchemaMigration.cs'
+      - 'src/Depot/Data/ZugferdFacturXSchema.cs'
       - 'src/Depot/Services/ElectronicInvoiceService.cs'
+      - 'src/Depot/Services/SalesInvoiceFinalizationService.cs'
+      - 'src/Depot/Services/SalesCreditNoteFinalizationService.cs'
+      - 'src/Depot/Services/ZugferdFacturXService.cs'
       - 'tests/Depot.Tests/ElectronicInvoiceTests.cs'
       - 'tests/Depot.Tests/ElectronicInvoiceConformanceFixtureTests.cs'
+      - 'tests/Depot.Tests/ZugferdFacturXTests.cs'
       - 'tests/Depot.Tests/SalesInvoiceFinalizationTests.cs'
       - 'tests/Depot.Tests/SalesFeatureTests.cs'
       - 'tests/Depot.Tests/Fixtures/ElectronicInvoice/**'
@@ -16,9 +23,16 @@ on:
   pull_request:
     paths:
       - 'src/Depot/Models/ElectronicInvoice.cs'
+      - 'src/Depot/Models/HybridElectronicInvoice.cs'
+      - 'src/Depot/Data/SalesSchemaMigration.cs'
+      - 'src/Depot/Data/ZugferdFacturXSchema.cs'
       - 'src/Depot/Services/ElectronicInvoiceService.cs'
+      - 'src/Depot/Services/SalesInvoiceFinalizationService.cs'
+      - 'src/Depot/Services/SalesCreditNoteFinalizationService.cs'
+      - 'src/Depot/Services/ZugferdFacturXService.cs'
       - 'tests/Depot.Tests/ElectronicInvoiceTests.cs'
       - 'tests/Depot.Tests/ElectronicInvoiceConformanceFixtureTests.cs'
+      - 'tests/Depot.Tests/ZugferdFacturXTests.cs'
       - 'tests/Depot.Tests/SalesInvoiceFinalizationTests.cs'
       - 'tests/Depot.Tests/SalesFeatureTests.cs'
       - 'tests/Depot.Tests/Fixtures/ElectronicInvoice/**'
@@ -46,6 +60,9 @@ jobs:
       - name: Verify generator-bound conformance fixtures
         shell: pwsh
         run: dotnet test tests/Depot.Tests/Depot.Tests.csproj --configuration Release --no-restore --filter "FullyQualifiedName~ElectronicInvoiceConformanceFixtureTests" -warnaserror
+      - name: Verify ZUGFeRD/Factur-X hybrid packaging contract
+        shell: pwsh
+        run: dotnet test tests/Depot.Tests/Depot.Tests.csproj --configuration Release --no-restore --filter "FullyQualifiedName~ZugferdFacturXTests" -warnaserror
       - name: Validate advertised XRechnung CII matrix
         shell: pwsh
         run: ./scripts/einvoice/validate-xrechnung.ps1

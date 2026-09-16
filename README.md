@@ -43,7 +43,7 @@ The product foundation includes:
 - dark permission-aware workspace shell with Quick Open and Command Palette
 - database-backed RBAC with service-layer authorization
 - immutable/correction-oriented retained business records and structured audit evidence
-- immutable seller/buyer invoice identity with persisted XRechnung XML and SHA-256 verification
+- immutable seller/buyer invoice identity with persisted XRechnung XML/SHA-256 evidence and retained ZUGFeRD/Factur-X hybrid PDF artifacts
 - jurisdiction-neutral Finance foundation with legal entities, currencies/FX, periods, charts, books, dimensions, tax registrations and number sequences
 - immutable General Ledger and posting profiles
 - Accounts Receivable and Accounts Payable subledgers
@@ -101,7 +101,7 @@ Current baseline:
 
 - Application: **0.15.x-preview**
 - Core database schema: **30**
-- Sales feature schema: **13**
+- Sales feature schema: **14**
 - Finance feature schema: **9**
 - User Sessions feature schema: **3**
 - Security Events feature schema: **2**
@@ -110,7 +110,7 @@ Current baseline:
 
 `Directory.Build.props` is authoritative for the exact application patch/version. The documentation baseline intentionally records the development line instead of duplicating the moving preview patch number.
 
-Sales schema 11 introduced the provider-equivalent active-reservation uniqueness invariant, schema 12 introduced Advanced Pricing persistence, and schema 13 adds the bounded electronic-invoice finalization/evidence contract. These feature migrations do not increment Core schema 30.
+Sales schema 11 introduced the provider-equivalent active-reservation uniqueness invariant, schema 12 introduced Advanced Pricing persistence, schema 13 adds the bounded XRechnung finalization/evidence contract, and schema 14 adds immutable ZUGFeRD 2.5.2 / Factur-X 1.09.2 XRECHNUNG-profile PDF/A-3B artifacts. These feature migrations do not increment Core schema 30.
 
 For implementation and release status, see [Current Status](docs/CurrentStatus.md), [Documentation Status](docs/DocumentationStatus.md), [User-Facing Changes](docs/UserFacingChanges.md) and [Release 1.0](docs/Release1.0.md).
 
@@ -160,7 +160,7 @@ See the [Help Center documentation](docs/HelpCenter.md).
 
 ## Road to 1.0
 
-The generic database-provider technical gate is complete for the certified support matrix. Major remaining 1.0 items include production code signing, accessibility/manual desktop acceptance, organization-specific accounting/tax/retention/valuation/reporting/localization procedures, F2 electronic-invoice acceptance evidence, the explicit ZUGFeRD/Factur-X product decision before any F3 claim, production backup ownership and installer/upgrade acceptance.
+The generic database-provider technical gate is complete for the certified support matrix. Major remaining 1.0 items include production code signing, accessibility/manual desktop acceptance, organization-specific accounting/tax/retention/valuation/reporting/localization procedures, F2/F3 electronic-invoice acceptance evidence including independent PDF/A-3 validation, production backup ownership and installer/upgrade acceptance.
 
 Track the path through the [Roadmap](docs/Roadmap.md) and [Release 1.0 plan](docs/Release1.0.md).
 

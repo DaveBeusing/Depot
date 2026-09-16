@@ -147,6 +147,13 @@ public sealed class SalesInvoiceFinalizationService
 
 		var xml = new ElectronicInvoiceService().CreateXRechnungXml(electronicInvoice);
 		var hash = ComputeHash(xml);
+		var hybridArtifact = ZugferdFacturXService.CreateArtifact(
+			ZugferdFacturXService.InvoiceDocumentType,
+			invoice.Id,
+			electronicInvoice,
+			xml,
+			hash,
+			finalizedAtUtc);
 		var buyerPayload = JsonSerializer.Serialize(buyer, JsonOptions);
 		await transaction.Session.ExecuteAsync(
 			"INSERT INTO SalesInvoiceFinalizations (SalesInvoiceId,BuyerPayload,XRechnungXml,XRechnungSha256,FinalizedAtUtc) VALUES ($Id,$Buyer,$Xml,$Hash,$At);",
@@ -157,6 +164,7 @@ public sealed class SalesInvoiceFinalizationService
 			new DatabaseParameter("$Hash", hash),
 			new DatabaseParameter("$At", finalizedAtUtc.ToString("O", CultureInfo.InvariantCulture)));
 		await SalesCreditNoteFinalizationService.InsertRoutingEvidenceAsync(transaction, "Invoice", invoice.Id, buyer, finalizedAtUtc, cancellationToken);
+		await ZugferdFacturXService.InsertAsync(transaction, hybridArtifact, cancellationToken);
 		return new SalesInvoiceFinalization(invoice.Id, buyer, xml, hash, finalizedAtUtc);
 	}
 

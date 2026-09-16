@@ -18,7 +18,7 @@ Localization requires explicit effective-dated assignment. The built-in `GENERIC
 
 - Application: **0.15.x-preview**
 - Core database schema: **30**
-- Sales feature schema: **13**
+- Sales feature schema: **14**
 - Finance feature schema: **9**
 - User Sessions feature schema: **3**
 - Security Events feature schema: **2**
@@ -26,6 +26,8 @@ Localization requires explicit effective-dated assignment. The built-in `GENERIC
 - Help manifest: **1.21**
 
 `Directory.Build.props` is authoritative for the exact application patch/version. Compliance documentation records the development line and stable schema/help contracts instead of duplicating the moving preview patch number.
+
+Sales schema 14 adds retained ZUGFeRD 2.5.2 / Factur-X 1.09.2 XRECHNUNG-profile hybrid artifacts. This is an engineering capability statement only. A product conformance claim remains gated by independent PDF/A-3 validation plus the established KoSIT/XRechnung validation and release evidence.
 
 ## Database-provider acceptance
 
