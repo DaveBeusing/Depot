@@ -6,7 +6,7 @@ Updated: 2026-09-16
 
 - [ ] Ready for release
 
-Depot is on the `0.15.x-preview` line with Core database schema **30**, Sales feature schema **13**, Finance feature schema **9**, User Sessions schema **3**, Security Events schema **2**, User Preferences schema **2**, and Help manifest **1.21**. `Directory.Build.props` is authoritative for the exact application patch/version. Checked items represent implemented technical controls/evidence only; they do not replace legal, accounting, accessibility, signing, localization or deployment acceptance.
+Depot is on the `0.15.x-preview` line with Core database schema **30**, Sales feature schema **14**, Finance feature schema **9**, User Sessions schema **3**, Security Events schema **2**, User Preferences schema **2**, and Help manifest **1.21**. `Directory.Build.props` is authoritative for the exact application patch/version. Checked items represent implemented technical controls/evidence only; they do not replace legal, accounting, accessibility, signing, localization or deployment acceptance.
 
 ## Implemented Finance baseline
 
@@ -35,6 +35,7 @@ Depot is on the `0.15.x-preview` line with Core database schema **30**, Sales fe
 - [x] dependency locks, NuGet audit, SBOM/evidence and release-integrity workflows
 - [x] centralized per-item Customer → Region → Global Sales pricing with optional customer assignment and retained document source snapshots
 - [x] Sales Invoice seller/buyer/XRechnung finalization and persisted XML integrity evidence
+- [x] ZUGFeRD 2.5.2 / Factur-X 1.09.2 XRECHNUNG-profile hybrid artifact generation/persistence with embedded finalized XML and PDF/XML SHA-256 evidence
 - [x] bounded regression/quality/accessibility CI controls
 - [x] repository governance with stable aggregate CI/quality/security/packaged-E2E/provider gates
 - [x] one authoritative Source-to-Release workflow
@@ -119,13 +120,14 @@ Technical controls and the evidence contract are implemented. The exact release 
 
 ### Electronic invoicing
 
-F2 implementation is merged and the bounded XRechnung 3.0 CII matrix is present. Production acceptance remains evidence-driven until the required repository/conformance gates for the accepted release candidate are green.
+F2 implementation is merged and the bounded XRechnung 3.0 CII matrix is present. F3A adds the ZUGFeRD/Factur-X hybrid artifact boundary. Production acceptance remains evidence-driven until the required repository/conformance gates for the accepted release candidate are green.
 
 - [ ] remaining EN 16931 special-tax semantics accepted
 - [ ] electronic credit-note finalization where advertised
 - [ ] recipient/channel routing acceptance
-- [ ] every advertised production scenario validated against applicable KoSIT/XRechnung release
-- [ ] PDF/A-3 before any ZUGFeRD/Factur-X claim
+- [ ] every advertised production XML scenario validated against applicable KoSIT/XRechnung release
+- [x] PDF/A-3 hybrid artifact generation embeds finalized `xrechnung.xml` and retains immutable PDF/XML hash evidence
+- [ ] representative ZUGFeRD/Factur-X artifacts independently validated with pinned veraPDF acceptance
 
 ### Legal/organizational
 

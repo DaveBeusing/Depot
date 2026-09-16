@@ -6,7 +6,7 @@ Updated: 2026-09-16
 
 - Application: **0.15.x-preview**
 - Core database schema: **30**
-- Sales feature schema: **13**
+- Sales feature schema: **14**
 - Finance feature schema: **9**
 - User Sessions feature schema: **3**
 - Security Events feature schema: **2**
@@ -58,7 +58,11 @@ Sales schema **12** introduced Advanced Pricing persistence and expanded Item Co
 
 ### Sales schema 13
 
-Sales schema **13** is the current Sales persistence baseline. It adds the production electronic-invoice evidence required by the bounded XRechnung 3.0 CII path, including explicit VAT treatment, retained recipient/routing evidence, immutable finalization records and electronic Sales Credit Note evidence.
+Sales schema **13** adds the production electronic-invoice evidence required by the bounded XRechnung 3.0 CII path, including explicit VAT treatment, retained recipient/routing evidence, immutable finalization records and electronic Sales Credit Note evidence.
+
+### Sales schema 14
+
+Sales schema **14** is the current Sales persistence baseline. It adds immutable ZUGFeRD 2.5.2 / Factur-X 1.09.2 hybrid invoice artifacts for the XRECHNUNG profile. The exact PDF/A-3B bytes, the finalized embedded `xrechnung.xml` SHA-256, the PDF SHA-256 and conformance metadata are retained together; later export does not rebuild the hybrid document from mutable master data.
 
 ### Finance schema 9
 
