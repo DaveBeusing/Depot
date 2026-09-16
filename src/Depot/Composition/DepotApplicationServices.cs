@@ -14,6 +14,7 @@ internal sealed class DepotApplicationServices : IDisposable
 		WorkspaceViewService workspaceViews,
 		WorkspaceProductivityService workspaceProductivity,
 		EnterpriseIdentityService enterpriseIdentity,
+		EnterpriseAuthenticationService enterpriseAuthentication,
 		AuthenticationSecurityService authenticationSecurity,
 		SecurityAdministrationService securityAdministration,
 		SecurityMaintenanceService securityMaintenance,
@@ -24,6 +25,7 @@ internal sealed class DepotApplicationServices : IDisposable
 		WorkspaceViews = workspaceViews;
 		WorkspaceProductivity = workspaceProductivity;
 		EnterpriseIdentity = enterpriseIdentity;
+		EnterpriseAuthentication = enterpriseAuthentication;
 		AuthenticationSecurity = authenticationSecurity;
 		SecurityAdministration = securityAdministration;
 		SecurityMaintenance = securityMaintenance;
@@ -35,6 +37,7 @@ internal sealed class DepotApplicationServices : IDisposable
 	public WorkspaceViewService WorkspaceViews { get; }
 	public WorkspaceProductivityService WorkspaceProductivity { get; }
 	public EnterpriseIdentityService EnterpriseIdentity { get; }
+	public EnterpriseAuthenticationService EnterpriseAuthentication { get; }
 	public AuthenticationSecurityService AuthenticationSecurity { get; }
 	public SecurityAdministrationService SecurityAdministration { get; }
 	public SecurityMaintenanceService SecurityMaintenance { get; }
@@ -85,6 +88,14 @@ internal sealed class DepotApplicationServices : IDisposable
 			services.Authentication.ConfigureSession(services.Session);
 			services.Users.ConfigureSessionSecurity(services.Session, services.SecurityEvents);
 
+			var enterpriseAuthentication = new EnterpriseAuthenticationService(
+				repositories.EnterpriseIdentity,
+				enterpriseIdentity,
+				services.Session,
+				services.Authorization,
+				services.SecurityEvents,
+				repositories.SecurityEvents);
+
 			var securityAdministration = new SecurityAdministrationService(
 				services.SecurityEvents,
 				authenticationSecurity,
@@ -107,10 +118,11 @@ internal sealed class DepotApplicationServices : IDisposable
 				workspaceViews,
 				workspaceProductivity,
 				enterpriseIdentity,
+				enterpriseAuthentication,
 				authenticationSecurity,
 				securityAdministration,
 				securityMaintenance,
-				new ViewModelFactory(database, services, fileDialogs, applicationInformation));
+				new ViewModelFactory(database, services, enterpriseAuthentication, fileDialogs, applicationInformation));
 			database.StartBackgroundServices();
 			securityMaintenance.Start();
 			return composition;
