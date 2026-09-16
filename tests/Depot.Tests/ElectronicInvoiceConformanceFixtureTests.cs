@@ -73,6 +73,7 @@ public sealed class ElectronicInvoiceConformanceFixtureTests
 			Name = "Customer GmbH",
 			ElectronicAddress = "buyer@example.de",
 			ElectronicAddressScheme = "EM",
+			VatIdentifier = taxCategory == ElectronicInvoiceTaxCategories.ReverseCharge ? "DE987654321" : null,
 			AddressLine1 = "Buyer 2",
 			City = "Berlin",
 			PostalCode = "10115",
