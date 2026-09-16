@@ -73,6 +73,8 @@ public sealed class GitHubReleaseClient(HttpClient httpClient)
 			if (!hash.Equals(release.Sha256, StringComparison.OrdinalIgnoreCase))
 				throw new InvalidOperationException("The downloaded Depot asset failed SHA-256 validation.");
 		}
+
+		ProductionSigningPolicy.ValidateStableArtifactPublisher(destination);
 	}
 
 	private static HttpRequestMessage CreateRequest(string uri)
@@ -144,6 +146,7 @@ public sealed class InstallationService(string installDirectory, Action<string> 
 
 	public static void ValidateTargetVersion(string file, Version target)
 	{
+		ProductionSigningPolicy.ValidateStableArtifactPublisher(file);
 		var text = FileVersionInfo.GetVersionInfo(file).FileVersion;
 		if (!Version.TryParse(text, out var actual) || VersionRules.ReleaseVersion(actual) != VersionRules.ReleaseVersion(target))
 			throw new InvalidOperationException("The downloaded executable version does not match the selected release.");

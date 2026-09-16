@@ -1,11 +1,20 @@
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 
 namespace DepotManager;
+
+public sealed record AuthenticodeSignatureInfo(
+    string Subject,
+    string Issuer,
+    string Thumbprint,
+    DateTime NotBefore,
+    DateTime NotAfter);
 
 public static class AuthenticodeVerifier
 {
     private static readonly Guid GenericVerifyV2 = new("00AAC56B-CD44-11D0-8CC2-00C04FC295EE");
+    private const string CodeSigningEnhancedKeyUsageOid = "1.3.6.1.5.5.7.3.3";
 
     private const uint WtdUiNone = 2;
     private const uint WtdRevokeWholeChain = 1;
@@ -14,7 +23,19 @@ public static class AuthenticodeVerifier
     private const uint WtdRevocationCheckChainExcludeRoot = 0x00000080;
     private const uint WtdSaferFlag = 0x00000100;
 
-    public static void ValidateTrustedSignature(string filePath)
+    public static void ValidateTrustedSignature(string filePath) =>
+        _ = ReadTrustedSignature(filePath, expectedPublisherSubject: null);
+
+    public static AuthenticodeSignatureInfo ValidateTrustedSignature(string filePath, string expectedPublisherSubject)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(expectedPublisherSubject);
+        return ReadTrustedSignature(filePath, expectedPublisherSubject);
+    }
+
+    public static AuthenticodeSignatureInfo GetTrustedSignatureInfo(string filePath) =>
+        ReadTrustedSignature(filePath, expectedPublisherSubject: null);
+
+    private static AuthenticodeSignatureInfo ReadTrustedSignature(string filePath, string? expectedPublisherSubject)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
         if (!OperatingSystem.IsWindows())
@@ -23,6 +44,43 @@ public static class AuthenticodeVerifier
         var fullPath = Path.GetFullPath(filePath);
         if (!File.Exists(fullPath)) throw new FileNotFoundException("The executable to verify was not found.", fullPath);
 
+        ValidateWinTrust(fullPath);
+
+        using var signer = X509Certificate.CreateFromSignedFile(fullPath);
+        using var certificate = X509CertificateLoader.LoadCertificate(signer.GetRawCertData());
+        EnsureCodeSigningEnhancedKeyUsage(certificate);
+
+        if (!string.IsNullOrWhiteSpace(expectedPublisherSubject) &&
+            !string.Equals(certificate.Subject, expectedPublisherSubject, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new CryptographicException(
+                $"The executable publisher '{certificate.Subject}' does not match the expected Depot publisher '{expectedPublisherSubject}'.");
+        }
+
+        return new AuthenticodeSignatureInfo(
+            certificate.Subject,
+            certificate.Issuer,
+            certificate.Thumbprint,
+            certificate.NotBefore,
+            certificate.NotAfter);
+    }
+
+    private static void EnsureCodeSigningEnhancedKeyUsage(X509Certificate2 certificate)
+    {
+        var enhancedKeyUsage = certificate.Extensions
+            .OfType<X509EnhancedKeyUsageExtension>()
+            .FirstOrDefault();
+        var hasCodeSigning = enhancedKeyUsage is not null &&
+            enhancedKeyUsage.EnhancedKeyUsages
+                .Cast<Oid>()
+                .Any(oid => string.Equals(oid.Value, CodeSigningEnhancedKeyUsageOid, StringComparison.Ordinal));
+
+        if (!hasCodeSigning)
+            throw new CryptographicException("The executable signer certificate is not valid for code signing.");
+    }
+
+    private static void ValidateWinTrust(string fullPath)
+    {
         var fileInfo = new WinTrustFileInfo
         {
             StructSize = (uint)Marshal.SizeOf<WinTrustFileInfo>(),

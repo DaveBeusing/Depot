@@ -1,10 +1,15 @@
 param(
     [ValidateSet('Preview', 'Stable')]
-    [string]$Channel = 'Preview'
+    [string]$Channel = 'Preview',
+    [switch]$AcceptanceOnly
 )
 
 $ErrorActionPreference = 'Stop'
 Set-Location (Resolve-Path "$PSScriptRoot\..")
+
+if ($AcceptanceOnly -and $Channel -ne 'Stable') {
+    throw 'AcceptanceOnly is reserved for the production-signed Stable release-candidate acceptance run.'
+}
 
 if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
     throw 'GitHub CLI (gh) is required to dispatch the authoritative release workflow.'
@@ -34,9 +39,16 @@ if ($local -ne $remote) {
 gh auth status
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-gh workflow run release-integrity.yml --ref master -f "channel=$Channel"
+$publishRelease = if ($AcceptanceOnly) { 'false' } else { 'true' }
+gh workflow run release-integrity.yml --ref master -f "channel=$Channel" -f "publish_release=$publishRelease"
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 Write-Host ""
-Write-Host "Authoritative $Channel release pipeline requested for source $local." -ForegroundColor Green
-Write-Host "The GitHub Actions workflow performs build, tests, packaging, signing policy, manifest/hashes, evidence and release publication."
+if ($AcceptanceOnly) {
+    Write-Host "Production-signed Stable release-candidate acceptance requested for source $local." -ForegroundColor Green
+    Write-Host 'The workflow will build, sign, timestamp, verify publisher identity, run packaged RC E2E and retain evidence without publishing a GitHub Release.'
+}
+else {
+    Write-Host "Authoritative $Channel release pipeline requested for source $local." -ForegroundColor Green
+    Write-Host 'The GitHub Actions workflow performs build, tests, packaging, signing policy, manifest/hashes, evidence and release publication.'
+}
