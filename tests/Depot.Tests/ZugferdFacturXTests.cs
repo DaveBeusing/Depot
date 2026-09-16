@@ -10,9 +10,6 @@ using Depot.Services;
 
 using Microsoft.Data.Sqlite;
 
-using PdfSharp.Pdf.Attachments;
-using PdfSharp.Pdf.IO;
-
 using Xunit;
 
 namespace Depot.Tests;
@@ -60,21 +57,15 @@ public sealed class ZugferdFacturXTests : IDisposable
 		Assert.Equal(Hash(artifact.PdfBytes), artifact.PdfSha256);
 		Assert.True(artifact.PdfBytes.Length > 1000);
 
-		using (var stream = new MemoryStream(artifact.PdfBytes, writable: false))
-		using (var document = PdfReader.Open(stream))
-		{
-			var embeddedFiles = EmbeddedFilesManager.ForDocument(document);
-			Assert.Equal(1, embeddedFiles.FileCount);
-			var embedded = embeddedFiles.GetEmbeddedFileInfo(0);
-			Assert.Equal("xrechnung.xml", embedded.FileName);
-			Assert.EndsWith("text/xml", embedded.FileType, StringComparison.OrdinalIgnoreCase);
-			Assert.Equal(Encoding.UTF8.GetBytes(xml), embedded.Data);
-			var xmp = document.Catalog.GetOrCreateMetadata().ToString();
-			Assert.Contains("<pdfaid:part>3</pdfaid:part>", xmp, StringComparison.Ordinal);
-			Assert.Contains("<pdfaid:conformance>B</pdfaid:conformance>", xmp, StringComparison.Ordinal);
-			Assert.Contains("<fx:DocumentFileName>xrechnung.xml</fx:DocumentFileName>", xmp, StringComparison.Ordinal);
-			Assert.Contains("<fx:ConformanceLevel>XRECHNUNG</fx:ConformanceLevel>", xmp, StringComparison.Ordinal);
-		}
+		var inspection = PdfSharpFacturXCompatibility.Inspect(artifact.PdfBytes);
+		Assert.Equal("xrechnung.xml", inspection.FileName);
+		Assert.Equal("/Alternative", inspection.AfRelationship);
+		Assert.Equal("/text#2Fxml", inspection.MimeSubtype);
+		Assert.Equal(Encoding.UTF8.GetBytes(xml), inspection.EmbeddedXml);
+		Assert.Contains("<pdfaid:part>3</pdfaid:part>", inspection.Xmp, StringComparison.Ordinal);
+		Assert.Contains("<pdfaid:conformance>B</pdfaid:conformance>", inspection.Xmp, StringComparison.Ordinal);
+		Assert.Contains("<fx:DocumentFileName>xrechnung.xml</fx:DocumentFileName>", inspection.Xmp, StringComparison.Ordinal);
+		Assert.Contains("<fx:ConformanceLevel>XRECHNUNG</fx:ConformanceLevel>", inspection.Xmp, StringComparison.Ordinal);
 
 		var runner = new DatabaseTransactionRunner(_database);
 		await runner.ExecuteAsync((transaction, token) => ZugferdFacturXService.InsertAsync(transaction, artifact, token), CancellationToken.None);

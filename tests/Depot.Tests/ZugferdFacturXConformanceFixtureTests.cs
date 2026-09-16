@@ -9,9 +9,6 @@ using System.Xml.Linq;
 using Depot.Models;
 using Depot.Services;
 
-using PdfSharp.Pdf.Attachments;
-using PdfSharp.Pdf.IO;
-
 using Xunit;
 
 namespace Depot.Tests;
@@ -69,15 +66,13 @@ public sealed class ZugferdFacturXConformanceFixtureTests
 				var pdfPath = Path.Combine(outputDirectory, conformanceCase.PdfFileName);
 				File.WriteAllBytes(pdfPath, artifact.PdfBytes);
 
-				using (var stream = new MemoryStream(artifact.PdfBytes, writable: false))
-				using (var document = PdfReader.Open(stream))
-				{
-					var embeddedFiles = EmbeddedFilesManager.ForDocument(document);
-					Assert.Equal(1, embeddedFiles.FileCount);
-					var embedded = embeddedFiles.GetEmbeddedFileInfo(0);
-					Assert.Equal(ZugferdFacturXConformance.XmlFileName, embedded.FileName);
-					Assert.Equal(xmlBytes, embedded.Data);
-				}
+				var inspection = PdfSharpFacturXCompatibility.Inspect(artifact.PdfBytes);
+				Assert.Equal(ZugferdFacturXConformance.XmlFileName, inspection.FileName);
+				Assert.Equal("/Alternative", inspection.AfRelationship);
+				Assert.Equal("/text#2Fxml", inspection.MimeSubtype);
+				Assert.Equal(xmlBytes, inspection.EmbeddedXml);
+				Assert.Contains("<pdfaid:part>3</pdfaid:part>", inspection.Xmp, StringComparison.Ordinal);
+				Assert.Contains("<pdfaid:conformance>B</pdfaid:conformance>", inspection.Xmp, StringComparison.Ordinal);
 
 				manifest.Add(new ManifestEntry(
 					conformanceCase.PdfFileName,
