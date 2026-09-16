@@ -34,72 +34,61 @@ Exports use persisted bytes and verify SHA-256 evidence. Legacy records are not 
 
 PR #42 (`zugferd-facturx-conformance-closure`) is merged into `master`. It adds the independent PDF/A acceptance gate without changing the persisted schema contract.
 
-The gate uses pinned veraPDF `1.30.2` and verifies the downloaded official installer against the repository-pinned SHA-256 `6cc6341cb1af644044054b81f00a6590a7918abb18f762243de115258bcad838`. The CLI is installed unattended and its runtime version must match the pin before any document is accepted.
-
-The production generator creates five hybrid artifacts bound to the same retained XRechnung fixtures used by the KoSIT matrix:
-
-- Standard-rated Invoice (`S`);
-- Zero-rated Invoice (`Z`);
-- Exempt Invoice (`E`) with exemption evidence;
-- Reverse-charge Invoice (`AE`) with exemption evidence;
-- Standard-rated Credit Note (`381`).
-
-For every case the generated CII must first equal the retained KoSIT-bound fixture. `ZugferdFacturXService` then creates the PDF/A-3B artifact from that exact XML. The external validator runs with explicit PDF/A-3B flavour and the workflow parses the machine-readable veraPDF report; missing reports, non-compliant validation results, parse/encryption/exception failures or validator execution errors fail closed.
-
-The workflow retains the generated PDFs, a generator manifest, per-document veraPDF XML reports/logs and a validator summary as `electronic-invoice-conformance-evidence`. KoSIT validation remains a separate step in the same electronic-invoice conformance workflow, so PDF/A success cannot substitute for XRechnung XML success and vice versa.
+The gate uses pinned veraPDF `1.30.2` and verifies the downloaded official installer against the repository-pinned SHA-256 `6cc6341cb1af644044054b81f00a6590a7918abb18f762243de115258bcad838`. The production generator creates five hybrid artifacts bound to the same retained XRechnung fixtures used by the KoSIT matrix: Standard-rated (`S`), Zero-rated (`Z`), Exempt (`E`), Reverse-charge (`AE`) and Standard-rated Credit Note (`381`). KoSIT validation remains independent from PDF/A validation.
 
 F3 repository implementation is merged, but final external acceptance remains evidence-dependent until the required candidate workflows complete successfully. Merge presence does not manufacture KoSIT or veraPDF evidence.
 
 ## F4A enterprise identity foundation
 
-PR #43 (`enterprise-identity-foundation`) is merged into `master`. Enterprise Identity feature schema `1` introduced non-secret provider configuration plus exact provider/issuer/subject links to existing local Depot users. The resolver returns only active local users and reloads roles/effective permissions exclusively from Depot RBAC.
-
-F4A deliberately does not auto-provision users or trust external roles/groups/permission claims.
+PR #43 (`enterprise-identity-foundation`) is merged into `master`. Enterprise Identity feature schema `1` introduced non-secret provider configuration plus exact provider/issuer/subject links to existing local Depot users. The resolver returns only active local users and reloads roles/effective permissions exclusively from Depot RBAC. F4A deliberately does not auto-provision users or trust external roles/groups/permission claims.
 
 ## F4B OpenID Connect / Microsoft Entra ID authentication
 
-PR #44 (`enterprise-identity-oidc`) is merged into `master`. The bounded F4B scope is:
+PR #44 (`enterprise-identity-oidc`) is merged into `master`. F4B implements Authorization Code + PKCE (`S256`), system-browser authorization, loopback callbacks, fail-closed `state` / `nonce`, HTTPS OIDC discovery/signing-key validation, tenant-bound Microsoft Entra ID sign-in and the existing local Session/RBAC boundary. It persists no client secret or protocol token and never maps external roles/groups to Depot permissions.
 
-- Authorization Code + PKCE (`S256`) for the native Windows client;
-- system-browser authorization;
-- dynamically allocated `http://localhost:<port>/` loopback callback;
-- cryptographically random and fail-closed `state` / `nonce` validation;
-- HTTPS OpenID Connect discovery and signing-key retrieval;
-- ID-token signature, issuer, audience, expiration/lifetime and advertised-algorithm validation;
-- one controlled signing-key metadata refresh/retry for normal key rollover;
-- tenant-bound Microsoft Entra ID sign-in only;
-- no client secret, token persistence or external-password handling;
-- no automatic local-user creation;
-- no external group/role-to-Depot-permission mapping;
-- normal Depot SessionService, concurrent-session policy, AuthorizationService and Security Event integration after F4A resolution succeeds.
-
-PR #45 repaired F4B/F3 build integration against the stable PDFsharp 6.2.4 surface and the OIDC compile boundary. Its candidate evidence also exposed a stale Factur-X structural test fixture that is corrected together with the next candidate package so the independent F3 gate can run again.
+PR #45 repaired F4B/F3 build integration against the stable PDFsharp 6.2.4 surface and the OIDC compile boundary.
 
 ## F4C external MFA claims and identity hardening
 
-The `enterprise-identity-mfa` package advances Enterprise Identity feature schema `1` to `2` and adds an explicit provider-bound external authentication-assurance contract.
-
-The bounded F4C scope is:
+PR #46 (`enterprise-identity-mfa`) is merged into `master`. Enterprise Identity feature schema `2` adds an explicit provider-bound external authentication-assurance contract:
 
 - optional exact required `amr` value per provider;
 - optional exact required `acr` value per provider;
 - optional maximum `auth_time` age from 1 through 1440 minutes;
-- `acr_values` and `max_age` request hints when those requirements are configured;
-- fail-closed verification of the validated ID-token assurance evidence before identity resolution or session creation;
-- `azp` validation against the configured client ID when present and mandatory authorized-party evidence for multi-audience tokens;
-- malformed, ambiguous, stale, future-dated or mismatching assurance evidence is rejected with controlled failure codes;
-- provider assurance-policy changes reuse `UsersManage`, optimistic concurrency and transactional Audit evidence;
-- `amr`, `acr`, `auth_time` and `azp` values remain runtime-only and are not stored on identity links;
-- no Depot-managed TOTP/MFA secrets, no automatic user provisioning and no external role/group/permission mapping.
+- `acr_values` and `max_age` request hints;
+- fail-closed assurance validation before local identity resolution/session creation;
+- `azp` validation against the configured client ID and mandatory authorized-party evidence for multi-audience tokens;
+- `UsersManage`, optimistic concurrency and transactional Audit for assurance-policy changes;
+- no persisted `amr`, `acr`, `auth_time`, `azp`, protocol tokens or Depot-managed MFA secrets.
 
-For Microsoft Entra ID deployments, Conditional Access and Authentication Strength remain the primary tenant-side method-policy controls. Depot does not infer universal MFA semantics from an arbitrary claim string; an `amr`/`acr` requirement is an explicit administrator-selected provider trust contract.
+For Microsoft Entra ID deployments, Conditional Access and Authentication Strength remain the primary tenant-side method-policy controls. Depot does not infer universal MFA semantics from arbitrary claim strings.
 
-The schema-1→2 migration preserves existing provider/link identities and initializes all new assurance requirements to null, so an upgrade cannot silently add a new MFA requirement.
+The first F4C candidate exposed three independent acceptance regressions after merge: invalid XRechnung exemption placement/order in the production CII generator, a stale User Preferences migration test setup and a transient packaged-E2E executable sharing violation. PR #47 (`f4c-acceptance-stabilization`) contains the deterministic XRechnung and migration-test repairs at `0.15.204-preview`; its exact-head acceptance evidence remains authoritative before the stabilization is treated as closed.
 
-F4C repository implementation remains acceptance-evidence dependent until its CI, quality, security, packaged-E2E, electronic-invoice conformance, release and provider gates complete successfully.
+## F5A security event export foundation
+
+The `security-event-export-foundation` package defines the source-side Security Event export contract without changing Security Events schema `2`.
+
+The bounded F5A scope is:
+
+- immutable export-record projection from existing `SecurityEvents` source evidence;
+- exclusion of mutable Security Center review metadata and row version from exported event meaning;
+- minimum-severity plus optional event-type filters;
+- canonical SHA-256 filter fingerprint;
+- filter-bound checkpoint based on monotonic Security Event ID;
+- snapshot upper-bound capture before each bounded read;
+- deterministic ascending batches with a maximum of 500 events;
+- fail-closed checkpoint/filter mismatch;
+- provider-neutral source repository and sink abstraction;
+- SQLite, SQL Server, MariaDB and MySQL provider-smoke coverage;
+- no durable delivery configuration, retry state or checkpoint persistence in F5A.
+
+F5A deliberately keeps reliable delivery separate from source extraction. `ISecurityEventExportSink` is an adapter boundary only. F5B will own sink delivery orchestration, retry classification and durable checkpoint advancement after successful delivery. The source `SecurityEvents` rows are never mutated to represent export state.
+
+See [Security Event Export Foundation](SecurityEventExport.md).
 
 ## Track status and next work
 
-F1 is merged. F2 repository implementation/conformance breadth are merged and remain final-evidence dependent. F3A and F3B are merged; final F3 acceptance remains external-evidence dependent. F4A, F4B and the F4B stabilization are merged. F4C is implemented on `enterprise-identity-mfa` and awaits candidate gates. F5 has not been started.
+F1 is merged. F2 repository implementation/conformance breadth are merged and remain final-evidence dependent. F3A/F3B are merged and remain external-evidence dependent. F4A/F4B/F4C are merged; F4C acceptance stabilization is tracked in PR #47. F5A is implemented on `security-event-export-foundation` and does not change Security Events schema `2`.
 
-After F4C is merged with green repository evidence, the next implementation package is F5A Security Event Export Contract.
+After F5A candidate gates and merge, the next implementation package is F5B Security Event Delivery & Checkpointing.
