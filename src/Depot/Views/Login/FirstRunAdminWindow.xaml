@@ -2,7 +2,7 @@
 	x:Class="Depot.Views.Login.FirstRunAdminWindow"
 	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
 	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-	xmlns:automation="clr-namespace:System.Windows.Automation;assembly=PresentationFramework"
+	xmlns:automation="clr-namespace:System.Windows.Automation;assembly=PresentationCore"
 	xmlns:controls="clr-namespace:Depot.Controls"
 	Title="Secure Depot setup"
 	Icon="/Resources/Images/Depot.ico"

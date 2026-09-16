@@ -2,7 +2,7 @@
 	x:Class="Depot.Views.Login.LoginWindow"
 	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
 	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-	xmlns:automation="clr-namespace:System.Windows.Automation;assembly=PresentationFramework"
+	xmlns:automation="clr-namespace:System.Windows.Automation;assembly=PresentationCore"
 	xmlns:controls="clr-namespace:Depot.Controls"
 	Title="Sign in to Depot"
 	Icon="/Resources/Images/Depot.ico"
