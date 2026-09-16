@@ -1,143 +1,200 @@
-# Item Cost Build-up and Bulk Pricing
-
-Updated: 2026-08-29
+# Item Costing and Advanced Bulk Pricing
 
 ## Purpose
 
-Depot separates purchase/base cost, calculated landed cost, and sales price. Cost build-up is a central business capability, not a UI-only percentage operation.
+Depot keeps operational item-cost calculation separate from runtime sales price resolution while allowing controlled commercial derivation of PriceList entries.
+
+The advanced flow is:
 
 ```text
-Preferred supplier purchase price
-        ↓
-ItemCostCalculationService
-        ↓
-ordered ItemCostComponents
-        ↓
-Calculated Item Cost
-        ↓
-PriceListGenerationService
-        ↓
-Percentage Markup
-        ↓
-Preview
-        ↓
-atomic Apply
-        ↓
-existing Global / Region / Customer PriceList
+Explicit Item Cost Base Source
+→ ItemCostCalculationService
+→ ordered ItemCostComponents
+→ Calculated Cost in Cost Currency
+→ direct effective-dated FX evidence when required
+→ Converted Cost in PriceList Currency
+→ Percentage Markup OR Target Gross Margin
+→ deterministic Commercial Rounding
+→ Preview with intermediate evidence
+→ atomic Apply
+→ existing Global / Region / Customer PriceList
 ```
 
-The pricing resolver itself remains unchanged: Customer → Region → Global is still evaluated per item.
+No step silently substitutes a different source, rate, formula or rounding rule.
 
-## Base Cost
+## Item Cost Base Sources
 
-For the first version, **Base Cost** is the active preferred `SupplierItem.PurchasePrice` for the item. The source is explicit through `ItemCostProfile.BaseCostSource` and is intentionally extensible for later cost sources.
+`ItemCostProfile.BaseCostSource` is explicit and persisted.
 
-Legacy supplier/purchase-order prices in Depot do not carry a currency. Depot therefore requires an explicit three-letter ISO currency on the item's cost profile. This is an assertion about the preferred supplier purchase price, not an implicit EUR default.
+Supported sources:
 
-If no active preferred supplier price exists, if more than one preferred source is present, or if the cost currency differs from the target PriceList currency, calculation fails closed. Depot does not assume a 1:1 FX rate. A future FX service may extend the cost-source strategy without changing the cost-component formula.
+1. `PreferredSupplierPurchasePrice`
+   - requires exactly one active preferred supplier price;
+   - zero matches fail closed;
+   - multiple matches fail closed.
+2. `LastPurchase`
+   - uses the most recent received purchase on or before the effective calculation date;
+   - purchase-order drafts or unreceived lines do not qualify;
+   - no received purchase fails closed.
+3. `ManualStandard`
+   - uses the persisted non-negative `ManualStandardCost` value;
+   - the selected strategy requires that value to be present.
+4. `InventoryCostReference`
+   - uses the persisted non-negative `InventoryCostReference` value;
+   - this is an explicit reference value, not an implicit substitution of live FIFO/accounting valuation.
 
-Inventory/FIFO valuation remains an accounting valuation source and is not silently substituted for purchasing Base Cost in this version.
+The profile keeps an explicit ISO three-letter Cost Currency. Existing supplier/procurement prices do not carry a currency field, so Depot does not infer one.
 
 ## Cost Components
 
-An `ItemCostComponent` belongs to one item and contains a name, calculation type, value, calculation base, sequence, active flag, optional validity window and optimistic `Version`.
+Cost Components retain the established deterministic sequence model:
 
-Supported calculation types:
+- Absolute;
+- Percentage of Base Cost;
+- Percentage of Running Total;
+- active/inactive;
+- optional valid-from/valid-until;
+- persisted identity and version evidence.
 
-- **Absolute Cost** adds the configured monetary value.
-- **Percentage Cost** calculates a percentage against an explicit base.
+`ItemCostCalculationService` remains the single cost formula.
 
-Supported percentage bases:
+## Pricing methods
 
-- **BaseCost** — percentage applies only to the original Base Cost.
-- **RunningTotal** — percentage applies to the accumulated cost immediately before this component.
-
-Example:
-
-```text
-Base Cost                     1,000.00
-10 Freight Absolute             +50.00
-20 Customs 4% BaseCost          +40.00
-30 Handling Absolute            +15.00
-40 Overhead 3% RunningTotal     +33.15
---------------------------------------
-Calculated Cost              1,138.15
-```
-
-Active components valid on the effective date are ordered by `Sequence`, then by persisted component `Id`. This stable secondary key makes equal sequences deterministic without depending on database or UI ordering. Inactive, not-yet-valid and expired components are ignored.
-
-## Rounding and currency
-
-Amounts are calculated with `decimal`. Each applied monetary component and running total uses deterministic currency precision with `MidpointRounding.ToEven`: known zero-decimal and three-decimal ISO currencies use their standard precision; other currencies use two decimals.
-
-Absolute components are denominated in the Item Cost Profile currency. Mixed currencies are never added. Bulk generation requires the calculated cost currency to match the target PriceList currency; otherwise the Preview row is an error.
-
-## Markup versus Gross Margin
-
-Depot's first bulk pricing rule is **Percentage Markup**:
+### Percentage Markup
 
 ```text
-Sales Price = Calculated Cost × (1 + Markup / 100)
+SalesPriceRaw = ConvertedCost × (1 + MarkupPercent / 100)
 ```
 
-For Cost 100 and Markup 25%, Sales Price is 125.
+### Target Gross Margin
 
-**Gross Margin is not Markup.** A 25% Gross Margin on Cost 100 would require `100 / (1 - 0.25) = 133.33`. The current UI and domain use the word Markup only. Target Gross Margin is a future pricing rule and must use a distinct formula and label.
+```text
+SalesPriceRaw = ConvertedCost / (1 - GrossMarginPercent / 100)
+```
 
-## Bulk filtering
+Gross Margin is validated in the range `0 <= margin < 100`. Markup and Gross Margin are separate enums and request values; neither is inferred from the other.
 
-Bulk generation supports existing Depot master data only:
+Example for a cost of 100 and 25%:
 
-- All Active Items;
-- Category;
-- Manufacturer;
-- Selected Items.
+```text
+25% Markup       = 125.00
+25% Gross Margin = 133.33 before commercial rounding
+```
 
-Candidates must be active and have active lifecycle status. No new master-data classifications are created solely for bulk pricing.
+## Controlled FX conversion
 
-## Preview and Apply
+FX is directional and effective-dated.
 
-`PriceListGenerationService` always calculates a Preview before Apply. Preview includes item, calculated cost, current target-list price, markup, new price, absolute/percentage change, action and any error. Selecting a row exposes the component evidence used to derive its cost.
+Each `PricingExchangeRates` row persists:
 
-Missing or ambiguous Base Cost and currency mismatches produce `Error`, never a zero cost.
+- Source Currency;
+- Target Currency;
+- Effective Date;
+- Rate Source;
+- Rate;
+- Version.
 
-Apply modes:
+For a calculation date, Depot resolves the newest direct row where:
 
-- **Replace calculated prices** — Create missing entries and Update existing entries.
-- **Only increase prices** — Create missing entries; Update only when the new price is greater; otherwise Skip.
-- **Only create missing prices** — Create missing entries; existing entries are Skip.
+```text
+SourceCurrency = CostCurrency
+TargetCurrency = PriceListCurrency
+EffectiveDate <= CalculationDate
+```
 
-Apply executes inside one existing provider write transaction. PriceList generation is therefore all-or-nothing. Audit failure or any business/concurrency failure rolls the transaction back.
+There is no automatic inversion, triangulation, previous-pair substitution or 1:1 fallback. A missing rate makes the affected Preview row an error.
 
-## Concurrency and evidence
+When source and target currencies are equal, conversion is an explicit in-memory identity (`1.0`) and no FX row is required.
 
-Preview captures target PriceList version, existing PriceListEntry versions and a cost evidence token containing the Cost Profile, preferred SupplierItem and effective Cost Component versions. Apply reloads those records within the write transaction and recalculates using `ItemCostCalculationService`.
+The converted cost is rounded to normal target-currency precision before applying the selected pricing formula.
 
-If the PriceList, an entry or any cost evidence changed after Preview, Apply fails with an optimistic concurrency conflict. The user must calculate a fresh Preview. Preview and Apply never use separate pricing formulas.
+## Commercial rounding
 
-Historical Sales Quotes, Sales Orders and finalized documents retain their existing immutable price-source snapshots. Bulk generation changes the target PriceList only; it does not retroactively rewrite historical business documents.
+Supported strategies:
 
-## RBAC and Audit
+- `CurrencyPrecision`;
+- `Nearest0_01`;
+- `Nearest0_05`;
+- `Nearest0_10`;
+- `Nearest0_50`;
+- `Ending99`.
 
-No duplicate permission model is introduced:
+Increment strategies use midpoint-away-from-zero and then target-currency precision. `Ending99` moves a positive raw price upward to the next `.99` endpoint and is restricted to two-decimal target currencies.
 
-- Item cost viewing uses `ItemsView`.
-- Item cost maintenance requires `ItemsEdit` or `ItemsManage`.
-- Bulk Preview requires `SalesPricingView` plus `ItemsView`.
-- Bulk Apply requires `SalesPricingManage` plus item-cost visibility.
+Preview stores both the unrounded raw price and the final price, so the rounding adjustment is visible and reproducible.
 
-Authorization is enforced in the service layer. Cost Profile and Component changes use the existing structured Audit infrastructure. A completed bulk Apply records one batch-level `PriceListGenerationAuditRecord` with target list, pricing method, Markup, Apply Mode and Created/Updated/Skipped/Failed counts rather than generating redundant batch audit rows per item.
+## Preview evidence
 
-## Persistence and provider neutrality
+Each successful Preview row exposes:
 
-Sales feature schema **10** adds:
+- Base Cost Source;
+- Base Cost;
+- Calculated Cost;
+- Cost Currency;
+- Cost Evidence Version;
+- FX rate ID/version, source, effective date, rate and currencies;
+- Converted Cost;
+- Pricing Method;
+- selected pricing percentage;
+- Unrounded Price;
+- Rounding Strategy;
+- Rounding Adjustment;
+- Calculated New Price;
+- existing target price and resulting action;
+- Cost Component details.
 
-- `ItemCostProfiles`;
-- `ItemCostComponents`;
-- `(ItemId, Sequence, Id)` lookup/order index.
+Errors are row-local and fail closed. Apply is blocked while Preview contains errors.
 
-The migration has provider-specific DDL through the established database abstractions for SQLite, SQL Server and MySQL/MariaDB. Repository operations continue through `DatabaseAccess` and existing transaction sessions; no provider-specific SQL is placed in ViewModels or Services.
+## Apply and concurrency
 
-## Extension points
+Preview performs no writes.
 
-The architecture intentionally leaves room for additional Base Cost sources, controlled FX conversion, target Gross Margin and commercial rounding rules such as 0.05/0.10/0.50 or .99 endings. These are not simulated by the current implementation; unsupported currency conversion fails closed.
+Apply runs atomically through the existing transaction boundary. It re-reads/recalculates:
+
+- target PriceList version;
+- target entry version;
+- Item Cost evidence;
+- selected FX rate and its version;
+- pricing formula;
+- rounding result;
+- Apply Mode result.
+
+A change to any calculation evidence after Preview results in a concurrency conflict and requires a fresh Preview. Preview and Apply therefore cannot drift onto separate formulas or rates.
+
+The batch Audit record persists the selected pricing method/percentage, rounding strategy, effective date and the actual non-identity FX evidence used by the applied rows.
+
+## Historical sales documents
+
+Advanced generation writes only PriceList entries. It does not revisit accepted quotes, submitted orders, invoices, credit notes or finalized monetary snapshots. Existing historical document evidence therefore remains unchanged.
+
+## RBAC
+
+- Item Cost read: existing Item view permission.
+- Item Cost profile/component maintenance: existing Item edit/manage permission.
+- Bulk Preview: Sales Pricing view plus Item-cost visibility.
+- Bulk Apply: Sales Pricing manage plus Item-cost visibility.
+- FX-rate maintenance: Sales Pricing manage.
+
+Authorization is enforced in services. UI command state is not the security boundary.
+
+## Schema and version impact
+
+Advanced Pricing introduces Sales feature schema **12**.
+
+Schema 12:
+
+- expands `ItemCostProfiles.BaseCostSource` to four explicit strategies;
+- adds nullable `ManualStandardCost` and `InventoryCostReference` reference values;
+- adds versioned `PricingExchangeRates` with directional/effective uniqueness and lookup indexing.
+
+Core database schema remains unchanged.
+
+## Provider contract
+
+The migration is implemented for:
+
+- SQLite;
+- SQL Server;
+- MySQL / MariaDB.
+
+Provider-specific DDL remains behind the data/schema layer. Pricing services and repositories use provider-neutral SQL/query behavior for runtime calculations.
