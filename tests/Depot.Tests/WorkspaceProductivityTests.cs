@@ -22,6 +22,7 @@ public sealed class WorkspaceProductivityTests : IDisposable
 	public void VersionOneMigratesToVersionTwoIdempotently()
 	{
 		var factory = Initialize();
+		UserPreferenceSchemaMigration.Migrate(factory);
 		using (var connection = Open())
 		{
 			Execute(connection, "DROP TABLE IF EXISTS UserWorkspacePreferences;");

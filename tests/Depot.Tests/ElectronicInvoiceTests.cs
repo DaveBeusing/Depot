@@ -79,7 +79,12 @@ public sealed class ElectronicInvoiceTests
 	[Fact]
 	public void CreateXRechnung_EmitsReverseChargeEvidence()
 	{
-		var invoice = CopyWithLine(CreateInvoice(), new ElectronicInvoiceLine { Id = "1", Name = "Consulting", Quantity = 1m, UnitPrice = 100m, TaxRate = 0m, TaxCategoryCode = ElectronicInvoiceTaxCategories.ReverseCharge, TaxExemptionReasonCode = "VATEX-EU-AE", TaxExemptionReason = "Reverse charge" });
+		var invoice = ElectronicInvoiceConformanceFixtureTests.CreateInvoice(
+			ElectronicInvoiceTypeCode.Invoice,
+			ElectronicInvoiceTaxCategories.ReverseCharge,
+			0m,
+			"VATEX-EU-AE",
+			"Reverse charge");
 		var xml = new ElectronicInvoiceService().CreateXRechnungXml(invoice);
 		Assert.Contains("<ram:CategoryCode>AE</ram:CategoryCode>", xml);
 		Assert.Contains("<ram:ExemptionReasonCode>VATEX-EU-AE</ram:ExemptionReasonCode>", xml);
