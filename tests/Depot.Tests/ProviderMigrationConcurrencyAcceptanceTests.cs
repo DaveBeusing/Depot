@@ -44,7 +44,9 @@ public sealed class ProviderMigrationConcurrencyAcceptanceTests
 		var data = new DatabaseAccess(factory);
 
 		await RemoveReservationInvariantAsync(data, factory.Provider);
-		await data.ExecuteAsync("UPDATE DepotFeatureVersions SET Version=10 WHERE Name='Sales';", CancellationToken.None);
+		// Reconcile the removed invariant without mislabelling the current schema as v10.
+		// Later migrations are forward-only and must not run against already upgraded tables.
+		SalesReservationSchema.EnsureActiveUniqueness(factory);
 		SalesSchemaMigration.Migrate(factory);
 		Assert.Equal(SalesSchemaMigration.CurrentVersion, Convert.ToInt32(await data.ExecuteScalarAsync("SELECT Version FROM DepotFeatureVersions WHERE Name='Sales';", CancellationToken.None), CultureInfo.InvariantCulture));
 		Assert.True(Convert.ToInt32(await data.ExecuteScalarAsync(ReservationIndexSql(factory.Provider), CancellationToken.None), CultureInfo.InvariantCulture) > 0);

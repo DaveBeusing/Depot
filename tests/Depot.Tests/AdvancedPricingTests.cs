@@ -62,7 +62,8 @@ public sealed class AdvancedPricingTests : IAsyncLifetime
 	[Fact]
 	public async Task SalesSchemaMigrationReachesAdvancedPricingVersion()
 	{
-		Assert.Equal(12,SalesSchemaMigration.CurrentVersion);Assert.Equal(12,Convert.ToInt32(await F.Data.ExecuteScalarAsync("SELECT Version FROM DepotFeatureVersions WHERE Name='Sales';",CancellationToken.None)));
+		Assert.Equal(SalesSchemaMigration.CurrentVersion,Convert.ToInt32(await F.Data.ExecuteScalarAsync("SELECT Version FROM DepotFeatureVersions WHERE Name='Sales';",CancellationToken.None)));
+		Assert.Equal(1,Convert.ToInt32(await F.Data.ExecuteScalarAsync("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='PricingExchangeRates';",CancellationToken.None)));
 	}
 
 	private static PriceListGenerationRequest Request(long priceListId,long itemId,BulkPricePricingMethod pricingMethod=BulkPricePricingMethod.PercentageMarkup,decimal markup=0m,decimal margin=0m,CommercialRoundingStrategy rounding=CommercialRoundingStrategy.CurrencyPrecision,DateTime? effectiveDate=null)=>new(){ExistingPriceListId=priceListId,FilterType=BulkPriceFilterType.SelectedItems,SelectedItemIds=[itemId],PricingMethod=pricingMethod,MarkupPercentage=markup,GrossMarginPercentage=margin,RoundingStrategy=rounding,ApplyMode=BulkPriceApplyMode.ReplaceCalculatedPrices,EffectiveDate=effectiveDate??DateTime.Today};

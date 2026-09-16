@@ -45,6 +45,7 @@ public sealed class SalesFeatureTests : IDisposable
 	{
 		var factory = new SqliteConnectionFactory(_databasePath);
 		new DepotDatabase(factory).Initialize();
+		CreateVersionEightSalesSchema(factory);
 		using (var connection = new SqliteConnection($"Data Source={_databasePath}"))
 		{
 			connection.Open();
@@ -52,13 +53,7 @@ public sealed class SalesFeatureTests : IDisposable
 			command.CommandText = """
 				CREATE TABLE DepotFeatureVersions (Name TEXT PRIMARY KEY, Version INTEGER NOT NULL);
 				INSERT INTO DepotFeatureVersions (Name,Version) VALUES ('Sales',8);
-				CREATE TABLE Customers (Id INTEGER PRIMARY KEY AUTOINCREMENT, Currency TEXT NOT NULL DEFAULT 'EUR', IsActive INTEGER NOT NULL DEFAULT 1);
-				CREATE TABLE SalesPriceLists (Id INTEGER PRIMARY KEY AUTOINCREMENT, Code TEXT NOT NULL UNIQUE, Name TEXT NOT NULL, Currency TEXT NOT NULL, ValidFrom TEXT NULL, ValidTo TEXT NULL, IsActive INTEGER NOT NULL DEFAULT 1, Version INTEGER NOT NULL DEFAULT 1);
-				CREATE TABLE SalesPriceListItems (Id INTEGER PRIMARY KEY AUTOINCREMENT, SalesPriceListId INTEGER NOT NULL, ItemId INTEGER NOT NULL, UnitPrice NUMERIC NOT NULL, DiscountPercent NUMERIC NOT NULL DEFAULT 0, Version INTEGER NOT NULL DEFAULT 1);
-				CREATE TABLE CustomerPriceLists (CustomerId INTEGER PRIMARY KEY, SalesPriceListId INTEGER NOT NULL);
-				CREATE TABLE SalesOrderLines (Id INTEGER PRIMARY KEY AUTOINCREMENT);
-				CREATE TABLE SalesQuoteLines (Id INTEGER PRIMARY KEY AUTOINCREMENT);
-				INSERT INTO Customers (Id,Currency,IsActive) VALUES (41,'EUR',1);
+				INSERT INTO Customers (Id,CustomerNumber,Name,Currency,IsActive) VALUES (41,'LEGACY-41','Legacy buyer','EUR',1);
 				INSERT INTO Items (PartNumber,Description,IsActive) VALUES ('LEGACY-PRICE','Legacy priced item',1);
 				INSERT INTO SalesPriceLists (Id,Code,Name,Currency,IsActive) VALUES (51,'LEGACY','Legacy Customer Pricing','EUR',1);
 				INSERT INTO SalesPriceLists (Id,Code,Name,Currency,IsActive) VALUES (52,'LEGACY-UNASSIGNED','Legacy Unassigned Pricing','EUR',1);
@@ -80,6 +75,45 @@ public sealed class SalesFeatureTests : IDisposable
 		Assert.Equal(51L, Scalar(migrated, "SELECT SalesPriceListId FROM CustomerPriceLists WHERE CustomerId=41;"));
 		Assert.Equal(1L, Scalar(migrated, "SELECT COUNT(*) FROM pragma_table_info('SalesPriceLists') WHERE name='RegionId';"));
 		Assert.Equal(0L, Scalar(migrated, "SELECT COUNT(*) FROM SalesRegions;"));
+	}
+
+	[Fact]
+	[Trait("Acceptance", "DatabaseProvider")]
+	[Trait("Provider", "SQLite")]
+	public void UpgradeFromVersionTenPreservesCostProfilesAndAddsInvoiceEvidence()
+	{
+		var factory = new SqliteConnectionFactory(_databasePath);
+		new DepotDatabase(factory).Initialize();
+		CreateVersionEightSalesSchema(factory);
+		ScopedSalesPricingSchema.Ensure(factory);
+		ItemCostSchema.Ensure(factory);
+		using (var connection = factory.CreateConnection())
+		{
+			connection.Open();
+			using var command = connection.CreateCommand();
+			command.CommandText = """
+				CREATE TABLE DepotFeatureVersions (Name TEXT PRIMARY KEY, Version INTEGER NOT NULL);
+				INSERT INTO DepotFeatureVersions VALUES ('Sales',10);
+				DROP INDEX IF EXISTS UX_InventoryReservations_Active;
+				INSERT INTO Items (PartNumber,Description,IsActive) VALUES ('LEGACY-COST','Legacy cost item',1);
+				INSERT INTO ItemCostProfiles (ItemId,BaseCostSource,Currency,Version)
+				SELECT Id,0,'EUR',7 FROM Items WHERE PartNumber='LEGACY-COST';
+				""";
+			command.ExecuteNonQuery();
+		}
+
+		SalesSchemaMigration.Migrate(factory);
+		SalesSchemaMigration.Migrate(factory);
+		using var migrated = new SqliteConnection($"Data Source={_databasePath}");
+		migrated.Open();
+		Assert.Equal((long)SalesSchemaMigration.CurrentVersion, Scalar(migrated, "SELECT Version FROM DepotFeatureVersions WHERE Name='Sales';"));
+		Assert.Equal(1L, Scalar(migrated, "SELECT COUNT(*) FROM ItemCostProfiles WHERE Currency='EUR' AND Version=7 AND BaseCostSource=0 AND ManualStandardCost IS NULL AND InventoryCostReference IS NULL;"));
+		Assert.Equal(1L, Scalar(migrated, "SELECT COUNT(*) FROM sqlite_master WHERE name='UX_InventoryReservations_Active';"));
+		Assert.Equal(1L, Scalar(migrated, "SELECT COUNT(*) FROM sqlite_master WHERE name='PricingExchangeRates' AND type='table';"));
+		Assert.Equal(1L, Scalar(migrated, "SELECT COUNT(*) FROM pragma_table_info('SalesInvoiceLines') WHERE name='TaxCategoryCode';"));
+		Assert.Equal(1L, Scalar(migrated, "SELECT COUNT(*) FROM pragma_table_info('SalesCreditNoteLines') WHERE name='TaxExemptionReason';"));
+		Assert.Equal(0L, Scalar(migrated, "SELECT COUNT(*) FROM SalesCreditNoteFinalizations;"));
+		Assert.Equal(0L, Scalar(migrated, "SELECT COUNT(*) FROM SalesElectronicInvoiceEvidence;"));
 	}
 
 	[Fact]
@@ -129,6 +163,18 @@ public sealed class SalesFeatureTests : IDisposable
 	{
 		SqliteConnection.ClearAllPools();
 		if (File.Exists(_databasePath)) File.Delete(_databasePath);
+	}
+
+	private static void CreateVersionEightSalesSchema(IDatabaseConnectionFactory factory)
+	{
+		SalesSchemaInitializer.Ensure(factory);
+		SalesCorrectionSchema.Ensure(factory);
+		CustomerAddressSchema.Ensure(factory);
+		SalesReservationSchema.Ensure(factory);
+		SalesOrderAddressSnapshotSchema.Ensure(factory);
+		SalesCommercialSchema.Ensure(factory);
+		SalesDocumentIssuerSnapshotSchema.Ensure(factory);
+		SalesInvoiceFinalizationSchema.Ensure(factory);
 	}
 
 	private static long Scalar(SqliteConnection connection, string sql)
