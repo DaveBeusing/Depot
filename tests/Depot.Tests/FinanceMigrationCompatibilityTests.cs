@@ -15,15 +15,19 @@ public sealed class FinanceMigrationCompatibilityTests
 		var path = Path.Combine(Path.GetTempPath(), $"depot-finance-migration-{Guid.NewGuid():N}.db");
 		try
 		{
+			var factory = new SqliteConnectionFactory(path);
+			new DepotDatabase(factory).Initialize();
 			using (var connection = new SqliteConnection($"Data Source={path}"))
 			{
 				connection.Open();
 				using var command = connection.CreateCommand();
-				command.CommandText = "CREATE TABLE DepotFeatureVersions (Name TEXT PRIMARY KEY, Version INTEGER NOT NULL); INSERT INTO DepotFeatureVersions (Name,Version) VALUES ('Finance',3);";
+				command.CommandText = "CREATE TABLE DepotFeatureVersions (Name TEXT PRIMARY KEY, Version INTEGER NOT NULL);";
 				command.ExecuteNonQuery();
 			}
 
-			var factory = new SqliteConnectionFactory(path);
+			// Build the actual v3 structures, not only a version marker in an empty database.
+			FinanceAccountsReceivableSchemaMigration.Migrate(factory);
+			Assert.Equal(3, ReadFinanceVersion(path));
 			FinanceInventoryAccountingSchemaMigration.Migrate(factory);
 			Assert.Equal(FinanceInventoryAccountingSchemaMigration.CurrentVersion, ReadFinanceVersion(path));
 

@@ -14,6 +14,8 @@ The validation follow-up on `electronic-invoice-validation` addresses:
 - a provider test that incorrectly relabelled the current Sales schema as
   version 10, causing forward-only migrations to replay against existing tables;
 - an incomplete version 8 migration fixture and a stale version 12 assertion;
+- a Finance version 3 fixture that lacked the Core and historical Finance
+  structures required by the transitive Sales migration;
 - the finalization regression's outdated error assertion after explicit VAT
   semantics were introduced;
 - unattended packaged E2E signing hanging while importing a root certificate
@@ -27,7 +29,7 @@ Explicit zero-rated finalization is checked alongside rejection of zero-rated
 lines labelled as standard VAT.
 
 This follow-up changes tests and workflow execution, not persisted contracts:
-Depot `0.15.189-preview`; Sales schema `13`; Core schema `30`;
+Depot `0.15.190-preview`; Sales schema `13`; Core schema `30`;
 DepotManager `0.1.23-preview` unchanged. Final acceptance requires successful
 CI, quality, security, Release, packaged E2E, provider and electronic-invoice
 conformance results for the final head. The existing KoSIT workflow validates
