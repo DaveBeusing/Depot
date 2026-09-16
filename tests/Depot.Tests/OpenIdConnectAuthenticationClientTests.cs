@@ -59,6 +59,66 @@ public sealed class OpenIdConnectAuthenticationClientTests : IDisposable
 	}
 
 	[Fact]
+	public async Task AssurancePolicyAddsRequestHintsAndRequiresValidatedEvidence()
+	{
+		var browser = new CapturingBrowser();
+		var callback = new CallbackFactory(browser, state => new OidcAuthorizationCallback("code", state, null));
+		var tokenEndpoint = new TokenEndpointHandler(_ =>
+		{
+			var query = ParseQuery(browser.LastUri!.Query);
+			Assert.Equal("urn:example:loa:2", query["acr_values"]);
+			Assert.Equal("1800", query["max_age"]);
+			return CreateToken(
+				"https://issuer.example.test",
+				"depot-client",
+				query["nonce"],
+				"subject-assured",
+				null,
+				null,
+				null,
+				[
+					new Claim("amr", "pwd"),
+					new Claim("amr", "mfa"),
+					new Claim("acr", "urn:example:loa:2"),
+					new Claim("auth_time", DateTimeOffset.UtcNow.AddMinutes(-2).ToUnixTimeSeconds().ToString(System.Globalization.CultureInfo.InvariantCulture)),
+					new Claim("azp", "depot-client")
+				]);
+		});
+		var client = CreateClient(browser, callback, tokenEndpoint);
+		var provider = Provider(EnterpriseIdentityProviderKind.OpenIdConnect, null) with
+		{
+			RequiredAmr = "mfa",
+			RequiredAcr = "urn:example:loa:2",
+			MaximumAuthenticationAgeMinutes = 30
+		};
+
+		var result = await client.AuthenticateAsync(provider, CancellationToken.None);
+
+		Assert.Equal(OidcAuthenticationStatus.Succeeded, result.Status);
+		Assert.Equal("subject-assured", result.Identity?.Subject);
+	}
+
+	[Fact]
+	public async Task AssurancePolicyRejectsMissingRequiredMethodBeforeIdentityResolution()
+	{
+		var browser = new CapturingBrowser();
+		var callback = new CallbackFactory(browser, state => new OidcAuthorizationCallback("code", state, null));
+		var tokenEndpoint = new TokenEndpointHandler(_ =>
+		{
+			var nonce = ParseQuery(browser.LastUri!.Query)["nonce"];
+			return CreateToken("https://issuer.example.test", "depot-client", nonce, "subject-no-mfa", null, null, null);
+		});
+		var client = CreateClient(browser, callback, tokenEndpoint);
+		var provider = Provider(EnterpriseIdentityProviderKind.OpenIdConnect, null) with { RequiredAmr = "mfa" };
+
+		var result = await client.AuthenticateAsync(provider, CancellationToken.None);
+
+		Assert.Equal(OidcAuthenticationStatus.Failed, result.Status);
+		Assert.Equal("authentication_method_requirement_not_met", result.FailureCode);
+		Assert.Null(result.Identity);
+	}
+
+	[Fact]
 	public async Task StateMismatchFailsBeforeTokenExchange()
 	{
 		var browser = new CapturingBrowser();
@@ -180,7 +240,8 @@ public sealed class OpenIdConnectAuthenticationClientTests : IDisposable
 		string subject,
 		string? tenantId,
 		string? email,
-		string? name)
+		string? name,
+		IEnumerable<Claim>? additionalClaims = null)
 	{
 		var claims = new List<Claim>
 		{
@@ -190,6 +251,7 @@ public sealed class OpenIdConnectAuthenticationClientTests : IDisposable
 		if (tenantId is not null) claims.Add(new Claim("tid", tenantId));
 		if (email is not null) claims.Add(new Claim("email", email));
 		if (name is not null) claims.Add(new Claim("name", name));
+		if (additionalClaims is not null) claims.AddRange(additionalClaims);
 		var token = new JwtSecurityToken(
 			issuer,
 			audience,

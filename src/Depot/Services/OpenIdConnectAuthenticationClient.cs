@@ -106,6 +106,8 @@ internal sealed class OpenIdConnectAuthenticationClient : IOpenIdConnectAuthenti
 		if (!Enum.IsDefined(provider.Kind)) return OidcAuthenticationResult.Failed("provider_kind_invalid");
 		if (provider.Kind == EnterpriseIdentityProviderKind.MicrosoftEntraId && string.IsNullOrWhiteSpace(provider.TenantId))
 			return OidcAuthenticationResult.Failed("entra_tenant_required");
+		var policyFailure = ExternalAuthenticationAssurance.ValidateProviderPolicy(provider);
+		if (policyFailure is not null) return OidcAuthenticationResult.Failed(policyFailure);
 
 		OpenIdConnectConfiguration configuration;
 		try
@@ -134,7 +136,9 @@ internal sealed class OpenIdConnectAuthenticationClient : IOpenIdConnectAuthenti
 			callbackListener.RedirectUri,
 			state,
 			nonce,
-			codeChallenge);
+			codeChallenge,
+			provider.RequiredAcr,
+			provider.MaximumAuthenticationAgeMinutes);
 
 		try
 		{
@@ -300,6 +304,14 @@ internal sealed class OpenIdConnectAuthenticationClient : IOpenIdConnectAuthenti
 				 !string.Equals(provider.TenantId, tenantId, StringComparison.OrdinalIgnoreCase)))
 				return OidcAuthenticationResult.Failed("tenant_mismatch");
 
+			var assuranceFailure = ExternalAuthenticationAssurance.Validate(
+				provider,
+				principal,
+				jwt.Audiences,
+				DateTimeOffset.UtcNow);
+			if (assuranceFailure is not null)
+				return OidcAuthenticationResult.Failed(assuranceFailure);
+
 			return OidcAuthenticationResult.Success(new ValidatedExternalIdentity(
 				provider.Code,
 				jwt.Issuer,
@@ -340,7 +352,9 @@ internal sealed class OpenIdConnectAuthenticationClient : IOpenIdConnectAuthenti
 		Uri redirectUri,
 		string state,
 		string nonce,
-		string codeChallenge)
+		string codeChallenge,
+		string? requiredAcr,
+		int? maximumAuthenticationAgeMinutes)
 	{
 		if (!TryHttpsEndpoint(authorizationEndpoint, out var endpoint))
 			throw new InvalidOperationException("OIDC authorization endpoint must use HTTPS.");
@@ -356,6 +370,10 @@ internal sealed class OpenIdConnectAuthenticationClient : IOpenIdConnectAuthenti
 			["code_challenge"] = codeChallenge,
 			["code_challenge_method"] = "S256"
 		};
+		if (!string.IsNullOrWhiteSpace(requiredAcr))
+			parameters["acr_values"] = requiredAcr;
+		if (maximumAuthenticationAgeMinutes is int maximumAgeMinutes)
+			parameters["max_age"] = (maximumAgeMinutes * 60).ToString(CultureInfo.InvariantCulture);
 		var builder = new UriBuilder(endpoint);
 		var existing = builder.Query.TrimStart('?');
 		var encoded = string.Join("&", parameters.Select(pair => $"{Uri.EscapeDataString(pair.Key)}={Uri.EscapeDataString(pair.Value)}"));

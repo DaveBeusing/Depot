@@ -39,11 +39,61 @@ public sealed class EnterpriseIdentityTests : IDisposable
 		EnterpriseIdentitySchemaMigration.Migrate(factory);
 		using (var connection = Open())
 		{
-			Execute(connection, "UPDATE DepotFeatureVersions SET Version=2 WHERE Name='EnterpriseIdentity';");
+			Execute(connection, $"UPDATE DepotFeatureVersions SET Version={EnterpriseIdentitySchemaMigration.CurrentVersion + 1} WHERE Name='EnterpriseIdentity';");
 		}
 
 		var error = Assert.Throws<InvalidOperationException>(() => EnterpriseIdentitySchemaMigration.Migrate(factory));
 		Assert.Contains("newer than the supported version", error.Message, StringComparison.Ordinal);
+	}
+
+	[Fact]
+	public async Task AssurancePolicyConfigurationIsPermissionedVersionedAndAudited()
+	{
+		var context = await CreateContextAsync();
+		var provider = await context.Service.CreateProviderAsync(
+			"oidc-assurance",
+			EnterpriseIdentityProviderKind.OpenIdConnect,
+			"OIDC Assurance",
+			"https://identity.example.test",
+			"depot-client",
+			null,
+			true);
+
+		var updated = await context.Service.ConfigureAssurancePolicyAsync(
+			provider.Id,
+			provider.Version,
+			"mfa",
+			"urn:example:loa:2",
+			30);
+
+		Assert.Equal(provider.Version + 1, updated.Version);
+		Assert.Equal("mfa", updated.RequiredAmr);
+		Assert.Equal("urn:example:loa:2", updated.RequiredAcr);
+		Assert.Equal(30, updated.MaximumAuthenticationAgeMinutes);
+		var history = await context.AuditEntries.GetEntityHistoryAsync(
+			nameof(EnterpriseIdentityProvider),
+			provider.Id,
+			10,
+			CancellationToken.None);
+		Assert.Contains(history, entry =>
+			entry.Action == "Updated" &&
+			entry.AfterJson is not null &&
+			entry.AfterJson.Contains("\"requiredAmr\":\"mfa\"", StringComparison.Ordinal));
+
+		await Assert.ThrowsAsync<ConcurrencyConflictException>(() => context.Service.ConfigureAssurancePolicyAsync(
+			provider.Id,
+			provider.Version,
+			"mfa",
+			"urn:example:loa:2",
+			30));
+
+		context.Authorization.SignOut();
+		await Assert.ThrowsAsync<UnauthorizedAccessException>(() => context.Service.ConfigureAssurancePolicyAsync(
+			provider.Id,
+			updated.Version,
+			"mfa",
+			"urn:example:loa:2",
+			30));
 	}
 
 	[Fact]
@@ -259,7 +309,7 @@ public sealed class EnterpriseIdentityTests : IDisposable
 			auditEntries,
 			audit,
 			authorization);
-		return new TestContext(transactions, users, roles, service);
+		return new TestContext(transactions, users, roles, auditEntries, authorization, service);
 	}
 
 	private SqliteConnectionFactory InitializeCore()
@@ -300,6 +350,8 @@ public sealed class EnterpriseIdentityTests : IDisposable
 		IDatabaseTransactionRunner Transactions,
 		UserRepository Users,
 		RoleRepository Roles,
+		AuditRepository AuditEntries,
+		AuthorizationService Authorization,
 		EnterpriseIdentityService Service)
 	{
 		public async Task<User> CreateUserAsync(string email, string displayName)

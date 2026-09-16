@@ -18,6 +18,9 @@ public sealed record EnterpriseIdentityProvider
 	public string Authority { get; init; } = string.Empty;
 	public string ClientId { get; init; } = string.Empty;
 	public string? TenantId { get; init; }
+	public string? RequiredAmr { get; init; }
+	public string? RequiredAcr { get; init; }
+	public int? MaximumAuthenticationAgeMinutes { get; init; }
 	public bool IsEnabled { get; init; }
 	public DateTime CreatedUtc { get; init; }
 	public DateTime UpdatedUtc { get; init; }

@@ -52,15 +52,13 @@ F3 repository implementation is merged, but final external acceptance remains ev
 
 ## F4A enterprise identity foundation
 
-PR #43 (`enterprise-identity-foundation`) is merged into `master`. Enterprise Identity feature schema `1` stores non-secret provider configuration plus exact provider/issuer/subject links to existing local Depot users. The resolver returns only active local users and reloads roles/effective permissions exclusively from Depot RBAC.
+PR #43 (`enterprise-identity-foundation`) is merged into `master`. Enterprise Identity feature schema `1` introduced non-secret provider configuration plus exact provider/issuer/subject links to existing local Depot users. The resolver returns only active local users and reloads roles/effective permissions exclusively from Depot RBAC.
 
-F4A deliberately does not auto-provision users or trust external roles/groups/permission claims. The persistence foundation is reused unchanged by F4B.
+F4A deliberately does not auto-provision users or trust external roles/groups/permission claims.
 
 ## F4B OpenID Connect / Microsoft Entra ID authentication
 
-The `enterprise-identity-oidc` package implements the interactive enterprise authentication path without changing Enterprise Identity schema `1`.
-
-The bounded F4B scope is:
+PR #44 (`enterprise-identity-oidc`) is merged into `master`. The bounded F4B scope is:
 
 - Authorization Code + PKCE (`S256`) for the native Windows client;
 - system-browser authorization;
@@ -75,12 +73,33 @@ The bounded F4B scope is:
 - no external group/role-to-Depot-permission mapping;
 - normal Depot SessionService, concurrent-session policy, AuthorizationService and Security Event integration after F4A resolution succeeds.
 
-A valid provider identity that has no existing F4A link remains denied. F4B does not interpret external MFA/authentication-method claims; that remains F4C.
+PR #45 repaired F4B/F3 build integration against the stable PDFsharp 6.2.4 surface and the OIDC compile boundary. Its candidate evidence also exposed a stale Factur-X structural test fixture that is corrected together with the next candidate package so the independent F3 gate can run again.
 
-F4B repository implementation is acceptance-evidence dependent until its CI, quality, security, packaged-E2E, release and provider gates complete successfully.
+## F4C external MFA claims and identity hardening
+
+The `enterprise-identity-mfa` package advances Enterprise Identity feature schema `1` to `2` and adds an explicit provider-bound external authentication-assurance contract.
+
+The bounded F4C scope is:
+
+- optional exact required `amr` value per provider;
+- optional exact required `acr` value per provider;
+- optional maximum `auth_time` age from 1 through 1440 minutes;
+- `acr_values` and `max_age` request hints when those requirements are configured;
+- fail-closed verification of the validated ID-token assurance evidence before identity resolution or session creation;
+- `azp` validation against the configured client ID when present and mandatory authorized-party evidence for multi-audience tokens;
+- malformed, ambiguous, stale, future-dated or mismatching assurance evidence is rejected with controlled failure codes;
+- provider assurance-policy changes reuse `UsersManage`, optimistic concurrency and transactional Audit evidence;
+- `amr`, `acr`, `auth_time` and `azp` values remain runtime-only and are not stored on identity links;
+- no Depot-managed TOTP/MFA secrets, no automatic user provisioning and no external role/group/permission mapping.
+
+For Microsoft Entra ID deployments, Conditional Access and Authentication Strength remain the primary tenant-side method-policy controls. Depot does not infer universal MFA semantics from an arbitrary claim string; an `amr`/`acr` requirement is an explicit administrator-selected provider trust contract.
+
+The schema-1→2 migration preserves existing provider/link identities and initializes all new assurance requirements to null, so an upgrade cannot silently add a new MFA requirement.
+
+F4C repository implementation remains acceptance-evidence dependent until its CI, quality, security, packaged-E2E, electronic-invoice conformance, release and provider gates complete successfully.
 
 ## Track status and next work
 
-F1 is merged. F2 repository implementation/conformance breadth are merged and remain final-evidence dependent. F3A and F3B are merged; final F3 acceptance remains external-evidence dependent. F4A is merged. F4B is implemented on `enterprise-identity-oidc` and awaiting candidate gates. F4C and F5 have not been started.
+F1 is merged. F2 repository implementation/conformance breadth are merged and remain final-evidence dependent. F3A and F3B are merged; final F3 acceptance remains external-evidence dependent. F4A, F4B and the F4B stabilization are merged. F4C is implemented on `enterprise-identity-mfa` and awaits candidate gates. F5 has not been started.
 
-After F4B is merged with green repository evidence, the next implementation package is F4C External MFA Claims & Identity Hardening.
+After F4C is merged with green repository evidence, the next implementation package is F5A Security Event Export Contract.

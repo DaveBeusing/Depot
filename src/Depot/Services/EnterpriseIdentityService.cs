@@ -115,15 +115,46 @@ public sealed class EnterpriseIdentityService : IEnterpriseIdentityResolver
 			UpdatedUtc = DateTime.UtcNow
 		});
 
-		return await _transactions.ExecuteAsync(async (transaction, token) =>
+		return await CommitProviderUpdateAsync(before, after, expectedVersion, cancellationToken);
+	}
+
+	public async Task<EnterpriseIdentityProvider> ConfigureAssurancePolicyAsync(
+		long id,
+		long expectedVersion,
+		string? requiredAmr,
+		string? requiredAcr,
+		int? maximumAuthenticationAgeMinutes,
+		CancellationToken cancellationToken = default)
+	{
+		_authorization.RequirePermission(ApplicationPermission.UsersManage);
+		if (id <= 0) throw new ArgumentOutOfRangeException(nameof(id));
+		var before = await _identities.GetProviderByIdAsync(id, cancellationToken)
+			?? throw new InvalidOperationException("The enterprise identity provider was not found.");
+		if (before.Version != expectedVersion) throw new ConcurrencyConflictException("enterprise identity provider");
+		var after = NormalizeProvider(before with
+		{
+			RequiredAmr = requiredAmr,
+			RequiredAcr = requiredAcr,
+			MaximumAuthenticationAgeMinutes = maximumAuthenticationAgeMinutes,
+			UpdatedUtc = DateTime.UtcNow
+		});
+
+		return await CommitProviderUpdateAsync(before, after, expectedVersion, cancellationToken);
+	}
+
+	private Task<EnterpriseIdentityProvider> CommitProviderUpdateAsync(
+		EnterpriseIdentityProvider before,
+		EnterpriseIdentityProvider after,
+		long expectedVersion,
+		CancellationToken cancellationToken) =>
+		_transactions.ExecuteAsync(async (transaction, token) =>
 		{
 			if (!await _identities.UpdateProviderAsync(transaction, after, expectedVersion, token))
 				throw new ConcurrencyConflictException("enterprise identity provider");
 			var committed = after with { Version = expectedVersion + 1 };
-			await _auditEntries.CreateAsync(transaction, _audit.CreateUpdatedEntry(id, before, committed), token);
+			await _auditEntries.CreateAsync(transaction, _audit.CreateUpdatedEntry(before.Id, before, committed), token);
 			return committed;
 		}, cancellationToken);
-	}
 
 	public async Task<IReadOnlyList<ExternalIdentityLink>> ListLinksForUserAsync(
 		long userId,
@@ -272,7 +303,10 @@ public sealed class EnterpriseIdentityService : IEnterpriseIdentityResolver
 			DisplayName = NormalizeRequired(provider.DisplayName, 120, "Provider display name"),
 			Authority = NormalizeHttpsUri(provider.Authority, 512, "Provider authority"),
 			ClientId = NormalizeRequired(provider.ClientId, 200, "Provider client ID"),
-			TenantId = NormalizeOptional(provider.TenantId, 128, "Provider tenant ID")
+			TenantId = NormalizeOptional(provider.TenantId, 128, "Provider tenant ID"),
+			RequiredAmr = NormalizeAssuranceValue(provider.RequiredAmr, 100, "Required amr value"),
+			RequiredAcr = NormalizeAssuranceValue(provider.RequiredAcr, 200, "Required acr value"),
+			MaximumAuthenticationAgeMinutes = NormalizeAuthenticationAge(provider.MaximumAuthenticationAgeMinutes)
 		};
 	}
 
@@ -340,6 +374,22 @@ public sealed class EnterpriseIdentityService : IEnterpriseIdentityResolver
 		var normalized = value.Trim();
 		if (normalized.Length > maximumLength) throw new ArgumentException($"{name} cannot exceed {maximumLength} characters.", nameof(value));
 		return normalized;
+	}
+
+	private static string? NormalizeAssuranceValue(string? value, int maximumLength, string name)
+	{
+		var normalized = NormalizeOptional(value, maximumLength, name);
+		if (normalized is not null && normalized.Any(char.IsWhiteSpace))
+			throw new ArgumentException($"{name} cannot contain whitespace.", nameof(value));
+		return normalized;
+	}
+
+	private static int? NormalizeAuthenticationAge(int? value)
+	{
+		if (value is null) return null;
+		if (value is < 1 or > 1440)
+			throw new ArgumentOutOfRangeException(nameof(value), "Maximum authentication age must be between 1 and 1440 minutes.");
+		return value;
 	}
 
 	private static string ComputeIdentityKey(string providerCode, string issuer, string subject)
