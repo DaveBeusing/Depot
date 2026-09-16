@@ -7,7 +7,7 @@ namespace Depot.Data;
 
 public static class UserPreferenceSchemaMigration
 {
-	public const int CurrentVersion = 1;
+	public const int CurrentVersion = 2;
 	private const string FeatureName = "UserPreferences";
 
 	public static void Migrate(IDatabaseConnectionFactory connectionFactory)
@@ -18,7 +18,7 @@ public static class UserPreferenceSchemaMigration
 		if (version > CurrentVersion)
 			throw new InvalidOperationException($"User preference schema version '{version}' is newer than the supported version '{CurrentVersion}'.");
 
-		if (version == 0)
+		if (version is 0 or 1)
 		{
 			UserPreferenceSchema.Ensure(connectionFactory);
 			WriteVersion(connectionFactory, CurrentVersion);

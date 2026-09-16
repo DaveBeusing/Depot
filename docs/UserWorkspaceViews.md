@@ -58,15 +58,17 @@ Each user can save multiple views per workspace. A single default view can be se
 Feature schema:
 
 ```text
-UserPreferences = 1
+UserPreferences = 2
 ```
 
-Tables:
+Saved-view tables remain:
 
 ```text
 UserWorkspaceViews
 UserWorkspaceDefaultViews
 ```
+
+Schema version 2 additionally contains user productivity tables for favorites, recent workspaces and default landing behavior. Those structures are documented in `WorkspaceProductivity.md` and do not change the saved-view definition format.
 
 `UserWorkspaceViews` is unique by `(UserId, WorkspaceId, ViewId)` and by `(UserId, WorkspaceId, Name)`. `UserWorkspaceDefaultViews` has a single row per `(UserId, WorkspaceId)`, which makes the default invariant explicit under concurrent use.
 

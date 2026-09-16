@@ -12,6 +12,7 @@ internal sealed class DepotApplicationServices : IDisposable
 		DatabaseComposition database,
 		ServiceComposition services,
 		WorkspaceViewService workspaceViews,
+		WorkspaceProductivityService workspaceProductivity,
 		AuthenticationSecurityService authenticationSecurity,
 		SecurityAdministrationService securityAdministration,
 		SecurityMaintenanceService securityMaintenance,
@@ -20,6 +21,7 @@ internal sealed class DepotApplicationServices : IDisposable
 		Database = database;
 		Services = services;
 		WorkspaceViews = workspaceViews;
+		WorkspaceProductivity = workspaceProductivity;
 		AuthenticationSecurity = authenticationSecurity;
 		SecurityAdministration = securityAdministration;
 		SecurityMaintenance = securityMaintenance;
@@ -29,6 +31,7 @@ internal sealed class DepotApplicationServices : IDisposable
 	public DatabaseComposition Database { get; }
 	public ServiceComposition Services { get; }
 	public WorkspaceViewService WorkspaceViews { get; }
+	public WorkspaceProductivityService WorkspaceProductivity { get; }
 	public AuthenticationSecurityService AuthenticationSecurity { get; }
 	public SecurityAdministrationService SecurityAdministration { get; }
 	public SecurityMaintenanceService SecurityMaintenance { get; }
@@ -47,6 +50,11 @@ internal sealed class DepotApplicationServices : IDisposable
 				new WorkspaceViewRepository(database.DataAccess),
 				services.Authorization);
 			WorkspaceViewRuntime.Configure(workspaceViews);
+			var workspaceProductivity = new WorkspaceProductivityService(
+				database.TransactionRunner,
+				new WorkspaceProductivityRepository(database.DataAccess),
+				services.Authorization);
+			WorkspaceProductivityRuntime.Configure(workspaceProductivity);
 			var audit = new AuditService(repositories.Audit, services.Authorization);
 			var authenticationSecurity = new AuthenticationSecurityService(
 				database.TransactionRunner,
@@ -86,6 +94,7 @@ internal sealed class DepotApplicationServices : IDisposable
 				database,
 				services,
 				workspaceViews,
+				workspaceProductivity,
 				authenticationSecurity,
 				securityAdministration,
 				securityMaintenance,
@@ -103,6 +112,7 @@ internal sealed class DepotApplicationServices : IDisposable
 
 	public void Dispose()
 	{
+		WorkspaceProductivityRuntime.Clear(WorkspaceProductivity);
 		WorkspaceViewRuntime.Clear(WorkspaceViews);
 		SecurityMaintenance.Dispose();
 		Services.Session.Dispose();
