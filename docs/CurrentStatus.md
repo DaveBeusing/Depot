@@ -2,7 +2,7 @@
 
 Updated: 2026-09-16
 
-Depot is on the `0.15.x-preview` development line. Finance, inventory, purchasing, sales, reporting, localization, notifications, Audit, persistent user sessions and operational security monitoring are integrated in the repository.
+Depot is on the `0.15.x-preview` development line. Finance, inventory, purchasing, sales, reporting, localization, notifications, Audit, persistent user sessions, operational security monitoring and the enterprise-identity persistence foundation are integrated in the repository.
 
 ## Repository governance
 
@@ -30,6 +30,8 @@ Release channels are explicit:
 `scripts/release.ps1` remains only a dispatcher for the authoritative workflow. It supports `-Channel Stable -AcceptanceOnly`, which executes the production-signed Stable RC path without creating a GitHub Release. DepotManager installation/update/repair discovery remains a Stable-channel consumer and ignores `prerelease=true` releases.
 
 The Track A closure review corrected a release-identity defect exposed by the H5 PR workflow: the conditioned XML node for `DepotVersionSuffix` was being read by PowerShell as `System.Xml.XmlElement`, producing an invalid Preview tag. The suffix is now a fixed repository property so release/evidence readers resolve the literal `preview` value.
+
+Release manifest/evidence records Core plus the current feature-schema compatibility dimensions; F4A closes the prior omission of User Preferences and adds Enterprise Identity schema evidence.
 
 See [Release Pipeline](ReleasePipeline.md), [Production Signing Acceptance](ProductionSigningAcceptance.md) and [Release Integrity](compliance/ReleaseIntegrity.md).
 
@@ -108,7 +110,7 @@ The following database baselines are technically **Supported** when shipped with
 - MariaDB 11.8.9 LTS;
 - MySQL 8.4.11 LTS.
 
-The matrix validates fresh/idempotent provisioning, Core 29→30 and legacy Sales migrations through the current Sales feature schema, concurrent provisioning, SQL/type/constraint/date/decimal behavior, transactional rollback, concurrency/deadlock/retry behavior, Sales, Procurement, sessions, Finance GL/AR/AP/FIFO, Banking/reconciliation, Financial Reporting/snapshots, server restart, native remote backup/restore and representative 100k indexed access. Pull requests include provider recovery drills and retained recovery evidence for every supported provider family.
+The matrix validates fresh/idempotent provisioning, Core 29→30 and legacy Sales migrations through the current Sales feature schema, concurrent provisioning, SQL/type/constraint/date/decimal behavior, transactional rollback, concurrency/deadlock/retry behavior, Sales, Procurement, sessions, Finance GL/AR/AP/FIFO, Banking/reconciliation, Financial Reporting/snapshots, server restart, native remote backup/restore and representative 100k indexed access. Pull requests include provider recovery drills and retained recovery evidence for every supported provider family. Enterprise Identity schema 1 adds provider-smoke coverage for SQLite, SQL Server, MariaDB and MySQL migration/persistence behavior.
 
 MariaDB and MySQL are independently certified; support for one never implies support for the other. Versions outside the listed baselines remain untested/best-effort until explicitly added to the matrix.
 
@@ -120,7 +122,7 @@ Depot persists one session per successful login and derives online presence from
 
 Credential changes invalidate other open sessions with `CredentialsChanged`; account deactivation atomically revokes open sessions with `Revoked`. Administrative single/bulk termination remains permissioned through `UserSessions.Terminate` and is coupled to Audit/Security Event evidence in the production transaction path.
 
-Production login throttling is database-shared across Depot clients. `AuthenticationSecurityPolicy` controls failure window, lockout threshold, lockout duration and Security Event retention. Local credentials are behind `IAuthenticationProvider` / `LocalAuthenticationProvider`, preserving a future OIDC/SSO boundary.
+Production login throttling is database-shared across Depot clients. `AuthenticationSecurityPolicy` controls failure window, lockout threshold, lockout duration and Security Event retention. Local credentials are behind `IAuthenticationProvider` / `LocalAuthenticationProvider`.
 
 **Administration → User Sessions** exposes lifetime, concurrency and history-retention policy plus active/history views and termination controls. **Administration → Security Center** exposes review KPIs, filters, authentication-policy maintenance, event/session/client correlation and controlled response actions for terminating sessions or deactivating a resolved user.
 
@@ -128,13 +130,23 @@ A bounded maintenance service enforces ended-session history retention, Security
 
 The security feature does not collect source IP, geolocation, MAC address, hardware fingerprint, typed text, key values, mouse coordinates or external-window activity.
 
+## Enterprise identity foundation
+
+Enterprise Identity schema **1** introduces the provider-neutral persistence and resolution boundary for future OpenID Connect / Microsoft Entra ID authentication. Non-secret provider configuration is stored separately from exact external provider/issuer/subject links to existing local Depot users.
+
+The external identity tuple is bound through a deterministic SHA-256 key so exact issuer/subject identity remains provider-neutral even on case-insensitive SQL collations. Optional observed tenant, email and display name are identity evidence only and never overwrite the local user.
+
+`IEnterpriseIdentityResolver` returns an active local user with roles and effective permissions reloaded exclusively from Depot's own RBAC tables. External roles, groups and permission claims are not authorization inputs. Provider/link administration reuses `UsersView` / `UsersManage` and writes administrative mutations with Audit evidence.
+
+F4A deliberately does not implement browser OIDC, PKCE/state/nonce, token validation, Entra token acquisition, automatic user provisioning or external MFA interpretation. See [Enterprise Identity Foundation](EnterpriseIdentity.md).
+
 ## Electronic invoicing status
 
 The bounded F2 XRechnung 3.0 CII implementation is merged. Sales schema 13 persists explicit `S`, `Z`, `E` and `AE` VAT semantics, immutable finalized XML/integrity evidence, recipient/routing evidence and electronic Sales Credit Note finalization. The conformance closure binds retained fixtures to production generator output and validates the advertised XML matrix through KoSIT.
 
-The product decision now includes ZUGFeRD/Factur-X. F3A introduces Sales schema 14 and the hybrid-artifact boundary for ZUGFeRD 2.5.2 / Factur-X 1.09.2 XRECHNUNG-profile documents: a new PDF/A-3B is created during finalization, the exact finalized `xrechnung.xml` is embedded with Factur-X XMP metadata, and PDF/XML SHA-256 evidence plus the exact PDF bytes are persisted atomically for invoice and credit-note export.
+The product decision now includes ZUGFeRD/Factur-X. F3A introduced Sales schema 14 and the hybrid-artifact boundary for ZUGFeRD 2.5.2 / Factur-X 1.09.2 XRECHNUNG-profile documents. F3B is merged and adds the pinned veraPDF 1.30.2 PDF/A-3B acceptance path for the advertised hybrid matrix.
 
-F2 and F3 remain acceptance-evidence dependent until their required repository/conformance gates are green. F3 additionally requires independent PDF/A-3 validation; implementation presence does not manufacture veraPDF acceptance evidence.
+F2/F3 final acceptance remains evidence-dependent until the corresponding candidate workflows actually complete successfully; implementation/merge presence does not manufacture KoSIT or veraPDF acceptance evidence.
 
 ## Versions
 
@@ -146,6 +158,7 @@ F2 and F3 remain acceptance-evidence dependent until their required repository/c
 - User Sessions feature schema: **3**
 - Security Events feature schema: **2**
 - User Preferences feature schema: **2**
+- Enterprise Identity feature schema: **1**
 - Help manifest: **1.21**
 
 `Directory.Build.props` is authoritative for the exact Depot application patch/version; `src/DepotManager/DepotManager.Version.props` is authoritative for the DepotManager version. Schema migration constants and `src/Depot/Help/manifest.json` are authoritative for the other baseline values. Every repository commit increments `DepotVersionPatch`.
@@ -162,4 +175,4 @@ Provider support does not replace deployment-specific accounting/tax/legal, acce
 
 Finish the four real Track A closure actions and validate the resulting controlled evidence with `Test-TrackAAcceptance.ps1 -RequirePass`. Track A closure remains a prerequisite rather than the whole Depot 1.0 decision.
 
-Remaining 1.0 work outside Track A is tracked in [Release 1.0](Release1.0.md) and the [Roadmap](Roadmap.md), including deployment/accounting procedure acceptance, customer-specific production sizing, F2/F3 electronic-invoice acceptance evidence including independent PDF/A-3 validation, and qualified GDPR/CRA/legal review.
+The next enterprise-identity implementation package is F4B OpenID Connect / Microsoft Entra ID authentication on top of this persistence foundation, followed by F4C external MFA claims and identity hardening. Remaining 1.0 work outside Track A is tracked in [Release 1.0](Release1.0.md) and the [Roadmap](Roadmap.md).

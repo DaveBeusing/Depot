@@ -57,6 +57,7 @@ internal sealed class RepositoryComposition
 		UserSessions = new UserSessionRepository(dataAccess);
 		SecurityEvents = new SecurityEventRepository(dataAccess);
 		AuthenticationSecurity = new AuthenticationSecurityRepository(dataAccess);
+		EnterpriseIdentity = new EnterpriseIdentityRepository(dataAccess);
 		Roles = new RoleRepository(dataAccess);
 		Audit = new AuditRepository(dataAccess);
 		Notifications = new NotificationRepository(dataAccess);
@@ -110,6 +111,7 @@ internal sealed class RepositoryComposition
 	public UserSessionRepository UserSessions { get; }
 	public SecurityEventRepository SecurityEvents { get; }
 	public AuthenticationSecurityRepository AuthenticationSecurity { get; }
+	public EnterpriseIdentityRepository EnterpriseIdentity { get; }
 	public RoleRepository Roles { get; }
 	public AuditRepository Audit { get; }
 	public NotificationRepository Notifications { get; }

@@ -32,7 +32,7 @@ Exports use persisted bytes and verify SHA-256 evidence. Legacy records are not 
 
 ## F3B independent conformance closure
 
-The `zugferd-facturx-conformance-closure` package adds the independent PDF/A acceptance gate without changing the persisted schema contract.
+PR #42 (`zugferd-facturx-conformance-closure`) is merged into `master`. It adds the independent PDF/A acceptance gate without changing the persisted schema contract.
 
 The gate uses pinned veraPDF `1.30.2` and verifies the downloaded official installer against the repository-pinned SHA-256 `6cc6341cb1af644044054b81f00a6590a7918abb18f762243de115258bcad838`. The CLI is installed unattended and its runtime version must match the pin before any document is accepted.
 
@@ -48,10 +48,16 @@ For every case the generated CII must first equal the retained KoSIT-bound fixtu
 
 The workflow retains the generated PDFs, a generator manifest, per-document veraPDF XML reports/logs and a validator summary as `electronic-invoice-conformance-evidence`. KoSIT validation remains a separate step in the same electronic-invoice conformance workflow, so PDF/A success cannot substitute for XRechnung XML success and vice versa.
 
-F3B repository implementation is not itself final acceptance. F3 may be marked accepted only after the F3B candidate's electronic-invoice conformance workflow and the required repository CI/quality/security/provider/release/packaged-E2E gates are green and the retained evidence corresponds to that candidate.
+F3 repository implementation is merged, but final external acceptance remains evidence-dependent until the required candidate workflows complete successfully. Merge presence does not manufacture KoSIT or veraPDF evidence.
+
+## F4A enterprise identity foundation
+
+PR #43 (`enterprise-identity-foundation`) implements the first F4 package on its feature branch. Enterprise Identity feature schema `1` stores non-secret provider configuration plus exact provider/issuer/subject links to existing local Depot users. The resolver returns only active local users and reloads roles/effective permissions exclusively from Depot RBAC.
+
+The package deliberately does not implement browser OIDC, token acquisition/validation, automatic user provisioning or MFA interpretation. Those concerns remain in F4B/F4C. F4A remains merge/evidence-dependent until its repository and provider gates are green.
 
 ## Track status and next work
 
-F1 is merged. F2 repository implementation/conformance breadth are merged and remain final-evidence dependent. F3A is merged; F3B independent conformance closure is implemented on its feature branch and remains evidence-dependent until its gates complete successfully. F4 and F5 have not been started.
+F1 is merged. F2 repository implementation/conformance breadth are merged and remain final-evidence dependent. F3A and F3B are merged; final F3 acceptance remains external-evidence dependent. F4A is implemented in PR #43 and awaiting gates. F4B, F4C and F5 have not been started.
 
-After F3B is merged with green candidate evidence, F3 can be marked accepted and Track C can proceed to F4.
+After F4A is merged with green repository/provider evidence, the next implementation package is F4B OpenID Connect / Microsoft Entra ID authentication. F4C follows with external MFA claims and identity hardening.
