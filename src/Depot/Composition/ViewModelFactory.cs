@@ -13,15 +13,21 @@ internal sealed class ViewModelFactory
 	private const string FinanceIcon="M 3,5 L 17,5 M 4,9 L 16,9 M 5,13 L 15,13 M 7,2 L 13,2 L 15,5 L 5,5 Z M 6,17 L 14,17";
 	private readonly DatabaseComposition _database;
 	private readonly ServiceComposition _services;
+	private readonly EnterpriseAuthenticationService _enterpriseAuthentication;
 	private readonly IFileDialogService _fileDialogs;
 	private readonly ApplicationInformationService _applicationInformation;
 
-	public ViewModelFactory(DatabaseComposition database, ServiceComposition services, IFileDialogService fileDialogs, ApplicationInformationService applicationInformation)
+	public ViewModelFactory(
+		DatabaseComposition database,
+		ServiceComposition services,
+		EnterpriseAuthenticationService enterpriseAuthentication,
+		IFileDialogService fileDialogs,
+		ApplicationInformationService applicationInformation)
 	{
-		_database=database; _services=services; _fileDialogs=fileDialogs; _applicationInformation=applicationInformation;
+		_database=database; _services=services; _enterpriseAuthentication=enterpriseAuthentication; _fileDialogs=fileDialogs; _applicationInformation=applicationInformation;
 	}
 
-	public LoginViewModel CreateLogin()=>new(_services.Authentication,_database.ConnectionStatus);
+	public LoginViewModel CreateLogin()=>new(_services.Authentication,_enterpriseAuthentication,_database.ConnectionStatus);
 
 	public MainViewModel CreateMain()
 	{

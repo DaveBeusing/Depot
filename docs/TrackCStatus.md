@@ -52,12 +52,35 @@ F3 repository implementation is merged, but final external acceptance remains ev
 
 ## F4A enterprise identity foundation
 
-PR #43 (`enterprise-identity-foundation`) implements the first F4 package on its feature branch. Enterprise Identity feature schema `1` stores non-secret provider configuration plus exact provider/issuer/subject links to existing local Depot users. The resolver returns only active local users and reloads roles/effective permissions exclusively from Depot RBAC.
+PR #43 (`enterprise-identity-foundation`) is merged into `master`. Enterprise Identity feature schema `1` stores non-secret provider configuration plus exact provider/issuer/subject links to existing local Depot users. The resolver returns only active local users and reloads roles/effective permissions exclusively from Depot RBAC.
 
-The package deliberately does not implement browser OIDC, token acquisition/validation, automatic user provisioning or MFA interpretation. Those concerns remain in F4B/F4C. F4A remains merge/evidence-dependent until its repository and provider gates are green.
+F4A deliberately does not auto-provision users or trust external roles/groups/permission claims. The persistence foundation is reused unchanged by F4B.
+
+## F4B OpenID Connect / Microsoft Entra ID authentication
+
+The `enterprise-identity-oidc` package implements the interactive enterprise authentication path without changing Enterprise Identity schema `1`.
+
+The bounded F4B scope is:
+
+- Authorization Code + PKCE (`S256`) for the native Windows client;
+- system-browser authorization;
+- dynamically allocated `http://localhost:<port>/` loopback callback;
+- cryptographically random and fail-closed `state` / `nonce` validation;
+- HTTPS OpenID Connect discovery and signing-key retrieval;
+- ID-token signature, issuer, audience, expiration/lifetime and advertised-algorithm validation;
+- one controlled signing-key metadata refresh/retry for normal key rollover;
+- tenant-bound Microsoft Entra ID sign-in only;
+- no client secret, token persistence or external-password handling;
+- no automatic local-user creation;
+- no external group/role-to-Depot-permission mapping;
+- normal Depot SessionService, concurrent-session policy, AuthorizationService and Security Event integration after F4A resolution succeeds.
+
+A valid provider identity that has no existing F4A link remains denied. F4B does not interpret external MFA/authentication-method claims; that remains F4C.
+
+F4B repository implementation is acceptance-evidence dependent until its CI, quality, security, packaged-E2E, release and provider gates complete successfully.
 
 ## Track status and next work
 
-F1 is merged. F2 repository implementation/conformance breadth are merged and remain final-evidence dependent. F3A and F3B are merged; final F3 acceptance remains external-evidence dependent. F4A is implemented in PR #43 and awaiting gates. F4B, F4C and F5 have not been started.
+F1 is merged. F2 repository implementation/conformance breadth are merged and remain final-evidence dependent. F3A and F3B are merged; final F3 acceptance remains external-evidence dependent. F4A is merged. F4B is implemented on `enterprise-identity-oidc` and awaiting candidate gates. F4C and F5 have not been started.
 
-After F4A is merged with green repository/provider evidence, the next implementation package is F4B OpenID Connect / Microsoft Entra ID authentication. F4C follows with external MFA claims and identity hardening.
+After F4B is merged with green repository evidence, the next implementation package is F4C External MFA Claims & Identity Hardening.
