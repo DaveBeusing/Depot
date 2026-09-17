@@ -14,9 +14,13 @@ Repository governance exposes five stable aggregate GitHub Actions checks intend
 - `Packaged E2E Required Gate`;
 - `Database Provider Required Gate`.
 
-The source-controlled ruleset template is `.github/rulesets/MasterGovernance.json` and activation is documented in [Repository Governance](RepositoryGovernance.md).
+The source-controlled ruleset template is `.github/rulesets/MasterGovernance.json`. `scripts/operations/Test-RepositoryGovernance.ps1` now validates the complete template contract and verifies that all five aggregate workflow job names remain present. CI retains this repository-side governance evidence on every change.
 
-**Administrative H1 closure is still required.** `master` is not currently protected and no active repository ruleset is enforcing the source-controlled template. H1 remains `ADMIN_REQUIRED` until the live GitHub ruleset is activated and retained evidence proves the active settings.
+The same validator provides a fail-closed `-RequireActiveRuleset` mode that queries the live GitHub rulesets API and records the matching active ruleset ID. This is the authoritative H1 activation evidence path.
+
+**Administrative H1 closure is still required.** `master` is not currently protected and the repository rulesets API currently exposes no active ruleset enforcing the source-controlled template. H1 remains `ADMIN_REQUIRED` until the live GitHub ruleset is activated and `Test-RepositoryGovernance.ps1 -RequireActiveRuleset` succeeds against the real repository settings.
+
+See [Repository Governance](RepositoryGovernance.md) and [Track A – Final Acceptance Closure](TrackAAcceptanceClosure.md).
 
 ## Release pipeline and production acceptance
 
@@ -32,7 +36,7 @@ Track A repository implementation is complete, but production closure intentiona
 - H4 Production Operations & DR: `DEPLOYMENT_REQUIRED`;
 - H5 Accessibility & Desktop Acceptance: `MANUAL_REQUIRED`.
 
-Repository CI validates the closure contract but does not manufacture missing production evidence. See [Track A – Final Acceptance Closure](TrackAAcceptanceClosure.md), [Release Pipeline](ReleasePipeline.md), [Production Signing Acceptance](ProductionSigningAcceptance.md), [Production Operations & Disaster Recovery](ProductionOperationsDisasterRecovery.md) and [Accessibility & Desktop Production Acceptance](AccessibilityProductionAcceptance.md).
+Repository CI validates the closure contracts but does not manufacture missing production evidence. See [Track A – Final Acceptance Closure](TrackAAcceptanceClosure.md), [Release Pipeline](ReleasePipeline.md), [Production Signing Acceptance](ProductionSigningAcceptance.md), [Production Operations & Disaster Recovery](ProductionOperationsDisasterRecovery.md) and [Accessibility & Desktop Production Acceptance](AccessibilityProductionAcceptance.md).
 
 ## Database provider production status
 
@@ -77,19 +81,13 @@ The `http-json-v1` adapter requires HTTPS and does not persist endpoint credenti
 
 See [Security Event Export](SecurityEventExport.md).
 
-## Final Track C acceptance repair
+## Final repository acceptance repairs
 
-AP-01 identified two evidence blockers after F5B: a transient Windows executable/image lock in DepotManager packaged replacement and stale canonical Security Events schema documentation. PR #51 is merged with both repairs.
+AP-01 identified two evidence blockers after F5B: a transient Windows executable/image lock in DepotManager packaged replacement and stale canonical Security Events schema documentation. PR #51 merged both repairs with green defined merge gates.
 
-The final PR #51 head completed the defined merge gates successfully:
+AP-04 then closed the remaining DepotManager shipped-artifact evidence gap: PR #53 adds real GitHub-hosted Windows integration acceptance for the current-user uninstall registration, Start menu and desktop shortcuts, `InstallationInspector`, repair behavior and idempotent cleanup while refusing mutation on non-clean/non-hosted profiles.
 
-- CI;
-- Software quality gates;
-- Security supply chain;
-- Database Provider Acceptance;
-- DepotManager packaged E2E.
-
-The replacement path now retries only bounded `IOException` / `UnauthorizedAccessException` failures caused by short-lived Windows locks. Persistent locks remain fail-closed; the original executable is preserved and the staged `.new` artifact is cleaned.
+The replacement path continues to retry only bounded `IOException` / `UnauthorizedAccessException` failures caused by short-lived Windows locks. Persistent locks remain fail-closed; the original executable is preserved and the staged `.new` artifact is cleaned.
 
 ## Versions
 
@@ -112,6 +110,6 @@ Repository build/test/security/provider/conformance evidence proves the implemen
 
 ## Next steps
 
-Track C repository work is closed. The next engineering package is **Depot 1.0 Technical Gap Reconciliation**: compare actual code, tests, release evidence and documentation against the remaining 1.0 checklist, classify true repository defects separately from external/manual acceptance, and create only the repair packages that are still technically necessary.
+The repository-side H1 governance contract is now machine-verifiable. The remaining H1 action is administrative activation of the source-controlled ruleset in GitHub followed by retained live-ruleset evidence.
 
-Remaining release work is tracked in [Release 1.0](Release1.0.md) and the [Roadmap](Roadmap.md).
+After H1 activation, the remaining Track A production closure work is external/evidence-driven: H3 production-signed Stable RC acceptance, H4 deployment disaster-recovery acceptance and H5 exact-RC manual desktop accessibility acceptance. Product/legal/deployment items remain separately tracked in [Release 1.0](Release1.0.md) and the [Roadmap](Roadmap.md).

@@ -38,6 +38,10 @@ jobs:
         shell: pwsh
         run: ./scripts/operations/Test-TrackAAcceptance.ps1 -Path operations/TrackAAcceptance.example.json -EvidencePath artifacts/operations/TrackAAcceptance.validation.json
 
+      - name: Validate repository governance contract
+        shell: pwsh
+        run: ./scripts/operations/Test-RepositoryGovernance.ps1 -EvidencePath artifacts/operations/RepositoryGovernance.validation.json
+
       - name: Restore win-x64 runtimes
         shell: pwsh
         run: |
@@ -84,6 +88,15 @@ jobs:
         with:
           name: track-a-closure-contract-${{ github.sha }}
           path: artifacts/operations/TrackAAcceptance.validation.json
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Upload repository governance contract evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: repository-governance-contract-${{ github.sha }}
+          path: artifacts/operations/RepositoryGovernance.validation.json
           if-no-files-found: error
           retention-days: 90
 

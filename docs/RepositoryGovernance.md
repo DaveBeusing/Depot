@@ -42,6 +42,32 @@ Target policy:
 
 The pull-request rule with zero required approvals blocks normal direct pushes to `master` without creating an artificial second-person dependency. Repository administrators can still edit or disable the ruleset in GitHub settings if a genuine governance incident makes recovery necessary; that administrative recovery action is not part of the normal development path.
 
+## Automated governance contract verification
+
+`scripts/operations/Test-RepositoryGovernance.ps1` is the authoritative repository-side H1 validator.
+
+The default mode validates only source-controlled evidence. It fails when the ruleset template drifts from the target policy or when one of the five workflow aggregate job names no longer matches the required-check contract:
+
+```powershell
+.\scripts\operations\Test-RepositoryGovernance.ps1 `
+    -EvidencePath artifacts\operations\RepositoryGovernance.validation.json
+```
+
+CI executes this mode and retains the generated evidence artifact. This proves that the repository contains a coherent governance contract, but it does **not** prove that GitHub is enforcing it.
+
+The activation mode additionally queries the live GitHub repository rulesets API, retrieves each active branch ruleset and requires one ruleset to match the complete Depot policy:
+
+```powershell
+.\scripts\operations\Test-RepositoryGovernance.ps1 `
+    -Repository DaveBeusing/Depot `
+    -RequireActiveRuleset `
+    -EvidencePath <h1-governance-evidence.json>
+```
+
+`GITHUB_TOKEN` or `GH_TOKEN` is used when available; public ruleset metadata can otherwise be queried anonymously where GitHub permits it. The evidence contains the active ruleset ID, required check names and validation result, but never stores an authentication token.
+
+`-RequireActiveRuleset` is deliberately fail-closed. Missing rulesets, inactive rulesets, wrong branch targeting, bypass actors, changed review policy, changed status-check policy or a GitHub API failure all prevent H1 from being represented as `PASS`.
+
 ## Why branch-up-to-date is not required
 
 The required status checks validate the exact pull-request head SHA. For the current one-person workflow, additionally requiring every branch to be updated with the latest `master` would force expensive packaged-E2E and real-provider smoke reruns whenever another change lands first, without adding a second reviewer or merge queue.
@@ -61,8 +87,11 @@ After the governance change is present on the pull request and the five aggregat
 5. Verify required approving reviews are `0` and there is no permanent bypass actor.
 6. Verify branch deletion and force pushes are blocked.
 7. Keep **Require branches to be up to date before merging** disabled for the current single-developer workflow.
+8. Run `Test-RepositoryGovernance.ps1 -RequireActiveRuleset` and retain the generated evidence with the active ruleset ID.
 
 After activation, a pull request may merge only when all five aggregate checks are green. A normal direct push to `master`, a force push and branch deletion must be rejected by GitHub.
+
+The source-controlled template and CI evidence alone are never sufficient for H1 production closure. H1 changes from `ADMIN_REQUIRED` only after the live activation validator succeeds against GitHub settings.
 
 ## Safe change procedure
 
