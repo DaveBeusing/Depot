@@ -1,6 +1,6 @@
 # Compliance overview
 
-Updated: 2026-09-16
+Updated: 2026-09-17
 
 Depot separates implemented technical controls from legal, accounting, tax, audit or certification claims. Security/compliance roadmap phases retain their technically implementable controls; remaining acceptance gates are tracked in the security, release, Finance and compliance documentation.
 
@@ -21,7 +21,7 @@ Localization requires explicit effective-dated assignment. The built-in `GENERIC
 - Sales feature schema: **14**
 - Finance feature schema: **9**
 - User Sessions feature schema: **3**
-- Security Events feature schema: **2**
+- Security Events feature schema: **3**
 - User Preferences feature schema: **2**
 - Enterprise Identity feature schema: **2**
 - Help manifest: **1.21**
@@ -29,6 +29,8 @@ Localization requires explicit effective-dated assignment. The built-in `GENERIC
 `Directory.Build.props` is authoritative for the exact application patch/version. Compliance documentation records the development line and stable schema/help contracts instead of duplicating the moving preview patch number.
 
 Sales schema 14 adds retained ZUGFeRD 2.5.2 / Factur-X 1.09.2 XRECHNUNG-profile hybrid artifacts. This is an engineering capability statement only. A product conformance claim remains gated by independent PDF/A-3 validation plus the established KoSIT/XRechnung validation and release evidence.
+
+Security Events schema 3 adds persisted export targets and durable at-least-once delivery state while keeping source Security Events immutable. This is an engineering delivery capability; downstream SIEM retention, receiver deduplication, endpoint governance and operational monitoring remain deployment responsibilities.
 
 Enterprise Identity schema 2 adds non-secret provider configuration, exact external-identity links and optional provider-bound `amr`/`acr`/authentication-age requirements. OIDC/Entra protocol and assurance validation are technical authentication controls, not an identity-provider certification. External groups, roles and permission claims do not grant Depot authorization; local Depot RBAC remains authoritative.
 

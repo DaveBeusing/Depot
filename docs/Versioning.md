@@ -1,6 +1,6 @@
 # Versioning and schema evolution
 
-Updated: 2026-09-16
+Updated: 2026-09-17
 
 ## Current baselines
 
@@ -9,7 +9,7 @@ Updated: 2026-09-16
 - Sales feature schema: **14**
 - Finance feature schema: **9**
 - User Sessions feature schema: **3**
-- Security Events feature schema: **2**
+- Security Events feature schema: **3**
 - User Preferences feature schema: **2**
 - Enterprise Identity feature schema: **2**
 - Help manifest: **1.21**
@@ -73,9 +73,9 @@ Finance schema **9** is the current Finance persistence baseline and contains th
 
 User Sessions schema **3** is the current persistent session/policy/history baseline.
 
-### Security Events schema 2
+### Security Events schema 3
 
-Security Events schema **2** is the current authentication-security event/policy/throttle baseline.
+Security Events schema **3** is the current authentication-security and durable export-delivery baseline. Schema 2 established authentication policy/throttle and correlation fields; schema 3 adds persisted export targets plus durable checkpoint, fixed-snapshot retry, suspension and worker-lease state for at-least-once Security Event delivery.
 
 ### User Preferences schema 2
 

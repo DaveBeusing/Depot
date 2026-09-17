@@ -1,6 +1,6 @@
 # Current project status
 
-Updated: 2026-09-16
+Updated: 2026-09-17
 
 Depot is on the `0.15.x-preview` development line. Finance, inventory, purchasing, sales, reporting, localization, notifications, Audit, persistent user sessions, operational security monitoring and enterprise identity/authentication are integrated in the repository.
 
@@ -130,6 +130,14 @@ A bounded maintenance service enforces ended-session history retention, Security
 
 The security feature does not collect source IP, geolocation, MAC address, hardware fingerprint, typed text, key values, mouse coordinates or external-window activity.
 
+## Security Event export and delivery
+
+F5A establishes immutable Security Event export projection, normalized filters, filter-bound checkpoints, fixed snapshot upper bounds and bounded deterministic batches without mutating source event meaning. F5B advances Security Events feature schema to **3** and persists export targets separately from source events together with durable checkpoints, in-flight snapshot state, retry/suspension evidence and short worker leases.
+
+Delivery is explicitly at-least-once: the batch snapshot is persisted before invoking a sink, retries reconstruct the same snapshot, and the durable checkpoint advances only after sink success. A crash after remote acceptance but before local checkpoint commit can therefore duplicate a delivery; the deterministic delivery ID is the receiver deduplication boundary. The current `http-json-v1` adapter requires HTTPS and does not persist endpoint credentials, tokens or response bodies. Normal retention protects events that enabled targets have not yet consumed.
+
+See [Security Event Export](SecurityEventExport.md).
+
 ## Enterprise identity and authentication
 
 Enterprise Identity schema **2** is the current provider-neutral external-identity and authentication-assurance boundary. Schema 1 established non-secret provider configuration plus exact provider/issuer/subject links to existing local Depot users. F4B added Authorization Code + PKCE, system-browser sign-in, loopback callback handling, discovery/signing-key validation, issuer/audience/lifetime/nonce validation and tenant-bound Microsoft Entra ID.
@@ -158,7 +166,7 @@ F2/F3 final acceptance remains evidence-dependent until the corresponding candid
 - Sales feature schema: **14**
 - Finance feature schema: **9**
 - User Sessions feature schema: **3**
-- Security Events feature schema: **2**
+- Security Events feature schema: **3**
 - User Preferences feature schema: **2**
 - Enterprise Identity feature schema: **2**
 - Help manifest: **1.21**
@@ -175,6 +183,6 @@ Provider support does not replace deployment-specific accounting/tax/legal, acce
 
 ## Next steps
 
-Finish the four real Track A closure actions and validate the resulting controlled evidence with `Test-TrackAAcceptance.ps1 -RequirePass`. Track A closure remains a prerequisite rather than the whole Depot 1.0 decision.
+Track C F1 through F5B are implemented in the repository. Final repository acceptance depends on the exact-head CI/Quality/Security/Packaged-E2E/provider evidence for the current closure candidate; external/manual production gates remain separate.
 
-After F4C passes its repository gates, the next Track C implementation package is F5A Security Event Export Contract, followed by F5B Security Event Delivery & Checkpointing. Remaining 1.0 work outside Track A is tracked in [Release 1.0](Release1.0.md) and the [Roadmap](Roadmap.md).
+The next planning step after Track C repository closure is to reconcile the remaining Depot 1.0 technical gaps against actual code/tests/evidence, while keeping Track A H1/H3/H4/H5 external acceptance states explicit. Remaining 1.0 work is tracked in [Release 1.0](Release1.0.md) and the [Roadmap](Roadmap.md).

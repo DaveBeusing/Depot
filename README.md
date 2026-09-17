@@ -52,6 +52,7 @@ The product foundation includes:
 - Financial Reporting with mappings, deterministic CSV and immutable report snapshots
 - effective-dated Finance Localization with built-in `GENERIC → EU → DE` references and extensible custom packs
 - persistent User Sessions and operational Security Center evidence
+- durable Security Event export targets and at-least-once delivery checkpointing
 
 Read the full [Architecture](docs/Architecture.md) and [Coding Standard](docs/CodingStandard.md).
 
@@ -104,7 +105,7 @@ Current baseline:
 - Sales feature schema: **14**
 - Finance feature schema: **9**
 - User Sessions feature schema: **3**
-- Security Events feature schema: **2**
+- Security Events feature schema: **3**
 - User Preferences feature schema: **2**
 - Help manifest: **1.21**
 
@@ -160,7 +161,7 @@ See the [Help Center documentation](docs/HelpCenter.md).
 
 ## Road to 1.0
 
-The generic database-provider technical gate is complete for the certified support matrix. Major remaining 1.0 items include production code signing, accessibility/manual desktop acceptance, organization-specific accounting/tax/retention/valuation/reporting/localization procedures, F2/F3 electronic-invoice acceptance evidence including independent PDF/A-3 validation, production backup ownership and installer/upgrade acceptance.
+The generic database-provider technical gate is complete for the certified support matrix. Major remaining 1.0 items include production code signing, accessibility/manual desktop acceptance, organization-specific accounting/tax/retention/valuation/reporting/localization procedures, production backup ownership and installer/upgrade acceptance, plus legal/organizational closure work tracked in the release checklist.
 
 Track the path through the [Roadmap](docs/Roadmap.md) and [Release 1.0 plan](docs/Release1.0.md).
 
