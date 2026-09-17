@@ -1,6 +1,6 @@
 # Documentation status
 
-Updated: 2026-09-16
+Updated: 2026-09-17
 
 This document identifies the documentation baseline for the current development state. Implemented technical controls must remain distinct from production/legal acceptance gates.
 
@@ -12,7 +12,7 @@ This document identifies the documentation baseline for the current development 
 - Sales feature schema: `14`
 - Finance feature schema: `9`
 - User Sessions feature schema: `3`
-- Security Events feature schema: `2`
+- Security Events feature schema: `3`
 - User Preferences feature schema: `2`
 - Enterprise Identity feature schema: `2`
 
@@ -55,6 +55,8 @@ Security Center investigation correlates only identifiers already present in Dep
 
 Session history and Security Event retention are actively enforced by bounded background maintenance. Security Event retention never deletes business Audit evidence. High/Critical notification behavior is behind `SecurityAlertPolicy`; the current default threshold is High.
 
+Security Event export keeps source evidence immutable. Schema 3 stores export targets and durable delivery state separately, including filter identity, checkpoints, fixed snapshot bounds, retry/suspension state and worker leases. Documentation must describe delivery as at-least-once and must not imply that source `SecurityEvents` rows are mutated to track export progress.
+
 ## Privacy invariants
 
 The current security implementation does not collect source IP, geolocation, MAC address, hardware fingerprint, typed input, key values, mouse coordinates or external-window activity. `ClientInstanceId` is a generated Depot process/session correlation identifier, not a device fingerprint.
@@ -63,7 +65,7 @@ Enterprise Identity may retain issuer/subject plus optional observed tenant, ema
 
 ## Documentation rules
 
-Do not describe password-change invalidation, concurrent-session policy, shared database throttling, provider certification, investigation/response, retention, OIDC sign-in or provider-bound assurance validation as future-only work.
+Do not describe password-change invalidation, concurrent-session policy, shared database throttling, provider certification, investigation/response, retention, OIDC sign-in, provider-bound assurance validation or Security Event durable delivery as future-only work.
 
 Do not describe database-provider technical support as jurisdiction-specific accounting, tax, legal, accessibility, bank-network or regulatory certification. Remote backup scheduling, retention, off-host copies and restore procedures remain operator responsibilities even though the CI matrix validates a provider-native restore boundary.
 

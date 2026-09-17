@@ -1,6 +1,6 @@
 # Depot Architecture
 
-Updated: 2026-09-16
+Updated: 2026-09-17
 
 ## Overview
 
@@ -49,9 +49,11 @@ Session Administration ┘                                      ↓
 
 `SecurityEventService` is the operational security-event policy boundary. Security Events complement rather than replace Audit. Administrative session termination and session-policy changes can produce both Audit-relevant evidence and operational Security Events.
 
+Security Event export projects immutable source evidence through a provider-neutral export contract. Durable delivery state is persisted separately from source `SecurityEvents`: configured targets retain filter identity, checkpoints, fixed in-flight snapshot bounds, retry/suspension state and a short worker lease. The checkpoint advances only after sink success, giving the delivery boundary explicit at-least-once semantics without mutating source events.
+
 The current monitoring boundary intentionally excludes source IP, geolocation and device fingerprinting. Such signals require a separate privacy/security contract before they can become risk inputs.
 
-See [User Sessions and Online Presence](UserSessions.md) and [Security Center and Authentication Risk Monitoring](SecurityCenter.md).
+See [User Sessions and Online Presence](UserSessions.md), [Security Center and Authentication Risk Monitoring](SecurityCenter.md) and [Security Event Export](SecurityEventExport.md).
 
 ## Finance authority split
 
@@ -96,7 +98,7 @@ XRechnung CII remains the structured invoice authority. During invoice or credit
 - Sales feature schema: **14**
 - Finance feature schema: **9**
 - User Sessions feature schema: **3**
-- Security Events feature schema: **2**
+- Security Events feature schema: **3**
 - User Preferences feature schema: **2**
 - Application: **0.15.x-preview**
 - Help manifest: **1.21**

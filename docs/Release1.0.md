@@ -1,12 +1,12 @@
 # Depot Version 1.0 Release Checklist
 
-Updated: 2026-09-16
+Updated: 2026-09-17
 
 ## Status
 
 - [ ] Ready for release
 
-Depot is on the `0.15.x-preview` line with Core database schema **30**, Sales feature schema **14**, Finance feature schema **9**, User Sessions schema **3**, Security Events schema **2**, User Preferences schema **2**, and Help manifest **1.21**. `Directory.Build.props` is authoritative for the exact application patch/version. Checked items represent implemented technical controls/evidence only; they do not replace legal, accounting, accessibility, signing, localization or deployment acceptance.
+Depot is on the `0.15.x-preview` line with Core database schema **30**, Sales feature schema **14**, Finance feature schema **9**, User Sessions schema **3**, Security Events schema **3**, User Preferences schema **2**, and Help manifest **1.21**. `Directory.Build.props` is authoritative for the exact application patch/version. Checked items represent implemented technical controls/evidence only; they do not replace legal, accounting, accessibility, signing, localization or deployment acceptance.
 
 ## Implemented Finance baseline
 
@@ -53,6 +53,7 @@ Depot is on the `0.15.x-preview` line with Core database schema **30**, Sales fe
 - [x] explicit Per-Monitor-V2 DPI manifests for Depot and DepotManager
 - [x] reproducible exact-RC accessibility acceptance/evidence contract
 - [x] centralized fail-closed Track A H1–H5 production-closure evidence contract
+- [x] persisted Security Event export targets with durable at-least-once checkpoint/retry/suspension state
 
 ## Database provider production acceptance
 
