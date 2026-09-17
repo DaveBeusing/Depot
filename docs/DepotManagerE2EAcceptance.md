@@ -21,17 +21,26 @@ Packaged E2E tests are Windows-only and opt-in. They are skipped unless:
 DEPOT_PACKAGED_E2E=1
 ```
 
-CI supplies isolated current/previous artifact roots and a disposable scenario root. Tests never intentionally target production installations or production databases. File/data lifecycle tests operate only below the supplied temporary root. Windows integration mutation is excluded from the test process; application-file removal is exercised independently from registry/shortcut removal.
+CI supplies isolated current/previous artifact roots and a disposable scenario root. File/data lifecycle tests operate only below the supplied temporary root and never intentionally target production databases or installations.
 
-Pull requests run the Smoke tier. Pushes to `master` and manual workflow runs execute the Full tier. Failure artifacts and TRX results are retained by CI.
+Windows shell integration is a stronger mutation boundary because the production implementation writes the current user's uninstall registry key plus Start menu and optional desktop shortcuts. That acceptance scenario therefore runs only when both of these GitHub-hosted-runner signals are present:
+
+```text
+GITHUB_ACTIONS=true
+RUNNER_ENVIRONMENT=github-hosted
+```
+
+Before the first registry or shortcut mutation, the test fails closed if the profile already contains a Depot uninstall registration, Depot Start menu shortcut, or Depot desktop shortcut. This keeps local/manual packaged-E2E runs from touching a pre-existing user installation while still exercising the real production registration/repair/uninstall functions on disposable GitHub-hosted Windows profiles.
+
+Pull requests run the Smoke tier. Pushes to `master` and manual workflow runs execute the Full tier. The Windows-integration roundtrip belongs to Smoke so every changed packaged candidate proves the shell contract before merge. Failure artifacts and TRX results are retained by CI.
 
 ## Artifact authority and signing
 
 The current artifacts are published from the exact workflow checkout. Previous artifacts are published from the immediate base/parent commit through the same publish script. File versions therefore prove the real version transition rather than a fake binary substitute.
 
-Packaged E2E uses a short-lived code-signing certificate created only on the disposable Windows runner. The public certificate is trusted only in that runner's current-user trust stores and is removed after the job. The real `AuthenticodeVerifier` / `WinVerifyTrust` path remains active. Production code contains no unsigned-test bypass.
+Packaged E2E uses a short-lived code-signing certificate created only on the disposable Windows runner. The public certificate is trusted only for the job and is removed afterward. The real `AuthenticodeVerifier` / `WinVerifyTrust` path remains active. Production code contains no unsigned-test bypass.
 
-**Production Authenticode Acceptance: BLOCKED until a production signing identity is available to the tagged release workflow.** The E2E certificate proves the verification mechanics, not the production publisher identity.
+**Production Authenticode Acceptance remains separate until a production signing identity is exercised by the Stable release workflow.** The E2E certificate proves the verification mechanics, not the production publisher identity.
 
 ## Smoke acceptance
 
@@ -44,7 +53,12 @@ Smoke verifies:
 5. normal binary update without schema change, rollback backup creation, and post-update `--manager-health-check`;
 6. repair of a damaged installed `Depot.exe` while preserving protected settings and administrator data;
 7. rejection of corrupt PE input, wrong executable version, wrong published size, wrong SHA-256, missing release manifest, and invalid manifest schema metadata;
-8. trusted Authenticode validation for the packaged manager and rejection of a tampered signed manager.
+8. trusted Authenticode validation for the packaged manager and rejection of a tampered signed manager;
+9. real current-user Windows integration registration through the production code path, including uninstall metadata, Start menu shortcut and desktop-shortcut preference;
+10. real shortcut target validation against the deployed `Depot.exe`;
+11. damaged Windows integration repair, with registry and both shortcuts restored through `WindowsIntegrationService.Repair`;
+12. `InstallationInspector` recognition of the repaired registration/shortcut state;
+13. production uninstall removal of registry registration, Start menu shortcut, desktop shortcut and application binaries, including an idempotent second uninstall.
 
 ## Full acceptance
 
@@ -61,7 +75,7 @@ Full includes Smoke plus:
 9. locked-target replacement failure preserving the original binary and removing the `.new` staging file;
 10. signed real `DepotManager.exe` self-update through the staged helper/readiness-marker flow;
 11. forced updated-manager startup failure before readiness, followed by automatic restoration of the previous signed manager;
-12. keep-data and delete-local-data uninstall scopes using the same application-file deletion and local-data deletion production functions without touching Windows integration;
+12. keep-data and delete-local-data uninstall scopes using the production application-file and local-data deletion functions;
 13. repeated removal for idempotency;
 14. isolated diagnostics/support-package generation with credential-bearing log lines redacted.
 
@@ -78,6 +92,7 @@ no automatic database downgrade
 no target schema older than current schema
 migration backup required before schema advancement
 manager self-update signature verification remains mandatory
+Windows integration tests refuse a non-clean user profile
 ```
 
 Schema 29 -> 30 is used because it is a real supported historical transition in Depot's migration pipeline and does not require inventing a test-only schema version.
@@ -94,4 +109,4 @@ Release/win-x64/self-contained/single-file publish for current and previous sour
 Packaged E2E Smoke or Full execution
 ```
 
-Existing CI, quality, coverage, performance, accessibility, and security workflows remain separate and continue to provide their prior evidence.
+On GitHub-hosted Windows runners, the same Packaged E2E test assembly additionally executes the real current-user registry/shortcut roundtrip. Existing CI, quality, coverage, performance, accessibility, provider and security workflows remain separate and continue to provide their prior evidence.
