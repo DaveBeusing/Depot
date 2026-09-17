@@ -2,7 +2,7 @@
 
 Updated: 2026-09-17
 
-Depot is on the `0.15.x-preview` development line. Finance, inventory, purchasing, sales, reporting, localization, notifications, Audit, persistent user sessions, operational security monitoring and enterprise identity/authentication are integrated in the repository.
+Depot is on the `0.15.x-preview` development line. Finance, inventory, purchasing, sales, reporting, localization, notifications, Audit, persistent user sessions, operational security monitoring, enterprise identity/authentication and the completed Track C feature set are integrated in the repository.
 
 ## Repository governance
 
@@ -14,82 +14,17 @@ Repository governance exposes five stable aggregate GitHub Actions checks intend
 - `Packaged E2E Required Gate`;
 - `Database Provider Required Gate`.
 
-Each aggregate check fails unless every underlying workflow dependency succeeds. The source-controlled ruleset template is `.github/rulesets/MasterGovernance.json` and the activation procedure is documented in [Repository Governance](RepositoryGovernance.md).
+The source-controlled ruleset template is `.github/rulesets/MasterGovernance.json` and activation is documented in [Repository Governance](RepositoryGovernance.md).
 
-**Administrative H1 closure is still required.** A live repository check on 2026-09-16 showed no active repository ruleset and `master` was not protected. The template must be activated in GitHub and the active ruleset ID/settings evidence retained before H1 can be marked `PASS` in Track A closure.
+**Administrative H1 closure is still required.** `master` is not currently protected and no active repository ruleset is enforcing the source-controlled template. H1 remains `ADMIN_REQUIRED` until the live GitHub ruleset is activated and retained evidence proves the active settings.
 
-## Release pipeline
+## Release pipeline and production acceptance
 
-`.github/workflows/release-integrity.yml` is the single authoritative Source-to-Release path. It performs locked restore, Release `-warnaserror` build, Depot and DepotManager regression tests, shared packaged publishing, channel validation, signing policy, manifest/hash/evidence generation and GitHub Release publication from the exact validated artifact.
+`.github/workflows/release-integrity.yml` remains the authoritative Source-to-Release path. It performs locked restore, warning-free Release build, regression testing, shared packaged publishing, channel validation, signing policy, manifest/hash/evidence generation and GitHub Release publication from the exact validated artifact.
 
-Release channels are explicit:
+Preview and Stable channels remain distinct. Preview may remain unsigned. Stable requires the production signing acceptance path to report `PASS` before publication.
 
-- **Preview** uses `<version>-preview`, retains the preview product-version suffix and publishes with `prerelease=true`. Preview may remain unsigned.
-- **Stable** uses the exact numeric version, removes the preview suffix and publishes with `prerelease=false`. Stable requires production signing acceptance to report `PASS` before publication.
-
-`scripts/release.ps1` remains only a dispatcher for the authoritative workflow. It supports `-Channel Stable -AcceptanceOnly`, which executes the production-signed Stable RC path without creating a GitHub Release. DepotManager installation/update/repair discovery remains a Stable-channel consumer and ignores `prerelease=true` releases.
-
-The Track A closure review corrected a release-identity defect exposed by the H5 PR workflow: the conditioned XML node for `DepotVersionSuffix` was being read by PowerShell as `System.Xml.XmlElement`, producing an invalid Preview tag. The suffix is now a fixed repository property so release/evidence readers resolve the literal `preview` value.
-
-Release manifest/evidence records Core plus the current feature-schema compatibility dimensions, including User Preferences and Enterprise Identity.
-
-See [Release Pipeline](ReleasePipeline.md), [Production Signing Acceptance](ProductionSigningAcceptance.md) and [Release Integrity](compliance/ReleaseIntegrity.md).
-
-## Production signing acceptance
-
-The technical H3 signing boundary is implemented:
-
-- Stable requires the production PFX/password plus exact `DEPOT_SIGNING_PUBLISHER_SUBJECT`;
-- the production certificate is preflight-checked for private key, validity period, publisher subject and Code Signing EKU;
-- both `Depot.exe` and `DepotManager.exe` are SHA-256 Authenticode signed and RFC 3161 timestamped;
-- Stable acceptance verifies Windows trust, exact publisher identity, Code Signing EKU, timestamp certificate evidence and one signer certificate for both executables;
-- a production-signed packaged RC E2E runs before Stable evidence is finalized;
-- Stable DepotManager update and self-update paths enforce publisher continuity against the trusted signer of the running Stable manager.
-
-**Production acceptance remains `PRODUCTION_RC_REQUIRED` until a real production-signed Stable acceptance-only run on current `master` completes successfully and retained evidence reports `PASS`.** Ephemeral Packaged-E2E certificates do not satisfy this gate.
-
-## Production operations and disaster recovery
-
-The H4 technical operating boundary is implemented around the existing provider-native recovery capabilities rather than adding a second backup engine.
-
-- `operations/DisasterRecoveryProfile.example.json` defines the deployment DR contract.
-- `scripts/operations/Test-DisasterRecoveryProfile.ps1` requires explicit RPO, RTO, retention, off-host copies, encryption, monitoring, restore-drill age and named ownership.
-- CI validates the DR-profile contract as part of `CI Required Gate`.
-- SQLite recovery acceptance restores a verified backup into an isolated target, compares SHA-256, runs `PRAGMA integrity_check` and validates Depot schema metadata.
-- SQL Server, MariaDB and MySQL run their provider-native backup/restore drill on pull requests as part of `Database Provider Required Gate`.
-- provider recovery drills retain structured JSON evidence without database identity or credentials.
-- DepotManager support packages include `RecoveryReadiness.json`; log-collection ACL/I/O failures no longer prevent support-package creation and are represented with sanitized recovery guidance.
-
-The Track A closure review found that SQLite migration-safety backup validation could leave a pooled provider handle on the generated backup, causing the immediate recovery drill to fail with a file-sharing violation. The closure fix disables pooling for these short-lived backup/validation connections and adds an exclusive-open regression assertion before the restore drill.
-
-The authoritative operating model and provider runbooks are in [Production Operations & Disaster Recovery](ProductionOperationsDisasterRecovery.md).
-
-**A specific deployment remains `DEPLOYMENT_REQUIRED` until an ACTIVE deployment DR profile is validated and its real backup infrastructure has passed an isolated restore drill within the accepted RPO/RTO.**
-
-## Accessibility and desktop production acceptance
-
-The H5 technical desktop-accessibility boundary is implemented without treating automation as a substitute for human desktop acceptance.
-
-- `DesktopAccessibilityRuntime` supplies a shared visible keyboard-focus fallback when a focusable WPF control resolves a null `FocusVisualStyle`, including legacy shared styles.
-- the accessibility static gate detects direct and Setter-based focus suppression and rejects unsafe suppression outside controlled shared resources.
-- cyclic Tab-navigation declarations are rejected by the quality gate.
-- `TextInput` and `PasswordInput` forward UI Automation labels, required-field state and related metadata to the native inner keyboard focus target.
-- Login and first-run administrator inputs expose explicit label and required-field semantics.
-- `OperationStatus` and `ConnectionStatusIndicator` raise UI Automation notifications for meaningful dynamic status/error changes.
-- standard file/message dialog flows capture and restore keyboard focus.
-- Depot and DepotManager explicitly declare Per-Monitor-V2 DPI awareness.
-- `Accessibility technical baseline` retains `TechnicalAccessibilityEvidence.json` as part of `Quality Required Gate`.
-- `operations/AccessibilityAcceptance.example.json` and `scripts/operations/Test-AccessibilityAcceptance.ps1` define the exact-RC manual acceptance/evidence contract.
-
-The procedure is documented in [Accessibility & Desktop Production Acceptance](AccessibilityProductionAcceptance.md) and [Desktop Accessibility Baseline](compliance/Accessibility.md).
-
-**Desktop production accessibility acceptance remains `MANUAL_REQUIRED` until the exact packaged release candidate has passed keyboard-only, focus/no-trap, Narrator, Accessibility Insights and 100/125/150/200% DPI acceptance and retained evidence passes `Test-AccessibilityAcceptance.ps1 -RequirePass`.**
-
-## Track A final acceptance closure
-
-All five Track A implementation packages are present in the repository. `operations/TrackAAcceptance.example.json` and `scripts/operations/Test-TrackAAcceptance.ps1` provide one explicit closure/evidence contract, documented in [Track A – Final Acceptance Closure](TrackAAcceptanceClosure.md).
-
-Current closure states are:
+Track A repository implementation is complete, but production closure intentionally remains evidence-gated:
 
 - H1 Repository Governance: `ADMIN_REQUIRED`;
 - H2 Release Pipeline & Channels: `PASS` at the repository implementation boundary;
@@ -97,66 +32,64 @@ Current closure states are:
 - H4 Production Operations & DR: `DEPLOYMENT_REQUIRED`;
 - H5 Accessibility & Desktop Acceptance: `MANUAL_REQUIRED`.
 
-The template therefore remains top-level `BLOCKED`. `Test-TrackAAcceptance.ps1 -RequirePass` fails closed unless H1 through H5 all contain concrete evidence, the exact Stable source/version is recorded and no blocking issues remain. CI validates the shape of the closure contract but deliberately does not manufacture production acceptance.
+Repository CI validates the closure contract but does not manufacture missing production evidence. See [Track A – Final Acceptance Closure](TrackAAcceptanceClosure.md), [Release Pipeline](ReleasePipeline.md), [Production Signing Acceptance](ProductionSigningAcceptance.md), [Production Operations & Disaster Recovery](ProductionOperationsDisasterRecovery.md) and [Accessibility & Desktop Production Acceptance](AccessibilityProductionAcceptance.md).
 
 ## Database provider production status
 
-Depot has a dedicated real-provider production acceptance matrix in `.github/workflows/database-provider-acceptance.yml`.
-
-The following database baselines are technically **Supported** when shipped with a release whose full provider matrix is green:
+The dedicated provider matrix certifies the current technical baselines when the full provider gate is green:
 
 - bundled SQLite runtime through `Microsoft.Data.Sqlite`;
-- SQL Server 2022 / engine 16.x; CI certification uses SQL Server 2022 Express;
+- SQL Server 2022 / engine 16.x;
 - MariaDB 11.8.9 LTS;
 - MySQL 8.4.11 LTS.
 
-The matrix validates fresh/idempotent provisioning, Core 29→30 and legacy Sales migrations through the current Sales feature schema, concurrent provisioning, SQL/type/constraint/date/decimal behavior, transactional rollback, concurrency/deadlock/retry behavior, Sales, Procurement, sessions, Finance GL/AR/AP/FIFO, Banking/reconciliation, Financial Reporting/snapshots, server restart, native remote backup/restore and representative 100k indexed access. Pull requests include provider recovery drills and retained recovery evidence for every supported provider family. Enterprise Identity schema 2 adds provider-smoke coverage for the provider-level assurance-policy migration/persistence boundary in addition to the external-identity foundation.
+The matrix covers provisioning/migration, transaction semantics, concurrency/deadlock/retry behavior, representative Sales/Procurement/Finance flows, Banking/reconciliation, Financial Reporting/snapshots, service restart, provider-native backup/restore and representative indexed-load acceptance. MariaDB and MySQL are independently certified; versions outside the listed baselines remain untested/best-effort until separately accepted.
 
-MariaDB and MySQL are independently certified; support for one never implies support for the other. Versions outside the listed baselines remain untested/best-effort until explicitly added to the matrix.
+See [Database Provider Production Support Matrix](DatabaseProviderSupportMatrix.md).
 
-SQLite remains the embedded baseline but does not provide the full fixed `DECIMAL(28,9)` magnitude/precision semantics of the server providers because SQLite uses dynamic `NUMERIC` affinity. See [Database Provider Production Support Matrix](DatabaseProviderSupportMatrix.md) for the exact boundary.
+## Track C repository closure
 
-## Session and authentication security
+Track C F1 through F5B are complete at the repository implementation/acceptance boundary. [Track C acceptance and product status](TrackCStatus.md) is the authoritative feature-level record.
 
-Depot persists one session per successful login and derives online presence from heartbeat freshness. The shared session policy covers idle timeout, absolute maximum session age, concurrent-session mode/limit/action and ended-session history retention. Concurrent limits can reject a new login or supersede the oldest session under a database serialization lock.
+### Electronic invoicing
 
-Credential changes invalidate other open sessions with `CredentialsChanged`; account deactivation atomically revokes open sessions with `Revoked`. Administrative single/bulk termination remains permissioned through `UserSessions.Terminate` and is coupled to Audit/Security Event evidence in the production transaction path.
+The bounded XRechnung 3.0 CII path includes Standard-rated (`S`), Zero-rated (`Z`), Exempt (`E`), Reverse-charge (`AE`) invoices and Standard-rated Sales Credit Note (`381`). Sales feature schema **14** also persists the ZUGFeRD 2.5.2 / Factur-X 1.09.2 XRECHNUNG-profile hybrid artifact with exact finalized XML, PDF bytes and PDF/XML SHA-256 evidence.
 
-Production login throttling is database-shared across Depot clients. `AuthenticationSecurityPolicy` controls failure window, lockout threshold, lockout duration and Security Event retention. Local credentials are behind `IAuthenticationProvider` / `LocalAuthenticationProvider`.
+PR #49 repaired the remaining veraPDF trailer-ID and embedded-MIME defects. The independent `Electronic invoice conformance` workflow then completed successfully on the exact PR #49 head for the bounded advertised matrix, closing both the KoSIT XML and veraPDF PDF/A-3B repository conformance boundary for that scope.
 
-**Administration → User Sessions** exposes lifetime, concurrency and history-retention policy plus active/history views and termination controls. **Administration → Security Center** exposes review KPIs, filters, authentication-policy maintenance, event/session/client correlation and controlled response actions for terminating sessions or deactivating a resolved user.
+This repository acceptance does **not** imply jurisdiction-wide tax/legal certification, arbitrary PDF conversion, unsupported Factur-X profiles or unimplemented special-tax/channel scenarios.
 
-A bounded maintenance service enforces ended-session history retention, Security Event retention and stale authentication-throttle cleanup in fixed-size batches. High/Critical event notifications are routed through a separate `SecurityAlertPolicy` boundary.
+### Enterprise identity and authentication
 
-The security feature does not collect source IP, geolocation, MAC address, hardware fingerprint, typed text, key values, mouse coordinates or external-window activity.
+Enterprise Identity feature schema **2** is the current provider-neutral external-identity and authentication-assurance boundary. The implemented path includes Authorization Code + PKCE, system-browser sign-in, loopback callback handling, OIDC discovery/signing-key validation, issuer/audience/lifetime/nonce validation, tenant-bound Microsoft Entra ID, optional provider-bound `amr` / `acr` / `auth_time` requirements and `azp` validation.
 
-## Security Event export and delivery
+Local Depot RBAC remains authoritative. External roles/groups/permission claims are not authorization inputs, and raw protocol tokens or runtime assurance claims are not persisted on identity links. PR #47 is merged and closes the earlier deterministic F4C acceptance regressions.
 
-F5A establishes immutable Security Event export projection, normalized filters, filter-bound checkpoints, fixed snapshot upper bounds and bounded deterministic batches without mutating source event meaning. F5B advances Security Events feature schema to **3** and persists export targets separately from source events together with durable checkpoints, in-flight snapshot state, retry/suspension evidence and short worker leases.
+See [Enterprise Identity and OpenID Connect](EnterpriseIdentity.md).
 
-Delivery is explicitly at-least-once: the batch snapshot is persisted before invoking a sink, retries reconstruct the same snapshot, and the durable checkpoint advances only after sink success. A crash after remote acceptance but before local checkpoint commit can therefore duplicate a delivery; the deterministic delivery ID is the receiver deduplication boundary. The current `http-json-v1` adapter requires HTTPS and does not persist endpoint credentials, tokens or response bodies. Normal retention protects events that enabled targets have not yet consumed.
+### Security Event export and delivery
+
+F5A established immutable Security Event export projection, normalized filters, filter-bound checkpoints, fixed snapshot upper bounds and bounded deterministic batches without mutating source event meaning.
+
+F5B advances Security Events feature schema to **3** and persists export targets separately from source events together with durable checkpoints, in-flight snapshot state, retry/suspension evidence and short worker leases. Delivery is explicitly **at-least-once**: the checkpoint advances only after sink success, and a crash after remote acceptance but before local commit may duplicate a batch. `X-Depot-Delivery-Id` is the receiver deduplication boundary.
+
+The `http-json-v1` adapter requires HTTPS and does not persist endpoint credentials, tokens or response bodies. Normal retention protects events not yet consumed by enabled targets.
 
 See [Security Event Export](SecurityEventExport.md).
 
-## Enterprise identity and authentication
+## Final Track C acceptance repair
 
-Enterprise Identity schema **2** is the current provider-neutral external-identity and authentication-assurance boundary. Schema 1 established non-secret provider configuration plus exact provider/issuer/subject links to existing local Depot users. F4B added Authorization Code + PKCE, system-browser sign-in, loopback callback handling, discovery/signing-key validation, issuer/audience/lifetime/nonce validation and tenant-bound Microsoft Entra ID.
+AP-01 identified two evidence blockers after F5B: a transient Windows executable/image lock in DepotManager packaged replacement and stale canonical Security Events schema documentation. PR #51 is merged with both repairs.
 
-F4C adds nullable provider-level `RequiredAmr`, `RequiredAcr` and `MaximumAuthenticationAgeMinutes` policy. Required context/freshness is requested through `acr_values`/`max_age` and independently verified against the validated ID-token evidence before identity resolution or session creation. `azp` is checked against the configured client ID when present and is required for multi-audience tokens.
+The final PR #51 head completed the defined merge gates successfully:
 
-The external identity tuple remains bound through a deterministic SHA-256 key so exact issuer/subject identity is provider-neutral even on case-insensitive SQL collations. Authentication-method/context/time claims remain runtime-only and are not stored on identity links.
+- CI;
+- Software quality gates;
+- Security supply chain;
+- Database Provider Acceptance;
+- DepotManager packaged E2E.
 
-`IEnterpriseIdentityResolver` returns an active local user with roles and effective permissions reloaded exclusively from Depot's own RBAC tables. External roles, groups and permission claims are not authorization inputs. Provider/link/assurance-policy administration reuses `UsersView` / `UsersManage` and writes administrative mutations with Audit evidence.
-
-Depot does not implement its own TOTP/MFA secret store in F4C. For Entra deployments, Conditional Access and Authentication Strength remain the primary tenant-side policy; Depot verifies only the explicitly configured provider evidence contract. See [Enterprise Identity and OpenID Connect](EnterpriseIdentity.md).
-
-## Electronic invoicing status
-
-The bounded F2 XRechnung 3.0 CII implementation is merged. Sales schema 13 persists explicit `S`, `Z`, `E` and `AE` VAT semantics, immutable finalized XML/integrity evidence, recipient/routing evidence and electronic Sales Credit Note finalization. The conformance closure binds retained fixtures to production generator output and validates the advertised XML matrix through KoSIT.
-
-The product decision includes ZUGFeRD/Factur-X. F3A introduced Sales schema 14 and the hybrid-artifact boundary for ZUGFeRD 2.5.2 / Factur-X 1.09.2 XRECHNUNG-profile documents. F3B adds the pinned veraPDF 1.30.2 PDF/A-3B acceptance path for the advertised hybrid matrix.
-
-F2/F3 final acceptance remains evidence-dependent until the corresponding candidate workflows actually complete successfully; implementation/merge presence does not manufacture KoSIT or veraPDF acceptance evidence.
+The replacement path now retries only bounded `IOException` / `UnauthorizedAccessException` failures caused by short-lived Windows locks. Persistent locks remain fail-closed; the original executable is preserved and the staged `.new` artifact is cleaned.
 
 ## Versions
 
@@ -171,18 +104,14 @@ F2/F3 final acceptance remains evidence-dependent until the corresponding candid
 - Enterprise Identity feature schema: **2**
 - Help manifest: **1.21**
 
-`Directory.Build.props` is authoritative for the exact Depot application patch/version; `src/DepotManager/DepotManager.Version.props` is authoritative for the DepotManager version. Schema migration constants and `src/Depot/Help/manifest.json` are authoritative for the other baseline values. Every repository commit increments `DepotVersionPatch`.
+`Directory.Build.props` is authoritative for the exact Depot application patch/version; `src/DepotManager/DepotManager.Version.props` is authoritative for DepotManager. Schema migration constants and `src/Depot/Help/manifest.json` are authoritative for the remaining baseline values. Every repository commit increments `DepotVersionPatch`.
 
 ## Validation boundary
 
-Release build with `-warnaserror`, repository regression suites, Security Supply Chain, Software Quality, Packaged E2E and Database Provider acceptance remain technical gates. CI additionally validates the Track A closure evidence contract and retains its validation result.
-
-Repository implementation does not itself prove the external/manual acceptance gates: H1 requires active GitHub settings evidence, H3 requires a real signed Stable RC, H4 requires deployment-specific DR evidence and H5 requires exact-RC human desktop evidence.
-
-Provider support does not replace deployment-specific accounting/tax/legal, accessibility, OS/client, performance-sizing, backup-retention or organizational acceptance.
+Repository build/test/security/provider/conformance evidence proves the implemented technical boundary only. It does not replace deployment-specific accounting/tax/legal review, accessibility acceptance, production signing, customer-specific sizing, backup-retention ownership, operational DR evidence or organizational compliance work.
 
 ## Next steps
 
-Track C F1 through F5B are implemented in the repository. Final repository acceptance depends on the exact-head CI/Quality/Security/Packaged-E2E/provider evidence for the current closure candidate; external/manual production gates remain separate.
+Track C repository work is closed. The next engineering package is **Depot 1.0 Technical Gap Reconciliation**: compare actual code, tests, release evidence and documentation against the remaining 1.0 checklist, classify true repository defects separately from external/manual acceptance, and create only the repair packages that are still technically necessary.
 
-The next planning step after Track C repository closure is to reconcile the remaining Depot 1.0 technical gaps against actual code/tests/evidence, while keeping Track A H1/H3/H4/H5 external acceptance states explicit. Remaining 1.0 work is tracked in [Release 1.0](Release1.0.md) and the [Roadmap](Roadmap.md).
+Remaining release work is tracked in [Release 1.0](Release1.0.md) and the [Roadmap](Roadmap.md).
