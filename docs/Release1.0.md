@@ -35,9 +35,13 @@ Depot is on the `0.15.x-preview` line with Core database schema **30**, Sales fe
 - [x] dependency locks, NuGet audit, SBOM/evidence and release-integrity workflows
 - [x] centralized per-item Customer → Region → Global Sales pricing with optional customer assignment and retained document source snapshots
 - [x] Sales Invoice seller/buyer/XRechnung finalization and persisted XML integrity evidence
+- [x] electronic Sales Credit Note finalization for the bounded advertised XRechnung scope
 - [x] ZUGFeRD 2.5.2 / Factur-X 1.09.2 XRECHNUNG-profile hybrid artifact generation/persistence with embedded finalized XML and PDF/XML SHA-256 evidence
+- [x] enterprise identity with OIDC Authorization Code + PKCE, tenant-bound Entra support and provider-bound assurance validation
+- [x] immutable Security Event export projection with provider-neutral filtering/snapshot boundaries
+- [x] persisted Security Event export targets with durable at-least-once checkpoint/retry/suspension state
 - [x] bounded regression/quality/accessibility CI controls
-- [x] repository governance with stable aggregate CI/quality/security/packaged-E2E/provider gates
+- [x] repository governance template with stable aggregate CI/quality/security/packaged-E2E/provider gates
 - [x] one authoritative Source-to-Release workflow
 - [x] explicit Preview/Stable GitHub Release channels with tag/version consistency
 - [x] release manifest records versions, Core/feature schema versions, source SHA, channel and final artifact hashes
@@ -53,7 +57,7 @@ Depot is on the `0.15.x-preview` line with Core database schema **30**, Sales fe
 - [x] explicit Per-Monitor-V2 DPI manifests for Depot and DepotManager
 - [x] reproducible exact-RC accessibility acceptance/evidence contract
 - [x] centralized fail-closed Track A H1–H5 production-closure evidence contract
-- [x] persisted Security Event export targets with durable at-least-once checkpoint/retry/suspension state
+- [x] Track C F1–F5B repository implementation and acceptance closure
 
 ## Database provider production acceptance
 
@@ -77,6 +81,22 @@ The generic technical provider gate is complete for the exact baselines in [Data
 - [x] representative 100,000-row indexed provider performance guard
 
 Versions outside these baselines are not implicitly supported. The provider gate is a database/runtime certification only.
+
+## Track C repository acceptance
+
+The Track C repository boundary is closed. [Track C acceptance and product status](TrackCStatus.md) records the detailed scope.
+
+- [x] F1 integrated
+- [x] bounded XRechnung 3.0 CII implementation and retained conformance fixtures
+- [x] independent KoSIT acceptance for every currently advertised XRechnung production scenario
+- [x] ZUGFeRD/Factur-X XRECHNUNG-profile hybrid generation and immutable PDF/XML evidence
+- [x] independent pinned veraPDF PDF/A-3B acceptance for the bounded advertised hybrid matrix
+- [x] enterprise identity foundation, OIDC/Entra sign-in and provider-bound assurance validation
+- [x] immutable Security Event export foundation
+- [x] durable at-least-once Security Event delivery/checkpoint/retry/suspension state
+- [x] final CI, Software Quality, Security Supply Chain, Database Provider and DepotManager packaged-E2E closure after F5B
+
+This repository acceptance does not certify unimplemented tax/channel scenarios or replace deployment/legal review.
 
 ## Required production acceptance before 1.0
 
@@ -121,14 +141,14 @@ Technical controls and the evidence contract are implemented. The exact release 
 
 ### Electronic invoicing
 
-F2 implementation is merged and the bounded XRechnung 3.0 CII matrix is present. F3A adds the ZUGFeRD/Factur-X hybrid artifact boundary. Production acceptance remains evidence-driven until the required repository/conformance gates for the accepted release candidate are green.
+The repository conformance boundary for the currently advertised XRechnung and ZUGFeRD/Factur-X XRECHNUNG-profile matrix is complete. Remaining items below are deliberately outside that bounded implemented scope or require deployment/business acceptance.
 
-- [ ] remaining EN 16931 special-tax semantics accepted
-- [ ] electronic credit-note finalization where advertised
-- [ ] recipient/channel routing acceptance
-- [ ] every advertised production XML scenario validated against applicable KoSIT/XRechnung release
+- [ ] remaining EN 16931 special-tax semantics beyond the advertised bounded matrix accepted before they are marketed
+- [x] electronic credit-note finalization for the advertised Standard-rated Credit Note (`381`) scenario
+- [ ] recipient/channel routing acceptance for any production channel that is marketed
+- [x] every currently advertised production XML scenario validated against the applicable KoSIT/XRechnung release
 - [x] PDF/A-3 hybrid artifact generation embeds finalized `xrechnung.xml` and retains immutable PDF/XML hash evidence
-- [ ] representative ZUGFeRD/Factur-X artifacts independently validated with pinned veraPDF acceptance
+- [x] representative advertised ZUGFeRD/Factur-X artifacts independently validated with pinned veraPDF acceptance
 
 ### Legal/organizational
 
@@ -144,6 +164,10 @@ All five Track A repository implementation packages have been addressed: reposit
 The unified closure procedure is documented in [Track A – Final Acceptance Closure](TrackAAcceptanceClosure.md). The repository template intentionally remains top-level `BLOCKED`: H1 is `ADMIN_REQUIRED`, H2 is repository-level `PASS`, H3 is `PRODUCTION_RC_REQUIRED`, H4 is `DEPLOYMENT_REQUIRED`, and H5 is `MANUAL_REQUIRED`.
 
 Track A becomes production-accepted only after a controlled evidence file for the exact Stable RC passes `Test-TrackAAcceptance.ps1 -RequirePass`. Repository CI validates the contract structure but never promotes missing external/manual evidence to `PASS`.
+
+## Next engineering step
+
+The next repository package is a technical 1.0 gap reconciliation against actual code, tests and retained evidence. It should distinguish genuine implementation/test/documentation defects from H1/H3/H4/H5 and other deployment/legal/manual acceptance work before new repair packages are opened.
 
 ## Demand-driven extensions
 

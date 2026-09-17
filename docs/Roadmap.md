@@ -1,8 +1,8 @@
 # Depot Roadmap
 
-Updated: 2026-09-16
+Updated: 2026-09-17
 
-This roadmap describes product capabilities and acceptance work without coupling the repository to historical implementation tranche names.
+This roadmap describes product capabilities and acceptance work without coupling the repository to historical implementation tranche names. Track C repository work is complete through F5B; the next engineering focus is 1.0 technical gap reconciliation rather than another preselected feature tranche.
 
 ## Implemented product capabilities
 
@@ -16,6 +16,8 @@ This roadmap describes product capabilities and acceptance work without coupling
 - [x] real production database-provider acceptance for the exact certified baselines
 - [x] structured Audit evidence and correction-oriented retained business records
 - [x] company/document identity controls and persisted XRechnung evidence
+- [x] one authoritative Source-to-Release path with Preview/Stable channels and retained release evidence
+- [x] technical DR, accessibility and Track A production-closure evidence contracts
 
 ### Costing and sales pricing
 
@@ -59,6 +61,30 @@ This roadmap describes product capabilities and acceptance work without coupling
 - [x] provider-neutral Finance Localization with explicit effective-dated assignments and `GENERIC → EU → DE` reference hierarchy
 - [x] Finance workspaces and contextual Help
 
+### Electronic invoicing
+
+- [x] bounded XRechnung 3.0 CII invoice finalization with persisted immutable XML/integrity evidence
+- [x] Standard-rated (`S`), Zero-rated (`Z`), Exempt (`E`) and Reverse-charge (`AE`) invoice semantics for the advertised matrix
+- [x] Standard-rated electronic Sales Credit Note (`381`) finalization
+- [x] independent KoSIT repository conformance for every currently advertised XML scenario
+- [x] ZUGFeRD 2.5.2 / Factur-X 1.09.2 XRECHNUNG-profile PDF/A-3B hybrid generation
+- [x] exact finalized `xrechnung.xml` embedded in the retained hybrid artifact
+- [x] immutable PDF/XML SHA-256 evidence
+- [x] independent pinned veraPDF acceptance for the advertised hybrid matrix
+
+Unsupported special-tax/channel scenarios, other Factur-X profiles and arbitrary existing-PDF conversion remain outside the current product promise until separately implemented and accepted.
+
+### Enterprise identity and authentication
+
+- [x] provider-neutral external identity configuration and exact provider/issuer/subject links
+- [x] Authorization Code + PKCE with system-browser sign-in and loopback callback handling
+- [x] OIDC discovery/signing-key and issuer/audience/lifetime/nonce validation
+- [x] tenant-bound Microsoft Entra ID support
+- [x] provider-bound optional `amr`, `acr` and authentication-age requirements
+- [x] `azp` validation and multi-audience fail-closed behavior
+- [x] local Depot RBAC remains authoritative; external roles/groups/permission claims are ignored for authorization
+- [x] protocol tokens and runtime assurance claims are not persisted on identity links
+
 ### Security and sessions
 
 - [x] persistent user sessions and heartbeat-derived online presence
@@ -66,6 +92,13 @@ This roadmap describes product capabilities and acceptance work without coupling
 - [x] credential/deactivation session invalidation
 - [x] shared database authentication throttling
 - [x] persisted Security Events, Security Center and bounded retention maintenance
+- [x] immutable Security Event export projection and deterministic bounded snapshots
+- [x] provider-neutral filter-bound export checkpoint semantics
+- [x] persisted export targets separate from source events
+- [x] durable fixed-snapshot at-least-once delivery state
+- [x] retry/backoff, suspension and short worker lease persistence
+- [x] HTTPS `http-json-v1` sink with deterministic delivery ID and no persisted endpoint secrets/tokens/response bodies
+- [x] retention protection for events not yet consumed by enabled targets
 
 ## Database provider production acceptance
 
@@ -89,6 +122,18 @@ The generic database-provider technical gate is complete for the exact baselines
 
 This does not certify versions outside the support matrix and does not close deployment-specific accounting/legal/accessibility/signing gates.
 
+## Repository acceptance state
+
+Track C F1 through F5B are complete at the repository implementation/acceptance boundary. The final closure after F5B has green CI, Software Quality, Security Supply Chain, Database Provider Acceptance and DepotManager packaged-E2E evidence on the accepted repair head.
+
+Track A repository implementation is also complete, but its production closure intentionally remains external/manual where appropriate:
+
+- H1 Repository Governance: `ADMIN_REQUIRED`;
+- H2 Release Pipeline & Channels: repository-level `PASS`;
+- H3 Production Signing: `PRODUCTION_RC_REQUIRED`;
+- H4 Production Operations & DR: `DEPLOYMENT_REQUIRED`;
+- H5 Accessibility & Desktop Acceptance: `MANUAL_REQUIRED`.
+
 ## Production acceptance still required before 1.0
 
 - [ ] accounting-book/chart/calendar/posting-profile/valuation/reporting policy approval
@@ -98,9 +143,27 @@ This does not certify versions outside the support matrix and does not close dep
 - [ ] retention/export/backup/restore operating procedures and ownership
 - [ ] realistic customer-specific sizing including network latency, concurrent users and large reports/exports
 - [ ] keyboard-only, screen-reader and DPI accessibility acceptance
-- [ ] production Authenticode signing and installer/upgrade/rollback acceptance
-- [ ] remaining electronic-invoice special-tax/channel scenarios
+- [ ] active GitHub `master` governance/ruleset evidence
+- [ ] production Authenticode signing and exact-RC publisher/timestamp acceptance
+- [ ] installer/package upgrade/rollback/uninstall acceptance
+- [ ] ACTIVE deployment DR evidence with real restore drill inside accepted RPO/RTO
+- [ ] remaining electronic-invoice special-tax/channel scenarios before they are marketed
 - [ ] qualified GDPR/CRA/legal/organizational review required for marketed deployment scenarios
+
+## Next engineering focus: Depot 1.0 technical gap reconciliation
+
+The next repository work is not another assumed feature tranche. It is a read-only-first reconciliation of the actual code, tests, release evidence and documentation against [Release 1.0](Release1.0.md).
+
+The reconciliation should classify each open item as one of:
+
+1. real repository implementation defect;
+2. missing automated test/evidence defect;
+3. documentation/baseline defect;
+4. repository administration requirement;
+5. production-RC/deployment/manual/legal acceptance requirement;
+6. demand-driven future extension outside the 1.0 product promise.
+
+Only categories 1–3 should automatically create technical repair packages. Categories 4–6 must remain explicit rather than being disguised as code work.
 
 ## Demand-driven extensions
 

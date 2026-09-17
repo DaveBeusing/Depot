@@ -1,94 +1,106 @@
-# Track C acceptance and product decision
+# Track C acceptance and product status
 
-Reviewed: 2026-09-16
+Reviewed: 2026-09-17
 
-## F2 validation follow-up
+Track C repository implementation is complete through F5B. This document records the implemented product boundary and repository acceptance evidence; it does not replace deployment-specific legal, accounting, accessibility, signing or operational acceptance.
 
-PR #36 (`electronic-invoice-completion`) introduced the bounded F2 production path. PR #37 repaired provider/migration and packaged-E2E regressions. PR #38 (`packaged-e2e-acceptance-repair`) removed stale packaged-version assumptions and hardened executable corruption detection. PR #39 (`electronic-invoice-conformance-closure`) is merged into `master` and closes the repository implementation's external XML-coverage breadth.
+## Overall status
 
-The conformance closure binds retained fixtures to the production `ElectronicInvoiceService` and validates the bounded XRechnung 3.0 CII issuance matrix through KoSIT: Standard-rated (`S`), Zero-rated (`Z`), Exempt (`E`), Reverse-charge (`AE`) invoices and Standard-rated Credit Note (`381`). F2 remains acceptance-evidence dependent until the required candidate gates are green; merge status alone is not final acceptance.
+- F1: merged and integrated.
+- F2 XRechnung completion/conformance: merged; bounded advertised XML matrix has successful independent repository conformance evidence.
+- F3A/F3B ZUGFeRD/Factur-X: merged; bounded advertised hybrid matrix has successful independent PDF/A-3B repository conformance evidence.
+- F4A/F4B/F4C Enterprise Identity: merged and acceptance stabilization completed.
+- F5A Security Event export foundation: merged.
+- F5B Security Event delivery/checkpointing: merged; Security Events feature schema is **3**.
+- AP-01 final acceptance repair: merged; the transient DepotManager packaged executable replacement lock is hardened with bounded retry while persistent locks remain fail-closed.
 
-## F3 product decision: approved
+## F2 XRechnung completion and conformance
 
-On 2026-09-16 the product decision was explicitly recorded to include ZUGFeRD/Factur-X in the Depot product promise.
+PR #36 introduced the bounded production path. PRs #37 and #38 repaired provider/migration and packaged-E2E regressions. PR #39 added the independent conformance closure and PR #47 repaired the deterministic exemption/reverse-charge acceptance regressions exposed later in the track.
 
-The bounded initial product scope is:
+The bounded XRechnung 3.0 CII issuance matrix covers:
 
-- ZUGFeRD `2.5.2` / Factur-X `1.09.2`;
-- German `XRECHNUNG` reference profile;
-- PDF/A-3B hybrid documents generated as new documents, not conversion of an arbitrary existing PDF;
-- exactly one embedded structured invoice payload named `xrechnung.xml`;
-- the embedded XML is the same finalized XRechnung CII payload already produced and validated by Depot, never a second XML generator;
-- Factur-X XMP metadata declares the embedded file/profile contract;
-- exact PDF bytes, PDF SHA-256 and finalized XML SHA-256 are retained as immutable evidence;
-- Invoice and Sales Credit Note use the same hybrid-artifact boundary;
-- external PDF/A acceptance is independent from KoSIT XML acceptance.
+- Standard-rated (`S`) invoices;
+- Zero-rated (`Z`) invoices;
+- Exempt (`E`) invoices;
+- Reverse-charge (`AE`) invoices;
+- Standard-rated Sales Credit Note (`381`).
 
-## F3A hybrid artifact foundation
+The production generator and retained fixtures are bound to the same issuance rules. The independent electronic-invoice conformance workflow on PR #49 completed successfully for the bounded advertised matrix. This closes the repository KoSIT/conformance boundary for that scope; it is not a jurisdiction-wide tax/legal certification and does not imply support for unimplemented special-tax or channel scenarios.
 
-PR #41 (`zugferd-facturx`) is merged into `master`. Sales feature schema `14` adds the provider-neutral `SalesHybridElectronicInvoiceArtifacts` store. `ZugferdFacturXService` creates a PDF/A-3B document from the immutable `ElectronicInvoice` finalization model, embeds the exact finalized `xrechnung.xml` using `AFRelationship=Alternative`, writes the Factur-X/XRECHNUNG XMP contract, hashes the PDF and persists the exact artifact in the same transaction as invoice or credit-note finalization.
+## F3 ZUGFeRD / Factur-X
 
-Exports use persisted bytes and verify SHA-256 evidence. Legacy records are not reconstructed from mutable customer/company master data. Repository tests verify embedded XML bytes, PDF/A/XMP markers, conformance constants, schema migration, persistence and tamper detection. This structural implementation alone does not prove external PDF/A conformance.
+The product decision includes ZUGFeRD `2.5.2` / Factur-X `1.09.2` using the German `XRECHNUNG` reference profile.
 
-## F3B independent conformance closure
+PR #41 introduced Sales feature schema **14** and the provider-neutral hybrid-artifact store. Depot creates new PDF/A-3B hybrid documents from the immutable finalized XRechnung model, embeds the exact finalized payload as `xrechnung.xml`, writes the Factur-X/XRECHNUNG XMP contract and retains exact PDF bytes plus PDF/XML SHA-256 evidence. Invoice and Sales Credit Note use the same artifact boundary.
 
-PR #42 (`zugferd-facturx-conformance-closure`) is merged into `master`. It adds the independent PDF/A acceptance gate without changing the persisted schema contract.
+PR #42 added the independent PDF/A acceptance path with pinned veraPDF `1.30.2`. PR #49 repaired the final trailer `/ID` and embedded MIME-name defects exposed by veraPDF. The exact PR #49 head then completed the independent electronic-invoice conformance workflow successfully, including the five-document PDF/A-3B matrix.
 
-The gate uses pinned veraPDF `1.30.2` and verifies the downloaded official installer against the repository-pinned SHA-256 `6cc6341cb1af644044054b81f00a6590a7918abb18f762243de115258bcad838`. The production generator creates five hybrid artifacts bound to the same retained XRechnung fixtures used by the KoSIT matrix: Standard-rated (`S`), Zero-rated (`Z`), Exempt (`E`), Reverse-charge (`AE`) and Standard-rated Credit Note (`381`). KoSIT validation remains independent from PDF/A validation.
+Repository acceptance therefore covers the bounded advertised hybrid matrix. Arbitrary existing-PDF conversion, other Factur-X profiles and unsupported tax/channel scenarios are outside this scope unless separately implemented and accepted.
 
-F3 repository implementation is merged, but final external acceptance remains evidence-dependent until the required candidate workflows complete successfully. Merge presence does not manufacture KoSIT or veraPDF evidence.
+## F4 Enterprise Identity and authentication assurance
 
-## F4A enterprise identity foundation
+PR #43 introduced the external-identity foundation. PR #44 added Authorization Code + PKCE, system-browser sign-in, loopback callback handling, discovery/signing-key validation, issuer/audience/lifetime/nonce validation and tenant-bound Microsoft Entra ID support. PR #46 advanced Enterprise Identity feature schema to **2** with provider-bound authentication-assurance requirements.
 
-PR #43 (`enterprise-identity-foundation`) is merged into `master`. Enterprise Identity feature schema `1` introduced non-secret provider configuration plus exact provider/issuer/subject links to existing local Depot users. The resolver returns only active local users and reloads roles/effective permissions exclusively from Depot RBAC. F4A deliberately does not auto-provision users or trust external roles/groups/permission claims.
+The current boundary supports optional exact provider requirements for `amr`, `acr` and maximum `auth_time` age, request hints through `acr_values` / `max_age`, and `azp` validation. Assurance is validated before local identity resolution/session creation. Raw protocol tokens and assurance claims are not persisted on identity links.
 
-## F4B OpenID Connect / Microsoft Entra ID authentication
+Local Depot RBAC remains authoritative. External roles, groups and permission claims are not authorization inputs. Depot does not maintain its own TOTP/MFA secret store in this track; Entra Conditional Access and Authentication Strength remain tenant-side controls.
 
-PR #44 (`enterprise-identity-oidc`) is merged into `master`. F4B implements Authorization Code + PKCE (`S256`), system-browser authorization, loopback callbacks, fail-closed `state` / `nonce`, HTTPS OIDC discovery/signing-key validation, tenant-bound Microsoft Entra ID sign-in and the existing local Session/RBAC boundary. It persists no client secret or protocol token and never maps external roles/groups to Depot permissions.
+PR #47 is merged and closes the deterministic F4C acceptance regressions that had been tracked in the earlier status document.
 
-PR #45 repaired F4B/F3 build integration against the stable PDFsharp 6.2.4 surface and the OIDC compile boundary.
+## F5A Security Event export foundation
 
-## F4C external MFA claims and identity hardening
+PR #48 is merged. F5A established the immutable source-side export contract while Security Events feature schema remained 2:
 
-PR #46 (`enterprise-identity-mfa`) is merged into `master`. Enterprise Identity feature schema `2` adds an explicit provider-bound external authentication-assurance contract:
-
-- optional exact required `amr` value per provider;
-- optional exact required `acr` value per provider;
-- optional maximum `auth_time` age from 1 through 1440 minutes;
-- `acr_values` and `max_age` request hints;
-- fail-closed assurance validation before local identity resolution/session creation;
-- `azp` validation against the configured client ID and mandatory authorized-party evidence for multi-audience tokens;
-- `UsersManage`, optimistic concurrency and transactional Audit for assurance-policy changes;
-- no persisted `amr`, `acr`, `auth_time`, `azp`, protocol tokens or Depot-managed MFA secrets.
-
-For Microsoft Entra ID deployments, Conditional Access and Authentication Strength remain the primary tenant-side method-policy controls. Depot does not infer universal MFA semantics from arbitrary claim strings.
-
-The first F4C candidate exposed three independent acceptance regressions after merge: invalid XRechnung exemption placement/order in the production CII generator, a stale User Preferences migration test setup and a transient packaged-E2E executable sharing violation. PR #47 (`f4c-acceptance-stabilization`) contains the deterministic XRechnung and migration-test repairs at `0.15.204-preview`; its exact-head acceptance evidence remains authoritative before the stabilization is treated as closed.
-
-## F5A security event export foundation
-
-The `security-event-export-foundation` package defines the source-side Security Event export contract without changing Security Events schema `2`.
-
-The bounded F5A scope is:
-
-- immutable export-record projection from existing `SecurityEvents` source evidence;
-- exclusion of mutable Security Center review metadata and row version from exported event meaning;
-- minimum-severity plus optional event-type filters;
+- immutable export projection from existing Security Event evidence;
+- minimum-severity plus optional event-type filtering;
 - canonical SHA-256 filter fingerprint;
-- filter-bound checkpoint based on monotonic Security Event ID;
-- snapshot upper-bound capture before each bounded read;
+- filter-bound checkpoint semantics based on monotonic Security Event ID;
+- captured snapshot upper bound before bounded reads;
 - deterministic ascending batches with a maximum of 500 events;
-- fail-closed checkpoint/filter mismatch;
-- provider-neutral source repository and sink abstraction;
+- provider-neutral source and sink boundaries;
 - SQLite, SQL Server, MariaDB and MySQL provider-smoke coverage;
-- no durable delivery configuration, retry state or checkpoint persistence in F5A.
+- source `SecurityEvents` rows remain immutable with respect to export state.
 
-F5A deliberately keeps reliable delivery separate from source extraction. `ISecurityEventExportSink` is an adapter boundary only. F5B will own sink delivery orchestration, retry classification and durable checkpoint advancement after successful delivery. The source `SecurityEvents` rows are never mutated to represent export state.
+F5A deliberately did not claim reliable delivery or persist sink/retry/checkpoint state.
 
-See [Security Event Export Foundation](SecurityEventExport.md).
+## F5B Security Event delivery and checkpointing
 
-## Track status and next work
+PR #50 is merged and advances Security Events feature schema from **2** to **3**.
 
-F1 is merged. F2 repository implementation/conformance breadth are merged and remain final-evidence dependent. F3A/F3B are merged and remain external-evidence dependent. F4A/F4B/F4C are merged; F4C acceptance stabilization is tracked in PR #47. F5A is implemented on `security-event-export-foundation` and does not change Security Events schema `2`.
+F5B adds:
 
-After F5A candidate gates and merge, the next implementation package is F5B Security Event Delivery & Checkpointing.
+- persisted export targets separate from source `SecurityEvents`;
+- durable checkpoint and in-flight fixed-snapshot state;
+- deterministic retry/backoff and suspension evidence;
+- short worker leases for delivery ownership;
+- checkpoint advancement only after sink success;
+- fixed-snapshot at-least-once retry semantics;
+- `http-json-v1` HTTPS delivery with deterministic `X-Depot-Delivery-Id`;
+- no persistence of endpoint credentials, tokens or response bodies;
+- retention protection for events not yet consumed by enabled targets;
+- provider persistence coverage for SQLite, SQL Server, MariaDB and MySQL.
+
+Delivery is explicitly **at-least-once**. A crash after remote acceptance but before the local checkpoint commit can duplicate a batch; the deterministic delivery ID is the receiver deduplication boundary. This is intentional and must not be documented as exactly-once delivery.
+
+See [Security Event Export](SecurityEventExport.md).
+
+## Final repository acceptance
+
+AP-01 revalidated the final Track C closure path after F5B. The first repair candidate exposed a pre-existing canonical-documentation schema drift and a transient Windows executable replacement lock. PR #51 is merged with both corrections.
+
+On the final PR #51 head, the defined merge gates completed successfully:
+
+- CI;
+- Software quality gates;
+- Security supply chain;
+- Database Provider Acceptance;
+- DepotManager packaged E2E.
+
+The executable replacement path now retries only bounded `IOException` / `UnauthorizedAccessException` failures caused by short-lived Windows locks. Existing persistent-lock behavior remains fail-closed, preserves the original binary and cleans the staged replacement.
+
+## Track C closure
+
+Track C F1 through F5B are complete at the repository implementation/acceptance boundary. There is no remaining Track C implementation package queued after F5B.
+
+The next engineering step is Depot 1.0 technical gap reconciliation against the actual repository, tests and retained evidence. External/manual production gates remain tracked separately in [Release 1.0](Release1.0.md), [Current Project Status](CurrentStatus.md) and Track A acceptance documentation.
