@@ -51,6 +51,7 @@ Depot is on the `0.15.x-preview` line with Core database schema **30**, Sales fe
 - [x] provider-specific SQLite/SQL Server/MariaDB/MySQL restore runbooks
 - [x] pull-request recovery drills and retained credential-free provider recovery evidence
 - [x] DepotManager recovery-readiness support evidence and sanitized ACL/I/O recovery diagnostics
+- [x] packaged DepotManager lifecycle acceptance for install, update, repair, rollback safety, manager self-update, uninstall scopes and real Windows registration/shortcut integration
 - [x] runtime keyboard-focus fallback plus hardened focus-suppression quality checks
 - [x] custom input UI Automation label/required-state forwarding to native focus targets
 - [x] UI Automation notifications for operation/error/connection status changes
@@ -58,6 +59,7 @@ Depot is on the `0.15.x-preview` line with Core database schema **30**, Sales fe
 - [x] reproducible exact-RC accessibility acceptance/evidence contract
 - [x] centralized fail-closed Track A H1–H5 production-closure evidence contract
 - [x] Track C F1–F5B repository implementation and acceptance closure
+- [x] Depot 1.0 technical gap reconciliation with no currently known generic implementation or automated-evidence defect inside the advertised repository boundary
 
 ## Database provider production acceptance
 
@@ -131,11 +133,12 @@ Technical controls and the evidence contract are implemented. The exact release 
 - [x] production DR runbook/profile/recovery-evidence technical boundary implemented
 - [x] desktop accessibility technical/evidence boundary implemented
 - [x] Track A closure validator rejects incomplete H1–H5 evidence
+- [x] generic packaged lifecycle acceptance covers install/update/repair, rollback safety, manager self-update, uninstall data scopes and Windows shell integration
 - [ ] active GitHub `master` governance/ruleset evidence retained
 - [ ] production backup/security ownership and vulnerability-reporting process accepted for the deployment
 - [ ] production Authenticode publisher identity and timestamp verified with a real Stable release candidate
 - [ ] certificate expiry/rotation and signing-recovery procedure accepted
-- [ ] installer/package upgrade/rollback/uninstall accepted
+- [ ] exact production-signed Stable RC lifecycle acceptance completed with the final release artifacts
 - [ ] exact-RC Track A closure evidence passes `Test-TrackAAcceptance.ps1 -RequirePass`
 - [ ] final release notes, known limitations, hashes, SBOM and support information published
 
@@ -165,9 +168,13 @@ The unified closure procedure is documented in [Track A – Final Acceptance Clo
 
 Track A becomes production-accepted only after a controlled evidence file for the exact Stable RC passes `Test-TrackAAcceptance.ps1 -RequirePass`. Repository CI validates the contract structure but never promotes missing external/manual evidence to `PASS`.
 
-## Next engineering step
+## Technical reconciliation result
 
-The next repository package is a technical 1.0 gap reconciliation against actual code, tests and retained evidence. It should distinguish genuine implementation/test/documentation defects from H1/H3/H4/H5 and other deployment/legal/manual acceptance work before new repair packages are opened.
+The read-only-first Depot 1.0 gap reconciliation is complete. [Depot 1.0 Release Candidate Readiness](ReleaseCandidateReadiness.md) records the classification and decision boundary.
+
+No currently known category-1 implementation defect or category-2 generic automated-evidence defect remains inside the advertised repository product boundary. The remaining blockers are repository administration, production-RC/deployment/manual/legal acceptance, or demand-driven extensions outside the current 1.0 promise.
+
+Do not open another generic feature/hardening package solely because the product has not yet reached 1.0. New repository repair work should be evidence-driven by a reproducible failing gate or RC acceptance finding.
 
 ## Demand-driven extensions
 
