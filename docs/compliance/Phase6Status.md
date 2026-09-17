@@ -1,53 +1,44 @@
 # Phase 6 Technical Status — Electronic Invoicing Readiness
 
-Date: 2026-08-23
+Date: 2026-09-17
 
 ## Status
 
-**TECHNICAL IMPLEMENTATION COMPLETE — 2026-08-23**
+**BOUNDED REPOSITORY IMPLEMENTATION AND CONFORMANCE COMPLETE — 2026-09-17**
 
-Phase 6 now includes the operational Sales Invoice finalization path. Remaining work is limited to additional tax/profile semantics, electronic credit-note finalization, production recipient/channel configuration and validation, PDF/A-3, and deployment-specific tax/legal acceptance.
+Depot's advertised repository scope now includes bounded XRechnung 3.0 CII issuance plus ZUGFeRD 2.5.2 / Factur-X 1.09.2 XRECHNUNG-profile PDF/A-3B hybrid artifacts. The implementation and independent repository conformance paths are present; deployment-specific routing, legal/tax acceptance and any scenarios outside the advertised matrix remain separate production decisions.
 
-## Implemented
+## Implemented bounded scope
 
 - [x] EN 16931-oriented semantic invoice model with seller/buyer, payment, line, tax and reference business terms.
-- [x] Invoice and credit-note semantic type codes in the semantic/generator layer.
-- [x] Deterministic decimal amount calculation and invariant-culture serialization.
-- [x] UN/CEFACT Cross Industry Invoice XML generation targeted at XRechnung 3.0.
-- [x] Application-level validation of mandatory XRechnung business terms and numeric invariants before generation.
-- [x] Administration > Company as authoritative seller/document identity.
-- [x] Structured Customer Buyer identity with Buyer Reference (BT-10), electronic address (BT-49) and scheme, tax identity, and structured billing address.
-- [x] Atomic Sales Invoice posting/finalization: business posting, issuer snapshot, Buyer snapshot, XML generation and audit share one transaction.
-- [x] Exact issued Sales Invoice XML retained in `SalesInvoiceFinalizations` with SHA-256 integrity verification.
-- [x] Posted Invoice workspace exports the verified persisted XRechnung XML without regeneration from mutable master data.
-- [x] Legacy posted invoices without finalization fail closed rather than being reconstructed silently.
-- [x] Unsupported ambiguous tax scenarios fail closed; zero-rated, exempt and reverse-charge lines are not guessed from a numeric 0% rate.
-- [x] Correction/credit behavior remains aligned with immutable business-record rules; posted credit notes capture immutable issuer identity.
-- [x] ZUGFeRD/Factur-X architecture is evaluated and the CII semantic/XML foundation is reusable for a future hybrid PDF/A-3 implementation.
-- [x] Representative generated CII is bound to a committed conformance fixture to detect generator drift.
-- [x] A dedicated CI workflow runs the representative fixture through pinned KoSIT validator and XRechnung configuration releases.
-- [x] Automated tests cover mandatory-field validation, deterministic generation, profile identification, representative tax/totals, credit-note semantic type, immutable Buyer finalization, exact XML export, hash tamper detection, incomplete Buyer rejection, country-code syntax and unsupported 0% tax rejection.
+- [x] Deterministic XRechnung 3.0 CII generation with application-level validation before issuance.
+- [x] Authoritative Company seller data and structured Customer Buyer identity with Buyer Reference, electronic address/scheme, tax identity and billing address.
+- [x] Atomic Sales Invoice finalization with immutable seller/buyer snapshots, exact issued XML, SHA-256 evidence and transactional Audit/business state.
+- [x] Explicit advertised VAT semantics for Standard-rated (`S`), Zero-rated (`Z`), Exempt (`E`) and Reverse-charge (`AE`) issuance instead of inferring special semantics from a numeric 0% rate.
+- [x] Electronic Sales Credit Note finalization for the bounded advertised scope, including immutable Buyer/routing evidence, exact XML retention and integrity verification.
+- [x] Persisted recipient/routing evidence kept separately from immutable XML meaning so later transport handling cannot silently rewrite the issued document.
+- [x] Posted Invoice and Credit Note export uses retained finalized evidence rather than mutable current master data.
+- [x] Legacy posted records without historical finalization fail closed instead of being reconstructed silently.
+- [x] ZUGFeRD 2.5.2 / Factur-X 1.09.2 XRECHNUNG-profile hybrid generation uses the same finalized `xrechnung.xml` payload and retains exact PDF/XML SHA-256 evidence.
+- [x] Hybrid documents are generated as PDF/A-3B artifacts with embedded `xrechnung.xml`, Factur-X XMP metadata and `AFRelationship=Alternative`.
+- [x] The bounded five-document matrix covers `S`, `Z`, `E`, `AE` invoices and a Standard-rated Credit Note (`381`).
+- [x] KoSIT validates the bounded XRechnung matrix independently of PDF/A validation.
+- [x] Pinned veraPDF validates the advertised hybrid PDF/A-3B matrix independently of KoSIT.
+- [x] Provider-neutral persistence/migration coverage exists for the electronic-invoice evidence boundary.
 
-## Pinned conformance assets
+## Conformance assets
 
-The repository conformance workflow currently pins:
-
-- KoSIT Validator `1.6.2`
-- XRechnung Validator Configuration `3.0.2 / 2026-01-31`
-- Java 17 runtime in GitHub Actions
-
-These versions are deliberate release inputs and must be updated through review rather than following moving `latest` references.
+The repository intentionally pins validation tool/configuration inputs rather than following moving `latest` references. The electronic-invoice workflow currently uses the repository-pinned KoSIT/XRechnung assets and veraPDF 1.30.2 for the advertised matrix. Changes to those inputs require review because they are part of the acceptance evidence chain.
 
 ## Remaining production/integration gates
 
-1. Persist explicit EN 16931 VAT-category and exemption/reason semantics for every commercial tax scenario that Depot intends to issue, including zero-rated, exempt and reverse-charge cases.
-2. Extend equivalent Buyer snapshot, exact XML retention and integrity verification to electronic credit notes before advertising that issuance channel.
-3. Configure organization/recipient-specific routing and delivery channels, including electronic-address scheme rules and Peppol requirements where applicable.
-4. Extend conformance fixtures and validation for every advertised tax/business/profile/channel scenario, including allowances/charges, multiple VAT categories, reverse charge, intra-EU/export and correction cases.
-5. Validate production releases against the then-applicable KoSIT/XRechnung assets rather than relying only on the pinned development baseline.
-6. Build and validate a PDF/A-3 pipeline before claiming ZUGFeRD/Factur-X support.
-7. Define and approve a controlled remediation procedure for legacy posted invoices that predate historical issuer/Buyer/XML finalization.
-8. Obtain organization-specific tax/legal review of supported invoice scenarios before production use.
+These are not missing implementation for the bounded repository scope:
+
+1. Configure and approve organization/recipient-specific transport channels, including Peppol or other delivery-network rules where a deployment advertises them.
+2. Add separate implementation and conformance evidence before advertising tax/business/profile scenarios outside the current bounded matrix, such as additional allowance/charge combinations, multi-VAT cases, intra-EU/export variants or jurisdiction-specific extensions.
+3. Revalidate a concrete production release against the then-applicable regulatory/conformance inputs where required by the target deployment or market.
+4. Define and approve operational handling for historical records that predate immutable electronic-invoice finalization.
+5. Obtain organization-specific accounting, tax and legal acceptance for the actual marketed/deployed scenarios.
 
 ## Evidence
 
@@ -55,12 +46,13 @@ These versions are deliberate release inputs and must be updated through review 
 - `src/Depot/Models/DocumentBuyerProfile.cs`
 - `src/Depot/Services/ElectronicInvoiceService.cs`
 - `src/Depot/Services/SalesInvoiceFinalizationService.cs`
-- `src/Depot/Services/SalesInvoiceService.cs`
-- `src/Depot/Services/SalesDocumentService.cs`
+- `src/Depot/Services/SalesCreditNoteFinalizationService.cs`
+- `src/Depot/Services/ZugferdFacturXService.cs`
 - `tests/Depot.Tests/ElectronicInvoiceTests.cs`
 - `tests/Depot.Tests/SalesInvoiceFinalizationTests.cs`
-- `tests/Depot.Tests/Fixtures/ElectronicInvoice/xrechnung-cii-basic.xml`
+- electronic-invoice conformance fixtures under `tests/Depot.Tests/Fixtures/ElectronicInvoice/`
 - `scripts/einvoice/validate-xrechnung.ps1`
 - `.github/workflows/electronic-invoice-conformance.yml`
 - `docs/compliance/ElectronicInvoicing.md`
-- `docs/compliance/InvoiceFinalization.md`
+- `docs/compliance/ElectronicInvoiceCompletion.md`
+- `docs/TrackCStatus.md`

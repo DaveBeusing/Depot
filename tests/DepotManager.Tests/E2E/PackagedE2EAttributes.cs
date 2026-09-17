@@ -22,11 +22,27 @@ public sealed class PackagedE2EFullFactAttribute : FactAttribute
     }
 }
 
+public sealed class PackagedE2EWindowsIntegrationFactAttribute : FactAttribute
+{
+    public PackagedE2EWindowsIntegrationFactAttribute()
+    {
+        if (!PackagedE2EEnvironment.Enabled)
+            Skip = "Packaged E2E tests run only when DEPOT_PACKAGED_E2E=1 is explicitly set.";
+        else if (!PackagedE2EEnvironment.WindowsIntegrationEnabled)
+            Skip = "Windows integration acceptance mutates HKCU and shell shortcuts only on GitHub-hosted disposable runners.";
+    }
+}
+
 internal static class PackagedE2EEnvironment
 {
     public static bool Enabled =>
         OperatingSystem.IsWindows()
         && string.Equals(Environment.GetEnvironmentVariable("DEPOT_PACKAGED_E2E"), "1", StringComparison.Ordinal);
+
+    public static bool WindowsIntegrationEnabled =>
+        Enabled
+        && string.Equals(Environment.GetEnvironmentVariable("GITHUB_ACTIONS"), "true", StringComparison.OrdinalIgnoreCase)
+        && string.Equals(Environment.GetEnvironmentVariable("RUNNER_ENVIRONMENT"), "github-hosted", StringComparison.OrdinalIgnoreCase);
 
     public static string Tier => Environment.GetEnvironmentVariable("DEPOT_PACKAGED_E2E_TIER") ?? "Smoke";
 
