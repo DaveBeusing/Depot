@@ -2,7 +2,7 @@
 
 Updated: 2026-09-17
 
-This roadmap describes product capabilities and acceptance work without coupling the repository to historical implementation tranche names. Track C repository work is complete through F5B; the next engineering focus is 1.0 technical gap reconciliation rather than another preselected feature tranche.
+This roadmap describes product capabilities and acceptance work without coupling the repository to historical implementation tranche names. Track C repository work is complete through F5B, and the Depot 1.0 technical gap reconciliation is now complete. Further repository work should be evidence-driven rather than another assumed feature tranche.
 
 ## Implemented product capabilities
 
@@ -18,6 +18,7 @@ This roadmap describes product capabilities and acceptance work without coupling
 - [x] company/document identity controls and persisted XRechnung evidence
 - [x] one authoritative Source-to-Release path with Preview/Stable channels and retained release evidence
 - [x] technical DR, accessibility and Track A production-closure evidence contracts
+- [x] packaged DepotManager lifecycle acceptance including real Windows registration/shortcut repair and cleanup
 
 ### Costing and sales pricing
 
@@ -134,6 +135,8 @@ Track A repository implementation is also complete, but its production closure i
 - H4 Production Operations & DR: `DEPLOYMENT_REQUIRED`;
 - H5 Accessibility & Desktop Acceptance: `MANUAL_REQUIRED`.
 
+The 1.0 technical gap reconciliation found no currently known generic implementation defect and no currently known missing automated-test/evidence defect inside the advertised repository boundary. See [Depot 1.0 Release Candidate Readiness](ReleaseCandidateReadiness.md).
+
 ## Production acceptance still required before 1.0
 
 - [ ] accounting-book/chart/calendar/posting-profile/valuation/reporting policy approval
@@ -145,25 +148,26 @@ Track A repository implementation is also complete, but its production closure i
 - [ ] keyboard-only, screen-reader and DPI accessibility acceptance
 - [ ] active GitHub `master` governance/ruleset evidence
 - [ ] production Authenticode signing and exact-RC publisher/timestamp acceptance
-- [ ] installer/package upgrade/rollback/uninstall acceptance
+- [x] generic repository lifecycle acceptance for install/update/repair, rollback safety, manager self-update, uninstall scopes and Windows shell integration
+- [ ] exact production-signed Stable RC lifecycle acceptance with the final release artifacts
 - [ ] ACTIVE deployment DR evidence with real restore drill inside accepted RPO/RTO
 - [ ] remaining electronic-invoice special-tax/channel scenarios before they are marketed
 - [ ] qualified GDPR/CRA/legal/organizational review required for marketed deployment scenarios
 
-## Next engineering focus: Depot 1.0 technical gap reconciliation
+## Engineering focus after the 1.0 reconciliation
 
-The next repository work is not another assumed feature tranche. It is a read-only-first reconciliation of the actual code, tests, release evidence and documentation against [Release 1.0](Release1.0.md).
+The read-only-first reconciliation is complete. Remaining work is no longer an undifferentiated repository backlog.
 
-The reconciliation should classify each open item as one of:
+Open items are classified as:
 
-1. real repository implementation defect;
-2. missing automated test/evidence defect;
-3. documentation/baseline defect;
-4. repository administration requirement;
-5. production-RC/deployment/manual/legal acceptance requirement;
-6. demand-driven future extension outside the 1.0 product promise.
+1. repository implementation defect — none currently known;
+2. missing automated test/evidence defect — none currently known for the advertised generic boundary;
+3. documentation/baseline defect — the packaged lifecycle acceptance wording is corrected by the reconciliation package;
+4. repository administration requirement — H1 live GitHub ruleset activation/evidence;
+5. production-RC/deployment/manual/legal acceptance — H3, H4, H5, deployment accounting/operations, sizing and qualified review;
+6. demand-driven future extension — capabilities outside the current 1.0 product promise.
 
-Only categories 1–3 should automatically create technical repair packages. Categories 4–6 must remain explicit rather than being disguised as code work.
+Do not create another generic feature or hardening tranche solely because Depot has not reached 1.0. New repository work should be triggered by concrete failing evidence, a reproducible RC defect or an explicit product-scope change.
 
 ## Demand-driven extensions
 
