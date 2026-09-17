@@ -2,7 +2,7 @@
 
 Updated: 2026-09-17
 
-This roadmap describes product capabilities and acceptance work without coupling the repository to historical implementation tranche names. Track C repository work is complete through F5B, and the Depot 1.0 technical gap reconciliation is now complete. Further repository work should be evidence-driven rather than another assumed feature tranche.
+This roadmap describes product capabilities and acceptance work without coupling the repository to historical implementation tranche names. Track C repository work is complete through F5B, and the Depot 1.0 technical gap reconciliation is complete. Further repository work should be evidence-driven rather than another assumed feature tranche.
 
 ## Implemented product capabilities
 
@@ -19,6 +19,7 @@ This roadmap describes product capabilities and acceptance work without coupling
 - [x] one authoritative Source-to-Release path with Preview/Stable channels and retained release evidence
 - [x] technical DR, accessibility and Track A production-closure evidence contracts
 - [x] packaged DepotManager lifecycle acceptance including real Windows registration/shortcut repair and cleanup
+- [x] active `master` governance through repository ruleset `23590604`
 
 ### Costing and sales pricing
 
@@ -127,9 +128,9 @@ This does not certify versions outside the support matrix and does not close dep
 
 Track C F1 through F5B are complete at the repository implementation/acceptance boundary. The final closure after F5B has green CI, Software Quality, Security Supply Chain, Database Provider Acceptance and DepotManager packaged-E2E evidence on the accepted repair head.
 
-Track A repository implementation is also complete, but its production closure intentionally remains external/manual where appropriate:
+Track A repository implementation is complete. H1 and H2 are closed; the remaining production closure is external/manual:
 
-- H1 Repository Governance: `ADMIN_REQUIRED`;
+- H1 Repository Governance: `PASS` via active ruleset `23590604`;
 - H2 Release Pipeline & Channels: repository-level `PASS`;
 - H3 Production Signing: `PRODUCTION_RC_REQUIRED`;
 - H4 Production Operations & DR: `DEPLOYMENT_REQUIRED`;
@@ -146,7 +147,7 @@ The 1.0 technical gap reconciliation found no currently known generic implementa
 - [ ] retention/export/backup/restore operating procedures and ownership
 - [ ] realistic customer-specific sizing including network latency, concurrent users and large reports/exports
 - [ ] keyboard-only, screen-reader and DPI accessibility acceptance
-- [ ] active GitHub `master` governance/ruleset evidence
+- [x] active GitHub `master` governance/ruleset evidence retained as ruleset `23590604`
 - [ ] production Authenticode signing and exact-RC publisher/timestamp acceptance
 - [x] generic repository lifecycle acceptance for install/update/repair, rollback safety, manager self-update, uninstall scopes and Windows shell integration
 - [ ] exact production-signed Stable RC lifecycle acceptance with the final release artifacts
@@ -162,12 +163,12 @@ Open items are classified as:
 
 1. repository implementation defect — none currently known;
 2. missing automated test/evidence defect — none currently known for the advertised generic boundary;
-3. documentation/baseline defect — the packaged lifecycle acceptance wording is corrected by the reconciliation package;
-4. repository administration requirement — H1 live GitHub ruleset activation/evidence;
+3. documentation/baseline defect — no known unresolved baseline defect after H1 closure reconciliation;
+4. repository administration requirement — H1 closed on 2026-09-17;
 5. production-RC/deployment/manual/legal acceptance — H3, H4, H5, deployment accounting/operations, sizing and qualified review;
 6. demand-driven future extension — capabilities outside the current 1.0 product promise.
 
-Do not create another generic feature or hardening tranche solely because Depot has not reached 1.0. New repository work should be triggered by concrete failing evidence, a reproducible RC defect or an explicit product-scope change.
+The immediate Track A action is H3: execute the production-signed Stable acceptance-only workflow and retain its evidence. Do not create another generic feature or hardening tranche solely because Depot has not reached 1.0. New repository work should be triggered by concrete failing evidence, a reproducible RC defect or an explicit product-scope change.
 
 ## Demand-driven extensions
 

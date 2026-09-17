@@ -1,10 +1,20 @@
 # Repository Governance
 
+Updated: 2026-09-17
+
 ## Purpose
 
-Depot protects `master` through a small set of stable aggregate GitHub Actions checks instead of binding repository rules to every individual matrix job. The aggregate jobs are the only status checks that the `master` ruleset should require.
+Depot protects `master` through a small set of stable aggregate GitHub Actions checks instead of binding repository rules to every individual matrix job. The aggregate jobs are the only status checks that the `master` ruleset requires.
 
 This keeps the branch policy stable when internal test matrices, runner versions or individual job names change.
+
+## Current live status
+
+H1 repository governance is **PASS**.
+
+GitHub repository ruleset **23590604**, `Depot master governance`, is active and targets exactly `refs/heads/master`. The live GitHub rulesets API confirms the expected pull-request rule, deletion/non-fast-forward protection, zero required approvals, no bypass actor and the five required aggregate status checks.
+
+The source-controlled template remains `.github/rulesets/MasterGovernance.json`. Live enforcement and the versioned template must remain equivalent; source control alone is not sufficient evidence if the GitHub ruleset is later removed or weakened.
 
 ## Required status checks
 
@@ -22,9 +32,7 @@ Each aggregate job uses `if: always()` and explicitly fails unless every depende
 
 `DepotManager packaged E2E` intentionally runs on every pull request targeting `master`. Its previous pull-request path filter was removed because a path-filtered workflow cannot safely be configured as a repository-wide required status check: an unrelated pull request could otherwise wait forever for a status that will never be reported. The push path filter remains in place for `master` pushes.
 
-## `master` ruleset
-
-The source-controlled ruleset template is `.github/rulesets/MasterGovernance.json`.
+## `master` ruleset contract
 
 Target policy:
 
@@ -40,22 +48,24 @@ Target policy:
 - block force pushes/non-fast-forward updates;
 - no permanent bypass actor.
 
+The live ruleset additionally reports `require_extra_approval_for_unattributed_changes=true`. This does not weaken the Depot contract and does not create a bypass path.
+
 The pull-request rule with zero required approvals blocks normal direct pushes to `master` without creating an artificial second-person dependency. Repository administrators can still edit or disable the ruleset in GitHub settings if a genuine governance incident makes recovery necessary; that administrative recovery action is not part of the normal development path.
 
 ## Automated governance contract verification
 
 `scripts/operations/Test-RepositoryGovernance.ps1` is the authoritative repository-side H1 validator.
 
-The default mode validates only source-controlled evidence. It fails when the ruleset template drifts from the target policy or when one of the five workflow aggregate job names no longer matches the required-check contract:
+The default mode validates source-controlled evidence. It fails when the ruleset template drifts from the target policy or when one of the five workflow aggregate job names no longer matches the required-check contract:
 
 ```powershell
 .\scripts\operations\Test-RepositoryGovernance.ps1 `
     -EvidencePath artifacts\operations\RepositoryGovernance.validation.json
 ```
 
-CI executes this mode and retains the generated evidence artifact. This proves that the repository contains a coherent governance contract, but it does **not** prove that GitHub is enforcing it.
+CI executes this mode and retains the generated evidence artifact. This proves that the repository contains a coherent governance contract.
 
-The activation mode additionally queries the live GitHub repository rulesets API, retrieves each active branch ruleset and requires one ruleset to match the complete Depot policy:
+The live mode additionally queries the GitHub repository rulesets API, retrieves each active branch ruleset and requires one ruleset to match the complete Depot policy:
 
 ```powershell
 .\scripts\operations\Test-RepositoryGovernance.ps1 `
@@ -74,24 +84,21 @@ The required status checks validate the exact pull-request head SHA. For the cur
 
 If Depot moves to parallel multi-developer delivery or a merge queue, reassess `strict_required_status_checks_policy` and enable it together with the corresponding merge workflow.
 
-## Activation
+## Activation evidence
 
-Repository rulesets are GitHub repository settings; committing the JSON template does not activate protection by itself.
+The live ruleset was activated on 2026-09-17 and is exposed by GitHub as:
 
-After the governance change is present on the pull request and the five aggregate checks have appeared at least once:
+- ruleset ID: `23590604`;
+- name: `Depot master governance`;
+- target: `branch`;
+- enforcement: `active`;
+- include: `refs/heads/master`;
+- bypass actors: none;
+- current user bypass: `never`.
 
-1. Open **Repository Settings → Rules → Rulesets**.
-2. Import `.github/rulesets/MasterGovernance.json`, or create an equivalent branch ruleset manually.
-3. Verify the target is only `master` and enforcement is **Active**.
-4. Verify the five required status check names exactly match this document.
-5. Verify required approving reviews are `0` and there is no permanent bypass actor.
-6. Verify branch deletion and force pushes are blocked.
-7. Keep **Require branches to be up to date before merging** disabled for the current single-developer workflow.
-8. Run `Test-RepositoryGovernance.ps1 -RequireActiveRuleset` and retain the generated evidence with the active ruleset ID.
+`operations/TrackAAcceptance.example.json` records this live evidence reference and H1 as `PASS`.
 
-After activation, a pull request may merge only when all five aggregate checks are green. A normal direct push to `master`, a force push and branch deletion must be rejected by GitHub.
-
-The source-controlled template and CI evidence alone are never sufficient for H1 production closure. H1 changes from `ADMIN_REQUIRED` only after the live activation validator succeeds against GitHub settings.
+Activation is not a one-time exemption from future validation. If the live ruleset is deleted, disabled, retargeted, given a bypass actor or loses one of the required checks, H1 must return to a blocked state until the live contract is restored.
 
 ## Safe change procedure
 

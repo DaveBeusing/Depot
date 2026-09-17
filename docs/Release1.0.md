@@ -41,7 +41,7 @@ Depot is on the `0.15.x-preview` line with Core database schema **30**, Sales fe
 - [x] immutable Security Event export projection with provider-neutral filtering/snapshot boundaries
 - [x] persisted Security Event export targets with durable at-least-once checkpoint/retry/suspension state
 - [x] bounded regression/quality/accessibility CI controls
-- [x] repository governance template with stable aggregate CI/quality/security/packaged-E2E/provider gates
+- [x] active `master` governance ruleset with stable aggregate CI/quality/security/packaged-E2E/provider gates
 - [x] one authoritative Source-to-Release workflow
 - [x] explicit Preview/Stable GitHub Release channels with tag/version consistency
 - [x] release manifest records versions, Core/feature schema versions, source SHA, channel and final artifact hashes
@@ -134,7 +134,7 @@ Technical controls and the evidence contract are implemented. The exact release 
 - [x] desktop accessibility technical/evidence boundary implemented
 - [x] Track A closure validator rejects incomplete H1–H5 evidence
 - [x] generic packaged lifecycle acceptance covers install/update/repair, rollback safety, manager self-update, uninstall data scopes and Windows shell integration
-- [ ] active GitHub `master` governance/ruleset evidence retained
+- [x] active GitHub `master` governance/ruleset evidence retained as ruleset `23590604`
 - [ ] production backup/security ownership and vulnerability-reporting process accepted for the deployment
 - [ ] production Authenticode publisher identity and timestamp verified with a real Stable release candidate
 - [ ] certificate expiry/rotation and signing-recovery procedure accepted
@@ -164,7 +164,7 @@ The repository conformance boundary for the currently advertised XRechnung and Z
 
 All five Track A repository implementation packages have been addressed: repository governance, release pipeline/channels, production-signing acceptance path, production operations/disaster recovery, and accessibility/desktop production acceptance.
 
-The unified closure procedure is documented in [Track A – Final Acceptance Closure](TrackAAcceptanceClosure.md). The repository template intentionally remains top-level `BLOCKED`: H1 is `ADMIN_REQUIRED`, H2 is repository-level `PASS`, H3 is `PRODUCTION_RC_REQUIRED`, H4 is `DEPLOYMENT_REQUIRED`, and H5 is `MANUAL_REQUIRED`.
+The unified closure procedure is documented in [Track A – Final Acceptance Closure](TrackAAcceptanceClosure.md). The controlled template remains top-level `BLOCKED`: H1 is `PASS`, H2 is repository-level `PASS`, H3 is `PRODUCTION_RC_REQUIRED`, H4 is `DEPLOYMENT_REQUIRED`, and H5 is `MANUAL_REQUIRED`.
 
 Track A becomes production-accepted only after a controlled evidence file for the exact Stable RC passes `Test-TrackAAcceptance.ps1 -RequirePass`. Repository CI validates the contract structure but never promotes missing external/manual evidence to `PASS`.
 
@@ -172,7 +172,7 @@ Track A becomes production-accepted only after a controlled evidence file for th
 
 The read-only-first Depot 1.0 gap reconciliation is complete. [Depot 1.0 Release Candidate Readiness](ReleaseCandidateReadiness.md) records the classification and decision boundary.
 
-No currently known category-1 implementation defect or category-2 generic automated-evidence defect remains inside the advertised repository product boundary. The remaining blockers are repository administration, production-RC/deployment/manual/legal acceptance, or demand-driven extensions outside the current 1.0 promise.
+No currently known category-1 implementation defect or category-2 generic automated-evidence defect remains inside the advertised repository product boundary. H1 governance is now closed; remaining blockers are production-RC/deployment/manual/legal acceptance or demand-driven extensions outside the current 1.0 promise.
 
 Do not open another generic feature/hardening package solely because the product has not yet reached 1.0. New repository repair work should be evidence-driven by a reproducible failing gate or RC acceptance finding.
 
