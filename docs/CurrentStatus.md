@@ -6,7 +6,7 @@ Depot is on the `0.15.x-preview` development line. Finance, inventory, purchasin
 
 ## Repository governance
 
-Repository governance exposes five stable aggregate GitHub Actions checks intended for `master` protection:
+Repository governance exposes five stable aggregate GitHub Actions checks required for `master`:
 
 - `CI Required Gate`;
 - `Quality Required Gate`;
@@ -14,11 +14,11 @@ Repository governance exposes five stable aggregate GitHub Actions checks intend
 - `Packaged E2E Required Gate`;
 - `Database Provider Required Gate`.
 
-The source-controlled ruleset template is `.github/rulesets/MasterGovernance.json`. `scripts/operations/Test-RepositoryGovernance.ps1` now validates the complete template contract and verifies that all five aggregate workflow job names remain present. CI retains this repository-side governance evidence on every change.
+The source-controlled ruleset template is `.github/rulesets/MasterGovernance.json`. `scripts/operations/Test-RepositoryGovernance.ps1` validates the complete template contract and verifies that all five aggregate workflow job names remain present.
 
-The same validator provides a fail-closed `-RequireActiveRuleset` mode that queries the live GitHub rulesets API and records the matching active ruleset ID. This is the authoritative H1 activation evidence path.
+**H1 repository governance is now PASS.** GitHub ruleset `23590604` (`Depot master governance`) is active, targets exactly `refs/heads/master`, requires pull-request delivery and the five aggregate checks, blocks deletion/non-fast-forward updates and exposes no bypass actor. `operations/TrackAAcceptance.example.json` records the live ruleset evidence reference and ruleset ID.
 
-**Administrative H1 closure is still required.** `master` is not currently protected and the repository rulesets API currently exposes no active ruleset enforcing the source-controlled template. H1 remains `ADMIN_REQUIRED` until the live GitHub ruleset is activated and `Test-RepositoryGovernance.ps1 -RequireActiveRuleset` succeeds against the real repository settings.
+Future live-ruleset drift reopens H1; a source-controlled template alone is not sufficient if GitHub enforcement is removed or weakened.
 
 See [Repository Governance](RepositoryGovernance.md) and [Track A – Final Acceptance Closure](TrackAAcceptanceClosure.md).
 
@@ -28,15 +28,17 @@ See [Repository Governance](RepositoryGovernance.md) and [Track A – Final Acce
 
 Preview and Stable channels remain distinct. Preview may remain unsigned. Stable requires the production signing acceptance path to report `PASS` before publication.
 
-Track A repository implementation is complete, but production closure intentionally remains evidence-gated:
+Track A repository implementation is complete, and H1/H2 are now closed:
 
-- H1 Repository Governance: `ADMIN_REQUIRED`;
+- H1 Repository Governance: `PASS`;
 - H2 Release Pipeline & Channels: `PASS` at the repository implementation boundary;
 - H3 Production Signing: `PRODUCTION_RC_REQUIRED`;
 - H4 Production Operations & DR: `DEPLOYMENT_REQUIRED`;
 - H5 Accessibility & Desktop Acceptance: `MANUAL_REQUIRED`.
 
-Repository CI validates the closure contracts but does not manufacture missing production evidence. See [Track A – Final Acceptance Closure](TrackAAcceptanceClosure.md), [Release Pipeline](ReleasePipeline.md), [Production Signing Acceptance](ProductionSigningAcceptance.md), [Production Operations & Disaster Recovery](ProductionOperationsDisasterRecovery.md) and [Accessibility & Desktop Production Acceptance](AccessibilityProductionAcceptance.md).
+AP-08 verified the Stable acceptance-only path. `scripts/release.ps1 -Channel Stable -AcceptanceOnly` dispatches the authoritative workflow with `publish_release=false`; the production-signing checks and packaged Stable-RC E2E still run, while the GitHub Release publication job is not eligible. The GitHub Actions API currently exposes no `workflow_dispatch` run, so H3 correctly remains `PRODUCTION_RC_REQUIRED` and production signing credentials are not presumed to exist.
+
+Repository CI validates closure contracts but does not manufacture missing production evidence. See [Track A – Final Acceptance Closure](TrackAAcceptanceClosure.md), [Release Pipeline](ReleasePipeline.md), [Production Signing Acceptance](ProductionSigningAcceptance.md), [Production Operations & Disaster Recovery](ProductionOperationsDisasterRecovery.md) and [Accessibility & Desktop Production Acceptance](AccessibilityProductionAcceptance.md).
 
 ## Database provider production status
 
@@ -87,7 +89,9 @@ AP-01 identified two evidence blockers after F5B: a transient Windows executable
 
 AP-04 then closed the remaining DepotManager shipped-artifact evidence gap: PR #53 adds real GitHub-hosted Windows integration acceptance for the current-user uninstall registration, Start menu and desktop shortcuts, `InstallationInspector`, repair behavior and idempotent cleanup while refusing mutation on non-clean/non-hosted profiles.
 
-The replacement path continues to retry only bounded `IOException` / `UnauthorizedAccessException` failures caused by short-lived Windows locks. Persistent locks remain fail-closed; the original executable is preserved and the staged `.new` artifact is cleaned.
+AP-06 completed the 1.0 technical reconciliation and found no currently known generic implementation defect or generic automated-evidence defect inside the advertised repository boundary.
+
+AP-07 was completed administratively by activating ruleset `23590604`. AP-08 reconciles that live H1 closure into the controlled acceptance baseline and confirms that the next remaining Track A gate is the real production-signed Stable RC.
 
 ## Versions
 
@@ -110,6 +114,8 @@ Repository build/test/security/provider/conformance evidence proves the implemen
 
 ## Next steps
 
-The repository-side H1 governance contract is now machine-verifiable. The remaining H1 action is administrative activation of the source-controlled ruleset in GitHub followed by retained live-ruleset evidence.
+H1 and H2 are closed. The next Track A acceptance action is H3: execute `scripts/release.ps1 -Channel Stable -AcceptanceOnly` from clean current `master` after the real production signing secrets and publisher-subject variable are configured in GitHub.
 
-After H1 activation, the remaining Track A production closure work is external/evidence-driven: H3 production-signed Stable RC acceptance, H4 deployment disaster-recovery acceptance and H5 exact-RC manual desktop accessibility acceptance. Product/legal/deployment items remain separately tracked in [Release 1.0](Release1.0.md) and the [Roadmap](Roadmap.md).
+A successful H3 run must retain `ProductionSigningAcceptance.json`, `ReleaseEvidence.json`, manifest/hashes and Stable RC test evidence. Until that run exists and passes, H3 remains `PRODUCTION_RC_REQUIRED`.
+
+After H3, the remaining Track A closure work is H4 deployment disaster-recovery acceptance and H5 exact-RC manual desktop accessibility acceptance. Product/legal/deployment items remain separately tracked in [Release 1.0](Release1.0.md) and the [Roadmap](Roadmap.md).

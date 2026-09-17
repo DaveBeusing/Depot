@@ -1,14 +1,16 @@
 # Production Signing Acceptance
 
-Updated: 2026-09-16
+Updated: 2026-09-17
 
 ## Current status
 
-**Production acceptance: BLOCKED**
+**Production acceptance: `PRODUCTION_RC_REQUIRED`**
 
-The repository now contains the technical production-signing acceptance path, publisher-continuity enforcement and release-candidate evidence model. A production signing acceptance must not be reported as PASS until a Stable acceptance-only run on current `master` completes with the real production code-signing identity.
+The repository contains the complete technical production-signing acceptance path, publisher-continuity enforcement and release-candidate evidence model. H1 repository governance is now closed with active ruleset `23590604`, so production-signing acceptance can proceed from protected `master`.
 
-No retained successful production-signed RC acceptance evidence is recorded in the repository at this point. Test or ephemeral certificates do not satisfy this gate.
+A production signing acceptance must not be reported as `PASS` until a Stable acceptance-only run on current `master` completes with the real production code-signing identity. As of the 2026-09-17 AP-08 readiness check, the repository Actions API exposes no `workflow_dispatch` run; there is therefore no retained successful production-signed RC acceptance evidence yet.
+
+Test or ephemeral certificates do not satisfy this gate.
 
 ## Required production configuration
 
@@ -18,7 +20,7 @@ The authoritative release workflow requires all of the following for Stable:
 - GitHub secret `DEPOT_SIGNING_PASSWORD`;
 - GitHub Actions variable `DEPOT_SIGNING_PUBLISHER_SUBJECT` containing the exact `SignerCertificate.Subject` expected for the production publisher.
 
-The private key must never be committed to the repository.
+The private key must never be committed to the repository. Repository source and connector-visible metadata cannot prove that these secret values are configured; only the Stable workflow preflight can do so safely.
 
 Before Stable packaging proceeds, the workflow verifies that the PFX:
 
@@ -35,30 +37,37 @@ Run from a clean local `master` that exactly matches `origin/master`:
 .\scripts\release.ps1 -Channel Stable -AcceptanceOnly
 ```
 
-This dispatches the same authoritative release pipeline used for Stable publication, but sets `publish_release=false`.
+The script dispatches the authoritative `release-integrity.yml` workflow with:
 
-The candidate is therefore built from current `master`, tested, packaged as Stable, signed and timestamped exactly through the production release path without creating a Git tag or GitHub Release.
+```text
+channel=Stable
+publish_release=false
+```
+
+The candidate is therefore built from current protected `master`, tested, packaged as Stable, signed and timestamped exactly through the production release path without creating a Git tag or GitHub Release. The workflow's `publish-release` job is eligible only when `inputs.publish_release` is true.
 
 The acceptance run must complete all of the following:
 
-1. locked restore and Release build with `-warnaserror`;
-2. Depot and DepotManager regression suites;
-3. Stable single-file package generation;
-4. SHA-256 Authenticode signing of both `Depot.exe` and `DepotManager.exe`;
-5. RFC 3161 timestamping through the configured timestamp service;
-6. Windows Authenticode trust verification;
-7. exact production publisher-subject verification;
-8. Code Signing EKU verification;
-9. identical signer-certificate thumbprint for both executables in the same candidate;
-10. timestamp-certificate evidence for both executables;
-11. packaged release-candidate E2E covering clean install/update/repair, fail-closed artifact/manifest validation and historical schema migration;
-12. immutable hashes and source-SHA evidence.
+1. verify the workflow checkout is the current `origin/master`;
+2. validate the production PFX/password/publisher configuration;
+3. locked restore and Release build with `-warnaserror`;
+4. Depot and DepotManager regression suites;
+5. Stable single-file package generation;
+6. SHA-256 Authenticode signing of both `Depot.exe` and `DepotManager.exe`;
+7. RFC 3161 timestamping through the configured timestamp service;
+8. Windows Authenticode trust verification;
+9. exact production publisher-subject verification;
+10. Code Signing EKU verification;
+11. identical signer-certificate thumbprint for both executables in the same candidate;
+12. timestamp-certificate evidence for both executables;
+13. packaged release-candidate E2E covering clean install/update/repair, fail-closed artifact/manifest validation and historical schema migration;
+14. immutable hashes and exact source-SHA evidence.
 
 A Stable GitHub Release is publishable only when the same workflow reports `productionSigningAcceptance=PASS`.
 
 ## Evidence
 
-A successful Stable acceptance candidate produces:
+A successful Stable acceptance candidate produces and retains:
 
 - `ProductionSigningAcceptance.json`;
 - `ReleaseEvidence.json`;

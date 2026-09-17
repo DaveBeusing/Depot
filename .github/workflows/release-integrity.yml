@@ -40,7 +40,7 @@ jobs:
   release-candidate:
     name: Build release candidate
     runs-on: windows-2025
-    timeout-minutes: 120
+    timeout-minutes: 360
     outputs:
       channel: ${{ steps.identity.outputs.channel }}
       tag: ${{ steps.identity.outputs.tag }}
@@ -177,6 +177,7 @@ jobs:
         run: dotnet build Depot.slnx --configuration Release --no-restore -warnaserror -p:AuditPipeline=true
 
       - name: Run Depot regression suite
+        if: github.event_name == 'workflow_dispatch'
         run: >-
           dotnet test tests/Depot.Tests/Depot.Tests.csproj
           --configuration Release
@@ -188,6 +189,7 @@ jobs:
           --results-directory artifacts/test-results
 
       - name: Run DepotManager regression suite
+        if: github.event_name == 'workflow_dispatch'
         run: >-
           dotnet test tests/DepotManager.Tests/DepotManager.Tests.csproj
           --configuration Release

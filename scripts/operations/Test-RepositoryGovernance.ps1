@@ -193,7 +193,7 @@ if ($RequireActiveRuleset) {
                     $liveStatus = 'PASS'
                     break
                 }
-                $candidateProblemSets.Add("ruleset $id: $($candidateProblems -join '; ')")
+                $candidateProblemSets.Add("ruleset ${id}: $($candidateProblems -join '; ')")
             }
 
             if ($liveStatus -ne 'PASS') {

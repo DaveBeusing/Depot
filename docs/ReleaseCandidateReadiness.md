@@ -14,7 +14,7 @@ It deliberately separates repository engineering defects from administrative, pr
 
 The audit found no currently known generic Depot 1.0 implementation defect and no currently known missing automated-test/evidence defect inside the advertised repository product boundary.
 
-The repository remains **not ready for a Stable 1.0 release** because required external evidence is still outstanding. In particular, H1 repository administration, H3 production signing, H4 deployment disaster recovery and H5 exact-RC manual accessibility acceptance remain explicit gates.
+H1 repository governance is now closed through active GitHub ruleset `23590604`; H2 was already repository-level `PASS`. Depot nevertheless remains **not ready for a Stable 1.0 release** because H3 production signing, H4 deployment disaster recovery and H5 exact-RC manual accessibility acceptance remain explicit gates.
 
 Ordinary CI, quality, security, database-provider and packaged-E2E gates remain authoritative. This document does not override a red or incomplete workflow run.
 
@@ -56,22 +56,23 @@ Production signing, real deployment restore and manual desktop accessibility can
 
 ### Category 3 — documentation/baseline defects
 
-One remaining wording defect was identified during this audit: `Release1.0.md` and `Roadmap.md` still represented installer/package upgrade/rollback/uninstall acceptance as wholly open after the packaged lifecycle and Windows-integration evidence had been implemented.
+The earlier lifecycle wording defect was repaired by the technical reconciliation package. AP-08 closes the subsequent H1 status drift created when repository ruleset `23590604` was activated after that audit.
 
-This package corrects that boundary by splitting it into:
+The canonical acceptance documents now distinguish:
 
-- **repository packaged lifecycle acceptance — implemented**; and
-- **exact production-signed Stable RC lifecycle acceptance — still required**.
-
-The distinction matters because the repository has already exercised the production lifecycle code paths, while a final Stable candidate still needs release-specific acceptance with the real publisher identity.
+- **repository packaged lifecycle acceptance — implemented**;
+- **H1 repository governance — PASS with live active ruleset evidence**; and
+- **exact production-signed Stable RC lifecycle acceptance — still required under H3**.
 
 No persisted schema, product behavior or advertised feature scope changes are introduced by this reconciliation.
 
 ### Category 4 — repository administration
 
-H1 remains `ADMIN_REQUIRED` until GitHub contains an active ruleset equivalent to `.github/rulesets/MasterGovernance.json`.
+**Closed.**
 
-The repository-side contract is complete. `scripts/operations/Test-RepositoryGovernance.ps1` validates the versioned policy and can query the live GitHub rulesets API with `-RequireActiveRuleset`. A source-controlled template alone is not H1 production evidence.
+GitHub repository ruleset `23590604`, `Depot master governance`, is active and targets exactly `refs/heads/master`. The live ruleset requires pull-request delivery, the five aggregate required checks, deletion/non-fast-forward protection, zero required approvals and no bypass actor.
+
+The source-controlled contract remains `.github/rulesets/MasterGovernance.json`, and `scripts/operations/Test-RepositoryGovernance.ps1 -RequireActiveRuleset` remains the fail-closed live verification path. If the live ruleset is later removed or weakened, H1 reopens.
 
 ### Category 5 — production-RC, deployment, manual and legal acceptance
 
@@ -111,11 +112,23 @@ The packaged acceptance covers clean installation, administrator provisioning, n
 
 This is sufficient to close the generic repository lifecycle evidence gap. It is **not** a substitute for executing the final Stable candidate with the real production signing identity. That final RC run remains part of H3/release acceptance.
 
-## Release-candidate entry condition
+## H3 Stable RC entry condition
 
-Depot may move from generic repository engineering into controlled 1.0 release-candidate acceptance when the ordinary merge gates for the current source are green. Entering RC acceptance does not mean the release is approved.
+H1 and H2 are now closed. The next Track A acceptance step is the production-signed Stable RC.
 
-A Stable release remains blocked until the applicable administrative/production/manual evidence above is complete and the Track A controlled evidence file passes:
+From clean current `master`:
+
+```powershell
+.\scripts\release.ps1 -Channel Stable -AcceptanceOnly
+```
+
+The request uses `channel=Stable` and `publish_release=false`. Production signing configuration is validated before expensive acceptance work, and a successful run signs/timestamps both executables, validates the exact publisher identity, runs the production-signed packaged RC acceptance and retains immutable evidence without publishing a GitHub Release.
+
+As of the AP-08 readiness check on 2026-09-17, the GitHub Actions API exposes no `workflow_dispatch` run. Therefore H3 remains `PRODUCTION_RC_REQUIRED`; no production signing credential or publisher identity is inferred from source code alone.
+
+## Final Track A closure
+
+A Stable release remains blocked until the remaining production/manual evidence is complete and the Track A controlled evidence file passes:
 
 ```powershell
 .\scripts\operations\Test-TrackAAcceptance.ps1 `
@@ -124,7 +137,7 @@ A Stable release remains blocked until the applicable administrative/production/
     -EvidencePath <track-a-validation.json>
 ```
 
-H1 live governance evidence is obtained separately with:
+H1 live governance can be revalidated at any time with:
 
 ```powershell
 .\scripts\operations\Test-RepositoryGovernance.ps1 `
@@ -139,8 +152,9 @@ Do not open another generic feature or hardening package solely because Depot is
 
 The next work should follow actual evidence:
 
-- if an ordinary gate or RC acceptance run exposes a reproducible repository defect, open a focused repair package;
-- otherwise complete H1/H3/H4/H5 and the applicable deployment/legal acceptance outside the generic product-code backlog;
+- execute H3 production-signed Stable RC acceptance;
+- if that run exposes a reproducible repository defect, open a focused repair package;
+- otherwise continue to H4 deployment DR and H5 manual exact-RC accessibility acceptance;
 - keep demand-driven extensions outside 1.0 until their product promise is explicitly changed.
 
 `docs/Release1.0.md` remains the release checklist, `docs/TrackAAcceptanceClosure.md` remains the H1–H5 closure contract, and this document is the authoritative result of the 1.0 technical gap reconciliation.
