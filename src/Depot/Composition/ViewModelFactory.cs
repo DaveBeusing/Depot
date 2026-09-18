@@ -35,6 +35,7 @@ internal sealed class ViewModelFactory
 			_services.Items,
 			_services.Stock,
 			_services.Dashboard,
+			_services.MyWork,
 			_services.Movements,
 			_services.Reports,
 			_services.AccountsReceivable,

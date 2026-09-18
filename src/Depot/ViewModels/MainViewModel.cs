@@ -65,6 +65,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		ItemService itemService,
 		StockService stockService,
 		DashboardService dashboardService,
+		MyWorkService myWorkService,
 		MovementService movementService,
 		ReportService reportService,
 		FinanceAccountsReceivableService financeReceivablesService,
@@ -127,7 +128,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 
 		var salesWorkspace = new SalesViewModel(salesServices.Customers, salesServices.Orders, salesServices.Shipments, salesServices.Invoices, salesServices.Items, salesServices.Pricing, salesServices.Authorization, fileDialogService, salesServices.Documents);
 
-		_dashboard = new(() => new DashboardViewModel(dashboardService));
+		_dashboard = new(() => new DashboardViewModel(dashboardService, myWorkService));
 		_inventory = new(() => new InventoryViewModel(stockService));
 		_items = new(() => new ItemsViewModel(itemService, manufacturerService, categoryService, unitOfMeasureService, packagingService, salesServices.ItemCosts));
 		_movements = new(() => new MovementsViewModel(movementService, reasonCodeService, fileDialogService, MarkInventoryPagesStale));
@@ -235,6 +236,64 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 	{
 		var (moduleName, pageName, workspace) = item.Kind switch { SalesQuickOpenKind.Customer => ("Sales", "Customers", CustomersViewModel.Workspace), SalesQuickOpenKind.SalesOrder => ("Sales", "Sales Orders", SalesOrdersViewModel.Workspace), SalesQuickOpenKind.Shipment or SalesQuickOpenKind.CustomerReturn => ("Warehouse", "Shipping", ShippingViewModel.Workspace), SalesQuickOpenKind.Invoice or SalesQuickOpenKind.CreditNote => ("Sales", "Invoices", SalesInvoicesViewModel.Workspace), _ => ("Sales", "Overview", SalesOverviewViewModel.Workspace) };
 		await NavigateToModulePageAsync(moduleName, pageName, cancellationToken); await workspace.OpenQuickItemAsync(item, cancellationToken);
+	}
+
+	public async Task OpenMyWorkItemAsync(MyWorkItem item, CancellationToken cancellationToken = default)
+	{
+		if (!ConfirmDiscardChanges(CurrentViewModel)) return;
+		var route = new ShellRoute(item.RouteId);
+		switch (item.Kind)
+		{
+			case MyWorkItemKind.PurchaseOrder:
+				await this.NavigateToRouteAsync(route, cancellationToken);
+				await ProcurementViewModel.OpenOrderAsync(item.EntityId, cancellationToken);
+				break;
+			case MyWorkItemKind.PurchaseOrderApproval:
+				await this.NavigateToRouteAsync(route, cancellationToken);
+				await PurchaseOrderApprovalsViewModel.OpenApprovalAsync(item.EntityId, cancellationToken);
+				break;
+			case MyWorkItemKind.SalesOrder:
+			{
+				var quickItem = new SalesQuickOpenItem(SalesQuickOpenKind.SalesOrder, item.EntityId, item.DisplayNumber, item.Context ?? string.Empty);
+				if (route == ShellRoutes.Warehouse.Shipping)
+				{
+					await this.NavigateToRouteAsync(route, cancellationToken);
+					await ShippingViewModel.Workspace.OpenQuickItemAsync(quickItem, cancellationToken);
+				}
+				else await OpenSalesQuickItemAsync(quickItem, cancellationToken);
+				break;
+			}
+			case MyWorkItemKind.SalesOrderApproval:
+				await this.NavigateToRouteAsync(route, cancellationToken);
+				await SalesApprovalsViewModel.Workspace.OpenQuickItemAsync(new SalesQuickOpenItem(SalesQuickOpenKind.SalesOrder, item.EntityId, item.DisplayNumber, item.Context ?? string.Empty), cancellationToken);
+				break;
+			case MyWorkItemKind.Shipment:
+				await OpenSalesQuickItemAsync(new SalesQuickOpenItem(SalesQuickOpenKind.Shipment, item.EntityId, item.DisplayNumber, item.Context ?? string.Empty), cancellationToken);
+				break;
+			case MyWorkItemKind.InventoryCount:
+				await this.NavigateToRouteAsync(route, cancellationToken);
+				await InventoryCountsViewModel.OpenCountAsync(item.EntityId, cancellationToken);
+				break;
+			case MyWorkItemKind.ReceivableOpenItem:
+				await this.NavigateToRouteAsync(route, cancellationToken);
+				await FinanceReceivablesViewModel.OpenOpenItemAsync(item.EntityId, cancellationToken);
+				break;
+			case MyWorkItemKind.SupplierDocument:
+				await this.NavigateToRouteAsync(route, cancellationToken);
+				await FinancePayablesViewModel.OpenDocumentAsync(item.EntityId, cancellationToken);
+				break;
+			case MyWorkItemKind.BankStatementLine:
+				await this.NavigateToRouteAsync(route, cancellationToken);
+				FinanceBankingViewModel.SelectedStatementLine = FinanceBankingViewModel.UnreconciledLines.FirstOrDefault(line => line.Id == item.EntityId);
+				break;
+			case MyWorkItemKind.PaymentRun:
+				await this.NavigateToRouteAsync(route, cancellationToken);
+				FinanceBankingViewModel.SelectedPaymentRun = FinanceBankingViewModel.PaymentRuns.FirstOrDefault(run => run.Id == item.EntityId);
+				break;
+			default:
+				await this.NavigateToRouteAsync(route, cancellationToken);
+				break;
+		}
 	}
 
 	private void BuildNavigation()

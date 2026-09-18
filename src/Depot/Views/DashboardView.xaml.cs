@@ -18,7 +18,10 @@ public partial class DashboardView : UserControl
 	{
 		InitializeComponent();
 		if (Content is Grid root && root.Children.OfType<ScrollViewer>().FirstOrDefault()?.Content is StackPanel content)
+		{
 			content.Children.Insert(0, new WorkspaceProductivityPanel());
+			content.Children.Insert(0, new MyWorkPanel());
+		}
 		Loaded += OnLoaded;
 		Unloaded += OnUnloaded;
 	}
