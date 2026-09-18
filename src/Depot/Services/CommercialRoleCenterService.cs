@@ -24,6 +24,7 @@ public sealed class CommercialRoleCenterService
 	private readonly StockTransferService _stockTransfers;
 	private readonly MaterialIssueService _materialIssues;
 	private readonly MaterialReturnService _materialReturns;
+	private readonly FinanceAccountsReceivableService _receivables;
 	private readonly FinanceAccountsPayableService _payables;
 	private readonly FinanceBankingService _banking;
 
@@ -42,6 +43,7 @@ public sealed class CommercialRoleCenterService
 		StockTransferService stockTransfers,
 		MaterialIssueService materialIssues,
 		MaterialReturnService materialReturns,
+		FinanceAccountsReceivableService receivables,
 		FinanceAccountsPayableService payables,
 		FinanceBankingService banking)
 	{
@@ -59,6 +61,7 @@ public sealed class CommercialRoleCenterService
 		_stockTransfers = stockTransfers;
 		_materialIssues = materialIssues;
 		_materialReturns = materialReturns;
+		_receivables = receivables;
 		_payables = payables;
 		_banking = banking;
 	}
@@ -72,6 +75,8 @@ public sealed class CommercialRoleCenterService
 		CommercialRoleCenterKind.ReceivingWorkspace => _authorization.HasAnyPermission(ApplicationPermission.GoodsReceiptsCreate, ApplicationPermission.GoodsReceiptsPost, ApplicationPermission.SupplierReturnsCreate),
 		CommercialRoleCenterKind.FulfillmentWorkspace => _authorization.HasAnyPermission(ApplicationPermission.ShipmentsCreate, ApplicationPermission.ShipmentsEdit, ApplicationPermission.ShipmentsPost, ApplicationPermission.CustomerReturnsCreate, ApplicationPermission.CustomerReturnsPost),
 		CommercialRoleCenterKind.InventoryControlWorkspace => _authorization.HasAnyPermission(ApplicationPermission.InventoryCountsCreate, ApplicationPermission.InventoryCountsEdit, ApplicationPermission.InventoryCountsPost, ApplicationPermission.StockTransfersCreate, ApplicationPermission.StockTransfersEdit, ApplicationPermission.StockTransfersPost, ApplicationPermission.MaterialIssuesCreate, ApplicationPermission.MaterialIssuesPost, ApplicationPermission.MaterialReturnsCreate, ApplicationPermission.MaterialReturnsPost),
+		CommercialRoleCenterKind.ReceivablesWorkspace => _authorization.HasPermission(ApplicationPermission.FinanceReceivablesView),
+		CommercialRoleCenterKind.PayablesWorkspace => _authorization.HasPermission(ApplicationPermission.FinancePayablesView),
 		_ => false
 	};
 
@@ -87,6 +92,8 @@ public sealed class CommercialRoleCenterService
 			CommercialRoleCenterKind.ReceivingWorkspace => GetReceivingWorkspaceAsync(cancellationToken),
 			CommercialRoleCenterKind.FulfillmentWorkspace => GetFulfillmentWorkspaceAsync(cancellationToken),
 			CommercialRoleCenterKind.InventoryControlWorkspace => GetInventoryControlWorkspaceAsync(cancellationToken),
+			CommercialRoleCenterKind.ReceivablesWorkspace => GetReceivablesWorkspaceAsync(cancellationToken),
+			CommercialRoleCenterKind.PayablesWorkspace => GetPayablesWorkspaceAsync(cancellationToken),
 			_ => throw new ArgumentOutOfRangeException(nameof(kind))
 		};
 	}
@@ -265,6 +272,125 @@ public sealed class CommercialRoleCenterService
 			[]);
 	}
 
+
+
+	private async Task<CommercialRoleCenterSnapshot> GetReceivablesWorkspaceAsync(CancellationToken cancellationToken)
+	{
+		var today = DateOnly.FromDateTime(DateTime.Today);
+		var openItemsTask = _receivables.SearchOpenItemsAsync(null, false, 1, MaximumItemsPerSection, cancellationToken);
+		var recentPaymentsTask = _receivables.ListRecentPaymentsAsync(SourceItemLimit, cancellationToken);
+		await Task.WhenAll(openItemsTask, recentPaymentsTask);
+
+		var page = await openItemsTask;
+		var openItems = page.Items;
+		var invoices = openItems.Where(value => value.Kind == FinanceReceivableOpenItemKind.Invoice).ToArray();
+		var overdue = invoices
+			.Where(value => value.DueDate < today)
+			.OrderByDescending(value => today.DayNumber - value.DueDate.DayNumber)
+			.ThenBy(value => value.DueDate)
+			.Select(value => ReceivableItem(value, today))
+			.ToArray();
+		var dueToday = invoices
+			.Where(value => value.DueDate == today)
+			.OrderByDescending(value => value.RemainingAmount)
+			.Select(value => ReceivableItem(value, today))
+			.ToArray();
+		var unapplied = openItems
+			.Where(value => value.Kind is FinanceReceivableOpenItemKind.Payment or FinanceReceivableOpenItemKind.CreditNote)
+			.OrderBy(value => value.DocumentDate)
+			.ThenBy(value => value.Id)
+			.Select(value => ReceivableItem(value, today))
+			.ToArray();
+		var dunning = _receivables.CanViewDunning ? overdue : Array.Empty<CommercialRoleItem>();
+		var recentReceipts = (await recentPaymentsTask).Select(value => ReceivablePaymentItem(value, today)).ToArray();
+
+		var quickActions = new List<CommercialRoleQuickAction>
+		{
+			new("Open Receivables", "navigate", "finance.receivables"),
+			new("Customer Statements", "navigate", "finance.receivables")
+		};
+		if (_receivables.CanViewDunning) quickActions.Add(new("Dunning", "navigate", "finance.receivables"));
+
+		return Snapshot(
+			CommercialRoleCenterKind.ReceivablesWorkspace,
+			"Receivables Workspace",
+			"Prioritized customer open items, overdue balances, allocations, receipts and dunning handoffs using the existing Accounts Receivable subledger.",
+			[
+				Section("Invoices / Open Items", "No customer open items require attention.", openItems.OrderBy(value => value.DueDate).ThenBy(value => value.Id).Select(value => ReceivableItem(value, today))),
+				Section("Overdue Receivables", "No customer invoices are overdue.", overdue),
+				Section("Due Today", "No customer invoices are due today.", dueToday),
+				Section("Unapplied / Partially Applied Customer Payments", "No unapplied customer payments or credits require allocation.", unapplied),
+				Section("Dunning Candidates", _receivables.CanViewDunning ? "No overdue receivables currently require dunning review." : "Dunning information is not available to this account.", dunning),
+				Section("Recently Posted / Reversed Receipts", "No recent customer receipts are available.", recentReceipts)
+			],
+			[new CommercialRoleKpi("Open items", page.TotalCount.ToString("N0"), "Current Accounts Receivable open-item population", "finance.receivables")],
+			quickActions,
+			[]);
+	}
+
+	private async Task<CommercialRoleCenterSnapshot> GetPayablesWorkspaceAsync(CancellationToken cancellationToken)
+	{
+		Task<PageResult<FinanceSupplierDocument>> Query(FinancePayableDocumentStatus status) =>
+			_payables.SearchDocumentsAsync(null, status, 1, SourceItemLimit, cancellationToken);
+
+		var today = DateOnly.FromDateTime(DateTime.Today);
+		var draftsTask = Query(FinancePayableDocumentStatus.Draft);
+		var submittedTask = Query(FinancePayableDocumentStatus.PendingApproval);
+		var approvedTask = Query(FinancePayableDocumentStatus.Approved);
+		var openItemsTask = _payables.SearchOpenItemsAsync(null, false, 1, MaximumItemsPerSection, cancellationToken);
+		await Task.WhenAll(draftsTask, submittedTask, approvedTask, openItemsTask);
+
+		var drafts = (await draftsTask).Items;
+		var submitted = (await submittedTask).Items;
+		var approved = (await approvedTask).Items;
+		var detailIds = drafts.Concat(submitted).Concat(approved).Select(value => value.Id).Distinct().Take(MaximumItemsPerSection).ToArray();
+		var detailTasks = detailIds.Select(id => _payables.GetDocumentAsync(id, cancellationToken)).ToArray();
+		var details = (await Task.WhenAll(detailTasks)).Where(value => value is not null).Select(value => value!).ToArray();
+		var matchResults = details
+			.Where(value => value.Lines.Any(line => line.MatchStatus != FinancePayableMatchStatus.NotRequired))
+			.OrderByDescending(value => value.HasMatchExceptions)
+			.ThenBy(value => value.DueDate)
+			.Select(value => SupplierDocumentItem(value, today))
+			.ToArray();
+		var matchExceptions = details
+			.Where(value => value.HasMatchExceptions && !value.MatchExceptionApproved)
+			.OrderBy(value => value.DueDate)
+			.Select(value => SupplierDocumentItem(
+				value,
+				today,
+				_payables.CanApproveDocuments && _payables.CanApproveMatchExceptions && _payables.CanDecide(value.CreatedByUserId)
+					? "Review / resolve exception"
+					: "Await authorized review"))
+			.ToArray();
+		var openItems = (await openItemsTask).Items;
+		var paymentReady = openItems
+			.Where(value => value.Kind == FinancePayableOpenItemKind.Invoice && !value.IsVoided && value.RemainingAmount > 0m)
+			.OrderBy(value => value.DueDate)
+			.ThenBy(value => value.Id)
+			.Select(value => PayableOpenItemItem(value, today, "Treasury handoff"))
+			.ToArray();
+
+		var quickActions = new List<CommercialRoleQuickAction>();
+		if (_payables.CanCreateDocuments) quickActions.Add(new("New Supplier Invoice", "ap.new-invoice", "finance.payables"));
+		quickActions.Add(new("Open Payables", "navigate", "finance.payables"));
+
+		return Snapshot(
+			CommercialRoleCenterKind.PayablesWorkspace,
+			"Payables Workspace",
+			"Supplier invoice processing, three-way match visibility, open items and read-only Treasury handoff without granting approval or payment authority.",
+			[
+				Section("Supplier Invoices in Draft", "No supplier invoice drafts require processing.", drafts.Where(value => value.Kind == FinancePayableDocumentKind.Invoice).Select(value => SupplierDocumentItem(value, today))),
+				Section("Submitted / Waiting for Approval", "No supplier documents are waiting for approval.", submitted.Select(value => SupplierDocumentItem(value, today))),
+				Section("PO / GR / Invoice Match Results", "No evaluated three-way match results require attention.", matchResults),
+				Section("Match Exceptions", "No unresolved match exceptions require attention.", matchExceptions),
+				Section("Approved but Unposted", "No approved supplier documents are waiting to be posted.", approved.Select(value => SupplierDocumentItem(value, today))),
+				Section("Open Supplier Items", "No supplier open items require attention.", openItems.OrderBy(value => value.DueDate).ThenBy(value => value.Id).Select(value => PayableOpenItemItem(value, today))),
+				Section("Payment-ready Items", "No supplier invoice open items are ready for Treasury handoff.", paymentReady)
+			],
+			[],
+			quickActions,
+			[]);
+	}
 
 	private async Task<CommercialRoleCenterSnapshot> GetReceivingWorkspaceAsync(CancellationToken cancellationToken)
 	{
@@ -533,6 +659,134 @@ public sealed class CommercialRoleCenterService
 
 	private static CommercialRoleItem SupplierReturnItem(SupplierReturnOverviewItem value) =>
 		new(CommercialRoleItemKind.SupplierReturn, value.Id, value.Version, value.ReturnNumber, "Supplier Return", value.SupplierName, value.StatusDisplayName, value.LineCount, value.ReturnDate, null, null, "purchasing.supplier-returns");
+
+
+	private CommercialRoleItem ReceivableItem(FinanceReceivableOpenItem value, DateOnly today)
+	{
+		var allocationState = value.Kind switch
+		{
+			FinanceReceivableOpenItemKind.Payment or FinanceReceivableOpenItemKind.CreditNote when value.SettlementStatus == FinanceReceivableSettlementStatus.Open => "Unapplied",
+			FinanceReceivableOpenItemKind.Payment or FinanceReceivableOpenItemKind.CreditNote when value.SettlementStatus == FinanceReceivableSettlementStatus.PartiallySettled => "Partially applied",
+			_ => value.SettlementStatus.ToString()
+		};
+		var nextAction = value.Kind switch
+		{
+			FinanceReceivableOpenItemKind.Invoice when value.DueDate < today && _receivables.CanManageDunning => "Review / dunning",
+			FinanceReceivableOpenItemKind.Payment or FinanceReceivableOpenItemKind.CreditNote when _receivables.CanPostPayments => "Allocate",
+			_ => "Open item"
+		};
+		var title = value.Kind switch
+		{
+			FinanceReceivableOpenItemKind.Invoice => "Customer Invoice",
+			FinanceReceivableOpenItemKind.CreditNote => "Customer Credit",
+			_ => "Customer Payment"
+		};
+		return new CommercialRoleItem(
+			CommercialRoleItemKind.ReceivableOpenItem,
+			value.Id,
+			value.Version,
+			value.SourceReference ?? value.SourceId,
+			title,
+			value.CustomerName,
+			value.SettlementStatus.ToString(),
+			value.RemainingAmount,
+			value.CreatedAtUtc,
+			value.DueDate.ToDateTime(TimeOnly.MinValue),
+			AgeFromDueDate(today, value.DueDate),
+			"finance.receivables",
+			value.CreatedByUserId,
+			Currency: value.Currency.Value,
+			StateDetail: allocationState,
+			NextAction: nextAction);
+	}
+
+	private static CommercialRoleItem ReceivablePaymentItem(FinanceReceivablePayment value, DateOnly today) =>
+		new(
+			CommercialRoleItemKind.ReceivableOpenItem,
+			value.OpenItemId,
+			value.Version,
+			value.Reference ?? $"RCPT-{value.Id:N0}",
+			"Customer Receipt",
+			$"Customer #{value.CustomerId:N0}",
+			value.IsReversed ? "Reversed" : "Posted",
+			value.Amount,
+			value.ReversedAtUtc ?? value.CreatedAtUtc,
+			value.PaymentDate.ToDateTime(TimeOnly.MinValue),
+			AgeFromDueDate(today, value.PaymentDate),
+			"finance.receivables",
+			value.CreatedByUserId,
+			Currency: value.Currency.Value,
+			StateDetail: value.IsReversed ? "Receipt reversed" : "Receipt posted",
+			NextAction: "Open item");
+
+	private CommercialRoleItem SupplierDocumentItem(FinanceSupplierDocument value, DateOnly today, string? nextAction = null)
+	{
+		var action = nextAction ?? value.Status switch
+		{
+			FinancePayableDocumentStatus.Draft when _payables.CanSubmitDocuments => "Edit / submit",
+			FinancePayableDocumentStatus.PendingApproval when _payables.CanApproveDocuments && _payables.CanDecide(value.CreatedByUserId) => "Review",
+			FinancePayableDocumentStatus.PendingApproval => "Await approval",
+			FinancePayableDocumentStatus.Approved when _payables.CanPostDocuments => "Post",
+			FinancePayableDocumentStatus.Approved => "Await posting",
+			_ => "Open"
+		};
+		return new CommercialRoleItem(
+			CommercialRoleItemKind.SupplierInvoice,
+			value.Id,
+			value.Version,
+			value.SupplierDocumentNumber,
+			value.Kind == FinancePayableDocumentKind.Invoice ? "Supplier Invoice" : "Supplier Credit Note",
+			value.SupplierName,
+			value.Status.ToString(),
+			value.GrossAmount,
+			value.SubmittedAtUtc ?? value.CreatedAtUtc,
+			value.DueDate.ToDateTime(TimeOnly.MinValue),
+			AgeFromDueDate(today, value.DueDate),
+			"finance.payables",
+			value.CreatedByUserId,
+			Requester: UserLabel(value.CreatedByUserId),
+			Currency: value.Currency.Value,
+			StateDetail: MatchState(value),
+			NextAction: action);
+	}
+
+	private static CommercialRoleItem PayableOpenItemItem(FinancePayableOpenItem value, DateOnly today, string? nextAction = null)
+	{
+		var title = value.Kind switch
+		{
+			FinancePayableOpenItemKind.Invoice => "Supplier Invoice",
+			FinancePayableOpenItemKind.CreditNote => "Supplier Credit",
+			_ => "Supplier Payment"
+		};
+		return new CommercialRoleItem(
+			CommercialRoleItemKind.PayableOpenItem,
+			value.Id,
+			value.Version,
+			value.SourceReference ?? value.SourceId,
+			title,
+			value.SupplierName,
+			value.SettlementStatus.ToString(),
+			value.RemainingAmount,
+			value.CreatedAtUtc,
+			value.DueDate.ToDateTime(TimeOnly.MinValue),
+			AgeFromDueDate(today, value.DueDate),
+			"finance.payables",
+			value.CreatedByUserId,
+			Currency: value.Currency.Value,
+			StateDetail: value.SettlementStatus.ToString(),
+			NextAction: nextAction ?? "Open item");
+	}
+
+	private static string MatchState(FinanceSupplierDocument value)
+	{
+		if (value.Lines.Count == 0) return "Not evaluated";
+		if (value.HasMatchExceptions) return value.MatchExceptionApproved ? "Exception approved" : "Exception";
+		if (value.Lines.Any(line => line.MatchStatus == FinancePayableMatchStatus.Matched)) return "Matched";
+		return "Not required";
+	}
+
+	private static int? AgeFromDueDate(DateOnly today, DateOnly dueDate) =>
+		dueDate <= today ? today.DayNumber - dueDate.DayNumber : null;
 
 	private static int DaysSince(DateTime nowUtc, DateTime timestampUtc) => Math.Max(0, (int)(nowUtc - timestampUtc).TotalDays);
 	private static string UserLabel(long? userId) => userId is null ? "Unknown" : $"User #{userId.Value:N0}";

@@ -39,6 +39,8 @@ public static class ShellRoutes
 		public static readonly ShellRoute ReceivingWorkspace = new("role-centers.receiving-workspace");
 		public static readonly ShellRoute FulfillmentWorkspace = new("role-centers.fulfillment-workspace");
 		public static readonly ShellRoute InventoryControlWorkspace = new("role-centers.inventory-control-workspace");
+		public static readonly ShellRoute ReceivablesWorkspace = new("role-centers.receivables-workspace");
+		public static readonly ShellRoute PayablesWorkspace = new("role-centers.payables-workspace");
 	}
 
 	public static class Inventory
@@ -76,6 +78,16 @@ public static class ShellRoutes
 		public static readonly ShellRoute Customers = new("sales.customers");
 		public static readonly ShellRoute Orders = new("sales.orders");
 		public static readonly ShellRoute Invoices = new("sales.invoices");
+	}
+
+	public static class Finance
+	{
+		public static readonly ShellRoute Module = new("finance");
+		public static readonly ShellRoute Receivables = new("finance.receivables");
+		public static readonly ShellRoute Payables = new("finance.payables");
+		public static readonly ShellRoute InventoryAccounting = new("finance.inventory-accounting");
+		public static readonly ShellRoute Banking = new("finance.banking");
+		public static readonly ShellRoute Reporting = new("finance.reporting");
 	}
 
 	public static class Approvals

@@ -108,6 +108,7 @@ internal sealed class ServiceComposition
 			StockTransfers,
 			MaterialIssues,
 			MaterialReturns,
+			AccountsReceivable,
 			AccountsPayable,
 			Banking);
 		GlobalSearch = new GlobalSearchService(

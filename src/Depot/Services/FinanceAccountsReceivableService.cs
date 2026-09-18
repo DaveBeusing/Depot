@@ -90,6 +90,12 @@ public sealed class FinanceAccountsReceivableService
 		return _receivables.GetOpenItemAsync(id, cancellationToken);
 	}
 
+	public Task<IReadOnlyList<FinanceReceivablePayment>> ListRecentPaymentsAsync(int count = 20, CancellationToken cancellationToken = default)
+	{
+		_authorization.RequirePermission(ApplicationPermission.FinanceReceivablesView);
+		return _receivables.ListRecentPaymentsAsync(count, cancellationToken);
+	}
+
 	public async Task<IReadOnlyList<FinanceReceivableAgingSummary>> GetAgingAsync(DateOnly asOfDate, CancellationToken cancellationToken = default)
 	{
 		_authorization.RequirePermission(ApplicationPermission.FinanceReceivablesView);

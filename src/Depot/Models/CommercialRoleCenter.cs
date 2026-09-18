@@ -11,7 +11,9 @@ public enum CommercialRoleCenterKind
 	ApprovalInbox = 4,
 	ReceivingWorkspace = 5,
 	FulfillmentWorkspace = 6,
-	InventoryControlWorkspace = 7
+	InventoryControlWorkspace = 7,
+	ReceivablesWorkspace = 8,
+	PayablesWorkspace = 9
 }
 
 public enum CommercialRoleItemKind
@@ -31,7 +33,9 @@ public enum CommercialRoleItemKind
 	InventoryCount = 13,
 	StockTransfer = 14,
 	MaterialIssue = 15,
-	MaterialReturn = 16
+	MaterialReturn = 16,
+	ReceivableOpenItem = 17,
+	PayableOpenItem = 18
 }
 
 public sealed record CommercialRoleItem(
@@ -50,9 +54,14 @@ public sealed record CommercialRoleItem(
 	long? CreatedByUserId = null,
 	bool CanApprove = false,
 	bool CanReject = false,
-	string? Requester = null)
+	string? Requester = null,
+	string? Currency = null,
+	string? StateDetail = null,
+	string? NextAction = null)
 {
 	public string SubmittedDisplay => SubmittedAtUtc?.ToLocalTime().ToString("g") ?? string.Empty;
+	public string DueDisplay => DueAt?.ToString("d") ?? string.Empty;
+	public string AgeDisplay => AgeDays is not null ? $"{AgeDays.Value:N0} d" : string.Empty;
 	public string DueOrAgeDisplay => DueAt is not null ? DueAt.Value.ToString("d") : AgeDays is not null ? $"{AgeDays.Value:N0} d" : string.Empty;
 	public bool HasDecisionActions => CanApprove || CanReject;
 }

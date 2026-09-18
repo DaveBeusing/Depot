@@ -21,6 +21,8 @@ public sealed class CommercialRoleCenterTests
 	[InlineData(ApplicationPermission.GoodsReceiptsPost, CommercialRoleCenterKind.ReceivingWorkspace)]
 	[InlineData(ApplicationPermission.ShipmentsCreate, CommercialRoleCenterKind.FulfillmentWorkspace)]
 	[InlineData(ApplicationPermission.InventoryCountsEdit, CommercialRoleCenterKind.InventoryControlWorkspace)]
+	[InlineData(ApplicationPermission.FinanceReceivablesView, CommercialRoleCenterKind.ReceivablesWorkspace)]
+	[InlineData(ApplicationPermission.FinancePayablesView, CommercialRoleCenterKind.PayablesWorkspace)]
 	public void RoleCenterVisibilityFollowsEffectivePermissions(ApplicationPermission permission, CommercialRoleCenterKind expected)
 	{
 		var service = CreateService(permission);
@@ -78,6 +80,54 @@ public sealed class CommercialRoleCenterTests
 		Assert.Contains(ApplicationPermission.StockTransfersPost, inventory.Permissions);
 		Assert.Contains(ApplicationPermission.MaterialIssuesPost, inventory.Permissions);
 		Assert.Contains(ApplicationPermission.MaterialReturnsPost, inventory.Permissions);
+	}
+
+	[Fact]
+	public void FinancePersonasRemainSeparatedByWorkspaceAndAuthority()
+	{
+		var receivables = SystemRoleCatalog.Definitions.Single(role => role.Code == SystemRoleCatalog.AccountsReceivableCode);
+		var payables = SystemRoleCatalog.Definitions.Single(role => role.Code == SystemRoleCatalog.AccountsPayableCode);
+		var receivablesService = CreateService(receivables.Permissions.ToArray());
+		var payablesService = CreateService(payables.Permissions.ToArray());
+
+		Assert.True(receivablesService.CanAccess(CommercialRoleCenterKind.ReceivablesWorkspace));
+		Assert.False(receivablesService.CanAccess(CommercialRoleCenterKind.PayablesWorkspace));
+		Assert.DoesNotContain(ApplicationPermission.FinancePayablesView, receivables.Permissions);
+		Assert.DoesNotContain(ApplicationPermission.FinanceBankingView, receivables.Permissions);
+
+		Assert.True(payablesService.CanAccess(CommercialRoleCenterKind.PayablesWorkspace));
+		Assert.False(payablesService.CanAccess(CommercialRoleCenterKind.ReceivablesWorkspace));
+		Assert.DoesNotContain(ApplicationPermission.FinanceSupplierInvoicesApprove, payables.Permissions);
+		Assert.DoesNotContain(ApplicationPermission.FinanceSupplierMatchExceptionsApprove, payables.Permissions);
+		Assert.DoesNotContain(ApplicationPermission.FinancePaymentProposalsApprove, payables.Permissions);
+		Assert.DoesNotContain(ApplicationPermission.FinanceBankingView, payables.Permissions);
+	}
+
+	[Fact]
+	public void FinanceRoleItemsExposeOperationalColumns()
+	{
+		var item = new CommercialRoleItem(
+			CommercialRoleItemKind.ReceivableOpenItem,
+			1,
+			2,
+			"INV-1",
+			"Customer Invoice",
+			"Example Customer",
+			"Open",
+			125m,
+			DateTime.UtcNow,
+			DateTime.Today,
+			4,
+			"finance.receivables",
+			Currency: "EUR",
+			StateDetail: "Partially settled",
+			NextAction: "Review / dunning");
+
+		Assert.Equal("EUR", item.Currency);
+		Assert.Equal("Partially settled", item.StateDetail);
+		Assert.Equal("Review / dunning", item.NextAction);
+		Assert.Equal("4 d", item.AgeDisplay);
+		Assert.NotEmpty(item.DueDisplay);
 	}
 
 	[Fact]
@@ -140,6 +190,8 @@ public sealed class CommercialRoleCenterTests
 			null!,
 			null!,
 			null!,
+			null!,
 			null!);
 	}
+
 }
