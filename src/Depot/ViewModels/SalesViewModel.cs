@@ -300,7 +300,7 @@ public sealed class SalesViewModel : BaseViewModel, IDisposable
 			case SalesQuickOpenKind.SalesOrder: Section = SalesSection.SalesOrders; SelectedOrder = await _orders.GetByIdAsync(item.Id, cancellationToken); break;
 			case SalesQuickOpenKind.Shipment: Section = SalesSection.Shipping; SelectedShipment = await _shipments.GetByIdAsync(item.Id, cancellationToken); break;
 			case SalesQuickOpenKind.Invoice: Section = SalesSection.Invoices; SelectedInvoice = await _invoices.GetByIdAsync(item.Id, cancellationToken); break;
-			case SalesQuickOpenKind.CustomerReturn: Section = SalesSection.Shipping; SelectedCustomerReturn = CustomerReturns.FirstOrDefault(value => value.Id == item.Id); break;
+			case SalesQuickOpenKind.CustomerReturn: Section = SalesSection.Shipping; SelectedCustomerReturn = await _shipments.GetCustomerReturnByIdAsync(item.Id, cancellationToken); break;
 			case SalesQuickOpenKind.CreditNote: Section = SalesSection.Invoices; SelectedCreditNote = CreditNotes.FirstOrDefault(value => value.Id == item.Id); break;
 		}
 	}

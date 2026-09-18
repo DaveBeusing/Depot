@@ -49,6 +49,7 @@ public sealed class ShipmentService
 	public bool CanCreateCustomerReturn => _customerReturns.CanCreate;
 	public bool CanPostCustomerReturn => _customerReturns.CanPost;
 	public Task<PageResult<CustomerReturn>> SearchCustomerReturnsAsync(string? searchText, CustomerReturnStatus? status, int pageNumber = 1, int pageSize = 100, CancellationToken token = default) => _customerReturns.SearchAsync(searchText, status, pageNumber, pageSize, token);
+	public Task<CustomerReturn?> GetCustomerReturnByIdAsync(long id, CancellationToken token = default) => _customerReturns.GetByIdAsync(id, token);
 	public Task<CustomerReturn> CreateCustomerReturnAsync(long shipmentId, string reason, CancellationToken token = default) => _customerReturns.CreateFromShipmentAsync(shipmentId, reason, token);
 	public Task<CustomerReturn> PostCustomerReturnAsync(long id, long version, CancellationToken token = default) => _customerReturns.PostAsync(id, version, token);
 	public Task<CustomerReturn> PostCustomerReturnAsync(long id, long version, IReadOnlyDictionary<long, IReadOnlyList<TrackingAllocationInput>> trackingByLineId, CancellationToken token = default) => _customerReturns.PostAsync(id, version, trackingByLineId, token);
