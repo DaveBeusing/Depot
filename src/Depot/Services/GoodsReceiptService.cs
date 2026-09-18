@@ -38,6 +38,13 @@ public sealed class GoodsReceiptService
 		_inventoryAccounting = inventoryAccounting;
 	}
 
+	public Task<IReadOnlyList<GoodsReceipt>> ListRecentAsync(int limit = 50, CancellationToken cancellationToken = default)
+	{
+		_audit.RequirePermission(ApplicationPermission.GoodsReceiptsView);
+		if (limit <= 0) throw new ArgumentOutOfRangeException(nameof(limit));
+		return _receipts.ListRecentAsync(Math.Min(limit, 100), cancellationToken);
+	}
+
 	public Task<IReadOnlyList<GoodsReceipt>> ListByPurchaseOrderAsync(long purchaseOrderId, CancellationToken cancellationToken = default)
 	{
 		_audit.RequirePermission(ApplicationPermission.GoodsReceiptsView);

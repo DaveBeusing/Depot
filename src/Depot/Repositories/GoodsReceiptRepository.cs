@@ -54,6 +54,14 @@ public sealed class GoodsReceiptRepository : DatabaseRepository
 			parameters);
 	}
 
+	public Task<IReadOnlyList<GoodsReceipt>> ListRecentAsync(int limit, CancellationToken cancellationToken) =>
+		Database.QuerySliceAsync(
+			$"SELECT {ReceiptColumns} FROM GoodsReceipts ORDER BY ReceiptDate DESC, Id DESC",
+			ReadReceipt,
+			0,
+			limit,
+			cancellationToken);
+
 	public async Task<IReadOnlyList<GoodsReceipt>> ListByPurchaseOrderAsync(long purchaseOrderId, CancellationToken cancellationToken)
 	{
 		var receipts = await Database.QueryAsync(

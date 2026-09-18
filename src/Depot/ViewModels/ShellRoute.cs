@@ -36,6 +36,9 @@ public static class ShellRoutes
 		public static readonly ShellRoute SalesControl = new("role-centers.sales-control");
 		public static readonly ShellRoute BuyerWorkbench = new("role-centers.buyer-workbench");
 		public static readonly ShellRoute ApprovalInbox = new("role-centers.approval-inbox");
+		public static readonly ShellRoute ReceivingWorkspace = new("role-centers.receiving-workspace");
+		public static readonly ShellRoute FulfillmentWorkspace = new("role-centers.fulfillment-workspace");
+		public static readonly ShellRoute InventoryControlWorkspace = new("role-centers.inventory-control-workspace");
 	}
 
 	public static class Inventory

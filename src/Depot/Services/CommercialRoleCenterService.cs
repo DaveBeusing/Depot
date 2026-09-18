@@ -18,6 +18,12 @@ public sealed class CommercialRoleCenterService
 	private readonly PurchaseOrderService _purchaseOrders;
 	private readonly PurchaseOrderApprovalService _purchaseApprovals;
 	private readonly SupplierReturnService _supplierReturns;
+	private readonly GoodsReceiptService _goodsReceipts;
+	private readonly ShipmentService _shipments;
+	private readonly InventoryCountService _inventoryCounts;
+	private readonly StockTransferService _stockTransfers;
+	private readonly MaterialIssueService _materialIssues;
+	private readonly MaterialReturnService _materialReturns;
 	private readonly FinanceAccountsPayableService _payables;
 	private readonly FinanceBankingService _banking;
 
@@ -30,6 +36,12 @@ public sealed class CommercialRoleCenterService
 		PurchaseOrderService purchaseOrders,
 		PurchaseOrderApprovalService purchaseApprovals,
 		SupplierReturnService supplierReturns,
+		GoodsReceiptService goodsReceipts,
+		ShipmentService shipments,
+		InventoryCountService inventoryCounts,
+		StockTransferService stockTransfers,
+		MaterialIssueService materialIssues,
+		MaterialReturnService materialReturns,
 		FinanceAccountsPayableService payables,
 		FinanceBankingService banking)
 	{
@@ -41,6 +53,12 @@ public sealed class CommercialRoleCenterService
 		_purchaseOrders = purchaseOrders;
 		_purchaseApprovals = purchaseApprovals;
 		_supplierReturns = supplierReturns;
+		_goodsReceipts = goodsReceipts;
+		_shipments = shipments;
+		_inventoryCounts = inventoryCounts;
+		_stockTransfers = stockTransfers;
+		_materialIssues = materialIssues;
+		_materialReturns = materialReturns;
 		_payables = payables;
 		_banking = banking;
 	}
@@ -51,6 +69,9 @@ public sealed class CommercialRoleCenterService
 		CommercialRoleCenterKind.SalesControlCenter => _authorization.HasAnyPermission(ApplicationPermission.SalesOrdersApprove, ApplicationPermission.SalesPricingManage, ApplicationPermission.ShipmentsView, ApplicationPermission.SalesInvoicesView, ApplicationPermission.CreditNotesView),
 		CommercialRoleCenterKind.BuyerWorkbench => _authorization.HasAnyPermission(ApplicationPermission.PurchaseOrdersView, ApplicationPermission.SuppliersView, ApplicationPermission.SupplierReturnsView),
 		CommercialRoleCenterKind.ApprovalInbox => HasApprovalPermission(),
+		CommercialRoleCenterKind.ReceivingWorkspace => _authorization.HasAnyPermission(ApplicationPermission.GoodsReceiptsCreate, ApplicationPermission.GoodsReceiptsPost, ApplicationPermission.SupplierReturnsCreate),
+		CommercialRoleCenterKind.FulfillmentWorkspace => _authorization.HasAnyPermission(ApplicationPermission.ShipmentsCreate, ApplicationPermission.ShipmentsEdit, ApplicationPermission.ShipmentsPost, ApplicationPermission.CustomerReturnsCreate, ApplicationPermission.CustomerReturnsPost),
+		CommercialRoleCenterKind.InventoryControlWorkspace => _authorization.HasAnyPermission(ApplicationPermission.InventoryCountsCreate, ApplicationPermission.InventoryCountsEdit, ApplicationPermission.InventoryCountsPost, ApplicationPermission.StockTransfersCreate, ApplicationPermission.StockTransfersEdit, ApplicationPermission.StockTransfersPost, ApplicationPermission.MaterialIssuesCreate, ApplicationPermission.MaterialIssuesPost, ApplicationPermission.MaterialReturnsCreate, ApplicationPermission.MaterialReturnsPost),
 		_ => false
 	};
 
@@ -63,6 +84,9 @@ public sealed class CommercialRoleCenterService
 			CommercialRoleCenterKind.SalesControlCenter => GetSalesControlCenterAsync(cancellationToken),
 			CommercialRoleCenterKind.BuyerWorkbench => GetBuyerWorkbenchAsync(cancellationToken),
 			CommercialRoleCenterKind.ApprovalInbox => GetApprovalInboxAsync(cancellationToken),
+			CommercialRoleCenterKind.ReceivingWorkspace => GetReceivingWorkspaceAsync(cancellationToken),
+			CommercialRoleCenterKind.FulfillmentWorkspace => GetFulfillmentWorkspaceAsync(cancellationToken),
+			CommercialRoleCenterKind.InventoryControlWorkspace => GetInventoryControlWorkspaceAsync(cancellationToken),
 			_ => throw new ArgumentOutOfRangeException(nameof(kind))
 		};
 	}
@@ -241,6 +265,141 @@ public sealed class CommercialRoleCenterService
 			[]);
 	}
 
+
+	private async Task<CommercialRoleCenterSnapshot> GetReceivingWorkspaceAsync(CancellationToken cancellationToken)
+	{
+		Task<PageResult<PurchaseOrder>> QueryOrder(PurchaseOrderStatus status) => _authorization.HasPermission(ApplicationPermission.PurchaseOrdersView)
+			? _purchaseOrders.SearchAsync(null, status, 1, SourceItemLimit, cancellationToken)
+			: Task.FromResult(new PageResult<PurchaseOrder>([], 1, SourceItemLimit, 0));
+
+		var orderedTask = QueryOrder(PurchaseOrderStatus.Ordered);
+		var partialTask = QueryOrder(PurchaseOrderStatus.PartiallyReceived);
+		var receiptsTask = _authorization.HasPermission(ApplicationPermission.GoodsReceiptsView)
+			? _goodsReceipts.ListRecentAsync(SourceItemLimit, cancellationToken)
+			: Task.FromResult<IReadOnlyList<GoodsReceipt>>([]);
+		var returnsTask = _authorization.HasPermission(ApplicationPermission.SupplierReturnsView)
+			? _supplierReturns.SearchAsync(null, null, SupplierReturnStatus.Draft, 1, SourceItemLimit, cancellationToken)
+			: Task.FromResult(new PageResult<SupplierReturnOverviewItem>([], 1, SourceItemLimit, 0));
+		await Task.WhenAll(orderedTask, partialTask, receiptsTask, returnsTask);
+
+		var receipts = await receiptsTask;
+		var orderLookup = new Dictionary<long, PurchaseOrder>();
+		if (_authorization.HasPermission(ApplicationPermission.PurchaseOrdersView))
+		{
+			var orderTasks = receipts.Select(value => value.PurchaseOrderId).Distinct()
+				.Select(async id => (Id: id, Order: await _purchaseOrders.GetByIdAsync(id, cancellationToken))).ToArray();
+			var orders = await Task.WhenAll(orderTasks);
+			orderLookup = orders.Where(value => value.Order is not null).ToDictionary(value => value.Id, value => value.Order!);
+		}
+
+		return Snapshot(
+			CommercialRoleCenterKind.ReceivingWorkspace,
+			"Receiving Workspace",
+			"Expected deliveries, partial receipts and supplier-return execution using the existing purchasing and goods-receipt workflows.",
+			[
+				Section("Expected / Ordered Purchase Orders", "No ordered purchase orders are waiting for receipt.", (await orderedTask).Items.Select(OrderItem)),
+				Section("Partial Receipts", "No purchase orders have remaining quantities after a partial receipt.", (await partialTask).Items.Select(OrderItem)),
+				Section("Draft Goods Receipts", "Goods receipt drafts are session-only in the existing receipt workflow and are not persisted as separate work items.", []),
+				Section("Recently Posted Receipts", "No posted goods receipts are available.", receipts.Select(value => ReceiptItem(value, orderLookup.GetValueOrDefault(value.PurchaseOrderId)))),
+				Section("Supplier Returns Requiring Execution", "No supplier-return drafts require execution.", (await returnsTask).Items.Select(SupplierReturnItem))
+			],
+			[],
+			[
+				new("Receive Goods", "receiving.receive", "purchasing.goods-receipts"),
+				new("Open Purchase Order", "receiving.open-order", "purchasing.purchase-orders"),
+				new("Create Supplier Return", "receiving.new-supplier-return", "purchasing.supplier-returns")
+			],
+			[]);
+	}
+
+	private async Task<CommercialRoleCenterSnapshot> GetFulfillmentWorkspaceAsync(CancellationToken cancellationToken)
+	{
+		Task<PageResult<SalesOrder>> QueryOrder(SalesOrderStatus status) => _authorization.HasPermission(ApplicationPermission.SalesOrdersView)
+			? _salesOrders.SearchAsync(null, status, 1, SourceItemLimit, cancellationToken)
+			: Task.FromResult(new PageResult<SalesOrder>([], 1, SourceItemLimit, 0));
+		Task<PageResult<Shipment>> QueryShipment(ShipmentStatus status) => _authorization.HasPermission(ApplicationPermission.ShipmentsView)
+			? _shipments.SearchAsync(null, status, 1, SourceItemLimit * 3, cancellationToken)
+			: Task.FromResult(new PageResult<Shipment>([], 1, SourceItemLimit * 3, 0));
+
+		var workTask = _myWork.GetAsync(cancellationToken);
+		var releasedTask = QueryOrder(SalesOrderStatus.Released);
+		var partialTask = QueryOrder(SalesOrderStatus.PartiallyShipped);
+		var draftsTask = QueryShipment(ShipmentStatus.Draft);
+		var cancelledTask = QueryShipment(ShipmentStatus.Cancelled);
+		var returnsTask = _authorization.HasPermission(ApplicationPermission.CustomerReturnsView)
+			? _shipments.SearchCustomerReturnsAsync(null, CustomerReturnStatus.Draft, 1, SourceItemLimit, cancellationToken)
+			: Task.FromResult(new PageResult<CustomerReturn>([], 1, SourceItemLimit, 0));
+		await Task.WhenAll(workTask, releasedTask, partialTask, draftsTask, cancelledTask, returnsTask);
+
+		var work = await workTask;
+		var drafts = (await draftsTask).Items;
+		var awaitingPicking = drafts.Where(value => value.PackingStatus == ShipmentPackingStatus.NotStarted).Take(SourceItemLimit).Select(ShipmentItem);
+		var packing = drafts.Where(value => value.PackingStatus == ShipmentPackingStatus.Picking).Take(SourceItemLimit).Select(ShipmentItem);
+		var readyToPost = drafts.Where(value => value.PackingStatus == ShipmentPackingStatus.Packed).Take(SourceItemLimit).Select(ShipmentItem);
+		var exceptions = WorkItems(work, MyWorkSectionKind.Exceptions, MyWorkItemKind.SalesOrder)
+			.Concat((await cancelledTask).Items.Select(ShipmentItem)).Take(MaximumItemsPerSection).ToArray();
+
+		return Snapshot(
+			CommercialRoleCenterKind.FulfillmentWorkspace,
+			"Fulfillment Workspace",
+			"Released orders, picking, packing, shipment posting and customer returns projected from existing Sales and Shipment states.",
+			[
+				Section("Released Orders Ready for Fulfillment", "No released sales orders are ready for fulfillment.", (await releasedTask).Items.Concat((await partialTask).Items).Select(OrderItem)),
+				Section("Awaiting Picking", "No draft shipments are waiting to start picking.", awaitingPicking),
+				Section("Packing in Progress", "No shipment is currently in picking/packing.", packing),
+				Section("Draft Shipments Ready to Post", "No packed draft shipments are ready to post.", readyToPost),
+				Section("Shipment / Fulfillment Exceptions", "No existing shipment or backorder state requires attention.", exceptions),
+				Section("Customer Returns Requiring Processing", "No customer-return drafts require processing.", (await returnsTask).Items.Select(CustomerReturnItem))
+			],
+			[],
+			[
+				new("Open Released Orders", "navigate", "sales.orders"),
+				new("Open Shipping", "navigate", "sales.shipping")
+			],
+			work.Failures);
+	}
+
+	private async Task<CommercialRoleCenterSnapshot> GetInventoryControlWorkspaceAsync(CancellationToken cancellationToken)
+	{
+		Task<PageResult<InventoryCountOverviewItem>> QueryCount(InventoryCountStatus status) => _authorization.HasPermission(ApplicationPermission.InventoryCountsView)
+			? _inventoryCounts.SearchAsync(null, status, null, 1, SourceItemLimit, cancellationToken)
+			: Task.FromResult(new PageResult<InventoryCountOverviewItem>([], 1, SourceItemLimit, 0));
+		var countingTask = QueryCount(InventoryCountStatus.Counting);
+		var reviewTask = QueryCount(InventoryCountStatus.Review);
+		var transfersTask = _authorization.HasPermission(ApplicationPermission.StockTransfersView)
+			? _stockTransfers.SearchAsync(null, StockTransferStatus.Draft, 1, SourceItemLimit, cancellationToken)
+			: Task.FromResult(new PageResult<StockTransferOverviewItem>([], 1, SourceItemLimit, 0));
+		var issuesTask = _authorization.HasPermission(ApplicationPermission.MaterialIssuesView)
+			? _materialIssues.SearchAsync(null, MaterialIssueStatus.Draft, 1, SourceItemLimit, cancellationToken)
+			: Task.FromResult(new PageResult<MaterialIssueOverviewItem>([], 1, SourceItemLimit, 0));
+		var returnsTask = _authorization.HasPermission(ApplicationPermission.MaterialReturnsView)
+			? _materialReturns.SearchAsync(null, MaterialReturnStatus.Draft, 1, SourceItemLimit, cancellationToken)
+			: Task.FromResult(new PageResult<MaterialReturnOverviewItem>([], 1, SourceItemLimit, 0));
+		await Task.WhenAll(countingTask, reviewTask, transfersTask, issuesTask, returnsTask);
+
+		var review = (await reviewTask).Items;
+		return Snapshot(
+			CommercialRoleCenterKind.InventoryControlWorkspace,
+			"Inventory Control Workspace",
+			"Counts, variances, transfers and controlled material corrections without introducing a second inventory workflow.",
+			[
+				Section("Counts in Progress", "No inventory counts are currently in progress.", (await countingTask).Items.Select(CountItem)),
+				Section("Counts Ready for Review / Posting", "No inventory counts are ready for review or posting.", review.Select(CountItem)),
+				Section("Count Variances", "No reviewed inventory counts contain variances.", review.Where(value => value.DifferenceLineCount > 0).Select(CountItem)),
+				Section("Open Stock Transfers", "No draft stock transfers require action.", (await transfersTask).Items.Select(TransferItem)),
+				Section("Material Issues Requiring Action", "No material-issue drafts require action.", (await issuesTask).Items.Select(MaterialIssueItem)),
+				Section("Material Returns Requiring Action", "No material-return drafts require action.", (await returnsTask).Items.Select(MaterialReturnItem))
+			],
+			[],
+			[
+				new("Start Inventory Count", "inventory.new-count", "warehouse.inventory-counts"),
+				new("Transfer Stock", "inventory.new-transfer", "warehouse.transfers"),
+				new("New Material Issue", "inventory.new-issue", "warehouse.material-issues"),
+				new("New Material Return", "inventory.new-return", "warehouse.material-returns")
+			],
+			[]);
+	}
+
 	private async Task<CommercialRoleCenterSnapshot> GetApprovalInboxAsync(CancellationToken cancellationToken)
 	{
 		var now = DateTime.UtcNow;
@@ -337,6 +496,7 @@ public sealed class CommercialRoleCenterService
 			MyWorkItemKind.PurchaseOrderApproval => CommercialRoleItemKind.PurchaseOrderApproval,
 			MyWorkItemKind.PurchaseOrder => CommercialRoleItemKind.PurchaseOrder,
 			MyWorkItemKind.Shipment => CommercialRoleItemKind.Shipment,
+			MyWorkItemKind.InventoryCount => CommercialRoleItemKind.InventoryCount,
 			_ => CommercialRoleItemKind.SalesOrder
 		}, value.EntityId, 0, value.DisplayNumber, value.Title, value.Context, value.Status, value.AmountOrQuantity, null, value.DueAt, value.AgeDays, value.RouteId, value.SourceUserId);
 
@@ -348,6 +508,31 @@ public sealed class CommercialRoleCenterService
 
 	private static CommercialRoleItem OrderItem(PurchaseOrder value) =>
 		new(CommercialRoleItemKind.PurchaseOrder, value.Id, value.Version, value.OrderNumber, "Purchase Order", value.SupplierName, value.StatusDisplayName, value.Lines.Sum(line => line.Quantity * line.UnitPrice), value.SubmittedAtUtc, value.ExpectedDeliveryDate, value.SubmittedAtUtc is null ? null : DaysSince(DateTime.UtcNow, value.SubmittedAtUtc.Value), "purchasing.purchase-orders", value.CreatedByUserId);
+
+
+	private static CommercialRoleItem ReceiptItem(GoodsReceipt value, PurchaseOrder? order) =>
+		new(CommercialRoleItemKind.GoodsReceipt, value.PurchaseOrderId, value.Version, value.ReceiptNumber, "Goods Receipt", order?.OrderNumber ?? $"Purchase order #{value.PurchaseOrderId:N0}", value.IsReversed ? "Reversed" : "Posted", null, value.ReceiptDate, null, null, "purchasing.goods-receipts", value.ReceivedByUserId);
+
+	private static CommercialRoleItem ShipmentItem(Shipment value) =>
+		new(CommercialRoleItemKind.Shipment, value.Id, value.Version, value.ShipmentNumber, "Shipment", value.SalesOrderNumber, value.Status == ShipmentStatus.Draft ? value.PackingStatus.ToString() : value.Status.ToString(), value.Lines.Sum(line => line.Quantity), value.PackedAtUtc, value.ShipmentDate, null, "sales.shipping", value.CreatedByUserId);
+
+	private static CommercialRoleItem CustomerReturnItem(CustomerReturn value) =>
+		new(CommercialRoleItemKind.CustomerReturn, value.Id, value.Version, value.ReturnNumber, "Customer Return", $"Shipment #{value.ShipmentId:N0}", value.Status.ToString(), value.Lines.Sum(line => line.Quantity), value.PostedAtUtc, value.ReturnDate, null, "sales.shipping", value.CreatedByUserId);
+
+	private static CommercialRoleItem CountItem(InventoryCountOverviewItem value) =>
+		new(CommercialRoleItemKind.InventoryCount, value.Id, value.Version, value.CountNumber, "Inventory Count", value.WarehouseName, value.StatusDisplayName, value.DifferenceLineCount, value.StartedAtUtc ?? value.CreatedAtUtc, null, null, "warehouse.inventory-counts");
+
+	private static CommercialRoleItem TransferItem(StockTransferOverviewItem value) =>
+		new(CommercialRoleItemKind.StockTransfer, value.Id, value.Version, value.TransferNumber, "Stock Transfer", $"{value.SourceWarehouseName} → {value.DestinationWarehouseName}", value.StatusDisplayName, value.LineCount, value.TransferDate, null, null, "warehouse.transfers");
+
+	private static CommercialRoleItem MaterialIssueItem(MaterialIssueOverviewItem value) =>
+		new(CommercialRoleItemKind.MaterialIssue, value.Id, value.Version, value.IssueNumber, "Material Issue", value.Recipient, value.StatusDisplayName, value.LineCount, value.IssueDate, null, null, "warehouse.material-issues");
+
+	private static CommercialRoleItem MaterialReturnItem(MaterialReturnOverviewItem value) =>
+		new(CommercialRoleItemKind.MaterialReturn, value.Id, value.Version, value.ReturnNumber, "Material Return", value.RecipientOrSource, value.StatusDisplayName, value.LineCount, value.ReturnDate, null, null, "warehouse.material-returns");
+
+	private static CommercialRoleItem SupplierReturnItem(SupplierReturnOverviewItem value) =>
+		new(CommercialRoleItemKind.SupplierReturn, value.Id, value.Version, value.ReturnNumber, "Supplier Return", value.SupplierName, value.StatusDisplayName, value.LineCount, value.ReturnDate, null, null, "purchasing.supplier-returns");
 
 	private static int DaysSince(DateTime nowUtc, DateTime timestampUtc) => Math.Max(0, (int)(nowUtc - timestampUtc).TotalDays);
 	private static string UserLabel(long? userId) => userId is null ? "Unknown" : $"User #{userId.Value:N0}";

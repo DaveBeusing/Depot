@@ -103,6 +103,19 @@ public sealed class MaterialIssuesViewModel : BaseViewModel, IDisposable
 		catch (Exception exception) when (exception is not OperationCanceledException) { FailOperation(exception, "Material issues could not be loaded"); }
 	}
 
+	public async Task OpenIssueAsync(long id, CancellationToken cancellationToken = default)
+	{
+		var overview = await _service.GetOverviewByIdAsync(id, cancellationToken)
+			?? throw new InvalidOperationException("The referenced material issue no longer exists.");
+		var existing = Issues.FirstOrDefault(value => value.Id == id);
+		if (existing is null)
+		{
+			Issues.Insert(0, overview);
+			existing = overview;
+		}
+		SelectedIssue = existing;
+	}
+
 	private async Task LoadPageAsync(CancellationToken cancellationToken = default) { try { ApplyPage(await _service.SearchAsync(SearchText, SelectedStatusFilter.Status, PageNumber, PageSize, cancellationToken)); } catch (Exception exception) when (exception is not OperationCanceledException) { FailOperation(exception, "Material issues could not be loaded"); } }
 	private async Task LoadInventoryOptionsAsync(CancellationToken cancellationToken = default) { try { Replace(InventoryOptions, (await _service.SearchInventoryOptionsAsync(InventorySearchText, 1, 100, cancellationToken)).Items); } catch (Exception exception) when (exception is not OperationCanceledException) { FailOperation(exception, "Inventory options could not be loaded"); } }
 	private async Task LoadSelectedAsync(MaterialIssueOverviewItem? overview, CancellationToken cancellationToken)

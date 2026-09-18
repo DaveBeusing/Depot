@@ -54,7 +54,8 @@ public static class SystemRoleCatalog
 		new(GoodsReceiverCode, "Goods Receiver", "Receives expected supplier deliveries without general Purchasing administration.", Set(
 			ApplicationPermission.DashboardView, ApplicationPermission.InventoryView, ApplicationPermission.ItemsView, ApplicationPermission.StockMovementsView,
 			ApplicationPermission.PurchasingView, ApplicationPermission.PurchaseOrdersView,
-			ApplicationPermission.GoodsReceiptsView, ApplicationPermission.GoodsReceiptsCreate, ApplicationPermission.GoodsReceiptsPost, ApplicationPermission.GoodsReceiptsReverse)),
+			ApplicationPermission.GoodsReceiptsView, ApplicationPermission.GoodsReceiptsCreate, ApplicationPermission.GoodsReceiptsPost, ApplicationPermission.GoodsReceiptsReverse,
+			ApplicationPermission.SupplierReturnsView, ApplicationPermission.SupplierReturnsCreate, ApplicationPermission.SupplierReturnsEdit, ApplicationPermission.SupplierReturnsPost, ApplicationPermission.SupplierReturnsReverse)),
 		new(FulfillmentOperatorCode, "Fulfillment Operator", "Executes picking, packing, shipping and customer returns for released Sales Orders.", Set(
 			ApplicationPermission.DashboardView, ApplicationPermission.InventoryView, ApplicationPermission.ItemsView, ApplicationPermission.StockMovementsView,
 			ApplicationPermission.SalesOrdersView,
@@ -65,6 +66,8 @@ public static class SystemRoleCatalog
 			ApplicationPermission.StockMovementsView, ApplicationPermission.StockMovementsCreate, ApplicationPermission.StockMovementsPost, ApplicationPermission.StockMovementsReverse,
 			ApplicationPermission.StockTransfersView, ApplicationPermission.StockTransfersCreate, ApplicationPermission.StockTransfersEdit, ApplicationPermission.StockTransfersPost, ApplicationPermission.StockTransfersReverse,
 			ApplicationPermission.InventoryCountsView, ApplicationPermission.InventoryCountsCreate, ApplicationPermission.InventoryCountsEdit, ApplicationPermission.InventoryCountsPost, ApplicationPermission.InventoryCountsReverse,
+			ApplicationPermission.MaterialIssuesView, ApplicationPermission.MaterialIssuesCreate, ApplicationPermission.MaterialIssuesEdit, ApplicationPermission.MaterialIssuesPost, ApplicationPermission.MaterialIssuesReverse,
+			ApplicationPermission.MaterialReturnsView, ApplicationPermission.MaterialReturnsCreate, ApplicationPermission.MaterialReturnsEdit, ApplicationPermission.MaterialReturnsPost, ApplicationPermission.MaterialReturnsReverse,
 			ApplicationPermission.ReportsView, ApplicationPermission.ReportsExport)),
 		new(AccountsReceivableCode, "Accounts Receivable", "Operates customer open items, receipts, allocations and dunning without Accounts Payable, Banking or General Ledger administration.", Set(
 			ApplicationPermission.DashboardView, ApplicationPermission.CustomersView, ApplicationPermission.SalesInvoicesView, ApplicationPermission.CreditNotesView,
