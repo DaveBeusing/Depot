@@ -147,6 +147,13 @@ public sealed class CommercialRoleCenterTests
 		Assert.False(CreateService(ApplicationPermission.AuditLogView).CanAccess(CommercialRoleCenterKind.AuditComplianceCenter));
 		Assert.False(CreateService(ApplicationPermission.MasterDataView).CanAccess(CommercialRoleCenterKind.MasterDataWorkspace));
 		Assert.False(CreateService(ApplicationPermission.UsersView).CanAccess(CommercialRoleCenterKind.ApplicationAdministrationCenter));
+
+		var management = SystemRoleCatalog.Definitions.Single(role => role.Code == SystemRoleCatalog.ManagementViewerCode);
+		Assert.False(CreateService(management.Permissions.Where(permission => permission != ApplicationPermission.FinanceBankingView).ToArray()).CanAccess(CommercialRoleCenterKind.ManagementCockpit));
+		Assert.False(CreateService(management.Permissions.Where(permission => permission != ApplicationPermission.ReportsView).ToArray()).CanAccess(CommercialRoleCenterKind.ManagementCockpit));
+
+		var applicationAdmin = SystemRoleCatalog.Definitions.Single(role => role.Code == SystemRoleCatalog.ApplicationAdministratorCode);
+		Assert.False(CreateService(applicationAdmin.Permissions.Where(permission => permission != ApplicationPermission.AuditLogView).ToArray()).CanAccess(CommercialRoleCenterKind.ApplicationAdministrationCenter));
 	}
 
 	[Fact]

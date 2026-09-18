@@ -106,7 +106,9 @@ public sealed class CommercialRoleCenterService
 			_authorization.HasPermission(ApplicationPermission.SalesOrdersView) &&
 			_authorization.HasPermission(ApplicationPermission.FinanceReceivablesView) &&
 			_authorization.HasPermission(ApplicationPermission.FinancePayablesView) &&
-			_authorization.HasPermission(ApplicationPermission.FinanceCashPositionView),
+			_authorization.HasPermission(ApplicationPermission.FinanceBankingView) &&
+			_authorization.HasPermission(ApplicationPermission.FinanceCashPositionView) &&
+			_authorization.HasPermission(ApplicationPermission.ReportsView),
 		CommercialRoleCenterKind.AuditComplianceCenter =>
 			_authorization.HasPermission(ApplicationPermission.AuditLogView) &&
 			_authorization.HasPermission(ApplicationPermission.AuditLogExport) &&
@@ -126,7 +128,8 @@ public sealed class CommercialRoleCenterService
 			_authorization.HasPermission(ApplicationPermission.RolesView) &&
 			_authorization.HasPermission(ApplicationPermission.SettingsView) &&
 			_authorization.HasPermission(ApplicationPermission.DatabaseView) &&
-			_authorization.HasPermission(ApplicationPermission.SecurityEventsView),
+			_authorization.HasPermission(ApplicationPermission.SecurityEventsView) &&
+			_authorization.HasPermission(ApplicationPermission.AuditLogView),
 		_ => false
 	};
 
@@ -765,6 +768,7 @@ public sealed class CommercialRoleCenterService
 			[],
 			[
 				new("Audit Log", "admin.audit-log", "administration"),
+				new("Document / Entity History", "admin.audit-log", "administration"),
 				new("Security Events", "admin.security", "administration"),
 				new("Users — Read Only", "admin.users", "administration"),
 				new("Roles — Read Only", "admin.roles", "administration"),
