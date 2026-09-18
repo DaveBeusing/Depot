@@ -425,6 +425,11 @@ public sealed class PackagedE2EAcceptanceTests
         throw new IOException($"Timed out waiting for exclusive write access to packaged executable '{path}'.", lastFailure);
     }
 
+    private static async Task WaitForExclusiveWriteAccessAsync(string path, TimeSpan timeout)
+    {
+        await using var stream = await OpenExclusiveWriteAsync(path, timeout);
+    }
+
     private static async Task<ManagerCommandResult> RunDepotCommandAsync(string executable, string workingDirectory, string command, object? request = null)
     {
         var response = Path.Combine(workingDirectory, $"e2e-{Guid.NewGuid():N}.response.json");
@@ -448,6 +453,7 @@ public sealed class PackagedE2EAcceptanceTests
 
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(90));
         await process.WaitForExitAsync(timeout.Token);
+        await WaitForExclusiveWriteAccessAsync(executable, TimeSpan.FromSeconds(10));
         if (!File.Exists(response)) throw new InvalidOperationException($"Packaged Depot command {command} returned no response. Exit code: {process.ExitCode}.");
         using var document = JsonDocument.Parse(await File.ReadAllTextAsync(response, timeout.Token));
         var result = new ManagerCommandResult(
