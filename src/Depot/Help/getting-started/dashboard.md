@@ -64,10 +64,10 @@ The Dashboard also retains **Recent activity** for the latest inventory movement
 5. Pin or unpin workspaces according to your recurring work.
 6. Select an available workspace as your personal default landing workspace when desired.
 7. Review the module overview cards available to your account.
-6. Select a module card to open its corresponding workspace.
-7. Use the Administration presence card to open **User Sessions** and review active clients or recent session history.
-8. Use the Reports card when your account has `Reports.View`.
-9. Use **Recent activity** to review the latest inventory movements or open the Inventory movements workspace.
+8. Select a module card to open its corresponding workspace.
+9. Use the Administration presence card to open **User Sessions** and review active clients or recent session history.
+10. Use the Reports card when your account has `Reports.View`.
+11. Use **Recent activity** to review the latest inventory movements or open the Inventory movements workspace.
 
 ## Result
 The Dashboard acts as an operational and personal starting point. Personal navigation preferences reduce repeated navigation without changing the authorization boundary of any workspace.

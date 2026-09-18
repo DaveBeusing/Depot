@@ -49,7 +49,7 @@
                                     <DataGridTextColumn Header="Context" Binding="{Binding Context}" Width="180" />
                                     <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="130" />
                                     <DataGridTextColumn Header="Amount / Qty" Binding="{Binding AmountOrQuantity, StringFormat={}{0:N2}}" Width="105" />
-                                    <DataGridTextColumn Header="Due / Age" Binding="{Binding DueOrAgeDisplay}" Width="105" />
+                                    <DataGridTextColumn Header="Due / Age" Binding="{Binding DueOrAgeDisplay}" SortMemberPath="DueAt" Width="105" />
                                     <DataGridTextColumn Header="Priority" Binding="{Binding Priority}" Width="90" />
                                     <DataGridTemplateColumn Header="" Width="90">
                                         <DataGridTemplateColumn.CellTemplate>
