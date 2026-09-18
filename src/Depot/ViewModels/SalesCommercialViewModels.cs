@@ -48,6 +48,14 @@ public sealed partial class SalesPricingViewModel : BaseViewModel, IDisposable
 	public decimal UnitPrice{get=>_unitPrice;set{_unitPrice=value;OnPropertyChanged();SavePriceItemCommand.RaiseCanExecuteChanged();}}
 	public decimal DiscountPercent{get=>_discountPercent;set{_discountPercent=value;OnPropertyChanged();}}
 
+	public async Task OpenQuoteAsync(long id, CancellationToken token=default)
+	{
+		var quote = await _quotes.GetByIdAsync(id, token) ?? throw new InvalidOperationException("The referenced sales quote no longer exists.");
+		_selectedQuote = quote;
+		OnPropertyChanged(nameof(SelectedQuote));
+		await LoadQuoteAsync(quote);
+	}
+
 	public async Task LoadAsync(CancellationToken token=default)
 	{
 		BeginOperation("Loading sales pricing");

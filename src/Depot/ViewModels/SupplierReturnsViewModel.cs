@@ -114,6 +114,14 @@ public sealed class SupplierReturnsViewModel : BaseViewModel, IDisposable
     public int PageNumber { get => _pageNumber; private set { if (_pageNumber == value) return; _pageNumber = value; OnPropertyChanged(); OnPropertyChanged(nameof(PageDisplay)); OnPropertyChanged(nameof(HasNextPage)); RaiseCommands(); } }
     public long TotalCount { get => _totalCount; private set { if (_totalCount == value) return; _totalCount = value; OnPropertyChanged(); OnPropertyChanged(nameof(PageDisplay)); OnPropertyChanged(nameof(HasNextPage)); RaiseCommands(); } }
 
+    public async Task OpenReturnAsync(long id, CancellationToken cancellationToken = default)
+    {
+        var overview = await _service.GetOverviewByIdAsync(id, cancellationToken) ?? throw new InvalidOperationException("The referenced supplier return no longer exists.");
+        _selectedReturn = overview;
+        OnPropertyChanged(nameof(SelectedReturn));
+        await LoadSelectedAsync(overview, cancellationToken);
+    }
+
     public async Task LoadAsync(CancellationToken cancellationToken = default)
     {
         BeginOperation("Supplier returns are loading");

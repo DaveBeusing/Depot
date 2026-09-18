@@ -21,6 +21,10 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 	private readonly IFileDialogService _fileDialogs;
 	private readonly WelcomeViewModel _welcome;
 	private readonly Lazy<DashboardViewModel> _dashboard;
+	private readonly Lazy<CommercialRoleCenterViewModel> _salesWorkspaceRoleCenter;
+	private readonly Lazy<CommercialRoleCenterViewModel> _salesControlRoleCenter;
+	private readonly Lazy<CommercialRoleCenterViewModel> _buyerWorkbenchRoleCenter;
+	private readonly Lazy<CommercialRoleCenterViewModel> _approvalInboxRoleCenter;
 	private readonly Lazy<InventoryViewModel> _inventory;
 	private readonly Lazy<ItemsViewModel> _items;
 	private readonly Lazy<MovementsViewModel> _movements;
@@ -66,6 +70,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		StockService stockService,
 		DashboardService dashboardService,
 		MyWorkService myWorkService,
+		CommercialRoleCenterService commercialRoleCenterService,
 		MovementService movementService,
 		ReportService reportService,
 		FinanceAccountsReceivableService financeReceivablesService,
@@ -129,6 +134,10 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		var salesWorkspace = new SalesViewModel(salesServices.Customers, salesServices.Orders, salesServices.Shipments, salesServices.Invoices, salesServices.Items, salesServices.Pricing, salesServices.Authorization, fileDialogService, salesServices.Documents);
 
 		_dashboard = new(() => new DashboardViewModel(dashboardService, myWorkService));
+		_salesWorkspaceRoleCenter = new(() => new CommercialRoleCenterViewModel(commercialRoleCenterService, CommercialRoleCenterKind.SalesWorkspace));
+		_salesControlRoleCenter = new(() => new CommercialRoleCenterViewModel(commercialRoleCenterService, CommercialRoleCenterKind.SalesControlCenter));
+		_buyerWorkbenchRoleCenter = new(() => new CommercialRoleCenterViewModel(commercialRoleCenterService, CommercialRoleCenterKind.BuyerWorkbench));
+		_approvalInboxRoleCenter = new(() => new CommercialRoleCenterViewModel(commercialRoleCenterService, CommercialRoleCenterKind.ApprovalInbox));
 		_inventory = new(() => new InventoryViewModel(stockService));
 		_items = new(() => new ItemsViewModel(itemService, manufacturerService, categoryService, unitOfMeasureService, packagingService, salesServices.ItemCosts));
 		_movements = new(() => new MovementsViewModel(movementService, reasonCodeService, fileDialogService, MarkInventoryPagesStale));
@@ -296,9 +305,97 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		}
 	}
 
+	public async Task OpenCommercialRoleItemAsync(CommercialRoleItem item, CancellationToken cancellationToken = default)
+	{
+		ArgumentNullException.ThrowIfNull(item);
+		if (!ConfirmDiscardChanges(CurrentViewModel)) return;
+		var route = new ShellRoute(item.RouteId);
+		switch (item.Kind)
+		{
+			case CommercialRoleItemKind.Customer:
+				await OpenSalesQuickItemAsync(new SalesQuickOpenItem(SalesQuickOpenKind.Customer, item.EntityId, item.DisplayNumber, item.Context ?? string.Empty), cancellationToken);
+				break;
+			case CommercialRoleItemKind.SalesQuote:
+				await this.NavigateToRouteAsync(route, cancellationToken);
+				await SalesQuotesViewModel.OpenQuoteAsync(item.EntityId, cancellationToken);
+				break;
+			case CommercialRoleItemKind.SalesOrder:
+				await OpenSalesQuickItemAsync(new SalesQuickOpenItem(SalesQuickOpenKind.SalesOrder, item.EntityId, item.DisplayNumber, item.Context ?? string.Empty), cancellationToken);
+				break;
+			case CommercialRoleItemKind.SalesOrderApproval:
+				await this.NavigateToRouteAsync(ShellRoutes.Approvals.Sales, cancellationToken);
+				await SalesApprovalsViewModel.Workspace.OpenQuickItemAsync(new SalesQuickOpenItem(SalesQuickOpenKind.SalesOrder, item.EntityId, item.DisplayNumber, item.Context ?? string.Empty), cancellationToken);
+				break;
+			case CommercialRoleItemKind.PurchaseOrder:
+				await this.NavigateToRouteAsync(route, cancellationToken);
+				await ProcurementViewModel.OpenOrderAsync(item.EntityId, cancellationToken);
+				break;
+			case CommercialRoleItemKind.PurchaseOrderApproval:
+				await this.NavigateToRouteAsync(ShellRoutes.Approvals.Purchasing, cancellationToken);
+				await PurchaseOrderApprovalsViewModel.OpenApprovalAsync(item.EntityId, cancellationToken);
+				break;
+			case CommercialRoleItemKind.SupplierReturn:
+				await this.NavigateToRouteAsync(route, cancellationToken);
+				await SupplierReturnsViewModel.OpenReturnAsync(item.EntityId, cancellationToken);
+				break;
+			case CommercialRoleItemKind.SupplierInvoice:
+				await this.NavigateToRouteAsync(route, cancellationToken);
+				await FinancePayablesViewModel.OpenDocumentAsync(item.EntityId, cancellationToken);
+				break;
+			case CommercialRoleItemKind.PaymentProposal:
+				await this.NavigateToRouteAsync(route, cancellationToken);
+				FinanceBankingViewModel.SelectedPaymentRun = FinanceBankingViewModel.PaymentRuns.FirstOrDefault(run => run.Id == item.EntityId);
+				break;
+			default:
+				await this.NavigateToRouteAsync(route, cancellationToken);
+				break;
+		}
+	}
+
+	public async Task ExecuteCommercialRoleActionAsync(CommercialRoleQuickAction action, CancellationToken cancellationToken = default)
+	{
+		ArgumentNullException.ThrowIfNull(action);
+		switch (action.ActionId)
+		{
+			case "sales.new-customer":
+				await this.NavigateToRouteAsync(ShellRoutes.Sales.Customers, cancellationToken);
+				CustomersViewModel.Workspace.NewCustomerCommand.Execute(null);
+				break;
+			case "sales.new-quote":
+				await this.NavigateToRouteAsync(ShellRoutes.Sales.Quotes, cancellationToken);
+				SalesQuotesViewModel.NewQuoteCommand.Execute(null);
+				break;
+			case "sales.new-order":
+				await this.NavigateToRouteAsync(ShellRoutes.Sales.Orders, cancellationToken);
+				SalesOrdersViewModel.Workspace.NewOrderCommand.Execute(null);
+				break;
+			case "purchasing.new-order":
+				await this.NavigateToRouteAsync(ShellRoutes.Purchasing.PurchaseOrders, cancellationToken);
+				ProcurementViewModel.NewOrderCommand.Execute(null);
+				break;
+			case "purchasing.open-supplier":
+				await NavigateToModulePageAsync("Administration", "Suppliers", cancellationToken);
+				break;
+			case "purchasing.receive":
+				await this.NavigateToRouteAsync(ShellRoutes.Purchasing.GoodsReceipts, cancellationToken);
+				break;
+			default:
+				await this.NavigateToRouteAsync(new ShellRoute(action.RouteId), cancellationToken);
+				break;
+		}
+	}
+
 	private void BuildNavigation()
 	{
 		AddDirect(ApplicationPermission.DashboardView, "Dashboard", Icons.Dashboard, () => _dashboard.Value, (viewModel, token) => viewModel.LoadAsync(token), HelpService.FallbackTopicId);
+		var roleCenterPages = new List<SecondaryNavigationItem>();
+		if (commercialRoleCenterServiceAccess(CommercialRoleCenterKind.SalesWorkspace)) roleCenterPages.Add(new("Sales Workspace", () => _salesWorkspaceRoleCenter.Value, (viewModel, token) => ((CommercialRoleCenterViewModel)viewModel).LoadAsync(token), HelpService.FallbackTopicId, route: ShellRoutes.RoleCenters.SalesWorkspace));
+		if (commercialRoleCenterServiceAccess(CommercialRoleCenterKind.SalesControlCenter)) roleCenterPages.Add(new("Sales Control Center", () => _salesControlRoleCenter.Value, (viewModel, token) => ((CommercialRoleCenterViewModel)viewModel).LoadAsync(token), HelpService.FallbackTopicId, route: ShellRoutes.RoleCenters.SalesControl));
+		if (commercialRoleCenterServiceAccess(CommercialRoleCenterKind.BuyerWorkbench)) roleCenterPages.Add(new("Buyer Workbench", () => _buyerWorkbenchRoleCenter.Value, (viewModel, token) => ((CommercialRoleCenterViewModel)viewModel).LoadAsync(token), HelpService.FallbackTopicId, route: ShellRoutes.RoleCenters.BuyerWorkbench));
+		if (commercialRoleCenterServiceAccess(CommercialRoleCenterKind.ApprovalInbox)) roleCenterPages.Add(new("Approval Inbox", () => _approvalInboxRoleCenter.Value, (viewModel, token) => ((CommercialRoleCenterViewModel)viewModel).LoadAsync(token), HelpService.FallbackTopicId, route: ShellRoutes.RoleCenters.ApprovalInbox));
+		AddModule("Role Centers", Icons.Sales, "Role-oriented starting points for commercial work, buying and approvals.", roleCenterPages);
+
+		bool commercialRoleCenterServiceAccess(CommercialRoleCenterKind kind) => commercialRoleCenterService.CanAccess(kind);
 		var inventoryPages = new List<SecondaryNavigationItem>();
 		AddPage(inventoryPages, ApplicationPermission.InventoryView, "Overview", () => _inventory.Value, (viewModel, token) => viewModel.LoadAsync(token), "inventory.overview"); AddPage(inventoryPages, ApplicationPermission.ItemsView, "Items", () => _items.Value, (viewModel, token) => viewModel.LoadItemsAsync(token), "inventory.items"); AddPage(inventoryPages, ApplicationPermission.StockMovementsView, "Movements", () => _movements.Value, (viewModel, token) => viewModel.LoadAsync(token), "inventory.movements"); AddModule("Inventory", Icons.Inventory, "Monitor stock, items, and immutable inventory movements.", inventoryPages);
 		var warehousePages = new List<SecondaryNavigationItem>();

@@ -35,6 +35,7 @@ public sealed class FinanceBankingService
 	public bool CanReconcile => _authorization.HasPermission(ApplicationPermission.FinanceBankReconciliationManage);
 	public bool CanCreatePaymentRuns => _authorization.HasPermission(ApplicationPermission.FinancePaymentProposalsCreate);
 	public bool CanApprovePaymentRuns => _authorization.HasPermission(ApplicationPermission.FinancePaymentProposalsApprove);
+	public bool CanApprovePaymentRun(long createdByUserId) => CanApprovePaymentRuns && _authorization.CurrentUser?.Id != createdByUserId;
 	public bool CanExecutePaymentRuns => _authorization.HasPermission(ApplicationPermission.FinancePaymentRunsPost);
 
 	public Task<IReadOnlyList<FinanceBankAccount>> GetBankAccountsAsync(CancellationToken cancellationToken = default)

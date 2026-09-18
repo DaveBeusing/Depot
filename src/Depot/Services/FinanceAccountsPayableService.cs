@@ -41,6 +41,7 @@ public sealed class FinanceAccountsPayableService
 	public bool CanCreateDocuments => _authorization.HasPermission(ApplicationPermission.FinanceSupplierInvoicesCreate);
 	public bool CanSubmitDocuments => _authorization.HasPermission(ApplicationPermission.FinanceSupplierInvoicesSubmit);
 	public bool CanApproveDocuments => _authorization.HasPermission(ApplicationPermission.FinanceSupplierInvoicesApprove);
+	public bool CanDecide(long createdByUserId) => CanApproveDocuments && (_authorization.CurrentUser?.Id != createdByUserId || _authorization.IsInRole(SystemRoleCatalog.AdministratorCode));
 	public bool CanApproveMatchExceptions => _authorization.HasPermission(ApplicationPermission.FinanceSupplierMatchExceptionsApprove);
 	public bool CanPostDocuments => _authorization.HasPermission(ApplicationPermission.FinanceSupplierInvoicesPost);
 	public bool CanReverseDocuments => _authorization.HasPermission(ApplicationPermission.FinanceSupplierInvoicesReverse);

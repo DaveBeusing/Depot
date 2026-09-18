@@ -93,6 +93,17 @@ internal sealed class ServiceComposition
 			new PayablesMyWorkProvider(AccountsPayable, Authorization),
 			new BankingMyWorkProvider(Banking, Authorization)
 		]);
+		CommercialRoleCenters = new CommercialRoleCenterService(
+			Authorization,
+			MyWork,
+			Dashboard,
+			SalesQuotes,
+			SalesOrders,
+			PurchaseOrders,
+			PurchaseOrderApprovals,
+			SupplierReturns,
+			AccountsPayable,
+			Banking);
 		GlobalSearch = new GlobalSearchService(
 		[
 			new ItemGlobalSearchProvider(Items, Authorization),
@@ -163,6 +174,7 @@ internal sealed class ServiceComposition
 	public SalesDocumentEmailService SalesEmail { get; }
 	public SalesServices Sales { get; }
 	public MyWorkService MyWork { get; }
+	public CommercialRoleCenterService CommercialRoleCenters { get; }
 	public GlobalSearchService GlobalSearch { get; }
 	public WarehouseService Warehouses { get; }
 	public StorageLocationService StorageLocations { get; }
