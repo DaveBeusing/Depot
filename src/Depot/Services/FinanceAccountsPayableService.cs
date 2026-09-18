@@ -41,6 +41,7 @@ public sealed class FinanceAccountsPayableService
 	public bool CanCreateDocuments => _authorization.HasPermission(ApplicationPermission.FinanceSupplierInvoicesCreate);
 	public bool CanSubmitDocuments => _authorization.HasPermission(ApplicationPermission.FinanceSupplierInvoicesSubmit);
 	public bool CanApproveDocuments => _authorization.HasPermission(ApplicationPermission.FinanceSupplierInvoicesApprove);
+	public bool CanDecide(long createdByUserId) => CanApproveDocuments && (_authorization.CurrentUser?.Id != createdByUserId || _authorization.IsInRole(SystemRoleCatalog.AdministratorCode));
 	public bool CanApproveMatchExceptions => _authorization.HasPermission(ApplicationPermission.FinanceSupplierMatchExceptionsApprove);
 	public bool CanPostDocuments => _authorization.HasPermission(ApplicationPermission.FinanceSupplierInvoicesPost);
 	public bool CanReverseDocuments => _authorization.HasPermission(ApplicationPermission.FinanceSupplierInvoicesReverse);
@@ -82,6 +83,12 @@ public sealed class FinanceAccountsPayableService
 	{
 		_authorization.RequirePermission(ApplicationPermission.FinancePayablesView);
 		return _payables.SearchDocumentsAsync(searchText, status, pageNumber, pageSize, cancellationToken);
+	}
+
+	public Task<PageResult<FinanceSupplierDocument>> SearchPendingApprovalDocumentsAsync(int pageNumber = 1, int pageSize = 50, CancellationToken cancellationToken = default)
+	{
+		_authorization.RequirePermission(ApplicationPermission.FinanceSupplierInvoicesApprove);
+		return _payables.SearchDocumentsAsync(null, FinancePayableDocumentStatus.PendingApproval, pageNumber, pageSize, cancellationToken);
 	}
 
 	public Task<FinanceSupplierDocument?> GetDocumentAsync(long id, CancellationToken cancellationToken = default)

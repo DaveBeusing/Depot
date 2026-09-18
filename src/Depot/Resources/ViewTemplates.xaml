@@ -24,6 +24,7 @@
 
 	<DataTemplate DataType="{x:Type viewModels:WelcomeViewModel}"><views:WelcomeView /></DataTemplate>
 	<DataTemplate DataType="{x:Type viewModels:DashboardViewModel}"><views:DashboardView /></DataTemplate>
+	<DataTemplate DataType="{x:Type viewModels:CommercialRoleCenterViewModel}"><views:CommercialRoleCenterView /></DataTemplate>
 	<DataTemplate DataType="{x:Type viewModels:InventoryViewModel}"><views:InventoryView /></DataTemplate>
 	<DataTemplate DataType="{x:Type viewModels:ItemsViewModel}"><views:ItemsView /></DataTemplate>
 	<DataTemplate DataType="{x:Type viewModels:MovementsViewModel}"><views:MovementsView /></DataTemplate>

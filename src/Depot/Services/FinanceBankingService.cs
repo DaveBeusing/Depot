@@ -35,6 +35,7 @@ public sealed class FinanceBankingService
 	public bool CanReconcile => _authorization.HasPermission(ApplicationPermission.FinanceBankReconciliationManage);
 	public bool CanCreatePaymentRuns => _authorization.HasPermission(ApplicationPermission.FinancePaymentProposalsCreate);
 	public bool CanApprovePaymentRuns => _authorization.HasPermission(ApplicationPermission.FinancePaymentProposalsApprove);
+	public bool CanApprovePaymentRun(long createdByUserId) => CanApprovePaymentRuns && _authorization.CurrentUser?.Id != createdByUserId;
 	public bool CanExecutePaymentRuns => _authorization.HasPermission(ApplicationPermission.FinancePaymentRunsPost);
 
 	public Task<IReadOnlyList<FinanceBankAccount>> GetBankAccountsAsync(CancellationToken cancellationToken = default)
@@ -71,6 +72,15 @@ public sealed class FinanceBankingService
 	{
 		_authorization.RequirePermission(ApplicationPermission.FinanceBankingView);
 		return _banking.SearchPaymentRunsAsync(pageNumber, pageSize, cancellationToken);
+	}
+
+	public async Task<IReadOnlyList<FinancePaymentRun>> SearchPendingApprovalPaymentRunsAsync(int maxResults = 12, CancellationToken cancellationToken = default)
+	{
+		_authorization.RequirePermission(ApplicationPermission.FinancePaymentProposalsApprove);
+		if (maxResults is < 1 or > 50) throw new ArgumentOutOfRangeException(nameof(maxResults));
+		var sourceSize = Math.Min(maxResults * 3, 100);
+		var page = await _banking.SearchPaymentRunsAsync(1, sourceSize, cancellationToken);
+		return page.Items.Where(value => value.Status == FinancePaymentRunStatus.Draft).Take(maxResults).ToArray();
 	}
 
 	public Task<IReadOnlyList<FinancePaymentRun>> GetPaymentRunsAsync(CancellationToken cancellationToken = default)

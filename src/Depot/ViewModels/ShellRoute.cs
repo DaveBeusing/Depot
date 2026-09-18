@@ -29,6 +29,15 @@ public static class ShellRoutes
 {
 	public static readonly ShellRoute Dashboard = new("dashboard");
 
+	public static class RoleCenters
+	{
+		public static readonly ShellRoute Module = new("role-centers");
+		public static readonly ShellRoute SalesWorkspace = new("role-centers.sales-workspace");
+		public static readonly ShellRoute SalesControl = new("role-centers.sales-control");
+		public static readonly ShellRoute BuyerWorkbench = new("role-centers.buyer-workbench");
+		public static readonly ShellRoute ApprovalInbox = new("role-centers.approval-inbox");
+	}
+
 	public static class Inventory
 	{
 		public static readonly ShellRoute Module = new("inventory");

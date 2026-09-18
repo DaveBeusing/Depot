@@ -12,6 +12,10 @@ public sealed class WorkspaceProductivityViewModel : BaseViewModel
 {
 	private static readonly string[] PreferredQuickActionRoutes =
 	[
+		"role-centers.sales-workspace",
+		"role-centers.sales-control",
+		"role-centers.buyer-workbench",
+		"role-centers.approval-inbox",
 		"inventory.items",
 		"purchasing.purchase-orders",
 		"sales.orders",
