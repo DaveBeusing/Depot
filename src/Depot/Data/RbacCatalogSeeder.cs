@@ -26,8 +26,14 @@ internal static class RbacCatalogSeeder
 
 		foreach (var role in SystemRoleCatalog.Definitions)
 		{
+			var existingSystemState = Scalar(command, "SELECT IsSystem FROM Roles WHERE Code = $Code;", ("$Code", role.Code));
+			if (existingSystemState is not null && Convert.ToInt32(existingSystemState) == 0)
+			{
+				throw new InvalidOperationException($"Custom role code '{role.Code}' conflicts with a reserved system role code. Rename the custom role before upgrading Depot.");
+			}
+
 			var updated = Execute(command,
-				"UPDATE Roles SET Name = $Name, Description = $Description, IsSystem = 1, IsActive = 1 WHERE Code = $Code;",
+				"UPDATE Roles SET Name = $Name, Description = $Description, IsSystem = 1, IsActive = 1 WHERE Code = $Code AND IsSystem = 1;",
 				("$Code", role.Code), ("$Name", role.Name), ("$Description", role.Description));
 			if (updated == 0)
 			{
@@ -82,7 +88,19 @@ internal static class RbacCatalogSeeder
 			$"INSERT INTO UserRoles (UserId, RoleId) SELECT u.Id, r.Id FROM Users u, Roles r WHERE r.Code = $RoleCode AND ({predicate}) AND NOT EXISTS (SELECT 1 FROM UserRoles ur WHERE ur.UserId = u.Id AND ur.RoleId = r.Id);",
 			("$RoleCode", roleCode));
 
+	private static object? Scalar(DbCommand command, string sql, params (string Name, object? Value)[] parameters)
+	{
+		Prepare(command, sql, parameters);
+		return command.ExecuteScalar();
+	}
+
 	private static int Execute(DbCommand command, string sql, params (string Name, object? Value)[] parameters)
+	{
+		Prepare(command, sql, parameters);
+		return command.ExecuteNonQuery();
+	}
+
+	private static void Prepare(DbCommand command, string sql, params (string Name, object? Value)[] parameters)
 	{
 		command.CommandText = sql.Replace("$", "@", StringComparison.Ordinal);
 		command.Parameters.Clear();
@@ -93,6 +111,5 @@ internal static class RbacCatalogSeeder
 			parameter.Value = value ?? DBNull.Value;
 			command.Parameters.Add(parameter);
 		}
-		return command.ExecuteNonQuery();
 	}
 }
