@@ -24,7 +24,7 @@ Depot keeps the original broad system roles for upgrade compatibility and adds n
 | **Fulfillment Operator** | Released Sales Orders, shipping and customer returns without Sales approval authority. |
 | **Inventory Controller** | Counts, transfers, controlled stock corrections and inventory traceability. |
 | **Accounts Receivable** | Customer open items, receipts, allocations and dunning. |
-| **Accounts Payable** | Supplier invoices and PO/receipt/invoice matching. |
+| **Accounts Payable** | Supplier invoices and standard PO/receipt/invoice matching; exception approval remains separately granted. |
 | **Treasury** | Bank statements, reconciliation, payment proposals, payment runs and cash position. |
 | **Accountant / Controller** | General Ledger, periods, posting profiles, inventory accounting, reconciliation and financial reporting. |
 | **Management Viewer** | Read-only operational and financial KPIs, reports and drilldowns. |
@@ -34,7 +34,7 @@ Depot keeps the original broad system roles for upgrade compatibility and adds n
 
 ### Separation of duties
 - **Accounts Receivable** and **Accounts Payable** are separate system roles.
-- **Accounts Payable** does not implicitly receive supplier-invoice approval; the existing **Approver** role remains the standard approval boundary.
+- **Accounts Payable** does not implicitly receive supplier-invoice or match-exception approval; those authorities remain separately granted.
 - **Treasury** can prepare and execute payment workflows but does not implicitly receive payment-proposal approval.
 - **Accountant / Controller** does not receive `FinanceManualJournals.Post`; manual journal authority must be granted deliberately.
 - **Application Administrator** does not receive operational Sales, Warehouse or Finance posting permissions.

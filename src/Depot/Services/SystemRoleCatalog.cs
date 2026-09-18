@@ -73,24 +73,20 @@ public static class SystemRoleCatalog
 		new(AccountsPayableCode, "Accounts Payable", "Processes supplier invoices and matching while keeping invoice approval and Treasury authority separate.", Set(
 			ApplicationPermission.DashboardView, ApplicationPermission.PurchasingView, ApplicationPermission.SuppliersView, ApplicationPermission.PurchaseOrdersView, ApplicationPermission.GoodsReceiptsView,
 			ApplicationPermission.FinancePayablesView, ApplicationPermission.FinanceSupplierInvoicesCreate, ApplicationPermission.FinanceSupplierInvoicesSubmit,
-			ApplicationPermission.FinanceSupplierMatchExceptionsApprove, ApplicationPermission.FinanceSupplierInvoicesPost, ApplicationPermission.FinanceSupplierInvoicesReverse)),
+			ApplicationPermission.FinanceSupplierInvoicesPost, ApplicationPermission.FinanceSupplierInvoicesReverse)),
 		new(TreasuryCode, "Treasury", "Operates bank statements, reconciliation, payment proposals, payment runs and cash position without supplier-invoice or General Ledger administration.", Set(
 			ApplicationPermission.DashboardView, ApplicationPermission.FinanceBankingView, ApplicationPermission.FinanceBankingManage,
 			ApplicationPermission.FinanceBankStatementsCreate, ApplicationPermission.FinanceBankReconciliationManage,
 			ApplicationPermission.FinancePaymentProposalsCreate, ApplicationPermission.FinancePaymentRunsPost, ApplicationPermission.FinanceCashPositionView)),
 		new(AccountantControllerCode, "Accountant / Controller", "Controls General Ledger, periods, posting profiles, inventory accounting, reconciliation and financial reporting; manual journal posting remains separately granted.", Set(
 			ApplicationPermission.DashboardView, ApplicationPermission.ReportsView, ApplicationPermission.ReportsExport,
-			ApplicationPermission.FinanceView, ApplicationPermission.FinanceExchangeRatesView, ApplicationPermission.FinanceExchangeRatesManage,
+			ApplicationPermission.FinanceView,
 			ApplicationPermission.FinancePeriodsView, ApplicationPermission.FinancePeriodsManage,
-			ApplicationPermission.FinanceAccountingBooksView, ApplicationPermission.FinanceAccountingBooksManage,
-			ApplicationPermission.FinanceTaxConfigurationView, ApplicationPermission.FinanceTaxConfigurationManage,
-			ApplicationPermission.FinanceNumberSequencesView, ApplicationPermission.FinanceNumberSequencesManage,
 			ApplicationPermission.FinanceGeneralLedgerView, ApplicationPermission.FinanceGeneralLedgerPost, ApplicationPermission.FinanceGeneralLedgerReverse,
 			ApplicationPermission.FinancePostingProfilesView, ApplicationPermission.FinancePostingProfilesManage,
 			ApplicationPermission.FinanceInventoryAccountingView, ApplicationPermission.FinanceInventoryAccountingManage,
 			ApplicationPermission.FinanceBankingView, ApplicationPermission.FinanceBankReconciliationManage,
-			ApplicationPermission.FinanceFinancialReportingView, ApplicationPermission.FinanceFinancialReportingManage, ApplicationPermission.FinanceFinancialReportingExport, ApplicationPermission.FinanceReportSnapshotsCreate,
-			ApplicationPermission.FinanceLocalizationView, ApplicationPermission.FinanceLocalizationManage)),
+			ApplicationPermission.FinanceFinancialReportingView, ApplicationPermission.FinanceFinancialReportingManage, ApplicationPermission.FinanceFinancialReportingExport, ApplicationPermission.FinanceReportSnapshotsCreate)),
 		new(ManagementViewerCode, "Management Viewer", "Read-only management access to operational and financial KPIs, reports and drilldowns.", Set(
 			ApplicationPermission.DashboardView,
 			ApplicationPermission.InventoryView, ApplicationPermission.ItemsView, ApplicationPermission.StockMovementsView, ApplicationPermission.StockTransfersView, ApplicationPermission.InventoryCountsView,

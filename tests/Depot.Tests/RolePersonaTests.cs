@@ -106,6 +106,7 @@ public sealed class RbacTestsPersonaProfiles
 		Assert.DoesNotContain(ApplicationPermission.FinanceReceivablePaymentsPost, payables);
 		Assert.DoesNotContain(ApplicationPermission.FinanceBankingManage, payables);
 		Assert.DoesNotContain(ApplicationPermission.FinanceSupplierInvoicesApprove, payables);
+		Assert.DoesNotContain(ApplicationPermission.FinanceSupplierMatchExceptionsApprove, payables);
 
 		Assert.Contains(ApplicationPermission.FinanceBankingView, treasury);
 		Assert.Contains(ApplicationPermission.FinancePaymentRunsPost, treasury);
@@ -125,6 +126,11 @@ public sealed class RbacTestsPersonaProfiles
 		Assert.Contains(ApplicationPermission.FinanceInventoryAccountingManage, role);
 		Assert.Contains(ApplicationPermission.FinanceFinancialReportingView, role);
 		Assert.DoesNotContain(ApplicationPermission.FinanceManualJournalsPost, role);
+		Assert.DoesNotContain(ApplicationPermission.FinanceExchangeRatesManage, role);
+		Assert.DoesNotContain(ApplicationPermission.FinanceAccountingBooksManage, role);
+		Assert.DoesNotContain(ApplicationPermission.FinanceTaxConfigurationManage, role);
+		Assert.DoesNotContain(ApplicationPermission.FinanceNumberSequencesManage, role);
+		Assert.DoesNotContain(ApplicationPermission.FinanceLocalizationManage, role);
 	}
 
 	[Fact]
@@ -265,7 +271,7 @@ public sealed class RbacTestsPersonaProfiles
 			{
 				ApplicationPermission.DashboardView, ApplicationPermission.PurchasingView, ApplicationPermission.SuppliersView, ApplicationPermission.PurchaseOrdersView, ApplicationPermission.GoodsReceiptsView,
 				ApplicationPermission.FinancePayablesView, ApplicationPermission.FinanceSupplierInvoicesCreate, ApplicationPermission.FinanceSupplierInvoicesSubmit,
-				ApplicationPermission.FinanceSupplierMatchExceptionsApprove, ApplicationPermission.FinanceSupplierInvoicesPost, ApplicationPermission.FinanceSupplierInvoicesReverse
+				ApplicationPermission.FinanceSupplierInvoicesPost, ApplicationPermission.FinanceSupplierInvoicesReverse
 			}
 		},
 		{
@@ -282,17 +288,13 @@ public sealed class RbacTestsPersonaProfiles
 			new ApplicationPermission[]
 			{
 				ApplicationPermission.DashboardView, ApplicationPermission.ReportsView, ApplicationPermission.ReportsExport,
-				ApplicationPermission.FinanceView, ApplicationPermission.FinanceExchangeRatesView, ApplicationPermission.FinanceExchangeRatesManage,
+				ApplicationPermission.FinanceView,
 				ApplicationPermission.FinancePeriodsView, ApplicationPermission.FinancePeriodsManage,
-				ApplicationPermission.FinanceAccountingBooksView, ApplicationPermission.FinanceAccountingBooksManage,
-				ApplicationPermission.FinanceTaxConfigurationView, ApplicationPermission.FinanceTaxConfigurationManage,
-				ApplicationPermission.FinanceNumberSequencesView, ApplicationPermission.FinanceNumberSequencesManage,
 				ApplicationPermission.FinanceGeneralLedgerView, ApplicationPermission.FinanceGeneralLedgerPost, ApplicationPermission.FinanceGeneralLedgerReverse,
 				ApplicationPermission.FinancePostingProfilesView, ApplicationPermission.FinancePostingProfilesManage,
 				ApplicationPermission.FinanceInventoryAccountingView, ApplicationPermission.FinanceInventoryAccountingManage,
 				ApplicationPermission.FinanceBankingView, ApplicationPermission.FinanceBankReconciliationManage,
-				ApplicationPermission.FinanceFinancialReportingView, ApplicationPermission.FinanceFinancialReportingManage, ApplicationPermission.FinanceFinancialReportingExport, ApplicationPermission.FinanceReportSnapshotsCreate,
-				ApplicationPermission.FinanceLocalizationView, ApplicationPermission.FinanceLocalizationManage
+				ApplicationPermission.FinanceFinancialReportingView, ApplicationPermission.FinanceFinancialReportingManage, ApplicationPermission.FinanceFinancialReportingExport, ApplicationPermission.FinanceReportSnapshotsCreate
 			}
 		},
 		{
