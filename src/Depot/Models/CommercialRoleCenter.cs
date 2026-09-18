@@ -15,7 +15,11 @@ public enum CommercialRoleCenterKind
 	ReceivablesWorkspace = 8,
 	PayablesWorkspace = 9,
 	TreasuryWorkspace = 10,
-	AccountingControlWorkspace = 11
+	AccountingControlWorkspace = 11,
+	ManagementCockpit = 12,
+	AuditComplianceCenter = 13,
+	MasterDataWorkspace = 14,
+	ApplicationAdministrationCenter = 15
 }
 
 public enum CommercialRoleItemKind

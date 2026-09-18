@@ -99,6 +99,37 @@ public sealed class CommercialRoleCenterService
 			ApplicationPermission.FinanceGeneralLedgerView,
 			ApplicationPermission.FinanceInventoryAccountingView,
 			ApplicationPermission.FinanceFinancialReportingView),
+		CommercialRoleCenterKind.ManagementCockpit =>
+			_authorization.HasPermission(ApplicationPermission.DashboardView) &&
+			_authorization.HasPermission(ApplicationPermission.InventoryView) &&
+			_authorization.HasPermission(ApplicationPermission.PurchaseOrdersView) &&
+			_authorization.HasPermission(ApplicationPermission.SalesOrdersView) &&
+			_authorization.HasPermission(ApplicationPermission.FinanceReceivablesView) &&
+			_authorization.HasPermission(ApplicationPermission.FinancePayablesView) &&
+			_authorization.HasPermission(ApplicationPermission.FinanceBankingView) &&
+			_authorization.HasPermission(ApplicationPermission.FinanceCashPositionView) &&
+			_authorization.HasPermission(ApplicationPermission.ReportsView),
+		CommercialRoleCenterKind.AuditComplianceCenter =>
+			_authorization.HasPermission(ApplicationPermission.AuditLogView) &&
+			_authorization.HasPermission(ApplicationPermission.AuditLogExport) &&
+			_authorization.HasPermission(ApplicationPermission.SecurityEventsView) &&
+			_authorization.HasPermission(ApplicationPermission.UsersView) &&
+			_authorization.HasPermission(ApplicationPermission.RolesView) &&
+			_authorization.HasPermission(ApplicationPermission.ReportsView) &&
+			_authorization.HasPermission(ApplicationPermission.FinanceFinancialReportingView),
+		CommercialRoleCenterKind.MasterDataWorkspace =>
+			_authorization.HasPermission(ApplicationPermission.MasterDataView) &&
+			_authorization.HasPermission(ApplicationPermission.ItemsView) &&
+			_authorization.HasPermission(ApplicationPermission.CustomersView) &&
+			_authorization.HasPermission(ApplicationPermission.SuppliersView),
+		CommercialRoleCenterKind.ApplicationAdministrationCenter =>
+			_authorization.HasPermission(ApplicationPermission.AdministrationView) &&
+			_authorization.HasPermission(ApplicationPermission.UsersView) &&
+			_authorization.HasPermission(ApplicationPermission.RolesView) &&
+			_authorization.HasPermission(ApplicationPermission.SettingsView) &&
+			_authorization.HasPermission(ApplicationPermission.DatabaseView) &&
+			_authorization.HasPermission(ApplicationPermission.SecurityEventsView) &&
+			_authorization.HasPermission(ApplicationPermission.AuditLogView),
 		_ => false
 	};
 
@@ -118,6 +149,10 @@ public sealed class CommercialRoleCenterService
 			CommercialRoleCenterKind.PayablesWorkspace => GetPayablesWorkspaceAsync(cancellationToken),
 			CommercialRoleCenterKind.TreasuryWorkspace => GetTreasuryWorkspaceAsync(cancellationToken),
 			CommercialRoleCenterKind.AccountingControlWorkspace => GetAccountingControlWorkspaceAsync(cancellationToken),
+			CommercialRoleCenterKind.ManagementCockpit => GetManagementCockpitAsync(cancellationToken),
+			CommercialRoleCenterKind.AuditComplianceCenter => GetAuditComplianceCenterAsync(),
+			CommercialRoleCenterKind.MasterDataWorkspace => GetMasterDataWorkspaceAsync(),
+			CommercialRoleCenterKind.ApplicationAdministrationCenter => GetApplicationAdministrationCenterAsync(),
 			_ => throw new ArgumentOutOfRangeException(nameof(kind))
 		};
 	}
@@ -614,6 +649,173 @@ public sealed class CommercialRoleCenterService
 			[],
 			quickActions,
 			[]);
+	}
+
+
+	private async Task<CommercialRoleCenterSnapshot> GetManagementCockpitAsync(CancellationToken cancellationToken)
+	{
+		Task<PageResult<SalesOrder>> Sales(SalesOrderStatus status, int pageSize = 1) =>
+			_salesOrders.SearchAsync(null, status, 1, pageSize, cancellationToken);
+		Task<PageResult<PurchaseOrder>> Purchasing(PurchaseOrderStatus status) =>
+			_purchaseOrders.SearchAsync(null, status, 1, 1, cancellationToken);
+
+		var today = DateOnly.FromDateTime(DateTime.Today);
+		var dashboardTask = _dashboard.GetAsync(cancellationToken);
+		var workTask = _myWork.GetAsync(cancellationToken);
+		var draftSalesTask = Sales(SalesOrderStatus.Draft);
+		var pendingSalesTask = Sales(SalesOrderStatus.PendingApproval);
+		var approvedSalesTask = Sales(SalesOrderStatus.Approved);
+		var releasedSalesTask = Sales(SalesOrderStatus.Released, SourceItemLimit);
+		var partialSalesTask = Sales(SalesOrderStatus.PartiallyShipped, SourceItemLimit);
+		var pendingPurchaseTask = Purchasing(PurchaseOrderStatus.PendingApproval);
+		var receivableOpenTask = _receivables.SearchOpenItemsAsync(null, false, 1, MaximumItemsPerSection, cancellationToken);
+		var receivableAgingTask = _receivables.GetAgingAsync(today, cancellationToken);
+		var payableOpenTask = _payables.SearchOpenItemsAsync(null, false, 1, MaximumItemsPerSection, cancellationToken);
+		var cashTask = _banking.GetCashPositionAsync(cancellationToken);
+
+		await Task.WhenAll(
+			dashboardTask, workTask,
+			draftSalesTask, pendingSalesTask, approvedSalesTask, releasedSalesTask, partialSalesTask,
+			pendingPurchaseTask, receivableOpenTask, receivableAgingTask, payableOpenTask, cashTask);
+
+		var dashboard = await dashboardTask;
+		var salesMetrics = dashboard.Roles.Sales;
+		var purchasingMetrics = dashboard.Roles.Purchasing;
+		var draftSales = await draftSalesTask;
+		var pendingSales = await pendingSalesTask;
+		var approvedSales = await approvedSalesTask;
+		var releasedSales = await releasedSalesTask;
+		var partialSales = await partialSalesTask;
+		var openSalesCount = draftSales.TotalCount + pendingSales.TotalCount + approvedSales.TotalCount + releasedSales.TotalCount + partialSales.TotalCount;
+		var releasedSalesCount = releasedSales.TotalCount + partialSales.TotalCount;
+		var pendingPurchaseCount = (await pendingPurchaseTask).TotalCount;
+		var receivableOpen = await receivableOpenTask;
+		var receivableAging = await receivableAgingTask;
+		var overdueAccounts = receivableAging.Count(value =>
+			value.Days1To30 != 0m || value.Days31To60 != 0m || value.Days61To90 != 0m || value.DaysOver90 != 0m);
+		var payableOpen = await payableOpenTask;
+		var dueHorizon = payableOpen.Items
+			.Where(value => value.Kind == FinancePayableOpenItemKind.Invoice && !value.IsVoided && value.RemainingAmount > 0m && value.DueDate <= today.AddDays(7))
+			.OrderBy(value => value.DueDate)
+			.ThenBy(value => value.Id)
+			.Select(value => PayableOpenItemItem(value, today, "Treasury handoff"))
+			.ToArray();
+		var overdueReceivables = receivableOpen.Items
+			.Where(value => value.Kind == FinanceReceivableOpenItemKind.Invoice && value.DueDate < today)
+			.OrderBy(value => value.DueDate)
+			.ThenBy(value => value.Id)
+			.Select(value => ReceivableItem(value, today))
+			.ToArray();
+		var releasedAndBackordered = releasedSales.Items
+			.Concat(partialSales.Items)
+			.OrderByDescending(value => value.Lines.Sum(line => line.BackorderedQuantity))
+			.ThenBy(value => value.RequestedDeliveryDate)
+			.Select(OrderItem)
+			.ToArray();
+		var work = await workTask;
+		var exceptions = work.Sections
+			.Single(value => value.Kind == MyWorkSectionKind.Exceptions)
+			.Items
+			.Take(MaximumItemsPerSection)
+			.Select(FromMyWork)
+			.ToArray();
+		var cash = await cashTask;
+		var pendingApprovals = pendingPurchaseCount + (salesMetrics?.PendingApprovals ?? pendingSales.TotalCount);
+
+		var kpis = new List<CommercialRoleKpi>
+		{
+			new("Open sales orders", openSalesCount.ToString("N0"), $"Released / partially shipped: {releasedSalesCount:N0}", "sales.orders"),
+			new("Pending approvals", pendingApprovals.ToString("N0"), $"Sales: {salesMetrics?.PendingApprovals ?? pendingSales.TotalCount:N0} · Purchase: {pendingPurchaseCount:N0}", "approvals"),
+			new("AR open items", receivableOpen.TotalCount.ToString("N0"), $"Overdue customer/currency positions: {overdueAccounts:N0}", "finance.receivables"),
+			new("AP open items", payableOpen.TotalCount.ToString("N0"), $"Due within 7 days shown: {dueHorizon.Length:N0}", "finance.payables")
+		};
+		if (salesMetrics is not null)
+			kpis.Insert(0, new("Net sales this month", salesMetrics.NetSalesThisMonth.ToString("C2"), $"Backordered orders: {salesMetrics.BackorderedOrders:N0}", "sales.invoices"));
+		if (dashboard.Inventory is not null)
+			kpis.Add(new("Inventory value", dashboard.Inventory.Summary.TotalInventoryValue.ToString("C2"), $"Stock quantity: {dashboard.Inventory.Summary.TotalStockQuantity:N0}", "inventory.overview"));
+		if (purchasingMetrics is not null)
+			kpis.Add(new("Late purchase orders", purchasingMetrics.OverdueDeliveries.ToString("N0"), "Existing purchasing overdue-delivery metric", "purchasing.purchase-orders"));
+
+		return Snapshot(
+			CommercialRoleCenterKind.ManagementCockpit,
+			"Management Cockpit",
+			"Read-only operational and financial visibility using existing permission-filtered KPIs, subledgers and exception projections.",
+			[
+				Section("Released / Backordered Sales Orders", "No released sales orders currently require management visibility.", releasedAndBackordered),
+				Section("Overdue Receivables", "No overdue customer invoices are visible.", overdueReceivables),
+				Section("AP Due Horizon — Next 7 Days", "No supplier invoices in the visible open-item horizon are due within seven days.", dueHorizon),
+				Section("Cash Position", "No active cash-position evidence is available.", cash.Select(CashPositionItem)),
+				Section("Selected Operational Exceptions", "No operational exceptions are visible for the current permissions.", exceptions)
+			],
+			kpis,
+			[
+				new("Sales Orders", "navigate", "sales.orders"),
+				new("Inventory", "navigate", "inventory.overview"),
+				new("Receivables", "navigate", "finance.receivables"),
+				new("Payables", "navigate", "finance.payables"),
+				new("Cash Position", "navigate", "finance.banking"),
+				new("Reports", "navigate", "reports.overview")
+			],
+			work.Failures);
+	}
+
+	private Task<CommercialRoleCenterSnapshot> GetAuditComplianceCenterAsync() =>
+		Task.FromResult(Snapshot(
+			CommercialRoleCenterKind.AuditComplianceCenter,
+			"Audit & Compliance Center",
+			"Read-only evidence and export entry points for audit, security, identities and reporting without operational mutation authority.",
+			[],
+			[],
+			[
+				new("Audit Log", "admin.audit-log", "administration"),
+				new("Document / Entity History", "admin.audit-log", "administration"),
+				new("Security Events", "admin.security", "administration"),
+				new("Users — Read Only", "admin.users", "administration"),
+				new("Roles — Read Only", "admin.roles", "administration"),
+				new("Operational Reports", "navigate", "reports.overview"),
+				new("Financial Reporting", "navigate", "finance.reporting")
+			],
+			[]));
+
+	private Task<CommercialRoleCenterSnapshot> GetMasterDataWorkspaceAsync() =>
+		Task.FromResult(Snapshot(
+			CommercialRoleCenterKind.MasterDataWorkspace,
+			"Master Data Workspace",
+			"Controlled maintenance entry points for item, customer, supplier, warehouse, location and reference master data without operational posting rights.",
+			[],
+			[],
+			[
+				new("Items", "navigate", "inventory.items"),
+				new("Customers", "navigate", "sales.customers"),
+				new("Suppliers", "admin.suppliers", "administration"),
+				new("Reference Master Data", "admin.master-data", "administration"),
+				new("Warehouses & Locations", "admin.warehouses", "administration")
+			],
+			[]));
+
+	private Task<CommercialRoleCenterSnapshot> GetApplicationAdministrationCenterAsync()
+	{
+		var quickActions = new List<CommercialRoleQuickAction>
+		{
+			new("Users", "admin.users", "administration"),
+			new("Roles", "admin.roles", "administration"),
+			new("User Sessions", "admin.sessions", "administration"),
+			new("Security Center", "admin.security", "administration"),
+			new("Company Settings", "admin.company", "administration"),
+			new("Database", "admin.database", "administration"),
+			new("Audit Log", "admin.audit-log", "administration")
+		};
+		if (_authorization.HasPermission(ApplicationPermission.ImportManage))
+			quickActions.Add(new("Import", "admin.import", "administration"));
+
+		return Task.FromResult(Snapshot(
+			CommercialRoleCenterKind.ApplicationAdministrationCenter,
+			"Application Administration Center",
+			"Application, identity, security, settings and database administration without implicit Sales, Purchasing, Warehouse or Finance posting authority.",
+			[],
+			[],
+			quickActions,
+			[]));
 	}
 
 	private async Task<CommercialRoleCenterSnapshot> GetReceivingWorkspaceAsync(CancellationToken cancellationToken)

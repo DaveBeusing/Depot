@@ -43,6 +43,10 @@ public static class ShellRoutes
 		public static readonly ShellRoute PayablesWorkspace = new("role-centers.payables-workspace");
 		public static readonly ShellRoute TreasuryWorkspace = new("role-centers.treasury-workspace");
 		public static readonly ShellRoute AccountingControlWorkspace = new("role-centers.accounting-control-workspace");
+		public static readonly ShellRoute ManagementCockpit = new("role-centers.management-cockpit");
+		public static readonly ShellRoute AuditComplianceCenter = new("role-centers.audit-compliance");
+		public static readonly ShellRoute MasterDataWorkspace = new("role-centers.master-data");
+		public static readonly ShellRoute ApplicationAdministrationCenter = new("role-centers.application-administration");
 	}
 
 	public static class Inventory
