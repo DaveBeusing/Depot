@@ -110,7 +110,11 @@ internal sealed class ServiceComposition
 			MaterialReturns,
 			AccountsReceivable,
 			AccountsPayable,
-			Banking);
+			Banking,
+			FinanceGeneralLedger,
+			InventoryAccounting,
+			InventoryCosting,
+			FinancialReporting);
 		GlobalSearch = new GlobalSearchService(
 		[
 			new ItemGlobalSearchProvider(Items, Authorization),

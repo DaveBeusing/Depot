@@ -13,7 +13,9 @@ public enum CommercialRoleCenterKind
 	FulfillmentWorkspace = 6,
 	InventoryControlWorkspace = 7,
 	ReceivablesWorkspace = 8,
-	PayablesWorkspace = 9
+	PayablesWorkspace = 9,
+	TreasuryWorkspace = 10,
+	AccountingControlWorkspace = 11
 }
 
 public enum CommercialRoleItemKind
@@ -35,7 +37,15 @@ public enum CommercialRoleItemKind
 	MaterialIssue = 15,
 	MaterialReturn = 16,
 	ReceivableOpenItem = 17,
-	PayableOpenItem = 18
+	PayableOpenItem = 18,
+	BankStatement = 19,
+	BankStatementLine = 20,
+	CashPosition = 21,
+	GeneralLedgerEntry = 22,
+	InventoryReconciliation = 23,
+	InventoryValuation = 24,
+	ReportSnapshot = 25,
+	FinanceStatus = 26
 }
 
 public sealed record CommercialRoleItem(

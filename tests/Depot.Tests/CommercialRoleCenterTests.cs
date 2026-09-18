@@ -23,6 +23,8 @@ public sealed class CommercialRoleCenterTests
 	[InlineData(ApplicationPermission.InventoryCountsEdit, CommercialRoleCenterKind.InventoryControlWorkspace)]
 	[InlineData(ApplicationPermission.FinanceReceivablesView, CommercialRoleCenterKind.ReceivablesWorkspace)]
 	[InlineData(ApplicationPermission.FinancePayablesView, CommercialRoleCenterKind.PayablesWorkspace)]
+	[InlineData(ApplicationPermission.FinancePaymentProposalsCreate, CommercialRoleCenterKind.TreasuryWorkspace)]
+	[InlineData(ApplicationPermission.FinanceGeneralLedgerView, CommercialRoleCenterKind.AccountingControlWorkspace)]
 	public void RoleCenterVisibilityFollowsEffectivePermissions(ApplicationPermission permission, CommercialRoleCenterKind expected)
 	{
 		var service = CreateService(permission);
@@ -104,6 +106,34 @@ public sealed class CommercialRoleCenterTests
 	}
 
 	[Fact]
+	public void TreasuryAndAccountingPersonasKeepSensitiveAuthoritiesSeparated()
+	{
+		var treasury = SystemRoleCatalog.Definitions.Single(role => role.Code == SystemRoleCatalog.TreasuryCode);
+		var accountant = SystemRoleCatalog.Definitions.Single(role => role.Code == SystemRoleCatalog.AccountantControllerCode);
+		var treasuryService = CreateService(treasury.Permissions.ToArray());
+		var accountantService = CreateService(accountant.Permissions.ToArray());
+
+		Assert.True(treasuryService.CanAccess(CommercialRoleCenterKind.TreasuryWorkspace));
+		Assert.False(treasuryService.CanAccess(CommercialRoleCenterKind.AccountingControlWorkspace));
+		Assert.DoesNotContain(ApplicationPermission.FinanceGeneralLedgerView, treasury.Permissions);
+		Assert.DoesNotContain(ApplicationPermission.FinancePaymentProposalsApprove, treasury.Permissions);
+
+		Assert.True(accountantService.CanAccess(CommercialRoleCenterKind.AccountingControlWorkspace));
+		Assert.False(accountantService.CanAccess(CommercialRoleCenterKind.TreasuryWorkspace));
+		Assert.DoesNotContain(ApplicationPermission.FinancePaymentProposalsApprove, accountant.Permissions);
+		Assert.DoesNotContain(ApplicationPermission.FinancePaymentRunsPost, accountant.Permissions);
+		Assert.DoesNotContain(ApplicationPermission.FinanceManualJournalsPost, accountant.Permissions);
+	}
+
+	[Fact]
+	public void ManualJournalAuthorityDoesNotFollowGeneralLedgerPostingAuthority()
+	{
+		var accountant = SystemRoleCatalog.Definitions.Single(role => role.Code == SystemRoleCatalog.AccountantControllerCode);
+		Assert.Contains(ApplicationPermission.FinanceGeneralLedgerPost, accountant.Permissions);
+		Assert.DoesNotContain(ApplicationPermission.FinanceManualJournalsPost, accountant.Permissions);
+	}
+
+	[Fact]
 	public void FinanceRoleItemsExposeOperationalColumns()
 	{
 		var item = new CommercialRoleItem(
@@ -176,6 +206,10 @@ public sealed class CommercialRoleCenterTests
 		authorization.SignIn(new User { Id = 42, Email = "role-center@test.local", DisplayName = "Role Center", IsActive = true }, permissions);
 		return new CommercialRoleCenterService(
 			authorization,
+			null!,
+			null!,
+			null!,
+			null!,
 			null!,
 			null!,
 			null!,

@@ -27,6 +27,10 @@ public sealed class CommercialRoleCenterService
 	private readonly FinanceAccountsReceivableService _receivables;
 	private readonly FinanceAccountsPayableService _payables;
 	private readonly FinanceBankingService _banking;
+	private readonly FinanceGeneralLedgerService _generalLedger;
+	private readonly FinanceInventoryAccountingService _inventoryAccounting;
+	private readonly FinanceInventoryCostingService _inventoryCosting;
+	private readonly FinanceFinancialReportingService _financialReporting;
 
 	public CommercialRoleCenterService(
 		IAuthorizationService authorization,
@@ -45,7 +49,11 @@ public sealed class CommercialRoleCenterService
 		MaterialReturnService materialReturns,
 		FinanceAccountsReceivableService receivables,
 		FinanceAccountsPayableService payables,
-		FinanceBankingService banking)
+		FinanceBankingService banking,
+		FinanceGeneralLedgerService generalLedger,
+		FinanceInventoryAccountingService inventoryAccounting,
+		FinanceInventoryCostingService inventoryCosting,
+		FinanceFinancialReportingService financialReporting)
 	{
 		_authorization = authorization;
 		_myWork = myWork;
@@ -64,6 +72,10 @@ public sealed class CommercialRoleCenterService
 		_receivables = receivables;
 		_payables = payables;
 		_banking = banking;
+		_generalLedger = generalLedger;
+		_inventoryAccounting = inventoryAccounting;
+		_inventoryCosting = inventoryCosting;
+		_financialReporting = financialReporting;
 	}
 
 	public bool CanAccess(CommercialRoleCenterKind kind) => kind switch
@@ -77,6 +89,16 @@ public sealed class CommercialRoleCenterService
 		CommercialRoleCenterKind.InventoryControlWorkspace => _authorization.HasAnyPermission(ApplicationPermission.InventoryCountsCreate, ApplicationPermission.InventoryCountsEdit, ApplicationPermission.InventoryCountsPost, ApplicationPermission.StockTransfersCreate, ApplicationPermission.StockTransfersEdit, ApplicationPermission.StockTransfersPost, ApplicationPermission.MaterialIssuesCreate, ApplicationPermission.MaterialIssuesPost, ApplicationPermission.MaterialReturnsCreate, ApplicationPermission.MaterialReturnsPost),
 		CommercialRoleCenterKind.ReceivablesWorkspace => _authorization.HasPermission(ApplicationPermission.FinanceReceivablesView),
 		CommercialRoleCenterKind.PayablesWorkspace => _authorization.HasPermission(ApplicationPermission.FinancePayablesView),
+		CommercialRoleCenterKind.TreasuryWorkspace => _authorization.HasAnyPermission(
+			ApplicationPermission.FinanceBankStatementsCreate,
+			ApplicationPermission.FinancePaymentProposalsCreate,
+			ApplicationPermission.FinancePaymentRunsPost,
+			ApplicationPermission.FinanceCashPositionView),
+		CommercialRoleCenterKind.AccountingControlWorkspace => _authorization.HasAnyPermission(
+			ApplicationPermission.FinancePeriodsView,
+			ApplicationPermission.FinanceGeneralLedgerView,
+			ApplicationPermission.FinanceInventoryAccountingView,
+			ApplicationPermission.FinanceFinancialReportingView),
 		_ => false
 	};
 
@@ -94,6 +116,8 @@ public sealed class CommercialRoleCenterService
 			CommercialRoleCenterKind.InventoryControlWorkspace => GetInventoryControlWorkspaceAsync(cancellationToken),
 			CommercialRoleCenterKind.ReceivablesWorkspace => GetReceivablesWorkspaceAsync(cancellationToken),
 			CommercialRoleCenterKind.PayablesWorkspace => GetPayablesWorkspaceAsync(cancellationToken),
+			CommercialRoleCenterKind.TreasuryWorkspace => GetTreasuryWorkspaceAsync(cancellationToken),
+			CommercialRoleCenterKind.AccountingControlWorkspace => GetAccountingControlWorkspaceAsync(cancellationToken),
 			_ => throw new ArgumentOutOfRangeException(nameof(kind))
 		};
 	}
@@ -273,6 +297,206 @@ public sealed class CommercialRoleCenterService
 	}
 
 
+
+
+	private async Task<CommercialRoleCenterSnapshot> GetTreasuryWorkspaceAsync(CancellationToken cancellationToken)
+	{
+		var statementsTask = _banking.GetStatementsAsync(cancellationToken: cancellationToken);
+		var unreconciledTask = _banking.SearchUnreconciledLinesAsync(null, 1, MaximumItemsPerSection, cancellationToken);
+		var paymentRunsTask = _banking.SearchPaymentRunsAsync(1, MaximumItemsPerSection, cancellationToken);
+		var cashTask = _authorization.HasPermission(ApplicationPermission.FinanceCashPositionView)
+			? _banking.GetCashPositionAsync(cancellationToken)
+			: Task.FromResult<IReadOnlyList<FinanceCashPosition>>([]);
+
+		await Task.WhenAll(statementsTask, unreconciledTask, paymentRunsTask, cashTask);
+
+		var today = DateOnly.FromDateTime(DateTime.Today);
+		var unreconciledPage = await unreconciledTask;
+		var unreconciled = unreconciledPage.Items;
+		var unreconciledByStatement = unreconciled
+			.GroupBy(value => value.StatementId)
+			.ToDictionary(group => group.Key, group => group.Count());
+		var statements = (await statementsTask)
+			.Where(value => unreconciledByStatement.ContainsKey(value.Id) || value.ImportedAtUtc >= DateTime.UtcNow.AddDays(-7))
+			.OrderByDescending(value => value.ImportedAtUtc)
+			.Take(MaximumItemsPerSection)
+			.Select(value => BankStatementItem(value, unreconciledByStatement.GetValueOrDefault(value.Id)))
+			.ToArray();
+		var cash = await cashTask;
+		var reconciliationExceptions = cash
+			.Where(value => value.Difference != 0m)
+			.OrderByDescending(value => Math.Abs(value.Difference))
+			.Select(CashPositionItem)
+			.ToArray();
+		var openReconciliation = unreconciled
+			.OrderBy(value => value.BookingDate)
+			.ThenBy(value => value.Id)
+			.Select(value => BankStatementLineItem(value, today))
+			.ToArray();
+		var paymentRuns = (await paymentRunsTask).Items;
+		var awaitingDecision = paymentRuns
+			.Where(value => value.Status == FinancePaymentRunStatus.Draft)
+			.OrderBy(value => value.PaymentDate)
+			.ThenBy(value => value.Id)
+			.Select(TreasuryPaymentRunItem)
+			.ToArray();
+		var readyToExecute = paymentRuns
+			.Where(value => value.Status is FinancePaymentRunStatus.Approved or FinancePaymentRunStatus.PartiallyExecuted)
+			.OrderBy(value => value.PaymentDate)
+			.ThenBy(value => value.Id)
+			.Select(TreasuryPaymentRunItem)
+			.ToArray();
+		var recentRuns = paymentRuns
+			.Where(value => value.Status is FinancePaymentRunStatus.Executed or FinancePaymentRunStatus.Cancelled)
+			.OrderByDescending(value => value.CompletedAtUtc ?? value.CreatedAtUtc)
+			.ThenByDescending(value => value.Id)
+			.Select(TreasuryPaymentRunItem)
+			.ToArray();
+
+		var quickActions = new List<CommercialRoleQuickAction>();
+		if (_banking.CanImportStatements) quickActions.Add(new("Import Bank Statement", "navigate", "finance.banking"));
+		if (_banking.CanReconcile) quickActions.Add(new("Reconcile Statement Lines", "navigate", "finance.banking"));
+		if (_banking.CanCreatePaymentRuns) quickActions.Add(new("Create Payment Proposal", "navigate", "finance.banking"));
+		if (_banking.CanExecutePaymentRuns) quickActions.Add(new("Execute Approved Payment Run", "navigate", "finance.banking"));
+
+		return Snapshot(
+			CommercialRoleCenterKind.TreasuryWorkspace,
+			"Treasury Workspace",
+			"Bank statements, reconciliation, payment proposals, payment execution and cash position without collapsing preparation, approval and execution authority.",
+			[
+				Section("New / Unprocessed Bank Statements", "No new or unreconciled bank statements require attention.", statements),
+				Section("Reconciliation Exceptions", "No cash-to-ledger reconciliation differences are currently visible.", reconciliationExceptions),
+				Section("Open Reconciliation Items", "No unreconciled bank statement lines remain.", openReconciliation),
+				Section("Payment Proposals Awaiting Preparation / Decision", "No draft payment proposals are waiting for preparation or independent decision.", awaitingDecision),
+				Section("Approved Proposals Ready for Payment Run", "No approved payment proposals are ready for execution.", readyToExecute),
+				Section("Recent Payment Runs", "No recently completed or cancelled payment runs are available.", recentRuns),
+				Section("Cash Position", _authorization.HasPermission(ApplicationPermission.FinanceCashPositionView) ? "No active cash-position evidence is available." : "Cash position is not available to this account.", cash.Select(CashPositionItem))
+			],
+			[
+				new("Unreconciled", unreconciledPage.TotalCount.ToString("N0"), "Bank statement lines requiring reconciliation", "finance.banking"),
+				new("Draft proposals", awaitingDecision.Length.ToString("N0"), "Preparation and approval remain separate authorities", "finance.banking"),
+				new("Ready to execute", readyToExecute.Length.ToString("N0"), "Approved payment runs", "finance.banking"),
+				new("Cash differences", reconciliationExceptions.Length.ToString("N0"), "Bank accounts with statement-to-GL differences", "finance.banking")
+			],
+			quickActions,
+			[]);
+	}
+
+	private async Task<CommercialRoleCenterSnapshot> GetAccountingControlWorkspaceAsync(CancellationToken cancellationToken)
+	{
+		var today = DateOnly.FromDateTime(DateTime.Today);
+		var journalsTask = _authorization.HasPermission(ApplicationPermission.FinanceGeneralLedgerView)
+			? _generalLedger.SearchAsync(null, null, null, null, 1, SourceItemLimit, cancellationToken)
+			: Task.FromResult(new PageResult<FinanceJournalEntrySummary>([], 1, SourceItemLimit, 0));
+		var periodsTask = _authorization.HasPermission(ApplicationPermission.FinancePeriodsView)
+			? _generalLedger.GetPeriodsForDateAsync(today, cancellationToken)
+			: Task.FromResult<IReadOnlyList<AccountingPeriod>>([]);
+		var configurationTask = _authorization.HasPermission(ApplicationPermission.FinanceInventoryAccountingView)
+			? _inventoryAccounting.GetConfigurationAsync(cancellationToken)
+			: Task.FromResult<FinanceInventoryAccountingConfiguration?>(null);
+		var policyTask = _authorization.HasPermission(ApplicationPermission.FinanceInventoryAccountingView)
+			? _inventoryCosting.GetPolicyAsync(cancellationToken)
+			: Task.FromResult<FinanceInventoryAccountingPolicy?>(null);
+		var valuationTask = _authorization.HasPermission(ApplicationPermission.FinanceInventoryAccountingView)
+			? _inventoryCosting.GetValuationSummaryAsync(cancellationToken)
+			: Task.FromResult<IReadOnlyList<FinanceInventoryValuationSummary>>([]);
+		var reconciliationTask = _authorization.HasPermission(ApplicationPermission.FinanceInventoryAccountingView)
+			? _inventoryCosting.GetRecentReconciliationsAsync(cancellationToken)
+			: Task.FromResult<IReadOnlyList<FinanceInventoryReconciliationRun>>([]);
+		var snapshotsTask = _authorization.HasPermission(ApplicationPermission.FinanceFinancialReportingView)
+			? _financialReporting.GetRecentSnapshotsAsync(cancellationToken: cancellationToken)
+			: Task.FromResult<IReadOnlyList<FinanceReportSnapshot>>([]);
+		var profilesTask = _authorization.HasPermission(ApplicationPermission.FinancePostingProfilesView)
+			? _generalLedger.GetPostingProfilesAsync(cancellationToken)
+			: Task.FromResult<IReadOnlyList<FinancePostingProfile>>([]);
+
+		await Task.WhenAll(journalsTask, periodsTask, configurationTask, policyTask, valuationTask, reconciliationTask, snapshotsTask, profilesTask);
+
+		var journals = (await journalsTask).Items
+			.Where(value => value.EntryKind != FinanceJournalEntryKind.Manual || _generalLedger.CanPostManualJournal)
+			.ToArray();
+		var periods = await periodsTask;
+		var configuration = await configurationTask;
+		var policy = await policyTask;
+		var valuation = await valuationTask;
+		var reconciliations = await reconciliationTask;
+		var snapshots = await snapshotsTask;
+		var profiles = await profilesTask;
+
+		var configurationWarnings = new List<CommercialRoleItem>();
+		if (_authorization.HasPermission(ApplicationPermission.FinanceInventoryAccountingView))
+		{
+			if (configuration is null)
+				configurationWarnings.Add(FinanceStatusItem("INV-CONFIG", "Inventory Accounting configuration", "No configuration is available.", "Warning", "finance.inventory-accounting", "Configure Inventory Accounting"));
+			else if (!configuration.IsActive)
+				configurationWarnings.Add(FinanceStatusItem("INV-CONFIG", "Inventory Accounting configuration", "The configured Inventory Accounting profile is inactive.", "Warning", "finance.inventory-accounting", "Review configuration"));
+			if (policy is null)
+				configurationWarnings.Add(FinanceStatusItem("INV-POLICY", "Inventory Accounting policy", "No valuation/reconciliation policy is available.", "Warning", "finance.inventory-accounting", "Configure policy"));
+			else if (!policy.IsActive)
+				configurationWarnings.Add(FinanceStatusItem("INV-POLICY", "Inventory Accounting policy", "The configured valuation/reconciliation policy is inactive.", "Warning", "finance.inventory-accounting", "Review policy"));
+		}
+		if (_authorization.HasPermission(ApplicationPermission.FinancePostingProfilesView) && profiles.Count == 0)
+			configurationWarnings.Add(FinanceStatusItem("POSTING", "Posting profiles", "No Finance posting profiles are available.", "Warning", "finance.inventory-accounting", "Review posting configuration"));
+		if (_authorization.HasPermission(ApplicationPermission.FinancePeriodsView) && periods.Count == 0)
+			configurationWarnings.Add(FinanceStatusItem("PERIOD", "Fiscal period", $"No fiscal period covers {today:yyyy-MM-dd}.", "Warning", "finance.reporting", "Review fiscal period configuration"));
+
+		var reconciliationDifferences = reconciliations
+			.Where(value => value.Difference != 0m)
+			.OrderByDescending(value => Math.Abs(value.Difference))
+			.Select(InventoryReconciliationItem)
+			.ToArray();
+		var needsAttention = configurationWarnings
+			.Concat(reconciliationDifferences)
+			.Take(MaximumItemsPerSection)
+			.ToArray();
+		var periodItems = periods
+			.OrderBy(value => value.StartDate)
+			.ThenBy(value => value.Code)
+			.Select(PeriodStatusItem)
+			.ToArray();
+		var accountingStatus = new List<CommercialRoleItem>();
+		if (configuration is not null)
+		{
+			accountingStatus.Add(FinanceStatusItem(
+				"GRNI / COGS",
+				"Inventory posting profiles",
+				$"GRNI profile #{configuration.GoodsReceiptPostingProfileId:N0} · COGS profile #{configuration.SalesIssuePostingProfileId:N0}",
+				configuration.IsActive ? "Configured" : "Inactive",
+				"finance.inventory-accounting",
+				"Open Inventory Accounting"));
+		}
+		accountingStatus.AddRange(valuation
+			.OrderByDescending(value => Math.Abs(value.TransactionValue))
+			.Take(SourceItemLimit)
+			.Select(InventoryValuationItem));
+
+		var quickActions = new List<CommercialRoleQuickAction>();
+		if (_authorization.HasPermission(ApplicationPermission.FinanceGeneralLedgerView)) quickActions.Add(new("General Ledger Reporting", "navigate", "finance.reporting"));
+		if (_authorization.HasPermission(ApplicationPermission.FinanceInventoryAccountingView)) quickActions.Add(new("Inventory Accounting", "navigate", "finance.inventory-accounting"));
+		if (_authorization.HasPermission(ApplicationPermission.FinanceFinancialReportingView)) quickActions.Add(new("Financial Reporting", "navigate", "finance.reporting"));
+
+		return Snapshot(
+			CommercialRoleCenterKind.AccountingControlWorkspace,
+			"Accounting & Control Workspace",
+			"Posting, reconciliation, fiscal-period and reporting attention for Accounting and Controlling, with sensitive manual journals kept behind their explicit permission.",
+			[
+				Section("Needs Attention", "No accounting, reconciliation or configuration issue currently requires attention.", needsAttention),
+				Section("GL Posting / Reversal Attention", "No recent General Ledger postings are visible to this account.", journals.Select(GeneralLedgerItem)),
+				Section("Reconciliation", "No recent Inventory-to-GL reconciliation evidence is available.", reconciliations.Select(InventoryReconciliationItem)),
+				Section("Period / Posting Status", "No current fiscal-period status is available to this account.", periodItems),
+				Section("GRNI / COGS / Valuation Status", "No Inventory Accounting status is available.", accountingStatus),
+				Section("Report Snapshots", "No recent financial-report snapshots are available.", snapshots.Take(MaximumItemsPerSection).Select(ReportSnapshotItem)),
+				Section("Configuration Warnings", "No existing Finance configuration warning is currently derivable.", configurationWarnings)
+			],
+			[
+				new("Current periods", periods.Count.ToString("N0"), periods.Count(value => value.Status == AccountingPeriodStatus.Open) + " open", "finance.reporting"),
+				new("Recent reversals", journals.Count(value => value.EntryKind == FinanceJournalEntryKind.Reversal).ToString("N0"), "Visible General Ledger reversals", "finance.reporting"),
+				new("Reconciliation differences", reconciliationDifferences.Length.ToString("N0"), "Inventory-to-GL differences", "finance.inventory-accounting"),
+				new("Report snapshots", snapshots.Count.ToString("N0"), "Recent immutable reporting evidence", "finance.reporting")
+			],
+			quickActions,
+			[]);
+	}
 
 	private async Task<CommercialRoleCenterSnapshot> GetReceivablesWorkspaceAsync(CancellationToken cancellationToken)
 	{
@@ -784,6 +1008,200 @@ public sealed class CommercialRoleCenterService
 		if (value.Lines.Any(line => line.MatchStatus == FinancePayableMatchStatus.Matched)) return "Matched";
 		return "Not required";
 	}
+
+
+	private static CommercialRoleItem BankStatementItem(FinanceBankStatement value, int unreconciledCount) =>
+		new(
+			CommercialRoleItemKind.BankStatement,
+			value.Id,
+			0,
+			value.StatementReference,
+			"Bank Statement",
+			$"{value.FromDate:d} – {value.ToDate:d}",
+			unreconciledCount > 0 ? "Unprocessed" : "Processed",
+			value.ClosingBalance,
+			value.ImportedAtUtc,
+			value.ToDate.ToDateTime(TimeOnly.MinValue),
+			null,
+			"finance.banking",
+			value.ImportedByUserId,
+			Currency: value.Currency.Value,
+			StateDetail: unreconciledCount > 0 ? $"{unreconciledCount:N0} unreconciled lines" : "Fully reconciled",
+			NextAction: unreconciledCount > 0 ? "Reconcile" : "Review");
+
+	private static CommercialRoleItem BankStatementLineItem(FinanceBankStatementLine value, DateOnly today) =>
+		new(
+			CommercialRoleItemKind.BankStatementLine,
+			value.Id,
+			0,
+			value.ExternalId ?? value.Reference ?? $"Line {value.LineNumber:N0}",
+			"Bank Statement Line",
+			value.CounterpartyName,
+			value.IsReconciled ? "Reconciled" : "Open",
+			value.Amount,
+			value.BookingDate.ToDateTime(TimeOnly.MinValue),
+			value.ValueDate?.ToDateTime(TimeOnly.MinValue),
+			AgeFromDueDate(today, value.BookingDate),
+			"finance.banking",
+			Currency: value.Currency.Value,
+			StateDetail: value.Reference,
+			NextAction: value.IsReconciled ? "Review" : "Reconcile");
+
+	private static CommercialRoleItem CashPositionItem(FinanceCashPosition value) =>
+		new(
+			CommercialRoleItemKind.CashPosition,
+			value.BankAccountId,
+			0,
+			value.BankAccountName,
+			"Cash Position",
+			value.StatementDate is null ? "No bank statement date" : $"Statement {value.StatementDate:yyyy-MM-dd}",
+			value.Difference == 0m ? "Reconciled" : "Difference",
+			value.StatementBalance,
+			null,
+			value.StatementDate?.ToDateTime(TimeOnly.MinValue),
+			null,
+			"finance.banking",
+			Currency: value.Currency.Value,
+			StateDetail: $"GL {value.GeneralLedgerBalance:N2} · Difference {value.Difference:N2}",
+			NextAction: value.Difference == 0m ? "Review" : "Reconcile");
+
+	private CommercialRoleItem TreasuryPaymentRunItem(FinancePaymentRun value)
+	{
+		var executed = value.Lines.Count(line => line.Status == FinancePaymentRunLineStatus.Executed);
+		var nextAction = value.Status switch
+		{
+			FinancePaymentRunStatus.Draft when _banking.CanApprovePaymentRun(value.CreatedByUserId) => "Independent approval available",
+			FinancePaymentRunStatus.Draft when value.CreatedByUserId == _authorization.CurrentUser?.Id => "Await independent approval",
+			FinancePaymentRunStatus.Draft => "Await approval",
+			FinancePaymentRunStatus.Approved or FinancePaymentRunStatus.PartiallyExecuted when _banking.CanExecutePaymentRuns => "Execute payment",
+			FinancePaymentRunStatus.Approved or FinancePaymentRunStatus.PartiallyExecuted => "Await execution authority",
+			_ => "Review"
+		};
+		return new CommercialRoleItem(
+			CommercialRoleItemKind.PaymentProposal,
+			value.Id,
+			value.Version,
+			$"PAY-{value.Id:N0}",
+			"Payment Proposal",
+			value.Description,
+			value.Status.ToString(),
+			value.Lines.Sum(line => line.Amount),
+			value.CreatedAtUtc,
+			value.PaymentDate.ToDateTime(TimeOnly.MinValue),
+			null,
+			"finance.banking",
+			value.CreatedByUserId,
+			Requester: UserLabel(value.CreatedByUserId),
+			Currency: value.Currency.Value,
+			StateDetail: $"{executed:N0} of {value.Lines.Count:N0} lines executed",
+			NextAction: nextAction);
+	}
+
+	private CommercialRoleItem GeneralLedgerItem(FinanceJournalEntrySummary value) =>
+		new(
+			CommercialRoleItemKind.GeneralLedgerEntry,
+			value.Id,
+			0,
+			value.EntryNumber,
+			value.EntryKind == FinanceJournalEntryKind.Reversal ? "General Ledger Reversal" : "General Ledger Posting",
+			$"{value.SourceType} / {value.SourceEvent}",
+			value.EntryKind.ToString(),
+			null,
+			value.PostedAtUtc,
+			value.PostingDate.ToDateTime(TimeOnly.MinValue),
+			null,
+			"finance.reporting",
+			Currency: value.ReportingCurrency.Value,
+			StateDetail: value.SourceReference ?? value.SourceId,
+			NextAction: value.EntryKind == FinanceJournalEntryKind.Reversal ? "Review reversal" : _generalLedger.CanReverse ? "Review / reverse if required" : "Review");
+
+	private static CommercialRoleItem InventoryReconciliationItem(FinanceInventoryReconciliationRun value) =>
+		new(
+			CommercialRoleItemKind.InventoryReconciliation,
+			value.Id,
+			0,
+			$"REC-{value.Id:N0}",
+			"Inventory-to-GL Reconciliation",
+			$"As of {value.AsOfDate:yyyy-MM-dd}",
+			value.Difference == 0m ? "Balanced" : "Difference",
+			value.Difference,
+			value.CreatedAtUtc,
+			value.AsOfDate.ToDateTime(TimeOnly.MinValue),
+			null,
+			"finance.inventory-accounting",
+			value.CreatedByUserId,
+			Currency: value.ReportingCurrency.Value,
+			StateDetail: $"Valuation {value.ValuationAmount:N2} · GL {value.GeneralLedgerAmount:N2}",
+			NextAction: value.Difference == 0m ? "Review" : "Investigate");
+
+	private static CommercialRoleItem InventoryValuationItem(FinanceInventoryValuationSummary value) =>
+		new(
+			CommercialRoleItemKind.InventoryValuation,
+			value.ItemId,
+			0,
+			$"ITEM-{value.ItemId:N0}",
+			"Inventory Valuation",
+			$"{value.Quantity:N0} units",
+			"Valued",
+			value.TransactionValue,
+			null,
+			null,
+			null,
+			"finance.inventory-accounting",
+			Currency: value.Currency.Value,
+			StateDetail: "FIFO valuation / GRNI / COGS evidence",
+			NextAction: "Open Inventory Accounting");
+
+	private static CommercialRoleItem PeriodStatusItem(AccountingPeriod value) =>
+		new(
+			CommercialRoleItemKind.FinanceStatus,
+			0,
+			0,
+			value.Code,
+			"Fiscal Period",
+			$"{value.StartDate:yyyy-MM-dd} – {value.EndDate:yyyy-MM-dd}",
+			value.Status.ToString(),
+			null,
+			null,
+			value.EndDate.ToDateTime(TimeOnly.MinValue),
+			null,
+			"finance.reporting",
+			StateDetail: $"Calendar {value.FiscalCalendarId:D}",
+			NextAction: value.Status == AccountingPeriodStatus.Open ? "Posting period open" : "Period closed");
+
+	private static CommercialRoleItem ReportSnapshotItem(FinanceReportSnapshot value) =>
+		new(
+			CommercialRoleItemKind.ReportSnapshot,
+			value.Id,
+			0,
+			$"SNAP-{value.Id:N0}",
+			value.Kind.ToString(),
+			value.AccountingBookId.ToString("D"),
+			"Snapshot",
+			null,
+			value.CreatedAtUtc,
+			value.AsOfDate?.ToDateTime(TimeOnly.MinValue) ?? value.ToDate?.ToDateTime(TimeOnly.MinValue),
+			null,
+			"finance.reporting",
+			value.CreatedByUserId,
+			StateDetail: value.ContentHash,
+			NextAction: "Open Financial Reporting");
+
+	private static CommercialRoleItem FinanceStatusItem(string displayNumber, string title, string? context, string status, string route, string nextAction) =>
+		new(
+			CommercialRoleItemKind.FinanceStatus,
+			0,
+			0,
+			displayNumber,
+			title,
+			context,
+			status,
+			null,
+			null,
+			null,
+			null,
+			route,
+			NextAction: nextAction);
 
 	private static int? AgeFromDueDate(DateOnly today, DateOnly dueDate) =>
 		dueDate <= today ? today.DayNumber - dueDate.DayNumber : null;

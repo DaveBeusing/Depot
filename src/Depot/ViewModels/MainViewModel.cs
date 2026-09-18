@@ -31,6 +31,8 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 	private readonly Lazy<CommercialRoleCenterViewModel> _inventoryControlWorkspaceRoleCenter;
 	private readonly Lazy<CommercialRoleCenterViewModel> _receivablesWorkspaceRoleCenter;
 	private readonly Lazy<CommercialRoleCenterViewModel> _payablesWorkspaceRoleCenter;
+	private readonly Lazy<CommercialRoleCenterViewModel> _treasuryWorkspaceRoleCenter;
+	private readonly Lazy<CommercialRoleCenterViewModel> _accountingControlWorkspaceRoleCenter;
 	private readonly Lazy<InventoryViewModel> _inventory;
 	private readonly Lazy<ItemsViewModel> _items;
 	private readonly Lazy<MovementsViewModel> _movements;
@@ -150,6 +152,8 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		_inventoryControlWorkspaceRoleCenter = new(() => new CommercialRoleCenterViewModel(commercialRoleCenterService, CommercialRoleCenterKind.InventoryControlWorkspace));
 		_receivablesWorkspaceRoleCenter = new(() => new CommercialRoleCenterViewModel(commercialRoleCenterService, CommercialRoleCenterKind.ReceivablesWorkspace));
 		_payablesWorkspaceRoleCenter = new(() => new CommercialRoleCenterViewModel(commercialRoleCenterService, CommercialRoleCenterKind.PayablesWorkspace));
+		_treasuryWorkspaceRoleCenter = new(() => new CommercialRoleCenterViewModel(commercialRoleCenterService, CommercialRoleCenterKind.TreasuryWorkspace));
+		_accountingControlWorkspaceRoleCenter = new(() => new CommercialRoleCenterViewModel(commercialRoleCenterService, CommercialRoleCenterKind.AccountingControlWorkspace));
 		_inventory = new(() => new InventoryViewModel(stockService));
 		_items = new(() => new ItemsViewModel(itemService, manufacturerService, categoryService, unitOfMeasureService, packagingService, salesServices.ItemCosts));
 		_movements = new(() => new MovementsViewModel(movementService, reasonCodeService, fileDialogService, MarkInventoryPagesStale));
@@ -392,6 +396,14 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 				await this.NavigateToRouteAsync(route, cancellationToken);
 				FinanceBankingViewModel.SelectedPaymentRun = FinanceBankingViewModel.PaymentRuns.FirstOrDefault(run => run.Id == item.EntityId);
 				break;
+			case CommercialRoleItemKind.BankStatement:
+				await this.NavigateToRouteAsync(route, cancellationToken);
+				FinanceBankingViewModel.SelectedStatement = FinanceBankingViewModel.Statements.FirstOrDefault(statement => statement.Id == item.EntityId);
+				break;
+			case CommercialRoleItemKind.BankStatementLine:
+				await this.NavigateToRouteAsync(route, cancellationToken);
+				FinanceBankingViewModel.SelectedStatementLine = FinanceBankingViewModel.UnreconciledLines.FirstOrDefault(line => line.Id == item.EntityId);
+				break;
 			default:
 				await this.NavigateToRouteAsync(route, cancellationToken);
 				break;
@@ -472,6 +484,8 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		if (_commercialRoleCenters.CanAccess(CommercialRoleCenterKind.InventoryControlWorkspace)) roleCenterPages.Add(new("Inventory Control Workspace", () => _inventoryControlWorkspaceRoleCenter.Value, (viewModel, token) => ((CommercialRoleCenterViewModel)viewModel).LoadAsync(token), HelpService.FallbackTopicId, route: ShellRoutes.RoleCenters.InventoryControlWorkspace));
 		if (_commercialRoleCenters.CanAccess(CommercialRoleCenterKind.ReceivablesWorkspace)) roleCenterPages.Add(new("Receivables Workspace", () => _receivablesWorkspaceRoleCenter.Value, (viewModel, token) => ((CommercialRoleCenterViewModel)viewModel).LoadAsync(token), HelpService.FallbackTopicId, route: ShellRoutes.RoleCenters.ReceivablesWorkspace));
 		if (_commercialRoleCenters.CanAccess(CommercialRoleCenterKind.PayablesWorkspace)) roleCenterPages.Add(new("Payables Workspace", () => _payablesWorkspaceRoleCenter.Value, (viewModel, token) => ((CommercialRoleCenterViewModel)viewModel).LoadAsync(token), HelpService.FallbackTopicId, route: ShellRoutes.RoleCenters.PayablesWorkspace));
+		if (_commercialRoleCenters.CanAccess(CommercialRoleCenterKind.TreasuryWorkspace)) roleCenterPages.Add(new("Treasury Workspace", () => _treasuryWorkspaceRoleCenter.Value, (viewModel, token) => ((CommercialRoleCenterViewModel)viewModel).LoadAsync(token), HelpService.FallbackTopicId, route: ShellRoutes.RoleCenters.TreasuryWorkspace));
+		if (_commercialRoleCenters.CanAccess(CommercialRoleCenterKind.AccountingControlWorkspace)) roleCenterPages.Add(new("Accounting & Control Workspace", () => _accountingControlWorkspaceRoleCenter.Value, (viewModel, token) => ((CommercialRoleCenterViewModel)viewModel).LoadAsync(token), HelpService.FallbackTopicId, route: ShellRoutes.RoleCenters.AccountingControlWorkspace));
 		AddModule("Role Centers", Icons.Finance, "Role-oriented starting points for commercial, warehouse and finance operations.", roleCenterPages);
 
 		var inventoryPages = new List<SecondaryNavigationItem>();
