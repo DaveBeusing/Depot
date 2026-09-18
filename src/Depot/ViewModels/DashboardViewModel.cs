@@ -11,7 +11,9 @@ namespace Depot.ViewModels;
 public sealed class DashboardViewModel : BaseViewModel, IDisposable
 {
 	private readonly DashboardService _dashboardService;
+	private readonly MyWorkService _myWorkService;
 	private readonly LatestRequest _loadRequest = new();
+	private readonly LatestRequest _myWorkRequest = new();
 	private int _totalItems;
 	private int _totalStockQuantity;
 	private decimal _totalInventoryValue;
@@ -21,8 +23,13 @@ public sealed class DashboardViewModel : BaseViewModel, IDisposable
 	private DashboardWarehouseMetrics? _warehouseMetrics;
 	private DashboardSalesMetrics? _salesMetrics;
 	private DashboardAdministrationMetrics? _administrationMetrics;
+	private string _myWorkStatusText = string.Empty;
 
-	public DashboardViewModel(DashboardService dashboardService) => _dashboardService = dashboardService;
+	public DashboardViewModel(DashboardService dashboardService, MyWorkService myWorkService)
+	{
+		_dashboardService = dashboardService;
+		_myWorkService = myWorkService;
+	}
 
 	public int TotalItems { get => _totalItems; private set { _totalItems = value; OnPropertyChanged(); } }
 	public int TotalStockQuantity { get => _totalStockQuantity; private set { _totalStockQuantity = value; OnPropertyChanged(); } }
@@ -50,8 +57,10 @@ public sealed class DashboardViewModel : BaseViewModel, IDisposable
 	public string SalesCommercialText => SalesMetrics is null ? string.Empty : $"Draft shipments: {SalesMetrics.DraftShipments:N0} · Draft invoices: {SalesMetrics.DraftInvoices:N0} · Returns: {SalesMetrics.ReturnsThisMonth:N0} · Credits: {SalesMetrics.CreditNotesThisMonth:N0} · Net sales: {SalesMetrics.NetSalesThisMonth:C2}";
 
 	public ObservableCollection<DashboardRecentMovementViewModel> RecentMovements { get; } = new();
+	public ObservableCollection<MyWorkSection> MyWorkSections { get; } = new();
 	public bool HasRecentMovements => RecentMovements.Count > 0;
 	public bool HasNoRecentMovements => !HasRecentMovements;
+	public string MyWorkStatusText { get => _myWorkStatusText; private set { _myWorkStatusText = value; OnPropertyChanged(); } }
 
 	public async Task LoadAsync(CancellationToken cancellationToken = default)
 	{
@@ -59,8 +68,11 @@ public sealed class DashboardViewModel : BaseViewModel, IDisposable
 		BeginOperation("Loading dashboard");
 		try
 		{
-			var result = await _dashboardService.GetAsync(request.Token);
+			var dashboardTask = _dashboardService.GetAsync(request.Token);
+			var myWorkTask = _myWorkService.GetAsync(request.Token);
+			await Task.WhenAll(dashboardTask, myWorkTask);
 			if (!request.IsCurrent) return;
+			var result = await dashboardTask;
 			var data = result.Inventory;
 			var summary = data?.Summary ?? new DashboardSummary();
 			HasCoreInventoryMetrics = data is not null;
@@ -76,6 +88,7 @@ public sealed class DashboardViewModel : BaseViewModel, IDisposable
 			WarehouseMetrics = result.Roles.Warehouse;
 			SalesMetrics = result.Roles.Sales;
 			AdministrationMetrics = result.Roles.Administration;
+			ApplyMyWork(await myWorkTask);
 			OnPropertyChanged(nameof(HasRecentMovements));
 			OnPropertyChanged(nameof(HasNoRecentMovements));
 			CompleteOperation(RecentMovements.Count == 0, "Dashboard loaded");
@@ -85,5 +98,26 @@ public sealed class DashboardViewModel : BaseViewModel, IDisposable
 		catch (Exception exception) { FailOperation(exception, "Dashboard could not be loaded"); }
 	}
 
-	public void Dispose() => _loadRequest.Dispose();
+	public async Task RefreshMyWorkAsync(CancellationToken cancellationToken = default)
+	{
+		var request = _myWorkRequest.Begin(cancellationToken);
+		try
+		{
+			var snapshot = await _myWorkService.GetAsync(request.Token);
+			if (request.IsCurrent) ApplyMyWork(snapshot);
+		}
+		catch (OperationCanceledException) when (request.Token.IsCancellationRequested) { }
+		catch (Exception) when (!request.IsCurrent) { }
+		catch (Exception exception) { MyWorkStatusText = $"My Work could not be refreshed: {exception.Message}"; }
+	}
+
+	private void ApplyMyWork(MyWorkSnapshot snapshot)
+	{
+		CollectionSynchronizer.Replace(MyWorkSections, snapshot.Sections);
+		MyWorkStatusText = snapshot.Failures.Count == 0
+			? "Work list is current."
+			: $"Some work sources are unavailable: {string.Join(", ", snapshot.Failures.Select(failure => failure.Provider))}.";
+	}
+
+	public void Dispose() { _loadRequest.Dispose(); _myWorkRequest.Dispose(); }
 }

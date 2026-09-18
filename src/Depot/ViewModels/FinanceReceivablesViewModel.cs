@@ -160,6 +160,12 @@ public sealed class FinanceReceivablesViewModel : BaseViewModel, IDisposable
 		}
 	}
 
+	public async Task OpenOpenItemAsync(long id, CancellationToken cancellationToken = default)
+	{
+		SelectedOpenItem = await _receivables.GetOpenItemAsync(id, cancellationToken)
+			?? throw new InvalidOperationException("The receivable open item no longer exists.");
+	}
+
 	public FinanceDunningPolicy? SelectedDunningPolicy
 	{
 		get => _selectedDunningPolicy;

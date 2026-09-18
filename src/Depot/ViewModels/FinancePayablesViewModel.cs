@@ -162,6 +162,12 @@ public sealed class FinancePayablesViewModel : BaseViewModel, IDisposable
 		}
 	}
 
+	public async Task OpenDocumentAsync(long id, CancellationToken cancellationToken = default)
+	{
+		SelectedDocument = await _payables.GetDocumentAsync(id, cancellationToken)
+			?? throw new InvalidOperationException("The supplier document no longer exists.");
+	}
+
 	public FinanceSupplierDocumentLineDraftEditor? SelectedDraftLine
 	{
 		get => _selectedDraftLine;

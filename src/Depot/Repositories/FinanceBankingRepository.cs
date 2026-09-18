@@ -46,6 +46,18 @@ public sealed class FinanceBankingRepository : DatabaseRepository
 			: Database.QueryAsync(sql, ReadLine, cancellationToken);
 	}
 
+	public Task<PageResult<FinanceBankStatementLine>> SearchUnreconciledLinesAsync(long? bankAccountId, int pageNumber, int pageSize, CancellationToken cancellationToken = default)
+	{
+		var filter = bankAccountId.HasValue ? " AND s.BankAccountId=$Account" : string.Empty;
+		var from = "FROM FinanceBankStatementLines l INNER JOIN FinanceBankStatements s ON s.Id=l.StatementId";
+		var where = "WHERE NOT EXISTS (SELECT 1 FROM FinanceBankReconciliations r WHERE r.StatementLineId=l.Id AND r.ReversedAtUtc IS NULL)" + filter;
+		DatabaseParameter[] parameters = bankAccountId.HasValue ? [Parameter("$Account", bankAccountId.Value)] : [];
+		return Database.QueryPageAsync($"SELECT {LineColumns} {from} {where} ORDER BY l.BookingDate,l.Id", $"SELECT COUNT(*) {from} {where};", ReadLine, pageNumber, pageSize, cancellationToken, parameters);
+	}
+
+	public Task<PageResult<FinancePaymentRun>> SearchPaymentRunsAsync(int pageNumber, int pageSize, CancellationToken cancellationToken = default) =>
+		Database.QueryPageAsync(RunSelect + " ORDER BY PaymentDate DESC,Id DESC", "SELECT COUNT(*) FROM FinancePaymentRuns;", ReadRun, pageNumber, pageSize, cancellationToken);
+
 	public async Task<IReadOnlyList<FinancePaymentRun>> GetPaymentRunsAsync(int count = 100, CancellationToken cancellationToken = default)
 	{
 		var rows = await Database.QueryAsync(RunSelect + " ORDER BY PaymentDate DESC,Id DESC;", ReadRun, cancellationToken);
@@ -169,7 +181,8 @@ public sealed class FinanceBankingRepository : DatabaseRepository
 		Parameter("$Entity", value.LegalEntityId.ToString("D")), Parameter("$Book", value.AccountingBookId.ToString("D")), Parameter("$Gl", value.GeneralLedgerAccountId.ToString("D")), Parameter("$Currency", value.Currency.Value), Parameter("$Name", value.Name), Parameter("$Bank", value.BankName), Parameter("$Iban", value.Iban), Parameter("$Bic", value.Bic), Parameter("$Local", value.LocalAccountNumber), Parameter("$Active", value.IsActive)
 	];
 
-	private const string LineSelect = "SELECT l.Id,l.StatementId,l.LineNumber,l.BookingDate,l.ValueDate,l.Amount,l.CurrencyCode,l.ExternalId,l.Reference,l.CounterpartyName,l.BankTransactionCode,CASE WHEN EXISTS (SELECT 1 FROM FinanceBankReconciliations r WHERE r.StatementLineId=l.Id AND r.ReversedAtUtc IS NULL) THEN 1 ELSE 0 END,(SELECT MAX(r.Id) FROM FinanceBankReconciliations r WHERE r.StatementLineId=l.Id AND r.ReversedAtUtc IS NULL) FROM FinanceBankStatementLines l";
+	private const string LineColumns = "l.Id,l.StatementId,l.LineNumber,l.BookingDate,l.ValueDate,l.Amount,l.CurrencyCode,l.ExternalId,l.Reference,l.CounterpartyName,l.BankTransactionCode,CASE WHEN EXISTS (SELECT 1 FROM FinanceBankReconciliations r WHERE r.StatementLineId=l.Id AND r.ReversedAtUtc IS NULL) THEN 1 ELSE 0 END,(SELECT MAX(r.Id) FROM FinanceBankReconciliations r WHERE r.StatementLineId=l.Id AND r.ReversedAtUtc IS NULL)";
+	private const string LineSelect = "SELECT " + LineColumns + " FROM FinanceBankStatementLines l";
 	private const string ReconciliationSelect = "SELECT Id,OperationId,StatementLineId,TargetKind,TargetId,TargetJournalEntryId,MatchedAmount,CreatedAtUtc,CreatedByUserId,ReversalOperationId,ReversedAtUtc,ReversedByUserId FROM FinanceBankReconciliations";
 	private const string RunSelect = "SELECT Id,Version,OperationId,BankAccountId,PaymentDate,CurrencyCode,Description,Status,CreatedAtUtc,CreatedByUserId,ApprovedAtUtc,ApprovedByUserId,ApprovalComment,CompletedAtUtc FROM FinancePaymentRuns";
 	private const string RunLineSelect = "SELECT Id,PaymentRunId,PayableOpenItemId,SupplierId,Amount,Reference,Status,ExecutionOperationId,PayablePaymentId,ExecutedAtUtc,ExecutedByUserId,ExecutionReference FROM FinancePaymentRunLines";
