@@ -62,6 +62,12 @@ public sealed class FinanceGeneralLedgerService
 		return _ledger.SearchAsync(accountingBookId, fromDate, toDate, sourceType, pageNumber, pageSize, cancellationToken);
 	}
 
+	public Task<IReadOnlyList<AccountingPeriod>> GetPeriodsForDateAsync(DateOnly date, CancellationToken cancellationToken = default)
+	{
+		_authorization.RequirePermission(ApplicationPermission.FinancePeriodsView);
+		return _ledger.GetPeriodsForDateAsync(date, cancellationToken);
+	}
+
 	public Task<FinancePostingProfile?> GetPostingProfileAsync(long id, CancellationToken cancellationToken = default)
 	{
 		_authorization.RequirePermission(ApplicationPermission.FinancePostingProfilesView);

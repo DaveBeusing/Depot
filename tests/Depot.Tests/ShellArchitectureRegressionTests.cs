@@ -15,7 +15,7 @@ public sealed class ShellArchitectureRegressionTests
 		var routes = new[]
 		{
 			ShellRoutes.Dashboard,
-			ShellRoutes.RoleCenters.Module, ShellRoutes.RoleCenters.SalesWorkspace, ShellRoutes.RoleCenters.SalesControl, ShellRoutes.RoleCenters.BuyerWorkbench, ShellRoutes.RoleCenters.ApprovalInbox, ShellRoutes.RoleCenters.ReceivingWorkspace, ShellRoutes.RoleCenters.FulfillmentWorkspace, ShellRoutes.RoleCenters.InventoryControlWorkspace, ShellRoutes.RoleCenters.ReceivablesWorkspace, ShellRoutes.RoleCenters.PayablesWorkspace,
+			ShellRoutes.RoleCenters.Module, ShellRoutes.RoleCenters.SalesWorkspace, ShellRoutes.RoleCenters.SalesControl, ShellRoutes.RoleCenters.BuyerWorkbench, ShellRoutes.RoleCenters.ApprovalInbox, ShellRoutes.RoleCenters.ReceivingWorkspace, ShellRoutes.RoleCenters.FulfillmentWorkspace, ShellRoutes.RoleCenters.InventoryControlWorkspace, ShellRoutes.RoleCenters.ReceivablesWorkspace, ShellRoutes.RoleCenters.PayablesWorkspace, ShellRoutes.RoleCenters.TreasuryWorkspace, ShellRoutes.RoleCenters.AccountingControlWorkspace,
 			ShellRoutes.Inventory.Module, ShellRoutes.Inventory.Overview, ShellRoutes.Inventory.Items, ShellRoutes.Inventory.Movements,
 			ShellRoutes.Warehouse.Module, ShellRoutes.Warehouse.Transfers, ShellRoutes.Warehouse.InventoryCounts, ShellRoutes.Warehouse.MaterialIssues, ShellRoutes.Warehouse.MaterialReturns, ShellRoutes.Warehouse.Shipping,
 			ShellRoutes.Purchasing.Module, ShellRoutes.Purchasing.PurchaseOrders, ShellRoutes.Purchasing.GoodsReceipts, ShellRoutes.Purchasing.SupplierReturns,

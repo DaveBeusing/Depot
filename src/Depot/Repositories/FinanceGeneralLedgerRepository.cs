@@ -63,6 +63,19 @@ public sealed class FinanceGeneralLedgerRepository : DatabaseRepository
 			parameters.ToArray());
 	}
 
+	public Task<IReadOnlyList<AccountingPeriod>> GetPeriodsForDateAsync(DateOnly date, CancellationToken cancellationToken = default) =>
+		Database.QueryAsync(
+			"SELECT Id, FiscalCalendarId, Code, StartDate, EndDate, Status FROM FinanceAccountingPeriods WHERE StartDate <= $Date AND EndDate >= $Date ORDER BY StartDate, Code;",
+			reader => new AccountingPeriod(
+				ReadGuid(reader, 0),
+				ReadGuid(reader, 1),
+				reader.GetString(2),
+				ReadDateOnly(reader, 3),
+				ReadDateOnly(reader, 4),
+				(AccountingPeriodStatus)Convert.ToInt32(reader.GetValue(5), CultureInfo.InvariantCulture)),
+			cancellationToken,
+			Parameter("$Date", date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)));
+
 	internal Task<FinanceExistingPosting?> FindByOperationAsync(DatabaseTransactionContext transaction, Guid operationId, CancellationToken cancellationToken) =>
 		transaction.Session.QuerySingleOrDefaultAsync(
 			"SELECT Id, RequestHash FROM FinanceJournalEntries WHERE OperationId = $OperationId;",
