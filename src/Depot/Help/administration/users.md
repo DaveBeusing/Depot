@@ -15,6 +15,32 @@ A new database does not use a shared default administrator password. Depot requi
 6. Use **Roles** to inspect or maintain non-protected role permissions.
 7. Save changes and start a new session where required for updated permissions to take effect.
 
+## Built-in work personas
+Depot keeps the original broad system roles for upgrade compatibility and adds narrower work personas for normal ERP duties:
+
+| Role | Primary responsibility |
+| --- | --- |
+| **Goods Receiver** | Expected receipts and controlled Goods Receipt create/post/reverse actions without general Purchasing management. |
+| **Fulfillment Operator** | Released Sales Orders, shipping and customer returns without Sales approval authority. |
+| **Inventory Controller** | Counts, transfers, controlled stock corrections and inventory traceability. |
+| **Accounts Receivable** | Customer open items, receipts, allocations and dunning. |
+| **Accounts Payable** | Supplier invoices and standard PO/receipt/invoice matching; exception approval remains separately granted. |
+| **Treasury** | Bank statements, reconciliation, payment proposals, payment runs and cash position. |
+| **Accountant / Controller** | General Ledger, periods, posting profiles, inventory accounting, reconciliation and financial reporting. |
+| **Management Viewer** | Read-only operational and financial KPIs, reports and drilldowns. |
+| **Auditor / Compliance** | Read-only/export-oriented audit, security, role and reporting evidence. |
+| **Master Data Manager** | Items, customers, suppliers, warehouse/location and reference master data. |
+| **Application Administrator** | Users, roles, sessions, settings, database and security administration. |
+
+### Separation of duties
+- **Accounts Receivable** and **Accounts Payable** are separate system roles.
+- **Accounts Payable** does not implicitly receive supplier-invoice or match-exception approval; those authorities remain separately granted.
+- **Treasury** can prepare and execute payment workflows but does not implicitly receive payment-proposal approval.
+- **Accountant / Controller** does not receive `FinanceManualJournals.Post`; manual journal authority must be granted deliberately.
+- **Application Administrator** does not receive operational Sales, Warehouse or Finance posting permissions.
+- **Management Viewer** and **Auditor / Compliance** contain only view/export permissions.
+- The protected **Administrator** role remains the only built-in full-access role.
+
 ## Password policy
 The Users editor uses the same central policy as first-run administrator setup: 12–128 characters, at least one uppercase letter, one lowercase letter, one number and one symbol, and the password must not contain the account name. The UI is advisory feedback; the same policy is also enforced when the account is saved.
 
