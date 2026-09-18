@@ -46,6 +46,7 @@ public sealed class SalesOrderService
 	public bool CanApprove => _authorization.HasPermission(ApplicationPermission.SalesOrdersApprove);
 	public bool CanRelease => _authorization.HasPermission(ApplicationPermission.SalesOrdersRelease);
 	public Task<PageResult<SalesOrder>> SearchAsync(string? searchText, SalesOrderStatus? status, int pageNumber = 1, int pageSize = 100, CancellationToken cancellationToken = default) { _authorization.RequirePermission(ApplicationPermission.SalesOrdersView); return _orders.SearchAsync(searchText, status, pageNumber, pageSize, cancellationToken); }
+	public Task<PageResult<SalesOrder>> SearchPendingApprovalsAsync(int pageNumber = 1, int pageSize = 50, CancellationToken cancellationToken = default) { _authorization.RequirePermission(ApplicationPermission.SalesOrdersApprove); return _orders.SearchAsync(null, SalesOrderStatus.PendingApproval, pageNumber, pageSize, cancellationToken); }
 	public bool CanDecide(long? createdByUserId) => _authorization.HasPermission(ApplicationPermission.SalesOrdersApprove) && (_authorization.CurrentUser?.Id != createdByUserId || _authorization.CurrentUser?.IsAdministrator == true);
 
 	public Task<SalesOrder?> GetByIdAsync(long id, CancellationToken cancellationToken = default) { _authorization.RequirePermission(ApplicationPermission.SalesOrdersView); return _orders.GetByIdAsync(id, cancellationToken); }

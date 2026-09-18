@@ -21,7 +21,8 @@ public enum CommercialRoleItemKind
 	PurchaseOrderApproval = 6,
 	SupplierReturn = 7,
 	SupplierInvoice = 8,
-	PaymentProposal = 9
+	PaymentProposal = 9,
+	Shipment = 10
 }
 
 public sealed record CommercialRoleItem(

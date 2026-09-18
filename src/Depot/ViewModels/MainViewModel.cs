@@ -19,6 +19,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 	private readonly SessionService _session;
 	private readonly INotificationNavigationService _notificationNavigation;
 	private readonly IFileDialogService _fileDialogs;
+	private readonly CommercialRoleCenterService _commercialRoleCenters;
 	private readonly WelcomeViewModel _welcome;
 	private readonly Lazy<DashboardViewModel> _dashboard;
 	private readonly Lazy<CommercialRoleCenterViewModel> _salesWorkspaceRoleCenter;
@@ -124,6 +125,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		_session = sessionService;
 		_notificationNavigation = notificationNavigationService;
 		_fileDialogs = fileDialogService;
+		_commercialRoleCenters = commercialRoleCenterService;
 		ConnectionStatus = connectionStatusService;
 		NotificationSummaryViewModel = new NotificationSummaryViewModel(notificationService);
 		LogoutCommand = new RelayCommand(Logout);
@@ -322,6 +324,9 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 			case CommercialRoleItemKind.SalesOrder:
 				await OpenSalesQuickItemAsync(new SalesQuickOpenItem(SalesQuickOpenKind.SalesOrder, item.EntityId, item.DisplayNumber, item.Context ?? string.Empty), cancellationToken);
 				break;
+			case CommercialRoleItemKind.Shipment:
+				await OpenSalesQuickItemAsync(new SalesQuickOpenItem(SalesQuickOpenKind.Shipment, item.EntityId, item.DisplayNumber, item.Context ?? string.Empty), cancellationToken);
+				break;
 			case CommercialRoleItemKind.SalesOrderApproval:
 				await this.NavigateToRouteAsync(ShellRoutes.Approvals.Sales, cancellationToken);
 				await SalesApprovalsViewModel.Workspace.OpenQuickItemAsync(new SalesQuickOpenItem(SalesQuickOpenKind.SalesOrder, item.EntityId, item.DisplayNumber, item.Context ?? string.Empty), cancellationToken);
@@ -389,13 +394,12 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 	{
 		AddDirect(ApplicationPermission.DashboardView, "Dashboard", Icons.Dashboard, () => _dashboard.Value, (viewModel, token) => viewModel.LoadAsync(token), HelpService.FallbackTopicId);
 		var roleCenterPages = new List<SecondaryNavigationItem>();
-		if (commercialRoleCenterServiceAccess(CommercialRoleCenterKind.SalesWorkspace)) roleCenterPages.Add(new("Sales Workspace", () => _salesWorkspaceRoleCenter.Value, (viewModel, token) => ((CommercialRoleCenterViewModel)viewModel).LoadAsync(token), HelpService.FallbackTopicId, route: ShellRoutes.RoleCenters.SalesWorkspace));
-		if (commercialRoleCenterServiceAccess(CommercialRoleCenterKind.SalesControlCenter)) roleCenterPages.Add(new("Sales Control Center", () => _salesControlRoleCenter.Value, (viewModel, token) => ((CommercialRoleCenterViewModel)viewModel).LoadAsync(token), HelpService.FallbackTopicId, route: ShellRoutes.RoleCenters.SalesControl));
-		if (commercialRoleCenterServiceAccess(CommercialRoleCenterKind.BuyerWorkbench)) roleCenterPages.Add(new("Buyer Workbench", () => _buyerWorkbenchRoleCenter.Value, (viewModel, token) => ((CommercialRoleCenterViewModel)viewModel).LoadAsync(token), HelpService.FallbackTopicId, route: ShellRoutes.RoleCenters.BuyerWorkbench));
-		if (commercialRoleCenterServiceAccess(CommercialRoleCenterKind.ApprovalInbox)) roleCenterPages.Add(new("Approval Inbox", () => _approvalInboxRoleCenter.Value, (viewModel, token) => ((CommercialRoleCenterViewModel)viewModel).LoadAsync(token), HelpService.FallbackTopicId, route: ShellRoutes.RoleCenters.ApprovalInbox));
+		if (_commercialRoleCenters.CanAccess(CommercialRoleCenterKind.SalesWorkspace)) roleCenterPages.Add(new("Sales Workspace", () => _salesWorkspaceRoleCenter.Value, (viewModel, token) => ((CommercialRoleCenterViewModel)viewModel).LoadAsync(token), HelpService.FallbackTopicId, route: ShellRoutes.RoleCenters.SalesWorkspace));
+		if (_commercialRoleCenters.CanAccess(CommercialRoleCenterKind.SalesControlCenter)) roleCenterPages.Add(new("Sales Control Center", () => _salesControlRoleCenter.Value, (viewModel, token) => ((CommercialRoleCenterViewModel)viewModel).LoadAsync(token), HelpService.FallbackTopicId, route: ShellRoutes.RoleCenters.SalesControl));
+		if (_commercialRoleCenters.CanAccess(CommercialRoleCenterKind.BuyerWorkbench)) roleCenterPages.Add(new("Buyer Workbench", () => _buyerWorkbenchRoleCenter.Value, (viewModel, token) => ((CommercialRoleCenterViewModel)viewModel).LoadAsync(token), HelpService.FallbackTopicId, route: ShellRoutes.RoleCenters.BuyerWorkbench));
+		if (_commercialRoleCenters.CanAccess(CommercialRoleCenterKind.ApprovalInbox)) roleCenterPages.Add(new("Approval Inbox", () => _approvalInboxRoleCenter.Value, (viewModel, token) => ((CommercialRoleCenterViewModel)viewModel).LoadAsync(token), HelpService.FallbackTopicId, route: ShellRoutes.RoleCenters.ApprovalInbox));
 		AddModule("Role Centers", Icons.Sales, "Role-oriented starting points for commercial work, buying and approvals.", roleCenterPages);
 
-		bool commercialRoleCenterServiceAccess(CommercialRoleCenterKind kind) => commercialRoleCenterService.CanAccess(kind);
 		var inventoryPages = new List<SecondaryNavigationItem>();
 		AddPage(inventoryPages, ApplicationPermission.InventoryView, "Overview", () => _inventory.Value, (viewModel, token) => viewModel.LoadAsync(token), "inventory.overview"); AddPage(inventoryPages, ApplicationPermission.ItemsView, "Items", () => _items.Value, (viewModel, token) => viewModel.LoadItemsAsync(token), "inventory.items"); AddPage(inventoryPages, ApplicationPermission.StockMovementsView, "Movements", () => _movements.Value, (viewModel, token) => viewModel.LoadAsync(token), "inventory.movements"); AddModule("Inventory", Icons.Inventory, "Monitor stock, items, and immutable inventory movements.", inventoryPages);
 		var warehousePages = new List<SecondaryNavigationItem>();

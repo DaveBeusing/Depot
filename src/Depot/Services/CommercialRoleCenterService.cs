@@ -73,36 +73,24 @@ public sealed class CommercialRoleCenterService
 		switch (item.Kind)
 		{
 			case CommercialRoleItemKind.PurchaseOrderApproval:
-			{
-				var current = await _purchaseApprovals.GetCurrentAsync(item.EntityId, cancellationToken) ?? throw new InvalidOperationException("The purchase order no longer exists.");
-				if (approve) await _purchaseApprovals.ApproveAsync(current.Id, current.Version, comment, cancellationToken);
-				else await _purchaseApprovals.RejectAsync(current.Id, current.Version, comment, cancellationToken);
+				if (approve) await _purchaseApprovals.ApproveAsync(item.EntityId, item.Version, comment, cancellationToken);
+				else await _purchaseApprovals.RejectAsync(item.EntityId, item.Version, comment, cancellationToken);
 				break;
-			}
 			case CommercialRoleItemKind.SalesOrderApproval:
-			{
-				var current = await _salesOrders.GetByIdAsync(item.EntityId, cancellationToken) ?? throw new InvalidOperationException("The sales order no longer exists.");
-				if (approve) await _salesOrders.ApproveAsync(current.Id, current.Version, comment, cancellationToken);
-				else await _salesOrders.RejectAsync(current.Id, current.Version, comment, cancellationToken);
+				if (approve) await _salesOrders.ApproveAsync(item.EntityId, item.Version, comment, cancellationToken);
+				else await _salesOrders.RejectAsync(item.EntityId, item.Version, comment, cancellationToken);
 				break;
-			}
 			case CommercialRoleItemKind.SupplierInvoice:
-			{
-				var current = await _payables.GetDocumentAsync(item.EntityId, cancellationToken) ?? throw new InvalidOperationException("The supplier document no longer exists.");
-				await _payables.DecideAsync(current.Id, new FinanceSupplierApprovalRequest
+				await _payables.DecideAsync(item.EntityId, new FinanceSupplierApprovalRequest
 				{
-					ExpectedVersion = current.Version,
+					ExpectedVersion = item.Version,
 					Approve = approve,
 					Comment = comment
 				}, cancellationToken);
 				break;
-			}
 			case CommercialRoleItemKind.PaymentProposal when approve:
-			{
-				var current = await _banking.GetPaymentRunAsync(item.EntityId, cancellationToken) ?? throw new InvalidOperationException("The payment proposal no longer exists.");
-				await _banking.ApprovePaymentRunAsync(current.Id, current.Version, comment, cancellationToken);
+				await _banking.ApprovePaymentRunAsync(item.EntityId, item.Version, comment, cancellationToken);
 				break;
-			}
 			case CommercialRoleItemKind.PaymentProposal:
 				throw new InvalidOperationException("Payment proposals do not expose a rejection operation in the existing banking service.");
 			default:
@@ -262,7 +250,7 @@ public sealed class CommercialRoleCenterService
 
 		if (_authorization.HasPermission(ApplicationPermission.SalesOrdersApprove))
 		{
-			var page = await _salesOrders.SearchAsync(null, SalesOrderStatus.PendingApproval, 1, SourceItemLimit, cancellationToken);
+			var page = await _salesOrders.SearchPendingApprovalsAsync(1, SourceItemLimit, cancellationToken);
 			items.AddRange(page.Items.Select(value =>
 			{
 				var submitted = value.SubmittedAtUtc ?? now;
@@ -273,7 +261,7 @@ public sealed class CommercialRoleCenterService
 
 		if (_authorization.HasPermission(ApplicationPermission.FinanceSupplierInvoicesApprove))
 		{
-			var page = await _payables.SearchDocumentsAsync(null, FinancePayableDocumentStatus.PendingApproval, 1, SourceItemLimit, cancellationToken);
+			var page = await _payables.SearchPendingApprovalDocumentsAsync(1, SourceItemLimit, cancellationToken);
 			items.AddRange(page.Items.Select(value =>
 			{
 				var submitted = value.SubmittedAtUtc ?? value.CreatedAtUtc;
@@ -284,8 +272,8 @@ public sealed class CommercialRoleCenterService
 
 		if (_authorization.HasPermission(ApplicationPermission.FinancePaymentProposalsApprove))
 		{
-			var page = await _banking.SearchPaymentRunsAsync(1, SourceItemLimit, cancellationToken);
-			items.AddRange(page.Items.Where(value => value.Status == FinancePaymentRunStatus.Draft).Select(value =>
+			var paymentRuns = await _banking.SearchPendingApprovalPaymentRunsAsync(SourceItemLimit, cancellationToken);
+			items.AddRange(paymentRuns.Select(value =>
 			{
 				var canApprove = _banking.CanApprovePaymentRun(value.CreatedByUserId);
 				return new CommercialRoleItem(CommercialRoleItemKind.PaymentProposal, value.Id, value.Version, value.Description, "Payment Proposal", value.Currency.ToString(), "Draft / Awaiting Approval", value.Lines.Sum(line => line.Amount), value.CreatedAtUtc, value.PaymentDate.ToDateTime(TimeOnly.MinValue), DaysSince(now, value.CreatedAtUtc), "finance.banking", value.CreatedByUserId, canApprove, false);
@@ -340,6 +328,7 @@ public sealed class CommercialRoleCenterService
 			MyWorkItemKind.SalesOrder => CommercialRoleItemKind.SalesOrder,
 			MyWorkItemKind.PurchaseOrderApproval => CommercialRoleItemKind.PurchaseOrderApproval,
 			MyWorkItemKind.PurchaseOrder => CommercialRoleItemKind.PurchaseOrder,
+			MyWorkItemKind.Shipment => CommercialRoleItemKind.Shipment,
 			_ => CommercialRoleItemKind.SalesOrder
 		}, value.EntityId, 0, value.DisplayNumber, value.Title, value.Context, value.Status, value.AmountOrQuantity, null, value.DueAt, value.AgeDays, value.RouteId, value.SourceUserId);
 

@@ -74,6 +74,15 @@ public sealed class FinanceBankingService
 		return _banking.SearchPaymentRunsAsync(pageNumber, pageSize, cancellationToken);
 	}
 
+	public async Task<IReadOnlyList<FinancePaymentRun>> SearchPendingApprovalPaymentRunsAsync(int maxResults = 12, CancellationToken cancellationToken = default)
+	{
+		_authorization.RequirePermission(ApplicationPermission.FinancePaymentProposalsApprove);
+		if (maxResults is < 1 or > 50) throw new ArgumentOutOfRangeException(nameof(maxResults));
+		var sourceSize = Math.Min(maxResults * 3, 100);
+		var page = await _banking.SearchPaymentRunsAsync(1, sourceSize, cancellationToken);
+		return page.Items.Where(value => value.Status == FinancePaymentRunStatus.Draft).Take(maxResults).ToArray();
+	}
+
 	public Task<IReadOnlyList<FinancePaymentRun>> GetPaymentRunsAsync(CancellationToken cancellationToken = default)
 	{
 		_authorization.RequirePermission(ApplicationPermission.FinanceBankingView);

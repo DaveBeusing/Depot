@@ -85,6 +85,12 @@ public sealed class FinanceAccountsPayableService
 		return _payables.SearchDocumentsAsync(searchText, status, pageNumber, pageSize, cancellationToken);
 	}
 
+	public Task<PageResult<FinanceSupplierDocument>> SearchPendingApprovalDocumentsAsync(int pageNumber = 1, int pageSize = 50, CancellationToken cancellationToken = default)
+	{
+		_authorization.RequirePermission(ApplicationPermission.FinanceSupplierInvoicesApprove);
+		return _payables.SearchDocumentsAsync(null, FinancePayableDocumentStatus.PendingApproval, pageNumber, pageSize, cancellationToken);
+	}
+
 	public Task<FinanceSupplierDocument?> GetDocumentAsync(long id, CancellationToken cancellationToken = default)
 	{
 		_authorization.RequirePermission(ApplicationPermission.FinancePayablesView);
