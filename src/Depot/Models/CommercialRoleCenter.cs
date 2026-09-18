@@ -8,7 +8,10 @@ public enum CommercialRoleCenterKind
 	SalesWorkspace = 1,
 	SalesControlCenter = 2,
 	BuyerWorkbench = 3,
-	ApprovalInbox = 4
+	ApprovalInbox = 4,
+	ReceivingWorkspace = 5,
+	FulfillmentWorkspace = 6,
+	InventoryControlWorkspace = 7
 }
 
 public enum CommercialRoleItemKind
@@ -22,7 +25,13 @@ public enum CommercialRoleItemKind
 	SupplierReturn = 7,
 	SupplierInvoice = 8,
 	PaymentProposal = 9,
-	Shipment = 10
+	Shipment = 10,
+	GoodsReceipt = 11,
+	CustomerReturn = 12,
+	InventoryCount = 13,
+	StockTransfer = 14,
+	MaterialIssue = 15,
+	MaterialReturn = 16
 }
 
 public sealed record CommercialRoleItem(

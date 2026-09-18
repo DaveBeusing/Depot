@@ -18,6 +18,9 @@ public sealed class CommercialRoleCenterTests
 	[InlineData(ApplicationPermission.SalesOrdersApprove, CommercialRoleCenterKind.ApprovalInbox)]
 	[InlineData(ApplicationPermission.FinanceSupplierInvoicesApprove, CommercialRoleCenterKind.ApprovalInbox)]
 	[InlineData(ApplicationPermission.FinancePaymentProposalsApprove, CommercialRoleCenterKind.ApprovalInbox)]
+	[InlineData(ApplicationPermission.GoodsReceiptsPost, CommercialRoleCenterKind.ReceivingWorkspace)]
+	[InlineData(ApplicationPermission.ShipmentsCreate, CommercialRoleCenterKind.FulfillmentWorkspace)]
+	[InlineData(ApplicationPermission.InventoryCountsEdit, CommercialRoleCenterKind.InventoryControlWorkspace)]
 	public void RoleCenterVisibilityFollowsEffectivePermissions(ApplicationPermission permission, CommercialRoleCenterKind expected)
 	{
 		var service = CreateService(permission);
@@ -54,6 +57,27 @@ public sealed class CommercialRoleCenterTests
 	{
 		var purchasing = SystemRoleCatalog.Definitions.Single(role => role.Code == SystemRoleCatalog.PurchasingCode);
 		Assert.Contains(ApplicationPermission.SupplierReturnsView, purchasing.Permissions);
+	}
+
+	[Fact]
+	public void WarehousePersonasRemainFunctionallySeparated()
+	{
+		var receiver = SystemRoleCatalog.Definitions.Single(role => role.Code == SystemRoleCatalog.GoodsReceiverCode);
+		var fulfillment = SystemRoleCatalog.Definitions.Single(role => role.Code == SystemRoleCatalog.FulfillmentOperatorCode);
+		var inventory = SystemRoleCatalog.Definitions.Single(role => role.Code == SystemRoleCatalog.InventoryControllerCode);
+
+		Assert.Contains(ApplicationPermission.SupplierReturnsCreate, receiver.Permissions);
+		Assert.DoesNotContain(ApplicationPermission.SalesOrdersView, receiver.Permissions);
+		Assert.DoesNotContain(ApplicationPermission.FinanceView, receiver.Permissions);
+
+		Assert.Contains(ApplicationPermission.ShipmentsPost, fulfillment.Permissions);
+		Assert.DoesNotContain(ApplicationPermission.PurchaseOrdersCreate, fulfillment.Permissions);
+		Assert.DoesNotContain(ApplicationPermission.FinanceView, fulfillment.Permissions);
+
+		Assert.Contains(ApplicationPermission.InventoryCountsPost, inventory.Permissions);
+		Assert.Contains(ApplicationPermission.StockTransfersPost, inventory.Permissions);
+		Assert.Contains(ApplicationPermission.MaterialIssuesPost, inventory.Permissions);
+		Assert.Contains(ApplicationPermission.MaterialReturnsPost, inventory.Permissions);
 	}
 
 	[Fact]
@@ -102,6 +126,12 @@ public sealed class CommercialRoleCenterTests
 		authorization.SignIn(new User { Id = 42, Email = "role-center@test.local", DisplayName = "Role Center", IsActive = true }, permissions);
 		return new CommercialRoleCenterService(
 			authorization,
+			null!,
+			null!,
+			null!,
+			null!,
+			null!,
+			null!,
 			null!,
 			null!,
 			null!,

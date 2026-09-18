@@ -31,6 +31,13 @@ public partial class CommercialRoleCenterView : UserControl
 		if (sender is DataGrid { SelectedItem: CommercialRoleItem item }) await OpenAsync(item);
 	}
 
+	private async void OnItemsKeyDown(object sender, KeyEventArgs e)
+	{
+		if (e.Key != Key.Enter || sender is not DataGrid { SelectedItem: CommercialRoleItem item }) return;
+		e.Handled = true;
+		await OpenAsync(item);
+	}
+
 	private async void OnApproveClick(object sender, RoutedEventArgs e)
 	{
 		if (sender is FrameworkElement { DataContext: CommercialRoleItem item } && DataContext is CommercialRoleCenterViewModel viewModel)

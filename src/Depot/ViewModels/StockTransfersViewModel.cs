@@ -306,6 +306,19 @@ public sealed class StockTransfersViewModel : BaseViewModel, IDisposable
 		}
 	}
 
+	public async Task OpenTransferAsync(long id, CancellationToken cancellationToken = default)
+	{
+		var overview = await _transfers.GetOverviewByIdAsync(id, cancellationToken)
+			?? throw new InvalidOperationException("The referenced stock transfer no longer exists.");
+		var existing = Transfers.FirstOrDefault(value => value.Id == id);
+		if (existing is null)
+		{
+			Transfers.Insert(0, overview);
+			existing = overview;
+		}
+		SelectedTransfer = existing;
+	}
+
 	private async Task LoadPageAsync(CancellationToken cancellationToken = default)
 	{
 		BeginOperation("Transfers werden geladen");

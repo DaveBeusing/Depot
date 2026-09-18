@@ -102,6 +102,12 @@ internal sealed class ServiceComposition
 			PurchaseOrders,
 			PurchaseOrderApprovals,
 			SupplierReturns,
+			GoodsReceipts,
+			Shipments,
+			InventoryCounts,
+			StockTransfers,
+			MaterialIssues,
+			MaterialReturns,
 			AccountsPayable,
 			Banking);
 		GlobalSearch = new GlobalSearchService(
