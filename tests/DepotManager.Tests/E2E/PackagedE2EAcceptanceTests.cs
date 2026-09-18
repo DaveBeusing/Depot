@@ -89,7 +89,7 @@ public sealed class PackagedE2EAcceptanceTests
         Assert.Equal(currentVersion, service.InstalledVersion);
         Assert.Equal(1, await CountAdministratorAsync(database));
 
-        await using (var damaged = new FileStream(service.DepotPath, FileMode.Open, FileAccess.Write, FileShare.None))
+        await using (var damaged = await OpenExclusiveWriteAsync(service.DepotPath, TimeSpan.FromSeconds(10)))
         {
             damaged.SetLength(1024);
         }
@@ -403,6 +403,27 @@ public sealed class PackagedE2EAcceptanceTests
         BackupDirectory = "Backups",
         BackupIntervalDays = 1
     };
+
+    private static async Task<FileStream> OpenExclusiveWriteAsync(string path, TimeSpan timeout)
+    {
+        var deadline = DateTimeOffset.UtcNow + timeout;
+        Exception? lastFailure = null;
+
+        while (DateTimeOffset.UtcNow < deadline)
+        {
+            try
+            {
+                return new FileStream(path, FileMode.Open, FileAccess.Write, FileShare.None);
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            {
+                lastFailure = exception;
+                await Task.Delay(100);
+            }
+        }
+
+        throw new IOException($"Timed out waiting for exclusive write access to packaged executable '{path}'.", lastFailure);
+    }
 
     private static async Task<ManagerCommandResult> RunDepotCommandAsync(string executable, string workingDirectory, string command, object? request = null)
     {
