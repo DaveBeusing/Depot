@@ -29,6 +29,8 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 	private readonly Lazy<CommercialRoleCenterViewModel> _receivingWorkspaceRoleCenter;
 	private readonly Lazy<CommercialRoleCenterViewModel> _fulfillmentWorkspaceRoleCenter;
 	private readonly Lazy<CommercialRoleCenterViewModel> _inventoryControlWorkspaceRoleCenter;
+	private readonly Lazy<CommercialRoleCenterViewModel> _receivablesWorkspaceRoleCenter;
+	private readonly Lazy<CommercialRoleCenterViewModel> _payablesWorkspaceRoleCenter;
 	private readonly Lazy<InventoryViewModel> _inventory;
 	private readonly Lazy<ItemsViewModel> _items;
 	private readonly Lazy<MovementsViewModel> _movements;
@@ -146,6 +148,8 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		_receivingWorkspaceRoleCenter = new(() => new CommercialRoleCenterViewModel(commercialRoleCenterService, CommercialRoleCenterKind.ReceivingWorkspace));
 		_fulfillmentWorkspaceRoleCenter = new(() => new CommercialRoleCenterViewModel(commercialRoleCenterService, CommercialRoleCenterKind.FulfillmentWorkspace));
 		_inventoryControlWorkspaceRoleCenter = new(() => new CommercialRoleCenterViewModel(commercialRoleCenterService, CommercialRoleCenterKind.InventoryControlWorkspace));
+		_receivablesWorkspaceRoleCenter = new(() => new CommercialRoleCenterViewModel(commercialRoleCenterService, CommercialRoleCenterKind.ReceivablesWorkspace));
+		_payablesWorkspaceRoleCenter = new(() => new CommercialRoleCenterViewModel(commercialRoleCenterService, CommercialRoleCenterKind.PayablesWorkspace));
 		_inventory = new(() => new InventoryViewModel(stockService));
 		_items = new(() => new ItemsViewModel(itemService, manufacturerService, categoryService, unitOfMeasureService, packagingService, salesServices.ItemCosts));
 		_movements = new(() => new MovementsViewModel(movementService, reasonCodeService, fileDialogService, MarkInventoryPagesStale));
@@ -372,6 +376,14 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 				await this.NavigateToRouteAsync(route, cancellationToken);
 				await MaterialReturnsViewModel.OpenReturnAsync(item.EntityId, cancellationToken);
 				break;
+			case CommercialRoleItemKind.ReceivableOpenItem:
+				await this.NavigateToRouteAsync(route, cancellationToken);
+				await FinanceReceivablesViewModel.OpenOpenItemAsync(item.EntityId, cancellationToken);
+				break;
+			case CommercialRoleItemKind.PayableOpenItem:
+				await this.NavigateToRouteAsync(route, cancellationToken);
+				await FinancePayablesViewModel.OpenOpenItemAsync(item.EntityId, cancellationToken);
+				break;
 			case CommercialRoleItemKind.SupplierInvoice:
 				await this.NavigateToRouteAsync(route, cancellationToken);
 				await FinancePayablesViewModel.OpenDocumentAsync(item.EntityId, cancellationToken);
@@ -437,6 +449,10 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 				await this.NavigateToRouteAsync(ShellRoutes.Warehouse.MaterialReturns, cancellationToken);
 				MaterialReturnsViewModel.NewReturnCommand.Execute(null);
 				break;
+			case "ap.new-invoice":
+				await this.NavigateToRouteAsync(ShellRoutes.Finance.Payables, cancellationToken);
+				FinancePayablesViewModel.NewDraftCommand.Execute(null);
+				break;
 			default:
 				await this.NavigateToRouteAsync(new ShellRoute(action.RouteId), cancellationToken);
 				break;
@@ -454,7 +470,9 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		if (_commercialRoleCenters.CanAccess(CommercialRoleCenterKind.ReceivingWorkspace)) roleCenterPages.Add(new("Receiving Workspace", () => _receivingWorkspaceRoleCenter.Value, (viewModel, token) => ((CommercialRoleCenterViewModel)viewModel).LoadAsync(token), HelpService.FallbackTopicId, route: ShellRoutes.RoleCenters.ReceivingWorkspace));
 		if (_commercialRoleCenters.CanAccess(CommercialRoleCenterKind.FulfillmentWorkspace)) roleCenterPages.Add(new("Fulfillment Workspace", () => _fulfillmentWorkspaceRoleCenter.Value, (viewModel, token) => ((CommercialRoleCenterViewModel)viewModel).LoadAsync(token), HelpService.FallbackTopicId, route: ShellRoutes.RoleCenters.FulfillmentWorkspace));
 		if (_commercialRoleCenters.CanAccess(CommercialRoleCenterKind.InventoryControlWorkspace)) roleCenterPages.Add(new("Inventory Control Workspace", () => _inventoryControlWorkspaceRoleCenter.Value, (viewModel, token) => ((CommercialRoleCenterViewModel)viewModel).LoadAsync(token), HelpService.FallbackTopicId, route: ShellRoutes.RoleCenters.InventoryControlWorkspace));
-		AddModule("Role Centers", Icons.Warehouse, "Role-oriented starting points for commercial, warehouse and operational work.", roleCenterPages);
+		if (_commercialRoleCenters.CanAccess(CommercialRoleCenterKind.ReceivablesWorkspace)) roleCenterPages.Add(new("Receivables Workspace", () => _receivablesWorkspaceRoleCenter.Value, (viewModel, token) => ((CommercialRoleCenterViewModel)viewModel).LoadAsync(token), HelpService.FallbackTopicId, route: ShellRoutes.RoleCenters.ReceivablesWorkspace));
+		if (_commercialRoleCenters.CanAccess(CommercialRoleCenterKind.PayablesWorkspace)) roleCenterPages.Add(new("Payables Workspace", () => _payablesWorkspaceRoleCenter.Value, (viewModel, token) => ((CommercialRoleCenterViewModel)viewModel).LoadAsync(token), HelpService.FallbackTopicId, route: ShellRoutes.RoleCenters.PayablesWorkspace));
+		AddModule("Role Centers", Icons.Finance, "Role-oriented starting points for commercial, warehouse and finance operations.", roleCenterPages);
 
 		var inventoryPages = new List<SecondaryNavigationItem>();
 		AddPage(inventoryPages, ApplicationPermission.InventoryView, "Overview", () => _inventory.Value, (viewModel, token) => viewModel.LoadAsync(token), "inventory.overview"); AddPage(inventoryPages, ApplicationPermission.ItemsView, "Items", () => _items.Value, (viewModel, token) => viewModel.LoadItemsAsync(token), "inventory.items"); AddPage(inventoryPages, ApplicationPermission.StockMovementsView, "Movements", () => _movements.Value, (viewModel, token) => viewModel.LoadAsync(token), "inventory.movements"); AddModule("Inventory", Icons.Inventory, "Monitor stock, items, and immutable inventory movements.", inventoryPages);

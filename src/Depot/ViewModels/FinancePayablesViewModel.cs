@@ -168,6 +168,12 @@ public sealed class FinancePayablesViewModel : BaseViewModel, IDisposable
 			?? throw new InvalidOperationException("The supplier document no longer exists.");
 	}
 
+	public async Task OpenOpenItemAsync(long id, CancellationToken cancellationToken = default)
+	{
+		SelectedOpenItem = await _payables.GetOpenItemAsync(id, cancellationToken)
+			?? throw new InvalidOperationException("The payable open item no longer exists.");
+	}
+
 	public FinanceSupplierDocumentLineDraftEditor? SelectedDraftLine
 	{
 		get => _selectedDraftLine;

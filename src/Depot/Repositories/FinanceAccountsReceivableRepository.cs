@@ -41,6 +41,17 @@ public sealed class FinanceAccountsReceivableRepository : DatabaseRepository
 	public Task<FinanceReceivablePayment?> GetPaymentAsync(long id, CancellationToken cancellationToken = default) =>
 		Database.QuerySingleOrDefaultAsync($"SELECT {PaymentColumns} FROM FinanceReceivablePayments WHERE Id=$Id;", ReadPayment, cancellationToken, Parameter("$Id", id));
 
+	public Task<IReadOnlyList<FinanceReceivablePayment>> ListRecentPaymentsAsync(int count, CancellationToken cancellationToken = default)
+	{
+		if (count is < 1 or > 200) throw new ArgumentOutOfRangeException(nameof(count));
+		return Database.QuerySliceAsync(
+			$"SELECT {PaymentColumns} FROM FinanceReceivablePayments ORDER BY COALESCE(ReversedAtUtc,CreatedAtUtc) DESC,Id DESC",
+			ReadPayment,
+			0,
+			count,
+			cancellationToken);
+	}
+
 	public Task<FinanceReceivableWriteOff?> GetWriteOffAsync(long id, CancellationToken cancellationToken = default) =>
 		Database.QuerySingleOrDefaultAsync($"SELECT {WriteOffColumns} FROM FinanceReceivableWriteOffs WHERE Id=$Id;", ReadWriteOff, cancellationToken, Parameter("$Id", id));
 

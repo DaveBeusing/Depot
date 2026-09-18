@@ -74,9 +74,13 @@
                                             <DataGridTextColumn Header="Requester / Creator" Binding="{Binding Requester}" Width="140" />
                                             <DataGridTextColumn Header="Counterparty / Context" Binding="{Binding Context}" Width="*" />
                                             <DataGridTextColumn Header="Amount" Binding="{Binding Amount, StringFormat={}{0:N2}}" Width="100" />
+                                            <DataGridTextColumn Header="Currency" Binding="{Binding Currency}" Width="75" />
                                             <DataGridTextColumn Header="Submitted / Activity" Binding="{Binding SubmittedDisplay}" Width="145" />
-                                            <DataGridTextColumn Header="Due / Age" Binding="{Binding DueOrAgeDisplay}" Width="100" />
-                                            <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="145" />
+                                            <DataGridTextColumn Header="Due" Binding="{Binding DueDisplay}" Width="95" />
+                                            <DataGridTextColumn Header="Age" Binding="{Binding AgeDisplay}" Width="75" />
+                                            <DataGridTextColumn Header="Match / Allocation" Binding="{Binding StateDetail}" Width="145" />
+                                            <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="135" />
+                                            <DataGridTextColumn Header="Next Action" Binding="{Binding NextAction}" Width="145" />
                                             <DataGridTemplateColumn Header="" Width="220">
                                                 <DataGridTemplateColumn.CellTemplate>
                                                     <DataTemplate>

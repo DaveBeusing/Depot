@@ -19,6 +19,8 @@ public sealed class WorkspaceProductivityViewModel : BaseViewModel
 		"role-centers.receiving-workspace",
 		"role-centers.fulfillment-workspace",
 		"role-centers.inventory-control-workspace",
+		"role-centers.receivables-workspace",
+		"role-centers.payables-workspace",
 		"inventory.items",
 		"purchasing.purchase-orders",
 		"sales.orders",
