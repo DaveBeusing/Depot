@@ -33,6 +33,10 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 	private readonly Lazy<CommercialRoleCenterViewModel> _payablesWorkspaceRoleCenter;
 	private readonly Lazy<CommercialRoleCenterViewModel> _treasuryWorkspaceRoleCenter;
 	private readonly Lazy<CommercialRoleCenterViewModel> _accountingControlWorkspaceRoleCenter;
+	private readonly Lazy<CommercialRoleCenterViewModel> _managementCockpitRoleCenter;
+	private readonly Lazy<CommercialRoleCenterViewModel> _auditComplianceRoleCenter;
+	private readonly Lazy<CommercialRoleCenterViewModel> _masterDataWorkspaceRoleCenter;
+	private readonly Lazy<CommercialRoleCenterViewModel> _applicationAdministrationRoleCenter;
 	private readonly Lazy<InventoryViewModel> _inventory;
 	private readonly Lazy<ItemsViewModel> _items;
 	private readonly Lazy<MovementsViewModel> _movements;
@@ -154,6 +158,10 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		_payablesWorkspaceRoleCenter = new(() => new CommercialRoleCenterViewModel(commercialRoleCenterService, CommercialRoleCenterKind.PayablesWorkspace));
 		_treasuryWorkspaceRoleCenter = new(() => new CommercialRoleCenterViewModel(commercialRoleCenterService, CommercialRoleCenterKind.TreasuryWorkspace));
 		_accountingControlWorkspaceRoleCenter = new(() => new CommercialRoleCenterViewModel(commercialRoleCenterService, CommercialRoleCenterKind.AccountingControlWorkspace));
+		_managementCockpitRoleCenter = new(() => new CommercialRoleCenterViewModel(commercialRoleCenterService, CommercialRoleCenterKind.ManagementCockpit));
+		_auditComplianceRoleCenter = new(() => new CommercialRoleCenterViewModel(commercialRoleCenterService, CommercialRoleCenterKind.AuditComplianceCenter));
+		_masterDataWorkspaceRoleCenter = new(() => new CommercialRoleCenterViewModel(commercialRoleCenterService, CommercialRoleCenterKind.MasterDataWorkspace));
+		_applicationAdministrationRoleCenter = new(() => new CommercialRoleCenterViewModel(commercialRoleCenterService, CommercialRoleCenterKind.ApplicationAdministrationCenter));
 		_inventory = new(() => new InventoryViewModel(stockService));
 		_items = new(() => new ItemsViewModel(itemService, manufacturerService, categoryService, unitOfMeasureService, packagingService, salesServices.ItemCosts));
 		_movements = new(() => new MovementsViewModel(movementService, reasonCodeService, fileDialogService, MarkInventoryPagesStale));
@@ -465,6 +473,17 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 				await this.NavigateToRouteAsync(ShellRoutes.Finance.Payables, cancellationToken);
 				FinancePayablesViewModel.NewDraftCommand.Execute(null);
 				break;
+			case "admin.master-data": await NavigateToAdministrationSectionAsync(AdministrationSection.MasterData, cancellationToken); break;
+			case "admin.warehouses": await NavigateToAdministrationSectionAsync(AdministrationSection.Warehouses, cancellationToken); break;
+			case "admin.suppliers": await NavigateToAdministrationSectionAsync(AdministrationSection.Suppliers, cancellationToken); break;
+			case "admin.users": await NavigateToAdministrationSectionAsync(AdministrationSection.Users, cancellationToken); break;
+			case "admin.sessions": await NavigateToAdministrationSectionAsync(AdministrationSection.UserSessions, cancellationToken); break;
+			case "admin.security": await NavigateToAdministrationSectionAsync(AdministrationSection.SecurityCenter, cancellationToken); break;
+			case "admin.roles": await NavigateToAdministrationSectionAsync(AdministrationSection.Roles, cancellationToken); break;
+			case "admin.company": await NavigateToAdministrationSectionAsync(AdministrationSection.Company, cancellationToken); break;
+			case "admin.import": await NavigateToAdministrationSectionAsync(AdministrationSection.Import, cancellationToken); break;
+			case "admin.audit-log": await NavigateToAdministrationSectionAsync(AdministrationSection.AuditLog, cancellationToken); break;
+			case "admin.database": await NavigateToAdministrationSectionAsync(AdministrationSection.Database, cancellationToken); break;
 			default:
 				await this.NavigateToRouteAsync(new ShellRoute(action.RouteId), cancellationToken);
 				break;
@@ -486,7 +505,11 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		if (_commercialRoleCenters.CanAccess(CommercialRoleCenterKind.PayablesWorkspace)) roleCenterPages.Add(new("Payables Workspace", () => _payablesWorkspaceRoleCenter.Value, (viewModel, token) => ((CommercialRoleCenterViewModel)viewModel).LoadAsync(token), HelpService.FallbackTopicId, route: ShellRoutes.RoleCenters.PayablesWorkspace));
 		if (_commercialRoleCenters.CanAccess(CommercialRoleCenterKind.TreasuryWorkspace)) roleCenterPages.Add(new("Treasury Workspace", () => _treasuryWorkspaceRoleCenter.Value, (viewModel, token) => ((CommercialRoleCenterViewModel)viewModel).LoadAsync(token), HelpService.FallbackTopicId, route: ShellRoutes.RoleCenters.TreasuryWorkspace));
 		if (_commercialRoleCenters.CanAccess(CommercialRoleCenterKind.AccountingControlWorkspace)) roleCenterPages.Add(new("Accounting & Control Workspace", () => _accountingControlWorkspaceRoleCenter.Value, (viewModel, token) => ((CommercialRoleCenterViewModel)viewModel).LoadAsync(token), HelpService.FallbackTopicId, route: ShellRoutes.RoleCenters.AccountingControlWorkspace));
-		AddModule("Role Centers", Icons.Finance, "Role-oriented starting points for commercial, warehouse and finance operations.", roleCenterPages);
+		if (_commercialRoleCenters.CanAccess(CommercialRoleCenterKind.ManagementCockpit)) roleCenterPages.Add(new("Management Cockpit", () => _managementCockpitRoleCenter.Value, (viewModel, token) => ((CommercialRoleCenterViewModel)viewModel).LoadAsync(token), HelpService.FallbackTopicId, route: ShellRoutes.RoleCenters.ManagementCockpit));
+		if (_commercialRoleCenters.CanAccess(CommercialRoleCenterKind.AuditComplianceCenter)) roleCenterPages.Add(new("Audit & Compliance Center", () => _auditComplianceRoleCenter.Value, (viewModel, token) => ((CommercialRoleCenterViewModel)viewModel).LoadAsync(token), HelpService.FallbackTopicId, route: ShellRoutes.RoleCenters.AuditComplianceCenter));
+		if (_commercialRoleCenters.CanAccess(CommercialRoleCenterKind.MasterDataWorkspace)) roleCenterPages.Add(new("Master Data Workspace", () => _masterDataWorkspaceRoleCenter.Value, (viewModel, token) => ((CommercialRoleCenterViewModel)viewModel).LoadAsync(token), HelpService.FallbackTopicId, route: ShellRoutes.RoleCenters.MasterDataWorkspace));
+		if (_commercialRoleCenters.CanAccess(CommercialRoleCenterKind.ApplicationAdministrationCenter)) roleCenterPages.Add(new("Application Administration Center", () => _applicationAdministrationRoleCenter.Value, (viewModel, token) => ((CommercialRoleCenterViewModel)viewModel).LoadAsync(token), HelpService.FallbackTopicId, route: ShellRoutes.RoleCenters.ApplicationAdministrationCenter));
+		AddModule("Role Centers", Icons.Finance, "Role-oriented starting points for commercial, warehouse, finance, management, compliance, master data and administration work.", roleCenterPages);
 
 		var inventoryPages = new List<SecondaryNavigationItem>();
 		AddPage(inventoryPages, ApplicationPermission.InventoryView, "Overview", () => _inventory.Value, (viewModel, token) => viewModel.LoadAsync(token), "inventory.overview"); AddPage(inventoryPages, ApplicationPermission.ItemsView, "Items", () => _items.Value, (viewModel, token) => viewModel.LoadItemsAsync(token), "inventory.items"); AddPage(inventoryPages, ApplicationPermission.StockMovementsView, "Movements", () => _movements.Value, (viewModel, token) => viewModel.LoadAsync(token), "inventory.movements"); AddModule("Inventory", Icons.Inventory, "Monitor stock, items, and immutable inventory movements.", inventoryPages);
@@ -537,6 +560,12 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		}
 	}
 	private Task NavigateToDirectAsync(string name,CancellationToken cancellationToken){var item=NavigationItems.FirstOrDefault(candidate=>candidate.Name==name)??throw new UnauthorizedAccessException("The requested page is not available.");return NavigateAsync(item,cancellationToken);}
+	private async Task NavigateToAdministrationSectionAsync(AdministrationSection section, CancellationToken cancellationToken)
+	{
+		await this.NavigateToRouteAsync(ShellRoutes.Administration, cancellationToken);
+		await AdministrationViewModel.NavigateToAsync(section, cancellationToken);
+	}
+
 	private async Task NavigateToModulePageAsync(string moduleName,string pageName,CancellationToken cancellationToken){var item=NavigationItems.FirstOrDefault(candidate=>candidate.Name==moduleName)??throw new UnauthorizedAccessException("The requested module is not available.");if(item.Content is not ShellModuleViewModel module)throw new InvalidOperationException("The requested navigation target is invalid.");var page=module.Pages.FirstOrDefault(candidate=>candidate.Name==pageName)??throw new UnauthorizedAccessException("The requested page is not available.");if(!module.SetSelectedPage(page))return;await NavigateAsync(item,cancellationToken);}
 	private void Logout(){if(!ConfirmDiscardChanges(CurrentViewModel))return;_session.Logout();LogoutRequested?.Invoke(this,EventArgs.Empty);}
 

@@ -125,6 +125,83 @@ public sealed class CommercialRoleCenterTests
 		Assert.DoesNotContain(ApplicationPermission.FinanceManualJournalsPost, accountant.Permissions);
 	}
 
+
+	[Fact]
+	public void ManagementComplianceMasterDataAndApplicationAdminPersonasExposeTheirWorkspaces()
+	{
+		var management = SystemRoleCatalog.Definitions.Single(role => role.Code == SystemRoleCatalog.ManagementViewerCode);
+		var auditor = SystemRoleCatalog.Definitions.Single(role => role.Code == SystemRoleCatalog.AuditorComplianceCode);
+		var masterData = SystemRoleCatalog.Definitions.Single(role => role.Code == SystemRoleCatalog.MasterDataManagerCode);
+		var applicationAdmin = SystemRoleCatalog.Definitions.Single(role => role.Code == SystemRoleCatalog.ApplicationAdministratorCode);
+
+		Assert.True(CreateService(management.Permissions.ToArray()).CanAccess(CommercialRoleCenterKind.ManagementCockpit));
+		Assert.True(CreateService(auditor.Permissions.ToArray()).CanAccess(CommercialRoleCenterKind.AuditComplianceCenter));
+		Assert.True(CreateService(masterData.Permissions.ToArray()).CanAccess(CommercialRoleCenterKind.MasterDataWorkspace));
+		Assert.True(CreateService(applicationAdmin.Permissions.ToArray()).CanAccess(CommercialRoleCenterKind.ApplicationAdministrationCenter));
+	}
+
+	[Fact]
+	public void GovernanceRoleCentersRequireCompleteReadCapabilities()
+	{
+		Assert.False(CreateService(ApplicationPermission.DashboardView).CanAccess(CommercialRoleCenterKind.ManagementCockpit));
+		Assert.False(CreateService(ApplicationPermission.AuditLogView).CanAccess(CommercialRoleCenterKind.AuditComplianceCenter));
+		Assert.False(CreateService(ApplicationPermission.MasterDataView).CanAccess(CommercialRoleCenterKind.MasterDataWorkspace));
+		Assert.False(CreateService(ApplicationPermission.UsersView).CanAccess(CommercialRoleCenterKind.ApplicationAdministrationCenter));
+	}
+
+	[Fact]
+	public void ManagementAndAuditPersonasRemainReadOnlyExceptExplicitExports()
+	{
+		var management = SystemRoleCatalog.Definitions.Single(role => role.Code == SystemRoleCatalog.ManagementViewerCode);
+		var auditor = SystemRoleCatalog.Definitions.Single(role => role.Code == SystemRoleCatalog.AuditorComplianceCode);
+
+		foreach (var permission in new[]
+		{
+			ApplicationPermission.SalesOrdersCreate, ApplicationPermission.SalesOrdersEdit, ApplicationPermission.SalesOrdersApprove, ApplicationPermission.SalesOrdersRelease,
+			ApplicationPermission.PurchaseOrdersCreate, ApplicationPermission.PurchaseOrdersEdit, ApplicationPermission.PurchaseOrdersApprove, ApplicationPermission.PurchaseOrdersOrder,
+			ApplicationPermission.StockMovementsPost, ApplicationPermission.FinanceGeneralLedgerPost, ApplicationPermission.FinancePayablePaymentsPost,
+			ApplicationPermission.UsersManage, ApplicationPermission.RolesManage, ApplicationPermission.SecurityEventsManage, ApplicationPermission.UserSessionsTerminate
+		})
+		{
+			Assert.DoesNotContain(permission, management.Permissions);
+			Assert.DoesNotContain(permission, auditor.Permissions);
+		}
+
+		Assert.Contains(ApplicationPermission.AuditLogExport, auditor.Permissions);
+		Assert.Contains(ApplicationPermission.ReportsExport, auditor.Permissions);
+		Assert.Contains(ApplicationPermission.FinanceFinancialReportingExport, auditor.Permissions);
+	}
+
+	[Fact]
+	public void MasterDataAndApplicationAdminDoNotGainOperationalPostingAuthority()
+	{
+		var masterData = SystemRoleCatalog.Definitions.Single(role => role.Code == SystemRoleCatalog.MasterDataManagerCode);
+		var applicationAdmin = SystemRoleCatalog.Definitions.Single(role => role.Code == SystemRoleCatalog.ApplicationAdministratorCode);
+
+		Assert.Contains(ApplicationPermission.ItemsManage, masterData.Permissions);
+		Assert.Contains(ApplicationPermission.MasterDataManage, masterData.Permissions);
+		Assert.Contains(ApplicationPermission.CustomersEdit, masterData.Permissions);
+		Assert.Contains(ApplicationPermission.SuppliersManage, masterData.Permissions);
+
+		Assert.Contains(ApplicationPermission.UsersManage, applicationAdmin.Permissions);
+		Assert.Contains(ApplicationPermission.RolesManage, applicationAdmin.Permissions);
+		Assert.Contains(ApplicationPermission.SettingsManage, applicationAdmin.Permissions);
+		Assert.Contains(ApplicationPermission.DatabaseManage, applicationAdmin.Permissions);
+
+		foreach (var permission in new[]
+		{
+			ApplicationPermission.StockMovementsPost,
+			ApplicationPermission.PurchaseOrdersOrder,
+			ApplicationPermission.SalesOrdersRelease,
+			ApplicationPermission.FinanceGeneralLedgerPost,
+			ApplicationPermission.FinancePaymentRunsPost
+		})
+		{
+			Assert.DoesNotContain(permission, masterData.Permissions);
+			Assert.DoesNotContain(permission, applicationAdmin.Permissions);
+		}
+	}
+
 	[Fact]
 	public void ManualJournalAuthorityDoesNotFollowGeneralLedgerPostingAuthority()
 	{
