@@ -51,6 +51,13 @@ public sealed class GoodsReceiptService
 		return _receipts.ListByPurchaseOrderAsync(purchaseOrderId, cancellationToken);
 	}
 
+	public Task<GoodsReceipt?> GetByIdAsync(long id, CancellationToken cancellationToken = default)
+	{
+		_audit.RequirePermission(ApplicationPermission.GoodsReceiptsView);
+		if (id <= 0) throw new ArgumentOutOfRangeException(nameof(id));
+		return _receipts.GetByIdAsync(id, cancellationToken);
+	}
+
 	public Task<PageResult<PurchaseOrder>> SearchOpenOrdersAsync(string? searchText, int pageNumber, int pageSize, CancellationToken cancellationToken = default)
 	{
 		_audit.RequirePermission(ApplicationPermission.GoodsReceiptsView);

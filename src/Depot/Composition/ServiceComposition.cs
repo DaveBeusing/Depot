@@ -57,7 +57,7 @@ internal sealed class ServiceComposition
 		SalesPricing = new SalesPricingService(database.TransactionRunner, repositories.SalesPriceLists, repositories.Audit, audit, Authorization);
 		ItemCosts = new ItemCostCalculationService(database.TransactionRunner, repositories.ItemCosts, repositories.Audit, audit, Authorization);
 		PriceListGeneration = new PriceListGenerationService(database.TransactionRunner, repositories.ItemCosts, ItemCosts, repositories.SalesPriceLists, SalesPricing, repositories.Audit, audit, Authorization);
-		SalesTimeline = new SalesTimelineService(repositories.SalesTimeline, Authorization);
+		SalesTimeline = new SalesTimelineService(repositories.SalesTimeline, PurchaseOrderHistory, Authorization);
 		SalesOrders = new SalesOrderService(database.TransactionRunner, repositories.SalesOrders, repositories.Customers, repositories.Items, repositories.Inventories, repositories.InventoryReservations, repositories.StockMovements, repositories.Audit, audit, Authorization, Notifications, ItemTraceability, SalesPricing);
 		SalesQuotes = new SalesQuoteService(repositories.SalesQuotes, repositories.Customers, SalesOrders, audit, Authorization, SalesPricing);
 		CustomerReturns = new CustomerReturnService(database.TransactionRunner, repositories.CustomerReturns, repositories.Shipments, repositories.StockMovements, repositories.Audit, audit, Authorization, Notifications, ItemTraceability);

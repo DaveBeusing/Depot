@@ -14,6 +14,8 @@ public sealed class FinancePayablesViewModel : BaseViewModel, IDisposable
 {
 	private const int PageSize = 100;
 	private readonly FinanceAccountsPayableService _payables;
+	private readonly SalesTimelineService? _timeline;
+	private readonly Func<WorkflowTimelineItem, CancellationToken, Task>? _timelineNavigation;
 	private readonly LatestRequest _loadRequest = new();
 	private string _searchText = string.Empty;
 	private bool _includeSettled;
@@ -67,8 +69,18 @@ public sealed class FinancePayablesViewModel : BaseViewModel, IDisposable
 	private bool _disposed;
 
 	public FinancePayablesViewModel(FinanceAccountsPayableService payables)
+		: this(payables, null, null)
+	{
+	}
+
+	public FinancePayablesViewModel(
+		FinanceAccountsPayableService payables,
+		SalesTimelineService? timeline,
+		Func<WorkflowTimelineItem, CancellationToken, Task>? timelineNavigation)
 	{
 		_payables = payables;
+		_timeline = timeline;
+		_timelineNavigation = timelineNavigation;
 		RefreshCommand = new AsyncRelayCommand(LoadAsync);
 		PreviousPageCommand = new AsyncRelayCommand(PreviousPageAsync, () => PageNumber > 1);
 		NextPageCommand = new AsyncRelayCommand(NextPageAsync, () => HasNextPage);
@@ -86,6 +98,7 @@ public sealed class FinancePayablesViewModel : BaseViewModel, IDisposable
 		ReversePaymentCommand = new AsyncRelayCommand(ReversePaymentAsync, () => CanReversePayments);
 		AllocateDebitCommand = new AsyncRelayCommand(AllocateDebitAsync, () => CanPostPayments);
 		LoadStatementCommand = new AsyncRelayCommand(LoadStatementAsync);
+		OpenTimelineItemCommand = new AsyncRelayCommand<WorkflowTimelineItem>(OpenTimelineItemAsync, item => item.CanNavigate && _timelineNavigation is not null);
 		NewDraft();
 	}
 
@@ -94,6 +107,7 @@ public sealed class FinancePayablesViewModel : BaseViewModel, IDisposable
 	public ObservableCollection<FinancePayableAgingSummary> Aging { get; } = [];
 	public ObservableCollection<FinanceSupplierStatementRow> StatementRows { get; } = [];
 	public ObservableCollection<FinanceSupplierDocumentLineDraftEditor> DraftLines { get; } = [];
+	public ObservableCollection<WorkflowTimelineItem> Timeline { get; } = [];
 
 	public AsyncRelayCommand RefreshCommand { get; }
 	public AsyncRelayCommand PreviousPageCommand { get; }
@@ -112,6 +126,7 @@ public sealed class FinancePayablesViewModel : BaseViewModel, IDisposable
 	public AsyncRelayCommand ReversePaymentCommand { get; }
 	public AsyncRelayCommand AllocateDebitCommand { get; }
 	public AsyncRelayCommand LoadStatementCommand { get; }
+	public AsyncRelayCommand<WorkflowTimelineItem> OpenTimelineItemCommand { get; }
 
 	public bool CanManage => _payables.CanManage;
 	public bool CanCreateDocuments => _payables.CanCreateDocuments;
@@ -144,6 +159,7 @@ public sealed class FinancePayablesViewModel : BaseViewModel, IDisposable
 			_selectedDocument = value;
 			OnPropertyChanged();
 			if (value is not null) LoadDraftEditor(value);
+			_ = LoadTimelineAsync(value);
 			RaiseDocumentCommands();
 		}
 	}
@@ -173,6 +189,16 @@ public sealed class FinancePayablesViewModel : BaseViewModel, IDisposable
 		SelectedOpenItem = await _payables.GetOpenItemAsync(id, cancellationToken)
 			?? throw new InvalidOperationException("The payable open item no longer exists.");
 	}
+
+	private async Task LoadTimelineAsync(FinanceSupplierDocument? document, CancellationToken cancellationToken = default)
+	{
+		Timeline.Clear();
+		if (document is null || _timeline is null) return;
+		foreach (var item in await _timeline.ListAsync(document, cancellationToken)) Timeline.Add(item);
+	}
+
+	private Task OpenTimelineItemAsync(WorkflowTimelineItem item, CancellationToken cancellationToken) =>
+		_timelineNavigation?.Invoke(item, cancellationToken) ?? Task.CompletedTask;
 
 	public FinanceSupplierDocumentLineDraftEditor? SelectedDraftLine
 	{
@@ -452,7 +478,7 @@ public sealed class FinancePayablesViewModel : BaseViewModel, IDisposable
 	private static decimal ParseDecimal(string value, string name) => TryParseDecimal(value, out var parsed) && parsed > 0m ? parsed : throw new InvalidOperationException($"A positive {name} is required.");
 	private static bool TryParseDecimal(string value, out decimal parsed) => decimal.TryParse(value, NumberStyles.Number, CultureInfo.CurrentCulture, out parsed) || decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out parsed);
 
-	public void Dispose() { if (_disposed) return; _disposed = true; _loadRequest.Dispose(); }
+	public void Dispose() { if (_disposed) return; _disposed = true; _loadRequest.Dispose(); OpenTimelineItemCommand.Dispose(); }
 }
 
 public sealed class FinanceSupplierDocumentLineDraftEditor : BaseViewModel

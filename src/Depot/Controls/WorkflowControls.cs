@@ -157,3 +157,19 @@ public sealed class ActivationStatusBadge : StatusBadge
 		badge.Variant = (bool)args.NewValue ? StatusBadgeVariant.Primary : StatusBadgeVariant.Muted;
 	}
 }
+
+
+public sealed class WorkflowTimeline : ItemsControl
+{
+	public static readonly DependencyProperty NavigateCommandProperty = DependencyProperty.Register(
+		nameof(NavigateCommand),
+		typeof(ICommand),
+		typeof(WorkflowTimeline),
+		new PropertyMetadata(null));
+
+	public ICommand? NavigateCommand
+	{
+		get => (ICommand?)GetValue(NavigateCommandProperty);
+		set => SetValue(NavigateCommandProperty, value);
+	}
+}

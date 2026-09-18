@@ -60,20 +60,107 @@ public sealed class SalesCommercialFeatureTests : IAsyncLifetime
 		Assert.Equal("Billing Snapshot", order.BillingAddress);
 		Assert.Equal("Shipping Snapshot", order.ShippingAddress);
 		Assert.Equal(114m, Assert.Single(order.Lines).UnitPrice * (1m - Assert.Single(order.Lines).DiscountPercent / 100m));
+
+		var timeline = await fixture.Timeline.ListAsync(order);
+		var quoteIndex = Array.FindIndex(timeline.ToArray(), value => value.Kind == WorkflowTimelineKind.SalesQuote);
+		var orderIndex = Array.FindIndex(timeline.ToArray(), value => value.Kind == WorkflowTimelineKind.SalesOrder);
+		Assert.True(quoteIndex >= 0 && orderIndex > quoteIndex);
 	}
 
 	[Fact]
-	public async Task TimelineReflectsSalesOrderLifecycle()
+	public async Task TimelineReflectsSalesOrderLifecycleDeterministically()
 	{
 		var fixture = Fixture;
 		var customer = await fixture.Customers.SaveAsync(new Customer { Name = "Timeline Customer", Currency = "EUR" });
 		var draft = await fixture.Orders.SaveDraftAsync(new SalesOrder { CustomerId = customer.Id, Lines = [new SalesOrderLine { ItemId = fixture.ItemId, Quantity = 1, UnitPrice = 50m, TaxRate = 19m }] });
 		var submitted = await fixture.Orders.SubmitAsync(draft.Id, draft.Version);
 		var approved = await fixture.Orders.ApproveAsync(submitted.Id, submitted.Version, "Timeline approval");
-		var events = await fixture.Timeline.ListAsync(approved);
-		Assert.Contains(events, value => value.EventType == "Created");
-		Assert.Contains(events, value => value.EventType == "Submitted");
-		Assert.Contains(events, value => value.EventType == "Approved");
+
+		var first = await fixture.Timeline.ListAsync(approved);
+		var second = await fixture.Timeline.ListAsync(approved);
+
+		var createdIndex = Array.FindIndex(first.ToArray(), value => value.Kind == WorkflowTimelineKind.SalesOrder && value.Title == "Sales order created");
+		var submittedIndex = Array.FindIndex(first.ToArray(), value => value.Kind == WorkflowTimelineKind.SalesApproval && value.Status == "Pending Approval");
+		var approvedIndex = Array.FindIndex(first.ToArray(), value => value.Kind == WorkflowTimelineKind.SalesApproval && value.Status == "Approved");
+		Assert.True(createdIndex >= 0 && submittedIndex > createdIndex && approvedIndex > submittedIndex);
+		Assert.Single(first, value => value.IsCurrent);
+		Assert.Equal(
+			first.Select(value => (value.Kind, value.EntityId, value.DisplayNumber, value.Title, value.Status, value.OccurredAt, value.IsCorrection, value.IsReversal)),
+			second.Select(value => (value.Kind, value.EntityId, value.DisplayNumber, value.Title, value.Status, value.OccurredAt, value.IsCorrection, value.IsReversal)));
+	}
+
+	[Fact]
+	public async Task TimelineDoesNotRequireOptionalWorkflowSteps()
+	{
+		var fixture = Fixture;
+		var customer = await fixture.Customers.SaveAsync(new Customer { Name = "Minimal Timeline Customer", Currency = "EUR" });
+		var draft = await fixture.Orders.SaveDraftAsync(new SalesOrder { CustomerId = customer.Id, Lines = [new SalesOrderLine { ItemId = fixture.ItemId, Quantity = 1, UnitPrice = 25m, TaxRate = 19m }] });
+
+		var events = await fixture.Timeline.ListAsync(draft);
+
+		var current = Assert.Single(events, value => value.IsCurrent);
+		Assert.Equal(WorkflowTimelineKind.SalesOrder, current.Kind);
+		Assert.DoesNotContain(events, value => value.Kind is WorkflowTimelineKind.Shipment or WorkflowTimelineKind.SalesInvoice);
+	}
+
+	[Fact]
+	public async Task TimelineMarksCorrectionsAndReversalsSeparately()
+	{
+		var fixture = Fixture;
+		var customer = await fixture.Customers.SaveAsync(new Customer { Name = "Correction Timeline Customer", Currency = "EUR" });
+		var order = await fixture.Orders.SaveDraftAsync(new SalesOrder { CustomerId = customer.Id, Lines = [new SalesOrderLine { ItemId = fixture.ItemId, Quantity = 1, UnitPrice = 75m, TaxRate = 19m }] });
+		var shipmentId = await fixture.Data.InsertAsync(
+			"INSERT INTO Shipments (ShipmentNumber,SalesOrderId,CustomerId,ShipmentDate,Status,CreatedByUserId,PostedByUserId,PostedAtUtc,ReversedAtUtc,ReversedByUserId,ReversalReason,Version) VALUES ($Number,$OrderId,$CustomerId,$Date,$Status,$UserId,$UserId,$At,$At,$UserId,$Reason,1);",
+			CancellationToken.None,
+			new DatabaseParameter("$Number", $"SH-TL-{Guid.NewGuid():N}"),
+			new DatabaseParameter("$OrderId", order.Id),
+			new DatabaseParameter("$CustomerId", customer.Id),
+			new DatabaseParameter("$Date", DateTime.Today.ToString("yyyy-MM-dd")),
+			new DatabaseParameter("$Status", (int)ShipmentStatus.Cancelled),
+			new DatabaseParameter("$UserId", fixture.Admin.Id),
+			new DatabaseParameter("$At", DateTime.UtcNow.ToString("O")),
+			new DatabaseParameter("$Reason", "Timeline reversal"));
+		await fixture.Data.InsertAsync(
+			"INSERT INTO CustomerReturns (ReturnNumber,ShipmentId,SalesOrderId,CustomerId,ReturnDate,Status,Reason,CreatedByUserId,PostedByUserId,PostedAtUtc,Version) VALUES ($Number,$ShipmentId,$OrderId,$CustomerId,$Date,$Status,$Reason,$UserId,$UserId,$At,1);",
+			CancellationToken.None,
+			new DatabaseParameter("$Number", $"CR-TL-{Guid.NewGuid():N}"),
+			new DatabaseParameter("$ShipmentId", shipmentId),
+			new DatabaseParameter("$OrderId", order.Id),
+			new DatabaseParameter("$CustomerId", customer.Id),
+			new DatabaseParameter("$Date", DateTime.Today.ToString("yyyy-MM-dd")),
+			new DatabaseParameter("$Status", (int)CustomerReturnStatus.Posted),
+			new DatabaseParameter("$Reason", "Timeline correction"),
+			new DatabaseParameter("$UserId", fixture.Admin.Id),
+			new DatabaseParameter("$At", DateTime.UtcNow.ToString("O")));
+
+		var events = await fixture.Timeline.ListAsync(order);
+		var correction = Assert.Single(events, value => value.Kind == WorkflowTimelineKind.CustomerReturn);
+		Assert.True(correction.IsCorrection);
+		Assert.False(correction.IsReversal);
+		Assert.Equal(WorkflowTimelineSeverity.Warning, correction.Severity);
+
+		var reversal = Assert.Single(events, value => value.Kind == WorkflowTimelineKind.ShipmentReversal);
+		Assert.True(reversal.IsReversal);
+		Assert.False(reversal.IsCorrection);
+		Assert.Equal(WorkflowTimelineSeverity.Error, reversal.Severity);
+	}
+
+	[Fact]
+	public async Task TimelineFiltersEntitiesWithoutViewPermission()
+	{
+		var fixture = Fixture;
+		var customer = await fixture.Customers.SaveAsync(new Customer { Name = "Restricted Timeline Customer", Currency = "EUR" });
+		var quote = await fixture.Quotes.SaveDraftAsync(new SalesQuote { CustomerId = customer.Id, QuoteDate = DateTime.Today, ValidUntil = DateTime.Today.AddDays(7), Lines = [new SalesQuoteLine { ItemId = fixture.ItemId, PartNumber = fixture.PartNumber, Description = "Restricted timeline item", Quantity = 1, UnitPrice = 10m, TaxRate = 19m }] });
+		var sent = await fixture.Quotes.MarkSentAsync(quote.Id, quote.Version);
+		var accepted = await fixture.Quotes.AcceptAsync(sent.Id, sent.Version);
+		var order = await fixture.Quotes.ConvertToSalesOrderAsync(accepted.Id, accepted.Version);
+		var restrictedTimeline = fixture.CreateTimeline(ApplicationPermission.SalesOrdersView);
+
+		var events = await restrictedTimeline.ListAsync(order);
+
+		Assert.NotEmpty(events);
+		Assert.DoesNotContain(events, value => value.Kind == WorkflowTimelineKind.SalesQuote);
+		Assert.All(events, value => Assert.Equal("sales.orders", value.RouteId));
 	}
 
 	[Fact]
@@ -105,15 +192,17 @@ public sealed class SalesCommercialFeatureTests : IAsyncLifetime
 
 	private sealed class CommercialFixture
 	{
-		private CommercialFixture(CustomerService customers, SalesPricingService pricing, SalesQuoteService quotes, SalesOrderService orders, SalesTimelineService timeline, long itemId, string partNumber)
+		private CommercialFixture(CustomerService customers, SalesPricingService pricing, SalesQuoteService quotes, SalesOrderService orders, SalesTimelineService timeline, DatabaseAccess data, User admin, long itemId, string partNumber)
 		{
-			Customers = customers; Pricing = pricing; Quotes = quotes; Orders = orders; Timeline = timeline; ItemId = itemId; PartNumber = partNumber;
+			Customers = customers; Pricing = pricing; Quotes = quotes; Orders = orders; Timeline = timeline; Data = data; Admin = admin; ItemId = itemId; PartNumber = partNumber;
 		}
 		public CustomerService Customers { get; }
 		public SalesPricingService Pricing { get; }
 		public SalesQuoteService Quotes { get; }
 		public SalesOrderService Orders { get; }
 		public SalesTimelineService Timeline { get; }
+		public DatabaseAccess Data { get; }
+		public User Admin { get; }
 		public long ItemId { get; }
 		public string PartNumber { get; }
 
@@ -135,7 +224,22 @@ public sealed class SalesCommercialFeatureTests : IAsyncLifetime
 			var pricing = new SalesPricingService(runner, new SalesPriceListRepository(data), auditRepository, audit, authorization);
 			var quotes = new SalesQuoteService(new SalesQuoteRepository(data), customerRepository, orders, audit, authorization);
 			var timeline = new SalesTimelineService(new SalesTimelineRepository(data), authorization);
-			return new CommercialFixture(customers, pricing, quotes, orders, timeline, itemId, partNumber);
+			return new CommercialFixture(customers, pricing, quotes, orders, timeline, data, admin, itemId, partNumber);
+		}
+
+		public SalesTimelineService CreateTimeline(params ApplicationPermission[] permissions)
+		{
+			var authorization = new AuthorizationService();
+			var user = new User
+			{
+				Id = Admin.Id,
+				Email = Admin.Email,
+				DisplayName = Admin.DisplayName,
+				IsActive = true,
+				Roles = Admin.Roles
+			};
+			authorization.SignIn(user, permissions);
+			return new SalesTimelineService(new SalesTimelineRepository(Data), authorization);
 		}
 	}
 }

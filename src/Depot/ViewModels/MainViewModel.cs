@@ -170,7 +170,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		_materialIssues = new(() => new MaterialIssuesViewModel(materialIssueService, reasonCodeService, fileDialogService));
 		_materialReturns = new(() => new MaterialReturnsViewModel(materialReturnService, reasonCodeService, fileDialogService));
 		_supplierReturns = new(() => new SupplierReturnsViewModel(supplierReturnService, supplierService, reasonCodeService, fileDialogService));
-		_procurement = new(() => new ProcurementViewModel(purchaseOrderService, purchaseOrderHistoryService, goodsReceiptService, supplierService, itemService, fileDialogService, reasonCodeService, MarkPurchasingPagesStale, MarkInventoryPagesStale));
+		_procurement = new(() => new ProcurementViewModel(purchaseOrderService, purchaseOrderHistoryService, goodsReceiptService, supplierService, itemService, fileDialogService, reasonCodeService, MarkPurchasingPagesStale, MarkInventoryPagesStale, salesServices.Timeline, OpenWorkflowTimelineItemAsync));
 		_purchaseOverview = new(() => new PurchaseOverviewViewModel(purchaseOrderService));
 		_purchaseOrdersPage = new(() => new PurchaseOrdersPageViewModel(_procurement.Value));
 		_goodsReceiptsPage = new(() => new GoodsReceiptsPageViewModel(_procurement.Value));
@@ -180,12 +180,12 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		_salesQuotes = new(() => new SalesQuotesViewModel(salesServices.Quotes, salesServices.Pricing, salesServices.Customers, salesServices.Items, fileDialogService, salesServices.Documents));
 		_salesPricing = new(() => new SalesPricingViewModel(salesServices.Pricing, salesServices.Customers, salesServices.Items, categoryService, manufacturerService, salesServices.PriceListGeneration));
 		_salesCustomers = new(() => new CustomersViewModel(salesWorkspace, salesServices.Customers, salesServices.Pricing));
-		_salesOrders = new(() => new SalesOrdersViewModel(salesWorkspace, salesServices.Pricing, salesServices.Timeline));
+		_salesOrders = new(() => new SalesOrdersViewModel(salesWorkspace, salesServices.Pricing, salesServices.Timeline, OpenWorkflowTimelineItemAsync));
 		_salesApprovals = new(() => new SalesApprovalsViewModel(salesWorkspace));
-		_salesShipping = new(() => new ShippingViewModel(salesWorkspace, salesServices.Packing, fileDialogService, salesServices.Documents));
-		_salesInvoices = new(() => new SalesInvoicesViewModel(salesWorkspace, salesServices.Invoices, fileDialogService, salesServices.Documents, salesServices.Email));
+		_salesShipping = new(() => new ShippingViewModel(salesWorkspace, salesServices.Packing, fileDialogService, salesServices.Documents, salesServices.Timeline, OpenWorkflowTimelineItemAsync));
+		_salesInvoices = new(() => new SalesInvoicesViewModel(salesWorkspace, salesServices.Invoices, fileDialogService, salesServices.Documents, salesServices.Email, salesServices.Timeline, OpenWorkflowTimelineItemAsync));
 		_financeReceivables = new(() => new FinanceReceivablesViewModel(financeReceivablesService));
-		_financePayables = new(() => new FinancePayablesViewModel(financePayablesService));
+		_financePayables = new(() => new FinancePayablesViewModel(financePayablesService, salesServices.Timeline, OpenWorkflowTimelineItemAsync));
 		_financeInventoryAccounting = new(() => new FinanceInventoryAccountingViewModel(financeInventoryAccountingService, financeInventoryCostingService, financeInventoryMovementAccountingService));
 		_financeBanking = new(() => new FinanceBankingViewModel(financeBankingService));
 		_financeFinancialReporting = new(() => new FinanceFinancialReportingViewModel(financeFinancialReportingService, fileDialogService));
@@ -269,6 +269,67 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 	{
 		var (moduleName, pageName, workspace) = item.Kind switch { SalesQuickOpenKind.Customer => ("Sales", "Customers", CustomersViewModel.Workspace), SalesQuickOpenKind.SalesOrder => ("Sales", "Sales Orders", SalesOrdersViewModel.Workspace), SalesQuickOpenKind.Shipment or SalesQuickOpenKind.CustomerReturn => ("Warehouse", "Shipping", ShippingViewModel.Workspace), SalesQuickOpenKind.Invoice or SalesQuickOpenKind.CreditNote => ("Sales", "Invoices", SalesInvoicesViewModel.Workspace), _ => ("Sales", "Overview", SalesOverviewViewModel.Workspace) };
 		await NavigateToModulePageAsync(moduleName, pageName, cancellationToken); await workspace.OpenQuickItemAsync(item, cancellationToken);
+	}
+
+	public async Task OpenWorkflowTimelineItemAsync(WorkflowTimelineItem item, CancellationToken cancellationToken = default)
+	{
+		ArgumentNullException.ThrowIfNull(item);
+		if (!item.CanNavigate || !ConfirmDiscardChanges(CurrentViewModel)) return;
+		var route = new ShellRoute(item.RouteId!);
+		switch (item.Kind)
+		{
+			case WorkflowTimelineKind.SalesQuote:
+				await this.NavigateToRouteAsync(route, cancellationToken);
+				await SalesQuotesViewModel.OpenQuoteAsync(item.EntityId, cancellationToken);
+				break;
+			case WorkflowTimelineKind.SalesOrder:
+			case WorkflowTimelineKind.SalesApproval:
+			case WorkflowTimelineKind.ReservationRelease:
+				await OpenSalesQuickItemAsync(new SalesQuickOpenItem(SalesQuickOpenKind.SalesOrder, item.EntityId, item.DisplayNumber, item.Title), cancellationToken);
+				break;
+			case WorkflowTimelineKind.Shipment:
+			case WorkflowTimelineKind.ShipmentReversal:
+				await OpenSalesQuickItemAsync(new SalesQuickOpenItem(SalesQuickOpenKind.Shipment, item.EntityId, item.DisplayNumber, item.Title), cancellationToken);
+				break;
+			case WorkflowTimelineKind.CustomerReturn:
+				await OpenSalesQuickItemAsync(new SalesQuickOpenItem(SalesQuickOpenKind.CustomerReturn, item.EntityId, item.DisplayNumber, item.Title), cancellationToken);
+				break;
+			case WorkflowTimelineKind.SalesInvoice:
+				await OpenSalesQuickItemAsync(new SalesQuickOpenItem(SalesQuickOpenKind.Invoice, item.EntityId, item.DisplayNumber, item.Title), cancellationToken);
+				break;
+			case WorkflowTimelineKind.SalesCreditNote:
+				await OpenSalesQuickItemAsync(new SalesQuickOpenItem(SalesQuickOpenKind.CreditNote, item.EntityId, item.DisplayNumber, item.Title), cancellationToken);
+				break;
+			case WorkflowTimelineKind.Receivable:
+				await this.NavigateToRouteAsync(route, cancellationToken);
+				await FinanceReceivablesViewModel.OpenOpenItemAsync(item.EntityId, cancellationToken);
+				break;
+			case WorkflowTimelineKind.PurchaseOrder:
+			case WorkflowTimelineKind.PurchaseApproval:
+			case WorkflowTimelineKind.PurchaseOrdered:
+				await this.NavigateToRouteAsync(route, cancellationToken);
+				await ProcurementViewModel.OpenOrderAsync(item.EntityId, cancellationToken);
+				break;
+			case WorkflowTimelineKind.GoodsReceipt:
+			case WorkflowTimelineKind.GoodsReceiptReversal:
+				await this.NavigateToRouteAsync(route, cancellationToken);
+				await ProcurementViewModel.OpenReceiptAsync(item.EntityId, cancellationToken);
+				break;
+			case WorkflowTimelineKind.SupplierInvoice:
+			case WorkflowTimelineKind.SupplierMatch:
+			case WorkflowTimelineKind.SupplierApproval:
+			case WorkflowTimelineKind.SupplierDocumentReversal:
+				await this.NavigateToRouteAsync(route, cancellationToken);
+				await FinancePayablesViewModel.OpenDocumentAsync(item.EntityId, cancellationToken);
+				break;
+			case WorkflowTimelineKind.Payable:
+				await this.NavigateToRouteAsync(route, cancellationToken);
+				await FinancePayablesViewModel.OpenOpenItemAsync(item.EntityId, cancellationToken);
+				break;
+			default:
+				await this.NavigateToRouteAsync(route, cancellationToken);
+				break;
+		}
 	}
 
 	public async Task OpenMyWorkItemAsync(MyWorkItem item, CancellationToken cancellationToken = default)
