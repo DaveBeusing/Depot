@@ -44,7 +44,7 @@
                     <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Button Content="{Binding Label}" Click="OnQuickActionClick" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,0" />
+                            <Button Content="{Binding Label}" Click="OnQuickActionClick" Style="{StaticResource PrimaryButtonStyle}" Padding="14,8" MinWidth="128" Margin="0,0,8,0" />
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
@@ -67,7 +67,7 @@
                                 <Grid>
                                     <DataGrid ItemsSource="{Binding Items}" AutoGenerateColumns="False" IsReadOnly="True"
                                               CanUserAddRows="False" SelectionMode="Single" SelectionUnit="FullRow"
-                                              MouseDoubleClick="OnItemsDoubleClick" MinHeight="120" MaxHeight="280">
+                                              MouseDoubleClick="OnItemsDoubleClick" KeyDown="OnItemsKeyDown" MinHeight="120" MaxHeight="280">
                                         <DataGrid.Columns>
                                             <DataGridTextColumn Header="Type / Work" Binding="{Binding Title}" Width="170" />
                                             <DataGridTextColumn Header="Reference" Binding="{Binding DisplayNumber}" Width="140" />
