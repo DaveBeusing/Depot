@@ -1,6 +1,6 @@
 # Track C acceptance and product status
 
-Reviewed: 2026-09-17
+Reviewed: 2026-09-18
 
 Track C repository implementation is complete through F5B. This document records the implemented product boundary and repository acceptance evidence; it does not replace deployment-specific legal, accounting, accessibility, signing or operational acceptance.
 
@@ -103,4 +103,4 @@ The executable replacement path now retries only bounded `IOException` / `Unauth
 
 Track C F1 through F5B are complete at the repository implementation/acceptance boundary. There is no remaining Track C implementation package queued after F5B.
 
-The next engineering step is Depot 1.0 technical gap reconciliation against the actual repository, tests and retained evidence. External/manual production gates remain tracked separately in [Release 1.0](Release1.0.md), [Current Project Status](CurrentStatus.md) and Track A acceptance documentation.
+The Depot 1.0 technical gap reconciliation is now complete and is recorded in [Depot 1.0 Release Candidate Readiness](ReleaseCandidateReadiness.md); it found no currently known generic implementation or automated-evidence defect inside the advertised repository boundary. The next Track A acceptance gate is H3 production-signed Stable RC acceptance, followed by H4 deployment DR and H5 exact-RC manual accessibility acceptance. See [Release 1.0](Release1.0.md) and [Current Project Status](CurrentStatus.md).

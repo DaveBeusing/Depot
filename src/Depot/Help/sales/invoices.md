@@ -69,15 +69,17 @@ For a posted invoice, use **Export XRechnung** in the Invoice action bar. The ac
 
 The runtime generator performs Depot's EN 16931/XRechnung model validation. Representative generated XML remains checked in CI with the pinned KoSIT validator/configuration. Runtime posting does not currently invoke the external KoSIT validator executable itself.
 
-Depot currently finalizes only invoice lines with a positive standard VAT rate. Zero-rated, exempt and reverse-charge scenarios are deliberately blocked until the invoice model carries the explicit EN 16931 tax category and exemption/reason semantics needed to issue them without guessing.
+Depot finalizes the bounded advertised EN 16931/XRechnung tax matrix using explicit tax semantics: Standard-rated (`S`), Zero-rated (`Z`), Exempt (`E`) and Reverse-charge (`AE`) invoices. Exempt and reverse-charge cases require the explicit category/reason evidence used by the finalized invoice model; Depot does not infer legal tax semantics from a numeric 0% rate.
 
-ZUGFeRD/Factur-X is not currently claimed. A true implementation requires a conforming PDF/A-3 container with embedded structured XML and end-to-end validation; a normal PDF with an XML attachment is not sufficient.
+Depot also retains ZUGFeRD 2.5.2 / Factur-X 1.09.2 XRECHNUNG-profile PDF/A-3B artifacts generated from the same finalized invoice model. The exact finalized `xrechnung.xml` is embedded in the PDF, Factur-X XMP metadata is included, and exact PDF/XML SHA-256 evidence is persisted so later export does not rebuild the artifact from mutable master data. The bounded advertised XML/PDF matrix is validated in CI with pinned KoSIT/XRechnung and veraPDF tooling. This repository conformance evidence does not extend to unsupported profiles, arbitrary existing-PDF conversion or jurisdiction-wide legal/tax certification.
 
 ## Credit notes
 
+The bounded electronic-invoice path includes Standard-rated Sales Credit Note `381`. Credit-note finalization reuses immutable source-invoice Buyer evidence and retains the exact issued XML plus the same hybrid-artifact integrity boundary as supported invoices.
+
 Posted invoices are immutable. Corrections are recorded as separate Credit Notes. Depot tracks cumulative credited quantities and prevents the total from exceeding the originally invoiced quantity.
 
-Each credit note captures its own issuer snapshot when it is posted. This preserves the legal identity that applied to the correction document even if company master data changes later. Buyer/XRechnung finalization for credit notes remains a separate follow-up because the current electronic-invoice flow finalizes sales invoices only.
+Each credit note captures its own issuer snapshot when it is posted. This preserves the legal identity that applied to the correction document even if company master data changes later. Supported electronic Credit Notes use the retained finalization/evidence path; unsupported tax/profile combinations remain fail-closed rather than being inferred.
 
 When Accounts Receivable is configured, the credit note's Finance posting and AR credit open item are part of the same posting transaction. The original posted invoice remains unchanged; settlement is represented by controlled AR allocations and the GL correction journal rather than by rewriting the invoice.
 

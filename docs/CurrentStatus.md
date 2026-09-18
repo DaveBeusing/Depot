@@ -1,6 +1,6 @@
 # Current project status
 
-Updated: 2026-09-17
+Updated: 2026-09-18
 
 Depot is on the `0.15.x-preview` development line. Finance, inventory, purchasing, sales, reporting, localization, notifications, Audit, persistent user sessions, operational security monitoring, enterprise identity/authentication and the completed Track C feature set are integrated in the repository.
 
@@ -25,6 +25,8 @@ See [Repository Governance](RepositoryGovernance.md) and [Track A – Final Acce
 ## Release pipeline and production acceptance
 
 `.github/workflows/release-integrity.yml` remains the authoritative Source-to-Release path. It performs locked restore, warning-free Release build, regression testing, shared packaged publishing, channel validation, signing policy, manifest/hash/evidence generation and GitHub Release publication from the exact validated artifact.
+
+Pull-request release validation intentionally focuses on release/package/signing/evidence behavior and does not repeat the complete Depot and DepotManager regression suites already covered by the required CI shards. Full Depot and DepotManager regression suites remain mandatory for authoritative `workflow_dispatch` release and Stable acceptance-only runs. The security workflow also keeps Audit/Privacy and Sessions in separate bounded shards to avoid timeout-driven false negatives while preserving the same security coverage.
 
 Preview and Stable channels remain distinct. Preview may remain unsigned. Stable requires the production signing acceptance path to report `PASS` before publication.
 
@@ -92,6 +94,8 @@ AP-04 then closed the remaining DepotManager shipped-artifact evidence gap: PR #
 AP-06 completed the 1.0 technical reconciliation and found no currently known generic implementation defect or generic automated-evidence defect inside the advertised repository boundary.
 
 AP-07 was completed administratively by activating ruleset `23590604`. AP-08 reconciles that live H1 closure into the controlled acceptance baseline and confirms that the next remaining Track A gate is the real production-signed Stable RC.
+
+PR #56 then repaired CI execution boundaries without changing runtime behavior or persisted schemas: repository-governance evidence parsing is valid again, the former combined Audit-Privacy-Sessions security shard is split into bounded Audit-Privacy and Sessions jobs, and PR release validation no longer duplicates the complete regression suites. Authoritative manual release/acceptance runs retain the full regression path.
 
 ## Versions
 

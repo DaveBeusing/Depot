@@ -31,7 +31,7 @@ Converted line amounts are rounded using the reporting currency's configured min
 
 Every posting has an operation ID and deterministic request fingerprint. Retrying the same operation/content returns the existing journal entry instead of consuming another document number.
 
-Source postings are also unique per accounting book, source type, source ID, and source event. This allows Sales/Accounts Receivable and future Purchasing/AP, Inventory Accounting, and Banking workflows to retry safely.
+Source postings are also unique per accounting book, source type, source ID, and source event. This allows Sales/Accounts Receivable, Accounts Payable, Inventory Accounting and Banking workflows to retry safely through the shared posting boundary.
 
 Reusing an operation ID or source identity for different accounting content is rejected rather than silently treating different accounting requests as the same posting.
 

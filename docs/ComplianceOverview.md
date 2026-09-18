@@ -28,7 +28,7 @@ Localization requires explicit effective-dated assignment. The built-in `GENERIC
 
 `Directory.Build.props` is authoritative for the exact application patch/version. Compliance documentation records the development line and stable schema/help contracts instead of duplicating the moving preview patch number.
 
-Sales schema 14 adds retained ZUGFeRD 2.5.2 / Factur-X 1.09.2 XRECHNUNG-profile hybrid artifacts. This is an engineering capability statement only. A product conformance claim remains gated by independent PDF/A-3 validation plus the established KoSIT/XRechnung validation and release evidence.
+Sales schema 14 adds retained ZUGFeRD 2.5.2 / Factur-X 1.09.2 XRECHNUNG-profile hybrid artifacts. The bounded advertised matrix now has repository-level KoSIT/XRechnung and pinned veraPDF PDF/A-3B acceptance. This remains an engineering/conformance evidence statement, not jurisdiction-wide tax/legal certification or support for unadvertised profiles/scenarios; release and deployment acceptance remain separate.
 
 Security Events schema 3 adds persisted export targets and durable at-least-once delivery state while keeping source Security Events immutable. This is an engineering delivery capability; downstream SIEM retention, receiver deduplication, endpoint governance and operational monitoring remain deployment responsibilities.
 

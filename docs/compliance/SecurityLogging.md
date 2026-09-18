@@ -15,7 +15,7 @@ Security logging should provide enough evidence to investigate privileged access
 - backup and restore operations,
 - integrity/migration failures,
 - security-sensitive import failures,
-- future update/signature validation failures.
+- update, release-artifact and signature-validation failures where handled by Depot or DepotManager.
 
 ## Minimum fields
 

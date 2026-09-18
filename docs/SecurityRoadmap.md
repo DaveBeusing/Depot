@@ -1,6 +1,6 @@
 # Depot Security and Compliance Roadmap
 
-Updated: 2026-09-17
+Updated: 2026-09-18
 
 ## Purpose
 
@@ -47,7 +47,7 @@ The supported SQLite, SQL Server, MariaDB and MySQL provider baselines have repo
 
 ## Remaining production acceptance gates
 
-- [ ] Complete H1 live repository-governance activation/evidence.
+- [x] H1 live repository-governance activation/evidence is closed through active ruleset `23590604`; future live-ruleset drift reopens the gate.
 - [ ] Exercise production signing with the real Stable publisher identity and timestamp evidence.
 - [ ] Accept deployment-specific backup/security ownership and DR evidence.
 - [ ] Complete any environment-specific ACL/recovery checks required by the target deployment.

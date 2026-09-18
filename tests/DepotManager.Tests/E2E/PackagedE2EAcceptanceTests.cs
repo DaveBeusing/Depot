@@ -89,7 +89,7 @@ public sealed class PackagedE2EAcceptanceTests
         Assert.Equal(currentVersion, service.InstalledVersion);
         Assert.Equal(1, await CountAdministratorAsync(database));
 
-        await using (var damaged = new FileStream(service.DepotPath, FileMode.Open, FileAccess.Write, FileShare.None))
+        await using (var damaged = await OpenExclusiveWriteAsync(service.DepotPath, TimeSpan.FromSeconds(10)))
         {
             damaged.SetLength(1024);
         }
@@ -404,6 +404,32 @@ public sealed class PackagedE2EAcceptanceTests
         BackupIntervalDays = 1
     };
 
+    private static async Task<FileStream> OpenExclusiveWriteAsync(string path, TimeSpan timeout)
+    {
+        var deadline = DateTimeOffset.UtcNow + timeout;
+        Exception? lastFailure = null;
+
+        while (DateTimeOffset.UtcNow < deadline)
+        {
+            try
+            {
+                return new FileStream(path, FileMode.Open, FileAccess.Write, FileShare.None);
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            {
+                lastFailure = exception;
+                await Task.Delay(100);
+            }
+        }
+
+        throw new IOException($"Timed out waiting for exclusive write access to packaged executable '{path}'.", lastFailure);
+    }
+
+    private static async Task WaitForExclusiveWriteAccessAsync(string path, TimeSpan timeout)
+    {
+        await using var stream = await OpenExclusiveWriteAsync(path, timeout);
+    }
+
     private static async Task<ManagerCommandResult> RunDepotCommandAsync(string executable, string workingDirectory, string command, object? request = null)
     {
         var response = Path.Combine(workingDirectory, $"e2e-{Guid.NewGuid():N}.response.json");
@@ -427,6 +453,7 @@ public sealed class PackagedE2EAcceptanceTests
 
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(90));
         await process.WaitForExitAsync(timeout.Token);
+        await WaitForExclusiveWriteAccessAsync(executable, TimeSpan.FromSeconds(10));
         if (!File.Exists(response)) throw new InvalidOperationException($"Packaged Depot command {command} returned no response. Exit code: {process.ExitCode}.");
         using var document = JsonDocument.Parse(await File.ReadAllTextAsync(response, timeout.Token));
         var result = new ManagerCommandResult(

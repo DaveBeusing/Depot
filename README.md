@@ -107,6 +107,7 @@ Current baseline:
 - User Sessions feature schema: **3**
 - Security Events feature schema: **3**
 - User Preferences feature schema: **2**
+- Enterprise Identity feature schema: **2**
 - Help manifest: **1.21**
 
 `Directory.Build.props` is authoritative for the exact application patch/version. The documentation baseline intentionally records the development line instead of duplicating the moving preview patch number.
@@ -161,7 +162,7 @@ See the [Help Center documentation](docs/HelpCenter.md).
 
 ## Road to 1.0
 
-The generic database-provider technical gate is complete for the certified support matrix. Major remaining 1.0 items include production code signing, accessibility/manual desktop acceptance, organization-specific accounting/tax/retention/valuation/reporting/localization procedures, production backup ownership and installer/upgrade acceptance, plus legal/organizational closure work tracked in the release checklist.
+The generic database-provider and packaged-lifecycle technical gates are complete for the advertised repository boundary, and H1/H2 are closed. Major remaining 1.0 acceptance items are H3 production-signed Stable RC acceptance (including exact signed-artifact install/update/repair evidence), H4 deployment disaster-recovery and backup-ownership acceptance, H5 exact-RC manual desktop/accessibility acceptance, plus organization-specific accounting/tax/retention/valuation/reporting/localization procedures and legal/organizational closure work tracked in the release checklist.
 
 Track the path through the [Roadmap](docs/Roadmap.md) and [Release 1.0 plan](docs/Release1.0.md).
 

@@ -1,6 +1,6 @@
 # Workspace Productivity & Home Personalization
 
-Updated: 2026-09-16
+Updated: 2026-09-18
 
 ## Purpose
 
@@ -86,7 +86,9 @@ Quick actions are bounded and deterministic. Favorites are preferred first, foll
 
 Workspace visits are recorded only when the semantic route changes. Repeated property notifications for the same route do not produce duplicate writes. Recording recents is best-effort and cancellable so preference persistence cannot stall or break navigation.
 
-## Schema and versioning
+## Schema and versioning at implementation closeout
+
+The exact values below are the historical implementation snapshot for this feature. For the current repository baseline, see [Documentation Status](DocumentationStatus.md).
 
 ```text
 Depot: 0.15.180-preview

@@ -1,5 +1,7 @@
 # Release Pipeline
 
+Updated: 2026-09-18
+
 ## Authority
 
 `.github/workflows/release-integrity.yml` is the single authoritative Source-to-Release pipeline for Depot.
@@ -23,6 +25,12 @@ current master source
 `scripts/release.ps1` is only a dispatcher for this workflow. It does not build, sign, stage, tag or publish release artifacts locally.
 
 Manual GitHub Release creation, locally built release assets and ad-hoc tag publication are not authoritative Depot release procedures.
+
+## Pull request validation versus authoritative runs
+
+Pull requests validate release/package/signing/evidence behavior without re-running the complete Depot and DepotManager regression suites a second time after the required CI shards. This keeps PR validation bounded while preserving the release-contract checks needed before merge.
+
+Authoritative `workflow_dispatch` Preview, Stable and Stable `-AcceptanceOnly` runs execute the full Depot and DepotManager regression suites in the release-candidate job. Those full suites remain mandatory before release evidence is finalized or a Stable candidate can be accepted/published.
 
 ## Release channels
 

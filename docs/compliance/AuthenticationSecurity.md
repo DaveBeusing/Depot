@@ -1,12 +1,12 @@
 # Depot Authentication Security
 
-Updated: 2026-09-01
+Updated: 2026-09-18
 
 ## Passwords and provider boundary
 
 New Depot password hashes use PBKDF2-HMAC-SHA256 with per-password random salt, a 256-bit derived key and the encoded work factor. New/changed passwords require the existing 12–128 character complexity policy and are never logged.
 
-Authentication now depends on `IAuthenticationProvider`. `LocalAuthenticationProvider` is the built-in credential provider; this keeps MFA/OIDC/SSO integration behind an explicit identity boundary rather than coupling external identity logic to session/RBAC code.
+Authentication depends on explicit identity boundaries. `LocalAuthenticationProvider` remains the built-in local credential provider, while Enterprise Identity implements Authorization Code + PKCE OIDC/Entra sign-in and provider-bound assurance validation without coupling external identity claims to Depot session/RBAC authorization.
 
 ## Shared login throttling
 
@@ -38,7 +38,7 @@ Security Event retention does not affect the separate business Audit Log.
 
 - Core schema: **30**
 - User Sessions feature schema: **3**
-- Security Events feature schema: **2**
+- Security Events feature schema: **3**
 
 Provider DDL exists for SQLite, SQL Server and MySQL/MariaDB. Provider-neutral implementation is not production certification; live migration, lock/deadlock, recovery and representative load acceptance remain required.
 
@@ -48,4 +48,4 @@ Depot does not collect source IP, geolocation, MAC address, hardware fingerprint
 
 ## Remaining roadmap
 
-Remaining identity/security work is MFA, OIDC/SSO/external identity providers, deployment-specific alert delivery/routing where required, and an explicit privacy/threat-model design before any IP/geolocation/device-trust signals are considered.
+OIDC/SSO and external identity are implemented. Remaining identity/security work is deployment/provider-specific trust configuration and authentication-strength policy, additional provider integrations when demanded, deployment-specific alert delivery/routing where required, and an explicit privacy/threat-model design before any IP/geolocation/device-trust signals are considered.

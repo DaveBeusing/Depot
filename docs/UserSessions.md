@@ -1,6 +1,6 @@
 # User Sessions and Online Presence
 
-Updated: 2026-09-01
+Updated: 2026-09-18
 
 Depot persists one `UserSession` for every successful authenticated login and derives online presence from heartbeat freshness. The feature follows the application layering `Views → ViewModels → Services → Repositories → DatabaseAccess` and remains provider-neutral for SQLite, SQL Server and MySQL/MariaDB.
 
@@ -51,7 +51,7 @@ Authentication failures, shared throttling, lockouts and investigation are docum
 
 - Core database schema: **30**
 - User Sessions feature schema: **3**
-- Security Events feature schema: **2**
+- Security Events feature schema: **3**
 
 User Sessions schema 1 introduced session persistence and presence indexes, schema 2 introduced lifetime policy, and schema 3 adds concurrent-session mode/action/limit and session-history retention. No schema change is required for the bounded maintenance implementation.
 
@@ -61,4 +61,4 @@ Depot does not collect source IP, geolocation, MAC address, hardware fingerprint
 
 ## Extension boundary
 
-Remaining identity/security extensions are MFA, OIDC/SSO/external identity providers, optional deployment-specific alert routing, and any future IP/geolocation/device-trust design only after an explicit privacy and threat-model decision.
+OIDC/SSO and external identity are implemented through the Enterprise Identity boundary, including provider-bound assurance checks while local Depot RBAC remains authoritative. Remaining extensions are additional provider/deployment-specific identity controls, optional alert routing, and any future IP/geolocation/device-trust design only after an explicit privacy and threat-model decision.
