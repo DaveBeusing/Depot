@@ -1,6 +1,6 @@
 # Documentation status
 
-Updated: 2026-09-17
+Updated: 2026-09-18
 
 This document identifies the documentation baseline for the current development state. Implemented technical controls must remain distinct from production/legal acceptance gates.
 
@@ -37,7 +37,11 @@ SQLite documentation must preserve its dynamic `NUMERIC` precision boundary; it 
 
 ## Electronic-invoice documentation invariant
 
-Sales schema 14 retains ZUGFeRD 2.5.2 / Factur-X 1.09.2 XRECHNUNG-profile hybrid artifacts as exact PDF/A-3B bytes linked to the finalized XRechnung XML SHA-256. Documentation must not describe the hybrid PDF as a later reconstruction from customer or company master data. Independent PDF/A validation remains an acceptance gate until retained veraPDF evidence is green.
+Sales schema 14 retains ZUGFeRD 2.5.2 / Factur-X 1.09.2 XRECHNUNG-profile hybrid artifacts as exact PDF/A-3B bytes linked to the finalized XRechnung XML SHA-256. Documentation must not describe the hybrid PDF as a later reconstruction from customer or company master data. Independent pinned veraPDF acceptance is green for the bounded advertised matrix. Documentation must not broaden that repository evidence into jurisdiction-wide tax/legal certification or support for profiles, tax scenarios or conversion paths outside the accepted matrix.
+
+## 2026-09-18 documentation reconciliation
+
+The current repository/help audit reconciles the post-Track-C and post-H1 baseline across README, canonical status/security/pricing documents and embedded Help. It also records the current PR-versus-authoritative release-validation boundary introduced by the latest CI hardening. Help article content is corrected without changing topic IDs, permission mappings or routing, so Help manifest version `1.21` remains valid.
 
 ## Session and authentication invariants
 

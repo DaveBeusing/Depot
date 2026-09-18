@@ -26,7 +26,14 @@ The Item editor loads these values from persisted reference data. Existing match
 ## Cost build-up
 For an existing item, **Cost build-up** provides the purchasing-cost calculation used by Bulk Pricing.
 
-The current Base Cost source is the active preferred supplier purchase price. Supplier prices created before this feature do not contain currency metadata, so set the item's three-letter ISO **Cost currency** explicitly. Depot does not silently assume EUR or an FX rate.
+Choose the **Base Cost Source** explicitly:
+
+- **Preferred Supplier Purchase Price** — requires exactly one active preferred supplier price.
+- **Last Purchase** — uses the most recent received purchase on or before the calculation date.
+- **Manual Standard** — uses the persisted manual-standard value.
+- **Inventory Cost Reference** — uses the persisted inventory-reference value.
+
+Set the item's three-letter ISO **Cost currency** explicitly. Depot does not silently switch to another Base Cost source, assume EUR, use zero cost or assume a 1:1 FX rate when the selected source lacks evidence.
 
 Add Cost Components with:
 
@@ -65,7 +72,7 @@ Depot detects changes in the active item editor. If you switch workspace or sect
 - GTIN must be valid and unique across items.
 - Dangerous-goods records require a UN number in `UN1234` form.
 - A replacement item must exist, be active, and cannot reference the item itself.
-- Calculated Cost requires exactly one active preferred supplier purchase price and an explicit cost currency.
+- Calculated Cost requires valid evidence for the selected Base Cost Source and an explicit cost currency; Depot does not fall back to another source.
 - A Cost currency different from the target PriceList currency cannot be bulk-priced until controlled FX conversion exists.
 - Do not use Packaging Types as quantity conversions; Packaging only describes the container/grouping.
 

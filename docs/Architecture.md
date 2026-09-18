@@ -71,7 +71,8 @@ Subledgers/accounting modules call the General Ledger boundary for postings rath
 ## Costing and sales-pricing authority
 
 ```text
-Preferred supplier purchase price
+Explicit Base Cost source
+(Preferred Supplier / Last Purchase / Manual Standard / Inventory Cost Reference)
         ↓
 ItemCostCalculationService
         ↓ ordered Absolute / Percentage components

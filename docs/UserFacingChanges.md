@@ -25,7 +25,7 @@ Sales feature schema **13** adds the retained production evidence for the bounde
 
 Sales feature schema **14** adds the first ZUGFeRD 2.5.2 / Factur-X 1.09.2 hybrid-document implementation using the XRECHNUNG profile. During invoice and credit-note finalization Depot creates a PDF/A-3B document, embeds the exact finalized XML as `xrechnung.xml`, adds Factur-X XMP metadata and persists the exact PDF bytes plus XML/PDF SHA-256 evidence in the same transaction. Later export uses the retained artifact instead of rebuilding it from mutable master data.
 
-The XRechnung XML matrix remains externally validated through the pinned KoSIT configuration. ZUGFeRD/Factur-X production acceptance additionally requires independent PDF/A-3 validation; that validator evidence is tracked separately and is not implied by the implementation alone.
+The bounded advertised XRechnung matrix is externally validated through the pinned KoSIT configuration, and the corresponding ZUGFeRD/Factur-X PDF/A-3B matrix is independently validated with pinned veraPDF. This repository conformance evidence does not imply jurisdiction-wide tax/legal certification, unsupported profiles, arbitrary existing-PDF conversion or unimplemented special-tax/channel scenarios.
 
 ## Finance workspaces
 

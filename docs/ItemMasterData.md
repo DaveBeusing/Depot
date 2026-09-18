@@ -115,7 +115,7 @@ Automatic substitution is intentionally not performed: changing the commercial o
 
 Supplier part numbers, supplier assignment, preference, lead time and supplier-specific commercial data belong to `SupplierItems` / purchasing structures rather than the item master. Customer price lists and transactional pricing likewise remain in the Sales pricing model.
 
-The first Item Cost Build-up source deliberately reuses the active preferred `SupplierItem.PurchasePrice`; Depot does not duplicate purchase price on `Item`. Because the current supplier-item model does not carry currency, `ItemCostProfile` explicitly states the ISO currency in which that preferred-supplier purchase price is to be interpreted. A missing profile, missing/ambiguous preferred supplier or currency mismatch is an error; Depot never assumes zero cost or a 1:1 FX rate.
+Item Cost Build-up uses an explicit `ItemCostProfile` Base Cost strategy: Preferred Supplier Purchase Price, Last Purchase, Manual Standard or Inventory Cost Reference. Depot does not duplicate supplier purchase price on `Item`; when Preferred Supplier is selected it reuses the active preferred `SupplierItem.PurchasePrice`, while Last Purchase resolves from received purchasing evidence and the manual/reference strategies use their persisted profile values. `ItemCostProfile` also states the ISO source currency. Missing evidence for the selected strategy, ambiguous preferred-supplier evidence or an unavailable required FX rate fails closed; Depot never falls back to another strategy, zero cost or an assumed 1:1 rate.
 
 ## Item Cost Build-up
 

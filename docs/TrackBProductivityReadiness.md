@@ -108,9 +108,11 @@ authorized
 
 Authorization continues through the existing service boundaries and command state. Stored routes and presentation state are revalidated against current application state before being exposed or used.
 
-## Schema and version impact
+## Schema and version impact at Track B closeout
 
-This closeout changes documentation and integration tests only.
+The values below are the historical snapshot from the Track B closeout and are retained as release-history evidence, not as the current repository baseline. For current versions and schemas, see [Documentation Status](DocumentationStatus.md).
+
+This closeout changed documentation and integration tests only.
 
 ```text
 Depot: 0.15.183-preview

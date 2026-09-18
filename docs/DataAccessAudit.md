@@ -1,6 +1,6 @@
 # Depot Data-Access Audit
 
-Updated: 2026-09-08
+Updated: 2026-09-18
 
 This audit records the productive read paths after removal of unbounded remote-database `GetAll()` usage. The obsolete repository and service `GetAll()` APIs were removed; legacy synchronous write adapters use only key-based reads.
 
@@ -19,7 +19,7 @@ This audit records the productive read paths after removal of unbounded remote-d
 | Transfer inventory choices | bounded selection | Warehouse-scoped inventory options are deterministically ordered and capped at 200 rows. They never load the complete Inventory table. |
 | Goods-receipt inventory choices | bounded selection | Item-scoped active destinations are deterministically ordered and capped at 100 rows. |
 | Purpose, ReasonCode, Warehouse, StorageLocation, Manufacturer, Category, UnitOfMeasure, Packaging, SupplierCategory | 5. Deliberately retained | These are small administrative reference sets. Active choices are cached where supported and always use stable name ordering. Their management screens use server-side search where available. |
-| Audit | no productive read list | Audit entries are transactionally written. There is no audit viewer or full-table read path yet. A future viewer must start with server paging and filters. |
+| Audit | server-paged viewer | Audit entries are transactionally written. The Administration Audit Log reads through `AuditLogService` and `AuditRepository.SearchPageAsync` with filters, page number and page size; there is no productive full-table `GetAll()` path. |
 | Import compatibility | targeted access | Import resolves items and master data by key and writes rows individually. It has no productive Item, Inventory, StockMovement, or Audit `GetAll()` path. |
 
 ## Invariants

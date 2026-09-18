@@ -109,8 +109,10 @@ Global search introduces no persisted data and does not change any database sche
 
 ```text
 Core database schema: 30
-UserPreferences feature schema: 1
+UserPreferences feature schema: 2
 ```
+
+Global Search itself introduces no persisted data. UserPreferences schema 2 is the current product baseline because later workspace-productivity persistence added favorites, recents and default-landing preferences.
 
 ## Tests
 

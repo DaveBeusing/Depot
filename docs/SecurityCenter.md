@@ -1,12 +1,12 @@
 # Security Center and Authentication Risk Monitoring
 
-Updated: 2026-09-01
+Updated: 2026-09-18
 
 Depot maintains a provider-neutral operational `SecurityEvents` stream for authentication and session-security observations. Security Events complement the business Audit Log; they do not replace required Audit evidence for administrative changes.
 
 ## Authentication architecture
 
-Local credentials are accessed through `IAuthenticationProvider`; the built-in `LocalAuthenticationProvider` is the current implementation. This preserves a clean boundary for future OIDC/SSO providers without changing session or authorization semantics.
+Local credentials are accessed through `IAuthenticationProvider` and the built-in `LocalAuthenticationProvider`. External identity uses the Enterprise Identity OIDC/Entra path with provider-bound assurance validation. Both paths converge on Depot session handling and local RBAC; external token roles/groups/permissions are not authorization inputs.
 
 Failed-login throttling is persisted in the shared database rather than process-local memory in the production composition. `AuthenticationSecurityPolicy` controls:
 
@@ -60,9 +60,9 @@ Security Event retention affects the operational event store only. It does not d
 
 - Core database schema: **30**
 - User Sessions feature schema: **3**
-- Security Events feature schema: **2**
+- Security Events feature schema: **3**
 
-Security Events schema 1 introduced event/review persistence. Schema 2 adds `ClientInstanceId`, the central authentication-security policy and the shared authentication-throttle store. Provider DDL exists for SQLite, SQL Server and MySQL/MariaDB.
+Security Events schema 1 introduced event/review persistence. Schema 2 adds `ClientInstanceId`, the central authentication-security policy and the shared authentication-throttle store. Schema 3 adds persisted export targets and durable at-least-once delivery state while leaving source Security Event evidence immutable. Provider DDL exists for SQLite, SQL Server and MySQL/MariaDB.
 
 ## Privacy boundary
 
