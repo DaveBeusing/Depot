@@ -216,8 +216,8 @@ internal sealed class InventoryCountMyWorkProvider : IMyWorkProvider
 		var recentCutoff = query.NowUtc.AddDays(-14);
 		foreach (var row in posted)
 		{
-			if (!postedHeaders.TryGetValue(row.Id, out var header) || header.CreatedByUserId != query.UserId || header.CompletedAtUtc < recentCutoff) continue;
-			items.Add(new(MyWorkSectionKind.RecentlyCompleted, MyWorkItemKind.InventoryCount, row.Id, row.CountNumber, "Inventory count posted", row.WarehouseName, row.StatusDisplayName, row.TotalLineCount, null, null, MyWorkPriority.Low, "warehouse.inventory-counts", "Open", header.CreatedByUserId, header.CompletedAtUtc));
+			if (!postedHeaders.TryGetValue(row.Id, out var header) || header.CreatedByUserId != query.UserId || header.CompletedAtUtc is not { } completedAt || completedAt < recentCutoff) continue;
+			items.Add(new(MyWorkSectionKind.RecentlyCompleted, MyWorkItemKind.InventoryCount, row.Id, row.CountNumber, "Inventory count posted", row.WarehouseName, row.StatusDisplayName, row.TotalLineCount, null, null, MyWorkPriority.Low, "warehouse.inventory-counts", "Open", header.CreatedByUserId, completedAt));
 		}
 
 		return items;
@@ -356,12 +356,12 @@ internal sealed class BankingMyWorkProvider : IMyWorkProvider
 
 	public async Task<IReadOnlyList<MyWorkItem>> GetAsync(MyWorkQuery query, CancellationToken cancellationToken)
 	{
-		var runsTask = _banking.GetPaymentRunsAsync(cancellationToken);
+		var runsTask = _banking.SearchPaymentRunsAsync(1, query.ProviderLimit, cancellationToken);
 		var unreconciledTask = _banking.SearchUnreconciledLinesAsync(null, 1, query.ProviderLimit, cancellationToken);
 		await Task.WhenAll(runsTask, unreconciledTask);
 		var items = new List<MyWorkItem>();
 
-		foreach (var run in (await runsTask).Take(query.ProviderLimit))
+		foreach (var run in (await runsTask).Items)
 		{
 			if (run.Status == FinancePaymentRunStatus.Draft)
 			{

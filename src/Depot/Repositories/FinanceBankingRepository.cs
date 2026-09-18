@@ -51,9 +51,12 @@ public sealed class FinanceBankingRepository : DatabaseRepository
 		var filter = bankAccountId.HasValue ? " AND s.BankAccountId=$Account" : string.Empty;
 		var from = "FROM FinanceBankStatementLines l INNER JOIN FinanceBankStatements s ON s.Id=l.StatementId";
 		var where = "WHERE NOT EXISTS (SELECT 1 FROM FinanceBankReconciliations r WHERE r.StatementLineId=l.Id AND r.ReversedAtUtc IS NULL)" + filter;
-		var parameters = bankAccountId.HasValue ? new[] { Parameter("$Account", bankAccountId.Value) } : [];
+		DatabaseParameter[] parameters = bankAccountId.HasValue ? [Parameter("$Account", bankAccountId.Value)] : [];
 		return Database.QueryPageAsync($"SELECT {LineColumns} {from} {where} ORDER BY l.BookingDate,l.Id", $"SELECT COUNT(*) {from} {where};", ReadLine, pageNumber, pageSize, cancellationToken, parameters);
 	}
+
+	public Task<PageResult<FinancePaymentRun>> SearchPaymentRunsAsync(int pageNumber, int pageSize, CancellationToken cancellationToken = default) =>
+		Database.QueryPageAsync(RunSelect + " ORDER BY PaymentDate DESC,Id DESC", "SELECT COUNT(*) FROM FinancePaymentRuns;", ReadRun, pageNumber, pageSize, cancellationToken);
 
 	public async Task<IReadOnlyList<FinancePaymentRun>> GetPaymentRunsAsync(int count = 100, CancellationToken cancellationToken = default)
 	{

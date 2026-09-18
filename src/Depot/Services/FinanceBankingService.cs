@@ -67,6 +67,12 @@ public sealed class FinanceBankingService
 		return _banking.SearchUnreconciledLinesAsync(bankAccountId, pageNumber, pageSize, cancellationToken);
 	}
 
+	public Task<PageResult<FinancePaymentRun>> SearchPaymentRunsAsync(int pageNumber = 1, int pageSize = 100, CancellationToken cancellationToken = default)
+	{
+		_authorization.RequirePermission(ApplicationPermission.FinanceBankingView);
+		return _banking.SearchPaymentRunsAsync(pageNumber, pageSize, cancellationToken);
+	}
+
 	public Task<IReadOnlyList<FinancePaymentRun>> GetPaymentRunsAsync(CancellationToken cancellationToken = default)
 	{
 		_authorization.RequirePermission(ApplicationPermission.FinanceBankingView);
