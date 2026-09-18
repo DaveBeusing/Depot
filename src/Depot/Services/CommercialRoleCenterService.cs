@@ -152,9 +152,16 @@ public sealed class CommercialRoleCenterService
 	{
 		var workTask = _myWork.GetAsync(cancellationToken);
 		var metricsTask = _dashboard.GetAsync(cancellationToken);
-		await Task.WhenAll(workTask, metricsTask);
+		var releasedTask = _authorization.HasPermission(ApplicationPermission.SalesOrdersView)
+			? _salesOrders.SearchAsync(null, SalesOrderStatus.Released, 1, SourceItemLimit, cancellationToken)
+			: Task.FromResult(new PageResult<SalesOrder>([], 1, SourceItemLimit, 0));
+		var partiallyShippedTask = _authorization.HasPermission(ApplicationPermission.SalesOrdersView)
+			? _salesOrders.SearchAsync(null, SalesOrderStatus.PartiallyShipped, 1, SourceItemLimit, cancellationToken)
+			: Task.FromResult(new PageResult<SalesOrder>([], 1, SourceItemLimit, 0));
+		await Task.WhenAll(workTask, metricsTask, releasedTask, partiallyShippedTask);
 		var work = await workTask;
 		var metrics = (await metricsTask).Roles.Sales;
+		var released = (await releasedTask).Items.Concat((await partiallyShippedTask).Items).Take(MaximumItemsPerSection).Select(OrderItem).ToArray();
 		var approvals = WorkItems(work, MyWorkSectionKind.NeedsMyAction, MyWorkItemKind.SalesOrderApproval);
 		var fulfillment = work.Sections.Single(section => section.Kind == MyWorkSectionKind.NeedsMyAction).Items
 			.Where(item => item.Kind is MyWorkItemKind.SalesOrder or MyWorkItemKind.Shipment)
@@ -177,6 +184,7 @@ public sealed class CommercialRoleCenterService
 			"Sales approvals, fulfillment handoff, blocked orders and read-only commercial KPIs without introducing CRM or pipeline state.",
 			[
 				Section("Sales Approvals Requiring Decision", "No sales approvals require your decision.", approvals),
+				Section("Released / Partially Shipped Orders", "No released sales orders are currently in fulfillment.", released),
 				Section("Fulfillment Handoff", "No released sales work requires handoff.", fulfillment),
 				Section("Blocked / Backordered Orders", "No modeled sales exceptions require attention.", blocked)
 			],
@@ -244,7 +252,7 @@ public sealed class CommercialRoleCenterService
 			items.AddRange(page.Page.Items.Select(value =>
 			{
 				var canDecide = _purchaseApprovals.CanDecide(value.CreatedByUserId);
-				return new CommercialRoleItem(CommercialRoleItemKind.PurchaseOrderApproval, value.Id, value.Version, value.OrderNumber, "Purchase Order", value.SupplierName, "Pending Approval", value.TotalAmount, value.SubmittedAtUtc, value.ExpectedDeliveryDate, DaysSince(now, value.SubmittedAtUtc), "approvals.purchase", value.CreatedByUserId, canDecide, canDecide);
+				return new CommercialRoleItem(CommercialRoleItemKind.PurchaseOrderApproval, value.Id, value.Version, value.OrderNumber, "Purchase Order", value.SupplierName, "Pending Approval", value.TotalAmount, value.SubmittedAtUtc, value.ExpectedDeliveryDate, DaysSince(now, value.SubmittedAtUtc), "approvals.purchase", value.CreatedByUserId, canDecide, canDecide, value.CreatorDisplayName);
 			}));
 		}
 
@@ -255,7 +263,7 @@ public sealed class CommercialRoleCenterService
 			{
 				var submitted = value.SubmittedAtUtc ?? now;
 				var canDecide = _salesOrders.CanDecide(value.CreatedByUserId);
-				return new CommercialRoleItem(CommercialRoleItemKind.SalesOrderApproval, value.Id, value.Version, value.OrderNumber, "Sales Order", value.CustomerName, "Pending Approval", value.GrossAmount, value.SubmittedAtUtc, value.RequestedDeliveryDate, DaysSince(now, submitted), "approvals.sales", value.CreatedByUserId, canDecide, canDecide);
+				return new CommercialRoleItem(CommercialRoleItemKind.SalesOrderApproval, value.Id, value.Version, value.OrderNumber, "Sales Order", value.CustomerName, "Pending Approval", value.GrossAmount, value.SubmittedAtUtc, value.RequestedDeliveryDate, DaysSince(now, submitted), "approvals.sales", value.CreatedByUserId, canDecide, canDecide, UserLabel(value.CreatedByUserId));
 			}));
 		}
 
@@ -266,7 +274,7 @@ public sealed class CommercialRoleCenterService
 			{
 				var submitted = value.SubmittedAtUtc ?? value.CreatedAtUtc;
 				var canDecide = _payables.CanDecide(value.CreatedByUserId);
-				return new CommercialRoleItem(CommercialRoleItemKind.SupplierInvoice, value.Id, value.Version, value.SupplierDocumentNumber, value.Kind == FinancePayableDocumentKind.Invoice ? "Supplier Invoice" : "Supplier Credit Note", value.SupplierName, "Pending Approval", value.GrossAmount, submitted, value.DueDate.ToDateTime(TimeOnly.MinValue), DaysSince(now, submitted), "finance.payables", value.CreatedByUserId, canDecide, canDecide);
+				return new CommercialRoleItem(CommercialRoleItemKind.SupplierInvoice, value.Id, value.Version, value.SupplierDocumentNumber, value.Kind == FinancePayableDocumentKind.Invoice ? "Supplier Invoice" : "Supplier Credit Note", value.SupplierName, "Pending Approval", value.GrossAmount, submitted, value.DueDate.ToDateTime(TimeOnly.MinValue), DaysSince(now, submitted), "finance.payables", value.CreatedByUserId, canDecide, canDecide, UserLabel(value.CreatedByUserId));
 			}));
 		}
 
@@ -276,7 +284,7 @@ public sealed class CommercialRoleCenterService
 			items.AddRange(paymentRuns.Select(value =>
 			{
 				var canApprove = _banking.CanApprovePaymentRun(value.CreatedByUserId);
-				return new CommercialRoleItem(CommercialRoleItemKind.PaymentProposal, value.Id, value.Version, value.Description, "Payment Proposal", value.Currency.ToString(), "Draft / Awaiting Approval", value.Lines.Sum(line => line.Amount), value.CreatedAtUtc, value.PaymentDate.ToDateTime(TimeOnly.MinValue), DaysSince(now, value.CreatedAtUtc), "finance.banking", value.CreatedByUserId, canApprove, false);
+				return new CommercialRoleItem(CommercialRoleItemKind.PaymentProposal, value.Id, value.Version, value.Description, "Payment Proposal", value.Currency.ToString(), "Draft / Awaiting Approval", value.Lines.Sum(line => line.Amount), value.CreatedAtUtc, value.PaymentDate.ToDateTime(TimeOnly.MinValue), DaysSince(now, value.CreatedAtUtc), "finance.banking", value.CreatedByUserId, canApprove, false, UserLabel(value.CreatedByUserId));
 			}));
 		}
 
@@ -342,4 +350,5 @@ public sealed class CommercialRoleCenterService
 		new(CommercialRoleItemKind.PurchaseOrder, value.Id, value.Version, value.OrderNumber, "Purchase Order", value.SupplierName, value.StatusDisplayName, value.Lines.Sum(line => line.Quantity * line.UnitPrice), value.SubmittedAtUtc, value.ExpectedDeliveryDate, value.SubmittedAtUtc is null ? null : DaysSince(DateTime.UtcNow, value.SubmittedAtUtc.Value), "purchasing.purchase-orders", value.CreatedByUserId);
 
 	private static int DaysSince(DateTime nowUtc, DateTime timestampUtc) => Math.Max(0, (int)(nowUtc - timestampUtc).TotalDays);
+	private static string UserLabel(long? userId) => userId is null ? "Unknown" : $"User #{userId.Value:N0}";
 }

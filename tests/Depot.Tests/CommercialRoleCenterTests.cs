@@ -64,6 +64,31 @@ public sealed class CommercialRoleCenterTests
 	}
 
 	[Fact]
+	public void ApprovalItemCanExposeRequesterWithoutChangingDecisionAuthority()
+	{
+		var item = new CommercialRoleItem(
+			CommercialRoleItemKind.SalesOrderApproval,
+			42,
+			3,
+			"SO-0042",
+			"Sales Order",
+			"Example Customer",
+			"Pending Approval",
+			1250m,
+			DateTime.UtcNow,
+			null,
+			1,
+			"approvals.sales",
+			7,
+			true,
+			true,
+			"User #7");
+
+		Assert.Equal("User #7", item.Requester);
+		Assert.True(item.HasDecisionActions);
+	}
+
+	[Fact]
 	public void EmptySectionCarriesExplicitEmptyState()
 	{
 		var section = new CommercialRoleSection("Submitted", "No submitted orders.", []);

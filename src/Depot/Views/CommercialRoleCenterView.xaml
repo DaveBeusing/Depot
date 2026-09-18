@@ -71,6 +71,7 @@
                                         <DataGrid.Columns>
                                             <DataGridTextColumn Header="Type / Work" Binding="{Binding Title}" Width="170" />
                                             <DataGridTextColumn Header="Reference" Binding="{Binding DisplayNumber}" Width="140" />
+                                            <DataGridTextColumn Header="Requester / Creator" Binding="{Binding Requester}" Width="140" />
                                             <DataGridTextColumn Header="Counterparty / Context" Binding="{Binding Context}" Width="*" />
                                             <DataGridTextColumn Header="Amount" Binding="{Binding Amount, StringFormat={}{0:N2}}" Width="100" />
                                             <DataGridTextColumn Header="Submitted / Activity" Binding="{Binding SubmittedDisplay}" Width="145" />

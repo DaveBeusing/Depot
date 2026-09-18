@@ -40,7 +40,8 @@ public sealed record CommercialRoleItem(
 	string RouteId,
 	long? CreatedByUserId = null,
 	bool CanApprove = false,
-	bool CanReject = false)
+	bool CanReject = false,
+	string? Requester = null)
 {
 	public string SubmittedDisplay => SubmittedAtUtc?.ToLocalTime().ToString("g") ?? string.Empty;
 	public string DueOrAgeDisplay => DueAt is not null ? DueAt.Value.ToString("d") : AgeDays is not null ? $"{AgeDays.Value:N0} d" : string.Empty;
