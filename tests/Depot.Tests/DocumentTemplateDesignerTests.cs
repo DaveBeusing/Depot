@@ -247,6 +247,18 @@ public sealed class DocumentTemplateDesignerTests
 	}
 
 	[Fact]
+	public void DesignerZoomUsesPdfPointToWpfDipScaleForReadableOnScreenPreview()
+	{
+		var authorization = Authorization([ApplicationPermission.DocumentTemplatesView, ApplicationPermission.DocumentTemplatesManage]);
+		var viewModel = new DocumentTemplateDesignerViewModel(
+			new DocumentTemplateDesignerService(authorization, new DocumentTemplateRuntimeCatalog(DefaultDocumentTemplates.Defaults)));
+
+		viewModel.ZoomPercent = 100;
+
+		Assert.Equal(96d / 72d, viewModel.ZoomScale, 6);
+	}
+
+	[Fact]
 	public void PropertyInspectorOnlyExposesPropertiesValidForSelectedElementType()
 	{
 		var authorization = Authorization([ApplicationPermission.DocumentTemplatesView, ApplicationPermission.DocumentTemplatesManage]);
@@ -331,6 +343,13 @@ public sealed class DocumentTemplateDesignerTests
 		Assert.Contains("DistributeHorizontallyCommand", xaml, StringComparison.Ordinal);
 		Assert.Contains("ResizeThumb_DragDelta", xaml, StringComparison.Ordinal);
 		Assert.Contains("AutomationProperties.Name=\"Undo designer change\"", xaml, StringComparison.Ordinal);
+		Assert.Contains("<controls:PageHeader", xaml, StringComparison.Ordinal);
+		Assert.Contains("<controls:Card", xaml, StringComparison.Ordinal);
+		Assert.Contains("<controls:AppCheckBox", xaml, StringComparison.Ordinal);
+		Assert.Contains("<controls:TextInput", xaml, StringComparison.Ordinal);
+		Assert.Contains("TextOptions.TextRenderingMode=\"ClearType\"", xaml, StringComparison.Ordinal);
+		Assert.Contains("BorderBrush=\"Transparent\"", xaml, StringComparison.Ordinal);
+		Assert.Contains("<Condition Binding=\"{Binding IsEditing}\" Value=\"True\" />", xaml, StringComparison.Ordinal);
 		Assert.Contains("viewModel.ResizeElement", codeBehind, StringComparison.Ordinal);
 		Assert.Contains("CurrentViewModel.CurrentViewModel.IsDirty", shell, StringComparison.Ordinal);
 		Assert.Contains("AutomationProperties.Name=\"Unsaved changes\"", shell, StringComparison.Ordinal);

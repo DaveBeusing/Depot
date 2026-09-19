@@ -146,6 +146,7 @@ public sealed class DocumentTemplateDesignerViewModel : BaseViewModel
 {
 	private const int HistoryLimit = 100;
 	private const double MinimumElementSize = 4d;
+	private const double PdfPointToWpfDipScale = 96d / 72d;
 
 	private readonly DocumentTemplateDesignerService _service;
 	private readonly HashSet<DocumentDesignerElementViewModel> _selection = [];
@@ -333,7 +334,7 @@ public sealed class DocumentTemplateDesignerViewModel : BaseViewModel
 	public bool SnapToGrid { get => _snapToGrid; set { if (_snapToGrid == value) return; _snapToGrid = value; OnPropertyChanged(); } }
 	public double GridSize { get => _gridSize; set { var normalized = Math.Clamp(value, 1, 100); if (Math.Abs(_gridSize - normalized) < 0.001) return; _gridSize = normalized; OnPropertyChanged(); } }
 	public double ZoomPercent { get => _zoomPercent; set { var normalized = Math.Clamp(value, 25, 200); if (Math.Abs(_zoomPercent - normalized) < 0.001) return; _zoomPercent = normalized; OnPropertyChanged(); OnPropertyChanged(nameof(ZoomScale)); } }
-	public double ZoomScale => ZoomPercent / 100d;
+	public double ZoomScale => (ZoomPercent / 100d) * PdfPointToWpfDipScale;
 	public string PreviewStatus { get => _previewStatus; private set { if (_previewStatus == value) return; _previewStatus = value; OnPropertyChanged(); } }
 	public string ValidationSummary => ValidationErrors.Count == 0 ? "Template is valid." : $"{ValidationErrors.Count} validation issue(s)";
 	public bool HasSelectedElement => SelectedElement is not null;

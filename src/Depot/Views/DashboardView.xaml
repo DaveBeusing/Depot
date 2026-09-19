@@ -20,17 +20,12 @@
 
         <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
             <StackPanel Margin="0,12,0,0">
-                <Border Background="{DynamicResource SurfaceBrush}"
-                        BorderBrush="{DynamicResource BorderBrush}"
-                        BorderThickness="1"
-                        CornerRadius="8"
-                        Padding="16"
-                        Margin="0,0,0,16">
+                <controls:Card Style="{StaticResource WorkspaceCardStyle}" Margin="0,0,0,16">
                     <StackPanel>
                         <TextBlock Text="{Binding GreetingText}" Style="{DynamicResource WorkspaceSectionTitleStyle}" />
                         <TextBlock Text="{Binding HomeContextText}" Style="{StaticResource CaptionStyle}" Margin="0,4,0,0" />
                     </StackPanel>
-                </Border>
+                </controls:Card>
 
                 <views:MyWorkPanel />
 
