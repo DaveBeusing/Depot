@@ -110,9 +110,23 @@ public partial class ShellPaletteWindow : Window
 	private IReadOnlyList<ShellPaletteEntry> BuildCommandEntries(string query)
 	{
 		EnsureCommandsRegistered();
+		var currentRoute = ResolveCurrentRoute();
 		return _commands.Search(query)
-			.Select(command => new ShellPaletteEntry(command.Title, command.Subtitle, command.Group, command.TypeLabel, command.IconData, command.ExecuteAsync))
+			.Select(command => new ShellPaletteEntry(
+				command.Title,
+				command.Subtitle,
+				command.ContextRoute is { } contextRoute && currentRoute is { } activeRoute && contextRoute == activeRoute ? "Suggested" : "Commands",
+				command.TypeLabel,
+				command.IconData,
+				command.ExecuteAsync))
 			.ToArray();
+	}
+
+	private ShellRoute? ResolveCurrentRoute()
+	{
+		if (_viewModel.SelectedNavigationItem is not { } selected) return null;
+		if (selected.IsContentCreated && selected.Content is ShellModuleViewModel { SelectedPage: { } page }) return page.Route;
+		return selected.Route;
 	}
 
 	private void EnsureCommandsRegistered()
@@ -127,7 +141,7 @@ public partial class ShellPaletteWindow : Window
 			foreach (var page in module.Pages)
 			{
 				var pageRoute = page.Route;
-				_commands.Register(new($"route:{pageRoute}", $"{module.Name}: {page.Name}", "Open workspace section", "Workspace Sections", "SECTION", module.IconData, () => _viewModel.NavigateToRouteAsync(pageRoute)));
+				_commands.Register(new($"route:{pageRoute}", $"{module.Name}: {page.Name}", "Open workspace section", "Workspaces", "SECTION", module.IconData, () => _viewModel.NavigateToRouteAsync(pageRoute)));
 			}
 		}
 
@@ -151,7 +165,7 @@ public partial class ShellPaletteWindow : Window
 	private void RegisterWorkflowAction(ShellRoute route, string id, string title, string subtitle, string icon, Func<Task> execute)
 	{
 		if (_viewModel.FindPage(route) is null && _viewModel.FindWorkspace(route) is null) return;
-		_commands.Register(new(id, title, subtitle, "Actions", "ACTION", icon, execute));
+		_commands.Register(new(id, title, subtitle, "Actions", "ACTION", icon, execute, route));
 	}
 
 	private List<ShellPaletteEntry> BuildNavigationEntries()
@@ -164,14 +178,14 @@ public partial class ShellPaletteWindow : Window
 			foreach (var page in module.Pages)
 			{
 				var pageRoute = page.Route;
-				entries.Add(new($"{module.Name}: {page.Name}", "Open workspace section", "Workspace Sections", "SECTION", module.IconData, () => _viewModel.NavigateToRouteAsync(pageRoute)));
+				entries.Add(new($"{module.Name}: {page.Name}", "Open workspace section", "Workspaces", "SECTION", module.IconData, () => _viewModel.NavigateToRouteAsync(pageRoute)));
 			}
 		}
 		foreach (var adminItem in _viewModel.AdministrationViewModel.NavigationItems)
 		{
 			if (adminItem.Section is not AdministrationSection section) continue;
 			var capturedSection = section;
-			entries.Add(new($"Administration: {adminItem.Name}", "Open administration section", "Workspace Sections", "SECTION", WorkspaceIcon, async () => { await _viewModel.NavigateToRouteAsync(ShellRoutes.Administration); await _viewModel.AdministrationViewModel.NavigateToAsync(capturedSection); }));
+			entries.Add(new($"Administration: {adminItem.Name}", "Open administration section", "Workspaces", "SECTION", WorkspaceIcon, async () => { await _viewModel.NavigateToRouteAsync(ShellRoutes.Administration); await _viewModel.AdministrationViewModel.NavigateToAsync(capturedSection); }));
 		}
 		return entries;
 	}
@@ -203,7 +217,7 @@ public partial class ShellPaletteWindow : Window
 			foreach (var item in _viewModel.ItemsViewModel.Items.Take(8))
 			{
 				var captured = item;
-				entries.Add(new(captured.PartNumber, captured.Description, "Items", "ITEM", ItemIcon, async () => { await _viewModel.NavigateToRouteAsync(ShellRoutes.Inventory.Items, token); _viewModel.ItemsViewModel.SelectedItem = captured; }, $"item:{captured.Id}"));
+				entries.Add(new(captured.PartNumber, captured.Description, "Records", "ITEM", ItemIcon, async () => { await _viewModel.NavigateToRouteAsync(ShellRoutes.Inventory.Items, token); _viewModel.ItemsViewModel.SelectedItem = captured; }, $"item:{captured.Id}"));
 			}
 			_viewModel.ItemsViewModel.SearchText = oldItemSearch;
 
@@ -217,12 +231,12 @@ public partial class ShellPaletteWindow : Window
 			foreach (var order in _viewModel.ProcurementViewModel.Orders.Take(8))
 			{
 				var captured = order;
-				entries.Add(new(captured.OrderNumber, captured.SupplierName ?? "Purchase order", "Purchase Orders", "PO", PurchaseOrderIcon, async () => { await _viewModel.NavigateToRouteAsync(ShellRoutes.Purchasing.PurchaseOrders, token); await _viewModel.ProcurementViewModel.OpenOrderAsync(captured.Id); }, $"po:{captured.Id}"));
+				entries.Add(new(captured.OrderNumber, captured.SupplierName ?? "Purchase order", "Records", "PO", PurchaseOrderIcon, async () => { await _viewModel.NavigateToRouteAsync(ShellRoutes.Purchasing.PurchaseOrders, token); await _viewModel.ProcurementViewModel.OpenOrderAsync(captured.Id); }, $"po:{captured.Id}"));
 			}
 			foreach (var supplier in _viewModel.ProcurementViewModel.Suppliers.Take(6))
 			{
 				var captured = supplier;
-				entries.Add(new(captured.Name, captured.AccountNumber == 0 ? "Supplier" : $"Account {captured.AccountNumber}", "Suppliers", "SUPPLIER", SupplierIcon, () => OpenSupplierAsync(captured, text), $"supplier:{captured.Id}"));
+				entries.Add(new(captured.Name, captured.AccountNumber == 0 ? "Supplier" : $"Account {captured.AccountNumber}", "Records", "SUPPLIER", SupplierIcon, () => OpenSupplierAsync(captured, text), $"supplier:{captured.Id}"));
 			}
 			_viewModel.ProcurementViewModel.SearchText = oldOrderSearch;
 			_viewModel.ProcurementViewModel.SupplierSearchText = oldSupplierSearch;
@@ -235,12 +249,12 @@ public partial class ShellPaletteWindow : Window
 					var captured = result;
 					var (group, type, icon, key) = captured.Kind switch
 					{
-						SalesQuickOpenKind.Customer => ("Customers", "CUSTOMER", CustomerIcon, $"customer:{captured.Id}"),
-						SalesQuickOpenKind.SalesOrder => ("Sales Orders", "SO", SalesOrderIcon, $"sales-order:{captured.Id}"),
-						SalesQuickOpenKind.Shipment => ("Shipments", "SHIPMENT", ShipmentIcon, $"shipment:{captured.Id}"),
-						SalesQuickOpenKind.CustomerReturn => ("Customer Returns", "RET", ReturnIcon, $"customer-return:{captured.Id}"),
-						SalesQuickOpenKind.CreditNote => ("Credit Notes", "CN", CreditNoteIcon, $"credit-note:{captured.Id}"),
-						_ => ("Sales Invoices", "INVOICE", InvoiceIcon, $"invoice:{captured.Id}")
+						SalesQuickOpenKind.Customer => ("Records", "CUSTOMER", CustomerIcon, $"customer:{captured.Id}"),
+						SalesQuickOpenKind.SalesOrder => ("Records", "SO", SalesOrderIcon, $"sales-order:{captured.Id}"),
+						SalesQuickOpenKind.Shipment => ("Records", "SHIPMENT", ShipmentIcon, $"shipment:{captured.Id}"),
+						SalesQuickOpenKind.CustomerReturn => ("Records", "RET", ReturnIcon, $"customer-return:{captured.Id}"),
+						SalesQuickOpenKind.CreditNote => ("Records", "CN", CreditNoteIcon, $"credit-note:{captured.Id}"),
+						_ => ("Records", "INVOICE", InvoiceIcon, $"invoice:{captured.Id}")
 					};
 					entries.Add(new(captured.Title, captured.Subtitle, group, type, icon, () => _viewModel.OpenSalesQuickItemAsync(captured), key));
 				}
@@ -282,11 +296,22 @@ public partial class ShellPaletteWindow : Window
 	private void ApplyEntries(IReadOnlyList<ShellPaletteEntry> entries)
 	{
 		_updating = true;
-		var view = new ListCollectionView(entries.ToList());
+		var orderedEntries = entries.OrderBy(entry => PaletteGroupOrder(entry.Group)).ToList();
+		var view = new ListCollectionView(orderedEntries);
 		view.GroupDescriptions.Add(new PropertyGroupDescription(nameof(ShellPaletteEntry.Group)));
 		ResultsList.ItemsSource = view;
-		ResultsList.SelectedIndex = entries.Count > 0 ? 0 : -1;
-		if (_mode == ShellPaletteMode.Commands) StatusText.Text = $"{entries.Count:N0} commands";
+		ResultsList.SelectedIndex = orderedEntries.Count > 0 ? 0 : -1;
+		if (_mode == ShellPaletteMode.Commands) StatusText.Text = $"{orderedEntries.Count:N0} commands";
 		_updating = false;
 	}
+
+	private static int PaletteGroupOrder(string group) => group switch
+	{
+		"Suggested" => 0,
+		"Commands" => 1,
+		"Workspaces" => 2,
+		"Records" => 3,
+		"Recent" => 4,
+		_ => 5
+	};
 }

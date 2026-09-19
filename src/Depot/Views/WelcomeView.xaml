@@ -7,9 +7,9 @@
                 <Image Source="/Resources/Images/Depot_32.png" Width="48" Height="48" HorizontalAlignment="Left" />
                 <TextBlock Text="{Binding Greeting}" Foreground="{DynamicResource PrimaryTextBrush}" FontSize="30" FontWeight="SemiBold" Margin="0,22,0,0" />
                 <TextBlock Text="{Binding Subtitle}" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="16" Margin="0,6,0,0" />
-                <TextBlock Text="Choose a module from the activity bar or use one of these shortcuts to get started." Foreground="{DynamicResource SecondaryTextBrush}" FontSize="12" Margin="0,20,0,0" />
+                <TextBlock Text="Open your default workspace, review My Work, or use Search / Quick Open to continue where you left off." Foreground="{DynamicResource SecondaryTextBrush}" FontSize="12" Margin="0,20,0,0" TextWrapping="Wrap" />
 
-                <TextBlock Text="Getting started" Foreground="{DynamicResource PrimaryTextBrush}" FontSize="15" FontWeight="SemiBold" Margin="0,34,0,12" />
+                <TextBlock Text="Useful shortcuts" Foreground="{DynamicResource PrimaryTextBrush}" FontSize="15" FontWeight="SemiBold" Margin="0,34,0,12" />
                 <ItemsControl ItemsSource="{Binding Tips}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>

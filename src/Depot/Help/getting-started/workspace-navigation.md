@@ -32,8 +32,9 @@ Notifications, Help, and the signed-in user are available from the utility area 
 6. Use **Ctrl+Tab** and **Ctrl+Shift+Tab** to move between open workspace tabs.
 7. Use **Alt+Left** and **Alt+Right** to move backward and forward through navigation history.
 8. Use **Ctrl+W**, middle-click, the tab close button, or tab context actions to close tabs.
-9. Use the workflow shortcuts below where the focused workspace exposes the corresponding existing command.
-10. Press **F1** to open context-sensitive Help in its own workspace tab.
+9. Use **Ctrl+Shift+T** or **Reopen Closed Tab** to reopen the last closed non-document workspace tab in this session.
+10. Use the workflow shortcuts below where the focused workspace exposes the corresponding existing command.
+11. Press **F1** to open context-sensitive Help in its own workspace tab.
 
 ## Global Search
 **Ctrl+K** is the canonical global-search shortcut. Results are grouped by type and remain permission-aware. Supported providers include workspaces and commands plus supported Items, Customers, Suppliers, Sales Orders, Purchase Orders, Invoices and journal/document identifiers. Search is bounded and cancellable; a new query supersedes older work.
@@ -58,6 +59,7 @@ These preferences store stable semantic route identifiers, not visible labels or
 | `Ctrl+P` | Open Quick Open |
 | `Ctrl+Shift+P` | Open Command Palette |
 | `Ctrl+W` | Close the active workspace tab |
+| `Ctrl+Shift+T` | Reopen the last closed workspace tab in this session |
 | `Ctrl+Tab` | Select the next workspace tab |
 | `Ctrl+Shift+Tab` | Select the previous workspace tab |
 | `Alt+Left` | Navigate backward |
@@ -84,9 +86,11 @@ Workflow shortcuts execute the same existing `ICommand` objects as visible contr
 You can keep multiple workflows and supported records open at once, find permitted work globally, return quickly to personal workspaces, and use the same business actions from keyboard or visible controls. Closing every tab returns the shell to the Welcome page.
 
 ## Status bar
-The status bar shows the current database connection state. Hover the database status indicator to see the detail for the currently configured connection, such as the SQLite database path or server/database endpoint.
+The status bar keeps the operational context visible: current connection state, active workspace, a safe database/provider label, and the Depot application version.
 
-The current Depot application version is shown on the right side of the status bar. Select the version to open the existing **About** page in a workspace tab.
+The shell deliberately does not display connection strings, server hosts, user names, passwords, or full local database paths. Company/legal-entity and accounting-period context is shown here only when a future shared shell context can provide it safely and consistently; Depot does not infer those values from administration screens.
+
+Select the version to open the existing **About** page in a workspace tab.
 
 ## Unsaved changes
 Depot protects unsaved changes in supported editors. When navigation, tab closing, sign-out, or application closing would discard modified editor data, Depot asks for confirmation first.

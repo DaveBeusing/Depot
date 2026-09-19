@@ -53,10 +53,11 @@
 
         <Border Grid.Row="1" Grid.ColumnSpan="2" Background="{DynamicResource SurfaceAltBrush}" BorderBrush="{DynamicResource NavigationBorderBrush}" BorderThickness="0,1,0,0">
             <Grid Margin="{StaticResource Shell.StatusMargin}">
-                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                <controls:ConnectionStatusIndicator State="{Binding ConnectionStatus.CompactState}" Status="{Binding ConnectionStatus.CompactStatus}" Detail="{Binding ConnectionStatus.Detail}" ToolTip="{Binding ConnectionStatus.Detail}" Compact="True" VerticalAlignment="Center" AutomationProperties.Name="{Binding ConnectionStatus.CompactStatus}" />
+                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                <controls:ConnectionStatusIndicator State="{Binding ConnectionStatus.CompactState}" Status="{Binding ConnectionStatus.CompactStatus}" Detail="{Binding ConnectionStatus.Context}" ToolTip="{Binding ConnectionStatus.Context}" Compact="True" VerticalAlignment="Center" AutomationProperties.Name="{Binding ConnectionStatus.CompactStatus}" />
                 <TextBlock Grid.Column="1" Text="{Binding SelectedItem.Name, ElementName=WorkspaceTabs}" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="{StaticResource Shell.CaptionFontSize}" VerticalAlignment="Center" Margin="{StaticResource Shell.StatusSectionMargin}" />
-                <Button Grid.Column="3" Style="{StaticResource FooterVersionButtonStyle}" Content="{Binding ApplicationVersion, RelativeSource={RelativeSource AncestorType={x:Type local:MainWindow}}}" ToolTip="About Depot" AutomationProperties.Name="About Depot" Click="OnVersionClick" />
+                <TextBlock Grid.Column="2" Text="{Binding ConnectionStatus.Context}" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="{StaticResource Shell.CaptionFontSize}" VerticalAlignment="Center" Margin="{StaticResource Shell.StatusSectionMargin}" AutomationProperties.Name="Database context" />
+                <Button Grid.Column="4" Style="{StaticResource FooterVersionButtonStyle}" Content="{Binding ApplicationVersion, RelativeSource={RelativeSource AncestorType={x:Type local:MainWindow}}}" ToolTip="About Depot" AutomationProperties.Name="About Depot" Click="OnVersionClick" />
             </Grid>
         </Border>
     </Grid>

@@ -13,6 +13,7 @@ public sealed class ConnectionStatusService : INotifyPropertyChanged
 	private ConnectionState _state = ConnectionState.Disconnected;
 	private string _status = "Database unavailable";
 	private string _detail = string.Empty;
+	private string _context = "Database unavailable";
 
 	public ConnectionState State
 	{
@@ -59,6 +60,12 @@ public sealed class ConnectionStatusService : INotifyPropertyChanged
 		private set => SetField(ref _detail, value);
 	}
 
+	public string Context
+	{
+		get => _context;
+		private set => SetField(ref _context, value);
+	}
+
 	public event PropertyChangedEventHandler? PropertyChanged;
 
 	public void SetConnected(DatabaseConnectionSettings settings)
@@ -68,14 +75,17 @@ public sealed class ConnectionStatusService : INotifyPropertyChanged
 			case DatabaseProvider.Local:
 				Status = "Local database connected";
 				Detail = settings.LocalDatabasePath;
+				Context = $"SQLite · {SafeName(Path.GetFileName(settings.LocalDatabasePath), "Local database")}";
 				break;
 			case DatabaseProvider.SqlServer:
 				Status = "SQL Server connected";
 				Detail = $"{settings.SqlServerHost}:{settings.SqlServerPort}/{settings.SqlServerDatabase}";
+				Context = $"SQL Server · {SafeName(settings.SqlServerDatabase, "Database")}";
 				break;
 			case DatabaseProvider.MySql:
 				Status = "MySQL/MariaDB connected";
 				Detail = $"{settings.MySqlHost}:{settings.MySqlPort}/{settings.MySqlDatabase}";
+				Context = $"MySQL/MariaDB · {SafeName(settings.MySqlDatabase, "Database")}";
 				break;
 			default:
 				throw new NotSupportedException($"Database provider '{settings.Provider}' is not supported.");
@@ -89,7 +99,10 @@ public sealed class ConnectionStatusService : INotifyPropertyChanged
 		State = ConnectionState.Disconnected;
 		Status = "Database unavailable";
 		Detail = detail;
+		Context = "Database unavailable";
 	}
+
+	private static string SafeName(string? value, string fallback) => string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
 
 	private void SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
 	{

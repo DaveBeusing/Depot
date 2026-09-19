@@ -20,6 +20,7 @@ public sealed class WorkspaceTabControl : TabControl
 {
 	private const string WelcomeTabKey = "__welcome__";
 	private ShellNavigationItem? _welcomeItem;
+	private ShellNavigationItem? _lastClosedItem;
 
 	public static readonly DependencyProperty ActiveItemProperty = DependencyProperty.Register(
 		nameof(ActiveItem), typeof(ShellNavigationItem), typeof(WorkspaceTabControl),
@@ -28,12 +29,14 @@ public sealed class WorkspaceTabControl : TabControl
 	public static readonly RoutedCommand CloseTabCommand = new(nameof(CloseTabCommand), typeof(WorkspaceTabControl));
 	public static readonly RoutedCommand CloseOtherTabsCommand = new(nameof(CloseOtherTabsCommand), typeof(WorkspaceTabControl));
 	public static readonly RoutedCommand CloseTabsToRightCommand = new(nameof(CloseTabsToRightCommand), typeof(WorkspaceTabControl));
+	public static readonly RoutedCommand ReopenClosedTabCommand = new(nameof(ReopenClosedTabCommand), typeof(WorkspaceTabControl));
 
 	public WorkspaceTabControl()
 	{
 		CommandBindings.Add(new CommandBinding(CloseTabCommand, OnCloseTabExecuted, OnCloseTabCanExecute));
 		CommandBindings.Add(new CommandBinding(CloseOtherTabsCommand, OnCloseOtherTabsExecuted, OnCloseOtherTabsCanExecute));
 		CommandBindings.Add(new CommandBinding(CloseTabsToRightCommand, OnCloseTabsToRightExecuted, OnCloseTabsToRightCanExecute));
+		CommandBindings.Add(new CommandBinding(ReopenClosedTabCommand, OnReopenClosedTabExecuted, OnReopenClosedTabCanExecute));
 	}
 
 	public event EventHandler<WorkspaceTabClosingEventArgs>? TabClosing;
@@ -67,6 +70,14 @@ public sealed class WorkspaceTabControl : TabControl
 	public void CloseActiveTab()
 	{
 		if (SelectedItem is ShellNavigationItem item) Close(item);
+	}
+
+	public void ReopenLastClosedTab()
+	{
+		if (_lastClosedItem is not { } item || item.IsDocument) return;
+		_lastClosedItem = null;
+		OpenOrActivate(item);
+		CommandManager.InvalidateRequerySuggested();
 	}
 
 	public void SelectRelativeTab(int offset)
@@ -140,6 +151,18 @@ public sealed class WorkspaceTabControl : TabControl
 		e.Handled = true;
 	}
 
+	private void OnReopenClosedTabCanExecute(object sender, CanExecuteRoutedEventArgs e)
+	{
+		e.CanExecute = _lastClosedItem is { IsDocument: false } item && !Items.Contains(item);
+		e.Handled = true;
+	}
+
+	private void OnReopenClosedTabExecuted(object sender, ExecutedRoutedEventArgs e)
+	{
+		ReopenLastClosedTab();
+		e.Handled = true;
+	}
+
 	private void OnCloseTabsToRightExecuted(object sender, ExecutedRoutedEventArgs e)
 	{
 		if (e.Parameter is not ShellNavigationItem item) return;
@@ -158,7 +181,9 @@ public sealed class WorkspaceTabControl : TabControl
 		var index = Items.IndexOf(item);
 		if (index < 0 || !CanClose(item)) return;
 		var wasSelected = ReferenceEquals(SelectedItem, item);
+		_lastClosedItem = item.IsDocument ? null : item;
 		Items.Remove(item);
+		CommandManager.InvalidateRequerySuggested();
 		if (item.IsDocument) item.Dispose();
 
 		if (Items.Count == 0)

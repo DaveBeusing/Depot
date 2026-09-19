@@ -10,7 +10,8 @@ public sealed record ShellCommandDefinition(
 	string Group,
 	string TypeLabel,
 	string IconData,
-	Func<Task> ExecuteAsync);
+	Func<Task> ExecuteAsync,
+	ShellRoute? ContextRoute = null);
 
 public sealed class ShellCommandRegistry
 {

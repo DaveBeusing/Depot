@@ -1,6 +1,6 @@
 # Global Search and Command Palette
 
-Updated: 2026-09-16
+Updated: 2026-09-19
 
 ## Purpose
 
@@ -101,7 +101,17 @@ Finance journal free-text lookup intentionally examines only a bounded recent wi
 4. permission-filtered Help topics;
 5. permission-filtered business records.
 
-Arrow keys change selection, `Enter` opens the selected result, and `Esc` closes the palette. Results are grouped by type. Static results remain visible while asynchronous business search is running.
+Arrow keys change selection, `Enter` opens the selected result, and `Esc` closes the palette. Static results remain visible while asynchronous business search is running.
+
+The shell uses one canonical group order across Command Palette, Quick Open and Global Search:
+
+1. **Suggested** — commands that are actually bound to the active workspace plus permission-filtered Help matches;
+2. **Commands** — other currently available shell and workflow commands;
+3. **Workspaces** — permitted workspaces and workspace sections;
+4. **Records** — permission-filtered business-record results;
+5. **Recent** — session-local recently opened record results.
+
+A workflow command becomes **Suggested** only when its registered context route matches the active workspace/page. Registration itself remains permission-safe, and execution still uses the existing command/service boundary.
 
 ## Persistence and schema
 

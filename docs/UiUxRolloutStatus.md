@@ -1,6 +1,6 @@
 # UI/UX Rollout Status
 
-Updated: 2026-09-02
+Updated: 2026-09-19
 
 The repository-wide presentation rollout against `UiUxDesignContract.md` is implementation-complete for the productive Inventory, Purchasing, Warehouse, Sales, Finance and Administration workspaces. Every material production surface in these modules was either migrated during this branch or explicitly reviewed as already compliant with the shared workspace grammar.
 
@@ -139,3 +139,18 @@ These belong to `ERP Productivity – Saved Views, User Preferences & Advanced G
 - RBAC, audit, transaction, immutable-history, concurrency and cancellation contracts: preserved.
 
 Build, regression, accessibility, release-integrity and security-supply-chain verification for the final branch head is tracked by PR #15 and its GitHub Actions checks.
+
+
+## Cross-app consistency — Complete
+
+The cross-app consistency pass reuses the existing productive workspace grammar rather than introducing a parallel UI model:
+
+- `DocumentStatusBadge` resolves shared status semantics and combines glyph plus text with the existing semantic badge variants;
+- workspace tabs retain the existing icon and unsaved-change marker, add visible keyboard focus, and can reopen the last closed non-document workspace tab for the current session;
+- the shell status bar keeps connection, active workspace, safe provider/database context and version visible without exposing connection strings, credentials, hosts or full local paths;
+- Command Palette, Quick Open and Global Search use the canonical group order **Suggested → Commands → Workspaces → Records → Recent**;
+- Welcome/first-run language starts from continuing work, My Work and Search/Quick Open instead of a module-first instruction;
+- notification navigation continues to deep-link through the existing service/navigation boundary, while My Work remains the actionable-work projection;
+- productive tables continue to use the already-shared `AppDataGridStyle`, compact/numeric styles, saved views, filters and detail-pane patterns; no duplicate generic grid system was added.
+
+No persisted schema, Help topic ID, permission mapping or route changed in this pass.

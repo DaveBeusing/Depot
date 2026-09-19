@@ -26,7 +26,7 @@ public sealed class WelcomeViewModelTests
 
 		Assert.Equal("Good morning, Alex", viewModel.Greeting);
 		Assert.Equal(
-			["Ctrl+P", "Ctrl+Shift+P", "Ctrl+Tab", "Ctrl+W", "F1"],
+			["Ctrl+K", "Ctrl+P", "Ctrl+Shift+P", "Ctrl+Tab", "Ctrl+W", "Ctrl+Shift+T", "F1"],
 			viewModel.Tips.Select(tip => tip.Shortcut).ToArray());
 	}
 }
