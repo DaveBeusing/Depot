@@ -11,6 +11,7 @@ using Xunit;
 
 namespace Depot.Tests;
 
+[Collection(SqliteSchemaInitializationCollection.Name)]
 public sealed class InventoryTraceabilityTests : IDisposable
 {
 	private readonly string _databasePath = Path.Combine(Path.GetTempPath(), $"depot-traceability-{Guid.NewGuid():N}.db");

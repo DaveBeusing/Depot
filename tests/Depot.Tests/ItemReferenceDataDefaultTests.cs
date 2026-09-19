@@ -7,6 +7,7 @@ using Xunit;
 
 namespace Depot.Tests;
 
+[Collection(SqliteSchemaInitializationCollection.Name)]
 public sealed class ItemReferenceDataDefaultTests : IDisposable
 {
 	private static readonly string[] ExpectedUnits = ["EA", "SET", "PAIR", "M", "M2", "M3", "KG", "G", "L", "ML", "H", "DAY"];

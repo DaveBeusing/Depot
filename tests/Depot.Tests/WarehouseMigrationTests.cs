@@ -9,6 +9,7 @@ using Xunit;
 
 namespace Depot.Tests;
 
+[Collection(SqliteSchemaInitializationCollection.Name)]
 public sealed class WarehouseMigrationTests : IDisposable
 {
 	private readonly string _databasePath =
@@ -153,4 +154,10 @@ public sealed class WarehouseMigrationTests : IDisposable
 			File.Delete(_databasePath);
 		}
 	}
+}
+
+[CollectionDefinition(Name, DisableParallelization = true)]
+public sealed class SqliteSchemaInitializationCollection
+{
+	public const string Name = "SQLite schema initialization";
 }
