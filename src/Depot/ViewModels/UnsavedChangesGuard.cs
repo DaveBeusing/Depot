@@ -24,6 +24,7 @@ public static class UnsavedChangesGuard
 			SalesViewModel sales when sales.HasUnsavedChanges() => new("sales document", sales.DiscardUnsavedChanges),
 			SupplierViewModel suppliers when HasSupplierChanges(suppliers) => new("supplier", () => DiscardSupplierChanges(suppliers)),
 			RoleViewModel roles when HasRoleChanges(roles) => new("role", () => DiscardRoleChanges(roles)),
+			DocumentTemplateDesignerViewModel designer when designer.IsDirty => new("document template", designer.DiscardUnsavedChanges),
 			_ => null
 		};
 		return info is not null;

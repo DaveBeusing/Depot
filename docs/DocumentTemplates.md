@@ -100,9 +100,16 @@ The WPF designer exposes:
 
 - the eight bounded template element types from the rendering model;
 - an A4 design canvas with zoom, grid, snap, mouse/keyboard movement and extended selection;
-- duplicate/delete operations and numeric position/size control independent of zoom;
-- a property editor for bindings, text, typography, alignment, format, border, visibility and placement;
-- New from Default, Duplicate, Save Draft, Preview, Activate Version and Reset Default lifecycle actions.
+- visible edge/corner resize handles with minimum-size, page-bound and snap-to-grid enforcement;
+- bounded Undo/Redo history for add, delete, move, resize, property edits, duplicate and multi-selection transforms, including Ctrl+Z / Ctrl+Y;
+- alignment, distribution and equal-size commands that enable only for meaningful selections;
+- a context-sensitive property inspector that hides properties which do not apply to the selected element type;
+- a normal unsaved-changes boundary: edit operations mark the draft dirty, shell navigation/tab close uses the shared discard guard, and Save Draft clears the dirty state;
+- primary lifecycle actions for Save Draft, Preview and Activate, with New from Default, current-draft Duplicate, Copy selected version as draft, Discard changes and Reset Default in secondary actions.
+
+The page is named **Document Designer** and deliberately describes itself as a designer for Depot PDF output templates rather than as a general-purpose PDF editor. Designer chrome uses the shared Depot theme resources while the paper surface remains white.
+
+Preview continues to render fixed sample data through the existing validated PDF renderer and opens the generated PDF in the system PDF viewer. An embedded PDF surface is intentionally not introduced because Depot currently has no shared production-grade WPF PDF viewing component; this keeps Preview inside the existing renderer/security boundary instead of adding a parallel rendering stack.
 
 `DocumentTemplates.View` gates access. `DocumentTemplates.Manage` gates layout changes and version activation. The protected Administrator role receives all permissions through the central permission catalog; the Application Administrator role receives both document-template permissions explicitly. Sales and Finance roles do not receive them implicitly.
 
