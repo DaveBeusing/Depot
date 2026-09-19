@@ -24,7 +24,10 @@ public class ShellNavigationItem : IDisposable
 		ShellRoute? route = null,
 		string? tabKey = null,
 		bool isDocument = false,
-		bool ownsContent = true)
+		bool ownsContent = true,
+		bool isPrimaryNavigationVisible = true,
+		bool showContextNavigation = true,
+		string? navigationLabel = null)
 	{
 		Name = name;
 		IconData = iconData;
@@ -38,6 +41,9 @@ public class ShellNavigationItem : IDisposable
 		Route = route ?? ShellRoute.FromName(name);
 		TabKey = string.IsNullOrWhiteSpace(tabKey) ? Route.Value : tabKey.Trim();
 		IsDocument = isDocument;
+		IsPrimaryNavigationVisible = isPrimaryNavigationVisible;
+		ShowContextNavigation = showContextNavigation;
+		NavigationLabel = string.IsNullOrWhiteSpace(navigationLabel) ? Name : navigationLabel.Trim();
 	}
 
 	public string Name { get; }
@@ -49,6 +55,9 @@ public class ShellNavigationItem : IDisposable
 	public ShellRoute Route { get; }
 	public string TabKey { get; }
 	public bool IsDocument { get; }
+	public bool IsPrimaryNavigationVisible { get; }
+	public bool ShowContextNavigation { get; }
+	public string NavigationLabel { get; }
 	public NavigationLoadStatus LoadStatus => _loadState.Status;
 
 	public Task ActivateAsync(CancellationToken cancellationToken = default) => _ownsLoadState
