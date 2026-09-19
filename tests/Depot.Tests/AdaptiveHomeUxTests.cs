@@ -34,6 +34,11 @@ public sealed class AdaptiveHomeUxTests
 		Assert.Contains("Tag=\"Overdue\"", xaml, StringComparison.Ordinal);
 		Assert.Contains("Tag=\"Today\"", xaml, StringComparison.Ordinal);
 		Assert.Contains("Tag=\"HighPriority\"", xaml, StringComparison.Ordinal);
+		Assert.Contains("<controls:Card", xaml, StringComparison.Ordinal);
+		Assert.Contains("<controls:FilterBar", xaml, StringComparison.Ordinal);
+		Assert.Contains("Style=\"{StaticResource AppTabControlStyle}\"", xaml, StringComparison.Ordinal);
+		Assert.Contains("Style=\"{StaticResource AppDataGridCompactStyle}\"", xaml, StringComparison.Ordinal);
+		Assert.Contains("<controls:EmptyState", xaml, StringComparison.Ordinal);
 		Assert.Contains("MyWorkQuickFilter.Overdue", source, StringComparison.Ordinal);
 		Assert.Contains("MyWorkQuickFilter.Today", source, StringComparison.Ordinal);
 		Assert.Contains("MyWorkQuickFilter.HighPriority", source, StringComparison.Ordinal);
@@ -51,6 +56,7 @@ public sealed class AdaptiveHomeUxTests
 		Assert.Contains("ItemsSource=\"{Binding AdaptiveKpis}\"", xaml, StringComparison.Ordinal);
 		Assert.Contains("ItemsSource=\"{Binding HomeQuickActions}\"", xaml, StringComparison.Ordinal);
 		Assert.Contains("<views:MyWorkPanel />", xaml, StringComparison.Ordinal);
+		Assert.Contains("<controls:Card Style=\"{StaticResource WorkspaceCardStyle}\"", xaml, StringComparison.Ordinal);
 	}
 
 	[Fact]
