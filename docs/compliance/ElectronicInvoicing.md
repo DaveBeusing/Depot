@@ -1,6 +1,6 @@
 # Electronic invoicing technical baseline
 
-Updated: 2026-09-16
+Updated: 2026-09-19
 
 ## Scope
 
@@ -53,6 +53,8 @@ Credit Note Buyer identity is derived from the immutable source-invoice finaliza
 ## ZUGFeRD / Factur-X hybrid artifacts
 
 Sales feature schema 14 adds immutable hybrid-artifact persistence. `ZugferdFacturXService` creates a new PDF/A-3B document during finalization, embeds exactly one structured payload named `xrechnung.xml`, uses `AFRelationship=Alternative`, writes the Factur-X/XRECHNUNG XMP contract and retains the exact PDF bytes.
+
+The visible page layout uses the same validated template infrastructure as normal Sales PDFs. The active Sales Invoice or Credit Note template is resolved at finalization time. Once finalization succeeds, the retained hybrid PDF bytes are authoritative for electronic-invoice export: later template activation, Company changes, or designer edits do not regenerate or replace the stored artifact. Designer Preview is sample-data presentation only and is never accepted as PDF/A/XRechnung evidence.
 
 The persisted hybrid evidence includes:
 

@@ -1,12 +1,12 @@
 # Depot Version 1.0 Release Checklist
 
-Updated: 2026-09-17
+Updated: 2026-09-19
 
 ## Status
 
 - [ ] Ready for release
 
-Depot is on the `0.15.x-preview` line with Core database schema **30**, Sales feature schema **14**, Finance feature schema **9**, User Sessions schema **3**, Security Events schema **3**, User Preferences schema **2**, and Help manifest **1.21**. `Directory.Build.props` is authoritative for the exact application patch/version. Checked items represent implemented technical controls/evidence only; they do not replace legal, accounting, accessibility, signing, localization or deployment acceptance.
+Depot is on the `0.15.x-preview` line with Core database schema **30**, Sales feature schema **14**, Finance feature schema **9**, User Sessions schema **3**, Security Events schema **3**, User Preferences schema **2**, Document Templates schema **1**, and Help manifest **1.22**. `Directory.Build.props` is authoritative for the exact application patch/version. Checked items represent implemented technical controls/evidence only; they do not replace legal, accounting, accessibility, signing, localization or deployment acceptance.
 
 ## Implemented Finance baseline
 
@@ -31,6 +31,7 @@ Depot is on the `0.15.x-preview` line with Core database schema **30**, Sales fe
 - [x] first-run administrator creation, hardened authentication and multi-role RBAC
 - [x] service-layer authorization and creator/approver controls where implemented
 - [x] immutable/correction-oriented retained business records and Audit evidence
+- [x] database-backed visual document-template versions and active-layout rollout across all supported Sales/warehouse PDFs
 - [x] local backup/recovery controls and privacy export
 - [x] dependency locks, NuGet audit, SBOM/evidence and release-integrity workflows
 - [x] centralized per-item Customer → Region → Global Sales pricing with optional customer assignment and retained document source snapshots

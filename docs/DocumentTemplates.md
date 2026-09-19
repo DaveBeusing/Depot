@@ -90,7 +90,7 @@ Elements carry explicit page coordinates and dimensions plus bounded font, align
 
 `DocumentTemplateCatalog` requires exactly one active version per registered document type and keeps explicit access to older registered versions. The initial defaults are version 1.
 
-AP09 deliberately did not introduce template database persistence. AP10 adds an in-process version workspace behind the same validated model so administrators can create drafts, preview them with safe sample data, activate a version, inspect older versions read-only and reset to the deterministic default without changing a persisted schema. Durable shared template persistence remains a rollout/compliance concern for the subsequent package.
+The deterministic built-in defaults remain version 1 for every document family. The visual designer keeps the same validated version workspace, but template versions and active state are now durable and shared through the provider-neutral database. Saving creates an inactive immutable version; activation changes only the active pointer for that document family; reset reactivates built-in version 1 without deleting history. Runtime reads refresh from persistence so another Depot client using the same database observes the active version.
 
 The active runtime catalog is read at render time by business-document PDF generation and by the visible Factur-X/ZUGFeRD layer. Activation therefore takes effect without restarting Depot while preserving the existing business-document and immutable-finalization boundaries.
 
@@ -128,7 +128,7 @@ The Factur-X/ZUGFeRD finalization path remains:
 ```text
 finalized business invoice
     ↓
-controlled render model + default template
+controlled render model + active validated template
     ↓
 PDF/A configuration and embedded finalized XML
     ↓
@@ -167,6 +167,22 @@ Regression coverage verifies:
 
 Existing electronic-invoice and finalization tests remain the authority for XRechnung and Factur-X acceptance and immutable posted-document behavior.
 
-## Next step
+## Rollout and compliance acceptance
 
-The next package is the visual document designer. It should edit this bounded template model rather than introduce a second rendering or scripting engine.
+All eight currently supported productive document families use the shared rendering stack: Sales Quote, Sales Order Confirmation, Pick List, Packing Slip, Delivery Note, Sales Invoice, Credit Note and Customer Return.
+
+Each family has a deterministic default template, a bounded render model, designer Preview, productive PDF export, controlled Company/logo bindings, line-table pagination and page-number support. Long-line regression coverage executes every default template, not only invoices.
+
+Template persistence is feature schema **1** under the `DocumentTemplates` key in `DepotFeatureVersions`. Core schema 30 and Sales schema 14 are unchanged.
+
+### Finalized invoice boundary
+
+A posted invoice or credit note keeps its immutable business, issuer and buyer evidence. A normal printable representation may be rendered again from that immutable data using the currently active presentation template; this does not mutate the posted record.
+
+The finalized XRechnung / ZUGFeRD / Factur-X artifact is generated once during finalization using the active validated template at that time and is retained as exact PDF/A-3B bytes linked to finalized XML/hash evidence. Later template activation never rewrites or silently replaces the retained compliance artifact. Export continues to use the verified stored bytes.
+
+Designer Preview always uses fixed sample data and is explicitly not a final compliance artifact.
+
+### Localization boundary
+
+Literal headings and labels are template-authored presentation text. Existing business-data/date/number/currency formatting remains in the established render-model/application boundary. This rollout does not introduce a second localization engine inside the designer.

@@ -1,6 +1,7 @@
 // Copyright (c) 2026 David Beusing
 // Licensed under the MIT License.
 
+using Depot.DocumentRendering;
 using Depot.Services;
 using Depot.Services.Import;
 using Depot.Services.Help;
@@ -11,6 +12,7 @@ internal sealed class ServiceComposition
 {
 	public ServiceComposition(DatabaseComposition database, RepositoryComposition repositories)
 	{
+		DefaultDocumentTemplates.Runtime.AttachStore(repositories.DocumentTemplates);
 		Authorization = new AuthorizationService();
 		NotificationNavigation = new NotificationNavigationService(Authorization);
 		Notifications = new NotificationService(database.TransactionRunner, repositories.Notifications, Authorization);

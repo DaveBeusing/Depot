@@ -1,19 +1,20 @@
 # Documentation status
 
-Updated: 2026-09-18
+Updated: 2026-09-19
 
 This document identifies the documentation baseline for the current development state. Implemented technical controls must remain distinct from production/legal acceptance gates.
 
 ## Current baseline
 
 - Application: `0.15.x-preview`
-- Help manifest: `1.21`
+- Help manifest: `1.22`
 - Core database schema: `30`
 - Sales feature schema: `14`
 - Finance feature schema: `9`
 - User Sessions feature schema: `3`
 - Security Events feature schema: `3`
 - User Preferences feature schema: `2`
+- Document Templates feature schema: `1`
 - Enterprise Identity feature schema: `2`
 
 `Directory.Build.props` is the authoritative source for the exact application patch/version. Canonical documentation records the moving preview line as `0.15.x-preview`; exact patch numbers belong in source/release evidence, not manually duplicated baseline text.
@@ -41,7 +42,7 @@ Sales schema 14 retains ZUGFeRD 2.5.2 / Factur-X 1.09.2 XRECHNUNG-profile hybrid
 
 ## 2026-09-18 documentation reconciliation
 
-The current repository/help audit reconciles the post-Track-C and post-H1 baseline across README, canonical status/security/pricing documents and embedded Help. It also records the current PR-versus-authoritative release-validation boundary introduced by the latest CI hardening. Help article content is corrected without changing topic IDs, permission mappings or routing, so Help manifest version `1.21` remains valid.
+The current repository/help audit reconciles the post-Track-C and post-H1 baseline across README, canonical status/security/pricing documents and embedded Help. It also records the current PR-versus-authoritative release-validation boundary introduced by the latest CI hardening. The Document Designer rollout adds a dedicated `administration.document-designer` topic bound to `DocumentTemplates.View`, so Help manifest version `1.22` records the new permission-bound route.
 
 ## Session and authentication invariants
 

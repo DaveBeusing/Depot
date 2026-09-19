@@ -107,8 +107,9 @@ Current baseline:
 - User Sessions feature schema: **3**
 - Security Events feature schema: **3**
 - User Preferences feature schema: **2**
+- Document Templates feature schema: **1**
 - Enterprise Identity feature schema: **2**
-- Help manifest: **1.21**
+- Help manifest: **1.22**
 
 `Directory.Build.props` is authoritative for the exact application patch/version. The documentation baseline intentionally records the development line instead of duplicating the moving preview patch number.
 

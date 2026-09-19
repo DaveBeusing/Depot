@@ -137,6 +137,49 @@ public sealed class DocumentTemplateRenderingTests
 	}
 
 	[Fact]
+	public void EveryDefaultTemplateSupportsMultiPageLineData()
+	{
+		var values = new Dictionary<string, object?>(StringComparer.Ordinal)
+		{
+			["Company.Name"] = "Depot Test GmbH",
+			["Company.Address"] = "Teststraße 1",
+			["Company.LegalLine"] = "HRB 1",
+			["Company.ContactLine"] = "test@example.invalid",
+			["Document.Number"] = "DOC-TEST",
+			["Document.Date"] = DateTime.Today,
+			["Document.Net"] = "100.00 EUR",
+			["Document.Tax"] = "19.00 EUR",
+			["Document.Total"] = "119.00 EUR",
+			["Customer.Name"] = "Test Customer",
+			["Customer.Address"] = "Customer Street 1",
+			["Customer.BillingAddress"] = "Customer Street 1",
+			["Customer.ShippingAddress"] = "Warehouse Street 2"
+		};
+		var lines = Enumerable.Range(1, 80).Select(index => new DocumentRenderRow(
+			new Dictionary<string, object?>(StringComparer.Ordinal)
+			{
+				["Line.Item"] = $"ITEM-{index:000}",
+				["Line.Description"] = $"Rendered template line {index}",
+				["Line.Quantity"] = "1",
+				["Line.UnitPrice"] = "10.00 EUR",
+				["Line.TaxRate"] = "19%",
+				["Line.Total"] = "11.90 EUR"
+			})).ToArray();
+
+		foreach (var type in Enum.GetValues<DocumentTemplateType>())
+		{
+			var template = DefaultDocumentTemplates.GetDefault(type);
+			Assert.Contains(template.Elements, element => element.Type == DocumentTemplateElementType.LineTable);
+			Assert.Contains(template.Elements, element => element.Binding == "Company.Name");
+			Assert.Contains(template.Elements, element => element.Binding == "Document.Number");
+			var bytes = new DocumentLayoutRenderer().RenderToBytes(template, Model(values, lines));
+			using var stream = new MemoryStream(bytes, writable: false);
+			using var pdf = PdfReader.Open(stream, PdfDocumentOpenMode.Modify);
+			Assert.True(pdf.PageCount > 1, $"{type} did not paginate long line content.");
+		}
+	}
+
+	[Fact]
 	public void ImageElementAcceptsControlledLogoBytes()
 	{
 		var template = Template(new DocumentTemplateElement
