@@ -167,67 +167,213 @@
         </Setter>
     </Style>
 
+
     <Style TargetType="{x:Type controls:WorkflowTimeline}">
         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
         <Setter Property="ItemsPanel">
             <Setter.Value><ItemsPanelTemplate><StackPanel /></ItemsPanelTemplate></Setter.Value>
         </Setter>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type controls:WorkflowTimeline}">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Border x:Name="ProcessSummary"
+                                Margin="0,0,0,10"
+                                Padding="10,8"
+                                Background="{DynamicResource SurfaceAltBrush}"
+                                BorderBrush="{DynamicResource BorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="{DynamicResource Radius.M}"
+                                Visibility="Collapsed">
+                            <TextBlock Text="{TemplateBinding CurrentStepText}"
+                                       FontWeight="SemiBold"
+                                       TextWrapping="Wrap" />
+                        </Border>
+                        <ScrollViewer x:Name="TimelineScroll"
+                                      Grid.Row="1"
+                                      HorizontalScrollBarVisibility="Disabled"
+                                      VerticalScrollBarVisibility="Auto">
+                            <ItemsPresenter />
+                        </ScrollViewer>
+                        <ToggleButton x:Name="CompactToggle"
+                                      Grid.Row="2"
+                                      Margin="34,4,0,0"
+                                      Padding="10,5"
+                                      HorizontalAlignment="Left"
+                                      Background="{DynamicResource SurfaceAltBrush}"
+                                      BorderBrush="{DynamicResource BorderBrush}"
+                                      BorderThickness="1"
+                                      Foreground="{DynamicResource PrimaryTextBrush}"
+                                      Content="Show all steps"
+                                      IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
+                                      AutomationProperties.Name="Show all workflow steps"
+                                      Visibility="Collapsed" />
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="HasCurrentStep" Value="True">
+                            <Setter TargetName="ProcessSummary" Property="Visibility" Value="Visible" />
+                        </Trigger>
+                        <Trigger Property="HasCompactOverflow" Value="True">
+                            <Setter TargetName="CompactToggle" Property="Visibility" Value="Visible" />
+                        </Trigger>
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="HasCompactOverflow" Value="True" />
+                                <Condition Property="IsExpanded" Value="False" />
+                            </MultiTrigger.Conditions>
+                            <Setter TargetName="TimelineScroll" Property="MaxHeight" Value="360" />
+                        </MultiTrigger>
+                        <Trigger Property="IsExpanded" Value="True">
+                            <Setter TargetName="CompactToggle" Property="Content" Value="Collapse timeline" />
+                            <Setter TargetName="CompactToggle" Property="AutomationProperties.Name" Value="Collapse workflow timeline" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
         <Setter Property="ItemTemplate">
             <Setter.Value>
                 <DataTemplate DataType="{x:Type models:WorkflowTimelineItem}">
-                    <Border x:Name="TimelineItemBorder" Margin="0,0,0,8" Padding="10" Background="{DynamicResource SurfaceAltBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="{DynamicResource Radius.M}">
-                        <Border.ToolTip>
-                            <StackPanel>
-                                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
-                                <TextBlock Text="{Binding DisplayNumber, StringFormat=Document: {0}}" />
-                                <TextBlock Text="{Binding Status, StringFormat=Status: {0}}" />
-                                <TextBlock Text="{Binding OccurredAtLocal, StringFormat=Date: {0:g}}" />
-                            </StackPanel>
-                        </Border.ToolTip>
+                    <Grid Margin="0,0,0,2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="24" />
+                            <ColumnDefinition Width="10" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
                         <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="12" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="12" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <StackPanel Width="92">
-                                <TextBlock Text="{Binding OccurredAtLocal, StringFormat={}{0:g}}" Style="{DynamicResource CaptionStyle}" />
-                                <TextBlock x:Name="CurrentLabel" Margin="0,4,0,0" Text="CURRENT" FontSize="10" FontWeight="Bold" Visibility="Collapsed" />
-                                <TextBlock x:Name="CorrectionLabel" Margin="0,4,0,0" Text="CORRECTION" FontSize="10" FontWeight="Bold" Visibility="Collapsed" />
-                                <TextBlock x:Name="ReversalLabel" Margin="0,4,0,0" Text="REVERSAL" FontSize="10" FontWeight="Bold" Visibility="Collapsed" />
-                            </StackPanel>
-                            <StackPanel Grid.Column="2">
-                                <Grid>
-                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                                    <TextBlock x:Name="TimelineTitle" Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                                    <controls:DocumentStatusBadge Grid.Column="1" Margin="12,0,0,0" Status="{Binding Status}" />
-                                </Grid>
-                                <TextBlock Margin="0,3,0,0" Style="{DynamicResource CaptionStyle}" TextTrimming="CharacterEllipsis">
-                                    <Run Text="{Binding DisplayNumber}" /><Run Text=" · " /><Run Text="{Binding Kind}" />
-                                </TextBlock>
-                            </StackPanel>
-                            <Button Grid.Column="4"
-                                    Command="{Binding NavigateCommand, RelativeSource={RelativeSource AncestorType={x:Type controls:WorkflowTimeline}}}"
-                                    CommandParameter="{Binding}"
-                                    Content="Open"
-                                    Style="{DynamicResource SecondaryButtonStyle}"
-                                    Visibility="{Binding CanNavigate, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                            <Border x:Name="ConnectorLine"
+                                    Width="2"
+                                    Margin="0,-2,0,-8"
+                                    HorizontalAlignment="Center"
+                                    Background="{DynamicResource SuccessForegroundBrush}"
+                                    Opacity="0.65" />
+                            <Border x:Name="TimelineNode"
+                                    Width="22"
+                                    Height="22"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Top"
+                                    Background="{DynamicResource SurfaceBrush}"
+                                    BorderBrush="{DynamicResource SuccessForegroundBrush}"
+                                    BorderThickness="2"
+                                    CornerRadius="11">
+                                <TextBlock x:Name="TimelineGlyph"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           FontSize="11"
+                                           FontWeight="Bold"
+                                           Foreground="{DynamicResource SuccessForegroundBrush}"
+                                           Text="{Binding VisualGlyph}" />
+                            </Border>
                         </Grid>
-                    </Border>
+                        <Border x:Name="TimelineItemBorder"
+                                Grid.Column="2"
+                                Margin="0,0,0,6"
+                                Padding="8,6"
+                                Background="{DynamicResource SurfaceAltBrush}"
+                                BorderBrush="{DynamicResource BorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="{DynamicResource Radius.M}"
+                                AutomationProperties.Name="{Binding AccessibleName}">
+                            <Border.ToolTip>
+                                <StackPanel>
+                                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
+                                    <TextBlock Text="{Binding DisplayNumber, StringFormat=Document: {0}}" />
+                                    <TextBlock Text="{Binding Status, StringFormat=Status: {0}}" />
+                                    <TextBlock Text="{Binding VisualStateLabel, StringFormat=Process state: {0}}" />
+                                    <TextBlock Text="{Binding OccurredAtText, StringFormat=Date: {0}}" />
+                                </StackPanel>
+                            </Border.ToolTip>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="12" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock x:Name="TimelineTitle"
+                                                   Text="{Binding Title}"
+                                                   FontWeight="SemiBold"
+                                                   TextTrimming="CharacterEllipsis" />
+                                        <controls:DocumentStatusBadge Grid.Column="1"
+                                                                      Margin="12,0,0,0"
+                                                                      Status="{Binding Status}" />
+                                    </Grid>
+                                    <StackPanel Margin="0,4,0,0" Orientation="Horizontal">
+                                        <TextBlock x:Name="StateLabel"
+                                                   FontSize="10"
+                                                   FontWeight="Bold"
+                                                   Foreground="{DynamicResource SuccessForegroundBrush}"
+                                                   Text="{Binding VisualStateLabel, StringFormat={}{0}:}" />
+                                        <TextBlock Margin="6,0,0,0"
+                                                   Style="{DynamicResource CaptionStyle}"
+                                                   TextTrimming="CharacterEllipsis">
+                                            <Run Text="{Binding DisplayNumber}" />
+                                            <Run Text=" · " />
+                                            <Run Text="{Binding Kind}" />
+                                            <Run Text=" · " />
+                                            <Run Text="{Binding OccurredAtText}" />
+                                        </TextBlock>
+                                    </StackPanel>
+                                </StackPanel>
+                                <Button Grid.Column="2"
+                                        MinWidth="64"
+                                        Command="{Binding NavigateCommand, RelativeSource={RelativeSource AncestorType={x:Type controls:WorkflowTimeline}}}"
+                                        CommandParameter="{Binding}"
+                                        Content="Open"
+                                        Style="{DynamicResource SecondaryButtonStyle}"
+                                        AutomationProperties.Name="{Binding AccessibleName}"
+                                        AutomationProperties.HelpText="Open workflow document"
+                                        Visibility="{Binding CanNavigate, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                            </Grid>
+                        </Border>
+                    </Grid>
                     <DataTemplate.Triggers>
-                        <DataTrigger Binding="{Binding IsCurrent}" Value="True">
+                        <DataTrigger Binding="{Binding VisualState}" Value="{x:Static models:WorkflowTimelineVisualState.Current}">
+                            <Setter TargetName="ConnectorLine" Property="Background" Value="{DynamicResource PrimaryBrush}" />
+                            <Setter TargetName="TimelineNode" Property="BorderBrush" Value="{DynamicResource PrimaryBrush}" />
+                            <Setter TargetName="TimelineGlyph" Property="Foreground" Value="{DynamicResource PrimaryBrush}" />
+                            <Setter TargetName="StateLabel" Property="Foreground" Value="{DynamicResource PrimaryBrush}" />
                             <Setter TargetName="TimelineItemBorder" Property="BorderBrush" Value="{DynamicResource PrimaryBrush}" />
                             <Setter TargetName="TimelineItemBorder" Property="BorderThickness" Value="2" />
-                            <Setter TargetName="CurrentLabel" Property="Visibility" Value="Visible" />
                             <Setter TargetName="TimelineTitle" Property="FontWeight" Value="Bold" />
                         </DataTrigger>
-                        <DataTrigger Binding="{Binding IsCorrection}" Value="True">
-                            <Setter TargetName="CorrectionLabel" Property="Visibility" Value="Visible" />
+                        <DataTrigger Binding="{Binding VisualState}" Value="{x:Static models:WorkflowTimelineVisualState.Pending}">
+                            <Setter TargetName="ConnectorLine" Property="Background" Value="{DynamicResource SecondaryTextBrush}" />
+                            <Setter TargetName="ConnectorLine" Property="Opacity" Value="0.35" />
+                            <Setter TargetName="TimelineNode" Property="BorderBrush" Value="{DynamicResource SecondaryTextBrush}" />
+                            <Setter TargetName="TimelineGlyph" Property="Foreground" Value="{DynamicResource SecondaryTextBrush}" />
+                            <Setter TargetName="StateLabel" Property="Foreground" Value="{DynamicResource SecondaryTextBrush}" />
                         </DataTrigger>
-                        <DataTrigger Binding="{Binding IsReversal}" Value="True">
-                            <Setter TargetName="ReversalLabel" Property="Visibility" Value="Visible" />
+                        <DataTrigger Binding="{Binding VisualState}" Value="{x:Static models:WorkflowTimelineVisualState.Correction}">
+                            <Setter TargetName="ConnectorLine" Property="Background" Value="{DynamicResource WarningForegroundBrush}" />
+                            <Setter TargetName="TimelineNode" Property="BorderBrush" Value="{DynamicResource WarningForegroundBrush}" />
+                            <Setter TargetName="TimelineGlyph" Property="Foreground" Value="{DynamicResource WarningForegroundBrush}" />
+                            <Setter TargetName="StateLabel" Property="Foreground" Value="{DynamicResource WarningForegroundBrush}" />
+                            <Setter TargetName="TimelineItemBorder" Property="BorderBrush" Value="{DynamicResource WarningForegroundBrush}" />
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding VisualState}" Value="{x:Static models:WorkflowTimelineVisualState.Reversal}">
+                            <Setter TargetName="ConnectorLine" Property="Background" Value="{DynamicResource ErrorForegroundBrush}" />
+                            <Setter TargetName="TimelineNode" Property="BorderBrush" Value="{DynamicResource ErrorForegroundBrush}" />
+                            <Setter TargetName="TimelineGlyph" Property="Foreground" Value="{DynamicResource ErrorForegroundBrush}" />
+                            <Setter TargetName="StateLabel" Property="Foreground" Value="{DynamicResource ErrorForegroundBrush}" />
+                            <Setter TargetName="TimelineItemBorder" Property="BorderBrush" Value="{DynamicResource ErrorForegroundBrush}" />
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding VisualState}" Value="{x:Static models:WorkflowTimelineVisualState.Error}">
+                            <Setter TargetName="ConnectorLine" Property="Background" Value="{DynamicResource ErrorForegroundBrush}" />
+                            <Setter TargetName="TimelineNode" Property="BorderBrush" Value="{DynamicResource ErrorForegroundBrush}" />
+                            <Setter TargetName="TimelineGlyph" Property="Foreground" Value="{DynamicResource ErrorForegroundBrush}" />
+                            <Setter TargetName="StateLabel" Property="Foreground" Value="{DynamicResource ErrorForegroundBrush}" />
+                            <Setter TargetName="TimelineItemBorder" Property="BorderBrush" Value="{DynamicResource ErrorForegroundBrush}" />
                         </DataTrigger>
                     </DataTemplate.Triggers>
                 </DataTemplate>
