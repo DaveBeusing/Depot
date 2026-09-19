@@ -7,9 +7,9 @@ using System.Security.Cryptography;
 using System.Text;
 
 using Depot.Data;
+using Depot.DocumentRendering;
 using Depot.Models;
 
-using PdfSharp.Drawing;
 using PdfSharp.Pdf;
 
 namespace Depot.Services;
@@ -19,10 +19,6 @@ public sealed class ZugferdFacturXService
 	public const string InvoiceDocumentType = "Invoice";
 	public const string CreditNoteDocumentType = "CreditNote";
 
-	private static readonly XFont TitleFont = new("Segoe UI", 18, XFontStyleEx.Bold);
-	private static readonly XFont HeadingFont = new("Segoe UI", 10, XFontStyleEx.Bold);
-	private static readonly XFont BodyFont = new("Segoe UI", 9, XFontStyleEx.Regular);
-	private static readonly XFont SmallFont = new("Segoe UI", 8, XFontStyleEx.Regular);
 	private readonly DatabaseAccess _dataAccess;
 
 	public ZugferdFacturXService(DatabaseAccess dataAccess)
@@ -93,7 +89,9 @@ public sealed class ZugferdFacturXService
 
 		var xmlBytes = new UTF8Encoding(false).GetBytes(xRechnungXml);
 		PdfSharpFacturXCompatibility.Configure(document, xmlBytes, createdAtUtc);
-		RenderInvoice(document, invoice);
+		var templateType = invoice.TypeCode == ElectronicInvoiceTypeCode.CreditNote ? DocumentTemplateType.CreditNote : DocumentTemplateType.SalesInvoice;
+		var renderModel = ElectronicInvoiceRenderModelFactory.Create(invoice);
+		new DocumentLayoutRenderer().RenderInto(document, DefaultDocumentTemplates.Catalog.GetActive(templateType), renderModel);
 		var pdfBytes = PdfSharpFacturXCompatibility.SaveWithXmp(document, BuildXmp(invoice, createdAtUtc));
 		return new HybridElectronicInvoiceArtifact(
 			documentType,
@@ -149,79 +147,6 @@ public sealed class ZugferdFacturXService
 			throw new InvalidOperationException("Stored ZUGFeRD/Factur-X PDF failed its SHA-256 integrity check.");
 	}
 
-	private static void RenderInvoice(PdfDocument document, ElectronicInvoice invoice)
-	{
-		var page = document.AddPage();
-		var graphics = XGraphics.FromPdfPage(page);
-		var y = 42d;
-		graphics.DrawString(invoice.Seller.Name, HeadingFont, XBrushes.Black, new XPoint(40, y));
-		y += 34;
-		graphics.DrawString(invoice.TypeCode == ElectronicInvoiceTypeCode.CreditNote ? "CREDIT NOTE" : "INVOICE", TitleFont, XBrushes.Black, new XPoint(40, y));
-		graphics.DrawString(invoice.InvoiceNumber, HeadingFont, XBrushes.Black, new XPoint(390, y));
-		y += 30;
-		graphics.DrawString($"Issue date: {invoice.IssueDate:yyyy-MM-dd}", BodyFont, XBrushes.Black, new XPoint(40, y));
-		if (invoice.DueDate is { } dueDate) graphics.DrawString($"Due date: {dueDate:yyyy-MM-dd}", BodyFont, XBrushes.Black, new XPoint(220, y));
-		y += 28;
-		graphics.DrawString("Bill to", HeadingFont, XBrushes.Black, new XPoint(40, y));
-		y += 15;
-		graphics.DrawString(invoice.Buyer.Name, BodyFont, XBrushes.Black, new XPoint(40, y));
-		y += 14;
-		foreach (var addressLine in new[] { invoice.Buyer.AddressLine1, invoice.Buyer.AddressLine2, $"{invoice.Buyer.PostalCode} {invoice.Buyer.City}", invoice.Buyer.CountryCode }.Where(value => !string.IsNullOrWhiteSpace(value)))
-		{
-			graphics.DrawString(addressLine!, BodyFont, XBrushes.Black, new XPoint(40, y));
-			y += 13;
-		}
-		y += 18;
-		graphics.DrawLine(XPens.LightGray, 40, y, 555, y);
-		y += 18;
-		graphics.DrawString("Item", HeadingFont, XBrushes.Black, new XPoint(40, y));
-		graphics.DrawString("Description", HeadingFont, XBrushes.Black, new XPoint(105, y));
-		graphics.DrawString("Qty", HeadingFont, XBrushes.Black, new XPoint(355, y));
-		graphics.DrawString("Unit", HeadingFont, XBrushes.Black, new XPoint(405, y));
-		graphics.DrawString("Tax", HeadingFont, XBrushes.Black, new XPoint(470, y));
-		graphics.DrawString("Net", HeadingFont, XBrushes.Black, new XPoint(520, y));
-		y += 18;
-
-		decimal netTotal = 0m;
-		decimal taxTotal = 0m;
-		foreach (var line in invoice.Lines)
-		{
-			if (y > page.Height.Point - 100)
-			{
-				graphics.Dispose();
-				page = document.AddPage();
-				graphics = XGraphics.FromPdfPage(page);
-				y = 50;
-			}
-			var net = Math.Round(line.Quantity * line.UnitPrice * (1m - line.DiscountPercent / 100m), 2, MidpointRounding.AwayFromZero);
-			var tax = Math.Round(net * line.TaxRate / 100m, 2, MidpointRounding.AwayFromZero);
-			netTotal += net;
-			taxTotal += tax;
-			graphics.DrawString(Trim(line.SellerItemIdentifier ?? line.Id, 10), BodyFont, XBrushes.Black, new XPoint(40, y));
-			graphics.DrawString(Trim(line.Name, 42), BodyFont, XBrushes.Black, new XPoint(105, y));
-			graphics.DrawString(line.Quantity.ToString("0.###", CultureInfo.InvariantCulture), BodyFont, XBrushes.Black, new XPoint(355, y));
-			graphics.DrawString(line.UnitPrice.ToString("0.00", CultureInfo.InvariantCulture), BodyFont, XBrushes.Black, new XPoint(405, y));
-			graphics.DrawString($"{line.TaxRate:0.##}%", BodyFont, XBrushes.Black, new XPoint(470, y));
-			graphics.DrawString(net.ToString("0.00", CultureInfo.InvariantCulture), BodyFont, XBrushes.Black, new XPoint(520, y));
-			y += 17;
-		}
-		y += 12;
-		graphics.DrawLine(XPens.LightGray, 350, y, 555, y);
-		y += 18;
-		graphics.DrawString("Net", BodyFont, XBrushes.Black, new XPoint(400, y));
-		graphics.DrawString($"{netTotal:0.00} {invoice.Currency}", BodyFont, XBrushes.Black, new XPoint(490, y));
-		y += 16;
-		graphics.DrawString("Tax", BodyFont, XBrushes.Black, new XPoint(400, y));
-		graphics.DrawString($"{taxTotal:0.00} {invoice.Currency}", BodyFont, XBrushes.Black, new XPoint(490, y));
-		y += 16;
-		graphics.DrawString("Total", HeadingFont, XBrushes.Black, new XPoint(400, y));
-		graphics.DrawString($"{netTotal + taxTotal:0.00} {invoice.Currency}", HeadingFont, XBrushes.Black, new XPoint(490, y));
-		var footerY = page.Height.Point - 45;
-		graphics.DrawLine(XPens.LightGray, 40, footerY - 10, 555, footerY - 10);
-		graphics.DrawString(Trim($"{invoice.Seller.AddressLine1} · {invoice.Seller.PostalCode} {invoice.Seller.City} · {invoice.Seller.CountryCode}", 100), SmallFont, XBrushes.Gray, new XPoint(40, footerY));
-		graphics.Dispose();
-	}
-
 	private static string BuildXmp(ElectronicInvoice invoice, DateTime createdAtUtc)
 	{
 		var title = Escape($"{(invoice.TypeCode == ElectronicInvoiceTypeCode.CreditNote ? "Credit Note" : "Invoice")} {invoice.InvoiceNumber}");
@@ -274,5 +199,4 @@ public sealed class ZugferdFacturXService
 
 	private static string Escape(string value) => SecurityElement.Escape(value) ?? string.Empty;
 	private static string ComputeHash(byte[] bytes) => Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
-	private static string Trim(string value, int maxLength) => value.Length <= maxLength ? value : value[..Math.Max(0, maxLength - 1)] + "…";
 }
