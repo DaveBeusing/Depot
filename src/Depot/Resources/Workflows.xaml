@@ -89,14 +89,6 @@
                 <ControlTemplate TargetType="{x:Type controls:WorkflowActionBar}">
                     <Border Padding="{DynamicResource Workspace.Toolbar.Padding}" Background="{DynamicResource SurfaceAltBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="{DynamicResource Radius.M}">
                         <Grid>
-                            <Grid.ToolTip>
-                                <StackPanel>
-                                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
-                                    <TextBlock Text="{Binding DisplayNumber, StringFormat=Document: {0}}" />
-                                    <TextBlock Text="{Binding Status, StringFormat=Status: {0}}" />
-                                    <TextBlock Text="{Binding OccurredAtLocal, StringFormat=Date: {0:g}}" />
-                                </StackPanel>
-                            </Grid.ToolTip>
                             <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                             <ContentPresenter Content="{TemplateBinding SecondaryActions}" HorizontalAlignment="Left" VerticalAlignment="Center" />
                             <ContentPresenter Grid.Column="2" Content="{TemplateBinding PrimaryAction}" HorizontalAlignment="Right" VerticalAlignment="Center" />
@@ -184,6 +176,14 @@
             <Setter.Value>
                 <DataTemplate DataType="{x:Type models:WorkflowTimelineItem}">
                     <Border x:Name="TimelineItemBorder" Margin="0,0,0,8" Padding="10" Background="{DynamicResource SurfaceAltBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="{DynamicResource Radius.M}">
+                        <Border.ToolTip>
+                            <StackPanel>
+                                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" />
+                                <TextBlock Text="{Binding DisplayNumber, StringFormat=Document: {0}}" />
+                                <TextBlock Text="{Binding Status, StringFormat=Status: {0}}" />
+                                <TextBlock Text="{Binding OccurredAtLocal, StringFormat=Date: {0:g}}" />
+                            </StackPanel>
+                        </Border.ToolTip>
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
