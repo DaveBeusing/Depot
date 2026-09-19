@@ -23,6 +23,7 @@ public sealed class AdministrationViewModel : BaseViewModel, IDisposable
 	private readonly SecurityCenterViewModel _securityCenterViewModel;
 	private readonly RoleViewModel _roleViewModel;
 	private readonly CompanyProfileViewModel _companyProfileViewModel;
+	private readonly DocumentTemplateDesignerViewModel _documentTemplateDesignerViewModel;
 	private readonly DatabaseSettingsViewModel _databaseSettingsViewModel;
 	private readonly AuditLogViewModel _auditLogViewModel;
 	private readonly PrivacyDataViewModel _privacyDataViewModel;
@@ -73,6 +74,7 @@ public sealed class AdministrationViewModel : BaseViewModel, IDisposable
 		_privacyDataViewModel = new PrivacyDataViewModel(new DataSubjectAccessService(privacyDatabase, authorization), fileDialogService);
 		_userSessionsViewModel = new UserSessionsViewModel(userSessionAdministrationService, fileDialogService);
 		_securityCenterViewModel = new SecurityCenterViewModel(securityEventService, fileDialogService);
+		_documentTemplateDesignerViewModel = new DocumentTemplateDesignerViewModel(new DocumentTemplateDesignerService(authorization));
 
 		AddIf(authorization, ApplicationPermission.MasterDataView, "Master Data", AdministrationSection.MasterData);
 		AddIf(authorization, ApplicationPermission.MasterDataView, "Warehouses & Locations", AdministrationSection.Warehouses);
@@ -82,6 +84,7 @@ public sealed class AdministrationViewModel : BaseViewModel, IDisposable
 		AddIf(authorization, ApplicationPermission.SecurityEventsView, "Security Center", AdministrationSection.SecurityCenter);
 		AddIf(authorization, ApplicationPermission.RolesView, "Roles", AdministrationSection.Roles);
 		AddIf(authorization, ApplicationPermission.SettingsView, "Company", AdministrationSection.Company);
+		AddIf(authorization, ApplicationPermission.DocumentTemplatesView, "Document Designer", AdministrationSection.DocumentDesigner);
 		AddIf(authorization, ApplicationPermission.ImportManage, "Import", AdministrationSection.Import);
 		AddIf(authorization, ApplicationPermission.AuditLogView, "Audit Log", AdministrationSection.AuditLog);
 		AddIf(authorization, ApplicationPermission.DatabaseView, "Database", AdministrationSection.Database);
@@ -173,6 +176,7 @@ public sealed class AdministrationViewModel : BaseViewModel, IDisposable
 		AdministrationSection.SecurityCenter => _securityCenterViewModel,
 		AdministrationSection.Roles => _roleViewModel,
 		AdministrationSection.Company => _companyProfileViewModel,
+		AdministrationSection.DocumentDesigner => _documentTemplateDesignerViewModel,
 		AdministrationSection.Database => _databaseSettingsViewModel,
 		AdministrationSection.AuditLog => _auditLogViewModel,
 		AdministrationSection.Privacy => _privacyDataViewModel,
@@ -190,6 +194,7 @@ public sealed class AdministrationViewModel : BaseViewModel, IDisposable
 		SecurityCenterViewModel security => security.LoadAsync(cancellationToken),
 		RoleViewModel roles => roles.LoadAsync(cancellationToken),
 		CompanyProfileViewModel company => company.LoadAsync(cancellationToken),
+		DocumentTemplateDesignerViewModel designer => designer.LoadAsync(cancellationToken),
 		DatabaseSettingsViewModel database => database.LoadAsync(cancellationToken),
 		AuditLogViewModel auditLog => auditLog.LoadAsync(cancellationToken),
 		PrivacyDataViewModel privacy => privacy.LoadAsync(cancellationToken),

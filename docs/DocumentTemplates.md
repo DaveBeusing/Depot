@@ -27,7 +27,7 @@ The foundation covers the productive Sales document outputs:
 - Delivery Note
 - Customer Return
 
-The visual designer is intentionally outside this foundation.
+The rendering foundation is consumed by the built-in visual designer under **Administration → Documents → Document Designer**.
 
 ## Presentation boundary
 
@@ -90,7 +90,23 @@ Elements carry explicit page coordinates and dimensions plus bounded font, align
 
 `DocumentTemplateCatalog` requires exactly one active version per registered document type and keeps explicit access to older registered versions. The initial defaults are version 1.
 
-AP09 deliberately does not introduce template database persistence. The code-based catalog provides deterministic defaults for every existing installation without a data migration or schema-version change. A later designer/persistence package can store template versions behind the same model and validation boundary.
+AP09 deliberately did not introduce template database persistence. AP10 adds an in-process version workspace behind the same validated model so administrators can create drafts, preview them with safe sample data, activate a version, inspect older versions read-only and reset to the deterministic default without changing a persisted schema. Durable shared template persistence remains a rollout/compliance concern for the subsequent package.
+
+The active runtime catalog is read at render time by business-document PDF generation and by the visible Factur-X/ZUGFeRD layer. Activation therefore takes effect without restarting Depot while preserving the existing business-document and immutable-finalization boundaries.
+
+## Visual designer
+
+The WPF designer exposes:
+
+- the eight bounded template element types from the rendering model;
+- an A4 design canvas with zoom, grid, snap, mouse/keyboard movement and extended selection;
+- duplicate/delete operations and numeric position/size control independent of zoom;
+- a property editor for bindings, text, typography, alignment, format, border, visibility and placement;
+- New from Default, Duplicate, Save Draft, Preview, Activate Version and Reset Default lifecycle actions.
+
+`DocumentTemplates.View` gates access. `DocumentTemplates.Manage` gates layout changes and version activation. The protected Administrator role receives all permissions through the central permission catalog; the Application Administrator role receives both document-template permissions explicitly. Sales and Finance roles do not receive them implicitly.
+
+Preview uses fixed publication-safe sample data and never mutates a business record. Invalid bindings, page overflow and invalid table configuration remain blocked by the existing `DocumentTemplateValidator`.
 
 ## Default-template migration
 

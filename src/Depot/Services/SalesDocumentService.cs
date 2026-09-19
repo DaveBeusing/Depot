@@ -13,7 +13,7 @@ public sealed class SalesDocumentService
 	private readonly CompanyDocumentIdentityService _issuerService;
 	private readonly DocumentIssuerSnapshotService _issuerSnapshots;
 	private readonly SalesInvoiceFinalizationService _invoiceFinalizations;
-	private readonly DocumentTemplateCatalog _templates;
+	private readonly Func<DocumentTemplateCatalog> _templates;
 	private readonly DocumentLayoutRenderer _renderer;
 
 	public SalesDocumentService()
@@ -24,7 +24,7 @@ public sealed class SalesDocumentService
 		_issuerService = new CompanyDocumentIdentityService(dataAccess, settings.Provider);
 		_issuerSnapshots = new DocumentIssuerSnapshotService(dataAccess);
 		_invoiceFinalizations = new SalesInvoiceFinalizationService(dataAccess);
-		_templates = DefaultDocumentTemplates.Catalog;
+		_templates = () => DefaultDocumentTemplates.Catalog;
 		_renderer = new DocumentLayoutRenderer();
 	}
 
@@ -32,7 +32,7 @@ public sealed class SalesDocumentService
 		CompanyDocumentIdentityService issuerService,
 		DocumentIssuerSnapshotService issuerSnapshots,
 		SalesInvoiceFinalizationService invoiceFinalizations)
-		: this(issuerService, issuerSnapshots, invoiceFinalizations, DefaultDocumentTemplates.Catalog, new DocumentLayoutRenderer())
+		: this(issuerService, issuerSnapshots, invoiceFinalizations, () => DefaultDocumentTemplates.Catalog, new DocumentLayoutRenderer())
 	{
 	}
 
@@ -41,6 +41,17 @@ public sealed class SalesDocumentService
 		DocumentIssuerSnapshotService issuerSnapshots,
 		SalesInvoiceFinalizationService invoiceFinalizations,
 		DocumentTemplateCatalog templates,
+		DocumentLayoutRenderer renderer)
+		: this(issuerService, issuerSnapshots, invoiceFinalizations, () => templates, renderer)
+	{
+		ArgumentNullException.ThrowIfNull(templates);
+	}
+
+	private SalesDocumentService(
+		CompanyDocumentIdentityService issuerService,
+		DocumentIssuerSnapshotService issuerSnapshots,
+		SalesInvoiceFinalizationService invoiceFinalizations,
+		Func<DocumentTemplateCatalog> templates,
 		DocumentLayoutRenderer renderer)
 	{
 		_issuerService = issuerService ?? throw new ArgumentNullException(nameof(issuerService));
@@ -126,7 +137,7 @@ public sealed class SalesDocumentService
 	}
 
 	private void Render(string path, DocumentTemplateType type, DocumentRenderModel model) =>
-		_renderer.Render(path, _templates.GetActive(type), model);
+		_renderer.Render(path, _templates().GetActive(type), model);
 
 	private DocumentIssuerProfile ResolveInvoiceIssuer(SalesInvoice invoice) =>
 		invoice.Status == SalesInvoiceStatus.Posted

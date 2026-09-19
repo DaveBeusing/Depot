@@ -209,6 +209,8 @@ public sealed class DocumentLayoutRenderer
 			default:
 				throw new ArgumentOutOfRangeException(nameof(element.Type), element.Type, "Unsupported document template element type.");
 		}
+		if (element.Border && element.Type is not DocumentTemplateElementType.Line and not DocumentTemplateElementType.Rectangle)
+			graphics.DrawRectangle(XPens.LightGray, element.X, y, element.Width, element.Height);
 	}
 
 	private static bool IsVisible(DocumentTemplateElement element, DocumentRenderModel model)
