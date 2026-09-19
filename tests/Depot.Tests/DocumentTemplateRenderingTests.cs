@@ -1,6 +1,8 @@
 // Copyright (c) 2026 David Beusing
 // Licensed under the MIT License.
 
+using Xunit;
+
 using Depot.DocumentRendering;
 
 using PdfSharp.Pdf.IO;
