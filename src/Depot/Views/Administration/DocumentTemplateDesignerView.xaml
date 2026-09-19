@@ -1,0 +1,227 @@
+<UserControl x:Class="Depot.Views.Administration.DocumentTemplateDesignerView"
+	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:automation="clr-namespace:System.Windows.Automation;assembly=PresentationCore"
+	MinWidth="980"
+	MinHeight="640">
+	<UserControl.Resources>
+		<DrawingBrush x:Key="DesignerGridBrush" TileMode="Tile" Viewport="0,0,10,10" ViewportUnits="Absolute">
+			<DrawingBrush.Drawing>
+				<GeometryDrawing Brush="White">
+					<GeometryDrawing.Pen>
+						<Pen Brush="#FFE5E7EB" Thickness="0.5" />
+					</GeometryDrawing.Pen>
+					<GeometryDrawing.Geometry>
+						<GeometryGroup>
+							<LineGeometry StartPoint="10,0" EndPoint="10,10" />
+							<LineGeometry StartPoint="0,10" EndPoint="10,10" />
+						</GeometryGroup>
+					</GeometryDrawing.Geometry>
+				</GeometryDrawing>
+			</DrawingBrush.Drawing>
+		</DrawingBrush>
+	</UserControl.Resources>
+
+	<Grid Margin="20">
+		<Grid.RowDefinitions>
+			<RowDefinition Height="Auto" />
+			<RowDefinition Height="Auto" />
+			<RowDefinition Height="*" />
+			<RowDefinition Height="Auto" />
+		</Grid.RowDefinitions>
+
+		<StackPanel Grid.Row="0" Margin="0,0,0,12">
+			<TextBlock Text="{Binding Breadcrumb}" FontSize="12" Opacity="0.65" />
+			<TextBlock Text="Visual Document / PDF Designer" FontSize="24" FontWeight="SemiBold" Margin="0,4,0,0" />
+			<TextBlock Text="{Binding ModeText}" Margin="0,4,0,0" Opacity="0.75" />
+		</StackPanel>
+
+		<Grid Grid.Row="1" Margin="0,0,0,12">
+			<Grid.ColumnDefinitions>
+				<ColumnDefinition Width="220" />
+				<ColumnDefinition Width="240" />
+				<ColumnDefinition Width="*" />
+			</Grid.ColumnDefinitions>
+			<StackPanel Grid.Column="0" Margin="0,0,10,0">
+				<TextBlock Text="Document type" FontWeight="SemiBold" />
+				<ComboBox ItemsSource="{Binding DocumentTypes}" SelectedItem="{Binding SelectedType}" Margin="0,4,0,0"
+					AutomationProperties.Name="Document template type" />
+			</StackPanel>
+			<StackPanel Grid.Column="1" Margin="0,0,10,0">
+				<TextBlock Text="Version" FontWeight="SemiBold" />
+				<ComboBox ItemsSource="{Binding Versions}" SelectedItem="{Binding SelectedVersion}" DisplayMemberPath="DisplayName" Margin="0,4,0,0"
+					AutomationProperties.Name="Document template version" />
+			</StackPanel>
+			<WrapPanel Grid.Column="2" VerticalAlignment="Bottom">
+				<Button Content="New from Default" Command="{Binding NewFromDefaultCommand}" Margin="0,0,6,0" Padding="10,5" />
+				<Button Content="Duplicate" Command="{Binding DuplicateCommand}" Margin="0,0,6,0" Padding="10,5" />
+				<Button Content="Revert as Draft" Command="{Binding DuplicateCommand}" Margin="0,0,6,0" Padding="10,5" />
+				<Button Content="Save Draft" Command="{Binding SaveDraftCommand}" Margin="0,0,6,0" Padding="10,5" />
+				<Button Content="Preview" Command="{Binding PreviewCommand}" Margin="0,0,6,0" Padding="10,5" />
+				<Button Content="Activate Version" Command="{Binding ActivateCommand}" Margin="0,0,6,0" Padding="10,5" />
+				<Button Content="Reset Default" Command="{Binding ResetDefaultCommand}" Padding="10,5" />
+			</WrapPanel>
+		</Grid>
+
+		<Grid Grid.Row="2">
+			<Grid.ColumnDefinitions>
+				<ColumnDefinition Width="180" />
+				<ColumnDefinition Width="*" />
+				<ColumnDefinition Width="280" />
+			</Grid.ColumnDefinitions>
+
+			<Border Grid.Column="0" BorderBrush="#FFD1D5DB" BorderThickness="1" CornerRadius="4" Padding="12" Margin="0,0,12,0">
+				<ScrollViewer VerticalScrollBarVisibility="Auto">
+					<StackPanel>
+						<TextBlock Text="Toolbox" FontWeight="SemiBold" FontSize="15" Margin="0,0,0,10" />
+						<Button Content="Text" Tag="Text" Click="AddElement_Click" Margin="0,0,0,6" />
+						<Button Content="Bound Text" Tag="BoundText" Click="AddElement_Click" Margin="0,0,0,6" />
+						<Button Content="Image / Logo" Tag="Image" Click="AddElement_Click" Margin="0,0,0,6" />
+						<Button Content="Line" Tag="Line" Click="AddElement_Click" Margin="0,0,0,6" />
+						<Button Content="Rectangle" Tag="Rectangle" Click="AddElement_Click" Margin="0,0,0,6" />
+						<Button Content="Line Table" Tag="LineTable" Click="AddElement_Click" Margin="0,0,0,6" />
+						<Button Content="Totals Block" Tag="TotalsBlock" Click="AddElement_Click" Margin="0,0,0,6" />
+						<Button Content="Page Number" Tag="PageNumber" Click="AddElement_Click" Margin="0,0,0,12" />
+						<Separator Margin="0,2,0,10" />
+						<Button Content="Duplicate selection" Command="{Binding DuplicateElementsCommand}" Margin="0,0,0,6" />
+						<Button Content="Delete selection" Command="{Binding DeleteElementsCommand}" />
+						<TextBlock Text="Ctrl/Shift-click selects multiple elements. Arrow keys move; Shift+Arrow moves faster. Ctrl+D duplicates; Delete removes."
+							TextWrapping="Wrap" FontSize="11" Opacity="0.65" Margin="0,12,0,0" />
+					</StackPanel>
+				</ScrollViewer>
+			</Border>
+
+			<Grid Grid.Column="1" Margin="0,0,12,0">
+				<Grid.RowDefinitions>
+					<RowDefinition Height="Auto" />
+					<RowDefinition Height="*" />
+				</Grid.RowDefinitions>
+				<WrapPanel Margin="0,0,0,8">
+					<TextBlock Text="Zoom" VerticalAlignment="Center" Margin="0,0,6,0" />
+					<Slider Minimum="25" Maximum="200" Width="140" Value="{Binding ZoomPercent}" TickFrequency="25" IsSnapToTickEnabled="False"
+						AutomationProperties.Name="Canvas zoom" />
+					<TextBlock Text="{Binding ZoomPercent, StringFormat={}{0:0}%}" VerticalAlignment="Center" Width="52" Margin="6,0,12,0" />
+					<CheckBox Content="Grid" IsChecked="{Binding ShowGrid}" VerticalAlignment="Center" Margin="0,0,10,0" />
+					<CheckBox Content="Snap" IsChecked="{Binding SnapToGrid}" VerticalAlignment="Center" Margin="0,0,8,0" />
+					<TextBlock Text="Grid" VerticalAlignment="Center" Margin="0,0,4,0" />
+					<TextBox Width="42" Text="{Binding GridSize, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Grid size" />
+				</WrapPanel>
+				<ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Background="#FFF3F4F6">
+					<Border x:Name="DesignerPage" Width="{Binding PageWidth}" Height="{Binding PageHeight}" BorderBrush="#FF9CA3AF" BorderThickness="1"
+						HorizontalAlignment="Center" VerticalAlignment="Top" Margin="24">
+						<Border.LayoutTransform>
+							<ScaleTransform ScaleX="{Binding ZoomScale}" ScaleY="{Binding ZoomScale}" />
+						</Border.LayoutTransform>
+						<Border.Style>
+							<Style TargetType="Border">
+								<Setter Property="Background" Value="{StaticResource DesignerGridBrush}" />
+								<Style.Triggers>
+									<DataTrigger Binding="{Binding ShowGrid}" Value="False">
+										<Setter Property="Background" Value="White" />
+									</DataTrigger>
+								</Style.Triggers>
+							</Style>
+						</Border.Style>
+						<ListBox x:Name="CanvasElements"
+							ItemsSource="{Binding Elements}"
+							SelectionMode="Extended"
+							Background="Transparent"
+							BorderThickness="0"
+							Width="{Binding PageWidth}"
+							Height="{Binding PageHeight}"
+							SelectionChanged="CanvasElements_SelectionChanged"
+							PreviewKeyDown="CanvasElements_PreviewKeyDown"
+							PreviewMouseLeftButtonDown="CanvasElements_PreviewMouseLeftButtonDown"
+							PreviewMouseMove="CanvasElements_PreviewMouseMove"
+							PreviewMouseLeftButtonUp="CanvasElements_PreviewMouseLeftButtonUp"
+							AutomationProperties.Name="Document design canvas">
+							<ListBox.ItemsPanel>
+								<ItemsPanelTemplate>
+									<Canvas />
+								</ItemsPanelTemplate>
+							</ListBox.ItemsPanel>
+							<ListBox.ItemContainerStyle>
+								<Style TargetType="ListBoxItem">
+									<Setter Property="Canvas.Left" Value="{Binding X}" />
+									<Setter Property="Canvas.Top" Value="{Binding Y}" />
+									<Setter Property="Width" Value="{Binding Width}" />
+									<Setter Property="Height" Value="{Binding Height}" />
+									<Setter Property="MinHeight" Value="4" />
+									<Setter Property="Padding" Value="0" />
+									<Setter Property="HorizontalContentAlignment" Value="Stretch" />
+									<Setter Property="VerticalContentAlignment" Value="Stretch" />
+									<Setter Property="AutomationProperties.Name" Value="{Binding ElementType}" />
+								</Style>
+							</ListBox.ItemContainerStyle>
+							<ListBox.ItemTemplate>
+								<DataTemplate>
+									<Border BorderBrush="#FF6B7280" BorderThickness="1" Background="#12FFFFFF" Padding="2">
+										<TextBlock Text="{Binding DisplayText}" FontSize="{Binding FontSize}" TextTrimming="CharacterEllipsis"
+											VerticalAlignment="Center" HorizontalAlignment="Stretch" />
+									</Border>
+								</DataTemplate>
+							</ListBox.ItemTemplate>
+						</ListBox>
+					</Border>
+				</ScrollViewer>
+			</Grid>
+
+			<Border Grid.Column="2" BorderBrush="#FFD1D5DB" BorderThickness="1" CornerRadius="4" Padding="12">
+				<ScrollViewer VerticalScrollBarVisibility="Auto">
+					<StackPanel IsEnabled="{Binding IsEditing}">
+						<TextBlock Text="Properties" FontWeight="SemiBold" FontSize="15" Margin="0,0,0,10" />
+						<TextBlock Text="Template name" />
+						<TextBox Text="{Binding TemplateName, UpdateSourceTrigger=PropertyChanged}" Margin="0,3,0,10" AutomationProperties.Name="Template name" />
+						<TextBlock Text="Element ID" />
+						<TextBox Text="{Binding SelectedElement.Id, UpdateSourceTrigger=PropertyChanged}" Margin="0,3,0,8" AutomationProperties.Name="Element ID" />
+						<Grid Margin="0,0,0,8">
+							<Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition /></Grid.ColumnDefinitions>
+							<StackPanel Grid.Column="0" Margin="0,0,4,0"><TextBlock Text="X" /><TextBox Text="{Binding SelectedElement.X, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Element X" /></StackPanel>
+							<StackPanel Grid.Column="1" Margin="4,0,0,0"><TextBlock Text="Y" /><TextBox Text="{Binding SelectedElement.Y, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Element Y" /></StackPanel>
+						</Grid>
+						<Grid Margin="0,0,0,8">
+							<Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition /></Grid.ColumnDefinitions>
+							<StackPanel Grid.Column="0" Margin="0,0,4,0"><TextBlock Text="Width" /><TextBox Text="{Binding SelectedElement.Width, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Element width" /></StackPanel>
+							<StackPanel Grid.Column="1" Margin="4,0,0,0"><TextBlock Text="Height" /><TextBox Text="{Binding SelectedElement.Height, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Element height" /></StackPanel>
+						</Grid>
+						<TextBlock Text="Binding" />
+						<ComboBox ItemsSource="{Binding Bindings}" SelectedItem="{Binding SelectedElement.Binding, UpdateSourceTrigger=PropertyChanged}" IsEditable="True" Margin="0,3,0,8" AutomationProperties.Name="Element binding" />
+						<TextBlock Text="Text" />
+						<TextBox Text="{Binding SelectedElement.Text, UpdateSourceTrigger=PropertyChanged}" Margin="0,3,0,8" AcceptsReturn="True" AutomationProperties.Name="Element text" />
+						<TextBlock Text="Font" />
+						<TextBox Text="{Binding SelectedElement.Font, UpdateSourceTrigger=PropertyChanged}" Margin="0,3,0,8" AutomationProperties.Name="Font family" />
+						<Grid Margin="0,0,0,8">
+							<Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition /></Grid.ColumnDefinitions>
+							<StackPanel Grid.Column="0" Margin="0,0,4,0"><TextBlock Text="Font size" /><TextBox Text="{Binding SelectedElement.FontSize, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Font size" /></StackPanel>
+							<StackPanel Grid.Column="1" Margin="4,0,0,0"><TextBlock Text="Weight" /><ComboBox ItemsSource="{Binding FontWeights}" SelectedItem="{Binding SelectedElement.FontWeight}" AutomationProperties.Name="Font weight" /></StackPanel>
+						</Grid>
+						<TextBlock Text="Alignment" />
+						<ComboBox ItemsSource="{Binding Alignments}" SelectedItem="{Binding SelectedElement.Alignment}" Margin="0,3,0,8" AutomationProperties.Name="Text alignment" />
+						<TextBlock Text="Format" />
+						<TextBox Text="{Binding SelectedElement.Format, UpdateSourceTrigger=PropertyChanged}" Margin="0,3,0,8" AutomationProperties.Name="Element format" />
+						<TextBlock Text="Visibility binding" />
+						<ComboBox ItemsSource="{Binding Bindings}" SelectedItem="{Binding SelectedElement.Visibility, UpdateSourceTrigger=PropertyChanged}" IsEditable="True" Margin="0,3,0,8" AutomationProperties.Name="Visibility binding" />
+						<CheckBox Content="Border" IsChecked="{Binding SelectedElement.Border}" Margin="0,2,0,6" />
+						<CheckBox Content="Repeat on every page" IsChecked="{Binding SelectedElement.RepeatOnEveryPage}" Margin="0,0,0,6" />
+						<TextBlock Text="Placement" />
+						<ComboBox ItemsSource="{Binding Placements}" SelectedItem="{Binding SelectedElement.Placement}" Margin="0,3,0,8" AutomationProperties.Name="Element placement" />
+						<TextBlock Text="Row height" />
+						<TextBox Text="{Binding SelectedElement.RowHeight, UpdateSourceTrigger=PropertyChanged}" Margin="0,3,0,8" AutomationProperties.Name="Table row height" />
+					</StackPanel>
+				</ScrollViewer>
+			</Border>
+		</Grid>
+
+		<Grid Grid.Row="3" Margin="0,12,0,0">
+			<Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+			<StackPanel>
+				<TextBlock Text="{Binding ValidationSummary}" FontWeight="SemiBold" />
+				<ItemsControl ItemsSource="{Binding ValidationErrors}">
+					<ItemsControl.ItemTemplate><DataTemplate><TextBlock Text="{Binding}" TextWrapping="Wrap" FontSize="11" /></DataTemplate></ItemsControl.ItemTemplate>
+				</ItemsControl>
+				<TextBlock Text="{Binding PreviewStatus}" FontSize="11" Opacity="0.7" TextWrapping="Wrap" />
+			</StackPanel>
+			<TextBlock Grid.Column="1" Text="A4 · 595 × 842 pt" VerticalAlignment="Bottom" Opacity="0.65" />
+		</Grid>
+	</Grid>
+</UserControl>

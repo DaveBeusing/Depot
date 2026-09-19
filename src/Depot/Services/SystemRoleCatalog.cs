@@ -120,6 +120,7 @@ public static class SystemRoleCatalog
 			ApplicationPermission.DatabaseView, ApplicationPermission.DatabaseManage,
 			ApplicationPermission.AuditLogView, ApplicationPermission.AuditLogExport,
 			ApplicationPermission.SecurityEventsView, ApplicationPermission.SecurityEventsManage,
+			ApplicationPermission.DocumentTemplatesView, ApplicationPermission.DocumentTemplatesManage,
 			ApplicationPermission.AdministrationView))
 	];
 

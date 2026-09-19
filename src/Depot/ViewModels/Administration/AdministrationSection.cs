@@ -14,6 +14,7 @@ public enum AdministrationSection
 	SecurityCenter,
 	Roles,
 	Company,
+	DocumentDesigner,
 	Database,
 	AuditLog,
 	Privacy,

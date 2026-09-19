@@ -5,9 +5,15 @@ namespace Depot.DocumentRendering;
 
 public static class DefaultDocumentTemplates
 {
-	private static readonly Lazy<DocumentTemplateCatalog> CatalogFactory = new(() => new DocumentTemplateCatalog(BuildTemplates()));
+	private static readonly Lazy<IReadOnlyList<DocumentTemplate>> DefaultsFactory = new(BuildTemplates);
+	private static readonly Lazy<DocumentTemplateRuntimeCatalog> RuntimeFactory = new(() => new DocumentTemplateRuntimeCatalog(DefaultsFactory.Value));
 
-	public static DocumentTemplateCatalog Catalog => CatalogFactory.Value;
+	public static DocumentTemplateCatalog Catalog => RuntimeFactory.Value.Snapshot;
+	public static IReadOnlyList<DocumentTemplate> Defaults => DefaultsFactory.Value;
+	internal static DocumentTemplateRuntimeCatalog Runtime => RuntimeFactory.Value;
+
+	public static DocumentTemplate GetDefault(DocumentTemplateType type) =>
+		DefaultsFactory.Value.Single(template => template.Type == type);
 
 	private static IReadOnlyList<DocumentTemplate> BuildTemplates() =>
 	[

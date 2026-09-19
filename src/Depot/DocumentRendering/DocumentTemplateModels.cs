@@ -70,6 +70,7 @@ public sealed record DocumentTemplateElement
 	public DocumentTemplateFontWeight FontWeight { get; init; }
 	public DocumentTemplateAlignment Alignment { get; init; }
 	public string? Format { get; init; }
+	public bool Border { get; init; }
 	public string? Visibility { get; init; }
 	public string? Binding { get; init; }
 	public string? Text { get; init; }
