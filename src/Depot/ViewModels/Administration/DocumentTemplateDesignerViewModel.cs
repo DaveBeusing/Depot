@@ -4,6 +4,7 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Text.Json;
 
 using Depot.Commands;
 using Depot.DocumentRendering;
@@ -824,17 +825,8 @@ public sealed class DocumentTemplateDesignerViewModel : BaseViewModel
 	private bool SnapshotsEqual(DesignerSnapshot left, DesignerSnapshot right) =>
 		string.Equals(SnapshotFingerprint(left), SnapshotFingerprint(right), StringComparison.Ordinal);
 
-	private string SnapshotFingerprint(DesignerSnapshot snapshot) =>
-		DocumentTemplateSerializer.Serialize(new DocumentTemplate
-		{
-			Id = string.IsNullOrWhiteSpace(snapshot.TemplateName) ? "untitled-template" : snapshot.TemplateName.Trim(),
-			Type = SelectedType,
-			Version = 1,
-			IsActive = false,
-			PageWidth = PageWidth,
-			PageHeight = PageHeight,
-			Elements = snapshot.Elements.Select(CloneElement).ToArray()
-		});
+	private static string SnapshotFingerprint(DesignerSnapshot snapshot) =>
+		JsonSerializer.Serialize(snapshot);
 
 	private void PushUndo(DesignerSnapshot snapshot)
 	{
