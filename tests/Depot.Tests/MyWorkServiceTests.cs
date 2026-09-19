@@ -34,7 +34,7 @@ public sealed class MyWorkServiceTests
 	public async Task SectionsAreDeterministicAndBounded()
 	{
 		var authorization = SignedIn(ApplicationPermission.DashboardView);
-		var values = Enumerable.Range(1, MyWorkService.MaximumItemsPerSection + 20)
+		var values = Enumerable.Range(1, MyWorkService.MaximumItemsPerSection + 5)
 			.Select(index => Item(MyWorkSectionKind.NeedsMyAction, index, index % 2 == 0 ? MyWorkPriority.High : MyWorkPriority.Normal))
 			.Concat([Item(MyWorkSectionKind.Exceptions, 1000, MyWorkPriority.Critical)])
 			.ToArray();

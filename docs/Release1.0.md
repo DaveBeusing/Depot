@@ -165,7 +165,7 @@ The repository conformance boundary for the currently advertised XRechnung and Z
 
 All five Track A repository implementation packages have been addressed: repository governance, release pipeline/channels, production-signing acceptance path, production operations/disaster recovery, and accessibility/desktop production acceptance.
 
-The unified closure procedure is documented in [Track A – Final Acceptance Closure](TrackAAcceptanceClosure.md). The controlled template remains top-level `BLOCKED`: H1 is `PASS`, H2 is repository-level `PASS`, H3 is `PRODUCTION_RC_REQUIRED`, H4 is `DEPLOYMENT_REQUIRED`, and H5 is `MANUAL_REQUIRED`.
+The unified closure procedure is documented in [Track A – Final Acceptance Closure](TrackAAcceptanceClosure.md). The controlled template remains top-level `BLOCKED`: H1 is currently `BLOCKED` by live ruleset drift, H2 is repository-level `PASS`, H3 is `PRODUCTION_RC_REQUIRED`, H4 is `DEPLOYMENT_REQUIRED`, and H5 is `MANUAL_REQUIRED`.
 
 Track A becomes production-accepted only after a controlled evidence file for the exact Stable RC passes `Test-TrackAAcceptance.ps1 -RequirePass`. Repository CI validates the contract structure but never promotes missing external/manual evidence to `PASS`.
 
@@ -173,7 +173,7 @@ Track A becomes production-accepted only after a controlled evidence file for th
 
 The read-only-first Depot 1.0 gap reconciliation is complete. [Depot 1.0 Release Candidate Readiness](ReleaseCandidateReadiness.md) records the classification and decision boundary.
 
-No currently known category-1 implementation defect or category-2 generic automated-evidence defect remains inside the advertised repository product boundary. H1 governance is now closed; remaining blockers are production-RC/deployment/manual/legal acceptance or demand-driven extensions outside the current 1.0 promise.
+The 2026-09-19 stabilization repairs the known warning-free build, Help-baseline and shell-focus regressions and adds stronger regression coverage. H1 governance is currently reopened because the live ruleset no longer requires the five aggregate checks; restore and validate that contract before H3. H3/H4/H5 and deployment/legal acceptance remain separate blockers.
 
 Do not open another generic feature/hardening package solely because the product has not yet reached 1.0. New repository repair work should be evidence-driven by a reproducible failing gate or RC acceptance finding.
 

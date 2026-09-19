@@ -9,11 +9,12 @@
   "packages": {
     "H1": {
       "name": "Repository Governance & Required Gates",
-      "status": "PASS",
+      "status": "BLOCKED",
       "evidenceReference": "https://api.github.com/repos/DaveBeusing/Depot/rulesets/23590604",
-      "verifiedBy": "GitHub rulesets API",
-      "verifiedAtUtc": "2026-09-17T10:01:43.983Z",
-      "rulesetId": 23590604
+      "verifiedBy": "UNSET",
+      "verifiedAtUtc": "UNSET",
+      "rulesetId": 23590604,
+      "blockingReason": "Live ruleset 23590604 currently omits the five required aggregate status checks after the temporary development-phase relaxation."
     },
     "H2": {
       "name": "Single Release Pipeline & Release Channels",
@@ -51,6 +52,7 @@
     }
   },
   "knownBlockingIssues": [
+    "Restore the five aggregate required status checks in live ruleset 23590604 and rerun the live repository-governance validator.",
     "Complete a real production-signed Stable release-candidate acceptance run.",
     "Complete deployment-specific disaster-recovery acceptance for the intended production deployment.",
     "Complete exact-release-candidate manual desktop accessibility acceptance."

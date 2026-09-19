@@ -232,7 +232,8 @@ public sealed class RbacTestsPersonaProfiles
 			{
 				ApplicationPermission.DashboardView, ApplicationPermission.InventoryView, ApplicationPermission.ItemsView, ApplicationPermission.StockMovementsView,
 				ApplicationPermission.PurchasingView, ApplicationPermission.PurchaseOrdersView,
-				ApplicationPermission.GoodsReceiptsView, ApplicationPermission.GoodsReceiptsCreate, ApplicationPermission.GoodsReceiptsPost, ApplicationPermission.GoodsReceiptsReverse
+				ApplicationPermission.GoodsReceiptsView, ApplicationPermission.GoodsReceiptsCreate, ApplicationPermission.GoodsReceiptsPost, ApplicationPermission.GoodsReceiptsReverse,
+				ApplicationPermission.SupplierReturnsView, ApplicationPermission.SupplierReturnsCreate, ApplicationPermission.SupplierReturnsEdit, ApplicationPermission.SupplierReturnsPost, ApplicationPermission.SupplierReturnsReverse
 			}
 		},
 		{
@@ -253,6 +254,8 @@ public sealed class RbacTestsPersonaProfiles
 				ApplicationPermission.StockMovementsView, ApplicationPermission.StockMovementsCreate, ApplicationPermission.StockMovementsPost, ApplicationPermission.StockMovementsReverse,
 				ApplicationPermission.StockTransfersView, ApplicationPermission.StockTransfersCreate, ApplicationPermission.StockTransfersEdit, ApplicationPermission.StockTransfersPost, ApplicationPermission.StockTransfersReverse,
 				ApplicationPermission.InventoryCountsView, ApplicationPermission.InventoryCountsCreate, ApplicationPermission.InventoryCountsEdit, ApplicationPermission.InventoryCountsPost, ApplicationPermission.InventoryCountsReverse,
+				ApplicationPermission.MaterialIssuesView, ApplicationPermission.MaterialIssuesCreate, ApplicationPermission.MaterialIssuesEdit, ApplicationPermission.MaterialIssuesPost, ApplicationPermission.MaterialIssuesReverse,
+				ApplicationPermission.MaterialReturnsView, ApplicationPermission.MaterialReturnsCreate, ApplicationPermission.MaterialReturnsEdit, ApplicationPermission.MaterialReturnsPost, ApplicationPermission.MaterialReturnsReverse,
 				ApplicationPermission.ReportsView, ApplicationPermission.ReportsExport
 			}
 		},
@@ -345,6 +348,7 @@ public sealed class RbacTestsPersonaProfiles
 				ApplicationPermission.DatabaseView, ApplicationPermission.DatabaseManage,
 				ApplicationPermission.AuditLogView, ApplicationPermission.AuditLogExport,
 				ApplicationPermission.SecurityEventsView, ApplicationPermission.SecurityEventsManage,
+				ApplicationPermission.DocumentTemplatesView, ApplicationPermission.DocumentTemplatesManage,
 				ApplicationPermission.AdministrationView
 			}
 		}

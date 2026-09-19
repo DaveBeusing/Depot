@@ -9,6 +9,7 @@ using Xunit;
 
 namespace Depot.Tests;
 
+[Collection(SqliteSchemaInitializationCollection.Name)]
 public sealed class InventoryCountMigrationTests : IDisposable
 {
 	private readonly string _databasePath = Path.Combine(Path.GetTempPath(), $"depot-count-migration-{Guid.NewGuid():N}.db");

@@ -6,7 +6,7 @@ Depot is on the `0.15.x-preview` development line. Finance, inventory, purchasin
 
 ## Repository governance
 
-Repository governance exposes five stable aggregate GitHub Actions checks required for `master`:
+Repository governance defines five stable aggregate GitHub Actions checks for `master`:
 
 - `CI Required Gate`;
 - `Quality Required Gate`;
@@ -14,14 +14,9 @@ Repository governance exposes five stable aggregate GitHub Actions checks requir
 - `Packaged E2E Required Gate`;
 - `Database Provider Required Gate`.
 
-The source-controlled ruleset template is `.github/rulesets/MasterGovernance.json`. `scripts/operations/Test-RepositoryGovernance.ps1` validates the complete template contract and verifies that all five aggregate workflow job names remain present.
+The source-controlled ruleset template remains `.github/rulesets/MasterGovernance.json`. The live GitHub ruleset `23590604` is active and still enforces pull-request delivery plus deletion/non-fast-forward protection, but its required-status-check rule is currently absent after the temporary development-phase relaxation. **H1 is therefore reopened / BLOCKED until live enforcement is restored to the template and the live validator passes again.**
 
-**H1 repository governance is now PASS.** GitHub ruleset `23590604` (`Depot master governance`) is active, targets exactly `refs/heads/master`, requires pull-request delivery and the five aggregate checks, blocks deletion/non-fast-forward updates and exposes no bypass actor. `operations/TrackAAcceptance.example.json` records the live ruleset evidence reference and ruleset ID.
-
-Future live-ruleset drift reopens H1; a source-controlled template alone is not sufficient if GitHub enforcement is removed or weakened.
-
-See [Repository Governance](RepositoryGovernance.md) and [Track A – Final Acceptance Closure](TrackAAcceptanceClosure.md).
-
+## Release pipeline and production acceptance
 ## Release pipeline and production acceptance
 
 `.github/workflows/release-integrity.yml` remains the authoritative Source-to-Release path. It performs locked restore, warning-free Release build, regression testing, shared packaged publishing, channel validation, signing policy, manifest/hash/evidence generation and GitHub Release publication from the exact validated artifact.
@@ -30,9 +25,9 @@ Pull-request release validation intentionally focuses on release/package/signing
 
 Preview and Stable channels remain distinct. Preview may remain unsigned. Stable requires the production signing acceptance path to report `PASS` before publication.
 
-Track A repository implementation is complete, and H1/H2 are now closed:
+Track A repository implementation remains complete, but the current acceptance state is:
 
-- H1 Repository Governance: `PASS`;
+- H1 Repository Governance: `BLOCKED` by live ruleset drift until the five aggregate required checks are restored;
 - H2 Release Pipeline & Channels: `PASS` at the repository implementation boundary;
 - H3 Production Signing: `PRODUCTION_RC_REQUIRED`;
 - H4 Production Operations & DR: `DEPLOYMENT_REQUIRED`;
