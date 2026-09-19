@@ -54,6 +54,20 @@ public sealed class AdaptiveHomeUxTests
 	}
 
 	[Fact]
+	public void OperationalPermissionsPrioritizePersonaRelevantKpisWithoutRoleChecks()
+	{
+		var root = FindRepositoryRoot();
+		var source = File.ReadAllText(Path.Combine(root, "src", "Depot", "ViewModels", "DashboardViewModel.cs"));
+
+		Assert.Contains("warehouseOperational", source, StringComparison.Ordinal);
+		Assert.Contains("fulfillmentOperational", source, StringComparison.Ordinal);
+		Assert.Contains("purchasingOperational", source, StringComparison.Ordinal);
+		Assert.Contains("treasuryOperational", source, StringComparison.Ordinal);
+		Assert.Contains("OrderByDescending(candidate => candidate.Priority)", source, StringComparison.Ordinal);
+		Assert.DoesNotContain("Role ==", source, StringComparison.Ordinal);
+	}
+
+	[Fact]
 	public void WorkspaceContinuationIsCompactAndDoesNotDuplicateOperationalQuickActions()
 	{
 		var root = FindRepositoryRoot();

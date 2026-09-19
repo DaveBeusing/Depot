@@ -201,56 +201,125 @@ public sealed class DashboardViewModel : BaseViewModel, IDisposable
 
 	private void BuildAdaptiveKpis()
 	{
-		var cards = new List<DashboardKpiCard>();
+		var candidates = new List<(DashboardKpiCard Card, int Priority, int Sequence)>();
 		var items = _myWorkSnapshot?.Sections.SelectMany(section => section.Items).ToArray() ?? [];
 		var today = DateTime.Today;
+		var sequence = 0;
 
-		void Add(string title, string value, string detail, string routeId) => cards.Add(new DashboardKpiCard(title, value, detail, routeId));
+		bool HasAny(params ApplicationPermission[] permissions) => _authorization.HasAnyPermission(permissions);
+		void Add(string title, string value, string detail, string routeId, int priority) =>
+			candidates.Add((new DashboardKpiCard(title, value, detail, routeId), priority, sequence++));
+
+		var receivablesOperational = HasAny(ApplicationPermission.FinanceReceivablePaymentsPost, ApplicationPermission.FinanceDunningManage);
+		var payablesOperational = HasAny(
+			ApplicationPermission.FinanceSupplierInvoicesCreate,
+			ApplicationPermission.FinanceSupplierInvoicesSubmit,
+			ApplicationPermission.FinanceSupplierInvoicesApprove,
+			ApplicationPermission.FinanceSupplierMatchExceptionsApprove,
+			ApplicationPermission.FinanceSupplierInvoicesPost);
+		var treasuryOperational = HasAny(
+			ApplicationPermission.FinanceBankingManage,
+			ApplicationPermission.FinanceBankStatementsCreate,
+			ApplicationPermission.FinanceBankReconciliationManage,
+			ApplicationPermission.FinancePaymentProposalsCreate,
+			ApplicationPermission.FinancePaymentProposalsApprove,
+			ApplicationPermission.FinancePaymentRunsPost);
+		var salesOperational = HasAny(
+			ApplicationPermission.SalesQuotesCreate,
+			ApplicationPermission.SalesQuotesEdit,
+			ApplicationPermission.SalesOrdersCreate,
+			ApplicationPermission.SalesOrdersEdit,
+			ApplicationPermission.SalesOrdersApprove,
+			ApplicationPermission.SalesOrdersRelease);
+		var fulfillmentOperational = HasAny(
+			ApplicationPermission.ShipmentsCreate,
+			ApplicationPermission.ShipmentsEdit,
+			ApplicationPermission.ShipmentsPost);
+		var purchasingOperational = HasAny(
+			ApplicationPermission.PurchaseOrdersCreate,
+			ApplicationPermission.PurchaseOrdersEdit,
+			ApplicationPermission.PurchaseOrdersSubmit,
+			ApplicationPermission.PurchaseOrdersApprove,
+			ApplicationPermission.PurchaseOrdersOrder,
+			ApplicationPermission.GoodsReceiptsCreate,
+			ApplicationPermission.GoodsReceiptsPost);
+		var warehouseOperational = HasAny(
+			ApplicationPermission.InventoryCountsCreate,
+			ApplicationPermission.InventoryCountsEdit,
+			ApplicationPermission.InventoryCountsPost,
+			ApplicationPermission.StockTransfersCreate,
+			ApplicationPermission.StockTransfersEdit,
+			ApplicationPermission.StockTransfersPost);
+		var inventoryOperational = HasAny(
+			ApplicationPermission.InventoryManage,
+			ApplicationPermission.StockMovementsCreate,
+			ApplicationPermission.StockMovementsPost,
+			ApplicationPermission.InventoryCountsCreate,
+			ApplicationPermission.StockTransfersCreate);
+		var administrationOperational = HasAny(
+			ApplicationPermission.UsersManage,
+			ApplicationPermission.RolesManage,
+			ApplicationPermission.UserSessionsTerminate,
+			ApplicationPermission.SecurityEventsManage,
+			ApplicationPermission.DatabaseManage);
+		var broadReadOnlyProjection =
+			_authorization.HasPermission(ApplicationPermission.ReportsView) &&
+			_authorization.HasPermission(ApplicationPermission.PurchaseOrdersView) &&
+			_authorization.HasPermission(ApplicationPermission.SalesOrdersView) &&
+			_authorization.HasPermission(ApplicationPermission.FinanceReceivablesView) &&
+			_authorization.HasPermission(ApplicationPermission.FinanceFinancialReportingView);
 
 		if (_authorization.HasPermission(ApplicationPermission.FinanceReceivablesView))
 		{
 			var overdue = items.Count(item => item.Kind == MyWorkItemKind.ReceivableOpenItem && item.DueAt is { } due && due.Date < today);
-			Add("Overdue receivables", overdue.ToString("N0"), "Customer open items past due", "finance.receivables");
+			Add("Overdue receivables", overdue.ToString("N0"), "Customer open items past due", "finance.receivables", receivablesOperational ? 520 : 240);
 		}
 		if (_authorization.HasPermission(ApplicationPermission.FinancePayablesView))
 		{
 			var supplierWork = items.Count(item => item.Kind == MyWorkItemKind.SupplierDocument && item.Section == MyWorkSectionKind.NeedsMyAction);
-			Add("Payables requiring action", supplierWork.ToString("N0"), "Supplier documents in your action queue", "finance.payables");
+			Add("Payables requiring action", supplierWork.ToString("N0"), "Supplier documents in your action queue", "finance.payables", payablesOperational ? 520 : 240);
 		}
 		if (_authorization.HasPermission(ApplicationPermission.FinanceBankingView))
 		{
 			var unreconciled = items.Count(item => item.Kind == MyWorkItemKind.BankStatementLine);
 			var proposals = items.Count(item => item.Kind == MyWorkItemKind.PaymentRun && item.Section == MyWorkSectionKind.NeedsMyAction);
-			Add("Unreconciled bank items", unreconciled.ToString("N0"), "Statement lines still requiring reconciliation", "finance.banking");
-			Add("Payment proposals", proposals.ToString("N0"), "Payment runs requiring review or execution", "finance.banking");
+			Add("Unreconciled bank items", unreconciled.ToString("N0"), "Statement lines still requiring reconciliation", "finance.banking", treasuryOperational ? 540 : 240);
+			Add("Payment proposals", proposals.ToString("N0"), "Payment runs requiring review or execution", "finance.banking", treasuryOperational ? 530 : 230);
 		}
 		if (SalesMetrics is { } sales)
 		{
-			Add("Net sales", $"{sales.NetSalesThisMonth:N2} EUR", "Current month", "role-centers.sales-workspace");
-			Add("Backorders", sales.BackorderedOrders.ToString("N0"), "Sales orders with backordered quantity", "role-centers.sales-control");
-			Add("Ready to ship", sales.ReadyToShipOrders.ToString("N0"), "Released orders ready for fulfillment", "role-centers.fulfillment-workspace");
+			Add("Net sales", $"{sales.NetSalesThisMonth:N2} EUR", "Current month", "role-centers.sales-workspace", salesOperational ? 510 : 220);
+			Add("Backorders", sales.BackorderedOrders.ToString("N0"), "Sales orders with backordered quantity", "role-centers.sales-control", salesOperational ? 500 : 210);
+			Add("Ready to ship", sales.ReadyToShipOrders.ToString("N0"), "Released orders ready for fulfillment", "role-centers.fulfillment-workspace", fulfillmentOperational ? 550 : salesOperational ? 450 : 200);
 		}
 		if (PurchasingMetrics is { } purchasing)
 		{
-			Add("Overdue deliveries", purchasing.OverdueDeliveries.ToString("N0"), "Supplier deliveries past expected date", "role-centers.buyer-workbench");
-			Add("Open purchasing work", (purchasing.PendingOrApprovedOrders + purchasing.PartiallyReceivedOrders).ToString("N0"), "Orders pending or partially received", "role-centers.buyer-workbench");
+			Add("Overdue deliveries", purchasing.OverdueDeliveries.ToString("N0"), "Supplier deliveries past expected date", "role-centers.buyer-workbench", purchasingOperational ? 510 : 220);
+			Add("Open purchasing work", (purchasing.PendingOrApprovedOrders + purchasing.PartiallyReceivedOrders).ToString("N0"), "Orders pending or partially received", "role-centers.buyer-workbench", purchasingOperational ? 500 : 210);
 		}
-		if (WarehouseMetrics is { } warehouse)
+		if (WarehouseMetrics is { } warehouse && (warehouseOperational || broadReadOnlyProjection))
 		{
-			Add("Counts ready for review", warehouse.InventoryCountsAwaitingReviewOrPosting.ToString("N0"), "Inventory counts awaiting review or posting", "role-centers.inventory-control-workspace");
-			Add("Open transfers", warehouse.OpenTransfers.ToString("N0"), "Stock transfers still in progress", "role-centers.inventory-control-workspace");
+			Add("Counts ready for review", warehouse.InventoryCountsAwaitingReviewOrPosting.ToString("N0"), "Inventory counts awaiting review or posting", "role-centers.inventory-control-workspace", warehouseOperational ? 540 : 200);
+			Add("Open transfers", warehouse.OpenTransfers.ToString("N0"), "Stock transfers still in progress", "role-centers.inventory-control-workspace", warehouseOperational ? 530 : 190);
 		}
 		if (ApprovalSummary is { } approvals)
-			Add("Pending approvals", approvals.OpenCount.ToString("N0"), "Purchase and sales decisions awaiting review", "role-centers.approval-inbox");
+			Add("Pending approvals", approvals.OpenCount.ToString("N0"), "Purchase and sales decisions awaiting review", "role-centers.approval-inbox", 560);
 		if (HasCoreInventoryMetrics)
 		{
-			Add("Inventory value", $"{TotalInventoryValue:N2} EUR", $"{TotalStockQuantity:N0} stock units", "inventory.overview");
-			Add("Inventory items", TotalItems.ToString("N0"), $"{TotalMovements:N0} recorded movements", "inventory.overview");
+			Add("Inventory value", $"{TotalInventoryValue:N2} EUR", $"{TotalStockQuantity:N0} stock units", "inventory.overview", inventoryOperational ? 330 : 180);
+			Add("Inventory items", TotalItems.ToString("N0"), $"{TotalMovements:N0} recorded movements", "inventory.overview", inventoryOperational ? 320 : 170);
 		}
 		if (AdministrationMetrics is { } administration)
-			Add("Online users", administration.OnlineUsers.ToString("N0"), $"{administration.ActiveSessions:N0} active sessions", "role-centers.application-administration");
+			Add("Online users", administration.OnlineUsers.ToString("N0"), $"{administration.ActiveSessions:N0} active sessions", "role-centers.application-administration", administrationOperational ? 500 : 160);
 
-		CollectionSynchronizer.Replace(AdaptiveKpis, cards.Take(5).ToArray());
+		CollectionSynchronizer.Replace(
+			AdaptiveKpis,
+			candidates
+				.OrderByDescending(candidate => candidate.Priority)
+				.ThenBy(candidate => candidate.Sequence)
+				.Take(5)
+				.Select(candidate => candidate.Card)
+				.ToArray());
 		OnPropertyChanged(nameof(HasAdaptiveKpis));
 	}
 
