@@ -3,6 +3,7 @@
 
 using System.Collections.Specialized;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Input;
 
@@ -69,6 +70,44 @@ public sealed class OperationPanel : Control
 	public string HelpTopicId { get => (string)GetValue(HelpTopicIdProperty); set => SetValue(HelpTopicIdProperty, value); }
 }
 
+public sealed record WorkflowStatusPresentation(string Text, string Glyph, StatusBadgeVariant Variant);
+
+public static class WorkflowStatusLanguage
+{
+	public static WorkflowStatusPresentation Resolve(string? status)
+	{
+		var value = status?.Trim() ?? string.Empty;
+		var text = SplitWords(value);
+		var technicalStatus = new string(value.Where(char.IsLetterOrDigit).ToArray()).ToUpperInvariant();
+		var (glyph, variant) = technicalStatus switch
+		{
+			"DRAFT" => ("○", StatusBadgeVariant.Neutral),
+			"WAITING" or "PENDING" or "PENDINGAPPROVAL" or "PARTIALLYRECEIVED" or "COUNTING" or "REVIEW" => ("…", StatusBadgeVariant.Warning),
+			"READY" or "ACTIVE" or "INPROGRESS" or "OPEN" => ("→", StatusBadgeVariant.Primary),
+			"DUETODAY" => ("!", StatusBadgeVariant.Warning),
+			"APPROVED" or "ORDERED" or "RECEIVED" or "POSTED" or "COMPLETED" or "CLOSED" or "PAID" => ("✓", StatusBadgeVariant.Success),
+			"REJECTED" or "CANCELLED" => ("×", StatusBadgeVariant.Error),
+			"REVERSED" => ("↶", StatusBadgeVariant.Error),
+			"ERROR" or "FAILED" or "BLOCKED" or "OVERDUE" => ("!", StatusBadgeVariant.Error),
+			"ARCHIVED" or "DISABLED" or "INACTIVE" => ("•", StatusBadgeVariant.Muted),
+			_ => ("•", StatusBadgeVariant.Neutral)
+		};
+		return new WorkflowStatusPresentation(text, glyph, variant);
+	}
+
+	private static string SplitWords(string value)
+	{
+		if (string.IsNullOrWhiteSpace(value)) return "Unknown";
+		var result = new System.Text.StringBuilder(value.Length + 4);
+		for (var index = 0; index < value.Length; index++)
+		{
+			if (index > 0 && char.IsUpper(value[index]) && char.IsLower(value[index - 1])) result.Append(' ');
+			result.Append(value[index]);
+		}
+		return result.ToString();
+	}
+}
+
 public sealed class DocumentStatusBadge : StatusBadge
 {
 	public static readonly DependencyProperty StatusProperty = DependencyProperty.Register(
@@ -82,30 +121,10 @@ public sealed class DocumentStatusBadge : StatusBadge
 	private static void OnStatusChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs args)
 	{
 		var badge = (DocumentStatusBadge)dependencyObject;
-		var status = args.NewValue as string ?? string.Empty;
-		badge.Content = SplitWords(status);
-		var technicalStatus = new string(status.Where(char.IsLetterOrDigit).ToArray()).ToUpperInvariant();
-		badge.Variant = technicalStatus switch
-		{
-			"ACTIVE" or "INPROGRESS" or "OPEN" => StatusBadgeVariant.Primary,
-			"APPROVED" or "ORDERED" or "RECEIVED" or "POSTED" or "COMPLETED" or "CLOSED" or "PAID" => StatusBadgeVariant.Success,
-			"PENDING" or "PENDINGAPPROVAL" or "PARTIALLYRECEIVED" or "COUNTING" or "REVIEW" => StatusBadgeVariant.Warning,
-			"REJECTED" or "CANCELLED" or "REVERSED" or "ERROR" or "FAILED" or "BLOCKED" or "OVERDUE" => StatusBadgeVariant.Error,
-			"ARCHIVED" or "DISABLED" or "INACTIVE" => StatusBadgeVariant.Muted,
-			_ => StatusBadgeVariant.Neutral
-		};
-	}
-
-	private static string SplitWords(string value)
-	{
-		if (string.IsNullOrWhiteSpace(value)) return "Unknown";
-		var result = new System.Text.StringBuilder(value.Length + 4);
-		for (var index = 0; index < value.Length; index++)
-		{
-			if (index > 0 && char.IsUpper(value[index]) && char.IsLower(value[index - 1])) result.Append(' ');
-			result.Append(value[index]);
-		}
-		return result.ToString();
+		var presentation = WorkflowStatusLanguage.Resolve(args.NewValue as string);
+		badge.Content = $"{presentation.Glyph} {presentation.Text}";
+		badge.Variant = presentation.Variant;
+		AutomationProperties.SetName(badge, presentation.Text);
 	}
 }
 

@@ -76,7 +76,8 @@ public partial class MainWindow : Window
 		if ((modifiers & ModifierKeys.Alt) != 0 && key == Key.Left) { _ = NavigateHistoryAsync(false); e.Handled = true; return; }
 		if ((modifiers & ModifierKeys.Alt) != 0 && key == Key.Right) { _ = NavigateHistoryAsync(true); e.Handled = true; return; }
 		if ((modifiers & ModifierKeys.Control) == 0) return;
-		if (key == Key.W) { WorkspaceTabs.CloseActiveTab(); e.Handled = true; }
+		if (key == Key.T && (modifiers & ModifierKeys.Shift) != 0) { WorkspaceTabs.ReopenLastClosedTab(); e.Handled = true; }
+		else if (key == Key.W) { WorkspaceTabs.CloseActiveTab(); e.Handled = true; }
 		else if (key == Key.Tab) { WorkspaceTabs.SelectRelativeTab((modifiers & ModifierKeys.Shift) != 0 ? -1 : 1); e.Handled = true; }
 		else if (key == Key.P && (modifiers & ModifierKeys.Shift) != 0) { OpenPalette(ShellPaletteMode.Commands); e.Handled = true; }
 		else if (key == Key.P) { OpenPalette(ShellPaletteMode.QuickOpen); e.Handled = true; }

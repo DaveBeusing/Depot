@@ -19,14 +19,14 @@ The old shared administrator is not disabled merely by opening a database. If it
 2. Enter your Depot email/login and password.
 3. Select **Sign in**.
 4. Depot opens the tabless Welcome page.
-5. Select a module from the activity bar or use **Ctrl+P**.
+5. Continue from your default workspace, review **My Work**, or use **Ctrl+K** / **Ctrl+P** to find permitted work.
 
 Repeated failed sign-in attempts are temporarily throttled per account. Invalid credentials are shown as one inline authentication message.
 
 ## Result
 Depot shows only modules permitted by your active roles. No workspace tab is created automatically after sign-in. Closing the final tab returns to Welcome.
 
-Use **Ctrl+P** for Quick Open, **Ctrl+Shift+P** for the Command Palette, **Ctrl+Tab** to move between tabs, **Ctrl+W** to close the active tab, and **F1** for context Help.
+Use **Ctrl+K** for Global Search, **Ctrl+P** for Quick Open, **Ctrl+Shift+P** for the Command Palette, **Ctrl+Tab** to move between tabs, **Ctrl+W** to close the active tab, **Ctrl+Shift+T** to reopen the last closed workspace tab in this session, and **F1** for context Help.
 
 ## Common problems
 - If the connection is unavailable, see [Database Connection Failures](topic:troubleshooting.database-connection-failures).

@@ -79,8 +79,8 @@ public partial class ShellPaletteWindow
 		if (text.Length == 0)
 		{
 			StatusText.Text = _recentEntries.Count > 0
-				? "Recent records · commands · workspaces"
-				: "Commands and workspaces · type to search records and help";
+				? "Suggested · commands · workspaces · records · recent"
+				: "Suggested · commands · workspaces · type to search records and help";
 			return;
 		}
 
@@ -104,7 +104,7 @@ public partial class ShellPaletteWindow
 				new ShellPaletteEntry(
 					topic.Definition.Title,
 					topic.Definition.Category,
-					"Help",
+					"Suggested",
 					"HELP",
 					HelpIcon,
 					() => _viewModel.OpenHelpAsync(topic.Definition.Id),
@@ -149,7 +149,7 @@ public partial class ShellPaletteWindow
 		return new ShellPaletteEntry(
 			result.Title,
 			result.Subtitle,
-			result.Group,
+			"Records",
 			result.TypeLabel,
 			icon,
 			() => OpenGlobalResultAsync(result),
