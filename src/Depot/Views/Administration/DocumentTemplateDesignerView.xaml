@@ -180,11 +180,15 @@
 						</Border.LayoutTransform>
 						<Border.Style>
 							<Style TargetType="Border">
-								<Setter Property="Background" Value="{StaticResource DesignerGridBrush}" />
+								<Setter Property="Background" Value="White" />
 								<Style.Triggers>
-									<DataTrigger Binding="{Binding ShowGrid}" Value="False">
-										<Setter Property="Background" Value="White" />
-									</DataTrigger>
+									<MultiDataTrigger>
+										<MultiDataTrigger.Conditions>
+											<Condition Binding="{Binding ShowGrid}" Value="True" />
+											<Condition Binding="{Binding IsEditing}" Value="True" />
+										</MultiDataTrigger.Conditions>
+										<Setter Property="Background" Value="{StaticResource DesignerGridBrush}" />
+									</MultiDataTrigger>
 								</Style.Triggers>
 							</Style>
 						</Border.Style>

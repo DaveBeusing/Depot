@@ -349,6 +349,7 @@ public sealed class DocumentTemplateDesignerTests
 		Assert.Contains("<controls:TextInput", xaml, StringComparison.Ordinal);
 		Assert.Contains("TextOptions.TextRenderingMode=\"ClearType\"", xaml, StringComparison.Ordinal);
 		Assert.Contains("BorderBrush=\"Transparent\"", xaml, StringComparison.Ordinal);
+		Assert.Contains("<Condition Binding=\"{Binding IsEditing}\" Value=\"True\" />", xaml, StringComparison.Ordinal);
 		Assert.Contains("viewModel.ResizeElement", codeBehind, StringComparison.Ordinal);
 		Assert.Contains("CurrentViewModel.CurrentViewModel.IsDirty", shell, StringComparison.Ordinal);
 		Assert.Contains("AutomationProperties.Name=\"Unsaved changes\"", shell, StringComparison.Ordinal);
