@@ -124,7 +124,7 @@ public sealed class DocumentTemplateDesignerTests
 
 		var json = DocumentTemplateSerializer.Serialize(changed);
 
-		Assert.Contains("\"Border\":true", json, StringComparison.Ordinal);
+		Assert.Contains("\"border\":true", json, StringComparison.Ordinal);
 		Assert.Equal(json, DocumentTemplateSerializer.Serialize(changed));
 	}
 
