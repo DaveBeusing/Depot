@@ -218,6 +218,7 @@ public sealed class AdministrationViewModel : BaseViewModel, IDisposable
 		AdministrationSection.UserSessions => "administration.user-sessions",
 		AdministrationSection.SecurityCenter => "administration.security-center",
 		AdministrationSection.Company => "administration.company",
+		AdministrationSection.DocumentDesigner => "administration.document-designer",
 		AdministrationSection.Database => "administration.database",
 		AdministrationSection.AuditLog => "administration.audit-log",
 		AdministrationSection.Privacy => "administration.privacy-data",

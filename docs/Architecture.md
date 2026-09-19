@@ -1,6 +1,6 @@
 # Depot Architecture
 
-Updated: 2026-09-17
+Updated: 2026-09-19
 
 ## Overview
 
@@ -93,6 +93,12 @@ Customer → Region → Global resolution
 
 XRechnung CII remains the structured invoice authority. During invoice or credit-note finalization, Depot generates the XRechnung XML once, hashes it and persists the immutable finalization evidence. Sales schema 14 adds the hybrid-document boundary: `ZugferdFacturXService` uses that exact finalized XML and the same immutable electronic-invoice model to create a new PDF/A-3B document, embeds `xrechnung.xml`, records ZUGFeRD/Factur-X XMP metadata and persists the exact PDF bytes plus SHA-256 evidence in the same posting transaction. Later export verifies stored hashes and never regenerates the hybrid document from mutable master data.
 
+## Document-template runtime and persistence
+
+Document layout is a bounded presentation subsystem. Built-in version-1 templates remain deterministic code assets; database-backed versions are stored through `DocumentTemplateRepository` and Document Templates feature schema 1. `DocumentTemplateRuntimeCatalog` validates every loaded version, refreshes shared state from persistence, and exposes exactly one active version per document type.
+
+The visual designer and productive Sales/warehouse PDF generation use the same runtime catalog. Bindings remain allowlisted and validated. Electronic-invoice finalization consumes the active validated invoice/credit-note template while creating the immutable hybrid artifact; later activation cannot alter retained PDF/A/XML evidence.
+
 ## Schema versions
 
 - Core database schema: **30**
@@ -101,8 +107,9 @@ XRechnung CII remains the structured invoice authority. During invoice or credit
 - User Sessions feature schema: **3**
 - Security Events feature schema: **3**
 - User Preferences feature schema: **2**
+- Document Templates feature schema: **1**
 - Application: **0.15.x-preview**
-- Help manifest: **1.21**
+- Help manifest: **1.22**
 
 `Directory.Build.props` is authoritative for the exact application patch/version. Feature schema constants remain authoritative in their migration classes; this architecture document records the compatibility baselines rather than duplicating a moving preview patch.
 

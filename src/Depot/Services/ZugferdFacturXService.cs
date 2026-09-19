@@ -89,9 +89,11 @@ public sealed class ZugferdFacturXService
 
 		var xmlBytes = new UTF8Encoding(false).GetBytes(xRechnungXml);
 		PdfSharpFacturXCompatibility.Configure(document, xmlBytes, createdAtUtc);
-		var templateType = invoice.TypeCode == ElectronicInvoiceTypeCode.CreditNote ? DocumentTemplateType.CreditNote : DocumentTemplateType.SalesInvoice;
 		var renderModel = ElectronicInvoiceRenderModelFactory.Create(invoice);
-		new DocumentLayoutRenderer().RenderInto(document, DefaultDocumentTemplates.Catalog.GetActive(templateType), renderModel);
+		new DocumentLayoutRenderer().RenderInto(
+			document,
+			ResolveFinalizationTemplate(DefaultDocumentTemplates.Runtime, invoice),
+			renderModel);
 		var pdfBytes = PdfSharpFacturXCompatibility.SaveWithXmp(document, BuildXmp(invoice, createdAtUtc));
 		return new HybridElectronicInvoiceArtifact(
 			documentType,
@@ -104,6 +106,18 @@ public sealed class ZugferdFacturXService
 			ComputeHash(pdfBytes),
 			pdfBytes,
 			createdAtUtc);
+	}
+
+	internal static DocumentTemplate ResolveFinalizationTemplate(
+		DocumentTemplateRuntimeCatalog runtime,
+		ElectronicInvoice invoice)
+	{
+		ArgumentNullException.ThrowIfNull(runtime);
+		ArgumentNullException.ThrowIfNull(invoice);
+		var templateType = invoice.TypeCode == ElectronicInvoiceTypeCode.CreditNote
+			? DocumentTemplateType.CreditNote
+			: DocumentTemplateType.SalesInvoice;
+		return runtime.Snapshot.GetActive(templateType);
 	}
 
 	internal static Task<int> InsertAsync(DatabaseTransactionContext transaction, HybridElectronicInvoiceArtifact artifact, CancellationToken cancellationToken)

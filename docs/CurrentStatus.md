@@ -1,6 +1,6 @@
 # Current project status
 
-Updated: 2026-09-18
+Updated: 2026-09-19
 
 Depot is on the `0.15.x-preview` development line. Finance, inventory, purchasing, sales, reporting, localization, notifications, Audit, persistent user sessions, operational security monitoring, enterprise identity/authentication and the completed Track C feature set are integrated in the repository.
 
@@ -107,8 +107,9 @@ PR #56 then repaired CI execution boundaries without changing runtime behavior o
 - User Sessions feature schema: **3**
 - Security Events feature schema: **3**
 - User Preferences feature schema: **2**
+- Document Templates feature schema: **1**
 - Enterprise Identity feature schema: **2**
-- Help manifest: **1.21**
+- Help manifest: **1.22**
 
 `Directory.Build.props` is authoritative for the exact Depot application patch/version; `src/DepotManager/DepotManager.Version.props` is authoritative for DepotManager. Schema migration constants and `src/Depot/Help/manifest.json` are authoritative for the remaining baseline values. Every repository commit increments `DepotVersionPatch`.
 

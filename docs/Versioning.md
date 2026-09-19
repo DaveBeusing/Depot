@@ -1,6 +1,6 @@
 # Versioning and schema evolution
 
-Updated: 2026-09-17
+Updated: 2026-09-19
 
 ## Current baselines
 
@@ -11,8 +11,9 @@ Updated: 2026-09-17
 - User Sessions feature schema: **3**
 - Security Events feature schema: **3**
 - User Preferences feature schema: **2**
+- Document Templates feature schema: **1**
 - Enterprise Identity feature schema: **2**
-- Help manifest: **1.21**
+- Help manifest: **1.22**
 
 Application, Core database and feature-schema versions are independent compatibility dimensions. `Directory.Build.props` is the authoritative source for the exact application patch/version; long-lived documentation records the development line rather than duplicating the moving patch number.
 
@@ -80,6 +81,10 @@ Security Events schema **3** is the current authentication-security and durable 
 ### User Preferences schema 2
 
 User Preferences schema **2** is the current persistent workspace/default-view preference baseline.
+
+### Document Templates schema 1
+
+Document Templates schema **1** is the durable shared layout-version baseline. It stores validated serialized template versions plus the active-version state per supported document family. Deterministic built-in version 1 defaults are seeded idempotently. This feature schema does not change Core schema 30 or Sales schema 14.
 
 ### Enterprise Identity schema 2
 

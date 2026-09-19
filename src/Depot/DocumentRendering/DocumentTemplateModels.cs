@@ -219,6 +219,15 @@ public static class DocumentTemplateSerializer
 		DocumentTemplateValidator.ValidateAndThrow(template);
 		return JsonSerializer.Serialize(template, Options);
 	}
+
+	public static DocumentTemplate Deserialize(string json)
+	{
+		ArgumentException.ThrowIfNullOrWhiteSpace(json);
+		var template = JsonSerializer.Deserialize<DocumentTemplate>(json, Options)
+			?? throw new InvalidOperationException("Document template JSON did not contain a template.");
+		DocumentTemplateValidator.ValidateAndThrow(template);
+		return template;
+	}
 }
 
 public static class DocumentTemplateValidator

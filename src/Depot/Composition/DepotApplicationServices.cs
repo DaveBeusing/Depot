@@ -1,6 +1,7 @@
 // Copyright (c) 2026 David Beusing
 // Licensed under the MIT License.
 
+using Depot.DocumentRendering;
 using Depot.Repositories;
 using Depot.Services;
 
@@ -108,6 +109,7 @@ internal sealed class DepotApplicationServices : IDisposable
 		}
 		catch
 		{
+			DefaultDocumentTemplates.Runtime.DetachStore();
 			database?.Dispose();
 			throw;
 		}
@@ -120,6 +122,7 @@ internal sealed class DepotApplicationServices : IDisposable
 		SecurityEventDelivery.Dispose();
 		SecurityMaintenance.Dispose();
 		Services.Session.Dispose();
+		DefaultDocumentTemplates.Runtime.DetachStore();
 		Database.Dispose();
 	}
 }

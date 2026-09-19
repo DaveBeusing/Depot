@@ -1,8 +1,14 @@
 # User-facing changes
 
-Updated: 2026-09-17
+Updated: 2026-09-19
 
 Depot's current `0.15.x-preview` line includes the integrated Finance platform, persistent session/security administration, production-tested database-provider support, advanced commercial price generation and electronic-invoice issuance based on XRechnung CII.
+
+## Visual document templates
+
+Administrators can design, preview, version, persist, and activate layouts for all supported Sales/warehouse PDF document families. Active templates are shared through the Depot database and survive application restarts. Built-in version 1 remains available as a deterministic reset target.
+
+Layout changes stay presentation-only. Posted business data remains immutable, and retained XRechnung / ZUGFeRD / Factur-X PDF/A artifacts are never rewritten by later template changes.
 
 ## Scoped and advanced Sales pricing
 
@@ -79,7 +85,8 @@ Advanced pricing uses existing Item and Sales Pricing permissions. FX-rate maint
 - User Sessions schema: **3**
 - Security Events schema: **3**
 - User Preferences schema: **2**
-- Help manifest: **1.21**
+- Document Templates schema: **1**
+- Help manifest: **1.22**
 
 The exact application patch/version is authoritative in `Directory.Build.props`; this user-facing baseline intentionally records the moving development line instead of duplicating the patch number.
 

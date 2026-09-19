@@ -1,6 +1,6 @@
 # Compliance overview
 
-Updated: 2026-09-17
+Updated: 2026-09-19
 
 Depot separates implemented technical controls from legal, accounting, tax, audit or certification claims. Security/compliance roadmap phases retain their technically implementable controls; remaining acceptance gates are tracked in the security, release, Finance and compliance documentation.
 
@@ -23,8 +23,9 @@ Localization requires explicit effective-dated assignment. The built-in `GENERIC
 - User Sessions feature schema: **3**
 - Security Events feature schema: **3**
 - User Preferences feature schema: **2**
+- Document Templates feature schema: **1**
 - Enterprise Identity feature schema: **2**
-- Help manifest: **1.21**
+- Help manifest: **1.22**
 
 `Directory.Build.props` is authoritative for the exact application patch/version. Compliance documentation records the development line and stable schema/help contracts instead of duplicating the moving preview patch number.
 

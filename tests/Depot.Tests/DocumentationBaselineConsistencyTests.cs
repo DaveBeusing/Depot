@@ -28,6 +28,7 @@ public sealed class DocumentationBaselineConsistencyTests
 			$"- User Sessions feature schema: **{UserSessionSchemaMigration.CurrentVersion}**",
 			$"- Security Events feature schema: **{SecurityEventSchemaMigration.CurrentVersion}**",
 			$"- User Preferences feature schema: **{UserPreferenceSchemaMigration.CurrentVersion}**",
+			$"- Document Templates feature schema: **{DocumentTemplateSchemaMigration.CurrentVersion}**",
 			$"- Help manifest: **{helpVersion}**"
 		};
 
@@ -46,7 +47,8 @@ public sealed class DocumentationBaselineConsistencyTests
 			$"- Finance feature schema: `{FinanceInventoryAccountingSchemaMigration.CurrentVersion}`",
 			$"- User Sessions feature schema: `{UserSessionSchemaMigration.CurrentVersion}`",
 			$"- Security Events feature schema: `{SecurityEventSchemaMigration.CurrentVersion}`",
-			$"- User Preferences feature schema: `{UserPreferenceSchemaMigration.CurrentVersion}`"
+			$"- User Preferences feature schema: `{UserPreferenceSchemaMigration.CurrentVersion}`",
+			$"- Document Templates feature schema: `{DocumentTemplateSchemaMigration.CurrentVersion}`"
 		]);
 
 		AssertMarkers(root, "docs/UserFacingChanges.md",
@@ -58,6 +60,7 @@ public sealed class DocumentationBaselineConsistencyTests
 			$"- User Sessions schema: **{UserSessionSchemaMigration.CurrentVersion}**",
 			$"- Security Events schema: **{SecurityEventSchemaMigration.CurrentVersion}**",
 			$"- User Preferences schema: **{UserPreferenceSchemaMigration.CurrentVersion}**",
+			$"- Document Templates schema: **{DocumentTemplateSchemaMigration.CurrentVersion}**",
 			$"- Help manifest: **{helpVersion}**"
 		]);
 
@@ -70,6 +73,7 @@ public sealed class DocumentationBaselineConsistencyTests
 			$"User Sessions schema **{UserSessionSchemaMigration.CurrentVersion}**",
 			$"Security Events schema **{SecurityEventSchemaMigration.CurrentVersion}**",
 			$"User Preferences schema **{UserPreferenceSchemaMigration.CurrentVersion}**",
+			$"Document Templates schema **{DocumentTemplateSchemaMigration.CurrentVersion}**",
 			$"Help manifest **{helpVersion}**"
 		]);
 

@@ -25,6 +25,7 @@ public static class DatabaseProvisioningService
 		UserSessionSchemaMigration.Migrate(connectionFactory);
 		SecurityEventSchemaMigration.Migrate(connectionFactory);
 		UserPreferenceSchemaMigration.Migrate(connectionFactory);
+		DocumentTemplateSchemaMigration.Migrate(connectionFactory);
 		EnterpriseIdentitySchemaMigration.Migrate(connectionFactory);
 	}
 }
