@@ -128,10 +128,19 @@
                     <MenuItem Header="Close Tabs to the Right" Command="{x:Static controls:WorkspaceTabControl.CloseTabsToRightCommand}" CommandParameter="{Binding}" />
                 </ContextMenu>
             </Grid.ContextMenu>
-            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
             <Path Width="14" Height="14" Data="{Binding IconData}" Stroke="{DynamicResource SecondaryTextBrush}" StrokeThickness="1.5" Stretch="Uniform" VerticalAlignment="Center" Margin="0,0,8,0" />
             <TextBlock Grid.Column="1" Text="{Binding Name}" VerticalAlignment="Center" FontSize="12" TextTrimming="CharacterEllipsis" />
-            <Button Grid.Column="2" Style="{StaticResource WorkspaceTabCloseButtonStyle}" Command="{x:Static controls:WorkspaceTabControl.CloseTabCommand}" CommandParameter="{Binding}" CommandTarget="{Binding RelativeSource={RelativeSource AncestorType={x:Type controls:WorkspaceTabControl}}}" ToolTip="Close tab (Ctrl+W)" />
+            <TextBlock Grid.Column="2"
+                       Margin="6,0,0,0"
+                       Text="●"
+                       FontSize="9"
+                       Foreground="{DynamicResource PrimaryBrush}"
+                       VerticalAlignment="Center"
+                       ToolTip="Unsaved changes"
+                       AutomationProperties.Name="Unsaved changes"
+                       Visibility="{Binding Content.CurrentViewModel.CurrentViewModel.IsDirty, Converter={StaticResource BooleanToVisibilityConverter}, FallbackValue=Collapsed}" />
+            <Button Grid.Column="3" Style="{StaticResource WorkspaceTabCloseButtonStyle}" Command="{x:Static controls:WorkspaceTabControl.CloseTabCommand}" CommandParameter="{Binding}" CommandTarget="{Binding RelativeSource={RelativeSource AncestorType={x:Type controls:WorkspaceTabControl}}}" ToolTip="Close tab (Ctrl+W)" />
         </Grid>
     </DataTemplate>
 </ResourceDictionary>

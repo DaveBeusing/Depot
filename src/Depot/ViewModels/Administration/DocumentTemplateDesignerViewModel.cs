@@ -95,10 +95,18 @@ public sealed class DocumentDesignerElementViewModel : BaseViewModel
 
 	public event EventHandler? ModelChanged;
 
-	public void Move(double deltaX, double deltaY, bool snap, double gridSize)
+	public void Translate(double deltaX, double deltaY)
 	{
-		X = snap ? Snap(X + deltaX, gridSize) : X + deltaX;
-		Y = snap ? Snap(Y + deltaY, gridSize) : Y + deltaY;
+		X += deltaX;
+		Y += deltaY;
+	}
+
+	public void SetBounds(double x, double y, double width, double height)
+	{
+		X = x;
+		Y = y;
+		Width = width;
+		Height = height;
 	}
 
 	public DocumentTemplateElement ToModel() => new()
@@ -130,24 +138,34 @@ public sealed class DocumentDesignerElementViewModel : BaseViewModel
 		ModelChanged?.Invoke(this, EventArgs.Empty);
 	}
 
-	private static double Snap(double value, double gridSize) => gridSize <= 0 ? value : Math.Round(value / gridSize) * gridSize;
 	private static string? NullIfWhiteSpace(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 }
 
 public sealed class DocumentTemplateDesignerViewModel : BaseViewModel
 {
+	private const int HistoryLimit = 100;
+	private const double MinimumElementSize = 4d;
+
 	private readonly DocumentTemplateDesignerService _service;
 	private readonly HashSet<DocumentDesignerElementViewModel> _selection = [];
+	private readonly List<DesignerSnapshot> _undoHistory = [];
+	private readonly List<DesignerSnapshot> _redoHistory = [];
 	private DocumentTemplateType _selectedType;
 	private DocumentTemplateVersionItem? _selectedVersion;
 	private DocumentDesignerElementViewModel? _selectedElement;
 	private string _templateName = string.Empty;
 	private bool _isEditing;
+	private bool _isDirty;
 	private bool _showGrid = true;
 	private bool _snapToGrid = true;
 	private double _gridSize = 10;
 	private double _zoomPercent = 90;
 	private string _previewStatus = string.Empty;
+	private bool _applyingSnapshot;
+	private int _transactionDepth;
+	private DesignerSnapshot? _transactionStart;
+	private DesignerSnapshot? _lastSnapshot;
+	private DesignerSnapshot? _cleanSnapshot;
 
 	public DocumentTemplateDesignerViewModel(DocumentTemplateDesignerService service)
 	{
@@ -158,14 +176,28 @@ public sealed class DocumentTemplateDesignerViewModel : BaseViewModel
 		Alignments = Enum.GetValues<DocumentTemplateAlignment>();
 		Placements = Enum.GetValues<DocumentTemplatePlacement>();
 
-		NewFromDefaultCommand = new RelayCommand(NewFromDefault, () => CanManage);
-		DuplicateCommand = new RelayCommand(Duplicate, () => CanManage && (SelectedVersion is not null || Elements.Count > 0));
-		SaveDraftCommand = new RelayCommand(SaveDraft, () => CanManage && IsEditing && ValidationErrors.Count == 0 && Elements.Count > 0);
-		ActivateCommand = new RelayCommand(Activate, () => CanManage && SelectedVersion is not null && !SelectedVersion.IsActive);
-		ResetDefaultCommand = new RelayCommand(ResetDefault, () => CanManage);
+		NewFromDefaultCommand = new RelayCommand(NewFromDefault, () => CanManage && !IsDirty);
+		DuplicateCommand = new RelayCommand(Duplicate, () => CanManage && IsEditing && Elements.Count > 0);
+		CopySelectedVersionAsDraftCommand = new RelayCommand(CopySelectedVersionAsDraft, () => CanManage && !IsDirty && SelectedVersion is not null);
+		DiscardChangesCommand = new RelayCommand(DiscardUnsavedChanges, () => IsDirty);
+		SaveDraftCommand = new RelayCommand(SaveDraft, () => CanManage && IsEditing && IsDirty && ValidationErrors.Count == 0 && Elements.Count > 0);
+		ActivateCommand = new RelayCommand(Activate, () => CanManage && !IsDirty && SelectedVersion is not null && !SelectedVersion.IsActive);
+		ResetDefaultCommand = new RelayCommand(ResetDefault, () => CanManage && !IsDirty);
 		PreviewCommand = new RelayCommand(Preview, () => Elements.Count > 0 && ValidationErrors.Count == 0);
 		DuplicateElementsCommand = new RelayCommand(DuplicateSelectedElements, () => CanManage && IsEditing && _selection.Count > 0);
 		DeleteElementsCommand = new RelayCommand(DeleteSelectedElements, () => CanManage && IsEditing && _selection.Count > 0);
+		UndoCommand = new RelayCommand(Undo, () => IsEditing && _undoHistory.Count > 0);
+		RedoCommand = new RelayCommand(Redo, () => IsEditing && _redoHistory.Count > 0);
+		AlignLeftCommand = new RelayCommand(() => AlignSelection(AlignmentOperation.Left), CanAlignSelection);
+		AlignCenterCommand = new RelayCommand(() => AlignSelection(AlignmentOperation.Center), CanAlignSelection);
+		AlignRightCommand = new RelayCommand(() => AlignSelection(AlignmentOperation.Right), CanAlignSelection);
+		AlignTopCommand = new RelayCommand(() => AlignSelection(AlignmentOperation.Top), CanAlignSelection);
+		AlignMiddleCommand = new RelayCommand(() => AlignSelection(AlignmentOperation.Middle), CanAlignSelection);
+		AlignBottomCommand = new RelayCommand(() => AlignSelection(AlignmentOperation.Bottom), CanAlignSelection);
+		DistributeHorizontallyCommand = new RelayCommand(() => DistributeSelection(horizontal: true), CanDistributeSelection);
+		DistributeVerticallyCommand = new RelayCommand(() => DistributeSelection(horizontal: false), CanDistributeSelection);
+		SameWidthCommand = new RelayCommand(() => MatchSelectionSize(width: true), CanAlignSelection);
+		SameHeightCommand = new RelayCommand(() => MatchSelectionSize(width: false), CanAlignSelection);
 
 		_selectedType = DocumentTypes.First();
 		ReloadVersions(selectActive: true);
@@ -182,25 +214,44 @@ public sealed class DocumentTemplateDesignerViewModel : BaseViewModel
 
 	public RelayCommand NewFromDefaultCommand { get; }
 	public RelayCommand DuplicateCommand { get; }
+	public RelayCommand CopySelectedVersionAsDraftCommand { get; }
+	public RelayCommand DiscardChangesCommand { get; }
 	public RelayCommand SaveDraftCommand { get; }
 	public RelayCommand ActivateCommand { get; }
 	public RelayCommand ResetDefaultCommand { get; }
 	public RelayCommand PreviewCommand { get; }
 	public RelayCommand DuplicateElementsCommand { get; }
 	public RelayCommand DeleteElementsCommand { get; }
+	public RelayCommand UndoCommand { get; }
+	public RelayCommand RedoCommand { get; }
+	public RelayCommand AlignLeftCommand { get; }
+	public RelayCommand AlignCenterCommand { get; }
+	public RelayCommand AlignRightCommand { get; }
+	public RelayCommand AlignTopCommand { get; }
+	public RelayCommand AlignMiddleCommand { get; }
+	public RelayCommand AlignBottomCommand { get; }
+	public RelayCommand DistributeHorizontallyCommand { get; }
+	public RelayCommand DistributeVerticallyCommand { get; }
+	public RelayCommand SameWidthCommand { get; }
+	public RelayCommand SameHeightCommand { get; }
 
 	public bool CanManage => _service.CanManage;
 	public string Breadcrumb => "Administration / Documents / Document Designer";
-	public string ModeText => IsEditing ? "Editing unsaved draft" : SelectedVersion is null ? "No template selected" : $"Read-only version {SelectedVersion.Version}";
+	public string Title => "Document Designer";
+	public string Subtitle => "Design PDF output templates for Depot business documents.";
+	public string ModeText => IsEditing
+		? IsDirty ? "Editing draft · unsaved changes" : "Editing draft"
+		: SelectedVersion is null ? "No template selected" : $"Read-only version {SelectedVersion.Version}";
 	public double PageWidth => 595;
 	public double PageHeight => 842;
+	public bool CanChangeTemplateSelection => !IsDirty;
 
 	public DocumentTemplateType SelectedType
 	{
 		get => _selectedType;
 		set
 		{
-			if (_selectedType == value) return;
+			if (_selectedType == value || IsDirty) return;
 			_selectedType = value;
 			OnPropertyChanged();
 			ReloadVersions(selectActive: true);
@@ -212,10 +263,10 @@ public sealed class DocumentTemplateDesignerViewModel : BaseViewModel
 		get => _selectedVersion;
 		set
 		{
-			if (ReferenceEquals(_selectedVersion, value)) return;
+			if (ReferenceEquals(_selectedVersion, value) || IsDirty) return;
 			_selectedVersion = value;
 			OnPropertyChanged();
-			if (value is not null) LoadTemplate(value.Template, false);
+			if (value is not null) LoadTemplate(value.Template, editing: false, markDirty: false);
 			RaiseCommandStates();
 		}
 	}
@@ -228,6 +279,7 @@ public sealed class DocumentTemplateDesignerViewModel : BaseViewModel
 			if (ReferenceEquals(_selectedElement, value)) return;
 			_selectedElement = value;
 			OnPropertyChanged();
+			RaiseInspectorProperties();
 		}
 	}
 
@@ -236,10 +288,14 @@ public sealed class DocumentTemplateDesignerViewModel : BaseViewModel
 		get => _templateName;
 		set
 		{
-			if (_templateName == value) return;
+			if (_templateName == value || _applyingSnapshot) return;
+			var ownsTransaction = _transactionDepth == 0;
+			if (ownsTransaction) BeginEditTransaction();
 			_templateName = value;
 			OnPropertyChanged();
 			UpdateValidation();
+			UpdateDirtyState();
+			if (ownsTransaction) EndEditTransaction();
 		}
 	}
 
@@ -257,6 +313,20 @@ public sealed class DocumentTemplateDesignerViewModel : BaseViewModel
 		}
 	}
 
+	public bool IsDirty
+	{
+		get => _isDirty;
+		private set
+		{
+			if (_isDirty == value) return;
+			_isDirty = value;
+			OnPropertyChanged();
+			OnPropertyChanged(nameof(CanChangeTemplateSelection));
+			OnPropertyChanged(nameof(ModeText));
+			RaiseCommandStates();
+		}
+	}
+
 	public bool IsReadOnly => !IsEditing;
 	public bool ShowGrid { get => _showGrid; set { if (_showGrid == value) return; _showGrid = value; OnPropertyChanged(); } }
 	public bool SnapToGrid { get => _snapToGrid; set { if (_snapToGrid == value) return; _snapToGrid = value; OnPropertyChanged(); } }
@@ -265,22 +335,34 @@ public sealed class DocumentTemplateDesignerViewModel : BaseViewModel
 	public double ZoomScale => ZoomPercent / 100d;
 	public string PreviewStatus { get => _previewStatus; private set { if (_previewStatus == value) return; _previewStatus = value; OnPropertyChanged(); } }
 	public string ValidationSummary => ValidationErrors.Count == 0 ? "Template is valid." : $"{ValidationErrors.Count} validation issue(s)";
+	public bool HasSelectedElement => SelectedElement is not null;
+	public bool ShowBindingProperty => SelectedElement?.ModelType is DocumentTemplateElementType.BoundText or DocumentTemplateElementType.Image;
+	public bool ShowTextProperty => SelectedElement?.ModelType == DocumentTemplateElementType.Text;
+	public bool ShowTypographyProperties => SelectedElement?.ModelType is DocumentTemplateElementType.Text or DocumentTemplateElementType.BoundText or DocumentTemplateElementType.PageNumber;
+	public bool ShowFormatProperty => SelectedElement?.ModelType is DocumentTemplateElementType.BoundText or DocumentTemplateElementType.PageNumber;
+	public bool ShowVisibilityProperty => SelectedElement?.ModelType is DocumentTemplateElementType.Text or DocumentTemplateElementType.BoundText or DocumentTemplateElementType.Image or DocumentTemplateElementType.Rectangle or DocumentTemplateElementType.TotalsBlock or DocumentTemplateElementType.PageNumber;
+	public bool ShowBorderProperty => SelectedElement?.ModelType is DocumentTemplateElementType.Text or DocumentTemplateElementType.BoundText or DocumentTemplateElementType.Rectangle;
+	public bool ShowPlacementProperty => SelectedElement is { ModelType: not DocumentTemplateElementType.Line and not DocumentTemplateElementType.PageNumber };
+	public bool ShowRepeatProperty => SelectedElement?.ModelType is DocumentTemplateElementType.Text or DocumentTemplateElementType.BoundText or DocumentTemplateElementType.Image or DocumentTemplateElementType.LineTable or DocumentTemplateElementType.PageNumber;
+	public bool ShowRowHeightProperty => SelectedElement?.ModelType == DocumentTemplateElementType.LineTable;
+	public bool ShowLineTableHint => SelectedElement?.ModelType == DocumentTemplateElementType.LineTable;
 
 	public Task LoadAsync(CancellationToken cancellationToken = default)
 	{
 		cancellationToken.ThrowIfCancellationRequested();
-		ReloadVersions(selectActive: SelectedVersion is null);
+		if (!IsDirty) ReloadVersions(selectActive: SelectedVersion is null);
 		return Task.CompletedTask;
 	}
 
 	public void AddElement(DocumentTemplateElementType type)
 	{
 		if (!CanManage || !IsEditing) return;
-		var element = CreateElement(type, Elements.Count);
-		AddEditor(new DocumentDesignerElementViewModel(element));
-		SelectedElement = Elements[^1];
-		SetSelectedElements([Elements[^1]]);
-		UpdateValidation();
+		RunEdit(() =>
+		{
+			var editor = new DocumentDesignerElementViewModel(CreateElement(type, Elements.Count));
+			AddEditor(editor);
+			SetSelectedElements([editor]);
+		});
 	}
 
 	public void SetSelectedElements(IEnumerable<DocumentDesignerElementViewModel> elements)
@@ -288,27 +370,140 @@ public sealed class DocumentTemplateDesignerViewModel : BaseViewModel
 		_selection.Clear();
 		foreach (var element in elements.Where(Elements.Contains)) _selection.Add(element);
 		SelectedElement = _selection.LastOrDefault();
+		OnPropertyChanged(nameof(HasSelectedElement));
+		RaiseCommandStates();
+	}
+
+	public void BeginEditTransaction()
+	{
+		if (!IsEditing || _applyingSnapshot) return;
+		if (_transactionDepth == 0) _transactionStart = CaptureSnapshot();
+		_transactionDepth++;
+	}
+
+	public void EndEditTransaction()
+	{
+		if (_transactionDepth <= 0) return;
+		_transactionDepth--;
+		if (_transactionDepth > 0) return;
+
+		var before = _transactionStart;
+		_transactionStart = null;
+		var after = CaptureSnapshot();
+		if (before is not null && !SnapshotsEqual(before, after))
+		{
+			PushUndo(before);
+			_redoHistory.Clear();
+		}
+		_lastSnapshot = after;
+		UpdateValidation();
+		UpdateDirtyState();
 		RaiseCommandStates();
 	}
 
 	public void MoveSelection(double deltaX, double deltaY)
 	{
-		if (!IsEditing) return;
-		foreach (var element in _selection)
-			element.Move(deltaX, deltaY, SnapToGrid, GridSize);
-		UpdateValidation();
+		if (!IsEditing || _selection.Count == 0) return;
+		var ownsTransaction = _transactionDepth == 0;
+		if (ownsTransaction) BeginEditTransaction();
+		try
+		{
+			var selected = _selection.ToArray();
+			if (SnapToGrid)
+			{
+				var anchor = SelectedElement ?? selected[0];
+				deltaX = Snap(anchor.X + deltaX) - anchor.X;
+				deltaY = Snap(anchor.Y + deltaY) - anchor.Y;
+			}
+
+			var minX = selected.Min(element => element.X);
+			var minY = selected.Min(element => element.Y);
+			var maxRight = selected.Max(element => element.X + Math.Max(0, element.Width));
+			var maxBottom = selected.Max(element => element.Y + Math.Max(0, element.Height));
+			deltaX = Math.Clamp(deltaX, -minX, PageWidth - maxRight);
+			deltaY = Math.Clamp(deltaY, -minY, PageHeight - maxBottom);
+
+			foreach (var element in selected) element.Translate(deltaX, deltaY);
+		}
+		finally
+		{
+			if (ownsTransaction) EndEditTransaction();
+		}
+	}
+
+	public void ResizeElement(DocumentDesignerElementViewModel element, string handle, double deltaX, double deltaY)
+	{
+		if (!IsEditing || !Elements.Contains(element) || string.IsNullOrWhiteSpace(handle)) return;
+		var ownsTransaction = _transactionDepth == 0;
+		if (ownsTransaction) BeginEditTransaction();
+		try
+		{
+			var direction = handle.Trim().ToUpperInvariant();
+			var left = element.X;
+			var top = element.Y;
+			var right = element.X + Math.Max(MinimumElementSize, element.Width);
+			var bottom = element.Y + Math.Max(element.ModelType == DocumentTemplateElementType.Line ? 0 : MinimumElementSize, element.Height);
+
+			if (direction.Contains('W')) left = SnapIfEnabled(left + deltaX);
+			if (direction.Contains('E')) right = SnapIfEnabled(right + deltaX);
+			if (direction.Contains('N')) top = SnapIfEnabled(top + deltaY);
+			if (direction.Contains('S')) bottom = SnapIfEnabled(bottom + deltaY);
+
+			left = Math.Clamp(left, 0, PageWidth);
+			right = Math.Clamp(right, 0, PageWidth);
+			top = Math.Clamp(top, 0, PageHeight);
+			bottom = Math.Clamp(bottom, 0, PageHeight);
+
+			var minimumHeight = element.ModelType == DocumentTemplateElementType.Line ? 0d : MinimumElementSize;
+			if (right - left < MinimumElementSize)
+			{
+				if (direction.Contains('W')) left = Math.Max(0, right - MinimumElementSize);
+				else right = Math.Min(PageWidth, left + MinimumElementSize);
+			}
+			if (bottom - top < minimumHeight)
+			{
+				if (direction.Contains('N')) top = Math.Max(0, bottom - minimumHeight);
+				else bottom = Math.Min(PageHeight, top + minimumHeight);
+			}
+
+			element.SetBounds(left, top, Math.Max(MinimumElementSize, right - left), Math.Max(minimumHeight, bottom - top));
+			SetSelectedElements([element]);
+		}
+		finally
+		{
+			if (ownsTransaction) EndEditTransaction();
+		}
+	}
+
+	public void DiscardUnsavedChanges()
+	{
+		if (!IsDirty) return;
+		if (SelectedVersion is { } selected)
+		{
+			LoadTemplate(selected.Template, editing: false, markDirty: false);
+			return;
+		}
+		ReloadVersions(selectActive: true);
 	}
 
 	private void NewFromDefault()
 	{
 		var source = _service.GetDefault(SelectedType);
-		LoadTemplate(source with { Id = $"{SelectedType.ToString().ToLowerInvariant()}-custom", Version = 0, IsActive = false }, true);
+		LoadTemplate(source with { Id = $"{SelectedType.ToString().ToLowerInvariant()}-custom", Version = 0, IsActive = false }, editing: true, markDirty: true);
 	}
 
 	private void Duplicate()
 	{
-		var source = SelectedVersion?.Template ?? BuildTemplate(1, false);
-		LoadTemplate(source with { Id = $"{source.Id}-copy", Version = 0, IsActive = false }, true);
+		if (!IsEditing || Elements.Count == 0) return;
+		var source = BuildTemplate(1, false);
+		LoadTemplate(source with { Id = UniqueTemplateName($"{source.Id}-copy"), Version = 0, IsActive = false }, editing: true, markDirty: true);
+	}
+
+	private void CopySelectedVersionAsDraft()
+	{
+		if (SelectedVersion is null) return;
+		var source = SelectedVersion.Template;
+		LoadTemplate(source with { Id = UniqueTemplateName($"{source.Id}-draft-copy"), Version = 0, IsActive = false }, editing: true, markDirty: true);
 	}
 
 	private void SaveDraft()
@@ -316,8 +511,7 @@ public sealed class DocumentTemplateDesignerViewModel : BaseViewModel
 		try
 		{
 			var saved = _service.SaveDraft(BuildTemplate(1, false));
-			ReloadVersions(selectActive: false);
-			SelectedVersion = Versions.Single(item => item.Version == saved.Version);
+			ReloadVersions(selectActive: false, forceSelection: saved.Version);
 			CompleteOperation(statusText: $"Draft v{saved.Version} saved.");
 		}
 		catch (Exception exception) { FailOperation(exception, "Template draft could not be saved"); }
@@ -329,8 +523,7 @@ public sealed class DocumentTemplateDesignerViewModel : BaseViewModel
 		try
 		{
 			var active = _service.Activate(SelectedType, SelectedVersion.Version);
-			ReloadVersions(selectActive: false);
-			SelectedVersion = Versions.Single(item => item.Version == active.Version);
+			ReloadVersions(selectActive: false, forceSelection: active.Version);
 			CompleteOperation(statusText: $"Version {active.Version} activated.");
 		}
 		catch (Exception exception) { FailOperation(exception, "Template version could not be activated"); }
@@ -341,8 +534,7 @@ public sealed class DocumentTemplateDesignerViewModel : BaseViewModel
 		try
 		{
 			var active = _service.ResetToDefault(SelectedType);
-			ReloadVersions(selectActive: false);
-			SelectedVersion = Versions.Single(item => item.Version == active.Version);
+			ReloadVersions(selectActive: false, forceSelection: active.Version);
 			CompleteOperation(statusText: "Default template activated.");
 		}
 		catch (Exception exception) { FailOperation(exception, "Default template could not be restored"); }
@@ -367,52 +559,205 @@ public sealed class DocumentTemplateDesignerViewModel : BaseViewModel
 	private void DuplicateSelectedElements()
 	{
 		if (!IsEditing) return;
-		var copies = _selection.Select((element, index) =>
+		RunEdit(() =>
 		{
-			var model = element.ToModel();
-			return new DocumentDesignerElementViewModel(model with
+			var copies = _selection.Select((element, index) =>
 			{
-				Id = UniqueElementId($"{model.Id}-copy"),
-				X = Math.Min(PageWidth - Math.Max(0, model.Width), model.X + 10 + index * 2),
-				Y = Math.Min(PageHeight - Math.Max(0, model.Height), model.Y + 10 + index * 2)
-			});
-		}).ToArray();
-		foreach (var copy in copies) AddEditor(copy);
-		SetSelectedElements(copies);
-		UpdateValidation();
+				var model = element.ToModel();
+				return new DocumentDesignerElementViewModel(model with
+				{
+					Id = UniqueElementId($"{model.Id}-copy"),
+					X = Math.Min(PageWidth - Math.Max(0, model.Width), model.X + 10 + index * 2),
+					Y = Math.Min(PageHeight - Math.Max(0, model.Height), model.Y + 10 + index * 2)
+				});
+			}).ToArray();
+			foreach (var copy in copies) AddEditor(copy);
+			SetSelectedElements(copies);
+		});
 	}
 
 	private void DeleteSelectedElements()
 	{
 		if (!IsEditing) return;
-		foreach (var element in _selection.ToArray())
+		RunEdit(() =>
 		{
-			element.ModelChanged -= OnElementChanged;
-			Elements.Remove(element);
-		}
-		SetSelectedElements([]);
-		UpdateValidation();
+			foreach (var element in _selection.ToArray())
+			{
+				element.ModelChanged -= OnElementChanged;
+				Elements.Remove(element);
+			}
+			SetSelectedElements([]);
+		});
 	}
 
-	private void ReloadVersions(bool selectActive)
+	private void Undo()
 	{
-		var currentVersion = selectActive ? (int?)null : SelectedVersion?.Version;
+		if (!IsEditing || _undoHistory.Count == 0 || _transactionDepth > 0) return;
+		var current = CaptureSnapshot();
+		var target = _undoHistory[^1];
+		_undoHistory.RemoveAt(_undoHistory.Count - 1);
+		_redoHistory.Add(current);
+		ApplySnapshot(target);
+		_lastSnapshot = CaptureSnapshot();
+		UpdateValidation();
+		UpdateDirtyState();
+		RaiseCommandStates();
+	}
+
+	private void Redo()
+	{
+		if (!IsEditing || _redoHistory.Count == 0 || _transactionDepth > 0) return;
+		var current = CaptureSnapshot();
+		var target = _redoHistory[^1];
+		_redoHistory.RemoveAt(_redoHistory.Count - 1);
+		PushUndo(current);
+		ApplySnapshot(target);
+		_lastSnapshot = CaptureSnapshot();
+		UpdateValidation();
+		UpdateDirtyState();
+		RaiseCommandStates();
+	}
+
+	private void AlignSelection(AlignmentOperation operation)
+	{
+		if (!CanAlignSelection()) return;
+		RunEdit(() =>
+		{
+			var selected = _selection.ToArray();
+			var left = selected.Min(element => element.X);
+			var top = selected.Min(element => element.Y);
+			var right = selected.Max(element => element.X + element.Width);
+			var bottom = selected.Max(element => element.Y + element.Height);
+			var center = (left + right) / 2d;
+			var middle = (top + bottom) / 2d;
+
+			foreach (var element in selected)
+			{
+				var x = operation switch
+				{
+					AlignmentOperation.Left => left,
+					AlignmentOperation.Center => center - element.Width / 2d,
+					AlignmentOperation.Right => right - element.Width,
+					_ => element.X
+				};
+				var y = operation switch
+				{
+					AlignmentOperation.Top => top,
+					AlignmentOperation.Middle => middle - element.Height / 2d,
+					AlignmentOperation.Bottom => bottom - element.Height,
+					_ => element.Y
+				};
+				element.SetBounds(
+					Math.Clamp(SnapIfEnabled(x), 0, Math.Max(0, PageWidth - element.Width)),
+					Math.Clamp(SnapIfEnabled(y), 0, Math.Max(0, PageHeight - element.Height)),
+					element.Width,
+					element.Height);
+			}
+		});
+	}
+
+	private void DistributeSelection(bool horizontal)
+	{
+		if (!CanDistributeSelection()) return;
+		RunEdit(() =>
+		{
+			var selected = horizontal
+				? _selection.OrderBy(element => element.X).ToArray()
+				: _selection.OrderBy(element => element.Y).ToArray();
+
+			if (horizontal)
+			{
+				var left = selected.First().X;
+				var right = selected.Last().X + selected.Last().Width;
+				var available = right - left - selected.Sum(element => element.Width);
+				var gap = available / (selected.Length - 1);
+				var cursor = left;
+				foreach (var element in selected)
+				{
+					element.X = Math.Clamp(SnapIfEnabled(cursor), 0, Math.Max(0, PageWidth - element.Width));
+					cursor += element.Width + gap;
+				}
+			}
+			else
+			{
+				var top = selected.First().Y;
+				var bottom = selected.Last().Y + selected.Last().Height;
+				var available = bottom - top - selected.Sum(element => element.Height);
+				var gap = available / (selected.Length - 1);
+				var cursor = top;
+				foreach (var element in selected)
+				{
+					element.Y = Math.Clamp(SnapIfEnabled(cursor), 0, Math.Max(0, PageHeight - element.Height));
+					cursor += element.Height + gap;
+				}
+			}
+		});
+	}
+
+	private void MatchSelectionSize(bool width)
+	{
+		if (!CanAlignSelection()) return;
+		RunEdit(() =>
+		{
+			var reference = SelectedElement ?? _selection.First();
+			foreach (var element in _selection)
+			{
+				if (width)
+				element.Width = Math.Min(reference.Width, PageWidth - element.X);
+				else
+				element.Height = Math.Min(reference.Height, PageHeight - element.Y);
+			}
+		});
+	}
+
+	private bool CanAlignSelection() => CanManage && IsEditing && _selection.Count >= 2;
+	private bool CanDistributeSelection() => CanManage && IsEditing && _selection.Count >= 3;
+
+	private void ReloadVersions(bool selectActive, int? forceSelection = null)
+	{
+		var currentVersion = forceSelection ?? (selectActive ? null : SelectedVersion?.Version);
 		Versions.Clear();
 		foreach (var template in _service.ListVersions(SelectedType)) Versions.Add(new DocumentTemplateVersionItem(template));
-		var target = currentVersion is int version ? Versions.FirstOrDefault(item => item.Version == version) : Versions.FirstOrDefault(item => item.IsActive);
-		_selectedVersion = null;
-		SelectedVersion = target ?? Versions.LastOrDefault();
+		var target = currentVersion is int version
+			? Versions.FirstOrDefault(item => item.Version == version)
+			: Versions.FirstOrDefault(item => item.IsActive);
+
+		_selectedVersion = target ?? Versions.LastOrDefault();
+		OnPropertyChanged(nameof(SelectedVersion));
+		if (_selectedVersion is not null) LoadTemplate(_selectedVersion.Template, editing: false, markDirty: false);
+		RaiseCommandStates();
 	}
 
-	private void LoadTemplate(DocumentTemplate template, bool editing)
+	private void LoadTemplate(DocumentTemplate template, bool editing, bool markDirty)
 	{
-		foreach (var existing in Elements) existing.ModelChanged -= OnElementChanged;
-		Elements.Clear();
-		foreach (var element in template.Elements) AddEditor(new DocumentDesignerElementViewModel(element));
-		TemplateName = template.Id;
+		_applyingSnapshot = true;
+		try
+		{
+			foreach (var existing in Elements) existing.ModelChanged -= OnElementChanged;
+			Elements.Clear();
+			foreach (var element in template.Elements) AddEditor(new DocumentDesignerElementViewModel(CloneElement(element)));
+			_templateName = template.Id;
+			OnPropertyChanged(nameof(TemplateName));
+			_selection.Clear();
+			SelectedElement = null;
+			OnPropertyChanged(nameof(HasSelectedElement));
+		}
+		finally
+		{
+			_applyingSnapshot = false;
+		}
+
 		IsEditing = editing;
-		SetSelectedElements([]);
+		_undoHistory.Clear();
+		_redoHistory.Clear();
+		_transactionDepth = 0;
+		_transactionStart = null;
+		var snapshot = CaptureSnapshot();
+		_lastSnapshot = snapshot;
+		_cleanSnapshot = markDirty ? null : snapshot;
 		UpdateValidation();
+		UpdateDirtyState();
+		RaiseCommandStates();
 	}
 
 	private void AddEditor(DocumentDesignerElementViewModel editor)
@@ -421,7 +766,92 @@ public sealed class DocumentTemplateDesignerViewModel : BaseViewModel
 		Elements.Add(editor);
 	}
 
-	private void OnElementChanged(object? sender, EventArgs e) => UpdateValidation();
+	private void OnElementChanged(object? sender, EventArgs e)
+	{
+		if (_applyingSnapshot) return;
+		if (_transactionDepth > 0)
+		{
+			UpdateValidation();
+			UpdateDirtyState();
+			return;
+		}
+
+		var before = _lastSnapshot ?? CaptureSnapshot();
+		var after = CaptureSnapshot();
+		if (!SnapshotsEqual(before, after))
+		{
+			PushUndo(before);
+			_redoHistory.Clear();
+		}
+		_lastSnapshot = after;
+		UpdateValidation();
+		UpdateDirtyState();
+		RaiseCommandStates();
+	}
+
+	private void RunEdit(Action action)
+	{
+		if (!IsEditing) return;
+		var ownsTransaction = _transactionDepth == 0;
+		if (ownsTransaction) BeginEditTransaction();
+		try { action(); }
+		finally { if (ownsTransaction) EndEditTransaction(); }
+	}
+
+	private void ApplySnapshot(DesignerSnapshot snapshot)
+	{
+		_applyingSnapshot = true;
+		try
+		{
+			foreach (var existing in Elements) existing.ModelChanged -= OnElementChanged;
+			Elements.Clear();
+			foreach (var element in snapshot.Elements) AddEditor(new DocumentDesignerElementViewModel(CloneElement(element)));
+			_templateName = snapshot.TemplateName;
+			OnPropertyChanged(nameof(TemplateName));
+			_selection.Clear();
+			SelectedElement = null;
+			OnPropertyChanged(nameof(HasSelectedElement));
+		}
+		finally
+		{
+			_applyingSnapshot = false;
+		}
+	}
+
+	private DesignerSnapshot CaptureSnapshot() =>
+		new(TemplateName, Elements.Select(element => CloneElement(element.ToModel())).ToArray());
+
+	private bool SnapshotsEqual(DesignerSnapshot left, DesignerSnapshot right) =>
+		string.Equals(SnapshotFingerprint(left), SnapshotFingerprint(right), StringComparison.Ordinal);
+
+	private string SnapshotFingerprint(DesignerSnapshot snapshot) =>
+		DocumentTemplateSerializer.Serialize(new DocumentTemplate
+		{
+			Id = string.IsNullOrWhiteSpace(snapshot.TemplateName) ? "untitled-template" : snapshot.TemplateName.Trim(),
+			Type = SelectedType,
+			Version = 1,
+			IsActive = false,
+			PageWidth = PageWidth,
+			PageHeight = PageHeight,
+			Elements = snapshot.Elements.Select(CloneElement).ToArray()
+		});
+
+	private void PushUndo(DesignerSnapshot snapshot)
+	{
+		_undoHistory.Add(snapshot);
+		if (_undoHistory.Count > HistoryLimit) _undoHistory.RemoveAt(0);
+	}
+
+	private void UpdateDirtyState()
+	{
+		if (!IsEditing)
+		{
+			IsDirty = false;
+			return;
+		}
+		var current = CaptureSnapshot();
+		IsDirty = _cleanSnapshot is null || !SnapshotsEqual(_cleanSnapshot, current);
+	}
 
 	private void UpdateValidation()
 	{
@@ -454,6 +884,21 @@ public sealed class DocumentTemplateDesignerViewModel : BaseViewModel
 		return candidate;
 	}
 
+	private string UniqueTemplateName(string prefix)
+	{
+		var candidate = prefix;
+		var suffix = 2;
+		var existing = Versions.Select(version => version.Template.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
+		while (existing.Contains(candidate)) candidate = $"{prefix}-{suffix++}";
+		return candidate;
+	}
+
+	private double Snap(double value) => GridSize <= 0 ? value : Math.Round(value / GridSize) * GridSize;
+	private double SnapIfEnabled(double value) => SnapToGrid ? Snap(value) : value;
+
+	private static DocumentTemplateElement CloneElement(DocumentTemplateElement element) =>
+		element with { Columns = element.Columns.Select(column => column with { }).ToArray() };
+
 	private static DocumentTemplateElement CreateElement(DocumentTemplateElementType type, int index)
 	{
 		var id = $"{type.ToString().ToLowerInvariant()}-{index + 1}";
@@ -483,15 +928,56 @@ public sealed class DocumentTemplateDesignerViewModel : BaseViewModel
 		};
 	}
 
+	private void RaiseInspectorProperties()
+	{
+		OnPropertyChanged(nameof(HasSelectedElement));
+		OnPropertyChanged(nameof(ShowBindingProperty));
+		OnPropertyChanged(nameof(ShowTextProperty));
+		OnPropertyChanged(nameof(ShowTypographyProperties));
+		OnPropertyChanged(nameof(ShowFormatProperty));
+		OnPropertyChanged(nameof(ShowVisibilityProperty));
+		OnPropertyChanged(nameof(ShowBorderProperty));
+		OnPropertyChanged(nameof(ShowPlacementProperty));
+		OnPropertyChanged(nameof(ShowRepeatProperty));
+		OnPropertyChanged(nameof(ShowRowHeightProperty));
+		OnPropertyChanged(nameof(ShowLineTableHint));
+	}
+
 	private void RaiseCommandStates()
 	{
 		NewFromDefaultCommand.RaiseCanExecuteChanged();
 		DuplicateCommand.RaiseCanExecuteChanged();
+		CopySelectedVersionAsDraftCommand.RaiseCanExecuteChanged();
+		DiscardChangesCommand.RaiseCanExecuteChanged();
 		SaveDraftCommand.RaiseCanExecuteChanged();
 		ActivateCommand.RaiseCanExecuteChanged();
 		ResetDefaultCommand.RaiseCanExecuteChanged();
 		PreviewCommand.RaiseCanExecuteChanged();
 		DuplicateElementsCommand.RaiseCanExecuteChanged();
 		DeleteElementsCommand.RaiseCanExecuteChanged();
+		UndoCommand.RaiseCanExecuteChanged();
+		RedoCommand.RaiseCanExecuteChanged();
+		AlignLeftCommand.RaiseCanExecuteChanged();
+		AlignCenterCommand.RaiseCanExecuteChanged();
+		AlignRightCommand.RaiseCanExecuteChanged();
+		AlignTopCommand.RaiseCanExecuteChanged();
+		AlignMiddleCommand.RaiseCanExecuteChanged();
+		AlignBottomCommand.RaiseCanExecuteChanged();
+		DistributeHorizontallyCommand.RaiseCanExecuteChanged();
+		DistributeVerticallyCommand.RaiseCanExecuteChanged();
+		SameWidthCommand.RaiseCanExecuteChanged();
+		SameHeightCommand.RaiseCanExecuteChanged();
+	}
+
+	private sealed record DesignerSnapshot(string TemplateName, IReadOnlyList<DocumentTemplateElement> Elements);
+
+	private enum AlignmentOperation
+	{
+		Left,
+		Center,
+		Right,
+		Top,
+		Middle,
+		Bottom
 	}
 }
