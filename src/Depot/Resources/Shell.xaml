@@ -15,7 +15,8 @@
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderThickness" Value="2,0,0,0" />
         <Setter Property="BorderBrush" Value="Transparent" />
-        <Setter Property="ToolTip" Value="{Binding Name}" />
+        <Setter Property="ToolTip" Value="{Binding NavigationLabel}" />
+        <Setter Property="AutomationProperties.Name" Value="{Binding NavigationLabel}" />
         <Setter Property="ToolTipService.Placement" Value="Right" />
         <Setter Property="ToolTipService.InitialShowDelay" Value="300" />
         <Setter Property="ToolTipService.BetweenShowDelay" Value="0" />
@@ -24,7 +25,7 @@
             <Setter.Value>
                 <ControlTemplate TargetType="ListBoxItem">
                     <Border x:Name="Root" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
-                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        <ContentPresenter HorizontalAlignment="Stretch" VerticalAlignment="Center" />
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Root" Property="Background" Value="{DynamicResource NavigationHoverBrush}" /></Trigger>
@@ -33,6 +34,9 @@
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding DataContext.IsNavigationExpanded, RelativeSource={RelativeSource AncestorType={x:Type Window}}}" Value="True"><Setter Property="ToolTip" Value="{x:Null}" /></DataTrigger>
+        </Style.Triggers>
     </Style>
     <DataTemplate x:Key="ActivityBarItemTemplate">
         <Grid Width="46" Height="46">

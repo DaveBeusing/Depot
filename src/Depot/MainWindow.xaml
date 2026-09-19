@@ -4,7 +4,7 @@
         xmlns:local="clr-namespace:Depot"
         xmlns:controls="clr-namespace:Depot.Controls"
         xmlns:commands="clr-namespace:Depot.Commands"
-        Title="Depot - Inventory Management" Icon="/Resources/Images/Depot.ico" Width="1600" Height="950" MinWidth="1200" MinHeight="700"
+        Title="Depot" Icon="/Resources/Images/Depot.ico" Width="1600" Height="950" MinWidth="1200" MinHeight="700"
         Activated="OnWindowActivated" Deactivated="OnWindowDeactivated">
     <Window.CommandBindings>
         <CommandBinding Command="{x:Static commands:HelpCommands.OpenHelp}" Executed="OnOpenHelpExecuted" />
@@ -23,13 +23,14 @@
     </Window.Resources>
 
     <Grid Background="{DynamicResource BackgroundBrush}" UseLayoutRounding="True" SnapsToDevicePixels="True">
-        <Grid.ColumnDefinitions><ColumnDefinition Width="{StaticResource Shell.ActivityBarWidth}" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+        <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
         <Grid.RowDefinitions><RowDefinition Height="*" /><RowDefinition Height="{StaticResource Shell.StatusBarHeight}" /></Grid.RowDefinitions>
 
-        <Border Grid.Row="0" Grid.Column="0" Background="{DynamicResource NavigationBackgroundBrush}" BorderBrush="{DynamicResource NavigationBorderBrush}" BorderThickness="0,0,1,0">
+        <Border Grid.Row="0" Grid.Column="0" Width="{Binding NavigationPaneWidth}" Background="{DynamicResource NavigationBackgroundBrush}" BorderBrush="{DynamicResource NavigationBorderBrush}" BorderThickness="0,0,1,0">
             <DockPanel>
-                <Button DockPanel.Dock="Top" Height="{StaticResource Shell.BrandHeight}" Style="{StaticResource BrandButtonStyle}" ToolTip="About Depot" AutomationProperties.Name="About Depot" Click="OnVersionClick"><Image Source="/Resources/Images/Depot_32.png" Width="26" Height="26" AutomationProperties.Name="Depot" /></Button>
-                <StackPanel DockPanel.Dock="Bottom">
+                <Button DockPanel.Dock="Top" Width="52" Height="{StaticResource Shell.BrandHeight}" HorizontalAlignment="Left" Style="{StaticResource BrandButtonStyle}" ToolTip="About Depot" AutomationProperties.Name="About Depot" Click="OnVersionClick"><Image Source="/Resources/Images/Depot_32.png" Width="26" Height="26" AutomationProperties.Name="Depot" /></Button>
+                <Button DockPanel.Dock="Top" HorizontalAlignment="Left" Style="{StaticResource ActivityUtilityButtonStyle}" Command="{Binding ToggleNavigationCommand}" ToolTip="{Binding NavigationToggleLabel}" AutomationProperties.Name="{Binding NavigationToggleLabel}"><Path Width="20" Height="20" Data="{StaticResource Shell.NavigationToggleIcon}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="1.5" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Stretch="Uniform" /></Button>
+                <StackPanel DockPanel.Dock="Bottom" HorizontalAlignment="Left">
                     <Button Style="{StaticResource ActivityUtilityButtonStyle}" Command="{Binding NotificationCommand}" ToolTip="Notifications" AutomationProperties.Name="Notifications">
                         <Grid Width="28" Height="28">
                             <Path Width="20" Height="20" Data="{StaticResource Shell.NotificationIcon}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="1.5" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" />
@@ -39,14 +40,14 @@
                     <Button Style="{StaticResource ActivityUtilityButtonStyle}" Command="{x:Static commands:HelpCommands.OpenHelp}" ToolTip="Help (F1)" AutomationProperties.Name="Help"><Path Width="20" Height="20" Data="{StaticResource Shell.HelpIcon}" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="1.5" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Stretch="Uniform" /></Button>
                     <Button Style="{StaticResource UserAvatarButtonStyle}" Content="{Binding CurrentUserInitials, RelativeSource={RelativeSource AncestorType={x:Type local:MainWindow}}}" ToolTip="{Binding CurrentUserDisplayName, RelativeSource={RelativeSource AncestorType={x:Type local:MainWindow}}}" AutomationProperties.Name="Current user" Click="OnCurrentUserClick" />
                 </StackPanel>
-                <ListBox Style="{StaticResource ActivityBarListStyle}" ItemContainerStyle="{StaticResource ActivityBarItemStyle}" ItemTemplate="{StaticResource ActivityBarItemTemplate}" ItemsSource="{Binding NavigationItems}" SelectedItem="{Binding SelectedNavigationItem}" AutomationProperties.Name="Application navigation" />
+                <ListBox Style="{StaticResource ActivityBarListStyle}" ItemContainerStyle="{StaticResource ActivityBarItemStyle}" ItemTemplate="{StaticResource ActivityBarItemTemplate}" ItemsSource="{Binding PrimaryNavigationItems}" SelectedItem="{Binding SelectedNavigationItem}" AutomationProperties.Name="Application navigation" />
             </DockPanel>
         </Border>
 
         <Grid Grid.Row="0" Grid.Column="1" Background="{DynamicResource BackgroundBrush}">
             <Grid.RowDefinitions><RowDefinition Height="{StaticResource Shell.TabHeight}" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
             <controls:WorkspaceTabControl x:Name="WorkspaceTabs" Grid.Row="0" ActiveItem="{Binding SelectedNavigationItem, Mode=TwoWay}" Style="{StaticResource WorkspaceTabControlStyle}" ItemContainerStyle="{StaticResource WorkspaceTabItemStyle}" ItemTemplate="{StaticResource WorkspaceTabHeaderTemplate}" TabClosing="OnWorkspaceTabClosing" AutomationProperties.Name="Workspace tabs" />
-            <ContentControl Grid.Row="1" Content="{Binding SelectedNavigationItem.Content}" ContentTemplateSelector="{StaticResource ActivityContextTemplateSelector}" />
+            <ContentControl Grid.Row="1" Content="{Binding SelectedNavigationItem.Content}" ContentTemplateSelector="{StaticResource ActivityContextTemplateSelector}" Visibility="{Binding ShowSelectedContextNavigation, Converter={StaticResource BooleanToVisibilityConverter}}" />
             <Border Grid.Row="2" Padding="{StaticResource Shell.ContentPadding}" Background="{DynamicResource BackgroundBrush}"><ContentControl Content="{Binding CurrentViewModel}" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" Background="{DynamicResource BackgroundBrush}" /></Border>
         </Grid>
 
