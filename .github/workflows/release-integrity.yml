@@ -347,6 +347,7 @@ jobs:
             userSessions = Read-CurrentVersion 'src/Depot/Data/UserSessionSchemaMigration.cs'
             securityEvents = Read-CurrentVersion 'src/Depot/Data/SecurityEventSchemaMigration.cs'
             userPreferences = Read-CurrentVersion 'src/Depot/Data/UserPreferenceSchemaMigration.cs'
+            documentTemplates = Read-CurrentVersion 'src/Depot/Data/DocumentTemplateSchemaMigration.cs'
             enterpriseIdentity = Read-CurrentVersion 'src/Depot/Data/EnterpriseIdentitySchemaMigration.cs'
           }
 

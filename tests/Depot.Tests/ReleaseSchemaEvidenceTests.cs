@@ -20,6 +20,7 @@ public sealed class ReleaseSchemaEvidenceTests
 			"src/Depot/Data/UserSessionSchemaMigration.cs",
 			"src/Depot/Data/SecurityEventSchemaMigration.cs",
 			"src/Depot/Data/UserPreferenceSchemaMigration.cs",
+			"src/Depot/Data/DocumentTemplateSchemaMigration.cs",
 			"src/Depot/Data/EnterpriseIdentitySchemaMigration.cs"
 		};
 
