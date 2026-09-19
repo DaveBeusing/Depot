@@ -29,7 +29,7 @@ jobs:
     timeout-minutes: 45
     steps:
       - name: Checkout exact source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -44,7 +44,7 @@ jobs:
           "current=$head" | Out-File artifacts/packaged/source.txt -Encoding ascii
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10.0.x
 
@@ -183,7 +183,7 @@ jobs:
 
       - name: Retain failure evidence
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: depot-manager-packaged-e2e-failure-${{ github.sha }}
           path: |
@@ -195,7 +195,7 @@ jobs:
 
       - name: Upload packaged E2E test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: depot-manager-packaged-e2e-results-${{ github.sha }}
           path: |

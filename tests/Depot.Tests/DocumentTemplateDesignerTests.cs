@@ -294,7 +294,7 @@ public sealed class DocumentTemplateDesignerTests
 
 		Assert.True(viewModel.IsEditing);
 		Assert.True(viewModel.IsDirty);
-		Assert.True(viewModel.TemplateName.EndsWith("-draft-copy", StringComparison.Ordinal));
+		Assert.EndsWith("-draft-copy", viewModel.TemplateName, StringComparison.Ordinal);
 
 		var activeBeforePreview = catalog.Snapshot.GetActive(viewModel.SelectedType);
 		var preview = service.Preview(new DocumentTemplate

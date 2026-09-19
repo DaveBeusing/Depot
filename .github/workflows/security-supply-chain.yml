@@ -33,10 +33,10 @@ jobs:
             filter: FullyQualifiedName~BusinessRecordIntegrityTests|FullyQualifiedName~PurchaseOrderApprovalServiceTests|FullyQualifiedName~PurchaseOrderApprovalMigrationTests
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10.0.x
 
@@ -63,7 +63,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Reject invalid or expired security exceptions
         shell: pwsh
@@ -75,10 +75,10 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10.0.x
 
@@ -91,10 +91,10 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10.0.x
 
@@ -107,12 +107,12 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10.0.x
 
@@ -137,7 +137,7 @@ jobs:
         run: ./scripts/security/build-cra-evidence.ps1 -SbomPath artifacts/sbom/depot.cdx.json
 
       - name: Upload dependency evidence
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: depot-dependency-evidence
           path: artifacts/sbom/
@@ -145,7 +145,7 @@ jobs:
           retention-days: 90
 
       - name: Upload CRA technical evidence
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: depot-cra-evidence-${{ github.sha }}
           path: artifacts/cra-evidence/

@@ -6,7 +6,7 @@ Updated: 2026-09-17
 
 **Production acceptance: `PRODUCTION_RC_REQUIRED`**
 
-The repository contains the complete technical production-signing acceptance path, publisher-continuity enforcement and release-candidate evidence model. H1 repository governance is now closed with active ruleset `23590604`, so production-signing acceptance can proceed from protected `master`.
+The repository contains the complete technical production-signing acceptance path, publisher-continuity enforcement and release-candidate evidence model. The live ruleset `23590604` is active, but H1 is currently reopened because its five required aggregate checks are not enforced. Production-signing acceptance must wait until that live governance contract is restored and revalidated.
 
 A production signing acceptance must not be reported as `PASS` until a Stable acceptance-only run on current `master` completes with the real production code-signing identity. As of the 2026-09-17 AP-08 readiness check, the repository Actions API exposes no `workflow_dispatch` run; there is therefore no retained successful production-signed RC acceptance evidence yet.
 

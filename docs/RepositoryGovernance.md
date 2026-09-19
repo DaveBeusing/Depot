@@ -10,12 +10,13 @@ This keeps the branch policy stable when internal test matrices, runner versions
 
 ## Current live status
 
-H1 repository governance is **PASS**.
+H1 repository governance is currently **BLOCKED by live-ruleset drift**.
 
-GitHub repository ruleset **23590604**, `Depot master governance`, is active and targets exactly `refs/heads/master`. The live GitHub rulesets API confirms the expected pull-request rule, deletion/non-fast-forward protection, zero required approvals, no bypass actor and the five required aggregate status checks.
+GitHub ruleset **23590604**, `Depot master governance`, is active and still targets exactly `refs/heads/master`. It continues to require pull-request delivery, blocks deletion/non-fast-forward updates and exposes no bypass actor. However, the live ruleset currently omits the `required_status_checks` rule after the temporary development-phase CI relaxation. The source-controlled template `.github/rulesets/MasterGovernance.json` still defines the intended five aggregate checks.
 
-The source-controlled template remains `.github/rulesets/MasterGovernance.json`. Live enforcement and the versioned template must remain equivalent; source control alone is not sufficient evidence if the GitHub ruleset is later removed or weakened.
+Because live enforcement no longer matches the versioned contract, H1 is reopened until the five required checks are restored in GitHub and `scripts/operations/Test-RepositoryGovernance.ps1 -RequireActiveRuleset` passes again. Repository documentation and Track A evidence must not report H1 as `PASS` while this drift exists.
 
+## Required status checks
 ## Required status checks
 
 The following job names are the repository governance contract and must remain stable unless the ruleset is changed in the same controlled rollout:
@@ -84,22 +85,24 @@ The required status checks validate the exact pull-request head SHA. For the cur
 
 If Depot moves to parallel multi-developer delivery or a merge queue, reassess `strict_required_status_checks_policy` and enable it together with the corresponding merge workflow.
 
-## Activation evidence
+## Historical activation evidence and current drift
 
-The live ruleset was activated on 2026-09-17 and is exposed by GitHub as:
+Ruleset ID `23590604` was originally activated on 2026-09-17 with the complete H1 contract and was valid evidence for H1 at that time. A later temporary development-phase relaxation removed the live required-status-check rule while leaving the source-controlled template unchanged.
+
+Current target state:
 
 - ruleset ID: `23590604`;
 - name: `Depot master governance`;
-- target: `branch`;
-- enforcement: `active`;
-- include: `refs/heads/master`;
-- bypass actors: none;
-- current user bypass: `never`.
+- target exactly `refs/heads/master`;
+- pull-request delivery required;
+- deletion and non-fast-forward updates blocked;
+- no bypass actors;
+- **restore** `CI Required Gate`, `Quality Required Gate`, `Security Required Gate`, `Packaged E2E Required Gate` and `Database Provider Required Gate` as required status checks;
+- keep `strict_required_status_checks_policy=false` for the current one-person workflow.
 
-`operations/TrackAAcceptance.example.json` records this live evidence reference and H1 as `PASS`.
+After restoration, rerun the live validator and only then return H1 and the controlled Track A evidence to `PASS`.
 
-Activation is not a one-time exemption from future validation. If the live ruleset is deleted, disabled, retargeted, given a bypass actor or loses one of the required checks, H1 must return to a blocked state until the live contract is restored.
-
+## Safe change procedure
 ## Safe change procedure
 
 Required-check names are an external repository contract. Do not rename or remove an aggregate job in isolation.

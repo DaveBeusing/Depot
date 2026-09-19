@@ -157,13 +157,13 @@ Security and compliance work is documented transparently rather than presented a
 
 ## Offline Help
 
-Embedded Help manifest **1.21** includes contextual Sales, Finance, User Sessions and Security Center guidance. Help visibility follows central permissions and never grants business access.
+Embedded Help manifest **1.22** includes contextual Sales, Finance, User Sessions and Security Center guidance. Help visibility follows central permissions and never grants business access.
 
 See the [Help Center documentation](docs/HelpCenter.md).
 
 ## Road to 1.0
 
-The generic database-provider and packaged-lifecycle technical gates are complete for the advertised repository boundary, and H1/H2 are closed. Major remaining 1.0 acceptance items are H3 production-signed Stable RC acceptance (including exact signed-artifact install/update/repair evidence), H4 deployment disaster-recovery and backup-ownership acceptance, H5 exact-RC manual desktop/accessibility acceptance, plus organization-specific accounting/tax/retention/valuation/reporting/localization procedures and legal/organizational closure work tracked in the release checklist.
+The generic database-provider and packaged-lifecycle technical gates are complete for the advertised repository boundary. H2 remains repository-level `PASS`; H1 repository governance is currently reopened because the live `master` ruleset is temporarily missing the five required aggregate status checks even though the source-controlled ruleset template still defines them. Restore the live required-check contract and revalidate H1 before entering H3. H3 production-signed Stable RC acceptance, H4 deployment disaster-recovery and backup-ownership acceptance, H5 exact-RC manual desktop/accessibility acceptance, plus organization-specific accounting/tax/retention/valuation/reporting/localization procedures and legal/organizational closure work remain outstanding.
 
 Track the path through the [Roadmap](docs/Roadmap.md) and [Release 1.0 plan](docs/Release1.0.md).
 

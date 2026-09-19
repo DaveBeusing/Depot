@@ -17,10 +17,10 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10.0.x
 
@@ -76,7 +76,7 @@ jobs:
           -o artifacts/publish/manager
 
       - name: Upload DR profile contract evidence
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: disaster-recovery-profile-contract-${{ github.sha }}
           path: artifacts/operations/DisasterRecoveryProfile.validation.json
@@ -84,7 +84,7 @@ jobs:
           retention-days: 90
 
       - name: Upload Track A closure contract evidence
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: track-a-closure-contract-${{ github.sha }}
           path: artifacts/operations/TrackAAcceptance.validation.json
@@ -93,7 +93,7 @@ jobs:
 
       - name: Upload repository governance contract evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: repository-governance-contract-${{ github.sha }}
           path: artifacts/operations/RepositoryGovernance.validation.json
@@ -138,10 +138,10 @@ jobs:
             project: tests/Depot.Tests/Depot.Tests.csproj
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10.0.x
 

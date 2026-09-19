@@ -1,6 +1,8 @@
 // Copyright (c) 2026 David Beusing
 // Licensed under the MIT License.
 
+using System.Xml.Linq;
+
 using Depot.Controls;
 
 using Xunit;
@@ -89,6 +91,25 @@ public sealed class CrossAppConsistencyTests
 		Assert.Contains("My Work = something currently requires work", docs, StringComparison.Ordinal);
 		Assert.Contains("NavigateToNotificationAsync", main, StringComparison.Ordinal);
 		Assert.Contains("No second task persistence", docs, StringComparison.Ordinal);
+	}
+
+	[Fact]
+	public void ShellChromeProvidesVisibleKeyboardFocusForFocusableChromeButtons()
+	{
+		var root = FindRepositoryRoot();
+		var x = XNamespace.Get("http://schemas.microsoft.com/winfx/2006/xaml/presentation");
+		var xaml = XNamespace.Get("http://schemas.microsoft.com/winfx/2006/xaml");
+		var polish = XDocument.Load(Path.Combine(root, "src", "Depot", "Resources", "ShellPolish.xaml"));
+		var shell = XDocument.Load(Path.Combine(root, "src", "Depot", "Resources", "Shell.xaml"));
+
+		foreach (var key in new[] { "BrandButtonStyle", "UserAvatarButtonStyle", "FooterVersionButtonStyle" })
+		{
+			var style = polish.Descendants(x + "Style").Single(element => (string?)element.Attribute(xaml + "Key") == key);
+			Assert.Contains(style.Descendants(x + "Trigger"), trigger => (string?)trigger.Attribute("Property") == "IsKeyboardFocused" && (string?)trigger.Attribute("Value") == "True");
+		}
+
+		var closeStyle = shell.Descendants(x + "Style").Single(element => (string?)element.Attribute(xaml + "Key") == "WorkspaceTabCloseButtonStyle");
+		Assert.Contains(closeStyle.Descendants(x + "Trigger"), trigger => (string?)trigger.Attribute("Property") == "IsKeyboardFocused" && (string?)trigger.Attribute("Value") == "True");
 	}
 
 	private static string FindRepositoryRoot()

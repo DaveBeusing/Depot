@@ -48,7 +48,7 @@ jobs:
       manager-version: ${{ steps.identity.outputs.manager-version }}
     steps:
       - name: Checkout exact source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -159,7 +159,7 @@ jobs:
         run: ./scripts/security/validate-risk-acceptances.ps1
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10.0.x
 
@@ -430,7 +430,7 @@ jobs:
             } | Out-File (Join-Path $assets 'SHA256SUMS.txt') -Encoding ascii
 
       - name: Upload immutable release candidate evidence
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: depot-release-${{ github.sha }}
           path: artifacts/release/assets/
@@ -439,7 +439,7 @@ jobs:
 
       - name: Upload release test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: depot-release-tests-${{ github.sha }}
           path: artifacts/test-results/
@@ -456,7 +456,7 @@ jobs:
       contents: write
     steps:
       - name: Download exact release candidate
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: depot-release-${{ github.sha }}
           path: artifacts/release

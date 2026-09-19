@@ -1,6 +1,6 @@
 # Depot 1.0 Release Candidate Readiness
 
-Updated: 2026-09-17
+Updated: 2026-09-19
 
 ## Purpose
 
@@ -10,11 +10,11 @@ It deliberately separates repository engineering defects from administrative, pr
 
 ## Audit result
 
-**Repository technical reconciliation: COMPLETE**
+**2026-09-17 repository technical reconciliation: COMPLETE at that snapshot. 2026-09-19 stabilization: REPAIRED, requalification pending.**
 
-The audit found no currently known generic Depot 1.0 implementation defect and no currently known missing automated-test/evidence defect inside the advertised repository product boundary.
+The subsequent UX merge sequence exposed three concrete repository-quality defects: a warning-as-error xUnit analyzer failure, a stale Help 1.21 test/documentation baseline after manifest 1.22, and inconsistent keyboard-focus treatment in shell chrome. This stabilization package repairs those defects and strengthens regression coverage so conflicting Help-manifest versions are rejected.
 
-H1 repository governance is now closed through active GitHub ruleset `23590604`; H2 was already repository-level `PASS`. Depot nevertheless remains **not ready for a Stable 1.0 release** because H3 production signing, H4 deployment disaster recovery and H5 exact-RC manual accessibility acceptance remain explicit gates.
+The same review found live governance drift: ruleset `23590604` remains active but currently omits the five required aggregate status checks after the temporary development relaxation. H1 is therefore reopened until live enforcement is restored and revalidated. H2 remains repository-level `PASS`. Depot remains **not ready for a Stable 1.0 release** until H1 is restored and H3 production signing, H4 deployment disaster recovery and H5 exact-RC manual accessibility acceptance are completed.
 
 Ordinary CI, quality, security, database-provider and packaged-E2E gates remain authoritative. This document does not override a red or incomplete workflow run.
 
@@ -31,7 +31,9 @@ The audit uses six categories:
 
 ### Category 1 — repository implementation defects
 
-**No unresolved defect identified by this reconciliation.**
+**No unresolved product defect remains from the 2026-09-19 stabilization changes once this package is green.**
+
+The stabilization explicitly repairs the Document Designer xUnit analyzer failure, the stale Help-manifest assertion/documentation drift, and shell keyboard-focus inconsistencies. A green warning-free build and regression suite on the exact stabilization SHA are required before treating the repository as requalified.
 
 The audit rechecked the implemented boundaries that had previously produced concrete repair work: packaged executable replacement, electronic-invoice conformance, enterprise identity acceptance, durable Security Event delivery and DepotManager Windows integration. Those repairs are already represented by the merged repository state.
 
@@ -39,7 +41,9 @@ The repository search also exposes no `NotImplementedException` placeholder in p
 
 ### Category 2 — automated test/evidence defects
 
-**No unresolved generic evidence defect identified by this reconciliation.**
+**The stale Help-manifest assertion was an automated-evidence defect and is repaired by this stabilization.**
+
+Canonical documentation tests now reject conflicting Help-manifest versions instead of only checking that one correct marker is present.
 
 The repository contains dedicated acceptance for:
 
@@ -68,9 +72,9 @@ No persisted schema, product behavior or advertised feature scope changes are in
 
 ### Category 4 — repository administration
 
-**Closed.**
+**Reopened / BLOCKED.**
 
-GitHub repository ruleset `23590604`, `Depot master governance`, is active and targets exactly `refs/heads/master`. The live ruleset requires pull-request delivery, the five aggregate required checks, deletion/non-fast-forward protection, zero required approvals and no bypass actor.
+GitHub repository ruleset `23590604`, `Depot master governance`, remains active and targets exactly `refs/heads/master`, but the live rule set currently omits the five aggregate required checks. The source-controlled template still contains the complete intended contract. H1 returns to `PASS` only after the live checks are restored and the fail-closed live validator passes.
 
 The source-controlled contract remains `.github/rulesets/MasterGovernance.json`, and `scripts/operations/Test-RepositoryGovernance.ps1 -RequireActiveRuleset` remains the fail-closed live verification path. If the live ruleset is later removed or weakened, H1 reopens.
 
@@ -114,7 +118,7 @@ This is sufficient to close the generic repository lifecycle evidence gap. It is
 
 ## H3 Stable RC entry condition
 
-H1 and H2 are now closed. The next Track A acceptance step is the production-signed Stable RC.
+H2 remains closed. H1 must first be restored to the source-controlled five-check governance contract and revalidated; only then is the next Track A acceptance step the production-signed Stable RC.
 
 From clean current `master`:
 

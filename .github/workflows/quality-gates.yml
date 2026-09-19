@@ -16,8 +16,8 @@ jobs:
     runs-on: windows-2022
     timeout-minutes: 35
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10.0.x
 
@@ -86,8 +86,8 @@ jobs:
           - area: Shell-UX
             project: tests/Depot.Tests/Depot.Tests.csproj
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10.0.x
 
@@ -109,7 +109,7 @@ jobs:
 
       - name: Upload area coverage
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: code-coverage-${{ matrix.area }}
           path: TestResults/Coverage/${{ matrix.area }}/**/*.cobertura.xml
@@ -125,10 +125,10 @@ jobs:
     env:
       COVERAGE_MATRIX_RESULT: ${{ needs.coverage.result }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Download coverage reports
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           pattern: code-coverage-*
           path: TestResults/Coverage
@@ -156,8 +156,8 @@ jobs:
     runs-on: windows-2025
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10.0.x
 
@@ -183,7 +183,7 @@ jobs:
     runs-on: windows-2025
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Verify desktop accessibility technical baseline
         shell: pwsh
@@ -195,7 +195,7 @@ jobs:
 
       - name: Upload accessibility technical evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: accessibility-technical-evidence
           path: artifacts/accessibility/TechnicalAccessibilityEvidence.json

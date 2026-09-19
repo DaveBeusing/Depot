@@ -91,6 +91,33 @@ public sealed class DocumentationBaselineConsistencyTests
 	}
 
 	[Fact]
+	public void CanonicalDocumentationDoesNotContainConflictingHelpManifestVersions()
+	{
+		var root = FindRepositoryRoot();
+		var helpVersion = ReadHelpManifestVersion(root);
+		var documents = new[]
+		{
+			"README.md",
+			"docs/CurrentStatus.md",
+			"docs/Release1.0.md",
+			"docs/Versioning.md",
+			"docs/Architecture.md",
+			"docs/ComplianceOverview.md",
+			"docs/DocumentationStatus.md",
+			"docs/UserFacingChanges.md",
+			"docs/HelpCenter.md"
+		};
+		var pattern = new Regex(@"Help manifest(?:\s*:)?\s*(?:\*\*|`)?(?<version>\d+\.\d+)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+		foreach (var relativePath in documents)
+		{
+			var content = File.ReadAllText(Path.Combine(root, relativePath));
+			foreach (Match match in pattern.Matches(content))
+				Assert.Equal(helpVersion, match.Groups["version"].Value);
+		}
+	}
+
+	[Fact]
 	public void CanonicalBaselineDocumentsDoNotPinDepotPreviewPatchVersions()
 	{
 		var root = FindRepositoryRoot();

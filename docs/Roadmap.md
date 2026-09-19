@@ -128,9 +128,9 @@ This does not certify versions outside the support matrix and does not close dep
 
 Track C F1 through F5B are complete at the repository implementation/acceptance boundary. The final closure after F5B has green CI, Software Quality, Security Supply Chain, Database Provider Acceptance and DepotManager packaged-E2E evidence on the accepted repair head.
 
-Track A repository implementation is complete. H1 and H2 are closed; the remaining production closure is external/manual:
+Track A repository implementation is complete, but H1 has been reopened by live governance drift while H2 remains closed:
 
-- H1 Repository Governance: `PASS` via active ruleset `23590604`;
+- H1 Repository Governance: `BLOCKED` until active ruleset `23590604` again requires all five aggregate gates and passes live validation;
 - H2 Release Pipeline & Channels: repository-level `PASS`;
 - H3 Production Signing: `PRODUCTION_RC_REQUIRED`;
 - H4 Production Operations & DR: `DEPLOYMENT_REQUIRED`;

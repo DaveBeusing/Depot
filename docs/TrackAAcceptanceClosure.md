@@ -28,7 +28,7 @@ Authoritative files:
 | H4 – Production Operations & Disaster Recovery | Implemented | `DEPLOYMENT_REQUIRED` – requires an ACTIVE production deployment profile and real isolated restore evidence |
 | H5 – Accessibility & Desktop Production Acceptance | Implemented | `MANUAL_REQUIRED` – requires human acceptance of the exact packaged RC |
 
-Track A therefore remains **BLOCKED for production closure** until H3 through H5 are backed by concrete evidence and the closure validator succeeds with `-RequirePass`. H1 and H2 are already closed.
+Track A therefore remains **BLOCKED for production closure**. H2 remains closed; H1 is reopened until live ruleset `23590604` again enforces the five aggregate required checks. H3 through H5 also still require their concrete evidence before the closure validator can succeed with `-RequirePass`.
 
 ## Technical closure defects found after H5
 
@@ -39,7 +39,7 @@ The final closure review intentionally rechecked the required gates rather than 
 
 The ordinary PR gates remain responsible for proving these fixes. A closure document must not override a red technical gate.
 
-## H1 – Repository governance: PASS
+## H1 – Repository governance: BLOCKED by live drift
 
 The source-controlled policy is `.github/rulesets/MasterGovernance.json`. CI validates the template and all five required aggregate workflow job names through `scripts/operations/Test-RepositoryGovernance.ps1`.
 
@@ -53,7 +53,7 @@ The required checks are:
 
 GitHub now exposes active repository ruleset **23590604**, named `Depot master governance`. The live ruleset targets exactly `refs/heads/master`, requires pull-request delivery, requires the five aggregate checks above, blocks deletion and non-fast-forward updates, has no bypass actor, requires zero approvals for the current one-person delivery model and keeps strict branch-up-to-date enforcement disabled.
 
-The live ruleset metadata was verified through the GitHub rulesets API on 2026-09-17. `operations/TrackAAcceptance.example.json` records the live API evidence reference and ruleset ID. H1 is therefore `PASS`.
+The live ruleset metadata was verified through the GitHub rulesets API on 2026-09-17 and was valid H1 `PASS` evidence at that time. A later temporary development-phase relaxation removed the live required-status-check rule. The ruleset remains active, targets `master`, requires PR delivery and blocks deletion/non-fast-forward updates, but H1 is now `BLOCKED` until the five aggregate checks are restored and the live validator passes again.
 
 The authoritative live validator remains:
 
