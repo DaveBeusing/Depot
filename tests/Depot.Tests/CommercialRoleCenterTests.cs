@@ -284,6 +284,80 @@ public sealed class CommercialRoleCenterTests
 		Assert.Equal("No submitted orders.", section.EmptyText);
 	}
 
+	[Fact]
+	public void RoleCenterColumnProfilesCoverEveryPersonaWithFocusedDefaults()
+	{
+		foreach (var kind in Enum.GetValues<CommercialRoleCenterKind>())
+		{
+			var profile = CommercialRoleColumnProfiles.Get(kind);
+			Assert.StartsWith("role-center.", profile.WorkspaceId, StringComparison.Ordinal);
+			Assert.InRange(profile.VisibleColumnIds.Count, 5, 8);
+			Assert.True(profile.IsVisible(CommercialRoleColumnProfiles.Reference));
+		}
+	}
+
+	[Fact]
+	public void ApprovalReceivableAndPayableProfilesUseTaskSpecificColumns()
+	{
+		var approval = CommercialRoleColumnProfiles.Get(CommercialRoleCenterKind.ApprovalInbox);
+		Assert.True(approval.IsVisible(CommercialRoleColumnProfiles.Requester));
+		Assert.True(approval.IsVisible(CommercialRoleColumnProfiles.Age));
+		Assert.False(approval.IsVisible(CommercialRoleColumnProfiles.Currency));
+
+		var receivables = CommercialRoleColumnProfiles.Get(CommercialRoleCenterKind.ReceivablesWorkspace);
+		Assert.Equal("Customer", receivables.GetHeader(CommercialRoleColumnProfiles.Context, "Context"));
+		Assert.Equal("Allocation", receivables.GetHeader(CommercialRoleColumnProfiles.StateDetail, "State"));
+
+		var payables = CommercialRoleColumnProfiles.Get(CommercialRoleCenterKind.PayablesWorkspace);
+		Assert.Equal("Supplier", payables.GetHeader(CommercialRoleColumnProfiles.Context, "Context"));
+		Assert.Equal("Match", payables.GetHeader(CommercialRoleColumnProfiles.StateDetail, "State"));
+	}
+
+	[Fact]
+	public void WarehouseProfilesStayCompactWithoutInventingBusinessState()
+	{
+		var receiving = CommercialRoleColumnProfiles.Get(CommercialRoleCenterKind.ReceivingWorkspace);
+		var fulfillment = CommercialRoleColumnProfiles.Get(CommercialRoleCenterKind.FulfillmentWorkspace);
+
+		Assert.Equal("Expected date", receiving.GetHeader(CommercialRoleColumnProfiles.Due, "Due"));
+		Assert.Equal("Receipt state", receiving.GetHeader(CommercialRoleColumnProfiles.StateDetail, "State"));
+		Assert.Equal("Requested date", fulfillment.GetHeader(CommercialRoleColumnProfiles.Due, "Due"));
+		Assert.Equal("Picking / Packing", fulfillment.GetHeader(CommercialRoleColumnProfiles.StateDetail, "State"));
+	}
+
+	[Fact]
+	public void FilteredSectionCarriesDistinctEmptyState()
+	{
+		var section = new CommercialRoleSection("Due Today", "Nothing is due today.", [], true);
+		Assert.True(section.IsEmpty);
+		Assert.Equal("No work items match the current filter.", section.DisplayEmptyText);
+	}
+
+	[Fact]
+	public void ApprovalItemKeepsSingleDominantRowAction()
+	{
+		var item = new CommercialRoleItem(
+			CommercialRoleItemKind.SalesOrderApproval,
+			42,
+			3,
+			"SO-0042",
+			"Sales Order",
+			"Example Customer",
+			"Pending Approval",
+			1250m,
+			DateTime.UtcNow,
+			null,
+			1,
+			"approvals.sales",
+			7,
+			true,
+			true,
+			"User #7");
+
+		Assert.True(item.CanApprove);
+		Assert.False(item.OpenIsPrimary);
+	}
+
 	private static CommercialRoleCenterService CreateService(params ApplicationPermission[] permissions)
 	{
 		var authorization = new AuthorizationService();
