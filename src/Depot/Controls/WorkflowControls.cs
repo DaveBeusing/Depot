@@ -1,9 +1,12 @@
 // Copyright (c) 2026 David Beusing
 // Licensed under the MIT License.
 
+using System.Collections.Specialized;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+
+using Depot.Models;
 
 namespace Depot.Controls;
 
@@ -167,9 +170,108 @@ public sealed class WorkflowTimeline : ItemsControl
 		typeof(WorkflowTimeline),
 		new PropertyMetadata(null));
 
+	public static readonly DependencyProperty CompactThresholdProperty = DependencyProperty.Register(
+		nameof(CompactThreshold),
+		typeof(int),
+		typeof(WorkflowTimeline),
+		new FrameworkPropertyMetadata(8, OnCompactThresholdChanged, CoerceCompactThreshold));
+
+	public static readonly DependencyProperty IsExpandedProperty = DependencyProperty.Register(
+		nameof(IsExpanded),
+		typeof(bool),
+		typeof(WorkflowTimeline),
+		new PropertyMetadata(false, OnIsExpandedChanged));
+
+	private static readonly DependencyPropertyKey HasCompactOverflowPropertyKey = DependencyProperty.RegisterReadOnly(
+		nameof(HasCompactOverflow),
+		typeof(bool),
+		typeof(WorkflowTimeline),
+		new PropertyMetadata(false));
+
+	public static readonly DependencyProperty HasCompactOverflowProperty = HasCompactOverflowPropertyKey.DependencyProperty;
+
+	private static readonly DependencyPropertyKey HasCurrentStepPropertyKey = DependencyProperty.RegisterReadOnly(
+		nameof(HasCurrentStep),
+		typeof(bool),
+		typeof(WorkflowTimeline),
+		new PropertyMetadata(false));
+
+	public static readonly DependencyProperty HasCurrentStepProperty = HasCurrentStepPropertyKey.DependencyProperty;
+
+	private static readonly DependencyPropertyKey CurrentStepTextPropertyKey = DependencyProperty.RegisterReadOnly(
+		nameof(CurrentStepText),
+		typeof(string),
+		typeof(WorkflowTimeline),
+		new PropertyMetadata(string.Empty));
+
+	public static readonly DependencyProperty CurrentStepTextProperty = CurrentStepTextPropertyKey.DependencyProperty;
+
+	public WorkflowTimeline()
+	{
+		Loaded += (_, _) =>
+		{
+			UpdatePresentation();
+			ScrollCurrentIntoView();
+		};
+	}
+
 	public ICommand? NavigateCommand
 	{
 		get => (ICommand?)GetValue(NavigateCommandProperty);
 		set => SetValue(NavigateCommandProperty, value);
 	}
+
+	public int CompactThreshold
+	{
+		get => (int)GetValue(CompactThresholdProperty);
+		set => SetValue(CompactThresholdProperty, value);
+	}
+
+	public bool IsExpanded
+	{
+		get => (bool)GetValue(IsExpandedProperty);
+		set => SetValue(IsExpandedProperty, value);
+	}
+
+	public bool HasCompactOverflow => (bool)GetValue(HasCompactOverflowProperty);
+	public bool HasCurrentStep => (bool)GetValue(HasCurrentStepProperty);
+	public string CurrentStepText => (string)GetValue(CurrentStepTextProperty);
+
+	protected override void OnItemsChanged(NotifyCollectionChangedEventArgs e)
+	{
+		base.OnItemsChanged(e);
+		UpdatePresentation();
+	}
+
+	private static object CoerceCompactThreshold(DependencyObject dependencyObject, object baseValue) =>
+		Math.Max(3, (int)baseValue);
+
+	private static void OnCompactThresholdChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs args) =>
+		((WorkflowTimeline)dependencyObject).UpdatePresentation();
+
+	private static void OnIsExpandedChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs args)
+	{
+		var timeline = (WorkflowTimeline)dependencyObject;
+		if (!(bool)args.NewValue) timeline.Dispatcher.BeginInvoke(new Action(timeline.ScrollCurrentIntoView));
+	}
+
+	private void UpdatePresentation()
+	{
+		var current = Items.OfType<WorkflowTimelineItem>().LastOrDefault(item => item.IsCurrent);
+		SetValue(HasCurrentStepPropertyKey, current is not null);
+		SetValue(CurrentStepTextPropertyKey, current is null ? string.Empty : "Current step: " + current.Title);
+
+		var hasOverflow = Items.Count > CompactThreshold;
+		SetValue(HasCompactOverflowPropertyKey, hasOverflow);
+		if (!hasOverflow && IsExpanded) SetCurrentValue(IsExpandedProperty, false);
+	}
+
+	private void ScrollCurrentIntoView()
+	{
+		if (!HasCompactOverflow || IsExpanded) return;
+		var current = Items.OfType<WorkflowTimelineItem>().LastOrDefault(item => item.IsCurrent);
+		if (current is null) return;
+		if (ItemContainerGenerator.ContainerFromItem(current) is FrameworkElement container) container.BringIntoView();
+	}
 }
+
