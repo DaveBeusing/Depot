@@ -106,3 +106,12 @@ My Work provides:
 ## Validation contract
 
 Regression coverage verifies permission removal, deterministic section ordering and bounds, cancellation, isolated provider failure handling, the absence of My Work mutation APIs and the ViewModel-to-service architecture boundary.
+
+
+## Adaptive Home integration
+
+The Home workspace treats My Work as the primary action surface. **Needs my action** is the default section, with Overdue, Today and High priority filters applied as presentation projections over the existing My Work snapshot.
+
+Home KPI cards are bounded to existing Dashboard and My Work data and are selected from effective permissions. Operational quick actions are offered only when the corresponding create/execute permission already exists. Favorites, Recents and Default Landing remain on the existing Workspace Productivity persistence model and are presented compactly after action-oriented content.
+
+Provider errors remain isolated by MyWorkService. No new workflow status, permission, repository, or persisted schema is introduced by the adaptive Home presentation.
