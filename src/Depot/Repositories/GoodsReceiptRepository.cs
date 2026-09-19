@@ -85,6 +85,22 @@ public sealed class GoodsReceiptRepository : DatabaseRepository
 		return receipts;
 	}
 
+	public async Task<GoodsReceipt?> GetByIdAsync(long id, CancellationToken cancellationToken)
+	{
+		var receipt = await Database.QuerySingleOrDefaultAsync(
+			$"SELECT {ReceiptColumns} FROM GoodsReceipts WHERE Id = $Id;",
+			ReadReceipt,
+			cancellationToken,
+			Parameter("$Id", id));
+		if (receipt is null) return null;
+		receipt.Lines = await Database.QueryAsync(
+			$"SELECT {LineColumns} FROM GoodsReceiptLines WHERE GoodsReceiptId = $GoodsReceiptId ORDER BY Id;",
+			ReadLine,
+			cancellationToken,
+			Parameter("$GoodsReceiptId", id));
+		return receipt;
+	}
+
 	public async Task<GoodsReceipt?> GetByIdAsync(DatabaseTransactionContext transaction, long id, CancellationToken cancellationToken)
 	{
 		var receipt = await transaction.Session.QuerySingleOrDefaultAsync(

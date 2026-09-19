@@ -66,3 +66,59 @@ public sealed class AsyncRelayCommand : ICommand, IDisposable
 		_cancellationTokenSource?.Dispose();
 	}
 }
+
+
+public sealed class AsyncRelayCommand<T> : ICommand, IDisposable where T : class
+{
+	private readonly Func<T, CancellationToken, Task> _execute;
+	private readonly Predicate<T>? _canExecute;
+	private CancellationTokenSource? _executionCancellation;
+	private bool _isExecuting;
+	private bool _disposed;
+
+	public AsyncRelayCommand(Func<T, CancellationToken, Task> execute, Predicate<T>? canExecute = null)
+	{
+		_execute = execute ?? throw new ArgumentNullException(nameof(execute));
+		_canExecute = canExecute;
+	}
+
+	public bool CanExecute(object? parameter) =>
+		!_isExecuting && parameter is T value && (_canExecute?.Invoke(value) ?? true);
+
+	public async void Execute(object? parameter)
+	{
+		if (parameter is T value) await ExecuteAsync(value);
+	}
+
+	public async Task ExecuteAsync(T parameter)
+	{
+		ObjectDisposedException.ThrowIf(_disposed, this);
+		if (!CanExecute(parameter)) return;
+		_isExecuting = true;
+		_executionCancellation = new CancellationTokenSource();
+		RaiseCanExecuteChanged();
+		try { await _execute(parameter, _executionCancellation.Token); }
+		finally
+		{
+			_executionCancellation.Dispose();
+			_executionCancellation = null;
+			_isExecuting = false;
+			RaiseCanExecuteChanged();
+		}
+	}
+
+	public void Cancel() => _executionCancellation?.Cancel();
+
+	public event EventHandler? CanExecuteChanged;
+
+	public void RaiseCanExecuteChanged() => CanExecuteChanged?.Invoke(this, EventArgs.Empty);
+
+	public void Dispose()
+	{
+		if (_disposed) return;
+		_disposed = true;
+		_executionCancellation?.Cancel();
+		_executionCancellation?.Dispose();
+		_executionCancellation = null;
+	}
+}
