@@ -123,49 +123,53 @@ public partial class WorkspaceViewBar : UserControl
 
 	private sealed class WorkspaceSurface : IWorkspaceViewSurface
 	{
-		private readonly DataGrid _grid;
+		private readonly IReadOnlyList<DataGrid> _grids;
+		private readonly DataGrid _primaryGrid;
 		private readonly IReadOnlyList<FrameworkElement> _filters;
-		private readonly IReadOnlyList<ColumnBaseline> _columns;
+		private readonly IReadOnlyDictionary<DataGrid, IReadOnlyList<ColumnBaseline>> _columns;
 		private readonly IReadOnlyList<FilterBaseline> _filterBaseline;
-		private readonly object _rowHeightLocal;
-		private readonly object _rowStyleLocal;
+		private readonly IReadOnlyDictionary<DataGrid, object> _rowHeightLocal;
+		private readonly IReadOnlyDictionary<DataGrid, object> _rowStyleLocal;
 
-		private WorkspaceSurface(DataGrid grid, IReadOnlyList<FrameworkElement> filters)
+		private WorkspaceSurface(IReadOnlyList<DataGrid> grids, IReadOnlyList<FrameworkElement> filters)
 		{
-			_grid = grid;
+			_grids = grids;
+			_primaryGrid = grids[0];
 			_filters = filters;
-			_columns = grid.Columns.Select(column => new ColumnBaseline(
-				column,
-				column.DisplayIndex,
-				column.Width,
-				column.Visibility,
-				column.SortDirection)).ToArray();
+			_columns = grids.ToDictionary(
+				grid => grid,
+				grid => (IReadOnlyList<ColumnBaseline>)grid.Columns.Select(column => new ColumnBaseline(
+					column,
+					column.DisplayIndex,
+					column.Width,
+					column.Visibility,
+					column.SortDirection)).ToArray());
 			_filterBaseline = filters.Select(filter => new FilterBaseline(filter, CaptureFilter(filter))).ToArray();
-			_rowHeightLocal = grid.ReadLocalValue(DataGrid.RowHeightProperty);
-			_rowStyleLocal = grid.ReadLocalValue(DataGrid.RowStyleProperty);
+			_rowHeightLocal = grids.ToDictionary(grid => grid, grid => grid.ReadLocalValue(DataGrid.RowHeightProperty));
+			_rowStyleLocal = grids.ToDictionary(grid => grid, grid => grid.ReadLocalValue(DataGrid.RowStyleProperty));
 		}
 
 		public static WorkspaceSurface? TryCreate(DependencyObject root, string workspaceId)
 		{
 			var descendants = Enumerate(root).OfType<FrameworkElement>().ToArray();
-			var grid = descendants.OfType<DataGrid>().FirstOrDefault(candidate =>
-				string.Equals(WorkspaceViewPersistence.GetWorkspaceId(candidate), workspaceId, StringComparison.Ordinal));
-			if (grid is null) return null;
+			var grids = descendants.OfType<DataGrid>().Where(candidate =>
+				string.Equals(WorkspaceViewPersistence.GetWorkspaceId(candidate), workspaceId, StringComparison.Ordinal)).ToArray();
+			if (grids.Length == 0) return null;
 			var filters = descendants.Where(candidate =>
 				string.Equals(WorkspaceViewPersistence.GetWorkspaceId(candidate), workspaceId, StringComparison.Ordinal) &&
 				!string.IsNullOrWhiteSpace(WorkspaceViewPersistence.GetFilterId(candidate))).ToArray();
-			return new WorkspaceSurface(grid, filters);
+			return new WorkspaceSurface(grids, filters);
 		}
 
 		public WorkspaceViewDefinition Capture(WorkspaceGridDensity density)
 		{
-			var columns = _grid.Columns
+			var columns = _primaryGrid.Columns
 				.Select(column => (Column: column, Id: WorkspaceViewPersistence.GetColumnId(column)))
 				.Where(entry => !string.IsNullOrWhiteSpace(entry.Id))
 				.Select(entry => new WorkspaceColumnPreference(
 					entry.Id!, entry.Column.DisplayIndex, Math.Round(Math.Max(40d, entry.Column.ActualWidth), 2), entry.Column.Visibility == Visibility.Visible))
 				.ToList();
-			var sorts = _grid.Columns
+			var sorts = _primaryGrid.Columns
 				.Select(column => (Column: column, Id: WorkspaceViewPersistence.GetColumnId(column)))
 				.Where(entry => !string.IsNullOrWhiteSpace(entry.Id) && entry.Column.SortDirection is not null)
 				.OrderBy(entry => entry.Column.DisplayIndex)
@@ -179,30 +183,34 @@ public partial class WorkspaceViewBar : UserControl
 
 		public void Apply(WorkspaceViewDefinition definition)
 		{
-			var byId = _grid.Columns
-				.Select(column => (Column: column, Id: WorkspaceViewPersistence.GetColumnId(column)))
-				.Where(entry => !string.IsNullOrWhiteSpace(entry.Id))
-				.ToDictionary(entry => entry.Id!, entry => entry.Column, StringComparer.Ordinal);
-
-			foreach (var preference in definition.Columns)
+			foreach (var grid in _grids)
 			{
-				if (!byId.TryGetValue(preference.ColumnId, out var column)) continue;
-				column.Visibility = preference.IsVisible ? Visibility.Visible : Visibility.Collapsed;
-				if (double.IsFinite(preference.Width) && preference.Width is >= 40 and <= 2000)
-					column.Width = new DataGridLength(preference.Width);
+				var byId = grid.Columns
+					.Select(column => (Column: column, Id: WorkspaceViewPersistence.GetColumnId(column)))
+					.Where(entry => !string.IsNullOrWhiteSpace(entry.Id))
+					.ToDictionary(entry => entry.Id!, entry => entry.Column, StringComparer.Ordinal);
+
+				foreach (var preference in definition.Columns)
+				{
+					if (!byId.TryGetValue(preference.ColumnId, out var column)) continue;
+					column.Visibility = preference.IsVisible ? Visibility.Visible : Visibility.Collapsed;
+					if (double.IsFinite(preference.Width) && preference.Width is >= 40 and <= 2000)
+						column.Width = new DataGridLength(preference.Width);
+				}
+
+				var preferredIds = definition.Columns.Select(column => column.ColumnId).ToHashSet(StringComparer.Ordinal);
+				var ordered = definition.Columns.OrderBy(column => column.DisplayIndex)
+					.Select(column => byId.GetValueOrDefault(column.ColumnId))
+					.Where(column => column is not null)
+					.Cast<DataGridColumn>()
+					.Concat(grid.Columns.Where(column => !preferredIds.Contains(WorkspaceViewPersistence.GetColumnId(column) ?? string.Empty)))
+					.Distinct()
+					.ToArray();
+				for (var index = 0; index < ordered.Length; index++) ordered[index].DisplayIndex = index;
+
+				ApplySorts(grid, definition.Sorts, byId);
 			}
 
-			var preferredIds = definition.Columns.Select(column => column.ColumnId).ToHashSet(StringComparer.Ordinal);
-			var ordered = definition.Columns.OrderBy(column => column.DisplayIndex)
-				.Select(column => byId.GetValueOrDefault(column.ColumnId))
-				.Where(column => column is not null)
-				.Cast<DataGridColumn>()
-				.Concat(_grid.Columns.Where(column => !preferredIds.Contains(WorkspaceViewPersistence.GetColumnId(column) ?? string.Empty)))
-				.Distinct()
-				.ToArray();
-			for (var index = 0; index < ordered.Length; index++) ordered[index].DisplayIndex = index;
-
-			ApplySorts(definition.Sorts, byId);
 			foreach (var preference in definition.Filters)
 			{
 				var filter = _filters.FirstOrDefault(candidate => string.Equals(
@@ -214,71 +222,84 @@ public partial class WorkspaceViewBar : UserControl
 
 		public void ResetCanonical()
 		{
-			foreach (var baseline in _columns)
+			foreach (var grid in _grids)
 			{
-				baseline.Column.Visibility = baseline.Visibility;
-				baseline.Column.Width = baseline.Width;
-				baseline.Column.SortDirection = baseline.SortDirection;
+				var baselines = _columns[grid];
+				foreach (var baseline in baselines)
+				{
+					baseline.Column.Visibility = baseline.Visibility;
+					baseline.Column.Width = baseline.Width;
+					baseline.Column.SortDirection = baseline.SortDirection;
+				}
+				foreach (var baseline in baselines.OrderBy(column => column.DisplayIndex)) baseline.Column.DisplayIndex = baseline.DisplayIndex;
+				if (grid.ItemsSource is not null) CollectionViewSource.GetDefaultView(grid.ItemsSource)?.SortDescriptions.Clear();
+				if (_rowHeightLocal[grid] == DependencyProperty.UnsetValue) grid.ClearValue(DataGrid.RowHeightProperty); else grid.SetValue(DataGrid.RowHeightProperty, _rowHeightLocal[grid]);
+				if (_rowStyleLocal[grid] == DependencyProperty.UnsetValue) grid.ClearValue(DataGrid.RowStyleProperty); else grid.SetValue(DataGrid.RowStyleProperty, _rowStyleLocal[grid]);
 			}
-			foreach (var baseline in _columns.OrderBy(column => column.DisplayIndex)) baseline.Column.DisplayIndex = baseline.DisplayIndex;
 			foreach (var baseline in _filterBaseline) ApplyFilter(baseline.Element, baseline.Value);
-			if (_grid.ItemsSource is not null) CollectionViewSource.GetDefaultView(_grid.ItemsSource)?.SortDescriptions.Clear();
-			if (_rowHeightLocal == DependencyProperty.UnsetValue) _grid.ClearValue(DataGrid.RowHeightProperty); else _grid.SetValue(DataGrid.RowHeightProperty, _rowHeightLocal);
-			if (_rowStyleLocal == DependencyProperty.UnsetValue) _grid.ClearValue(DataGrid.RowStyleProperty); else _grid.SetValue(DataGrid.RowStyleProperty, _rowStyleLocal);
 		}
 
 		public void SetDensity(WorkspaceGridDensity density)
 		{
-			switch (density)
+			foreach (var grid in _grids)
 			{
-				case WorkspaceGridDensity.Compact:
-					_grid.RowHeight = 32;
-					if (Application.Current?.TryFindResource("AppDataGridCompactRowStyle") is Style compact) _grid.RowStyle = compact;
-					break;
-				case WorkspaceGridDensity.Comfortable:
-					_grid.RowHeight = 44;
-					if (Application.Current?.TryFindResource("AppDataGridRowStyle") is Style comfortable) _grid.RowStyle = comfortable;
-					break;
-				default:
-					_grid.RowHeight = 36;
-					if (Application.Current?.TryFindResource("AppDataGridRowStyle") is Style standard) _grid.RowStyle = standard;
-					break;
+				switch (density)
+				{
+					case WorkspaceGridDensity.Compact:
+						grid.RowHeight = 32;
+						if (Application.Current?.TryFindResource("AppDataGridCompactRowStyle") is Style compact) grid.RowStyle = compact;
+						break;
+					case WorkspaceGridDensity.Comfortable:
+						grid.RowHeight = 44;
+						if (Application.Current?.TryFindResource("AppDataGridRowStyle") is Style comfortable) grid.RowStyle = comfortable;
+						break;
+					default:
+						grid.RowHeight = 36;
+						if (Application.Current?.TryFindResource("AppDataGridRowStyle") is Style standard) grid.RowStyle = standard;
+						break;
+				}
 			}
 		}
 
 		public void ShowColumnMenu(FrameworkElement target)
 		{
 			var menu = new ContextMenu { PlacementTarget = target, Placement = PlacementMode.Bottom };
-			foreach (var column in _grid.Columns.Where(column => !string.IsNullOrWhiteSpace(WorkspaceViewPersistence.GetColumnId(column))).OrderBy(column => column.DisplayIndex))
+			foreach (var column in _primaryGrid.Columns.Where(column => !string.IsNullOrWhiteSpace(WorkspaceViewPersistence.GetColumnId(column))).OrderBy(column => column.DisplayIndex))
 			{
+				var columnId = WorkspaceViewPersistence.GetColumnId(column)!;
 				var item = new MenuItem
 				{
-					Header = Convert.ToString(column.Header, CultureInfo.CurrentCulture) ?? WorkspaceViewPersistence.GetColumnId(column),
+					Header = Convert.ToString(column.Header, CultureInfo.CurrentCulture) ?? columnId,
 					IsCheckable = true,
 					IsChecked = column.Visibility == Visibility.Visible,
 					StaysOpenOnClick = true,
-					Tag = column
+					Tag = columnId
 				};
 				item.Click += (_, _) =>
 				{
-					if (item.Tag is not DataGridColumn selected) return;
-					if (!item.IsChecked && _grid.Columns.Count(candidate => candidate.Visibility == Visibility.Visible) <= 1)
+					if (item.Tag is not string selectedId) return;
+					if (!item.IsChecked && _primaryGrid.Columns.Count(candidate => candidate.Visibility == Visibility.Visible) <= 1)
 					{
 						item.IsChecked = true;
 						return;
 					}
-					selected.Visibility = item.IsChecked ? Visibility.Visible : Visibility.Collapsed;
+					foreach (var grid in _grids)
+					{
+						var selected = grid.Columns.FirstOrDefault(candidate => string.Equals(
+							WorkspaceViewPersistence.GetColumnId(candidate), selectedId, StringComparison.Ordinal));
+						if (selected is not null) selected.Visibility = item.IsChecked ? Visibility.Visible : Visibility.Collapsed;
+					}
 				};
 				menu.Items.Add(item);
 			}
 			menu.IsOpen = true;
 		}
 
-		private void ApplySorts(IReadOnlyList<WorkspaceSortPreference> sorts, IReadOnlyDictionary<string, DataGridColumn> byId)
+		private static void ApplySorts(DataGrid grid, IReadOnlyList<WorkspaceSortPreference> sorts, IReadOnlyDictionary<string, DataGridColumn> byId)
 		{
-			foreach (var column in _grid.Columns) column.SortDirection = null;
-			if (_grid.ItemsSource is null) return;
-			var view = CollectionViewSource.GetDefaultView(_grid.ItemsSource);
+			foreach (var column in grid.Columns) column.SortDirection = null;
+			if (grid.ItemsSource is null) return;
+			var view = CollectionViewSource.GetDefaultView(grid.ItemsSource);
 			if (view is null) return;
 			view.SortDescriptions.Clear();
 			foreach (var sort in sorts.OrderBy(sort => sort.Priority))

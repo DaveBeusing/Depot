@@ -37,6 +37,9 @@ Initial workspace coverage:
 
 - `inventory.overview`
 - `inventory.traceability`
+- persona-specific `role-center.*` workspaces for Sales, Purchasing, Approvals, Warehouse, Finance, Management, Compliance, Master Data and Application Administration.
+
+Role-center saved views share one semantic column profile across the sections of a role center. Column visibility, order, width, sorting, density and the role-center text filter therefore remain a single personal workspace preference even when the page contains several work queues. The canonical reset returns to the persona-specific default profile rather than the old all-columns layout.
 
 The mechanism is reusable by further workspaces by assigning semantic identifiers to their grid, columns and supported filters.
 
