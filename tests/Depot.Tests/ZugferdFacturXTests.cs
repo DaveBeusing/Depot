@@ -5,6 +5,7 @@ using System.Security.Cryptography;
 using System.Text;
 
 using Depot.Data;
+using Depot.DocumentRendering;
 using Depot.Models;
 using Depot.Services;
 
@@ -73,6 +74,25 @@ public sealed class ZugferdFacturXTests : IDisposable
 		var stored = new ZugferdFacturXService(_database).LoadRequired(ZugferdFacturXService.InvoiceDocumentType, 42);
 		Assert.Equal(artifact.PdfSha256, stored.PdfSha256);
 		Assert.Equal(artifact.PdfBytes, stored.PdfBytes);
+	}
+
+	[Fact]
+	public void FinalizationResolvesTheActivatedRuntimeTemplate()
+	{
+		var runtime = new DocumentTemplateRuntimeCatalog(DefaultDocumentTemplates.Defaults);
+		var source = runtime.GetDefault(DocumentTemplateType.SalesInvoice);
+		var draft = runtime.SaveDraft(source with
+		{
+			Id = "sales-invoice-finalization-test",
+			Version = 0,
+			IsActive = false
+		});
+		runtime.Activate(DocumentTemplateType.SalesInvoice, draft.Version);
+
+		var resolved = ZugferdFacturXService.ResolveFinalizationTemplate(runtime, Invoice());
+
+		Assert.Equal(draft.Version, resolved.Version);
+		Assert.True(resolved.IsActive);
 	}
 
 	[Fact]
