@@ -12,22 +12,26 @@
             <Grid Margin="0,0,0,12">
                 <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                 <StackPanel>
-                    <TextBlock Text="My workspace" Style="{DynamicResource WorkspaceSectionTitleStyle}" />
-                    <TextBlock Text="Favorites, recent workspaces and personal landing behavior." Style="{StaticResource CaptionStyle}" Margin="0,3,0,0" />
+                    <TextBlock Text="Continue working" Style="{DynamicResource WorkspaceSectionTitleStyle}" />
+                    <TextBlock Text="Favorites and recent workspaces keep your daily context close." Style="{StaticResource CaptionStyle}" Margin="0,3,0,0" />
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock Text="Landing:" Style="{StaticResource CaptionStyle}" VerticalAlignment="Center" Margin="0,0,6,0" />
+                    <TextBlock Text="Default landing:" Style="{StaticResource CaptionStyle}" VerticalAlignment="Center" Margin="0,0,6,0" />
                     <TextBlock Text="{Binding DefaultLandingLabel}" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,8,0" />
-                    <Button Content="Reset landing" Click="OnClearDefaultClick" Style="{StaticResource SecondaryButtonStyle}" />
+                    <Button Content="Reset" Click="OnClearDefaultClick" Style="{StaticResource SecondaryButtonStyle}" />
                 </StackPanel>
             </Grid>
 
-            <UniformGrid Columns="3">
-                <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="12" Margin="0,0,8,0">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <Border Grid.Column="0" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="12" Margin="0,0,6,0">
                     <StackPanel>
                         <TextBlock Text="Favorites" Style="{StaticResource SectionTitleStyle}" />
-                        <TextBlock Text="Pinned workspaces stay one click away." Style="{StaticResource CaptionStyle}" Margin="0,2,0,8" />
-                        <ItemsControl ItemsSource="{Binding Favorites}">
+                        <ItemsControl ItemsSource="{Binding Favorites}" Margin="0,8,0,0">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <Grid Margin="0,0,0,6">
@@ -42,11 +46,10 @@
                     </StackPanel>
                 </Border>
 
-                <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="12" Margin="4,0">
+                <Border Grid.Column="1" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="12" Margin="6,0,0,0">
                     <StackPanel>
                         <TextBlock Text="Recent" Style="{StaticResource SectionTitleStyle}" />
-                        <TextBlock Text="Your latest permitted workspaces." Style="{StaticResource CaptionStyle}" Margin="0,2,0,8" />
-                        <ItemsControl ItemsSource="{Binding Recents}">
+                        <ItemsControl ItemsSource="{Binding Recents}" Margin="0,8,0,0">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <Grid Margin="0,0,0,6">
@@ -60,21 +63,7 @@
                         </ItemsControl>
                     </StackPanel>
                 </Border>
-
-                <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="6" Padding="12" Margin="8,0,0,0">
-                    <StackPanel>
-                        <TextBlock Text="Quick actions" Style="{StaticResource SectionTitleStyle}" />
-                        <TextBlock Text="Favorites first, then commonly used permitted workspaces." Style="{StaticResource CaptionStyle}" Margin="0,2,0,8" />
-                        <ItemsControl ItemsSource="{Binding QuickActions}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Button Content="{Binding Title}" Click="OnOpenClick" Style="{StaticResource SecondaryButtonStyle}" HorizontalContentAlignment="Left" Margin="0,0,0,6" />
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </StackPanel>
-                </Border>
-            </UniformGrid>
+            </Grid>
 
             <TextBlock Text="{Binding StatusText}" Style="{StaticResource CaptionStyle}" Margin="0,10,0,0" />
         </StackPanel>

@@ -2,7 +2,8 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:automation="clr-namespace:System.Windows.Automation;assembly=PresentationCore"
-             xmlns:controls="clr-namespace:Depot.Controls">
+             xmlns:controls="clr-namespace:Depot.Controls"
+             xmlns:views="clr-namespace:Depot.Views">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -10,7 +11,7 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <controls:PageHeader Title="Dashboard" Subtitle="Operational overview, attention items and recent activity across Depot." />
+        <controls:PageHeader Title="Home" Subtitle="A focused, permission-aware workspace for today's work." />
         <controls:OperationPanel Grid.Row="1"
                                  IsBusy="{Binding IsBusy}"
                                  HasError="{Binding HasOperationError}"
@@ -19,171 +20,75 @@
 
         <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
             <StackPanel Margin="0,12,0,0">
-                <TextBlock Text="Needs attention" Style="{DynamicResource WorkspaceSectionTitleStyle}" />
-                <UniformGrid Columns="3">
-                    <Button automation:AutomationProperties.Name="Open purchasing attention"
-                            Style="{DynamicResource DashboardActionCardStyle}"
-                            Tag="Purchasing"
-                            Click="OnDashboardActionClick"
-                            Visibility="{Binding HasPurchasingMetrics, Converter={StaticResource BooleanToVisibilityConverter}}">
-                        <StackPanel>
-                            <TextBlock Text="Purchasing" Style="{StaticResource SectionTitleStyle}" />
-                            <TextBlock Text="Purchase orders, receipts and supplier returns" Style="{StaticResource CaptionStyle}" Margin="0,4,0,12" />
-                            <TextBlock Text="{Binding PurchasingAttentionCount, StringFormat={}{0:N0}}" Style="{StaticResource MetricLargeStyle}" Foreground="{DynamicResource WarningForegroundBrush}" />
-                            <TextBlock Text="Items requiring attention" Style="{StaticResource CaptionStyle}" />
-                            <TextBlock Text="{Binding PurchasingSupportingText}" Style="{StaticResource CaptionStyle}" Margin="0,10,0,0" TextWrapping="Wrap" />
-                        </StackPanel>
-                    </Button>
+                <Border Background="{DynamicResource SurfaceBrush}"
+                        BorderBrush="{DynamicResource BorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Padding="16"
+                        Margin="0,0,0,16">
+                    <StackPanel>
+                        <TextBlock Text="{Binding GreetingText}" Style="{DynamicResource WorkspaceSectionTitleStyle}" />
+                        <TextBlock Text="{Binding HomeContextText}" Style="{StaticResource CaptionStyle}" Margin="0,4,0,0" />
+                    </StackPanel>
+                </Border>
 
-                    <Button automation:AutomationProperties.Name="Open warehouse work"
-                            Style="{DynamicResource DashboardActionCardStyle}"
-                            Tag="Warehouse"
-                            Click="OnDashboardActionClick"
-                            Visibility="{Binding HasWarehouseMetrics, Converter={StaticResource BooleanToVisibilityConverter}}">
-                        <StackPanel>
-                            <TextBlock Text="Warehouse" Style="{StaticResource SectionTitleStyle}" />
-                            <TextBlock Text="Counts, transfers and warehouse execution" Style="{StaticResource CaptionStyle}" Margin="0,4,0,12" />
-                            <TextBlock Text="{Binding WarehouseWorkCount, StringFormat={}{0:N0}}" Style="{StaticResource MetricLargeStyle}" />
-                            <TextBlock Text="Open warehouse work" Style="{StaticResource CaptionStyle}" />
-                            <TextBlock Text="{Binding WarehouseSupportingText}" Style="{StaticResource CaptionStyle}" Margin="0,10,0,0" TextWrapping="Wrap" />
-                        </StackPanel>
-                    </Button>
+                <views:MyWorkPanel />
 
-                    <Button automation:AutomationProperties.Name="Open sales attention"
-                            Style="{DynamicResource DashboardActionCardStyle}"
-                            Tag="Sales"
-                            Click="OnDashboardActionClick"
-                            Visibility="{Binding HasSalesMetrics, Converter={StaticResource BooleanToVisibilityConverter}}">
-                        <StackPanel>
-                            <TextBlock Text="Sales" Style="{StaticResource SectionTitleStyle}" />
-                            <TextBlock Text="Orders, fulfillment, invoices and commercial activity" Style="{StaticResource CaptionStyle}" Margin="0,4,0,12" />
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
+                <TextBlock Text="Key metrics"
+                           Style="{DynamicResource WorkspaceSectionTitleStyle}"
+                           Margin="0,0,0,10"
+                           Visibility="{Binding HasAdaptiveKpis, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                <ItemsControl ItemsSource="{Binding AdaptiveKpis}"
+                              Margin="0,0,0,16"
+                              Visibility="{Binding HasAdaptiveKpis, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <UniformGrid Columns="5" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Button Style="{DynamicResource DashboardActionCardStyle}"
+                                    Tag="{Binding RouteId}"
+                                    Click="OnKpiClick"
+                                    automation:AutomationProperties.Name="{Binding Title}">
                                 <StackPanel>
-                                    <TextBlock Text="{Binding SalesAttentionCount, StringFormat={}{0:N0}}" Style="{StaticResource MetricLargeStyle}" />
-                                    <TextBlock Text="Workflow attention" Style="{StaticResource CaptionStyle}" />
+                                    <TextBlock Text="{Binding Title}" Style="{StaticResource SectionTitleStyle}" />
+                                    <TextBlock Text="{Binding Value}" Style="{StaticResource MetricLargeStyle}" Margin="0,10,0,2" />
+                                    <TextBlock Text="{Binding Detail}" Style="{StaticResource CaptionStyle}" TextWrapping="Wrap" />
                                 </StackPanel>
-                                <StackPanel Grid.Column="1">
-                                    <TextBlock Text="{Binding SalesMetrics.NetSalesThisMonth, StringFormat={}{0:C2}}" Style="{StaticResource MetricStyle}" />
-                                    <TextBlock Text="Net sales this month" Style="{StaticResource CaptionStyle}" />
-                                </StackPanel>
-                            </Grid>
-                            <TextBlock Text="{Binding SalesSupportingText}" Style="{StaticResource CaptionStyle}" Margin="0,10,0,0" TextWrapping="Wrap" />
-                            <TextBlock Text="{Binding SalesCommercialText}" Style="{StaticResource CaptionStyle}" Margin="0,3,0,0" TextWrapping="Wrap" />
-                        </StackPanel>
-                    </Button>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
 
-                    <Button automation:AutomationProperties.Name="Open approvals"
-                            Style="{DynamicResource DashboardActionCardStyle}"
-                            Tag="Approvals"
-                            Click="OnDashboardActionClick"
-                            Visibility="{Binding HasApprovalMetrics, Converter={StaticResource BooleanToVisibilityConverter}}">
-                        <StackPanel>
-                            <TextBlock Text="Approvals" Style="{StaticResource SectionTitleStyle}" />
-                            <TextBlock Text="Pending purchase and sales decisions" Style="{StaticResource CaptionStyle}" Margin="0,4,0,12" />
-                            <TextBlock Text="{Binding ApprovalSummary.OpenCount, StringFormat={}{0:N0}}" Style="{StaticResource MetricLargeStyle}" Foreground="{DynamicResource PrimaryBrush}" />
-                            <TextBlock Text="Open approvals" Style="{StaticResource CaptionStyle}" />
-                            <TextBlock Text="{Binding ApprovalSupportingText}" Style="{StaticResource CaptionStyle}" Margin="0,10,0,0" TextWrapping="Wrap" />
-                        </StackPanel>
-                    </Button>
-                </UniformGrid>
+                <TextBlock Text="Quick actions"
+                           Style="{DynamicResource WorkspaceSectionTitleStyle}"
+                           Margin="0,0,0,10"
+                           Visibility="{Binding HasHomeQuickActions, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                <ItemsControl ItemsSource="{Binding HomeQuickActions}"
+                              Margin="0,0,0,16"
+                              Visibility="{Binding HasHomeQuickActions, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Button Content="{Binding Label}"
+                                    Click="OnQuickActionClick"
+                                    Style="{StaticResource SecondaryButtonStyle}"
+                                    Margin="0,0,8,8"
+                                    MinWidth="120"
+                                    automation:AutomationProperties.Name="{Binding Label}" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
 
-                <TextBlock Text="Key metrics and workspaces" Style="{DynamicResource WorkspaceSectionTitleStyle}" Margin="0,8,0,10" />
-                <UniformGrid Columns="3">
-                    <Button automation:AutomationProperties.Name="Open inventory workspace"
-                            Style="{DynamicResource DashboardActionCardStyle}"
-                            Tag="Inventory"
-                            Click="OnDashboardActionClick"
-                            Visibility="{Binding HasCoreInventoryMetrics, Converter={StaticResource BooleanToVisibilityConverter}}">
-                        <StackPanel>
-                            <TextBlock Text="Inventory" Style="{StaticResource SectionTitleStyle}" />
-                            <TextBlock Text="Catalog, stock, value and movement activity" Style="{StaticResource CaptionStyle}" Margin="0,4,0,12" />
-                            <UniformGrid Columns="2">
-                                <StackPanel>
-                                    <TextBlock Text="{Binding TotalItems, StringFormat={}{0:N0}}" Style="{StaticResource MetricStyle}" />
-                                    <TextBlock Text="Items" Style="{StaticResource CaptionStyle}" />
-                                </StackPanel>
-                                <StackPanel>
-                                    <TextBlock Text="{Binding TotalStockQuantity, StringFormat={}{0:N0}}" Style="{StaticResource MetricStyle}" />
-                                    <TextBlock Text="Stock units" Style="{StaticResource CaptionStyle}" />
-                                </StackPanel>
-                                <StackPanel Margin="0,10,0,0">
-                                    <TextBlock Text="{Binding TotalInventoryValue, StringFormat={}{0:C2}}" Style="{StaticResource MetricStyle}" />
-                                    <TextBlock Text="Inventory value" Style="{StaticResource CaptionStyle}" />
-                                </StackPanel>
-                                <StackPanel Margin="0,10,0,0">
-                                    <TextBlock Text="{Binding TotalMovements, StringFormat={}{0:N0}}" Style="{StaticResource MetricStyle}" />
-                                    <TextBlock Text="Movements" Style="{StaticResource CaptionStyle}" />
-                                </StackPanel>
-                            </UniformGrid>
-                        </StackPanel>
-                    </Button>
+                <views:WorkspaceProductivityPanel />
 
-                    <Button automation:AutomationProperties.Name="Open active user sessions"
-                            Style="{DynamicResource DashboardActionCardStyle}"
-                            Tag="AdministrationUserSessions"
-                            Click="OnDashboardActionClick"
-                            Visibility="{Binding HasAdministrationMetrics, Converter={StaticResource BooleanToVisibilityConverter}}">
-                        <StackPanel>
-                            <TextBlock Text="User Presence" Style="{StaticResource SectionTitleStyle}" />
-                            <TextBlock Text="Authenticated users, active clients and today's session events" Style="{StaticResource CaptionStyle}" Margin="0,4,0,12" />
-
-                            <TextBlock Text="Live now" Style="{StaticResource CaptionStyle}" FontWeight="SemiBold" Margin="0,0,0,6" />
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="Auto" />
-                                </Grid.RowDefinitions>
-                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Online users" Style="{StaticResource CaptionStyle}" VerticalAlignment="Center" />
-                                <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding AdministrationMetrics.OnlineUsers, StringFormat={}{0:N0}}" Style="{StaticResource MetricLargeStyle}" HorizontalAlignment="Right" />
-                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Active sessions" Style="{StaticResource CaptionStyle}" VerticalAlignment="Center" Margin="0,6,0,0" />
-                                <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding AdministrationMetrics.ActiveSessions, StringFormat={}{0:N0}}" Style="{StaticResource MetricLargeStyle}" HorizontalAlignment="Right" Margin="16,6,0,0" />
-                            </Grid>
-
-                            <Border Height="1" Background="{DynamicResource BorderBrush}" Margin="0,12,0,10" />
-                            <TextBlock Text="Today" Style="{StaticResource CaptionStyle}" FontWeight="SemiBold" Margin="0,0,0,6" />
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="Auto" />
-                                </Grid.RowDefinitions>
-                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Sessions started" Style="{StaticResource CaptionStyle}" VerticalAlignment="Center" />
-                                <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding AdministrationMetrics.SessionsToday, StringFormat={}{0:N0}}" Style="{StaticResource MetricStyle}" HorizontalAlignment="Right" />
-                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Administrative logouts" Style="{StaticResource CaptionStyle}" VerticalAlignment="Center" Margin="0,6,0,0" />
-                                <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding AdministrationMetrics.AdministrativeLogoutsToday, StringFormat={}{0:N0}}" Style="{StaticResource MetricStyle}" HorizontalAlignment="Right" Margin="16,6,0,0" />
-                                <TextBlock Grid.Row="2" Grid.Column="0" Text="Revoked sessions" Style="{StaticResource CaptionStyle}" VerticalAlignment="Center" Margin="0,6,0,0" />
-                                <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding AdministrationMetrics.RevokedSessionsToday, StringFormat={}{0:N0}}" Style="{StaticResource MetricStyle}" HorizontalAlignment="Right" Margin="16,6,0,0" />
-                            </Grid>
-                        </StackPanel>
-                    </Button>
-
-                    <Button automation:AutomationProperties.Name="Open reports workspace"
-                            Style="{DynamicResource DashboardActionCardStyle}"
-                            Tag="Reports"
-                            Click="OnDashboardActionClick"
-                            Visibility="{Binding HasReportsAccess, Converter={StaticResource BooleanToVisibilityConverter}}">
-                        <StackPanel>
-                            <TextBlock Text="Reports" Style="{StaticResource SectionTitleStyle}" />
-                            <TextBlock Text="Inventory value and stock distribution reporting" Style="{StaticResource CaptionStyle}" Margin="0,4,0,12" />
-                            <TextBlock Text="Open reporting workspace" Style="{StaticResource SectionTitleStyle}" />
-                            <TextBlock Text="Analyze and export the current report result." Style="{StaticResource CaptionStyle}" Margin="0,6,0,0" TextWrapping="Wrap" />
-                        </StackPanel>
-                    </Button>
-                </UniformGrid>
-
-                <TextBlock Text="Recent activity" Style="{DynamicResource WorkspaceSectionTitleStyle}" Margin="0,8,0,10" />
+                <TextBlock Text="Recent activity" Style="{DynamicResource WorkspaceSectionTitleStyle}" Margin="0,0,0,10" />
                 <controls:Card Style="{StaticResource WorkspaceCardStyle}" Margin="0,0,0,12">
                     <controls:Card.Header>
                         <Grid>
@@ -193,17 +98,17 @@
                             </Grid.ColumnDefinitions>
                             <StackPanel>
                                 <TextBlock Text="Latest inventory movements" Style="{StaticResource WorkspaceTitleStyle}" />
-                                <TextBlock Text="Recent stock activity across inventory." Style="{StaticResource CaptionStyle}" Margin="0,3,0,0" />
+                                <TextBlock Text="Secondary activity stays available without competing with today's work." Style="{StaticResource CaptionStyle}" Margin="0,3,0,0" />
                             </StackPanel>
                             <Button Grid.Column="1"
                                     automation:AutomationProperties.Name="Open inventory movements"
                                     Content="Open movements"
-                                    Tag="InventoryMovements"
-                                    Click="OnDashboardActionClick"
+                                    Tag="inventory.movements"
+                                    Click="OnKpiClick"
                                     Style="{StaticResource SecondaryButtonStyle}" />
                         </Grid>
                     </controls:Card.Header>
-                    <Grid MinHeight="260">
+                    <Grid MinHeight="220">
                         <DataGrid Style="{StaticResource AppDataGridStyle}"
                                   ItemsSource="{Binding RecentMovements}"
                                   Visibility="{Binding HasRecentMovements, Converter={StaticResource BooleanToVisibilityConverter}}"

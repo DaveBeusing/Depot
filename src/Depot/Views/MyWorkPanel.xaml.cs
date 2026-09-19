@@ -19,6 +19,14 @@ public partial class MyWorkPanel : UserControl
 		if (DataContext is DashboardViewModel viewModel) await viewModel.RefreshMyWorkAsync();
 	}
 
+	private void OnFilterClick(object sender, RoutedEventArgs e)
+	{
+		if (DataContext is not DashboardViewModel viewModel ||
+			sender is not FrameworkElement { Tag: string filter } ||
+			!Enum.TryParse<MyWorkQuickFilter>(filter, out var parsed)) return;
+		viewModel.MyWorkFilter = parsed;
+	}
+
 	private async void OnOpenClick(object sender, RoutedEventArgs e)
 	{
 		if (sender is FrameworkElement { DataContext: MyWorkItem item }) await OpenAsync(item);

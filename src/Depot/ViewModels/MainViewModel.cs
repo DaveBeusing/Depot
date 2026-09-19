@@ -148,7 +148,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 
 		var salesWorkspace = new SalesViewModel(salesServices.Customers, salesServices.Orders, salesServices.Shipments, salesServices.Invoices, salesServices.Items, salesServices.Pricing, salesServices.Authorization, fileDialogService, salesServices.Documents);
 
-		_dashboard = new(() => new DashboardViewModel(dashboardService, myWorkService));
+		_dashboard = new(() => new DashboardViewModel(dashboardService, myWorkService, authorizationService));
 		_salesWorkspaceRoleCenter = new(() => new CommercialRoleCenterViewModel(commercialRoleCenterService, CommercialRoleCenterKind.SalesWorkspace));
 		_salesControlRoleCenter = new(() => new CommercialRoleCenterViewModel(commercialRoleCenterService, CommercialRoleCenterKind.SalesControlCenter));
 		_buyerWorkbenchRoleCenter = new(() => new CommercialRoleCenterViewModel(commercialRoleCenterService, CommercialRoleCenterKind.BuyerWorkbench));

@@ -94,3 +94,19 @@ Dashboard content is permission-aware. My Work providers run only when the curre
 - [Reports](topic:reports.overview)
 - [Users and Roles](topic:administration.users)
 - [User Sessions](topic:administration.user-sessions)
+
+
+## Adaptive Home
+
+Home is ordered for daily execution rather than by module ownership:
+
+1. greeting and context;
+2. **Needs my action** from My Work;
+3. up to five permission-relevant KPIs;
+4. operative quick actions allowed by the user's effective permissions;
+5. compact Favorites and Recent workspaces;
+6. secondary recent activity.
+
+My Work opens on **Needs my action** and supports **Overdue**, **Today**, and **High priority** quick filters. Provider failures are isolated so healthy work sources remain usable. Amounts and quantities are presented with their business meaning instead of a generic numeric format.
+
+Home adapts from effective permissions and existing role-center/work projections. It does not assign behavior from a single hard-coded role and it does not introduce new workflow states or business KPIs.
