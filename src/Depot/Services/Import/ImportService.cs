@@ -40,173 +40,163 @@ public sealed class ImportService
 		_authorization = authorization;
 	}
 
-	public ImportPreview CreatePreview(
+	public ImportMapping InspectMapping(
 		string filePath,
 		CancellationToken cancellationToken = default)
 	{
 		_authorization.RequirePermission(ApplicationPermission.ImportManage);
-		var itemsByKey =
-			new Dictionary<string, ImportPreviewAccumulator>(
-				StringComparer.OrdinalIgnoreCase);
+		using var workbook = new XLWorkbook(filePath);
+		var worksheet = workbook.Worksheet(1);
+		var sourceColumns = ReadSourceColumns(worksheet, cancellationToken);
+		return ImportMapping.CreateDefault(sourceColumns);
+	}
 
-		var warnings =
-			new List<ImportWarning>();
+	public ImportPreview CreatePreview(
+		string filePath,
+		CancellationToken cancellationToken = default)
+	{
+		var mapping = InspectMapping(filePath, cancellationToken);
+		return CreatePreview(filePath, mapping, cancellationToken);
+	}
 
-		using var workbook =
-			new XLWorkbook(filePath);
+	public ImportPreview CreatePreview(
+		string filePath,
+		ImportMapping mapping,
+		CancellationToken cancellationToken = default)
+	{
+		_authorization.RequirePermission(ApplicationPermission.ImportManage);
+		ArgumentNullException.ThrowIfNull(mapping);
 
-		var worksheet =
-			workbook.Worksheet(1);
+		if (!mapping.IsValid)
+		{
+			throw new InvalidOperationException(
+				"The import mapping contains blocking validation errors. Resolve them before generating the preview.");
+		}
 
-		var columns =
-			ReadColumns(worksheet);
+		var itemsByKey = new Dictionary<string, ImportPreviewAccumulator>(
+			StringComparer.OrdinalIgnoreCase);
+		var warnings = new List<ImportWarning>();
 
-		var lastRow =
-			worksheet.LastRowUsed()?.RowNumber() ?? 1;
+		using var workbook = new XLWorkbook(filePath);
+		var worksheet = workbook.Worksheet(1);
+		EnsureMappingMatchesWorksheet(worksheet, mapping);
+
+		var lastRow = worksheet.LastRowUsed()?.RowNumber() ?? 1;
 
 		for (var row = 2; row <= lastRow; row++)
 		{
 			cancellationToken.ThrowIfCancellationRequested();
+
 			try
 			{
-				var partNumber =
-					GetString(
-						worksheet,
-						row,
-						columns,
-						"P/N");
+				var partNumber = GetString(
+					worksheet,
+					row,
+					mapping,
+					ImportTargetField.PartNumber);
 
 				if (string.IsNullOrWhiteSpace(partNumber))
 				{
-					warnings.Add(
-						new ImportWarning
-						{
-							RowNumber = row,
-							Message = "Part number is missing."
-						});
-
+					warnings.Add(new ImportWarning
+					{
+						RowNumber = row,
+						Message = "Part number is missing."
+					});
 					continue;
 				}
 
-				var description =
-					GetString(
-						worksheet,
-						row,
-						columns,
-						"Item Description");
+				var description = GetString(
+					worksheet,
+					row,
+					mapping,
+					ImportTargetField.Description);
 
 				if (string.IsNullOrWhiteSpace(description))
 				{
-					warnings.Add(
-						new ImportWarning
-						{
-							RowNumber = row,
-							Message = $"Description is missing for '{partNumber}'."
-						});
-
+					warnings.Add(new ImportWarning
+					{
+						RowNumber = row,
+						Message = $"Description is missing for '{partNumber}'."
+					});
 					continue;
 				}
 
-				var purpose =
-					GetString(
-						worksheet,
-						row,
-						columns,
-						"Purpose");
+				var purpose = GetString(
+					worksheet,
+					row,
+					mapping,
+					ImportTargetField.Purpose);
 
 				if (string.IsNullOrWhiteSpace(purpose))
 				{
-					warnings.Add(
-						new ImportWarning
-						{
-							RowNumber = row,
-							Message = $"Purpose is missing for '{partNumber}'."
-						});
-
+					warnings.Add(new ImportWarning
+					{
+						RowNumber = row,
+						Message = $"Purpose is missing for '{partNumber}'."
+					});
 					continue;
 				}
 
-				var location =
-					GetString(
-						worksheet,
-						row,
-						columns,
-						"Location");
+				var location = GetString(
+					worksheet,
+					row,
+					mapping,
+					ImportTargetField.Location);
 
 				if (string.IsNullOrWhiteSpace(location))
 				{
-					warnings.Add(
-						new ImportWarning
-						{
-							RowNumber = row,
-							Message = $"Location is missing for '{partNumber}'."
-						});
-
+					warnings.Add(new ImportWarning
+					{
+						RowNumber = row,
+						Message = $"Location is missing for '{partNumber}'."
+					});
 					continue;
 				}
 
-				var warehouse =
-					GetOptionalString(
-						worksheet,
-						row,
-						columns,
-						"Warehouse",
-						"Main Warehouse");
+				var warehouseDefinition = ImportTargetCatalog.Get(ImportTargetField.Warehouse);
+				var warehouse = GetOptionalString(
+					worksheet,
+					row,
+					mapping,
+					ImportTargetField.Warehouse,
+					warehouseDefinition.DefaultValue ?? "Main Warehouse");
 
-				var manufacturer =
-					GetString(
-						worksheet,
-						row,
-						columns,
-						"Manufacturer");
+				var manufacturer = GetString(
+					worksheet,
+					row,
+					mapping,
+					ImportTargetField.Manufacturer);
+				var category = GetString(
+					worksheet,
+					row,
+					mapping,
+					ImportTargetField.Category);
+				var quantity = GetInt(
+					worksheet,
+					row,
+					mapping,
+					ImportTargetField.Quantity);
+				var unitPrice = GetDecimal(
+					worksheet,
+					row,
+					mapping,
+					ImportTargetField.UnitPrice);
 
-				var category =
-					GetString(
-						worksheet,
-						row,
-						columns,
-						"Item Category");
+				var key = $"{partNumber}|{purpose}|{warehouse}|{location}";
 
-				var quantity =
-					GetInt(
-						worksheet,
-						row,
-						columns,
-						"Current Inventory");
-
-				var unitPrice =
-					GetDecimal(
-						worksheet,
-						row,
-						columns,
-						"Unit Price");
-
-				var key =
-					$"{partNumber}|{purpose}|{warehouse}|{location}";
-
-				if (!itemsByKey.TryGetValue(
-					key,
-					out var accumulator))
+				if (!itemsByKey.TryGetValue(key, out var accumulator))
 				{
-					accumulator =
-						new ImportPreviewAccumulator
-						{
-							PartNumber = partNumber,
-							Description = description,
-							Manufacturer = string.IsNullOrWhiteSpace(manufacturer)
-								? null
-								: manufacturer,
-							Category = string.IsNullOrWhiteSpace(category)
-								? null
-								: category,
-							Purpose = purpose,
-							Warehouse = warehouse,
-							Location = location
-						};
-
-					itemsByKey.Add(
-						key,
-						accumulator);
+					accumulator = new ImportPreviewAccumulator
+					{
+						PartNumber = partNumber,
+						Description = description,
+						Manufacturer = string.IsNullOrWhiteSpace(manufacturer) ? null : manufacturer,
+						Category = string.IsNullOrWhiteSpace(category) ? null : category,
+						Purpose = purpose,
+						Warehouse = warehouse,
+						Location = location
+					};
+					itemsByKey.Add(key, accumulator);
 				}
 
 				accumulator.Quantity += quantity;
@@ -214,54 +204,41 @@ public sealed class ImportService
 			}
 			catch (Exception ex)
 			{
-				warnings.Add(
-					new ImportWarning
-					{
-						RowNumber = row,
-						Message = ex.Message
-					});
+				warnings.Add(new ImportWarning
+				{
+					RowNumber = row,
+					Message = ex.Message
+				});
 			}
 		}
 
-		var items =
-			itemsByKey
-				.Values
-				.Select(
-					x =>
-					{
-						var existingItem =
-							_itemRepository.GetByPartNumber(
-								x.PartNumber);
+		var items = itemsByKey
+			.Values
+			.Select(x =>
+			{
+				var existingItem = _itemRepository.GetByPartNumber(x.PartNumber);
+				var unitPrice = x.Quantity == 0 ? 0m : x.TotalValue / x.Quantity;
 
-						var unitPrice =
-							x.Quantity == 0
-								? 0m
-								: x.TotalValue / x.Quantity;
-
-						return new ImportPreviewItem
-						{
-							PartNumber = x.PartNumber,
-							Description = x.Description,
-							Manufacturer = x.Manufacturer,
-							Category = x.Category,
-							Purpose = x.Purpose,
-							Warehouse = x.Warehouse,
-							Location = x.Location,
-							Quantity = x.Quantity,
-							UnitPrice = unitPrice,
-							TotalValue = x.TotalValue,
-							ItemAlreadyExists = existingItem is not null
-						};
-					})
-				.OrderBy(
-					x => x.PartNumber)
-				.ThenBy(
-					x => x.Purpose)
-				.ThenBy(
-					x => x.Warehouse)
-				.ThenBy(
-					x => x.Location)
-				.ToList();
+				return new ImportPreviewItem
+				{
+					PartNumber = x.PartNumber,
+					Description = x.Description,
+					Manufacturer = x.Manufacturer,
+					Category = x.Category,
+					Purpose = x.Purpose,
+					Warehouse = x.Warehouse,
+					Location = x.Location,
+					Quantity = x.Quantity,
+					UnitPrice = unitPrice,
+					TotalValue = x.TotalValue,
+					ItemAlreadyExists = existingItem is not null
+				};
+			})
+			.OrderBy(x => x.PartNumber)
+			.ThenBy(x => x.Purpose)
+			.ThenBy(x => x.Warehouse)
+			.ThenBy(x => x.Location)
+			.ToList();
 
 		return new ImportPreview
 		{
@@ -280,34 +257,25 @@ public sealed class ImportService
 
 		foreach (var previewItem in preview.Items)
 		{
-			var item =
-				_itemRepository.GetByPartNumber(
-					previewItem.PartNumber);
+			var item = _itemRepository.GetByPartNumber(previewItem.PartNumber);
 
 			if (item is null)
 			{
-				item =
-					_itemService.CreateItem(
-						previewItem.PartNumber,
-						previewItem.Description,
-						previewItem.Manufacturer,
-						previewItem.Category);
-
+				item = _itemService.CreateItem(
+					previewItem.PartNumber,
+					previewItem.Description,
+					previewItem.Manufacturer,
+					previewItem.Category);
 				importedItems++;
 			}
 
-			var purpose =
-				_purposeService.GetOrCreatePurpose(
-					previewItem.Purpose);
-
+			var purpose = _purposeService.GetOrCreatePurpose(previewItem.Purpose);
 			var warehouse = _warehouseService.GetOrCreateAsync(previewItem.Warehouse).GetAwaiter().GetResult();
 			var location = _storageLocationService.GetOrCreateAsync(warehouse.Id, previewItem.Location).GetAwaiter().GetResult();
-
-			var inventory =
-				_inventoryManagementService.GetOrCreateInventory(
-					item.Id,
-					purpose.Id,
-					location.Id);
+			var inventory = _inventoryManagementService.GetOrCreateInventory(
+				item.Id,
+				purpose.Id,
+				location.Id);
 
 			if (previewItem.Quantity <= 0)
 			{
@@ -320,7 +288,6 @@ public sealed class ImportService
 				previewItem.Quantity,
 				previewItem.UnitPrice,
 				"Imported from Excel");
-
 			importedMovements++;
 		}
 
@@ -362,7 +329,9 @@ public sealed class ImportService
 			var purpose = await _purposeService.GetOrCreatePurposeAsync(
 				previewItem.Purpose,
 				cancellationToken);
-			var warehouse = await _warehouseService.GetOrCreateAsync(previewItem.Warehouse, cancellationToken);
+			var warehouse = await _warehouseService.GetOrCreateAsync(
+				previewItem.Warehouse,
+				cancellationToken);
 			var location = await _storageLocationService.GetOrCreateAsync(
 				warehouse.Id,
 				previewItem.Location,
@@ -396,47 +365,53 @@ public sealed class ImportService
 		};
 	}
 
-	private static Dictionary<string, int> ReadColumns(
-		IXLWorksheet worksheet)
+	private static IReadOnlyList<(int ColumnNumber, string Header)> ReadSourceColumns(
+		IXLWorksheet worksheet,
+		CancellationToken cancellationToken)
 	{
-		var result =
-			new Dictionary<string, int>(
-				StringComparer.OrdinalIgnoreCase);
-
-		var lastColumn =
-			worksheet.LastColumnUsed()?.ColumnNumber() ?? 0;
+		var lastColumn = worksheet.LastColumnUsed()?.ColumnNumber() ?? 0;
+		var result = new List<(int ColumnNumber, string Header)>(lastColumn);
 
 		for (var column = 1; column <= lastColumn; column++)
 		{
-			var header =
-				worksheet
-					.Cell(1, column)
-					.GetString()
-					.Trim();
-
-			if (!string.IsNullOrWhiteSpace(header))
-			{
-				result[header] = column;
-			}
+			cancellationToken.ThrowIfCancellationRequested();
+			var header = worksheet.Cell(1, column).GetString().Trim();
+			result.Add((column, header));
 		}
 
 		return result;
 	}
 
+	private static void EnsureMappingMatchesWorksheet(
+		IXLWorksheet worksheet,
+		ImportMapping mapping)
+	{
+		var lastColumn = worksheet.LastColumnUsed()?.ColumnNumber() ?? 0;
+
+		foreach (var source in mapping.Columns)
+		{
+			if (source.ColumnNumber < 1 || source.ColumnNumber > lastColumn)
+			{
+				throw new InvalidOperationException(
+					"The workbook columns changed after the mapping was loaded. Reload the file before continuing.");
+			}
+
+			var currentHeader = worksheet.Cell(1, source.ColumnNumber).GetString().Trim();
+			if (!string.Equals(currentHeader, source.Header, StringComparison.Ordinal))
+			{
+				throw new InvalidOperationException(
+					"The workbook columns changed after the mapping was loaded. Reload the file before continuing.");
+			}
+		}
+	}
+
 	private static string GetString(
 		IXLWorksheet worksheet,
 		int row,
-		IReadOnlyDictionary<string, int> columns,
-		string header)
+		ImportMapping mapping,
+		ImportTargetField target)
 	{
-		var cell =
-			GetCell(
-				worksheet,
-				row,
-				columns,
-				header);
-
-		return cell
+		return GetCell(worksheet, row, mapping, target)
 			.GetString()
 			.Trim();
 	}
@@ -444,33 +419,22 @@ public sealed class ImportService
 	private static int GetInt(
 		IXLWorksheet worksheet,
 		int row,
-		IReadOnlyDictionary<string, int> columns,
-		string header)
+		ImportMapping mapping,
+		ImportTargetField target)
 	{
-		var cell =
-			GetCell(
-				worksheet,
-				row,
-				columns,
-				header);
+		var cell = GetCell(worksheet, row, mapping, target);
 
 		if (cell.IsEmpty())
 		{
 			return 0;
 		}
 
-		if (cell.TryGetValue<decimal>(
-			out var decimalValue))
+		if (cell.TryGetValue<decimal>(out var decimalValue))
 		{
-			return Convert.ToInt32(
-				decimalValue);
+			return Convert.ToInt32(decimalValue);
 		}
 
-		var text =
-			cell
-				.GetString()
-				.Trim();
-
+		var text = cell.GetString().Trim();
 		if (string.IsNullOrWhiteSpace(text))
 		{
 			return 0;
@@ -485,48 +449,39 @@ public sealed class ImportService
 	private static string GetOptionalString(
 		IXLWorksheet worksheet,
 		int row,
-		IReadOnlyDictionary<string, int> columns,
-		string header,
+		ImportMapping mapping,
+		ImportTargetField target,
 		string defaultValue)
 	{
-		if (!columns.TryGetValue(header, out var column))
+		var column = mapping.GetColumnNumber(target);
+		if (column is null)
 		{
 			return defaultValue;
 		}
 
-		var value = worksheet.Cell(row, column).GetString().Trim();
+		var value = worksheet.Cell(row, column.Value).GetString().Trim();
 		return string.IsNullOrWhiteSpace(value) ? defaultValue : value;
 	}
 
 	private static decimal GetDecimal(
 		IXLWorksheet worksheet,
 		int row,
-		IReadOnlyDictionary<string, int> columns,
-		string header)
+		ImportMapping mapping,
+		ImportTargetField target)
 	{
-		var cell =
-			GetCell(
-				worksheet,
-				row,
-				columns,
-				header);
+		var cell = GetCell(worksheet, row, mapping, target);
 
 		if (cell.IsEmpty())
 		{
 			return 0m;
 		}
 
-		if (cell.TryGetValue<decimal>(
-			out var decimalValue))
+		if (cell.TryGetValue<decimal>(out var decimalValue))
 		{
 			return decimalValue;
 		}
 
-		var text =
-			cell
-				.GetString()
-				.Trim();
-
+		var text = cell.GetString().Trim();
 		if (string.IsNullOrWhiteSpace(text))
 		{
 			return 0m;
@@ -540,40 +495,30 @@ public sealed class ImportService
 	private static IXLCell GetCell(
 		IXLWorksheet worksheet,
 		int row,
-		IReadOnlyDictionary<string, int> columns,
-		string header)
+		ImportMapping mapping,
+		ImportTargetField target)
 	{
-		if (!columns.TryGetValue(
-			header,
-			out var column))
+		var column = mapping.GetColumnNumber(target);
+		if (column is null)
 		{
+			var definition = ImportTargetCatalog.Get(target);
 			throw new InvalidOperationException(
-				$"Column '{header}' was not found.");
+				$"Target field '{definition.DisplayName}' is not mapped.");
 		}
 
-		return worksheet.Cell(
-			row,
-			column);
+		return worksheet.Cell(row, column.Value);
 	}
 
 	private sealed class ImportPreviewAccumulator
 	{
 		public string PartNumber { get; init; } = string.Empty;
-
 		public string Description { get; init; } = string.Empty;
-
 		public string? Manufacturer { get; init; }
-
 		public string? Category { get; init; }
-
 		public string Purpose { get; init; } = string.Empty;
-
 		public string Warehouse { get; init; } = string.Empty;
-
 		public string Location { get; init; } = string.Empty;
-
 		public int Quantity { get; set; }
-
 		public decimal TotalValue { get; set; }
 	}
 }
