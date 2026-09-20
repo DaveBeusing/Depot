@@ -59,8 +59,9 @@ public sealed class MotionSystemTests
 
 		Assert.Contains("TransitionKind=\"Workspace\"", main, StringComparison.Ordinal);
 		Assert.Contains("TransitionKind=\"State\"", main, StringComparison.Ordinal);
-		Assert.Contains("Motion.Duration.Fast", navigation, StringComparison.Ordinal);
-		Assert.Contains("Motion.Duration.Standard", navigation, StringComparison.Ordinal);
+		Assert.Contains("MotionDuration Kind=Fast", navigation, StringComparison.Ordinal);
+		Assert.Contains("MotionDuration Kind=Standard", navigation, StringComparison.Ordinal);
+		Assert.DoesNotContain("Duration=\\\"{StaticResource Motion.Duration.", navigation, StringComparison.Ordinal);
 		Assert.DoesNotContain("NavigationAnimationDuration", navigation, StringComparison.Ordinal);
 	}
 
