@@ -27,7 +27,13 @@ public sealed record FinancePostingFlowNode(
 	int Column,
 	int Row,
 	Guid? EntityId = null,
-	int? LineNumber = null);
+	int? LineNumber = null)
+{
+	public double CanvasLeft => 24d + (Column * 210d);
+	public double CanvasTop => 36d + (Row * 88d);
+	public double CanvasWidth => 178d;
+	public double CanvasHeight => 62d;
+}
 
 public sealed record FinancePostingFlowEdge(string SourceKey, string TargetKey);
 
