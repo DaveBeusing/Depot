@@ -16,11 +16,26 @@ public sealed class SalesQuoteRepository : DatabaseRepository
 
 	public Task<PageResult<SalesQuote>> SearchAsync(string? searchText, SalesQuoteStatus? status, int pageNumber, int pageSize, CancellationToken token)
 	{
-		var filters=new List<string>(); var parameters=new List<DatabaseParameter>();
-		if(!string.IsNullOrWhiteSpace(searchText)){filters.Add("(q.QuoteNumber LIKE $Search OR c.Name LIKE $Search OR q.CustomerReference LIKE $Search)");parameters.Add(Parameter("$Search",$"%{searchText.Trim()}%"));}
-		if(status is not null){filters.Add("q.Status=$Status");parameters.Add(Parameter("$Status",(int)status.Value));}
-		var where=filters.Count==0?string.Empty:$"WHERE {string.Join(" AND ",filters)}";
-		return Database.QueryPageAsync($"SELECT {Columns} {From} {where} ORDER BY q.QuoteDate DESC,q.Id DESC",$"SELECT COUNT(*) {From} {where}",Read,pageNumber,pageSize,token,parameters.ToArray());
+		var filters = new List<string>(); var parameters = new List<DatabaseParameter>();
+		var plan = SearchQueryPlan.Create(searchText);
+		string? rank = null;
+		if (plan is { } search)
+		{
+			var prefixColumns = new[] { "q.QuoteNumber", "c.Name", "q.CustomerReference" };
+			filters.Add(search.BuildPredicate(prefixColumns, prefixColumns));
+			parameters.Add(Parameter("$SearchExact", search.Exact));
+			parameters.Add(Parameter("$SearchPrefix", search.Prefix));
+			if (search.AllowContains)
+			{
+				parameters.Add(Parameter("$SearchWordPrefix", search.WordPrefix));
+				parameters.Add(Parameter("$SearchContains", search.Contains));
+			}
+			rank = search.BuildRankExpression(prefixColumns, ["c.Name", "q.CustomerReference"]);
+		}
+		if (status is not null) { filters.Add("q.Status=$Status"); parameters.Add(Parameter("$Status", (int)status.Value)); }
+		var where = filters.Count == 0 ? string.Empty : $"WHERE {string.Join(" AND ", filters)}";
+		var orderBy = rank is null ? "q.QuoteDate DESC,q.Id DESC" : $"{rank},q.QuoteDate DESC,q.Id DESC";
+		return Database.QueryPageAsync($"SELECT {Columns} {From} {where} ORDER BY {orderBy}", $"SELECT COUNT(*) {From} {where}", Read, pageNumber, pageSize, token, parameters.ToArray());
 	}
 
 	public async Task<SalesQuote?> GetByIdAsync(long id,CancellationToken token)

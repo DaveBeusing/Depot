@@ -119,11 +119,11 @@ internal sealed class ServiceComposition
 			FinancialReporting);
 		GlobalSearch = new GlobalSearchService(
 		[
-			new ItemGlobalSearchProvider(Items, Authorization),
-			new SupplierGlobalSearchProvider(Suppliers, Authorization),
-			new PurchaseOrderGlobalSearchProvider(PurchaseOrders, Authorization),
-			new SalesGlobalSearchProvider(Sales, Authorization),
-			new FinanceJournalGlobalSearchProvider(FinanceGeneralLedger, Authorization)
+			new ItemGlobalSearchProvider(repositories.GlobalSearch, Authorization),
+			new SupplierGlobalSearchProvider(repositories.GlobalSearch, Authorization),
+			new PurchaseOrderGlobalSearchProvider(repositories.GlobalSearch, Authorization),
+			new SalesGlobalSearchProvider(repositories.GlobalSearch, Authorization),
+			new FinanceJournalGlobalSearchProvider(repositories.GlobalSearch, Authorization)
 		]);
 	}
 

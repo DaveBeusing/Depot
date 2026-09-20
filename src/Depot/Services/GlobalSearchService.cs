@@ -8,6 +8,7 @@ namespace Depot.Services;
 public interface IGlobalSearchProvider
 {
 	string Id { get; }
+	bool CanSearch { get; }
 	Task<IReadOnlyList<GlobalSearchResult>> SearchAsync(string query, int maxResults, CancellationToken cancellationToken = default);
 }
 
@@ -35,9 +36,11 @@ public sealed class GlobalSearchService
 		var normalized = query?.Trim() ?? string.Empty;
 		if (normalized.Length < MinimumQueryLength || _providers.Count == 0) return [];
 
+		var eligibleProviders = _providers.Where(provider => provider.CanSearch).ToArray();
+		if (eligibleProviders.Length == 0) return [];
 		var boundedMaximum = Math.Clamp(maxResults, 1, MaximumResults);
-		var perProvider = Math.Clamp(((boundedMaximum + _providers.Count - 1) / _providers.Count) + 2, 4, 12);
-		var tasks = _providers.Select(provider => provider.SearchAsync(normalized, perProvider, cancellationToken)).ToArray();
+		var perProvider = Math.Clamp(((boundedMaximum + eligibleProviders.Length - 1) / eligibleProviders.Length) + 2, 4, 12);
+		var tasks = eligibleProviders.Select(provider => provider.SearchAsync(normalized, perProvider, cancellationToken)).ToArray();
 		var providerResults = await Task.WhenAll(tasks);
 		cancellationToken.ThrowIfCancellationRequested();
 

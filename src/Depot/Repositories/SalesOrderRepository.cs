@@ -17,10 +17,25 @@ public sealed class SalesOrderRepository : DatabaseRepository
 	public Task<PageResult<SalesOrder>> SearchAsync(string? searchText, SalesOrderStatus? status, int pageNumber, int pageSize, CancellationToken cancellationToken)
 	{
 		var filters = new List<string>(); var parameters = new List<DatabaseParameter>();
-		if (!string.IsNullOrWhiteSpace(searchText)) { filters.Add("(so.OrderNumber LIKE $Search OR c.Name LIKE $Search OR so.CustomerReference LIKE $Search)"); parameters.Add(Parameter("$Search", $"%{searchText.Trim()}%")); }
+		var plan = SearchQueryPlan.Create(searchText);
+		string? rank = null;
+		if (plan is { } search)
+		{
+			var prefixColumns = new[] { "so.OrderNumber", "c.Name" };
+			filters.Add(search.BuildPredicate(prefixColumns, ["so.OrderNumber", "c.Name", "so.CustomerReference"]));
+			parameters.Add(Parameter("$SearchExact", search.Exact));
+			parameters.Add(Parameter("$SearchPrefix", search.Prefix));
+			if (search.AllowContains)
+			{
+				parameters.Add(Parameter("$SearchWordPrefix", search.WordPrefix));
+				parameters.Add(Parameter("$SearchContains", search.Contains));
+			}
+			rank = search.BuildRankExpression(prefixColumns, ["c.Name", "so.CustomerReference"]);
+		}
 		if (status is not null) { filters.Add("so.Status=$Status"); parameters.Add(Parameter("$Status", (int)status.Value)); }
 		var where = filters.Count == 0 ? string.Empty : $"WHERE {string.Join(" AND ", filters)}";
-		return Database.QueryPageAsync($"SELECT {Columns} {From} {where} ORDER BY so.OrderDate DESC, so.Id DESC", $"SELECT COUNT(*) {From} {where}", ReadOrder, pageNumber, pageSize, cancellationToken, parameters.ToArray());
+		var orderBy = rank is null ? "so.OrderDate DESC, so.Id DESC" : $"{rank}, so.OrderDate DESC, so.Id DESC";
+		return Database.QueryPageAsync($"SELECT {Columns} {From} {where} ORDER BY {orderBy}", $"SELECT COUNT(*) {From} {where}", ReadOrder, pageNumber, pageSize, cancellationToken, parameters.ToArray());
 	}
 
 	public async Task<SalesOrder?> GetByIdAsync(long id, CancellationToken cancellationToken)

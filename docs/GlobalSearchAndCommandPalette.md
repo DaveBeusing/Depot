@@ -1,6 +1,6 @@
 # Global Search and Command Palette
 
-Updated: 2026-09-19
+Updated: 2026-09-20
 
 ## Purpose
 
@@ -20,12 +20,11 @@ The palette combines immediate local results with permission-aware asynchronous 
 ShellPaletteWindow
   -> GlobalSearchService
       -> IGlobalSearchProvider
-          -> existing business services
-              -> repositories
-                  -> DatabaseAccess
+          -> GlobalSearchReadRepository
+              -> DatabaseAccess
 ```
 
-The palette never queries repositories or SQL directly. Search providers call existing service boundaries, and each provider checks the current authorization state before invoking services whose search method is not already permission-gated.
+The palette never queries repositories or SQL directly. `GlobalSearchService` filters providers by their current authorization eligibility before any provider task is started. Built-in providers use the dedicated, read-only `GlobalSearchReadRepository`; it exposes only bounded search projections and does not provide mutation APIs. Opening a selected record still goes through the existing application/service authorization boundary.
 
 Navigation, shell commands and already-known recent entries are resolved locally and displayed before any record query starts. A database-backed search failure therefore does not prevent workspace navigation or command execution.
 
@@ -81,15 +80,17 @@ The command palette is designed to remain responsive under ordinary ERP data vol
 - record lookup starts only after two non-whitespace characters;
 - the UI uses a cancellable 120 ms debounce;
 - a new query cancels the previous query;
-- providers execute concurrently;
+- only permission-eligible providers are started;
+- eligible providers execute concurrently;
 - each provider receives a bounded result budget;
+- built-in record providers use count-free Top-N reads;
 - the aggregate result set is capped;
 - duplicate stable identifiers are removed deterministically;
 - exact matches rank before prefixes, word prefixes and general contains matches.
 
-There is no unbounded cross-table scan and no external full-text engine.
+There is no unbounded result set and no external full-text engine. One- and two-character record queries use exact/prefix paths only; from three characters, contains remains available as a fallback.
 
-Finance journal free-text lookup intentionally examines only a bounded recent window. A positive numeric query can be resolved directly as a journal-entry ID. This keeps the feature useful without adding an unindexed global ledger scan as part of this work package.
+Finance journal lookup is filtered server-side with the same bounded Top-N contract. A positive numeric query can also match a journal-entry ID directly; the previous broad recent-window load plus in-memory filtering is no longer used.
 
 ## UX
 
@@ -133,6 +134,11 @@ Global Search itself introduces no persisted data. UserPreferences schema 2 is t
 - stable-ID deduplication;
 - result bounding;
 - cancellation of in-flight provider searches;
-- duplicate provider-ID rejection.
+- duplicate provider-ID rejection;
+- permission-ineligible providers are not invoked;
+- count-free bounded Global Search reads;
+- Finance Journal server-side filtering;
+- short-query contains suppression;
+- rapid-input debounce/cancellation/stale-result safety.
 
-Existing service authorization and shell-navigation regression suites remain part of the required CI and quality gates.
+Search performance contracts additionally cover the 10k/100k benchmark probe, identifier-heavy repository coverage, DataGrid virtualization/recycling and CollectionSynchronizer refresh behavior. Existing authorization and shell-navigation regression suites remain part of the required CI and quality gates.

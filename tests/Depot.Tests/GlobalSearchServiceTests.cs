@@ -109,6 +109,7 @@ public sealed class GlobalSearchServiceTests
 		}
 
 		public string Id { get; }
+		public bool CanSearch => true;
 
 		public Task<IReadOnlyList<GlobalSearchResult>> SearchAsync(string query, int maxResults, CancellationToken cancellationToken = default) =>
 			_search(query, maxResults, cancellationToken);

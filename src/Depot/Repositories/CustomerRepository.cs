@@ -16,9 +16,24 @@ public sealed class CustomerRepository : DatabaseRepository
 	{
 		var filters = new List<string>(); var parameters = new List<DatabaseParameter>();
 		if (!includeInactive) filters.Add("IsActive=1");
-		if (!string.IsNullOrWhiteSpace(searchText)) { filters.Add("(CustomerNumber LIKE $Search OR Name LIKE $Search OR Email LIKE $Search OR TaxId LIKE $Search OR VatId LIKE $Search)"); parameters.Add(Parameter("$Search", $"%{searchText.Trim()}%")); }
+		var plan = SearchQueryPlan.Create(searchText);
+		string? rank = null;
+		if (plan is { } search)
+		{
+			var prefixColumns = new[] { "CustomerNumber", "Name" };
+			filters.Add(search.BuildPredicate(prefixColumns, ["CustomerNumber", "Name", "Email", "TaxId", "VatId"]));
+			parameters.Add(Parameter("$SearchExact", search.Exact));
+			parameters.Add(Parameter("$SearchPrefix", search.Prefix));
+			if (search.AllowContains)
+			{
+				parameters.Add(Parameter("$SearchWordPrefix", search.WordPrefix));
+				parameters.Add(Parameter("$SearchContains", search.Contains));
+			}
+			rank = search.BuildRankExpression(prefixColumns, ["Name"]);
+		}
 		var where = filters.Count == 0 ? string.Empty : $"WHERE {string.Join(" AND ", filters)}";
-		return Database.QueryPageAsync($"SELECT {Columns} FROM Customers {where} ORDER BY Name,CustomerNumber", $"SELECT COUNT(*) FROM Customers {where}", Read, pageNumber, pageSize, cancellationToken, parameters.ToArray());
+		var orderBy = rank is null ? "Name,CustomerNumber" : $"{rank},Name,CustomerNumber";
+		return Database.QueryPageAsync($"SELECT {Columns} FROM Customers {where} ORDER BY {orderBy}", $"SELECT COUNT(*) FROM Customers {where}", Read, pageNumber, pageSize, cancellationToken, parameters.ToArray());
 	}
 
 	public async Task<Customer?> GetByIdAsync(long id, CancellationToken cancellationToken)

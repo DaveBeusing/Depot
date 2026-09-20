@@ -22,10 +22,20 @@ public sealed class PurchaseOrderRepository : DatabaseRepository
 	{
 		var filters = new List<string>();
 		var parameters = new List<DatabaseParameter>();
-		if (!string.IsNullOrWhiteSpace(searchText))
+		var plan = SearchQueryPlan.Create(searchText);
+		string? rank = null;
+		if (plan is { } search)
 		{
-			filters.Add("(po.OrderNumber LIKE $Search OR s.Name LIKE $Search OR po.Notes LIKE $Search)");
-			parameters.Add(Parameter("$Search", $"%{searchText.Trim()}%"));
+			var prefixColumns = new[] { "po.OrderNumber", "s.Name" };
+			filters.Add(search.BuildPredicate(prefixColumns, ["po.OrderNumber", "s.Name", "po.Notes"]));
+			parameters.Add(Parameter("$SearchExact", search.Exact));
+			parameters.Add(Parameter("$SearchPrefix", search.Prefix));
+			if (search.AllowContains)
+			{
+				parameters.Add(Parameter("$SearchWordPrefix", search.WordPrefix));
+				parameters.Add(Parameter("$SearchContains", search.Contains));
+			}
+			rank = search.BuildRankExpression(prefixColumns, ["s.Name", "po.Notes"]);
 		}
 		if (status is not null)
 		{
@@ -33,8 +43,9 @@ public sealed class PurchaseOrderRepository : DatabaseRepository
 			parameters.Add(Parameter("$Status", (int)status.Value));
 		}
 		var where = filters.Count == 0 ? string.Empty : $"WHERE {string.Join(" AND ", filters)}";
+		var orderBy = rank is null ? "po.OrderDate DESC, po.Id DESC" : $"{rank}, po.OrderDate DESC, po.Id DESC";
 		return Database.QueryPageAsync(
-			$"SELECT {Columns} {From} {where} ORDER BY po.OrderDate DESC, po.Id DESC",
+			$"SELECT {Columns} {From} {where} ORDER BY {orderBy}",
 			$"SELECT COUNT(*) {From} {where}", ReadOrder, pageNumber, pageSize, cancellationToken, parameters.ToArray());
 	}
 
