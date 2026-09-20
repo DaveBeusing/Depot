@@ -52,7 +52,7 @@ public sealed partial class SalesPricingViewModel : BaseViewModel, IDisposable
 	public async Task LoadAsync(CancellationToken token=default)
 	{
 		BeginOperation("Loading sales pricing");
-		try{Replace(PriceLists,await _pricing.ListAsync(token));await LoadScopedPricingAsync(token);Replace(Customers,await _customers.ListActiveAsync(token));Replace(Items,(await _items.SearchItemsAsync(string.Empty,1,200,token)).Items);if(SelectedPriceList is not null)SelectedPriceList=PriceLists.FirstOrDefault(p=>p.Id==SelectedPriceList.Id);await LoadCustomerAssignmentAsync(token);CompleteOperation(false,"Sales pricing loaded");}catch(Exception ex){FailOperation(ex,"Sales pricing could not be loaded");}
+		try{Replace(PriceLists,await _pricing.ListAsync(token));await LoadScopedPricingAsync(token);Replace(Customers,await _customers.ListActiveAsync(token));Replace(Items,(await _items.SearchItemsAsync(string.Empty,1,200,token)).Items);if(SelectedPriceList is not null)SelectedPriceList=PriceLists.FirstOrDefault(p=>p.Id==SelectedPriceList.Id);await LoadCustomerAssignmentAsync(token);await LoadPricingStrategyAsync(token);CompleteOperation(false,"Sales pricing loaded");}catch(Exception ex){FailOperation(ex,"Sales pricing could not be loaded");}
 	}
 	private async Task SavePriceListAsync(CancellationToken token){SelectedPriceList=await _pricing.SaveAsync(Draft,token);await LoadAsync(token);}
 	private async Task SavePriceItemAsync(CancellationToken token){if(SelectedPriceList is null||SelectedItem is null)return;await _pricing.SaveItemAsync(new SalesPriceListItem{SalesPriceListId=SelectedPriceList.Id,ItemId=SelectedItem.Id,UnitPrice=UnitPrice,DiscountPercent=DiscountPercent},token);await LoadAsync(token);}

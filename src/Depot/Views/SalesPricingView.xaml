@@ -6,6 +6,98 @@
         <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
         <controls:PageHeader Title="Sales pricing" Subtitle="Manage scoped price lists, commercial price calculation, FX evidence and bulk generation." />
         <controls:OperationPanel Grid.Row="1" ErrorText="{Binding OperationError}" HasError="{Binding HasOperationError}" IsBusy="{Binding IsBusy}" StatusText="{Binding StatusText}" />
+        <TabControl Grid.Row="2" Margin="0,12,0,0" Style="{StaticResource AppTabControlStyle}">
+            <TabItem Header="Strategy designer">
+                <Grid Margin="0,10,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="1.15*"/>
+                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition Width="1.55*"/>
+                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition Width="1.1*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <Border Style="{StaticResource WorkspaceSectionStyle}">
+                        <Grid>
+                            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                            <TextBlock Text="Pricing hierarchy" Style="{StaticResource WorkspaceSectionTitleStyle}"/>
+                            <TextBlock Grid.Row="1" Margin="0,4,0,10" Text="{Binding PricingStrategySummary}" Style="{StaticResource CaptionStyle}" TextWrapping="Wrap"/>
+                            <ListBox Grid.Row="2"
+                                     ItemsSource="{Binding PricingStrategyRows}"
+                                     SelectedItem="{Binding SelectedPricingStrategyRow}"
+                                     Style="{StaticResource AppListBoxStyle}"
+                                     VirtualizingPanel.IsVirtualizing="True"
+                                     VirtualizingPanel.VirtualizationMode="Recycling"
+                                     ScrollViewer.CanContentScroll="True">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Margin="0,2">
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                            <Border Width="{Binding Indent}"/>
+                                            <StackPanel Grid.Column="1">
+                                                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                                                <TextBlock Style="{StaticResource CaptionStyle}" TextTrimming="CharacterEllipsis">
+                                                    <Run Text="{Binding Kind}"/><Run Text=" · "/><Run Text="{Binding State}"/>
+                                                </TextBlock>
+                                            </StackPanel>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </Grid>
+                    </Border>
+
+                    <Border Grid.Column="2" Style="{StaticResource WorkspaceSectionStyle}">
+                        <StackPanel>
+                            <TextBlock Text="Resolution cascade" Style="{StaticResource WorkspaceSectionTitleStyle}"/>
+                            <TextBlock Margin="0,4,0,14" Text="Depot resolves the most specific valid price first. The visual hierarchy is a projection of the existing pricing model and does not create alternate fallback rules." Style="{StaticResource CaptionStyle}" TextWrapping="Wrap"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="36"/><ColumnDefinition Width="*"/><ColumnDefinition Width="36"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                <Border Padding="12" Style="{StaticResource WorkspaceToolbarBorderStyle}">
+                                    <StackPanel><TextBlock Text="GLOBAL" FontWeight="Bold"/><TextBlock Margin="0,4,0,0" Text="Default item price" Style="{StaticResource CaptionStyle}" TextWrapping="Wrap"/></StackPanel>
+                                </Border>
+                                <TextBlock Grid.Column="1" Text="→" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="20"/>
+                                <Border Grid.Column="2" Padding="12" Style="{StaticResource WorkspaceToolbarBorderStyle}">
+                                    <StackPanel><TextBlock Text="REGION" FontWeight="Bold"/><TextBlock Margin="0,4,0,0" Text="Regional override" Style="{StaticResource CaptionStyle}" TextWrapping="Wrap"/></StackPanel>
+                                </Border>
+                                <TextBlock Grid.Column="3" Text="→" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="20"/>
+                                <Border Grid.Column="4" Padding="12" Style="{StaticResource WorkspaceToolbarBorderStyle}">
+                                    <StackPanel><TextBlock Text="CUSTOMER" FontWeight="Bold"/><TextBlock Margin="0,4,0,0" Text="Explicit assignment" Style="{StaticResource CaptionStyle}" TextWrapping="Wrap"/></StackPanel>
+                                </Border>
+                            </Grid>
+                            <Border Margin="0,16,0,0" Padding="12" Style="{StaticResource WorkspaceToolbarBorderStyle}">
+                                <StackPanel>
+                                    <TextBlock Text="Selected strategy node" Style="{StaticResource FormLabelStyle}"/>
+                                    <TextBlock Margin="0,4,0,0" Text="{Binding PricingStrategySelectionTitle}" FontSize="16" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                    <TextBlock Margin="0,3,0,0" Text="{Binding PricingStrategySelectionSubtitle}" Style="{StaticResource CaptionStyle}" TextWrapping="Wrap"/>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Grid.Column="4" Style="{StaticResource WorkspaceSectionStyle}">
+                        <StackPanel>
+                            <TextBlock Text="Inspector" Style="{StaticResource WorkspaceSectionTitleStyle}"/>
+                            <TextBlock Margin="0,4,0,12" Text="{Binding PricingStrategySelectionIdentity}" Style="{StaticResource CaptionStyle}" TextWrapping="Wrap"/>
+                            <TextBlock Text="Name" Style="{StaticResource FormLabelStyle}"/>
+                            <TextBlock Margin="0,4,0,10" Text="{Binding SelectedPricingStrategyRow.Title, TargetNullValue=—}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                            <TextBlock Text="Context" Style="{StaticResource FormLabelStyle}"/>
+                            <TextBlock Margin="0,4,0,10" Text="{Binding SelectedPricingStrategyRow.Subtitle, TargetNullValue=—}" TextWrapping="Wrap"/>
+                            <TextBlock Text="Scope" Style="{StaticResource FormLabelStyle}"/>
+                            <TextBlock Margin="0,4,0,10" Text="{Binding SelectedPricingStrategyRow.Scope, TargetNullValue=—}"/>
+                            <TextBlock Text="State" Style="{StaticResource FormLabelStyle}"/>
+                            <TextBlock Margin="0,4,0,10" Text="{Binding SelectedPricingStrategyRow.State, TargetNullValue=—}"/>
+                            <TextBlock Text="Identifiers" Style="{StaticResource FormLabelStyle}"/>
+                            <TextBlock Margin="0,4,0,0" Style="{StaticResource CaptionStyle}" TextWrapping="Wrap">
+                                <Run Text="List "/><Run Text="{Binding SelectedPricingStrategyRow.PriceListId, TargetNullValue=—}"/>
+                                <Run Text=" · Region "/><Run Text="{Binding SelectedPricingStrategyRow.RegionId, TargetNullValue=—}"/>
+                                <Run Text=" · Customer "/><Run Text="{Binding SelectedPricingStrategyRow.CustomerId, TargetNullValue=—}"/>
+                            </TextBlock>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </TabItem>
+            <TabItem Header="Price list editor">
         <controls:MasterDetailGrid Grid.Row="2" Margin="0,12,0,0">
             <controls:MasterDetailGrid.Master>
                 <Border Style="{StaticResource WorkspaceSectionStyle}"><Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
@@ -86,5 +178,7 @@
                 </StackPanel></ScrollViewer>
             </controls:MasterDetailGrid.Detail>
         </controls:MasterDetailGrid>
+            </TabItem>
+        </TabControl>
     </Grid>
 </UserControl>
