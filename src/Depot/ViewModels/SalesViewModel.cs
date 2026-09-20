@@ -53,6 +53,7 @@ public sealed class SalesViewModel : BaseViewModel, IDisposable
 	private CustomerAddress? _selectedBillingAddress;
 	private CustomerAddress? _selectedShippingAddress;
 	private SalesOrder? _selectedOrder;
+	private ApprovalFlowProjection? _approvalFlow;
 	private SalesOrder? _orderBaseline;
 	private Shipment? _selectedShipment;
 	private Shipment? _shipmentBaseline;
@@ -210,7 +211,8 @@ public sealed class SalesViewModel : BaseViewModel, IDisposable
 	public Customer? SelectedOrderCustomer { get => _selectedOrderCustomer; set { if (_selectedOrderCustomer == value) return; _selectedOrderCustomer = value; OnPropertyChanged(); _ = LoadOrderAddressesAsync(value, true); } }
 	public CustomerAddress? SelectedBillingAddress { get => _selectedBillingAddress; set { if (_selectedBillingAddress == value) return; _selectedBillingAddress = value; if (value is not null) OrderDraft.BillingAddress = value.Address; OnPropertyChanged(); OnPropertyChanged(nameof(OrderDraft)); } }
 	public CustomerAddress? SelectedShippingAddress { get => _selectedShippingAddress; set { if (_selectedShippingAddress == value) return; _selectedShippingAddress = value; if (value is not null) OrderDraft.ShippingAddress = value.Address; OnPropertyChanged(); OnPropertyChanged(nameof(OrderDraft)); } }
-	public SalesOrder? SelectedOrder { get => _selectedOrder; set { if (_selectedOrder == value) return; _selectedOrder = value; OnPropertyChanged(); _ = LoadSelectedOrderAsync(value); RaiseCommands(); } }
+	public SalesOrder? SelectedOrder { get => _selectedOrder; set { if (_selectedOrder == value) return; _selectedOrder = value; OnPropertyChanged(); UpdateApprovalFlow(value); _ = LoadSelectedOrderAsync(value); RaiseCommands(); } }
+	public ApprovalFlowProjection? ApprovalFlow { get => _approvalFlow; private set { if (ReferenceEquals(_approvalFlow, value)) return; _approvalFlow = value; OnPropertyChanged(); } }
 	public Shipment? SelectedShipment { get => _selectedShipment; set { if (_selectedShipment == value) return; _selectedShipment = value; OnPropertyChanged(); _ = LoadSelectedShipmentAsync(value); RaiseCommands(); } }
 	public SalesInvoice? SelectedInvoice { get => _selectedInvoice; set { if (_selectedInvoice == value) return; _selectedInvoice = value; OnPropertyChanged(); RaiseCommands(); } }
 	public CustomerReturn? SelectedCustomerReturn { get => _selectedCustomerReturn; set { if (_selectedCustomerReturn == value) return; _selectedCustomerReturn = value; OnPropertyChanged(); RaiseCommands(); } }
@@ -383,10 +385,10 @@ public sealed class SalesViewModel : BaseViewModel, IDisposable
 
 	private async Task LoadSelectedOrderAsync(SalesOrder? order)
 	{
-		if (order is null) { _orderBaseline = null; OrderDraft = NewOrderDraft(); Replace(OrderLines, []); Replace(Reservations, []); BillingAddresses.Clear(); ShippingAddresses.Clear(); return; }
+		if (order is null) { _orderBaseline = null; ApprovalFlow = null; OrderDraft = NewOrderDraft(); Replace(OrderLines, []); Replace(Reservations, []); BillingAddresses.Clear(); ShippingAddresses.Clear(); return; }
 		try
 		{
-			var loaded = await _orders.GetByIdAsync(order.Id) ?? order; _selectedOrder = loaded; OnPropertyChanged(nameof(SelectedOrder)); _orderBaseline = Copy(loaded); OrderDraft = Copy(loaded);
+			var loaded = await _orders.GetByIdAsync(order.Id) ?? order; _selectedOrder = loaded; OnPropertyChanged(nameof(SelectedOrder)); UpdateApprovalFlow(loaded); _orderBaseline = Copy(loaded); OrderDraft = Copy(loaded);
 			Replace(OrderLines, loaded.Lines.Select(CopyLine)); Replace(Reservations, await _orders.GetReservationsAsync(loaded.Id)); SelectedOrderLine = OrderLines.FirstOrDefault(); SelectedReservation = Reservations.FirstOrDefault(value => value.Status == InventoryReservationStatus.Active);
 			var customer = Customers.FirstOrDefault(c => c.Id == loaded.CustomerId) ?? await _customers.GetByIdAsync(loaded.CustomerId); _selectedOrderCustomer = customer; OnPropertyChanged(nameof(SelectedOrderCustomer)); await LoadOrderAddressesAsync(customer, false);
 			_selectedBillingAddress = BillingAddresses.FirstOrDefault(a => string.Equals(a.Address, loaded.BillingAddress, StringComparison.Ordinal)) ?? BillingAddresses.FirstOrDefault(a => a.IsDefault); OnPropertyChanged(nameof(SelectedBillingAddress));
@@ -395,6 +397,9 @@ public sealed class SalesViewModel : BaseViewModel, IDisposable
 		}
 		catch (Exception exception) { FailOperation(exception, "Sales order details could not be loaded"); }
 	}
+
+	private void UpdateApprovalFlow(SalesOrder? order) =>
+		ApprovalFlow = order is null ? null : ApprovalFlowProjectionService.ProjectSalesOrder(order, _orders.CanSubmit, _orders.CanDecide(order.CreatedByUserId), _orders.CanRelease);
 
 	private async Task LoadSelectedShipmentAsync(Shipment? shipment)
 	{

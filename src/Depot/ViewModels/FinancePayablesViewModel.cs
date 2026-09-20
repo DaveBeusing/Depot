@@ -22,6 +22,7 @@ public sealed class FinancePayablesViewModel : BaseViewModel, IDisposable
 	private int _pageNumber = 1;
 	private long _totalCount;
 	private FinanceSupplierDocument? _selectedDocument;
+	private ApprovalFlowProjection? _approvalFlow;
 	private FinancePayableOpenItem? _selectedOpenItem;
 	private FinanceSupplierDocumentLineDraftEditor? _selectedDraftLine;
 	private long _configurationId;
@@ -108,6 +109,7 @@ public sealed class FinancePayablesViewModel : BaseViewModel, IDisposable
 	public ObservableCollection<FinanceSupplierStatementRow> StatementRows { get; } = [];
 	public ObservableCollection<FinanceSupplierDocumentLineDraftEditor> DraftLines { get; } = [];
 	public ObservableCollection<WorkflowTimelineItem> Timeline { get; } = [];
+	public ApprovalFlowProjection? ApprovalFlow { get => _approvalFlow; private set { if (ReferenceEquals(_approvalFlow, value)) return; _approvalFlow = value; OnPropertyChanged(); } }
 
 	public AsyncRelayCommand RefreshCommand { get; }
 	public AsyncRelayCommand PreviousPageCommand { get; }
@@ -158,6 +160,7 @@ public sealed class FinancePayablesViewModel : BaseViewModel, IDisposable
 			if (ReferenceEquals(_selectedDocument, value)) return;
 			_selectedDocument = value;
 			OnPropertyChanged();
+			ApprovalFlow = value is null ? null : ApprovalFlowProjectionService.ProjectSupplierDocument(value, CanSubmitDocuments, _payables.CanDecide(value.CreatedByUserId), CanPostDocuments);
 			if (value is not null) LoadDraftEditor(value);
 			_ = LoadTimelineAsync(value);
 			RaiseDocumentCommands();

@@ -35,6 +35,9 @@ public sealed class PurchaseOrderApprovalService
 		_authorization.HasPermission(ApplicationPermission.PurchaseOrdersApprove) &&
 		(_authorization.CurrentUser?.Id != createdByUserId || _authorization.IsInRole(SystemRoleCatalog.AdministratorCode));
 
+	public bool CanSubmit => _purchaseOrders.CanCurrentUserSubmit;
+	public bool CanOrder => _purchaseOrders.CanCurrentUserOrder;
+
 	public async Task<PurchaseOrderApprovalPage> SearchAsync(PurchaseOrderApprovalFilter filter, int pageNumber, int pageSize, CancellationToken cancellationToken = default)
 	{
 		EnsureAuthorized();

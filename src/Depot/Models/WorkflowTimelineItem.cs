@@ -30,7 +30,9 @@ public enum WorkflowTimelineKind
 	SupplierDocumentReversal,
 	Payable,
 	SupplierPayment,
-	SupplierPaymentReversal
+	SupplierPaymentReversal,
+	PaymentProposal,
+	PaymentExecution
 }
 
 public enum WorkflowTimelineSeverity
@@ -47,6 +49,8 @@ public enum WorkflowTimelineVisualState
 	Completed,
 	Current,
 	Pending,
+	Rejected,
+	Cancelled,
 	Correction,
 	Reversal,
 	Error
@@ -63,8 +67,13 @@ public sealed record WorkflowTimelineItem
 	public string? RouteId { get; init; }
 	public bool IsCurrent { get; init; }
 	public bool IsPending { get; init; }
+	public bool IsRejected { get; init; }
+	public bool IsCancelled { get; init; }
 	public bool IsCorrection { get; init; }
 	public bool IsReversal { get; init; }
+	public string? Actor { get; init; }
+	public string? Detail { get; init; }
+	public string? RequiredPermission { get; init; }
 	public WorkflowTimelineSeverity Severity { get; init; }
 
 	public DateTime OccurredAtLocal => OccurredAt.Kind == DateTimeKind.Utc ? OccurredAt.ToLocalTime() : OccurredAt;
@@ -73,6 +82,8 @@ public sealed record WorkflowTimelineItem
 	public WorkflowTimelineVisualState VisualState =>
 		IsReversal ? WorkflowTimelineVisualState.Reversal :
 		IsCorrection ? WorkflowTimelineVisualState.Correction :
+		IsRejected ? WorkflowTimelineVisualState.Rejected :
+		IsCancelled ? WorkflowTimelineVisualState.Cancelled :
 		Severity == WorkflowTimelineSeverity.Error ? WorkflowTimelineVisualState.Error :
 		IsPending ? WorkflowTimelineVisualState.Pending :
 		IsCurrent ? WorkflowTimelineVisualState.Current :
@@ -83,6 +94,8 @@ public sealed record WorkflowTimelineItem
 		WorkflowTimelineVisualState.Completed => "Completed",
 		WorkflowTimelineVisualState.Current => "Current",
 		WorkflowTimelineVisualState.Pending => "Pending",
+		WorkflowTimelineVisualState.Rejected => "Rejected",
+		WorkflowTimelineVisualState.Cancelled => "Cancelled",
 		WorkflowTimelineVisualState.Correction => "Correction",
 		WorkflowTimelineVisualState.Reversal => "Reversal",
 		WorkflowTimelineVisualState.Error => "Exception",
@@ -94,6 +107,8 @@ public sealed record WorkflowTimelineItem
 		WorkflowTimelineVisualState.Completed => "✓",
 		WorkflowTimelineVisualState.Current => "●",
 		WorkflowTimelineVisualState.Pending => "○",
+		WorkflowTimelineVisualState.Rejected => "×",
+		WorkflowTimelineVisualState.Cancelled => "—",
 		WorkflowTimelineVisualState.Correction => "↺",
 		WorkflowTimelineVisualState.Reversal => "↶",
 		WorkflowTimelineVisualState.Error => "!",
@@ -103,6 +118,13 @@ public sealed record WorkflowTimelineItem
 	public string OccurredAtText => HasOccurredAt
 		? OccurredAtLocal.ToString("g", CultureInfo.CurrentCulture)
 		: "Not yet occurred";
+	public bool HasMetadata => !string.IsNullOrWhiteSpace(Actor) || !string.IsNullOrWhiteSpace(RequiredPermission) || !string.IsNullOrWhiteSpace(Detail);
+	public string MetadataText => string.Join(" · ", new[]
+	{
+		string.IsNullOrWhiteSpace(Actor) ? null : "Actor: " + Actor,
+		string.IsNullOrWhiteSpace(RequiredPermission) ? null : "Permission: " + RequiredPermission,
+		string.IsNullOrWhiteSpace(Detail) ? null : Detail
+	}.Where(value => !string.IsNullOrWhiteSpace(value)));
 
 	public string AccessibleName
 	{
@@ -110,6 +132,9 @@ public sealed record WorkflowTimelineItem
 		{
 			var values = new List<string> { Title, "Document " + DisplayNumber, "Status " + Status, VisualStateLabel };
 			if (HasOccurredAt) values.Add("Date " + OccurredAtText);
+			if (!string.IsNullOrWhiteSpace(Actor)) values.Add("Actor " + Actor);
+			if (!string.IsNullOrWhiteSpace(RequiredPermission)) values.Add("Required permission " + RequiredPermission);
+			if (!string.IsNullOrWhiteSpace(Detail)) values.Add(Detail);
 			return string.Join(", ", values.Where(value => !string.IsNullOrWhiteSpace(value)));
 		}
 	}
