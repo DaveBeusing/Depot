@@ -9,7 +9,7 @@ using Depot.Services;
 
 namespace Depot.ViewModels.Users;
 
-public sealed class RoleViewModel : BaseViewModel, IDisposable
+public sealed partial class RoleViewModel : BaseViewModel, IDisposable
 {
 	private const int PageSize = 100;
 	private readonly RoleService _service;
@@ -31,6 +31,7 @@ public sealed class RoleViewModel : BaseViewModel, IDisposable
 		NewCommand = new RelayCommand(New);
 		SaveCommand = new AsyncRelayCommand(SaveAsync, () => !IsSystem);
 		ToggleActiveCommand = new AsyncRelayCommand(ToggleActiveAsync, () => Id != 0 && !IsSystem);
+		InitializePermissionDesigner();
 	}
 
 	public ObservableCollection<Role> Roles { get; } = new();
@@ -57,6 +58,7 @@ public sealed class RoleViewModel : BaseViewModel, IDisposable
 		{
 			var page = await _service.SearchAsync(SearchText, 1, PageSize, cancellationToken);
 			CollectionSynchronizer.Replace(Roles, page.Items);
+			await RefreshPermissionDesignerAsync(cancellationToken);
 			CompleteOperation(Roles.Count == 0, $"{page.TotalCount:N0} roles");
 		}
 		catch (Exception exception) when (exception is not OperationCanceledException) { FailOperation(exception, "Roles could not be loaded"); }
@@ -77,6 +79,7 @@ public sealed class RoleViewModel : BaseViewModel, IDisposable
 	{
 		SelectedRole = null; Id = 0; _version = 1; Code = string.Empty; Name = string.Empty; Description = null; IsSystem = false; IsActive = true;
 		foreach (var permission in Permissions) permission.IsSelected = false;
+		RefreshPermissionDesignerSelection();
 	}
 
 	private async Task SaveAsync(CancellationToken cancellationToken)
@@ -102,6 +105,7 @@ public sealed class RoleViewModel : BaseViewModel, IDisposable
 		Id = role.Id; _version = role.Version; Code = role.Code; Name = role.Name; Description = role.Description; IsSystem = role.IsSystem; IsActive = role.IsActive;
 		var selected = role.Permissions.ToHashSet();
 		foreach (var permission in Permissions) permission.IsSelected = selected.Contains(permission.Permission);
+		RefreshPermissionDesignerSelection();
 	}
 
 	private void Replace(Role role)
@@ -112,5 +116,5 @@ public sealed class RoleViewModel : BaseViewModel, IDisposable
 	}
 
 	private void RaiseCommands() { SaveCommand.RaiseCanExecuteChanged(); ToggleActiveCommand.RaiseCanExecuteChanged(); }
-	public void Dispose() { _searchDebouncer.Dispose(); SaveCommand.Dispose(); ToggleActiveCommand.Dispose(); }
+	public void Dispose() { DisposePermissionDesigner(); _searchDebouncer.Dispose(); SaveCommand.Dispose(); ToggleActiveCommand.Dispose(); }
 }

@@ -32,6 +32,12 @@ public sealed class RoleService
 		return _roles.SearchPageAsync(searchText, pageNumber, pageSize, cancellationToken);
 	}
 
+	public Task<IReadOnlyList<Role>> ListDesignerRolesAsync(CancellationToken cancellationToken)
+	{
+		_authorization.RequirePermission(ApplicationPermission.RolesView);
+		return _roles.ListAllWithPermissionsAsync(cancellationToken);
+	}
+
 	public Task<IReadOnlyList<Role>> ListAssignableAsync(CancellationToken cancellationToken)
 	{
 		_authorization.RequirePermission(ApplicationPermission.UsersManage);

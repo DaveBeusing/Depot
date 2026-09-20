@@ -34,6 +34,32 @@ public sealed class RoleRepository : DatabaseRepository
 	public Task<IReadOnlyList<Role>> ListActiveAsync(CancellationToken cancellationToken) =>
 		Database.QueryAsync($"SELECT {Columns} FROM Roles r WHERE r.IsActive = 1 ORDER BY r.IsSystem DESC, r.Name, r.Id;", ReadRole, cancellationToken);
 
+	public async Task<IReadOnlyList<Role>> ListAllWithPermissionsAsync(CancellationToken cancellationToken)
+	{
+		var roles = (await Database.QueryAsync(
+			$"SELECT {Columns} FROM Roles r ORDER BY r.IsSystem DESC, r.Name, r.Id;",
+			ReadRole,
+			cancellationToken)).ToArray();
+		if (roles.Length == 0) return roles;
+		var permissionRows = await Database.QueryAsync(
+			"SELECT rp.RoleId, p.Code FROM RolePermissions rp INNER JOIN Permissions p ON p.Id = rp.PermissionId ORDER BY rp.RoleId, p.Code;",
+			reader => new UserPermissionRow(reader.GetInt64(0), reader.GetString(1)),
+			cancellationToken);
+		var byRole = permissionRows
+			.GroupBy(value => value.UserId)
+			.ToDictionary(
+				group => group.Key,
+				group => (IReadOnlyList<ApplicationPermission>)group
+					.Select(value => PermissionCatalog.TryParse(value.Code, out var permission) ? permission : (ApplicationPermission?)null)
+					.Where(value => value.HasValue)
+					.Select(value => value.GetValueOrDefault())
+					.ToArray());
+		foreach (var role in roles)
+			role.Permissions = byRole.GetValueOrDefault(role.Id) ?? [];
+		return roles;
+	}
+
+
 	public async Task<Role?> GetByIdAsync(long id, CancellationToken cancellationToken)
 	{
 		var role = await Database.QuerySingleOrDefaultAsync(
