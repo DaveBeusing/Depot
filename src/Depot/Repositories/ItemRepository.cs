@@ -148,8 +148,7 @@ public sealed class ItemRepository : DatabaseRepository
 		bool includeMasterData,
 		CancellationToken cancellationToken)
 	{
-		var search = searchText?.Trim();
-		var hasSearch = !string.IsNullOrWhiteSpace(search);
+		var plan = SearchQueryPlan.Create(searchText);
 		var predicates = new List<string>();
 		var parameters = new List<DatabaseParameter>();
 		if (isActive is not null)
@@ -157,19 +156,34 @@ public sealed class ItemRepository : DatabaseRepository
 			predicates.Add("i.IsActive = $IsActive");
 			parameters.Add(Parameter("$IsActive", isActive.Value));
 		}
-		if (hasSearch)
+		string? searchRank = null;
+		if (plan is { } search)
 		{
-			var masterSearch = includeMasterData
-				? " OR i.Gtin LIKE $Search OR i.Revision LIKE $Search OR i.Model LIKE $Search OR i.ProductFamily LIKE $Search OR i.CountryOfOrigin LIKE $Search OR i.CustomsTariffNumber LIKE $Search OR i.Eccn LIKE $Search OR i.UnNumber LIKE $Search OR i.Notes LIKE $Search"
-				: string.Empty;
-			predicates.Add($"(i.PartNumber LIKE $Search OR i.Description LIKE $Search OR m.Name LIKE $Search OR c.Name LIKE $Search OR u.Name LIKE $Search OR pk.Name LIKE $Search{masterSearch} OR EXISTS (SELECT 1 FROM SupplierItems si INNER JOIN Suppliers s ON s.Id = si.SupplierId WHERE si.ItemId = i.Id AND si.IsActive = 1 AND (s.Name LIKE $Search OR si.SupplierPartNumber LIKE $Search)))");
-			parameters.Add(Parameter("$Search", $"%{search}%"));
+			var prefixColumns = includeMasterData
+				? new[] { "i.PartNumber", "i.Description", "i.Gtin", "i.Model" }
+				: new[] { "i.PartNumber", "i.Description" };
+			var containsColumns = includeMasterData
+				? new[] { "i.PartNumber", "i.Description", "m.Name", "c.Name", "u.Name", "pk.Name", "i.Gtin", "i.Revision", "i.Model", "i.ProductFamily", "i.CountryOfOrigin", "i.CustomsTariffNumber", "i.Eccn", "i.UnNumber", "i.Notes" }
+				: new[] { "i.PartNumber", "i.Description", "m.Name", "c.Name", "u.Name", "pk.Name" };
+			var supplierPredicate = search.AllowContains
+				? "EXISTS (SELECT 1 FROM SupplierItems si INNER JOIN Suppliers s ON s.Id = si.SupplierId WHERE si.ItemId = i.Id AND si.IsActive = 1 AND (s.Name LIKE $SearchContains OR si.SupplierPartNumber LIKE $SearchContains))"
+				: "EXISTS (SELECT 1 FROM SupplierItems si INNER JOIN Suppliers s ON s.Id = si.SupplierId WHERE si.ItemId = i.Id AND si.IsActive = 1 AND (s.Name LIKE $SearchPrefix OR si.SupplierPartNumber LIKE $SearchPrefix))";
+			predicates.Add($"({search.BuildPredicate(prefixColumns, containsColumns)} OR {supplierPredicate})");
+			parameters.Add(Parameter("$SearchExact", search.Exact));
+			parameters.Add(Parameter("$SearchPrefix", search.Prefix));
+			if (search.AllowContains)
+			{
+				parameters.Add(Parameter("$SearchWordPrefix", search.WordPrefix));
+				parameters.Add(Parameter("$SearchContains", search.Contains));
+			}
+			searchRank = search.BuildRankExpression(prefixColumns, ["i.Description", "m.Name", "c.Name"]);
 		}
 		var filter = predicates.Count == 0 ? "1 = 1" : string.Join(" AND ", predicates);
 		var columns = includeMasterData ? MasterDataSelectColumns : SelectColumns;
 		Func<DbDataReader, Item> reader = includeMasterData ? ReadMasterDataItem : ReadItem;
+		var orderBy = searchRank is null ? "i.IsActive DESC, i.PartNumber, i.Id" : $"{searchRank}, i.IsActive DESC, i.PartNumber, i.Id";
 		return Database.QueryPageAsync(
-			$"SELECT {columns} {SelectFrom} WHERE {filter} ORDER BY i.IsActive DESC, i.PartNumber, i.Id",
+			$"SELECT {columns} {SelectFrom} WHERE {filter} ORDER BY {orderBy}",
 			$"SELECT COUNT(*) {SelectFrom} WHERE {filter};",
 			reader,
 			pageNumber,

@@ -18,29 +18,46 @@ public sealed class SupplierRepository : DatabaseRepository
 
 	public Task<IReadOnlyList<Supplier>> SearchAsync(string? searchText, CancellationToken cancellationToken)
 	{
-		var search = searchText?.Trim();
-		var hasAccountNumber = long.TryParse(search, out var accountNumber);
-		var filter = string.IsNullOrWhiteSpace(search)
-			? string.Empty
-			: $"WHERE {(hasAccountNumber ? "s.AccountNumber = $AccountNumber OR " : string.Empty)}s.CustomerNumber LIKE $Search OR s.Name LIKE $Search OR s.Contact LIKE $Search OR s.Email LIKE $Search OR s.Phone LIKE $Search OR s.VatNumber LIKE $Search OR c.Name LIKE $Search";
-		var parameters = string.IsNullOrWhiteSpace(search)
-			? []
-			: hasAccountNumber
-				? new[] { Parameter("$Search", $"%{search}%"), Parameter("$AccountNumber", accountNumber) }
-				: new[] { Parameter("$Search", $"%{search}%") };
-		return Database.QuerySliceAsync($"SELECT {Columns} {From} {filter} ORDER BY s.IsActive DESC, s.Name, s.Id", Read, 0, 200, cancellationToken, parameters);
+		var plan = SearchQueryPlan.Create(searchText);
+		if (plan is not { } search)
+			return Database.QuerySliceAsync($"SELECT {Columns} {From} ORDER BY s.IsActive DESC, s.Name, s.Id", Read, 0, 200, cancellationToken);
+
+		var prefixColumns = new[] { "s.CustomerNumber", "s.Name" };
+		var predicate = search.BuildPredicate(prefixColumns, ["s.CustomerNumber", "s.Name", "s.Contact", "s.Email", "s.Phone", "s.VatNumber", "c.Name"]);
+		var parameters = new List<DatabaseParameter> { Parameter("$SearchExact", search.Exact), Parameter("$SearchPrefix", search.Prefix) };
+		var accountRank = false;
+		if (long.TryParse(search.Query, out var accountNumber))
+		{
+			predicate = $"(s.AccountNumber = $AccountNumber OR {predicate})";
+			parameters.Add(Parameter("$AccountNumber", accountNumber));
+			accountRank = true;
+		}
+		if (search.AllowContains)
+		{
+			parameters.Add(Parameter("$SearchWordPrefix", search.WordPrefix));
+			parameters.Add(Parameter("$SearchContains", search.Contains));
+		}
+		var rank = search.BuildRankExpression(prefixColumns, ["s.Name", "c.Name"]);
+		if (accountRank) rank = $"CASE WHEN s.AccountNumber = $AccountNumber THEN 0 ELSE ({rank}) END";
+		return Database.QuerySliceAsync($"SELECT {Columns} {From} WHERE {predicate} ORDER BY {rank}, s.IsActive DESC, s.Name, s.Id", Read, 0, 200, cancellationToken, parameters.ToArray());
 	}
 
 	public Task<IReadOnlyList<Supplier>> SearchActiveSliceAsync(string? searchText, int count, CancellationToken cancellationToken)
 	{
-		var search = searchText?.Trim();
-		var filter = string.IsNullOrWhiteSpace(search)
-			? string.Empty
-			: "AND (s.Name LIKE $Search OR s.CustomerNumber LIKE $Search OR s.Contact LIKE $Search)";
-		var parameters = string.IsNullOrWhiteSpace(search)
-			? []
-			: new[] { Parameter("$Search", $"%{search}%") };
-		return Database.QuerySliceAsync($"SELECT {Columns} {From} WHERE s.IsActive = 1 {filter} ORDER BY s.Name, s.Id", Read, 0, count, cancellationToken, parameters);
+		var plan = SearchQueryPlan.Create(searchText);
+		if (plan is not { } search)
+			return Database.QuerySliceAsync($"SELECT {Columns} {From} WHERE s.IsActive = 1 ORDER BY s.Name, s.Id", Read, 0, count, cancellationToken);
+
+		var prefixColumns = new[] { "s.CustomerNumber", "s.Name" };
+		var predicate = search.BuildPredicate(prefixColumns, ["s.CustomerNumber", "s.Name", "s.Contact"]);
+		var parameters = new List<DatabaseParameter> { Parameter("$SearchExact", search.Exact), Parameter("$SearchPrefix", search.Prefix) };
+		if (search.AllowContains)
+		{
+			parameters.Add(Parameter("$SearchWordPrefix", search.WordPrefix));
+			parameters.Add(Parameter("$SearchContains", search.Contains));
+		}
+		var rank = search.BuildRankExpression(prefixColumns, ["s.Name"]);
+		return Database.QuerySliceAsync($"SELECT {Columns} {From} WHERE s.IsActive = 1 AND {predicate} ORDER BY {rank}, s.Name, s.Id", Read, 0, count, cancellationToken, parameters.ToArray());
 	}
 
 	public Task<IReadOnlyList<Supplier>> ListActiveAsync(CancellationToken cancellationToken) =>
