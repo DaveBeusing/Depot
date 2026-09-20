@@ -30,7 +30,9 @@ public enum WorkflowTimelineKind
 	SupplierDocumentReversal,
 	Payable,
 	SupplierPayment,
-	SupplierPaymentReversal
+	SupplierPaymentReversal,
+	PaymentProposal,
+	PaymentExecution
 }
 
 public enum WorkflowTimelineSeverity
