@@ -113,6 +113,18 @@ public sealed record FinanceSupplierDocument
 	public bool HasMatchExceptions => Lines.Any(line => line.MatchStatus == FinancePayableMatchStatus.Exception);
 }
 
+public sealed record FinancePayablesMyWorkDocument(
+	long Id,
+	string SupplierDocumentNumber,
+	string? SupplierName,
+	FinancePayableDocumentStatus Status,
+	long CreatedByUserId,
+	DateOnly DueDate,
+	decimal GrossAmount,
+	DateTime? PostedAtUtc,
+	bool HasMatchExceptions,
+	bool MatchExceptionApproved);
+
 public sealed record FinanceSupplierDocumentLine
 {
 	public long Id { get; init; }

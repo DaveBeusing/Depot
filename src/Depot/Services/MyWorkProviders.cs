@@ -299,44 +299,42 @@ internal sealed class PayablesMyWorkProvider : IMyWorkProvider
 		await Task.WhenAll(draftTask, pendingTask, approvedTask, postedTask);
 
 		var items = new List<MyWorkItem>();
-		foreach (var document in (await draftTask).Items.Where(document => document.CreatedByUserId == query.UserId))
+		foreach (var document in (await draftTask).Where(document => document.CreatedByUserId == query.UserId))
 			items.Add(Item(MyWorkSectionKind.MyDrafts, document, "Supplier document draft", MyWorkPriority.Normal, _payables.CanCreateDocuments ? "Edit" : "Open"));
 
-		foreach (var document in (await pendingTask).Items)
+		foreach (var document in await pendingTask)
 		{
 			if (document.CreatedByUserId == query.UserId && _authorization.CurrentUser?.IsAdministrator != true)
 				items.Add(Item(MyWorkSectionKind.Waiting, document, "Supplier document approval", MyWorkPriority.Normal, "Open"));
 			else if (_payables.CanApproveDocuments)
 				items.Add(Item(MyWorkSectionKind.NeedsMyAction, document, "Supplier document approval", MyWorkPriority.Normal, "Review"));
 
-			var details = await _payables.GetDocumentAsync(document.Id, cancellationToken);
-			if (details is { HasMatchExceptions: true, MatchExceptionApproved: false })
-				items.Add(Item(MyWorkSectionKind.Exceptions, details, "Supplier match exception", MyWorkPriority.High, _payables.CanApproveMatchExceptions ? "Resolve exception" : "Open"));
+			if (document.HasMatchExceptions && !document.MatchExceptionApproved)
+				items.Add(Item(MyWorkSectionKind.Exceptions, document, "Supplier match exception", MyWorkPriority.High, _payables.CanApproveMatchExceptions ? "Resolve exception" : "Open"));
 		}
 
-		foreach (var document in (await approvedTask).Items)
+		foreach (var document in await approvedTask)
 		{
 			if (_payables.CanPostDocuments)
 				items.Add(Item(MyWorkSectionKind.NeedsMyAction, document, "Approved supplier document", MyWorkPriority.Normal, "Post"));
 			if (document.CreatedByUserId == query.UserId && !_payables.CanPostDocuments)
 				items.Add(Item(MyWorkSectionKind.Waiting, document, "Awaiting supplier posting", MyWorkPriority.Normal, "Open"));
 
-			var details = await _payables.GetDocumentAsync(document.Id, cancellationToken);
-			if (details is { HasMatchExceptions: true, MatchExceptionApproved: false })
-				items.Add(Item(MyWorkSectionKind.Exceptions, details, "Supplier match exception", MyWorkPriority.High, _payables.CanApproveMatchExceptions ? "Resolve exception" : "Open"));
+			if (document.HasMatchExceptions && !document.MatchExceptionApproved)
+				items.Add(Item(MyWorkSectionKind.Exceptions, document, "Supplier match exception", MyWorkPriority.High, _payables.CanApproveMatchExceptions ? "Resolve exception" : "Open"));
 		}
 
 		var recentCutoff = query.NowUtc.AddDays(-14);
-		foreach (var document in (await postedTask).Items.Where(document => document.CreatedByUserId == query.UserId && document.PostedAtUtc >= recentCutoff))
+		foreach (var document in (await postedTask).Where(document => document.CreatedByUserId == query.UserId && document.PostedAtUtc >= recentCutoff))
 			items.Add(new(MyWorkSectionKind.RecentlyCompleted, MyWorkItemKind.SupplierDocument, document.Id, document.SupplierDocumentNumber, "Supplier document posted", document.SupplierName, document.Status.ToString(), document.GrossAmount, document.DueDate.ToDateTime(TimeOnly.MinValue), null, MyWorkPriority.Low, "finance.payables", "Open", document.CreatedByUserId, document.PostedAtUtc));
 
 		return items;
 	}
 
-	private Task<PageResult<FinanceSupplierDocument>> SearchAsync(FinancePayableDocumentStatus status, int limit, CancellationToken cancellationToken) =>
-		_payables.SearchDocumentsAsync(null, status, 1, limit, cancellationToken);
+	private Task<IReadOnlyList<FinancePayablesMyWorkDocument>> SearchAsync(FinancePayableDocumentStatus status, int limit, CancellationToken cancellationToken) =>
+		_payables.GetMyWorkDocumentsAsync(status, limit, cancellationToken);
 
-	private static MyWorkItem Item(MyWorkSectionKind section, FinanceSupplierDocument document, string title, MyWorkPriority priority, string action) =>
+	private static MyWorkItem Item(MyWorkSectionKind section, FinancePayablesMyWorkDocument document, string title, MyWorkPriority priority, string action) =>
 		new(section, MyWorkItemKind.SupplierDocument, document.Id, document.SupplierDocumentNumber, title, document.SupplierName, document.Status.ToString(), document.GrossAmount, document.DueDate.ToDateTime(TimeOnly.MinValue), null, priority, "finance.payables", action, document.CreatedByUserId);
 }
 

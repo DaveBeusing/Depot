@@ -57,6 +57,19 @@ public sealed class MyWorkPerformanceDiagnosticsTests
 	}
 
 	[Fact]
+	public async Task CancellationIsNotConvertedIntoProviderFailure()
+	{
+		using var cancellation = new CancellationTokenSource();
+		cancellation.Cancel();
+
+		await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+			MyWorkPerformanceDiagnostics.MeasureAsync<IReadOnlyList<MyWorkItem>>(
+				"Cancelled",
+				() => Task.FromCanceled<IReadOnlyList<MyWorkItem>>(cancellation.Token),
+				items => items.Count));
+	}
+
+	[Fact]
 	public void IneligibleProviderEvidenceHasNoDataOrQueries()
 	{
 		var measurement = MyWorkPerformanceDiagnostics.MeasureIneligible("Restricted");

@@ -31,6 +31,41 @@ public sealed class FinanceAccountsPayableRepository : DatabaseRepository
 		return Database.QueryPageAsync($"SELECT {DocumentColumns} {from} {where} ORDER BY d.DocumentDate DESC,d.Id DESC", $"SELECT COUNT(*) {from} {where};", ReadDocument, pageNumber, pageSize, cancellationToken, parameters.ToArray());
 	}
 
+	public Task<IReadOnlyList<FinancePayablesMyWorkDocument>> SearchMyWorkDocumentsAsync(
+		FinancePayableDocumentStatus status,
+		int count,
+		CancellationToken cancellationToken = default)
+	{
+		return Database.QuerySliceAsync(
+			"""
+			SELECT d.Id,
+			       d.SupplierDocumentNumber,
+			       s.Name,
+			       d.Status,
+			       d.CreatedByUserId,
+			       d.DueDate,
+			       d.GrossAmount,
+			       d.PostedAtUtc,
+			       CASE WHEN EXISTS (
+			           SELECT 1
+			           FROM FinanceSupplierDocumentLines line
+			           WHERE line.DocumentId = d.Id
+			             AND line.MatchStatus = $ExceptionStatus
+			       ) THEN 1 ELSE 0 END,
+			       d.MatchExceptionApproved
+			FROM FinanceSupplierDocuments d
+			INNER JOIN Suppliers s ON s.Id = d.SupplierId
+			WHERE d.Status = $Status
+			ORDER BY d.DocumentDate DESC, d.Id DESC
+			""",
+			ReadMyWorkDocument,
+			0,
+			count,
+			cancellationToken,
+			Parameter("$ExceptionStatus", (int)FinancePayableMatchStatus.Exception),
+			Parameter("$Status", (int)status));
+	}
+
 	public async Task<FinanceSupplierDocument?> GetDocumentAsync(long id, CancellationToken cancellationToken = default)
 	{
 		var document = await Database.QuerySingleOrDefaultAsync($"SELECT {DocumentColumns} FROM FinanceSupplierDocuments d INNER JOIN Suppliers s ON s.Id=d.SupplierId WHERE d.Id=$Id;", ReadDocument, cancellationToken, Parameter("$Id", id));
@@ -139,6 +174,19 @@ public sealed class FinanceAccountsPayableRepository : DatabaseRepository
 	private static DatabaseParameter[] LineParameters(FinanceSupplierDocumentLine line) => [Parameter("$DocumentId", line.DocumentId), Parameter("$LineNumber", line.LineNumber), Parameter("$PoLineId", line.PurchaseOrderLineId), Parameter("$ReceiptLineId", line.GoodsReceiptLineId), Parameter("$Description", line.Description), Parameter("$Quantity", line.Quantity), Parameter("$UnitPrice", line.UnitPrice), Parameter("$Net", line.NetAmount), Parameter("$Tax", line.TaxAmount), Parameter("$Gross", line.GrossAmount), Parameter("$MatchStatus", (int)line.MatchStatus), Parameter("$OrderedUnitPrice", line.OrderedUnitPrice), Parameter("$ReceivedQuantity", line.ReceivedQuantity), Parameter("$PreviouslyInvoiced", line.PreviouslyInvoicedQuantity), Parameter("$QuantityVariance", line.QuantityVariance), Parameter("$PriceVariance", line.PriceVariance)];
 
 	private static FinancePayablesConfiguration ReadConfiguration(DbDataReader reader) => new() { Id = reader.GetInt64(0), Version = Convert.ToInt64(reader.GetValue(1), CultureInfo.InvariantCulture), LegalEntityId = Guid.Parse(reader.GetString(2)), FiscalCalendarId = Guid.Parse(reader.GetString(3)), InvoicePostingProfileId = reader.GetInt64(4), CreditNotePostingProfileId = reader.GetInt64(5), PaymentPostingProfileId = reader.GetInt64(6), IsActive = ReadBool(reader, 7) };
+	private static FinancePayablesMyWorkDocument ReadMyWorkDocument(DbDataReader reader) =>
+		new(
+			reader.GetInt64(0),
+			reader.GetString(1),
+			reader.IsDBNull(2) ? null : reader.GetString(2),
+			(FinancePayableDocumentStatus)Convert.ToInt32(reader.GetValue(3), CultureInfo.InvariantCulture),
+			reader.GetInt64(4),
+			ReadDateOnly(reader, 5),
+			ReadDecimal(reader, 6),
+			reader.IsDBNull(7) ? null : ReadDateTimeUtc(reader, 7),
+			ReadBool(reader, 8),
+			ReadBool(reader, 9));
+
 	private static FinanceSupplierDocument ReadDocument(DbDataReader reader) => new() { Id = reader.GetInt64(0), Version = Convert.ToInt64(reader.GetValue(1), CultureInfo.InvariantCulture), Kind = (FinancePayableDocumentKind)Convert.ToInt32(reader.GetValue(2), CultureInfo.InvariantCulture), SupplierId = reader.GetInt64(3), SupplierName = reader.GetString(4), SupplierDocumentNumber = reader.GetString(5), InternalReference = reader.IsDBNull(6) ? null : reader.GetString(6), DocumentDate = ReadDateOnly(reader, 7), DueDate = ReadDateOnly(reader, 8), Currency = new CurrencyCode(reader.GetString(9)), Status = (FinancePayableDocumentStatus)Convert.ToInt32(reader.GetValue(10), CultureInfo.InvariantCulture), NetAmount = ReadDecimal(reader, 11), TaxAmount = ReadDecimal(reader, 12), GrossAmount = ReadDecimal(reader, 13), CreatedByUserId = reader.GetInt64(14), CreatedAtUtc = ReadDateTimeUtc(reader, 15), SubmittedByUserId = reader.IsDBNull(16) ? null : reader.GetInt64(16), SubmittedAtUtc = reader.IsDBNull(17) ? null : ReadDateTimeUtc(reader, 17), ApprovalDecisionByUserId = reader.IsDBNull(18) ? null : reader.GetInt64(18), ApprovalDecisionAtUtc = reader.IsDBNull(19) ? null : ReadDateTimeUtc(reader, 19), ApprovalComment = reader.IsDBNull(20) ? null : reader.GetString(20), MatchExceptionApproved = ReadBool(reader, 21), MatchExceptionReason = reader.IsDBNull(22) ? null : reader.GetString(22), PostedByUserId = reader.IsDBNull(23) ? null : reader.GetInt64(23), PostedAtUtc = reader.IsDBNull(24) ? null : ReadDateTimeUtc(reader, 24), PostingOperationId = reader.IsDBNull(25) ? null : Guid.Parse(reader.GetString(25)), OpenItemId = reader.IsDBNull(26) ? null : reader.GetInt64(26), JournalEntryId = reader.IsDBNull(27) ? null : reader.GetInt64(27), ReversalOperationId = reader.IsDBNull(28) ? null : Guid.Parse(reader.GetString(28)), ReversalJournalEntryId = reader.IsDBNull(29) ? null : reader.GetInt64(29), ReversedAtUtc = reader.IsDBNull(30) ? null : ReadDateTimeUtc(reader, 30), ReversedByUserId = reader.IsDBNull(31) ? null : reader.GetInt64(31) };
 	private static FinanceSupplierDocumentLine ReadLine(DbDataReader reader) => new() { Id = reader.GetInt64(0), DocumentId = reader.GetInt64(1), LineNumber = Convert.ToInt32(reader.GetValue(2), CultureInfo.InvariantCulture), PurchaseOrderLineId = reader.IsDBNull(3) ? null : reader.GetInt64(3), GoodsReceiptLineId = reader.IsDBNull(4) ? null : reader.GetInt64(4), Description = reader.GetString(5), Quantity = ReadDecimal(reader, 6), UnitPrice = ReadDecimal(reader, 7), NetAmount = ReadDecimal(reader, 8), TaxAmount = ReadDecimal(reader, 9), GrossAmount = ReadDecimal(reader, 10), MatchStatus = (FinancePayableMatchStatus)Convert.ToInt32(reader.GetValue(11), CultureInfo.InvariantCulture), OrderedUnitPrice = reader.IsDBNull(12) ? null : ReadDecimal(reader, 12), ReceivedQuantity = reader.IsDBNull(13) ? null : ReadDecimal(reader, 13), PreviouslyInvoicedQuantity = reader.IsDBNull(14) ? null : ReadDecimal(reader, 14), QuantityVariance = ReadDecimal(reader, 15), PriceVariance = ReadDecimal(reader, 16) };
 	private static FinancePayableOpenItem ReadOpenItem(DbDataReader reader) => new() { Id = reader.GetInt64(0), Version = Convert.ToInt64(reader.GetValue(1), CultureInfo.InvariantCulture), LegalEntityId = Guid.Parse(reader.GetString(2)), AccountingBookId = Guid.Parse(reader.GetString(3)), SupplierId = reader.GetInt64(4), SupplierName = reader.GetString(5), Kind = (FinancePayableOpenItemKind)Convert.ToInt32(reader.GetValue(6), CultureInfo.InvariantCulture), SourceType = reader.GetString(7), SourceId = reader.GetString(8), SourceReference = reader.IsDBNull(9) ? null : reader.GetString(9), DocumentDate = ReadDateOnly(reader, 10), DueDate = ReadDateOnly(reader, 11), Currency = new CurrencyCode(reader.GetString(12)), OriginalAmount = ReadDecimal(reader, 13), RemainingAmount = ReadDecimal(reader, 14), JournalEntryId = reader.GetInt64(15), OperationId = Guid.Parse(reader.GetString(16)), IsVoided = ReadBool(reader, 17), CreatedAtUtc = ReadDateTimeUtc(reader, 18), CreatedByUserId = reader.IsDBNull(19) ? null : reader.GetInt64(19) };

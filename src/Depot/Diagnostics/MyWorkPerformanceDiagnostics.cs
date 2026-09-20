@@ -42,6 +42,11 @@ internal static class MyWorkPerformanceDiagnostics
 				false,
 				queryScope.CommandCount));
 		}
+		catch (OperationCanceledException)
+		{
+			stopwatch.Stop();
+			throw;
+		}
 		catch
 		{
 			stopwatch.Stop();
