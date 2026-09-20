@@ -49,10 +49,39 @@ public sealed class RequestAndNotificationEfficiencyTests
 	}
 
 	[Fact]
+	public async Task NotificationPollingDoesNotStartBeforeActivation()
+	{
+		var service = new ControlledNotificationService();
+		using var summary = new NotificationSummaryViewModel(service);
+
+		service.RaiseChanged();
+		await Task.Delay(100);
+		Assert.Equal(0, service.UnreadCalls);
+
+		summary.Activate();
+		await WaitUntilAsync(() => service.UnreadCalls == 1);
+		Assert.Equal(1, service.UnreadCalls);
+	}
+
+	[Fact]
+	public async Task ActivationIsIdempotentAndTriggersOneInitialRefresh()
+	{
+		var service = new ControlledNotificationService();
+		using var summary = new NotificationSummaryViewModel(service);
+
+		summary.Activate();
+		summary.Activate();
+		await WaitUntilAsync(() => service.UnreadCalls == 1);
+
+		Assert.Equal(1, service.UnreadCalls);
+	}
+
+	[Fact]
 	public async Task RepeatedNotificationRefreshSignalsNeverRunDuplicateCountQueries()
 	{
 		var service = new ControlledNotificationService { BlockUnreadCount = true };
 		using var summary = new NotificationSummaryViewModel(service);
+		summary.Activate();
 		await service.FirstUnreadRequest.Task.WaitAsync(TimeSpan.FromSeconds(5));
 
 		service.RaiseChanged();
@@ -70,6 +99,7 @@ public sealed class RequestAndNotificationEfficiencyTests
 	{
 		var service = new ControlledNotificationService();
 		using var summary = new NotificationSummaryViewModel(service);
+		summary.Activate();
 		await WaitUntilAsync(() => service.UnreadCalls == 1);
 		summary.SetApplicationActive(false);
 
@@ -84,6 +114,7 @@ public sealed class RequestAndNotificationEfficiencyTests
 	{
 		var service = new ControlledNotificationService { FailUnreadCount = true };
 		using var summary = new NotificationSummaryViewModel(service);
+		summary.Activate();
 		await WaitUntilAsync(() => service.UnreadCalls == 1);
 
 		service.RaiseChanged();

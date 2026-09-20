@@ -9,6 +9,13 @@ namespace Depot.Data;
 
 internal static class ItemTraceabilitySchema
 {
+	internal static IReadOnlyList<string> RequiredTables { get; } = ["ItemTrackingUnits", "StockMovementTracking"];
+	internal static IReadOnlyList<(string Table, string Index)> RequiredIndexes { get; } =
+	[
+		("ItemTrackingUnits", "UX_ItemTrackingUnits_Item_Mode_Code"),
+		("StockMovementTracking", "IX_StockMovementTracking_TrackingUnit")
+	];
+
 	public static void Ensure(IDatabaseConnectionFactory connectionFactory)
 	{
 		using var connection = connectionFactory.CreateConnection();

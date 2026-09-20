@@ -21,6 +21,7 @@ public static class Program
 				return;
 			}
 
+			StartupPerformance.Mark(StartupPerformanceCheckpoint.ApplicationStartup);
 			StartupDiagnostics.Log("Program.Main entered.");
 			var app = new App();
 			StartupDiagnostics.Log("App instance created.");

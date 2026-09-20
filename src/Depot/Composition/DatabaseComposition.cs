@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 using Depot.Data;
+using Depot.Diagnostics;
 using Depot.Repositories;
 using Depot.Services;
 
@@ -34,7 +35,12 @@ internal sealed class DatabaseComposition : IDisposable
 		var settings = new SettingsService(settingsRepository);
 		var connectionStatus = new ConnectionStatusService();
 		var connectionSettings = settings.LoadOrCreate();
-		var connectionFactory = DatabaseProvisioningService.Initialize(connectionSettings);
+		StartupPerformance.Mark(StartupPerformanceCheckpoint.SettingsLoad);
+		var connectionFactory = DatabaseProviderFactory.CreateConnectionFactory(connectionSettings);
+		StartupPerformance.Mark(StartupPerformanceCheckpoint.DatabaseConnectionCreation);
+		var provisioningPath = DatabaseProvisioningService.InitializeCore(connectionFactory);
+		StartupDiagnostics.Log($"Database provisioning path: {provisioningPath}.");
+		StartupPerformance.Mark(StartupPerformanceCheckpoint.SchemaProvisioningCheck);
 		var dataAccess = new DatabaseAccess(connectionFactory);
 		connectionStatus.SetConnected(connectionSettings);
 		var management = new DatabaseManagementService(connectionFactory, settings);

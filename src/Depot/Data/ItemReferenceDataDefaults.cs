@@ -40,6 +40,9 @@ internal static class ItemReferenceDataDefaults
 		new("PALLET", "Pallet")
 	];
 
+	internal static IEnumerable<string> RequiredUnitNames => UnitsOfMeasure.Select(value => value.Name);
+	internal static IEnumerable<string> RequiredPackagingNames => Packagings.Select(value => value.Name);
+
 	public static void Ensure(IDatabaseConnectionFactory connectionFactory)
 	{
 		using var connection = connectionFactory.CreateConnection();

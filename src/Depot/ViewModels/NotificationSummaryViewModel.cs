@@ -17,10 +17,16 @@ public sealed class NotificationSummaryViewModel : BaseViewModel, IDisposable
 	private int _refreshRequested;
 	private int _consecutiveFailures;
 	private DateTime _nextAttemptUtc;
+	private int _started;
 
 	public NotificationSummaryViewModel(INotificationService notifications)
 	{
 		_notifications = notifications;
+	}
+
+	public void Activate()
+	{
+		if (_lifetime.IsCancellationRequested || Interlocked.Exchange(ref _started, 1) == 1) return;
 		_notifications.NotificationsChanged += OnNotificationsChanged;
 		_ = PollAsync(_lifetime.Token);
 	}
@@ -46,7 +52,7 @@ public sealed class NotificationSummaryViewModel : BaseViewModel, IDisposable
 	public void SetApplicationActive(bool isActive)
 	{
 		_isApplicationActive = isActive;
-		if (isActive) _ = RefreshAsync(_lifetime.Token);
+		if (isActive && Volatile.Read(ref _started) == 1) _ = RefreshAsync(_lifetime.Token);
 	}
 
 	public async Task RefreshAsync(CancellationToken cancellationToken = default)
@@ -112,7 +118,7 @@ public sealed class NotificationSummaryViewModel : BaseViewModel, IDisposable
 
 	public void Dispose()
 	{
-		_notifications.NotificationsChanged -= OnNotificationsChanged;
+		if (Volatile.Read(ref _started) == 1) _notifications.NotificationsChanged -= OnNotificationsChanged;
 		_lifetime.Cancel();
 		_timer.Dispose();
 		_lifetime.Dispose();
