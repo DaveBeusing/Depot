@@ -49,6 +49,12 @@ The matrix covers provisioning/migration, transaction semantics, concurrency/dea
 
 See [Database Provider Production Support Matrix](DatabaseProviderSupportMatrix.md).
 
+## Deployment sizing and operations evidence
+
+The repository now includes `scripts/performance/Measure-DeploymentSizing.ps1` and [Deployment Sizing and Operations Readiness](DeploymentSizing.md). The tooling records exact build identity, provider, representative data volume, network latency, concurrent users, p50/p95/max scenario timings, CPU/memory, optimizations, known limits and CI state. It can also aggregate structural Home first-content and eligible My Work provider timings from `performance.log`.
+
+This adds a reproducible acceptance path; it does **not** create customer-specific capacity results by itself. No universal maximum user count, database size or hardware recommendation is claimed. Final sizing still requires execution in the representative target environment.
+
 ## Track C repository closure
 
 Track C F1 through F5B are complete at the repository implementation/acceptance boundary. [Track C acceptance and product status](TrackCStatus.md) is the authoritative feature-level record.

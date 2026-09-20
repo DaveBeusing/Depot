@@ -52,6 +52,10 @@ Live repository governance is also evidence-driven. Ruleset `23590604` is active
 
 Embedded Finance Help must describe Accounts Payable, Inventory Accounting, Banking, Financial Reporting and Localization as implemented capabilities. Help manifest `1.22` remains unchanged because this reconciliation changes Help content only; topic IDs, routing and permission metadata are unchanged.
 
+## Deployment sizing documentation invariant
+
+[Deployment Sizing and Operations Readiness](DeploymentSizing.md) is the canonical deployment-capacity evidence procedure. Documentation may describe the repository's calibration profiles and aggregation tooling, but must not convert those profiles or one measured environment into universal user-count, hardware, database-size or latency guarantees. Customer-specific sizing remains an environment-specific acceptance activity and must retain provider/security/transaction semantics.
+
 ## Session and authentication invariants
 
 Documentation must state that online presence is derived from an open session plus heartbeat freshness; no persisted `IsOnline` is authoritative. The runtime heartbeat is 30 seconds and presence timeout is 90 seconds. Activity stores only the latest in-Depot keyboard/mouse/touch timestamp, never typed input or coordinates.
