@@ -16,10 +16,16 @@ public sealed partial class SalesPricingViewModel
 	private DateTime _resolutionDate = DateTime.Today;
 	private string _resolutionCurrency = "EUR";
 	private string _resolutionSummary = "Select an item and calculate a preview.";
+	private SalesPriceList? _designerAssignmentTarget;
+	private int _pricingWorkspaceModeIndex;
 
 	public ObservableCollection<PricingStrategyRow> PricingStrategyRows { get; } = [];
 	public ObservableCollection<PricingResolutionPreviewRow> ResolutionPreviewRows { get; } = [];
+	public ObservableCollection<SalesPriceList> DesignerCustomerPriceLists { get; } = [];
 	public AsyncRelayCommand? CalculateResolutionPreviewCommand { get; private set; }
+	public RelayCommand? OpenStrategySelectionCommand { get; private set; }
+	public AsyncRelayCommand? ApplyDesignerAssignmentCommand { get; private set; }
+	public AsyncRelayCommand? ClearDesignerAssignmentCommand { get; private set; }
 
 	public PricingStrategyRow? SelectedPricingStrategyRow
 	{
@@ -32,6 +38,13 @@ public sealed partial class SalesPricingViewModel
 			OnPropertyChanged(nameof(PricingStrategySelectionTitle));
 			OnPropertyChanged(nameof(PricingStrategySelectionSubtitle));
 			OnPropertyChanged(nameof(PricingStrategySelectionIdentity));
+			OnPropertyChanged(nameof(HasDesignerCustomerSelection));
+			DesignerAssignmentTarget = value?.PriceListId is long listId
+				? DesignerCustomerPriceLists.FirstOrDefault(priceList => priceList.Id == listId)
+				: null;
+			OpenStrategySelectionCommand?.RaiseCanExecuteChanged();
+			ApplyDesignerAssignmentCommand?.RaiseCanExecuteChanged();
+			ClearDesignerAssignmentCommand?.RaiseCanExecuteChanged();
 		}
 	}
 
@@ -51,6 +64,27 @@ public sealed partial class SalesPricingViewModel
 	public string PricingStrategySelectionIdentity => SelectedPricingStrategyRow is null
 		? "No selection"
 		: $"{SelectedPricingStrategyRow.Kind} · {SelectedPricingStrategyRow.State}";
+	public bool HasDesignerCustomerSelection => SelectedPricingStrategyRow?.CustomerId is > 0;
+	public bool CanManagePricingStrategy => _pricing.CanManage;
+
+	public SalesPriceList? DesignerAssignmentTarget
+	{
+		get => _designerAssignmentTarget;
+		set
+		{
+			if (_designerAssignmentTarget == value) return;
+			_designerAssignmentTarget = value;
+			OnPropertyChanged();
+			ApplyDesignerAssignmentCommand?.RaiseCanExecuteChanged();
+		}
+	}
+
+	public int PricingWorkspaceModeIndex
+	{
+		get => _pricingWorkspaceModeIndex;
+		set { if (_pricingWorkspaceModeIndex == value) return; _pricingWorkspaceModeIndex = value; OnPropertyChanged(); }
+	}
+
 
 	public Customer? ResolutionCustomer
 	{
@@ -92,6 +126,9 @@ public sealed partial class SalesPricingViewModel
 	private void InitializePricingStrategyDesigner()
 	{
 		CalculateResolutionPreviewCommand = new AsyncRelayCommand(CalculateResolutionPreviewAsync, CanCalculateResolutionPreview);
+		OpenStrategySelectionCommand = new RelayCommand(OpenStrategySelection, CanOpenStrategySelection);
+		ApplyDesignerAssignmentCommand = new AsyncRelayCommand(ApplyDesignerAssignmentAsync, CanApplyDesignerAssignment);
+		ClearDesignerAssignmentCommand = new AsyncRelayCommand(ClearDesignerAssignmentAsync, () => _pricing.CanManage && HasDesignerCustomerSelection);
 	}
 
 	private bool CanCalculateResolutionPreview() =>
@@ -134,12 +171,56 @@ public sealed partial class SalesPricingViewModel
 		CalculateResolutionPreviewCommand?.RaiseCanExecuteChanged();
 	}
 
-	private void DisposePricingStrategyDesigner() => CalculateResolutionPreviewCommand?.Dispose();
+	private bool CanOpenStrategySelection() =>
+		SelectedPricingStrategyRow is { PriceListId: > 0 } or { RegionId: > 0 } or { CustomerId: > 0 };
+
+	private void OpenStrategySelection()
+	{
+		var selection = SelectedPricingStrategyRow;
+		if (selection is null) return;
+		if (selection.PriceListId is long priceListId) SelectedPriceList = PriceLists.FirstOrDefault(value => value.Id == priceListId);
+		if (selection.RegionId is long regionId) SelectedRegionDefinition = Regions.FirstOrDefault(value => value.Id == regionId);
+		if (selection.CustomerId is long customerId) SelectedCustomer = Customers.FirstOrDefault(value => value.Id == customerId);
+		PricingWorkspaceModeIndex = 1;
+	}
+
+	private bool CanApplyDesignerAssignment() =>
+		_pricing.CanManage &&
+		SelectedPricingStrategyRow?.CustomerId is > 0 &&
+		DesignerAssignmentTarget is { Scope: SalesPriceListScope.Customer };
+
+	private async Task ApplyDesignerAssignmentAsync(CancellationToken token)
+	{
+		if (SelectedPricingStrategyRow?.CustomerId is not long customerId || DesignerAssignmentTarget is null) return;
+		var targetId = DesignerAssignmentTarget.Id;
+		await _pricing.AssignCustomerAsync(customerId, targetId, token);
+		await LoadAsync(token);
+		SelectedPricingStrategyRow = PricingStrategyRows.FirstOrDefault(row => row.CustomerId == customerId && row.PriceListId == targetId)
+			?? PricingStrategyRows.FirstOrDefault(row => row.CustomerId == customerId);
+		CompleteOperation(false, "Customer pricing assignment updated");
+	}
+
+	private async Task ClearDesignerAssignmentAsync(CancellationToken token)
+	{
+		if (SelectedPricingStrategyRow?.CustomerId is not long customerId) return;
+		await _pricing.AssignCustomerAsync(customerId, null, token);
+		await LoadAsync(token);
+		CompleteOperation(false, "Customer-specific pricing cleared");
+	}
+
+	private void DisposePricingStrategyDesigner()
+	{
+		CalculateResolutionPreviewCommand?.Dispose();
+		ApplyDesignerAssignmentCommand?.Dispose();
+		ClearDesignerAssignmentCommand?.Dispose();
+	}
+
 
 	private async Task LoadPricingStrategyAsync(CancellationToken token)
 	{
 		var selectedKey = SelectedPricingStrategyRow?.Key;
 		var assignments = await _pricing.ListCustomerAssignmentsAsync(token);
+		Replace(DesignerCustomerPriceLists, PriceLists.Where(value => value.Scope == SalesPriceListScope.Customer).OrderBy(value => value.Name));
 		var projection = PricingStrategyProjector.Project(PriceLists, Regions, Customers, assignments);
 		Replace(PricingStrategyRows, projection.Rows);
 		SelectedPricingStrategyRow = selectedKey is null

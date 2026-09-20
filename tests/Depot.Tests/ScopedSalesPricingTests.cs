@@ -155,6 +155,8 @@ public sealed class ScopedSalesPricingTests : IAsyncLifetime
 		await fixture.Pricing.AssignCustomerAsync(customer.Id, staged.Id);
 		staged.IsActive = true;
 		staged = await fixture.Pricing.SaveAsync(staged);
+		var assignments = await fixture.Pricing.ListCustomerAssignmentsAsync();
+		Assert.Contains(assignments, value => value.CustomerId == customer.Id && value.SalesPriceListId == staged.Id);
 
 		await fixture.Pricing.AssignCustomerAsync(customer.Id, null);
 
@@ -194,7 +196,14 @@ public sealed class ScopedSalesPricingTests : IAsyncLifetime
 		readOnlyAuthorization.SignIn(new User { Id = fixture.AdministratorId, Email = "read-only@depot.test", IsActive = true }, [ApplicationPermission.SalesPricingView]);
 		var auditRepository = new AuditRepository(fixture.Data);
 		var readOnlyPricing = new SalesPricingService(new DatabaseTransactionRunner(fixture.Data), new SalesPriceListRepository(fixture.Data), auditRepository, new AuditService(auditRepository, readOnlyAuthorization), readOnlyAuthorization);
+		_ = await readOnlyPricing.ListCustomerAssignmentsAsync();
 		await Assert.ThrowsAsync<UnauthorizedAccessException>(() => readOnlyPricing.SaveAsync(new SalesPriceList { Code = "DENIED", Name = "Denied", Scope = SalesPriceListScope.Global }));
+
+		var noViewAuthorization = new AuthorizationService();
+		noViewAuthorization.SignIn(new User { Id = fixture.AdministratorId, Email = "no-pricing-view@depot.test", IsActive = true }, []);
+		var noViewPricing = new SalesPricingService(new DatabaseTransactionRunner(fixture.Data), new SalesPriceListRepository(fixture.Data), auditRepository, new AuditService(auditRepository, noViewAuthorization), noViewAuthorization);
+		await Assert.ThrowsAsync<UnauthorizedAccessException>(() => noViewPricing.ListCustomerAssignmentsAsync());
+		await Assert.ThrowsAsync<UnauthorizedAccessException>(() => noViewPricing.PreviewResolutionAsync(null, fixture.ItemA, DateTime.Today, "EUR"));
 	}
 
 	[Fact]

@@ -6,7 +6,7 @@
         <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
         <controls:PageHeader Title="Sales pricing" Subtitle="Manage scoped price lists, commercial price calculation, FX evidence and bulk generation." />
         <controls:OperationPanel Grid.Row="1" ErrorText="{Binding OperationError}" HasError="{Binding HasOperationError}" IsBusy="{Binding IsBusy}" StatusText="{Binding StatusText}" />
-        <TabControl Grid.Row="2" Margin="0,12,0,0" Style="{StaticResource AppTabControlStyle}">
+        <TabControl Grid.Row="2" Margin="0,12,0,0" SelectedIndex="{Binding PricingWorkspaceModeIndex}" Style="{StaticResource AppTabControlStyle}">
             <TabItem Header="Strategy designer">
                 <Grid Margin="0,10,0,0">
                     <Grid.ColumnDefinitions>
@@ -97,6 +97,23 @@
                                     </DataGrid>
                                 </StackPanel>
                             </Border>
+                            <Border Margin="0,16,0,0" Padding="12" Style="{StaticResource WorkspaceToolbarBorderStyle}">
+                                <StackPanel>
+                                    <TextBlock Text="Bulk pricing impact" Style="{StaticResource WorkspaceSectionTitleStyle}"/>
+                                    <TextBlock Margin="0,4,0,8" Text="{Binding BulkPreviewSummary}" Style="{StaticResource CaptionStyle}" TextWrapping="Wrap"/>
+                                    <DataGrid ItemsSource="{Binding BulkPreviewRows}" SelectedItem="{Binding SelectedBulkPreviewRow}" Style="{StaticResource AppDataGridCompactStyle}" MaxHeight="180" IsReadOnly="True">
+                                        <DataGrid.Columns>
+                                            <DataGridTextColumn Header="Item" Binding="{Binding PartNumber}" Width="105"/>
+                                            <DataGridTextColumn Header="Before" Binding="{Binding CurrentPrice, StringFormat={}{0:N2}}" Width="75" ElementStyle="{StaticResource AppDataGridNumericTextStyle}"/>
+                                            <DataGridTextColumn Header="After" Binding="{Binding CalculatedNewPrice, StringFormat={}{0:N2}}" Width="75" ElementStyle="{StaticResource AppDataGridNumericTextStyle}"/>
+                                            <DataGridTextColumn Header="Change %" Binding="{Binding PercentageChange, StringFormat={}{0:N2}}" Width="75" ElementStyle="{StaticResource AppDataGridNumericTextStyle}"/>
+                                            <DataGridTextColumn Header="Action" Binding="{Binding Action}" Width="80"/>
+                                            <DataGridTextColumn Header="Error" Binding="{Binding Error}" Width="*"/>
+                                        </DataGrid.Columns>
+                                    </DataGrid>
+                                    <TextBlock Margin="0,6,0,0" Text="Configure and calculate bulk pricing in the Price list editor. The same immutable preview is reflected here before apply." Style="{StaticResource CaptionStyle}" TextWrapping="Wrap"/>
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
                     </Border>
 
@@ -118,6 +135,18 @@
                                 <Run Text=" · Region "/><Run Text="{Binding SelectedPricingStrategyRow.RegionId, TargetNullValue=—}"/>
                                 <Run Text=" · Customer "/><Run Text="{Binding SelectedPricingStrategyRow.CustomerId, TargetNullValue=—}"/>
                             </TextBlock>
+                            <Button Margin="0,14,0,0" Command="{Binding OpenStrategySelectionCommand}" Content="Open in price list editor" Style="{StaticResource SecondaryButtonStyle}"/>
+                            <Border Margin="0,14,0,0" Padding="10" Style="{StaticResource WorkspaceToolbarBorderStyle}" Visibility="{Binding HasDesignerCustomerSelection, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <StackPanel IsEnabled="{Binding CanManagePricingStrategy}">
+                                    <TextBlock Text="Customer assignment" FontWeight="SemiBold"/>
+                                    <TextBlock Margin="0,3,0,8" Text="Reassign this customer to an existing customer-scoped price list or clear the explicit override." Style="{StaticResource CaptionStyle}" TextWrapping="Wrap"/>
+                                    <ComboBox ItemsSource="{Binding DesignerCustomerPriceLists}" SelectedItem="{Binding DesignerAssignmentTarget}" DisplayMemberPath="Name" Style="{StaticResource AppComboBoxStyle}"/>
+                                    <StackPanel Margin="0,8,0,0" Orientation="Horizontal" HorizontalAlignment="Right">
+                                        <Button Command="{Binding ClearDesignerAssignmentCommand}" Content="Use automatic" Style="{StaticResource SecondaryButtonStyle}"/>
+                                        <Button Margin="8,0,0,0" Command="{Binding ApplyDesignerAssignmentCommand}" Content="Apply assignment" Style="{StaticResource PrimaryButtonStyle}"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
                     </Border>
                 </Grid>
