@@ -8,7 +8,7 @@ using Depot.Services;
 
 namespace Depot.ViewModels;
 
-public sealed class FinanceLocalizationViewModel : BaseViewModel, IDisposable
+public sealed partial class FinanceLocalizationViewModel : BaseViewModel, IDisposable
 {
 	private readonly FinanceLocalizationService _localization;
 	private LegalEntity? _selectedLegalEntity;
@@ -37,6 +37,7 @@ public sealed class FinanceLocalizationViewModel : BaseViewModel, IDisposable
 		SavePackCommand=new AsyncRelayCommand(SavePackAsync);
 		NewRegistryEntryCommand=new AsyncRelayCommand(_=>{ClearRegistry();return Task.CompletedTask;});
 		SaveRegistryEntryCommand=new AsyncRelayCommand(SaveRegistryEntryAsync);
+		InitializeHierarchyDesigner();
 	}
 
 	public ObservableCollection<LegalEntity> LegalEntities { get; }=[];
@@ -102,12 +103,14 @@ public sealed class FinanceLocalizationViewModel : BaseViewModel, IDisposable
 			Replace(Packs,await _localization.GetPacksAsync(cancellationToken));
 			SelectedAssignmentPack=Packs.FirstOrDefault(value=>value.Code==selectedPackCode)??Packs.FirstOrDefault(value=>value.Code==FinanceLocalizationPackCodes.Generic);
 			Replace(RegistryEntries,await _localization.GetRegistryAsync(null,null,cancellationToken));
+			RefreshHierarchyProjection();
 			if(SelectedLegalEntity is not null)
 			{
 				Replace(Assignments,await _localization.GetAssignmentsAsync(SelectedLegalEntity.Id,cancellationToken));
+				RefreshAssignmentTimeline();
 				await LoadProfileCoreAsync(cancellationToken);
 			}
-			else { Assignments.Clear(); EffectivePacks.Clear(); Requirements.Clear(); Profile=null; WarningText="No legal entity is configured."; }
+			else { Assignments.Clear(); RefreshAssignmentTimeline(); EffectivePacks.Clear(); Requirements.Clear(); Profile=null; WarningText="No legal entity is configured."; }
 			CompleteOperation(false,"Finance Localization loaded.");
 		}
 		catch(OperationCanceledException) when(cancellationToken.IsCancellationRequested){}
@@ -121,6 +124,7 @@ public sealed class FinanceLocalizationViewModel : BaseViewModel, IDisposable
 		{
 			if(SelectedLegalEntity is null)throw new InvalidOperationException("Select a legal entity.");
 			Replace(Assignments,await _localization.GetAssignmentsAsync(SelectedLegalEntity.Id,cancellationToken));
+			RefreshAssignmentTimeline();
 			await LoadProfileCoreAsync(cancellationToken);
 			CompleteOperation(false,"Effective localization profile resolved.");
 		}
@@ -139,10 +143,7 @@ public sealed class FinanceLocalizationViewModel : BaseViewModel, IDisposable
 		BeginOperation("Saving localization assignment...");
 		try
 		{
-			var entity=SelectedLegalEntity??throw new InvalidOperationException("Select a legal entity.");
-			var pack=SelectedAssignmentPack??throw new InvalidOperationException("Select a localization pack.");
-			var current=SelectedAssignment;
-			var value=new FinanceLocalizationAssignment{Id=current?.Id??0,Version=current?.Version??1,LegalEntityId=entity.Id,PackCode=pack.Code,EffectiveFrom=DateOnly.FromDateTime(AssignmentFrom),EffectiveTo=AssignmentTo.HasValue?DateOnly.FromDateTime(AssignmentTo.Value):null,IsActive=AssignmentActive,CreatedAtUtc=current?.CreatedAtUtc??default,CreatedByUserId=current?.CreatedByUserId??0};
+			var value=CreateAssignmentDraft();
 			SelectedAssignment=await _localization.SaveAssignmentAsync(value,token);await LoadAsync(token);CompleteOperation(false,"Localization assignment saved.");
 		}
 		catch(Exception exception){FailOperation(exception,"Localization assignment could not be saved.");}
@@ -183,5 +184,5 @@ public sealed class FinanceLocalizationViewModel : BaseViewModel, IDisposable
 	private void SetDate(ref DateTime field,DateTime value,[System.Runtime.CompilerServices.CallerMemberName]string? name=null){if(field==value)return;field=value;OnPropertyChanged(name);}
 	private void SetBool(ref bool field,bool value,[System.Runtime.CompilerServices.CallerMemberName]string? name=null){if(field==value)return;field=value;OnPropertyChanged(name);}
 	private static void Replace<T>(ObservableCollection<T> target,IEnumerable<T> values){target.Clear();foreach(var value in values)target.Add(value);}
-	public void Dispose(){if(_disposed)return;_disposed=true;RefreshCommand.Dispose();LoadProfileCommand.Dispose();NewAssignmentCommand.Dispose();SaveAssignmentCommand.Dispose();NewPackCommand.Dispose();SavePackCommand.Dispose();NewRegistryEntryCommand.Dispose();SaveRegistryEntryCommand.Dispose();}
+	public void Dispose(){if(_disposed)return;_disposed=true;DisposeHierarchyDesigner();RefreshCommand.Dispose();LoadProfileCommand.Dispose();NewAssignmentCommand.Dispose();SaveAssignmentCommand.Dispose();NewPackCommand.Dispose();SavePackCommand.Dispose();NewRegistryEntryCommand.Dispose();SaveRegistryEntryCommand.Dispose();}
 }

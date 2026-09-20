@@ -110,9 +110,8 @@ public sealed class FinanceLocalizationService
 			{
 				parent = await _repository.GetPackAsync(transaction, normalized.ParentPackCode, token) ?? throw new InvalidOperationException("Parent localization pack was not found.");
 				if (!parent.IsActive) throw new InvalidOperationException("Parent localization pack is inactive.");
-				if (parent.Layer >= normalized.Layer) throw new InvalidOperationException("A localization pack parent must belong to a broader layer.");
 			}
-			ValidateLayer(normalized, parent);
+			FinanceLocalizationHierarchyRules.ThrowIfInvalidPack(normalized, parent);
 			if (normalized.Id == 0)
 			{
 				if (await _repository.GetPackAsync(transaction, normalized.Code, token) is not null) throw new InvalidOperationException("A localization pack with this code already exists.");
@@ -133,6 +132,28 @@ public sealed class FinanceLocalizationService
 		}, cancellationToken);
 	}
 
+	public async Task<FinanceLocalizationAssignmentValidationResult> ValidateAssignmentAsync(FinanceLocalizationAssignment value, CancellationToken cancellationToken = default)
+	{
+		ArgumentNullException.ThrowIfNull(value);
+		_authorization.RequirePermission(ApplicationPermission.FinanceLocalizationView);
+		try
+		{
+			if (value.LegalEntityId == Guid.Empty) throw new ArgumentException("Legal entity is required.", nameof(value));
+			var packCode = NormalizeCode(value.PackCode, nameof(value.PackCode), 50);
+			ValidateRange(value.EffectiveFrom, value.EffectiveTo);
+			await _transactions.ExecuteAsync(async (transaction, token) =>
+			{
+				await ValidateAssignmentCoreAsync(transaction, value, packCode, token);
+				return true;
+			}, cancellationToken);
+			return new FinanceLocalizationAssignmentValidationResult(true, []);
+		}
+		catch (Exception exception) when (exception is ArgumentException or InvalidOperationException or ConcurrencyConflictException)
+		{
+			return new FinanceLocalizationAssignmentValidationResult(false, [exception.Message]);
+		}
+	}
+
 	public async Task<FinanceLocalizationAssignment> SaveAssignmentAsync(FinanceLocalizationAssignment value, CancellationToken cancellationToken = default)
 	{
 		ArgumentNullException.ThrowIfNull(value);
@@ -143,26 +164,16 @@ public sealed class FinanceLocalizationService
 		ValidateRange(value.EffectiveFrom, value.EffectiveTo);
 		return await _transactions.ExecuteAsync(async (transaction, token) =>
 		{
-			var entity = await RequireLegalEntityAsync(transaction, value.LegalEntityId, token);
-			var chain = await ResolvePackChainAsync(transaction, packCode, true, token);
-			var root = chain[^1];
-			if (!string.IsNullOrWhiteSpace(root.CountryCode) && !string.Equals(root.CountryCode, entity.CountryCode, StringComparison.Ordinal))
-				throw new InvalidOperationException($"Localization pack '{root.Code}' targets country '{root.CountryCode}' and cannot be assigned to legal entity country '{entity.CountryCode}'.");
-
+			var before = await ValidateAssignmentCoreAsync(transaction, value, packCode, token);
 			FinanceLocalizationAssignment normalized;
-			if (value.Id == 0)
+			if (before is null)
 			{
-				if (value.IsActive && await _repository.HasOverlappingAssignmentAsync(transaction, value.LegalEntityId, value.EffectiveFrom, value.EffectiveTo, 0, token)) throw new InvalidOperationException("Another localization assignment overlaps this effective date range.");
 				normalized = value with { PackCode=packCode,CreatedAtUtc=DateTime.UtcNow,CreatedByUserId=user.Id,Version=1 };
 				var id = await _repository.CreateAssignmentAsync(transaction, normalized, token);
 				var created = normalized with { Id=id };
 				await _auditEntries.CreateAsync(transaction, _audit.CreateCreatedEntry(id, created), token);
 				return created;
 			}
-			var before = await _repository.GetAssignmentAsync(transaction, value.Id, token) ?? throw new InvalidOperationException("Localization assignment was not found.");
-			if (before.Version != value.Version) throw new ConcurrencyConflictException("finance localization assignment");
-			if (before.LegalEntityId!=value.LegalEntityId || !string.Equals(before.PackCode,packCode,StringComparison.Ordinal) || before.EffectiveFrom!=value.EffectiveFrom) throw new InvalidOperationException("Legal entity, pack and effective-from date are immutable after assignment creation.");
-			if (value.IsActive && await _repository.HasOverlappingAssignmentAsync(transaction, value.LegalEntityId, value.EffectiveFrom, value.EffectiveTo, value.Id, token)) throw new InvalidOperationException("Another localization assignment overlaps this effective date range.");
 			normalized = value with { PackCode=packCode,CreatedAtUtc=before.CreatedAtUtc,CreatedByUserId=before.CreatedByUserId };
 			if (await _repository.UpdateAssignmentAsync(transaction, normalized, before.Version, token) != 1) throw new ConcurrencyConflictException("finance localization assignment");
 			var after = normalized with { Version=before.Version+1 };
@@ -200,6 +211,27 @@ public sealed class FinanceLocalizationService
 		}, cancellationToken);
 	}
 
+	private async Task<FinanceLocalizationAssignment?> ValidateAssignmentCoreAsync(DatabaseTransactionContext transaction, FinanceLocalizationAssignment value, string packCode, CancellationToken token)
+	{
+		var entity = await RequireLegalEntityAsync(transaction, value.LegalEntityId, token);
+		var chain = await ResolvePackChainAsync(transaction, packCode, true, token);
+		var root = chain[^1];
+		if (!string.IsNullOrWhiteSpace(root.CountryCode) && !string.Equals(root.CountryCode, entity.CountryCode, StringComparison.Ordinal))
+			throw new InvalidOperationException($"Localization pack '{root.Code}' targets country '{root.CountryCode}' and cannot be assigned to legal entity country '{entity.CountryCode}'.");
+
+		FinanceLocalizationAssignment? before = null;
+		if (value.Id != 0)
+		{
+			before = await _repository.GetAssignmentAsync(transaction, value.Id, token) ?? throw new InvalidOperationException("Localization assignment was not found.");
+			if (before.Version != value.Version) throw new ConcurrencyConflictException("finance localization assignment");
+			if (before.LegalEntityId!=value.LegalEntityId || !string.Equals(before.PackCode,packCode,StringComparison.Ordinal) || before.EffectiveFrom!=value.EffectiveFrom)
+				throw new InvalidOperationException("Legal entity, pack and effective-from date are immutable after assignment creation.");
+		}
+		if (value.IsActive && await _repository.HasOverlappingAssignmentAsync(transaction, value.LegalEntityId, value.EffectiveFrom, value.EffectiveTo, value.Id, token))
+			throw new InvalidOperationException("Another localization assignment overlaps this effective date range.");
+		return before;
+	}
+
 	private async Task<IReadOnlyList<FinanceLocalizationPack>> ResolvePackChainAsync(DatabaseTransactionContext transaction, string rootCode, bool requireActive, CancellationToken cancellationToken)
 	{
 		var chain = new List<FinanceLocalizationPack>();
@@ -232,14 +264,6 @@ public sealed class FinanceLocalizationService
 		var country=string.IsNullOrWhiteSpace(value.CountryCode)?null:FinanceValidation.CountryCode(value.CountryCode,nameof(value.CountryCode));
 		var parent=string.IsNullOrWhiteSpace(value.ParentPackCode)?null:NormalizeCode(value.ParentPackCode,nameof(value.ParentPackCode),50);
 		return value with { Code=code,Name=name,Description=description,CountryCode=country,ParentPackCode=parent };
-	}
-
-	private static void ValidateLayer(FinanceLocalizationPack value, FinanceLocalizationPack? parent)
-	{
-		if (value.Layer==FinanceLocalizationLayer.Generic && (value.CountryCode is not null || parent is not null)) throw new InvalidOperationException("Generic localization packs cannot target a country or have a parent.");
-		if (value.Layer==FinanceLocalizationLayer.Regional && (value.CountryCode is not null || parent is null)) throw new InvalidOperationException("Regional localization packs require a broader parent and cannot target one country.");
-		if (value.Layer==FinanceLocalizationLayer.Country && (value.CountryCode is null || parent is null)) throw new InvalidOperationException("Country localization packs require a country code and a broader parent.");
-		if (parent is not null && string.Equals(parent.Code,value.Code,StringComparison.Ordinal)) throw new InvalidOperationException("A localization pack cannot depend on itself.");
 	}
 
 	private static FinanceLocalizationRegistryEntry NormalizeRegistry(FinanceLocalizationRegistryEntry value)

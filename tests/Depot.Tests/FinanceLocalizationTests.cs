@@ -84,6 +84,23 @@ public sealed class FinanceLocalizationTests
 	}
 
 	[Fact]
+	public async Task AssignmentValidationPreviewUsesTheSameCountryAndOverlapRulesAsSave()
+	{
+		using var context=TestContext.Create();
+		var germany=context.CreateLegalEntity("DE01","Germany Entity","DE");
+		await context.Service.SaveAssignmentAsync(new FinanceLocalizationAssignment{LegalEntityId=germany,PackCode=FinanceLocalizationPackCodes.Generic,EffectiveFrom=new DateOnly(2026,1,1),EffectiveTo=new DateOnly(2026,12,31),IsActive=true});
+
+		var overlap=await context.Service.ValidateAssignmentAsync(new FinanceLocalizationAssignment{LegalEntityId=germany,PackCode=FinanceLocalizationPackCodes.Germany,EffectiveFrom=new DateOnly(2026,8,28),IsActive=true});
+		Assert.False(overlap.IsValid);
+		Assert.Contains(overlap.Errors,value=>value.Contains("overlaps",StringComparison.OrdinalIgnoreCase));
+
+		var france=context.CreateLegalEntity("FR01","France Entity","FR");
+		var mismatch=await context.Service.ValidateAssignmentAsync(new FinanceLocalizationAssignment{LegalEntityId=france,PackCode=FinanceLocalizationPackCodes.Germany,EffectiveFrom=new DateOnly(2026,8,28),IsActive=true});
+		Assert.False(mismatch.IsValid);
+		Assert.Contains(mismatch.Errors,value=>value.Contains("country",StringComparison.OrdinalIgnoreCase));
+	}
+
+	[Fact]
 	public async Task CustomCountryPackAndEffectiveRegistryEntryExtendFrameworkWithoutSchemaChange()
 	{
 		using var context=TestContext.Create();
@@ -91,11 +108,41 @@ public sealed class FinanceLocalizationTests
 		var pack=await context.Service.SavePackAsync(new FinanceLocalizationPack{Code="FR-REF",Name="France Reference",Layer=FinanceLocalizationLayer.Country,CountryCode="FR",ParentPackCode=FinanceLocalizationPackCodes.EuropeanUnion,Description="Deployment-specific French reference extension.",IsActive=true});
 		Assert.False(pack.IsBuiltIn);
 		await context.Service.SaveRegistryEntryAsync(new FinanceLocalizationRegistryEntry{PackCode=pack.Code,RequirementCode="FR-LOCAL-REVIEW",Category=FinanceLocalizationRequirementCategory.Tax,SupportLevel=FinanceLocalizationSupportLevel.ExternalProcedureRequired,EffectiveFrom=new DateOnly(2026,8,28),Title="French local review",Description="Requires deployment-specific qualified review.",Reference="deployment policy",IsActive=true});
-		await context.Service.SaveAssignmentAsync(new FinanceLocalizationAssignment{LegalEntityId=entity,PackCode=pack.Code,EffectiveFrom=new DateOnly(2026,8,28),IsActive=true});
+		var savedAssignment=await context.Service.SaveAssignmentAsync(new FinanceLocalizationAssignment{LegalEntityId=entity,PackCode=pack.Code,EffectiveFrom=new DateOnly(2026,8,28),IsActive=true});
+		var reloadedAssignments=await context.Service.GetAssignmentsAsync(entity);
+		Assert.Contains(reloadedAssignments,value=>value.Id==savedAssignment.Id && value.PackCode==pack.Code && value.EffectiveFrom==new DateOnly(2026,8,28));
 		var profile=await context.Service.GetEffectiveProfileAsync(entity,new DateOnly(2026,8,28));
 		Assert.Equal([FinanceLocalizationPackCodes.Generic,FinanceLocalizationPackCodes.EuropeanUnion,"FR-REF"],profile.Packs.Select(value=>value.Code).ToArray());
 		Assert.Contains(profile.Requirements,value=>value.RequirementCode=="FR-LOCAL-REVIEW");
 		Assert.Equal(9L,context.Scalar("SELECT Version FROM DepotFeatureVersions WHERE Name='Finance';"));
+	}
+
+	[Fact]
+	public async Task CorruptedPackCycleFailsClosedDuringValidationAndSave()
+	{
+		using var context=TestContext.Create();
+		var entity=context.CreateLegalEntity("DE01","Germany Entity","DE");
+		context.Execute("UPDATE FinanceLocalizationPacks SET ParentPackCode='DE' WHERE Code='GENERIC';");
+		var draft=new FinanceLocalizationAssignment{LegalEntityId=entity,PackCode=FinanceLocalizationPackCodes.Germany,EffectiveFrom=new DateOnly(2026,8,28),IsActive=true};
+
+		var validation=await context.Service.ValidateAssignmentAsync(draft);
+		Assert.False(validation.IsValid);
+		Assert.Contains(validation.Errors,value=>value.Contains("cycle",StringComparison.OrdinalIgnoreCase));
+		await Assert.ThrowsAsync<InvalidOperationException>(()=>context.Service.SaveAssignmentAsync(draft));
+	}
+
+	[Fact]
+	public async Task ViewOnlyLocalizationPermissionCanInspectAndValidateButCannotMutate()
+	{
+		using var context=TestContext.Create();
+		var entity=context.CreateLegalEntity("DE01","Germany Entity","DE");
+		var viewer=context.CreateService(ApplicationPermission.FinanceLocalizationView);
+
+		Assert.NotEmpty(await viewer.GetPacksAsync());
+		var validation=await viewer.ValidateAssignmentAsync(new FinanceLocalizationAssignment{LegalEntityId=entity,PackCode=FinanceLocalizationPackCodes.Generic,EffectiveFrom=new DateOnly(2026,1,1),IsActive=true});
+		Assert.True(validation.IsValid);
+		await Assert.ThrowsAsync<UnauthorizedAccessException>(()=>viewer.SaveAssignmentAsync(new FinanceLocalizationAssignment{LegalEntityId=entity,PackCode=FinanceLocalizationPackCodes.Generic,EffectiveFrom=new DateOnly(2026,1,1),IsActive=true}));
+		await Assert.ThrowsAsync<UnauthorizedAccessException>(()=>viewer.SavePackAsync(new FinanceLocalizationPack{Code="CUSTOM",Name="Custom",Layer=FinanceLocalizationLayer.Generic,Description="Custom",IsActive=true}));
 	}
 
 	[Fact]
@@ -138,6 +185,19 @@ public sealed class FinanceLocalizationTests
 			_database.Execute("INSERT INTO FinanceLegalEntities (Id,Code,Name,CountryCode,FunctionalCurrencyCode,IsActive) VALUES ($Id,$Code,$Name,$Country,'EUR',1);",new DatabaseParameter("$Id",id.ToString("D")),new DatabaseParameter("$Code",code),new DatabaseParameter("$Name",name),new DatabaseParameter("$Country",country));
 			return id;
 		}
+
+		public FinanceLocalizationService CreateService(params ApplicationPermission[] permissions)
+		{
+			var email=$"localization-{Guid.NewGuid():N}@depot.test";
+			var userId=_database.Insert("INSERT INTO Users (Email,DisplayName,PasswordHash,IsAdministrator,CanApprovePurchaseOrders,Role,IsActive,CreatedUtc) VALUES ($Email,'Localization Viewer','test',0,0,0,1,'2026-08-28T00:00:00.0000000Z');",new DatabaseParameter("$Email",email));
+			var authorization=new AuthorizationService();
+			authorization.SignIn(new User{Id=userId,Email=email,DisplayName="Localization Viewer",IsActive=true,CreatedUtc=DateTime.UtcNow},permissions);
+			var auditRepository=new AuditRepository(_database);
+			var audit=new AuditService(auditRepository,authorization);
+			return new FinanceLocalizationService(new DatabaseTransactionRunner(_database),new FinanceLocalizationRepository(_database),auditRepository,audit,authorization);
+		}
+
+		public void Execute(string sql)=>_database.Execute(sql);
 
 		public long Scalar(string sql)
 		{
