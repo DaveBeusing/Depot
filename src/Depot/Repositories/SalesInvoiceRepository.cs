@@ -13,7 +13,30 @@ public sealed class SalesInvoiceRepository : DatabaseRepository
 	private const string Columns="si.Id,si.InvoiceNumber,si.CustomerId,c.Name,si.SalesOrderId,so.OrderNumber,si.ShipmentId,sh.ShipmentNumber,si.InvoiceDate,si.DueDate,si.Currency,si.Status,si.CustomerReference,si.BillingAddress,si.Notes,si.CreatedByUserId,si.PostedByUserId,si.PostedAtUtc,si.Version";
 	private const string From="FROM SalesInvoices si INNER JOIN Customers c ON c.Id=si.CustomerId INNER JOIN SalesOrders so ON so.Id=si.SalesOrderId INNER JOIN Shipments sh ON sh.Id=si.ShipmentId";
 	public SalesInvoiceRepository(DatabaseAccess database):base(database){}
-	public Task<PageResult<SalesInvoice>> SearchAsync(string? searchText,SalesInvoiceStatus? status,int pageNumber,int pageSize,CancellationToken token){var filters=new List<string>();var parameters=new List<DatabaseParameter>();if(!string.IsNullOrWhiteSpace(searchText)){filters.Add("(si.InvoiceNumber LIKE $Search OR so.OrderNumber LIKE $Search OR sh.ShipmentNumber LIKE $Search OR c.Name LIKE $Search)");parameters.Add(Parameter("$Search",$"%{searchText.Trim()}%"));}if(status is not null){filters.Add("si.Status=$Status");parameters.Add(Parameter("$Status",(int)status.Value));}var where=filters.Count==0?string.Empty:$"WHERE {string.Join(" AND ",filters)}";return Database.QueryPageAsync($"SELECT {Columns} {From} {where} ORDER BY si.InvoiceDate DESC,si.Id DESC",$"SELECT COUNT(*) {From} {where}",Read,pageNumber,pageSize,token,parameters.ToArray());}
+	public Task<PageResult<SalesInvoice>> SearchAsync(string? searchText, SalesInvoiceStatus? status, int pageNumber, int pageSize, CancellationToken token)
+	{
+		var filters = new List<string>(); var parameters = new List<DatabaseParameter>();
+		var plan = SearchQueryPlan.Create(searchText);
+		string? rank = null;
+		if (plan is { } search)
+		{
+			var prefixColumns = new[] { "si.InvoiceNumber", "so.OrderNumber", "sh.ShipmentNumber", "c.Name" };
+			filters.Add(search.BuildPredicate(prefixColumns, prefixColumns));
+			parameters.Add(Parameter("$SearchExact", search.Exact));
+			parameters.Add(Parameter("$SearchPrefix", search.Prefix));
+			if (search.AllowContains)
+			{
+				parameters.Add(Parameter("$SearchWordPrefix", search.WordPrefix));
+				parameters.Add(Parameter("$SearchContains", search.Contains));
+			}
+			rank = search.BuildRankExpression(prefixColumns, ["c.Name"]);
+		}
+		if (status is not null) { filters.Add("si.Status=$Status"); parameters.Add(Parameter("$Status", (int)status.Value)); }
+		var where = filters.Count == 0 ? string.Empty : $"WHERE {string.Join(" AND ", filters)}";
+		var orderBy = rank is null ? "si.InvoiceDate DESC,si.Id DESC" : $"{rank},si.InvoiceDate DESC,si.Id DESC";
+		return Database.QueryPageAsync($"SELECT {Columns} {From} {where} ORDER BY {orderBy}", $"SELECT COUNT(*) {From} {where}", Read, pageNumber, pageSize, token, parameters.ToArray());
+	}
+
 	public async Task<SalesInvoice?> GetByIdAsync(long id,CancellationToken token){var invoice=await Database.QuerySingleOrDefaultAsync($"SELECT {Columns} {From} WHERE si.Id=$Id;",Read,token,Parameter("$Id",id));if(invoice is null)return null;invoice.Lines=await ListLinesAsync(id,token);return invoice;}
 	public async Task<SalesInvoice?> GetByIdAsync(DatabaseTransactionContext tx,long id,CancellationToken token){var rows=await tx.Session.QueryAsync($"SELECT {Columns} {From} WHERE si.Id=$Id;",Read,token,Parameter("$Id",id));if(rows.Count==0)return null;var invoice=rows[0];invoice.Lines=await tx.Session.QueryAsync(LineSql+" WHERE sil.SalesInvoiceId=$Id ORDER BY sil.LineNumber;",ReadLine,token,Parameter("$Id",id));return invoice;}
 	public Task<IReadOnlyList<SalesInvoiceLine>> ListLinesAsync(long id,CancellationToken token)=>Database.QueryAsync(LineSql+" WHERE sil.SalesInvoiceId=$Id ORDER BY sil.LineNumber;",ReadLine,token,Parameter("$Id",id));

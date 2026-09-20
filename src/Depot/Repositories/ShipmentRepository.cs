@@ -16,11 +16,26 @@ public sealed class ShipmentRepository : DatabaseRepository
 
 	public Task<PageResult<Shipment>> SearchAsync(string? searchText, ShipmentStatus? status, int pageNumber, int pageSize, CancellationToken token)
 	{
-		var filters=new List<string>(); var parameters=new List<DatabaseParameter>();
-		if(!string.IsNullOrWhiteSpace(searchText)){filters.Add("(sh.ShipmentNumber LIKE $Search OR so.OrderNumber LIKE $Search OR c.Name LIKE $Search OR sh.TrackingNumber LIKE $Search)");parameters.Add(Parameter("$Search",$"%{searchText.Trim()}%"));}
-		if(status is not null){filters.Add("sh.Status=$Status");parameters.Add(Parameter("$Status",(int)status.Value));}
-		var where=filters.Count==0?string.Empty:$"WHERE {string.Join(" AND ",filters)}";
-		return Database.QueryPageAsync($"SELECT {Columns} {From} {where} ORDER BY sh.ShipmentDate DESC,sh.Id DESC",$"SELECT COUNT(*) {From} {where}",Read,pageNumber,pageSize,token,parameters.ToArray());
+		var filters = new List<string>(); var parameters = new List<DatabaseParameter>();
+		var plan = SearchQueryPlan.Create(searchText);
+		string? rank = null;
+		if (plan is { } search)
+		{
+			var prefixColumns = new[] { "sh.ShipmentNumber", "so.OrderNumber", "c.Name", "sh.TrackingNumber" };
+			filters.Add(search.BuildPredicate(prefixColumns, prefixColumns));
+			parameters.Add(Parameter("$SearchExact", search.Exact));
+			parameters.Add(Parameter("$SearchPrefix", search.Prefix));
+			if (search.AllowContains)
+			{
+				parameters.Add(Parameter("$SearchWordPrefix", search.WordPrefix));
+				parameters.Add(Parameter("$SearchContains", search.Contains));
+			}
+			rank = search.BuildRankExpression(prefixColumns, ["c.Name"]);
+		}
+		if (status is not null) { filters.Add("sh.Status=$Status"); parameters.Add(Parameter("$Status", (int)status.Value)); }
+		var where = filters.Count == 0 ? string.Empty : $"WHERE {string.Join(" AND ", filters)}";
+		var orderBy = rank is null ? "sh.ShipmentDate DESC,sh.Id DESC" : $"{rank},sh.ShipmentDate DESC,sh.Id DESC";
+		return Database.QueryPageAsync($"SELECT {Columns} {From} {where} ORDER BY {orderBy}", $"SELECT COUNT(*) {From} {where}", Read, pageNumber, pageSize, token, parameters.ToArray());
 	}
 
 	public async Task<Shipment?> GetByIdAsync(long id,CancellationToken token)

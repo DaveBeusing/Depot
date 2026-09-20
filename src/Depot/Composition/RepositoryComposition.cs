@@ -64,6 +64,7 @@ internal sealed class RepositoryComposition
 		Audit = new AuditRepository(dataAccess);
 		Notifications = new NotificationRepository(dataAccess);
 		Dashboard = new DashboardRepository(dataAccess);
+		GlobalSearch = new GlobalSearchReadRepository(dataAccess);
 		MyWork = new MyWorkReadRepository(dataAccess);
 		DocumentTemplates = new DocumentTemplateRepository(dataAccess);
 	}
@@ -122,6 +123,7 @@ internal sealed class RepositoryComposition
 	public AuditRepository Audit { get; }
 	public NotificationRepository Notifications { get; }
 	public DashboardRepository Dashboard { get; }
+	public GlobalSearchReadRepository GlobalSearch { get; }
 	public MyWorkReadRepository MyWork { get; }
 	public DocumentTemplateRepository DocumentTemplates { get; }
 }
