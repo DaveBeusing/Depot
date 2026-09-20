@@ -31,6 +31,7 @@ public partial class MainWindow : Window
 	private ShellNavigationItem? _helpNavigationItem;
 	private ShellNavigationItem? _aboutNavigationItem;
 	private MainViewModel? _observedViewModel;
+	private SalesViewModel? _observedSalesViewModel;
 	private ShellModuleViewModel? _observedModule;
 	private bool _historyNavigation;
 
@@ -104,7 +105,11 @@ public partial class MainWindow : Window
 	private void OnLoaded(object sender, RoutedEventArgs e)
 	{
 		ObserveViewModel(DataContext as MainViewModel);
-		if (DataContext is MainViewModel viewModel) UpdateNavigationContext(viewModel);
+		if (DataContext is MainViewModel viewModel)
+		{
+			viewModel.ActivateShell();
+			UpdateNavigationContext(viewModel);
+		}
 		StartupPerformance.Mark(StartupPerformanceCheckpoint.FirstInteractiveShell);
 		StartupPerformance.FlushToDiagnostics();
 	}
@@ -117,13 +122,15 @@ public partial class MainWindow : Window
 		if (_observedViewModel is not null)
 		{
 			_observedViewModel.PropertyChanged -= OnMainViewModelPropertyChanged;
-			_observedViewModel.SalesViewModel.PropertyChanged -= OnSalesWorkspacePropertyChanged;
+			_observedViewModel.SalesViewModelCreated -= OnSalesViewModelCreated;
 		}
+		ObserveSalesViewModel(null);
 		_observedViewModel = viewModel;
 		if (_observedViewModel is not null)
 		{
 			_observedViewModel.PropertyChanged += OnMainViewModelPropertyChanged;
-			_observedViewModel.SalesViewModel.PropertyChanged += OnSalesWorkspacePropertyChanged;
+			_observedViewModel.SalesViewModelCreated += OnSalesViewModelCreated;
+			ObserveSalesViewModel(_observedViewModel.CreatedSalesViewModel);
 			UpdateNavigationContext(_observedViewModel);
 		}
 	}
@@ -141,17 +148,27 @@ public partial class MainWindow : Window
 		if (e.PropertyName == nameof(ShellModuleViewModel.SelectedPage) && DataContext is MainViewModel viewModel) UpdateNavigationContext(viewModel);
 	}
 
+	private void OnSalesViewModelCreated(SalesViewModel viewModel) => ObserveSalesViewModel(viewModel);
+
+	private void ObserveSalesViewModel(SalesViewModel? viewModel)
+	{
+		if (ReferenceEquals(_observedSalesViewModel, viewModel)) return;
+		if (_observedSalesViewModel is not null) _observedSalesViewModel.PropertyChanged -= OnSalesWorkspacePropertyChanged;
+		_observedSalesViewModel = viewModel;
+		if (_observedSalesViewModel is not null) _observedSalesViewModel.PropertyChanged += OnSalesWorkspacePropertyChanged;
+	}
+
 	private void OnSalesWorkspacePropertyChanged(object? sender, PropertyChangedEventArgs e)
 	{
-		if (_observedViewModel is not { } viewModel) return;
+		if (_observedViewModel is not { } viewModel || sender is not SalesViewModel sales) return;
 		SalesQuickOpenItem? item = e.PropertyName switch
 		{
-			nameof(SalesViewModel.SelectedCustomer) when viewModel.SalesViewModel.SelectedCustomer is { } customer => new(SalesQuickOpenKind.Customer, customer.Id, customer.Name, customer.CustomerNumber),
-			nameof(SalesViewModel.SelectedOrder) when viewModel.SalesViewModel.SelectedOrder is { } order => new(SalesQuickOpenKind.SalesOrder, order.Id, order.OrderNumber, order.CustomerName),
-			nameof(SalesViewModel.SelectedShipment) when viewModel.SalesViewModel.SelectedShipment is { } shipment => new(SalesQuickOpenKind.Shipment, shipment.Id, shipment.ShipmentNumber, shipment.SalesOrderNumber),
-			nameof(SalesViewModel.SelectedInvoice) when viewModel.SalesViewModel.SelectedInvoice is { } invoice => new(SalesQuickOpenKind.Invoice, invoice.Id, invoice.InvoiceNumber, invoice.CustomerName),
-			nameof(SalesViewModel.SelectedCustomerReturn) when viewModel.SalesViewModel.SelectedCustomerReturn is { } customerReturn => new(SalesQuickOpenKind.CustomerReturn, customerReturn.Id, customerReturn.ReturnNumber, "Customer return"),
-			nameof(SalesViewModel.SelectedCreditNote) when viewModel.SalesViewModel.SelectedCreditNote is { } creditNote => new(SalesQuickOpenKind.CreditNote, creditNote.Id, creditNote.CreditNoteNumber, "Credit note"),
+			nameof(SalesViewModel.SelectedCustomer) when sales.SelectedCustomer is { } customer => new(SalesQuickOpenKind.Customer, customer.Id, customer.Name, customer.CustomerNumber),
+			nameof(SalesViewModel.SelectedOrder) when sales.SelectedOrder is { } order => new(SalesQuickOpenKind.SalesOrder, order.Id, order.OrderNumber, order.CustomerName),
+			nameof(SalesViewModel.SelectedShipment) when sales.SelectedShipment is { } shipment => new(SalesQuickOpenKind.Shipment, shipment.Id, shipment.ShipmentNumber, shipment.SalesOrderNumber),
+			nameof(SalesViewModel.SelectedInvoice) when sales.SelectedInvoice is { } invoice => new(SalesQuickOpenKind.Invoice, invoice.Id, invoice.InvoiceNumber, invoice.CustomerName),
+			nameof(SalesViewModel.SelectedCustomerReturn) when sales.SelectedCustomerReturn is { } customerReturn => new(SalesQuickOpenKind.CustomerReturn, customerReturn.Id, customerReturn.ReturnNumber, "Customer return"),
+			nameof(SalesViewModel.SelectedCreditNote) when sales.SelectedCreditNote is { } creditNote => new(SalesQuickOpenKind.CreditNote, creditNote.Id, creditNote.CreditNoteNumber, "Credit note"),
 			_ => null
 		};
 		if (item is not null) OpenSalesDocument(viewModel, item);

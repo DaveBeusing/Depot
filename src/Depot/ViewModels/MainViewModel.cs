@@ -146,7 +146,6 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		NotificationCommand = new RelayCommand(() => _ = OpenNotificationsAsync());
 		_welcome = new WelcomeViewModel(CurrentUserDisplayName, DateTime.Now);
 
-		var salesWorkspace = new SalesViewModel(salesServices.Customers, salesServices.Orders, salesServices.Shipments, salesServices.Invoices, salesServices.Items, salesServices.Pricing, salesServices.Authorization, fileDialogService, salesServices.Documents);
 
 		_dashboard = new(() => new DashboardViewModel(dashboardService, myWorkService, authorizationService));
 		_salesWorkspaceRoleCenter = new(() => new CommercialRoleCenterViewModel(commercialRoleCenterService, CommercialRoleCenterKind.SalesWorkspace));
@@ -177,15 +176,20 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		_purchaseOrdersPage = new(() => new PurchaseOrdersPageViewModel(_procurement.Value));
 		_goodsReceiptsPage = new(() => new GoodsReceiptsPageViewModel(_procurement.Value));
 		_purchaseOrderApprovals = new(() => new PurchaseOrderApprovalsViewModel(purchaseOrderApprovalService, fileDialogService));
-		_salesSearch = new(() => salesWorkspace);
-		_salesOverview = new(() => new SalesOverviewViewModel(salesWorkspace));
+		_salesSearch = new(() =>
+		{
+			var workspace = new SalesViewModel(salesServices.Customers, salesServices.Orders, salesServices.Shipments, salesServices.Invoices, salesServices.Items, salesServices.Pricing, salesServices.Authorization, fileDialogService, salesServices.Documents);
+			SalesViewModelCreated?.Invoke(workspace);
+			return workspace;
+		});
+		_salesOverview = new(() => new SalesOverviewViewModel(_salesSearch.Value));
 		_salesQuotes = new(() => new SalesQuotesViewModel(salesServices.Quotes, salesServices.Pricing, salesServices.Customers, salesServices.Items, fileDialogService, salesServices.Documents));
 		_salesPricing = new(() => new SalesPricingViewModel(salesServices.Pricing, salesServices.Customers, salesServices.Items, categoryService, manufacturerService, salesServices.PriceListGeneration));
-		_salesCustomers = new(() => new CustomersViewModel(salesWorkspace, salesServices.Customers, salesServices.Pricing));
-		_salesOrders = new(() => new SalesOrdersViewModel(salesWorkspace, salesServices.Pricing, salesServices.Timeline, OpenWorkflowTimelineItemAsync));
-		_salesApprovals = new(() => new SalesApprovalsViewModel(salesWorkspace));
-		_salesShipping = new(() => new ShippingViewModel(salesWorkspace, salesServices.Packing, fileDialogService, salesServices.Documents, salesServices.Timeline, OpenWorkflowTimelineItemAsync));
-		_salesInvoices = new(() => new SalesInvoicesViewModel(salesWorkspace, salesServices.Invoices, fileDialogService, salesServices.Documents, salesServices.Email, salesServices.Timeline, OpenWorkflowTimelineItemAsync));
+		_salesCustomers = new(() => new CustomersViewModel(_salesSearch.Value, salesServices.Customers, salesServices.Pricing));
+		_salesOrders = new(() => new SalesOrdersViewModel(_salesSearch.Value, salesServices.Pricing, salesServices.Timeline, OpenWorkflowTimelineItemAsync));
+		_salesApprovals = new(() => new SalesApprovalsViewModel(_salesSearch.Value));
+		_salesShipping = new(() => new ShippingViewModel(_salesSearch.Value, salesServices.Packing, fileDialogService, salesServices.Documents, salesServices.Timeline, OpenWorkflowTimelineItemAsync));
+		_salesInvoices = new(() => new SalesInvoicesViewModel(_salesSearch.Value, salesServices.Invoices, fileDialogService, salesServices.Documents, salesServices.Email, salesServices.Timeline, OpenWorkflowTimelineItemAsync));
 		_financeReceivables = new(() => new FinanceReceivablesViewModel(financeReceivablesService));
 		_financePayables = new(() => new FinancePayablesViewModel(financePayablesService, salesServices.Timeline, OpenWorkflowTimelineItemAsync));
 		_financeInventoryAccounting = new(() => new FinanceInventoryAccountingViewModel(financeInventoryAccountingService, financeInventoryCostingService, financeInventoryMovementAccountingService));
@@ -211,6 +215,8 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 	public ConnectionStatusService ConnectionStatus { get; }
 	public NotificationSummaryViewModel NotificationSummaryViewModel { get; }
 	public event EventHandler? LogoutRequested;
+	internal event Action<SalesViewModel>? SalesViewModelCreated;
+	internal SalesViewModel? CreatedSalesViewModel => _salesSearch.IsValueCreated ? _salesSearch.Value : null;
 
 	public WelcomeViewModel WelcomeViewModel => _welcome;
 	public DashboardViewModel DashboardViewModel => _dashboard.Value;
@@ -271,6 +277,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 	public async Task RefreshCurrentAsync(CancellationToken cancellationToken = default) { var selected = SelectedNavigationItem; if (selected is null) return; var navigation = BeginNavigation(cancellationToken); try { await selected.RefreshAsync(navigation.Token); } catch (OperationCanceledException) when (navigation.IsCancellationRequested) { } }
 	public async Task OpenHelpAsync(string? topicId = null, CancellationToken cancellationToken = default) { var help = HelpViewModel; if (CurrentViewModel != help && !ConfirmDiscardChanges(CurrentViewModel)) return; var targetTopicId = topicId ?? CurrentHelpTopicId; if (CurrentViewModel != help) _viewModelBeforeHelp = CurrentViewModel; CancelNavigationLoad(); CurrentViewModel = help; await help.OpenAsync(targetTopicId, cancellationToken); }
 	public async Task OpenNotificationsAsync(CancellationToken cancellationToken = default) { var notifications = NotificationCenterViewModel; if (CurrentViewModel != notifications && !ConfirmDiscardChanges(CurrentViewModel)) return; if (CurrentViewModel != notifications) _viewModelBeforeNotifications = CurrentViewModel; CancelNavigationLoad(); CurrentViewModel = notifications; await _notificationLoadState.ActivateAsync(notifications.LoadAsync, cancellationToken); }
+	public void ActivateShell() => NotificationSummaryViewModel.Activate();
 	public void SetApplicationActive(bool isActive) { NotificationSummaryViewModel.SetApplicationActive(isActive); if (_notificationCenter.IsValueCreated) _notificationCenter.Value.SetApplicationActive(isActive); }
 
 	public async Task OpenSalesQuickItemAsync(SalesQuickOpenItem item, CancellationToken cancellationToken = default)
