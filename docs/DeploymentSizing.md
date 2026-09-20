@@ -98,7 +98,7 @@ pwsh ./scripts/performance/Measure-DeploymentSizing.ps1 `
   -EnvironmentName "Customer-like staging" `
   -Provider SqlServer `
   -CommitSha "<tested-sha>" `
-  -DepotVersion "0.15.x-preview" `
+  -DepotVersion "<tested-version>" `
   -DataProfile "Remote standard" `
   -DataVolumeRecords 1000000 `
   -ConcurrentUsers 20 `
