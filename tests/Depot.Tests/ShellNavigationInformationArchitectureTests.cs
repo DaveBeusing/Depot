@@ -67,6 +67,18 @@ public sealed class ShellNavigationInformationArchitectureTests
 	}
 
 	[Fact]
+	public void AdministrationModuleVisibilityUsesTheSamePermissionCatalogAsItsPages()
+	{
+		var root = FindRepositoryRoot();
+		var main = File.ReadAllText(Path.Combine(root, "src", "Depot", "ViewModels", "MainViewModel.cs"));
+		var administration = File.ReadAllText(Path.Combine(root, "src", "Depot", "ViewModels", "Administration", "AdministrationViewModel.cs"));
+
+		Assert.Contains("HasAdministrationPages() => AdministrationNavigationItems.Count > 0", main, StringComparison.Ordinal);
+		Assert.Contains("ApplicationPermission.SettingsView, \"Company\"", administration, StringComparison.Ordinal);
+		Assert.DoesNotContain("_authorization.HasAnyPermission(ApplicationPermission.MasterDataView", main, StringComparison.Ordinal);
+	}
+
+	[Fact]
 	public void PaletteDiscoversAdministrationSectionsWithoutCreatingAdministrationWorkspace()
 	{
 		var root = FindRepositoryRoot();
