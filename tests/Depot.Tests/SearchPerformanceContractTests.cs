@@ -62,14 +62,18 @@ public sealed class SearchPerformanceContractTests
 			transaction.Commit();
 		}
 
-		var exact = Measure(connection, "SELECT COUNT(*) FROM SearchProbe WHERE Identifier = $Search;", "SO-050000");
-		var prefix = Measure(connection, "SELECT COUNT(*) FROM SearchProbe WHERE Identifier LIKE $Search;", "SO-05%");
+		var targetIdentifier = $"SO-{rowCount / 2:000000}";
+		var prefixStem = targetIdentifier[..5];
+		var legacyExact = Measure(connection, "SELECT COUNT(*) FROM SearchProbe WHERE Identifier LIKE $Search OR DisplayText LIKE $Search;", $"%{targetIdentifier}%");
+		var exact = Measure(connection, "SELECT COUNT(*) FROM SearchProbe WHERE Identifier = $Search;", targetIdentifier);
+		var legacyPrefix = Measure(connection, "SELECT COUNT(*) FROM SearchProbe WHERE Identifier LIKE $Search OR DisplayText LIKE $Search;", $"%{prefixStem}%");
+		var prefix = Measure(connection, "SELECT COUNT(*) FROM SearchProbe WHERE Identifier LIKE $Search;", $"{prefixStem}%");
 		var contains = Measure(connection, "SELECT COUNT(*) FROM SearchProbe WHERE Identifier LIKE $Search OR DisplayText LIKE $Search;", "%500%");
 
-		Assert.InRange(exact.Count, 0, 1);
+		Assert.Equal(1, exact.Count);
 		Assert.True(prefix.Count >= exact.Count);
-		Assert.True(contains.Count >= 0);
-		_output.WriteLine($"rows={rowCount:N0} exactMs={exact.Elapsed.TotalMilliseconds:F3} prefixMs={prefix.Elapsed.TotalMilliseconds:F3} containsMs={contains.Elapsed.TotalMilliseconds:F3} exactCount={exact.Count} prefixCount={prefix.Count} containsCount={contains.Count}");
+		Assert.True(contains.Count > 0);
+		_output.WriteLine($"rows={rowCount:N0} legacyExactMs={legacyExact.Elapsed.TotalMilliseconds:F3} exactMs={exact.Elapsed.TotalMilliseconds:F3} legacyPrefixMs={legacyPrefix.Elapsed.TotalMilliseconds:F3} prefixMs={prefix.Elapsed.TotalMilliseconds:F3} containsMs={contains.Elapsed.TotalMilliseconds:F3} exactCount={exact.Count} prefixCount={prefix.Count} containsCount={contains.Count}");
 	}
 
 	private static (long Count, TimeSpan Elapsed) Measure(SqliteConnection connection, string sql, string search)
