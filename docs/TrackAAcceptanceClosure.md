@@ -1,6 +1,6 @@
 # Track A – Final Acceptance Closure
 
-Updated: 2026-09-17
+Updated: 2026-09-20
 
 ## Purpose
 
@@ -22,7 +22,7 @@ Authoritative files:
 
 | Package | Repository implementation | Production acceptance state |
 | --- | --- | --- |
-| H1 – Repository Governance & Required Gates | Implemented | `PASS` – active repository ruleset `23590604` protects `master` with the five required aggregate gates and no bypass actor |
+| H1 – Repository Governance & Required Gates | Implemented | `BLOCKED` – active ruleset `23590604` still protects pull-request delivery plus deletion/non-fast-forward updates, but the five aggregate required-status-check bindings must be restored and revalidated |
 | H2 – Single Release Pipeline & Release Channels | Implemented | `PASS` at the repository implementation boundary |
 | H3 – Production Signing & Release Candidate Acceptance | Implemented | `PRODUCTION_RC_REQUIRED` – requires a real production-signed Stable RC acceptance run |
 | H4 – Production Operations & Disaster Recovery | Implemented | `DEPLOYMENT_REQUIRED` – requires an ACTIVE production deployment profile and real isolated restore evidence |

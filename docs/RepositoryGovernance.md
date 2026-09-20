@@ -1,6 +1,6 @@
 # Repository Governance
 
-Updated: 2026-09-17
+Updated: 2026-09-20
 
 ## Purpose
 
@@ -16,7 +16,6 @@ GitHub ruleset **23590604**, `Depot master governance`, is active and still targ
 
 Because live enforcement no longer matches the versioned contract, H1 is reopened until the five required checks are restored in GitHub and `scripts/operations/Test-RepositoryGovernance.ps1 -RequireActiveRuleset` passes again. Repository documentation and Track A evidence must not report H1 as `PASS` while this drift exists.
 
-## Required status checks
 ## Required status checks
 
 The following job names are the repository governance contract and must remain stable unless the ruleset is changed in the same controlled rollout:

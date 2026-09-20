@@ -134,6 +134,9 @@ public sealed class DocumentationBaselineConsistencyTests
 		var financeFoundation = File.ReadAllText(Path.Combine(root, "src", "Depot", "Help", "finance", "foundation.md"));
 		var receivables = File.ReadAllText(Path.Combine(root, "src", "Depot", "Help", "finance", "receivables.md"));
 		var generalLedger = File.ReadAllText(Path.Combine(root, "src", "Depot", "Help", "finance", "general-ledger.md"));
+		var trackA = File.ReadAllText(Path.Combine(root, "docs", "TrackAAcceptanceClosure.md"));
+		var securityRoadmap = File.ReadAllText(Path.Combine(root, "docs", "SecurityRoadmap.md"));
+		var repositoryGovernance = File.ReadAllText(Path.Combine(root, "docs", "RepositoryGovernance.md"));
 
 		Assert.Contains("H1 Repository Governance: `BLOCKED`", current, StringComparison.Ordinal);
 		Assert.Contains("H1 Repository Governance: `BLOCKED`", roadmap, StringComparison.Ordinal);
@@ -142,9 +145,14 @@ public sealed class DocumentationBaselineConsistencyTests
 		Assert.DoesNotContain("H1 and H2 are closed", current, StringComparison.Ordinal);
 		Assert.DoesNotContain("H1 closed on 2026-09-17", roadmap, StringComparison.Ordinal);
 		Assert.DoesNotContain("H1 repository governance — PASS with live active ruleset evidence", readiness, StringComparison.Ordinal);
+		Assert.Contains("| H1 – Repository Governance & Required Gates | Implemented | `BLOCKED`", trackA, StringComparison.Ordinal);
+		Assert.DoesNotContain("| H1 – Repository Governance & Required Gates | Implemented | `PASS`", trackA, StringComparison.Ordinal);
+		Assert.Contains("- [ ] H1 live repository-governance required-check binding restored and revalidated", securityRoadmap, StringComparison.Ordinal);
+		Assert.DoesNotContain("H1 live repository-governance activation/evidence is closed", securityRoadmap, StringComparison.Ordinal);
+		Assert.DoesNotContain("## Required status checks\n## Required status checks", repositoryGovernance, StringComparison.Ordinal);
 
 		Assert.Contains("## Subsequent productivity integration — Complete", uiStatus, StringComparison.Ordinal);
-		Assert.Contains("User Preferences schema **2**", uiStatus, StringComparison.Ordinal);
+		Assert.Contains($"User Preferences schema **{UserPreferenceSchemaMigration.CurrentVersion}**", uiStatus, StringComparison.Ordinal);
 		Assert.DoesNotContain("## Deliberately deferred", uiStatus, StringComparison.Ordinal);
 		Assert.Contains("## Historical follow-up boundary", uiPackages, StringComparison.Ordinal);
 		Assert.DoesNotContain("remain outside this rollout because they require persisted preference/state architecture", uiPackages, StringComparison.Ordinal);
