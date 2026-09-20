@@ -330,6 +330,7 @@ public sealed class WarehouseStructureViewModel : BaseViewModel, IDisposable
 				cancellationToken);
 			ReplaceStorageLocation(location);
 			SelectedStorageLocation = location;
+			await LoadLayoutAsync(SelectedWarehouse.Id, cancellationToken);
 			CompleteOperation(statusText: "Storage location saved.");
 			RequestEditorFocus();
 		}
@@ -349,6 +350,7 @@ public sealed class WarehouseStructureViewModel : BaseViewModel, IDisposable
 				cancellationToken);
 			ReplaceStorageLocation(location);
 			SelectedStorageLocation = location;
+			await LoadLayoutAsync(SelectedWarehouse.Id, cancellationToken);
 			CompleteOperation(statusText: location.IsActive ? "Storage location activated." : "Storage location deactivated.");
 		}
 		catch (Exception exception) when (exception is not OperationCanceledException) { FailOperation(exception, "Storage location status could not be changed."); }
