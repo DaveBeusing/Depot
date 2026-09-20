@@ -42,6 +42,21 @@ public sealed class FinanceFinancialReportingTests
 	}
 
 	[Fact]
+	public async Task ReportingMappingReadsAndWritesRespectPermissionBoundaries()
+	{
+		using var context = TestContext.Create();
+		var viewer = context.CreateReportingService(ApplicationPermission.FinanceFinancialReportingView);
+		_ = await viewer.GetMappingsAsync(context.BookId);
+		await Assert.ThrowsAsync<UnauthorizedAccessException>(() => viewer.GetAccountsAsync(context.BookId));
+		await Assert.ThrowsAsync<UnauthorizedAccessException>(() => viewer.SaveMappingAsync(new FinanceReportingAccountMapping
+		{
+			AccountingBookId = context.BookId,
+			AccountId = context.CashAccountId,
+			StatementSection = FinanceStatementSection.CurrentAssets
+		}));
+	}
+
+	[Fact]
 	public async Task TrialBalanceUsesLedgerReportingCurrencyAndHonorsCutoff()
 	{
 		using var context = TestContext.Create();
@@ -106,6 +121,34 @@ public sealed class FinanceFinancialReportingTests
 	}
 
 	[Fact]
+	public async Task IdenticalMappingSemanticsProduceIdenticalProfitLossReports()
+	{
+		using var context = TestContext.Create();
+		var mapping = await context.Reporting.SaveMappingAsync(new FinanceReportingAccountMapping
+		{
+			AccountingBookId = context.BookId,
+			AccountId = context.RevenueAccountId,
+			StatementSection = FinanceStatementSection.Revenue,
+			CashFlowCategory = FinanceCashFlowCategory.Operating,
+			SortOrder = 10
+		});
+		await context.PostAsync(new DateOnly(2026, 1, 10), 250m, "PARITY");
+		var parameters = new FinanceReportParameters
+		{
+			Kind = FinanceReportKind.ProfitLoss,
+			AccountingBookId = context.BookId,
+			FromDate = new DateOnly(2026, 1, 1),
+			ToDate = new DateOnly(2026, 1, 31)
+		};
+		var before = await context.Reporting.GenerateAsync(parameters);
+		await context.Reporting.SaveMappingAsync(mapping);
+		var after = await context.Reporting.GenerateAsync(parameters);
+
+		Assert.Equal(before.Rows, after.Rows);
+		Assert.Equal(before.Warnings, after.Warnings);
+	}
+
+	[Fact]
 	public async Task SnapshotIsIdempotentContentBoundAndCsvExportIsDeterministic()
 	{
 		using var context = TestContext.Create();
@@ -142,12 +185,13 @@ public sealed class FinanceFinancialReportingTests
 		private readonly Guid _periodId;
 		private readonly Guid _journalId;
 
-		private TestContext(string path, DatabaseAccess database, FinanceGeneralLedgerService generalLedger, FinanceFinancialReportingService reporting, Guid bookId, Guid periodId, Guid journalId, Guid cashAccountId, Guid revenueAccountId)
+		private TestContext(string path, DatabaseAccess database, FinanceGeneralLedgerService generalLedger, FinanceFinancialReportingService reporting, long userId, Guid bookId, Guid periodId, Guid journalId, Guid cashAccountId, Guid revenueAccountId)
 		{
 			_path = path;
 			_database = database;
 			_generalLedger = generalLedger;
 			Reporting = reporting;
+			UserId = userId;
 			BookId = bookId;
 			_periodId = periodId;
 			_journalId = journalId;
@@ -156,6 +200,7 @@ public sealed class FinanceFinancialReportingTests
 		}
 
 		public FinanceFinancialReportingService Reporting { get; }
+		public long UserId { get; }
 		public Guid BookId { get; }
 		public Guid CashAccountId { get; }
 		public Guid RevenueAccountId { get; }
@@ -209,7 +254,20 @@ public sealed class FinanceFinancialReportingTests
 			var receivables = new FinanceAccountsReceivableService(transactions, new FinanceAccountsReceivableRepository(database), generalLedger, auditRepository, audit, authorization);
 			var payables = new FinanceAccountsPayableService(transactions, new FinanceAccountsPayableRepository(database), generalLedger, auditRepository, audit, authorization);
 			var reporting = new FinanceFinancialReportingService(transactions, new FinanceFinancialReportingRepository(database), new FinanceFinancialReportingInventoryRepository(database), receivables, payables, auditRepository, audit, authorization);
-			return new TestContext(path, database, generalLedger, reporting, bookId, periodId, journalId, cashAccountId, revenueAccountId);
+			return new TestContext(path, database, generalLedger, reporting, userId, bookId, periodId, journalId, cashAccountId, revenueAccountId);
+		}
+
+		public FinanceFinancialReportingService CreateReportingService(params ApplicationPermission[] permissions)
+		{
+			var authorization = new AuthorizationService();
+			authorization.SignIn(new User { Id = UserId, Email = "reporting@depot.test", DisplayName = "Reporting", IsActive = true }, permissions);
+			var auditRepository = new AuditRepository(_database);
+			var audit = new AuditService(auditRepository, authorization);
+			var transactions = new DatabaseTransactionRunner(_database);
+			var generalLedger = new FinanceGeneralLedgerService(transactions, new FinanceGeneralLedgerRepository(_database), new FinancePostingProfileRepository(_database), auditRepository, audit, authorization);
+			var receivables = new FinanceAccountsReceivableService(transactions, new FinanceAccountsReceivableRepository(_database), generalLedger, auditRepository, audit, authorization);
+			var payables = new FinanceAccountsPayableService(transactions, new FinanceAccountsPayableRepository(_database), generalLedger, auditRepository, audit, authorization);
+			return new FinanceFinancialReportingService(transactions, new FinanceFinancialReportingRepository(_database), new FinanceFinancialReportingInventoryRepository(_database), receivables, payables, auditRepository, audit, authorization);
 		}
 
 		public Task<FinanceJournalEntry> PostAsync(DateOnly postingDate, decimal amount, string sourceId) => _generalLedger.PostAsync(new FinancePostingRequest

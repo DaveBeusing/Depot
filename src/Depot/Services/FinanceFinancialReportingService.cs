@@ -284,22 +284,8 @@ public sealed class FinanceFinancialReportingService
 	private static FinanceReportResult Result(FinanceReportParameters parameters, FinanceReportingBookRecord book, IReadOnlyList<FinanceReportRow> rows, IReadOnlyList<string> warnings, DateTime generatedAt) => new() { Parameters = parameters, ReportingCurrency = book.ReportingCurrency, Rows = rows, Warnings = warnings, GeneratedAtUtc = generatedAt };
 	private static FinanceStatementSection DefaultSection(FinanceAccountType type) => type switch { FinanceAccountType.Asset => FinanceStatementSection.CurrentAssets, FinanceAccountType.Liability => FinanceStatementSection.CurrentLiabilities, FinanceAccountType.Equity => FinanceStatementSection.Equity, FinanceAccountType.Revenue => FinanceStatementSection.Revenue, FinanceAccountType.Expense => FinanceStatementSection.OperatingExpenses, _ => FinanceStatementSection.Unclassified };
 
-	private static void ValidateMapping(FinanceReportingAccountMapping mapping, FinanceReportingAccountRecord account)
-	{
-		if (!account.IsActive && mapping.IsActive) throw new InvalidOperationException("An inactive account cannot have an active reporting mapping.");
-		if (mapping.IsCashAccount && mapping.CashFlowCategory != FinanceCashFlowCategory.None) throw new InvalidOperationException("Cash accounts must not classify themselves as operating, investing or financing counterpart accounts.");
-		if (mapping.IsCostOfGoodsSold && account.AccountType != FinanceAccountType.Expense) throw new InvalidOperationException("Cost of Goods Sold mapping requires an expense account.");
-		var validSection = mapping.StatementSection == FinanceStatementSection.Unclassified || account.AccountType switch
-		{
-			FinanceAccountType.Asset => mapping.StatementSection is FinanceStatementSection.CurrentAssets or FinanceStatementSection.NonCurrentAssets,
-			FinanceAccountType.Liability => mapping.StatementSection is FinanceStatementSection.CurrentLiabilities or FinanceStatementSection.NonCurrentLiabilities,
-			FinanceAccountType.Equity => mapping.StatementSection == FinanceStatementSection.Equity,
-			FinanceAccountType.Revenue => mapping.StatementSection is FinanceStatementSection.Revenue or FinanceStatementSection.OtherIncomeExpense,
-			FinanceAccountType.Expense => mapping.StatementSection is FinanceStatementSection.CostOfGoodsSold or FinanceStatementSection.OperatingExpenses or FinanceStatementSection.OtherIncomeExpense,
-			_ => false
-		};
-		if (!validSection) throw new InvalidOperationException("Financial-statement section is incompatible with the account type.");
-	}
+	private static void ValidateMapping(FinanceReportingAccountMapping mapping, FinanceReportingAccountRecord account) =>
+		FinanceReportingMappingValidator.ThrowIfInvalid(mapping, account);
 
 	private static void ValidateParameters(FinanceReportParameters value)
 	{
