@@ -107,6 +107,7 @@ public sealed class DashboardViewModel : BaseViewModel, IDisposable
 	public async Task LoadAsync(CancellationToken cancellationToken = default)
 	{
 		var request = _loadRequest.Begin(cancellationToken);
+		var progress = new HomeProgressiveLoadTrace();
 		BeginOperation("Loading home");
 		if (request.IsCurrent)
 		{
@@ -115,37 +116,66 @@ public sealed class DashboardViewModel : BaseViewModel, IDisposable
 		}
 		try
 		{
-			var dashboardTask = _dashboardService.GetAsync(request.Token);
-			var myWorkTask = _myWorkService.GetAsync(request.Token);
-			await Task.WhenAll(dashboardTask, myWorkTask);
+			var dashboardApplyTask = ApplyDashboardWhenReadyAsync(_dashboardService.GetAsync(request.Token), request, progress);
+			var myWorkApplyTask = ApplyMyWorkWhenReadyAsync(_myWorkService.GetAsync(request.Token), request, progress);
+			await Task.WhenAll(dashboardApplyTask, myWorkApplyTask);
 			if (!request.IsCurrent) return;
-			var result = await dashboardTask;
-			var data = result.Inventory;
-			var summary = data?.Summary ?? new DashboardSummary();
-			HasCoreInventoryMetrics = data is not null;
-			OnPropertyChanged(nameof(HasCoreInventoryMetrics));
-			OnPropertyChanged(nameof(HasReportsAccess));
-			TotalItems = summary.TotalItems;
-			TotalStockQuantity = summary.TotalStockQuantity;
-			TotalInventoryValue = summary.TotalInventoryValue;
-			TotalMovements = summary.TotalMovements;
-			CollectionSynchronizer.Replace(RecentMovements, data?.RecentMovements.Select(movement => new DashboardRecentMovementViewModel(movement)).ToArray() ?? []);
-			ApprovalSummary = result.Roles.Approvals;
-			PurchasingMetrics = result.Roles.Purchasing;
-			WarehouseMetrics = result.Roles.Warehouse;
-			SalesMetrics = result.Roles.Sales;
-			AdministrationMetrics = result.Roles.Administration;
-			ApplyMyWork(await myWorkTask);
 			BuildAdaptiveKpis();
 			BuildHomeQuickActions();
-			OnPropertyChanged(nameof(HasRecentMovements));
-			OnPropertyChanged(nameof(HasNoRecentMovements));
 			CompleteOperation(RecentMovements.Count == 0, "Home loaded");
 		}
-		catch (OperationCanceledException) when (request.Token.IsCancellationRequested) { if (request.IsCurrent) CompleteOperation(RecentMovements.Count == 0); }
+		catch (OperationCanceledException) when (request.Token.IsCancellationRequested)
+		{
+			if (request.IsCurrent) CompleteOperation(RecentMovements.Count == 0);
+		}
 		catch (Exception) when (!request.IsCurrent) { }
 		catch (Exception exception) { FailOperation(exception, "Home could not be loaded"); }
 		finally { if (request.IsCurrent) IsMyWorkLoading = false; }
+	}
+
+	private async Task ApplyDashboardWhenReadyAsync(
+		Task<(DashboardData? Inventory, DashboardRoleMetrics Roles)> dashboardTask,
+		LatestRequestLease request,
+		HomeProgressiveLoadTrace progress)
+	{
+		var result = await dashboardTask;
+		if (!request.IsCurrent) return;
+
+		var data = result.Inventory;
+		var summary = data?.Summary ?? new DashboardSummary();
+		HasCoreInventoryMetrics = data is not null;
+		OnPropertyChanged(nameof(HasCoreInventoryMetrics));
+		OnPropertyChanged(nameof(HasReportsAccess));
+		TotalItems = summary.TotalItems;
+		TotalStockQuantity = summary.TotalStockQuantity;
+		TotalInventoryValue = summary.TotalInventoryValue;
+		TotalMovements = summary.TotalMovements;
+		CollectionSynchronizer.Replace(RecentMovements, data?.RecentMovements.Select(movement => new DashboardRecentMovementViewModel(movement)).ToArray() ?? []);
+		ApprovalSummary = result.Roles.Approvals;
+		PurchasingMetrics = result.Roles.Purchasing;
+		WarehouseMetrics = result.Roles.Warehouse;
+		SalesMetrics = result.Roles.Sales;
+		AdministrationMetrics = result.Roles.Administration;
+		BuildAdaptiveKpis();
+		BuildHomeQuickActions();
+		OnPropertyChanged(nameof(HasRecentMovements));
+		OnPropertyChanged(nameof(HasNoRecentMovements));
+		progress.RecordFirstContent("dashboard");
+		UpdateOperationStatus("Home content is loading...");
+	}
+
+	private async Task ApplyMyWorkWhenReadyAsync(
+		Task<MyWorkSnapshot> myWorkTask,
+		LatestRequestLease request,
+		HomeProgressiveLoadTrace progress)
+	{
+		var snapshot = await myWorkTask;
+		if (!request.IsCurrent) return;
+		ApplyMyWork(snapshot);
+		BuildAdaptiveKpis();
+		BuildHomeQuickActions();
+		progress.RecordFirstContent("my-work");
+		UpdateOperationStatus("Home content is loading...");
 	}
 
 	public async Task RefreshMyWorkAsync(CancellationToken cancellationToken = default)

@@ -1,6 +1,7 @@
 // Copyright (c) 2026 David Beusing
 // Licensed under the MIT License.
 
+using Depot.Diagnostics;
 using Depot.Models;
 
 namespace Depot.Services;
@@ -43,8 +44,10 @@ public sealed class MyWorkService
 
 		cancellationToken.ThrowIfCancellationRequested();
 		var query = new MyWorkQuery(user.Id, DateTime.UtcNow, ProviderItemLimit);
-		var eligible = _providers.Where(provider => provider.CanQuery(_authorization)).ToArray();
-		var results = await Task.WhenAll(eligible.Select(provider => LoadProviderAsync(provider, query, cancellationToken)));
+		var providerStates = _providers.Select(provider => (Provider: provider, Eligible: provider.CanQuery(_authorization))).ToArray();
+		foreach (var state in providerStates.Where(state => !state.Eligible))
+			MyWorkPerformanceDiagnostics.Write(MyWorkPerformanceDiagnostics.MeasureIneligible(state.Provider.Name));
+		var results = await Task.WhenAll(providerStates.Where(state => state.Eligible).Select(state => LoadProviderAsync(state.Provider, query, cancellationToken)));
 
 		var items = results
 			.SelectMany(result => result.Items)
@@ -65,16 +68,25 @@ public sealed class MyWorkService
 	{
 		try
 		{
-			var items = await provider.GetAsync(query, cancellationToken);
-			return new ProviderResult(items.Take(query.ProviderLimit * 5).ToArray(), null);
+			var measured = await MyWorkPerformanceDiagnostics.MeasureAsync(
+				provider.Name,
+				() => provider.GetAsync(query, cancellationToken),
+				items => items.Count);
+			MyWorkPerformanceDiagnostics.Write(measured.Measurement);
+			return new ProviderResult(measured.Result.Take(query.ProviderLimit * 5).ToArray(), null);
 		}
 		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
 		{
 			throw;
 		}
-		catch (Exception exception)
+		catch (MyWorkPerformanceDiagnostics.MyWorkProviderMeasurementException exception)
 		{
-			return new ProviderResult([], new MyWorkProviderFailure(provider.Name, exception.Message));
+			MyWorkPerformanceDiagnostics.Write(exception.Measurement);
+			return new ProviderResult([], new MyWorkProviderFailure(provider.Name, "The work source could not be loaded."));
+		}
+		catch (Exception)
+		{
+			return new ProviderResult([], new MyWorkProviderFailure(provider.Name, "The work source could not be loaded."));
 		}
 	}
 

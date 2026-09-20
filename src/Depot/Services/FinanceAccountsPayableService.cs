@@ -91,6 +91,17 @@ public sealed class FinanceAccountsPayableService
 		return _payables.SearchDocumentsAsync(null, FinancePayableDocumentStatus.PendingApproval, pageNumber, pageSize, cancellationToken);
 	}
 
+	public Task<IReadOnlyList<FinancePayablesMyWorkDocument>> GetMyWorkDocumentsAsync(
+		FinancePayableDocumentStatus status,
+		int count,
+		CancellationToken cancellationToken = default)
+	{
+		_authorization.RequirePermission(ApplicationPermission.FinancePayablesView);
+		if (count is < 1 or > MyWorkService.ProviderItemLimit)
+			throw new ArgumentOutOfRangeException(nameof(count));
+		return _payables.SearchMyWorkDocumentsAsync(status, count, cancellationToken);
+	}
+
 	public Task<FinanceSupplierDocument?> GetDocumentAsync(long id, CancellationToken cancellationToken = default)
 	{
 		_authorization.RequirePermission(ApplicationPermission.FinancePayablesView);

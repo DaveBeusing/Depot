@@ -88,11 +88,11 @@ internal sealed class ServiceComposition
 		Sales = new SalesServices(Customers, SalesPricing, SalesTimeline, SalesOrders, SalesQuotes, Shipments, ShipmentPacking, SalesInvoices, CustomerReturns, SalesCreditNotes, Items, Authorization, SalesDocuments, SalesEmail, SalesInvoiceFinalizations, ItemCosts, PriceListGeneration);
 		MyWork = new MyWorkService(Authorization,
 		[
-			new PurchasingMyWorkProvider(PurchaseOrders, PurchaseOrderApprovals, Authorization),
-			new SalesMyWorkProvider(SalesOrders, Shipments, Authorization),
-			new InventoryCountMyWorkProvider(InventoryCounts, Authorization),
+			new PurchasingMyWorkProvider(PurchaseOrders, PurchaseOrderApprovals, repositories.MyWork, Authorization),
+			new SalesMyWorkProvider(SalesOrders, Shipments, repositories.MyWork, Authorization),
+			new InventoryCountMyWorkProvider(repositories.MyWork, Authorization),
 			new ReceivablesMyWorkProvider(AccountsReceivable, Authorization),
-			new PayablesMyWorkProvider(AccountsPayable, Authorization),
+			new PayablesMyWorkProvider(AccountsPayable, repositories.MyWork, Authorization),
 			new BankingMyWorkProvider(Banking, Authorization)
 		]);
 		CommercialRoleCenters = new CommercialRoleCenterService(
