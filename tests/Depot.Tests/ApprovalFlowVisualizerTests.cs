@@ -81,6 +81,8 @@ public sealed class ApprovalFlowVisualizerTests
 		var completedFlow = ApprovalFlowProjectionService.ProjectSalesOrder(completed, false, false, false);
 
 		Assert.Equal(WorkflowTimelineVisualState.Cancelled, Assert.Single(cancelledFlow.Steps, step => step.Status == "Cancelled").VisualState);
+		Assert.Contains(cancelledFlow.Steps, step => step.Title == "Approval decision" && step.Status == "Not reached" && step.VisualState == WorkflowTimelineVisualState.Pending);
+		Assert.Contains(cancelledFlow.Steps, step => step.Title == "Release" && step.Status == "Not reached" && step.VisualState == WorkflowTimelineVisualState.Pending);
 		Assert.Contains(completedFlow.Steps, step => step.Title == "Approval decision" && step.VisualState == WorkflowTimelineVisualState.Completed);
 		Assert.Contains(completedFlow.Steps, step => step.Title == "Release" && step.VisualState == WorkflowTimelineVisualState.Completed);
 	}
@@ -131,6 +133,7 @@ public sealed class ApprovalFlowVisualizerTests
 		var executable = ApprovalFlowProjectionService.ProjectPaymentRun(approved, canApprove: false, canExecute: true);
 
 		Assert.Equal(PermissionCatalog.Code(ApplicationPermission.FinancePaymentProposalsApprove), blocked.RequiredPermission);
+		Assert.Equal(WorkflowTimelineVisualState.Current, Assert.Single(blocked.Steps, step => step.Title == "Approval decision").VisualState);
 		Assert.Contains("not available", blocked.NextActions, StringComparison.OrdinalIgnoreCase);
 		Assert.Contains("does not expose a payment-proposal rejection operation", blocked.SeparationOfDuties, StringComparison.Ordinal);
 		Assert.Equal(PermissionCatalog.Code(ApplicationPermission.FinancePaymentRunsPost), executable.RequiredPermission);

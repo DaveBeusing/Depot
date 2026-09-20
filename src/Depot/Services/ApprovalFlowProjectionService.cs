@@ -13,6 +13,7 @@ public static class ApprovalFlowProjectionService
 		var status = order.Status;
 		var progressedPastApproval = status is PurchaseOrderStatus.Approved or PurchaseOrderStatus.Ordered or PurchaseOrderStatus.PartiallyReceived or PurchaseOrderStatus.Received or PurchaseOrderStatus.Closed;
 		var progressedPastOrder = status is PurchaseOrderStatus.Ordered or PurchaseOrderStatus.PartiallyReceived or PurchaseOrderStatus.Received or PurchaseOrderStatus.Closed;
+		var hasApprovalDecision = order.ApprovalDecisionAtUtc is not null;
 		var steps = new List<WorkflowTimelineItem>
 		{
 			Step(WorkflowTimelineKind.PurchaseOrder, order.Id, order.OrderNumber, "Draft", "Draft", order.OrderDate, status == PurchaseOrderStatus.Draft, false, actor: order.CreatedByUserDisplay ?? User(order.CreatedByUserId), requiredPermission: PermissionCatalog.Code(ApplicationPermission.PurchaseOrdersSubmit)),
@@ -22,9 +23,10 @@ public static class ApprovalFlowProjectionService
 				PurchaseOrderStatus.Rejected => "Rejected",
 				PurchaseOrderStatus.PendingApproval => "Pending Approval",
 				_ when progressedPastApproval => "Approved",
+				PurchaseOrderStatus.Cancelled when hasApprovalDecision => "Decision recorded",
 				_ => "Not reached"
-			}, order.ApprovalDecisionAtUtc, status is PurchaseOrderStatus.PendingApproval or PurchaseOrderStatus.Rejected, status == PurchaseOrderStatus.Draft, status == PurchaseOrderStatus.Rejected ? WorkflowTimelineSeverity.Error : WorkflowTimelineSeverity.Normal, actor: order.ApprovalDecisionByUserDisplay ?? User(order.ApprovalDecisionByUserId), detail: order.ApprovalComment, requiredPermission: PermissionCatalog.Code(ApplicationPermission.PurchaseOrdersApprove)),
-			Step(WorkflowTimelineKind.PurchaseOrdered, order.Id, order.OrderNumber, "Order placement", progressedPastOrder ? status.ToString() : "Not reached", null, status == PurchaseOrderStatus.Approved, status is PurchaseOrderStatus.Draft or PurchaseOrderStatus.PendingApproval, requiredPermission: PermissionCatalog.Code(ApplicationPermission.PurchaseOrdersOrder))
+			}, order.ApprovalDecisionAtUtc, status is PurchaseOrderStatus.PendingApproval or PurchaseOrderStatus.Rejected, status == PurchaseOrderStatus.Draft || (status == PurchaseOrderStatus.Cancelled && !hasApprovalDecision), status == PurchaseOrderStatus.Rejected ? WorkflowTimelineSeverity.Error : WorkflowTimelineSeverity.Normal, actor: order.ApprovalDecisionByUserDisplay ?? User(order.ApprovalDecisionByUserId), detail: order.ApprovalComment, requiredPermission: PermissionCatalog.Code(ApplicationPermission.PurchaseOrdersApprove)),
+			Step(WorkflowTimelineKind.PurchaseOrdered, order.Id, order.OrderNumber, "Order placement", progressedPastOrder ? status.ToString() : "Not reached", null, status == PurchaseOrderStatus.Approved, !progressedPastOrder && status != PurchaseOrderStatus.Approved, requiredPermission: PermissionCatalog.Code(ApplicationPermission.PurchaseOrdersOrder))
 		};
 		if (status == PurchaseOrderStatus.Cancelled)
 			steps.Add(Step(WorkflowTimelineKind.PurchaseOrder, order.Id, order.OrderNumber, "Order cancelled", "Cancelled", order.ClosedAtUtc, true, false, WorkflowTimelineSeverity.Error));
@@ -57,6 +59,7 @@ public static class ApprovalFlowProjectionService
 		var status = order.Status;
 		var approved = status is SalesOrderStatus.Approved or SalesOrderStatus.Released or SalesOrderStatus.PartiallyShipped or SalesOrderStatus.Shipped or SalesOrderStatus.Completed;
 		var released = status is SalesOrderStatus.Released or SalesOrderStatus.PartiallyShipped or SalesOrderStatus.Shipped or SalesOrderStatus.Completed;
+		var hasApprovalDecision = order.ApprovalDecisionAtUtc is not null;
 		var steps = new List<WorkflowTimelineItem>
 		{
 			Step(WorkflowTimelineKind.SalesOrder, order.Id, order.OrderNumber, "Draft", "Draft", order.OrderDate, status == SalesOrderStatus.Draft, false, actor: User(order.CreatedByUserId), requiredPermission: PermissionCatalog.Code(ApplicationPermission.SalesOrdersSubmit)),
@@ -66,9 +69,10 @@ public static class ApprovalFlowProjectionService
 				SalesOrderStatus.Rejected => "Rejected",
 				SalesOrderStatus.PendingApproval => "Pending Approval",
 				_ when approved => "Approved",
+				SalesOrderStatus.Cancelled when hasApprovalDecision => "Decision recorded",
 				_ => "Not reached"
-			}, order.ApprovalDecisionAtUtc, status is SalesOrderStatus.PendingApproval or SalesOrderStatus.Rejected, status == SalesOrderStatus.Draft, status == SalesOrderStatus.Rejected ? WorkflowTimelineSeverity.Error : WorkflowTimelineSeverity.Normal, actor: User(order.ApprovalDecisionByUserId), detail: order.ApprovalComment, requiredPermission: PermissionCatalog.Code(ApplicationPermission.SalesOrdersApprove)),
-			Step(WorkflowTimelineKind.ReservationRelease, order.Id, order.OrderNumber, "Release", released ? status.ToString() : "Not reached", order.ReleasedAtUtc, status == SalesOrderStatus.Approved, status is SalesOrderStatus.Draft or SalesOrderStatus.PendingApproval, actor: User(order.ReleasedByUserId), requiredPermission: PermissionCatalog.Code(ApplicationPermission.SalesOrdersRelease))
+			}, order.ApprovalDecisionAtUtc, status is SalesOrderStatus.PendingApproval or SalesOrderStatus.Rejected, status == SalesOrderStatus.Draft || (status == SalesOrderStatus.Cancelled && !hasApprovalDecision), status == SalesOrderStatus.Rejected ? WorkflowTimelineSeverity.Error : WorkflowTimelineSeverity.Normal, actor: User(order.ApprovalDecisionByUserId), detail: order.ApprovalComment, requiredPermission: PermissionCatalog.Code(ApplicationPermission.SalesOrdersApprove)),
+			Step(WorkflowTimelineKind.ReservationRelease, order.Id, order.OrderNumber, "Release", released ? status.ToString() : "Not reached", order.ReleasedAtUtc, status == SalesOrderStatus.Approved, !released && status != SalesOrderStatus.Approved, actor: User(order.ReleasedByUserId), requiredPermission: PermissionCatalog.Code(ApplicationPermission.SalesOrdersRelease))
 		};
 		if (status == SalesOrderStatus.Cancelled)
 			steps.Add(Step(WorkflowTimelineKind.SalesOrder, order.Id, order.OrderNumber, "Order cancelled", "Cancelled", order.CancelledAtUtc, true, false, WorkflowTimelineSeverity.Error, actor: User(order.CancelledByUserId), detail: order.CancelReason));
@@ -111,7 +115,7 @@ public static class ApprovalFlowProjectionService
 				_ when approved => "Approved",
 				_ => "Not reached"
 			}, document.ApprovalDecisionAtUtc, status is FinancePayableDocumentStatus.PendingApproval or FinancePayableDocumentStatus.Rejected, status == FinancePayableDocumentStatus.Draft, status == FinancePayableDocumentStatus.Rejected ? WorkflowTimelineSeverity.Error : WorkflowTimelineSeverity.Normal, actor: User(document.ApprovalDecisionByUserId), detail: document.ApprovalComment, requiredPermission: PermissionCatalog.Code(ApplicationPermission.FinanceSupplierInvoicesApprove)),
-			Step(WorkflowTimelineKind.Payable, document.Id, document.SupplierDocumentNumber, "Posting", status is FinancePayableDocumentStatus.Posted or FinancePayableDocumentStatus.Reversed ? status.ToString() : "Not reached", document.PostedAtUtc, status == FinancePayableDocumentStatus.Approved, status is FinancePayableDocumentStatus.Draft or FinancePayableDocumentStatus.PendingApproval, actor: User(document.PostedByUserId), requiredPermission: PermissionCatalog.Code(ApplicationPermission.FinanceSupplierInvoicesPost))
+			Step(WorkflowTimelineKind.Payable, document.Id, document.SupplierDocumentNumber, "Posting", status is FinancePayableDocumentStatus.Posted or FinancePayableDocumentStatus.Reversed ? status.ToString() : "Not reached", document.PostedAtUtc, status == FinancePayableDocumentStatus.Approved, status is FinancePayableDocumentStatus.Draft or FinancePayableDocumentStatus.PendingApproval or FinancePayableDocumentStatus.Rejected, actor: User(document.PostedByUserId), requiredPermission: PermissionCatalog.Code(ApplicationPermission.FinanceSupplierInvoicesPost))
 		};
 		if (status == FinancePayableDocumentStatus.Reversed)
 			steps.Add(Step(WorkflowTimelineKind.SupplierDocumentReversal, document.Id, document.SupplierDocumentNumber, "Reversal", "Reversed", document.ReversedAtUtc, true, false, WorkflowTimelineSeverity.Warning, isReversal: true, actor: User(document.ReversedByUserId)));
@@ -143,12 +147,15 @@ public static class ApprovalFlowProjectionService
 		ArgumentNullException.ThrowIfNull(run);
 		var status = run.Status;
 		var approved = status is FinancePaymentRunStatus.Approved or FinancePaymentRunStatus.PartiallyExecuted or FinancePaymentRunStatus.Executed;
+		var approvalRecorded = approved || run.ApprovedAtUtc is not null;
 		var steps = new List<WorkflowTimelineItem>
 		{
 			Step(WorkflowTimelineKind.PaymentProposal, run.Id, $"Payment run {run.Id}", "Proposal created", "Draft", run.CreatedAtUtc, status == FinancePaymentRunStatus.Draft, false, actor: User(run.CreatedByUserId), requiredPermission: PermissionCatalog.Code(ApplicationPermission.FinancePaymentProposalsCreate)),
-			Step(WorkflowTimelineKind.PaymentProposal, run.Id, $"Payment run {run.Id}", "Approval decision", approved ? "Approved" : status == FinancePaymentRunStatus.Cancelled ? "Cancelled" : "Pending Approval", run.ApprovedAtUtc, status == FinancePaymentRunStatus.Draft, false, status == FinancePaymentRunStatus.Cancelled ? WorkflowTimelineSeverity.Error : WorkflowTimelineSeverity.Normal, actor: User(run.ApprovedByUserId), detail: run.ApprovalComment, requiredPermission: PermissionCatalog.Code(ApplicationPermission.FinancePaymentProposalsApprove)),
-			Step(WorkflowTimelineKind.PaymentExecution, run.Id, $"Payment run {run.Id}", "Execution", status is FinancePaymentRunStatus.PartiallyExecuted or FinancePaymentRunStatus.Executed ? status.ToString() : "Not reached", run.CompletedAtUtc, status == FinancePaymentRunStatus.Approved, status == FinancePaymentRunStatus.Draft, requiredPermission: PermissionCatalog.Code(ApplicationPermission.FinancePaymentRunsPost))
+			Step(WorkflowTimelineKind.PaymentProposal, run.Id, $"Payment run {run.Id}", "Approval decision", approvalRecorded ? "Approved" : status == FinancePaymentRunStatus.Draft ? "Pending Approval" : "Not reached", run.ApprovedAtUtc, status == FinancePaymentRunStatus.Draft, status == FinancePaymentRunStatus.Cancelled && !approvalRecorded, actor: User(run.ApprovedByUserId), detail: run.ApprovalComment, requiredPermission: PermissionCatalog.Code(ApplicationPermission.FinancePaymentProposalsApprove)),
+			Step(WorkflowTimelineKind.PaymentExecution, run.Id, $"Payment run {run.Id}", "Execution", status is FinancePaymentRunStatus.PartiallyExecuted or FinancePaymentRunStatus.Executed ? status.ToString() : "Not reached", run.CompletedAtUtc, status is FinancePaymentRunStatus.Approved or FinancePaymentRunStatus.PartiallyExecuted, status is FinancePaymentRunStatus.Draft or FinancePaymentRunStatus.Cancelled, requiredPermission: PermissionCatalog.Code(ApplicationPermission.FinancePaymentRunsPost))
 		};
+		if (status == FinancePaymentRunStatus.Cancelled)
+			steps.Add(Step(WorkflowTimelineKind.PaymentProposal, run.Id, $"Payment run {run.Id}", "Proposal cancelled", "Cancelled", null, true, false, WorkflowTimelineSeverity.Error));
 
 		return new ApprovalFlowProjection
 		{
