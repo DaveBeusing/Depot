@@ -64,9 +64,13 @@ public class ShellNavigationItem : IDisposable
 		? _loadState.ActivateAsync(token => _loadAsync(Content, token), cancellationToken)
 		: _loadAsync(Content, cancellationToken);
 
-	public Task RefreshAsync(CancellationToken cancellationToken = default) => _ownsLoadState
-		? _loadState.RefreshAsync(token => _loadAsync(Content, token), cancellationToken)
-		: (_refreshAsync ?? _loadAsync)(Content, cancellationToken);
+	public Task RefreshAsync(CancellationToken cancellationToken = default)
+	{
+		var refreshAsync = _refreshAsync ?? _loadAsync;
+		return _ownsLoadState
+			? _loadState.RefreshAsync(token => refreshAsync(Content, token), cancellationToken)
+			: refreshAsync(Content, cancellationToken);
+	}
 
 	public void MarkStale() => _loadState.MarkStale();
 

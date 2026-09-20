@@ -118,6 +118,26 @@ public sealed class NavigationLifecycleTests
 	}
 
 	[Fact]
+	public async Task ShellItemRefreshUsesDedicatedRefreshDelegateWithOwnedLoadState()
+	{
+		var loads = 0;
+		var refreshes = 0;
+		using var item = new ShellNavigationItem(
+			"Refreshable",
+			string.Empty,
+			() => new StubViewModel(),
+			(_, _) => { loads++; return Task.CompletedTask; },
+			"refreshable",
+			refreshAsync: (_, _) => { refreshes++; return Task.CompletedTask; });
+
+		await item.ActivateAsync();
+		await item.RefreshAsync();
+
+		Assert.Equal(1, loads);
+		Assert.Equal(1, refreshes);
+	}
+
+	[Fact]
 	public async Task CancelledFirstLoadRemainsNotLoadedAndCanBeRetried()
 	{
 		var loads = 0;
