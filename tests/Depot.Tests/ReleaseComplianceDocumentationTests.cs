@@ -77,6 +77,8 @@ public sealed class ReleaseComplianceDocumentationTests
 		var databaseMatrix = Read(root, "docs", "DatabaseProviderSupportMatrix.md");
 		Assert.Contains("## Depot 1.0 accepted baselines", databaseMatrix, StringComparison.Ordinal);
 		Assert.DoesNotContain("## Depot 1.0 certification baselines", databaseMatrix, StringComparison.Ordinal);
+		Assert.DoesNotContain("implicitly certified", databaseMatrix, StringComparison.OrdinalIgnoreCase);
+		Assert.DoesNotContain("certification environment", databaseMatrix, StringComparison.OrdinalIgnoreCase);
 
 		foreach (var supportLevel in new[]
 		{

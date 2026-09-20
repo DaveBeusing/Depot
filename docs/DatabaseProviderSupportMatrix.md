@@ -11,13 +11,13 @@ Depot does not treat provider-neutral SQL generation, successful compilation, or
 | Provider | Accepted baseline | Provisioning / migration | Finance and business workflows | Concurrency / retry | Recovery | Performance | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | SQLite | SQLite runtime bundled with the Depot release through `Microsoft.Data.Sqlite` | Fresh provisioning, idempotent provisioning, Core 29→30 and Sales 10→11 acceptance | Sales, Procurement, sessions, GL, AR, AP, FIFO/inventory accounting, Banking/reconciliation and Financial Reporting/snapshots | Immediate write transactions, rollback, constraints and concurrent mutation acceptance | Depot-managed SQLite backup/reopen boundary | 100k indexed lookup regression | **Supported** |
-| SQL Server | SQL Server 2022, engine 16.x; certification environment uses SQL Server 2022 Express | Real Windows server, Core 29→30, Sales 10→11, concurrent provisioning | Sales, Procurement, sessions, GL, AR, AP, FIFO/inventory accounting, Banking/reconciliation and Financial Reporting/snapshots | Serializable transactions, provider locks, controlled deadlock/retry and non-transient no-retry | Native `BACKUP DATABASE` / `RESTORE DATABASE`, restart and Depot re-entry | 100k indexed lookup regression | **Supported** |
+| SQL Server | SQL Server 2022, engine 16.x; acceptance environment uses SQL Server 2022 Express | Real Windows server, Core 29→30, Sales 10→11, concurrent provisioning | Sales, Procurement, sessions, GL, AR, AP, FIFO/inventory accounting, Banking/reconciliation and Financial Reporting/snapshots | Serializable transactions, provider locks, controlled deadlock/retry and non-transient no-retry | Native `BACKUP DATABASE` / `RESTORE DATABASE`, restart and Depot re-entry | 100k indexed lookup regression | **Supported** |
 | MariaDB | MariaDB **11.8.9** LTS | Real Windows server, Core 29→30, Sales 10→11, concurrent provisioning | Sales, Procurement, sessions, GL, AR, AP, FIFO/inventory accounting, Banking/reconciliation and Financial Reporting/snapshots | InnoDB serializable transactions, `FOR UPDATE`, transient write-conflict/deadlock retry and non-transient no-retry | `mariadb-dump` / `mariadb` restore, restart and Depot re-entry | 100k indexed lookup regression | **Supported** |
 | MySQL | MySQL **8.4.11** LTS | Real Windows server, Core 29→30, Sales 10→11, concurrent provisioning | Sales, Procurement, sessions, GL, AR, AP, FIFO/inventory accounting, Banking/reconciliation and Financial Reporting/snapshots | InnoDB serializable transactions, `FOR UPDATE`, deadlock retry and non-transient no-retry | `mysqldump` / `mysql` restore, restart and Depot re-entry | 100k indexed lookup regression | **Supported** |
 
-Support applies to the listed baseline and the Depot release that carries the corresponding green full provider workflow. Newer or older server versions are not implicitly certified merely because they belong to the same product family.
+Support applies to the listed baseline and the Depot release that carries the corresponding green full provider workflow. Newer or older server versions are not implicitly supported merely because they belong to the same product family.
 
-SQL Server editions share the same engine line for the database behavior used by Depot, but CI acceptance is executed on SQL Server 2022 Express. Edition-specific capabilities that Depot does not exercise are outside this certification.
+SQL Server editions share the same engine line for the database behavior used by Depot, but CI acceptance is executed on SQL Server 2022 Express. Edition-specific capabilities that Depot does not exercise are outside this acceptance.
 
 ## Acceptance layers
 
@@ -66,7 +66,7 @@ Pull requests run:
 - critical MariaDB smoke acceptance;
 - critical MySQL smoke acceptance.
 
-`master`, `database-provider-*` certification branches and manual workflow dispatches run the full remote matrix, including server restart, provider-native backup/restore and the complete business/performance acceptance suite.
+`master`, `database-provider-*` full-matrix branches and manual workflow dispatches run the full remote matrix, including server restart, provider-native backup/restore and the complete business/performance acceptance suite.
 
 Each remote job receives a unique database name and ephemeral credentials. Passwords are masked and are not committed. Provider/server version and schema versions are diagnostic output; connection secrets are not.
 
@@ -90,7 +90,7 @@ The Sales active-reservation invariant cannot use SQL Server-style filtered inde
 
 SQLite remains the embedded reference baseline. Local-only capabilities such as `VACUUM` and DepotManager's local pre-migration safety-copy path are not claims about remote-provider functionality.
 
-SQLite uses dynamic typing and `NUMERIC` affinity rather than a server-style fixed `DECIMAL(28,9)` implementation. The acceptance suite proves nine fractional decimal digits for representative business-scale values, but SQLite cannot guarantee the full fixed-decimal magnitude/precision range available from SQL Server, MariaDB and MySQL. Deployments requiring exact very-large high-scale decimal values should select one of the certified server providers.
+SQLite uses dynamic typing and `NUMERIC` affinity rather than a server-style fixed `DECIMAL(28,9)` implementation. The acceptance suite proves nine fractional decimal digits for representative business-scale values, but SQLite cannot guarantee the full fixed-decimal magnitude/precision range available from SQL Server, MariaDB and MySQL. Deployments requiring exact very-large high-scale decimal values should select one of the supported server providers.
 
 ## Backup / disaster-recovery boundary
 
@@ -102,11 +102,11 @@ Depot's portable `.depotbackup` format is not advertised as a complete remote-pr
 
 ## Support policy
 
-- **Supported** — the exact certification baseline has a green full provider acceptance run for the release candidate/release.
-- **Best effort** — a technically compatible family/version outside the certified baseline; no production guarantee is implied.
+- **Supported** — the exact accepted baseline has a green full provider acceptance run for the release candidate/release.
+- **Best effort** — a technically compatible family/version outside the accepted baseline; no production guarantee is implied.
 - **Untested** — no reproducible full acceptance evidence exists for the combination.
 - **Not supported** — known incompatible or intentionally excluded combination.
 
-Examples outside the current supported matrix include SQL Server 2025, MariaDB 12.x and MySQL 9.x; they remain untested/best-effort until an explicit certification run is added.
+Examples outside the current supported matrix include SQL Server 2025, MariaDB 12.x and MySQL 9.x; they remain untested/best-effort until an explicit full acceptance run is added.
 
 Database-provider acceptance is a technical data-integrity/runtime statement. It does not constitute jurisdiction-specific accounting, tax, legal, accessibility, operating-system, banking-network or regulatory certification.
