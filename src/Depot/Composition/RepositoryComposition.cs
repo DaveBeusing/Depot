@@ -52,6 +52,7 @@ internal sealed class RepositoryComposition
 		Inventories = new InventoryRepository(dataAccess);
 		Warehouses = new WarehouseRepository(dataAccess);
 		StorageLocations = new StorageLocationRepository(dataAccess);
+		WarehouseLayoutRead = new WarehouseLayoutReadRepository(dataAccess);
 		StockMovements = new StockMovementRepository(dataAccess);
 		Users = new UserRepository(dataAccess);
 		UserSessions = new UserSessionRepository(dataAccess);
@@ -111,6 +112,7 @@ internal sealed class RepositoryComposition
 	public InventoryRepository Inventories { get; }
 	public WarehouseRepository Warehouses { get; }
 	public StorageLocationRepository StorageLocations { get; }
+	public WarehouseLayoutReadRepository WarehouseLayoutRead { get; }
 	public StockMovementRepository StockMovements { get; }
 	public UserRepository Users { get; }
 	public UserSessionRepository UserSessions { get; }

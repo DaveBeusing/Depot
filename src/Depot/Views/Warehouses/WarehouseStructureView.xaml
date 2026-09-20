@@ -30,6 +30,193 @@
 					<controls:WorkflowActionBar Grid.Row="5"><controls:WorkflowActionBar.SecondaryActions><StackPanel Orientation="Horizontal"><Button Command="{Binding NewStorageLocationCommand}" Content="Cancel" Style="{StaticResource SecondaryButtonStyle}" /><Button Margin="{StaticResource Button.Margin}" Command="{Binding ToggleStorageLocationCommand}" Content="{Binding StorageLocationActionText}" Style="{StaticResource SecondaryButtonStyle}" /></StackPanel></controls:WorkflowActionBar.SecondaryActions><controls:WorkflowActionBar.PrimaryAction><Button Command="{Binding SaveStorageLocationCommand}" Content="Save location" Style="{StaticResource PrimaryButtonStyle}" /></controls:WorkflowActionBar.PrimaryAction></controls:WorkflowActionBar>
 				</Grid></Border></controls:MasterDetailGrid.Detail>
 			</controls:MasterDetailGrid></TabItem>
+			<TabItem Header="Layout visualizer">
+				<Grid>
+					<Grid.RowDefinitions>
+						<RowDefinition Height="Auto" />
+						<RowDefinition Height="12" />
+						<RowDefinition Height="*" />
+					</Grid.RowDefinitions>
+
+					<Border Style="{StaticResource WorkspaceSectionStyle}">
+						<Grid>
+							<Grid.ColumnDefinitions>
+								<ColumnDefinition Width="240" />
+								<ColumnDefinition Width="16" />
+								<ColumnDefinition Width="*" />
+							</Grid.ColumnDefinitions>
+							<StackPanel>
+								<TextBlock Text="Warehouse" Style="{StaticResource FormLabelStyle}" />
+								<ComboBox
+									Margin="0,4,0,0"
+									ItemsSource="{Binding Warehouses}"
+									SelectedItem="{Binding SelectedWarehouse}"
+									DisplayMemberPath="Name"
+									Style="{StaticResource AppComboBoxStyle}" />
+							</StackPanel>
+							<StackPanel Grid.Column="2">
+								<TextBlock Text="Logical zone board" Style="{StaticResource SectionTitleStyle}" />
+								<TextBlock
+									Margin="0,4,0,0"
+									Text="Locations are sorted deterministically by name and ID. Logical slots are display positions only; they do not represent physical coordinates, distance, routing, capacity, or pick paths."
+									TextWrapping="Wrap"
+									Style="{StaticResource CaptionStyle}" />
+							</StackPanel>
+						</Grid>
+					</Border>
+
+					<controls:MasterDetailGrid Grid.Row="2">
+						<controls:MasterDetailGrid.Master>
+							<Border Style="{StaticResource WorkspaceSectionStyle}">
+								<Grid>
+									<Grid.RowDefinitions>
+										<RowDefinition Height="Auto" />
+										<RowDefinition Height="10" />
+										<RowDefinition Height="Auto" />
+										<RowDefinition Height="12" />
+										<RowDefinition Height="*" />
+									</Grid.RowDefinitions>
+
+									<Grid>
+										<Grid.ColumnDefinitions>
+											<ColumnDefinition Width="*" />
+											<ColumnDefinition Width="*" />
+											<ColumnDefinition Width="*" />
+											<ColumnDefinition Width="*" />
+											<ColumnDefinition Width="*" />
+										</Grid.ColumnDefinitions>
+										<StackPanel>
+											<TextBlock Text="Locations" Style="{StaticResource FormLabelStyle}" />
+											<TextBlock Text="{Binding LayoutLocationCount, StringFormat={}{0:N0}}" FontSize="20" FontWeight="SemiBold" />
+										</StackPanel>
+										<StackPanel Grid.Column="1">
+											<TextBlock Text="Active / inactive" Style="{StaticResource FormLabelStyle}" />
+											<TextBlock>
+												<Run Text="{Binding LayoutActiveLocationCount, Mode=OneWay}" />
+												<Run Text=" / " />
+												<Run Text="{Binding LayoutInactiveLocationCount, Mode=OneWay}" />
+											</TextBlock>
+										</StackPanel>
+										<StackPanel Grid.Column="2">
+											<TextBlock Text="Units on hand" Style="{StaticResource FormLabelStyle}" />
+											<TextBlock Text="{Binding LayoutQuantityOnHand, StringFormat={}{0:N0}}" FontSize="20" FontWeight="SemiBold" />
+										</StackPanel>
+										<StackPanel Grid.Column="3">
+											<TextBlock Text="Transfer attention" Style="{StaticResource FormLabelStyle}" />
+											<TextBlock Text="{Binding LayoutTransferAttentionDisplay}" />
+										</StackPanel>
+										<StackPanel Grid.Column="4">
+											<TextBlock Text="Count attention" Style="{StaticResource FormLabelStyle}" />
+											<TextBlock Text="{Binding LayoutInventoryCountAttentionDisplay}" />
+										</StackPanel>
+									</Grid>
+
+									<TextBlock
+										Grid.Row="2"
+										Text="Occupancy means stocked inventory contexts versus all active inventory contexts at a location. It is not a physical capacity measurement."
+										TextWrapping="Wrap"
+										Style="{StaticResource CaptionStyle}" />
+
+									<DataGrid
+										Grid.Row="4"
+										AutoGenerateColumns="False"
+										CanUserAddRows="False"
+										CanUserDeleteRows="False"
+										CanUserReorderColumns="False"
+										EnableColumnVirtualization="True"
+										EnableRowVirtualization="True"
+										IsReadOnly="True"
+										ItemsSource="{Binding LayoutLocations}"
+										SelectedItem="{Binding SelectedLayoutLocation}"
+										SelectionMode="Single"
+										Style="{StaticResource AppDataGridCompactStyle}">
+										<DataGrid.Columns>
+											<DataGridTextColumn Header="Logical slot" Binding="{Binding LogicalGridPosition}" Width="90" ElementStyle="{StaticResource AppDataGridTextStyle}" />
+											<DataGridTextColumn Header="Location" Binding="{Binding Location.Name}" Width="*" ElementStyle="{StaticResource AppDataGridTextStyle}" />
+											<DataGridTemplateColumn Header="Status" Width="90">
+												<DataGridTemplateColumn.CellTemplate>
+													<DataTemplate>
+														<controls:ActivationStatusBadge IsActive="{Binding Location.IsActive}" />
+													</DataTemplate>
+												</DataGridTemplateColumn.CellTemplate>
+											</DataGridTemplateColumn>
+											<DataGridTextColumn Header="Inventory contexts" Binding="{Binding InventoryContextCount, StringFormat={}{0:N0}}" Width="115" ElementStyle="{StaticResource AppDataGridNumericTextStyle}" />
+											<DataGridTextColumn Header="Stocked" Binding="{Binding StockedInventoryContextCount, StringFormat={}{0:N0}}" Width="80" ElementStyle="{StaticResource AppDataGridNumericTextStyle}" />
+											<DataGridTextColumn Header="Units" Binding="{Binding QuantityOnHand, StringFormat={}{0:N0}}" Width="90" ElementStyle="{StaticResource AppDataGridNumericTextStyle}" />
+											<DataGridTextColumn Header="Draft transfers" Binding="{Binding TransferAttentionDisplay}" Width="105" ElementStyle="{StaticResource AppDataGridTextStyle}" />
+											<DataGridTextColumn Header="Active counts" Binding="{Binding InventoryCountAttentionDisplay}" Width="100" ElementStyle="{StaticResource AppDataGridTextStyle}" />
+										</DataGrid.Columns>
+									</DataGrid>
+								</Grid>
+							</Border>
+						</controls:MasterDetailGrid.Master>
+
+						<controls:MasterDetailGrid.Detail>
+							<Border Style="{StaticResource WorkspaceSectionStyle}">
+								<Grid>
+									<Grid.RowDefinitions>
+										<RowDefinition Height="Auto" />
+										<RowDefinition Height="16" />
+										<RowDefinition Height="Auto" />
+										<RowDefinition Height="16" />
+										<RowDefinition Height="Auto" />
+										<RowDefinition Height="16" />
+										<RowDefinition Height="*" />
+									</Grid.RowDefinitions>
+
+									<controls:WorkflowHeader
+										Title="{Binding SelectedLayoutLocation.Location.Name, TargetNullValue=Select a location}"
+										Subtitle="{Binding SelectedLayoutLocation.LogicalGridPosition, StringFormat=Logical display slot: {0}, TargetNullValue=No logical slot selected}"
+										Status="Read-only" />
+
+									<Grid Grid.Row="2">
+										<Grid.ColumnDefinitions>
+											<ColumnDefinition Width="*" />
+											<ColumnDefinition Width="12" />
+											<ColumnDefinition Width="*" />
+										</Grid.ColumnDefinitions>
+										<StackPanel>
+											<TextBlock Text="Inventory contexts" Style="{StaticResource FormLabelStyle}" />
+											<TextBlock Text="{Binding SelectedLayoutLocation.InventoryContextCount, StringFormat={}{0:N0}, TargetNullValue=—}" FontSize="20" FontWeight="SemiBold" />
+										</StackPanel>
+										<StackPanel Grid.Column="2">
+											<TextBlock Text="Units on hand" Style="{StaticResource FormLabelStyle}" />
+											<TextBlock Text="{Binding SelectedLayoutLocation.QuantityOnHand, StringFormat={}{0:N0}, TargetNullValue=—}" FontSize="20" FontWeight="SemiBold" />
+										</StackPanel>
+									</Grid>
+
+									<StackPanel Grid.Row="4">
+										<TextBlock Text="Derived occupancy" Style="{StaticResource FormLabelStyle}" />
+										<TextBlock Text="{Binding SelectedLayoutLocation.OccupancyDisplay, TargetNullValue=No location selected}" TextWrapping="Wrap" />
+										<TextBlock Margin="0,10,0,0" Text="Attention" Style="{StaticResource FormLabelStyle}" />
+										<TextBlock>
+											<Run Text="Draft transfers: " />
+											<Run Text="{Binding SelectedLayoutLocation.TransferAttentionDisplay, Mode=OneWay, TargetNullValue=—}" />
+										</TextBlock>
+										<TextBlock>
+											<Run Text="Active inventory counts: " />
+											<Run Text="{Binding SelectedLayoutLocation.InventoryCountAttentionDisplay, Mode=OneWay, TargetNullValue=—}" />
+										</TextBlock>
+									</StackPanel>
+
+									<StackPanel Grid.Row="6">
+										<TextBlock Text="Location description" Style="{StaticResource FormLabelStyle}" />
+										<TextBlock
+											Margin="0,4,0,0"
+											Text="{Binding SelectedLayoutLocation.Location.Description, TargetNullValue=No description provided.}"
+											TextWrapping="Wrap" />
+										<TextBlock
+											Margin="0,16,0,0"
+											Text="Selecting a row synchronizes the existing Storage locations editor. Editing remains in the existing editor; this visualizer does not mutate warehouse, inventory, transfer, or count data."
+											TextWrapping="Wrap"
+											Style="{StaticResource CaptionStyle}" />
+									</StackPanel>
+								</Grid>
+							</Border>
+						</controls:MasterDetailGrid.Detail>
+					</controls:MasterDetailGrid>
+				</Grid>
+			</TabItem>
 		</TabControl>
 	</Grid>
 </UserControl>

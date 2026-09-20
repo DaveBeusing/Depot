@@ -116,6 +116,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		SalesServices salesServices,
 		WarehouseService warehouseService,
 		StorageLocationService storageLocationService,
+		WarehouseLayoutVisualizerService warehouseLayoutVisualizerService,
 		UserService userService,
 		RoleService roleService,
 		IAuthorizationService authorizationService,
@@ -200,7 +201,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		_financeFinancialReporting = new(() => new FinanceFinancialReportingViewModel(financeFinancialReportingService, fileDialogService));
 		_reports = new(() => new ReportsViewModel(reportService, fileDialogService));
 		_import = new(() => new ImportViewModel(importService, fileDialogService));
-		_administration = new(() => new AdministrationViewModel(_import.Value, itemService, purposeService, reasonCodeService, manufacturerService, categoryService, unitOfMeasureService, packagingService, supplierCategoryService, supplierService, supplierItemService, warehouseService, storageLocationService, userService, roleService, authorizationService, settingsService, connectionStatusService, databaseConnectionTester, databaseManagementService, auditLogService, userSessionAdministrationService, securityEventService, fileDialogService, applicationInformationService));
+		_administration = new(() => new AdministrationViewModel(_import.Value, itemService, purposeService, reasonCodeService, manufacturerService, categoryService, unitOfMeasureService, packagingService, supplierCategoryService, supplierService, supplierItemService, warehouseService, storageLocationService, warehouseLayoutVisualizerService, userService, roleService, authorizationService, settingsService, connectionStatusService, databaseConnectionTester, databaseManagementService, auditLogService, userSessionAdministrationService, securityEventService, fileDialogService, applicationInformationService));
 		_help = new(() => CreateHelpViewModel(helpService, helpRenderer));
 		_notificationCenter = new(() => CreateNotificationCenterViewModel(notificationService, notificationNavigationService));
 
