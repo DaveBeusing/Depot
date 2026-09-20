@@ -6,7 +6,7 @@ Depot is a modern Windows business platform that brings **Sales, Purchasing, Inv
 
 > **One platform. One source of truth. Complete control.**
 
-Depot is currently in active **0.15.x-preview** development. The repository contains substantial operational, accounting, security, audit and compliance capabilities. Preview status still matters: implemented engineering controls and database-provider certification are not claims of jurisdiction-specific legal, tax, accessibility, banking-network or organizational certification. See [Current Status](docs/CurrentStatus.md), [Database Provider Production Support Matrix](docs/DatabaseProviderSupportMatrix.md) and the [Roadmap](docs/Roadmap.md).
+Depot is currently in active **0.15.x-preview** development. The repository contains substantial operational, accounting, security, audit and compliance capabilities. Preview status still matters: implemented engineering controls and database-provider acceptance are not claims of jurisdiction-specific legal, tax, accessibility, banking-network or organizational certification. See [Current Status](docs/CurrentStatus.md), [Release Compliance Boundary](docs/ReleaseComplianceBoundary.md), [Known Limitations](docs/KnownLimitations.md), [Database Provider Production Support Matrix](docs/DatabaseProviderSupportMatrix.md) and the [Roadmap](docs/Roadmap.md).
 
 ## Why Depot
 
@@ -164,6 +164,10 @@ Embedded Help manifest **1.22** includes contextual Sales, Finance, User Session
 
 See the [Help Center documentation](docs/HelpCenter.md).
 
+## Release scope and limitations
+
+The current supported/unsupported claim boundary is consolidated in [Release Compliance Boundary](docs/ReleaseComplianceBoundary.md). Release-facing limitations are maintained in [Known Limitations](docs/KnownLimitations.md). Those documents distinguish implemented technical capabilities from deployment, legal, accounting, tax, banking-network, support and external-review obligations.
+
 ## Road to 1.0
 
 The generic database-provider and packaged-lifecycle technical gates are complete for the advertised repository boundary. H2 remains repository-level `PASS`; H1 repository governance is currently reopened because the live `master` ruleset is temporarily missing the five required aggregate status checks even though the source-controlled ruleset template still defines them. Restore the live required-check contract and revalidate H1 before entering H3. H3 production-signed Stable RC acceptance, H4 deployment disaster-recovery and backup-ownership acceptance, H5 exact-RC manual desktop/accessibility acceptance, plus organization-specific accounting/tax/retention/valuation/reporting/localization procedures and legal/organizational closure work remain outstanding.
@@ -181,6 +185,8 @@ Track the path through the [Roadmap](docs/Roadmap.md) and [Release 1.0 plan](doc
 - [Repository Governance](docs/RepositoryGovernance.md)
 - [Database Provider Production Support Matrix](docs/DatabaseProviderSupportMatrix.md)
 - [Deployment Sizing and Operations Readiness](docs/DeploymentSizing.md)
+- [Release Compliance Boundary](docs/ReleaseComplianceBoundary.md)
+- [Known Limitations](docs/KnownLimitations.md)
 - [Versioning and Schema Evolution](docs/Versioning.md)
 - [User-Facing Changes](docs/UserFacingChanges.md)
 - [Help Center](docs/HelpCenter.md)

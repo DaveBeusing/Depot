@@ -55,6 +55,12 @@ The repository now includes `scripts/performance/Measure-DeploymentSizing.ps1` a
 
 This adds a reproducible acceptance path; it does **not** create customer-specific capacity results by itself. No universal maximum user count, database size or hardware recommendation is claimed. Final sizing still requires execution in the representative target environment.
 
+## Release compliance and known limitations
+
+The repository now has a canonical [Release Compliance Boundary](ReleaseComplianceBoundary.md) and [Known Limitations](KnownLimitations.md). They consolidate release-facing claims across GDPR/DSGVO, CRA, Finance/accounting/localization, electronic invoicing, Banking, database support, retention/DR, vulnerability handling and production support.
+
+This documentation does not close external/manual acceptance. It explicitly records that Preview is not production-supported, the `DE` localization hierarchy is not a certified country pack, the electronic-invoice matrix remains bounded, direct bank connectivity is outside the current baseline, database support is limited to exact accepted versions and customer sizing/DR/legal procedures remain deployment-specific.
+
 ## Track C repository closure
 
 Track C F1 through F5B are complete at the repository implementation/acceptance boundary. [Track C acceptance and product status](TrackCStatus.md) is the authoritative feature-level record.

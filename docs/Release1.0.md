@@ -146,7 +146,7 @@ Technical controls and the evidence contract are implemented. The exact release 
 - [ ] certificate expiry/rotation and signing-recovery procedure accepted
 - [ ] exact production-signed Stable RC lifecycle acceptance completed with the final release artifacts
 - [ ] exact-RC Track A closure evidence passes `Test-TrackAAcceptance.ps1 -RequirePass`
-- [ ] final release notes, known limitations, hashes, SBOM and support information published
+- [ ] final release notes, exact-RC Known Limitations, hashes, SBOM and support information published
 
 ### Electronic invoicing
 
@@ -162,6 +162,7 @@ The repository conformance boundary for the currently advertised XRechnung and Z
 ### Legal/organizational
 
 - [x] canonical release compliance claim boundary prepared and linked to authoritative technical evidence
+- [x] canonical Known Limitations document prepared for exact-RC review/publication
 - [ ] GDPR/DSGVO deployment assessment and retention procedures
 - [ ] organization-specific GoBD/accounting/reporting/localization procedures
 - [ ] final CRA applicability/classification/conformity work

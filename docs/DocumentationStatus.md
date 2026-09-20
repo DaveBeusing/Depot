@@ -56,6 +56,21 @@ Embedded Finance Help must describe Accounts Payable, Inventory Accounting, Bank
 
 [Deployment Sizing and Operations Readiness](DeploymentSizing.md) is the canonical deployment-capacity evidence procedure. Documentation may describe the repository's calibration profiles and aggregation tooling, but must not convert those profiles or one measured environment into universal user-count, hardware, database-size or latency guarantees. Customer-specific sizing remains an environment-specific acceptance activity and must retain provider/security/transaction semantics.
 
+## Release compliance and limitations invariant
+
+[Release Compliance Boundary](ReleaseComplianceBoundary.md) is the canonical supported/unsupported claim matrix. [Known Limitations](KnownLimitations.md) is the release-facing limitation list that must be revalidated for the exact Stable release candidate.
+
+Documentation must not broaden:
+
+- the bounded XRechnung/ZUGFeRD/Factur-X issuance matrix;
+- the exact database-provider baselines;
+- Finance Localization support levels into legal compliance states;
+- repository backup/recovery evidence into deployment RPO/RTO or legal-retention evidence;
+- repository CRA/privacy/security controls into a completed external legal/conformity assessment;
+- Preview engineering evidence into a commercial production-support commitment.
+
+Help manifest `1.22` is unchanged because this reconciliation changes release/compliance documentation only; no Help topic route, permission or in-app workflow contract changes.
+
 ## Session and authentication invariants
 
 Documentation must state that online presence is derived from an open session plus heartbeat freshness; no persisted `IsOnline` is authoritative. The runtime heartbeat is 30 seconds and presence timeout is 90 seconds. Activity stores only the latest in-Depot keyboard/mouse/touch timestamp, never typed input or coordinates.
