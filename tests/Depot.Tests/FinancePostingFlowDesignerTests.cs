@@ -134,6 +134,7 @@ public sealed class FinancePostingFlowDesignerTests
 		Assert.Contains("AutomationProperties.Name=\"Posting rule palette\"", view, StringComparison.Ordinal);
 		Assert.Contains("TryAddRule(item)", codeBehind, StringComparison.Ordinal);
 		Assert.Contains("KeyboardNavigation.DirectionalNavigation", resources, StringComparison.Ordinal);
+		Assert.Contains("AppKeyboardFocusVisualStyle", resources, StringComparison.Ordinal);
 		Assert.Contains("MotionBehavior.TransitionKind=\"State\"", resources, StringComparison.Ordinal);
 		Assert.Contains("public double CanvasLeft =>", model, StringComparison.Ordinal);
 		Assert.DoesNotContain("CanvasLeft { get; init;", model, StringComparison.Ordinal);
