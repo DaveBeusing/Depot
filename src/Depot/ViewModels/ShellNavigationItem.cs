@@ -27,7 +27,8 @@ public class ShellNavigationItem : IDisposable
 		bool ownsContent = true,
 		bool isPrimaryNavigationVisible = true,
 		bool showContextNavigation = true,
-		string? navigationLabel = null)
+		string? navigationLabel = null,
+		IReadOnlyCollection<SecondaryNavigationItem>? pages = null)
 	{
 		Name = name;
 		IconData = iconData;
@@ -44,6 +45,7 @@ public class ShellNavigationItem : IDisposable
 		IsPrimaryNavigationVisible = isPrimaryNavigationVisible;
 		ShowContextNavigation = showContextNavigation;
 		NavigationLabel = string.IsNullOrWhiteSpace(navigationLabel) ? Name : navigationLabel.Trim();
+		Pages = pages ?? Array.Empty<SecondaryNavigationItem>();
 	}
 
 	public string Name { get; }
@@ -58,15 +60,20 @@ public class ShellNavigationItem : IDisposable
 	public bool IsPrimaryNavigationVisible { get; }
 	public bool ShowContextNavigation { get; }
 	public string NavigationLabel { get; }
+	public IReadOnlyCollection<SecondaryNavigationItem> Pages { get; }
 	public NavigationLoadStatus LoadStatus => _loadState.Status;
 
 	public Task ActivateAsync(CancellationToken cancellationToken = default) => _ownsLoadState
 		? _loadState.ActivateAsync(token => _loadAsync(Content, token), cancellationToken)
 		: _loadAsync(Content, cancellationToken);
 
-	public Task RefreshAsync(CancellationToken cancellationToken = default) => _ownsLoadState
-		? _loadState.RefreshAsync(token => _loadAsync(Content, token), cancellationToken)
-		: (_refreshAsync ?? _loadAsync)(Content, cancellationToken);
+	public Task RefreshAsync(CancellationToken cancellationToken = default)
+	{
+		var refreshAsync = _refreshAsync ?? _loadAsync;
+		return _ownsLoadState
+			? _loadState.RefreshAsync(token => refreshAsync(Content, token), cancellationToken)
+			: refreshAsync(Content, cancellationToken);
+	}
 
 	public void MarkStale() => _loadState.MarkStale();
 

@@ -77,20 +77,11 @@ public sealed class AdministrationViewModel : BaseViewModel, IDisposable
 		_securityCenterViewModel = new SecurityCenterViewModel(securityEventService, fileDialogService);
 		_documentTemplateDesignerViewModel = new DocumentTemplateDesignerViewModel(new DocumentTemplateDesignerService(authorization));
 
-		AddIf(authorization, ApplicationPermission.MasterDataView, "Master Data", AdministrationSection.MasterData);
-		AddIf(authorization, ApplicationPermission.MasterDataView, "Warehouses & Locations", AdministrationSection.Warehouses);
-		AddIf(authorization, ApplicationPermission.SuppliersView, "Suppliers", AdministrationSection.Suppliers);
-		AddIf(authorization, ApplicationPermission.UsersView, "Users", AdministrationSection.Users);
-		AddIf(authorization, ApplicationPermission.UsersView, "User Sessions", AdministrationSection.UserSessions);
-		AddIf(authorization, ApplicationPermission.SecurityEventsView, "Security Center", AdministrationSection.SecurityCenter);
-		AddIf(authorization, ApplicationPermission.RolesView, "Roles", AdministrationSection.Roles);
-		AddIf(authorization, ApplicationPermission.SettingsView, "Company", AdministrationSection.Company);
-		AddIf(authorization, ApplicationPermission.DocumentTemplatesView, "Document Designer", AdministrationSection.DocumentDesigner);
-		AddIf(authorization, ApplicationPermission.ImportManage, "Import", AdministrationSection.Import);
-		AddIf(authorization, ApplicationPermission.AuditLogView, "Audit Log", AdministrationSection.AuditLog);
-		AddIf(authorization, ApplicationPermission.DatabaseView, "Database", AdministrationSection.Database);
-		AddIf(authorization, ApplicationPermission.AdministrationView, "Privacy Data", AdministrationSection.Privacy);
-		if (authorization.HasPermission(ApplicationPermission.AdministrationView)) Add("About", AdministrationSection.About, HelpService.FallbackTopicId);
+		foreach (var item in CreateNavigationItems(authorization))
+		{
+			NavigationItems.Add(item);
+			if (item.Section is AdministrationSection section) _loadStates.Add(section, new NavigationLoadState());
+		}
 		SetSelection(NavigationItems.FirstOrDefault());
 	}
 
@@ -202,15 +193,33 @@ public sealed class AdministrationViewModel : BaseViewModel, IDisposable
 		_ => Task.CompletedTask
 	};
 
-	private void AddIf(IAuthorizationService authorization, ApplicationPermission permission, string name, AdministrationSection section)
+	internal static IReadOnlyList<NavigationItem> CreateNavigationItems(IAuthorizationService authorization)
 	{
-		if (authorization.HasPermission(permission)) Add(name, section, TopicFor(section));
-	}
+		var items = new List<NavigationItem>();
 
-	private void Add(string name, AdministrationSection section, string helpTopicId)
-	{
-		NavigationItems.Add(new NavigationItem { Name = name, Section = section, HelpTopicId = helpTopicId });
-		_loadStates.Add(section, new NavigationLoadState());
+		void AddIf(ApplicationPermission permission, string name, AdministrationSection section)
+		{
+			if (authorization.HasPermission(permission))
+				items.Add(new NavigationItem { Name = name, Section = section, HelpTopicId = TopicFor(section) });
+		}
+
+		AddIf(ApplicationPermission.MasterDataView, "Master Data", AdministrationSection.MasterData);
+		AddIf(ApplicationPermission.MasterDataView, "Warehouses & Locations", AdministrationSection.Warehouses);
+		AddIf(ApplicationPermission.SuppliersView, "Suppliers", AdministrationSection.Suppliers);
+		AddIf(ApplicationPermission.UsersView, "Users", AdministrationSection.Users);
+		AddIf(ApplicationPermission.UsersView, "User Sessions", AdministrationSection.UserSessions);
+		AddIf(ApplicationPermission.SecurityEventsView, "Security Center", AdministrationSection.SecurityCenter);
+		AddIf(ApplicationPermission.RolesView, "Roles", AdministrationSection.Roles);
+		AddIf(ApplicationPermission.SettingsView, "Company", AdministrationSection.Company);
+		AddIf(ApplicationPermission.DocumentTemplatesView, "Document Designer", AdministrationSection.DocumentDesigner);
+		AddIf(ApplicationPermission.ImportManage, "Import", AdministrationSection.Import);
+		AddIf(ApplicationPermission.AuditLogView, "Audit Log", AdministrationSection.AuditLog);
+		AddIf(ApplicationPermission.DatabaseView, "Database", AdministrationSection.Database);
+		AddIf(ApplicationPermission.AdministrationView, "Privacy Data", AdministrationSection.Privacy);
+		if (authorization.HasPermission(ApplicationPermission.AdministrationView))
+			items.Add(new NavigationItem { Name = "About", Section = AdministrationSection.About, HelpTopicId = HelpService.FallbackTopicId });
+
+		return items;
 	}
 
 	private static string TopicFor(AdministrationSection section) => section switch

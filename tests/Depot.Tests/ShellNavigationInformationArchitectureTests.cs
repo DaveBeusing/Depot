@@ -59,9 +59,49 @@ public sealed class ShellNavigationInformationArchitectureTests
 
 		Assert.Contains("viewModel.NavigationItems.Select(CreateModule)", catalog, StringComparison.Ordinal);
 		Assert.DoesNotContain("viewModel.PrimaryNavigationItems.Select(CreateModule)", catalog, StringComparison.Ordinal);
+		Assert.Contains("navigationItem.Pages", catalog, StringComparison.Ordinal);
+		Assert.DoesNotContain("navigationItem.Content is ShellModuleViewModel", catalog, StringComparison.Ordinal);
 		Assert.Contains("ShellFeatureCatalog.Create(_viewModel).Modules", palette, StringComparison.Ordinal);
 		Assert.Contains("ShellFeatureCatalog.Create(main).Modules", productivity, StringComparison.Ordinal);
 		Assert.Contains("\"role-centers.sales-workspace\"", productivity, StringComparison.Ordinal);
+	}
+
+	[Fact]
+	public void AdministrationModuleVisibilityUsesTheSamePermissionCatalogAsItsPages()
+	{
+		var root = FindRepositoryRoot();
+		var main = File.ReadAllText(Path.Combine(root, "src", "Depot", "ViewModels", "MainViewModel.cs"));
+		var administration = File.ReadAllText(Path.Combine(root, "src", "Depot", "ViewModels", "Administration", "AdministrationViewModel.cs"));
+
+		Assert.Contains("HasAdministrationPages() => AdministrationNavigationItems.Count > 0", main, StringComparison.Ordinal);
+		Assert.Contains("ApplicationPermission.SettingsView, \"Company\"", administration, StringComparison.Ordinal);
+		Assert.DoesNotContain("_authorization.HasAnyPermission(ApplicationPermission.MasterDataView", main, StringComparison.Ordinal);
+	}
+
+	[Fact]
+	public void PaletteDiscoversAdministrationSectionsWithoutCreatingAdministrationWorkspace()
+	{
+		var root = FindRepositoryRoot();
+		var palette = File.ReadAllText(Path.Combine(root, "src", "Depot", "Views", "ShellPaletteWindow.xaml.cs"));
+		var main = File.ReadAllText(Path.Combine(root, "src", "Depot", "ViewModels", "MainViewModel.cs"));
+		var administration = File.ReadAllText(Path.Combine(root, "src", "Depot", "ViewModels", "Administration", "AdministrationViewModel.cs"));
+
+		Assert.Contains("_viewModel.AdministrationNavigationItems", palette, StringComparison.Ordinal);
+		Assert.DoesNotContain("_viewModel.AdministrationViewModel.NavigationItems", palette, StringComparison.Ordinal);
+		Assert.Contains("AdministrationNavigationItems = AdministrationViewModel.CreateNavigationItems(authorizationService)", main, StringComparison.Ordinal);
+		Assert.Contains("internal static IReadOnlyList<NavigationItem> CreateNavigationItems", administration, StringComparison.Ordinal);
+	}
+
+	[Fact]
+	public void RouteDiscoveryUsesPageMetadataWithoutMaterializingWorkspaceContent()
+	{
+		var root = FindRepositoryRoot();
+		var navigator = File.ReadAllText(Path.Combine(root, "src", "Depot", "ViewModels", "ShellRouteNavigator.cs"));
+		var main = File.ReadAllText(Path.Combine(root, "src", "Depot", "ViewModels", "MainViewModel.cs"));
+
+		Assert.Contains("item.Pages.FirstOrDefault", navigator, StringComparison.Ordinal);
+		Assert.DoesNotContain("if (item.Content is not ShellModuleViewModel module) return null;", navigator, StringComparison.Ordinal);
+		Assert.Contains("pages:pages", main, StringComparison.Ordinal);
 	}
 
 	private static string FindRepositoryRoot()

@@ -181,7 +181,7 @@ public partial class ShellPaletteWindow : Window
 				entries.Add(new($"{module.Name}: {page.Name}", "Open workspace section", "Workspaces", "SECTION", module.IconData, () => _viewModel.NavigateToRouteAsync(pageRoute)));
 			}
 		}
-		foreach (var adminItem in _viewModel.AdministrationViewModel.NavigationItems)
+		foreach (var adminItem in _viewModel.AdministrationNavigationItems)
 		{
 			if (adminItem.Section is not AdministrationSection section) continue;
 			var capturedSection = section;

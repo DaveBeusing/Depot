@@ -38,9 +38,6 @@ public static class ShellRouteNavigator
 		throw new UnauthorizedAccessException($"The requested route '{route}' is not available.");
 	}
 
-	private static SecondaryNavigationItem? FindPage(ShellNavigationItem item, ShellRoute route)
-	{
-		if (item.Content is not ShellModuleViewModel module) return null;
-		return module.Pages.FirstOrDefault(page => page.Route == route && page.IsVisible);
-	}
+	private static SecondaryNavigationItem? FindPage(ShellNavigationItem item, ShellRoute route) =>
+		item.Pages.FirstOrDefault(page => page.Route == route && page.IsVisible);
 }
