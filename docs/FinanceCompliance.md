@@ -33,6 +33,12 @@ These controls support evidentiary integrity but do not independently establish 
 
 The General Ledger validates balanced debit/credit totals, transaction/reporting currency, period/date/legal-entity/account/dimension requirements, number sequences, idempotency and configured posting profiles.
 
+### Accounting-period control
+
+The Finance Period Control workspace reads and changes accounting-period availability through `FinanceGeneralLedgerService`. Viewing requires `FinancePeriods.View`; close/reopen transitions require `FinancePeriods.Manage`. Closed periods remain fail-closed for new postings.
+
+This is an operational control, not an accounting-policy decision. Depot does not decide whether reconciliation, accruals, reporting review, tax procedures or other deployment-specific period-end activities are complete, and it does not authorize reopening outside the organization's approved procedure.
+
 ### Audit, idempotency and retry safety
 
 Finance mutations persist Audit evidence where required. Retry-sensitive operations use operation IDs, immutable source identities, request/content hashes or uniqueness constraints. Reusing an operation ID with incompatible content is rejected. Localization configuration writes use optimistic concurrency; active assignments cannot overlap for one Legal Entity; built-in pack/registry rows reject mutation.
