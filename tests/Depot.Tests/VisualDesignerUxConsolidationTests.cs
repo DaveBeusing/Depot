@@ -32,6 +32,20 @@ public sealed class VisualDesignerUxConsolidationTests
 		Assert.Contains("ItemsSource=\"{Binding MappingIssues}\" ItemTemplate=\"{StaticResource DesignerValidationIssueTemplate}\"", import, StringComparison.Ordinal);
 	}
 
+	[Fact]
+	public void ConsolidationPreservesKeyboardAccessibilityAndVirtualizationContracts()
+	{
+		var root = FindRepositoryRoot();
+		var posting = File.ReadAllText(Path.Combine(root, "src", "Depot", "Views", "FinancePostingFlowDesignerView.xaml"));
+		var import = File.ReadAllText(Path.Combine(root, "src", "Depot", "Views", "ImportView.xaml"));
+
+		Assert.Contains("Content=\"Add selected rule\"", posting, StringComparison.Ordinal);
+		Assert.Contains("AutomationProperties.HelpText=\"Use arrow keys to select nodes.", posting, StringComparison.Ordinal);
+		Assert.Contains("EnableColumnVirtualization=\"True\"", import, StringComparison.Ordinal);
+		Assert.Contains("EnableRowVirtualization=\"True\"", import, StringComparison.Ordinal);
+		Assert.Contains("SelectedItem=\"{Binding SelectedTarget, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}\"", import, StringComparison.Ordinal);
+	}
+
 	private static string FindRepositoryRoot()
 	{
 		for (var directory = new DirectoryInfo(AppContext.BaseDirectory); directory is not null; directory = directory.Parent)
