@@ -139,10 +139,9 @@
                                     <DataTemplate>
                                         <Grid Margin="0,3">
                                             <Grid.ColumnDefinitions><ColumnDefinition Width="8"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                            <Line Grid.Column="0" X1="3" X2="3" Y1="0" Y2="28" Stroke="{DynamicResource AccentBrush}" StrokeThickness="2">
+                                            <Line Grid.Column="0" X1="3" X2="3" Y1="0" Y2="28" Stroke="{DynamicResource NavigationAccentBrush}" StrokeThickness="2">
                                                 <Line.Style>
                                                     <Style TargetType="Line">
-                                                        <Setter Property="StrokeDashArray" Value="1 0"/>
                                                         <Style.Triggers>
                                                             <DataTrigger Binding="{Binding IsReversed}" Value="True">
                                                                 <Setter Property="StrokeDashArray" Value="3 2"/>

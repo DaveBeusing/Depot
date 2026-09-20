@@ -158,17 +158,57 @@ public sealed class FinanceBankingReportingProviderAcceptanceTests
 		});
 		Assert.Equal(statement.Id, importRetry.Id);
 
-		var reconciliation = await banking.ReconcileAsync(new FinanceBankReconciliationRequest
-		{
-			OperationId = Guid.NewGuid(),
-			StatementLineId = statementLine.Id,
-			TargetKind = FinanceBankReconciliationTargetKind.GeneralLedgerEntry,
-			TargetId = fixture.JournalEntryId
-		});
+		var candidates = await banking.GetReconciliationCandidatesAsync(statementLine.Id);
+		var generalLedgerCandidate = Assert.Single(candidates, value =>
+			value.TargetKind == FinanceBankReconciliationTargetKind.GeneralLedgerEntry &&
+			value.TargetId == fixture.JournalEntryId);
+		Assert.Equal(50m, generalLedgerCandidate.Amount);
+		Assert.Equal(new CurrencyCode("XTS"), generalLedgerCandidate.Currency);
+		Assert.Equal("PROVIDER-GL", generalLedgerCandidate.Reference);
+
+		var reconciliationOperation = Guid.NewGuid();
+		var request = generalLedgerCandidate.CreateRequest(reconciliationOperation, statementLine.Id);
+		Assert.Equal(reconciliationOperation, request.OperationId);
+		Assert.Equal(statementLine.Id, request.StatementLineId);
+		Assert.Equal(FinanceBankReconciliationTargetKind.GeneralLedgerEntry, request.TargetKind);
+		Assert.Equal(fixture.JournalEntryId, request.TargetId);
+
+		var reconciliation = await banking.ReconcileAsync(request);
 		Assert.Equal(fixture.JournalEntryId, reconciliation.TargetJournalEntryId);
 		Assert.Equal(50m, reconciliation.MatchedAmount);
+		var activeHistory = await banking.SearchReconciliationHistoryAsync(bankAccount.Id, 1, 100);
+		var activeItem = Assert.Single(activeHistory.Items, value => value.Reconciliation.Id == reconciliation.Id);
+		Assert.False(activeItem.IsReversed);
+		Assert.False(activeItem.IsReadOnly);
+
 		var reversed = await banking.ReverseReconciliationAsync(reconciliation.Id, Guid.NewGuid(), "Provider acceptance reversal");
 		Assert.True(reversed.IsReversed);
+		var reversedHistory = await banking.SearchReconciliationHistoryAsync(bankAccount.Id, 1, 100);
+		var reversedItem = Assert.Single(reversedHistory.Items, value => value.Reconciliation.Id == reconciliation.Id);
+		Assert.True(reversedItem.IsReversed);
+		Assert.True(reversedItem.IsReadOnly);
+
+		var viewerAuthorization = new AuthorizationService();
+		viewerAuthorization.SignIn(
+			new User { Id = fixture.UserId, Email = fixture.UserEmail, DisplayName = "Provider banking viewer", IsActive = true },
+			[ApplicationPermission.FinanceBankingView]);
+		var viewerAuditRepository = new AuditRepository(database);
+		var viewerAudit = new AuditService(viewerAuditRepository, viewerAuthorization);
+		var viewerBanking = new FinanceBankingService(
+			transactions,
+			new FinanceBankingRepository(database),
+			payables,
+			viewerAuditRepository,
+			viewerAudit,
+			viewerAuthorization);
+		Assert.Contains(await viewerBanking.GetReconciliationCandidatesAsync(statementLine.Id), value => value.TargetId == fixture.JournalEntryId);
+		Assert.NotEmpty((await viewerBanking.SearchReconciliationHistoryAsync(bankAccount.Id, 1, 100)).Items);
+		await Assert.ThrowsAsync<UnauthorizedAccessException>(() => viewerBanking.ReconcileAsync(generalLedgerCandidate.CreateRequest(Guid.NewGuid(), statementLine.Id)));
+		await Assert.ThrowsAsync<UnauthorizedAccessException>(() => viewerBanking.ReverseReconciliationAsync(reconciliation.Id, Guid.NewGuid(), "Not allowed"));
+
+		using var cancelled = new CancellationTokenSource();
+		cancelled.Cancel();
+		await Assert.ThrowsAnyAsync<OperationCanceledException>(() => banking.GetReconciliationCandidatesAsync(statementLine.Id, 100, cancelled.Token));
 
 		var parameters = new FinanceReportParameters
 		{

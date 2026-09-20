@@ -161,6 +161,11 @@ public sealed partial class FinanceBankingViewModel
 	{
 		var bankAccountId = SelectedBankAccount?.Id;
 		var page = await _banking.SearchUnreconciledLinesAsync(bankAccountId, Math.Max(1, pageNumber), ReconciliationDesignerPageSize, token);
+		if (page.Items.Count == 0 && page.PageNumber > 1 && page.TotalCount > 0)
+		{
+			await LoadReconciliationDesignerPageAsync(page.PageNumber - 1, token);
+			return;
+		}
 		var selectedId = SelectedReconciliationLine?.Id;
 		Replace(ReconciliationDesignerLines, page.Items);
 		ReconciliationPageNumber = page.PageNumber;
