@@ -3,6 +3,7 @@
 
 using System.Collections.ObjectModel;
 
+using Depot.Diagnostics;
 using Depot.Models;
 using Depot.Services;
 
