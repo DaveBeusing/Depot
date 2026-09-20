@@ -97,8 +97,8 @@ public sealed class WarehouseLayoutVisualizerTests : IDisposable
 			authorization);
 		var snapshot = await service.GetSnapshotAsync(warehouse, locations, CancellationToken.None);
 
-		Assert.Equal(["Alpha", "Default", "Zulu"], snapshot.Locations.Select(item => item.Location.Name).ToArray());
-		Assert.Equal(["R01 / C01", "R01 / C02", "R01 / C03"], snapshot.Locations.Select(item => item.LogicalGridPosition).ToArray());
+		Assert.Equal(new[] { "Alpha", "Default", "Zulu" }, snapshot.Locations.Select(item => item.Location.Name).ToArray());
+		Assert.Equal(new[] { "R01 / C01", "R01 / C02", "R01 / C03" }, snapshot.Locations.Select(item => item.LogicalGridPosition).ToArray());
 		Assert.False(snapshot.CanViewTransferAttention);
 		Assert.False(snapshot.CanViewInventoryCountAttention);
 		Assert.All(snapshot.Locations, item => Assert.Equal("Restricted", item.TransferAttentionDisplay));
@@ -114,13 +114,13 @@ public sealed class WarehouseLayoutVisualizerTests : IDisposable
 		var service = File.ReadAllText(Path.Combine(root, "src", "Depot", "Services", "WarehouseLayoutVisualizerService.cs"));
 		var repository = File.ReadAllText(Path.Combine(root, "src", "Depot", "Repositories", "WarehouseLayoutReadRepository.cs"));
 
-		Assert.Contains("Header="Layout visualizer"", view, StringComparison.Ordinal);
+		Assert.Contains("Header=\"Layout visualizer\"", view, StringComparison.Ordinal);
 		Assert.Contains("do not represent physical coordinates", view, StringComparison.Ordinal);
 		Assert.Contains("It is not a physical capacity measurement.", view, StringComparison.Ordinal);
-		Assert.Contains("IsReadOnly="True"", view, StringComparison.Ordinal);
-		Assert.Contains("EnableRowVirtualization="True"", view, StringComparison.Ordinal);
-		Assert.Contains("EnableColumnVirtualization="True"", view, StringComparison.Ordinal);
-		Assert.Contains("SelectedItem="{Binding SelectedLayoutLocation}"", view, StringComparison.Ordinal);
+		Assert.Contains("IsReadOnly=\"True\"", view, StringComparison.Ordinal);
+		Assert.Contains("EnableRowVirtualization=\"True\"", view, StringComparison.Ordinal);
+		Assert.Contains("EnableColumnVirtualization=\"True\"", view, StringComparison.Ordinal);
+		Assert.Contains("SelectedItem=\"{Binding SelectedLayoutLocation}\"", view, StringComparison.Ordinal);
 		Assert.Contains("SelectedStorageLocation = StorageLocations.FirstOrDefault", viewModel, StringComparison.Ordinal);
 		Assert.Contains("StorageLocationService", viewModel, StringComparison.Ordinal);
 		Assert.Contains("RequirePermission(ApplicationPermission.MasterDataView)", service, StringComparison.Ordinal);
