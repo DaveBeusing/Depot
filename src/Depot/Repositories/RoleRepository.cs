@@ -34,6 +34,32 @@ public sealed class RoleRepository : DatabaseRepository
 	public Task<IReadOnlyList<Role>> ListActiveAsync(CancellationToken cancellationToken) =>
 		Database.QueryAsync($"SELECT {Columns} FROM Roles r WHERE r.IsActive = 1 ORDER BY r.IsSystem DESC, r.Name, r.Id;", ReadRole, cancellationToken);
 
+	public async Task<IReadOnlyList<Role>> ListAllWithPermissionsAsync(CancellationToken cancellationToken)
+	{
+		var roles = (await Database.QueryAsync(
+			$"SELECT {Columns} FROM Roles r ORDER BY r.IsSystem DESC, r.Name, r.Id;",
+			ReadRole,
+			cancellationToken)).ToArray();
+		if (roles.Length == 0) return roles;
+		var permissionRows = await Database.QueryAsync(
+			"SELECT rp.RoleId, p.Code FROM RolePermissions rp INNER JOIN Permissions p ON p.Id = rp.PermissionId ORDER BY rp.RoleId, p.Code;",
+			reader => new RolePermissionCodeRow(reader.GetInt64(0), reader.GetString(1)),
+			cancellationToken);
+		var byRole = permissionRows
+			.GroupBy(value => value.RoleId)
+			.ToDictionary(
+				group => group.Key,
+				group => (IReadOnlyList<ApplicationPermission>)group
+					.Select(value => PermissionCatalog.TryParse(value.Code, out var permission) ? permission : (ApplicationPermission?)null)
+					.Where(value => value.HasValue)
+					.Select(value => value.GetValueOrDefault())
+					.ToArray());
+		foreach (var role in roles)
+			role.Permissions = byRole.GetValueOrDefault(role.Id) ?? [];
+		return roles;
+	}
+
+
 	public async Task<Role?> GetByIdAsync(long id, CancellationToken cancellationToken)
 	{
 		var role = await Database.QuerySingleOrDefaultAsync(
@@ -84,6 +110,28 @@ public sealed class RoleRepository : DatabaseRepository
 			.Where(permission => permission.HasValue)
 			.Select(permission => permission.GetValueOrDefault())
 			.ToHashSet();
+	}
+
+	public async Task<IReadOnlyList<RoleEffectivePermissionUserProjection>> GetRoleEffectivePermissionUsersAsync(long roleId, CancellationToken cancellationToken)
+	{
+		if (roleId <= 0) throw new ArgumentOutOfRangeException(nameof(roleId));
+		var users = await Database.QueryAsync(
+			"SELECT u.Id,u.DisplayName,u.Email,u.IsActive FROM Users u INNER JOIN UserRoles ur ON ur.UserId=u.Id WHERE ur.RoleId=$RoleId ORDER BY u.DisplayName,u.Email,u.Id;",
+			reader => new RoleDesignerUserRow(reader.GetInt64(0), reader.GetString(1), reader.GetString(2), Convert.ToInt32(reader.GetValue(3), System.Globalization.CultureInfo.InvariantCulture) != 0),
+			cancellationToken,
+			Parameter("$RoleId", roleId));
+		if (users.Count == 0) return [];
+		var ids = users.Select(value => value.Id).ToArray();
+		var assignedRoles = await GetUserRolesAsync(ids, cancellationToken);
+		var effective = await GetEffectivePermissionsAsync(ids, cancellationToken);
+		return users.Select(user => new RoleEffectivePermissionUserProjection(
+			user.Id,
+			user.DisplayName,
+			user.Email,
+			user.IsActive,
+			assignedRoles.GetValueOrDefault(user.Id) ?? [],
+			user.IsActive ? effective.GetValueOrDefault(user.Id) ?? new HashSet<ApplicationPermission>() : new HashSet<ApplicationPermission>()))
+			.ToArray();
 	}
 
 	public async Task<IReadOnlyDictionary<long, IReadOnlySet<ApplicationPermission>>> GetEffectivePermissionsAsync(IEnumerable<long> userIds, CancellationToken cancellationToken)
@@ -188,6 +236,8 @@ public sealed class RoleRepository : DatabaseRepository
 	}
 
 	private sealed record UserRoleRow(long UserId, Role Role);
+	private sealed record RoleDesignerUserRow(long Id, string DisplayName, string Email, bool IsActive);
+	private sealed record RolePermissionCodeRow(long RoleId, string Code);
 	private sealed record UserPermissionRow(long UserId, string Code);
 
 	private static DatabaseParameter[] Parameters(Role role) =>

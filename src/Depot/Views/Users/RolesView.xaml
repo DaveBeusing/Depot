@@ -1,10 +1,248 @@
-<UserControl x:Class="Depot.Views.Users.RolesView" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:controls="clr-namespace:Depot.Controls">
-	<Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="12"/><RowDefinition Height="*"/></Grid.RowDefinitions>
-		<controls:PageHeader Title="Roles" Subtitle="Manage reusable permission sets and protected system roles." />
+<UserControl x:Class="Depot.Views.Users.RolesView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:Depot.Controls">
+	<Grid>
+		<Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="12"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+		<controls:PageHeader Title="Roles" Subtitle="Compare direct role permissions, inspect effective impact and maintain protected system or custom roles." />
 		<controls:OperationPanel Grid.Row="1" ErrorText="{Binding OperationError}" HasError="{Binding HasOperationError}" IsBusy="{Binding IsBusy}" StatusText="{Binding StatusText}" />
-		<controls:MasterDetailGrid Grid.Row="3">
-			<controls:MasterDetailGrid.Master><Border Style="{StaticResource WorkspaceSectionStyle}"><Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="12"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><controls:FilterBar><controls:SearchBox Placeholder="Search roles" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" /></controls:FilterBar><ListBox Grid.Row="1" ItemsSource="{Binding Roles}" SelectedItem="{Binding SelectedRole}" Style="{StaticResource AppListBoxStyle}"><ListBox.ItemTemplate><DataTemplate><StackPanel><TextBlock FontWeight="SemiBold" Text="{Binding Name}" TextTrimming="CharacterEllipsis"/><TextBlock Margin="0,2,0,0" Text="{Binding Code}" Style="{StaticResource CaptionStyle}"/></StackPanel></DataTemplate></ListBox.ItemTemplate></ListBox><Button Grid.Row="3" Command="{Binding NewCommand}" Content="New role" Style="{StaticResource PrimaryButtonStyle}"/></Grid></Border></controls:MasterDetailGrid.Master>
-			<controls:MasterDetailGrid.Detail><Border Style="{StaticResource WorkspaceSectionStyle}"><Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><controls:WorkflowHeader Title="{Binding EditorTitle}" Subtitle="Permission assignments and role identity" /><ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"><StackPanel Margin="0,12,0,0"><Grid IsEnabled="{Binding CanEdit}"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="Code" Style="{StaticResource FormLabelStyle}"/><TextBox Text="{Binding Code}" Style="{StaticResource AppTextBoxStyle}"/></StackPanel><StackPanel Grid.Column="2"><TextBlock Text="Name" Style="{StaticResource FormLabelStyle}"/><TextBox Text="{Binding Name}" Style="{StaticResource AppTextBoxStyle}"/></StackPanel></Grid><StackPanel Margin="0,12,0,0" IsEnabled="{Binding CanEdit}"><TextBlock Text="Description" Style="{StaticResource FormLabelStyle}"/><TextBox Text="{Binding Description}" Style="{StaticResource AppTextBoxStyle}"/></StackPanel><Separator Margin="0,16,0,12"/><TextBlock Text="Permissions" Style="{StaticResource WorkspaceSectionTitleStyle}"/><TextBlock Margin="0,3,0,8" Text="Permissions assigned to this role become effective for every user with the role." Style="{StaticResource CaptionStyle}" TextWrapping="Wrap"/><ItemsControl IsEnabled="{Binding CanEdit}" ItemsSource="{Binding Permissions}"><ItemsControl.ItemTemplate><DataTemplate><controls:AppCheckBox Margin="0,4,0,0" Content="{Binding Name}" IsChecked="{Binding IsSelected}"/></DataTemplate></ItemsControl.ItemTemplate></ItemsControl></StackPanel></ScrollViewer><controls:WorkflowActionBar Grid.Row="2"><controls:WorkflowActionBar.SecondaryActions><StackPanel Orientation="Horizontal"><Button Command="{Binding NewCommand}" Content="Cancel" Style="{StaticResource SecondaryButtonStyle}"/><Button Margin="{StaticResource Button.Margin}" Command="{Binding ToggleActiveCommand}" Content="{Binding ActivationButtonText}" Style="{StaticResource DangerButtonStyle}"/></StackPanel></controls:WorkflowActionBar.SecondaryActions><controls:WorkflowActionBar.PrimaryAction><Button Command="{Binding SaveCommand}" Content="Save role" Style="{StaticResource PrimaryButtonStyle}"/></controls:WorkflowActionBar.PrimaryAction></controls:WorkflowActionBar></Grid></Border></controls:MasterDetailGrid.Detail>
-		</controls:MasterDetailGrid>
+
+		<TabControl Grid.Row="3" Style="{StaticResource AppTabControlStyle}">
+			<TabItem Header="Permission Matrix">
+				<Grid Margin="8">
+					<Grid.ColumnDefinitions><ColumnDefinition Width="1.65*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="1.15*"/></Grid.ColumnDefinitions>
+
+					<Border Style="{StaticResource WorkspaceSectionStyle}">
+						<Grid>
+							<Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+							<TextBlock Text="Role matrix" Style="{StaticResource WorkspaceSectionTitleStyle}"/>
+							<TextBlock Grid.Row="1" Margin="0,4,0,10" Text="Capability groups are rows; roles are columns. Values are persisted direct permissions only. Select a role column to inspect or edit it." Style="{StaticResource CaptionStyle}" TextWrapping="Wrap"/>
+							<Grid Grid.Row="2">
+								<Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+								<Grid>
+									<Grid.ColumnDefinitions><ColumnDefinition Width="190"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+									<TextBlock VerticalAlignment="Center" Text="Capability group" FontWeight="SemiBold"/>
+									<ListBox Grid.Column="1"
+											 ItemsSource="{Binding DesignerRoles}"
+											 Style="{StaticResource AppListBoxStyle}"
+											 ScrollViewer.HorizontalScrollBarVisibility="Auto"
+											 ScrollViewer.VerticalScrollBarVisibility="Disabled"
+											 VirtualizingPanel.IsVirtualizing="True"
+											 VirtualizingPanel.VirtualizationMode="Recycling">
+										<ListBox.ItemsPanel><ItemsPanelTemplate><VirtualizingStackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ListBox.ItemsPanel>
+										<ListBox.ItemTemplate>
+											<DataTemplate>
+												<Button Width="120" Margin="2" Padding="6"
+														Command="{Binding DataContext.SelectMatrixRoleCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+														CommandParameter="{Binding}"
+														Style="{StaticResource SecondaryButtonStyle}"
+														AutomationProperties.Name="{Binding Name, StringFormat=Select role {0}}"
+														ToolTip="{Binding Description}">
+													<StackPanel>
+														<TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextAlignment="Center" TextTrimming="CharacterEllipsis"/>
+														<TextBlock Text="{Binding Code}" Style="{StaticResource CaptionStyle}" TextAlignment="Center" TextTrimming="CharacterEllipsis"/>
+													</StackPanel>
+												</Button>
+											</DataTemplate>
+										</ListBox.ItemTemplate>
+									</ListBox>
+								</Grid>
+								<ListBox Grid.Row="1"
+										 Margin="0,8,0,0"
+										 ItemsSource="{Binding PermissionMatrixRows}"
+										 Style="{StaticResource AppListBoxStyle}"
+										 VirtualizingPanel.IsVirtualizing="True"
+										 VirtualizingPanel.VirtualizationMode="Recycling"
+										 ScrollViewer.CanContentScroll="True">
+									<ListBox.ItemTemplate>
+										<DataTemplate>
+											<Grid Margin="0,2">
+												<Grid.ColumnDefinitions><ColumnDefinition Width="190"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+												<StackPanel VerticalAlignment="Center">
+													<TextBlock Text="{Binding GroupName}" FontWeight="SemiBold"/>
+													<TextBlock Text="{Binding Permissions.Count, StringFormat={}{0} capabilities}" Style="{StaticResource CaptionStyle}"/>
+												</StackPanel>
+												<ListBox Grid.Column="1"
+														 ItemsSource="{Binding Cells}"
+														 Style="{StaticResource AppListBoxStyle}"
+														 ScrollViewer.HorizontalScrollBarVisibility="Auto"
+														 ScrollViewer.VerticalScrollBarVisibility="Disabled"
+														 VirtualizingPanel.IsVirtualizing="True"
+														 VirtualizingPanel.VirtualizationMode="Recycling">
+													<ListBox.ItemsPanel><ItemsPanelTemplate><VirtualizingStackPanel Orientation="Horizontal"/></ItemsPanelTemplate></ListBox.ItemsPanel>
+													<ListBox.ItemTemplate>
+														<DataTemplate>
+															<Button Width="120" Margin="2" Padding="7"
+																	Command="{Binding DataContext.SelectMatrixRoleCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+																	CommandParameter="{Binding Role}"
+																	Style="{StaticResource SecondaryButtonStyle}"
+																	AutomationProperties.Name="{Binding AccessibilitySummary}"
+																	ToolTip="{Binding AccessibilitySummary}">
+																<StackPanel>
+																	<TextBlock Text="{Binding Summary}" FontWeight="SemiBold" TextAlignment="Center"/>
+																	<TextBlock Text="{Binding Role.IsSystem, StringFormat=System: {0}}" Style="{StaticResource CaptionStyle}" TextAlignment="Center"/>
+																</StackPanel>
+															</Button>
+														</DataTemplate>
+													</ListBox.ItemTemplate>
+												</ListBox>
+											</Grid>
+										</DataTemplate>
+									</ListBox.ItemTemplate>
+								</ListBox>
+							</Grid>
+						</Grid>
+					</Border>
+
+					<Border Grid.Column="2" Style="{StaticResource WorkspaceSectionStyle}">
+						<ScrollViewer VerticalScrollBarVisibility="Auto">
+							<StackPanel>
+								<TextBlock Text="Role detail / permission map" Style="{StaticResource WorkspaceSectionTitleStyle}"/>
+								<TextBlock Margin="0,4,0,2" Text="{Binding EditorTitle}" FontWeight="SemiBold"/>
+								<TextBlock Text="{Binding RoleProtectionSummary}" Style="{StaticResource CaptionStyle}"/>
+								<TextBlock Margin="0,4,0,0" Text="{Binding PermissionDesignerStatus}" Style="{StaticResource CaptionStyle}" TextWrapping="Wrap"/>
+
+								<Separator Margin="0,12"/>
+								<TextBlock Text="Permission group" Style="{StaticResource FormLabelStyle}"/>
+								<ComboBox ItemsSource="{Binding PermissionGroups}" SelectedItem="{Binding SelectedPermissionGroup}" DisplayMemberPath="Name" Style="{StaticResource AppComboBoxStyle}"/>
+								<ListBox Margin="0,8,0,0"
+										 ItemsSource="{Binding SelectedPermissionGroup.Permissions}"
+										 SelectedItem="{Binding SelectedDesignerPermission}"
+										 Style="{StaticResource AppListBoxStyle}"
+										 MaxHeight="260"
+										 VirtualizingPanel.IsVirtualizing="True"
+										 VirtualizingPanel.VirtualizationMode="Recycling"
+										 ScrollViewer.CanContentScroll="True">
+									<ListBox.ItemTemplate>
+										<DataTemplate>
+											<Grid Margin="0,3">
+												<Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+												<StackPanel>
+													<TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
+													<TextBlock Text="{Binding Code}" Style="{StaticResource CaptionStyle}"/>
+												</StackPanel>
+												<controls:AppCheckBox Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Center" IsChecked="{Binding IsSelected}" IsEnabled="{Binding DataContext.CanEdit, RelativeSource={RelativeSource AncestorType=UserControl}}" AutomationProperties.Name="{Binding Name, StringFormat=Toggle direct permission {0}}"/>
+											</Grid>
+										</DataTemplate>
+									</ListBox.ItemTemplate>
+								</ListBox>
+
+								<Border Margin="0,10,0,0" Padding="10" Style="{StaticResource WorkspaceToolbarBorderStyle}">
+									<StackPanel>
+										<TextBlock Text="{Binding SelectedPermissionTitle}" FontWeight="SemiBold"/>
+										<TextBlock Margin="0,3,0,0" Text="{Binding SelectedPermissionDescription}" Style="{StaticResource CaptionStyle}" TextWrapping="Wrap"/>
+										<TextBlock Margin="0,8,0,0" Text="Affected workspace" Style="{StaticResource FormLabelStyle}"/>
+										<TextBlock Text="{Binding SelectedPermissionWorkspace}"/>
+										<TextBlock Margin="0,6,0,0" Text="Permission code" Style="{StaticResource FormLabelStyle}"/>
+										<TextBlock Text="{Binding SelectedPermissionCode}" Style="{StaticResource CaptionStyle}"/>
+									</StackPanel>
+								</Border>
+
+								<TextBlock Margin="0,14,0,0" Text="Separation-of-duties advisory" Style="{StaticResource WorkspaceSectionTitleStyle}"/>
+								<TextBlock Margin="0,3,0,8" Text="Advisories explain potentially sensitive combinations only. They do not alter AuthorizationService decisions or block RoleService saves." Style="{StaticResource CaptionStyle}" TextWrapping="Wrap"/>
+								<ListBox ItemsSource="{Binding PermissionAdvisories}" Style="{StaticResource AppListBoxStyle}" MaxHeight="170">
+									<ListBox.ItemTemplate>
+										<DataTemplate>
+											<StackPanel Margin="0,3">
+												<TextBlock Text="{Binding Title}" FontWeight="SemiBold"/>
+												<TextBlock Text="{Binding Description}" Style="{StaticResource CaptionStyle}" TextWrapping="Wrap"/>
+											</StackPanel>
+										</DataTemplate>
+									</ListBox.ItemTemplate>
+								</ListBox>
+
+								<TextBlock Margin="0,14,0,0" Text="Effective permission impact" Style="{StaticResource WorkspaceSectionTitleStyle}"/>
+								<TextBlock Margin="0,3,0,8" Text="Direct permissions above are stored on this role. Effective permissions below are the persisted union of all active assigned roles for each affected user; AuthorizationService remains the runtime authority." Style="{StaticResource CaptionStyle}" TextWrapping="Wrap"/>
+								<DataGrid ItemsSource="{Binding EffectivePermissionUsers}"
+										  SelectedItem="{Binding SelectedEffectivePermissionUser}"
+										  Style="{StaticResource AppDataGridCompactStyle}"
+										  AutoGenerateColumns="False"
+										  IsReadOnly="True"
+										  MaxHeight="180"
+										  VirtualizingPanel.IsVirtualizing="True"
+										  VirtualizingPanel.VirtualizationMode="Recycling">
+									<DataGrid.Columns>
+										<DataGridTextColumn Header="User" Binding="{Binding DisplayName}" Width="*"/>
+										<DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="70"/>
+										<DataGridTextColumn Header="Assigned roles" Binding="{Binding AssignedRoleSummary}" Width="1.5*"/>
+										<DataGridTextColumn Header="Effective" Binding="{Binding EffectivePermissionCount}" Width="80" ElementStyle="{StaticResource AppDataGridNumericTextStyle}"/>
+									</DataGrid.Columns>
+								</DataGrid>
+								<TextBlock Margin="0,8,0,0" Text="{Binding EffectivePermissionSummary}" Style="{StaticResource CaptionStyle}" TextWrapping="Wrap"/>
+								<ListBox Margin="0,6,0,0"
+										 ItemsSource="{Binding SelectedEffectivePermissions}"
+										 Style="{StaticResource AppListBoxStyle}"
+										 MaxHeight="160"
+										 VirtualizingPanel.IsVirtualizing="True"
+										 VirtualizingPanel.VirtualizationMode="Recycling">
+									<ListBox.ItemTemplate>
+										<DataTemplate>
+											<Grid Margin="0,2">
+												<Grid.ColumnDefinitions><ColumnDefinition Width="115"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+												<TextBlock Text="{Binding GroupName}" Style="{StaticResource CaptionStyle}"/>
+												<TextBlock Grid.Column="1" Text="{Binding Name}" TextTrimming="CharacterEllipsis"/>
+											</Grid>
+										</DataTemplate>
+									</ListBox.ItemTemplate>
+								</ListBox>
+
+								<WrapPanel Margin="0,14,0,0" HorizontalAlignment="Right">
+									<Button Command="{Binding NewCommand}" Content="New custom role" Style="{StaticResource SecondaryButtonStyle}"/>
+									<Button Margin="8,0,0,0" Command="{Binding SaveCommand}" Content="Save role" Style="{StaticResource PrimaryButtonStyle}"/>
+								</WrapPanel>
+							</StackPanel>
+						</ScrollViewer>
+					</Border>
+				</Grid>
+			</TabItem>
+
+			<TabItem Header="Role Editor">
+				<controls:MasterDetailGrid Margin="8">
+					<controls:MasterDetailGrid.Master>
+						<Border Style="{StaticResource WorkspaceSectionStyle}">
+							<Grid>
+								<Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="12"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+								<controls:FilterBar><controls:SearchBox Placeholder="Search roles" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" /></controls:FilterBar>
+								<ListBox Grid.Row="1" ItemsSource="{Binding Roles}" SelectedItem="{Binding SelectedRole}" Style="{StaticResource AppListBoxStyle}" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling">
+									<ListBox.ItemTemplate><DataTemplate><StackPanel><TextBlock FontWeight="SemiBold" Text="{Binding Name}" TextTrimming="CharacterEllipsis"/><TextBlock Margin="0,2,0,0" Text="{Binding Code}" Style="{StaticResource CaptionStyle}"/></StackPanel></DataTemplate></ListBox.ItemTemplate>
+								</ListBox>
+								<Button Grid.Row="3" Command="{Binding NewCommand}" Content="New role" Style="{StaticResource PrimaryButtonStyle}"/>
+							</Grid>
+						</Border>
+					</controls:MasterDetailGrid.Master>
+					<controls:MasterDetailGrid.Detail>
+						<Border Style="{StaticResource WorkspaceSectionStyle}">
+							<Grid>
+								<Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+								<controls:WorkflowHeader Title="{Binding EditorTitle}" Subtitle="Permission assignments and role identity" />
+								<ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+									<StackPanel Margin="0,12,0,0">
+										<Grid IsEnabled="{Binding CanEdit}">
+											<Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+											<StackPanel><TextBlock Text="Code" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding Code}"/></StackPanel>
+											<StackPanel Grid.Column="2"><TextBlock Text="Name" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding Name}"/></StackPanel>
+										</Grid>
+										<StackPanel Margin="0,12,0,0" IsEnabled="{Binding CanEdit}">
+											<TextBlock Text="Description" Style="{StaticResource FormLabelStyle}"/>
+											<TextBox Text="{Binding Description}" Style="{StaticResource AppTextBoxStyle}"/>
+										</StackPanel>
+										<Separator Margin="0,16,0,12"/>
+										<TextBlock Text="Permissions" Style="{StaticResource WorkspaceSectionTitleStyle}"/>
+										<TextBlock Margin="0,3,0,8" Text="These are direct permissions stored on the role. Effective user permissions are the union of all active assigned roles." Style="{StaticResource CaptionStyle}" TextWrapping="Wrap"/>
+										<ItemsControl IsEnabled="{Binding CanEdit}" ItemsSource="{Binding Permissions}">
+											<ItemsControl.ItemTemplate><DataTemplate><controls:AppCheckBox Margin="0,4,0,0" Content="{Binding Name}" IsChecked="{Binding IsSelected}"/></DataTemplate></ItemsControl.ItemTemplate>
+										</ItemsControl>
+									</StackPanel>
+								</ScrollViewer>
+								<controls:WorkflowActionBar Grid.Row="2">
+									<controls:WorkflowActionBar.SecondaryActions><StackPanel Orientation="Horizontal"><Button Command="{Binding NewCommand}" Content="Cancel" Style="{StaticResource SecondaryButtonStyle}"/><Button Margin="{StaticResource Button.Margin}" Command="{Binding ToggleActiveCommand}" Content="{Binding ActivationButtonText}" Style="{StaticResource DangerButtonStyle}"/></StackPanel></controls:WorkflowActionBar.SecondaryActions>
+									<controls:WorkflowActionBar.PrimaryAction><Button Command="{Binding SaveCommand}" Content="Save role" Style="{StaticResource PrimaryButtonStyle}"/></controls:WorkflowActionBar.PrimaryAction>
+								</controls:WorkflowActionBar>
+							</Grid>
+						</Border>
+					</controls:MasterDetailGrid.Detail>
+				</controls:MasterDetailGrid>
+			</TabItem>
+		</TabControl>
 	</Grid>
 </UserControl>
