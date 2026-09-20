@@ -21,6 +21,17 @@ public sealed class VisualDesignerUxConsolidationTests
 		Assert.Contains("Text=\"{Binding Message}\"", resources, StringComparison.Ordinal);
 	}
 
+	[Fact]
+	public void ProductiveDesignersReuseSharedValidationIssuePresentation()
+	{
+		var root = FindRepositoryRoot();
+		var posting = File.ReadAllText(Path.Combine(root, "src", "Depot", "Views", "FinancePostingFlowDesignerView.xaml"));
+		var import = File.ReadAllText(Path.Combine(root, "src", "Depot", "Views", "ImportView.xaml"));
+
+		Assert.Contains("ItemsSource=\"{Binding Issues}\" ItemTemplate=\"{StaticResource DesignerValidationIssueTemplate}\"", posting, StringComparison.Ordinal);
+		Assert.Contains("ItemsSource=\"{Binding MappingIssues}\" ItemTemplate=\"{StaticResource DesignerValidationIssueTemplate}\"", import, StringComparison.Ordinal);
+	}
+
 	private static string FindRepositoryRoot()
 	{
 		for (var directory = new DirectoryInfo(AppContext.BaseDirectory); directory is not null; directory = directory.Parent)

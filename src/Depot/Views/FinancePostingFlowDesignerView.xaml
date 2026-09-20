@@ -139,18 +139,7 @@
 						<Separator Margin="0,16" />
 						<TextBlock Text="Live validation" FontWeight="SemiBold" />
 						<TextBlock Margin="0,4,0,8" Text="{Binding ValidationSummary}" Style="{StaticResource CaptionStyle}" TextWrapping="Wrap" />
-						<ItemsControl ItemsSource="{Binding Issues}">
-							<ItemsControl.ItemTemplate>
-								<DataTemplate>
-									<Border Margin="0,0,0,6" Padding="8" Background="{DynamicResource SurfaceAltBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="{DynamicResource Radius.M}">
-										<StackPanel>
-											<TextBlock Text="{Binding Severity}" FontWeight="SemiBold" />
-											<TextBlock Margin="0,2,0,0" Text="{Binding Message}" Style="{StaticResource CaptionStyle}" TextWrapping="Wrap" />
-										</StackPanel>
-									</Border>
-								</DataTemplate>
-							</ItemsControl.ItemTemplate>
-						</ItemsControl>
+						<ItemsControl ItemsSource="{Binding Issues}" ItemTemplate="{StaticResource DesignerValidationIssueTemplate}" />
 					</StackPanel>
 				</ScrollViewer>
 			</controls:Card>
