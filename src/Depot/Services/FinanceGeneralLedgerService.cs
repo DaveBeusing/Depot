@@ -97,6 +97,17 @@ public sealed class FinanceGeneralLedgerService
 		return rate?.Id ?? throw new InvalidOperationException($"No persisted exchange rate is available for {transactionCurrency.Value}->{book.ReportingCurrency.Value} on or before {postingDate:yyyy-MM-dd}.");
 	}
 
+	public Task<FinancePostingFlowContext> GetPostingFlowContextAsync(
+		Guid accountingBookId,
+		Guid journalId,
+		CancellationToken cancellationToken = default)
+	{
+		_authorization.RequirePermission(ApplicationPermission.FinancePostingProfilesView);
+		if (accountingBookId == Guid.Empty) throw new ArgumentException("Accounting book is required.", nameof(accountingBookId));
+		if (journalId == Guid.Empty) throw new ArgumentException("Journal is required.", nameof(journalId));
+		return _ledger.GetPostingFlowContextAsync(accountingBookId, journalId, cancellationToken);
+	}
+
 	public async Task<FinancePostingProfile> SavePostingProfileAsync(FinancePostingProfile profile, CancellationToken cancellationToken = default)
 	{
 		ArgumentNullException.ThrowIfNull(profile);

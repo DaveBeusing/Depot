@@ -76,6 +76,57 @@ public sealed class FinanceGeneralLedgerRepository : DatabaseRepository
 			cancellationToken,
 			Parameter("$Date", date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)));
 
+	public async Task<FinancePostingFlowContext> GetPostingFlowContextAsync(
+		Guid accountingBookId,
+		Guid journalId,
+		CancellationToken cancellationToken = default)
+	{
+		var book = await Database.QuerySingleOrDefaultAsync(
+			"SELECT Id, LegalEntityId, ChartOfAccountsId, Code, Name, ReportingCurrencyCode, AccountingStandardCode, IsPrimary, IsActive FROM FinanceAccountingBooks WHERE Id = $Id;",
+			reader => new AccountingBook(
+				ReadGuid(reader, 0),
+				ReadGuid(reader, 1),
+				ReadGuid(reader, 2),
+				reader.GetString(3),
+				reader.GetString(4),
+				new CurrencyCode(reader.GetString(5)),
+				reader.GetString(6),
+				ReadBool(reader, 7),
+				ReadBool(reader, 8)),
+			cancellationToken,
+			Parameter("$Id", accountingBookId.ToString("D")));
+
+		var journals = await Database.QueryAsync(
+			"SELECT Id, AccountingBookId, Code, Name, IsActive FROM FinanceJournals WHERE AccountingBookId = $BookId ORDER BY Code;",
+			reader => new JournalDefinition(
+				ReadGuid(reader, 0),
+				ReadGuid(reader, 1),
+				reader.GetString(2),
+				reader.GetString(3),
+				ReadBool(reader, 4)),
+			cancellationToken,
+			Parameter("$BookId", accountingBookId.ToString("D")));
+
+		var accounts = await Database.QueryAsync(
+			"SELECT a.Id, a.ChartOfAccountsId, a.Number, a.Name, a.AccountType, a.AllowDirectPosting, a.IsActive FROM FinanceAccounts a INNER JOIN FinanceAccountingBooks b ON b.ChartOfAccountsId = a.ChartOfAccountsId WHERE b.Id = $BookId ORDER BY a.Number, a.Id;",
+			reader => new FinanceAccount(
+				ReadGuid(reader, 0),
+				ReadGuid(reader, 1),
+				reader.GetString(2),
+				reader.GetString(3),
+				(FinanceAccountType)Convert.ToInt32(reader.GetValue(4), CultureInfo.InvariantCulture),
+				ReadBool(reader, 5),
+				ReadBool(reader, 6)),
+			cancellationToken,
+			Parameter("$BookId", accountingBookId.ToString("D")));
+
+		return new FinancePostingFlowContext(
+			book,
+			journals.FirstOrDefault(value => value.Id == journalId),
+			accounts.ToDictionary(value => value.Id),
+			journals);
+	}
+
 	internal Task<FinanceExistingPosting?> FindByOperationAsync(DatabaseTransactionContext transaction, Guid operationId, CancellationToken cancellationToken) =>
 		transaction.Session.QuerySingleOrDefaultAsync(
 			"SELECT Id, RequestHash FROM FinanceJournalEntries WHERE OperationId = $OperationId;",
