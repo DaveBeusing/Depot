@@ -107,9 +107,10 @@ public sealed partial class FinanceLocalizationViewModel : BaseViewModel, IDispo
 			if(SelectedLegalEntity is not null)
 			{
 				Replace(Assignments,await _localization.GetAssignmentsAsync(SelectedLegalEntity.Id,cancellationToken));
+				RefreshAssignmentTimeline();
 				await LoadProfileCoreAsync(cancellationToken);
 			}
-			else { Assignments.Clear(); EffectivePacks.Clear(); Requirements.Clear(); Profile=null; WarningText="No legal entity is configured."; }
+			else { Assignments.Clear(); RefreshAssignmentTimeline(); EffectivePacks.Clear(); Requirements.Clear(); Profile=null; WarningText="No legal entity is configured."; }
 			CompleteOperation(false,"Finance Localization loaded.");
 		}
 		catch(OperationCanceledException) when(cancellationToken.IsCancellationRequested){}
@@ -123,6 +124,7 @@ public sealed partial class FinanceLocalizationViewModel : BaseViewModel, IDispo
 		{
 			if(SelectedLegalEntity is null)throw new InvalidOperationException("Select a legal entity.");
 			Replace(Assignments,await _localization.GetAssignmentsAsync(SelectedLegalEntity.Id,cancellationToken));
+			RefreshAssignmentTimeline();
 			await LoadProfileCoreAsync(cancellationToken);
 			CompleteOperation(false,"Effective localization profile resolved.");
 		}
@@ -141,10 +143,7 @@ public sealed partial class FinanceLocalizationViewModel : BaseViewModel, IDispo
 		BeginOperation("Saving localization assignment...");
 		try
 		{
-			var entity=SelectedLegalEntity??throw new InvalidOperationException("Select a legal entity.");
-			var pack=SelectedAssignmentPack??throw new InvalidOperationException("Select a localization pack.");
-			var current=SelectedAssignment;
-			var value=new FinanceLocalizationAssignment{Id=current?.Id??0,Version=current?.Version??1,LegalEntityId=entity.Id,PackCode=pack.Code,EffectiveFrom=DateOnly.FromDateTime(AssignmentFrom),EffectiveTo=AssignmentTo.HasValue?DateOnly.FromDateTime(AssignmentTo.Value):null,IsActive=AssignmentActive,CreatedAtUtc=current?.CreatedAtUtc??default,CreatedByUserId=current?.CreatedByUserId??0};
+			var value=CreateAssignmentDraft();
 			SelectedAssignment=await _localization.SaveAssignmentAsync(value,token);await LoadAsync(token);CompleteOperation(false,"Localization assignment saved.");
 		}
 		catch(Exception exception){FailOperation(exception,"Localization assignment could not be saved.");}

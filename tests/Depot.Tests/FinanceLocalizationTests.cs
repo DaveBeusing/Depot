@@ -84,6 +84,23 @@ public sealed class FinanceLocalizationTests
 	}
 
 	[Fact]
+	public async Task AssignmentValidationPreviewUsesTheSameCountryAndOverlapRulesAsSave()
+	{
+		using var context=TestContext.Create();
+		var germany=context.CreateLegalEntity("DE01","Germany Entity","DE");
+		await context.Service.SaveAssignmentAsync(new FinanceLocalizationAssignment{LegalEntityId=germany,PackCode=FinanceLocalizationPackCodes.Generic,EffectiveFrom=new DateOnly(2026,1,1),EffectiveTo=new DateOnly(2026,12,31),IsActive=true});
+
+		var overlap=await context.Service.ValidateAssignmentAsync(new FinanceLocalizationAssignment{LegalEntityId=germany,PackCode=FinanceLocalizationPackCodes.Germany,EffectiveFrom=new DateOnly(2026,8,28),IsActive=true});
+		Assert.False(overlap.IsValid);
+		Assert.Contains(overlap.Errors,value=>value.Contains("overlaps",StringComparison.OrdinalIgnoreCase));
+
+		var france=context.CreateLegalEntity("FR01","France Entity","FR");
+		var mismatch=await context.Service.ValidateAssignmentAsync(new FinanceLocalizationAssignment{LegalEntityId=france,PackCode=FinanceLocalizationPackCodes.Germany,EffectiveFrom=new DateOnly(2026,8,28),IsActive=true});
+		Assert.False(mismatch.IsValid);
+		Assert.Contains(mismatch.Errors,value=>value.Contains("country",StringComparison.OrdinalIgnoreCase));
+	}
+
+	[Fact]
 	public async Task CustomCountryPackAndEffectiveRegistryEntryExtendFrameworkWithoutSchemaChange()
 	{
 		using var context=TestContext.Create();

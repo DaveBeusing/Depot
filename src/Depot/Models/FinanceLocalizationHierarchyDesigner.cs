@@ -157,3 +157,83 @@ public static class FinanceLocalizationHierarchyProjector
 		}
 	}
 }
+
+
+public enum FinanceLocalizationAssignmentState
+{
+	Valid,
+	Inactive,
+	Overlap,
+	CountryMismatch,
+	MissingPack,
+	InactivePack
+}
+
+public sealed record FinanceLocalizationAssignmentTimelineRow(
+	FinanceLocalizationAssignment Assignment,
+	FinanceLocalizationPack? Pack,
+	FinanceLocalizationAssignmentState State,
+	string ValidationMessage)
+{
+	public string PackCode => Assignment.PackCode;
+	public DateOnly EffectiveFrom => Assignment.EffectiveFrom;
+	public DateOnly? EffectiveTo => Assignment.EffectiveTo;
+	public bool IsActive => Assignment.IsActive;
+	public bool HasConflict => State is FinanceLocalizationAssignmentState.Overlap or FinanceLocalizationAssignmentState.CountryMismatch or FinanceLocalizationAssignmentState.MissingPack or FinanceLocalizationAssignmentState.InactivePack;
+	public string StateText => State.ToString();
+	public string RangeText => $"{EffectiveFrom:yyyy-MM-dd} → {(EffectiveTo.HasValue ? EffectiveTo.Value.ToString("yyyy-MM-dd") : "open")}";
+}
+
+public sealed record FinanceLocalizationAssignmentValidationResult(
+	bool IsValid,
+	IReadOnlyList<string> Errors)
+{
+	public string Summary => IsValid ? "Assignment is valid for the existing localization service rules." : string.Join(Environment.NewLine, Errors);
+}
+
+public static class FinanceLocalizationAssignmentProjector
+{
+	public static IReadOnlyList<FinanceLocalizationAssignmentTimelineRow> Project(
+		LegalEntity legalEntity,
+		IEnumerable<FinanceLocalizationAssignment> assignments,
+		IEnumerable<FinanceLocalizationPack> packs)
+	{
+		ArgumentNullException.ThrowIfNull(legalEntity);
+		ArgumentNullException.ThrowIfNull(assignments);
+		ArgumentNullException.ThrowIfNull(packs);
+		var source = assignments.OrderBy(value => value.EffectiveFrom).ThenBy(value => value.Id).ToArray();
+		var byCode = packs.ToDictionary(value => value.Code, StringComparer.Ordinal);
+		return source.Select(assignment =>
+		{
+			byCode.TryGetValue(assignment.PackCode, out var pack);
+			var overlap = assignment.IsActive && source.Any(other =>
+				other.Id != assignment.Id &&
+				other.IsActive &&
+				FinanceLocalizationHierarchyRules.RangesOverlap(assignment.EffectiveFrom, assignment.EffectiveTo, other.EffectiveFrom, other.EffectiveTo));
+			var countryMismatch = pack is not null &&
+				!string.IsNullOrWhiteSpace(pack.CountryCode) &&
+				!string.Equals(pack.CountryCode, legalEntity.CountryCode, StringComparison.Ordinal);
+			var state = pack is null
+				? FinanceLocalizationAssignmentState.MissingPack
+				: !pack.IsActive
+					? FinanceLocalizationAssignmentState.InactivePack
+					: countryMismatch
+						? FinanceLocalizationAssignmentState.CountryMismatch
+						: overlap
+							? FinanceLocalizationAssignmentState.Overlap
+							: !assignment.IsActive
+								? FinanceLocalizationAssignmentState.Inactive
+								: FinanceLocalizationAssignmentState.Valid;
+			var message = state switch
+			{
+				FinanceLocalizationAssignmentState.MissingPack => "Assigned localization pack was not found.",
+				FinanceLocalizationAssignmentState.InactivePack => "Assigned localization pack is inactive.",
+				FinanceLocalizationAssignmentState.CountryMismatch => $"Localization pack country '{pack!.CountryCode}' does not match legal entity country '{legalEntity.CountryCode}'.",
+				FinanceLocalizationAssignmentState.Overlap => "Another active localization assignment overlaps this effective date range.",
+				FinanceLocalizationAssignmentState.Inactive => "Assignment is inactive and retained as historical evidence.",
+				_ => "Assignment is consistent with the current hierarchy, country and effective-date projection."
+			};
+			return new FinanceLocalizationAssignmentTimelineRow(assignment, pack, state, message);
+		}).ToArray();
+	}
+}

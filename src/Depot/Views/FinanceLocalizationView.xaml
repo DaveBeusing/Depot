@@ -11,6 +11,13 @@
         <TabControl Grid.Row="2" SelectedIndex="{Binding LocalizationWorkspaceModeIndex}" Style="{StaticResource AppTabControlStyle}">
             <TabItem Header="Hierarchy Designer">
                 <Grid Margin="8">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="12"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="12"/>
+                        <RowDefinition Height="220"/>
+                    </Grid.RowDefinitions>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="1.35*"/>
                         <ColumnDefinition Width="12"/>
@@ -19,7 +26,23 @@
                         <ColumnDefinition Width="1.45*"/>
                     </Grid.ColumnDefinitions>
 
-                    <Border Style="{StaticResource WorkspaceSectionStyle}">
+                    <Border Grid.ColumnSpan="5" Style="{StaticResource WorkspaceToolbarStyle}">
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="2*"/><ColumnDefinition Width="160"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="Legal entity" Style="{StaticResource FormLabelStyle}"/>
+                                <ComboBox ItemsSource="{Binding LegalEntities}" SelectedItem="{Binding SelectedLegalEntity}" DisplayMemberPath="Name" Style="{StaticResource AppComboBoxStyle}"/>
+                                <TextBlock Margin="0,3,0,0" Text="{Binding SelectedLegalEntitySummary}" Style="{StaticResource CaptionStyle}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Margin="12,0,0,0">
+                                <TextBlock Text="As of" Style="{StaticResource FormLabelStyle}"/>
+                                <DatePicker SelectedDate="{Binding AsOfDate}" Style="{StaticResource AppDatePickerStyle}"/>
+                            </StackPanel>
+                            <Button Grid.Column="2" Margin="12,18,0,0" Command="{Binding LoadProfileCommand}" Content="Load entity" Style="{StaticResource SecondaryButtonStyle}"/>
+                        </Grid>
+                    </Border>
+
+                    <Border Grid.Row="2" Style="{StaticResource WorkspaceSectionStyle}">
                         <Grid>
                             <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
                             <TextBlock Text="Localization hierarchy" Style="{StaticResource WorkspaceSectionTitleStyle}"/>
@@ -52,7 +75,7 @@
                         </Grid>
                     </Border>
 
-                    <Border Grid.Column="2" Style="{StaticResource WorkspaceSectionStyle}">
+                    <Border Grid.Row="2" Grid.Column="2" Style="{StaticResource WorkspaceSectionStyle}">
                         <ScrollViewer VerticalScrollBarVisibility="Auto">
                             <StackPanel>
                                 <TextBlock Text="Pack inspector" Style="{StaticResource WorkspaceSectionTitleStyle}"/>
@@ -87,7 +110,7 @@
                         </ScrollViewer>
                     </Border>
 
-                    <Border Grid.Column="4" Style="{StaticResource WorkspaceSectionStyle}">
+                    <Border Grid.Row="2" Grid.Column="4" Style="{StaticResource WorkspaceSectionStyle}">
                         <Grid>
                             <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
                             <TextBlock Text="Registry entries" Style="{StaticResource WorkspaceSectionTitleStyle}"/>
@@ -109,6 +132,48 @@
                                     <DataGridTextColumn Header="Reference" Binding="{Binding Reference}" Width="*"/>
                                 </DataGrid.Columns>
                             </DataGrid>
+                        </Grid>
+                    </Border>
+
+                    <Border Grid.Row="4" Grid.ColumnSpan="5" Style="{StaticResource WorkspaceSectionStyle}">
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="1.7*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="1.1*"/></Grid.ColumnDefinitions>
+                            <Grid>
+                                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                                <TextBlock Text="Effective assignment timeline" Style="{StaticResource WorkspaceSectionTitleStyle}"/>
+                                <TextBlock Grid.Row="1" Margin="0,4,0,8" Text="Active ranges must not overlap. Conflicts, inactive packs and country mismatches remain visible; historical inactive assignments stay retained." Style="{StaticResource CaptionStyle}" TextWrapping="Wrap"/>
+                                <DataGrid Grid.Row="2"
+                                          ItemsSource="{Binding AssignmentTimelineRows}"
+                                          SelectedItem="{Binding SelectedAssignmentTimelineRow}"
+                                          Style="{StaticResource AppDataGridCompactStyle}"
+                                          AutoGenerateColumns="False"
+                                          IsReadOnly="True"
+                                          VirtualizingPanel.IsVirtualizing="True"
+                                          VirtualizingPanel.VirtualizationMode="Recycling">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Pack" Binding="{Binding PackCode}" Width="100"/>
+                                        <DataGridTextColumn Header="Range" Binding="{Binding RangeText}" Width="210"/>
+                                        <DataGridTextColumn Header="State" Binding="{Binding StateText}" Width="120"/>
+                                        <DataGridTextColumn Header="Evidence" Binding="{Binding ValidationMessage}" Width="*"/>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </Grid>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="Assignment draft" Style="{StaticResource WorkspaceSectionTitleStyle}"/>
+                                <ComboBox Margin="0,8,0,0" ItemsSource="{Binding Packs}" SelectedItem="{Binding SelectedAssignmentPack}" DisplayMemberPath="Name" Style="{StaticResource AppComboBoxStyle}"/>
+                                <Grid Margin="0,8,0,0">
+                                    <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="8"/><ColumnDefinition/></Grid.ColumnDefinitions>
+                                    <DatePicker SelectedDate="{Binding AssignmentFrom}" Style="{StaticResource AppDatePickerStyle}" ToolTip="Effective from"/>
+                                    <DatePicker Grid.Column="2" SelectedDate="{Binding AssignmentTo}" Style="{StaticResource AppDatePickerStyle}" ToolTip="Effective to"/>
+                                </Grid>
+                                <controls:AppCheckBox Margin="0,8,0,0" Content="Active" IsChecked="{Binding AssignmentActive}"/>
+                                <TextBlock Margin="0,8,0,0" Text="{Binding AssignmentValidationText}" Style="{StaticResource CaptionStyle}" TextWrapping="Wrap"/>
+                                <WrapPanel Margin="0,8,0,0" HorizontalAlignment="Right">
+                                    <Button Command="{Binding NewAssignmentCommand}" Content="New" Style="{StaticResource SecondaryButtonStyle}"/>
+                                    <Button Margin="8,0,0,0" Command="{Binding ValidateDesignerAssignmentCommand}" Content="Validate" Style="{StaticResource SecondaryButtonStyle}"/>
+                                    <Button Margin="8,0,0,0" Command="{Binding SaveAssignmentCommand}" Content="Save" IsEnabled="{Binding CanSaveDesignerAssignment}" Style="{StaticResource PrimaryButtonStyle}"/>
+                                </WrapPanel>
+                            </StackPanel>
                         </Grid>
                     </Border>
                 </Grid>
