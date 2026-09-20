@@ -191,18 +191,7 @@
 						</Grid>
 
 						<ScrollViewer Grid.Row="4" VerticalScrollBarVisibility="Auto">
-							<ItemsControl ItemsSource="{Binding MappingIssues}">
-								<ItemsControl.ItemTemplate>
-									<DataTemplate>
-										<Border Margin="0,0,0,8" Padding="8" Style="{StaticResource WorkspaceToolbarBorderStyle}">
-											<StackPanel>
-												<TextBlock Text="{Binding Severity}" FontWeight="SemiBold" />
-												<TextBlock Margin="0,2,0,0" Text="{Binding Message}" TextWrapping="Wrap" Style="{StaticResource CaptionStyle}" />
-											</StackPanel>
-										</Border>
-									</DataTemplate>
-								</ItemsControl.ItemTemplate>
-							</ItemsControl>
+							<ItemsControl ItemsSource="{Binding MappingIssues}" ItemTemplate="{StaticResource DesignerValidationIssueTemplate}" />
 						</ScrollViewer>
 
 						<StackPanel Grid.Row="6">
