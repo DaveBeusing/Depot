@@ -9,7 +9,7 @@ using Depot.Services;
 
 namespace Depot.ViewModels;
 
-public sealed class FinanceBankingViewModel : BaseViewModel, IDisposable
+public sealed partial class FinanceBankingViewModel : BaseViewModel, IDisposable
 {
 	private readonly FinanceBankingService _banking;
 	private FinanceBankAccount? _selectedBankAccount;
@@ -40,6 +40,7 @@ public sealed class FinanceBankingViewModel : BaseViewModel, IDisposable
 		CreatePaymentRunCommand=new AsyncRelayCommand(CreatePaymentRunAsync);
 		ApprovePaymentRunCommand=new AsyncRelayCommand(ApprovePaymentRunAsync);
 		ExecutePaymentRunLineCommand=new AsyncRelayCommand(ExecutePaymentRunLineAsync);
+		InitializeReconciliationDesigner();
 	}
 
 	public ObservableCollection<FinanceBankAccount> BankAccounts { get; }=[];
@@ -111,6 +112,7 @@ public sealed class FinanceBankingViewModel : BaseViewModel, IDisposable
 			Replace(UnreconciledLines,await _banking.GetUnreconciledLinesAsync(cancellationToken:cancellationToken));
 			Replace(PaymentRuns,await _banking.GetPaymentRunsAsync(cancellationToken));
 			Replace(CashPositions,await _banking.GetCashPositionAsync(cancellationToken));
+			await LoadReconciliationDesignerPageAsync(1,cancellationToken);
 			CompleteOperation(BankAccounts.Count==0,"Banking loaded.");
 		}
 		catch(OperationCanceledException) when(cancellationToken.IsCancellationRequested){}
@@ -227,5 +229,5 @@ public sealed class FinanceBankingViewModel : BaseViewModel, IDisposable
 	private static long ParseLong(string value,string field)=>long.TryParse(value,NumberStyles.Integer,CultureInfo.InvariantCulture,out var result)&&result>0?result:throw new ArgumentException($"A valid {field} ID is required.");
 	private static decimal ParseDecimal(string value,string field)=>decimal.TryParse(value,NumberStyles.Number,CultureInfo.InvariantCulture,out var result)&&result>0m?result:throw new ArgumentException($"A positive {field} is required.");
 	private static void Replace<T>(ObservableCollection<T> target,IEnumerable<T> values){target.Clear();foreach(var value in values)target.Add(value);}
-	public void Dispose(){if(_disposed)return;_disposed=true;RefreshCommand.Dispose();SaveBankAccountCommand.Dispose();NewBankAccountCommand.Dispose();ImportStatementCommand.Dispose();LoadStatementCommand.Dispose();ReconcileCommand.Dispose();ReverseReconciliationCommand.Dispose();CreatePaymentRunCommand.Dispose();ApprovePaymentRunCommand.Dispose();ExecutePaymentRunLineCommand.Dispose();}
+	public void Dispose(){if(_disposed)return;_disposed=true;DisposeReconciliationDesigner();RefreshCommand.Dispose();SaveBankAccountCommand.Dispose();NewBankAccountCommand.Dispose();ImportStatementCommand.Dispose();LoadStatementCommand.Dispose();ReconcileCommand.Dispose();ReverseReconciliationCommand.Dispose();CreatePaymentRunCommand.Dispose();ApprovePaymentRunCommand.Dispose();ExecutePaymentRunLineCommand.Dispose();}
 }

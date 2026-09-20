@@ -64,6 +64,102 @@
                     </Grid>
                 </Grid>
             </TabItem>
+            <TabItem Header="Reconciliation Designer">
+                <Grid Margin="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="1.6*"/>
+                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition Width="1.15*"/>
+                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition Width="1.6*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <Border Style="{StaticResource WorkspaceSectionStyle}">
+                        <Grid>
+                            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                            <TextBlock Text="Unreconciled bank lines" Style="{StaticResource WorkspaceSectionTitleStyle}"/>
+                            <TextBlock Grid.Row="1" Margin="0,4,0,8" Text="{Binding ReconciliationPageSummary}" Style="{StaticResource CaptionStyle}"/>
+                            <DataGrid Grid.Row="2"
+                                      ItemsSource="{Binding ReconciliationDesignerLines}"
+                                      SelectedItem="{Binding SelectedReconciliationLine}"
+                                      Style="{StaticResource AppDataGridCompactStyle}"
+                                      AutoGenerateColumns="False"
+                                      IsReadOnly="True"
+                                      VirtualizingPanel.IsVirtualizing="True"
+                                      VirtualizingPanel.VirtualizationMode="Recycling">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Date" Binding="{Binding BookingDate}" Width="100"/>
+                                    <DataGridTextColumn Header="Amount" Binding="{Binding Amount, StringFormat={}{0:N2}}" Width="105" ElementStyle="{StaticResource AppDataGridNumericTextStyle}"/>
+                                    <DataGridTextColumn Header="Currency" Binding="{Binding Currency}" Width="75"/>
+                                    <DataGridTextColumn Header="Reference" Binding="{Binding Reference}" Width="*"/>
+                                    <DataGridTextColumn Header="Counterparty" Binding="{Binding CounterpartyName}" Width="*"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                            <WrapPanel Grid.Row="3" Margin="0,8,0,0">
+                                <Button Command="{Binding PreviousReconciliationPageCommand}" Content="Previous" Style="{StaticResource SecondaryButtonStyle}"/>
+                                <Button Margin="8,0,0,0" Command="{Binding NextReconciliationPageCommand}" Content="Next" Style="{StaticResource SecondaryButtonStyle}"/>
+                                <Button Margin="8,0,0,0" Command="{Binding LoadReconciliationPageCommand}" Content="Refresh page" Style="{StaticResource SecondaryButtonStyle}"/>
+                            </WrapPanel>
+                        </Grid>
+                    </Border>
+
+                    <Border x:Name="ReconciliationPreviewDropZone"
+                            Grid.Column="2"
+                            Style="{StaticResource WorkspaceSectionStyle}"
+                            AllowDrop="True"
+                            Drop="OnReconciliationPreviewDrop">
+                        <StackPanel>
+                            <TextBlock Text="Match preview" Style="{StaticResource WorkspaceSectionTitleStyle}"/>
+                            <TextBlock Margin="0,10,0,0" Text="Bank evidence" Style="{StaticResource FormLabelStyle}"/>
+                            <TextBlock Margin="0,3,0,0" Text="{Binding ReconciliationBankEvidence}" TextWrapping="Wrap"/>
+                            <Separator Margin="0,12"/>
+                            <TextBlock Text="Target evidence" Style="{StaticResource FormLabelStyle}"/>
+                            <TextBlock Margin="0,3,0,0" Text="{Binding ReconciliationTargetEvidence}" TextWrapping="Wrap"/>
+                            <Separator Margin="0,12"/>
+                            <TextBlock Text="Amount" Style="{StaticResource FormLabelStyle}"/>
+                            <TextBlock Margin="0,3,0,0" Text="{Binding ReconciliationMatchAmountEvidence}" TextWrapping="Wrap"/>
+                            <TextBlock Margin="0,10,0,0" Text="Reference" Style="{StaticResource FormLabelStyle}"/>
+                            <TextBlock Margin="0,3,0,0" Text="{Binding ReconciliationMatchReferenceEvidence}" TextWrapping="Wrap"/>
+                            <TextBlock Margin="0,14,0,0" Text="A preview never creates a reconciliation. Match is always an explicit user action." Style="{StaticResource CaptionStyle}" TextWrapping="Wrap"/>
+                            <Button Margin="0,14,0,0"
+                                    Command="{Binding MatchReconciliationCandidateCommand}"
+                                    Content="Match"
+                                    Style="{StaticResource PrimaryButtonStyle}"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Grid.Column="4" Style="{StaticResource WorkspaceSectionStyle}">
+                        <Grid>
+                            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                            <TextBlock Text="Match targets" Style="{StaticResource WorkspaceSectionTitleStyle}"/>
+                            <TextBlock Grid.Row="1" Margin="0,4,0,8" Text="Candidates are exact existing payment or General Ledger evidence. No target is selected automatically." Style="{StaticResource CaptionStyle}" TextWrapping="Wrap"/>
+                            <DataGrid x:Name="ReconciliationCandidateGrid"
+                                      Grid.Row="2"
+                                      ItemsSource="{Binding ReconciliationCandidates}"
+                                      SelectedItem="{Binding SelectedReconciliationCandidate}"
+                                      Style="{StaticResource AppDataGridCompactStyle}"
+                                      AutoGenerateColumns="False"
+                                      IsReadOnly="True"
+                                      PreviewMouseLeftButtonDown="OnReconciliationCandidateMouseLeftButtonDown"
+                                      PreviewMouseMove="OnReconciliationCandidateMouseMove"
+                                      VirtualizingPanel.IsVirtualizing="True"
+                                      VirtualizingPanel.VirtualizationMode="Recycling">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Type" Binding="{Binding TargetKind}" Width="125"/>
+                                    <DataGridTextColumn Header="Date" Binding="{Binding Date}" Width="100"/>
+                                    <DataGridTextColumn Header="Amount" Binding="{Binding Amount, StringFormat={}{0:N2}}" Width="105" ElementStyle="{StaticResource AppDataGridNumericTextStyle}"/>
+                                    <DataGridTextColumn Header="Reference" Binding="{Binding Reference}" Width="*"/>
+                                    <DataGridTextColumn Header="Counterparty" Binding="{Binding Counterparty}" Width="*"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                            <WrapPanel Grid.Row="3" Margin="0,8,0,0" HorizontalAlignment="Right">
+                                <Button Command="{Binding LoadReconciliationCandidatesCommand}" Content="Load candidates" Style="{StaticResource SecondaryButtonStyle}"/>
+                                <Button Margin="8,0,0,0" Command="{Binding UseReconciliationCandidateCommand}" Content="Use selected target" Style="{StaticResource PrimaryButtonStyle}"/>
+                            </WrapPanel>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </TabItem>
             <TabItem Header="Payment Runs">
                 <Grid Margin="8"><Grid.ColumnDefinitions><ColumnDefinition Width="2*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="3*"/></Grid.ColumnDefinitions>
                     <Grid><Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="*"/></Grid.RowDefinitions><DataGrid ItemsSource="{Binding PaymentRuns}" SelectedItem="{Binding SelectedPaymentRun}" Style="{StaticResource AppDataGridCompactStyle}" AutoGenerateColumns="False"><DataGrid.Columns><DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="70" ElementStyle="{StaticResource AppDataGridNumericTextStyle}"/><DataGridTextColumn Header="Date" Binding="{Binding PaymentDate}" Width="105"/><DataGridTextColumn Header="Description" Binding="{Binding Description}" Width="*"/><DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="130"/></DataGrid.Columns></DataGrid><DataGrid Grid.Row="1" ItemsSource="{Binding PaymentRunLines}" SelectedItem="{Binding SelectedPaymentRunLine}" Style="{StaticResource AppDataGridCompactStyle}" AutoGenerateColumns="False"><DataGrid.Columns><DataGridTextColumn Header="Open item" Binding="{Binding PayableOpenItemId}" Width="90" ElementStyle="{StaticResource AppDataGridNumericTextStyle}"/><DataGridTextColumn Header="Supplier" Binding="{Binding SupplierId}" Width="90" ElementStyle="{StaticResource AppDataGridNumericTextStyle}"/><DataGridTextColumn Header="Amount" Binding="{Binding Amount, StringFormat={}{0:N2}}" Width="110" ElementStyle="{StaticResource AppDataGridNumericTextStyle}"/><DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="100"/><DataGridTextColumn Header="AP payment" Binding="{Binding PayablePaymentId}" Width="100" ElementStyle="{StaticResource AppDataGridNumericTextStyle}"/></DataGrid.Columns></DataGrid></Grid>
