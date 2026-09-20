@@ -100,6 +100,7 @@ public sealed class ImportService
 					warnings.Add(new ImportWarning
 					{
 						RowNumber = row,
+						BlocksImport = true,
 						Message = "Part number is missing."
 					});
 					continue;
@@ -116,6 +117,7 @@ public sealed class ImportService
 					warnings.Add(new ImportWarning
 					{
 						RowNumber = row,
+						BlocksImport = true,
 						Message = $"Description is missing for '{partNumber}'."
 					});
 					continue;
@@ -132,6 +134,7 @@ public sealed class ImportService
 					warnings.Add(new ImportWarning
 					{
 						RowNumber = row,
+						BlocksImport = true,
 						Message = $"Purpose is missing for '{partNumber}'."
 					});
 					continue;
@@ -148,6 +151,7 @@ public sealed class ImportService
 					warnings.Add(new ImportWarning
 					{
 						RowNumber = row,
+						BlocksImport = true,
 						Message = $"Location is missing for '{partNumber}'."
 					});
 					continue;
@@ -207,6 +211,7 @@ public sealed class ImportService
 				warnings.Add(new ImportWarning
 				{
 					RowNumber = row,
+					BlocksImport = true,
 					Message = ex.Message
 				});
 			}
