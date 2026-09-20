@@ -47,6 +47,7 @@ public sealed class AdministrationViewModel : BaseViewModel, IDisposable
 		SupplierItemService supplierItemService,
 		WarehouseService warehouseService,
 		StorageLocationService storageLocationService,
+		WarehouseLayoutVisualizerService warehouseLayoutVisualizerService,
 		UserService userService,
 		RoleService roleService,
 		IAuthorizationService authorization,
@@ -61,7 +62,7 @@ public sealed class AdministrationViewModel : BaseViewModel, IDisposable
 		ApplicationInformationService applicationInformationService)
 	{
 		_importViewModel = importViewModel;
-		_masterDataViewModel = new MasterDataViewModel(purposeService, reasonCodeService, manufacturerService, categoryService, unitOfMeasureService, packagingService, supplierCategoryService, supplierService, supplierItemService, itemService, warehouseService, storageLocationService);
+		_masterDataViewModel = new MasterDataViewModel(purposeService, reasonCodeService, manufacturerService, categoryService, unitOfMeasureService, packagingService, supplierCategoryService, supplierService, supplierItemService, itemService, warehouseService, storageLocationService, warehouseLayoutVisualizerService);
 		_userViewModel = new UserViewModel(userService);
 		_roleViewModel = new RoleViewModel(roleService);
 		_databaseSettingsViewModel = new DatabaseSettingsViewModel(settingsService, connectionStatusService, databaseConnectionTester, databaseManagementService, fileDialogService);

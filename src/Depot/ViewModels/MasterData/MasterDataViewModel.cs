@@ -35,7 +35,8 @@ public sealed class MasterDataViewModel : BaseViewModel, IDisposable
 		SupplierItemService supplierItemService,
 		ItemService itemService,
 		WarehouseService warehouseService,
-		StorageLocationService storageLocationService)
+		StorageLocationService storageLocationService,
+		WarehouseLayoutVisualizerService warehouseLayoutVisualizerService)
 	{
 		_purposeViewModel = new PurposeViewModel(purposeService);
 		_reasonCodeViewModel = new ReasonCodeViewModel(reasonCodeService);
@@ -48,7 +49,7 @@ public sealed class MasterDataViewModel : BaseViewModel, IDisposable
 			[MasterDataSection.SupplierCategories] = new(supplierCategoryService)
 		};
 		_supplierViewModel = new SupplierViewModel(supplierService, supplierItemService, supplierCategoryService, itemService);
-		_warehouseStructureViewModel = new WarehouseStructureViewModel(warehouseService, storageLocationService);
+		_warehouseStructureViewModel = new WarehouseStructureViewModel(warehouseService, storageLocationService, warehouseLayoutVisualizerService);
 
 		Add("Purposes", MasterDataSection.Purposes);
 		Add("Manufacturers", MasterDataSection.Manufacturers);

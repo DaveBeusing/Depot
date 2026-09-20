@@ -14,10 +14,13 @@ public sealed class WarehouseStructureViewModel : BaseViewModel, IDisposable
 {
 	private readonly WarehouseService _warehouseService;
 	private readonly StorageLocationService _storageLocationService;
+	private readonly WarehouseLayoutVisualizerService _layoutVisualizerService;
 	private readonly AsyncDebouncer _warehouseSearchDebouncer = new(TimeSpan.FromMilliseconds(300));
 	private readonly AsyncDebouncer _locationSearchDebouncer = new(TimeSpan.FromMilliseconds(300));
 	private Warehouse? _selectedWarehouse;
 	private StorageLocation? _selectedStorageLocation;
+	private WarehouseLayoutLocationProjection? _selectedLayoutLocation;
+	private WarehouseLayoutSnapshot? _layoutSnapshot;
 	private string _warehouseSearchText = string.Empty;
 	private string _locationSearchText = string.Empty;
 	private long _warehouseEditorId;
@@ -33,10 +36,12 @@ public sealed class WarehouseStructureViewModel : BaseViewModel, IDisposable
 
 	public WarehouseStructureViewModel(
 		WarehouseService warehouseService,
-		StorageLocationService storageLocationService)
+		StorageLocationService storageLocationService,
+		WarehouseLayoutVisualizerService layoutVisualizerService)
 	{
 		_warehouseService = warehouseService;
 		_storageLocationService = storageLocationService;
+		_layoutVisualizerService = layoutVisualizerService;
 		NewWarehouseCommand = new RelayCommand(NewWarehouse);
 		SaveWarehouseCommand = new AsyncRelayCommand(SaveWarehouseAsync);
 		ToggleWarehouseCommand = new AsyncRelayCommand(ToggleWarehouseAsync, () => SelectedWarehouse is not null);
@@ -47,6 +52,7 @@ public sealed class WarehouseStructureViewModel : BaseViewModel, IDisposable
 
 	public ObservableCollection<Warehouse> Warehouses { get; } = new();
 	public ObservableCollection<StorageLocation> StorageLocations { get; } = new();
+	public ObservableCollection<WarehouseLayoutLocationProjection> LayoutLocations { get; } = new();
 	public RelayCommand NewWarehouseCommand { get; }
 	public AsyncRelayCommand SaveWarehouseCommand { get; }
 	public AsyncRelayCommand ToggleWarehouseCommand { get; }
@@ -58,6 +64,17 @@ public sealed class WarehouseStructureViewModel : BaseViewModel, IDisposable
 	public string LocationEditorTitle => _locationEditorId == 0 ? "New storage location" : "Storage location details";
 	public string WarehouseStatus => _warehouseEditorId == 0 ? "New" : SelectedWarehouse?.IsActive == true ? "Active" : "Inactive";
 	public string StorageLocationStatus => _locationEditorId == 0 ? "New" : SelectedStorageLocation?.IsActive == true ? "Active" : "Inactive";
+
+	public int LayoutLocationCount => _layoutSnapshot?.Locations.Count ?? 0;
+	public int LayoutActiveLocationCount => _layoutSnapshot?.ActiveLocationCount ?? 0;
+	public int LayoutInactiveLocationCount => _layoutSnapshot?.InactiveLocationCount ?? 0;
+	public long LayoutQuantityOnHand => _layoutSnapshot?.QuantityOnHand ?? 0;
+	public int LayoutDraftTransferCount => _layoutSnapshot?.DraftTransferCount ?? 0;
+	public int LayoutActiveInventoryCountCount => _layoutSnapshot?.ActiveInventoryCountCount ?? 0;
+	public bool CanViewLayoutTransferAttention => _layoutSnapshot?.CanViewTransferAttention == true;
+	public bool CanViewLayoutInventoryCountAttention => _layoutSnapshot?.CanViewInventoryCountAttention == true;
+	public string LayoutTransferAttentionDisplay => CanViewLayoutTransferAttention ? $"{LayoutDraftTransferCount:N0} draft transfer(s)" : "Restricted";
+	public string LayoutInventoryCountAttentionDisplay => CanViewLayoutInventoryCountAttention ? $"{LayoutActiveInventoryCountCount:N0} active count(s)" : "Restricted";
 
 	public ActivationFilterOption SelectedWarehouseActivationFilter
 	{
@@ -122,11 +139,30 @@ public sealed class WarehouseStructureViewModel : BaseViewModel, IDisposable
 			if (_selectedStorageLocation == value) return;
 			_selectedStorageLocation = value;
 			OnPropertyChanged();
+			var layoutSelection = LayoutLocations.FirstOrDefault(item => item.Location.Id == value?.Id);
+			if (!ReferenceEquals(_selectedLayoutLocation, layoutSelection))
+			{
+				_selectedLayoutLocation = layoutSelection;
+				OnPropertyChanged(nameof(SelectedLayoutLocation));
+			}
 			OnPropertyChanged(nameof(StorageLocationActionText));
 			OnPropertyChanged(nameof(LocationEditorTitle));
 			OnPropertyChanged(nameof(StorageLocationStatus));
 			LoadStorageLocationEditor(value);
 			ToggleStorageLocationCommand.RaiseCanExecuteChanged();
+		}
+	}
+
+	public WarehouseLayoutLocationProjection? SelectedLayoutLocation
+	{
+		get => _selectedLayoutLocation;
+		set
+		{
+			if (ReferenceEquals(_selectedLayoutLocation, value)) return;
+			_selectedLayoutLocation = value;
+			OnPropertyChanged();
+			if (value is null || SelectedStorageLocation?.Id == value.Location.Id) return;
+			SelectedStorageLocation = StorageLocations.FirstOrDefault(location => location.Id == value.Location.Id);
 		}
 	}
 
@@ -167,9 +203,55 @@ public sealed class WarehouseStructureViewModel : BaseViewModel, IDisposable
 			StorageLocations.Clear();
 			foreach (var location in locations) StorageLocations.Add(location);
 			SelectedStorageLocation = StorageLocations.FirstOrDefault(item => item.Id == selectedId) ?? StorageLocations.FirstOrDefault();
+			await LoadLayoutAsync(warehouseId, cancellationToken);
 		}
 		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
 		catch (Exception exception) { FailOperation(exception, "Storage locations could not be loaded."); }
+	}
+
+	private async Task LoadLayoutAsync(long? warehouseId, CancellationToken cancellationToken)
+	{
+		if (warehouseId is null || SelectedWarehouse is null)
+		{
+			ClearLayout();
+			return;
+		}
+
+		var snapshot = await _layoutVisualizerService.GetSnapshotAsync(
+			SelectedWarehouse,
+			StorageLocations.ToArray(),
+			cancellationToken);
+
+		_layoutSnapshot = snapshot;
+		var selectedId = SelectedStorageLocation?.Id;
+		LayoutLocations.Clear();
+		foreach (var location in snapshot.Locations) LayoutLocations.Add(location);
+		_selectedLayoutLocation = LayoutLocations.FirstOrDefault(item => item.Location.Id == selectedId);
+		OnPropertyChanged(nameof(SelectedLayoutLocation));
+		NotifyLayoutSummaryChanged();
+	}
+
+	private void ClearLayout()
+	{
+		_layoutSnapshot = null;
+		LayoutLocations.Clear();
+		_selectedLayoutLocation = null;
+		OnPropertyChanged(nameof(SelectedLayoutLocation));
+		NotifyLayoutSummaryChanged();
+	}
+
+	private void NotifyLayoutSummaryChanged()
+	{
+		OnPropertyChanged(nameof(LayoutLocationCount));
+		OnPropertyChanged(nameof(LayoutActiveLocationCount));
+		OnPropertyChanged(nameof(LayoutInactiveLocationCount));
+		OnPropertyChanged(nameof(LayoutQuantityOnHand));
+		OnPropertyChanged(nameof(LayoutDraftTransferCount));
+		OnPropertyChanged(nameof(LayoutActiveInventoryCountCount));
+		OnPropertyChanged(nameof(CanViewLayoutTransferAttention));
+		OnPropertyChanged(nameof(CanViewLayoutInventoryCountAttention));
+		OnPropertyChanged(nameof(LayoutTransferAttentionDisplay));
+		OnPropertyChanged(nameof(LayoutInventoryCountAttentionDisplay));
 	}
 
 	private void NewWarehouse()
