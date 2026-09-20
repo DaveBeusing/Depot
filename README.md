@@ -78,7 +78,7 @@ MariaDB and MySQL are tested independently. Newer/older versions are not automat
 
 SQLite uses dynamic `NUMERIC` affinity and therefore does not guarantee the full fixed `DECIMAL(28,9)` magnitude/precision range available on the server providers. Remote production backup scheduling/retention/off-host copies remain operator responsibilities even though CI validates provider-native restore/re-entry.
 
-See the authoritative [Database Provider Production Support Matrix](docs/DatabaseProviderSupportMatrix.md).
+See the authoritative [Database Provider Production Support Matrix](docs/DatabaseProviderSupportMatrix.md). Deployment-specific capacity, latency and concurrency acceptance is documented separately in [Deployment Sizing and Operations Readiness](docs/DeploymentSizing.md).
 
 ## Finance
 
@@ -180,6 +180,7 @@ Track the path through the [Roadmap](docs/Roadmap.md) and [Release 1.0 plan](doc
 - [Documentation Status](docs/DocumentationStatus.md)
 - [Repository Governance](docs/RepositoryGovernance.md)
 - [Database Provider Production Support Matrix](docs/DatabaseProviderSupportMatrix.md)
+- [Deployment Sizing and Operations Readiness](docs/DeploymentSizing.md)
 - [Versioning and Schema Evolution](docs/Versioning.md)
 - [User-Facing Changes](docs/UserFacingChanges.md)
 - [Help Center](docs/HelpCenter.md)
