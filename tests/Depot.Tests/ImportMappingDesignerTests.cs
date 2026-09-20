@@ -119,13 +119,13 @@ public sealed class ImportMappingDesignerTests
 		Assert.Contains("Import Mapping Designer", view, StringComparison.Ordinal);
 		Assert.Contains("Source columns stay on the left", view, StringComparison.Ordinal);
 		Assert.Contains("keyboard accessible", view, StringComparison.OrdinalIgnoreCase);
-		Assert.Contains("ItemsSource="{Binding TargetOptions}"", view, StringComparison.Ordinal);
-		Assert.Contains("SelectedItem="{Binding SelectedTarget, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"", view, StringComparison.Ordinal);
+		Assert.Contains("ItemsSource=\"{Binding TargetOptions}\"", view, StringComparison.Ordinal);
+		Assert.Contains("SelectedItem=\"{Binding SelectedTarget, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}\"", view, StringComparison.Ordinal);
 		Assert.Contains("AppComboBoxStyle", view, StringComparison.Ordinal);
 		Assert.Contains("Generate validated preview", view, StringComparison.Ordinal);
 		Assert.Contains("WarningItems", view, StringComparison.Ordinal);
 		Assert.Contains("SeverityDisplay", view, StringComparison.Ordinal);
-		Assert.Contains("EnableRowVirtualization="True"", view, StringComparison.Ordinal);
+		Assert.Contains("EnableRowVirtualization=\"True\"", view, StringComparison.Ordinal);
 		Assert.DoesNotContain("DragDrop", view, StringComparison.Ordinal);
 		Assert.DoesNotContain("Mouse", view, StringComparison.Ordinal);
 	}
