@@ -99,6 +99,12 @@ Document layout is a bounded presentation subsystem. Built-in version-1 template
 
 The visual designer and productive Sales/warehouse PDF generation use the same runtime catalog. Bindings remain allowlisted and validated. Electronic-invoice finalization consumes the active validated invoice/credit-note template while creating the immutable hybrid artifact; later activation cannot alter retained PDF/A/XML evidence.
 
+## Visual-designer interaction boundary
+
+Productive visual designers share presentation infrastructure only where the interaction semantics are already identical. Posting Flow and Import Mapping reuse the common `DesignerValidationIssueTemplate` for severity/message presentation and accessibility metadata. Their selection models, validators, commands, services and persistence remain feature-owned.
+
+Document-layout zoom, snap, resize, undo/redo and dirty-state behavior remain specific to the Document Designer because no second productive designer currently exposes the same editing semantics. Canvas coordinates and visual projections are not promoted into shared persistence merely to support UI reuse.
+
 ## Schema versions
 
 - Core database schema: **30**
