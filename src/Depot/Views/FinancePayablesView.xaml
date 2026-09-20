@@ -111,6 +111,11 @@
                                 <controls:WorkflowTimeline ItemsSource="{Binding Timeline}" NavigateCommand="{Binding OpenTimelineItemCommand}"/>
                             </controls:Card>
 
+                            <controls:Card Margin="0,0,0,12">
+                                <controls:Card.Header><TextBlock Text="Approval flow" Style="{StaticResource SectionTitleStyle}"/></controls:Card.Header>
+                                <controls:ApprovalFlowVisualizer Projection="{Binding ApprovalFlow}"/>
+                            </controls:Card>
+
                             <controls:Card>
                                 <controls:Card.Header><TextBlock Text="Approval and posting" Style="{StaticResource SectionTitleStyle}"/></controls:Card.Header>
                                 <StackPanel>

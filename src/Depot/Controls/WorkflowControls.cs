@@ -181,6 +181,19 @@ public sealed class ActivationStatusBadge : StatusBadge
 }
 
 
+public sealed class ApprovalFlowVisualizer : Control
+{
+	public static readonly DependencyProperty ProjectionProperty = DependencyProperty.Register(
+		nameof(Projection),
+		typeof(ApprovalFlowProjection),
+		typeof(ApprovalFlowVisualizer),
+		new PropertyMetadata(null));
+
+	static ApprovalFlowVisualizer() => DefaultStyleKeyProperty.OverrideMetadata(typeof(ApprovalFlowVisualizer), new FrameworkPropertyMetadata(typeof(ApprovalFlowVisualizer)));
+
+	public ApprovalFlowProjection? Projection { get => (ApprovalFlowProjection?)GetValue(ProjectionProperty); set => SetValue(ProjectionProperty, value); }
+}
+
 public sealed class WorkflowTimeline : ItemsControl
 {
 	public static readonly DependencyProperty NavigateCommandProperty = DependencyProperty.Register(

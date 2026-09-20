@@ -16,6 +16,7 @@ public sealed partial class FinanceBankingViewModel : BaseViewModel, IDisposable
 	private FinanceBankStatement? _selectedStatement;
 	private FinanceBankStatementLine? _selectedStatementLine;
 	private FinancePaymentRun? _selectedPaymentRun;
+	private ApprovalFlowProjection? _paymentApprovalFlow;
 	private FinancePaymentRunLine? _selectedPaymentRunLine;
 	private string _accountName=string.Empty,_bankName=string.Empty,_iban=string.Empty,_bic=string.Empty,_localAccount=string.Empty,_legalEntityId=string.Empty,_bookId=string.Empty,_glAccountId=string.Empty,_currency="EUR";
 	private bool _accountActive=true;
@@ -73,7 +74,8 @@ public sealed partial class FinanceBankingViewModel : BaseViewModel, IDisposable
 	public FinanceBankAccount? SelectedBankAccount { get=>_selectedBankAccount; set { if(ReferenceEquals(_selectedBankAccount,value))return; _selectedBankAccount=value; OnPropertyChanged(); if(value is not null) Apply(value); } }
 	public FinanceBankStatement? SelectedStatement { get=>_selectedStatement; set { if(ReferenceEquals(_selectedStatement,value))return; _selectedStatement=value; OnPropertyChanged(); } }
 	public FinanceBankStatementLine? SelectedStatementLine { get=>_selectedStatementLine; set { if(ReferenceEquals(_selectedStatementLine,value))return; _selectedStatementLine=value; OnPropertyChanged(); } }
-	public FinancePaymentRun? SelectedPaymentRun { get=>_selectedPaymentRun; set { if(ReferenceEquals(_selectedPaymentRun,value))return; _selectedPaymentRun=value; OnPropertyChanged(); Replace(PaymentRunLines,value?.Lines??[]); } }
+	public FinancePaymentRun? SelectedPaymentRun { get=>_selectedPaymentRun; set { if(ReferenceEquals(_selectedPaymentRun,value))return; _selectedPaymentRun=value; OnPropertyChanged(); PaymentApprovalFlow=value is null?null:ApprovalFlowProjectionService.ProjectPaymentRun(value,_banking.CanApprovePaymentRun(value.CreatedByUserId),_banking.CanExecutePaymentRuns); Replace(PaymentRunLines,value?.Lines??[]); } }
+	public ApprovalFlowProjection? PaymentApprovalFlow { get=>_paymentApprovalFlow; private set { if(ReferenceEquals(_paymentApprovalFlow,value))return; _paymentApprovalFlow=value; OnPropertyChanged(); } }
 	public ObservableCollection<FinancePaymentRunLine> PaymentRunLines { get; }=[];
 	public FinancePaymentRunLine? SelectedPaymentRunLine { get=>_selectedPaymentRunLine; set { if(ReferenceEquals(_selectedPaymentRunLine,value))return; _selectedPaymentRunLine=value; OnPropertyChanged(); } }
 

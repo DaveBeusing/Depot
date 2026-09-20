@@ -58,6 +58,7 @@
 								</TabItem>
 								<TabItem Header="Notes"><TextBlock Margin="0,12,0,0" Text="{Binding Details.Order.Notes, TargetNullValue=No notes provided.}" TextWrapping="Wrap" Style="{StaticResource BodyStyle}" /></TabItem>
 								<TabItem Header="Status history"><ListBox Margin="0,12,0,0" ItemsSource="{Binding Details.History}" Style="{StaticResource AppListBoxStyle}"><ListBox.ItemTemplate><DataTemplate><Grid Margin="0,5"><Grid.ColumnDefinitions><ColumnDefinition Width="145" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Text="{Binding TimestampLocal, StringFormat={}{0:g}}" Style="{StaticResource CaptionStyle}" /><StackPanel Grid.Column="1"><TextBlock Text="{Binding StatusChange}" FontWeight="SemiBold" /><TextBlock Text="{Binding UserEmail}" Style="{StaticResource CaptionStyle}" /></StackPanel></Grid></DataTemplate></ListBox.ItemTemplate></ListBox></TabItem>
+								<TabItem Header="Approval flow"><controls:ApprovalFlowVisualizer Margin="0,12,0,0" Projection="{Binding ApprovalFlow}" /></TabItem>
 							</TabControl>
 							<controls:WorkflowActionBar Grid.Row="2">
 								<controls:WorkflowActionBar.SecondaryActions><Button Command="{Binding RejectCommand}" Content="Reject" Style="{StaticResource DangerButtonStyle}" /></controls:WorkflowActionBar.SecondaryActions>

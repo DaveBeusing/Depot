@@ -25,6 +25,7 @@ public sealed class PurchaseOrderApprovalsViewModel : BaseViewModel, IDisposable
 	private string _decisionComment = string.Empty;
 	private PurchaseOrderApprovalWorkItem? _selectedApproval;
 	private PurchaseOrderApprovalDetails? _details;
+	private ApprovalFlowProjection? _approvalFlow;
 	private PurchaseOrderApprovalSummary _summary = new(0, null, 0);
 	private int _pageNumber = 1;
 	private long _totalCount;
@@ -84,7 +85,20 @@ public sealed class PurchaseOrderApprovalsViewModel : BaseViewModel, IDisposable
 	public PurchaseOrderApprovalDetails? Details
 	{
 		get => _details;
-		private set { _details = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasDetails)); OnPropertyChanged(nameof(HasNoDetails)); }
+		private set
+		{
+			_details = value;
+			OnPropertyChanged();
+			OnPropertyChanged(nameof(HasDetails));
+			OnPropertyChanged(nameof(HasNoDetails));
+			ApprovalFlow = value is null ? null : ApprovalFlowProjectionService.ProjectPurchaseOrder(value.Order, _approvals.CanSubmit, _approvals.CanDecide(value.Order.CreatedByUserId), _approvals.CanOrder);
+		}
+	}
+
+	public ApprovalFlowProjection? ApprovalFlow
+	{
+		get => _approvalFlow;
+		private set { if (ReferenceEquals(_approvalFlow, value)) return; _approvalFlow = value; OnPropertyChanged(); }
 	}
 
 	public PurchaseOrderApprovalSummary Summary

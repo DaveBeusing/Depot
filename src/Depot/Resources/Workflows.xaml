@@ -168,6 +168,33 @@
     </Style>
 
 
+    <Style TargetType="{x:Type controls:ApprovalFlowVisualizer}">
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type controls:ApprovalFlowVisualizer}">
+                    <StackPanel AutomationProperties.Name="Approval flow visualizer">
+                        <controls:WorkflowTimeline ItemsSource="{Binding Projection.Steps, RelativeSource={RelativeSource TemplatedParent}}" />
+                        <Border Margin="0,10,0,0" Padding="12" Background="{DynamicResource SurfaceAltBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="{DynamicResource Radius.M}">
+                            <Grid>
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="150" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="8" /><RowDefinition Height="Auto" /><RowDefinition Height="8" /><RowDefinition Height="Auto" /><RowDefinition Height="8" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                                <TextBlock Text="Required permission" Style="{DynamicResource FormLabelStyle}" />
+                                <TextBlock Grid.Column="1" Text="{Binding Projection.RequiredPermission, RelativeSource={RelativeSource TemplatedParent}}" TextWrapping="Wrap" />
+                                <TextBlock Grid.Row="2" Text="Separation of duties" Style="{DynamicResource FormLabelStyle}" />
+                                <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Projection.SeparationOfDuties, RelativeSource={RelativeSource TemplatedParent}}" TextWrapping="Wrap" />
+                                <TextBlock Grid.Row="4" Text="Allowed next action" Style="{DynamicResource FormLabelStyle}" />
+                                <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding Projection.NextActions, RelativeSource={RelativeSource TemplatedParent}}" TextWrapping="Wrap" />
+                                <TextBlock Grid.Row="6" Text="Rule source" Style="{DynamicResource FormLabelStyle}" />
+                                <TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding Projection.RuleSummary, RelativeSource={RelativeSource TemplatedParent}}" TextWrapping="Wrap" />
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <Style TargetType="{x:Type controls:WorkflowTimeline}">
         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
         <Setter Property="ItemsPanel">
