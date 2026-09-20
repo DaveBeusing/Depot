@@ -38,14 +38,14 @@ Repository CI validates closure contracts but does not manufacture missing produ
 
 ## Database provider production status
 
-The dedicated provider matrix certifies the current technical baselines when the full provider gate is green:
+The dedicated provider matrix accepts the current technical baselines when the full provider gate is green:
 
 - bundled SQLite runtime through `Microsoft.Data.Sqlite`;
 - SQL Server 2022 / engine 16.x;
 - MariaDB 11.8.9 LTS;
 - MySQL 8.4.11 LTS.
 
-The matrix covers provisioning/migration, transaction semantics, concurrency/deadlock/retry behavior, representative Sales/Procurement/Finance flows, Banking/reconciliation, Financial Reporting/snapshots, service restart, provider-native backup/restore and representative indexed-load acceptance. MariaDB and MySQL are independently certified; versions outside the listed baselines remain untested/best-effort until separately accepted.
+The matrix covers provisioning/migration, transaction semantics, concurrency/deadlock/retry behavior, representative Sales/Procurement/Finance flows, Banking/reconciliation, Financial Reporting/snapshots, service restart, provider-native backup/restore and representative indexed-load acceptance. MariaDB and MySQL are independently accepted; versions outside the listed baselines remain untested/best-effort until separately accepted.
 
 See [Database Provider Production Support Matrix](DatabaseProviderSupportMatrix.md).
 

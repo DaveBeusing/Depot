@@ -61,9 +61,9 @@ Read the full [Architecture](docs/Architecture.md) and [Coding Standard](docs/Co
 
 ## Production database support
 
-Depot now certifies database providers through real-server acceptance rather than treating provider-neutral code as proof of production readiness.
+Depot accepts database providers for production support only through real-server acceptance rather than treating provider-neutral code as proof of production readiness.
 
-Current technical certification baselines:
+Current accepted technical baselines:
 
 | Provider | Baseline | Status |
 | --- | --- | --- |
@@ -154,7 +154,7 @@ CI includes Release build/publish, bounded regression suites, code-coverage gate
 
 Repository governance exposes five stable aggregate status checks for CI, quality, security, packaged DepotManager E2E and database-provider acceptance. These are the only checks intended to be bound to the `master` ruleset; see [Repository Governance](docs/RepositoryGovernance.md) for the exact names and protection policy.
 
-The separate database-provider acceptance workflow adds real SQLite/SQL Server/MariaDB/MySQL migration, locking, retry, business-flow, restart, native restore and performance evidence. Pull requests use fast remote smoke coverage; certification branches, `master` and manual full runs execute the complete matrix.
+The separate database-provider acceptance workflow adds real SQLite/SQL Server/MariaDB/MySQL migration, locking, retry, business-flow, restart, native restore and performance evidence. Pull requests use fast remote smoke coverage; `database-provider-*` branches, `master` and manual full runs execute the complete matrix.
 
 Security and compliance work is documented transparently rather than presented as certification that has not been achieved. Start with the [Security Roadmap](docs/SecurityRoadmap.md), [Compliance Overview](docs/ComplianceOverview.md) and [Compliance Matrix](docs/compliance/ComplianceMatrix.md).
 

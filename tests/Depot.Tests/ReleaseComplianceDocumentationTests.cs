@@ -26,6 +26,8 @@ public sealed class ReleaseComplianceDocumentationTests
 		Assert.Contains("[Known Limitations](docs/KnownLimitations.md)", readme, StringComparison.Ordinal);
 		Assert.Contains("canonical release compliance claim boundary", release, StringComparison.Ordinal);
 		Assert.Contains("canonical Known Limitations document", release, StringComparison.Ordinal);
+		Assert.DoesNotContain("certifies database providers", readme, StringComparison.OrdinalIgnoreCase);
+		Assert.DoesNotContain("Current technical certification baselines", readme, StringComparison.OrdinalIgnoreCase);
 	}
 
 	[Fact]
@@ -73,6 +75,8 @@ public sealed class ReleaseComplianceDocumentationTests
 		var boundary = Read(root, "docs", "ReleaseComplianceBoundary.md");
 		var limitations = Read(root, "docs", "KnownLimitations.md");
 		var databaseMatrix = Read(root, "docs", "DatabaseProviderSupportMatrix.md");
+		Assert.Contains("## Depot 1.0 accepted baselines", databaseMatrix, StringComparison.Ordinal);
+		Assert.DoesNotContain("## Depot 1.0 certification baselines", databaseMatrix, StringComparison.Ordinal);
 
 		foreach (var supportLevel in new[]
 		{

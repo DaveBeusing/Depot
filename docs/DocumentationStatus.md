@@ -23,10 +23,10 @@ This document identifies the documentation baseline for the current development 
 
 The authoritative production database support statement is [Database Provider Production Support Matrix](DatabaseProviderSupportMatrix.md).
 
-Current certified technical baselines are:
+Current accepted technical baselines are:
 
 - Depot-bundled SQLite runtime;
-- SQL Server 2022 / engine 16.x, with CI certification on SQL Server 2022 Express;
+- SQL Server 2022 / engine 16.x, with CI acceptance on SQL Server 2022 Express;
 - MariaDB 11.8.9 LTS;
 - MySQL 8.4.11 LTS.
 
@@ -97,7 +97,7 @@ Enterprise Identity may retain issuer/subject plus optional observed tenant, ema
 
 ## Documentation rules
 
-Do not describe password-change invalidation, concurrent-session policy, shared database throttling, provider certification, investigation/response, retention, OIDC sign-in, provider-bound assurance validation, Security Event durable delivery, Saved Views, workspace Favorites/Recents/default landing, supported grid-density persistence, command/search productivity, or the implemented Finance packages as future-only work.
+Do not describe password-change invalidation, concurrent-session policy, shared database throttling, provider acceptance, investigation/response, retention, OIDC sign-in, provider-bound assurance validation, Security Event durable delivery, Saved Views, workspace Favorites/Recents/default landing, supported grid-density persistence, command/search productivity, or the implemented Finance packages as future-only work.
 
 Do not describe database-provider technical support as jurisdiction-specific accounting, tax, legal, accessibility, bank-network or regulatory certification. Remote backup scheduling, retention, off-host copies and restore procedures remain operator responsibilities even though the CI matrix validates a provider-native restore boundary.
 

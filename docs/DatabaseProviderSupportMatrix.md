@@ -6,9 +6,9 @@ Updated: 2026-09-08
 
 Depot does not treat provider-neutral SQL generation, successful compilation, or SQLite-only regression coverage as evidence that a remote database provider is production-ready. A provider/version combination is marked **Supported** only after the real-server workflow `.github/workflows/database-provider-acceptance.yml` completes the applicable full matrix successfully.
 
-## Depot 1.0 certification baselines
+## Depot 1.0 accepted baselines
 
-| Provider | Certified baseline | Provisioning / migration | Finance and business workflows | Concurrency / retry | Recovery | Performance | Status |
+| Provider | Accepted baseline | Provisioning / migration | Finance and business workflows | Concurrency / retry | Recovery | Performance | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | SQLite | SQLite runtime bundled with the Depot release through `Microsoft.Data.Sqlite` | Fresh provisioning, idempotent provisioning, Core 29→30 and Sales 10→11 acceptance | Sales, Procurement, sessions, GL, AR, AP, FIFO/inventory accounting, Banking/reconciliation and Financial Reporting/snapshots | Immediate write transactions, rollback, constraints and concurrent mutation acceptance | Depot-managed SQLite backup/reopen boundary | 100k indexed lookup regression | **Supported** |
 | SQL Server | SQL Server 2022, engine 16.x; certification environment uses SQL Server 2022 Express | Real Windows server, Core 29→30, Sales 10→11, concurrent provisioning | Sales, Procurement, sessions, GL, AR, AP, FIFO/inventory accounting, Banking/reconciliation and Financial Reporting/snapshots | Serializable transactions, provider locks, controlled deadlock/retry and non-transient no-retry | Native `BACKUP DATABASE` / `RESTORE DATABASE`, restart and Depot re-entry | 100k indexed lookup regression | **Supported** |
@@ -17,7 +17,7 @@ Depot does not treat provider-neutral SQL generation, successful compilation, or
 
 Support applies to the listed baseline and the Depot release that carries the corresponding green full provider workflow. Newer or older server versions are not implicitly certified merely because they belong to the same product family.
 
-SQL Server editions share the same engine line for the database behavior used by Depot, but CI certification is executed on SQL Server 2022 Express. Edition-specific capabilities that Depot does not exercise are outside this certification.
+SQL Server editions share the same engine line for the database behavior used by Depot, but CI acceptance is executed on SQL Server 2022 Express. Edition-specific capabilities that Depot does not exercise are outside this certification.
 
 ## Acceptance layers
 
@@ -78,7 +78,7 @@ Depot uses serializable write transactions and explicit row locks (`UPDLOCK`, `H
 
 ### MariaDB and MySQL
 
-Both products use the established `MySqlConnector` implementation path but are certified independently. A green MariaDB run never implies MySQL support and vice versa.
+Both products use the established `MySqlConnector` implementation path but are accepted independently. A green MariaDB run never implies MySQL support and vice versa.
 
 InnoDB `FOR UPDATE`, serializable write transactions and `GET_LOCK` provisioning serialization are exercised on both server families. Known transient lock/deadlock/write-conflict codes use bounded exponential retry with jitter and complete transaction recreation; non-transient failures are not retried.
 
@@ -107,6 +107,6 @@ Depot's portable `.depotbackup` format is not advertised as a complete remote-pr
 - **Untested** — no reproducible full acceptance evidence exists for the combination.
 - **Not supported** — known incompatible or intentionally excluded combination.
 
-Examples outside the current certified matrix include SQL Server 2025, MariaDB 12.x and MySQL 9.x; they remain untested/best-effort until an explicit certification run is added.
+Examples outside the current supported matrix include SQL Server 2025, MariaDB 12.x and MySQL 9.x; they remain untested/best-effort until an explicit certification run is added.
 
-Database-provider certification is a technical data-integrity/runtime statement. It does not constitute jurisdiction-specific accounting, tax, legal, accessibility, operating-system, banking-network or regulatory certification.
+Database-provider acceptance is a technical data-integrity/runtime statement. It does not constitute jurisdiction-specific accounting, tax, legal, accessibility, operating-system, banking-network or regulatory certification.
