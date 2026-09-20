@@ -37,6 +37,16 @@ public sealed record WarehouseLayoutLocationProjection(
 			? "No inventory contexts"
 			: $"{StockedInventoryContextCount:N0} stocked / {InventoryContextCount:N0} inventory contexts";
 
+	public string TransferAttentionDisplay =>
+		CanViewTransferAttention
+			? $"{TransferAttentionCount:N0}"
+			: "Restricted";
+
+	public string InventoryCountAttentionDisplay =>
+		CanViewInventoryCountAttention
+			? $"{InventoryCountAttentionCount:N0}"
+			: "Restricted";
+
 	public bool HasAttention =>
 		TransferAttentionCount > 0 ||
 		InventoryCountAttentionCount > 0;
