@@ -19,6 +19,20 @@ public sealed class ApplicationStartupTests
 		Assert.DoesNotContain(".Result", appSource, StringComparison.Ordinal);
 	}
 
+	[Fact]
+	public void MainShellKeepsFinanceLocalizationLazyUntilNavigation()
+	{
+		var repositoryRoot = FindRepositoryRoot();
+		var factorySource = File.ReadAllText(Path.Combine(repositoryRoot, "src", "Depot", "Composition", "ViewModelFactory.cs"));
+		var mainSource = File.ReadAllText(Path.Combine(repositoryRoot, "src", "Depot", "ViewModels", "MainViewModel.cs"));
+
+		Assert.DoesNotContain("financeItem?.Content", factorySource, StringComparison.Ordinal);
+		Assert.DoesNotContain("AddLocalizationPage(main)", factorySource, StringComparison.Ordinal);
+		Assert.Contains("Lazy<FinanceLocalizationViewModel> _financeLocalization", mainSource, StringComparison.Ordinal);
+		Assert.Contains("ApplicationPermission.FinanceLocalizationView", mainSource, StringComparison.Ordinal);
+		Assert.Contains("() => _financeLocalization.Value", mainSource, StringComparison.Ordinal);
+	}
+
 	private static string FindRepositoryRoot()
 	{
 		var directory = new DirectoryInfo(AppContext.BaseDirectory);
