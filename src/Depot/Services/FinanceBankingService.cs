@@ -158,6 +158,14 @@ public sealed class FinanceBankingService
 		}, cancellationToken);
 	}
 
+	public Task<IReadOnlyList<FinanceBankReconciliationCandidate>> GetReconciliationCandidatesAsync(long statementLineId, int maxResults = 100, CancellationToken cancellationToken = default)
+	{
+		_authorization.RequirePermission(ApplicationPermission.FinanceBankingView);
+		if (statementLineId <= 0) throw new ArgumentOutOfRangeException(nameof(statementLineId));
+		if (maxResults is < 1 or > 200) throw new ArgumentOutOfRangeException(nameof(maxResults));
+		return _transactions.ExecuteAsync((transaction, token) => _banking.GetReconciliationCandidatesAsync(transaction, statementLineId, maxResults, token), cancellationToken);
+	}
+
 	public async Task<FinanceBankReconciliation> ReconcileAsync(FinanceBankReconciliationRequest request, CancellationToken cancellationToken = default)
 	{
 		ArgumentNullException.ThrowIfNull(request);
