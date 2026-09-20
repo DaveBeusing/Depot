@@ -333,8 +333,8 @@ public sealed class DocumentTemplateDesignerTests
 		var shell = File.ReadAllText(Path.Combine(root, "src", "Depot", "Resources", "Shell.xaml"));
 		var guard = File.ReadAllText(Path.Combine(root, "src", "Depot", "ViewModels", "UnsavedChangesGuard.cs"));
 
-		Assert.Contains("Text=\"{Binding Title}\"", xaml, StringComparison.Ordinal);
-		Assert.Contains("Text=\"{Binding Subtitle}\"", xaml, StringComparison.Ordinal);
+		Assert.Contains("Title=\"{Binding Title}\"", xaml, StringComparison.Ordinal);
+		Assert.Contains("Subtitle=\"{Binding Subtitle}\"", xaml, StringComparison.Ordinal);
 		Assert.Contains("Key=\"Z\" Modifiers=\"Control\"", xaml, StringComparison.Ordinal);
 		Assert.Contains("Key=\"Y\" Modifiers=\"Control\"", xaml, StringComparison.Ordinal);
 		Assert.Contains("Copy selected version as draft", xaml, StringComparison.Ordinal);
