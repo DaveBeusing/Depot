@@ -55,6 +55,21 @@ public sealed class FinanceBankingRepository : DatabaseRepository
 		return Database.QueryPageAsync($"SELECT {LineColumns} {from} {where} ORDER BY l.BookingDate,l.Id", $"SELECT COUNT(*) {from} {where};", ReadLine, pageNumber, pageSize, cancellationToken, parameters);
 	}
 
+	public Task<PageResult<FinanceBankReconciliationHistoryItem>> SearchReconciliationHistoryAsync(long? bankAccountId, int pageNumber, int pageSize, CancellationToken cancellationToken = default)
+	{
+		var filter = bankAccountId.HasValue ? " WHERE s.BankAccountId=$Account" : string.Empty;
+		var from = "FROM FinanceBankReconciliations r INNER JOIN FinanceBankStatementLines l ON l.Id=r.StatementLineId INNER JOIN FinanceBankStatements s ON s.Id=l.StatementId";
+		DatabaseParameter[] parameters = bankAccountId.HasValue ? [Parameter("$Account", bankAccountId.Value)] : [];
+		return Database.QueryPageAsync(
+			$"SELECT r.Id,r.OperationId,r.StatementLineId,r.TargetKind,r.TargetId,r.TargetJournalEntryId,r.MatchedAmount,r.CreatedAtUtc,r.CreatedByUserId,r.ReversalOperationId,r.ReversedAtUtc,r.ReversedByUserId,l.Id,l.StatementId,l.LineNumber,l.BookingDate,l.ValueDate,l.Amount,l.CurrencyCode,l.ExternalId,l.Reference,l.CounterpartyName,l.BankTransactionCode {from}{filter} ORDER BY r.CreatedAtUtc DESC,r.Id DESC",
+			$"SELECT COUNT(*) {from}{filter};",
+			ReadReconciliationHistory,
+			pageNumber,
+			pageSize,
+			cancellationToken,
+			parameters);
+	}
+
 	public Task<PageResult<FinancePaymentRun>> SearchPaymentRunsAsync(int pageNumber, int pageSize, CancellationToken cancellationToken = default) =>
 		Database.QueryPageAsync(RunSelect + " ORDER BY PaymentDate DESC,Id DESC", "SELECT COUNT(*) FROM FinancePaymentRuns;", ReadRun, pageNumber, pageSize, cancellationToken);
 
@@ -103,6 +118,41 @@ public sealed class FinanceBankingRepository : DatabaseRepository
 
 	internal Task<FinanceBankStatementLineContext?> GetStatementLineContextAsync(DatabaseTransactionContext transaction, long lineId, CancellationToken cancellationToken) =>
 		transaction.Session.QuerySingleOrDefaultAsync("SELECT l.Id,l.StatementId,l.LineNumber,l.BookingDate,l.ValueDate,l.Amount,l.CurrencyCode,l.ExternalId,l.Reference,l.CounterpartyName,l.BankTransactionCode,s.BankAccountId,a.AccountingBookId,a.GeneralLedgerAccountId,a.CurrencyCode FROM FinanceBankStatementLines l INNER JOIN FinanceBankStatements s ON s.Id=l.StatementId INNER JOIN FinanceBankAccounts a ON a.Id=s.BankAccountId WHERE l.Id=$Id;", reader => new FinanceBankStatementLineContext(ReadLineBase(reader), reader.GetInt64(11), Guid.Parse(reader.GetString(12)), Guid.Parse(reader.GetString(13)), new CurrencyCode(reader.GetString(14))), cancellationToken, Parameter("$Id", lineId));
+
+	internal async Task<IReadOnlyList<FinanceBankReconciliationCandidate>> GetReconciliationCandidatesAsync(DatabaseTransactionContext transaction, long lineId, int maxResults, CancellationToken cancellationToken)
+	{
+		var context = await GetStatementLineContextAsync(transaction, lineId, cancellationToken) ?? throw new InvalidOperationException("Bank statement line was not found.");
+		if (context.Line.Currency != context.BankCurrency) return [];
+		var book = Parameter("$Book", context.AccountingBookId.ToString("D"));
+		var currency = Parameter("$Currency", context.BankCurrency.Value);
+		var receivableAmount = Parameter("$Amount", context.Line.Amount);
+		var payableAmount = Parameter("$Amount", -context.Line.Amount);
+		var bankAccount = Parameter("$Account", context.GeneralLedgerAccountId.ToString("D"));
+
+		var receivables = await transaction.Session.QueryAsync(
+			"SELECT p.Id,p.Amount,p.CurrencyCode,p.PaymentDate,p.Reference,c.Name,p.Description,p.CustomerId FROM FinanceReceivablePayments p INNER JOIN FinanceReceivableOpenItems o ON o.Id=p.OpenItemId LEFT JOIN Customers c ON c.Id=p.CustomerId WHERE p.IsReversed=0 AND o.AccountingBookId=$Book AND p.CurrencyCode=$Currency AND p.Amount=$Amount ORDER BY p.PaymentDate DESC,p.Id DESC;",
+			reader => new FinanceBankReconciliationCandidate { TargetKind=FinanceBankReconciliationTargetKind.ReceivablePayment,TargetId=reader.GetInt64(0),Amount=ReadDecimal(reader,1),Currency=new CurrencyCode(reader.GetString(2)),Date=ReadDate(reader,3),Reference=reader.IsDBNull(4)?null:reader.GetString(4),Counterparty=reader.IsDBNull(5)?$"Customer #{reader.GetInt64(7)}":reader.GetString(5),Evidence=reader.GetString(6) },
+			cancellationToken, book, currency, receivableAmount);
+
+		var payables = await transaction.Session.QueryAsync(
+			"SELECT p.Id,-p.Amount,p.CurrencyCode,p.PaymentDate,p.Reference,s.Name,p.Description,p.SupplierId FROM FinancePayablePayments p INNER JOIN FinancePayableOpenItems o ON o.Id=p.OpenItemId LEFT JOIN Suppliers s ON s.Id=p.SupplierId WHERE p.IsReversed=0 AND o.AccountingBookId=$Book AND p.CurrencyCode=$Currency AND p.Amount=$Amount ORDER BY p.PaymentDate DESC,p.Id DESC;",
+			reader => new FinanceBankReconciliationCandidate { TargetKind=FinanceBankReconciliationTargetKind.PayablePayment,TargetId=reader.GetInt64(0),Amount=ReadDecimal(reader,1),Currency=new CurrencyCode(reader.GetString(2)),Date=ReadDate(reader,3),Reference=reader.IsDBNull(4)?null:reader.GetString(4),Counterparty=reader.IsDBNull(5)?$"Supplier #{reader.GetInt64(7)}":reader.GetString(5),Evidence=reader.GetString(6) },
+			cancellationToken, book, currency, payableAmount);
+
+		var generalLedger = await transaction.Session.QueryAsync(
+			"SELECT e.Id,COALESCE(SUM(l.TransactionDebit-l.TransactionCredit),0),e.TransactionCurrencyCode,e.PostingDate,COALESCE(e.SourceReference,e.EntryNumber),e.SourceType,e.Description FROM FinanceJournalEntries e INNER JOIN FinanceJournalEntryLines l ON l.JournalEntryId=e.Id WHERE e.AccountingBookId=$Book AND e.TransactionCurrencyCode=$Currency AND l.AccountId=$Account GROUP BY e.Id,e.TransactionCurrencyCode,e.PostingDate,e.SourceReference,e.EntryNumber,e.SourceType,e.Description HAVING COALESCE(SUM(l.TransactionDebit-l.TransactionCredit),0)=$Amount ORDER BY e.PostingDate DESC,e.Id DESC;",
+			reader => new FinanceBankReconciliationCandidate { TargetKind=FinanceBankReconciliationTargetKind.GeneralLedgerEntry,TargetId=reader.GetInt64(0),Amount=ReadDecimal(reader,1),Currency=new CurrencyCode(reader.GetString(2)),Date=ReadDate(reader,3),Reference=reader.IsDBNull(4)?null:reader.GetString(4),Counterparty=reader.GetString(5),Evidence=reader.GetString(6) },
+			cancellationToken, book, currency, bankAccount, receivableAmount);
+
+		return receivables
+			.Concat(payables)
+			.Concat(generalLedger)
+			.OrderByDescending(value => value.Date)
+			.ThenBy(value => value.TargetKind)
+			.ThenByDescending(value => value.TargetId)
+			.Take(Math.Clamp(maxResults, 1, 200))
+			.ToArray();
+	}
 
 	internal Task<FinanceBankReconciliation?> FindReconciliationByOperationAsync(DatabaseTransactionContext transaction, Guid operationId, CancellationToken cancellationToken) =>
 		transaction.Session.QuerySingleOrDefaultAsync(ReconciliationSelect + " WHERE OperationId=$Operation;", ReadReconciliation, cancellationToken, Parameter("$Operation", operationId.ToString("D")));
@@ -191,6 +241,19 @@ public sealed class FinanceBankingRepository : DatabaseRepository
 	private static FinanceBankStatement ReadStatement(DbDataReader reader) => new() { Id=reader.GetInt64(0),OperationId=Guid.Parse(reader.GetString(1)),BankAccountId=reader.GetInt64(2),Format=(FinanceBankStatementFormat)Convert.ToInt32(reader.GetValue(3),CultureInfo.InvariantCulture),StatementReference=reader.GetString(4),ImportHash=reader.GetString(5),SourceFileName=reader.IsDBNull(6)?null:reader.GetString(6),Currency=new CurrencyCode(reader.GetString(7)),FromDate=ReadDate(reader,8),ToDate=ReadDate(reader,9),OpeningBalance=ReadDecimal(reader,10),ClosingBalance=ReadDecimal(reader,11),ImportedAtUtc=Convert.ToDateTime(reader.GetValue(12),CultureInfo.InvariantCulture),ImportedByUserId=reader.GetInt64(13) };
 	private static FinanceBankStatementLine ReadLine(DbDataReader reader) => ReadLineBase(reader) with { IsReconciled=ReadBool(reader,11),ReconciliationId=reader.IsDBNull(12)?null:reader.GetInt64(12) };
 	private static FinanceBankStatementLine ReadLineBase(DbDataReader reader) => new() { Id=reader.GetInt64(0),StatementId=reader.GetInt64(1),LineNumber=Convert.ToInt32(reader.GetValue(2),CultureInfo.InvariantCulture),BookingDate=ReadDate(reader,3),ValueDate=reader.IsDBNull(4)?null:ReadDate(reader,4),Amount=ReadDecimal(reader,5),Currency=new CurrencyCode(reader.GetString(6)),ExternalId=reader.IsDBNull(7)?null:reader.GetString(7),Reference=reader.IsDBNull(8)?null:reader.GetString(8),CounterpartyName=reader.IsDBNull(9)?null:reader.GetString(9),BankTransactionCode=reader.IsDBNull(10)?null:reader.GetString(10) };
+	private static FinanceBankReconciliationHistoryItem ReadReconciliationHistory(DbDataReader reader)
+	{
+		var reconciliation = new FinanceBankReconciliation
+		{
+			Id=reader.GetInt64(0),OperationId=Guid.Parse(reader.GetString(1)),StatementLineId=reader.GetInt64(2),TargetKind=(FinanceBankReconciliationTargetKind)Convert.ToInt32(reader.GetValue(3),CultureInfo.InvariantCulture),TargetId=reader.GetInt64(4),TargetJournalEntryId=reader.GetInt64(5),MatchedAmount=ReadDecimal(reader,6),CreatedAtUtc=Convert.ToDateTime(reader.GetValue(7),CultureInfo.InvariantCulture),CreatedByUserId=reader.GetInt64(8),ReversalOperationId=reader.IsDBNull(9)?null:Guid.Parse(reader.GetString(9)),ReversedAtUtc=reader.IsDBNull(10)?null:Convert.ToDateTime(reader.GetValue(10),CultureInfo.InvariantCulture),ReversedByUserId=reader.IsDBNull(11)?null:reader.GetInt64(11)
+		};
+		var line = new FinanceBankStatementLine
+		{
+			Id=reader.GetInt64(12),StatementId=reader.GetInt64(13),LineNumber=Convert.ToInt32(reader.GetValue(14),CultureInfo.InvariantCulture),BookingDate=ReadDate(reader,15),ValueDate=reader.IsDBNull(16)?null:ReadDate(reader,16),Amount=ReadDecimal(reader,17),Currency=new CurrencyCode(reader.GetString(18)),ExternalId=reader.IsDBNull(19)?null:reader.GetString(19),Reference=reader.IsDBNull(20)?null:reader.GetString(20),CounterpartyName=reader.IsDBNull(21)?null:reader.GetString(21),BankTransactionCode=reader.IsDBNull(22)?null:reader.GetString(22),IsReconciled=!reconciliation.IsReversed,ReconciliationId=reconciliation.IsReversed?null:reconciliation.Id
+		};
+		return new FinanceBankReconciliationHistoryItem(reconciliation, line);
+	}
+
 	private static FinanceBankReconciliation ReadReconciliation(DbDataReader reader) => new() { Id=reader.GetInt64(0),OperationId=Guid.Parse(reader.GetString(1)),StatementLineId=reader.GetInt64(2),TargetKind=(FinanceBankReconciliationTargetKind)Convert.ToInt32(reader.GetValue(3),CultureInfo.InvariantCulture),TargetId=reader.GetInt64(4),TargetJournalEntryId=reader.GetInt64(5),MatchedAmount=ReadDecimal(reader,6),CreatedAtUtc=Convert.ToDateTime(reader.GetValue(7),CultureInfo.InvariantCulture),CreatedByUserId=reader.GetInt64(8),ReversalOperationId=reader.IsDBNull(9)?null:Guid.Parse(reader.GetString(9)),ReversedAtUtc=reader.IsDBNull(10)?null:Convert.ToDateTime(reader.GetValue(10),CultureInfo.InvariantCulture),ReversedByUserId=reader.IsDBNull(11)?null:reader.GetInt64(11) };
 	private static FinancePaymentRun ReadRun(DbDataReader reader) => new() { Id=reader.GetInt64(0),Version=reader.GetInt64(1),OperationId=Guid.Parse(reader.GetString(2)),BankAccountId=reader.GetInt64(3),PaymentDate=ReadDate(reader,4),Currency=new CurrencyCode(reader.GetString(5)),Description=reader.GetString(6),Status=(FinancePaymentRunStatus)Convert.ToInt32(reader.GetValue(7),CultureInfo.InvariantCulture),CreatedAtUtc=Convert.ToDateTime(reader.GetValue(8),CultureInfo.InvariantCulture),CreatedByUserId=reader.GetInt64(9),ApprovedAtUtc=reader.IsDBNull(10)?null:Convert.ToDateTime(reader.GetValue(10),CultureInfo.InvariantCulture),ApprovedByUserId=reader.IsDBNull(11)?null:reader.GetInt64(11),ApprovalComment=reader.IsDBNull(12)?null:reader.GetString(12),CompletedAtUtc=reader.IsDBNull(13)?null:Convert.ToDateTime(reader.GetValue(13),CultureInfo.InvariantCulture) };
 	private static FinancePaymentRunLine ReadRunLine(DbDataReader reader) => new() { Id=reader.GetInt64(0),PaymentRunId=reader.GetInt64(1),PayableOpenItemId=reader.GetInt64(2),SupplierId=reader.GetInt64(3),Amount=ReadDecimal(reader,4),Reference=reader.IsDBNull(5)?null:reader.GetString(5),Status=(FinancePaymentRunLineStatus)Convert.ToInt32(reader.GetValue(6),CultureInfo.InvariantCulture),ExecutionOperationId=Guid.Parse(reader.GetString(7)),PayablePaymentId=reader.IsDBNull(8)?null:reader.GetInt64(8),ExecutedAtUtc=reader.IsDBNull(9)?null:Convert.ToDateTime(reader.GetValue(9),CultureInfo.InvariantCulture),ExecutedByUserId=reader.IsDBNull(10)?null:reader.GetInt64(10),ExecutionReference=reader.IsDBNull(11)?null:reader.GetString(11) };

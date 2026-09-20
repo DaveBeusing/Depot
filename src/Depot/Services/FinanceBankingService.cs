@@ -68,6 +68,13 @@ public sealed class FinanceBankingService
 		return _banking.SearchUnreconciledLinesAsync(bankAccountId, pageNumber, pageSize, cancellationToken);
 	}
 
+	public Task<PageResult<FinanceBankReconciliationHistoryItem>> SearchReconciliationHistoryAsync(long? bankAccountId = null, int pageNumber = 1, int pageSize = 100, CancellationToken cancellationToken = default)
+	{
+		_authorization.RequirePermission(ApplicationPermission.FinanceBankingView);
+		if (bankAccountId is <= 0) throw new ArgumentOutOfRangeException(nameof(bankAccountId));
+		return _banking.SearchReconciliationHistoryAsync(bankAccountId, pageNumber, pageSize, cancellationToken);
+	}
+
 	public Task<PageResult<FinancePaymentRun>> SearchPaymentRunsAsync(int pageNumber = 1, int pageSize = 100, CancellationToken cancellationToken = default)
 	{
 		_authorization.RequirePermission(ApplicationPermission.FinanceBankingView);
@@ -156,6 +163,14 @@ public sealed class FinanceBankingService
 			await _auditEntries.CreateAsync(transaction, _audit.CreateCreatedEntry(id, created), token);
 			return created;
 		}, cancellationToken);
+	}
+
+	public Task<IReadOnlyList<FinanceBankReconciliationCandidate>> GetReconciliationCandidatesAsync(long statementLineId, int maxResults = 100, CancellationToken cancellationToken = default)
+	{
+		_authorization.RequirePermission(ApplicationPermission.FinanceBankingView);
+		if (statementLineId <= 0) throw new ArgumentOutOfRangeException(nameof(statementLineId));
+		if (maxResults is < 1 or > 200) throw new ArgumentOutOfRangeException(nameof(maxResults));
+		return _transactions.ExecuteAsync((transaction, token) => _banking.GetReconciliationCandidatesAsync(transaction, statementLineId, maxResults, token), cancellationToken);
 	}
 
 	public async Task<FinanceBankReconciliation> ReconcileAsync(FinanceBankReconciliationRequest request, CancellationToken cancellationToken = default)
