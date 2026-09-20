@@ -5,6 +5,24 @@
     xmlns:commands="clr-namespace:Depot.Commands"
     xmlns:models="clr-namespace:Depot.Models">
 
+    <DataTemplate x:Key="DesignerValidationIssueTemplate">
+        <Border Margin="0,0,0,6"
+                Padding="8"
+                Background="{DynamicResource SurfaceAltBrush}"
+                BorderBrush="{DynamicResource BorderBrush}"
+                BorderThickness="1"
+                CornerRadius="{DynamicResource Radius.M}"
+                AutomationProperties.Name="{Binding Message}">
+            <StackPanel>
+                <TextBlock Text="{Binding Severity}" FontWeight="SemiBold" />
+                <TextBlock Margin="0,2,0,0"
+                           Text="{Binding Message}"
+                           Style="{DynamicResource CaptionStyle}"
+                           TextWrapping="Wrap" />
+            </StackPanel>
+        </Border>
+    </DataTemplate>
+
     <Style x:Key="MasterDataListBoxStyle" TargetType="ListBox">
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
