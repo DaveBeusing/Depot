@@ -158,29 +158,12 @@ public sealed partial class FinanceFinancialReportingViewModel
 		ArgumentNullException.ThrowIfNull(target);
 		if (!CanManage) return false;
 		SelectedMappingDesignerRow = row;
-		switch (target.Kind)
-		{
-			case FinanceReportingMappingTargetKind.StatementSection:
-				StatementSection = target.StatementSection ?? FinanceStatementSection.Unclassified;
-				break;
-			case FinanceReportingMappingTargetKind.CashFlowCategory:
-				CashFlowCategory = target.CashFlowCategory ?? FinanceCashFlowCategory.None;
-				IsCashAccount = false;
-				break;
-			case FinanceReportingMappingTargetKind.TaxCategory:
-				TaxCategory = target.TaxCategory ?? FinanceTaxReportCategory.None;
-				break;
-			case FinanceReportingMappingTargetKind.CashAccount:
-				IsCashAccount = true;
-				CashFlowCategory = FinanceCashFlowCategory.None;
-				break;
-			case FinanceReportingMappingTargetKind.CostOfGoodsSold:
-				IsCostOfGoodsSold = true;
-				StatementSection = FinanceStatementSection.CostOfGoodsSold;
-				break;
-			default:
-				throw new ArgumentOutOfRangeException(nameof(target));
-		}
+		var changed = FinanceReportingMappingProjector.ApplyTarget(CreateMappingDraft(), target);
+		StatementSection = changed.StatementSection;
+		CashFlowCategory = changed.CashFlowCategory;
+		TaxCategory = changed.TaxCategory;
+		IsCashAccount = changed.IsCashAccount;
+		IsCostOfGoodsSold = changed.IsCostOfGoodsSold;
 		RefreshMappingDraftValidation();
 		return true;
 	}
@@ -264,7 +247,15 @@ public sealed partial class FinanceFinancialReportingViewModel
 			MappingValidationText = "Select an account to inspect its reporting mapping.";
 			return;
 		}
-		var mapping = new FinanceReportingAccountMapping
+		var validation = FinanceReportingMappingValidator.Validate(CreateMappingDraft(), SelectedAccount);
+		IsMappingDraftValid = validation.IsValid;
+		MappingValidationText = validation.Summary;
+	}
+
+	private FinanceReportingAccountMapping CreateMappingDraft()
+	{
+		if (SelectedAccount is null) throw new InvalidOperationException("Select an account.");
+		return new FinanceReportingAccountMapping
 		{
 			Id = SelectedMapping?.Id ?? 0,
 			Version = SelectedMapping?.Version ?? 1,
@@ -278,9 +269,6 @@ public sealed partial class FinanceFinancialReportingViewModel
 			SortOrder = int.TryParse(SortOrder, out var sortOrder) ? sortOrder : 0,
 			IsActive = MappingActive
 		};
-		var validation = FinanceReportingMappingValidator.Validate(mapping, SelectedAccount);
-		IsMappingDraftValid = validation.IsValid;
-		MappingValidationText = validation.Summary;
 	}
 
 	private void DisposeMappingDesigner()

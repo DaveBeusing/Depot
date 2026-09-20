@@ -63,6 +63,55 @@ public sealed class FinanceReportingMappingDesignerProjectionTests
 	}
 
 	[Fact]
+	public void DragDropTargetTransformationChangesOnlyExplicitMappingFields()
+	{
+		var accountId = Guid.NewGuid();
+		var mapping = new FinanceReportingAccountMapping
+		{
+			Id = 42,
+			Version = 7,
+			AccountingBookId = Guid.NewGuid(),
+			AccountId = accountId,
+			StatementSection = FinanceStatementSection.OperatingExpenses,
+			CashFlowCategory = FinanceCashFlowCategory.None,
+			TaxCategory = FinanceTaxReportCategory.None,
+			SortOrder = 40,
+			IsActive = true
+		};
+		var cashTarget = FinanceReportingMappingProjector.Targets.Single(value => value.Kind == FinanceReportingMappingTargetKind.CashAccount);
+		var cogsTarget = FinanceReportingMappingProjector.Targets.Single(value => value.Kind == FinanceReportingMappingTargetKind.CostOfGoodsSold);
+
+		var cash = FinanceReportingMappingProjector.ApplyTarget(mapping, cashTarget);
+		var cogs = FinanceReportingMappingProjector.ApplyTarget(cash, cogsTarget);
+
+		Assert.Equal(mapping.Id, cogs.Id);
+		Assert.Equal(mapping.Version, cogs.Version);
+		Assert.Equal(mapping.AccountingBookId, cogs.AccountingBookId);
+		Assert.Equal(mapping.AccountId, cogs.AccountId);
+		Assert.Equal(mapping.SortOrder, cogs.SortOrder);
+		Assert.True(cogs.IsCashAccount);
+		Assert.Equal(FinanceCashFlowCategory.None, cogs.CashFlowCategory);
+		Assert.True(cogs.IsCostOfGoodsSold);
+		Assert.Equal(FinanceStatementSection.CostOfGoodsSold, cogs.StatementSection);
+	}
+
+	[Fact]
+	public void ProjectionOrdersPersistedMappingsBySortOrderBeforeUnmappedAccounts()
+	{
+		var first = new FinanceReportingAccountRecord(Guid.NewGuid(), "2000", "Second number", FinanceAccountType.Asset, true);
+		var second = new FinanceReportingAccountRecord(Guid.NewGuid(), "1000", "First number", FinanceAccountType.Asset, true);
+		var unmapped = new FinanceReportingAccountRecord(Guid.NewGuid(), "0500", "Unmapped", FinanceAccountType.Asset, true);
+		var projection = FinanceReportingMappingProjector.Project(
+			[first, second, unmapped],
+			[
+				new FinanceReportingAccountMapping { Id = 1, AccountId = first.Id, StatementSection = FinanceStatementSection.CurrentAssets, SortOrder = 20 },
+				new FinanceReportingAccountMapping { Id = 2, AccountId = second.Id, StatementSection = FinanceStatementSection.CurrentAssets, SortOrder = 10 }
+			]);
+
+		Assert.Equal([second.Id, first.Id, unmapped.Id], projection.Rows.Select(value => value.AccountId).ToArray());
+	}
+
+	[Fact]
 	public void TargetsAreExplicitAndNeverDerivedFromAccountNamesOrNumbers()
 	{
 		var targets = FinanceReportingMappingProjector.Targets;

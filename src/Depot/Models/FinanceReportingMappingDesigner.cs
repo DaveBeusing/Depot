@@ -151,6 +151,23 @@ public static class FinanceReportingMappingProjector
 		return new FinanceReportingMappingProjection(rows, coverage);
 	}
 
+	public static FinanceReportingAccountMapping ApplyTarget(
+		FinanceReportingAccountMapping mapping,
+		FinanceReportingMappingTarget target)
+	{
+		ArgumentNullException.ThrowIfNull(mapping);
+		ArgumentNullException.ThrowIfNull(target);
+		return target.Kind switch
+		{
+			FinanceReportingMappingTargetKind.StatementSection => mapping with { StatementSection = target.StatementSection ?? FinanceStatementSection.Unclassified },
+			FinanceReportingMappingTargetKind.CashFlowCategory => mapping with { CashFlowCategory = target.CashFlowCategory ?? FinanceCashFlowCategory.None, IsCashAccount = false },
+			FinanceReportingMappingTargetKind.TaxCategory => mapping with { TaxCategory = target.TaxCategory ?? FinanceTaxReportCategory.None },
+			FinanceReportingMappingTargetKind.CashAccount => mapping with { IsCashAccount = true, CashFlowCategory = FinanceCashFlowCategory.None },
+			FinanceReportingMappingTargetKind.CostOfGoodsSold => mapping with { IsCostOfGoodsSold = true, StatementSection = FinanceStatementSection.CostOfGoodsSold },
+			_ => throw new ArgumentOutOfRangeException(nameof(target))
+		};
+	}
+
 	public static IReadOnlyList<FinanceReportingMappingTarget> Targets { get; } = BuildTargets();
 
 	private static IReadOnlyList<FinanceReportingMappingTarget> BuildTargets()

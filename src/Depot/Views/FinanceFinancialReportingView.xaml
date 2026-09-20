@@ -46,7 +46,7 @@
 
                     <Border Style="{StaticResource WorkspaceSectionStyle}">
                         <Grid>
-                            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="1.35*"/><RowDefinition Height="12"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
                             <TextBlock Text="Accounts" Style="{StaticResource WorkspaceSectionTitleStyle}"/>
                             <StackPanel Grid.Row="1" Margin="0,4,0,10">
                                 <TextBlock Text="Drag an account onto an explicit target. No classification is inferred from account name or number." Style="{StaticResource CaptionStyle}" TextWrapping="Wrap"/>
@@ -81,7 +81,7 @@
 
                     <Border Grid.Column="2" Style="{StaticResource WorkspaceSectionStyle}">
                         <Grid>
-                            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="1.35*"/><RowDefinition Height="12"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
                             <TextBlock Text="Mapping targets" Style="{StaticResource WorkspaceSectionTitleStyle}"/>
                             <TextBlock Grid.Row="1" Margin="0,4,0,10" Text="Statement sections, cash-flow categories, tax categories and explicit cash/COGS flags." Style="{StaticResource CaptionStyle}" TextWrapping="Wrap"/>
                             <ListBox x:Name="MappingTargetList"
