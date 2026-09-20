@@ -41,6 +41,8 @@ public sealed class FinanceGeneralLedgerService
 	public bool CanPostManualJournal => _authorization.HasPermission(ApplicationPermission.FinanceManualJournalsPost);
 	public bool CanReverse => _authorization.HasPermission(ApplicationPermission.FinanceGeneralLedgerReverse);
 	public bool CanManagePostingProfiles => _authorization.HasPermission(ApplicationPermission.FinancePostingProfilesManage);
+	public bool CanViewPeriods => _authorization.HasPermission(ApplicationPermission.FinancePeriodsView);
+	public bool CanManagePeriods => _authorization.HasPermission(ApplicationPermission.FinancePeriodsManage);
 
 	public Task<FinanceJournalEntry?> GetByIdAsync(long id, CancellationToken cancellationToken = default)
 	{
@@ -66,6 +68,30 @@ public sealed class FinanceGeneralLedgerService
 	{
 		_authorization.RequirePermission(ApplicationPermission.FinancePeriodsView);
 		return _ledger.GetPeriodsForDateAsync(date, cancellationToken);
+	}
+
+	public async Task<AccountingPeriod> SetPeriodStatusAsync(
+		Guid periodId,
+		AccountingPeriodStatus status,
+		CancellationToken cancellationToken = default)
+	{
+		if (periodId == Guid.Empty) throw new ArgumentException("An accounting period is required.", nameof(periodId));
+		if (!Enum.IsDefined(status)) throw new ArgumentOutOfRangeException(nameof(status));
+		_authorization.RequirePermission(ApplicationPermission.FinancePeriodsManage);
+		RequireUser();
+
+		return await _transactions.ExecuteAsync(async (transaction, token) =>
+		{
+			var before = await _ledger.LockPeriodAsync(transaction, periodId, token)
+				?? throw new InvalidOperationException("Accounting period was not found.");
+			if (before.Status != status &&
+				await _ledger.UpdatePeriodStatusAsync(transaction, periodId, before.Status, status, token) != 1)
+				throw new ConcurrencyConflictException("accounting period");
+
+			var after = await _ledger.LockPeriodAsync(transaction, periodId, token)
+				?? throw new InvalidOperationException("Accounting period could not be reloaded.");
+			return new AccountingPeriod(after.Id, after.FiscalCalendarId, after.Code, after.StartDate, after.EndDate, after.Status);
+		}, cancellationToken);
 	}
 
 	public Task<FinancePostingProfile?> GetPostingProfileAsync(long id, CancellationToken cancellationToken = default)

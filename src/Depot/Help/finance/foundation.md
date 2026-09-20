@@ -44,6 +44,12 @@ F2 adds:
 
 When an active AR configuration exists, Sales Invoice/Credit Note posting connects Sales, the AR subledger, the F1 General Ledger, Finance number allocation, and Audit Log evidence in one database transaction. If AR has not been configured, Depot does not invent accounting defaults and the existing Sales workflow remains operational without AR/GL posting.
 
+## Period control
+
+**Finance > Period Control** exposes the persisted accounting-period status through the existing General Ledger boundary. Users with `FinancePeriods.View` can review the periods covering a selected date. `FinancePeriods.Manage` is required to close or reopen a period.
+
+Closing a period prevents new Finance postings dated inside that period because the General Ledger already requires an open period for every posting. Reopening restores technical posting availability. Neither action determines whether period-end work is complete, whether a period should be closed under an accounting framework, or whether reopening is organizationally authorized; those decisions belong to the deployment's approved period-end procedure and responsible Finance owners.
+
 ## Permissions
 
 `Finance.View` controls the generic Finance read boundary. More granular permissions cover exchange rates, periods, accounting books, tax configuration, number sequences, General Ledger activity, posting profiles, manual journals, receivables, customer payments, write-offs, and dunning.

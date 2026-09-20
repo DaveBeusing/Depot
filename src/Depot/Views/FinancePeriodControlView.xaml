@@ -1,0 +1,106 @@
+<UserControl x:Class="Depot.Views.FinancePeriodControlView"
+	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:controls="clr-namespace:Depot.Controls">
+	<Grid>
+		<Grid.RowDefinitions>
+			<RowDefinition Height="Auto" />
+			<RowDefinition Height="Auto" />
+			<RowDefinition Height="Auto" />
+			<RowDefinition Height="*" />
+		</Grid.RowDefinitions>
+
+		<controls:PageHeader
+			Title="Period Control"
+			Subtitle="Review and control accounting-period availability without inferring accounting, tax, or statutory approval.">
+			<controls:PageHeader.Actions>
+				<Button
+					AutomationProperties.Name="Refresh accounting periods"
+					Command="{Binding RefreshCommand}"
+					Content="Refresh"
+					Style="{StaticResource SecondaryButtonStyle}" />
+			</controls:PageHeader.Actions>
+		</controls:PageHeader>
+
+		<controls:OperationPanel
+			Grid.Row="1"
+			ErrorText="{Binding OperationError}"
+			HasError="{Binding HasOperationError}"
+			HelpTopicId="finance.foundation"
+			IsBusy="{Binding IsBusy}"
+			StatusText="{Binding StatusText}" />
+
+		<controls:FilterBar Grid.Row="2" Margin="0,0,0,12">
+			<Grid>
+				<Grid.ColumnDefinitions>
+					<ColumnDefinition Width="Auto" />
+					<ColumnDefinition Width="12" />
+					<ColumnDefinition Width="180" />
+					<ColumnDefinition Width="*" />
+				</Grid.ColumnDefinitions>
+				<TextBlock VerticalAlignment="Center" Style="{StaticResource FormLabelStyle}" Text="Reference date" />
+				<DatePicker
+					Grid.Column="2"
+					AutomationProperties.Name="Accounting period reference date"
+					SelectedDate="{Binding SelectedDate, Mode=TwoWay}"
+					Style="{StaticResource AppDatePickerStyle}" />
+				<TextBlock
+					Grid.Column="3"
+					Margin="16,0,0,0"
+					VerticalAlignment="Center"
+					Style="{StaticResource CaptionStyle}"
+					Text="Closing a period blocks new postings. Period-end approval remains an organizational procedure."
+					TextWrapping="Wrap" />
+			</Grid>
+		</controls:FilterBar>
+
+		<controls:Card Grid.Row="3">
+			<Grid>
+				<Grid.RowDefinitions>
+					<RowDefinition Height="Auto" />
+					<RowDefinition Height="*" />
+					<RowDefinition Height="Auto" />
+				</Grid.RowDefinitions>
+				<controls:WorkflowHeader
+					Title="Accounting periods"
+					Subtitle="{Binding SelectedPeriodSummary}"
+					Status="{Binding SelectedPeriod.Status, TargetNullValue=No selection}" />
+				<DataGrid
+					Grid.Row="1"
+					Margin="0,12,0,0"
+					AutomationProperties.Name="Accounting periods"
+					EnableColumnVirtualization="True"
+					EnableRowVirtualization="True"
+					ItemsSource="{Binding Periods}"
+					SelectedItem="{Binding SelectedPeriod}"
+					Style="{StaticResource AppDataGridCompactStyle}"
+					VirtualizingPanel.IsVirtualizing="True"
+					VirtualizingPanel.VirtualizationMode="Recycling">
+					<DataGrid.Columns>
+						<DataGridTextColumn Binding="{Binding Code}" Header="Period" Width="140" />
+						<DataGridTextColumn Binding="{Binding StartDate, StringFormat={}{0:yyyy-MM-dd}}" Header="Start" Width="120" />
+						<DataGridTextColumn Binding="{Binding EndDate, StringFormat={}{0:yyyy-MM-dd}}" Header="End" Width="120" />
+						<DataGridTextColumn Binding="{Binding Status}" Header="Status" Width="110" />
+						<DataGridTextColumn Binding="{Binding FiscalCalendarId}" Header="Fiscal calendar" Width="*" />
+					</DataGrid.Columns>
+				</DataGrid>
+				<controls:WorkflowActionBar Grid.Row="2" Margin="0,12,0,0">
+					<controls:WorkflowActionBar.SecondaryActions>
+						<Button
+							AutomationProperties.Name="Reopen selected accounting period"
+							Command="{Binding ReopenPeriodCommand}"
+							Content="Reopen selected period"
+							Style="{StaticResource SecondaryButtonStyle}" />
+					</controls:WorkflowActionBar.SecondaryActions>
+					<controls:WorkflowActionBar.PrimaryAction>
+						<Button
+							AutomationProperties.Name="Close selected accounting period"
+							Command="{Binding ClosePeriodCommand}"
+							Content="Close selected period"
+							Style="{StaticResource DangerButtonStyle}" />
+					</controls:WorkflowActionBar.PrimaryAction>
+				</controls:WorkflowActionBar>
+			</Grid>
+		</controls:Card>
+	</Grid>
+</UserControl>

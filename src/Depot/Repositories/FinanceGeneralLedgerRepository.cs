@@ -76,6 +76,19 @@ public sealed class FinanceGeneralLedgerRepository : DatabaseRepository
 			cancellationToken,
 			Parameter("$Date", date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)));
 
+	internal Task<int> UpdatePeriodStatusAsync(
+		DatabaseTransactionContext transaction,
+		Guid id,
+		AccountingPeriodStatus expectedStatus,
+		AccountingPeriodStatus status,
+		CancellationToken cancellationToken) =>
+		transaction.Session.ExecuteAsync(
+			"UPDATE FinanceAccountingPeriods SET Status = $Status WHERE Id = $Id AND Status = $ExpectedStatus;",
+			cancellationToken,
+			Parameter("$Status", (int)status),
+			Parameter("$Id", id.ToString("D")),
+			Parameter("$ExpectedStatus", (int)expectedStatus));
+
 	public async Task<FinancePostingFlowContext> GetPostingFlowContextAsync(
 		Guid accountingBookId,
 		Guid journalId,
