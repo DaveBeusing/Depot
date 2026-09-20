@@ -46,9 +46,17 @@
 
                     <Border Style="{StaticResource WorkspaceSectionStyle}">
                         <Grid>
-                            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="1.35*"/><RowDefinition Height="12"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
                             <TextBlock Text="Accounts" Style="{StaticResource WorkspaceSectionTitleStyle}"/>
-                            <TextBlock Grid.Row="1" Margin="0,4,0,10" Text="Drag an account onto an explicit target. No classification is inferred from account name or number." Style="{StaticResource CaptionStyle}" TextWrapping="Wrap"/>
+                            <StackPanel Grid.Row="1" Margin="0,4,0,10">
+                                <TextBlock Text="Drag an account onto an explicit target. No classification is inferred from account name or number." Style="{StaticResource CaptionStyle}" TextWrapping="Wrap"/>
+                                <Border Margin="0,8,0,0" Padding="8" Style="{StaticResource WorkspaceToolbarBorderStyle}">
+                                    <StackPanel>
+                                        <TextBlock Text="Coverage" FontWeight="SemiBold"/>
+                                        <TextBlock Margin="0,2,0,0" Text="{Binding MappingCoverageSummary}" Style="{StaticResource CaptionStyle}" TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
                             <ListBox x:Name="MappingAccountList"
                                      Grid.Row="2"
                                      ItemsSource="{Binding MappingDesignerRows}"
@@ -94,6 +102,27 @@
                                     </DataTemplate>
                                 </ListBox.ItemTemplate>
                             </ListBox>
+                            <Border Grid.Row="4" Padding="10" Style="{StaticResource WorkspaceToolbarBorderStyle}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="10"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Text="Live report preview" FontWeight="SemiBold"/>
+                                        <ComboBox Margin="0,6,0,0" ItemsSource="{Binding MappingPreviewKinds}" SelectedItem="{Binding MappingPreviewKind}" Style="{StaticResource AppComboBoxStyle}"/>
+                                    </StackPanel>
+                                    <Button Grid.Column="2" VerticalAlignment="Bottom" Command="{Binding RefreshMappingPreviewCommand}" Content="Refresh preview" Style="{StaticResource SecondaryButtonStyle}"/>
+                                </Grid>
+                            </Border>
+                            <Grid Grid.Row="5" Margin="0,8,0,0">
+                                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                                <TextBlock Text="{Binding MappingPreviewWarningText}" Style="{StaticResource CaptionStyle}" TextWrapping="Wrap"/>
+                                <DataGrid Grid.Row="1" Margin="0,6,0,0" ItemsSource="{Binding MappingPreviewRows}" Style="{StaticResource AppDataGridCompactStyle}" IsReadOnly="True" MaxHeight="240">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Group" Binding="{Binding Group}" Width="110"/>
+                                        <DataGridTextColumn Header="Label" Binding="{Binding Label}" Width="*"/>
+                                        <DataGridTextColumn Header="Amount" Binding="{Binding Amount, StringFormat={}{0:N2}}" Width="90" ElementStyle="{StaticResource AppDataGridNumericTextStyle}"/>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </Grid>
                         </Grid>
                     </Border>
 
@@ -129,7 +158,7 @@
                                 </Border>
                                 <WrapPanel Margin="0,12,0,0" HorizontalAlignment="Right" IsEnabled="{Binding CanManage}">
                                     <Button Command="{Binding NewMappingCommand}" Content="Reset draft" Style="{StaticResource SecondaryButtonStyle}"/>
-                                    <Button Margin="8,0,0,0" Command="{Binding SaveMappingCommand}" Content="Save mapping" Style="{StaticResource PrimaryButtonStyle}"/>
+                                    <Button Margin="8,0,0,0" Command="{Binding SaveMappingCommand}" Content="Save mapping" IsEnabled="{Binding IsMappingDraftValid}" Style="{StaticResource PrimaryButtonStyle}"/>
                                 </WrapPanel>
                             </StackPanel>
                         </ScrollViewer>

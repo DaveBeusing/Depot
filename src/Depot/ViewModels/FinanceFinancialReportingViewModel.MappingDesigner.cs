@@ -13,11 +13,24 @@ public sealed partial class FinanceFinancialReportingViewModel
 	private FinanceReportingMappingProjectionRow? _selectedMappingDesignerRow;
 	private string _mappingValidationText = "Select an account to inspect its reporting mapping.";
 	private bool _isMappingDraftValid;
+	private FinanceReportingMappingCoverage _mappingCoverage = new(0, 0, 0, 0, 0);
+	private FinanceReportKind _mappingPreviewKind = FinanceReportKind.BalanceSheet;
+	private string _mappingPreviewWarningText = string.Empty;
 
 	public ObservableCollection<FinanceReportingMappingProjectionRow> MappingDesignerRows { get; } = [];
 	public ObservableCollection<FinanceReportingMappingTarget> MappingTargets { get; } = [];
+	public ObservableCollection<FinanceReportRow> MappingPreviewRows { get; } = [];
 	public AsyncRelayCommand? MoveMappingUpCommand { get; private set; }
 	public AsyncRelayCommand? MoveMappingDownCommand { get; private set; }
+	public AsyncRelayCommand? RefreshMappingPreviewCommand { get; private set; }
+	public IReadOnlyList<FinanceReportKind> MappingPreviewKinds { get; } =
+	[
+		FinanceReportKind.BalanceSheet,
+		FinanceReportKind.ProfitLoss,
+		FinanceReportKind.CashFlow,
+		FinanceReportKind.TaxSummary,
+		FinanceReportKind.CostOfGoodsSold
+	];
 
 	public FinanceReportingMappingProjectionRow? SelectedMappingDesignerRow
 	{
@@ -80,12 +93,51 @@ public sealed partial class FinanceFinancialReportingViewModel
 			OnPropertyChanged();
 		}
 	}
+	public FinanceReportingMappingCoverage MappingCoverage
+	{
+		get => _mappingCoverage;
+		private set
+		{
+			if (_mappingCoverage == value) return;
+			_mappingCoverage = value;
+			OnPropertyChanged();
+			OnPropertyChanged(nameof(MappingCoverageSummary));
+		}
+	}
+
+	public string MappingCoverageSummary => MappingCoverage.Summary;
+
+	public FinanceReportKind MappingPreviewKind
+	{
+		get => _mappingPreviewKind;
+		set
+		{
+			if (_mappingPreviewKind == value) return;
+			_mappingPreviewKind = value;
+			OnPropertyChanged();
+			MappingPreviewRows.Clear();
+			MappingPreviewWarningText = "Preview parameters changed. Refresh to regenerate.";
+		}
+	}
+
+	public string MappingPreviewWarningText
+	{
+		get => _mappingPreviewWarningText;
+		private set
+		{
+			if (_mappingPreviewWarningText == value) return;
+			_mappingPreviewWarningText = value;
+			OnPropertyChanged();
+		}
+	}
+
 
 	private void InitializeMappingDesigner()
 	{
 		Replace(MappingTargets, FinanceReportingMappingProjector.Targets);
 		MoveMappingUpCommand = new AsyncRelayCommand(token => MoveMappingAsync(-1, token), CanMoveMappingUp);
 		MoveMappingDownCommand = new AsyncRelayCommand(token => MoveMappingAsync(1, token), CanMoveMappingDown);
+		RefreshMappingPreviewCommand = new AsyncRelayCommand(RefreshMappingDesignerPreviewAsync, () => _reporting.CanView && Guid.TryParse(AccountingBookId, out _));
 		PropertyChanged += OnMappingDraftPropertyChanged;
 	}
 
@@ -93,6 +145,7 @@ public sealed partial class FinanceFinancialReportingViewModel
 	{
 		var selectedAccountId = SelectedMappingDesignerRow?.AccountId ?? SelectedAccount?.Id;
 		var projection = FinanceReportingMappingProjector.Project(Accounts, Mappings);
+		MappingCoverage = projection.Coverage;
 		Replace(MappingDesignerRows, projection.Rows);
 		SelectedMappingDesignerRow = selectedAccountId is Guid accountId
 			? MappingDesignerRows.FirstOrDefault(value => value.AccountId == accountId)
@@ -130,6 +183,32 @@ public sealed partial class FinanceFinancialReportingViewModel
 		}
 		RefreshMappingDraftValidation();
 		return true;
+	}
+
+	private async Task RefreshMappingDesignerPreviewAsync(CancellationToken token)
+	{
+		if (!Guid.TryParse(AccountingBookId, out var bookId))
+		{
+			MappingPreviewRows.Clear();
+			MappingPreviewWarningText = "A valid accounting book is required.";
+			return;
+		}
+		var parameters = new FinanceReportParameters
+		{
+			Kind = MappingPreviewKind,
+			AccountingBookId = bookId,
+			FromDate = DateOnly.FromDateTime(FromDate),
+			ToDate = DateOnly.FromDateTime(ToDate),
+			AsOfDate = DateOnly.FromDateTime(AsOfDate),
+			DimensionId = OptionalGuid(DimensionId, "dimension"),
+			DimensionValueId = OptionalGuid(DimensionValueId, "dimension value"),
+			IncludeZeroBalances = IncludeZeroBalances
+		};
+		var result = await _reporting.GenerateAsync(parameters, token);
+		Replace(MappingPreviewRows, result.Rows);
+		MappingPreviewWarningText = result.Warnings.Count == 0
+			? $"{MappingPreviewKind} preview generated with {result.Rows.Count} row(s)."
+			: string.Join(Environment.NewLine, result.Warnings);
 	}
 
 	private bool CanMoveMappingUp() => CanMoveMapping(-1);
@@ -209,5 +288,6 @@ public sealed partial class FinanceFinancialReportingViewModel
 		PropertyChanged -= OnMappingDraftPropertyChanged;
 		MoveMappingUpCommand?.Dispose();
 		MoveMappingDownCommand?.Dispose();
+		RefreshMappingPreviewCommand?.Dispose();
 	}
 }

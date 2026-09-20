@@ -106,6 +106,34 @@ public sealed class FinanceFinancialReportingTests
 	}
 
 	[Fact]
+	public async Task IdenticalMappingSemanticsProduceIdenticalProfitLossReports()
+	{
+		using var context = TestContext.Create();
+		var mapping = await context.Reporting.SaveMappingAsync(new FinanceReportingAccountMapping
+		{
+			AccountingBookId = context.BookId,
+			AccountId = context.RevenueAccountId,
+			StatementSection = FinanceStatementSection.Revenue,
+			CashFlowCategory = FinanceCashFlowCategory.Operating,
+			SortOrder = 10
+		});
+		await context.PostAsync(new DateOnly(2026, 1, 10), 250m, "PARITY");
+		var parameters = new FinanceReportParameters
+		{
+			Kind = FinanceReportKind.ProfitLoss,
+			AccountingBookId = context.BookId,
+			FromDate = new DateOnly(2026, 1, 1),
+			ToDate = new DateOnly(2026, 1, 31)
+		};
+		var before = await context.Reporting.GenerateAsync(parameters);
+		await context.Reporting.SaveMappingAsync(mapping);
+		var after = await context.Reporting.GenerateAsync(parameters);
+
+		Assert.Equal(before.Rows, after.Rows);
+		Assert.Equal(before.Warnings, after.Warnings);
+	}
+
+	[Fact]
 	public async Task SnapshotIsIdempotentContentBoundAndCsvExportIsDeterministic()
 	{
 		using var context = TestContext.Create();

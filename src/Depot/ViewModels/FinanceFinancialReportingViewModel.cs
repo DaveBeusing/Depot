@@ -92,6 +92,7 @@ public sealed partial class FinanceFinancialReportingViewModel : BaseViewModel, 
 				Replace(Mappings,await _reporting.GetMappingsAsync(book,cancellationToken));
 				if(CanManage) Replace(Accounts,await _reporting.GetAccountsAsync(book,cancellationToken)); else Accounts.Clear();
 				LoadMappingDesignerProjection();
+				await RefreshMappingDesignerPreviewAsync(cancellationToken);
 				Replace(Snapshots,await _reporting.GetRecentSnapshotsAsync(book,cancellationToken));
 			}
 			else { Mappings.Clear(); Accounts.Clear(); MappingDesignerRows.Clear(); Replace(Snapshots,await _reporting.GetRecentSnapshotsAsync(null,cancellationToken)); }
@@ -123,7 +124,7 @@ public sealed partial class FinanceFinancialReportingViewModel : BaseViewModel, 
 			var account=SelectedAccount??(SelectedMapping is not null?Accounts.FirstOrDefault(value=>value.Id==SelectedMapping.AccountId):null)??throw new InvalidOperationException("Select an account.");
 			var current=SelectedMapping;
 			var value=new FinanceReportingAccountMapping{Id=current?.Id??0,Version=current?.Version??1,AccountingBookId=ParseGuid(AccountingBookId,"accounting book"),AccountId=account.Id,StatementSection=StatementSection,CashFlowCategory=CashFlowCategory,TaxCategory=TaxCategory,IsCashAccount=IsCashAccount,IsCostOfGoodsSold=IsCostOfGoodsSold,SortOrder=ParseInt(SortOrder,"sort order"),IsActive=MappingActive};
-			SelectedMapping=await _reporting.SaveMappingAsync(value,token); await LoadAsync(token); CompleteOperation(false,"Reporting mapping saved.");
+			SelectedMapping=await _reporting.SaveMappingAsync(value,token); await LoadAsync(token); CompleteOperation(false,"Reporting mapping saved and preview refreshed.");
 		}
 		catch(Exception exception){FailOperation(exception,"Reporting mapping could not be saved.");}
 	}
