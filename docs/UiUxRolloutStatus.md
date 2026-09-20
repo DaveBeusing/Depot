@@ -1,6 +1,6 @@
 # UI/UX Rollout Status
 
-Updated: 2026-09-19
+Updated: 2026-09-20
 
 The repository-wide presentation rollout against `UiUxDesignContract.md` is implementation-complete for the productive Inventory, Purchasing, Warehouse, Sales, Finance and Administration workspaces. Every material production surface in these modules was either migrated during this branch or explicitly reviewed as already compliant with the shared workspace grammar.
 
@@ -109,7 +109,7 @@ The central DataGrid resources:
 - use `AppDataGridNumericTextStyle` for quantities, prices, costs, percentages, tax, debit/credit, balances and other numeric evidence;
 - preserve keyboard focus, selection and horizontal scrolling behavior.
 
-Compact density is deliberately used for operational lines, movements, financial evidence, pricing previews, audit/security evidence, backups and reports. It does not add persisted user preferences.
+Compact density is deliberately used for operational lines, movements, financial evidence, pricing previews, audit/security evidence, backups and reports. The original presentation rollout did not add persistence; subsequent User Preferences work now persists supported per-user grid density together with Saved View presentation state.
 
 ## Cross-module review
 
@@ -117,28 +117,31 @@ Compact density is deliberately used for operational lines, movements, financial
 - `CurrentUserView` was reviewed as a specialized account-information surface; its cards are self-contained account/authorization/permission groups rather than general ERP collection containers.
 - shell/navigation wrapper views intentionally do not duplicate child page headers.
 
-## Deliberately deferred
+## Subsequent productivity integration — Complete
 
-The following require persisted preference/state architecture and are not part of this presentation-only rollout:
+The presentation-only rollout deliberately left persistence and cross-workspace productivity to a separate architecture. That follow-up is now integrated on `master`:
 
-- persistent Saved Views;
-- user-specific filter state;
-- persisted column selection/order/width/sort;
-- user-selectable grid density;
-- saved workspaces and favorites;
-- user-specific default views;
-- optional global command/search productivity patterns.
+- persistent user-scoped Saved Views for supported workspace filters and presentation state;
+- persisted supported column visibility/order/width/sort and user-selectable grid density;
+- per-user default Saved Views;
+- Favorites, Recent workspaces and a default landing route;
+- My Work and role-centered landing surfaces that reuse existing domain/service authority;
+- Quick Open, Command Palette and Global Search with permission-filtered discovery.
 
-These belong to `ERP Productivity – Saved Views, User Preferences & Advanced Grid Workspaces`.
+These capabilities use the existing User Preferences schema **2** and remain presentation/navigation preferences rather than authorization inputs. See [User Workspace Views](UserWorkspaceViews.md), [Workspace Productivity](WorkspaceProductivity.md) and [Track B Productivity Readiness](TrackBProductivityReadiness.md).
+
+## Current visual-designer integration
+
+The current `master` also contains productive visual designer surfaces for document templates, Finance posting flows, Sales pricing strategy, financial-report mappings, bank reconciliation, localization hierarchy, role permissions and import mapping. Designer-specific domain models, validators, services and persistence remain feature-owned; shared UI infrastructure is extracted only where current implementations have identical interaction semantics.
 
 ## Architecture and data boundaries
 
-- Database schema: unchanged (`DatabaseVersion.CurrentVersion = 30`).
+- Core database schema remains `DatabaseVersion.CurrentVersion = 30`; subsequent personalization uses User Preferences schema **2**.
 - Business logic: unchanged.
 - `Views → ViewModels → Services → Repositories → DatabaseAccess`: preserved.
 - RBAC, audit, transaction, immutable-history, concurrency and cancellation contracts: preserved.
 
-Build, regression, accessibility, release-integrity and security-supply-chain verification for the final branch head is tracked by PR #15 and its GitHub Actions checks.
+The original rollout branch/PR is historical. Current acceptance is governed by the repository's active CI, quality, security, packaged-E2E and database-provider workflows on each current change.
 
 
 ## Cross-app consistency — Complete
@@ -153,4 +156,4 @@ The cross-app consistency pass reuses the existing productive workspace grammar 
 - notification navigation continues to deep-link through the existing service/navigation boundary, while My Work remains the actionable-work projection;
 - productive tables continue to use the already-shared `AppDataGridStyle`, compact/numeric styles, saved views, filters and detail-pane patterns; no duplicate generic grid system was added.
 
-No persisted schema, Help topic ID, permission mapping or route changed in this pass.
+The cross-app consistency pass itself did not change persisted schemas, Help topic IDs, permission mappings or routes. Later User Preferences and productivity work is represented separately by its current schema and documentation.

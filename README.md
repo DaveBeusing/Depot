@@ -24,6 +24,7 @@ Business software should make operations easier to understand, not add another l
 - **Inventory & Warehouse** — enriched item master data, serial/lot traceability, reversal-safe movement history and inventory accounting.
 - **Finance** — legal entities, currencies, periods, General Ledger, Accounts Receivable, Accounts Payable, FIFO inventory accounting, banking, reconciliation and financial reporting.
 - **Operations & Control** — approvals, reporting, administration, RBAC, audit evidence, persistent sessions and retained business records.
+- **Workspace Productivity** — My Work, Saved Views, Favorites, Recents, default landing, Quick Open, Command Palette and Global Search support repeatable day-to-day navigation without changing authorization.
 - **Integrated Help** — contextual offline Help follows central permissions and supports users directly inside the application.
 
 ## Product foundation
@@ -53,6 +54,8 @@ The product foundation includes:
 - effective-dated Finance Localization with built-in `GENERIC → EU → DE` references and extensible custom packs
 - persistent User Sessions and operational Security Center evidence
 - durable Security Event export targets and at-least-once delivery checkpointing
+- persistent User Preferences for supported Saved View filters, column layout/sort, grid density, Favorites, Recents and default landing
+- bounded visual designers for document layouts, Finance posting flows, Sales pricing strategy, financial-report mappings, bank reconciliation, localization hierarchy, role permissions and import mapping
 
 Read the full [Architecture](docs/Architecture.md) and [Coding Standard](docs/CodingStandard.md).
 

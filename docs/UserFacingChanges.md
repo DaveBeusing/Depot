@@ -1,14 +1,35 @@
 # User-facing changes
 
-Updated: 2026-09-19
+Updated: 2026-09-20
 
-Depot's current `0.15.x-preview` line includes the integrated Finance platform, persistent session/security administration, production-tested database-provider support, advanced commercial price generation and electronic-invoice issuance based on XRechnung CII.
+Depot's current `0.15.x-preview` line includes the integrated Finance platform, persistent session/security administration, user-scoped workspace productivity, productive visual designers, production-tested database-provider support, advanced commercial price generation and electronic-invoice issuance based on XRechnung CII.
 
 ## Visual document templates
 
 Administrators can design, preview, version, persist, and activate layouts for all supported Sales/warehouse PDF document families. Active templates are shared through the Depot database and survive application restarts. Built-in version 1 remains available as a deterministic reset target.
 
 Layout changes stay presentation-only. Posted business data remains immutable, and retained XRechnung / ZUGFeRD / Factur-X PDF/A artifacts are never rewritten by later template changes.
+
+## Workspace productivity
+
+User Preferences schema **2** provides persistent user-scoped productivity state. Supported workspaces can save and reapply presentation state such as filters, column visibility/order/width/sort and grid density; a user can choose a default Saved View for a workspace. Favorites, Recent workspaces and the default landing route are also user-specific.
+
+Quick Open, Command Palette and Global Search materialize routes/actions against the current permission-filtered shell catalog. Stored preferences never grant access and do not bypass service-layer authorization.
+
+## Visual operational designers
+
+The current product includes bounded visual designer surfaces for:
+
+- document templates and PDF layout;
+- Finance posting flows;
+- Sales pricing strategy;
+- financial-report account mappings;
+- bank reconciliation;
+- localization hierarchy and assignment review;
+- role permissions and effective-impact inspection;
+- import column mapping and validated preview.
+
+The designers reuse Depot custom controls and shared interaction resources where semantics match, while each feature keeps its own domain validation, service authorization and persistence boundary. Selection or drag/drop preview alone is not a business mutation.
 
 ## Scoped and advanced Sales pricing
 
@@ -86,6 +107,7 @@ Advanced pricing uses existing Item and Sales Pricing permissions. FX-rate maint
 - Security Events schema: **3**
 - User Preferences schema: **2**
 - Document Templates schema: **1**
+- Enterprise Identity schema: **2**
 - Help manifest: **1.22**
 
 The exact application patch/version is authoritative in `Directory.Build.props`; this user-facing baseline intentionally records the moving development line instead of duplicating the patch number.
