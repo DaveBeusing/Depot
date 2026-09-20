@@ -16,9 +16,11 @@ public sealed partial class FinanceBankingViewModel
 	private FinanceBankReconciliationMatchPreview? _reconciliationMatchPreview;
 	private int _reconciliationPageNumber = 1;
 	private long _reconciliationTotalCount;
+	private FinanceBankReconciliationHistoryItem? _selectedReconciliationHistoryItem;
 
 	public ObservableCollection<FinanceBankStatementLine> ReconciliationDesignerLines { get; } = [];
 	public ObservableCollection<FinanceBankReconciliationCandidate> ReconciliationCandidates { get; } = [];
+	public ObservableCollection<FinanceBankReconciliationHistoryItem> ReconciliationHistory { get; } = [];
 
 	public AsyncRelayCommand LoadReconciliationPageCommand { get; private set; } = null!;
 	public AsyncRelayCommand PreviousReconciliationPageCommand { get; private set; } = null!;
@@ -26,6 +28,7 @@ public sealed partial class FinanceBankingViewModel
 	public AsyncRelayCommand LoadReconciliationCandidatesCommand { get; private set; } = null!;
 	public AsyncRelayCommand UseReconciliationCandidateCommand { get; private set; } = null!;
 	public AsyncRelayCommand MatchReconciliationCandidateCommand { get; private set; } = null!;
+	public AsyncRelayCommand ReverseSelectedReconciliationCommand { get; private set; } = null!;
 
 	public FinanceBankStatementLine? SelectedReconciliationLine
 	{
@@ -54,6 +57,23 @@ public sealed partial class FinanceBankingViewModel
 			UseReconciliationCandidateCommand.RaiseCanExecuteChanged();
 		}
 	}
+
+	public FinanceBankReconciliationHistoryItem? SelectedReconciliationHistoryItem
+	{
+		get => _selectedReconciliationHistoryItem;
+		set
+		{
+			if (ReferenceEquals(_selectedReconciliationHistoryItem, value)) return;
+			_selectedReconciliationHistoryItem = value;
+			OnPropertyChanged();
+			OnPropertyChanged(nameof(ReconciliationHistoryBankEvidence));
+			OnPropertyChanged(nameof(ReconciliationHistoryTargetEvidence));
+			ReverseSelectedReconciliationCommand.RaiseCanExecuteChanged();
+		}
+	}
+
+	public string ReconciliationHistoryBankEvidence => SelectedReconciliationHistoryItem?.BankEvidence ?? "Select a history item.";
+	public string ReconciliationHistoryTargetEvidence => SelectedReconciliationHistoryItem?.TargetEvidence ?? string.Empty;
 
 	public FinanceBankReconciliationCandidate? PreviewReconciliationCandidate
 	{
@@ -134,6 +154,7 @@ public sealed partial class FinanceBankingViewModel
 			return Task.CompletedTask;
 		}, () => SelectedReconciliationCandidate is not null);
 		MatchReconciliationCandidateCommand = new AsyncRelayCommand(MatchReconciliationCandidateAsync, () => CanReconcile && SelectedReconciliationLine is not null && PreviewReconciliationCandidate is not null);
+		ReverseSelectedReconciliationCommand = new AsyncRelayCommand(ReverseSelectedReconciliationAsync, () => CanReconcile && SelectedReconciliationHistoryItem is { IsReversed: false });
 	}
 
 	private async Task LoadReconciliationDesignerPageAsync(int pageNumber, CancellationToken token)
@@ -149,6 +170,33 @@ public sealed partial class FinanceBankingViewModel
 			: ReconciliationDesignerLines.FirstOrDefault();
 		PreviousReconciliationPageCommand.RaiseCanExecuteChanged();
 		NextReconciliationPageCommand.RaiseCanExecuteChanged();
+		await LoadReconciliationHistoryAsync(token);
+	}
+
+	private async Task LoadReconciliationHistoryAsync(CancellationToken token)
+	{
+		var page = await _banking.SearchReconciliationHistoryAsync(SelectedBankAccount?.Id, 1, 100, token);
+		var selectedId = SelectedReconciliationHistoryItem?.Reconciliation.Id;
+		Replace(ReconciliationHistory, page.Items);
+		SelectedReconciliationHistoryItem = selectedId.HasValue
+			? ReconciliationHistory.FirstOrDefault(value => value.Reconciliation.Id == selectedId.Value)
+			: ReconciliationHistory.FirstOrDefault();
+	}
+
+	private async Task ReverseSelectedReconciliationAsync(CancellationToken token)
+	{
+		BeginOperation("Reversing bank reconciliation...");
+		try
+		{
+			var history = SelectedReconciliationHistoryItem ?? throw new InvalidOperationException("Select an active reconciliation.");
+			if (history.IsReversed) throw new InvalidOperationException("Reversed reconciliation history is read-only.");
+			await _banking.ReverseReconciliationAsync(history.Reconciliation.Id, Guid.NewGuid(), ReversalReason, token);
+			await LoadReconciliationDesignerPageAsync(ReconciliationPageNumber, token);
+			if (SelectedStatement is not null) await LoadStatementAsync(token);
+			CompleteOperation(false, "Bank reconciliation reversed.");
+		}
+		catch (OperationCanceledException) when (token.IsCancellationRequested) { }
+		catch (Exception exception) { FailOperation(exception, "Bank reconciliation reversal failed."); }
 	}
 
 	private async Task LoadReconciliationCandidatesAsync(CancellationToken token)
@@ -193,5 +241,6 @@ public sealed partial class FinanceBankingViewModel
 		LoadReconciliationCandidatesCommand.Dispose();
 		UseReconciliationCandidateCommand.Dispose();
 		MatchReconciliationCandidateCommand.Dispose();
+		ReverseSelectedReconciliationCommand.Dispose();
 	}
 }

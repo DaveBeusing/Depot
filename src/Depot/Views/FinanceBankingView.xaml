@@ -125,6 +125,46 @@
                                     Command="{Binding MatchReconciliationCandidateCommand}"
                                     Content="Match"
                                     Style="{StaticResource PrimaryButtonStyle}"/>
+                            <Separator Margin="0,16,0,12"/>
+                            <TextBlock Text="Match history" Style="{StaticResource WorkspaceSectionTitleStyle}"/>
+                            <ListBox Margin="0,6,0,0"
+                                     MaxHeight="220"
+                                     ItemsSource="{Binding ReconciliationHistory}"
+                                     SelectedItem="{Binding SelectedReconciliationHistoryItem}"
+                                     Style="{StaticResource AppListBoxStyle}"
+                                     IsTabStop="True"
+                                     VirtualizingPanel.IsVirtualizing="True"
+                                     VirtualizingPanel.VirtualizationMode="Recycling">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Margin="0,3">
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="8"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                            <Line Grid.Column="0" X1="3" X2="3" Y1="0" Y2="28" Stroke="{DynamicResource AccentBrush}" StrokeThickness="2">
+                                                <Line.Style>
+                                                    <Style TargetType="Line">
+                                                        <Setter Property="StrokeDashArray" Value="1 0"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsReversed}" Value="True">
+                                                                <Setter Property="StrokeDashArray" Value="3 2"/>
+                                                                <Setter Property="Opacity" Value="0.6"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Line.Style>
+                                            </Line>
+                                            <StackPanel Grid.Column="1" Margin="6,0,0,0">
+                                                <TextBlock FontWeight="SemiBold"><Run Text="{Binding TargetDisplay}"/><Run Text=" · "/><Run Text="{Binding Status}"/></TextBlock>
+                                                <TextBlock Style="{StaticResource CaptionStyle}"><Run Text="{Binding Reconciliation.CreatedAtUtc}"/><Run Text=" · "/><Run Text="{Binding Reconciliation.MatchedAmount, StringFormat={}{0:N2}}"/></TextBlock>
+                                            </StackPanel>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                            <TextBlock Margin="0,8,0,0" Text="{Binding ReconciliationHistoryBankEvidence}" Style="{StaticResource CaptionStyle}" TextWrapping="Wrap"/>
+                            <TextBlock Margin="0,4,0,0" Text="{Binding ReconciliationHistoryTargetEvidence}" Style="{StaticResource CaptionStyle}" TextWrapping="Wrap"/>
+                            <TextBlock Margin="0,10,0,0" Text="Reversal reason" Style="{StaticResource FormLabelStyle}"/>
+                            <controls:TextInput Text="{Binding ReversalReason, UpdateSourceTrigger=PropertyChanged}"/>
+                            <Button Margin="0,8,0,0" Command="{Binding ReverseSelectedReconciliationCommand}" Content="Reverse selected active match" Style="{StaticResource DangerButtonStyle}"/>
                         </StackPanel>
                     </Border>
 

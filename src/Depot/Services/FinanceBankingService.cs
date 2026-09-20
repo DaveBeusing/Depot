@@ -68,6 +68,13 @@ public sealed class FinanceBankingService
 		return _banking.SearchUnreconciledLinesAsync(bankAccountId, pageNumber, pageSize, cancellationToken);
 	}
 
+	public Task<PageResult<FinanceBankReconciliationHistoryItem>> SearchReconciliationHistoryAsync(long? bankAccountId = null, int pageNumber = 1, int pageSize = 100, CancellationToken cancellationToken = default)
+	{
+		_authorization.RequirePermission(ApplicationPermission.FinanceBankingView);
+		if (bankAccountId is <= 0) throw new ArgumentOutOfRangeException(nameof(bankAccountId));
+		return _banking.SearchReconciliationHistoryAsync(bankAccountId, pageNumber, pageSize, cancellationToken);
+	}
+
 	public Task<PageResult<FinancePaymentRun>> SearchPaymentRunsAsync(int pageNumber = 1, int pageSize = 100, CancellationToken cancellationToken = default)
 	{
 		_authorization.RequirePermission(ApplicationPermission.FinanceBankingView);

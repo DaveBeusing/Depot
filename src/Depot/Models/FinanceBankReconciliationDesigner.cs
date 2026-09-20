@@ -39,3 +39,15 @@ public sealed record FinanceBankReconciliationMatchPreview(
 	public string AmountEvidence => $"{StatementLine.Amount:N2} {StatementLine.Currency.Value} ↔ {Candidate.Amount:N2} {Candidate.Currency.Value}";
 	public string ReferenceEvidence => $"{StatementLine.Reference ?? "No bank reference"} ↔ {Candidate.Reference ?? "No target reference"}";
 }
+
+public sealed record FinanceBankReconciliationHistoryItem(
+	FinanceBankReconciliation Reconciliation,
+	FinanceBankStatementLine StatementLine)
+{
+	public bool IsReversed => Reconciliation.IsReversed;
+	public bool IsReadOnly => IsReversed;
+	public string Status => IsReversed ? "Reversed" : "Active";
+	public string TargetDisplay => $"{Reconciliation.TargetKind} #{Reconciliation.TargetId}";
+	public string BankEvidence => $"{StatementLine.BookingDate:yyyy-MM-dd} · {StatementLine.Amount:N2} {StatementLine.Currency.Value} · {StatementLine.CounterpartyName ?? "Unknown counterparty"} · {StatementLine.Reference ?? "No reference"}";
+	public string TargetEvidence => $"{TargetDisplay} · journal #{Reconciliation.TargetJournalEntryId} · matched {Reconciliation.MatchedAmount:N2}";
+}
