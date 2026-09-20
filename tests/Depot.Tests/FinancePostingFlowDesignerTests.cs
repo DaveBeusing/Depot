@@ -75,9 +75,9 @@ public sealed class FinancePostingFlowDesignerTests
 			]);
 
 		Assert.IsType<FinancePostingProfile>(edited);
-		Assert.Equal([1, 2], edited.Lines.Select(line => line.LineNumber).ToArray());
-		Assert.Equal(["GROSS", "NET"], edited.Lines.Select(line => line.AmountKey).ToArray());
-		Assert.Equal([profile.Lines[0].AccountId, profile.Lines[1].AccountId], edited.Lines.Select(line => line.AccountId).ToArray());
+		Assert.Equal(new[] { 1, 2 }, edited.Lines.Select(line => line.LineNumber).ToArray());
+		Assert.Equal(new[] { "GROSS", "NET" }, edited.Lines.Select(line => line.AmountKey).ToArray());
+		Assert.Equal(new[] { profile.Lines[0].AccountId, profile.Lines[1].AccountId }, edited.Lines.Select(line => line.AccountId).ToArray());
 		Assert.Equal(2m, edited.Lines[1].Multiplier);
 	}
 

@@ -12,6 +12,7 @@ namespace Depot.Views;
 public partial class FinancePostingFlowDesignerView : UserControl
 {
 	private Point _dragStart;
+	private FinancePostingFlowPaletteItem? _dragItem;
 
 	public FinancePostingFlowDesignerView()
 	{
@@ -21,12 +22,14 @@ public partial class FinancePostingFlowDesignerView : UserControl
 	private void OnPaletteMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
 	{
 		_dragStart = e.GetPosition(PaletteList);
+		_dragItem = ItemsControl.ContainerFromElement(PaletteList, e.OriginalSource as DependencyObject) is ListBoxItem item
+			? item.DataContext as FinancePostingFlowPaletteItem
+			: null;
 	}
 
 	private void OnPaletteMouseMove(object sender, MouseEventArgs e)
 	{
-		if (e.LeftButton != MouseButtonState.Pressed ||
-			PaletteList.SelectedItem is not FinancePostingFlowPaletteItem item)
+		if (e.LeftButton != MouseButtonState.Pressed || _dragItem is not { } item)
 			return;
 
 		var position = e.GetPosition(PaletteList);
@@ -35,6 +38,7 @@ public partial class FinancePostingFlowDesignerView : UserControl
 			return;
 
 		DragDrop.DoDragDrop(PaletteList, item, DragDropEffects.Copy);
+		_dragItem = null;
 	}
 
 	private void OnCanvasDrop(object sender, DragEventArgs e)
