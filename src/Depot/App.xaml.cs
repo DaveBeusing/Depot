@@ -36,6 +36,7 @@ public partial class App : Application
 			base.OnStartup(e);
 			StartupDiagnostics.Log($"Application startup. Version {_applicationInformation.GetVersionInfo().InformationalVersion}.");
 			var composition = DepotApplicationServices.Create(_fileDialogs, _applicationInformation);
+			StartupPerformance.Mark(StartupPerformanceCheckpoint.CompositionCreation);
 			_composition = composition;
 			StartupDiagnostics.Log("Application composition initialized.");
 			if (!await EnsureAdministratorAsync(composition))
@@ -47,6 +48,7 @@ public partial class App : Application
 		}
 		catch (Exception exception)
 		{
+			StartupPerformance.FlushToDiagnostics();
 			StartupDiagnostics.LogException(exception);
 			StartupDiagnostics.ShowStartupError(exception);
 			Shutdown();
@@ -58,6 +60,7 @@ public partial class App : Application
 		var bootstrap = new AdministratorBootstrapService(composition.Database.DataAccess, composition.Database.TransactionRunner, composition.Services.Authorization);
 		StartupDiagnostics.Log("Checking administrator bootstrap state.");
 		var requiresSetup = await bootstrap.RequiresSetupAsync(CancellationToken.None);
+		StartupPerformance.Mark(StartupPerformanceCheckpoint.AdministratorBootstrapCheck);
 		StartupDiagnostics.Log($"Administrator bootstrap required: {requiresSetup}.");
 		if (!requiresSetup) return true;
 
@@ -90,8 +93,10 @@ public partial class App : Application
 	private static bool ShowLogin(DepotApplicationServices composition)
 	{
 		var loginWindow = new LoginWindow(composition.ViewModels.CreateLogin());
+		StartupPerformance.Mark(StartupPerformanceCheckpoint.LoginWindowReady);
 		StartupDiagnostics.Log("Showing login dialog.");
 		var result = loginWindow.ShowDialog();
+		if (result == true) StartupPerformance.Mark(StartupPerformanceCheckpoint.AuthenticationComplete);
 		StartupDiagnostics.Log($"Login dialog returned: {result}");
 		return result == true;
 	}
@@ -99,6 +104,7 @@ public partial class App : Application
 	private void ShowMainWindow(DepotApplicationServices composition)
 	{
 		var mainViewModel = composition.ViewModels.CreateMain();
+		StartupPerformance.Mark(StartupPerformanceCheckpoint.MainViewModelCreation);
 		StartupDiagnostics.Log("MainViewModel created.");
 		var mainWindow = new MainWindow(
 			composition.Services.Authorization,
@@ -109,6 +115,7 @@ public partial class App : Application
 			DataContext = mainViewModel
 		};
 		MainWindow = mainWindow;
+		StartupPerformance.Mark(StartupPerformanceCheckpoint.MainWindowReady);
 		StartupDiagnostics.Log("MainWindow created.");
 		mainViewModel.LogoutRequested += OnLogoutRequested;
 		composition.Services.Session.SessionRevoked += OnSessionRevoked;

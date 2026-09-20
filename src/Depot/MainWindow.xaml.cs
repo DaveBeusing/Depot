@@ -105,6 +105,8 @@ public partial class MainWindow : Window
 	{
 		ObserveViewModel(DataContext as MainViewModel);
 		if (DataContext is MainViewModel viewModel) UpdateNavigationContext(viewModel);
+		StartupPerformance.Mark(StartupPerformanceCheckpoint.FirstInteractiveShell);
+		StartupPerformance.FlushToDiagnostics();
 	}
 
 	private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e) => ObserveViewModel(e.NewValue as MainViewModel);
