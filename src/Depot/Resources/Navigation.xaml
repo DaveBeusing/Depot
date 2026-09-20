@@ -11,9 +11,6 @@
 		states and storyboards. No external UI library is required.
 	-->
 
-	<!-- Animation timings -->
-	<Duration x:Key="NavigationAnimationDuration.Fast">0:0:0.10</Duration>
-	<Duration x:Key="NavigationAnimationDuration.Normal">0:0:0.16</Duration>
 
 	<!-- Navigation List -->
 	<Style x:Key="NavigationListBoxStyle" TargetType="ListBox">
@@ -79,12 +76,12 @@
 											Storyboard.TargetName="HoverBackground"
 											Storyboard.TargetProperty="Opacity"
 											To="0"
-											Duration="{StaticResource NavigationAnimationDuration.Normal}" />
+											Duration="{controls:MotionDuration Kind=Standard}" />
 										<DoubleAnimation
 											Storyboard.TargetName="Root"
 											Storyboard.TargetProperty="Opacity"
 											To="1"
-											Duration="{StaticResource NavigationAnimationDuration.Fast}" />
+											Duration="{controls:MotionDuration Kind=Fast}" />
 									</Storyboard>
 								</VisualState>
 
@@ -94,12 +91,12 @@
 											Storyboard.TargetName="HoverBackground"
 											Storyboard.TargetProperty="Opacity"
 											To="1"
-											Duration="{StaticResource NavigationAnimationDuration.Normal}" />
+											Duration="{controls:MotionDuration Kind=Standard}" />
 										<DoubleAnimation
 											Storyboard.TargetName="Root"
 											Storyboard.TargetProperty="Opacity"
 											To="1"
-											Duration="{StaticResource NavigationAnimationDuration.Fast}" />
+											Duration="{controls:MotionDuration Kind=Fast}" />
 									</Storyboard>
 								</VisualState>
 
@@ -109,12 +106,12 @@
 											Storyboard.TargetName="HoverBackground"
 											Storyboard.TargetProperty="Opacity"
 											To="0"
-											Duration="{StaticResource NavigationAnimationDuration.Fast}" />
+											Duration="{controls:MotionDuration Kind=Fast}" />
 										<DoubleAnimation
 											Storyboard.TargetName="Root"
 											Storyboard.TargetProperty="Opacity"
 											To="0.42"
-											Duration="{StaticResource NavigationAnimationDuration.Fast}" />
+											Duration="{controls:MotionDuration Kind=Fast}" />
 									</Storyboard>
 								</VisualState>
 							</VisualStateGroup>
@@ -127,17 +124,17 @@
 											Storyboard.TargetName="SelectedBackground"
 											Storyboard.TargetProperty="Opacity"
 											To="0"
-											Duration="{StaticResource NavigationAnimationDuration.Normal}" />
+											Duration="{controls:MotionDuration Kind=Standard}" />
 										<DoubleAnimation
 											Storyboard.TargetName="Accent"
 											Storyboard.TargetProperty="Opacity"
 											To="0"
-											Duration="{StaticResource NavigationAnimationDuration.Fast}" />
+											Duration="{controls:MotionDuration Kind=Fast}" />
 										<DoubleAnimation
 											Storyboard.TargetName="AccentScale"
 											Storyboard.TargetProperty="ScaleY"
 											To="0.35"
-											Duration="{StaticResource NavigationAnimationDuration.Normal}" />
+											Duration="{controls:MotionDuration Kind=Standard}" />
 									</Storyboard>
 								</VisualState>
 
@@ -147,17 +144,17 @@
 											Storyboard.TargetName="SelectedBackground"
 											Storyboard.TargetProperty="Opacity"
 											To="1"
-											Duration="{StaticResource NavigationAnimationDuration.Normal}" />
+											Duration="{controls:MotionDuration Kind=Standard}" />
 										<DoubleAnimation
 											Storyboard.TargetName="Accent"
 											Storyboard.TargetProperty="Opacity"
 											To="1"
-											Duration="{StaticResource NavigationAnimationDuration.Fast}" />
+											Duration="{controls:MotionDuration Kind=Fast}" />
 										<DoubleAnimation
 											Storyboard.TargetName="AccentScale"
 											Storyboard.TargetProperty="ScaleY"
 											To="1"
-											Duration="{StaticResource NavigationAnimationDuration.Normal}">
+											Duration="{controls:MotionDuration Kind=Standard}">
 											<DoubleAnimation.EasingFunction>
 												<CubicEase EasingMode="EaseOut" />
 											</DoubleAnimation.EasingFunction>
@@ -171,17 +168,17 @@
 											Storyboard.TargetName="SelectedBackground"
 											Storyboard.TargetProperty="Opacity"
 											To="0.78"
-											Duration="{StaticResource NavigationAnimationDuration.Normal}" />
+											Duration="{controls:MotionDuration Kind=Standard}" />
 										<DoubleAnimation
 											Storyboard.TargetName="Accent"
 											Storyboard.TargetProperty="Opacity"
 											To="0.88"
-											Duration="{StaticResource NavigationAnimationDuration.Fast}" />
+											Duration="{controls:MotionDuration Kind=Fast}" />
 										<DoubleAnimation
 											Storyboard.TargetName="AccentScale"
 											Storyboard.TargetProperty="ScaleY"
 											To="1"
-											Duration="{StaticResource NavigationAnimationDuration.Normal}" />
+											Duration="{controls:MotionDuration Kind=Standard}" />
 									</Storyboard>
 								</VisualState>
 							</VisualStateGroup>
@@ -194,7 +191,7 @@
 											Storyboard.TargetName="FocusBorder"
 											Storyboard.TargetProperty="Opacity"
 											To="0"
-											Duration="{StaticResource NavigationAnimationDuration.Fast}" />
+											Duration="{controls:MotionDuration Kind=Fast}" />
 									</Storyboard>
 								</VisualState>
 
@@ -204,7 +201,7 @@
 											Storyboard.TargetName="FocusBorder"
 											Storyboard.TargetProperty="Opacity"
 											To="0.9"
-											Duration="{StaticResource NavigationAnimationDuration.Fast}" />
+											Duration="{controls:MotionDuration Kind=Fast}" />
 									</Storyboard>
 								</VisualState>
 							</VisualStateGroup>
@@ -374,7 +371,7 @@
 				StrokeThickness="1.5"
 				Stretch="Uniform" />
 			<TextBlock Grid.Column="2" VerticalAlignment="Center" Text="Notification Center" TextTrimming="CharacterEllipsis" Style="{DynamicResource NavigationTextStyle}" />
-			<Border Grid.Column="3" MinWidth="{DynamicResource Notification.Badge.MinWidth}" Height="{DynamicResource Notification.Badge.Height}" Padding="{DynamicResource Notification.Badge.Padding}" Background="{DynamicResource PrimaryBrush}" CornerRadius="{DynamicResource Notification.Badge.CornerRadius}">
+			<Border Grid.Column="3" MinWidth="{DynamicResource Notification.Badge.MinWidth}" Height="{DynamicResource Notification.Badge.Height}" Padding="{DynamicResource Notification.Badge.Padding}" Background="{DynamicResource PrimaryBrush}" CornerRadius="{DynamicResource Notification.Badge.CornerRadius}" controls:MotionBehavior.TransitionKind="NotificationBadge">
 				<Border.Style>
 					<Style TargetType="Border">
 						<Setter Property="Visibility" Value="Collapsed" />
