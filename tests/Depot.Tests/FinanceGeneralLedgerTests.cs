@@ -67,6 +67,80 @@ public sealed class FinanceGeneralLedgerTests
 	}
 
 	[Fact]
+	public async Task PostingFlowContextIsViewProtectedAndReturnsCompatibleReferences()
+	{
+		using var context = FinanceTestContext.Create();
+		var viewer = context.CreateService(ApplicationPermission.FinancePostingProfilesView);
+
+		Assert.False(viewer.CanManagePostingProfiles);
+		var flow = await viewer.GetPostingFlowContextAsync(context.BookId, context.JournalId);
+
+		Assert.Equal(context.BookId, flow.AccountingBook?.Id);
+		Assert.Equal(context.JournalId, flow.Journal?.Id);
+		Assert.Contains(context.DebitAccountId, flow.Accounts.Keys);
+		Assert.Contains(context.CreditAccountId, flow.Accounts.Keys);
+		Assert.Contains(flow.Journals, journal => journal.Id == context.JournalId);
+
+		var withoutView = context.CreateService();
+		await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+			withoutView.GetPostingFlowContextAsync(context.BookId, context.JournalId));
+	}
+
+	[Fact]
+	public async Task PostingFlowDesignerSaveRoundTripsThroughGeneralLedgerService()
+	{
+		using var context = FinanceTestContext.Create();
+		var manager = context.CreateService(
+			ApplicationPermission.FinancePostingProfilesView,
+			ApplicationPermission.FinancePostingProfilesManage);
+		var profile = new FinancePostingProfile
+		{
+			LegalEntityId = context.LegalEntityId,
+			AccountingBookId = context.BookId,
+			JournalId = context.JournalId,
+			Code = "FLOW",
+			Name = "Designer profile",
+			SourceType = "TestDocument",
+			SourceEvent = "Posted",
+			NumberSequenceCode = "GL",
+			Lines =
+			[
+				new FinancePostingProfileLine { LineNumber = 1, AccountId = context.DebitAccountId, Direction = FinancePostingDirection.Debit, AmountKey = "TOTAL" },
+				new FinancePostingProfileLine { LineNumber = 2, AccountId = context.CreditAccountId, Direction = FinancePostingDirection.Credit, AmountKey = "TOTAL" }
+			]
+		};
+
+		var created = await manager.SavePostingProfileAsync(profile);
+		var reloaded = await manager.GetPostingProfileAsync(created.Id);
+		Assert.NotNull(reloaded);
+		Assert.Equal(created.Code, reloaded.Code);
+		Assert.Equal(created.Lines.Select(line => (line.LineNumber, line.AccountId, line.Direction, line.AmountKey, line.Multiplier)),
+			reloaded.Lines.Select(line => (line.LineNumber, line.AccountId, line.Direction, line.AmountKey, line.Multiplier)));
+
+		var edited = FinancePostingFlowProjector.ApplyLines(
+			reloaded,
+			reloaded.Lines.Select(line => new FinancePostingFlowLineDraft(
+				line.Id,
+				line.LineNumber,
+				line.AccountId,
+				line.Direction,
+				line.AmountKey,
+				line.Multiplier,
+				$"Designer line {line.LineNumber}"))) with { Name = "Designer profile updated" };
+
+		var saved = await manager.SavePostingProfileAsync(edited);
+		var savedReload = await manager.GetPostingProfileAsync(saved.Id);
+
+		Assert.NotNull(savedReload);
+		Assert.Equal("Designer profile updated", savedReload.Name);
+		Assert.Equal(saved.Version, savedReload.Version);
+		Assert.Equal(saved.Lines.Select(line => line.Description), savedReload.Lines.Select(line => line.Description));
+
+		var viewer = context.CreateService(ApplicationPermission.FinancePostingProfilesView);
+		await Assert.ThrowsAsync<UnauthorizedAccessException>(() => viewer.SavePostingProfileAsync(savedReload));
+	}
+
+	[Fact]
 	public async Task PostingProfileCanPostWithoutManualJournalPermission()
 	{
 		using var context = FinanceTestContext.Create();
