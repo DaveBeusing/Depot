@@ -51,11 +51,10 @@ public sealed class ShellFeatureCatalog
 
 	private static ShellFeatureModule CreateModule(ShellNavigationItem navigationItem)
 	{
-		var pages = navigationItem.Content is ShellModuleViewModel module
-			? module.Pages.Where(page => page.IsVisible)
-				.Select(page => new ShellFeaturePage(page.Route, page.Name, page.HelpTopicId, page))
-				.ToArray()
-			: [];
+		var pages = navigationItem.Pages
+			.Where(page => page.IsVisible)
+			.Select(page => new ShellFeaturePage(page.Route, page.Name, page.HelpTopicId, page))
+			.ToArray();
 		return new ShellFeatureModule(navigationItem, pages);
 	}
 }

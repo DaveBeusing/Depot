@@ -72,6 +72,24 @@ public sealed class NavigationLifecycleTests
 	}
 
 	[Fact]
+	public void PageMetadataDoesNotMaterializeShellContent()
+	{
+		var creations = 0;
+		using var page = Item("Page", () => { });
+		using var item = new ShellNavigationItem(
+			"Module",
+			string.Empty,
+			() => { creations++; return new ShellModuleViewModel("Module", "Description", [page]); },
+			(_, _) => Task.CompletedTask,
+			"module",
+			pages: [page]);
+
+		Assert.False(item.IsContentCreated);
+		Assert.Same(page, Assert.Single(item.Pages));
+		Assert.Equal(0, creations);
+	}
+
+	[Fact]
 	public void DisposingNavigationItemDoesNotCreateItsContent()
 	{
 		var creations = 0;
