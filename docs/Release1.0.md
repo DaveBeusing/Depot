@@ -37,6 +37,7 @@ Depot is on the `0.15.x-preview` line with Core database schema **30**, Sales fe
 - [x] bounded productive visual designers for posting flows, pricing strategy, financial-report mappings, bank reconciliation, localization hierarchy, role permissions and import mapping
 - [x] local backup/recovery controls and privacy export
 - [x] dependency locks, NuGet audit, SBOM/evidence and release-integrity workflows
+- [x] repository vulnerability-reporting, vulnerability-management and production-support policy baselines
 - [x] centralized per-item Customer → Region → Global Sales pricing with optional customer assignment and retained document source snapshots
 - [x] Sales Invoice seller/buyer/XRechnung finalization and persisted XML integrity evidence
 - [x] electronic Sales Credit Note finalization for the bounded advertised XRechnung scope
@@ -140,6 +141,7 @@ Technical controls and the evidence contract are implemented. The exact release 
 - [x] generic packaged lifecycle acceptance covers install/update/repair, rollback safety, manager self-update, uninstall data scopes and Windows shell integration
 - [ ] H1 live GitHub `master` ruleset `23590604` again requires all five aggregate gates and fresh fail-closed governance evidence passes
 - [ ] production backup/security ownership and vulnerability-reporting process accepted for the deployment
+- [ ] release-specific support statement published with support dates, supported Windows versions, exact database baselines, upgrade path and security-update channel
 - [ ] production Authenticode publisher identity and timestamp verified with a real Stable release candidate
 - [ ] certificate expiry/rotation and signing-recovery procedure accepted
 - [ ] exact production-signed Stable RC lifecycle acceptance completed with the final release artifacts
