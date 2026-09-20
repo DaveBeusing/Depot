@@ -8,7 +8,7 @@ using Depot.Services;
 
 namespace Depot.ViewModels;
 
-public sealed class FinanceLocalizationViewModel : BaseViewModel, IDisposable
+public sealed partial class FinanceLocalizationViewModel : BaseViewModel, IDisposable
 {
 	private readonly FinanceLocalizationService _localization;
 	private LegalEntity? _selectedLegalEntity;
@@ -37,6 +37,7 @@ public sealed class FinanceLocalizationViewModel : BaseViewModel, IDisposable
 		SavePackCommand=new AsyncRelayCommand(SavePackAsync);
 		NewRegistryEntryCommand=new AsyncRelayCommand(_=>{ClearRegistry();return Task.CompletedTask;});
 		SaveRegistryEntryCommand=new AsyncRelayCommand(SaveRegistryEntryAsync);
+		InitializeHierarchyDesigner();
 	}
 
 	public ObservableCollection<LegalEntity> LegalEntities { get; }=[];
@@ -102,6 +103,7 @@ public sealed class FinanceLocalizationViewModel : BaseViewModel, IDisposable
 			Replace(Packs,await _localization.GetPacksAsync(cancellationToken));
 			SelectedAssignmentPack=Packs.FirstOrDefault(value=>value.Code==selectedPackCode)??Packs.FirstOrDefault(value=>value.Code==FinanceLocalizationPackCodes.Generic);
 			Replace(RegistryEntries,await _localization.GetRegistryAsync(null,null,cancellationToken));
+			RefreshHierarchyProjection();
 			if(SelectedLegalEntity is not null)
 			{
 				Replace(Assignments,await _localization.GetAssignmentsAsync(SelectedLegalEntity.Id,cancellationToken));
@@ -183,5 +185,5 @@ public sealed class FinanceLocalizationViewModel : BaseViewModel, IDisposable
 	private void SetDate(ref DateTime field,DateTime value,[System.Runtime.CompilerServices.CallerMemberName]string? name=null){if(field==value)return;field=value;OnPropertyChanged(name);}
 	private void SetBool(ref bool field,bool value,[System.Runtime.CompilerServices.CallerMemberName]string? name=null){if(field==value)return;field=value;OnPropertyChanged(name);}
 	private static void Replace<T>(ObservableCollection<T> target,IEnumerable<T> values){target.Clear();foreach(var value in values)target.Add(value);}
-	public void Dispose(){if(_disposed)return;_disposed=true;RefreshCommand.Dispose();LoadProfileCommand.Dispose();NewAssignmentCommand.Dispose();SaveAssignmentCommand.Dispose();NewPackCommand.Dispose();SavePackCommand.Dispose();NewRegistryEntryCommand.Dispose();SaveRegistryEntryCommand.Dispose();}
+	public void Dispose(){if(_disposed)return;_disposed=true;DisposeHierarchyDesigner();RefreshCommand.Dispose();LoadProfileCommand.Dispose();NewAssignmentCommand.Dispose();SaveAssignmentCommand.Dispose();NewPackCommand.Dispose();SavePackCommand.Dispose();NewRegistryEntryCommand.Dispose();SaveRegistryEntryCommand.Dispose();}
 }
