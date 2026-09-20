@@ -74,6 +74,7 @@ public static class MotionTransitions
 			MotionTransitionKind.Timeline => 6d,
 			_ => 0d
 		};
+		var initialScale = kind == MotionTransitionKind.NotificationBadge ? 0.92d : 1d;
 		var duration = MotionDurations.Resolve(speed, reduceMotion);
 		var easing = new CubicEase { EasingMode = EasingMode.EaseOut };
 
@@ -90,6 +91,21 @@ public static class MotionTransitions
 		{
 			translate.BeginAnimation(TranslateTransform.YProperty, null);
 			translate.Y = 0d;
+		}
+
+		ScaleTransform? scale = element.RenderTransform as ScaleTransform;
+		if (initialScale != 1d && scale is null && ReferenceEquals(element.RenderTransform, Transform.Identity))
+		{
+			scale = new ScaleTransform();
+			element.RenderTransform = scale;
+			element.RenderTransformOrigin = new Point(0.5d, 0.5d);
+		}
+		if (scale is not null)
+		{
+			scale.BeginAnimation(ScaleTransform.ScaleXProperty, null);
+			scale.BeginAnimation(ScaleTransform.ScaleYProperty, null);
+			scale.ScaleX = 1d;
+			scale.ScaleY = 1d;
 		}
 
 		if (reduceMotion) return;
@@ -112,6 +128,65 @@ public static class MotionTransitions
 					FillBehavior = FillBehavior.Stop
 				});
 		}
+
+		if (scale is not null && initialScale != 1d)
+		{
+			scale.BeginAnimation(
+				ScaleTransform.ScaleXProperty,
+				new DoubleAnimation(initialScale, 1d, duration)
+				{
+					EasingFunction = easing,
+					FillBehavior = FillBehavior.Stop
+				});
+			scale.BeginAnimation(
+				ScaleTransform.ScaleYProperty,
+				new DoubleAnimation(initialScale, 1d, duration)
+				{
+					EasingFunction = easing,
+					FillBehavior = FillBehavior.Stop
+				});
+		}
+	}
+}
+
+public static class MotionBehavior
+{
+	public static readonly DependencyProperty TransitionKindProperty = DependencyProperty.RegisterAttached(
+		"TransitionKind",
+		typeof(MotionTransitionKind),
+		typeof(MotionBehavior),
+		new FrameworkPropertyMetadata(MotionTransitionKind.None, OnTransitionKindChanged));
+
+	public static void SetTransitionKind(DependencyObject element, MotionTransitionKind value) =>
+		element.SetValue(TransitionKindProperty, value);
+
+	public static MotionTransitionKind GetTransitionKind(DependencyObject element) =>
+		(MotionTransitionKind)element.GetValue(TransitionKindProperty);
+
+	private static void OnTransitionKindChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs args)
+	{
+		if (dependencyObject is not FrameworkElement element) return;
+
+		element.Loaded -= OnLoaded;
+		element.IsVisibleChanged -= OnIsVisibleChanged;
+
+		if ((MotionTransitionKind)args.NewValue == MotionTransitionKind.None) return;
+
+		element.Loaded += OnLoaded;
+		element.IsVisibleChanged += OnIsVisibleChanged;
+		if (element.IsLoaded && element.IsVisible) MotionTransitions.Begin(element, (MotionTransitionKind)args.NewValue);
+	}
+
+	private static void OnLoaded(object sender, RoutedEventArgs args)
+	{
+		if (sender is FrameworkElement element && element.IsVisible)
+			MotionTransitions.Begin(element, GetTransitionKind(element));
+	}
+
+	private static void OnIsVisibleChanged(object sender, DependencyPropertyChangedEventArgs args)
+	{
+		if (sender is FrameworkElement element && element.IsLoaded && args.NewValue is true)
+			MotionTransitions.Begin(element, GetTransitionKind(element));
 	}
 }
 

@@ -76,6 +76,49 @@ public sealed class MotionSystemTests
 		Assert.DoesNotContain("HeightProperty", source, StringComparison.Ordinal);
 	}
 
+
+	[Fact]
+	public void WorkflowAndStatusSurfacesUseReusableMotionKinds()
+	{
+		var root = FindRepositoryRoot();
+		var workflows = File.ReadAllText(Path.Combine(root, "src", "Depot", "Resources", "Workflows.xaml"));
+		var status = File.ReadAllText(Path.Combine(root, "src", "Depot", "Resources", "Status.xaml"));
+		var emptyStates = File.ReadAllText(Path.Combine(root, "src", "Depot", "Resources", "EmptyStates.xaml"));
+		var main = File.ReadAllText(Path.Combine(root, "src", "Depot", "MainWindow.xaml"));
+		var navigation = File.ReadAllText(Path.Combine(root, "src", "Depot", "Resources", "Navigation.xaml"));
+
+		Assert.Contains("TransitionKind=\"DetailPane\"", workflows, StringComparison.Ordinal);
+		Assert.Contains("MotionBehavior.TransitionKind=\"State\"", workflows, StringComparison.Ordinal);
+		Assert.Contains("MotionBehavior.TransitionKind=\"Timeline\"", workflows, StringComparison.Ordinal);
+		Assert.Contains("MotionBehavior.TransitionKind=\"Status\"", status, StringComparison.Ordinal);
+		Assert.Contains("MotionBehavior.TransitionKind=\"State\"", emptyStates, StringComparison.Ordinal);
+		Assert.Contains("MotionBehavior.TransitionKind=\"NotificationBadge\"", main, StringComparison.Ordinal);
+		Assert.Contains("MotionBehavior.TransitionKind=\"NotificationBadge\"", navigation, StringComparison.Ordinal);
+	}
+
+	[Fact]
+	public void MotionPackagePreservesDataGridVirtualizationAndAvoidsPermanentAnimation()
+	{
+		var root = FindRepositoryRoot();
+		var dataGrid = File.ReadAllText(Path.Combine(root, "src", "Depot", "Resources", "DataGrid.xaml"));
+		var motionFiles = string.Join("\n", new[]
+		{
+			File.ReadAllText(Path.Combine(root, "src", "Depot", "Resources", "Motion.xaml")),
+			File.ReadAllText(Path.Combine(root, "src", "Depot", "Resources", "Navigation.xaml")),
+			File.ReadAllText(Path.Combine(root, "src", "Depot", "Resources", "Workflows.xaml")),
+			File.ReadAllText(Path.Combine(root, "src", "Depot", "Resources", "Status.xaml")),
+			File.ReadAllText(Path.Combine(root, "src", "Depot", "Resources", "EmptyStates.xaml")),
+			File.ReadAllText(Path.Combine(root, "src", "Depot", "MainWindow.xaml"))
+		});
+
+		Assert.Contains("ScrollViewer.CanContentScroll\" Value=\"True\"", dataGrid, StringComparison.Ordinal);
+		Assert.Contains("VirtualizingPanel.IsVirtualizing\" Value=\"True\"", dataGrid, StringComparison.Ordinal);
+		Assert.Contains("VirtualizingPanel.VirtualizationMode\" Value=\"Recycling\"", dataGrid, StringComparison.Ordinal);
+		Assert.Contains("EnableRowVirtualization\" Value=\"True\"", dataGrid, StringComparison.Ordinal);
+		Assert.Contains("EnableColumnVirtualization\" Value=\"True\"", dataGrid, StringComparison.Ordinal);
+		Assert.DoesNotContain("RepeatBehavior=\"Forever\"", motionFiles, StringComparison.OrdinalIgnoreCase);
+	}
+
 	private static string FindRepositoryRoot()
 	{
 		for (var directory = new DirectoryInfo(AppContext.BaseDirectory); directory is not null; directory = directory.Parent)

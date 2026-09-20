@@ -128,7 +128,7 @@
                     <Grid>
                         <Grid.ColumnDefinitions><ColumnDefinition Width="{DynamicResource MasterPane.DefaultWidth}" MinWidth="{DynamicResource MasterPane.MinWidth}" MaxWidth="{DynamicResource MasterPane.MaxWidth}" /><ColumnDefinition Width="{DynamicResource MasterDetail.ColumnGap}" /><ColumnDefinition Width="*" MinWidth="360" /></Grid.ColumnDefinitions>
                         <ContentPresenter Content="{TemplateBinding Master}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
-                        <ContentPresenter Grid.Column="2" Content="{TemplateBinding Detail}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
+                        <controls:MotionContentControl Grid.Column="2" TransitionKind="DetailPane" Content="{TemplateBinding Detail}" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" />
                     </Grid>
                 </ControlTemplate>
             </Setter.Value>
@@ -155,7 +155,7 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="{x:Type controls:WorkflowListState}">
-                    <Border Background="{TemplateBinding Background}"><controls:EmptyState x:Name="State" Title="No documents yet" Description="Create the first document to begin this workflow." /></Border>
+                    <Border Background="{TemplateBinding Background}" controls:MotionBehavior.TransitionKind="State"><controls:EmptyState x:Name="State" Title="No documents yet" Description="Create the first document to begin this workflow." /></Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="ItemCount" Value="0"><Setter Property="Visibility" Value="Visible" /></Trigger>
                         <Trigger Property="IsSearchActive" Value="True"><Setter TargetName="State" Property="Title" Value="No results" /><Setter TargetName="State" Property="Description" Value="No documents match the current search and filters." /></Trigger>
@@ -272,6 +272,7 @@
                         </Grid>
                         <Border x:Name="TimelineItemBorder"
                                 Grid.Column="2"
+                                controls:MotionBehavior.TransitionKind="Timeline"
                                 Margin="0,0,0,6"
                                 Padding="8,6"
                                 Background="{DynamicResource SurfaceAltBrush}"

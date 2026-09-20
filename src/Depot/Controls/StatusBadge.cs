@@ -33,4 +33,11 @@ public class StatusBadge : ContentControl
         get => (StatusBadgeVariant)GetValue(VariantProperty);
         set => SetValue(VariantProperty, value);
     }
+
+    protected override void OnContentChanged(object oldContent, object newContent)
+    {
+        base.OnContentChanged(oldContent, newContent);
+        if (IsLoaded && !Equals(oldContent, newContent))
+            MotionTransitions.Begin(this, MotionTransitionKind.Status);
+    }
 }
