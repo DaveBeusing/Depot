@@ -55,6 +55,7 @@ public sealed class ProviderMigrationConcurrencyAcceptanceTests
 		DatabaseProviderFactory.CreateInitializer(factory).Initialize();
 		Assert.Equal(DatabaseVersion.CurrentVersion, Convert.ToInt32(await data.ExecuteScalarAsync("SELECT Version FROM DatabaseInfo;", CancellationToken.None), CultureInfo.InvariantCulture));
 
+		await data.ExecuteAsync("UPDATE DatabaseInfo SET Version=29;", CancellationToken.None);
 		await Task.WhenAll(
 			Task.Run(() => DatabaseProvisioningService.Initialize(factory)),
 			Task.Run(() => DatabaseProvisioningService.Initialize(factory)));

@@ -38,7 +38,8 @@ internal sealed class DatabaseComposition : IDisposable
 		StartupPerformance.Mark(StartupPerformanceCheckpoint.SettingsLoad);
 		var connectionFactory = DatabaseProviderFactory.CreateConnectionFactory(connectionSettings);
 		StartupPerformance.Mark(StartupPerformanceCheckpoint.DatabaseConnectionCreation);
-		DatabaseProvisioningService.Initialize(connectionFactory);
+		var provisioningPath = DatabaseProvisioningService.InitializeCore(connectionFactory);
+		StartupDiagnostics.Log($"Database provisioning path: {provisioningPath}.");
 		StartupPerformance.Mark(StartupPerformanceCheckpoint.SchemaProvisioningCheck);
 		var dataAccess = new DatabaseAccess(connectionFactory);
 		connectionStatus.SetConnected(connectionSettings);
