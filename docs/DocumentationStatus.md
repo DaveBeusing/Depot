@@ -1,6 +1,6 @@
 # Documentation status
 
-Updated: 2026-09-19
+Updated: 2026-09-20
 
 This document identifies the documentation baseline for the current development state. Implemented technical controls must remain distinct from production/legal acceptance gates.
 
@@ -44,6 +44,14 @@ Sales schema 14 retains ZUGFeRD 2.5.2 / Factur-X 1.09.2 XRECHNUNG-profile hybrid
 
 The current repository/help audit reconciles the post-Track-C and post-H1 baseline across README, canonical status/security/pricing documents and embedded Help. It also records the current PR-versus-authoritative release-validation boundary introduced by the latest CI hardening. The Document Designer rollout adds a dedicated `administration.document-designer` topic bound to `DocumentTemplates.View`, so Help manifest version `1.22` records the new permission-bound route.
 
+## 2026-09-20 baseline reconciliation
+
+The current baseline is reconciled against the live repository rather than earlier acceptance snapshots. User Preferences schema 2 provides persisted Saved Views, supported filter/column/sort state, grid density, Favorites, Recents and default landing behavior; command/search productivity and current role-center navigation are implemented and must not be described as deferred. The current visual-designer set is present on `master`, while shared designer infrastructure remains intentionally bounded to interactions with proven duplicate semantics.
+
+Live repository governance is also evidence-driven. Ruleset `23590604` is active and still enforces pull-request delivery plus deletion/non-fast-forward protection, but it currently lacks the five aggregate required-status-check bindings. H1 is therefore `BLOCKED` until those live checks are restored and the governance validator passes. Historical text that recorded H1 as closed does not override the live state.
+
+Embedded Finance Help must describe Accounts Payable, Inventory Accounting, Banking, Financial Reporting and Localization as implemented capabilities. Help manifest `1.22` remains unchanged because this reconciliation changes Help content only; topic IDs, routing and permission metadata are unchanged.
+
 ## Session and authentication invariants
 
 Documentation must state that online presence is derived from an open session plus heartbeat freshness; no persisted `IsOnline` is authoritative. The runtime heartbeat is 30 seconds and presence timeout is 90 seconds. Activity stores only the latest in-Depot keyboard/mouse/touch timestamp, never typed input or coordinates.
@@ -70,7 +78,7 @@ Enterprise Identity may retain issuer/subject plus optional observed tenant, ema
 
 ## Documentation rules
 
-Do not describe password-change invalidation, concurrent-session policy, shared database throttling, provider certification, investigation/response, retention, OIDC sign-in, provider-bound assurance validation or Security Event durable delivery as future-only work.
+Do not describe password-change invalidation, concurrent-session policy, shared database throttling, provider certification, investigation/response, retention, OIDC sign-in, provider-bound assurance validation, Security Event durable delivery, Saved Views, workspace Favorites/Recents/default landing, supported grid-density persistence, command/search productivity, or the implemented Finance packages as future-only work.
 
 Do not describe database-provider technical support as jurisdiction-specific accounting, tax, legal, accessibility, bank-network or regulatory certification. Remote backup scheduling, retention, off-host copies and restore procedures remain operator responsibilities even though the CI matrix validates a provider-native restore boundary.
 
