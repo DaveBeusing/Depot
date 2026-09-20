@@ -12,14 +12,13 @@ public sealed class MyWorkQueryOptimizationTests
 	{
 		var root = FindRepositoryRoot();
 		var providers = File.ReadAllText(Path.Combine(root, "src", "Depot", "Services", "MyWorkProviders.cs"));
-		var repository = File.ReadAllText(Path.Combine(root, "src", "Depot", "Repositories", "FinanceAccountsPayableRepository.cs"));
+		var repository = File.ReadAllText(Path.Combine(root, "src", "Depot", "Repositories", "MyWorkReadRepository.cs"));
 		var start = providers.IndexOf("internal sealed class PayablesMyWorkProvider", StringComparison.Ordinal);
 		var end = providers.IndexOf("internal sealed class BankingMyWorkProvider", start, StringComparison.Ordinal);
 		var payablesProvider = providers[start..end];
 
-		Assert.Contains("GetMyWorkDocumentsAsync", payablesProvider, StringComparison.Ordinal);
+		Assert.Contains("GetPayablesDocumentsAsync", payablesProvider, StringComparison.Ordinal);
 		Assert.DoesNotContain("GetDocumentAsync", payablesProvider, StringComparison.Ordinal);
-		Assert.Contains("QuerySliceAsync", repository, StringComparison.Ordinal);
 		Assert.Contains("EXISTS (", repository, StringComparison.Ordinal);
 		Assert.Contains("line.MatchStatus = $ExceptionStatus", repository, StringComparison.Ordinal);
 	}
@@ -38,6 +37,25 @@ public sealed class MyWorkQueryOptimizationTests
 		Assert.DoesNotContain("Lines", projection, StringComparison.Ordinal);
 		Assert.DoesNotContain("ApprovalComment", projection, StringComparison.Ordinal);
 		Assert.DoesNotContain("InternalReference", projection, StringComparison.Ordinal);
+	}
+
+	[Fact]
+	public void HighFanOutProvidersUseBoundedPartitionedReadsWithoutCountPages()
+	{
+		var root = FindRepositoryRoot();
+		var providers = File.ReadAllText(Path.Combine(root, "src", "Depot", "Services", "MyWorkProviders.cs"));
+		var repository = File.ReadAllText(Path.Combine(root, "src", "Depot", "Repositories", "MyWorkReadRepository.cs"));
+
+		Assert.Contains("GetPurchaseOrdersAsync", providers, StringComparison.Ordinal);
+		Assert.Contains("GetPurchaseApprovalsAsync", providers, StringComparison.Ordinal);
+		Assert.Contains("GetSalesOrdersAsync", providers, StringComparison.Ordinal);
+		Assert.Contains("GetShipmentsAsync", providers, StringComparison.Ordinal);
+		Assert.Contains("GetInventoryCountsAsync", providers, StringComparison.Ordinal);
+		Assert.Contains("GetPayablesDocumentsAsync", providers, StringComparison.Ordinal);
+		Assert.DoesNotContain("LoadHeadersAsync", providers, StringComparison.Ordinal);
+		Assert.Contains("ROW_NUMBER() OVER (PARTITION BY", repository, StringComparison.Ordinal);
+		Assert.Contains("WHERE RowRank <= $Limit", repository, StringComparison.Ordinal);
+		Assert.DoesNotContain("QueryPageAsync", repository, StringComparison.Ordinal);
 	}
 
 	private static string FindRepositoryRoot()

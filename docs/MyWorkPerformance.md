@@ -28,3 +28,17 @@ The runtime counter is authoritative for a concrete user/permission set. Provide
 - Cancellation remains propagated.
 - Diagnostics contain no business payload.
 - Query reductions must prefer bounded read projections and slices over schema changes.
+
+
+## Query fan-out after consolidated My Work reads
+
+The measured high-fan-out providers now use dedicated bounded projections instead of repeated status pages:
+
+| Provider | Before | After |
+| --- | ---: | ---: |
+| Purchasing | up to 11 | 2 |
+| Sales and Shipping | 14 | 2 |
+| Inventory Counts | 8–32 | 1 |
+| Accounts Payable | 8–56 | 1 |
+
+Per-status Top-N semantics are preserved by stable `ROW_NUMBER() OVER (PARTITION BY Status ...)` bounds. These reads do not execute `COUNT(*)` page totals. Inventory Counts carries creator and completion metadata in the projection, removing its header N+1. Payables carries the match-exception flag through an `EXISTS` projection, so no document/line detail load is required.
