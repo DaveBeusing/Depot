@@ -12,10 +12,15 @@ public sealed class ImportWarningViewModel
 		ImportWarning warning)
 	{
 		RowNumber = warning.RowNumber;
+		BlocksImport = warning.BlocksImport;
 		Message = warning.Message;
 	}
 
 	public int RowNumber { get; }
+
+	public bool BlocksImport { get; }
+
+	public string SeverityDisplay => BlocksImport ? "Error" : "Warning";
 
 	public string Message { get; }
 }

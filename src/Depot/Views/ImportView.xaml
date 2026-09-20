@@ -1,31 +1,328 @@
-<UserControl x:Class="Depot.Views.ImportView" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:controls="clr-namespace:Depot.Controls">
+<UserControl x:Class="Depot.Views.ImportView"
+	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:controls="clr-namespace:Depot.Controls">
 	<Grid>
-		<Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="16" /><RowDefinition Height="*" /></Grid.RowDefinitions>
-		<controls:PageHeader Title="Import" Subtitle="Choose a file, review the validated preview, and confirm the import." />
-		<controls:OperationPanel Grid.Row="1" ErrorText="{Binding OperationError}" HasError="{Binding HasOperationError}" IsBusy="{Binding IsBusy}" StatusText="{Binding StatusText}" />
+		<Grid.RowDefinitions>
+			<RowDefinition Height="Auto" />
+			<RowDefinition Height="Auto" />
+			<RowDefinition Height="Auto" />
+			<RowDefinition Height="12" />
+			<RowDefinition Height="*" />
+		</Grid.RowDefinitions>
+
+		<controls:PageHeader
+			Title="Import Mapping Designer"
+			Subtitle="Map workbook columns to Depot inventory fields, validate the preview, and execute only after review." />
+
+		<controls:OperationPanel
+			Grid.Row="1"
+			ErrorText="{Binding OperationError}"
+			HasError="{Binding HasOperationError}"
+			IsBusy="{Binding IsBusy}"
+			StatusText="{Binding StatusText}" />
+
 		<controls:Card Grid.Row="2">
 			<Grid>
-				<Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="16" /><RowDefinition Height="Auto" /><RowDefinition Height="16" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
-				<TextBlock Text="1  Choose file     2  Validate     3  Preview     4  Confirm     5  Import     6  Result" Style="{StaticResource CardTitleStyle}" />
-				<Grid Grid.Row="2"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBox IsReadOnly="True" Text="{Binding FilePath, Mode=OneWay}" Style="{StaticResource AppTextBoxStyle}" /><Button Grid.Column="2" Command="{Binding BrowseCommand}" Content="Browse..." Style="{StaticResource SecondaryButtonStyle}" /></Grid>
-				<controls:WorkflowActionBar Grid.Row="4"><controls:WorkflowActionBar.SecondaryActions><TextBlock VerticalAlignment="Center" Text="{Binding TotalItems, StringFormat={}{0:N0} preview rows}" Style="{StaticResource CaptionStyle}" /></controls:WorkflowActionBar.SecondaryActions><controls:WorkflowActionBar.PrimaryAction><Button Command="{Binding ImportCommand}" Content="Confirm and import" Style="{StaticResource PrimaryButtonStyle}" /></controls:WorkflowActionBar.PrimaryAction></controls:WorkflowActionBar>
+				<Grid.RowDefinitions>
+					<RowDefinition Height="Auto" />
+					<RowDefinition Height="12" />
+					<RowDefinition Height="Auto" />
+					<RowDefinition Height="12" />
+					<RowDefinition Height="Auto" />
+				</Grid.RowDefinitions>
+
+				<TextBlock
+					Text="1  Choose file     2  Map columns     3  Validate mapping     4  Generate preview     5  Review rows     6  Execute"
+					Style="{StaticResource CardTitleStyle}" />
+
+				<Grid Grid.Row="2">
+					<Grid.ColumnDefinitions>
+						<ColumnDefinition Width="*" />
+						<ColumnDefinition Width="12" />
+						<ColumnDefinition Width="Auto" />
+					</Grid.ColumnDefinitions>
+
+					<TextBox
+						IsReadOnly="True"
+						Text="{Binding FilePath, Mode=OneWay}"
+						ToolTip="{Binding FilePath}"
+						Style="{StaticResource AppTextBoxStyle}" />
+					<Button
+						Grid.Column="2"
+						Command="{Binding BrowseCommand}"
+						Content="Browse..."
+						Style="{StaticResource SecondaryButtonStyle}" />
+				</Grid>
+
+				<controls:WorkflowActionBar Grid.Row="4">
+					<controls:WorkflowActionBar.SecondaryActions>
+						<StackPanel Orientation="Horizontal">
+							<Button
+								Command="{Binding ResetMappingCommand}"
+								Content="Reset mapping"
+								Style="{StaticResource SecondaryButtonStyle}" />
+							<Button
+								Margin="{StaticResource Button.Margin}"
+								Command="{Binding PreviewCommand}"
+								Content="Generate preview"
+								Style="{StaticResource SecondaryButtonStyle}" />
+							<TextBlock
+								Margin="12,0,0,0"
+								VerticalAlignment="Center"
+								Text="{Binding MappingItems.Count, StringFormat={}{0:N0} source columns}"
+								Style="{StaticResource CaptionStyle}" />
+						</StackPanel>
+					</controls:WorkflowActionBar.SecondaryActions>
+					<controls:WorkflowActionBar.PrimaryAction>
+						<Button
+							Command="{Binding ImportCommand}"
+							Content="Confirm and import"
+							Style="{StaticResource PrimaryButtonStyle}" />
+					</controls:WorkflowActionBar.PrimaryAction>
+				</controls:WorkflowActionBar>
 			</Grid>
 		</controls:Card>
+
 		<Grid Grid.Row="4">
-			<Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="8" /><RowDefinition Height="Auto" /><RowDefinition Height="12" /><RowDefinition Height="*" /><RowDefinition Height="12" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+			<Grid.RowDefinitions>
+				<RowDefinition Height="2*" MinHeight="230" />
+				<RowDefinition Height="12" />
+				<RowDefinition Height="3*" MinHeight="280" />
+			</Grid.RowDefinitions>
+
 			<Grid>
-				<Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-				<TextBlock Text="{Binding TotalItems, StringFormat=Total: {0:N0}}" /><TextBlock Grid.Column="1" Text="{Binding NewItems, StringFormat=New: {0:N0}}" /><TextBlock Grid.Column="2" Text="{Binding ExistingItems, StringFormat=Existing: {0:N0}}" /><TextBlock Grid.Column="3" Text="{Binding Warnings, StringFormat=Warnings: {0:N0}}" /><TextBlock Grid.Column="4" Text="{Binding TotalQuantity, StringFormat=Quantity: {0:N2}}" /><TextBlock Grid.Column="5" HorizontalAlignment="Right" Text="{Binding TotalValue, StringFormat=Value: {0:C2}}" />
+				<Grid.ColumnDefinitions>
+					<ColumnDefinition Width="2*" MinWidth="520" />
+					<ColumnDefinition Width="12" />
+					<ColumnDefinition Width="*" MinWidth="280" />
+				</Grid.ColumnDefinitions>
+
+				<Border Style="{StaticResource WorkspaceSectionStyle}">
+					<Grid>
+						<Grid.RowDefinitions>
+							<RowDefinition Height="Auto" />
+							<RowDefinition Height="4" />
+							<RowDefinition Height="Auto" />
+							<RowDefinition Height="10" />
+							<RowDefinition Height="*" />
+						</Grid.RowDefinitions>
+
+						<TextBlock Text="Column mapping" Style="{StaticResource SectionTitleStyle}" />
+						<TextBlock
+							Grid.Row="2"
+							Text="Source columns stay on the left; choose one Depot target per row. The target selector is fully keyboard accessible."
+							TextWrapping="Wrap"
+							Style="{StaticResource CaptionStyle}" />
+
+						<DataGrid
+							Grid.Row="4"
+							AutoGenerateColumns="False"
+							CanUserAddRows="False"
+							CanUserDeleteRows="False"
+							CanUserReorderColumns="False"
+							EnableColumnVirtualization="True"
+							EnableRowVirtualization="True"
+							ItemsSource="{Binding MappingItems}"
+							Style="{StaticResource AppDataGridCompactStyle}">
+							<DataGrid.Columns>
+								<DataGridTextColumn
+									Header="#"
+									Binding="{Binding ColumnNumber}"
+									IsReadOnly="True"
+									Width="48"
+									ElementStyle="{StaticResource AppDataGridNumericTextStyle}" />
+								<DataGridTextColumn
+									Header="Source column"
+									Binding="{Binding SourceDisplay}"
+									IsReadOnly="True"
+									Width="*" 
+									ElementStyle="{StaticResource AppDataGridTextStyle}" />
+								<DataGridTemplateColumn Header="Depot target" Width="220">
+									<DataGridTemplateColumn.CellTemplate>
+										<DataTemplate>
+											<ComboBox
+												ItemsSource="{Binding TargetOptions}"
+												SelectedItem="{Binding SelectedTarget, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+												DisplayMemberPath="DisplayName"
+												Style="{StaticResource AppComboBoxStyle}"
+												ToolTip="Choose the Depot target field for this workbook column." />
+										</DataTemplate>
+									</DataGridTemplateColumn.CellTemplate>
+								</DataGridTemplateColumn>
+								<DataGridTextColumn
+									Header="Status"
+									Binding="{Binding TargetStatus}"
+									IsReadOnly="True"
+									Width="120"
+									ElementStyle="{StaticResource AppDataGridTextStyle}" />
+							</DataGrid.Columns>
+						</DataGrid>
+					</Grid>
+				</Border>
+
+				<Border Grid.Column="2" Style="{StaticResource WorkspaceSectionStyle}">
+					<Grid>
+						<Grid.RowDefinitions>
+							<RowDefinition Height="Auto" />
+							<RowDefinition Height="8" />
+							<RowDefinition Height="Auto" />
+							<RowDefinition Height="8" />
+							<RowDefinition Height="*" />
+							<RowDefinition Height="12" />
+							<RowDefinition Height="Auto" />
+						</Grid.RowDefinitions>
+
+						<TextBlock Text="Mapping validation" Style="{StaticResource SectionTitleStyle}" />
+
+						<Grid Grid.Row="2">
+							<Grid.ColumnDefinitions>
+								<ColumnDefinition Width="*" />
+								<ColumnDefinition Width="*" />
+							</Grid.ColumnDefinitions>
+							<StackPanel>
+								<TextBlock Text="Blocking issues" Style="{StaticResource FormLabelStyle}" />
+								<TextBlock Text="{Binding MappingErrorCount, StringFormat={}{0:N0}}" FontSize="20" FontWeight="SemiBold" />
+							</StackPanel>
+							<StackPanel Grid.Column="1">
+								<TextBlock Text="Warnings" Style="{StaticResource FormLabelStyle}" />
+								<TextBlock Text="{Binding MappingWarningCount, StringFormat={}{0:N0}}" FontSize="20" FontWeight="SemiBold" />
+							</StackPanel>
+						</Grid>
+
+						<ScrollViewer Grid.Row="4" VerticalScrollBarVisibility="Auto">
+							<ItemsControl ItemsSource="{Binding MappingIssues}">
+								<ItemsControl.ItemTemplate>
+									<DataTemplate>
+										<Border Margin="0,0,0,8" Padding="8" Style="{StaticResource WorkspaceToolbarBorderStyle}">
+											<StackPanel>
+												<TextBlock Text="{Binding Severity}" FontWeight="SemiBold" />
+												<TextBlock Margin="0,2,0,0" Text="{Binding Message}" TextWrapping="Wrap" Style="{StaticResource CaptionStyle}" />
+											</StackPanel>
+										</Border>
+									</DataTemplate>
+								</ItemsControl.ItemTemplate>
+							</ItemsControl>
+						</ScrollViewer>
+
+						<StackPanel Grid.Row="6">
+							<TextBlock
+								Text="{Binding IsMappingValid, StringFormat=Mapping valid: {0}}"
+								Style="{StaticResource CaptionStyle}" />
+							<Button
+								Margin="0,8,0,0"
+								HorizontalAlignment="Stretch"
+								Command="{Binding PreviewCommand}"
+								Content="Generate validated preview"
+								Style="{StaticResource PrimaryButtonStyle}" />
+						</StackPanel>
+					</Grid>
+				</Border>
 			</Grid>
-			<Border Grid.Row="2" Padding="12" Background="{StaticResource SuccessBrush}" CornerRadius="{StaticResource CornerRadius.Small}" Visibility="{Binding Result.HasResult, Converter={StaticResource BooleanToVisibilityConverter}}"><TextBlock Foreground="{StaticResource SuccessForegroundBrush}"><Run Text="Import completed - " /><Run Text="{Binding Result.ImportedItems, Mode=OneWay, StringFormat={}{0:N0}}" /><Run Text=" items, " /><Run Text="{Binding Result.ImportedMovements, Mode=OneWay, StringFormat={}{0:N0}}" /><Run Text=" movements, " /><Run Text="{Binding Result.SkippedItems, Mode=OneWay, StringFormat={}{0:N0}}" /><Run Text=" skipped." /></TextBlock></Border>
-			<DataGrid Grid.Row="4" Style="{StaticResource AppDataGridStyle}" ItemsSource="{Binding Items}">
-				<DataGrid.Columns>
-					<DataGridTextColumn Header="Part number" Binding="{Binding PartNumber}" Width="140" ElementStyle="{StaticResource AppDataGridTextStyle}" /><DataGridTextColumn Header="Description" Binding="{Binding Description}" Width="*" ElementStyle="{StaticResource AppDataGridTextStyle}" /><DataGridTextColumn Header="Warehouse" Binding="{Binding Warehouse}" Width="130" ElementStyle="{StaticResource AppDataGridTextStyle}" /><DataGridTextColumn Header="Location" Binding="{Binding Location}" Width="120" ElementStyle="{StaticResource AppDataGridTextStyle}" /><DataGridTextColumn Header="Quantity" Binding="{Binding Quantity, StringFormat={}{0:N2}}" Width="90" ElementStyle="{StaticResource AppDataGridNumericTextStyle}" /><DataGridTextColumn Header="Unit price" Binding="{Binding UnitPrice, StringFormat={}{0:C2}}" Width="110" ElementStyle="{StaticResource AppDataGridNumericTextStyle}" /><DataGridTextColumn Header="Total" Binding="{Binding TotalValue, StringFormat={}{0:C2}}" Width="110" ElementStyle="{StaticResource AppDataGridNumericTextStyle}" /><DataGridCheckBoxColumn Header="Exists" Binding="{Binding ItemAlreadyExists, Mode=OneWay}" Width="70" />
-				</DataGrid.Columns>
-			</DataGrid>
-			<Expander Grid.Row="6" Header="{Binding Warnings, StringFormat=Warnings ({0:N0})}" Visibility="{Binding Warnings, Converter={StaticResource NonZeroToVisibilityConverter}}">
-				<DataGrid MaxHeight="220" Margin="0,8,0,0" Style="{StaticResource AppDataGridStyle}" ItemsSource="{Binding WarningItems}"><DataGrid.Columns><DataGridTextColumn Header="Row" Binding="{Binding RowNumber}" Width="80" ElementStyle="{StaticResource AppDataGridNumericTextStyle}" /><DataGridTextColumn Header="Warning" Binding="{Binding Message}" Width="*" ElementStyle="{StaticResource AppDataGridTextStyle}" /></DataGrid.Columns></DataGrid>
-			</Expander>
+
+			<Border Grid.Row="2" Style="{StaticResource WorkspaceSectionStyle}">
+				<Grid>
+					<Grid.RowDefinitions>
+						<RowDefinition Height="Auto" />
+						<RowDefinition Height="8" />
+						<RowDefinition Height="Auto" />
+						<RowDefinition Height="8" />
+						<RowDefinition Height="Auto" />
+						<RowDefinition Height="10" />
+						<RowDefinition Height="*" />
+						<RowDefinition Height="10" />
+						<RowDefinition Height="Auto" />
+					</Grid.RowDefinitions>
+
+					<Grid>
+						<Grid.ColumnDefinitions>
+							<ColumnDefinition Width="*" />
+							<ColumnDefinition Width="Auto" />
+						</Grid.ColumnDefinitions>
+						<TextBlock Text="Preview and row validation" Style="{StaticResource SectionTitleStyle}" />
+						<TextBlock
+							Grid.Column="1"
+							Text="{Binding HasPreview, StringFormat=Preview ready: {0}}"
+							Style="{StaticResource CaptionStyle}" />
+					</Grid>
+
+					<Grid Grid.Row="2">
+						<Grid.ColumnDefinitions>
+							<ColumnDefinition Width="*" />
+							<ColumnDefinition Width="*" />
+							<ColumnDefinition Width="*" />
+							<ColumnDefinition Width="*" />
+							<ColumnDefinition Width="*" />
+							<ColumnDefinition Width="*" />
+							<ColumnDefinition Width="*" />
+						</Grid.ColumnDefinitions>
+						<TextBlock Text="{Binding TotalItems, StringFormat=Rows: {0:N0}}" />
+						<TextBlock Grid.Column="1" Text="{Binding NewItems, StringFormat=New: {0:N0}}" />
+						<TextBlock Grid.Column="2" Text="{Binding ExistingItems, StringFormat=Existing: {0:N0}}" />
+						<TextBlock Grid.Column="3" Text="{Binding Warnings, StringFormat=Messages: {0:N0}}" />
+						<TextBlock Grid.Column="4" Text="{Binding BlockingRowErrors, StringFormat=Blocking: {0:N0}}" />
+						<TextBlock Grid.Column="5" Text="{Binding TotalQuantity, StringFormat=Quantity: {0:N2}}" />
+						<TextBlock Grid.Column="6" HorizontalAlignment="Right" Text="{Binding TotalValue, StringFormat=Value: {0:C2}}" />
+					</Grid>
+
+					<Border
+						Grid.Row="4"
+						Padding="10"
+						Background="{StaticResource SuccessBrush}"
+						CornerRadius="{StaticResource CornerRadius.Small}"
+						Visibility="{Binding Result.HasResult, Converter={StaticResource BooleanToVisibilityConverter}}">
+						<TextBlock Foreground="{StaticResource SuccessForegroundBrush}">
+							<Run Text="Import completed - " />
+							<Run Text="{Binding Result.ImportedItems, Mode=OneWay, StringFormat={}{0:N0}}" />
+							<Run Text=" items, " />
+							<Run Text="{Binding Result.ImportedMovements, Mode=OneWay, StringFormat={}{0:N0}}" />
+							<Run Text=" movements, " />
+							<Run Text="{Binding Result.SkippedItems, Mode=OneWay, StringFormat={}{0:N0}}" />
+							<Run Text=" skipped." />
+						</TextBlock>
+					</Border>
+
+					<DataGrid
+						Grid.Row="6"
+						AutoGenerateColumns="False"
+						CanUserAddRows="False"
+						EnableColumnVirtualization="True"
+						EnableRowVirtualization="True"
+						ItemsSource="{Binding Items}"
+						Style="{StaticResource AppDataGridStyle}">
+						<DataGrid.Columns>
+							<DataGridTextColumn Header="Part number" Binding="{Binding PartNumber}" Width="130" ElementStyle="{StaticResource AppDataGridTextStyle}" />
+							<DataGridTextColumn Header="Description" Binding="{Binding Description}" Width="*" ElementStyle="{StaticResource AppDataGridTextStyle}" />
+							<DataGridTextColumn Header="Purpose" Binding="{Binding Purpose}" Width="120" ElementStyle="{StaticResource AppDataGridTextStyle}" />
+							<DataGridTextColumn Header="Warehouse" Binding="{Binding Warehouse}" Width="130" ElementStyle="{StaticResource AppDataGridTextStyle}" />
+							<DataGridTextColumn Header="Location" Binding="{Binding Location}" Width="120" ElementStyle="{StaticResource AppDataGridTextStyle}" />
+							<DataGridTextColumn Header="Quantity" Binding="{Binding Quantity, StringFormat={}{0:N2}}" Width="90" ElementStyle="{StaticResource AppDataGridNumericTextStyle}" />
+							<DataGridTextColumn Header="Unit price" Binding="{Binding UnitPrice, StringFormat={}{0:C2}}" Width="110" ElementStyle="{StaticResource AppDataGridNumericTextStyle}" />
+							<DataGridTextColumn Header="Total" Binding="{Binding TotalValue, StringFormat={}{0:C2}}" Width="110" ElementStyle="{StaticResource AppDataGridNumericTextStyle}" />
+							<DataGridCheckBoxColumn Header="Exists" Binding="{Binding ItemAlreadyExists, Mode=OneWay}" Width="70" />
+						</DataGrid.Columns>
+					</DataGrid>
+
+					<Expander
+						Grid.Row="8"
+						Header="{Binding Warnings, StringFormat=Row validation ({0:N0})}"
+						Visibility="{Binding Warnings, Converter={StaticResource NonZeroToVisibilityConverter}}">
+						<DataGrid
+							MaxHeight="180"
+							Margin="0,8,0,0"
+							AutoGenerateColumns="False"
+							CanUserAddRows="False"
+							ItemsSource="{Binding WarningItems}"
+							Style="{StaticResource AppDataGridCompactStyle}">
+							<DataGrid.Columns>
+								<DataGridTextColumn Header="Severity" Binding="{Binding SeverityDisplay}" Width="90" ElementStyle="{StaticResource AppDataGridTextStyle}" />
+								<DataGridTextColumn Header="Row" Binding="{Binding RowNumber}" Width="70" ElementStyle="{StaticResource AppDataGridNumericTextStyle}" />
+								<DataGridTextColumn Header="Message" Binding="{Binding Message}" Width="*" ElementStyle="{StaticResource AppDataGridTextStyle}" />
+							</DataGrid.Columns>
+						</DataGrid>
+					</Expander>
+				</Grid>
+			</Border>
 		</Grid>
 	</Grid>
 </UserControl>

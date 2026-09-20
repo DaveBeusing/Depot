@@ -7,5 +7,7 @@ public sealed class ImportWarning
 {
 	public int RowNumber { get; init; }
 
+	public bool BlocksImport { get; init; }
+
 	public string Message { get; init; } = string.Empty;
 }
