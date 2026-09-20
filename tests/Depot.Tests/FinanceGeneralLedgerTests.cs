@@ -40,16 +40,40 @@ public sealed class FinanceGeneralLedgerTests
 	public async Task UnbalancedOrClosedPeriodPostingRollsBackWithoutConsumingNumber()
 	{
 		using var context = FinanceTestContext.Create();
-		var service = context.CreateService(ApplicationPermission.FinanceGeneralLedgerPost, ApplicationPermission.FinanceManualJournalsPost);
+		var service = context.CreateService(
+			ApplicationPermission.FinanceGeneralLedgerPost,
+			ApplicationPermission.FinanceManualJournalsPost,
+			ApplicationPermission.FinancePeriodsManage);
 
 		await Assert.ThrowsAsync<InvalidOperationException>(() => service.PostAsync(context.Request(Guid.NewGuid(), FinanceJournalEntryKind.Manual, 100m, 99m)));
 		Assert.Equal(0L, context.Scalar("SELECT COUNT(*) FROM FinanceJournalEntries;"));
 		Assert.Equal(1L, context.Scalar("SELECT NextNumber FROM FinanceNumberSequences WHERE Id = $Id;", new DatabaseParameter("$Id", context.SequenceId.ToString("D"))));
 
-		context.Database.Execute("UPDATE FinanceAccountingPeriods SET Status = 1 WHERE Id = $Id;", new DatabaseParameter("$Id", context.PeriodId.ToString("D")));
+		var closed = await service.SetPeriodStatusAsync(context.PeriodId, AccountingPeriodStatus.Closed);
+		Assert.Equal(AccountingPeriodStatus.Closed, closed.Status);
 		await Assert.ThrowsAsync<InvalidOperationException>(() => service.PostAsync(context.Request(Guid.NewGuid(), FinanceJournalEntryKind.Manual, 100m, 100m)));
 		Assert.Equal(0L, context.Scalar("SELECT COUNT(*) FROM FinanceJournalEntries;"));
 		Assert.Equal(1L, context.Scalar("SELECT NextNumber FROM FinanceNumberSequences WHERE Id = $Id;", new DatabaseParameter("$Id", context.SequenceId.ToString("D"))));
+	}
+
+	[Fact]
+	public async Task PeriodStatusManagementRequiresManagePermissionAndSupportsReopen()
+	{
+		using var context = FinanceTestContext.Create();
+		var viewer = context.CreateService(ApplicationPermission.FinancePeriodsView);
+		Assert.True(viewer.CanViewPeriods);
+		Assert.False(viewer.CanManagePeriods);
+		await Assert.ThrowsAsync<UnauthorizedAccessException>(() => viewer.SetPeriodStatusAsync(context.PeriodId, AccountingPeriodStatus.Closed));
+
+		var manager = context.CreateService(ApplicationPermission.FinancePeriodsView, ApplicationPermission.FinancePeriodsManage);
+		var visible = Assert.Single(await manager.GetPeriodsForDateAsync(context.PostingDate));
+		Assert.Equal(AccountingPeriodStatus.Open, visible.Status);
+
+		var closed = await manager.SetPeriodStatusAsync(context.PeriodId, AccountingPeriodStatus.Closed);
+		Assert.Equal(AccountingPeriodStatus.Closed, closed.Status);
+		var reopened = await manager.SetPeriodStatusAsync(context.PeriodId, AccountingPeriodStatus.Open);
+		Assert.Equal(AccountingPeriodStatus.Open, reopened.Status);
+		Assert.Equal(0L, context.Scalar("SELECT Status FROM FinanceAccountingPeriods WHERE Id = $Id;", new DatabaseParameter("$Id", context.PeriodId.ToString("D"))));
 	}
 
 	[Fact]
