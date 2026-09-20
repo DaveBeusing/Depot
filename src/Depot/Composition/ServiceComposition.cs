@@ -77,6 +77,7 @@ internal sealed class ServiceComposition
 		ReasonCodes = new ReasonCodeService(repositories.ReasonCodes, audit);
 		Warehouses = new WarehouseService(repositories.Warehouses, repositories.StorageLocations, audit);
 		StorageLocations = new StorageLocationService(repositories.StorageLocations, repositories.Warehouses, audit);
+		WarehouseLayout = new WarehouseLayoutVisualizerService(repositories.WarehouseLayoutRead, Authorization);
 		Roles = new RoleService(database.TransactionRunner, repositories.Roles, repositories.Audit, audit, Authorization);
 		Users = new UserService(database.TransactionRunner, repositories.Users, repositories.Roles, repositories.Audit, passwordHasher, Authorization, audit);
 		Movements = new MovementService(repositories.Items, repositories.Inventories, repositories.ReasonCodes, repositories.StockMovements, audit, movementReversals, database.TransactionRunner, repositories.Audit, ItemTraceability);
@@ -191,6 +192,7 @@ internal sealed class ServiceComposition
 	public GlobalSearchService GlobalSearch { get; }
 	public WarehouseService Warehouses { get; }
 	public StorageLocationService StorageLocations { get; }
+	public WarehouseLayoutVisualizerService WarehouseLayout { get; }
 	public UserService Users { get; }
 	public RoleService Roles { get; }
 	public MovementService Movements { get; }
