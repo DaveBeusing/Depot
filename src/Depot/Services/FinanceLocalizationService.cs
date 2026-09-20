@@ -110,9 +110,8 @@ public sealed class FinanceLocalizationService
 			{
 				parent = await _repository.GetPackAsync(transaction, normalized.ParentPackCode, token) ?? throw new InvalidOperationException("Parent localization pack was not found.");
 				if (!parent.IsActive) throw new InvalidOperationException("Parent localization pack is inactive.");
-				if (parent.Layer >= normalized.Layer) throw new InvalidOperationException("A localization pack parent must belong to a broader layer.");
 			}
-			ValidateLayer(normalized, parent);
+			FinanceLocalizationHierarchyRules.ThrowIfInvalidPack(normalized, parent);
 			if (normalized.Id == 0)
 			{
 				if (await _repository.GetPackAsync(transaction, normalized.Code, token) is not null) throw new InvalidOperationException("A localization pack with this code already exists.");
@@ -232,14 +231,6 @@ public sealed class FinanceLocalizationService
 		var country=string.IsNullOrWhiteSpace(value.CountryCode)?null:FinanceValidation.CountryCode(value.CountryCode,nameof(value.CountryCode));
 		var parent=string.IsNullOrWhiteSpace(value.ParentPackCode)?null:NormalizeCode(value.ParentPackCode,nameof(value.ParentPackCode),50);
 		return value with { Code=code,Name=name,Description=description,CountryCode=country,ParentPackCode=parent };
-	}
-
-	private static void ValidateLayer(FinanceLocalizationPack value, FinanceLocalizationPack? parent)
-	{
-		if (value.Layer==FinanceLocalizationLayer.Generic && (value.CountryCode is not null || parent is not null)) throw new InvalidOperationException("Generic localization packs cannot target a country or have a parent.");
-		if (value.Layer==FinanceLocalizationLayer.Regional && (value.CountryCode is not null || parent is null)) throw new InvalidOperationException("Regional localization packs require a broader parent and cannot target one country.");
-		if (value.Layer==FinanceLocalizationLayer.Country && (value.CountryCode is null || parent is null)) throw new InvalidOperationException("Country localization packs require a country code and a broader parent.");
-		if (parent is not null && string.Equals(parent.Code,value.Code,StringComparison.Ordinal)) throw new InvalidOperationException("A localization pack cannot depend on itself.");
 	}
 
 	private static FinanceLocalizationRegistryEntry NormalizeRegistry(FinanceLocalizationRegistryEntry value)
