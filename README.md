@@ -6,7 +6,7 @@ Depot is a modern Windows business platform that brings **Sales, Purchasing, Inv
 
 > **One platform. One source of truth. Complete control.**
 
-Depot is currently in active **0.15.x-preview** development. The repository contains substantial operational, accounting, security, audit and compliance capabilities. Preview status still matters: implemented engineering controls and database-provider certification are not claims of jurisdiction-specific legal, tax, accessibility, banking-network or organizational certification. See [Current Status](docs/CurrentStatus.md), [Database Provider Production Support Matrix](docs/DatabaseProviderSupportMatrix.md) and the [Roadmap](docs/Roadmap.md).
+Depot is currently in active **0.15.x-preview** development. The repository contains substantial operational, accounting, security, audit and compliance capabilities. Preview status still matters: implemented engineering controls and database-provider acceptance are not claims of jurisdiction-specific legal, tax, accessibility, banking-network or organizational certification. See [Current Status](docs/CurrentStatus.md), [Release Compliance Boundary](docs/ReleaseComplianceBoundary.md), [Known Limitations](docs/KnownLimitations.md), [Database Provider Production Support Matrix](docs/DatabaseProviderSupportMatrix.md) and the [Roadmap](docs/Roadmap.md).
 
 ## Why Depot
 
@@ -61,9 +61,9 @@ Read the full [Architecture](docs/Architecture.md) and [Coding Standard](docs/Co
 
 ## Production database support
 
-Depot now certifies database providers through real-server acceptance rather than treating provider-neutral code as proof of production readiness.
+Depot accepts database providers for production support only through real-server acceptance rather than treating provider-neutral code as proof of production readiness.
 
-Current technical certification baselines:
+Current accepted technical baselines:
 
 | Provider | Baseline | Status |
 | --- | --- | --- |
@@ -154,7 +154,7 @@ CI includes Release build/publish, bounded regression suites, code-coverage gate
 
 Repository governance exposes five stable aggregate status checks for CI, quality, security, packaged DepotManager E2E and database-provider acceptance. These are the only checks intended to be bound to the `master` ruleset; see [Repository Governance](docs/RepositoryGovernance.md) for the exact names and protection policy.
 
-The separate database-provider acceptance workflow adds real SQLite/SQL Server/MariaDB/MySQL migration, locking, retry, business-flow, restart, native restore and performance evidence. Pull requests use fast remote smoke coverage; certification branches, `master` and manual full runs execute the complete matrix.
+The separate database-provider acceptance workflow adds real SQLite/SQL Server/MariaDB/MySQL migration, locking, retry, business-flow, restart, native restore and performance evidence. Pull requests use fast remote smoke coverage; `database-provider-*` branches, `master` and manual full runs execute the complete matrix.
 
 Security and compliance work is documented transparently rather than presented as certification that has not been achieved. Start with the [Security Roadmap](docs/SecurityRoadmap.md), [Compliance Overview](docs/ComplianceOverview.md) and [Compliance Matrix](docs/compliance/ComplianceMatrix.md).
 
@@ -163,6 +163,10 @@ Security and compliance work is documented transparently rather than presented a
 Embedded Help manifest **1.22** includes contextual Sales, Finance, User Sessions and Security Center guidance. Help visibility follows central permissions and never grants business access.
 
 See the [Help Center documentation](docs/HelpCenter.md).
+
+## Release scope and limitations
+
+The current supported/unsupported claim boundary is consolidated in [Release Compliance Boundary](docs/ReleaseComplianceBoundary.md). Release-facing limitations are maintained in [Known Limitations](docs/KnownLimitations.md). Those documents distinguish implemented technical capabilities from deployment, legal, accounting, tax, banking-network, support and external-review obligations.
 
 ## Road to 1.0
 
@@ -181,6 +185,8 @@ Track the path through the [Roadmap](docs/Roadmap.md) and [Release 1.0 plan](doc
 - [Repository Governance](docs/RepositoryGovernance.md)
 - [Database Provider Production Support Matrix](docs/DatabaseProviderSupportMatrix.md)
 - [Deployment Sizing and Operations Readiness](docs/DeploymentSizing.md)
+- [Release Compliance Boundary](docs/ReleaseComplianceBoundary.md)
+- [Known Limitations](docs/KnownLimitations.md)
 - [Versioning and Schema Evolution](docs/Versioning.md)
 - [User-Facing Changes](docs/UserFacingChanges.md)
 - [Help Center](docs/HelpCenter.md)

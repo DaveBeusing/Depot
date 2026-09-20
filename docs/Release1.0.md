@@ -37,6 +37,7 @@ Depot is on the `0.15.x-preview` line with Core database schema **30**, Sales fe
 - [x] bounded productive visual designers for posting flows, pricing strategy, financial-report mappings, bank reconciliation, localization hierarchy, role permissions and import mapping
 - [x] local backup/recovery controls and privacy export
 - [x] dependency locks, NuGet audit, SBOM/evidence and release-integrity workflows
+- [x] repository vulnerability-reporting, vulnerability-management and production-support policy baselines
 - [x] centralized per-item Customer → Region → Global Sales pricing with optional customer assignment and retained document source snapshots
 - [x] Sales Invoice seller/buyer/XRechnung finalization and persisted XML integrity evidence
 - [x] electronic Sales Credit Note finalization for the bounded advertised XRechnung scope
@@ -69,7 +70,7 @@ Depot is on the `0.15.x-preview` line with Core database schema **30**, Sales fe
 
 The generic technical provider gate is complete for the exact baselines in [Database Provider Production Support Matrix](DatabaseProviderSupportMatrix.md):
 
-- [x] supported database certification baselines defined
+- [x] supported database technical-acceptance baselines defined
 - [x] bundled SQLite full provider acceptance
 - [x] SQL Server 2022 / engine 16.x live migration, concurrency, locking, recovery and performance matrix
 - [x] MariaDB 11.8.9 LTS live migration, concurrency, locking, recovery and performance matrix
@@ -86,7 +87,7 @@ The generic technical provider gate is complete for the exact baselines in [Data
 - [x] structured recovery evidence retained for every supported provider family
 - [x] representative 100,000-row indexed provider performance guard
 
-Versions outside these baselines are not implicitly supported. The provider gate is a database/runtime certification only.
+Versions outside these baselines are not implicitly supported. The provider gate is a technical database/runtime acceptance boundary only.
 
 ## Track C repository acceptance
 
@@ -140,11 +141,12 @@ Technical controls and the evidence contract are implemented. The exact release 
 - [x] generic packaged lifecycle acceptance covers install/update/repair, rollback safety, manager self-update, uninstall data scopes and Windows shell integration
 - [ ] H1 live GitHub `master` ruleset `23590604` again requires all five aggregate gates and fresh fail-closed governance evidence passes
 - [ ] production backup/security ownership and vulnerability-reporting process accepted for the deployment
+- [ ] release-specific support statement published with support dates, supported Windows versions, exact database baselines, upgrade path and security-update channel
 - [ ] production Authenticode publisher identity and timestamp verified with a real Stable release candidate
 - [ ] certificate expiry/rotation and signing-recovery procedure accepted
 - [ ] exact production-signed Stable RC lifecycle acceptance completed with the final release artifacts
 - [ ] exact-RC Track A closure evidence passes `Test-TrackAAcceptance.ps1 -RequirePass`
-- [ ] final release notes, known limitations, hashes, SBOM and support information published
+- [ ] final release notes, exact-RC Known Limitations, hashes, SBOM and support information published
 
 ### Electronic invoicing
 
@@ -159,6 +161,8 @@ The repository conformance boundary for the currently advertised XRechnung and Z
 
 ### Legal/organizational
 
+- [x] canonical release compliance claim boundary prepared and linked to authoritative technical evidence
+- [x] canonical Known Limitations document prepared for exact-RC review/publication
 - [ ] GDPR/DSGVO deployment assessment and retention procedures
 - [ ] organization-specific GoBD/accounting/reporting/localization procedures
 - [ ] final CRA applicability/classification/conformity work

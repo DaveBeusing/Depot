@@ -4,6 +4,14 @@
 
 Technical lifecycle baseline for production planning. Commercial commitments and the support end-date for each marketed release line must be approved and published before production distribution.
 
+## Current publication state
+
+Depot is currently distributed from the `0.15.x-preview` development line. No Stable 1.0 production support window, supported-Windows matrix or commercial end-of-support date is published by this repository baseline.
+
+A green CI, database-provider acceptance or release-integrity run does not by itself create a commercial support commitment. Before any Stable release is described as production-supported, the release-facing support statement must identify the exact product/release line, support start and end dates, supported Windows versions, exact supported database baselines, supported upgrade path and security-update channel.
+
+Preview support statements must not be reused as Stable commitments. Release notes and support material must link back to this policy and the exact [Database Provider Production Support Matrix](../DatabaseProviderSupportMatrix.md).
+
 ## Version states
 
 ### Preview
@@ -39,6 +47,12 @@ Before 1.0 production distribution, publish for each supported release line:
 - security-update distribution method,
 - end-of-support notification approach,
 - emergency security-update process.
+
+## Vulnerability reporting boundary
+
+The public intake path is the repository root `SECURITY.md`; triage and remediation follow [Vulnerability Management](VulnerabilityManagement.md). For a commercially supplied product where CRA reporting obligations apply, the organizational reporting path is additionally governed by [CRA Vulnerability and Incident Reporting Runbook](CraIncidentReporting.md).
+
+Repository process documentation does not prove that deployment-specific contacts, regulatory decision authority, reporting-platform access or customer-communication procedures are operational. Those are release/organization acceptance items.
 
 ## Security updates
 

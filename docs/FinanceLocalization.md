@@ -1,6 +1,6 @@
 # Finance Localization Framework
 
-Updated: 2026-09-08
+Updated: 2026-09-20
 
 ## Scope
 
@@ -57,6 +57,12 @@ The Germany reference can describe technical capabilities such as XRechnung-rela
 
 These are not legal/compliance pass/fail states.
 
+## Release claim boundary
+
+The built-in `GENERIC → EU → DE` hierarchy may be described as a localization reference/configuration framework. It must not be described as a certified or legally sufficient German/EU country pack.
+
+In particular, assigning `DE` does not activate VAT rates, SKR mappings, statutory filing logic, GoBD procedures or a legal compliance status. A release may claim only the software capabilities actually implemented and must identify `ConfigurationRequired` and `ExternalProcedureRequired` items as deployment responsibilities.
+
 ## Service and UI boundary
 
 `FinanceLocalizationService` owns permissions, legal-entity/pack validation, hierarchy resolution, effective-date rules, overlap prevention, optimistic concurrency, Audit evidence and immutable built-in protection. `FinanceLocalizationRepository` owns persistence. `FinanceLocalizationViewModel` owns UI state and commands. `FinanceLocalizationView` contains presentation only.
@@ -67,6 +73,6 @@ These are not legal/compliance pass/fail states.
 
 Additional regional/country packs do not require a schema migration when metadata/configuration is sufficient. New executable statutory behavior still requires separately scoped code.
 
-The certified provider matrix closes the generic database/migration/runtime gate for Finance schema 9 on its exact database baselines. It does **not** certify a localization pack, tax treatment, filing procedure or jurisdiction. Before production use, qualified Finance/tax/legal owners must approve configured profiles, mappings, controls and external procedures for each deployed legal entity.
+The supported provider matrix closes the generic database/migration/runtime gate for Finance schema 9 on its exact database baselines. It does **not** certify a localization pack, tax treatment, filing procedure or jurisdiction. Before production use, qualified Finance/tax/legal owners must approve configured profiles, mappings, controls and external procedures for each deployed legal entity.
 
 The localization framework is engineering infrastructure and reference evidence, not certification, legal advice or a statutory compliance opinion.

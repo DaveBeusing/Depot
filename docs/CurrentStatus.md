@@ -38,14 +38,14 @@ Repository CI validates closure contracts but does not manufacture missing produ
 
 ## Database provider production status
 
-The dedicated provider matrix certifies the current technical baselines when the full provider gate is green:
+The dedicated provider matrix accepts the current technical baselines when the full provider gate is green:
 
 - bundled SQLite runtime through `Microsoft.Data.Sqlite`;
 - SQL Server 2022 / engine 16.x;
 - MariaDB 11.8.9 LTS;
 - MySQL 8.4.11 LTS.
 
-The matrix covers provisioning/migration, transaction semantics, concurrency/deadlock/retry behavior, representative Sales/Procurement/Finance flows, Banking/reconciliation, Financial Reporting/snapshots, service restart, provider-native backup/restore and representative indexed-load acceptance. MariaDB and MySQL are independently certified; versions outside the listed baselines remain untested/best-effort until separately accepted.
+The matrix covers provisioning/migration, transaction semantics, concurrency/deadlock/retry behavior, representative Sales/Procurement/Finance flows, Banking/reconciliation, Financial Reporting/snapshots, service restart, provider-native backup/restore and representative indexed-load acceptance. MariaDB and MySQL are independently accepted; versions outside the listed baselines remain untested/best-effort until separately accepted.
 
 See [Database Provider Production Support Matrix](DatabaseProviderSupportMatrix.md).
 
@@ -54,6 +54,12 @@ See [Database Provider Production Support Matrix](DatabaseProviderSupportMatrix.
 The repository now includes `scripts/performance/Measure-DeploymentSizing.ps1` and [Deployment Sizing and Operations Readiness](DeploymentSizing.md). The tooling records exact build identity, provider, representative data volume, network latency, concurrent users, p50/p95/max scenario timings, CPU/memory, optimizations, known limits and CI state. It can also aggregate structural Home first-content and eligible My Work provider timings from `performance.log`.
 
 This adds a reproducible acceptance path; it does **not** create customer-specific capacity results by itself. No universal maximum user count, database size or hardware recommendation is claimed. Final sizing still requires execution in the representative target environment.
+
+## Release compliance and known limitations
+
+The repository now has a canonical [Release Compliance Boundary](ReleaseComplianceBoundary.md) and [Known Limitations](KnownLimitations.md). They consolidate release-facing claims across GDPR/DSGVO, CRA, Finance/accounting/localization, electronic invoicing, Banking, database support, retention/DR, vulnerability handling and production support.
+
+This documentation does not close external/manual acceptance. It explicitly records that Preview is not production-supported, the `DE` localization hierarchy is not a certified country pack, the electronic-invoice matrix remains bounded, direct bank connectivity is outside the current baseline, database support is limited to exact accepted versions and customer sizing/DR/legal procedures remain deployment-specific.
 
 ## Track C repository closure
 
