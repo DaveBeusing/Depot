@@ -34,6 +34,108 @@
                     </DataGrid>
                 </Grid>
             </TabItem>
+            <TabItem Header="Mapping Designer">
+                <Grid Margin="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="1.15*"/>
+                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition Width="1.2*"/>
+                        <ColumnDefinition Width="12"/>
+                        <ColumnDefinition Width="1.1*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <Border Style="{StaticResource WorkspaceSectionStyle}">
+                        <Grid>
+                            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                            <TextBlock Text="Accounts" Style="{StaticResource WorkspaceSectionTitleStyle}"/>
+                            <TextBlock Grid.Row="1" Margin="0,4,0,10" Text="Drag an account onto an explicit target. No classification is inferred from account name or number." Style="{StaticResource CaptionStyle}" TextWrapping="Wrap"/>
+                            <ListBox x:Name="MappingAccountList"
+                                     Grid.Row="2"
+                                     ItemsSource="{Binding MappingDesignerRows}"
+                                     SelectedItem="{Binding SelectedMappingDesignerRow}"
+                                     Style="{StaticResource AppListBoxStyle}"
+                                     PreviewMouseLeftButtonDown="OnMappingAccountMouseLeftButtonDown"
+                                     PreviewMouseMove="OnMappingAccountMouseMove"
+                                     VirtualizingPanel.IsVirtualizing="True"
+                                     VirtualizingPanel.VirtualizationMode="Recycling"
+                                     ScrollViewer.CanContentScroll="True">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Margin="0,2">
+                                            <TextBlock FontWeight="SemiBold"><Run Text="{Binding AccountNumber}"/><Run Text=" · "/><Run Text="{Binding AccountName}"/></TextBlock>
+                                            <TextBlock Style="{StaticResource CaptionStyle}"><Run Text="{Binding AccountType}"/><Run Text=" · "/><Run Text="{Binding StateText}"/><Run Text=" · sort "/><Run Text="{Binding SortOrder}"/></TextBlock>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </Grid>
+                    </Border>
+
+                    <Border Grid.Column="2" Style="{StaticResource WorkspaceSectionStyle}">
+                        <Grid>
+                            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                            <TextBlock Text="Mapping targets" Style="{StaticResource WorkspaceSectionTitleStyle}"/>
+                            <TextBlock Grid.Row="1" Margin="0,4,0,10" Text="Statement sections, cash-flow categories, tax categories and explicit cash/COGS flags." Style="{StaticResource CaptionStyle}" TextWrapping="Wrap"/>
+                            <ListBox x:Name="MappingTargetList"
+                                     Grid.Row="2"
+                                     ItemsSource="{Binding MappingTargets}"
+                                     Style="{StaticResource AppListBoxStyle}"
+                                     AllowDrop="True"
+                                     Drop="OnMappingTargetDrop">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Margin="0,2" Padding="10" Style="{StaticResource WorkspaceToolbarBorderStyle}">
+                                            <StackPanel>
+                                                <TextBlock Text="{Binding Group}" Style="{StaticResource CaptionStyle}"/>
+                                                <TextBlock Margin="0,2,0,0" Text="{Binding Title}" FontWeight="SemiBold"/>
+                                                <TextBlock Margin="0,2,0,0" Text="{Binding Description}" Style="{StaticResource CaptionStyle}" TextWrapping="Wrap"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </Grid>
+                    </Border>
+
+                    <Border Grid.Column="4" Style="{StaticResource WorkspaceSectionStyle}">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <StackPanel>
+                                <TextBlock Text="Inspector" Style="{StaticResource WorkspaceSectionTitleStyle}"/>
+                                <TextBlock Margin="0,4,0,2" Text="{Binding MappingDesignerSelectionTitle}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                <TextBlock Text="{Binding MappingDesignerSelectionSubtitle}" Style="{StaticResource CaptionStyle}" TextWrapping="Wrap"/>
+                                <Separator Margin="0,12"/>
+                                <TextBlock Text="Financial statement section" Style="{StaticResource FormLabelStyle}"/>
+                                <ComboBox ItemsSource="{Binding StatementSections}" SelectedItem="{Binding StatementSection}" IsEnabled="{Binding CanManage}" Style="{StaticResource AppComboBoxStyle}"/>
+                                <TextBlock Margin="0,8,0,0" Text="Cash-flow category" Style="{StaticResource FormLabelStyle}"/>
+                                <ComboBox ItemsSource="{Binding CashFlowCategories}" SelectedItem="{Binding CashFlowCategory}" IsEnabled="{Binding CanManage}" Style="{StaticResource AppComboBoxStyle}"/>
+                                <TextBlock Margin="0,8,0,0" Text="Tax category" Style="{StaticResource FormLabelStyle}"/>
+                                <ComboBox ItemsSource="{Binding TaxCategories}" SelectedItem="{Binding TaxCategory}" IsEnabled="{Binding CanManage}" Style="{StaticResource AppComboBoxStyle}"/>
+                                <WrapPanel Margin="0,10,0,0" IsEnabled="{Binding CanManage}">
+                                    <controls:AppCheckBox Content="Cash account" IsChecked="{Binding IsCashAccount}"/>
+                                    <controls:AppCheckBox Margin="12,0,0,0" Content="COGS" IsChecked="{Binding IsCostOfGoodsSold}"/>
+                                    <controls:AppCheckBox Margin="12,0,0,0" Content="Active" IsChecked="{Binding MappingActive}"/>
+                                </WrapPanel>
+                                <TextBlock Margin="0,10,0,0" Text="Sort order" Style="{StaticResource FormLabelStyle}"/>
+                                <controls:TextInput Text="{Binding SortOrder, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding CanManage}"/>
+                                <WrapPanel Margin="0,8,0,0" HorizontalAlignment="Right">
+                                    <Button Command="{Binding MoveMappingUpCommand}" Content="Move up" Style="{StaticResource SecondaryButtonStyle}"/>
+                                    <Button Margin="8,0,0,0" Command="{Binding MoveMappingDownCommand}" Content="Move down" Style="{StaticResource SecondaryButtonStyle}"/>
+                                </WrapPanel>
+                                <Border Margin="0,12,0,0" Padding="10" Style="{StaticResource WorkspaceToolbarBorderStyle}">
+                                    <StackPanel>
+                                        <TextBlock Text="Validation" FontWeight="SemiBold"/>
+                                        <TextBlock Margin="0,3,0,0" Text="{Binding MappingValidationText}" Style="{StaticResource CaptionStyle}" TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                </Border>
+                                <WrapPanel Margin="0,12,0,0" HorizontalAlignment="Right" IsEnabled="{Binding CanManage}">
+                                    <Button Command="{Binding NewMappingCommand}" Content="Reset draft" Style="{StaticResource SecondaryButtonStyle}"/>
+                                    <Button Margin="8,0,0,0" Command="{Binding SaveMappingCommand}" Content="Save mapping" Style="{StaticResource PrimaryButtonStyle}"/>
+                                </WrapPanel>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </Border>
+                </Grid>
+            </TabItem>
             <TabItem Header="Account Mapping">
                 <Grid Margin="8"><Grid.ColumnDefinitions><ColumnDefinition Width="2*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="3*"/></Grid.ColumnDefinitions>
                     <DataGrid ItemsSource="{Binding Mappings}" SelectedItem="{Binding SelectedMapping}" Style="{StaticResource AppDataGridStyle}" AutoGenerateColumns="False"><DataGrid.Columns><DataGridTextColumn Header="Account ID" Binding="{Binding AccountId}" Width="*"/><DataGridTextColumn Header="Statement" Binding="{Binding StatementSection}" Width="140"/><DataGridTextColumn Header="Cash flow" Binding="{Binding CashFlowCategory}" Width="110"/><DataGridTextColumn Header="Tax" Binding="{Binding TaxCategory}" Width="110"/><DataGridCheckBoxColumn Header="Cash" Binding="{Binding IsCashAccount}" Width="60"/><DataGridCheckBoxColumn Header="COGS" Binding="{Binding IsCostOfGoodsSold}" Width="60"/></DataGrid.Columns></DataGrid>

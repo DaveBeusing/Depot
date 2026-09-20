@@ -10,7 +10,7 @@ using Depot.Services;
 
 namespace Depot.ViewModels;
 
-public sealed class FinanceFinancialReportingViewModel : BaseViewModel, IDisposable
+public sealed partial class FinanceFinancialReportingViewModel : BaseViewModel, IDisposable
 {
 	private readonly FinanceFinancialReportingService _reporting;
 	private readonly IFileDialogService _fileDialogs;
@@ -37,6 +37,7 @@ public sealed class FinanceFinancialReportingViewModel : BaseViewModel, IDisposa
 		NewMappingCommand=new AsyncRelayCommand(_=>{ClearMapping();return Task.CompletedTask;});
 		CreateSnapshotCommand=new AsyncRelayCommand(CreateSnapshotAsync);
 		ExportCsvCommand=new AsyncRelayCommand(ExportCsvAsync);
+		InitializeMappingDesigner();
 	}
 
 	public ObservableCollection<FinanceReportRow> Rows { get; }=[];
@@ -89,10 +90,11 @@ public sealed class FinanceFinancialReportingViewModel : BaseViewModel, IDisposa
 			if(Guid.TryParse(AccountingBookId,out var book))
 			{
 				Replace(Mappings,await _reporting.GetMappingsAsync(book,cancellationToken));
-				if(CanManage) Replace(Accounts,await _reporting.GetAccountsAsync(book,cancellationToken));
+				if(CanManage) Replace(Accounts,await _reporting.GetAccountsAsync(book,cancellationToken)); else Accounts.Clear();
+				LoadMappingDesignerProjection();
 				Replace(Snapshots,await _reporting.GetRecentSnapshotsAsync(book,cancellationToken));
 			}
-			else { Mappings.Clear(); Accounts.Clear(); Replace(Snapshots,await _reporting.GetRecentSnapshotsAsync(null,cancellationToken)); }
+			else { Mappings.Clear(); Accounts.Clear(); MappingDesignerRows.Clear(); Replace(Snapshots,await _reporting.GetRecentSnapshotsAsync(null,cancellationToken)); }
 			CompleteOperation(false,"Financial Reporting loaded.");
 		}
 		catch(OperationCanceledException) when(cancellationToken.IsCancellationRequested){}
@@ -160,5 +162,5 @@ public sealed class FinanceFinancialReportingViewModel : BaseViewModel, IDisposa
 	private static Guid? OptionalGuid(string value,string field)=>string.IsNullOrWhiteSpace(value)?null:ParseGuid(value,field);
 	private static int ParseInt(string value,string field)=>int.TryParse(value,NumberStyles.Integer,CultureInfo.InvariantCulture,out var result)?result:throw new ArgumentException($"A valid {field} is required.");
 	private static void Replace<T>(ObservableCollection<T> target,IEnumerable<T> values){target.Clear();foreach(var value in values)target.Add(value);}
-	public void Dispose(){if(_disposed)return;_disposed=true;RefreshCommand.Dispose();GenerateCommand.Dispose();SaveMappingCommand.Dispose();NewMappingCommand.Dispose();CreateSnapshotCommand.Dispose();ExportCsvCommand.Dispose();}
+	public void Dispose(){if(_disposed)return;_disposed=true;DisposeMappingDesigner();RefreshCommand.Dispose();GenerateCommand.Dispose();SaveMappingCommand.Dispose();NewMappingCommand.Dispose();CreateSnapshotCommand.Dispose();ExportCsvCommand.Dispose();}
 }
