@@ -43,10 +43,10 @@ public sealed class RoleRepository : DatabaseRepository
 		if (roles.Length == 0) return roles;
 		var permissionRows = await Database.QueryAsync(
 			"SELECT rp.RoleId, p.Code FROM RolePermissions rp INNER JOIN Permissions p ON p.Id = rp.PermissionId ORDER BY rp.RoleId, p.Code;",
-			reader => new UserPermissionRow(reader.GetInt64(0), reader.GetString(1)),
+			reader => new RolePermissionCodeRow(reader.GetInt64(0), reader.GetString(1)),
 			cancellationToken);
 		var byRole = permissionRows
-			.GroupBy(value => value.UserId)
+			.GroupBy(value => value.RoleId)
 			.ToDictionary(
 				group => group.Key,
 				group => (IReadOnlyList<ApplicationPermission>)group
@@ -130,7 +130,7 @@ public sealed class RoleRepository : DatabaseRepository
 			user.Email,
 			user.IsActive,
 			assignedRoles.GetValueOrDefault(user.Id) ?? [],
-			effective.GetValueOrDefault(user.Id) ?? new HashSet<ApplicationPermission>()))
+			user.IsActive ? effective.GetValueOrDefault(user.Id) ?? new HashSet<ApplicationPermission>() : new HashSet<ApplicationPermission>()))
 			.ToArray();
 	}
 
@@ -237,6 +237,7 @@ public sealed class RoleRepository : DatabaseRepository
 
 	private sealed record UserRoleRow(long UserId, Role Role);
 	private sealed record RoleDesignerUserRow(long Id, string DisplayName, string Email, bool IsActive);
+	private sealed record RolePermissionCodeRow(long RoleId, string Code);
 	private sealed record UserPermissionRow(long UserId, string Code);
 
 	private static DatabaseParameter[] Parameters(Role role) =>

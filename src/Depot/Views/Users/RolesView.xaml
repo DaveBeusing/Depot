@@ -36,6 +36,7 @@
 														Command="{Binding DataContext.SelectMatrixRoleCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
 														CommandParameter="{Binding}"
 														Style="{StaticResource SecondaryButtonStyle}"
+														AutomationProperties.Name="{Binding Name, StringFormat=Select role {0}}"
 														ToolTip="{Binding Description}">
 													<StackPanel>
 														<TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextAlignment="Center" TextTrimming="CharacterEllipsis"/>
@@ -75,6 +76,7 @@
 																	Command="{Binding DataContext.SelectMatrixRoleCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
 																	CommandParameter="{Binding Role}"
 																	Style="{StaticResource SecondaryButtonStyle}"
+																	AutomationProperties.Name="{Binding AccessibilitySummary}"
 																	ToolTip="{Binding AccessibilitySummary}">
 																<StackPanel>
 																	<TextBlock Text="{Binding Summary}" FontWeight="SemiBold" TextAlignment="Center"/>
@@ -119,7 +121,7 @@
 													<TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
 													<TextBlock Text="{Binding Code}" Style="{StaticResource CaptionStyle}"/>
 												</StackPanel>
-												<controls:AppCheckBox Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Center" IsChecked="{Binding IsSelected}" IsEnabled="{Binding DataContext.CanEdit, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
+												<controls:AppCheckBox Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Center" IsChecked="{Binding IsSelected}" IsEnabled="{Binding DataContext.CanEdit, RelativeSource={RelativeSource AncestorType=UserControl}}" AutomationProperties.Name="{Binding Name, StringFormat=Toggle direct permission {0}}"/>
 											</Grid>
 										</DataTemplate>
 									</ListBox.ItemTemplate>
