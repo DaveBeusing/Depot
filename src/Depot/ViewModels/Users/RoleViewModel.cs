@@ -71,6 +71,7 @@ public sealed partial class RoleViewModel : BaseViewModel, IDisposable
 		{
 			var role = await _service.GetByIdAsync(SelectedRole.Id, CancellationToken.None) ?? throw new InvalidOperationException("The role was not found.");
 			Apply(role);
+			await LoadEffectivePermissionImpactAsync(role.Id, CancellationToken.None);
 		}
 		catch (Exception exception) { FailOperation(exception, "Role details could not be loaded"); }
 	}
@@ -79,6 +80,7 @@ public sealed partial class RoleViewModel : BaseViewModel, IDisposable
 	{
 		SelectedRole = null; Id = 0; _version = 1; Code = string.Empty; Name = string.Empty; Description = null; IsSystem = false; IsActive = true;
 		foreach (var permission in Permissions) permission.IsSelected = false;
+		ClearEffectivePermissionImpact();
 		RefreshPermissionDesignerSelection();
 	}
 
@@ -88,7 +90,10 @@ public sealed partial class RoleViewModel : BaseViewModel, IDisposable
 		try
 		{
 			var saved = await _service.SaveAsync(new Role { Id = Id, Code = Code, Name = Name, Description = Description, IsActive = IsActive, IsSystem = IsSystem, Version = _version, Permissions = Permissions.Where(permission => permission.IsSelected).Select(permission => permission.Permission).ToArray() }, cancellationToken);
-			Replace(saved); Apply(saved); CompleteOperation(false, "Role saved");
+			Replace(saved);
+			Apply(saved);
+			await RefreshPermissionDesignerAsync(cancellationToken);
+			CompleteOperation(false, "Role saved");
 		}
 		catch (Exception exception) when (exception is not OperationCanceledException) { FailOperation(exception, "Role could not be saved"); }
 	}
@@ -96,7 +101,14 @@ public sealed partial class RoleViewModel : BaseViewModel, IDisposable
 	private async Task ToggleActiveAsync(CancellationToken cancellationToken)
 	{
 		BeginOperation(IsActive ? "Deactivating role" : "Activating role");
-		try { var saved = await _service.SetActiveAsync(Id, _version, !IsActive, cancellationToken); Replace(saved); Apply(saved); CompleteOperation(false, "Role updated"); }
+		try
+		{
+			var saved = await _service.SetActiveAsync(Id, _version, !IsActive, cancellationToken);
+			Replace(saved);
+			Apply(saved);
+			await RefreshPermissionDesignerAsync(cancellationToken);
+			CompleteOperation(false, "Role updated");
+		}
 		catch (Exception exception) when (exception is not OperationCanceledException) { FailOperation(exception, "Role could not be updated"); }
 	}
 

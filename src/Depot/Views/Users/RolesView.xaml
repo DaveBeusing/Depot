@@ -149,6 +149,41 @@
 									</ListBox.ItemTemplate>
 								</ListBox>
 
+								<TextBlock Margin="0,14,0,0" Text="Effective permission impact" Style="{StaticResource WorkspaceSectionTitleStyle}"/>
+								<TextBlock Margin="0,3,0,8" Text="Direct permissions above are stored on this role. Effective permissions below are the persisted union of all active assigned roles for each affected user; AuthorizationService remains the runtime authority." Style="{StaticResource CaptionStyle}" TextWrapping="Wrap"/>
+								<DataGrid ItemsSource="{Binding EffectivePermissionUsers}"
+										  SelectedItem="{Binding SelectedEffectivePermissionUser}"
+										  Style="{StaticResource AppDataGridCompactStyle}"
+										  AutoGenerateColumns="False"
+										  IsReadOnly="True"
+										  MaxHeight="180"
+										  VirtualizingPanel.IsVirtualizing="True"
+										  VirtualizingPanel.VirtualizationMode="Recycling">
+									<DataGrid.Columns>
+										<DataGridTextColumn Header="User" Binding="{Binding DisplayName}" Width="*"/>
+										<DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="70"/>
+										<DataGridTextColumn Header="Assigned roles" Binding="{Binding AssignedRoleSummary}" Width="1.5*"/>
+										<DataGridTextColumn Header="Effective" Binding="{Binding EffectivePermissionCount}" Width="80" ElementStyle="{StaticResource AppDataGridNumericTextStyle}"/>
+									</DataGrid.Columns>
+								</DataGrid>
+								<TextBlock Margin="0,8,0,0" Text="{Binding EffectivePermissionSummary}" Style="{StaticResource CaptionStyle}" TextWrapping="Wrap"/>
+								<ListBox Margin="0,6,0,0"
+										 ItemsSource="{Binding SelectedEffectivePermissions}"
+										 Style="{StaticResource AppListBoxStyle}"
+										 MaxHeight="160"
+										 VirtualizingPanel.IsVirtualizing="True"
+										 VirtualizingPanel.VirtualizationMode="Recycling">
+									<ListBox.ItemTemplate>
+										<DataTemplate>
+											<Grid Margin="0,2">
+												<Grid.ColumnDefinitions><ColumnDefinition Width="115"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+												<TextBlock Text="{Binding GroupName}" Style="{StaticResource CaptionStyle}"/>
+												<TextBlock Grid.Column="1" Text="{Binding Name}" TextTrimming="CharacterEllipsis"/>
+											</Grid>
+										</DataTemplate>
+									</ListBox.ItemTemplate>
+								</ListBox>
+
 								<WrapPanel Margin="0,14,0,0" HorizontalAlignment="Right">
 									<Button Command="{Binding NewCommand}" Content="New custom role" Style="{StaticResource SecondaryButtonStyle}"/>
 									<Button Margin="8,0,0,0" Command="{Binding SaveCommand}" Content="Save role" Style="{StaticResource PrimaryButtonStyle}"/>

@@ -38,6 +38,13 @@ public sealed class RoleService
 		return _roles.ListAllWithPermissionsAsync(cancellationToken);
 	}
 
+	public Task<IReadOnlyList<RoleEffectivePermissionUserProjection>> GetEffectivePermissionUsersAsync(long roleId, CancellationToken cancellationToken)
+	{
+		_authorization.RequirePermission(ApplicationPermission.RolesView);
+		if (roleId <= 0) throw new ArgumentOutOfRangeException(nameof(roleId));
+		return _roles.GetRoleEffectivePermissionUsersAsync(roleId, cancellationToken);
+	}
+
 	public Task<IReadOnlyList<Role>> ListAssignableAsync(CancellationToken cancellationToken)
 	{
 		_authorization.RequirePermission(ApplicationPermission.UsersManage);

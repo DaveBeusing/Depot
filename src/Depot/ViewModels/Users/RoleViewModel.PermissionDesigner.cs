@@ -19,11 +19,14 @@ public sealed partial class RoleViewModel
 	private RolePermissionGroupSelectionViewModel? _selectedPermissionGroup;
 	private PermissionSelectionViewModel? _selectedDesignerPermission;
 	private string _permissionDesignerStatus = "Select a role to inspect direct permissions.";
+	private RoleEffectivePermissionUserProjection? _selectedEffectivePermissionUser;
 
 	public ObservableCollection<Role> DesignerRoles { get; } = [];
 	public ObservableCollection<RolePermissionMatrixRow> PermissionMatrixRows { get; } = [];
 	public ObservableCollection<RolePermissionGroupSelectionViewModel> PermissionGroups { get; } = [];
 	public ObservableCollection<RolePermissionAdvisory> PermissionAdvisories { get; } = [];
+	public ObservableCollection<RoleEffectivePermissionUserProjection> EffectivePermissionUsers { get; } = [];
+	public ObservableCollection<RolePermissionDescriptor> SelectedEffectivePermissions { get; } = [];
 
 	public AsyncRelayCommand<Role> SelectMatrixRoleCommand { get; private set; } = null!;
 
@@ -53,6 +56,22 @@ public sealed partial class RoleViewModel
 			OnPropertyChanged(nameof(SelectedPermissionCode));
 		}
 	}
+
+	public RoleEffectivePermissionUserProjection? SelectedEffectivePermissionUser
+	{
+		get => _selectedEffectivePermissionUser;
+		set
+		{
+			if (ReferenceEquals(_selectedEffectivePermissionUser, value)) return;
+			_selectedEffectivePermissionUser = value;
+			OnPropertyChanged();
+			RefreshSelectedEffectivePermissions();
+		}
+	}
+
+	public string EffectivePermissionSummary => SelectedEffectivePermissionUser is null
+		? "Select an affected user to inspect the effective union of all active assigned roles."
+		: $"{SelectedEffectivePermissionUser.DisplayName}: {SelectedEffectivePermissionUser.EffectivePermissionCount} effective permissions from {SelectedEffectivePermissionUser.AssignedRoles.Count} assigned role(s).";
 
 	public string SelectedPermissionTitle => SelectedDesignerPermission?.Name ?? "Select a permission";
 	public string SelectedPermissionDescription => SelectedDesignerPermission?.Description ?? "Choose a permission to inspect its capability meaning.";
@@ -99,7 +118,15 @@ public sealed partial class RoleViewModel
 		{
 			var role = DesignerRoles.FirstOrDefault(value => value.Id == selectedRoleId.Value);
 			if (role is not null)
+			{
 				Apply(role);
+				await LoadEffectivePermissionImpactAsync(role.Id, token);
+			}
+		}
+		else
+		{
+			EffectivePermissionUsers.Clear();
+			SelectedEffectivePermissionUser = null;
 		}
 		RefreshPermissionDesignerSelection();
 	}
@@ -110,6 +137,39 @@ public sealed partial class RoleViewModel
 		_selectedRole = Roles.FirstOrDefault(value => value.Id == role.Id) ?? role;
 		OnPropertyChanged(nameof(SelectedRole));
 		Apply(detailed);
+		await LoadEffectivePermissionImpactAsync(detailed.Id, token);
+	}
+
+	private async Task LoadEffectivePermissionImpactAsync(long roleId, CancellationToken token)
+	{
+		var selectedUserId = SelectedEffectivePermissionUser?.UserId;
+		var users = await _service.GetEffectivePermissionUsersAsync(roleId, token);
+		CollectionSynchronizer.Replace(EffectivePermissionUsers, users);
+		SelectedEffectivePermissionUser = selectedUserId.HasValue
+			? EffectivePermissionUsers.FirstOrDefault(value => value.UserId == selectedUserId.Value) ?? EffectivePermissionUsers.FirstOrDefault()
+			: EffectivePermissionUsers.FirstOrDefault();
+		OnPropertyChanged(nameof(EffectivePermissionSummary));
+	}
+
+	private void RefreshSelectedEffectivePermissions()
+	{
+		var definitions = PermissionCatalog.Definitions.ToDictionary(value => value.Permission);
+		var descriptors = SelectedEffectivePermissionUser?.EffectivePermissions
+			.Where(definitions.ContainsKey)
+			.Select(permission => RolePermissionDesignerProjector.Describe(definitions[permission]))
+			.OrderBy(value => value.Group)
+			.ThenBy(value => value.Module, StringComparer.OrdinalIgnoreCase)
+			.ThenBy(value => value.Action, StringComparer.OrdinalIgnoreCase)
+			.ToArray() ?? [];
+		CollectionSynchronizer.Replace(SelectedEffectivePermissions, descriptors);
+		OnPropertyChanged(nameof(EffectivePermissionSummary));
+	}
+
+	private void ClearEffectivePermissionImpact()
+	{
+		EffectivePermissionUsers.Clear();
+		SelectedEffectivePermissionUser = null;
+		SelectedEffectivePermissions.Clear();
 	}
 
 	private void RefreshPermissionDesignerSelection()

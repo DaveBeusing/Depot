@@ -154,3 +154,17 @@ public static class RolePermissionDesignerProjector
 	private static bool StartsWithAny(string value, params string[] prefixes) =>
 		prefixes.Any(prefix => value.StartsWith(prefix, StringComparison.Ordinal));
 }
+
+
+public sealed record RoleEffectivePermissionUserProjection(
+	long UserId,
+	string DisplayName,
+	string Email,
+	bool IsActive,
+	IReadOnlyList<Role> AssignedRoles,
+	IReadOnlySet<ApplicationPermission> EffectivePermissions)
+{
+	public string AssignedRoleSummary => AssignedRoles.Count == 0 ? "No roles" : string.Join(", ", AssignedRoles.Select(value => value.Name));
+	public int EffectivePermissionCount => EffectivePermissions.Count;
+	public string Status => IsActive ? "Active" : "Inactive";
+}

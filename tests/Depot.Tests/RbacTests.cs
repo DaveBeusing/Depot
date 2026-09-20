@@ -138,6 +138,39 @@ public sealed class RbacTests : IDisposable
 	}
 
 	[Fact]
+	public async Task DesignerEffectiveImpactKeepsDirectRoleSaveParityAndShowsUnionAcrossAssignedRoles()
+	{
+		var (roles, service, _) = await CreateRoleServiceAsync();
+		var custom = await service.SaveAsync(new Role
+		{
+			Code = "SECURITY_REVIEW",
+			Name = "Security Review",
+			IsActive = true,
+			Permissions = [ApplicationPermission.RolesView, ApplicationPermission.SettingsView]
+		}, CancellationToken.None);
+		var persisted = await roles.GetByIdAsync(custom.Id, CancellationToken.None) ?? throw new InvalidOperationException();
+		Assert.Equal(
+			[ApplicationPermission.RolesView, ApplicationPermission.SettingsView],
+			persisted.Permissions.OrderBy(PermissionCatalog.Code, StringComparer.Ordinal).ToArray());
+
+		var userId = await CreateUserAsync("designer-impact@depot.test");
+		await _data.ExecuteAsync(
+			"INSERT INTO UserRoles (UserId, RoleId) VALUES ($UserId, $RoleId);",
+			CancellationToken.None,
+			new DatabaseParameter("$UserId", userId),
+			new DatabaseParameter("$RoleId", custom.Id));
+		await AssignSystemRoleAsync(userId, SystemRoleCatalog.PurchasingCode);
+
+		var impact = Assert.Single(await service.GetEffectivePermissionUsersAsync(custom.Id, CancellationToken.None));
+		Assert.Equal(userId, impact.UserId);
+		Assert.Equal(2, impact.AssignedRoles.Count);
+		Assert.Contains(ApplicationPermission.RolesView, impact.EffectivePermissions);
+		Assert.Contains(ApplicationPermission.SettingsView, impact.EffectivePermissions);
+		Assert.Contains(ApplicationPermission.PurchaseOrdersCreate, impact.EffectivePermissions);
+		Assert.Equal(custom.Id, (await service.ListDesignerRolesAsync(CancellationToken.None)).Single(value => value.Code == "SECURITY_REVIEW").Id);
+	}
+
+	[Fact]
 	public async Task Version27MigrationMapsEveryLegacyRoleWithoutRightsLoss()
 	{
 		await _data.ExecuteAsync("DELETE FROM UserRoles;", CancellationToken.None);
