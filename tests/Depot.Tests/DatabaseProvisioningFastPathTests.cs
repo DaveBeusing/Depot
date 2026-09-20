@@ -54,6 +54,39 @@ public sealed class DatabaseProvisioningFastPathTests : IDisposable
 	}
 
 	[Fact]
+	public void MissingUnversionedItemStructureFallsBackAndRepairs()
+	{
+		DatabaseProvisioningService.Initialize(_factory);
+		Execute("DROP TABLE StockMovementTracking;");
+
+		Assert.False(DatabaseSchemaStateInspector.IsCurrent(_factory));
+		Assert.Equal(DatabaseProvisioningPath.FullProvisioning, DatabaseProvisioningService.InitializeCore(_factory));
+		Assert.True(DatabaseSchemaStateInspector.IsCurrent(_factory));
+	}
+
+	[Fact]
+	public void MissingReferenceDefaultFallsBackAndRepairs()
+	{
+		DatabaseProvisioningService.Initialize(_factory);
+		Execute("DELETE FROM UnitsOfMeasure WHERE Name='EA';");
+
+		Assert.False(DatabaseSchemaStateInspector.IsCurrent(_factory));
+		Assert.Equal(DatabaseProvisioningPath.FullProvisioning, DatabaseProvisioningService.InitializeCore(_factory));
+		Assert.True(DatabaseSchemaStateInspector.IsCurrent(_factory));
+	}
+
+	[Fact]
+	public void StaleSystemRolePermissionsFallBackAndRepair()
+	{
+		DatabaseProvisioningService.Initialize(_factory);
+		Execute("DELETE FROM RolePermissions WHERE RoleId=(SELECT Id FROM Roles WHERE Code='ADMINISTRATOR') AND PermissionId=(SELECT MIN(Id) FROM Permissions);");
+
+		Assert.False(DatabaseSchemaStateInspector.IsCurrent(_factory));
+		Assert.Equal(DatabaseProvisioningPath.FullProvisioning, DatabaseProvisioningService.InitializeCore(_factory));
+		Assert.True(DatabaseSchemaStateInspector.IsCurrent(_factory));
+	}
+
+	[Fact]
 	public void FutureFeatureVersionIsNeverAcceptedByFastPath()
 	{
 		DatabaseProvisioningService.Initialize(_factory);

@@ -40,6 +40,8 @@ internal static class ItemMasterDataSchema
 		"Notes"
 	];
 
+	internal static IReadOnlyList<string> RequiredColumns => Columns;
+
 	public static void Ensure(IDatabaseConnectionFactory connectionFactory)
 	{
 		using var connection = connectionFactory.CreateConnection();
