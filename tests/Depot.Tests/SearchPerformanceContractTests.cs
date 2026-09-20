@@ -33,6 +33,7 @@ public sealed class SearchPerformanceContractTests
 	}
 
 	[Theory]
+	[Trait("QualityGate", "Performance")]
 	[InlineData(10_000)]
 	[InlineData(100_000)]
 	public void SearchShapeBenchmarkCapturesExactPrefixAndContainsCosts(int rowCount)
