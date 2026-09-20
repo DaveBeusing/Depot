@@ -42,3 +42,10 @@ The measured high-fan-out providers now use dedicated bounded projections instea
 | Accounts Payable | 8–56 | 1 |
 
 Per-status Top-N semantics are preserved by stable `ROW_NUMBER() OVER (PARTITION BY Status ...)` bounds. These reads do not execute `COUNT(*)` page totals. Inventory Counts carries creator and completion metadata in the projection, removing its header N+1. Payables carries the match-exception flag through an `EXISTS` projection, so no document/line detail load is required.
+
+
+## Progressive Home evidence
+
+Home starts the dashboard and My Work operations in parallel. Each result is now applied independently as soon as its task completes, guarded by the same `LatestRequestLease.IsCurrent` generation check. A stale generation therefore cannot overwrite any already-current block.
+
+The first successfully applied block writes a structural `home firstContent=<block> elapsedMs=<value>` entry to `performance.log`. This enables local and remote p95 validation without logging business data. Manual shell refresh continues to invoke the complete `DashboardViewModel.LoadAsync` path; the My Work panel's own refresh remains intentionally scoped to My Work only.

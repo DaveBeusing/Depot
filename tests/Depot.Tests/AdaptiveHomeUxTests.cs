@@ -98,6 +98,30 @@ public sealed class AdaptiveHomeUxTests
 		Assert.Contains("Some work sources are unavailable", File.ReadAllText(Path.Combine(root, "src", "Depot", "ViewModels", "DashboardViewModel.cs")), StringComparison.Ordinal);
 	}
 
+	[Fact]
+	public void HomeAppliesDashboardAndMyWorkProgressivelyWithLatestRequestGuards()
+	{
+		var root = FindRepositoryRoot();
+		var source = File.ReadAllText(Path.Combine(root, "src", "Depot", "ViewModels", "DashboardViewModel.cs"));
+
+		Assert.Contains("ApplyDashboardWhenReadyAsync", source, StringComparison.Ordinal);
+		Assert.Contains("ApplyMyWorkWhenReadyAsync", source, StringComparison.Ordinal);
+		Assert.Contains("Task.WhenAll(dashboardApplyTask, myWorkApplyTask)", source, StringComparison.Ordinal);
+		Assert.DoesNotContain("Task.WhenAll(dashboardTask, myWorkTask)", source, StringComparison.Ordinal);
+		Assert.Contains("if (!request.IsCurrent) return;", source, StringComparison.Ordinal);
+		Assert.Contains("progress.RecordFirstContent(\"dashboard\")", source, StringComparison.Ordinal);
+		Assert.Contains("progress.RecordFirstContent(\"my-work\")", source, StringComparison.Ordinal);
+	}
+
+	[Fact]
+	public void HomeManualShellRefreshStillReloadsTheWholeDashboard()
+	{
+		var root = FindRepositoryRoot();
+		var shell = File.ReadAllText(Path.Combine(root, "src", "Depot", "ViewModels", "MainViewModel.cs"));
+		Assert.Contains("AddDirect(ApplicationPermission.DashboardView, \"Dashboard\"", shell, StringComparison.Ordinal);
+		Assert.Contains("(viewModel, token) => viewModel.LoadAsync(token)", shell, StringComparison.Ordinal);
+	}
+
 	private static string FindRepositoryRoot()
 	{
 		var directory = new DirectoryInfo(AppContext.BaseDirectory);
