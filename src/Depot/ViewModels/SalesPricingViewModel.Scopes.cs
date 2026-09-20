@@ -81,6 +81,7 @@ public sealed partial class SalesPricingViewModel
 		var saved = await _pricing.SaveRegionAsync(RegionDraft, token);
 		await LoadScopedPricingAsync(token);
 		SelectedRegionDefinition = Regions.FirstOrDefault(value => value.Id == saved.Id);
+		await LoadPricingStrategyAsync(token);
 		CompleteOperation(false, $"Sales region {saved.Name} saved");
 	}
 
@@ -89,6 +90,7 @@ public sealed partial class SalesPricingViewModel
 		if (SelectedCustomer is null) return;
 		await _pricing.AssignCustomerAsync(SelectedCustomer.Id, null, token);
 		await LoadCustomerAssignmentAsync(token);
+		await LoadPricingStrategyAsync(token);
 		CompleteOperation(false, $"Automatic pricing enabled for {SelectedCustomer.Name}");
 	}
 

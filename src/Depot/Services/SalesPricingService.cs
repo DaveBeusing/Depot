@@ -33,7 +33,8 @@ public sealed class SalesPricingService
 	public bool CanManage => _authorization.HasPermission(ApplicationPermission.SalesPricingManage);
 	public Task<IReadOnlyList<SalesPriceList>> ListAsync(CancellationToken token = default) { _authorization.RequirePermission(ApplicationPermission.SalesPricingView); return _prices.ListAsync(token); }
 	public Task<IReadOnlyList<SalesRegion>> ListRegionsAsync(CancellationToken token = default) { _authorization.RequirePermission(ApplicationPermission.SalesPricingView); return _prices.ListRegionsAsync(token); }
-	public Task<CustomerPriceListAssignment?> GetCustomerAssignmentAsync(long customerId, CancellationToken token = default) => _prices.GetCustomerAssignmentAsync(customerId, token);
+	public Task<IReadOnlyList<CustomerPriceListAssignment>> ListCustomerAssignmentsAsync(CancellationToken token = default) { _authorization.RequirePermission(ApplicationPermission.SalesPricingView); return _prices.ListCustomerAssignmentsAsync(token); }
+	public Task<CustomerPriceListAssignment?> GetCustomerAssignmentAsync(long customerId, CancellationToken token = default) { _authorization.RequirePermission(ApplicationPermission.SalesPricingView); return _prices.GetCustomerAssignmentAsync(customerId, token); }
 
 	public async Task<SalesPriceResult?> ResolveAsync(long customerId, long itemId, DateTime effectiveDate, CancellationToken token = default)
 	{
@@ -51,6 +52,21 @@ public sealed class SalesPricingService
 		var normalizedCurrency = currency.Trim().ToUpperInvariant();
 		if (normalizedCurrency.Length != 3) throw new ArgumentException("Currency must be a three-letter code.", nameof(currency));
 		return await _prices.ResolveAsync(customerId, itemId, effectiveDate.Date, normalizedCurrency, token);
+	}
+
+	public async Task<SalesPriceResolutionPreview> PreviewResolutionAsync(long? customerId, long itemId, DateTime effectiveDate, string currency, CancellationToken token = default)
+	{
+		_authorization.RequirePermission(ApplicationPermission.SalesPricingView);
+		if (customerId is <= 0) throw new ArgumentOutOfRangeException(nameof(customerId));
+		if (itemId <= 0) throw new ArgumentOutOfRangeException(nameof(itemId));
+		var normalizedCurrency = currency.Trim().ToUpperInvariant();
+		if (normalizedCurrency.Length != 3 || !normalizedCurrency.All(char.IsLetter))
+			throw new ArgumentException("Currency must be a three-letter code.", nameof(currency));
+		var date = effectiveDate.Date;
+		var candidates = customerId is long id
+			? await _prices.ResolveCandidatesAsync(id, itemId, date, normalizedCurrency, token)
+			: await _prices.ResolveGlobalCandidatesAsync(itemId, date, normalizedCurrency, token);
+		return new SalesPriceResolutionPreview(customerId, itemId, date, normalizedCurrency, candidates);
 	}
 
 	public async Task<SalesPriceList> SaveAsync(SalesPriceList value, CancellationToken token = default)

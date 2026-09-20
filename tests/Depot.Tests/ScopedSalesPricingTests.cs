@@ -155,6 +155,8 @@ public sealed class ScopedSalesPricingTests : IAsyncLifetime
 		await fixture.Pricing.AssignCustomerAsync(customer.Id, staged.Id);
 		staged.IsActive = true;
 		staged = await fixture.Pricing.SaveAsync(staged);
+		var assignments = await fixture.Pricing.ListCustomerAssignmentsAsync();
+		Assert.Contains(assignments, value => value.CustomerId == customer.Id && value.SalesPriceListId == staged.Id);
 
 		await fixture.Pricing.AssignCustomerAsync(customer.Id, null);
 
@@ -194,7 +196,14 @@ public sealed class ScopedSalesPricingTests : IAsyncLifetime
 		readOnlyAuthorization.SignIn(new User { Id = fixture.AdministratorId, Email = "read-only@depot.test", IsActive = true }, [ApplicationPermission.SalesPricingView]);
 		var auditRepository = new AuditRepository(fixture.Data);
 		var readOnlyPricing = new SalesPricingService(new DatabaseTransactionRunner(fixture.Data), new SalesPriceListRepository(fixture.Data), auditRepository, new AuditService(auditRepository, readOnlyAuthorization), readOnlyAuthorization);
+		_ = await readOnlyPricing.ListCustomerAssignmentsAsync();
 		await Assert.ThrowsAsync<UnauthorizedAccessException>(() => readOnlyPricing.SaveAsync(new SalesPriceList { Code = "DENIED", Name = "Denied", Scope = SalesPriceListScope.Global }));
+
+		var noViewAuthorization = new AuthorizationService();
+		noViewAuthorization.SignIn(new User { Id = fixture.AdministratorId, Email = "no-pricing-view@depot.test", IsActive = true }, []);
+		var noViewPricing = new SalesPricingService(new DatabaseTransactionRunner(fixture.Data), new SalesPriceListRepository(fixture.Data), auditRepository, new AuditService(auditRepository, noViewAuthorization), noViewAuthorization);
+		await Assert.ThrowsAsync<UnauthorizedAccessException>(() => noViewPricing.ListCustomerAssignmentsAsync());
+		await Assert.ThrowsAsync<UnauthorizedAccessException>(() => noViewPricing.PreviewResolutionAsync(null, fixture.ItemA, DateTime.Today, "EUR"));
 	}
 
 	[Fact]
@@ -239,6 +248,34 @@ public sealed class ScopedSalesPricingTests : IAsyncLifetime
 		var historical = await fixture.Orders.GetByIdAsync(submitted.Id) ?? throw new InvalidOperationException();
 		AssertPriceSource(Assert.Single(historical.Lines), 125m, SalesPriceListScope.Global, "Global Standard");
 		await Assert.ThrowsAsync<InvalidOperationException>(() => fixture.Orders.SaveDraftAsync(historical));
+	}
+
+	[Fact]
+	public async Task ResolutionPreviewUsesTheSameCustomerRegionGlobalCandidatesAsRuntimeResolution()
+	{
+		var fixture = Fixture;
+		var region = await fixture.Pricing.SaveRegionAsync(new SalesRegion { Code = "PREVIEW", Name = "Preview Region" });
+		var customer = await fixture.Customers.SaveAsync(new Customer { Name = "Preview Customer", Currency = "EUR", SalesRegionId = region.Id });
+		var global = await fixture.CreateListAsync("PREVIEW-G", "Preview Global", SalesPriceListScope.Global);
+		var regional = await fixture.CreateListAsync("PREVIEW-R", "Preview Regional", SalesPriceListScope.Region, region.Id);
+		var customerList = await fixture.CreateListAsync("PREVIEW-C", "Preview Customer", SalesPriceListScope.Customer, active: false);
+		customerList = await fixture.AssignAndActivateAsync(customer.Id, customerList);
+		await fixture.AddPriceAsync(global.Id, fixture.ItemA, 120m);
+		await fixture.AddPriceAsync(regional.Id, fixture.ItemA, 110m);
+		await fixture.AddPriceAsync(customerList.Id, fixture.ItemA, 100m);
+
+		var runtime = await fixture.Pricing.ResolveAsync(customer.Id, fixture.ItemA, 1, DateTime.Today, "EUR");
+		var preview = await fixture.Pricing.PreviewResolutionAsync(customer.Id, fixture.ItemA, DateTime.Today, "EUR");
+		var globalOnly = await fixture.Pricing.PreviewResolutionAsync(null, fixture.ItemA, DateTime.Today, "EUR");
+
+		Assert.NotNull(runtime);
+		Assert.Equal(runtime, preview.Effective);
+		Assert.Equal([SalesPriceListScope.Customer, SalesPriceListScope.Region, SalesPriceListScope.Global], preview.Candidates.Select(value => value.Scope).ToArray());
+		Assert.Equal(customerList.Id, preview.Customer?.PriceListId);
+		Assert.Equal(regional.Id, preview.Region?.PriceListId);
+		Assert.Equal(global.Id, preview.Global?.PriceListId);
+		Assert.Equal(global.Id, globalOnly.Effective?.PriceListId);
+		Assert.Single(globalOnly.Candidates);
 	}
 
 	public async Task InitializeAsync()

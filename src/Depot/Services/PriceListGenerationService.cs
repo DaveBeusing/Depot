@@ -24,6 +24,7 @@ public sealed class PriceListGenerationService
 	public bool CanManageExchangeRates=>_authorization.HasPermission(ApplicationPermission.SalesPricingManage);
 
 	public Task<IReadOnlyList<PricingExchangeRate>> ListExchangeRatesAsync(CancellationToken token=default){_authorization.RequirePermission(ApplicationPermission.SalesPricingView);return _costRepository.ListExchangeRatesAsync(token);}
+	public async Task<ItemCostCalculationResult> PreviewCostAsync(long itemId,DateTime effectiveDate,CancellationToken token=default){RequirePreview();if(itemId<=0)throw new ArgumentOutOfRangeException(nameof(itemId));return await _costs.CalculateAsync(itemId,effectiveDate.Date,null,token);}
 	public async Task<PricingExchangeRate> SaveExchangeRateAsync(PricingExchangeRate value,CancellationToken token=default)
 	{
 		if(!CanManageExchangeRates)throw new UnauthorizedAccessException("Managing pricing exchange rates requires sales pricing management permission.");NormalizeExchangeRate(value);return await _transactions.ExecuteAsync(async(transaction,ct)=>{var before=value.Id==0?null:await _costRepository.GetExchangeRateAsync(transaction,value.Id,ct)??throw new InvalidOperationException("Pricing exchange rate was not found.");var saved=await _costRepository.SaveExchangeRateAsync(transaction,value,ct);await _auditEntries.CreateAsync(transaction,before is null?_audit.CreateCreatedEntry(saved.Id,saved):_audit.CreateUpdatedEntry(saved.Id,before,saved),ct);return saved;},token);
