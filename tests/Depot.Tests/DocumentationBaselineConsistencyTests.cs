@@ -29,6 +29,7 @@ public sealed class DocumentationBaselineConsistencyTests
 			$"- Security Events feature schema: **{SecurityEventSchemaMigration.CurrentVersion}**",
 			$"- User Preferences feature schema: **{UserPreferenceSchemaMigration.CurrentVersion}**",
 			$"- Document Templates feature schema: **{DocumentTemplateSchemaMigration.CurrentVersion}**",
+			$"- Enterprise Identity feature schema: **{EnterpriseIdentitySchemaMigration.CurrentVersion}**",
 			$"- Help manifest: **{helpVersion}**"
 		};
 
@@ -48,7 +49,8 @@ public sealed class DocumentationBaselineConsistencyTests
 			$"- User Sessions feature schema: `{UserSessionSchemaMigration.CurrentVersion}`",
 			$"- Security Events feature schema: `{SecurityEventSchemaMigration.CurrentVersion}`",
 			$"- User Preferences feature schema: `{UserPreferenceSchemaMigration.CurrentVersion}`",
-			$"- Document Templates feature schema: `{DocumentTemplateSchemaMigration.CurrentVersion}`"
+			$"- Document Templates feature schema: `{DocumentTemplateSchemaMigration.CurrentVersion}`",
+			$"- Enterprise Identity feature schema: `{EnterpriseIdentitySchemaMigration.CurrentVersion}`"
 		]);
 
 		AssertMarkers(root, "docs/UserFacingChanges.md",
@@ -61,6 +63,7 @@ public sealed class DocumentationBaselineConsistencyTests
 			$"- Security Events schema: **{SecurityEventSchemaMigration.CurrentVersion}**",
 			$"- User Preferences schema: **{UserPreferenceSchemaMigration.CurrentVersion}**",
 			$"- Document Templates schema: **{DocumentTemplateSchemaMigration.CurrentVersion}**",
+			$"- Enterprise Identity feature schema: **{EnterpriseIdentitySchemaMigration.CurrentVersion}**",
 			$"- Help manifest: **{helpVersion}**"
 		]);
 
@@ -74,6 +77,7 @@ public sealed class DocumentationBaselineConsistencyTests
 			$"Security Events schema **{SecurityEventSchemaMigration.CurrentVersion}**",
 			$"User Preferences schema **{UserPreferenceSchemaMigration.CurrentVersion}**",
 			$"Document Templates schema **{DocumentTemplateSchemaMigration.CurrentVersion}**",
+			$"Enterprise Identity feature schema **{EnterpriseIdentitySchemaMigration.CurrentVersion}**",
 			$"Help manifest **{helpVersion}**"
 		]);
 
@@ -118,6 +122,48 @@ public sealed class DocumentationBaselineConsistencyTests
 	}
 
 	[Fact]
+	public void CanonicalStatusDoesNotRegressToHistoricalGovernanceProductivityOrFinanceHelpClaims()
+	{
+		var root = FindRepositoryRoot();
+		var current = File.ReadAllText(Path.Combine(root, "docs", "CurrentStatus.md"));
+		var roadmap = File.ReadAllText(Path.Combine(root, "docs", "Roadmap.md"));
+		var release = File.ReadAllText(Path.Combine(root, "docs", "Release1.0.md"));
+		var readiness = File.ReadAllText(Path.Combine(root, "docs", "ReleaseCandidateReadiness.md"));
+		var uiStatus = File.ReadAllText(Path.Combine(root, "docs", "UiUxRolloutStatus.md"));
+		var uiPackages = File.ReadAllText(Path.Combine(root, "docs", "UiUxRolloutWorkPackages.md"));
+		var financeFoundation = File.ReadAllText(Path.Combine(root, "src", "Depot", "Help", "finance", "foundation.md"));
+		var receivables = File.ReadAllText(Path.Combine(root, "src", "Depot", "Help", "finance", "receivables.md"));
+		var generalLedger = File.ReadAllText(Path.Combine(root, "src", "Depot", "Help", "finance", "general-ledger.md"));
+		var trackA = File.ReadAllText(Path.Combine(root, "docs", "TrackAAcceptanceClosure.md"));
+		var securityRoadmap = File.ReadAllText(Path.Combine(root, "docs", "SecurityRoadmap.md"));
+		var repositoryGovernance = File.ReadAllText(Path.Combine(root, "docs", "RepositoryGovernance.md"));
+
+		Assert.Contains("H1 Repository Governance: `BLOCKED`", current, StringComparison.Ordinal);
+		Assert.Contains("H1 Repository Governance: `BLOCKED`", roadmap, StringComparison.Ordinal);
+		Assert.Contains("H1 is currently `BLOCKED`", release, StringComparison.Ordinal);
+		Assert.Contains("H1 repository governance — reopened / BLOCKED", readiness, StringComparison.Ordinal);
+		Assert.DoesNotContain("H1 and H2 are closed", current, StringComparison.Ordinal);
+		Assert.DoesNotContain("H1 closed on 2026-09-17", roadmap, StringComparison.Ordinal);
+		Assert.DoesNotContain("H1 repository governance — PASS with live active ruleset evidence", readiness, StringComparison.Ordinal);
+		Assert.Contains("| H1 – Repository Governance & Required Gates | Implemented | `BLOCKED`", trackA, StringComparison.Ordinal);
+		Assert.DoesNotContain("| H1 – Repository Governance & Required Gates | Implemented | `PASS`", trackA, StringComparison.Ordinal);
+		Assert.Contains("- [ ] H1 live repository-governance required-check binding restored and revalidated", securityRoadmap, StringComparison.Ordinal);
+		Assert.DoesNotContain("H1 live repository-governance activation/evidence is closed", securityRoadmap, StringComparison.Ordinal);
+		Assert.DoesNotContain("## Required status checks\n## Required status checks", repositoryGovernance, StringComparison.Ordinal);
+
+		Assert.Contains("## Subsequent productivity integration — Complete", uiStatus, StringComparison.Ordinal);
+		Assert.Contains($"User Preferences schema **{UserPreferenceSchemaMigration.CurrentVersion}**", uiStatus, StringComparison.Ordinal);
+		Assert.DoesNotContain("## Deliberately deferred", uiStatus, StringComparison.Ordinal);
+		Assert.Contains("## Historical follow-up boundary", uiPackages, StringComparison.Ordinal);
+		Assert.DoesNotContain("remain outside this rollout because they require persisted preference/state architecture", uiPackages, StringComparison.Ordinal);
+
+		Assert.DoesNotContain("Not yet implemented as complete Finance packages", financeFoundation, StringComparison.Ordinal);
+		Assert.DoesNotContain("The next Finance package is **F3", financeFoundation, StringComparison.Ordinal);
+		Assert.DoesNotContain("Next is **F3", receivables, StringComparison.Ordinal);
+		Assert.DoesNotContain("Next: **F3", generalLedger, StringComparison.Ordinal);
+	}
+
+	[Fact]
 	public void CanonicalBaselineDocumentsDoNotPinDepotPreviewPatchVersions()
 	{
 		var root = FindRepositoryRoot();
@@ -134,7 +180,10 @@ public sealed class DocumentationBaselineConsistencyTests
 			"docs/Architecture.md",
 			"docs/ComplianceOverview.md",
 			"docs/DocumentationStatus.md",
-			"docs/UserFacingChanges.md"
+			"docs/UserFacingChanges.md",
+			"docs/Roadmap.md",
+			"docs/ReleaseCandidateReadiness.md",
+			"docs/UiUxRolloutStatus.md"
 		};
 
 		foreach (var relativePath in documents)

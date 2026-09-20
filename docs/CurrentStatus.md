@@ -1,8 +1,8 @@
 # Current project status
 
-Updated: 2026-09-19
+Updated: 2026-09-20
 
-Depot is on the `0.15.x-preview` development line. Finance, inventory, purchasing, sales, reporting, localization, notifications, Audit, persistent user sessions, operational security monitoring, enterprise identity/authentication and the completed Track C feature set are integrated in the repository.
+Depot is on the `0.15.x-preview` development line. Finance, inventory, purchasing, sales, reporting, localization, notifications, Audit, persistent user sessions, operational security monitoring, enterprise identity/authentication, persisted workspace productivity preferences and the current visual-designer set are integrated in the repository.
 
 ## Repository governance
 
@@ -16,7 +16,6 @@ Repository governance defines five stable aggregate GitHub Actions checks for `m
 
 The source-controlled ruleset template remains `.github/rulesets/MasterGovernance.json`. The live GitHub ruleset `23590604` is active and still enforces pull-request delivery plus deletion/non-fast-forward protection, but its required-status-check rule is currently absent after the temporary development-phase relaxation. **H1 is therefore reopened / BLOCKED until live enforcement is restored to the template and the live validator passes again.**
 
-## Release pipeline and production acceptance
 ## Release pipeline and production acceptance
 
 `.github/workflows/release-integrity.yml` remains the authoritative Source-to-Release path. It performs locked restore, warning-free Release build, regression testing, shared packaged publishing, channel validation, signing policy, manifest/hash/evidence generation and GitHub Release publication from the exact validated artifact.
@@ -88,7 +87,7 @@ AP-04 then closed the remaining DepotManager shipped-artifact evidence gap: PR #
 
 AP-06 completed the 1.0 technical reconciliation and found no currently known generic implementation defect or generic automated-evidence defect inside the advertised repository boundary.
 
-AP-07 was completed administratively by activating ruleset `23590604`. AP-08 reconciles that live H1 closure into the controlled acceptance baseline and confirms that the next remaining Track A gate is the real production-signed Stable RC.
+AP-07 historically activated ruleset `23590604`, and AP-08 recorded H1 as closed against that then-current live configuration. The live ruleset was later relaxed and currently omits the five aggregate required checks. The current governance section above supersedes that historical snapshot: H1 is reopened / `BLOCKED` until the intended live contract is restored and revalidated.
 
 PR #56 then repaired CI execution boundaries without changing runtime behavior or persisted schemas: repository-governance evidence parsing is valid again, the former combined Audit-Privacy-Sessions security shard is split into bounded Audit-Privacy and Sessions jobs, and PR release validation no longer duplicates the complete regression suites. Authoritative manual release/acceptance runs retain the full regression path.
 
@@ -114,7 +113,7 @@ Repository build/test/security/provider/conformance evidence proves the implemen
 
 ## Next steps
 
-H1 and H2 are closed. The next Track A acceptance action is H3: execute `scripts/release.ps1 -Channel Stable -AcceptanceOnly` from clean current `master` after the real production signing secrets and publisher-subject variable are configured in GitHub.
+H2 remains closed, but H1 must be restored first. Reapply the five aggregate required checks to live ruleset `23590604` and pass the fail-closed governance validation. Only after H1 returns to `PASS` is the next Track A acceptance action H3: execute `scripts/release.ps1 -Channel Stable -AcceptanceOnly` from clean current `master` with the real production signing secrets and publisher-subject variable configured in GitHub.
 
 A successful H3 run must retain `ProductionSigningAcceptance.json`, `ReleaseEvidence.json`, manifest/hashes and Stable RC test evidence. Until that run exists and passes, H3 remains `PRODUCTION_RC_REQUIRED`.
 

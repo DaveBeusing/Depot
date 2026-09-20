@@ -58,22 +58,19 @@ Depot does not seed a legal entity, chart, book, tax rate, accounting standard, 
 
 Country/currency validation in the generic core is structural syntax validation. Whether a code, tax registration, chart, rate source, account, posting profile, dunning policy, or accounting configuration is legally/operationally valid for a deployment remains a reference-data/localization/accounting responsibility.
 
-## Current package boundary
+## Current Finance package map
 
-Implemented:
+The current Finance platform integrates:
 
 - F0 — International Finance Foundation
 - F1 — General Ledger & Posting Engine
 - F2 — Accounts Receivable
-
-Not yet implemented as complete Finance packages:
-
 - F3 — Accounts Payable
 - F4 — Inventory Accounting
-- F5 — Banking/payments/reconciliation
-- F6 — financial reporting
-- F7 — localization/statutory packages
+- F5 — Banking, payments and reconciliation
+- F6 — Financial Reporting
+- F7 — Finance Localization
 
-The next Finance package is **F3 — Accounts Payable**.
+These packages share the same General Ledger, authorization, transaction and audit boundaries where applicable. Localization provides explicit configuration/capability/reference layers; it does not certify statutory accounting, tax, filing or retention compliance for a deployment.
 
-See also: [General Ledger and Posting](topic:finance.general-ledger), [Accounts Receivable](topic:finance.receivables), [Sales Invoices and Credit Notes](topic:sales.invoices), [Company Master Data](topic:administration.company), and [Audit Log](topic:administration.audit-log).
+See also: [General Ledger and Posting](topic:finance.general-ledger), [Accounts Receivable](topic:finance.receivables), [Accounts Payable](topic:finance.payables), [Inventory Accounting](topic:finance.inventory-accounting), [Banking and Payments](topic:finance.banking), [Financial Reporting](topic:finance.reporting), [Sales Invoices and Credit Notes](topic:sales.invoices), [Company Master Data](topic:administration.company), and [Audit Log](topic:administration.audit-log).

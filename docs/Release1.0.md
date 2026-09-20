@@ -1,12 +1,12 @@
 # Depot Version 1.0 Release Checklist
 
-Updated: 2026-09-19
+Updated: 2026-09-20
 
 ## Status
 
 - [ ] Ready for release
 
-Depot is on the `0.15.x-preview` line with Core database schema **30**, Sales feature schema **14**, Finance feature schema **9**, User Sessions schema **3**, Security Events schema **3**, User Preferences schema **2**, Document Templates schema **1**, and Help manifest **1.22**. `Directory.Build.props` is authoritative for the exact application patch/version. Checked items represent implemented technical controls/evidence only; they do not replace legal, accounting, accessibility, signing, localization or deployment acceptance.
+Depot is on the `0.15.x-preview` line with Core database schema **30**, Sales feature schema **14**, Finance feature schema **9**, User Sessions schema **3**, Security Events schema **3**, User Preferences schema **2**, Document Templates schema **1**, Enterprise Identity feature schema **2**, and Help manifest **1.22**. `Directory.Build.props` is authoritative for the exact application patch/version. Checked items represent implemented technical controls/evidence only; they do not replace legal, accounting, accessibility, signing, localization or deployment acceptance.
 
 ## Implemented Finance baseline
 
@@ -32,6 +32,9 @@ Depot is on the `0.15.x-preview` line with Core database schema **30**, Sales fe
 - [x] service-layer authorization and creator/approver controls where implemented
 - [x] immutable/correction-oriented retained business records and Audit evidence
 - [x] database-backed visual document-template versions and active-layout rollout across all supported Sales/warehouse PDFs
+- [x] User Preferences schema 2 workspace productivity: Saved Views, supported filter/column/sort state, grid density, Favorites, Recents and default landing
+- [x] permission-filtered Quick Open, Command Palette and Global Search
+- [x] bounded productive visual designers for posting flows, pricing strategy, financial-report mappings, bank reconciliation, localization hierarchy, role permissions and import mapping
 - [x] local backup/recovery controls and privacy export
 - [x] dependency locks, NuGet audit, SBOM/evidence and release-integrity workflows
 - [x] centralized per-item Customer → Region → Global Sales pricing with optional customer assignment and retained document source snapshots
@@ -42,7 +45,7 @@ Depot is on the `0.15.x-preview` line with Core database schema **30**, Sales fe
 - [x] immutable Security Event export projection with provider-neutral filtering/snapshot boundaries
 - [x] persisted Security Event export targets with durable at-least-once checkpoint/retry/suspension state
 - [x] bounded regression/quality/accessibility CI controls
-- [x] active `master` governance ruleset with stable aggregate CI/quality/security/packaged-E2E/provider gates
+- [x] source-controlled `master` governance contract and active ruleset PR/deletion/non-fast-forward protection; live aggregate required-check binding remains an H1 acceptance item
 - [x] one authoritative Source-to-Release workflow
 - [x] explicit Preview/Stable GitHub Release channels with tag/version consistency
 - [x] release manifest records versions, Core/feature schema versions, source SHA, channel and final artifact hashes
@@ -135,7 +138,7 @@ Technical controls and the evidence contract are implemented. The exact release 
 - [x] desktop accessibility technical/evidence boundary implemented
 - [x] Track A closure validator rejects incomplete H1–H5 evidence
 - [x] generic packaged lifecycle acceptance covers install/update/repair, rollback safety, manager self-update, uninstall data scopes and Windows shell integration
-- [x] active GitHub `master` governance/ruleset evidence retained as ruleset `23590604`
+- [ ] H1 live GitHub `master` ruleset `23590604` again requires all five aggregate gates and fresh fail-closed governance evidence passes
 - [ ] production backup/security ownership and vulnerability-reporting process accepted for the deployment
 - [ ] production Authenticode publisher identity and timestamp verified with a real Stable release candidate
 - [ ] certificate expiry/rotation and signing-recovery procedure accepted
@@ -173,7 +176,7 @@ Track A becomes production-accepted only after a controlled evidence file for th
 
 The read-only-first Depot 1.0 gap reconciliation is complete. [Depot 1.0 Release Candidate Readiness](ReleaseCandidateReadiness.md) records the classification and decision boundary.
 
-The 2026-09-19 stabilization repairs the known warning-free build, Help-baseline and shell-focus regressions and adds stronger regression coverage. H1 governance is currently reopened because the live ruleset no longer requires the five aggregate checks; restore and validate that contract before H3. H3/H4/H5 and deployment/legal acceptance remain separate blockers.
+The 2026-09-20 documentation reconciliation keeps the post-stabilization repository baseline aligned with current `master`: H1 governance is reopened because the live ruleset no longer requires the five aggregate checks, while persisted workspace productivity, the current designer set and Finance Help are implemented rather than deferred. Restore and validate H1 before H3. H3/H4/H5 and deployment/legal acceptance remain separate blockers.
 
 Do not open another generic feature/hardening package solely because the product has not yet reached 1.0. New repository repair work should be evidence-driven by a reproducible failing gate or RC acceptance finding.
 

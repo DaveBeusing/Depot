@@ -1,6 +1,6 @@
 # UI/UX Rollout Work Packages
 
-Updated: 2026-09-02
+Updated: 2026-09-20
 
 The repository-wide UI/UX migration packages defined for `ui-ux-rollout` have been implemented. The productive ERP workspaces were migrated or explicitly reviewed without introducing new business logic or database-schema changes.
 
@@ -120,20 +120,12 @@ Delivered outcomes:
 | Finance | Complete |
 | Administration | Complete |
 
-## Deliberately separate follow-up package
+## Historical follow-up boundary
 
-The following remain outside this rollout because they require persisted preference/state architecture rather than presentation-only migration:
+The original `ui-ux-rollout` intentionally excluded persisted preference/state architecture. That boundary is historical rather than a statement about the current product: the later productivity implementation is merged and now provides Saved Views, supported user-specific filter/column/sort state, grid density, Favorites, Recent workspaces, default landing and broader command/search productivity through User Preferences schema **2**.
 
-- persistent Saved Views;
-- user-specific filter state;
-- persisted column selection/order/width/sort;
-- user-selectable grid density;
-- saved workspaces/favorites;
-- user-specific default views;
-- broader command/search productivity features.
-
-These belong to `ERP Productivity – Saved Views, User Preferences & Advanced Grid Workspaces`.
+See [User Workspace Views](UserWorkspaceViews.md), [Workspace Productivity](WorkspaceProductivity.md) and [Track B Productivity Readiness](TrackBProductivityReadiness.md) for the current implemented contract.
 
 ## Verification boundary
 
-The implementation is complete on `ui-ux-rollout`. Final build, regression, accessibility, release-integrity and security-supply-chain results are evaluated on the final PR head before PR #15 is moved from Draft to Ready for Review.
+The `ui-ux-rollout` branch and PR #15 are historical delivery evidence. Current repository changes are validated by the current CI, quality, security, packaged-E2E and database-provider gates rather than by the old rollout branch state.

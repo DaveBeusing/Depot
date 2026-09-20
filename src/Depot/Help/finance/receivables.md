@@ -112,12 +112,6 @@ The standard Finance system role receives Receivables view/manage, payment post/
 
 ## Current package boundary
 
-Implemented Finance packages:
+Accounts Receivable remains the F2 customer-subledger boundary. The wider current Finance platform also includes Accounts Payable, Inventory Accounting, Banking, Financial Reporting and Finance Localization as separate workspaces/services; those capabilities do not become part of AR merely because they are now integrated in the product.
 
-- F0 — International Finance Foundation
-- F1 — General Ledger & Posting Engine
-- F2 — Accounts Receivable
-
-Next is **F3 — Accounts Payable**. Supplier invoices/open items, three-way matching, supplier payment execution, Inventory Accounting, Banking, financial statements, and jurisdiction-specific statutory/localization packages are not provided by F2.
-
-See also: [Finance Foundation](topic:finance.foundation), [General Ledger and Posting](topic:finance.general-ledger), [Sales Invoices and Credit Notes](topic:sales.invoices), and [Audit Log](topic:administration.audit-log).
+See also: [Finance Foundation](topic:finance.foundation), [General Ledger and Posting](topic:finance.general-ledger), [Accounts Payable](topic:finance.payables), [Inventory Accounting](topic:finance.inventory-accounting), [Banking and Payments](topic:finance.banking), [Financial Reporting](topic:finance.reporting), [Sales Invoices and Credit Notes](topic:sales.invoices), and [Audit Log](topic:administration.audit-log).

@@ -1,6 +1,6 @@
 # Depot 1.0 Release Candidate Readiness
 
-Updated: 2026-09-19
+Updated: 2026-09-20
 
 ## Purpose
 
@@ -10,7 +10,7 @@ It deliberately separates repository engineering defects from administrative, pr
 
 ## Audit result
 
-**2026-09-17 repository technical reconciliation: COMPLETE at that snapshot. 2026-09-19 stabilization: REPAIRED, requalification pending.**
+**2026-09-17 repository technical reconciliation: COMPLETE at that snapshot. 2026-09-19 stabilization: REPAIRED. 2026-09-20 canonical baseline: RECONCILED against current `master` and live governance evidence.**
 
 The subsequent UX merge sequence exposed three concrete repository-quality defects: a warning-as-error xUnit analyzer failure, a stale Help 1.21 test/documentation baseline after manifest 1.22, and inconsistent keyboard-focus treatment in shell chrome. This stabilization package repairs those defects and strengthens regression coverage so conflicting Help-manifest versions are rejected.
 
@@ -31,9 +31,9 @@ The audit uses six categories:
 
 ### Category 1 — repository implementation defects
 
-**No unresolved product defect remains from the 2026-09-19 stabilization changes once this package is green.**
+**No new runtime/product defect is identified by the 2026-09-20 documentation reconciliation.**
 
-The stabilization explicitly repairs the Document Designer xUnit analyzer failure, the stale Help-manifest assertion/documentation drift, and shell keyboard-focus inconsistencies. A green warning-free build and regression suite on the exact stabilization SHA are required before treating the repository as requalified.
+The earlier stabilization repaired the Document Designer xUnit analyzer failure, stale Help-manifest assertion/documentation drift and shell keyboard-focus inconsistencies. Current repository workflows remain authoritative for every current head; this document does not infer green status from historical runs.
 
 The audit rechecked the implemented boundaries that had previously produced concrete repair work: packaged executable replacement, electronic-invoice conformance, enterprise identity acceptance, durable Security Event delivery and DepotManager Windows integration. Those repairs are already represented by the merged repository state.
 
@@ -60,13 +60,13 @@ Production signing, real deployment restore and manual desktop accessibility can
 
 ### Category 3 — documentation/baseline defects
 
-The earlier lifecycle wording defect was repaired by the technical reconciliation package. AP-08 closes the subsequent H1 status drift created when repository ruleset `23590604` was activated after that audit.
+The earlier lifecycle wording defect was repaired by the technical reconciliation package. The 2026-09-20 baseline reconciliation fixes later drift that left historical H1-closed wording beside current live-governance evidence and also removes stale UI/productivity and Finance Help future-only statements.
 
 The canonical acceptance documents now distinguish:
 
 - **repository packaged lifecycle acceptance — implemented**;
-- **H1 repository governance — PASS with live active ruleset evidence**; and
-- **exact production-signed Stable RC lifecycle acceptance — still required under H3**.
+- **H1 repository governance — reopened / BLOCKED because the active live ruleset omits the five aggregate required checks**; and
+- **exact production-signed Stable RC lifecycle acceptance — still required under H3 after H1 is restored**.
 
 No persisted schema, product behavior or advertised feature scope changes are introduced by this reconciliation.
 
@@ -156,7 +156,8 @@ Do not open another generic feature or hardening package solely because Depot is
 
 The next work should follow actual evidence:
 
-- execute H3 production-signed Stable RC acceptance;
+- restore the five aggregate required checks on live ruleset `23590604` and revalidate H1;
+- after H1 returns to `PASS`, execute H3 production-signed Stable RC acceptance;
 - if that run exposes a reproducible repository defect, open a focused repair package;
 - otherwise continue to H4 deployment DR and H5 manual exact-RC accessibility acceptance;
 - keep demand-driven extensions outside 1.0 until their product promise is explicitly changed.

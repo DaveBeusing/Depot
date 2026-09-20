@@ -82,6 +82,6 @@ The service permission check is authoritative even if a UI control is visible.
 
 Financial Reporting uses existing F1-F5 accounting evidence. It does not create a second ledger, change posted journals, or invent missing historical FX data.
 
-Depot F6 does not claim HGB, IFRS, US-GAAP, tax-return, GoBD or other statutory certification for report layouts. Country-specific statutory presentation and filing behavior belongs to future localization/compliance packages.
+Depot F6 does not claim HGB, IFRS, US-GAAP, tax-return, GoBD or other statutory certification for report layouts. Finance Localization is implemented as an explicit capability/configuration/reference boundary, but country-specific statutory presentation or filing behavior still requires separately implemented behavior and qualified deployment acceptance.
 
 Related topics: [General Ledger and Posting](topic:finance.general-ledger), [Accounts Receivable](topic:finance.receivables), [Accounts Payable](topic:finance.payables), [Inventory Accounting](topic:finance.inventory-accounting), [Banking and Payments](topic:finance.banking), [Audit Log](topic:administration.audit-log).

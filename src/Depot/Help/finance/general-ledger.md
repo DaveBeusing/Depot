@@ -85,17 +85,15 @@ This prevents a posting from being committed without its required central audit 
 
 ## Current source integration
 
-F2 is the first production workflow package that consumes the F1 posting engine directly. With an active AR configuration:
+F2 Accounts Receivable was the first production workflow package to consume the F1 posting engine directly. The current platform also routes controlled Accounts Payable, Inventory Accounting and Banking posting consequences through the same General Ledger authority when their required configuration is active.
+
+For Accounts Receivable:
 
 - Sales Invoice posting produces a GL journal plus debit receivable open item;
 - Sales Credit Note posting produces a GL journal plus credit open item and can allocate against the original invoice;
 - customer payments and write-offs create controlled GL postings;
 - payment/write-off reversals use linked F1 reversal journals.
 
-The Finance > Receivables workspace exposes the F2 customer-subledger workflows. General Ledger remains an accounting service boundary; a standalone free-form GL workspace is not introduced by F2.
+Accounts Payable, Inventory Accounting and Banking retain their own service/subledger evidence and use the shared GL boundary rather than implementing a second ledger. Financial Reporting reads existing accounting evidence and does not post. Finance Localization configures effective capability/reference context and does not post by itself.
 
-Purchasing, Inventory, and Banking are not forced to post GL entries until their respective Finance integration packages provide complete behavior.
-
-Next: **F3 — Accounts Payable**, including supplier invoices/open items, matching, approval, and controlled GL integration.
-
-See also: [Finance Foundation](topic:finance.foundation), [Accounts Receivable](topic:finance.receivables), [Audit Log](topic:administration.audit-log), and [Sales Invoices and Credit Notes](topic:sales.invoices).
+See also: [Finance Foundation](topic:finance.foundation), [Accounts Receivable](topic:finance.receivables), [Accounts Payable](topic:finance.payables), [Inventory Accounting](topic:finance.inventory-accounting), [Banking and Payments](topic:finance.banking), [Financial Reporting](topic:finance.reporting), [Audit Log](topic:administration.audit-log), and [Sales Invoices and Credit Notes](topic:sales.invoices).

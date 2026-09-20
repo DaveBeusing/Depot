@@ -1,6 +1,6 @@
 # Depot Roadmap
 
-Updated: 2026-09-17
+Updated: 2026-09-20
 
 This roadmap describes product capabilities and acceptance work without coupling the repository to historical implementation tranche names. Track C repository work is complete through F5B, and the Depot 1.0 technical gap reconciliation is complete. Further repository work should be evidence-driven rather than another assumed feature tranche.
 
@@ -19,7 +19,10 @@ This roadmap describes product capabilities and acceptance work without coupling
 - [x] one authoritative Source-to-Release path with Preview/Stable channels and retained release evidence
 - [x] technical DR, accessibility and Track A production-closure evidence contracts
 - [x] packaged DepotManager lifecycle acceptance including real Windows registration/shortcut repair and cleanup
-- [x] active `master` governance through repository ruleset `23590604`
+- [x] persisted user workspace productivity with Saved Views, supported grid presentation state, Favorites, Recents and default landing
+- [x] permission-filtered Quick Open, Command Palette and Global Search
+- [x] bounded productive visual designers for document layout, posting flow, pricing strategy, reporting mapping, bank reconciliation, localization hierarchy, role permissions and import mapping
+- [x] source-controlled `master` governance contract plus active ruleset `23590604` PR/deletion/non-fast-forward protection; the missing live required-status-check bindings are tracked separately as H1 `BLOCKED`
 
 ### Costing and sales pricing
 
@@ -147,7 +150,7 @@ The 1.0 technical gap reconciliation found no currently known generic implementa
 - [ ] retention/export/backup/restore operating procedures and ownership
 - [ ] realistic customer-specific sizing including network latency, concurrent users and large reports/exports
 - [ ] keyboard-only, screen-reader and DPI accessibility acceptance
-- [x] active GitHub `master` governance/ruleset evidence retained as ruleset `23590604`
+- [ ] H1 live `master` governance restored so ruleset `23590604` requires all five aggregate gates and fresh validation evidence is retained
 - [ ] production Authenticode signing and exact-RC publisher/timestamp acceptance
 - [x] generic repository lifecycle acceptance for install/update/repair, rollback safety, manager self-update, uninstall scopes and Windows shell integration
 - [ ] exact production-signed Stable RC lifecycle acceptance with the final release artifacts
@@ -163,12 +166,12 @@ Open items are classified as:
 
 1. repository implementation defect — none currently known;
 2. missing automated test/evidence defect — none currently known for the advertised generic boundary;
-3. documentation/baseline defect — no known unresolved baseline defect after H1 closure reconciliation;
-4. repository administration requirement — H1 closed on 2026-09-17;
+3. documentation/baseline defect — the 2026-09-20 reconciliation corrects stale H1, UI/productivity and Help statements against current `master`;
+4. repository administration requirement — H1 is reopened / `BLOCKED` until the live ruleset again binds all five aggregate required checks and passes validation;
 5. production-RC/deployment/manual/legal acceptance — H3, H4, H5, deployment accounting/operations, sizing and qualified review;
 6. demand-driven future extension — capabilities outside the current 1.0 product promise.
 
-The immediate Track A action is H3: execute the production-signed Stable acceptance-only workflow and retain its evidence. Do not create another generic feature or hardening tranche solely because Depot has not reached 1.0. New repository work should be triggered by concrete failing evidence, a reproducible RC defect or an explicit product-scope change.
+The immediate Track A action is to restore and revalidate H1 live governance. After H1 returns to `PASS`, execute H3 production-signed Stable acceptance-only workflow and retain its evidence. Do not create another generic feature or hardening tranche solely because Depot has not reached 1.0. New repository work should be triggered by concrete failing evidence, a reproducible RC defect or an explicit product-scope change.
 
 ## Demand-driven extensions
 

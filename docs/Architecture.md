@@ -114,6 +114,7 @@ Document-layout zoom, snap, resize, undo/redo and dirty-state behavior remain sp
 - Security Events feature schema: **3**
 - User Preferences feature schema: **2**
 - Document Templates feature schema: **1**
+- Enterprise Identity feature schema: **2**
 - Application: **0.15.x-preview**
 - Help manifest: **1.22**
 
