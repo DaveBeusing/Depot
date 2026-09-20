@@ -139,6 +139,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		INotificationNavigationService notificationNavigationService)
 	{
 		_authorization = authorizationService;
+		AdministrationNavigationItems = AdministrationViewModel.CreateNavigationItems(authorizationService);
 		_session = sessionService;
 		_notificationNavigation = notificationNavigationService;
 		_fileDialogs = fileDialogService;
@@ -221,6 +222,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 	public RelayCommand NotificationCommand { get; }
 	public ConnectionStatusService ConnectionStatus { get; }
 	public NotificationSummaryViewModel NotificationSummaryViewModel { get; }
+	public IReadOnlyList<NavigationItem> AdministrationNavigationItems { get; }
 	public event EventHandler? LogoutRequested;
 	internal event Action<SalesViewModel>? SalesViewModelCreated;
 	internal SalesViewModel? CreatedSalesViewModel => _salesSearch.IsValueCreated ? _salesSearch.Value : null;

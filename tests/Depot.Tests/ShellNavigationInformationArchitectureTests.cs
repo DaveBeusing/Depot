@@ -67,6 +67,20 @@ public sealed class ShellNavigationInformationArchitectureTests
 	}
 
 	[Fact]
+	public void PaletteDiscoversAdministrationSectionsWithoutCreatingAdministrationWorkspace()
+	{
+		var root = FindRepositoryRoot();
+		var palette = File.ReadAllText(Path.Combine(root, "src", "Depot", "Views", "ShellPaletteWindow.xaml.cs"));
+		var main = File.ReadAllText(Path.Combine(root, "src", "Depot", "ViewModels", "MainViewModel.cs"));
+		var administration = File.ReadAllText(Path.Combine(root, "src", "Depot", "ViewModels", "Administration", "AdministrationViewModel.cs"));
+
+		Assert.Contains("_viewModel.AdministrationNavigationItems", palette, StringComparison.Ordinal);
+		Assert.DoesNotContain("_viewModel.AdministrationViewModel.NavigationItems", palette, StringComparison.Ordinal);
+		Assert.Contains("AdministrationNavigationItems = AdministrationViewModel.CreateNavigationItems(authorizationService)", main, StringComparison.Ordinal);
+		Assert.Contains("internal static IReadOnlyList<NavigationItem> CreateNavigationItems", administration, StringComparison.Ordinal);
+	}
+
+	[Fact]
 	public void RouteDiscoveryUsesPageMetadataWithoutMaterializingWorkspaceContent()
 	{
 		var root = FindRepositoryRoot();
