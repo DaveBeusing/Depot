@@ -167,3 +167,26 @@ public static class PricingStrategyProjector
 	private static string CustomerName(long customerId, IReadOnlyDictionary<long, Customer> customers) =>
 		customers.TryGetValue(customerId, out var customer) ? customer.Name : $"Customer #{customerId}";
 }
+
+
+public sealed record SalesPriceResolutionPreview(
+	long? CustomerId,
+	long ItemId,
+	DateTime EffectiveDate,
+	string Currency,
+	IReadOnlyList<SalesPriceResult> Candidates)
+{
+	public SalesPriceResult? Effective => Candidates.FirstOrDefault();
+	public SalesPriceResult? Customer => Candidates.FirstOrDefault(value => value.Scope == SalesPriceListScope.Customer);
+	public SalesPriceResult? Region => Candidates.FirstOrDefault(value => value.Scope == SalesPriceListScope.Region);
+	public SalesPriceResult? Global => Candidates.FirstOrDefault(value => value.Scope == SalesPriceListScope.Global);
+}
+
+public sealed record PricingResolutionPreviewRow(
+	string Layer,
+	string Source,
+	decimal? Amount,
+	string Currency,
+	string Detail,
+	bool IsAvailable,
+	bool IsEffective);

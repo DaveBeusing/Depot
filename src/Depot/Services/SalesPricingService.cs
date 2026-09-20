@@ -54,6 +54,21 @@ public sealed class SalesPricingService
 		return await _prices.ResolveAsync(customerId, itemId, effectiveDate.Date, normalizedCurrency, token);
 	}
 
+	public async Task<SalesPriceResolutionPreview> PreviewResolutionAsync(long? customerId, long itemId, DateTime effectiveDate, string currency, CancellationToken token = default)
+	{
+		_authorization.RequirePermission(ApplicationPermission.SalesPricingView);
+		if (customerId is <= 0) throw new ArgumentOutOfRangeException(nameof(customerId));
+		if (itemId <= 0) throw new ArgumentOutOfRangeException(nameof(itemId));
+		var normalizedCurrency = currency.Trim().ToUpperInvariant();
+		if (normalizedCurrency.Length != 3 || !normalizedCurrency.All(char.IsLetter))
+			throw new ArgumentException("Currency must be a three-letter code.", nameof(currency));
+		var date = effectiveDate.Date;
+		var candidates = customerId is long id
+			? await _prices.ResolveCandidatesAsync(id, itemId, date, normalizedCurrency, token)
+			: await _prices.ResolveGlobalCandidatesAsync(itemId, date, normalizedCurrency, token);
+		return new SalesPriceResolutionPreview(customerId, itemId, date, normalizedCurrency, candidates);
+	}
+
 	public async Task<SalesPriceList> SaveAsync(SalesPriceList value, CancellationToken token = default)
 	{
 		_authorization.RequirePermission(ApplicationPermission.SalesPricingManage);

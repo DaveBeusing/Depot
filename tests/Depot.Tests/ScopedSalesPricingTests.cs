@@ -241,6 +241,34 @@ public sealed class ScopedSalesPricingTests : IAsyncLifetime
 		await Assert.ThrowsAsync<InvalidOperationException>(() => fixture.Orders.SaveDraftAsync(historical));
 	}
 
+	[Fact]
+	public async Task ResolutionPreviewUsesTheSameCustomerRegionGlobalCandidatesAsRuntimeResolution()
+	{
+		var fixture = Fixture;
+		var region = await fixture.Pricing.SaveRegionAsync(new SalesRegion { Code = "PREVIEW", Name = "Preview Region" });
+		var customer = await fixture.Customers.SaveAsync(new Customer { Name = "Preview Customer", Currency = "EUR", SalesRegionId = region.Id });
+		var global = await fixture.CreateListAsync("PREVIEW-G", "Preview Global", SalesPriceListScope.Global);
+		var regional = await fixture.CreateListAsync("PREVIEW-R", "Preview Regional", SalesPriceListScope.Region, region.Id);
+		var customerList = await fixture.CreateListAsync("PREVIEW-C", "Preview Customer", SalesPriceListScope.Customer, active: false);
+		customerList = await fixture.AssignAndActivateAsync(customer.Id, customerList);
+		await fixture.AddPriceAsync(global.Id, fixture.ItemA, 120m);
+		await fixture.AddPriceAsync(regional.Id, fixture.ItemA, 110m);
+		await fixture.AddPriceAsync(customerList.Id, fixture.ItemA, 100m);
+
+		var runtime = await fixture.Pricing.ResolveAsync(customer.Id, fixture.ItemA, 1, DateTime.Today, "EUR");
+		var preview = await fixture.Pricing.PreviewResolutionAsync(customer.Id, fixture.ItemA, DateTime.Today, "EUR");
+		var globalOnly = await fixture.Pricing.PreviewResolutionAsync(null, fixture.ItemA, DateTime.Today, "EUR");
+
+		Assert.NotNull(runtime);
+		Assert.Equal(runtime, preview.Effective);
+		Assert.Equal([SalesPriceListScope.Customer, SalesPriceListScope.Region, SalesPriceListScope.Global], preview.Candidates.Select(value => value.Scope).ToArray());
+		Assert.Equal(customerList.Id, preview.Customer?.PriceListId);
+		Assert.Equal(regional.Id, preview.Region?.PriceListId);
+		Assert.Equal(global.Id, preview.Global?.PriceListId);
+		Assert.Equal(global.Id, globalOnly.Effective?.PriceListId);
+		Assert.Single(globalOnly.Candidates);
+	}
+
 	public async Task InitializeAsync()
 	{
 		var factory = new SqliteConnectionFactory(_databasePath);
