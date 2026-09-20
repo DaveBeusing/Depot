@@ -287,6 +287,7 @@
                                     <TextBlock Text="{Binding Status, StringFormat=Status: {0}}" />
                                     <TextBlock Text="{Binding VisualStateLabel, StringFormat=Process state: {0}}" />
                                     <TextBlock Text="{Binding OccurredAtText, StringFormat=Date: {0}}" />
+                                    <TextBlock Text="{Binding MetadataText}" Visibility="{Binding HasMetadata, Converter={StaticResource BooleanToVisibilityConverter}}" TextWrapping="Wrap" />
                                 </StackPanel>
                             </Border.ToolTip>
                             <Grid>
@@ -325,6 +326,11 @@
                                             <Run Text="{Binding OccurredAtText}" />
                                         </TextBlock>
                                     </StackPanel>
+                                    <TextBlock Margin="0,3,0,0"
+                                               Style="{DynamicResource CaptionStyle}"
+                                               Text="{Binding MetadataText}"
+                                               TextWrapping="Wrap"
+                                               Visibility="{Binding HasMetadata, Converter={StaticResource BooleanToVisibilityConverter}}" />
                                 </StackPanel>
                                 <Button Grid.Column="2"
                                         MinWidth="64"
@@ -354,6 +360,20 @@
                             <Setter TargetName="TimelineNode" Property="BorderBrush" Value="{DynamicResource SecondaryTextBrush}" />
                             <Setter TargetName="TimelineGlyph" Property="Foreground" Value="{DynamicResource SecondaryTextBrush}" />
                             <Setter TargetName="StateLabel" Property="Foreground" Value="{DynamicResource SecondaryTextBrush}" />
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding VisualState}" Value="{x:Static models:WorkflowTimelineVisualState.Rejected}">
+                            <Setter TargetName="ConnectorLine" Property="Background" Value="{DynamicResource ErrorForegroundBrush}" />
+                            <Setter TargetName="TimelineNode" Property="BorderBrush" Value="{DynamicResource ErrorForegroundBrush}" />
+                            <Setter TargetName="TimelineGlyph" Property="Foreground" Value="{DynamicResource ErrorForegroundBrush}" />
+                            <Setter TargetName="StateLabel" Property="Foreground" Value="{DynamicResource ErrorForegroundBrush}" />
+                            <Setter TargetName="TimelineItemBorder" Property="BorderBrush" Value="{DynamicResource ErrorForegroundBrush}" />
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding VisualState}" Value="{x:Static models:WorkflowTimelineVisualState.Cancelled}">
+                            <Setter TargetName="ConnectorLine" Property="Background" Value="{DynamicResource SecondaryTextBrush}" />
+                            <Setter TargetName="TimelineNode" Property="BorderBrush" Value="{DynamicResource SecondaryTextBrush}" />
+                            <Setter TargetName="TimelineGlyph" Property="Foreground" Value="{DynamicResource SecondaryTextBrush}" />
+                            <Setter TargetName="StateLabel" Property="Foreground" Value="{DynamicResource SecondaryTextBrush}" />
+                            <Setter TargetName="TimelineItemBorder" Property="BorderBrush" Value="{DynamicResource SecondaryTextBrush}" />
                         </DataTrigger>
                         <DataTrigger Binding="{Binding VisualState}" Value="{x:Static models:WorkflowTimelineVisualState.Correction}">
                             <Setter TargetName="ConnectorLine" Property="Background" Value="{DynamicResource WarningForegroundBrush}" />
