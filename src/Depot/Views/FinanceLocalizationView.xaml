@@ -63,7 +63,7 @@
                                                 <TextBlock FontWeight="SemiBold"><Run Text="{Binding Code}"/><Run Text=" · "/><Run Text="{Binding Name}"/></TextBlock>
                                                 <TextBlock Style="{StaticResource CaptionStyle}"><Run Text="{Binding Layer}"/><Run Text=" · "/><Run Text="{Binding CountryCode, TargetNullValue=—}"/><Run Text=" · "/><Run Text="{Binding StateText}"/></TextBlock>
                                             </StackPanel>
-                                            <TextBlock Grid.Column="2" Margin="8,0,0,0" VerticalAlignment="Center" Text="{Binding Pack.IsBuiltIn, StringFormat=Built-in: {0}}" Style="{StaticResource CaptionStyle}"/>
+                                            <TextBlock Grid.Column="2" Margin="8,0,0,0" VerticalAlignment="Center" Text="{Binding OriginText}" Style="{StaticResource CaptionStyle}"/>
                                         </Grid>
                                     </DataTemplate>
                                 </ListBox.ItemTemplate>

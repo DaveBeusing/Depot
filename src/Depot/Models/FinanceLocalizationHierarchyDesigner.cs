@@ -32,6 +32,7 @@ public sealed record FinanceLocalizationHierarchyRow(
 	public bool IsBuiltIn => Pack.IsBuiltIn;
 	public bool IsActive => Pack.IsActive;
 	public bool IsReadOnly => Pack.IsBuiltIn;
+	public string OriginText => Pack.IsBuiltIn ? "Built-in" : "Custom";
 	public string StateText => State.ToString();
 	public string DepthMarker => Depth == 0 ? "●" : string.Concat(Enumerable.Repeat("↳ ", Depth));
 	public string RegistrySummary => $"{RegistryCount} registry entr{(RegistryCount == 1 ? "y" : "ies")} · {SoftwareCapabilityCount} capability · {ConfigurationRequiredCount} configuration · {ExternalProcedureCount} external · {ReferenceOnlyCount} reference";

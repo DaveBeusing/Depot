@@ -144,6 +144,7 @@ public sealed class FinanceLocalizationService
 			await _transactions.ExecuteAsync(async (transaction, token) =>
 			{
 				await ValidateAssignmentCoreAsync(transaction, value, packCode, token);
+				return true;
 			}, cancellationToken);
 			return new FinanceLocalizationAssignmentValidationResult(true, []);
 		}
