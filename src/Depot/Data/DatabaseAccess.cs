@@ -5,6 +5,7 @@ using System.Data.Common;
 using System.Globalization;
 using System.Runtime.CompilerServices;
 
+using Depot.Diagnostics;
 using Depot.Models;
 
 using Microsoft.Data.SqlClient;
@@ -432,6 +433,7 @@ public sealed class DatabaseSession : IDisposable, IAsyncDisposable
 
 	private DbCommand CreateCommand(string sql, IReadOnlyList<DatabaseParameter> parameters)
 	{
+		DatabaseQueryDiagnostics.RecordCommand();
 		var command = _connection.CreateCommand();
 		command.Transaction = _transaction;
 		command.CommandText = sql;
