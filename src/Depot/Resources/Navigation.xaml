@@ -11,9 +11,6 @@
 		states and storyboards. No external UI library is required.
 	-->
 
-	<!-- Animation timings -->
-	<Duration x:Key="NavigationAnimationDuration.Fast">0:0:0.10</Duration>
-	<Duration x:Key="NavigationAnimationDuration.Normal">0:0:0.16</Duration>
 
 	<!-- Navigation List -->
 	<Style x:Key="NavigationListBoxStyle" TargetType="ListBox">
@@ -79,12 +76,12 @@
 											Storyboard.TargetName="HoverBackground"
 											Storyboard.TargetProperty="Opacity"
 											To="0"
-											Duration="{StaticResource NavigationAnimationDuration.Normal}" />
+											Duration="{StaticResource Motion.Duration.Standard}" />
 										<DoubleAnimation
 											Storyboard.TargetName="Root"
 											Storyboard.TargetProperty="Opacity"
 											To="1"
-											Duration="{StaticResource NavigationAnimationDuration.Fast}" />
+											Duration="{StaticResource Motion.Duration.Fast}" />
 									</Storyboard>
 								</VisualState>
 
@@ -94,12 +91,12 @@
 											Storyboard.TargetName="HoverBackground"
 											Storyboard.TargetProperty="Opacity"
 											To="1"
-											Duration="{StaticResource NavigationAnimationDuration.Normal}" />
+											Duration="{StaticResource Motion.Duration.Standard}" />
 										<DoubleAnimation
 											Storyboard.TargetName="Root"
 											Storyboard.TargetProperty="Opacity"
 											To="1"
-											Duration="{StaticResource NavigationAnimationDuration.Fast}" />
+											Duration="{StaticResource Motion.Duration.Fast}" />
 									</Storyboard>
 								</VisualState>
 
@@ -109,12 +106,12 @@
 											Storyboard.TargetName="HoverBackground"
 											Storyboard.TargetProperty="Opacity"
 											To="0"
-											Duration="{StaticResource NavigationAnimationDuration.Fast}" />
+											Duration="{StaticResource Motion.Duration.Fast}" />
 										<DoubleAnimation
 											Storyboard.TargetName="Root"
 											Storyboard.TargetProperty="Opacity"
 											To="0.42"
-											Duration="{StaticResource NavigationAnimationDuration.Fast}" />
+											Duration="{StaticResource Motion.Duration.Fast}" />
 									</Storyboard>
 								</VisualState>
 							</VisualStateGroup>
@@ -127,17 +124,17 @@
 											Storyboard.TargetName="SelectedBackground"
 											Storyboard.TargetProperty="Opacity"
 											To="0"
-											Duration="{StaticResource NavigationAnimationDuration.Normal}" />
+											Duration="{StaticResource Motion.Duration.Standard}" />
 										<DoubleAnimation
 											Storyboard.TargetName="Accent"
 											Storyboard.TargetProperty="Opacity"
 											To="0"
-											Duration="{StaticResource NavigationAnimationDuration.Fast}" />
+											Duration="{StaticResource Motion.Duration.Fast}" />
 										<DoubleAnimation
 											Storyboard.TargetName="AccentScale"
 											Storyboard.TargetProperty="ScaleY"
 											To="0.35"
-											Duration="{StaticResource NavigationAnimationDuration.Normal}" />
+											Duration="{StaticResource Motion.Duration.Standard}" />
 									</Storyboard>
 								</VisualState>
 
@@ -147,17 +144,17 @@
 											Storyboard.TargetName="SelectedBackground"
 											Storyboard.TargetProperty="Opacity"
 											To="1"
-											Duration="{StaticResource NavigationAnimationDuration.Normal}" />
+											Duration="{StaticResource Motion.Duration.Standard}" />
 										<DoubleAnimation
 											Storyboard.TargetName="Accent"
 											Storyboard.TargetProperty="Opacity"
 											To="1"
-											Duration="{StaticResource NavigationAnimationDuration.Fast}" />
+											Duration="{StaticResource Motion.Duration.Fast}" />
 										<DoubleAnimation
 											Storyboard.TargetName="AccentScale"
 											Storyboard.TargetProperty="ScaleY"
 											To="1"
-											Duration="{StaticResource NavigationAnimationDuration.Normal}">
+											Duration="{StaticResource Motion.Duration.Standard}">
 											<DoubleAnimation.EasingFunction>
 												<CubicEase EasingMode="EaseOut" />
 											</DoubleAnimation.EasingFunction>
@@ -171,17 +168,17 @@
 											Storyboard.TargetName="SelectedBackground"
 											Storyboard.TargetProperty="Opacity"
 											To="0.78"
-											Duration="{StaticResource NavigationAnimationDuration.Normal}" />
+											Duration="{StaticResource Motion.Duration.Standard}" />
 										<DoubleAnimation
 											Storyboard.TargetName="Accent"
 											Storyboard.TargetProperty="Opacity"
 											To="0.88"
-											Duration="{StaticResource NavigationAnimationDuration.Fast}" />
+											Duration="{StaticResource Motion.Duration.Fast}" />
 										<DoubleAnimation
 											Storyboard.TargetName="AccentScale"
 											Storyboard.TargetProperty="ScaleY"
 											To="1"
-											Duration="{StaticResource NavigationAnimationDuration.Normal}" />
+											Duration="{StaticResource Motion.Duration.Standard}" />
 									</Storyboard>
 								</VisualState>
 							</VisualStateGroup>
@@ -194,7 +191,7 @@
 											Storyboard.TargetName="FocusBorder"
 											Storyboard.TargetProperty="Opacity"
 											To="0"
-											Duration="{StaticResource NavigationAnimationDuration.Fast}" />
+											Duration="{StaticResource Motion.Duration.Fast}" />
 									</Storyboard>
 								</VisualState>
 
@@ -204,7 +201,7 @@
 											Storyboard.TargetName="FocusBorder"
 											Storyboard.TargetProperty="Opacity"
 											To="0.9"
-											Duration="{StaticResource NavigationAnimationDuration.Fast}" />
+											Duration="{StaticResource Motion.Duration.Fast}" />
 									</Storyboard>
 								</VisualState>
 							</VisualStateGroup>

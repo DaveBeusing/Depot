@@ -47,8 +47,8 @@
         <Grid Grid.Row="0" Grid.Column="1" Background="{DynamicResource BackgroundBrush}">
             <Grid.RowDefinitions><RowDefinition Height="{StaticResource Shell.TabHeight}" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
             <controls:WorkspaceTabControl x:Name="WorkspaceTabs" Grid.Row="0" ActiveItem="{Binding SelectedNavigationItem, Mode=TwoWay}" Style="{StaticResource WorkspaceTabControlStyle}" ItemContainerStyle="{StaticResource WorkspaceTabItemStyle}" ItemTemplate="{StaticResource WorkspaceTabHeaderTemplate}" TabClosing="OnWorkspaceTabClosing" AutomationProperties.Name="Workspace tabs" />
-            <ContentControl Grid.Row="1" Content="{Binding SelectedNavigationItem.Content}" ContentTemplateSelector="{StaticResource ActivityContextTemplateSelector}" Visibility="{Binding ShowSelectedContextNavigation, Converter={StaticResource BooleanToVisibilityConverter}}" />
-            <Border Grid.Row="2" Padding="{StaticResource Shell.ContentPadding}" Background="{DynamicResource BackgroundBrush}"><ContentControl Content="{Binding CurrentViewModel}" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" Background="{DynamicResource BackgroundBrush}" /></Border>
+            <controls:MotionContentControl Grid.Row="1" TransitionKind="State" Content="{Binding SelectedNavigationItem.Content}" ContentTemplateSelector="{StaticResource ActivityContextTemplateSelector}" Visibility="{Binding ShowSelectedContextNavigation, Converter={StaticResource BooleanToVisibilityConverter}}" />
+            <Border Grid.Row="2" Padding="{StaticResource Shell.ContentPadding}" Background="{DynamicResource BackgroundBrush}"><controls:MotionContentControl TransitionKind="Workspace" Content="{Binding CurrentViewModel}" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" Background="{DynamicResource BackgroundBrush}" /></Border>
         </Grid>
 
         <Border Grid.Row="1" Grid.ColumnSpan="2" Background="{DynamicResource SurfaceAltBrush}" BorderBrush="{DynamicResource NavigationBorderBrush}" BorderThickness="0,1,0,0">

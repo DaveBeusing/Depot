@@ -2,7 +2,9 @@
 // Licensed under the MIT License.
 
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Markup;
+using System.Windows.Media;
 using System.Windows.Media.Animation;
 
 namespace Depot.Controls;
@@ -12,6 +14,17 @@ public enum MotionSpeed
 	Fast,
 	Standard,
 	Emphasis
+}
+
+public enum MotionTransitionKind
+{
+	None,
+	Workspace,
+	DetailPane,
+	State,
+	Status,
+	NotificationBadge,
+	Timeline
 }
 
 public static class MotionPreferences
@@ -35,6 +48,97 @@ public static class MotionDurations
 			MotionSpeed.Emphasis => Emphasis,
 			_ => Standard
 		});
+	}
+}
+
+public static class MotionTransitions
+{
+	public static void Begin(FrameworkElement element, MotionTransitionKind kind)
+	{
+		ArgumentNullException.ThrowIfNull(element);
+		if (kind == MotionTransitionKind.None) return;
+
+		var reduceMotion = MotionPreferences.IsReducedMotionEnabled;
+		var speed = kind switch
+		{
+			MotionTransitionKind.Workspace => MotionSpeed.Standard,
+			MotionTransitionKind.DetailPane => MotionSpeed.Emphasis,
+			_ => MotionSpeed.Fast
+		};
+		var offset = kind switch
+		{
+			MotionTransitionKind.Workspace => 8d,
+			MotionTransitionKind.DetailPane => 10d,
+			MotionTransitionKind.State => 4d,
+			MotionTransitionKind.Status => 2d,
+			MotionTransitionKind.Timeline => 6d,
+			_ => 0d
+		};
+		var duration = MotionDurations.Resolve(speed, reduceMotion);
+		var easing = new CubicEase { EasingMode = EasingMode.EaseOut };
+
+		element.BeginAnimation(UIElement.OpacityProperty, null);
+		element.Opacity = 1d;
+
+		TranslateTransform? translate = element.RenderTransform as TranslateTransform;
+		if (offset != 0d && translate is null && ReferenceEquals(element.RenderTransform, Transform.Identity))
+		{
+			translate = new TranslateTransform();
+			element.RenderTransform = translate;
+		}
+		if (translate is not null)
+		{
+			translate.BeginAnimation(TranslateTransform.YProperty, null);
+			translate.Y = 0d;
+		}
+
+		if (reduceMotion) return;
+
+		element.BeginAnimation(
+			UIElement.OpacityProperty,
+			new DoubleAnimation(0d, 1d, duration)
+			{
+				EasingFunction = easing,
+				FillBehavior = FillBehavior.Stop
+			});
+
+		if (translate is not null && offset != 0d)
+		{
+			translate.BeginAnimation(
+				TranslateTransform.YProperty,
+				new DoubleAnimation(offset, 0d, duration)
+				{
+					EasingFunction = easing,
+					FillBehavior = FillBehavior.Stop
+				});
+		}
+	}
+}
+
+public sealed class MotionContentControl : ContentControl
+{
+	public static readonly DependencyProperty TransitionKindProperty = DependencyProperty.Register(
+		nameof(TransitionKind),
+		typeof(MotionTransitionKind),
+		typeof(MotionContentControl),
+		new FrameworkPropertyMetadata(MotionTransitionKind.Workspace));
+
+	public MotionContentControl()
+	{
+		RenderTransform = new TranslateTransform();
+		Loaded += (_, _) => MotionTransitions.Begin(this, TransitionKind);
+	}
+
+	public MotionTransitionKind TransitionKind
+	{
+		get => (MotionTransitionKind)GetValue(TransitionKindProperty);
+		set => SetValue(TransitionKindProperty, value);
+	}
+
+	protected override void OnContentChanged(object oldContent, object newContent)
+	{
+		base.OnContentChanged(oldContent, newContent);
+		if (IsLoaded) MotionTransitions.Begin(this, TransitionKind);
 	}
 }
 
