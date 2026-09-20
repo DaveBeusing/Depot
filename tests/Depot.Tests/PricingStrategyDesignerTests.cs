@@ -22,7 +22,7 @@ public sealed class PricingStrategyDesignerTests
 		Assert.DoesNotContain("DatabaseAccess", viewModel, StringComparison.Ordinal);
 		Assert.DoesNotContain("INSERT INTO", viewModel, StringComparison.OrdinalIgnoreCase);
 		Assert.Contains("Strategy designer", view, StringComparison.Ordinal);
-		Assert.Contains("VirtualizingPanel.VirtualizationMode="Recycling"", view, StringComparison.Ordinal);
+		Assert.Contains("VirtualizingPanel.VirtualizationMode=\"Recycling\"", view, StringComparison.Ordinal);
 		Assert.Contains("Price resolution preview", view, StringComparison.Ordinal);
 		Assert.Contains("Bulk pricing impact", view, StringComparison.Ordinal);
 		Assert.Contains("CurrentPrice", view, StringComparison.Ordinal);
