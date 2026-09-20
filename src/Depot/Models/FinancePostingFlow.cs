@@ -55,10 +55,11 @@ public sealed record FinancePostingFlowLineDraft(
 public sealed record FinancePostingFlowContext(
 	AccountingBook? AccountingBook,
 	JournalDefinition? Journal,
-	IReadOnlyDictionary<Guid, FinanceAccount> Accounts)
+	IReadOnlyDictionary<Guid, FinanceAccount> Accounts,
+	IReadOnlyList<JournalDefinition> Journals)
 {
 	public static FinancePostingFlowContext Empty { get; } =
-		new(null, null, new Dictionary<Guid, FinanceAccount>());
+		new(null, null, new Dictionary<Guid, FinanceAccount>(), []);
 }
 
 public sealed record FinancePostingFlowProjection(

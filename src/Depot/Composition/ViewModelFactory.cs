@@ -39,6 +39,7 @@ internal sealed class ViewModelFactory
 			_services.CommercialRoleCenters,
 			_services.Movements,
 			_services.Reports,
+			_services.FinanceGeneralLedger,
 			_services.AccountsReceivable,
 			_services.AccountsPayable,
 			_services.InventoryAccounting,

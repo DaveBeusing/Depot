@@ -1,0 +1,159 @@
+<UserControl x:Class="Depot.Views.FinancePostingFlowDesignerView"
+	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:controls="clr-namespace:Depot.Controls">
+	<Grid>
+		<Grid.RowDefinitions>
+			<RowDefinition Height="Auto" />
+			<RowDefinition Height="Auto" />
+			<RowDefinition Height="12" />
+			<RowDefinition Height="*" />
+		</Grid.RowDefinitions>
+
+		<controls:PageHeader Title="Posting Flow Designer" Subtitle="Edit existing posting profiles as Business Event → Amount Key → Debit/Credit Rule → Account → Journal.">
+			<controls:PageHeader.Actions>
+				<StackPanel Orientation="Horizontal">
+					<ComboBox Width="250"
+						ItemsSource="{Binding Profiles}"
+						SelectedItem="{Binding SelectedProfile}"
+						DisplayMemberPath="Name"
+						Style="{StaticResource AppComboBoxStyle}"
+						AutomationProperties.Name="Posting profile" />
+					<Button Margin="{StaticResource Button.Margin}" Command="{Binding RefreshCommand}" Content="Reload" Style="{StaticResource SecondaryButtonStyle}" />
+					<Button Margin="{StaticResource Button.Margin}" Command="{Binding SaveCommand}" Content="Save profile" Style="{StaticResource PrimaryButtonStyle}" />
+				</StackPanel>
+			</controls:PageHeader.Actions>
+		</controls:PageHeader>
+		<controls:OperationPanel Grid.Row="1"
+			IsBusy="{Binding IsBusy}"
+			HasError="{Binding HasOperationError}"
+			StatusText="{Binding StatusText}"
+			ErrorText="{Binding OperationError}" />
+
+		<Grid Grid.Row="3">
+			<Grid.ColumnDefinitions>
+				<ColumnDefinition Width="230" />
+				<ColumnDefinition Width="12" />
+				<ColumnDefinition Width="*" />
+				<ColumnDefinition Width="12" />
+				<ColumnDefinition Width="330" />
+			</Grid.ColumnDefinitions>
+
+			<controls:Card Grid.Column="0">
+				<StackPanel>
+					<TextBlock Text="Rule palette" Style="{StaticResource SectionTitleStyle}" />
+					<TextBlock Margin="0,4,0,12" Text="Drag a valid amount/direction pair onto the canvas, or add it with the button for keyboard operation." Style="{StaticResource CaptionStyle}" TextWrapping="Wrap" />
+					<ListBox x:Name="PaletteList"
+						ItemsSource="{Binding PaletteItems}"
+						SelectedItem="{Binding SelectedPaletteItem}"
+						Style="{StaticResource AppListBoxStyle}"
+						PreviewMouseLeftButtonDown="OnPaletteMouseLeftButtonDown"
+						PreviewMouseMove="OnPaletteMouseMove"
+						AutomationProperties.Name="Posting rule palette">
+						<ListBox.ItemTemplate>
+							<DataTemplate>
+								<Border Padding="2">
+									<TextBlock Text="{Binding DisplayName}" />
+								</Border>
+							</DataTemplate>
+						</ListBox.ItemTemplate>
+					</ListBox>
+					<Button Margin="0,10,0,0" Command="{Binding AddRuleCommand}" Content="Add selected rule" Style="{StaticResource SecondaryButtonStyle}" />
+					<TextBlock Margin="0,14,0,0" Text="Read-only access" FontWeight="SemiBold" Visibility="{Binding IsReadOnly, Converter={StaticResource BooleanToVisibilityConverter}}" />
+					<TextBlock Margin="0,4,0,0" Text="You can inspect this flow, but Finance Posting Profiles Manage permission is required to change it." Style="{StaticResource CaptionStyle}" TextWrapping="Wrap" Visibility="{Binding IsReadOnly, Converter={StaticResource BooleanToVisibilityConverter}}" />
+				</StackPanel>
+			</controls:Card>
+
+			<controls:Card Grid.Column="2">
+				<Grid>
+					<Grid.RowDefinitions>
+						<RowDefinition Height="Auto" />
+						<RowDefinition Height="10" />
+						<RowDefinition Height="*" />
+					</Grid.RowDefinitions>
+					<Grid>
+						<Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+						<StackPanel>
+							<TextBlock Text="Posting flow" Style="{StaticResource SectionTitleStyle}" />
+							<TextBlock Margin="0,3,0,0" Text="The graph is a deterministic projection of the persisted profile; it is not an executable workflow." Style="{StaticResource CaptionStyle}" TextWrapping="Wrap" />
+						</StackPanel>
+						<controls:StatusBadge Grid.Column="1" Content="{Binding ValidationSummary}" Variant="Primary" />
+					</Grid>
+					<controls:FinancePostingFlowCanvas x:Name="FlowCanvas"
+						Grid.Row="2"
+						ItemsSource="{Binding Nodes}"
+						Edges="{Binding Edges}"
+						SelectedItem="{Binding SelectedNode, Mode=TwoWay}"
+						IsReadOnly="{Binding IsReadOnly}"
+						AllowDrop="True"
+						Drop="OnCanvasDrop"
+						AutomationProperties.Name="Posting flow canvas"
+						AutomationProperties.HelpText="Use arrow keys to select nodes. Rule details are edited in the inspector." />
+				</Grid>
+			</controls:Card>
+
+			<controls:Card Grid.Column="4">
+				<ScrollViewer VerticalScrollBarVisibility="Auto">
+					<StackPanel>
+						<TextBlock Text="Inspector" Style="{StaticResource SectionTitleStyle}" />
+						<TextBlock Margin="0,4,0,12" Text="Profile" FontWeight="SemiBold" />
+						<TextBlock Text="Code" Style="{StaticResource FormLabelStyle}" />
+						<TextBox Text="{Binding Code, UpdateSourceTrigger=PropertyChanged}" IsReadOnly="{Binding IsReadOnly}" Style="{StaticResource AppTextBoxStyle}" />
+						<TextBlock Margin="0,8,0,0" Text="Name" Style="{StaticResource FormLabelStyle}" />
+						<TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" IsReadOnly="{Binding IsReadOnly}" Style="{StaticResource AppTextBoxStyle}" />
+						<TextBlock Margin="0,8,0,0" Text="Source type" Style="{StaticResource FormLabelStyle}" />
+						<TextBox Text="{Binding SourceType, UpdateSourceTrigger=PropertyChanged}" IsReadOnly="{Binding IsReadOnly}" Style="{StaticResource AppTextBoxStyle}" />
+						<TextBlock Margin="0,8,0,0" Text="Business event" Style="{StaticResource FormLabelStyle}" />
+						<TextBox Text="{Binding SourceEvent, UpdateSourceTrigger=PropertyChanged}" IsReadOnly="{Binding IsReadOnly}" Style="{StaticResource AppTextBoxStyle}" />
+						<TextBlock Margin="0,8,0,0" Text="Number sequence" Style="{StaticResource FormLabelStyle}" />
+						<TextBox Text="{Binding NumberSequenceCode, UpdateSourceTrigger=PropertyChanged}" IsReadOnly="{Binding IsReadOnly}" Style="{StaticResource AppTextBoxStyle}" />
+						<TextBlock Margin="0,8,0,0" Text="Journal" Style="{StaticResource FormLabelStyle}" />
+						<ComboBox ItemsSource="{Binding Journals}" SelectedItem="{Binding SelectedJournal}" DisplayMemberPath="Name" IsEnabled="{Binding CanManage}" Style="{StaticResource AppComboBoxStyle}" />
+						<CheckBox Margin="0,10,0,0" Content="Profile active" IsChecked="{Binding IsActive}" IsEnabled="{Binding CanManage}" Style="{StaticResource AppCheckBoxStyle}" />
+
+						<Separator Margin="0,16" />
+						<StackPanel Visibility="{Binding HasSelectedRule, Converter={StaticResource BooleanToVisibilityConverter}}">
+							<TextBlock Text="Selected rule" FontWeight="SemiBold" />
+							<TextBlock Margin="0,8,0,0" Text="Amount key" Style="{StaticResource FormLabelStyle}" />
+							<TextBox Text="{Binding SelectedRule.AmountKey, UpdateSourceTrigger=PropertyChanged}" IsReadOnly="{Binding IsReadOnly}" Style="{StaticResource AppTextBoxStyle}" />
+							<TextBlock Margin="0,8,0,0" Text="Debit / Credit" Style="{StaticResource FormLabelStyle}" />
+							<ComboBox ItemsSource="{Binding Directions}" SelectedItem="{Binding SelectedRule.Direction}" IsEnabled="{Binding CanManage}" Style="{StaticResource AppComboBoxStyle}" />
+							<TextBlock Margin="0,8,0,0" Text="Account" Style="{StaticResource FormLabelStyle}" />
+							<ComboBox ItemsSource="{Binding Accounts}" SelectedItem="{Binding SelectedRule.SelectedAccount}" IsEnabled="{Binding CanManage}" Style="{StaticResource AppComboBoxStyle}">
+								<ComboBox.ItemTemplate>
+									<DataTemplate>
+										<StackPanel Orientation="Horizontal">
+											<TextBlock Text="{Binding Number}" FontWeight="SemiBold" />
+											<TextBlock Margin="6,0,0,0" Text="{Binding Name}" />
+										</StackPanel>
+									</DataTemplate>
+								</ComboBox.ItemTemplate>
+							</ComboBox>
+							<TextBlock Margin="0,8,0,0" Text="Multiplier" Style="{StaticResource FormLabelStyle}" />
+							<TextBox Text="{Binding SelectedRule.Multiplier, UpdateSourceTrigger=PropertyChanged}" IsReadOnly="{Binding IsReadOnly}" Style="{StaticResource AppTextBoxStyle}" />
+							<TextBlock Margin="0,8,0,0" Text="Description" Style="{StaticResource FormLabelStyle}" />
+							<TextBox Text="{Binding SelectedRule.Description, UpdateSourceTrigger=PropertyChanged}" IsReadOnly="{Binding IsReadOnly}" Style="{StaticResource AppTextBoxStyle}" />
+							<Button Margin="0,10,0,0" Command="{Binding RemoveRuleCommand}" Content="Remove rule" Style="{StaticResource DangerButtonStyle}" />
+						</StackPanel>
+
+						<Separator Margin="0,16" />
+						<TextBlock Text="Live validation" FontWeight="SemiBold" />
+						<TextBlock Margin="0,4,0,8" Text="{Binding ValidationSummary}" Style="{StaticResource CaptionStyle}" TextWrapping="Wrap" />
+						<ItemsControl ItemsSource="{Binding Issues}">
+							<ItemsControl.ItemTemplate>
+								<DataTemplate>
+									<Border Margin="0,0,0,6" Padding="8" Background="{DynamicResource SurfaceAltBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="{DynamicResource Radius.M}">
+										<StackPanel>
+											<TextBlock Text="{Binding Severity}" FontWeight="SemiBold" />
+											<TextBlock Margin="0,2,0,0" Text="{Binding Message}" Style="{StaticResource CaptionStyle}" TextWrapping="Wrap" />
+										</StackPanel>
+									</Border>
+								</DataTemplate>
+							</ItemsControl.ItemTemplate>
+						</ItemsControl>
+					</StackPanel>
+				</ScrollViewer>
+			</controls:Card>
+		</Grid>
+	</Grid>
+</UserControl>
