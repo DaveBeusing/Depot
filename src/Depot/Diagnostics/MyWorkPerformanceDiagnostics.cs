@@ -60,8 +60,13 @@ internal static class MyWorkPerformanceDiagnostics
 		var line = string.Create(
 			CultureInfo.InvariantCulture,
 			$"{DateTimeOffset.Now:O} my-work provider={Sanitize(measurement.Provider)} eligible={measurement.Eligible} elapsedMs={measurement.Elapsed.TotalMilliseconds:F1} rows={measurement.ReturnedRows} failed={measurement.Failed} queries={measurement.QueryCount}");
-		lock (SyncRoot)
-			File.AppendAllText(LogPath, line + Environment.NewLine, Encoding.UTF8);
+		try
+		{
+			lock (SyncRoot)
+				File.AppendAllText(LogPath, line + Environment.NewLine, Encoding.UTF8);
+		}
+		catch (IOException) { }
+		catch (UnauthorizedAccessException) { }
 	}
 
 	private static string Sanitize(string value) =>

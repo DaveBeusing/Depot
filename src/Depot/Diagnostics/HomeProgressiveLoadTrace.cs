@@ -22,7 +22,12 @@ internal sealed class HomeProgressiveLoadTrace
 		var line = string.Create(
 			CultureInfo.InvariantCulture,
 			$"{DateTimeOffset.Now:O} home firstContent={safeBlock} elapsedMs={elapsed:F1}");
-		lock (SyncRoot)
-			File.AppendAllText(LogPath, line + Environment.NewLine, Encoding.UTF8);
+		try
+		{
+			lock (SyncRoot)
+				File.AppendAllText(LogPath, line + Environment.NewLine, Encoding.UTF8);
+		}
+		catch (IOException) { }
+		catch (UnauthorizedAccessException) { }
 	}
 }
