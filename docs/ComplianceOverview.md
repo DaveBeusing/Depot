@@ -1,8 +1,10 @@
 # Compliance overview
 
-Updated: 2026-09-19
+Updated: 2026-09-20
 
 Depot separates implemented technical controls from legal, accounting, tax, audit or certification claims. Security/compliance roadmap phases retain their technically implementable controls; remaining acceptance gates are tracked in the security, release, Finance and compliance documentation.
+
+The canonical release-facing supported/unsupported claim boundary is [Release Compliance Boundary](ReleaseComplianceBoundary.md). Customer-facing release language must stay within that documented boundary.
 
 ## Finance technical baseline
 
@@ -41,7 +43,7 @@ The database-provider technical gate is complete for the exact baselines documen
 
 The real-provider matrix covers provisioning/migration, locking/deadlock/retry, rollback, constraints, date/decimal/timestamp handling, representative Finance/Sales/Procurement/session workflows, Banking/reconciliation, Financial Reporting/snapshots, remote restart and provider-native backup/restore boundaries plus representative 100k indexed access. Enterprise Identity schema 2 extends the provider migration/persistence boundary with assurance-policy fields while preserving existing schema-1 provider/link identity data.
 
-Database-provider certification is an engineering/runtime statement. It does not establish jurisdiction-specific accounting, tax, legal, accessibility, operating-system, banking-network or regulatory certification.
+Database-provider acceptance is an engineering/runtime statement. It does not establish jurisdiction-specific accounting, tax, legal, accessibility, operating-system, banking-network or regulatory certification.
 
 ## External authentication boundary
 

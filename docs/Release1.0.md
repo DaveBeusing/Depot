@@ -70,7 +70,7 @@ Depot is on the `0.15.x-preview` line with Core database schema **30**, Sales fe
 
 The generic technical provider gate is complete for the exact baselines in [Database Provider Production Support Matrix](DatabaseProviderSupportMatrix.md):
 
-- [x] supported database certification baselines defined
+- [x] supported database technical-acceptance baselines defined
 - [x] bundled SQLite full provider acceptance
 - [x] SQL Server 2022 / engine 16.x live migration, concurrency, locking, recovery and performance matrix
 - [x] MariaDB 11.8.9 LTS live migration, concurrency, locking, recovery and performance matrix
@@ -87,7 +87,7 @@ The generic technical provider gate is complete for the exact baselines in [Data
 - [x] structured recovery evidence retained for every supported provider family
 - [x] representative 100,000-row indexed provider performance guard
 
-Versions outside these baselines are not implicitly supported. The provider gate is a database/runtime certification only.
+Versions outside these baselines are not implicitly supported. The provider gate is a technical database/runtime acceptance boundary only.
 
 ## Track C repository acceptance
 
@@ -161,6 +161,7 @@ The repository conformance boundary for the currently advertised XRechnung and Z
 
 ### Legal/organizational
 
+- [x] canonical release compliance claim boundary prepared and linked to authoritative technical evidence
 - [ ] GDPR/DSGVO deployment assessment and retention procedures
 - [ ] organization-specific GoBD/accounting/reporting/localization procedures
 - [ ] final CRA applicability/classification/conformity work
