@@ -99,12 +99,16 @@ public sealed class SalesPriceListRepository : DatabaseRepository
 		if (listId is > 0) await transaction.Session.ExecuteAsync("INSERT INTO CustomerPriceLists (CustomerId,SalesPriceListId) VALUES ($CustomerId,$ListId);", token, Parameter("$CustomerId", customerId), Parameter("$ListId", listId.Value));
 	}
 
+	public Task<IReadOnlyList<CustomerPriceListAssignment>> ListCustomerAssignmentsAsync(CancellationToken token) => Database.QueryAsync(
+		"SELECT cpl.CustomerId,cpl.SalesPriceListId,pl.Name,pl.IsActive FROM CustomerPriceLists cpl INNER JOIN SalesPriceLists pl ON pl.Id=cpl.SalesPriceListId ORDER BY cpl.CustomerId,cpl.SalesPriceListId;",
+		ReadCustomerAssignment, token);
+
 	public Task<CustomerPriceListAssignment?> GetCustomerAssignmentAsync(long customerId, CancellationToken token) => Database.QuerySingleOrDefaultAsync(
 		"SELECT cpl.CustomerId,cpl.SalesPriceListId,pl.Name,pl.IsActive FROM CustomerPriceLists cpl INNER JOIN SalesPriceLists pl ON pl.Id=cpl.SalesPriceListId WHERE cpl.CustomerId=$CustomerId;",
-		r => new CustomerPriceListAssignment { CustomerId=r.GetInt64(0), SalesPriceListId=r.GetInt64(1), PriceListName=r.GetString(2), IsActive=r.GetBoolean(3) }, token, Parameter("$CustomerId", customerId));
+		ReadCustomerAssignment, token, Parameter("$CustomerId", customerId));
 	public Task<CustomerPriceListAssignment?> GetCustomerAssignmentAsync(DatabaseTransactionContext transaction, long customerId, CancellationToken token) => transaction.Session.QuerySingleOrDefaultAsync(
 		"SELECT cpl.CustomerId,cpl.SalesPriceListId,pl.Name,pl.IsActive FROM CustomerPriceLists cpl INNER JOIN SalesPriceLists pl ON pl.Id=cpl.SalesPriceListId WHERE cpl.CustomerId=$CustomerId;",
-		r => new CustomerPriceListAssignment { CustomerId=r.GetInt64(0), SalesPriceListId=r.GetInt64(1), PriceListName=r.GetString(2), IsActive=r.GetBoolean(3) }, token, Parameter("$CustomerId", customerId));
+		ReadCustomerAssignment, token, Parameter("$CustomerId", customerId));
 
 	public Task<SalesPriceList?> FindActiveDefaultAsync(DatabaseTransactionContext transaction, SalesPriceListScope scope, long? regionId, long excludedId, CancellationToken token) => transaction.Session.QuerySingleOrDefaultAsync(
 		$"{ListSelect} WHERE pl.Scope=$Scope AND pl.IsActive=1 AND (($RegionId IS NULL AND pl.RegionId IS NULL) OR pl.RegionId=$RegionId) AND pl.Id<>$ExcludedId ORDER BY pl.Id;",
@@ -147,6 +151,7 @@ public sealed class SalesPriceListRepository : DatabaseRepository
 	private static SalesPriceList ReadList(DbDataReader r) => new(){Id=r.GetInt64(0),Code=r.GetString(1),Name=r.GetString(2),Scope=(SalesPriceListScope)r.GetInt32(3),RegionId=r.IsDBNull(4)?null:r.GetInt64(4),RegionName=r.IsDBNull(5)?null:r.GetString(5),Currency=r.GetString(6),ValidFrom=r.IsDBNull(7)?null:Convert.ToDateTime(r.GetValue(7),CultureInfo.InvariantCulture),ValidTo=r.IsDBNull(8)?null:Convert.ToDateTime(r.GetValue(8),CultureInfo.InvariantCulture),IsActive=r.GetBoolean(9),Version=r.GetInt64(10)};
 	private static SalesPriceListItem ReadItem(DbDataReader r) => new(){Id=r.GetInt64(0),SalesPriceListId=r.GetInt64(1),ItemId=r.GetInt64(2),PartNumber=r.GetString(3),Description=r.GetString(4),UnitPrice=Convert.ToDecimal(r.GetValue(5),CultureInfo.InvariantCulture),DiscountPercent=Convert.ToDecimal(r.GetValue(6),CultureInfo.InvariantCulture),Version=r.GetInt64(7)};
 	private static SalesRegion ReadRegion(DbDataReader r) => new(){Id=r.GetInt64(0),Code=r.GetString(1),Name=r.GetString(2),IsActive=r.GetBoolean(3),Version=r.GetInt64(4)};
+	private static CustomerPriceListAssignment ReadCustomerAssignment(DbDataReader r) => new(){CustomerId=r.GetInt64(0),SalesPriceListId=r.GetInt64(1),PriceListName=r.GetString(2),IsActive=r.GetBoolean(3)};
 	private static SalesPriceResult ReadPrice(DbDataReader r) => new(Convert.ToDecimal(r.GetValue(0),CultureInfo.InvariantCulture),Convert.ToDecimal(r.GetValue(1),CultureInfo.InvariantCulture),r.GetInt64(2),r.GetString(3),(SalesPriceListScope)r.GetInt32(4),r.GetString(5),r.IsDBNull(6)?null:r.GetInt64(6));
 }
 

@@ -33,7 +33,8 @@ public sealed class SalesPricingService
 	public bool CanManage => _authorization.HasPermission(ApplicationPermission.SalesPricingManage);
 	public Task<IReadOnlyList<SalesPriceList>> ListAsync(CancellationToken token = default) { _authorization.RequirePermission(ApplicationPermission.SalesPricingView); return _prices.ListAsync(token); }
 	public Task<IReadOnlyList<SalesRegion>> ListRegionsAsync(CancellationToken token = default) { _authorization.RequirePermission(ApplicationPermission.SalesPricingView); return _prices.ListRegionsAsync(token); }
-	public Task<CustomerPriceListAssignment?> GetCustomerAssignmentAsync(long customerId, CancellationToken token = default) => _prices.GetCustomerAssignmentAsync(customerId, token);
+	public Task<IReadOnlyList<CustomerPriceListAssignment>> ListCustomerAssignmentsAsync(CancellationToken token = default) { _authorization.RequirePermission(ApplicationPermission.SalesPricingView); return _prices.ListCustomerAssignmentsAsync(token); }
+	public Task<CustomerPriceListAssignment?> GetCustomerAssignmentAsync(long customerId, CancellationToken token = default) { _authorization.RequirePermission(ApplicationPermission.SalesPricingView); return _prices.GetCustomerAssignmentAsync(customerId, token); }
 
 	public async Task<SalesPriceResult?> ResolveAsync(long customerId, long itemId, DateTime effectiveDate, CancellationToken token = default)
 	{
