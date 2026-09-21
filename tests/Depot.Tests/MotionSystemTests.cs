@@ -120,6 +120,103 @@ public sealed class MotionSystemTests
 		Assert.DoesNotContain("RepeatBehavior=\"Forever\"", motionFiles, StringComparison.OrdinalIgnoreCase);
 	}
 
+	[Fact]
+	public void ButtonResourcesHaveSingleCanonicalAuthority()
+	{
+		var root = FindRepositoryRoot();
+		var resourceRoot = Path.Combine(root, "src", "Depot", "Resources");
+		var theme = File.ReadAllText(Path.Combine(resourceRoot, "Theme.xaml"));
+		var allResources = Directory.EnumerateFiles(resourceRoot, "*.xaml")
+			.Select(File.ReadAllText)
+			.ToArray();
+
+		Assert.Contains("ResourceDictionary Source=\"Buttons.xaml\"", theme, StringComparison.Ordinal);
+		Assert.DoesNotContain("ButtonPolish.xaml", theme, StringComparison.Ordinal);
+		Assert.False(File.Exists(Path.Combine(resourceRoot, "ButtonPolish.xaml")));
+
+		foreach (var key in new[]
+		{
+			"AppButtonBaseStyle",
+			"PrimaryButtonStyle",
+			"SecondaryButtonStyle",
+			"DangerButtonStyle",
+			"AppLinkButtonStyle"
+		})
+		{
+			var declaration = $"x:Key=\"{key}\"";
+			Assert.Equal(1, allResources.Sum(resource => CountOccurrences(resource, declaration)));
+		}
+	}
+
+	[Fact]
+	public void ButtonFeedbackUsesSharedMotionTokensAndReducedMotionGuard()
+	{
+		var root = FindRepositoryRoot();
+		var motion = File.ReadAllText(Path.Combine(root, "src", "Depot", "Resources", "Motion.xaml"));
+		var source = File.ReadAllText(Path.Combine(root, "src", "Depot", "Controls", "MotionSystem.cs"));
+		var buttons = File.ReadAllText(Path.Combine(root, "src", "Depot", "Resources", "Buttons.xaml"));
+		var shell = File.ReadAllText(Path.Combine(root, "src", "Depot", "Resources", "ShellPolish.xaml"));
+
+		Assert.Contains("Motion.Scale.ButtonHover", motion, StringComparison.Ordinal);
+		Assert.Contains("Motion.Scale.ButtonPressed", motion, StringComparison.Ordinal);
+		Assert.Contains("Motion.Scale.ButtonLinkPressed", motion, StringComparison.Ordinal);
+		Assert.Contains("Motion.Scale.ButtonUtilityPressed", motion, StringComparison.Ordinal);
+		Assert.Contains("IsButtonFeedbackEnabledProperty", source, StringComparison.Ordinal);
+		Assert.Contains("MotionPreferences.IsReducedMotionEnabled", source, StringComparison.Ordinal);
+		Assert.Contains("ScaleTransform.ScaleXProperty", source, StringComparison.Ordinal);
+		Assert.Contains("ScaleTransform.ScaleYProperty", source, StringComparison.Ordinal);
+		Assert.Contains("controls:MotionBehavior.IsButtonFeedbackEnabled", buttons, StringComparison.Ordinal);
+		Assert.Contains("controls:MotionBehavior.IsButtonFeedbackEnabled", shell, StringComparison.Ordinal);
+		Assert.Contains("AppKeyboardFocusVisualStyle", buttons, StringComparison.Ordinal);
+		Assert.DoesNotContain("FocusVisualStyle\" Value=\"{x:Null}", buttons, StringComparison.Ordinal);
+		Assert.DoesNotContain("ScaleTransform ScaleX=\"0.97\"", buttons, StringComparison.Ordinal);
+		Assert.DoesNotContain("ScaleTransform ScaleX=\"0.94\"", shell, StringComparison.Ordinal);
+	}
+
+	[Fact]
+	public void ButtonMotionAvoidsLayoutAnimationAndPermanentEffects()
+	{
+		var root = FindRepositoryRoot();
+		var files = string.Join("\n", new[]
+		{
+			File.ReadAllText(Path.Combine(root, "src", "Depot", "Resources", "Buttons.xaml")),
+			File.ReadAllText(Path.Combine(root, "src", "Depot", "Resources", "ShellPolish.xaml")),
+			File.ReadAllText(Path.Combine(root, "src", "Depot", "Resources", "Motion.xaml")),
+			File.ReadAllText(Path.Combine(root, "src", "Depot", "Controls", "MotionSystem.cs"))
+		});
+
+		Assert.DoesNotContain("WidthProperty", files, StringComparison.Ordinal);
+		Assert.DoesNotContain("HeightProperty", files, StringComparison.Ordinal);
+		Assert.DoesNotContain("Storyboard.TargetProperty=\"Width\"", files, StringComparison.Ordinal);
+		Assert.DoesNotContain("Storyboard.TargetProperty=\"Height\"", files, StringComparison.Ordinal);
+		Assert.DoesNotContain("RepeatBehavior=\"Forever\"", files, StringComparison.OrdinalIgnoreCase);
+	}
+
+	[Fact]
+	public void DisabledButtonsBypassInteractionAnimation()
+	{
+		var root = FindRepositoryRoot();
+		var source = File.ReadAllText(Path.Combine(root, "src", "Depot", "Controls", "MotionSystem.cs"));
+		var buttons = File.ReadAllText(Path.Combine(root, "src", "Depot", "Resources", "Buttons.xaml"));
+
+		Assert.Contains("button.IsEnabled", source, StringComparison.Ordinal);
+		Assert.Contains("OnButtonIsEnabledChanged", source, StringComparison.Ordinal);
+		Assert.Contains("ResetButtonScale(button)", source, StringComparison.Ordinal);
+		Assert.Contains("<Trigger Property=\"IsEnabled\" Value=\"False\">", buttons, StringComparison.Ordinal);
+	}
+
+	private static int CountOccurrences(string source, string value)
+	{
+		var count = 0;
+		var index = 0;
+		while ((index = source.IndexOf(value, index, StringComparison.Ordinal)) >= 0)
+		{
+			count++;
+			index += value.Length;
+		}
+		return count;
+	}
+
 	private static string FindRepositoryRoot()
 	{
 		for (var directory = new DirectoryInfo(AppContext.BaseDirectory); directory is not null; directory = directory.Parent)
