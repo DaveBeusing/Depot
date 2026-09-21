@@ -165,6 +165,10 @@ public sealed class SalesViewModel : BaseViewModel, IDisposable
 	public RelayCommand OrderConfirmationCommand { get; }
 	public RelayCommand DeliveryNoteCommand { get; }
 	public RelayCommand InvoicePdfCommand { get; }
+	public bool ShowSaveOrderAction => SaveOrderCommand.CanExecute(null);
+	public bool ShowOrderDocumentActions => OrderConfirmationCommand.CanExecute(null);
+	public bool ShowSubmitOrderPrimaryAction => SubmitCommand.CanExecute(null);
+	public bool ShowReleaseOrderPrimaryAction => !ShowSubmitOrderPrimaryAction && ReleaseCommand.CanExecute(null);
 
 	public SalesSection Section
 	{
@@ -420,7 +424,14 @@ public sealed class SalesViewModel : BaseViewModel, IDisposable
 	private void GenerateDeliveryNote() { if (SelectedShipment is null) return; var path = _fileDialogs.ShowSaveFile(new SaveFileDialogRequest("Save delivery note", "PDF document (*.pdf)|*.pdf", ".pdf", $"{SelectedShipment.ShipmentNumber}-delivery-note.pdf")); if (path is not null) _documents.CreateDeliveryNote(path, SelectedShipment); }
 	private void GenerateInvoice() { if (SelectedInvoice is null) return; var path = _fileDialogs.ShowSaveFile(new SaveFileDialogRequest("Save sales invoice", "PDF document (*.pdf)|*.pdf", ".pdf", $"{SelectedInvoice.InvoiceNumber}.pdf")); if (path is not null) _documents.CreateInvoice(path, SelectedInvoice); }
 	private void NotifyMetrics() { OnPropertyChanged(nameof(OpenOrdersCount)); OnPropertyChanged(nameof(PendingApprovalCount)); OnPropertyChanged(nameof(ReadyToShipCount)); OnPropertyChanged(nameof(DraftShipmentCount)); OnPropertyChanged(nameof(DraftInvoiceCount)); OnPropertyChanged(nameof(PostedRevenue)); }
-	private void RaiseCommands() { SaveOrderCommand.RaiseCanExecuteChanged(); SubmitCommand.RaiseCanExecuteChanged(); ApproveCommand.RaiseCanExecuteChanged(); RejectCommand.RaiseCanExecuteChanged(); ReserveCommand.RaiseCanExecuteChanged(); ReleaseCommand.RaiseCanExecuteChanged(); CreateShipmentCommand.RaiseCanExecuteChanged(); SaveShipmentCommand.RaiseCanExecuteChanged(); PostShipmentCommand.RaiseCanExecuteChanged(); ReverseShipmentCommand.RaiseCanExecuteChanged(); CreateCustomerReturnCommand.RaiseCanExecuteChanged(); PostCustomerReturnCommand.RaiseCanExecuteChanged(); CreateInvoiceCommand.RaiseCanExecuteChanged(); CancelInvoiceCommand.RaiseCanExecuteChanged(); PostInvoiceCommand.RaiseCanExecuteChanged(); CreateCreditNoteCommand.RaiseCanExecuteChanged(); PostCreditNoteCommand.RaiseCanExecuteChanged(); OrderConfirmationCommand.RaiseCanExecuteChanged(); DeliveryNoteCommand.RaiseCanExecuteChanged(); InvoicePdfCommand.RaiseCanExecuteChanged(); AddLineCommand.RaiseCanExecuteChanged(); RemoveLineCommand.RaiseCanExecuteChanged(); }
+	private void RaiseCommands()
+	{
+		SaveOrderCommand.RaiseCanExecuteChanged(); SubmitCommand.RaiseCanExecuteChanged(); ApproveCommand.RaiseCanExecuteChanged(); RejectCommand.RaiseCanExecuteChanged(); ReserveCommand.RaiseCanExecuteChanged(); ReleaseCommand.RaiseCanExecuteChanged(); CreateShipmentCommand.RaiseCanExecuteChanged(); SaveShipmentCommand.RaiseCanExecuteChanged(); PostShipmentCommand.RaiseCanExecuteChanged(); ReverseShipmentCommand.RaiseCanExecuteChanged(); CreateCustomerReturnCommand.RaiseCanExecuteChanged(); PostCustomerReturnCommand.RaiseCanExecuteChanged(); CreateInvoiceCommand.RaiseCanExecuteChanged(); CancelInvoiceCommand.RaiseCanExecuteChanged(); PostInvoiceCommand.RaiseCanExecuteChanged(); CreateCreditNoteCommand.RaiseCanExecuteChanged(); PostCreditNoteCommand.RaiseCanExecuteChanged(); OrderConfirmationCommand.RaiseCanExecuteChanged(); DeliveryNoteCommand.RaiseCanExecuteChanged(); InvoicePdfCommand.RaiseCanExecuteChanged(); AddLineCommand.RaiseCanExecuteChanged(); RemoveLineCommand.RaiseCanExecuteChanged();
+		OnPropertyChanged(nameof(ShowSaveOrderAction));
+		OnPropertyChanged(nameof(ShowOrderDocumentActions));
+		OnPropertyChanged(nameof(ShowSubmitOrderPrimaryAction));
+		OnPropertyChanged(nameof(ShowReleaseOrderPrimaryAction));
+	}
 	private static Customer NewCustomerDraft() => new() { Currency = "EUR", PaymentTermsDays = 30, IsActive = true };
 	private static SalesOrder NewOrderDraft() => new() { OrderDate = DateTime.Today, Currency = "EUR", Status = SalesOrderStatus.Draft };
 	private static Customer Copy(Customer value) => new()
