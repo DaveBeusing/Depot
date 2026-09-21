@@ -19,7 +19,7 @@
 			<controls:Card Grid.Column="4"><StackPanel><TextBlock Text="Open order value" Style="{StaticResource CardTitleStyle}" /><TextBlock Margin="0,6,0,0" Text="{Binding Summary.TotalAmount, StringFormat={}{0:C2}}" Style="{StaticResource SectionTitleStyle}" /></StackPanel></controls:Card>
 		</Grid>
 
-		<controls:MasterDetailGrid Grid.Row="5">
+		<controls:MasterDetailGrid Grid.Row="5" DetailTransitionKey="{Binding SelectedApproval.Id}">
 			<controls:MasterDetailGrid.Master>
 				<Border Style="{StaticResource WorkspaceSectionStyle}">
 					<Grid>
@@ -60,7 +60,7 @@
 								<TabItem Header="Status history"><ListBox Margin="0,12,0,0" ItemsSource="{Binding Details.History}" Style="{StaticResource AppListBoxStyle}"><ListBox.ItemTemplate><DataTemplate><Grid Margin="0,5"><Grid.ColumnDefinitions><ColumnDefinition Width="145" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Text="{Binding TimestampLocal, StringFormat={}{0:g}}" Style="{StaticResource CaptionStyle}" /><StackPanel Grid.Column="1"><TextBlock Text="{Binding StatusChange}" FontWeight="SemiBold" /><TextBlock Text="{Binding UserEmail}" Style="{StaticResource CaptionStyle}" /></StackPanel></Grid></DataTemplate></ListBox.ItemTemplate></ListBox></TabItem>
 								<TabItem Header="Approval flow"><controls:ApprovalFlowVisualizer Margin="0,12,0,0" Projection="{Binding ApprovalFlow}" /></TabItem>
 							</TabControl>
-							<controls:WorkflowActionBar Grid.Row="2">
+							<controls:WorkflowActionBar Grid.Row="2" Visibility="{Binding CanDecideSelected, Converter={StaticResource BooleanToVisibilityConverter}}" controls:MotionBehavior.TransitionKind="State">
 								<controls:WorkflowActionBar.SecondaryActions><Button Command="{Binding RejectCommand}" Content="Reject" Style="{StaticResource DangerButtonStyle}" /></controls:WorkflowActionBar.SecondaryActions>
 								<controls:WorkflowActionBar.PrimaryAction><StackPanel><TextBlock Text="Decision comment (optional)" Style="{StaticResource FormLabelStyle}" /><TextBox Width="360" MinHeight="48" AcceptsReturn="True" Text="{Binding DecisionComment, UpdateSourceTrigger=PropertyChanged}" TextWrapping="Wrap" Style="{StaticResource MultilineTextBoxStyle}" /><Button Margin="0,8,0,0" HorizontalAlignment="Right" Command="{Binding ApproveCommand}" Content="Approve" Style="{StaticResource PrimaryButtonStyle}" /></StackPanel></controls:WorkflowActionBar.PrimaryAction>
 							</controls:WorkflowActionBar>
