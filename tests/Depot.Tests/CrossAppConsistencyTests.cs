@@ -49,6 +49,24 @@ public sealed class CrossAppConsistencyTests
 	}
 
 	[Fact]
+	public void WorkspaceTabMotionPreservesReopenAndKeyboardLifecycle()
+	{
+		var root = FindRepositoryRoot();
+		var shell = File.ReadAllText(Path.Combine(root, "src", "Depot", "Resources", "Shell.xaml"));
+		var tabs = File.ReadAllText(Path.Combine(root, "src", "Depot", "Controls", "WorkspaceTabControl.cs"));
+		var window = File.ReadAllText(Path.Combine(root, "src", "Depot", "MainWindow.xaml.cs"));
+
+		Assert.Contains("controls:MotionBehavior.TransitionKind\" Value=\"State\"", shell, StringComparison.Ordinal);
+		Assert.Contains("SelectionAccentScale", shell, StringComparison.Ordinal);
+		Assert.Contains("Items.Add(item)", tabs, StringComparison.Ordinal);
+		Assert.Contains("Items.Remove(item)", tabs, StringComparison.Ordinal);
+		Assert.DoesNotContain("BeginAnimation", tabs, StringComparison.Ordinal);
+		Assert.Contains("WorkspaceTabs.ReopenLastClosedTab()", window, StringComparison.Ordinal);
+		Assert.Contains("key == Key.T", window, StringComparison.Ordinal);
+		Assert.Contains("key == Key.Tab", window, StringComparison.Ordinal);
+	}
+
+	[Fact]
 	public void StatusBarUsesSafeContextInsteadOfDetailedConnectionEndpoint()
 	{
 		var root = FindRepositoryRoot();

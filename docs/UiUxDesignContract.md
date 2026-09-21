@@ -140,6 +140,14 @@ Button state feedback must use the shared motion foundation and preserve the est
 
 Button motion is non-essential. When Windows client-area animations are disabled, the shared motion behavior collapses the transition duration to zero. Button interactions must not animate `Width`, `Height`, margins, padding or other layout properties; use `RenderTransform` and, where appropriate, `Opacity` only. Do not add permanent, repeating or decorative button animations.
 
+### Shell, tabs and navigation motion
+
+Shell motion uses the same Fast (100 ms), Standard (160 ms) and reduced-motion-aware duration grammar as the rest of Depot. App tabs and workspace tabs communicate selection with opacity plus a centered scale transform on the accent/underline; tab width, height, padding, margin and position are never animated. Keyboard focus always has a static visible border and does not rely on motion alone.
+
+Newly materialized workspace-tab headers may use the shared `State` entrance transition. Closing remains immediate after the existing close/discard guard succeeds; no exit animation may delay removal, disposal, Ctrl+W or Ctrl+Shift+T reopen semantics. Workspace content continues to use its existing `Workspace` transition and must not receive a second page-level animation.
+
+Activity Bar hover and selection may animate the existing accent, icon and halo with brief opacity and minimal render-scale feedback. Running state animations must replace stale animations during rapid navigation. Navigation Toggle, Notifications, Help, Current User and other shell utility buttons use the shared button feedback behavior and utility press scale where appropriate. Notification badges remain one-shot and no shell motion repeats indefinitely.
+
 ## Data grids and lists
 
 `AppDataGridStyle` is the standard ERP grid surface. New collection views should use the existing shared grid styles for headers, text, numeric alignment, selection and state behavior. Its standard row/header height is based on the semantic `ControlHeight.L` token rather than per-view magic numbers.

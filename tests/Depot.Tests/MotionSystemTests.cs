@@ -121,6 +121,51 @@ public sealed class MotionSystemTests
 	}
 
 	[Fact]
+	public void ShellTabsUseReducedMotionAwareRenderOnlyStateTransitions()
+	{
+		var root = FindRepositoryRoot();
+		var tabs = File.ReadAllText(Path.Combine(root, "src", "Depot", "Resources", "Tabs.xaml"));
+		var shell = File.ReadAllText(Path.Combine(root, "src", "Depot", "Resources", "Shell.xaml"));
+		var polish = File.ReadAllText(Path.Combine(root, "src", "Depot", "Resources", "ShellPolish.xaml"));
+		var runtime = File.ReadAllText(Path.Combine(root, "src", "Depot", "Controls", "MotionSystem.cs"));
+		var combined = tabs + "\n" + shell + "\n" + polish;
+
+		Assert.Contains("SelectionAccentScale", tabs, StringComparison.Ordinal);
+		Assert.Contains("Storyboard.TargetProperty=\"ScaleX\"", tabs, StringComparison.Ordinal);
+		Assert.Contains("controls:MotionBehavior.TransitionKind\" Value=\"State\"", tabs, StringComparison.Ordinal);
+		Assert.Contains("SelectionAccentScale", shell, StringComparison.Ordinal);
+		Assert.Contains("AccentScale", shell, StringComparison.Ordinal);
+		Assert.Contains("MotionDuration Kind=Fast", combined, StringComparison.Ordinal);
+		Assert.Contains("MotionDuration Kind=Standard", combined, StringComparison.Ordinal);
+		Assert.Contains("HandoffBehavior=\"SnapshotAndReplace\"", polish, StringComparison.Ordinal);
+		Assert.Contains("IconHoverScale", polish, StringComparison.Ordinal);
+		Assert.Contains("SelectedHaloScale", polish, StringComparison.Ordinal);
+		Assert.Contains("HandoffBehavior.SnapshotAndReplace", runtime, StringComparison.Ordinal);
+		Assert.DoesNotContain("Storyboard.TargetProperty=\"Width\"", combined, StringComparison.Ordinal);
+		Assert.DoesNotContain("Storyboard.TargetProperty=\"Height\"", combined, StringComparison.Ordinal);
+		Assert.DoesNotContain("Storyboard.TargetProperty=\"Margin\"", combined, StringComparison.Ordinal);
+		Assert.DoesNotContain("RepeatBehavior=\"Forever\"", combined, StringComparison.OrdinalIgnoreCase);
+	}
+
+	[Fact]
+	public void ShellUtilityAndWorkspaceCloseButtonsUseSharedButtonFeedback()
+	{
+		var root = FindRepositoryRoot();
+		var shell = File.ReadAllText(Path.Combine(root, "src", "Depot", "Resources", "Shell.xaml"));
+		var polish = File.ReadAllText(Path.Combine(root, "src", "Depot", "Resources", "ShellPolish.xaml"));
+
+		Assert.Contains("x:Key=\"WorkspaceTabCloseButtonStyle\"", shell, StringComparison.Ordinal);
+		Assert.Contains("controls:MotionBehavior.IsButtonFeedbackEnabled\" Value=\"True\"", shell, StringComparison.Ordinal);
+		Assert.Contains("Motion.Scale.ButtonUtilityPressed", shell, StringComparison.Ordinal);
+		Assert.DoesNotContain("ScaleTransform ScaleX=\"0.92\"", shell, StringComparison.Ordinal);
+		Assert.Contains("x:Key=\"ActivityUtilityButtonStyle\"", polish, StringComparison.Ordinal);
+		Assert.Contains("Motion.Scale.ButtonUtilityPressed", polish, StringComparison.Ordinal);
+		Assert.Contains("x:Key=\"UserAvatarButtonStyle\"", polish, StringComparison.Ordinal);
+		Assert.Contains("x:Key=\"BrandButtonStyle\"", polish, StringComparison.Ordinal);
+		Assert.Contains("x:Key=\"FooterVersionButtonStyle\"", polish, StringComparison.Ordinal);
+	}
+
+	[Fact]
 	public void ButtonResourcesHaveSingleCanonicalAuthority()
 	{
 		var root = FindRepositoryRoot();
