@@ -26,7 +26,7 @@
 			HasError="{Binding HasOperationError}"
 			HelpTopicId="troubleshooting.database-connection-failures"
 			IsBusy="{Binding IsBusy}"
-			StatusText="{Binding StatusText}" />
+			StatusText="{Binding StatusText}"  Severity="{Binding OperationSeverity}" ActionText="{Binding OperationActionText}" ActionCommand="{Binding RefreshCommand}" />
 
 		<TabControl Grid.Row="3" Style="{StaticResource AppTabControlStyle}">
 			<TabItem Header="Connection">

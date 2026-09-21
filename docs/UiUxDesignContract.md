@@ -188,6 +188,12 @@ The displayed business status remains the source of truth. The visual mapping mu
 
 Views should use common patterns for busy, success, information, warning, error, empty, disabled and no-permission states. Reuse `OperationPanel`, `OperationStatus`, `WorkflowListState` and `EmptyState` rather than introducing per-view substitutes.
 
+`OperationStatus` may expose one contextual follow-up or recovery CTA through `ActionText`, `ActionCommand` and optional `ActionCommandParameter`. The CTA is interactive only when both meaningful text and a real command are present; never render pseudo-clickable action text. Command `CanExecute` remains authoritative for enabled state and RBAC/business rules must not be duplicated in the status control.
+
+Use recovery actions only when an existing workflow already supports the operation, such as reloading after an optimistic-concurrency conflict. Diagnostic actions such as Copy diagnostics and Open Help remain separate supporting tools and must not be replaced by the recovery CTA.
+
+Document status badges may briefly confirm a real status value change with the shared reduced-motion-aware status-change motion. Initial presentation should not pulse or flash. Status confirmation is one-shot, uses opacity plus a subtle render scale, and must not animate layout dimensions or alter the underlying business status.
+
 ## Dashboard
 
 The Dashboard is an operational attention surface, not a duplicate module menu. Its hierarchy is:

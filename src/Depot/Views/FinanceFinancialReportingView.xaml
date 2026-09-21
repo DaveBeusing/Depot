@@ -7,7 +7,7 @@
         <controls:PageHeader Title="Financial Reporting" Subtitle="Trial balance, General Ledger, financial statements, cash flow, aging, tax, inventory and COGS reporting.">
             <controls:PageHeader.Actions><Button Command="{Binding RefreshCommand}" Content="Refresh" Style="{StaticResource SecondaryButtonStyle}"/></controls:PageHeader.Actions>
         </controls:PageHeader>
-        <controls:OperationPanel Grid.Row="1" ErrorText="{Binding OperationError}" HasError="{Binding HasOperationError}" IsBusy="{Binding IsBusy}" StatusText="{Binding StatusText}"/>
+        <controls:OperationPanel Grid.Row="1" ErrorText="{Binding OperationError}" HasError="{Binding HasOperationError}" IsBusy="{Binding IsBusy}" StatusText="{Binding StatusText}" Severity="{Binding OperationSeverity}" ActionText="{Binding OperationActionText}" ActionCommand="{Binding RefreshCommand}" />
         <TabControl Grid.Row="2" Style="{StaticResource AppTabControlStyle}">
             <TabItem Header="Reports">
                 <Grid Margin="8">

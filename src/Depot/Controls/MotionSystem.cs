@@ -25,6 +25,7 @@ public enum MotionTransitionKind
 	DetailPane,
 	State,
 	Status,
+	StatusChange,
 	NotificationBadge,
 	Timeline
 }
@@ -76,7 +77,12 @@ public static class MotionTransitions
 			MotionTransitionKind.Timeline => 6d,
 			_ => 0d
 		};
-		var initialScale = kind == MotionTransitionKind.NotificationBadge ? 0.92d : 1d;
+		var initialScale = kind switch
+		{
+			MotionTransitionKind.NotificationBadge => 0.92d,
+			MotionTransitionKind.StatusChange => 0.96d,
+			_ => 1d
+		};
 		var duration = MotionDurations.Resolve(speed, reduceMotion);
 		var easing = new CubicEase { EasingMode = EasingMode.EaseOut };
 

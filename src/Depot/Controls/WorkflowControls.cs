@@ -8,6 +8,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 
 using Depot.Models;
+using Depot.ViewModels;
 
 namespace Depot.Controls;
 
@@ -64,6 +65,10 @@ public sealed class OperationPanel : Control
 	public static readonly DependencyProperty StatusTextProperty = DependencyProperty.Register(nameof(StatusText), typeof(string), typeof(OperationPanel), new PropertyMetadata(string.Empty));
 	public static readonly DependencyProperty ErrorTextProperty = DependencyProperty.Register(nameof(ErrorText), typeof(string), typeof(OperationPanel), new PropertyMetadata(string.Empty));
 	public static readonly DependencyProperty HelpTopicIdProperty = DependencyProperty.Register(nameof(HelpTopicId), typeof(string), typeof(OperationPanel), new PropertyMetadata(string.Empty));
+	public static readonly DependencyProperty SeverityProperty = DependencyProperty.Register(nameof(Severity), typeof(OperationSeverity), typeof(OperationPanel), new PropertyMetadata(OperationSeverity.None));
+	public static readonly DependencyProperty ActionTextProperty = DependencyProperty.Register(nameof(ActionText), typeof(string), typeof(OperationPanel), new PropertyMetadata(null));
+	public static readonly DependencyProperty ActionCommandProperty = DependencyProperty.Register(nameof(ActionCommand), typeof(ICommand), typeof(OperationPanel), new PropertyMetadata(null));
+	public static readonly DependencyProperty ActionCommandParameterProperty = DependencyProperty.Register(nameof(ActionCommandParameter), typeof(object), typeof(OperationPanel), new PropertyMetadata(null));
 
 	static OperationPanel() => DefaultStyleKeyProperty.OverrideMetadata(typeof(OperationPanel), new FrameworkPropertyMetadata(typeof(OperationPanel)));
 
@@ -72,6 +77,10 @@ public sealed class OperationPanel : Control
 	public string StatusText { get => (string)GetValue(StatusTextProperty); set => SetValue(StatusTextProperty, value); }
 	public string ErrorText { get => (string)GetValue(ErrorTextProperty); set => SetValue(ErrorTextProperty, value); }
 	public string HelpTopicId { get => (string)GetValue(HelpTopicIdProperty); set => SetValue(HelpTopicIdProperty, value); }
+	public OperationSeverity Severity { get => (OperationSeverity)GetValue(SeverityProperty); set => SetValue(SeverityProperty, value); }
+	public string? ActionText { get => (string?)GetValue(ActionTextProperty); set => SetValue(ActionTextProperty, value); }
+	public ICommand? ActionCommand { get => (ICommand?)GetValue(ActionCommandProperty); set => SetValue(ActionCommandProperty, value); }
+	public object? ActionCommandParameter { get => GetValue(ActionCommandParameterProperty); set => SetValue(ActionCommandParameterProperty, value); }
 }
 
 public sealed record WorkflowStatusPresentation(string Text, string Glyph, StatusBadgeVariant Variant);
@@ -114,6 +123,8 @@ public static class WorkflowStatusLanguage
 
 public sealed class DocumentStatusBadge : StatusBadge
 {
+	private bool _hasPresentedStatus;
+
 	public static readonly DependencyProperty StatusProperty = DependencyProperty.Register(
 		nameof(Status),
 		typeof(string),
@@ -125,10 +136,17 @@ public sealed class DocumentStatusBadge : StatusBadge
 	private static void OnStatusChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs args)
 	{
 		var badge = (DocumentStatusBadge)dependencyObject;
-		var presentation = WorkflowStatusLanguage.Resolve(args.NewValue as string);
+		var oldStatus = (args.OldValue as string)?.Trim();
+		var newStatus = (args.NewValue as string)?.Trim();
+		var changed = !string.Equals(oldStatus, newStatus, StringComparison.OrdinalIgnoreCase);
+		var presentation = WorkflowStatusLanguage.Resolve(newStatus);
 		badge.Content = $"{presentation.Glyph} {presentation.Text}";
 		badge.Variant = presentation.Variant;
 		AutomationProperties.SetName(badge, presentation.Text);
+
+		if (badge._hasPresentedStatus && badge.IsLoaded && changed)
+			MotionTransitions.Begin(badge, MotionTransitionKind.StatusChange);
+		badge._hasPresentedStatus = true;
 	}
 }
 

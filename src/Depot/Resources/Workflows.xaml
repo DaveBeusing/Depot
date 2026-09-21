@@ -210,7 +210,14 @@
             <Setter.Value>
                 <ControlTemplate TargetType="{x:Type controls:OperationPanel}">
                     <StackPanel>
-                        <controls:OperationStatus ErrorText="{TemplateBinding ErrorText}" HasError="{TemplateBinding HasError}" IsBusy="{TemplateBinding IsBusy}" StatusText="{TemplateBinding StatusText}" />
+                        <controls:OperationStatus ErrorText="{TemplateBinding ErrorText}"
+                                                  HasError="{TemplateBinding HasError}"
+                                                  IsBusy="{TemplateBinding IsBusy}"
+                                                  StatusText="{TemplateBinding StatusText}"
+                                                  Severity="{TemplateBinding Severity}"
+                                                  ActionText="{TemplateBinding ActionText}"
+                                                  ActionCommand="{TemplateBinding ActionCommand}"
+                                                  ActionCommandParameter="{TemplateBinding ActionCommandParameter}" />
                         <StackPanel x:Name="DiagnosticActions" Margin="{DynamicResource Control.Margin}" HorizontalAlignment="Right" Orientation="Horizontal" Visibility="Collapsed">
                             <Button Command="{x:Static commands:HelpCommands.CopyDiagnostics}" CommandParameter="{TemplateBinding ErrorText}" Content="Copy diagnostics" Style="{DynamicResource SecondaryButtonStyle}" />
                             <Button Margin="{DynamicResource Button.Margin}" Command="{x:Static commands:HelpCommands.OpenTopic}" CommandParameter="{TemplateBinding HelpTopicId}" Content="Open Help" Style="{DynamicResource SecondaryButtonStyle}" />

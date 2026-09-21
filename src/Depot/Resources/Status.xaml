@@ -64,7 +64,19 @@
                             <Grid.ColumnDefinitions><ColumnDefinition Width="90"/><ColumnDefinition Width="10"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                             <ProgressBar x:Name="Progress" Height="2" VerticalAlignment="Center" IsIndeterminate="True"/>
                             <TextBlock x:Name="Message" Grid.Column="2" VerticalAlignment="Center" Foreground="{DynamicResource SecondaryTextBrush}" FontSize="{DynamicResource FontSize.Caption}" Text="{TemplateBinding StatusText}"/>
-                            <TextBlock x:Name="Action" Grid.Column="3" Margin="12,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource PrimaryTextBrush}" FontSize="{DynamicResource FontSize.Caption}" FontWeight="SemiBold" Text="{TemplateBinding ActionText}" Visibility="Collapsed"/>
+                            <Button x:Name="Action"
+                                    Grid.Column="3"
+                                    MinWidth="0"
+                                    Height="Auto"
+                                    Margin="12,0,0,0"
+                                    Padding="10,4"
+                                    VerticalAlignment="Center"
+                                    AutomationProperties.Name="{TemplateBinding ActionText}"
+                                    Command="{TemplateBinding ActionCommand}"
+                                    CommandParameter="{TemplateBinding ActionCommandParameter}"
+                                    Content="{TemplateBinding ActionText}"
+                                    Style="{DynamicResource SecondaryButtonStyle}"
+                                    Visibility="Collapsed"/>
                         </Grid>
                     </Border>
                     <ControlTemplate.Triggers>
@@ -90,15 +102,7 @@
                             <Setter TargetName="Message" Property="Foreground" Value="{DynamicResource SuccessForegroundBrush}"/>
                             <Setter TargetName="Progress" Property="Visibility" Value="Collapsed"/>
                         </Trigger>
-                        <Trigger Property="ActionText" Value=""><Setter TargetName="Action" Property="Visibility" Value="Collapsed"/></Trigger>
-                        <Trigger Property="ActionText" Value="{x:Null}"><Setter TargetName="Action" Property="Visibility" Value="Collapsed"/></Trigger>
-                        <MultiTrigger>
-                            <MultiTrigger.Conditions>
-                                <Condition Property="HasError" Value="True"/>
-                                <Condition Property="Severity" Value="{x:Static viewModels:OperationSeverity.Warning}"/>
-                            </MultiTrigger.Conditions>
-                            <Setter TargetName="Action" Property="Visibility" Value="Visible"/>
-                        </MultiTrigger>
+                        <Trigger Property="HasAction" Value="True"><Setter TargetName="Action" Property="Visibility" Value="Visible"/></Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
