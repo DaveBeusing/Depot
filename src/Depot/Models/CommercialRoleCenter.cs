@@ -87,7 +87,15 @@ public sealed record CommercialRoleSection(string Title, string EmptyText, IRead
 	public string DisplayEmptyText => IsFiltered ? "No work items match the current filter." : EmptyText;
 }
 
-public sealed record CommercialRoleKpi(string Label, string Value, string? SupportingText = null, string? RouteId = null);
+public sealed record CommercialRoleKpi(
+	string Label,
+	string Value,
+	string? SupportingText = null,
+	string? RouteId = null,
+	bool HasChanged = false)
+{
+	public string PresentationKey => $"{RouteId ?? string.Empty}|{Label}";
+}
 
 public enum CommercialRoleQuickActionPresentation
 {
