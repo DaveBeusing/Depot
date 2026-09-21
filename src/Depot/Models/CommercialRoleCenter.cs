@@ -89,7 +89,23 @@ public sealed record CommercialRoleSection(string Title, string EmptyText, IRead
 
 public sealed record CommercialRoleKpi(string Label, string Value, string? SupportingText = null, string? RouteId = null);
 
-public sealed record CommercialRoleQuickAction(string Label, string ActionId, string RouteId);
+public enum CommercialRoleQuickActionPresentation
+{
+	Primary = 1,
+	Secondary = 2,
+	Overflow = 3
+}
+
+public sealed record CommercialRoleQuickAction(
+	string Label,
+	string ActionId,
+	string RouteId,
+	CommercialRoleQuickActionPresentation Presentation = CommercialRoleQuickActionPresentation.Secondary)
+{
+	public bool IsPrimary => Presentation == CommercialRoleQuickActionPresentation.Primary;
+	public bool IsSecondary => Presentation == CommercialRoleQuickActionPresentation.Secondary;
+	public bool IsOverflow => Presentation == CommercialRoleQuickActionPresentation.Overflow;
+}
 
 public sealed record CommercialRoleColumnProfile(
 	string WorkspaceId,

@@ -1030,8 +1030,21 @@ public sealed class CommercialRoleCenterService
 		IReadOnlyList<CommercialRoleSection> sections,
 		IReadOnlyList<CommercialRoleKpi> kpis,
 		IReadOnlyList<CommercialRoleQuickAction> quickActions,
-		IReadOnlyList<MyWorkProviderFailure> failures) =>
-		new(kind, title, subtitle, sections, kpis, quickActions, failures);
+		IReadOnlyList<MyWorkProviderFailure> failures)
+	{
+		var presentedActions = quickActions
+			.Select((action, index) => action with
+			{
+				Presentation = index switch
+				{
+					0 => CommercialRoleQuickActionPresentation.Primary,
+					1 or 2 => CommercialRoleQuickActionPresentation.Secondary,
+					_ => CommercialRoleQuickActionPresentation.Overflow
+				}
+			})
+			.ToArray();
+		return new(kind, title, subtitle, sections, kpis, presentedActions, failures);
+	}
 
 	private static IReadOnlyList<CommercialRoleItem> WorkItems(MyWorkSnapshot snapshot, MyWorkSectionKind section, MyWorkItemKind kind, long? owner = null) =>
 		snapshot.Sections.Single(value => value.Kind == section).Items

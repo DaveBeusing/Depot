@@ -32,8 +32,14 @@ public sealed class CommercialRoleCenterViewModel : BaseViewModel
 	public ObservableCollection<CommercialRoleSection> Sections { get; } = [];
 	public ObservableCollection<CommercialRoleKpi> Kpis { get; } = [];
 	public ObservableCollection<CommercialRoleQuickAction> QuickActions { get; } = [];
+	public ObservableCollection<CommercialRoleQuickAction> PrimaryQuickActions { get; } = [];
+	public ObservableCollection<CommercialRoleQuickAction> SecondaryQuickActions { get; } = [];
+	public ObservableCollection<CommercialRoleQuickAction> OverflowQuickActions { get; } = [];
 	public bool HasKpis => Kpis.Count > 0;
 	public bool HasQuickActions => QuickActions.Count > 0;
+	public bool HasPrimaryQuickActions => PrimaryQuickActions.Count > 0;
+	public bool HasSecondaryQuickActions => SecondaryQuickActions.Count > 0;
+	public bool HasOverflowQuickActions => OverflowQuickActions.Count > 0;
 	public bool IsApprovalInbox => Kind == CommercialRoleCenterKind.ApprovalInbox;
 	public string WorkspaceId => CommercialRoleColumnProfiles.Get(Kind).WorkspaceId;
 	public string DecisionComment { get => _decisionComment; set { if (_decisionComment == value) return; _decisionComment = value; OnPropertyChanged(); } }
@@ -90,8 +96,14 @@ public sealed class CommercialRoleCenterViewModel : BaseViewModel
 				: $"Some work sources are unavailable: {string.Join(", ", snapshot.Failures.Select(failure => failure.Provider))}.";
 			Replace(Kpis, snapshot.Kpis);
 			Replace(QuickActions, snapshot.QuickActions);
+			Replace(PrimaryQuickActions, snapshot.QuickActions.Where(action => action.IsPrimary));
+			Replace(SecondaryQuickActions, snapshot.QuickActions.Where(action => action.IsSecondary));
+			Replace(OverflowQuickActions, snapshot.QuickActions.Where(action => action.IsOverflow));
 			OnPropertyChanged(nameof(HasKpis));
 			OnPropertyChanged(nameof(HasQuickActions));
+			OnPropertyChanged(nameof(HasPrimaryQuickActions));
+			OnPropertyChanged(nameof(HasSecondaryQuickActions));
+			OnPropertyChanged(nameof(HasOverflowQuickActions));
 			CompleteOperation(Sections.All(section => section.IsEmpty), snapshot.Failures.Count == 0
 				? "Role center is current."
 				: PartialFailureText);
