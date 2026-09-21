@@ -13,6 +13,12 @@
 	<CubicEase x:Key="Motion.Ease.Out" EasingMode="EaseOut" />
 	<QuadraticEase x:Key="Motion.Ease.InOut" EasingMode="EaseInOut" />
 
+	<!-- Render-transform-only interaction scales. -->
+	<sys:Double x:Key="Motion.Scale.ButtonHover">1.01</sys:Double>
+	<sys:Double x:Key="Motion.Scale.ButtonPressed">0.97</sys:Double>
+	<sys:Double x:Key="Motion.Scale.ButtonLinkPressed">0.98</sys:Double>
+	<sys:Double x:Key="Motion.Scale.ButtonUtilityPressed">0.94</sys:Double>
+
 	<!-- Small render-transform distances used by reusable entrance transitions. -->
 	<sys:Double x:Key="Motion.Offset.Workspace">8</sys:Double>
 	<sys:Double x:Key="Motion.Offset.DetailPane">10</sys:Double>

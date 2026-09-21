@@ -3,6 +3,8 @@
 
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Windows.Input;
 using System.Windows.Markup;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
@@ -157,11 +159,47 @@ public static class MotionBehavior
 		typeof(MotionBehavior),
 		new FrameworkPropertyMetadata(MotionTransitionKind.None, OnTransitionKindChanged));
 
+	public static readonly DependencyProperty IsButtonFeedbackEnabledProperty = DependencyProperty.RegisterAttached(
+		"IsButtonFeedbackEnabled",
+		typeof(bool),
+		typeof(MotionBehavior),
+		new FrameworkPropertyMetadata(false, OnIsButtonFeedbackEnabledChanged));
+
+	public static readonly DependencyProperty ButtonHoverScaleProperty = DependencyProperty.RegisterAttached(
+		"ButtonHoverScale",
+		typeof(double),
+		typeof(MotionBehavior),
+		new FrameworkPropertyMetadata(1d));
+
+	public static readonly DependencyProperty ButtonPressedScaleProperty = DependencyProperty.RegisterAttached(
+		"ButtonPressedScale",
+		typeof(double),
+		typeof(MotionBehavior),
+		new FrameworkPropertyMetadata(0.97d));
+
 	public static void SetTransitionKind(DependencyObject element, MotionTransitionKind value) =>
 		element.SetValue(TransitionKindProperty, value);
 
 	public static MotionTransitionKind GetTransitionKind(DependencyObject element) =>
 		(MotionTransitionKind)element.GetValue(TransitionKindProperty);
+
+	public static void SetIsButtonFeedbackEnabled(DependencyObject element, bool value) =>
+		element.SetValue(IsButtonFeedbackEnabledProperty, value);
+
+	public static bool GetIsButtonFeedbackEnabled(DependencyObject element) =>
+		(bool)element.GetValue(IsButtonFeedbackEnabledProperty);
+
+	public static void SetButtonHoverScale(DependencyObject element, double value) =>
+		element.SetValue(ButtonHoverScaleProperty, value);
+
+	public static double GetButtonHoverScale(DependencyObject element) =>
+		(double)element.GetValue(ButtonHoverScaleProperty);
+
+	public static void SetButtonPressedScale(DependencyObject element, double value) =>
+		element.SetValue(ButtonPressedScaleProperty, value);
+
+	public static double GetButtonPressedScale(DependencyObject element) =>
+		(double)element.GetValue(ButtonPressedScaleProperty);
 
 	private static void OnTransitionKindChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs args)
 	{
@@ -175,6 +213,143 @@ public static class MotionBehavior
 		element.Loaded += OnLoaded;
 		element.IsVisibleChanged += OnIsVisibleChanged;
 		if (element.IsLoaded && element.IsVisible) MotionTransitions.Begin(element, (MotionTransitionKind)args.NewValue);
+	}
+
+	private static void OnIsButtonFeedbackEnabledChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs args)
+	{
+		if (dependencyObject is not ButtonBase button) return;
+
+		DetachButtonFeedback(button);
+		ResetButtonScale(button);
+
+		if (args.NewValue is not true) return;
+
+		EnsureButtonScale(button);
+		button.MouseEnter += OnButtonMouseEnter;
+		button.MouseLeave += OnButtonMouseLeave;
+		button.PreviewMouseLeftButtonDown += OnButtonMouseLeftButtonDown;
+		button.PreviewMouseLeftButtonUp += OnButtonMouseLeftButtonUp;
+		button.LostMouseCapture += OnButtonLostMouseCapture;
+		button.PreviewKeyDown += OnButtonPreviewKeyDown;
+		button.PreviewKeyUp += OnButtonPreviewKeyUp;
+		button.LostKeyboardFocus += OnButtonLostKeyboardFocus;
+		button.IsEnabledChanged += OnButtonIsEnabledChanged;
+	}
+
+	private static void DetachButtonFeedback(ButtonBase button)
+	{
+		button.MouseEnter -= OnButtonMouseEnter;
+		button.MouseLeave -= OnButtonMouseLeave;
+		button.PreviewMouseLeftButtonDown -= OnButtonMouseLeftButtonDown;
+		button.PreviewMouseLeftButtonUp -= OnButtonMouseLeftButtonUp;
+		button.LostMouseCapture -= OnButtonLostMouseCapture;
+		button.PreviewKeyDown -= OnButtonPreviewKeyDown;
+		button.PreviewKeyUp -= OnButtonPreviewKeyUp;
+		button.LostKeyboardFocus -= OnButtonLostKeyboardFocus;
+		button.IsEnabledChanged -= OnButtonIsEnabledChanged;
+	}
+
+	private static void OnButtonMouseEnter(object sender, MouseEventArgs args)
+	{
+		if (sender is ButtonBase button && button.IsEnabled && !button.IsPressed)
+			AnimateButtonScale(button, GetButtonHoverScale(button));
+	}
+
+	private static void OnButtonMouseLeave(object sender, MouseEventArgs args)
+	{
+		if (sender is ButtonBase button && button.IsEnabled && !button.IsPressed)
+			AnimateButtonScale(button, 1d);
+	}
+
+	private static void OnButtonMouseLeftButtonDown(object sender, MouseButtonEventArgs args)
+	{
+		if (sender is ButtonBase button && button.IsEnabled)
+			AnimateButtonScale(button, GetButtonPressedScale(button));
+	}
+
+	private static void OnButtonMouseLeftButtonUp(object sender, MouseButtonEventArgs args)
+	{
+		if (sender is ButtonBase button && button.IsEnabled)
+			AnimateButtonScale(button, button.IsMouseOver ? GetButtonHoverScale(button) : 1d);
+	}
+
+	private static void OnButtonLostMouseCapture(object sender, MouseEventArgs args)
+	{
+		if (sender is ButtonBase button && button.IsEnabled)
+			AnimateButtonScale(button, button.IsMouseOver ? GetButtonHoverScale(button) : 1d);
+	}
+
+	private static void OnButtonPreviewKeyDown(object sender, KeyEventArgs args)
+	{
+		if (sender is ButtonBase button && button.IsEnabled && IsButtonActivationKey(args.Key))
+			AnimateButtonScale(button, GetButtonPressedScale(button));
+	}
+
+	private static void OnButtonPreviewKeyUp(object sender, KeyEventArgs args)
+	{
+		if (sender is ButtonBase button && button.IsEnabled && IsButtonActivationKey(args.Key))
+			AnimateButtonScale(button, button.IsMouseOver ? GetButtonHoverScale(button) : 1d);
+	}
+
+	private static void OnButtonLostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs args)
+	{
+		if (sender is ButtonBase button && button.IsEnabled && !button.IsPressed)
+			AnimateButtonScale(button, button.IsMouseOver ? GetButtonHoverScale(button) : 1d);
+	}
+
+	private static void OnButtonIsEnabledChanged(object sender, DependencyPropertyChangedEventArgs args)
+	{
+		if (sender is not ButtonBase button) return;
+		if (args.NewValue is true)
+			AnimateButtonScale(button, button.IsMouseOver ? GetButtonHoverScale(button) : 1d);
+		else
+			ResetButtonScale(button);
+	}
+
+	private static bool IsButtonActivationKey(Key key) => key is Key.Space or Key.Enter;
+
+	private static ScaleTransform? EnsureButtonScale(ButtonBase button)
+	{
+		if (button.RenderTransform is ScaleTransform scale) return scale;
+		if (!ReferenceEquals(button.RenderTransform, Transform.Identity)) return null;
+
+		scale = new ScaleTransform(1d, 1d);
+		button.RenderTransform = scale;
+		button.RenderTransformOrigin = new Point(0.5d, 0.5d);
+		return scale;
+	}
+
+	private static void AnimateButtonScale(ButtonBase button, double targetScale)
+	{
+		var scale = EnsureButtonScale(button);
+		if (scale is null) return;
+
+		var duration = MotionDurations.Resolve(MotionSpeed.Fast, MotionPreferences.IsReducedMotionEnabled);
+		if (!duration.HasTimeSpan || duration.TimeSpan == TimeSpan.Zero)
+		{
+			scale.BeginAnimation(ScaleTransform.ScaleXProperty, null);
+			scale.BeginAnimation(ScaleTransform.ScaleYProperty, null);
+			scale.ScaleX = targetScale;
+			scale.ScaleY = targetScale;
+			return;
+		}
+
+		var easing = new CubicEase { EasingMode = EasingMode.EaseOut };
+		scale.BeginAnimation(
+			ScaleTransform.ScaleXProperty,
+			new DoubleAnimation(targetScale, duration) { EasingFunction = easing });
+		scale.BeginAnimation(
+			ScaleTransform.ScaleYProperty,
+			new DoubleAnimation(targetScale, duration) { EasingFunction = easing });
+	}
+
+	private static void ResetButtonScale(ButtonBase button)
+	{
+		if (button.RenderTransform is not ScaleTransform scale) return;
+		scale.BeginAnimation(ScaleTransform.ScaleXProperty, null);
+		scale.BeginAnimation(ScaleTransform.ScaleYProperty, null);
+		scale.ScaleX = 1d;
+		scale.ScaleY = 1d;
 	}
 
 	private static void OnLoaded(object sender, RoutedEventArgs args)
