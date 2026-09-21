@@ -12,7 +12,7 @@ on:
       - 'src/DepotManager/**'
       - 'tests/DepotManager.Tests/**'
       - 'Directory.Build.props'
-      - 'security/security-risk-acceptances.json'
+      - 'docs/security/security-risk-acceptances.json'
       - 'scripts/security/validate-risk-acceptances.ps1'
   workflow_dispatch:
     inputs:
@@ -419,7 +419,7 @@ jobs:
             }
           }
           $evidence | ConvertTo-Json -Depth 8 | Out-File (Join-Path $assets 'ReleaseEvidence.json') -Encoding utf8
-          Copy-Item security/security-risk-acceptances.json (Join-Path $assets 'security-risk-acceptances.json')
+          Copy-Item docs/security/security-risk-acceptances.json (Join-Path $assets 'security-risk-acceptances.json')
 
           Get-ChildItem $assets -File |
             Where-Object Name -ne 'SHA256SUMS.txt' |

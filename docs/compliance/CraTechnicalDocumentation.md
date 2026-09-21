@@ -46,7 +46,7 @@ Provide a stable technical-documentation index for CRA readiness and evidence co
 - `docs/compliance/CraIncidentReporting.md`
 - `docs/compliance/SecurityUpdateLifecycle.md`
 - `docs/compliance/SupportPolicy.md`
-- `security/security-risk-acceptances.json`
+- `docs/security/security-risk-acceptances.json`
 
 ## Supply-chain evidence
 

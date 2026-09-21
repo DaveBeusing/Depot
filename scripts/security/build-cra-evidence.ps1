@@ -24,7 +24,7 @@ $requiredFiles = @(
     "docs/compliance/SecureConfiguration.md",
     "docs/compliance/ThreatModel.md",
     "docs/compliance/ReleaseIntegrity.md",
-    "security/security-risk-acceptances.json"
+    "docs/security/security-risk-acceptances.json"
 )
 
 foreach ($file in $requiredFiles) {

@@ -82,7 +82,7 @@ Engineering planning currently assumes CRA reporting obligations apply from **11
 - `docs/compliance/SecureDefaultsReview.md`
 - `docs/compliance/VulnerabilityManagement.md`
 - `docs/compliance/SupportPolicy.md`
-- `security/security-risk-acceptances.json`
+- `docs/security/security-risk-acceptances.json`
 - `scripts/security/validate-risk-acceptances.ps1`
 - `scripts/security/build-cra-evidence.ps1`
 - `.github/workflows/security-supply-chain.yml`

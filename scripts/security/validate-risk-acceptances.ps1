@@ -3,7 +3,7 @@
 
 [CmdletBinding()]
 param(
-    [string]$Path = "security/security-risk-acceptances.json"
+    [string]$Path = "docs/security/security-risk-acceptances.json"
 )
 
 $ErrorActionPreference = "Stop"
