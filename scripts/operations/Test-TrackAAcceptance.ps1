@@ -1,5 +1,5 @@
 param(
-    [string]$Path = (Join-Path (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path 'operations/TrackAAcceptance.example.json'),
+    [string]$Path = (Join-Path (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path 'docs/operations/TrackAAcceptance.example.json'),
     [switch]$RequirePass,
     [string]$EvidencePath = ''
 )

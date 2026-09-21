@@ -32,11 +32,11 @@ jobs:
 
       - name: Validate disaster recovery profile contract
         shell: pwsh
-        run: ./scripts/operations/Test-DisasterRecoveryProfile.ps1 -ProfilePath operations/DisasterRecoveryProfile.example.json -AllowTemplate -EvidencePath artifacts/operations/DisasterRecoveryProfile.validation.json
+        run: ./scripts/operations/Test-DisasterRecoveryProfile.ps1 -ProfilePath docs/operations/DisasterRecoveryProfile.example.json -AllowTemplate -EvidencePath artifacts/operations/DisasterRecoveryProfile.validation.json
 
       - name: Validate Track A acceptance closure contract
         shell: pwsh
-        run: ./scripts/operations/Test-TrackAAcceptance.ps1 -Path operations/TrackAAcceptance.example.json -EvidencePath artifacts/operations/TrackAAcceptance.validation.json
+        run: ./scripts/operations/Test-TrackAAcceptance.ps1 -Path docs/operations/TrackAAcceptance.example.json -EvidencePath artifacts/operations/TrackAAcceptance.validation.json
 
       - name: Validate repository governance contract
         shell: pwsh

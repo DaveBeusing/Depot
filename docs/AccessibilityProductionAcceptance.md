@@ -42,7 +42,7 @@ The quality job retains `TechnicalAccessibilityEvidence.json`. That artifact pro
 Copy:
 
 ```text
-operations/AccessibilityAcceptance.example.json
+docs/operations/AccessibilityAcceptance.example.json
 ```
 
 to the release evidence location for the candidate being accepted.

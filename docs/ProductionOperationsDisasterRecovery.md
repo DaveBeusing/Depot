@@ -14,7 +14,7 @@ A deployment is not operationally accepted merely because a backup job reports s
 
 Before production use, create an ACTIVE deployment profile based on:
 
-`operations/DisasterRecoveryProfile.example.json`
+`docs/operations/DisasterRecoveryProfile.example.json`
 
 Validate it with:
 
