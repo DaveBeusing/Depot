@@ -98,9 +98,12 @@ My Work provides:
 - five tabs with item counts;
 - compact read-only rows;
 - priority/due-age ordering;
+- mutually exclusive All, Overdue, Today and High priority filter chips with a visible selected state;
+- filter counts calculated from the already-loaded My Work snapshot without additional provider/database queries;
+- an item PrimaryAction rendered as the dominant CTA only when both its existing action label and route are present;
 - empty states;
 - refresh;
-- double-click and action-button navigation;
+- double-click and action-button navigation through the existing permission-filtered shell route;
 - provider failure status without suppressing healthy providers.
 
 ## Validation contract
@@ -110,7 +113,7 @@ Regression coverage verifies permission removal, deterministic section ordering 
 
 ## Adaptive Home integration
 
-The Home workspace treats My Work as the primary action surface. **Needs my action** is the default section, with Overdue, Today and High priority filters applied as presentation projections over the existing My Work snapshot.
+The Home workspace treats My Work as the primary action surface. **Needs my action** is the default section, with All, Overdue, Today and High priority filters applied as mutually exclusive presentation projections over the existing My Work snapshot. Their counts are calculated locally from that same snapshot, so selecting a filter does not issue another provider or database query.
 
 Home KPI cards are bounded to existing Dashboard and My Work data and are selected from effective permissions. Operational quick actions are offered only when the corresponding create/execute permission already exists. Favorites, Recents and Default Landing remain on the existing Workspace Productivity persistence model and are presented compactly after action-oriented content.
 

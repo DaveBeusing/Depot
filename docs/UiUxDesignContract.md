@@ -125,6 +125,14 @@ When multiple commands are valid in the same state, choose one preferred next st
 
 A workflow state with no appropriate next Primary action should leave the Primary area empty rather than displaying a disabled or fabricated action. Contextual visibility changes should use the shared reduced-motion-aware State transition and must not animate layout dimensions.
 
+Role Center quick actions follow the same hierarchy. Their service/projection order is the explicit priority contract: at most the first permitted action is Primary, the next supporting actions are Secondary, and lower-frequency remainder may move to Overflow. Views must not inspect action labels to infer priority, and reclassification must not change permissions or the existing execution path.
+
+### Filter chips and segmented filters
+
+Use the shared `FilterChipToggleStyle` when a small, finite filter set benefits from immediate switching. Exactly one chip should communicate the selected projection when the filter is mutually exclusive. The selected state must be visible without relying on animation, every chip remains keyboard-operable, and its automation name must identify the filter.
+
+Counts may be shown when they are derived from the already-loaded in-memory projection. A filter chip must not trigger additional repository/provider queries merely to calculate its count. Filtering remains presentation state and must not become a second persistence or authorization model.
+
 ## Button interaction and motion
 
 Shared application buttons are defined canonically in `src/Depot/Resources/Buttons.xaml`. Do not redeclare `AppButtonBaseStyle`, `PrimaryButtonStyle`, `SecondaryButtonStyle`, `DangerButtonStyle` or `AppLinkButtonStyle` in later resource dictionaries.
@@ -201,6 +209,8 @@ Views should use common patterns for busy, success, information, warning, error,
 Use recovery actions only when an existing workflow already supports the operation, such as reloading after an optimistic-concurrency conflict. Diagnostic actions such as Copy diagnostics and Open Help remain separate supporting tools and must not be replaced by the recovery CTA.
 
 Document status badges may briefly confirm a real status value change with the shared reduced-motion-aware status-change motion. Initial presentation should not pulse or flash. Status confirmation is one-shot, uses opacity plus a subtle render scale, and must not animate layout dimensions or alter the underlying business status.
+
+Role Center KPI values may use the same one-shot `StatusChange` grammar when the ViewModel can compare a stable KPI identity with a previously presented value in the current view session. Initial load and identical refresh values remain static. Previous KPI values are presentation-only state and are never persisted. Progressive dashboard KPI loading is not treated as a value change unless the surface can reliably distinguish initial materialization from a later refresh.
 
 ## Dashboard
 
