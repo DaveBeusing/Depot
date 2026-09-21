@@ -43,12 +43,12 @@
                                 <StackPanel Grid.Column="2"><TextBlock Text="Active reservations" Style="{StaticResource WorkspaceSectionTitleStyle}"/><ListBox Margin="0,8,0,0" ItemsSource="{Binding Workspace.Reservations}" SelectedItem="{Binding Workspace.SelectedReservation}" MinHeight="95"><ListBox.ItemTemplate><DataTemplate><TextBlock><Run Text="Inventory "/><Run Text="{Binding InventoryId}"/><Run Text=" · qty "/><Run Text="{Binding Quantity}"/><Run Text=" · "/><Run Text="{Binding Status}"/></TextBlock></DataTemplate></ListBox.ItemTemplate></ListBox></StackPanel>
                             </Grid>
                         </StackPanel>
-                        <controls:WorkflowActionBar Grid.Row="2">
+                        <controls:WorkflowActionBar Grid.Row="2" IsOverflowVisible="{Binding Workspace.ShowOrderDocumentActions}">
                         <controls:WorkflowActionBar.SecondaryActions>
                             <Button Command="{Binding Workspace.SaveOrderCommand}" Content="Save draft" Style="{StaticResource SecondaryButtonStyle}" Visibility="{Binding Workspace.ShowSaveOrderAction, Converter={StaticResource BooleanToVisibilityConverter}}" />
                         </controls:WorkflowActionBar.SecondaryActions>
                         <controls:WorkflowActionBar.OverflowActions>
-                            <StackPanel Visibility="{Binding Workspace.ShowOrderDocumentActions, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <StackPanel>
                                 <Button MinWidth="190" HorizontalContentAlignment="Left" Command="{Binding Workspace.OrderConfirmationCommand}" Content="Order confirmation PDF" Style="{StaticResource SecondaryButtonStyle}" AutomationProperties.Name="Create order confirmation PDF" />
                             </StackPanel>
                         </controls:WorkflowActionBar.OverflowActions>

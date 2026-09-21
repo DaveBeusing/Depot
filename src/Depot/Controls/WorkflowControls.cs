@@ -46,12 +46,14 @@ public sealed class WorkflowActionBar : Control
 {
 	public static readonly DependencyProperty SecondaryActionsProperty = DependencyProperty.Register(nameof(SecondaryActions), typeof(object), typeof(WorkflowActionBar));
 	public static readonly DependencyProperty OverflowActionsProperty = DependencyProperty.Register(nameof(OverflowActions), typeof(object), typeof(WorkflowActionBar));
+	public static readonly DependencyProperty IsOverflowVisibleProperty = DependencyProperty.Register(nameof(IsOverflowVisible), typeof(bool), typeof(WorkflowActionBar), new PropertyMetadata(true));
 	public static readonly DependencyProperty PrimaryActionProperty = DependencyProperty.Register(nameof(PrimaryAction), typeof(object), typeof(WorkflowActionBar));
 
 	static WorkflowActionBar() => DefaultStyleKeyProperty.OverrideMetadata(typeof(WorkflowActionBar), new FrameworkPropertyMetadata(typeof(WorkflowActionBar)));
 
 	public object? SecondaryActions { get => GetValue(SecondaryActionsProperty); set => SetValue(SecondaryActionsProperty, value); }
 	public object? OverflowActions { get => GetValue(OverflowActionsProperty); set => SetValue(OverflowActionsProperty, value); }
+	public bool IsOverflowVisible { get => (bool)GetValue(IsOverflowVisibleProperty); set => SetValue(IsOverflowVisibleProperty, value); }
 	public object? PrimaryAction { get => GetValue(PrimaryActionProperty); set => SetValue(PrimaryActionProperty, value); }
 }
 

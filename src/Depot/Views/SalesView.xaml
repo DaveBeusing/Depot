@@ -70,12 +70,12 @@
                         <StackPanel Grid.Column="2"><TextBlock Text="Reservations" Style="{StaticResource FormLabelStyle}"/><ListBox ItemsSource="{Binding Reservations}" SelectedItem="{Binding SelectedReservation}" MinHeight="70"><ListBox.ItemTemplate><DataTemplate><TextBlock><Run Text="Inventory "/><Run Text="{Binding InventoryId}"/><Run Text=" · qty "/><Run Text="{Binding Quantity}"/><Run Text=" · "/><Run Text="{Binding Status}"/></TextBlock></DataTemplate></ListBox.ItemTemplate></ListBox></StackPanel>
                     </Grid>
                 </StackPanel></ScrollViewer>
-                <controls:WorkflowActionBar Grid.Row="2">
+                <controls:WorkflowActionBar Grid.Row="2" IsOverflowVisible="{Binding ShowOrderDocumentActions}">
                         <controls:WorkflowActionBar.SecondaryActions>
                             <Button Command="{Binding SaveOrderCommand}" Content="Save draft" Style="{StaticResource SecondaryButtonStyle}" Visibility="{Binding ShowSaveOrderAction, Converter={StaticResource BooleanToVisibilityConverter}}" />
                         </controls:WorkflowActionBar.SecondaryActions>
                         <controls:WorkflowActionBar.OverflowActions>
-                            <StackPanel Visibility="{Binding ShowOrderDocumentActions, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <StackPanel>
                                 <Button MinWidth="190" HorizontalContentAlignment="Left" Command="{Binding OrderConfirmationCommand}" Content="Order confirmation PDF" Style="{StaticResource SecondaryButtonStyle}" AutomationProperties.Name="Create order confirmation PDF" />
                             </StackPanel>
                         </controls:WorkflowActionBar.OverflowActions>

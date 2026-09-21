@@ -195,6 +195,10 @@
                             <Setter TargetName="OverflowHost" Property="Visibility" Value="Collapsed" />
                             <Setter TargetName="OverflowToggle" Property="IsChecked" Value="False" />
                         </Trigger>
+                        <Trigger Property="IsOverflowVisible" Value="False">
+                            <Setter TargetName="OverflowHost" Property="Visibility" Value="Collapsed" />
+                            <Setter TargetName="OverflowToggle" Property="IsChecked" Value="False" />
+                        </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>

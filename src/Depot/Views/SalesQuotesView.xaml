@@ -24,7 +24,7 @@
                         <Border Margin="0,10,0,0" Style="{StaticResource WorkspaceToolbarBorderStyle}"><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="2*"/><ColumnDefinition Width="8"/><ColumnDefinition Width="70"/><ColumnDefinition Width="8"/><ColumnDefinition Width="90"/><ColumnDefinition Width="8"/><ColumnDefinition Width="75"/><ColumnDefinition Width="8"/><ColumnDefinition Width="65"/><ColumnDefinition Width="8"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><ComboBox ItemsSource="{Binding Items}" SelectedItem="{Binding SelectedItem}" Style="{StaticResource AppComboBoxStyle}"><ComboBox.ItemTemplate><DataTemplate><TextBlock><Run Text="{Binding PartNumber}" FontWeight="SemiBold"/><Run Text=" — "/><Run Text="{Binding Description}"/></TextBlock></DataTemplate></ComboBox.ItemTemplate></ComboBox><controls:TextInput Grid.Column="2" Text="{Binding Quantity, UpdateSourceTrigger=PropertyChanged}"/><controls:TextInput Grid.Column="4" Text="{Binding UnitPrice, UpdateSourceTrigger=PropertyChanged}"/><controls:TextInput Grid.Column="6" Text="{Binding DiscountPercent, UpdateSourceTrigger=PropertyChanged}"/><controls:TextInput Grid.Column="8" Text="{Binding TaxRate, UpdateSourceTrigger=PropertyChanged}"/><StackPanel Grid.Column="10" Orientation="Horizontal"><Button Command="{Binding RemoveLineCommand}" Content="Remove" Style="{StaticResource SecondaryButtonStyle}"/><Button Margin="{StaticResource Button.Margin}" Command="{Binding AddLineCommand}" Content="Add line" Style="{StaticResource SecondaryButtonStyle}"/></StackPanel></Grid></Border>
                         <TextBlock Margin="0,12,0,0" Text="{Binding Draft.BillingAddress}" Style="{StaticResource CaptionStyle}" TextWrapping="Wrap"/><TextBlock Margin="0,4,0,0" Text="{Binding Draft.ShippingAddress}" Style="{StaticResource CaptionStyle}" TextWrapping="Wrap"/>
                     </StackPanel></ScrollViewer>
-                    <controls:WorkflowActionBar Grid.Row="2">
+                    <controls:WorkflowActionBar Grid.Row="2" IsOverflowVisible="{Binding ShowQuoteDocumentActions}">
                         <controls:WorkflowActionBar.SecondaryActions>
                             <StackPanel Orientation="Horizontal">
                                 <Button Command="{Binding SaveQuoteCommand}" Content="Save draft" Style="{StaticResource SecondaryButtonStyle}" Visibility="{Binding ShowSaveQuoteAction, Converter={StaticResource BooleanToVisibilityConverter}}" />
@@ -33,7 +33,7 @@
                             </StackPanel>
                         </controls:WorkflowActionBar.SecondaryActions>
                         <controls:WorkflowActionBar.OverflowActions>
-                            <StackPanel Visibility="{Binding ShowQuoteDocumentActions, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <StackPanel>
                                 <Button MinWidth="178" HorizontalContentAlignment="Left" Command="{Binding QuotePdfCommand}" Content="Quote PDF" Style="{StaticResource SecondaryButtonStyle}" AutomationProperties.Name="Create quote PDF" />
                                 <Button MinWidth="178" Margin="0,4,0,0" HorizontalContentAlignment="Left" Click="OnEmailQuoteClick" Content="Email quote" Style="{StaticResource SecondaryButtonStyle}" AutomationProperties.Name="Email quote" />
                             </StackPanel>
