@@ -38,6 +38,8 @@ Pull requests run the Smoke tier. Pushes to `master` and manual workflow runs ex
 
 The current artifacts are published from the exact workflow checkout. Previous artifacts are published from the immediate base/parent commit through the same publish script. File versions therefore prove the real version transition rather than a fake binary substitute.
 
+A narrowly scoped recovery bootstrap exists for a historical source-boundary mismatch where the base commit already contains the shared `MotionSystem.cs` and `Motion.xaml` implementation and `Buttons.xaml` references it, but the base DepotManager project does not yet link those shared resources. The workflow always attempts an unmodified base publish first. Only when that exact condition is detected after a failed publish does it patch the disposable base worktree with the missing DepotManager project/resource links, using only files already present at that base SHA. The overlay does not change `Directory.Build.props`, schema state, application business sources, or the recorded previous source SHA. The evidence file records `previous-build-bootstrap=DepotManager-MotionLinkage` whenever this recovery path is used. All packaged acceptance scenarios still execute normally.
+
 Packaged E2E uses a short-lived code-signing certificate created only on the disposable Windows runner. The public certificate is trusted only for the job and is removed afterward. The real `AuthenticodeVerifier` / `WinVerifyTrust` path remains active. Production code contains no unsigned-test bypass.
 
 **Production Authenticode Acceptance remains separate until a production signing identity is exercised by the Stable release workflow.** The E2E certificate proves the verification mechanics, not the production publisher identity.
