@@ -93,16 +93,24 @@ public sealed class DashboardViewModel : BaseViewModel, IDisposable
 			if (_myWorkFilter == value) return;
 			_myWorkFilter = value;
 			OnPropertyChanged();
-			OnPropertyChanged(nameof(MyWorkFilterSummaryText));
+			NotifyMyWorkFilterPresentation();
 			RebuildMyWorkSections();
 		}
 	}
+	public bool IsAllMyWorkFilter => MyWorkFilter == MyWorkQuickFilter.All;
+	public bool IsOverdueMyWorkFilter => MyWorkFilter == MyWorkQuickFilter.Overdue;
+	public bool IsTodayMyWorkFilter => MyWorkFilter == MyWorkQuickFilter.Today;
+	public bool IsHighPriorityMyWorkFilter => MyWorkFilter == MyWorkQuickFilter.HighPriority;
+	public int MyWorkAllCount => CountMyWorkItems(MyWorkQuickFilter.All);
+	public int MyWorkOverdueCount => CountMyWorkItems(MyWorkQuickFilter.Overdue);
+	public int MyWorkTodayCount => CountMyWorkItems(MyWorkQuickFilter.Today);
+	public int MyWorkHighPriorityCount => CountMyWorkItems(MyWorkQuickFilter.HighPriority);
 	public string MyWorkFilterSummaryText => MyWorkFilter switch
 	{
-		MyWorkQuickFilter.Overdue => "Showing overdue work",
-		MyWorkQuickFilter.Today => "Showing work due today",
-		MyWorkQuickFilter.HighPriority => "Showing high-priority work",
-		_ => "Showing all work"
+		MyWorkQuickFilter.Overdue => $"Showing {MyWorkOverdueCount:N0} overdue work item(s)",
+		MyWorkQuickFilter.Today => $"Showing {MyWorkTodayCount:N0} work item(s) due today",
+		MyWorkQuickFilter.HighPriority => $"Showing {MyWorkHighPriorityCount:N0} high-priority work item(s)",
+		_ => $"Showing all {MyWorkAllCount:N0} work item(s)"
 	};
 
 	public async Task LoadAsync(CancellationToken cancellationToken = default)
@@ -205,6 +213,7 @@ public sealed class DashboardViewModel : BaseViewModel, IDisposable
 	private void ApplyMyWork(MyWorkSnapshot snapshot)
 	{
 		_myWorkSnapshot = snapshot;
+		NotifyMyWorkFilterPresentation();
 		RebuildMyWorkSections();
 		MyWorkStatusText = snapshot.Failures.Count == 0
 			? "Work list is current."
@@ -215,19 +224,45 @@ public sealed class DashboardViewModel : BaseViewModel, IDisposable
 	{
 		if (_myWorkSnapshot is null) return;
 		var today = DateTime.Today;
-		IEnumerable<MyWorkItem> Filter(IEnumerable<MyWorkItem> items) => MyWorkFilter switch
-		{
-			MyWorkQuickFilter.Overdue => items.Where(item => item.DueAt is { } due && due.Date < today && item.Section != MyWorkSectionKind.RecentlyCompleted),
-			MyWorkQuickFilter.Today => items.Where(item => item.DueAt is { } due && due.Date == today),
-			MyWorkQuickFilter.HighPriority => items.Where(item => item.Priority >= MyWorkPriority.High),
-			_ => items
-		};
 
 		CollectionSynchronizer.Replace(
 			MyWorkSections,
 			_myWorkSnapshot.Sections
-				.Select(section => new MyWorkSection(section.Kind, section.Title, Filter(section.Items).ToArray()))
+				.Select(section => new MyWorkSection(
+					section.Kind,
+					section.Title,
+					section.Items.Where(item => MatchesMyWorkFilter(item, MyWorkFilter, today)).ToArray()))
 				.ToArray());
+	}
+
+	private int CountMyWorkItems(MyWorkQuickFilter filter)
+	{
+		if (_myWorkSnapshot is null) return 0;
+		var today = DateTime.Today;
+		return _myWorkSnapshot.Sections
+			.SelectMany(section => section.Items)
+			.Count(item => MatchesMyWorkFilter(item, filter, today));
+	}
+
+	private static bool MatchesMyWorkFilter(MyWorkItem item, MyWorkQuickFilter filter, DateTime today) => filter switch
+	{
+		MyWorkQuickFilter.Overdue => item.DueAt is { } overdueDue && overdueDue.Date < today && item.Section != MyWorkSectionKind.RecentlyCompleted,
+		MyWorkQuickFilter.Today => item.DueAt is { } todayDue && todayDue.Date == today,
+		MyWorkQuickFilter.HighPriority => item.Priority >= MyWorkPriority.High,
+		_ => true
+	};
+
+	private void NotifyMyWorkFilterPresentation()
+	{
+		OnPropertyChanged(nameof(IsAllMyWorkFilter));
+		OnPropertyChanged(nameof(IsOverdueMyWorkFilter));
+		OnPropertyChanged(nameof(IsTodayMyWorkFilter));
+		OnPropertyChanged(nameof(IsHighPriorityMyWorkFilter));
+		OnPropertyChanged(nameof(MyWorkAllCount));
+		OnPropertyChanged(nameof(MyWorkOverdueCount));
+		OnPropertyChanged(nameof(MyWorkTodayCount));
+		OnPropertyChanged(nameof(MyWorkHighPriorityCount));
+		OnPropertyChanged(nameof(MyWorkFilterSummaryText));
 	}
 
 	private void BuildAdaptiveKpis()

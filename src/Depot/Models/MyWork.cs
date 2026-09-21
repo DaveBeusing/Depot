@@ -68,6 +68,8 @@ public sealed record MyWorkItem(
 	DateTime? CompletedAtUtc = null,
 	MyWorkValueKind ValueKind = MyWorkValueKind.Auto)
 {
+	public bool HasPrimaryAction => !string.IsNullOrWhiteSpace(PrimaryAction) && !string.IsNullOrWhiteSpace(RouteId);
+
 	public string DueOrAgeDisplay =>
 		DueAt is not null ? DueAt.Value.ToString("d") :
 		AgeDays is not null ? $"{AgeDays.Value:N0} d" :
