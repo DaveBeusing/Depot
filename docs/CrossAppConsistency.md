@@ -24,6 +24,10 @@ Depot uses one cross-app presentation contract for statuses, workspace tabs, she
 
 Every badge combines glyph plus text with the semantic variant. Domain states are not renamed or collapsed into a new persisted status model.
 
+A real change of document status may receive one brief visual confirmation through the shared status-change motion. Initial rendering remains static, reduced-motion preferences are respected, and no repeating pulse/blink behavior is used.
+
+`OperationStatus` may surface one command-bound recovery or follow-up action. The action appears only when both action text and an existing command are supplied; the command remains responsible for `CanExecute`. Existing diagnostic/help actions stay separate from recovery so troubleshooting evidence remains available.
+
 ## Workspace tabs
 
 Tabs reuse the existing icon and unsaved-change marker. Selected/hover states are supplemented with a visible keyboard-focus border.
