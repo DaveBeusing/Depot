@@ -8,6 +8,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 
 using Depot.Models;
+using Depot.ViewModels;
 
 namespace Depot.Controls;
 
