@@ -128,9 +128,6 @@
 						<Button Content="Line Table" Tag="LineTable" Click="AddElement_Click" Margin="0,0,0,6" />
 						<Button Content="Totals Block" Tag="TotalsBlock" Click="AddElement_Click" Margin="0,0,0,6" />
 						<Button Content="Page Number" Tag="PageNumber" Click="AddElement_Click" Margin="0,0,0,12" />
-						<Separator Margin="0,2,0,10" />
-						<Button Content="Duplicate selection" Command="{Binding DuplicateElementsCommand}" Margin="0,0,0,6" />
-						<Button Content="Delete selection" Command="{Binding DeleteElementsCommand}" Style="{StaticResource DangerButtonStyle}" />
 						<TextBlock Text="Ctrl/Shift-click selects multiple elements. Arrow keys move; Shift+Arrow moves faster. Ctrl+D duplicates; Delete removes. Ctrl+Z/Ctrl+Y undo and redo."
 							TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource SecondaryTextBrush}" Margin="0,12,0,0" />
 					</StackPanel>

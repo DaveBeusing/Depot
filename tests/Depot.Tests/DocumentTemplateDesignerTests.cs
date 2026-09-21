@@ -408,6 +408,8 @@ public sealed class DocumentTemplateDesignerTests
 		Assert.Contains("x:Name=\"SelectionFrame\"", xaml, StringComparison.Ordinal);
 		Assert.Contains("Property=\"controls:MotionBehavior.TransitionKind\" Value=\"State\"", xaml, StringComparison.Ordinal);
 		Assert.Contains("IsHitTestVisible=\"False\"", xaml, StringComparison.Ordinal);
+		Assert.DoesNotContain("Content=\"Duplicate selection\"", xaml, StringComparison.Ordinal);
+		Assert.DoesNotContain("Content=\"Delete selection\"", xaml, StringComparison.Ordinal);
 	}
 
 	private static string FindRepositoryRoot()
