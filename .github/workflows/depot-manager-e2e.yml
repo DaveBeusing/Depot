@@ -103,7 +103,10 @@ jobs:
 
               Write-Host 'Retrying previous artifact publish with the historical MotionSystem build-link bootstrap.'
               Remove-Item artifacts/packaged/previous -Recurse -Force -ErrorAction SilentlyContinue
-              $bootstrapTargets = Join-Path $previousTree 'DepotManagerE2EBootstrap.targets'
+              $bootstrapTargets = Join-Path $previousTree 'Directory.Build.targets'
+              if (Test-Path $bootstrapTargets) {
+                throw "Historical E2E bootstrap cannot overwrite an existing Directory.Build.targets at $bootstrapTargets."
+              }
               @'
           <Project>
             <ItemGroup Condition="'$(MSBuildProjectName)' == 'DepotManager'">
@@ -112,15 +115,15 @@ jobs:
             </ItemGroup>
           </Project>
           '@ | Set-Content $bootstrapTargets -Encoding utf8
-              $savedTargets = $env:CustomAfterMicrosoftCommonTargets
+              Remove-Item (Join-Path $previousTree 'src/DepotManager/bin') -Recurse -Force -ErrorAction SilentlyContinue
+              Remove-Item (Join-Path $previousTree 'src/DepotManager/obj') -Recurse -Force -ErrorAction SilentlyContinue
               try {
-                $env:CustomAfterMicrosoftCommonTargets = $bootstrapTargets
                 ./scripts/publish-packaged-artifacts.ps1 -SourceRoot $previousTree -OutputRoot artifacts/packaged/previous
                 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
                 "previous-build-bootstrap=MotionSystem.cs" | Add-Content artifacts/packaged/source.txt -Encoding ascii
               }
               finally {
-                $env:CustomAfterMicrosoftCommonTargets = $savedTargets
+                Remove-Item $bootstrapTargets -Force -ErrorAction SilentlyContinue
               }
             }
           }
