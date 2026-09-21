@@ -30,9 +30,13 @@ A real change of document status may receive one brief visual confirmation throu
 
 ## Workspace tabs
 
-Tabs reuse the existing icon and unsaved-change marker. Selected/hover states are supplemented with a visible keyboard-focus border.
+Tabs reuse the existing icon and unsaved-change marker. Hover and selection use the shared reduced-motion-aware Fast/Standard grammar, with selection expressed through opacity plus a centered scale transform on the tab accent rather than layout animation. A newly materialized workspace tab may briefly enter through the shared `State` transition; closing remains immediate so disposal and keyboard behavior are never delayed. Keyboard focus remains visible through a static border independent of animation.
 
 **Reopen Closed Tab** and **Ctrl+Shift+T** restore the last closed normal workspace tab for the current application session. Document tabs remain disposable and are intentionally not retained for reopen. There is no new persisted session-restore model and no pin persistence in this pass.
+
+## Shell navigation motion
+
+Activity Bar selection retains the established accent and adds restrained icon/halo feedback using opacity and minimal render scale. Utility buttons for navigation, notifications, help, current user and shell chrome use the common button-motion foundation. Reduced Motion collapses these non-essential durations, and no shell animation changes navigation routes, focus ownership, tab persistence or workspace content transition semantics.
 
 ## Shell context
 
