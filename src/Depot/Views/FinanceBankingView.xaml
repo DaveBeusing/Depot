@@ -7,7 +7,7 @@
         <controls:PageHeader Title="Banking and Payments" Subtitle="Bank accounts, statements, payment proposals, reconciliation, and cash position.">
             <controls:PageHeader.Actions><Button Command="{Binding RefreshCommand}" Content="Refresh" Style="{StaticResource SecondaryButtonStyle}"/></controls:PageHeader.Actions>
         </controls:PageHeader>
-        <controls:OperationPanel Grid.Row="1" ErrorText="{Binding OperationError}" HasError="{Binding HasOperationError}" IsBusy="{Binding IsBusy}" StatusText="{Binding StatusText}"/>
+        <controls:OperationPanel Grid.Row="1" ErrorText="{Binding OperationError}" HasError="{Binding HasOperationError}" IsBusy="{Binding IsBusy}" StatusText="{Binding StatusText}" Severity="{Binding OperationSeverity}" ActionText="{Binding OperationActionText}" ActionCommand="{Binding RefreshCommand}" />
         <TabControl Grid.Row="2" Style="{StaticResource AppTabControlStyle}">
             <TabItem Header="Cash Position">
                 <DataGrid Margin="8" ItemsSource="{Binding CashPositions}" Style="{StaticResource AppDataGridCompactStyle}" AutoGenerateColumns="False">
