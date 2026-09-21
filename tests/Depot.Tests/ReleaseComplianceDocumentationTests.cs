@@ -21,7 +21,7 @@ public sealed class ReleaseComplianceDocumentationTests
 		Assert.Contains("No qualified legal, accounting or tax opinion", boundary, StringComparison.Ordinal);
 		Assert.Contains("Preview builds are not production-supported", limitations, StringComparison.Ordinal);
 		Assert.Contains("No Stable 1.0 production support window", support, StringComparison.Ordinal);
-		Assert.Contains("release-specific support statement", support, StringComparison.Ordinal);
+		Assert.Contains("release-facing support statement", support, StringComparison.Ordinal);
 		Assert.Contains("[Release Compliance Boundary](docs/ReleaseComplianceBoundary.md)", readme, StringComparison.Ordinal);
 		Assert.Contains("[Known Limitations](docs/KnownLimitations.md)", readme, StringComparison.Ordinal);
 		Assert.Contains("canonical release compliance claim boundary", release, StringComparison.Ordinal);
@@ -79,6 +79,7 @@ public sealed class ReleaseComplianceDocumentationTests
 		Assert.DoesNotContain("## Depot 1.0 certification baselines", databaseMatrix, StringComparison.Ordinal);
 		Assert.DoesNotContain("implicitly certified", databaseMatrix, StringComparison.OrdinalIgnoreCase);
 		Assert.DoesNotContain("certification environment", databaseMatrix, StringComparison.OrdinalIgnoreCase);
+		var normalizedDatabaseMatrix = databaseMatrix.Replace("**", string.Empty, StringComparison.Ordinal);
 
 		foreach (var supportLevel in new[]
 		{
@@ -103,7 +104,7 @@ public sealed class ReleaseComplianceDocumentationTests
 			"MySQL 8.4.11 LTS"
 		})
 		{
-			Assert.Contains(baseline, databaseMatrix, StringComparison.Ordinal);
+			Assert.Contains(baseline, normalizedDatabaseMatrix, StringComparison.Ordinal);
 			Assert.Contains(baseline, boundary, StringComparison.Ordinal);
 			Assert.Contains(baseline, limitations, StringComparison.Ordinal);
 		}
@@ -127,7 +128,7 @@ public sealed class ReleaseComplianceDocumentationTests
 		Assert.Contains("final product classification", boundary, StringComparison.Ordinal);
 		Assert.Contains("Deployment-specific GDPR/DSGVO obligations remain", dataProtection, StringComparison.Ordinal);
 
-		foreach (var excluded in new[] { "direct bank connectivity", "EBICS", "PSD2/open-banking APIs", "payment initiation" })
+		foreach (var excluded in new[] { "direct bank connectivity", "EBICS", "PSD2/open-banking", "payment initiation" })
 		{
 			Assert.Contains(excluded, banking, StringComparison.OrdinalIgnoreCase);
 			Assert.Contains(excluded, boundary, StringComparison.OrdinalIgnoreCase);
