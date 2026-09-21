@@ -70,7 +70,22 @@
                         <StackPanel Grid.Column="2"><TextBlock Text="Reservations" Style="{StaticResource FormLabelStyle}"/><ListBox ItemsSource="{Binding Reservations}" SelectedItem="{Binding SelectedReservation}" MinHeight="70"><ListBox.ItemTemplate><DataTemplate><TextBlock><Run Text="Inventory "/><Run Text="{Binding InventoryId}"/><Run Text=" · qty "/><Run Text="{Binding Quantity}"/><Run Text=" · "/><Run Text="{Binding Status}"/></TextBlock></DataTemplate></ListBox.ItemTemplate></ListBox></StackPanel>
                     </Grid>
                 </StackPanel></ScrollViewer>
-                <controls:WorkflowActionBar Grid.Row="2"><controls:WorkflowActionBar.SecondaryActions><StackPanel Orientation="Horizontal"><Button Command="{Binding SaveOrderCommand}" Content="Save draft" Style="{StaticResource SecondaryButtonStyle}"/><Button Margin="{StaticResource Button.Margin}" Command="{Binding OrderConfirmationCommand}" Content="Order confirmation PDF" Style="{StaticResource SecondaryButtonStyle}"/></StackPanel></controls:WorkflowActionBar.SecondaryActions><controls:WorkflowActionBar.PrimaryAction><StackPanel Orientation="Horizontal"><Button Command="{Binding SubmitCommand}" Content="Submit" Style="{StaticResource PrimaryButtonStyle}"/><Button Margin="{StaticResource Button.Margin}" Command="{Binding ReleaseCommand}" Content="Release reserved" Style="{StaticResource PrimaryButtonStyle}"/></StackPanel></controls:WorkflowActionBar.PrimaryAction></controls:WorkflowActionBar>
+                <controls:WorkflowActionBar Grid.Row="2" IsOverflowVisible="{Binding ShowOrderDocumentActions}">
+                        <controls:WorkflowActionBar.SecondaryActions>
+                            <Button Command="{Binding SaveOrderCommand}" Content="Save draft" Style="{StaticResource SecondaryButtonStyle}" Visibility="{Binding ShowSaveOrderAction, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                        </controls:WorkflowActionBar.SecondaryActions>
+                        <controls:WorkflowActionBar.OverflowActions>
+                            <StackPanel>
+                                <Button MinWidth="190" HorizontalContentAlignment="Left" Command="{Binding OrderConfirmationCommand}" Content="Order confirmation PDF" Style="{StaticResource SecondaryButtonStyle}" AutomationProperties.Name="Create order confirmation PDF" />
+                            </StackPanel>
+                        </controls:WorkflowActionBar.OverflowActions>
+                        <controls:WorkflowActionBar.PrimaryAction>
+                            <Grid>
+                                <Button Command="{Binding SubmitCommand}" Content="Submit" Style="{StaticResource PrimaryButtonStyle}" Visibility="{Binding ShowSubmitOrderPrimaryAction, Converter={StaticResource BooleanToVisibilityConverter}}" controls:MotionBehavior.TransitionKind="State" />
+                                <Button Command="{Binding ReleaseCommand}" Content="Release reserved" Style="{StaticResource PrimaryButtonStyle}" Visibility="{Binding ShowReleaseOrderPrimaryAction, Converter={StaticResource BooleanToVisibilityConverter}}" controls:MotionBehavior.TransitionKind="State" />
+                            </Grid>
+                        </controls:WorkflowActionBar.PrimaryAction>
+                    </controls:WorkflowActionBar>
             </Grid></Border></controls:MasterDetailGrid.Detail>
         </controls:MasterDetailGrid>
 

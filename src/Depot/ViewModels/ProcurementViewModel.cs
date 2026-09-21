@@ -126,6 +126,9 @@ public sealed class ProcurementViewModel : BaseViewModel, IDisposable
 	public bool CanSubmitCurrent => CanSubmitOrders && Draft.Id > 0 && Draft.Status == PurchaseOrderStatus.Draft;
 	public bool CanReopenCurrent => CanEditOrders && Draft.Status == PurchaseOrderStatus.Rejected;
 	public bool CanPlaceCurrent => CanOrderPurchaseOrders && Draft.Status == PurchaseOrderStatus.Approved;
+	public bool ShowReopenOrderPrimaryAction => ReopenRejectedCommand.CanExecute(null);
+	public bool ShowSubmitOrderPrimaryAction => !ShowReopenOrderPrimaryAction && SubmitForApprovalCommand.CanExecute(null);
+	public bool ShowPlaceOrderPrimaryAction => !ShowReopenOrderPrimaryAction && !ShowSubmitOrderPrimaryAction && PlaceOrderCommand.CanExecute(null);
 	public bool CanCancelCurrent => CanEditOrders && Draft.Id > 0 && Draft.Status is (PurchaseOrderStatus.Draft or PurchaseOrderStatus.Rejected or PurchaseOrderStatus.Approved or PurchaseOrderStatus.Ordered);
 	public bool CanReceive => _receipts.CanPost && SelectedOrder?.Status is (PurchaseOrderStatus.Ordered or PurchaseOrderStatus.PartiallyReceived);
 	public string EditorTitle => Draft.Id == 0 ? "New Purchase Order" : Draft.OrderNumber;
@@ -549,7 +552,14 @@ public sealed class ProcurementViewModel : BaseViewModel, IDisposable
 			order.SupplierName.Contains(search, StringComparison.OrdinalIgnoreCase) ||
 			(order.Notes?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false);
 	}
-	private void RaiseCommands() { OnPropertyChanged(nameof(CanSubmitCurrent)); OnPropertyChanged(nameof(CanReopenCurrent)); OnPropertyChanged(nameof(CanPlaceCurrent)); OnPropertyChanged(nameof(CanCancelCurrent)); SaveOrderCommand.RaiseCanExecuteChanged(); SubmitForApprovalCommand.RaiseCanExecuteChanged(); ReopenRejectedCommand.RaiseCanExecuteChanged(); PlaceOrderCommand.RaiseCanExecuteChanged(); CloseOrderCommand.RaiseCanExecuteChanged(); CancelOrderCommand.RaiseCanExecuteChanged(); AddLineCommand.RaiseCanExecuteChanged(); RemoveLineCommand.RaiseCanExecuteChanged(); PostReceiptCommand.RaiseCanExecuteChanged(); ReverseReceiptCommand.RaiseCanExecuteChanged(); }
+	private void RaiseCommands()
+	{
+		OnPropertyChanged(nameof(CanSubmitCurrent)); OnPropertyChanged(nameof(CanReopenCurrent)); OnPropertyChanged(nameof(CanPlaceCurrent)); OnPropertyChanged(nameof(CanCancelCurrent));
+		SaveOrderCommand.RaiseCanExecuteChanged(); SubmitForApprovalCommand.RaiseCanExecuteChanged(); ReopenRejectedCommand.RaiseCanExecuteChanged(); PlaceOrderCommand.RaiseCanExecuteChanged(); CloseOrderCommand.RaiseCanExecuteChanged(); CancelOrderCommand.RaiseCanExecuteChanged(); AddLineCommand.RaiseCanExecuteChanged(); RemoveLineCommand.RaiseCanExecuteChanged(); PostReceiptCommand.RaiseCanExecuteChanged(); ReverseReceiptCommand.RaiseCanExecuteChanged();
+		OnPropertyChanged(nameof(ShowReopenOrderPrimaryAction));
+		OnPropertyChanged(nameof(ShowSubmitOrderPrimaryAction));
+		OnPropertyChanged(nameof(ShowPlaceOrderPrimaryAction));
+	}
 	private static PurchaseOrder NewOrderDraft() => new() { OrderDate = DateTime.Today, ExpectedDeliveryDate = DateTime.Today.AddDays(7) };
 	private static PurchaseOrder Copy(PurchaseOrder value) => new() { Id = value.Id, OrderNumber = value.OrderNumber, SupplierId = value.SupplierId, SupplierName = value.SupplierName, OrderDate = value.OrderDate, ExpectedDeliveryDate = value.ExpectedDeliveryDate, Notes = value.Notes, Status = value.Status, CreatedByUserId = value.CreatedByUserId, SubmittedByUserId = value.SubmittedByUserId, SubmittedAtUtc = value.SubmittedAtUtc, ApprovalDecisionByUserId = value.ApprovalDecisionByUserId, ApprovalDecisionAtUtc = value.ApprovalDecisionAtUtc, ApprovalComment = value.ApprovalComment, ClosedByUserId = value.ClosedByUserId, ClosedAtUtc = value.ClosedAtUtc, CloseReason = value.CloseReason, CreatedByUserDisplay = value.CreatedByUserDisplay, SubmittedByUserDisplay = value.SubmittedByUserDisplay, ApprovalDecisionByUserDisplay = value.ApprovalDecisionByUserDisplay, ClosedByUserDisplay = value.ClosedByUserDisplay, Version = value.Version, Lines = value.Lines.Select(Copy).ToArray() };
 	private static PurchaseOrderLine Copy(PurchaseOrderLine value) => new() { Id = value.Id, PurchaseOrderId = value.PurchaseOrderId, LineNumber = value.LineNumber, ItemId = value.ItemId, ItemPartNumber = value.ItemPartNumber, ItemDescription = value.ItemDescription, Quantity = value.Quantity, UnitPrice = value.UnitPrice, ReceivedQuantity = value.ReceivedQuantity, Version = value.Version };

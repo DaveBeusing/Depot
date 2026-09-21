@@ -111,6 +111,13 @@ public sealed class SalesQuotesViewModel : BaseViewModel, IDisposable
 	public AsyncRelayCommand RejectQuoteCommand{get;}
 	public AsyncRelayCommand ConvertQuoteCommand{get;}
 	public RelayCommand QuotePdfCommand{get;}
+	public bool ShowSaveQuoteAction => SaveQuoteCommand.CanExecute(null);
+	public bool ShowRejectQuoteAction => RejectQuoteCommand.CanExecute(null);
+	public bool ShowQuoteDocumentActions => QuotePdfCommand.CanExecute(null);
+	public bool ShowSendQuotePrimaryAction => SendQuoteCommand.CanExecute(null);
+	public bool ShowAcceptQuotePrimaryAction => !ShowSendQuotePrimaryAction && AcceptQuoteCommand.CanExecute(null);
+	public bool ShowConvertQuotePrimaryAction => !ShowSendQuotePrimaryAction && !ShowAcceptQuotePrimaryAction && ConvertQuoteCommand.CanExecute(null);
+	public bool ShowConvertQuoteSecondaryAction => ConvertQuoteCommand.CanExecute(null) && !ShowConvertQuotePrimaryAction;
 	public string SearchText{get;set;}=string.Empty;
 	public SalesQuote Draft{get=>_draft;private set{_draft=value;OnPropertyChanged();OnPropertyChanged(nameof(Title));Raise();}}
 	public string Title=>Draft.Id==0?"New quote":Draft.QuoteNumber;
@@ -148,7 +155,17 @@ public sealed class SalesQuotesViewModel : BaseViewModel, IDisposable
 	private async Task RejectAsync(CancellationToken token){Draft=Copy(await _quotes.RejectAsync(Draft.Id,Draft.Version,token));await LoadAsync(token);}
 	private async Task ConvertAsync(CancellationToken token){var order=await _quotes.ConvertToSalesOrderAsync(Draft.Id,Draft.Version,token);CompleteOperation(false,$"Converted to sales order {order.OrderNumber}");Draft=Copy(await _quotes.GetByIdAsync(Draft.Id,token)??Draft);await LoadAsync(token);}
 	private void CreatePdf(){var path=_fileDialogs.ShowSaveFile(new SaveFileDialogRequest("Save quote","PDF document (*.pdf)|*.pdf",".pdf",$"{Draft.QuoteNumber}.pdf"));if(path is not null)_documents.CreateQuote(path,Draft);}
-	private void Raise(){SaveQuoteCommand.RaiseCanExecuteChanged();AddLineCommand.RaiseCanExecuteChanged();RemoveLineCommand.RaiseCanExecuteChanged();SendQuoteCommand.RaiseCanExecuteChanged();AcceptQuoteCommand.RaiseCanExecuteChanged();RejectQuoteCommand.RaiseCanExecuteChanged();ConvertQuoteCommand.RaiseCanExecuteChanged();QuotePdfCommand.RaiseCanExecuteChanged();}
+	private void Raise()
+	{
+		SaveQuoteCommand.RaiseCanExecuteChanged();AddLineCommand.RaiseCanExecuteChanged();RemoveLineCommand.RaiseCanExecuteChanged();SendQuoteCommand.RaiseCanExecuteChanged();AcceptQuoteCommand.RaiseCanExecuteChanged();RejectQuoteCommand.RaiseCanExecuteChanged();ConvertQuoteCommand.RaiseCanExecuteChanged();QuotePdfCommand.RaiseCanExecuteChanged();
+		OnPropertyChanged(nameof(ShowSaveQuoteAction));
+		OnPropertyChanged(nameof(ShowRejectQuoteAction));
+		OnPropertyChanged(nameof(ShowQuoteDocumentActions));
+		OnPropertyChanged(nameof(ShowSendQuotePrimaryAction));
+		OnPropertyChanged(nameof(ShowAcceptQuotePrimaryAction));
+		OnPropertyChanged(nameof(ShowConvertQuotePrimaryAction));
+		OnPropertyChanged(nameof(ShowConvertQuoteSecondaryAction));
+	}
 	private static SalesQuote NewDraft()=>new(){QuoteDate=DateTime.Today,ValidUntil=DateTime.Today.AddDays(30),Currency="EUR",Status=SalesQuoteStatus.Draft};
 	private static SalesQuote Copy(SalesQuote v)=>new(){Id=v.Id,QuoteNumber=v.QuoteNumber,CustomerId=v.CustomerId,CustomerName=v.CustomerName,BillingAddress=v.BillingAddress,ShippingAddress=v.ShippingAddress,ContactId=v.ContactId,ContactName=v.ContactName,QuoteDate=v.QuoteDate,ValidUntil=v.ValidUntil,Currency=v.Currency,CustomerReference=v.CustomerReference,Notes=v.Notes,Status=v.Status,CreatedByUserId=v.CreatedByUserId,CreatedAtUtc=v.CreatedAtUtc,ConvertedSalesOrderId=v.ConvertedSalesOrderId,ConvertedAtUtc=v.ConvertedAtUtc,Version=v.Version,Lines=v.Lines.Select(Copy).ToArray()};
 	private static SalesQuoteLine Copy(SalesQuoteLine v)=>new(){Id=v.Id,SalesQuoteId=v.SalesQuoteId,LineNumber=v.LineNumber,ItemId=v.ItemId,PartNumber=v.PartNumber,Description=v.Description,Quantity=v.Quantity,UnitPrice=v.UnitPrice,DiscountPercent=v.DiscountPercent,PriceSourceListId=v.PriceSourceListId,PriceSourceName=v.PriceSourceName,PriceSourceScope=v.PriceSourceScope,PriceSourceCurrency=v.PriceSourceCurrency,TaxRate=v.TaxRate,Version=v.Version};

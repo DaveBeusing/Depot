@@ -97,6 +97,53 @@
         </Setter>
     </Style>
 
+    <Style x:Key="WorkflowOverflowToggleStyle" TargetType="ToggleButton">
+        <Setter Property="Width" Value="34" />
+        <Setter Property="Height" Value="{DynamicResource Input.MinHeight}" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{DynamicResource SecondaryTextBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="FocusVisualStyle" Value="{DynamicResource AppKeyboardFocusVisualStyle}" />
+        <Setter Property="controls:MotionBehavior.IsButtonFeedbackEnabled" Value="True" />
+        <Setter Property="controls:MotionBehavior.ButtonHoverScale" Value="1" />
+        <Setter Property="controls:MotionBehavior.ButtonPressedScale" Value="{DynamicResource Motion.Scale.ButtonLinkPressed}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToggleButton">
+                    <Border x:Name="Root"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="{DynamicResource Input.CornerRadius}">
+                        <TextBlock HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"
+                                   FontSize="17"
+                                   FontWeight="SemiBold"
+                                   Foreground="{TemplateBinding Foreground}"
+                                   Text="⋯" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Root" Property="Background" Value="{DynamicResource HoverBrush}" />
+                            <Setter Property="Foreground" Value="{DynamicResource PrimaryTextBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Root" Property="Background" Value="{DynamicResource NavigationSelectedBackgroundBrush}" />
+                            <Setter TargetName="Root" Property="BorderBrush" Value="{DynamicResource PrimaryHoverBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Cursor" Value="Arrow" />
+                            <Setter TargetName="Root" Property="Opacity" Value="0.42" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <Style TargetType="{x:Type controls:WorkflowActionBar}">
         <Setter Property="Panel.ZIndex" Value="10" />
         <Setter Property="Margin" Value="{DynamicResource Control.Margin.Large}" />
@@ -107,11 +154,52 @@
                 <ControlTemplate TargetType="{x:Type controls:WorkflowActionBar}">
                     <Border Padding="{DynamicResource Workspace.Toolbar.Padding}" Background="{DynamicResource SurfaceAltBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="{DynamicResource Radius.M}">
                         <Grid>
-                            <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="8" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="8" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
                             <ContentPresenter Content="{TemplateBinding SecondaryActions}" HorizontalAlignment="Left" VerticalAlignment="Center" />
-                            <ContentPresenter Grid.Column="2" Content="{TemplateBinding PrimaryAction}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                            <Grid x:Name="OverflowHost" Grid.Column="2">
+                                <ToggleButton x:Name="OverflowToggle"
+                                              Style="{DynamicResource WorkflowOverflowToggleStyle}"
+                                              AutomationProperties.Name="More actions"
+                                              ToolTip="More actions" />
+                                <Popup AllowsTransparency="True"
+                                       IsOpen="{Binding IsChecked, ElementName=OverflowToggle, Mode=TwoWay}"
+                                       Placement="Bottom"
+                                       PlacementTarget="{Binding ElementName=OverflowToggle}"
+                                       StaysOpen="False">
+                                    <Border MinWidth="190"
+                                            Margin="0,4,0,0"
+                                            Padding="6"
+                                            Background="{DynamicResource SurfaceBrush}"
+                                            BorderBrush="{DynamicResource BorderBrush}"
+                                            BorderThickness="1"
+                                            CornerRadius="{DynamicResource Radius.M}"
+                                            controls:MotionBehavior.TransitionKind="State">
+                                        <ContentPresenter Content="{TemplateBinding OverflowActions}" />
+                                    </Border>
+                                </Popup>
+                            </Grid>
+                            <ContentPresenter Grid.Column="4"
+                                              Content="{TemplateBinding PrimaryAction}"
+                                              HorizontalAlignment="Right"
+                                              VerticalAlignment="Center" />
                         </Grid>
                     </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="OverflowActions" Value="{x:Null}">
+                            <Setter TargetName="OverflowHost" Property="Visibility" Value="Collapsed" />
+                            <Setter TargetName="OverflowToggle" Property="IsChecked" Value="False" />
+                        </Trigger>
+                        <Trigger Property="IsOverflowVisible" Value="False">
+                            <Setter TargetName="OverflowHost" Property="Visibility" Value="Collapsed" />
+                            <Setter TargetName="OverflowToggle" Property="IsChecked" Value="False" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>

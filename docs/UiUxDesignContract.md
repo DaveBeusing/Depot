@@ -113,7 +113,17 @@ Delete, Reject, Void and Deactivate must be visually distinct and must not weake
 
 ### Overflow
 
-Low-frequency actions such as Duplicate, Archive, History and advanced operations may move to overflow menus when that improves clarity. Do not hide actions required for the primary workflow.
+Low-frequency actions such as Duplicate, Archive, History, document generation, export and similar supporting operations may move to overflow when that improves clarity. Do not hide actions required for the primary workflow. Overflow content must remain fully keyboard-operable and must not expose an empty overflow affordance when no action is currently available.
+
+### Contextual workflow actions
+
+`WorkflowActionBar` provides three presentation areas: secondary actions, optional overflow actions and the current primary action. For the current business context, at most one dominant Primary action may be visible.
+
+The ViewModel or View owns the presentation decision. It must derive action visibility from the already-authoritative workflow state, permissions and command `CanExecute` behavior. `WorkflowActionBar` must not infer business rules, inspect status text or introduce an alternate authorization path.
+
+When multiple commands are valid in the same state, choose one preferred next step as Primary and retain other still-valid workflow actions as Secondary where users must continue to have direct access to them. Supporting low-frequency actions may move to Overflow. Destructive actions remain destructive and never become Primary merely because they are executable.
+
+A workflow state with no appropriate next Primary action should leave the Primary area empty rather than displaying a disabled or fabricated action. Contextual visibility changes should use the shared reduced-motion-aware State transition and must not animate layout dimensions.
 
 ## Button interaction and motion
 

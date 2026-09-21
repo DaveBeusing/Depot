@@ -43,7 +43,22 @@
                                 <StackPanel Grid.Column="2"><TextBlock Text="Active reservations" Style="{StaticResource WorkspaceSectionTitleStyle}"/><ListBox Margin="0,8,0,0" ItemsSource="{Binding Workspace.Reservations}" SelectedItem="{Binding Workspace.SelectedReservation}" MinHeight="95"><ListBox.ItemTemplate><DataTemplate><TextBlock><Run Text="Inventory "/><Run Text="{Binding InventoryId}"/><Run Text=" · qty "/><Run Text="{Binding Quantity}"/><Run Text=" · "/><Run Text="{Binding Status}"/></TextBlock></DataTemplate></ListBox.ItemTemplate></ListBox></StackPanel>
                             </Grid>
                         </StackPanel>
-                        <controls:WorkflowActionBar Grid.Row="2"><controls:WorkflowActionBar.SecondaryActions><StackPanel Orientation="Horizontal"><Button Command="{Binding Workspace.SaveOrderCommand}" Content="Save draft" Style="{StaticResource SecondaryButtonStyle}"/><Button Margin="{StaticResource Button.Margin}" Command="{Binding Workspace.OrderConfirmationCommand}" Content="Order confirmation PDF" Style="{StaticResource SecondaryButtonStyle}"/></StackPanel></controls:WorkflowActionBar.SecondaryActions><controls:WorkflowActionBar.PrimaryAction><StackPanel Orientation="Horizontal"><Button Command="{Binding Workspace.SubmitCommand}" Content="Submit" Style="{StaticResource PrimaryButtonStyle}"/><Button Margin="{StaticResource Button.Margin}" Command="{Binding Workspace.ReleaseCommand}" Content="Release reserved" Style="{StaticResource PrimaryButtonStyle}"/></StackPanel></controls:WorkflowActionBar.PrimaryAction></controls:WorkflowActionBar>
+                        <controls:WorkflowActionBar Grid.Row="2" IsOverflowVisible="{Binding Workspace.ShowOrderDocumentActions}">
+                        <controls:WorkflowActionBar.SecondaryActions>
+                            <Button Command="{Binding Workspace.SaveOrderCommand}" Content="Save draft" Style="{StaticResource SecondaryButtonStyle}" Visibility="{Binding Workspace.ShowSaveOrderAction, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                        </controls:WorkflowActionBar.SecondaryActions>
+                        <controls:WorkflowActionBar.OverflowActions>
+                            <StackPanel>
+                                <Button MinWidth="190" HorizontalContentAlignment="Left" Command="{Binding Workspace.OrderConfirmationCommand}" Content="Order confirmation PDF" Style="{StaticResource SecondaryButtonStyle}" AutomationProperties.Name="Create order confirmation PDF" />
+                            </StackPanel>
+                        </controls:WorkflowActionBar.OverflowActions>
+                        <controls:WorkflowActionBar.PrimaryAction>
+                            <Grid>
+                                <Button Command="{Binding Workspace.SubmitCommand}" Content="Submit" Style="{StaticResource PrimaryButtonStyle}" Visibility="{Binding Workspace.ShowSubmitOrderPrimaryAction, Converter={StaticResource BooleanToVisibilityConverter}}" controls:MotionBehavior.TransitionKind="State" />
+                                <Button Command="{Binding Workspace.ReleaseCommand}" Content="Release reserved" Style="{StaticResource PrimaryButtonStyle}" Visibility="{Binding Workspace.ShowReleaseOrderPrimaryAction, Converter={StaticResource BooleanToVisibilityConverter}}" controls:MotionBehavior.TransitionKind="State" />
+                            </Grid>
+                        </controls:WorkflowActionBar.PrimaryAction>
+                    </controls:WorkflowActionBar>
                     </Grid></Border>
                     <controls:Card Margin="0,12,0,0"><StackPanel><TextBlock Text="Workflow timeline" Style="{StaticResource WorkspaceTitleStyle}"/><TextBlock Margin="0,4,0,10" Text="Connected quote, order, fulfillment, invoice, correction and settlement steps." Style="{StaticResource CaptionStyle}" TextWrapping="Wrap"/><controls:WorkflowTimeline ItemsSource="{Binding Timeline}" NavigateCommand="{Binding OpenTimelineItemCommand}"/></StackPanel></controls:Card>
                 </StackPanel></ScrollViewer>
