@@ -202,6 +202,14 @@ Dashboard cards may navigate to the corresponding established workspace but must
 
 Use master-detail for workflows where users repeatedly select records and inspect/edit details. Use an inspector for quick read-only or low-complexity detail when opening a full workspace would create unnecessary navigation.
 
+For selection-driven detail content, bind `MasterDetailGrid.DetailTransitionKey` to a stable identity for the currently presented record or editor context. The transition key must change only when the displayed selection/content identity changes; do not bind it to general view-model state or properties that update during scrolling, virtualization, refresh or normal editing.
+
+Selection-detail transitions use the shared `DetailPane` motion grammar: opacity plus a small translate offset, reduced-motion-aware, with running animations replaced on rapid selection changes. Selection motion must not move keyboard focus and must not animate layout dimensions.
+
+Selection-dependent actions must be derived from existing commands and permission/state properties. Collection actions such as New remain available without a selection; record actions such as Activate/Deactivate, Approve/Reject, Open or Continue should appear only when they are meaningful and allowed for the current selection. Do not duplicate RBAC or business-state rules in XAML visibility expressions when an existing command or presentation property already represents that decision.
+
+When the active record is not otherwise obvious, show a restrained selection context in the detail header. Avoid redundant selection labels when the detail title/status already identifies the record clearly.
+
 Do not force split layouts where available horizontal space would make the workflow materially worse.
 
 ## Accessibility
