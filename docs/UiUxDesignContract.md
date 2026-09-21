@@ -115,6 +115,21 @@ Delete, Reject, Void and Deactivate must be visually distinct and must not weake
 
 Low-frequency actions such as Duplicate, Archive, History and advanced operations may move to overflow menus when that improves clarity. Do not hide actions required for the primary workflow.
 
+## Button interaction and motion
+
+Shared application buttons are defined canonically in `src/Depot/Resources/Buttons.xaml`. Do not redeclare `AppButtonBaseStyle`, `PrimaryButtonStyle`, `SecondaryButtonStyle`, `DangerButtonStyle` or `AppLinkButtonStyle` in later resource dictionaries.
+
+Button state feedback must use the shared motion foundation and preserve the established brush semantics:
+
+- hover may use the established hover brushes plus only a subtle shared render-transform cue;
+- press uses the shared pressed-scale token;
+- release returns through the shared Fast motion duration rather than snapping from a local transform;
+- keyboard focus must remain visible through `AppKeyboardFocusVisualStyle` and the button template border;
+- disabled buttons must not run hover or press motion and must retain a clear disabled visual state;
+- shell and utility buttons may use the smaller utility pressed-scale token while retaining their own shell visual grammar.
+
+Button motion is non-essential. When Windows client-area animations are disabled, the shared motion behavior collapses the transition duration to zero. Button interactions must not animate `Width`, `Height`, margins, padding or other layout properties; use `RenderTransform` and, where appropriate, `Opacity` only. Do not add permanent, repeating or decorative button animations.
+
 ## Data grids and lists
 
 `AppDataGridStyle` is the standard ERP grid surface. New collection views should use the existing shared grid styles for headers, text, numeric alignment, selection and state behavior. Its standard row/header height is based on the semantic `ControlHeight.L` token rather than per-view magic numbers.

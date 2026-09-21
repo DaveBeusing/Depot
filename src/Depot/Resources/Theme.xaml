@@ -31,6 +31,5 @@
         <ResourceDictionary Source="FinancePostingFlow.xaml" />
         <ResourceDictionary Source="Workspace.xaml" />
         <ResourceDictionary Source="WorkspacePolish.xaml" />
-        <ResourceDictionary Source="ButtonPolish.xaml" />
     </ResourceDictionary.MergedDictionaries>
 </ResourceDictionary>
