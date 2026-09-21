@@ -13,8 +13,9 @@
         <Setter Property="Height" Value="48" />
         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
         <Setter Property="Background" Value="Transparent" />
-        <Setter Property="BorderThickness" Value="2,0,0,0" />
+        <Setter Property="BorderThickness" Value="0" />
         <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
         <Setter Property="ToolTip" Value="{Binding NavigationLabel}" />
         <Setter Property="AutomationProperties.Name" Value="{Binding NavigationLabel}" />
         <Setter Property="ToolTipService.Placement" Value="Right" />
@@ -24,18 +25,86 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ListBoxItem">
-                    <Border x:Name="Root" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
-                        <ContentPresenter HorizontalAlignment="Stretch" VerticalAlignment="Center" />
-                    </Border>
-                    <ControlTemplate.Triggers>
-                        <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Root" Property="Background" Value="{DynamicResource NavigationHoverBrush}" /></Trigger>
-                        <Trigger Property="IsSelected" Value="True"><Setter TargetName="Root" Property="BorderBrush" Value="{DynamicResource NavigationAccentBrush}" /><Setter TargetName="Root" Property="Background" Value="{DynamicResource NavigationSelectedBackgroundBrush}" /></Trigger>
-                    </ControlTemplate.Triggers>
+                    <Grid Background="Transparent">
+                        <VisualStateManager.VisualStateGroups>
+                            <VisualStateGroup x:Name="CommonStates">
+                                <VisualState x:Name="Normal">
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="HoverBackground" Storyboard.TargetProperty="Opacity" To="0" Duration="{controls:MotionDuration Kind=Fast}" />
+                                    </Storyboard>
+                                </VisualState>
+                                <VisualState x:Name="MouseOver">
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="HoverBackground" Storyboard.TargetProperty="Opacity" To="1" Duration="{controls:MotionDuration Kind=Fast}" />
+                                    </Storyboard>
+                                </VisualState>
+                                <VisualState x:Name="Disabled">
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="ContentRoot" Storyboard.TargetProperty="Opacity" To="0.42" Duration="{controls:MotionDuration Kind=Fast}" />
+                                        <DoubleAnimation Storyboard.TargetName="HoverBackground" Storyboard.TargetProperty="Opacity" To="0" Duration="{controls:MotionDuration Kind=Fast}" />
+                                    </Storyboard>
+                                </VisualState>
+                            </VisualStateGroup>
+                            <VisualStateGroup x:Name="SelectionStates">
+                                <VisualState x:Name="Unselected">
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="SelectedBackground" Storyboard.TargetProperty="Opacity" To="0" Duration="{controls:MotionDuration Kind=Fast}" />
+                                        <DoubleAnimation Storyboard.TargetName="Accent" Storyboard.TargetProperty="Opacity" To="0" Duration="{controls:MotionDuration Kind=Fast}" />
+                                        <DoubleAnimation Storyboard.TargetName="AccentScale" Storyboard.TargetProperty="ScaleY" To="0.35" Duration="{controls:MotionDuration Kind=Standard}" />
+                                    </Storyboard>
+                                </VisualState>
+                                <VisualState x:Name="Selected">
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="SelectedBackground" Storyboard.TargetProperty="Opacity" To="1" Duration="{controls:MotionDuration Kind=Fast}" />
+                                        <DoubleAnimation Storyboard.TargetName="Accent" Storyboard.TargetProperty="Opacity" To="1" Duration="{controls:MotionDuration Kind=Fast}" />
+                                        <DoubleAnimation Storyboard.TargetName="AccentScale" Storyboard.TargetProperty="ScaleY" To="1" Duration="{controls:MotionDuration Kind=Standard}">
+                                            <DoubleAnimation.EasingFunction>
+                                                <CubicEase EasingMode="EaseOut" />
+                                            </DoubleAnimation.EasingFunction>
+                                        </DoubleAnimation>
+                                    </Storyboard>
+                                </VisualState>
+                                <VisualState x:Name="SelectedUnfocused">
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="SelectedBackground" Storyboard.TargetProperty="Opacity" To="0.82" Duration="{controls:MotionDuration Kind=Fast}" />
+                                        <DoubleAnimation Storyboard.TargetName="Accent" Storyboard.TargetProperty="Opacity" To="0.9" Duration="{controls:MotionDuration Kind=Fast}" />
+                                        <DoubleAnimation Storyboard.TargetName="AccentScale" Storyboard.TargetProperty="ScaleY" To="1" Duration="{controls:MotionDuration Kind=Standard}" />
+                                    </Storyboard>
+                                </VisualState>
+                            </VisualStateGroup>
+                            <VisualStateGroup x:Name="FocusStates">
+                                <VisualState x:Name="Unfocused">
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="FocusBorder" Storyboard.TargetProperty="Opacity" To="0" Duration="{controls:MotionDuration Kind=Fast}" />
+                                    </Storyboard>
+                                </VisualState>
+                                <VisualState x:Name="Focused">
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="FocusBorder" Storyboard.TargetProperty="Opacity" To="0.9" Duration="{controls:MotionDuration Kind=Fast}" />
+                                    </Storyboard>
+                                </VisualState>
+                            </VisualStateGroup>
+                        </VisualStateManager.VisualStateGroups>
+
+                        <Border x:Name="Accent" Width="3" Margin="0,5,0,5" HorizontalAlignment="Left" Background="{DynamicResource NavigationAccentBrush}" CornerRadius="0,2,2,0" Opacity="0" RenderTransformOrigin="0.5,0.5" IsHitTestVisible="False">
+                            <Border.RenderTransform>
+                                <ScaleTransform x:Name="AccentScale" ScaleX="1" ScaleY="0.35" />
+                            </Border.RenderTransform>
+                        </Border>
+                        <Border x:Name="HoverBackground" Margin="3,2" Background="{DynamicResource NavigationHoverBrush}" CornerRadius="8" Opacity="0" IsHitTestVisible="False" />
+                        <Border x:Name="SelectedBackground" Margin="3,2" Background="{DynamicResource NavigationSelectedBackgroundBrush}" CornerRadius="8" Opacity="0" IsHitTestVisible="False" />
+                        <Grid x:Name="ContentRoot">
+                            <ContentPresenter HorizontalAlignment="Stretch" VerticalAlignment="Center" />
+                        </Grid>
+                        <Border x:Name="FocusBorder" Margin="3,2" BorderBrush="{DynamicResource NavigationAccentBrush}" BorderThickness="1" CornerRadius="8" Opacity="0" IsHitTestVisible="False" />
+                    </Grid>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
         <Style.Triggers>
-            <DataTrigger Binding="{Binding DataContext.IsNavigationExpanded, RelativeSource={RelativeSource AncestorType={x:Type Window}}}" Value="True"><Setter Property="ToolTip" Value="{x:Null}" /></DataTrigger>
+            <DataTrigger Binding="{Binding DataContext.IsNavigationExpanded, RelativeSource={RelativeSource AncestorType={x:Type Window}}}" Value="True">
+                <Setter Property="ToolTip" Value="{x:Null}" />
+            </DataTrigger>
         </Style.Triggers>
     </Style>
     <DataTemplate x:Key="ActivityBarItemTemplate">
