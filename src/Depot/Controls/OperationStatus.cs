@@ -4,6 +4,7 @@
 using System.Windows;
 using System.Windows.Automation.Peers;
 using System.Windows.Controls;
+using System.Windows.Input;
 
 using Depot.ViewModels;
 
@@ -70,9 +71,40 @@ public sealed class OperationStatus : Control
 	}
 
 	public static readonly DependencyProperty ActionTextProperty =
-		DependencyProperty.Register(nameof(ActionText), typeof(string), typeof(OperationStatus), new PropertyMetadata(null));
+		DependencyProperty.Register(nameof(ActionText), typeof(string), typeof(OperationStatus), new PropertyMetadata(null, OnActionPropertyChanged));
+
+	public ICommand? ActionCommand
+	{
+		get => (ICommand?)GetValue(ActionCommandProperty);
+		set => SetValue(ActionCommandProperty, value);
+	}
+
+	public static readonly DependencyProperty ActionCommandProperty =
+		DependencyProperty.Register(nameof(ActionCommand), typeof(ICommand), typeof(OperationStatus), new PropertyMetadata(null, OnActionPropertyChanged));
+
+	public object? ActionCommandParameter
+	{
+		get => GetValue(ActionCommandParameterProperty);
+		set => SetValue(ActionCommandParameterProperty, value);
+	}
+
+	public static readonly DependencyProperty ActionCommandParameterProperty =
+		DependencyProperty.Register(nameof(ActionCommandParameter), typeof(object), typeof(OperationStatus), new PropertyMetadata(null));
+
+	private static readonly DependencyPropertyKey HasActionPropertyKey =
+		DependencyProperty.RegisterReadOnly(nameof(HasAction), typeof(bool), typeof(OperationStatus), new PropertyMetadata(false));
+
+	public static readonly DependencyProperty HasActionProperty = HasActionPropertyKey.DependencyProperty;
+
+	public bool HasAction => (bool)GetValue(HasActionProperty);
 
 	protected override AutomationPeer OnCreateAutomationPeer() => new FrameworkElementAutomationPeer(this);
+
+	private static void OnActionPropertyChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs e)
+	{
+		var status = (OperationStatus)dependencyObject;
+		status.SetValue(HasActionPropertyKey, !string.IsNullOrWhiteSpace(status.ActionText) && status.ActionCommand is not null);
+	}
 
 	private static void OnAnnouncementPropertyChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs e)
 	{
