@@ -157,19 +157,34 @@
 					<controls:TextInput Width="42" Text="{Binding GridSize, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="Grid size" />
 				</WrapPanel>
 
-				<WrapPanel Grid.Row="1" Margin="0,0,0,8">
-					<TextBlock Text="Align" VerticalAlignment="Center" Margin="0,0,6,0" Foreground="{DynamicResource SecondaryTextBrush}" />
-					<Button Content="Left" Command="{Binding AlignLeftCommand}" Margin="0,0,4,0" Padding="7,3" ToolTip="Align left" />
-					<Button Content="Center" Command="{Binding AlignCenterCommand}" Margin="0,0,4,0" Padding="7,3" ToolTip="Align horizontal centers" />
-					<Button Content="Right" Command="{Binding AlignRightCommand}" Margin="0,0,8,0" Padding="7,3" ToolTip="Align right" />
-					<Button Content="Top" Command="{Binding AlignTopCommand}" Margin="0,0,4,0" Padding="7,3" ToolTip="Align top" />
-					<Button Content="Middle" Command="{Binding AlignMiddleCommand}" Margin="0,0,4,0" Padding="7,3" ToolTip="Align vertical centers" />
-					<Button Content="Bottom" Command="{Binding AlignBottomCommand}" Margin="0,0,8,0" Padding="7,3" ToolTip="Align bottom" />
-					<Button Content="Distribute H" Command="{Binding DistributeHorizontallyCommand}" Margin="0,0,4,0" Padding="7,3" ToolTip="Distribute horizontally" />
-					<Button Content="Distribute V" Command="{Binding DistributeVerticallyCommand}" Margin="0,0,8,0" Padding="7,3" ToolTip="Distribute vertically" />
-					<Button Content="Same Width" Command="{Binding SameWidthCommand}" Margin="0,0,4,0" Padding="7,3" />
-					<Button Content="Same Height" Command="{Binding SameHeightCommand}" Padding="7,3" />
-				</WrapPanel>
+				<Grid Grid.Row="1" Margin="0,0,0,8">
+					<WrapPanel
+						Visibility="{Binding HasSingleSelection, Converter={StaticResource BooleanToVisibilityConverter}}"
+						controls:MotionBehavior.TransitionKind="State">
+						<TextBlock Text="{Binding SelectionCount, StringFormat=Selection ({0})}" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="{DynamicResource SecondaryTextBrush}" />
+						<Button Content="Duplicate" Command="{Binding DuplicateElementsCommand}" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,6,0" ToolTip="Duplicate selected element (Ctrl+D)" AutomationProperties.Name="Duplicate selected element" />
+						<Button Content="Delete" Command="{Binding DeleteElementsCommand}" Style="{StaticResource DangerButtonStyle}" ToolTip="Delete selected element" AutomationProperties.Name="Delete selected element" />
+					</WrapPanel>
+
+					<WrapPanel
+						Visibility="{Binding HasMultipleSelection, Converter={StaticResource BooleanToVisibilityConverter}}"
+						controls:MotionBehavior.TransitionKind="State">
+						<TextBlock Text="{Binding SelectionCount, StringFormat=Selection ({0})}" VerticalAlignment="Center" Margin="0,0,8,0" Foreground="{DynamicResource SecondaryTextBrush}" />
+						<Button Content="Duplicate" Command="{Binding DuplicateElementsCommand}" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,6,0" ToolTip="Duplicate selected elements (Ctrl+D)" AutomationProperties.Name="Duplicate selected elements" />
+						<Button Content="Delete" Command="{Binding DeleteElementsCommand}" Style="{StaticResource DangerButtonStyle}" Margin="0,0,12,0" ToolTip="Delete selected elements" AutomationProperties.Name="Delete selected elements" />
+						<TextBlock Text="Align" VerticalAlignment="Center" Margin="0,0,6,0" Foreground="{DynamicResource SecondaryTextBrush}" />
+						<Button Content="Left" Command="{Binding AlignLeftCommand}" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,4,0" ToolTip="Align left" />
+						<Button Content="Center" Command="{Binding AlignCenterCommand}" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,4,0" ToolTip="Align horizontal centers" />
+						<Button Content="Right" Command="{Binding AlignRightCommand}" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,0" ToolTip="Align right" />
+						<Button Content="Top" Command="{Binding AlignTopCommand}" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,4,0" ToolTip="Align top" />
+						<Button Content="Middle" Command="{Binding AlignMiddleCommand}" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,4,0" ToolTip="Align vertical centers" />
+						<Button Content="Bottom" Command="{Binding AlignBottomCommand}" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,0" ToolTip="Align bottom" />
+						<Button Content="Distribute H" Command="{Binding DistributeHorizontallyCommand}" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,4,0" ToolTip="Distribute horizontally" />
+						<Button Content="Distribute V" Command="{Binding DistributeVerticallyCommand}" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,0" ToolTip="Distribute vertically" />
+						<Button Content="Same Width" Command="{Binding SameWidthCommand}" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,4,0" ToolTip="Match selected widths" />
+						<Button Content="Same Height" Command="{Binding SameHeightCommand}" Style="{StaticResource SecondaryButtonStyle}" ToolTip="Match selected heights" />
+					</WrapPanel>
+				</Grid>
 
 				<ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Background="{DynamicResource SurfaceAltBrush}" PanningMode="Both">
 					<Border x:Name="DesignerPage" Width="{Binding PageWidth}" Height="{Binding PageHeight}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
