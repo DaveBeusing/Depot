@@ -9,7 +9,7 @@
     <Grid>
         <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
         <controls:OperationPanel IsBusy="{Binding IsBusy}" HasError="{Binding HasOperationError}" StatusText="{Binding StatusText}" ErrorText="{Binding OperationError}" />
-        <controls:MasterDetailGrid Grid.Row="1">
+        <controls:MasterDetailGrid Grid.Row="1" DetailTransitionKey="{Binding Editor.Id}">
             <controls:MasterDetailGrid.Master>
                 <controls:Card><Grid>
                     <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
@@ -34,7 +34,7 @@
             <controls:MasterDetailGrid.Detail>
                 <controls:Card><Grid>
                     <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
-                    <controls:WorkflowHeader Title="{Binding Editor.EditorTitle}" Subtitle="Part numbers are immutable after creation. Weight is stored in kg; dimensions are stored in mm." Status="{Binding EditorStatus}" />
+                    <controls:WorkflowHeader Title="{Binding Editor.EditorTitle}" Subtitle="{Binding SelectionContextText}" Status="{Binding EditorStatus}" />
                     <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"><StackPanel>
                         <TextBlock Text="Identity and classification" FontSize="14" FontWeight="SemiBold" Margin="0,4,0,10" />
                         <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="12" /><RowDefinition Height="Auto" /><RowDefinition Height="12" /><RowDefinition Height="Auto" /><RowDefinition Height="12" /><RowDefinition Height="Auto" /><RowDefinition Height="12" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
@@ -114,7 +114,7 @@
                         </Grid>
                         <Button Margin="0,8,0,0" HorizontalAlignment="Right" Command="{Binding ToggleCostComponentCommand}" Content="Activate / deactivate selected component" Style="{StaticResource SecondaryButtonStyle}" />
                     </StackPanel></ScrollViewer>
-                    <controls:WorkflowActionBar Grid.Row="2"><controls:WorkflowActionBar.SecondaryActions><StackPanel Orientation="Horizontal"><Button Command="{Binding NewItemCommand}" Content="Cancel" Style="{StaticResource SecondaryButtonStyle}" /><Button Margin="{StaticResource Button.Margin}" Command="{Binding DeactivateItemCommand}" Content="{Binding ActivationActionText}" Style="{StaticResource SecondaryButtonStyle}" /></StackPanel></controls:WorkflowActionBar.SecondaryActions><controls:WorkflowActionBar.PrimaryAction><Button IsDefault="True" Command="{Binding SaveItemCommand}" Content="{Binding Editor.SaveButtonText}" Style="{StaticResource PrimaryButtonStyle}" /></controls:WorkflowActionBar.PrimaryAction></controls:WorkflowActionBar>
+                    <controls:WorkflowActionBar Grid.Row="2"><controls:WorkflowActionBar.SecondaryActions><StackPanel Orientation="Horizontal"><Button Command="{Binding NewItemCommand}" Content="Cancel" Style="{StaticResource SecondaryButtonStyle}" /><Button Margin="{StaticResource Button.Margin}" Command="{Binding DeactivateItemCommand}" Content="{Binding ActivationActionText}" Style="{StaticResource SecondaryButtonStyle}" Visibility="{Binding ShowSelectedItemActivationAction, Converter={StaticResource BooleanToVisibilityConverter}}" controls:MotionBehavior.TransitionKind="State" /></StackPanel></controls:WorkflowActionBar.SecondaryActions><controls:WorkflowActionBar.PrimaryAction><Button IsDefault="True" Command="{Binding SaveItemCommand}" Content="{Binding Editor.SaveButtonText}" Style="{StaticResource PrimaryButtonStyle}" /></controls:WorkflowActionBar.PrimaryAction></controls:WorkflowActionBar>
                 </Grid></controls:Card>
             </controls:MasterDetailGrid.Detail>
         </controls:MasterDetailGrid>

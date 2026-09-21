@@ -58,6 +58,10 @@ public sealed partial class ItemsViewModel : BaseViewModel, IDisposable
 	public IReadOnlyList<ActivationFilterOption> ActivationFilters => ActivationFilterOption.All;
 	public string EditorStatus => Editor.Id == 0 ? "New" : SelectedItem?.IsActive == true ? "Active" : "Inactive";
 	public string ActivationActionText => SelectedItem?.IsActive == true ? "Deactivate" : "Activate";
+	public string SelectionContextText => SelectedItem is null
+		? "Create a new item. Part numbers are immutable after creation."
+		: $"{SelectedItem.PartNumber} · {SelectedItem.Description}";
+	public bool ShowSelectedItemActivationAction => DeactivateItemCommand.CanExecute(null);
 	public ItemEditorViewModel Editor { get; }
 	public RelayCommand NewItemCommand { get; }
 	public RelayCommand ClearReplacementCommand { get; }
@@ -130,6 +134,8 @@ public sealed partial class ItemsViewModel : BaseViewModel, IDisposable
 			OnPropertyChanged(nameof(ActivationActionText));
 			LoadSelectedItem();
 			DeactivateItemCommand.RaiseCanExecuteChanged();
+			OnPropertyChanged(nameof(SelectionContextText));
+			OnPropertyChanged(nameof(ShowSelectedItemActivationAction));
 		}
 	}
 
@@ -244,6 +250,8 @@ public sealed partial class ItemsViewModel : BaseViewModel, IDisposable
 		OnPropertyChanged(nameof(EditorStatus));
 		OnPropertyChanged(nameof(ActivationActionText));
 		DeactivateItemCommand.RaiseCanExecuteChanged();
+		OnPropertyChanged(nameof(SelectionContextText));
+		OnPropertyChanged(nameof(ShowSelectedItemActivationAction));
 		RequestEditorFocus();
 	}
 
