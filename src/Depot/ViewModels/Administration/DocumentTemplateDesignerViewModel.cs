@@ -338,6 +338,10 @@ public sealed class DocumentTemplateDesignerViewModel : BaseViewModel
 	public string PreviewStatus { get => _previewStatus; private set { if (_previewStatus == value) return; _previewStatus = value; OnPropertyChanged(); } }
 	public string ValidationSummary => ValidationErrors.Count == 0 ? "Template is valid." : $"{ValidationErrors.Count} validation issue(s)";
 	public bool HasSelectedElement => SelectedElement is not null;
+	public int SelectionCount => _selection.Count;
+	public bool HasSelection => SelectionCount > 0;
+	public bool HasSingleSelection => SelectionCount == 1;
+	public bool HasMultipleSelection => SelectionCount > 1;
 	public bool ShowBindingProperty => SelectedElement?.ModelType is DocumentTemplateElementType.BoundText or DocumentTemplateElementType.Image;
 	public bool ShowTextProperty => SelectedElement?.ModelType == DocumentTemplateElementType.Text;
 	public bool ShowTypographyProperties => SelectedElement?.ModelType is DocumentTemplateElementType.Text or DocumentTemplateElementType.BoundText or DocumentTemplateElementType.PageNumber;
@@ -373,6 +377,10 @@ public sealed class DocumentTemplateDesignerViewModel : BaseViewModel
 		foreach (var element in elements.Where(Elements.Contains)) _selection.Add(element);
 		SelectedElement = _selection.LastOrDefault();
 		OnPropertyChanged(nameof(HasSelectedElement));
+		OnPropertyChanged(nameof(SelectionCount));
+		OnPropertyChanged(nameof(HasSelection));
+		OnPropertyChanged(nameof(HasSingleSelection));
+		OnPropertyChanged(nameof(HasMultipleSelection));
 		RaiseCommandStates();
 	}
 

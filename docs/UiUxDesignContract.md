@@ -214,6 +214,8 @@ Selection-detail transitions use the shared `DetailPane` motion grammar: opacity
 
 Selection-dependent actions must be derived from existing commands and permission/state properties. Collection actions such as New remain available without a selection; record actions such as Activate/Deactivate, Approve/Reject, Open or Continue should appear only when they are meaningful and allowed for the current selection. Do not duplicate RBAC or business-state rules in XAML visibility expressions when an existing command or presentation property already represents that decision.
 
+Selection-driven designer toolbars should keep global editing/navigation controls available while hiding transform groups that are irrelevant to the current selection cardinality. Visibility may use presentation-only selection properties, but command `CanExecute` remains authoritative for whether an operation is permitted. Contextual groups should use the shared reduced-motion-aware `State` transition and must not animate layout dimensions.
+
 When the active record is not otherwise obvious, show a restrained selection context in the detail header. Avoid redundant selection labels when the detail title/status already identifies the record clearly.
 
 Do not force split layouts where available horizontal space would make the workflow materially worse.

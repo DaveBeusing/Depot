@@ -102,7 +102,8 @@ The WPF designer exposes:
 - an A4 design canvas with zoom, grid, snap, mouse/keyboard movement and extended selection;
 - visible edge/corner resize handles with minimum-size, page-bound and snap-to-grid enforcement;
 - bounded Undo/Redo history for add, delete, move, resize, property edits, duplicate and multi-selection transforms, including Ctrl+Z / Ctrl+Y;
-- alignment, distribution and equal-size commands that enable only for meaningful selections;
+- a contextual designer toolbar: global Undo/Redo, zoom, grid and snap controls remain available while selection tools are shown only for single or multi-selection states;
+- alignment, distribution and equal-size commands that remain command-authoritative and are shown only for meaningful multi-selections;
 - a context-sensitive property inspector that hides properties which do not apply to the selected element type;
 - a normal unsaved-changes boundary: edit operations mark the draft dirty, shell navigation/tab close uses the shared discard guard, and Save Draft clears the dirty state;
 - primary lifecycle actions for Save Draft, Preview and Activate, with New from Default, current-draft Duplicate, Copy selected version as draft, Discard changes and Reset Default in secondary actions.
