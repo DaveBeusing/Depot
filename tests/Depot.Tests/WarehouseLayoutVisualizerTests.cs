@@ -54,7 +54,7 @@ public sealed class WarehouseLayoutVisualizerTests : IDisposable
 
 		var facts = await new WarehouseLayoutReadRepository(database)
 			.ListStockFactsAsync(warehouse.Id, CancellationToken.None);
-		var fact = Assert.Single(facts.Where(candidate => candidate.StorageLocationId == location.Id));
+		var fact = Assert.Single(facts, candidate => candidate.StorageLocationId == location.Id);
 
 		Assert.Equal(1, fact.InventoryContextCount);
 		Assert.Equal(1, fact.StockedInventoryContextCount);
