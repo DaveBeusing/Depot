@@ -3,6 +3,7 @@
 
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 
 using Depot.Models;
@@ -22,9 +23,10 @@ public partial class MyWorkPanel : UserControl
 	private void OnFilterClick(object sender, RoutedEventArgs e)
 	{
 		if (DataContext is not DashboardViewModel viewModel ||
-			sender is not FrameworkElement { Tag: string filter } ||
+			sender is not ToggleButton { Tag: string filter } toggle ||
 			!Enum.TryParse<MyWorkQuickFilter>(filter, out var parsed)) return;
 		viewModel.MyWorkFilter = parsed;
+		toggle.IsChecked = true;
 	}
 
 	private async void OnOpenClick(object sender, RoutedEventArgs e)

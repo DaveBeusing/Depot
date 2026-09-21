@@ -245,6 +245,50 @@ public sealed class CommercialRoleCenterTests
 	}
 
 	[Fact]
+	public void QuickActionPresentationDefinesOnePrimaryAndExplicitSupportingKinds()
+	{
+		var primary = new CommercialRoleQuickAction("Review", "review", "route", CommercialRoleQuickActionPresentation.Primary);
+		var secondary = new CommercialRoleQuickAction("Create", "create", "route", CommercialRoleQuickActionPresentation.Secondary);
+		var overflow = new CommercialRoleQuickAction("More", "more", "route", CommercialRoleQuickActionPresentation.Overflow);
+
+		Assert.True(primary.IsPrimary);
+		Assert.False(primary.IsSecondary);
+		Assert.True(secondary.IsSecondary);
+		Assert.True(overflow.IsOverflow);
+	}
+
+	[Fact]
+	public void RoleCenterSnapshotUsesServiceOrderAsDeterministicActionPriority()
+	{
+		var root = FindRepositoryRoot();
+		var service = File.ReadAllText(Path.Combine(root, "src", "Depot", "Services", "CommercialRoleCenterService.cs"));
+		var view = File.ReadAllText(Path.Combine(root, "src", "Depot", "Views", "CommercialRoleCenterView.xaml"));
+
+		Assert.Contains("0 => CommercialRoleQuickActionPresentation.Primary", service, StringComparison.Ordinal);
+		Assert.Contains("1 or 2 => CommercialRoleQuickActionPresentation.Secondary", service, StringComparison.Ordinal);
+		Assert.Contains("_ => CommercialRoleQuickActionPresentation.Overflow", service, StringComparison.Ordinal);
+		Assert.Contains("<controls:WorkflowActionBar", view, StringComparison.Ordinal);
+		Assert.Contains("ItemsSource=\"{Binding PrimaryQuickActions}\"", view, StringComparison.Ordinal);
+		Assert.Contains("ItemsSource=\"{Binding SecondaryQuickActions}\"", view, StringComparison.Ordinal);
+		Assert.Contains("ItemsSource=\"{Binding OverflowQuickActions}\"", view, StringComparison.Ordinal);
+		Assert.DoesNotContain("ItemsSource=\"{Binding QuickActions}\"", view, StringComparison.Ordinal);
+	}
+
+	[Fact]
+	public void RoleCenterKpiChangeFeedbackRequiresAPreviouslyPresentedDifferentValue()
+	{
+		var root = FindRepositoryRoot();
+		var source = File.ReadAllText(Path.Combine(root, "src", "Depot", "ViewModels", "CommercialRoleCenterViewModel.cs"));
+		var view = File.ReadAllText(Path.Combine(root, "src", "Depot", "Views", "CommercialRoleCenterView.xaml"));
+
+		Assert.Contains("_hasPresentedKpis &&", source, StringComparison.Ordinal);
+		Assert.Contains("_presentedKpiValues.TryGetValue", source, StringComparison.Ordinal);
+		Assert.Contains("!string.Equals(previousValue, kpi.Value, StringComparison.Ordinal)", source, StringComparison.Ordinal);
+		Assert.Contains("Binding=\"{Binding HasChanged}\" Value=\"True\"", view, StringComparison.Ordinal);
+		Assert.Contains("MotionBehavior.TransitionKind\" Value=\"StatusChange\"", view, StringComparison.Ordinal);
+	}
+
+	[Fact]
 	public void ProjectionLimitsRemainBounded()
 	{
 		Assert.InRange(CommercialRoleCenterService.SourceItemLimit, 1, MyWorkService.ProviderItemLimit);
@@ -384,6 +428,13 @@ public sealed class CommercialRoleCenterTests
 			null!,
 			null!,
 			null!);
+	}
+
+	private static string FindRepositoryRoot()
+	{
+		for (var directory = new DirectoryInfo(AppContext.BaseDirectory); directory is not null; directory = directory.Parent)
+			if (File.Exists(Path.Combine(directory.FullName, "Depot.slnx"))) return directory.FullName;
+		throw new DirectoryNotFoundException("Could not locate the Depot repository root.");
 	}
 
 }

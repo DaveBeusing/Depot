@@ -44,7 +44,19 @@
                         <Border Style="{StaticResource WorkspaceSectionStyle}" Width="190" Margin="0,0,10,10">
                             <StackPanel>
                                 <TextBlock Text="{Binding Label}" Style="{StaticResource CaptionStyle}" />
-                                <TextBlock Text="{Binding Value}" FontSize="22" FontWeight="SemiBold" Margin="0,4,0,0" />
+                                <TextBlock Text="{Binding Value}" Margin="0,4,0,0">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="FontSize" Value="22" />
+                                            <Setter Property="FontWeight" Value="SemiBold" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding HasChanged}" Value="True">
+                                                    <Setter Property="controls:MotionBehavior.TransitionKind" Value="StatusChange" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
                                 <TextBlock Text="{Binding SupportingText}" Style="{StaticResource CaptionStyle}" TextWrapping="Wrap" Margin="0,4,0,0" />
                             </StackPanel>
                         </Border>
@@ -52,16 +64,38 @@
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
 
-            <StackPanel Orientation="Horizontal" Visibility="{Binding HasQuickActions, Converter={StaticResource BooleanToVisibility}}">
-                <ItemsControl ItemsSource="{Binding QuickActions}">
-                    <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <Button Content="{Binding Label}" Click="OnQuickActionClick" Style="{StaticResource PrimaryButtonStyle}" Padding="14,8" MinWidth="128" Margin="0,0,8,0" />
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </StackPanel>
+            <controls:WorkflowActionBar Visibility="{Binding HasQuickActions, Converter={StaticResource BooleanToVisibility}}"
+                                        IsOverflowVisible="{Binding HasOverflowQuickActions}"
+                                        controls:MotionBehavior.TransitionKind="State">
+                <controls:WorkflowActionBar.SecondaryActions>
+                    <ItemsControl ItemsSource="{Binding SecondaryQuickActions}">
+                        <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Button Content="{Binding Label}" Click="OnQuickActionClick" Style="{StaticResource SecondaryButtonStyle}" Padding="12,7" MinWidth="120" Margin="0,0,8,0" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </controls:WorkflowActionBar.SecondaryActions>
+                <controls:WorkflowActionBar.OverflowActions>
+                    <ItemsControl ItemsSource="{Binding OverflowQuickActions}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Button Content="{Binding Label}" Click="OnQuickActionClick" Style="{StaticResource AppLinkButtonStyle}" MinWidth="170" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </controls:WorkflowActionBar.OverflowActions>
+                <controls:WorkflowActionBar.PrimaryAction>
+                    <ItemsControl ItemsSource="{Binding PrimaryQuickActions}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Button Content="{Binding Label}" Click="OnQuickActionClick" Style="{StaticResource PrimaryButtonStyle}" Padding="14,8" MinWidth="128" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </controls:WorkflowActionBar.PrimaryAction>
+            </controls:WorkflowActionBar>
 
             <TextBox Text="{Binding DecisionComment, UpdateSourceTrigger=PropertyChanged}"
                      Visibility="{Binding IsApprovalInbox, Converter={StaticResource BooleanToVisibility}}"

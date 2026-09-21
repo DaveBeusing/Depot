@@ -29,10 +29,31 @@
             <controls:FilterBar Margin="0,0,0,8">
                 <StackPanel Orientation="Horizontal">
                 <TextBlock Text="Quick filter:" Style="{StaticResource CaptionStyle}" VerticalAlignment="Center" Margin="0,0,8,0" />
-                <Button Content="All" Tag="All" Click="OnFilterClick" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,6,0" automation:AutomationProperties.Name="Show all work" />
-                <Button Content="Overdue" Tag="Overdue" Click="OnFilterClick" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,6,0" automation:AutomationProperties.Name="Show overdue work" />
-                <Button Content="Today" Tag="Today" Click="OnFilterClick" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,6,0" automation:AutomationProperties.Name="Show work due today" />
-                <Button Content="High priority" Tag="HighPriority" Click="OnFilterClick" Style="{StaticResource SecondaryButtonStyle}" automation:AutomationProperties.Name="Show high priority work" />
+                <ToggleButton Tag="All" Click="OnFilterClick" Style="{StaticResource FilterChipToggleStyle}" IsChecked="{Binding IsAllMyWorkFilter, Mode=OneWay}" Margin="0,0,6,0" automation:AutomationProperties.Name="All work filter">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="All" />
+                        <TextBlock Text="{Binding MyWorkAllCount, StringFormat={} ({0})}" Margin="4,0,0,0" Opacity="0.72" />
+                    </StackPanel>
+                </ToggleButton>
+                <ToggleButton Tag="Overdue" Click="OnFilterClick" Style="{StaticResource FilterChipToggleStyle}" IsChecked="{Binding IsOverdueMyWorkFilter, Mode=OneWay}" Margin="0,0,6,0" automation:AutomationProperties.Name="Overdue work filter">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Overdue" />
+                        <TextBlock Text="{Binding MyWorkOverdueCount, StringFormat={} ({0})}" Margin="4,0,0,0" Opacity="0.72" />
+                    </StackPanel>
+                </ToggleButton>
+                <ToggleButton Tag="Today" Click="OnFilterClick" Style="{StaticResource FilterChipToggleStyle}" IsChecked="{Binding IsTodayMyWorkFilter, Mode=OneWay}" Margin="0,0,6,0" automation:AutomationProperties.Name="Today work filter">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="Today" />
+                        <TextBlock Text="{Binding MyWorkTodayCount, StringFormat={} ({0})}" Margin="4,0,0,0" Opacity="0.72" />
+                    </StackPanel>
+                </ToggleButton>
+                <ToggleButton Tag="HighPriority" Click="OnFilterClick" Style="{StaticResource FilterChipToggleStyle}" IsChecked="{Binding IsHighPriorityMyWorkFilter, Mode=OneWay}" Margin="0" automation:AutomationProperties.Name="High priority work filter">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="High priority" />
+                        <TextBlock Text="{Binding MyWorkHighPriorityCount, StringFormat={} ({0})}" Margin="4,0,0,0" Opacity="0.72" />
+                    </StackPanel>
+                </ToggleButton>
+
                 </StackPanel>
             </controls:FilterBar>
             <TextBlock Text="{Binding MyWorkFilterSummaryText}" Style="{StaticResource CaptionStyle}" Margin="0,0,0,8" />
@@ -86,8 +107,9 @@
                                             <DataTemplate>
                                                 <Button Content="{Binding PrimaryAction}"
                                                         Click="OnOpenClick"
-                                                        Style="{StaticResource SecondaryButtonStyle}"
+                                                        Style="{StaticResource PrimaryButtonStyle}"
                                                         Padding="8,3"
+                                                        Visibility="{Binding HasPrimaryAction, Converter={StaticResource BooleanToVisibility}}"
                                                         automation:AutomationProperties.Name="{Binding PrimaryAction}" />
                                             </DataTemplate>
                                         </DataGridTemplateColumn.CellTemplate>

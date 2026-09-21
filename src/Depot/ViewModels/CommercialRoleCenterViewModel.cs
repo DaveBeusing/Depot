@@ -19,6 +19,8 @@ public sealed class CommercialRoleCenterViewModel : BaseViewModel
 	private IReadOnlyList<CommercialRoleSection> _sourceSections = [];
 	private string _partialFailureText = string.Empty;
 	private bool _isDetailPaneVisible = true;
+	private readonly Dictionary<string, string> _presentedKpiValues = new(StringComparer.Ordinal);
+	private bool _hasPresentedKpis;
 
 	public CommercialRoleCenterViewModel(CommercialRoleCenterService service, CommercialRoleCenterKind kind)
 	{
@@ -32,8 +34,14 @@ public sealed class CommercialRoleCenterViewModel : BaseViewModel
 	public ObservableCollection<CommercialRoleSection> Sections { get; } = [];
 	public ObservableCollection<CommercialRoleKpi> Kpis { get; } = [];
 	public ObservableCollection<CommercialRoleQuickAction> QuickActions { get; } = [];
+	public ObservableCollection<CommercialRoleQuickAction> PrimaryQuickActions { get; } = [];
+	public ObservableCollection<CommercialRoleQuickAction> SecondaryQuickActions { get; } = [];
+	public ObservableCollection<CommercialRoleQuickAction> OverflowQuickActions { get; } = [];
 	public bool HasKpis => Kpis.Count > 0;
 	public bool HasQuickActions => QuickActions.Count > 0;
+	public bool HasPrimaryQuickActions => PrimaryQuickActions.Count > 0;
+	public bool HasSecondaryQuickActions => SecondaryQuickActions.Count > 0;
+	public bool HasOverflowQuickActions => OverflowQuickActions.Count > 0;
 	public bool IsApprovalInbox => Kind == CommercialRoleCenterKind.ApprovalInbox;
 	public string WorkspaceId => CommercialRoleColumnProfiles.Get(Kind).WorkspaceId;
 	public string DecisionComment { get => _decisionComment; set { if (_decisionComment == value) return; _decisionComment = value; OnPropertyChanged(); } }
@@ -88,10 +96,16 @@ public sealed class CommercialRoleCenterViewModel : BaseViewModel
 			PartialFailureText = snapshot.Failures.Count == 0
 				? string.Empty
 				: $"Some work sources are unavailable: {string.Join(", ", snapshot.Failures.Select(failure => failure.Provider))}.";
-			Replace(Kpis, snapshot.Kpis);
+			Replace(Kpis, ProjectKpis(snapshot.Kpis));
 			Replace(QuickActions, snapshot.QuickActions);
+			Replace(PrimaryQuickActions, snapshot.QuickActions.Where(action => action.IsPrimary));
+			Replace(SecondaryQuickActions, snapshot.QuickActions.Where(action => action.IsSecondary));
+			Replace(OverflowQuickActions, snapshot.QuickActions.Where(action => action.IsOverflow));
 			OnPropertyChanged(nameof(HasKpis));
 			OnPropertyChanged(nameof(HasQuickActions));
+			OnPropertyChanged(nameof(HasPrimaryQuickActions));
+			OnPropertyChanged(nameof(HasSecondaryQuickActions));
+			OnPropertyChanged(nameof(HasOverflowQuickActions));
 			CompleteOperation(Sections.All(section => section.IsEmpty), snapshot.Failures.Count == 0
 				? "Role center is current."
 				: PartialFailureText);
@@ -114,6 +128,23 @@ public sealed class CommercialRoleCenterViewModel : BaseViewModel
 	}
 
 	public void ToggleDetailPane() => IsDetailPaneVisible = !IsDetailPaneVisible;
+
+	private IReadOnlyList<CommercialRoleKpi> ProjectKpis(IReadOnlyList<CommercialRoleKpi> source)
+	{
+		var projected = source
+			.Select(kpi => kpi with
+			{
+				HasChanged = _hasPresentedKpis &&
+					_presentedKpiValues.TryGetValue(kpi.PresentationKey, out var previousValue) &&
+					!string.Equals(previousValue, kpi.Value, StringComparison.Ordinal)
+			})
+			.ToArray();
+
+		_presentedKpiValues.Clear();
+		foreach (var kpi in source) _presentedKpiValues[kpi.PresentationKey] = kpi.Value;
+		_hasPresentedKpis = true;
+		return projected;
+	}
 
 	private void ApplyFilter()
 	{
