@@ -116,15 +116,21 @@ public sealed class WorkflowActionHierarchyTests
 
 	private static void AssertContextualPrimaryButtons(string view, params string[] contents)
 	{
+		var primarySections = Regex.Matches(view, @"<controls:WorkflowActionBar.PrimaryAction>[\s\S]*?</controls:WorkflowActionBar.PrimaryAction>")
+			.Select(match => match.Value)
+			.ToArray();
+
 		foreach (var content in contents)
 		{
 			var marker = $"Content=\"{content}\"";
-			var index = view.IndexOf(marker, StringComparison.Ordinal);
-			Assert.True(index >= 0, $"Expected action '{content}'.");
-			var start = view.LastIndexOf("<Button", index, StringComparison.Ordinal);
-			var end = view.IndexOf("/>", index, StringComparison.Ordinal);
+			var primary = primarySections.FirstOrDefault(section => section.Contains(marker, StringComparison.Ordinal));
+			Assert.NotNull(primary);
+
+			var index = primary.IndexOf(marker, StringComparison.Ordinal);
+			var start = primary.LastIndexOf("<Button", index, StringComparison.Ordinal);
+			var end = primary.IndexOf("/>", index, StringComparison.Ordinal);
 			Assert.True(start >= 0 && end > start);
-			var button = view[start..(end + 2)];
+			var button = primary[start..(end + 2)];
 			Assert.Contains("PrimaryButtonStyle", button, StringComparison.Ordinal);
 			Assert.Contains("PrimaryAction, Converter={StaticResource BooleanToVisibilityConverter}", button, StringComparison.Ordinal);
 			Assert.Contains("MotionBehavior.TransitionKind=\"State\"", button, StringComparison.Ordinal);
