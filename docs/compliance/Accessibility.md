@@ -20,7 +20,7 @@ The automated baseline requires:
 - Login and first-run administrator inputs expose explicit labels and form-required semantics;
 - Depot and DepotManager explicitly declare Per-Monitor-V2 DPI awareness.
 
-CI also validates the structure of `operations/AccessibilityAcceptance.example.json`. It deliberately does not mark manual checks as passed.
+CI also validates the structure of `docs/operations/AccessibilityAcceptance.example.json`. It deliberately does not mark manual checks as passed.
 
 ## Manual production acceptance
 

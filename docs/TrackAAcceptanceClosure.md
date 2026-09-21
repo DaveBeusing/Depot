@@ -10,7 +10,7 @@ This closure package defines one fail-closed evidence contract for the remaining
 
 Authoritative files:
 
-- `operations/TrackAAcceptance.example.json` – controlled current closure-state template;
+- `docs/operations/TrackAAcceptance.example.json` – controlled current closure-state template;
 - `scripts/operations/Test-TrackAAcceptance.ps1` – closure-contract validator;
 - `scripts/operations/Test-RepositoryGovernance.ps1` – H1 source/live governance validator;
 - `docs/RepositoryGovernance.md` – H1 governance requirements and live closure;
@@ -90,7 +90,7 @@ Do not store PFX data, signing passwords or other secrets in Track A evidence.
 
 ## H4 – Deployment disaster-recovery acceptance
 
-Create a deployment-specific copy of `operations/DisasterRecoveryProfile.example.json` with `status=ACTIVE`, real ownership and the accepted RPO/RTO/retention/off-host requirements. Validate it without `-AllowTemplate`:
+Create a deployment-specific copy of `docs/operations/DisasterRecoveryProfile.example.json` with `status=ACTIVE`, real ownership and the accepted RPO/RTO/retention/off-host requirements. Validate it without `-AllowTemplate`:
 
 ```powershell
 .\scripts\operations\Test-DisasterRecoveryProfile.ps1 `
@@ -104,7 +104,7 @@ Credentials, database secrets and production data must not be copied into reposi
 
 ## H5 – Exact-RC desktop accessibility acceptance
 
-Populate a deployment/test copy of `operations/AccessibilityAcceptance.example.json` from the exact Stable RC used for closure. Complete the documented keyboard-only, focus/no-trap, Narrator, Accessibility Insights and 100/125/150/200% DPI matrix.
+Populate a deployment/test copy of `docs/operations/AccessibilityAcceptance.example.json` from the exact Stable RC used for closure. Complete the documented keyboard-only, focus/no-trap, Narrator, Accessibility Insights and 100/125/150/200% DPI matrix.
 
 Then validate the actual evidence:
 
@@ -118,7 +118,7 @@ Record the retained evidence reference in the Track A closure evidence. A techni
 
 ## Final closure
 
-Create a controlled copy of `operations/TrackAAcceptance.example.json` and replace the remaining placeholder states/references with concrete evidence. H1 through H5 must all be `PASS`; `knownBlockingIssues` must be empty; the exact Stable source SHA/version and acceptance owner/timestamp must be recorded.
+Create a controlled copy of `docs/operations/TrackAAcceptance.example.json` and replace the remaining placeholder states/references with concrete evidence. H1 through H5 must all be `PASS`; `knownBlockingIssues` must be empty; the exact Stable source SHA/version and acceptance owner/timestamp must be recorded.
 
 Validate it with:
 
