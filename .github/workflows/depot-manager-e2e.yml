@@ -91,7 +91,38 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           try {
             ./scripts/publish-packaged-artifacts.ps1 -SourceRoot $previousTree -OutputRoot artifacts/packaged/previous
-            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            if ($LASTEXITCODE -ne 0) {
+              $previousManagerProject = Join-Path $previousTree 'src/DepotManager/DepotManager.csproj'
+              $previousButtons = Join-Path $previousTree 'src/Depot/Resources/Buttons.xaml'
+              $managerProjectText = Get-Content $previousManagerProject -Raw
+              $buttonsText = Get-Content $previousButtons -Raw
+              $needsMotionBootstrap =
+                $managerProjectText -notmatch 'MotionSystem\.cs' -and
+                $buttonsText -match 'MotionBehavior\.IsButtonFeedbackEnabled'
+              if (-not $needsMotionBootstrap) { exit $LASTEXITCODE }
+
+              Write-Host 'Retrying previous artifact publish with the historical MotionSystem build-link bootstrap.'
+              Remove-Item artifacts/packaged/previous -Recurse -Force -ErrorAction SilentlyContinue
+              $bootstrapTargets = Join-Path $previousTree 'DepotManagerE2EBootstrap.targets'
+              @'
+<Project>
+  <ItemGroup Condition="'$(MSBuildProjectName)' == 'DepotManager'">
+    <Compile Include="$(MSBuildThisFileDirectory)src\Depot\Controls\MotionSystem.cs"
+             Link="Controls\MotionSystem.cs" />
+  </ItemGroup>
+</Project>
+'@ | Set-Content $bootstrapTargets -Encoding utf8
+              $savedTargets = $env:CustomAfterMicrosoftCommonTargets
+              try {
+                $env:CustomAfterMicrosoftCommonTargets = $bootstrapTargets
+                ./scripts/publish-packaged-artifacts.ps1 -SourceRoot $previousTree -OutputRoot artifacts/packaged/previous
+                if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+                "previous-build-bootstrap=MotionSystem.cs" | Add-Content artifacts/packaged/source.txt -Encoding ascii
+              }
+              finally {
+                $env:CustomAfterMicrosoftCommonTargets = $savedTargets
+              }
+            }
           }
           finally {
             git worktree remove --force $previousTree
