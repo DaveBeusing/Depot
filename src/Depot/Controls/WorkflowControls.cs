@@ -122,6 +122,8 @@ public static class WorkflowStatusLanguage
 
 public sealed class DocumentStatusBadge : StatusBadge
 {
+	private bool _hasPresentedStatus;
+
 	public static readonly DependencyProperty StatusProperty = DependencyProperty.Register(
 		nameof(Status),
 		typeof(string),
@@ -133,10 +135,17 @@ public sealed class DocumentStatusBadge : StatusBadge
 	private static void OnStatusChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs args)
 	{
 		var badge = (DocumentStatusBadge)dependencyObject;
-		var presentation = WorkflowStatusLanguage.Resolve(args.NewValue as string);
+		var oldStatus = (args.OldValue as string)?.Trim();
+		var newStatus = (args.NewValue as string)?.Trim();
+		var changed = !string.Equals(oldStatus, newStatus, StringComparison.OrdinalIgnoreCase);
+		var presentation = WorkflowStatusLanguage.Resolve(newStatus);
 		badge.Content = $"{presentation.Glyph} {presentation.Text}";
 		badge.Variant = presentation.Variant;
 		AutomationProperties.SetName(badge, presentation.Text);
+
+		if (badge._hasPresentedStatus && badge.IsLoaded && changed)
+			MotionTransitions.Begin(badge, MotionTransitionKind.StatusChange);
+		badge._hasPresentedStatus = true;
 	}
 }
 
