@@ -45,6 +45,10 @@ public sealed class UserViewModel : BaseViewModel, IDisposable
 	public IReadOnlyList<ActivationFilterOption> ActivationFilters => ActivationFilterOption.All;
 	public bool HasUsers => Users.Count > 0;
 	public string EditorStatus => Editor.IsExistingUser ? Editor.IsActive ? "Active" : "Inactive" : "New";
+	public string SelectionContextText => SelectedUser is null
+		? "Create a new identity and role assignment."
+		: $"{SelectedUser.DisplayName} · {SelectedUser.Email}";
+	public bool ShowSelectedUserActivationAction => ToggleActiveCommand.CanExecute(null);
 
 	public ActivationFilterOption SelectedActivationFilter
 	{
@@ -109,6 +113,8 @@ public sealed class UserViewModel : BaseViewModel, IDisposable
 			OnPropertyChanged(nameof(EditorStatus));
 			LoadSelectedUser();
 			ToggleActiveCommand.RaiseCanExecuteChanged();
+			OnPropertyChanged(nameof(SelectionContextText));
+			OnPropertyChanged(nameof(ShowSelectedUserActivationAction));
 		}
 	}
 
@@ -170,6 +176,8 @@ public sealed class UserViewModel : BaseViewModel, IDisposable
 		Editor.Clear();
 		OnPropertyChanged(nameof(EditorStatus));
 		ToggleActiveCommand.RaiseCanExecuteChanged();
+		OnPropertyChanged(nameof(SelectionContextText));
+		OnPropertyChanged(nameof(ShowSelectedUserActivationAction));
 		RequestEditorFocus();
 	}
 
