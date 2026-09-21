@@ -122,7 +122,7 @@ public sealed class WarehouseLayoutVisualizerTests : IDisposable
 		Assert.Contains("EnableColumnVirtualization=\"True\"", view, StringComparison.Ordinal);
 		Assert.Contains("SelectedItem=\"{Binding SelectedLayoutLocation}\"", view, StringComparison.Ordinal);
 		Assert.Contains("SelectedStorageLocation = StorageLocations.FirstOrDefault", viewModel, StringComparison.Ordinal);
-		Assert.Contains("await LoadLayoutAsync(SelectedWarehouse.Id, cancellationToken);", viewModel, StringComparison.Ordinal);
+		Assert.Contains("await LoadLayoutAsync(warehouse.Id, cancellationToken);", viewModel, StringComparison.Ordinal);
 		Assert.Contains("StorageLocationService", viewModel, StringComparison.Ordinal);
 		Assert.Contains("RequirePermission(ApplicationPermission.MasterDataView)", service, StringComparison.Ordinal);
 		Assert.DoesNotContain("SaveAsync", service, StringComparison.Ordinal);
