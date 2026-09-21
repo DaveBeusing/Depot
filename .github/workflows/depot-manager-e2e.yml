@@ -105,13 +105,13 @@ jobs:
               Remove-Item artifacts/packaged/previous -Recurse -Force -ErrorAction SilentlyContinue
               $bootstrapTargets = Join-Path $previousTree 'DepotManagerE2EBootstrap.targets'
               @'
-<Project>
-  <ItemGroup Condition="'$(MSBuildProjectName)' == 'DepotManager'">
-    <Compile Include="$(MSBuildThisFileDirectory)src\Depot\Controls\MotionSystem.cs"
-             Link="Controls\MotionSystem.cs" />
-  </ItemGroup>
-</Project>
-'@ | Set-Content $bootstrapTargets -Encoding utf8
+          <Project>
+            <ItemGroup Condition="'$(MSBuildProjectName)' == 'DepotManager'">
+              <Compile Include="$(MSBuildThisFileDirectory)src\Depot\Controls\MotionSystem.cs"
+                       Link="Controls\MotionSystem.cs" />
+            </ItemGroup>
+          </Project>
+          '@ | Set-Content $bootstrapTargets -Encoding utf8
               $savedTargets = $env:CustomAfterMicrosoftCommonTargets
               try {
                 $env:CustomAfterMicrosoftCommonTargets = $bootstrapTargets
