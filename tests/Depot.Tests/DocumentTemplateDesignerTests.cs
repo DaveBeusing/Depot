@@ -356,6 +356,60 @@ public sealed class DocumentTemplateDesignerTests
 		Assert.Contains("DocumentTemplateDesignerViewModel designer when designer.IsDirty", guard, StringComparison.Ordinal);
 	}
 
+	[Fact]
+	public void DesignerSelectionPresentationTracksNoSingleAndMultipleSelectionStates()
+	{
+		var authorization = Authorization([ApplicationPermission.DocumentTemplatesView, ApplicationPermission.DocumentTemplatesManage]);
+		var viewModel = new DocumentTemplateDesignerViewModel(
+			new DocumentTemplateDesignerService(authorization, new DocumentTemplateRuntimeCatalog(DefaultDocumentTemplates.Defaults)));
+
+		Assert.Equal(0, viewModel.SelectionCount);
+		Assert.False(viewModel.HasSelection);
+		Assert.False(viewModel.HasSingleSelection);
+		Assert.False(viewModel.HasMultipleSelection);
+
+		viewModel.NewFromDefaultCommand.Execute(null);
+		var selected = viewModel.Elements.Take(2).ToArray();
+
+		viewModel.SetSelectedElements([selected[0]]);
+		Assert.Equal(1, viewModel.SelectionCount);
+		Assert.True(viewModel.HasSelection);
+		Assert.True(viewModel.HasSingleSelection);
+		Assert.False(viewModel.HasMultipleSelection);
+		Assert.True(viewModel.DuplicateElementsCommand.CanExecute(null));
+		Assert.False(viewModel.AlignLeftCommand.CanExecute(null));
+
+		viewModel.SetSelectedElements(selected);
+		Assert.Equal(2, viewModel.SelectionCount);
+		Assert.True(viewModel.HasSelection);
+		Assert.False(viewModel.HasSingleSelection);
+		Assert.True(viewModel.HasMultipleSelection);
+		Assert.True(viewModel.AlignLeftCommand.CanExecute(null));
+
+		viewModel.SetSelectedElements([]);
+		Assert.Equal(0, viewModel.SelectionCount);
+		Assert.False(viewModel.HasSelection);
+		Assert.False(viewModel.DeleteElementsCommand.CanExecute(null));
+	}
+
+	[Fact]
+	public void DesignerToolbarUsesContextualSelectionGroupsAndSharedMotion()
+	{
+		var root = FindRepositoryRoot();
+		var xaml = File.ReadAllText(Path.Combine(root, "src", "Depot", "Views", "Administration", "DocumentTemplateDesignerView.xaml"));
+
+		Assert.Contains("Visibility=\"{Binding HasSingleSelection, Converter={StaticResource BooleanToVisibilityConverter}}\"", xaml, StringComparison.Ordinal);
+		Assert.Contains("Visibility=\"{Binding HasMultipleSelection, Converter={StaticResource BooleanToVisibilityConverter}}\"", xaml, StringComparison.Ordinal);
+		Assert.Contains("controls:MotionBehavior.TransitionKind=\"State\"", xaml, StringComparison.Ordinal);
+		Assert.Contains("Command=\"{Binding DuplicateElementsCommand}\"", xaml, StringComparison.Ordinal);
+		Assert.Contains("Command=\"{Binding DeleteElementsCommand}\"", xaml, StringComparison.Ordinal);
+		Assert.Contains("Command=\"{Binding AlignLeftCommand}\"", xaml, StringComparison.Ordinal);
+		Assert.Contains("Command=\"{Binding DistributeHorizontallyCommand}\"", xaml, StringComparison.Ordinal);
+		Assert.Contains("x:Name=\"SelectionFrame\"", xaml, StringComparison.Ordinal);
+		Assert.Contains("Property=\"controls:MotionBehavior.TransitionKind\" Value=\"State\"", xaml, StringComparison.Ordinal);
+		Assert.Contains("IsHitTestVisible=\"False\"", xaml, StringComparison.Ordinal);
+	}
+
 	private static string FindRepositoryRoot()
 	{
 		for (var directory = new DirectoryInfo(AppContext.BaseDirectory); directory is not null; directory = directory.Parent)
