@@ -118,7 +118,8 @@ public static class MotionTransitions
 			{
 				EasingFunction = easing,
 				FillBehavior = FillBehavior.Stop
-			});
+			},
+			HandoffBehavior.SnapshotAndReplace);
 
 		if (translate is not null && offset != 0d)
 		{
@@ -128,7 +129,8 @@ public static class MotionTransitions
 				{
 					EasingFunction = easing,
 					FillBehavior = FillBehavior.Stop
-				});
+				},
+				HandoffBehavior.SnapshotAndReplace);
 		}
 
 		if (scale is not null && initialScale != 1d)
@@ -139,14 +141,16 @@ public static class MotionTransitions
 				{
 					EasingFunction = easing,
 					FillBehavior = FillBehavior.Stop
-				});
+				},
+				HandoffBehavior.SnapshotAndReplace);
 			scale.BeginAnimation(
 				ScaleTransform.ScaleYProperty,
 				new DoubleAnimation(initialScale, 1d, duration)
 				{
 					EasingFunction = easing,
 					FillBehavior = FillBehavior.Stop
-				});
+				},
+				HandoffBehavior.SnapshotAndReplace);
 		}
 	}
 }
@@ -373,6 +377,12 @@ public sealed class MotionContentControl : ContentControl
 		typeof(MotionContentControl),
 		new FrameworkPropertyMetadata(MotionTransitionKind.Workspace));
 
+	public static readonly DependencyProperty TransitionKeyProperty = DependencyProperty.Register(
+		nameof(TransitionKey),
+		typeof(object),
+		typeof(MotionContentControl),
+		new FrameworkPropertyMetadata(null, OnTransitionKeyChanged));
+
 	public MotionContentControl()
 	{
 		RenderTransform = new TranslateTransform();
@@ -385,10 +395,23 @@ public sealed class MotionContentControl : ContentControl
 		set => SetValue(TransitionKindProperty, value);
 	}
 
+	public object? TransitionKey
+	{
+		get => GetValue(TransitionKeyProperty);
+		set => SetValue(TransitionKeyProperty, value);
+	}
+
 	protected override void OnContentChanged(object oldContent, object newContent)
 	{
 		base.OnContentChanged(oldContent, newContent);
 		if (IsLoaded) MotionTransitions.Begin(this, TransitionKind);
+	}
+
+	private static void OnTransitionKeyChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs args)
+	{
+		if (dependencyObject is not MotionContentControl control || !control.IsLoaded) return;
+		if (Equals(args.OldValue, args.NewValue)) return;
+		MotionTransitions.Begin(control, control.TransitionKind);
 	}
 }
 

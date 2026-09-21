@@ -136,11 +136,13 @@ public sealed class MasterDetailGrid : Control
 {
 	public static readonly DependencyProperty MasterProperty = DependencyProperty.Register(nameof(Master), typeof(object), typeof(MasterDetailGrid));
 	public static readonly DependencyProperty DetailProperty = DependencyProperty.Register(nameof(Detail), typeof(object), typeof(MasterDetailGrid));
+	public static readonly DependencyProperty DetailTransitionKeyProperty = DependencyProperty.Register(nameof(DetailTransitionKey), typeof(object), typeof(MasterDetailGrid));
 
 	static MasterDetailGrid() => DefaultStyleKeyProperty.OverrideMetadata(typeof(MasterDetailGrid), new FrameworkPropertyMetadata(typeof(MasterDetailGrid)));
 
 	public object? Master { get => GetValue(MasterProperty); set => SetValue(MasterProperty, value); }
 	public object? Detail { get => GetValue(DetailProperty); set => SetValue(DetailProperty, value); }
+	public object? DetailTransitionKey { get => GetValue(DetailTransitionKeyProperty); set => SetValue(DetailTransitionKeyProperty, value); }
 }
 
 public sealed class WorkflowListState : Control

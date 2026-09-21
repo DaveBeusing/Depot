@@ -234,7 +234,7 @@
                     <Grid>
                         <Grid.ColumnDefinitions><ColumnDefinition Width="{DynamicResource MasterPane.DefaultWidth}" MinWidth="{DynamicResource MasterPane.MinWidth}" MaxWidth="{DynamicResource MasterPane.MaxWidth}" /><ColumnDefinition Width="{DynamicResource MasterDetail.ColumnGap}" /><ColumnDefinition Width="*" MinWidth="360" /></Grid.ColumnDefinitions>
                         <ContentPresenter Content="{TemplateBinding Master}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
-                        <controls:MotionContentControl Grid.Column="2" TransitionKind="DetailPane" Content="{TemplateBinding Detail}" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" />
+                        <controls:MotionContentControl Grid.Column="2" TransitionKind="DetailPane" TransitionKey="{TemplateBinding DetailTransitionKey}" Content="{TemplateBinding Detail}" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" />
                     </Grid>
                 </ControlTemplate>
             </Setter.Value>
