@@ -103,28 +103,34 @@ jobs:
 
               Write-Host 'Retrying previous artifact publish with the historical MotionSystem build-link bootstrap.'
               Remove-Item artifacts/packaged/previous -Recurse -Force -ErrorAction SilentlyContinue
-              $bootstrapTargets = Join-Path $previousTree 'Directory.Build.targets'
-              if (Test-Path $bootstrapTargets) {
-                throw "Historical E2E bootstrap cannot overwrite an existing Directory.Build.targets at $bootstrapTargets."
+              $previousManagerApp = Join-Path $previousTree 'src/DepotManager/App.xaml'
+              $managerAppText = Get-Content $previousManagerApp -Raw
+              $pageAnchor = '    <Page Include="..\Depot\Resources\Accessibility.xaml" Link="Resources\Accessibility.xaml" />'
+              $compileAnchor = '    <Compile Include="..\Depot\Controls\AccessibilityAutomation.cs" Link="Controls\AccessibilityAutomation.cs" />'
+              $resourceAnchor = '        <ResourceDictionary Source="Resources/Accessibility.xaml" />'
+              if (-not $managerProjectText.Contains($pageAnchor) -or
+                  -not $managerProjectText.Contains($compileAnchor) -or
+                  -not $managerAppText.Contains($resourceAnchor)) {
+                throw 'Historical E2E bootstrap anchors are missing from the previous DepotManager source.'
               }
-              @'
-          <Project>
-            <ItemGroup Condition="'$(MSBuildProjectName)' == 'DepotManager'">
-              <Compile Include="$(MSBuildThisFileDirectory)src\Depot\Controls\MotionSystem.cs"
-                       Link="Controls\MotionSystem.cs" />
-            </ItemGroup>
-          </Project>
-          '@ | Set-Content $bootstrapTargets -Encoding utf8
+
+              $managerProjectText = $managerProjectText.Replace(
+                $pageAnchor,
+                $pageAnchor + [Environment]::NewLine + '    <Page Include="..\Depot\Resources\Motion.xaml" Link="Resources\Motion.xaml" />')
+              $managerProjectText = $managerProjectText.Replace(
+                $compileAnchor,
+                $compileAnchor + [Environment]::NewLine + '    <Compile Include="..\Depot\Controls\MotionSystem.cs" Link="Controls\MotionSystem.cs" />')
+              $managerAppText = $managerAppText.Replace(
+                $resourceAnchor,
+                $resourceAnchor + [Environment]::NewLine + '        <ResourceDictionary Source="Resources/Motion.xaml" />')
+              Set-Content $previousManagerProject $managerProjectText -Encoding utf8
+              Set-Content $previousManagerApp $managerAppText -Encoding utf8
+
               Remove-Item (Join-Path $previousTree 'src/DepotManager/bin') -Recurse -Force -ErrorAction SilentlyContinue
               Remove-Item (Join-Path $previousTree 'src/DepotManager/obj') -Recurse -Force -ErrorAction SilentlyContinue
-              try {
-                ./scripts/publish-packaged-artifacts.ps1 -SourceRoot $previousTree -OutputRoot artifacts/packaged/previous
-                if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-                "previous-build-bootstrap=MotionSystem.cs" | Add-Content artifacts/packaged/source.txt -Encoding ascii
-              }
-              finally {
-                Remove-Item $bootstrapTargets -Force -ErrorAction SilentlyContinue
-              }
+              ./scripts/publish-packaged-artifacts.ps1 -SourceRoot $previousTree -OutputRoot artifacts/packaged/previous
+              if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+              "previous-build-bootstrap=DepotManager-MotionLinkage" | Add-Content artifacts/packaged/source.txt -Encoding ascii
             }
           }
           finally {
