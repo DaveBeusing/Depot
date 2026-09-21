@@ -317,20 +317,20 @@ public sealed class WarehouseStructureViewModel : BaseViewModel, IDisposable
 
 	private async Task SaveStorageLocationAsync(CancellationToken cancellationToken)
 	{
-		if (SelectedWarehouse is null) return;
+		if (SelectedWarehouse is not { } warehouse) return;
 		BeginOperation("Saving storage location...");
 		try
 		{
 			var location = await _storageLocationService.SaveAsync(
 				_locationEditorId,
 				_locationEditorVersion,
-				SelectedWarehouse.Id,
+				warehouse.Id,
 				LocationName,
 				LocationDescription,
 				cancellationToken);
 			ReplaceStorageLocation(location);
 			SelectedStorageLocation = location;
-			await LoadLayoutAsync(SelectedWarehouse.Id, cancellationToken);
+			await LoadLayoutAsync(warehouse.Id, cancellationToken);
 			CompleteOperation(statusText: "Storage location saved.");
 			RequestEditorFocus();
 		}
@@ -339,18 +339,18 @@ public sealed class WarehouseStructureViewModel : BaseViewModel, IDisposable
 
 	private async Task ToggleStorageLocationAsync(CancellationToken cancellationToken)
 	{
-		if (SelectedStorageLocation is null) return;
-		BeginOperation(SelectedStorageLocation.IsActive ? "Deactivating storage location..." : "Activating storage location...");
+		if (SelectedStorageLocation is not { } selectedLocation || SelectedWarehouse is not { } warehouse) return;
+		BeginOperation(selectedLocation.IsActive ? "Deactivating storage location..." : "Activating storage location...");
 		try
 		{
 			var location = await _storageLocationService.SetActiveAsync(
-				SelectedStorageLocation.Id,
-				SelectedStorageLocation.Version,
-				!SelectedStorageLocation.IsActive,
+				selectedLocation.Id,
+				selectedLocation.Version,
+				!selectedLocation.IsActive,
 				cancellationToken);
 			ReplaceStorageLocation(location);
 			SelectedStorageLocation = location;
-			await LoadLayoutAsync(SelectedWarehouse.Id, cancellationToken);
+			await LoadLayoutAsync(warehouse.Id, cancellationToken);
 			CompleteOperation(statusText: location.IsActive ? "Storage location activated." : "Storage location deactivated.");
 		}
 		catch (Exception exception) when (exception is not OperationCanceledException) { FailOperation(exception, "Storage location status could not be changed."); }
