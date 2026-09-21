@@ -34,6 +34,14 @@ public sealed class AdaptiveHomeUxTests
 		Assert.Contains("Tag=\"Overdue\"", xaml, StringComparison.Ordinal);
 		Assert.Contains("Tag=\"Today\"", xaml, StringComparison.Ordinal);
 		Assert.Contains("Tag=\"HighPriority\"", xaml, StringComparison.Ordinal);
+		Assert.Contains("Style=\"{StaticResource FilterChipToggleStyle}\"", xaml, StringComparison.Ordinal);
+		Assert.Contains("IsChecked=\"{Binding IsAllMyWorkFilter, Mode=OneWay}\"", xaml, StringComparison.Ordinal);
+		Assert.Contains("IsChecked=\"{Binding IsOverdueMyWorkFilter, Mode=OneWay}\"", xaml, StringComparison.Ordinal);
+		Assert.Contains("IsChecked=\"{Binding IsTodayMyWorkFilter, Mode=OneWay}\"", xaml, StringComparison.Ordinal);
+		Assert.Contains("IsChecked=\"{Binding IsHighPriorityMyWorkFilter, Mode=OneWay}\"", xaml, StringComparison.Ordinal);
+		Assert.Contains("MyWorkOverdueCount", xaml, StringComparison.Ordinal);
+		Assert.Contains("MyWorkTodayCount", xaml, StringComparison.Ordinal);
+		Assert.Contains("MyWorkHighPriorityCount", xaml, StringComparison.Ordinal);
 		Assert.Contains("<controls:Card", xaml, StringComparison.Ordinal);
 		Assert.Contains("<controls:FilterBar", xaml, StringComparison.Ordinal);
 		Assert.Contains("Style=\"{StaticResource AppTabControlStyle}\"", xaml, StringComparison.Ordinal);
@@ -42,6 +50,33 @@ public sealed class AdaptiveHomeUxTests
 		Assert.Contains("MyWorkQuickFilter.Overdue", source, StringComparison.Ordinal);
 		Assert.Contains("MyWorkQuickFilter.Today", source, StringComparison.Ordinal);
 		Assert.Contains("MyWorkQuickFilter.HighPriority", source, StringComparison.Ordinal);
+	}
+
+	[Fact]
+	public void MyWorkFilterCountsStayOnTheLoadedSnapshotAndPrimaryActionIsExplicit()
+	{
+		var root = FindRepositoryRoot();
+		var xaml = File.ReadAllText(Path.Combine(root, "src", "Depot", "Views", "MyWorkPanel.xaml"));
+		var source = File.ReadAllText(Path.Combine(root, "src", "Depot", "ViewModels", "DashboardViewModel.cs"));
+
+		Assert.Contains("CountMyWorkItems(MyWorkQuickFilter.Overdue)", source, StringComparison.Ordinal);
+		Assert.Contains("_myWorkSnapshot.Sections", source, StringComparison.Ordinal);
+		Assert.Contains("MatchesMyWorkFilter(item, filter, today)", source, StringComparison.Ordinal);
+		Assert.Contains("NotifyMyWorkFilterPresentation()", source, StringComparison.Ordinal);
+		Assert.Contains("Style=\"{StaticResource PrimaryButtonStyle}\"", xaml, StringComparison.Ordinal);
+		Assert.Contains("Visibility=\"{Binding HasPrimaryAction", xaml, StringComparison.Ordinal);
+	}
+
+	[Fact]
+	public void MyWorkActionPresentationRequiresBothActionAndRoute()
+	{
+		var actionable = new MyWorkItem(MyWorkSectionKind.NeedsMyAction, MyWorkItemKind.SalesOrder, 1, "SO-1", "Order", "Customer", "Ready", null, null, null, MyWorkPriority.Normal, "sales.orders", "Open", 42);
+		var noAction = actionable with { PrimaryAction = string.Empty };
+		var noRoute = actionable with { RouteId = string.Empty };
+
+		Assert.True(actionable.HasPrimaryAction);
+		Assert.False(noAction.HasPrimaryAction);
+		Assert.False(noRoute.HasPrimaryAction);
 	}
 
 	[Fact]
