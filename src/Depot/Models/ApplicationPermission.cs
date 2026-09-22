@@ -15,6 +15,7 @@ public enum ApplicationPermission
 	MaterialReturnsView, MaterialReturnsCreate, MaterialReturnsEdit, MaterialReturnsPost, MaterialReturnsReverse,
 	SupplierReturnsView, SupplierReturnsCreate, SupplierReturnsEdit, SupplierReturnsPost, SupplierReturnsReverse,
 	SalesView, CustomersView, CustomersCreate, CustomersEdit,
+	SalesCrmView, SalesCrmRecordsManage, SalesCrmManage, SalesCrmActivitiesView, SalesCrmActivitiesManage,
 	SalesQuotesView, SalesQuotesCreate, SalesQuotesEdit, SalesQuotesSend, SalesQuotesConvert,
 	SalesPricingView, SalesPricingManage,
 	SalesOrdersView, SalesOrdersCreate, SalesOrdersEdit, SalesOrdersSubmit, SalesOrdersApprove, SalesOrdersRelease, SalesOrdersCancel,
