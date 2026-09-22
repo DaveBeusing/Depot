@@ -6,7 +6,7 @@ Updated: 2026-09-19
 
 - Application: **0.15.x-preview**
 - Core database schema: **30**
-- Sales feature schema: **14**
+- Sales feature schema: **15**
 - Finance feature schema: **9**
 - User Sessions feature schema: **3**
 - Security Events feature schema: **3**
@@ -14,7 +14,7 @@ Updated: 2026-09-19
 - Document Templates feature schema: **1**
 - Enterprise Identity feature schema: **2**
 - Approval Policies feature schema: **1**
-- Help manifest: **1.23**
+- Help manifest: **1.24**
 
 Application, Core database and feature-schema versions are independent compatibility dimensions. `Directory.Build.props` is the authoritative source for the exact application patch/version; long-lived documentation records the development line rather than duplicating the moving patch number.
 
@@ -65,7 +65,11 @@ Sales schema **13** adds the production electronic-invoice evidence required by 
 
 ### Sales schema 14
 
-Sales schema **14** is the current Sales persistence baseline. It adds immutable ZUGFeRD 2.5.2 / Factur-X 1.09.2 hybrid invoice artifacts for the XRECHNUNG profile. The exact PDF/A-3B bytes, the finalized embedded `xrechnung.xml` SHA-256, the PDF SHA-256 and conformance metadata are retained together; later export does not rebuild the hybrid document from mutable master data.
+Sales schema **14** introduced immutable ZUGFeRD 2.5.2 / Factur-X 1.09.2 hybrid invoice artifacts for the XRECHNUNG profile. The exact PDF/A-3B bytes, the finalized embedded `xrechnung.xml` SHA-256, the PDF SHA-256 and conformance metadata are retained together; later export does not rebuild the hybrid document from mutable master data.
+
+### Sales schema 15
+
+Sales schema **15** is the current Sales persistence baseline. It adds provider-neutral `SalesLeads`, `SalesOpportunityStages`, `SalesOpportunities` and `SalesActivities` persistence plus bounded owner/status/stage/due-date/search indexes. Lead conversion retains Customer/Opportunity linkage and mutable CRM records use optimistic versions. Core schema remains **30**.
 
 ### Finance schema 9
 

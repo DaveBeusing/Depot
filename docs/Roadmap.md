@@ -25,6 +25,16 @@ This roadmap describes product capabilities and acceptance work without coupling
 - [x] bounded productive visual designers for document layout, posting flow, pricing strategy, reporting mapping, bank reconciliation, localization hierarchy, role permissions and import mapping
 - [x] source-controlled `master` governance contract plus active ruleset `23590604` PR/deletion/non-fast-forward protection; the missing live required-status-check bindings are tracked separately as H1 `BLOCKED`
 
+### ERP-native Sales CRM
+
+- [x] Lead capture with ownership, qualification state, contact channels and optimistic concurrency
+- [x] controlled Lead → Customer/Opportunity conversion without a second customer master
+- [x] stage-based Opportunities with expected amount, user-maintained probability and Won/Lost evidence
+- [x] Sales Activities with due/completion/cancellation evidence
+- [x] Opportunity → Sales Quote conversion through the existing quote authority
+- [x] bounded pipeline aggregation, Global Search/deep links, My Work and Sales role-center integration
+- [x] service-layer CRM RBAC and provider-neutral Sales schema 15 persistence
+
 ### Costing and sales pricing
 
 - [x] scoped Global, Region and Customer PriceLists with Customer → Region → Global item resolution

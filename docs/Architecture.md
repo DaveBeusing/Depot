@@ -24,7 +24,7 @@ Remote provisioning serializes the complete global/feature migration sequence wi
 
 Known transient deadlock/write-conflict errors use bounded exponential retry with jitter and complete transaction recreation. Non-transient business/constraint failures are not retried. MySQL/MariaDB Finance UTC timestamps are normalized to real `DATETIME(6)` parameters at the provider boundary rather than leaking provider rules into Services/Repositories.
 
-Sales schema 11 introduced the active reservation uniqueness invariant on every supported provider. SQLite and SQL Server use partial/filtered unique indexes; MariaDB/MySQL use an active generated inventory key plus a unique compound index. Subsequent Sales schemas build on that provider-parity baseline; the current Sales feature schema is 14.
+Sales schema 11 introduced the active reservation uniqueness invariant on every supported provider. SQLite and SQL Server use partial/filtered unique indexes; MariaDB/MySQL use an active generated inventory key plus a unique compound index. Subsequent Sales schemas build on that provider-parity baseline; the current Sales feature schema is 15.
 
 ## Authentication sessions, presence and policy enforcement
 
@@ -68,6 +68,19 @@ See [User Sessions and Online Presence](UserSessions.md), [Security Center and A
 
 Subledgers/accounting modules call the General Ledger boundary for postings rather than duplicating ledger invariants. Reporting reads existing evidence and does not create a second ledger. Localization does not post accounting entries.
 
+## Sales CRM authority
+
+The CRM layer sits immediately upstream of the existing Customer and Quote authorities:
+
+```text
+Lead → CustomerService + Opportunity
+Opportunity → SalesQuoteService
+             ↓
+        existing Sales flow
+```
+
+`SalesCrmService` owns Lead, Opportunity, Stage and Activity business state, ownership rules, conversion orchestration and CRM authorization. `CustomerService` remains authoritative for Customer creation rules and `SalesQuoteService` remains authoritative for Quote creation. Pipeline amounts are operational CRM data and do not post accounting revenue. Bounded repository queries back pipeline summaries, My Work and search integrations.
+
 ## Costing and sales-pricing authority
 
 ```text
@@ -108,7 +121,7 @@ Document-layout zoom, snap, resize, undo/redo and dirty-state behavior remain sp
 ## Schema versions
 
 - Core database schema: **30**
-- Sales feature schema: **14**
+- Sales feature schema: **15**
 - Finance feature schema: **9**
 - User Sessions feature schema: **3**
 - Security Events feature schema: **3**
@@ -116,11 +129,11 @@ Document-layout zoom, snap, resize, undo/redo and dirty-state behavior remain sp
 - Document Templates feature schema: **1**
 - Enterprise Identity feature schema: **2**
 - Application: **0.15.x-preview**
-- Help manifest: **1.23**
+- Help manifest: **1.24**
 
 `Directory.Build.props` is authoritative for the exact application patch/version. Feature schema constants remain authoritative in their migration classes; this architecture document records the compatibility baselines rather than duplicating a moving preview patch.
 
-Feature schemas evolve independently. Sales schema 11 remains the provider-parity/data-integrity correction; schema 12 introduced Advanced Pricing persistence, schema 13 adds bounded XRechnung finalization/evidence and schema 14 adds immutable ZUGFeRD/Factur-X hybrid artifact persistence. None of these changes increments Core schema 30.
+Feature schemas evolve independently. Sales schema 11 remains the provider-parity/data-integrity correction; schema 12 introduced Advanced Pricing persistence, schema 13 adds bounded XRechnung finalization/evidence and schema 14 adds immutable ZUGFeRD/Factur-X hybrid artifact persistence and schema 15 adds the ERP-native CRM Lead/Opportunity/Activity persistence. None of these changes increments Core schema 30.
 
 ## Transaction, concurrency and evidence model
 
