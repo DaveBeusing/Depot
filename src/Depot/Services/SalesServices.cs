@@ -11,6 +11,7 @@ public sealed class SalesServices
 		SalesTimelineService timeline,
 		SalesOrderService orders,
 		SalesQuoteService quotes,
+		SalesCrmService crm,
 		ShipmentService shipments,
 		ShipmentPackingService packing,
 		SalesInvoiceService invoices,
@@ -29,6 +30,7 @@ public sealed class SalesServices
 		Timeline = timeline;
 		Orders = orders;
 		Quotes = quotes;
+		Crm = crm;
 		Shipments = shipments;
 		Packing = packing;
 		Invoices = invoices;
@@ -48,6 +50,7 @@ public sealed class SalesServices
 	public SalesTimelineService Timeline { get; }
 	public SalesOrderService Orders { get; }
 	public SalesQuoteService Quotes { get; }
+	public SalesCrmService Crm { get; }
 	public ShipmentService Shipments { get; }
 	public ShipmentPackingService Packing { get; }
 	public SalesInvoiceService Invoices { get; }
