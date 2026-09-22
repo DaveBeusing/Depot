@@ -202,7 +202,7 @@ public sealed class CommercialRoleCenterService
 			? _salesOrders.SearchAsync(null, null, 1, SourceItemLimit * 3, cancellationToken)
 			: Task.FromResult(new PageResult<SalesOrder>([], 1, SourceItemLimit * 3, 0));
 		var opportunitiesTask = _authorization.HasPermission(ApplicationPermission.SalesCrmView)
-			? _salesCrm.SearchOpportunitiesAsync(null, SalesOpportunityOutcome.Open, ownerUserId: user.Id, pageNumber: 1, pageSize: SourceItemLimit, cancellationToken: cancellationToken)
+			? _salesCrm.SearchOpportunitiesAsync(null, outcome: SalesOpportunityOutcome.Open, ownerUserId: user.Id, pageNumber: 1, pageSize: SourceItemLimit, cancellationToken: cancellationToken)
 			: Task.FromResult(new PageResult<SalesOpportunity>([], 1, SourceItemLimit, 0));
 		var leadsTask = _authorization.HasPermission(ApplicationPermission.SalesCrmView)
 			? _salesCrm.SearchLeadsAsync(null, ownerUserId: user.Id, pageNumber: 1, pageSize: 1, cancellationToken: cancellationToken)
