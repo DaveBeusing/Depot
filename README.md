@@ -112,11 +112,14 @@ Current baseline:
 - User Preferences feature schema: **2**
 - Document Templates feature schema: **1**
 - Enterprise Identity feature schema: **2**
-- Help manifest: **1.22**
+- Approval Policies feature schema: **1**
+- Help manifest: **1.23**
 
 `Directory.Build.props` is authoritative for the exact application patch/version. The documentation baseline intentionally records the development line instead of duplicating the moving preview patch number.
 
 Sales schema 11 introduced the provider-equivalent active-reservation uniqueness invariant, schema 12 introduced Advanced Pricing persistence, schema 13 adds the bounded XRechnung finalization/evidence contract, and schema 14 adds immutable ZUGFeRD 2.5.2 / Factur-X 1.09.2 XRECHNUNG-profile PDF/A-3B artifacts. These feature migrations do not increment Core schema 30.
+
+Configurable approvals use a dedicated bounded [Approval Policies](docs/ApprovalPolicies.md) feature schema. Policies centralize deterministic routing and immutable stage snapshots for Purchase Orders, Sales Orders, AP match exceptions and payment proposals while domain services remain authoritative for final business state.
 
 For implementation and release status, see [Current Status](docs/CurrentStatus.md), [Documentation Status](docs/DocumentationStatus.md), [User-Facing Changes](docs/UserFacingChanges.md) and [Release 1.0](docs/Release1.0.md).
 
@@ -160,7 +163,7 @@ Security and compliance work is documented transparently rather than presented a
 
 ## Offline Help
 
-Embedded Help manifest **1.22** includes contextual Sales, Finance, User Sessions and Security Center guidance. Help visibility follows central permissions and never grants business access.
+Embedded Help manifest **1.23** includes contextual Sales, Finance, User Sessions and Security Center guidance. Help visibility follows central permissions and never grants business access.
 
 See the [Help Center documentation](docs/HelpCenter.md).
 

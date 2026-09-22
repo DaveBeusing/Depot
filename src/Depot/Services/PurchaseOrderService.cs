@@ -15,8 +15,9 @@ public sealed class PurchaseOrderService
 	private readonly AuditService _audit;
 	private readonly IAuthorizationService _authorization;
 	private readonly NotificationService _notifications;
+	private readonly ApprovalPolicyService? _approvalPolicies;
 
-	public PurchaseOrderService(PurchaseOrderRepository orders, SupplierRepository suppliers, ItemRepository items, AuditService audit, IAuthorizationService authorization, NotificationService notifications)
+	public PurchaseOrderService(PurchaseOrderRepository orders, SupplierRepository suppliers, ItemRepository items, AuditService audit, IAuthorizationService authorization, NotificationService notifications, ApprovalPolicyService? approvalPolicies = null)
 	{
 		_orders = orders;
 		_suppliers = suppliers;
@@ -24,6 +25,7 @@ public sealed class PurchaseOrderService
 		_audit = audit;
 		_authorization = authorization;
 		_notifications = notifications;
+		_approvalPolicies = approvalPolicies;
 	}
 
 	public Task<PageResult<PurchaseOrder>> SearchAsync(string? searchText, PurchaseOrderStatus? status, int pageNumber = 1, int pageSize = 100, CancellationToken cancellationToken = default)
@@ -157,13 +159,26 @@ public sealed class PurchaseOrderService
 		var isSelfApproval = before.CreatedByUserId == user.Id;
 		var isAdministrator = _authorization.IsInRole(SystemRoleCatalog.AdministratorCode);
 		if (isSelfApproval && !isAdministrator) throw new InvalidOperationException("A purchase order cannot be approved or rejected by its creator.");
-		return await ChangeStatusAsync(before, version, PurchaseOrderStatus.PendingApproval, decision, order =>
+		ApprovalPreparedDecision? approvalDecision = null;
+		if (_approvalPolicies is not null)
+		{
+			approvalDecision = await _approvalPolicies.PrepareDecisionAsync(
+				ApprovalSubjectKind.PurchaseOrder,
+				id.ToString(System.Globalization.CultureInfo.InvariantCulture),
+				decision == PurchaseOrderStatus.Approved ? ApprovalDecisionKind.Approved : ApprovalDecisionKind.Rejected,
+				comment,
+				cancellationToken);
+		}
+		var target = decision == PurchaseOrderStatus.Approved && approvalDecision is { IsFinalApproval: false }
+			? PurchaseOrderStatus.PendingApproval
+			: decision;
+		return await ChangeStatusAsync(before, version, PurchaseOrderStatus.PendingApproval, target, target == PurchaseOrderStatus.PendingApproval ? null : order =>
 		{
 			order.ApprovalDecisionByUserId = user.Id;
 			order.ApprovalDecisionByUserDisplay = user.DisplayName;
 			order.ApprovalDecisionAtUtc = DateTime.UtcNow;
 			order.ApprovalComment = comment;
-		}, operation, cancellationToken);
+		}, operation, cancellationToken, approvalDecision);
 	}
 
 	private async Task<PurchaseOrder> ChangeStatusAsync(long id, long version, PurchaseOrderStatus expected, PurchaseOrderStatus status, Action<PurchaseOrder>? applyMetadata, CancellationToken cancellationToken)
@@ -181,10 +196,20 @@ public sealed class PurchaseOrderService
 	private async Task<PurchaseOrder> ChangeStatusAsync(PurchaseOrder before, long version, PurchaseOrderStatus expected, PurchaseOrderStatus status, Action<PurchaseOrder>? applyMetadata, CancellationToken cancellationToken) =>
 		await ChangeStatusAsync(before, version, expected, status, applyMetadata, null, cancellationToken);
 
-	private async Task<PurchaseOrder> ChangeStatusAsync(PurchaseOrder before, long version, PurchaseOrderStatus expected, PurchaseOrderStatus status, Action<PurchaseOrder>? applyMetadata, WorkflowOperation? operation, CancellationToken cancellationToken)
+	private async Task<PurchaseOrder> ChangeStatusAsync(PurchaseOrder before, long version, PurchaseOrderStatus expected, PurchaseOrderStatus status, Action<PurchaseOrder>? applyMetadata, WorkflowOperation? operation, CancellationToken cancellationToken, ApprovalPreparedDecision? approvalDecision = null)
 	{
 		if (before.Version != version) throw new ConcurrencyConflictException("purchase order");
 		if (before.Status != expected) throw new InvalidOperationException($"The purchase order must be in {expected} status for this transition.");
+		ApprovalPlanSnapshot? startApproval = null;
+		if (_approvalPolicies is not null && expected == PurchaseOrderStatus.Draft && status == PurchaseOrderStatus.PendingApproval)
+		{
+			startApproval = await _approvalPolicies.ResolveSnapshotAsync(
+				new ApprovalSubjectAttributes(
+					ApprovalSubjectKind.PurchaseOrder,
+					before.Id.ToString(System.Globalization.CultureInfo.InvariantCulture),
+					before.Lines.Sum(line => line.Quantity * line.UnitPrice)),
+				cancellationToken);
+		}
 		var after = new PurchaseOrder
 		{
 			Id = before.Id, OrderNumber = before.OrderNumber, SupplierId = before.SupplierId, SupplierName = before.SupplierName, OrderDate = before.OrderDate, ExpectedDeliveryDate = before.ExpectedDeliveryDate, Notes = before.Notes, Status = status,
@@ -193,7 +218,15 @@ public sealed class PurchaseOrderService
 			Version = version + 1, Lines = before.Lines
 		};
 		applyMetadata?.Invoke(after);
-		var changed = await _orders.SetStatusAsync(before.Id, version, expected, status, after, _audit.CreateUpdatedEntry(before.Id, before, after), operation, (session, token) => CreateStatusNotificationAsync(new DatabaseTransactionContext(session), before, after, token), cancellationToken);
+		var changed = await _orders.SetStatusAsync(before.Id, version, expected, status, after, _audit.CreateUpdatedEntry(before.Id, before, after), operation, async (session, token) =>
+		{
+			var transaction = new DatabaseTransactionContext(session);
+			if (startApproval is not null)
+				await _approvalPolicies!.StartResolvedAsync(transaction, startApproval, token);
+			if (approvalDecision is not null)
+				await _approvalPolicies!.ApplyPreparedDecisionAsync(transaction, approvalDecision, token);
+			await CreateStatusNotificationAsync(transaction, before, after, token);
+		}, cancellationToken);
 		if (status is PurchaseOrderStatus.PendingApproval or PurchaseOrderStatus.Approved or PurchaseOrderStatus.Rejected) _notifications.RaiseChanged();
 		return changed;
 	}

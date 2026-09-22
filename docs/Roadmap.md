@@ -10,6 +10,7 @@ This roadmap describes product capabilities and acceptance work without coupling
 
 - [x] WPF/MVVM shell, navigation and contextual offline Help
 - [x] inventory, warehouse, purchasing, sales and approval workflows
+- [x] bounded configurable approval policies with deterministic routing, immutable approval snapshots and an Administration designer for the four existing approval domains
 - [x] serial/lot traceability and reversal-safe stock evidence
 - [x] database-backed RBAC and service-layer authorization
 - [x] provider-neutral persistence for SQLite, SQL Server, MariaDB and MySQL
@@ -143,7 +144,7 @@ The 1.0 technical gap reconciliation found no currently known generic implementa
 
 ## Production acceptance still required before 1.0
 
-- [ ] accounting-book/chart/calendar/posting-profile/valuation/reporting policy approval
+- [ ] accounting-book/chart/calendar/posting-profile/valuation/reporting policy approval, reusing the bounded Approval Policies foundation where domain semantics require configurable approval routing
 - [ ] AR/AP/inventory/bank reconciliation and period-end procedures
 - [ ] segregation-of-duties review for posting, approval, payment and configuration roles
 - [ ] jurisdiction-specific accounting/tax/localization acceptance

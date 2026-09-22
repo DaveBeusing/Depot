@@ -15,6 +15,7 @@ public enum AdministrationSection
 	Roles,
 	Company,
 	DocumentDesigner,
+	ApprovalPolicies,
 	Database,
 	AuditLog,
 	Privacy,

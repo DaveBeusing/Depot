@@ -45,6 +45,7 @@ public static class DatabaseProvisioningService
 		SecurityEventSchemaMigration.Migrate(connectionFactory);
 		UserPreferenceSchemaMigration.Migrate(connectionFactory);
 		DocumentTemplateSchemaMigration.Migrate(connectionFactory);
+		ApprovalPolicySchemaMigration.Migrate(connectionFactory);
 		EnterpriseIdentitySchemaMigration.Migrate(connectionFactory);
 		return DatabaseProvisioningPath.FullProvisioning;
 	}
@@ -62,6 +63,7 @@ internal static class FeatureVersionMetadataRecovery
 			["SecurityEvents"] = SecurityEventSchemaMigration.CurrentVersion,
 			["UserPreferences"] = UserPreferenceSchemaMigration.CurrentVersion,
 			["DocumentTemplates"] = DocumentTemplateSchemaMigration.CurrentVersion,
+			["ApprovalPolicies"] = ApprovalPolicySchemaMigration.CurrentVersion,
 			["EnterpriseIdentity"] = EnterpriseIdentitySchemaMigration.CurrentVersion
 		};
 

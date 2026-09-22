@@ -19,6 +19,7 @@ public sealed class FinanceAccountsPayableService
 	private readonly AuditRepository _auditEntries;
 	private readonly AuditService _audit;
 	private readonly IAuthorizationService _authorization;
+	private readonly ApprovalPolicyService? _approvalPolicies;
 
 	public FinanceAccountsPayableService(
 		IDatabaseTransactionRunner transactions,
@@ -26,7 +27,8 @@ public sealed class FinanceAccountsPayableService
 		FinanceGeneralLedgerService generalLedger,
 		AuditRepository auditEntries,
 		AuditService audit,
-		IAuthorizationService authorization)
+		IAuthorizationService authorization,
+		ApprovalPolicyService? approvalPolicies = null)
 	{
 		_transactions = transactions;
 		_payables = payables;
@@ -34,6 +36,7 @@ public sealed class FinanceAccountsPayableService
 		_auditEntries = auditEntries;
 		_audit = audit;
 		_authorization = authorization;
+		_approvalPolicies = approvalPolicies;
 	}
 
 	public bool CanView => _authorization.HasPermission(ApplicationPermission.FinancePayablesView);
@@ -154,7 +157,22 @@ public sealed class FinanceAccountsPayableService
 			if (before.Version != expectedVersion) throw new ConcurrencyConflictException("supplier document");
 			if (before.Status != FinancePayableDocumentStatus.Draft) throw new InvalidOperationException("Only a draft supplier document can be submitted.");
 			var refreshed = await RefreshMatchesAsync(transaction, before, token);
+			ApprovalPlanSnapshot? approvalSnapshot = null;
+			if (_approvalPolicies is not null && refreshed.Any(line => line.MatchStatus == FinancePayableMatchStatus.Exception))
+			{
+				var configuration = await RequireActiveConfigurationAsync(transaction, token);
+				approvalSnapshot = await _approvalPolicies.ResolveSnapshotAsync(
+					new ApprovalSubjectAttributes(
+						ApprovalSubjectKind.AccountsPayableException,
+						before.Id.ToString(CultureInfo.InvariantCulture),
+						before.GrossAmount,
+						before.Currency.Value,
+						configuration.LegalEntityId),
+					token);
+			}
 			if (await _payables.SetSubmittedAsync(transaction, before.Id, before.Version, user.Id, DateTime.UtcNow, token) != 1) throw new ConcurrencyConflictException("supplier document");
+			if (approvalSnapshot is not null)
+				await _approvalPolicies!.StartResolvedAsync(transaction, approvalSnapshot, token);
 			var after = (await _payables.GetDocumentAsync(transaction, before.Id, token) ?? throw new InvalidOperationException("Submitted supplier document could not be reloaded.")) with { Lines = refreshed };
 			await _auditEntries.CreateAsync(transaction, _audit.CreateActionEntry(after.Id, "Submitted", before, after), token);
 			return after;
@@ -183,8 +201,29 @@ public sealed class FinanceAccountsPayableService
 				exceptionReason = FinanceValidation.Required(request.MatchExceptionReason, nameof(request.MatchExceptionReason), 500);
 				exceptionApproved = true;
 			}
+			ApprovalPreparedDecision? approvalDecision = null;
+			if (hasException && _approvalPolicies is not null)
+			{
+				approvalDecision = await _approvalPolicies.PrepareDecisionAsync(
+					ApprovalSubjectKind.AccountsPayableException,
+					before.Id.ToString(CultureInfo.InvariantCulture),
+					request.Approve ? ApprovalDecisionKind.Approved : ApprovalDecisionKind.Rejected,
+					comment,
+					token);
+			}
+			var isIntermediate = request.Approve && approvalDecision is { IsFinalApproval: false };
+			if (isIntermediate)
+			{
+				if (await _payables.AdvanceApprovalStageAsync(transaction, before.Id, before.Version, token) != 1) throw new ConcurrencyConflictException("supplier document");
+				await _approvalPolicies!.ApplyPreparedDecisionAsync(transaction, approvalDecision!, token);
+				var pending = await _payables.GetDocumentAsync(transaction, before.Id, token) ?? throw new InvalidOperationException("Supplier document approval stage could not be reloaded.");
+				await _auditEntries.CreateAsync(transaction, _audit.CreateActionEntry(pending.Id, "Approval stage completed", before, pending), token);
+				return pending;
+			}
 			var status = request.Approve ? FinancePayableDocumentStatus.Approved : FinancePayableDocumentStatus.Rejected;
 			if (await _payables.SetApprovalAsync(transaction, before.Id, before.Version, status, user.Id, DateTime.UtcNow, comment, exceptionApproved, exceptionReason, token) != 1) throw new ConcurrencyConflictException("supplier document");
+			if (approvalDecision is not null)
+				await _approvalPolicies!.ApplyPreparedDecisionAsync(transaction, approvalDecision, token);
 			var after = await _payables.GetDocumentAsync(transaction, before.Id, token) ?? throw new InvalidOperationException("Supplier document decision could not be reloaded.");
 			await _auditEntries.CreateAsync(transaction, _audit.CreateActionEntry(after.Id, request.Approve ? "Approved" : "Rejected", before, after), token);
 			return after;

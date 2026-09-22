@@ -137,10 +137,11 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		IHelpService helpService,
 		HelpMarkdownRenderer helpRenderer,
 		INotificationService notificationService,
-		INotificationNavigationService notificationNavigationService)
+		INotificationNavigationService notificationNavigationService,
+		ApprovalPolicyService? approvalPolicyService = null)
 	{
 		_authorization = authorizationService;
-		AdministrationNavigationItems = AdministrationViewModel.CreateNavigationItems(authorizationService);
+		AdministrationNavigationItems = AdministrationViewModel.CreateNavigationItems(authorizationService, approvalPolicyService is not null);
 		_session = sessionService;
 		_notificationNavigation = notificationNavigationService;
 		_fileDialogs = fileDialogService;
@@ -207,7 +208,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		_financeLocalization = new(() => new FinanceLocalizationViewModel(financeLocalizationService));
 		_reports = new(() => new ReportsViewModel(reportService, fileDialogService));
 		_import = new(() => new ImportViewModel(importService, fileDialogService));
-		_administration = new(() => new AdministrationViewModel(_import.Value, itemService, purposeService, reasonCodeService, manufacturerService, categoryService, unitOfMeasureService, packagingService, supplierCategoryService, supplierService, supplierItemService, warehouseService, storageLocationService, warehouseLayoutVisualizerService, userService, roleService, authorizationService, settingsService, connectionStatusService, databaseConnectionTester, databaseManagementService, auditLogService, userSessionAdministrationService, securityEventService, fileDialogService, applicationInformationService));
+		_administration = new(() => new AdministrationViewModel(_import.Value, itemService, purposeService, reasonCodeService, manufacturerService, categoryService, unitOfMeasureService, packagingService, supplierCategoryService, supplierService, supplierItemService, warehouseService, storageLocationService, warehouseLayoutVisualizerService, userService, roleService, authorizationService, settingsService, connectionStatusService, databaseConnectionTester, databaseManagementService, auditLogService, userSessionAdministrationService, securityEventService, fileDialogService, applicationInformationService, approvalPolicyService));
 		_help = new(() => CreateHelpViewModel(helpService, helpRenderer));
 		_notificationCenter = new(() => CreateNotificationCenterViewModel(notificationService, notificationNavigationService));
 

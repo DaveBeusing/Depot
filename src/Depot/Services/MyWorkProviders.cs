@@ -12,13 +12,15 @@ internal sealed class PurchasingMyWorkProvider : IMyWorkProvider
 	private readonly PurchaseOrderApprovalService _approvals;
 	private readonly MyWorkReadRepository _read;
 	private readonly IAuthorizationService _authorization;
+	private readonly ApprovalPolicyService? _approvalPolicies;
 
-	public PurchasingMyWorkProvider(PurchaseOrderService orders, PurchaseOrderApprovalService approvals, MyWorkReadRepository read, IAuthorizationService authorization)
+	public PurchasingMyWorkProvider(PurchaseOrderService orders, PurchaseOrderApprovalService approvals, MyWorkReadRepository read, IAuthorizationService authorization, ApprovalPolicyService? approvalPolicies = null)
 	{
 		_orders = orders;
 		_approvals = approvals;
 		_read = read;
 		_authorization = authorization;
+		_approvalPolicies = approvalPolicies;
 	}
 
 	public string Name => "Purchasing";
@@ -46,7 +48,7 @@ internal sealed class PurchasingMyWorkProvider : IMyWorkProvider
 			var age = Math.Max(0, (int)(query.NowUtc - approval.SubmittedAtUtc).TotalDays);
 			if (approval.CreatedByUserId == query.UserId && !isAdministrator)
 				items.Add(new(MyWorkSectionKind.Waiting, MyWorkItemKind.PurchaseOrderApproval, approval.Id, approval.OrderNumber, "Purchase approval", approval.SupplierName, "Pending Approval", approval.TotalAmount, null, age, MyWorkPriority.Normal, "approvals.purchase", "Open", approval.CreatedByUserId));
-			else if (_approvals.CanDecide(approval.CreatedByUserId))
+			else if (_approvals.CanDecide(approval.CreatedByUserId) && (_approvalPolicies is null || await _approvalPolicies.CanCurrentUserDecideAsync(ApprovalSubjectKind.PurchaseOrder, approval.Id.ToString(System.Globalization.CultureInfo.InvariantCulture), cancellationToken)))
 				items.Add(new(MyWorkSectionKind.NeedsMyAction, MyWorkItemKind.PurchaseOrderApproval, approval.Id, approval.OrderNumber, "Purchase approval", approval.SupplierName, "Pending Approval", approval.TotalAmount, null, age, age >= 3 ? MyWorkPriority.High : MyWorkPriority.Normal, "approvals.purchase", "Review", approval.CreatedByUserId));
 		}
 
@@ -75,13 +77,15 @@ internal sealed class SalesMyWorkProvider : IMyWorkProvider
 	private readonly ShipmentService _shipments;
 	private readonly MyWorkReadRepository _read;
 	private readonly IAuthorizationService _authorization;
+	private readonly ApprovalPolicyService? _approvalPolicies;
 
-	public SalesMyWorkProvider(SalesOrderService orders, ShipmentService shipments, MyWorkReadRepository read, IAuthorizationService authorization)
+	public SalesMyWorkProvider(SalesOrderService orders, ShipmentService shipments, MyWorkReadRepository read, IAuthorizationService authorization, ApprovalPolicyService? approvalPolicies = null)
 	{
 		_orders = orders;
 		_shipments = shipments;
 		_read = read;
 		_authorization = authorization;
+		_approvalPolicies = approvalPolicies;
 	}
 
 	public string Name => "Sales and Shipping";
@@ -112,7 +116,7 @@ internal sealed class SalesMyWorkProvider : IMyWorkProvider
 			var age = order.SubmittedAtUtc is null ? (int?)null : Math.Max(0, (int)(query.NowUtc - order.SubmittedAtUtc.Value).TotalDays);
 			if (order.CreatedByUserId == query.UserId && !isAdministrator)
 				items.Add(new(MyWorkSectionKind.Waiting, MyWorkItemKind.SalesOrderApproval, order.Id, order.OrderNumber, "Sales approval", order.CustomerName, "Pending Approval", order.GrossAmount, order.RequestedDeliveryDate, age, MyWorkPriority.Normal, "approvals.sales", "Open", order.CreatedByUserId));
-			else if (canApprove)
+			else if (canApprove && (_approvalPolicies is null || await _approvalPolicies.CanCurrentUserDecideAsync(ApprovalSubjectKind.SalesOrder, order.Id.ToString(System.Globalization.CultureInfo.InvariantCulture), cancellationToken)))
 				items.Add(new(MyWorkSectionKind.NeedsMyAction, MyWorkItemKind.SalesOrderApproval, order.Id, order.OrderNumber, "Sales approval", order.CustomerName, "Pending Approval", order.GrossAmount, order.RequestedDeliveryDate, age, age >= 3 ? MyWorkPriority.High : MyWorkPriority.Normal, "approvals.sales", "Review", order.CreatedByUserId));
 		}
 
@@ -236,12 +240,14 @@ internal sealed class PayablesMyWorkProvider : IMyWorkProvider
 	private readonly FinanceAccountsPayableService _payables;
 	private readonly MyWorkReadRepository _read;
 	private readonly IAuthorizationService _authorization;
+	private readonly ApprovalPolicyService? _approvalPolicies;
 
-	public PayablesMyWorkProvider(FinanceAccountsPayableService payables, MyWorkReadRepository read, IAuthorizationService authorization)
+	public PayablesMyWorkProvider(FinanceAccountsPayableService payables, MyWorkReadRepository read, IAuthorizationService authorization, ApprovalPolicyService? approvalPolicies = null)
 	{
 		_payables = payables;
 		_read = read;
 		_authorization = authorization;
+		_approvalPolicies = approvalPolicies;
 	}
 
 	public string Name => "Accounts Payable";
@@ -260,10 +266,13 @@ internal sealed class PayablesMyWorkProvider : IMyWorkProvider
 		{
 			if (document.CreatedByUserId == query.UserId && _authorization.CurrentUser?.IsAdministrator != true)
 				items.Add(Item(MyWorkSectionKind.Waiting, document, "Supplier document approval", MyWorkPriority.Normal, "Open"));
-			else if (_payables.CanApproveDocuments)
+			else if (_payables.CanApproveDocuments && (!document.HasMatchExceptions || _approvalPolicies is null || await _approvalPolicies.CanCurrentUserDecideAsync(ApprovalSubjectKind.AccountsPayableException, document.Id.ToString(System.Globalization.CultureInfo.InvariantCulture), cancellationToken)))
 				items.Add(Item(MyWorkSectionKind.NeedsMyAction, document, "Supplier document approval", MyWorkPriority.Normal, "Review"));
 			if (document.HasMatchExceptions && !document.MatchExceptionApproved)
-				items.Add(Item(MyWorkSectionKind.Exceptions, document, "Supplier match exception", MyWorkPriority.High, _payables.CanApproveMatchExceptions ? "Resolve exception" : "Open"));
+			{
+				var canResolveException = _payables.CanApproveMatchExceptions && (_approvalPolicies is null || await _approvalPolicies.CanCurrentUserDecideAsync(ApprovalSubjectKind.AccountsPayableException, document.Id.ToString(System.Globalization.CultureInfo.InvariantCulture), cancellationToken));
+				items.Add(Item(MyWorkSectionKind.Exceptions, document, "Supplier match exception", MyWorkPriority.High, canResolveException ? "Resolve exception" : "Open"));
+			}
 		}
 
 		foreach (var document in documents.Where(document => document.Status == FinancePayableDocumentStatus.Approved))
@@ -291,11 +300,13 @@ internal sealed class BankingMyWorkProvider : IMyWorkProvider
 {
 	private readonly FinanceBankingService _banking;
 	private readonly IAuthorizationService _authorization;
+	private readonly ApprovalPolicyService? _approvalPolicies;
 
-	public BankingMyWorkProvider(FinanceBankingService banking, IAuthorizationService authorization)
+	public BankingMyWorkProvider(FinanceBankingService banking, IAuthorizationService authorization, ApprovalPolicyService? approvalPolicies = null)
 	{
 		_banking = banking;
 		_authorization = authorization;
+		_approvalPolicies = approvalPolicies;
 	}
 
 	public string Name => "Banking";
@@ -312,7 +323,7 @@ internal sealed class BankingMyWorkProvider : IMyWorkProvider
 		{
 			if (run.Status == FinancePaymentRunStatus.Draft)
 			{
-				if (_banking.CanApprovePaymentRuns && run.CreatedByUserId != query.UserId)
+				if (_banking.CanApprovePaymentRuns && run.CreatedByUserId != query.UserId && (_approvalPolicies is null || await _approvalPolicies.CanCurrentUserDecideAsync(ApprovalSubjectKind.PaymentProposal, run.Id.ToString(System.Globalization.CultureInfo.InvariantCulture), cancellationToken)))
 					items.Add(RunItem(MyWorkSectionKind.NeedsMyAction, run, "Payment proposal", MyWorkPriority.Normal, "Approve"));
 				else if (run.CreatedByUserId == query.UserId)
 					items.Add(RunItem(MyWorkSectionKind.Waiting, run, "Payment proposal", MyWorkPriority.Normal, "Open"));

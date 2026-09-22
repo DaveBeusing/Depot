@@ -22,8 +22,9 @@ public sealed class SalesOrderService
 	private readonly NotificationService _notifications;
 	private readonly ItemTraceabilityService? _traceability;
 	private readonly SalesPricingService? _pricing;
+	private readonly ApprovalPolicyService? _approvalPolicies;
 
-	public SalesOrderService(IDatabaseTransactionRunner transactions, SalesOrderRepository orders, CustomerRepository customers, ItemRepository items, InventoryRepository inventories, InventoryReservationRepository reservations, StockMovementRepository movements, AuditRepository auditEntries, AuditService audit, IAuthorizationService authorization, NotificationService notifications, ItemTraceabilityService? traceability = null, SalesPricingService? pricing = null)
+	public SalesOrderService(IDatabaseTransactionRunner transactions, SalesOrderRepository orders, CustomerRepository customers, ItemRepository items, InventoryRepository inventories, InventoryReservationRepository reservations, StockMovementRepository movements, AuditRepository auditEntries, AuditService audit, IAuthorizationService authorization, NotificationService notifications, ItemTraceabilityService? traceability = null, SalesPricingService? pricing = null, ApprovalPolicyService? approvalPolicies = null)
 	{
 		_transactions = transactions;
 		_orders = orders;
@@ -38,6 +39,7 @@ public sealed class SalesOrderService
 		_notifications = notifications;
 		_traceability = traceability;
 		_pricing = pricing;
+		_approvalPolicies = approvalPolicies;
 	}
 
 	public bool CanCreate => _authorization.HasPermission(ApplicationPermission.SalesOrdersCreate);
@@ -81,7 +83,11 @@ public sealed class SalesOrderService
 		if (before.Status != SalesOrderStatus.PendingApproval) throw new InvalidOperationException("Only a pending sales order can be approved.");
 		if (before.CreatedByUserId == user.Id && !user.IsAdministrator) throw new InvalidOperationException("A sales order cannot be approved by its creator.");
 		comment = Normalize(comment);
-		return await ChangeStatusCoreAsync(before, version, SalesOrderStatus.PendingApproval, SalesOrderStatus.Approved, order => { order.ApprovalDecisionByUserId = user.Id; order.ApprovalDecisionAtUtc = DateTime.UtcNow; order.ApprovalComment = comment; }, cancellationToken);
+		var approvalDecision = _approvalPolicies is null
+			? null
+			: await _approvalPolicies.PrepareDecisionAsync(ApprovalSubjectKind.SalesOrder, id.ToString(System.Globalization.CultureInfo.InvariantCulture), ApprovalDecisionKind.Approved, comment, cancellationToken);
+		var target = approvalDecision is { IsFinalApproval: false } ? SalesOrderStatus.PendingApproval : SalesOrderStatus.Approved;
+		return await ChangeStatusCoreAsync(before, version, SalesOrderStatus.PendingApproval, target, target == SalesOrderStatus.PendingApproval ? null : order => { order.ApprovalDecisionByUserId = user.Id; order.ApprovalDecisionAtUtc = DateTime.UtcNow; order.ApprovalComment = comment; }, cancellationToken, approvalDecision: approvalDecision);
 	}
 
 	public async Task<SalesOrder> RejectAsync(long id, long version, string? comment = null, CancellationToken cancellationToken = default)
@@ -92,7 +98,11 @@ public sealed class SalesOrderService
 		if (before.Version != version) throw new ConcurrencyConflictException("sales order");
 		if (before.Status != SalesOrderStatus.PendingApproval) throw new InvalidOperationException("Only a pending sales order can be rejected.");
 		if (before.CreatedByUserId == user.Id && !user.IsAdministrator) throw new InvalidOperationException("A sales order cannot be rejected by its creator.");
-		return await ChangeStatusCoreAsync(before, version, SalesOrderStatus.PendingApproval, SalesOrderStatus.Rejected, order => { order.ApprovalDecisionByUserId = user.Id; order.ApprovalDecisionAtUtc = DateTime.UtcNow; order.ApprovalComment = Normalize(comment); }, cancellationToken);
+		comment = Normalize(comment);
+		var approvalDecision = _approvalPolicies is null
+			? null
+			: await _approvalPolicies.PrepareDecisionAsync(ApprovalSubjectKind.SalesOrder, id.ToString(System.Globalization.CultureInfo.InvariantCulture), ApprovalDecisionKind.Rejected, comment, cancellationToken);
+		return await ChangeStatusCoreAsync(before, version, SalesOrderStatus.PendingApproval, SalesOrderStatus.Rejected, order => { order.ApprovalDecisionByUserId = user.Id; order.ApprovalDecisionAtUtc = DateTime.UtcNow; order.ApprovalComment = comment; }, cancellationToken, approvalDecision: approvalDecision);
 	}
 
 	public Task<SalesOrder> ReopenRejectedAsync(long id, long version, CancellationToken cancellationToken = default) => ChangeStatusAsync(ApplicationPermission.SalesOrdersEdit, id, version, SalesOrderStatus.Rejected, SalesOrderStatus.Draft, order => { order.SubmittedByUserId = null; order.SubmittedAtUtc = null; order.ApprovalDecisionByUserId = null; order.ApprovalDecisionAtUtc = null; order.ApprovalComment = null; }, cancellationToken);
@@ -200,17 +210,35 @@ public sealed class SalesOrderService
 		var before = await _orders.GetByIdAsync(id, cancellationToken) ?? throw new InvalidOperationException("Sales order was not found.");
 		if (before.Version != version) throw new ConcurrencyConflictException("sales order");
 		if (before.Status != expected) throw new InvalidOperationException($"The sales order must be in {expected} status.");
-		if (target == SalesOrderStatus.PendingApproval) await ValidateContentAsync(before, cancellationToken);
-		return await ChangeStatusCoreAsync(before, version, expected, target, apply, cancellationToken);
+		ApprovalPlanSnapshot? startApproval = null;
+		if (target == SalesOrderStatus.PendingApproval)
+		{
+			await ValidateContentAsync(before, cancellationToken);
+			if (_approvalPolicies is not null)
+			{
+				startApproval = await _approvalPolicies.ResolveSnapshotAsync(
+					new ApprovalSubjectAttributes(
+						ApprovalSubjectKind.SalesOrder,
+						before.Id.ToString(System.Globalization.CultureInfo.InvariantCulture),
+						before.GrossAmount,
+						before.Currency),
+					cancellationToken);
+			}
+		}
+		return await ChangeStatusCoreAsync(before, version, expected, target, apply, cancellationToken, startApproval);
 	}
 
-	private async Task<SalesOrder> ChangeStatusCoreAsync(SalesOrder before, long version, SalesOrderStatus expected, SalesOrderStatus target, Action<SalesOrder>? apply, CancellationToken cancellationToken)
+	private async Task<SalesOrder> ChangeStatusCoreAsync(SalesOrder before, long version, SalesOrderStatus expected, SalesOrderStatus target, Action<SalesOrder>? apply, CancellationToken cancellationToken, ApprovalPlanSnapshot? startApproval = null, ApprovalPreparedDecision? approvalDecision = null)
 	{
 		var after = Copy(before); after.Status = target; apply?.Invoke(after);
 		var saved = await _transactions.ExecuteAsync(async (transaction, token) =>
 		{
 			if (!await _orders.SetStatusAsync(transaction, after, version, expected, token)) throw new ConcurrencyConflictException("sales order");
 			after.Version = version + 1;
+			if (startApproval is not null)
+				await _approvalPolicies!.StartResolvedAsync(transaction, startApproval, token);
+			if (approvalDecision is not null)
+				await _approvalPolicies!.ApplyPreparedDecisionAsync(transaction, approvalDecision, token);
 			await _auditEntries.CreateAsync(transaction, _audit.CreateUpdatedEntry(before.Id, before, after), token);
 			return after;
 		}, cancellationToken);

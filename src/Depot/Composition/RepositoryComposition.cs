@@ -68,6 +68,7 @@ internal sealed class RepositoryComposition
 		GlobalSearch = new GlobalSearchReadRepository(dataAccess);
 		MyWork = new MyWorkReadRepository(dataAccess);
 		DocumentTemplates = new DocumentTemplateRepository(dataAccess);
+		ApprovalPolicies = new ApprovalPolicyRepository(dataAccess);
 	}
 
 	public ItemRepository Items { get; }
@@ -128,4 +129,5 @@ internal sealed class RepositoryComposition
 	public GlobalSearchReadRepository GlobalSearch { get; }
 	public MyWorkReadRepository MyWork { get; }
 	public DocumentTemplateRepository DocumentTemplates { get; }
+	public ApprovalPolicyRepository ApprovalPolicies { get; }
 }

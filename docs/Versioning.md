@@ -13,7 +13,8 @@ Updated: 2026-09-19
 - User Preferences feature schema: **2**
 - Document Templates feature schema: **1**
 - Enterprise Identity feature schema: **2**
-- Help manifest: **1.22**
+- Approval Policies feature schema: **1**
+- Help manifest: **1.23**
 
 Application, Core database and feature-schema versions are independent compatibility dimensions. `Directory.Build.props` is the authoritative source for the exact application patch/version; long-lived documentation records the development line rather than duplicating the moving patch number.
 
@@ -86,6 +87,10 @@ User Preferences schema **2** is the current persistent workspace/default-view p
 
 Document Templates schema **1** is the durable shared layout-version baseline. It stores validated serialized template versions plus the active-version state per supported document family. Deterministic built-in version 1 defaults are seeded idempotently. This feature schema does not change Core schema 30 or Sales schema 14.
 
+### Approval Policies schema 1
+
+Approval Policies schema **1** is the provider-neutral persisted routing baseline for Purchase Orders, Sales Orders, Accounts Payable match exceptions and payment proposals. It stores versioned policy definitions, typed allowlisted conditions, ordered stages/approver targets, immutable in-flight snapshots, decision evidence and explicit effective-dated delegations. It is intentionally bounded and does not introduce a general BPM or scripting engine. Core schema remains **30**.
+
 ### Enterprise Identity schema 2
 
 Enterprise Identity schema **2** is the current external-identity and provider-assurance baseline. It retains the schema-1 non-secret provider configuration and exact external provider/issuer/subject links to existing local Depot users, and adds nullable provider-level assurance requirements:
@@ -120,7 +125,7 @@ Remote provisioning serializes the entire authoritative provisioning sequence, n
 - SQL Server: `sp_getapplock` session lock scoped to the Depot database;
 - MariaDB/MySQL: `GET_LOCK` advisory lock scoped to the Depot database.
 
-The lock covers Core initialization plus Sales, Finance, User Sessions, Security Events, User Preferences and Enterprise Identity feature migrations so parallel startup cannot independently advance the same database.
+The lock covers Core initialization plus Sales, Finance, User Sessions, Security Events, User Preferences, Enterprise Identity and Approval Policies feature migrations so parallel startup cannot independently advance the same database.
 
 ## Retry compatibility
 
@@ -128,6 +133,6 @@ Write-transaction retry is restricted to known transient provider failures. Retr
 
 ## Release compatibility
 
-The authoritative release manifest/evidence records Core plus all current feature-schema versions, including User Preferences and Enterprise Identity. A target release cannot be treated as compatible solely because its application version is newer.
+The authoritative release manifest/evidence records Core plus all current feature-schema versions, including User Preferences, Enterprise Identity and Approval Policies. A target release cannot be treated as compatible solely because its application version is newer.
 
 DepotManager release metadata continues to record the target Core database schema and uses Depot's authoritative provisioning path for migrations. Remote database rollback/downgrade is never automatic. Provider-native backup responsibility and exact supported baselines are documented separately in the support matrix.

@@ -23,6 +23,7 @@ internal sealed class ServiceComposition
 		AuditLog = new AuditLogService(repositories.Audit, Authorization, new AuditJsonSanitizer());
 		DataSubjectAccess = new DataSubjectAccessService(database.DataAccess, Authorization);
 		var audit = new AuditService(repositories.Audit, Authorization);
+		ApprovalPolicies = new ApprovalPolicyService(repositories.ApprovalPolicies, repositories.Roles, repositories.Users, Authorization);
 		SecurityEvents = new SecurityEventService(repositories.SecurityEvents, Authorization, Notifications);
 		UserSessionAdministration = new UserSessionAdministrationService(database.TransactionRunner, repositories.UserSessions, repositories.Audit, Authorization, audit, SecurityEvents);
 		FinanceGeneralLedger = new FinanceGeneralLedgerService(database.TransactionRunner, repositories.FinanceGeneralLedger, repositories.FinancePostingProfiles, repositories.Audit, audit, Authorization);
@@ -30,8 +31,8 @@ internal sealed class ServiceComposition
 		InventoryAccounting = new FinanceInventoryAccountingService(database.TransactionRunner, repositories.FinanceInventoryAccounting, FinanceGeneralLedger, repositories.Audit, audit, Authorization);
 		InventoryCosting = new FinanceInventoryCostingService(database.TransactionRunner, repositories.FinanceInventoryAccounting, repositories.FinanceInventoryCosting, FinanceGeneralLedger, repositories.Audit, audit, Authorization, repositories.FinanceAccountsPayable);
 		InventoryMovementAccounting = new FinanceInventoryMovementAccountingService(database.TransactionRunner, repositories.FinanceInventoryCosting, repositories.Inventories, InventoryCosting, Authorization);
-		AccountsPayable = new FinanceAccountsPayableService(database.TransactionRunner, repositories.FinanceAccountsPayable, FinanceGeneralLedger, repositories.Audit, audit, Authorization);
-		Banking = new FinanceBankingService(database.TransactionRunner, repositories.FinanceBanking, AccountsPayable, repositories.Audit, audit, Authorization);
+		AccountsPayable = new FinanceAccountsPayableService(database.TransactionRunner, repositories.FinanceAccountsPayable, FinanceGeneralLedger, repositories.Audit, audit, Authorization, ApprovalPolicies);
+		Banking = new FinanceBankingService(database.TransactionRunner, repositories.FinanceBanking, AccountsPayable, repositories.Audit, audit, Authorization, ApprovalPolicies);
 		FinancialReporting = new FinanceFinancialReportingService(database.TransactionRunner, repositories.FinanceFinancialReporting, repositories.FinanceFinancialReportingInventory, AccountsReceivable, AccountsPayable, repositories.Audit, audit, Authorization);
 		Localization = new FinanceLocalizationService(database.TransactionRunner, repositories.FinanceLocalization, repositories.Audit, audit, Authorization);
 		var passwordHasher = new PasswordHasher();
@@ -46,7 +47,7 @@ internal sealed class ServiceComposition
 		SupplierCategories = new SupplierCategoryService(repositories.SupplierCategories, audit);
 		Suppliers = new SupplierService(repositories.Suppliers, repositories.SupplierItems, repositories.SupplierCategories, audit);
 		SupplierItems = new SupplierItemService(repositories.SupplierItems, repositories.Suppliers, repositories.Items, audit);
-		PurchaseOrders = new PurchaseOrderService(repositories.PurchaseOrders, repositories.Suppliers, repositories.Items, audit, Authorization, Notifications);
+		PurchaseOrders = new PurchaseOrderService(repositories.PurchaseOrders, repositories.Suppliers, repositories.Items, audit, Authorization, Notifications, ApprovalPolicies);
 		PurchaseOrderApprovals = new PurchaseOrderApprovalService(repositories.PurchaseOrders, repositories.Audit, PurchaseOrders, Authorization, new AuditJsonSanitizer());
 		PurchaseOrderHistory = new PurchaseOrderHistoryService(repositories.Audit, Authorization, new AuditJsonSanitizer());
 		GoodsReceipts = new GoodsReceiptService(database.TransactionRunner, repositories.GoodsReceipts, repositories.PurchaseOrders, repositories.Inventories, repositories.StockMovements, repositories.ReasonCodes, repositories.Audit, audit, movementReversals, ItemTraceability, InventoryAccounting);
@@ -60,7 +61,7 @@ internal sealed class ServiceComposition
 		ItemCosts = new ItemCostCalculationService(database.TransactionRunner, repositories.ItemCosts, repositories.Audit, audit, Authorization);
 		PriceListGeneration = new PriceListGenerationService(database.TransactionRunner, repositories.ItemCosts, ItemCosts, repositories.SalesPriceLists, SalesPricing, repositories.Audit, audit, Authorization);
 		SalesTimeline = new SalesTimelineService(repositories.SalesTimeline, PurchaseOrderHistory, Authorization);
-		SalesOrders = new SalesOrderService(database.TransactionRunner, repositories.SalesOrders, repositories.Customers, repositories.Items, repositories.Inventories, repositories.InventoryReservations, repositories.StockMovements, repositories.Audit, audit, Authorization, Notifications, ItemTraceability, SalesPricing);
+		SalesOrders = new SalesOrderService(database.TransactionRunner, repositories.SalesOrders, repositories.Customers, repositories.Items, repositories.Inventories, repositories.InventoryReservations, repositories.StockMovements, repositories.Audit, audit, Authorization, Notifications, ItemTraceability, SalesPricing, ApprovalPolicies);
 		SalesQuotes = new SalesQuoteService(repositories.SalesQuotes, repositories.Customers, SalesOrders, audit, Authorization, SalesPricing);
 		CustomerReturns = new CustomerReturnService(database.TransactionRunner, repositories.CustomerReturns, repositories.Shipments, repositories.StockMovements, repositories.Audit, audit, Authorization, Notifications, ItemTraceability);
 		SalesCreditNotes = new SalesCreditNoteService(database.TransactionRunner, repositories.SalesCreditNotes, repositories.SalesInvoices, repositories.Audit, audit, Authorization, Notifications, AccountsReceivable);
@@ -89,12 +90,12 @@ internal sealed class ServiceComposition
 		Sales = new SalesServices(Customers, SalesPricing, SalesTimeline, SalesOrders, SalesQuotes, Shipments, ShipmentPacking, SalesInvoices, CustomerReturns, SalesCreditNotes, Items, Authorization, SalesDocuments, SalesEmail, SalesInvoiceFinalizations, ItemCosts, PriceListGeneration);
 		MyWork = new MyWorkService(Authorization,
 		[
-			new PurchasingMyWorkProvider(PurchaseOrders, PurchaseOrderApprovals, repositories.MyWork, Authorization),
-			new SalesMyWorkProvider(SalesOrders, Shipments, repositories.MyWork, Authorization),
+			new PurchasingMyWorkProvider(PurchaseOrders, PurchaseOrderApprovals, repositories.MyWork, Authorization, ApprovalPolicies),
+			new SalesMyWorkProvider(SalesOrders, Shipments, repositories.MyWork, Authorization, ApprovalPolicies),
 			new InventoryCountMyWorkProvider(repositories.MyWork, Authorization),
 			new ReceivablesMyWorkProvider(AccountsReceivable, Authorization),
-			new PayablesMyWorkProvider(AccountsPayable, repositories.MyWork, Authorization),
-			new BankingMyWorkProvider(Banking, Authorization)
+			new PayablesMyWorkProvider(AccountsPayable, repositories.MyWork, Authorization, ApprovalPolicies),
+			new BankingMyWorkProvider(Banking, Authorization, ApprovalPolicies)
 		]);
 		CommercialRoleCenters = new CommercialRoleCenterService(
 			Authorization,
@@ -136,6 +137,7 @@ internal sealed class ServiceComposition
 	public HelpMarkdownRenderer HelpRenderer { get; }
 	public AuditLogService AuditLog { get; }
 	public DataSubjectAccessService DataSubjectAccess { get; }
+	public ApprovalPolicyService ApprovalPolicies { get; }
 	public SecurityEventService SecurityEvents { get; }
 	public UserSessionAdministrationService UserSessionAdministration { get; }
 	public FinanceGeneralLedgerService FinanceGeneralLedger { get; }

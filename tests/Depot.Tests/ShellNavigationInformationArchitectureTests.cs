@@ -88,7 +88,7 @@ public sealed class ShellNavigationInformationArchitectureTests
 
 		Assert.Contains("_viewModel.AdministrationNavigationItems", palette, StringComparison.Ordinal);
 		Assert.DoesNotContain("_viewModel.AdministrationViewModel.NavigationItems", palette, StringComparison.Ordinal);
-		Assert.Contains("AdministrationNavigationItems = AdministrationViewModel.CreateNavigationItems(authorizationService)", main, StringComparison.Ordinal);
+		Assert.Contains("AdministrationNavigationItems = AdministrationViewModel.CreateNavigationItems(authorizationService, approvalPolicyService is not null)", main, StringComparison.Ordinal);
 		Assert.Contains("internal static IReadOnlyList<NavigationItem> CreateNavigationItems", administration, StringComparison.Ordinal);
 	}
 

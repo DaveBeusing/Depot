@@ -18,8 +18,9 @@ public sealed class FinanceBankingService
 	private readonly AuditRepository _auditEntries;
 	private readonly AuditService _audit;
 	private readonly IAuthorizationService _authorization;
+	private readonly ApprovalPolicyService? _approvalPolicies;
 
-	public FinanceBankingService(IDatabaseTransactionRunner transactions, FinanceBankingRepository banking, FinanceAccountsPayableService accountsPayable, AuditRepository auditEntries, AuditService audit, IAuthorizationService authorization)
+	public FinanceBankingService(IDatabaseTransactionRunner transactions, FinanceBankingRepository banking, FinanceAccountsPayableService accountsPayable, AuditRepository auditEntries, AuditService audit, IAuthorizationService authorization, ApprovalPolicyService? approvalPolicies = null)
 	{
 		_transactions = transactions;
 		_banking = banking;
@@ -27,6 +28,7 @@ public sealed class FinanceBankingService
 		_auditEntries = auditEntries;
 		_audit = audit;
 		_authorization = authorization;
+		_approvalPolicies = approvalPolicies;
 	}
 
 	public bool CanView => _authorization.HasPermission(ApplicationPermission.FinanceBankingView);
@@ -282,6 +284,19 @@ public sealed class FinanceBankingService
 				lines.Add(line with { Id=lineId });
 			}
 			var created = run with { Id=runId,Version=1,Lines=lines };
+			if (_approvalPolicies is not null)
+			{
+				var snapshot = await _approvalPolicies.ResolveSnapshotAsync(
+					new ApprovalSubjectAttributes(
+						ApprovalSubjectKind.PaymentProposal,
+						runId.ToString(CultureInfo.InvariantCulture),
+						lines.Sum(line => line.Amount),
+						request.Currency.Value,
+						bank.LegalEntityId,
+						bank.AccountingBookId),
+					token);
+				await _approvalPolicies.StartResolvedAsync(transaction, snapshot, token);
+			}
 			await _auditEntries.CreateAsync(transaction, _audit.CreateCreatedEntry(runId, created), token);
 			return created;
 		}, cancellationToken);
@@ -297,10 +312,23 @@ public sealed class FinanceBankingService
 			if (before.Version != expectedVersion) throw new ConcurrencyConflictException("payment run");
 			if (before.Status != FinancePaymentRunStatus.Draft) throw new InvalidOperationException("Only a draft payment run can be approved.");
 			if (before.CreatedByUserId == user.Id) throw new InvalidOperationException("Payment-run creator cannot approve the same run.");
+			var normalizedComment = Clean(comment,500);
+			var approvalDecision = _approvalPolicies is null
+				? null
+				: await _approvalPolicies.PrepareDecisionAsync(ApprovalSubjectKind.PaymentProposal, runId.ToString(CultureInfo.InvariantCulture), ApprovalDecisionKind.Approved, normalizedComment, token);
+			var isIntermediate = approvalDecision is { IsFinalApproval: false };
 			var now = DateTime.UtcNow;
-			if (await _banking.ApprovePaymentRunAsync(transaction, runId, expectedVersion, now, user.Id, Clean(comment,500), token) != 1) throw new ConcurrencyConflictException("payment run");
-			var after = before with { Version=before.Version+1,Status=FinancePaymentRunStatus.Approved,ApprovedAtUtc=now,ApprovedByUserId=user.Id,ApprovalComment=Clean(comment,500) };
-			await _auditEntries.CreateAsync(transaction, _audit.CreateActionEntry(runId, "Approved", before, after), token);
+			if (isIntermediate)
+			{
+				if (await _banking.AdvancePaymentRunApprovalAsync(transaction, runId, expectedVersion, token) != 1) throw new ConcurrencyConflictException("payment run");
+			}
+			else if (await _banking.ApprovePaymentRunAsync(transaction, runId, expectedVersion, now, user.Id, normalizedComment, token) != 1) throw new ConcurrencyConflictException("payment run");
+			if (approvalDecision is not null)
+				await _approvalPolicies!.ApplyPreparedDecisionAsync(transaction, approvalDecision, token);
+			var after = isIntermediate
+				? before with { Version=before.Version+1 }
+				: before with { Version=before.Version+1,Status=FinancePaymentRunStatus.Approved,ApprovedAtUtc=now,ApprovedByUserId=user.Id,ApprovalComment=normalizedComment };
+			await _auditEntries.CreateAsync(transaction, _audit.CreateActionEntry(runId, isIntermediate ? "Approval stage completed" : "Approved", before, after), token);
 			return after;
 		}, cancellationToken);
 	}
