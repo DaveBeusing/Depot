@@ -24,6 +24,7 @@ public sealed class AdministrationViewModel : BaseViewModel, IDisposable
 	private readonly RoleViewModel _roleViewModel;
 	private readonly CompanyProfileViewModel _companyProfileViewModel;
 	private readonly DocumentTemplateDesignerViewModel _documentTemplateDesignerViewModel;
+	private readonly ApprovalPolicyDesignerViewModel? _approvalPolicyDesignerViewModel;
 	private readonly DatabaseSettingsViewModel _databaseSettingsViewModel;
 	private readonly AuditLogViewModel _auditLogViewModel;
 	private readonly PrivacyDataViewModel _privacyDataViewModel;
@@ -59,7 +60,8 @@ public sealed class AdministrationViewModel : BaseViewModel, IDisposable
 		UserSessionAdministrationService userSessionAdministrationService,
 		SecurityEventService securityEventService,
 		IFileDialogService fileDialogService,
-		ApplicationInformationService applicationInformationService)
+		ApplicationInformationService applicationInformationService,
+		ApprovalPolicyService? approvalPolicyService = null)
 	{
 		_importViewModel = importViewModel;
 		_masterDataViewModel = new MasterDataViewModel(purposeService, reasonCodeService, manufacturerService, categoryService, unitOfMeasureService, packagingService, supplierCategoryService, supplierService, supplierItemService, itemService, warehouseService, storageLocationService, warehouseLayoutVisualizerService);
@@ -76,8 +78,9 @@ public sealed class AdministrationViewModel : BaseViewModel, IDisposable
 		_userSessionsViewModel = new UserSessionsViewModel(userSessionAdministrationService, fileDialogService);
 		_securityCenterViewModel = new SecurityCenterViewModel(securityEventService, fileDialogService);
 		_documentTemplateDesignerViewModel = new DocumentTemplateDesignerViewModel(new DocumentTemplateDesignerService(authorization));
+		_approvalPolicyDesignerViewModel = approvalPolicyService is null ? null : new ApprovalPolicyDesignerViewModel(approvalPolicyService, authorization);
 
-		foreach (var item in CreateNavigationItems(authorization))
+		foreach (var item in CreateNavigationItems(authorization, approvalPolicyService is not null))
 		{
 			NavigationItems.Add(item);
 			if (item.Section is AdministrationSection section) _loadStates.Add(section, new NavigationLoadState());
@@ -169,6 +172,7 @@ public sealed class AdministrationViewModel : BaseViewModel, IDisposable
 		AdministrationSection.Roles => _roleViewModel,
 		AdministrationSection.Company => _companyProfileViewModel,
 		AdministrationSection.DocumentDesigner => _documentTemplateDesignerViewModel,
+		AdministrationSection.ApprovalPolicies => _approvalPolicyDesignerViewModel ?? _aboutViewModel,
 		AdministrationSection.Database => _databaseSettingsViewModel,
 		AdministrationSection.AuditLog => _auditLogViewModel,
 		AdministrationSection.Privacy => _privacyDataViewModel,
@@ -187,13 +191,14 @@ public sealed class AdministrationViewModel : BaseViewModel, IDisposable
 		RoleViewModel roles => roles.LoadAsync(cancellationToken),
 		CompanyProfileViewModel company => company.LoadAsync(cancellationToken),
 		DocumentTemplateDesignerViewModel designer => designer.LoadAsync(cancellationToken),
+		ApprovalPolicyDesignerViewModel approvalPolicies => approvalPolicies.LoadAsync(cancellationToken),
 		DatabaseSettingsViewModel database => database.LoadAsync(cancellationToken),
 		AuditLogViewModel auditLog => auditLog.LoadAsync(cancellationToken),
 		PrivacyDataViewModel privacy => privacy.LoadAsync(cancellationToken),
 		_ => Task.CompletedTask
 	};
 
-	internal static IReadOnlyList<NavigationItem> CreateNavigationItems(IAuthorizationService authorization)
+	internal static IReadOnlyList<NavigationItem> CreateNavigationItems(IAuthorizationService authorization, bool approvalPoliciesAvailable = false)
 	{
 		var items = new List<NavigationItem>();
 
@@ -212,6 +217,7 @@ public sealed class AdministrationViewModel : BaseViewModel, IDisposable
 		AddIf(ApplicationPermission.RolesView, "Roles", AdministrationSection.Roles);
 		AddIf(ApplicationPermission.SettingsView, "Company", AdministrationSection.Company);
 		AddIf(ApplicationPermission.DocumentTemplatesView, "Document Designer", AdministrationSection.DocumentDesigner);
+		if (approvalPoliciesAvailable) AddIf(ApplicationPermission.ApprovalPoliciesView, "Approval Policies", AdministrationSection.ApprovalPolicies);
 		AddIf(ApplicationPermission.ImportManage, "Import", AdministrationSection.Import);
 		AddIf(ApplicationPermission.AuditLogView, "Audit Log", AdministrationSection.AuditLog);
 		AddIf(ApplicationPermission.DatabaseView, "Database", AdministrationSection.Database);
@@ -229,6 +235,7 @@ public sealed class AdministrationViewModel : BaseViewModel, IDisposable
 		AdministrationSection.SecurityCenter => "administration.security-center",
 		AdministrationSection.Company => "administration.company",
 		AdministrationSection.DocumentDesigner => "administration.document-designer",
+		AdministrationSection.ApprovalPolicies => "administration.approval-policies",
 		AdministrationSection.Database => "administration.database",
 		AdministrationSection.AuditLog => "administration.audit-log",
 		AdministrationSection.Privacy => "administration.privacy-data",
@@ -249,6 +256,7 @@ public sealed class AdministrationViewModel : BaseViewModel, IDisposable
 		_securityCenterViewModel.Dispose();
 		if (_roleViewModel is IDisposable roles) roles.Dispose();
 		_companyProfileViewModel.Dispose();
+		_approvalPolicyDesignerViewModel?.Dispose();
 		if (_databaseSettingsViewModel is IDisposable database) database.Dispose();
 		if (_auditLogViewModel is IDisposable audit) audit.Dispose();
 		_privacyDataViewModel.Dispose();

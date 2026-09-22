@@ -25,6 +25,7 @@ public static class UnsavedChangesGuard
 			SupplierViewModel suppliers when HasSupplierChanges(suppliers) => new("supplier", () => DiscardSupplierChanges(suppliers)),
 			RoleViewModel roles when HasRoleChanges(roles) => new("role", () => DiscardRoleChanges(roles)),
 			DocumentTemplateDesignerViewModel designer when designer.IsDirty => new("document template", designer.DiscardUnsavedChanges),
+			ApprovalPolicyDesignerViewModel approvalPolicies when approvalPolicies.IsDirty => new("approval policy", approvalPolicies.DiscardUnsavedChanges),
 			_ => null
 		};
 		return info is not null;
