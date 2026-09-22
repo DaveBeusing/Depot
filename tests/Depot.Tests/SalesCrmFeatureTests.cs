@@ -224,13 +224,11 @@ public sealed class SalesCrmFeatureTests : IAsyncLifetime
 
 	private sealed class CrmFixture
 	{
-		private readonly IDatabaseConnectionFactory _factory;
 		private readonly DatabaseAccess _data;
 		private readonly CustomerRepository _customerRepository;
 		private readonly AuditRepository _auditRepository;
 
 		private CrmFixture(
-			IDatabaseConnectionFactory factory,
 			DatabaseAccess data,
 			AuthorizationService authorization,
 			CustomerRepository customerRepository,
@@ -239,7 +237,6 @@ public sealed class SalesCrmFeatureTests : IAsyncLifetime
 			SalesCrmService crm,
 			User admin)
 		{
-			_factory = factory;
 			_data = data;
 			Authorization = authorization;
 			_customerRepository = customerRepository;
@@ -293,7 +290,7 @@ public sealed class SalesCrmFeatureTests : IAsyncLifetime
 				customers,
 				quotes,
 				authorization);
-			return new CrmFixture(factory, data, authorization, customerRepository, auditRepository, customers, crm, admin);
+			return new CrmFixture(data, authorization, customerRepository, auditRepository, customers, crm, admin);
 		}
 
 		public SalesCrmService CreateCrm(params ApplicationPermission[] permissions)
