@@ -56,6 +56,65 @@ public sealed class SalesProviderAcceptanceTests
 		Assert.Equal(SalesOrderStatus.Completed, completed.Status);
 		Assert.Equal(251.23m, postedInvoice.NetAmount);
 		Assert.Equal(10, completed.Lines[0].InvoicedQuantity);
+		await VerifyCrmAsync(factory);
+	}
+
+	private static async Task VerifyCrmAsync(IDatabaseConnectionFactory factory)
+	{
+		var data = new DatabaseAccess(factory);
+		var authorization = new AuthorizationService();
+		var roles = new RoleRepository(data);
+		var users = new UserRepository(data);
+		var admin = await users.GetByEmailAsync("admin@depot.local", CancellationToken.None) ?? throw new InvalidOperationException("Default administrator missing.");
+		admin.Roles = await roles.GetUserRolesAsync(admin.Id, CancellationToken.None);
+		admin.EffectivePermissions = PermissionCatalog.All;
+		authorization.SignIn(admin, PermissionCatalog.All);
+		var auditRepository = new AuditRepository(data);
+		var audit = new AuditService(auditRepository, authorization);
+		var runner = new DatabaseTransactionRunner(data);
+		var notifications = new NotificationService(runner, new NotificationRepository(data), authorization);
+		var customerRepository = new CustomerRepository(data);
+		var customers = new CustomerService(customerRepository, audit, authorization);
+		var orders = new SalesOrderService(
+			runner,
+			new SalesOrderRepository(data),
+			customerRepository,
+			new ItemRepository(data),
+			new InventoryRepository(data),
+			new InventoryReservationRepository(data),
+			new StockMovementRepository(data),
+			auditRepository,
+			audit,
+			authorization,
+			notifications);
+		var quotes = new SalesQuoteService(new SalesQuoteRepository(data), customerRepository, orders, audit, authorization);
+		var crm = new SalesCrmService(runner, new SalesCrmRepository(data), customerRepository, auditRepository, audit, customers, quotes, authorization);
+		var lead = await crm.SaveLeadAsync(new SalesLead
+		{
+			CompanyName = $"Provider CRM {Guid.NewGuid():N}",
+			Email = "provider-crm@example.test",
+			Source = "Provider acceptance"
+		});
+		var converted = await crm.ConvertLeadAsync(lead.Id, lead.Version, null, new SalesOpportunity
+		{
+			Currency = "EUR",
+			ExpectedAmount = 1234.56m,
+			ProbabilityPercent = 40,
+			ExpectedCloseDate = DateTime.Today.AddDays(14)
+		});
+		var activity = await crm.SaveActivityAsync(new SalesActivity
+		{
+			OpportunityId = converted.Opportunity.Id,
+			Type = SalesActivityType.FollowUp,
+			DueAtUtc = DateTime.UtcNow.AddHours(1),
+			Subject = "Provider CRM follow-up"
+		});
+		var loaded = await crm.GetOpportunityAsync(converted.Opportunity.Id) ?? throw new InvalidOperationException("CRM opportunity missing after provider roundtrip.");
+		var activities = await crm.ListActivitiesAsync(null, loaded.Id, 10);
+		Assert.Equal(converted.Customer.Id, loaded.CustomerId);
+		Assert.Equal(1234.56m, loaded.ExpectedAmount);
+		Assert.Equal(40, loaded.ProbabilityPercent);
+		Assert.Contains(activities, value => value.Id == activity.Id && value.Status == SalesActivityStatus.Planned);
 	}
 
 	private static Customer InvoiceCustomer(string name) => new()
