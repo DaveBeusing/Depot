@@ -295,6 +295,18 @@ public sealed class SalesCrmService
 		return await _crm.SaveStageAsync(stage, cancellationToken);
 	}
 
+	public Task<IReadOnlyList<SalesActivity>> ListMyDueActivitiesAsync(DateTime dueThroughUtc, int count = 100, CancellationToken cancellationToken = default)
+	{
+		RequireActivityView();
+		return _crm.ListOwnedPlannedActivitiesAsync(RequireUser().Id, dueThroughUtc, count, cancellationToken);
+	}
+
+	public Task<IReadOnlyList<SalesOpportunity>> ListMyOpportunitiesNeedingFollowUpAsync(DateTime nowUtc, int count = 100, CancellationToken cancellationToken = default)
+	{
+		_authorization.RequirePermission(ApplicationPermission.SalesCrmView);
+		return _crm.ListOwnedOpenOpportunitiesNeedingFollowUpAsync(RequireUser().Id, nowUtc, count, cancellationToken);
+	}
+
 	public Task<IReadOnlyList<SalesActivity>> ListActivitiesAsync(long? leadId, long? opportunityId, int count = 100, CancellationToken cancellationToken = default)
 	{
 		RequireActivityView();

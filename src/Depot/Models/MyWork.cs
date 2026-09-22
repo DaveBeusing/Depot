@@ -31,7 +31,10 @@ public enum MyWorkItemKind
 	ReceivableOpenItem = 7,
 	SupplierDocument = 8,
 	BankStatementLine = 9,
-	PaymentRun = 10
+	PaymentRun = 10,
+	SalesLeadActivity = 11,
+	SalesOpportunityActivity = 12,
+	SalesOpportunityFollowUp = 13
 }
 
 public enum MyWorkPriority

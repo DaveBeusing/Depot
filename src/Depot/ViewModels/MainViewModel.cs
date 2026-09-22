@@ -397,6 +397,15 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 			case MyWorkItemKind.Shipment:
 				await OpenSalesQuickItemAsync(new SalesQuickOpenItem(SalesQuickOpenKind.Shipment, item.EntityId, item.DisplayNumber, item.Context ?? string.Empty), cancellationToken);
 				break;
+			case MyWorkItemKind.SalesLeadActivity:
+				await this.NavigateToRouteAsync(ShellRoutes.Sales.Leads, cancellationToken);
+				await SalesLeadsViewModel.OpenAsync(item.EntityId, cancellationToken);
+				break;
+			case MyWorkItemKind.SalesOpportunityActivity:
+			case MyWorkItemKind.SalesOpportunityFollowUp:
+				await this.NavigateToRouteAsync(ShellRoutes.Sales.Opportunities, cancellationToken);
+				await SalesOpportunitiesViewModel.OpenAsync(item.EntityId, cancellationToken);
+				break;
 			case MyWorkItemKind.InventoryCount:
 				await this.NavigateToRouteAsync(route, cancellationToken);
 				await InventoryCountsViewModel.OpenCountAsync(item.EntityId, cancellationToken);

@@ -346,3 +346,69 @@ internal sealed class BankingMyWorkProvider : IMyWorkProvider
 	private static MyWorkItem RunItem(MyWorkSectionKind section, FinancePaymentRun run, string title, MyWorkPriority priority, string action) =>
 		new(section, MyWorkItemKind.PaymentRun, run.Id, $"PAY-{run.Id:N0}", title, run.Description, run.Status.ToString(), run.Lines.Sum(line => line.Amount), run.PaymentDate.ToDateTime(TimeOnly.MinValue), null, priority, "finance.banking", action, run.CreatedByUserId);
 }
+
+internal sealed class SalesCrmMyWorkProvider(SalesCrmService crm) : IMyWorkProvider
+{
+	public string Name => "Sales CRM";
+	public bool CanQuery(IAuthorizationService authorization) =>
+		authorization.HasAnyPermission(ApplicationPermission.SalesCrmView, ApplicationPermission.SalesCrmActivitiesView, ApplicationPermission.SalesCrmManage);
+
+	public async Task<IReadOnlyList<MyWorkItem>> GetAsync(MyWorkQuery query, CancellationToken cancellationToken)
+	{
+		var dueThroughUtc = query.NowUtc.Date.AddDays(1).AddTicks(-1);
+		var activitiesTask = crm.CanViewActivities
+			? crm.ListMyDueActivitiesAsync(dueThroughUtc, query.ProviderLimit, cancellationToken)
+			: Task.FromResult<IReadOnlyList<SalesActivity>>([]);
+		var opportunitiesTask = crm.CanView
+			? crm.ListMyOpportunitiesNeedingFollowUpAsync(query.NowUtc, query.ProviderLimit, cancellationToken)
+			: Task.FromResult<IReadOnlyList<SalesOpportunity>>([]);
+		await Task.WhenAll(activitiesTask, opportunitiesTask);
+
+		var items = new List<MyWorkItem>();
+		foreach (var activity in await activitiesTask)
+		{
+			var overdue = activity.DueAtUtc < query.NowUtc;
+			var opportunityTarget = activity.OpportunityId is > 0;
+			var entityId = opportunityTarget ? activity.OpportunityId!.Value : activity.LeadId ?? 0;
+			if (entityId <= 0) continue;
+			items.Add(new(
+				overdue ? MyWorkSectionKind.Exceptions : MyWorkSectionKind.NeedsMyAction,
+				opportunityTarget ? MyWorkItemKind.SalesOpportunityActivity : MyWorkItemKind.SalesLeadActivity,
+				entityId,
+				$"ACT-{activity.Id:000000}",
+				activity.Subject,
+				activity.Type.ToString(),
+				overdue ? "Overdue" : "Due today",
+				null,
+				activity.DueAtUtc,
+				null,
+				overdue ? MyWorkPriority.High : MyWorkPriority.Normal,
+				opportunityTarget ? "sales.opportunities" : "sales.leads",
+				"Open",
+				activity.OwnerUserId));
+		}
+
+		foreach (var opportunity in await opportunitiesTask)
+		{
+			var overdue = opportunity.NextActivityDate is null || opportunity.NextActivityDate < query.NowUtc;
+			items.Add(new(
+				MyWorkSectionKind.NeedsMyAction,
+				MyWorkItemKind.SalesOpportunityFollowUp,
+				opportunity.Id,
+				opportunity.OpportunityNumber,
+				opportunity.NextActivityDate is null ? "Opportunity needs a next activity" : "Opportunity follow-up due",
+				opportunity.CustomerName,
+				opportunity.StageName,
+				opportunity.ExpectedAmount,
+				opportunity.NextActivityDate,
+				null,
+				overdue ? MyWorkPriority.High : MyWorkPriority.Normal,
+				"sales.opportunities",
+				"Open",
+				opportunity.OwnerUserId,
+				null,
+				MyWorkValueKind.Currency));
+		}
+		return items;
+	}
+}
