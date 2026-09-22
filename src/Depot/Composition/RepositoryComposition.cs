@@ -34,6 +34,7 @@ internal sealed class RepositoryComposition
 		SalesTimeline = new SalesTimelineRepository(dataAccess);
 		SalesPriceLists = new SalesPriceListRepository(dataAccess);
 		SalesQuotes = new SalesQuoteRepository(dataAccess);
+		SalesCrm = new SalesCrmRepository(dataAccess);
 		InventoryReservations = new InventoryReservationRepository(dataAccess);
 		Shipments = new ShipmentRepository(dataAccess);
 		SalesInvoices = new SalesInvoiceRepository(dataAccess);
@@ -95,6 +96,7 @@ internal sealed class RepositoryComposition
 	public SalesTimelineRepository SalesTimeline { get; }
 	public SalesPriceListRepository SalesPriceLists { get; }
 	public SalesQuoteRepository SalesQuotes { get; }
+	public SalesCrmRepository SalesCrm { get; }
 	public InventoryReservationRepository InventoryReservations { get; }
 	public ShipmentRepository Shipments { get; }
 	public SalesInvoiceRepository SalesInvoices { get; }
