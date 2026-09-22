@@ -194,7 +194,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		});
 		_salesOverview = new(() => new SalesOverviewViewModel(_salesSearch.Value));
 		_salesLeads = new(() => new SalesLeadsViewModel(salesServices.Crm, salesServices.Customers));
-		_salesOpportunities = new(() => new SalesOpportunitiesViewModel(salesServices.Crm, salesServices.Customers, async (_, token) => await NavigateToRouteAsync(ShellRoutes.Sales.Quotes, token)));
+		_salesOpportunities = new(() => new SalesOpportunitiesViewModel(salesServices.Crm, salesServices.Customers, async (_, token) => await this.NavigateToRouteAsync(ShellRoutes.Sales.Quotes, token)));
 		_salesQuotes = new(() => new SalesQuotesViewModel(salesServices.Quotes, salesServices.Pricing, salesServices.Customers, salesServices.Items, fileDialogService, salesServices.Documents));
 		_salesPricing = new(() => new SalesPricingViewModel(salesServices.Pricing, salesServices.Customers, salesServices.Items, categoryService, manufacturerService, salesServices.PriceListGeneration));
 		_salesCustomers = new(() => new CustomersViewModel(_salesSearch.Value, salesServices.Customers, salesServices.Pricing));
