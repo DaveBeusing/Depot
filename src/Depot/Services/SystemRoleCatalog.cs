@@ -121,6 +121,7 @@ public static class SystemRoleCatalog
 			ApplicationPermission.AuditLogView, ApplicationPermission.AuditLogExport,
 			ApplicationPermission.SecurityEventsView, ApplicationPermission.SecurityEventsManage,
 			ApplicationPermission.DocumentTemplatesView, ApplicationPermission.DocumentTemplatesManage,
+			ApplicationPermission.ApprovalPoliciesView, ApplicationPermission.ApprovalPoliciesManage,
 			ApplicationPermission.AdministrationView))
 	];
 

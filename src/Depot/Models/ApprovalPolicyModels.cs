@@ -152,3 +152,10 @@ public sealed class ApprovalDelegation
 	public string CreatedByUserDisplay { get; set; } = string.Empty;
 	public DateTime CreatedAtUtc { get; set; }
 }
+
+
+public sealed record ApprovalPolicyValidationIssue(string Code, string Message);
+
+public sealed record ApprovalResolutionPreview(
+	ApprovalPolicy Policy,
+	ApprovalPlanSnapshot Snapshot);
