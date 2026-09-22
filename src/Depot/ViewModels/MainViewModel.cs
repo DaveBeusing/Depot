@@ -439,6 +439,14 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		var route = new ShellRoute(item.RouteId);
 		switch (item.Kind)
 		{
+			case CommercialRoleItemKind.SalesLead:
+				await this.NavigateToRouteAsync(ShellRoutes.Sales.Leads, cancellationToken);
+				await SalesLeadsViewModel.OpenAsync(item.EntityId, cancellationToken);
+				break;
+			case CommercialRoleItemKind.SalesOpportunity:
+				await this.NavigateToRouteAsync(ShellRoutes.Sales.Opportunities, cancellationToken);
+				await SalesOpportunitiesViewModel.OpenAsync(item.EntityId, cancellationToken);
+				break;
 			case CommercialRoleItemKind.Customer:
 				await OpenSalesQuickItemAsync(new SalesQuickOpenItem(SalesQuickOpenKind.Customer, item.EntityId, item.DisplayNumber, item.Context ?? string.Empty), cancellationToken);
 				break;
@@ -526,6 +534,14 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		ArgumentNullException.ThrowIfNull(action);
 		switch (action.ActionId)
 		{
+			case "sales.new-lead":
+				await this.NavigateToRouteAsync(ShellRoutes.Sales.Leads, cancellationToken);
+				SalesLeadsViewModel.NewLeadCommand.Execute(null);
+				break;
+			case "sales.new-opportunity":
+				await this.NavigateToRouteAsync(ShellRoutes.Sales.Opportunities, cancellationToken);
+				SalesOpportunitiesViewModel.NewOpportunityCommand.Execute(null);
+				break;
 			case "sales.new-customer":
 				await this.NavigateToRouteAsync(ShellRoutes.Sales.Customers, cancellationToken);
 				CustomersViewModel.Workspace.NewCustomerCommand.Execute(null);

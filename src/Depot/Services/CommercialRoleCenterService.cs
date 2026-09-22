@@ -15,6 +15,7 @@ public sealed class CommercialRoleCenterService
 	private readonly DashboardService _dashboard;
 	private readonly SalesQuoteService _salesQuotes;
 	private readonly SalesOrderService _salesOrders;
+	private readonly SalesCrmService _salesCrm;
 	private readonly PurchaseOrderService _purchaseOrders;
 	private readonly PurchaseOrderApprovalService _purchaseApprovals;
 	private readonly SupplierReturnService _supplierReturns;
@@ -38,6 +39,7 @@ public sealed class CommercialRoleCenterService
 		DashboardService dashboard,
 		SalesQuoteService salesQuotes,
 		SalesOrderService salesOrders,
+		SalesCrmService salesCrm,
 		PurchaseOrderService purchaseOrders,
 		PurchaseOrderApprovalService purchaseApprovals,
 		SupplierReturnService supplierReturns,
@@ -60,6 +62,7 @@ public sealed class CommercialRoleCenterService
 		_dashboard = dashboard;
 		_salesQuotes = salesQuotes;
 		_salesOrders = salesOrders;
+		_salesCrm = salesCrm;
 		_purchaseOrders = purchaseOrders;
 		_purchaseApprovals = purchaseApprovals;
 		_supplierReturns = supplierReturns;
@@ -80,7 +83,7 @@ public sealed class CommercialRoleCenterService
 
 	public bool CanAccess(CommercialRoleCenterKind kind) => kind switch
 	{
-		CommercialRoleCenterKind.SalesWorkspace => _authorization.HasAnyPermission(ApplicationPermission.CustomersView, ApplicationPermission.SalesQuotesView, ApplicationPermission.SalesOrdersView),
+		CommercialRoleCenterKind.SalesWorkspace => _authorization.HasAnyPermission(ApplicationPermission.SalesCrmView, ApplicationPermission.CustomersView, ApplicationPermission.SalesQuotesView, ApplicationPermission.SalesOrdersView),
 		CommercialRoleCenterKind.SalesControlCenter => _authorization.HasAnyPermission(ApplicationPermission.SalesOrdersApprove, ApplicationPermission.SalesPricingManage, ApplicationPermission.ShipmentsView, ApplicationPermission.SalesInvoicesView, ApplicationPermission.CreditNotesView),
 		CommercialRoleCenterKind.BuyerWorkbench => _authorization.HasAnyPermission(ApplicationPermission.PurchaseOrdersView, ApplicationPermission.SuppliersView, ApplicationPermission.SupplierReturnsView),
 		CommercialRoleCenterKind.ApprovalInbox => HasApprovalPermission(),
@@ -198,7 +201,16 @@ public sealed class CommercialRoleCenterService
 		var ordersTask = _authorization.HasPermission(ApplicationPermission.SalesOrdersView)
 			? _salesOrders.SearchAsync(null, null, 1, SourceItemLimit * 3, cancellationToken)
 			: Task.FromResult(new PageResult<SalesOrder>([], 1, SourceItemLimit * 3, 0));
-		await Task.WhenAll(workTask, quotesTask, ordersTask);
+		var opportunitiesTask = _authorization.HasPermission(ApplicationPermission.SalesCrmView)
+			? _salesCrm.SearchOpportunitiesAsync(null, SalesOpportunityOutcome.Open, ownerUserId: user.Id, pageNumber: 1, pageSize: SourceItemLimit, cancellationToken: cancellationToken)
+			: Task.FromResult(new PageResult<SalesOpportunity>([], 1, SourceItemLimit, 0));
+		var leadsTask = _authorization.HasPermission(ApplicationPermission.SalesCrmView)
+			? _salesCrm.SearchLeadsAsync(null, ownerUserId: user.Id, pageNumber: 1, pageSize: 1, cancellationToken: cancellationToken)
+			: Task.FromResult(new PageResult<SalesLead>([], 1, 1, 0));
+		var pipelineTask = _authorization.HasPermission(ApplicationPermission.SalesCrmView)
+			? _salesCrm.GetPipelineSummaryAsync(user.Id, cancellationToken)
+			: Task.FromResult<IReadOnlyList<SalesPipelineStageSummary>>([]);
+		await Task.WhenAll(workTask, quotesTask, ordersTask, opportunitiesTask, leadsTask, pipelineTask);
 
 		var work = await workTask;
 		var quotes = (await quotesTask).Items.Where(value => value.CreatedByUserId == user.Id).OrderByDescending(value => value.CreatedAtUtc).Take(SourceItemLimit).ToArray();
@@ -207,6 +219,22 @@ public sealed class CommercialRoleCenterService
 		var waiting = WorkItems(work, MyWorkSectionKind.Waiting, MyWorkItemKind.SalesOrderApproval, user.Id);
 		var exceptions = WorkItems(work, MyWorkSectionKind.Exceptions, MyWorkItemKind.SalesOrder, user.Id);
 		var rejected = orders.Where(value => value.Status == SalesOrderStatus.Rejected).Take(SourceItemLimit).Select(OrderItem).ToArray();
+		var opportunities = (await opportunitiesTask).Items.Select(value => new CommercialRoleItem(
+			CommercialRoleItemKind.SalesOpportunity, value.Id, value.Version, value.OpportunityNumber, value.StageName,
+			value.CustomerName, value.Outcome.ToString(), value.ExpectedAmount, value.CreatedAtUtc, value.ExpectedCloseDate, null, "sales.opportunities", value.OwnerUserId, Currency: value.Currency,
+			StateDetail: $"{value.ProbabilityPercent:N0}% probability", NextAction: value.NextActivityDate is null ? "Plan activity" : "Open")).ToArray();
+		var pipeline = await pipelineTask;
+		var pipelineAmount = pipeline.Sum(value => value.ExpectedAmount);
+		var weightedPipelineAmount = pipeline.Sum(value => value.WeightedAmount);
+		var pipelineCount = pipeline.Sum(value => value.OpportunityCount);
+		var crmKpis = _authorization.HasPermission(ApplicationPermission.SalesCrmView)
+			? new CommercialRoleKpi[]
+			{
+				new("Open opportunities", pipelineCount.ToString("N0"), $"Owned leads: {(await leadsTask).TotalCount:N0}", "sales.opportunities"),
+				new("Pipeline value", pipelineAmount.ToString("C2"), "Open opportunity value", "sales.opportunities"),
+				new("Weighted pipeline", weightedPipelineAmount.ToString("C2"), "User-maintained probability weighting", "sales.opportunities")
+			}
+			: [];
 
 		var recentCustomers = quotes.Select(value => new { value.CustomerId, value.CustomerName, At = value.CreatedAtUtc, Reference = value.QuoteNumber })
 			.Concat(orders.Select(value => new { value.CustomerId, value.CustomerName, At = value.OrderDate.ToUniversalTime(), Reference = value.OrderNumber }))
@@ -220,8 +248,9 @@ public sealed class CommercialRoleCenterService
 		return Snapshot(
 			CommercialRoleCenterKind.SalesWorkspace,
 			"Sales Workspace",
-			"Your quotes, sales orders, approval handoffs and recent customers in one commercial starting point.",
+			"Your leads, opportunities, quotes, sales orders, approval handoffs and recent customers in one commercial starting point.",
 			[
+				Section("My Open Opportunities", "You have no open owned opportunities.", opportunities),
 				Section("My Quotes", "No quotes are currently associated with your user.", quotes.Select(QuoteItem)),
 				Section("My Draft Orders", "You have no sales-order drafts.", myDrafts),
 				Section("Waiting for Approval", "None of your sales orders are waiting for approval.", waiting),
@@ -229,8 +258,10 @@ public sealed class CommercialRoleCenterService
 				Section("Backordered / Blocked Own Orders", "No owned sales-order exceptions are currently modeled.", exceptions),
 				Section("Recently Used Customers", "No recent customer context is available.", recentCustomers)
 			],
-			[],
+			crmKpis,
 			[
+				new("New Lead", "sales.new-lead", "sales.leads"),
+				new("New Opportunity", "sales.new-opportunity", "sales.opportunities"),
 				new("New Customer", "sales.new-customer", "sales.customers"),
 				new("New Quote", "sales.new-quote", "sales.quotes"),
 				new("New Sales Order", "sales.new-order", "sales.orders")

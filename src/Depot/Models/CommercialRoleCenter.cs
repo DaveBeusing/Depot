@@ -49,7 +49,9 @@ public enum CommercialRoleItemKind
 	InventoryReconciliation = 23,
 	InventoryValuation = 24,
 	ReportSnapshot = 25,
-	FinanceStatus = 26
+	FinanceStatus = 26,
+	SalesLead = 27,
+	SalesOpportunity = 28
 }
 
 public sealed record CommercialRoleItem(

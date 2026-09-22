@@ -105,6 +105,7 @@ internal sealed class ServiceComposition
 			Dashboard,
 			SalesQuotes,
 			SalesOrders,
+			SalesCrm,
 			PurchaseOrders,
 			PurchaseOrderApprovals,
 			SupplierReturns,
