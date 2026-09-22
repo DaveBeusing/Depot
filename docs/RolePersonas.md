@@ -80,3 +80,7 @@ Automated tests assert:
 - manual-journal separation for Accountant / Controller;
 - permission-bounded navigation profiles;
 - idempotent seeding and role-repository visibility.
+
+## Sales CRM permission profile
+
+The Sales CRM capability extends the existing Sales personas without creating a separate CRM identity model. **Sales User** receives `SalesCrm.View`, `SalesCrmRecords.Manage`, `SalesCrmActivities.View` and `SalesCrmActivities.Manage` for operational work. **Sales Manager** additionally receives `SalesCrm.Manage` for stage/configuration and broader ownership authority. **Management Viewer** receives read-only CRM and activity visibility. Service-layer authorization remains authoritative.

@@ -1,6 +1,6 @@
 # Sales Overview
 
-The Sales workspace covers Depot's commercial and order-to-cash process from customer master data and quotations through order release and invoicing.
+The Sales workspace covers Depot's commercial and order-to-cash process from lead capture and opportunity management through customer master data, quotations, order release and invoicing.
 
 Physical fulfillment is deliberately separated from the commercial workspace: once a Sales Order is released, picking, packing, shipment posting, shipment reversal, and Customer Returns are handled under **Warehouse > Shipping**.
 
@@ -9,6 +9,8 @@ Physical fulfillment is deliberately separated from the commercial workspace: on
 Depending on permissions, the Sales workspace exposes these sections directly below the workspace tabs:
 
 - **Overview** — operational Sales workload and order-to-cash status.
+- **Leads** — prospects, qualification, activities and controlled conversion into Customer/Opportunity workflows.
+- **Opportunities** — stage-based pipeline, expected value/probability, follow-up activities and conversion into Sales Quotes.
 - **Quotes** — customer quotations, PDF/email output, pricing snapshots, and conversion to Sales Orders.
 - **Pricing** — Global, Regional and optional Customer price lists, item prices, discounts, validity windows, Sales Regions, and customer assignments.
 - **Customers** — customer master data, addresses, contacts, payment terms, currency, optional Sales Region, and optional customer pricing.
