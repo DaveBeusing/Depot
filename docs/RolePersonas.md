@@ -37,7 +37,7 @@ The protected **Administrator** role remains the full-access role. Existing user
 | **Management Viewer** | Operational/financial KPIs, reports and drilldowns | All mutation permissions |
 | **Auditor / Compliance** | Audit log, security events, user/role visibility and relevant report exports | Post, edit, reverse, terminate and other mutation permissions |
 | **Master Data Manager** | Items, customers, suppliers and warehouse/reference master data | Operational transaction posting |
-| **Application Administrator** | Users, roles, sessions, settings, database and security administration | Sales, Warehouse and Finance posting authority |
+| **Application Administrator** | Users, roles, sessions, settings, database, security and approval-policy administration | Sales, Warehouse and Finance posting/approval authority |
 
 ## Segregation of duties
 
@@ -48,6 +48,7 @@ The built-in personas intentionally preserve these boundaries:
 - Treasury can create payment proposals and execute payment runs but does not receive payment-proposal approval.
 - Accountant / Controller does not receive `FinanceManualJournals.Post`; manual journal posting is intentionally explicit.
 - Application Administrator can administer the application without receiving operational business posting permissions.
+- `ApprovalPolicies.View` / `ApprovalPolicies.Manage` configure routing only; they do not grant Purchase Order, Sales Order, Accounts Payable exception or payment-proposal decision authority.
 - Management Viewer and Auditor / Compliance contain view/export permissions only.
 - Combining multiple roles produces the union of their permissions, so deployments remain responsible for reviewing combinations that could weaken local separation-of-duties policy.
 

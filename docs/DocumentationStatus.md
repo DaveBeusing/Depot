@@ -7,7 +7,7 @@ This document identifies the documentation baseline for the current development 
 ## Current baseline
 
 - Application: `0.15.x-preview`
-- Help manifest: `1.22`
+- Help manifest: `1.23`
 - Core database schema: `30`
 - Sales feature schema: `14`
 - Finance feature schema: `9`
@@ -16,6 +16,7 @@ This document identifies the documentation baseline for the current development 
 - User Preferences feature schema: `2`
 - Document Templates feature schema: `1`
 - Enterprise Identity feature schema: `2`
+- Approval Policies feature schema: `1`
 
 `Directory.Build.props` is the authoritative source for the exact application patch/version. Canonical documentation records the moving preview line as `0.15.x-preview`; exact patch numbers belong in source/release evidence, not manually duplicated baseline text.
 
@@ -50,7 +51,7 @@ The current baseline is reconciled against the live repository rather than earli
 
 Live repository governance is also evidence-driven. Ruleset `23590604` is active and still enforces pull-request delivery plus deletion/non-fast-forward protection, but it currently lacks the five aggregate required-status-check bindings. H1 is therefore `BLOCKED` until those live checks are restored and the governance validator passes. Historical text that recorded H1 as closed does not override the live state.
 
-Embedded Finance Help must describe Accounts Payable, Inventory Accounting, Banking, Financial Reporting and Localization as implemented capabilities. Help manifest `1.22` remains unchanged because this reconciliation changes Help content only; topic IDs, routing and permission metadata are unchanged.
+Embedded Finance Help must describe Accounts Payable, Inventory Accounting, Banking, Financial Reporting and Localization as implemented capabilities. Help manifest `1.23` remains unchanged because this reconciliation changes Help content only; topic IDs, routing and permission metadata are unchanged.
 
 ## Deployment sizing documentation invariant
 
@@ -69,7 +70,7 @@ Documentation must not broaden:
 - repository CRA/privacy/security controls into a completed external legal/conformity assessment;
 - Preview engineering evidence into a commercial production-support commitment.
 
-Help manifest `1.22` is unchanged because this reconciliation changes release/compliance documentation only; no Help topic route, permission or in-app workflow contract changes.
+Help manifest `1.23` is unchanged because this reconciliation changes release/compliance documentation only; no Help topic route, permission or in-app workflow contract changes.
 
 ## Session and authentication invariants
 
@@ -103,4 +104,9 @@ Do not describe database-provider technical support as jurisdiction-specific acc
 
 Do not pin an exact preview patch version in canonical baseline documents. Use the development line and link exact build/release identity to `Directory.Build.props` and release evidence.
 
-Help manifest **1.22** contains the existing User Sessions and Security Center topics plus the permission-bound `administration.document-designer` topic. The current manifest version is authoritative for embedded Help routing and content.
+Help manifest **1.23** contains the existing User Sessions and Security Center topics plus the permission-bound `administration.document-designer` topic. The current manifest version is authoritative for embedded Help routing and content.
+
+
+## 2026-09-22 approval-policy documentation reconciliation
+
+Approval Policies feature schema 1 is documented as a bounded routing contract for Purchase Orders, Sales Orders, Accounts Payable match exceptions and payment proposals. Embedded Help now exposes `administration.approval-policies` behind `ApprovalPolicies.View`; policy mutation requires `ApprovalPolicies.Manage`, while existing domain approval permissions remain independently authoritative for business decisions. Help manifest 1.23 records the new permission-bound route.
