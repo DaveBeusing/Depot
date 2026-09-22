@@ -7,6 +7,7 @@ using System.Text.Json;
 
 using Depot.Data;
 using Depot.Models;
+using Depot.Services;
 
 namespace Depot.Repositories;
 
