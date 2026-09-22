@@ -111,6 +111,47 @@ internal sealed class SalesGlobalSearchProvider(GlobalSearchReadRepository read,
 	}
 }
 
+internal sealed class SalesCrmGlobalSearchProvider(SalesCrmService crm, IAuthorizationService authorization) : IGlobalSearchProvider
+{
+	public string Id => "sales-crm";
+	public bool CanSearch => authorization.HasPermission(ApplicationPermission.SalesCrmView);
+
+	public async Task<IReadOnlyList<GlobalSearchResult>> SearchAsync(string query, int maxResults, CancellationToken cancellationToken = default)
+	{
+		if (!CanSearch) return [];
+		var perType = Math.Clamp((maxResults + 1) / 2, 2, 8);
+		var leadsTask = crm.SearchLeadsAsync(query, pageNumber: 1, pageSize: perType, cancellationToken: cancellationToken);
+		var opportunitiesTask = crm.SearchOpportunitiesAsync(query, pageNumber: 1, pageSize: perType, cancellationToken: cancellationToken);
+		await Task.WhenAll(leadsTask, opportunitiesTask);
+
+		var leads = leadsTask.Result.Items.Select(value => new GlobalSearchResult(
+			$"sales-lead:{value.Id}",
+			GlobalSearchResultKind.Lead,
+			value.Id,
+			value.LeadNumber,
+			value.DisplayName,
+			"Sales Leads",
+			"LEAD",
+			GlobalSearchRanking.Calculate(query, value.LeadNumber, value.CompanyName, value.PersonName, value.Email, value.Phone)));
+		var opportunities = opportunitiesTask.Result.Items.Select(value => new GlobalSearchResult(
+			$"sales-opportunity:{value.Id}",
+			GlobalSearchResultKind.Opportunity,
+			value.Id,
+			value.OpportunityNumber,
+			value.CustomerName,
+			"Sales Opportunities",
+			"OPPORTUNITY",
+			GlobalSearchRanking.Calculate(query, value.OpportunityNumber, value.CustomerName, value.StageName)));
+
+		return leads.Concat(opportunities)
+			.OrderBy(value => value.Rank)
+			.ThenBy(value => (int)value.Kind)
+			.ThenBy(value => value.Title, StringComparer.OrdinalIgnoreCase)
+			.Take(maxResults)
+			.ToArray();
+	}
+}
+
 internal sealed class FinanceJournalGlobalSearchProvider(GlobalSearchReadRepository read, IAuthorizationService authorization)
 	: GlobalSearchProviderBase(read, authorization), IGlobalSearchProvider
 {

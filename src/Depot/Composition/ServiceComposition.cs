@@ -126,6 +126,7 @@ internal sealed class ServiceComposition
 			new SupplierGlobalSearchProvider(repositories.GlobalSearch, Authorization),
 			new PurchaseOrderGlobalSearchProvider(repositories.GlobalSearch, Authorization),
 			new SalesGlobalSearchProvider(repositories.GlobalSearch, Authorization),
+			new SalesCrmGlobalSearchProvider(SalesCrm, Authorization),
 			new FinanceJournalGlobalSearchProvider(repositories.GlobalSearch, Authorization)
 		]);
 	}
