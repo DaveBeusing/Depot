@@ -75,6 +75,8 @@ This repository acceptance does **not** imply jurisdiction-wide tax/legal certif
 
 ### Enterprise identity and authentication
 
+Approval Policies feature schema **1** is the current bounded configurable-approval boundary for Purchase Orders, Sales Orders, Accounts Payable match exceptions and payment proposals. Resolution is deterministic and fails closed on equal-priority ambiguity; new approval chains retain immutable policy snapshots, while domain services and their existing approval permissions remain authoritative for final business transitions. The Administration designer provides validation and non-mutating preview, and My Work/role-center action eligibility follows the current snapshot stage.
+
 Enterprise Identity feature schema **2** is the current provider-neutral external-identity and authentication-assurance boundary. The implemented path includes Authorization Code + PKCE, system-browser sign-in, loopback callback handling, OIDC discovery/signing-key validation, issuer/audience/lifetime/nonce validation, tenant-bound Microsoft Entra ID, optional provider-bound `amr` / `acr` / `auth_time` requirements and `azp` validation.
 
 Local Depot RBAC remains authoritative. External roles/groups/permission claims are not authorization inputs, and raw protocol tokens or runtime assurance claims are not persisted on identity links. PR #47 is merged and closes the earlier deterministic F4C acceptance regressions.
@@ -115,6 +117,7 @@ PR #56 then repaired CI execution boundaries without changing runtime behavior o
 - User Preferences feature schema: **2**
 - Document Templates feature schema: **1**
 - Enterprise Identity feature schema: **2**
+- Approval Policies feature schema: **1**
 - Help manifest: **1.22**
 
 `Directory.Build.props` is authoritative for the exact Depot application patch/version; `src/DepotManager/DepotManager.Version.props` is authoritative for DepotManager. Schema migration constants and `src/Depot/Help/manifest.json` are authoritative for the remaining baseline values. Every repository commit increments `DepotVersionPatch`.
