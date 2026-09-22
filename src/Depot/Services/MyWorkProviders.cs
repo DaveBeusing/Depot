@@ -357,15 +357,15 @@ internal sealed class SalesCrmMyWorkProvider(SalesCrmService crm) : IMyWorkProvi
 	{
 		var dueThroughUtc = query.NowUtc.Date.AddDays(1).AddTicks(-1);
 		var activitiesTask = crm.CanViewActivities
-			? crm.ListMyDueActivitiesAsync(dueThroughUtc, query.ProviderLimit, cancellationToken)
+			? crm.GetOwnedOpenActivitiesAsync(query.UserId, query.ProviderLimit, cancellationToken)
 			: Task.FromResult<IReadOnlyList<SalesActivity>>([]);
 		var opportunitiesTask = crm.CanView
-			? crm.ListMyOpportunitiesNeedingFollowUpAsync(query.NowUtc, query.ProviderLimit, cancellationToken)
+			? crm.GetOwnedFollowUpOpportunitiesAsync(query.UserId, query.NowUtc, query.ProviderLimit, cancellationToken)
 			: Task.FromResult<IReadOnlyList<SalesOpportunity>>([]);
 		await Task.WhenAll(activitiesTask, opportunitiesTask);
 
 		var items = new List<MyWorkItem>();
-		foreach (var activity in await activitiesTask)
+		foreach (var activity in (await activitiesTask).Where(value => value.DueAtUtc <= dueThroughUtc))
 		{
 			var overdue = activity.DueAtUtc < query.NowUtc;
 			var opportunityTarget = activity.OpportunityId is > 0;

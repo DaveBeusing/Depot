@@ -133,20 +133,6 @@ public sealed class SalesCrmRepository : DatabaseRepository
 			: Database.QueryAsync("SELECT s.Id,s.Name,s.SortOrder,COUNT(o.Id),COALESCE(SUM(o.ExpectedAmount),0),COALESCE(SUM(o.ExpectedAmount*o.ProbabilityPercent/100.0),0) FROM SalesOpportunityStages s LEFT JOIN SalesOpportunities o ON o.StageId=s.Id AND o.Outcome=0 WHERE s.IsActive=1 GROUP BY s.Id,s.Name,s.SortOrder ORDER BY s.SortOrder,s.Id;",ReadPipeline,cancellationToken);
 	}
 
-	public Task<IReadOnlyList<SalesActivity>> ListOwnedPlannedActivitiesAsync(long ownerUserId,DateTime dueThroughUtc,int count,CancellationToken cancellationToken)
-	{
-		if(ownerUserId<=0)throw new ArgumentOutOfRangeException(nameof(ownerUserId));
-		if(count is < 1 or > 500)throw new ArgumentOutOfRangeException(nameof(count));
-		return Database.QuerySliceAsync($"SELECT {ActivityColumns} FROM SalesActivities a INNER JOIN Users u ON u.Id=a.OwnerUserId WHERE a.OwnerUserId=$OwnerUserId AND a.Status=1 AND a.DueAtUtc<=$DueThroughUtc ORDER BY a.DueAtUtc,a.Id",ReadActivity,0,count,cancellationToken,Parameter("$OwnerUserId",ownerUserId),Parameter("$DueThroughUtc",dueThroughUtc));
-	}
-
-	public Task<IReadOnlyList<SalesOpportunity>> ListOwnedOpenOpportunitiesNeedingFollowUpAsync(long ownerUserId,DateTime nowUtc,int count,CancellationToken cancellationToken)
-	{
-		if(ownerUserId<=0)throw new ArgumentOutOfRangeException(nameof(ownerUserId));
-		if(count is < 1 or > 500)throw new ArgumentOutOfRangeException(nameof(count));
-		return Database.QuerySliceAsync($"SELECT {OpportunityColumns} FROM SalesOpportunities o INNER JOIN Customers c ON c.Id=o.CustomerId INNER JOIN Users u ON u.Id=o.OwnerUserId INNER JOIN SalesOpportunityStages s ON s.Id=o.StageId WHERE o.OwnerUserId=$OwnerUserId AND o.Outcome=0 AND (o.NextActivityDate IS NULL OR o.NextActivityDate<=$NowUtc) ORDER BY CASE WHEN o.NextActivityDate IS NULL THEN 0 ELSE 1 END,o.NextActivityDate,o.ExpectedCloseDate,o.Id",ReadOpportunity,0,count,cancellationToken,Parameter("$OwnerUserId",ownerUserId),Parameter("$NowUtc",nowUtc));
-	}
-
 	public Task<IReadOnlyList<SalesActivity>> ListActivitiesAsync(long? leadId,long? opportunityId,int count,CancellationToken cancellationToken)
 	{
 		if(count is < 1 or > 500)throw new ArgumentOutOfRangeException(nameof(count));
