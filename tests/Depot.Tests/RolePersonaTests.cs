@@ -349,7 +349,8 @@ public sealed class RbacTestsPersonaProfiles
 				ApplicationPermission.AuditLogView, ApplicationPermission.AuditLogExport,
 				ApplicationPermission.SecurityEventsView, ApplicationPermission.SecurityEventsManage,
 				ApplicationPermission.DocumentTemplatesView, ApplicationPermission.DocumentTemplatesManage,
-				ApplicationPermission.AdministrationView
+				ApplicationPermission.AdministrationView,
+				ApplicationPermission.ApprovalPoliciesView, ApplicationPermission.ApprovalPoliciesManage
 			}
 		}
 	};
