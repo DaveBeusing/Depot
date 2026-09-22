@@ -89,6 +89,103 @@ public sealed class ApprovalPolicyServiceTests : IDisposable
 		Assert.Equal([1, 2], decisions.Select(value => value.StageOrder).ToArray());
 	}
 
+
+	[Fact]
+	public async Task ResolutionHonorsAmountAndCurrencyConditions()
+	{
+		var context = await CreateContextAsync();
+		await context.CreateAndActivatePolicyAsync(
+			"Bounded EUR",
+			200,
+			[Stage(1, context.Role.Code)],
+			[
+				new ApprovalPolicyCondition { Kind = ApprovalConditionKind.MinimumAmount, DecimalValue = 100m },
+				new ApprovalPolicyCondition { Kind = ApprovalConditionKind.MaximumAmount, DecimalValue = 1000m },
+				new ApprovalPolicyCondition { Kind = ApprovalConditionKind.Currency, StringValue = "eur" }
+			]);
+
+		var matching = await context.Service.PreviewAsync(
+			new ApprovalSubjectAttributes(ApprovalSubjectKind.PurchaseOrder, "amount-currency-match", 500m, "EUR"));
+		var belowThreshold = await context.Service.PreviewAsync(
+			new ApprovalSubjectAttributes(ApprovalSubjectKind.PurchaseOrder, "amount-currency-fallback", 50m, "EUR"));
+
+		Assert.Equal("Bounded EUR", matching.Policy.Name);
+		Assert.NotEqual("Bounded EUR", belowThreshold.Policy.Name);
+	}
+
+	[Fact]
+	public async Task FutureEffectivePolicyIsIgnoredUntilEffective()
+	{
+		var context = await CreateContextAsync();
+		var draft = await context.Service.CreateAsync(new ApprovalPolicy
+		{
+			Name = "Future policy",
+			SubjectKind = ApprovalSubjectKind.PurchaseOrder,
+			Priority = 500,
+			EffectiveFromUtc = DateTime.UtcNow.AddDays(1),
+			Stages = [Stage(1, context.Role.Code)]
+		});
+		await context.Service.ActivateAsync(draft.Id, draft.Version);
+
+		var preview = await context.Service.PreviewAsync(
+			new ApprovalSubjectAttributes(ApprovalSubjectKind.PurchaseOrder, "future-policy", 100m));
+
+		Assert.NotEqual("Future policy", preview.Policy.Name);
+	}
+
+	[Fact]
+	public async Task RejectionTerminatesApprovalAndRecordsEvidence()
+	{
+		var context = await CreateContextAsync();
+		await context.CreateAndActivatePolicyAsync("Rejectable", 100, [Stage(1, context.Role.Code)]);
+		var instance = await context.Service.StartAsync(
+			new ApprovalSubjectAttributes(ApprovalSubjectKind.PurchaseOrder, "reject-1", 250m));
+
+		var rejected = await context.Service.RejectStageAsync(instance.Id, "Rejected for test coverage");
+		var decisions = await context.Repository.GetDecisionsAsync(instance.Id);
+
+		Assert.Equal(ApprovalInstanceStatus.Rejected, rejected.Status);
+		var decision = Assert.Single(decisions);
+		Assert.Equal(ApprovalDecisionKind.Rejected, decision.Decision);
+		Assert.Equal("Rejected for test coverage", decision.Comment);
+	}
+
+	[Fact]
+	public async Task CompletedApprovalRejectsDuplicateDecision()
+	{
+		var context = await CreateContextAsync();
+		await context.CreateAndActivatePolicyAsync("Single stage", 100, [Stage(1, context.Role.Code)]);
+		var instance = await context.Service.StartAsync(
+			new ApprovalSubjectAttributes(ApprovalSubjectKind.PurchaseOrder, "duplicate-decision", 250m));
+
+		var approved = await context.Service.ApproveStageAsync(instance.Id);
+		Assert.Equal(ApprovalInstanceStatus.Approved, approved.Status);
+
+		await Assert.ThrowsAsync<InvalidOperationException>(() => context.Service.ApproveStageAsync(instance.Id));
+	}
+
+	[Fact]
+	public async Task ValidationRejectsFinanceOnlySelectorForPurchaseOrder()
+	{
+		var context = await CreateContextAsync();
+		var issues = await context.Service.ValidateAsync(new ApprovalPolicy
+		{
+			Name = "Invalid selector",
+			SubjectKind = ApprovalSubjectKind.PurchaseOrder,
+			Conditions =
+			[
+				new ApprovalPolicyCondition
+				{
+					Kind = ApprovalConditionKind.LegalEntityId,
+					GuidValue = Guid.NewGuid()
+				}
+			],
+			Stages = [Stage(1, context.Role.Code)]
+		});
+
+		Assert.Contains(issues, issue => issue.Code == "condition.subject");
+	}
+
 	private async Task<TestContext> CreateContextAsync()
 	{
 		var factory = Initialize();
@@ -181,13 +278,15 @@ public sealed class ApprovalPolicyServiceTests : IDisposable
 		public async Task<ApprovalPolicy> CreateAndActivatePolicyAsync(
 			string name,
 			int priority,
-			IReadOnlyList<ApprovalPolicyStage> stages)
+			IReadOnlyList<ApprovalPolicyStage> stages,
+			IReadOnlyList<ApprovalPolicyCondition>? conditions = null)
 		{
 			var created = await Service.CreateAsync(new ApprovalPolicy
 			{
 				Name = name,
 				SubjectKind = ApprovalSubjectKind.PurchaseOrder,
 				Priority = priority,
+				Conditions = conditions?.ToList() ?? [],
 				Stages = stages.ToList()
 			});
 			return await Service.ActivateAsync(created.Id, created.Version);
