@@ -43,7 +43,7 @@ Sales schema 14 retains ZUGFeRD 2.5.2 / Factur-X 1.09.2 XRECHNUNG-profile hybrid
 
 ## 2026-09-18 documentation reconciliation
 
-The current repository/help audit reconciles the post-Track-C and post-H1 baseline across README, canonical status/security/pricing documents and embedded Help. It also records the current PR-versus-authoritative release-validation boundary introduced by the latest CI hardening. The Document Designer rollout adds a dedicated `administration.document-designer` topic bound to `DocumentTemplates.View`, so Help manifest version `1.22` records the new permission-bound route.
+The current repository/help audit reconciles the post-Track-C and post-H1 baseline across README, canonical status/security/pricing documents and embedded Help. It also records the current PR-versus-authoritative release-validation boundary introduced by the latest CI hardening. The Document Designer rollout adds a dedicated `administration.document-designer` topic bound to `DocumentTemplates.View`; the then-current Help manifest recorded that permission-bound route.
 
 ## 2026-09-20 baseline reconciliation
 

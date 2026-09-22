@@ -113,7 +113,7 @@ Current baseline:
 - Document Templates feature schema: **1**
 - Enterprise Identity feature schema: **2**
 - Approval Policies feature schema: **1**
-- Help manifest: **1.22**
+- Help manifest: **1.23**
 
 `Directory.Build.props` is authoritative for the exact application patch/version. The documentation baseline intentionally records the development line instead of duplicating the moving preview patch number.
 
@@ -163,7 +163,7 @@ Security and compliance work is documented transparently rather than presented a
 
 ## Offline Help
 
-Embedded Help manifest **1.22** includes contextual Sales, Finance, User Sessions and Security Center guidance. Help visibility follows central permissions and never grants business access.
+Embedded Help manifest **1.23** includes contextual Sales, Finance, User Sessions and Security Center guidance. Help visibility follows central permissions and never grants business access.
 
 See the [Help Center documentation](docs/HelpCenter.md).
 
