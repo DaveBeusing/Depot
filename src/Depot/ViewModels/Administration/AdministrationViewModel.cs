@@ -172,7 +172,7 @@ public sealed class AdministrationViewModel : BaseViewModel, IDisposable
 		AdministrationSection.Roles => _roleViewModel,
 		AdministrationSection.Company => _companyProfileViewModel,
 		AdministrationSection.DocumentDesigner => _documentTemplateDesignerViewModel,
-		AdministrationSection.ApprovalPolicies => _approvalPolicyDesignerViewModel ?? _aboutViewModel,
+		AdministrationSection.ApprovalPolicies => (BaseViewModel?)_approvalPolicyDesignerViewModel ?? _aboutViewModel,
 		AdministrationSection.Database => _databaseSettingsViewModel,
 		AdministrationSection.AuditLog => _auditLogViewModel,
 		AdministrationSection.Privacy => _privacyDataViewModel,
