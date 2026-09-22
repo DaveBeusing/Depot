@@ -43,6 +43,9 @@ public sealed class CustomerRepository : DatabaseRepository
 		customer.Addresses = await ListAddressesAsync(id, cancellationToken); customer.Contacts = await ListContactsAsync(id, cancellationToken); return customer;
 	}
 
+	public Task<Customer?> GetByIdAsync(DatabaseTransactionContext transaction, long id, CancellationToken cancellationToken) =>
+		transaction.Session.QuerySingleOrDefaultAsync($"SELECT {Columns} FROM Customers WHERE Id=$Id;", Read, cancellationToken, Parameter("$Id", id));
+
 	public Task<IReadOnlyList<Customer>> ListActiveAsync(CancellationToken cancellationToken) => Database.QueryAsync($"SELECT {Columns} FROM Customers WHERE IsActive=1 ORDER BY Name,CustomerNumber;", Read, cancellationToken);
 	public Task<SalesRegion?> GetSalesRegionAsync(long id, CancellationToken cancellationToken) => Database.QuerySingleOrDefaultAsync("SELECT Id,Code,Name,IsActive,Version FROM SalesRegions WHERE Id=$Id;", ReadRegion, cancellationToken, Parameter("$Id", id));
 	public Task<IReadOnlyList<CustomerAddress>> ListAddressesAsync(long customerId, CancellationToken cancellationToken) => Database.QueryAsync("SELECT Id,CustomerId,Type,Name,Address,IsDefault,IsActive,Version FROM CustomerAddresses WHERE CustomerId=$CustomerId AND IsActive=1 ORDER BY Type,IsDefault DESC,Id;", ReadAddress, cancellationToken, Parameter("$CustomerId", customerId));
