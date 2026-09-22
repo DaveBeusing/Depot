@@ -261,6 +261,19 @@ public sealed class ApprovalPolicyService
 		return issues;
 	}
 
+	public async Task<bool> CanCurrentUserDecideAsync(
+		ApprovalSubjectKind subjectKind,
+		string subjectId,
+		CancellationToken cancellationToken = default)
+	{
+		if (!_authorization.HasPermission(RequiredDecisionPermission(subjectKind))) return false;
+		if (_authorization.CurrentUser is not { IsActive: true } user) return false;
+		var instance = await _policies.GetPendingInstanceAsync(subjectKind, NormalizeSubjectId(subjectId), cancellationToken);
+		if (instance is null) return true;
+		var stage = instance.Snapshot.Stages.SingleOrDefault(value => value.Order == instance.CurrentStageOrder);
+		return stage is not null && await IsEligibleAsync(user, subjectKind, stage, UtcNow(), cancellationToken);
+	}
+
 	public async Task<ApprovalResolutionPreview> PreviewAsync(
 		ApprovalSubjectAttributes attributes,
 		CancellationToken cancellationToken = default)
