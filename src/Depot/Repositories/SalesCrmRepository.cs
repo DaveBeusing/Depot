@@ -106,6 +106,15 @@ public sealed class SalesCrmRepository : DatabaseRepository
 	public Task<IReadOnlyList<SalesOpportunityStage>> ListStagesAsync(bool activeOnly,CancellationToken cancellationToken)=>
 		Database.QueryAsync($"SELECT Id,Code,Name,SortOrder,IsActive,Version FROM SalesOpportunityStages {(activeOnly?"WHERE IsActive=1":string.Empty)} ORDER BY SortOrder,Id;",ReadStage,cancellationToken);
 
+	public Task<SalesOpportunityStage?> GetStageAsync(long id,CancellationToken cancellationToken)=>
+		Database.QuerySingleOrDefaultAsync("SELECT Id,Code,Name,SortOrder,IsActive,Version FROM SalesOpportunityStages WHERE Id=$Id;",ReadStage,cancellationToken,Parameter("$Id",id));
+
+	public Task<SalesOpportunityStage?> GetStageAsync(DatabaseTransactionContext transaction,long id,CancellationToken cancellationToken)=>
+		transaction.Session.QuerySingleOrDefaultAsync("SELECT Id,Code,Name,SortOrder,IsActive,Version FROM SalesOpportunityStages WHERE Id=$Id;",ReadStage,cancellationToken,Parameter("$Id",id));
+
+	public Task<SalesOpportunityStage?> GetFirstActiveStageAsync(DatabaseTransactionContext transaction,CancellationToken cancellationToken)=>
+		transaction.Session.QuerySingleOrDefaultAsync("SELECT Id,Code,Name,SortOrder,IsActive,Version FROM SalesOpportunityStages WHERE IsActive=1 ORDER BY SortOrder,Id;",ReadStage,cancellationToken);
+
 	public async Task<SalesOpportunityStage> SaveStageAsync(SalesOpportunityStage stage,CancellationToken cancellationToken)
 	{
 		if(stage.Id==0)
@@ -119,7 +128,9 @@ public sealed class SalesCrmRepository : DatabaseRepository
 	public Task<IReadOnlyList<SalesPipelineStageSummary>> GetPipelineSummaryAsync(long? ownerUserId,CancellationToken cancellationToken)
 	{
 		var owner=ownerUserId is > 0?"AND o.OwnerUserId=$OwnerUserId":string.Empty;
-		return Database.QueryAsync($"SELECT s.Id,s.Name,s.SortOrder,COUNT(o.Id),COALESCE(SUM(o.ExpectedAmount),0),COALESCE(SUM(o.ExpectedAmount*o.ProbabilityPercent/100.0),0) FROM SalesOpportunityStages s LEFT JOIN SalesOpportunities o ON o.StageId=s.Id AND o.Outcome=0 {owner} WHERE s.IsActive=1 GROUP BY s.Id,s.Name,s.SortOrder ORDER BY s.SortOrder,s.Id;",ReadPipeline,cancellationToken,ownerUserId is > 0?Parameter("$OwnerUserId",ownerUserId.Value):Parameter("$OwnerUserId",DBNull.Value));
+		return ownerUserId is > 0
+			? Database.QueryAsync($"SELECT s.Id,s.Name,s.SortOrder,COUNT(o.Id),COALESCE(SUM(o.ExpectedAmount),0),COALESCE(SUM(o.ExpectedAmount*o.ProbabilityPercent/100.0),0) FROM SalesOpportunityStages s LEFT JOIN SalesOpportunities o ON o.StageId=s.Id AND o.Outcome=0 {owner} WHERE s.IsActive=1 GROUP BY s.Id,s.Name,s.SortOrder ORDER BY s.SortOrder,s.Id;",ReadPipeline,cancellationToken,Parameter("$OwnerUserId",ownerUserId.Value))
+			: Database.QueryAsync("SELECT s.Id,s.Name,s.SortOrder,COUNT(o.Id),COALESCE(SUM(o.ExpectedAmount),0),COALESCE(SUM(o.ExpectedAmount*o.ProbabilityPercent/100.0),0) FROM SalesOpportunityStages s LEFT JOIN SalesOpportunities o ON o.StageId=s.Id AND o.Outcome=0 WHERE s.IsActive=1 GROUP BY s.Id,s.Name,s.SortOrder ORDER BY s.SortOrder,s.Id;",ReadPipeline,cancellationToken);
 	}
 
 	public Task<IReadOnlyList<SalesActivity>> ListActivitiesAsync(long? leadId,long? opportunityId,int count,CancellationToken cancellationToken)
