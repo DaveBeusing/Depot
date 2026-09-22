@@ -39,6 +39,8 @@
 	<DataTemplate DataType="{x:Type viewModels:PurchaseOrderApprovalsViewModel}"><views:PurchaseOrderApprovalsView /></DataTemplate>
 	<DataTemplate DataType="{x:Type viewModels:SalesViewModel}"><views:SalesView /></DataTemplate>
 	<DataTemplate DataType="{x:Type viewModels:SalesOverviewViewModel}"><views:SalesView DataContext="{Binding Workspace}" /></DataTemplate>
+	<DataTemplate DataType="{x:Type viewModels:SalesLeadsViewModel}"><views:SalesLeadsView /></DataTemplate>
+	<DataTemplate DataType="{x:Type viewModels:SalesOpportunitiesViewModel}"><views:SalesOpportunitiesView /></DataTemplate>
 	<DataTemplate DataType="{x:Type viewModels:SalesQuotesViewModel}"><views:SalesQuotesView /></DataTemplate>
 	<DataTemplate DataType="{x:Type viewModels:SalesPricingViewModel}"><views:SalesPricingView /></DataTemplate>
 	<DataTemplate DataType="{x:Type viewModels:CustomersViewModel}"><views:SalesCustomersView /></DataTemplate>
