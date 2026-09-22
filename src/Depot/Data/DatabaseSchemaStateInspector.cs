@@ -19,6 +19,7 @@ internal static class DatabaseSchemaStateInspector
 			["SecurityEvents"] = SecurityEventSchemaMigration.CurrentVersion,
 			["UserPreferences"] = UserPreferenceSchemaMigration.CurrentVersion,
 			["DocumentTemplates"] = DocumentTemplateSchemaMigration.CurrentVersion,
+			["ApprovalPolicies"] = ApprovalPolicySchemaMigration.CurrentVersion,
 			["EnterpriseIdentity"] = EnterpriseIdentitySchemaMigration.CurrentVersion
 		};
 
