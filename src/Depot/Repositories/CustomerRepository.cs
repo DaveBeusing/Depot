@@ -43,10 +43,31 @@ public sealed class CustomerRepository : DatabaseRepository
 		customer.Addresses = await ListAddressesAsync(id, cancellationToken); customer.Contacts = await ListContactsAsync(id, cancellationToken); return customer;
 	}
 
+	public Task<Customer?> GetByIdAsync(DatabaseTransactionContext transaction, long id, CancellationToken cancellationToken) =>
+		transaction.Session.QuerySingleOrDefaultAsync($"SELECT {Columns} FROM Customers WHERE Id=$Id;", Read, cancellationToken, Parameter("$Id", id));
+
 	public Task<IReadOnlyList<Customer>> ListActiveAsync(CancellationToken cancellationToken) => Database.QueryAsync($"SELECT {Columns} FROM Customers WHERE IsActive=1 ORDER BY Name,CustomerNumber;", Read, cancellationToken);
 	public Task<SalesRegion?> GetSalesRegionAsync(long id, CancellationToken cancellationToken) => Database.QuerySingleOrDefaultAsync("SELECT Id,Code,Name,IsActive,Version FROM SalesRegions WHERE Id=$Id;", ReadRegion, cancellationToken, Parameter("$Id", id));
 	public Task<IReadOnlyList<CustomerAddress>> ListAddressesAsync(long customerId, CancellationToken cancellationToken) => Database.QueryAsync("SELECT Id,CustomerId,Type,Name,Address,IsDefault,IsActive,Version FROM CustomerAddresses WHERE CustomerId=$CustomerId AND IsActive=1 ORDER BY Type,IsDefault DESC,Id;", ReadAddress, cancellationToken, Parameter("$CustomerId", customerId));
 	public Task<IReadOnlyList<CustomerContact>> ListContactsAsync(long customerId, CancellationToken cancellationToken) => Database.QueryAsync("SELECT Id,CustomerId,Name,Role,Department,Email,Phone,Mobile,IsPrimary,IsActive,Version FROM CustomerContacts WHERE CustomerId=$CustomerId AND IsActive=1 ORDER BY IsPrimary DESC,Name;", ReadContact, cancellationToken, Parameter("$CustomerId", customerId));
+
+	public async Task<Customer> CreateAsync(DatabaseTransactionContext transaction, Customer customer, CancellationToken cancellationToken)
+	{
+		ArgumentNullException.ThrowIfNull(transaction);
+		if (customer.Id != 0) throw new ArgumentException("Only new customers can be created through this transaction path.", nameof(customer));
+		customer.CustomerNumber = $"PENDING-{Guid.NewGuid():N}";
+		customer.Id = await transaction.Session.InsertAsync(
+			"INSERT INTO Customers (CustomerNumber,Name,BillingAddress,ShippingAddress,ContactName,Email,Phone,TaxId,VatId,BuyerReference,EInvoiceEndpoint,EInvoiceEndpointScheme,BillingStreet,BillingAddressLine2,BillingPostalCode,BillingCity,BillingCountryCode,SalesRegionId,PaymentTermsDays,Currency,IsActive) VALUES ($CustomerNumber,$Name,$BillingAddress,$ShippingAddress,$ContactName,$Email,$Phone,$TaxId,$VatId,$BuyerReference,$EInvoiceEndpoint,$EInvoiceEndpointScheme,$BillingStreet,$BillingAddressLine2,$BillingPostalCode,$BillingCity,$BillingCountryCode,$SalesRegionId,$PaymentTermsDays,$Currency,$IsActive);",
+			cancellationToken,
+			Parameters(customer));
+		customer.CustomerNumber = $"CU-{customer.Id:000000}";
+		await transaction.Session.ExecuteAsync(
+			"UPDATE Customers SET CustomerNumber=$CustomerNumber WHERE Id=$Id;",
+			cancellationToken,
+			Parameter("$CustomerNumber", customer.CustomerNumber),
+			Parameter("$Id", customer.Id));
+		return customer;
+	}
 
 	public async Task<Customer> SaveAsync(Customer customer, CancellationToken cancellationToken)
 	{

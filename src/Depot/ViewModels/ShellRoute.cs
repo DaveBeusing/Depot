@@ -79,6 +79,8 @@ public static class ShellRoutes
 	{
 		public static readonly ShellRoute Module = new("sales");
 		public static readonly ShellRoute Overview = new("sales.overview");
+		public static readonly ShellRoute Leads = new("sales.leads");
+		public static readonly ShellRoute Opportunities = new("sales.opportunities");
 		public static readonly ShellRoute Quotes = new("sales.quotes");
 		public static readonly ShellRoute Pricing = new("sales.pricing");
 		public static readonly ShellRoute Customers = new("sales.customers");

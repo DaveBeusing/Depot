@@ -48,6 +48,15 @@ public sealed class CustomerService
 		var saved = await _customers.SaveContactAsync(contact, cancellationToken); var customer = await _customers.GetByIdAsync(contact.CustomerId, cancellationToken); if (customer is not null) await _audit.RecordUpdatedAsync(customer.Id, customer, customer, cancellationToken); return saved;
 	}
 
+	public void PrepareForCreate(Customer customer)
+	{
+		_authorization.RequirePermission(ApplicationPermission.CustomersCreate);
+		ArgumentNullException.ThrowIfNull(customer);
+		if (customer.Id != 0) throw new ArgumentException("Only a new customer can be prepared for creation.", nameof(customer));
+		NormalizeAndValidate(customer);
+		if (customer.SalesRegionId is > 0) throw new InvalidOperationException("Transactional customer creation requires sales-region assignment after CRM conversion.");
+	}
+
 	public async Task<Customer> SaveAsync(Customer customer, CancellationToken cancellationToken = default)
 	{
 		_authorization.RequirePermission(customer.Id == 0 ? ApplicationPermission.CustomersCreate : ApplicationPermission.CustomersEdit);

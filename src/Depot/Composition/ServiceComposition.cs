@@ -63,6 +63,7 @@ internal sealed class ServiceComposition
 		SalesTimeline = new SalesTimelineService(repositories.SalesTimeline, PurchaseOrderHistory, Authorization);
 		SalesOrders = new SalesOrderService(database.TransactionRunner, repositories.SalesOrders, repositories.Customers, repositories.Items, repositories.Inventories, repositories.InventoryReservations, repositories.StockMovements, repositories.Audit, audit, Authorization, Notifications, ItemTraceability, SalesPricing, ApprovalPolicies);
 		SalesQuotes = new SalesQuoteService(repositories.SalesQuotes, repositories.Customers, SalesOrders, audit, Authorization, SalesPricing);
+		SalesCrm = new SalesCrmService(database.TransactionRunner, repositories.SalesCrm, repositories.Customers, repositories.Audit, audit, Customers, SalesQuotes, Authorization);
 		CustomerReturns = new CustomerReturnService(database.TransactionRunner, repositories.CustomerReturns, repositories.Shipments, repositories.StockMovements, repositories.Audit, audit, Authorization, Notifications, ItemTraceability);
 		SalesCreditNotes = new SalesCreditNoteService(database.TransactionRunner, repositories.SalesCreditNotes, repositories.SalesInvoices, repositories.Audit, audit, Authorization, Notifications, AccountsReceivable);
 		Shipments = new ShipmentService(database.TransactionRunner, repositories.Shipments, repositories.SalesOrders, repositories.InventoryReservations, repositories.Inventories, repositories.StockMovements, repositories.SalesInvoices, CustomerReturns, repositories.Audit, audit, Authorization, Notifications, ItemTraceability, InventoryAccounting);
@@ -87,11 +88,12 @@ internal sealed class ServiceComposition
 		Reports = new ReportService(Stock, Authorization);
 		var inventoryManagement = new InventoryManagementService(repositories.Inventories, audit);
 		Import = new ImportService(repositories.Items, Items, Purposes, Warehouses, StorageLocations, inventoryManagement, Movements, Authorization);
-		Sales = new SalesServices(Customers, SalesPricing, SalesTimeline, SalesOrders, SalesQuotes, Shipments, ShipmentPacking, SalesInvoices, CustomerReturns, SalesCreditNotes, Items, Authorization, SalesDocuments, SalesEmail, SalesInvoiceFinalizations, ItemCosts, PriceListGeneration);
+		Sales = new SalesServices(Customers, SalesPricing, SalesTimeline, SalesOrders, SalesQuotes, SalesCrm, Shipments, ShipmentPacking, SalesInvoices, CustomerReturns, SalesCreditNotes, Items, Authorization, SalesDocuments, SalesEmail, SalesInvoiceFinalizations, ItemCosts, PriceListGeneration);
 		MyWork = new MyWorkService(Authorization,
 		[
 			new PurchasingMyWorkProvider(PurchaseOrders, PurchaseOrderApprovals, repositories.MyWork, Authorization, ApprovalPolicies),
 			new SalesMyWorkProvider(SalesOrders, Shipments, repositories.MyWork, Authorization, ApprovalPolicies),
+			new SalesCrmMyWorkProvider(SalesCrm),
 			new InventoryCountMyWorkProvider(repositories.MyWork, Authorization),
 			new ReceivablesMyWorkProvider(AccountsReceivable, Authorization),
 			new PayablesMyWorkProvider(AccountsPayable, repositories.MyWork, Authorization, ApprovalPolicies),
@@ -103,6 +105,7 @@ internal sealed class ServiceComposition
 			Dashboard,
 			SalesQuotes,
 			SalesOrders,
+			SalesCrm,
 			PurchaseOrders,
 			PurchaseOrderApprovals,
 			SupplierReturns,
@@ -125,6 +128,7 @@ internal sealed class ServiceComposition
 			new SupplierGlobalSearchProvider(repositories.GlobalSearch, Authorization),
 			new PurchaseOrderGlobalSearchProvider(repositories.GlobalSearch, Authorization),
 			new SalesGlobalSearchProvider(repositories.GlobalSearch, Authorization),
+			new SalesCrmGlobalSearchProvider(SalesCrm, Authorization),
 			new FinanceJournalGlobalSearchProvider(repositories.GlobalSearch, Authorization)
 		]);
 	}
@@ -178,6 +182,7 @@ internal sealed class ServiceComposition
 	public SalesTimelineService SalesTimeline { get; }
 	public SalesOrderService SalesOrders { get; }
 	public SalesQuoteService SalesQuotes { get; }
+	public SalesCrmService SalesCrm { get; }
 	public ShipmentService Shipments { get; }
 	public ShipmentPackingService ShipmentPacking { get; }
 	public SalesInvoiceService SalesInvoices { get; }

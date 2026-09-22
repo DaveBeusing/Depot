@@ -105,7 +105,7 @@ Current baseline:
 
 - Application: **0.15.x-preview**
 - Core database schema: **30**
-- Sales feature schema: **14**
+- Sales feature schema: **15**
 - Finance feature schema: **9**
 - User Sessions feature schema: **3**
 - Security Events feature schema: **3**
@@ -113,11 +113,11 @@ Current baseline:
 - Document Templates feature schema: **1**
 - Enterprise Identity feature schema: **2**
 - Approval Policies feature schema: **1**
-- Help manifest: **1.23**
+- Help manifest: **1.24**
 
 `Directory.Build.props` is authoritative for the exact application patch/version. The documentation baseline intentionally records the development line instead of duplicating the moving preview patch number.
 
-Sales schema 11 introduced the provider-equivalent active-reservation uniqueness invariant, schema 12 introduced Advanced Pricing persistence, schema 13 adds the bounded XRechnung finalization/evidence contract, and schema 14 adds immutable ZUGFeRD 2.5.2 / Factur-X 1.09.2 XRECHNUNG-profile PDF/A-3B artifacts. These feature migrations do not increment Core schema 30.
+Sales schema 11 introduced the provider-equivalent active-reservation uniqueness invariant, schema 12 introduced Advanced Pricing persistence, schema 13 adds the bounded XRechnung finalization/evidence contract, and schema 14 adds immutable ZUGFeRD 2.5.2 / Factur-X 1.09.2 XRECHNUNG-profile PDF/A-3B artifacts, and schema 15 adds the ERP-native Sales CRM persistence for Leads, Opportunities, Stages and Activities. These feature migrations do not increment Core schema 30.
 
 Configurable approvals use a dedicated bounded [Approval Policies](docs/ApprovalPolicies.md) feature schema. Policies centralize deterministic routing and immutable stage snapshots for Purchase Orders, Sales Orders, AP match exceptions and payment proposals while domain services remain authoritative for final business state.
 
@@ -163,7 +163,7 @@ Security and compliance work is documented transparently rather than presented a
 
 ## Offline Help
 
-Embedded Help manifest **1.23** includes contextual Sales, Finance, User Sessions and Security Center guidance. Help visibility follows central permissions and never grants business access.
+Embedded Help manifest **1.24** includes contextual Sales, Finance, User Sessions and Security Center guidance. Help visibility follows central permissions and never grants business access.
 
 See the [Help Center documentation](docs/HelpCenter.md).
 

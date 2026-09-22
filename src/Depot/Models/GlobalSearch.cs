@@ -11,7 +11,9 @@ public enum GlobalSearchResultKind
 	SalesOrder = 4,
 	PurchaseOrder = 5,
 	Invoice = 6,
-	JournalEntry = 7
+	JournalEntry = 7,
+	Lead = 8,
+	Opportunity = 9
 }
 
 public sealed record GlobalSearchResult(

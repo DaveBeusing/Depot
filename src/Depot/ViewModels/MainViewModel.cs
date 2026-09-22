@@ -52,6 +52,8 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 	private readonly Lazy<PurchaseOrderApprovalsViewModel> _purchaseOrderApprovals;
 	private readonly Lazy<SalesViewModel> _salesSearch;
 	private readonly Lazy<SalesOverviewViewModel> _salesOverview;
+	private readonly Lazy<SalesLeadsViewModel> _salesLeads;
+	private readonly Lazy<SalesOpportunitiesViewModel> _salesOpportunities;
 	private readonly Lazy<SalesQuotesViewModel> _salesQuotes;
 	private readonly Lazy<SalesPricingViewModel> _salesPricing;
 	private readonly Lazy<CustomersViewModel> _salesCustomers;
@@ -191,6 +193,8 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 			return workspace;
 		});
 		_salesOverview = new(() => new SalesOverviewViewModel(_salesSearch.Value));
+		_salesLeads = new(() => new SalesLeadsViewModel(salesServices.Crm, salesServices.Customers));
+		_salesOpportunities = new(() => new SalesOpportunitiesViewModel(salesServices.Crm, salesServices.Customers, async (_, token) => await this.NavigateToRouteAsync(ShellRoutes.Sales.Quotes, token)));
 		_salesQuotes = new(() => new SalesQuotesViewModel(salesServices.Quotes, salesServices.Pricing, salesServices.Customers, salesServices.Items, fileDialogService, salesServices.Documents));
 		_salesPricing = new(() => new SalesPricingViewModel(salesServices.Pricing, salesServices.Customers, salesServices.Items, categoryService, manufacturerService, salesServices.PriceListGeneration));
 		_salesCustomers = new(() => new CustomersViewModel(_salesSearch.Value, salesServices.Customers, salesServices.Pricing));
@@ -247,6 +251,8 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 	public PurchaseOrderApprovalsViewModel PurchaseOrderApprovalsViewModel => _purchaseOrderApprovals.Value;
 	public SalesViewModel SalesViewModel => _salesSearch.Value;
 	public SalesOverviewViewModel SalesOverviewViewModel => _salesOverview.Value;
+	public SalesLeadsViewModel SalesLeadsViewModel => _salesLeads.Value;
+	public SalesOpportunitiesViewModel SalesOpportunitiesViewModel => _salesOpportunities.Value;
 	public SalesQuotesViewModel SalesQuotesViewModel => _salesQuotes.Value;
 	public SalesPricingViewModel SalesPricingViewModel => _salesPricing.Value;
 	public CustomersViewModel CustomersViewModel => _salesCustomers.Value;
@@ -391,6 +397,15 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 			case MyWorkItemKind.Shipment:
 				await OpenSalesQuickItemAsync(new SalesQuickOpenItem(SalesQuickOpenKind.Shipment, item.EntityId, item.DisplayNumber, item.Context ?? string.Empty), cancellationToken);
 				break;
+			case MyWorkItemKind.SalesLeadActivity:
+				await this.NavigateToRouteAsync(ShellRoutes.Sales.Leads, cancellationToken);
+				await SalesLeadsViewModel.OpenAsync(item.EntityId, cancellationToken);
+				break;
+			case MyWorkItemKind.SalesOpportunityActivity:
+			case MyWorkItemKind.SalesOpportunityFollowUp:
+				await this.NavigateToRouteAsync(ShellRoutes.Sales.Opportunities, cancellationToken);
+				await SalesOpportunitiesViewModel.OpenAsync(item.EntityId, cancellationToken);
+				break;
 			case MyWorkItemKind.InventoryCount:
 				await this.NavigateToRouteAsync(route, cancellationToken);
 				await InventoryCountsViewModel.OpenCountAsync(item.EntityId, cancellationToken);
@@ -424,6 +439,14 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		var route = new ShellRoute(item.RouteId);
 		switch (item.Kind)
 		{
+			case CommercialRoleItemKind.SalesLead:
+				await this.NavigateToRouteAsync(ShellRoutes.Sales.Leads, cancellationToken);
+				await SalesLeadsViewModel.OpenAsync(item.EntityId, cancellationToken);
+				break;
+			case CommercialRoleItemKind.SalesOpportunity:
+				await this.NavigateToRouteAsync(ShellRoutes.Sales.Opportunities, cancellationToken);
+				await SalesOpportunitiesViewModel.OpenAsync(item.EntityId, cancellationToken);
+				break;
 			case CommercialRoleItemKind.Customer:
 				await OpenSalesQuickItemAsync(new SalesQuickOpenItem(SalesQuickOpenKind.Customer, item.EntityId, item.DisplayNumber, item.Context ?? string.Empty), cancellationToken);
 				break;
@@ -511,6 +534,14 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		ArgumentNullException.ThrowIfNull(action);
 		switch (action.ActionId)
 		{
+			case "sales.new-lead":
+				await this.NavigateToRouteAsync(ShellRoutes.Sales.Leads, cancellationToken);
+				SalesLeadsViewModel.NewLeadCommand.Execute(null);
+				break;
+			case "sales.new-opportunity":
+				await this.NavigateToRouteAsync(ShellRoutes.Sales.Opportunities, cancellationToken);
+				SalesOpportunitiesViewModel.NewOpportunityCommand.Execute(null);
+				break;
 			case "sales.new-customer":
 				await this.NavigateToRouteAsync(ShellRoutes.Sales.Customers, cancellationToken);
 				CustomersViewModel.Workspace.NewCustomerCommand.Execute(null);
@@ -602,7 +633,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		var inventoryPages = new List<SecondaryNavigationItem>();
 		AddPage(inventoryPages, ApplicationPermission.InventoryView, "Overview", () => _inventory.Value, (viewModel, token) => viewModel.LoadAsync(token), "inventory.overview"); AddPage(inventoryPages, ApplicationPermission.ItemsView, "Items", () => _items.Value, (viewModel, token) => viewModel.LoadItemsAsync(token), "inventory.items"); AddPage(inventoryPages, ApplicationPermission.StockMovementsView, "Movements", () => _movements.Value, (viewModel, token) => viewModel.LoadAsync(token), "inventory.movements"); AddModule("Inventory", Icons.Inventory, "Monitor stock, items, and immutable inventory movements.", inventoryPages);
 		var salesPages = new List<SecondaryNavigationItem>();
-		AddPage(salesPages, ApplicationPermission.SalesView, "Overview", () => _salesOverview.Value, (viewModel, token) => viewModel.LoadAsync(token), "sales.overview"); AddPage(salesPages, ApplicationPermission.SalesQuotesView, "Quotes", () => _salesQuotes.Value, (viewModel, token) => viewModel.LoadAsync(token), "sales.quotes"); AddPage(salesPages, ApplicationPermission.SalesPricingView, "Pricing", () => _salesPricing.Value, (viewModel, token) => viewModel.LoadAsync(token), "sales.pricing"); AddPage(salesPages, ApplicationPermission.CustomersView, "Customers", () => _salesCustomers.Value, (viewModel, token) => viewModel.LoadAsync(token), "sales.customers"); AddPage(salesPages, ApplicationPermission.SalesOrdersView, "Sales Orders", () => _salesOrders.Value, (viewModel, token) => viewModel.LoadAsync(token), "sales.orders"); AddPage(salesPages, ApplicationPermission.SalesInvoicesView, "Invoices", () => _salesInvoices.Value, (viewModel, token) => viewModel.LoadAsync(token), "sales.invoices"); AddModule("Sales", Icons.Sales, "Manage quotes, pricing, customers, sales orders, and invoicing.", salesPages);
+		AddPage(salesPages, ApplicationPermission.SalesView, "Overview", () => _salesOverview.Value, (viewModel, token) => viewModel.LoadAsync(token), "sales.overview"); AddPage(salesPages, ApplicationPermission.SalesCrmView, "Leads", () => _salesLeads.Value, (viewModel, token) => viewModel.LoadAsync(token), "sales.leads"); AddPage(salesPages, ApplicationPermission.SalesCrmView, "Opportunities", () => _salesOpportunities.Value, (viewModel, token) => viewModel.LoadAsync(token), "sales.opportunities"); AddPage(salesPages, ApplicationPermission.SalesQuotesView, "Quotes", () => _salesQuotes.Value, (viewModel, token) => viewModel.LoadAsync(token), "sales.quotes"); AddPage(salesPages, ApplicationPermission.SalesPricingView, "Pricing", () => _salesPricing.Value, (viewModel, token) => viewModel.LoadAsync(token), "sales.pricing"); AddPage(salesPages, ApplicationPermission.CustomersView, "Customers", () => _salesCustomers.Value, (viewModel, token) => viewModel.LoadAsync(token), "sales.customers"); AddPage(salesPages, ApplicationPermission.SalesOrdersView, "Sales Orders", () => _salesOrders.Value, (viewModel, token) => viewModel.LoadAsync(token), "sales.orders"); AddPage(salesPages, ApplicationPermission.SalesInvoicesView, "Invoices", () => _salesInvoices.Value, (viewModel, token) => viewModel.LoadAsync(token), "sales.invoices"); AddModule("Sales", Icons.Sales, "Manage leads, opportunities, quotes, pricing, customers, sales orders, and invoicing.", salesPages);
 		if (_authorization.HasPermission(ApplicationPermission.PurchasingView)) { var purchasingPages = new List<SecondaryNavigationItem>(); AddPage(purchasingPages, ApplicationPermission.PurchaseOrdersView, "Overview", () => _purchaseOverview.Value, (viewModel, token) => viewModel.LoadAsync(token), "purchasing.overview"); AddPage(purchasingPages, ApplicationPermission.PurchaseOrdersView, "Purchase Orders", () => _purchaseOrdersPage.Value, (viewModel, token) => viewModel.LoadAsync(token), "purchasing.purchase-orders", () => _procurement.Value.Section = ProcurementSection.PurchaseOrders); AddPage(purchasingPages, ApplicationPermission.GoodsReceiptsView, "Goods Receipts", () => _goodsReceiptsPage.Value, (viewModel, token) => viewModel.LoadAsync(token), "purchasing.goods-receipts", () => _procurement.Value.Section = ProcurementSection.GoodsReceipts); AddPage(purchasingPages, ApplicationPermission.SupplierReturnsView, "Supplier Returns", () => _supplierReturns.Value, (viewModel, token) => viewModel.LoadAsync(token), "purchasing.supplier-returns"); AddModule("Purchasing", Icons.Purchasing, "Manage orders, supplier deliveries, and returns.", purchasingPages); }
 		var warehousePages = new List<SecondaryNavigationItem>();
 		AddPage(warehousePages, ApplicationPermission.StockTransfersView, "Transfers", () => _stockTransfers.Value, (viewModel, token) => viewModel.LoadAsync(token), "warehouse.transfers"); AddPage(warehousePages, ApplicationPermission.InventoryCountsView, "Inventory Counts", () => _inventoryCounts.Value, (viewModel, token) => viewModel.LoadAsync(token), "warehouse.inventory-counts"); AddPage(warehousePages, ApplicationPermission.MaterialIssuesView, "Material Issues", () => _materialIssues.Value, (viewModel, token) => viewModel.LoadAsync(token), "warehouse.material-issues"); AddPage(warehousePages, ApplicationPermission.MaterialReturnsView, "Material Returns", () => _materialReturns.Value, (viewModel, token) => viewModel.LoadAsync(token), "warehouse.material-returns"); AddPage(warehousePages, ApplicationPermission.ShipmentsView, "Shipping", () => _salesShipping.Value, (viewModel, token) => viewModel.LoadAsync(token), "sales.shipping"); AddModule("Warehouse", Icons.Warehouse, "Execute controlled warehouse operations, fulfillment, shipping, and physical stock workflows.", warehousePages);

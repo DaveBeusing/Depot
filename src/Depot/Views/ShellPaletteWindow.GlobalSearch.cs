@@ -144,6 +144,7 @@ public partial class ShellPaletteWindow
 			GlobalSearchResultKind.PurchaseOrder => PurchaseOrderIcon,
 			GlobalSearchResultKind.Invoice => InvoiceIcon,
 			GlobalSearchResultKind.JournalEntry => JournalIcon,
+			GlobalSearchResultKind.Lead or GlobalSearchResultKind.Opportunity => SalesOrderIcon,
 			_ => WorkspaceIcon
 		};
 		return new ShellPaletteEntry(
@@ -196,6 +197,16 @@ public partial class ShellPaletteWindow
 
 			case GlobalSearchResultKind.JournalEntry:
 				await _viewModel.NavigateToRouteAsync(new ShellRoute("finance.reporting"));
+				break;
+
+			case GlobalSearchResultKind.Lead:
+				await _viewModel.NavigateToRouteAsync(ShellRoutes.Sales.Leads);
+				await _viewModel.SalesLeadsViewModel.OpenAsync(result.EntityId);
+				break;
+
+			case GlobalSearchResultKind.Opportunity:
+				await _viewModel.NavigateToRouteAsync(ShellRoutes.Sales.Opportunities);
+				await _viewModel.SalesOpportunitiesViewModel.OpenAsync(result.EntityId);
 				break;
 		}
 	}
