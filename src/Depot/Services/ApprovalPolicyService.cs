@@ -281,26 +281,87 @@ public sealed class ApprovalPolicyService
 		var subjectId = NormalizeSubjectId(attributes.SubjectId);
 		var existing = await _policies.GetPendingInstanceAsync(attributes.SubjectKind, subjectId, cancellationToken);
 		if (existing is not null) return existing;
-
-		var preview = await ResolveInternalAsync(attributes with { SubjectId = subjectId }, UtcNow(), cancellationToken);
-		var snapshot = preview.Snapshot;
-		var instance = new ApprovalInstance
-		{
-			Id = snapshot.InstanceId,
-			SubjectKind = snapshot.SubjectKind,
-			SubjectId = snapshot.SubjectId,
-			PolicyId = snapshot.PolicyId,
-			PolicyVersion = snapshot.PolicyVersion,
-			PolicyName = snapshot.PolicyName,
-			Snapshot = snapshot,
-			CurrentStageOrder = 1,
-			Status = ApprovalInstanceStatus.Pending,
-			Version = 1,
-			CreatedAtUtc = snapshot.CreatedAtUtc
-		};
+		var snapshot = await ResolveSnapshotAsync(attributes with { SubjectId = subjectId }, cancellationToken);
+		var instance = CreateInstance(snapshot);
 		await _policies.CreateInstanceAsync(instance, cancellationToken);
 		return instance;
 	}
+
+	internal async Task<ApprovalInstance> StartResolvedAsync(
+		Depot.Data.DatabaseTransactionContext transaction,
+		ApprovalPlanSnapshot snapshot,
+		CancellationToken cancellationToken)
+	{
+		ArgumentNullException.ThrowIfNull(transaction);
+		ArgumentNullException.ThrowIfNull(snapshot);
+		var existing = await _policies.GetPendingInstanceAsync(transaction, snapshot.SubjectKind, NormalizeSubjectId(snapshot.SubjectId), cancellationToken);
+		if (existing is not null) return existing;
+		var instance = CreateInstance(snapshot);
+		await _policies.CreateInstanceAsync(transaction, instance, cancellationToken);
+		return instance;
+	}
+
+	internal async Task<ApprovalPreparedDecision> PrepareDecisionAsync(
+		ApprovalSubjectKind subjectKind,
+		string subjectId,
+		ApprovalDecisionKind decision,
+		string? comment,
+		CancellationToken cancellationToken)
+	{
+		if (decision is not (ApprovalDecisionKind.Approved or ApprovalDecisionKind.Rejected))
+			throw new ArgumentOutOfRangeException(nameof(decision));
+		var user = CurrentUser();
+		var instance = await _policies.GetPendingInstanceAsync(subjectKind, NormalizeSubjectId(subjectId), cancellationToken)
+			?? throw new InvalidOperationException($"No pending approval instance exists for {subjectKind} subject '{subjectId}'.");
+		_authorization.RequirePermission(RequiredDecisionPermission(instance.SubjectKind));
+		if (comment?.Trim().Length > 2000)
+			throw new ArgumentException("Approval comments must not exceed 2000 characters.", nameof(comment));
+		var stage = instance.Snapshot.Stages.SingleOrDefault(value => value.Order == instance.CurrentStageOrder)
+			?? throw new InvalidOperationException("The approval snapshot does not contain the expected current stage.");
+		if (!await IsEligibleAsync(user, instance.SubjectKind, stage, UtcNow(), cancellationToken))
+			throw new UnauthorizedAccessException("The current user is not an eligible approver for the current approval stage.");
+
+		var expectedVersion = instance.Version;
+		var isFinalApproval = false;
+		if (decision == ApprovalDecisionKind.Rejected)
+		{
+			instance.Status = ApprovalInstanceStatus.Rejected;
+		}
+		else
+		{
+			var next = instance.Snapshot.Stages.Where(value => value.Order > stage.Order).OrderBy(value => value.Order).FirstOrDefault();
+			if (next is null)
+			{
+				instance.Status = ApprovalInstanceStatus.Approved;
+				isFinalApproval = true;
+			}
+			else instance.CurrentStageOrder = next.Order;
+		}
+		instance.Version++;
+		var evidence = new ApprovalDecisionEvidence
+		{
+			Id = Guid.NewGuid(),
+			InstanceId = instance.Id,
+			StageOrder = stage.Order,
+			Decision = decision,
+			UserId = user.Id,
+			UserDisplay = user.DisplayName,
+			Comment = NormalizeOptional(comment),
+			DecidedAtUtc = UtcNow()
+		};
+		return new ApprovalPreparedDecision(instance, expectedVersion, evidence, isFinalApproval);
+	}
+
+	internal Task ApplyPreparedDecisionAsync(
+		Depot.Data.DatabaseTransactionContext transaction,
+		ApprovalPreparedDecision prepared,
+		CancellationToken cancellationToken) =>
+		_policies.RecordDecisionAsync(transaction, prepared.Instance, prepared.ExpectedVersion, prepared.Evidence, cancellationToken);
+
+	internal Task ApplyPreparedDecisionAsync(
+		ApprovalPreparedDecision prepared,
+		CancellationToken cancellationToken) =>
+		_policies.RecordDecisionAsync(prepared.Instance, prepared.ExpectedVersion, prepared.Evidence, cancellationToken);
 
 	public Task<ApprovalInstance?> GetPendingInstanceAsync(
 		ApprovalSubjectKind subjectKind,
@@ -326,48 +387,12 @@ public sealed class ApprovalPolicyService
 		string? comment,
 		CancellationToken cancellationToken)
 	{
-		var user = CurrentUser();
-		var instance = await GetInstanceRequiredAsync(instanceId, cancellationToken);
-		_authorization.RequirePermission(RequiredDecisionPermission(instance.SubjectKind));
-		if (instance.Status != ApprovalInstanceStatus.Pending)
-			throw new InvalidOperationException("The approval instance is no longer pending.");
-		if (comment?.Trim().Length > 2000)
-			throw new ArgumentException("Approval comments must not exceed 2000 characters.", nameof(comment));
-
-		var stage = instance.Snapshot.Stages.SingleOrDefault(value => value.Order == instance.CurrentStageOrder)
-			?? throw new InvalidOperationException("The approval snapshot does not contain the expected current stage.");
-		if (!await IsEligibleAsync(user, instance.SubjectKind, stage, UtcNow(), cancellationToken))
-			throw new UnauthorizedAccessException("The current user is not an eligible approver for the current approval stage.");
-
-		var beforeVersion = instance.Version;
-		if (decision == ApprovalDecisionKind.Rejected)
-		{
-			instance.Status = ApprovalInstanceStatus.Rejected;
-		}
-		else
-		{
-			var next = instance.Snapshot.Stages
-				.Where(value => value.Order > instance.CurrentStageOrder)
-				.OrderBy(value => value.Order)
-				.FirstOrDefault();
-			if (next is null) instance.Status = ApprovalInstanceStatus.Approved;
-			else instance.CurrentStageOrder = next.Order;
-		}
-		instance.Version++;
-
-		var evidence = new ApprovalDecisionEvidence
-		{
-			Id = Guid.NewGuid(),
-			InstanceId = instance.Id,
-			StageOrder = stage.Order,
-			Decision = decision,
-			UserId = user.Id,
-			UserDisplay = user.DisplayName,
-			Comment = NormalizeOptional(comment),
-			DecidedAtUtc = UtcNow()
-		};
-		await _policies.RecordDecisionAsync(instance, beforeVersion, evidence, cancellationToken);
-		return instance;
+		var current = await GetInstanceRequiredAsync(instanceId, cancellationToken);
+		var prepared = await PrepareDecisionAsync(current.SubjectKind, current.SubjectId, decision, comment, cancellationToken);
+		if (prepared.Instance.Id != instanceId)
+			throw new ConcurrencyConflictException("approval instance");
+		await ApplyPreparedDecisionAsync(prepared, cancellationToken);
+		return prepared.Instance;
 	}
 
 	private async Task<ApprovalResolutionPreview> ResolveInternalAsync(
@@ -470,8 +495,8 @@ public sealed class ApprovalPolicyService
 				ApprovalConditionKind.MaximumAmount => attributes.Amount is not null && attributes.Amount <= condition.DecimalValue,
 				ApprovalConditionKind.Currency => !string.IsNullOrWhiteSpace(attributes.Currency) &&
 					string.Equals(attributes.Currency, condition.StringValue, StringComparison.OrdinalIgnoreCase),
-				ApprovalConditionKind.LegalEntityId => attributes.LegalEntityId is not null && attributes.LegalEntityId == condition.LongValue,
-				ApprovalConditionKind.FinanceBookId => attributes.FinanceBookId is not null && attributes.FinanceBookId == condition.LongValue,
+				ApprovalConditionKind.LegalEntityId => attributes.LegalEntityId is not null && attributes.LegalEntityId == condition.GuidValue,
+				ApprovalConditionKind.AccountingBookId => attributes.AccountingBookId is not null && attributes.FinanceBookId == condition.LongValue,
 				_ => false
 			};
 			if (!matches) return false;
@@ -525,6 +550,21 @@ public sealed class ApprovalPolicyService
 	private async Task<ApprovalInstance> GetInstanceRequiredAsync(Guid instanceId, CancellationToken cancellationToken) =>
 		await _policies.GetInstanceAsync(instanceId, cancellationToken)
 			?? throw new KeyNotFoundException("Approval instance was not found.");
+
+	private static ApprovalInstance CreateInstance(ApprovalPlanSnapshot snapshot) => new()
+	{
+		Id = snapshot.InstanceId,
+		SubjectKind = snapshot.SubjectKind,
+		SubjectId = snapshot.SubjectId,
+		PolicyId = snapshot.PolicyId,
+		PolicyVersion = snapshot.PolicyVersion,
+		PolicyName = snapshot.PolicyName,
+		Snapshot = snapshot,
+		CurrentStageOrder = 1,
+		Status = ApprovalInstanceStatus.Pending,
+		Version = 1,
+		CreatedAtUtc = snapshot.CreatedAtUtc
+	};
 
 	private User CurrentUser() =>
 		_authorization.CurrentUser is { IsActive: true } user
@@ -593,7 +633,7 @@ public sealed class ApprovalPolicyService
 			Kind = value.Kind,
 			DecimalValue = value.DecimalValue,
 			StringValue = value.StringValue,
-			LongValue = value.LongValue
+			GuidValue = value.GuidValue
 		}).ToList(),
 		Stages = source.Stages.Select(value => new ApprovalPolicyStage
 		{
@@ -610,3 +650,10 @@ public sealed class ApprovalPolicyService
 		UserId = source.UserId
 	};
 }
+
+
+internal sealed record ApprovalPreparedDecision(
+	ApprovalInstance Instance,
+	int ExpectedVersion,
+	ApprovalDecisionEvidence Evidence,
+	bool IsFinalApproval);

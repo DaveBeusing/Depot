@@ -17,7 +17,7 @@ public enum ApprovalConditionKind
 	MaximumAmount = 2,
 	Currency = 3,
 	LegalEntityId = 4,
-	FinanceBookId = 5
+	AccountingBookId = 5
 }
 
 public enum ApprovalApproverKind
@@ -69,7 +69,7 @@ public sealed class ApprovalPolicyCondition
 	public ApprovalConditionKind Kind { get; set; }
 	public decimal? DecimalValue { get; set; }
 	public string? StringValue { get; set; }
-	public long? LongValue { get; set; }
+	public Guid? GuidValue { get; set; }
 }
 
 public sealed class ApprovalPolicyStage
@@ -91,8 +91,8 @@ public sealed record ApprovalSubjectAttributes(
 	string SubjectId,
 	decimal? Amount = null,
 	string? Currency = null,
-	long? LegalEntityId = null,
-	long? FinanceBookId = null);
+	Guid? LegalEntityId = null,
+	Guid? AccountingBookId = null);
 
 public sealed class ApprovalPlanSnapshot
 {

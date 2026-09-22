@@ -21,6 +21,7 @@ public static class ApprovalPolicySchemaMigration
 		if (version == 0)
 		{
 			ApprovalPolicySchema.Ensure(connectionFactory);
+			ApprovalPolicyDefaultSeeder.Seed(connectionFactory);
 			WriteVersion(connectionFactory, CurrentVersion);
 			version = CurrentVersion;
 		}

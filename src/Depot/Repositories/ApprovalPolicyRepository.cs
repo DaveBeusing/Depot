@@ -124,6 +124,20 @@ public sealed class ApprovalPolicyRepository : DatabaseRepository
 			cancellationToken,
 			Parameter("$InstanceId", instanceId.ToString("D")));
 
+	internal Task<ApprovalInstance?> GetPendingInstanceAsync(Depot.Data.DatabaseTransactionContext transaction, ApprovalSubjectKind subjectKind, string subjectId, CancellationToken cancellationToken) =>
+		transaction.Session.QuerySingleOrDefaultAsync(
+			"""
+			SELECT InstanceId,SubjectKind,SubjectId,PolicyId,PolicyVersion,PolicyName,SnapshotJson,CurrentStageOrder,Status,Version,CreatedAtUtc
+			FROM ApprovalInstances
+			WHERE SubjectKind=$SubjectKind AND SubjectId=$SubjectId AND Status=$Status
+			ORDER BY CreatedAtUtc DESC;
+			""",
+			ReadInstance,
+			cancellationToken,
+			Parameter("$SubjectKind", (int)subjectKind),
+			Parameter("$SubjectId", subjectId),
+			Parameter("$Status", (int)ApprovalInstanceStatus.Pending));
+
 	public Task<ApprovalInstance?> GetPendingInstanceAsync(ApprovalSubjectKind subjectKind, string subjectId, CancellationToken cancellationToken = default) =>
 		Database.QuerySingleOrDefaultAsync(
 			"""
@@ -137,6 +151,19 @@ public sealed class ApprovalPolicyRepository : DatabaseRepository
 			Parameter("$SubjectKind", (int)subjectKind),
 			Parameter("$SubjectId", subjectId),
 			Parameter("$Status", (int)ApprovalInstanceStatus.Pending));
+
+	internal async Task CreateInstanceAsync(Depot.Data.DatabaseTransactionContext transaction, ApprovalInstance instance, CancellationToken cancellationToken)
+	{
+		var affected = await transaction.Session.ExecuteAsync(
+			"""
+			INSERT INTO ApprovalInstances
+			(InstanceId,SubjectKind,SubjectId,PolicyId,PolicyVersion,PolicyName,SnapshotJson,CurrentStageOrder,Status,Version,CreatedAtUtc)
+			VALUES ($InstanceId,$SubjectKind,$SubjectId,$PolicyId,$PolicyVersion,$PolicyName,$SnapshotJson,$CurrentStageOrder,$Status,$Version,$CreatedAtUtc);
+			""",
+			cancellationToken,
+			InstanceParameters(instance));
+		if (affected != 1) throw new InvalidOperationException("The approval instance was not created.");
+	}
 
 	public async Task CreateInstanceAsync(ApprovalInstance instance, CancellationToken cancellationToken = default)
 	{
@@ -161,17 +188,27 @@ public sealed class ApprovalPolicyRepository : DatabaseRepository
 			cancellationToken,
 			Parameter("$InstanceId", instanceId.ToString("D")));
 
+	internal Task RecordDecisionAsync(Depot.Data.DatabaseTransactionContext transaction, ApprovalInstance updatedInstance, int expectedVersion, ApprovalDecisionEvidence decision, CancellationToken cancellationToken) =>
+		RecordDecisionCoreAsync(transaction.Session, updatedInstance, expectedVersion, decision, cancellationToken);
+
 	public async Task RecordDecisionAsync(ApprovalInstance updatedInstance, int expectedVersion, ApprovalDecisionEvidence decision, CancellationToken cancellationToken = default)
 	{
 		await Database.ExecuteInWriteTransactionAsync(async (session, token) =>
 		{
-			var inserted = await session.ExecuteAsync(
+			await RecordDecisionCoreAsync(session, updatedInstance, expectedVersion, decision, token);
+			return 0;
+		}, cancellationToken);
+	}
+
+	private async Task RecordDecisionCoreAsync(Depot.Data.DatabaseSession session, ApprovalInstance updatedInstance, int expectedVersion, ApprovalDecisionEvidence decision, CancellationToken cancellationToken)
+	{
+		var inserted = await session.ExecuteAsync(
 				"""
 				INSERT INTO ApprovalDecisions
 				(DecisionId,InstanceId,StageOrder,Decision,UserId,UserDisplay,Comment,DecidedAtUtc)
 				VALUES ($DecisionId,$InstanceId,$StageOrder,$Decision,$UserId,$UserDisplay,$Comment,$DecidedAtUtc);
 				""",
-				token,
+				cancellationToken,
 				Parameter("$DecisionId", decision.Id.ToString("D")),
 				Parameter("$InstanceId", decision.InstanceId.ToString("D")),
 				Parameter("$StageOrder", decision.StageOrder),
@@ -189,11 +226,9 @@ public sealed class ApprovalPolicyRepository : DatabaseRepository
 					CurrentStageOrder=$CurrentStageOrder,Status=$Status,Version=$Version
 				WHERE InstanceId=$InstanceId AND Version=$ExpectedVersion;
 				""",
-				token,
+				cancellationToken,
 				updateParameters);
-			if (updated != 1) throw new ConcurrencyConflictException("approval decision");
-			return 0;
-		}, cancellationToken);
+		if (updated != 1) throw new ConcurrencyConflictException("approval decision");
 	}
 
 	public Task<IReadOnlyList<ApprovalDelegation>> GetEffectiveDelegationsAsync(long fromUserId, ApprovalSubjectKind subjectKind, DateTime atUtc, CancellationToken cancellationToken = default) =>
