@@ -255,7 +255,7 @@ public sealed class SalesCrmService
 		}, cancellationToken);
 	}
 
-	public async Task<SalesQuote> CreateQuoteAsync(long opportunityId, long version, SalesQuote quote, CancellationToken cancellationToken = default)
+	public async Task<SalesQuote> CreateQuoteAsync(long opportunityId, long version, CancellationToken cancellationToken = default)
 	{
 		RequireRecordManagement();
 		var opportunity = await GetOpportunityAsync(opportunityId, cancellationToken) ?? throw new InvalidOperationException("Opportunity was not found.");
@@ -264,15 +264,12 @@ public sealed class SalesCrmService
 		if (opportunity.LinkedSalesQuoteId is not null) throw new InvalidOperationException("The opportunity already has a linked quote.");
 		RequireOwnershipAuthority(opportunity.OwnerUserId, RequireUser().Id);
 
-		quote.Id = 0;
-		quote.CustomerId = opportunity.CustomerId;
-		quote.Currency = opportunity.Currency;
-		quote.Status = SalesQuoteStatus.Draft;
-		quote.CustomerReference = string.IsNullOrWhiteSpace(quote.CustomerReference) ? opportunity.OpportunityNumber : quote.CustomerReference;
-		quote.Notes = string.IsNullOrWhiteSpace(quote.Notes)
-			? $"Created from opportunity {opportunity.OpportunityNumber}."
-			: $"Created from opportunity {opportunity.OpportunityNumber}. {quote.Notes.Trim()}";
-		var savedQuote = await _quotes.SaveDraftAsync(quote, cancellationToken);
+		var savedQuote = await _quotes.CreateDraftAsync(
+			opportunity.CustomerId,
+			opportunity.Currency,
+			opportunity.OpportunityNumber,
+			$"Created from opportunity {opportunity.OpportunityNumber}.",
+			cancellationToken);
 
 		await _transactions.ExecuteAsync(async (transaction, token) =>
 		{

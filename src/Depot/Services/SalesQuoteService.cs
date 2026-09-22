@@ -29,19 +29,40 @@ public sealed class SalesQuoteService
 	public Task<PageResult<SalesQuote>> SearchAsync(string? searchText,SalesQuoteStatus? status,int pageNumber=1,int pageSize=100,CancellationToken token=default){_authorization.RequirePermission(ApplicationPermission.SalesQuotesView);return _quotes.SearchAsync(searchText,status,pageNumber,pageSize,token);}
 	public Task<SalesQuote?> GetByIdAsync(long id,CancellationToken token=default){_authorization.RequirePermission(ApplicationPermission.SalesQuotesView);return _quotes.GetByIdAsync(id,token);}
 
-	public async Task<SalesQuote> SaveDraftAsync(SalesQuote quote,CancellationToken token=default)
+	public Task<SalesQuote> SaveDraftAsync(SalesQuote quote,CancellationToken token=default) =>
+		SaveDraftCoreAsync(quote, allowEmptyLines: false, token);
+
+	public Task<SalesQuote> CreateDraftAsync(long customerId,string? currency,string? customerReference,string? notes,CancellationToken token=default) =>
+		SaveDraftCoreAsync(
+			new SalesQuote
+			{
+				CustomerId=customerId,
+				Currency=string.IsNullOrWhiteSpace(currency)?"EUR":currency.Trim().ToUpperInvariant(),
+				CustomerReference=customerReference,
+				Notes=notes,
+				QuoteDate=DateTime.Today,
+				ValidUntil=DateTime.Today.AddDays(30),
+				Status=SalesQuoteStatus.Draft
+			},
+			allowEmptyLines: true,
+			token);
+
+	private async Task<SalesQuote> SaveDraftCoreAsync(SalesQuote quote,bool allowEmptyLines,CancellationToken token)
 	{
-		_authorization.RequirePermission(quote.Id==0?ApplicationPermission.SalesQuotesCreate:ApplicationPermission.SalesQuotesEdit);
-		if(quote.Id!=0&&quote.Status!=SalesQuoteStatus.Draft)throw new InvalidOperationException("Only draft quotes can be edited.");
+		var isNew=quote.Id==0;
+		_authorization.RequirePermission(isNew?ApplicationPermission.SalesQuotesCreate:ApplicationPermission.SalesQuotesEdit);
+		if(!isNew&&quote.Status!=SalesQuoteStatus.Draft)throw new InvalidOperationException("Only draft quotes can be edited.");
 		if(_pricing is not null)await RefreshAutomaticPricesAsync(quote,token);
-		if(quote.CustomerId<=0||quote.Lines.Count==0||quote.Lines.Any(l=>l.Quantity<=0||l.UnitPrice<0))throw new InvalidOperationException("A quote requires a customer and at least one valid line.");
+		if(quote.CustomerId<=0||(!allowEmptyLines&&quote.Lines.Count==0)||quote.Lines.Any(l=>l.Quantity<=0||l.UnitPrice<0))throw new InvalidOperationException("A quote requires a customer and valid lines before it can be saved.");
 		var customer=await _customers.GetByIdAsync(quote.CustomerId,token)??throw new InvalidOperationException("Customer was not found.");
 		quote.BillingAddress??=customer.Addresses.FirstOrDefault(a=>a.Type==CustomerAddressType.Billing&&a.IsDefault)?.Address??customer.BillingAddress;
 		quote.ShippingAddress??=customer.Addresses.FirstOrDefault(a=>a.Type==CustomerAddressType.Shipping&&a.IsDefault)?.Address??customer.ShippingAddress;
 		quote.Currency=string.IsNullOrWhiteSpace(quote.Currency)?customer.Currency:quote.Currency.Trim().ToUpperInvariant();
 		if(quote.ValidUntil<quote.QuoteDate)throw new InvalidOperationException("Quote validity must not end before the quote date.");
-		if(quote.Id==0){quote.CreatedByUserId=RequireUser().Id;quote.CreatedAtUtc=DateTime.UtcNow;}
-		var saved=await _quotes.SaveDraftAsync(quote,token); await _audit.RecordUpdatedAsync(saved.Id,saved,saved,token); return saved;
+		if(isNew){quote.CreatedByUserId=RequireUser().Id;quote.CreatedAtUtc=DateTime.UtcNow;}
+		var saved=await _quotes.SaveDraftAsync(quote,token);
+		if(isNew)await _audit.RecordCreatedAsync(saved.Id,saved,token);else await _audit.RecordUpdatedAsync(saved.Id,saved,saved,token);
+		return saved;
 	}
 
 	public Task<SalesQuote> MarkSentAsync(long id,long version,CancellationToken token=default)=>ChangeStatusAsync(id,version,SalesQuoteStatus.Draft,SalesQuoteStatus.Sent,ApplicationPermission.SalesQuotesSend,token);
