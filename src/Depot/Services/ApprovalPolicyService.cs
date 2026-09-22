@@ -496,7 +496,7 @@ public sealed class ApprovalPolicyService
 				ApprovalConditionKind.Currency => !string.IsNullOrWhiteSpace(attributes.Currency) &&
 					string.Equals(attributes.Currency, condition.StringValue, StringComparison.OrdinalIgnoreCase),
 				ApprovalConditionKind.LegalEntityId => attributes.LegalEntityId is not null && attributes.LegalEntityId == condition.GuidValue,
-				ApprovalConditionKind.AccountingBookId => attributes.AccountingBookId is not null && attributes.FinanceBookId == condition.LongValue,
+				ApprovalConditionKind.AccountingBookId => attributes.AccountingBookId is not null && attributes.AccountingBookId == condition.GuidValue,
 				_ => false
 			};
 			if (!matches) return false;
@@ -515,7 +515,7 @@ public sealed class ApprovalPolicyService
 			return;
 		}
 		var financeSubject = subjectKind is ApprovalSubjectKind.AccountsPayableException or ApprovalSubjectKind.PaymentProposal;
-		if ((condition.Kind is ApprovalConditionKind.LegalEntityId or ApprovalConditionKind.FinanceBookId) && !financeSubject)
+		if ((condition.Kind is ApprovalConditionKind.LegalEntityId or ApprovalConditionKind.AccountingBookId) && !financeSubject)
 		{
 			issues.Add(new("condition.subject", $"Condition '{condition.Kind}' is not supported for '{subjectKind}'."));
 			return;
@@ -524,18 +524,18 @@ public sealed class ApprovalPolicyService
 		{
 			case ApprovalConditionKind.MinimumAmount:
 			case ApprovalConditionKind.MaximumAmount:
-				if (condition.DecimalValue is null || condition.DecimalValue < 0 || condition.StringValue is not null || condition.LongValue is not null)
+				if (condition.DecimalValue is null || condition.DecimalValue < 0 || condition.StringValue is not null || condition.GuidValue is not null)
 					issues.Add(new("condition.amount", $"Condition '{condition.Kind}' requires only a non-negative decimal value."));
 				break;
 			case ApprovalConditionKind.Currency:
 				var currency = condition.StringValue?.Trim();
-				if (currency is null || currency.Length != 3 || !currency.All(char.IsLetter) || condition.DecimalValue is not null || condition.LongValue is not null)
+				if (currency is null || currency.Length != 3 || !currency.All(char.IsLetter) || condition.DecimalValue is not null || condition.GuidValue is not null)
 					issues.Add(new("condition.currency", "Currency conditions require only a three-letter currency code."));
 				break;
 			case ApprovalConditionKind.LegalEntityId:
-			case ApprovalConditionKind.FinanceBookId:
-				if (condition.LongValue is not > 0 || condition.DecimalValue is not null || condition.StringValue is not null)
-					issues.Add(new("condition.selector", $"Condition '{condition.Kind}' requires only a positive identifier."));
+			case ApprovalConditionKind.AccountingBookId:
+				if (condition.GuidValue is null || condition.GuidValue == Guid.Empty || condition.DecimalValue is not null || condition.StringValue is not null)
+					issues.Add(new("condition.selector", $"Condition '{condition.Kind}' requires only a non-empty identifier."));
 				break;
 		}
 	}
