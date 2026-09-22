@@ -177,6 +177,50 @@ public static class ApprovalFlowProjectionService
 		};
 	}
 
+	public static ApprovalFlowProjection ProjectPolicyPreview(ApprovalResolutionPreview preview)
+	{
+		ArgumentNullException.ThrowIfNull(preview);
+		var kind = preview.Snapshot.SubjectKind switch
+		{
+			ApprovalSubjectKind.PurchaseOrder => WorkflowTimelineKind.PurchaseApproval,
+			ApprovalSubjectKind.SalesOrder => WorkflowTimelineKind.SalesApproval,
+			ApprovalSubjectKind.AccountsPayableException => WorkflowTimelineKind.SupplierApproval,
+			ApprovalSubjectKind.PaymentProposal => WorkflowTimelineKind.PaymentProposal,
+			_ => WorkflowTimelineKind.PurchaseApproval
+		};
+		var requiredPermission = preview.Snapshot.SubjectKind switch
+		{
+			ApprovalSubjectKind.PurchaseOrder => PermissionCatalog.Code(ApplicationPermission.PurchaseOrdersApprove),
+			ApprovalSubjectKind.SalesOrder => PermissionCatalog.Code(ApplicationPermission.SalesOrdersApprove),
+			ApprovalSubjectKind.AccountsPayableException => PermissionCatalog.Code(ApplicationPermission.FinanceSupplierMatchExceptionsApprove),
+			ApprovalSubjectKind.PaymentProposal => PermissionCatalog.Code(ApplicationPermission.FinancePaymentProposalsApprove),
+			_ => "None"
+		};
+		var steps = preview.Snapshot.Stages
+			.OrderBy(value => value.Order)
+			.Select((stage, index) => new WorkflowTimelineItem
+			{
+				Kind = kind,
+				EntityId = 0,
+				DisplayNumber = preview.Snapshot.SubjectId,
+				Title = stage.Name,
+				Status = "Required",
+				IsCurrent = index == 0,
+				IsPending = index > 0,
+				RequiredPermission = requiredPermission,
+				Detail = string.Join(", ", stage.Approvers.Select(value => value.Kind == ApprovalApproverKind.Role ? $"Role: {value.RoleCode}" : $"User #{value.UserId}"))
+			})
+			.ToArray();
+		return new ApprovalFlowProjection
+		{
+			Steps = steps,
+			RequiredPermission = requiredPermission,
+			SeparationOfDuties = "Preview only. Eligibility is evaluated from the immutable resolved snapshot and existing domain permissions.",
+			NextActions = steps.Length == 0 ? "No approval stage resolved." : $"Stage 1 of {steps.Length} would be required first.",
+			RuleSummary = $"Resolved policy '{preview.Policy.Name}' version {preview.Policy.Version}. Preview does not mutate business data."
+		};
+	}
+
 	private static WorkflowTimelineItem Step(
 		WorkflowTimelineKind kind,
 		long entityId,
