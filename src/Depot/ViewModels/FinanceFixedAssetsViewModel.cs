@@ -132,7 +132,7 @@ public sealed class FinanceFixedAssetsViewModel : BaseViewModel, IDisposable
 			var current=SelectedAsset;
 			var cls=AssetClass??throw new InvalidOperationException("Select an asset class.");
 			var entity=AssetEntity??throw new InvalidOperationException("Select a legal entity.");
-			var currency=current?.Currency??new CurrencyCode("EUR");
+			var currency=current?.Currency??entity.FunctionalCurrency;
 			var value=new FinanceFixedAsset{Id=current?.Id??0,Version=current?.Version??1,AssetNumber=AssetNumber,LegalEntityId=entity.Id,AssetClassId=cls.Id,Description=Description,AcquisitionDate=DateOnly.FromDateTime(AcquisitionDate),CapitalizationDate=current?.CapitalizationDate,DepreciationStartDate=DateOnly.FromDateTime(DepreciationStartDate),Currency=currency,OriginalCost=OriginalCost,SalvageValue=SalvageValue,UsefulLifeMonths=UsefulLifeMonths,DepreciationMethod=Method,Location=Location,Custodian=Custodian,Status=current?.Status??FinanceAssetStatus.Draft,SourceSupplierDocumentLineId=current?.SourceSupplierDocumentLineId};
 			SelectedAsset=await _service.SaveAssetAsync(value,token);
 			await LoadAsync(token);

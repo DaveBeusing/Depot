@@ -31,7 +31,7 @@ public sealed class FinanceFixedAssetRepository : DatabaseRepository
 		Database.QuerySingleOrDefaultAsync($"SELECT {AssetColumns} FROM FinanceFixedAssets WHERE Id=$Id;",ReadAsset,cancellationToken,Parameter("$Id",id));
 
 	public Task<IReadOnlyList<FinanceAssetLegalEntityOption>> GetLegalEntitiesAsync(CancellationToken cancellationToken=default) =>
-		Database.QueryAsync("SELECT Id,Code,Name FROM FinanceLegalEntities WHERE IsActive=1 ORDER BY Code;",r=>new FinanceAssetLegalEntityOption(Guid.Parse(r.GetString(0)),r.GetString(1),r.GetString(2)),cancellationToken);
+		Database.QueryAsync("SELECT Id,Code,Name,FunctionalCurrencyCode FROM FinanceLegalEntities WHERE IsActive=1 ORDER BY Code;",r=>new FinanceAssetLegalEntityOption(Guid.Parse(r.GetString(0)),r.GetString(1),r.GetString(2),new CurrencyCode(r.GetString(3))),cancellationToken);
 
 	public Task<IReadOnlyList<FinanceAssetFiscalCalendarOption>> GetFiscalCalendarsAsync(CancellationToken cancellationToken=default) =>
 		Database.QueryAsync("SELECT Id,LegalEntityId,Code,Name,IsActive FROM FinanceFiscalCalendars ORDER BY LegalEntityId,Code;",r=>new FinanceAssetFiscalCalendarOption(Guid.Parse(r.GetString(0)),Guid.Parse(r.GetString(1)),r.GetString(2),r.GetString(3),ReadBool(r,4)),cancellationToken);
