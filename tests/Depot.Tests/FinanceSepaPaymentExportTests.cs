@@ -122,6 +122,8 @@ public sealed class FinanceSepaPaymentExportTests
 			var creditor=await fixture.Service.GetCreditorProfileAsync(fixture.Supplier1Id);
 			Assert.NotNull(creditor);
 			await Assert.ThrowsAsync<ArgumentException>(()=>fixture.Service.SaveCreditorProfileAsync(creditor! with { Iban="DE0012345678" }));
+			var nonSepa=await Assert.ThrowsAsync<ArgumentException>(()=>fixture.Service.SaveCreditorProfileAsync(creditor! with { Iban="AE070331234567890123456" }));
+			Assert.Contains("outside the supported SEPA geographical scope",nonSepa.Message,StringComparison.Ordinal);
 			await Assert.ThrowsAsync<ArgumentException>(()=>fixture.Service.SaveCreditorProfileAsync(creditor! with { Bic="INVALID" }));
 			await Assert.ThrowsAsync<ArgumentException>(()=>fixture.Service.SaveCreditorProfileAsync(creditor! with { StreetName=" " }));
 		}

@@ -22,6 +22,10 @@ public sealed class FinanceSepaPaymentExportService
 	private const int MaximumTransactionsPerExport = 500;
 	private static readonly Regex BicPattern = new("^[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?$", RegexOptions.CultureInvariant);
 	private static readonly Regex CountryPattern = new("^[A-Z]{2}$", RegexOptions.CultureInvariant);
+	private static readonly IReadOnlySet<string> SepaCountryCodes = new HashSet<string>(StringComparer.Ordinal)
+	{
+		"AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "FR", "DE", "GR", "HU", "IE", "IT", "LV", "LT", "LU", "MT", "NL", "PL", "PT", "RO", "SK", "SI", "ES", "SE", "IS", "LI", "NO", "AD", "AL", "CH", "GB", "MD", "MC", "ME", "MK", "RS", "SM", "VA"
+	};
 
 	private readonly IDatabaseTransactionRunner _transactions;
 	private readonly FinanceBankingRepository _bankingRepository;
@@ -108,7 +112,7 @@ public sealed class FinanceSepaPaymentExportService
 		RequireUser();
 		var normalized = Normalize(profile);
 		ValidateParty(normalized.Name, normalized.StreetName, normalized.BuildingNumber, normalized.PostalCode, normalized.TownName, normalized.CountrySubdivision, normalized.CountryCode);
-		ValidateIban(normalized.Iban, "Creditor IBAN");
+		ValidateSepaIban(normalized.Iban, "Creditor IBAN");
 		ValidateBic(normalized.Bic, "Creditor BIC");
 		return await _transactions.ExecuteAsync(async (transaction, token) =>
 		{
@@ -310,7 +314,7 @@ public sealed class FinanceSepaPaymentExportService
 		{
 			if (!bank.IsActive) errors.Add("Configured bank account is inactive.");
 			if (bank.Currency.Value != "EUR") errors.Add("Configured bank account must use EUR.");
-			try { ValidateIban(bank.Iban, "Debtor IBAN"); } catch (Exception exception) { errors.Add(exception.Message); }
+			try { ValidateSepaIban(bank.Iban, "Debtor IBAN"); } catch (Exception exception) { errors.Add(exception.Message); }
 			try { ValidateBic(bank.Bic, "Debtor BIC"); } catch (Exception exception) { errors.Add(exception.Message); }
 		}
 		if (debtor is null) errors.Add("A structured SEPA debtor profile is required for the selected bank account.");
@@ -329,7 +333,7 @@ public sealed class FinanceSepaPaymentExportService
 				continue;
 			}
 			if (!creditor.IsActive) errors.Add($"Supplier {line.SupplierId} SEPA creditor profile is inactive.");
-			try { ValidateIban(creditor.Iban, $"Supplier {line.SupplierId} IBAN"); } catch (Exception exception) { errors.Add(exception.Message); }
+			try { ValidateSepaIban(creditor.Iban, $"Supplier {line.SupplierId} IBAN"); } catch (Exception exception) { errors.Add(exception.Message); }
 			try { ValidateBic(creditor.Bic, $"Supplier {line.SupplierId} BIC"); } catch (Exception exception) { errors.Add(exception.Message); }
 			try { ValidateParty(creditor.Name,creditor.StreetName,creditor.BuildingNumber,creditor.PostalCode,creditor.TownName,creditor.CountrySubdivision,creditor.CountryCode); }
 			catch (Exception exception) { errors.Add($"Supplier {line.SupplierId} profile: {exception.Message}"); }
@@ -491,6 +495,14 @@ public sealed class FinanceSepaPaymentExportService
 			}
 		}
 		if (remainder != 1) throw new ArgumentException($"{field} checksum is invalid.");
+	}
+
+	private static void ValidateSepaIban(string? value, string field)
+	{
+		ValidateIban(value, field);
+		var iban = NormalizeIban(value);
+		var countryCode = iban[..2];
+		if (!SepaCountryCodes.Contains(countryCode)) throw new ArgumentException($"{field} country '{countryCode}' is outside the supported SEPA geographical scope.");
 	}
 
 	private static void ValidateBic(string? value, string field)
