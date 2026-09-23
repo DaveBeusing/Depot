@@ -11,8 +11,10 @@
 
 		<controls:PageHeader Title="Budgeting" Subtitle="Versioned financial planning, policy-driven approval, and Actual vs Budget variance using Financial Reporting actuals.">
 			<controls:PageHeader.Actions>
-				<Button Command="{Binding NewBudgetCommand}" Content="New budget" IsEnabled="{Binding CanManage}" Style="{StaticResource SecondaryButtonStyle}"/>
-				<Button Margin="6,0,0,0" Command="{Binding RefreshCommand}" Content="Refresh" Style="{StaticResource SecondaryButtonStyle}"/>
+				<StackPanel Orientation="Horizontal">
+					<Button Command="{Binding NewBudgetCommand}" Content="New budget" IsEnabled="{Binding CanManage}" Style="{StaticResource SecondaryButtonStyle}"/>
+					<Button Margin="6,0,0,0" Command="{Binding RefreshCommand}" Content="Refresh" Style="{StaticResource SecondaryButtonStyle}"/>
+				</StackPanel>
 			</controls:PageHeader.Actions>
 		</controls:PageHeader>
 
