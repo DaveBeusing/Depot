@@ -38,6 +38,7 @@ public sealed class FinanceProviderAcceptanceTests
 		await context.VerifyPayablesAsync();
 		await context.VerifyInventoryValuationAsync();
 		await context.VerifyFixedAssetsAsync();
+		await context.VerifyBudgetingAsync();
 	}
 
 	private sealed class FinanceContext
@@ -230,7 +231,7 @@ public sealed class FinanceProviderAcceptanceTests
 
 		public async Task VerifyFixedAssetsAsync()
 		{
-			Assert.Equal(10L,Scalar("SELECT Version FROM DepotFeatureVersions WHERE Name='Finance';"));
+			Assert.Equal(11L,Scalar("SELECT Version FROM DepotFeatureVersions WHERE Name='Finance';"));
 			var assetCost=Guid.NewGuid();var accumulatedDepreciation=Guid.NewGuid();var accumulatedImpairment=Guid.NewGuid();var capitalizationOffset=Guid.NewGuid();var depreciationExpense=Guid.NewGuid();var impairmentExpense=Guid.NewGuid();
 			InsertAccount(assetCost,$"15{_suffix[..6]}","Fixed assets",FinanceAccountType.Asset);InsertAccount(accumulatedDepreciation,$"16{_suffix[..6]}","Accumulated depreciation",FinanceAccountType.Asset);InsertAccount(accumulatedImpairment,$"17{_suffix[..6]}","Accumulated impairment",FinanceAccountType.Asset);InsertAccount(capitalizationOffset,$"21{_suffix[..6]}","Capitalization offset",FinanceAccountType.Liability);InsertAccount(depreciationExpense,$"65{_suffix[..6]}","Depreciation expense",FinanceAccountType.Expense);InsertAccount(impairmentExpense,$"66{_suffix[..6]}","Impairment expense",FinanceAccountType.Expense);
 			var capitalizationProfile=InsertProfileForEvent($"FA-C-{_suffix[..8]}","Capitalization",(assetCost,FinancePostingDirection.Debit,"AssetCost"),(capitalizationOffset,FinancePostingDirection.Credit,"AssetCost"));
@@ -245,6 +246,47 @@ public sealed class FinanceProviderAcceptanceTests
 			var impairment=await service.ImpairAsync(assetId,Guid.NewGuid(),_periodId,_postingDate,100m,"Provider impairment");Assert.NotNull(impairment.JournalEntryId);
 			var correction=await service.CorrectImpairmentAsync(impairment.Id,Guid.NewGuid(),_periodId,_postingDate,"Provider correction");Assert.Equal(FinanceAssetTransactionKind.Correction,correction.Kind);
 			var reconciliation=Assert.Single((await service.SearchReconciliationAsync(_legalEntityId,1,20)).Items);Assert.Equal(1000m,reconciliation.SubledgerCarryingValue);Assert.Equal(reconciliation.SubledgerCarryingValue,reconciliation.GeneralLedgerCarryingValue);Assert.Equal(0m,reconciliation.Difference);
+		}
+
+
+		public async Task VerifyBudgetingAsync()
+		{
+			Assert.Equal(11L, Scalar("SELECT Version FROM DepotFeatureVersions WHERE Name='Finance';"));
+			var repository = new FinanceBudgetingRepository(_database);
+			var now = DateTime.UtcNow;
+			var version = new FinanceBudgetVersion
+			{
+				LegalEntityId = _legalEntityId,
+				AccountingBookId = _bookId,
+				FiscalCalendarId = _calendarId,
+				FiscalYear = 2026,
+				Name = $"Provider Budget {_suffix[..8]}",
+				BudgetVersionNumber = 1,
+				Currency = new CurrencyCode("USD"),
+				Status = FinanceBudgetStatus.Draft,
+				OwnerUserId = _userId,
+				SourceKind = FinanceBudgetSourceKind.Manual,
+				CreatedAtUtc = now,
+				CreatedByUserId = _userId,
+				UpdatedAtUtc = now,
+				UpdatedByUserId = _userId
+			};
+			var versionId = await _transactions.ExecuteAsync((transaction, token) => repository.CreateVersionAsync(transaction, version, token));
+			var line = new FinanceBudgetLine
+			{
+				BudgetVersionId = versionId,
+				AccountId = _expenseAccountId,
+				AccountingPeriodId = _periodId,
+				Amount = 123.456789123m,
+				SourceEvidence = "Provider acceptance"
+			};
+			await _transactions.ExecuteAsync((transaction, token) => repository.CreateLineAsync(transaction, line, token));
+			var summary = await repository.GetSummaryAsync(versionId);
+
+			Assert.Equal(1, summary.LineCount);
+			Assert.Equal(123.456789123m, summary.TotalBudget);
+			Assert.Equal(123.456789123m, Assert.Single(summary.Periods).BudgetAmount);
+			Assert.NotNull(await repository.GetVersionAsync(versionId));
 		}
 
 		private FinanceGeneralLedgerService CreateGeneralLedgerService(long userId, params ApplicationPermission[] permissions)
