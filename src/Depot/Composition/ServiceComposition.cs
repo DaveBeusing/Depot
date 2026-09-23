@@ -100,7 +100,8 @@ internal sealed class ServiceComposition
 			new InventoryCountMyWorkProvider(repositories.MyWork, Authorization),
 			new ReceivablesMyWorkProvider(AccountsReceivable, Authorization),
 			new PayablesMyWorkProvider(AccountsPayable, repositories.MyWork, Authorization, ApprovalPolicies),
-			new BankingMyWorkProvider(Banking, Authorization, ApprovalPolicies)
+			new BankingMyWorkProvider(Banking, Authorization, ApprovalPolicies),
+			new BudgetingMyWorkProvider(Budgeting, ApprovalPolicies)
 		]);
 		CommercialRoleCenters = new CommercialRoleCenterService(
 			Authorization,

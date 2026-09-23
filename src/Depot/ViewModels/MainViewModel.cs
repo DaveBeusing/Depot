@@ -434,6 +434,10 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 				await this.NavigateToRouteAsync(route, cancellationToken);
 				FinanceBankingViewModel.SelectedPaymentRun = FinanceBankingViewModel.PaymentRuns.FirstOrDefault(run => run.Id == item.EntityId);
 				break;
+			case MyWorkItemKind.FinanceBudget:
+				await this.NavigateToRouteAsync(route, cancellationToken);
+				await FinanceBudgetingViewModel.OpenBudgetAsync(item.EntityId, cancellationToken);
+				break;
 			default:
 				await this.NavigateToRouteAsync(route, cancellationToken);
 				break;

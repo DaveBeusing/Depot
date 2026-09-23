@@ -34,7 +34,8 @@ public enum MyWorkItemKind
 	PaymentRun = 10,
 	SalesLeadActivity = 11,
 	SalesOpportunityActivity = 12,
-	SalesOpportunityFollowUp = 13
+	SalesOpportunityFollowUp = 13,
+	FinanceBudget = 14
 }
 
 public enum MyWorkPriority
@@ -131,7 +132,7 @@ public sealed record MyWorkItem(
 			MyWorkItemKind.PurchaseOrder or MyWorkItemKind.PurchaseOrderApproval or
 			MyWorkItemKind.SalesOrder or MyWorkItemKind.SalesOrderApproval or
 			MyWorkItemKind.ReceivableOpenItem or MyWorkItemKind.SupplierDocument or
-			MyWorkItemKind.BankStatementLine or MyWorkItemKind.PaymentRun => MyWorkValueKind.Currency,
+			MyWorkItemKind.BankStatementLine or MyWorkItemKind.PaymentRun or MyWorkItemKind.FinanceBudget => MyWorkValueKind.Currency,
 			_ => MyWorkValueKind.Auto
 		};
 	}

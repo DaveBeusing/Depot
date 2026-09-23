@@ -205,6 +205,15 @@ public sealed class FinanceBudgetingViewModel : BaseViewModel, IDisposable
 		? "No budget selected"
 		: $"{Summary.LineCount:N0} lines · {Summary.TotalBudget:N2} signed budget total";
 
+	public async Task OpenBudgetAsync(long budgetVersionId, CancellationToken cancellationToken = default)
+	{
+		if (budgetVersionId <= 0) throw new ArgumentOutOfRangeException(nameof(budgetVersionId));
+		await LoadAsync(cancellationToken);
+		SelectedBudget = Versions.FirstOrDefault(value => value.Id == budgetVersionId)
+			?? await _service.GetVersionAsync(budgetVersionId, cancellationToken)
+			?? throw new InvalidOperationException("Budget version was not found.");
+	}
+
 	public async Task LoadAsync(CancellationToken cancellationToken = default)
 	{
 		BeginOperation("Loading budgets...");
