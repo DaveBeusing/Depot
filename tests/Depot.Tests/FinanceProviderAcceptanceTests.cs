@@ -231,7 +231,7 @@ public sealed class FinanceProviderAcceptanceTests
 
 		public async Task VerifyFixedAssetsAsync()
 		{
-			Assert.Equal(FinanceInventoryAccountingSchemaMigration.CurrentVersion,Scalar("SELECT Version FROM DepotFeatureVersions WHERE Name='Finance';"));
+			Assert.Equal((long)FinanceInventoryAccountingSchemaMigration.CurrentVersion,Scalar("SELECT Version FROM DepotFeatureVersions WHERE Name='Finance';"));
 			var assetCost=Guid.NewGuid();var accumulatedDepreciation=Guid.NewGuid();var accumulatedImpairment=Guid.NewGuid();var capitalizationOffset=Guid.NewGuid();var depreciationExpense=Guid.NewGuid();var impairmentExpense=Guid.NewGuid();
 			InsertAccount(assetCost,$"15{_suffix[..6]}","Fixed assets",FinanceAccountType.Asset);InsertAccount(accumulatedDepreciation,$"16{_suffix[..6]}","Accumulated depreciation",FinanceAccountType.Asset);InsertAccount(accumulatedImpairment,$"17{_suffix[..6]}","Accumulated impairment",FinanceAccountType.Asset);InsertAccount(capitalizationOffset,$"21{_suffix[..6]}","Capitalization offset",FinanceAccountType.Liability);InsertAccount(depreciationExpense,$"65{_suffix[..6]}","Depreciation expense",FinanceAccountType.Expense);InsertAccount(impairmentExpense,$"66{_suffix[..6]}","Impairment expense",FinanceAccountType.Expense);
 			var capitalizationProfile=InsertProfileForEvent($"FA-C-{_suffix[..8]}","Capitalization",(assetCost,FinancePostingDirection.Debit,"AssetCost"),(capitalizationOffset,FinancePostingDirection.Credit,"AssetCost"));
@@ -251,7 +251,7 @@ public sealed class FinanceProviderAcceptanceTests
 
 		public async Task VerifyBudgetingAsync()
 		{
-			Assert.Equal(FinanceInventoryAccountingSchemaMigration.CurrentVersion, Scalar("SELECT Version FROM DepotFeatureVersions WHERE Name='Finance';"));
+			Assert.Equal((long)FinanceInventoryAccountingSchemaMigration.CurrentVersion, Scalar("SELECT Version FROM DepotFeatureVersions WHERE Name='Finance';"));
 			var repository = new FinanceBudgetingRepository(_database);
 			var now = DateTime.UtcNow;
 			var version = new FinanceBudgetVersion
