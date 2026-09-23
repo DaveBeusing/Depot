@@ -23,7 +23,7 @@ public enum FinanceBudgetSourceKind
 
 public sealed record FinanceBudgetVersion
 {
-	public Guid Id { get; init; }
+	public long Id { get; init; }
 	public long Version { get; init; } = 1;
 	public Guid LegalEntityId { get; init; }
 	public Guid AccountingBookId { get; init; }
@@ -36,7 +36,7 @@ public sealed record FinanceBudgetVersion
 	public long OwnerUserId { get; init; }
 	public string? Description { get; init; }
 	public FinanceBudgetSourceKind SourceKind { get; init; } = FinanceBudgetSourceKind.Manual;
-	public Guid? SourceBudgetVersionId { get; init; }
+	public long? SourceBudgetVersionId { get; init; }
 	public Guid? ApprovalInstanceId { get; init; }
 	public DateTime CreatedAtUtc { get; init; }
 	public long CreatedByUserId { get; init; }
@@ -51,7 +51,7 @@ public sealed record FinanceBudgetLine
 {
 	public long Id { get; init; }
 	public long Version { get; init; } = 1;
-	public Guid BudgetVersionId { get; init; }
+	public long BudgetVersionId { get; init; }
 	public Guid AccountId { get; init; }
 	public Guid AccountingPeriodId { get; init; }
 	public Guid? DimensionId { get; init; }
@@ -105,7 +105,7 @@ public sealed record FinanceBudgetVarianceRow(
 }
 
 public sealed record FinanceBudgetSummary(
-	Guid BudgetVersionId,
+	long BudgetVersionId,
 	decimal TotalBudget,
 	int LineCount,
 	IReadOnlyList<FinanceBudgetSummaryPeriod> Periods);

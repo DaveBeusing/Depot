@@ -60,14 +60,14 @@ public sealed class FinanceBudgetingRepository : DatabaseRepository
 			parameters.ToArray());
 	}
 
-	public Task<FinanceBudgetVersion?> GetVersionAsync(Guid id, CancellationToken cancellationToken = default) =>
+	public Task<FinanceBudgetVersion?> GetVersionAsync(long id, CancellationToken cancellationToken = default) =>
 		Database.QuerySingleOrDefaultAsync(
 			$"SELECT {VersionColumns} FROM FinanceBudgetVersions WHERE Id=$Id;",
 			ReadVersion,
 			cancellationToken,
-			Parameter("$Id", id.ToString("D")));
+			Parameter("$Id", id));
 
-	public Task<PageResult<FinanceBudgetLine>> GetLinesAsync(Guid budgetVersionId, int pageNumber, int pageSize, CancellationToken cancellationToken = default) =>
+	public Task<PageResult<FinanceBudgetLine>> GetLinesAsync(long budgetVersionId, int pageNumber, int pageSize, CancellationToken cancellationToken = default) =>
 		Database.QueryPageAsync(
 			$"SELECT {LineColumns} FROM FinanceBudgetLines WHERE BudgetVersionId=$BudgetVersionId ORDER BY AccountingPeriodId,AccountId,DimensionId,DimensionValueId,Id",
 			"SELECT COUNT(*) FROM FinanceBudgetLines WHERE BudgetVersionId=$BudgetVersionId;",
@@ -75,14 +75,14 @@ public sealed class FinanceBudgetingRepository : DatabaseRepository
 			Math.Max(1, pageNumber),
 			Math.Clamp(pageSize, 1, 500),
 			cancellationToken,
-			Parameter("$BudgetVersionId", budgetVersionId.ToString("D")));
+			Parameter("$BudgetVersionId", budgetVersionId));
 
-	public async Task<FinanceBudgetSummary> GetSummaryAsync(Guid budgetVersionId, CancellationToken cancellationToken = default)
+	public async Task<FinanceBudgetSummary> GetSummaryAsync(long budgetVersionId, CancellationToken cancellationToken = default)
 	{
 		var total = Database.Query(
 			"SELECT COALESCE(SUM(Amount),0),COUNT(*) FROM FinanceBudgetLines WHERE BudgetVersionId=$BudgetVersionId;",
 			reader => (Amount: ReadDecimal(reader, 0), Count: Convert.ToInt32(reader.GetValue(1), CultureInfo.InvariantCulture)),
-			Parameter("$BudgetVersionId", budgetVersionId.ToString("D"))).Single();
+			Parameter("$BudgetVersionId", budgetVersionId)).Single();
 		var periods = await Database.QueryAsync(
 			"""
 			SELECT l.AccountingPeriodId,p.Code,COALESCE(SUM(l.Amount),0),COUNT(*)
@@ -98,7 +98,7 @@ public sealed class FinanceBudgetingRepository : DatabaseRepository
 				ReadDecimal(reader, 2),
 				Convert.ToInt32(reader.GetValue(3), CultureInfo.InvariantCulture)),
 			cancellationToken,
-			Parameter("$BudgetVersionId", budgetVersionId.ToString("D")));
+			Parameter("$BudgetVersionId", budgetVersionId));
 		return new FinanceBudgetSummary(budgetVersionId, total.Amount, total.Count, periods);
 	}
 
@@ -160,12 +160,12 @@ public sealed class FinanceBudgetingRepository : DatabaseRepository
 			cancellationToken,
 			Parameter("$DimensionId", dimensionId.ToString("D")));
 
-	internal Task<FinanceBudgetVersion?> GetVersionAsync(DatabaseTransactionContext transaction, Guid id, CancellationToken cancellationToken) =>
+	internal Task<FinanceBudgetVersion?> GetVersionAsync(DatabaseTransactionContext transaction, long id, CancellationToken cancellationToken) =>
 		transaction.Session.QuerySingleOrDefaultAsync(
 			$"SELECT {VersionColumns} FROM FinanceBudgetVersions WHERE Id=$Id;",
 			ReadVersion,
 			cancellationToken,
-			Parameter("$Id", id.ToString("D")));
+			Parameter("$Id", id));
 
 	internal async Task<int> GetNextVersionNumberAsync(
 		DatabaseTransactionContext transaction,
@@ -189,13 +189,13 @@ public sealed class FinanceBudgetingRepository : DatabaseRepository
 		return Convert.ToInt32(value, CultureInfo.InvariantCulture) + 1;
 	}
 
-	internal Task<int> CreateVersionAsync(DatabaseTransactionContext transaction, FinanceBudgetVersion value, CancellationToken cancellationToken) =>
-		transaction.Session.ExecuteAsync(
+	internal Task<long> CreateVersionAsync(DatabaseTransactionContext transaction, FinanceBudgetVersion value, CancellationToken cancellationToken) =>
+		transaction.Session.InsertAsync(
 			"""
 			INSERT INTO FinanceBudgetVersions
-			(Id,Version,LegalEntityId,AccountingBookId,FiscalCalendarId,FiscalYear,BudgetName,BudgetVersionNumber,CurrencyCode,Status,OwnerUserId,Description,SourceKind,SourceBudgetVersionId,ApprovalInstanceId,CreatedAtUtc,CreatedByUserId,UpdatedAtUtc,UpdatedByUserId)
+			(Version,LegalEntityId,AccountingBookId,FiscalCalendarId,FiscalYear,BudgetName,BudgetVersionNumber,CurrencyCode,Status,OwnerUserId,Description,SourceKind,SourceBudgetVersionId,ApprovalInstanceId,CreatedAtUtc,CreatedByUserId,UpdatedAtUtc,UpdatedByUserId)
 			VALUES
-			($Id,1,$LegalEntityId,$AccountingBookId,$FiscalCalendarId,$FiscalYear,$BudgetName,$BudgetVersionNumber,$CurrencyCode,$Status,$OwnerUserId,$Description,$SourceKind,$SourceBudgetVersionId,$ApprovalInstanceId,$CreatedAtUtc,$CreatedByUserId,$UpdatedAtUtc,$UpdatedByUserId);
+			(1,$LegalEntityId,$AccountingBookId,$FiscalCalendarId,$FiscalYear,$BudgetName,$BudgetVersionNumber,$CurrencyCode,$Status,$OwnerUserId,$Description,$SourceKind,$SourceBudgetVersionId,$ApprovalInstanceId,$CreatedAtUtc,$CreatedByUserId,$UpdatedAtUtc,$UpdatedByUserId);
 			""",
 			cancellationToken,
 			VersionParameters(value));
@@ -209,6 +209,7 @@ public sealed class FinanceBudgetingRepository : DatabaseRepository
 			""",
 			cancellationToken,
 			VersionParameters(value)
+				.Append(Parameter("$Id", value.Id))
 				.Append(Parameter("$ExpectedVersion", expectedVersion))
 				.ToArray());
 
@@ -236,29 +237,29 @@ public sealed class FinanceBudgetingRepository : DatabaseRepository
 				.Append(Parameter("$ExpectedVersion", expectedVersion))
 				.ToArray());
 
-	internal Task<int> DeleteLineAsync(DatabaseTransactionContext transaction, Guid budgetVersionId, long lineId, long expectedVersion, CancellationToken cancellationToken) =>
+	internal Task<int> DeleteLineAsync(DatabaseTransactionContext transaction, long budgetVersionId, long lineId, long expectedVersion, CancellationToken cancellationToken) =>
 		transaction.Session.ExecuteAsync(
 			"DELETE FROM FinanceBudgetLines WHERE Id=$Id AND BudgetVersionId=$BudgetVersionId AND Version=$ExpectedVersion;",
 			cancellationToken,
 			Parameter("$Id", lineId),
-			Parameter("$BudgetVersionId", budgetVersionId.ToString("D")),
+			Parameter("$BudgetVersionId", budgetVersionId),
 			Parameter("$ExpectedVersion", expectedVersion));
 
-	internal Task<int> DeleteAllLinesAsync(DatabaseTransactionContext transaction, Guid budgetVersionId, CancellationToken cancellationToken) =>
+	internal Task<int> DeleteAllLinesAsync(DatabaseTransactionContext transaction, long budgetVersionId, CancellationToken cancellationToken) =>
 		transaction.Session.ExecuteAsync(
 			"DELETE FROM FinanceBudgetLines WHERE BudgetVersionId=$BudgetVersionId;",
 			cancellationToken,
-			Parameter("$BudgetVersionId", budgetVersionId.ToString("D")));
+			Parameter("$BudgetVersionId", budgetVersionId));
 
-	internal Task<long> CountLinesAsync(DatabaseTransactionContext transaction, Guid budgetVersionId, CancellationToken cancellationToken) =>
-		CountAsync(transaction, "SELECT COUNT(*) FROM FinanceBudgetLines WHERE BudgetVersionId=$BudgetVersionId;", cancellationToken, Parameter("$BudgetVersionId", budgetVersionId.ToString("D")));
+	internal Task<long> CountLinesAsync(DatabaseTransactionContext transaction, long budgetVersionId, CancellationToken cancellationToken) =>
+		CountAsync(transaction, "SELECT COUNT(*) FROM FinanceBudgetLines WHERE BudgetVersionId=$BudgetVersionId;", cancellationToken, Parameter("$BudgetVersionId", budgetVersionId));
 
-	internal Task<IReadOnlyList<FinanceBudgetLine>> ListLinesAsync(DatabaseTransactionContext transaction, Guid budgetVersionId, CancellationToken cancellationToken) =>
+	internal Task<IReadOnlyList<FinanceBudgetLine>> ListLinesAsync(DatabaseTransactionContext transaction, long budgetVersionId, CancellationToken cancellationToken) =>
 		transaction.Session.QueryAsync(
 			$"SELECT {LineColumns} FROM FinanceBudgetLines WHERE BudgetVersionId=$BudgetVersionId ORDER BY AccountingPeriodId,AccountId,DimensionId,DimensionValueId,Id;",
 			ReadLine,
 			cancellationToken,
-			Parameter("$BudgetVersionId", budgetVersionId.ToString("D")));
+			Parameter("$BudgetVersionId", budgetVersionId));
 
 	internal Task<bool> LineKeyExistsAsync(DatabaseTransactionContext transaction, FinanceBudgetLine value, long? excludeId, CancellationToken cancellationToken) =>
 		ExistsAsync(
@@ -322,7 +323,6 @@ public sealed class FinanceBudgetingRepository : DatabaseRepository
 
 	private static DatabaseParameter[] VersionParameters(FinanceBudgetVersion value) =>
 	[
-		Parameter("$Id", value.Id.ToString("D")),
 		Parameter("$LegalEntityId", value.LegalEntityId.ToString("D")),
 		Parameter("$AccountingBookId", value.AccountingBookId.ToString("D")),
 		Parameter("$FiscalCalendarId", value.FiscalCalendarId.ToString("D")),
@@ -334,7 +334,7 @@ public sealed class FinanceBudgetingRepository : DatabaseRepository
 		Parameter("$OwnerUserId", value.OwnerUserId),
 		Parameter("$Description", value.Description),
 		Parameter("$SourceKind", (int)value.SourceKind),
-		Parameter("$SourceBudgetVersionId", value.SourceBudgetVersionId?.ToString("D")),
+		Parameter("$SourceBudgetVersionId", value.SourceBudgetVersionId),
 		Parameter("$ApprovalInstanceId", value.ApprovalInstanceId?.ToString("D")),
 		Parameter("$CreatedAtUtc", value.CreatedAtUtc.ToString("O", CultureInfo.InvariantCulture)),
 		Parameter("$CreatedByUserId", value.CreatedByUserId),
@@ -344,7 +344,7 @@ public sealed class FinanceBudgetingRepository : DatabaseRepository
 
 	private static DatabaseParameter[] LineParameters(FinanceBudgetLine value) =>
 	[
-		Parameter("$BudgetVersionId", value.BudgetVersionId.ToString("D")),
+		Parameter("$BudgetVersionId", value.BudgetVersionId),
 		Parameter("$AccountId", value.AccountId.ToString("D")),
 		Parameter("$AccountingPeriodId", value.AccountingPeriodId.ToString("D")),
 		Parameter("$DimensionId", value.DimensionId?.ToString("D") ?? string.Empty),
@@ -355,7 +355,7 @@ public sealed class FinanceBudgetingRepository : DatabaseRepository
 
 	private static FinanceBudgetVersion ReadVersion(DbDataReader reader) => new()
 	{
-		Id = Guid.Parse(reader.GetString(0)),
+		Id = Convert.ToInt64(reader.GetValue(0), CultureInfo.InvariantCulture),
 		Version = Convert.ToInt64(reader.GetValue(1), CultureInfo.InvariantCulture),
 		LegalEntityId = Guid.Parse(reader.GetString(2)),
 		AccountingBookId = Guid.Parse(reader.GetString(3)),
@@ -368,7 +368,7 @@ public sealed class FinanceBudgetingRepository : DatabaseRepository
 		OwnerUserId = Convert.ToInt64(reader.GetValue(10), CultureInfo.InvariantCulture),
 		Description = reader.IsDBNull(11) ? null : reader.GetString(11),
 		SourceKind = (FinanceBudgetSourceKind)Convert.ToInt32(reader.GetValue(12), CultureInfo.InvariantCulture),
-		SourceBudgetVersionId = ReadGuid(reader, 13),
+		SourceBudgetVersionId = reader.IsDBNull(13) ? null : Convert.ToInt64(reader.GetValue(13), CultureInfo.InvariantCulture),
 		ApprovalInstanceId = ReadGuid(reader, 14),
 		CreatedAtUtc = ReadDateTime(reader, 15),
 		CreatedByUserId = Convert.ToInt64(reader.GetValue(16), CultureInfo.InvariantCulture),
@@ -380,7 +380,7 @@ public sealed class FinanceBudgetingRepository : DatabaseRepository
 	{
 		Id = Convert.ToInt64(reader.GetValue(0), CultureInfo.InvariantCulture),
 		Version = Convert.ToInt64(reader.GetValue(1), CultureInfo.InvariantCulture),
-		BudgetVersionId = Guid.Parse(reader.GetString(2)),
+		BudgetVersionId = Convert.ToInt64(reader.GetValue(2), CultureInfo.InvariantCulture),
 		AccountId = Guid.Parse(reader.GetString(3)),
 		AccountingPeriodId = Guid.Parse(reader.GetString(4)),
 		DimensionId = ReadOptionalGuidString(reader, 5),
