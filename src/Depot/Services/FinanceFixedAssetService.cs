@@ -93,7 +93,7 @@ public sealed class FinanceFixedAssetService
 		_authorization.RequirePermission(ApplicationPermission.FinanceFixedAssetsManage);RequireUser();
 		return await _transactions.ExecuteAsync(async(tx,ct)=>{
 			var asset=await _assets.GetAssetAsync(tx,assetId,ct)??throw new InvalidOperationException("Asset was not found.");var cls=await _assets.GetClassAsync(tx,asset.AssetClassId,ct)??throw new InvalidOperationException("Asset class was not found.");
-			var schedule=await CalculateScheduleAsync(tx,asset,cls,ct);await _assets.ReplaceScheduleAsync(tx,asset.Id,schedule,ct);await _auditEntries.CreateAsync(tx,_audit.CreateActionEntry(asset.Id,"DepreciationScheduleRecalculated",asset,asset),ct);return (IReadOnlyList<FinanceAssetDepreciationPeriod>)schedule;
+			var schedule=await CalculateScheduleAsync(tx,asset,cls,ct);var persisted=await _assets.ReplaceScheduleAsync(tx,asset.Id,schedule,ct);await _auditEntries.CreateAsync(tx,_audit.CreateActionEntry(asset.Id,"DepreciationScheduleRecalculated",asset,asset),ct);return persisted;
 		},token);
 	}
 
