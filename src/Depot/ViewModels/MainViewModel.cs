@@ -100,6 +100,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		FinanceInventoryCostingService financeInventoryCostingService,
 		FinanceInventoryMovementAccountingService financeInventoryMovementAccountingService,
 		FinanceBankingService financeBankingService,
+		FinanceSepaPaymentExportService financeSepaPaymentExportService,
 		FinanceFinancialReportingService financeFinancialReportingService,
 		FinanceLocalizationService financeLocalizationService,
 		PurposeService purposeService,
@@ -212,7 +213,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		_financeReceivables = new(() => new FinanceReceivablesViewModel(financeReceivablesService));
 		_financePayables = new(() => new FinancePayablesViewModel(financePayablesService, salesServices.Timeline, OpenWorkflowTimelineItemAsync, businessAttachmentService, fileDialogService));
 		_financeInventoryAccounting = new(() => new FinanceInventoryAccountingViewModel(financeInventoryAccountingService, financeInventoryCostingService, financeInventoryMovementAccountingService));
-		_financeBanking = new(() => new FinanceBankingViewModel(financeBankingService));
+		_financeBanking = new(() => new FinanceBankingViewModel(financeBankingService, financeSepaPaymentExportService, fileDialogService));
 		_financeFinancialReporting = new(() => new FinanceFinancialReportingViewModel(financeFinancialReportingService, fileDialogService));
 		_financeLocalization = new(() => new FinanceLocalizationViewModel(financeLocalizationService));
 		if(financeFixedAssetService is not null)_financeFixedAssets=new(()=>new FinanceFixedAssetsViewModel(financeFixedAssetService));

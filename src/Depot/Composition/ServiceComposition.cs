@@ -34,6 +34,7 @@ internal sealed class ServiceComposition
 		InventoryMovementAccounting = new FinanceInventoryMovementAccountingService(database.TransactionRunner, repositories.FinanceInventoryCosting, repositories.Inventories, InventoryCosting, Authorization);
 		AccountsPayable = new FinanceAccountsPayableService(database.TransactionRunner, repositories.FinanceAccountsPayable, FinanceGeneralLedger, repositories.Audit, audit, Authorization, ApprovalPolicies);
 		Banking = new FinanceBankingService(database.TransactionRunner, repositories.FinanceBanking, AccountsPayable, repositories.Audit, audit, Authorization, ApprovalPolicies);
+		SepaPaymentExports = new FinanceSepaPaymentExportService(database.TransactionRunner, repositories.FinanceBanking, repositories.FinanceSepaPaymentExports, Banking, repositories.Audit, audit, Authorization);
 		FinancialReporting = new FinanceFinancialReportingService(database.TransactionRunner, repositories.FinanceFinancialReporting, repositories.FinanceFinancialReportingInventory, AccountsReceivable, AccountsPayable, repositories.Audit, audit, Authorization);
 		Localization = new FinanceLocalizationService(database.TransactionRunner, repositories.FinanceLocalization, repositories.Audit, audit, Authorization);
 		FixedAssets = new FinanceFixedAssetService(database.TransactionRunner, repositories.FinanceFixedAssets, FinanceGeneralLedger, repositories.Audit, audit, Authorization);
@@ -156,6 +157,7 @@ internal sealed class ServiceComposition
 	public FinanceInventoryCostingService InventoryCosting { get; }
 	public FinanceInventoryMovementAccountingService InventoryMovementAccounting { get; }
 	public FinanceBankingService Banking { get; }
+	public FinanceSepaPaymentExportService SepaPaymentExports { get; }
 	public FinanceFinancialReportingService FinancialReporting { get; }
 	public FinanceLocalizationService Localization { get; }
 	public FinanceFixedAssetService FixedAssets { get; }
