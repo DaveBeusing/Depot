@@ -49,7 +49,8 @@ public static class SystemRoleCatalog
 			ApplicationPermission.FinanceInventoryAccountingView, ApplicationPermission.FinanceInventoryAccountingManage,
 			ApplicationPermission.FinanceBankingView, ApplicationPermission.FinanceBankingManage, ApplicationPermission.FinanceBankStatementsCreate, ApplicationPermission.FinanceBankReconciliationManage, ApplicationPermission.FinancePaymentProposalsCreate, ApplicationPermission.FinancePaymentRunsPost, ApplicationPermission.FinanceCashPositionView,
 			ApplicationPermission.FinanceFinancialReportingView, ApplicationPermission.FinanceFinancialReportingManage, ApplicationPermission.FinanceFinancialReportingExport, ApplicationPermission.FinanceReportSnapshotsCreate,
-			ApplicationPermission.FinanceLocalizationView, ApplicationPermission.FinanceLocalizationManage)),
+			ApplicationPermission.FinanceLocalizationView, ApplicationPermission.FinanceLocalizationManage,
+			ApplicationPermission.FinanceFixedAssetsView, ApplicationPermission.FinanceFixedAssetsConfigure, ApplicationPermission.FinanceFixedAssetsManage, ApplicationPermission.FinanceFixedAssetsDepreciationPost)),
 		new(UserCode, "User", "Read-only access to standard operational views.", CommonViewPermissions),
 		new(GoodsReceiverCode, "Goods Receiver", "Receives expected supplier deliveries without general Purchasing administration.", Set(
 			ApplicationPermission.DashboardView, ApplicationPermission.InventoryView, ApplicationPermission.ItemsView, ApplicationPermission.StockMovementsView,
@@ -89,7 +90,8 @@ public static class SystemRoleCatalog
 			ApplicationPermission.FinancePostingProfilesView, ApplicationPermission.FinancePostingProfilesManage,
 			ApplicationPermission.FinanceInventoryAccountingView, ApplicationPermission.FinanceInventoryAccountingManage,
 			ApplicationPermission.FinanceBankingView, ApplicationPermission.FinanceBankReconciliationManage,
-			ApplicationPermission.FinanceFinancialReportingView, ApplicationPermission.FinanceFinancialReportingManage, ApplicationPermission.FinanceFinancialReportingExport, ApplicationPermission.FinanceReportSnapshotsCreate)),
+			ApplicationPermission.FinanceFinancialReportingView, ApplicationPermission.FinanceFinancialReportingManage, ApplicationPermission.FinanceFinancialReportingExport, ApplicationPermission.FinanceReportSnapshotsCreate,
+			ApplicationPermission.FinanceFixedAssetsView, ApplicationPermission.FinanceFixedAssetsConfigure, ApplicationPermission.FinanceFixedAssetsManage, ApplicationPermission.FinanceFixedAssetsDepreciationPost)),
 		new(ManagementViewerCode, "Management Viewer", "Read-only management access to operational and financial KPIs, reports and drilldowns.", Set(
 			ApplicationPermission.DashboardView,
 			ApplicationPermission.InventoryView, ApplicationPermission.ItemsView, ApplicationPermission.StockMovementsView, ApplicationPermission.StockTransfersView, ApplicationPermission.InventoryCountsView,
@@ -100,10 +102,10 @@ public static class SystemRoleCatalog
 			ApplicationPermission.FinanceTaxConfigurationView, ApplicationPermission.FinanceNumberSequencesView, ApplicationPermission.FinanceGeneralLedgerView, ApplicationPermission.FinancePostingProfilesView,
 			ApplicationPermission.FinanceReceivablesView, ApplicationPermission.FinanceDunningView, ApplicationPermission.FinancePayablesView, ApplicationPermission.FinanceInventoryAccountingView,
 			ApplicationPermission.FinanceBankingView, ApplicationPermission.FinanceCashPositionView, ApplicationPermission.FinanceFinancialReportingView, ApplicationPermission.FinanceFinancialReportingExport,
-			ApplicationPermission.FinanceLocalizationView, ApplicationPermission.ReportsView, ApplicationPermission.ReportsExport)),
+			ApplicationPermission.FinanceLocalizationView, ApplicationPermission.FinanceFixedAssetsView, ApplicationPermission.ReportsView, ApplicationPermission.ReportsExport)),
 		new(AuditorComplianceCode, "Auditor / Compliance", "Read-only and export-oriented access to audit, security, user/role and relevant reporting evidence.", Set(
 			ApplicationPermission.DashboardView, ApplicationPermission.ReportsView, ApplicationPermission.ReportsExport,
-			ApplicationPermission.FinanceFinancialReportingView, ApplicationPermission.FinanceFinancialReportingExport, ApplicationPermission.FinanceLocalizationView,
+			ApplicationPermission.FinanceFinancialReportingView, ApplicationPermission.FinanceFinancialReportingExport, ApplicationPermission.FinanceLocalizationView, ApplicationPermission.FinanceFixedAssetsView,
 			ApplicationPermission.UsersView, ApplicationPermission.RolesView,
 			ApplicationPermission.AuditLogView, ApplicationPermission.AuditLogExport, ApplicationPermission.SecurityEventsView)),
 		new(MasterDataManagerCode, "Master Data Manager", "Maintains item, customer, supplier, warehouse, location and reference master data without operational transaction posting.", Set(
