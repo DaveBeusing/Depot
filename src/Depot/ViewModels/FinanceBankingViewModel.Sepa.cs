@@ -198,6 +198,7 @@ public sealed partial class FinanceBankingViewModel
 		{
 			var export=await _sepa.DownloadAsync(selected.Id,token);
 			await File.WriteAllBytesAsync(path,export.XmlPayload,token);
+			await _sepa.RecordDownloadedAsync(selected.Id,token);
 			await LoadSepaExportsAsync(token);
 			SelectedSepaExport=SepaExports.FirstOrDefault(value=>value.Id==selected.Id);
 			CompleteOperation(false,$"Saved exact retained artifact. SHA-256: {export.XmlSha256}");

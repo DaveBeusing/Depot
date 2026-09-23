@@ -54,6 +54,9 @@ public sealed class FinanceSepaPaymentExportTests
 			var downloaded=await fixture.Service.DownloadAsync(first.Id);
 			Assert.Equal(first.XmlPayload,downloaded.XmlPayload);
 			Assert.Equal(first.XmlSha256,downloaded.XmlSha256);
+			Assert.Equal(FinanceSepaPaymentExportStatus.Generated,(await fixture.Service.GetExportAsync(first.Id))!.CurrentStatus);
+			await fixture.Service.RecordDownloadedAsync(first.Id);
+			Assert.Equal(FinanceSepaPaymentExportStatus.Downloaded,(await fixture.Service.GetExportAsync(first.Id))!.CurrentStatus);
 
 			var superseding=await fixture.Service.GenerateAsync(fixture.PaymentRunId,true);
 			Assert.NotEqual(first.Id,superseding.Id);

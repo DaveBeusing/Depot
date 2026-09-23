@@ -229,23 +229,30 @@ public sealed class FinanceSepaPaymentExportService
 	public async Task<FinanceSepaPaymentExport> DownloadAsync(long exportId, CancellationToken cancellationToken = default)
 	{
 		_authorization.RequirePermission(ApplicationPermission.FinanceSepaPaymentExportsExport);
-		var user = RequireUser();
+		_ = RequireUser();
 		var current = await _exports.GetExportAsync(exportId, cancellationToken) ?? throw new InvalidOperationException("SEPA payment export was not found.");
 		if (!string.Equals(Convert.ToHexString(SHA256.HashData(current.XmlPayload)).ToLowerInvariant(), current.XmlSha256, StringComparison.Ordinal))
 			throw new InvalidDataException("Retained SEPA payment export hash does not match its immutable XML payload.");
-		if (current.CurrentStatus != FinanceSepaPaymentExportStatus.Generated) return current;
+		return current;
+	}
 
+	public async Task<FinanceSepaPaymentExport> RecordDownloadedAsync(long exportId, CancellationToken cancellationToken = default)
+	{
+		_authorization.RequirePermission(ApplicationPermission.FinanceSepaPaymentExportsExport);
+		var user = RequireUser();
 		return await _transactions.ExecuteAsync(async (transaction, token) =>
 		{
-			var locked = await _exports.GetExportAsync(transaction, exportId, token) ?? throw new InvalidOperationException("SEPA payment export was not found.");
-			if (locked.CurrentStatus != FinanceSepaPaymentExportStatus.Generated) return locked;
+			var before = await _exports.GetExportAsync(transaction, exportId, token) ?? throw new InvalidOperationException("SEPA payment export was not found.");
+			if (before.CurrentStatus != FinanceSepaPaymentExportStatus.Generated) return before;
 			if (await _exports.UpdateStatusAsync(transaction, exportId, FinanceSepaPaymentExportStatus.Generated, FinanceSepaPaymentExportStatus.Downloaded, token) != 1)
 				throw new ConcurrencyConflictException("SEPA payment export");
 			var now = DateTime.UtcNow;
-			var history = new FinanceSepaPaymentExportStatusHistory { ExportId=exportId,Status=FinanceSepaPaymentExportStatus.Downloaded,RecordedAtUtc=now,RecordedByUserId=user.Id,EvidenceNote="Exact retained XML artifact downloaded." };
-			await _exports.AddStatusHistoryAsync(transaction, history, token);
-			var after = locked with { CurrentStatus = FinanceSepaPaymentExportStatus.Downloaded };
-			await _auditEntries.CreateAsync(transaction, _audit.CreateActionEntry(exportId, "Downloaded", ToSummary(locked), ToSummary(after)), token);
+			await _exports.AddStatusHistoryAsync(transaction, new FinanceSepaPaymentExportStatusHistory
+			{
+				ExportId=exportId,Status=FinanceSepaPaymentExportStatus.Downloaded,RecordedAtUtc=now,RecordedByUserId=user.Id,EvidenceNote="Exact retained XML artifact downloaded."
+			}, token);
+			var after = before with { CurrentStatus = FinanceSepaPaymentExportStatus.Downloaded };
+			await _auditEntries.CreateAsync(transaction, _audit.CreateActionEntry(exportId, "Downloaded", ToSummary(before), ToSummary(after)), token);
 			return after;
 		}, cancellationToken);
 	}
