@@ -153,22 +153,17 @@ jobs:
 
               $previousBudgetingView = Join-Path $previousTree 'src/Depot/Views/FinanceBudgetingView.xaml'
               $budgetingViewText = Get-Content $previousBudgetingView -Raw
-              $oldBudgetActions = @'
-        <controls:PageHeader.Actions>
-            <Button Command="{Binding NewBudgetCommand}" Content="New budget" IsEnabled="{Binding CanManage}" Style="{StaticResource SecondaryButtonStyle}"/>
-            <Button Margin="6,0,0,0" Command="{Binding RefreshCommand}" Content="Refresh" Style="{StaticResource SecondaryButtonStyle}"/>
-        </controls:PageHeader.Actions>
-'@
-              $newBudgetActions = @'
-        <controls:PageHeader.Actions>
-            <StackPanel Orientation="Horizontal">
-                <Button Command="{Binding NewBudgetCommand}" Content="New budget" IsEnabled="{Binding CanManage}" Style="{StaticResource SecondaryButtonStyle}"/>
-                <Button Margin="6,0,0,0" Command="{Binding RefreshCommand}" Content="Refresh" Style="{StaticResource SecondaryButtonStyle}"/>
-            </StackPanel>
-        </controls:PageHeader.Actions>
-'@
-              if ($budgetingViewText.Contains($oldBudgetActions)) {
-                $budgetingViewText = $budgetingViewText.Replace($oldBudgetActions, $newBudgetActions)
+              $firstBudgetButton = '<Button Command="{Binding NewBudgetCommand}" Content="New budget" IsEnabled="{Binding CanManage}" Style="{StaticResource SecondaryButtonStyle}"/>'
+              $secondBudgetButton = '<Button Margin="6,0,0,0" Command="{Binding RefreshCommand}" Content="Refresh" Style="{StaticResource SecondaryButtonStyle}"/>'
+              if ($budgetingViewText.Contains($firstBudgetButton) -and
+                  $budgetingViewText.Contains($secondBudgetButton) -and
+                  $budgetingViewText -notmatch '<StackPanel Orientation="Horizontal">\s*<Button Command="\{Binding NewBudgetCommand\}"') {
+                $budgetingViewText = $budgetingViewText.Replace(
+                  $firstBudgetButton,
+                  '<StackPanel Orientation="Horizontal">' + [Environment]::NewLine + "`t`t`t`t" + $firstBudgetButton)
+                $budgetingViewText = $budgetingViewText.Replace(
+                  $secondBudgetButton,
+                  $secondBudgetButton + [Environment]::NewLine + "`t`t`t</StackPanel>")
                 Set-Content $previousBudgetingView $budgetingViewText -Encoding utf8
                 $budgetingBootstrapApplied = $true
               }
