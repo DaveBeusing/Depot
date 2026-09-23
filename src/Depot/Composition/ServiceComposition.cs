@@ -36,6 +36,7 @@ internal sealed class ServiceComposition
 		Banking = new FinanceBankingService(database.TransactionRunner, repositories.FinanceBanking, AccountsPayable, repositories.Audit, audit, Authorization, ApprovalPolicies);
 		FinancialReporting = new FinanceFinancialReportingService(database.TransactionRunner, repositories.FinanceFinancialReporting, repositories.FinanceFinancialReportingInventory, AccountsReceivable, AccountsPayable, repositories.Audit, audit, Authorization);
 		Localization = new FinanceLocalizationService(database.TransactionRunner, repositories.FinanceLocalization, repositories.Audit, audit, Authorization);
+		FixedAssets = new FinanceFixedAssetService(database.TransactionRunner, repositories.FinanceFixedAssets, FinanceGeneralLedger, repositories.Audit, audit, Authorization);
 		var passwordHasher = new PasswordHasher();
 		ItemTraceability = new ItemTraceabilityService(repositories.ItemTraceability, audit);
 		var movementReversals = new StockMovementReversalService(database.TransactionRunner, repositories.Inventories, repositories.StockMovements, repositories.ReasonCodes, repositories.Audit, audit, ItemTraceability);
@@ -155,6 +156,7 @@ internal sealed class ServiceComposition
 	public FinanceBankingService Banking { get; }
 	public FinanceFinancialReportingService FinancialReporting { get; }
 	public FinanceLocalizationService Localization { get; }
+	public FinanceFixedAssetService FixedAssets { get; }
 	public AuthenticationService Authentication { get; }
 	public SessionService Session { get; }
 	public ItemService Items { get; }

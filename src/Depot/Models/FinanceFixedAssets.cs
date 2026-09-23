@@ -6,6 +6,7 @@ namespace Depot.Models;
 public enum FinanceAssetStatus { Draft=1, Active=2, Disposed=3, Retired=4 }
 public enum FinanceDepreciationMethod { StraightLine=1, NoDepreciation=2 }
 public enum FinanceAssetTransactionKind { Capitalization=1, Depreciation=2, Impairment=3, Correction=4, Transfer=5, Disposal=6 }
+public enum FinanceClosedPeriodPolicy { Fail=1, NextOpenPeriod=2 }
 
 public sealed record FinanceAssetClass
 {
@@ -14,7 +15,11 @@ public sealed record FinanceAssetClass
 	public required Guid LegalEntityId { get; init; }
 	public required string Code { get; init; }
 	public required string Name { get; init; }
-	public long PostingProfileId { get; init; }
+	public required Guid FiscalCalendarId { get; init; }
+	public long CapitalizationPostingProfileId { get; init; }
+	public long DepreciationPostingProfileId { get; init; }
+	public long ImpairmentPostingProfileId { get; init; }
+	public long DisposalPostingProfileId { get; init; }
 	public int DefaultUsefulLifeMonths { get; init; }
 	public FinanceDepreciationMethod DefaultMethod { get; init; } = FinanceDepreciationMethod.StraightLine;
 	public bool IsActive { get; init; } = true;
