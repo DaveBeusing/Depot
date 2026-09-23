@@ -150,3 +150,9 @@ Service-layer authorization is authoritative. UI visibility mirrors permissions 
 The full provider workflow exercises real database/runtime paths through provisioning, migrations, repositories and services. It covers SQL/type/constraint/date/decimal behavior, rollback, concurrency/deadlock/retry, Sales, Procurement, sessions, GL/AR/AP/FIFO, Banking/reconciliation, Financial Reporting/snapshots, remote restart, provider-native backup/restore and a representative 100k indexed lookup guard.
 
 This closes the technical database-provider acceptance gate for the exact baselines in the support matrix. It does not claim jurisdiction-specific accounting/legal certification or replace deployment-specific sizing, backup operations, accessibility, signing or organization-control acceptance.
+
+## Business-attachment boundary
+
+Business Attachments are a cross-domain user-document subsystem behind `BusinessAttachmentService`, `BusinessAttachmentRepository` and the replaceable `IBusinessAttachmentContentStore`. V1 content is database-backed so supported database backup/restore procedures retain content with metadata. Allowlisted entity kinds and service-layer RBAC prevent arbitrary table access. Revisions are immutable; replacement creates a new retained revision and SHA-256 is verified when content is opened. Generated document archives and electronic-invoice evidence remain separate authorities.
+
+See [Business Attachments](BusinessAttachments.md).

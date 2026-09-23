@@ -14,6 +14,7 @@ Updated: 2026-09-19
 - Document Templates feature schema: **1**
 - Enterprise Identity feature schema: **2**
 - Approval Policies feature schema: **1**
+- Business Attachments feature schema: **1**
 - Help manifest: **1.24**
 
 Application, Core database and feature-schema versions are independent compatibility dimensions. `Directory.Build.props` is the authoritative source for the exact application patch/version; long-lived documentation records the development line rather than duplicating the moving patch number.
@@ -140,3 +141,7 @@ Write-transaction retry is restricted to known transient provider failures. Retr
 The authoritative release manifest/evidence records Core plus all current feature-schema versions, including User Preferences, Enterprise Identity and Approval Policies. A target release cannot be treated as compatible solely because its application version is newer.
 
 DepotManager release metadata continues to record the target Core database schema and uses Depot's authoritative provisioning path for migrations. Remote database rollback/downgrade is never automatic. Provider-native backup responsibility and exact supported baselines are documented separately in the support matrix.
+
+### Business Attachments schema 1
+
+Business Attachments schema **1** is the provider-neutral metadata, immutable revision and database-backed content baseline. It stores allowlisted business-record links, current metadata and optimistic version state separately from immutable revision/content rows. It does not change Core schema **30** or any domain feature schema.

@@ -118,6 +118,7 @@ PR #56 then repaired CI execution boundaries without changing runtime behavior o
 - Document Templates feature schema: **1**
 - Enterprise Identity feature schema: **2**
 - Approval Policies feature schema: **1**
+- Business Attachments feature schema: **1**
 - Help manifest: **1.24**
 
 `Directory.Build.props` is authoritative for the exact Depot application patch/version; `src/DepotManager/DepotManager.Version.props` is authoritative for DepotManager. Schema migration constants and `src/Depot/Help/manifest.json` are authoritative for the remaining baseline values. Every repository commit increments `DepotVersionPatch`.
@@ -133,3 +134,11 @@ H2 remains closed, but H1 must be restored first. Reapply the five aggregate req
 A successful H3 run must retain `ProductionSigningAcceptance.json`, `ReleaseEvidence.json`, manifest/hashes and Stable RC test evidence. Until that run exists and passes, H3 remains `PRODUCTION_RC_REQUIRED`.
 
 After H3, the remaining Track A closure work is H4 deployment disaster-recovery acceptance and H5 exact-RC manual desktop accessibility acceptance. Product/legal/deployment items remain separately tracked in [Release 1.0](Release1.0.md) and the [Roadmap](Roadmap.md).
+
+## Business attachments
+
+Business Attachments feature schema **1** provides one reusable attachment workflow for Customer, Supplier, Item, Sales Quote, Sales Order, Sales Invoice, Purchase Order, Goods Receipt and Supplier/AP Document records. V1 content is database-backed behind a replaceable content-store abstraction, revisioned and SHA-256 verified. Service-layer domain permissions and Audit remain authoritative.
+
+The provider acceptance matrix exercises schema provisioning and binary content round-trip on every supported provider. The product boundary remains 25 MiB per file, blocks known executable/script extensions and requires deployment-level malware scanning where applicable.
+
+See [Business Attachments](BusinessAttachments.md).
