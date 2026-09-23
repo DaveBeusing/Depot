@@ -6,7 +6,7 @@ Updated: 2026-09-08
 
 This document describes technical controls implemented in Depot Finance. It is not a legal opinion, accounting-policy determination, tax determination, certification, audit opinion, or claim of compliance with a jurisdiction-specific accounting framework.
 
-Current Finance feature schema: **10**.
+Current Finance feature schema: **12**.
 
 ## Core principle
 

@@ -152,7 +152,7 @@ Finance schema **10** introduced the Fixed Assets persistence baseline.
 
 ### Finance schema 11
 
-Finance schema **11** is the current Finance persistence baseline. It adds provider-neutral `FinanceBudgetVersions` and `FinanceBudgetLines` with optimistic versions, lifecycle/source/approval evidence, account/period/dimension granularity and bounded list/aggregation indexes. Core schema remains **30**.
+Finance schema **11** introduced provider-neutral `FinanceBudgetVersions` and `FinanceBudgetLines` with optimistic versions, lifecycle/source/approval evidence, account/period/dimension granularity and bounded list/aggregation indexes. Core schema remains **30**.
 
 
 ### Finance schema 12
