@@ -203,6 +203,7 @@
                     </controls:Card>
                 </StackPanel>
             </TabItem>
+                    <TabItem Header="Attachments"><controls:BusinessAttachmentPanel Margin="8" DataContext="{Binding Attachments}" /></TabItem>
         </TabControl>
     </Grid>
 </UserControl>
