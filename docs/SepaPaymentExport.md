@@ -40,7 +40,7 @@ The general Supplier `Address` field is intentionally not parsed or guessed into
 
 Depot emits structured `PstlAdr` elements and does not generate unstructured-only `AdrLine` payment addresses.
 
-The 2025 EPC guidance originally scheduled the end of unstructured addresses for 15 November 2026. On 9 September 2026 the EPC announced that this deadline would be postponed, with a revised date to follow. Depot nevertheless keeps structured-address-only output as its supported profile.
+The 2025 SCT rulebook version 1.1 sets 15 November 2026 as the date from which unstructured postal addresses are no longer permitted in EPC payment messages. Depot emits structured-address-only output and therefore does not rely on the transitional unstructured format.
 
 ## Deterministic identity and retained evidence
 
