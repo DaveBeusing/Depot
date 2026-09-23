@@ -36,7 +36,7 @@ public sealed class ZugferdFacturXTests : IDisposable
 		connection.Open();
 		using var command = connection.CreateCommand();
 		command.CommandText = "SELECT Version FROM DepotFeatureVersions WHERE Name='Sales';";
-		Assert.Equal(14L, Convert.ToInt64(command.ExecuteScalar()));
+		Assert.Equal(SalesSchemaMigration.CurrentVersion, Convert.ToInt32(command.ExecuteScalar(), System.Globalization.CultureInfo.InvariantCulture));
 		command.CommandText = "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='SalesHybridElectronicInvoiceArtifacts';";
 		Assert.Equal(1L, Convert.ToInt64(command.ExecuteScalar()));
 	}

@@ -1,4 +1,4 @@
-<UserControl x:Class="Depot.Views.FinanceBudgetingView"
+<UserControl x:Class="Depot.Views.FinanceBudgetingView" AutomationProperties.Name="Finance budgeting workspace"
 	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
 	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
 	xmlns:controls="clr-namespace:Depot.Controls">

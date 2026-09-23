@@ -16,7 +16,7 @@ public sealed class FinanceLocalizationTests
 	public void CurrentFinanceMigrationCreatesLocalizationSchemaVersionNineAndReferencePacks()
 	{
 		using var context=TestContext.Create();
-		Assert.Equal(9L,context.Scalar("SELECT Version FROM DepotFeatureVersions WHERE Name='Finance';"));
+		Assert.Equal(FinanceInventoryAccountingSchemaMigration.CurrentVersion,context.Scalar("SELECT Version FROM DepotFeatureVersions WHERE Name='Finance';"));
 		Assert.Equal(1L,context.Scalar("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='FinanceLocalizationPacks';"));
 		Assert.Equal(1L,context.Scalar("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='FinanceLocalizationAssignments';"));
 		Assert.Equal(1L,context.Scalar("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='FinanceLocalizationRegistryEntries';"));
@@ -114,7 +114,7 @@ public sealed class FinanceLocalizationTests
 		var profile=await context.Service.GetEffectiveProfileAsync(entity,new DateOnly(2026,8,28));
 		Assert.Equal([FinanceLocalizationPackCodes.Generic,FinanceLocalizationPackCodes.EuropeanUnion,"FR-REF"],profile.Packs.Select(value=>value.Code).ToArray());
 		Assert.Contains(profile.Requirements,value=>value.RequirementCode=="FR-LOCAL-REVIEW");
-		Assert.Equal(9L,context.Scalar("SELECT Version FROM DepotFeatureVersions WHERE Name='Finance';"));
+		Assert.Equal(FinanceInventoryAccountingSchemaMigration.CurrentVersion,context.Scalar("SELECT Version FROM DepotFeatureVersions WHERE Name='Finance';"));
 	}
 
 	[Fact]
