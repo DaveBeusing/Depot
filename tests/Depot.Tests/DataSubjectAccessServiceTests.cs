@@ -67,15 +67,15 @@ public sealed class DataSubjectAccessServiceTests : IDisposable
 		await _database.InsertAsync(
 			"INSERT INTO BusinessAttachments (Id,EntityKind,EntityId,FileName,MediaType,ByteLength,Sha256,Description,Category,CreatedAtUtc,CurrentRevision,Status,Version) VALUES ($Id,1,$EntityId,'agreement.pdf','application/pdf',123,'ABCDEF','Customer agreement','Contract','2026-09-23T09:00:00Z',1,1,1);",
 			CancellationToken.None,
-			new Microsoft.Data.Sqlite.SqliteParameter("$Id", attachmentId.ToString("D")),
-			new Microsoft.Data.Sqlite.SqliteParameter("$EntityId", customerId));
+			new DatabaseParameter("$Id", attachmentId.ToString("D")),
+			new DatabaseParameter("$EntityId", customerId));
 		var service = new DataSubjectAccessService(_database, AdministratorAuthorization());
 
 		var result = await service.SearchAsync("bob");
-		var attachment = Assert.Single(result.Records.Where(record => record.Source == "BusinessAttachments"));
+		var attachment = Assert.Single(result.Records, record => record.Source == "BusinessAttachments");
 
 		Assert.Equal(customerId, attachment.EntityId);
-		Assert.Equal("agreement.pdf", attachment.DisplayName);
+		Assert.Equal("agreement.pdf", attachment.Subject);
 		Assert.Equal(attachmentId.ToString("D"), attachment.Fields["attachmentId"], ignoreCase: true);
 		Assert.Equal("ABCDEF", attachment.Fields["sha256"]);
 		Assert.Contains("retained", attachment.Fields["contentRepresentation"], StringComparison.OrdinalIgnoreCase);
