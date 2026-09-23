@@ -90,21 +90,20 @@ jobs:
           git worktree add --detach $previousTree $previousRef
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           try {
-            ./scripts/publish-packaged-artifacts.ps1 -SourceRoot $previousTree -OutputRoot artifacts/packaged/previous
-            if ($LASTEXITCODE -ne 0) {
-              $previousManagerProject = Join-Path $previousTree 'src/DepotManager/DepotManager.csproj'
-              $previousButtons = Join-Path $previousTree 'src/Depot/Resources/Buttons.xaml'
-              $managerProjectText = Get-Content $previousManagerProject -Raw
-              $buttonsText = Get-Content $previousButtons -Raw
-              $needsMotionBootstrap =
-                $managerProjectText -notmatch 'MotionSystem\.cs' -and
-                $buttonsText -match 'MotionBehavior\.IsButtonFeedbackEnabled'
-              if (-not $needsMotionBootstrap) { exit $LASTEXITCODE }
-
-              Write-Host 'Retrying previous artifact publish with the historical MotionSystem build-link bootstrap.'
-              Remove-Item artifacts/packaged/previous -Recurse -Force -ErrorAction SilentlyContinue
-              $previousManagerApp = Join-Path $previousTree 'src/DepotManager/App.xaml'
-              $managerAppText = Get-Content $previousManagerApp -Raw
+            # Historical base commits can contain narrowly scoped compile/link defects
+            # that were corrected immediately after merge. Apply only those exact,
+            # behavior-preserving compatibility rewrites before invoking the publish
+            # script because that script exits the PowerShell process on build failure.
+            $previousManagerProject = Join-Path $previousTree 'src/DepotManager/DepotManager.csproj'
+            $previousManagerApp = Join-Path $previousTree 'src/DepotManager/App.xaml'
+            $previousButtons = Join-Path $previousTree 'src/Depot/Resources/Buttons.xaml'
+            $managerProjectText = Get-Content $previousManagerProject -Raw
+            $managerAppText = Get-Content $previousManagerApp -Raw
+            $buttonsText = Get-Content $previousButtons -Raw
+            $needsMotionBootstrap =
+              $managerProjectText -notmatch 'MotionSystem\.cs' -and
+              $buttonsText -match 'MotionBehavior\.IsButtonFeedbackEnabled'
+            if ($needsMotionBootstrap) {
               $pageAnchor = '    <Page Include="..\Depot\Resources\Accessibility.xaml" Link="Resources\Accessibility.xaml" />'
               $compileAnchor = '    <Compile Include="..\Depot\Controls\AccessibilityAutomation.cs" Link="Controls\AccessibilityAutomation.cs" />'
               $resourceAnchor = '        <ResourceDictionary Source="Resources/Accessibility.xaml" />'
@@ -113,7 +112,6 @@ jobs:
                   -not $managerAppText.Contains($resourceAnchor)) {
                 throw 'Historical E2E bootstrap anchors are missing from the previous DepotManager source.'
               }
-
               $managerProjectText = $managerProjectText.Replace(
                 $pageAnchor,
                 $pageAnchor + [Environment]::NewLine + '    <Page Include="..\Depot\Resources\Motion.xaml" Link="Resources\Motion.xaml" />')
@@ -125,58 +123,52 @@ jobs:
                 $resourceAnchor + [Environment]::NewLine + '        <ResourceDictionary Source="Resources/Motion.xaml" />')
               Set-Content $previousManagerProject $managerProjectText -Encoding utf8
               Set-Content $previousManagerApp $managerAppText -Encoding utf8
-
-              # The current PR base predates three narrowly scoped Finance Budgeting
-              # build corrections. Apply only those exact historical source rewrites
-              # when the old forms are present so the previous package remains
-              # behaviorally equivalent while it can still be built for upgrade E2E.
-              $budgetingBootstrapApplied = $false
-              $previousBudgetingService = Join-Path $previousTree 'src/Depot/Services/FinanceBudgetingService.cs'
-              $budgetingServiceText = Get-Content $previousBudgetingService -Raw
-              $oldBudgetKey = 'value => (value.AccountId, value.AccountingPeriodId),'
-              $newBudgetKey = 'value => (AccountId: value.AccountId, PeriodId: value.AccountingPeriodId),'
-              if ($budgetingServiceText.Contains($oldBudgetKey)) {
-                $budgetingServiceText = $budgetingServiceText.Replace($oldBudgetKey, $newBudgetKey)
-                Set-Content $previousBudgetingService $budgetingServiceText -Encoding utf8
-                $budgetingBootstrapApplied = $true
-              }
-
-              $previousMainViewModel = Join-Path $previousTree 'src/Depot/ViewModels/MainViewModel.cs'
-              $mainViewModelText = Get-Content $previousMainViewModel -Raw
-              $oldBudgetOpen = 'await FinanceBudgetingViewModel.OpenBudgetAsync(item.EntityId, cancellationToken);'
-              $newBudgetOpen = 'if (_financeBudgeting is not null) await _financeBudgeting.Value.OpenBudgetAsync(item.EntityId, cancellationToken);'
-              if ($mainViewModelText.Contains($oldBudgetOpen)) {
-                $mainViewModelText = $mainViewModelText.Replace($oldBudgetOpen, $newBudgetOpen)
-                Set-Content $previousMainViewModel $mainViewModelText -Encoding utf8
-                $budgetingBootstrapApplied = $true
-              }
-
-              $previousBudgetingView = Join-Path $previousTree 'src/Depot/Views/FinanceBudgetingView.xaml'
-              $budgetingViewText = Get-Content $previousBudgetingView -Raw
-              $firstBudgetButton = '<Button Command="{Binding NewBudgetCommand}" Content="New budget" IsEnabled="{Binding CanManage}" Style="{StaticResource SecondaryButtonStyle}"/>'
-              $secondBudgetButton = '<Button Margin="6,0,0,0" Command="{Binding RefreshCommand}" Content="Refresh" Style="{StaticResource SecondaryButtonStyle}"/>'
-              if ($budgetingViewText.Contains($firstBudgetButton) -and
-                  $budgetingViewText.Contains($secondBudgetButton) -and
-                  $budgetingViewText -notmatch '<StackPanel Orientation="Horizontal">\s*<Button Command="\{Binding NewBudgetCommand\}"') {
-                $budgetingViewText = $budgetingViewText.Replace(
-                  $firstBudgetButton,
-                  '<StackPanel Orientation="Horizontal">' + [Environment]::NewLine + "`t`t`t`t" + $firstBudgetButton)
-                $budgetingViewText = $budgetingViewText.Replace(
-                  $secondBudgetButton,
-                  $secondBudgetButton + [Environment]::NewLine + "`t`t`t</StackPanel>")
-                Set-Content $previousBudgetingView $budgetingViewText -Encoding utf8
-                $budgetingBootstrapApplied = $true
-              }
-              if ($budgetingBootstrapApplied) {
-                "previous-build-bootstrap=FinanceBudgeting-BaseCompile" | Add-Content artifacts/packaged/source.txt -Encoding ascii
-              }
-
-              Remove-Item (Join-Path $previousTree 'src/DepotManager/bin') -Recurse -Force -ErrorAction SilentlyContinue
-              Remove-Item (Join-Path $previousTree 'src/DepotManager/obj') -Recurse -Force -ErrorAction SilentlyContinue
-              ./scripts/publish-packaged-artifacts.ps1 -SourceRoot $previousTree -OutputRoot artifacts/packaged/previous
-              if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
               "previous-build-bootstrap=DepotManager-MotionLinkage" | Add-Content artifacts/packaged/source.txt -Encoding ascii
             }
+
+            $budgetingBootstrapApplied = $false
+            $previousBudgetingService = Join-Path $previousTree 'src/Depot/Services/FinanceBudgetingService.cs'
+            $budgetingServiceText = Get-Content $previousBudgetingService -Raw
+            $oldBudgetKey = 'value => (value.AccountId, value.AccountingPeriodId),'
+            $newBudgetKey = 'value => (AccountId: value.AccountId, PeriodId: value.AccountingPeriodId),'
+            if ($budgetingServiceText.Contains($oldBudgetKey)) {
+              $budgetingServiceText = $budgetingServiceText.Replace($oldBudgetKey, $newBudgetKey)
+              Set-Content $previousBudgetingService $budgetingServiceText -Encoding utf8
+              $budgetingBootstrapApplied = $true
+            }
+
+            $previousMainViewModel = Join-Path $previousTree 'src/Depot/ViewModels/MainViewModel.cs'
+            $mainViewModelText = Get-Content $previousMainViewModel -Raw
+            $oldBudgetOpen = 'await FinanceBudgetingViewModel.OpenBudgetAsync(item.EntityId, cancellationToken);'
+            $newBudgetOpen = 'if (_financeBudgeting is not null) await _financeBudgeting.Value.OpenBudgetAsync(item.EntityId, cancellationToken);'
+            if ($mainViewModelText.Contains($oldBudgetOpen)) {
+              $mainViewModelText = $mainViewModelText.Replace($oldBudgetOpen, $newBudgetOpen)
+              Set-Content $previousMainViewModel $mainViewModelText -Encoding utf8
+              $budgetingBootstrapApplied = $true
+            }
+
+            $previousBudgetingView = Join-Path $previousTree 'src/Depot/Views/FinanceBudgetingView.xaml'
+            $budgetingViewText = Get-Content $previousBudgetingView -Raw
+            $firstBudgetButton = '<Button Command="{Binding NewBudgetCommand}" Content="New budget" IsEnabled="{Binding CanManage}" Style="{StaticResource SecondaryButtonStyle}"/>'
+            $secondBudgetButton = '<Button Margin="6,0,0,0" Command="{Binding RefreshCommand}" Content="Refresh" Style="{StaticResource SecondaryButtonStyle}"/>'
+            if ($budgetingViewText.Contains($firstBudgetButton) -and
+                $budgetingViewText.Contains($secondBudgetButton) -and
+                $budgetingViewText -notmatch '<StackPanel Orientation="Horizontal">\s*<Button Command="\{Binding NewBudgetCommand\}"') {
+              $budgetingViewText = $budgetingViewText.Replace(
+                $firstBudgetButton,
+                '<StackPanel Orientation="Horizontal">' + [Environment]::NewLine + "`t`t`t`t" + $firstBudgetButton)
+              $budgetingViewText = $budgetingViewText.Replace(
+                $secondBudgetButton,
+                $secondBudgetButton + [Environment]::NewLine + "`t`t`t</StackPanel>")
+              Set-Content $previousBudgetingView $budgetingViewText -Encoding utf8
+              $budgetingBootstrapApplied = $true
+            }
+            if ($budgetingBootstrapApplied) {
+              "previous-build-bootstrap=FinanceBudgeting-BaseCompile" | Add-Content artifacts/packaged/source.txt -Encoding ascii
+            }
+
+            ./scripts/publish-packaged-artifacts.ps1 -SourceRoot $previousTree -OutputRoot artifacts/packaged/previous
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
           finally {
             git worktree remove --force $previousTree
