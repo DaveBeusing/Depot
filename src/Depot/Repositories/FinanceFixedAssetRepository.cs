@@ -5,7 +5,6 @@ using System.Data.Common;
 using System.Globalization;
 using Depot.Data;
 using Depot.Models;
-using Depot.Services;
 
 namespace Depot.Repositories;
 
@@ -50,7 +49,7 @@ public sealed class FinanceFixedAssetRepository : DatabaseRepository
 		var assets=await SearchAssetsAsync(legalEntityId,null,null,pageNumber,pageSize,cancellationToken);
 		if(assets.Items.Count==0)return new PageResult<FinanceAssetReconciliationRow>([],pageNumber,pageSize,assets.TotalCount);
 		var ids=assets.Items.Select(value=>value.Id).ToArray();
-		var parameters=new List<DatabaseParameter>{Parameter("$SourceType",FinanceFixedAssetService.SourceType)};
+		var parameters=new List<DatabaseParameter>{Parameter("$SourceType","FixedAssets")};
 		var sourceParams=new List<string>(ids.Length);
 		for(var i=0;i<ids.Length;i++){var name=$"$Source{i}";sourceParams.Add(name);parameters.Add(Parameter(name,ids[i].ToString(CultureInfo.InvariantCulture)));}
 		var gl=await Database.QueryAsync(
