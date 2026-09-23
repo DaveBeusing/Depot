@@ -527,7 +527,7 @@ public sealed class ApprovalPolicyService
 			issues.Add(new("condition.unsupported", "An approval condition uses an unsupported kind."));
 			return;
 		}
-		var financeSubject = subjectKind is ApprovalSubjectKind.AccountsPayableException or ApprovalSubjectKind.PaymentProposal;
+		var financeSubject = subjectKind is ApprovalSubjectKind.AccountsPayableException or ApprovalSubjectKind.PaymentProposal or ApprovalSubjectKind.FinanceBudget;
 		if ((condition.Kind is ApprovalConditionKind.LegalEntityId or ApprovalConditionKind.AccountingBookId) && !financeSubject)
 		{
 			issues.Add(new("condition.subject", $"Condition '{condition.Kind}' is not supported for '{subjectKind}'."));
@@ -590,6 +590,7 @@ public sealed class ApprovalPolicyService
 		ApprovalSubjectKind.SalesOrder => ApplicationPermission.SalesOrdersApprove,
 		ApprovalSubjectKind.AccountsPayableException => ApplicationPermission.FinanceSupplierMatchExceptionsApprove,
 		ApprovalSubjectKind.PaymentProposal => ApplicationPermission.FinancePaymentProposalsApprove,
+		ApprovalSubjectKind.FinanceBudget => ApplicationPermission.FinanceBudgetingApprove,
 		_ => throw new InvalidOperationException($"Approval subject kind '{subjectKind}' is not supported.")
 	};
 
