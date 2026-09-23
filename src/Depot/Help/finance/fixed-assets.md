@@ -19,7 +19,7 @@ No other depreciation method is implied by the current implementation.
 
 ## Capitalization
 
-Capitalization is available only for draft assets. The service validates the configured asset class and posting profile, then posts through the existing Finance General Ledger service. Fixed Assets never writes parallel ledger rows.
+Capitalization is available only for draft assets. A draft asset may optionally reference a line from a **posted supplier invoice**; the source selector shows only eligible AP lines, and Fixed Assets revalidates the link and currency without changing AP history or posting authority. The configured asset class and posting profile are then used to post through the existing Finance General Ledger service. Fixed Assets never writes parallel ledger rows.
 
 ## Depreciation schedule and period run
 

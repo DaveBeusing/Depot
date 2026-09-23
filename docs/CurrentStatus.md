@@ -2,7 +2,7 @@
 
 Updated: 2026-09-20
 
-Depot is on the `0.15.x-preview` development line. Finance, inventory, purchasing, sales including the ERP-native Lead/Opportunity CRM pipeline, reporting, localization, notifications, Audit, persistent user sessions, operational security monitoring, enterprise identity/authentication, persisted workspace productivity preferences and the current visual-designer set are integrated in the repository.
+Depot is on the `0.15.x-preview` development line. Finance includes the General Ledger, AR/AP, Banking, Inventory Accounting, Financial Reporting and the current Fixed Assets/depreciation subledger work; inventory, purchasing, sales including the ERP-native Lead/Opportunity CRM pipeline, localization, notifications, Audit, persistent user sessions, operational security monitoring, enterprise identity/authentication, persisted workspace productivity preferences and the current visual-designer set are integrated in the repository.
 
 ## Repository governance
 

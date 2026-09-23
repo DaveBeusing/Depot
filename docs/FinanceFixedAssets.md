@@ -120,7 +120,7 @@ Only active assets can be disposed. Disposal computes carrying value from retain
 
 ## Accounts Payable source linkage
 
-An asset can retain the originating `FinanceSupplierDocumentLine` identity. The Fixed Assets service validates that the linked line exists but does not own or rewrite AP posting, matching or historical supplier-document evidence.
+An asset can retain the originating `FinanceSupplierDocumentLine` identity. The Asset Register offers a bounded selection of lines from **posted supplier invoices** only. The Fixed Assets service revalidates the selected source at save time and requires its currency to match the asset currency; it does not own or rewrite AP posting, matching, approval, reversal or historical supplier-document evidence.
 
 Classification, useful life, depreciation method and capitalization remain explicit Fixed Assets decisions rather than being inferred automatically from the supplier document.
 
