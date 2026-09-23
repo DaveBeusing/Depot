@@ -7,10 +7,10 @@ This document identifies the documentation baseline for the current development 
 ## Current baseline
 
 - Application: `0.15.x-preview`
-- Help manifest: `1.24`
+- Help manifest: `1.26`
 - Core database schema: `30`
 - Sales feature schema: `15`
-- Finance feature schema: `9`
+- Finance feature schema: `10`
 - User Sessions feature schema: `3`
 - Security Events feature schema: `3`
 - User Preferences feature schema: `2`
@@ -51,7 +51,7 @@ The current baseline is reconciled against the live repository rather than earli
 
 Live repository governance is also evidence-driven. Ruleset `23590604` is active and still enforces pull-request delivery plus deletion/non-fast-forward protection, but it currently lacks the five aggregate required-status-check bindings. H1 is therefore `BLOCKED` until those live checks are restored and the governance validator passes. Historical text that recorded H1 as closed does not override the live state.
 
-Embedded Finance Help must describe Accounts Payable, Inventory Accounting, Banking, Financial Reporting and Localization as implemented capabilities. Help manifest `1.24` remains unchanged because this reconciliation changes Help content only; topic IDs, routing and permission metadata are unchanged.
+Embedded Finance Help must describe Accounts Payable, Inventory Accounting, Banking, Financial Reporting and Localization as implemented capabilities. Help manifest `1.26` remains unchanged because this reconciliation changes Help content only; topic IDs, routing and permission metadata are unchanged.
 
 ## Deployment sizing documentation invariant
 
@@ -70,7 +70,7 @@ Documentation must not broaden:
 - repository CRA/privacy/security controls into a completed external legal/conformity assessment;
 - Preview engineering evidence into a commercial production-support commitment.
 
-Help manifest `1.24` is unchanged because this reconciliation changes release/compliance documentation only; no Help topic route, permission or in-app workflow contract changes.
+Help manifest `1.26` is unchanged because this reconciliation changes release/compliance documentation only; no Help topic route, permission or in-app workflow contract changes.
 
 ## Session and authentication invariants
 
@@ -104,7 +104,7 @@ Do not describe database-provider technical support as jurisdiction-specific acc
 
 Do not pin an exact preview patch version in canonical baseline documents. Use the development line and link exact build/release identity to `Directory.Build.props` and release evidence.
 
-Help manifest **1.24** contains the existing User Sessions and Security Center topics plus the permission-bound `administration.document-designer` topic. The current manifest version is authoritative for embedded Help routing and content.
+Help manifest **1.26** contains the existing User Sessions and Security Center topics plus the permission-bound `administration.document-designer` topic. The current manifest version is authoritative for embedded Help routing and content.
 
 
 ## 2026-09-22 approval-policy documentation reconciliation
