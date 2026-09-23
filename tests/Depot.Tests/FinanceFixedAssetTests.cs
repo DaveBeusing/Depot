@@ -185,6 +185,24 @@ public sealed class FinanceFixedAssetTests : IDisposable
 	}
 
 	[Fact]
+	public async Task PostedSupplierInvoiceLineCanBeSelectedAsAssetSource()
+	{
+		var classId=await InsertClassAsync(FinanceDepreciationMethod.NoDepreciation,1);
+		var postedLine=InsertSupplierLine(FinancePayableDocumentStatus.Posted,"EUR");
+		var draftLine=InsertSupplierLine(FinancePayableDocumentStatus.Draft,"EUR");
+		var foreignLine=InsertSupplierLine(FinancePayableDocumentStatus.Posted,"USD");
+
+		var options=await _service.GetCapitalizableSupplierLinesAsync();
+		Assert.Contains(options,value=>value.Id==postedLine);
+		Assert.DoesNotContain(options,value=>value.Id==draftLine);
+
+		var saved=await _service.SaveAssetAsync(NewAsset(classId,postedLine,"EUR"));
+		Assert.Equal(postedLine,saved.SourceSupplierDocumentLineId);
+		await Assert.ThrowsAsync<InvalidOperationException>(()=>_service.SaveAssetAsync(NewAsset(classId,draftLine,"EUR")));
+		await Assert.ThrowsAsync<InvalidOperationException>(()=>_service.SaveAssetAsync(NewAsset(classId,foreignLine,"EUR")));
+	}
+
+	[Fact]
 	public void FixedAssetRecordsAreClassifiedAsRetainedAccountingEvidence()
 	{
 		Assert.Equal(BusinessRecordRetentionCategory.AccountingRelevant,BusinessRecordCatalog.Require(nameof(FinanceFixedAsset)).RetentionCategory);
@@ -253,6 +271,23 @@ public sealed class FinanceFixedAssetTests : IDisposable
 		var debit=Convert.ToDecimal(_database.ExecuteScalarAsync("SELECT COALESCE(SUM(TransactionDebit),0) FROM FinanceJournalEntryLines WHERE JournalEntryId=$Id;",CancellationToken.None,new DatabaseParameter("$Id",journalEntryId.Value)).GetAwaiter().GetResult(),System.Globalization.CultureInfo.InvariantCulture);
 		var credit=Convert.ToDecimal(_database.ExecuteScalarAsync("SELECT COALESCE(SUM(TransactionCredit),0) FROM FinanceJournalEntryLines WHERE JournalEntryId=$Id;",CancellationToken.None,new DatabaseParameter("$Id",journalEntryId.Value)).GetAwaiter().GetResult(),System.Globalization.CultureInfo.InvariantCulture);
 		Assert.Equal(debit,credit);
+	}
+
+
+	private FinanceFixedAsset NewAsset(long classId,long sourceLineId,string currency) => new()
+	{
+		AssetNumber=$"FA-{Guid.NewGuid():N}",LegalEntityId=_legalEntityId,AssetClassId=classId,Description="AP-assisted asset",
+		AcquisitionDate=new DateOnly(2026,1,1),DepreciationStartDate=new DateOnly(2026,1,1),Currency=new CurrencyCode(currency),
+		OriginalCost=250m,SalvageValue=0m,UsefulLifeMonths=1,DepreciationMethod=FinanceDepreciationMethod.NoDepreciation,
+		Status=FinanceAssetStatus.Draft,SourceSupplierDocumentLineId=sourceLineId
+	};
+
+	private long InsertSupplierLine(FinancePayableDocumentStatus status,string currency)
+	{
+		var suffix=Guid.NewGuid().ToString("N");var userId=Convert.ToInt64(_database.ExecuteScalarAsync("SELECT Id FROM Users WHERE Email='admin@depot.local';",CancellationToken.None).GetAwaiter().GetResult(),System.Globalization.CultureInfo.InvariantCulture);
+		var supplierId=_database.Insert("INSERT INTO Suppliers (SupplierNumber,AccountNumber,Name,Loyalty,Quality,IsActive) VALUES ($Number,$Account,'Fixed Asset Supplier',100,100,1);",new DatabaseParameter("$Number",$"FA-{suffix[..12]}"),new DatabaseParameter("$Account",Math.Abs(DateTime.UtcNow.Ticks%1000000000L)));
+		var documentId=_database.Insert("INSERT INTO FinanceSupplierDocuments (Version,Kind,SupplierId,SupplierDocumentNumber,DocumentDate,DueDate,CurrencyCode,Status,NetAmount,TaxAmount,GrossAmount,CreatedByUserId,CreatedAtUtc,MatchExceptionApproved) VALUES (1,$Kind,$Supplier,$Number,'2026-01-01','2026-01-31',$Currency,$Status,250,0,250,$User,$Created,0);",new DatabaseParameter("$Kind",(int)FinancePayableDocumentKind.Invoice),new DatabaseParameter("$Supplier",supplierId),new DatabaseParameter("$Number",$"INV-{suffix[..12]}"),new DatabaseParameter("$Currency",currency),new DatabaseParameter("$Status",(int)status),new DatabaseParameter("$User",userId),new DatabaseParameter("$Created","2026-01-01T00:00:00.0000000Z"));
+		return _database.Insert("INSERT INTO FinanceSupplierDocumentLines (DocumentId,LineNumber,Description,Quantity,UnitPrice,NetAmount,TaxAmount,GrossAmount,MatchStatus,QuantityVariance,PriceVariance) VALUES ($Document,1,'Capital equipment',1,250,250,0,250,$Match,0,0);",new DatabaseParameter("$Document",documentId),new DatabaseParameter("$Match",(int)FinancePayableMatchStatus.NotRequired));
 	}
 
 	private Task<long> InsertAssetAsync(long classId,decimal cost,decimal salvage,int life,FinanceDepreciationMethod method) =>
