@@ -287,7 +287,7 @@ public sealed class FinanceSepaPaymentExportService
 
 	public Task<FinanceSepaPaymentExport?> GetExportAsync(long exportId, CancellationToken cancellationToken = default)
 	{
-		_authorization.RequirePermission(ApplicationPermission.FinanceBankingView);
+		_authorization.RequirePermission(ApplicationPermission.FinanceSepaPaymentExportsExport);
 		if (exportId <= 0) throw new ArgumentOutOfRangeException(nameof(exportId));
 		return _exports.GetExportAsync(exportId, cancellationToken);
 	}

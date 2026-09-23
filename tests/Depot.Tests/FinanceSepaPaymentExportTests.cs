@@ -133,6 +133,29 @@ public sealed class FinanceSepaPaymentExportTests
 	}
 
 	[Fact]
+	public async Task FullExportPayloadRequiresDedicatedExportPermission()
+	{
+		var path=Path.Combine(Path.GetTempPath(),$"depot-sepa-export-permission-{Guid.NewGuid():N}.db");
+		try
+		{
+			var fixture=await CreateFixtureAsync(new SqliteConnectionFactory(path));
+			var export=await fixture.Service.GenerateAsync(fixture.PaymentRunId);
+			var user=fixture.Authorization.CurrentUser!;
+			fixture.Authorization.SignIn(user,[ApplicationPermission.FinanceBankingView]);
+
+			var summaries=await fixture.Service.SearchExportsAsync(fixture.PaymentRunId,1,20);
+			Assert.Contains(summaries.Items,value=>value.Id==export.Id);
+			await Assert.ThrowsAsync<UnauthorizedAccessException>(()=>fixture.Service.GetExportAsync(export.Id));
+			await Assert.ThrowsAsync<UnauthorizedAccessException>(()=>fixture.Service.DownloadAsync(export.Id));
+		}
+		finally
+		{
+			SqliteConnection.ClearAllPools();
+			try{File.Delete(path);}catch(IOException){}
+		}
+	}
+
+	[Fact]
 	public async Task ManualExternalStatusFollowsControlledLifecycle()
 	{
 		var path=Path.Combine(Path.GetTempPath(),$"depot-sepa-status-{Guid.NewGuid():N}.db");
@@ -209,7 +232,7 @@ public sealed class FinanceSepaPaymentExportTests
 		if(saveDebtor)await service.SaveDebtorProfileAsync(new FinanceSepaDebtorProfile{BankAccountId=bankId,Name="Depot SEPA Test",StreetName="Teststrasse",BuildingNumber="1",PostalCode="53111",TownName="Bonn",CountryCode="DE"});
 		await service.SaveCreditorProfileAsync(new FinanceSepaCreditorProfile{SupplierId=supplier1,Name="Supplier Alpha",Iban="FR1420041010050500013M02606",Bic="BNPAFRPP",StreetName="Rue de Test",BuildingNumber="2",PostalCode="75001",TownName="Paris",CountryCode="FR"});
 		if(saveSecondCreditor)await service.SaveCreditorProfileAsync(new FinanceSepaCreditorProfile{SupplierId=supplier2,Name="Supplier Beta",Iban="GB82WEST12345698765432",Bic="DABAIE2D",StreetName="Test Road",BuildingNumber="3",PostalCode="D02",TownName="Dublin",CountryCode="IE"});
-		return new SepaFixture(service,runId,supplier1,supplier2);
+		return new SepaFixture(service,authorization,runId,supplier1,supplier2);
 	}
 
 	private static void ValidateAgainstPinnedSubset(byte[] payload)
@@ -223,5 +246,5 @@ public sealed class FinanceSepaPaymentExportTests
 		Assert.Empty(errors);
 	}
 
-	internal sealed record SepaFixture(FinanceSepaPaymentExportService Service,long PaymentRunId,long Supplier1Id,long Supplier2Id);
+	internal sealed record SepaFixture(FinanceSepaPaymentExportService Service,AuthorizationService Authorization,long PaymentRunId,long Supplier1Id,long Supplier2Id);
 }
