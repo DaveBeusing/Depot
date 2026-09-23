@@ -52,6 +52,8 @@ public sealed class ProcurementViewModel : BaseViewModel, IDisposable
 	private int _pageNumber = 1;
 	private long _totalCount;
 	private bool _isLoadingOrderDetails;
+	public BusinessAttachmentPanelViewModel? PurchaseOrderAttachments { get; }
+	public BusinessAttachmentPanelViewModel? GoodsReceiptAttachments { get; }
 
 	public ProcurementViewModel(
 		PurchaseOrderService orders,
@@ -64,10 +66,12 @@ public sealed class ProcurementViewModel : BaseViewModel, IDisposable
 		Action? purchaseOrderChanged = null,
 		Action? inventoryChanged = null,
 		SalesTimelineService? timeline = null,
-		Func<WorkflowTimelineItem, CancellationToken, Task>? timelineNavigation = null)
+		Func<WorkflowTimelineItem, CancellationToken, Task>? timelineNavigation = null,
+		BusinessAttachmentService? attachmentService = null)
 	{
 		_orders = orders; _history = history; _receipts = receipts; _suppliers = suppliers; _items = items; _fileDialogs = fileDialogs; _reasonCodes = reasonCodes;
 		_timeline = timeline; _timelineNavigation = timelineNavigation;
+		if (attachmentService is not null) { PurchaseOrderAttachments = new BusinessAttachmentPanelViewModel(attachmentService, fileDialogs); GoodsReceiptAttachments = new BusinessAttachmentPanelViewModel(attachmentService, fileDialogs); }
 		_purchaseOrderChanged = purchaseOrderChanged;
 		_inventoryChanged = inventoryChanged;
 		StatusFilters = [new("All statuses", null), .. Enum.GetValues<PurchaseOrderStatus>().Select(status => new PurchaseOrderStatusFilter(StatusLabel(status), status))];
@@ -158,6 +162,7 @@ public sealed class ProcurementViewModel : BaseViewModel, IDisposable
 			OnPropertyChanged(nameof(HasNoSelectedOrder));
 			OnPropertyChanged(nameof(CanReceive));
 			OnPropertyChanged(nameof(ShowReceiptEntry));
+			if (PurchaseOrderAttachments is not null) _ = PurchaseOrderAttachments.SetTargetAsync(BusinessAttachmentEntityKind.PurchaseOrder, value?.Id);
 			_ = SelectOrderAsync(value);
 		}
 	}
@@ -177,7 +182,7 @@ public sealed class ProcurementViewModel : BaseViewModel, IDisposable
 	public string SupplierDeliveryNoteNumber { get => _supplierDeliveryNoteNumber; set { if (_supplierDeliveryNoteNumber == value) return; _supplierDeliveryNoteNumber = value; OnPropertyChanged(); } }
 	public DateTime ReceiptDate { get => _receiptDate; set { if (_receiptDate == value) return; _receiptDate = value; OnPropertyChanged(); } }
 	public string? ReceiptNotes { get => _receiptNotes; set { if (_receiptNotes == value) return; _receiptNotes = value; OnPropertyChanged(); } }
-	public GoodsReceipt? SelectedReceipt { get => _selectedReceipt; set { if (_selectedReceipt == value) return; _selectedReceipt = value; OnPropertyChanged(); OnPropertyChanged(nameof(CanReverseReceipt)); ReverseReceiptCommand.RaiseCanExecuteChanged(); _ = LoadReceiptMovementsAsync(value); } }
+	public GoodsReceipt? SelectedReceipt { get => _selectedReceipt; set { if (_selectedReceipt == value) return; _selectedReceipt = value; OnPropertyChanged(); OnPropertyChanged(nameof(CanReverseReceipt)); ReverseReceiptCommand.RaiseCanExecuteChanged(); if (GoodsReceiptAttachments is not null) _ = GoodsReceiptAttachments.SetTargetAsync(BusinessAttachmentEntityKind.GoodsReceipt, value?.Id); _ = LoadReceiptMovementsAsync(value); } }
 	public bool CanReverseReceipt => _receipts.CanReverse && SelectedReceipt is { IsReversed: false };
 	public ProcurementSection Section
 	{
@@ -564,7 +569,7 @@ public sealed class ProcurementViewModel : BaseViewModel, IDisposable
 	private static PurchaseOrder Copy(PurchaseOrder value) => new() { Id = value.Id, OrderNumber = value.OrderNumber, SupplierId = value.SupplierId, SupplierName = value.SupplierName, OrderDate = value.OrderDate, ExpectedDeliveryDate = value.ExpectedDeliveryDate, Notes = value.Notes, Status = value.Status, CreatedByUserId = value.CreatedByUserId, SubmittedByUserId = value.SubmittedByUserId, SubmittedAtUtc = value.SubmittedAtUtc, ApprovalDecisionByUserId = value.ApprovalDecisionByUserId, ApprovalDecisionAtUtc = value.ApprovalDecisionAtUtc, ApprovalComment = value.ApprovalComment, ClosedByUserId = value.ClosedByUserId, ClosedAtUtc = value.ClosedAtUtc, CloseReason = value.CloseReason, CreatedByUserDisplay = value.CreatedByUserDisplay, SubmittedByUserDisplay = value.SubmittedByUserDisplay, ApprovalDecisionByUserDisplay = value.ApprovalDecisionByUserDisplay, ClosedByUserDisplay = value.ClosedByUserDisplay, Version = value.Version, Lines = value.Lines.Select(Copy).ToArray() };
 	private static PurchaseOrderLine Copy(PurchaseOrderLine value) => new() { Id = value.Id, PurchaseOrderId = value.PurchaseOrderId, LineNumber = value.LineNumber, ItemId = value.ItemId, ItemPartNumber = value.ItemPartNumber, ItemDescription = value.ItemDescription, Quantity = value.Quantity, UnitPrice = value.UnitPrice, ReceivedQuantity = value.ReceivedQuantity, Version = value.Version };
 	private static string StatusLabel(PurchaseOrderStatus status) => status switch { PurchaseOrderStatus.PartiallyReceived => "Partially Received", PurchaseOrderStatus.PendingApproval => "Pending Approval", _ => status.ToString() };
-	public void Dispose() { _orderRequest.Dispose(); _selectionRequest.Dispose(); _supplierOptionRequest.Dispose(); _itemOptionRequest.Dispose(); _receiptMovementRequest.Dispose(); _search.Dispose(); _supplierSearch.Dispose(); _itemSearch.Dispose(); SaveOrderCommand.Dispose(); SubmitForApprovalCommand.Dispose(); ReopenRejectedCommand.Dispose(); PlaceOrderCommand.Dispose(); CloseOrderCommand.Dispose(); CancelOrderCommand.Dispose(); PostReceiptCommand.Dispose(); ReverseReceiptCommand.Dispose(); PreviousPageCommand.Dispose(); NextPageCommand.Dispose(); OpenTimelineItemCommand.Dispose(); }
+	public void Dispose() { _orderRequest.Dispose(); _selectionRequest.Dispose(); _supplierOptionRequest.Dispose(); _itemOptionRequest.Dispose(); _receiptMovementRequest.Dispose(); _search.Dispose(); _supplierSearch.Dispose(); _itemSearch.Dispose(); SaveOrderCommand.Dispose(); SubmitForApprovalCommand.Dispose(); ReopenRejectedCommand.Dispose(); PlaceOrderCommand.Dispose(); CloseOrderCommand.Dispose(); CancelOrderCommand.Dispose(); PostReceiptCommand.Dispose(); ReverseReceiptCommand.Dispose(); PreviousPageCommand.Dispose(); NextPageCommand.Dispose(); OpenTimelineItemCommand.Dispose(); PurchaseOrderAttachments?.Dispose(); GoodsReceiptAttachments?.Dispose(); }
 }
 
 public sealed record PurchaseOrderStatusFilter(string Name, PurchaseOrderStatus? Status);

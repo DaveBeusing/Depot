@@ -9,13 +9,14 @@ The workflow is a discovery aid. It does not automatically decide whether a reco
 1. Open **Administration > Privacy Data**.
 2. Enter a name, email address, company/contact reference, or other identifying search term.
 3. Run the search.
-4. Review matching users, customers, customer contacts, suppliers, and attributable audit references.
+4. Review matching users, customers, customer contacts, suppliers, attributable audit references, and represented business attachments linked to matching Customer/Supplier records.
 5. Export the discovery result to JSON when required for the administrative process.
 
 ## Data protection
 - Password hashes, database credentials, protected settings, and other authentication secrets are excluded from the export.
 - Business and audit records can have retention requirements. Do not remove retained evidence solely because it contains personal data.
 - Historical backups can reintroduce previously removed or anonymized data after restore; applicable lifecycle actions must be reapplied after recovery.
+- Business Attachments linked to matching Customer/Supplier records are represented with metadata and retained-content status; their binary content is not full-text searched by this workflow.
 - Generated PDFs, spreadsheets, CSV files, email attachments, or copies already outside Depot are separate data locations and are not modified by this workflow.
 
 ## Required permissions

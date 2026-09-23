@@ -47,6 +47,7 @@ public static class DatabaseProvisioningService
 		DocumentTemplateSchemaMigration.Migrate(connectionFactory);
 		ApprovalPolicySchemaMigration.Migrate(connectionFactory);
 		EnterpriseIdentitySchemaMigration.Migrate(connectionFactory);
+		BusinessAttachmentSchemaMigration.Migrate(connectionFactory);
 		return DatabaseProvisioningPath.FullProvisioning;
 	}
 }
@@ -64,7 +65,8 @@ internal static class FeatureVersionMetadataRecovery
 			["UserPreferences"] = UserPreferenceSchemaMigration.CurrentVersion,
 			["DocumentTemplates"] = DocumentTemplateSchemaMigration.CurrentVersion,
 			["ApprovalPolicies"] = ApprovalPolicySchemaMigration.CurrentVersion,
-			["EnterpriseIdentity"] = EnterpriseIdentitySchemaMigration.CurrentVersion
+			["EnterpriseIdentity"] = EnterpriseIdentitySchemaMigration.CurrentVersion,
+			["BusinessAttachments"] = BusinessAttachmentSchemaMigration.CurrentVersion
 		};
 
 	public static void RestoreIfCurrentSchemaDetected(IDatabaseConnectionFactory connectionFactory)
@@ -100,7 +102,10 @@ internal static class FeatureVersionMetadataRecovery
 		TableExists(connection, provider, "SecurityEventExportTargets") &&
 		TableExists(connection, provider, "UserWorkspacePreferences") &&
 		TableExists(connection, provider, "DocumentTemplates") &&
-		ColumnExists(connection, provider, "EnterpriseIdentityProviders", "MaximumAuthenticationAgeMinutes");
+		ColumnExists(connection, provider, "EnterpriseIdentityProviders", "MaximumAuthenticationAgeMinutes") &&
+		TableExists(connection, provider, "BusinessAttachments") &&
+		TableExists(connection, provider, "BusinessAttachmentRevisions") &&
+		TableExists(connection, provider, "BusinessAttachmentContents");
 
 	private static bool HasFutureFeatureVersion(DbConnection connection)
 	{

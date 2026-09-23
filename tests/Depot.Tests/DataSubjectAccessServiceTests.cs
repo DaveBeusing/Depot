@@ -22,6 +22,7 @@ public sealed class DataSubjectAccessServiceTests : IDisposable
 		_factory = new SqliteConnectionFactory(_path);
 		new DepotDatabase(_factory).Initialize();
 		SalesSchemaMigration.Migrate(_factory);
+		BusinessAttachmentSchemaMigration.Migrate(_factory);
 		_database = new DatabaseAccess(_factory);
 	}
 
@@ -54,6 +55,30 @@ public sealed class DataSubjectAccessServiceTests : IDisposable
 		Assert.Contains(result.Records, record => record.Source == "Customers" && record.Email == "alice@example.test");
 		Assert.DoesNotContain("TOP-SECRET-HASH", json, StringComparison.Ordinal);
 		Assert.DoesNotContain("passwordHash", json, StringComparison.OrdinalIgnoreCase);
+	}
+
+	[Fact]
+	public async Task SearchRepresentsAttachmentsLinkedToPersonalDataRecords()
+	{
+		var customerId = await _database.InsertAsync(
+			"INSERT INTO Customers (CustomerNumber,Name,ContactName,Email,Phone,PaymentTermsDays,Currency,IsActive) VALUES ('CU-900002','Attachment Customer','Bob Example','bob@example.test','+49 456',30,'EUR',1);",
+			CancellationToken.None);
+		var attachmentId = Guid.NewGuid();
+		await _database.InsertAsync(
+			"INSERT INTO BusinessAttachments (Id,EntityKind,EntityId,FileName,MediaType,ByteLength,Sha256,Description,Category,CreatedAtUtc,CurrentRevision,Status,Version) VALUES ($Id,1,$EntityId,'agreement.pdf','application/pdf',123,'ABCDEF','Customer agreement','Contract','2026-09-23T09:00:00Z',1,1,1);",
+			CancellationToken.None,
+			new DatabaseParameter("$Id", attachmentId.ToString("D")),
+			new DatabaseParameter("$EntityId", customerId));
+		var service = new DataSubjectAccessService(_database, AdministratorAuthorization());
+
+		var result = await service.SearchAsync("bob");
+		var attachment = Assert.Single(result.Records, record => record.Source == "BusinessAttachments");
+
+		Assert.Equal(customerId, attachment.EntityId);
+		Assert.Equal("agreement.pdf", attachment.Subject);
+		Assert.Equal(attachmentId.ToString("D"), attachment.Fields["attachmentId"], ignoreCase: true);
+		Assert.Equal("ABCDEF", attachment.Fields["sha256"]);
+		Assert.Contains("retained", attachment.Fields["contentRepresentation"], StringComparison.OrdinalIgnoreCase);
 	}
 
 	[Fact]

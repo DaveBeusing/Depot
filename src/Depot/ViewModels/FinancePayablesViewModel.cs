@@ -68,20 +68,24 @@ public sealed class FinancePayablesViewModel : BaseViewModel, IDisposable
 	private decimal _unappliedDebits;
 	private decimal _netExposure;
 	private bool _disposed;
+	public BusinessAttachmentPanelViewModel? Attachments { get; }
 
 	public FinancePayablesViewModel(FinanceAccountsPayableService payables)
-		: this(payables, null, null)
+		: this(payables, null, null, null, null)
 	{
 	}
 
 	public FinancePayablesViewModel(
 		FinanceAccountsPayableService payables,
 		SalesTimelineService? timeline,
-		Func<WorkflowTimelineItem, CancellationToken, Task>? timelineNavigation)
+		Func<WorkflowTimelineItem, CancellationToken, Task>? timelineNavigation,
+		BusinessAttachmentService? attachmentService = null,
+		IFileDialogService? fileDialogs = null)
 	{
 		_payables = payables;
 		_timeline = timeline;
 		_timelineNavigation = timelineNavigation;
+		if (attachmentService is not null && fileDialogs is not null) Attachments = new BusinessAttachmentPanelViewModel(attachmentService, fileDialogs);
 		RefreshCommand = new AsyncRelayCommand(LoadAsync);
 		PreviousPageCommand = new AsyncRelayCommand(PreviousPageAsync, () => PageNumber > 1);
 		NextPageCommand = new AsyncRelayCommand(NextPageAsync, () => HasNextPage);
@@ -162,6 +166,7 @@ public sealed class FinancePayablesViewModel : BaseViewModel, IDisposable
 			OnPropertyChanged();
 			ApprovalFlow = value is null ? null : ApprovalFlowProjectionService.ProjectSupplierDocument(value, CanSubmitDocuments, _payables.CanDecide(value.CreatedByUserId), CanPostDocuments);
 			if (value is not null) LoadDraftEditor(value);
+			if (Attachments is not null) _ = Attachments.SetTargetAsync(BusinessAttachmentEntityKind.SupplierDocument, value?.Id);
 			_ = LoadTimelineAsync(value);
 			RaiseDocumentCommands();
 		}
@@ -481,7 +486,7 @@ public sealed class FinancePayablesViewModel : BaseViewModel, IDisposable
 	private static decimal ParseDecimal(string value, string name) => TryParseDecimal(value, out var parsed) && parsed > 0m ? parsed : throw new InvalidOperationException($"A positive {name} is required.");
 	private static bool TryParseDecimal(string value, out decimal parsed) => decimal.TryParse(value, NumberStyles.Number, CultureInfo.CurrentCulture, out parsed) || decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out parsed);
 
-	public void Dispose() { if (_disposed) return; _disposed = true; _loadRequest.Dispose(); OpenTimelineItemCommand.Dispose(); }
+	public void Dispose() { if (_disposed) return; _disposed = true; _loadRequest.Dispose(); OpenTimelineItemCommand.Dispose(); Attachments?.Dispose(); }
 }
 
 public sealed class FinanceSupplierDocumentLineDraftEditor : BaseViewModel

@@ -70,6 +70,8 @@ internal sealed class RepositoryComposition
 		MyWork = new MyWorkReadRepository(dataAccess);
 		DocumentTemplates = new DocumentTemplateRepository(dataAccess);
 		ApprovalPolicies = new ApprovalPolicyRepository(dataAccess);
+		BusinessAttachmentContents = new DatabaseBusinessAttachmentContentStore(dataAccess);
+		BusinessAttachments = new BusinessAttachmentRepository(dataAccess, BusinessAttachmentContents);
 	}
 
 	public ItemRepository Items { get; }
@@ -132,4 +134,6 @@ internal sealed class RepositoryComposition
 	public MyWorkReadRepository MyWork { get; }
 	public DocumentTemplateRepository DocumentTemplates { get; }
 	public ApprovalPolicyRepository ApprovalPolicies { get; }
+	public DatabaseBusinessAttachmentContentStore BusinessAttachmentContents { get; }
+	public BusinessAttachmentRepository BusinessAttachments { get; }
 }

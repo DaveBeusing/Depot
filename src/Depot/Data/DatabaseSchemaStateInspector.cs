@@ -20,7 +20,8 @@ internal static class DatabaseSchemaStateInspector
 			["UserPreferences"] = UserPreferenceSchemaMigration.CurrentVersion,
 			["DocumentTemplates"] = DocumentTemplateSchemaMigration.CurrentVersion,
 			["ApprovalPolicies"] = ApprovalPolicySchemaMigration.CurrentVersion,
-			["EnterpriseIdentity"] = EnterpriseIdentitySchemaMigration.CurrentVersion
+			["EnterpriseIdentity"] = EnterpriseIdentitySchemaMigration.CurrentVersion,
+			["BusinessAttachments"] = BusinessAttachmentSchemaMigration.CurrentVersion
 		};
 
 	public static bool IsCurrent(IDatabaseConnectionFactory connectionFactory)

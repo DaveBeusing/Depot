@@ -83,10 +83,11 @@ public sealed class SalesQuotesViewModel : BaseViewModel, IDisposable
 	private decimal _discountPercent;
 	private decimal _taxRate=19m;
 	private SalesQuote _draft=NewDraft();
+	public BusinessAttachmentPanelViewModel? Attachments{get;}
 
-	public SalesQuotesViewModel(SalesQuoteService quotes,SalesPricingService pricing,CustomerService customers,ItemService items,IFileDialogService fileDialogs,SalesDocumentService documents)
+	public SalesQuotesViewModel(SalesQuoteService quotes,SalesPricingService pricing,CustomerService customers,ItemService items,IFileDialogService fileDialogs,SalesDocumentService documents,BusinessAttachmentService? attachmentService=null)
 	{
-		_quotes=quotes;_pricing=pricing;_customers=customers;_items=items;_fileDialogs=fileDialogs;_documents=documents;
+		_quotes=quotes;_pricing=pricing;_customers=customers;_items=items;_fileDialogs=fileDialogs;_documents=documents;if(attachmentService is not null)Attachments=new BusinessAttachmentPanelViewModel(attachmentService,fileDialogs);
 		NewQuoteCommand=new RelayCommand(NewQuote,()=>_quotes.CanCreate);
 		SaveQuoteCommand=new AsyncRelayCommand(SaveQuoteAsync,()=>Draft.Status==SalesQuoteStatus.Draft&&(Draft.Id==0?_quotes.CanCreate:_quotes.CanEdit));
 		AddLineCommand=new AsyncRelayCommand(AddLineAsync,()=>Draft.Status==SalesQuoteStatus.Draft&&SelectedItem is not null&&Quantity>0);
@@ -122,7 +123,7 @@ public sealed class SalesQuotesViewModel : BaseViewModel, IDisposable
 	public SalesQuote Draft{get=>_draft;private set{_draft=value;OnPropertyChanged();OnPropertyChanged(nameof(Title));Raise();}}
 	public string Title=>Draft.Id==0?"New quote":Draft.QuoteNumber;
 	public SalesQuoteLine? SelectedLine{get;set;}
-	public SalesQuote? SelectedQuote{get=>_selectedQuote;set{if(_selectedQuote==value)return;_selectedQuote=value;OnPropertyChanged();_ = LoadQuoteAsync(value);}}
+	public SalesQuote? SelectedQuote{get=>_selectedQuote;set{if(_selectedQuote==value)return;_selectedQuote=value;OnPropertyChanged();if(Attachments is not null)_ = Attachments.SetTargetAsync(BusinessAttachmentEntityKind.SalesQuote,value?.Id);_ = LoadQuoteAsync(value);}}
 	public Customer? SelectedCustomer{get=>_selectedCustomer;set{if(_selectedCustomer==value)return;_selectedCustomer=value;OnPropertyChanged();_ = LoadCustomerContextAsync(value);}}
 	public CustomerContact? SelectedContact{get=>_selectedContact;set{_selectedContact=value;Draft.ContactId=value?.Id;Draft.ContactName=value?.Name;OnPropertyChanged();}}
 	public Item? SelectedItem{get=>_selectedItem;set{_selectedItem=value;OnPropertyChanged();AddLineCommand.RaiseCanExecuteChanged();}}
@@ -136,6 +137,7 @@ public sealed class SalesQuotesViewModel : BaseViewModel, IDisposable
 		var quote = await _quotes.GetByIdAsync(id, token) ?? throw new InvalidOperationException("The referenced sales quote no longer exists.");
 		_selectedQuote = quote;
 		OnPropertyChanged(nameof(SelectedQuote));
+		if(Attachments is not null)await Attachments.SetTargetAsync(BusinessAttachmentEntityKind.SalesQuote,quote.Id,token);
 		await LoadQuoteAsync(quote);
 	}
 
@@ -170,5 +172,5 @@ public sealed class SalesQuotesViewModel : BaseViewModel, IDisposable
 	private static SalesQuote Copy(SalesQuote v)=>new(){Id=v.Id,QuoteNumber=v.QuoteNumber,CustomerId=v.CustomerId,CustomerName=v.CustomerName,BillingAddress=v.BillingAddress,ShippingAddress=v.ShippingAddress,ContactId=v.ContactId,ContactName=v.ContactName,QuoteDate=v.QuoteDate,ValidUntil=v.ValidUntil,Currency=v.Currency,CustomerReference=v.CustomerReference,Notes=v.Notes,Status=v.Status,CreatedByUserId=v.CreatedByUserId,CreatedAtUtc=v.CreatedAtUtc,ConvertedSalesOrderId=v.ConvertedSalesOrderId,ConvertedAtUtc=v.ConvertedAtUtc,Version=v.Version,Lines=v.Lines.Select(Copy).ToArray()};
 	private static SalesQuoteLine Copy(SalesQuoteLine v)=>new(){Id=v.Id,SalesQuoteId=v.SalesQuoteId,LineNumber=v.LineNumber,ItemId=v.ItemId,PartNumber=v.PartNumber,Description=v.Description,Quantity=v.Quantity,UnitPrice=v.UnitPrice,DiscountPercent=v.DiscountPercent,PriceSourceListId=v.PriceSourceListId,PriceSourceName=v.PriceSourceName,PriceSourceScope=v.PriceSourceScope,PriceSourceCurrency=v.PriceSourceCurrency,TaxRate=v.TaxRate,Version=v.Version};
 	private static void Replace<T>(ObservableCollection<T> target,IEnumerable<T> values){target.Clear();foreach(var v in values)target.Add(v);}
-	public void Dispose(){SaveQuoteCommand.Dispose();AddLineCommand.Dispose();SendQuoteCommand.Dispose();AcceptQuoteCommand.Dispose();RejectQuoteCommand.Dispose();ConvertQuoteCommand.Dispose();}
+	public void Dispose(){Attachments?.Dispose();SaveQuoteCommand.Dispose();AddLineCommand.Dispose();SendQuoteCommand.Dispose();AcceptQuoteCommand.Dispose();RejectQuoteCommand.Dispose();ConvertQuoteCommand.Dispose();}
 }

@@ -24,15 +24,20 @@ public sealed partial class ItemsViewModel : BaseViewModel, IDisposable
 	private long _totalCount;
 	private ActivationFilterOption _selectedActivationFilter = ActivationFilterOption.All[0];
 
+	public BusinessAttachmentPanelViewModel? Attachments { get; private set; }
+
 	public ItemsViewModel(
 		ItemService itemService,
 		ManufacturerService manufacturerService,
 		CategoryService categoryService,
 		UnitOfMeasureService unitOfMeasureService,
-		PackagingService packagingService)
+		PackagingService packagingService,
+		BusinessAttachmentService? attachmentService = null,
+		IFileDialogService? fileDialogs = null)
 	{
 		_itemService = itemService;
 		_referenceServices = [manufacturerService, categoryService, unitOfMeasureService, packagingService];
+		if (attachmentService is not null && fileDialogs is not null) Attachments = new BusinessAttachmentPanelViewModel(attachmentService, fileDialogs);
 		Editor = new ItemEditorViewModel();
 		NewItemCommand = new RelayCommand(NewItem);
 		ClearReplacementCommand = new RelayCommand(() => Editor.ReplacementItemId = null);
@@ -136,6 +141,7 @@ public sealed partial class ItemsViewModel : BaseViewModel, IDisposable
 			DeactivateItemCommand.RaiseCanExecuteChanged();
 			OnPropertyChanged(nameof(SelectionContextText));
 			OnPropertyChanged(nameof(ShowSelectedItemActivationAction));
+			if (Attachments is not null) _ = Attachments.SetTargetAsync(BusinessAttachmentEntityKind.Item, value?.Id);
 		}
 	}
 
@@ -445,5 +451,6 @@ public sealed partial class ItemsViewModel : BaseViewModel, IDisposable
 		PreviousPageCommand.Dispose();
 		NextPageCommand.Dispose();
 		DisposeCosting();
+		Attachments?.Dispose();
 	}
 }

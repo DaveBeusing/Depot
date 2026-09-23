@@ -1,5 +1,5 @@
 {
-  "version": "1.24",
+  "version": "1.25",
   "topics": [
     {
       "id": "getting-started.first-login",
@@ -1080,6 +1080,15 @@
       "relatedTopics": [
         "administration.database"
       ]
+    }
+    ,{
+      "id": "getting-started.business-attachments",
+      "title": "Business Attachments",
+      "category": "Getting Started",
+      "file": "getting-started/business-attachments.md",
+      "order": 130,
+      "keywords": ["attachment", "document", "file", "revision", "upload", "download"],
+      "relatedTopics": ["administration.privacy-data", "administration.audit-log"]
     }
   ]
 }

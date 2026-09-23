@@ -52,6 +52,7 @@ The acceptance suite covers:
 - Banking account persistence, CSV statement import/idempotence, GL reconciliation and reconciliation reversal;
 - Financial Reporting Trial Balance generation, deterministic CSV export and immutable report-snapshot idempotence;
 - persistent user sessions, heartbeat and termination;
+- Business Attachments feature schema provisioning plus database-backed binary content round-trip and SHA-256 metadata persistence;
 - unavailable-connection failure followed by healthy connection-pool recovery;
 - remote database service restart followed by successful Depot re-entry;
 - provider-native backup/restore with a persisted recovery marker and post-restore Depot recognition;

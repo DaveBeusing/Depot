@@ -34,12 +34,13 @@ public sealed class SupplierViewModel : BaseViewModel, IDisposable
 	private ActivationFilterOption _selectedActivationFilter = ActivationFilterOption.All[0];
 	private ActivationFilterOption _selectedSupplierItemActivationFilter = ActivationFilterOption.All[0];
 
-	public SupplierViewModel(SupplierService supplierService, SupplierItemService supplierItemService, SupplierCategoryService categoryService, ItemService itemService)
+	public SupplierViewModel(SupplierService supplierService, SupplierItemService supplierItemService, SupplierCategoryService categoryService, ItemService itemService, BusinessAttachmentService? attachmentService = null, IFileDialogService? fileDialogs = null)
 	{
 		_supplierService = supplierService;
 		_supplierItemService = supplierItemService;
 		_categoryService = categoryService;
 		_itemService = itemService;
+		if (attachmentService is not null && fileDialogs is not null) Attachments = new BusinessAttachmentPanelViewModel(attachmentService, fileDialogs);
 		NewSupplierCommand = new RelayCommand(NewSupplier);
 		SaveSupplierCommand = new AsyncRelayCommand(SaveSupplierAsync);
 		ToggleSupplierCommand = new AsyncRelayCommand(ToggleSupplierAsync, () => SelectedSupplier is not null);
@@ -49,6 +50,7 @@ public sealed class SupplierViewModel : BaseViewModel, IDisposable
 		ToggleSupplierItemCommand = new AsyncRelayCommand(ToggleSupplierItemAsync, () => SelectedSupplierItem is not null);
 	}
 
+	public BusinessAttachmentPanelViewModel? Attachments { get; }
 	public ObservableCollection<Supplier> Suppliers { get; } = new();
 	public ObservableCollection<ItemReferenceData> Categories { get; } = new();
 	public ObservableCollection<SupplierItem> SupplierItems { get; } = new();
@@ -98,6 +100,7 @@ public sealed class SupplierViewModel : BaseViewModel, IDisposable
 			_selectedSupplier = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasSelectedSupplier)); OnPropertyChanged(nameof(SupplierActionText));
 			Draft = value is null ? NewSupplierDraft() : Copy(value);
 			ToggleSupplierCommand.RaiseCanExecuteChanged(); NewSupplierItemCommand.RaiseCanExecuteChanged(); SaveSupplierItemCommand.RaiseCanExecuteChanged();
+			if (Attachments is not null) _ = Attachments.SetTargetAsync(BusinessAttachmentEntityKind.Supplier, value?.Id);
 			NewSupplierItem(); _ = LoadSupplierItemsAsync();
 		}
 	}
@@ -264,5 +267,5 @@ public sealed class SupplierViewModel : BaseViewModel, IDisposable
 	private static Supplier Copy(Supplier s) => new() { Id=s.Id, AccountNumber=s.AccountNumber, CustomerNumber=s.CustomerNumber, Name=s.Name, Contact=s.Contact, Email=s.Email, Phone=s.Phone, Address=s.Address, RmaTerms=s.RmaTerms, Url=s.Url, PaymentTerm=s.PaymentTerm, Iban=s.Iban, AccountName=s.AccountName, SepaMandate=s.SepaMandate, VatNumber=s.VatNumber, SupplierCategoryId=s.SupplierCategoryId, SupplierCategoryName=s.SupplierCategoryName, Loyalty=s.Loyalty, Quality=s.Quality, Notes=s.Notes, IsActive=s.IsActive, Version=s.Version };
 	private static SupplierItem Copy(SupplierItem s) => new() { Id=s.Id, SupplierId=s.SupplierId, ItemId=s.ItemId, ItemPartNumber=s.ItemPartNumber, ItemDescription=s.ItemDescription, SupplierPartNumber=s.SupplierPartNumber, PurchasePrice=s.PurchasePrice, LeadTimeDays=s.LeadTimeDays, MinimumOrderQuantity=s.MinimumOrderQuantity, IsPreferredSupplier=s.IsPreferredSupplier, IsActive=s.IsActive, Version=s.Version };
 
-	public void Dispose() { _supplierSearch.Dispose(); _supplierItemSearch.Dispose(); _itemSearch.Dispose(); _supplierRequest.Dispose(); _supplierItemRequest.Dispose(); _itemOptionRequest.Dispose(); SaveSupplierCommand.Dispose(); ToggleSupplierCommand.Dispose(); SaveSupplierItemCommand.Dispose(); ToggleSupplierItemCommand.Dispose(); }
+	public void Dispose() { _supplierSearch.Dispose(); _supplierItemSearch.Dispose(); _itemSearch.Dispose(); _supplierRequest.Dispose(); _supplierItemRequest.Dispose(); _itemOptionRequest.Dispose(); Attachments?.Dispose(); SaveSupplierCommand.Dispose(); ToggleSupplierCommand.Dispose(); SaveSupplierItemCommand.Dispose(); ToggleSupplierItemCommand.Dispose(); }
 }

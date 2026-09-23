@@ -30,9 +30,9 @@ public sealed partial class ItemsViewModel
 	private string _baseCostDisplay="—";
 	private string _calculatedCostDisplay="—";
 
-	public ItemsViewModel(ItemService itemService,ManufacturerService manufacturerService,CategoryService categoryService,UnitOfMeasureService unitOfMeasureService,PackagingService packagingService,ItemCostCalculationService itemCosts)
+	public ItemsViewModel(ItemService itemService,ManufacturerService manufacturerService,CategoryService categoryService,UnitOfMeasureService unitOfMeasureService,PackagingService packagingService,ItemCostCalculationService itemCosts,BusinessAttachmentService? attachmentService=null,IFileDialogService? fileDialogs=null)
 	{
-		_itemService=itemService;_referenceServices=[manufacturerService,categoryService,unitOfMeasureService,packagingService];_itemCosts=itemCosts;
+		_itemService=itemService;_referenceServices=[manufacturerService,categoryService,unitOfMeasureService,packagingService];_itemCosts=itemCosts;if(attachmentService is not null&&fileDialogs is not null)Attachments=new BusinessAttachmentPanelViewModel(attachmentService,fileDialogs);
 		Editor=new ItemEditorViewModel();NewItemCommand=new RelayCommand(NewItem);ClearReplacementCommand=new RelayCommand(()=>Editor.ReplacementItemId=null);SaveItemCommand=new AsyncRelayCommand(SaveItemAsync);DeactivateItemCommand=new AsyncRelayCommand(DeactivateItemAsync,CanDeactivateItem);PreviousPageCommand=new AsyncRelayCommand(PreviousPageAsync,()=>PageNumber>1);NextPageCommand=new AsyncRelayCommand(NextPageAsync,()=>HasNextPage);
 		NewCostComponentCommand=new RelayCommand(NewCostComponent,()=>SelectedItem is not null&&itemCosts.CanManage);SaveCostProfileCommand=new AsyncRelayCommand(SaveCostProfileAsync,CanSaveCostProfile);SaveCostComponentCommand=new AsyncRelayCommand(SaveCostComponentAsync,()=>SelectedItem is not null&&itemCosts.CanManage&&!string.IsNullOrWhiteSpace(CostComponentName)&&CostValue>=0&&CostSequence>=0);ToggleCostComponentCommand=new AsyncRelayCommand(ToggleCostComponentAsync,()=>SelectedCostComponent is not null&&itemCosts.CanManage);
 		PropertyChanged+=OnCostingPropertyChanged;

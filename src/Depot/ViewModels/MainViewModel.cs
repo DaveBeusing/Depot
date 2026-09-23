@@ -127,6 +127,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		IAuthorizationService authorizationService,
 		SessionService sessionService,
 		ImportService importService,
+		BusinessAttachmentService businessAttachmentService,
 		IFileDialogService fileDialogService,
 		SettingsService settingsService,
 		ConnectionStatusService connectionStatusService,
@@ -174,14 +175,14 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		_masterDataWorkspaceRoleCenter = new(() => new CommercialRoleCenterViewModel(commercialRoleCenterService, CommercialRoleCenterKind.MasterDataWorkspace));
 		_applicationAdministrationRoleCenter = new(() => new CommercialRoleCenterViewModel(commercialRoleCenterService, CommercialRoleCenterKind.ApplicationAdministrationCenter));
 		_inventory = new(() => new InventoryViewModel(stockService));
-		_items = new(() => new ItemsViewModel(itemService, manufacturerService, categoryService, unitOfMeasureService, packagingService, salesServices.ItemCosts));
+		_items = new(() => new ItemsViewModel(itemService, manufacturerService, categoryService, unitOfMeasureService, packagingService, salesServices.ItemCosts, businessAttachmentService, fileDialogService));
 		_movements = new(() => new MovementsViewModel(movementService, reasonCodeService, fileDialogService, MarkInventoryPagesStale));
 		_stockTransfers = new(() => new StockTransfersViewModel(stockTransferService, warehouseService, fileDialogService, reasonCodeService));
 		_inventoryCounts = new(() => new InventoryCountsViewModel(inventoryCountService, warehouseService, fileDialogService, reasonCodeService));
 		_materialIssues = new(() => new MaterialIssuesViewModel(materialIssueService, reasonCodeService, fileDialogService));
 		_materialReturns = new(() => new MaterialReturnsViewModel(materialReturnService, reasonCodeService, fileDialogService));
 		_supplierReturns = new(() => new SupplierReturnsViewModel(supplierReturnService, supplierService, reasonCodeService, fileDialogService));
-		_procurement = new(() => new ProcurementViewModel(purchaseOrderService, purchaseOrderHistoryService, goodsReceiptService, supplierService, itemService, fileDialogService, reasonCodeService, MarkPurchasingPagesStale, MarkInventoryPagesStale, salesServices.Timeline, OpenWorkflowTimelineItemAsync));
+		_procurement = new(() => new ProcurementViewModel(purchaseOrderService, purchaseOrderHistoryService, goodsReceiptService, supplierService, itemService, fileDialogService, reasonCodeService, MarkPurchasingPagesStale, MarkInventoryPagesStale, salesServices.Timeline, OpenWorkflowTimelineItemAsync, businessAttachmentService));
 		_purchaseOverview = new(() => new PurchaseOverviewViewModel(purchaseOrderService));
 		_purchaseOrdersPage = new(() => new PurchaseOrdersPageViewModel(_procurement.Value));
 		_goodsReceiptsPage = new(() => new GoodsReceiptsPageViewModel(_procurement.Value));
@@ -195,24 +196,24 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		_salesOverview = new(() => new SalesOverviewViewModel(_salesSearch.Value));
 		_salesLeads = new(() => new SalesLeadsViewModel(salesServices.Crm, salesServices.Customers));
 		_salesOpportunities = new(() => new SalesOpportunitiesViewModel(salesServices.Crm, salesServices.Customers, async (_, token) => await this.NavigateToRouteAsync(ShellRoutes.Sales.Quotes, token)));
-		_salesQuotes = new(() => new SalesQuotesViewModel(salesServices.Quotes, salesServices.Pricing, salesServices.Customers, salesServices.Items, fileDialogService, salesServices.Documents));
+		_salesQuotes = new(() => new SalesQuotesViewModel(salesServices.Quotes, salesServices.Pricing, salesServices.Customers, salesServices.Items, fileDialogService, salesServices.Documents, businessAttachmentService));
 		_salesPricing = new(() => new SalesPricingViewModel(salesServices.Pricing, salesServices.Customers, salesServices.Items, categoryService, manufacturerService, salesServices.PriceListGeneration));
-		_salesCustomers = new(() => new CustomersViewModel(_salesSearch.Value, salesServices.Customers, salesServices.Pricing));
-		_salesOrders = new(() => new SalesOrdersViewModel(_salesSearch.Value, salesServices.Pricing, salesServices.Timeline, OpenWorkflowTimelineItemAsync));
+		_salesCustomers = new(() => new CustomersViewModel(_salesSearch.Value, salesServices.Customers, salesServices.Pricing, businessAttachmentService, fileDialogService));
+		_salesOrders = new(() => new SalesOrdersViewModel(_salesSearch.Value, salesServices.Pricing, salesServices.Timeline, OpenWorkflowTimelineItemAsync, businessAttachmentService, fileDialogService));
 		_salesApprovals = new(() => new SalesApprovalsViewModel(_salesSearch.Value));
 		_salesShipping = new(() => new ShippingViewModel(_salesSearch.Value, salesServices.Packing, fileDialogService, salesServices.Documents, salesServices.Timeline, OpenWorkflowTimelineItemAsync));
-		_salesInvoices = new(() => new SalesInvoicesViewModel(_salesSearch.Value, salesServices.Invoices, fileDialogService, salesServices.Documents, salesServices.Email, salesServices.Timeline, OpenWorkflowTimelineItemAsync));
+		_salesInvoices = new(() => new SalesInvoicesViewModel(_salesSearch.Value, salesServices.Invoices, fileDialogService, salesServices.Documents, salesServices.Email, salesServices.Timeline, OpenWorkflowTimelineItemAsync, businessAttachmentService));
 		_financePostingFlowDesigner = new(() => new FinancePostingFlowDesignerViewModel(financeGeneralLedgerService));
 		_financePeriodControl = new(() => new FinancePeriodControlViewModel(financeGeneralLedgerService, fileDialogService));
 		_financeReceivables = new(() => new FinanceReceivablesViewModel(financeReceivablesService));
-		_financePayables = new(() => new FinancePayablesViewModel(financePayablesService, salesServices.Timeline, OpenWorkflowTimelineItemAsync));
+		_financePayables = new(() => new FinancePayablesViewModel(financePayablesService, salesServices.Timeline, OpenWorkflowTimelineItemAsync, businessAttachmentService, fileDialogService));
 		_financeInventoryAccounting = new(() => new FinanceInventoryAccountingViewModel(financeInventoryAccountingService, financeInventoryCostingService, financeInventoryMovementAccountingService));
 		_financeBanking = new(() => new FinanceBankingViewModel(financeBankingService));
 		_financeFinancialReporting = new(() => new FinanceFinancialReportingViewModel(financeFinancialReportingService, fileDialogService));
 		_financeLocalization = new(() => new FinanceLocalizationViewModel(financeLocalizationService));
 		_reports = new(() => new ReportsViewModel(reportService, fileDialogService));
 		_import = new(() => new ImportViewModel(importService, fileDialogService));
-		_administration = new(() => new AdministrationViewModel(_import.Value, itemService, purposeService, reasonCodeService, manufacturerService, categoryService, unitOfMeasureService, packagingService, supplierCategoryService, supplierService, supplierItemService, warehouseService, storageLocationService, warehouseLayoutVisualizerService, userService, roleService, authorizationService, settingsService, connectionStatusService, databaseConnectionTester, databaseManagementService, auditLogService, userSessionAdministrationService, securityEventService, fileDialogService, applicationInformationService, approvalPolicyService));
+		_administration = new(() => new AdministrationViewModel(_import.Value, itemService, purposeService, reasonCodeService, manufacturerService, categoryService, unitOfMeasureService, packagingService, supplierCategoryService, supplierService, supplierItemService, warehouseService, storageLocationService, warehouseLayoutVisualizerService, userService, roleService, authorizationService, settingsService, connectionStatusService, databaseConnectionTester, databaseManagementService, auditLogService, userSessionAdministrationService, securityEventService, fileDialogService, applicationInformationService, approvalPolicyService, businessAttachmentService));
 		_help = new(() => CreateHelpViewModel(helpService, helpRenderer));
 		_notificationCenter = new(() => CreateNotificationCenterViewModel(notificationService, notificationNavigationService));
 
