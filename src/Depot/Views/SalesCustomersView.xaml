@@ -123,6 +123,7 @@
                                     </Grid>
                                 </ScrollViewer>
                             </TabItem>
+                                                    <TabItem Header="Attachments"><controls:BusinessAttachmentPanel Margin="0,10,0,0" DataContext="{Binding Attachments}" /></TabItem>
                         </TabControl>
                     </Border>
                 </Grid>

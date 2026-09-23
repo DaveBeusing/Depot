@@ -60,6 +60,7 @@
                         </controls:WorkflowActionBar.PrimaryAction>
                     </controls:WorkflowActionBar>
                     </Grid></Border>
+                    <controls:Card Margin="0,12,0,0"><controls:BusinessAttachmentPanel DataContext="{Binding Attachments}" /></controls:Card>
                     <controls:Card Margin="0,12,0,0"><StackPanel><TextBlock Text="Workflow timeline" Style="{StaticResource WorkspaceTitleStyle}"/><TextBlock Margin="0,4,0,10" Text="Connected quote, order, fulfillment, invoice, correction and settlement steps." Style="{StaticResource CaptionStyle}" TextWrapping="Wrap"/><controls:WorkflowTimeline ItemsSource="{Binding Timeline}" NavigateCommand="{Binding OpenTimelineItemCommand}"/></StackPanel></controls:Card>
                 </StackPanel></ScrollViewer>
             </controls:MasterDetailGrid.Detail>
