@@ -44,11 +44,13 @@ public sealed class CustomersViewModel : SalesSectionPageViewModel
 	private SalesRegion? _selectedSalesRegion;
 	private SalesPriceList? _selectedCustomerPriceList;
 	private string _pricingModeText = "Automatic · Global";
+	public BusinessAttachmentPanelViewModel? Attachments { get; }
 
-	public CustomersViewModel(SalesViewModel workspace, CustomerService customers, SalesPricingService pricing) : base(workspace, SalesSection.Customers)
+	public CustomersViewModel(SalesViewModel workspace, CustomerService customers, SalesPricingService pricing, BusinessAttachmentService? attachmentService = null, IFileDialogService? fileDialogs = null) : base(workspace, SalesSection.Customers)
 	{
 		_customers = customers;
 		_pricing = pricing;
+		if (attachmentService is not null && fileDialogs is not null) Attachments = new BusinessAttachmentPanelViewModel(attachmentService, fileDialogs);
 		NewAddressCommand = new RelayCommand(NewAddress, () => WorkspaceState.SelectedCustomer is not null && Workspace.CanEditCustomers);
 		SaveAddressCommand = new AsyncRelayCommand(SaveAddressAsync, () => WorkspaceState.SelectedCustomer is not null && Workspace.CanEditCustomers && !string.IsNullOrWhiteSpace(AddressDraft.Address));
 		NewContactCommand = new RelayCommand(NewContact, () => WorkspaceState.SelectedCustomer is not null && Workspace.CanEditCustomers);
@@ -77,7 +79,7 @@ public sealed class CustomersViewModel : SalesSectionPageViewModel
 	public Customer? SelectedCustomer
 	{
 		get => _selectedCustomer;
-		set { if (_selectedCustomer == value) return; _selectedCustomer = value; OnPropertyChanged(); _ = SelectCustomerAsync(value); }
+		set { if (_selectedCustomer == value) return; _selectedCustomer = value; OnPropertyChanged(); if (Attachments is not null) _ = Attachments.SetTargetAsync(BusinessAttachmentEntityKind.Customer, value?.Id); _ = SelectCustomerAsync(value); }
 	}
 	public CustomerAddress? SelectedAddress
 	{
@@ -137,7 +139,7 @@ public sealed class CustomersViewModel : SalesSectionPageViewModel
 	private static CustomerAddress Copy(CustomerAddress v) => new() { Id = v.Id, CustomerId = v.CustomerId, Type = v.Type, Name = v.Name, Address = v.Address, IsDefault = v.IsDefault, IsActive = v.IsActive, Version = v.Version };
 	private static CustomerContact Copy(CustomerContact v) => new() { Id = v.Id, CustomerId = v.CustomerId, Name = v.Name, Role = v.Role, Department = v.Department, Email = v.Email, Phone = v.Phone, Mobile = v.Mobile, IsPrimary = v.IsPrimary, IsActive = v.IsActive, Version = v.Version };
 	private static void Replace<T>(ObservableCollection<T> target, IEnumerable<T> values) { target.Clear(); foreach (var value in values) target.Add(value); }
-	public override void Dispose() { SaveAddressCommand.Dispose(); SaveContactCommand.Dispose(); AssignPriceListCommand.Dispose(); UseAutomaticPricingCommand.Dispose(); }
+	public override void Dispose() { SaveAddressCommand.Dispose(); SaveContactCommand.Dispose(); AssignPriceListCommand.Dispose(); UseAutomaticPricingCommand.Dispose(); Attachments?.Dispose(); }
 }
 
 public sealed class SalesOrdersViewModel : SalesSectionPageViewModel
@@ -146,17 +148,21 @@ public sealed class SalesOrdersViewModel : SalesSectionPageViewModel
 	private readonly SalesTimelineService _timeline;
 	private readonly Func<WorkflowTimelineItem, CancellationToken, Task>? _timelineNavigation;
 	private SalesOrder? _selectedOrder;
+	public BusinessAttachmentPanelViewModel? Attachments { get; }
 
 	public SalesOrdersViewModel(
 		SalesViewModel workspace,
 		SalesPricingService pricing,
 		SalesTimelineService timeline,
-		Func<WorkflowTimelineItem, CancellationToken, Task>? timelineNavigation = null)
+		Func<WorkflowTimelineItem, CancellationToken, Task>? timelineNavigation = null,
+		BusinessAttachmentService? attachmentService = null,
+		IFileDialogService? fileDialogs = null)
 		: base(workspace, SalesSection.SalesOrders)
 	{
 		_pricing = pricing;
 		_timeline = timeline;
 		_timelineNavigation = timelineNavigation;
+		if (attachmentService is not null && fileDialogs is not null) Attachments = new BusinessAttachmentPanelViewModel(attachmentService, fileDialogs);
 		ApplyCustomerPriceCommand = new AsyncRelayCommand(ApplyCustomerPriceAsync, () => Workspace.SelectedOrderCustomer is not null && Workspace.SelectedItem is not null);
 		OpenTimelineItemCommand = new AsyncRelayCommand<WorkflowTimelineItem>(OpenTimelineItemAsync, item => item.CanNavigate && _timelineNavigation is not null);
 	}
@@ -164,12 +170,12 @@ public sealed class SalesOrdersViewModel : SalesSectionPageViewModel
 	public ObservableCollection<WorkflowTimelineItem> Timeline { get; } = [];
 	public AsyncRelayCommand ApplyCustomerPriceCommand { get; }
 	public AsyncRelayCommand<WorkflowTimelineItem> OpenTimelineItemCommand { get; }
-	public SalesOrder? SelectedOrder { get => _selectedOrder; set { if (_selectedOrder == value) return; _selectedOrder = value; WorkspaceState.SelectedOrder = value; OnPropertyChanged(); _ = LoadTimelineAsync(value); } }
+	public SalesOrder? SelectedOrder { get => _selectedOrder; set { if (_selectedOrder == value) return; _selectedOrder = value; WorkspaceState.SelectedOrder = value; OnPropertyChanged(); if (Attachments is not null) _ = Attachments.SetTargetAsync(BusinessAttachmentEntityKind.SalesOrder, value?.Id); _ = LoadTimelineAsync(value); } }
 	public override async Task LoadAsync(CancellationToken cancellationToken = default) { await base.LoadAsync(cancellationToken); if (WorkspaceState.SelectedOrder is { } order) { _selectedOrder = order; OnPropertyChanged(nameof(SelectedOrder)); await LoadTimelineAsync(order, cancellationToken); } ApplyCustomerPriceCommand.RaiseCanExecuteChanged(); }
 	private async Task LoadTimelineAsync(SalesOrder? order, CancellationToken token = default) { Timeline.Clear(); if (order is null) return; foreach (var item in await _timeline.ListAsync(order, token)) Timeline.Add(item); }
 	private Task OpenTimelineItemAsync(WorkflowTimelineItem item, CancellationToken token) => _timelineNavigation?.Invoke(item, token) ?? Task.CompletedTask;
 	private async Task ApplyCustomerPriceAsync(CancellationToken token) { if (Workspace.SelectedOrderCustomer is null || Workspace.SelectedItem is null) return; var price = await _pricing.ResolveAsync(Workspace.SelectedOrderCustomer.Id, Workspace.SelectedItem.Id, Workspace.LineQuantity, Workspace.OrderDraft.OrderDate, Workspace.OrderDraft.Currency, token); if (price is null) return; Workspace.LineUnitPrice = price.UnitPrice; Workspace.LineDiscountPercent = price.DiscountPercent; }
-	public override void Dispose() { ApplyCustomerPriceCommand.Dispose(); OpenTimelineItemCommand.Dispose(); }
+	public override void Dispose() { ApplyCustomerPriceCommand.Dispose(); OpenTimelineItemCommand.Dispose(); Attachments?.Dispose(); }
 }
 
 public sealed class SalesApprovalsViewModel(SalesViewModel workspace) : SalesSectionPageViewModel(workspace, SalesSection.Approvals);
@@ -233,8 +239,9 @@ public sealed class SalesInvoicesViewModel : SalesSectionPageViewModel
 	private readonly Func<WorkflowTimelineItem, CancellationToken, Task>? _timelineNavigation;
 	private SalesInvoiceLine? _selectedInvoiceLine;
 	private int _creditQuantity = 1;
+	public BusinessAttachmentPanelViewModel? Attachments { get; }
 
-	public SalesInvoicesViewModel(SalesViewModel workspace, SalesInvoiceService invoices, IFileDialogService fileDialogs, SalesDocumentService documents, SalesDocumentEmailService email, SalesTimelineService? timeline = null, Func<WorkflowTimelineItem, CancellationToken, Task>? timelineNavigation = null) : base(workspace, SalesSection.Invoices)
+	public SalesInvoicesViewModel(SalesViewModel workspace, SalesInvoiceService invoices, IFileDialogService fileDialogs, SalesDocumentService documents, SalesDocumentEmailService email, SalesTimelineService? timeline = null, Func<WorkflowTimelineItem, CancellationToken, Task>? timelineNavigation = null, BusinessAttachmentService? attachmentService = null) : base(workspace, SalesSection.Invoices)
 	{
 		_invoices = invoices;
 		_fileDialogs = fileDialogs;
@@ -242,6 +249,7 @@ public sealed class SalesInvoicesViewModel : SalesSectionPageViewModel
 		_email = email;
 		_timeline = timeline;
 		_timelineNavigation = timelineNavigation;
+		if (attachmentService is not null) Attachments = new BusinessAttachmentPanelViewModel(attachmentService, fileDialogs);
 		CreatePartialCreditNoteCommand = new AsyncRelayCommand(CreatePartialCreditNoteAsync, CanCreatePartialCreditNote);
 		CreditNotePdfCommand = new RelayCommand(CreateCreditNotePdf, () => WorkspaceState.SelectedCreditNote is not null && WorkspaceState.SelectedInvoice is not null);
 		InvoiceEmailCommand = new RelayCommand(CreateInvoiceEmail, () => WorkspaceState.SelectedInvoice is not null);
@@ -268,7 +276,7 @@ public sealed class SalesInvoicesViewModel : SalesSectionPageViewModel
 	private void ExportXRechnung() { if (WorkspaceState.SelectedInvoice is not { Status: SalesInvoiceStatus.Posted } invoice) return; var path = _fileDialogs.ShowSaveFile(new SaveFileDialogRequest("Export XRechnung", "XML document (*.xml)|*.xml", ".xml", $"{invoice.InvoiceNumber}-xrechnung.xml")); if (path is not null) _documents.ExportXRechnung(path, invoice); }
 	private async Task LoadTimelineAsync(SalesInvoice? invoice, CancellationToken token = default) { Timeline.Clear(); if (invoice is null || _timeline is null) return; foreach (var item in await _timeline.ListAsync(invoice, token)) Timeline.Add(item); }
 	private Task OpenTimelineItemAsync(WorkflowTimelineItem item, CancellationToken token) => _timelineNavigation?.Invoke(item, token) ?? Task.CompletedTask;
-	private void OnWorkspacePropertyChanged(object? sender, PropertyChangedEventArgs e) { if (e.PropertyName != nameof(SalesViewModel.SelectedInvoice)) return; SelectedInvoiceLine = WorkspaceState.SelectedInvoice?.Lines.FirstOrDefault(); _ = LoadTimelineAsync(WorkspaceState.SelectedInvoice); OnPropertyChanged(nameof(CreditedGrossAmount)); OnPropertyChanged(nameof(EffectiveGrossAmount)); RaiseInvoiceCommands(); }
+	private void OnWorkspacePropertyChanged(object? sender, PropertyChangedEventArgs e) { if (e.PropertyName != nameof(SalesViewModel.SelectedInvoice)) return; SelectedInvoiceLine = WorkspaceState.SelectedInvoice?.Lines.FirstOrDefault(); if (Attachments is not null) _ = Attachments.SetTargetAsync(BusinessAttachmentEntityKind.SalesInvoice, WorkspaceState.SelectedInvoice?.Id); _ = LoadTimelineAsync(WorkspaceState.SelectedInvoice); OnPropertyChanged(nameof(CreditedGrossAmount)); OnPropertyChanged(nameof(EffectiveGrossAmount)); RaiseInvoiceCommands(); }
 	private void RaiseInvoiceCommands() { CreatePartialCreditNoteCommand.RaiseCanExecuteChanged(); CreditNotePdfCommand.RaiseCanExecuteChanged(); InvoiceEmailCommand.RaiseCanExecuteChanged(); XRechnungXmlCommand.RaiseCanExecuteChanged(); }
-	public override void Dispose() { Workspace.PropertyChanged -= OnWorkspacePropertyChanged; CreatePartialCreditNoteCommand.Dispose(); OpenTimelineItemCommand.Dispose(); }
+	public override void Dispose() { Workspace.PropertyChanged -= OnWorkspacePropertyChanged; CreatePartialCreditNoteCommand.Dispose(); OpenTimelineItemCommand.Dispose(); Attachments?.Dispose(); }
 }
