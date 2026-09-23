@@ -129,7 +129,7 @@ Document-layout zoom, snap, resize, undo/redo and dirty-state behavior remain sp
 - Document Templates feature schema: **1**
 - Enterprise Identity feature schema: **2**
 - Application: **0.15.x-preview**
-- Help manifest: **1.27**
+- Help manifest: **1.28**
 
 `Directory.Build.props` is authoritative for the exact application patch/version. Feature schema constants remain authoritative in their migration classes; this architecture document records the compatibility baselines rather than duplicating a moving preview patch.
 

@@ -63,3 +63,20 @@ UI visibility is not an authorization boundary. The Finance services enforce the
 F5 provides technical accounting controls and ISO 20022 `camt.053` import. It does not claim connectivity to a bank, payment initiation certification, PSD2/open-banking conformance, sanctions screening, AML/KYC decisioning, EBICS support, country-specific payment-file approval, or statutory cash-management compliance. These require explicit later integrations, localization, and production acceptance.
 
 Related topics: [Accounts Payable](topic:finance.payables), [Accounts Receivable](topic:finance.receivables), [General Ledger](topic:finance.general-ledger), and [Finance Foundation](topic:finance.foundation).
+
+
+## SEPA SCT payment export
+
+Use the **SEPA Export** tab after the payment proposal has completed approval.
+
+1. Select the EUR bank account and maintain its structured debtor payment profile.
+2. Select each supplier payment line and maintain an active structured creditor profile with IBAN and structured address.
+3. Run **Validate** and resolve every reported issue.
+4. Use **Generate / retry** to create the retained `pain.001.001.09` artifact. Repeating the action returns the same retained export.
+5. Use **Download exact XML** to save the stored bytes; the displayed SHA-256 identifies the artifact.
+6. Use **Supersede + regenerate** only when a changed payment instruction is intentionally required.
+7. Record external submission and accepted/rejected evidence manually when applicable.
+
+Depot does not submit the file to a bank. Successful validation means the supported Depot profile is structurally and semantically valid; it does not mean a particular bank has certified or accepted the file.
+
+The supported path is EUR SEPA Credit Transfer only. SEPA Instant, direct debit, EBICS, PSD2/Open Banking and automatic bank-status polling are outside this workflow.
