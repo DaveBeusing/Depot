@@ -56,6 +56,10 @@ Cash Position compares the latest imported statement closing balance with the co
 - `FinancePaymentProposals.Approve`
 - `FinancePaymentRuns.Post`
 - `FinanceCashPosition.View`
+- `FinanceSepaPaymentProfiles.Manage`
+- `FinanceSepaPaymentExports.Create`
+- `FinanceSepaPaymentExports.Export`
+- `FinanceSepaPaymentExports.Manage`
 
 The standard Finance role receives operational Banking rights but not Payment Proposal approval; the Approver role receives the approval permission.
 

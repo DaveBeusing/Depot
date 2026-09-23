@@ -32,7 +32,7 @@ The protected **Administrator** role remains the full-access role. Existing user
 | **Inventory Controller** | Inventory movements, transfers, counts, corrections and reports | Finance posting and Finance configuration |
 | **Accounts Receivable** | Customer open items, receipts/allocations and dunning | Accounts Payable, Banking and General Ledger administration |
 | **Accounts Payable** | Supplier invoices and standard PO/receipt/invoice matching | Supplier-invoice approval, match-exception approval, Treasury and General Ledger administration |
-| **Treasury** | Bank statements, reconciliation, payment proposals/runs and cash position | Accounts Payable invoice capture, payment-proposal approval and General Ledger administration |
+| **Treasury** | Bank statements, reconciliation, payment proposals/runs, SEPA payment-file profiles/export/status evidence and cash position | Accounts Payable invoice capture, payment-proposal approval and General Ledger administration |
 | **Accountant / Controller** | General Ledger, periods, posting profiles, inventory accounting, reconciliation and financial reporting | Manual journal posting and operational AP/AR/Treasury duties unless separately granted |
 | **Management Viewer** | Operational/financial KPIs, reports and drilldowns | All mutation permissions |
 | **Auditor / Compliance** | Audit log, security events, user/role visibility and relevant report exports | Post, edit, reverse, terminate and other mutation permissions |
@@ -45,7 +45,7 @@ The built-in personas intentionally preserve these boundaries:
 
 - Accounts Receivable and Accounts Payable are distinct roles.
 - Supplier-invoice approval and match-exception approval are not part of Accounts Payable by default; grant those authorities deliberately where required.
-- Treasury can create payment proposals and execute payment runs but does not receive payment-proposal approval.
+- Treasury can create payment proposals, execute payment runs and operate SEPA payment-file generation/download/status evidence but does not receive payment-proposal approval.
 - Accountant / Controller does not receive `FinanceManualJournals.Post`; manual journal posting is intentionally explicit.
 - Application Administrator can administer the application without receiving operational business posting permissions.
 - `ApprovalPolicies.View` / `ApprovalPolicies.Manage` configure routing only; they do not grant Purchase Order, Sales Order, Accounts Payable exception or payment-proposal decision authority.

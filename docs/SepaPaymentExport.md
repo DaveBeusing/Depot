@@ -56,7 +56,14 @@ External submission and acceptance/rejection are manual evidence. Depot does not
 
 ## Authorization
 
-Separate permissions are used for payment-profile administration, artifact generation, artifact download and external-status administration. The built-in Finance and Treasury roles receive these operational permissions. The Approver role keeps payment-proposal approval authority without implicit file-generation/download rights. Service-layer authorization remains authoritative.
+Separate service-layer permissions are used for each payment-export authority:
+
+- `FinanceSepaPaymentProfiles.Manage` — maintain debtor/creditor payment profiles;
+- `FinanceSepaPaymentExports.Create` — validate and generate retained artifacts;
+- `FinanceSepaPaymentExports.Export` — read/download the exact retained XML payload;
+- `FinanceSepaPaymentExports.Manage` — record external lifecycle/status evidence.
+
+The built-in Finance and Treasury roles receive these operational permissions. The Approver role keeps payment-proposal approval authority without implicit file-generation/download rights. Service-layer authorization remains authoritative.
 
 ## Persistence and migration
 

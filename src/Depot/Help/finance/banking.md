@@ -55,6 +55,10 @@ Cash Position compares the most recent imported statement closing balance with t
 - `FinancePaymentProposals.Approve` — approve payment runs.
 - `FinancePaymentRuns.Post` — execute approved payment-run lines through Accounts Payable.
 - `FinanceCashPosition.View` — read cash-position information.
+- `FinanceSepaPaymentProfiles.Manage` — maintain structured debtor/creditor payment profiles.
+- `FinanceSepaPaymentExports.Create` — validate and generate retained SEPA artifacts.
+- `FinanceSepaPaymentExports.Export` — read/download exact retained SEPA XML payloads.
+- `FinanceSepaPaymentExports.Manage` — record external SEPA lifecycle/status evidence.
 
 UI visibility is not an authorization boundary. The Finance services enforce the permissions.
 
