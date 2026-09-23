@@ -79,4 +79,4 @@ Use the **SEPA Export** tab after the payment proposal has completed approval.
 
 Depot does not submit the file to a bank. Successful validation means the supported Depot profile is structurally and semantically valid; it does not mean a particular bank has certified or accepted the file.
 
-The supported path is EUR SEPA Credit Transfer only. SEPA Instant, direct debit, EBICS, PSD2/Open Banking and automatic bank-status polling are outside this workflow.
+The supported path is EUR SEPA Credit Transfer only. Debtor and creditor IBANs must use a country code from Depot's pinned 41-country EPC SEPA scope; checksum-valid non-SEPA IBANs are rejected. SEPA Instant, direct debit, EBICS, PSD2/Open Banking and automatic bank-status polling are outside this workflow.

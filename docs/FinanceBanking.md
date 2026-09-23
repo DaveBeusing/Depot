@@ -78,6 +78,8 @@ Generation is deterministic for one payment-run/export sequence. Depot stores th
 
 A payment file requires an approved, unexecuted EUR payment run, a valid debtor bank IBAN, an explicit structured debtor payment profile and an active structured creditor payment profile for every supplier. Depot deliberately emits structured postal-address elements and does not emit unstructured-only `AdrLine` addresses.
 
+Debtor and creditor IBAN country codes must also belong to the 41-country EPC SEPA geographical scope verified on 2026-09-23. This keeps non-SEPA credit transfers outside the supported artifact profile even if an IBAN is otherwise checksum-valid.
+
 The EPC announced on 9 September 2026 that the previously planned 15 November 2026 end-date for unstructured addresses would be postponed and that a new date would follow. Depot keeps its stricter structured-address-only export rule as a product interoperability constraint.
 
 External submission is intentionally outside Depot's database transaction. V1 records manual evidence for `SubmittedExternally`, `Accepted`, `Rejected` and `Cancelled`; it does not claim that bank submission is ACID with payment-file creation.
