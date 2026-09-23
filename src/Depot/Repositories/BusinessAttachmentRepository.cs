@@ -306,7 +306,7 @@ public sealed class BusinessAttachmentRepository : DatabaseRepository
 
 	private static BusinessAttachment ReadAttachment(DbDataReader reader) =>
 		new(
-			Guid.Parse(reader.GetString(0)),
+			ReadGuid(reader, 0),
 			(BusinessAttachmentEntityKind)Convert.ToInt32(reader.GetValue(1), CultureInfo.InvariantCulture),
 			Convert.ToInt64(reader.GetValue(2), CultureInfo.InvariantCulture),
 			reader.GetString(3),
@@ -323,7 +323,7 @@ public sealed class BusinessAttachmentRepository : DatabaseRepository
 
 	private static BusinessAttachmentRevision ReadRevision(DbDataReader reader) =>
 		new(
-			Guid.Parse(reader.GetString(0)),
+			ReadGuid(reader, 0),
 			Convert.ToInt32(reader.GetValue(1), CultureInfo.InvariantCulture),
 			reader.GetString(2),
 			reader.GetString(3),
@@ -331,6 +331,13 @@ public sealed class BusinessAttachmentRepository : DatabaseRepository
 			reader.GetString(5),
 			reader.IsDBNull(6) ? null : Convert.ToInt64(reader.GetValue(6), CultureInfo.InvariantCulture),
 			ReadUtc(reader, 7));
+
+	private static Guid ReadGuid(DbDataReader reader, int ordinal)
+	{
+		var value = reader.GetValue(ordinal);
+		if (value is Guid guid) return guid;
+		return Guid.Parse(Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty);
+	}
 
 	private static DateTime ReadUtc(DbDataReader reader, int ordinal)
 	{
