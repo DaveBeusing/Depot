@@ -10,7 +10,7 @@ namespace Depot.Tests;
 
 [Collection("Provider database")]
 [Trait("Acceptance","DatabaseProvider")]
-[Trait("AcceptanceLevel","Full")]
+[Trait("AcceptanceLevel","Smoke")]
 public sealed class FinanceSepaPaymentExportProviderAcceptanceTests
 {
 	[Fact]
