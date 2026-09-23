@@ -92,6 +92,13 @@ public sealed class FinanceBudgetingService
 		return _budgets.GetAccountingBooksAsync(legalEntityId, cancellationToken);
 	}
 
+	public Task<IReadOnlyList<FinanceBudgetOption>> GetFiscalCalendarsAsync(Guid legalEntityId, CancellationToken cancellationToken = default)
+	{
+		_authorization.RequirePermission(ApplicationPermission.FinanceBudgetingView);
+		RequireGuid(legalEntityId, nameof(legalEntityId));
+		return _budgets.GetFiscalCalendarsAsync(legalEntityId, cancellationToken);
+	}
+
 	public Task<IReadOnlyList<FinanceBudgetPeriodOption>> GetPeriodsAsync(Guid fiscalCalendarId, CancellationToken cancellationToken = default)
 	{
 		_authorization.RequirePermission(ApplicationPermission.FinanceBudgetingView);
@@ -125,7 +132,6 @@ public sealed class FinanceBudgetingService
 		Guid fiscalCalendarId,
 		int fiscalYear,
 		string name,
-		CurrencyCode currency,
 		long? ownerUserId = null,
 		string? description = null,
 		CancellationToken cancellationToken = default)
@@ -143,7 +149,7 @@ public sealed class FinanceBudgetingService
 
 		return await _transactions.ExecuteAsync(async (transaction, token) =>
 		{
-			var book = await RequireBookAsync(transaction, accountingBookId, legalEntityId, currency, token);
+			var book = await RequireBookAsync(transaction, accountingBookId, legalEntityId, token);
 			if (!await _budgets.FiscalCalendarMatchesEntityAsync(transaction, fiscalCalendarId, legalEntityId, token))
 				throw new InvalidOperationException("The fiscal calendar is not active for the selected legal entity.");
 			var versionNumber = await _budgets.GetNextVersionNumberAsync(transaction, legalEntityId, book.Id, fiscalYear, normalizedName, token);
@@ -966,15 +972,12 @@ public sealed class FinanceBudgetingService
 		DatabaseTransactionContext transaction,
 		Guid accountingBookId,
 		Guid legalEntityId,
-		CurrencyCode currency,
 		CancellationToken cancellationToken)
 	{
 		var book = await _budgets.GetBookContextAsync(transaction, accountingBookId, cancellationToken)
 			?? throw new InvalidOperationException("Accounting book was not found.");
 		if (!book.IsActive || book.LegalEntityId != legalEntityId)
 			throw new InvalidOperationException("Accounting book is inactive or belongs to another legal entity.");
-		if (!book.ReportingCurrency.Equals(currency))
-			throw new InvalidOperationException("Budget currency must match the accounting-book reporting currency so Actual vs Budget remains comparable.");
 		return book;
 	}
 

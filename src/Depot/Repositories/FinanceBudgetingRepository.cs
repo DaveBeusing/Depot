@@ -108,6 +108,13 @@ public sealed class FinanceBudgetingRepository : DatabaseRepository
 			reader => new FinanceBudgetOption(Guid.Parse(reader.GetString(0)), reader.GetString(1), reader.GetString(2)),
 			cancellationToken);
 
+	public Task<IReadOnlyList<FinanceBudgetOption>> GetFiscalCalendarsAsync(Guid legalEntityId, CancellationToken cancellationToken = default) =>
+		Database.QueryAsync(
+			"SELECT Id,Code,Name FROM FinanceFiscalCalendars WHERE LegalEntityId=$LegalEntityId AND IsActive=1 ORDER BY Code;",
+			reader => new FinanceBudgetOption(Guid.Parse(reader.GetString(0)), reader.GetString(1), reader.GetString(2)),
+			cancellationToken,
+			Parameter("$LegalEntityId", legalEntityId.ToString("D")));
+
 	public Task<IReadOnlyList<FinanceBudgetOption>> GetAccountingBooksAsync(Guid? legalEntityId = null, CancellationToken cancellationToken = default)
 	{
 		var where = legalEntityId.HasValue ? " WHERE IsActive=1 AND LegalEntityId=$LegalEntityId" : " WHERE IsActive=1";

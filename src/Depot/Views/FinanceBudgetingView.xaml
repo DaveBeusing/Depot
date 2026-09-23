@@ -1,0 +1,214 @@
+<UserControl x:Class="Depot.Views.FinanceBudgetingView"
+	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:controls="clr-namespace:Depot.Controls">
+	<Grid>
+		<Grid.RowDefinitions>
+			<RowDefinition Height="Auto"/>
+			<RowDefinition Height="Auto"/>
+			<RowDefinition Height="*"/>
+		</Grid.RowDefinitions>
+
+		<controls:PageHeader Title="Budgeting" Subtitle="Versioned financial planning, policy-driven approval, and Actual vs Budget variance using Financial Reporting actuals.">
+			<controls:PageHeader.Actions>
+				<Button Command="{Binding NewBudgetCommand}" Content="New budget" IsEnabled="{Binding CanManage}" Style="{StaticResource SecondaryButtonStyle}"/>
+				<Button Margin="6,0,0,0" Command="{Binding RefreshCommand}" Content="Refresh" Style="{StaticResource SecondaryButtonStyle}"/>
+			</controls:PageHeader.Actions>
+		</controls:PageHeader>
+
+		<controls:OperationPanel Grid.Row="1"
+			ErrorText="{Binding OperationError}"
+			HasError="{Binding HasOperationError}"
+			IsBusy="{Binding IsBusy}"
+			StatusText="{Binding StatusText}"/>
+
+		<TabControl Grid.Row="2" Style="{StaticResource AppTabControlStyle}">
+			<TabItem Header="Versions">
+				<Grid Margin="8">
+					<Grid.ColumnDefinitions>
+						<ColumnDefinition Width="3*"/>
+						<ColumnDefinition Width="12"/>
+						<ColumnDefinition Width="2*"/>
+					</Grid.ColumnDefinitions>
+
+					<DataGrid ItemsSource="{Binding Versions}" SelectedItem="{Binding SelectedBudget}" AutoGenerateColumns="False" IsReadOnly="True" Style="{StaticResource AppDataGridCompactStyle}">
+						<DataGrid.Columns>
+							<DataGridTextColumn Header="Budget" Binding="{Binding Name}" Width="*"/>
+							<DataGridTextColumn Header="Version" Binding="{Binding BudgetVersionNumber}" Width="75"/>
+							<DataGridTextColumn Header="Fiscal year" Binding="{Binding FiscalYear}" Width="90"/>
+							<DataGridTextColumn Header="Currency" Binding="{Binding Currency.Value}" Width="75"/>
+							<DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="120"/>
+							<DataGridTextColumn Header="Updated" Binding="{Binding UpdatedAtUtc,StringFormat=g}" Width="145"/>
+						</DataGrid.Columns>
+					</DataGrid>
+
+					<Border Grid.Column="2" Style="{StaticResource WorkspaceSectionStyle}">
+						<ScrollViewer VerticalScrollBarVisibility="Auto">
+							<StackPanel>
+								<TextBlock Text="Budget version" Style="{StaticResource WorkspaceSectionTitleStyle}"/>
+								<TextBlock Margin="0,4,0,12" Text="{Binding SelectedBudgetStatus}" Opacity="0.72"/>
+
+								<TextBlock Text="Legal entity" Style="{StaticResource FormLabelStyle}"/>
+								<ComboBox ItemsSource="{Binding LegalEntities}" SelectedItem="{Binding SelectedLegalEntity}" DisplayMemberPath="Name"/>
+								<TextBlock Margin="0,8,0,0" Text="Accounting book" Style="{StaticResource FormLabelStyle}"/>
+								<ComboBox ItemsSource="{Binding Books}" SelectedItem="{Binding SelectedBook}" DisplayMemberPath="Name"/>
+								<TextBlock Margin="0,8,0,0" Text="Fiscal calendar" Style="{StaticResource FormLabelStyle}"/>
+								<ComboBox ItemsSource="{Binding Calendars}" SelectedItem="{Binding SelectedCalendar}" DisplayMemberPath="Name"/>
+								<TextBlock Margin="0,8,0,0" Text="Fiscal year" Style="{StaticResource FormLabelStyle}"/>
+								<controls:TextInput Text="{Binding FiscalYear,UpdateSourceTrigger=PropertyChanged}"/>
+								<TextBlock Margin="0,8,0,0" Text="Budget name" Style="{StaticResource FormLabelStyle}"/>
+								<controls:TextInput Text="{Binding BudgetName,UpdateSourceTrigger=PropertyChanged}"/>
+								<TextBlock Margin="0,8,0,0" Text="Description" Style="{StaticResource FormLabelStyle}"/>
+								<controls:TextInput Text="{Binding Description,UpdateSourceTrigger=PropertyChanged}"/>
+								<Button Margin="0,12,0,0" Command="{Binding CreateBudgetCommand}" Content="Create draft" IsEnabled="{Binding CanManage}" Style="{StaticResource PrimaryButtonStyle}"/>
+
+								<Separator Margin="0,16,0,12"/>
+								<TextBlock Text="{Binding SummaryText}" TextWrapping="Wrap"/>
+								<TextBlock Margin="0,4,0,0" Text="Amounts use signed GL semantics: positive = debit, negative = credit." TextWrapping="Wrap" Opacity="0.72"/>
+
+								<WrapPanel Margin="0,12,0,0">
+									<Button Command="{Binding CopyVersionCommand}" Content="Copy" Style="{StaticResource SecondaryButtonStyle}"/>
+									<Button Margin="6,0,0,0" Command="{Binding CreateAmendmentCommand}" Content="Amend" IsEnabled="{Binding CanManage}" Style="{StaticResource SecondaryButtonStyle}"/>
+								</WrapPanel>
+								<TextBlock Margin="0,12,0,0" Text="Prior-year target" Style="{StaticResource FormLabelStyle}"/>
+								<controls:TextInput Text="{Binding TargetFiscalYear,UpdateSourceTrigger=PropertyChanged}"/>
+								<Button Margin="0,6,0,0" Command="{Binding CreateFromPriorYearCommand}" Content="Create from prior year" IsEnabled="{Binding CanManage}" Style="{StaticResource SecondaryButtonStyle}"/>
+
+								<Separator Margin="0,16,0,12"/>
+								<WrapPanel>
+									<Button Command="{Binding SubmitCommand}" Content="Submit" IsEnabled="{Binding CanManage}" Style="{StaticResource PrimaryButtonStyle}"/>
+									<Button Margin="6,0,0,0" Command="{Binding ApproveCommand}" Content="Approve" IsEnabled="{Binding CanApprove}" Style="{StaticResource PrimaryButtonStyle}"/>
+									<Button Margin="6,0,0,0" Command="{Binding RejectCommand}" Content="Reject" IsEnabled="{Binding CanApprove}" Style="{StaticResource DangerButtonStyle}"/>
+								</WrapPanel>
+								<WrapPanel Margin="0,6,0,0">
+									<Button Command="{Binding LockCommand}" Content="Lock" IsEnabled="{Binding CanLock}" Style="{StaticResource SecondaryButtonStyle}"/>
+									<Button Margin="6,0,0,0" Command="{Binding SupersedeCommand}" Content="Supersede" IsEnabled="{Binding CanLock}" Style="{StaticResource SecondaryButtonStyle}"/>
+									<Button Margin="6,0,0,0" Command="{Binding ArchiveCommand}" Content="Archive" IsEnabled="{Binding CanManage}" Style="{StaticResource SecondaryButtonStyle}"/>
+								</WrapPanel>
+							</StackPanel>
+						</ScrollViewer>
+					</Border>
+				</Grid>
+			</TabItem>
+
+			<TabItem Header="Lines">
+				<Grid Margin="8">
+					<Grid.RowDefinitions>
+						<RowDefinition Height="Auto"/>
+						<RowDefinition Height="*"/>
+					</Grid.RowDefinitions>
+					<Border Style="{StaticResource WorkspaceSectionStyle}">
+						<Grid>
+							<Grid.ColumnDefinitions>
+								<ColumnDefinition Width="2*"/>
+								<ColumnDefinition Width="2*"/>
+								<ColumnDefinition Width="2*"/>
+								<ColumnDefinition Width="2*"/>
+								<ColumnDefinition Width="*"/>
+								<ColumnDefinition Width="Auto"/>
+							</Grid.ColumnDefinitions>
+							<StackPanel Margin="0,0,8,0">
+								<TextBlock Text="Account" Style="{StaticResource FormLabelStyle}"/>
+								<ComboBox ItemsSource="{Binding Accounts}" SelectedItem="{Binding SelectedAccount}">
+									<ComboBox.ItemTemplate><DataTemplate><TextBlock><Run Text="{Binding Number}"/><Run Text=" · "/><Run Text="{Binding Name}"/></TextBlock></DataTemplate></ComboBox.ItemTemplate>
+								</ComboBox>
+							</StackPanel>
+							<StackPanel Grid.Column="1" Margin="0,0,8,0">
+								<TextBlock Text="Period" Style="{StaticResource FormLabelStyle}"/>
+								<ComboBox ItemsSource="{Binding Periods}" SelectedItem="{Binding SelectedPeriod}" DisplayMemberPath="Code"/>
+							</StackPanel>
+							<StackPanel Grid.Column="2" Margin="0,0,8,0">
+								<TextBlock Text="Dimension" Style="{StaticResource FormLabelStyle}"/>
+								<ComboBox ItemsSource="{Binding Dimensions}" SelectedItem="{Binding SelectedDimension}" DisplayMemberPath="Name"/>
+							</StackPanel>
+							<StackPanel Grid.Column="3" Margin="0,0,8,0">
+								<TextBlock Text="Dimension value" Style="{StaticResource FormLabelStyle}"/>
+								<ComboBox ItemsSource="{Binding DimensionValues}" SelectedItem="{Binding SelectedDimensionValue}" DisplayMemberPath="Name"/>
+							</StackPanel>
+							<StackPanel Grid.Column="4" Margin="0,0,8,0">
+								<TextBlock Text="Signed amount" Style="{StaticResource FormLabelStyle}"/>
+								<controls:TextInput Text="{Binding LineAmount,UpdateSourceTrigger=PropertyChanged}"/>
+							</StackPanel>
+							<StackPanel Grid.Column="5" VerticalAlignment="Bottom" Orientation="Horizontal">
+								<Button Command="{Binding NewLineCommand}" Content="New" Style="{StaticResource SecondaryButtonStyle}"/>
+								<Button Margin="6,0,0,0" Command="{Binding SaveLineCommand}" Content="Save" IsEnabled="{Binding IsSelectedBudgetDraft}" Style="{StaticResource PrimaryButtonStyle}"/>
+								<Button Margin="6,0,0,0" Command="{Binding DeleteLineCommand}" Content="Delete" IsEnabled="{Binding IsSelectedBudgetDraft}" Style="{StaticResource DangerButtonStyle}"/>
+							</StackPanel>
+						</Grid>
+					</Border>
+
+					<Grid Grid.Row="1" Margin="0,8,0,0">
+						<Grid.ColumnDefinitions><ColumnDefinition Width="3*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+						<DataGrid ItemsSource="{Binding Lines}" SelectedItem="{Binding SelectedLine}" AutoGenerateColumns="False" IsReadOnly="True" Style="{StaticResource AppDataGridCompactStyle}">
+							<DataGrid.Columns>
+								<DataGridTextColumn Header="Account" Binding="{Binding AccountId}" Width="*"/>
+								<DataGridTextColumn Header="Period" Binding="{Binding AccountingPeriodId}" Width="*"/>
+								<DataGridTextColumn Header="Dimension" Binding="{Binding DimensionValueId}" Width="*"/>
+								<DataGridTextColumn Header="Amount" Binding="{Binding Amount,StringFormat=N2}" Width="120"/>
+								<DataGridTextColumn Header="Evidence" Binding="{Binding SourceEvidence}" Width="2*"/>
+							</DataGrid.Columns>
+						</DataGrid>
+						<Border Grid.Column="2" Style="{StaticResource WorkspaceSectionStyle}">
+							<StackPanel>
+								<TextBlock Text="Annual spread" Style="{StaticResource WorkspaceSectionTitleStyle}"/>
+								<TextBlock Margin="0,6,0,0" Text="Uses the selected account/dimension and equal allocation. The exact remainder is assigned to the final period." TextWrapping="Wrap" Opacity="0.72"/>
+								<TextBlock Margin="0,12,0,0" Text="Annual signed amount" Style="{StaticResource FormLabelStyle}"/>
+								<controls:TextInput Text="{Binding AnnualAmount,UpdateSourceTrigger=PropertyChanged}"/>
+								<Button Margin="0,8,0,0" Command="{Binding SpreadAnnualCommand}" Content="Spread across periods" IsEnabled="{Binding IsSelectedBudgetDraft}" Style="{StaticResource SecondaryButtonStyle}"/>
+							</StackPanel>
+						</Border>
+					</Grid>
+				</Grid>
+			</TabItem>
+
+			<TabItem Header="Import / Export">
+				<Grid Margin="8">
+					<Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+					<Border Style="{StaticResource WorkspaceSectionStyle}">
+						<StackPanel Orientation="Horizontal">
+							<Button Command="{Binding PreviewImportCommand}" Content="Preview CSV" IsEnabled="{Binding IsSelectedBudgetDraft}" Style="{StaticResource SecondaryButtonStyle}"/>
+							<CheckBox Margin="16,0,0,0" VerticalAlignment="Center" Content="Replace current draft lines" IsChecked="{Binding ReplaceImport}"/>
+							<Button Margin="8,0,0,0" Command="{Binding ApplyImportCommand}" Content="Apply atomically" IsEnabled="{Binding IsSelectedBudgetDraft}" Style="{StaticResource PrimaryButtonStyle}"/>
+							<Button Margin="8,0,0,0" Command="{Binding ExportCommand}" Content="Export CSV" Style="{StaticResource SecondaryButtonStyle}"/>
+						</StackPanel>
+					</Border>
+					<TextBlock Grid.Row="1" Margin="4,8" Text="{Binding ImportSummary}"/>
+					<DataGrid Grid.Row="2" ItemsSource="{Binding ImportRows}" AutoGenerateColumns="False" IsReadOnly="True" Style="{StaticResource AppDataGridCompactStyle}">
+						<DataGrid.Columns>
+							<DataGridTextColumn Header="Row" Binding="{Binding RowNumber}" Width="65"/>
+							<DataGridTextColumn Header="Account" Binding="{Binding AccountId}" Width="*"/>
+							<DataGridTextColumn Header="Period" Binding="{Binding AccountingPeriodId}" Width="*"/>
+							<DataGridTextColumn Header="Amount" Binding="{Binding Amount,StringFormat=N2}" Width="110"/>
+							<DataGridTextColumn Header="Errors" Binding="{Binding Errors.Count}" Width="80"/>
+							<DataGridTextColumn Header="Source evidence" Binding="{Binding SourceEvidence}" Width="2*"/>
+						</DataGrid.Columns>
+					</DataGrid>
+				</Grid>
+			</TabItem>
+
+			<TabItem Header="Actual vs Budget">
+				<Grid Margin="8">
+					<Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+					<Border Style="{StaticResource WorkspaceSectionStyle}">
+						<StackPanel Orientation="Horizontal">
+							<CheckBox VerticalAlignment="Center" Content="P&amp;L orientation" IsChecked="{Binding ProfitLossVariance}"/>
+							<Button Margin="12,0,0,0" Command="{Binding RefreshVarianceCommand}" Content="Refresh from Financial Reporting" Style="{StaticResource SecondaryButtonStyle}"/>
+							<TextBlock Margin="16,0,0,0" VerticalAlignment="Center" Text="Actuals are never stored in budgets; they come from current GL/reporting authority." Opacity="0.72"/>
+						</StackPanel>
+					</Border>
+					<DataGrid Grid.Row="1" Margin="0,8,0,0" ItemsSource="{Binding VarianceRows}" AutoGenerateColumns="False" IsReadOnly="True" Style="{StaticResource AppDataGridCompactStyle}">
+						<DataGrid.Columns>
+							<DataGridTextColumn Header="Period" Binding="{Binding PeriodCode}" Width="110"/>
+							<DataGridTextColumn Header="Account" Binding="{Binding AccountNumber}" Width="120"/>
+							<DataGridTextColumn Header="Name" Binding="{Binding AccountName}" Width="*"/>
+							<DataGridTextColumn Header="Actual" Binding="{Binding Actual,StringFormat=N2}" Width="120"/>
+							<DataGridTextColumn Header="Budget" Binding="{Binding Budget,StringFormat=N2}" Width="120"/>
+							<DataGridTextColumn Header="Variance" Binding="{Binding Variance,StringFormat=N2}" Width="120"/>
+							<DataGridTextColumn Header="Variance %" Binding="{Binding VariancePercent,StringFormat=P1}" Width="110"/>
+						</DataGrid.Columns>
+					</DataGrid>
+				</Grid>
+			</TabItem>
+		</TabControl>
+	</Grid>
+</UserControl>

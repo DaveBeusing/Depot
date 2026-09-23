@@ -57,6 +57,7 @@
 	<DataTemplate DataType="{x:Type viewModels:FinanceFinancialReportingViewModel}"><views:FinanceFinancialReportingView /></DataTemplate>
 	<DataTemplate DataType="{x:Type viewModels:FinanceLocalizationViewModel}"><views:FinanceLocalizationView /></DataTemplate>
 	<DataTemplate DataType="{x:Type viewModels:FinanceFixedAssetsViewModel}"><views:FinanceFixedAssetsView /></DataTemplate>
+	<DataTemplate DataType="{x:Type viewModels:FinanceBudgetingViewModel}"><views:FinanceBudgetingView /></DataTemplate>
 	<DataTemplate DataType="{x:Type viewModels:ReportsViewModel}"><views:ReportsView /></DataTemplate>
 	<DataTemplate DataType="{x:Type viewModels:ShellModuleViewModel}"><views:ShellModuleView /></DataTemplate>
 	<DataTemplate DataType="{x:Type viewModels:ImportViewModel}"><views:ImportView /></DataTemplate>

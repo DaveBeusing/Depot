@@ -88,7 +88,8 @@ internal sealed class ViewModelFactory
 			_services.Notifications,
 			_services.NotificationNavigation,
 			_services.ApprovalPolicies,
-			_services.FixedAssets);
+			_services.FixedAssets,
+			_services.Budgeting);
 		return main;
 	}
 }
