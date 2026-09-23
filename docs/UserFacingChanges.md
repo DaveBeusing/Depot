@@ -101,7 +101,7 @@ Advanced pricing uses existing Item and Sales Pricing permissions. FX-rate maint
 
 - Application: **0.15.x-preview**
 - Core database schema: **30**
-- Sales schema: **14**
+- Sales schema: **15**
 - Finance schema: **12**
 - User Sessions schema: **3**
 - Security Events schema: **3**
