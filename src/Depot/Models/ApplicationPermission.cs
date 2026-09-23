@@ -35,6 +35,7 @@ public enum ApplicationPermission
 	FinancePaymentProposalsCreate, FinancePaymentProposalsApprove, FinancePaymentRunsPost, FinanceCashPositionView,
 	FinanceFinancialReportingView, FinanceFinancialReportingManage, FinanceFinancialReportingExport, FinanceReportSnapshotsCreate,
 	FinanceLocalizationView, FinanceLocalizationManage,
+	FinanceFixedAssetsView, FinanceFixedAssetsConfigure, FinanceFixedAssetsManage, FinanceFixedAssetsDepreciationPost,
 	SuppliersView, SuppliersManage, MasterDataView, MasterDataManage, ImportManage, UsersView, UsersManage, UserSessionsTerminate, RolesView, RolesManage,
 	DatabaseView, DatabaseManage, AuditLogView, AuditLogExport, SecurityEventsView, SecurityEventsManage, SettingsView, SettingsManage, DocumentTemplatesView, DocumentTemplatesManage, AdministrationView, ApprovalPoliciesView, ApprovalPoliciesManage
 }

@@ -1,0 +1,126 @@
+<UserControl x:Class="Depot.Views.FinanceFixedAssetsView"
+	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:controls="clr-namespace:Depot.Controls">
+	<Grid>
+		<Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+		<controls:PageHeader Title="Fixed Assets" Subtitle="Asset register, capitalization, depreciation, adjustments, disposal and General Ledger reconciliation.">
+			<controls:PageHeader.Actions>
+				<Button Command="{Binding RefreshCommand}" Content="Refresh" Style="{StaticResource SecondaryButtonStyle}"/>
+			</controls:PageHeader.Actions>
+		</controls:PageHeader>
+		<controls:OperationPanel Grid.Row="1" ErrorText="{Binding OperationError}" HasError="{Binding HasOperationError}" IsBusy="{Binding IsBusy}" StatusText="{Binding StatusText}"/>
+		<TabControl Grid.Row="2" Style="{StaticResource AppTabControlStyle}">
+			<TabItem Header="Asset Register">
+				<Grid Margin="8">
+					<Grid.ColumnDefinitions><ColumnDefinition Width="3*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="2*"/></Grid.ColumnDefinitions>
+					<Grid>
+						<Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+						<Border Style="{StaticResource WorkspaceToolbarStyle}">
+							<Grid>
+								<Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+								<controls:TextInput Text="{Binding SearchText,UpdateSourceTrigger=PropertyChanged}"/>
+								<Button Grid.Column="1" Margin="8,0,0,0" Command="{Binding RefreshCommand}" Content="Search" Style="{StaticResource SecondaryButtonStyle}"/>
+							</Grid>
+						</Border>
+						<DataGrid Grid.Row="1" Margin="0,8,0,0" ItemsSource="{Binding Assets}" SelectedItem="{Binding SelectedAsset}" AutoGenerateColumns="False" IsReadOnly="True" Style="{StaticResource AppDataGridCompactStyle}" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling">
+							<DataGrid.Columns>
+								<DataGridTextColumn Header="Asset" Binding="{Binding AssetNumber}" Width="110"/>
+								<DataGridTextColumn Header="Description" Binding="{Binding Description}" Width="*"/>
+								<DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="100"/>
+								<DataGridTextColumn Header="Cost" Binding="{Binding OriginalCost,StringFormat=N2}" Width="100"/>
+								<DataGridTextColumn Header="Location" Binding="{Binding Location}" Width="130"/>
+							</DataGrid.Columns>
+						</DataGrid>
+					</Grid>
+					<Border Grid.Column="2" Style="{StaticResource WorkspaceSectionStyle}">
+						<ScrollViewer VerticalScrollBarVisibility="Auto">
+							<StackPanel>
+								<TextBlock Text="Asset details" Style="{StaticResource WorkspaceSectionTitleStyle}"/>
+								<TextBlock Margin="0,8,0,0" Text="Asset number" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding AssetNumber}"/>
+								<TextBlock Margin="0,8,0,0" Text="Legal entity" Style="{StaticResource FormLabelStyle}"/><ComboBox ItemsSource="{Binding LegalEntities}" SelectedItem="{Binding AssetEntity}" DisplayMemberPath="Name" Style="{StaticResource AppComboBoxStyle}"/>
+								<TextBlock Margin="0,8,0,0" Text="Asset class" Style="{StaticResource FormLabelStyle}"/><ComboBox ItemsSource="{Binding Classes}" SelectedItem="{Binding AssetClass}" DisplayMemberPath="Name" Style="{StaticResource AppComboBoxStyle}"/>
+								<TextBlock Margin="0,8,0,0" Text="Description" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding Description}"/>
+								<TextBlock Margin="0,8,0,0" Text="Posted AP line (optional)" Style="{StaticResource FormLabelStyle}"/><ComboBox ItemsSource="{Binding SupplierLines}" SelectedItem="{Binding SelectedSupplierLine}" DisplayMemberPath="DisplayName" ToolTip="Optional source evidence from a posted supplier invoice. Accounts Payable remains the posting authority." Style="{StaticResource AppComboBoxStyle}"/>
+								<Grid Margin="0,8,0,0"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="8"/><ColumnDefinition/></Grid.ColumnDefinitions>
+									<StackPanel><TextBlock Text="Acquisition date" Style="{StaticResource FormLabelStyle}"/><DatePicker SelectedDate="{Binding AcquisitionDate}" Style="{StaticResource AppDatePickerStyle}"/></StackPanel>
+									<StackPanel Grid.Column="2"><TextBlock Text="Depreciation start" Style="{StaticResource FormLabelStyle}"/><DatePicker SelectedDate="{Binding DepreciationStartDate}" Style="{StaticResource AppDatePickerStyle}"/></StackPanel>
+								</Grid>
+								<Grid Margin="0,8,0,0"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="8"/><ColumnDefinition/></Grid.ColumnDefinitions>
+									<StackPanel><TextBlock Text="Original cost" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding OriginalCost}"/></StackPanel>
+									<StackPanel Grid.Column="2"><TextBlock Text="Salvage value" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding SalvageValue}"/></StackPanel>
+								</Grid>
+								<Grid Margin="0,8,0,0"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="8"/><ColumnDefinition/></Grid.ColumnDefinitions>
+									<StackPanel><TextBlock Text="Useful life (months)" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding UsefulLifeMonths}"/></StackPanel>
+									<StackPanel Grid.Column="2"><TextBlock Text="Method" Style="{StaticResource FormLabelStyle}"/><ComboBox ItemsSource="{Binding Methods}" SelectedItem="{Binding Method}" Style="{StaticResource AppComboBoxStyle}"/></StackPanel>
+								</Grid>
+								<TextBlock Margin="0,8,0,0" Text="Location" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding Location}"/>
+								<TextBlock Margin="0,8,0,0" Text="Custodian" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding Custodian}"/>
+								<WrapPanel Margin="0,12,0,0" HorizontalAlignment="Right"><Button Command="{Binding NewAssetCommand}" Content="New" Style="{StaticResource SecondaryButtonStyle}"/><Button Margin="8,0,0,0" Command="{Binding SaveAssetCommand}" Content="Save" IsEnabled="{Binding CanManage}" Style="{StaticResource PrimaryButtonStyle}"/></WrapPanel>
+							</StackPanel>
+						</ScrollViewer>
+					</Border>
+				</Grid>
+			</TabItem>
+			<TabItem Header="Depreciation &amp; Actions">
+				<Grid Margin="8">
+					<Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="2*"/><RowDefinition Height="12"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+					<Border Style="{StaticResource WorkspaceToolbarStyle}">
+						<WrapPanel>
+							<TextBlock VerticalAlignment="Center" Text="Posting period" Style="{StaticResource FormLabelStyle}"/>
+							<ComboBox Width="180" Margin="8,0,0,0" ItemsSource="{Binding Periods}" SelectedItem="{Binding SelectedPeriod}" DisplayMemberPath="Code" Style="{StaticResource AppComboBoxStyle}"/>
+							<ComboBox Width="150" Margin="8,0,0,0" ItemsSource="{Binding ClosedPeriodPolicies}" SelectedItem="{Binding ClosedPeriodPolicy}" Style="{StaticResource AppComboBoxStyle}"/>
+							<Button Margin="8,0,0,0" Command="{Binding RunDepreciationCommand}" Content="Run period depreciation" IsEnabled="{Binding CanPostDepreciation}" Style="{StaticResource PrimaryButtonStyle}"/>
+						</WrapPanel>
+					</Border>
+					<DataGrid Grid.Row="1" Margin="0,8,0,0" ItemsSource="{Binding Schedule}" SelectedItem="{Binding SelectedSchedulePeriod}" AutoGenerateColumns="False" IsReadOnly="True" Style="{StaticResource AppDataGridCompactStyle}">
+						<DataGrid.Columns><DataGridTextColumn Header="Period start" Binding="{Binding PeriodStart}" Width="110"/><DataGridTextColumn Header="Period end" Binding="{Binding PeriodEnd}" Width="110"/><DataGridTextColumn Header="Planned" Binding="{Binding PlannedAmount,StringFormat=N2}" Width="100"/><DataGridTextColumn Header="Posted" Binding="{Binding PostedAmount,StringFormat=N2}" Width="100"/><DataGridTextColumn Header="Journal" Binding="{Binding JournalEntryId}" Width="100"/></DataGrid.Columns>
+					</DataGrid>
+					<Grid Grid.Row="3">
+						<Grid.ColumnDefinitions><ColumnDefinition Width="2*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+						<DataGrid ItemsSource="{Binding Transactions}" SelectedItem="{Binding SelectedTransaction}" AutoGenerateColumns="False" IsReadOnly="True" Style="{StaticResource AppDataGridCompactStyle}">
+							<DataGrid.Columns><DataGridTextColumn Header="Date" Binding="{Binding TransactionDate}" Width="100"/><DataGridTextColumn Header="Kind" Binding="{Binding Kind}" Width="110"/><DataGridTextColumn Header="Amount" Binding="{Binding Amount,StringFormat=N2}" Width="100"/><DataGridTextColumn Header="Reason" Binding="{Binding Reason}" Width="*"/><DataGridTextColumn Header="Journal" Binding="{Binding JournalEntryId}" Width="90"/></DataGrid.Columns>
+						</DataGrid>
+						<Border Grid.Column="2" Style="{StaticResource WorkspaceSectionStyle}">
+							<StackPanel>
+								<TextBlock Text="Asset actions" Style="{StaticResource WorkspaceSectionTitleStyle}"/>
+								<TextBlock Margin="0,8,0,0" Text="Reason" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding Reason}"/>
+								<TextBlock Margin="0,8,0,0" Text="Adjustment / impairment amount" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding AdjustmentAmount}"/>
+								<TextBlock Margin="0,8,0,0" Text="Disposal proceeds" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding DisposalProceeds}"/>
+								<WrapPanel Margin="0,12,0,0"><Button Command="{Binding RecalculateScheduleCommand}" Content="Recalculate" Style="{StaticResource SecondaryButtonStyle}"/><Button Margin="6,0,0,0" Command="{Binding CapitalizeCommand}" Content="Capitalize" Style="{StaticResource SecondaryButtonStyle}"/><Button Margin="6,0,0,0" Command="{Binding PostDepreciationCommand}" Content="Post selected" Style="{StaticResource SecondaryButtonStyle}"/><Button Margin="6,0,0,0" Command="{Binding ImpairCommand}" Content="Impair" Style="{StaticResource SecondaryButtonStyle}"/><Button Margin="6,0,0,0" Command="{Binding CorrectImpairmentCommand}" Content="Correct impairment" Style="{StaticResource DangerButtonStyle}"/><Button Margin="6,0,0,0" Command="{Binding TransferCommand}" Content="Transfer" Style="{StaticResource SecondaryButtonStyle}"/><Button Margin="6,0,0,0" Command="{Binding DisposeCommand}" Content="Dispose" Style="{StaticResource SecondaryButtonStyle}"/></WrapPanel>
+							</StackPanel>
+						</Border>
+					</Grid>
+				</Grid>
+			</TabItem>
+			<TabItem Header="Reconciliation">
+				<DataGrid Margin="8" ItemsSource="{Binding Reconciliation}" AutoGenerateColumns="False" IsReadOnly="True" Style="{StaticResource AppDataGridCompactStyle}">
+					<DataGrid.Columns><DataGridTextColumn Header="Asset" Binding="{Binding AssetNumber}" Width="140"/><DataGridTextColumn Header="Subledger carrying value" Binding="{Binding SubledgerCarryingValue,StringFormat=N2}" Width="180"/><DataGridTextColumn Header="GL carrying value" Binding="{Binding GeneralLedgerCarryingValue,StringFormat=N2}" Width="180"/><DataGridTextColumn Header="Difference" Binding="{Binding Difference,StringFormat=N2}" Width="140"/></DataGrid.Columns>
+				</DataGrid>
+			</TabItem>
+			<TabItem Header="Asset Classes" IsEnabled="{Binding CanConfigure}">
+				<Grid Margin="8">
+					<Grid.ColumnDefinitions><ColumnDefinition Width="2*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="3*"/></Grid.ColumnDefinitions>
+					<DataGrid ItemsSource="{Binding Classes}" SelectedItem="{Binding SelectedClass}" AutoGenerateColumns="False" IsReadOnly="True" Style="{StaticResource AppDataGridCompactStyle}">
+						<DataGrid.Columns><DataGridTextColumn Header="Code" Binding="{Binding Code}" Width="100"/><DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*"/><DataGridTextColumn Header="Life" Binding="{Binding DefaultUsefulLifeMonths}" Width="70"/><DataGridTextColumn Header="Method" Binding="{Binding DefaultMethod}" Width="110"/></DataGrid.Columns>
+					</DataGrid>
+					<Border Grid.Column="2" Style="{StaticResource WorkspaceSectionStyle}">
+						<ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel>
+							<TextBlock Text="Asset class configuration" Style="{StaticResource WorkspaceSectionTitleStyle}"/>
+							<TextBlock Margin="0,8,0,0" Text="Legal entity" Style="{StaticResource FormLabelStyle}"/><ComboBox ItemsSource="{Binding LegalEntities}" SelectedItem="{Binding ClassEntity}" DisplayMemberPath="Name" Style="{StaticResource AppComboBoxStyle}"/>
+							<TextBlock Margin="0,8,0,0" Text="Fiscal calendar" Style="{StaticResource FormLabelStyle}"/><ComboBox ItemsSource="{Binding FiscalCalendars}" SelectedItem="{Binding ClassCalendar}" DisplayMemberPath="Name" Style="{StaticResource AppComboBoxStyle}"/>
+							<TextBlock Margin="0,8,0,0" Text="Code" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding ClassCode}"/>
+							<TextBlock Margin="0,8,0,0" Text="Name" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding ClassName}"/>
+							<Grid Margin="0,8,0,0"><Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="8"/><ColumnDefinition/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="Default life (months)" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding ClassUsefulLifeMonths}"/></StackPanel><StackPanel Grid.Column="2"><TextBlock Text="Method" Style="{StaticResource FormLabelStyle}"/><ComboBox ItemsSource="{Binding Methods}" SelectedItem="{Binding ClassMethod}" Style="{StaticResource AppComboBoxStyle}"/></StackPanel></Grid>
+							<TextBlock Margin="0,8,0,0" Text="Capitalization profile" Style="{StaticResource FormLabelStyle}"/><ComboBox ItemsSource="{Binding PostingProfiles}" SelectedItem="{Binding CapitalizationProfile}" DisplayMemberPath="Code" Style="{StaticResource AppComboBoxStyle}"/>
+							<TextBlock Margin="0,8,0,0" Text="Depreciation profile" Style="{StaticResource FormLabelStyle}"/><ComboBox ItemsSource="{Binding PostingProfiles}" SelectedItem="{Binding DepreciationProfile}" DisplayMemberPath="Code" Style="{StaticResource AppComboBoxStyle}"/>
+							<TextBlock Margin="0,8,0,0" Text="Impairment profile" Style="{StaticResource FormLabelStyle}"/><ComboBox ItemsSource="{Binding PostingProfiles}" SelectedItem="{Binding ImpairmentProfile}" DisplayMemberPath="Code" Style="{StaticResource AppComboBoxStyle}"/>
+							<TextBlock Margin="0,8,0,0" Text="Disposal profile" Style="{StaticResource FormLabelStyle}"/><ComboBox ItemsSource="{Binding PostingProfiles}" SelectedItem="{Binding DisposalProfile}" DisplayMemberPath="Code" Style="{StaticResource AppComboBoxStyle}"/>
+							<WrapPanel Margin="0,12,0,0" HorizontalAlignment="Right"><Button Command="{Binding NewClassCommand}" Content="New" Style="{StaticResource SecondaryButtonStyle}"/><Button Margin="8,0,0,0" Command="{Binding SaveClassCommand}" Content="Save" Style="{StaticResource PrimaryButtonStyle}"/></WrapPanel>
+						</StackPanel></ScrollViewer>
+					</Border>
+				</Grid>
+			</TabItem>
+		</TabControl>
+	</Grid>
+</UserControl>

@@ -21,13 +21,13 @@ Localization requires explicit effective-dated assignment. The built-in `GENERIC
 - Application: **0.15.x-preview**
 - Core database schema: **30**
 - Sales feature schema: **14**
-- Finance feature schema: **9**
+- Finance feature schema: **10**
 - User Sessions feature schema: **3**
 - Security Events feature schema: **3**
 - User Preferences feature schema: **2**
 - Document Templates feature schema: **1**
 - Enterprise Identity feature schema: **2**
-- Help manifest: **1.24**
+- Help manifest: **1.26**
 
 `Directory.Build.props` is authoritative for the exact application patch/version. Compliance documentation records the development line and stable schema/help contracts instead of duplicating the moving preview patch number.
 

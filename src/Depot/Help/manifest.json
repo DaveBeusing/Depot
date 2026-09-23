@@ -1,5 +1,5 @@
 {
-  "version": "1.25",
+  "version": "1.26",
   "topics": [
     {
       "id": "getting-started.first-login",
@@ -51,6 +51,25 @@
         "purchasing.purchase-orders",
         "sales.overview",
         "administration.user-sessions"
+      ]
+    },
+    {
+      "id": "getting-started.business-attachments",
+      "title": "Business Attachments",
+      "category": "Getting Started",
+      "file": "getting-started/business-attachments.md",
+      "order": 130,
+      "keywords": [
+        "attachment",
+        "document",
+        "file",
+        "revision",
+        "upload",
+        "download"
+      ],
+      "relatedTopics": [
+        "administration.privacy-data",
+        "administration.audit-log"
       ]
     },
     {
@@ -716,6 +735,31 @@
       ]
     },
     {
+      "id": "finance.fixed-assets",
+      "title": "Fixed Assets and Depreciation",
+      "category": "Finance",
+      "file": "finance/fixed-assets.md",
+      "order": 793,
+      "keywords": [
+        "fixed assets",
+        "asset register",
+        "capitalization",
+        "depreciation",
+        "straight line",
+        "impairment",
+        "disposal",
+        "asset reconciliation"
+      ],
+      "requiredPermission": "FinanceFixedAssets.View",
+      "relatedTopics": [
+        "finance.foundation",
+        "finance.general-ledger",
+        "finance.payables",
+        "finance.reporting",
+        "administration.audit-log"
+      ]
+    },
+    {
       "id": "finance.banking",
       "title": "Banking and Payments",
       "category": "Finance",
@@ -1080,15 +1124,6 @@
       "relatedTopics": [
         "administration.database"
       ]
-    }
-    ,{
-      "id": "getting-started.business-attachments",
-      "title": "Business Attachments",
-      "category": "Getting Started",
-      "file": "getting-started/business-attachments.md",
-      "order": 130,
-      "keywords": ["attachment", "document", "file", "revision", "upload", "download"],
-      "relatedTopics": ["administration.privacy-data", "administration.audit-log"]
     }
   ]
 }

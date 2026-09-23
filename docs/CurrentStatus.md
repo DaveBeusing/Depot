@@ -2,7 +2,7 @@
 
 Updated: 2026-09-20
 
-Depot is on the `0.15.x-preview` development line. Finance, inventory, purchasing, sales including the ERP-native Lead/Opportunity CRM pipeline, reporting, localization, notifications, Audit, persistent user sessions, operational security monitoring, enterprise identity/authentication, persisted workspace productivity preferences and the current visual-designer set are integrated in the repository.
+Depot is on the `0.15.x-preview` development line. Finance includes the General Ledger, AR/AP, Banking, Inventory Accounting, Financial Reporting and the current Fixed Assets/depreciation subledger work; inventory, purchasing, sales including the ERP-native Lead/Opportunity CRM pipeline, localization, notifications, Audit, persistent user sessions, operational security monitoring, enterprise identity/authentication, persisted workspace productivity preferences and the current visual-designer set are integrated in the repository.
 
 ## Repository governance
 
@@ -111,7 +111,7 @@ PR #56 then repaired CI execution boundaries without changing runtime behavior o
 - DepotManager: **0.1.23-preview**
 - Core database schema: **30**
 - Sales feature schema: **15**
-- Finance feature schema: **9**
+- Finance feature schema: **10**
 - User Sessions feature schema: **3**
 - Security Events feature schema: **3**
 - User Preferences feature schema: **2**
@@ -119,7 +119,7 @@ PR #56 then repaired CI execution boundaries without changing runtime behavior o
 - Enterprise Identity feature schema: **2**
 - Approval Policies feature schema: **1**
 - Business Attachments feature schema: **1**
-- Help manifest: **1.24**
+- Help manifest: **1.26**
 
 `Directory.Build.props` is authoritative for the exact Depot application patch/version; `src/DepotManager/DepotManager.Version.props` is authoritative for DepotManager. Schema migration constants and `src/Depot/Help/manifest.json` are authoritative for the remaining baseline values. Every repository commit increments `DepotVersionPatch`.
 

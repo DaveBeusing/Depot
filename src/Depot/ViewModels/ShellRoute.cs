@@ -94,6 +94,7 @@ public static class ShellRoutes
 		public static readonly ShellRoute Receivables = new("finance.receivables");
 		public static readonly ShellRoute Payables = new("finance.payables");
 		public static readonly ShellRoute InventoryAccounting = new("finance.inventory-accounting");
+		public static readonly ShellRoute FixedAssets = new("finance.fixed-assets");
 		public static readonly ShellRoute Banking = new("finance.banking");
 		public static readonly ShellRoute Reporting = new("finance.reporting");
 	}

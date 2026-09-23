@@ -37,6 +37,7 @@ public sealed class FinanceProviderAcceptanceTests
 		await context.VerifyReceivablesAsync();
 		await context.VerifyPayablesAsync();
 		await context.VerifyInventoryValuationAsync();
+		await context.VerifyFixedAssetsAsync();
 	}
 
 	private sealed class FinanceContext
@@ -226,6 +227,26 @@ public sealed class FinanceProviderAcceptanceTests
 			Assert.Equal(10, Assert.Single(reversed, value => value.ItemId == itemId).Quantity);
 		}
 
+
+		public async Task VerifyFixedAssetsAsync()
+		{
+			Assert.Equal(10L,Scalar("SELECT Version FROM DepotFeatureVersions WHERE Name='Finance';"));
+			var assetCost=Guid.NewGuid();var accumulatedDepreciation=Guid.NewGuid();var accumulatedImpairment=Guid.NewGuid();var capitalizationOffset=Guid.NewGuid();var depreciationExpense=Guid.NewGuid();var impairmentExpense=Guid.NewGuid();
+			InsertAccount(assetCost,$"15{_suffix[..6]}","Fixed assets",FinanceAccountType.Asset);InsertAccount(accumulatedDepreciation,$"16{_suffix[..6]}","Accumulated depreciation",FinanceAccountType.Asset);InsertAccount(accumulatedImpairment,$"17{_suffix[..6]}","Accumulated impairment",FinanceAccountType.Asset);InsertAccount(capitalizationOffset,$"21{_suffix[..6]}","Capitalization offset",FinanceAccountType.Liability);InsertAccount(depreciationExpense,$"65{_suffix[..6]}","Depreciation expense",FinanceAccountType.Expense);InsertAccount(impairmentExpense,$"66{_suffix[..6]}","Impairment expense",FinanceAccountType.Expense);
+			var capitalizationProfile=InsertProfileForEvent($"FA-C-{_suffix[..8]}","Capitalization",(assetCost,FinancePostingDirection.Debit,"AssetCost"),(capitalizationOffset,FinancePostingDirection.Credit,"AssetCost"));
+			var depreciationProfile=InsertProfileForEvent($"FA-D-{_suffix[..8]}","Depreciation",(depreciationExpense,FinancePostingDirection.Debit,"Depreciation"),(accumulatedDepreciation,FinancePostingDirection.Credit,"Depreciation"));
+			var impairmentProfile=InsertProfileForEvent($"FA-I-{_suffix[..8]}","Impairment",(impairmentExpense,FinancePostingDirection.Debit,"Impairment"),(accumulatedImpairment,FinancePostingDirection.Credit,"Impairment"));
+			var disposalProfile=InsertProfileForEvent($"FA-X-{_suffix[..8]}","Disposal",(assetCost,FinancePostingDirection.Debit,"AssetCost"),(capitalizationOffset,FinancePostingDirection.Credit,"AssetCost"));
+			var classId=_database.Insert("INSERT INTO FinanceAssetClasses (Version,LegalEntityId,FiscalCalendarId,Code,Name,CapitalizationPostingProfileId,DepreciationPostingProfileId,ImpairmentPostingProfileId,DisposalPostingProfileId,DefaultUsefulLifeMonths,DefaultMethod,IsActive) VALUES (1,$Entity,$Calendar,$Code,'Provider fixed assets',$Capitalization,$Depreciation,$Impairment,$Disposal,12,$Method,1);",new DatabaseParameter("$Entity",_legalEntityId.ToString("D")),new DatabaseParameter("$Calendar",_calendarId.ToString("D")),new DatabaseParameter("$Code",$"FA-{_suffix[..8]}"),new DatabaseParameter("$Capitalization",capitalizationProfile),new DatabaseParameter("$Depreciation",depreciationProfile),new DatabaseParameter("$Impairment",impairmentProfile),new DatabaseParameter("$Disposal",disposalProfile),new DatabaseParameter("$Method",(int)FinanceDepreciationMethod.NoDepreciation));
+			var assetId=_database.Insert("INSERT INTO FinanceFixedAssets (Version,AssetNumber,LegalEntityId,AssetClassId,Description,AcquisitionDate,CapitalizationDate,DepreciationStartDate,CurrencyCode,OriginalCost,SalvageValue,UsefulLifeMonths,DepreciationMethod,Location,Custodian,Status,SourceSupplierDocumentLineId) VALUES (1,$Number,$Entity,$Class,'Provider asset',$Date,NULL,$Date,'USD',1000,0,12,$Method,NULL,NULL,$Status,NULL);",new DatabaseParameter("$Number",$"FA-{_suffix[..12]}"),new DatabaseParameter("$Entity",_legalEntityId.ToString("D")),new DatabaseParameter("$Class",classId),new DatabaseParameter("$Date",_postingDate.ToString("yyyy-MM-dd")),new DatabaseParameter("$Method",(int)FinanceDepreciationMethod.NoDepreciation),new DatabaseParameter("$Status",(int)FinanceAssetStatus.Draft));
+			var authorization=Authorization(_userId,[ApplicationPermission.FinanceFixedAssetsView,ApplicationPermission.FinanceFixedAssetsConfigure,ApplicationPermission.FinanceFixedAssetsManage,ApplicationPermission.FinanceFixedAssetsDepreciationPost]);
+			var auditRepository=new AuditRepository(_database);var audit=new AuditService(auditRepository,authorization);var generalLedger=new FinanceGeneralLedgerService(_transactions,new FinanceGeneralLedgerRepository(_database),new FinancePostingProfileRepository(_database),auditRepository,audit,authorization);var service=new FinanceFixedAssetService(_transactions,new FinanceFixedAssetRepository(_database),generalLedger,auditRepository,audit,authorization);
+			var capitalization=await service.CapitalizeAsync(assetId,Guid.NewGuid(),_periodId,_postingDate);Assert.NotNull(capitalization.JournalEntryId);
+			var impairment=await service.ImpairAsync(assetId,Guid.NewGuid(),_periodId,_postingDate,100m,"Provider impairment");Assert.NotNull(impairment.JournalEntryId);
+			var correction=await service.CorrectImpairmentAsync(impairment.Id,Guid.NewGuid(),_periodId,_postingDate,"Provider correction");Assert.Equal(FinanceAssetTransactionKind.Correction,correction.Kind);
+			var reconciliation=Assert.Single((await service.SearchReconciliationAsync(_legalEntityId,1,20)).Items);Assert.Equal(1000m,reconciliation.SubledgerCarryingValue);Assert.Equal(reconciliation.SubledgerCarryingValue,reconciliation.GeneralLedgerCarryingValue);Assert.Equal(0m,reconciliation.Difference);
+		}
+
 		private FinanceGeneralLedgerService CreateGeneralLedgerService(long userId, params ApplicationPermission[] permissions)
 		{
 			var authorization = Authorization(userId, permissions);
@@ -344,6 +365,14 @@ public sealed class FinanceProviderAcceptanceTests
 				_database.Execute("INSERT INTO FinancePostingProfileLines (PostingProfileId,LineNumber,AccountId,Direction,AmountKey,Multiplier,Description) VALUES ($ProfileId,$LineNumber,$AccountId,$Direction,$AmountKey,1,NULL);",
 					new DatabaseParameter("$ProfileId", id), new DatabaseParameter("$LineNumber", index + 1), new DatabaseParameter("$AccountId", line.AccountId.ToString("D")), new DatabaseParameter("$Direction", (int)line.Direction), new DatabaseParameter("$AmountKey", line.AmountKey));
 			}
+			return id;
+		}
+
+
+		private long InsertProfileForEvent(string code,string eventName,params (Guid AccountId,FinancePostingDirection Direction,string AmountKey)[] lines)
+		{
+			var id=_database.Insert("INSERT INTO FinancePostingProfiles (Version,LegalEntityId,AccountingBookId,JournalId,Code,Name,SourceType,SourceEvent,NumberSequenceCode,IsActive) VALUES (1,$LegalEntityId,$BookId,$JournalId,$Code,$Name,'FixedAssets',$Event,$Sequence,1);",new DatabaseParameter("$LegalEntityId",_legalEntityId.ToString("D")),new DatabaseParameter("$BookId",_bookId.ToString("D")),new DatabaseParameter("$JournalId",_journalId.ToString("D")),new DatabaseParameter("$Code",code),new DatabaseParameter("$Name",code),new DatabaseParameter("$Event",eventName),new DatabaseParameter("$Sequence",_sequenceCode));
+			for(var index=0;index<lines.Length;index++){var line=lines[index];_database.Execute("INSERT INTO FinancePostingProfileLines (PostingProfileId,LineNumber,AccountId,Direction,AmountKey,Multiplier,Description) VALUES ($ProfileId,$LineNumber,$AccountId,$Direction,$AmountKey,1,NULL);",new DatabaseParameter("$ProfileId",id),new DatabaseParameter("$LineNumber",index+1),new DatabaseParameter("$AccountId",line.AccountId.ToString("D")),new DatabaseParameter("$Direction",(int)line.Direction),new DatabaseParameter("$AmountKey",line.AmountKey));}
 			return id;
 		}
 

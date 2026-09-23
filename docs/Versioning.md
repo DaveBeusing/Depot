@@ -7,7 +7,7 @@ Updated: 2026-09-19
 - Application: **0.15.x-preview**
 - Core database schema: **30**
 - Sales feature schema: **15**
-- Finance feature schema: **9**
+- Finance feature schema: **10**
 - User Sessions feature schema: **3**
 - Security Events feature schema: **3**
 - User Preferences feature schema: **2**
@@ -15,7 +15,7 @@ Updated: 2026-09-19
 - Enterprise Identity feature schema: **2**
 - Approval Policies feature schema: **1**
 - Business Attachments feature schema: **1**
-- Help manifest: **1.24**
+- Help manifest: **1.26**
 
 Application, Core database and feature-schema versions are independent compatibility dimensions. `Directory.Build.props` is the authoritative source for the exact application patch/version; long-lived documentation records the development line rather than duplicating the moving patch number.
 

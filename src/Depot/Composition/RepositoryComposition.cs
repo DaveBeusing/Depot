@@ -50,6 +50,7 @@ internal sealed class RepositoryComposition
 		FinanceFinancialReporting = new FinanceFinancialReportingRepository(dataAccess);
 		FinanceFinancialReportingInventory = new FinanceFinancialReportingInventoryRepository(dataAccess);
 		FinanceLocalization = new FinanceLocalizationRepository(dataAccess);
+		FinanceFixedAssets = new FinanceFixedAssetRepository(dataAccess);
 		Inventories = new InventoryRepository(dataAccess);
 		Warehouses = new WarehouseRepository(dataAccess);
 		StorageLocations = new StorageLocationRepository(dataAccess);
@@ -114,6 +115,7 @@ internal sealed class RepositoryComposition
 	public FinanceFinancialReportingRepository FinanceFinancialReporting { get; }
 	public FinanceFinancialReportingInventoryRepository FinanceFinancialReportingInventory { get; }
 	public FinanceLocalizationRepository FinanceLocalization { get; }
+	public FinanceFixedAssetRepository FinanceFixedAssets { get; }
 	public InventoryRepository Inventories { get; }
 	public WarehouseRepository Warehouses { get; }
 	public StorageLocationRepository StorageLocations { get; }

@@ -297,7 +297,8 @@ public sealed class RbacTestsPersonaProfiles
 				ApplicationPermission.FinancePostingProfilesView, ApplicationPermission.FinancePostingProfilesManage,
 				ApplicationPermission.FinanceInventoryAccountingView, ApplicationPermission.FinanceInventoryAccountingManage,
 				ApplicationPermission.FinanceBankingView, ApplicationPermission.FinanceBankReconciliationManage,
-				ApplicationPermission.FinanceFinancialReportingView, ApplicationPermission.FinanceFinancialReportingManage, ApplicationPermission.FinanceFinancialReportingExport, ApplicationPermission.FinanceReportSnapshotsCreate
+				ApplicationPermission.FinanceFinancialReportingView, ApplicationPermission.FinanceFinancialReportingManage, ApplicationPermission.FinanceFinancialReportingExport, ApplicationPermission.FinanceReportSnapshotsCreate,
+				ApplicationPermission.FinanceFixedAssetsView, ApplicationPermission.FinanceFixedAssetsConfigure, ApplicationPermission.FinanceFixedAssetsManage, ApplicationPermission.FinanceFixedAssetsDepreciationPost
 			}
 		},
 		{
@@ -313,7 +314,7 @@ public sealed class RbacTestsPersonaProfiles
 				ApplicationPermission.FinanceTaxConfigurationView, ApplicationPermission.FinanceNumberSequencesView, ApplicationPermission.FinanceGeneralLedgerView, ApplicationPermission.FinancePostingProfilesView,
 				ApplicationPermission.FinanceReceivablesView, ApplicationPermission.FinanceDunningView, ApplicationPermission.FinancePayablesView, ApplicationPermission.FinanceInventoryAccountingView,
 				ApplicationPermission.FinanceBankingView, ApplicationPermission.FinanceCashPositionView, ApplicationPermission.FinanceFinancialReportingView, ApplicationPermission.FinanceFinancialReportingExport,
-				ApplicationPermission.FinanceLocalizationView, ApplicationPermission.ReportsView, ApplicationPermission.ReportsExport
+				ApplicationPermission.FinanceLocalizationView, ApplicationPermission.FinanceFixedAssetsView, ApplicationPermission.ReportsView, ApplicationPermission.ReportsExport
 			}
 		},
 		{
@@ -321,7 +322,7 @@ public sealed class RbacTestsPersonaProfiles
 			new ApplicationPermission[]
 			{
 				ApplicationPermission.DashboardView, ApplicationPermission.ReportsView, ApplicationPermission.ReportsExport,
-				ApplicationPermission.FinanceFinancialReportingView, ApplicationPermission.FinanceFinancialReportingExport, ApplicationPermission.FinanceLocalizationView,
+				ApplicationPermission.FinanceFinancialReportingView, ApplicationPermission.FinanceFinancialReportingExport, ApplicationPermission.FinanceLocalizationView, ApplicationPermission.FinanceFixedAssetsView,
 				ApplicationPermission.UsersView, ApplicationPermission.RolesView,
 				ApplicationPermission.AuditLogView, ApplicationPermission.AuditLogExport, ApplicationPermission.SecurityEventsView
 			}

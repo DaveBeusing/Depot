@@ -17,9 +17,9 @@ Views contain presentation only. ViewModels own UI state, commands and cancellat
 ## Authoritative accounting flow
 
 ```text
-Sales / Purchasing / Inventory / Returns / Banking
+Sales / Purchasing / Inventory / Returns / Banking / Fixed Assets
                     ↓
-        AR / AP / Inventory Accounting / Banking
+        AR / AP / Inventory Accounting / Banking / Fixed Assets
                     ↓
           FinanceGeneralLedgerService
                     ↓
@@ -36,7 +36,7 @@ FinanceLocalizationService
 Pack hierarchy + capability/configuration/procedure registry
 ```
 
-The General Ledger remains the single accounting authority. Receivables, Payables, Inventory Accounting and Banking create or reconcile financial consequences through existing boundaries. Financial Reporting is read/reporting plus immutable snapshot persistence. Localization is metadata/control infrastructure and never posts accounting entries.
+The General Ledger remains the single accounting authority. Receivables, Payables, Inventory Accounting, Banking and Fixed Assets create or reconcile financial consequences through existing boundaries. Financial Reporting is read/reporting plus immutable snapshot persistence. Localization is metadata/control infrastructure and never posts accounting entries.
 
 ## Finance capability boundaries
 
@@ -46,6 +46,7 @@ The General Ledger remains the single accounting authority. Receivables, Payable
 - **Accounts Payable:** supplier-document lifecycle, three-way matching, exception authority, payments/allocation/reversal and Purchasing integration.
 - **Inventory Accounting:** FIFO valuation, GRNI/COGS, inventory adjustments, purchase-price variance, landed cost, historical valuation and Inventory ↔ GL reconciliation.
 - **Banking and Payments:** bank accounts, immutable statements, CSV/camt.053 import, payment proposals/execution, reconciliation and cash position.
+- **Fixed Assets:** asset classes and masters, GL-authoritative capitalization, deterministic straight-line/no-depreciation schedules, periodic depreciation, impairments, non-destructive transfers, disposal, retained transaction evidence and subledger-to-GL reconciliation.
 - **Financial Reporting:** configurable reports, explicit account mappings, deterministic export and immutable snapshots.
 - **Localization:** explicit effective-dated assignments, hierarchical localization packs, effective capability/configuration/procedure registry and jurisdiction-extension infrastructure.
 
@@ -89,7 +90,7 @@ Current schema baseline:
 
 - Core database schema: **30**
 - Sales feature schema: **14**
-- Finance feature schema: **9**
+- Finance feature schema: **10**
 
 Finance schema evolution is sequential from foundation through General Ledger, subledgers, inventory accounting, banking, reporting and localization. Sales is listed because Finance/provider acceptance crosses order-to-cash and related feature migrations; its current persistence baseline is maintained independently from Finance.
 
