@@ -100,3 +100,10 @@ Before Stable publication, the exact release package must make the remaining ext
 - [CRA Product Classification](compliance/CraClassification.md)
 - [CRA Vulnerability and Incident Reporting Runbook](compliance/CraIncidentReporting.md)
 - [Production Operations & Disaster Recovery](ProductionOperationsDisasterRecovery.md)
+
+
+## SEPA payment export
+
+Depot may state that approved EUR payment runs can generate deterministic, retained ISO 20022 `pain.001.001.09` SEPA SCT files with structured payment-party addresses, SHA-256 evidence, controlled re-download and manually recorded external status evidence.
+
+Depot must not state or imply EPC certification, bank certification, automatic bank submission, EBICS/PSD2/Open Banking connectivity, clearing acceptance, sanctions screening or an ACID transaction with an external bank. Bank-specific acceptance remains deployment/integration evidence outside repository conformance.

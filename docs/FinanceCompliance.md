@@ -97,3 +97,12 @@ No repository feature, provider baseline or localization pack should be describe
 Finance schema **11** adds controlled budgeting without changing the accounting system of record. Budgets are planning evidence only: they do not post journals, alter posted history or replace General Ledger/Financial Reporting authority.
 
 Approval policies retain immutable submitted-stage evidence. Approved and Locked budget versions cannot be silently edited; changes require a new version/amendment. The real-provider acceptance path includes budget persistence and nine-decimal aggregate behavior.
+
+
+## SEPA SCT export boundary
+
+Depot implements a bounded SEPA SCT customer-to-PSP export profile using `pain.001.001.09`, pinned to the EPC SCT 2025 rulebook v1.1 / Customer-to-PSP implementation guidelines 2025 v1.0. The implementation requires explicit structured payment addresses and does not emit unstructured-only address lines.
+
+The EPC announced on 9 September 2026 that the previously planned 15 November 2026 end-date for unstructured addresses would be postponed. Depot's structured-address-only rule is therefore a stricter supported-product profile, not a claim that the postponed date remains binding.
+
+Schema/profile validation, deterministic artifact tests and live database-provider persistence evidence do not constitute EPC or bank certification. EBICS, PSD2/Open Banking submission, bank-specific host-to-host connectivity, automatic status polling and sanctions/AML/KYC decisioning remain outside the implemented boundary. External submission and acceptance/rejection are retained as manual evidence only.

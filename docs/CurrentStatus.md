@@ -111,7 +111,7 @@ PR #56 then repaired CI execution boundaries without changing runtime behavior o
 - DepotManager: **0.1.23-preview**
 - Core database schema: **30**
 - Sales feature schema: **15**
-- Finance feature schema: **11**
+- Finance feature schema: **12**
 - User Sessions feature schema: **3**
 - Security Events feature schema: **3**
 - User Preferences feature schema: **2**
@@ -119,7 +119,7 @@ PR #56 then repaired CI execution boundaries without changing runtime behavior o
 - Enterprise Identity feature schema: **2**
 - Approval Policies feature schema: **1**
 - Business Attachments feature schema: **1**
-- Help manifest: **1.27**
+- Help manifest: **1.28**
 
 `Directory.Build.props` is authoritative for the exact Depot application patch/version; `src/DepotManager/DepotManager.Version.props` is authoritative for DepotManager. Schema migration constants and `src/Depot/Help/manifest.json` are authoritative for the remaining baseline values. Every repository commit increments `DepotVersionPatch`.
 
@@ -148,3 +148,8 @@ See [Business Attachments](BusinessAttachments.md).
 Finance feature schema **11** adds controlled versioned budgeting, account/period/dimension lines, deterministic annual spreading, CSV preview/atomic import/export, configurable policy approval, immutable Approved/Locked history, Finance > Budgeting UI, My Work projections and Actual-vs-Budget variance backed by the existing Financial Reporting/GL authority.
 
 Forecasting, workforce planning, treasury cash forecasting, consolidation budgeting and spreadsheet formulas remain outside this scope.
+
+
+## Finance SEPA SCT export
+
+Finance Banking includes deterministic `pain.001.001.09` SEPA SCT export from approved payment runs, explicit structured debtor/creditor payment profiles, immutable retained XML/SHA-256 evidence, exact re-download, explicit supersede semantics and manual external-status evidence. External bank submission, bank certification and automated status polling remain outside the repository boundary.

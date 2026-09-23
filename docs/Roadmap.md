@@ -200,3 +200,8 @@ Provider versions outside the certified matrix are likewise demand-driven certif
 ## Finance budgeting and variance analysis
 
 Controlled Finance Budgeting is implemented with schema 11 persistence, policy approval, immutable version history, import/export, period spreading, My Work integration and Actual-vs-Budget reporting. Remaining acceptance is the normal PR build/test/provider/quality gate; automated forecasting and broader planning engines remain outside this scope.
+
+
+## Integrated Finance payment-initiation artifact
+
+The bounded SEPA SCT payment-export capability is implemented at the repository boundary: `pain.001.001.09`, structured payment addresses, immutable artifact/hash evidence, role-separated generation/download/status operations and provider-backed persistence. Future banking connectivity such as EBICS, PSD2/Open Banking, SCT Inst and automated status ingestion remains separate roadmap scope and must not be inferred from the file-export capability.

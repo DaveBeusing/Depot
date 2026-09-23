@@ -8,7 +8,7 @@ The canonical release-facing supported/unsupported claim boundary is [Release Co
 
 ## Finance technical baseline
 
-Depot Finance provides explicit legal entities, currencies/exchange rates, periods, accounting books/charts/accounts, immutable balanced double-entry posting, customer and supplier subledgers, FIFO inventory valuation, Banking and Payments, configurable Financial Reporting and an effective-dated Localization framework.
+Depot Finance provides explicit legal entities, currencies/exchange rates, periods, accounting books/charts/accounts, immutable balanced double-entry posting, customer and supplier subledgers, FIFO inventory valuation, Banking and Payments including retained SEPA SCT payment-file export, configurable Financial Reporting and an effective-dated Localization framework.
 
 These capabilities improve traceability, repeatability, reconciliation, correction history, authorization and retry safety. They do not by themselves establish HGB, GoBD, IFRS, US-GAAP, VAT/GST/sales-tax, statutory retention, payment-services, audit or tax-filing conformity.
 
@@ -20,14 +20,14 @@ Localization requires explicit effective-dated assignment. The built-in `GENERIC
 
 - Application: **0.15.x-preview**
 - Core database schema: **30**
-- Sales feature schema: **14**
-- Finance feature schema: **10**
+- Sales feature schema: **15**
+- Finance feature schema: **12**
 - User Sessions feature schema: **3**
 - Security Events feature schema: **3**
 - User Preferences feature schema: **2**
 - Document Templates feature schema: **1**
 - Enterprise Identity feature schema: **2**
-- Help manifest: **1.26**
+- Help manifest: **1.28**
 
 `Directory.Build.props` is authoritative for the exact application patch/version. Compliance documentation records the development line and stable schema/help contracts instead of duplicating the moving preview patch number.
 
