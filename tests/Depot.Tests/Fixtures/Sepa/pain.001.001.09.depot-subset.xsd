@@ -5,6 +5,8 @@
            targetNamespace="urn:iso:std:iso:20022:tech:xsd:pain.001.001.09"
            xmlns="urn:iso:std:iso:20022:tech:xsd:pain.001.001.09"
            elementFormDefault="qualified">
+  <xs:simpleType name="SepaPartyName"><xs:restriction base="xs:string"><xs:minLength value="1"/><xs:maxLength value="70"/></xs:restriction></xs:simpleType>
+  <xs:simpleType name="SepaAmount"><xs:restriction base="xs:decimal"><xs:minInclusive value="0.01"/><xs:maxInclusive value="999999999.99"/><xs:fractionDigits value="2"/><xs:totalDigits value="18"/></xs:restriction></xs:simpleType>
   <xs:element name="Document">
     <xs:complexType><xs:sequence>
       <xs:element name="CstmrCdtTrfInitn">
@@ -20,7 +22,7 @@
     <xs:element name="CreDtTm" type="xs:dateTime"/>
     <xs:element name="NbOfTxs" type="xs:positiveInteger"/>
     <xs:element name="CtrlSum" type="xs:decimal"/>
-    <xs:element name="InitgPty"><xs:complexType><xs:sequence><xs:element name="Nm" type="xs:string"/></xs:sequence></xs:complexType></xs:element>
+    <xs:element name="InitgPty"><xs:complexType><xs:sequence><xs:element name="Nm" type="SepaPartyName"/></xs:sequence></xs:complexType></xs:element>
   </xs:sequence></xs:complexType>
   <xs:complexType name="PaymentInformation"><xs:sequence>
     <xs:element name="PmtInfId" type="xs:string"/>
@@ -37,7 +39,7 @@
     <xs:element name="CdtTrfTxInf" type="CreditTransfer" minOccurs="1" maxOccurs="unbounded"/>
   </xs:sequence></xs:complexType>
   <xs:complexType name="Party"><xs:sequence>
-    <xs:element name="Nm" type="xs:string"/>
+    <xs:element name="Nm" type="SepaPartyName"/>
     <xs:element name="PstlAdr" type="PostalAddress"/>
   </xs:sequence></xs:complexType>
   <xs:complexType name="PostalAddress"><xs:sequence>
@@ -59,7 +61,7 @@
   </xs:sequence></xs:complexType>
   <xs:complexType name="CreditTransfer"><xs:sequence>
     <xs:element name="PmtId"><xs:complexType><xs:sequence><xs:element name="EndToEndId" type="xs:string"/></xs:sequence></xs:complexType></xs:element>
-    <xs:element name="Amt"><xs:complexType><xs:sequence><xs:element name="InstdAmt"><xs:complexType><xs:simpleContent><xs:extension base="xs:decimal"><xs:attribute name="Ccy" type="xs:string" use="required"/></xs:extension></xs:simpleContent></xs:complexType></xs:element></xs:sequence></xs:complexType></xs:element>
+    <xs:element name="Amt"><xs:complexType><xs:sequence><xs:element name="InstdAmt"><xs:complexType><xs:simpleContent><xs:extension base="SepaAmount"><xs:attribute name="Ccy" type="xs:string" use="required"/></xs:extension></xs:simpleContent></xs:complexType></xs:element></xs:sequence></xs:complexType></xs:element>
     <xs:element name="CdtrAgt" type="Agent" minOccurs="0"/>
     <xs:element name="Cdtr" type="Party"/>
     <xs:element name="CdtrAcct" type="Account"/>

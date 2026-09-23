@@ -20,6 +20,7 @@ public sealed class FinanceSepaPaymentExportService
 	public const string XmlNamespace = "urn:iso:std:iso:20022:tech:xsd:pain.001.001.09";
 
 	private const int MaximumTransactionsPerExport = 500;
+	private const decimal MaximumTransactionAmount = 999999999.99m;
 	private static readonly Regex BicPattern = new("^[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?$", RegexOptions.CultureInvariant);
 	private static readonly Regex CountryPattern = new("^[A-Z]{2}$", RegexOptions.CultureInvariant);
 	private static readonly IReadOnlySet<string> SepaCountryCodes = new HashSet<string>(StringComparer.Ordinal)
@@ -325,7 +326,7 @@ public sealed class FinanceSepaPaymentExportService
 		}
 		foreach (var line in run.Lines)
 		{
-			if (line.Amount <= 0m) errors.Add($"Payment line {line.Id} must have a positive amount.");
+			if (line.Amount < 0.01m || line.Amount > MaximumTransactionAmount) errors.Add($"Payment line {line.Id} amount must be between 0.01 and 999999999.99 EUR.");
 			if (decimal.Round(line.Amount, 2, MidpointRounding.ToEven) != line.Amount) errors.Add($"Payment line {line.Id} amount must not exceed two decimal places for EUR.");
 			if (!creditors.TryGetValue(line.SupplierId, out var creditor))
 			{
@@ -459,19 +460,19 @@ public sealed class FinanceSepaPaymentExportService
 
 	private static FinanceSepaDebtorProfile Normalize(FinanceSepaDebtorProfile value) => value with
 	{
-		Name=Required(value.Name,140),StreetName=Required(value.StreetName,70),BuildingNumber=Clean(value.BuildingNumber,16),PostalCode=Required(value.PostalCode,16),
+		Name=Required(value.Name,70),StreetName=Required(value.StreetName,70),BuildingNumber=Clean(value.BuildingNumber,16),PostalCode=Required(value.PostalCode,16),
 		TownName=Required(value.TownName,35),CountrySubdivision=Clean(value.CountrySubdivision,35),CountryCode=Required(value.CountryCode,2).ToUpperInvariant()
 	};
 
 	private static FinanceSepaCreditorProfile Normalize(FinanceSepaCreditorProfile value) => value with
 	{
-		Name=Required(value.Name,140),Iban=NormalizeIban(value.Iban),Bic=NormalizeBic(value.Bic),StreetName=Required(value.StreetName,70),BuildingNumber=Clean(value.BuildingNumber,16),
+		Name=Required(value.Name,70),Iban=NormalizeIban(value.Iban),Bic=NormalizeBic(value.Bic),StreetName=Required(value.StreetName,70),BuildingNumber=Clean(value.BuildingNumber,16),
 		PostalCode=Required(value.PostalCode,16),TownName=Required(value.TownName,35),CountrySubdivision=Clean(value.CountrySubdivision,35),CountryCode=Required(value.CountryCode,2).ToUpperInvariant()
 	};
 
 	private static void ValidateParty(string name, string street, string? building, string postalCode, string town, string? subdivision, string country)
 	{
-		_ = Required(name,140); _ = Required(street,70); _ = Required(postalCode,16); _ = Required(town,35);
+		_ = Required(name,70); _ = Required(street,70); _ = Required(postalCode,16); _ = Required(town,35);
 		if (!string.IsNullOrWhiteSpace(building) && building.Trim().Length > 16) throw new ArgumentException("Building number exceeds 16 characters.");
 		if (!string.IsNullOrWhiteSpace(subdivision) && subdivision.Trim().Length > 35) throw new ArgumentException("Country subdivision exceeds 35 characters.");
 		if (!CountryPattern.IsMatch(country.Trim().ToUpperInvariant())) throw new ArgumentException("Country code must be a two-letter ISO code.");

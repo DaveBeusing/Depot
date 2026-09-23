@@ -30,7 +30,7 @@ Business and authorization rules remain in the service layer. Persistence retain
 
 ## Eligibility and validation
 
-Generation requires an approved payment run that has not started AP execution, EUR on the run and bank account, positive two-decimal EUR amounts, a valid debtor IBAN, explicit structured debtor payment data, an active structured creditor profile for every supplier, valid creditor IBANs, optional syntactically valid BICs, a non-past requested execution date, bounded remittance text, and no more than 500 transfers per artifact.
+Generation requires an approved payment run that has not started AP execution, EUR on the run and bank account, individual amounts from 0.01 through 999999999.99 EUR with at most two decimal places, debtor/creditor names of at most 70 characters, a valid debtor IBAN, explicit structured debtor payment data, an active structured creditor profile for every supplier, valid creditor IBANs, optional syntactically valid BICs, a non-past requested execution date, bounded remittance text, and no more than 500 transfers per artifact.
 
 The supported IBAN geography is pinned to the **41-country EPC SEPA geographical scope verified on 2026-09-23**. Debtor and creditor IBANs whose country code falls outside that scope are rejected even when their IBAN checksum is formally valid. A future EPC scope expansion requires an explicit compatibility update rather than being accepted silently.
 

@@ -125,7 +125,27 @@ public sealed class FinanceSepaPaymentExportTests
 			var nonSepa=await Assert.ThrowsAsync<ArgumentException>(()=>fixture.Service.SaveCreditorProfileAsync(creditor! with { Iban="AE070331234567890123456" }));
 			Assert.Contains("outside the supported SEPA geographical scope",nonSepa.Message,StringComparison.Ordinal);
 			await Assert.ThrowsAsync<ArgumentException>(()=>fixture.Service.SaveCreditorProfileAsync(creditor! with { Bic="INVALID" }));
+			await Assert.ThrowsAsync<ArgumentException>(()=>fixture.Service.SaveCreditorProfileAsync(creditor! with { Name=new string('N',71) }));
 			await Assert.ThrowsAsync<ArgumentException>(()=>fixture.Service.SaveCreditorProfileAsync(creditor! with { StreetName=" " }));
+		}
+		finally
+		{
+			SqliteConnection.ClearAllPools();
+			try{File.Delete(path);}catch(IOException){}
+		}
+	}
+
+	[Fact]
+	public async Task ValidationRejectsAmountAboveEpcSctMaximum()
+	{
+		var path=Path.Combine(Path.GetTempPath(),$"depot-sepa-amount-{Guid.NewGuid():N}.db");
+		try
+		{
+			var fixture=await CreateFixtureAsync(new SqliteConnectionFactory(path),firstAmount:1000000000m);
+			var preview=await fixture.Service.PreviewAsync(fixture.PaymentRunId);
+			Assert.False(preview.IsValid);
+			Assert.Contains(preview.Errors,value=>value.Contains("between 0.01 and 999999999.99 EUR",StringComparison.Ordinal));
+			await Assert.ThrowsAsync<InvalidOperationException>(()=>fixture.Service.GenerateAsync(fixture.PaymentRunId));
 		}
 		finally
 		{
@@ -194,7 +214,7 @@ public sealed class FinanceSepaPaymentExportTests
 		Assert.Equal(BusinessRecordRetentionCategory.AccountingRelevant,BusinessRecordCatalog.Require(nameof(FinanceSepaPaymentExport)).RetentionCategory);
 	}
 
-	internal static async Task<SepaFixture> CreateFixtureAsync(IDatabaseConnectionFactory factory,bool saveSecondCreditor=true,string currency="EUR",bool saveDebtor=true)
+	internal static async Task<SepaFixture> CreateFixtureAsync(IDatabaseConnectionFactory factory,bool saveSecondCreditor=true,string currency="EUR",bool saveDebtor=true,decimal firstAmount=100.25m)
 	{
 		DatabaseProvisioningService.Initialize(factory);
 		var database=new DatabaseAccess(factory);
@@ -210,8 +230,8 @@ public sealed class FinanceSepaPaymentExportTests
 		var paymentDate=DateOnly.FromDateTime(DateTime.UtcNow).AddDays(2);
 		var runId=database.Insert("INSERT INTO FinancePaymentRuns (Version,OperationId,BankAccountId,PaymentDate,CurrencyCode,Description,Status,CreatedAtUtc,CreatedByUserId,ApprovedAtUtc,ApprovedByUserId,ApprovalComment,CompletedAtUtc) VALUES (1,$Operation,$Bank,$Date,$Currency,'SEPA export test',$Status,$Created,$User,$Approved,$User,'Approved for test',NULL);",
 			new DatabaseParameter("$Operation",operation.ToString("D")),new DatabaseParameter("$Bank",bankId),new DatabaseParameter("$Date",paymentDate.ToString("yyyy-MM-dd",System.Globalization.CultureInfo.InvariantCulture)),new DatabaseParameter("$Currency",currency),new DatabaseParameter("$Status",(int)FinancePaymentRunStatus.Approved),new DatabaseParameter("$Created","2026-09-23T10:00:00.0000000Z"),new DatabaseParameter("$Approved","2026-09-23T10:05:00.0000000Z"),new DatabaseParameter("$User",userId));
-		database.Insert("INSERT INTO FinancePaymentRunLines (PaymentRunId,PayableOpenItemId,SupplierId,Amount,Reference,Status,ExecutionOperationId,PayablePaymentId,ExecutedAtUtc,ExecutedByUserId,ExecutionReference) VALUES ($Run,1001,$Supplier,100.25,'INV-1001',$Status,$Operation,NULL,NULL,NULL,NULL);",
-			new DatabaseParameter("$Run",runId),new DatabaseParameter("$Supplier",supplier1),new DatabaseParameter("$Status",(int)FinancePaymentRunLineStatus.Proposed),new DatabaseParameter("$Operation",Guid.NewGuid().ToString("D")));
+		database.Insert("INSERT INTO FinancePaymentRunLines (PaymentRunId,PayableOpenItemId,SupplierId,Amount,Reference,Status,ExecutionOperationId,PayablePaymentId,ExecutedAtUtc,ExecutedByUserId,ExecutionReference) VALUES ($Run,1001,$Supplier,$Amount,'INV-1001',$Status,$Operation,NULL,NULL,NULL,NULL);",
+			new DatabaseParameter("$Run",runId),new DatabaseParameter("$Supplier",supplier1),new DatabaseParameter("$Amount",firstAmount),new DatabaseParameter("$Status",(int)FinancePaymentRunLineStatus.Proposed),new DatabaseParameter("$Operation",Guid.NewGuid().ToString("D")));
 		database.Insert("INSERT INTO FinancePaymentRunLines (PaymentRunId,PayableOpenItemId,SupplierId,Amount,Reference,Status,ExecutionOperationId,PayablePaymentId,ExecutedAtUtc,ExecutedByUserId,ExecutionReference) VALUES ($Run,1002,$Supplier,25.30,'INV-1002',$Status,$Operation,NULL,NULL,NULL,NULL);",
 			new DatabaseParameter("$Run",runId),new DatabaseParameter("$Supplier",supplier2),new DatabaseParameter("$Status",(int)FinancePaymentRunLineStatus.Proposed),new DatabaseParameter("$Operation",Guid.NewGuid().ToString("D")));
 
