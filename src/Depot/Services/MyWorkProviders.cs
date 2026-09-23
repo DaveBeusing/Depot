@@ -412,3 +412,66 @@ internal sealed class SalesCrmMyWorkProvider(SalesCrmService crm) : IMyWorkProvi
 		return items;
 	}
 }
+
+internal sealed class BudgetingMyWorkProvider(
+	FinanceBudgetingService budgeting,
+	ApprovalPolicyService approvalPolicies) : IMyWorkProvider
+{
+	public string Name => "Finance Budgeting";
+
+	public bool CanQuery(IAuthorizationService authorization) =>
+		authorization.HasPermission(ApplicationPermission.FinanceBudgetingView);
+
+	public async Task<IReadOnlyList<MyWorkItem>> GetAsync(MyWorkQuery query, CancellationToken cancellationToken)
+	{
+		var page = await budgeting.SearchVersionsAsync(new FinanceBudgetListFilter(), 1, Math.Min(query.ProviderLimit, 100), cancellationToken);
+		var items = new List<MyWorkItem>();
+		foreach (var budget in page.Items)
+		{
+			if (budget.Status == FinanceBudgetStatus.Draft && budget.OwnerUserId == query.UserId)
+			{
+				items.Add(ToItem(MyWorkSectionKind.MyDrafts, budget, "Budget draft", "Open", MyWorkPriority.Normal));
+				continue;
+			}
+			if (budget.Status != FinanceBudgetStatus.PendingApproval) continue;
+
+			if (budget.OwnerUserId == query.UserId)
+				items.Add(ToItem(MyWorkSectionKind.Waiting, budget, "Budget awaiting approval", "Open", MyWorkPriority.Normal));
+
+			if (budgeting.CanApprove &&
+				await approvalPolicies.CanCurrentUserDecideAsync(
+					ApprovalSubjectKind.FinanceBudget,
+					budget.Id.ToString(System.Globalization.CultureInfo.InvariantCulture),
+					cancellationToken))
+			{
+				items.Add(ToItem(MyWorkSectionKind.NeedsMyAction, budget, "Budget approval", "Review", MyWorkPriority.High));
+			}
+		}
+		return items;
+	}
+
+	private static MyWorkItem ToItem(
+		MyWorkSectionKind section,
+		FinanceBudgetVersion budget,
+		string title,
+		string action,
+		MyWorkPriority priority) =>
+		new(
+			section,
+			MyWorkItemKind.FinanceBudget,
+			budget.Id,
+			$"{budget.Name} v{budget.BudgetVersionNumber}",
+			title,
+			$"FY {budget.FiscalYear} · {budget.Currency.Value}",
+			budget.Status.ToString(),
+			null,
+			null,
+			Math.Max(0, (int)(DateTime.UtcNow - budget.UpdatedAtUtc).TotalDays),
+			priority,
+			"finance.budgeting",
+			action,
+			budget.OwnerUserId,
+			null,
+			MyWorkValueKind.Currency);
+}
+

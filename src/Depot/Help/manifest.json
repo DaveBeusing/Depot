@@ -1,5 +1,5 @@
 {
-  "version": "1.26",
+  "version": "1.27",
   "topics": [
     {
       "id": "getting-started.first-login",
@@ -819,6 +819,16 @@
         "finance.localization",
         "administration.audit-log"
       ]
+    },
+    {
+      "id": "finance.budgeting",
+      "title": "Budgeting and Variance Analysis",
+      "category": "Finance",
+      "file": "finance/budgeting.md",
+      "order": 796,
+      "keywords": ["budget", "budgeting", "variance", "actual vs budget", "planning", "approval"],
+      "requiredPermission": "FinanceBudgeting.View",
+      "relatedTopics": ["finance.foundation", "finance.general-ledger", "finance.reporting", "administration.approval-policies"]
     },
     {
       "id": "finance.localization",

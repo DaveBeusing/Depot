@@ -34,6 +34,7 @@ public enum ApplicationPermission
 	FinanceBankingView, FinanceBankingManage, FinanceBankStatementsCreate, FinanceBankReconciliationManage,
 	FinancePaymentProposalsCreate, FinancePaymentProposalsApprove, FinancePaymentRunsPost, FinanceCashPositionView,
 	FinanceFinancialReportingView, FinanceFinancialReportingManage, FinanceFinancialReportingExport, FinanceReportSnapshotsCreate,
+	FinanceBudgetingView, FinanceBudgetingManage, FinanceBudgetingApprove, FinanceBudgetingLock,
 	FinanceLocalizationView, FinanceLocalizationManage,
 	FinanceFixedAssetsView, FinanceFixedAssetsConfigure, FinanceFixedAssetsManage, FinanceFixedAssetsDepreciationPost,
 	SuppliersView, SuppliersManage, MasterDataView, MasterDataManage, ImportManage, UsersView, UsersManage, UserSessionsTerminate, RolesView, RolesManage,

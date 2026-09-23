@@ -111,3 +111,7 @@ Depot's portable `.depotbackup` format is not advertised as a complete remote-pr
 Examples outside the current supported matrix include SQL Server 2025, MariaDB 12.x and MySQL 9.x; they remain untested/best-effort until an explicit full acceptance run is added.
 
 Database-provider acceptance is a technical data-integrity/runtime statement. It does not constitute jurisdiction-specific accounting, tax, legal, accessibility, operating-system, banking-network or regulatory certification.
+
+### Finance budgeting
+
+Finance feature schema **11** adds `FinanceBudgetVersions` and `FinanceBudgetLines`. Full provider acceptance migrates the schema on each supported server baseline and exercises persisted budget versions/lines plus nine-decimal aggregation. Provider-neutral SQL alone is not support evidence.

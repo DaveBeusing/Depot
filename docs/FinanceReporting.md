@@ -57,3 +57,9 @@ The service-backed live scenario generates a Trial Balance from a real General L
 This technical provider certification does not make report mappings, layouts or outputs HGB/IFRS/US-GAAP certified and does not prove tax-return, statutory-filing or organization-specific reporting correctness. Large deployment-specific report/export volumes and accounting mappings still require sizing and qualified acceptance.
 
 See [Database Provider Production Support Matrix](DatabaseProviderSupportMatrix.md) for exact provider baselines.
+
+## Budget variance
+
+Finance Budgeting consumes Financial Reporting as the authority for actual values. It joins those actuals to server-aggregated budget lines by account, period and optional dimension and exposes deterministic Actual, Budget, Variance and Variance Percent projections.
+
+Budget records are not report snapshots and are not ledger entries. A budget change never rewrites Actual. See [Finance Budgeting and Variance Analysis](FinanceBudgeting.md).

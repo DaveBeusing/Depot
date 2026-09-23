@@ -109,3 +109,11 @@ Database-provider technical acceptance is not accounting/legal certification. Lo
 Deployments still require accounting-book/chart/calendar/posting-profile/valuation/reporting policy approval, reconciliation/period-end procedures, retention/backup operating procedures and qualified jurisdiction-specific review.
 
 See [Finance Localization](FinanceLocalization.md), [Finance Compliance](FinanceCompliance.md), [Finance Banking](FinanceBanking.md) and [Finance Reporting](FinanceReporting.md).
+
+## Budgeting and variance analysis
+
+Finance schema **11** extends the sequential Finance persistence path with controlled budgeting. `FinanceBudgetingService` owns lifecycle, authorization and approval; `FinanceBudgetingRepository` owns provider-neutral persistence, paging and aggregation. Budget planning data remains separate from General Ledger truth.
+
+Actual-vs-Budget projections compose budget aggregates with `FinanceFinancialReportingService`; they do not duplicate journal or reporting calculations. Approved and Locked versions are immutable; amendments create new Draft versions.
+
+See [Finance Budgeting and Variance Analysis](FinanceBudgeting.md).

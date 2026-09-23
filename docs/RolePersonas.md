@@ -84,3 +84,9 @@ Automated tests assert:
 ## Sales CRM permission profile
 
 The Sales CRM capability extends the existing Sales personas without creating a separate CRM identity model. **Sales User** receives `SalesCrm.View`, `SalesCrmRecords.Manage`, `SalesCrmActivities.View` and `SalesCrmActivities.Manage` for operational work. **Sales Manager** additionally receives `SalesCrm.Manage` for stage/configuration and broader ownership authority. **Management Viewer** receives read-only CRM and activity visibility. Service-layer authorization remains authoritative.
+
+## Finance budgeting responsibilities
+
+The built-in **Finance** role receives `FinanceBudgeting.View`, `FinanceBudgeting.Manage` and `FinanceBudgeting.Lock`, but not `FinanceBudgeting.Approve`. The built-in **Approver** role receives `FinanceBudgeting.View` and `FinanceBudgeting.Approve`, but not draft-management authority.
+
+Approval-policy stage eligibility remains an additional requirement for pending decisions. My Work uses the same policy-aware boundary.
