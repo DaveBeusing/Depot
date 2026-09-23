@@ -106,14 +106,14 @@ Current baseline:
 - Application: **0.15.x-preview**
 - Core database schema: **30**
 - Sales feature schema: **15**
-- Finance feature schema: **9**
+- Finance feature schema: **10**
 - User Sessions feature schema: **3**
 - Security Events feature schema: **3**
 - User Preferences feature schema: **2**
 - Document Templates feature schema: **1**
 - Enterprise Identity feature schema: **2**
 - Approval Policies feature schema: **1**
-- Help manifest: **1.24**
+- Help manifest: **1.26**
 
 `Directory.Build.props` is authoritative for the exact application patch/version. The documentation baseline intentionally records the development line instead of duplicating the moving preview patch number.
 
@@ -163,7 +163,7 @@ Security and compliance work is documented transparently rather than presented a
 
 ## Offline Help
 
-Embedded Help manifest **1.24** includes contextual Sales, Finance, User Sessions and Security Center guidance. Help visibility follows central permissions and never grants business access.
+Embedded Help manifest **1.26** includes contextual Sales, Finance, User Sessions and Security Center guidance. Help visibility follows central permissions and never grants business access.
 
 See the [Help Center documentation](docs/HelpCenter.md).
 
