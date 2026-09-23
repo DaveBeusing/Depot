@@ -33,6 +33,7 @@ public enum ApplicationPermission
 	FinanceInventoryAccountingView, FinanceInventoryAccountingManage,
 	FinanceBankingView, FinanceBankingManage, FinanceBankStatementsCreate, FinanceBankReconciliationManage,
 	FinancePaymentProposalsCreate, FinancePaymentProposalsApprove, FinancePaymentRunsPost, FinanceCashPositionView,
+	FinanceSepaPaymentProfilesManage, FinanceSepaPaymentExportsCreate, FinanceSepaPaymentExportsExport, FinanceSepaPaymentExportsManage,
 	FinanceFinancialReportingView, FinanceFinancialReportingManage, FinanceFinancialReportingExport, FinanceReportSnapshotsCreate,
 	FinanceBudgetingView, FinanceBudgetingManage, FinanceBudgetingApprove, FinanceBudgetingLock,
 	FinanceLocalizationView, FinanceLocalizationManage,
