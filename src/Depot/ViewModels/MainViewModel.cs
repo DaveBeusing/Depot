@@ -437,7 +437,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 				break;
 			case MyWorkItemKind.FinanceBudget:
 				await this.NavigateToRouteAsync(route, cancellationToken);
-				await FinanceBudgetingViewModel.OpenBudgetAsync(item.EntityId, cancellationToken);
+				if (_financeBudgeting is not null) await _financeBudgeting.Value.OpenBudgetAsync(item.EntityId, cancellationToken);
 				break;
 			default:
 				await this.NavigateToRouteAsync(route, cancellationToken);

@@ -802,10 +802,10 @@ public sealed class FinanceBudgetingService
 		}
 
 		var budgetsByKey = budgetRows.ToDictionary(
-			value => (value.AccountId, value.AccountingPeriodId),
+			value => (AccountId: value.AccountId, PeriodId: value.AccountingPeriodId),
 			value => profitLossOnly && value.AccountType == FinanceAccountType.Revenue ? -value.RawBudget : value.RawBudget);
 		var metadata = budgetRows.ToDictionary(
-			value => (value.AccountId, value.AccountingPeriodId),
+			value => (AccountId: value.AccountId, PeriodId: value.AccountingPeriodId),
 			value => (value.AccountNumber, value.AccountName, value.PeriodCode, value.PeriodStart));
 		var keys = budgetsByKey.Keys.Union(actuals.Keys)
 			.OrderBy(key => metadata.TryGetValue(key, out var meta) ? meta.PeriodStart : periods.First(value => value.Id == key.PeriodId).StartDate)
