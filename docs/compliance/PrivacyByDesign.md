@@ -30,3 +30,7 @@ Every such change should document:
 ## Pull-request requirement
 
 The existing security/compliance review should treat a change as privacy-impacting when any rule above is triggered and update `DataInventory.md`, `RetentionPolicy.md`, and the data-subject search/export implementation when necessary.
+
+## Business attachments
+
+Business Attachments linked to Customer or Supplier records are explicitly represented by the data-subject discovery/export workflow. The export identifies attachment metadata and retained-content status without treating attachment bytes as searchable text. Attachment revisions may be retained for legitimate business/legal evidence; erasure, restriction or retention decisions remain a controlled administrative/legal process rather than an automatic attachment deletion.

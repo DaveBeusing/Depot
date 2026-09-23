@@ -60,3 +60,7 @@ Production use still requires deployment-specific accounting/reporting policy ap
 Enterprise external authentication additionally requires deployment-specific identity-provider configuration, redirect/application registration and Conditional Access / Authentication Strength or equivalent provider-policy acceptance before it can be advertised as an accepted customer SSO/MFA deployment.
 
 This document is engineering evidence and not a certification statement.
+
+## Business attachments
+
+User-supplied Business Attachments are separate from immutable generated/electronic-invoice evidence. Attachment mutations are audited, revisions are retained, and attachments associated with personal-data Customer/Supplier records are represented by the data-subject export boundary. File retention, legal hold, erasure/restriction procedures and external malware scanning remain deployment-policy responsibilities. See [Business Attachments](BusinessAttachments.md).
