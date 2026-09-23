@@ -7,7 +7,7 @@ Updated: 2026-09-19
 - Application: **0.15.x-preview**
 - Core database schema: **30**
 - Sales feature schema: **15**
-- Finance feature schema: **10**
+- Finance feature schema: **11**
 - User Sessions feature schema: **3**
 - Security Events feature schema: **3**
 - User Preferences feature schema: **2**
@@ -15,7 +15,7 @@ Updated: 2026-09-19
 - Enterprise Identity feature schema: **2**
 - Approval Policies feature schema: **1**
 - Business Attachments feature schema: **1**
-- Help manifest: **1.26**
+- Help manifest: **1.27**
 
 Application, Core database and feature-schema versions are independent compatibility dimensions. `Directory.Build.props` is the authoritative source for the exact application patch/version; long-lived documentation records the development line rather than duplicating the moving patch number.
 
@@ -145,3 +145,11 @@ DepotManager release metadata continues to record the target Core database schem
 ### Business Attachments schema 1
 
 Business Attachments schema **1** is the provider-neutral metadata, immutable revision and database-backed content baseline. It stores allowlisted business-record links, current metadata and optimistic version state separately from immutable revision/content rows. It does not change Core schema **30** or any domain feature schema.
+
+### Finance schema 10
+
+Finance schema **10** introduced the Fixed Assets persistence baseline.
+
+### Finance schema 11
+
+Finance schema **11** is the current Finance persistence baseline. It adds provider-neutral `FinanceBudgetVersions` and `FinanceBudgetLines` with optimistic versions, lifecycle/source/approval evidence, account/period/dimension granularity and bounded list/aggregation indexes. Core schema remains **30**.
