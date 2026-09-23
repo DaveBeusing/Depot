@@ -291,3 +291,21 @@ public sealed record FinanceSepaPaymentExportStatusUpdate
 	public string? ExternalReference { get; init; }
 	public string? EvidenceNote { get; init; }
 }
+
+
+public sealed record FinanceSepaPaymentExportSummary
+{
+	public long Id { get; init; }
+	public long PaymentRunId { get; init; }
+	public int ExportSequence { get; init; }
+	public required string MessageId { get; init; }
+	public required string FileName { get; init; }
+	public required string MessageVersion { get; init; }
+	public required string SchemeProfile { get; init; }
+	public DateTime GeneratedAtUtc { get; init; }
+	public int TransactionCount { get; init; }
+	public decimal ControlSum { get; init; }
+	public required string XmlSha256 { get; init; }
+	public FinanceSepaPaymentExportStatus CurrentStatus { get; init; }
+	public long? SupersedesExportId { get; init; }
+}

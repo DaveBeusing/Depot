@@ -47,6 +47,7 @@ internal sealed class RepositoryComposition
 		FinanceInventoryAccounting = new FinanceInventoryAccountingRepository(dataAccess);
 		FinanceInventoryCosting = new FinanceInventoryCostingRepository(dataAccess);
 		FinanceBanking = new FinanceBankingRepository(dataAccess);
+		FinanceSepaPaymentExports = new FinanceSepaPaymentExportRepository(dataAccess);
 		FinanceFinancialReporting = new FinanceFinancialReportingRepository(dataAccess);
 		FinanceFinancialReportingInventory = new FinanceFinancialReportingInventoryRepository(dataAccess);
 		FinanceLocalization = new FinanceLocalizationRepository(dataAccess);
@@ -113,6 +114,7 @@ internal sealed class RepositoryComposition
 	public FinanceInventoryAccountingRepository FinanceInventoryAccounting { get; }
 	public FinanceInventoryCostingRepository FinanceInventoryCosting { get; }
 	public FinanceBankingRepository FinanceBanking { get; }
+	public FinanceSepaPaymentExportRepository FinanceSepaPaymentExports { get; }
 	public FinanceFinancialReportingRepository FinanceFinancialReporting { get; }
 	public FinanceFinancialReportingInventoryRepository FinanceFinancialReportingInventory { get; }
 	public FinanceLocalizationRepository FinanceLocalization { get; }
