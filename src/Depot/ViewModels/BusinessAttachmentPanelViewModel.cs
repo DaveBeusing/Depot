@@ -170,9 +170,10 @@ public sealed class BusinessAttachmentPanelViewModel : BaseViewModel, IDisposabl
 		ErrorMessage = null;
 		try
 		{
-			await using var content = await _attachments.OpenAsync(SelectedAttachment.Id, cancellationToken: cancellationToken);
+			var content = await _attachments.OpenAsync(SelectedAttachment.Id, cancellationToken: cancellationToken);
+			await using var source = content.Content;
 			await using var destination = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None, 81920, useAsync: true);
-			await content.Content.CopyToAsync(destination, cancellationToken);
+			await source.CopyToAsync(destination, cancellationToken);
 		}
 		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
 		{
