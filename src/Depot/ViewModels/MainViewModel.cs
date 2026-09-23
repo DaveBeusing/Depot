@@ -67,6 +67,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 	private readonly Lazy<FinanceBankingViewModel> _financeBanking;
 	private readonly Lazy<FinanceFinancialReportingViewModel> _financeFinancialReporting;
 	private readonly Lazy<FinanceLocalizationViewModel> _financeLocalization;
+	private readonly Lazy<FinanceFixedAssetsViewModel>? _financeFixedAssets;
 	private readonly Lazy<FinancePostingFlowDesignerViewModel> _financePostingFlowDesigner;
 	private readonly Lazy<FinancePeriodControlViewModel> _financePeriodControl;
 	private readonly Lazy<ReportsViewModel> _reports;
@@ -141,7 +142,8 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		HelpMarkdownRenderer helpRenderer,
 		INotificationService notificationService,
 		INotificationNavigationService notificationNavigationService,
-		ApprovalPolicyService? approvalPolicyService = null)
+		ApprovalPolicyService? approvalPolicyService = null,
+		FinanceFixedAssetService? financeFixedAssetService = null)
 	{
 		_authorization = authorizationService;
 		AdministrationNavigationItems = AdministrationViewModel.CreateNavigationItems(authorizationService, approvalPolicyService is not null);
@@ -211,6 +213,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		_financeBanking = new(() => new FinanceBankingViewModel(financeBankingService));
 		_financeFinancialReporting = new(() => new FinanceFinancialReportingViewModel(financeFinancialReportingService, fileDialogService));
 		_financeLocalization = new(() => new FinanceLocalizationViewModel(financeLocalizationService));
+		if(financeFixedAssetService is not null)_financeFixedAssets=new(()=>new FinanceFixedAssetsViewModel(financeFixedAssetService));
 		_reports = new(() => new ReportsViewModel(reportService, fileDialogService));
 		_import = new(() => new ImportViewModel(importService, fileDialogService));
 		_administration = new(() => new AdministrationViewModel(_import.Value, itemService, purposeService, reasonCodeService, manufacturerService, categoryService, unitOfMeasureService, packagingService, supplierCategoryService, supplierService, supplierItemService, warehouseService, storageLocationService, warehouseLayoutVisualizerService, userService, roleService, authorizationService, settingsService, connectionStatusService, databaseConnectionTester, databaseManagementService, auditLogService, userSessionAdministrationService, securityEventService, fileDialogService, applicationInformationService, approvalPolicyService, businessAttachmentService));
@@ -266,6 +269,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 	public FinanceInventoryAccountingViewModel FinanceInventoryAccountingViewModel => _financeInventoryAccounting.Value;
 	public FinanceBankingViewModel FinanceBankingViewModel => _financeBanking.Value;
 	public FinanceFinancialReportingViewModel FinanceFinancialReportingViewModel => _financeFinancialReporting.Value;
+	public FinanceFixedAssetsViewModel? FinanceFixedAssetsViewModel => _financeFixedAssets?.Value;
 	public ReportsViewModel ReportsViewModel => _reports.Value;
 	public ImportViewModel ImportViewModel => _import.Value;
 	public AdministrationViewModel AdministrationViewModel => _administration.Value;
@@ -641,7 +645,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		var financePages = new List<SecondaryNavigationItem>();
 		AddPage(financePages, ApplicationPermission.FinancePeriodsView, "Period Control", () => _financePeriodControl.Value, (viewModel, token) => viewModel.LoadAsync(token), "finance.foundation");
 		AddPage(financePages, ApplicationPermission.FinancePostingProfilesView, "Posting Flow Designer", () => _financePostingFlowDesigner.Value, (viewModel, token) => viewModel.LoadAsync(token), "finance.general-ledger");
-		AddPage(financePages, ApplicationPermission.FinanceReceivablesView, "Receivables", () => _financeReceivables.Value, (viewModel, token) => viewModel.LoadAsync(token), "finance.receivables"); AddPage(financePages, ApplicationPermission.FinancePayablesView, "Payables", () => _financePayables.Value, (viewModel, token) => viewModel.LoadAsync(token), "finance.payables"); AddPage(financePages, ApplicationPermission.FinanceInventoryAccountingView, "Inventory Accounting", () => _financeInventoryAccounting.Value, (viewModel, token) => viewModel.LoadAsync(token), "finance.inventory-accounting"); AddPage(financePages, ApplicationPermission.FinanceBankingView, "Banking", () => _financeBanking.Value, (viewModel, token) => viewModel.LoadAsync(token), "finance.banking"); AddPage(financePages, ApplicationPermission.FinanceFinancialReportingView, "Financial Reporting", () => _financeFinancialReporting.Value, (viewModel, token) => viewModel.LoadAsync(token), "finance.reporting"); AddPage(financePages, ApplicationPermission.FinanceLocalizationView, "Localization", () => _financeLocalization.Value, (viewModel, token) => viewModel.LoadAsync(token), "finance.localization"); AddModule("Finance", Icons.Finance, "Manage receivables, payables, inventory valuation, banking, financial reporting, settlements, matching, and controlled accounting workflows.", financePages);
+		AddPage(financePages, ApplicationPermission.FinanceReceivablesView, "Receivables", () => _financeReceivables.Value, (viewModel, token) => viewModel.LoadAsync(token), "finance.receivables"); AddPage(financePages, ApplicationPermission.FinancePayablesView, "Payables", () => _financePayables.Value, (viewModel, token) => viewModel.LoadAsync(token), "finance.payables"); AddPage(financePages, ApplicationPermission.FinanceInventoryAccountingView, "Inventory Accounting", () => _financeInventoryAccounting.Value, (viewModel, token) => viewModel.LoadAsync(token), "finance.inventory-accounting"); AddPage(financePages, ApplicationPermission.FinanceBankingView, "Banking", () => _financeBanking.Value, (viewModel, token) => viewModel.LoadAsync(token), "finance.banking"); AddPage(financePages, ApplicationPermission.FinanceFinancialReportingView, "Financial Reporting", () => _financeFinancialReporting.Value, (viewModel, token) => viewModel.LoadAsync(token), "finance.reporting"); if(_financeFixedAssets is not null)AddPage(financePages, ApplicationPermission.FinanceFixedAssetsView, "Fixed Assets", () => _financeFixedAssets.Value, (viewModel, token) => viewModel.LoadAsync(token), "finance.fixed-assets"); AddPage(financePages, ApplicationPermission.FinanceLocalizationView, "Localization", () => _financeLocalization.Value, (viewModel, token) => viewModel.LoadAsync(token), "finance.localization"); AddModule("Finance", Icons.Finance, "Manage receivables, payables, fixed assets, inventory valuation, banking, financial reporting, settlements, matching, and controlled accounting workflows.", financePages);
 		var approvalPages = new List<SecondaryNavigationItem>(); AddPage(approvalPages, ApplicationPermission.PurchaseOrdersApprove, "Purchase Approvals", () => _purchaseOrderApprovals.Value, (viewModel, token) => viewModel.LoadAsync(token), "approvals.purchase"); AddPage(approvalPages, ApplicationPermission.SalesOrdersApprove, "Sales Approvals", () => _salesApprovals.Value, (viewModel, token) => viewModel.LoadAsync(token), "approvals.sales"); AddModule("Approvals", Icons.Approvals, "Review and decide pending purchase and sales approvals.", approvalPages, isPrimaryNavigationVisible: false);
 		AddDirect(ApplicationPermission.ReportsView, "Reports", Icons.Reports, () => _reports.Value, (viewModel, token) => viewModel.LoadAsync(token), "reports.overview");
 		if (HasAdministrationPages()) { var administrationPages = new List<SecondaryNavigationItem> { new("Administration", () => _administration.Value, (viewModel, token) => ((AdministrationViewModel)viewModel).ActivateAsync(token), HelpService.FallbackTopicId) }; AddModule("Administration", Icons.Administration, "Configure master data, security, connectivity, and application settings.", administrationPages, true); }
