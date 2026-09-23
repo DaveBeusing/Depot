@@ -70,13 +70,32 @@ public sealed class DataSubjectAccessService
 			MaxMatchesPerSource,
 			cancellationToken,
 			parameter);
+		var attachmentsTask = _database.QuerySliceAsync(
+			"""
+			SELECT Id, EntityKind, EntityId, FileName, MediaType, ByteLength, Sha256, Description, Category, CurrentRevision, Status, CreatedAtUtc
+			FROM BusinessAttachments
+			WHERE FileName LIKE $Search OR Description LIKE $Search OR Category LIKE $Search
+				OR (EntityKind = 1 AND EntityId IN (
+					SELECT Id FROM Customers
+					WHERE Name LIKE $Search OR ContactName LIKE $Search OR Email LIKE $Search OR Phone LIKE $Search OR BillingAddress LIKE $Search OR ShippingAddress LIKE $Search OR TaxId LIKE $Search))
+				OR (EntityKind = 2 AND EntityId IN (
+					SELECT Id FROM Suppliers
+					WHERE Name LIKE $Search OR Contact LIKE $Search OR Email LIKE $Search OR Phone LIKE $Search OR Address LIKE $Search OR Iban LIKE $Search OR AccountName LIKE $Search OR SepaMandate LIKE $Search OR VatNumber LIKE $Search))
+			ORDER BY CreatedAtUtc DESC, EntityKind, EntityId
+			""",
+			ReadBusinessAttachment,
+			0,
+			MaxMatchesPerSource,
+			cancellationToken,
+			parameter);
 
-		await Task.WhenAll(usersTask, customersTask, contactsTask, suppliersTask, auditTask);
+		await Task.WhenAll(usersTask, customersTask, contactsTask, suppliersTask, auditTask, attachmentsTask);
 		var records = (await usersTask)
 			.Concat(await customersTask)
 			.Concat(await contactsTask)
 			.Concat(await suppliersTask)
 			.Concat(await auditTask)
+			.Concat(await attachmentsTask)
 			.OrderBy(record => record.Category, StringComparer.Ordinal)
 			.ThenBy(record => record.Source, StringComparer.Ordinal)
 			.ThenBy(record => record.EntityId)
@@ -181,6 +200,33 @@ public sealed class DataSubjectAccessService
 			("entityId", reader.GetInt64(3).ToString(CultureInfo.InvariantCulture)),
 			("action", reader.GetString(4)),
 			("timestampUtc", reader.GetString(5))));
+
+	private static PersonalDataRecord ReadBusinessAttachment(DbDataReader reader)
+	{
+		var entityKind = (BusinessAttachmentEntityKind)Convert.ToInt32(reader.GetValue(1), CultureInfo.InvariantCulture);
+		var entityId = Convert.ToInt64(reader.GetValue(2), CultureInfo.InvariantCulture);
+		var fileName = reader.GetString(3);
+		return new(
+			"Business attachment",
+			"BusinessAttachments",
+			entityId,
+			fileName,
+			NullableString(reader, 7),
+			Fields(
+				("attachmentId", reader.GetString(0)),
+				("entityKind", entityKind.ToString()),
+				("entityId", entityId.ToString(CultureInfo.InvariantCulture)),
+				("fileName", fileName),
+				("mediaType", reader.GetString(4)),
+				("byteLength", Convert.ToInt64(reader.GetValue(5), CultureInfo.InvariantCulture).ToString(CultureInfo.InvariantCulture)),
+				("sha256", reader.GetString(6)),
+				("description", NullableString(reader, 7)),
+				("category", NullableString(reader, 8)),
+				("currentRevision", Convert.ToInt32(reader.GetValue(9), CultureInfo.InvariantCulture).ToString(CultureInfo.InvariantCulture)),
+				("status", ((BusinessAttachmentStatus)Convert.ToInt32(reader.GetValue(10), CultureInfo.InvariantCulture)).ToString()),
+				("createdAtUtc", Convert.ToString(reader.GetValue(11), CultureInfo.InvariantCulture)),
+				("contentRepresentation", "Content is retained in the attachment store; this privacy export identifies it by stable attachment id and SHA-256.")));
+	}
 
 	private static Dictionary<string, string?> Fields(params (string Name, string? Value)[] values) =>
 		values.ToDictionary(value => value.Name, value => value.Value, StringComparer.Ordinal);
