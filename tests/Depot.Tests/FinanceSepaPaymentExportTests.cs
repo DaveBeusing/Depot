@@ -94,6 +94,45 @@ public sealed class FinanceSepaPaymentExportTests
 	}
 
 	[Fact]
+	public async Task ValidationRejectsMissingDebtorProfile()
+	{
+		var path=Path.Combine(Path.GetTempPath(),$"depot-sepa-debtor-{Guid.NewGuid():N}.db");
+		try
+		{
+			var fixture=await CreateFixtureAsync(new SqliteConnectionFactory(path),saveDebtor:false);
+			var preview=await fixture.Service.PreviewAsync(fixture.PaymentRunId);
+			Assert.False(preview.IsValid);
+			Assert.Contains(preview.Errors,value=>value.Contains("structured SEPA debtor profile",StringComparison.Ordinal));
+			await Assert.ThrowsAsync<InvalidOperationException>(()=>fixture.Service.GenerateAsync(fixture.PaymentRunId));
+		}
+		finally
+		{
+			SqliteConnection.ClearAllPools();
+			try{File.Delete(path);}catch(IOException){}
+		}
+	}
+
+	[Fact]
+	public async Task PaymentProfileValidationRejectsInvalidIbanBicAndStructuredAddress()
+	{
+		var path=Path.Combine(Path.GetTempPath(),$"depot-sepa-profile-{Guid.NewGuid():N}.db");
+		try
+		{
+			var fixture=await CreateFixtureAsync(new SqliteConnectionFactory(path));
+			var creditor=await fixture.Service.GetCreditorProfileAsync(fixture.Supplier1Id);
+			Assert.NotNull(creditor);
+			await Assert.ThrowsAsync<ArgumentException>(()=>fixture.Service.SaveCreditorProfileAsync(creditor! with { Iban="DE0012345678" }));
+			await Assert.ThrowsAsync<ArgumentException>(()=>fixture.Service.SaveCreditorProfileAsync(creditor! with { Bic="INVALID" }));
+			await Assert.ThrowsAsync<ArgumentException>(()=>fixture.Service.SaveCreditorProfileAsync(creditor! with { StreetName=" " }));
+		}
+		finally
+		{
+			SqliteConnection.ClearAllPools();
+			try{File.Delete(path);}catch(IOException){}
+		}
+	}
+
+	[Fact]
 	public async Task ManualExternalStatusFollowsControlledLifecycle()
 	{
 		var path=Path.Combine(Path.GetTempPath(),$"depot-sepa-status-{Guid.NewGuid():N}.db");
@@ -130,7 +169,7 @@ public sealed class FinanceSepaPaymentExportTests
 		Assert.Equal(BusinessRecordRetentionCategory.AccountingRelevant,BusinessRecordCatalog.Require(nameof(FinanceSepaPaymentExport)).RetentionCategory);
 	}
 
-	internal static async Task<SepaFixture> CreateFixtureAsync(IDatabaseConnectionFactory factory,bool saveSecondCreditor=true,string currency="EUR")
+	internal static async Task<SepaFixture> CreateFixtureAsync(IDatabaseConnectionFactory factory,bool saveSecondCreditor=true,string currency="EUR",bool saveDebtor=true)
 	{
 		DatabaseProvisioningService.Initialize(factory);
 		var database=new DatabaseAccess(factory);
@@ -167,7 +206,7 @@ public sealed class FinanceSepaPaymentExportTests
 		var bankingRepository=new FinanceBankingRepository(database);
 		var banking=new FinanceBankingService(transactions,bankingRepository,ap,auditRepository,audit,authorization);
 		var service=new FinanceSepaPaymentExportService(transactions,bankingRepository,new FinanceSepaPaymentExportRepository(database),banking,auditRepository,audit,authorization);
-		await service.SaveDebtorProfileAsync(new FinanceSepaDebtorProfile{BankAccountId=bankId,Name="Depot SEPA Test",StreetName="Teststrasse",BuildingNumber="1",PostalCode="53111",TownName="Bonn",CountryCode="DE"});
+		if(saveDebtor)await service.SaveDebtorProfileAsync(new FinanceSepaDebtorProfile{BankAccountId=bankId,Name="Depot SEPA Test",StreetName="Teststrasse",BuildingNumber="1",PostalCode="53111",TownName="Bonn",CountryCode="DE"});
 		await service.SaveCreditorProfileAsync(new FinanceSepaCreditorProfile{SupplierId=supplier1,Name="Supplier Alpha",Iban="FR1420041010050500013M02606",Bic="BNPAFRPP",StreetName="Rue de Test",BuildingNumber="2",PostalCode="75001",TownName="Paris",CountryCode="FR"});
 		if(saveSecondCreditor)await service.SaveCreditorProfileAsync(new FinanceSepaCreditorProfile{SupplierId=supplier2,Name="Supplier Beta",Iban="GB82WEST12345698765432",Bic="DABAIE2D",StreetName="Test Road",BuildingNumber="3",PostalCode="D02",TownName="Dublin",CountryCode="IE"});
 		return new SepaFixture(service,runId,supplier1,supplier2);
