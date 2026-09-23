@@ -91,3 +91,9 @@ Depending on deployment, these controls may contribute evidence toward ISO 27001
 Remaining work is legal/organizational/deployment acceptance and demand-driven jurisdiction extensions, not generic provider compatibility for the certified database baselines. Other potential extensions include costing methods beyond FIFO, impairment/NRV, manufacturing/WIP costing, direct bank connectivity and jurisdiction-specific statutory filing implementations.
 
 No repository feature, provider baseline or localization pack should be described externally as legally certified or jurisdiction-compliant solely because these engineering controls and provider tests pass.
+
+## Budget planning boundary
+
+Finance schema **11** adds controlled budgeting without changing the accounting system of record. Budgets are planning evidence only: they do not post journals, alter posted history or replace General Ledger/Financial Reporting authority.
+
+Approval policies retain immutable submitted-stage evidence. Approved and Locked budget versions cannot be silently edited; changes require a new version/amendment. The real-provider acceptance path includes budget persistence and nine-decimal aggregate behavior.

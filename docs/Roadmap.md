@@ -196,3 +196,7 @@ Future pricing extensions should continue to use the current cost, FX and bulk-p
 The existing Finance architecture can host additional regional/country localization packs without a schema change when requirements are metadata/configuration only. Jurisdictions that require new executable workflows, statutory filing formats, additional costing methods, direct bank connectivity or other missing behavior require separately scoped implementation and qualified acceptance.
 
 Provider versions outside the certified matrix are likewise demand-driven certification extensions and must not be inferred from a green baseline for a different version/product.
+
+## Finance budgeting and variance analysis
+
+Controlled Finance Budgeting is implemented with schema 11 persistence, policy approval, immutable version history, import/export, period spreading, My Work integration and Actual-vs-Budget reporting. Remaining acceptance is the normal PR build/test/provider/quality gate; automated forecasting and broader planning engines remain outside this scope.

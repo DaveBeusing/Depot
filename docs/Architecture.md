@@ -122,14 +122,14 @@ Document-layout zoom, snap, resize, undo/redo and dirty-state behavior remain sp
 
 - Core database schema: **30**
 - Sales feature schema: **15**
-- Finance feature schema: **10**
+- Finance feature schema: **11**
 - User Sessions feature schema: **3**
 - Security Events feature schema: **3**
 - User Preferences feature schema: **2**
 - Document Templates feature schema: **1**
 - Enterprise Identity feature schema: **2**
 - Application: **0.15.x-preview**
-- Help manifest: **1.26**
+- Help manifest: **1.27**
 
 `Directory.Build.props` is authoritative for the exact application patch/version. Feature schema constants remain authoritative in their migration classes; this architecture document records the compatibility baselines rather than duplicating a moving preview patch.
 
@@ -156,3 +156,7 @@ This closes the technical database-provider acceptance gate for the exact baseli
 Business Attachments are a cross-domain user-document subsystem behind `BusinessAttachmentService`, `BusinessAttachmentRepository` and the replaceable `IBusinessAttachmentContentStore`. V1 content is database-backed so supported database backup/restore procedures retain content with metadata. Allowlisted entity kinds and service-layer RBAC prevent arbitrary table access. Revisions are immutable; replacement creates a new retained revision and SHA-256 is verified when content is opened. Generated document archives and electronic-invoice evidence remain separate authorities.
 
 See [Business Attachments](BusinessAttachments.md).
+
+### Finance budgeting planning boundary
+
+Finance Budgeting follows the standard `View → ViewModel → Service → Repository → DatabaseAccess` dependency direction. Budget data is planning evidence and does not become an alternate General Ledger. Actual-vs-Budget analysis delegates actual calculations to the existing Financial Reporting authority.
