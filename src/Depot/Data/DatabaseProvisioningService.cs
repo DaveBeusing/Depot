@@ -98,6 +98,10 @@ internal static class FeatureVersionMetadataRecovery
 		ColumnExists(connection, provider, "Shipments", "PackingStatus") &&
 		ColumnExists(connection, provider, "SalesInvoiceLines", "TaxCategoryCode") &&
 		TableExists(connection, provider, "FinanceLocalizationPacks") &&
+		TableExists(connection, provider, "FinanceSepaDebtorProfiles") &&
+		TableExists(connection, provider, "FinanceSepaCreditorProfiles") &&
+		TableExists(connection, provider, "FinanceSepaPaymentExports") &&
+		TableExists(connection, provider, "FinanceSepaPaymentExportStatusHistory") &&
 		ColumnExists(connection, provider, "UserSessionPolicy", "ConcurrentSessionMode") &&
 		TableExists(connection, provider, "SecurityEventExportTargets") &&
 		TableExists(connection, provider, "UserWorkspacePreferences") &&
