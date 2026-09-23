@@ -46,6 +46,8 @@ public sealed class FinanceFixedAssetService
 	{_authorization.RequirePermission(ApplicationPermission.FinanceFixedAssetsView);return _assets.GetPostingProfilesAsync(token);}
 	public Task<IReadOnlyList<FinanceAssetPeriodOption>> GetPeriodOptionsAsync(CancellationToken token=default)
 	{_authorization.RequirePermission(ApplicationPermission.FinanceFixedAssetsView);return _assets.GetPeriodOptionsAsync(token);}
+	public Task<IReadOnlyList<FinanceAssetSupplierLineOption>> GetCapitalizableSupplierLinesAsync(int limit=200,CancellationToken token=default)
+	{_authorization.RequirePermission(ApplicationPermission.FinanceFixedAssetsView);return _assets.GetCapitalizableSupplierLinesAsync(limit,token);}
 	public Task<IReadOnlyList<FinanceAssetDepreciationPeriod>> GetScheduleAsync(long assetId,CancellationToken token=default)
 	{_authorization.RequirePermission(ApplicationPermission.FinanceFixedAssetsView);return _assets.GetScheduleAsync(assetId,token);}
 	public Task<PageResult<FinanceAssetTransaction>> SearchTransactionsAsync(long assetId,int pageNumber=1,int pageSize=100,CancellationToken token=default)
@@ -79,7 +81,7 @@ public sealed class FinanceFixedAssetService
 		ArgumentNullException.ThrowIfNull(value);_authorization.RequirePermission(ApplicationPermission.FinanceFixedAssetsManage);RequireUser();var normalized=NormalizeAsset(value);
 		return await _transactions.ExecuteAsync(async(tx,ct)=>{
 			var assetClass=await _assets.GetClassAsync(tx,normalized.AssetClassId,ct)??throw new InvalidOperationException("Asset class was not found.");if(!assetClass.IsActive||assetClass.LegalEntityId!=normalized.LegalEntityId)throw new InvalidOperationException("Asset class is inactive or belongs to a different legal entity.");
-			if(normalized.SourceSupplierDocumentLineId is long sourceLine && !await _assets.SupplierDocumentLineExistsAsync(tx,sourceLine,ct))throw new InvalidOperationException("The linked supplier document line was not found.");
+			if(normalized.SourceSupplierDocumentLineId is long sourceLine){var source=await _assets.GetCapitalizableSupplierLineAsync(tx,sourceLine,ct)??throw new InvalidOperationException("The linked supplier document line must belong to a posted supplier invoice.");if(source.Currency!=normalized.Currency)throw new InvalidOperationException("The linked supplier invoice line currency must match the asset currency.");}
 			if(normalized.Id==0){var id=await _assets.CreateAssetAsync(tx,normalized,ct);var created=await _assets.GetAssetAsync(tx,id,ct)??throw new InvalidOperationException("Asset could not be reloaded.");await _auditEntries.CreateAsync(tx,_audit.CreateCreatedEntry(id,created),ct);return created;}
 			var before=await _assets.GetAssetAsync(tx,normalized.Id,ct)??throw new InvalidOperationException("Asset was not found.");if(before.Version!=normalized.Version)throw new ConcurrencyConflictException("fixed asset");if(before.Status!=FinanceAssetStatus.Draft&&(before.OriginalCost!=normalized.OriginalCost||before.Currency!=normalized.Currency||before.LegalEntityId!=normalized.LegalEntityId))throw new InvalidOperationException("Capitalized asset cost, currency and legal entity cannot be rewritten.");
 			if(await _assets.UpdateAssetAsync(tx,normalized,before.Version,ct)!=1)throw new ConcurrencyConflictException("fixed asset");var after=await _assets.GetAssetAsync(tx,normalized.Id,ct)??throw new InvalidOperationException("Asset could not be reloaded.");await _auditEntries.CreateAsync(tx,_audit.CreateUpdatedEntry(after.Id,before,after),ct);return after;

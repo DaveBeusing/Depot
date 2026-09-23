@@ -93,3 +93,7 @@ public sealed record FinanceAssetLegalEntityOption(Guid Id,string Code,string Na
 public sealed record FinanceAssetFiscalCalendarOption(Guid Id,Guid LegalEntityId,string Code,string Name,bool IsActive);
 public sealed record FinanceAssetPostingProfileOption(long Id,Guid LegalEntityId,string Code,string Name,string SourceEvent,bool IsActive);
 public sealed record FinanceAssetPeriodOption(Guid Id,Guid FiscalCalendarId,string Code,DateOnly StartDate,DateOnly EndDate,AccountingPeriodStatus Status);
+public sealed record FinanceAssetSupplierLineOption(long Id,string SupplierDocumentNumber,int LineNumber,string Description,decimal NetAmount,CurrencyCode Currency)
+{
+	public string DisplayName => $"{SupplierDocumentNumber} · {LineNumber}: {Description} ({NetAmount:N2} {Currency.Value})";
+}

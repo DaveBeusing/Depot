@@ -19,6 +19,7 @@ public sealed class FinanceFixedAssetsViewModel : BaseViewModel, IDisposable
 	private FinanceAssetPeriodOption? _selectedPeriod;
 	private FinanceAssetDepreciationPeriod? _selectedSchedulePeriod;
 	private FinanceAssetTransaction? _selectedTransaction;
+	private FinanceAssetSupplierLineOption? _selectedSupplierLine;
 	private string _searchText=string.Empty,_assetNumber=string.Empty,_description=string.Empty,_location=string.Empty,_custodian=string.Empty,_classCode=string.Empty,_className=string.Empty,_reason=string.Empty;
 	private DateTime _acquisitionDate=DateTime.Today,_depreciationStartDate=DateTime.Today;
 	private decimal _originalCost,_salvageValue,_adjustmentAmount,_disposalProceeds;
@@ -54,6 +55,7 @@ public sealed class FinanceFixedAssetsViewModel : BaseViewModel, IDisposable
 	public ObservableCollection<FinanceAssetFiscalCalendarOption> FiscalCalendars{get;}=[];
 	public ObservableCollection<FinanceAssetPostingProfileOption> PostingProfiles{get;}=[];
 	public ObservableCollection<FinanceAssetPeriodOption> Periods{get;}=[];
+	public ObservableCollection<FinanceAssetSupplierLineOption> SupplierLines{get;}=[];
 	public IReadOnlyList<FinanceDepreciationMethod> Methods{get;}=Enum.GetValues<FinanceDepreciationMethod>();
 	public IReadOnlyList<FinanceClosedPeriodPolicy> ClosedPeriodPolicies{get;}=Enum.GetValues<FinanceClosedPeriodPolicy>();
 
@@ -88,6 +90,7 @@ public sealed class FinanceFixedAssetsViewModel : BaseViewModel, IDisposable
 	public FinanceAssetPeriodOption? SelectedPeriod{get=>_selectedPeriod;set=>SetRef(ref _selectedPeriod,value);}
 	public FinanceAssetDepreciationPeriod? SelectedSchedulePeriod{get=>_selectedSchedulePeriod;set=>SetRef(ref _selectedSchedulePeriod,value);}
 	public FinanceAssetTransaction? SelectedTransaction{get=>_selectedTransaction;set=>SetRef(ref _selectedTransaction,value);}
+	public FinanceAssetSupplierLineOption? SelectedSupplierLine{get=>_selectedSupplierLine;set=>SetRef(ref _selectedSupplierLine,value);}
 	public string AssetNumber{get=>_assetNumber;set=>Set(ref _assetNumber,value);}
 	public string Description{get=>_description;set=>Set(ref _description,value);}
 	public string Location{get=>_location;set=>Set(ref _location,value);}
@@ -116,6 +119,7 @@ public sealed class FinanceFixedAssetsViewModel : BaseViewModel, IDisposable
 			Replace(FiscalCalendars,await _service.GetFiscalCalendarsAsync(token));
 			Replace(PostingProfiles,await _service.GetPostingProfilesAsync(token));
 			Replace(Periods,await _service.GetPeriodOptionsAsync(token));
+			Replace(SupplierLines,await _service.GetCapitalizableSupplierLinesAsync(200,token));
 			Replace(Classes,await _service.GetClassesAsync(null,token));
 			var page=await _service.SearchAssetsAsync(null,string.IsNullOrWhiteSpace(SearchText)?null:SearchText,null,1,200,token);
 			var selectedId=SelectedAsset?.Id;
@@ -136,8 +140,8 @@ public sealed class FinanceFixedAssetsViewModel : BaseViewModel, IDisposable
 			var current=SelectedAsset;
 			var cls=AssetClass??throw new InvalidOperationException("Select an asset class.");
 			var entity=AssetEntity??throw new InvalidOperationException("Select a legal entity.");
-			var currency=current?.Currency??entity.FunctionalCurrency;
-			var value=new FinanceFixedAsset{Id=current?.Id??0,Version=current?.Version??1,AssetNumber=AssetNumber,LegalEntityId=entity.Id,AssetClassId=cls.Id,Description=Description,AcquisitionDate=DateOnly.FromDateTime(AcquisitionDate),CapitalizationDate=current?.CapitalizationDate,DepreciationStartDate=DateOnly.FromDateTime(DepreciationStartDate),Currency=currency,OriginalCost=OriginalCost,SalvageValue=SalvageValue,UsefulLifeMonths=UsefulLifeMonths,DepreciationMethod=Method,Location=Location,Custodian=Custodian,Status=current?.Status??FinanceAssetStatus.Draft,SourceSupplierDocumentLineId=current?.SourceSupplierDocumentLineId};
+			var currency=current?.Currency??SelectedSupplierLine?.Currency??entity.FunctionalCurrency;
+			var value=new FinanceFixedAsset{Id=current?.Id??0,Version=current?.Version??1,AssetNumber=AssetNumber,LegalEntityId=entity.Id,AssetClassId=cls.Id,Description=Description,AcquisitionDate=DateOnly.FromDateTime(AcquisitionDate),CapitalizationDate=current?.CapitalizationDate,DepreciationStartDate=DateOnly.FromDateTime(DepreciationStartDate),Currency=currency,OriginalCost=OriginalCost,SalvageValue=SalvageValue,UsefulLifeMonths=UsefulLifeMonths,DepreciationMethod=Method,Location=Location,Custodian=Custodian,Status=current?.Status??FinanceAssetStatus.Draft,SourceSupplierDocumentLineId=SelectedSupplierLine?.Id};
 			SelectedAsset=await _service.SaveAssetAsync(value,token);
 			await LoadAsync(token);
 			CompleteOperation(false,"Asset saved.");
@@ -177,11 +181,11 @@ public sealed class FinanceFixedAssetsViewModel : BaseViewModel, IDisposable
 
 	private void ApplyAsset(FinanceFixedAsset v)
 	{
-		AssetNumber=v.AssetNumber;AssetEntity=LegalEntities.FirstOrDefault(x=>x.Id==v.LegalEntityId);AssetClass=Classes.FirstOrDefault(x=>x.Id==v.AssetClassId);Description=v.Description;AcquisitionDate=v.AcquisitionDate.ToDateTime(TimeOnly.MinValue);DepreciationStartDate=v.DepreciationStartDate.ToDateTime(TimeOnly.MinValue);OriginalCost=v.OriginalCost;SalvageValue=v.SalvageValue;UsefulLifeMonths=v.UsefulLifeMonths;Method=v.DepreciationMethod;Location=v.Location??string.Empty;Custodian=v.Custodian??string.Empty;
+		AssetNumber=v.AssetNumber;AssetEntity=LegalEntities.FirstOrDefault(x=>x.Id==v.LegalEntityId);AssetClass=Classes.FirstOrDefault(x=>x.Id==v.AssetClassId);Description=v.Description;AcquisitionDate=v.AcquisitionDate.ToDateTime(TimeOnly.MinValue);DepreciationStartDate=v.DepreciationStartDate.ToDateTime(TimeOnly.MinValue);OriginalCost=v.OriginalCost;SalvageValue=v.SalvageValue;UsefulLifeMonths=v.UsefulLifeMonths;Method=v.DepreciationMethod;Location=v.Location??string.Empty;Custodian=v.Custodian??string.Empty;SelectedSupplierLine=v.SourceSupplierDocumentLineId is long lineId?SupplierLines.FirstOrDefault(x=>x.Id==lineId):null;
 		var cls=AssetClass;SelectedPeriod=cls is null?Periods.FirstOrDefault(p=>p.Status==AccountingPeriodStatus.Open):Periods.FirstOrDefault(p=>p.FiscalCalendarId==cls.FiscalCalendarId&&p.StartDate<=DateOnly.FromDateTime(DateTime.Today)&&p.EndDate>=DateOnly.FromDateTime(DateTime.Today))??Periods.FirstOrDefault(p=>p.FiscalCalendarId==cls.FiscalCalendarId&&p.Status==AccountingPeriodStatus.Open);
 	}
 	private void ApplyClass(FinanceAssetClass v){ClassEntity=LegalEntities.FirstOrDefault(x=>x.Id==v.LegalEntityId);ClassCalendar=FiscalCalendars.FirstOrDefault(x=>x.Id==v.FiscalCalendarId);ClassCode=v.Code;ClassName=v.Name;ClassUsefulLifeMonths=v.DefaultUsefulLifeMonths;ClassMethod=v.DefaultMethod;CapitalizationProfile=PostingProfiles.FirstOrDefault(x=>x.Id==v.CapitalizationPostingProfileId);DepreciationProfile=PostingProfiles.FirstOrDefault(x=>x.Id==v.DepreciationPostingProfileId);ImpairmentProfile=PostingProfiles.FirstOrDefault(x=>x.Id==v.ImpairmentPostingProfileId);DisposalProfile=PostingProfiles.FirstOrDefault(x=>x.Id==v.DisposalPostingProfileId);}
-	private void ClearAssetDraft(){SelectedAsset=null;AssetNumber=string.Empty;Description=string.Empty;AssetEntity=LegalEntities.FirstOrDefault();AssetClass=Classes.FirstOrDefault();AcquisitionDate=DateTime.Today;DepreciationStartDate=DateTime.Today;OriginalCost=0;SalvageValue=0;UsefulLifeMonths=AssetClass?.DefaultUsefulLifeMonths??60;Method=AssetClass?.DefaultMethod??FinanceDepreciationMethod.StraightLine;Location=string.Empty;Custodian=string.Empty;Schedule.Clear();Transactions.Clear();SelectedTransaction=null;}
+	private void ClearAssetDraft(){SelectedAsset=null;AssetNumber=string.Empty;Description=string.Empty;AssetEntity=LegalEntities.FirstOrDefault();AssetClass=Classes.FirstOrDefault();AcquisitionDate=DateTime.Today;DepreciationStartDate=DateTime.Today;OriginalCost=0;SalvageValue=0;UsefulLifeMonths=AssetClass?.DefaultUsefulLifeMonths??60;Method=AssetClass?.DefaultMethod??FinanceDepreciationMethod.StraightLine;Location=string.Empty;Custodian=string.Empty;SelectedSupplierLine=null;Schedule.Clear();Transactions.Clear();SelectedTransaction=null;}
 	private void ClearClassDraft(){SelectedClass=null;ClassEntity=LegalEntities.FirstOrDefault();ClassCalendar=FiscalCalendars.FirstOrDefault(c=>c.LegalEntityId==ClassEntity?.Id);ClassCode=string.Empty;ClassName=string.Empty;ClassUsefulLifeMonths=60;ClassMethod=FinanceDepreciationMethod.StraightLine;CapitalizationProfile=PostingProfiles.FirstOrDefault(p=>p.SourceEvent==FinanceFixedAssetService.CapitalizationEvent);DepreciationProfile=PostingProfiles.FirstOrDefault(p=>p.SourceEvent==FinanceFixedAssetService.DepreciationEvent);ImpairmentProfile=PostingProfiles.FirstOrDefault(p=>p.SourceEvent==FinanceFixedAssetService.ImpairmentEvent);DisposalProfile=PostingProfiles.FirstOrDefault(p=>p.SourceEvent==FinanceFixedAssetService.DisposalEvent);}
 	private void Set<T>(ref T field,T value,[System.Runtime.CompilerServices.CallerMemberName]string? name=null){if(EqualityComparer<T>.Default.Equals(field,value))return;field=value;OnPropertyChanged(name);}
 	private void SetRef<T>(ref T? field,T? value,[System.Runtime.CompilerServices.CallerMemberName]string? name=null)where T:class{if(ReferenceEquals(field,value))return;field=value;OnPropertyChanged(name);}
