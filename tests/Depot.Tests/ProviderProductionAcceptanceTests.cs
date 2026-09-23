@@ -102,6 +102,7 @@ public sealed class ProviderProductionAcceptanceTests
 		_output.WriteLine($"Provider={providerName}; ServerVersion={serverVersion}; DatabaseSchema={DatabaseVersion.CurrentVersion}; SalesSchema={SalesSchemaMigration.CurrentVersion}; FinanceSchema={FinanceInventoryAccountingSchemaMigration.CurrentVersion}");
 
 		await CreateProbeAsync(data, factory.Provider);
+		await VerifyBusinessAttachmentPersistenceAsync(data);
 		await VerifyRoundTripsAndConstraintsAsync(data);
 		await VerifyRollbackAndRetryBoundaryAsync(data);
 		await VerifyConcurrentMutationAsync(data);
@@ -109,6 +110,61 @@ public sealed class ProviderProductionAcceptanceTests
 		await VerifySessionPersistenceAsync(data, providerName);
 		await VerifyConnectionRecoversAfterFailureAsync(factory);
 	}
+
+
+	private static async Task VerifyBusinessAttachmentPersistenceAsync(DatabaseAccess data)
+	{
+		Assert.Equal(
+			BusinessAttachmentSchemaMigration.CurrentVersion,
+			Convert.ToInt32(
+				await data.ExecuteScalarAsync(
+					"SELECT Version FROM DepotFeatureVersions WHERE Name='BusinessAttachments';",
+					CancellationToken.None),
+				CultureInfo.InvariantCulture));
+
+		var contentStore = new DatabaseBusinessAttachmentContentStore(data);
+		var repository = new BusinessAttachmentRepository(data, contentStore);
+		var id = Guid.NewGuid();
+		var now = new DateTime(2026, 9, 23, 9, 0, 0, DateTimeKind.Utc);
+		var bytes = Enumerable.Range(0, 8192).Select(index => (byte)(index % 251)).ToArray();
+		var hash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes)).ToLowerInvariant();
+		var attachment = new BusinessAttachment(
+			id,
+			BusinessAttachmentEntityKind.Customer,
+			1,
+			"provider-acceptance.bin",
+			"application/octet-stream",
+			bytes.LongLength,
+			hash,
+			"Provider binary round-trip",
+			"Acceptance",
+			null,
+			now,
+			1,
+			BusinessAttachmentStatus.Active,
+			1);
+		var revision = new BusinessAttachmentRevision(
+			id,
+			1,
+			attachment.FileName,
+			attachment.MediaType,
+			attachment.ByteLength,
+			attachment.Sha256,
+			null,
+			now);
+
+		await repository.CreateAsync(attachment, revision, bytes, CancellationToken.None);
+		await using var content = await contentStore.OpenReadAsync(id, 1, CancellationToken.None);
+		using var copy = new MemoryStream();
+		await content.CopyToAsync(copy);
+		Assert.Equal(bytes, copy.ToArray());
+
+		var persisted = await repository.GetAsync(id, CancellationToken.None);
+		Assert.NotNull(persisted);
+		Assert.Equal(hash, persisted.Sha256);
+		Assert.Equal(bytes.LongLength, persisted.ByteLength);
+	}
+
 
 	private static async Task CreateProbeAsync(DatabaseAccess data, DatabaseProvider provider)
 	{
