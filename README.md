@@ -22,7 +22,7 @@ Business software should make operations easier to understand, not add another l
 - **Sales & Pricing** — scoped per-item pricing with Customer → Region → Global fallback, retained document-price sources and controlled pricing workflows.
 - **Purchasing** — supplier and purchasing workflows connected to inventory, approvals and financial consequences.
 - **Inventory & Warehouse** — enriched item master data, serial/lot traceability, reversal-safe movement history and inventory accounting.
-- **Finance** — legal entities, currencies, periods, General Ledger, Accounts Receivable, Accounts Payable, FIFO inventory accounting, banking, reconciliation and financial reporting.
+- **Finance** — legal entities, currencies, periods, General Ledger, Accounts Receivable, Accounts Payable, FIFO inventory accounting, banking, fixed assets, controlled budgeting, reconciliation and financial reporting.
 - **Operations & Control** — approvals, reporting, administration, RBAC, audit evidence, persistent sessions and retained business records.
 - **Workspace Productivity** — My Work, Saved Views, Favorites, Recents, default landing, Quick Open, Command Palette and Global Search support repeatable day-to-day navigation without changing authorization.
 - **Integrated Help** — contextual offline Help follows central permissions and supports users directly inside the application.
@@ -93,11 +93,13 @@ Finance currently provides:
 - **Inventory Accounting** — FIFO valuation, GRNI/COGS, inventory adjustments, purchase-price variance, landed cost, historical valuation and Inventory ↔ GL reconciliation.
 - **Banking and Payments** — bank accounts, immutable CSV/camt.053 statements, payment proposals/execution, AR/AP/GL reconciliation and cash position.
 - **Financial Reporting** — Trial Balance, GL detail, Balance Sheet, P&L, Cash Flow, AR/AP Aging, Tax Summary, historical Inventory Valuation, COGS, dimension filtering, explicit mappings, deterministic CSV and immutable SHA-256-bound snapshots.
+- **Fixed Assets** — asset register, capitalization, depreciation, impairment, disposal/correction evidence and reconciliation.
+- **Budgeting & Variance** — versioned account/period/dimension budgets, approval/locking, CSV planning exchange and Actual-vs-Budget analysis backed by Financial Reporting actuals.
 - **Finance Localization** — explicit effective-dated legal-entity assignments, hierarchical localization packs and a capability/configuration/procedure registry. `LegalEntity.CountryCode` validates country packs but never activates them automatically.
 
 Localization support levels (`SoftwareCapability`, `ConfigurationRequired`, `ExternalProcedureRequired`, `ReferenceOnly`) describe responsibility and capability boundaries, not legal/compliance pass/fail status. Depot does not invent tax rates, statutory charts, filing classifications or accounting-policy choices.
 
-Explore [Finance Architecture](docs/FinanceArchitecture.md), [Finance Fixed Assets](docs/FinanceFixedAssets.md), [Finance Banking](docs/FinanceBanking.md), [Finance Localization](docs/FinanceLocalization.md), [Finance Reporting](docs/FinanceReporting.md) and [Finance Compliance](docs/FinanceCompliance.md).
+Explore [Finance Architecture](docs/FinanceArchitecture.md), [Finance Budgeting](docs/FinanceBudgeting.md), [Finance Fixed Assets](docs/FinanceFixedAssets.md), [Finance Banking](docs/FinanceBanking.md), [Finance Localization](docs/FinanceLocalization.md), [Finance Reporting](docs/FinanceReporting.md) and [Finance Compliance](docs/FinanceCompliance.md).
 
 ## Current engineering status
 
@@ -106,14 +108,14 @@ Current baseline:
 - Application: **0.15.x-preview**
 - Core database schema: **30**
 - Sales feature schema: **15**
-- Finance feature schema: **10**
+- Finance feature schema: **11**
 - User Sessions feature schema: **3**
 - Security Events feature schema: **3**
 - User Preferences feature schema: **2**
 - Document Templates feature schema: **1**
 - Enterprise Identity feature schema: **2**
 - Approval Policies feature schema: **1**
-- Help manifest: **1.26**
+- Help manifest: **1.27**
 
 `Directory.Build.props` is authoritative for the exact application patch/version. The documentation baseline intentionally records the development line instead of duplicating the moving preview patch number.
 
@@ -163,7 +165,7 @@ Security and compliance work is documented transparently rather than presented a
 
 ## Offline Help
 
-Embedded Help manifest **1.26** includes contextual Sales, Finance, User Sessions and Security Center guidance. Help visibility follows central permissions and never grants business access.
+Embedded Help manifest **1.27** includes contextual Sales, Finance, User Sessions and Security Center guidance. Help visibility follows central permissions and never grants business access.
 
 See the [Help Center documentation](docs/HelpCenter.md).
 
@@ -208,6 +210,7 @@ Track the path through the [Roadmap](docs/Roadmap.md) and [Release 1.0 plan](doc
 ### Finance
 
 - [Finance Architecture](docs/FinanceArchitecture.md)
+- [Finance Budgeting and Variance Analysis](docs/FinanceBudgeting.md)
 - [Finance Fixed Assets](docs/FinanceFixedAssets.md)
 - [Finance Banking](docs/FinanceBanking.md)
 - [Finance Localization](docs/FinanceLocalization.md)
