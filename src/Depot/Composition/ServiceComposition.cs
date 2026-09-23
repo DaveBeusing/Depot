@@ -23,6 +23,7 @@ internal sealed class ServiceComposition
 		AuditLog = new AuditLogService(repositories.Audit, Authorization, new AuditJsonSanitizer());
 		DataSubjectAccess = new DataSubjectAccessService(database.DataAccess, Authorization);
 		var audit = new AuditService(repositories.Audit, Authorization);
+		BusinessAttachments = new BusinessAttachmentService(repositories.BusinessAttachments, repositories.BusinessAttachmentContents, audit, Authorization);
 		ApprovalPolicies = new ApprovalPolicyService(repositories.ApprovalPolicies, repositories.Roles, repositories.Users, Authorization);
 		SecurityEvents = new SecurityEventService(repositories.SecurityEvents, Authorization, Notifications);
 		UserSessionAdministration = new UserSessionAdministrationService(database.TransactionRunner, repositories.UserSessions, repositories.Audit, Authorization, audit, SecurityEvents);
@@ -141,6 +142,7 @@ internal sealed class ServiceComposition
 	public HelpMarkdownRenderer HelpRenderer { get; }
 	public AuditLogService AuditLog { get; }
 	public DataSubjectAccessService DataSubjectAccess { get; }
+	public BusinessAttachmentService BusinessAttachments { get; }
 	public ApprovalPolicyService ApprovalPolicies { get; }
 	public SecurityEventService SecurityEvents { get; }
 	public UserSessionAdministrationService UserSessionAdministration { get; }

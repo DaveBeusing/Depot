@@ -49,11 +49,18 @@ public static class BusinessAttachmentSchema
 					Sha256 TEXT NOT NULL,
 					CreatedByUserId INTEGER NULL,
 					CreatedAtUtc TEXT NOT NULL,
-					Content BLOB NOT NULL,
 					PRIMARY KEY (AttachmentId, Revision),
 					FOREIGN KEY (AttachmentId) REFERENCES BusinessAttachments(Id) ON DELETE RESTRICT,
 					CHECK (Revision > 0),
 					CHECK (ByteLength >= 0)
+				);
+				CREATE TABLE IF NOT EXISTS BusinessAttachmentContents
+				(
+					AttachmentId TEXT NOT NULL,
+					Revision INTEGER NOT NULL,
+					Content BLOB NOT NULL,
+					PRIMARY KEY (AttachmentId, Revision),
+					FOREIGN KEY (AttachmentId, Revision) REFERENCES BusinessAttachmentRevisions(AttachmentId, Revision) ON DELETE RESTRICT
 				);
 				CREATE INDEX IF NOT EXISTS IX_BusinessAttachments_Entity
 					ON BusinessAttachments (EntityKind, EntityId, Status, CreatedAtUtc);
@@ -66,7 +73,7 @@ public static class BusinessAttachmentSchema
 				BEGIN
 					CREATE TABLE BusinessAttachments
 					(
-						Id uniqueidentifier NOT NULL,
+						Id char(36) NOT NULL,
 						EntityKind int NOT NULL,
 						EntityId bigint NOT NULL,
 						FileName nvarchar(255) NOT NULL,
@@ -92,7 +99,7 @@ public static class BusinessAttachmentSchema
 				BEGIN
 					CREATE TABLE BusinessAttachmentRevisions
 					(
-						AttachmentId uniqueidentifier NOT NULL,
+						AttachmentId char(36) NOT NULL,
 						Revision int NOT NULL,
 						FileName nvarchar(255) NOT NULL,
 						MediaType nvarchar(127) NOT NULL,
@@ -100,11 +107,21 @@ public static class BusinessAttachmentSchema
 						Sha256 char(64) NOT NULL,
 						CreatedByUserId bigint NULL,
 						CreatedAtUtc datetime2(6) NOT NULL,
-						Content varbinary(max) NOT NULL,
 						CONSTRAINT PK_BusinessAttachmentRevisions PRIMARY KEY (AttachmentId, Revision),
 						CONSTRAINT FK_BusinessAttachmentRevisions_Attachment FOREIGN KEY (AttachmentId) REFERENCES BusinessAttachments(Id),
 						CONSTRAINT CK_BusinessAttachmentRevisions_Revision CHECK (Revision > 0),
 						CONSTRAINT CK_BusinessAttachmentRevisions_ByteLength CHECK (ByteLength >= 0)
+					);
+				END;
+				IF OBJECT_ID(N'BusinessAttachmentContents', N'U') IS NULL
+				BEGIN
+					CREATE TABLE BusinessAttachmentContents
+					(
+						AttachmentId char(36) NOT NULL,
+						Revision int NOT NULL,
+						Content varbinary(max) NOT NULL,
+						CONSTRAINT PK_BusinessAttachmentContents PRIMARY KEY (AttachmentId, Revision),
+						CONSTRAINT FK_BusinessAttachmentContents_Revision FOREIGN KEY (AttachmentId, Revision) REFERENCES BusinessAttachmentRevisions(AttachmentId, Revision)
 					);
 				END;
 				IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name=N'IX_BusinessAttachments_Entity' AND object_id=OBJECT_ID(N'BusinessAttachments'))
@@ -149,11 +166,18 @@ public static class BusinessAttachmentSchema
 					Sha256 CHAR(64) NOT NULL,
 					CreatedByUserId BIGINT NULL,
 					CreatedAtUtc DATETIME(6) NOT NULL,
-					Content LONGBLOB NOT NULL,
 					PRIMARY KEY (AttachmentId, Revision),
 					CONSTRAINT FK_BusinessAttachmentRevisions_Attachment FOREIGN KEY (AttachmentId) REFERENCES BusinessAttachments(Id),
 					CONSTRAINT CK_BusinessAttachmentRevisions_Revision CHECK (Revision > 0),
 					CONSTRAINT CK_BusinessAttachmentRevisions_ByteLength CHECK (ByteLength >= 0)
+				) ENGINE=InnoDB;
+				CREATE TABLE IF NOT EXISTS BusinessAttachmentContents
+				(
+					AttachmentId CHAR(36) NOT NULL,
+					Revision INT NOT NULL,
+					Content LONGBLOB NOT NULL,
+					PRIMARY KEY (AttachmentId, Revision),
+					CONSTRAINT FK_BusinessAttachmentContents_Revision FOREIGN KEY (AttachmentId, Revision) REFERENCES BusinessAttachmentRevisions(AttachmentId, Revision)
 				) ENGINE=InnoDB;
 				""",
 			_ => throw new NotSupportedException($"Business-attachment persistence is not supported for provider '{connectionFactory.Provider}'.")

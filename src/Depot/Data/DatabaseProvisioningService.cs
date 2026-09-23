@@ -104,7 +104,8 @@ internal static class FeatureVersionMetadataRecovery
 		TableExists(connection, provider, "DocumentTemplates") &&
 		ColumnExists(connection, provider, "EnterpriseIdentityProviders", "MaximumAuthenticationAgeMinutes") &&
 		TableExists(connection, provider, "BusinessAttachments") &&
-		TableExists(connection, provider, "BusinessAttachmentRevisions");
+		TableExists(connection, provider, "BusinessAttachmentRevisions") &&
+		TableExists(connection, provider, "BusinessAttachmentContents");
 
 	private static bool HasFutureFeatureVersion(DbConnection connection)
 	{
