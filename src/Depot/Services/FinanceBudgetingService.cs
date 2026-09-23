@@ -327,13 +327,11 @@ public sealed class FinanceBudgetingService
 			if (dimensionId.HasValue && !await _budgets.DimensionValueMatchesAsync(transaction, dimensionId.Value, dimensionValueId!.Value, token))
 				throw new InvalidOperationException("The accounting dimension value is invalid.");
 
-			var baseAmount = Math.Round(annualAmount / periods.Length, 9, MidpointRounding.ToZero);
-			var assigned = 0m;
+			var allocations = AllocateEqualPeriods(annualAmount, periods.Length);
 			var created = new List<FinanceBudgetLine>(periods.Length);
 			for (var index = 0; index < periods.Length; index++)
 			{
-				var amount = index == periods.Length - 1 ? annualAmount - assigned : baseAmount;
-				assigned += amount;
+				var amount = allocations[index];
 				var line = new FinanceBudgetLine
 				{
 					BudgetVersionId = budget.Id,
@@ -586,6 +584,21 @@ public sealed class FinanceBudgetingService
 		Guid? dimensionValueId = null,
 		CancellationToken cancellationToken = default) =>
 		await GetVarianceAsync(budgetVersionId, false, dimensionId, dimensionValueId, cancellationToken);
+
+
+	internal static IReadOnlyList<decimal> AllocateEqualPeriods(decimal totalAmount, int periodCount)
+	{
+		if (periodCount <= 0) throw new ArgumentOutOfRangeException(nameof(periodCount));
+		var baseAmount = Math.Round(totalAmount / periodCount, 9, MidpointRounding.ToZero);
+		var allocations = new decimal[periodCount];
+		var assigned = 0m;
+		for (var index = 0; index < periodCount; index++)
+		{
+			allocations[index] = index == periodCount - 1 ? totalAmount - assigned : baseAmount;
+			assigned += allocations[index];
+		}
+		return allocations;
+	}
 
 	private async Task<FinanceBudgetVersion> CopyCoreAsync(
 		long sourceBudgetVersionId,
