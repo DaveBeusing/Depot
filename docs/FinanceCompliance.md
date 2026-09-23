@@ -6,7 +6,7 @@ Updated: 2026-09-08
 
 This document describes technical controls implemented in Depot Finance. It is not a legal opinion, accounting-policy determination, tax determination, certification, audit opinion, or claim of compliance with a jurisdiction-specific accounting framework.
 
-Current Finance feature schema: **9**.
+Current Finance feature schema: **10**.
 
 ## Core principle
 
@@ -24,12 +24,13 @@ Localization makes this boundary operational by requiring explicit effective-dat
 - Bank statements are immutable imports; reconciliations preserve original evidence and explicit reversal.
 - Report snapshots are immutable `AuditEvidence` containing report parameters, canonical CSV and SHA-256 parameter/content hashes.
 - Localization assignments and registry entries are retained `AuditEvidence`; built-in reference definitions are immutable.
+- Fixed-asset masters retain stable identity while capitalization, depreciation, impairment, transfer and disposal evidence is retained separately. Accounting mutations reference immutable General Ledger journal entries and operation IDs; historical posted evidence is not rewritten.
 
 These controls support evidentiary integrity but do not independently establish statutory retention compliance. Organization-specific retention periods, archival procedures, access controls and export procedures remain required.
 
 ### Double-entry and posting controls
 
-`FinanceGeneralLedgerService` is the authoritative posting boundary. Subledgers and Inventory Accounting use this boundary rather than maintaining parallel ledger truth. Financial Reporting is read/reporting apart from explicit snapshot persistence. Localization never posts accounting entries.
+`FinanceGeneralLedgerService` is the authoritative posting boundary. Subledgers, Inventory Accounting and Fixed Assets use this boundary rather than maintaining parallel ledger truth. Financial Reporting is read/reporting apart from explicit snapshot persistence. Localization never posts accounting entries.
 
 The General Ledger validates balanced debit/credit totals, transaction/reporting currency, period/date/legal-entity/account/dimension requirements, number sequences, idempotency and configured posting profiles.
 
@@ -55,6 +56,14 @@ Banking provides configured bank accounts, immutable statement imports, determin
 
 Financial Reporting provides Trial Balance, GL detail, Balance Sheet, P&L, Cash Flow, AR/AP Aging, Tax Summary, historical Inventory Valuation and COGS. GL-derived reports use persisted reporting-currency evidence; accounting meaning is driven by explicit mappings rather than names/numbers. Report snapshots bind parameters/content with SHA-256.
 
+### Fixed Assets
+
+Fixed Assets is a jurisdiction-neutral subledger. Asset classes configure fiscal calendars plus explicit posting profiles for capitalization, depreciation, impairment and disposal. The initial automated depreciation methods are **Straight Line** and **No Depreciation** only.
+
+Closed-period depreciation fails closed unless the caller explicitly selects the documented next-open-period policy. Period depreciation runs use deterministic operation identities so retries cannot silently double-post completed schedule rows. Transfers update current location/custodian information without rewriting retained transactions, and disposal preserves historical cost/depreciation evidence.
+
+The implementation does not decide statutory useful lives, tax depreciation, HGB/IFRS/US-GAAP treatment, component accounting, revaluation, pooled-asset treatment, IFRS 16 lease accounting or tax-book policy. Those remain deployment-specific accounting/tax decisions.
+
 ### Localization Framework
 
 Localization requires an explicit effective-dated root-pack assignment. Country packs are validated against Legal Entity country; active assignment ranges cannot overlap; parent/child layer rules and cycle/depth controls protect pack composition. Built-in `GENERIC → EU → DE` references are immutable. Custom packs can extend the hierarchy without another schema change when metadata/configuration is sufficient.
@@ -69,7 +78,7 @@ UI visibility is not an authorization boundary. Finance operations are enforced 
 
 ## Provider and operational acceptance
 
-Finance schema 9 is technically accepted on the database baselines listed in [Database Provider Production Support Matrix](DatabaseProviderSupportMatrix.md): Depot's bundled SQLite runtime, SQL Server 2022 engine 16.x, MariaDB 11.8.9 LTS and MySQL 8.4.11 LTS.
+Finance schema 10 follows the same provider-neutral migration and acceptance path on the database baselines listed in [Database Provider Production Support Matrix](DatabaseProviderSupportMatrix.md): Depot's bundled SQLite runtime, SQL Server 2022 engine 16.x, MariaDB 11.8.9 LTS and MySQL 8.4.11 LTS.
 
 The real-provider suite covers provisioning/migration, decimal/date/timestamp behavior, rollback, constraints, concurrency/deadlock/retry, GL/AR/AP/FIFO flows, Banking/reconciliation, Financial Reporting/snapshots, restart/re-entry, provider-native remote backup/restore and representative 100k indexed lookup performance. This closes the database-provider technical acceptance gate for those exact baselines.
 

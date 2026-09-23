@@ -97,7 +97,7 @@ Finance currently provides:
 
 Localization support levels (`SoftwareCapability`, `ConfigurationRequired`, `ExternalProcedureRequired`, `ReferenceOnly`) describe responsibility and capability boundaries, not legal/compliance pass/fail status. Depot does not invent tax rates, statutory charts, filing classifications or accounting-policy choices.
 
-Explore [Finance Architecture](docs/FinanceArchitecture.md), [Finance Banking](docs/FinanceBanking.md), [Finance Localization](docs/FinanceLocalization.md), [Finance Reporting](docs/FinanceReporting.md) and [Finance Compliance](docs/FinanceCompliance.md).
+Explore [Finance Architecture](docs/FinanceArchitecture.md), [Finance Fixed Assets](docs/FinanceFixedAssets.md), [Finance Banking](docs/FinanceBanking.md), [Finance Localization](docs/FinanceLocalization.md), [Finance Reporting](docs/FinanceReporting.md) and [Finance Compliance](docs/FinanceCompliance.md).
 
 ## Current engineering status
 
@@ -208,6 +208,7 @@ Track the path through the [Roadmap](docs/Roadmap.md) and [Release 1.0 plan](doc
 ### Finance
 
 - [Finance Architecture](docs/FinanceArchitecture.md)
+- [Finance Fixed Assets](docs/FinanceFixedAssets.md)
 - [Finance Banking](docs/FinanceBanking.md)
 - [Finance Localization](docs/FinanceLocalization.md)
 - [Finance Reporting](docs/FinanceReporting.md)

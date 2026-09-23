@@ -78,6 +78,10 @@ This roadmap describes product capabilities and acceptance work without coupling
 - [x] provider-neutral Finance Localization with explicit effective-dated assignments and `GENERIC → EU → DE` reference hierarchy
 - [x] Finance workspaces and contextual Help
 
+
+- [x] Fixed Assets and depreciation foundation: asset register, configurable classes/posting profiles, deterministic straight-line/no-depreciation schedules, GL-authoritative capitalization/depreciation/impairment/disposal, retained transaction evidence, period runs and reconciliation.
+- [ ] Complete deployment-specific accounting/tax policy acceptance for Fixed Assets; jurisdiction-specific tax depreciation remains outside the generic product boundary.
+
 ### Electronic invoicing
 
 - [x] bounded XRechnung 3.0 CII invoice finalization with persisted immutable XML/integrity evidence
