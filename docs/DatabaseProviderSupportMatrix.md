@@ -50,6 +50,7 @@ The acceptance suite covers:
 - Accounts Payable posting/payment/reversal and Three-Way-Match exception authorization;
 - FIFO inventory valuation consumption/reversal reporting;
 - Banking account persistence, CSV statement import/idempotence, GL reconciliation and reconciliation reversal;
+- SEPA SCT payment-profile persistence plus deterministic retained payment-export artifact/hash/status-history readback;
 - Financial Reporting Trial Balance generation, deterministic CSV export and immutable report-snapshot idempotence;
 - persistent user sessions, heartbeat and termination;
 - Business Attachments feature schema provisioning plus database-backed binary content round-trip and SHA-256 metadata persistence;
@@ -114,4 +115,4 @@ Database-provider acceptance is a technical data-integrity/runtime statement. It
 
 ### Finance budgeting
 
-Finance feature schema **11** adds `FinanceBudgetVersions` and `FinanceBudgetLines`. Full provider acceptance migrates the schema on each supported server baseline and exercises persisted budget versions/lines plus nine-decimal aggregation. Provider-neutral SQL alone is not support evidence.
+Finance feature schema **12** includes the Finance Budgeting baseline plus structured SEPA debtor/creditor payment profiles, immutable `pain.001.001.09` export artifacts and append-only export-status history. Full provider acceptance migrates the schema on each supported server baseline and exercises persisted budget data as well as SEPA payment-export generation/readback. Provider-neutral SQL alone is not support evidence.
