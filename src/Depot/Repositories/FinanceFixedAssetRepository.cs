@@ -72,7 +72,7 @@ public sealed class FinanceFixedAssetRepository : DatabaseRepository
 		var txParams=new List<DatabaseParameter>();var idParams=new List<string>(ids.Length);
 		for(var i=0;i<ids.Length;i++){var name=$"$Id{i}";idParams.Add(name);txParams.Add(Parameter(name,ids[i]));}
 		var balances=await Database.QueryAsync(
-			$"SELECT AssetId,COALESCE(SUM(CASE WHEN Kind=1 THEN Amount WHEN Kind IN (2,3) THEN -Amount ELSE 0 END),0),MAX(CASE WHEN Kind=6 THEN 1 ELSE 0 END) FROM FinanceAssetTransactions WHERE AssetId IN ({string.Join(",",idParams)}) GROUP BY AssetId;",
+			$"SELECT AssetId,COALESCE(SUM(CASE WHEN Kind=1 THEN Amount WHEN Kind IN (2,3) THEN -Amount WHEN Kind=4 THEN Amount ELSE 0 END),0),MAX(CASE WHEN Kind=6 THEN 1 ELSE 0 END) FROM FinanceAssetTransactions WHERE AssetId IN ({string.Join(",",idParams)}) GROUP BY AssetId;",
 			r=>new { AssetId=r.GetInt64(0), Carrying=ReadDecimal(r,1), Disposed=Convert.ToInt32(r.GetValue(2),CultureInfo.InvariantCulture)!=0 },cancellationToken,txParams.ToArray());
 		var subledger=balances.ToDictionary(value=>value.AssetId,value=>value.Disposed?0m:value.Carrying);
 		var rows=assets.Items.Select(asset=>new FinanceAssetReconciliationRow(asset.Id,asset.AssetNumber,subledger.GetValueOrDefault(asset.Id),glByAsset.GetValueOrDefault(asset.Id))).ToArray();
@@ -87,6 +87,9 @@ public sealed class FinanceFixedAssetRepository : DatabaseRepository
 
 	internal Task<FinanceAssetDepreciationPeriod?> GetSchedulePeriodAsync(DatabaseTransactionContext transaction,long id,CancellationToken token) =>
 		transaction.Session.QuerySingleOrDefaultAsync($"SELECT {ScheduleColumns} FROM FinanceAssetDepreciationPeriods WHERE Id=$Id;",ReadSchedule,token,Parameter("$Id",id));
+
+	internal Task<FinanceAssetTransaction?> GetTransactionAsync(DatabaseTransactionContext transaction,long id,CancellationToken token) =>
+		transaction.Session.QuerySingleOrDefaultAsync($"SELECT {TransactionColumns} FROM FinanceAssetTransactions WHERE Id=$Id;",ReadTransaction,token,Parameter("$Id",id));
 
 	internal Task<long> CreateClassAsync(DatabaseTransactionContext transaction,FinanceAssetClass value,CancellationToken token) =>
 		transaction.Session.InsertAsync("INSERT INTO FinanceAssetClasses (Version,LegalEntityId,FiscalCalendarId,Code,Name,CapitalizationPostingProfileId,DepreciationPostingProfileId,ImpairmentPostingProfileId,DisposalPostingProfileId,DefaultUsefulLifeMonths,DefaultMethod,IsActive) VALUES (1,$Entity,$Calendar,$Code,$Name,$Capitalization,$Depreciation,$Impairment,$Disposal,$Life,$Method,$Active);",token,ClassParameters(value));

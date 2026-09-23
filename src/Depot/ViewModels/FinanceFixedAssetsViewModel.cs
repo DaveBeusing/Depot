@@ -18,6 +18,7 @@ public sealed class FinanceFixedAssetsViewModel : BaseViewModel, IDisposable
 	private FinanceAssetPostingProfileOption? _capitalizationProfile,_depreciationProfile,_impairmentProfile,_disposalProfile;
 	private FinanceAssetPeriodOption? _selectedPeriod;
 	private FinanceAssetDepreciationPeriod? _selectedSchedulePeriod;
+	private FinanceAssetTransaction? _selectedTransaction;
 	private string _searchText=string.Empty,_assetNumber=string.Empty,_description=string.Empty,_location=string.Empty,_custodian=string.Empty,_classCode=string.Empty,_className=string.Empty,_reason=string.Empty;
 	private DateTime _acquisitionDate=DateTime.Today,_depreciationStartDate=DateTime.Today;
 	private decimal _originalCost,_salvageValue,_adjustmentAmount,_disposalProceeds;
@@ -37,6 +38,7 @@ public sealed class FinanceFixedAssetsViewModel : BaseViewModel, IDisposable
 		PostDepreciationCommand=new AsyncRelayCommand(PostDepreciationAsync);
 		RunDepreciationCommand=new AsyncRelayCommand(RunDepreciationAsync);
 		ImpairCommand=new AsyncRelayCommand(ImpairAsync);
+		CorrectImpairmentCommand=new AsyncRelayCommand(CorrectImpairmentAsync);
 		TransferCommand=new AsyncRelayCommand(TransferAsync);
 		DisposeCommand=new AsyncRelayCommand(DisposeAssetAsync);
 		NewClassCommand=new AsyncRelayCommand(_=>{ClearClassDraft();return Task.CompletedTask;});
@@ -63,6 +65,7 @@ public sealed class FinanceFixedAssetsViewModel : BaseViewModel, IDisposable
 	public AsyncRelayCommand PostDepreciationCommand{get;}
 	public AsyncRelayCommand RunDepreciationCommand{get;}
 	public AsyncRelayCommand ImpairCommand{get;}
+	public AsyncRelayCommand CorrectImpairmentCommand{get;}
 	public AsyncRelayCommand TransferCommand{get;}
 	public AsyncRelayCommand DisposeCommand{get;}
 	public AsyncRelayCommand NewClassCommand{get;}
@@ -84,6 +87,7 @@ public sealed class FinanceFixedAssetsViewModel : BaseViewModel, IDisposable
 	public FinanceAssetPostingProfileOption? DisposalProfile{get=>_disposalProfile;set=>SetRef(ref _disposalProfile,value);}
 	public FinanceAssetPeriodOption? SelectedPeriod{get=>_selectedPeriod;set=>SetRef(ref _selectedPeriod,value);}
 	public FinanceAssetDepreciationPeriod? SelectedSchedulePeriod{get=>_selectedSchedulePeriod;set=>SetRef(ref _selectedSchedulePeriod,value);}
+	public FinanceAssetTransaction? SelectedTransaction{get=>_selectedTransaction;set=>SetRef(ref _selectedTransaction,value);}
 	public string AssetNumber{get=>_assetNumber;set=>Set(ref _assetNumber,value);}
 	public string Description{get=>_description;set=>Set(ref _description,value);}
 	public string Location{get=>_location;set=>Set(ref _location,value);}
@@ -165,9 +169,10 @@ public sealed class FinanceFixedAssetsViewModel : BaseViewModel, IDisposable
 	private async Task PostDepreciationAsync(CancellationToken token){if(SelectedSchedulePeriod is null)return;BeginOperation("Posting depreciation...");try{await _service.PostDepreciationAsync(SelectedSchedulePeriod.Id,Guid.NewGuid(),ClosedPeriodPolicy,token);await LoadAssetDetailsAsync(SelectedSchedulePeriod.AssetId,token);await LoadReconciliationAsync(token);CompleteOperation(false,"Depreciation posted.");}catch(Exception ex){FailOperation(ex,"Depreciation posting failed.");}}
 	private async Task RunDepreciationAsync(CancellationToken token){if(SelectedPeriod is null)return;BeginOperation("Running period depreciation...");try{var result=await _service.RunDepreciationAsync(SelectedPeriod.Id,Guid.NewGuid(),ClosedPeriodPolicy,token);await LoadAsync(token);CompleteOperation(false,$"Posted {result.PostedCount} depreciation entries ({result.PostedAmount:N2}).");}catch(Exception ex){FailOperation(ex,"Depreciation run failed.");}}
 	private async Task ImpairAsync(CancellationToken token){if(SelectedAsset is null||SelectedPeriod is null)return;BeginOperation("Posting impairment...");try{await _service.ImpairAsync(SelectedAsset.Id,Guid.NewGuid(),SelectedPeriod.Id,DateOnly.FromDateTime(DateTime.Today),AdjustmentAmount,Reason,token);await LoadAsync(token);CompleteOperation(false,"Impairment posted.");}catch(Exception ex){FailOperation(ex,"Impairment failed.");}}
+	private async Task CorrectImpairmentAsync(CancellationToken token){if(SelectedTransaction is null||SelectedPeriod is null)return;BeginOperation("Correcting impairment...");try{var assetId=SelectedTransaction.AssetId;await _service.CorrectImpairmentAsync(SelectedTransaction.Id,Guid.NewGuid(),SelectedPeriod.Id,DateOnly.FromDateTime(DateTime.Today),Reason,token);await LoadAssetDetailsAsync(assetId,token);await LoadReconciliationAsync(token);CompleteOperation(false,"Impairment corrected by explicit General Ledger reversal.");}catch(Exception ex){FailOperation(ex,"Impairment correction failed.");}}
 	private async Task TransferAsync(CancellationToken token){if(SelectedAsset is null)return;BeginOperation("Transferring asset...");try{await _service.TransferAsync(SelectedAsset.Id,Guid.NewGuid(),DateOnly.FromDateTime(DateTime.Today),Location,Custodian,Reason,token);await LoadAsync(token);CompleteOperation(false,"Asset transfer recorded.");}catch(Exception ex){FailOperation(ex,"Asset transfer failed.");}}
 	private async Task DisposeAssetAsync(CancellationToken token){if(SelectedAsset is null||SelectedPeriod is null)return;BeginOperation("Disposing asset...");try{await _service.DisposeAsync(SelectedAsset.Id,Guid.NewGuid(),SelectedPeriod.Id,DateOnly.FromDateTime(DateTime.Today),DisposalProceeds,Reason,token);await LoadAsync(token);CompleteOperation(false,"Asset disposed.");}catch(Exception ex){FailOperation(ex,"Asset disposal failed.");}}
-	private async Task LoadAssetDetailsAsync(long id,CancellationToken token){Replace(Schedule,await _service.GetScheduleAsync(id,token));var tx=await _service.SearchTransactionsAsync(id,1,200,token);Replace(Transactions,tx.Items);}
+	private async Task LoadAssetDetailsAsync(long id,CancellationToken token){Replace(Schedule,await _service.GetScheduleAsync(id,token));var tx=await _service.SearchTransactionsAsync(id,1,200,token);Replace(Transactions,tx.Items);SelectedTransaction=Transactions.FirstOrDefault();}
 	private async Task LoadReconciliationAsync(CancellationToken token){Reconciliation.Clear();foreach(var entity in LegalEntities){var page=await _service.SearchReconciliationAsync(entity.Id,1,200,token);foreach(var row in page.Items)Reconciliation.Add(row);}}
 
 	private void ApplyAsset(FinanceFixedAsset v)
@@ -176,7 +181,7 @@ public sealed class FinanceFixedAssetsViewModel : BaseViewModel, IDisposable
 		var cls=AssetClass;SelectedPeriod=cls is null?Periods.FirstOrDefault(p=>p.Status==AccountingPeriodStatus.Open):Periods.FirstOrDefault(p=>p.FiscalCalendarId==cls.FiscalCalendarId&&p.StartDate<=DateOnly.FromDateTime(DateTime.Today)&&p.EndDate>=DateOnly.FromDateTime(DateTime.Today))??Periods.FirstOrDefault(p=>p.FiscalCalendarId==cls.FiscalCalendarId&&p.Status==AccountingPeriodStatus.Open);
 	}
 	private void ApplyClass(FinanceAssetClass v){ClassEntity=LegalEntities.FirstOrDefault(x=>x.Id==v.LegalEntityId);ClassCalendar=FiscalCalendars.FirstOrDefault(x=>x.Id==v.FiscalCalendarId);ClassCode=v.Code;ClassName=v.Name;ClassUsefulLifeMonths=v.DefaultUsefulLifeMonths;ClassMethod=v.DefaultMethod;CapitalizationProfile=PostingProfiles.FirstOrDefault(x=>x.Id==v.CapitalizationPostingProfileId);DepreciationProfile=PostingProfiles.FirstOrDefault(x=>x.Id==v.DepreciationPostingProfileId);ImpairmentProfile=PostingProfiles.FirstOrDefault(x=>x.Id==v.ImpairmentPostingProfileId);DisposalProfile=PostingProfiles.FirstOrDefault(x=>x.Id==v.DisposalPostingProfileId);}
-	private void ClearAssetDraft(){SelectedAsset=null;AssetNumber=string.Empty;Description=string.Empty;AssetEntity=LegalEntities.FirstOrDefault();AssetClass=Classes.FirstOrDefault();AcquisitionDate=DateTime.Today;DepreciationStartDate=DateTime.Today;OriginalCost=0;SalvageValue=0;UsefulLifeMonths=AssetClass?.DefaultUsefulLifeMonths??60;Method=AssetClass?.DefaultMethod??FinanceDepreciationMethod.StraightLine;Location=string.Empty;Custodian=string.Empty;Schedule.Clear();Transactions.Clear();}
+	private void ClearAssetDraft(){SelectedAsset=null;AssetNumber=string.Empty;Description=string.Empty;AssetEntity=LegalEntities.FirstOrDefault();AssetClass=Classes.FirstOrDefault();AcquisitionDate=DateTime.Today;DepreciationStartDate=DateTime.Today;OriginalCost=0;SalvageValue=0;UsefulLifeMonths=AssetClass?.DefaultUsefulLifeMonths??60;Method=AssetClass?.DefaultMethod??FinanceDepreciationMethod.StraightLine;Location=string.Empty;Custodian=string.Empty;Schedule.Clear();Transactions.Clear();SelectedTransaction=null;}
 	private void ClearClassDraft(){SelectedClass=null;ClassEntity=LegalEntities.FirstOrDefault();ClassCalendar=FiscalCalendars.FirstOrDefault(c=>c.LegalEntityId==ClassEntity?.Id);ClassCode=string.Empty;ClassName=string.Empty;ClassUsefulLifeMonths=60;ClassMethod=FinanceDepreciationMethod.StraightLine;CapitalizationProfile=PostingProfiles.FirstOrDefault(p=>p.SourceEvent==FinanceFixedAssetService.CapitalizationEvent);DepreciationProfile=PostingProfiles.FirstOrDefault(p=>p.SourceEvent==FinanceFixedAssetService.DepreciationEvent);ImpairmentProfile=PostingProfiles.FirstOrDefault(p=>p.SourceEvent==FinanceFixedAssetService.ImpairmentEvent);DisposalProfile=PostingProfiles.FirstOrDefault(p=>p.SourceEvent==FinanceFixedAssetService.DisposalEvent);}
 	private void Set<T>(ref T field,T value,[System.Runtime.CompilerServices.CallerMemberName]string? name=null){if(EqualityComparer<T>.Default.Equals(field,value))return;field=value;OnPropertyChanged(name);}
 	private void SetRef<T>(ref T? field,T? value,[System.Runtime.CompilerServices.CallerMemberName]string? name=null)where T:class{if(ReferenceEquals(field,value))return;field=value;OnPropertyChanged(name);}

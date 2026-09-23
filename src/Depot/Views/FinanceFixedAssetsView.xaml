@@ -77,7 +77,7 @@
 					</DataGrid>
 					<Grid Grid.Row="3">
 						<Grid.ColumnDefinitions><ColumnDefinition Width="2*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-						<DataGrid ItemsSource="{Binding Transactions}" AutoGenerateColumns="False" IsReadOnly="True" Style="{StaticResource AppDataGridCompactStyle}">
+						<DataGrid ItemsSource="{Binding Transactions}" SelectedItem="{Binding SelectedTransaction}" AutoGenerateColumns="False" IsReadOnly="True" Style="{StaticResource AppDataGridCompactStyle}">
 							<DataGrid.Columns><DataGridTextColumn Header="Date" Binding="{Binding TransactionDate}" Width="100"/><DataGridTextColumn Header="Kind" Binding="{Binding Kind}" Width="110"/><DataGridTextColumn Header="Amount" Binding="{Binding Amount,StringFormat=N2}" Width="100"/><DataGridTextColumn Header="Reason" Binding="{Binding Reason}" Width="*"/><DataGridTextColumn Header="Journal" Binding="{Binding JournalEntryId}" Width="90"/></DataGrid.Columns>
 						</DataGrid>
 						<Border Grid.Column="2" Style="{StaticResource WorkspaceSectionStyle}">
@@ -86,7 +86,7 @@
 								<TextBlock Margin="0,8,0,0" Text="Reason" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding Reason}"/>
 								<TextBlock Margin="0,8,0,0" Text="Adjustment / impairment amount" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding AdjustmentAmount}"/>
 								<TextBlock Margin="0,8,0,0" Text="Disposal proceeds" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding DisposalProceeds}"/>
-								<WrapPanel Margin="0,12,0,0"><Button Command="{Binding RecalculateScheduleCommand}" Content="Recalculate" Style="{StaticResource SecondaryButtonStyle}"/><Button Margin="6,0,0,0" Command="{Binding CapitalizeCommand}" Content="Capitalize" Style="{StaticResource SecondaryButtonStyle}"/><Button Margin="6,0,0,0" Command="{Binding PostDepreciationCommand}" Content="Post selected" Style="{StaticResource SecondaryButtonStyle}"/><Button Margin="6,0,0,0" Command="{Binding ImpairCommand}" Content="Impair" Style="{StaticResource SecondaryButtonStyle}"/><Button Margin="6,0,0,0" Command="{Binding TransferCommand}" Content="Transfer" Style="{StaticResource SecondaryButtonStyle}"/><Button Margin="6,0,0,0" Command="{Binding DisposeCommand}" Content="Dispose" Style="{StaticResource SecondaryButtonStyle}"/></WrapPanel>
+								<WrapPanel Margin="0,12,0,0"><Button Command="{Binding RecalculateScheduleCommand}" Content="Recalculate" Style="{StaticResource SecondaryButtonStyle}"/><Button Margin="6,0,0,0" Command="{Binding CapitalizeCommand}" Content="Capitalize" Style="{StaticResource SecondaryButtonStyle}"/><Button Margin="6,0,0,0" Command="{Binding PostDepreciationCommand}" Content="Post selected" Style="{StaticResource SecondaryButtonStyle}"/><Button Margin="6,0,0,0" Command="{Binding ImpairCommand}" Content="Impair" Style="{StaticResource SecondaryButtonStyle}"/><Button Margin="6,0,0,0" Command="{Binding CorrectImpairmentCommand}" Content="Correct impairment" Style="{StaticResource DangerButtonStyle}"/><Button Margin="6,0,0,0" Command="{Binding TransferCommand}" Content="Transfer" Style="{StaticResource SecondaryButtonStyle}"/><Button Margin="6,0,0,0" Command="{Binding DisposeCommand}" Content="Dispose" Style="{StaticResource SecondaryButtonStyle}"/></WrapPanel>
 							</StackPanel>
 						</Border>
 					</Grid>

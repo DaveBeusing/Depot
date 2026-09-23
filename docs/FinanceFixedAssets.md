@@ -106,6 +106,10 @@ Only active assets can post depreciation. A schedule row can be posted once; opt
 
 Impairment requires an explicit positive amount and reason and posts through the configured impairment profile.
 
+### Impairment correction
+
+A posted impairment can be corrected only through an explicit General Ledger reversal. The original impairment transaction and journal remain immutable; the correction creates its own operation ID, reversal journal reference, reason and Fixed Assets transaction evidence. Corrected impairment is added back when carrying value is calculated. Other transaction kinds are not silently repurposed as generic corrections.
+
 ### Transfer
 
 Location/custodian transfers require a reason. They update current assignment data while retaining a separate transaction record; prior accounting entries are not rewritten.

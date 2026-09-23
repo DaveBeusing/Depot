@@ -35,6 +35,7 @@ For a closed accounting period, choose an explicit policy:
 ## Adjustments, transfers and disposal
 
 - **Impairment** posts an explicit write-down with a required reason.
+- **Correct impairment** reverses a selected posted impairment through General Ledger and records a separate correction transaction; the original evidence stays unchanged.
 - **Transfer** changes current location/custodian data without rewriting historical transactions.
 - **Disposal** closes the active asset through the configured disposal profile while retaining acquisition, depreciation, impairment and journal evidence.
 
