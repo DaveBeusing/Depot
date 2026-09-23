@@ -37,3 +37,7 @@ The production database provider matrix now runs a representative **100,000-row 
 This synthetic guard is not a workload-specific SLA and does not replace screen/report-specific query-plan review, realistic network latency, concurrent-user sizing, large export/report tests or customer data-distribution analysis. Those remain deployment/performance-engineering activities.
 
 See [Database Provider Production Support Matrix](DatabaseProviderSupportMatrix.md) for exact provider baselines.
+
+## Business attachment access
+
+Attachment list and revision queries are server-bounded. Binary content is never joined into record lists or metadata search results and is loaded only for the selected attachment revision. The V1 database-backed path has a hard 25 MiB per-file limit, providing an explicit materialization bound. Metadata search is capped and does not index file contents.

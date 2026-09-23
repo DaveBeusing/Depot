@@ -16,6 +16,7 @@ This roadmap describes product capabilities and acceptance work without coupling
 - [x] provider-neutral persistence for SQLite, SQL Server, MariaDB and MySQL
 - [x] real production database-provider acceptance for the exact certified baselines
 - [x] structured Audit evidence and correction-oriented retained business records
+- [x] reusable versioned business attachments across the initial Customer, Supplier, Item, Sales, Purchasing and AP record set
 - [x] company/document identity controls and persisted XRechnung evidence
 - [x] one authoritative Source-to-Release path with Preview/Stable channels and retained release evidence
 - [x] technical DR, accessibility and Track A production-closure evidence contracts

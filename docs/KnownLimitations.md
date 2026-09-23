@@ -130,3 +130,9 @@ The authoritative gate state is [Version 1.0 Release Checklist](Release1.0.md) a
 ## Publication rule
 
 Stable release notes must include or link this document and must remove, amend or add limitations when the exact release candidate evidence changes. A limitation may be removed only when implementation plus the required acceptance evidence supports the broader claim.
+
+## Business attachments and malware scanning
+
+Business Attachments are limited to 25 MiB per file in the current baseline. Known executable/script extensions are rejected, but MIME metadata is not a malware verdict. Depot does not include an antivirus engine and does not execute attachment content. Deployments that require malware inspection must provide an external scanning/control boundary.
+
+V1 attachment content is stored in the configured Depot database; external object stores such as SharePoint, S3 and Azure Blob are not implemented. Arbitrary file-content full-text indexing, OCR, e-signatures and collaborative editing are outside the current baseline.
