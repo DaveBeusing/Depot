@@ -23,5 +23,6 @@
 
 	<ItemGroup>
 		<None Include="Fixtures\ElectronicInvoice\**\*" CopyToOutputDirectory="PreserveNewest" />
+		<None Include="Fixtures\Sepa\**\*" CopyToOutputDirectory="PreserveNewest" />
 	</ItemGroup>
 </Project>
