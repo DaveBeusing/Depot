@@ -4,6 +4,8 @@
 using Depot.Data;
 using Depot.Models;
 using Depot.Repositories;
+using System.Buffers.Binary;
+using System.Security.Cryptography;
 
 namespace Depot.Services;
 
@@ -40,6 +42,16 @@ public sealed class FinanceFixedAssetService
 	{_authorization.RequirePermission(ApplicationPermission.FinanceFixedAssetsView);return _assets.GetScheduleAsync(assetId,token);}
 	public Task<PageResult<FinanceAssetTransaction>> SearchTransactionsAsync(long assetId,int pageNumber=1,int pageSize=100,CancellationToken token=default)
 	{_authorization.RequirePermission(ApplicationPermission.FinanceFixedAssetsView);return _assets.SearchTransactionsAsync(assetId,pageNumber,pageSize,token);}
+	public Task<PageResult<FinanceAssetReconciliationRow>> SearchReconciliationAsync(Guid legalEntityId,int pageNumber=1,int pageSize=100,CancellationToken token=default)
+	{_authorization.RequirePermission(ApplicationPermission.FinanceFixedAssetsView);if(legalEntityId==Guid.Empty)throw new ArgumentException("A legal entity is required.",nameof(legalEntityId));return _assets.SearchReconciliationAsync(legalEntityId,pageNumber,pageSize,token);}
+
+	public async Task<FinanceDepreciationRunResult> RunDepreciationAsync(Guid accountingPeriodId,Guid runOperationId,FinanceClosedPeriodPolicy closedPeriodPolicy=FinanceClosedPeriodPolicy.Fail,CancellationToken token=default)
+	{
+		_authorization.RequirePermission(ApplicationPermission.FinanceFixedAssetsDepreciationPost);RequireUser();if(accountingPeriodId==Guid.Empty)throw new ArgumentException("An accounting period is required.",nameof(accountingPeriodId));RequireOperation(runOperationId);
+		var candidates=await _assets.GetPendingDepreciationAsync(accountingPeriodId,5000,token);var posted=new List<FinanceAssetTransaction>(candidates.Count);
+		foreach(var candidate in candidates){token.ThrowIfCancellationRequested();var child=DeriveOperationId(runOperationId,candidate.Id);posted.Add(await PostDepreciationAsync(candidate.Id,child,closedPeriodPolicy,token));}
+		return new FinanceDepreciationRunResult(runOperationId,accountingPeriodId,candidates.Count,posted.Count,posted.Sum(value=>value.Amount),posted);
+	}
 
 	public async Task<FinanceAssetClass> SaveClassAsync(FinanceAssetClass value,CancellationToken token=default)
 	{
@@ -147,6 +159,10 @@ public sealed class FinanceFixedAssetService
 	private static FinanceAssetClass NormalizeClass(FinanceAssetClass v){if(v.LegalEntityId==Guid.Empty||v.FiscalCalendarId==Guid.Empty)throw new ArgumentException("Legal entity and fiscal calendar are required.");if(v.DefaultUsefulLifeMonths<1||v.DefaultUsefulLifeMonths>1200)throw new ArgumentOutOfRangeException(nameof(v.DefaultUsefulLifeMonths));if(!Enum.IsDefined(v.DefaultMethod))throw new ArgumentOutOfRangeException(nameof(v.DefaultMethod));return v with{Code=Required(v.Code,50).ToUpperInvariant(),Name=Required(v.Name,200)};}
 	private static FinanceFixedAsset NormalizeAsset(FinanceFixedAsset v){if(v.LegalEntityId==Guid.Empty)throw new ArgumentException("Legal entity is required.");if(v.AssetClassId<=0)throw new ArgumentException("Asset class is required.");if(v.OriginalCost<0m||v.SalvageValue<0m||v.SalvageValue>v.OriginalCost)throw new ArgumentException("Cost and salvage value are invalid.");if(v.DepreciationMethod==FinanceDepreciationMethod.StraightLine&&v.UsefulLifeMonths<1)throw new ArgumentException("Straight-line depreciation requires a positive useful life.");if(!Enum.IsDefined(v.DepreciationMethod)||!Enum.IsDefined(v.Status))throw new ArgumentOutOfRangeException(nameof(v));return v with{AssetNumber=Required(v.AssetNumber,50).ToUpperInvariant(),Description=Required(v.Description,500),Location=Trim(v.Location,200),Custodian=Trim(v.Custodian,200)};}
 	private static FinanceAssetTransaction NewTransaction(long assetId,FinanceAssetTransactionKind kind,Guid op,DateOnly date,decimal amount,long? journal,string? reason,string? evidence,long user)=>new(){AssetId=assetId,Kind=kind,OperationId=op,TransactionDate=date,Amount=amount,JournalEntryId=journal,Reason=reason,Evidence=evidence,CreatedAtUtc=DateTime.UtcNow,CreatedByUserId=user};
+	private static Guid DeriveOperationId(Guid runOperationId,long schedulePeriodId)
+	{
+		Span<byte> input=stackalloc byte[24];runOperationId.TryWriteBytes(input[..16]);BinaryPrimitives.WriteInt64LittleEndian(input[16..],schedulePeriodId);Span<byte> hash=stackalloc byte[32];SHA256.HashData(input,hash);return new Guid(hash[..16]);
+	}
 	private User RequireUser()=>_authorization.CurrentUser??throw new UnauthorizedAccessException("An authenticated user is required.");
 	private static void RequireOperation(Guid operationId){if(operationId==Guid.Empty)throw new ArgumentException("An operation ID is required.",nameof(operationId));}
 	private static string Required(string? value,int max){var v=value?.Trim();if(string.IsNullOrWhiteSpace(v))throw new ArgumentException("A value is required.");if(v.Length>max)throw new ArgumentException($"Value cannot exceed {max} characters.");return v;}

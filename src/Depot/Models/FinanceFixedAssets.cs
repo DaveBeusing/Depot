@@ -80,3 +80,11 @@ public sealed record FinanceAssetReconciliationRow(long AssetId,string AssetNumb
 {
 	public decimal Difference => SubledgerCarryingValue-GeneralLedgerCarryingValue;
 }
+
+public sealed record FinanceDepreciationRunResult(
+	Guid RunOperationId,
+	Guid AccountingPeriodId,
+	int CandidateCount,
+	int PostedCount,
+	decimal PostedAmount,
+	IReadOnlyList<FinanceAssetTransaction> Transactions);

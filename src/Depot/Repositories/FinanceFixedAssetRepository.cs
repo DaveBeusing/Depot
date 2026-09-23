@@ -5,6 +5,7 @@ using System.Data.Common;
 using System.Globalization;
 using Depot.Data;
 using Depot.Models;
+using Depot.Services;
 
 namespace Depot.Repositories;
 
@@ -40,6 +41,31 @@ public sealed class FinanceFixedAssetRepository : DatabaseRepository
 
 	public Task<PageResult<FinanceAssetTransaction>> SearchTransactionsAsync(long assetId,int pageNumber,int pageSize,CancellationToken cancellationToken=default) =>
 		Database.QueryPageAsync($"SELECT {TransactionColumns} FROM FinanceAssetTransactions WHERE AssetId=$Asset ORDER BY TransactionDate DESC,Id DESC","SELECT COUNT(*) FROM FinanceAssetTransactions WHERE AssetId=$Asset;",ReadTransaction,pageNumber,Math.Clamp(pageSize,1,200),cancellationToken,Parameter("$Asset",assetId));
+
+	public Task<IReadOnlyList<FinanceAssetDepreciationPeriod>> GetPendingDepreciationAsync(Guid accountingPeriodId,int limit=5000,CancellationToken cancellationToken=default) =>
+		Database.QuerySliceAsync($"SELECT {ScheduleColumns} FROM FinanceAssetDepreciationPeriods WHERE AccountingPeriodId=$Period AND JournalEntryId IS NULL ORDER BY AssetId,Id",ReadSchedule,0,Math.Clamp(limit,1,5000),cancellationToken,Parameter("$Period",accountingPeriodId.ToString("D")));
+
+	public async Task<PageResult<FinanceAssetReconciliationRow>> SearchReconciliationAsync(Guid legalEntityId,int pageNumber,int pageSize,CancellationToken cancellationToken=default)
+	{
+		var assets=await SearchAssetsAsync(legalEntityId,null,null,pageNumber,pageSize,cancellationToken);
+		if(assets.Items.Count==0)return new PageResult<FinanceAssetReconciliationRow>([],pageNumber,pageSize,assets.TotalCount);
+		var ids=assets.Items.Select(value=>value.Id).ToArray();
+		var parameters=new List<DatabaseParameter>{Parameter("$SourceType",FinanceFixedAssetService.SourceType)};
+		var sourceParams=new List<string>(ids.Length);
+		for(var i=0;i<ids.Length;i++){var name=$"$Source{i}";sourceParams.Add(name);parameters.Add(Parameter(name,ids[i].ToString(CultureInfo.InvariantCulture)));}
+		var gl=await Database.QueryAsync(
+			$"SELECT je.SourceId,COALESCE(SUM(jl.TransactionDebit-jl.TransactionCredit),0) FROM FinanceJournalEntries je INNER JOIN FinanceJournalEntryLines jl ON jl.JournalEntryId=je.Id INNER JOIN FinanceAccounts a ON a.Id=jl.AccountId WHERE je.SourceType=$SourceType AND a.AccountType=0 AND je.SourceId IN ({string.Join(",",sourceParams)}) GROUP BY je.SourceId;",
+			r=>new KeyValuePair<long,decimal>(long.Parse(r.GetString(0),CultureInfo.InvariantCulture),ReadDecimal(r,1)),cancellationToken,parameters.ToArray());
+		var glByAsset=gl.ToDictionary(value=>value.Key,value=>value.Value);
+		var txParams=new List<DatabaseParameter>();var idParams=new List<string>(ids.Length);
+		for(var i=0;i<ids.Length;i++){var name=$"$Id{i}";idParams.Add(name);txParams.Add(Parameter(name,ids[i]));}
+		var balances=await Database.QueryAsync(
+			$"SELECT AssetId,COALESCE(SUM(CASE WHEN Kind=1 THEN Amount WHEN Kind IN (2,3) THEN -Amount ELSE 0 END),0),MAX(CASE WHEN Kind=6 THEN 1 ELSE 0 END) FROM FinanceAssetTransactions WHERE AssetId IN ({string.Join(",",idParams)}) GROUP BY AssetId;",
+			r=>new { AssetId=r.GetInt64(0), Carrying=ReadDecimal(r,1), Disposed=Convert.ToInt32(r.GetValue(2),CultureInfo.InvariantCulture)!=0 },cancellationToken,txParams.ToArray());
+		var subledger=balances.ToDictionary(value=>value.AssetId,value=>value.Disposed?0m:value.Carrying);
+		var rows=assets.Items.Select(asset=>new FinanceAssetReconciliationRow(asset.Id,asset.AssetNumber,subledger.GetValueOrDefault(asset.Id),glByAsset.GetValueOrDefault(asset.Id))).ToArray();
+		return new PageResult<FinanceAssetReconciliationRow>(rows,pageNumber,pageSize,assets.TotalCount);
+	}
 
 	internal Task<FinanceAssetClass?> GetClassAsync(DatabaseTransactionContext transaction,long id,CancellationToken token) =>
 		transaction.Session.QuerySingleOrDefaultAsync($"SELECT {ClassColumns} FROM FinanceAssetClasses WHERE Id=$Id;",ReadClass,token,Parameter("$Id",id));
