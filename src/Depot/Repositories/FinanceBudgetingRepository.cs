@@ -167,6 +167,69 @@ public sealed class FinanceBudgetingRepository : DatabaseRepository
 			cancellationToken,
 			Parameter("$Id", id));
 
+	internal Task<FinanceBudgetLine?> GetLineAsync(DatabaseTransactionContext transaction, long budgetVersionId, long lineId, CancellationToken cancellationToken) =>
+		transaction.Session.QuerySingleOrDefaultAsync(
+			$"SELECT {LineColumns} FROM FinanceBudgetLines WHERE BudgetVersionId=$BudgetVersionId AND Id=$Id;",
+			ReadLine,
+			cancellationToken,
+			Parameter("$BudgetVersionId", budgetVersionId),
+			Parameter("$Id", lineId));
+
+	internal Task<IReadOnlyList<FinanceBudgetPeriodOption>> GetPeriodsAsync(DatabaseTransactionContext transaction, Guid fiscalCalendarId, CancellationToken cancellationToken) =>
+		transaction.Session.QueryAsync(
+			"SELECT Id,Code,StartDate,EndDate FROM FinanceAccountingPeriods WHERE FiscalCalendarId=$CalendarId ORDER BY StartDate,Code;",
+			reader => new FinanceBudgetPeriodOption(Guid.Parse(reader.GetString(0)),reader.GetString(1),ReadDate(reader,2),ReadDate(reader,3)),
+			cancellationToken,
+			Parameter("$CalendarId", fiscalCalendarId.ToString("D")));
+
+	public async Task<decimal> GetApprovalAmountAsync(long budgetVersionId, CancellationToken cancellationToken = default) =>
+		Convert.ToDecimal(
+			await Database.ExecuteScalarAsync(
+				"SELECT COALESCE(SUM(ABS(Amount)),0) FROM FinanceBudgetLines WHERE BudgetVersionId=$BudgetVersionId;",
+				cancellationToken,
+				Parameter("$BudgetVersionId", budgetVersionId)),
+			CultureInfo.InvariantCulture);
+
+	internal Task<IReadOnlyList<FinanceBudgetAggregateRow>> GetAggregatesAsync(
+		DatabaseTransactionContext transaction,
+		long budgetVersionId,
+		Guid? dimensionId,
+		Guid? dimensionValueId,
+		CancellationToken cancellationToken)
+	{
+		var dimensionFilter = dimensionId.HasValue
+			? " AND l.DimensionId=$DimensionId AND l.DimensionValueId=$DimensionValueId"
+			: string.Empty;
+		var parameters = new List<DatabaseParameter> { Parameter("$BudgetVersionId", budgetVersionId) };
+		if (dimensionId.HasValue)
+		{
+			parameters.Add(Parameter("$DimensionId", dimensionId.Value.ToString("D")));
+			parameters.Add(Parameter("$DimensionValueId", dimensionValueId!.Value.ToString("D")));
+		}
+		return transaction.Session.QueryAsync(
+			$"""
+			SELECT l.AccountId,a.Number,a.Name,a.AccountType,l.AccountingPeriodId,p.Code,p.StartDate,p.EndDate,COALESCE(SUM(l.Amount),0)
+			FROM FinanceBudgetLines l
+			INNER JOIN FinanceAccounts a ON a.Id=l.AccountId
+			INNER JOIN FinanceAccountingPeriods p ON p.Id=l.AccountingPeriodId
+			WHERE l.BudgetVersionId=$BudgetVersionId{dimensionFilter}
+			GROUP BY l.AccountId,a.Number,a.Name,a.AccountType,l.AccountingPeriodId,p.Code,p.StartDate,p.EndDate
+			ORDER BY p.StartDate,a.Number;
+			""",
+			reader => new FinanceBudgetAggregateRow(
+				Guid.Parse(reader.GetString(0)),
+				reader.GetString(1),
+				reader.GetString(2),
+				(FinanceAccountType)Convert.ToInt32(reader.GetValue(3),CultureInfo.InvariantCulture),
+				Guid.Parse(reader.GetString(4)),
+				reader.GetString(5),
+				ReadDate(reader,6),
+				ReadDate(reader,7),
+				ReadDecimal(reader,8)),
+			cancellationToken,
+			parameters.ToArray());
+	}
+
 	internal async Task<int> GetNextVersionNumberAsync(
 		DatabaseTransactionContext transaction,
 		Guid legalEntityId,
@@ -419,3 +482,15 @@ public sealed class FinanceBudgetingRepository : DatabaseRepository
 }
 
 internal sealed record FinanceBudgetBookContext(Guid Id, Guid LegalEntityId, Guid ChartOfAccountsId, CurrencyCode ReportingCurrency, bool IsActive);
+
+
+internal sealed record FinanceBudgetAggregateRow(
+	Guid AccountId,
+	string AccountNumber,
+	string AccountName,
+	FinanceAccountType AccountType,
+	Guid AccountingPeriodId,
+	string PeriodCode,
+	DateOnly PeriodStart,
+	DateOnly PeriodEnd,
+	decimal RawBudget);
