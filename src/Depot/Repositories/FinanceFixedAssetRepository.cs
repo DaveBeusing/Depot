@@ -61,19 +61,31 @@ public sealed class FinanceFixedAssetRepository : DatabaseRepository
 	{
 		var assets=await SearchAssetsAsync(legalEntityId,null,null,pageNumber,pageSize,cancellationToken);
 		if(assets.Items.Count==0)return new PageResult<FinanceAssetReconciliationRow>([],pageNumber,pageSize,assets.TotalCount);
+
+		var classIds=assets.Items.Select(value=>value.AssetClassId).Distinct().ToArray();
+		var classParameters=new List<DatabaseParameter>{Parameter("$AssetType",(int)FinanceAccountType.Asset)};
+		var classNames=new List<string>(classIds.Length);
+		for(var i=0;i<classIds.Length;i++){var name=$"$Class{i}";classNames.Add(name);classParameters.Add(Parameter(name,classIds[i]));}
+		var configuredAccounts=await Database.QueryAsync(
+			$"SELECT c.Id,l.AccountId FROM FinanceAssetClasses c INNER JOIN FinancePostingProfileLines l ON l.PostingProfileId IN (c.CapitalizationPostingProfileId,c.DepreciationPostingProfileId,c.ImpairmentPostingProfileId) INNER JOIN FinanceAccounts a ON a.Id=l.AccountId WHERE c.Id IN ({string.Join(",",classNames)}) AND a.AccountType=$AssetType GROUP BY c.Id,l.AccountId;",
+			r=>new { ClassId=r.GetInt64(0),AccountId=Guid.Parse(r.GetString(1)) },cancellationToken,classParameters.ToArray());
+		var accountsByClass=configuredAccounts.GroupBy(value=>value.ClassId).ToDictionary(group=>group.Key,group=>group.Select(value=>value.AccountId).ToHashSet());
+
 		var ids=assets.Items.Select(value=>value.Id).ToArray();
-		var parameters=new List<DatabaseParameter>{Parameter("$SourceType","FixedAssets")};
-		var sourceParams=new List<string>(ids.Length);
-		for(var i=0;i<ids.Length;i++){var name=$"$Source{i}";sourceParams.Add(name);parameters.Add(Parameter(name,ids[i].ToString(CultureInfo.InvariantCulture)));}
-		var gl=await Database.QueryAsync(
-			$"SELECT je.SourceId,COALESCE(SUM(jl.TransactionDebit-jl.TransactionCredit),0) FROM FinanceJournalEntries je INNER JOIN FinanceJournalEntryLines jl ON jl.JournalEntryId=je.Id INNER JOIN FinanceAccounts a ON a.Id=jl.AccountId WHERE je.SourceType=$SourceType AND a.AccountType=0 AND je.SourceId IN ({string.Join(",",sourceParams)}) GROUP BY je.SourceId;",
-			r=>new KeyValuePair<long,decimal>(long.Parse(r.GetString(0),CultureInfo.InvariantCulture),ReadDecimal(r,1)),cancellationToken,parameters.ToArray());
-		var glByAsset=gl.ToDictionary(value=>value.Key,value=>value.Value);
-		var txParams=new List<DatabaseParameter>();var idParams=new List<string>(ids.Length);
-		for(var i=0;i<ids.Length;i++){var name=$"$Id{i}";idParams.Add(name);txParams.Add(Parameter(name,ids[i]));}
+		var idParameters=new List<DatabaseParameter>();var idNames=new List<string>(ids.Length);
+		for(var i=0;i<ids.Length;i++){var name=$"$Id{i}";idNames.Add(name);idParameters.Add(Parameter(name,ids[i]));}
+		var journalBalances=await Database.QueryAsync(
+			$"SELECT t.AssetId,jl.AccountId,COALESCE(SUM(jl.TransactionDebit-jl.TransactionCredit),0) FROM FinanceAssetTransactions t INNER JOIN FinanceJournalEntryLines jl ON jl.JournalEntryId=t.JournalEntryId WHERE t.AssetId IN ({string.Join(",",idNames)}) AND t.JournalEntryId IS NOT NULL GROUP BY t.AssetId,jl.AccountId;",
+			r=>new { AssetId=r.GetInt64(0),AccountId=Guid.Parse(r.GetString(1)),Balance=ReadDecimal(r,2) },cancellationToken,idParameters.ToArray());
+		var classByAsset=assets.Items.ToDictionary(value=>value.Id,value=>value.AssetClassId);
+		var glByAsset=journalBalances
+			.Where(value=>accountsByClass.TryGetValue(classByAsset[value.AssetId],out var accounts)&&accounts.Contains(value.AccountId))
+			.GroupBy(value=>value.AssetId)
+			.ToDictionary(group=>group.Key,group=>group.Sum(value=>value.Balance));
+
 		var balances=await Database.QueryAsync(
-			$"SELECT AssetId,COALESCE(SUM(CASE WHEN Kind=1 THEN Amount WHEN Kind IN (2,3) THEN -Amount WHEN Kind=4 THEN Amount ELSE 0 END),0),MAX(CASE WHEN Kind=6 THEN 1 ELSE 0 END) FROM FinanceAssetTransactions WHERE AssetId IN ({string.Join(",",idParams)}) GROUP BY AssetId;",
-			r=>new { AssetId=r.GetInt64(0), Carrying=ReadDecimal(r,1), Disposed=Convert.ToInt32(r.GetValue(2),CultureInfo.InvariantCulture)!=0 },cancellationToken,txParams.ToArray());
+			$"SELECT AssetId,COALESCE(SUM(CASE WHEN Kind=1 THEN Amount WHEN Kind IN (2,3) THEN -Amount WHEN Kind=4 THEN Amount ELSE 0 END),0),MAX(CASE WHEN Kind=6 THEN 1 ELSE 0 END) FROM FinanceAssetTransactions WHERE AssetId IN ({string.Join(",",idNames)}) GROUP BY AssetId;",
+			r=>new { AssetId=r.GetInt64(0),Carrying=ReadDecimal(r,1),Disposed=Convert.ToInt32(r.GetValue(2),CultureInfo.InvariantCulture)!=0 },cancellationToken,idParameters.ToArray());
 		var subledger=balances.ToDictionary(value=>value.AssetId,value=>value.Disposed?0m:value.Carrying);
 		var rows=assets.Items.Select(asset=>new FinanceAssetReconciliationRow(asset.Id,asset.AssetNumber,subledger.GetValueOrDefault(asset.Id),glByAsset.GetValueOrDefault(asset.Id))).ToArray();
 		return new PageResult<FinanceAssetReconciliationRow>(rows,pageNumber,pageSize,assets.TotalCount);
