@@ -31,7 +31,7 @@ public sealed class BusinessAttachmentPanelViewModel : BaseViewModel, IDisposabl
 		ReplaceCommand = new AsyncRelayCommand(ReplaceAsync, CanManageSelected);
 		RetireCommand = new AsyncRelayCommand(RetireAsync, CanManageSelected);
 		SaveMetadataCommand = new AsyncRelayCommand(SaveMetadataAsync, CanManageSelected);
-		RefreshCommand = new AsyncRelayCommand(RefreshAsync, HasTarget);
+		RefreshCommand = new AsyncRelayCommand(RefreshAsync, () => HasTarget);
 	}
 
 	public ObservableCollection<BusinessAttachment> Attachments { get; } = [];
@@ -136,7 +136,7 @@ public sealed class BusinessAttachmentPanelViewModel : BaseViewModel, IDisposabl
 			SelectedAttachment = Attachments.FirstOrDefault(item => item.Id == selectedId) ?? Attachments.FirstOrDefault();
 			RaiseCollectionState();
 		}
-		catch (OperationCanceledException) when (request.IsCancellationRequested)
+		catch (OperationCanceledException) when (request.Token.IsCancellationRequested)
 		{
 		}
 		catch (Exception ex)
