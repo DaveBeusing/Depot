@@ -117,3 +117,8 @@ Finance schema **11** extends the sequential Finance persistence path with contr
 Actual-vs-Budget projections compose budget aggregates with `FinanceFinancialReportingService`; they do not duplicate journal or reporting calculations. Approved and Locked versions are immutable; amendments create new Draft versions.
 
 See [Finance Budgeting and Variance Analysis](FinanceBudgeting.md).
+
+
+## SEPA SCT payment initiation artifact
+
+Finance schema **12** extends Banking with a dedicated payment-export boundary. `FinanceSepaPaymentExportService` consumes approved payment-run evidence, validates explicit debtor/creditor payment profiles, generates deterministic `pain.001.001.09` XML and atomically retains the exact bytes plus SHA-256 and source evidence. Bank submission remains an external system boundary rather than a distributed transaction.
