@@ -61,10 +61,11 @@ public sealed class AdministrationViewModel : BaseViewModel, IDisposable
 		SecurityEventService securityEventService,
 		IFileDialogService fileDialogService,
 		ApplicationInformationService applicationInformationService,
+		BusinessAttachmentService businessAttachmentService,
 		ApprovalPolicyService? approvalPolicyService = null)
 	{
 		_importViewModel = importViewModel;
-		_masterDataViewModel = new MasterDataViewModel(purposeService, reasonCodeService, manufacturerService, categoryService, unitOfMeasureService, packagingService, supplierCategoryService, supplierService, supplierItemService, itemService, warehouseService, storageLocationService, warehouseLayoutVisualizerService);
+		_masterDataViewModel = new MasterDataViewModel(purposeService, reasonCodeService, manufacturerService, categoryService, unitOfMeasureService, packagingService, supplierCategoryService, supplierService, supplierItemService, itemService, warehouseService, storageLocationService, warehouseLayoutVisualizerService, businessAttachmentService, fileDialogService);
 		_userViewModel = new UserViewModel(userService);
 		_roleViewModel = new RoleViewModel(roleService);
 		_databaseSettingsViewModel = new DatabaseSettingsViewModel(settingsService, connectionStatusService, databaseConnectionTester, databaseManagementService, fileDialogService);
