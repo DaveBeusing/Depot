@@ -182,7 +182,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		_materialIssues = new(() => new MaterialIssuesViewModel(materialIssueService, reasonCodeService, fileDialogService));
 		_materialReturns = new(() => new MaterialReturnsViewModel(materialReturnService, reasonCodeService, fileDialogService));
 		_supplierReturns = new(() => new SupplierReturnsViewModel(supplierReturnService, supplierService, reasonCodeService, fileDialogService));
-		_procurement = new(() => new ProcurementViewModel(purchaseOrderService, purchaseOrderHistoryService, goodsReceiptService, supplierService, itemService, fileDialogService, reasonCodeService, MarkPurchasingPagesStale, MarkInventoryPagesStale, salesServices.Timeline, OpenWorkflowTimelineItemAsync));
+		_procurement = new(() => new ProcurementViewModel(purchaseOrderService, purchaseOrderHistoryService, goodsReceiptService, supplierService, itemService, fileDialogService, reasonCodeService, MarkPurchasingPagesStale, MarkInventoryPagesStale, salesServices.Timeline, OpenWorkflowTimelineItemAsync, businessAttachmentService));
 		_purchaseOverview = new(() => new PurchaseOverviewViewModel(purchaseOrderService));
 		_purchaseOrdersPage = new(() => new PurchaseOrdersPageViewModel(_procurement.Value));
 		_goodsReceiptsPage = new(() => new GoodsReceiptsPageViewModel(_procurement.Value));
@@ -206,7 +206,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		_financePostingFlowDesigner = new(() => new FinancePostingFlowDesignerViewModel(financeGeneralLedgerService));
 		_financePeriodControl = new(() => new FinancePeriodControlViewModel(financeGeneralLedgerService, fileDialogService));
 		_financeReceivables = new(() => new FinanceReceivablesViewModel(financeReceivablesService));
-		_financePayables = new(() => new FinancePayablesViewModel(financePayablesService, salesServices.Timeline, OpenWorkflowTimelineItemAsync));
+		_financePayables = new(() => new FinancePayablesViewModel(financePayablesService, salesServices.Timeline, OpenWorkflowTimelineItemAsync, businessAttachmentService, fileDialogService));
 		_financeInventoryAccounting = new(() => new FinanceInventoryAccountingViewModel(financeInventoryAccountingService, financeInventoryCostingService, financeInventoryMovementAccountingService));
 		_financeBanking = new(() => new FinanceBankingViewModel(financeBankingService));
 		_financeFinancialReporting = new(() => new FinanceFinancialReportingViewModel(financeFinancialReportingService, fileDialogService));
