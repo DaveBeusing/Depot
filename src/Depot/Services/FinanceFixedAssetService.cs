@@ -38,6 +38,14 @@ public sealed class FinanceFixedAssetService
 	{_authorization.RequirePermission(ApplicationPermission.FinanceFixedAssetsView);return _assets.GetAssetAsync(id,token);}
 	public Task<IReadOnlyList<FinanceAssetClass>> GetClassesAsync(Guid? legalEntityId=null,CancellationToken token=default)
 	{_authorization.RequirePermission(ApplicationPermission.FinanceFixedAssetsView);return _assets.GetClassesAsync(legalEntityId,token);}
+	public Task<IReadOnlyList<FinanceAssetLegalEntityOption>> GetLegalEntitiesAsync(CancellationToken token=default)
+	{_authorization.RequirePermission(ApplicationPermission.FinanceFixedAssetsView);return _assets.GetLegalEntitiesAsync(token);}
+	public Task<IReadOnlyList<FinanceAssetFiscalCalendarOption>> GetFiscalCalendarsAsync(CancellationToken token=default)
+	{_authorization.RequirePermission(ApplicationPermission.FinanceFixedAssetsView);return _assets.GetFiscalCalendarsAsync(token);}
+	public Task<IReadOnlyList<FinanceAssetPostingProfileOption>> GetPostingProfilesAsync(CancellationToken token=default)
+	{_authorization.RequirePermission(ApplicationPermission.FinanceFixedAssetsView);return _assets.GetPostingProfilesAsync(token);}
+	public Task<IReadOnlyList<FinanceAssetPeriodOption>> GetPeriodOptionsAsync(CancellationToken token=default)
+	{_authorization.RequirePermission(ApplicationPermission.FinanceFixedAssetsView);return _assets.GetPeriodOptionsAsync(token);}
 	public Task<IReadOnlyList<FinanceAssetDepreciationPeriod>> GetScheduleAsync(long assetId,CancellationToken token=default)
 	{_authorization.RequirePermission(ApplicationPermission.FinanceFixedAssetsView);return _assets.GetScheduleAsync(assetId,token);}
 	public Task<PageResult<FinanceAssetTransaction>> SearchTransactionsAsync(long assetId,int pageNumber=1,int pageSize=100,CancellationToken token=default)

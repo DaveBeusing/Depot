@@ -30,6 +30,18 @@ public sealed class FinanceFixedAssetRepository : DatabaseRepository
 	public Task<FinanceFixedAsset?> GetAssetAsync(long id,CancellationToken cancellationToken=default) =>
 		Database.QuerySingleOrDefaultAsync($"SELECT {AssetColumns} FROM FinanceFixedAssets WHERE Id=$Id;",ReadAsset,cancellationToken,Parameter("$Id",id));
 
+	public Task<IReadOnlyList<FinanceAssetLegalEntityOption>> GetLegalEntitiesAsync(CancellationToken cancellationToken=default) =>
+		Database.QueryAsync("SELECT Id,Code,Name FROM FinanceLegalEntities WHERE IsActive=1 ORDER BY Code;",r=>new FinanceAssetLegalEntityOption(Guid.Parse(r.GetString(0)),r.GetString(1),r.GetString(2)),cancellationToken);
+
+	public Task<IReadOnlyList<FinanceAssetFiscalCalendarOption>> GetFiscalCalendarsAsync(CancellationToken cancellationToken=default) =>
+		Database.QueryAsync("SELECT Id,LegalEntityId,Code,Name,IsActive FROM FinanceFiscalCalendars ORDER BY LegalEntityId,Code;",r=>new FinanceAssetFiscalCalendarOption(Guid.Parse(r.GetString(0)),Guid.Parse(r.GetString(1)),r.GetString(2),r.GetString(3),ReadBool(r,4)),cancellationToken);
+
+	public Task<IReadOnlyList<FinanceAssetPostingProfileOption>> GetPostingProfilesAsync(CancellationToken cancellationToken=default) =>
+		Database.QueryAsync("SELECT Id,LegalEntityId,Code,Name,SourceEvent,IsActive FROM FinancePostingProfiles WHERE SourceType='FixedAssets' ORDER BY LegalEntityId,SourceEvent,Code;",r=>new FinanceAssetPostingProfileOption(r.GetInt64(0),Guid.Parse(r.GetString(1)),r.GetString(2),r.GetString(3),r.GetString(4),ReadBool(r,5)),cancellationToken);
+
+	public Task<IReadOnlyList<FinanceAssetPeriodOption>> GetPeriodOptionsAsync(CancellationToken cancellationToken=default) =>
+		Database.QueryAsync("SELECT Id,FiscalCalendarId,Code,StartDate,EndDate,Status FROM FinanceAccountingPeriods ORDER BY StartDate,Code;",r=>new FinanceAssetPeriodOption(Guid.Parse(r.GetString(0)),Guid.Parse(r.GetString(1)),r.GetString(2),ReadDate(r,3),ReadDate(r,4),(AccountingPeriodStatus)Convert.ToInt32(r.GetValue(5),CultureInfo.InvariantCulture)),cancellationToken);
+
 	public Task<IReadOnlyList<FinanceAssetClass>> GetClassesAsync(Guid? legalEntityId=null,CancellationToken cancellationToken=default) =>
 		legalEntityId.HasValue
 			? Database.QueryAsync($"SELECT {ClassColumns} FROM FinanceAssetClasses WHERE LegalEntityId=$Entity ORDER BY Code;",ReadClass,cancellationToken,Parameter("$Entity",legalEntityId.Value.ToString("D")))
