@@ -73,6 +73,7 @@ internal sealed class ViewModelFactory
 			_services.Authorization,
 			_services.Session,
 			_services.Import,
+			_services.BusinessAttachments,
 			_fileDialogs,
 			_database.Settings,
 			_database.ConnectionStatus,

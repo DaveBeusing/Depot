@@ -127,6 +127,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		IAuthorizationService authorizationService,
 		SessionService sessionService,
 		ImportService importService,
+		BusinessAttachmentService businessAttachmentService,
 		IFileDialogService fileDialogService,
 		SettingsService settingsService,
 		ConnectionStatusService connectionStatusService,
@@ -174,7 +175,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		_masterDataWorkspaceRoleCenter = new(() => new CommercialRoleCenterViewModel(commercialRoleCenterService, CommercialRoleCenterKind.MasterDataWorkspace));
 		_applicationAdministrationRoleCenter = new(() => new CommercialRoleCenterViewModel(commercialRoleCenterService, CommercialRoleCenterKind.ApplicationAdministrationCenter));
 		_inventory = new(() => new InventoryViewModel(stockService));
-		_items = new(() => new ItemsViewModel(itemService, manufacturerService, categoryService, unitOfMeasureService, packagingService, salesServices.ItemCosts));
+		_items = new(() => new ItemsViewModel(itemService, manufacturerService, categoryService, unitOfMeasureService, packagingService, salesServices.ItemCosts, businessAttachmentService, fileDialogService));
 		_movements = new(() => new MovementsViewModel(movementService, reasonCodeService, fileDialogService, MarkInventoryPagesStale));
 		_stockTransfers = new(() => new StockTransfersViewModel(stockTransferService, warehouseService, fileDialogService, reasonCodeService));
 		_inventoryCounts = new(() => new InventoryCountsViewModel(inventoryCountService, warehouseService, fileDialogService, reasonCodeService));
