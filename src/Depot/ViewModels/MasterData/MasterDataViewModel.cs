@@ -37,8 +37,8 @@ public sealed class MasterDataViewModel : BaseViewModel, IDisposable
 		WarehouseService warehouseService,
 		StorageLocationService storageLocationService,
 		WarehouseLayoutVisualizerService warehouseLayoutVisualizerService,
-		BusinessAttachmentService businessAttachmentService,
-		IFileDialogService fileDialogService)
+		BusinessAttachmentService? businessAttachmentService = null,
+		IFileDialogService? fileDialogService = null)
 	{
 		_purposeViewModel = new PurposeViewModel(purposeService);
 		_reasonCodeViewModel = new ReasonCodeViewModel(reasonCodeService);
