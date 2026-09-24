@@ -53,6 +53,7 @@ public sealed class ProjectAccountingTests
 	{
 		await using var context = await ProcurementTestContext.CreateSqliteAsync();
 		FinanceInventoryAccountingSchemaMigration.Migrate(context.ConnectionFactory);
+		BusinessAttachmentSchemaMigration.Migrate(context.ConnectionFactory);
 		ProjectAccountingSchemaMigration.Migrate(context.ConnectionFactory);
 		var legalEntityId = await SeedLegalEntityAsync(context.Data, "OPS");
 		var service = CreateService(context);
@@ -97,6 +98,24 @@ public sealed class ProjectAccountingTests
 		phase = await service.ActivatePhaseAsync(phase.Id, phase.Version);
 		Assert.Equal(ProjectPhaseStatus.Active, phase.Status);
 		await Assert.ThrowsAsync<ConcurrencyConflictException>(() => service.CompletePhaseAsync(phase.Id, phase.Version - 1));
+
+		var attachmentContentStore = new DatabaseBusinessAttachmentContentStore(context.Data);
+		var attachmentRepository = new BusinessAttachmentRepository(context.Data, attachmentContentStore);
+		var attachmentAuditRepository = new AuditRepository(context.Data);
+		var attachmentService = new BusinessAttachmentService(
+			attachmentRepository,
+			attachmentContentStore,
+			new AuditService(attachmentAuditRepository, context.Authorization),
+			context.Authorization);
+		var projectAttachment = await attachmentService.AddAsync(
+			BusinessAttachmentEntityKind.Project,
+			active.Id,
+			"project-note.txt",
+			"text/plain",
+			new MemoryStream("project evidence"u8.ToArray()));
+		Assert.Equal(BusinessAttachmentEntityKind.Project, projectAttachment.EntityKind);
+		Assert.Equal(active.Id, projectAttachment.EntityId);
+
 		var order = await context.Orders.SaveDraftAsync(context.NewOrder(quantity: 5, unitPrice: 12.50m));
 		order = await context.ApproveAndOrderAsync(order);
 		var attribution = await service.AttributeAsync(new ProjectAttributionRequest(
@@ -122,6 +141,20 @@ public sealed class ProjectAccountingTests
 
 		context.Authorization.SignIn(user, [ApplicationPermission.ProjectsView]);
 		Assert.False(service.CanManage);
+		Assert.False(service.CanViewFinancials);
+		Assert.Single(await attachmentService.ListAsync(BusinessAttachmentEntityKind.Project, active.Id));
+		await Assert.ThrowsAsync<UnauthorizedAccessException>(() => attachmentService.AddAsync(
+			BusinessAttachmentEntityKind.Project,
+			active.Id,
+			"denied.txt",
+			"text/plain",
+			new MemoryStream([1])));
+		await Assert.ThrowsAsync<UnauthorizedAccessException>(() => service.ListActualsAsync(active.Id));
+		await Assert.ThrowsAsync<UnauthorizedAccessException>(() => service.AttributeAsync(new ProjectAttributionRequest(
+			active.Id,
+			null,
+			ProjectAttributionEntityKind.PurchaseOrder,
+			order.Id)));
 		await Assert.ThrowsAsync<UnauthorizedAccessException>(() => service.SaveAsync(new ProjectRecord
 		{
 			Code = "PRJ-DENIED",
@@ -163,6 +196,11 @@ public sealed class ProjectAccountingTests
 		Assert.Equal(150m, revenue.Amount);
 		Assert.Equal(100m, expense.Amount);
 		Assert.All(actuals, value => Assert.Equal("EUR", value.ReportingCurrency.Value));
+		Assert.Empty(await service.ListActualsAsync(project.Id, fromDate: new DateOnly(2026, 9, 25)));
+		Assert.Equal(2, (await service.ListActualsAsync(
+			project.Id,
+			fromDate: new DateOnly(2026, 9, 24),
+			toDate: new DateOnly(2026, 9, 24))).Count);
 
 		var summary = await service.GetFinancialSummaryAsync(project.Id);
 		var totals = Assert.Single(summary.CurrencyTotals);
