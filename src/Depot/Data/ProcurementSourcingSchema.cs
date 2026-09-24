@@ -1,6 +1,8 @@
 // Copyright (c) 2026 David Beusing
 // Licensed under the MIT License.
 
+using Depot.Models;
+
 namespace Depot.Data;
 
 public static class ProcurementSourcingSchema
@@ -13,9 +15,9 @@ public static class ProcurementSourcingSchema
 		using var command = connection.CreateCommand();
 		command.CommandText = connectionFactory.Provider switch
 		{
-			Models.DatabaseProvider.Local => Sqlite,
-			Models.DatabaseProvider.SqlServer => SqlServer,
-			Models.DatabaseProvider.MySql => MySql,
+			DatabaseProvider.Local => Sqlite,
+			DatabaseProvider.SqlServer => SqlServer,
+			DatabaseProvider.MySql => MySql,
 			_ => throw new NotSupportedException($"Procurement-sourcing persistence is not supported for provider '{connectionFactory.Provider}'.")
 		};
 		command.ExecuteNonQuery();
