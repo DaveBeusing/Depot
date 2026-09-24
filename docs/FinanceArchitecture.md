@@ -122,3 +122,10 @@ See [Finance Budgeting and Variance Analysis](FinanceBudgeting.md).
 ## SEPA SCT payment initiation artifact
 
 Finance schema **12** extends Banking with a dedicated payment-export boundary. `FinanceSepaPaymentExportService` consumes approved payment-run evidence, validates explicit debtor/creditor payment profiles, generates deterministic `pain.001.001.09` XML and atomically retains the exact bytes plus SHA-256 and source evidence. Bank submission remains an external system boundary rather than a distributed transaction.
+
+
+## Project Accounting integration
+
+Project Accounting is a consumer of Finance evidence, not a Finance posting authority. Project actuals are read-only projections over posted General Ledger lines reached through explicit project attribution. Project budget links reference existing `FinanceBudgetLines`; Finance Budgeting continues to own amounts, account/period granularity, version lifecycle and approval/locking semantics.
+
+Open Purchase Order commitments are intentionally not posted into Finance merely to support project analysis. They remain a separate operational projection until authoritative downstream accounting evidence exists. Project Accounting feature schema **1** is versioned independently from Finance schema **12**.
