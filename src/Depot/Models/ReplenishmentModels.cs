@@ -81,8 +81,10 @@ public sealed class ReplenishmentSuggestion
 	public long? ReviewedByUserId { get; set; }
 	public long? ConvertedPurchaseRequisitionId { get; set; }
 	public long Version { get; set; } = 1;
+	public long ItemId { get; set; }
 	public string ItemPartNumber { get; set; } = string.Empty;
 	public string ItemDescription { get; set; } = string.Empty;
+	public long WarehouseId { get; set; }
 	public string WarehouseName { get; set; } = string.Empty;
 	public string? PlanningSupplierName { get; set; }
 	public ReplenishmentRequirementSnapshot Snapshot { get; set; } = new();

@@ -82,6 +82,14 @@ public sealed class ProcurementSourcingService
 
 	public async Task<PurchaseRequisition> SaveRequisitionAsync(PurchaseRequisition value, CancellationToken cancellationToken = default)
 	{
+		await PrepareRequisitionAsync(value, cancellationToken);
+		return await _transactions.ExecuteAsync(
+			(transaction, token) => SavePreparedRequisitionAsync(transaction, value, token),
+			cancellationToken);
+	}
+
+	internal async Task PrepareRequisitionAsync(PurchaseRequisition value, CancellationToken cancellationToken)
+	{
 		_authorization.RequirePermission(ApplicationPermission.PurchaseRequisitionsManage);
 		ArgumentNullException.ThrowIfNull(value);
 		var user = CurrentUser();
@@ -95,13 +103,21 @@ public sealed class ProcurementSourcingService
 			value.Status = PurchaseRequisitionStatus.Draft;
 		}
 		await ValidateRequisitionAsync(value, cancellationToken);
-		var before = value.Id == 0 ? null : await _sourcing.GetRequisitionAsync(value.Id, cancellationToken);
-		return await _transactions.ExecuteAsync(async (transaction, token) =>
-		{
-			var saved = await _sourcing.SaveRequisitionAsync(transaction, value, token);
-			await _auditRepository.CreateAsync(transaction, before is null ? _audit.CreateCreatedEntry(saved.Id, saved) : _audit.CreateUpdatedEntry(saved.Id, before, saved), token);
-			return saved;
-		}, cancellationToken);
+	}
+
+	internal async Task<PurchaseRequisition> SavePreparedRequisitionAsync(
+		DatabaseTransactionContext transaction,
+		PurchaseRequisition value,
+		CancellationToken cancellationToken)
+	{
+		_authorization.RequirePermission(ApplicationPermission.PurchaseRequisitionsManage);
+		var before = value.Id == 0 ? null : await _sourcing.GetRequisitionAsync(transaction, value.Id, cancellationToken);
+		var saved = await _sourcing.SaveRequisitionAsync(transaction, value, cancellationToken);
+		await _auditRepository.CreateAsync(
+			transaction,
+			before is null ? _audit.CreateCreatedEntry(saved.Id, saved) : _audit.CreateUpdatedEntry(saved.Id, before, saved),
+			cancellationToken);
+		return saved;
 	}
 
 	public async Task<PurchaseRequisition> SubmitAsync(long id, long version, CancellationToken cancellationToken = default)
