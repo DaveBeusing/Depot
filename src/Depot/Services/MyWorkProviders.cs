@@ -14,8 +14,9 @@ internal sealed class PurchasingMyWorkProvider : IMyWorkProvider
 	private readonly IAuthorizationService _authorization;
 	private readonly ApprovalPolicyService? _approvalPolicies;
 	private readonly ProcurementSourcingService? _sourcing;
+	private readonly ReplenishmentService? _replenishment;
 
-	public PurchasingMyWorkProvider(PurchaseOrderService orders, PurchaseOrderApprovalService approvals, MyWorkReadRepository read, IAuthorizationService authorization, ApprovalPolicyService? approvalPolicies = null, ProcurementSourcingService? sourcing = null)
+	public PurchasingMyWorkProvider(PurchaseOrderService orders, PurchaseOrderApprovalService approvals, MyWorkReadRepository read, IAuthorizationService authorization, ApprovalPolicyService? approvalPolicies = null, ProcurementSourcingService? sourcing = null, ReplenishmentService? replenishment = null)
 	{
 		_orders = orders;
 		_approvals = approvals;
@@ -23,11 +24,12 @@ internal sealed class PurchasingMyWorkProvider : IMyWorkProvider
 		_authorization = authorization;
 		_approvalPolicies = approvalPolicies;
 		_sourcing = sourcing;
+		_replenishment = replenishment;
 	}
 
 	public string Name => "Purchasing";
 	public bool CanQuery(IAuthorizationService authorization) =>
-		authorization.HasAnyPermission(ApplicationPermission.PurchaseOrdersView, ApplicationPermission.PurchaseOrdersApprove, ApplicationPermission.GoodsReceiptsView, ApplicationPermission.PurchaseRequisitionsView, ApplicationPermission.PurchaseRequisitionsApprove, ApplicationPermission.SupplierSourcingView);
+		authorization.HasAnyPermission(ApplicationPermission.PurchaseOrdersView, ApplicationPermission.PurchaseOrdersApprove, ApplicationPermission.GoodsReceiptsView, ApplicationPermission.PurchaseRequisitionsView, ApplicationPermission.PurchaseRequisitionsApprove, ApplicationPermission.SupplierSourcingView, ApplicationPermission.ReplenishmentView);
 
 	public async Task<IReadOnlyList<MyWorkItem>> GetAsync(MyWorkQuery query, CancellationToken cancellationToken)
 	{
@@ -89,6 +91,31 @@ internal sealed class PurchasingMyWorkProvider : IMyWorkProvider
 			if (_authorization.HasPermission(ApplicationPermission.SupplierSourcingConvert))
 				foreach (var rfq in rfqs.Where(value => value.Status == RequestForQuotationStatus.Awarded))
 					items.Add(new(MyWorkSectionKind.NeedsMyAction, MyWorkItemKind.RequestForQuotation, rfq.Id, rfq.RfqNumber, "Convert selected supplier quote", rfq.RequisitionNumber, "Awarded", null, null, null, MyWorkPriority.High, "purchasing.sourcing", "Create PO", rfq.CreatedByUserId));
+		}
+
+		if (_replenishment is not null && _authorization.HasPermission(ApplicationPermission.ReplenishmentView))
+		{
+			var suggestions = await _replenishment.ListActionableAsync(Math.Min(query.ProviderLimit, 200), cancellationToken);
+			foreach (var suggestion in suggestions)
+			{
+				var blocked = suggestion.Status == ReplenishmentSuggestionStatus.Blocked;
+				items.Add(new(
+					blocked ? MyWorkSectionKind.Exceptions : MyWorkSectionKind.NeedsMyAction,
+					MyWorkItemKind.ReplenishmentSuggestion,
+					suggestion.Id,
+					$"RPL-{suggestion.Id:000000}",
+					blocked ? "Replenishment planning blocked" : "Inventory replenishment suggestion",
+					$"{suggestion.ItemPartNumber} · {suggestion.WarehouseName}",
+					suggestion.Status.ToString(),
+					suggestion.SuggestedQuantity,
+					null,
+					null,
+					blocked || suggestion.Snapshot.ProjectedAvailableQuantity < suggestion.Snapshot.SafetyStock ? MyWorkPriority.High : MyWorkPriority.Normal,
+					"purchasing.replenishment",
+					"Review",
+					null,
+					ValueKind: MyWorkValueKind.Quantity));
+			}
 		}
 
 		var recentCutoff = query.NowUtc.AddDays(-14);

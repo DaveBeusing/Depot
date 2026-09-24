@@ -19,6 +19,7 @@ public sealed class CommercialRoleCenterService
 	private readonly PurchaseOrderService _purchaseOrders;
 	private readonly PurchaseOrderApprovalService _purchaseApprovals;
 	private readonly ProcurementSourcingService _procurementSourcing;
+	private readonly ReplenishmentService _replenishment;
 	private readonly SupplierReturnService _supplierReturns;
 	private readonly GoodsReceiptService _goodsReceipts;
 	private readonly ShipmentService _shipments;
@@ -44,6 +45,7 @@ public sealed class CommercialRoleCenterService
 		PurchaseOrderService purchaseOrders,
 		PurchaseOrderApprovalService purchaseApprovals,
 		ProcurementSourcingService procurementSourcing,
+		ReplenishmentService replenishment,
 		SupplierReturnService supplierReturns,
 		GoodsReceiptService goodsReceipts,
 		ShipmentService shipments,
@@ -68,6 +70,7 @@ public sealed class CommercialRoleCenterService
 		_purchaseOrders = purchaseOrders;
 		_purchaseApprovals = purchaseApprovals;
 		_procurementSourcing = procurementSourcing;
+		_replenishment = replenishment;
 		_supplierReturns = supplierReturns;
 		_goodsReceipts = goodsReceipts;
 		_shipments = shipments;
@@ -88,7 +91,7 @@ public sealed class CommercialRoleCenterService
 	{
 		CommercialRoleCenterKind.SalesWorkspace => _authorization.HasAnyPermission(ApplicationPermission.SalesCrmView, ApplicationPermission.CustomersView, ApplicationPermission.SalesQuotesView, ApplicationPermission.SalesOrdersView),
 		CommercialRoleCenterKind.SalesControlCenter => _authorization.HasAnyPermission(ApplicationPermission.SalesOrdersApprove, ApplicationPermission.SalesPricingManage, ApplicationPermission.ShipmentsView, ApplicationPermission.SalesInvoicesView, ApplicationPermission.CreditNotesView),
-		CommercialRoleCenterKind.BuyerWorkbench => _authorization.HasAnyPermission(ApplicationPermission.PurchaseRequisitionsView, ApplicationPermission.SupplierSourcingView, ApplicationPermission.PurchaseOrdersView, ApplicationPermission.SuppliersView, ApplicationPermission.SupplierReturnsView),
+		CommercialRoleCenterKind.BuyerWorkbench => _authorization.HasAnyPermission(ApplicationPermission.ReplenishmentView, ApplicationPermission.PurchaseRequisitionsView, ApplicationPermission.SupplierSourcingView, ApplicationPermission.PurchaseOrdersView, ApplicationPermission.SuppliersView, ApplicationPermission.SupplierReturnsView),
 		CommercialRoleCenterKind.ApprovalInbox => HasApprovalPermission(),
 		CommercialRoleCenterKind.ReceivingWorkspace => _authorization.HasAnyPermission(ApplicationPermission.GoodsReceiptsCreate, ApplicationPermission.GoodsReceiptsPost, ApplicationPermission.SupplierReturnsCreate),
 		CommercialRoleCenterKind.FulfillmentWorkspace => _authorization.HasAnyPermission(ApplicationPermission.ShipmentsCreate, ApplicationPermission.ShipmentsEdit, ApplicationPermission.ShipmentsPost, ApplicationPermission.CustomerReturnsCreate, ApplicationPermission.CustomerReturnsPost),
@@ -341,8 +344,11 @@ public sealed class CommercialRoleCenterService
 		var rfqsTask = _authorization.HasPermission(ApplicationPermission.SupplierSourcingView)
 			? _procurementSourcing.SearchRfqsAsync(null, 1, SourceItemLimit, cancellationToken)
 			: Task.FromResult(new PageResult<RequestForQuotation>([], 1, SourceItemLimit, 0));
+		var replenishmentTask = _authorization.HasPermission(ApplicationPermission.ReplenishmentView)
+			? _replenishment.ListActionableAsync(SourceItemLimit, cancellationToken)
+			: Task.FromResult<IReadOnlyList<ReplenishmentSuggestion>>([]);
 
-		await Task.WhenAll(draftsTask, submittedTask, approvedTask, orderedTask, partialTask, returnsTask, requisitionsTask, rfqsTask);
+		await Task.WhenAll(draftsTask, submittedTask, approvedTask, orderedTask, partialTask, returnsTask, requisitionsTask, rfqsTask, replenishmentTask);
 
 		var today = DateTime.Today;
 		var ordered = (await orderedTask).Items;
@@ -375,12 +381,30 @@ public sealed class CommercialRoleCenterService
 		var awards = rfqs
 			.Where(value => value.Status == RequestForQuotationStatus.Awarded)
 			.Select(value => RfqItem(value, "Create purchase order")).ToArray();
+		var replenishment = (await replenishmentTask)
+			.Select(value => new CommercialRoleItem(
+				CommercialRoleItemKind.ReplenishmentSuggestion,
+				value.Id,
+				value.Version,
+				$"RPL-{value.Id:000000}",
+				value.Status == ReplenishmentSuggestionStatus.Blocked ? "Replenishment blocked" : "Purchase suggestion",
+				$"{value.ItemPartNumber} · {value.WarehouseName}",
+				value.Status.ToString(),
+				value.SuggestedQuantity,
+				value.CreatedAtUtc,
+				null,
+				null,
+				"purchasing.replenishment",
+				StateDetail: value.Status == ReplenishmentSuggestionStatus.Blocked ? value.Snapshot.BlockReason : value.Snapshot.Explanation,
+				NextAction: "Review"))
+			.ToArray();
 
 		return Snapshot(
 			CommercialRoleCenterKind.BuyerWorkbench,
 			"Buyer Workbench",
 			"Purchase demand, sourcing, purchase-order progression and supplier exceptions in one buying workspace.",
 			[
+				Section("Replenishment Suggestions", "No material-shortage purchase suggestions require attention.", replenishment),
 				Section("Purchase Requisitions", "No purchase requisitions require attention.", requisitionItems),
 				Section("RFQs Awaiting Supplier Quotes", "No RFQs are awaiting supplier quotes.", awaitingQuotes),
 				Section("RFQs with Overdue Responses", "No supplier quote deadlines are overdue.", overdueQuotes),
@@ -394,6 +418,7 @@ public sealed class CommercialRoleCenterService
 			],
 			[],
 			[
+				new("Review Replenishment", "navigate", "purchasing.replenishment"),
 				new("New Purchase Requisition", "purchasing.new-requisition", "purchasing.sourcing"),
 				new("Open Sourcing", "purchasing.open-sourcing", "purchasing.sourcing"),
 				new("New Purchase Order", "purchasing.new-order", "purchasing.purchase-orders"),

@@ -37,7 +37,8 @@ public enum MyWorkItemKind
 	SalesOpportunityFollowUp = 13,
 	FinanceBudget = 14,
 	PurchaseRequisition = 15,
-	RequestForQuotation = 16
+	RequestForQuotation = 16,
+	ReplenishmentSuggestion = 17
 }
 
 public enum MyWorkPriority
@@ -130,7 +131,7 @@ public sealed record MyWorkItem(
 			return MyWorkValueKind.Quantity;
 		return Kind switch
 		{
-			MyWorkItemKind.Shipment or MyWorkItemKind.InventoryCount => MyWorkValueKind.Quantity,
+			MyWorkItemKind.Shipment or MyWorkItemKind.InventoryCount or MyWorkItemKind.ReplenishmentSuggestion => MyWorkValueKind.Quantity,
 			MyWorkItemKind.PurchaseOrder or MyWorkItemKind.PurchaseOrderApproval or
 			MyWorkItemKind.SalesOrder or MyWorkItemKind.SalesOrderApproval or
 			MyWorkItemKind.ReceivableOpenItem or MyWorkItemKind.SupplierDocument or
