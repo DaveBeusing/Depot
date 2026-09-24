@@ -141,10 +141,11 @@ public sealed class ProcurementSourcingViewModel : BaseViewModel, IDisposable
 	public bool CanSubmitRequisition => _sourcing.CanManageRequisitions && RequisitionDraft.Id > 0 && RequisitionDraft.Status is PurchaseRequisitionStatus.Draft or PurchaseRequisitionStatus.Returned;
 	public bool CanApproveRequisition => _sourcing.CanApproveRequisitions && RequisitionDraft.Id > 0 && RequisitionDraft.Status == PurchaseRequisitionStatus.Submitted;
 	public bool CanCancelRequisition => _sourcing.CanManageRequisitions && RequisitionDraft.Id > 0 && RequisitionDraft.Status is PurchaseRequisitionStatus.Draft or PurchaseRequisitionStatus.Returned;
-	public bool CanCreateRfq => _sourcing.CanManageSourcing && RequisitionDraft.Id > 0 && RequisitionDraft.Status == PurchaseRequisitionStatus.Approved && RfqSupplierOptions.Any(option => option.IsSelected);
+	public bool CanPrepareRfq => _sourcing.CanManageSourcing && RequisitionDraft.Id > 0 && RequisitionDraft.Status == PurchaseRequisitionStatus.Approved;
+	public bool CanCreateRfq => CanPrepareRfq && RfqSupplierOptions.Any(option => option.IsSelected);
 	public bool CanCancelRfq => _sourcing.CanManageSourcing && SelectedRfq?.Status == RequestForQuotationStatus.Open;
 	public bool CanCaptureQuote => _sourcing.CanManageSourcing && SelectedRfq?.Status == RequestForQuotationStatus.Open && SelectedQuoteSupplier is not null && QuoteLines.Count > 0;
-	public bool CanSelectQuote => _sourcing.CanManageSourcing && SelectedRfq?.Status == RequestForQuotationStatus.Open && SelectedQuoteResponse is { Status: SupplierQuoteResponseStatus.Active } response && (response.ValidUntil is null || response.ValidUntil.Value.Date >= DateTime.Today);
+	public bool CanSelectQuote => _sourcing.CanManageSourcing && SelectedRfq?.Status == RequestForQuotationStatus.Open && SelectedQuoteResponse is { Status: SupplierQuoteResponseStatus.Active } response && (response.ValidUntil is null || response.ValidUntil.Value.Date >= DateTime.UtcNow.Date);
 	public bool CanConvertToPurchaseOrder => _sourcing.CanConvertSourcing && SelectedRfq?.Status == RequestForQuotationStatus.Awarded;
 
 	public async Task LoadAsync(CancellationToken cancellationToken = default)
@@ -413,6 +414,7 @@ public sealed class ProcurementSourcingViewModel : BaseViewModel, IDisposable
 		OnPropertyChanged(nameof(CanSubmitRequisition));
 		OnPropertyChanged(nameof(CanApproveRequisition));
 		OnPropertyChanged(nameof(CanCancelRequisition));
+		OnPropertyChanged(nameof(CanPrepareRfq));
 		OnPropertyChanged(nameof(CanCreateRfq));
 		OnPropertyChanged(nameof(CanCancelRfq));
 		OnPropertyChanged(nameof(CanCaptureQuote));
