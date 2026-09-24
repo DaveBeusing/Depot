@@ -71,7 +71,7 @@ public sealed class ProcurementSourcingRepository : DatabaseRepository
 			var updated = await transaction.Session.ExecuteAsync(
 				"UPDATE PurchaseRequisitions SET RequestedByUserId=$Requester,RequiredByDate=$Required,PreferredSupplierId=$Supplier,BusinessJustification=$Justification,Version=Version+1 WHERE Id=$Id AND Version=$Version AND Status IN ($Draft,$Returned);",
 				cancellationToken, Parameter("$Requester", value.RequestedByUserId), Parameter("$Required", NullableDate(value.RequiredByDate)), Parameter("$Supplier", value.PreferredSupplierId), Parameter("$Justification", value.BusinessJustification), Parameter("$Id", value.Id), Parameter("$Version", value.Version), Parameter("$Draft", (int)PurchaseRequisitionStatus.Draft), Parameter("$Returned", (int)PurchaseRequisitionStatus.Returned));
-			if (updated != 1) throw new ConcurrencyConflictException("purchase requisition");
+			if (updated != 1) throw new Services.ConcurrencyConflictException("purchase requisition");
 			value.Version++;
 		}
 
