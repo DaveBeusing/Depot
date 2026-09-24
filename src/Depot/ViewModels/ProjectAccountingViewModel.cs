@@ -124,6 +124,16 @@ public sealed class ProjectAccountingViewModel : BaseViewModel
 		catch (Exception exception) { FailOperation(exception, "Projects could not be loaded."); }
 	}
 
+
+	public async Task OpenProjectAsync(long projectId, CancellationToken cancellationToken = default)
+	{
+		if (Projects.Count == 0) await LoadAsync(cancellationToken);
+		var project = Projects.FirstOrDefault(value => value.Id == projectId) ?? await _service.GetAsync(projectId, cancellationToken);
+		if (Projects.All(value => value.Id != project.Id)) Projects.Add(project);
+		SelectedProject = project;
+		await LoadSelectedAsync(project.Id, cancellationToken);
+	}
+
 	private async Task LoadSelectedAsync(long projectId, CancellationToken cancellationToken)
 	{
 		try
