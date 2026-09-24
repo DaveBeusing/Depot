@@ -33,7 +33,7 @@ public static class BusinessAttachmentSchema
 					CurrentRevision INTEGER NOT NULL,
 					Status INTEGER NOT NULL,
 					Version INTEGER NOT NULL,
-					CHECK (EntityKind BETWEEN 1 AND 9),
+					CHECK (EntityKind BETWEEN 1 AND 13),
 					CHECK (ByteLength >= 0),
 					CHECK (CurrentRevision > 0),
 					CHECK (Status IN (1, 2)),
@@ -88,7 +88,7 @@ public static class BusinessAttachmentSchema
 						Status int NOT NULL,
 						Version bigint NOT NULL,
 						CONSTRAINT PK_BusinessAttachments PRIMARY KEY (Id),
-						CONSTRAINT CK_BusinessAttachments_EntityKind CHECK (EntityKind BETWEEN 1 AND 9),
+						CONSTRAINT CK_BusinessAttachments_EntityKind CHECK (EntityKind BETWEEN 1 AND 13),
 						CONSTRAINT CK_BusinessAttachments_ByteLength CHECK (ByteLength >= 0),
 						CONSTRAINT CK_BusinessAttachments_CurrentRevision CHECK (CurrentRevision > 0),
 						CONSTRAINT CK_BusinessAttachments_Status CHECK (Status IN (1, 2)),
@@ -148,7 +148,7 @@ public static class BusinessAttachmentSchema
 					Status INT NOT NULL,
 					Version BIGINT NOT NULL,
 					PRIMARY KEY (Id),
-					CONSTRAINT CK_BusinessAttachments_EntityKind CHECK (EntityKind BETWEEN 1 AND 9),
+					CONSTRAINT CK_BusinessAttachments_EntityKind CHECK (EntityKind BETWEEN 1 AND 13),
 					CONSTRAINT CK_BusinessAttachments_ByteLength CHECK (ByteLength >= 0),
 					CONSTRAINT CK_BusinessAttachments_CurrentRevision CHECK (CurrentRevision > 0),
 					CONSTRAINT CK_BusinessAttachments_Status CHECK (Status IN (1, 2)),
@@ -184,4 +184,103 @@ public static class BusinessAttachmentSchema
 		};
 		command.ExecuteNonQuery();
 	}
+
+	public static void ExpandEntityKindConstraint(IDatabaseConnectionFactory connectionFactory)
+	{
+		ArgumentNullException.ThrowIfNull(connectionFactory);
+		using var connection = connectionFactory.CreateConnection();
+		connection.Open();
+
+		if (connectionFactory.Provider == DatabaseProvider.Local)
+		{
+			using (var foreignKeysOff = connection.CreateCommand())
+			{
+				foreignKeysOff.CommandText = "PRAGMA foreign_keys=OFF;";
+				foreignKeysOff.ExecuteNonQuery();
+			}
+
+			try
+			{
+				using var transaction = connectionFactory.BeginWriteTransaction(connection);
+				using var command = connection.CreateCommand();
+				command.Transaction = transaction;
+				command.CommandText =
+					"""
+					DROP TABLE IF EXISTS BusinessAttachments_V2;
+					CREATE TABLE BusinessAttachments_V2
+					(
+						Id TEXT NOT NULL PRIMARY KEY,
+						EntityKind INTEGER NOT NULL,
+						EntityId INTEGER NOT NULL,
+						FileName TEXT NOT NULL,
+						MediaType TEXT NOT NULL,
+						ByteLength INTEGER NOT NULL,
+						Sha256 TEXT NOT NULL,
+						Description TEXT NULL,
+						Category TEXT NULL,
+						CreatedByUserId INTEGER NULL,
+						CreatedAtUtc TEXT NOT NULL,
+						CurrentRevision INTEGER NOT NULL,
+						Status INTEGER NOT NULL,
+						Version INTEGER NOT NULL,
+						CHECK (EntityKind BETWEEN 1 AND 13),
+						CHECK (ByteLength >= 0),
+						CHECK (CurrentRevision > 0),
+						CHECK (Status IN (1, 2)),
+						CHECK (Version > 0)
+					);
+					INSERT INTO BusinessAttachments_V2
+						(Id,EntityKind,EntityId,FileName,MediaType,ByteLength,Sha256,Description,Category,CreatedByUserId,CreatedAtUtc,CurrentRevision,Status,Version)
+					SELECT
+						Id,EntityKind,EntityId,FileName,MediaType,ByteLength,Sha256,Description,Category,CreatedByUserId,CreatedAtUtc,CurrentRevision,Status,Version
+					FROM BusinessAttachments;
+					DROP TABLE BusinessAttachments;
+					ALTER TABLE BusinessAttachments_V2 RENAME TO BusinessAttachments;
+					CREATE INDEX IX_BusinessAttachments_Entity
+						ON BusinessAttachments (EntityKind, EntityId, Status, CreatedAtUtc);
+					CREATE INDEX IX_BusinessAttachments_Metadata
+						ON BusinessAttachments (FileName, Category);
+					""";
+				command.ExecuteNonQuery();
+				transaction.Commit();
+			}
+			finally
+			{
+				using var foreignKeysOn = connection.CreateCommand();
+				foreignKeysOn.CommandText = "PRAGMA foreign_keys=ON;";
+				foreignKeysOn.ExecuteNonQuery();
+			}
+
+			return;
+		}
+
+		using var constraintCommand = connection.CreateCommand();
+		constraintCommand.CommandText = connectionFactory.Provider switch
+		{
+			DatabaseProvider.SqlServer =>
+				"""
+				BEGIN TRANSACTION;
+				BEGIN TRY
+					IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE parent_object_id=OBJECT_ID(N'BusinessAttachments') AND name=N'CK_BusinessAttachments_EntityKind')
+						ALTER TABLE BusinessAttachments DROP CONSTRAINT CK_BusinessAttachments_EntityKind;
+					ALTER TABLE BusinessAttachments WITH CHECK
+						ADD CONSTRAINT CK_BusinessAttachments_EntityKind CHECK (EntityKind BETWEEN 1 AND 13);
+					COMMIT TRANSACTION;
+				END TRY
+				BEGIN CATCH
+					IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+					THROW;
+				END CATCH;
+				""",
+			DatabaseProvider.MySql =>
+				"""
+				ALTER TABLE BusinessAttachments
+					DROP CONSTRAINT CK_BusinessAttachments_EntityKind,
+					ADD CONSTRAINT CK_BusinessAttachments_EntityKind CHECK (EntityKind BETWEEN 1 AND 13);
+				""",
+			_ => throw new NotSupportedException($"Business-attachment constraint migration is not supported for provider '{connectionFactory.Provider}'.")
+		};
+		constraintCommand.ExecuteNonQuery();
+	}
+
 }

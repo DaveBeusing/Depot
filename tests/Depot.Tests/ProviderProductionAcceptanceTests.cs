@@ -240,6 +240,44 @@ public sealed class ProviderProductionAcceptanceTests
 		var persistedPhase = Assert.Single(phases);
 		Assert.Equal(phase.Id, persistedPhase.Id);
 		Assert.Equal(ProjectPhaseStatus.Active, persistedPhase.Status);
+
+		var projectAttachmentId = Guid.NewGuid();
+		var projectAttachmentBytes = "project-provider-attachment"u8.ToArray();
+		var projectAttachmentHash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(projectAttachmentBytes)).ToLowerInvariant();
+		var projectAttachmentStore = new DatabaseBusinessAttachmentContentStore(data);
+		var projectAttachmentRepository = new BusinessAttachmentRepository(data, projectAttachmentStore);
+		var projectAttachment = new BusinessAttachment(
+			projectAttachmentId,
+			BusinessAttachmentEntityKind.Project,
+			active.Id,
+			"project-provider.txt",
+			"text/plain",
+			projectAttachmentBytes.LongLength,
+			projectAttachmentHash,
+			"Project provider attachment",
+			"Acceptance",
+			administrator.Id,
+			DateTime.UtcNow,
+			1,
+			BusinessAttachmentStatus.Active,
+			1);
+		await projectAttachmentRepository.CreateAsync(
+			projectAttachment,
+			new BusinessAttachmentRevision(
+				projectAttachmentId,
+				1,
+				projectAttachment.FileName,
+				projectAttachment.MediaType,
+				projectAttachment.ByteLength,
+				projectAttachment.Sha256,
+				administrator.Id,
+				projectAttachment.CreatedAtUtc),
+			projectAttachmentBytes,
+			CancellationToken.None);
+		var persistedAttachment = await projectAttachmentRepository.GetAsync(projectAttachmentId, CancellationToken.None);
+		Assert.NotNull(persistedAttachment);
+		Assert.Equal(BusinessAttachmentEntityKind.Project, persistedAttachment.EntityKind);
+		Assert.Equal(active.Id, persistedAttachment.EntityId);
 	}
 
 
