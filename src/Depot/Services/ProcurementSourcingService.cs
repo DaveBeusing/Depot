@@ -241,6 +241,7 @@ public sealed class ProcurementSourcingService
 			if (!rfqLines.TryGetValue(line.RequestForQuotationLineId, out var requested) || requested.ItemId != line.ItemId)
 				throw new InvalidOperationException("A quote line does not correspond to the requested RFQ line.");
 			if (line.Quantity <= 0 || line.UnitPrice < 0) throw new InvalidOperationException("Quoted quantity must be positive and unit price cannot be negative.");
+			if (line.Quantity != requested.Quantity) throw new InvalidOperationException("Quoted quantity must match the RFQ requested quantity; use MOQ to capture supplier minimums.");
 			if (line.MinimumOrderQuantity is <= 0) throw new InvalidOperationException("MOQ must be positive when supplied.");
 			if (line.LeadTimeDays is < 0) throw new InvalidOperationException("Lead time cannot be negative.");
 		}

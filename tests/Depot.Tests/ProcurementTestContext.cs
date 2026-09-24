@@ -15,6 +15,8 @@ internal sealed class ProcurementTestContext : IAsyncDisposable
 	private readonly string? _databasePath;
 	private readonly bool _cleanDatabaseRows;
 	private PurchaseOrderService? _orders;
+	private ProcurementSourcingService? _sourcing;
+	private BusinessAttachmentService? _businessAttachments;
 	private PurchaseOrderApprovalService? _approvals;
 	private GoodsReceiptService? _receipts;
 	private AuthorizationService? _authorization;
@@ -38,6 +40,8 @@ internal sealed class ProcurementTestContext : IAsyncDisposable
 	public IDatabaseConnectionFactory ConnectionFactory { get; }
 	public DatabaseAccess Data { get; }
 	public PurchaseOrderService Orders => _orders ?? throw new InvalidOperationException("The purchase order service was not initialized.");
+	public ProcurementSourcingService Sourcing => _sourcing ?? throw new InvalidOperationException("The procurement sourcing service was not initialized.");
+	public BusinessAttachmentService BusinessAttachments => _businessAttachments ?? throw new InvalidOperationException("The business attachment service was not initialized.");
 	public PurchaseOrderApprovalService Approvals => _approvals ?? throw new InvalidOperationException("The purchase order approval service was not initialized.");
 	public GoodsReceiptService Receipts => _receipts ?? throw new InvalidOperationException("The goods receipt service was not initialized.");
 	public AuthorizationService Authorization => _authorization ?? throw new InvalidOperationException("Authorization was not initialized.");
@@ -60,6 +64,8 @@ internal sealed class ProcurementTestContext : IAsyncDisposable
 		var path = Path.Combine(Path.GetTempPath(), $"depot-procurement-{Guid.NewGuid():N}.db");
 		var factory = new SqliteConnectionFactory(path);
 		new DepotDatabase(factory).Initialize();
+		ProcurementSourcingSchemaMigration.Migrate(factory);
+		BusinessAttachmentSchemaMigration.Migrate(factory);
 		return await CreateAsync(factory, path, false);
 	}
 
@@ -68,6 +74,7 @@ internal sealed class ProcurementTestContext : IAsyncDisposable
 		IDatabaseInitializer initializer)
 	{
 		initializer.Initialize();
+		ProcurementSourcingSchemaMigration.Migrate(connectionFactory);
 		return await CreateAsync(connectionFactory, null, true);
 	}
 
@@ -247,6 +254,27 @@ internal sealed class ProcurementTestContext : IAsyncDisposable
 			audit,
 			authorization,
 			notifications);
+		var approvalPolicies = new ApprovalPolicyService(
+			new ApprovalPolicyRepository(context.Data),
+			roleRepository,
+			new UserRepository(context.Data),
+			authorization);
+		context._sourcing = new ProcurementSourcingService(
+			new DatabaseTransactionRunner(context.Data),
+			new ProcurementSourcingRepository(context.Data),
+			new SupplierRepository(context.Data),
+			new ItemRepository(context.Data),
+			new AuditRepository(context.Data),
+			audit,
+			authorization,
+			approvalPolicies,
+			context._orders);
+		var attachmentContentStore = new DatabaseBusinessAttachmentContentStore(context.Data);
+		context._businessAttachments = new BusinessAttachmentService(
+			new BusinessAttachmentRepository(context.Data, attachmentContentStore),
+			attachmentContentStore,
+			audit,
+			authorization);
 		context._approvals = new PurchaseOrderApprovalService(
 			new PurchaseOrderRepository(context.Data),
 			new AuditRepository(context.Data),
@@ -361,6 +389,14 @@ internal sealed class ProcurementTestContext : IAsyncDisposable
 		await Data.ExecuteAsync("DELETE FROM MaterialIssues WHERE Recipient LIKE 'Material issue test %';", CancellationToken.None);
 		await Data.ExecuteAsync("DELETE FROM GoodsReceiptLines WHERE InventoryId IN ($First, $Second, $Inactive);", CancellationToken.None, new DatabaseParameter("$First", inventoryIds[0]), new DatabaseParameter("$Second", inventoryIds[1]), new DatabaseParameter("$Inactive", inventoryIds[2]));
 		await Data.ExecuteAsync("DELETE FROM GoodsReceipts WHERE PurchaseOrderId IN (SELECT Id FROM PurchaseOrders WHERE SupplierId IN ($First, $Second));", CancellationToken.None, new DatabaseParameter("$First", supplierIds[0]), new DatabaseParameter("$Second", supplierIds[1]));
+		await Data.ExecuteAsync("DELETE FROM ProcurementSourcingEvidence WHERE PurchaseRequisitionId IN (SELECT DISTINCT PurchaseRequisitionId FROM PurchaseRequisitionLines WHERE ItemId IN ($First,$Second,$Third));", CancellationToken.None, new DatabaseParameter("$First", itemIds[0]), new DatabaseParameter("$Second", itemIds[1]), new DatabaseParameter("$Third", itemIds[2]));
+		await Data.ExecuteAsync("DELETE FROM SupplierQuoteResponseLines WHERE SupplierQuoteResponseId IN (SELECT q.Id FROM SupplierQuoteResponses q INNER JOIN RequestsForQuotation r ON r.Id=q.RequestForQuotationId INNER JOIN RequestForQuotationLines l ON l.RequestForQuotationId=r.Id WHERE l.ItemId IN ($First,$Second,$Third));", CancellationToken.None, new DatabaseParameter("$First", itemIds[0]), new DatabaseParameter("$Second", itemIds[1]), new DatabaseParameter("$Third", itemIds[2]));
+		await Data.ExecuteAsync("DELETE FROM SupplierQuoteResponses WHERE RequestForQuotationId IN (SELECT DISTINCT r.Id FROM RequestsForQuotation r INNER JOIN RequestForQuotationLines l ON l.RequestForQuotationId=r.Id WHERE l.ItemId IN ($First,$Second,$Third));", CancellationToken.None, new DatabaseParameter("$First", itemIds[0]), new DatabaseParameter("$Second", itemIds[1]), new DatabaseParameter("$Third", itemIds[2]));
+		await Data.ExecuteAsync("DELETE FROM RequestForQuotationSuppliers WHERE RequestForQuotationId IN (SELECT DISTINCT r.Id FROM RequestsForQuotation r INNER JOIN RequestForQuotationLines l ON l.RequestForQuotationId=r.Id WHERE l.ItemId IN ($First,$Second,$Third));", CancellationToken.None, new DatabaseParameter("$First", itemIds[0]), new DatabaseParameter("$Second", itemIds[1]), new DatabaseParameter("$Third", itemIds[2]));
+		await Data.ExecuteAsync("DELETE FROM RequestForQuotationLines WHERE ItemId IN ($First,$Second,$Third);", CancellationToken.None, new DatabaseParameter("$First", itemIds[0]), new DatabaseParameter("$Second", itemIds[1]), new DatabaseParameter("$Third", itemIds[2]));
+		await Data.ExecuteAsync("DELETE FROM RequestsForQuotation WHERE PurchaseRequisitionId IN (SELECT DISTINCT PurchaseRequisitionId FROM PurchaseRequisitionLines WHERE ItemId IN ($First,$Second,$Third));", CancellationToken.None, new DatabaseParameter("$First", itemIds[0]), new DatabaseParameter("$Second", itemIds[1]), new DatabaseParameter("$Third", itemIds[2]));
+		await Data.ExecuteAsync("DELETE FROM PurchaseRequisitionLines WHERE ItemId IN ($First,$Second,$Third);", CancellationToken.None, new DatabaseParameter("$First", itemIds[0]), new DatabaseParameter("$Second", itemIds[1]), new DatabaseParameter("$Third", itemIds[2]));
+		await Data.ExecuteAsync("DELETE FROM PurchaseRequisitions WHERE Id NOT IN (SELECT DISTINCT PurchaseRequisitionId FROM PurchaseRequisitionLines);", CancellationToken.None);
 		await Data.ExecuteAsync("DELETE FROM PurchaseOrderLines WHERE PurchaseOrderId IN (SELECT Id FROM PurchaseOrders WHERE SupplierId IN ($First, $Second));", CancellationToken.None, new DatabaseParameter("$First", supplierIds[0]), new DatabaseParameter("$Second", supplierIds[1]));
 		await Data.ExecuteAsync("DELETE FROM PurchaseOrders WHERE SupplierId IN ($First, $Second);", CancellationToken.None, new DatabaseParameter("$First", supplierIds[0]), new DatabaseParameter("$Second", supplierIds[1]));
 		await Data.ExecuteAsync("DELETE FROM Users WHERE Id = $Id;", CancellationToken.None, new DatabaseParameter("$Id", ApproverUserId));
