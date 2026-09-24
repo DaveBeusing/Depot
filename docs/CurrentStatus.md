@@ -161,3 +161,10 @@ Finance Banking includes deterministic `pain.001.001.09` SEPA SCT export from ap
 The repository now contains the controlled Purchase Requisition -> approval -> RFQ -> Supplier Quote Response -> explicit comparison/selection -> Purchase Order draft workflow. Procurement Sourcing feature schema **1** provides provider-neutral persistence, Approval Policy integration, optimistic concurrency, explicit requisition and sourcing permissions, Audit evidence, Business Attachments, My Work/Buyer Workbench projections and a dedicated Purchasing > Sourcing workspace.
 
 Supplier comparison is informational and deterministic; Depot does not automatically award a supplier. Purchase Order conversion is explicit and idempotent and continues through the existing Purchase Order authority. Resulting Purchase Orders retain source links to the requisition, RFQ and selected quote response.
+
+## Inventory replenishment
+
+Inventory Replenishment feature schema **1** adds controlled per-item/per-warehouse policies, deterministic stock/demand/supply snapshots, MOQ-aware explainable purchase suggestions, explicit Blocked/Superseded lifecycle states, Buyer/My Work visibility and idempotent user-approved conversion into the existing Purchase Requisition sourcing workflow.
+
+The feature does not forecast demand, allocate suppliers automatically, create Purchase Orders automatically or implement full MRP.
+

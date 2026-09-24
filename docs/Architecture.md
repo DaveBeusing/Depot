@@ -187,3 +187,12 @@ Purchase Requisition
 Procurement Sourcing feature schema **1** is tracked independently in `DepotFeatureVersions`; it does not change Core schema 30. The feature is provisioned through the normal database provisioning path and has provider acceptance coverage for SQLite, SQL Server, MariaDB and MySQL.
 
 The resulting Purchase Order retains immutable sourcing evidence that identifies the originating Purchase Requisition, RFQ and selected Supplier Quote Response. Business Attachments can be associated with sourcing records, and awarded quote evidence is protected from destructive replacement.
+
+## Inventory replenishment authority
+
+`ReplenishmentService` owns policy validation, deterministic requirement calculation, suggestion lifecycle, authorization, optimistic concurrency and transactional conversion into Purchase Requisitions. `ReplenishmentRepository` owns set-based stock/demand/supply projections and feature persistence. Existing Inventory, Sales, Purchasing and SupplierItem stores remain source authorities.
+
+The calculation is `ProjectedAvailable = OnHand - Reserved - Backordered + EligibleInbound`; at or below the reorder point, required quantity is `max(0, TargetStock - ProjectedAvailable)`, followed by explicit SupplierItem MOQ rounding. Ambiguous warehouse allocation or supplier evidence fails visibly as Blocked.
+
+Feature schema **1** is tracked independently in `DepotFeatureVersions`. Suggestions are planning evidence and can only create Purchase Requisition demand through `ProcurementSourcingService`; no automatic supplier award or Purchase Order creation exists.
+
