@@ -342,9 +342,6 @@ public sealed class ProjectAccountingService
 				AccountNumber: group.First().AccountNumber,
 				AccountName: group.First().AccountName,
 				Category: group.Select(value => value.CategoryCode).Distinct(StringComparer.OrdinalIgnoreCase).Count() == 1 ? group.First().CategoryCode : null));
-		var metadata = budgets.ToDictionary(
-			value => (value.AccountingBookId, value.AccountingPeriodId, value.AccountId, value.ProjectPhaseId, value.CategoryCode),
-			value => value);
 		var keys = actualByKey.Keys.Union(budgetByKey.Keys)
 			.OrderBy(value => value.AccountingBookId)
 			.ThenBy(value => value.AccountingPeriodId)
