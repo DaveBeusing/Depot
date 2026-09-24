@@ -35,12 +35,17 @@ public sealed class ProcurementSourcingViewModel : BaseViewModel, IDisposable
 	private long? _lastConvertedPurchaseOrderId;
 	private bool _disposed;
 
-	public ProcurementSourcingViewModel(ProcurementSourcingService sourcing, SupplierService suppliers, ItemService items, Action markPurchasingStale)
+	public ProcurementSourcingViewModel(ProcurementSourcingService sourcing, SupplierService suppliers, ItemService items, BusinessAttachmentService attachmentService, IFileDialogService fileDialogs, Action markPurchasingStale)
 	{
 		_sourcing = sourcing ?? throw new ArgumentNullException(nameof(sourcing));
 		_suppliers = suppliers ?? throw new ArgumentNullException(nameof(suppliers));
 		_items = items ?? throw new ArgumentNullException(nameof(items));
+		ArgumentNullException.ThrowIfNull(attachmentService);
+		ArgumentNullException.ThrowIfNull(fileDialogs);
 		_markPurchasingStale = markPurchasingStale ?? throw new ArgumentNullException(nameof(markPurchasingStale));
+		RequisitionAttachments = new BusinessAttachmentPanelViewModel(attachmentService, fileDialogs);
+		RfqAttachments = new BusinessAttachmentPanelViewModel(attachmentService, fileDialogs);
+		QuoteAttachments = new BusinessAttachmentPanelViewModel(attachmentService, fileDialogs);
 
 		RefreshCommand = new AsyncRelayCommand(LoadAsync);
 		NewRequisitionCommand = new RelayCommand(NewRequisition, () => _sourcing.CanManageRequisitions);
@@ -70,6 +75,9 @@ public sealed class ProcurementSourcingViewModel : BaseViewModel, IDisposable
 	public ObservableCollection<SupplierQuoteComparisonRow> ComparisonRows { get; } = [];
 	public ObservableCollection<Supplier> Suppliers { get; } = [];
 	public ObservableCollection<Item> Items { get; } = [];
+	public BusinessAttachmentPanelViewModel RequisitionAttachments { get; }
+	public BusinessAttachmentPanelViewModel RfqAttachments { get; }
+	public BusinessAttachmentPanelViewModel QuoteAttachments { get; }
 
 	public AsyncRelayCommand RefreshCommand { get; }
 	public RelayCommand NewRequisitionCommand { get; }
@@ -119,7 +127,7 @@ public sealed class ProcurementSourcingViewModel : BaseViewModel, IDisposable
 		}
 	}
 	public RequestForQuotationSupplier? SelectedQuoteSupplier { get => _selectedQuoteSupplier; set { if (_selectedQuoteSupplier == value) return; _selectedQuoteSupplier = value; OnPropertyChanged(); RaiseState(); } }
-	public SupplierQuoteResponse? SelectedQuoteResponse { get => _selectedQuoteResponse; set { if (_selectedQuoteResponse == value) return; _selectedQuoteResponse = value; OnPropertyChanged(); RaiseState(); } }
+	public SupplierQuoteResponse? SelectedQuoteResponse { get => _selectedQuoteResponse; set { if (_selectedQuoteResponse == value) return; _selectedQuoteResponse = value; OnPropertyChanged(); _ = QuoteAttachments.SetTargetAsync(BusinessAttachmentEntityKind.SupplierQuoteResponse, value?.Id); RaiseState(); } }
 	public SupplierQuoteComparisonRow? SelectedComparisonRow { get => _selectedComparisonRow; set { if (_selectedComparisonRow == value) return; _selectedComparisonRow = value; OnPropertyChanged(); if (value is not null) SelectedQuoteResponse = QuoteResponses.FirstOrDefault(response => response.Id == value.SupplierQuoteResponseId); } }
 	public DateTime? ResponseDueDate { get => _responseDueDate; set { if (_responseDueDate == value) return; _responseDueDate = value; OnPropertyChanged(); } }
 	public string QuoteCurrency { get => _quoteCurrency; set { if (_quoteCurrency == value) return; _quoteCurrency = value ?? string.Empty; OnPropertyChanged(); } }
@@ -170,6 +178,7 @@ public sealed class ProcurementSourcingViewModel : BaseViewModel, IDisposable
 			_selectedRequisition = value;
 			OnPropertyChanged(nameof(SelectedRequisition));
 			ApplyRequisition(value);
+			await RequisitionAttachments.SetTargetAsync(BusinessAttachmentEntityKind.PurchaseRequisition, value.Id, cancellationToken);
 		}
 		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
 		catch (Exception ex) { FailOperation(ex, "Purchase requisition could not be opened"); }
@@ -183,6 +192,7 @@ public sealed class ProcurementSourcingViewModel : BaseViewModel, IDisposable
 			var value = await _sourcing.GetRfqAsync(id, cancellationToken) ?? throw new InvalidOperationException("RFQ was not found.");
 			_selectedRfq = value;
 			OnPropertyChanged(nameof(SelectedRfq));
+			await RfqAttachments.SetTargetAsync(BusinessAttachmentEntityKind.RequestForQuotation, value.Id, cancellationToken);
 			Replace(RfqRecipientOptions, value.Suppliers);
 			SelectedQuoteSupplier = RfqRecipientOptions.FirstOrDefault();
 			QuoteLines.Clear();
@@ -201,6 +211,7 @@ public sealed class ProcurementSourcingViewModel : BaseViewModel, IDisposable
 		_selectedRequisition = null;
 		OnPropertyChanged(nameof(SelectedRequisition));
 		ApplyRequisition(NewRequisitionDraft());
+		_ = RequisitionAttachments.SetTargetAsync(BusinessAttachmentEntityKind.PurchaseRequisition, null);
 		LastConvertedPurchaseOrderId = null;
 		RequestEditorFocus();
 	}
@@ -391,6 +402,8 @@ public sealed class ProcurementSourcingViewModel : BaseViewModel, IDisposable
 		SelectedQuoteSupplier = null;
 		SelectedQuoteResponse = null;
 		SelectedComparisonRow = null;
+		_ = RfqAttachments.SetTargetAsync(BusinessAttachmentEntityKind.RequestForQuotation, null);
+		_ = QuoteAttachments.SetTargetAsync(BusinessAttachmentEntityKind.SupplierQuoteResponse, null);
 		RaiseState();
 	}
 
@@ -446,6 +459,9 @@ public sealed class ProcurementSourcingViewModel : BaseViewModel, IDisposable
 		RefreshComparisonCommand.Dispose();
 		SelectQuoteCommand.Dispose();
 		ConvertToPurchaseOrderCommand.Dispose();
+		RequisitionAttachments.Dispose();
+		RfqAttachments.Dispose();
+		QuoteAttachments.Dispose();
 	}
 }
 

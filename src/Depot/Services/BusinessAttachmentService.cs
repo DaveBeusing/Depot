@@ -57,6 +57,7 @@ public sealed class BusinessAttachmentService
 	{
 		RequireManage(entityKind);
 		await RequireEntityAsync(entityKind, entityId, cancellationToken);
+		await RequireMutableEntityAsync(entityKind, entityId, cancellationToken);
 		var normalizedFileName = NormalizeFileName(fileName);
 		var normalizedMediaType = NormalizeMediaType(mediaType);
 		var normalizedDescription = NormalizeOptional(description, 1000, nameof(description));
@@ -150,6 +151,7 @@ public sealed class BusinessAttachmentService
 	{
 		var before = await RequireAttachmentAsync(attachmentId, cancellationToken);
 		RequireManage(before.EntityKind);
+		await RequireMutableEntityAsync(before.EntityKind, before.EntityId, cancellationToken);
 		var normalizedFileName = NormalizeFileName(fileName);
 		var normalizedMediaType = NormalizeMediaType(mediaType);
 		var bytes = await ReadBoundedAsync(content, cancellationToken);
@@ -175,6 +177,7 @@ public sealed class BusinessAttachmentService
 	{
 		var before = await RequireAttachmentAsync(attachmentId, cancellationToken);
 		RequireManage(before.EntityKind);
+		await RequireMutableEntityAsync(before.EntityKind, before.EntityId, cancellationToken);
 		var updated = await _attachments.UpdateMetadataAsync(
 			attachmentId,
 			NormalizeOptional(update.Description, 1000, nameof(update.Description)),
@@ -192,6 +195,7 @@ public sealed class BusinessAttachmentService
 	{
 		var before = await RequireAttachmentAsync(attachmentId, cancellationToken);
 		RequireManage(before.EntityKind);
+		await RequireMutableEntityAsync(before.EntityKind, before.EntityId, cancellationToken);
 		var updated = await _attachments.RetireAsync(attachmentId, expectedVersion, cancellationToken);
 		if (before.Status != updated.Status)
 			await _audit.RecordActionAsync(before.EntityId, "AttachmentRetired", before, updated, cancellationToken);
@@ -223,6 +227,12 @@ public sealed class BusinessAttachmentService
 			throw new InvalidOperationException($"The referenced {entityKind} record was not found.");
 	}
 
+	private async Task RequireMutableEntityAsync(BusinessAttachmentEntityKind entityKind, long entityId, CancellationToken cancellationToken)
+	{
+		if (!await _attachments.CanMutateEntityAsync(entityKind, entityId, cancellationToken))
+			throw new InvalidOperationException("Supplier quote evidence is immutable after award or purchase-order conversion.");
+	}
+
 	private void RequireView(BusinessAttachmentEntityKind entityKind) =>
 		_authorization.RequirePermission(ViewPermission(entityKind));
 
@@ -240,6 +250,8 @@ public sealed class BusinessAttachmentService
 		BusinessAttachmentEntityKind.PurchaseOrder => ApplicationPermission.PurchaseOrdersView,
 		BusinessAttachmentEntityKind.GoodsReceipt => ApplicationPermission.GoodsReceiptsView,
 		BusinessAttachmentEntityKind.SupplierDocument => ApplicationPermission.FinancePayablesView,
+		BusinessAttachmentEntityKind.PurchaseRequisition => ApplicationPermission.PurchaseRequisitionsView,
+		BusinessAttachmentEntityKind.RequestForQuotation or BusinessAttachmentEntityKind.SupplierQuoteResponse => ApplicationPermission.SupplierSourcingView,
 		_ => throw new ArgumentOutOfRangeException(nameof(entityKind))
 	};
 
@@ -254,6 +266,8 @@ public sealed class BusinessAttachmentService
 		BusinessAttachmentEntityKind.PurchaseOrder => ApplicationPermission.PurchaseOrdersEdit,
 		BusinessAttachmentEntityKind.GoodsReceipt => ApplicationPermission.GoodsReceiptsCreate,
 		BusinessAttachmentEntityKind.SupplierDocument => ApplicationPermission.FinancePayablesManage,
+		BusinessAttachmentEntityKind.PurchaseRequisition => ApplicationPermission.PurchaseRequisitionsManage,
+		BusinessAttachmentEntityKind.RequestForQuotation or BusinessAttachmentEntityKind.SupplierQuoteResponse => ApplicationPermission.SupplierSourcingManage,
 		_ => throw new ArgumentOutOfRangeException(nameof(entityKind))
 	};
 

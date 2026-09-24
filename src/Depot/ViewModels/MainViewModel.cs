@@ -190,7 +190,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		_materialReturns = new(() => new MaterialReturnsViewModel(materialReturnService, reasonCodeService, fileDialogService));
 		_supplierReturns = new(() => new SupplierReturnsViewModel(supplierReturnService, supplierService, reasonCodeService, fileDialogService));
 		_procurement = new(() => new ProcurementViewModel(purchaseOrderService, purchaseOrderHistoryService, goodsReceiptService, supplierService, itemService, fileDialogService, reasonCodeService, MarkPurchasingPagesStale, MarkInventoryPagesStale, salesServices.Timeline, OpenWorkflowTimelineItemAsync, businessAttachmentService));
-		_procurementSourcing = new(() => new ProcurementSourcingViewModel(procurementSourcingService, supplierService, itemService, MarkPurchasingPagesStale));
+		_procurementSourcing = new(() => new ProcurementSourcingViewModel(procurementSourcingService, supplierService, itemService, businessAttachmentService, fileDialogService, MarkPurchasingPagesStale));
 		_purchaseOverview = new(() => new PurchaseOverviewViewModel(purchaseOrderService));
 		_purchaseOrdersPage = new(() => new PurchaseOrdersPageViewModel(_procurement.Value));
 		_goodsReceiptsPage = new(() => new GoodsReceiptsPageViewModel(_procurement.Value));
