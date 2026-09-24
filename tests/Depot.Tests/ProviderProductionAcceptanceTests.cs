@@ -7,6 +7,7 @@ using System.Globalization;
 using Depot.Data;
 using Depot.Models;
 using Depot.Repositories;
+using Depot.Services;
 
 using Microsoft.Data.Sqlite;
 
@@ -105,6 +106,7 @@ public sealed class ProviderProductionAcceptanceTests
 
 		await CreateProbeAsync(data, factory.Provider);
 		await VerifyBusinessAttachmentPersistenceAsync(data);
+		await VerifyProjectAccountingPersistenceAsync(data);
 		await VerifyRoundTripsAndConstraintsAsync(data);
 		await VerifyRollbackAndRetryBoundaryAsync(data);
 		await VerifyConcurrentMutationAsync(data);
@@ -165,6 +167,79 @@ public sealed class ProviderProductionAcceptanceTests
 		Assert.NotNull(persisted);
 		Assert.Equal(hash, persisted.Sha256);
 		Assert.Equal(bytes.LongLength, persisted.ByteLength);
+	}
+
+
+	private static async Task VerifyProjectAccountingPersistenceAsync(DatabaseAccess data)
+	{
+		if (Convert.ToInt32(
+			await data.ExecuteScalarAsync("SELECT COUNT(*) FROM FinanceCurrencies WHERE Code='EUR';", CancellationToken.None),
+			CultureInfo.InvariantCulture) == 0)
+		{
+			await data.ExecuteAsync(
+				"INSERT INTO FinanceCurrencies (Code,Name,MinorUnits,IsActive) VALUES ('EUR','Euro',2,1);",
+				CancellationToken.None);
+		}
+
+		var suffix = Guid.NewGuid().ToString("N")[..8];
+		var legalEntityId = Guid.NewGuid();
+		await data.ExecuteAsync(
+			"INSERT INTO FinanceLegalEntities (Id,Code,Name,CountryCode,FunctionalCurrencyCode,IsActive) VALUES ($Id,$Code,$Name,'DE','EUR',1);",
+			CancellationToken.None,
+			new DatabaseParameter("$Id", legalEntityId.ToString("D")),
+			new DatabaseParameter("$Code", $"PRJ-{suffix}"),
+			new DatabaseParameter("$Name", $"Project Provider {suffix}"));
+
+		var users = new UserRepository(data);
+		var administrator = await users.GetByEmailAsync("admin@depot.local", CancellationToken.None)
+			?? throw new InvalidOperationException("The default administrator was not initialized.");
+		var authorization = new AuthorizationService();
+		authorization.SignIn(administrator, PermissionCatalog.All);
+		var auditRepository = new AuditRepository(data);
+		var service = new ProjectAccountingService(
+			new DatabaseTransactionRunner(data),
+			new ProjectAccountingRepository(data),
+			auditRepository,
+			new AuditService(auditRepository, authorization),
+			authorization);
+
+		var project = await service.SaveAsync(new ProjectRecord
+		{
+			Code = $"P-{suffix}",
+			Name = $"Provider project {suffix}",
+			LegalEntityId = legalEntityId,
+			OwnerUserId = administrator.Id,
+			PlannedStartDate = new DateOnly(2026, 9, 1),
+			PlannedEndDate = new DateOnly(2026, 12, 31)
+		});
+		Assert.True(project.Id > 0);
+		Assert.Equal(1, project.Version);
+		Assert.Equal(ProjectStatus.Draft, project.Status);
+
+		var persisted = await service.GetAsync(project.Id);
+		Assert.NotNull(persisted);
+		Assert.Equal(project.Code, persisted.Code);
+		Assert.Equal(legalEntityId, persisted.LegalEntityId);
+
+		var active = await service.ActivateAsync(project.Id, project.Version);
+		Assert.Equal(ProjectStatus.Active, active.Status);
+		Assert.Equal(project.Version + 1, active.Version);
+
+		var phase = await service.SavePhaseAsync(new ProjectPhase
+		{
+			ProjectId = active.Id,
+			Code = "DELIVERY",
+			Name = "Delivery",
+			Status = ProjectPhaseStatus.Active
+		});
+		Assert.True(phase.Id > 0);
+		Assert.Equal(active.Id, phase.ProjectId);
+		Assert.Equal("DELIVERY", phase.Code);
+
+		var phases = await service.ListPhasesAsync(active.Id);
+		var persistedPhase = Assert.Single(phases);
+		Assert.Equal(phase.Id, persistedPhase.Id);
+		Assert.Equal(ProjectPhaseStatus.Active, persistedPhase.Status);
 	}
 
 
