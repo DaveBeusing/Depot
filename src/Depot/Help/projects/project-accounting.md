@@ -4,7 +4,7 @@ Projects provide a bounded operational cost-object layer over Depot's existing F
 
 ## Project lifecycle
 
-Create a project with a legal entity, owner, optional customer, planned dates and description. Projects move through Draft, Active, On Hold, Closed or Cancelled. Closed and cancelled projects do not accept new operational attribution. Phases provide a deliberately shallow work breakdown.
+Create a project with a legal entity, owner, optional customer, planned dates and description. The legal entity is fixed after creation to preserve accounting reconciliation. Projects move through Draft, Active, On Hold, Closed or Cancelled. Closed and cancelled projects do not accept new operational attribution. Phases provide a deliberately shallow work breakdown.
 
 ## Financial views
 
@@ -27,6 +27,10 @@ Supported attribution covers Purchase Orders, supplier documents, Sales Orders, 
 - `ProjectFinancials.View` exposes actuals, commitments and budget variance.
 
 UI visibility never replaces service-layer authorization.
+
+## Attachments
+
+The **Attachments** tab uses Depot's shared versioned Business Attachments capability. Project viewers can inspect files; project managers can upload, replace, retire and maintain attachment metadata according to the existing attachment permission boundary.
 
 ## My Work
 

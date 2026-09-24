@@ -35,7 +35,7 @@ Budget comparison uses `FinanceBudgetLines` and their existing budget-version au
 
 ## Lifecycle and integrity
 
-Project codes are unique within a legal entity. Projects support Draft, Active, OnHold, Closed and Cancelled states. Project phases are deliberately shallow and support Planned, Active, Completed and Cancelled states.
+Project codes are unique within a legal entity. Projects support Draft, Active, OnHold, Closed and Cancelled states. Project phases are deliberately shallow and support Planned, Active, Completed and Cancelled states. A project's legal entity is immutable after creation so existing attribution, budget links and Finance reconciliation cannot be detached from their accounting scope.
 
 New operational attribution is blocked when a project is Closed or Cancelled. Attribution becomes immutable once the authoritative source is posted or otherwise enters an immutable operational state. Manual journal attribution is limited to existing manual General Ledger entries.
 
@@ -48,7 +48,7 @@ The `ProjectAccounting` feature schema is provider-neutral and provisioned for S
 
 ## Workspace and My Work
 
-The Projects workspace uses Depot standard custom controls and exposes project master/detail, shallow phases and read-only financial views. Owned Draft projects appear in My Work drafts; active owned projects remain visible, On Hold or overdue owned projects surface as exceptions, and recently closed owned projects can appear as completed work.
+The Projects workspace uses Depot standard custom controls and exposes project master/detail, shallow phases, business attachments and read-only financial views. Project attachments use the shared versioned Business Attachments boundary and the existing project view/manage permissions. Owned Draft projects appear in My Work drafts; active owned projects remain visible, On Hold or overdue owned projects surface as exceptions, and recently closed owned projects can appear as completed work.
 
 Contextual Help topic `projects.accounting` explains the accounting authority boundary and project permissions.
 
