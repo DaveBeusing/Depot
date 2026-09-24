@@ -239,6 +239,31 @@ public sealed class PurchaseOrderRepository : DatabaseRepository
 			return order;
 		}, cancellationToken);
 
+
+	internal async Task<PurchaseOrder> CreateDraftAsync(
+		DatabaseTransactionContext transaction,
+		PurchaseOrder order,
+		Func<PurchaseOrder, AuditEntry> createAuditEntry,
+		CancellationToken cancellationToken)
+	{
+		if (order.Id != 0) throw new InvalidOperationException("Sourced purchase-order creation requires a new draft.");
+		var temporaryNumber = $"PENDING-{Guid.NewGuid():N}";
+		order.Id = await transaction.Session.InsertAsync(
+			"INSERT INTO PurchaseOrders (OrderNumber, SupplierId, OrderDate, ExpectedDeliveryDate, Notes, Status, CreatedByUserId) VALUES ($OrderNumber, $SupplierId, $OrderDate, $ExpectedDeliveryDate, $Notes, $Status, $CreatedByUserId);",
+			cancellationToken, Parameter("$OrderNumber", temporaryNumber), Parameter("$SupplierId", order.SupplierId), Parameter("$OrderDate", Date(order.OrderDate)), Parameter("$ExpectedDeliveryDate", NullableDate(order.ExpectedDeliveryDate)), Parameter("$Notes", order.Notes), Parameter("$Status", (int)PurchaseOrderStatus.Draft), Parameter("$CreatedByUserId", order.CreatedByUserId));
+		order.OrderNumber = $"PO-{order.Id:000000}";
+		await transaction.Session.ExecuteAsync("UPDATE PurchaseOrders SET OrderNumber = $OrderNumber WHERE Id = $Id;", cancellationToken, Parameter("$OrderNumber", order.OrderNumber), Parameter("$Id", order.Id));
+		var lineNumber = 1;
+		foreach (var line in order.Lines)
+		{
+			line.PurchaseOrderId = order.Id;
+			line.LineNumber = lineNumber++;
+			line.Id = await transaction.Session.InsertAsync("INSERT INTO PurchaseOrderLines (PurchaseOrderId, LineNumber, ItemId, Quantity, UnitPrice) VALUES ($PurchaseOrderId, $LineNumber, $ItemId, $Quantity, $UnitPrice);", cancellationToken, LineParameters(line));
+		}
+		await AuditRepository.CreateAsync(transaction.Session, createAuditEntry(order), cancellationToken);
+		return order;
+	}
+
 	public Task<PurchaseOrder> SetStatusAsync(
 		long id,
 		long version,

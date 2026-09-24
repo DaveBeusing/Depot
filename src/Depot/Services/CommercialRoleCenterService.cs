@@ -18,6 +18,7 @@ public sealed class CommercialRoleCenterService
 	private readonly SalesCrmService _salesCrm;
 	private readonly PurchaseOrderService _purchaseOrders;
 	private readonly PurchaseOrderApprovalService _purchaseApprovals;
+	private readonly ProcurementSourcingService _procurementSourcing;
 	private readonly SupplierReturnService _supplierReturns;
 	private readonly GoodsReceiptService _goodsReceipts;
 	private readonly ShipmentService _shipments;
@@ -42,6 +43,7 @@ public sealed class CommercialRoleCenterService
 		SalesCrmService salesCrm,
 		PurchaseOrderService purchaseOrders,
 		PurchaseOrderApprovalService purchaseApprovals,
+		ProcurementSourcingService procurementSourcing,
 		SupplierReturnService supplierReturns,
 		GoodsReceiptService goodsReceipts,
 		ShipmentService shipments,
@@ -65,6 +67,7 @@ public sealed class CommercialRoleCenterService
 		_salesCrm = salesCrm;
 		_purchaseOrders = purchaseOrders;
 		_purchaseApprovals = purchaseApprovals;
+		_procurementSourcing = procurementSourcing;
 		_supplierReturns = supplierReturns;
 		_goodsReceipts = goodsReceipts;
 		_shipments = shipments;
@@ -85,7 +88,7 @@ public sealed class CommercialRoleCenterService
 	{
 		CommercialRoleCenterKind.SalesWorkspace => _authorization.HasAnyPermission(ApplicationPermission.SalesCrmView, ApplicationPermission.CustomersView, ApplicationPermission.SalesQuotesView, ApplicationPermission.SalesOrdersView),
 		CommercialRoleCenterKind.SalesControlCenter => _authorization.HasAnyPermission(ApplicationPermission.SalesOrdersApprove, ApplicationPermission.SalesPricingManage, ApplicationPermission.ShipmentsView, ApplicationPermission.SalesInvoicesView, ApplicationPermission.CreditNotesView),
-		CommercialRoleCenterKind.BuyerWorkbench => _authorization.HasAnyPermission(ApplicationPermission.PurchaseOrdersView, ApplicationPermission.SuppliersView, ApplicationPermission.SupplierReturnsView),
+		CommercialRoleCenterKind.BuyerWorkbench => _authorization.HasAnyPermission(ApplicationPermission.PurchaseRequisitionsView, ApplicationPermission.SupplierSourcingView, ApplicationPermission.PurchaseOrdersView, ApplicationPermission.SuppliersView, ApplicationPermission.SupplierReturnsView),
 		CommercialRoleCenterKind.ApprovalInbox => HasApprovalPermission(),
 		CommercialRoleCenterKind.ReceivingWorkspace => _authorization.HasAnyPermission(ApplicationPermission.GoodsReceiptsCreate, ApplicationPermission.GoodsReceiptsPost, ApplicationPermission.SupplierReturnsCreate),
 		CommercialRoleCenterKind.FulfillmentWorkspace => _authorization.HasAnyPermission(ApplicationPermission.ShipmentsCreate, ApplicationPermission.ShipmentsEdit, ApplicationPermission.ShipmentsPost, ApplicationPermission.CustomerReturnsCreate, ApplicationPermission.CustomerReturnsPost),
@@ -332,20 +335,56 @@ public sealed class CommercialRoleCenterService
 		var returnsTask = _authorization.HasPermission(ApplicationPermission.SupplierReturnsView)
 			? _supplierReturns.SearchAsync(null, null, SupplierReturnStatus.Draft, 1, SourceItemLimit, cancellationToken)
 			: Task.FromResult(new PageResult<SupplierReturnOverviewItem>([], 1, SourceItemLimit, 0));
-		await Task.WhenAll(draftsTask, submittedTask, approvedTask, orderedTask, partialTask, returnsTask);
+		var requisitionsTask = _authorization.HasPermission(ApplicationPermission.PurchaseRequisitionsView)
+			? _procurementSourcing.SearchRequisitionsAsync(null, null, 1, SourceItemLimit, cancellationToken)
+			: Task.FromResult(new PageResult<PurchaseRequisition>([], 1, SourceItemLimit, 0));
+		var rfqsTask = _authorization.HasPermission(ApplicationPermission.SupplierSourcingView)
+			? _procurementSourcing.SearchRfqsAsync(null, 1, SourceItemLimit, cancellationToken)
+			: Task.FromResult(new PageResult<RequestForQuotation>([], 1, SourceItemLimit, 0));
 
-		var now = DateTime.Today;
+		await Task.WhenAll(draftsTask, submittedTask, approvedTask, orderedTask, partialTask, returnsTask, requisitionsTask, rfqsTask);
+
+		var today = DateTime.Today;
 		var ordered = (await orderedTask).Items;
-		var overdue = ordered.Where(value => value.ExpectedDeliveryDate is { } due && due.Date < now).Select(OrderItem).ToArray();
+		var overdue = ordered.Where(value => value.ExpectedDeliveryDate is { } due && due.Date < today).Select(OrderItem).ToArray();
 		var supplierReturns = (await returnsTask).Items.Select(value => new CommercialRoleItem(
 			CommercialRoleItemKind.SupplierReturn, value.Id, value.Version, value.ReturnNumber, "Supplier return requiring attention",
 			value.SupplierName, value.StatusDisplayName, null, null, null, null, "purchasing.supplier-returns")).ToArray();
+		var requisitions = (await requisitionsTask).Items;
+		var requisitionItems = requisitions
+			.Where(value => value.Status is PurchaseRequisitionStatus.Draft or PurchaseRequisitionStatus.Submitted or PurchaseRequisitionStatus.Approved or PurchaseRequisitionStatus.Returned)
+			.Select(value => new CommercialRoleItem(
+				CommercialRoleItemKind.PurchaseRequisition, value.Id, value.Version, value.RequisitionNumber, "Purchase Requisition",
+				value.PreferredSupplierName, value.Status.ToString(), null, value.SubmittedAtUtc, value.RequiredByDate, null,
+				"purchasing.sourcing", value.RequestedByUserId, Requester: value.RequestedByUserDisplay,
+				NextAction: value.Status switch
+				{
+					PurchaseRequisitionStatus.Draft or PurchaseRequisitionStatus.Returned => "Complete / submit",
+					PurchaseRequisitionStatus.Submitted => "Await approval",
+					PurchaseRequisitionStatus.Approved => "Create RFQ",
+					_ => "Open"
+				}))
+			.ToArray();
+		var rfqs = (await rfqsTask).Items;
+		var awaitingQuotes = rfqs
+			.Where(value => value.Status == RequestForQuotationStatus.Open && (value.ResponseDueDate is null || value.ResponseDueDate.Value.Date >= today))
+			.Select(value => RfqItem(value)).ToArray();
+		var overdueQuotes = rfqs
+			.Where(value => value.Status == RequestForQuotationStatus.Open && value.ResponseDueDate is { } due && due.Date < today)
+			.Select(value => RfqItem(value, "Quote response overdue")).ToArray();
+		var awards = rfqs
+			.Where(value => value.Status == RequestForQuotationStatus.Awarded)
+			.Select(value => RfqItem(value, "Create purchase order")).ToArray();
 
 		return Snapshot(
 			CommercialRoleCenterKind.BuyerWorkbench,
 			"Buyer Workbench",
-			"Purchase-order progression, overdue deliveries and supplier-return attention in one buying workspace.",
+			"Purchase demand, sourcing, purchase-order progression and supplier exceptions in one buying workspace.",
 			[
+				Section("Purchase Requisitions", "No purchase requisitions require attention.", requisitionItems),
+				Section("RFQs Awaiting Supplier Quotes", "No RFQs are awaiting supplier quotes.", awaitingQuotes),
+				Section("RFQs with Overdue Responses", "No supplier quote deadlines are overdue.", overdueQuotes),
+				Section("Selected Quotes Awaiting PO Conversion", "No selected supplier quotes are waiting for conversion.", awards),
 				Section("Draft Purchase Orders", "No draft purchase orders.", (await draftsTask).Items.Select(OrderItem)),
 				Section("Submitted", "No purchase orders are awaiting approval.", (await submittedTask).Items.Select(OrderItem)),
 				Section("Approved but not Ordered", "No approved purchase orders are waiting to be placed.", (await approvedTask).Items.Select(OrderItem)),
@@ -355,6 +394,8 @@ public sealed class CommercialRoleCenterService
 			],
 			[],
 			[
+				new("New Purchase Requisition", "purchasing.new-requisition", "purchasing.sourcing"),
+				new("Open Sourcing", "purchasing.open-sourcing", "purchasing.sourcing"),
 				new("New Purchase Order", "purchasing.new-order", "purchasing.purchase-orders"),
 				new("Open Supplier", "purchasing.open-supplier", "administration.suppliers"),
 				new("Receive Goods", "purchasing.receive", "purchasing.goods-receipts")
@@ -362,8 +403,10 @@ public sealed class CommercialRoleCenterService
 			[]);
 	}
 
-
-
+	private static CommercialRoleItem RfqItem(RequestForQuotation value, string? nextAction = null) =>
+		new(CommercialRoleItemKind.RequestForQuotation, value.Id, value.Version, value.RfqNumber, "Request for Quotation",
+			value.RequisitionNumber, value.Status.ToString(), null, value.CreatedAtUtc, value.ResponseDueDate, null,
+			"purchasing.sourcing", value.CreatedByUserId, NextAction: nextAction ?? "Await supplier quote");
 
 	private async Task<CommercialRoleCenterSnapshot> GetTreasuryWorkspaceAsync(CancellationToken cancellationToken)
 	{

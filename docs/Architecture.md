@@ -128,8 +128,9 @@ Document-layout zoom, snap, resize, undo/redo and dirty-state behavior remain sp
 - User Preferences feature schema: **2**
 - Document Templates feature schema: **1**
 - Enterprise Identity feature schema: **2**
+- Procurement Sourcing feature schema: **1**
 - Application: **0.15.x-preview**
-- Help manifest: **1.28**
+- Help manifest: **1.29**
 
 `Directory.Build.props` is authoritative for the exact application patch/version. Feature schema constants remain authoritative in their migration classes; this architecture document records the compatibility baselines rather than duplicating a moving preview patch.
 
@@ -165,3 +166,24 @@ Finance Budgeting follows the standard `View → ViewModel → Service → Repos
 ### SEPA payment-export boundary
 
 SEPA payment-file generation follows the Finance layering: Banking UI/ViewModel -> `FinanceSepaPaymentExportService` -> Banking/SEPA repositories -> `DatabaseAccess`. The service owns eligibility, validation, deterministic identity, authorization, artifact hashing and lifecycle rules. Persistence retains exact XML and status history. External bank submission is outside the database transaction and is represented only as explicit evidence.
+
+
+## Procurement sourcing authority
+
+Procurement sourcing is a bounded purchasing feature built on the existing authority chain rather than a second purchasing stack:
+
+```text
+Purchase Requisition
+  -> Approval Policy / requisition decision
+    -> Request for Quotation
+      -> Supplier Quote Responses
+        -> deterministic comparison
+          -> explicit quote selection
+            -> PurchaseOrderService -> Purchase Order Draft
+```
+
+`ProcurementSourcingService` owns requisition/RFQ/quote lifecycle validation, authorization, deterministic comparison, award selection, idempotent conversion and sourcing Audit evidence. `ProcurementSourcingRepository` owns sourcing persistence and optimistic state mutation. `PurchaseOrderService` remains authoritative for Purchase Order creation and downstream approval/order behavior.
+
+Procurement Sourcing feature schema **1** is tracked independently in `DepotFeatureVersions`; it does not change Core schema 30. The feature is provisioned through the normal database provisioning path and has provider acceptance coverage for SQLite, SQL Server, MariaDB and MySQL.
+
+The resulting Purchase Order retains immutable sourcing evidence that identifies the originating Purchase Requisition, RFQ and selected Supplier Quote Response. Business Attachments can be associated with sourcing records, and awarded quote evidence is protected from destructive replacement.

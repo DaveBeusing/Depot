@@ -95,6 +95,8 @@ public sealed class ProcurementProviderTests
 				new DatabaseParameter("$Reference", $"Supplier Return {supplierReturn.ReturnNumber}"),
 				new DatabaseParameter("$MovementType", (int)StockMovementType.SupplierReturn)));
 
+			await VerifySourcingRoundTripAsync(context);
+
 			var orderCountBeforeAuditFailure = await context.ScalarAsync(
 				"SELECT COUNT(*) FROM PurchaseOrders WHERE SupplierId = $SupplierId;",
 				new DatabaseParameter("$SupplierId", context.SupplierId));
@@ -135,6 +137,87 @@ public sealed class ProcurementProviderTests
 		finally
 		{
 			await RemoveNotificationReferencesAsync(context);
+		}
+	}
+
+	private static async Task VerifySourcingRoundTripAsync(ProcurementTestContext context)
+	{
+		long? requisitionId = null;
+		long? rfqId = null;
+		try
+		{
+			var requisition = await context.Sourcing.SaveRequisitionAsync(new PurchaseRequisition
+			{
+				BusinessJustification = "Provider sourcing acceptance",
+				RequiredByDate = DateTime.Today.AddDays(8),
+				Lines = [new PurchaseRequisitionLine { ItemId = context.SecondItemId, Quantity = 4 }]
+			});
+			requisitionId = requisition.Id;
+			var submitted = await context.Sourcing.SubmitAsync(requisition.Id, requisition.Version);
+			context.SignInApprover();
+			var approved = await context.Sourcing.ApproveAsync(submitted.Id, submitted.Version, "Provider acceptance approval");
+			context.SignInAdministrator();
+
+			var rfq = await context.Sourcing.CreateRfqAsync(approved.Id, [context.SupplierId], DateTime.Today.AddDays(3));
+			rfqId = rfq.Id;
+			var details = await context.Sourcing.GetRfqAsync(rfq.Id) ?? throw new InvalidOperationException("Provider RFQ could not be reloaded.");
+			var line = Assert.Single(details.Lines);
+			var quote = await context.Sourcing.CaptureQuoteResponseAsync(new SupplierQuoteResponse
+			{
+				RequestForQuotationId = rfq.Id,
+				SupplierId = context.SupplierId,
+				SupplierReference = $"PROVIDER-{Guid.NewGuid():N}",
+				Currency = "EUR",
+				ValidUntil = DateTime.Today.AddDays(10),
+				Lines =
+				[
+					new SupplierQuoteResponseLine
+					{
+						RequestForQuotationLineId = line.Id,
+						ItemId = line.ItemId,
+						Quantity = line.Quantity,
+						UnitPrice = 21.75m,
+						MinimumOrderQuantity = 4,
+						LeadTimeDays = 6
+					}
+				]
+			});
+			var comparison = await context.Sourcing.CompareAsync(rfq.Id);
+			var compared = Assert.Single(comparison);
+			Assert.Equal(quote.Id, compared.SupplierQuoteResponseId);
+			Assert.Equal(21.75m, compared.UnitPrice);
+			Assert.False(compared.IsSelected);
+
+			var awarded = await context.Sourcing.SelectQuoteAsync(rfq.Id, details.Version, quote.Id);
+			Assert.Equal(RequestForQuotationStatus.Awarded, awarded.Status);
+			var purchaseOrderId = await context.Sourcing.ConvertSelectedQuoteToPurchaseOrderAsync(rfq.Id);
+			Assert.Equal(purchaseOrderId, await context.Sourcing.ConvertSelectedQuoteToPurchaseOrderAsync(rfq.Id));
+			var evidence = await context.Sourcing.GetEvidenceByPurchaseOrderAsync(purchaseOrderId);
+			Assert.NotNull(evidence);
+			Assert.Equal(requisition.Id, evidence!.PurchaseRequisitionId);
+			Assert.Equal(rfq.Id, evidence.RequestForQuotationId);
+			Assert.Equal(quote.Id, evidence.SupplierQuoteResponseId);
+		}
+		finally
+		{
+			context.SignInAdministrator();
+			if (requisitionId is { } reqId)
+			{
+				await context.Data.ExecuteAsync("DELETE FROM ProcurementSourcingEvidence WHERE PurchaseRequisitionId=$Id;", CancellationToken.None, new DatabaseParameter("$Id", reqId));
+			}
+			if (rfqId is { } requestId)
+			{
+				await context.Data.ExecuteAsync("DELETE FROM SupplierQuoteResponseLines WHERE SupplierQuoteResponseId IN (SELECT Id FROM SupplierQuoteResponses WHERE RequestForQuotationId=$Id);", CancellationToken.None, new DatabaseParameter("$Id", requestId));
+				await context.Data.ExecuteAsync("DELETE FROM SupplierQuoteResponses WHERE RequestForQuotationId=$Id;", CancellationToken.None, new DatabaseParameter("$Id", requestId));
+				await context.Data.ExecuteAsync("DELETE FROM RequestForQuotationSuppliers WHERE RequestForQuotationId=$Id;", CancellationToken.None, new DatabaseParameter("$Id", requestId));
+				await context.Data.ExecuteAsync("DELETE FROM RequestForQuotationLines WHERE RequestForQuotationId=$Id;", CancellationToken.None, new DatabaseParameter("$Id", requestId));
+				await context.Data.ExecuteAsync("DELETE FROM RequestsForQuotation WHERE Id=$Id;", CancellationToken.None, new DatabaseParameter("$Id", requestId));
+			}
+			if (requisitionId is { } requisition)
+			{
+				await context.Data.ExecuteAsync("DELETE FROM PurchaseRequisitionLines WHERE PurchaseRequisitionId=$Id;", CancellationToken.None, new DatabaseParameter("$Id", requisition));
+				await context.Data.ExecuteAsync("DELETE FROM PurchaseRequisitions WHERE Id=$Id;", CancellationToken.None, new DatabaseParameter("$Id", requisition));
+			}
 		}
 	}
 

@@ -51,7 +51,9 @@ public enum CommercialRoleItemKind
 	ReportSnapshot = 25,
 	FinanceStatus = 26,
 	SalesLead = 27,
-	SalesOpportunity = 28
+	SalesOpportunity = 28,
+	PurchaseRequisition = 29,
+	RequestForQuotation = 30
 }
 
 public sealed record CommercialRoleItem(
@@ -147,7 +149,7 @@ public static class CommercialRoleColumnProfiles
 		{
 			[CommercialRoleCenterKind.SalesWorkspace] = Create("role-center.sales", [Type, Reference, Context, Amount, Submitted, Status, NextAction, Actions], (Reference, "Document"), (Context, "Customer / Context")),
 			[CommercialRoleCenterKind.SalesControlCenter] = Create("role-center.sales-control", [Type, Reference, Context, Amount, Due, Status, NextAction, Actions], (Reference, "Order / Work"), (Context, "Customer / Context")),
-			[CommercialRoleCenterKind.BuyerWorkbench] = Create("role-center.buyer", [Type, Reference, Context, Amount, Due, Status, NextAction, Actions], (Reference, "PO / Return"), (Context, "Supplier")),
+			[CommercialRoleCenterKind.BuyerWorkbench] = Create("role-center.buyer", [Type, Reference, Context, Amount, Due, Status, NextAction, Actions], (Reference, "Request / PO / Return"), (Context, "Supplier / Sourcing")),
 			[CommercialRoleCenterKind.ApprovalInbox] = Create("role-center.approvals", [Type, Reference, Requester, Context, Amount, Age, Status, Actions], (Type, "Type"), (Requester, "Requester"), (Context, "Counterparty")),
 			[CommercialRoleCenterKind.ReceivingWorkspace] = Create("role-center.receiving", [Reference, Context, Due, StateDetail, Status, NextAction, Actions], (Reference, "PO / Receipt"), (Context, "Supplier"), (Due, "Expected date"), (StateDetail, "Receipt state")),
 			[CommercialRoleCenterKind.FulfillmentWorkspace] = Create("role-center.fulfillment", [Reference, Context, Due, StateDetail, Status, NextAction, Actions], (Reference, "Order / Shipment"), (Context, "Customer"), (Due, "Requested date"), (StateDetail, "Picking / Packing")),

@@ -7,7 +7,7 @@ This document identifies the documentation baseline for the current development 
 ## Current baseline
 
 - Application: `0.15.x-preview`
-- Help manifest: `1.28`
+- Help manifest: `1.29`
 - Core database schema: `30`
 - Sales feature schema: `15`
 - Finance feature schema: `12`
@@ -17,6 +17,7 @@ This document identifies the documentation baseline for the current development 
 - Document Templates feature schema: `1`
 - Enterprise Identity feature schema: `2`
 - Approval Policies feature schema: `1`
+- Procurement Sourcing feature schema: `1`
 
 `Directory.Build.props` is the authoritative source for the exact application patch/version. Canonical documentation records the moving preview line as `0.15.x-preview`; exact patch numbers belong in source/release evidence, not manually duplicated baseline text.
 
@@ -104,9 +105,14 @@ Do not describe database-provider technical support as jurisdiction-specific acc
 
 Do not pin an exact preview patch version in canonical baseline documents. Use the development line and link exact build/release identity to `Directory.Build.props` and release evidence.
 
-Help manifest **1.28** contains the existing User Sessions and Security Center topics plus the permission-bound `administration.document-designer` topic. The current manifest version is authoritative for embedded Help routing and content.
+Help manifest **1.29** contains the existing User Sessions and Security Center topics plus the permission-bound `administration.document-designer` topic. The current manifest version is authoritative for embedded Help routing and content.
 
 
 ## 2026-09-22 approval-policy documentation reconciliation
 
 Approval Policies feature schema 1 is documented as a bounded routing contract for Purchase Orders, Sales Orders, Accounts Payable match exceptions and payment proposals. Embedded Help now exposes `administration.approval-policies` behind `ApprovalPolicies.View`; policy mutation requires `ApprovalPolicies.Manage`, while existing domain approval permissions remain independently authoritative for business decisions. That Help manifest revision records the new permission-bound route.
+
+
+## Procurement sourcing documentation invariant
+
+Procurement Sourcing feature schema `1` is the current sourcing persistence contract. Documentation must preserve the explicit-decision boundary: quote comparison may order and present evidence deterministically, but it must not be described as autonomous supplier selection, recommendation or automatic Purchase Order placement. `PurchaseOrderService` remains the downstream Purchase Order authority and sourcing evidence remains traceable to the originating requisition, RFQ and selected quote.

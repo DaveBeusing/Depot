@@ -205,3 +205,18 @@ Controlled Finance Budgeting is implemented with schema 11 persistence, policy a
 ## Integrated Finance payment-initiation artifact
 
 The bounded SEPA SCT payment-export capability is implemented at the repository boundary: `pain.001.001.09`, structured payment addresses, immutable artifact/hash evidence, role-separated generation/download/status operations and provider-backed persistence. Future banking connectivity such as EBICS, PSD2/Open Banking, SCT Inst and automated status ingestion remains separate roadmap scope and must not be inferred from the file-export capability.
+
+
+## Procurement sourcing foundation
+
+- [x] Purchase Requisition lifecycle with requester/creator evidence and optimistic concurrency
+- [x] configurable Approval Policy integration with explicit authorization boundaries
+- [x] RFQ recipients, requested lines and response-due tracking
+- [x] Supplier Quote Response capture with currency, price, MOQ, lead time, validity and supplier reference
+- [x] deterministic side-by-side comparison without automatic supplier award
+- [x] explicit quote selection and idempotent conversion through the existing Purchase Order authority
+- [x] immutable Purchase Order sourcing evidence and sourcing Business Attachments
+- [x] My Work, Buyer Workbench, shell navigation and contextual Help integration
+- [x] SQLite and remote-provider sourcing persistence/round-trip acceptance coverage
+
+Future replenishment suggestions may consume approved purchase demand and the established sourcing boundary, but automatic supplier award or automatic Purchase Order placement remains outside the current product scope.

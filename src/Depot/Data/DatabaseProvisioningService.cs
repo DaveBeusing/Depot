@@ -48,6 +48,7 @@ public static class DatabaseProvisioningService
 		ApprovalPolicySchemaMigration.Migrate(connectionFactory);
 		EnterpriseIdentitySchemaMigration.Migrate(connectionFactory);
 		BusinessAttachmentSchemaMigration.Migrate(connectionFactory);
+		ProcurementSourcingSchemaMigration.Migrate(connectionFactory);
 		return DatabaseProvisioningPath.FullProvisioning;
 	}
 }
@@ -66,7 +67,8 @@ internal static class FeatureVersionMetadataRecovery
 			["DocumentTemplates"] = DocumentTemplateSchemaMigration.CurrentVersion,
 			["ApprovalPolicies"] = ApprovalPolicySchemaMigration.CurrentVersion,
 			["EnterpriseIdentity"] = EnterpriseIdentitySchemaMigration.CurrentVersion,
-			["BusinessAttachments"] = BusinessAttachmentSchemaMigration.CurrentVersion
+			["BusinessAttachments"] = BusinessAttachmentSchemaMigration.CurrentVersion,
+			["ProcurementSourcing"] = ProcurementSourcingSchemaMigration.CurrentVersion
 		};
 
 	public static void RestoreIfCurrentSchemaDetected(IDatabaseConnectionFactory connectionFactory)

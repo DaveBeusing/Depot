@@ -68,13 +68,16 @@ public sealed class RolePermissionDesignerProjectionTests
 		[
 			ApplicationPermission.PurchaseOrdersCreate,
 			ApplicationPermission.PurchaseOrdersApprove,
+			ApplicationPermission.PurchaseRequisitionsManage,
+			ApplicationPermission.PurchaseRequisitionsApprove,
 			ApplicationPermission.FinancePaymentProposalsCreate,
 			ApplicationPermission.FinancePaymentProposalsApprove
 		]);
 
-		Assert.Equal(2, advisories.Count);
+		Assert.Equal(3, advisories.Count);
 		Assert.All(advisories, value => Assert.False(value.IsBlocking));
 		Assert.Contains(advisories, value => value.Code == "PURCHASE_CREATE_APPROVE");
+		Assert.Contains(advisories, value => value.Code == "REQUISITION_MANAGE_APPROVE");
 		Assert.Contains(advisories, value => value.Code == "PAYMENT_PROPOSAL_CREATE_APPROVE");
 	}
 }

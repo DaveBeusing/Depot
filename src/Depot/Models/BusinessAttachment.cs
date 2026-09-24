@@ -13,7 +13,10 @@ public enum BusinessAttachmentEntityKind
 	SalesInvoice = 6,
 	PurchaseOrder = 7,
 	GoodsReceipt = 8,
-	SupplierDocument = 9
+	SupplierDocument = 9,
+	PurchaseRequisition = 10,
+	RequestForQuotation = 11,
+	SupplierQuoteResponse = 12
 }
 
 public enum BusinessAttachmentStatus

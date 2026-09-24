@@ -6,7 +6,7 @@ Updated: 2026-09-20
 
 - [ ] Ready for release
 
-Depot is on the `0.15.x-preview` line with Core database schema **30**, Sales feature schema **15**, Finance feature schema **12**, User Sessions schema **3**, Security Events schema **3**, User Preferences schema **2**, Document Templates schema **1**, Enterprise Identity feature schema **2**, and Help manifest **1.28**. `Directory.Build.props` is authoritative for the exact application patch/version. Checked items represent implemented technical controls/evidence only; they do not replace legal, accounting, accessibility, signing, localization or deployment acceptance.
+Depot is on the `0.15.x-preview` line with Core database schema **30**, Sales feature schema **15**, Finance feature schema **12**, User Sessions schema **3**, Security Events schema **3**, User Preferences schema **2**, Document Templates schema **1**, Enterprise Identity feature schema **2**, Procurement Sourcing feature schema **1**, and Help manifest **1.29**. `Directory.Build.props` is authoritative for the exact application patch/version. Checked items represent implemented technical controls/evidence only; they do not replace legal, accounting, accessibility, signing, localization or deployment acceptance.
 
 ## Implemented Finance baseline
 
@@ -30,6 +30,7 @@ Depot is on the `0.15.x-preview` line with Core database schema **30**, Sales fe
 
 - [x] first-run administrator creation, hardened authentication and multi-role RBAC
 - [x] service-layer authorization and creator/approver controls where implemented
+- [x] controlled Purchase Requisition and supplier-sourcing workflow with explicit award and idempotent Purchase Order draft conversion
 - [x] immutable/correction-oriented retained business records and Audit evidence
 - [x] database-backed visual document-template versions and active-layout rollout across all supported Sales/warehouse PDFs
 - [x] User Preferences schema 2 workspace productivity: Saved Views, supported filter/column/sort state, grid density, Favorites, Recents and default landing

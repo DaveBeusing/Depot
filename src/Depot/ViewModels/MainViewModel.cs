@@ -46,6 +46,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 	private readonly Lazy<MaterialReturnsViewModel> _materialReturns;
 	private readonly Lazy<SupplierReturnsViewModel> _supplierReturns;
 	private readonly Lazy<ProcurementViewModel> _procurement;
+	private readonly Lazy<ProcurementSourcingViewModel> _procurementSourcing;
 	private readonly Lazy<PurchaseOverviewViewModel> _purchaseOverview;
 	private readonly Lazy<PurchaseOrdersPageViewModel> _purchaseOrdersPage;
 	private readonly Lazy<GoodsReceiptsPageViewModel> _goodsReceiptsPage;
@@ -113,6 +114,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		SupplierService supplierService,
 		SupplierItemService supplierItemService,
 		PurchaseOrderService purchaseOrderService,
+		ProcurementSourcingService procurementSourcingService,
 		PurchaseOrderApprovalService purchaseOrderApprovalService,
 		PurchaseOrderHistoryService purchaseOrderHistoryService,
 		GoodsReceiptService goodsReceiptService,
@@ -188,6 +190,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		_materialReturns = new(() => new MaterialReturnsViewModel(materialReturnService, reasonCodeService, fileDialogService));
 		_supplierReturns = new(() => new SupplierReturnsViewModel(supplierReturnService, supplierService, reasonCodeService, fileDialogService));
 		_procurement = new(() => new ProcurementViewModel(purchaseOrderService, purchaseOrderHistoryService, goodsReceiptService, supplierService, itemService, fileDialogService, reasonCodeService, MarkPurchasingPagesStale, MarkInventoryPagesStale, salesServices.Timeline, OpenWorkflowTimelineItemAsync, businessAttachmentService));
+		_procurementSourcing = new(() => new ProcurementSourcingViewModel(procurementSourcingService, supplierService, itemService, businessAttachmentService, fileDialogService, MarkPurchasingPagesStale));
 		_purchaseOverview = new(() => new PurchaseOverviewViewModel(purchaseOrderService));
 		_purchaseOrdersPage = new(() => new PurchaseOrdersPageViewModel(_procurement.Value));
 		_goodsReceiptsPage = new(() => new GoodsReceiptsPageViewModel(_procurement.Value));
@@ -253,6 +256,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 	public MaterialReturnsViewModel MaterialReturnsViewModel => _materialReturns.Value;
 	public SupplierReturnsViewModel SupplierReturnsViewModel => _supplierReturns.Value;
 	public ProcurementViewModel ProcurementViewModel => _procurement.Value;
+	public ProcurementSourcingViewModel ProcurementSourcingViewModel => _procurementSourcing.Value;
 	public PurchaseOverviewViewModel PurchaseOverviewViewModel => _purchaseOverview.Value;
 	public PurchaseOrdersPageViewModel PurchaseOrdersPageViewModel => _purchaseOrdersPage.Value;
 	public GoodsReceiptsPageViewModel GoodsReceiptsPageViewModel => _goodsReceiptsPage.Value;
@@ -380,6 +384,14 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		var route = new ShellRoute(item.RouteId);
 		switch (item.Kind)
 		{
+			case MyWorkItemKind.PurchaseRequisition:
+				await this.NavigateToRouteAsync(route, cancellationToken);
+				await ProcurementSourcingViewModel.OpenRequisitionAsync(item.EntityId, cancellationToken);
+				break;
+			case MyWorkItemKind.RequestForQuotation:
+				await this.NavigateToRouteAsync(route, cancellationToken);
+				await ProcurementSourcingViewModel.OpenRfqAsync(item.EntityId, cancellationToken);
+				break;
 			case MyWorkItemKind.PurchaseOrder:
 				await this.NavigateToRouteAsync(route, cancellationToken);
 				await ProcurementViewModel.OpenOrderAsync(item.EntityId, cancellationToken);
@@ -480,6 +492,14 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 				await this.NavigateToRouteAsync(ShellRoutes.Approvals.Sales, cancellationToken);
 				await SalesApprovalsViewModel.Workspace.OpenQuickItemAsync(new SalesQuickOpenItem(SalesQuickOpenKind.SalesOrder, item.EntityId, item.DisplayNumber, item.Context ?? string.Empty), cancellationToken);
 				break;
+			case CommercialRoleItemKind.PurchaseRequisition:
+				await this.NavigateToRouteAsync(route, cancellationToken);
+				await ProcurementSourcingViewModel.OpenRequisitionAsync(item.EntityId, cancellationToken);
+				break;
+			case CommercialRoleItemKind.RequestForQuotation:
+				await this.NavigateToRouteAsync(route, cancellationToken);
+				await ProcurementSourcingViewModel.OpenRfqAsync(item.EntityId, cancellationToken);
+				break;
 			case CommercialRoleItemKind.PurchaseOrder:
 				await this.NavigateToRouteAsync(route, cancellationToken);
 				await ProcurementViewModel.OpenOrderAsync(item.EntityId, cancellationToken);
@@ -567,6 +587,13 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 				await this.NavigateToRouteAsync(ShellRoutes.Sales.Orders, cancellationToken);
 				SalesOrdersViewModel.Workspace.NewOrderCommand.Execute(null);
 				break;
+			case "purchasing.new-requisition":
+				await this.NavigateToRouteAsync(ShellRoutes.Purchasing.Sourcing, cancellationToken);
+				ProcurementSourcingViewModel.NewRequisitionCommand.Execute(null);
+				break;
+			case "purchasing.open-sourcing":
+				await this.NavigateToRouteAsync(ShellRoutes.Purchasing.Sourcing, cancellationToken);
+				break;
 			case "purchasing.new-order":
 				await this.NavigateToRouteAsync(ShellRoutes.Purchasing.PurchaseOrders, cancellationToken);
 				ProcurementViewModel.NewOrderCommand.Execute(null);
@@ -647,7 +674,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		AddPage(inventoryPages, ApplicationPermission.InventoryView, "Overview", () => _inventory.Value, (viewModel, token) => viewModel.LoadAsync(token), "inventory.overview"); AddPage(inventoryPages, ApplicationPermission.ItemsView, "Items", () => _items.Value, (viewModel, token) => viewModel.LoadItemsAsync(token), "inventory.items"); AddPage(inventoryPages, ApplicationPermission.StockMovementsView, "Movements", () => _movements.Value, (viewModel, token) => viewModel.LoadAsync(token), "inventory.movements"); AddModule("Inventory", Icons.Inventory, "Monitor stock, items, and immutable inventory movements.", inventoryPages);
 		var salesPages = new List<SecondaryNavigationItem>();
 		AddPage(salesPages, ApplicationPermission.SalesView, "Overview", () => _salesOverview.Value, (viewModel, token) => viewModel.LoadAsync(token), "sales.overview"); AddPage(salesPages, ApplicationPermission.SalesCrmView, "Leads", () => _salesLeads.Value, (viewModel, token) => viewModel.LoadAsync(token), "sales.leads"); AddPage(salesPages, ApplicationPermission.SalesCrmView, "Opportunities", () => _salesOpportunities.Value, (viewModel, token) => viewModel.LoadAsync(token), "sales.opportunities"); AddPage(salesPages, ApplicationPermission.SalesQuotesView, "Quotes", () => _salesQuotes.Value, (viewModel, token) => viewModel.LoadAsync(token), "sales.quotes"); AddPage(salesPages, ApplicationPermission.SalesPricingView, "Pricing", () => _salesPricing.Value, (viewModel, token) => viewModel.LoadAsync(token), "sales.pricing"); AddPage(salesPages, ApplicationPermission.CustomersView, "Customers", () => _salesCustomers.Value, (viewModel, token) => viewModel.LoadAsync(token), "sales.customers"); AddPage(salesPages, ApplicationPermission.SalesOrdersView, "Sales Orders", () => _salesOrders.Value, (viewModel, token) => viewModel.LoadAsync(token), "sales.orders"); AddPage(salesPages, ApplicationPermission.SalesInvoicesView, "Invoices", () => _salesInvoices.Value, (viewModel, token) => viewModel.LoadAsync(token), "sales.invoices"); AddModule("Sales", Icons.Sales, "Manage leads, opportunities, quotes, pricing, customers, sales orders, and invoicing.", salesPages);
-		if (_authorization.HasPermission(ApplicationPermission.PurchasingView)) { var purchasingPages = new List<SecondaryNavigationItem>(); AddPage(purchasingPages, ApplicationPermission.PurchaseOrdersView, "Overview", () => _purchaseOverview.Value, (viewModel, token) => viewModel.LoadAsync(token), "purchasing.overview"); AddPage(purchasingPages, ApplicationPermission.PurchaseOrdersView, "Purchase Orders", () => _purchaseOrdersPage.Value, (viewModel, token) => viewModel.LoadAsync(token), "purchasing.purchase-orders", () => _procurement.Value.Section = ProcurementSection.PurchaseOrders); AddPage(purchasingPages, ApplicationPermission.GoodsReceiptsView, "Goods Receipts", () => _goodsReceiptsPage.Value, (viewModel, token) => viewModel.LoadAsync(token), "purchasing.goods-receipts", () => _procurement.Value.Section = ProcurementSection.GoodsReceipts); AddPage(purchasingPages, ApplicationPermission.SupplierReturnsView, "Supplier Returns", () => _supplierReturns.Value, (viewModel, token) => viewModel.LoadAsync(token), "purchasing.supplier-returns"); AddModule("Purchasing", Icons.Purchasing, "Manage orders, supplier deliveries, and returns.", purchasingPages); }
+		if (_authorization.HasAnyPermission(ApplicationPermission.PurchasingView, ApplicationPermission.PurchaseRequisitionsView, ApplicationPermission.SupplierSourcingView)) { var purchasingPages = new List<SecondaryNavigationItem>(); AddPage(purchasingPages, ApplicationPermission.PurchaseOrdersView, "Overview", () => _purchaseOverview.Value, (viewModel, token) => viewModel.LoadAsync(token), "purchasing.overview"); if (_authorization.HasAnyPermission(ApplicationPermission.PurchaseRequisitionsView, ApplicationPermission.SupplierSourcingView)) purchasingPages.Add(new("Sourcing", () => _procurementSourcing.Value, (viewModel, token) => ((ProcurementSourcingViewModel)viewModel).LoadAsync(token), "purchasing.sourcing", route: ShellRoutes.Purchasing.Sourcing)); AddPage(purchasingPages, ApplicationPermission.PurchaseOrdersView, "Purchase Orders", () => _purchaseOrdersPage.Value, (viewModel, token) => viewModel.LoadAsync(token), "purchasing.purchase-orders", () => _procurement.Value.Section = ProcurementSection.PurchaseOrders); AddPage(purchasingPages, ApplicationPermission.GoodsReceiptsView, "Goods Receipts", () => _goodsReceiptsPage.Value, (viewModel, token) => viewModel.LoadAsync(token), "purchasing.goods-receipts", () => _procurement.Value.Section = ProcurementSection.GoodsReceipts); AddPage(purchasingPages, ApplicationPermission.SupplierReturnsView, "Supplier Returns", () => _supplierReturns.Value, (viewModel, token) => viewModel.LoadAsync(token), "purchasing.supplier-returns"); AddModule("Purchasing", Icons.Purchasing, "Manage purchase demand, sourcing, orders, supplier deliveries, and returns.", purchasingPages); }
 		var warehousePages = new List<SecondaryNavigationItem>();
 		AddPage(warehousePages, ApplicationPermission.StockTransfersView, "Transfers", () => _stockTransfers.Value, (viewModel, token) => viewModel.LoadAsync(token), "warehouse.transfers"); AddPage(warehousePages, ApplicationPermission.InventoryCountsView, "Inventory Counts", () => _inventoryCounts.Value, (viewModel, token) => viewModel.LoadAsync(token), "warehouse.inventory-counts"); AddPage(warehousePages, ApplicationPermission.MaterialIssuesView, "Material Issues", () => _materialIssues.Value, (viewModel, token) => viewModel.LoadAsync(token), "warehouse.material-issues"); AddPage(warehousePages, ApplicationPermission.MaterialReturnsView, "Material Returns", () => _materialReturns.Value, (viewModel, token) => viewModel.LoadAsync(token), "warehouse.material-returns"); AddPage(warehousePages, ApplicationPermission.ShipmentsView, "Shipping", () => _salesShipping.Value, (viewModel, token) => viewModel.LoadAsync(token), "sales.shipping"); AddModule("Warehouse", Icons.Warehouse, "Execute controlled warehouse operations, fulfillment, shipping, and physical stock workflows.", warehousePages);
 		var financePages = new List<SecondaryNavigationItem>();
@@ -666,7 +693,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 	private async void OnModuleNavigationRequested(object? sender,EventArgs e){if(sender is not ShellModuleViewModel module)return;var item=NavigationItems.FirstOrDefault(candidate=>candidate.IsContentCreated&&ReferenceEquals(candidate.Content,module));if(item is not null)await NavigateAsync(item);}
 	private bool HasAdministrationPages() => AdministrationNavigationItems.Count > 0;
 	private void MarkInventoryPagesStale(){MarkModulePageStale("Inventory","Overview");MarkModulePageStale("Inventory","Movements");}
-	private void MarkPurchasingPagesStale(){MarkModulePageStale("Purchasing","Overview");MarkModulePageStale("Purchasing","Purchase Orders");MarkModulePageStale("Purchasing","Goods Receipts");}
+	private void MarkPurchasingPagesStale(){MarkModulePageStale("Purchasing","Overview");MarkModulePageStale("Purchasing","Sourcing");MarkModulePageStale("Purchasing","Purchase Orders");MarkModulePageStale("Purchasing","Goods Receipts");}
 	private void MarkModulePageStale(string moduleName,string pageName){var moduleItem=NavigationItems.FirstOrDefault(item=>item.Name==moduleName);if(moduleItem?.IsContentCreated!=true||moduleItem.Content is not ShellModuleViewModel module)return;module.Pages.FirstOrDefault(page=>page.Name==pageName)?.MarkStale();}
 	private CancellationTokenSource BeginNavigation(CancellationToken cancellationToken){CancelNavigationLoad();_navigationCancellation=cancellationToken.CanBeCanceled?CancellationTokenSource.CreateLinkedTokenSource(cancellationToken):new CancellationTokenSource();return _navigationCancellation;}
 	private void CancelNavigationLoad(){_navigationCancellation?.Cancel();_navigationCancellation?.Dispose();_navigationCancellation=null;}
@@ -707,7 +734,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 	public void Dispose()
 	{
 		if(_disposed)return;_disposed=true;_notificationNavigation.SetNavigationHandler(null);CancelNavigationLoad();_notificationLoadState.Dispose();NotificationSummaryViewModel.Dispose();foreach(var item in NavigationItems){if(item.IsContentCreated&&item.Content is ShellModuleViewModel module)module.NavigationRequested-=OnModuleNavigationRequested;item.Dispose();}
-		if(_procurement.IsValueCreated)_procurement.Value.Dispose();if(_salesOverview.IsValueCreated)_salesOverview.Value.Dispose();if(_salesQuotes.IsValueCreated)_salesQuotes.Value.Dispose();if(_salesPricing.IsValueCreated)_salesPricing.Value.Dispose();if(_salesCustomers.IsValueCreated)_salesCustomers.Value.Dispose();if(_salesOrders.IsValueCreated)_salesOrders.Value.Dispose();if(_salesApprovals.IsValueCreated)_salesApprovals.Value.Dispose();if(_salesShipping.IsValueCreated)_salesShipping.Value.Dispose();if(_salesInvoices.IsValueCreated)_salesInvoices.Value.Dispose();if(_salesSearch.IsValueCreated)_salesSearch.Value.Dispose();if(_financePostingFlowDesigner.IsValueCreated)_financePostingFlowDesigner.Value.Dispose();if(_financePeriodControl.IsValueCreated)_financePeriodControl.Value.Dispose();if(_financeReceivables.IsValueCreated)_financeReceivables.Value.Dispose();if(_financePayables.IsValueCreated)_financePayables.Value.Dispose();if(_financeInventoryAccounting.IsValueCreated)_financeInventoryAccounting.Value.Dispose();if(_financeBanking.IsValueCreated)_financeBanking.Value.Dispose();if(_financeFinancialReporting.IsValueCreated)_financeFinancialReporting.Value.Dispose();if(_help.IsValueCreated){_help.Value.CloseRequested-=OnHelpCloseRequested;_help.Value.Dispose();}if(_notificationCenter.IsValueCreated){_notificationCenter.Value.CloseRequested-=OnNotificationCloseRequested;_notificationCenter.Value.Dispose();}
+		if(_procurement.IsValueCreated)_procurement.Value.Dispose();if(_procurementSourcing.IsValueCreated)_procurementSourcing.Value.Dispose();if(_salesOverview.IsValueCreated)_salesOverview.Value.Dispose();if(_salesQuotes.IsValueCreated)_salesQuotes.Value.Dispose();if(_salesPricing.IsValueCreated)_salesPricing.Value.Dispose();if(_salesCustomers.IsValueCreated)_salesCustomers.Value.Dispose();if(_salesOrders.IsValueCreated)_salesOrders.Value.Dispose();if(_salesApprovals.IsValueCreated)_salesApprovals.Value.Dispose();if(_salesShipping.IsValueCreated)_salesShipping.Value.Dispose();if(_salesInvoices.IsValueCreated)_salesInvoices.Value.Dispose();if(_salesSearch.IsValueCreated)_salesSearch.Value.Dispose();if(_financePostingFlowDesigner.IsValueCreated)_financePostingFlowDesigner.Value.Dispose();if(_financePeriodControl.IsValueCreated)_financePeriodControl.Value.Dispose();if(_financeReceivables.IsValueCreated)_financeReceivables.Value.Dispose();if(_financePayables.IsValueCreated)_financePayables.Value.Dispose();if(_financeInventoryAccounting.IsValueCreated)_financeInventoryAccounting.Value.Dispose();if(_financeBanking.IsValueCreated)_financeBanking.Value.Dispose();if(_financeFinancialReporting.IsValueCreated)_financeFinancialReporting.Value.Dispose();if(_help.IsValueCreated){_help.Value.CloseRequested-=OnHelpCloseRequested;_help.Value.Dispose();}if(_notificationCenter.IsValueCreated){_notificationCenter.Value.CloseRequested-=OnNotificationCloseRequested;_notificationCenter.Value.Dispose();}
 	}
 
 	private static class Icons

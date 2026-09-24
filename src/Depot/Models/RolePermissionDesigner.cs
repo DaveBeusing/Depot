@@ -67,6 +67,7 @@ public static class RolePermissionDesignerProjector
 	private static readonly (string Code, string Title, string Description, ApplicationPermission First, ApplicationPermission Second)[] SeparationAdvisories =
 	[
 		("PURCHASE_CREATE_APPROVE", "Purchase order create / approve", "Creating and approving purchase orders in one role can reduce creator/approver separation.", ApplicationPermission.PurchaseOrdersCreate, ApplicationPermission.PurchaseOrdersApprove),
+		("REQUISITION_MANAGE_APPROVE", "Purchase requisition manage / approve", "Managing and approving purchase requisitions in one role can reduce requester/approver separation.", ApplicationPermission.PurchaseRequisitionsManage, ApplicationPermission.PurchaseRequisitionsApprove),
 		("SUPPLIER_INVOICE_CREATE_APPROVE", "Supplier invoice create / approve", "Creating and approving supplier invoices in one role can reduce invoice approval separation.", ApplicationPermission.FinanceSupplierInvoicesCreate, ApplicationPermission.FinanceSupplierInvoicesApprove),
 		("PAYMENT_PROPOSAL_CREATE_APPROVE", "Payment proposal create / approve", "Creating and approving payment proposals in one role can reduce Treasury approval separation.", ApplicationPermission.FinancePaymentProposalsCreate, ApplicationPermission.FinancePaymentProposalsApprove),
 		("SALES_ORDER_CREATE_APPROVE", "Sales order create / approve", "Creating and approving sales orders in one role can reduce order approval separation.", ApplicationPermission.SalesOrdersCreate, ApplicationPermission.SalesOrdersApprove)

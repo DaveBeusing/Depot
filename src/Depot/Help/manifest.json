@@ -1,5 +1,5 @@
 {
-  "version": "1.28",
+  "version": "1.29",
   "topics": [
     {
       "id": "getting-started.first-login",
@@ -287,11 +287,35 @@
       ],
       "requiredPermission": "PurchaseOrders.View",
       "relatedTopics": [
+        "purchasing.sourcing",
         "approvals.queue",
         "purchasing.goods-receipts",
         "inventory.items",
         "finance.payables",
         "finance.inventory-accounting"
+      ]
+    },
+    {
+      "id": "purchasing.sourcing",
+      "title": "Purchase Requisitions and Supplier Sourcing",
+      "category": "Purchasing",
+      "file": "purchasing/sourcing.md",
+      "order": 405,
+      "keywords": [
+        "purchase requisition",
+        "requisition",
+        "request for quotation",
+        "rfq",
+        "supplier quote",
+        "quote comparison",
+        "sourcing",
+        "award"
+      ],
+      "relatedTopics": [
+        "purchasing.purchase-orders",
+        "approvals.queue",
+        "getting-started.business-attachments",
+        "administration.approval-policies"
       ]
     },
     {
@@ -831,9 +855,21 @@
       "category": "Finance",
       "file": "finance/budgeting.md",
       "order": 796,
-      "keywords": ["budget", "budgeting", "variance", "actual vs budget", "planning", "approval"],
+      "keywords": [
+        "budget",
+        "budgeting",
+        "variance",
+        "actual vs budget",
+        "planning",
+        "approval"
+      ],
       "requiredPermission": "FinanceBudgeting.View",
-      "relatedTopics": ["finance.foundation", "finance.general-ledger", "finance.reporting", "administration.approval-policies"]
+      "relatedTopics": [
+        "finance.foundation",
+        "finance.general-ledger",
+        "finance.reporting",
+        "administration.approval-policies"
+      ]
     },
     {
       "id": "finance.localization",

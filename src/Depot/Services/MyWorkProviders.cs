@@ -13,19 +13,21 @@ internal sealed class PurchasingMyWorkProvider : IMyWorkProvider
 	private readonly MyWorkReadRepository _read;
 	private readonly IAuthorizationService _authorization;
 	private readonly ApprovalPolicyService? _approvalPolicies;
+	private readonly ProcurementSourcingService? _sourcing;
 
-	public PurchasingMyWorkProvider(PurchaseOrderService orders, PurchaseOrderApprovalService approvals, MyWorkReadRepository read, IAuthorizationService authorization, ApprovalPolicyService? approvalPolicies = null)
+	public PurchasingMyWorkProvider(PurchaseOrderService orders, PurchaseOrderApprovalService approvals, MyWorkReadRepository read, IAuthorizationService authorization, ApprovalPolicyService? approvalPolicies = null, ProcurementSourcingService? sourcing = null)
 	{
 		_orders = orders;
 		_approvals = approvals;
 		_read = read;
 		_authorization = authorization;
 		_approvalPolicies = approvalPolicies;
+		_sourcing = sourcing;
 	}
 
 	public string Name => "Purchasing";
 	public bool CanQuery(IAuthorizationService authorization) =>
-		authorization.HasAnyPermission(ApplicationPermission.PurchaseOrdersView, ApplicationPermission.PurchaseOrdersApprove, ApplicationPermission.GoodsReceiptsView);
+		authorization.HasAnyPermission(ApplicationPermission.PurchaseOrdersView, ApplicationPermission.PurchaseOrdersApprove, ApplicationPermission.GoodsReceiptsView, ApplicationPermission.PurchaseRequisitionsView, ApplicationPermission.PurchaseRequisitionsApprove, ApplicationPermission.SupplierSourcingView);
 
 	public async Task<IReadOnlyList<MyWorkItem>> GetAsync(MyWorkQuery query, CancellationToken cancellationToken)
 	{
@@ -58,6 +60,35 @@ internal sealed class PurchasingMyWorkProvider : IMyWorkProvider
 				items.Add(Item(MyWorkSectionKind.NeedsMyAction, order, "Supplier delivery", order.OpenQuantity, order.ExpectedDeliveryDate, MyWorkPriority.Normal, "purchasing.goods-receipts", "Receive"));
 			if (order.ExpectedDeliveryDate is { } due && due.Date < query.NowUtc.Date)
 				items.Add(Item(MyWorkSectionKind.Exceptions, order, "Overdue purchase delivery", order.OpenQuantity, due, MyWorkPriority.High, "purchasing.purchase-orders", "Open"));
+		}
+
+		if (_sourcing is not null && _authorization.HasPermission(ApplicationPermission.PurchaseRequisitionsView))
+		{
+			var requisitions = (await _sourcing.SearchRequisitionsAsync(null, null, 1, query.ProviderLimit, cancellationToken)).Items;
+			foreach (var requisition in requisitions.Where(value => value.Status is PurchaseRequisitionStatus.Draft or PurchaseRequisitionStatus.Returned && value.RequestedByUserId == query.UserId))
+				items.Add(new(MyWorkSectionKind.MyDrafts, MyWorkItemKind.PurchaseRequisition, requisition.Id, requisition.RequisitionNumber, "Purchase requisition", requisition.PreferredSupplierName, requisition.Status.ToString(), null, requisition.RequiredByDate, null, MyWorkPriority.Normal, "purchasing.sourcing", "Edit", requisition.RequestedByUserId));
+
+			foreach (var requisition in requisitions.Where(value => value.Status == PurchaseRequisitionStatus.Submitted))
+			{
+				var age = requisition.SubmittedAtUtc is { } submitted ? Math.Max(0, (int)(query.NowUtc - submitted).TotalDays) : 0;
+				if (requisition.CreatedByUserId == query.UserId || requisition.RequestedByUserId == query.UserId)
+					items.Add(new(MyWorkSectionKind.Waiting, MyWorkItemKind.PurchaseRequisition, requisition.Id, requisition.RequisitionNumber, "Requisition approval", requisition.PreferredSupplierName, "Submitted", null, requisition.RequiredByDate, age, MyWorkPriority.Normal, "purchasing.sourcing", "Open", requisition.RequestedByUserId));
+				else if (_authorization.HasPermission(ApplicationPermission.PurchaseRequisitionsApprove) && (_approvalPolicies is null || await _approvalPolicies.CanCurrentUserDecideAsync(ApprovalSubjectKind.PurchaseRequisition, requisition.Id.ToString(System.Globalization.CultureInfo.InvariantCulture), cancellationToken)))
+					items.Add(new(MyWorkSectionKind.NeedsMyAction, MyWorkItemKind.PurchaseRequisition, requisition.Id, requisition.RequisitionNumber, "Requisition approval", requisition.PreferredSupplierName, "Submitted", null, requisition.RequiredByDate, age, age >= 3 ? MyWorkPriority.High : MyWorkPriority.Normal, "purchasing.sourcing", "Review", requisition.RequestedByUserId));
+			}
+		}
+
+		if (_sourcing is not null && _authorization.HasPermission(ApplicationPermission.SupplierSourcingView))
+		{
+			var rfqs = (await _sourcing.SearchRfqsAsync(null, 1, query.ProviderLimit, cancellationToken)).Items;
+			foreach (var rfq in rfqs.Where(value => value.Status == RequestForQuotationStatus.Open))
+			{
+				var overdue = rfq.ResponseDueDate is { } due && due.Date < query.NowUtc.Date;
+				items.Add(new(overdue ? MyWorkSectionKind.Exceptions : MyWorkSectionKind.Waiting, MyWorkItemKind.RequestForQuotation, rfq.Id, rfq.RfqNumber, overdue ? "Supplier quotes overdue" : "Awaiting supplier quotes", rfq.RequisitionNumber, rfq.Status.ToString(), null, rfq.ResponseDueDate, null, overdue ? MyWorkPriority.High : MyWorkPriority.Normal, "purchasing.sourcing", "Open", rfq.CreatedByUserId));
+			}
+			if (_authorization.HasPermission(ApplicationPermission.SupplierSourcingConvert))
+				foreach (var rfq in rfqs.Where(value => value.Status == RequestForQuotationStatus.Awarded))
+					items.Add(new(MyWorkSectionKind.NeedsMyAction, MyWorkItemKind.RequestForQuotation, rfq.Id, rfq.RfqNumber, "Convert selected supplier quote", rfq.RequisitionNumber, "Awarded", null, null, null, MyWorkPriority.High, "purchasing.sourcing", "Create PO", rfq.CreatedByUserId));
 		}
 
 		var recentCutoff = query.NowUtc.AddDays(-14);

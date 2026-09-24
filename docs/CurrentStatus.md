@@ -119,7 +119,8 @@ PR #56 then repaired CI execution boundaries without changing runtime behavior o
 - Enterprise Identity feature schema: **2**
 - Approval Policies feature schema: **1**
 - Business Attachments feature schema: **1**
-- Help manifest: **1.28**
+- Procurement Sourcing feature schema: **1**
+- Help manifest: **1.29**
 
 `Directory.Build.props` is authoritative for the exact Depot application patch/version; `src/DepotManager/DepotManager.Version.props` is authoritative for DepotManager. Schema migration constants and `src/Depot/Help/manifest.json` are authoritative for the remaining baseline values. Every repository commit increments `DepotVersionPatch`.
 
@@ -153,3 +154,10 @@ Forecasting, workforce planning, treasury cash forecasting, consolidation budget
 ## Finance SEPA SCT export
 
 Finance Banking includes deterministic `pain.001.001.09` SEPA SCT export from approved payment runs, explicit structured debtor/creditor payment profiles, immutable retained XML/SHA-256 evidence, exact re-download, explicit supersede semantics and manual external-status evidence. External bank submission, bank certification and automated status polling remain outside the repository boundary.
+
+
+## Procurement sourcing
+
+The repository now contains the controlled Purchase Requisition -> approval -> RFQ -> Supplier Quote Response -> explicit comparison/selection -> Purchase Order draft workflow. Procurement Sourcing feature schema **1** provides provider-neutral persistence, Approval Policy integration, optimistic concurrency, explicit requisition and sourcing permissions, Audit evidence, Business Attachments, My Work/Buyer Workbench projections and a dedicated Purchasing > Sourcing workspace.
+
+Supplier comparison is informational and deterministic; Depot does not automatically award a supplier. Purchase Order conversion is explicit and idempotent and continues through the existing Purchase Order authority. Resulting Purchase Orders retain source links to the requisition, RFQ and selected quote response.

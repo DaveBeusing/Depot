@@ -23,6 +23,7 @@ internal sealed class RepositoryComposition
 		Suppliers = new SupplierRepository(dataAccess);
 		SupplierItems = new SupplierItemRepository(dataAccess);
 		PurchaseOrders = new PurchaseOrderRepository(dataAccess);
+		ProcurementSourcing = new ProcurementSourcingRepository(dataAccess);
 		GoodsReceipts = new GoodsReceiptRepository(dataAccess);
 		StockTransfers = new StockTransferRepository(dataAccess);
 		InventoryCounts = new InventoryCountRepository(dataAccess);
@@ -90,6 +91,7 @@ internal sealed class RepositoryComposition
 	public SupplierRepository Suppliers { get; }
 	public SupplierItemRepository SupplierItems { get; }
 	public PurchaseOrderRepository PurchaseOrders { get; }
+	public ProcurementSourcingRepository ProcurementSourcing { get; }
 	public GoodsReceiptRepository GoodsReceipts { get; }
 	public StockTransferRepository StockTransfers { get; }
 	public InventoryCountRepository InventoryCounts { get; }

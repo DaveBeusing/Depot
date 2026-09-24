@@ -35,7 +35,9 @@ public enum MyWorkItemKind
 	SalesLeadActivity = 11,
 	SalesOpportunityActivity = 12,
 	SalesOpportunityFollowUp = 13,
-	FinanceBudget = 14
+	FinanceBudget = 14,
+	PurchaseRequisition = 15,
+	RequestForQuotation = 16
 }
 
 public enum MyWorkPriority

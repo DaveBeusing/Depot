@@ -21,10 +21,16 @@ public sealed class ShellNavigationTests
 
 		Assert.Equal(PermissionCatalog.All.Count, administrator.Count);
 		Assert.Contains(ApplicationPermission.PurchasingView, purchasing);
+		Assert.Contains(ApplicationPermission.PurchaseRequisitionsManage, purchasing);
+		Assert.Contains(ApplicationPermission.SupplierSourcingManage, purchasing);
+		Assert.Contains(ApplicationPermission.SupplierSourcingConvert, purchasing);
 		Assert.Contains(ApplicationPermission.PurchaseOrdersCreate, purchasing);
 		Assert.DoesNotContain(ApplicationPermission.PurchaseOrdersApprove, purchasing);
+		Assert.Contains(ApplicationPermission.PurchaseRequisitionsView, approver);
+		Assert.Contains(ApplicationPermission.PurchaseRequisitionsApprove, approver);
 		Assert.Contains(ApplicationPermission.PurchaseOrdersApprove, approver);
 		Assert.DoesNotContain(ApplicationPermission.PurchasingView, approver);
+		Assert.DoesNotContain(ApplicationPermission.SupplierSourcingManage, approver);
 		Assert.Contains(ApplicationPermission.PurchasingView, warehouseOperator);
 		Assert.Contains(ApplicationPermission.GoodsReceiptsPost, warehouseOperator);
 		Assert.DoesNotContain(ApplicationPermission.PurchaseOrdersView, warehouseOperator);

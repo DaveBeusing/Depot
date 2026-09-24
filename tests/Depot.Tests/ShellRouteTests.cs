@@ -14,6 +14,7 @@ public sealed class ShellRouteTests
 	{
 		Assert.Equal("sales-orders", ShellRoute.FromName("Sales Orders").Value);
 		Assert.Equal(ShellRoutes.Sales.Orders, new ShellRoute("SALES.ORDERS"));
+		Assert.Equal("purchasing.sourcing", ShellRoutes.Purchasing.Sourcing.Value);
 	}
 
 	[Fact]

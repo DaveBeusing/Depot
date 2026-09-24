@@ -63,6 +63,21 @@ public sealed class PurchaseOrderService
 		return await _orders.SaveDraftAsync(draft, after => isNew ? _audit.CreateCreatedEntry(after.Id, after) : _audit.CreateUpdatedEntry(after.Id, before ?? throw new InvalidOperationException("Purchase order was not found before saving."), after), cancellationToken);
 	}
 
+
+	internal async Task<PurchaseOrder> CreateSourcedDraftAsync(
+		DatabaseTransactionContext transaction,
+		PurchaseOrder draft,
+		CancellationToken cancellationToken)
+	{
+		_authorization.RequirePermission(ApplicationPermission.PurchaseOrdersCreate);
+		if (draft.Id != 0) throw new InvalidOperationException("Sourced conversion can only create a new purchase-order draft.");
+		await ValidateOrderContentAsync(draft, cancellationToken);
+		var creator = CurrentUser();
+		draft.CreatedByUserId = creator.Id;
+		draft.CreatedByUserDisplay = creator.DisplayName;
+		return await _orders.CreateDraftAsync(transaction, draft, after => _audit.CreateCreatedEntry(after.Id, after), cancellationToken);
+	}
+
 	public async Task<PurchaseOrder> SubmitForApprovalAsync(long id, long version, CancellationToken cancellationToken = default)
 	{
 		_authorization.RequirePermission(ApplicationPermission.PurchaseOrdersSubmit);

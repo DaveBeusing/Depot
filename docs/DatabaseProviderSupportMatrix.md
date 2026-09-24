@@ -54,6 +54,7 @@ The acceptance suite covers:
 - Financial Reporting Trial Balance generation, deterministic CSV export and immutable report-snapshot idempotence;
 - persistent user sessions, heartbeat and termination;
 - Business Attachments feature schema provisioning plus database-backed binary content round-trip and SHA-256 metadata persistence;
+- Procurement Sourcing feature schema provisioning plus requisition, RFQ, supplier quote comparison/selection and Purchase Order sourcing-evidence round-trip;
 - unavailable-connection failure followed by healthy connection-pool recovery;
 - remote database service restart followed by successful Depot re-entry;
 - provider-native backup/restore with a persisted recovery marker and post-restore Depot recognition;

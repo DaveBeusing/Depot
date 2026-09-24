@@ -107,12 +107,26 @@ public sealed class BusinessAttachmentRepository : DatabaseRepository
 			BusinessAttachmentEntityKind.PurchaseOrder => "PurchaseOrders",
 			BusinessAttachmentEntityKind.GoodsReceipt => "GoodsReceipts",
 			BusinessAttachmentEntityKind.SupplierDocument => "FinanceSupplierDocuments",
+			BusinessAttachmentEntityKind.PurchaseRequisition => "PurchaseRequisitions",
+			BusinessAttachmentEntityKind.RequestForQuotation => "RequestsForQuotation",
+			BusinessAttachmentEntityKind.SupplierQuoteResponse => "SupplierQuoteResponses",
 			_ => throw new ArgumentOutOfRangeException(nameof(entityKind))
 		};
 		var value = await Database.ExecuteScalarAsync(
 			$"SELECT COUNT(*) FROM {table} WHERE Id=$EntityId;",
 			cancellationToken,
 			Parameter("$EntityId", entityId));
+		return Convert.ToInt32(value, CultureInfo.InvariantCulture) == 1;
+	}
+
+	public async Task<bool> CanMutateEntityAsync(BusinessAttachmentEntityKind entityKind, long entityId, CancellationToken cancellationToken = default)
+	{
+		if (entityKind != BusinessAttachmentEntityKind.SupplierQuoteResponse) return true;
+		var value = await Database.ExecuteScalarAsync(
+			"SELECT COUNT(*) FROM SupplierQuoteResponses q INNER JOIN RequestsForQuotation r ON r.Id=q.RequestForQuotationId WHERE q.Id=$Id AND r.Status=$Open;",
+			cancellationToken,
+			Parameter("$Id", entityId),
+			Parameter("$Open", (int)RequestForQuotationStatus.Open));
 		return Convert.ToInt32(value, CultureInfo.InvariantCulture) == 1;
 	}
 
