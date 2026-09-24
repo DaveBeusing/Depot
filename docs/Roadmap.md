@@ -221,3 +221,16 @@ The bounded SEPA SCT payment-export capability is implemented at the repository 
 - [x] SQLite and remote-provider sourcing persistence/round-trip acceptance coverage
 
 Inventory replenishment suggestions now consume authoritative stock, reservation, backorder and open-supply evidence and convert user-approved suggestions into the established Purchase Requisition sourcing boundary. Automatic supplier award and automatic Purchase Order placement remain outside the product scope.
+
+
+## Project and cost accounting foundation
+
+- [x] independent project lifecycle and shallow phase model
+- [x] explicit source-document/manual-journal attribution with immutable posted-evidence protection
+- [x] GL-backed project actuals and separate open Purchase Order commitments
+- [x] Finance Budgeting line links and Actual-vs-Budget projection
+- [x] permissions, Audit, optimistic concurrency and Business Attachments
+- [x] Projects workspace and owned-project My Work integration
+- [x] provider-neutral feature migration and real-provider provisioning acceptance
+
+Complex construction accounting, percentage-of-completion revenue recognition, payroll/timekeeping, resource scheduling, full PSA and a separate project billing engine remain outside this foundation.
