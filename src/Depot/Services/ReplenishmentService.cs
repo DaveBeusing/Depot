@@ -59,6 +59,27 @@ public sealed class ReplenishmentService
 		return _repository.SearchPoliciesAsync(searchText,includeInactive,pageNumber,pageSize,cancellationToken);
 	}
 
+	public async Task<IReadOnlyList<Item>> ListPolicyItemsAsync(int count=500,CancellationToken cancellationToken=default)
+	{
+		_authorization.RequirePermission(ApplicationPermission.ReplenishmentPoliciesManage);
+		if(count is <1 or >500) throw new ArgumentOutOfRangeException(nameof(count));
+		return (await _items.SearchPageAsync(null,true,1,count,cancellationToken)).Items;
+	}
+
+	public Task<IReadOnlyList<Warehouse>> ListPolicyWarehousesAsync(int count=500,CancellationToken cancellationToken=default)
+	{
+		_authorization.RequirePermission(ApplicationPermission.ReplenishmentPoliciesManage);
+		if(count is <1 or >500) throw new ArgumentOutOfRangeException(nameof(count));
+		return _warehouses.ListActiveOptionsAsync(count,cancellationToken);
+	}
+
+	public Task<IReadOnlyList<Supplier>> ListPolicySuppliersAsync(int count=500,CancellationToken cancellationToken=default)
+	{
+		_authorization.RequirePermission(ApplicationPermission.ReplenishmentPoliciesManage);
+		if(count is <1 or >500) throw new ArgumentOutOfRangeException(nameof(count));
+		return _suppliers.SearchActiveSliceAsync(null,count,cancellationToken);
+	}
+
 	public Task<PageResult<ReplenishmentSuggestion>> SearchSuggestionsAsync(ReplenishmentSuggestionStatus? status=null,int pageNumber=1,int pageSize=100,CancellationToken cancellationToken=default)
 	{
 		_authorization.RequirePermission(ApplicationPermission.ReplenishmentView);

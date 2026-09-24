@@ -70,6 +70,7 @@ public static class ShellRoutes
 	public static class Purchasing
 	{
 		public static readonly ShellRoute Module = new("purchasing");
+		public static readonly ShellRoute Replenishment = new("purchasing.replenishment");
 		public static readonly ShellRoute Sourcing = new("purchasing.sourcing");
 		public static readonly ShellRoute PurchaseOrders = new("purchasing.purchase-orders");
 		public static readonly ShellRoute GoodsReceipts = new("purchasing.goods-receipts");
