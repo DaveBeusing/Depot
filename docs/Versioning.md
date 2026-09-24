@@ -171,3 +171,10 @@ The migration is tracked as `ProcurementSourcing` in `DepotFeatureVersions` and 
 
 Inventory Replenishment feature schema **1** introduces per-item/per-warehouse policies, deterministic requirement snapshots and reviewable suggestion lifecycle persistence. The migration is tracked as `InventoryReplenishment` in `DepotFeatureVersions`, does not increment Core schema 30, and must remain equivalent across SQLite, SQL Server, MariaDB and MySQL.
 
+
+
+### Project Accounting schema 1
+
+Project Accounting feature schema **1** introduces provider-neutral `Projects`, shallow `ProjectPhases`, explicit `ProjectAttributions` and `ProjectBudgetLineLinks`. The migration is tracked as `ProjectAccounting` in `DepotFeatureVersions` and does not increment Core or Finance schema versions.
+
+Project budget links reference existing Finance Budgeting lines rather than duplicating planning amounts. The schema is provisioned through the authoritative database initialization path and is included in SQLite, SQL Server, MariaDB and MySQL provider acceptance.

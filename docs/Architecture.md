@@ -196,3 +196,10 @@ The calculation is `ProjectedAvailable = OnHand - Reserved - Backordered + Eligi
 
 Feature schema **1** is tracked independently in `DepotFeatureVersions`. Suggestions are planning evidence and can only create Purchase Requisition demand through `ProcurementSourcingService`; no automatic supplier award or Purchase Order creation exists.
 
+
+
+## Project and cost accounting boundary
+
+Project Accounting follows the standard `View → ViewModel → Service → Repository → DatabaseAccess` dependency direction and owns an independent `ProjectAccounting` feature schema for project lifecycle, shallow phases, explicit source attribution and links to existing Finance budget lines.
+
+It is not an alternate ledger. Posted General Ledger and subledger evidence remains immutable and authoritative; project actuals read that evidence, open purchasing commitments remain operational projections, and budget comparisons reuse Finance Budgeting amounts and periods. Project attribution adds analysis context without rewriting source accounting records.
