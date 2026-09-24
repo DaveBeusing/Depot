@@ -9,7 +9,8 @@ public enum ApprovalSubjectKind
 	SalesOrder = 2,
 	AccountsPayableException = 3,
 	PaymentProposal = 4,
-	FinanceBudget = 5
+	FinanceBudget = 5,
+	PurchaseRequisition = 6
 }
 
 public enum ApprovalConditionKind
