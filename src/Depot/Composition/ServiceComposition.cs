@@ -96,7 +96,7 @@ internal sealed class ServiceComposition
 		Sales = new SalesServices(Customers, SalesPricing, SalesTimeline, SalesOrders, SalesQuotes, SalesCrm, Shipments, ShipmentPacking, SalesInvoices, CustomerReturns, SalesCreditNotes, Items, Authorization, SalesDocuments, SalesEmail, SalesInvoiceFinalizations, ItemCosts, PriceListGeneration);
 		MyWork = new MyWorkService(Authorization,
 		[
-			new PurchasingMyWorkProvider(PurchaseOrders, PurchaseOrderApprovals, repositories.MyWork, Authorization, ApprovalPolicies),
+			new PurchasingMyWorkProvider(PurchaseOrders, PurchaseOrderApprovals, repositories.MyWork, Authorization, ApprovalPolicies, ProcurementSourcing),
 			new SalesMyWorkProvider(SalesOrders, Shipments, repositories.MyWork, Authorization, ApprovalPolicies),
 			new SalesCrmMyWorkProvider(SalesCrm),
 			new InventoryCountMyWorkProvider(repositories.MyWork, Authorization),
