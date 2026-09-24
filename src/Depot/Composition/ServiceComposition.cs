@@ -114,6 +114,7 @@ internal sealed class ServiceComposition
 			SalesCrm,
 			PurchaseOrders,
 			PurchaseOrderApprovals,
+			ProcurementSourcing,
 			SupplierReturns,
 			GoodsReceipts,
 			Shipments,
