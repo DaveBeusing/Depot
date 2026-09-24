@@ -352,7 +352,7 @@ public sealed class ProjectAccountingRepository : DatabaseRepository
 			parameters.ToArray());
 	}
 
-	public Task<IReadOnlyList<ProjectBudgetAggregate>> ListBudgetAggregatesAsync(long projectId, long? projectPhaseId = null, CancellationToken cancellationToken = default)
+	internal Task<IReadOnlyList<ProjectBudgetAggregate>> ListBudgetAggregatesAsync(long projectId, long? projectPhaseId = null, CancellationToken cancellationToken = default)
 	{
 		var phasePredicate = projectPhaseId.HasValue ? " AND link.ProjectPhaseId=$ProjectPhaseId" : string.Empty;
 		var parameters = new List<DatabaseParameter> { Parameter("$ProjectId", projectId) };
