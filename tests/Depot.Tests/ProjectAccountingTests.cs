@@ -179,6 +179,7 @@ public sealed class ProjectAccountingTests
 		Assert.Equal(120m, variance.Budget);
 		Assert.Equal(30m, variance.Variance);
 		Assert.Equal(0.25m, variance.VariancePercent);
+		Assert.Equal("EUR", variance.Currency.Value);
 
 		await service.LinkBudgetLineAsync(project.Id, null, finance.SecondBudgetLineId, "REVENUE");
 		var combined = Assert.Single(
@@ -226,6 +227,8 @@ public sealed class ProjectAccountingTests
 		Assert.Contains("<controls:BusinessAttachmentPanel", view, StringComparison.Ordinal);
 		Assert.Contains("ActivatePhaseCommand", viewModel, StringComparison.Ordinal);
 		Assert.Contains("PhasePlannedStartDate", viewModel, StringComparison.Ordinal);
+		Assert.Contains("Summary.CurrencyTotals", view, StringComparison.Ordinal);
+		Assert.Contains("ReportingCurrency.Value", view, StringComparison.Ordinal);
 		Assert.Contains("ApplicationPermission.ProjectsView", main, StringComparison.Ordinal);
 		Assert.Contains("ProjectAccountingViewModel", templates, StringComparison.Ordinal);
 	}

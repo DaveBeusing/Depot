@@ -173,7 +173,7 @@ public sealed class ProjectAccountingViewModel : BaseViewModel
 
 	public string FinancialSummaryText => Summary is null
 		? "Select a project to load GL actuals, open purchasing commitments and budget variance."
-		: $"{Summary.ActualEntryCount:N0} actual entries · {Summary.CommitmentLineCount:N0} open commitment lines · {Summary.OpenPurchaseCommitments:N2} open purchasing commitment";
+		: $"{Summary.ActualEntryCount:N0} actual entries · {Summary.CommitmentLineCount:N0} open commitment lines · {Summary.OpenPurchaseCommitments:N2} open commitment amount (Purchase Order currency is not persisted)";
 
 	public async Task LoadAsync(CancellationToken cancellationToken = default)
 	{

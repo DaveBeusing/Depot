@@ -287,6 +287,8 @@ public sealed class ProjectAccountingService
 				?? throw new InvalidOperationException("Finance budget line was not found.");
 			if (line.LegalEntityId != project.LegalEntityId)
 				throw new InvalidOperationException("Finance budget line belongs to another legal entity.");
+			if (!string.Equals(line.BudgetCurrency.Value, line.ReportingCurrency.Value, StringComparison.OrdinalIgnoreCase))
+				throw new InvalidOperationException("Finance budget line currency does not match its accounting book reporting currency.");
 			var existing = await _projects.GetBudgetLinkAsync(transaction, financeBudgetLineId, token);
 			if (existing is not null)
 			{
@@ -344,10 +346,10 @@ public sealed class ProjectAccountingService
 		var actuals = await _projects.ListActualsAsync(projectId, projectPhaseId, null, null, cancellationToken);
 		var budgets = await _projects.ListBudgetAggregatesAsync(projectId, projectPhaseId, cancellationToken);
 		var actualByKey = actuals
-			.GroupBy(value => (value.AccountingBookId, value.AccountingPeriodId, value.AccountId, value.ProjectPhaseId))
+			.GroupBy(value => (value.AccountingBookId, value.AccountingPeriodId, value.AccountId, value.ProjectPhaseId, Currency: value.ReportingCurrency.Value))
 			.ToDictionary(group => group.Key, group => group.Sum(value => value.Amount));
 		var budgetByKey = budgets
-			.GroupBy(value => (value.AccountingBookId, value.AccountingPeriodId, value.AccountId, value.ProjectPhaseId))
+			.GroupBy(value => (value.AccountingBookId, value.AccountingPeriodId, value.AccountId, value.ProjectPhaseId, Currency: value.Currency.Value))
 			.ToDictionary(group => group.Key, group => (
 				Amount: group.Sum(value => value.Budget),
 				PeriodCode: group.First().PeriodCode,
@@ -359,12 +361,13 @@ public sealed class ProjectAccountingService
 			.ThenBy(value => value.AccountingPeriodId)
 			.ThenBy(value => value.AccountId)
 			.ThenBy(value => value.ProjectPhaseId)
+			.ThenBy(value => value.Currency, StringComparer.Ordinal)
 			.ToArray();
 		var rows = new List<ProjectBudgetVarianceRow>(keys.Length);
 		foreach (var key in keys)
 		{
 			var budget = budgetByKey.GetValueOrDefault(key);
-			var actualMeta = actuals.FirstOrDefault(value => value.AccountingBookId == key.AccountingBookId && value.AccountingPeriodId == key.AccountingPeriodId && value.AccountId == key.AccountId && value.ProjectPhaseId == key.ProjectPhaseId);
+			var actualMeta = actuals.FirstOrDefault(value => value.AccountingBookId == key.AccountingBookId && value.AccountingPeriodId == key.AccountingPeriodId && value.AccountId == key.AccountId && value.ProjectPhaseId == key.ProjectPhaseId && string.Equals(value.ReportingCurrency.Value, key.Currency, StringComparison.Ordinal));
 			rows.Add(new ProjectBudgetVarianceRow(
 				key.AccountingBookId,
 				key.AccountingPeriodId,
@@ -372,6 +375,7 @@ public sealed class ProjectAccountingService
 				key.AccountId,
 				budget.AccountNumber ?? actualMeta?.AccountNumber ?? string.Empty,
 				budget.AccountName ?? actualMeta?.AccountName ?? string.Empty,
+				new CurrencyCode(key.Currency),
 				key.ProjectPhaseId,
 				budget.Category,
 				actualByKey.GetValueOrDefault(key),

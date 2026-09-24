@@ -167,7 +167,7 @@ public sealed class ProjectAccountingRepository : DatabaseRepository
 	public Task<IReadOnlyList<ProjectBudgetLineOption>> ListBudgetLineOptionsAsync(Guid legalEntityId, int limit = 200, CancellationToken cancellationToken = default) =>
 		Database.QuerySliceAsync(
 			"""
-			SELECT l.Id,v.Id,v.BudgetName,v.FiscalYear,a.Number,a.Name,p.Code,l.Amount
+			SELECT l.Id,v.Id,v.BudgetName,v.FiscalYear,v.CurrencyCode,a.Number,a.Name,p.Code,l.Amount
 			FROM FinanceBudgetLines l
 			INNER JOIN FinanceBudgetVersions v ON v.Id=l.BudgetVersionId
 			INNER JOIN FinanceAccounts a ON a.Id=l.AccountId
@@ -185,8 +185,10 @@ public sealed class ProjectAccountingRepository : DatabaseRepository
 	internal Task<ProjectBudgetLineContext?> GetBudgetLineContextAsync(DatabaseTransactionContext transaction, long lineId, CancellationToken cancellationToken) =>
 		transaction.Session.QuerySingleOrDefaultAsync(
 			"""
-			SELECT l.Id,v.LegalEntityId,v.AccountingBookId,l.AccountId,l.AccountingPeriodId
-			FROM FinanceBudgetLines l INNER JOIN FinanceBudgetVersions v ON v.Id=l.BudgetVersionId
+			SELECT l.Id,v.LegalEntityId,v.AccountingBookId,l.AccountId,l.AccountingPeriodId,v.CurrencyCode,b.ReportingCurrencyCode
+			FROM FinanceBudgetLines l
+			INNER JOIN FinanceBudgetVersions v ON v.Id=l.BudgetVersionId
+			INNER JOIN FinanceAccountingBooks b ON b.Id=v.AccountingBookId
 			WHERE l.Id=$Id;
 			""",
 			reader => new ProjectBudgetLineContext(
@@ -194,7 +196,9 @@ public sealed class ProjectAccountingRepository : DatabaseRepository
 				Guid.Parse(reader.GetString(1)),
 				Guid.Parse(reader.GetString(2)),
 				Guid.Parse(reader.GetString(3)),
-				Guid.Parse(reader.GetString(4))),
+				Guid.Parse(reader.GetString(4)),
+				new CurrencyCode(reader.GetString(5)),
+				new CurrencyCode(reader.GetString(6))),
 			cancellationToken,
 			Parameter("$Id", lineId));
 
@@ -359,20 +363,20 @@ public sealed class ProjectAccountingRepository : DatabaseRepository
 		if (projectPhaseId.HasValue) parameters.Add(Parameter("$ProjectPhaseId", projectPhaseId.Value));
 		return Database.QueryAsync(
 			$"""
-			SELECT v.AccountingBookId,l.AccountingPeriodId,p.Code,l.AccountId,a.Number,a.Name,link.ProjectPhaseId,link.CategoryCode,SUM(l.Amount)
+			SELECT v.AccountingBookId,l.AccountingPeriodId,p.Code,l.AccountId,a.Number,a.Name,v.CurrencyCode,link.ProjectPhaseId,link.CategoryCode,SUM(l.Amount)
 			FROM ProjectBudgetLineLinks link
 			INNER JOIN FinanceBudgetLines l ON l.Id=link.FinanceBudgetLineId
 			INNER JOIN FinanceBudgetVersions v ON v.Id=l.BudgetVersionId
 			INNER JOIN FinanceAccountingPeriods p ON p.Id=l.AccountingPeriodId
 			INNER JOIN FinanceAccounts a ON a.Id=l.AccountId
 			WHERE link.ProjectId=$ProjectId{phasePredicate}
-			GROUP BY v.AccountingBookId,l.AccountingPeriodId,p.Code,l.AccountId,a.Number,a.Name,link.ProjectPhaseId,link.CategoryCode
+			GROUP BY v.AccountingBookId,l.AccountingPeriodId,p.Code,l.AccountId,a.Number,a.Name,v.CurrencyCode,link.ProjectPhaseId,link.CategoryCode
 			ORDER BY p.Code,a.Number,link.ProjectPhaseId,link.CategoryCode;
 			""",
 			reader => new ProjectBudgetAggregate(
 				Guid.Parse(reader.GetString(0)), Guid.Parse(reader.GetString(1)), reader.GetString(2), Guid.Parse(reader.GetString(3)),
-				reader.GetString(4), reader.GetString(5), reader.IsDBNull(6) ? null : reader.GetInt64(6),
-				reader.IsDBNull(7) ? null : reader.GetString(7), ReadDecimal(reader, 8)),
+				reader.GetString(4), reader.GetString(5), new CurrencyCode(reader.GetString(6)), reader.IsDBNull(7) ? null : reader.GetInt64(7),
+				reader.IsDBNull(8) ? null : reader.GetString(8), ReadDecimal(reader, 9)),
 			cancellationToken,
 			parameters.ToArray());
 	}
@@ -446,7 +450,7 @@ public sealed class ProjectAccountingRepository : DatabaseRepository
 	};
 
 	private static ProjectBudgetLineOption ReadBudgetOption(DbDataReader reader) =>
-		new(reader.GetInt64(0), reader.GetInt64(1), reader.GetString(2), Convert.ToInt32(reader.GetValue(3), CultureInfo.InvariantCulture), reader.GetString(4), reader.GetString(5), reader.GetString(6), ReadDecimal(reader, 7));
+		new(reader.GetInt64(0), reader.GetInt64(1), reader.GetString(2), Convert.ToInt32(reader.GetValue(3), CultureInfo.InvariantCulture), new CurrencyCode(reader.GetString(4)), reader.GetString(5), reader.GetString(6), reader.GetString(7), ReadDecimal(reader, 8));
 
 	private static ProjectActualRow ReadActual(DbDataReader reader) =>
 		new(Guid.Parse(reader.GetString(0)), reader.GetInt64(1), reader.GetString(2), ReadDate(reader, 3), Guid.Parse(reader.GetString(4)),
@@ -471,8 +475,8 @@ public sealed class ProjectAccountingRepository : DatabaseRepository
 	private static DateTime Utc(DateTime value) => value.Kind == DateTimeKind.Utc ? value : value.ToUniversalTime();
 }
 
-internal sealed record ProjectBudgetLineContext(long LineId, Guid LegalEntityId, Guid AccountingBookId, Guid AccountId, Guid AccountingPeriodId);
-internal sealed record ProjectBudgetAggregate(Guid AccountingBookId, Guid AccountingPeriodId, string PeriodCode, Guid AccountId, string AccountNumber, string AccountName, long? ProjectPhaseId, string? CategoryCode, decimal Budget);
+internal sealed record ProjectBudgetLineContext(long LineId, Guid LegalEntityId, Guid AccountingBookId, Guid AccountId, Guid AccountingPeriodId, CurrencyCode BudgetCurrency, CurrencyCode ReportingCurrency);
+internal sealed record ProjectBudgetAggregate(Guid AccountingBookId, Guid AccountingPeriodId, string PeriodCode, Guid AccountId, string AccountNumber, string AccountName, CurrencyCode Currency, long? ProjectPhaseId, string? CategoryCode, decimal Budget);
 internal sealed record ProjectAttributionSource(
 	ProjectAttributionEntityKind Kind,
 	long EntityId,
