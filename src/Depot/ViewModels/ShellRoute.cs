@@ -28,6 +28,7 @@ public readonly record struct ShellRoute
 public static class ShellRoutes
 {
 	public static readonly ShellRoute Dashboard = new("dashboard");
+	public static readonly ShellRoute Projects = new("projects");
 
 	public static class RoleCenters
 	{
