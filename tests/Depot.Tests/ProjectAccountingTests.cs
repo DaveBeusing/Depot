@@ -21,7 +21,7 @@ public sealed class ProjectAccountingTests
 	}
 
 	[Fact]
-	public void ProjectFeatureSchemaMigratesIndependently()
+	public async Task ProjectFeatureSchemaMigratesIndependently()
 	{
 		var path = Path.Combine(Path.GetTempPath(), $"depot-project-accounting-{Guid.NewGuid():N}.db");
 		try
@@ -33,10 +33,10 @@ public sealed class ProjectAccountingTests
 			var database = new DatabaseAccess(factory);
 
 			Assert.Equal(ProjectAccountingSchemaMigration.CurrentVersion,
-				Convert.ToInt32(database.ExecuteScalarAsync("SELECT Version FROM DepotFeatureVersions WHERE Name='ProjectAccounting';", CancellationToken.None).GetAwaiter().GetResult()));
-			Assert.Equal(1L, Convert.ToInt64(database.ExecuteScalarAsync("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='Projects';", CancellationToken.None).GetAwaiter().GetResult()));
-			Assert.Equal(1L, Convert.ToInt64(database.ExecuteScalarAsync("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='ProjectAttributions';", CancellationToken.None).GetAwaiter().GetResult()));
-			Assert.Equal(1L, Convert.ToInt64(database.ExecuteScalarAsync("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='ProjectBudgetLineLinks';", CancellationToken.None).GetAwaiter().GetResult()));
+				Convert.ToInt32(await database.ExecuteScalarAsync("SELECT Version FROM DepotFeatureVersions WHERE Name='ProjectAccounting';", CancellationToken.None)));
+			Assert.Equal(1L, Convert.ToInt64(await database.ExecuteScalarAsync("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='Projects';", CancellationToken.None)));
+			Assert.Equal(1L, Convert.ToInt64(await database.ExecuteScalarAsync("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='ProjectAttributions';", CancellationToken.None)));
+			Assert.Equal(1L, Convert.ToInt64(await database.ExecuteScalarAsync("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='ProjectBudgetLineLinks';", CancellationToken.None)));
 		}
 		finally
 		{
