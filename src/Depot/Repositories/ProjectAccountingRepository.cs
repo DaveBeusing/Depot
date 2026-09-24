@@ -468,7 +468,7 @@ public sealed class ProjectAccountingRepository : DatabaseRepository
 	private static decimal ReadDecimal(DbDataReader reader, int ordinal) => Convert.ToDecimal(reader.GetValue(ordinal), CultureInfo.InvariantCulture);
 	private static bool ReadBool(DbDataReader reader, int ordinal) => Convert.ToBoolean(reader.GetValue(ordinal), CultureInfo.InvariantCulture);
 	private static string Date(DateOnly value) => value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
-	private static string Utc(DateTime value) => value.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture);
+	private static DateTime Utc(DateTime value) => value.Kind == DateTimeKind.Utc ? value : value.ToUniversalTime();
 }
 
 internal sealed record ProjectBudgetLineContext(long LineId, Guid LegalEntityId, Guid AccountingBookId, Guid AccountId, Guid AccountingPeriodId);
