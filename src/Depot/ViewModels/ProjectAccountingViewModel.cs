@@ -27,6 +27,12 @@ public sealed class ProjectAccountingViewModel : BaseViewModel
 	private string _phaseName = string.Empty;
 	private string _phaseDescription = string.Empty;
 	private ProjectFinancialSummary? _summary;
+	private ProjectAttribution? _selectedAttribution;
+	private ProjectAttributionEntityKind _selectedAttributionKind = ProjectAttributionEntityKind.PurchaseOrder;
+	private string _attributionEntityId = string.Empty;
+	private ProjectBudgetLineOption? _selectedBudgetLineOption;
+	private ProjectBudgetLink? _selectedBudgetLink;
+	private string _budgetCategoryCode = string.Empty;
 
 	public ProjectAccountingViewModel(ProjectAccountingService service)
 	{
@@ -40,6 +46,10 @@ public sealed class ProjectAccountingViewModel : BaseViewModel
 		CancelCommand = new AsyncRelayCommand(token => TransitionAsync(ProjectStatus.Cancelled, token), () => CanManage && SelectedProject?.Status is ProjectStatus.Draft or ProjectStatus.Active or ProjectStatus.OnHold);
 		NewPhaseCommand = new RelayCommand(NewPhase, () => CanManage && SelectedProject?.AcceptsOperationalActivity == true);
 		SavePhaseCommand = new AsyncRelayCommand(SavePhaseAsync, () => CanManage && SelectedProject?.AcceptsOperationalActivity == true);
+		AttributeCommand = new AsyncRelayCommand(AttributeAsync, () => CanManageAttributions && SelectedProject?.AcceptsOperationalActivity == true);
+		RemoveAttributionCommand = new AsyncRelayCommand(RemoveAttributionAsync, () => CanManageAttributions && SelectedAttribution is { IsImmutable: false });
+		LinkBudgetLineCommand = new AsyncRelayCommand(LinkBudgetLineAsync, () => CanManageBudgetLinks && SelectedProject?.AcceptsOperationalActivity == true && SelectedBudgetLineOption is not null);
+		UnlinkBudgetLineCommand = new AsyncRelayCommand(UnlinkBudgetLineAsync, () => CanManageBudgetLinks && SelectedProject?.AcceptsOperationalActivity == true && SelectedBudgetLink is not null);
 	}
 
 	public ObservableCollection<ProjectRecord> Projects { get; } = [];
@@ -47,6 +57,10 @@ public sealed class ProjectAccountingViewModel : BaseViewModel
 	public ObservableCollection<ProjectActualRow> Actuals { get; } = [];
 	public ObservableCollection<ProjectCommitmentRow> Commitments { get; } = [];
 	public ObservableCollection<ProjectBudgetVarianceRow> VarianceRows { get; } = [];
+	public ObservableCollection<ProjectAttribution> Attributions { get; } = [];
+	public ObservableCollection<ProjectBudgetLink> BudgetLinks { get; } = [];
+	public ObservableCollection<ProjectBudgetLineOption> BudgetLineOptions { get; } = [];
+	public IReadOnlyList<ProjectAttributionEntityKind> AttributionKinds { get; } = Enum.GetValues<ProjectAttributionEntityKind>();
 
 	public AsyncRelayCommand RefreshCommand { get; }
 	public RelayCommand NewProjectCommand { get; }
@@ -57,9 +71,15 @@ public sealed class ProjectAccountingViewModel : BaseViewModel
 	public AsyncRelayCommand CancelCommand { get; }
 	public RelayCommand NewPhaseCommand { get; }
 	public AsyncRelayCommand SavePhaseCommand { get; }
+	public AsyncRelayCommand AttributeCommand { get; }
+	public AsyncRelayCommand RemoveAttributionCommand { get; }
+	public AsyncRelayCommand LinkBudgetLineCommand { get; }
+	public AsyncRelayCommand UnlinkBudgetLineCommand { get; }
 
 	public bool CanManage => _service.CanManage;
 	public bool CanViewFinancials => _service.CanViewFinancials;
+	public bool CanManageAttributions => _service.CanManageAttributions;
+	public bool CanManageBudgetLinks => _service.CanManageBudgetLinks;
 
 	public ProjectRecord? SelectedProject
 	{
@@ -74,6 +94,29 @@ public sealed class ProjectAccountingViewModel : BaseViewModel
 			if (value is not null) _ = LoadSelectedAsync(value.Id, CancellationToken.None);
 		}
 	}
+
+	public ProjectAttribution? SelectedAttribution
+	{
+		get => _selectedAttribution;
+		set { if (ReferenceEquals(_selectedAttribution, value)) return; _selectedAttribution = value; OnPropertyChanged(); RemoveAttributionCommand.RaiseCanExecuteChanged(); }
+	}
+
+	public ProjectAttributionEntityKind SelectedAttributionKind { get => _selectedAttributionKind; set => Set(ref _selectedAttributionKind, value); }
+	public string AttributionEntityId { get => _attributionEntityId; set => Set(ref _attributionEntityId, value); }
+
+	public ProjectBudgetLineOption? SelectedBudgetLineOption
+	{
+		get => _selectedBudgetLineOption;
+		set { if (ReferenceEquals(_selectedBudgetLineOption, value)) return; _selectedBudgetLineOption = value; OnPropertyChanged(); LinkBudgetLineCommand.RaiseCanExecuteChanged(); }
+	}
+
+	public ProjectBudgetLink? SelectedBudgetLink
+	{
+		get => _selectedBudgetLink;
+		set { if (ReferenceEquals(_selectedBudgetLink, value)) return; _selectedBudgetLink = value; OnPropertyChanged(); UnlinkBudgetLineCommand.RaiseCanExecuteChanged(); }
+	}
+
+	public string BudgetCategoryCode { get => _budgetCategoryCode; set => Set(ref _budgetCategoryCode, value); }
 
 	public ProjectPhase? SelectedPhase
 	{
@@ -139,12 +182,18 @@ public sealed class ProjectAccountingViewModel : BaseViewModel
 		try
 		{
 			var phasesTask = _service.ListPhasesAsync(projectId, cancellationToken);
+			var attributionsTask = _service.ListAttributionsAsync(projectId, cancellationToken);
+			Task<IReadOnlyList<ProjectBudgetLink>> budgetLinksTask = CanViewFinancials ? _service.ListBudgetLinksAsync(projectId, cancellationToken) : Task.FromResult<IReadOnlyList<ProjectBudgetLink>>([]);
+			Task<IReadOnlyList<ProjectBudgetLineOption>> budgetOptionsTask = CanViewFinancials ? _service.ListBudgetLineOptionsAsync(projectId, cancellationToken: cancellationToken) : Task.FromResult<IReadOnlyList<ProjectBudgetLineOption>>([]);
 			Task<IReadOnlyList<ProjectActualRow>> actualsTask = CanViewFinancials ? _service.ListActualsAsync(projectId, cancellationToken: cancellationToken) : Task.FromResult<IReadOnlyList<ProjectActualRow>>([]);
 			Task<IReadOnlyList<ProjectCommitmentRow>> commitmentsTask = CanViewFinancials ? _service.ListCommitmentsAsync(projectId, cancellationToken: cancellationToken) : Task.FromResult<IReadOnlyList<ProjectCommitmentRow>>([]);
 			Task<IReadOnlyList<ProjectBudgetVarianceRow>> varianceTask = CanViewFinancials ? _service.GetBudgetVarianceAsync(projectId, cancellationToken: cancellationToken) : Task.FromResult<IReadOnlyList<ProjectBudgetVarianceRow>>([]);
 			Task<ProjectFinancialSummary?> summaryTask = CanViewFinancials ? LoadSummaryAsync(projectId, cancellationToken) : Task.FromResult<ProjectFinancialSummary?>(null);
-			await Task.WhenAll(phasesTask, actualsTask, commitmentsTask, varianceTask, summaryTask);
+			await Task.WhenAll(phasesTask, attributionsTask, budgetLinksTask, budgetOptionsTask, actualsTask, commitmentsTask, varianceTask, summaryTask);
 			Replace(Phases, await phasesTask);
+			Replace(Attributions, await attributionsTask);
+			Replace(BudgetLinks, await budgetLinksTask);
+			Replace(BudgetLineOptions, await budgetOptionsTask);
 			Replace(Actuals, await actualsTask);
 			Replace(Commitments, await commitmentsTask);
 			Replace(VarianceRows, await varianceTask);
@@ -152,6 +201,71 @@ public sealed class ProjectAccountingViewModel : BaseViewModel
 		}
 		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
 		catch (Exception exception) { FailOperation(exception, "Project details could not be loaded."); }
+	}
+
+	private async Task AttributeAsync(CancellationToken cancellationToken)
+	{
+		var project = SelectedProject ?? throw new InvalidOperationException("Select a project first.");
+		if (!long.TryParse(AttributionEntityId, NumberStyles.Integer, CultureInfo.InvariantCulture, out var entityId) || entityId <= 0)
+			throw new InvalidOperationException("Source entity ID must be a positive number.");
+		BeginOperation("Saving project attribution...");
+		try
+		{
+			await _service.AttributeAsync(new ProjectAttributionRequest(project.Id, SelectedPhase?.Id, SelectedAttributionKind, entityId), cancellationToken);
+			Replace(Attributions, await _service.ListAttributionsAsync(project.Id, cancellationToken));
+			AttributionEntityId = string.Empty;
+			CompleteOperation(false, "Project attribution saved.");
+		}
+		catch (Exception exception) { FailOperation(exception, "Project attribution could not be saved."); }
+	}
+
+	private async Task RemoveAttributionAsync(CancellationToken cancellationToken)
+	{
+		var project = SelectedProject;
+		var attribution = SelectedAttribution;
+		if (project is null || attribution is null) return;
+		BeginOperation("Removing project attribution...");
+		try
+		{
+			await _service.RemoveAttributionAsync(attribution.EntityKind, attribution.EntityId, cancellationToken);
+			Replace(Attributions, await _service.ListAttributionsAsync(project.Id, cancellationToken));
+			SelectedAttribution = null;
+			CompleteOperation(false, "Project attribution removed.");
+		}
+		catch (Exception exception) { FailOperation(exception, "Project attribution could not be removed."); }
+	}
+
+	private async Task LinkBudgetLineAsync(CancellationToken cancellationToken)
+	{
+		var project = SelectedProject ?? throw new InvalidOperationException("Select a project first.");
+		var option = SelectedBudgetLineOption ?? throw new InvalidOperationException("Select a Finance budget line.");
+		BeginOperation("Linking Finance budget line...");
+		try
+		{
+			await _service.LinkBudgetLineAsync(project.Id, SelectedPhase?.Id, option.FinanceBudgetLineId, BudgetCategoryCode, cancellationToken);
+			Replace(BudgetLinks, await _service.ListBudgetLinksAsync(project.Id, cancellationToken));
+			Replace(BudgetLineOptions, await _service.ListBudgetLineOptionsAsync(project.Id, cancellationToken: cancellationToken));
+			SelectedBudgetLineOption = null;
+			CompleteOperation(false, "Finance budget line linked to project.");
+		}
+		catch (Exception exception) { FailOperation(exception, "Finance budget line could not be linked."); }
+	}
+
+	private async Task UnlinkBudgetLineAsync(CancellationToken cancellationToken)
+	{
+		var project = SelectedProject;
+		var link = SelectedBudgetLink;
+		if (project is null || link is null) return;
+		BeginOperation("Removing project budget link...");
+		try
+		{
+			await _service.UnlinkBudgetLineAsync(link.FinanceBudgetLineId, cancellationToken);
+			Replace(BudgetLinks, await _service.ListBudgetLinksAsync(project.Id, cancellationToken));
+			Replace(BudgetLineOptions, await _service.ListBudgetLineOptionsAsync(project.Id, cancellationToken: cancellationToken));
+			SelectedBudgetLink = null;
+			CompleteOperation(false, "Project budget link removed.");
+		}
+		catch (Exception exception) { FailOperation(exception, "Project budget link could not be removed."); }
 	}
 
 	private async Task<ProjectFinancialSummary?> LoadSummaryAsync(long projectId, CancellationToken cancellationToken) =>
@@ -270,6 +384,7 @@ public sealed class ProjectAccountingViewModel : BaseViewModel
 	{
 		NewProjectCommand.RaiseCanExecuteChanged(); SaveProjectCommand.RaiseCanExecuteChanged(); ActivateCommand.RaiseCanExecuteChanged(); HoldCommand.RaiseCanExecuteChanged();
 		CloseCommand.RaiseCanExecuteChanged(); CancelCommand.RaiseCanExecuteChanged(); NewPhaseCommand.RaiseCanExecuteChanged(); SavePhaseCommand.RaiseCanExecuteChanged();
+		AttributeCommand.RaiseCanExecuteChanged(); RemoveAttributionCommand.RaiseCanExecuteChanged(); LinkBudgetLineCommand.RaiseCanExecuteChanged(); UnlinkBudgetLineCommand.RaiseCanExecuteChanged();
 	}
 
 	private static void Replace<T>(ObservableCollection<T> target, IEnumerable<T> values)

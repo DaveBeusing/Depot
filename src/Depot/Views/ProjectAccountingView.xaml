@@ -61,6 +61,39 @@
 						</StackPanel>
 					</Grid>
 				</TabItem>
+				<TabItem Header="Attribution">
+					<Grid Margin="8">
+						<Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+						<Border Style="{StaticResource WorkspaceSectionStyle}">
+							<Grid>
+								<Grid.ColumnDefinitions><ColumnDefinition Width="180"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+								<StackPanel Margin="0,0,8,0"><TextBlock Text="Source type" Style="{StaticResource FormLabelStyle}"/><ComboBox ItemsSource="{Binding AttributionKinds}" SelectedItem="{Binding SelectedAttributionKind}"/></StackPanel>
+								<StackPanel Grid.Column="1" Margin="0,0,8,0"><TextBlock Text="Source entity ID" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding AttributionEntityId,UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+								<StackPanel Grid.Column="2" Margin="0,0,8,0"><TextBlock Text="Phase" Style="{StaticResource FormLabelStyle}"/><ComboBox ItemsSource="{Binding Phases}" SelectedItem="{Binding SelectedPhase}" DisplayMemberPath="Name"/></StackPanel>
+								<StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Bottom"><Button Command="{Binding AttributeCommand}" Content="Attribute" Style="{StaticResource PrimaryButtonStyle}"/><Button Margin="6,0,0,0" Command="{Binding RemoveAttributionCommand}" Content="Remove" Style="{StaticResource DangerButtonStyle}"/></StackPanel>
+							</Grid>
+						</Border>
+						<DataGrid Grid.Row="1" Margin="0,8,0,0" ItemsSource="{Binding Attributions}" SelectedItem="{Binding SelectedAttribution}" AutoGenerateColumns="False" IsReadOnly="True" Style="{StaticResource AppDataGridCompactStyle}">
+							<DataGrid.Columns><DataGridTextColumn Header="Type" Binding="{Binding EntityKind}" Width="140"/><DataGridTextColumn Header="Entity ID" Binding="{Binding EntityId}" Width="100"/><DataGridTextColumn Header="Phase ID" Binding="{Binding ProjectPhaseId}" Width="100"/><DataGridTextColumn Header="Source" Binding="{Binding SourceType}" Width="*"/><DataGridTextColumn Header="Source ID" Binding="{Binding SourceId}" Width="*"/><DataGridCheckBoxColumn Header="Immutable" Binding="{Binding IsImmutable}" Width="90"/></DataGrid.Columns>
+						</DataGrid>
+					</Grid>
+				</TabItem>
+				<TabItem Header="Budget links">
+					<Grid Margin="8">
+						<Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+						<Border Style="{StaticResource WorkspaceSectionStyle}">
+							<Grid>
+								<Grid.ColumnDefinitions><ColumnDefinition Width="3*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+								<StackPanel Margin="0,0,8,0"><TextBlock Text="Available Finance budget line" Style="{StaticResource FormLabelStyle}"/><ComboBox ItemsSource="{Binding BudgetLineOptions}" SelectedItem="{Binding SelectedBudgetLineOption}"><ComboBox.ItemTemplate><DataTemplate><TextBlock><Run Text="{Binding BudgetName}"/><Run Text=" · "/><Run Text="{Binding FiscalYear}"/><Run Text=" · "/><Run Text="{Binding PeriodCode}"/><Run Text=" · "/><Run Text="{Binding AccountNumber}"/><Run Text=" · "/><Run Text="{Binding Amount,StringFormat=N2}"/></TextBlock></DataTemplate></ComboBox.ItemTemplate></ComboBox></StackPanel>
+								<StackPanel Grid.Column="1" Margin="0,0,8,0"><TextBlock Text="Category (optional)" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding BudgetCategoryCode,UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+								<StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Bottom"><Button Command="{Binding LinkBudgetLineCommand}" Content="Link" Style="{StaticResource PrimaryButtonStyle}"/><Button Margin="6,0,0,0" Command="{Binding UnlinkBudgetLineCommand}" Content="Unlink selected" Style="{StaticResource DangerButtonStyle}"/></StackPanel>
+							</Grid>
+						</Border>
+						<DataGrid Grid.Row="1" Margin="0,8,0,0" ItemsSource="{Binding BudgetLinks}" SelectedItem="{Binding SelectedBudgetLink}" AutoGenerateColumns="False" IsReadOnly="True" Style="{StaticResource AppDataGridCompactStyle}">
+							<DataGrid.Columns><DataGridTextColumn Header="Finance line ID" Binding="{Binding FinanceBudgetLineId}" Width="140"/><DataGridTextColumn Header="Phase ID" Binding="{Binding ProjectPhaseId}" Width="100"/><DataGridTextColumn Header="Category" Binding="{Binding CategoryCode}" Width="*"/></DataGrid.Columns>
+						</DataGrid>
+					</Grid>
+				</TabItem>
 				<TabItem Header="Financials">
 					<Grid Margin="8">
 						<Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>

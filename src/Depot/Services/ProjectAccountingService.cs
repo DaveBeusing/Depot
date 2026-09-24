@@ -35,6 +35,7 @@ public sealed class ProjectAccountingService
 	public bool CanManage => _authorization.HasPermission(ApplicationPermission.ProjectsManage);
 	public bool CanManageAttributions => _authorization.HasPermission(ApplicationPermission.ProjectAttributionsManage);
 	public bool CanViewFinancials => _authorization.HasPermission(ApplicationPermission.ProjectFinancialsView);
+	public bool CanManageBudgetLinks => _authorization.HasPermission(ApplicationPermission.ProjectsManage) && _authorization.HasPermission(ApplicationPermission.FinanceBudgetingManage);
 
 	public Task<PageResult<ProjectRecord>> SearchAsync(ProjectListFilter filter, int pageNumber = 1, int pageSize = 100, CancellationToken cancellationToken = default)
 	{
