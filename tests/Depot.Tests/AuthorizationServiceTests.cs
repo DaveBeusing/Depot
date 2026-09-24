@@ -33,9 +33,14 @@ public sealed class AuthorizationServiceTests
 	}
 
 	[Fact]
-	public void PurchasingHasOnlyPurchaseOrderExecutionPermissions()
+	public void PurchasingOwnsRequisitionSourcingAndPurchaseOrderExecutionWithoutApproval()
 	{
 		var authorization = SignIn(UserRole.Purchasing);
+		Assert.True(authorization.HasPermission(ApplicationPermission.PurchaseRequisitionsView));
+		Assert.True(authorization.HasPermission(ApplicationPermission.PurchaseRequisitionsManage));
+		Assert.True(authorization.HasPermission(ApplicationPermission.SupplierSourcingView));
+		Assert.True(authorization.HasPermission(ApplicationPermission.SupplierSourcingManage));
+		Assert.True(authorization.HasPermission(ApplicationPermission.SupplierSourcingConvert));
 		Assert.True(authorization.HasPermission(ApplicationPermission.PurchaseOrdersCreate));
 		Assert.True(authorization.HasPermission(ApplicationPermission.PurchaseOrdersEdit));
 		Assert.True(authorization.HasPermission(ApplicationPermission.PurchaseOrdersSubmit));
@@ -46,9 +51,13 @@ public sealed class AuthorizationServiceTests
 	}
 
 	[Fact]
-	public void ApproverCanOnlyApprovePurchaseOrders()
+	public void ApproverCanDecideRequisitionsWithoutManagingSourcing()
 	{
 		var authorization = SignIn(UserRole.Approver);
+		Assert.True(authorization.HasPermission(ApplicationPermission.PurchaseRequisitionsView));
+		Assert.True(authorization.HasPermission(ApplicationPermission.PurchaseRequisitionsApprove));
+		Assert.False(authorization.HasPermission(ApplicationPermission.PurchaseRequisitionsManage));
+		Assert.False(authorization.HasPermission(ApplicationPermission.SupplierSourcingManage));
 		Assert.True(authorization.HasPermission(ApplicationPermission.PurchaseOrdersApprove));
 		Assert.False(authorization.HasPermission(ApplicationPermission.PurchaseOrdersCreate));
 		Assert.False(authorization.HasPermission(ApplicationPermission.PurchaseOrdersOrder));
