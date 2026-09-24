@@ -4,6 +4,8 @@
 using Depot.Models;
 using Depot.Services;
 
+using Xunit;
+
 namespace Depot.Tests;
 
 public sealed class ProcurementSourcingTests
