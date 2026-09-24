@@ -80,6 +80,9 @@ public sealed class ProjectAccountingTests
 		Assert.Equal(project.Version + 1, updated.Version);
 		await Assert.ThrowsAsync<ConcurrencyConflictException>(() => service.SaveAsync(project with { Name = "Stale update" }));
 
+		var alternateLegalEntityId = await SeedLegalEntityAsync(context.Data, "ALT");
+		await Assert.ThrowsAsync<InvalidOperationException>(() => service.SaveAsync(updated with { LegalEntityId = alternateLegalEntityId }));
+
 		var active = await service.ActivateAsync(updated.Id, updated.Version);
 		var phase = await service.SavePhaseAsync(new ProjectPhase
 		{

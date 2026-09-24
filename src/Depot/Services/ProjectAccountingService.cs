@@ -108,6 +108,8 @@ public sealed class ProjectAccountingService
 
 			var before = await RequireProjectAsync(transaction, normalized.Id, token);
 			if (before.Version != normalized.Version) throw new ConcurrencyConflictException("project");
+			if (before.LegalEntityId != normalized.LegalEntityId)
+				throw new InvalidOperationException("Project legal entity cannot be changed after creation.");
 			if (before.Status is ProjectStatus.Closed or ProjectStatus.Cancelled)
 				throw new InvalidOperationException("Closed or cancelled projects cannot be edited.");
 			var after = normalized with
