@@ -147,7 +147,7 @@ public sealed class ProcurementSourcingService
 		comment = Normalize(comment, 2000);
 		var subjectId = id.ToString(CultureInfo.InvariantCulture);
 		ApprovalPreparedDecision? prepared = null;
-		if (!returnForChanges && await _approvalPolicies.GetPendingInstanceAsync(ApprovalSubjectKind.PurchaseRequisition, subjectId, cancellationToken) is not null)
+		if (await _approvalPolicies.GetPendingInstanceAsync(ApprovalSubjectKind.PurchaseRequisition, subjectId, cancellationToken) is not null)
 			prepared = await _approvalPolicies.PrepareDecisionAsync(ApprovalSubjectKind.PurchaseRequisition, subjectId, decision, comment, cancellationToken);
 
 		var target = returnForChanges

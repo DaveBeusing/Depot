@@ -17,6 +17,7 @@ internal sealed class ProcurementTestContext : IAsyncDisposable
 	private PurchaseOrderService? _orders;
 	private ProcurementSourcingService? _sourcing;
 	private BusinessAttachmentService? _businessAttachments;
+	private ApprovalPolicyService? _approvalPolicies;
 	private PurchaseOrderApprovalService? _approvals;
 	private GoodsReceiptService? _receipts;
 	private AuthorizationService? _authorization;
@@ -42,6 +43,7 @@ internal sealed class ProcurementTestContext : IAsyncDisposable
 	public PurchaseOrderService Orders => _orders ?? throw new InvalidOperationException("The purchase order service was not initialized.");
 	public ProcurementSourcingService Sourcing => _sourcing ?? throw new InvalidOperationException("The procurement sourcing service was not initialized.");
 	public BusinessAttachmentService BusinessAttachments => _businessAttachments ?? throw new InvalidOperationException("The business attachment service was not initialized.");
+	public ApprovalPolicyService ApprovalPolicies => _approvalPolicies ?? throw new InvalidOperationException("Approval policies were not initialized.");
 	public PurchaseOrderApprovalService Approvals => _approvals ?? throw new InvalidOperationException("The purchase order approval service was not initialized.");
 	public GoodsReceiptService Receipts => _receipts ?? throw new InvalidOperationException("The goods receipt service was not initialized.");
 	public AuthorizationService Authorization => _authorization ?? throw new InvalidOperationException("Authorization was not initialized.");
@@ -259,6 +261,7 @@ internal sealed class ProcurementTestContext : IAsyncDisposable
 			roleRepository,
 			new UserRepository(context.Data),
 			authorization);
+		context._approvalPolicies = approvalPolicies;
 		context._sourcing = new ProcurementSourcingService(
 			new DatabaseTransactionRunner(context.Data),
 			new ProcurementSourcingRepository(context.Data),

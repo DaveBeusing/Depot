@@ -99,6 +99,55 @@ public sealed class ProcurementSourcingTests
 			new MemoryStream([4, 5, 6])));
 	}
 
+
+	[Fact]
+	public async Task ReturnedRequisitionClosesApprovalSnapshotAndResubmitCreatesFreshInstance()
+	{
+		await using var context = await ProcurementTestContext.CreateSqliteAsync();
+		var policy = await context.ApprovalPolicies.CreateAsync(new ApprovalPolicy
+		{
+			Name = "Purchase requisition approval",
+			SubjectKind = ApprovalSubjectKind.PurchaseRequisition,
+			Priority = 100,
+			Stages =
+			[
+				new ApprovalPolicyStage
+				{
+					Order = 1,
+					Name = "Buyer approval",
+					Approvers = [new ApprovalApproverTarget { Kind = ApprovalApproverKind.Role, RoleCode = SystemRoleCatalog.ApproverCode }]
+				}
+			]
+		});
+		policy = await context.ApprovalPolicies.ActivateAsync(policy.Id, policy.Version);
+
+		var draft = await context.Sourcing.SaveRequisitionAsync(new PurchaseRequisition
+		{
+			BusinessJustification = "Demand requiring revision",
+			Lines = [new PurchaseRequisitionLine { ItemId = context.ItemId, Quantity = 2 }]
+		});
+		var submitted = await context.Sourcing.SubmitAsync(draft.Id, draft.Version);
+		var firstInstance = await context.ApprovalPolicies.GetPendingInstanceAsync(
+			ApprovalSubjectKind.PurchaseRequisition,
+			submitted.Id.ToString(System.Globalization.CultureInfo.InvariantCulture));
+		Assert.NotNull(firstInstance);
+
+		context.SignInApprover();
+		var returned = await context.Sourcing.ReturnAsync(submitted.Id, submitted.Version, "Please revise");
+		Assert.Equal(PurchaseRequisitionStatus.Returned, returned.Status);
+		Assert.Null(await context.ApprovalPolicies.GetPendingInstanceAsync(
+			ApprovalSubjectKind.PurchaseRequisition,
+			returned.Id.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+
+		context.SignInAdministrator();
+		var resubmitted = await context.Sourcing.SubmitAsync(returned.Id, returned.Version);
+		var secondInstance = await context.ApprovalPolicies.GetPendingInstanceAsync(
+			ApprovalSubjectKind.PurchaseRequisition,
+			resubmitted.Id.ToString(System.Globalization.CultureInfo.InvariantCulture));
+		Assert.NotNull(secondInstance);
+		Assert.NotEqual(firstInstance!.Id, secondInstance!.Id);
+	}
+
 	private static SupplierQuoteResponse Quote(long rfqId, RequestForQuotationLine line, long supplierId, decimal unitPrice, string reference) => new()
 	{
 		RequestForQuotationId = rfqId,
