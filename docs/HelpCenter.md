@@ -6,7 +6,7 @@ Depot ships an embedded offline Markdown Help Center rendered natively in WPF. H
 
 ## Current manifest
 
-Help manifest **1.28** contains Inventory, Warehouse, Purchasing, Sales, Approvals, Reports, Finance, Administration and Troubleshooting topics plus the current User Sessions and Security Center guidance.
+Help manifest **1.29** contains Inventory, Warehouse, Purchasing, Sales, Approvals, Reports, Finance, Administration and Troubleshooting topics plus the current User Sessions and Security Center guidance.
 
 The session/security help contract includes:
 
@@ -28,7 +28,7 @@ The embedded articles are aligned with the current product boundary:
 - Sales Invoice Help documents the bounded Standard (`S`), Zero (`Z`), Exempt (`E`) and Reverse-charge (`AE`) invoice matrix, Standard-rated Sales Credit Note `381`, and retained ZUGFeRD 2.5.2 / Factur-X 1.09.2 XRECHNUNG-profile PDF/A-3B evidence.
 - The bounded electronic-invoice matrix is repository-validated with pinned KoSIT/XRechnung and veraPDF tooling; Help does not present that as jurisdiction-wide legal/tax certification.
 
-These are article-content corrections only. Topic IDs, `requiredPermission` mappings, related-topic routing and manifest structure are unchanged, so Help manifest **1.28** remains the correct contract.
+These are article-content corrections only. Topic IDs, `requiredPermission` mappings, related-topic routing and manifest structure are unchanged, so Help manifest **1.29** remains the correct contract.
 
 ## Content rules
 
@@ -49,11 +49,16 @@ Finance Localization Help must continue to distinguish software capability, requ
 5. Increment the manifest version for material topic/permission/mapping changes.
 6. Run Help regression validation for duplicate IDs, missing files, unknown permissions and broken links.
 
-Help manifest **1.28** is the current documentation contract.
+Help manifest **1.29** is the current documentation contract.
 
 
 Approval Policy administration requires `ApprovalPolicies.Manage`; actual Purchase Order, Sales Order, Accounts Payable exception and payment-proposal decisions still require their existing domain approval permissions in addition to current-stage eligibility.
 
 ## Finance Budgeting
 
-Help manifest **1.28** adds `finance.budgeting` for the Finance > Budgeting workspace, covering controlled versions, approval/locking, CSV planning exchange, My Work and the Actual-vs-Budget boundary.
+Help manifest **1.29** adds `finance.budgeting` for the Finance > Budgeting workspace, covering controlled versions, approval/locking, CSV planning exchange, My Work and the Actual-vs-Budget boundary.
+
+
+## Procurement sourcing
+
+Help manifest **1.29** adds `purchasing.sourcing` for the Purchasing > Sourcing workspace. It documents the controlled requisition-to-order path, approval separation, RFQ recipients, supplier quote capture, deterministic comparison, explicit supplier selection, immutable sourcing evidence, attachments and conversion into the existing Purchase Order draft authority. Depot does not automatically award a supplier or place a Purchase Order.
