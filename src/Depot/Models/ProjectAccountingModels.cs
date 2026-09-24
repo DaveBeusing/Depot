@@ -111,6 +111,7 @@ public sealed record ProjectBudgetLineOption(
 	decimal Amount);
 
 public sealed record ProjectActualRow(
+	Guid AccountingBookId,
 	long JournalEntryId,
 	string EntryNumber,
 	DateOnly PostingDate,
@@ -141,6 +142,7 @@ public sealed record ProjectCommitmentRow(
 	long? ProjectPhaseId);
 
 public sealed record ProjectBudgetVarianceRow(
+	Guid AccountingBookId,
 	Guid AccountingPeriodId,
 	string PeriodCode,
 	Guid AccountId,
