@@ -115,7 +115,8 @@ Current baseline:
 - Document Templates feature schema: **1**
 - Enterprise Identity feature schema: **2**
 - Approval Policies feature schema: **1**
-- Procurement Sourcing feature schema: **1**- Help manifest: **1.29**
+- Procurement Sourcing feature schema: **1**
+- Help manifest: **1.29**
 
 `Directory.Build.props` is authoritative for the exact application patch/version. The documentation baseline intentionally records the development line instead of duplicating the moving preview patch number.
 
