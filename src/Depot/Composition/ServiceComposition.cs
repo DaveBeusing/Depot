@@ -53,6 +53,7 @@ internal sealed class ServiceComposition
 		SupplierItems = new SupplierItemService(repositories.SupplierItems, repositories.Suppliers, repositories.Items, audit);
 		PurchaseOrders = new PurchaseOrderService(repositories.PurchaseOrders, repositories.Suppliers, repositories.Items, audit, Authorization, Notifications, ApprovalPolicies);
 		PurchaseOrderApprovals = new PurchaseOrderApprovalService(repositories.PurchaseOrders, repositories.Audit, PurchaseOrders, Authorization, new AuditJsonSanitizer());
+		ProcurementSourcing = new ProcurementSourcingService(database.TransactionRunner, repositories.ProcurementSourcing, repositories.Suppliers, repositories.Items, repositories.Audit, audit, Authorization, ApprovalPolicies, PurchaseOrders);
 		PurchaseOrderHistory = new PurchaseOrderHistoryService(repositories.Audit, Authorization, new AuditJsonSanitizer());
 		GoodsReceipts = new GoodsReceiptService(database.TransactionRunner, repositories.GoodsReceipts, repositories.PurchaseOrders, repositories.Inventories, repositories.StockMovements, repositories.ReasonCodes, repositories.Audit, audit, movementReversals, ItemTraceability, InventoryAccounting);
 		StockTransfers = new StockTransferService(database.TransactionRunner, repositories.StockTransfers, repositories.Inventories, repositories.StockMovements, repositories.ReasonCodes, repositories.Audit, audit, movementReversals, ItemTraceability);
@@ -179,6 +180,7 @@ internal sealed class ServiceComposition
 	public SupplierItemService SupplierItems { get; }
 	public PurchaseOrderService PurchaseOrders { get; }
 	public PurchaseOrderApprovalService PurchaseOrderApprovals { get; }
+	public ProcurementSourcingService ProcurementSourcing { get; }
 	public PurchaseOrderHistoryService PurchaseOrderHistory { get; }
 	public GoodsReceiptService GoodsReceipts { get; }
 	public StockTransferService StockTransfers { get; }
