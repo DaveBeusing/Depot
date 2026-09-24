@@ -4,7 +4,7 @@ Projects provide a bounded operational cost-object layer over Depot's existing F
 
 ## Project lifecycle
 
-Create a project with a legal entity, owner, optional customer, planned dates and description. The legal entity is fixed after creation to preserve accounting reconciliation. Projects move through Draft, Active, On Hold, Closed or Cancelled. Closed and cancelled projects do not accept new operational attribution. Phases provide a deliberately shallow work breakdown.
+Create a project with a legal entity, owner, optional customer, planned dates and description. The legal entity is fixed after creation to preserve accounting reconciliation. Projects move through Draft, Active, On Hold, Closed or Cancelled. Closed and cancelled projects do not accept new operational attribution. Phases provide a deliberately shallow work breakdown with optional planned dates. New phases start in Planned and can be activated, then completed, or cancelled through explicit lifecycle actions.
 
 ## Financial views
 

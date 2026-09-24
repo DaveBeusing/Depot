@@ -121,7 +121,7 @@ PR #56 then repaired CI execution boundaries without changing runtime behavior o
 - Business Attachments feature schema: **2**
 - Procurement Sourcing feature schema: **1**
 - Project Accounting feature schema: **1**
-- Help manifest: **1.32**
+- Help manifest: **1.33**
 
 `Directory.Build.props` is authoritative for the exact Depot application patch/version; `src/DepotManager/DepotManager.Version.props` is authoritative for DepotManager. Schema migration constants and `src/Depot/Help/manifest.json` are authoritative for the remaining baseline values. Every repository commit increments `DepotVersionPatch`.
 

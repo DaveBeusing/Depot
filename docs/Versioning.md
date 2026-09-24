@@ -16,7 +16,7 @@ Updated: 2026-09-19
 - Approval Policies feature schema: **1**
 - Business Attachments feature schema: **2**
 - Procurement Sourcing feature schema: **1**
-- Help manifest: **1.32**
+- Help manifest: **1.33**
 
 Application, Core database and feature-schema versions are independent compatibility dimensions. `Directory.Build.props` is the authoritative source for the exact application patch/version; long-lived documentation records the development line rather than duplicating the moving patch number.
 

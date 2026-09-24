@@ -35,7 +35,7 @@ Budget comparison uses `FinanceBudgetLines` and their existing budget-version au
 
 ## Lifecycle and integrity
 
-Project codes are unique within a legal entity. Projects support Draft, Active, OnHold, Closed and Cancelled states. Project phases are deliberately shallow and support Planned, Active, Completed and Cancelled states. A project's legal entity is immutable after creation so existing attribution, budget links and Finance reconciliation cannot be detached from their accounting scope.
+Project codes are unique within a legal entity. Projects support Draft, Active, OnHold, Closed and Cancelled states. Project phases are deliberately shallow, retain optional planned dates and start in Planned. Explicit phase transitions allow Planned -> Active/Cancelled and Active -> Completed/Cancelled; terminal phases cannot be edited. A project's legal entity is immutable after creation so existing attribution, budget links and Finance reconciliation cannot be detached from their accounting scope.
 
 New operational attribution is blocked when a project is Closed or Cancelled. Attribution becomes immutable once the authoritative source is posted or otherwise enters an immutable operational state. Manual journal attribution is limited to existing manual General Ledger entries.
 
