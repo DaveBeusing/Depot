@@ -44,3 +44,16 @@ All mutable project records use optimistic concurrency. Lifecycle, attribution a
 ## Provider support
 
 The `ProjectAccounting` feature schema is provider-neutral and provisioned for SQLite, SQL Server, MariaDB and MySQL through the existing database abstraction. Provider acceptance must cover schema creation and a project persistence round trip before the feature is considered complete.
+
+
+## Workspace and My Work
+
+The Projects workspace uses Depot standard custom controls and exposes project master/detail, shallow phases and read-only financial views. Owned Draft projects appear in My Work drafts; active owned projects remain visible, On Hold or overdue owned projects surface as exceptions, and recently closed owned projects can appear as completed work.
+
+Contextual Help topic `projects.accounting` explains the accounting authority boundary and project permissions.
+
+## Validation
+
+Focused regression coverage verifies lifecycle state behavior, independent SQLite feature migration, service/repository layering, authoritative Finance evidence usage, workspace integration and My Work integration.
+
+The shared production-provider acceptance suite provisions the feature through `DatabaseProvisioningService` and asserts the `ProjectAccounting` feature version and Projects table on SQLite, SQL Server, MariaDB and MySQL. MariaDB and MySQL remain independently accepted despite sharing the MySQL connector family.
