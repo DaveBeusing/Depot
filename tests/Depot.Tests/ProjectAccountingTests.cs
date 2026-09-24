@@ -161,8 +161,8 @@ public sealed class ProjectAccountingTests
 
 		await service.LinkBudgetLineAsync(project.Id, null, finance.BudgetLineId, "REVENUE");
 		var variance = Assert.Single(
-			(await service.GetBudgetVarianceAsync(project.Id))
-				.Where(value => value.AccountId == finance.RevenueAccountId));
+			await service.GetBudgetVarianceAsync(project.Id),
+			value => value.AccountId == finance.RevenueAccountId);
 		Assert.Equal(150m, variance.Actual);
 		Assert.Equal(120m, variance.Budget);
 		Assert.Equal(30m, variance.Variance);
