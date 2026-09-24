@@ -118,10 +118,10 @@ PR #56 then repaired CI execution boundaries without changing runtime behavior o
 - Document Templates feature schema: **1**
 - Enterprise Identity feature schema: **2**
 - Approval Policies feature schema: **1**
-- Business Attachments feature schema: **1**
+- Business Attachments feature schema: **2**
 - Procurement Sourcing feature schema: **1**
 - Project Accounting feature schema: **1**
-- Help manifest: **1.31**
+- Help manifest: **1.32**
 
 `Directory.Build.props` is authoritative for the exact Depot application patch/version; `src/DepotManager/DepotManager.Version.props` is authoritative for DepotManager. Schema migration constants and `src/Depot/Help/manifest.json` are authoritative for the remaining baseline values. Every repository commit increments `DepotVersionPatch`.
 
@@ -139,7 +139,7 @@ After H3, the remaining Track A closure work is H4 deployment disaster-recovery 
 
 ## Business attachments
 
-Business Attachments feature schema **1** provides one reusable attachment workflow for Customer, Supplier, Item, Sales Quote, Sales Order, Sales Invoice, Purchase Order, Goods Receipt and Supplier/AP Document records. V1 content is database-backed behind a replaceable content-store abstraction, revisioned and SHA-256 verified. Service-layer domain permissions and Audit remain authoritative.
+Business Attachments feature schema **2** provides one reusable attachment workflow across the established Customer, Supplier, Item, Sales, Purchasing, AP, Procurement Sourcing and Project record set. Schema 2 expands the provider-enforced entity-kind range without changing retained metadata/revision/content semantics. V1 content remains database-backed behind a replaceable content-store abstraction, revisioned and SHA-256 verified. Service-layer domain permissions and Audit remain authoritative.
 
 The provider acceptance matrix exercises schema provisioning and binary content round-trip on every supported provider. The product boundary remains 25 MiB per file, blocks known executable/script extensions and requires deployment-level malware scanning where applicable.
 
