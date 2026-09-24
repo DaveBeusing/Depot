@@ -1,0 +1,94 @@
+<UserControl x:Class="Depot.Views.ReplenishmentView"
+	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:controls="clr-namespace:Depot.Controls">
+	<Grid>
+		<Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="12"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+		<controls:PageHeader Title="Inventory Replenishment" Subtitle="Explain material shortages, review deterministic purchase suggestions, and hand approved demand into controlled procurement sourcing."/>
+		<controls:OperationPanel Grid.Row="1" ErrorText="{Binding OperationError}" HasError="{Binding HasOperationError}" IsBusy="{Binding IsBusy}" StatusText="{Binding StatusText}"/>
+		<TabControl Grid.Row="3" Style="{StaticResource AppTabControlStyle}">
+			<TabItem Header="Purchase Suggestions">
+				<Border Style="{StaticResource WorkspaceSectionStyle}">
+					<Grid>
+						<Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+						<controls:WorkflowHeader Title="Material shortage review" Subtitle="Suggestions are planning output only. Conversion creates a purchase requisition; it never places a purchase order."/>
+						<StackPanel Grid.Row="1" Margin="0,10,0,10">
+							<TextBlock Text="{Binding LastBatchStatus}" Style="{StaticResource CaptionStyle}"/>
+							<TextBlock Margin="0,4,0,0" Text="{Binding LastConversionStatus}" Style="{StaticResource CaptionStyle}"/>
+						</StackPanel>
+						<Grid Grid.Row="2">
+							<DataGrid ItemsSource="{Binding Suggestions}" AutoGenerateColumns="False" IsReadOnly="False" Style="{StaticResource AppDataGridCompactStyle}">
+								<DataGrid.Columns>
+									<DataGridCheckBoxColumn Header="Select" Binding="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}" Width="60"/>
+									<DataGridTextColumn Header="Status" Binding="{Binding Source.Status}" IsReadOnly="True" Width="85"/>
+									<DataGridTextColumn Header="Item" Binding="{Binding Source.ItemPartNumber}" IsReadOnly="True" Width="120"/>
+									<DataGridTextColumn Header="Warehouse" Binding="{Binding Source.WarehouseName}" IsReadOnly="True" Width="130"/>
+									<DataGridTextColumn Header="Projected" Binding="{Binding Source.Snapshot.ProjectedAvailableQuantity}" IsReadOnly="True" Width="80"/>
+									<DataGridTextColumn Header="Inbound" Binding="{Binding Source.Snapshot.EligibleInboundQuantity}" IsReadOnly="True" Width="75"/>
+									<DataGridTextColumn Header="Target" Binding="{Binding Source.Snapshot.TargetStock}" IsReadOnly="True" Width="70"/>
+									<DataGridTextColumn Header="Required" Binding="{Binding Source.Snapshot.RequiredReplenishmentQuantity}" IsReadOnly="True" Width="75"/>
+									<DataGridTextColumn Header="Suggested" Binding="{Binding Source.SuggestedQuantity}" IsReadOnly="True" Width="80"/>
+									<DataGridTextColumn Header="Supplier" Binding="{Binding Source.PlanningSupplierName}" IsReadOnly="True" Width="140"/>
+									<DataGridTextColumn Header="Explanation" Binding="{Binding Source.Snapshot.Explanation}" IsReadOnly="True" Width="*"/>
+								</DataGrid.Columns>
+							</DataGrid>
+							<controls:WorkflowListState ItemCount="{Binding Suggestions.Count}" IsBusy="{Binding IsBusy}" HasError="{Binding HasOperationError}" ErrorText="{Binding OperationError}"/>
+						</Grid>
+						<controls:WorkflowActionBar Grid.Row="3">
+							<controls:WorkflowActionBar.SecondaryActions>
+								<WrapPanel>
+									<Button Command="{Binding RefreshCommand}" Content="Refresh" Style="{StaticResource SecondaryButtonStyle}"/>
+									<Button Margin="{StaticResource Button.Margin}" Command="{Binding RecalculateBatchCommand}" Content="Recalculate" Style="{StaticResource SecondaryButtonStyle}"/>
+									<Button Margin="{StaticResource Button.Margin}" Command="{Binding DismissSelectedCommand}" Content="Dismiss selected" Style="{StaticResource SecondaryButtonStyle}"/>
+								</WrapPanel>
+							</controls:WorkflowActionBar.SecondaryActions>
+							<controls:WorkflowActionBar.PrimaryAction>
+								<Button Command="{Binding ConvertSelectedCommand}" Content="Create purchase requisition" Style="{StaticResource PrimaryButtonStyle}"/>
+							</controls:WorkflowActionBar.PrimaryAction>
+						</controls:WorkflowActionBar>
+					</Grid>
+				</Border>
+			</TabItem>
+			<TabItem Header="Policies">
+				<controls:MasterDetailGrid>
+					<controls:MasterDetailGrid.Master>
+						<Border Style="{StaticResource WorkspaceSectionStyle}">
+							<Grid>
+								<Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+								<controls:FilterBar><StackPanel><controls:SearchBox Placeholder="Search item, warehouse or supplier" Text="{Binding PolicySearchText, UpdateSourceTrigger=PropertyChanged}"/><Button Margin="0,8,0,0" HorizontalAlignment="Left" Command="{Binding RefreshCommand}" Content="Refresh" Style="{StaticResource SecondaryButtonStyle}"/></StackPanel></controls:FilterBar>
+								<ListBox Grid.Row="1" ItemsSource="{Binding Policies}" SelectedItem="{Binding SelectedPolicy}" Style="{StaticResource MasterDataListBoxStyle}" ItemContainerStyle="{StaticResource MasterDataListBoxItemStyle}">
+									<ListBox.ItemTemplate><DataTemplate><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="{Binding ItemPartNumber}" FontWeight="SemiBold"/><TextBlock Text="{Binding WarehouseName}" Style="{StaticResource CaptionStyle}"/></StackPanel><StackPanel Grid.Column="1"><TextBlock Text="{Binding TargetStock, StringFormat=Target {0:N0}}" HorizontalAlignment="Right"/><TextBlock Text="{Binding PreferredSupplierName}" Style="{StaticResource CaptionStyle}" HorizontalAlignment="Right"/></StackPanel></Grid></DataTemplate></ListBox.ItemTemplate>
+								</ListBox>
+								<Button Grid.Row="2" Margin="0,10,0,0" HorizontalAlignment="Right" Command="{Binding NewPolicyCommand}" Content="New policy" Style="{StaticResource SecondaryButtonStyle}"/>
+							</Grid>
+						</Border>
+					</controls:MasterDetailGrid.Master>
+					<controls:MasterDetailGrid.Detail>
+						<Border Style="{StaticResource WorkspaceSectionStyle}">
+							<Grid>
+								<Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+								<controls:WorkflowHeader Title="{Binding PolicyDraft.ItemPartNumber, TargetNullValue=Replenishment policy}" Subtitle="Per-item/per-warehouse reorder policy with explicit safety stock and order-up-to target."/>
+								<ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"><StackPanel Margin="0,10,0,0">
+									<TextBlock Text="Item" Style="{StaticResource FormLabelStyle}"/>
+									<ComboBox ItemsSource="{Binding Items}" SelectedValue="{Binding PolicyDraft.ItemId}" SelectedValuePath="Id" Style="{StaticResource AppComboBoxStyle}"><ComboBox.ItemTemplate><DataTemplate><TextBlock><Run Text="{Binding PartNumber}" FontWeight="SemiBold"/><Run Text=" — "/><Run Text="{Binding Description}"/></TextBlock></DataTemplate></ComboBox.ItemTemplate></ComboBox>
+									<TextBlock Margin="0,10,0,0" Text="Warehouse" Style="{StaticResource FormLabelStyle}"/>
+									<ComboBox ItemsSource="{Binding Warehouses}" SelectedValue="{Binding PolicyDraft.WarehouseId}" SelectedValuePath="Id" DisplayMemberPath="Name" Style="{StaticResource AppComboBoxStyle}"/>
+									<Grid Margin="0,10,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="10"/><ColumnDefinition Width="*"/><ColumnDefinition Width="10"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+										<StackPanel><TextBlock Text="Safety stock" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding PolicyDraft.SafetyStock, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+										<StackPanel Grid.Column="2"><TextBlock Text="Reorder point" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding PolicyDraft.ReorderPoint, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+										<StackPanel Grid.Column="4"><TextBlock Text="Target stock" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding PolicyDraft.TargetStock, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+									</Grid>
+									<TextBlock Margin="0,10,0,0" Text="Preferred planning supplier (optional)" Style="{StaticResource FormLabelStyle}"/>
+									<ComboBox ItemsSource="{Binding Suppliers}" SelectedValue="{Binding PolicyDraft.PreferredSupplierId}" SelectedValuePath="Id" DisplayMemberPath="Name" IsEditable="False" IsTextSearchEnabled="True" Style="{StaticResource AppComboBoxStyle}"/>
+									<CheckBox Margin="0,12,0,0" Content="Policy active" IsChecked="{Binding PolicyDraft.IsActive}"/>
+									<TextBlock Margin="0,16,0,0" Text="Supplier preference is planning evidence only. Supplier award remains an explicit sourcing decision." TextWrapping="Wrap" Style="{StaticResource CaptionStyle}"/>
+								</StackPanel></ScrollViewer>
+								<controls:WorkflowActionBar Grid.Row="2"><controls:WorkflowActionBar.PrimaryAction><Button Command="{Binding SavePolicyCommand}" Content="Save policy" Style="{StaticResource PrimaryButtonStyle}"/></controls:WorkflowActionBar.PrimaryAction></controls:WorkflowActionBar>
+							</Grid>
+						</Border>
+					</controls:MasterDetailGrid.Detail>
+				</controls:MasterDetailGrid>
+			</TabItem>
+		</TabControl>
+	</Grid>
+</UserControl>

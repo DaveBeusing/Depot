@@ -96,6 +96,7 @@ public sealed class ProcurementProviderTests
 				new DatabaseParameter("$MovementType", (int)StockMovementType.SupplierReturn)));
 
 			await VerifySourcingRoundTripAsync(context);
+			await VerifyInventoryReplenishmentRoundTripAsync(context);
 
 			var orderCountBeforeAuditFailure = await context.ScalarAsync(
 				"SELECT COUNT(*) FROM PurchaseOrders WHERE SupplierId = $SupplierId;",
@@ -218,6 +219,61 @@ public sealed class ProcurementProviderTests
 				await context.Data.ExecuteAsync("DELETE FROM PurchaseRequisitionLines WHERE PurchaseRequisitionId=$Id;", CancellationToken.None, new DatabaseParameter("$Id", requisition));
 				await context.Data.ExecuteAsync("DELETE FROM PurchaseRequisitions WHERE Id=$Id;", CancellationToken.None, new DatabaseParameter("$Id", requisition));
 			}
+		}
+	}
+
+	private static async Task VerifyInventoryReplenishmentRoundTripAsync(ProcurementTestContext context)
+	{
+		var warehouseId = await context.ScalarAsync("SELECT MIN(Id) FROM Warehouses;");
+		long? policyId = null;
+		try
+		{
+			await context.Data.ExecuteAsync(
+				"INSERT INTO SupplierItems (SupplierId,ItemId,SupplierPartNumber,PurchasePrice,LeadTimeDays,MinimumOrderQuantity,IsPreferredSupplier,IsActive) VALUES($Supplier,$Item,$Part,10,6,4,1,1);",
+				CancellationToken.None,
+				new DatabaseParameter("$Supplier", context.SupplierId),
+				new DatabaseParameter("$Item", context.SecondItemId),
+				new DatabaseParameter("$Part", $"REPL-{Guid.NewGuid():N}"));
+			var auditRepository = new AuditRepository(context.Data);
+			var service = new ReplenishmentService(
+				new DatabaseTransactionRunner(context.Data),
+				new ReplenishmentRepository(context.Data),
+				new ItemRepository(context.Data),
+				new WarehouseRepository(context.Data),
+				new SupplierRepository(context.Data),
+				context.Sourcing,
+				auditRepository,
+				new AuditService(auditRepository, context.Authorization),
+				context.Authorization);
+			var policy = await service.SavePolicyAsync(new ReplenishmentPolicy
+			{
+				ItemId = context.SecondItemId,
+				WarehouseId = warehouseId,
+				ReorderPoint = 4,
+				SafetyStock = 2,
+				TargetStock = 9,
+				PreferredSupplierId = context.SupplierId
+			});
+			policyId = policy.Id;
+			var suggestion = await service.RecalculatePolicyAsync(policy.Id);
+			Assert.NotNull(suggestion);
+			Assert.Equal(ReplenishmentSuggestionStatus.Open, suggestion!.Status);
+			Assert.Equal(12, suggestion.SuggestedQuantity);
+			Assert.Equal(context.SupplierId, suggestion.Snapshot.PlanningSupplierId);
+			Assert.Equal(6, suggestion.Snapshot.SupplierLeadTimeDays);
+			Assert.Equal(4m, suggestion.Snapshot.SupplierMinimumOrderQuantity);
+		}
+		finally
+		{
+			if (policyId is { } id)
+			{
+				await context.Data.ExecuteAsync("DELETE FROM ReplenishmentSuggestions WHERE PolicyId=$Id;", CancellationToken.None, new DatabaseParameter("$Id", id));
+				await context.Data.ExecuteAsync("DELETE FROM ReplenishmentRequirementSnapshots WHERE PolicyId=$Id;", CancellationToken.None, new DatabaseParameter("$Id", id));
+				await context.Data.ExecuteAsync("DELETE FROM ReplenishmentPolicies WHERE Id=$Id;", CancellationToken.None, new DatabaseParameter("$Id", id));
+			}
+			await context.Data.ExecuteAsync("DELETE FROM SupplierItems WHERE SupplierId=$Supplier AND ItemId=$Item;", CancellationToken.None,
+				new DatabaseParameter("$Supplier", context.SupplierId),
+				new DatabaseParameter("$Item", context.SecondItemId));
 		}
 	}
 

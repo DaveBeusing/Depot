@@ -166,3 +166,8 @@ Finance schema **12** is the current Finance persistence baseline. It adds expli
 Procurement Sourcing feature schema **1** introduces provider-neutral persisted contracts for Purchase Requisitions and lines, Requests for Quotation and recipients/lines, Supplier Quote Responses and lines, and immutable Purchase Order sourcing evidence.
 
 The migration is tracked as `ProcurementSourcing` in `DepotFeatureVersions` and is invoked from the established provisioning path. It does not increment Core schema 30. Provider behavior must remain equivalent across SQLite, SQL Server, MariaDB and MySQL, with MariaDB and MySQL accepted independently by the provider workflow.
+
+### Inventory Replenishment schema 1
+
+Inventory Replenishment feature schema **1** introduces per-item/per-warehouse policies, deterministic requirement snapshots and reviewable suggestion lifecycle persistence. The migration is tracked as `InventoryReplenishment` in `DepotFeatureVersions`, does not increment Core schema 30, and must remain equivalent across SQLite, SQL Server, MariaDB and MySQL.
+

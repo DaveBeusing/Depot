@@ -58,6 +58,7 @@ internal sealed class ViewModelFactory
 			_services.SupplierItems,
 			_services.PurchaseOrders,
 			_services.ProcurementSourcing,
+			_services.Replenishment,
 			_services.PurchaseOrderApprovals,
 			_services.PurchaseOrderHistory,
 			_services.GoodsReceipts,

@@ -117,3 +117,8 @@ Database-provider acceptance is a technical data-integrity/runtime statement. It
 ### Finance budgeting
 
 Finance feature schema **12** includes the Finance Budgeting baseline plus structured SEPA debtor/creditor payment profiles, immutable `pain.001.001.09` export artifacts and append-only export-status history. Full provider acceptance migrates the schema on each supported server baseline and exercises persisted budget data as well as SEPA payment-export generation/readback. Provider-neutral SQL alone is not support evidence.
+
+## Inventory Replenishment feature schema
+
+Provider acceptance includes `InventoryReplenishment` feature-schema provisioning and a real-provider policy/suggestion round trip. The same deterministic policy, SupplierItem MOQ/lead-time evidence and suggestion persistence contract is exercised for SQL Server, MariaDB and MySQL in addition to SQLite regression coverage.
+

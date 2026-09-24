@@ -49,6 +49,7 @@ public static class DatabaseProvisioningService
 		EnterpriseIdentitySchemaMigration.Migrate(connectionFactory);
 		BusinessAttachmentSchemaMigration.Migrate(connectionFactory);
 		ProcurementSourcingSchemaMigration.Migrate(connectionFactory);
+		InventoryReplenishmentSchemaMigration.Migrate(connectionFactory);
 		return DatabaseProvisioningPath.FullProvisioning;
 	}
 }
@@ -68,7 +69,8 @@ internal static class FeatureVersionMetadataRecovery
 			["ApprovalPolicies"] = ApprovalPolicySchemaMigration.CurrentVersion,
 			["EnterpriseIdentity"] = EnterpriseIdentitySchemaMigration.CurrentVersion,
 			["BusinessAttachments"] = BusinessAttachmentSchemaMigration.CurrentVersion,
-			["ProcurementSourcing"] = ProcurementSourcingSchemaMigration.CurrentVersion
+			["ProcurementSourcing"] = ProcurementSourcingSchemaMigration.CurrentVersion,
+			["InventoryReplenishment"] = InventoryReplenishmentSchemaMigration.CurrentVersion
 		};
 
 	public static void RestoreIfCurrentSchemaDetected(IDatabaseConnectionFactory connectionFactory)
@@ -111,7 +113,9 @@ internal static class FeatureVersionMetadataRecovery
 		ColumnExists(connection, provider, "EnterpriseIdentityProviders", "MaximumAuthenticationAgeMinutes") &&
 		TableExists(connection, provider, "BusinessAttachments") &&
 		TableExists(connection, provider, "BusinessAttachmentRevisions") &&
-		TableExists(connection, provider, "BusinessAttachmentContents");
+		TableExists(connection, provider, "BusinessAttachmentContents") &&
+		TableExists(connection, provider, "PurchaseRequisitions") &&
+		TableExists(connection, provider, "ReplenishmentPolicies");
 
 	private static bool HasFutureFeatureVersion(DbConnection connection)
 	{

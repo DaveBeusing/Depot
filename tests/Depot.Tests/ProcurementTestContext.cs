@@ -67,6 +67,7 @@ internal sealed class ProcurementTestContext : IAsyncDisposable
 		var factory = new SqliteConnectionFactory(path);
 		new DepotDatabase(factory).Initialize();
 		ProcurementSourcingSchemaMigration.Migrate(factory);
+		InventoryReplenishmentSchemaMigration.Migrate(factory);
 		BusinessAttachmentSchemaMigration.Migrate(factory);
 		return await CreateAsync(factory, path, false);
 	}
@@ -77,6 +78,7 @@ internal sealed class ProcurementTestContext : IAsyncDisposable
 	{
 		initializer.Initialize();
 		ProcurementSourcingSchemaMigration.Migrate(connectionFactory);
+		InventoryReplenishmentSchemaMigration.Migrate(connectionFactory);
 		return await CreateAsync(connectionFactory, null, true);
 	}
 

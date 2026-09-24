@@ -10,6 +10,7 @@ public enum ApplicationPermission
 	StockTransfersView, StockTransfersCreate, StockTransfersEdit, StockTransfersPost, StockTransfersReverse,
 	InventoryCountsView, InventoryCountsCreate, InventoryCountsEdit, InventoryCountsPost, InventoryCountsReverse,
 	PurchasingView, PurchaseOrdersView, PurchaseOrdersCreate, PurchaseOrdersEdit, PurchaseOrdersSubmit, PurchaseOrdersApprove, PurchaseOrdersOrder, PurchaseOrdersClose,
+	ReplenishmentView, ReplenishmentSuggestionsManage, ReplenishmentPoliciesManage,
 	PurchaseRequisitionsView, PurchaseRequisitionsManage, PurchaseRequisitionsApprove, SupplierSourcingView, SupplierSourcingManage, SupplierSourcingConvert,
 	GoodsReceiptsView, GoodsReceiptsCreate, GoodsReceiptsPost, GoodsReceiptsReverse,
 	MaterialIssuesView, MaterialIssuesCreate, MaterialIssuesEdit, MaterialIssuesPost, MaterialIssuesReverse,

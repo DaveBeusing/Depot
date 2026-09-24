@@ -10,6 +10,7 @@ This roadmap describes product capabilities and acceptance work without coupling
 
 - [x] WPF/MVVM shell, navigation and contextual offline Help
 - [x] inventory, warehouse, purchasing, sales and approval workflows
+- [x] deterministic inventory replenishment with per-warehouse policies, explainable MOQ-aware purchase suggestions and controlled Purchase Requisition conversion
 - [x] bounded configurable approval policies with deterministic routing, immutable approval snapshots and an Administration designer for the four existing approval domains
 - [x] serial/lot traceability and reversal-safe stock evidence
 - [x] database-backed RBAC and service-layer authorization
@@ -219,4 +220,4 @@ The bounded SEPA SCT payment-export capability is implemented at the repository 
 - [x] My Work, Buyer Workbench, shell navigation and contextual Help integration
 - [x] SQLite and remote-provider sourcing persistence/round-trip acceptance coverage
 
-Future replenishment suggestions may consume approved purchase demand and the established sourcing boundary, but automatic supplier award or automatic Purchase Order placement remains outside the current product scope.
+Inventory replenishment suggestions now consume authoritative stock, reservation, backorder and open-supply evidence and convert user-approved suggestions into the established Purchase Requisition sourcing boundary. Automatic supplier award and automatic Purchase Order placement remain outside the product scope.

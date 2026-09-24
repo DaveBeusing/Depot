@@ -53,7 +53,8 @@ public enum CommercialRoleItemKind
 	SalesLead = 27,
 	SalesOpportunity = 28,
 	PurchaseRequisition = 29,
-	RequestForQuotation = 30
+	RequestForQuotation = 30,
+	ReplenishmentSuggestion = 31
 }
 
 public sealed record CommercialRoleItem(
