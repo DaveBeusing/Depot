@@ -89,8 +89,14 @@ public sealed class ProjectAccountingTests
 			ProjectId = active.Id,
 			Code = "DELIVERY",
 			Name = "Delivery",
+			PlannedStartDate = new DateOnly(2026, 9, 1),
+			PlannedEndDate = new DateOnly(2026, 11, 30),
 			Status = ProjectPhaseStatus.Active
 		});
+		Assert.Equal(ProjectPhaseStatus.Planned, phase.Status);
+		phase = await service.ActivatePhaseAsync(phase.Id, phase.Version);
+		Assert.Equal(ProjectPhaseStatus.Active, phase.Status);
+		await Assert.ThrowsAsync<ConcurrencyConflictException>(() => service.CompletePhaseAsync(phase.Id, phase.Version - 1));
 		var order = await context.Orders.SaveDraftAsync(context.NewOrder(quantity: 5, unitPrice: 12.50m));
 		order = await context.ApproveAndOrderAsync(order);
 		var attribution = await service.AttributeAsync(new ProjectAttributionRequest(
@@ -106,6 +112,9 @@ public sealed class ProjectAccountingTests
 		Assert.Equal(0, commitment.ReceivedQuantity);
 		Assert.Equal(62.50m, commitment.RemainingAmount);
 		await Assert.ThrowsAsync<InvalidOperationException>(() => service.RemoveAttributionAsync(ProjectAttributionEntityKind.PurchaseOrder, order.Id));
+		var completedPhase = await service.CompletePhaseAsync(phase.Id, phase.Version);
+		Assert.Equal(ProjectPhaseStatus.Completed, completedPhase.Status);
+		await Assert.ThrowsAsync<InvalidOperationException>(() => service.SavePhaseAsync(completedPhase with { Name = "Terminal mutation" }));
 
 		var closed = await service.CloseAsync(active.Id, active.Version);
 		await Assert.ThrowsAsync<InvalidOperationException>(() => service.SaveAsync(closed with { Name = "Closed mutation" }));
@@ -215,6 +224,8 @@ public sealed class ProjectAccountingTests
 		Assert.Contains("BusinessAttachmentPanelViewModel", viewModel, StringComparison.Ordinal);
 		Assert.Contains("BusinessAttachmentEntityKind.Project", viewModel, StringComparison.Ordinal);
 		Assert.Contains("<controls:BusinessAttachmentPanel", view, StringComparison.Ordinal);
+		Assert.Contains("ActivatePhaseCommand", viewModel, StringComparison.Ordinal);
+		Assert.Contains("PhasePlannedStartDate", viewModel, StringComparison.Ordinal);
 		Assert.Contains("ApplicationPermission.ProjectsView", main, StringComparison.Ordinal);
 		Assert.Contains("ProjectAccountingViewModel", templates, StringComparison.Ordinal);
 	}

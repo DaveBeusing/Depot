@@ -26,6 +26,8 @@ public sealed class ProjectAccountingViewModel : BaseViewModel
 	private string _phaseCode = string.Empty;
 	private string _phaseName = string.Empty;
 	private string _phaseDescription = string.Empty;
+	private DateTime? _phasePlannedStartDate;
+	private DateTime? _phasePlannedEndDate;
 	private ProjectFinancialSummary? _summary;
 	private ProjectAttribution? _selectedAttribution;
 	private ProjectAttributionEntityKind _selectedAttributionKind = ProjectAttributionEntityKind.PurchaseOrder;
@@ -52,6 +54,9 @@ public sealed class ProjectAccountingViewModel : BaseViewModel
 		CancelCommand = new AsyncRelayCommand(token => TransitionAsync(ProjectStatus.Cancelled, token), () => CanManage && SelectedProject?.Status is ProjectStatus.Draft or ProjectStatus.Active or ProjectStatus.OnHold);
 		NewPhaseCommand = new RelayCommand(NewPhase, () => CanManage && SelectedProject?.AcceptsOperationalActivity == true);
 		SavePhaseCommand = new AsyncRelayCommand(SavePhaseAsync, () => CanManage && SelectedProject?.AcceptsOperationalActivity == true);
+		ActivatePhaseCommand = new AsyncRelayCommand(token => TransitionPhaseAsync(ProjectPhaseStatus.Active, token), () => CanManage && SelectedProject?.AcceptsOperationalActivity == true && SelectedPhase?.Status == ProjectPhaseStatus.Planned);
+		CompletePhaseCommand = new AsyncRelayCommand(token => TransitionPhaseAsync(ProjectPhaseStatus.Completed, token), () => CanManage && SelectedProject?.AcceptsOperationalActivity == true && SelectedPhase?.Status == ProjectPhaseStatus.Active);
+		CancelPhaseCommand = new AsyncRelayCommand(token => TransitionPhaseAsync(ProjectPhaseStatus.Cancelled, token), () => CanManage && SelectedProject?.AcceptsOperationalActivity == true && SelectedPhase?.Status is ProjectPhaseStatus.Planned or ProjectPhaseStatus.Active);
 		AttributeCommand = new AsyncRelayCommand(AttributeAsync, () => CanManageAttributions && SelectedProject?.AcceptsOperationalActivity == true);
 		RemoveAttributionCommand = new AsyncRelayCommand(RemoveAttributionAsync, () => CanManageAttributions && SelectedAttribution is { IsImmutable: false });
 		LinkBudgetLineCommand = new AsyncRelayCommand(LinkBudgetLineAsync, () => CanManageBudgetLinks && SelectedProject?.AcceptsOperationalActivity == true && SelectedBudgetLineOption is not null);
@@ -78,6 +83,9 @@ public sealed class ProjectAccountingViewModel : BaseViewModel
 	public AsyncRelayCommand CancelCommand { get; }
 	public RelayCommand NewPhaseCommand { get; }
 	public AsyncRelayCommand SavePhaseCommand { get; }
+	public AsyncRelayCommand ActivatePhaseCommand { get; }
+	public AsyncRelayCommand CompletePhaseCommand { get; }
+	public AsyncRelayCommand CancelPhaseCommand { get; }
 	public AsyncRelayCommand AttributeCommand { get; }
 	public AsyncRelayCommand RemoveAttributionCommand { get; }
 	public AsyncRelayCommand LinkBudgetLineCommand { get; }
@@ -137,9 +145,14 @@ public sealed class ProjectAccountingViewModel : BaseViewModel
 			_phaseCode = value?.Code ?? string.Empty;
 			_phaseName = value?.Name ?? string.Empty;
 			_phaseDescription = value?.Description ?? string.Empty;
+			_phasePlannedStartDate = value?.PlannedStartDate?.ToDateTime(TimeOnly.MinValue);
+			_phasePlannedEndDate = value?.PlannedEndDate?.ToDateTime(TimeOnly.MinValue);
 			OnPropertyChanged(nameof(PhaseCode));
 			OnPropertyChanged(nameof(PhaseName));
 			OnPropertyChanged(nameof(PhaseDescription));
+			OnPropertyChanged(nameof(PhasePlannedStartDate));
+			OnPropertyChanged(nameof(PhasePlannedEndDate));
+			RaiseCommands();
 		}
 	}
 
@@ -154,6 +167,8 @@ public sealed class ProjectAccountingViewModel : BaseViewModel
 	public string PhaseCode { get => _phaseCode; set => Set(ref _phaseCode, value); }
 	public string PhaseName { get => _phaseName; set => Set(ref _phaseName, value); }
 	public string PhaseDescription { get => _phaseDescription; set => Set(ref _phaseDescription, value); }
+	public DateTime? PhasePlannedStartDate { get => _phasePlannedStartDate; set => Set(ref _phasePlannedStartDate, value); }
+	public DateTime? PhasePlannedEndDate { get => _phasePlannedEndDate; set => Set(ref _phasePlannedEndDate, value); }
 	public ProjectFinancialSummary? Summary { get => _summary; private set { _summary=value; OnPropertyChanged(); OnPropertyChanged(nameof(FinancialSummaryText)); } }
 
 	public string FinancialSummaryText => Summary is null
@@ -351,7 +366,9 @@ public sealed class ProjectAccountingViewModel : BaseViewModel
 	{
 		SelectedPhase = null;
 		_phaseCode = _phaseName = _phaseDescription = string.Empty;
+		_phasePlannedStartDate = _phasePlannedEndDate = null;
 		OnPropertyChanged(nameof(PhaseCode)); OnPropertyChanged(nameof(PhaseName)); OnPropertyChanged(nameof(PhaseDescription));
+		OnPropertyChanged(nameof(PhasePlannedStartDate)); OnPropertyChanged(nameof(PhasePlannedEndDate));
 	}
 
 	private async Task SavePhaseAsync(CancellationToken cancellationToken)
@@ -368,6 +385,8 @@ public sealed class ProjectAccountingViewModel : BaseViewModel
 				ProjectId = project.Id,
 				Code = PhaseCode,
 				Name = PhaseName,
+				PlannedStartDate = PhasePlannedStartDate.HasValue ? DateOnly.FromDateTime(PhasePlannedStartDate.Value) : null,
+				PlannedEndDate = PhasePlannedEndDate.HasValue ? DateOnly.FromDateTime(PhasePlannedEndDate.Value) : null,
 				Status = before?.Status ?? ProjectPhaseStatus.Planned,
 				Description = PhaseDescription
 			}, cancellationToken);
@@ -376,6 +395,28 @@ public sealed class ProjectAccountingViewModel : BaseViewModel
 			CompleteOperation(false, $"Phase {saved.Code} saved.");
 		}
 		catch (Exception exception) { FailOperation(exception, "Project phase could not be saved."); }
+	}
+
+	private async Task TransitionPhaseAsync(ProjectPhaseStatus status, CancellationToken cancellationToken)
+	{
+		var project = SelectedProject;
+		var phase = SelectedPhase;
+		if (project is null || phase is null) return;
+		BeginOperation($"Updating phase status to {status}...");
+		try
+		{
+			var updated = status switch
+			{
+				ProjectPhaseStatus.Active => await _service.ActivatePhaseAsync(phase.Id, phase.Version, cancellationToken),
+				ProjectPhaseStatus.Completed => await _service.CompletePhaseAsync(phase.Id, phase.Version, cancellationToken),
+				ProjectPhaseStatus.Cancelled => await _service.CancelPhaseAsync(phase.Id, phase.Version, cancellationToken),
+				_ => throw new InvalidOperationException("Unsupported project phase transition.")
+			};
+			Replace(Phases, await _service.ListPhasesAsync(project.Id, cancellationToken));
+			SelectedPhase = Phases.FirstOrDefault(value => value.Id == updated.Id);
+			CompleteOperation(false, $"Phase status changed to {updated.Status}.");
+		}
+		catch (Exception exception) { FailOperation(exception, "Project phase status could not be changed."); }
 	}
 
 	private void LoadProjectEditor(ProjectRecord? value)
@@ -392,6 +433,7 @@ public sealed class ProjectAccountingViewModel : BaseViewModel
 	{
 		NewProjectCommand.RaiseCanExecuteChanged(); SaveProjectCommand.RaiseCanExecuteChanged(); ActivateCommand.RaiseCanExecuteChanged(); HoldCommand.RaiseCanExecuteChanged();
 		CloseCommand.RaiseCanExecuteChanged(); CancelCommand.RaiseCanExecuteChanged(); NewPhaseCommand.RaiseCanExecuteChanged(); SavePhaseCommand.RaiseCanExecuteChanged();
+		ActivatePhaseCommand.RaiseCanExecuteChanged(); CompletePhaseCommand.RaiseCanExecuteChanged(); CancelPhaseCommand.RaiseCanExecuteChanged();
 		AttributeCommand.RaiseCanExecuteChanged(); RemoveAttributionCommand.RaiseCanExecuteChanged(); LinkBudgetLineCommand.RaiseCanExecuteChanged(); UnlinkBudgetLineCommand.RaiseCanExecuteChanged();
 	}
 

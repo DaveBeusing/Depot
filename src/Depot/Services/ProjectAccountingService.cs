@@ -152,7 +152,7 @@ public sealed class ProjectAccountingService
 			RequireOperationalProject(project);
 			if (normalized.Id == 0)
 			{
-				var created = await _projects.CreatePhaseAsync(transaction, normalized with { Version = 1 }, token);
+				var created = await _projects.CreatePhaseAsync(transaction, normalized with { Version = 1, Status = ProjectPhaseStatus.Planned }, token);
 				await _auditEntries.CreateAsync(transaction, _audit.CreateCreatedEntry(created.Id, created), token);
 				return created;
 			}
@@ -161,13 +161,23 @@ public sealed class ProjectAccountingService
 			if (before.Version != normalized.Version) throw new ConcurrencyConflictException("project phase");
 			if (before.Status is ProjectPhaseStatus.Completed or ProjectPhaseStatus.Cancelled)
 				throw new InvalidOperationException("Completed or cancelled project phases cannot be edited.");
-			if (await _projects.UpdatePhaseAsync(transaction, normalized, before.Version, token) != 1)
+			var updated = normalized with { Status = before.Status };
+			if (await _projects.UpdatePhaseAsync(transaction, updated, before.Version, token) != 1)
 				throw new ConcurrencyConflictException("project phase");
-			var persisted = normalized with { Version = before.Version + 1 };
+			var persisted = updated with { Version = before.Version + 1 };
 			await _auditEntries.CreateAsync(transaction, _audit.CreateUpdatedEntry(persisted.Id, before, persisted), token);
 			return persisted;
 		}, cancellationToken);
 	}
+
+	public Task<ProjectPhase> ActivatePhaseAsync(long phaseId, long expectedVersion, CancellationToken cancellationToken = default) =>
+		TransitionPhaseAsync(phaseId, expectedVersion, ProjectPhaseStatus.Active, cancellationToken);
+
+	public Task<ProjectPhase> CompletePhaseAsync(long phaseId, long expectedVersion, CancellationToken cancellationToken = default) =>
+		TransitionPhaseAsync(phaseId, expectedVersion, ProjectPhaseStatus.Completed, cancellationToken);
+
+	public Task<ProjectPhase> CancelPhaseAsync(long phaseId, long expectedVersion, CancellationToken cancellationToken = default) =>
+		TransitionPhaseAsync(phaseId, expectedVersion, ProjectPhaseStatus.Cancelled, cancellationToken);
 
 	public async Task<ProjectAttribution> AttributeAsync(ProjectAttributionRequest request, CancellationToken cancellationToken = default)
 	{
@@ -393,6 +403,28 @@ public sealed class ProjectAccountingService
 		return page.Items.Where(value => value.Status is ProjectStatus.Draft or ProjectStatus.Active or ProjectStatus.OnHold).ToArray();
 	}
 
+	private async Task<ProjectPhase> TransitionPhaseAsync(long phaseId, long expectedVersion, ProjectPhaseStatus target, CancellationToken cancellationToken)
+	{
+		_authorization.RequirePermission(ApplicationPermission.ProjectsManage);
+		RequirePositive(phaseId, nameof(phaseId));
+		RequirePositive(expectedVersion, nameof(expectedVersion));
+		return await _transactions.ExecuteAsync(async (transaction, token) =>
+		{
+			var before = await _projects.GetPhaseAsync(transaction, phaseId, token) ?? throw new InvalidOperationException("Project phase was not found.");
+			if (before.Version != expectedVersion) throw new ConcurrencyConflictException("project phase");
+			var project = await RequireProjectAsync(transaction, before.ProjectId, token);
+			RequireOperationalProject(project);
+			if (!CanTransitionPhase(before.Status, target))
+				throw new InvalidOperationException($"Project phase status '{before.Status}' cannot transition to '{target}'.");
+			var after = before with { Status = target };
+			if (await _projects.UpdatePhaseAsync(transaction, after, before.Version, token) != 1)
+				throw new ConcurrencyConflictException("project phase");
+			var persisted = after with { Version = before.Version + 1 };
+			await _auditEntries.CreateAsync(transaction, _audit.CreateActionEntry(phaseId, target.ToString(), before, persisted), token);
+			return persisted;
+		}, cancellationToken);
+	}
+
 	private async Task<ProjectRecord> TransitionAsync(long projectId, long expectedVersion, ProjectStatus target, CancellationToken cancellationToken)
 	{
 		_authorization.RequirePermission(ApplicationPermission.ProjectsManage);
@@ -486,6 +518,13 @@ public sealed class ProjectAccountingService
 		(ProjectStatus.Draft, ProjectStatus.Active or ProjectStatus.Cancelled) => true,
 		(ProjectStatus.Active, ProjectStatus.OnHold or ProjectStatus.Closed or ProjectStatus.Cancelled) => true,
 		(ProjectStatus.OnHold, ProjectStatus.Active or ProjectStatus.Closed or ProjectStatus.Cancelled) => true,
+		_ => false
+	};
+
+	private static bool CanTransitionPhase(ProjectPhaseStatus current, ProjectPhaseStatus target) => (current, target) switch
+	{
+		(ProjectPhaseStatus.Planned, ProjectPhaseStatus.Active or ProjectPhaseStatus.Cancelled) => true,
+		(ProjectPhaseStatus.Active, ProjectPhaseStatus.Completed or ProjectPhaseStatus.Cancelled) => true,
 		_ => false
 	};
 

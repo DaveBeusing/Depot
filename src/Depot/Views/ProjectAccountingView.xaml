@@ -53,14 +53,22 @@
 				<TabItem Header="Phases">
 					<Grid Margin="8"><Grid.ColumnDefinitions><ColumnDefinition Width="2*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
 						<DataGrid ItemsSource="{Binding Phases}" SelectedItem="{Binding SelectedPhase}" AutoGenerateColumns="False" IsReadOnly="True" Style="{StaticResource AppDataGridCompactStyle}">
-							<DataGrid.Columns><DataGridTextColumn Header="Code" Binding="{Binding Code}" Width="100"/><DataGridTextColumn Header="Phase" Binding="{Binding Name}" Width="*"/><DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="110"/></DataGrid.Columns>
+							<DataGrid.Columns><DataGridTextColumn Header="Code" Binding="{Binding Code}" Width="100"/><DataGridTextColumn Header="Phase" Binding="{Binding Name}" Width="*"/><DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="100"/><DataGridTextColumn Header="Start" Binding="{Binding PlannedStartDate}" Width="105"/><DataGridTextColumn Header="End" Binding="{Binding PlannedEndDate}" Width="105"/></DataGrid.Columns>
 						</DataGrid>
 						<StackPanel Grid.Column="2">
 							<TextBlock Text="Phase" Style="{StaticResource WorkspaceSectionTitleStyle}"/>
 							<TextBlock Margin="0,8,0,0" Text="Code" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding PhaseCode,UpdateSourceTrigger=PropertyChanged}"/>
 							<TextBlock Margin="0,8,0,0" Text="Name" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding PhaseName,UpdateSourceTrigger=PropertyChanged}"/>
+							<TextBlock Margin="0,8,0,0" Text="Planned start" Style="{StaticResource FormLabelStyle}"/><DatePicker SelectedDate="{Binding PhasePlannedStartDate}"/>
+							<TextBlock Margin="0,8,0,0" Text="Planned end" Style="{StaticResource FormLabelStyle}"/><DatePicker SelectedDate="{Binding PhasePlannedEndDate}"/>
 							<TextBlock Margin="0,8,0,0" Text="Description" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding PhaseDescription,UpdateSourceTrigger=PropertyChanged}"/>
-							<WrapPanel Margin="0,12,0,0"><Button Command="{Binding NewPhaseCommand}" Content="New" Style="{StaticResource SecondaryButtonStyle}"/><Button Margin="6,0,0,0" Command="{Binding SavePhaseCommand}" Content="Save" Style="{StaticResource PrimaryButtonStyle}"/></WrapPanel>
+							<WrapPanel Margin="0,12,0,0">
+								<Button Command="{Binding NewPhaseCommand}" Content="New" Style="{StaticResource SecondaryButtonStyle}"/>
+								<Button Margin="6,0,0,0" Command="{Binding SavePhaseCommand}" Content="Save" Style="{StaticResource PrimaryButtonStyle}"/>
+								<Button Margin="6,0,0,0" Command="{Binding ActivatePhaseCommand}" Content="Activate" Style="{StaticResource SecondaryButtonStyle}"/>
+								<Button Margin="6,0,0,0" Command="{Binding CompletePhaseCommand}" Content="Complete" Style="{StaticResource SecondaryButtonStyle}"/>
+								<Button Margin="6,0,0,0" Command="{Binding CancelPhaseCommand}" Content="Cancel" Style="{StaticResource DangerButtonStyle}"/>
+							</WrapPanel>
 						</StackPanel>
 					</Grid>
 				</TabItem>

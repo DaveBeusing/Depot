@@ -230,16 +230,22 @@ public sealed class ProviderProductionAcceptanceTests
 			ProjectId = active.Id,
 			Code = "DELIVERY",
 			Name = "Delivery",
+			PlannedStartDate = new DateOnly(2026, 9, 1),
+			PlannedEndDate = new DateOnly(2026, 12, 15),
 			Status = ProjectPhaseStatus.Active
 		});
 		Assert.True(phase.Id > 0);
 		Assert.Equal(active.Id, phase.ProjectId);
 		Assert.Equal("DELIVERY", phase.Code);
+		Assert.Equal(ProjectPhaseStatus.Planned, phase.Status);
+		phase = await service.ActivatePhaseAsync(phase.Id, phase.Version);
 
 		var phases = await service.ListPhasesAsync(active.Id);
 		var persistedPhase = Assert.Single(phases);
 		Assert.Equal(phase.Id, persistedPhase.Id);
 		Assert.Equal(ProjectPhaseStatus.Active, persistedPhase.Status);
+		Assert.Equal(new DateOnly(2026, 9, 1), persistedPhase.PlannedStartDate);
+		Assert.Equal(new DateOnly(2026, 12, 15), persistedPhase.PlannedEndDate);
 
 		var projectAttachmentId = Guid.NewGuid();
 		var projectAttachmentBytes = "project-provider-attachment"u8.ToArray();
