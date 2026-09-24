@@ -1,5 +1,5 @@
 {
-  "version": "1.29",
+  "version": "1.30",
   "topics": [
     {
       "id": "getting-started.first-login",
@@ -316,6 +316,28 @@
         "approvals.queue",
         "getting-started.business-attachments",
         "administration.approval-policies"
+      ]
+    },
+    {
+      "id": "purchasing.replenishment",
+      "title": "Inventory Replenishment",
+      "category": "Purchasing",
+      "file": "purchasing/replenishment.md",
+      "order": 407,
+      "keywords": [
+        "replenishment",
+        "reorder point",
+        "safety stock",
+        "purchase suggestion",
+        "shortage",
+        "minimum order quantity",
+        "moq"
+      ],
+      "requiredPermission": "Replenishment.View",
+      "relatedTopics": [
+        "purchasing.sourcing",
+        "purchasing.purchase-orders",
+        "inventory.overview"
       ]
     },
     {

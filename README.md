@@ -241,3 +241,7 @@ Depot is licensed under the [MIT License](LICENSE.md).
 ## Procurement sourcing
 
 Depot includes a controlled [Procurement Sourcing](docs/ProcurementSourcing.md) workflow from Purchase Requisition through approval, RFQ and supplier quote comparison to an explicitly selected Purchase Order draft. Supplier selection is never automatic, Purchase Order authority remains in the existing purchasing service, and retained sourcing evidence links the resulting draft back to the requisition, RFQ and selected quote.
+
+## Inventory replenishment
+
+Depot includes deterministic [Inventory Replenishment](docs/InventoryReplenishment.md) with per-item/per-warehouse policies, explainable shortage snapshots, SupplierItem lead-time/MOQ evidence and explicit user conversion of accepted suggestions into Purchase Requisitions. The feature never awards suppliers or creates Purchase Orders automatically.
