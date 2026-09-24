@@ -110,6 +110,7 @@ public sealed class BusinessAttachmentRepository : DatabaseRepository
 			BusinessAttachmentEntityKind.PurchaseRequisition => "PurchaseRequisitions",
 			BusinessAttachmentEntityKind.RequestForQuotation => "RequestsForQuotation",
 			BusinessAttachmentEntityKind.SupplierQuoteResponse => "SupplierQuoteResponses",
+			BusinessAttachmentEntityKind.Project => "Projects",
 			_ => throw new ArgumentOutOfRangeException(nameof(entityKind))
 		};
 		var value = await Database.ExecuteScalarAsync(

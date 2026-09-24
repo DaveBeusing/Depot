@@ -16,7 +16,8 @@ public enum BusinessAttachmentEntityKind
 	SupplierDocument = 9,
 	PurchaseRequisition = 10,
 	RequestForQuotation = 11,
-	SupplierQuoteResponse = 12
+	SupplierQuoteResponse = 12,
+	Project = 13
 }
 
 public enum BusinessAttachmentStatus
