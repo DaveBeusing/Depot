@@ -212,6 +212,9 @@ public sealed class ProjectAccountingTests
 		Assert.Contains("<controls:PageHeader", view, StringComparison.Ordinal);
 		Assert.Contains("<controls:OperationPanel", view, StringComparison.Ordinal);
 		Assert.Contains("AppDataGridCompactStyle", view, StringComparison.Ordinal);
+		Assert.Contains("BusinessAttachmentPanelViewModel", viewModel, StringComparison.Ordinal);
+		Assert.Contains("BusinessAttachmentEntityKind.Project", viewModel, StringComparison.Ordinal);
+		Assert.Contains("<controls:BusinessAttachmentPanel", view, StringComparison.Ordinal);
 		Assert.Contains("ApplicationPermission.ProjectsView", main, StringComparison.Ordinal);
 		Assert.Contains("ProjectAccountingViewModel", templates, StringComparison.Ordinal);
 	}

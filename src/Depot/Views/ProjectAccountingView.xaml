@@ -47,6 +47,9 @@
 						</StackPanel>
 					</ScrollViewer>
 				</TabItem>
+				<TabItem Header="Attachments">
+					<controls:BusinessAttachmentPanel Margin="8" DataContext="{Binding Attachments}"/>
+				</TabItem>
 				<TabItem Header="Phases">
 					<Grid Margin="8"><Grid.ColumnDefinitions><ColumnDefinition Width="2*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
 						<DataGrid ItemsSource="{Binding Phases}" SelectedItem="{Binding SelectedPhase}" AutoGenerateColumns="False" IsReadOnly="True" Style="{StaticResource AppDataGridCompactStyle}">

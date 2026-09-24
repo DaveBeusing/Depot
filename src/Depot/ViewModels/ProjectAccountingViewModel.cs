@@ -34,9 +34,15 @@ public sealed class ProjectAccountingViewModel : BaseViewModel
 	private ProjectBudgetLink? _selectedBudgetLink;
 	private string _budgetCategoryCode = string.Empty;
 
-	public ProjectAccountingViewModel(ProjectAccountingService service)
+	public ProjectAccountingViewModel(
+		ProjectAccountingService service,
+		BusinessAttachmentService attachmentService,
+		IFileDialogService fileDialogs)
 	{
 		_service = service ?? throw new ArgumentNullException(nameof(service));
+		Attachments = new BusinessAttachmentPanelViewModel(
+			attachmentService ?? throw new ArgumentNullException(nameof(attachmentService)),
+			fileDialogs ?? throw new ArgumentNullException(nameof(fileDialogs)));
 		RefreshCommand = new AsyncRelayCommand(LoadAsync);
 		NewProjectCommand = new RelayCommand(NewProject, () => CanManage);
 		SaveProjectCommand = new AsyncRelayCommand(SaveProjectAsync, () => CanManage);
@@ -60,6 +66,7 @@ public sealed class ProjectAccountingViewModel : BaseViewModel
 	public ObservableCollection<ProjectAttribution> Attributions { get; } = [];
 	public ObservableCollection<ProjectBudgetLink> BudgetLinks { get; } = [];
 	public ObservableCollection<ProjectBudgetLineOption> BudgetLineOptions { get; } = [];
+	public BusinessAttachmentPanelViewModel Attachments { get; }
 	public IReadOnlyList<ProjectAttributionEntityKind> AttributionKinds { get; } = Enum.GetValues<ProjectAttributionEntityKind>();
 
 	public AsyncRelayCommand RefreshCommand { get; }
@@ -91,6 +98,7 @@ public sealed class ProjectAccountingViewModel : BaseViewModel
 			OnPropertyChanged();
 			LoadProjectEditor(value);
 			RaiseCommands();
+			_ = Attachments.SetTargetAsync(BusinessAttachmentEntityKind.Project, value?.Id);
 			if (value is not null) _ = LoadSelectedAsync(value.Id, CancellationToken.None);
 		}
 	}

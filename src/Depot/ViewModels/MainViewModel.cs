@@ -226,7 +226,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		_financeLocalization = new(() => new FinanceLocalizationViewModel(financeLocalizationService));
 		if(financeFixedAssetService is not null)_financeFixedAssets=new(()=>new FinanceFixedAssetsViewModel(financeFixedAssetService));
 		if(financeBudgetingService is not null)_financeBudgeting=new(()=>new FinanceBudgetingViewModel(financeBudgetingService,fileDialogService));
-		if(projectAccountingService is not null)_projectAccounting=new(()=>new ProjectAccountingViewModel(projectAccountingService));
+		if(projectAccountingService is not null)_projectAccounting=new(()=>new ProjectAccountingViewModel(projectAccountingService, businessAttachmentService, fileDialogService));
 		_reports = new(() => new ReportsViewModel(reportService, fileDialogService));
 		_import = new(() => new ImportViewModel(importService, fileDialogService));
 		_administration = new(() => new AdministrationViewModel(_import.Value, itemService, purposeService, reasonCodeService, manufacturerService, categoryService, unitOfMeasureService, packagingService, supplierCategoryService, supplierService, supplierItemService, warehouseService, storageLocationService, warehouseLayoutVisualizerService, userService, roleService, authorizationService, settingsService, connectionStatusService, databaseConnectionTester, databaseManagementService, auditLogService, userSessionAdministrationService, securityEventService, fileDialogService, applicationInformationService, approvalPolicyService, businessAttachmentService));
