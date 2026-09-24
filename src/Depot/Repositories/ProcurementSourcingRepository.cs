@@ -180,8 +180,8 @@ public sealed class ProcurementSourcingRepository : DatabaseRepository
 		var changed = await transaction.Session.ExecuteAsync("UPDATE RequestsForQuotation SET ConvertedPurchaseOrderId=$Order,Status=$Converted,Version=Version+1 WHERE Id=$Id AND Version=$Version AND Status=$Awarded AND ConvertedPurchaseOrderId IS NULL;", cancellationToken, Parameter("$Order", purchaseOrderId), Parameter("$Converted", (int)RequestForQuotationStatus.Converted), Parameter("$Id", rfq.Id), Parameter("$Version", rfq.Version), Parameter("$Awarded", (int)RequestForQuotationStatus.Awarded));
 		if (changed != 1) return false;
 		await transaction.Session.ExecuteAsync("INSERT INTO ProcurementSourcingEvidence(PurchaseOrderId,PurchaseRequisitionId,RequestForQuotationId,SupplierQuoteResponseId,SelectedByUserId,SelectedAtUtc) VALUES($Order,$Req,$Rfq,$Quote,$User,$At);", cancellationToken, Parameter("$Order", purchaseOrderId), Parameter("$Req", rfq.PurchaseRequisitionId), Parameter("$Rfq", rfq.Id), Parameter("$Quote", rfq.SelectedQuoteResponseId.Value), Parameter("$User", userId), Parameter("$At", Utc(atUtc)));
-		await transaction.Session.ExecuteAsync("UPDATE PurchaseRequisitions SET Status=$Converted,Version=Version+1 WHERE Id=$Id AND Status=$Approved;", cancellationToken, Parameter("$Converted", (int)PurchaseRequisitionStatus.Converted), Parameter("$Id", rfq.PurchaseRequisitionId), Parameter("$Approved", (int)PurchaseRequisitionStatus.Approved));
-		return true;
+		var requisitionChanged = await transaction.Session.ExecuteAsync("UPDATE PurchaseRequisitions SET Status=$Converted,Version=Version+1 WHERE Id=$Id AND Status=$Approved;", cancellationToken, Parameter("$Converted", (int)PurchaseRequisitionStatus.Converted), Parameter("$Id", rfq.PurchaseRequisitionId), Parameter("$Approved", (int)PurchaseRequisitionStatus.Approved));
+		return requisitionChanged == 1;
 	}
 
 	public Task<ProcurementSourcingEvidence?> GetEvidenceByPurchaseOrderAsync(long purchaseOrderId, CancellationToken cancellationToken) =>

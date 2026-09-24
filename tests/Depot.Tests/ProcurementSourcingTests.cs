@@ -148,6 +148,41 @@ public sealed class ProcurementSourcingTests
 		Assert.NotEqual(firstInstance!.Id, secondInstance!.Id);
 	}
 
+
+	[Fact]
+	public async Task SeparateRfqsForSameRequisitionCannotCreateDuplicatePurchaseOrders()
+	{
+		await using var context = await ProcurementTestContext.CreateSqliteAsync();
+		var draft = await context.Sourcing.SaveRequisitionAsync(new PurchaseRequisition
+		{
+			BusinessJustification = "Single demand with parallel sourcing rounds",
+			Lines = [new PurchaseRequisitionLine { ItemId = context.ItemId, Quantity = 4 }]
+		});
+		var submitted = await context.Sourcing.SubmitAsync(draft.Id, draft.Version);
+		context.SignInApprover();
+		var approved = await context.Sourcing.ApproveAsync(submitted.Id, submitted.Version, "Approved");
+		context.SignInAdministrator();
+
+		var firstRfq = await context.Sourcing.CreateRfqAsync(approved.Id, [context.SupplierId], DateTime.Today.AddDays(3));
+		var secondRfq = await context.Sourcing.CreateRfqAsync(approved.Id, [context.SupplierId], DateTime.Today.AddDays(4));
+		var firstDetails = await context.Sourcing.GetRfqAsync(firstRfq.Id) ?? throw new InvalidOperationException();
+		var secondDetails = await context.Sourcing.GetRfqAsync(secondRfq.Id) ?? throw new InvalidOperationException();
+		var firstQuote = await context.Sourcing.CaptureQuoteResponseAsync(Quote(firstRfq.Id, Assert.Single(firstDetails.Lines), context.SupplierId, 9.5m, "FIRST"));
+		var secondQuote = await context.Sourcing.CaptureQuoteResponseAsync(Quote(secondRfq.Id, Assert.Single(secondDetails.Lines), context.SupplierId, 9.0m, "SECOND"));
+		await context.Sourcing.SelectQuoteAsync(firstRfq.Id, firstDetails.Version, firstQuote.Id);
+		await context.Sourcing.SelectQuoteAsync(secondRfq.Id, secondDetails.Version, secondQuote.Id);
+
+		await context.Sourcing.ConvertSelectedQuoteToPurchaseOrderAsync(firstRfq.Id);
+		var orderCount = await context.ScalarAsync(
+			"SELECT COUNT(*) FROM PurchaseOrders WHERE SupplierId=$SupplierId;",
+			new DatabaseParameter("$SupplierId", context.SupplierId));
+
+		await Assert.ThrowsAsync<ConcurrencyConflictException>(() => context.Sourcing.ConvertSelectedQuoteToPurchaseOrderAsync(secondRfq.Id));
+		Assert.Equal(orderCount, await context.ScalarAsync(
+			"SELECT COUNT(*) FROM PurchaseOrders WHERE SupplierId=$SupplierId;",
+			new DatabaseParameter("$SupplierId", context.SupplierId)));
+	}
+
 	private static SupplierQuoteResponse Quote(long rfqId, RequestForQuotationLine line, long supplierId, decimal unitPrice, string reference) => new()
 	{
 		RequestForQuotationId = rfqId,
