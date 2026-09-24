@@ -95,6 +95,8 @@ public sealed class ProviderProductionAcceptanceTests
 		Assert.Equal(DatabaseVersion.CurrentVersion, Convert.ToInt32(await data.ExecuteScalarAsync("SELECT Version FROM DatabaseInfo;", CancellationToken.None), CultureInfo.InvariantCulture));
 		Assert.Equal(SalesSchemaMigration.CurrentVersion, Convert.ToInt32(await data.ExecuteScalarAsync("SELECT Version FROM DepotFeatureVersions WHERE Name='Sales';", CancellationToken.None), CultureInfo.InvariantCulture));
 		Assert.Equal(FinanceInventoryAccountingSchemaMigration.CurrentVersion, Convert.ToInt32(await data.ExecuteScalarAsync("SELECT Version FROM DepotFeatureVersions WHERE Name='Finance';", CancellationToken.None), CultureInfo.InvariantCulture));
+		Assert.Equal(ProjectAccountingSchemaMigration.CurrentVersion, Convert.ToInt32(await data.ExecuteScalarAsync("SELECT Version FROM DepotFeatureVersions WHERE Name='ProjectAccounting';", CancellationToken.None), CultureInfo.InvariantCulture));
+		Assert.Equal(0, Convert.ToInt32(await data.ExecuteScalarAsync("SELECT COUNT(*) FROM Projects;", CancellationToken.None), CultureInfo.InvariantCulture));
 		Assert.True(Convert.ToInt32(await data.ExecuteScalarAsync(ReservationIndexSql(factory.Provider), CancellationToken.None), CultureInfo.InvariantCulture) > 0);
 
 		var serverVersion = Convert.ToString(await data.ExecuteScalarAsync(ServerVersionSql(factory.Provider), CancellationToken.None), CultureInfo.InvariantCulture);

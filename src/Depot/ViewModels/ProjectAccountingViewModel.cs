@@ -169,7 +169,7 @@ public sealed class ProjectAccountingViewModel : BaseViewModel
 
 	private async Task SaveProjectAsync(CancellationToken cancellationToken)
 	{
-		if (!Guid.TryParse(ProjectCode is null ? null : LegalEntityId, out var legalEntityId)) throw new InvalidOperationException("Legal entity must be a valid GUID.");
+		if (!Guid.TryParse(LegalEntityId, out var legalEntityId)) throw new InvalidOperationException("Legal entity must be a valid GUID.");
 		if (!long.TryParse(OwnerUserId, NumberStyles.Integer, CultureInfo.InvariantCulture, out var ownerUserId) || ownerUserId <= 0) throw new InvalidOperationException("Owner user ID must be a positive number.");
 		long? customerId = null;
 		if (!string.IsNullOrWhiteSpace(CustomerId))
