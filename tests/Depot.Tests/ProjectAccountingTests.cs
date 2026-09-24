@@ -167,6 +167,14 @@ public sealed class ProjectAccountingTests
 		Assert.Equal(120m, variance.Budget);
 		Assert.Equal(30m, variance.Variance);
 		Assert.Equal(0.25m, variance.VariancePercent);
+
+		await service.LinkBudgetLineAsync(project.Id, null, finance.SecondBudgetLineId, "REVENUE");
+		var combined = Assert.Single(
+			await service.GetBudgetVarianceAsync(project.Id),
+			value => value.AccountId == finance.RevenueAccountId);
+		Assert.Equal(150m, combined.Actual);
+		Assert.Equal(150m, combined.Budget);
+		Assert.Equal(0m, combined.Variance);
 	}
 
 	[Fact]
@@ -344,8 +352,31 @@ public sealed class ProjectAccountingTests
 			new DatabaseParameter("$Budget", budgetVersionId),
 			new DatabaseParameter("$Account", revenueAccountId.ToString("D")),
 			new DatabaseParameter("$Period", periodId.ToString("D")));
+		var secondBudgetVersionId = await data.InsertAsync(
+			"""
+			INSERT INTO FinanceBudgetVersions
+			(LegalEntityId,AccountingBookId,FiscalCalendarId,FiscalYear,BudgetName,BudgetVersionNumber,CurrencyCode,Status,OwnerUserId,Description,SourceKind,SourceBudgetVersionId,ApprovalInstanceId,CreatedAtUtc,CreatedByUserId,UpdatedAtUtc,UpdatedByUserId)
+			VALUES
+			($Entity,$Book,$Calendar,2026,$Name,2,'EUR',$Status,$User,'Project test amendment',$SourceKind,$SourceBudget,NULL,$Now,$User,$Now,$User);
+			""",
+			CancellationToken.None,
+			new DatabaseParameter("$Entity", legalEntityId.ToString("D")),
+			new DatabaseParameter("$Book", bookId.ToString("D")),
+			new DatabaseParameter("$Calendar", calendarId.ToString("D")),
+			new DatabaseParameter("$Name", $"Project Budget {suffix}"),
+			new DatabaseParameter("$Status", (int)FinanceBudgetStatus.Approved),
+			new DatabaseParameter("$User", userId),
+			new DatabaseParameter("$SourceKind", (int)FinanceBudgetSourceKind.Manual),
+			new DatabaseParameter("$SourceBudget", budgetVersionId),
+			new DatabaseParameter("$Now", now));
+		var secondBudgetLineId = await data.InsertAsync(
+			"INSERT INTO FinanceBudgetLines (BudgetVersionId,AccountId,AccountingPeriodId,DimensionId,DimensionValueId,Amount,SourceEvidence) VALUES ($Budget,$Account,$Period,'','',30,'Project amendment test');",
+			CancellationToken.None,
+			new DatabaseParameter("$Budget", secondBudgetVersionId),
+			new DatabaseParameter("$Account", revenueAccountId.ToString("D")),
+			new DatabaseParameter("$Period", periodId.ToString("D")));
 
-		return new FinanceProjectionSeed(legalEntityId, revenueAccountId, expenseAccountId, journalEntryId, budgetLineId);
+		return new FinanceProjectionSeed(legalEntityId, revenueAccountId, expenseAccountId, journalEntryId, budgetLineId, secondBudgetLineId);
 	}
 
 	private static Task InsertAccountAsync(DatabaseAccess data, Guid id, Guid chartId, string number, string name, FinanceAccountType type) =>
@@ -373,7 +404,8 @@ public sealed class ProjectAccountingTests
 		Guid RevenueAccountId,
 		Guid ExpenseAccountId,
 		long JournalEntryId,
-		long BudgetLineId);
+		long BudgetLineId,
+		long SecondBudgetLineId);
 
 	private static string FindRepositoryRoot()
 	{
