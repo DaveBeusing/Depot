@@ -30,6 +30,8 @@ public sealed class DocumentationBaselineConsistencyTests
 			$"- User Preferences feature schema: **{UserPreferenceSchemaMigration.CurrentVersion}**",
 			$"- Document Templates feature schema: **{DocumentTemplateSchemaMigration.CurrentVersion}**",
 			$"- Enterprise Identity feature schema: **{EnterpriseIdentitySchemaMigration.CurrentVersion}**",
+			$"- Procurement Sourcing feature schema: **{ProcurementSourcingSchemaMigration.CurrentVersion}**",
+			$"- Procurement Sourcing feature schema: **{ProcurementSourcingSchemaMigration.CurrentVersion}**",
 			$"- Help manifest: **{helpVersion}**"
 		};
 
@@ -51,6 +53,7 @@ public sealed class DocumentationBaselineConsistencyTests
 			$"- User Preferences feature schema: `{UserPreferenceSchemaMigration.CurrentVersion}`",
 			$"- Document Templates feature schema: `{DocumentTemplateSchemaMigration.CurrentVersion}`",
 			$"- Enterprise Identity feature schema: `{EnterpriseIdentitySchemaMigration.CurrentVersion}`"
+			,$"- Procurement Sourcing feature schema: `{ProcurementSourcingSchemaMigration.CurrentVersion}`"
 		]);
 
 		AssertMarkers(root, "docs/UserFacingChanges.md",
@@ -78,6 +81,7 @@ public sealed class DocumentationBaselineConsistencyTests
 			$"User Preferences schema **{UserPreferenceSchemaMigration.CurrentVersion}**",
 			$"Document Templates schema **{DocumentTemplateSchemaMigration.CurrentVersion}**",
 			$"Enterprise Identity feature schema **{EnterpriseIdentitySchemaMigration.CurrentVersion}**",
+			$"Procurement Sourcing feature schema **{ProcurementSourcingSchemaMigration.CurrentVersion}**",
 			$"Help manifest **{helpVersion}**"
 		]);
 

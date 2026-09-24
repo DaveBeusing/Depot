@@ -115,7 +115,7 @@ Current baseline:
 - Document Templates feature schema: **1**
 - Enterprise Identity feature schema: **2**
 - Approval Policies feature schema: **1**
-- Help manifest: **1.29**
+- Procurement Sourcing feature schema: **1**- Help manifest: **1.29**
 
 `Directory.Build.props` is authoritative for the exact application patch/version. The documentation baseline intentionally records the development line instead of duplicating the moving preview patch number.
 
@@ -235,3 +235,8 @@ Track the path through the [Roadmap](docs/Roadmap.md) and [Release 1.0 plan](doc
 ## License
 
 Depot is licensed under the [MIT License](LICENSE.md).
+
+
+## Procurement sourcing
+
+Depot includes a controlled [Procurement Sourcing](docs/ProcurementSourcing.md) workflow from Purchase Requisition through approval, RFQ and supplier quote comparison to an explicitly selected Purchase Order draft. Supplier selection is never automatic, Purchase Order authority remains in the existing purchasing service, and retained sourcing evidence links the resulting draft back to the requisition, RFQ and selected quote.

@@ -108,8 +108,16 @@ Advanced pricing uses existing Item and Sales Pricing permissions. FX-rate maint
 - User Preferences schema: **2**
 - Document Templates schema: **1**
 - Enterprise Identity feature schema: **2**
+- Procurement Sourcing feature schema: **1**
 - Help manifest: **1.29**
 
 The exact application patch/version is authoritative in `Directory.Build.props`; this user-facing baseline intentionally records the moving development line instead of duplicating the patch number.
 
 Database-provider technical acceptance is complete for the certified matrix. Organization-specific accounting/localization, accessibility, signing, deployment and legal acceptance remain separate release gates.
+
+
+## Purchase requisitions and supplier sourcing
+
+Purchasing now includes a Sourcing workspace for controlled purchase demand. Users can create and submit Purchase Requisitions, route eligible demand through requisition approval, prepare RFQs for one or more suppliers, record supplier quote responses and compare them side by side.
+
+Supplier selection is explicit. Depot does not automatically choose a quote or place a Purchase Order. An authorized user can convert the selected eligible quote into the existing Purchase Order draft workflow, with retained links back to the requisition, RFQ and selected supplier response. Relevant work appears in My Work and the Buyer Workbench.

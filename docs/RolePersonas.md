@@ -90,3 +90,15 @@ The Sales CRM capability extends the existing Sales personas without creating a 
 The built-in **Finance** role receives `FinanceBudgeting.View`, `FinanceBudgeting.Manage` and `FinanceBudgeting.Lock`, but not `FinanceBudgeting.Approve`. The built-in **Approver** role receives `FinanceBudgeting.View` and `FinanceBudgeting.Approve`, but not draft-management authority.
 
 Approval-policy stage eligibility remains an additional requirement for pending decisions. My Work uses the same policy-aware boundary.
+
+
+## Procurement sourcing responsibilities
+
+Procurement sourcing separates demand preparation, requisition approval and supplier award/conversion through explicit permissions:
+
+- `PurchaseRequisitions.View` / `PurchaseRequisitions.Manage` expose and prepare purchase demand;
+- `PurchaseRequisitions.Approve` authorizes eligible requisition decisions and remains subject to creator/approver separation;
+- `SupplierSourcing.View` / `SupplierSourcing.Manage` expose RFQs, supplier responses and comparison;
+- `SupplierSourcing.Convert` authorizes conversion of an explicitly selected quote into the existing Purchase Order draft path.
+
+The broad Purchasing system role receives the operational requisition/sourcing permissions required for buyer work but does not gain Purchase Order approval authority. The Approver role receives requisition approval capability without sourcing-management or supplier-award authority. Custom roles may compose these permissions deliberately; UI visibility never replaces service authorization.

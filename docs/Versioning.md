@@ -15,6 +15,7 @@ Updated: 2026-09-19
 - Enterprise Identity feature schema: **2**
 - Approval Policies feature schema: **1**
 - Business Attachments feature schema: **1**
+- Procurement Sourcing feature schema: **1**
 - Help manifest: **1.29**
 
 Application, Core database and feature-schema versions are independent compatibility dimensions. `Directory.Build.props` is the authoritative source for the exact application patch/version; long-lived documentation records the development line rather than duplicating the moving patch number.
@@ -158,3 +159,10 @@ Finance schema **11** introduced provider-neutral `FinanceBudgetVersions` and `F
 ### Finance schema 12
 
 Finance schema **12** is the current Finance persistence baseline. It adds explicit structured SEPA debtor/creditor payment profiles plus immutable `pain.001.001.09` payment-export artifacts and append-only external-status history. Exact generated XML bytes and SHA-256 evidence are retained so re-download never regenerates historical instructions from mutable master data. Core schema remains **30**.
+
+
+### Procurement Sourcing schema 1
+
+Procurement Sourcing feature schema **1** introduces provider-neutral persisted contracts for Purchase Requisitions and lines, Requests for Quotation and recipients/lines, Supplier Quote Responses and lines, and immutable Purchase Order sourcing evidence.
+
+The migration is tracked as `ProcurementSourcing` in `DepotFeatureVersions` and is invoked from the established provisioning path. It does not increment Core schema 30. Provider behavior must remain equivalent across SQLite, SQL Server, MariaDB and MySQL, with MariaDB and MySQL accepted independently by the provider workflow.
