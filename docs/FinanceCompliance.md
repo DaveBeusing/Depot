@@ -6,7 +6,7 @@ Updated: 2026-09-08
 
 This document describes technical controls implemented in Depot Finance. It is not a legal opinion, accounting-policy determination, tax determination, certification, audit opinion, or claim of compliance with a jurisdiction-specific accounting framework.
 
-Current Finance feature schema: **10**.
+Current Finance feature schema: **12**.
 
 ## Core principle
 
@@ -97,3 +97,12 @@ No repository feature, provider baseline or localization pack should be describe
 Finance schema **11** adds controlled budgeting without changing the accounting system of record. Budgets are planning evidence only: they do not post journals, alter posted history or replace General Ledger/Financial Reporting authority.
 
 Approval policies retain immutable submitted-stage evidence. Approved and Locked budget versions cannot be silently edited; changes require a new version/amendment. The real-provider acceptance path includes budget persistence and nine-decimal aggregate behavior.
+
+
+## SEPA SCT export boundary
+
+Depot implements a bounded SEPA SCT customer-to-PSP export profile using `pain.001.001.09`, pinned to the EPC SCT 2025 rulebook v1.1 / Customer-to-PSP implementation guidelines 2025 v1.0. The implementation requires explicit structured payment addresses and does not emit unstructured-only address lines.
+
+Under the 2025 SCT rulebook version 1.1, unstructured postal addresses are no longer permitted in EPC payment messages from 15 November 2026. Depot's structured-address-only export rule is therefore aligned with the published transition while remaining an explicitly bounded supported-product profile.
+
+Schema/profile validation, deterministic artifact tests and live database-provider persistence evidence do not constitute EPC or bank certification. EBICS, PSD2/Open Banking submission, bank-specific host-to-host connectivity, automatic status polling and sanctions/AML/KYC decisioning remain outside the implemented boundary. External submission and acceptance/rejection are retained as manual evidence only.

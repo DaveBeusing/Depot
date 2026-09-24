@@ -200,3 +200,112 @@ public sealed record FinanceParsedBankStatementLine(
 	string? Reference,
 	string? CounterpartyName,
 	string? BankTransactionCode);
+
+
+public enum FinanceSepaPaymentExportStatus
+{
+	Generated = 1,
+	Downloaded = 2,
+	SubmittedExternally = 3,
+	Accepted = 4,
+	Rejected = 5,
+	Cancelled = 6,
+	Superseded = 7
+}
+
+public sealed record FinanceSepaDebtorProfile
+{
+	public long BankAccountId { get; init; }
+	public long Version { get; init; } = 1;
+	public required string Name { get; init; }
+	public required string StreetName { get; init; }
+	public string? BuildingNumber { get; init; }
+	public required string PostalCode { get; init; }
+	public required string TownName { get; init; }
+	public string? CountrySubdivision { get; init; }
+	public required string CountryCode { get; init; }
+}
+
+public sealed record FinanceSepaCreditorProfile
+{
+	public long SupplierId { get; init; }
+	public long Version { get; init; } = 1;
+	public required string Name { get; init; }
+	public required string Iban { get; init; }
+	public string? Bic { get; init; }
+	public required string StreetName { get; init; }
+	public string? BuildingNumber { get; init; }
+	public required string PostalCode { get; init; }
+	public required string TownName { get; init; }
+	public string? CountrySubdivision { get; init; }
+	public required string CountryCode { get; init; }
+	public bool IsActive { get; init; } = true;
+}
+
+public sealed record FinanceSepaPaymentExport
+{
+	public long Id { get; init; }
+	public long PaymentRunId { get; init; }
+	public int ExportSequence { get; init; }
+	public required string ExportKey { get; init; }
+	public required string MessageId { get; init; }
+	public required string PaymentInformationId { get; init; }
+	public required string FileName { get; init; }
+	public required string MessageVersion { get; init; }
+	public required string SchemeProfile { get; init; }
+	public DateTime GeneratedAtUtc { get; init; }
+	public long GeneratedByUserId { get; init; }
+	public int TransactionCount { get; init; }
+	public decimal ControlSum { get; init; }
+	public long BankAccountId { get; init; }
+	public required string XmlSha256 { get; init; }
+	public required byte[] XmlPayload { get; init; }
+	public FinanceSepaPaymentExportStatus CurrentStatus { get; init; }
+	public long? SupersedesExportId { get; init; }
+	public IReadOnlyList<FinanceSepaPaymentExportStatusHistory> StatusHistory { get; init; } = [];
+}
+
+public sealed record FinanceSepaPaymentExportStatusHistory
+{
+	public long Id { get; init; }
+	public long ExportId { get; init; }
+	public FinanceSepaPaymentExportStatus Status { get; init; }
+	public DateTime RecordedAtUtc { get; init; }
+	public long RecordedByUserId { get; init; }
+	public string? ExternalReference { get; init; }
+	public string? EvidenceNote { get; init; }
+}
+
+public sealed record FinanceSepaPaymentExportPreview
+{
+	public long PaymentRunId { get; init; }
+	public int TransactionCount { get; init; }
+	public decimal ControlSum { get; init; }
+	public IReadOnlyList<string> Errors { get; init; } = [];
+	public bool IsValid => Errors.Count == 0;
+}
+
+public sealed record FinanceSepaPaymentExportStatusUpdate
+{
+	public FinanceSepaPaymentExportStatus Status { get; init; }
+	public string? ExternalReference { get; init; }
+	public string? EvidenceNote { get; init; }
+}
+
+
+public sealed record FinanceSepaPaymentExportSummary
+{
+	public long Id { get; init; }
+	public long PaymentRunId { get; init; }
+	public int ExportSequence { get; init; }
+	public required string MessageId { get; init; }
+	public required string FileName { get; init; }
+	public required string MessageVersion { get; init; }
+	public required string SchemeProfile { get; init; }
+	public DateTime GeneratedAtUtc { get; init; }
+	public int TransactionCount { get; init; }
+	public decimal ControlSum { get; init; }
+	public required string XmlSha256 { get; init; }
+	public FinanceSepaPaymentExportStatus CurrentStatus { get; init; }
+	public long? SupersedesExportId { get; init; }
+}

@@ -48,6 +48,7 @@ public static class SystemRoleCatalog
 			ApplicationPermission.FinancePayablesView, ApplicationPermission.FinancePayablesManage, ApplicationPermission.FinanceSupplierInvoicesCreate, ApplicationPermission.FinanceSupplierInvoicesSubmit, ApplicationPermission.FinanceSupplierInvoicesPost, ApplicationPermission.FinanceSupplierInvoicesReverse, ApplicationPermission.FinancePayablePaymentsPost, ApplicationPermission.FinancePayablePaymentsReverse,
 			ApplicationPermission.FinanceInventoryAccountingView, ApplicationPermission.FinanceInventoryAccountingManage,
 			ApplicationPermission.FinanceBankingView, ApplicationPermission.FinanceBankingManage, ApplicationPermission.FinanceBankStatementsCreate, ApplicationPermission.FinanceBankReconciliationManage, ApplicationPermission.FinancePaymentProposalsCreate, ApplicationPermission.FinancePaymentRunsPost, ApplicationPermission.FinanceCashPositionView,
+			ApplicationPermission.FinanceSepaPaymentProfilesManage, ApplicationPermission.FinanceSepaPaymentExportsCreate, ApplicationPermission.FinanceSepaPaymentExportsExport, ApplicationPermission.FinanceSepaPaymentExportsManage,
 			ApplicationPermission.FinanceFinancialReportingView, ApplicationPermission.FinanceFinancialReportingManage, ApplicationPermission.FinanceFinancialReportingExport, ApplicationPermission.FinanceReportSnapshotsCreate,
 			ApplicationPermission.FinanceBudgetingView, ApplicationPermission.FinanceBudgetingManage, ApplicationPermission.FinanceBudgetingLock,
 			ApplicationPermission.FinanceLocalizationView, ApplicationPermission.FinanceLocalizationManage,
@@ -82,7 +83,8 @@ public static class SystemRoleCatalog
 		new(TreasuryCode, "Treasury", "Operates bank statements, reconciliation, payment proposals, payment runs and cash position without supplier-invoice or General Ledger administration.", Set(
 			ApplicationPermission.DashboardView, ApplicationPermission.FinanceBankingView, ApplicationPermission.FinanceBankingManage,
 			ApplicationPermission.FinanceBankStatementsCreate, ApplicationPermission.FinanceBankReconciliationManage,
-			ApplicationPermission.FinancePaymentProposalsCreate, ApplicationPermission.FinancePaymentRunsPost, ApplicationPermission.FinanceCashPositionView)),
+			ApplicationPermission.FinancePaymentProposalsCreate, ApplicationPermission.FinancePaymentRunsPost, ApplicationPermission.FinanceCashPositionView,
+			ApplicationPermission.FinanceSepaPaymentProfilesManage, ApplicationPermission.FinanceSepaPaymentExportsCreate, ApplicationPermission.FinanceSepaPaymentExportsExport, ApplicationPermission.FinanceSepaPaymentExportsManage)),
 		new(AccountantControllerCode, "Accountant / Controller", "Controls General Ledger, periods, posting profiles, inventory accounting, reconciliation and financial reporting; manual journal posting remains separately granted.", Set(
 			ApplicationPermission.DashboardView, ApplicationPermission.ReportsView, ApplicationPermission.ReportsExport,
 			ApplicationPermission.FinanceView,

@@ -27,8 +27,9 @@ public sealed class ApprovalPolicyServiceTests : IDisposable
 
 		using var connection = Open();
 		Assert.Equal(ApprovalPolicySchemaMigration.CurrentVersion, Scalar(connection, "SELECT Version FROM DepotFeatureVersions WHERE Name='ApprovalPolicies';"));
-		Assert.Equal(4, Scalar(connection, "SELECT COUNT(*) FROM ApprovalPolicies;"));
-		Assert.Equal(4, Scalar(connection, "SELECT COUNT(DISTINCT SubjectKind) FROM ApprovalPolicies WHERE IsActive=1;"));
+		var supportedSubjects = Enum.GetValues<ApprovalSubjectKind>().Length;
+		Assert.Equal(supportedSubjects, Scalar(connection, "SELECT COUNT(*) FROM ApprovalPolicies;"));
+		Assert.Equal(supportedSubjects, Scalar(connection, "SELECT COUNT(DISTINCT SubjectKind) FROM ApprovalPolicies WHERE IsActive=1;"));
 		Assert.Equal(1, Scalar(connection, "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='ApprovalInstances';"));
 		Assert.Equal(1, Scalar(connection, "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='ApprovalDecisions';"));
 	}

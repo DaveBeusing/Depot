@@ -7,7 +7,7 @@ Updated: 2026-09-19
 - Application: **0.15.x-preview**
 - Core database schema: **30**
 - Sales feature schema: **15**
-- Finance feature schema: **11**
+- Finance feature schema: **12**
 - User Sessions feature schema: **3**
 - Security Events feature schema: **3**
 - User Preferences feature schema: **2**
@@ -15,7 +15,7 @@ Updated: 2026-09-19
 - Enterprise Identity feature schema: **2**
 - Approval Policies feature schema: **1**
 - Business Attachments feature schema: **1**
-- Help manifest: **1.27**
+- Help manifest: **1.28**
 
 Application, Core database and feature-schema versions are independent compatibility dimensions. `Directory.Build.props` is the authoritative source for the exact application patch/version; long-lived documentation records the development line rather than duplicating the moving patch number.
 
@@ -74,7 +74,7 @@ Sales schema **15** is the current Sales persistence baseline. It adds provider-
 
 ### Finance schema 9
 
-Finance schema **9** is the current Finance persistence baseline and contains the sequential foundation, General Ledger, Accounts Receivable/Payable, Inventory Accounting, Banking, Financial Reporting and Localization structures.
+Finance schema **9** introduced the combined Finance foundation, General Ledger, Accounts Receivable/Payable, Inventory Accounting, Banking, Financial Reporting and Localization persistence baseline.
 
 ### User Sessions schema 3
 
@@ -152,4 +152,9 @@ Finance schema **10** introduced the Fixed Assets persistence baseline.
 
 ### Finance schema 11
 
-Finance schema **11** is the current Finance persistence baseline. It adds provider-neutral `FinanceBudgetVersions` and `FinanceBudgetLines` with optimistic versions, lifecycle/source/approval evidence, account/period/dimension granularity and bounded list/aggregation indexes. Core schema remains **30**.
+Finance schema **11** introduced provider-neutral `FinanceBudgetVersions` and `FinanceBudgetLines` with optimistic versions, lifecycle/source/approval evidence, account/period/dimension granularity and bounded list/aggregation indexes. Core schema remains **30**.
+
+
+### Finance schema 12
+
+Finance schema **12** is the current Finance persistence baseline. It adds explicit structured SEPA debtor/creditor payment profiles plus immutable `pain.001.001.09` payment-export artifacts and append-only external-status history. Exact generated XML bytes and SHA-256 evidence are retained so re-download never regenerates historical instructions from mutable master data. Core schema remains **30**.

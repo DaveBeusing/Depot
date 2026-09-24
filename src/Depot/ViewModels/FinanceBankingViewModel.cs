@@ -28,9 +28,10 @@ public sealed partial class FinanceBankingViewModel : BaseViewModel, IDisposable
 	private string _targetId=string.Empty,_reversalReason=string.Empty;
 	private bool _disposed;
 
-	public FinanceBankingViewModel(FinanceBankingService banking)
+	public FinanceBankingViewModel(FinanceBankingService banking, FinanceSepaPaymentExportService sepa, IFileDialogService fileDialogs)
 	{
 		_banking=banking;
+		InitializeSepa(sepa,fileDialogs);
 		RefreshCommand=new AsyncRelayCommand(LoadAsync);
 		SaveBankAccountCommand=new AsyncRelayCommand(SaveBankAccountAsync);
 		NewBankAccountCommand=new AsyncRelayCommand(_=>{ClearBankAccount(); return Task.CompletedTask;});
@@ -71,13 +72,13 @@ public sealed partial class FinanceBankingViewModel : BaseViewModel, IDisposable
 	public bool CanApprovePaymentRuns=>_banking.CanApprovePaymentRuns;
 	public bool CanExecutePaymentRuns=>_banking.CanExecutePaymentRuns;
 
-	public FinanceBankAccount? SelectedBankAccount { get=>_selectedBankAccount; set { if(ReferenceEquals(_selectedBankAccount,value))return; _selectedBankAccount=value; OnPropertyChanged(); if(value is not null) Apply(value); } }
+	public FinanceBankAccount? SelectedBankAccount { get=>_selectedBankAccount; set { if(ReferenceEquals(_selectedBankAccount,value))return; _selectedBankAccount=value; OnPropertyChanged(); if(value is not null) Apply(value); OnSepaBankAccountSelected(value); } }
 	public FinanceBankStatement? SelectedStatement { get=>_selectedStatement; set { if(ReferenceEquals(_selectedStatement,value))return; _selectedStatement=value; OnPropertyChanged(); } }
 	public FinanceBankStatementLine? SelectedStatementLine { get=>_selectedStatementLine; set { if(ReferenceEquals(_selectedStatementLine,value))return; _selectedStatementLine=value; OnPropertyChanged(); } }
-	public FinancePaymentRun? SelectedPaymentRun { get=>_selectedPaymentRun; set { if(ReferenceEquals(_selectedPaymentRun,value))return; _selectedPaymentRun=value; OnPropertyChanged(); PaymentApprovalFlow=value is null?null:ApprovalFlowProjectionService.ProjectPaymentRun(value,_banking.CanApprovePaymentRun(value.CreatedByUserId),_banking.CanExecutePaymentRuns); Replace(PaymentRunLines,value?.Lines??[]); } }
+	public FinancePaymentRun? SelectedPaymentRun { get=>_selectedPaymentRun; set { if(ReferenceEquals(_selectedPaymentRun,value))return; _selectedPaymentRun=value; OnPropertyChanged(); PaymentApprovalFlow=value is null?null:ApprovalFlowProjectionService.ProjectPaymentRun(value,_banking.CanApprovePaymentRun(value.CreatedByUserId),_banking.CanExecutePaymentRuns); Replace(PaymentRunLines,value?.Lines??[]); OnSepaPaymentRunSelected(value); } }
 	public ApprovalFlowProjection? PaymentApprovalFlow { get=>_paymentApprovalFlow; private set { if(ReferenceEquals(_paymentApprovalFlow,value))return; _paymentApprovalFlow=value; OnPropertyChanged(); } }
 	public ObservableCollection<FinancePaymentRunLine> PaymentRunLines { get; }=[];
-	public FinancePaymentRunLine? SelectedPaymentRunLine { get=>_selectedPaymentRunLine; set { if(ReferenceEquals(_selectedPaymentRunLine,value))return; _selectedPaymentRunLine=value; OnPropertyChanged(); } }
+	public FinancePaymentRunLine? SelectedPaymentRunLine { get=>_selectedPaymentRunLine; set { if(ReferenceEquals(_selectedPaymentRunLine,value))return; _selectedPaymentRunLine=value; OnPropertyChanged(); OnSepaPaymentRunLineSelected(value); } }
 
 	public string AccountName { get=>_accountName; set=>Set(ref _accountName,value); }
 	public string BankName { get=>_bankName; set=>Set(ref _bankName,value); }
@@ -114,6 +115,7 @@ public sealed partial class FinanceBankingViewModel : BaseViewModel, IDisposable
 			Replace(UnreconciledLines,await _banking.GetUnreconciledLinesAsync(cancellationToken:cancellationToken));
 			Replace(PaymentRuns,await _banking.GetPaymentRunsAsync(cancellationToken));
 			Replace(CashPositions,await _banking.GetCashPositionAsync(cancellationToken));
+			await LoadSepaExportsAsync(cancellationToken);
 			await LoadReconciliationDesignerPageAsync(1,cancellationToken);
 			CompleteOperation(BankAccounts.Count==0,"Banking loaded.");
 		}
@@ -231,5 +233,5 @@ public sealed partial class FinanceBankingViewModel : BaseViewModel, IDisposable
 	private static long ParseLong(string value,string field)=>long.TryParse(value,NumberStyles.Integer,CultureInfo.InvariantCulture,out var result)&&result>0?result:throw new ArgumentException($"A valid {field} ID is required.");
 	private static decimal ParseDecimal(string value,string field)=>decimal.TryParse(value,NumberStyles.Number,CultureInfo.InvariantCulture,out var result)&&result>0m?result:throw new ArgumentException($"A positive {field} is required.");
 	private static void Replace<T>(ObservableCollection<T> target,IEnumerable<T> values){target.Clear();foreach(var value in values)target.Add(value);}
-	public void Dispose(){if(_disposed)return;_disposed=true;DisposeReconciliationDesigner();RefreshCommand.Dispose();SaveBankAccountCommand.Dispose();NewBankAccountCommand.Dispose();ImportStatementCommand.Dispose();LoadStatementCommand.Dispose();ReconcileCommand.Dispose();ReverseReconciliationCommand.Dispose();CreatePaymentRunCommand.Dispose();ApprovePaymentRunCommand.Dispose();ExecutePaymentRunLineCommand.Dispose();}
+	public void Dispose(){if(_disposed)return;_disposed=true;DisposeReconciliationDesigner();DisposeSepa();RefreshCommand.Dispose();SaveBankAccountCommand.Dispose();NewBankAccountCommand.Dispose();ImportStatementCommand.Dispose();LoadStatementCommand.Dispose();ReconcileCommand.Dispose();ReverseReconciliationCommand.Dispose();CreatePaymentRunCommand.Dispose();ApprovePaymentRunCommand.Dispose();ExecutePaymentRunLineCommand.Dispose();}
 }

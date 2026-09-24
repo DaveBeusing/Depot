@@ -6,7 +6,7 @@ Updated: 2026-09-20
 
 - [ ] Ready for release
 
-Depot is on the `0.15.x-preview` line with Core database schema **30**, Sales feature schema **14**, Finance feature schema **10**, User Sessions schema **3**, Security Events schema **3**, User Preferences schema **2**, Document Templates schema **1**, Enterprise Identity feature schema **2**, and Help manifest **1.26**. `Directory.Build.props` is authoritative for the exact application patch/version. Checked items represent implemented technical controls/evidence only; they do not replace legal, accounting, accessibility, signing, localization or deployment acceptance.
+Depot is on the `0.15.x-preview` line with Core database schema **30**, Sales feature schema **15**, Finance feature schema **12**, User Sessions schema **3**, Security Events schema **3**, User Preferences schema **2**, Document Templates schema **1**, Enterprise Identity feature schema **2**, and Help manifest **1.28**. `Directory.Build.props` is authoritative for the exact application patch/version. Checked items represent implemented technical controls/evidence only; they do not replace legal, accounting, accessibility, signing, localization or deployment acceptance.
 
 ## Implemented Finance baseline
 

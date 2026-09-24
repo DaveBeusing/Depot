@@ -44,6 +44,7 @@ internal sealed class ViewModelFactory
 			_services.InventoryCosting,
 			_services.InventoryMovementAccounting,
 			_services.Banking,
+			_services.SepaPaymentExports,
 			_services.FinancialReporting,
 			_services.Localization,
 			_services.Purposes,

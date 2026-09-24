@@ -102,7 +102,7 @@ Preview exposes both raw and rounded prices plus the rounding adjustment.
 
 ## Schema and migration
 
-The **current Sales feature schema is 14**.
+The **current Sales feature schema is 15**.
 
 Sales schema **10** introduced Item Cost profiles/components and deterministic cost-component ordering.
 
@@ -117,6 +117,8 @@ Sales schema **12**:
 Sales schema **13** adds the electronic-invoice finalization/evidence persistence used by the bounded XRechnung 3.0 CII production path. It does not change the Advanced Pricing formulas or runtime resolution contract described here.
 
 Sales schema **14** adds immutable ZUGFeRD/Factur-X hybrid PDF artifact persistence linked to the finalized XRechnung payload. It likewise does not change Advanced Pricing formulas or price resolution.
+
+Sales schema **15** adds CRM lead, opportunity, stage and activity persistence. It does not change Advanced Pricing formulas, price-list scope resolution or historical price evidence.
 
 Core database schema remains **30**.
 

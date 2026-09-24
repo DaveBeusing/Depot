@@ -91,7 +91,7 @@ Finance currently provides:
 - **Accounts Receivable** — customer open items, payments/allocations, write-offs, aging/statements, dunning and Sales → AR → GL integration.
 - **Accounts Payable** — supplier documents/open items, three-way matching, exception approval, payments/allocations/reversals, aging/statements and AP → GL integration.
 - **Inventory Accounting** — FIFO valuation, GRNI/COGS, inventory adjustments, purchase-price variance, landed cost, historical valuation and Inventory ↔ GL reconciliation.
-- **Banking and Payments** — bank accounts, immutable CSV/camt.053 statements, payment proposals/execution, AR/AP/GL reconciliation and cash position.
+- **Banking and Payments** — bank accounts, immutable CSV/camt.053 statements, payment proposals/execution, deterministic SEPA SCT `pain.001.001.09` export, AR/AP/GL reconciliation and cash position.
 - **Financial Reporting** — Trial Balance, GL detail, Balance Sheet, P&L, Cash Flow, AR/AP Aging, Tax Summary, historical Inventory Valuation, COGS, dimension filtering, explicit mappings, deterministic CSV and immutable SHA-256-bound snapshots.
 - **Fixed Assets** — asset register, capitalization, depreciation, impairment, disposal/correction evidence and reconciliation.
 - **Budgeting & Variance** — versioned account/period/dimension budgets, approval/locking, CSV planning exchange and Actual-vs-Budget analysis backed by Financial Reporting actuals.
@@ -108,14 +108,14 @@ Current baseline:
 - Application: **0.15.x-preview**
 - Core database schema: **30**
 - Sales feature schema: **15**
-- Finance feature schema: **11**
+- Finance feature schema: **12**
 - User Sessions feature schema: **3**
 - Security Events feature schema: **3**
 - User Preferences feature schema: **2**
 - Document Templates feature schema: **1**
 - Enterprise Identity feature schema: **2**
 - Approval Policies feature schema: **1**
-- Help manifest: **1.27**
+- Help manifest: **1.28**
 
 `Directory.Build.props` is authoritative for the exact application patch/version. The documentation baseline intentionally records the development line instead of duplicating the moving preview patch number.
 
@@ -165,7 +165,7 @@ Security and compliance work is documented transparently rather than presented a
 
 ## Offline Help
 
-Embedded Help manifest **1.27** includes contextual Sales, Finance, User Sessions and Security Center guidance. Help visibility follows central permissions and never grants business access.
+Embedded Help manifest **1.28** includes contextual Sales, Finance, User Sessions and Security Center guidance. Help visibility follows central permissions and never grants business access.
 
 See the [Help Center documentation](docs/HelpCenter.md).
 
@@ -213,6 +213,7 @@ Track the path through the [Roadmap](docs/Roadmap.md) and [Release 1.0 plan](doc
 - [Finance Budgeting and Variance Analysis](docs/FinanceBudgeting.md)
 - [Finance Fixed Assets](docs/FinanceFixedAssets.md)
 - [Finance Banking](docs/FinanceBanking.md)
+- [SEPA Payment Export](docs/SepaPaymentExport.md)
 - [Finance Localization](docs/FinanceLocalization.md)
 - [Finance Reporting](docs/FinanceReporting.md)
 - [Finance Compliance](docs/FinanceCompliance.md)

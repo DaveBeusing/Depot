@@ -122,14 +122,14 @@ Document-layout zoom, snap, resize, undo/redo and dirty-state behavior remain sp
 
 - Core database schema: **30**
 - Sales feature schema: **15**
-- Finance feature schema: **11**
+- Finance feature schema: **12**
 - User Sessions feature schema: **3**
 - Security Events feature schema: **3**
 - User Preferences feature schema: **2**
 - Document Templates feature schema: **1**
 - Enterprise Identity feature schema: **2**
 - Application: **0.15.x-preview**
-- Help manifest: **1.27**
+- Help manifest: **1.28**
 
 `Directory.Build.props` is authoritative for the exact application patch/version. Feature schema constants remain authoritative in their migration classes; this architecture document records the compatibility baselines rather than duplicating a moving preview patch.
 
@@ -160,3 +160,8 @@ See [Business Attachments](BusinessAttachments.md).
 ### Finance budgeting planning boundary
 
 Finance Budgeting follows the standard `View → ViewModel → Service → Repository → DatabaseAccess` dependency direction. Budget data is planning evidence and does not become an alternate General Ledger. Actual-vs-Budget analysis delegates actual calculations to the existing Financial Reporting authority.
+
+
+### SEPA payment-export boundary
+
+SEPA payment-file generation follows the Finance layering: Banking UI/ViewModel -> `FinanceSepaPaymentExportService` -> Banking/SEPA repositories -> `DatabaseAccess`. The service owns eligibility, validation, deterministic identity, authorization, artifact hashing and lifecycle rules. Persistence retains exact XML and status history. External bank submission is outside the database transaction and is represented only as explicit evidence.

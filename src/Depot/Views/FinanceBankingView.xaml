@@ -205,6 +205,81 @@
                     <StackPanel Grid.Column="2"><Border Margin="0,0,0,12" Style="{StaticResource WorkspaceSectionStyle}"><StackPanel><TextBlock Text="New supplier payment proposal" Style="{StaticResource WorkspaceSectionTitleStyle}"/><TextBlock Margin="0,10,0,0" Text="Payable open-item ID" Style="{StaticResource FormLabelStyle}"/><TextBox Text="{Binding PayableOpenItemId}" Style="{StaticResource AppTextBoxStyle}"/><TextBlock Margin="0,8,0,0" Text="Amount" Style="{StaticResource FormLabelStyle}"/><TextBox Text="{Binding PaymentAmount}" Style="{StaticResource AppTextBoxStyle}"/><TextBlock Margin="0,8,0,0" Text="Payment date" Style="{StaticResource FormLabelStyle}"/><DatePicker SelectedDate="{Binding PaymentDate}"/><TextBlock Margin="0,8,0,0" Text="Reference" Style="{StaticResource FormLabelStyle}"/><TextBox Text="{Binding PaymentReference}" Style="{StaticResource AppTextBoxStyle}"/><TextBlock Margin="0,8,0,0" Text="Description" Style="{StaticResource FormLabelStyle}"/><TextBox Text="{Binding PaymentDescription}" Style="{StaticResource AppTextBoxStyle}"/><Button Margin="0,10,0,0" HorizontalAlignment="Right" Command="{Binding CreatePaymentRunCommand}" Content="Create proposal" Style="{StaticResource PrimaryButtonStyle}"/></StackPanel></Border><Border Margin="0,0,0,12" Style="{StaticResource WorkspaceSectionStyle}"><StackPanel><TextBlock Text="Approval flow" Style="{StaticResource WorkspaceSectionTitleStyle}"/><controls:ApprovalFlowVisualizer Margin="0,10,0,0" Projection="{Binding PaymentApprovalFlow}"/></StackPanel></Border><Border Style="{StaticResource WorkspaceSectionStyle}"><StackPanel><TextBlock Text="Approval and execution" Style="{StaticResource WorkspaceSectionTitleStyle}"/><TextBlock Margin="0,10,0,0" Text="Approval comment" Style="{StaticResource FormLabelStyle}"/><TextBox Text="{Binding ApprovalComment}" Style="{StaticResource AppTextBoxStyle}"/><Button Margin="0,8,0,0" HorizontalAlignment="Right" Command="{Binding ApprovePaymentRunCommand}" Content="Approve selected run" Style="{StaticResource SecondaryButtonStyle}"/><TextBlock Margin="0,12,0,0" Text="Execution reference" Style="{StaticResource FormLabelStyle}"/><TextBox Text="{Binding ExecutionReference}" Style="{StaticResource AppTextBoxStyle}"/><Button Margin="0,8,0,0" HorizontalAlignment="Right" Command="{Binding ExecutePaymentRunLineCommand}" Content="Execute selected line" Style="{StaticResource PrimaryButtonStyle}"/></StackPanel></Border></StackPanel>
                 </Grid>
             </TabItem>
+            <TabItem Header="SEPA Export">
+                <Grid Margin="8">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="1.4*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="1.15*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="1.2*"/></Grid.ColumnDefinitions>
+                    <Border Style="{StaticResource WorkspaceSectionStyle}">
+                        <Grid>
+                            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                            <TextBlock Text="Payment export history" Style="{StaticResource WorkspaceSectionTitleStyle}"/>
+                            <TextBlock Grid.Row="1" Margin="0,4,0,8" Text="Select an approved payment run on the Payment Runs tab. Export retries return the retained artifact; regeneration requires explicit supersede." Style="{StaticResource CaptionStyle}" TextWrapping="Wrap"/>
+                            <DataGrid Grid.Row="2" ItemsSource="{Binding SepaExports}" SelectedItem="{Binding SelectedSepaExport}" Style="{StaticResource AppDataGridCompactStyle}" AutoGenerateColumns="False" IsReadOnly="True">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Seq" Binding="{Binding ExportSequence}" Width="55" ElementStyle="{StaticResource AppDataGridNumericTextStyle}"/>
+                                    <DataGridTextColumn Header="Message ID" Binding="{Binding MessageId}" Width="*"/>
+                                    <DataGridTextColumn Header="Status" Binding="{Binding CurrentStatus}" Width="120"/>
+                                    <DataGridTextColumn Header="Amount" Binding="{Binding ControlSum, StringFormat={}{0:N2}}" Width="100" ElementStyle="{StaticResource AppDataGridNumericTextStyle}"/>
+                                    <DataGridTextColumn Header="SHA-256" Binding="{Binding XmlSha256}" Width="180"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                            <StackPanel Grid.Row="3" Margin="0,10,0,0">
+                                <TextBlock Text="{Binding SepaPreviewText}" Style="{StaticResource CaptionStyle}" TextWrapping="Wrap"/>
+                                <WrapPanel Margin="0,8,0,0">
+                                    <Button Command="{Binding PreviewSepaExportCommand}" Content="Validate" Style="{StaticResource SecondaryButtonStyle}" IsEnabled="{Binding CanGenerateSepaExports}"/>
+                                    <Button Margin="8,0,0,0" Command="{Binding GenerateSepaExportCommand}" Content="Generate / retry" Style="{StaticResource PrimaryButtonStyle}" IsEnabled="{Binding CanGenerateSepaExports}"/>
+                                    <Button Margin="8,0,0,0" Command="{Binding SupersedeSepaExportCommand}" Content="Supersede + regenerate" Style="{StaticResource SecondaryButtonStyle}" IsEnabled="{Binding CanGenerateSepaExports}"/>
+                                    <Button Margin="8,0,0,0" Command="{Binding DownloadSepaExportCommand}" Content="Download exact XML" Style="{StaticResource SecondaryButtonStyle}" IsEnabled="{Binding CanDownloadSepaExports}"/>
+                                </WrapPanel>
+                                <Separator Margin="0,12"/>
+                                <TextBlock Text="External status evidence" Style="{StaticResource FormLabelStyle}"/>
+                                <ComboBox Margin="0,4,0,0" ItemsSource="{Binding SepaManualStatuses}" SelectedItem="{Binding SepaTargetStatus}" Style="{StaticResource AppComboBoxStyle}"/>
+                                <TextBlock Margin="0,8,0,0" Text="External reference" Style="{StaticResource FormLabelStyle}"/>
+                                <TextBox Text="{Binding SepaExternalReference}" Style="{StaticResource AppTextBoxStyle}"/>
+                                <TextBlock Margin="0,8,0,0" Text="Evidence note" Style="{StaticResource FormLabelStyle}"/>
+                                <TextBox Text="{Binding SepaEvidenceNote}" Style="{StaticResource AppTextBoxStyle}"/>
+                                <Button Margin="0,8,0,0" HorizontalAlignment="Right" Command="{Binding UpdateSepaExportStatusCommand}" Content="Record status" Style="{StaticResource PrimaryButtonStyle}" IsEnabled="{Binding CanManageSepaStatus}"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                    <Border Grid.Column="2" Style="{StaticResource WorkspaceSectionStyle}">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <StackPanel>
+                                <TextBlock Text="Debtor payment profile" Style="{StaticResource WorkspaceSectionTitleStyle}"/>
+                                <TextBlock Margin="0,4,0,10" Text="Explicit structured payment identity for the selected bank account. IBAN/BIC remain on the bank account." Style="{StaticResource CaptionStyle}" TextWrapping="Wrap"/>
+                                <TextBlock Text="Account holder / debtor name" Style="{StaticResource FormLabelStyle}"/><TextBox Text="{Binding DebtorName}" Style="{StaticResource AppTextBoxStyle}"/>
+                                <TextBlock Margin="0,8,0,0" Text="Street name" Style="{StaticResource FormLabelStyle}"/><TextBox Text="{Binding DebtorStreet}" Style="{StaticResource AppTextBoxStyle}"/>
+                                <TextBlock Margin="0,8,0,0" Text="Building number" Style="{StaticResource FormLabelStyle}"/><TextBox Text="{Binding DebtorBuilding}" Style="{StaticResource AppTextBoxStyle}"/>
+                                <TextBlock Margin="0,8,0,0" Text="Postal code" Style="{StaticResource FormLabelStyle}"/><TextBox Text="{Binding DebtorPostalCode}" Style="{StaticResource AppTextBoxStyle}"/>
+                                <TextBlock Margin="0,8,0,0" Text="Town" Style="{StaticResource FormLabelStyle}"/><TextBox Text="{Binding DebtorTown}" Style="{StaticResource AppTextBoxStyle}"/>
+                                <TextBlock Margin="0,8,0,0" Text="Country subdivision" Style="{StaticResource FormLabelStyle}"/><TextBox Text="{Binding DebtorSubdivision}" Style="{StaticResource AppTextBoxStyle}"/>
+                                <TextBlock Margin="0,8,0,0" Text="Country code" Style="{StaticResource FormLabelStyle}"/><TextBox Text="{Binding DebtorCountry}" Style="{StaticResource AppTextBoxStyle}"/>
+                                <Button Margin="0,10,0,0" HorizontalAlignment="Right" Command="{Binding SaveSepaDebtorProfileCommand}" Content="Save debtor profile" Style="{StaticResource PrimaryButtonStyle}" IsEnabled="{Binding CanManageSepaProfiles}"/>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </Border>
+                    <Border Grid.Column="4" Style="{StaticResource WorkspaceSectionStyle}">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <StackPanel>
+                                <TextBlock Text="Supplier / creditor payment profile" Style="{StaticResource WorkspaceSectionTitleStyle}"/>
+                                <TextBlock Margin="0,4,0,10" Text="A structured profile is required for every supplier in the payment run. No free-form supplier address is emitted." Style="{StaticResource CaptionStyle}" TextWrapping="Wrap"/>
+                                <TextBlock Text="Supplier ID" Style="{StaticResource FormLabelStyle}"/><TextBox Text="{Binding CreditorSupplierId}" Style="{StaticResource AppTextBoxStyle}"/>
+                                <Button Margin="0,6,0,8" HorizontalAlignment="Right" Command="{Binding LoadSepaCreditorProfileCommand}" Content="Load profile" Style="{StaticResource SecondaryButtonStyle}"/>
+                                <TextBlock Text="Creditor name" Style="{StaticResource FormLabelStyle}"/><TextBox Text="{Binding CreditorName}" Style="{StaticResource AppTextBoxStyle}"/>
+                                <TextBlock Margin="0,8,0,0" Text="IBAN" Style="{StaticResource FormLabelStyle}"/><TextBox Text="{Binding CreditorIban}" Style="{StaticResource AppTextBoxStyle}"/>
+                                <TextBlock Margin="0,8,0,0" Text="BIC (optional where permitted)" Style="{StaticResource FormLabelStyle}"/><TextBox Text="{Binding CreditorBic}" Style="{StaticResource AppTextBoxStyle}"/>
+                                <TextBlock Margin="0,8,0,0" Text="Street name" Style="{StaticResource FormLabelStyle}"/><TextBox Text="{Binding CreditorStreet}" Style="{StaticResource AppTextBoxStyle}"/>
+                                <TextBlock Margin="0,8,0,0" Text="Building number" Style="{StaticResource FormLabelStyle}"/><TextBox Text="{Binding CreditorBuilding}" Style="{StaticResource AppTextBoxStyle}"/>
+                                <TextBlock Margin="0,8,0,0" Text="Postal code" Style="{StaticResource FormLabelStyle}"/><TextBox Text="{Binding CreditorPostalCode}" Style="{StaticResource AppTextBoxStyle}"/>
+                                <TextBlock Margin="0,8,0,0" Text="Town" Style="{StaticResource FormLabelStyle}"/><TextBox Text="{Binding CreditorTown}" Style="{StaticResource AppTextBoxStyle}"/>
+                                <TextBlock Margin="0,8,0,0" Text="Country subdivision" Style="{StaticResource FormLabelStyle}"/><TextBox Text="{Binding CreditorSubdivision}" Style="{StaticResource AppTextBoxStyle}"/>
+                                <TextBlock Margin="0,8,0,0" Text="Country code" Style="{StaticResource FormLabelStyle}"/><TextBox Text="{Binding CreditorCountry}" Style="{StaticResource AppTextBoxStyle}"/>
+                                <CheckBox Margin="0,8,0,0" Content="Active for SEPA export" IsChecked="{Binding CreditorActive}"/>
+                                <Button Margin="0,10,0,0" HorizontalAlignment="Right" Command="{Binding SaveSepaCreditorProfileCommand}" Content="Save creditor profile" Style="{StaticResource PrimaryButtonStyle}" IsEnabled="{Binding CanManageSepaProfiles}"/>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </Border>
+                </Grid>
+            </TabItem>
         </TabControl>
     </Grid>
 </UserControl>

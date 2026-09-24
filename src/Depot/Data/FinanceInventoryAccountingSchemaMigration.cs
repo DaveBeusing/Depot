@@ -8,7 +8,7 @@ namespace Depot.Data;
 
 public static class FinanceInventoryAccountingSchemaMigration
 {
-	public const int CurrentVersion = 11;
+	public const int CurrentVersion = 12;
 	private const string FeatureName = "Finance";
 
 	public static void Migrate(IDatabaseConnectionFactory connectionFactory)
@@ -24,6 +24,7 @@ public static class FinanceInventoryAccountingSchemaMigration
 		if (version == 8) { FinanceLocalizationSchemaInitializer.Ensure(connectionFactory); WriteVersion(connectionFactory, 9); version = 9; }
 		if (version == 9) { FinanceFixedAssetsSchemaInitializer.Ensure(connectionFactory); WriteVersion(connectionFactory, 10); version = 10; }
 		if (version == 10) { FinanceBudgetingSchemaInitializer.Ensure(connectionFactory); WriteVersion(connectionFactory, 11); version = 11; }
+		if (version == 11) { FinanceSepaPaymentExportSchemaInitializer.Ensure(connectionFactory); WriteVersion(connectionFactory, 12); version = 12; }
 		if (version != CurrentVersion) throw new InvalidOperationException($"Finance schema migration stopped at unsupported version '{version}'.");
 	}
 

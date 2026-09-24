@@ -43,9 +43,9 @@ public sealed class FinanceFixedAssetTests : IDisposable
 	}
 
 	[Fact]
-	public async Task MigrationCreatesFixedAssetSchemaAtFinanceVersionTen()
+	public async Task CurrentFinanceMigrationRetainsFixedAssetSchema()
 	{
-		Assert.Equal(10L,Convert.ToInt64(await _database.ExecuteScalarAsync("SELECT Version FROM DepotFeatureVersions WHERE Name='Finance';",CancellationToken.None)));
+		Assert.Equal(FinanceInventoryAccountingSchemaMigration.CurrentVersion,Convert.ToInt32(await _database.ExecuteScalarAsync("SELECT Version FROM DepotFeatureVersions WHERE Name='Finance';",CancellationToken.None),System.Globalization.CultureInfo.InvariantCulture));
 		foreach(var table in new[]{"FinanceAssetClasses","FinanceFixedAssets","FinanceAssetDepreciationPeriods","FinanceAssetTransactions"})
 			Assert.Equal(1L,Convert.ToInt64(await _database.ExecuteScalarAsync("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name=$Name;",CancellationToken.None,new DatabaseParameter("$Name",table))));
 	}
@@ -285,7 +285,7 @@ public sealed class FinanceFixedAssetTests : IDisposable
 	private long InsertSupplierLine(FinancePayableDocumentStatus status,string currency)
 	{
 		var suffix=Guid.NewGuid().ToString("N");var userId=Convert.ToInt64(_database.ExecuteScalarAsync("SELECT Id FROM Users WHERE Email='admin@depot.local';",CancellationToken.None).GetAwaiter().GetResult(),System.Globalization.CultureInfo.InvariantCulture);
-		var supplierId=_database.Insert("INSERT INTO Suppliers (SupplierNumber,AccountNumber,Name,Loyalty,Quality,IsActive) VALUES ($Number,$Account,'Fixed Asset Supplier',100,100,1);",new DatabaseParameter("$Number",$"FA-{suffix[..12]}"),new DatabaseParameter("$Account",Math.Abs(DateTime.UtcNow.Ticks%1000000000L)));
+		var supplierId=_database.Insert("INSERT INTO Suppliers (SupplierNumber,AccountNumber,Name,Loyalty,Quality,IsActive) VALUES ($Number,$Account,$Name,100,100,1);",new DatabaseParameter("$Number",$"FA-{suffix[..12]}"),new DatabaseParameter("$Account",Math.Abs(DateTime.UtcNow.Ticks%1000000000L)),new DatabaseParameter("$Name",$"Fixed Asset Supplier {suffix[..12]}"));
 		var documentId=_database.Insert("INSERT INTO FinanceSupplierDocuments (Version,Kind,SupplierId,SupplierDocumentNumber,DocumentDate,DueDate,CurrencyCode,Status,NetAmount,TaxAmount,GrossAmount,CreatedByUserId,CreatedAtUtc,MatchExceptionApproved) VALUES (1,$Kind,$Supplier,$Number,'2026-01-01','2026-01-31',$Currency,$Status,250,0,250,$User,$Created,0);",new DatabaseParameter("$Kind",(int)FinancePayableDocumentKind.Invoice),new DatabaseParameter("$Supplier",supplierId),new DatabaseParameter("$Number",$"INV-{suffix[..12]}"),new DatabaseParameter("$Currency",currency),new DatabaseParameter("$Status",(int)status),new DatabaseParameter("$User",userId),new DatabaseParameter("$Created","2026-01-01T00:00:00.0000000Z"));
 		return _database.Insert("INSERT INTO FinanceSupplierDocumentLines (DocumentId,LineNumber,Description,Quantity,UnitPrice,NetAmount,TaxAmount,GrossAmount,MatchStatus,QuantityVariance,PriceVariance) VALUES ($Document,1,'Capital equipment',1,250,250,0,250,$Match,0,0);",new DatabaseParameter("$Document",documentId),new DatabaseParameter("$Match",(int)FinancePayableMatchStatus.NotRequired));
 	}

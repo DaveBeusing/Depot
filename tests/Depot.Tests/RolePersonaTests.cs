@@ -283,7 +283,8 @@ public sealed class RbacTestsPersonaProfiles
 			{
 				ApplicationPermission.DashboardView, ApplicationPermission.FinanceBankingView, ApplicationPermission.FinanceBankingManage,
 				ApplicationPermission.FinanceBankStatementsCreate, ApplicationPermission.FinanceBankReconciliationManage,
-				ApplicationPermission.FinancePaymentProposalsCreate, ApplicationPermission.FinancePaymentRunsPost, ApplicationPermission.FinanceCashPositionView
+				ApplicationPermission.FinancePaymentProposalsCreate, ApplicationPermission.FinancePaymentRunsPost, ApplicationPermission.FinanceCashPositionView,
+				ApplicationPermission.FinanceSepaPaymentProfilesManage, ApplicationPermission.FinanceSepaPaymentExportsCreate, ApplicationPermission.FinanceSepaPaymentExportsExport, ApplicationPermission.FinanceSepaPaymentExportsManage
 			}
 		},
 		{
@@ -308,7 +309,7 @@ public sealed class RbacTestsPersonaProfiles
 				ApplicationPermission.DashboardView,
 				ApplicationPermission.InventoryView, ApplicationPermission.ItemsView, ApplicationPermission.StockMovementsView, ApplicationPermission.StockTransfersView, ApplicationPermission.InventoryCountsView,
 				ApplicationPermission.PurchasingView, ApplicationPermission.PurchaseOrdersView, ApplicationPermission.GoodsReceiptsView, ApplicationPermission.SupplierReturnsView, ApplicationPermission.SuppliersView,
-				ApplicationPermission.SalesView, ApplicationPermission.CustomersView, ApplicationPermission.SalesQuotesView, ApplicationPermission.SalesPricingView, ApplicationPermission.SalesOrdersView,
+				ApplicationPermission.SalesView, ApplicationPermission.CustomersView, ApplicationPermission.SalesCrmView, ApplicationPermission.SalesCrmActivitiesView, ApplicationPermission.SalesQuotesView, ApplicationPermission.SalesPricingView, ApplicationPermission.SalesOrdersView,
 				ApplicationPermission.ShipmentsView, ApplicationPermission.CustomerReturnsView, ApplicationPermission.SalesInvoicesView, ApplicationPermission.CreditNotesView,
 				ApplicationPermission.FinanceView, ApplicationPermission.FinanceExchangeRatesView, ApplicationPermission.FinancePeriodsView, ApplicationPermission.FinanceAccountingBooksView,
 				ApplicationPermission.FinanceTaxConfigurationView, ApplicationPermission.FinanceNumberSequencesView, ApplicationPermission.FinanceGeneralLedgerView, ApplicationPermission.FinancePostingProfilesView,

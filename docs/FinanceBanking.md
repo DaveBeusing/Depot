@@ -6,7 +6,7 @@ Updated: 2026-09-08
 
 Banking and Payments provides banking evidence and payment orchestration within the existing Finance architecture. It does not create a parallel ledger or a parallel AP/AR settlement model.
 
-Implemented components include `FinanceBankingService`, provider-neutral banking persistence, CSV and ISO 20022 `camt.053` statement normalization, and the **Finance > Banking** workspace. Banking persistence is part of Finance schema **9**.
+Implemented components include `FinanceBankingService`, provider-neutral banking persistence, CSV and ISO 20022 `camt.053` statement normalization, and the **Finance > Banking** workspace. Banking persistence, including retained SEPA payment-export evidence, is part of the current Finance schema **12**.
 
 ## Architecture
 
@@ -56,6 +56,10 @@ Cash Position compares the latest imported statement closing balance with the co
 - `FinancePaymentProposals.Approve`
 - `FinancePaymentRuns.Post`
 - `FinanceCashPosition.View`
+- `FinanceSepaPaymentProfiles.Manage`
+- `FinanceSepaPaymentExports.Create`
+- `FinanceSepaPaymentExports.Export`
+- `FinanceSepaPaymentExports.Manage`
 
 The standard Finance role receives operational Banking rights but not Payment Proposal approval; the Approver role receives the approval permission.
 
@@ -68,3 +72,20 @@ The live acceptance creates a real Finance bank account, imports and idempotentl
 This proves the Depot database/runtime boundary; it does **not** certify direct bank connectivity, EBICS, PSD2/open-banking APIs, payment initiation, sanctions/AML/KYC decisioning, bank-specific `camt.053` profiles or jurisdiction-specific payment procedures. Those remain separate integration and organizational responsibilities.
 
 See [Database Provider Production Support Matrix](DatabaseProviderSupportMatrix.md) for the exact supported database baselines and recovery boundary.
+
+
+## SEPA SCT payment export
+
+Approved payment runs can be converted into a retained SEPA Credit Transfer customer-to-PSP artifact using ISO 20022 `pain.001.001.09`. The implementation pins the supported profile to **EPC SCT 2025 rulebook v1.1 / Customer-to-PSP implementation guidelines 2025 v1.0** rather than silently following later scheme revisions.
+
+Generation is deterministic for one payment-run/export sequence. Depot stores the exact UTF-8 XML bytes, SHA-256, message/profile identifiers, transaction count, control sum, selected bank account, generation evidence and lifecycle state. Re-download returns those retained bytes; it never regenerates historical files from changed supplier, debtor or bank master data.
+
+A payment file requires an approved, unexecuted EUR payment run, a valid debtor bank IBAN, an explicit structured debtor payment profile and an active structured creditor payment profile for every supplier. Depot deliberately emits structured postal-address elements and does not emit unstructured-only `AdrLine` addresses.
+
+Debtor and creditor IBAN country codes must also belong to the 41-country EPC SEPA geographical scope verified on 2026-09-23. This keeps non-SEPA credit transfers outside the supported artifact profile even if an IBAN is otherwise checksum-valid.
+
+Under the 2025 SCT rulebook version 1.1, unstructured postal addresses are no longer permitted in EPC payment messages from 15 November 2026. Depot already emits structured payment-party addresses only, so generated artifacts remain compatible with that transition.
+
+External submission is intentionally outside Depot's database transaction. V1 records manual evidence for `SubmittedExternally`, `Accepted`, `Rejected` and `Cancelled`; it does not claim that bank submission is ACID with payment-file creation.
+
+See [SEPA Payment Export](SepaPaymentExport.md) for the exact profile, lifecycle, RBAC and compliance boundary.

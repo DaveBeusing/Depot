@@ -127,7 +127,7 @@ public sealed class FinanceFixedAssetRepository : DatabaseRepository
 	internal Task<FinanceAssetSupplierLineOption?> GetCapitalizableSupplierLineAsync(DatabaseTransactionContext transaction,long lineId,CancellationToken token) =>
 		transaction.Session.QuerySingleOrDefaultAsync("SELECT l.Id,d.SupplierDocumentNumber,l.LineNumber,l.Description,l.NetAmount,d.CurrencyCode FROM FinanceSupplierDocumentLines l INNER JOIN FinanceSupplierDocuments d ON d.Id=l.DocumentId WHERE l.Id=$Id AND d.Kind=$Invoice AND d.Status=$Posted;",ReadSupplierLineOption,token,Parameter("$Id",lineId),Parameter("$Invoice",(int)FinancePayableDocumentKind.Invoice),Parameter("$Posted",(int)FinancePayableDocumentStatus.Posted));
 
-	internal Task ReplaceScheduleAsync(DatabaseTransactionContext transaction,long assetId,IReadOnlyList<FinanceAssetDepreciationPeriod> periods,CancellationToken token) =>
+	internal Task<IReadOnlyList<FinanceAssetDepreciationPeriod>> ReplaceScheduleAsync(DatabaseTransactionContext transaction,long assetId,IReadOnlyList<FinanceAssetDepreciationPeriod> periods,CancellationToken token) =>
 		ReplaceScheduleCoreAsync(transaction,assetId,periods,token);
 
 	internal async Task MarkSchedulePostedAsync(DatabaseTransactionContext transaction,long scheduleId,decimal amount,long journalEntryId,Guid operationId,CancellationToken token)
@@ -146,13 +146,18 @@ public sealed class FinanceFixedAssetRepository : DatabaseRepository
 	internal async Task<decimal> SumPostedAsync(DatabaseTransactionContext transaction,long assetId,FinanceAssetTransactionKind kind,CancellationToken token) =>
 		Convert.ToDecimal(await transaction.Session.ExecuteScalarAsync("SELECT COALESCE(SUM(Amount),0) FROM FinanceAssetTransactions WHERE AssetId=$Asset AND Kind=$Kind;",token,Parameter("$Asset",assetId),Parameter("$Kind",(int)kind)) ?? 0m,CultureInfo.InvariantCulture);
 
-	private static async Task ReplaceScheduleCoreAsync(DatabaseTransactionContext transaction,long assetId,IReadOnlyList<FinanceAssetDepreciationPeriod> periods,CancellationToken token)
+	private static async Task<IReadOnlyList<FinanceAssetDepreciationPeriod>> ReplaceScheduleCoreAsync(DatabaseTransactionContext transaction,long assetId,IReadOnlyList<FinanceAssetDepreciationPeriod> periods,CancellationToken token)
 	{
 		var posted=Convert.ToInt64(await transaction.Session.ExecuteScalarAsync("SELECT COUNT(*) FROM FinanceAssetDepreciationPeriods WHERE AssetId=$Asset AND JournalEntryId IS NOT NULL;",token,Parameter("$Asset",assetId)) ?? 0,CultureInfo.InvariantCulture);
 		if(posted>0) throw new InvalidOperationException("A depreciation schedule with posted periods cannot be replaced.");
 		await transaction.Session.ExecuteAsync("DELETE FROM FinanceAssetDepreciationPeriods WHERE AssetId=$Asset;",token,Parameter("$Asset",assetId));
+		var persisted=new List<FinanceAssetDepreciationPeriod>(periods.Count);
 		foreach(var p in periods)
-			await transaction.Session.InsertAsync("INSERT INTO FinanceAssetDepreciationPeriods (AssetId,AccountingPeriodId,PeriodStart,PeriodEnd,PlannedAmount,PostedAmount,JournalEntryId,OperationId) VALUES ($Asset,$Period,$Start,$End,$Planned,0,NULL,NULL);",token,Parameter("$Asset",assetId),Parameter("$Period",p.AccountingPeriodId.ToString("D")),Parameter("$Start",p.PeriodStart.ToString("yyyy-MM-dd",CultureInfo.InvariantCulture)),Parameter("$End",p.PeriodEnd.ToString("yyyy-MM-dd",CultureInfo.InvariantCulture)),Parameter("$Planned",p.PlannedAmount));
+		{
+			var id=await transaction.Session.InsertAsync("INSERT INTO FinanceAssetDepreciationPeriods (AssetId,AccountingPeriodId,PeriodStart,PeriodEnd,PlannedAmount,PostedAmount,JournalEntryId,OperationId) VALUES ($Asset,$Period,$Start,$End,$Planned,0,NULL,NULL);",token,Parameter("$Asset",assetId),Parameter("$Period",p.AccountingPeriodId.ToString("D")),Parameter("$Start",p.PeriodStart.ToString("yyyy-MM-dd",CultureInfo.InvariantCulture)),Parameter("$End",p.PeriodEnd.ToString("yyyy-MM-dd",CultureInfo.InvariantCulture)),Parameter("$Planned",p.PlannedAmount));
+			persisted.Add(p with { Id=id });
+		}
+		return persisted;
 	}
 
 	private static DatabaseParameter[] ClassParameters(FinanceAssetClass v) => [

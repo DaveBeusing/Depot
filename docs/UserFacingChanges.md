@@ -101,14 +101,14 @@ Advanced pricing uses existing Item and Sales Pricing permissions. FX-rate maint
 
 - Application: **0.15.x-preview**
 - Core database schema: **30**
-- Sales schema: **14**
-- Finance schema: **10**
+- Sales schema: **15**
+- Finance schema: **12**
 - User Sessions schema: **3**
 - Security Events schema: **3**
 - User Preferences schema: **2**
 - Document Templates schema: **1**
 - Enterprise Identity feature schema: **2**
-- Help manifest: **1.26**
+- Help manifest: **1.28**
 
 The exact application patch/version is authoritative in `Directory.Build.props`; this user-facing baseline intentionally records the moving development line instead of duplicating the patch number.
 

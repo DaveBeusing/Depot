@@ -30,6 +30,14 @@ public sealed class FinanceMigrationCompatibilityTests
 			Assert.Equal(3, ReadFinanceVersion(path));
 			FinanceInventoryAccountingSchemaMigration.Migrate(factory);
 			Assert.Equal(FinanceInventoryAccountingSchemaMigration.CurrentVersion, ReadFinanceVersion(path));
+			using (var current = new SqliteConnection($"Data Source={path}"))
+			{
+				current.Open();
+				Assert.Equal(1L, ReadCount(current, "FinanceSepaDebtorProfiles"));
+				Assert.Equal(1L, ReadCount(current, "FinanceSepaCreditorProfiles"));
+				Assert.Equal(1L, ReadCount(current, "FinanceSepaPaymentExports"));
+				Assert.Equal(1L, ReadCount(current, "FinanceSepaPaymentExportStatusHistory"));
+			}
 
 			FinanceInventoryAccountingSchemaMigration.Migrate(factory);
 			Assert.Equal(FinanceInventoryAccountingSchemaMigration.CurrentVersion, ReadFinanceVersion(path));
@@ -39,6 +47,13 @@ public sealed class FinanceMigrationCompatibilityTests
 			SqliteConnection.ClearAllPools();
 			try { File.Delete(path); } catch (IOException) { }
 		}
+	}
+
+	private static long ReadCount(SqliteConnection connection, string table)
+	{
+		using var command = connection.CreateCommand();
+		command.CommandText = $"SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='{table}';";
+		return Convert.ToInt64(command.ExecuteScalar(), System.Globalization.CultureInfo.InvariantCulture);
 	}
 
 	private static int ReadFinanceVersion(string path)

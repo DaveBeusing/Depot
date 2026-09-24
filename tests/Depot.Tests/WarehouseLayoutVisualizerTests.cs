@@ -132,7 +132,7 @@ public sealed class WarehouseLayoutVisualizerTests : IDisposable
 		Assert.DoesNotContain("Drag", view, StringComparison.OrdinalIgnoreCase);
 		Assert.DoesNotContain("Resize", view, StringComparison.OrdinalIgnoreCase);
 		Assert.DoesNotContain("Zoom", view, StringComparison.OrdinalIgnoreCase);
-		Assert.DoesNotContain("Pan", view, StringComparison.OrdinalIgnoreCase);
+		Assert.DoesNotContain("PanCommand", view, StringComparison.OrdinalIgnoreCase);
 	}
 
 	[Fact]

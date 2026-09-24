@@ -1,5 +1,5 @@
 {
-  "version": "1.27",
+  "version": "1.28",
   "topics": [
     {
       "id": "getting-started.first-login",
@@ -774,7 +774,12 @@
         "payment proposal",
         "payment run",
         "reconciliation",
-        "cash position"
+        "cash position",
+        "sepa",
+        "pain.001.001.09",
+        "payment export",
+        "iban",
+        "structured address"
       ],
       "requiredPermission": "FinanceBanking.View",
       "relatedTopics": [
