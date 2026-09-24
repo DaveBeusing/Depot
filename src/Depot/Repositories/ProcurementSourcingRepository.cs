@@ -166,6 +166,11 @@ public sealed class ProcurementSourcingRepository : DatabaseRepository
 		return value;
 	}
 
+	public async Task<bool> SetRfqStatusAsync(DatabaseTransactionContext transaction, long rfqId, long version, RequestForQuotationStatus expected, RequestForQuotationStatus status, CancellationToken cancellationToken) =>
+		await transaction.Session.ExecuteAsync(
+			"UPDATE RequestsForQuotation SET Status=$Status,Version=Version+1 WHERE Id=$Id AND Version=$Version AND Status=$Expected AND ConvertedPurchaseOrderId IS NULL;",
+			cancellationToken, Parameter("$Status",(int)status), Parameter("$Id",rfqId), Parameter("$Version",version), Parameter("$Expected",(int)expected)) == 1;
+
 	public async Task<bool> SelectQuoteAsync(DatabaseTransactionContext transaction, long rfqId, long version, long quoteId, long userId, DateTime atUtc, CancellationToken cancellationToken) =>
 		await transaction.Session.ExecuteAsync("UPDATE RequestsForQuotation SET SelectedQuoteResponseId=$Quote,SelectedByUserId=$User,SelectedAtUtc=$At,Status=$Awarded,Version=Version+1 WHERE Id=$Id AND Version=$Version AND Status=$Open AND ConvertedPurchaseOrderId IS NULL;", cancellationToken, Parameter("$Quote", quoteId), Parameter("$User", userId), Parameter("$At", Utc(atUtc)), Parameter("$Awarded", (int)RequestForQuotationStatus.Awarded), Parameter("$Id", rfqId), Parameter("$Version", version), Parameter("$Open", (int)RequestForQuotationStatus.Open)) == 1;
 

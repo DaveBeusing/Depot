@@ -43,6 +43,13 @@ public sealed class ProcurementSourcingService
 		_purchaseOrders = purchaseOrders;
 	}
 
+	public bool CanViewRequisitions => _authorization.HasPermission(ApplicationPermission.PurchaseRequisitionsView);
+	public bool CanManageRequisitions => _authorization.HasPermission(ApplicationPermission.PurchaseRequisitionsManage);
+	public bool CanApproveRequisitions => _authorization.HasPermission(ApplicationPermission.PurchaseRequisitionsApprove);
+	public bool CanViewSourcing => _authorization.HasPermission(ApplicationPermission.SupplierSourcingView);
+	public bool CanManageSourcing => _authorization.HasPermission(ApplicationPermission.SupplierSourcingManage);
+	public bool CanConvertSourcing => _authorization.HasPermission(ApplicationPermission.SupplierSourcingConvert);
+
 	public Task<PageResult<PurchaseRequisition>> SearchRequisitionsAsync(string? searchText = null, PurchaseRequisitionStatus? status = null, int pageNumber = 1, int pageSize = 100, CancellationToken cancellationToken = default)
 	{
 		_authorization.RequirePermission(ApplicationPermission.PurchaseRequisitionsView);
@@ -162,6 +169,23 @@ public sealed class ProcurementSourcingService
 		}, cancellationToken);
 	}
 
+	public async Task<PurchaseRequisition> CancelRequisitionAsync(long id, long version, CancellationToken cancellationToken = default)
+	{
+		_authorization.RequirePermission(ApplicationPermission.PurchaseRequisitionsManage);
+		var before = await RequireRequisitionAsync(id, cancellationToken);
+		if (before.Version != version) throw new ConcurrencyConflictException("purchase requisition");
+		if (before.Status is not (PurchaseRequisitionStatus.Draft or PurchaseRequisitionStatus.Returned))
+			throw new InvalidOperationException("Only draft or returned requisitions can be cancelled.");
+		return await _transactions.ExecuteAsync(async (transaction, token) =>
+		{
+			if (!await _sourcing.SetRequisitionStatusAsync(transaction, id, version, before.Status, PurchaseRequisitionStatus.Cancelled, CurrentUser().Id, null, DateTime.UtcNow, "Cancelled", token))
+				throw new ConcurrencyConflictException("purchase requisition");
+			var after = await _sourcing.GetRequisitionAsync(transaction, id, token) ?? throw new InvalidOperationException("Cancelled requisition could not be reloaded.");
+			await _auditRepository.CreateAsync(transaction, _audit.CreateActionEntry(id, "Cancelled", before, after), token);
+			return after;
+		}, cancellationToken);
+	}
+
 	public async Task<RequestForQuotation> CreateRfqAsync(long requisitionId, IReadOnlyCollection<long> supplierIds, DateTime? responseDueDate = null, CancellationToken cancellationToken = default)
 	{
 		_authorization.RequirePermission(ApplicationPermission.SupplierSourcingManage);
@@ -179,6 +203,22 @@ public sealed class ProcurementSourcingService
 			var rfq = await _sourcing.CreateRfqAsync(transaction, requisition, supplierIds.Distinct().Order().ToArray(), responseDueDate, user.Id, token);
 			await _auditRepository.CreateAsync(transaction, _audit.CreateCreatedEntry(rfq.Id, rfq), token);
 			return rfq;
+		}, cancellationToken);
+	}
+
+	public async Task<RequestForQuotation> CancelRfqAsync(long rfqId, long version, CancellationToken cancellationToken = default)
+	{
+		_authorization.RequirePermission(ApplicationPermission.SupplierSourcingManage);
+		var before = await _sourcing.GetRfqAsync(rfqId, cancellationToken) ?? throw new InvalidOperationException("RFQ was not found.");
+		if (before.Version != version) throw new ConcurrencyConflictException("request for quotation");
+		if (before.Status != RequestForQuotationStatus.Open) throw new InvalidOperationException("Only open RFQs can be cancelled.");
+		return await _transactions.ExecuteAsync(async (transaction, token) =>
+		{
+			if (!await _sourcing.SetRfqStatusAsync(transaction, rfqId, version, RequestForQuotationStatus.Open, RequestForQuotationStatus.Cancelled, token))
+				throw new ConcurrencyConflictException("request for quotation");
+			var after = await _sourcing.GetRfqAsync(transaction, rfqId, token) ?? throw new InvalidOperationException("Cancelled RFQ could not be reloaded.");
+			await _auditRepository.CreateAsync(transaction, _audit.CreateActionEntry(rfqId, "Cancelled", before, after), token);
+			return after;
 		}, cancellationToken);
 	}
 
