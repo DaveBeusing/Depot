@@ -368,7 +368,7 @@ public sealed class CommercialRoleCenterService
 		var rfqs = (await rfqsTask).Items;
 		var awaitingQuotes = rfqs
 			.Where(value => value.Status == RequestForQuotationStatus.Open && (value.ResponseDueDate is null || value.ResponseDueDate.Value.Date >= today))
-			.Select(RfqItem).ToArray();
+			.Select(value => RfqItem(value)).ToArray();
 		var overdueQuotes = rfqs
 			.Where(value => value.Status == RequestForQuotationStatus.Open && value.ResponseDueDate is { } due && due.Date < today)
 			.Select(value => RfqItem(value, "Quote response overdue")).ToArray();
