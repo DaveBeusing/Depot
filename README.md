@@ -23,6 +23,7 @@ Business software should make operations easier to understand, not add another l
 - **Purchasing** — supplier and purchasing workflows connected to inventory, approvals and financial consequences.
 - **Inventory & Warehouse** — enriched item master data, serial/lot traceability, reversal-safe movement history and inventory accounting.
 - **Finance** — legal entities, currencies, periods, General Ledger, Accounts Receivable, Accounts Payable, FIFO inventory accounting, banking, fixed assets, controlled budgeting, reconciliation and financial reporting.
+- **Projects & Cost Accounting** — project/phase lifecycle, operational attribution, GL-backed actuals, open purchasing commitments and budget variance without a second ledger.
 - **Operations & Control** — approvals, reporting, administration, RBAC, audit evidence, persistent sessions and retained business records.
 - **Workspace Productivity** — My Work, Saved Views, Favorites, Recents, default landing, Quick Open, Command Palette and Global Search support repeatable day-to-day navigation without changing authorization.
 - **Integrated Help** — contextual offline Help follows central permissions and supports users directly inside the application.
@@ -116,7 +117,8 @@ Current baseline:
 - Enterprise Identity feature schema: **2**
 - Approval Policies feature schema: **1**
 - Procurement Sourcing feature schema: **1**
-- Help manifest: **1.29**
+- Project Accounting feature schema: **1**
+- Help manifest: **1.31**
 
 `Directory.Build.props` is authoritative for the exact application patch/version. The documentation baseline intentionally records the development line instead of duplicating the moving preview patch number.
 
@@ -210,6 +212,7 @@ Track the path through the [Roadmap](docs/Roadmap.md) and [Release 1.0 plan](doc
 
 ### Finance
 
+- [Project and Cost Accounting](docs/ProjectAccounting.md)
 - [Finance Architecture](docs/FinanceArchitecture.md)
 - [Finance Budgeting and Variance Analysis](docs/FinanceBudgeting.md)
 - [Finance Fixed Assets](docs/FinanceFixedAssets.md)

@@ -102,3 +102,10 @@ Procurement sourcing separates demand preparation, requisition approval and supp
 - `SupplierSourcing.Convert` authorizes conversion of an explicitly selected quote into the existing Purchase Order draft path.
 
 The broad Purchasing system role receives the operational requisition/sourcing permissions required for buyer work but does not gain Purchase Order approval authority. The Approver role receives requisition approval capability without sourcing-management or supplier-award authority. Custom roles may compose these permissions deliberately; UI visibility never replaces service authorization.
+
+
+## Project accounting responsibilities
+
+Project capability is separated into `Projects.View`, `Projects.Manage`, `ProjectAttributions.Manage` and `ProjectFinancials.View`. Project management does not grant Finance posting authority, and financial project analysis does not grant permission to alter General Ledger or Finance Budgeting evidence.
+
+Source attribution remains subject to both the project permission and the applicable source-domain permission enforced by `ProjectAccountingService`. UI visibility is not an authorization boundary.
