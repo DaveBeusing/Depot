@@ -287,6 +287,20 @@ public sealed class ApprovalPolicyService
 		CancellationToken cancellationToken = default) =>
 		(await ResolveInternalAsync(attributes, UtcNow(), cancellationToken)).Snapshot;
 
+	public async Task<ApprovalPlanSnapshot?> TryResolveSnapshotAsync(
+		ApprovalSubjectAttributes attributes,
+		CancellationToken cancellationToken = default)
+	{
+		try
+		{
+			return await ResolveSnapshotAsync(attributes, cancellationToken);
+		}
+		catch (InvalidOperationException exception) when (exception.Message.StartsWith("No active approval policy matches ", StringComparison.Ordinal))
+		{
+			return null;
+		}
+	}
+
 	public async Task<ApprovalInstance> StartAsync(
 		ApprovalSubjectAttributes attributes,
 		CancellationToken cancellationToken = default)
@@ -591,6 +605,7 @@ public sealed class ApprovalPolicyService
 		ApprovalSubjectKind.AccountsPayableException => ApplicationPermission.FinanceSupplierMatchExceptionsApprove,
 		ApprovalSubjectKind.PaymentProposal => ApplicationPermission.FinancePaymentProposalsApprove,
 		ApprovalSubjectKind.FinanceBudget => ApplicationPermission.FinanceBudgetingApprove,
+		ApprovalSubjectKind.PurchaseRequisition => ApplicationPermission.PurchaseRequisitionsApprove,
 		_ => throw new InvalidOperationException($"Approval subject kind '{subjectKind}' is not supported.")
 	};
 
