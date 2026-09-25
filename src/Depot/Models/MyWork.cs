@@ -38,7 +38,8 @@ public enum MyWorkItemKind
 	FinanceBudget = 14,
 	PurchaseRequisition = 15,
 	RequestForQuotation = 16,
-	ReplenishmentSuggestion = 17
+	ReplenishmentSuggestion = 17,
+	Project = 18
 }
 
 public enum MyWorkPriority

@@ -20,10 +20,87 @@ public sealed class BusinessAttachmentTests : IAsyncLifetime
 	[Fact]
 	public async Task FeatureSchemaCreatesVersionedAttachmentTables()
 	{
-		Assert.Equal(1L, await Fixture.ScalarAsync("SELECT Version FROM DepotFeatureVersions WHERE Name='BusinessAttachments';"));
+		Assert.Equal(BusinessAttachmentSchemaMigration.CurrentVersion, await Fixture.ScalarAsync("SELECT Version FROM DepotFeatureVersions WHERE Name='BusinessAttachments';"));
 		Assert.Equal(1L, await Fixture.ScalarAsync("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='BusinessAttachments';"));
 		Assert.Equal(1L, await Fixture.ScalarAsync("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='BusinessAttachmentRevisions';"));
 		Assert.Equal(1L, await Fixture.ScalarAsync("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='BusinessAttachmentContents';"));
+	}
+
+	[Fact]
+	public async Task VersionOneSchemaMigratesExpandedEntityKindsWithoutDataLoss()
+	{
+		var path = Path.Combine(Path.GetTempPath(), $"depot-attachments-v1-{Guid.NewGuid():N}.db");
+		try
+		{
+			var factory = new SqliteConnectionFactory(path);
+			var database = new DatabaseAccess(factory);
+			var existingId = Guid.NewGuid().ToString("D");
+			await database.ExecuteAsync(
+				"""
+				CREATE TABLE DepotFeatureVersions (Name TEXT PRIMARY KEY, Version INTEGER NOT NULL);
+				INSERT INTO DepotFeatureVersions (Name,Version) VALUES ('BusinessAttachments',1);
+				CREATE TABLE BusinessAttachments
+				(
+					Id TEXT NOT NULL PRIMARY KEY,
+					EntityKind INTEGER NOT NULL,
+					EntityId INTEGER NOT NULL,
+					FileName TEXT NOT NULL,
+					MediaType TEXT NOT NULL,
+					ByteLength INTEGER NOT NULL,
+					Sha256 TEXT NOT NULL,
+					Description TEXT NULL,
+					Category TEXT NULL,
+					CreatedByUserId INTEGER NULL,
+					CreatedAtUtc TEXT NOT NULL,
+					CurrentRevision INTEGER NOT NULL,
+					Status INTEGER NOT NULL,
+					Version INTEGER NOT NULL,
+					CHECK (EntityKind BETWEEN 1 AND 9),
+					CHECK (ByteLength >= 0),
+					CHECK (CurrentRevision > 0),
+					CHECK (Status IN (1,2)),
+					CHECK (Version > 0)
+				);
+				CREATE TABLE BusinessAttachmentRevisions
+				(
+					AttachmentId TEXT NOT NULL,
+					Revision INTEGER NOT NULL,
+					PRIMARY KEY (AttachmentId,Revision),
+					FOREIGN KEY (AttachmentId) REFERENCES BusinessAttachments(Id) ON DELETE RESTRICT
+				);
+				INSERT INTO BusinessAttachments
+					(Id,EntityKind,EntityId,FileName,MediaType,ByteLength,Sha256,CreatedAtUtc,CurrentRevision,Status,Version)
+				VALUES
+					($Id,1,1,'existing.txt','text/plain',1,$Hash,'2026-09-24T12:00:00Z',1,1,1);
+				INSERT INTO BusinessAttachmentRevisions (AttachmentId,Revision) VALUES ($Id,1);
+				""",
+				CancellationToken.None,
+				new DatabaseParameter("$Id", existingId),
+				new DatabaseParameter("$Hash", new string('A', 64)));
+
+			BusinessAttachmentSchemaMigration.Migrate(factory);
+
+			Assert.Equal(2, Convert.ToInt32(await database.ExecuteScalarAsync("SELECT Version FROM DepotFeatureVersions WHERE Name='BusinessAttachments';", CancellationToken.None)));
+			Assert.Equal(1L, Convert.ToInt64(await database.ExecuteScalarAsync("SELECT COUNT(*) FROM BusinessAttachments WHERE Id=$Id;", CancellationToken.None, new DatabaseParameter("$Id", existingId))));
+			Assert.Equal(0L, Convert.ToInt64(await database.ExecuteScalarAsync("SELECT COUNT(*) FROM pragma_foreign_key_check;", CancellationToken.None)));
+
+			await database.ExecuteAsync(
+				"""
+				INSERT INTO BusinessAttachments
+					(Id,EntityKind,EntityId,FileName,MediaType,ByteLength,Sha256,CreatedAtUtc,CurrentRevision,Status,Version)
+				VALUES
+					($Id,$EntityKind,42,'project.txt','text/plain',1,$Hash,'2026-09-24T12:00:00Z',1,1,1);
+				""",
+				CancellationToken.None,
+				new DatabaseParameter("$Id", Guid.NewGuid().ToString("D")),
+				new DatabaseParameter("$EntityKind", (int)BusinessAttachmentEntityKind.Project),
+				new DatabaseParameter("$Hash", new string('B', 64)));
+		}
+		finally
+		{
+			SqliteConnection.ClearAllPools();
+			if (File.Exists(path)) File.Delete(path);
+		}
 	}
 
 	[Fact]

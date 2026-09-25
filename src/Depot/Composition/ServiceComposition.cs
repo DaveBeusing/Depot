@@ -39,6 +39,7 @@ internal sealed class ServiceComposition
 		Localization = new FinanceLocalizationService(database.TransactionRunner, repositories.FinanceLocalization, repositories.Audit, audit, Authorization);
 		FixedAssets = new FinanceFixedAssetService(database.TransactionRunner, repositories.FinanceFixedAssets, FinanceGeneralLedger, repositories.Audit, audit, Authorization);
 		Budgeting = new FinanceBudgetingService(database.TransactionRunner, repositories.FinanceBudgeting, FinancialReporting, repositories.Audit, audit, Authorization, ApprovalPolicies);
+		ProjectAccounting = new ProjectAccountingService(database.TransactionRunner, repositories.ProjectAccounting, repositories.Audit, audit, Authorization);
 		var passwordHasher = new PasswordHasher();
 		ItemTraceability = new ItemTraceabilityService(repositories.ItemTraceability, audit);
 		var movementReversals = new StockMovementReversalService(database.TransactionRunner, repositories.Inventories, repositories.StockMovements, repositories.ReasonCodes, repositories.Audit, audit, ItemTraceability);
@@ -104,7 +105,8 @@ internal sealed class ServiceComposition
 			new ReceivablesMyWorkProvider(AccountsReceivable, Authorization),
 			new PayablesMyWorkProvider(AccountsPayable, repositories.MyWork, Authorization, ApprovalPolicies),
 			new BankingMyWorkProvider(Banking, Authorization, ApprovalPolicies),
-			new BudgetingMyWorkProvider(Budgeting, ApprovalPolicies)
+			new BudgetingMyWorkProvider(Budgeting, ApprovalPolicies),
+			new ProjectAccountingMyWorkProvider(ProjectAccounting)
 		]);
 		CommercialRoleCenters = new CommercialRoleCenterService(
 			Authorization,
@@ -166,6 +168,7 @@ internal sealed class ServiceComposition
 	public FinanceLocalizationService Localization { get; }
 	public FinanceFixedAssetService FixedAssets { get; }
 	public FinanceBudgetingService Budgeting { get; }
+	public ProjectAccountingService ProjectAccounting { get; }
 	public AuthenticationService Authentication { get; }
 	public SessionService Session { get; }
 	public ItemService Items { get; }

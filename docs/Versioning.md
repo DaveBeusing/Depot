@@ -14,9 +14,9 @@ Updated: 2026-09-19
 - Document Templates feature schema: **1**
 - Enterprise Identity feature schema: **2**
 - Approval Policies feature schema: **1**
-- Business Attachments feature schema: **1**
+- Business Attachments feature schema: **2**
 - Procurement Sourcing feature schema: **1**
-- Help manifest: **1.29**
+- Help manifest: **1.33**
 
 Application, Core database and feature-schema versions are independent compatibility dimensions. `Directory.Build.props` is the authoritative source for the exact application patch/version; long-lived documentation records the development line rather than duplicating the moving patch number.
 
@@ -147,6 +147,10 @@ DepotManager release metadata continues to record the target Core database schem
 
 Business Attachments schema **1** is the provider-neutral metadata, immutable revision and database-backed content baseline. It stores allowlisted business-record links, current metadata and optimistic version state separately from immutable revision/content rows. It does not change Core schema **30** or any domain feature schema.
 
+### Business Attachments schema 2
+
+Business Attachments schema **2** expands the persisted entity-kind constraint through the current Project attachment kind. Existing attachment metadata, revision rows and content remain unchanged; SQLite rebuilds the constrained parent table transactionally while SQL Server and MariaDB/MySQL replace the named check constraint in place. Core schema remains **30**.
+
 ### Finance schema 10
 
 Finance schema **10** introduced the Fixed Assets persistence baseline.
@@ -171,3 +175,10 @@ The migration is tracked as `ProcurementSourcing` in `DepotFeatureVersions` and 
 
 Inventory Replenishment feature schema **1** introduces per-item/per-warehouse policies, deterministic requirement snapshots and reviewable suggestion lifecycle persistence. The migration is tracked as `InventoryReplenishment` in `DepotFeatureVersions`, does not increment Core schema 30, and must remain equivalent across SQLite, SQL Server, MariaDB and MySQL.
 
+
+
+### Project Accounting schema 1
+
+Project Accounting feature schema **1** introduces provider-neutral `Projects`, shallow `ProjectPhases`, explicit `ProjectAttributions` and `ProjectBudgetLineLinks`. The migration is tracked as `ProjectAccounting` in `DepotFeatureVersions` and does not increment Core or Finance schema versions.
+
+Project budget links reference existing Finance Budgeting lines rather than duplicating planning amounts. The schema is provisioned through the authoritative database initialization path and is included in SQLite, SQL Server, MariaDB and MySQL provider acceptance.

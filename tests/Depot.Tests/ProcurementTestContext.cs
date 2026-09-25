@@ -65,10 +65,7 @@ internal sealed class ProcurementTestContext : IAsyncDisposable
 	{
 		var path = Path.Combine(Path.GetTempPath(), $"depot-procurement-{Guid.NewGuid():N}.db");
 		var factory = new SqliteConnectionFactory(path);
-		new DepotDatabase(factory).Initialize();
-		ProcurementSourcingSchemaMigration.Migrate(factory);
-		InventoryReplenishmentSchemaMigration.Migrate(factory);
-		BusinessAttachmentSchemaMigration.Migrate(factory);
+		DatabaseProvisioningService.Initialize(factory);
 		return await CreateAsync(factory, path, false);
 	}
 

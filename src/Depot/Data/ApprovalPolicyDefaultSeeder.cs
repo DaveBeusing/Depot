@@ -42,6 +42,11 @@ internal static class ApprovalPolicyDefaultSeeder
 			"Default Finance Budget Approval",
 			ApprovalSubjectKind.FinanceBudget,
 			SystemRoleCatalog.ApproverCode));
+		SeedIfMissing(database, DefaultPolicy(
+			new Guid("8ca52645-14c7-4a4b-8c1c-2acdd3061006"),
+			"Default Purchase Requisition Approval",
+			ApprovalSubjectKind.PurchaseRequisition,
+			SystemRoleCatalog.ApproverCode));
 	}
 
 	private static ApprovalPolicy DefaultPolicy(Guid id, string name, ApprovalSubjectKind subjectKind, string businessRole) => new()

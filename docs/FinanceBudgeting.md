@@ -44,3 +44,10 @@ Finance > Budgeting provides versions, lines, import/export, approval, locking, 
 Coverage includes schema migration, spread/remainder math, permission segregation, immutable-state contracts, UI/service layering and live-provider budget persistence/decimal aggregation.
 
 See [Finance Architecture](FinanceArchitecture.md), [Finance Reporting](FinanceReporting.md), [Finance Compliance](FinanceCompliance.md), [Approval Policies](ApprovalPolicies.md), [Role Personas](RolePersonas.md), [Database Provider Production Support Matrix](DatabaseProviderSupportMatrix.md) and [Versioning](Versioning.md).
+
+
+## Project links
+
+Project Accounting may link an existing Finance budget line to a project or project phase. The link stores only project attribution metadata and an optional project category; it never copies or overrides the Finance budget amount, account, accounting period, version status or approval evidence.
+
+Project Actual-vs-Budget views therefore reuse the same Finance Budgeting records and authoritative General Ledger actuals. Removing a project link changes project analysis only and does not mutate the budget itself.

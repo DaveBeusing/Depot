@@ -167,6 +167,16 @@ jobs:
               "previous-build-bootstrap=FinanceBudgeting-BaseCompile" | Add-Content artifacts/packaged/source.txt -Encoding ascii
             }
 
+            $previousReplenishmentService = Join-Path $previousTree 'src/Depot/Services/ReplenishmentService.cs'
+            $replenishmentServiceText = Get-Content $previousReplenishmentService -Raw
+            $oldReplenishmentAudit = '_audit.CreateActionEntry(suggestion.Id,"ConvertedToPurchaseRequisition",suggestion,new { PurchaseRequisitionId=saved.Id })'
+            $newReplenishmentAudit = '_audit.CreateActionEntry<object>(suggestion.Id,"ConvertedToPurchaseRequisition",suggestion,new { PurchaseRequisitionId=saved.Id })'
+            if ($replenishmentServiceText.Contains($oldReplenishmentAudit)) {
+              $replenishmentServiceText = $replenishmentServiceText.Replace($oldReplenishmentAudit, $newReplenishmentAudit)
+              Set-Content $previousReplenishmentService $replenishmentServiceText -Encoding utf8
+              "previous-build-bootstrap=InventoryReplenishment-BaseCompile" | Add-Content artifacts/packaged/source.txt -Encoding ascii
+            }
+
             $previousPermissionCatalog = Join-Path $previousTree 'src/Depot/Services/PermissionCatalog.cs'
             $previousApplicationPermission = Join-Path $previousTree 'src/Depot/Models/ApplicationPermission.cs'
             $permissionCatalogText = Get-Content $previousPermissionCatalog -Raw

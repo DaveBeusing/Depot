@@ -6,6 +6,8 @@ using System.Globalization;
 
 using Depot.Data;
 using Depot.Models;
+using Depot.Repositories;
+using Depot.Services;
 
 using Xunit;
 

@@ -40,6 +40,7 @@ public enum ApplicationPermission
 	FinanceBudgetingView, FinanceBudgetingManage, FinanceBudgetingApprove, FinanceBudgetingLock,
 	FinanceLocalizationView, FinanceLocalizationManage,
 	FinanceFixedAssetsView, FinanceFixedAssetsConfigure, FinanceFixedAssetsManage, FinanceFixedAssetsDepreciationPost,
+	ProjectsView, ProjectsManage, ProjectAttributionsManage, ProjectFinancialsView,
 	SuppliersView, SuppliersManage, MasterDataView, MasterDataManage, ImportManage, UsersView, UsersManage, UserSessionsTerminate, RolesView, RolesManage,
 	DatabaseView, DatabaseManage, AuditLogView, AuditLogExport, SecurityEventsView, SecurityEventsManage, SettingsView, SettingsManage, DocumentTemplatesView, DocumentTemplatesManage, AdministrationView, ApprovalPoliciesView, ApprovalPoliciesManage
 }

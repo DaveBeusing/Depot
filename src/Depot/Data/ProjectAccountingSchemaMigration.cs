@@ -5,10 +5,10 @@ using System.Globalization;
 
 namespace Depot.Data;
 
-public static class ApprovalPolicySchemaMigration
+public static class ProjectAccountingSchemaMigration
 {
 	public const int CurrentVersion = 1;
-	private const string FeatureName = "ApprovalPolicies";
+	private const string FeatureName = "ProjectAccounting";
 
 	public static void Migrate(IDatabaseConnectionFactory connectionFactory)
 	{
@@ -16,20 +16,15 @@ public static class ApprovalPolicySchemaMigration
 		EnsureVersionTable(connectionFactory);
 		var version = ReadVersion(connectionFactory);
 		if (version > CurrentVersion)
-			throw new InvalidOperationException($"Approval-policy schema version '{version}' is newer than the supported version '{CurrentVersion}'.");
-
+			throw new InvalidOperationException($"Project-accounting schema version '{version}' is newer than the supported version '{CurrentVersion}'.");
 		if (version == 0)
 		{
-			ApprovalPolicySchema.Ensure(connectionFactory);
-			ApprovalPolicyDefaultSeeder.Seed(connectionFactory);
+			ProjectAccountingSchema.Ensure(connectionFactory);
 			WriteVersion(connectionFactory, CurrentVersion);
 			version = CurrentVersion;
 		}
-
 		if (version != CurrentVersion)
-			throw new InvalidOperationException($"Approval-policy schema version '{version}' is not supported. Expected '{CurrentVersion}'.");
-
-		ApprovalPolicyDefaultSeeder.Seed(connectionFactory);
+			throw new InvalidOperationException($"Project-accounting schema version '{version}' is not supported. Expected '{CurrentVersion}'.");
 	}
 
 	private static void EnsureVersionTable(IDatabaseConnectionFactory connectionFactory)
@@ -42,7 +37,7 @@ public static class ApprovalPolicySchemaMigration
 			DatabaseProvider.Local => "CREATE TABLE IF NOT EXISTS DepotFeatureVersions (Name TEXT PRIMARY KEY, Version INTEGER NOT NULL);",
 			DatabaseProvider.SqlServer => "IF OBJECT_ID(N'DepotFeatureVersions', N'U') IS NULL CREATE TABLE DepotFeatureVersions (Name nvarchar(100) NOT NULL PRIMARY KEY, Version int NOT NULL);",
 			DatabaseProvider.MySql => "CREATE TABLE IF NOT EXISTS DepotFeatureVersions (Name VARCHAR(100) NOT NULL PRIMARY KEY, Version INT NOT NULL);",
-			_ => throw new NotSupportedException($"Approval-policy migrations are not supported for provider '{connectionFactory.Provider}'.")
+			_ => throw new NotSupportedException($"Project-accounting migrations are not supported for provider '{connectionFactory.Provider}'.")
 		};
 		command.ExecuteNonQuery();
 	}
@@ -67,7 +62,7 @@ public static class ApprovalPolicySchemaMigration
 			DatabaseProvider.Local => $"INSERT INTO DepotFeatureVersions (Name, Version) VALUES ('{FeatureName}', {version}) ON CONFLICT(Name) DO UPDATE SET Version=excluded.Version;",
 			DatabaseProvider.SqlServer => $"IF EXISTS (SELECT 1 FROM DepotFeatureVersions WHERE Name=N'{FeatureName}') UPDATE DepotFeatureVersions SET Version={version} WHERE Name=N'{FeatureName}'; ELSE INSERT INTO DepotFeatureVersions (Name, Version) VALUES (N'{FeatureName}', {version});",
 			DatabaseProvider.MySql => $"INSERT INTO DepotFeatureVersions (Name, Version) VALUES ('{FeatureName}', {version}) ON DUPLICATE KEY UPDATE Version=VALUES(Version);",
-			_ => throw new NotSupportedException($"Approval-policy migrations are not supported for provider '{connectionFactory.Provider}'.")
+			_ => throw new NotSupportedException($"Project-accounting migrations are not supported for provider '{connectionFactory.Provider}'.")
 		};
 		command.ExecuteNonQuery();
 	}

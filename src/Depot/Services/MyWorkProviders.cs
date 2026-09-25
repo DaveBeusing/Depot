@@ -533,3 +533,49 @@ internal sealed class BudgetingMyWorkProvider(
 			MyWorkValueKind.Currency);
 }
 
+
+
+internal sealed class ProjectAccountingMyWorkProvider(ProjectAccountingService projects) : IMyWorkProvider
+{
+	public string Name => "Projects";
+
+	public bool CanQuery(IAuthorizationService authorization) =>
+		authorization.HasPermission(ApplicationPermission.ProjectsView);
+
+	public async Task<IReadOnlyList<MyWorkItem>> GetAsync(MyWorkQuery query, CancellationToken cancellationToken)
+	{
+		var page = await projects.SearchAsync(new ProjectListFilter(OwnerUserId: query.UserId), 1, query.ProviderLimit, cancellationToken);
+		var items = new List<MyWorkItem>();
+		foreach (var project in page.Items)
+		{
+			var dueAt = project.PlannedEndDate?.ToDateTime(TimeOnly.MinValue);
+			var overdue = dueAt is { } due && due.Date < query.NowUtc.Date && project.Status is ProjectStatus.Active or ProjectStatus.OnHold;
+			if (project.Status == ProjectStatus.Draft)
+			{
+				items.Add(Item(MyWorkSectionKind.MyDrafts, project, "Project draft", dueAt, MyWorkPriority.Normal, "Edit"));
+				continue;
+			}
+			if (overdue)
+			{
+				items.Add(Item(MyWorkSectionKind.Exceptions, project, "Project past planned end", dueAt, MyWorkPriority.High, "Review"));
+				continue;
+			}
+			if (project.Status == ProjectStatus.OnHold)
+			{
+				items.Add(Item(MyWorkSectionKind.Exceptions, project, "Project on hold", dueAt, MyWorkPriority.High, "Review"));
+				continue;
+			}
+			if (project.Status == ProjectStatus.Active)
+			{
+				items.Add(Item(MyWorkSectionKind.Waiting, project, "Owned active project", dueAt, MyWorkPriority.Normal, "Open"));
+				continue;
+			}
+			if (project.Status == ProjectStatus.Closed && project.ClosedAtUtc is { } closed && closed >= query.NowUtc.AddDays(-14))
+				items.Add(new(MyWorkSectionKind.RecentlyCompleted, MyWorkItemKind.Project, project.Id, project.Code, "Project closed", project.Name, project.Status.ToString(), null, dueAt, null, MyWorkPriority.Low, "projects", "Open", project.OwnerUserId, closed));
+		}
+		return items;
+	}
+
+	private static MyWorkItem Item(MyWorkSectionKind section, ProjectRecord project, string title, DateTime? dueAt, MyWorkPriority priority, string action) =>
+		new(section, MyWorkItemKind.Project, project.Id, project.Code, title, project.Name, project.Status.ToString(), null, dueAt, null, priority, "projects", action, project.OwnerUserId);
+}

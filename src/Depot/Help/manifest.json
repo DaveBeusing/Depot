@@ -1,5 +1,5 @@
 {
-  "version": "1.30",
+  "version": "1.33",
   "topics": [
     {
       "id": "getting-started.first-login",
@@ -1143,6 +1143,16 @@
         "finance.banking",
         "administration.audit-log"
       ]
+    },
+    {
+      "id": "projects.accounting",
+      "title": "Projects and Cost Accounting",
+      "category": "Projects",
+      "file": "projects/project-accounting.md",
+      "order": 870,
+      "keywords": ["project", "phase", "cost", "actuals", "commitments", "budget variance", "attachments"],
+      "requiredPermission": "Projects.View",
+      "relatedTopics": ["finance.general-ledger", "finance.budgeting", "purchasing.purchase-orders", "sales.orders"]
     },
     {
       "id": "troubleshooting.concurrency-conflict",

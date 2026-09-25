@@ -265,7 +265,8 @@ public sealed class RbacTestsPersonaProfiles
 			{
 				ApplicationPermission.DashboardView, ApplicationPermission.CustomersView, ApplicationPermission.SalesInvoicesView, ApplicationPermission.CreditNotesView,
 				ApplicationPermission.FinanceReceivablesView, ApplicationPermission.FinanceReceivablePaymentsPost, ApplicationPermission.FinanceReceivablePaymentsReverse,
-				ApplicationPermission.FinanceDunningView, ApplicationPermission.FinanceDunningManage
+				ApplicationPermission.FinanceDunningView, ApplicationPermission.FinanceDunningManage,
+				ApplicationPermission.ProjectsView, ApplicationPermission.ProjectFinancialsView
 			}
 		},
 		{
@@ -274,7 +275,8 @@ public sealed class RbacTestsPersonaProfiles
 			{
 				ApplicationPermission.DashboardView, ApplicationPermission.PurchasingView, ApplicationPermission.SuppliersView, ApplicationPermission.PurchaseOrdersView, ApplicationPermission.GoodsReceiptsView,
 				ApplicationPermission.FinancePayablesView, ApplicationPermission.FinanceSupplierInvoicesCreate, ApplicationPermission.FinanceSupplierInvoicesSubmit,
-				ApplicationPermission.FinanceSupplierInvoicesPost, ApplicationPermission.FinanceSupplierInvoicesReverse
+				ApplicationPermission.FinanceSupplierInvoicesPost, ApplicationPermission.FinanceSupplierInvoicesReverse,
+				ApplicationPermission.ProjectsView, ApplicationPermission.ProjectAttributionsManage
 			}
 		},
 		{
@@ -299,7 +301,8 @@ public sealed class RbacTestsPersonaProfiles
 				ApplicationPermission.FinanceInventoryAccountingView, ApplicationPermission.FinanceInventoryAccountingManage,
 				ApplicationPermission.FinanceBankingView, ApplicationPermission.FinanceBankReconciliationManage,
 				ApplicationPermission.FinanceFinancialReportingView, ApplicationPermission.FinanceFinancialReportingManage, ApplicationPermission.FinanceFinancialReportingExport, ApplicationPermission.FinanceReportSnapshotsCreate,
-				ApplicationPermission.FinanceFixedAssetsView, ApplicationPermission.FinanceFixedAssetsConfigure, ApplicationPermission.FinanceFixedAssetsManage, ApplicationPermission.FinanceFixedAssetsDepreciationPost
+				ApplicationPermission.FinanceFixedAssetsView, ApplicationPermission.FinanceFixedAssetsConfigure, ApplicationPermission.FinanceFixedAssetsManage, ApplicationPermission.FinanceFixedAssetsDepreciationPost,
+				ApplicationPermission.ProjectsView, ApplicationPermission.ProjectAttributionsManage, ApplicationPermission.ProjectFinancialsView
 			}
 		},
 		{
@@ -315,7 +318,8 @@ public sealed class RbacTestsPersonaProfiles
 				ApplicationPermission.FinanceTaxConfigurationView, ApplicationPermission.FinanceNumberSequencesView, ApplicationPermission.FinanceGeneralLedgerView, ApplicationPermission.FinancePostingProfilesView,
 				ApplicationPermission.FinanceReceivablesView, ApplicationPermission.FinanceDunningView, ApplicationPermission.FinancePayablesView, ApplicationPermission.FinanceInventoryAccountingView,
 				ApplicationPermission.FinanceBankingView, ApplicationPermission.FinanceCashPositionView, ApplicationPermission.FinanceFinancialReportingView, ApplicationPermission.FinanceFinancialReportingExport,
-				ApplicationPermission.FinanceLocalizationView, ApplicationPermission.FinanceFixedAssetsView, ApplicationPermission.ReportsView, ApplicationPermission.ReportsExport
+				ApplicationPermission.FinanceLocalizationView, ApplicationPermission.FinanceFixedAssetsView, ApplicationPermission.ReportsView, ApplicationPermission.ReportsExport,
+				ApplicationPermission.ProjectsView, ApplicationPermission.ProjectFinancialsView
 			}
 		},
 		{

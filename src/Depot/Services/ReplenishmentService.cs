@@ -197,7 +197,15 @@ public sealed class ReplenishmentService
 			{
 				if(!await _repository.AcceptAsync(transaction,suggestion.Id,suggestion.Version,saved.Id,user.Id,reviewedAt,token))
 					throw new ConcurrencyConflictException("replenishment suggestion");
-				await _auditRepository.CreateAsync(transaction,_audit.CreateActionEntry(suggestion.Id,"ConvertedToPurchaseRequisition",suggestion,new { PurchaseRequisitionId=saved.Id }),token);
+			}
+			var accepted=await _repository.GetSuggestionsByIdsAsync(transaction,ids,token);
+			if(accepted.Count!=current.Count) throw new ConcurrencyConflictException("replenishment suggestion");
+			var acceptedById=accepted.ToDictionary(x=>x.Id);
+			foreach(var suggestion in current)
+			{
+				if(!acceptedById.TryGetValue(suggestion.Id,out var after))
+					throw new ConcurrencyConflictException("replenishment suggestion");
+				await _auditRepository.CreateAsync(transaction,_audit.CreateActionEntry(suggestion.Id,"ConvertedToPurchaseRequisition",suggestion,after),token);
 			}
 			return new ReplenishmentConversionResult(saved.Id,ids);
 		},cancellationToken);
