@@ -168,7 +168,7 @@ Security and compliance work is documented transparently rather than presented a
 
 ## Offline Help
 
-Embedded Help manifest **1.29** includes contextual Sales, Finance, User Sessions and Security Center guidance. Help visibility follows central permissions and never grants business access.
+Embedded Help manifest **1.33** includes contextual Sales, Finance, User Sessions and Security Center guidance. Help visibility follows central permissions and never grants business access.
 
 See the [Help Center documentation](docs/HelpCenter.md).
 

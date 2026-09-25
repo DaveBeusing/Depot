@@ -7,7 +7,7 @@ This document identifies the documentation baseline for the current development 
 ## Current baseline
 
 - Application: `0.15.x-preview`
-- Help manifest: `1.29`
+- Help manifest: `1.33`
 - Core database schema: `30`
 - Sales feature schema: `15`
 - Finance feature schema: `12`
@@ -105,7 +105,7 @@ Do not describe database-provider technical support as jurisdiction-specific acc
 
 Do not pin an exact preview patch version in canonical baseline documents. Use the development line and link exact build/release identity to `Directory.Build.props` and release evidence.
 
-Help manifest **1.29** contains the existing User Sessions and Security Center topics plus the permission-bound `administration.document-designer` topic. The current manifest version is authoritative for embedded Help routing and content.
+Help manifest **1.33** contains the existing User Sessions and Security Center topics plus the permission-bound `administration.document-designer` topic. The current manifest version is authoritative for embedded Help routing and content.
 
 
 ## 2026-09-22 approval-policy documentation reconciliation

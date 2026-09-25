@@ -109,7 +109,7 @@ Advanced pricing uses existing Item and Sales Pricing permissions. FX-rate maint
 - Document Templates schema: **1**
 - Enterprise Identity feature schema: **2**
 - Procurement Sourcing feature schema: **1**
-- Help manifest: **1.29**
+- Help manifest: **1.33**
 
 The exact application patch/version is authoritative in `Directory.Build.props`; this user-facing baseline intentionally records the moving development line instead of duplicating the patch number.
 

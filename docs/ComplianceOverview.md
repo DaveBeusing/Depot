@@ -28,7 +28,7 @@ Localization requires explicit effective-dated assignment. The built-in `GENERIC
 - Document Templates feature schema: **1**
 - Enterprise Identity feature schema: **2**
 - Procurement Sourcing feature schema: **1**
-- Help manifest: **1.29**
+- Help manifest: **1.33**
 
 `Directory.Build.props` is authoritative for the exact application patch/version. Compliance documentation records the development line and stable schema/help contracts instead of duplicating the moving preview patch number.
 
