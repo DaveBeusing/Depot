@@ -76,6 +76,7 @@ internal sealed class ServiceComposition
 		Shipments = new ShipmentService(database.TransactionRunner, repositories.Shipments, repositories.SalesOrders, repositories.InventoryReservations, repositories.Inventories, repositories.StockMovements, repositories.SalesInvoices, CustomerReturns, repositories.Audit, audit, Authorization, Notifications, ItemTraceability, InventoryAccounting);
 		ShipmentPacking = new ShipmentPackingService(database.TransactionRunner, repositories.Shipments, repositories.Audit, audit, Authorization);
 		SalesInvoices = new SalesInvoiceService(database.TransactionRunner, repositories.SalesInvoices, repositories.Shipments, repositories.SalesOrders, repositories.Customers, repositories.Audit, audit, Authorization, Notifications, SalesCreditNotes, AccountsReceivable);
+		SubscriptionBilling = new SubscriptionBillingService(database.TransactionRunner, repositories.SubscriptionBilling, repositories.Customers, repositories.Items, SalesPricing, SalesInvoices, repositories.Audit, audit, Authorization);
 		CompanyDocumentIdentity = new CompanyDocumentIdentityService(database.DataAccess, database.Settings.CurrentSettings.Provider);
 		DocumentIssuerSnapshots = new DocumentIssuerSnapshotService(database.DataAccess);
 		SalesInvoiceFinalizations = new SalesInvoiceFinalizationService(database.DataAccess);
@@ -95,7 +96,7 @@ internal sealed class ServiceComposition
 		Reports = new ReportService(Stock, Authorization);
 		var inventoryManagement = new InventoryManagementService(repositories.Inventories, audit);
 		Import = new ImportService(repositories.Items, Items, Purposes, Warehouses, StorageLocations, inventoryManagement, Movements, Authorization);
-		Sales = new SalesServices(Customers, SalesPricing, SalesTimeline, SalesOrders, SalesQuotes, SalesCrm, Shipments, ShipmentPacking, SalesInvoices, CustomerReturns, SalesCreditNotes, Items, Authorization, SalesDocuments, SalesEmail, SalesInvoiceFinalizations, ItemCosts, PriceListGeneration);
+		Sales = new SalesServices(Customers, SalesPricing, SalesTimeline, SalesOrders, SalesQuotes, SalesCrm, Shipments, ShipmentPacking, SalesInvoices, SubscriptionBilling, CustomerReturns, SalesCreditNotes, Items, Authorization, SalesDocuments, SalesEmail, SalesInvoiceFinalizations, ItemCosts, PriceListGeneration);
 		MyWork = new MyWorkService(Authorization,
 		[
 			new PurchasingMyWorkProvider(PurchaseOrders, PurchaseOrderApprovals, repositories.MyWork, Authorization, ApprovalPolicies, ProcurementSourcing, Replenishment),
@@ -204,6 +205,7 @@ internal sealed class ServiceComposition
 	public ShipmentService Shipments { get; }
 	public ShipmentPackingService ShipmentPacking { get; }
 	public SalesInvoiceService SalesInvoices { get; }
+	public SubscriptionBillingService SubscriptionBilling { get; }
 	public CustomerReturnService CustomerReturns { get; }
 	public SalesCreditNoteService SalesCreditNotes { get; }
 	public CompanyDocumentIdentityService CompanyDocumentIdentity { get; }

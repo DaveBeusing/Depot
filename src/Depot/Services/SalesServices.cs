@@ -15,6 +15,7 @@ public sealed class SalesServices
 		ShipmentService shipments,
 		ShipmentPackingService packing,
 		SalesInvoiceService invoices,
+		SubscriptionBillingService subscriptionBilling,
 		CustomerReturnService customerReturns,
 		SalesCreditNoteService creditNotes,
 		ItemService items,
@@ -34,6 +35,7 @@ public sealed class SalesServices
 		Shipments = shipments;
 		Packing = packing;
 		Invoices = invoices;
+		SubscriptionBilling = subscriptionBilling;
 		CustomerReturns = customerReturns;
 		CreditNotes = creditNotes;
 		Items = items;
@@ -54,6 +56,7 @@ public sealed class SalesServices
 	public ShipmentService Shipments { get; }
 	public ShipmentPackingService Packing { get; }
 	public SalesInvoiceService Invoices { get; }
+	public SubscriptionBillingService SubscriptionBilling { get; }
 	public CustomerReturnService CustomerReturns { get; }
 	public SalesCreditNoteService CreditNotes { get; }
 	public ItemService Items { get; }
