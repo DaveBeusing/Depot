@@ -28,6 +28,8 @@ public static class ApprovalPolicySchemaMigration
 
 		if (version != CurrentVersion)
 			throw new InvalidOperationException($"Approval-policy schema version '{version}' is not supported. Expected '{CurrentVersion}'.");
+
+		ApprovalPolicyDefaultSeeder.Seed(connectionFactory);
 	}
 
 	private static void EnsureVersionTable(IDatabaseConnectionFactory connectionFactory)
