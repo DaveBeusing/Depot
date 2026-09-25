@@ -63,6 +63,7 @@
 	<DataTemplate DataType="{x:Type viewModels:FinanceBudgetingViewModel}"><views:FinanceBudgetingView /></DataTemplate>
 	<DataTemplate DataType="{x:Type viewModels:ProjectAccountingViewModel}"><views:ProjectAccountingView /></DataTemplate>
 	<DataTemplate DataType="{x:Type viewModels:ServiceManagementViewModel}"><views:ServiceManagementView /></DataTemplate>
+	<DataTemplate DataType="{x:Type viewModels:ProductionViewModel}"><views:ProductionView /></DataTemplate>
 	<DataTemplate DataType="{x:Type viewModels:ReportsViewModel}"><views:ReportsView /></DataTemplate>
 	<DataTemplate DataType="{x:Type viewModels:ShellModuleViewModel}"><views:ShellModuleView /></DataTemplate>
 	<DataTemplate DataType="{x:Type viewModels:ImportViewModel}"><views:ImportView /></DataTemplate>

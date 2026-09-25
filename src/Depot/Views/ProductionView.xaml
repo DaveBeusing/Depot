@@ -1,0 +1,112 @@
+<UserControl x:Class="Depot.Views.ProductionView"
+	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:controls="clr-namespace:Depot.Controls"
+	AutomationProperties.Name="Production and light assembly workspace">
+	<Grid>
+		<Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="12"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+		<controls:PageHeader Title="Production" Subtitle="Revisioned bills of material, controlled assembly orders, shortage review, component issue, completion, traceability, and deterministic cost evidence."/>
+		<controls:OperationPanel Grid.Row="1" ErrorText="{Binding OperationError}" HasError="{Binding HasOperationError}" IsBusy="{Binding IsBusy}" StatusText="{Binding StatusText}"/>
+		<TabControl Grid.Row="3" Style="{StaticResource AppTabControlStyle}">
+			<TabItem Header="Bills of Material">
+				<controls:MasterDetailGrid>
+					<controls:MasterDetailGrid.Master>
+						<Border Style="{StaticResource WorkspaceSectionStyle}">
+							<Grid>
+								<Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+								<controls:WorkflowHeader Title="BOM revisions" Subtitle="Released revisions remain immutable; create a new revision when the product structure changes."/>
+								<ListBox Grid.Row="1" Margin="0,10,0,0" ItemsSource="{Binding Boms}" SelectedItem="{Binding SelectedBom}" Style="{StaticResource MasterDataListBoxStyle}" ItemContainerStyle="{StaticResource MasterDataListBoxItemStyle}">
+									<ListBox.ItemTemplate><DataTemplate><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel><TextBlock FontWeight="SemiBold" Text="{Binding FinishedPartNumber}"/><TextBlock Style="{StaticResource CaptionStyle}" Text="{Binding FinishedDescription}"/></StackPanel><StackPanel Grid.Column="1"><TextBlock HorizontalAlignment="Right" Text="{Binding Revision, StringFormat=Rev {0}}"/><TextBlock HorizontalAlignment="Right" Style="{StaticResource CaptionStyle}" Text="{Binding Status}"/></StackPanel></Grid></DataTemplate></ListBox.ItemTemplate>
+								</ListBox>
+								<controls:WorkflowActionBar Grid.Row="2">
+									<controls:WorkflowActionBar.SecondaryActions><Button Command="{Binding RefreshCommand}" Content="Refresh" Style="{StaticResource SecondaryButtonStyle}"/></controls:WorkflowActionBar.SecondaryActions>
+									<controls:WorkflowActionBar.PrimaryAction><Button Command="{Binding NewBomCommand}" Content="New BOM" Style="{StaticResource PrimaryButtonStyle}"/></controls:WorkflowActionBar.PrimaryAction>
+								</controls:WorkflowActionBar>
+							</Grid>
+						</Border>
+					</controls:MasterDetailGrid.Master>
+					<controls:MasterDetailGrid.Detail>
+						<Border Style="{StaticResource WorkspaceSectionStyle}">
+							<Grid>
+								<Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+								<controls:WorkflowHeader Title="BOM editor" Subtitle="V1 uses a bounded single-level explosion. Component cycles and fractional inventory base-unit requirements fail closed."/>
+								<Grid Grid.Row="1" Margin="0,10,0,10">
+									<Grid.ColumnDefinitions><ColumnDefinition Width="2*"/><ColumnDefinition Width="10"/><ColumnDefinition Width="*"/><ColumnDefinition Width="10"/><ColumnDefinition Width="*"/><ColumnDefinition Width="10"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+									<StackPanel><TextBlock Text="Finished item" Style="{StaticResource FormLabelStyle}"/><ComboBox ItemsSource="{Binding StockItems}" SelectedItem="{Binding SelectedBomFinishedItem}" Style="{StaticResource AppComboBoxStyle}"><ComboBox.ItemTemplate><DataTemplate><TextBlock><Run FontWeight="SemiBold" Text="{Binding PartNumber}"/><Run Text=" — "/><Run Text="{Binding Description}"/></TextBlock></DataTemplate></ComboBox.ItemTemplate></ComboBox></StackPanel>
+									<StackPanel Grid.Column="2"><TextBlock Text="Revision" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding BomDraft.Revision, UpdateSourceTrigger=PropertyChanged}"/></StackPanel>
+									<StackPanel Grid.Column="4"><TextBlock Text="Effective from" Style="{StaticResource FormLabelStyle}"/><DatePicker SelectedDate="{Binding BomDraft.EffectiveFromUtc}"/></StackPanel>
+									<StackPanel Grid.Column="6"><TextBlock Text="Effective until" Style="{StaticResource FormLabelStyle}"/><DatePicker SelectedDate="{Binding BomDraft.EffectiveUntilUtc}"/></StackPanel>
+								</Grid>
+								<Grid Grid.Row="2">
+									<Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+									<DataGrid ItemsSource="{Binding BomLines}" SelectedItem="{Binding SelectedBomLine}" AutoGenerateColumns="False" CanUserAddRows="False" Style="{StaticResource AppDataGridCompactStyle}">
+										<DataGrid.Columns>
+											<DataGridTemplateColumn Header="Component" Width="*"><DataGridTemplateColumn.CellTemplate><DataTemplate><ComboBox ItemsSource="{Binding DataContext.StockItems, RelativeSource={RelativeSource AncestorType=DataGrid}}" SelectedValue="{Binding ComponentItemId, UpdateSourceTrigger=PropertyChanged}" SelectedValuePath="Id" Style="{StaticResource AppComboBoxStyle}"><ComboBox.ItemTemplate><DataTemplate><TextBlock><Run FontWeight="SemiBold" Text="{Binding PartNumber}"/><Run Text=" — "/><Run Text="{Binding Description}"/></TextBlock></DataTemplate></ComboBox.ItemTemplate></ComboBox></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+											<DataGridTextColumn Header="Quantity" Binding="{Binding Quantity, UpdateSourceTrigger=PropertyChanged}" Width="110"/>
+											<DataGridTextColumn Header="Sequence" Binding="{Binding Sequence, UpdateSourceTrigger=PropertyChanged}" Width="90"/>
+										</DataGrid.Columns>
+									</DataGrid>
+									<StackPanel Grid.Row="1" Margin="0,8,0,0" Orientation="Horizontal"><Button Command="{Binding AddBomLineCommand}" Content="Add component" Style="{StaticResource SecondaryButtonStyle}"/><Button Margin="{StaticResource Button.Margin}" Command="{Binding RemoveBomLineCommand}" Content="Remove component" Style="{StaticResource SecondaryButtonStyle}"/></StackPanel>
+								</Grid>
+								<controls:WorkflowActionBar Grid.Row="3">
+									<controls:WorkflowActionBar.SecondaryActions><Button Command="{Binding ActivateBomCommand}" Content="Activate revision" Style="{StaticResource SecondaryButtonStyle}"/></controls:WorkflowActionBar.SecondaryActions>
+									<controls:WorkflowActionBar.PrimaryAction><Button Command="{Binding SaveBomCommand}" Content="Save draft" Style="{StaticResource PrimaryButtonStyle}"/></controls:WorkflowActionBar.PrimaryAction>
+								</controls:WorkflowActionBar>
+							</Grid>
+						</Border>
+					</controls:MasterDetailGrid.Detail>
+				</controls:MasterDetailGrid>
+			</TabItem>
+			<TabItem Header="Assembly Orders">
+				<Grid>
+					<Grid.ColumnDefinitions><ColumnDefinition Width="0.9*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="1.6*"/></Grid.ColumnDefinitions>
+					<Border Style="{StaticResource WorkspaceSectionStyle}">
+						<Grid>
+							<Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+							<controls:WorkflowHeader Title="Assembly orders" Subtitle="Orders snapshot their requirements at release so later BOM changes cannot rewrite production history."/>
+							<DataGrid Grid.Row="1" Margin="0,10,0,0" ItemsSource="{Binding Orders}" SelectedItem="{Binding SelectedOrder}" AutoGenerateColumns="False" IsReadOnly="True" Style="{StaticResource AppDataGridCompactStyle}">
+								<DataGrid.Columns><DataGridTextColumn Header="Order" Binding="{Binding OrderNumber}" Width="110"/><DataGridTextColumn Header="Item" Binding="{Binding FinishedPartNumber}" Width="110"/><DataGridTextColumn Header="Qty" Binding="{Binding PlannedQuantity}" Width="55"/><DataGridTextColumn Header="Warehouse" Binding="{Binding WarehouseName}" Width="*"/><DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="90"/></DataGrid.Columns>
+							</DataGrid>
+							<StackPanel Grid.Row="2" Margin="0,12,0,0">
+								<TextBlock Text="Create assembly order" FontWeight="SemiBold"/>
+								<TextBlock Margin="0,8,0,0" Text="Active BOM" Style="{StaticResource FormLabelStyle}"/>
+								<ComboBox ItemsSource="{Binding ActiveBoms}" SelectedItem="{Binding SelectedOrderBom}" Style="{StaticResource AppComboBoxStyle}"><ComboBox.ItemTemplate><DataTemplate><TextBlock><Run Text="{Binding FinishedPartNumber}"/><Run Text=" · rev "/><Run Text="{Binding Revision}"/></TextBlock></DataTemplate></ComboBox.ItemTemplate></ComboBox>
+								<TextBlock Margin="0,8,0,0" Text="Warehouse" Style="{StaticResource FormLabelStyle}"/><ComboBox ItemsSource="{Binding Warehouses}" SelectedItem="{Binding SelectedWarehouse}" DisplayMemberPath="Name" Style="{StaticResource AppComboBoxStyle}"/>
+								<TextBlock Margin="0,8,0,0" Text="Finished-goods inventory location" Style="{StaticResource FormLabelStyle}"/><ComboBox ItemsSource="{Binding FinishedInventoryOptions}" SelectedItem="{Binding SelectedFinishedInventory}" Style="{StaticResource AppComboBoxStyle}"><ComboBox.ItemTemplate><DataTemplate><TextBlock><Run Text="{Binding LocationName}"/><Run Text=" · "/><Run Text="{Binding PurposeName}"/></TextBlock></DataTemplate></ComboBox.ItemTemplate></ComboBox>
+								<TextBlock Margin="0,8,0,0" Text="Planned quantity" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding OrderPlannedQuantity, UpdateSourceTrigger=PropertyChanged}"/>
+								<Button Margin="0,10,0,0" HorizontalAlignment="Right" Command="{Binding CreateOrderCommand}" Content="Create order" Style="{StaticResource PrimaryButtonStyle}"/>
+							</StackPanel>
+						</Grid>
+					</Border>
+					<Border Grid.Column="2" Style="{StaticResource WorkspaceSectionStyle}">
+						<Grid>
+							<Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+							<controls:WorkflowHeader Title="{Binding OrderDetail.OrderNumber, TargetNullValue=Assembly order}" Subtitle="Requirements, shortage projection, controlled component issue, completion evidence and compensating reversal."/>
+							<StackPanel Grid.Row="1" Margin="0,8,0,8" Orientation="Horizontal"><TextBlock Text="{Binding OrderDetail.FinishedPartNumber}" FontWeight="SemiBold"/><TextBlock Margin="12,0,0,0" Text="{Binding OrderDetail.Status}"/><TextBlock Margin="12,0,0,0" Text="{Binding OrderDetail.WarehouseName}" Style="{StaticResource CaptionStyle}"/></StackPanel>
+							<TabControl Grid.Row="2" Style="{StaticResource AppTabControlStyle}">
+								<TabItem Header="Materials">
+									<Grid><Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+										<DataGrid ItemsSource="{Binding OrderDetail.Requirements}" SelectedItem="{Binding SelectedRequirement}" AutoGenerateColumns="False" IsReadOnly="True" Style="{StaticResource AppDataGridCompactStyle}">
+											<DataGrid.Columns><DataGridTextColumn Header="Component" Binding="{Binding ComponentPartNumber}" Width="*"/><DataGridTextColumn Header="Required" Binding="{Binding RequiredQuantity}" Width="80"/><DataGridTextColumn Header="Issued" Binding="{Binding IssuedQuantity}" Width="70"/><DataGridTextColumn Header="Remaining" Binding="{Binding RemainingQuantity}" Width="80"/><DataGridTextColumn Header="UOM" Binding="{Binding UnitOfMeasure}" Width="80"/></DataGrid.Columns>
+										</DataGrid>
+										<StackPanel Grid.Row="1" Margin="0,10,0,0"><TextBlock Text="Issue selected component" FontWeight="SemiBold"/><ComboBox Margin="0,6,0,0" ItemsSource="{Binding IssueInventoryOptions}" SelectedItem="{Binding SelectedIssueInventory}" Style="{StaticResource AppComboBoxStyle}"><ComboBox.ItemTemplate><DataTemplate><TextBlock><Run Text="{Binding LocationName}"/><Run Text=" · "/><Run Text="{Binding PurposeName}"/></TextBlock></DataTemplate></ComboBox.ItemTemplate></ComboBox><Grid Margin="0,6,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="100"/><ColumnDefinition Width="10"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><controls:TextInput Text="{Binding IssueQuantity, UpdateSourceTrigger=PropertyChanged}"/><controls:TextInput Grid.Column="2" Text="{Binding IssueTrackingCodes, UpdateSourceTrigger=PropertyChanged}" ToolTip="Optional tracking: one lot code, or one serial code per unit separated by comma, semicolon, or line break."/></Grid><Button Margin="0,8,0,0" HorizontalAlignment="Right" Command="{Binding IssueComponentCommand}" Content="Post component issue" Style="{StaticResource PrimaryButtonStyle}"/></StackPanel>
+									</Grid>
+								</TabItem>
+								<TabItem Header="Availability">
+									<Grid><Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><DataGrid ItemsSource="{Binding Availability}" AutoGenerateColumns="False" IsReadOnly="True" Style="{StaticResource AppDataGridCompactStyle}"><DataGrid.Columns><DataGridTextColumn Header="Component" Binding="{Binding ComponentPartNumber}" Width="*"/><DataGridTextColumn Header="Required" Binding="{Binding RequiredQuantity}" Width="75"/><DataGridTextColumn Header="Available" Binding="{Binding ReservableQuantity}" Width="75"/><DataGridTextColumn Header="Reserved" Binding="{Binding ReservedQuantity}" Width="75"/><DataGridTextColumn Header="Shortage" Binding="{Binding ShortageQuantity}" Width="75"/></DataGrid.Columns></DataGrid><StackPanel Grid.Row="1" Margin="0,8,0,0"><TextBlock Text="{Binding HandoffStatus}" Style="{StaticResource CaptionStyle}"/><Button Margin="0,6,0,0" HorizontalAlignment="Right" Command="{Binding HandoffShortagesCommand}" Content="Send shortages to replenishment" Style="{StaticResource SecondaryButtonStyle}"/></StackPanel></Grid>
+								</TabItem>
+								<TabItem Header="Completion & Cost">
+									<Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions><StackPanel><TextBlock Text="Finished-goods tracking codes (optional)" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding FinishedTrackingCodes, UpdateSourceTrigger=PropertyChanged}" ToolTip="Enter one lot code, or one serial code per finished unit."/></StackPanel><DataGrid Grid.Row="1" Margin="0,10,0,0" ItemsSource="{Binding CostEvidence}" AutoGenerateColumns="False" IsReadOnly="True" Style="{StaticResource AppDataGridCompactStyle}"><DataGrid.Columns><DataGridTextColumn Header="Component item" Binding="{Binding ComponentItemId}" Width="110"/><DataGridTextColumn Header="Qty" Binding="{Binding Quantity}" Width="55"/><DataGridTextColumn Header="Unit cost" Binding="{Binding UnitCost, StringFormat=N2}" Width="90"/><DataGridTextColumn Header="Extended" Binding="{Binding ExtendedCost, StringFormat=N2}" Width="90"/><DataGridTextColumn Header="Currency" Binding="{Binding Currency}" Width="70"/><DataGridTextColumn Header="Evidence" Binding="{Binding EvidenceVersion}" Width="*"/></DataGrid.Columns></DataGrid><Button Grid.Row="2" Margin="0,8,0,0" HorizontalAlignment="Right" Command="{Binding CompleteOrderCommand}" Content="Complete and receive finished goods" Style="{StaticResource PrimaryButtonStyle}"/></Grid>
+								</TabItem>
+								<TabItem Header="Correction">
+									<StackPanel Margin="0,8,0,0"><TextBlock Text="Completed orders are corrected with compensating stock movements; original movement and cost evidence remain immutable." TextWrapping="Wrap" Style="{StaticResource CaptionStyle}"/><TextBlock Margin="0,12,0,0" Text="Reason code" Style="{StaticResource FormLabelStyle}"/><ComboBox ItemsSource="{Binding ReversalReasonCodes}" SelectedItem="{Binding SelectedReversalReasonCode}" DisplayMemberPath="Name" Style="{StaticResource AppComboBoxStyle}"/><TextBlock Margin="0,8,0,0" Text="Reason" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding ReversalReason, UpdateSourceTrigger=PropertyChanged}"/><Button Margin="0,10,0,0" HorizontalAlignment="Right" Command="{Binding ReverseOrderCommand}" Content="Reverse completed assembly" Style="{StaticResource SecondaryButtonStyle}"/></StackPanel>
+								</TabItem>
+							</TabControl>
+							<controls:WorkflowActionBar Grid.Row="3"><controls:WorkflowActionBar.SecondaryActions><Button Command="{Binding RefreshCommand}" Content="Refresh" Style="{StaticResource SecondaryButtonStyle}"/></controls:WorkflowActionBar.SecondaryActions><controls:WorkflowActionBar.PrimaryAction><Button Command="{Binding ReleaseOrderCommand}" Content="Release order" Style="{StaticResource PrimaryButtonStyle}"/></controls:WorkflowActionBar.PrimaryAction></controls:WorkflowActionBar>
+						</Grid>
+					</Border>
+				</Grid>
+			</TabItem>
+		</TabControl>
+	</Grid>
+</UserControl>

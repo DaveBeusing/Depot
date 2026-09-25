@@ -47,6 +47,36 @@ public sealed class ProductionService
 	public bool CanComplete=>_authorization.HasPermission(ApplicationPermission.ProductionOrdersComplete);
 	public bool CanReverse=>_authorization.HasPermission(ApplicationPermission.ProductionOrdersReverse);
 
+	public async Task<IReadOnlyList<Item>> ListStockItemsAsync(int count=500,CancellationToken token=default)
+	{
+		_authorization.RequirePermission(ApplicationPermission.ProductionView);
+		if(count is <1 or >2000) throw new ArgumentOutOfRangeException(nameof(count));
+		var values=await _items.GetActiveItemsAsync(token);
+		return values.Where(value=>value.IsActive && value.ItemType==ItemType.StockItem).OrderBy(value=>value.PartNumber,StringComparer.CurrentCultureIgnoreCase).Take(count).ToArray();
+	}
+
+	public Task<IReadOnlyList<Warehouse>> ListWarehousesAsync(int count=200,CancellationToken token=default)
+	{
+		_authorization.RequirePermission(ApplicationPermission.ProductionView);
+		if(count is <1 or >1000) throw new ArgumentOutOfRangeException(nameof(count));
+		return _warehouses.ListActiveOptionsAsync(count,token);
+	}
+
+	public Task<IReadOnlyList<InventoryLookupItem>> SearchInventoriesAsync(string? searchText=null,int count=500,CancellationToken token=default)
+	{
+		_authorization.RequirePermission(ApplicationPermission.ProductionView);
+		if(count is <1 or >2000) throw new ArgumentOutOfRangeException(nameof(count));
+		return _movements.SearchAvailableInventoriesAsync(searchText,count,token);
+	}
+
+	public Task<IReadOnlyList<ProductionAssemblyCostEvidence>> GetCostEvidenceAsync(long orderId,CancellationToken token=default)
+	{
+		_authorization.RequirePermission(ApplicationPermission.ProductionView);
+		return _production.ListCostEvidenceAsync(orderId,token);
+	}
+
+	public bool CanHandoffShortages=>CanManageOrders && _authorization.HasPermission(ApplicationPermission.ReplenishmentSuggestionsManage);
+
 	public Task<PageResult<BillOfMaterial>> SearchBomsAsync(string? searchText=null,int pageNumber=1,int pageSize=100,CancellationToken token=default)
 	{
 		_authorization.RequirePermission(ApplicationPermission.ProductionView);
