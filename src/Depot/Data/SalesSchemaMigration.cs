@@ -8,7 +8,7 @@ namespace Depot.Data;
 
 public static class SalesSchemaMigration
 {
-	public const int CurrentVersion = 15;
+	public const int CurrentVersion = 16;
 	private const string FeatureName = "Sales";
 
 	public static void Migrate(IDatabaseConnectionFactory connectionFactory)
@@ -31,6 +31,7 @@ public static class SalesSchemaMigration
 		if (version == 12) { ElectronicInvoiceCompletionSchema.Ensure(connectionFactory); WriteVersion(connectionFactory, 13); version = 13; }
 		if (version == 13) { ZugferdFacturXSchema.Ensure(connectionFactory); WriteVersion(connectionFactory, 14); version = 14; }
 		if (version == 14) { SalesCrmSchema.Ensure(connectionFactory); WriteVersion(connectionFactory, 15); version = 15; }
+		if (version == 15) { SubscriptionBillingSchema.Ensure(connectionFactory); WriteVersion(connectionFactory, 16); version = 16; }
 		if (version != CurrentVersion) throw new InvalidOperationException($"Sales schema version '{version}' is not supported. Expected '{CurrentVersion}'.");
 	}
 

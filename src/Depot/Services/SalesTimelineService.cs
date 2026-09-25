@@ -42,7 +42,7 @@ public sealed class SalesTimelineService
 	public async Task<IReadOnlyList<WorkflowTimelineItem>> ListAsync(SalesInvoice invoice, CancellationToken cancellationToken = default)
 	{
 		_authorization.RequirePermission(ApplicationPermission.SalesInvoicesView);
-		return Prepare(await _timeline.ListSalesAsync(invoice.SalesOrderId, cancellationToken));
+		return invoice.SalesOrderId is long orderId ? Prepare(await _timeline.ListSalesAsync(orderId, cancellationToken)) : [];
 	}
 
 	public async Task<IReadOnlyList<WorkflowTimelineItem>> ListAsync(PurchaseOrder order, CancellationToken cancellationToken = default)
