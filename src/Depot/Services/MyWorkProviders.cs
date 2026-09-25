@@ -615,3 +615,72 @@ internal sealed class ProjectAccountingMyWorkProvider(ProjectAccountingService p
 	private static MyWorkItem Item(MyWorkSectionKind section, ProjectRecord project, string title, DateTime? dueAt, MyWorkPriority priority, string action) =>
 		new(section, MyWorkItemKind.Project, project.Id, project.Code, title, project.Name, project.Status.ToString(), null, dueAt, null, priority, "projects", action, project.OwnerUserId);
 }
+
+
+internal sealed class ServiceManagementMyWorkProvider(ServiceManagementService service) : IMyWorkProvider
+{
+	public string Name => "Service Management";
+
+	public async Task<IReadOnlyList<MyWorkItem>> GetItemsAsync(MyWorkQuery query, CancellationToken token)
+	{
+		if (!service.CanView) return [];
+		var casesTask = service.GetOwnedOpenCasesAsync(query.UserId, query.ProviderLimit, token);
+		var ordersTask = service.GetOwnedOpenOrdersAsync(query.UserId, query.ProviderLimit, token);
+		await Task.WhenAll(casesTask, ordersTask);
+		var result = new List<MyWorkItem>();
+		foreach (var value in casesTask.Result)
+		{
+			var section = value.Status switch
+			{
+				ServiceCaseStatus.Waiting => MyWorkSectionKind.Waiting,
+				ServiceCaseStatus.Resolved => MyWorkSectionKind.RecentlyCompleted,
+				_ => value.IsOverdue(query.NowUtc) ? MyWorkSectionKind.Exceptions : MyWorkSectionKind.NeedsMyAction
+			};
+			result.Add(new MyWorkItem(
+				section,
+				MyWorkItemKind.ServiceCase,
+				value.Id,
+				value.CaseNumber,
+				value.Subject,
+				value.CustomerName,
+				value.Status.ToString(),
+				null,
+				value.DueAtUtc?.ToLocalTime(),
+				value.CreatedAtUtc.Date < query.NowUtc.Date ? (query.NowUtc.Date - value.CreatedAtUtc.Date).Days : null,
+				MapPriority(value.Priority),
+				ShellRoutes.Service.Value,
+				"Open",
+				value.OwnerUserId,
+				value.ResolvedAtUtc));
+		}
+		foreach (var value in ordersTask.Result)
+		{
+			var overdue = value.PlannedEndAtUtc is { } due && due < query.NowUtc;
+			result.Add(new MyWorkItem(
+				overdue ? MyWorkSectionKind.Exceptions : MyWorkSectionKind.NeedsMyAction,
+				MyWorkItemKind.ServiceOrder,
+				value.Id,
+				value.OrderNumber,
+				$"Service order for {value.CaseNumber}",
+				value.CustomerName,
+				value.Status.ToString(),
+				null,
+				value.PlannedEndAtUtc?.ToLocalTime(),
+				null,
+				overdue ? MyWorkPriority.High : MyWorkPriority.Normal,
+				ShellRoutes.Service.Value,
+				"Open",
+				value.AssignedOwnerUserId));
+		}
+		return result;
+	}
+
+	private static MyWorkPriority MapPriority(ServiceCasePriority value) => value switch
+	{
+		ServiceCasePriority.Low => MyWorkPriority.Low,
+		ServiceCasePriority.Normal => MyWorkPriority.Normal,
+		ServiceCasePriority.High => MyWorkPriority.High,
+		ServiceCasePriority.Critical => MyWorkPriority.Critical,
+		_ => MyWorkPriority.Normal
+	};
+}

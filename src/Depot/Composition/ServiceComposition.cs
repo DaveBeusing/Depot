@@ -109,7 +109,8 @@ internal sealed class ServiceComposition
 			new PayablesMyWorkProvider(AccountsPayable, repositories.MyWork, Authorization, ApprovalPolicies),
 			new BankingMyWorkProvider(Banking, Authorization, ApprovalPolicies),
 			new BudgetingMyWorkProvider(Budgeting, ApprovalPolicies),
-			new ProjectAccountingMyWorkProvider(ProjectAccounting)
+			new ProjectAccountingMyWorkProvider(ProjectAccounting),
+			new ServiceManagementMyWorkProvider(ServiceManagement)
 		]);
 		CommercialRoleCenters = new CommercialRoleCenterService(
 			Authorization,
