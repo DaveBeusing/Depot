@@ -306,11 +306,18 @@ public sealed class ApprovalPolicyRepository : DatabaseRepository
 		Parameter("$CreatedAtUtc", Iso(instance.CreatedAtUtc))
 	];
 
+	private static Guid ReadGuid(DbDataReader reader, int ordinal)
+	{
+		var value = reader.GetValue(ordinal);
+		if (value is Guid guid) return guid;
+		return Guid.Parse(Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty);
+	}
+
 	private static ApprovalPolicy ReadPolicy(DbDataReader reader)
 	{
 		var policy = JsonSerializer.Deserialize<ApprovalPolicy>(reader.GetString(9), SerializerOptions)
 			?? throw new InvalidOperationException("Persisted approval policy JSON is invalid.");
-		policy.Id = Guid.Parse(reader.GetString(0));
+		policy.Id = ReadGuid(reader, 0);
 		policy.Name = reader.GetString(1);
 		policy.Description = reader.IsDBNull(2) ? null : reader.GetString(2);
 		policy.SubjectKind = (ApprovalSubjectKind)Convert.ToInt32(reader.GetValue(3), CultureInfo.InvariantCulture);
@@ -334,10 +341,10 @@ public sealed class ApprovalPolicyRepository : DatabaseRepository
 			?? throw new InvalidOperationException("Persisted approval snapshot JSON is invalid.");
 		return new ApprovalInstance
 		{
-			Id = Guid.Parse(reader.GetString(0)),
+			Id = ReadGuid(reader, 0),
 			SubjectKind = (ApprovalSubjectKind)Convert.ToInt32(reader.GetValue(1), CultureInfo.InvariantCulture),
 			SubjectId = reader.GetString(2),
-			PolicyId = Guid.Parse(reader.GetString(3)),
+			PolicyId = ReadGuid(reader, 3),
 			PolicyVersion = Convert.ToInt32(reader.GetValue(4), CultureInfo.InvariantCulture),
 			PolicyName = reader.GetString(5),
 			Snapshot = snapshot,
@@ -350,8 +357,8 @@ public sealed class ApprovalPolicyRepository : DatabaseRepository
 
 	private static ApprovalDecisionEvidence ReadDecision(DbDataReader reader) => new()
 	{
-		Id = Guid.Parse(reader.GetString(0)),
-		InstanceId = Guid.Parse(reader.GetString(1)),
+		Id = ReadGuid(reader, 0),
+		InstanceId = ReadGuid(reader, 1),
 		StageOrder = Convert.ToInt32(reader.GetValue(2), CultureInfo.InvariantCulture),
 		Decision = (ApprovalDecisionKind)Convert.ToInt32(reader.GetValue(3), CultureInfo.InvariantCulture),
 		UserId = Convert.ToInt64(reader.GetValue(4), CultureInfo.InvariantCulture),
@@ -362,7 +369,7 @@ public sealed class ApprovalPolicyRepository : DatabaseRepository
 
 	private static ApprovalDelegation ReadDelegation(DbDataReader reader) => new()
 	{
-		Id = Guid.Parse(reader.GetString(0)),
+		Id = ReadGuid(reader, 0),
 		FromUserId = Convert.ToInt64(reader.GetValue(1), CultureInfo.InvariantCulture),
 		ToUserId = Convert.ToInt64(reader.GetValue(2), CultureInfo.InvariantCulture),
 		SubjectKind = reader.IsDBNull(3) ? null : (ApprovalSubjectKind)Convert.ToInt32(reader.GetValue(3), CultureInfo.InvariantCulture),
