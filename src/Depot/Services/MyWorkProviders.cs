@@ -649,7 +649,7 @@ internal sealed class ServiceManagementMyWorkProvider(ServiceManagementService s
 				value.DueAtUtc?.ToLocalTime(),
 				value.CreatedAtUtc.Date < query.NowUtc.Date ? (query.NowUtc.Date - value.CreatedAtUtc.Date).Days : null,
 				MapPriority(value.Priority),
-				ShellRoutes.Service.Value,
+				"service",
 				"Open",
 				value.OwnerUserId,
 				value.ResolvedAtUtc));
@@ -669,7 +669,7 @@ internal sealed class ServiceManagementMyWorkProvider(ServiceManagementService s
 				value.PlannedEndAtUtc?.ToLocalTime(),
 				null,
 				overdue ? MyWorkPriority.High : MyWorkPriority.Normal,
-				ShellRoutes.Service.Value,
+				"service",
 				"Open",
 				value.AssignedOwnerUserId));
 		}

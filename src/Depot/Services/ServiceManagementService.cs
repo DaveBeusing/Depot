@@ -77,7 +77,7 @@ public sealed class ServiceManagementService
 			if(await _service.UpdateCaseAsync(tx,changed,before.Version,ct)!=1)throw new ConcurrencyConflictException("service case");
 			var after=await _service.GetCaseAsync(tx,before.Id,ct)??throw new InvalidOperationException("Service case could not be reloaded.");
 			await _auditEntries.CreateAsync(tx,_audit.CreateUpdatedEntry(after.Id,before,after),ct);
-			if(before.OwnerUserId!=after.OwnerUserId&&after.OwnerUserId is{} owner&&owner!=user.Id)notifyOwner=owner;
+			if(before.OwnerUserId!=after.OwnerUserId&&after.OwnerUserId is{} reassignedOwner&&reassignedOwner!=user.Id)notifyOwner=reassignedOwner;
 			return after;
 		},token);
 		if(notifyOwner is{} recipient)await NotifyAssignmentAsync(result,recipient,user.Id,token);
@@ -187,7 +187,7 @@ public sealed class ServiceManagementService
 		{
 			var order=await _service.GetOrderAsync(tx,orderId,ct)??throw new InvalidOperationException("Service order was not found.");EnsureOrderMutable(order);
 			if(await _service.DeleteWorkLineAsync(tx,lineId,orderId,version,ct)!=1)throw new ConcurrencyConflictException("service work line");
-			await _auditEntries.CreateAsync(tx,_audit.CreateActionEntry(lineId,"Deleted",new{ServiceOrderId=orderId,Version=version},new{ServiceOrderId=orderId,DeletedBy=user.Id}),ct);
+			var beforeEvidence=new{ServiceOrderId=orderId,Version=version,DeletedBy=(long?)null};var afterEvidence=new{ServiceOrderId=orderId,Version=version,DeletedBy=(long?)user.Id};await _auditEntries.CreateAsync(tx,_audit.CreateActionEntry(lineId,"Deleted",beforeEvidence,afterEvidence),ct);
 		},token);
 	}
 
@@ -244,7 +244,14 @@ public sealed class ServiceManagementService
 			var customer=await _customers.GetByIdAsync(tx,current.CustomerId,ct)??throw new InvalidOperationException("Customer was not found.");
 			if(!customer.IsActive)throw new InvalidOperationException("Inactive customers cannot receive service invoice drafts.");
 			var lines=new List<SalesInvoiceLine>();var lineNumber=1;
-			foreach(var line in billableWork)lines.Add(new SalesInvoiceLine{LineNumber=lineNumber++,PartNumber="SERVICE",Description=line.Description,Quantity=line.Quantity,UnitPrice=line.UnitPrice,DiscountPercent=0m,TaxRate=line.TaxRate,TaxCategoryCode=line.TaxRate==0m?ElectronicInvoiceTaxCategories.ZeroRated:ElectronicInvoiceTaxCategories.StandardRated});
+			foreach(var line in billableWork)
+			{
+				var wholeQuantity=line.Quantity==decimal.Truncate(line.Quantity)&&line.Quantity<=int.MaxValue;
+				var invoiceQuantity=wholeQuantity?(int)line.Quantity:1;
+				var invoiceUnitPrice=wholeQuantity?line.UnitPrice:line.Quantity*line.UnitPrice;
+				var invoiceDescription=wholeQuantity?line.Description:$"{line.Description} ({line.Quantity:0.###} × {line.UnitPrice:0.00})";
+				lines.Add(new SalesInvoiceLine{LineNumber=lineNumber++,PartNumber="SERVICE",Description=invoiceDescription,Quantity=invoiceQuantity,UnitPrice=invoiceUnitPrice,DiscountPercent=0m,TaxRate=line.TaxRate,TaxCategoryCode=line.TaxRate==0m?ElectronicInvoiceTaxCategories.ZeroRated:ElectronicInvoiceTaxCategories.StandardRated});
+			}
 			foreach(var part in billableParts)lines.Add(new SalesInvoiceLine{LineNumber=lineNumber++,PartNumber=part.PartNumber,Description=part.Description,Quantity=part.Quantity,UnitPrice=part.UnitPrice,DiscountPercent=0m,TaxRate=part.TaxRate,TaxCategoryCode=part.TaxRate==0m?ElectronicInvoiceTaxCategories.ZeroRated:ElectronicInvoiceTaxCategories.StandardRated});
 			var invoice=await _invoices.CreateDirectDraftAsync(tx,new SalesInvoice{CustomerId=current.CustomerId,InvoiceDate=DateTime.Today,DueDate=DateTime.Today.AddDays(customer.PaymentTermsDays),Currency=customer.Currency,CustomerReference=current.OrderNumber,BillingAddress=customer.BillingAddress,Notes=$"Service order {current.OrderNumber} / case {current.CaseNumber}.",Lines=lines},ct);
 			var linked=current with{SalesInvoiceId=invoice.Id,UpdatedAtUtc=DateTime.UtcNow,UpdatedByUserId=user.Id};

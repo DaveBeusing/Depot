@@ -3,6 +3,7 @@
 
 using System.Collections.ObjectModel;
 using System.Globalization;
+using System.Runtime.CompilerServices;
 
 using Depot.Commands;
 using Depot.Models;
@@ -277,5 +278,13 @@ public sealed class ServiceManagementViewModel : BaseViewModel, IDisposable
 	private static DateTime? ToUtcStart(DateTime? value)=>value is null?null:DateTime.SpecifyKind(value.Value.Date,DateTimeKind.Local).ToUniversalTime();
 	private static DateTime? ToUtcEndOfDay(DateTime? value)=>value is null?null:DateTime.SpecifyKind(value.Value.Date.AddDays(1).AddTicks(-1),DateTimeKind.Local).ToUniversalTime();
 	private static void Replace<T>(ObservableCollection<T> target,IEnumerable<T> source){target.Clear();foreach(var item in source)target.Add(item);}
+	private bool Set<T>(ref T field,T value,[CallerMemberName] string? propertyName=null)
+	{
+		if(EqualityComparer<T>.Default.Equals(field,value))return false;
+		field=value;
+		OnPropertyChanged(propertyName);
+		return true;
+	}
+
 	public void Dispose(){if(_disposed)return;_disposed=true;CaseAttachments.Dispose();OrderAttachments.Dispose();foreach(var command in new IDisposable[]{RefreshCommand,SaveCaseCommand,OpenCaseCommand,StartCaseCommand,WaitCaseCommand,ResolveCaseCommand,CloseCaseCommand,CancelCaseCommand,ReopenCaseCommand,CreateOrderCommand,SaveOrderCommand,StartOrderCommand,CancelOrderCommand,CompleteOrderCommand,AddWorkLineCommand,RemoveWorkLineCommand,ConsumePartCommand,ReturnPartCommand,GenerateInvoiceCommand})command.Dispose();}
 }
