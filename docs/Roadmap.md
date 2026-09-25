@@ -234,3 +234,12 @@ Inventory replenishment suggestions now consume authoritative stock, reservation
 - [x] provider-neutral feature migration and real-provider provisioning acceptance
 
 Complex construction accounting, percentage-of-completion revenue recognition, payroll/timekeeping, resource scheduling, full PSA and a separate project billing engine remain outside this foundation.
+
+
+## Recurring commercial agreements
+
+- [x] Provider-neutral subscription contract persistence and deterministic billing schedules.
+- [x] Fixed-price snapshot and controlled reprice-at-billing policies with source evidence.
+- [x] Explicit, idempotent Sales Invoice draft generation through the existing invoice authority.
+- [x] Contract lifecycle, My Work, Business Attachments, Help and Sales workspace integration.
+- [ ] Usage/metered billing, revenue recognition and automatic payment collection remain outside the current recurring-billing scope.

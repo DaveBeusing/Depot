@@ -6,7 +6,7 @@ Updated: 2026-09-19
 
 - Application: **0.15.x-preview**
 - Core database schema: **30**
-- Sales feature schema: **15**
+- Sales feature schema: **16**
 - Finance feature schema: **12**
 - User Sessions feature schema: **3**
 - Security Events feature schema: **3**
@@ -14,9 +14,9 @@ Updated: 2026-09-19
 - Document Templates feature schema: **1**
 - Enterprise Identity feature schema: **2**
 - Approval Policies feature schema: **1**
-- Business Attachments feature schema: **2**
+- Business Attachments feature schema: **3**
 - Procurement Sourcing feature schema: **1**
-- Help manifest: **1.33**
+- Help manifest: **1.34**
 
 Application, Core database and feature-schema versions are independent compatibility dimensions. `Directory.Build.props` is the authoritative source for the exact application patch/version; long-lived documentation records the development line rather than duplicating the moving patch number.
 
@@ -71,9 +71,13 @@ Sales schema **14** introduced immutable ZUGFeRD 2.5.2 / Factur-X 1.09.2 hybrid 
 
 ### Sales schema 15
 
-Sales schema **15** is the current Sales persistence baseline. It adds provider-neutral `SalesLeads`, `SalesOpportunityStages`, `SalesOpportunities` and `SalesActivities` persistence plus bounded owner/status/stage/due-date/search indexes. Lead conversion retains Customer/Opportunity linkage and mutable CRM records use optimistic versions. Core schema remains **30**.
+Sales schema **15** added provider-neutral CRM persistence. It adds provider-neutral `SalesLeads`, `SalesOpportunityStages`, `SalesOpportunities` and `SalesActivities` persistence plus bounded owner/status/stage/due-date/search indexes. Lead conversion retains Customer/Opportunity linkage and mutable CRM records use optimistic versions. Core schema remains **30**.
 
-### Finance schema 9
+#### Sales schema 16
+
+Sales schema **16** adds provider-neutral recurring commercial contracts, immutable terms revisions, lifecycle evidence, deterministic due billing instances, pricing-source evidence and idempotent links to generated Sales Invoice drafts. Existing Sales Invoice posting, electronic-invoice, AR and GL authorities remain unchanged.
+
+## Finance schema 9
 
 Finance schema **9** introduced the combined Finance foundation, General Ledger, Accounts Receivable/Payable, Inventory Accounting, Banking, Financial Reporting and Localization persistence baseline.
 

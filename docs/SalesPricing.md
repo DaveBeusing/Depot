@@ -102,7 +102,7 @@ Preview exposes both raw and rounded prices plus the rounding adjustment.
 
 ## Schema and migration
 
-The **current Sales feature schema is 15**.
+The **current Sales feature schema is 16**.
 
 Sales schema **10** introduced Item Cost profiles/components and deterministic cost-component ordering.
 

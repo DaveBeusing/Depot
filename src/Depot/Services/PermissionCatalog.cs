@@ -7,7 +7,7 @@ public static class PermissionCatalog
 {
 	private static readonly string[] Actions =
 	[
-		"Terminate", "Reverse", "Approve", "Create", "Configure", "Manage", "Submit", "Release", "Cancel", "Convert", "Send", "Export", "Order", "Close", "Lock", "Edit", "Post", "View"
+		"Terminate", "Reverse", "Approve", "Generate", "Create", "Configure", "Manage", "Submit", "Release", "Cancel", "Convert", "Send", "Export", "Order", "Close", "Lock", "Edit", "Post", "View"
 	];
 	private static readonly IReadOnlyList<PermissionDefinition> DefinitionsValue =
 		Enum.GetValues<ApplicationPermission>()

@@ -7,9 +7,9 @@ This document identifies the documentation baseline for the current development 
 ## Current baseline
 
 - Application: `0.15.x-preview`
-- Help manifest: `1.33`
+- Help manifest: `1.34`
 - Core database schema: `30`
-- Sales feature schema: `15`
+- Sales feature schema: `16`
 - Finance feature schema: `12`
 - User Sessions feature schema: `3`
 - Security Events feature schema: `3`

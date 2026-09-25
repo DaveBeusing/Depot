@@ -39,7 +39,8 @@ public enum MyWorkItemKind
 	PurchaseRequisition = 15,
 	RequestForQuotation = 16,
 	ReplenishmentSuggestion = 17,
-	Project = 18
+	Project = 18,
+	SubscriptionBilling = 19
 }
 
 public enum MyWorkPriority

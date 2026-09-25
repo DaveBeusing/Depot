@@ -40,6 +40,7 @@ internal sealed class RepositoryComposition
 		InventoryReservations = new InventoryReservationRepository(dataAccess);
 		Shipments = new ShipmentRepository(dataAccess);
 		SalesInvoices = new SalesInvoiceRepository(dataAccess);
+		SubscriptionBilling = new SubscriptionBillingRepository(dataAccess);
 		CustomerReturns = new CustomerReturnRepository(dataAccess);
 		SalesCreditNotes = new SalesCreditNoteRepository(dataAccess);
 		FinanceGeneralLedger = new FinanceGeneralLedgerRepository(dataAccess);
@@ -110,6 +111,7 @@ internal sealed class RepositoryComposition
 	public InventoryReservationRepository InventoryReservations { get; }
 	public ShipmentRepository Shipments { get; }
 	public SalesInvoiceRepository SalesInvoices { get; }
+	public SubscriptionBillingRepository SubscriptionBilling { get; }
 	public CustomerReturnRepository CustomerReturns { get; }
 	public SalesCreditNoteRepository SalesCreditNotes { get; }
 	public FinanceGeneralLedgerRepository FinanceGeneralLedger { get; }

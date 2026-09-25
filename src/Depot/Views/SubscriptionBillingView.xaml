@@ -1,0 +1,62 @@
+<UserControl x:Class="Depot.Views.SubscriptionBillingView"
+	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:controls="clr-namespace:Depot.Controls">
+	<Grid>
+		<Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="12"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+		<controls:PageHeader Title="Subscriptions &amp; Recurring Billing" Subtitle="Manage recurring commercial agreements and create normal Sales Invoice drafts for due billing periods."/>
+		<controls:OperationPanel Grid.Row="1" ErrorText="{Binding OperationError}" HasError="{Binding HasOperationError}" IsBusy="{Binding IsBusy}" StatusText="{Binding StatusText}"/>
+		<TabControl Grid.Row="3" Style="{StaticResource AppTabControlStyle}">
+			<TabItem Header="Contracts">
+				<controls:MasterDetailGrid>
+					<controls:MasterDetailGrid.Master>
+						<Border Style="{StaticResource WorkspaceSectionStyle}">
+							<Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+								<controls:FilterBar><StackPanel><controls:SearchBox Placeholder="Search contract or customer" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"/><StackPanel Margin="0,8,0,0" Orientation="Horizontal"><Button Command="{Binding RefreshCommand}" Content="Refresh" Style="{StaticResource SecondaryButtonStyle}"/><Button Margin="{StaticResource Button.Margin}" Command="{Binding NewContractCommand}" Content="New contract" Style="{StaticResource SecondaryButtonStyle}"/></StackPanel></StackPanel></controls:FilterBar>
+								<ListBox Grid.Row="1" ItemsSource="{Binding Contracts}" SelectedItem="{Binding SelectedContract}" Style="{StaticResource MasterDataListBoxStyle}" ItemContainerStyle="{StaticResource MasterDataListBoxItemStyle}">
+									<ListBox.ItemTemplate><DataTemplate><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="{Binding ContractNumber}" FontWeight="SemiBold"/><TextBlock Text="{Binding CustomerName}" Style="{StaticResource CaptionStyle}"/></StackPanel><StackPanel Grid.Column="1"><TextBlock Text="{Binding Status}" HorizontalAlignment="Right"/><TextBlock Text="{Binding NextBillingDate, StringFormat='Next {0}'}" Style="{StaticResource CaptionStyle}" HorizontalAlignment="Right"/></StackPanel></Grid></DataTemplate></ListBox.ItemTemplate>
+								</ListBox>
+								<TextBlock Grid.Row="2" Margin="0,10,0,0" Text="Generated documents remain normal Sales Invoice drafts and use the existing posting, e-invoice, AR and GL path." TextWrapping="Wrap" Style="{StaticResource CaptionStyle}"/>
+							</Grid>
+						</Border>
+					</controls:MasterDetailGrid.Master>
+					<controls:MasterDetailGrid.Detail>
+						<Border Style="{StaticResource WorkspaceSectionStyle}">
+							<Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+								<controls:WorkflowHeader Title="{Binding ContractNumber}" Subtitle="Commercial terms, billing cadence and lifecycle evidence."/>
+								<ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"><StackPanel Margin="0,10,0,0">
+									<TextBlock Text="Customer" Style="{StaticResource FormLabelStyle}"/><ComboBox ItemsSource="{Binding Customers}" SelectedItem="{Binding SelectedCustomer}" DisplayMemberPath="Name" IsTextSearchEnabled="True" Style="{StaticResource AppComboBoxStyle}"/>
+									<Grid Margin="0,10,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="10"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="Legal entity ID" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding LegalEntityId, UpdateSourceTrigger=PropertyChanged}"/></StackPanel><StackPanel Grid.Column="2"><TextBlock Text="Currency" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding Currency, UpdateSourceTrigger=PropertyChanged}"/></StackPanel></Grid>
+									<Grid Margin="0,10,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="10"/><ColumnDefinition Width="*"/><ColumnDefinition Width="10"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="Start" Style="{StaticResource FormLabelStyle}"/><DatePicker SelectedDate="{Binding StartDate}"/></StackPanel><StackPanel Grid.Column="2"><TextBlock Text="End (optional)" Style="{StaticResource FormLabelStyle}"/><DatePicker SelectedDate="{Binding EndDate}"/></StackPanel><StackPanel Grid.Column="4"><TextBlock Text="Cadence" Style="{StaticResource FormLabelStyle}"/><ComboBox ItemsSource="{Binding Cadences}" SelectedItem="{Binding Cadence}" Style="{StaticResource AppComboBoxStyle}"/></StackPanel></Grid>
+									<TextBlock Margin="0,10,0,0" Text="Notes" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding Notes, UpdateSourceTrigger=PropertyChanged}"/>
+									<Separator Margin="0,16,0,12"/><TextBlock Text="Recurring lines" FontWeight="SemiBold"/>
+									<DataGrid Margin="0,8,0,0" ItemsSource="{Binding Lines}" SelectedItem="{Binding SelectedLine}" AutoGenerateColumns="False" Style="{StaticResource AppDataGridCompactStyle}">
+										<DataGrid.Columns><DataGridTextColumn Header="Item" Binding="{Binding PartNumber}" Width="110"/><DataGridTextColumn Header="Description" Binding="{Binding Description}" Width="*"/><DataGridTextColumn Header="Qty" Binding="{Binding Quantity}" Width="55"/><DataGridTextColumn Header="Unit price" Binding="{Binding UnitPrice}" Width="80"/><DataGridTextColumn Header="Discount %" Binding="{Binding DiscountPercent}" Width="75"/><DataGridTextColumn Header="Tax %" Binding="{Binding TaxRate}" Width="60"/><DataGridTextColumn Header="Price policy" Binding="{Binding PricePolicy}" Width="145"/></DataGrid.Columns>
+									</DataGrid>
+									<Grid Margin="0,10,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="2*"/><ColumnDefinition Width="10"/><ColumnDefinition Width="*"/><ColumnDefinition Width="10"/><ColumnDefinition Width="*"/><ColumnDefinition Width="10"/><ColumnDefinition Width="*"/><ColumnDefinition Width="10"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+										<StackPanel><TextBlock Text="Item to add" Style="{StaticResource FormLabelStyle}"/><ComboBox ItemsSource="{Binding Items}" SelectedItem="{Binding SelectedItem}" Style="{StaticResource AppComboBoxStyle}"><ComboBox.ItemTemplate><DataTemplate><TextBlock><Run Text="{Binding PartNumber}" FontWeight="SemiBold"/><Run Text=" — "/><Run Text="{Binding Description}"/></TextBlock></DataTemplate></ComboBox.ItemTemplate></ComboBox></StackPanel>
+										<StackPanel Grid.Column="2"><TextBlock Text="Qty" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding Quantity, UpdateSourceTrigger=PropertyChanged}"/></StackPanel><StackPanel Grid.Column="4"><TextBlock Text="Unit price" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding UnitPrice, UpdateSourceTrigger=PropertyChanged}"/></StackPanel><StackPanel Grid.Column="6"><TextBlock Text="Tax %" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding TaxRate, UpdateSourceTrigger=PropertyChanged}"/></StackPanel><StackPanel Grid.Column="8"><TextBlock Text="Price policy" Style="{StaticResource FormLabelStyle}"/><ComboBox ItemsSource="{Binding PricePolicies}" SelectedItem="{Binding PricePolicy}" Style="{StaticResource AppComboBoxStyle}"/></StackPanel>
+									</Grid>
+									<StackPanel Margin="0,8,0,0" Orientation="Horizontal"><Button Command="{Binding AddLineCommand}" Content="Add line" Style="{StaticResource SecondaryButtonStyle}"/><Button Margin="{StaticResource Button.Margin}" Command="{Binding RemoveLineCommand}" Content="Remove line" Style="{StaticResource SecondaryButtonStyle}"/></StackPanel>
+									<Separator Margin="0,16,0,12"/><TextBlock Text="Billing history" FontWeight="SemiBold"/>
+									<DataGrid Margin="0,8,0,0" ItemsSource="{Binding BillingHistory}" AutoGenerateColumns="False" IsReadOnly="True" Style="{StaticResource AppDataGridCompactStyle}"><DataGrid.Columns><DataGridTextColumn Header="Period start" Binding="{Binding PeriodStart}" Width="100"/><DataGridTextColumn Header="Period end" Binding="{Binding PeriodEnd}" Width="100"/><DataGridTextColumn Header="Billing date" Binding="{Binding BillingDate}" Width="100"/><DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="90"/><DataGridTextColumn Header="Invoice" Binding="{Binding SalesInvoiceNumber}" Width="120"/><DataGridTextColumn Header="Block reason" Binding="{Binding BlockReason}" Width="*"/></DataGrid.Columns></DataGrid>
+								</StackPanel></ScrollViewer>
+								<controls:WorkflowActionBar Grid.Row="2"><controls:WorkflowActionBar.SecondaryActions><WrapPanel><Button Command="{Binding ActivateCommand}" Content="Activate" Style="{StaticResource SecondaryButtonStyle}"/><Button Margin="{StaticResource Button.Margin}" Command="{Binding PauseCommand}" Content="Pause" Style="{StaticResource SecondaryButtonStyle}"/><Button Margin="{StaticResource Button.Margin}" Command="{Binding ResumeCommand}" Content="Resume" Style="{StaticResource SecondaryButtonStyle}"/><Button Margin="{StaticResource Button.Margin}" Command="{Binding CancelCommand}" Content="Cancel" Style="{StaticResource SecondaryButtonStyle}"/></WrapPanel></controls:WorkflowActionBar.SecondaryActions><controls:WorkflowActionBar.PrimaryAction><Button Command="{Binding SaveCommand}" Content="Save contract" Style="{StaticResource PrimaryButtonStyle}"/></controls:WorkflowActionBar.PrimaryAction></controls:WorkflowActionBar>
+							</Grid>
+						</Border>
+					</controls:MasterDetailGrid.Detail>
+				</controls:MasterDetailGrid>
+			</TabItem>
+			<TabItem Header="Attachments">
+				<Border Style="{StaticResource WorkspaceSectionStyle}"><controls:BusinessAttachmentPanel DataContext="{Binding Attachments}"/></Border>
+			</TabItem>
+			<TabItem Header="Due Billing">
+				<Border Style="{StaticResource WorkspaceSectionStyle}"><Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+					<controls:WorkflowHeader Title="Due billing periods" Subtitle="Materialize deterministic due periods and explicitly generate one normal Sales Invoice draft per eligible period."/>
+					<DataGrid Grid.Row="1" Margin="0,10,0,0" ItemsSource="{Binding DueBilling}" SelectedItem="{Binding SelectedBillingInstance}" AutoGenerateColumns="False" IsReadOnly="True" Style="{StaticResource AppDataGridCompactStyle}"><DataGrid.Columns><DataGridTextColumn Header="Contract" Binding="{Binding ContractNumber}" Width="125"/><DataGridTextColumn Header="Period start" Binding="{Binding PeriodStart}" Width="100"/><DataGridTextColumn Header="Period end" Binding="{Binding PeriodEnd}" Width="100"/><DataGridTextColumn Header="Billing date" Binding="{Binding BillingDate}" Width="100"/><DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="90"/><DataGridTextColumn Header="Invoice" Binding="{Binding SalesInvoiceNumber}" Width="120"/><DataGridTextColumn Header="Block reason" Binding="{Binding BlockReason}" Width="*"/></DataGrid.Columns></DataGrid>
+					<controls:WorkflowActionBar Grid.Row="2"><controls:WorkflowActionBar.SecondaryActions><Button Command="{Binding RefreshDueCommand}" Content="Calculate due periods" Style="{StaticResource SecondaryButtonStyle}"/></controls:WorkflowActionBar.SecondaryActions><controls:WorkflowActionBar.PrimaryAction><Button Command="{Binding GenerateInvoiceCommand}" Content="Generate invoice draft" Style="{StaticResource PrimaryButtonStyle}"/></controls:WorkflowActionBar.PrimaryAction></controls:WorkflowActionBar>
+				</Grid></Border>
+			</TabItem>
+		</TabControl>
+	</Grid>
+</UserControl>
