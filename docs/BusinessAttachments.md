@@ -8,7 +8,7 @@ Business Attachments provide one reusable document-management boundary for user-
 
 ## Supported records
 
-The allowlist covers Customer, Supplier, Item, Sales Quote, Sales Order, Sales Invoice, Purchase Order, Goods Receipt, Supplier/AP Document, Purchase Requisition, Request for Quotation, Supplier Quote Response, Project and Subscription Contract. Arbitrary table names are not accepted. Service-layer validation verifies the allowlisted entity kind, referenced record and the corresponding domain permission.
+The allowlist covers Customer, Supplier, Item, Sales Quote, Sales Order, Sales Invoice, Purchase Order, Goods Receipt, Supplier/AP Document, Purchase Requisition, Request for Quotation, Supplier Quote Response, Project, Subscription Contract, Service Case and Service Order. Arbitrary table names are not accepted. Service-layer validation verifies the allowlisted entity kind, referenced record and the corresponding domain permission.
 
 ## Storage and revision model
 
@@ -16,7 +16,7 @@ The allowlist covers Customer, Supplier, Item, Sales Quote, Sales Order, Sales I
 
 Replacing content creates a new immutable revision and retains earlier revision metadata/content. Current metadata includes SHA-256, byte length, file name, media type, description/category, creation identity/time, current revision, status and optimistic version. Retrieval verifies byte length and SHA-256 before returning content.
 
-The persisted contract is tracked independently as **Business Attachments feature schema 3** in `DepotFeatureVersions`. Schema 3 extends the provider-enforced entity-kind constraint through Subscription Contract while preserving existing metadata, revisions and content.
+The persisted contract is tracked independently as **Business Attachments feature schema 4** in `DepotFeatureVersions`. Schema 4 extends the provider-enforced entity-kind constraint through Service Case and Service Order while preserving existing metadata, revisions and content. Completed Service Orders and closed Service Cases reject attachment mutations so retained service evidence cannot be silently altered.
 
 ## Security and file boundary
 

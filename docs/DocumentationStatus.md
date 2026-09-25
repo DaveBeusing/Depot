@@ -7,7 +7,7 @@ This document identifies the documentation baseline for the current development 
 ## Current baseline
 
 - Application: `0.15.x-preview`
-- Help manifest: `1.34`
+- Help manifest: `1.35`
 - Core database schema: `30`
 - Sales feature schema: `16`
 - Finance feature schema: `12`
@@ -17,7 +17,10 @@ This document identifies the documentation baseline for the current development 
 - Document Templates feature schema: `1`
 - Enterprise Identity feature schema: `2`
 - Approval Policies feature schema: `1`
+- Business Attachments feature schema: `4`
 - Procurement Sourcing feature schema: `1`
+- Project Accounting feature schema: `1`
+- Service Management feature schema: `1`
 
 `Directory.Build.props` is the authoritative source for the exact application patch/version. Canonical documentation records the moving preview line as `0.15.x-preview`; exact patch numbers belong in source/release evidence, not manually duplicated baseline text.
 

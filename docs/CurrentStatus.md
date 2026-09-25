@@ -10,6 +10,12 @@ Sales feature schema **16** adds controlled recurring commercial contracts with 
 
 The Sales workspace includes subscription contract management, due billing, generated-invoice history, My Work projections, Business Attachments and contextual Help. Invoice posting, electronic invoicing, Accounts Receivable and General Ledger remain on the existing authorities; recurring billing does not auto-post or collect payment.
 
+## Service management
+
+Service Management feature schema **1** adds provider-neutral customer Service Cases and optional Service Orders with controlled lifecycle, ownership, due/overdue projection, work and parts evidence, completion evidence and optional idempotent Sales Invoice draft generation.
+
+Parts consumption and returns remain under the existing stock-movement authority, generic customer interactions remain CRM Activity responsibilities, and billing remains under the existing Sales Invoice authority. The Service workspace integrates Business Attachments, My Work and contextual Help without introducing field routing, GPS tracking, payroll/timekeeping, warranty accounting or automatic invoice posting.
+
 ## Repository governance
 
 Repository governance defines five stable aggregate GitHub Actions checks for `master`:
@@ -124,10 +130,10 @@ PR #56 then repaired CI execution boundaries without changing runtime behavior o
 - Document Templates feature schema: **1**
 - Enterprise Identity feature schema: **2**
 - Approval Policies feature schema: **1**
-- Business Attachments feature schema: **2**
+- Business Attachments feature schema: **4**
 - Procurement Sourcing feature schema: **1**
 - Project Accounting feature schema: **1**
-- Help manifest: **1.34**
+- Help manifest: **1.35**
 
 `Directory.Build.props` is authoritative for the exact Depot application patch/version; `src/DepotManager/DepotManager.Version.props` is authoritative for DepotManager. Schema migration constants and `src/Depot/Help/manifest.json` are authoritative for the remaining baseline values. Every repository commit increments `DepotVersionPatch`.
 

@@ -109,3 +109,10 @@ The broad Purchasing system role receives the operational requisition/sourcing p
 Project capability is separated into `Projects.View`, `Projects.Manage`, `ProjectAttributions.Manage` and `ProjectFinancials.View`. Project management does not grant Finance posting authority, and financial project analysis does not grant permission to alter General Ledger or Finance Budgeting evidence.
 
 Source attribution remains subject to both the project permission and the applicable source-domain permission enforced by `ProjectAccountingService`. UI visibility is not an authorization boundary.
+
+
+## Service management responsibilities
+
+The broad **Sales User** role can view and manage Service Cases. **Sales Manager** additionally manages and completes Service Orders. **Finance** can view service evidence and generate eligible service invoice drafts, while the existing Sales Invoice create permission remains independently required by the service boundary.
+
+The capability is separated into `ServiceManagement.View`, `ServiceCases.Manage`, `ServiceOrders.Manage`, `ServiceOrders.Close` and `ServiceBilling.Generate`. Custom roles may compose these authorities deliberately; UI visibility never replaces service-layer authorization.

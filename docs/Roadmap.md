@@ -243,3 +243,17 @@ Complex construction accounting, percentage-of-completion revenue recognition, p
 - [x] Explicit, idempotent Sales Invoice draft generation through the existing invoice authority.
 - [x] Contract lifecycle, My Work, Business Attachments, Help and Sales workspace integration.
 - [ ] Usage/metered billing, revenue recognition and automatic payment collection remain outside the current recurring-billing scope.
+
+
+## Customer service management
+
+- [x] provider-neutral Service Case lifecycle with ownership, priority, due target and optimistic concurrency
+- [x] explicit CRM boundary: generic interactions remain Sales CRM Activities while service history retains lifecycle evidence
+- [x] optional Service Order for operational work, parts and completion evidence
+- [x] parts consumption/return through the existing stock-movement authority
+- [x] bounded billable/non-billable service work evidence without payroll/timekeeping
+- [x] immutable completion evidence and attachment protection after completion/closure
+- [x] idempotent Sales Invoice draft generation through the existing invoice authority
+- [x] service permissions, assignment notifications, My Work overdue projection, workspace, contextual Help and provider acceptance
+
+Field-service route optimization, technician GPS tracking, warranty accounting, IoT telemetry, customer portals and automatic invoice posting remain outside this bounded capability.
