@@ -1,0 +1,75 @@
+<UserControl x:Class="Depot.Views.ServiceManagementView" AutomationProperties.Name="Service management workspace"
+	xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+	xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+	xmlns:controls="clr-namespace:Depot.Controls">
+	<Grid>
+		<Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+		<controls:PageHeader Title="Service" Subtitle="Customer cases, controlled service execution, work and parts evidence, completion and billing.">
+			<controls:PageHeader.Actions><StackPanel Orientation="Horizontal"><Button Command="{Binding NewCaseCommand}" Content="New case" Style="{StaticResource SecondaryButtonStyle}"/><Button Margin="6,0,0,0" Command="{Binding RefreshCommand}" Content="Refresh" Style="{StaticResource SecondaryButtonStyle}"/></StackPanel></controls:PageHeader.Actions>
+		</controls:PageHeader>
+		<controls:OperationPanel Grid.Row="1" ErrorText="{Binding OperationError}" HasError="{Binding HasOperationError}" IsBusy="{Binding IsBusy}" StatusText="{Binding StatusText}"/>
+		<Grid Grid.Row="2" Margin="8">
+			<Grid.ColumnDefinitions><ColumnDefinition Width="2*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="3*"/></Grid.ColumnDefinitions>
+			<DataGrid ItemsSource="{Binding Cases}" SelectedItem="{Binding SelectedCase}" AutoGenerateColumns="False" IsReadOnly="True" Style="{StaticResource AppDataGridCompactStyle}">
+				<DataGrid.Columns>
+					<DataGridTextColumn Header="Case" Binding="{Binding CaseNumber}" Width="105"/>
+					<DataGridTextColumn Header="Customer" Binding="{Binding CustomerName}" Width="*"/>
+					<DataGridTextColumn Header="Subject" Binding="{Binding Subject}" Width="2*"/>
+					<DataGridTextColumn Header="Priority" Binding="{Binding Priority}" Width="85"/>
+					<DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="95"/>
+					<DataGridTextColumn Header="Due" Binding="{Binding DueAtUtc,StringFormat=d}" Width="95"/>
+				</DataGrid.Columns>
+			</DataGrid>
+			<TabControl Grid.Column="2" Style="{StaticResource AppTabControlStyle}">
+				<TabItem Header="Case"><ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="8">
+					<TextBlock Text="Case master" Style="{StaticResource WorkspaceSectionTitleStyle}"/>
+					<TextBlock Margin="0,8,0,0" Text="Customer" Style="{StaticResource FormLabelStyle}"/><ComboBox ItemsSource="{Binding Customers}" SelectedItem="{Binding SelectedCustomer}" DisplayMemberPath="Name"/>
+					<TextBlock Margin="0,8,0,0" Text="Contact" Style="{StaticResource FormLabelStyle}"/><ComboBox ItemsSource="{Binding Contacts}" SelectedItem="{Binding SelectedContact}" DisplayMemberPath="Name"/>
+					<TextBlock Margin="0,8,0,0" Text="Subject" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding Subject,UpdateSourceTrigger=PropertyChanged}"/>
+					<TextBlock Margin="0,8,0,0" Text="Description" Style="{StaticResource FormLabelStyle}"/><TextBox Text="{Binding Description,UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" MinHeight="70" TextWrapping="Wrap"/>
+					<Grid Margin="0,8,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="8"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+						<StackPanel><TextBlock Text="Priority" Style="{StaticResource FormLabelStyle}"/><ComboBox ItemsSource="{Binding Priorities}" SelectedItem="{Binding Priority}"/></StackPanel>
+						<StackPanel Grid.Column="2"><TextBlock Text="Due date" Style="{StaticResource FormLabelStyle}"/><DatePicker SelectedDate="{Binding DueDate}"/></StackPanel>
+					</Grid>
+					<TextBlock Margin="0,8,0,0" Text="Category" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding Category,UpdateSourceTrigger=PropertyChanged}"/>
+					<TextBlock Margin="0,8,0,0" Text="Owner user ID" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding OwnerUserId,UpdateSourceTrigger=PropertyChanged}"/>
+					<Button Margin="0,12,0,0" Command="{Binding SaveCaseCommand}" Content="Save case" HorizontalAlignment="Left" Style="{StaticResource PrimaryButtonStyle}"/>
+					<TextBlock Margin="0,16,0,0" Text="Lifecycle note / resolution" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding TransitionNote,UpdateSourceTrigger=PropertyChanged}"/>
+					<WrapPanel Margin="0,8,0,0">
+						<Button Command="{Binding OpenCaseCommand}" Content="Open" Style="{StaticResource SecondaryButtonStyle}"/><Button Margin="6,0,0,0" Command="{Binding StartCaseCommand}" Content="Start" Style="{StaticResource SecondaryButtonStyle}"/><Button Margin="6,0,0,0" Command="{Binding WaitCaseCommand}" Content="Wait" Style="{StaticResource SecondaryButtonStyle}"/><Button Margin="6,0,0,0" Command="{Binding ResolveCaseCommand}" Content="Resolve" Style="{StaticResource PrimaryButtonStyle}"/><Button Margin="6,0,0,0" Command="{Binding CloseCaseCommand}" Content="Close" Style="{StaticResource SecondaryButtonStyle}"/><Button Margin="6,0,0,0" Command="{Binding ReopenCaseCommand}" Content="Reopen" Style="{StaticResource SecondaryButtonStyle}"/><Button Margin="6,0,0,0" Command="{Binding CancelCaseCommand}" Content="Cancel" Style="{StaticResource DangerButtonStyle}"/>
+					</WrapPanel>
+				</StackPanel></ScrollViewer></TabItem>
+				<TabItem Header="History"><DataGrid Margin="8" ItemsSource="{Binding History}" AutoGenerateColumns="False" IsReadOnly="True" Style="{StaticResource AppDataGridCompactStyle}"><DataGrid.Columns><DataGridTextColumn Header="Time" Binding="{Binding CreatedAtUtc,StringFormat=g}" Width="130"/><DataGridTextColumn Header="From" Binding="{Binding PreviousStatus}" Width="95"/><DataGridTextColumn Header="To" Binding="{Binding Status}" Width="95"/><DataGridTextColumn Header="Evidence" Binding="{Binding Note}" Width="*"/></DataGrid.Columns></DataGrid></TabItem>
+				<TabItem Header="Service order"><ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="8">
+					<TextBlock Text="{Binding SelectedOrder.OrderNumber,StringFormat=Order: {0},TargetNullValue=No service order yet}" Style="{StaticResource WorkspaceSectionTitleStyle}"/>
+					<TextBlock Margin="0,8,0,0" Text="Assigned owner user ID" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding OrderOwnerUserId,UpdateSourceTrigger=PropertyChanged}"/>
+					<TextBlock Margin="0,8,0,0" Text="Serviced item ID (optional)" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding ServicedItemId,UpdateSourceTrigger=PropertyChanged}"/>
+					<TextBlock Margin="0,8,0,0" Text="Serviced inventory/location (optional)" Style="{StaticResource FormLabelStyle}"/><ComboBox ItemsSource="{Binding PartInventory}" SelectedItem="{Binding ServicedInventory}"><ComboBox.ItemTemplate><DataTemplate><TextBlock><Run Text="{Binding PartNumber}"/><Run Text=" · "/><Run Text="{Binding WarehouseName}"/><Run Text=" / "/><Run Text="{Binding LocationName}"/></TextBlock></DataTemplate></ComboBox.ItemTemplate></ComboBox>
+					<TextBlock Margin="0,8,0,0" Text="Serial / lot reference" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding SerialLotReference,UpdateSourceTrigger=PropertyChanged}"/>
+					<Grid Margin="0,8,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="8"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="Planned start" Style="{StaticResource FormLabelStyle}"/><DatePicker SelectedDate="{Binding PlannedStartDate}"/></StackPanel><StackPanel Grid.Column="2"><TextBlock Text="Planned end" Style="{StaticResource FormLabelStyle}"/><DatePicker SelectedDate="{Binding PlannedEndDate}"/></StackPanel></Grid>
+					<WrapPanel Margin="0,12,0,0"><Button Command="{Binding CreateOrderCommand}" Content="Create order" Style="{StaticResource PrimaryButtonStyle}"/><Button Margin="6,0,0,0" Command="{Binding SaveOrderCommand}" Content="Save" Style="{StaticResource SecondaryButtonStyle}"/><Button Margin="6,0,0,0" Command="{Binding StartOrderCommand}" Content="Start" Style="{StaticResource SecondaryButtonStyle}"/><Button Margin="6,0,0,0" Command="{Binding CancelOrderCommand}" Content="Cancel" Style="{StaticResource DangerButtonStyle}"/></WrapPanel>
+					<TextBlock Margin="0,16,0,0" Text="Completion notes" Style="{StaticResource FormLabelStyle}"/><TextBox Text="{Binding CompletionNotes,UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" MinHeight="70" TextWrapping="Wrap"/>
+					<WrapPanel Margin="0,8,0,0"><Button Command="{Binding CompleteOrderCommand}" Content="Complete service" Style="{StaticResource PrimaryButtonStyle}"/><Button Margin="6,0,0,0" Command="{Binding GenerateInvoiceCommand}" Content="Create invoice draft" Style="{StaticResource SecondaryButtonStyle}"/></WrapPanel>
+					<TextBlock Margin="0,12,0,0" Text="{Binding SelectedOrder.SalesInvoiceNumber,StringFormat=Invoice: {0},TargetNullValue=No invoice draft created}" />
+				</StackPanel></ScrollViewer></TabItem>
+				<TabItem Header="Work &amp; parts"><ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="8">
+					<TextBlock Text="Work evidence" Style="{StaticResource WorkspaceSectionTitleStyle}"/>
+					<DataGrid Margin="0,8,0,0" MaxHeight="180" ItemsSource="{Binding WorkLines}" SelectedItem="{Binding SelectedWorkLine}" AutoGenerateColumns="False" IsReadOnly="True" Style="{StaticResource AppDataGridCompactStyle}"><DataGrid.Columns><DataGridTextColumn Header="Description" Binding="{Binding Description}" Width="*"/><DataGridTextColumn Header="Qty / h" Binding="{Binding Quantity,StringFormat=N2}" Width="80"/><DataGridTextColumn Header="Price" Binding="{Binding UnitPrice,StringFormat=N2}" Width="90"/><DataGridCheckBoxColumn Header="Billable" Binding="{Binding Billable}" Width="70"/></DataGrid.Columns></DataGrid>
+					<TextBlock Margin="0,8,0,0" Text="Description" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding WorkDescription,UpdateSourceTrigger=PropertyChanged}"/>
+					<Grid Margin="0,8,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="8"/><ColumnDefinition Width="*"/><ColumnDefinition Width="8"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="Quantity / hours" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding WorkQuantity}"/></StackPanel><StackPanel Grid.Column="2"><TextBlock Text="Unit price" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding WorkUnitPrice}"/></StackPanel><StackPanel Grid.Column="4"><TextBlock Text="Tax %" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding WorkTaxRate}"/></StackPanel></Grid>
+					<CheckBox Margin="0,8,0,0" Content="Billable" IsChecked="{Binding WorkBillable}"/><WrapPanel Margin="0,8,0,0"><Button Command="{Binding AddWorkLineCommand}" Content="Add work" Style="{StaticResource PrimaryButtonStyle}"/><Button Margin="6,0,0,0" Command="{Binding RemoveWorkLineCommand}" Content="Remove selected" Style="{StaticResource DangerButtonStyle}"/></WrapPanel>
+					<Separator Margin="0,16,0,16"/>
+					<TextBlock Text="Parts evidence" Style="{StaticResource WorkspaceSectionTitleStyle}"/>
+					<DataGrid Margin="0,8,0,0" MaxHeight="180" ItemsSource="{Binding Parts}" AutoGenerateColumns="False" IsReadOnly="True" Style="{StaticResource AppDataGridCompactStyle}"><DataGrid.Columns><DataGridTextColumn Header="Part" Binding="{Binding PartNumber}" Width="120"/><DataGridTextColumn Header="Description" Binding="{Binding Description}" Width="*"/><DataGridTextColumn Header="Type" Binding="{Binding MovementKind}" Width="90"/><DataGridTextColumn Header="Qty" Binding="{Binding Quantity}" Width="60"/><DataGridCheckBoxColumn Header="Billable" Binding="{Binding Billable}" Width="70"/></DataGrid.Columns></DataGrid>
+					<TextBlock Margin="0,8,0,0" Text="Inventory / location" Style="{StaticResource FormLabelStyle}"/><ComboBox ItemsSource="{Binding PartInventory}" SelectedItem="{Binding SelectedPartInventory}"><ComboBox.ItemTemplate><DataTemplate><TextBlock><Run Text="{Binding PartNumber}"/><Run Text=" · "/><Run Text="{Binding Description}"/><Run Text=" · "/><Run Text="{Binding WarehouseName}"/><Run Text=" / "/><Run Text="{Binding LocationName}"/></TextBlock></DataTemplate></ComboBox.ItemTemplate></ComboBox>
+					<Grid Margin="0,8,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="8"/><ColumnDefinition Width="*"/><ColumnDefinition Width="8"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><StackPanel><TextBlock Text="Quantity" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding PartQuantity}"/></StackPanel><StackPanel Grid.Column="2"><TextBlock Text="Commercial unit price" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding PartUnitPrice}"/></StackPanel><StackPanel Grid.Column="4"><TextBlock Text="Tax %" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding PartTaxRate}"/></StackPanel></Grid>
+					<TextBlock Margin="0,8,0,0" Text="Reason code ID (optional)" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding PartReasonCodeId}"/>
+					<CheckBox Margin="0,8,0,0" Content="Billable consumption" IsChecked="{Binding PartBillable}"/>
+					<TextBlock Margin="0,8,0,0" Text="Serial / lot allocations" Style="{StaticResource FormLabelStyle}"/><TextBox Text="{Binding TrackingText,UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" MinHeight="60"/><TextBlock Margin="0,4,0,0" Text="{Binding TrackingHint}" TextWrapping="Wrap" Style="{StaticResource CaptionStyle}"/>
+					<WrapPanel Margin="0,8,0,0"><Button Command="{Binding ConsumePartCommand}" Content="Consume part" Style="{StaticResource PrimaryButtonStyle}"/><Button Margin="6,0,0,0" Command="{Binding ReturnPartCommand}" Content="Return part" Style="{StaticResource SecondaryButtonStyle}"/></WrapPanel>
+				</StackPanel></ScrollViewer></TabItem>
+				<TabItem Header="Attachments"><TabControl Margin="8" Style="{StaticResource AppTabControlStyle}"><TabItem Header="Case"><controls:BusinessAttachmentPanel DataContext="{Binding CaseAttachments}"/></TabItem><TabItem Header="Order"><controls:BusinessAttachmentPanel DataContext="{Binding OrderAttachments}"/></TabItem></TabControl></TabItem>
+			</TabControl>
+		</Grid>
+	</Grid>
+</UserControl>
