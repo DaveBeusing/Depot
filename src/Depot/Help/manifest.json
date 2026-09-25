@@ -1,5 +1,5 @@
 {
-  "version": "1.34",
+  "version": "1.35",
   "topics": [
     {
       "id": "getting-started.first-login",
@@ -861,6 +861,28 @@
       ]
     },
     {
+      "id": "finance.budgeting",
+      "title": "Budgeting and Variance Analysis",
+      "category": "Finance",
+      "file": "finance/budgeting.md",
+      "order": 796,
+      "keywords": [
+        "budget",
+        "budgeting",
+        "variance",
+        "actual vs budget",
+        "planning",
+        "approval"
+      ],
+      "requiredPermission": "FinanceBudgeting.View",
+      "relatedTopics": [
+        "finance.foundation",
+        "finance.general-ledger",
+        "finance.reporting",
+        "administration.approval-policies"
+      ]
+    },
+    {
       "id": "finance.reporting",
       "title": "Financial Reporting",
       "category": "Finance",
@@ -891,28 +913,6 @@
         "finance.banking",
         "finance.localization",
         "administration.audit-log"
-      ]
-    },
-    {
-      "id": "finance.budgeting",
-      "title": "Budgeting and Variance Analysis",
-      "category": "Finance",
-      "file": "finance/budgeting.md",
-      "order": 796,
-      "keywords": [
-        "budget",
-        "budgeting",
-        "variance",
-        "actual vs budget",
-        "planning",
-        "approval"
-      ],
-      "requiredPermission": "FinanceBudgeting.View",
-      "relatedTopics": [
-        "finance.foundation",
-        "finance.general-ledger",
-        "finance.reporting",
-        "administration.approval-policies"
       ]
     },
     {
@@ -1187,6 +1187,29 @@
         "finance.budgeting",
         "purchasing.purchase-orders",
         "sales.orders"
+      ]
+    },
+    {
+      "id": "service.management",
+      "title": "Service Management",
+      "category": "Service",
+      "file": "service/service-management.md",
+      "order": 880,
+      "keywords": [
+        "service case",
+        "ticket",
+        "service order",
+        "repair",
+        "parts",
+        "work",
+        "completion",
+        "invoice"
+      ],
+      "requiredPermission": "ServiceManagement.View",
+      "relatedTopics": [
+        "sales.customers",
+        "inventory.overview",
+        "sales.invoices"
       ]
     },
     {

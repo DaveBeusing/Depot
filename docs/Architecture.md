@@ -144,7 +144,7 @@ Document-layout zoom, snap, resize, undo/redo and dirty-state behavior remain sp
 - Enterprise Identity feature schema: **2**
 - Procurement Sourcing feature schema: **1**
 - Application: **0.15.x-preview**
-- Help manifest: **1.34**
+- Help manifest: **1.35**
 
 `Directory.Build.props` is authoritative for the exact application patch/version. Feature schema constants remain authoritative in their migration classes; this architecture document records the compatibility baselines rather than duplicating a moving preview patch.
 
@@ -217,3 +217,12 @@ Feature schema **1** is tracked independently in `DepotFeatureVersions`. Suggest
 Project Accounting follows the standard `View → ViewModel → Service → Repository → DatabaseAccess` dependency direction and owns an independent `ProjectAccounting` feature schema for project lifecycle, shallow phases, explicit source attribution and links to existing Finance budget lines.
 
 It is not an alternate ledger. Posted General Ledger and subledger evidence remains immutable and authoritative; project actuals read that evidence, open purchasing commitments remain operational projections, and budget comparisons reuse Finance Budgeting amounts and periods. Project attribution adds analysis context without rewriting source accounting records.
+
+
+## Service management authority
+
+Service Management preserves the standard dependency direction: `View -> ViewModel -> ServiceManagementService -> ServiceManagementRepository -> DatabaseAccess`. Service Case owns the customer-service lifecycle, ownership, due target and immutable transition evidence. Generic notes, calls, reminders and follow-up tasks remain CRM Activity responsibilities; Service Case history records only service-lifecycle evidence.
+
+A Service Order is introduced only when operational work, parts or completion evidence is required. `MovementService` remains authoritative for parts consumption and return, including stock and serial/lot controls; Service Management does not mutate inventory balances directly. `SalesInvoiceService` remains authoritative for optional invoice-draft creation, and downstream posting, tax, electronic-invoice, AR and GL behavior remains unchanged. Business Attachments and My Work are reused through their existing platform boundaries.
+
+Service Management feature schema **1** is independent of Core schema 30. The persisted service contract contains cases, transition history, orders, work lines and references to authoritative stock-movement evidence.
