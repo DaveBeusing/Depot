@@ -1,6 +1,6 @@
 # Database Provider Production Support Matrix
 
-Updated: 2026-09-08
+Updated: 2026-09-25
 
 ## Purpose
 
@@ -56,6 +56,7 @@ The acceptance suite covers:
 - Business Attachments feature schema provisioning plus database-backed binary content round-trip and SHA-256 metadata persistence;
 - Procurement Sourcing feature schema provisioning plus requisition, RFQ, supplier quote comparison/selection and Purchase Order sourcing-evidence round-trip;
 - Project Accounting feature schema provisioning, feature-version verification and Projects table availability on every supported provider;
+- Production feature schema provisioning, feature-version verification and BOM/order/evidence table availability on every supported provider;
 - unavailable-connection failure followed by healthy connection-pool recovery;
 - remote database service restart followed by successful Depot re-entry;
 - provider-native backup/restore with a persisted recovery marker and post-restore Depot recognition;
@@ -123,3 +124,10 @@ Finance feature schema **12** includes the Finance Budgeting baseline plus struc
 
 Provider acceptance includes `InventoryReplenishment` feature-schema provisioning and a real-provider policy/suggestion round trip. The same deterministic policy, SupplierItem MOQ/lead-time evidence and suggestion persistence contract is exercised for SQL Server, MariaDB and MySQL in addition to SQLite regression coverage.
 
+
+
+## Production feature schema
+
+Provider acceptance includes `Production` feature-schema provisioning and verifies the production BOM, order, requirement, movement-evidence and cost-evidence tables on SQLite, SQL Server, MariaDB and MySQL. Production business regression tests additionally exercise BOM revision history, issue/completion idempotency, Stock Movement authority, deterministic cost evidence and compensating reversal on SQLite.
+
+Remote-provider support remains conditional on the normal provider gate for the exact supported server baselines; provider-neutral DDL alone is not treated as acceptance evidence.

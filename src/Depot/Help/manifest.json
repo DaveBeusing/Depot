@@ -1,5 +1,5 @@
 {
-  "version": "1.35",
+  "version": "1.36",
   "topics": [
     {
       "id": "getting-started.first-login",
@@ -1210,6 +1210,32 @@
         "sales.customers",
         "inventory.overview",
         "sales.invoices"
+      ]
+    },
+    {
+      "id": "production.assembly",
+      "title": "Light Assembly and Production Orders",
+      "category": "Production",
+      "file": "production/assembly.md",
+      "order": 890,
+      "keywords": [
+        "production",
+        "assembly",
+        "bill of material",
+        "bom",
+        "components",
+        "shortage",
+        "material issue",
+        "finished goods",
+        "cost evidence"
+      ],
+      "requiredPermission": "Production.View",
+      "relatedTopics": [
+        "inventory.overview",
+        "inventory.movements",
+        "inventory.traceability",
+        "purchasing.replenishment",
+        "finance.inventory-accounting"
       ]
     },
     {

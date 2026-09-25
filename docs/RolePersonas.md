@@ -1,6 +1,6 @@
 # Role & Persona Model
 
-Updated: 2026-09-18
+Updated: 2026-09-25
 
 ## Purpose
 
@@ -116,3 +116,12 @@ Source attribution remains subject to both the project permission and the applic
 The broad **Sales User** role can view and manage Service Cases. **Sales Manager** additionally manages and completes Service Orders. **Finance** can view service evidence and generate eligible service invoice drafts, while the existing Sales Invoice create permission remains independently required by the service boundary.
 
 The capability is separated into `ServiceManagement.View`, `ServiceCases.Manage`, `ServiceOrders.Manage`, `ServiceOrders.Close` and `ServiceBilling.Generate`. Custom roles may compose these authorities deliberately; UI visibility never replaces service-layer authorization.
+
+
+## Production responsibilities
+
+Production capability is separated into `Production.View`, `BillsOfMaterial.Manage`, `ProductionOrders.Manage`, `ProductionOrders.Issue`, `ProductionOrders.Complete` and `ProductionOrders.Reverse`.
+
+The broad **Warehouse Operator** role receives the bounded operational Production capability so warehouse staff can maintain BOMs, create/release assembly orders, issue components, complete finished goods and perform authorized compensating reversals. Production permissions do not replace the independently enforced Stock Movement permissions required by issue, receipt or reversal operations. Shortage handoff also remains subject to the existing Replenishment authority.
+
+Custom roles may separate BOM engineering/maintenance from order execution. UI visibility remains a convenience boundary only; `ProductionService` and the reused Inventory/Traceability/Costing services enforce authorization independently.
