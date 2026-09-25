@@ -147,3 +147,5 @@ public sealed record ProductionShortageHandoffResult(
 	long ProductionOrderId,
 	int ShortagesEvaluated,
 	IReadOnlyList<long> ReplenishmentSuggestionIds);
+
+public sealed record ProductionCompletionResult(ProductionOrder Order, ProductionCompletionCost Cost);
