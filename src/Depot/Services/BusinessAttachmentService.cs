@@ -253,6 +253,7 @@ public sealed class BusinessAttachmentService
 		BusinessAttachmentEntityKind.PurchaseRequisition => ApplicationPermission.PurchaseRequisitionsView,
 		BusinessAttachmentEntityKind.RequestForQuotation or BusinessAttachmentEntityKind.SupplierQuoteResponse => ApplicationPermission.SupplierSourcingView,
 		BusinessAttachmentEntityKind.Project => ApplicationPermission.ProjectsView,
+		BusinessAttachmentEntityKind.SubscriptionContract => ApplicationPermission.SubscriptionContractsView,
 		_ => throw new ArgumentOutOfRangeException(nameof(entityKind))
 	};
 
@@ -270,6 +271,7 @@ public sealed class BusinessAttachmentService
 		BusinessAttachmentEntityKind.PurchaseRequisition => ApplicationPermission.PurchaseRequisitionsManage,
 		BusinessAttachmentEntityKind.RequestForQuotation or BusinessAttachmentEntityKind.SupplierQuoteResponse => ApplicationPermission.SupplierSourcingManage,
 		BusinessAttachmentEntityKind.Project => ApplicationPermission.ProjectsManage,
+		BusinessAttachmentEntityKind.SubscriptionContract => ApplicationPermission.SubscriptionContractsManage,
 		_ => throw new ArgumentOutOfRangeException(nameof(entityKind))
 	};
 

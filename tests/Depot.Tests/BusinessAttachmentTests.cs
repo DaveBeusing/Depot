@@ -80,7 +80,7 @@ public sealed class BusinessAttachmentTests : IAsyncLifetime
 
 			BusinessAttachmentSchemaMigration.Migrate(factory);
 
-			Assert.Equal(2, Convert.ToInt32(await database.ExecuteScalarAsync("SELECT Version FROM DepotFeatureVersions WHERE Name='BusinessAttachments';", CancellationToken.None)));
+			Assert.Equal(BusinessAttachmentSchemaMigration.CurrentVersion, Convert.ToInt32(await database.ExecuteScalarAsync("SELECT Version FROM DepotFeatureVersions WHERE Name='BusinessAttachments';", CancellationToken.None)));
 			Assert.Equal(1L, Convert.ToInt64(await database.ExecuteScalarAsync("SELECT COUNT(*) FROM BusinessAttachments WHERE Id=$Id;", CancellationToken.None, new DatabaseParameter("$Id", existingId))));
 			Assert.Equal(0L, Convert.ToInt64(await database.ExecuteScalarAsync("SELECT COUNT(*) FROM pragma_foreign_key_check;", CancellationToken.None)));
 
@@ -93,7 +93,7 @@ public sealed class BusinessAttachmentTests : IAsyncLifetime
 				""",
 				CancellationToken.None,
 				new DatabaseParameter("$Id", Guid.NewGuid().ToString("D")),
-				new DatabaseParameter("$EntityKind", (int)BusinessAttachmentEntityKind.Project),
+				new DatabaseParameter("$EntityKind", (int)BusinessAttachmentEntityKind.SubscriptionContract),
 				new DatabaseParameter("$Hash", new string('B', 64)));
 		}
 		finally

@@ -47,6 +47,9 @@
 					</controls:MasterDetailGrid.Detail>
 				</controls:MasterDetailGrid>
 			</TabItem>
+			<TabItem Header="Attachments">
+				<Border Style="{StaticResource WorkspaceSectionStyle}"><controls:BusinessAttachmentPanel DataContext="{Binding Attachments}"/></Border>
+			</TabItem>
 			<TabItem Header="Due Billing">
 				<Border Style="{StaticResource WorkspaceSectionStyle}"><Grid><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
 					<controls:WorkflowHeader Title="Due billing periods" Subtitle="Materialize deterministic due periods and explicitly generate one normal Sales Invoice draft per eligible period."/>

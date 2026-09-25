@@ -217,7 +217,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		_salesApprovals = new(() => new SalesApprovalsViewModel(_salesSearch.Value));
 		_salesShipping = new(() => new ShippingViewModel(_salesSearch.Value, salesServices.Packing, fileDialogService, salesServices.Documents, salesServices.Timeline, OpenWorkflowTimelineItemAsync));
 		_salesInvoices = new(() => new SalesInvoicesViewModel(_salesSearch.Value, salesServices.Invoices, fileDialogService, salesServices.Documents, salesServices.Email, salesServices.Timeline, OpenWorkflowTimelineItemAsync, businessAttachmentService));
-		_subscriptionBilling = new(() => new SubscriptionBillingViewModel(salesServices.SubscriptionBilling, salesServices.Customers, salesServices.Items));
+		_subscriptionBilling = new(() => new SubscriptionBillingViewModel(salesServices.SubscriptionBilling, salesServices.Customers, salesServices.Items, businessAttachmentService, fileDialogService));
 		_financePostingFlowDesigner = new(() => new FinancePostingFlowDesignerViewModel(financeGeneralLedgerService));
 		_financePeriodControl = new(() => new FinancePeriodControlViewModel(financeGeneralLedgerService, fileDialogService));
 		_financeReceivables = new(() => new FinanceReceivablesViewModel(financeReceivablesService));

@@ -14,6 +14,7 @@ public sealed class SubscriptionBillingViewModel : BaseViewModel, IDisposable
 	private readonly SubscriptionBillingService _service;
 	private readonly CustomerService _customers;
 	private readonly ItemService _items;
+	public BusinessAttachmentPanelViewModel Attachments { get; }
 	private SubscriptionContract? _selectedContract;
 	private SubscriptionBillingInstance? _selectedBillingInstance;
 	private Customer? _selectedCustomer;
@@ -35,11 +36,12 @@ public sealed class SubscriptionBillingViewModel : BaseViewModel, IDisposable
 	private SubscriptionPricePolicy _pricePolicy = SubscriptionPricePolicy.FixedContractPrice;
 	private bool _disposed;
 
-	public SubscriptionBillingViewModel(SubscriptionBillingService service, CustomerService customers, ItemService items)
+	public SubscriptionBillingViewModel(SubscriptionBillingService service, CustomerService customers, ItemService items, BusinessAttachmentService attachmentService, IFileDialogService fileDialogs)
 	{
 		_service = service ?? throw new ArgumentNullException(nameof(service));
 		_customers = customers ?? throw new ArgumentNullException(nameof(customers));
 		_items = items ?? throw new ArgumentNullException(nameof(items));
+		Attachments = new BusinessAttachmentPanelViewModel(attachmentService ?? throw new ArgumentNullException(nameof(attachmentService)), fileDialogs ?? throw new ArgumentNullException(nameof(fileDialogs)));
 		RefreshCommand = new AsyncRelayCommand(LoadAsync);
 		NewContractCommand = new RelayCommand(NewContract, () => _service.CanManage);
 		SaveCommand = new AsyncRelayCommand(SaveAsync, () => _service.CanManage);
@@ -118,6 +120,7 @@ public sealed class SubscriptionBillingViewModel : BaseViewModel, IDisposable
 			OnPropertyChanged();
 			if (value is null) ResetEditor(); else Apply(value);
 			_ = LoadHistoryAsync(value?.Id ?? 0, CancellationToken.None);
+			_ = Attachments.SetTargetAsync(BusinessAttachmentEntityKind.SubscriptionContract, value?.Id);
 			RaiseState();
 		}
 	}
@@ -292,6 +295,7 @@ public sealed class SubscriptionBillingViewModel : BaseViewModel, IDisposable
 	public void Dispose()
 	{
 		if (_disposed) return; _disposed = true;
+		Attachments.Dispose();
 		RefreshCommand.Dispose(); SaveCommand.Dispose(); ActivateCommand.Dispose(); PauseCommand.Dispose(); ResumeCommand.Dispose(); CancelCommand.Dispose(); RefreshDueCommand.Dispose(); GenerateInvoiceCommand.Dispose();
 	}
 }
