@@ -91,6 +91,7 @@ internal sealed class ServiceComposition
 		Roles = new RoleService(database.TransactionRunner, repositories.Roles, repositories.Audit, audit, Authorization);
 		Users = new UserService(database.TransactionRunner, repositories.Users, repositories.Roles, repositories.Audit, passwordHasher, Authorization, audit);
 		Movements = new MovementService(repositories.Items, repositories.Inventories, repositories.ReasonCodes, repositories.StockMovements, audit, movementReversals, database.TransactionRunner, repositories.Audit, ItemTraceability);
+		Production = new ProductionService(database.TransactionRunner, repositories.Production, repositories.Items, repositories.Warehouses, Movements, repositories.StockMovements, movementReversals, ItemCosts, Replenishment, repositories.Audit, audit, Authorization);
 		ServiceManagement = new ServiceManagementService(database.TransactionRunner, repositories.ServiceManagement, repositories.Customers, repositories.Audit, audit, Authorization, Notifications, Movements, SalesInvoices);
 		Stock = new StockService(repositories.Inventories, repositories.StockMovements, ItemTraceability);
 		Dashboard = new DashboardService(Stock, repositories.Dashboard, Authorization);
@@ -192,6 +193,7 @@ internal sealed class ServiceComposition
 	public PurchaseOrderApprovalService PurchaseOrderApprovals { get; }
 	public ProcurementSourcingService ProcurementSourcing { get; }
 	public ReplenishmentService Replenishment { get; }
+	public ProductionService Production { get; }
 	public PurchaseOrderHistoryService PurchaseOrderHistory { get; }
 	public GoodsReceiptService GoodsReceipts { get; }
 	public StockTransferService StockTransfers { get; }
