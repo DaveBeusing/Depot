@@ -213,7 +213,7 @@ public sealed class SubscriptionBillingViewModel : BaseViewModel, IDisposable
 				Id = source?.Id ?? 0, Version = _version, CustomerId = SelectedCustomer.Id, LegalEntityId = legalEntityId, Currency = Currency,
 				StartDate = DateOnly.FromDateTime(StartDate), EndDate = EndDate is null ? null : DateOnly.FromDateTime(EndDate.Value), Cadence = Cadence,
 				Notes = Notes, Lines = Lines.Select((line, index) => line.ToModel(index + 1)).ToArray()
-			}, cancellationToken: cancellationToken);
+			}, token: cancellationToken);
 			await LoadAsync(cancellationToken);
 			SelectedContract = Contracts.FirstOrDefault(value => value.Id == saved.Id);
 			CompleteOperation(false, "Subscription contract saved");
@@ -290,6 +290,14 @@ public sealed class SubscriptionBillingViewModel : BaseViewModel, IDisposable
 		RefreshDueCommand.RaiseCanExecuteChanged(); GenerateInvoiceCommand.RaiseCanExecuteChanged();
 	}
 
+	private bool Set<T>(ref T field, T value, [System.Runtime.CompilerServices.CallerMemberName] string? propertyName = null)
+	{
+		if (EqualityComparer<T>.Default.Equals(field, value)) return false;
+		field = value;
+		OnPropertyChanged(propertyName);
+		return true;
+	}
+
 	private static void Replace<T>(ObservableCollection<T> target, IEnumerable<T> source) { target.Clear(); foreach (var value in source) target.Add(value); }
 
 	public void Dispose()
@@ -312,6 +320,14 @@ public sealed class SubscriptionLineEditor : BaseViewModel
 	public decimal DiscountPercent { get => _discountPercent; set => Set(ref _discountPercent, value); }
 	public decimal TaxRate { get => _taxRate; set => Set(ref _taxRate, value); }
 	public SubscriptionPricePolicy PricePolicy { get => _pricePolicy; set => Set(ref _pricePolicy, value); }
+	private bool Set<T>(ref T field, T value, [System.Runtime.CompilerServices.CallerMemberName] string? propertyName = null)
+	{
+		if (EqualityComparer<T>.Default.Equals(field, value)) return false;
+		field = value;
+		OnPropertyChanged(propertyName);
+		return true;
+	}
+
 	public SubscriptionContractLine ToModel(int lineNumber) => new() { ItemId = ItemId, LineNumber = lineNumber, PartNumber = PartNumber, Description = Description, Quantity = Quantity, UnitPrice = UnitPrice, DiscountPercent = DiscountPercent, TaxRate = TaxRate, PricePolicy = PricePolicy, PriceSourceName = PricePolicy == SubscriptionPricePolicy.FixedContractPrice ? "Contract snapshot" : null };
 	public static SubscriptionLineEditor From(SubscriptionContractLine line) => new() { ItemId = line.ItemId, PartNumber = line.PartNumber, Description = line.Description, Quantity = line.Quantity, UnitPrice = line.UnitPrice, DiscountPercent = line.DiscountPercent, TaxRate = line.TaxRate, PricePolicy = line.PricePolicy };
 }
