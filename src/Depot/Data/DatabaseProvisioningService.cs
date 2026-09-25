@@ -116,6 +116,7 @@ internal static class FeatureVersionMetadataRecovery
 		TableExists(connection, provider, "SecurityEventExportTargets") &&
 		TableExists(connection, provider, "UserWorkspacePreferences") &&
 		TableExists(connection, provider, "DocumentTemplates") &&
+		TableExists(connection, provider, "ApprovalPolicies") &&
 		ColumnExists(connection, provider, "EnterpriseIdentityProviders", "MaximumAuthenticationAgeMinutes") &&
 		TableExists(connection, provider, "BusinessAttachments") &&
 		TableExists(connection, provider, "BusinessAttachmentRevisions") &&

@@ -76,7 +76,11 @@ internal static class SubscriptionBillingSchema
 					INNER JOIN sys.index_columns ic ON ic.object_id=kc.parent_object_id AND ic.index_id=kc.unique_index_id
 					INNER JOIN sys.columns c ON c.object_id=ic.object_id AND c.column_id=ic.column_id
 					WHERE kc.parent_object_id=OBJECT_ID(N'SalesInvoices') AND kc.type=N'UQ' AND c.name=N'ShipmentId';
-					IF @uq IS NOT NULL EXEC(N'ALTER TABLE SalesInvoices DROP CONSTRAINT ' + QUOTENAME(@uq));
+					IF @uq IS NOT NULL
+					BEGIN
+						DECLARE @dropShipmentConstraint nvarchar(max)=N'ALTER TABLE SalesInvoices DROP CONSTRAINT ' + QUOTENAME(@uq);
+						EXEC sys.sp_executesql @dropShipmentConstraint;
+					END;
 					ALTER TABLE SalesInvoices ALTER COLUMN SalesOrderId bigint NULL;
 					ALTER TABLE SalesInvoices ALTER COLUMN ShipmentId bigint NULL;
 					IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id=OBJECT_ID(N'SalesInvoices') AND name=N'UX_SalesInvoices_ShipmentId')
