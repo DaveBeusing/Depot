@@ -91,6 +91,30 @@ public sealed class ServiceManagementTests
 	}
 
 	[Fact]
+	public async Task FractionalWorkQuantityPreservesCommercialAmountWhenCreatingInvoiceDraft()
+	{
+		await using var context=await ProcurementTestContext.CreateSqliteAsync();
+		var fixture=CreateFixture(context);
+		var customer=await CreateCustomerAsync(context,"Fractional Work Customer");
+		var serviceCase=await fixture.Service.SaveCaseAsync(new ServiceCase
+		{
+			CustomerId=customer.Id,
+			Subject="Fractional labor billing",
+			Priority=ServiceCasePriority.Normal
+		});
+		var order=await fixture.Service.CreateServiceOrderAsync(serviceCase.Id,null,null,null,null,null,null);
+		await fixture.Service.AddWorkLineAsync(order.Id,"Remote diagnostics",1.5m,100m,true,19m);
+		var completed=await fixture.Service.CompleteServiceOrderAsync(order.Id,order.Version,"Diagnostics completed and verified.");
+
+		var generated=await fixture.Service.GenerateInvoiceDraftAsync(completed.Id);
+		var line=Assert.Single(generated.Invoice!.Lines);
+		Assert.Equal(1,line.Quantity);
+		Assert.Equal(150m,line.UnitPrice);
+		Assert.Contains("1.5",line.Description,StringComparison.Ordinal);
+		Assert.Equal(150m,line.NetAmount);
+	}
+
+	[Fact]
 	public async Task PartsUseStockMovementAuthorityAndCompletionFreezesAttachments()
 	{
 		await using var context=await ProcurementTestContext.CreateSqliteAsync();
