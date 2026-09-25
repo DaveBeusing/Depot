@@ -18,7 +18,9 @@ public enum BusinessAttachmentEntityKind
 	RequestForQuotation = 11,
 	SupplierQuoteResponse = 12,
 	Project = 13,
-	SubscriptionContract = 14
+	SubscriptionContract = 14,
+	ServiceCase = 15,
+	ServiceOrder = 16
 }
 
 public enum BusinessAttachmentStatus

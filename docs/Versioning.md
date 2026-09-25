@@ -14,9 +14,11 @@ Updated: 2026-09-19
 - Document Templates feature schema: **1**
 - Enterprise Identity feature schema: **2**
 - Approval Policies feature schema: **1**
-- Business Attachments feature schema: **3**
+- Business Attachments feature schema: **4**
 - Procurement Sourcing feature schema: **1**
-- Help manifest: **1.34**
+- Project Accounting feature schema: **1**
+- Service Management feature schema: **1**
+- Help manifest: **1.35**
 
 Application, Core database and feature-schema versions are independent compatibility dimensions. `Directory.Build.props` is the authoritative source for the exact application patch/version; long-lived documentation records the development line rather than duplicating the moving patch number.
 
@@ -186,3 +188,8 @@ Inventory Replenishment feature schema **1** introduces per-item/per-warehouse p
 Project Accounting feature schema **1** introduces provider-neutral `Projects`, shallow `ProjectPhases`, explicit `ProjectAttributions` and `ProjectBudgetLineLinks`. The migration is tracked as `ProjectAccounting` in `DepotFeatureVersions` and does not increment Core or Finance schema versions.
 
 Project budget links reference existing Finance Budgeting lines rather than duplicating planning amounts. The schema is provisioned through the authoritative database initialization path and is included in SQLite, SQL Server, MariaDB and MySQL provider acceptance.
+
+
+### Service Management schema 1
+
+Service Management schema **1** adds provider-neutral Service Case, lifecycle-history, Service Order, work-line and parts-evidence persistence. Inventory quantities remain owned by the existing stock-movement subsystem and service billing remains owned by Sales Invoice services. Core schema remains **30**.

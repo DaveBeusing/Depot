@@ -91,6 +91,7 @@ internal sealed class ServiceComposition
 		Roles = new RoleService(database.TransactionRunner, repositories.Roles, repositories.Audit, audit, Authorization);
 		Users = new UserService(database.TransactionRunner, repositories.Users, repositories.Roles, repositories.Audit, passwordHasher, Authorization, audit);
 		Movements = new MovementService(repositories.Items, repositories.Inventories, repositories.ReasonCodes, repositories.StockMovements, audit, movementReversals, database.TransactionRunner, repositories.Audit, ItemTraceability);
+		ServiceManagement = new ServiceManagementService(database.TransactionRunner, repositories.ServiceManagement, repositories.Customers, repositories.Audit, audit, Authorization, Notifications, Movements, SalesInvoices);
 		Stock = new StockService(repositories.Inventories, repositories.StockMovements, ItemTraceability);
 		Dashboard = new DashboardService(Stock, repositories.Dashboard, Authorization);
 		Reports = new ReportService(Stock, Authorization);
@@ -108,7 +109,8 @@ internal sealed class ServiceComposition
 			new PayablesMyWorkProvider(AccountsPayable, repositories.MyWork, Authorization, ApprovalPolicies),
 			new BankingMyWorkProvider(Banking, Authorization, ApprovalPolicies),
 			new BudgetingMyWorkProvider(Budgeting, ApprovalPolicies),
-			new ProjectAccountingMyWorkProvider(ProjectAccounting)
+			new ProjectAccountingMyWorkProvider(ProjectAccounting),
+			new ServiceManagementMyWorkProvider(ServiceManagement)
 		]);
 		CommercialRoleCenters = new CommercialRoleCenterService(
 			Authorization,
@@ -224,6 +226,7 @@ internal sealed class ServiceComposition
 	public UserService Users { get; }
 	public RoleService Roles { get; }
 	public MovementService Movements { get; }
+	public ServiceManagementService ServiceManagement { get; }
 	public StockService Stock { get; }
 	public DashboardService Dashboard { get; }
 	public ReportService Reports { get; }

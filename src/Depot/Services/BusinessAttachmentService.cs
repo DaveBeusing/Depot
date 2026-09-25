@@ -230,7 +230,7 @@ public sealed class BusinessAttachmentService
 	private async Task RequireMutableEntityAsync(BusinessAttachmentEntityKind entityKind, long entityId, CancellationToken cancellationToken)
 	{
 		if (!await _attachments.CanMutateEntityAsync(entityKind, entityId, cancellationToken))
-			throw new InvalidOperationException("Supplier quote evidence is immutable after award or purchase-order conversion.");
+			throw new InvalidOperationException("Attachments are immutable after the referenced business record reaches its controlled final state.");
 	}
 
 	private void RequireView(BusinessAttachmentEntityKind entityKind) =>
@@ -254,6 +254,7 @@ public sealed class BusinessAttachmentService
 		BusinessAttachmentEntityKind.RequestForQuotation or BusinessAttachmentEntityKind.SupplierQuoteResponse => ApplicationPermission.SupplierSourcingView,
 		BusinessAttachmentEntityKind.Project => ApplicationPermission.ProjectsView,
 		BusinessAttachmentEntityKind.SubscriptionContract => ApplicationPermission.SubscriptionContractsView,
+		BusinessAttachmentEntityKind.ServiceCase or BusinessAttachmentEntityKind.ServiceOrder => ApplicationPermission.ServiceManagementView,
 		_ => throw new ArgumentOutOfRangeException(nameof(entityKind))
 	};
 
@@ -272,6 +273,8 @@ public sealed class BusinessAttachmentService
 		BusinessAttachmentEntityKind.RequestForQuotation or BusinessAttachmentEntityKind.SupplierQuoteResponse => ApplicationPermission.SupplierSourcingManage,
 		BusinessAttachmentEntityKind.Project => ApplicationPermission.ProjectsManage,
 		BusinessAttachmentEntityKind.SubscriptionContract => ApplicationPermission.SubscriptionContractsManage,
+		BusinessAttachmentEntityKind.ServiceCase => ApplicationPermission.ServiceCasesManage,
+		BusinessAttachmentEntityKind.ServiceOrder => ApplicationPermission.ServiceOrdersManage,
 		_ => throw new ArgumentOutOfRangeException(nameof(entityKind))
 	};
 

@@ -73,6 +73,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 	private readonly Lazy<FinanceFixedAssetsViewModel>? _financeFixedAssets;
 	private readonly Lazy<FinanceBudgetingViewModel>? _financeBudgeting;
 	private readonly Lazy<ProjectAccountingViewModel>? _projectAccounting;
+	private readonly Lazy<ServiceManagementViewModel>? _serviceManagement;
 	private readonly Lazy<FinancePostingFlowDesignerViewModel> _financePostingFlowDesigner;
 	private readonly Lazy<FinancePeriodControlViewModel> _financePeriodControl;
 	private readonly Lazy<ReportsViewModel> _reports;
@@ -153,7 +154,8 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		ApprovalPolicyService? approvalPolicyService = null,
 		FinanceFixedAssetService? financeFixedAssetService = null,
 		FinanceBudgetingService? financeBudgetingService = null,
-		ProjectAccountingService? projectAccountingService = null)
+		ProjectAccountingService? projectAccountingService = null,
+		ServiceManagementService? serviceManagementService = null)
 	{
 		_authorization = authorizationService;
 		AdministrationNavigationItems = AdministrationViewModel.CreateNavigationItems(authorizationService, approvalPolicyService is not null);
@@ -229,6 +231,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		if(financeFixedAssetService is not null)_financeFixedAssets=new(()=>new FinanceFixedAssetsViewModel(financeFixedAssetService));
 		if(financeBudgetingService is not null)_financeBudgeting=new(()=>new FinanceBudgetingViewModel(financeBudgetingService,fileDialogService));
 		if(projectAccountingService is not null)_projectAccounting=new(()=>new ProjectAccountingViewModel(projectAccountingService, businessAttachmentService, fileDialogService));
+		if(serviceManagementService is not null)_serviceManagement=new(()=>new ServiceManagementViewModel(serviceManagementService, salesServices.Customers, businessAttachmentService, fileDialogService));
 		_reports = new(() => new ReportsViewModel(reportService, fileDialogService));
 		_import = new(() => new ImportViewModel(importService, fileDialogService));
 		_administration = new(() => new AdministrationViewModel(_import.Value, itemService, purposeService, reasonCodeService, manufacturerService, categoryService, unitOfMeasureService, packagingService, supplierCategoryService, supplierService, supplierItemService, warehouseService, storageLocationService, warehouseLayoutVisualizerService, userService, roleService, authorizationService, settingsService, connectionStatusService, databaseConnectionTester, databaseManagementService, auditLogService, userSessionAdministrationService, securityEventService, fileDialogService, applicationInformationService, approvalPolicyService, businessAttachmentService));
@@ -290,6 +293,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 	public FinanceFixedAssetsViewModel? FinanceFixedAssetsViewModel => _financeFixedAssets?.Value;
 	public ReportsViewModel ReportsViewModel => _reports.Value;
 	public ImportViewModel ImportViewModel => _import.Value;
+	public ServiceManagementViewModel? ServiceManagementViewModel => _serviceManagement?.Value;
 	public AdministrationViewModel AdministrationViewModel => _administration.Value;
 	public HelpViewModel HelpViewModel => _help.Value;
 	public NotificationCenterViewModel NotificationCenterViewModel => _notificationCenter.Value;
@@ -468,6 +472,14 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 			case MyWorkItemKind.SubscriptionBilling:
 				await this.NavigateToRouteAsync(route, cancellationToken);
 				await SubscriptionBillingViewModel.OpenBillingInstanceAsync(item.EntityId, cancellationToken);
+				break;
+			case MyWorkItemKind.ServiceCase:
+				await this.NavigateToRouteAsync(ShellRoutes.Service, cancellationToken);
+				if (_serviceManagement is not null) await _serviceManagement.Value.OpenCaseAsync(item.EntityId, cancellationToken);
+				break;
+			case MyWorkItemKind.ServiceOrder:
+				await this.NavigateToRouteAsync(ShellRoutes.Service, cancellationToken);
+				if (_serviceManagement is not null) await _serviceManagement.Value.OpenOrderAsync(item.EntityId, cancellationToken);
 				break;
 			default:
 				await this.NavigateToRouteAsync(route, cancellationToken);
@@ -700,6 +712,7 @@ public sealed class MainViewModel : BaseViewModel, IDisposable
 		AddPage(financePages, ApplicationPermission.FinancePostingProfilesView, "Posting Flow Designer", () => _financePostingFlowDesigner.Value, (viewModel, token) => viewModel.LoadAsync(token), "finance.general-ledger");
 		AddPage(financePages, ApplicationPermission.FinanceReceivablesView, "Receivables", () => _financeReceivables.Value, (viewModel, token) => viewModel.LoadAsync(token), "finance.receivables"); AddPage(financePages, ApplicationPermission.FinancePayablesView, "Payables", () => _financePayables.Value, (viewModel, token) => viewModel.LoadAsync(token), "finance.payables"); AddPage(financePages, ApplicationPermission.FinanceInventoryAccountingView, "Inventory Accounting", () => _financeInventoryAccounting.Value, (viewModel, token) => viewModel.LoadAsync(token), "finance.inventory-accounting"); AddPage(financePages, ApplicationPermission.FinanceBankingView, "Banking", () => _financeBanking.Value, (viewModel, token) => viewModel.LoadAsync(token), "finance.banking"); AddPage(financePages, ApplicationPermission.FinanceFinancialReportingView, "Financial Reporting", () => _financeFinancialReporting.Value, (viewModel, token) => viewModel.LoadAsync(token), "finance.reporting"); if(_financeFixedAssets is not null)AddPage(financePages, ApplicationPermission.FinanceFixedAssetsView, "Fixed Assets", () => _financeFixedAssets.Value, (viewModel, token) => viewModel.LoadAsync(token), "finance.fixed-assets"); if(_financeBudgeting is not null)AddPage(financePages, ApplicationPermission.FinanceBudgetingView, "Budgeting", () => _financeBudgeting.Value, (viewModel, token) => viewModel.LoadAsync(token), "finance.budgeting"); AddPage(financePages, ApplicationPermission.FinanceLocalizationView, "Localization", () => _financeLocalization.Value, (viewModel, token) => viewModel.LoadAsync(token), "finance.localization"); AddModule("Finance", Icons.Finance, "Manage receivables, payables, fixed assets, budgeting, inventory valuation, banking, financial reporting, settlements, matching, and controlled accounting workflows.", financePages);
 		if(_projectAccounting is not null) AddDirect(ApplicationPermission.ProjectsView, "Projects", Icons.Reports, () => _projectAccounting.Value, (viewModel, token) => viewModel.LoadAsync(token), "projects");
+		if(_serviceManagement is not null) AddDirect(ApplicationPermission.ServiceManagementView, "Service", Icons.Sales, () => _serviceManagement.Value, (viewModel, token) => viewModel.LoadAsync(token), "service.management");
 		var approvalPages = new List<SecondaryNavigationItem>(); AddPage(approvalPages, ApplicationPermission.PurchaseOrdersApprove, "Purchase Approvals", () => _purchaseOrderApprovals.Value, (viewModel, token) => viewModel.LoadAsync(token), "approvals.purchase"); AddPage(approvalPages, ApplicationPermission.SalesOrdersApprove, "Sales Approvals", () => _salesApprovals.Value, (viewModel, token) => viewModel.LoadAsync(token), "approvals.sales"); AddModule("Approvals", Icons.Approvals, "Review and decide pending purchase and sales approvals.", approvalPages, isPrimaryNavigationVisible: false);
 		AddDirect(ApplicationPermission.ReportsView, "Reports", Icons.Reports, () => _reports.Value, (viewModel, token) => viewModel.LoadAsync(token), "reports.overview");
 		if (HasAdministrationPages()) { var administrationPages = new List<SecondaryNavigationItem> { new("Administration", () => _administration.Value, (viewModel, token) => ((AdministrationViewModel)viewModel).ActivateAsync(token), HelpService.FallbackTopicId) }; AddModule("Administration", Icons.Administration, "Configure master data, security, connectivity, and application settings.", administrationPages, true); }

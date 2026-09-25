@@ -29,6 +29,7 @@ public static class ShellRoutes
 {
 	public static readonly ShellRoute Dashboard = new("dashboard");
 	public static readonly ShellRoute Projects = new("projects");
+	public static readonly ShellRoute Service = new("service");
 
 	public static class RoleCenters
 	{

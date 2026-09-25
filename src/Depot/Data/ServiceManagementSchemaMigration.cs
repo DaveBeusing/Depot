@@ -3,14 +3,12 @@
 
 using System.Globalization;
 
-using Depot.Models;
-
 namespace Depot.Data;
 
-public static class BusinessAttachmentSchemaMigration
+public static class ServiceManagementSchemaMigration
 {
-	public const int CurrentVersion = 4;
-	private const string FeatureName = "BusinessAttachments";
+	public const int CurrentVersion = 1;
+	private const string FeatureName = "ServiceManagement";
 
 	public static void Migrate(IDatabaseConnectionFactory connectionFactory)
 	{
@@ -18,38 +16,15 @@ public static class BusinessAttachmentSchemaMigration
 		EnsureVersionTable(connectionFactory);
 		var version = ReadVersion(connectionFactory);
 		if (version > CurrentVersion)
-			throw new InvalidOperationException($"Business-attachment schema version '{version}' is newer than the supported version '{CurrentVersion}'.");
-
+			throw new InvalidOperationException($"Service-management schema version '{version}' is newer than the supported version '{CurrentVersion}'.");
 		if (version == 0)
 		{
-			BusinessAttachmentSchema.Ensure(connectionFactory);
+			ServiceManagementSchema.Ensure(connectionFactory);
 			WriteVersion(connectionFactory, CurrentVersion);
 			version = CurrentVersion;
 		}
-
-		if (version == 1)
-		{
-			BusinessAttachmentSchema.ExpandEntityKindConstraint(connectionFactory);
-			WriteVersion(connectionFactory, 2);
-			version = 2;
-		}
-
-		if (version == 2)
-		{
-			BusinessAttachmentSchema.ExpandEntityKindConstraint(connectionFactory);
-			WriteVersion(connectionFactory, 3);
-			version = 3;
-		}
-
-		if (version == 3)
-		{
-			BusinessAttachmentSchema.ExpandEntityKindConstraint(connectionFactory);
-			WriteVersion(connectionFactory, 4);
-			version = 4;
-		}
-
 		if (version != CurrentVersion)
-			throw new InvalidOperationException($"Business-attachment schema version '{version}' is not supported. Expected '{CurrentVersion}'.");
+			throw new InvalidOperationException($"Service-management schema version '{version}' is not supported. Expected '{CurrentVersion}'.");
 	}
 
 	private static void EnsureVersionTable(IDatabaseConnectionFactory connectionFactory)
@@ -62,7 +37,7 @@ public static class BusinessAttachmentSchemaMigration
 			DatabaseProvider.Local => "CREATE TABLE IF NOT EXISTS DepotFeatureVersions (Name TEXT PRIMARY KEY, Version INTEGER NOT NULL);",
 			DatabaseProvider.SqlServer => "IF OBJECT_ID(N'DepotFeatureVersions', N'U') IS NULL CREATE TABLE DepotFeatureVersions (Name nvarchar(100) NOT NULL PRIMARY KEY, Version int NOT NULL);",
 			DatabaseProvider.MySql => "CREATE TABLE IF NOT EXISTS DepotFeatureVersions (Name VARCHAR(100) NOT NULL PRIMARY KEY, Version INT NOT NULL);",
-			_ => throw new NotSupportedException($"Business-attachment migrations are not supported for provider '{connectionFactory.Provider}'.")
+			_ => throw new NotSupportedException($"Service-management migrations are not supported for provider '{connectionFactory.Provider}'.")
 		};
 		command.ExecuteNonQuery();
 	}
@@ -87,7 +62,7 @@ public static class BusinessAttachmentSchemaMigration
 			DatabaseProvider.Local => $"INSERT INTO DepotFeatureVersions (Name, Version) VALUES ('{FeatureName}', {version}) ON CONFLICT(Name) DO UPDATE SET Version=excluded.Version;",
 			DatabaseProvider.SqlServer => $"IF EXISTS (SELECT 1 FROM DepotFeatureVersions WHERE Name=N'{FeatureName}') UPDATE DepotFeatureVersions SET Version={version} WHERE Name=N'{FeatureName}'; ELSE INSERT INTO DepotFeatureVersions (Name, Version) VALUES (N'{FeatureName}', {version});",
 			DatabaseProvider.MySql => $"INSERT INTO DepotFeatureVersions (Name, Version) VALUES ('{FeatureName}', {version}) ON DUPLICATE KEY UPDATE Version=VALUES(Version);",
-			_ => throw new NotSupportedException($"Business-attachment migrations are not supported for provider '{connectionFactory.Provider}'.")
+			_ => throw new NotSupportedException($"Service-management migrations are not supported for provider '{connectionFactory.Provider}'.")
 		};
 		command.ExecuteNonQuery();
 	}
