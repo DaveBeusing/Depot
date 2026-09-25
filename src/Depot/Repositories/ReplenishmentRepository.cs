@@ -110,6 +110,10 @@ public sealed class ReplenishmentRepository : DatabaseRepository
 			ReadPolicy,pageNumber,pageSize,cancellationToken,parameters.ToArray());
 	}
 
+
+	public Task<ReplenishmentPolicy?> GetPolicyByItemWarehouseAsync(long itemId,long warehouseId,CancellationToken cancellationToken) =>
+		Database.QuerySingleOrDefaultAsync($"SELECT {PolicyColumns} {PolicyFrom} WHERE p.ItemId=$Item AND p.WarehouseId=$Warehouse AND p.IsActive=1;",ReadPolicy,cancellationToken,Parameter("$Item",itemId),Parameter("$Warehouse",warehouseId));
+
 	public Task<ReplenishmentPolicy?> GetPolicyAsync(long id, CancellationToken cancellationToken) =>
 		Database.QuerySingleOrDefaultAsync($"SELECT {PolicyColumns} {PolicyFrom} WHERE p.Id=$Id;",ReadPolicy,cancellationToken,Parameter("$Id",id));
 

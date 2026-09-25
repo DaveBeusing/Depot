@@ -1,6 +1,6 @@
 # Versioning and schema evolution
 
-Updated: 2026-09-19
+Updated: 2026-09-25
 
 ## Current baselines
 
@@ -18,7 +18,8 @@ Updated: 2026-09-19
 - Procurement Sourcing feature schema: **1**
 - Project Accounting feature schema: **1**
 - Service Management feature schema: **1**
-- Help manifest: **1.35**
+- Production feature schema: **1**
+- Help manifest: **1.36**
 
 Application, Core database and feature-schema versions are independent compatibility dimensions. `Directory.Build.props` is the authoritative source for the exact application patch/version; long-lived documentation records the development line rather than duplicating the moving patch number.
 
@@ -193,3 +194,8 @@ Project budget links reference existing Finance Budgeting lines rather than dupl
 ### Service Management schema 1
 
 Service Management schema **1** adds provider-neutral Service Case, lifecycle-history, Service Order, work-line and parts-evidence persistence. Inventory quantities remain owned by the existing stock-movement subsystem and service billing remains owned by Sales Invoice services. Core schema remains **30**.
+
+
+### Production schema 1
+
+Production feature schema **1** introduces revisioned BOM headers/lines, assembly orders, released requirement snapshots, links to authoritative Stock Movement records and retained component-cost evidence. It is independent of Core schema 30 and is provisioned through the standard provider-neutral initialization path.

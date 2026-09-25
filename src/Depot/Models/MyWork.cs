@@ -42,7 +42,8 @@ public enum MyWorkItemKind
 	Project = 18,
 	SubscriptionBilling = 19,
 	ServiceCase = 20,
-	ServiceOrder = 21
+	ServiceOrder = 21,
+	ProductionOrder = 22
 }
 
 public enum MyWorkPriority

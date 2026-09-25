@@ -211,6 +211,16 @@ public sealed class ReplenishmentService
 		},cancellationToken);
 	}
 
+
+	public async Task<ReplenishmentSuggestion?> RecalculateItemWarehouseAsync(long itemId,long warehouseId,CancellationToken cancellationToken=default)
+	{
+		_authorization.RequirePermission(ApplicationPermission.ReplenishmentSuggestionsManage);
+		var policy=await _repository.GetPolicyByItemWarehouseAsync(itemId,warehouseId,cancellationToken);
+		if(policy is null) return null;
+		var input=await _repository.LoadRequirementInputAsync(policy.Id,cancellationToken)??throw new InvalidOperationException("Active replenishment policy could not be evaluated.");
+		return (await ApplyInputAsync(input,cancellationToken)).Suggestion;
+	}
+
 	private async Task<(ReplenishmentSuggestion? Suggestion,int Superseded)> ApplyInputAsync(ReplenishmentRequirementInput input,CancellationToken cancellationToken)
 	{
 		var snapshot=Calculate(input);

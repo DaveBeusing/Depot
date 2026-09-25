@@ -98,11 +98,18 @@ public sealed class ProviderProductionAcceptanceTests
 		Assert.Equal(FinanceInventoryAccountingSchemaMigration.CurrentVersion, Convert.ToInt32(await data.ExecuteScalarAsync("SELECT Version FROM DepotFeatureVersions WHERE Name='Finance';", CancellationToken.None), CultureInfo.InvariantCulture));
 		Assert.Equal(ProjectAccountingSchemaMigration.CurrentVersion, Convert.ToInt32(await data.ExecuteScalarAsync("SELECT Version FROM DepotFeatureVersions WHERE Name='ProjectAccounting';", CancellationToken.None), CultureInfo.InvariantCulture));
 		Assert.Equal(ServiceManagementSchemaMigration.CurrentVersion, Convert.ToInt32(await data.ExecuteScalarAsync("SELECT Version FROM DepotFeatureVersions WHERE Name='ServiceManagement';", CancellationToken.None), CultureInfo.InvariantCulture));
+		Assert.Equal(ProductionSchemaMigration.CurrentVersion, Convert.ToInt32(await data.ExecuteScalarAsync("SELECT Version FROM DepotFeatureVersions WHERE Name='Production';", CancellationToken.None), CultureInfo.InvariantCulture));
 		Assert.NotNull(await data.ExecuteScalarAsync("SELECT COUNT(*) FROM Projects;", CancellationToken.None));
 		Assert.NotNull(await data.ExecuteScalarAsync("SELECT COUNT(*) FROM ServiceCases;", CancellationToken.None));
 		Assert.NotNull(await data.ExecuteScalarAsync("SELECT COUNT(*) FROM ServiceOrders;", CancellationToken.None));
 		Assert.NotNull(await data.ExecuteScalarAsync("SELECT COUNT(*) FROM ServiceWorkLines;", CancellationToken.None));
 		Assert.NotNull(await data.ExecuteScalarAsync("SELECT COUNT(*) FROM ServicePartEvidence;", CancellationToken.None));
+		Assert.NotNull(await data.ExecuteScalarAsync("SELECT COUNT(*) FROM ProductionBillsOfMaterial;", CancellationToken.None));
+		Assert.NotNull(await data.ExecuteScalarAsync("SELECT COUNT(*) FROM ProductionBillOfMaterialLines;", CancellationToken.None));
+		Assert.NotNull(await data.ExecuteScalarAsync("SELECT COUNT(*) FROM ProductionOrders;", CancellationToken.None));
+		Assert.NotNull(await data.ExecuteScalarAsync("SELECT COUNT(*) FROM ProductionOrderRequirements;", CancellationToken.None));
+		Assert.NotNull(await data.ExecuteScalarAsync("SELECT COUNT(*) FROM ProductionMaterialMovements;", CancellationToken.None));
+		Assert.NotNull(await data.ExecuteScalarAsync("SELECT COUNT(*) FROM ProductionAssemblyCostEvidence;", CancellationToken.None));
 		Assert.True(Convert.ToInt32(await data.ExecuteScalarAsync(ReservationIndexSql(factory.Provider), CancellationToken.None), CultureInfo.InvariantCulture) > 0);
 
 		var serverVersion = Convert.ToString(await data.ExecuteScalarAsync(ServerVersionSql(factory.Provider), CancellationToken.None), CultureInfo.InvariantCulture);

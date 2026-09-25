@@ -24,6 +24,7 @@ internal static class DatabaseSchemaStateInspector
 			["BusinessAttachments"] = BusinessAttachmentSchemaMigration.CurrentVersion,
 			["ProcurementSourcing"] = ProcurementSourcingSchemaMigration.CurrentVersion,
 			["InventoryReplenishment"] = InventoryReplenishmentSchemaMigration.CurrentVersion,
+			["Production"] = ProductionSchemaMigration.CurrentVersion,
 			["ProjectAccounting"] = ProjectAccountingSchemaMigration.CurrentVersion,
 			["ServiceManagement"] = ServiceManagementSchemaMigration.CurrentVersion
 		};

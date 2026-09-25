@@ -1,6 +1,6 @@
 # Finance Architecture
 
-Updated: 2026-09-16
+Updated: 2026-09-25
 
 ## Purpose
 
@@ -129,3 +129,10 @@ Finance schema **12** extends Banking with a dedicated payment-export boundary. 
 Project Accounting is a consumer of Finance evidence, not a Finance posting authority. Project actuals are read-only projections over posted General Ledger lines reached through explicit project attribution. Project budget links reference existing `FinanceBudgetLines`; Finance Budgeting continues to own amounts, account/period granularity, version lifecycle and approval/locking semantics.
 
 Open Purchase Order commitments are intentionally not posted into Finance merely to support project analysis. They remain a separate operational projection until authoritative downstream accounting evidence exists. Project Accounting feature schema **1** is versioned independently from Finance schema **12**.
+
+
+## Production and assembly boundary
+
+Light Assembly creates operational stock movements and retained component-cost evidence, but it does not own accounting balances. Component issue and finished-goods receipt flow through the existing Inventory/Stock Movement authority; Finance Inventory Accounting and the General Ledger remain authoritative for any financial consequence of those movements.
+
+The Production feature does not create a parallel WIP or costing ledger in V1. Its retained component-cost evidence is operational traceability for the assembly completion and remains separate from posted Finance evidence.

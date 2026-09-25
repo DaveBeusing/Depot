@@ -1,6 +1,6 @@
 # Depot Architecture
 
-Updated: 2026-09-19
+Updated: 2026-09-25
 
 ## Overview
 
@@ -226,3 +226,12 @@ Service Management preserves the standard dependency direction: `View -> ViewMod
 A Service Order is introduced only when operational work, parts or completion evidence is required. `MovementService` remains authoritative for parts consumption and return, including stock and serial/lot controls; Service Management does not mutate inventory balances directly. `SalesInvoiceService` remains authoritative for optional invoice-draft creation, and downstream posting, tax, electronic-invoice, AR and GL behavior remains unchanged. Business Attachments and My Work are reused through their existing platform boundaries.
 
 Service Management feature schema **1** is independent of Core schema 30. The persisted service contract contains cases, transition history, orders, work lines and references to authoritative stock-movement evidence.
+
+
+## Light assembly and production authority
+
+Production follows the standard `View -> ViewModel -> ProductionService -> ProductionRepository -> DatabaseAccess` boundary. The Production feature schema owns revisioned BOM definitions, production-order lifecycle state, immutable released requirement snapshots, links to authoritative stock movements and retained component-cost evidence.
+
+Inventory and Stock Movements remain authoritative for physical quantities. Item Traceability remains authoritative for serial/lot validation. Item Costing remains authoritative for component cost resolution. Finance Inventory Accounting and the General Ledger remain authoritative for accounting consequences. Production therefore records operational evidence and links; it does not introduce a second inventory, costing or accounting ledger.
+
+V1 intentionally uses a bounded single-level BOM explosion. Direct and graph cycles are rejected, and release fails closed if a decimal BOM quantity cannot be represented as a positive integral Inventory base-unit requirement. Component shortages are projections and reach Purchasing only through an explicit handoff to the existing Replenishment/Purchase Requisition path.

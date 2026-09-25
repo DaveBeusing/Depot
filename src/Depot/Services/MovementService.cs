@@ -125,6 +125,39 @@ public sealed class MovementService
 		return await _movements.GetOverviewByIdAsync(fallback.Id, cancellationToken) ?? throw new InvalidOperationException($"Movement with id '{fallback.Id}' was not found.");
 	}
 
+	internal Task<StockMovement> AddWithdrawalInTransactionAsync(DatabaseTransactionContext transaction,long inventoryId,int quantity,long? reasonCodeId,string? reference,string? notes,IReadOnlyList<TrackingAllocationInput> trackingAllocations,CancellationToken cancellationToken)
+	{
+		if(quantity<=0) throw new ArgumentException("Quantity must be greater than zero.",nameof(quantity));
+		return CreateInTransactionAsync(transaction,inventoryId,StockMovementType.Withdrawal,-quantity,null,reasonCodeId,reference,notes,trackingAllocations,cancellationToken);
+	}
+
+	internal Task<StockMovement> AddCorrectionInTransactionAsync(DatabaseTransactionContext transaction,long inventoryId,int quantityDelta,long? reasonCodeId,string? reference,string? notes,IReadOnlyList<TrackingAllocationInput> trackingAllocations,CancellationToken cancellationToken)
+	{
+		if(quantityDelta==0) throw new ArgumentException("Correction quantity cannot be zero.",nameof(quantityDelta));
+		return CreateInTransactionAsync(transaction,inventoryId,StockMovementType.Correction,quantityDelta,null,reasonCodeId,reference,notes,trackingAllocations,cancellationToken);
+	}
+
+	private async Task<StockMovement> CreateInTransactionAsync(DatabaseTransactionContext transaction,long inventoryId,StockMovementType movementType,int quantity,decimal? unitPrice,long? reasonCodeId,string? reference,string? notes,IReadOnlyList<TrackingAllocationInput> trackingAllocations,CancellationToken cancellationToken)
+	{
+		_audit.RequirePermission(ApplicationPermission.StockMovementsPost);
+		if(_auditEntries is null || _traceability is null) throw new InvalidOperationException("Transactional traceable stock movement composition is unavailable.");
+		ArgumentNullException.ThrowIfNull(transaction);
+		ArgumentNullException.ThrowIfNull(trackingAllocations);
+		var inventories=await _inventories.GetByIdsForUpdateAsync(transaction,[inventoryId],cancellationToken);
+		var inventory=inventories.SingleOrDefault()??throw new InvalidOperationException($"Inventory with id '{inventoryId}' was not found.");
+		if(!inventory.IsActive) throw new InvalidOperationException("The selected inventory is inactive.");
+		var policy=await _traceability.GetPolicyAsync(transaction,inventoryId,cancellationToken);
+		ItemTraceabilityService.EnsurePhysicalStockItem(policy,"stock movement");
+		await ValidateReasonCodeAsync(transaction,reasonCodeId,cancellationToken);
+		var current=(await _movements.GetCurrentQuantitiesAsync(transaction,[inventoryId],cancellationToken)).SingleOrDefault()?.Quantity??0L;
+		if(current+quantity<0) throw new InsufficientStockException();
+		var movement=CreateMovement(inventoryId,movementType,quantity,unitPrice,reasonCodeId,reference,notes);
+		movement.Id=await _movements.CreateAsync(transaction,movement,cancellationToken);
+		await _traceability.AttachMovementAsync(transaction,movement,trackingAllocations,cancellationToken);
+		await _auditEntries.CreateAsync(transaction,_audit.CreateCreatedEntry(movement.Id,movement),cancellationToken);
+		return movement;
+	}
+
 	private static StockMovement CreateMovement(long inventoryId, StockMovementType movementType, int quantity, decimal? unitPrice, long? reasonCodeId, string? reference, string? notes) => new() { InventoryId = inventoryId, ReasonCodeId = reasonCodeId, MovementType = movementType, TimestampUtc = DateTime.UtcNow, Quantity = quantity, UnitPrice = unitPrice, Reference = string.IsNullOrWhiteSpace(reference) ? null : reference.Trim(), Notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim() };
 	private void ValidateReasonCode(long? reasonCodeId) { if (reasonCodeId is null) return; var reasonCode = _reasonCodes.GetById(reasonCodeId.Value) ?? throw new InvalidOperationException($"Reason code with id '{reasonCodeId}' was not found."); if (!reasonCode.IsActive) throw new InvalidOperationException("The selected reason code is inactive."); }
 	private async Task ValidateReasonCodeAsync(long? reasonCodeId, CancellationToken cancellationToken) { if (reasonCodeId is null) return; var reasonCode = await _reasonCodes.GetByIdAsync(reasonCodeId.Value, cancellationToken) ?? throw new InvalidOperationException($"Reason code with id '{reasonCodeId}' was not found."); if (!reasonCode.IsActive) throw new InvalidOperationException("The selected reason code is inactive."); }

@@ -50,6 +50,7 @@ public static class DatabaseProvisioningService
 		BusinessAttachmentSchemaMigration.Migrate(connectionFactory);
 		ProcurementSourcingSchemaMigration.Migrate(connectionFactory);
 		InventoryReplenishmentSchemaMigration.Migrate(connectionFactory);
+		ProductionSchemaMigration.Migrate(connectionFactory);
 		ProjectAccountingSchemaMigration.Migrate(connectionFactory);
 		ServiceManagementSchemaMigration.Migrate(connectionFactory);
 		return DatabaseProvisioningPath.FullProvisioning;
@@ -73,6 +74,7 @@ internal static class FeatureVersionMetadataRecovery
 			["BusinessAttachments"] = BusinessAttachmentSchemaMigration.CurrentVersion,
 			["ProcurementSourcing"] = ProcurementSourcingSchemaMigration.CurrentVersion,
 			["InventoryReplenishment"] = InventoryReplenishmentSchemaMigration.CurrentVersion,
+			["Production"] = ProductionSchemaMigration.CurrentVersion,
 			["ProjectAccounting"] = ProjectAccountingSchemaMigration.CurrentVersion,
 			["ServiceManagement"] = ServiceManagementSchemaMigration.CurrentVersion
 		};
@@ -114,12 +116,15 @@ internal static class FeatureVersionMetadataRecovery
 		TableExists(connection, provider, "SecurityEventExportTargets") &&
 		TableExists(connection, provider, "UserWorkspacePreferences") &&
 		TableExists(connection, provider, "DocumentTemplates") &&
+		TableExists(connection, provider, "ApprovalPolicies") &&
 		ColumnExists(connection, provider, "EnterpriseIdentityProviders", "MaximumAuthenticationAgeMinutes") &&
 		TableExists(connection, provider, "BusinessAttachments") &&
 		TableExists(connection, provider, "BusinessAttachmentRevisions") &&
 		TableExists(connection, provider, "BusinessAttachmentContents") &&
 		TableExists(connection, provider, "PurchaseRequisitions") &&
 		TableExists(connection, provider, "ReplenishmentPolicies") &&
+		TableExists(connection, provider, "ProductionBillsOfMaterial") &&
+		TableExists(connection, provider, "ProductionOrders") &&
 		TableExists(connection, provider, "Projects") &&
 		TableExists(connection, provider, "ProjectBudgetLineLinks") &&
 		TableExists(connection, provider, "ServiceCases") &&
