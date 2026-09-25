@@ -1,6 +1,6 @@
 # Depot Roadmap
 
-Updated: 2026-09-20
+Updated: 2026-09-25
 
 This roadmap describes product capabilities and acceptance work without coupling the repository to historical implementation tranche names. Track C repository work is complete through F5B, and the Depot 1.0 technical gap reconciliation is complete. Further repository work should be evidence-driven rather than another assumed feature tranche.
 
@@ -11,6 +11,7 @@ This roadmap describes product capabilities and acceptance work without coupling
 - [x] WPF/MVVM shell, navigation and contextual offline Help
 - [x] inventory, warehouse, purchasing, sales and approval workflows
 - [x] deterministic inventory replenishment with per-warehouse policies, explainable MOQ-aware purchase suggestions and controlled Purchase Requisition conversion
+- [x] bounded light assembly with revisioned BOMs, controlled production orders, material issue/receipt, traceability, cost evidence and reversal
 - [x] bounded configurable approval policies with deterministic routing, immutable approval snapshots and an Administration designer for the four existing approval domains
 - [x] serial/lot traceability and reversal-safe stock evidence
 - [x] database-backed RBAC and service-layer authorization
@@ -221,6 +222,22 @@ The bounded SEPA SCT payment-export capability is implemented at the repository 
 - [x] SQLite and remote-provider sourcing persistence/round-trip acceptance coverage
 
 Inventory replenishment suggestions now consume authoritative stock, reservation, backorder and open-supply evidence and convert user-approved suggestions into the established Purchase Requisition sourcing boundary. Automatic supplier award and automatic Purchase Order placement remain outside the product scope.
+
+
+## Light assembly and production
+
+- [x] revisioned Bills of Material with immutable released revisions and cycle validation
+- [x] controlled assembly-order lifecycle with released requirement snapshots
+- [x] deterministic material availability and explicit shortage visibility
+- [x] explicit shortage handoff into the existing Replenishment/Purchase Requisition path
+- [x] component issue and finished-goods receipt through the existing Stock Movement authority
+- [x] serial/lot handling through existing Item Traceability rules
+- [x] deterministic retained component-cost evidence from Item Costing
+- [x] compensating reversal without deletion of original stock evidence
+- [x] production permissions, My Work projection, WPF workspace, contextual Help and provider-neutral feature migration
+- [x] SQLite regression coverage plus remote-provider Production schema acceptance
+
+Full MRP/MRP II, routings/work centers, machine or finite-capacity scheduling, labor/payroll costing, process manufacturing, subcontract manufacturing and shop-floor telemetry remain outside this bounded capability.
 
 
 ## Project and cost accounting foundation

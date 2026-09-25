@@ -1,6 +1,6 @@
 # Current project status
 
-Updated: 2026-09-20
+Updated: 2026-09-25
 
 Depot is on the `0.15.x-preview` development line. Finance includes the General Ledger, AR/AP, Banking, Inventory Accounting, Financial Reporting and the current Fixed Assets/depreciation subledger work; inventory, purchasing, sales including the ERP-native Lead/Opportunity CRM pipeline, localization, notifications, Audit, persistent user sessions, operational security monitoring, enterprise identity/authentication, persisted workspace productivity preferences and the current visual-designer set are integrated in the repository.
 
@@ -15,6 +15,12 @@ The Sales workspace includes subscription contract management, due billing, gene
 Service Management feature schema **1** adds provider-neutral customer Service Cases and optional Service Orders with controlled lifecycle, ownership, due/overdue projection, work and parts evidence, completion evidence and optional idempotent Sales Invoice draft generation.
 
 Parts consumption and returns remain under the existing stock-movement authority, generic customer interactions remain CRM Activity responsibilities, and billing remains under the existing Sales Invoice authority. The Service workspace integrates Business Attachments, My Work and contextual Help without introducing field routing, GPS tracking, payroll/timekeeping, warranty accounting or automatic invoice posting.
+
+## Light assembly and production
+
+Production feature schema **1** adds revisioned Bills of Material and controlled assembly orders with immutable released requirement snapshots, material availability/shortage projection, explicit component issue, finished-goods receipt, deterministic component-cost evidence and compensating reversal.
+
+The Production workspace and My Work projection reuse existing Inventory/Stock Movement, Item Traceability, Item Costing, Replenishment and Finance boundaries. Shortages never procure automatically; a user explicitly hands shortage demand to Replenishment. V1 is intentionally limited to light assembly and does not add MRP/MRP II, routings, work centers, finite-capacity scheduling, labor/payroll costing or shop-floor telemetry.
 
 ## Repository governance
 
@@ -133,7 +139,8 @@ PR #56 then repaired CI execution boundaries without changing runtime behavior o
 - Business Attachments feature schema: **4**
 - Procurement Sourcing feature schema: **1**
 - Project Accounting feature schema: **1**
-- Help manifest: **1.35**
+- Production feature schema: **1**
+- Help manifest: **1.36**
 
 `Directory.Build.props` is authoritative for the exact Depot application patch/version; `src/DepotManager/DepotManager.Version.props` is authoritative for DepotManager. Schema migration constants and `src/Depot/Help/manifest.json` are authoritative for the remaining baseline values. Every repository commit increments `DepotVersionPatch`.
 
