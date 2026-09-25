@@ -208,6 +208,42 @@ internal sealed class SalesMyWorkProvider : IMyWorkProvider
 		new(section, MyWorkItemKind.SalesOrder, order.Id, order.OrderNumber, title, order.CustomerName, order.Status.ToString(), order.GrossAmount, order.RequestedDeliveryDate, null, priority, routeId, action, order.CreatedByUserId);
 }
 
+
+internal sealed class SubscriptionBillingMyWorkProvider(SubscriptionBillingService subscriptions) : IMyWorkProvider
+{
+	public string Name => "Subscription Billing";
+	public bool CanQuery(IAuthorizationService authorization) =>
+		authorization.HasPermission(ApplicationPermission.SubscriptionContractsView);
+
+	public async Task<IReadOnlyList<MyWorkItem>> GetAsync(MyWorkQuery query, CancellationToken cancellationToken)
+	{
+		var today = DateOnly.FromDateTime(query.NowUtc);
+		var instances = subscriptions.CanGenerate
+			? await subscriptions.EnsureDueInstancesAsync(today, cancellationToken)
+			: await subscriptions.ListDueAsync(today, query.ProviderLimit, cancellationToken);
+		return instances.Take(query.ProviderLimit).Select(instance =>
+		{
+			var overdue = instance.BillingDate < today;
+			var blocked = instance.Status == SubscriptionBillingInstanceStatus.Blocked;
+			return new MyWorkItem(
+				blocked || overdue ? MyWorkSectionKind.Exceptions : MyWorkSectionKind.NeedsMyAction,
+				MyWorkItemKind.SubscriptionBilling,
+				instance.Id,
+				instance.ContractNumber,
+				blocked ? "Recurring billing blocked" : overdue ? "Recurring billing overdue" : "Recurring billing due",
+				$"{instance.PeriodStart:yyyy-MM-dd} – {instance.PeriodEnd:yyyy-MM-dd}",
+				instance.Status.ToString(),
+				null,
+				instance.BillingDate.ToDateTime(TimeOnly.MinValue),
+				overdue ? today.DayNumber - instance.BillingDate.DayNumber : null,
+				blocked || overdue ? MyWorkPriority.High : MyWorkPriority.Normal,
+				"sales.subscriptions",
+				subscriptions.CanGenerate ? "Generate draft" : "Open",
+				null);
+		}).ToArray();
+	}
+}
+
 internal sealed class InventoryCountMyWorkProvider : IMyWorkProvider
 {
 	private readonly MyWorkReadRepository _read;

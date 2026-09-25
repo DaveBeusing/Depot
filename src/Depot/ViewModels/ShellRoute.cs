@@ -88,6 +88,7 @@ public static class ShellRoutes
 		public static readonly ShellRoute Pricing = new("sales.pricing");
 		public static readonly ShellRoute Customers = new("sales.customers");
 		public static readonly ShellRoute Orders = new("sales.orders");
+		public static readonly ShellRoute Subscriptions = new("sales.subscriptions");
 		public static readonly ShellRoute Invoices = new("sales.invoices");
 	}
 

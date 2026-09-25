@@ -101,6 +101,7 @@ internal sealed class ServiceComposition
 		[
 			new PurchasingMyWorkProvider(PurchaseOrders, PurchaseOrderApprovals, repositories.MyWork, Authorization, ApprovalPolicies, ProcurementSourcing, Replenishment),
 			new SalesMyWorkProvider(SalesOrders, Shipments, repositories.MyWork, Authorization, ApprovalPolicies),
+			new SubscriptionBillingMyWorkProvider(SubscriptionBilling),
 			new SalesCrmMyWorkProvider(SalesCrm),
 			new InventoryCountMyWorkProvider(repositories.MyWork, Authorization),
 			new ReceivablesMyWorkProvider(AccountsReceivable, Authorization),
