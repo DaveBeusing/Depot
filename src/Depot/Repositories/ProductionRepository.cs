@@ -105,6 +105,15 @@ public sealed class ProductionRepository : DatabaseRepository
 		return Database.QueryPageAsync($"SELECT {OrderColumns} {OrderFrom} {where} ORDER BY o.Id DESC",$"SELECT COUNT(*) {OrderFrom} {where}",ReadOrder,pageNumber,pageSize,token,parameters);
 	}
 
+	public Task<IReadOnlyList<ProductionOrder>> GetOwnedOpenOrdersAsync(long ownerUserId,int count,CancellationToken token) =>
+		Database.QuerySliceAsync(
+			$"SELECT {OrderColumns} {OrderFrom} WHERE o.OwnerUserId=$Owner AND o.Status IN ($Draft,$Released,$InProgress) ORDER BY o.Id DESC",
+			ReadOrder,0,Math.Clamp(count,1,100),token,
+			Parameter("$Owner",ownerUserId),
+			Parameter("$Draft",(int)ProductionOrderStatus.Draft),
+			Parameter("$Released",(int)ProductionOrderStatus.Released),
+			Parameter("$InProgress",(int)ProductionOrderStatus.InProgress));
+
 	public async Task<ProductionOrder?> GetOrderAsync(long id,CancellationToken token)
 	{
 		var order=await Database.QuerySingleOrDefaultAsync($"SELECT {OrderColumns} {OrderFrom} WHERE o.Id=$Id;",ReadOrder,token,Parameter("$Id",id));

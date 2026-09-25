@@ -685,3 +685,47 @@ internal sealed class ServiceManagementMyWorkProvider(ServiceManagementService s
 		_ => MyWorkPriority.Normal
 	};
 }
+
+
+internal sealed class ProductionMyWorkProvider(ProductionService production) : IMyWorkProvider
+{
+	public string Name => "Production";
+
+	public bool CanQuery(IAuthorizationService authorization) =>
+		authorization.HasPermission(ApplicationPermission.ProductionView);
+
+	public async Task<IReadOnlyList<MyWorkItem>> GetAsync(MyWorkQuery query,CancellationToken token)
+	{
+		var orders=await production.GetOwnedOpenOrdersAsync(query.UserId,query.ProviderLimit,token);
+		var items=new List<MyWorkItem>(orders.Count);
+		foreach(var order in orders)
+		{
+			if(order.Status==ProductionOrderStatus.Draft)
+			{
+				items.Add(ToItem(MyWorkSectionKind.MyDrafts,order,"Production order draft","Edit",MyWorkPriority.Normal));
+				continue;
+			}
+
+			var availability=await production.GetAvailabilityAsync(order.Id,token);
+			if(availability.Any(value=>value.ShortageQuantity>0))
+			{
+				items.Add(ToItem(MyWorkSectionKind.Exceptions,order,"Component shortage","Review",MyWorkPriority.High));
+				continue;
+			}
+
+			if(availability.Count>0 && availability.All(value=>value.IssuedQuantity==value.RequiredQuantity))
+			{
+				items.Add(ToItem(MyWorkSectionKind.NeedsMyAction,order,"Ready for completion","Complete",MyWorkPriority.High));
+				continue;
+			}
+
+			items.Add(ToItem(MyWorkSectionKind.NeedsMyAction,order,"Materials ready","Issue",MyWorkPriority.Normal));
+		}
+		return items;
+	}
+
+	private static MyWorkItem ToItem(MyWorkSectionKind section,ProductionOrder order,string title,string action,MyWorkPriority priority) =>
+		new(section,MyWorkItemKind.ProductionOrder,order.Id,order.OrderNumber,title,
+			$"{order.FinishedPartNumber} · {order.WarehouseName}",order.Status.ToString(),order.PlannedQuantity,null,
+			Math.Max(0,(int)(DateTime.UtcNow.Date-order.CreatedAtUtc.Date).TotalDays),priority,"production.assembly",action,order.OwnerUserId,null,MyWorkValueKind.Quantity);
+}

@@ -107,6 +107,13 @@ public sealed class ProductionService
 		return _production.SearchOrdersAsync(status,pageNumber,pageSize,token);
 	}
 
+	public Task<IReadOnlyList<ProductionOrder>> GetOwnedOpenOrdersAsync(long userId,int count,CancellationToken token=default)
+	{
+		_authorization.RequirePermission(ApplicationPermission.ProductionView);
+		if(count is <1 or >100) throw new ArgumentOutOfRangeException(nameof(count));
+		return _production.GetOwnedOpenOrdersAsync(userId,count,token);
+	}
+
 	public Task<ProductionOrder?> GetOrderAsync(long id,CancellationToken token=default)
 	{
 		_authorization.RequirePermission(ApplicationPermission.ProductionView);
