@@ -41,7 +41,7 @@
 				</StackPanel></ScrollViewer></TabItem>
 				<TabItem Header="History"><DataGrid Margin="8" ItemsSource="{Binding History}" AutoGenerateColumns="False" IsReadOnly="True" Style="{StaticResource AppDataGridCompactStyle}"><DataGrid.Columns><DataGridTextColumn Header="Time" Binding="{Binding CreatedAtUtc,StringFormat=g}" Width="130"/><DataGridTextColumn Header="From" Binding="{Binding PreviousStatus}" Width="95"/><DataGridTextColumn Header="To" Binding="{Binding Status}" Width="95"/><DataGridTextColumn Header="Evidence" Binding="{Binding Note}" Width="*"/></DataGrid.Columns></DataGrid></TabItem>
 				<TabItem Header="Service order"><ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="8">
-					<TextBlock Text="{Binding SelectedOrder.OrderNumber,StringFormat=Order: {0},TargetNullValue=No service order yet}" Style="{StaticResource WorkspaceSectionTitleStyle}"/>
+					<TextBlock Text="{Binding SelectedOrder.OrderNumber,TargetNullValue=No service order yet}" Style="{StaticResource WorkspaceSectionTitleStyle}"/>
 					<TextBlock Margin="0,8,0,0" Text="Assigned owner user ID" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding OrderOwnerUserId,UpdateSourceTrigger=PropertyChanged}"/>
 					<TextBlock Margin="0,8,0,0" Text="Serviced item ID (optional)" Style="{StaticResource FormLabelStyle}"/><controls:TextInput Text="{Binding ServicedItemId,UpdateSourceTrigger=PropertyChanged}"/>
 					<TextBlock Margin="0,8,0,0" Text="Serviced inventory/location (optional)" Style="{StaticResource FormLabelStyle}"/><ComboBox ItemsSource="{Binding PartInventory}" SelectedItem="{Binding ServicedInventory}"><ComboBox.ItemTemplate><DataTemplate><TextBlock><Run Text="{Binding PartNumber}"/><Run Text=" · "/><Run Text="{Binding WarehouseName}"/><Run Text=" / "/><Run Text="{Binding LocationName}"/></TextBlock></DataTemplate></ComboBox.ItemTemplate></ComboBox>
@@ -50,7 +50,7 @@
 					<WrapPanel Margin="0,12,0,0"><Button Command="{Binding CreateOrderCommand}" Content="Create order" Style="{StaticResource PrimaryButtonStyle}"/><Button Margin="6,0,0,0" Command="{Binding SaveOrderCommand}" Content="Save" Style="{StaticResource SecondaryButtonStyle}"/><Button Margin="6,0,0,0" Command="{Binding StartOrderCommand}" Content="Start" Style="{StaticResource SecondaryButtonStyle}"/><Button Margin="6,0,0,0" Command="{Binding CancelOrderCommand}" Content="Cancel" Style="{StaticResource DangerButtonStyle}"/></WrapPanel>
 					<TextBlock Margin="0,16,0,0" Text="Completion notes" Style="{StaticResource FormLabelStyle}"/><TextBox Text="{Binding CompletionNotes,UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" MinHeight="70" TextWrapping="Wrap"/>
 					<WrapPanel Margin="0,8,0,0"><Button Command="{Binding CompleteOrderCommand}" Content="Complete service" Style="{StaticResource PrimaryButtonStyle}"/><Button Margin="6,0,0,0" Command="{Binding GenerateInvoiceCommand}" Content="Create invoice draft" Style="{StaticResource SecondaryButtonStyle}"/></WrapPanel>
-					<TextBlock Margin="0,12,0,0" Text="{Binding SelectedOrder.SalesInvoiceNumber,StringFormat=Invoice: {0},TargetNullValue=No invoice draft created}" />
+					<TextBlock Margin="0,12,0,0" Text="{Binding SelectedOrder.SalesInvoiceNumber,TargetNullValue=No invoice draft created}" />
 				</StackPanel></ScrollViewer></TabItem>
 				<TabItem Header="Work &amp; parts"><ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="8">
 					<TextBlock Text="Work evidence" Style="{StaticResource WorkspaceSectionTitleStyle}"/>

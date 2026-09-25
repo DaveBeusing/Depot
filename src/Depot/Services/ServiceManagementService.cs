@@ -206,7 +206,7 @@ public sealed class ServiceManagementService
 			var before=await _service.GetOrderAsync(tx,id,ct)??throw new InvalidOperationException("Service order was not found.");
 			if(before.Version!=version)throw new ConcurrencyConflictException("service order");
 			if(before.Status is ServiceOrderStatus.Completed or ServiceOrderStatus.Cancelled)throw new InvalidOperationException("The service order is already final.");
-			var work=await _service.ListWorkLinesAsync(id,ct);var parts=await _service.ListPartEvidenceAsync(id,ct);
+			var work=await _service.ListWorkLinesAsync(tx,id,ct);var parts=await _service.ListPartEvidenceAsync(tx,id,ct);
 			if(work.Count==0&&parts.Count==0)throw new InvalidOperationException("Completion requires work or parts evidence in addition to completion notes.");
 			var now=DateTime.UtcNow;var completed=before with{Status=ServiceOrderStatus.Completed,CompletionNotes=completionNotes.Trim(),CompletedAtUtc=now,CompletedByUserId=user.Id,UpdatedAtUtc=now,UpdatedByUserId=user.Id};
 			if(await _service.UpdateOrderAsync(tx,completed,before.Version,ct)!=1)throw new ConcurrencyConflictException("service order");

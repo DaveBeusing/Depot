@@ -42,8 +42,8 @@ public sealed class ServiceManagementRepository : DatabaseRepository
 		var id=await tx.Session.InsertAsync("""
 			INSERT INTO ServiceCases
 			(Version,CaseNumber,CustomerId,CustomerContactId,Subject,Description,Category,Priority,Status,OwnerUserId,SalesOrderId,ItemId,CreatedAtUtc,CreatedByUserId,UpdatedAtUtc,UpdatedByUserId,DueAtUtc,ResolvedAtUtc,ResolvedByUserId,ClosedAtUtc,ClosedByUserId,CancelledAtUtc,CancelledByUserId)
-			VALUES(1,'', $CustomerId,$ContactId,$Subject,$Description,$Category,$Priority,$Status,$Owner,$SalesOrderId,$ItemId,$CreatedAt,$CreatedBy,$UpdatedAt,$UpdatedBy,$DueAt,$ResolvedAt,$ResolvedBy,$ClosedAt,$ClosedBy,$CancelledAt,$CancelledBy);
-			""",token,CaseParameters(value));
+			VALUES(1,$PendingNumber,$CustomerId,$ContactId,$Subject,$Description,$Category,$Priority,$Status,$Owner,$SalesOrderId,$ItemId,$CreatedAt,$CreatedBy,$UpdatedAt,$UpdatedBy,$DueAt,$ResolvedAt,$ResolvedBy,$ClosedAt,$ClosedBy,$CancelledAt,$CancelledBy);
+			""",token,[Parameter("$PendingNumber",$"PENDING-{Guid.NewGuid():N}"),..CaseParameters(value)]);
 		var number=$"SC-{id:000000}";
 		await tx.Session.ExecuteAsync("UPDATE ServiceCases SET CaseNumber=$Number WHERE Id=$Id;",token,Parameter("$Number",number),Parameter("$Id",id));
 		return value with{Id=id,Version=1,CaseNumber=number};
@@ -71,8 +71,8 @@ public sealed class ServiceManagementRepository : DatabaseRepository
 		var id=await tx.Session.InsertAsync("""
 			INSERT INTO ServiceOrders
 			(Version,OrderNumber,ServiceCaseId,CustomerId,AssignedOwnerUserId,ServicedItemId,ServicedInventoryId,SerialLotReference,Status,PlannedStartAtUtc,PlannedEndAtUtc,CompletionNotes,CompletedAtUtc,CompletedByUserId,SalesInvoiceId,CreatedAtUtc,CreatedByUserId,UpdatedAtUtc,UpdatedByUserId)
-			VALUES(1,'',$CaseId,$CustomerId,$Owner,$ItemId,$InventoryId,$SerialLot,$Status,$Start,$End,$CompletionNotes,$CompletedAt,$CompletedBy,$InvoiceId,$CreatedAt,$CreatedBy,$UpdatedAt,$UpdatedBy);
-			""",token,OrderParameters(value));
+			VALUES(1,$PendingNumber,$CaseId,$CustomerId,$Owner,$ItemId,$InventoryId,$SerialLot,$Status,$Start,$End,$CompletionNotes,$CompletedAt,$CompletedBy,$InvoiceId,$CreatedAt,$CreatedBy,$UpdatedAt,$UpdatedBy);
+			""",token,[Parameter("$PendingNumber",$"PENDING-{Guid.NewGuid():N}"),..OrderParameters(value)]);
 		var number=$"SVC-{id:000000}";
 		await tx.Session.ExecuteAsync("UPDATE ServiceOrders SET OrderNumber=$Number WHERE Id=$Id;",token,Parameter("$Number",number),Parameter("$Id",id));
 		return value with{Id=id,Version=1,OrderNumber=number};
@@ -88,6 +88,8 @@ public sealed class ServiceManagementRepository : DatabaseRepository
 
 	public Task<IReadOnlyList<ServiceWorkLine>> ListWorkLinesAsync(long orderId,CancellationToken token=default)=>
 		Database.QueryAsync("SELECT Id,Version,ServiceOrderId,Description,Quantity,UnitPrice,Billable,TaxRate,CreatedAtUtc,CreatedByUserId FROM ServiceWorkLines WHERE ServiceOrderId=$OrderId ORDER BY Id;",ReadWorkLine,token,Parameter("$OrderId",orderId));
+	internal Task<IReadOnlyList<ServiceWorkLine>> ListWorkLinesAsync(DatabaseTransactionContext tx,long orderId,CancellationToken token)=>
+		tx.Session.QueryAsync("SELECT Id,Version,ServiceOrderId,Description,Quantity,UnitPrice,Billable,TaxRate,CreatedAtUtc,CreatedByUserId FROM ServiceWorkLines WHERE ServiceOrderId=$OrderId ORDER BY Id;",ReadWorkLine,token,Parameter("$OrderId",orderId));
 	internal async Task<ServiceWorkLine> CreateWorkLineAsync(DatabaseTransactionContext tx,ServiceWorkLine value,CancellationToken token)
 	{
 		var id=await tx.Session.InsertAsync("INSERT INTO ServiceWorkLines(Version,ServiceOrderId,Description,Quantity,UnitPrice,Billable,TaxRate,CreatedAtUtc,CreatedByUserId) VALUES(1,$OrderId,$Description,$Quantity,$UnitPrice,$Billable,$TaxRate,$CreatedAt,$CreatedBy);",token,WorkParameters(value));
@@ -98,6 +100,8 @@ public sealed class ServiceManagementRepository : DatabaseRepository
 
 	public Task<IReadOnlyList<ServicePartEvidence>> ListPartEvidenceAsync(long orderId,CancellationToken token=default)=>
 		Database.QueryAsync("SELECT Id,ServiceOrderId,StockMovementId,MovementKind,InventoryId,ItemId,PartNumber,Description,Quantity,UnitPrice,Billable,TaxRate,CreatedAtUtc,CreatedByUserId FROM ServicePartEvidence WHERE ServiceOrderId=$OrderId ORDER BY Id;",ReadPart,token,Parameter("$OrderId",orderId));
+	internal Task<IReadOnlyList<ServicePartEvidence>> ListPartEvidenceAsync(DatabaseTransactionContext tx,long orderId,CancellationToken token)=>
+		tx.Session.QueryAsync("SELECT Id,ServiceOrderId,StockMovementId,MovementKind,InventoryId,ItemId,PartNumber,Description,Quantity,UnitPrice,Billable,TaxRate,CreatedAtUtc,CreatedByUserId FROM ServicePartEvidence WHERE ServiceOrderId=$OrderId ORDER BY Id;",ReadPart,token,Parameter("$OrderId",orderId));
 	internal async Task<ServicePartEvidence> CreatePartEvidenceAsync(DatabaseTransactionContext tx,ServicePartEvidence value,CancellationToken token)
 	{
 		var id=await tx.Session.InsertAsync("INSERT INTO ServicePartEvidence(ServiceOrderId,StockMovementId,MovementKind,InventoryId,ItemId,PartNumber,Description,Quantity,UnitPrice,Billable,TaxRate,CreatedAtUtc,CreatedByUserId) VALUES($OrderId,$MovementId,$Kind,$InventoryId,$ItemId,$PartNumber,$Description,$Quantity,$UnitPrice,$Billable,$TaxRate,$CreatedAt,$CreatedBy);",token,

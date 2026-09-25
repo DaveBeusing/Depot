@@ -59,10 +59,10 @@ public sealed class ServiceManagementViewModel : BaseViewModel, IDisposable
 		OpenCaseCommand=new AsyncRelayCommand(token=>TransitionCaseAsync((c,ct)=>_service.OpenCaseAsync(c.Id,c.Version,ct),token),()=>CanManageCases&&SelectedCase?.Status==ServiceCaseStatus.New);
 		StartCaseCommand=new AsyncRelayCommand(token=>TransitionCaseAsync((c,ct)=>_service.StartCaseAsync(c.Id,c.Version,ct),token),()=>CanManageCases&&SelectedCase?.Status is ServiceCaseStatus.Open or ServiceCaseStatus.Waiting);
 		WaitCaseCommand=new AsyncRelayCommand(token=>TransitionCaseAsync((c,ct)=>_service.WaitCaseAsync(c.Id,c.Version,TransitionNote,ct),token),()=>CanManageCases&&SelectedCase?.Status is ServiceCaseStatus.Open or ServiceCaseStatus.InProgress);
-		ResolveCaseCommand=new AsyncRelayCommand(token=>TransitionCaseAsync((c,ct)=>_service.ResolveCaseAsync(c.Id,c.Version,TransitionNote,ct),token),()=>CanManageCases&&SelectedCase?.Status is ServiceCaseStatus.Open or ServiceCaseStatus.InProgress or ServiceCaseStatus.Waiting&&!string.IsNullOrWhiteSpace(TransitionNote));
+		ResolveCaseCommand=new AsyncRelayCommand(token=>TransitionCaseAsync((c,ct)=>_service.ResolveCaseAsync(c.Id,c.Version,TransitionNote,ct),token),()=>CanManageCases&&SelectedCase?.Status is (ServiceCaseStatus.Open or ServiceCaseStatus.InProgress or ServiceCaseStatus.Waiting)&&!string.IsNullOrWhiteSpace(TransitionNote));
 		CloseCaseCommand=new AsyncRelayCommand(token=>TransitionCaseAsync((c,ct)=>_service.CloseCaseAsync(c.Id,c.Version,TransitionNote,ct),token),()=>CanManageCases&&SelectedCase?.Status==ServiceCaseStatus.Resolved);
 		CancelCaseCommand=new AsyncRelayCommand(token=>TransitionCaseAsync((c,ct)=>_service.CancelCaseAsync(c.Id,c.Version,TransitionNote,ct),token),()=>CanManageCases&&SelectedCase is{Status:not ServiceCaseStatus.Closed and not ServiceCaseStatus.Cancelled}&&!string.IsNullOrWhiteSpace(TransitionNote));
-		ReopenCaseCommand=new AsyncRelayCommand(token=>TransitionCaseAsync((c,ct)=>_service.ReopenCaseAsync(c.Id,c.Version,TransitionNote,ct),token),()=>CanManageCases&&SelectedCase?.Status is ServiceCaseStatus.Resolved or ServiceCaseStatus.Closed&&!string.IsNullOrWhiteSpace(TransitionNote));
+		ReopenCaseCommand=new AsyncRelayCommand(token=>TransitionCaseAsync((c,ct)=>_service.ReopenCaseAsync(c.Id,c.Version,TransitionNote,ct),token),()=>CanManageCases&&SelectedCase?.Status is (ServiceCaseStatus.Resolved or ServiceCaseStatus.Closed)&&!string.IsNullOrWhiteSpace(TransitionNote));
 		CreateOrderCommand=new AsyncRelayCommand(CreateOrderAsync,()=>CanManageOrders&&SelectedCase is not null&&SelectedOrder is null);
 		SaveOrderCommand=new AsyncRelayCommand(SaveOrderAsync,()=>CanManageOrders&&SelectedOrder is{Status:not ServiceOrderStatus.Completed and not ServiceOrderStatus.Cancelled});
 		StartOrderCommand=new AsyncRelayCommand(token=>RunOrderMutationAsync(o=>_service.StartServiceOrderAsync(o.Id,o.Version,token),"Starting service order...",token),()=>CanManageOrders&&SelectedOrder?.Status==ServiceOrderStatus.Planned);
@@ -240,6 +240,12 @@ public sealed class ServiceManagementViewModel : BaseViewModel, IDisposable
 		History.Clear();WorkLines.Clear();Parts.Clear();SelectedOrder=null;if(id is null)return;
 		try
 		{
+			var current=SelectedCase;
+			if(current is not null)
+			{
+				await LoadContactsAsync(current.CustomerId,token);
+				SelectedContact=current.CustomerContactId is long contactId?Contacts.FirstOrDefault(x=>x.Id==contactId):null;
+			}
 			var historyTask=_service.ListCaseHistoryAsync(id.Value,token);var orderTask=_service.GetOrderForCaseAsync(id.Value,token);await Task.WhenAll(historyTask,orderTask);Replace(History,historyTask.Result);SelectedOrder=orderTask.Result;if(SelectedOrder is not null)await LoadOrderEvidenceAsync(SelectedOrder.Id,token);
 		}
 		catch(OperationCanceledException)when(token.IsCancellationRequested){}
