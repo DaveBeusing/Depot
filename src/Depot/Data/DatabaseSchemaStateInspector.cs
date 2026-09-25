@@ -24,7 +24,8 @@ internal static class DatabaseSchemaStateInspector
 			["BusinessAttachments"] = BusinessAttachmentSchemaMigration.CurrentVersion,
 			["ProcurementSourcing"] = ProcurementSourcingSchemaMigration.CurrentVersion,
 			["InventoryReplenishment"] = InventoryReplenishmentSchemaMigration.CurrentVersion,
-			["ProjectAccounting"] = ProjectAccountingSchemaMigration.CurrentVersion
+			["ProjectAccounting"] = ProjectAccountingSchemaMigration.CurrentVersion,
+			["ServiceManagement"] = ServiceManagementSchemaMigration.CurrentVersion
 		};
 
 	public static bool IsCurrent(IDatabaseConnectionFactory connectionFactory)

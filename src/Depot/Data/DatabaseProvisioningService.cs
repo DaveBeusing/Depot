@@ -51,6 +51,7 @@ public static class DatabaseProvisioningService
 		ProcurementSourcingSchemaMigration.Migrate(connectionFactory);
 		InventoryReplenishmentSchemaMigration.Migrate(connectionFactory);
 		ProjectAccountingSchemaMigration.Migrate(connectionFactory);
+		ServiceManagementSchemaMigration.Migrate(connectionFactory);
 		return DatabaseProvisioningPath.FullProvisioning;
 	}
 }
@@ -72,7 +73,8 @@ internal static class FeatureVersionMetadataRecovery
 			["BusinessAttachments"] = BusinessAttachmentSchemaMigration.CurrentVersion,
 			["ProcurementSourcing"] = ProcurementSourcingSchemaMigration.CurrentVersion,
 			["InventoryReplenishment"] = InventoryReplenishmentSchemaMigration.CurrentVersion,
-			["ProjectAccounting"] = ProjectAccountingSchemaMigration.CurrentVersion
+			["ProjectAccounting"] = ProjectAccountingSchemaMigration.CurrentVersion,
+			["ServiceManagement"] = ServiceManagementSchemaMigration.CurrentVersion
 		};
 
 	public static void RestoreIfCurrentSchemaDetected(IDatabaseConnectionFactory connectionFactory)
@@ -119,7 +121,11 @@ internal static class FeatureVersionMetadataRecovery
 		TableExists(connection, provider, "PurchaseRequisitions") &&
 		TableExists(connection, provider, "ReplenishmentPolicies") &&
 		TableExists(connection, provider, "Projects") &&
-		TableExists(connection, provider, "ProjectBudgetLineLinks");
+		TableExists(connection, provider, "ProjectBudgetLineLinks") &&
+		TableExists(connection, provider, "ServiceCases") &&
+		TableExists(connection, provider, "ServiceOrders") &&
+		TableExists(connection, provider, "ServiceWorkLines") &&
+		TableExists(connection, provider, "ServicePartEvidence");
 
 	private static bool HasFutureFeatureVersion(DbConnection connection)
 	{
