@@ -124,4 +124,6 @@ public static class NotificationSourceTypes
 	public const string CustomerReturn = "CustomerReturn";
 	public const string SalesInvoice = "SalesInvoice";
 	public const string SalesCreditNote = "SalesCreditNote";
+	public const string ServiceCase = "ServiceCase";
+	public const string ServiceOrder = "ServiceOrder";
 }
