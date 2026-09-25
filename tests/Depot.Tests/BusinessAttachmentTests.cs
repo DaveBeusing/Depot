@@ -93,7 +93,7 @@ public sealed class BusinessAttachmentTests : IAsyncLifetime
 				""",
 				CancellationToken.None,
 				new DatabaseParameter("$Id", Guid.NewGuid().ToString("D")),
-				new DatabaseParameter("$EntityKind", (int)BusinessAttachmentEntityKind.SubscriptionContract),
+				new DatabaseParameter("$EntityKind", (int)BusinessAttachmentEntityKind.ServiceOrder),
 				new DatabaseParameter("$Hash", new string('B', 64)));
 		}
 		finally
