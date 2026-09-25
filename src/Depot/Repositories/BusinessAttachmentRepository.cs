@@ -112,6 +112,8 @@ public sealed class BusinessAttachmentRepository : DatabaseRepository
 			BusinessAttachmentEntityKind.SupplierQuoteResponse => "SupplierQuoteResponses",
 			BusinessAttachmentEntityKind.Project => "Projects",
 			BusinessAttachmentEntityKind.SubscriptionContract => "SubscriptionContracts",
+			BusinessAttachmentEntityKind.ServiceCase => "ServiceCases",
+			BusinessAttachmentEntityKind.ServiceOrder => "ServiceOrders",
 			_ => throw new ArgumentOutOfRangeException(nameof(entityKind))
 		};
 		var value = await Database.ExecuteScalarAsync(
@@ -123,13 +125,30 @@ public sealed class BusinessAttachmentRepository : DatabaseRepository
 
 	public async Task<bool> CanMutateEntityAsync(BusinessAttachmentEntityKind entityKind, long entityId, CancellationToken cancellationToken = default)
 	{
-		if (entityKind != BusinessAttachmentEntityKind.SupplierQuoteResponse) return true;
-		var value = await Database.ExecuteScalarAsync(
-			"SELECT COUNT(*) FROM SupplierQuoteResponses q INNER JOIN RequestsForQuotation r ON r.Id=q.RequestForQuotationId WHERE q.Id=$Id AND r.Status=$Open;",
-			cancellationToken,
-			Parameter("$Id", entityId),
-			Parameter("$Open", (int)RequestForQuotationStatus.Open));
-		return Convert.ToInt32(value, CultureInfo.InvariantCulture) == 1;
+		if (entityKind == BusinessAttachmentEntityKind.SupplierQuoteResponse)
+		{
+			var value = await Database.ExecuteScalarAsync(
+				"SELECT COUNT(*) FROM SupplierQuoteResponses q INNER JOIN RequestsForQuotation r ON r.Id=q.RequestForQuotationId WHERE q.Id=$Id AND r.Status=$Open;",
+				cancellationToken,
+				Parameter("$Id", entityId),
+				Parameter("$Open", (int)RequestForQuotationStatus.Open));
+			return Convert.ToInt32(value, CultureInfo.InvariantCulture) == 1;
+		}
+		if (entityKind == BusinessAttachmentEntityKind.ServiceCase)
+		{
+			var value = await Database.ExecuteScalarAsync(
+				"SELECT COUNT(*) FROM ServiceCases WHERE Id=$Id AND Status NOT IN ($Closed,$Cancelled);",
+				cancellationToken, Parameter("$Id", entityId), Parameter("$Closed", (int)ServiceCaseStatus.Closed), Parameter("$Cancelled", (int)ServiceCaseStatus.Cancelled));
+			return Convert.ToInt32(value, CultureInfo.InvariantCulture) == 1;
+		}
+		if (entityKind == BusinessAttachmentEntityKind.ServiceOrder)
+		{
+			var value = await Database.ExecuteScalarAsync(
+				"SELECT COUNT(*) FROM ServiceOrders WHERE Id=$Id AND Status NOT IN ($Completed,$Cancelled);",
+				cancellationToken, Parameter("$Id", entityId), Parameter("$Completed", (int)ServiceOrderStatus.Completed), Parameter("$Cancelled", (int)ServiceOrderStatus.Cancelled));
+			return Convert.ToInt32(value, CultureInfo.InvariantCulture) == 1;
+		}
+		return true;
 	}
 
 	public Task<BusinessAttachment> CreateAsync(

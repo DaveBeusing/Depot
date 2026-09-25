@@ -9,7 +9,7 @@ namespace Depot.Data;
 
 public static class BusinessAttachmentSchemaMigration
 {
-	public const int CurrentVersion = 3;
+	public const int CurrentVersion = 4;
 	private const string FeatureName = "BusinessAttachments";
 
 	public static void Migrate(IDatabaseConnectionFactory connectionFactory)
@@ -39,6 +39,13 @@ public static class BusinessAttachmentSchemaMigration
 			BusinessAttachmentSchema.ExpandEntityKindConstraint(connectionFactory);
 			WriteVersion(connectionFactory, 3);
 			version = 3;
+		}
+
+		if (version == 3)
+		{
+			BusinessAttachmentSchema.ExpandEntityKindConstraint(connectionFactory);
+			WriteVersion(connectionFactory, 4);
+			version = 4;
 		}
 
 		if (version != CurrentVersion)

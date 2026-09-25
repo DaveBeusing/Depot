@@ -33,7 +33,7 @@ public static class BusinessAttachmentSchema
 					CurrentRevision INTEGER NOT NULL,
 					Status INTEGER NOT NULL,
 					Version INTEGER NOT NULL,
-					CHECK (EntityKind BETWEEN 1 AND 14),
+					CHECK (EntityKind BETWEEN 1 AND 16),
 					CHECK (ByteLength >= 0),
 					CHECK (CurrentRevision > 0),
 					CHECK (Status IN (1, 2)),
@@ -88,7 +88,7 @@ public static class BusinessAttachmentSchema
 						Status int NOT NULL,
 						Version bigint NOT NULL,
 						CONSTRAINT PK_BusinessAttachments PRIMARY KEY (Id),
-						CONSTRAINT CK_BusinessAttachments_EntityKind CHECK (EntityKind BETWEEN 1 AND 14),
+						CONSTRAINT CK_BusinessAttachments_EntityKind CHECK (EntityKind BETWEEN 1 AND 16),
 						CONSTRAINT CK_BusinessAttachments_ByteLength CHECK (ByteLength >= 0),
 						CONSTRAINT CK_BusinessAttachments_CurrentRevision CHECK (CurrentRevision > 0),
 						CONSTRAINT CK_BusinessAttachments_Status CHECK (Status IN (1, 2)),
@@ -148,7 +148,7 @@ public static class BusinessAttachmentSchema
 					Status INT NOT NULL,
 					Version BIGINT NOT NULL,
 					PRIMARY KEY (Id),
-					CONSTRAINT CK_BusinessAttachments_EntityKind CHECK (EntityKind BETWEEN 1 AND 14),
+					CONSTRAINT CK_BusinessAttachments_EntityKind CHECK (EntityKind BETWEEN 1 AND 16),
 					CONSTRAINT CK_BusinessAttachments_ByteLength CHECK (ByteLength >= 0),
 					CONSTRAINT CK_BusinessAttachments_CurrentRevision CHECK (CurrentRevision > 0),
 					CONSTRAINT CK_BusinessAttachments_Status CHECK (Status IN (1, 2)),
@@ -223,7 +223,7 @@ public static class BusinessAttachmentSchema
 						CurrentRevision INTEGER NOT NULL,
 						Status INTEGER NOT NULL,
 						Version INTEGER NOT NULL,
-						CHECK (EntityKind BETWEEN 1 AND 14),
+						CHECK (EntityKind BETWEEN 1 AND 16),
 						CHECK (ByteLength >= 0),
 						CHECK (CurrentRevision > 0),
 						CHECK (Status IN (1, 2)),
@@ -264,7 +264,7 @@ public static class BusinessAttachmentSchema
 					IF EXISTS (SELECT 1 FROM sys.check_constraints WHERE parent_object_id=OBJECT_ID(N'BusinessAttachments') AND name=N'CK_BusinessAttachments_EntityKind')
 						ALTER TABLE BusinessAttachments DROP CONSTRAINT CK_BusinessAttachments_EntityKind;
 					ALTER TABLE BusinessAttachments WITH CHECK
-						ADD CONSTRAINT CK_BusinessAttachments_EntityKind CHECK (EntityKind BETWEEN 1 AND 14);
+						ADD CONSTRAINT CK_BusinessAttachments_EntityKind CHECK (EntityKind BETWEEN 1 AND 16);
 					COMMIT TRANSACTION;
 				END TRY
 				BEGIN CATCH
@@ -276,7 +276,7 @@ public static class BusinessAttachmentSchema
 				"""
 				ALTER TABLE BusinessAttachments
 					DROP CONSTRAINT CK_BusinessAttachments_EntityKind,
-					ADD CONSTRAINT CK_BusinessAttachments_EntityKind CHECK (EntityKind BETWEEN 1 AND 14);
+					ADD CONSTRAINT CK_BusinessAttachments_EntityKind CHECK (EntityKind BETWEEN 1 AND 16);
 				""",
 			_ => throw new NotSupportedException($"Business-attachment constraint migration is not supported for provider '{connectionFactory.Provider}'.")
 		};
