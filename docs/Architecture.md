@@ -24,7 +24,7 @@ Remote provisioning serializes the complete global/feature migration sequence wi
 
 Known transient deadlock/write-conflict errors use bounded exponential retry with jitter and complete transaction recreation. Non-transient business/constraint failures are not retried. MySQL/MariaDB Finance UTC timestamps are normalized to real `DATETIME(6)` parameters at the provider boundary rather than leaking provider rules into Services/Repositories.
 
-Sales schema 11 introduced the active reservation uniqueness invariant on every supported provider. SQLite and SQL Server use partial/filtered unique indexes; MariaDB/MySQL use an active generated inventory key plus a unique compound index. Subsequent Sales schemas build on that provider-parity baseline; the current Sales feature schema is 15.
+Sales schema 11 introduced the active reservation uniqueness invariant on every supported provider. SQLite and SQL Server use partial/filtered unique indexes; MariaDB/MySQL use an active generated inventory key plus a unique compound index. Subsequent Sales schemas build on that provider-parity baseline; the current Sales feature schema is 16.
 
 ## Authentication sessions, presence and policy enforcement
 
@@ -102,6 +102,20 @@ Customer → Region → Global resolution
 
 `ItemCostCalculationService` is the single item-cost formula. `PriceListGenerationService` consumes that calculation rather than reproducing it. `SalesPricingService` remains the single runtime price-resolution boundary and historical document lines retain source snapshots.
 
+## Subscription and recurring-billing authority
+
+Recurring sales are implemented inside the existing Sales authority rather than as a parallel invoicing stack:
+
+```text
+SubscriptionContract
+    -> deterministic billing schedule / persisted due instance
+        -> explicit authorized generation
+            -> existing SalesInvoiceService draft
+                -> existing posting / e-invoice / AR / GL path
+```
+
+`SubscriptionBillingService` owns contract lifecycle, deterministic schedule progression, pricing-policy evidence, due-instance idempotency and controlled draft generation. Fixed-price lines retain their contract snapshot; reprice-at-billing lines resolve through the existing `SalesPricingService`. A unique contract/period persistence boundary prevents duplicate billing instances, and invoice generation remains idempotent and draft-only. Business Attachments, My Work and contextual Help reuse their existing shared platform boundaries.
+
 ## Electronic-invoice artifact boundary
 
 XRechnung CII remains the structured invoice authority. During invoice or credit-note finalization, Depot generates the XRechnung XML once, hashes it and persists the immutable finalization evidence. Sales schema 14 adds the hybrid-document boundary: `ZugferdFacturXService` uses that exact finalized XML and the same immutable electronic-invoice model to create a new PDF/A-3B document, embeds `xrechnung.xml`, records ZUGFeRD/Factur-X XMP metadata and persists the exact PDF bytes plus SHA-256 evidence in the same posting transaction. Later export verifies stored hashes and never regenerates the hybrid document from mutable master data.
@@ -121,7 +135,7 @@ Document-layout zoom, snap, resize, undo/redo and dirty-state behavior remain sp
 ## Schema versions
 
 - Core database schema: **30**
-- Sales feature schema: **15**
+- Sales feature schema: **16**
 - Finance feature schema: **12**
 - User Sessions feature schema: **3**
 - Security Events feature schema: **3**
@@ -130,7 +144,7 @@ Document-layout zoom, snap, resize, undo/redo and dirty-state behavior remain sp
 - Enterprise Identity feature schema: **2**
 - Procurement Sourcing feature schema: **1**
 - Application: **0.15.x-preview**
-- Help manifest: **1.33**
+- Help manifest: **1.34**
 
 `Directory.Build.props` is authoritative for the exact application patch/version. Feature schema constants remain authoritative in their migration classes; this architecture document records the compatibility baselines rather than duplicating a moving preview patch.
 

@@ -4,6 +4,12 @@ Updated: 2026-09-20
 
 Depot is on the `0.15.x-preview` development line. Finance includes the General Ledger, AR/AP, Banking, Inventory Accounting, Financial Reporting and the current Fixed Assets/depreciation subledger work; inventory, purchasing, sales including the ERP-native Lead/Opportunity CRM pipeline, localization, notifications, Audit, persistent user sessions, operational security monitoring, enterprise identity/authentication, persisted workspace productivity preferences and the current visual-designer set are integrated in the repository.
 
+## Subscription and recurring billing
+
+Sales feature schema **16** adds controlled recurring commercial contracts with monthly, quarterly and annual cadence, finite or evergreen terms, lifecycle evidence, deterministic due billing instances and idempotent generation of normal Sales Invoice drafts. Pricing is explicit per line as either a fixed contract snapshot or controlled re-resolution through Sales Pricing at billing time.
+
+The Sales workspace includes subscription contract management, due billing, generated-invoice history, My Work projections, Business Attachments and contextual Help. Invoice posting, electronic invoicing, Accounts Receivable and General Ledger remain on the existing authorities; recurring billing does not auto-post or collect payment.
+
 ## Repository governance
 
 Repository governance defines five stable aggregate GitHub Actions checks for `master`:
@@ -110,7 +116,7 @@ PR #56 then repaired CI execution boundaries without changing runtime behavior o
 - Application: **0.15.x-preview**
 - DepotManager: **0.1.23-preview**
 - Core database schema: **30**
-- Sales feature schema: **15**
+- Sales feature schema: **16**
 - Finance feature schema: **12**
 - User Sessions feature schema: **3**
 - Security Events feature schema: **3**
@@ -121,7 +127,7 @@ PR #56 then repaired CI execution boundaries without changing runtime behavior o
 - Business Attachments feature schema: **2**
 - Procurement Sourcing feature schema: **1**
 - Project Accounting feature schema: **1**
-- Help manifest: **1.33**
+- Help manifest: **1.34**
 
 `Directory.Build.props` is authoritative for the exact Depot application patch/version; `src/DepotManager/DepotManager.Version.props` is authoritative for DepotManager. Schema migration constants and `src/Depot/Help/manifest.json` are authoritative for the remaining baseline values. Every repository commit increments `DepotVersionPatch`.
 
