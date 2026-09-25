@@ -89,7 +89,7 @@ Administrator receives the complete permission catalog. UI visibility is not an 
 Current schema baseline:
 
 - Core database schema: **30**
-- Sales feature schema: **15**
+- Sales feature schema: **16**
 - Finance feature schema: **12**
 
 Finance schema evolution is sequential from foundation through General Ledger, subledgers, inventory accounting, banking, reporting and localization. Sales is listed because Finance/provider acceptance crosses order-to-cash and related feature migrations; its current persistence baseline is maintained independently from Finance.

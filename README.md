@@ -108,7 +108,7 @@ Current baseline:
 
 - Application: **0.15.x-preview**
 - Core database schema: **30**
-- Sales feature schema: **15**
+- Sales feature schema: **16**
 - Finance feature schema: **12**
 - User Sessions feature schema: **3**
 - Security Events feature schema: **3**
