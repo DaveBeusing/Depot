@@ -620,10 +620,11 @@ internal sealed class ProjectAccountingMyWorkProvider(ProjectAccountingService p
 internal sealed class ServiceManagementMyWorkProvider(ServiceManagementService service) : IMyWorkProvider
 {
 	public string Name => "Service Management";
+	public bool CanQuery(IAuthorizationService authorization) =>
+		authorization.HasPermission(ApplicationPermission.ServiceManagementView);
 
-	public async Task<IReadOnlyList<MyWorkItem>> GetItemsAsync(MyWorkQuery query, CancellationToken token)
+	public async Task<IReadOnlyList<MyWorkItem>> GetAsync(MyWorkQuery query, CancellationToken token)
 	{
-		if (!service.CanView) return [];
 		var casesTask = service.GetOwnedOpenCasesAsync(query.UserId, query.ProviderLimit, token);
 		var ordersTask = service.GetOwnedOpenOrdersAsync(query.UserId, query.ProviderLimit, token);
 		await Task.WhenAll(casesTask, ordersTask);
