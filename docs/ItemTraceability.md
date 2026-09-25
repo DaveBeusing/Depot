@@ -102,3 +102,8 @@ When receiving serial-tracked stock, enter one serial number per physical unit. 
 8. Tracking writes are transactional with their business document and stock movement.
 9. Ambiguous transient UI captures fail closed rather than being assigned heuristically.
 10. Non-stock item types cannot enter physical stock workflows.
+
+
+## Production integration
+
+Light Assembly does not implement separate serial/lot logic. Component issue and finished-goods receipt use the existing Stock Movement and Item Traceability authority, so tracked quantities must satisfy the same serial/lot allocation rules as other physical inventory movements. Production stores links to the resulting authoritative movements rather than duplicating tracking balances.

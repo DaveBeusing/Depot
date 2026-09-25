@@ -34,3 +34,29 @@ BOM quantities are decimal so product definitions can retain explicit quantities
 ## Reversal
 
 Production corrections preserve original movements and evidence. Reversal is represented by compensating Stock Movements linked as production evidence; historical issue/receipt records are not deleted. Reversal fails closed when current stock or serial/lot state makes the compensating movement unsafe.
+
+
+## Workspace and My Work
+
+The **Production** workspace exposes BOM revision maintenance and assembly-order execution. Order detail separates material requirements, availability/shortages, controlled issue, completion/cost evidence and correction.
+
+Owned production orders participate in **My Work**:
+- drafts remain visible as drafts;
+- current shortages are surfaced as exceptions;
+- released/in-progress orders without shortages are surfaced for material issue;
+- fully issued orders are surfaced as ready for completion.
+
+The Warehouse Operator system role receives the bounded Production permissions. Stock posting/reversal permissions and Replenishment authorization remain independently enforced by the reused services.
+
+## Permissions
+
+- `Production.View` — view BOMs, production orders, availability and evidence.
+- `BillsOfMaterial.Manage` — create draft BOM revisions and activate them.
+- `ProductionOrders.Manage` — create/release production orders and explicitly hand shortages to Replenishment.
+- `ProductionOrders.Issue` — issue components; existing Stock Movement posting authorization is also required.
+- `ProductionOrders.Complete` — receive the finished quantity; existing Stock Movement posting authorization is also required.
+- `ProductionOrders.Reverse` — request a complete assembly reversal; existing Stock Movement reversal authorization is also required.
+
+## Provider and regression validation
+
+Production schema 1 is provisioned through the normal database initialization path for SQLite, SQL Server and the shared MariaDB/MySQL provider infrastructure. Provider acceptance verifies the feature version and all Production tables. Focused regression tests cover BOM revision stability, cycle rejection, issue/completion idempotency, retained cost evidence and compensating reversal.

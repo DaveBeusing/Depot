@@ -198,3 +198,10 @@ The migration is implemented for:
 - MySQL / MariaDB.
 
 Provider-specific DDL remains behind the data/schema layer. Pricing services and repositories use provider-neutral SQL/query behavior for runtime calculations.
+
+
+## Production cost evidence
+
+Assembly completion resolves each consumed component through `ItemCostCalculationService` at completion time and persists the resolved unit cost, extended cost, currency and calculation evidence version on the Production order. This retained evidence explains the operational assembly cost used for the completion without creating a second item-cost ledger.
+
+All component cost evidence for one completion must resolve to one currency. Missing or ambiguous authoritative cost evidence fails completion closed. Production cost evidence does not post the General Ledger and does not replace Finance Inventory Accounting.
