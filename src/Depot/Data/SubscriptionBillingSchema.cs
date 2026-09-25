@@ -130,7 +130,7 @@ internal static class SubscriptionBillingSchema
 			PeriodStart TEXT NOT NULL, PeriodEnd TEXT NOT NULL, BillingDate TEXT NOT NULL, Status INTEGER NOT NULL, SalesInvoiceId INTEGER NULL,
 			BlockReason TEXT NULL, CreatedAtUtc TEXT NOT NULL, GeneratedAtUtc TEXT NULL, GeneratedByUserId INTEGER NULL,
 			UNIQUE(ContractId,PeriodStart,PeriodEnd), FOREIGN KEY(ContractId) REFERENCES SubscriptionContracts(Id), FOREIGN KEY(SalesInvoiceId) REFERENCES SalesInvoices(Id),
-			CHECK(Status BETWEEN 1 AND 3));
+			CHECK(Status BETWEEN 1 AND 4));
 		CREATE UNIQUE INDEX IF NOT EXISTS UX_SubscriptionBillingInstances_Invoice ON SubscriptionBillingInstances(SalesInvoiceId) WHERE SalesInvoiceId IS NOT NULL;
 		CREATE INDEX IF NOT EXISTS IX_SubscriptionBillingInstances_Due ON SubscriptionBillingInstances(Status,BillingDate,Id);
 		CREATE TABLE IF NOT EXISTS SubscriptionBillingPriceEvidence (
@@ -179,7 +179,7 @@ internal static class SubscriptionBillingSchema
 			CONSTRAINT UQ_SubscriptionBillingInstances_Period UNIQUE(ContractId,PeriodStart,PeriodEnd),
 			CONSTRAINT FK_SubscriptionBillingInstances_Contract FOREIGN KEY(ContractId) REFERENCES SubscriptionContracts(Id),
 			CONSTRAINT FK_SubscriptionBillingInstances_Invoice FOREIGN KEY(SalesInvoiceId) REFERENCES SalesInvoices(Id),
-			CONSTRAINT CK_SubscriptionBillingInstances_Status CHECK(Status BETWEEN 1 AND 3));
+			CONSTRAINT CK_SubscriptionBillingInstances_Status CHECK(Status BETWEEN 1 AND 4));
 		IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id=OBJECT_ID(N'SubscriptionBillingInstances') AND name=N'UX_SubscriptionBillingInstances_Invoice') CREATE UNIQUE INDEX UX_SubscriptionBillingInstances_Invoice ON SubscriptionBillingInstances(SalesInvoiceId) WHERE SalesInvoiceId IS NOT NULL;
 		IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id=OBJECT_ID(N'SubscriptionBillingInstances') AND name=N'IX_SubscriptionBillingInstances_Due') CREATE INDEX IX_SubscriptionBillingInstances_Due ON SubscriptionBillingInstances(Status,BillingDate,Id);
 		IF OBJECT_ID(N'SubscriptionBillingPriceEvidence',N'U') IS NULL CREATE TABLE SubscriptionBillingPriceEvidence (
@@ -225,7 +225,7 @@ internal static class SubscriptionBillingSchema
 			UNIQUE KEY UX_SubscriptionBillingInstances_Invoice(SalesInvoiceId), INDEX IX_SubscriptionBillingInstances_Due(Status,BillingDate,Id),
 			CONSTRAINT FK_SubscriptionBillingInstances_Contract FOREIGN KEY(ContractId) REFERENCES SubscriptionContracts(Id),
 			CONSTRAINT FK_SubscriptionBillingInstances_Invoice FOREIGN KEY(SalesInvoiceId) REFERENCES SalesInvoices(Id),
-			CONSTRAINT CK_SubscriptionBillingInstances_Status CHECK(Status BETWEEN 1 AND 3)) ENGINE=InnoDB;
+			CONSTRAINT CK_SubscriptionBillingInstances_Status CHECK(Status BETWEEN 1 AND 4)) ENGINE=InnoDB;
 		CREATE TABLE IF NOT EXISTS SubscriptionBillingPriceEvidence (
 			Id BIGINT AUTO_INCREMENT PRIMARY KEY, BillingInstanceId BIGINT NOT NULL, ContractLineId BIGINT NOT NULL, LineNumber INT NOT NULL,
 			UnitPrice DECIMAL(18,4) NOT NULL, DiscountPercent DECIMAL(9,4) NOT NULL, PriceSourceListId BIGINT NULL, PriceSourceName VARCHAR(250) NULL,

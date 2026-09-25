@@ -20,6 +20,7 @@ public enum ApplicationPermission
 	SalesCrmView, SalesCrmRecordsManage, SalesCrmManage, SalesCrmActivitiesView, SalesCrmActivitiesManage,
 	SalesQuotesView, SalesQuotesCreate, SalesQuotesEdit, SalesQuotesSend, SalesQuotesConvert,
 	SalesPricingView, SalesPricingManage,
+	SubscriptionContractsView, SubscriptionContractsManage, SubscriptionBillingGenerate,
 	SalesOrdersView, SalesOrdersCreate, SalesOrdersEdit, SalesOrdersSubmit, SalesOrdersApprove, SalesOrdersRelease, SalesOrdersCancel,
 	ShipmentsView, ShipmentsCreate, ShipmentsEdit, ShipmentsPost, ShipmentsReverse,
 	CustomerReturnsView, CustomerReturnsCreate, CustomerReturnsPost,

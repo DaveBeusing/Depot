@@ -6,7 +6,7 @@ namespace Depot.Models;
 public enum SubscriptionContractStatus { Draft = 1, Active = 2, Paused = 3, Cancelled = 4, Expired = 5 }
 public enum SubscriptionBillingCadence { Monthly = 1, Quarterly = 2, Annual = 3 }
 public enum SubscriptionPricePolicy { FixedContractPrice = 1, RepriceAtBilling = 2 }
-public enum SubscriptionBillingInstanceStatus { Due = 1, Generated = 2, Blocked = 3 }
+public enum SubscriptionBillingInstanceStatus { Due = 1, Generated = 2, Blocked = 3, Generating = 4 }
 
 public sealed record SubscriptionContract
 {
