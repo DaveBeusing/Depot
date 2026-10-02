@@ -110,11 +110,13 @@ public sealed class DatabaseProviderProvisioningLockTests
 		var path = Path.Combine(Path.GetTempPath(), $"depot-lock-release-{Guid.NewGuid():N}.db");
 		var factory = new SqliteConnectionFactory(path);
 
-		Assert.Throws<InvalidOperationException>(() =>
+		void SimulateProvisioningFailure()
 		{
 			using var held = DatabaseProvisioningLock.Acquire(factory);
 			throw new InvalidOperationException("Simulated provisioning failure.");
-		});
+		}
+
+		Assert.Throws<InvalidOperationException>(SimulateProvisioningFailure);
 
 		var contender = StartAcquireAndRelease(new SqliteConnectionFactory(path));
 		Assert.True(await CompletesWithinAsync(contender, TimeSpan.FromSeconds(2)));
