@@ -79,6 +79,32 @@ public sealed class DatabaseProviderProvisioningLockTests
 	}
 
 	[Fact]
+	public async Task AbandonedSqliteProvisioningLockIsRecovered()
+	{
+		var path = Path.Combine(Path.GetTempPath(), $"depot-lock-abandoned-{Guid.NewGuid():N}.db");
+		using var ownerReady = new ManualResetEventSlim();
+
+		var abandonedOwner = Task.Factory.StartNew(
+			() =>
+			{
+				var held = DatabaseProvisioningLock.Acquire(new SqliteConnectionFactory(path));
+				ownerReady.Set();
+				// Intentionally leave ownership undisposed so thread termination abandons the mutex.
+				GC.KeepAlive(held);
+			},
+			CancellationToken.None,
+			TaskCreationOptions.LongRunning,
+			TaskScheduler.Default);
+
+		Assert.True(ownerReady.Wait(TimeSpan.FromSeconds(5)));
+		await abandonedOwner;
+
+		var contender = StartAcquireAndRelease(new SqliteConnectionFactory(path));
+		Assert.True(await CompletesWithinAsync(contender, TimeSpan.FromSeconds(2)));
+		await contender;
+	}
+
+	[Fact]
 	public async Task FailedProvisioningScopeReleasesSqliteLock()
 	{
 		var path = Path.Combine(Path.GetTempPath(), $"depot-lock-release-{Guid.NewGuid():N}.db");
