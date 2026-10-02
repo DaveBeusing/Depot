@@ -20,7 +20,9 @@ public sealed class DatabaseProviderProvisioningLockTests
 		var holder = StartLockHolder(new SqliteConnectionFactory(firstPath), firstReady, releaseFirst);
 		Assert.True(firstReady.Wait(TimeSpan.FromSeconds(5)));
 
-		var contender = StartAcquireAndRelease(new SqliteConnectionFactory(secondPath));
+		using var contenderStarted = new ManualResetEventSlim();
+		var contender = StartAcquireAndRelease(new SqliteConnectionFactory(secondPath), contenderStarted);
+		Assert.True(contenderStarted.Wait(TimeSpan.FromSeconds(5)));
 		var completedWhileFirstWasHeld = await CompletesWithinAsync(contender, TimeSpan.FromSeconds(2));
 
 		releaseFirst.Set();
@@ -40,7 +42,9 @@ public sealed class DatabaseProviderProvisioningLockTests
 		var holder = StartLockHolder(new SqliteConnectionFactory(path), firstReady, releaseFirst);
 		Assert.True(firstReady.Wait(TimeSpan.FromSeconds(5)));
 
-		var contender = StartAcquireAndRelease(new SqliteConnectionFactory(path));
+		using var contenderStarted = new ManualResetEventSlim();
+		var contender = StartAcquireAndRelease(new SqliteConnectionFactory(path), contenderStarted);
+		Assert.True(contenderStarted.Wait(TimeSpan.FromSeconds(5)));
 		var completedWhileFirstWasHeld = await CompletesWithinAsync(contender, TimeSpan.FromMilliseconds(300));
 
 		releaseFirst.Set();
@@ -62,7 +66,9 @@ public sealed class DatabaseProviderProvisioningLockTests
 		var holder = StartLockHolder(new SqliteConnectionFactory(canonicalPath), firstReady, releaseFirst);
 		Assert.True(firstReady.Wait(TimeSpan.FromSeconds(5)));
 
-		var contender = StartAcquireAndRelease(new SqliteConnectionFactory(equivalentPath));
+		using var contenderStarted = new ManualResetEventSlim();
+		var contender = StartAcquireAndRelease(new SqliteConnectionFactory(equivalentPath), contenderStarted);
+		Assert.True(contenderStarted.Wait(TimeSpan.FromSeconds(5)));
 		var completedWhileFirstWasHeld = await CompletesWithinAsync(contender, TimeSpan.FromMilliseconds(300));
 
 		releaseFirst.Set();
@@ -105,10 +111,13 @@ public sealed class DatabaseProviderProvisioningLockTests
 			TaskCreationOptions.LongRunning,
 			TaskScheduler.Default);
 
-	private static Task StartAcquireAndRelease(SqliteConnectionFactory factory) =>
+	private static Task StartAcquireAndRelease(
+		SqliteConnectionFactory factory,
+		ManualResetEventSlim? started = null) =>
 		Task.Factory.StartNew(
 			() =>
 			{
+				started?.Set();
 				using var held = DatabaseProvisioningLock.Acquire(factory);
 			},
 			CancellationToken.None,
