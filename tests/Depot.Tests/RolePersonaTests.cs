@@ -263,7 +263,7 @@ public sealed class RbacTestsPersonaProfiles
 			SystemRoleCatalog.AccountsReceivableCode,
 			new ApplicationPermission[]
 			{
-				ApplicationPermission.DashboardView, ApplicationPermission.CustomersView, ApplicationPermission.SalesInvoicesView, ApplicationPermission.CreditNotesView,
+				ApplicationPermission.DashboardView, ApplicationPermission.CustomersView, ApplicationPermission.SubscriptionContractsView, ApplicationPermission.ServiceManagementView, ApplicationPermission.SalesInvoicesView, ApplicationPermission.CreditNotesView,
 				ApplicationPermission.FinanceReceivablesView, ApplicationPermission.FinanceReceivablePaymentsPost, ApplicationPermission.FinanceReceivablePaymentsReverse,
 				ApplicationPermission.FinanceDunningView, ApplicationPermission.FinanceDunningManage,
 				ApplicationPermission.ProjectsView, ApplicationPermission.ProjectFinancialsView
@@ -312,7 +312,7 @@ public sealed class RbacTestsPersonaProfiles
 				ApplicationPermission.DashboardView,
 				ApplicationPermission.InventoryView, ApplicationPermission.ItemsView, ApplicationPermission.StockMovementsView, ApplicationPermission.StockTransfersView, ApplicationPermission.InventoryCountsView,
 				ApplicationPermission.PurchasingView, ApplicationPermission.PurchaseRequisitionsView, ApplicationPermission.SupplierSourcingView, ApplicationPermission.PurchaseOrdersView, ApplicationPermission.GoodsReceiptsView, ApplicationPermission.SupplierReturnsView, ApplicationPermission.SuppliersView,
-				ApplicationPermission.SalesView, ApplicationPermission.CustomersView, ApplicationPermission.SalesCrmView, ApplicationPermission.SalesCrmActivitiesView, ApplicationPermission.SalesQuotesView, ApplicationPermission.SalesPricingView, ApplicationPermission.SalesOrdersView,
+				ApplicationPermission.SalesView, ApplicationPermission.CustomersView, ApplicationPermission.SalesCrmView, ApplicationPermission.SalesCrmActivitiesView, ApplicationPermission.SalesQuotesView, ApplicationPermission.SalesPricingView, ApplicationPermission.SubscriptionContractsView, ApplicationPermission.ServiceManagementView, ApplicationPermission.SalesOrdersView,
 				ApplicationPermission.ShipmentsView, ApplicationPermission.CustomerReturnsView, ApplicationPermission.SalesInvoicesView, ApplicationPermission.CreditNotesView,
 				ApplicationPermission.FinanceView, ApplicationPermission.FinanceExchangeRatesView, ApplicationPermission.FinancePeriodsView, ApplicationPermission.FinanceAccountingBooksView,
 				ApplicationPermission.FinanceTaxConfigurationView, ApplicationPermission.FinanceNumberSequencesView, ApplicationPermission.FinanceGeneralLedgerView, ApplicationPermission.FinancePostingProfilesView,
