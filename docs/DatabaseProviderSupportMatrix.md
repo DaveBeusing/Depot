@@ -1,6 +1,6 @@
 # Database Provider Production Support Matrix
 
-Updated: 2026-09-25
+Updated: 2026-10-02
 
 ## Purpose
 
@@ -94,6 +94,8 @@ The Sales active-reservation invariant cannot use SQL Server-style filtered inde
 ### SQLite
 
 SQLite remains the embedded reference baseline. Local-only capabilities such as `VACUUM` and DepotManager's local pre-migration safety-copy path are not claims about remote-provider functionality.
+
+SQLite provisioning is serialized per normalized database target rather than through one process-wide lock for every local database. The target identity is normalized before hashing into the named-mutex resource, so equivalent paths to the same file serialize together while unrelated SQLite files can initialize concurrently. The lock remains bounded to 60 seconds, abandoned mutex ownership is recoverable, and disposal releases ownership on normal and exception paths. Timeout diagnostics identify the hashed lock resource without exposing the database path.
 
 SQLite uses dynamic typing and `NUMERIC` affinity rather than a server-style fixed `DECIMAL(28,9)` implementation. The acceptance suite proves nine fractional decimal digits for representative business-scale values, but SQLite cannot guarantee the full fixed-decimal magnitude/precision range available from SQL Server, MariaDB and MySQL. Deployments requiring exact very-large high-scale decimal values should select one of the supported server providers.
 
