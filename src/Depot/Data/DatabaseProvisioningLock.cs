@@ -3,6 +3,8 @@
 
 using System.Data.Common;
 using System.Globalization;
+using System.Security.Cryptography;
+using System.Text;
 
 using Depot.Models;
 
@@ -24,9 +26,10 @@ internal sealed class DatabaseProvisioningLock : IDisposable
 		_resource = resource;
 	}
 
-	private DatabaseProvisioningLock(Mutex mutex, bool ownsMutex)
+	private DatabaseProvisioningLock(Mutex mutex, string resource, bool ownsMutex)
 	{
 		_mutex = mutex;
+		_resource = resource;
 		_ownsMutex = ownsMutex;
 		_provider = DatabaseProvider.Local;
 	}
@@ -38,7 +41,7 @@ internal sealed class DatabaseProvisioningLock : IDisposable
 		{
 			SqlServerConnectionFactory sqlServer => AcquireSqlServer(sqlServer),
 			MySqlConnectionFactory mySql => AcquireMySql(mySql),
-			SqliteConnectionFactory => AcquireSqlite(),
+			SqliteConnectionFactory sqlite => AcquireSqlite(sqlite),
 			_ => throw new NotSupportedException($"Provisioning lock is not supported for provider '{connectionFactory.Provider}'.")
 		};
 	}
@@ -93,9 +96,10 @@ internal sealed class DatabaseProvisioningLock : IDisposable
 		}
 	}
 
-	private static DatabaseProvisioningLock AcquireSqlite()
+	private static DatabaseProvisioningLock AcquireSqlite(SqliteConnectionFactory factory)
 	{
-		var mutex = new Mutex(false, @"Local\Depot.DatabaseProvisioning.SQLite");
+		var resource = CreateSqliteResource(factory.DatabasePath);
+		var mutex = new Mutex(false, resource);
 		var acquired = false;
 		try
 		{
@@ -107,14 +111,36 @@ internal sealed class DatabaseProvisioningLock : IDisposable
 			{
 				acquired = true;
 			}
-			if (!acquired) throw new TimeoutException("Timed out waiting for the SQLite provisioning lock.");
-			return new DatabaseProvisioningLock(mutex, true);
+			if (!acquired)
+				throw new TimeoutException($"Timed out waiting for SQLite provisioning lock '{resource}' after {TimeoutSeconds} seconds.");
+			return new DatabaseProvisioningLock(mutex, resource, true);
 		}
 		catch
 		{
 			mutex.Dispose();
 			throw;
 		}
+	}
+
+	private static string CreateSqliteResource(string databasePath)
+	{
+		var normalizedTarget = NormalizeSqliteTarget(databasePath);
+		var digest = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(normalizedTarget)));
+		return $@"Local\Depot.DatabaseProvisioning.SQLite.{digest}";
+	}
+
+	private static string NormalizeSqliteTarget(string databasePath)
+	{
+		if (string.IsNullOrWhiteSpace(databasePath))
+			return "<empty>";
+
+		var trimmed = databasePath.Trim();
+		if (string.Equals(trimmed, ":memory:", StringComparison.OrdinalIgnoreCase) ||
+			trimmed.StartsWith("file:", StringComparison.OrdinalIgnoreCase))
+			return trimmed.Normalize(NormalizationForm.FormC);
+
+		var fullPath = Path.GetFullPath(trimmed).Normalize(NormalizationForm.FormC);
+		return OperatingSystem.IsWindows() ? fullPath.ToUpperInvariant() : fullPath;
 	}
 
 	public void Dispose()
@@ -149,12 +175,15 @@ internal sealed class DatabaseProvisioningLock : IDisposable
 
 		if (_mutex is not null)
 		{
-			if (_ownsMutex)
+			try
 			{
-				_mutex.ReleaseMutex();
-				_ownsMutex = false;
+				if (_ownsMutex)
+					_mutex.ReleaseMutex();
 			}
-			_mutex.Dispose();
-		}
-	}
+			finally
+			{
+				_ownsMutex = false;
+				_mutex.Dispose();
+			}
+		}	}
 }
