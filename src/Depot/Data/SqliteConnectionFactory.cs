@@ -8,9 +8,11 @@ namespace Depot.Data;
 public sealed class SqliteConnectionFactory : IDatabaseConnectionFactory
 {
 	private readonly string _connectionString;
+	private readonly string _databasePath;
 
 	public SqliteConnectionFactory(string databasePath)
 	{
+		_databasePath = databasePath;
 		var connectionStringBuilder =
 			new SqliteConnectionStringBuilder
 			{
@@ -21,6 +23,8 @@ public sealed class SqliteConnectionFactory : IDatabaseConnectionFactory
 		_connectionString =
 			connectionStringBuilder.ToString();
 	}
+
+	internal string DatabasePath => _databasePath;
 
 	public SqliteConnection CreateConnection()
 	{

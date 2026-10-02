@@ -1,6 +1,6 @@
 # Depot Architecture
 
-Updated: 2026-09-25
+Updated: 2026-10-02
 
 ## Overview
 
@@ -20,7 +20,7 @@ Provider-neutral code is not itself a support claim. Production database support
 
 Current certified baselines are the Depot-bundled SQLite runtime, SQL Server 2022 engine 16.x, MariaDB 11.8.9 LTS and MySQL 8.4.11 LTS. MariaDB and MySQL share `MySqlConnector` infrastructure but are accepted independently.
 
-Remote provisioning serializes the complete global/feature migration sequence with provider-native locks: SQL Server uses `sp_getapplock`; MariaDB/MySQL use `GET_LOCK`. Write transactions are serializable on remote providers. Business serialization uses provider-specific row locking behind the data layer.
+Provisioning serializes the complete global/feature migration sequence per physical database target. SQL Server uses `sp_getapplock`; MariaDB/MySQL use `GET_LOCK`; SQLite uses a named mutex keyed by a SHA-256 digest of the normalized database target. Independent SQLite files therefore provision concurrently, while the same normalized target remains serialized across factory instances and processes. SQLite diagnostics expose only the derived lock resource, not the database path. Write transactions are serializable on remote providers. Business serialization uses provider-specific row locking behind the data layer.
 
 Known transient deadlock/write-conflict errors use bounded exponential retry with jitter and complete transaction recreation. Non-transient business/constraint failures are not retried. MySQL/MariaDB Finance UTC timestamps are normalized to real `DATETIME(6)` parameters at the provider boundary rather than leaking provider rules into Services/Repositories.
 
