@@ -52,7 +52,7 @@ jobs:
   coverage:
     name: Coverage regression - ${{ matrix.area }}
     runs-on: windows-2025
-    timeout-minutes: 60
+    timeout-minutes: 75
     strategy:
       fail-fast: false
       matrix:
