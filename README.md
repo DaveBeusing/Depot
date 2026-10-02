@@ -118,7 +118,7 @@ Current baseline:
 - Approval Policies feature schema: **1**
 - Procurement Sourcing feature schema: **1**
 - Project Accounting feature schema: **1**
-- Help manifest: **1.31**
+- Help manifest: **1.36**
 
 `Directory.Build.props` is authoritative for the exact application patch/version. The documentation baseline intentionally records the development line instead of duplicating the moving preview patch number.
 
@@ -168,7 +168,7 @@ Security and compliance work is documented transparently rather than presented a
 
 ## Offline Help
 
-Embedded Help manifest **1.33** includes contextual Sales, Finance, User Sessions and Security Center guidance. Help visibility follows central permissions and never grants business access.
+Embedded Help manifest **1.36** includes contextual Sales, Finance, User Sessions and Security Center guidance. Help visibility follows central permissions and never grants business access.
 
 See the [Help Center documentation](docs/HelpCenter.md).
 
