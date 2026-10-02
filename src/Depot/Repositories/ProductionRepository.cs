@@ -219,7 +219,12 @@ public sealed class ProductionRepository : DatabaseRepository
 	}
 
 	internal Task MarkInProgressAsync(DatabaseTransactionContext transaction,long orderId,CancellationToken token)=>
-		transaction.Session.ExecuteAsync("UPDATE ProductionOrders SET Status=$InProgress,Version=Version+1 WHERE Id=$Id AND Status=$Released;",token,Parameter("$InProgress",(int)ProductionOrderStatus.InProgress),Parameter("$Id",orderId));
+		transaction.Session.ExecuteAsync(
+			"UPDATE ProductionOrders SET Status=$InProgress,Version=Version+1 WHERE Id=$Id AND Status=$Released;",
+			token,
+			Parameter("$InProgress",(int)ProductionOrderStatus.InProgress),
+			Parameter("$Released",(int)ProductionOrderStatus.Released),
+			Parameter("$Id",orderId));
 
 	internal async Task SaveCostEvidenceAsync(DatabaseTransactionContext transaction,IReadOnlyList<ProductionAssemblyCostEvidence> evidence,CancellationToken token)
 	{
