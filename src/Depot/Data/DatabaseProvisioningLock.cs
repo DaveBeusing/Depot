@@ -185,5 +185,6 @@ internal sealed class DatabaseProvisioningLock : IDisposable
 				_ownsMutex = false;
 				_mutex.Dispose();
 			}
-		}	}
+		}
+	}
 }

@@ -51,6 +51,28 @@ public sealed class DatabaseProviderProvisioningLockTests
 	}
 
 	[Fact]
+	public async Task EquivalentSqlitePathsShareProvisioningLock()
+	{
+		var directory = Path.Combine(Path.GetTempPath(), $"depot-lock-normalized-{Guid.NewGuid():N}");
+		var canonicalPath = Path.Combine(directory, "depot.db");
+		var equivalentPath = Path.Combine(directory, ".", "depot.db");
+		using var firstReady = new ManualResetEventSlim();
+		using var releaseFirst = new ManualResetEventSlim();
+
+		var holder = StartLockHolder(new SqliteConnectionFactory(canonicalPath), firstReady, releaseFirst);
+		Assert.True(firstReady.Wait(TimeSpan.FromSeconds(5)));
+
+		var contender = StartAcquireAndRelease(new SqliteConnectionFactory(equivalentPath));
+		var completedWhileFirstWasHeld = await CompletesWithinAsync(contender, TimeSpan.FromMilliseconds(300));
+
+		releaseFirst.Set();
+		await holder;
+		await contender;
+
+		Assert.False(completedWhileFirstWasHeld);
+	}
+
+	[Fact]
 	public async Task FailedProvisioningScopeReleasesSqliteLock()
 	{
 		var path = Path.Combine(Path.GetTempPath(), $"depot-lock-release-{Guid.NewGuid():N}.db");
