@@ -3,6 +3,8 @@ param(
     [string]$OutputRoot = (Join-Path (Resolve-Path (Join-Path $PSScriptRoot '..')).Path 'artifacts\packaged'),
     [ValidateSet('Preview', 'Stable')]
     [string]$Channel = 'Preview',
+    [string]$DepotReleaseVersion,
+    [string]$ManagerReleaseVersion,
     [switch]$NoRestore
 )
 
@@ -39,6 +41,8 @@ $publishProperties = @(
 
 $depotPublishProperties = @($publishProperties)
 $managerPublishProperties = @($publishProperties)
+if ($DepotReleaseVersion) { $depotPublishProperties += "-p:Version=$DepotReleaseVersion" }
+if ($ManagerReleaseVersion) { $managerPublishProperties += "-p:Version=$ManagerReleaseVersion" }
 if ($Channel -eq 'Stable') {
     $depotPublishProperties += '-p:DepotStableRelease=true'
     $managerPublishProperties += '-p:DepotManagerStableRelease=true'

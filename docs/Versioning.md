@@ -21,9 +21,19 @@ Updated: 2026-09-25
 - Production feature schema: **1**
 - Help manifest: **1.36**
 
-Application, Core database and feature-schema versions are independent compatibility dimensions. `Directory.Build.props` is the authoritative source for the exact application patch/version; long-lived documentation records the development line rather than duplicating the moving patch number.
+Application, Core database and feature-schema versions are independent compatibility dimensions. `Directory.Build.props` is the source-controlled target for the product version; long-lived documentation records the development line rather than duplicating the moving patch number.
 
-Every repository commit increments `DepotVersionPatch` in `Directory.Build.props`. Database schema versions change only when the corresponding persisted schema contract changes.
+**Adopted policy (2026-10-10):** A commit is not a release. Do not change `DepotVersionPatch` for ordinary commits. Set SemVer MAJOR/MINOR/PATCH only for deliberate product-version boundaries. Use uniquely allocated `preview.N` for eligible integration builds, `rc.N` for candidates, and immutable `vMAJOR.MINOR.PATCH` tags for stable releases. Preserve the full Git SHA in build/release evidence. Database schema versions remain independent and change only when persisted schema contracts change. The release pipeline migration is tracked separately and must be completed before new preview publications can claim compliance.
+
+## Release version identity and allocation
+
+The repository retains the historical `0.15.666-preview` baseline in source during the migration. A new target version is selected deliberately when release scope changes, never for an ordinary commit. The pre-commit hook does not modify product versions.
+
+The authoritative release workflow serializes manual publication runs using a repository-wide release concurrency group. For Preview, it reads existing `vMAJOR.MINOR.PATCH-preview.N` tags and selects the next available `N`; the release-publication job refuses tag/release collisions. Only tagged, published preview runs consume an identifier. Unpublished acceptance-only or failed runs can reuse an uncommitted candidate number; source SHA and workflow run ID distinguish unpublished evidence. This scheme requires publication exclusively through the controlled workflow; independently publishing matching tags outside the workflow is prohibited.
+
+PR validation uses temporary `MAJOR.MINOR.PATCH-pr.PR_NUMBER.ATTEMPT` product identities and must not publish to the official release feed. Released Depot and DepotManager have independent base versions, while a combined product distribution uses the same preview sequence for both artifacts. The exact published versions are passed to `dotnet publish` through MSBuild `Version`; Windows numeric `FileVersion` remains the base numeric product identity. Artifacts record SHA-256, full source SHA, CI run identity, and UTC build time. Stable tags use `vMAJOR.MINOR.PATCH` and remain immutable. Never overwrite a release/tag or release artifact.
+
+The Preview channel is non-production. Stable publication still requires all existing signing, compatibility, E2E, security and release gates; no version change bypasses acceptance. Schema migration identifiers and compatibility remain independent of SemVer.
 
 ## Core database schema
 

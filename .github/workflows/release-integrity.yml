@@ -7,6 +7,7 @@ on:
       - '.github/workflows/release-integrity.yml'
       - 'scripts/publish-packaged-artifacts.ps1'
       - 'scripts/release.ps1'
+      - 'docs/Versioning.md'
       - 'scripts/signing/**'
       - 'src/Depot/**'
       - 'src/DepotManager/**'
@@ -33,7 +34,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: release-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  group: ${{ github.event_name == 'workflow_dispatch' && 'depot-release-publication' || format('release-pr-{0}', github.event.pull_request.number) }}
   cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' }}
 
 jobs:
@@ -93,11 +94,39 @@ jobs:
           $manager = $managerProps.Project.PropertyGroup | Select-Object -First 1
           $managerVersion = "$($manager.DepotManagerVersionMajor).$($manager.DepotManagerVersionMinor).$($manager.DepotManagerVersionPatch)"
 
-          $tag = if ($channel -eq 'Preview') { "$depotVersion-$suffix" } else { $depotVersion }
+          $isPr = '${{ github.event_name }}' -eq 'pull_request'
+          $baseVersion = $depotVersion
+          $managerBaseVersion = $managerVersion
+          if ($isPr) {
+            $sequence = [int]'${{ github.run_attempt }}'
+            $depotVersion = "$baseVersion-pr.${{ github.event.pull_request.number }}.$sequence"
+            $managerVersion = "$managerBaseVersion-pr.${{ github.event.pull_request.number }}.$sequence"
+            $tag = "validation-${{ github.event.pull_request.number }}-$sequence"
+          }
+          elseif ($channel -eq 'Preview') {
+            # The workflow-level concurrency group serializes publication runs.
+            # Published tags are the durable counter; no tracked file is mutated.
+            $env:GH_TOKEN = '${{ github.token }}'
+            $all = @()
+            $all = @(gh api "repos/${{ github.repository }}/git/matching-refs/tags/v$baseVersion-preview." --paginate --jq '.[].ref')
+            if ($LASTEXITCODE -ne 0) { throw 'Could not read existing preview tags.' }
+            $numbers = @($all | ForEach-Object {
+              if ($_ -match ('^refs/tags/v' + [regex]::Escape($baseVersion) + '-preview\.(\d+)$')) { [int]$Matches[1] }
+            })
+            $next = if ($numbers.Count -gt 0) { (($numbers | Measure-Object -Maximum).Maximum + 1) } else { 1 }
+            $depotVersion = "$baseVersion-preview.$next"
+            $managerVersion = "$managerBaseVersion-preview.$next"
+            $tag = "v$depotVersion"
+          }
+          else {
+            $tag = "v$baseVersion"
+          }
 
           "DEPOT_RELEASE_CHANNEL=$channel" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
           "DEPOT_VERSION=$depotVersion" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          "DEPOT_BASE_VERSION=$baseVersion" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
           "DEPOT_MANAGER_VERSION=$managerVersion" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
+          "DEPOT_MANAGER_BASE_VERSION=$managerBaseVersion" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
           "DEPOT_RELEASE_TAG=$tag" | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
           'DEPOT_PRODUCTION_SIGNING_ACCEPTANCE=NOT_APPLICABLE' | Out-File $env:GITHUB_ENV -Encoding utf8 -Append
 
@@ -202,7 +231,7 @@ jobs:
 
       - name: Publish packaged artifacts
         shell: pwsh
-        run: ./scripts/publish-packaged-artifacts.ps1 -OutputRoot artifacts/release -NoRestore -Channel $env:DEPOT_RELEASE_CHANNEL
+        run: ./scripts/publish-packaged-artifacts.ps1 -OutputRoot artifacts/release -NoRestore -Channel $env:DEPOT_RELEASE_CHANNEL -DepotReleaseVersion $env:DEPOT_VERSION -ManagerReleaseVersion $env:DEPOT_MANAGER_VERSION
 
       - name: Validate packaged channel and versions
         shell: pwsh
@@ -210,16 +239,17 @@ jobs:
           $depotInfo = [Diagnostics.FileVersionInfo]::GetVersionInfo((Resolve-Path 'artifacts/release/depot/Depot.exe'))
           $managerInfo = [Diagnostics.FileVersionInfo]::GetVersionInfo((Resolve-Path 'artifacts/release/manager/DepotManager.exe'))
 
-          if ([Version]$depotInfo.FileVersion -ne [Version]"$env:DEPOT_VERSION.0") {
+          if ([Version]$depotInfo.FileVersion -ne [Version]"$env:DEPOT_BASE_VERSION.0") {
             throw "Depot.exe file version $($depotInfo.FileVersion) does not match configured version $env:DEPOT_VERSION."
           }
-          if ([Version]$managerInfo.FileVersion -ne [Version]"$env:DEPOT_MANAGER_VERSION.0") {
+          if ([Version]$managerInfo.FileVersion -ne [Version]"$env:DEPOT_MANAGER_BASE_VERSION.0") {
             throw "DepotManager.exe file version $($managerInfo.FileVersion) does not match configured version $env:DEPOT_MANAGER_VERSION."
           }
 
           if ($env:DEPOT_RELEASE_CHANNEL -eq 'Preview') {
-            if ($depotInfo.ProductVersion -notmatch '-preview' -or $managerInfo.ProductVersion -notmatch '-preview') {
-              throw 'Preview artifacts must retain their preview version suffix.'
+            $expectedSuffix = if ('${{ github.event_name }}' -eq 'pull_request') { '-pr.' } else { '-preview.' }
+            if ($depotInfo.ProductVersion -notmatch [regex]::Escape($expectedSuffix) -or $managerInfo.ProductVersion -notmatch [regex]::Escape($expectedSuffix)) {
+              throw "Validation artifacts must retain expected suffix $expectedSuffix."
             }
           }
           else {
@@ -404,6 +434,9 @@ jobs:
             sourceSha = '${{ github.sha }}'
             sourceRef = '${{ github.ref }}'
             workflowRunId = '${{ github.run_id }}'
+            buildUtc = [DateTime]::UtcNow.ToString('o')
+            repository = '${{ github.repository }}'
+            dotnetSdk = (dotnet --version).Trim()
             releaseChannel = $channelText
             releaseTag = $env:DEPOT_RELEASE_TAG
             depotVersion = $env:DEPOT_VERSION
@@ -492,6 +525,22 @@ jobs:
           gh api "repos/${{ github.repository }}/git/ref/tags/$tag" *> $null
           if ($LASTEXITCODE -eq 0) {
             throw "Git tag '$tag' already exists without an authoritative release."
+          }
+
+      - name: Create immutable annotated release tag
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = '${{ needs.release-candidate.outputs.tag }}'
+          $sha = '${{ github.sha }}'
+          $tagObject = gh api -X POST "repos/${{ github.repository }}/git/tags" -f "tag=$tag" -f "message=Release $tag from $sha" -f "object=$sha" -f type=commit --jq .sha
+          if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($tagObject)) {
+            throw 'Could not create annotated tag object.'
+          }
+          gh api -X POST "repos/${{ github.repository }}/git/refs" -f "ref=refs/tags/$tag" -f "sha=$tagObject"
+          if ($LASTEXITCODE -ne 0) {
+            throw "Refusing to publish: annotated tag $tag could not be reserved."
           }
 
       - name: Publish release from validated artifacts
