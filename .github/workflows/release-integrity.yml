@@ -527,6 +527,22 @@ jobs:
             throw "Git tag '$tag' already exists without an authoritative release."
           }
 
+      - name: Create immutable annotated release tag
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = '${{ needs.release-candidate.outputs.tag }}'
+          $sha = '${{ github.sha }}'
+          $tagObject = gh api -X POST "repos/${{ github.repository }}/git/tags" -f "tag=$tag" -f "message=Release $tag from $sha" -f "object=$sha" -f type=commit --jq .sha
+          if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($tagObject)) {
+            throw 'Could not create annotated tag object.'
+          }
+          gh api -X POST "repos/${{ github.repository }}/git/refs" -f "ref=refs/tags/$tag" -f "sha=$tagObject"
+          if ($LASTEXITCODE -ne 0) {
+            throw "Refusing to publish: annotated tag $tag could not be reserved."
+          }
+
       - name: Publish release from validated artifacts
         shell: pwsh
         env:
