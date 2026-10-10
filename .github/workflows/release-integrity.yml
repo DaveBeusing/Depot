@@ -108,13 +108,8 @@ jobs:
             # Published tags are the durable counter; no tracked file is mutated.
             $env:GH_TOKEN = '${{ github.token }}'
             $all = @()
-            $page = 1
-            do {
-              $response = @(gh api "repos/${{ github.repository }}/git/matching-refs/tags/v$baseVersion-preview." --paginate --jq '.[].ref')
-              if ($LASTEXITCODE -ne 0) { throw 'Could not read existing preview tags.' }
-              $all = $response
-              break
-            } while ($false)
+            $all = @(gh api "repos/${{ github.repository }}/git/matching-refs/tags/v$baseVersion-preview." --paginate --jq '.[].ref')
+            if ($LASTEXITCODE -ne 0) { throw 'Could not read existing preview tags.' }
             $numbers = @($all | ForEach-Object {
               if ($_ -match ('^refs/tags/v' + [regex]::Escape($baseVersion) + '-preview\.(\d+)$')) { [int]$Matches[1] }
             })
@@ -252,8 +247,9 @@ jobs:
           }
 
           if ($env:DEPOT_RELEASE_CHANNEL -eq 'Preview') {
-            if ($depotInfo.ProductVersion -notmatch '-preview' -or $managerInfo.ProductVersion -notmatch '-preview') {
-              throw 'Preview artifacts must retain their preview version suffix.'
+            $expectedSuffix = if ('${{ github.event_name }}' -eq 'pull_request') { '-pr.' } else { '-preview.' }
+            if ($depotInfo.ProductVersion -notmatch [regex]::Escape($expectedSuffix) -or $managerInfo.ProductVersion -notmatch [regex]::Escape($expectedSuffix)) {
+              throw "Validation artifacts must retain expected suffix $expectedSuffix."
             }
           }
           else {
