@@ -21,9 +21,9 @@ Updated: 2026-09-25
 - Production feature schema: **1**
 - Help manifest: **1.36**
 
-Application, Core database and feature-schema versions are independent compatibility dimensions. `Directory.Build.props` is the authoritative source for the exact application patch/version; long-lived documentation records the development line rather than duplicating the moving patch number.
+Application, Core database and feature-schema versions are independent compatibility dimensions. `Directory.Build.props` is the source-controlled target for the product version; long-lived documentation records the development line rather than duplicating the moving patch number.
 
-Every repository commit increments `DepotVersionPatch` in `Directory.Build.props`. Database schema versions change only when the corresponding persisted schema contract changes.
+**Adopted policy (2026-10-10):** A commit is not a release. Do not change `DepotVersionPatch` for ordinary commits. Set SemVer MAJOR/MINOR/PATCH only for deliberate product-version boundaries. Use uniquely allocated `preview.N` for eligible integration builds, `rc.N` for candidates, and immutable `vMAJOR.MINOR.PATCH` tags for stable releases. Preserve the full Git SHA in build/release evidence. Database schema versions remain independent and change only when persisted schema contracts change. The release pipeline migration is tracked separately and must be completed before new preview publications can claim compliance.
 
 ## Core database schema
 
