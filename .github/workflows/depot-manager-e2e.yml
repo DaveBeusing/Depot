@@ -9,6 +9,8 @@ on:
       - '.github/workflows/depot-manager-e2e.yml'
       - '.github/workflows/release-integrity.yml'
       - 'scripts/publish-packaged-artifacts.ps1'
+      - 'scripts/ci/Resolve-PackagedE2EBase.ps1'
+      - 'scripts/ci/Test-PackagedE2EBase.ps1'
       - 'src/Depot/**'
       - 'src/DepotManager/**'
       - 'tests/DepotManager.Tests/**'
