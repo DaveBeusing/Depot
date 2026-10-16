@@ -119,7 +119,7 @@ jobs:
       - name: Run critical provider smoke
         shell: pwsh
         run: |
-          $filter = "Acceptance=DatabaseProvider&Provider=${{ matrix.trait }}&(AcceptanceLevel=Smoke|FullyQualifiedName~ProcurementProviderTests)"
+          $filter = "Acceptance=DatabaseProvider&Provider=${{ matrix.trait }}&(AcceptanceLevel=Smoke|FullyQualifiedName~ProcurementProviderTests|FullyQualifiedName~SalesProviderAcceptanceTests)"
           dotnet test tests/Depot.Tests/Depot.Tests.csproj `
             --configuration Release `
             --no-build `

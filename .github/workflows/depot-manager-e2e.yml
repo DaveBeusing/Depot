@@ -9,6 +9,8 @@ on:
       - '.github/workflows/depot-manager-e2e.yml'
       - '.github/workflows/release-integrity.yml'
       - 'scripts/publish-packaged-artifacts.ps1'
+      - 'scripts/ci/Resolve-PackagedE2EBase.ps1'
+      - 'scripts/ci/Test-PackagedE2EBase.ps1'
       - 'src/Depot/**'
       - 'src/DepotManager/**'
       - 'tests/DepotManager.Tests/**'
@@ -48,6 +50,10 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
+      - name: Test real-source version baseline selection
+        shell: pwsh
+        run: ./scripts/ci/Test-PackagedE2EBase.ps1
+
       - name: Restore locked dependencies
         shell: pwsh
         run: |
@@ -84,6 +90,7 @@ jobs:
             $previousRef = (git rev-parse HEAD^).Trim()
           }
           if ([string]::IsNullOrWhiteSpace($previousRef)) { throw 'Previous source ref could not be determined.' }
+          $previousRef = ./scripts/ci/Resolve-PackagedE2EBase.ps1 -BaseRef $previousRef
           "previous=$previousRef" | Add-Content artifacts/packaged/source.txt -Encoding ascii
           $previousTree = Join-Path $env:RUNNER_TEMP 'DepotPreviousSource'
           if (Test-Path $previousTree) { Remove-Item $previousTree -Recurse -Force }
