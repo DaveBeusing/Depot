@@ -115,7 +115,10 @@ public sealed class MySqlConnectionFactory : IDatabaseConnectionFactory
 
 	private static void NormalizeParameters(DbCommand command)
 	{
-		if (!command.CommandText.Contains("Finance", StringComparison.OrdinalIgnoreCase)) return;
+		var isCrm = command.CommandText.Contains("SalesLeads", StringComparison.OrdinalIgnoreCase) ||
+			command.CommandText.Contains("SalesOpportunities", StringComparison.OrdinalIgnoreCase) ||
+			command.CommandText.Contains("SalesActivities", StringComparison.OrdinalIgnoreCase);
+		if (!isCrm && !command.CommandText.Contains("Finance", StringComparison.OrdinalIgnoreCase)) return;
 
 		foreach (DbParameter parameter in command.Parameters)
 		{
@@ -123,7 +126,8 @@ public sealed class MySqlConnectionFactory : IDatabaseConnectionFactory
 			var name = parameter.ParameterName.TrimStart('@', '$');
 			if (!name.EndsWith("Utc", StringComparison.OrdinalIgnoreCase) &&
 				!name.EndsWith("At", StringComparison.OrdinalIgnoreCase) &&
-				!FinanceDateTimeParameterNames.Contains(name)) continue;
+				!FinanceDateTimeParameterNames.Contains(name) &&
+				!(isCrm && name.Equals("NextActivityDate", StringComparison.OrdinalIgnoreCase))) continue;
 			if (!DateTime.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var parsed)) continue;
 
 			var utc = parsed.Kind switch

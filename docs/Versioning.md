@@ -27,7 +27,7 @@ Application, Core database and feature-schema versions are independent compatibi
 
 ## Release version identity and allocation
 
-The repository retains the historical `0.15.666-preview` baseline in source during the migration. A new target version is selected deliberately when release scope changes, never for an ordinary commit. The pre-commit hook does not modify product versions.
+The repository retains the historical `0.15.x-preview` development line during the migration; `Directory.Build.props` is authoritative for the exact source baseline. A new target version is selected deliberately when release scope changes, never for an ordinary commit. The pre-commit hook does not modify product versions.
 
 The authoritative release workflow serializes manual publication runs using a repository-wide release concurrency group. For Preview, it reads existing `vMAJOR.MINOR.PATCH-preview.N` tags and selects the next available `N`; the release-publication job refuses tag/release collisions. Only tagged, published preview runs consume an identifier. Unpublished acceptance-only or failed runs can reuse an uncommitted candidate number; source SHA and workflow run ID distinguish unpublished evidence. This scheme requires publication exclusively through the controlled workflow; independently publishing matching tags outside the workflow is prohibited.
 

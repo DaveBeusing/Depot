@@ -100,6 +100,7 @@ public sealed class SalesProviderAcceptanceTests
 			Currency = "EUR",
 			ExpectedAmount = 1234.56m,
 			ProbabilityPercent = 40,
+			NextActivityDate = DateTime.UtcNow.AddMinutes(-5),
 			ExpectedCloseDate = DateTime.Today.AddDays(14)
 		});
 		var activity = await crm.SaveActivityAsync(new SalesActivity
@@ -115,6 +116,17 @@ public sealed class SalesProviderAcceptanceTests
 		Assert.Equal(1234.56m, loaded.ExpectedAmount);
 		Assert.Equal(40, loaded.ProbabilityPercent);
 		Assert.Contains(activities, value => value.Id == activity.Id && value.Status == SalesActivityStatus.Planned);
+		Assert.Equal(DateTimeKind.Utc, loaded.CreatedAtUtc.Kind);
+		Assert.Equal(DateTimeKind.Utc, loaded.NextActivityDate!.Value.Kind);
+		var repository = new SalesCrmRepository(data);
+		Assert.Contains(await repository.GetOwnedFollowUpOpportunitiesAsync(admin.Id, DateTime.UtcNow, 100, CancellationToken.None),
+			value => value.Id == loaded.Id);
+		var completedActivity = await crm.CompleteActivityAsync(activity.Id, activity.Version);
+		Assert.NotNull(completedActivity.CompletedAtUtc);
+		Assert.Equal(DateTimeKind.Utc, completedActivity.CompletedAtUtc.Value.Kind);
+		var closedOpportunity = await crm.CloseOpportunityAsync(loaded.Id, loaded.Version, SalesOpportunityOutcome.Won, "Provider acceptance");
+		Assert.NotNull(closedOpportunity.ClosedAtUtc);
+		Assert.Equal(DateTimeKind.Utc, closedOpportunity.ClosedAtUtc.Value.Kind);
 	}
 
 	private static Customer InvoiceCustomer(string name) => new()
