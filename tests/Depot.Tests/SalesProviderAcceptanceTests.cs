@@ -172,8 +172,10 @@ public sealed class SalesProviderAcceptanceTests
 			admin.EffectivePermissions = PermissionCatalog.All;
 			authorization.SignIn(admin, PermissionCatalog.All);
 			var company = new CompanyProfileService(data, factory.Provider, authorization);
+			var existingProfile = await company.LoadAsync();
 			await company.SaveAsync(new CompanyProfile
 			{
+				Version = existingProfile.Version,
 				LegalName = "Depot Provider Acceptance GmbH", LegalForm = "GmbH", Street = "Test Street 1", PostalCode = "53111", City = "Bonn",
 				CountryCode = "DE", TaxResidenceCountryCode = "DE", RegisteredOffice = "Bonn", IsRegisteredEntity = true, RegisterCourt = "Amtsgericht Bonn",
 				RegisterType = "HRB", RegisterNumber = "12345", ManagingDirectors = "Acceptance Test", VatId = "DE111111111", Email = "acceptance@depot.test",
@@ -222,3 +224,4 @@ public sealed class SalesProviderAcceptanceTests
 		}
 	}
 }
+
