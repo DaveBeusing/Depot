@@ -48,6 +48,7 @@ public sealed class DatabaseBackupProviderAcceptanceTests
 		var table = $"BackupIdentityProbe_{Guid.NewGuid():N}";
 		var createSql = $"CREATE TABLE [dbo].[{table}] (Id BIGINT IDENTITY(1,1) NOT NULL PRIMARY KEY, Label NVARCHAR(40) NOT NULL);";
 		string? baseline = null;
+		Exception? testFailure = null;
 		try
 		{
 			baseline = (await service.CreateBackupAsync(Path.Combine(directory, "baseline.depotbackup"))).FilePath;
@@ -74,11 +75,14 @@ public sealed class DatabaseBackupProviderAcceptanceTests
 				await data.ExecuteAsync($"DROP TABLE [dbo].[{table}];", CancellationToken.None);
 			}
 		}
+		catch (Exception exception)
+		{
+			testFailure = exception;
+			throw;
+		}
 		finally
 		{
-			await data.ExecuteAsync($"DROP TABLE IF EXISTS [dbo].[{table}];", CancellationToken.None);
-			if (baseline is not null) await service.RestoreBackupAsync(baseline);
-			Directory.Delete(directory, recursive: true);
+			await RestoreBaselineAsync(data, service, baseline, directory, testFailure, $"DROP TABLE IF EXISTS [dbo].[{table}];");
 		}
 	}
 
@@ -99,10 +103,12 @@ public sealed class DatabaseBackupProviderAcceptanceTests
 		var service = CreateManagementService(factory, directory);
 		var data = new DatabaseAccess(factory);
 		string? baseline = null;
+		Exception? testFailure = null;
 		try
 		{
 			baseline = (await service.CreateBackupAsync(Path.Combine(directory, "baseline.depotbackup"))).FilePath;
-			var seed = await SeedModernRecordsAsync(data);
+			var seed = await SeedModernRecordsAsync(data, factory.Provider);
+			await AssertSeedTimestampsAsync(data, seed);
 			var snapshot = await service.CreateBackupAsync(Path.Combine(directory, "seeded.depotbackup"));
 			Assert.True(snapshot.IsValid, snapshot.ValidationMessage);
 			Assert.Equal(factory.Provider, snapshot.Provider);
@@ -144,8 +150,7 @@ public sealed class DatabaseBackupProviderAcceptanceTests
 				new DatabaseParameter("$Id", seed.ItemId)), CultureInfo.InvariantCulture));
 			Assert.Equal(seed.Content, Assert.IsType<byte[]>(await data.ExecuteScalarAsync(
 				"SELECT Content FROM BusinessAttachmentContents WHERE AttachmentId=$Id AND Revision=1;", CancellationToken.None, new DatabaseParameter("$Id", seed.AttachmentId))));
-			Assert.Equal(seed.Timestamp, Assert.IsType<DateTime>(await data.ExecuteScalarAsync(
-				"SELECT CreatedAtUtc FROM BusinessAttachments WHERE Id=$Id;", CancellationToken.None, new DatabaseParameter("$Id", seed.AttachmentId))));
+			await AssertSeedTimestampsAsync(data, seed);
 			Assert.Equal(seed.OpportunityId, await ScalarAsync(data, "SELECT ConvertedOpportunityId FROM SalesLeads WHERE Id=$Id;", new DatabaseParameter("$Id", seed.LeadId)));
 			Assert.Equal(3L, await ScalarAsync(data, "SELECT SUM(mt.Quantity) FROM StockMovementTracking mt INNER JOIN StockMovements sm ON sm.Id=mt.StockMovementId WHERE sm.InventoryId=$Id;",
 				new DatabaseParameter("$Id", seed.InventoryId)));
@@ -156,12 +161,16 @@ public sealed class DatabaseBackupProviderAcceptanceTests
 			var roundTrip = await service.CreateBackupAsync(Path.Combine(directory, "round-trip.depotbackup"));
 			Assert.Equal(ReadTableSignatures(snapshot.FilePath), ReadTableSignatures(roundTrip.FilePath));
 		}
+		catch (Exception exception)
+		{
+			testFailure = exception;
+			throw;
+		}
 		finally
 		{
 			// Other acceptance tests share this isolated provider database. Restore every
 			// original row, including feature metadata, before another test can run.
-			if (baseline is not null) await service.RestoreBackupAsync(baseline);
-			Directory.Delete(directory, recursive: true);
+			await RestoreBaselineAsync(data, service, baseline, directory, testFailure);
 		}
 	}
 
@@ -174,6 +183,7 @@ public sealed class DatabaseBackupProviderAcceptanceTests
 		var table = $"BackupIdentityProbe_{Guid.NewGuid():N}";
 		var createSql = $"CREATE TABLE `{table}` (Id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY, Label VARCHAR(40) NOT NULL) ENGINE=InnoDB;";
 		string? baseline = null;
+		Exception? testFailure = null;
 		try
 		{
 			baseline = (await service.CreateBackupAsync(Path.Combine(directory, "baseline.depotbackup"))).FilePath;
@@ -195,11 +205,29 @@ public sealed class DatabaseBackupProviderAcceptanceTests
 			Assert.Equal(ReadTableSignatures(beforeRestore.FilePath), ReadTableSignatures(afterRestore.FilePath));
 			await AssertForeignKeysEnforcedAsync(data);
 		}
+		catch (Exception exception)
+		{
+			testFailure = exception;
+			throw;
+		}
 		finally
 		{
-			await data.ExecuteAsync($"DROP TABLE IF EXISTS `{table}`;", CancellationToken.None);
+			await RestoreBaselineAsync(data, service, baseline, directory, testFailure, $"DROP TABLE IF EXISTS `{table}`;");
+		}
+	}
+
+	private static async Task RestoreBaselineAsync(DatabaseAccess data, DatabaseManagementService service,
+		string? baseline, string directory, Exception? testFailure, string? dropProbeSql = null)
+	{
+		try
+		{
+			if (dropProbeSql is not null) await data.ExecuteAsync(dropProbeSql, CancellationToken.None);
 			if (baseline is not null) await service.RestoreBackupAsync(baseline);
 			Directory.Delete(directory, recursive: true);
+		}
+		catch (Exception cleanupFailure) when (testFailure is not null)
+		{
+			throw new AggregateException("The provider test failed and its database cleanup also failed.", testFailure, cleanupFailure);
 		}
 	}
 
@@ -220,11 +248,16 @@ public sealed class DatabaseBackupProviderAcceptanceTests
 		return new DatabaseManagementService(factory, settings, authorization);
 	}
 
-	private static async Task<SeedRecords> SeedModernRecordsAsync(DatabaseAccess data)
+	private static async Task<SeedRecords> SeedModernRecordsAsync(DatabaseAccess data, DatabaseProvider provider)
 	{
 		var suffix = Guid.NewGuid().ToString("N");
 		var timestamp = new DateTime(2026, 1, 2, 3, 4, 5, DateTimeKind.Unspecified).AddTicks(1234560);
 		var timestampText = timestamp.ToString("O", CultureInfo.InvariantCulture);
+		var crmTimestamp = provider == DatabaseProvider.SqlServer ? timestamp.AddTicks(7) : timestamp;
+		// SQL Server must receive exact source values before the archive is created:
+		// inferring a DateTime parameter would round it to legacy datetime precision.
+		object timestampParameter = provider == DatabaseProvider.SqlServer ? timestampText : timestamp;
+		object crmTimestampParameter = provider == DatabaseProvider.SqlServer ? crmTimestamp.ToString("O", CultureInfo.InvariantCulture) : crmTimestamp;
 		var userId = await ScalarAsync(data, "SELECT MIN(Id) FROM Users;");
 		var itemId = await data.InsertAsync(
 			"INSERT INTO Items (PartNumber,Description,IsActive,Revision,TrackingMode,NetWeightKg,ContainsBattery) VALUES ($Number,'Backup provider item',1,'R2',2,$Weight,1);", CancellationToken.None,
@@ -239,7 +272,7 @@ public sealed class DatabaseBackupProviderAcceptanceTests
 			new DatabaseParameter("$Timestamp", timestampText), new DatabaseParameter("$Price", 12.3456m));
 		var unitId = await data.InsertAsync(
 			"INSERT INTO ItemTrackingUnits (ItemId,TrackingMode,Code,CreatedAtUtc) VALUES ($ItemId,2,'BACKUP-LOT',$CreatedAtUtc);", CancellationToken.None,
-			new DatabaseParameter("$ItemId", itemId), new DatabaseParameter("$CreatedAtUtc", timestamp));
+			new DatabaseParameter("$ItemId", itemId), new DatabaseParameter("$CreatedAtUtc", timestampParameter));
 		await data.ExecuteAsync("INSERT INTO StockMovementTracking (StockMovementId,TrackingUnitId,Quantity) VALUES ($MovementId,$UnitId,3);", CancellationToken.None,
 			new DatabaseParameter("$MovementId", movementId), new DatabaseParameter("$UnitId", unitId));
 
@@ -255,12 +288,12 @@ public sealed class DatabaseBackupProviderAcceptanceTests
 			new DatabaseParameter("$LineId", lineId), new DatabaseParameter("$InventoryId", inventoryId), new DatabaseParameter("$At", timestampText), new DatabaseParameter("$UserId", userId));
 		var leadId = await data.InsertAsync(
 			"INSERT INTO SalesLeads (LeadNumber,CompanyName,OwnerUserId,Status,CreatedAtUtc,UpdatedAtUtc,ConvertedCustomerId) VALUES ($Number,'Backup customer',$UserId,4,$At,$At,$CustomerId);", CancellationToken.None,
-			new DatabaseParameter("$Number", $"BL-{suffix}"), new DatabaseParameter("$UserId", userId), new DatabaseParameter("$At", timestamp), new DatabaseParameter("$CustomerId", customerId));
+			new DatabaseParameter("$Number", $"BL-{suffix}"), new DatabaseParameter("$UserId", userId), new DatabaseParameter("$At", crmTimestampParameter), new DatabaseParameter("$CustomerId", customerId));
 		var opportunityId = await data.InsertAsync(
 			"INSERT INTO SalesOpportunities (OpportunityNumber,CustomerId,LeadId,OwnerUserId,StageId,Currency,ExpectedAmount,CreatedAtUtc,UpdatedAtUtc) VALUES ($Number,$CustomerId,$LeadId,$UserId,$StageId,'EUR',$Amount,$At,$At);", CancellationToken.None,
 			new DatabaseParameter("$Number", $"BO-{suffix}"), new DatabaseParameter("$CustomerId", customerId), new DatabaseParameter("$LeadId", leadId),
 			new DatabaseParameter("$UserId", userId), new DatabaseParameter("$StageId", await ScalarAsync(data, "SELECT MIN(Id) FROM SalesOpportunityStages;")),
-			new DatabaseParameter("$Amount", 123456.78m), new DatabaseParameter("$At", timestamp));
+			new DatabaseParameter("$Amount", 123456.78m), new DatabaseParameter("$At", crmTimestampParameter));
 		await data.ExecuteAsync("UPDATE SalesLeads SET ConvertedOpportunityId=$OpportunityId WHERE Id=$Id;", CancellationToken.None,
 			new DatabaseParameter("$OpportunityId", opportunityId), new DatabaseParameter("$Id", leadId));
 
@@ -270,13 +303,21 @@ public sealed class DatabaseBackupProviderAcceptanceTests
 		await data.ExecuteAsync(
 			"INSERT INTO BusinessAttachments (Id,EntityKind,EntityId,FileName,MediaType,ByteLength,Sha256,CreatedAtUtc,CurrentRevision,Status,Version) VALUES ($Id,3,$EntityId,'backup.bin','application/octet-stream',$Length,$Hash,$At,1,1,1);", CancellationToken.None,
 			new DatabaseParameter("$Id", attachmentId), new DatabaseParameter("$EntityId", itemId), new DatabaseParameter("$Length", content.Length),
-			new DatabaseParameter("$Hash", hash), new DatabaseParameter("$At", timestamp));
+			new DatabaseParameter("$Hash", hash), new DatabaseParameter("$At", timestampParameter));
 		await data.ExecuteAsync(
 			"INSERT INTO BusinessAttachmentRevisions (AttachmentId,Revision,FileName,MediaType,ByteLength,Sha256,CreatedAtUtc) VALUES ($Id,1,'backup.bin','application/octet-stream',$Length,$Hash,$At);", CancellationToken.None,
-			new DatabaseParameter("$Id", attachmentId), new DatabaseParameter("$Length", content.Length), new DatabaseParameter("$Hash", hash), new DatabaseParameter("$At", timestamp));
+			new DatabaseParameter("$Id", attachmentId), new DatabaseParameter("$Length", content.Length), new DatabaseParameter("$Hash", hash), new DatabaseParameter("$At", timestampParameter));
 		await data.ExecuteAsync("INSERT INTO BusinessAttachmentContents (AttachmentId,Revision,Content) VALUES ($Id,1,$Content);", CancellationToken.None,
 			new DatabaseParameter("$Id", attachmentId), new DatabaseParameter("$Content", content));
-		return new(itemId, inventoryId, reservationId, leadId, opportunityId, attachmentId, timestamp, content);
+		return new(itemId, inventoryId, reservationId, leadId, opportunityId, attachmentId, timestamp, crmTimestamp, content);
+	}
+
+	private static async Task AssertSeedTimestampsAsync(DatabaseAccess data, SeedRecords seed)
+	{
+		Assert.Equal(seed.Timestamp, Assert.IsType<DateTime>(await data.ExecuteScalarAsync(
+			"SELECT CreatedAtUtc FROM BusinessAttachments WHERE Id=$Id;", CancellationToken.None, new DatabaseParameter("$Id", seed.AttachmentId))));
+		Assert.Equal(seed.CrmTimestamp, Assert.IsType<DateTime>(await data.ExecuteScalarAsync(
+			"SELECT CreatedAtUtc FROM SalesLeads WHERE Id=$Id;", CancellationToken.None, new DatabaseParameter("$Id", seed.LeadId))));
 	}
 
 	private static async Task AssertForeignKeysEnforcedAsync(DatabaseAccess data)
@@ -315,7 +356,7 @@ public sealed class DatabaseBackupProviderAcceptanceTests
 	private static async Task<long> ScalarAsync(DatabaseAccess data, string sql, params DatabaseParameter[] parameters) =>
 		Convert.ToInt64(await data.ExecuteScalarAsync(sql, CancellationToken.None, parameters), CultureInfo.InvariantCulture);
 
-	private sealed record SeedRecords(long ItemId, long InventoryId, long ReservationId, long LeadId, long OpportunityId, string AttachmentId, DateTime Timestamp, byte[] Content);
+	private sealed record SeedRecords(long ItemId, long InventoryId, long ReservationId, long LeadId, long OpportunityId, string AttachmentId, DateTime Timestamp, DateTime CrmTimestamp, byte[] Content);
 
 	private sealed class InlineProgress(Action<DatabaseOperationProgress> report) : IProgress<DatabaseOperationProgress>
 	{

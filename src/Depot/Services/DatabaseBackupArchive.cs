@@ -1,6 +1,7 @@
 // Copyright (c) 2026 David Beusing
 // Licensed under the MIT License.
 
+using System.Data;
 using System.Data.Common;
 using System.Globalization;
 using System.IO;
@@ -252,6 +253,7 @@ internal sealed class DatabaseBackupArchive : IDisposable
 			{
 				var parameter = command.CreateParameter();
 				parameter.ParameterName = $"@Value{index}";
+				ConfigureRestoreParameter(parameter, columns[index], schema.Provider);
 				command.Parameters.Add(parameter);
 			}
 			await using var source = _archive.GetEntry(EntryName(table))!.Open();
@@ -265,6 +267,28 @@ internal sealed class DatabaseBackupArchive : IDisposable
 		{
 			if (identity) await ExecuteAsync(connection, transaction, $"SET IDENTITY_INSERT {schema.TableName(table.Name)} OFF;", CancellationToken.None);
 		}
+	}
+
+	internal static void ConfigureRestoreParameter(DbParameter parameter, DatabaseBackupColumn column, DatabaseProvider provider)
+	{
+		if (provider != DatabaseProvider.SqlServer) return;
+		var storeType = column.StoreType.Split(':');
+		DbType? type = storeType[0] switch
+		{
+			"date" => DbType.Date,
+			"datetime2" => DbType.DateTime2,
+			"datetimeoffset" => DbType.DateTimeOffset,
+			"time" => DbType.Time,
+			_ => null
+		};
+		if (type is null) return;
+		// CLR DateTime otherwise infers SQL datetime and loses datetime2 precision.
+		// Bind the live column contract before any values, including an initial null.
+		parameter.DbType = type.Value;
+		if (type == DbType.Date) return;
+		if (storeType.Length != 4 || !byte.TryParse(storeType[3], NumberStyles.None, CultureInfo.InvariantCulture, out var scale) || scale > 7)
+			throw new InvalidDataException($"The temporal column metadata for {column.Name} is invalid.");
+		parameter.Scale = scale;
 	}
 
 	public async Task VerifyRestoredRowsAsync(DbConnection connection, DbTransaction transaction, DatabaseBackupSchema schema, CancellationToken cancellationToken)
