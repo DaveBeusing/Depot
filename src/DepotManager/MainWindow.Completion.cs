@@ -90,28 +90,36 @@ public partial class MainWindow
             }
 
             var metadata = await new DepotReleaseMetadataClient(_http).GetAsync(release, operationToken);
-            if (metadata.ManagerCommandProtocol < 1)
+            if (metadata.ManagerCommandProtocol != 2)
                 throw new InvalidOperationException("The selected Depot release does not declare the required manager health-check protocol.");
 
             var settings = LoadInstalledSettings(installation);
             await new ManagerDatabaseConnectionValidator().ValidateAsync(settings, operationToken);
-            var currentSchema = await new DatabaseSchemaInspector().ReadSchemaVersionAsync(settings, operationToken);
-            MigrationBackupGate.EnsureTargetSchemaIsNotOlder(currentSchema, metadata.DatabaseSchemaVersion);
+            installation.EnsureDepotStopped();
+            // A legacy executable can be an upgrade source only after its existing health protocol succeeds.
+            await InvokeDepotMaintenanceModeAsync("--manager-health-check", operationToken);
+            var currentCompatibility = await new DatabaseSchemaInspector().ReadStableCompatibilityAsync(settings, operationToken);
+            var currentSchema = currentCompatibility.CoreVersion;
+            var requiresMigration = currentCompatibility.RequiresMigrationTo(metadata.SchemaCompatibility);
 
-            if (metadata.DatabaseSchemaVersion > currentSchema)
+            if (requiresMigration)
             {
                 if (settings.Provider == DatabaseProvider.Local)
                 {
                     safetyBackup = await new MigrationSafetyService().CreateSqliteSafetyBackupAsync(
                         settings, installation.InstallDirectory, installed, currentSchema, operationToken);
+                    var backupSettings = new DatabaseConnectionSettings { Provider = DatabaseProvider.Local, LocalDatabasePath = safetyBackup };
+                    var backupCompatibility = await new DatabaseSchemaInspector().ReadStableCompatibilityAsync(backupSettings, operationToken);
+                    if (!currentCompatibility.HasSameState(backupCompatibility))
+                        throw new InvalidOperationException("The migration backup does not match the inspected complete database schema.");
                     safetyBackup = MigrationBackupGate.EnsureVerifiedSqliteBackup(safetyBackup);
                     Log($"SQLite migration safety backup created: {safetyBackup}");
                 }
                 else
                 {
                     var remoteBackupConfirmed = MessageBox.Show(
-                        $"Depot {VersionRules.VersionText(release.Version)} requires database schema {metadata.DatabaseSchemaVersion}; the current schema is {currentSchema}.\n\n" +
-                        "For remote SQL Server or MySQL/MariaDB databases, Depot Manager does not assume server backup privileges. Confirm that a current server-side backup exists before continuing.",
+                        $"Depot {VersionRules.VersionText(release.Version)} requires a core, feature or structural database migration.\n\n" +
+                        "For remote SQL Server or MySQL/MariaDB databases, Depot Manager does not assume server backup privileges. Confirm that all Depot clients are stopped and a current verified server-side backup exists before continuing.",
                         "Database backup required",
                         MessageBoxButton.YesNo,
                         MessageBoxImage.Warning) == MessageBoxResult.Yes;
@@ -125,8 +133,8 @@ public partial class MainWindow
             }
 
             var confirmationText = $"Update Depot from {VersionRules.VersionText(installed)} to {VersionRules.VersionText(release.Version)}?\n\n" +
-                $"Database schema: {currentSchema} → {metadata.DatabaseSchemaVersion}" +
-                (metadata.DatabaseSchemaVersion > currentSchema ? "\nA database migration will be performed." : "\nNo database migration is required.");
+                $"Core schema: {currentSchema} → {metadata.DatabaseSchemaVersion}; all feature and structural requirements checked." +
+                (requiresMigration ? "\nA database migration will be performed." : "\nNo database migration is required.");
             if (MessageBox.Show(confirmationText, "Depot update", MessageBoxButton.YesNo, MessageBoxImage.Information) != MessageBoxResult.Yes) return;
 
             Progress.Value = 0;
@@ -139,13 +147,20 @@ public partial class MainWindow
                 // From executable replacement through migration/health validation the operation is deliberately non-cancellable.
                 // Interrupting this critical section could leave the application and database at different compatibility levels.
                 SetOperationCancellationAllowed(false);
+                installation.EnsureDepotStopped();
+                var beforeReplacement = await new DatabaseSchemaInspector().ReadStableCompatibilityAsync(settings, CancellationToken.None);
+                if (!currentCompatibility.HasSameState(beforeReplacement))
+                    throw new InvalidOperationException("Database compatibility changed after backup/confirmation. Restart the update to obtain fresh backup evidence.");
                 installation.Deploy(temp, release.Version, createBackup: true);
                 deployedNewExecutable = true;
-                RollbackMetadataService.Write(installation.BackupDirectory, installed, currentSchema);
+                RollbackMetadataService.Write(installation.BackupDirectory, installed, currentCompatibility);
 
-                if (metadata.DatabaseSchemaVersion > currentSchema)
+                if (requiresMigration)
                     await InvokeDepotMaintenanceModeAsync("--manager-migrate", CancellationToken.None);
                 await InvokeDepotMaintenanceModeAsync("--manager-health-check", CancellationToken.None);
+                var migratedCompatibility = await new DatabaseSchemaInspector().ReadStableCompatibilityAsync(settings, CancellationToken.None);
+                migratedCompatibility.RequireCompatibleWith(metadata.SchemaCompatibility);
+                InstalledSchemaContract.Save(installation.InstallDirectory, metadata.SchemaCompatibility);
 
                 installation.CopyManagerToInstallLocation();
                 new WindowsIntegrationService().Repair(installation, release.Version);
@@ -192,13 +207,14 @@ public partial class MainWindow
         {
             var settings = LoadInstalledSettings(installation);
             await new ManagerDatabaseConnectionValidator().ValidateAsync(settings, CancellationToken.None);
-            var currentSchema = await new DatabaseSchemaInspector().ReadSchemaVersionAsync(settings, CancellationToken.None);
-            if (!UpdateRecoveryRules.CanRestorePreviousExecutable(currentSchema, candidate.SupportedSchemaVersion))
+            var currentCompatibility = await new DatabaseSchemaInspector().ReadStableCompatibilityAsync(settings, CancellationToken.None);
+            if (!UpdateRecoveryRules.CanRestorePreviousExecutable(currentCompatibility, candidate.Compatibility))
             {
-                return $"The previous executable was not restored because database schema {currentSchema} no longer matches schema {candidate.SupportedSchemaVersion}. Database downgrade is never automatic.";
+                return "The previous executable was not restored because the complete database compatibility state changed. Database downgrade is never automatic.";
             }
 
-            RollbackMetadataService.Apply(installation, candidate, currentSchema);
+            await RollbackMetadataService.ApplyAsync(installation, candidate, settings, CancellationToken.None);
+            await InvokeDepotMaintenanceModeAsync("--manager-health-check", CancellationToken.None);
             new WindowsIntegrationService().Repair(installation, candidate.Version);
             return $"Depot {VersionRules.VersionText(candidate.Version)} was restored automatically because the database schema remained compatible.";
         }

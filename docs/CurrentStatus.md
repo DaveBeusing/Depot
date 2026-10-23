@@ -1,8 +1,14 @@
 # Current project status
 
-Updated: 2026-09-25
+Updated: 2026-10-23
 
 Depot is on the `0.15.x-preview` development line. Finance includes the General Ledger, AR/AP, Banking, Inventory Accounting, Financial Reporting and the current Fixed Assets/depreciation subledger work; inventory, purchasing, sales including the ERP-native Lead/Opportunity CRM pipeline, localization, notifications, Audit, persistent user sessions, operational security monitoring, enterprise identity/authentication, persisted workspace productivity preferences and the current visual-designer set are integrated in the repository.
+
+## Master audit remediation
+
+The 2026-10-23 audit and ranked correction queue are tracked in [issue #195](https://github.com/DaveBeusing/Depot/issues/195). The first correction batch restored complete logical database backups, enforced database-maintenance permissions and protected asynchronous stock posting. The second correction batch adds account revision checks during session admission, [role-editor selection consistency](development/RoleEditorConcurrency.md) and [complete database compatibility checks](development/DatabaseSchemaCompatibility.md) for Manager migration and rollback.
+
+These corrections preserve the existing product-version boundary and database schema baselines. Release readiness still depends on the remaining audit findings and the exact-source validation and deployment acceptance requirements below. Historical completion statements describe their original review scope and do not supersede the current audit backlog.
 
 ## Subscription and recurring billing
 
@@ -117,7 +123,7 @@ AP-01 identified two evidence blockers after F5B: a transient Windows executable
 
 AP-04 then closed the remaining DepotManager shipped-artifact evidence gap: PR #53 adds real GitHub-hosted Windows integration acceptance for the current-user uninstall registration, Start menu and desktop shortcuts, `InstallationInspector`, repair behavior and idempotent cleanup while refusing mutation on non-clean/non-hosted profiles.
 
-AP-06 completed the 1.0 technical reconciliation and found no currently known generic implementation defect or generic automated-evidence defect inside the advertised repository boundary.
+AP-06 completed its historical 1.0 technical reconciliation with no then-known generic implementation or automated-evidence defect inside that review boundary. The later master audit is the current source for outstanding confirmed defects.
 
 AP-07 historically activated ruleset `23590604`, and AP-08 recorded H1 as closed against that then-current live configuration. The live ruleset was later relaxed and currently omits the five aggregate required checks. The current governance section above supersedes that historical snapshot: H1 is reopened / `BLOCKED` until the intended live contract is restored and revalidated.
 

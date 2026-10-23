@@ -22,6 +22,8 @@ public sealed record InstallationSnapshot(
     bool RegistrationConsistent,
     string Message)
 {
+    [System.Text.Json.Serialization.JsonIgnore]
+    public DatabaseSchemaCompatibility? DatabaseCompatibility { get; init; }
     public bool IsInstalled => State != InstallationHealthState.NotInstalled;
     public bool CanStartDepot => State is InstallationHealthState.InstalledHealthy or InstallationHealthState.RepairRecommended;
 }

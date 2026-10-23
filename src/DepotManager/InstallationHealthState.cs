@@ -11,5 +11,6 @@ public enum InstallationHealthState
     ConfigurationDamaged,
     DatabaseUnavailable,
     DatabaseMigrationRequired,
-    RecoveryRequired
+    RecoveryRequired,
+    CompatibilityUnknown
 }

@@ -70,19 +70,19 @@ public sealed class DepotManagerHardeningTests
     [Fact]
     public void UpdateRecovery_RequiresExactKnownSchemaMatch()
     {
-        Assert.True(UpdateRecoveryRules.CanRestorePreviousExecutable(30, 30));
-        Assert.False(UpdateRecoveryRules.CanRestorePreviousExecutable(31, 30));
-        Assert.False(UpdateRecoveryRules.CanRestorePreviousExecutable(29, 30));
-        Assert.False(UpdateRecoveryRules.CanRestorePreviousExecutable(null, 30));
-        Assert.False(UpdateRecoveryRules.CanRestorePreviousExecutable(30, null));
+        Assert.True(UpdateRecoveryRules.CanRestorePreviousExecutable(SchemaCompatibilityFixture.Create(30), SchemaCompatibilityFixture.Create(30)));
+        Assert.False(UpdateRecoveryRules.CanRestorePreviousExecutable(SchemaCompatibilityFixture.Create(31), SchemaCompatibilityFixture.Create(30)));
+        Assert.False(UpdateRecoveryRules.CanRestorePreviousExecutable(SchemaCompatibilityFixture.Create(29), SchemaCompatibilityFixture.Create(30)));
+        Assert.False(UpdateRecoveryRules.CanRestorePreviousExecutable(null, SchemaCompatibilityFixture.Create(30)));
+        Assert.False(UpdateRecoveryRules.CanRestorePreviousExecutable(SchemaCompatibilityFixture.Create(30), null));
     }
 
     [Fact]
     public void RollbackCompatibility_RequiresExactSchemaMatch()
     {
-        Assert.True(RollbackCompatibility.IsCompatible(30, 30));
-        Assert.False(RollbackCompatibility.IsCompatible(31, 30));
-        Assert.False(RollbackCompatibility.IsCompatible(29, 30));
+        Assert.True(RollbackCompatibility.IsCompatible(SchemaCompatibilityFixture.Create(30), SchemaCompatibilityFixture.Create(30)));
+        Assert.False(RollbackCompatibility.IsCompatible(SchemaCompatibilityFixture.Create(31), SchemaCompatibilityFixture.Create(30)));
+        Assert.False(RollbackCompatibility.IsCompatible(SchemaCompatibilityFixture.Create(29), SchemaCompatibilityFixture.Create(30)));
     }
 
     [Fact]

@@ -17,6 +17,7 @@ internal static class DepotManagerCommand
     private const string ProvisionArgument = "--manager-provision";
     private const string HealthCheckArgument = "--manager-health-check";
     private const string MigrateArgument = "--manager-migrate";
+    private const string SchemaContractArgument = "--manager-schema-contract";
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true, WriteIndented = true };
 
     public static bool TryRun(string[] args, out int exitCode)
@@ -26,7 +27,11 @@ internal static class DepotManagerCommand
         var responsePath = args[1];
         try
         {
-            if (args[0] is TestDatabaseArgument or ProvisionArgument)
+            if (args[0] == SchemaContractArgument)
+            {
+                WriteResponse(responsePath, true, "Database compatibility contract exported.", DatabaseVersion.CurrentVersion, DatabaseSchemaContract.Current);
+            }
+            else if (args[0] is TestDatabaseArgument or ProvisionArgument)
             {
                 RunProvisioningCommand(args[0], responsePath);
             }
@@ -45,7 +50,7 @@ internal static class DepotManagerCommand
     }
 
     private static bool IsManagerCommand(string argument) => argument is
-        TestDatabaseArgument or ProvisionArgument or HealthCheckArgument or MigrateArgument;
+        TestDatabaseArgument or ProvisionArgument or HealthCheckArgument or MigrateArgument or SchemaContractArgument;
 
     private static void RunProvisioningCommand(string argument, string responsePath)
     {
@@ -69,7 +74,8 @@ internal static class DepotManagerCommand
             responsePath,
             true,
             argument == ProvisionArgument ? "Provisioning completed." : "Connection successful.",
-            schemaVersion);
+            schemaVersion,
+            schemaVersion is null ? null : DatabaseSchemaContract.Current);
     }
 
     private static void RunMaintenanceCommand(string argument, string responsePath)
@@ -90,10 +96,11 @@ internal static class DepotManagerCommand
             factory = DatabaseProviderFactory.CreateConnectionFactory(settings);
         }
 
-        var schemaVersion = ReadSchemaVersion(factory);
-        if (schemaVersion != DatabaseVersion.CurrentVersion)
-            throw new InvalidOperationException(
-                $"Database schema {schemaVersion} is not compatible with this Depot version, which requires schema {DatabaseVersion.CurrentVersion}.");
+        using var connection = factory.CreateConnection();
+        connection.Open();
+        var compatibility = DatabaseCompatibilityReader.ReadAsync(connection, factory.Provider, CancellationToken.None).GetAwaiter().GetResult();
+        compatibility.RequireCompatibleWith(DatabaseSchemaContract.Current);
+        var schemaVersion = compatibility.CoreVersion;
 
         if (argument == HealthCheckArgument)
         {
@@ -107,7 +114,8 @@ internal static class DepotManagerCommand
             responsePath,
             true,
             argument == MigrateArgument ? "Database migration completed." : "Depot health check passed.",
-            schemaVersion);
+            schemaVersion,
+            DatabaseSchemaContract.Current);
     }
 
     private static int ReadSchemaVersion(IDatabaseConnectionFactory factory)
@@ -129,10 +137,10 @@ internal static class DepotManagerCommand
         bootstrap.CreateAdministratorAsync(administrator.Email, administrator.DisplayName, administrator.Password, CancellationToken.None).GetAwaiter().GetResult();
     }
 
-    private static void WriteResponse(string path, bool success, string message, int? databaseSchemaVersion)
+    private static void WriteResponse(string path, bool success, string message, int? databaseSchemaVersion, DatabaseSchemaCompatibility? compatibility = null)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);
-        File.WriteAllText(path, JsonSerializer.Serialize(new { Success = success, Message = message, DatabaseSchemaVersion = databaseSchemaVersion }, JsonOptions));
+        File.WriteAllText(path, JsonSerializer.Serialize(new { Success = success, Message = message, DatabaseSchemaVersion = databaseSchemaVersion, ManagerCommandProtocol = 2, SchemaCompatibility = compatibility }, JsonOptions));
     }
 
     private sealed class ProvisioningRequest

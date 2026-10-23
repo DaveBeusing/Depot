@@ -135,23 +135,9 @@ internal sealed class DatabaseBackupSchema
 		}
 	}
 
-	internal static IReadOnlyDictionary<string, int> CurrentFeatureVersions { get; } = new Dictionary<string, int>(StringComparer.Ordinal)
-	{
-		["Sales"] = SalesSchemaMigration.CurrentVersion,
-		["Finance"] = FinanceInventoryAccountingSchemaMigration.CurrentVersion,
-		["UserSessions"] = UserSessionSchemaMigration.CurrentVersion,
-		["SecurityEvents"] = SecurityEventSchemaMigration.CurrentVersion,
-		["UserPreferences"] = UserPreferenceSchemaMigration.CurrentVersion,
-		["DocumentTemplates"] = DocumentTemplateSchemaMigration.CurrentVersion,
-		["ApprovalPolicies"] = ApprovalPolicySchemaMigration.CurrentVersion,
-		["EnterpriseIdentity"] = EnterpriseIdentitySchemaMigration.CurrentVersion,
-		["BusinessAttachments"] = BusinessAttachmentSchemaMigration.CurrentVersion,
-		["ProcurementSourcing"] = ProcurementSourcingSchemaMigration.CurrentVersion,
-		["InventoryReplenishment"] = InventoryReplenishmentSchemaMigration.CurrentVersion,
-		["Production"] = ProductionSchemaMigration.CurrentVersion,
-		["ProjectAccounting"] = ProjectAccountingSchemaMigration.CurrentVersion,
-		["ServiceManagement"] = ServiceManagementSchemaMigration.CurrentVersion
-	};
+	internal static IReadOnlyDictionary<string, int> CurrentFeatureVersions => DatabaseSchemaRegistry.CurrentFeatureVersions;
+
+	internal static IReadOnlyList<DatabaseBackupTable> RequiredTableDefinitions => RequiredTables.Value;
 
 	internal static bool VersionsEqual(IReadOnlyDictionary<string, int> actual, IReadOnlyDictionary<string, int> expected) =>
 		actual.Count == expected.Count && expected.All(pair => actual.TryGetValue(pair.Key, out var version) && version == pair.Value);
@@ -384,3 +370,4 @@ internal sealed class DatabaseBackupSchema
 	private static int Integer(object value) => Convert.ToInt32(value, CultureInfo.InvariantCulture);
 	private static bool Boolean(object value) => Convert.ToBoolean(value, CultureInfo.InvariantCulture);
 }
+

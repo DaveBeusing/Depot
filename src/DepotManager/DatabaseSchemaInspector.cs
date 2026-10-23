@@ -1,4 +1,5 @@
 using Depot.Models;
+using Depot.Data;
 using Microsoft.Data.SqlClient;
 using Microsoft.Data.Sqlite;
 using MySqlConnector;
@@ -7,7 +8,10 @@ namespace DepotManager;
 
 public sealed class DatabaseSchemaInspector
 {
-    public async Task<int> ReadSchemaVersionAsync(DatabaseConnectionSettings settings, CancellationToken cancellationToken)
+    public async Task<int> ReadSchemaVersionAsync(DatabaseConnectionSettings settings, CancellationToken cancellationToken) =>
+        (await ReadCompatibilityAsync(settings, cancellationToken)).CoreVersion;
+
+    public async Task<DatabaseSchemaCompatibility> ReadCompatibilityAsync(DatabaseConnectionSettings settings, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(settings);
         return settings.Provider switch
@@ -19,19 +23,29 @@ public sealed class DatabaseSchemaInspector
         };
     }
 
-    private static async Task<int> ReadSqliteAsync(DatabaseConnectionSettings settings, CancellationToken cancellationToken)
+    public async Task<DatabaseSchemaCompatibility> ReadStableCompatibilityAsync(DatabaseConnectionSettings settings, CancellationToken cancellationToken)
+    {
+        var before = await ReadCompatibilityAsync(settings, cancellationToken);
+        var after = await ReadCompatibilityAsync(settings, cancellationToken);
+        if (!before.HasSameState(after))
+            throw new InvalidOperationException("Database schema changed during inspection. Stop all Depot clients and retry maintenance.");
+        return after;
+    }
+
+    private static async Task<DatabaseSchemaCompatibility> ReadSqliteAsync(DatabaseConnectionSettings settings, CancellationToken cancellationToken)
     {
         var builder = new SqliteConnectionStringBuilder
         {
             DataSource = Path.GetFullPath(settings.LocalDatabasePath),
-            ForeignKeys = true
+            ForeignKeys = true,
+            Mode = SqliteOpenMode.ReadOnly
         };
         await using var connection = new SqliteConnection(builder.ConnectionString);
         await connection.OpenAsync(cancellationToken);
-        return await ReadAsync(connection, cancellationToken);
+        return await DatabaseCompatibilityReader.ReadAsync(connection, settings.Provider, cancellationToken);
     }
 
-    private static async Task<int> ReadSqlServerAsync(DatabaseConnectionSettings settings, CancellationToken cancellationToken)
+    private static async Task<DatabaseSchemaCompatibility> ReadSqlServerAsync(DatabaseConnectionSettings settings, CancellationToken cancellationToken)
     {
         var builder = new SqlConnectionStringBuilder
         {
@@ -47,10 +61,10 @@ public sealed class DatabaseSchemaInspector
         };
         await using var connection = new SqlConnection(builder.ConnectionString);
         await connection.OpenAsync(cancellationToken);
-        return await ReadAsync(connection, cancellationToken);
+        return await DatabaseCompatibilityReader.ReadAsync(connection, settings.Provider, cancellationToken);
     }
 
-    private static async Task<int> ReadMySqlAsync(DatabaseConnectionSettings settings, CancellationToken cancellationToken)
+    private static async Task<DatabaseSchemaCompatibility> ReadMySqlAsync(DatabaseConnectionSettings settings, CancellationToken cancellationToken)
     {
         var builder = new MySqlConnectionStringBuilder
         {
@@ -66,17 +80,7 @@ public sealed class DatabaseSchemaInspector
         };
         await using var connection = new MySqlConnection(builder.ConnectionString);
         await connection.OpenAsync(cancellationToken);
-        return await ReadAsync(connection, cancellationToken);
-    }
-
-    private static async Task<int> ReadAsync(System.Data.Common.DbConnection connection, CancellationToken cancellationToken)
-    {
-        await using var command = connection.CreateCommand();
-        command.CommandText = "SELECT Version FROM DatabaseInfo;";
-        var result = await command.ExecuteScalarAsync(cancellationToken);
-        if (result is null || result is DBNull)
-            throw new InvalidOperationException("The Depot database schema version could not be determined.");
-        return Convert.ToInt32(result, System.Globalization.CultureInfo.InvariantCulture);
+        return await DatabaseCompatibilityReader.ReadAsync(connection, settings.Provider, cancellationToken);
     }
 
     public static string DescribeTarget(DatabaseConnectionSettings settings) => settings.Provider switch

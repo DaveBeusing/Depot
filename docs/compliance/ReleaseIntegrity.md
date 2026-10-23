@@ -99,7 +99,7 @@ Each release contains a format-version-3 `Depot-<version>.manifest.json` recordi
 - Stable publisher subject;
 - final executable names, sizes, SHA-256 hashes and signing state.
 
-The legacy `databaseSchemaVersion` field remains the Core-schema compatibility field for DepotManager.
+The legacy `databaseSchemaVersion` field remains diagnostic metadata. DepotManager protocol 2 authorizes updates only from the complete `schemaCompatibility` contract; the release workflow exports Core, all registered feature versions and structural requirements from the actual packaged executable. Core-only target manifests fail closed.
 
 Hashes are calculated after signing and therefore describe the exact executable bytes retained for publication.
 

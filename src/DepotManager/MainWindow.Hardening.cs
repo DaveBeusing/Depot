@@ -67,94 +67,7 @@ public partial class MainWindow
         }
     }
 
-    private async void UpdateHardening_Click(object sender, RoutedEventArgs e)
-    {
-        string? safetyBackup = null;
-        try
-        {
-            SetBusy(true);
-            var operationToken = _operation!.Token;
-            var service = Installation;
-            var installed = service.InstalledVersion ?? throw new InvalidOperationException("No existing Depot installation was found.");
-            var releaseClient = new GitHubReleaseClient(_http);
-            var release = _latestDepotRelease ?? await releaseClient.GetLatestAsync(operationToken);
-            if (!VersionRules.IsUpdate(installed, release.Version))
-            {
-                Log("The installed Depot version is already current.");
-                return;
-            }
-
-            var metadata = await new DepotReleaseMetadataClient(_http).GetAsync(release, operationToken);
-            if (metadata.ManagerCommandProtocol < 1)
-                throw new InvalidOperationException("The selected Depot release does not declare the required manager health-check protocol.");
-
-            var settings = LoadInstalledSettings(service);
-            await new ManagerDatabaseConnectionValidator().ValidateAsync(settings, operationToken);
-            var currentSchema = await new DatabaseSchemaInspector().ReadSchemaVersionAsync(settings, operationToken);
-            if (metadata.DatabaseSchemaVersion < currentSchema)
-                throw new InvalidOperationException($"Update blocked because release schema {metadata.DatabaseSchemaVersion} is older than database schema {currentSchema}.");
-
-            if (metadata.DatabaseSchemaVersion > currentSchema)
-            {
-                if (settings.Provider == DatabaseProvider.Local)
-                {
-                    safetyBackup = await new MigrationSafetyService().CreateSqliteSafetyBackupAsync(
-                        settings, service.InstallDirectory, installed, currentSchema, operationToken);
-                    Log($"SQLite migration safety backup created: {safetyBackup}");
-                }
-                else
-                {
-                    var confirmation = MessageBox.Show(
-                        $"Depot {VersionRules.VersionText(release.Version)} requires database schema {metadata.DatabaseSchemaVersion}; the current schema is {currentSchema}.\n\n" +
-                        "For remote SQL Server or MySQL/MariaDB databases, Depot Manager does not assume server backup privileges. Confirm that a current server-side backup exists before continuing.",
-                        "Database backup required",
-                        MessageBoxButton.YesNo,
-                        MessageBoxImage.Warning);
-                    if (confirmation != MessageBoxResult.Yes)
-                    {
-                        Log("Update cancelled because a required remote database backup was not confirmed.");
-                        return;
-                    }
-                }
-            }
-
-            var confirmationText = $"Update Depot from {VersionRules.VersionText(installed)} to {VersionRules.VersionText(release.Version)}?\n\n" +
-                $"Database schema: {currentSchema} → {metadata.DatabaseSchemaVersion}" +
-                (metadata.DatabaseSchemaVersion > currentSchema ? "\nA database migration will be performed." : "\nNo database migration is required.");
-            if (MessageBox.Show(confirmationText, "Depot update", MessageBoxButton.YesNo, MessageBoxImage.Information) != MessageBoxResult.Yes) return;
-
-            Progress.Value = 0;
-            var temp = Path.Combine(Path.GetTempPath(), $"Depot-{VersionRules.VersionText(release.Version)}-{Guid.NewGuid():N}.exe");
-            try
-            {
-                await releaseClient.DownloadAsync(release, temp, new Progress<int>(value => Progress.Value = value), operationToken);
-                service.Deploy(temp, release.Version, createBackup: true);
-                RollbackMetadataService.Write(service.BackupDirectory, installed, currentSchema);
-                if (metadata.DatabaseSchemaVersion > currentSchema)
-                    await InvokeDepotMaintenanceModeAsync("--manager-migrate", operationToken);
-                await InvokeDepotMaintenanceModeAsync("--manager-health-check", operationToken);
-                service.CopyManagerToInstallLocation();
-                new WindowsIntegrationService().Repair(service, release.Version);
-                Progress.Value = 100;
-                Log($"Depot update to {VersionRules.VersionText(release.Version)} completed and health check passed.");
-            }
-            finally
-            {
-                if (File.Exists(temp)) File.Delete(temp);
-            }
-        }
-        catch (Exception exception)
-        {
-            var backupNote = safetyBackup is null ? string.Empty : $"\n\nThe migration safety backup was preserved at:\n{safetyBackup}";
-            Log($"Depot update failed: {exception.Message}");
-            MessageBox.Show(exception.Message + backupNote, "Depot Manager", MessageBoxButton.OK, MessageBoxImage.Error);
-        }
-        finally
-        {
-            SetBusy(false);
-            await RefreshMaintenanceStateAsync();
-        }
-    }
+    private void UpdateHardening_Click(object sender, RoutedEventArgs e) => UpdateWithRecovery_Click(sender, e);
 
     private async void RepairHardening_Click(object sender, RoutedEventArgs e)
     {
@@ -175,18 +88,8 @@ public partial class MainWindow
             var releaseClient = new GitHubReleaseClient(_http);
             ReleaseInfo release;
             if (targetVersion is null)
-            {
-                release = await releaseClient.GetLatestAsync(operationToken);
-                if (MessageBox.Show(
-                    $"The installed Depot version cannot be determined. Repair can restore the latest stable release {VersionRules.VersionText(release.Version)}. Continue?",
-                    "Depot repair",
-                    MessageBoxButton.YesNo,
-                    MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
-            }
-            else
-            {
-                release = await releaseClient.GetAsync(targetVersion, operationToken);
-            }
+                throw new InvalidOperationException("The original Depot version cannot be proven. Restore a verified same-version executable before updating; repair cannot substitute a newer release outside the protected migration workflow.");
+            release = await releaseClient.GetAsync(targetVersion, operationToken);
 
             var temp = Path.Combine(Path.GetTempPath(), $"Depot-repair-{Guid.NewGuid():N}.exe");
             try
@@ -201,6 +104,7 @@ public partial class MainWindow
                 if (File.Exists(temp)) File.Delete(temp);
             }
 
+            await InvokeDepotMaintenanceModeAsync("--manager-health-check", operationToken);
             var repaired = await inspector.InspectAsync(service.InstallDirectory, operationToken);
             if (repaired.State is InstallationHealthState.InstalledHealthy or InstallationHealthState.RepairRecommended)
             {
@@ -229,19 +133,21 @@ public partial class MainWindow
         {
             SetBusy(true);
             var operationToken = _operation!.Token;
-            var snapshot = _lastSnapshot ?? await new InstallationInspector().InspectAsync(InstallPathBox.Text, operationToken);
-            if (snapshot.DatabaseSchemaVersion is null) throw new InvalidOperationException("Rollback is unavailable because the current database schema cannot be determined.");
-            var candidate = RollbackMetadataService.Read(Installation.BackupDirectory)
+            var installation = Installation;
+            var settings = LoadInstalledSettings(installation);
+            installation.EnsureDepotStopped();
+            var current = await new DatabaseSchemaInspector().ReadStableCompatibilityAsync(settings, operationToken);
+            var candidate = RollbackMetadataService.Read(installation.BackupDirectory)
                 ?? throw new InvalidOperationException("No previous Depot executable backup is available.");
-            RollbackMetadataService.EnsureCompatible(candidate, snapshot.DatabaseSchemaVersion.Value);
+            RollbackMetadataService.EnsureCompatible(candidate, current);
             if (MessageBox.Show(
-                $"Roll back Depot to {VersionRules.VersionText(candidate.Version)}?\n\nDatabase schema {snapshot.DatabaseSchemaVersion} is compatible. Database schema downgrade is not performed.",
-                "Depot rollback",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
-            RollbackMetadataService.Apply(Installation, candidate, snapshot.DatabaseSchemaVersion.Value);
-            var settings = LoadInstalledSettings(Installation);
-            await new ManagerDatabaseConnectionValidator().ValidateAsync(settings, operationToken);
+                $"Roll back Depot to {VersionRules.VersionText(candidate.Version)}?\n\nCore, feature and structural schemas are unchanged. Stop all Depot clients before continuing. Database downgrade is not performed.",
+                "Depot rollback", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes) return;
+            SetOperationCancellationAllowed(false);
+            // Apply re-reads the database after the confirmation dialog and immediately before replacement.
+            await RollbackMetadataService.ApplyAsync(installation, candidate, settings, CancellationToken.None);
+            await InvokeDepotMaintenanceModeAsync("--manager-health-check", CancellationToken.None);
+            await new ManagerDatabaseConnectionValidator().ValidateAsync(settings, CancellationToken.None);
             Log($"Depot rolled back to {VersionRules.VersionText(candidate.Version)}. Database connectivity check passed.");
         }
         catch (Exception exception)
@@ -360,7 +266,7 @@ public partial class MainWindow
             ApplyHardeningStatus(snapshot.State, snapshot.Message);
 
             var rollback = RollbackMetadataService.Read(Path.Combine(snapshot.InstallDirectory, "Backup"));
-            RollbackButton.IsEnabled = rollback is { IsValid: true } && snapshot.DatabaseSchemaVersion == rollback.SupportedSchemaVersion;
+            RollbackButton.IsEnabled = rollback is { IsValid: true } && RollbackCompatibility.IsCompatible(snapshot.DatabaseCompatibility, rollback.Compatibility);
             RollbackInfoText.Text = rollback is null ? "No rollback backup available." : rollback.IsValid
                 ? $"Rollback: Depot {VersionRules.VersionText(rollback.Version)} · schema {rollback.SupportedSchemaVersion}"
                 : rollback.Message;
@@ -437,6 +343,9 @@ public partial class MainWindow
             var success = document.RootElement.GetProperty("Success").GetBoolean();
             var message = document.RootElement.GetProperty("Message").GetString() ?? "Unknown Depot maintenance result.";
             if (!success || process.ExitCode != 0) throw new InvalidOperationException(message);
+            if (mode == "--manager-health-check" && document.RootElement.TryGetProperty("ManagerCommandProtocol", out var protocol) && protocol.GetInt32() == 2 &&
+                document.RootElement.TryGetProperty("SchemaCompatibility", out var compatibility) && compatibility.ValueKind == JsonValueKind.Object)
+                InstalledSchemaContract.Save(service.InstallDirectory, compatibility.Deserialize<DatabaseSchemaCompatibility>() ?? throw new InvalidDataException("Empty schema compatibility contract."));
             if (document.RootElement.TryGetProperty("DatabaseSchemaVersion", out var schema) && schema.ValueKind == JsonValueKind.Number)
                 return schema.GetInt32();
             return null;
@@ -464,7 +373,7 @@ public partial class MainWindow
     {
         var migration = currentSchema is null ? "Database schema unknown" : metadata.DatabaseSchemaVersion > currentSchema
             ? $"Migration required: schema {currentSchema} → {metadata.DatabaseSchemaVersion}"
-            : $"Schema {currentSchema} is compatible; no migration required";
+            : $"Core schema {currentSchema}; feature and structural migration requirements are checked before update";
         var published = metadata.PublishedAt?.ToLocalTime().ToString("g", System.Globalization.CultureInfo.CurrentCulture) ?? "unknown date";
         var name = string.IsNullOrWhiteSpace(metadata.ReleaseName) ? $"Depot {VersionRules.VersionText(metadata.DepotVersion)}" : metadata.ReleaseName;
         return $"{name} · published {published}\n{migration}";
@@ -476,7 +385,7 @@ public partial class MainWindow
         var brushPrefix = state switch
         {
             InstallationHealthState.InstalledHealthy => "Success",
-            InstallationHealthState.RepairRecommended or InstallationHealthState.DatabaseMigrationRequired or InstallationHealthState.DatabaseUnavailable or InstallationHealthState.ProvisioningIncomplete => "Warning",
+            InstallationHealthState.RepairRecommended or InstallationHealthState.DatabaseMigrationRequired or InstallationHealthState.DatabaseUnavailable or InstallationHealthState.ProvisioningIncomplete or InstallationHealthState.CompatibilityUnknown => "Warning",
             _ => "Error"
         };
         StatusBadge.Background = (Brush)FindResource($"{brushPrefix}Brush");

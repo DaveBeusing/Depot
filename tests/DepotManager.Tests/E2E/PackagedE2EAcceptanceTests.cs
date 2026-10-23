@@ -82,7 +82,8 @@ public sealed class PackagedE2EAcceptanceTests
 
         var settingsHash = await HashAsync(service.SettingsPath);
         service.Deploy(PackagedE2EEnvironment.CurrentDepot, currentVersion, createBackup: true);
-        RollbackMetadataService.Write(service.BackupDirectory, previousVersion, CurrentSchema);
+        RollbackMetadataService.Write(service.BackupDirectory, previousVersion, await new DatabaseSchemaInspector().ReadStableCompatibilityAsync(
+            new DatabaseConnectionSettings { Provider = DatabaseProvider.Local, LocalDatabasePath = database }, CancellationToken.None));
         ExecutableDeployment.InstallManagerCopy(PackagedE2EEnvironment.CurrentManager, service.ManagerPath);
         var health = await RunDepotCommandAsync(service.DepotPath, install, "--manager-health-check");
         Assert.True(health.Success, health.Message);
@@ -242,18 +243,21 @@ public sealed class PackagedE2EAcceptanceTests
         service.Deploy(PackagedE2EEnvironment.PreviousDepot, previousVersion, createBackup: false);
         Assert.True((await RunDepotCommandAsync(service.DepotPath, install, "--manager-provision", CreateProvisioningRequest(database))).Success);
         service.Deploy(PackagedE2EEnvironment.CurrentDepot, currentVersion, createBackup: true);
-        RollbackMetadataService.Write(service.BackupDirectory, previousVersion, CurrentSchema);
+        RollbackMetadataService.Write(service.BackupDirectory, previousVersion, await new DatabaseSchemaInspector().ReadStableCompatibilityAsync(
+            new DatabaseConnectionSettings { Provider = DatabaseProvider.Local, LocalDatabasePath = database }, CancellationToken.None));
         var candidate = RollbackMetadataService.Read(service.BackupDirectory);
         Assert.NotNull(candidate);
         Assert.True(candidate!.IsValid, candidate.Message);
 
         await WriteSchemaAsync(database, CurrentSchema + 1);
-        Assert.Throws<InvalidOperationException>(() => RollbackMetadataService.RestoreExecutable(service, candidate, CurrentSchema + 1));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => RollbackMetadataService.RestoreExecutableAsync(service, candidate,
+            new DatabaseConnectionSettings { Provider = DatabaseProvider.Local, LocalDatabasePath = database }, CancellationToken.None));
         Assert.Equal(currentVersion, service.InstalledVersion);
         Assert.Equal(CurrentSchema + 1, await ReadSchemaAsync(database));
 
         await WriteSchemaAsync(database, CurrentSchema);
-        RollbackMetadataService.RestoreExecutable(service, candidate, CurrentSchema);
+        await RollbackMetadataService.RestoreExecutableAsync(service, candidate,
+            new DatabaseConnectionSettings { Provider = DatabaseProvider.Local, LocalDatabasePath = database }, CancellationToken.None);
         Assert.Equal(previousVersion, service.InstalledVersion);
         Assert.Equal(CurrentSchema, await ReadSchemaAsync(database));
 
@@ -265,6 +269,46 @@ public sealed class PackagedE2EAcceptanceTests
         }
         Assert.Equal(originalHash, await HashAsync(service.DepotPath));
         Assert.False(File.Exists(service.DepotPath + ".new"));
+    }
+
+    [PackagedE2EFact]
+    [Trait("Category", "PackagedE2E")]
+    [Trait("Tier", "Smoke")]
+    public async Task SameCoreFeatureMigrationRequiresBackupAndInvalidatesRollbackState()
+    {
+        var root = PackagedE2EEnvironment.CreateScenarioRoot(nameof(SameCoreFeatureMigrationRequiresBackupAndInvalidatesRollbackState));
+        var install = Path.Combine(root, "install");
+        var database = Path.Combine(root, "data", "depot.db");
+        Directory.CreateDirectory(Path.GetDirectoryName(database)!);
+        var service = new InstallationService(install, _ => { });
+        var version = ReadVersion(PackagedE2EEnvironment.CurrentDepot);
+        service.Deploy(PackagedE2EEnvironment.CurrentDepot, version, createBackup: false);
+        Assert.True((await RunDepotCommandAsync(service.DepotPath, install, "--manager-provision", CreateProvisioningRequest(database))).Success);
+        var settings = new DatabaseConnectionSettings { Provider = DatabaseProvider.Local, LocalDatabasePath = database };
+        var inspector = new DatabaseSchemaInspector();
+        var current = await inspector.ReadStableCompatibilityAsync(settings, CancellationToken.None);
+        await using (var connection = new SqliteConnection($"Data Source={database};Pooling=False"))
+        {
+            await connection.OpenAsync();
+            await using var command = connection.CreateCommand();
+            command.CommandText = "UPDATE DepotFeatureVersions SET Version=Version-1 WHERE Name='Sales';";
+            await command.ExecuteNonQueryAsync();
+        }
+        var previous = await inspector.ReadStableCompatibilityAsync(settings, CancellationToken.None);
+        Assert.Equal(current.CoreVersion, previous.CoreVersion);
+        Assert.True(previous.RequiresMigrationTo(current));
+        var failedHealth = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            RunDepotCommandAsync(service.DepotPath, install, "--manager-health-check"));
+        Assert.Contains("feature", failedHealth.Message, StringComparison.OrdinalIgnoreCase);
+        var backup = await new MigrationSafetyService().CreateSqliteSafetyBackupAsync(settings, install, version, previous.CoreVersion, CancellationToken.None);
+        MigrationBackupGate.EnsureVerifiedSqliteBackup(backup);
+        Assert.True(previous.HasSameState(await inspector.ReadStableCompatibilityAsync(
+            new DatabaseConnectionSettings { Provider = DatabaseProvider.Local, LocalDatabasePath = backup }, CancellationToken.None)));
+        Assert.True((await RunDepotCommandAsync(service.DepotPath, install, "--manager-migrate")).Success);
+        Assert.True((await RunDepotCommandAsync(service.DepotPath, install, "--manager-health-check")).Success);
+        var migrated = await inspector.ReadStableCompatibilityAsync(settings, CancellationToken.None);
+        Assert.False(RollbackCompatibility.IsCompatible(migrated, previous));
+        migrated.RequireCompatibleWith(current);
     }
 
     [PackagedE2EFullFact]

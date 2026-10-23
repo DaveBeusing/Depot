@@ -2,6 +2,8 @@ using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text.Json;
 
+using Depot.Models;
+
 namespace DepotManager;
 
 public sealed record DepotReleaseMetadata(
@@ -11,7 +13,8 @@ public sealed record DepotReleaseMetadata(
     int ManagerCommandProtocol,
     DateTimeOffset? PublishedAt,
     string ReleaseName,
-    string ReleaseNotes);
+    string ReleaseNotes,
+    DatabaseSchemaCompatibility SchemaCompatibility);
 
 public sealed class DepotReleaseMetadataClient
 {
@@ -68,6 +71,11 @@ public sealed class DepotReleaseMetadataClient
             throw new InvalidOperationException("The Depot release metadata version does not match the selected release.");
         if (payload.DatabaseSchemaVersion < 1)
             throw new InvalidOperationException("The Depot release metadata contains an invalid database schema version.");
+        if (payload.ManagerCommandProtocol != 2 || payload.SchemaCompatibility is null)
+            throw new InvalidOperationException("This release uses legacy or unsupported Core-only migration metadata. Select a release with Manager protocol 2 and a complete schema compatibility contract; update Depot Manager first when required.");
+        payload.SchemaCompatibility.Validate(requirement: true);
+        if (payload.SchemaCompatibility.CoreVersion != payload.DatabaseSchemaVersion)
+            throw new InvalidOperationException("Release core schema metadata does not match its complete compatibility contract.");
         Version? managerVersion = null;
         if (!string.IsNullOrWhiteSpace(payload.DepotManagerVersion) && Version.TryParse(payload.DepotManagerVersion, out var parsedManager))
             managerVersion = VersionRules.ReleaseVersion(parsedManager);
@@ -77,7 +85,7 @@ public sealed class DepotReleaseMetadataClient
             published = parsedPublished;
         var name = root.TryGetProperty("name", out var nameElement) ? nameElement.GetString() ?? string.Empty : string.Empty;
         var notes = root.TryGetProperty("body", out var bodyElement) ? bodyElement.GetString() ?? string.Empty : string.Empty;
-        return new DepotReleaseMetadata(release.Version, payload.DatabaseSchemaVersion, managerVersion, payload.ManagerCommandProtocol, published, name, notes);
+        return new DepotReleaseMetadata(release.Version, payload.DatabaseSchemaVersion, managerVersion, payload.ManagerCommandProtocol, published, name, notes, payload.SchemaCompatibility);
     }
 
     private sealed class ManifestPayload
@@ -86,5 +94,6 @@ public sealed class DepotReleaseMetadataClient
         public string DepotManagerVersion { get; set; } = string.Empty;
         public int DatabaseSchemaVersion { get; set; }
         public int ManagerCommandProtocol { get; set; }
+        public DatabaseSchemaCompatibility? SchemaCompatibility { get; set; }
     }
 }
