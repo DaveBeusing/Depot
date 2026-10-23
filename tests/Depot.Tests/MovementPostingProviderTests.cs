@@ -2,6 +2,8 @@
 // Licensed under the MIT License.
 
 using Depot.Data;
+using Depot.Models;
+using Depot.Repositories;
 using Depot.Services;
 
 using Xunit;
@@ -34,7 +36,8 @@ public sealed class MovementPostingProviderTests
 		try
 		{
 			var movements = MovementPostingTestSupport.CreateMovements(context);
-			await movements.AddPurchaseAsync(context.InventoryId, 1, 5m, null, null, null, CancellationToken.None);
+			var purchase = await movements.AddPurchaseAsync(context.InventoryId, 1, 5m, null, null, null, CancellationToken.None);
+			Assert.False(purchase.IsReversed);
 			var auditCount = await MovementPostingTestSupport.StockMovementAuditCountAsync(context);
 
 			await Assert.ThrowsAsync<InsufficientStockException>(() => movements.AddWithdrawalAsync(context.InventoryId, 2, null, null, null, CancellationToken.None));
@@ -50,6 +53,28 @@ public sealed class MovementPostingProviderTests
 
 			await MovementPostingTestSupport.WithdrawLastUnitConcurrentlyAsync(context);
 			Assert.Equal(auditCount + 1, await MovementPostingTestSupport.StockMovementAuditCountAsync(context));
+
+			var withdrawalId = await context.ScalarAsync(
+				"SELECT MIN(Id) FROM StockMovements WHERE InventoryId = $InventoryId AND MovementType = $MovementType;",
+				new DatabaseParameter("$InventoryId", context.InventoryId),
+				new DatabaseParameter("$MovementType", (int)StockMovementType.Withdrawal));
+			var repository = new StockMovementRepository(context.Data);
+			var withdrawal = await repository.GetOverviewByIdAsync(withdrawalId, CancellationToken.None);
+			Assert.NotNull(withdrawal);
+			Assert.False(withdrawal.IsReversed);
+			var reasonCodeId = await context.ScalarAsync("SELECT MIN(Id) FROM ReasonCodes WHERE IsActive = 1;");
+			var reversal = await movements.ReverseWithdrawalAsync(withdrawalId, reasonCodeId, "Provider reversal flag verification", CancellationToken.None);
+			Assert.Equal(withdrawalId, reversal.ReversalOfMovementId);
+			Assert.False(reversal.IsReversed);
+			var reversedOriginal = await repository.GetOverviewByIdAsync(withdrawalId, CancellationToken.None);
+			Assert.NotNull(reversedOriginal);
+			Assert.True(reversedOriginal.IsReversed);
+			var overview = await movements.SearchAsync(purchase.PartNumber, 1, 10, CancellationToken.None);
+			Assert.Equal(3, overview.TotalCount);
+			Assert.True(Assert.Single(overview.Items, item => item.MovementId == withdrawalId).IsReversed);
+			Assert.False(Assert.Single(overview.Items, item => item.MovementId == purchase.MovementId).IsReversed);
+			await MovementPostingTestSupport.AssertInventoryStateAsync(context, context.InventoryId, 1, 3);
+			Assert.Equal(auditCount + 2, await MovementPostingTestSupport.StockMovementAuditCountAsync(context));
 		}
 		finally
 		{
