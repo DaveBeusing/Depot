@@ -4,8 +4,8 @@
 using System.Data.Common;
 using System.Globalization;
 using System.IO;
-using System.IO.Compression;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 using Depot.Data;
 using Depot.Models;
@@ -15,51 +15,10 @@ namespace Depot.Services;
 public sealed partial class DatabaseManagementService
 {
 	private const string BackupExtension = ".depotbackup";
-	private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
-	private static readonly TableDefinition[] Tables =
-	[
-		new("Manufacturers", ["Id", "Name", "Description", "IsActive", "Version"]),
-		new("Categories", ["Id", "Name", "Description", "IsActive", "Version"]),
-		new("UnitsOfMeasure", ["Id", "Name", "Description", "IsActive", "Version"]),
-		new("Packagings", ["Id", "Name", "Description", "IsActive", "Version"]),
-		new("SupplierCategories", ["Id", "Name", "Description", "IsActive", "Version"]),
-		new("Suppliers", ["Id", "SupplierNumber", "AccountNumber", "CustomerNumber", "Name", "Contact", "Email", "Phone", "Address", "RmaTerms", "Url", "PaymentTerm", "Iban", "AccountName", "SepaMandate", "VatNumber", "SupplierCategoryId", "Loyalty", "Quality", "Notes", "IsActive", "Version"]),
-		new("Items", ["Id", "PartNumber", "Description", "Manufacturer", "Category", "ManufacturerId", "CategoryId", "UnitOfMeasureId", "PackagingId", "SupplierId", "IsActive", "Version"]),
-		new("SupplierItems", ["Id", "SupplierId", "ItemId", "SupplierPartNumber", "PurchasePrice", "LeadTimeDays", "MinimumOrderQuantity", "IsPreferredSupplier", "IsActive", "Version"]),
-		new("Purposes", ["Id", "Name", "Description", "IsActive", "Version"]),
-		new("ReasonCodes", ["Id", "Code", "Name", "Description", "IsSystem", "IsActive", "Version"]),
-		new("Warehouses", ["Id", "Name", "Description", "IsActive", "Version"]),
-		new("StorageLocations", ["Id", "WarehouseId", "Name", "Description", "IsActive", "Version"]),
-		new("Users", ["Id", "Email", "DisplayName", "PasswordHash", "IsAdministrator", "CanApprovePurchaseOrders", "Role", "IsActive", "CreatedUtc", "Version"]),
-		new("Roles", ["Id", "Code", "Name", "Description", "IsSystem", "IsActive", "Version"]),
-		new("Permissions", ["Id", "Code", "Name", "Module", "Action"]),
-		new("RolePermissions", ["Id", "RoleId", "PermissionId"]),
-		new("UserRoles", ["Id", "UserId", "RoleId"]),
-		new("Inventories", ["Id", "ItemId", "PurposeId", "StorageLocationId", "IsActive", "Version"]),
-		new("PurchaseOrders", ["Id", "OrderNumber", "SupplierId", "OrderDate", "ExpectedDeliveryDate", "Notes", "Status", "CreatedByUserId", "SubmittedByUserId", "SubmittedAtUtc", "ApprovalDecisionByUserId", "ApprovalDecisionAtUtc", "ApprovalComment", "ClosedByUserId", "ClosedAtUtc", "CloseReason", "Version"]),
-		new("MaterialIssues", ["Id", "IssueNumber", "IssueDate", "Status", "Recipient", "Reference", "Notes", "CreatedByUserId", "PostedByUserId", "PostedAtUtc", "ReversedByUserId", "ReversedAtUtc", "ReversalReason", "Version"]),
-		new("MaterialIssueLines", ["Id", "MaterialIssueId", "LineNumber", "InventoryId", "Quantity", "ReasonCodeId", "Notes", "Version"]),
-		new("MaterialReturns", ["Id", "ReturnNumber", "ReturnDate", "Status", "RecipientOrSource", "OriginalMaterialIssueId", "Reference", "Notes", "CreatedByUserId", "PostedByUserId", "PostedAtUtc", "Version"]),
-		new("MaterialReturnLines", ["Id", "MaterialReturnId", "LineNumber", "InventoryId", "Quantity", "ReasonCodeId", "Notes", "Version"]),
-		new("SupplierReturns", ["Id", "ReturnNumber", "SupplierId", "ReturnDate", "Status", "PurchaseOrderId", "GoodsReceiptId", "SupplierReference", "Notes", "CreatedByUserId", "PostedByUserId", "PostedAtUtc", "ReversedByUserId", "ReversedAtUtc", "ReversalReason", "Version"]),
-		new("SupplierReturnLines", ["Id", "SupplierReturnId", "InventoryId", "ItemId", "Quantity", "UnitCost", "ReasonCodeId", "GoodsReceiptLineId", "Version"]),
-		new("PurchaseOrderLines", ["Id", "PurchaseOrderId", "LineNumber", "ItemId", "Quantity", "UnitPrice", "ReceivedQuantity", "Version"]),
-		new("GoodsReceipts", ["Id", "ReceiptNumber", "PurchaseOrderId", "ReceiptDate", "SupplierDeliveryNoteNumber", "ReceivedByUserId", "InvoiceNumber", "InvoiceDate", "InvoiceDocumentPath", "Notes"]),
-		new("GoodsReceiptLines", ["Id", "GoodsReceiptId", "PurchaseOrderLineId", "InventoryId", "Quantity"]),
-		new("StockMovements", ["Id", "InventoryId", "ReasonCodeId", "MovementType", "TimestampUtc", "Quantity", "UnitPrice", "Reference", "Notes", "ReversalOfMovementId", "ReversalReason", "ReversedAtUtc", "ReversedByUserId"]),
-		new("AuditEntries", ["Id", "TimestampUtc", "UserId", "UserEmail", "EntityType", "EntityId", "Action", "BeforeJson", "AfterJson"]),
-		new("WorkflowOperations", ["Id", "OperationId", "Workflow", "EntityId", "CompletedAtUtc"]),
-		new("Notifications", ["Id", "Type", "Severity", "Title", "Message", "SourceType", "SourceId", "SourceNumber", "CreatedAtUtc", "CreatedByUserId", "ExpiresAtUtc", "Version"]),
-		new("NotificationRecipients", ["Id", "NotificationId", "UserId", "ReadAtUtc", "ArchivedAtUtc", "CreatedAtUtc", "Version"])
-	];
-
 	private readonly IDatabaseConnectionFactory _connectionFactory;
 	private readonly SettingsService _settingsService;
 
-	public DatabaseManagementService(
-		IDatabaseConnectionFactory connectionFactory,
-		SettingsService settingsService,
-		IAuthorizationService authorization)
+	public DatabaseManagementService(IDatabaseConnectionFactory connectionFactory, SettingsService settingsService, IAuthorizationService authorization)
 	{
 		_connectionFactory = connectionFactory ?? throw new ArgumentNullException(nameof(connectionFactory));
 		_settingsService = settingsService ?? throw new ArgumentNullException(nameof(settingsService));
@@ -71,24 +30,13 @@ public sealed partial class DatabaseManagementService
 		RequireView();
 		await using var connection = _connectionFactory.CreateConnection();
 		await connection.OpenAsync(cancellationToken);
-		var version = Convert.ToInt32(
-			await ExecuteScalarAsync(connection, "SELECT Version FROM DatabaseInfo;", cancellationToken),
-			CultureInfo.InvariantCulture);
+		var version = Convert.ToInt32(await DatabaseBackupSchema.ScalarAsync(connection, null, "SELECT Version FROM DatabaseInfo;", cancellationToken), CultureInfo.InvariantCulture);
 		var size = await GetDatabaseSizeAsync(connection, cancellationToken);
 		var settings = _settingsService.CurrentSettings;
-		return new DatabaseOverview(
-			settings.Provider,
-			GetProviderDisplayName(settings.Provider),
-			GetConnectionDisplayName(settings),
-			version,
-			size,
-			settings.LastSuccessfulBackupUtc);
+		return new DatabaseOverview(settings.Provider, GetProviderDisplayName(settings.Provider), GetConnectionDisplayName(settings), version, size, settings.LastSuccessfulBackupUtc);
 	}
 
-	public Task<DatabaseBackupInfo> CreateBackupAsync(
-		string filePath,
-		IProgress<DatabaseOperationProgress>? progress = null,
-		CancellationToken cancellationToken = default)
+	public Task<DatabaseBackupInfo> CreateBackupAsync(string filePath, IProgress<DatabaseOperationProgress>? progress = null, CancellationToken cancellationToken = default)
 	{
 		RequireManage();
 		return CreateBackupCoreAsync(filePath, progress, cancellationToken);
@@ -101,170 +49,242 @@ public sealed partial class DatabaseManagementService
 		return CreateBackupCoreAsync(GetAutomaticBackupPath(), null, cancellationToken);
 	}
 
-	private async Task<DatabaseBackupInfo> CreateBackupCoreAsync(
-		string filePath,
-		IProgress<DatabaseOperationProgress>? progress,
-		CancellationToken cancellationToken)
+	private async Task<DatabaseBackupInfo> CreateBackupCoreAsync(string filePath, IProgress<DatabaseOperationProgress>? progress, CancellationToken cancellationToken)
 	{
+		cancellationToken.ThrowIfCancellationRequested();
 		var normalizedPath = NormalizeBackupPath(filePath);
-		var directory = Path.GetDirectoryName(normalizedPath)
-			?? throw new ArgumentException("The backup path must contain a directory.", nameof(filePath));
-		Directory.CreateDirectory(directory);
-		var temporaryPath = normalizedPath + ".tmp";
-		if (File.Exists(temporaryPath)) File.Delete(temporaryPath);
-
-		try
-		{
-			progress?.Report(new DatabaseOperationProgress(5, "Opening a consistent database snapshot..."));
-			await using var connection = _connectionFactory.CreateConnection();
-			await connection.OpenAsync(cancellationToken);
-			await using var transaction = await _connectionFactory.BeginWriteTransactionAsync(connection, cancellationToken);
-			var schemaVersion = Convert.ToInt32(
-				await ExecuteScalarAsync(connection, transaction, "SELECT Version FROM DatabaseInfo;", cancellationToken),
-				CultureInfo.InvariantCulture);
-			var manifest = new BackupManifest
-			{
-				CreatedUtc = DateTime.UtcNow,
-				Provider = _connectionFactory.Provider,
-				SchemaVersion = schemaVersion
-			};
-
-			await using (var stream = new FileStream(
-				temporaryPath,
-				FileMode.CreateNew,
-				FileAccess.ReadWrite,
-				FileShare.None,
-				bufferSize: 81920,
-				useAsync: true))
-			using (var archive = new ZipArchive(stream, ZipArchiveMode.Create, leaveOpen: false))
-			{
-				for (var index = 0; index < Tables.Length; index++)
-				{
-					cancellationToken.ThrowIfCancellationRequested();
-					var table = Tables[index];
-					progress?.Report(new DatabaseOperationProgress(
-						10 + (index * 70 / Tables.Length),
-						$"Backing up {table.Name}..."));
-					manifest.RowCounts[table.Name] = await WriteTableAsync(
-						archive,
-						connection,
-						transaction,
-						table,
-						cancellationToken);
-				}
-
-				var manifestEntry = archive.CreateEntry("manifest.json", CompressionLevel.Optimal);
-				await using var manifestStream = manifestEntry.Open();
-				await JsonSerializer.SerializeAsync(manifestStream, manifest, JsonOptions, cancellationToken);
-			}
-
-			await transaction.CommitAsync(cancellationToken);
-			progress?.Report(new DatabaseOperationProgress(85, "Validating the completed backup..."));
-			var validation = await ValidateBackupCoreAsync(temporaryPath, requireCurrentProvider: true, cancellationToken);
-			if (!validation.IsValid) throw new InvalidDataException(validation.ValidationMessage);
-			File.Move(temporaryPath, normalizedPath, overwrite: true);
-			var completedUtc = DateTime.UtcNow;
-			_settingsService.RecordSuccessfulBackup(completedUtc);
-			progress?.Report(new DatabaseOperationProgress(100, "Backup completed."));
-			return validation with
-			{
-				FilePath = normalizedPath,
-				CreatedUtc = manifest.CreatedUtc,
-				SizeBytes = new FileInfo(normalizedPath).Length
-			};
-		}
-		catch (OperationCanceledException)
-		{
-			DeleteTemporaryFile(temporaryPath);
-			throw;
-		}
-		catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidDataException)
-		{
-			DeleteTemporaryFile(temporaryPath);
-			throw new InvalidOperationException($"The database backup could not be created: {exception.Message}", exception);
-		}
-	}
-
-	public Task<DatabaseBackupInfo> ValidateBackupAsync(
-		string filePath,
-		CancellationToken cancellationToken = default)
-	{
-		RequireView();
-		return ValidateBackupCoreAsync(filePath, requireCurrentProvider: true, cancellationToken);
-	}
-
-	public async Task<string> RestoreBackupAsync(
-		string filePath,
-		IProgress<DatabaseOperationProgress>? progress = null,
-		CancellationToken cancellationToken = default)
-	{
-		RequireManage();
-		progress?.Report(new DatabaseOperationProgress(2, "Validating the selected backup..."));
-		var backup = await ValidateBackupCoreAsync(filePath, requireCurrentProvider: true, cancellationToken);
-		if (!backup.IsValid) throw new InvalidDataException(backup.ValidationMessage);
-
-		var safetyDirectory = GetAbsoluteBackupDirectory();
-		var safetyPath = Path.Combine(
-			safetyDirectory,
-			$"Depot-Safety-{DateTime.Now:yyyyMMdd-HHmmss}{BackupExtension}");
-		progress?.Report(new DatabaseOperationProgress(8, "Creating a safety backup of the current database..."));
-		await CreateBackupAsync(safetyPath, null, cancellationToken);
-
-		progress?.Report(new DatabaseOperationProgress(30, "Restoring database records..."));
+		progress?.Report(new DatabaseOperationProgress(5, "Opening a consistent database snapshot..."));
 		await using var connection = _connectionFactory.CreateConnection();
 		await connection.OpenAsync(cancellationToken);
 		await using var transaction = await _connectionFactory.BeginWriteTransactionAsync(connection, cancellationToken);
+		var schema = await DatabaseBackupSchema.ReadAsync(connection, transaction, _connectionFactory.Provider, cancellationToken);
+		await schema.ValidateForeignKeysAsync(connection, transaction, cancellationToken);
+		var backup = await WriteSnapshotAsync(normalizedPath, connection, transaction, schema, progress, cancellationToken);
+		await transaction.CommitAsync(cancellationToken);
+		_settingsService.RecordSuccessfulBackup(DateTime.UtcNow);
+		progress?.Report(new DatabaseOperationProgress(100, "Backup completed."));
+		return backup;
+	}
+
+	private static async Task<DatabaseBackupInfo> WriteSnapshotAsync(
+		string path, DbConnection connection, DbTransaction transaction, DatabaseBackupSchema schema,
+		IProgress<DatabaseOperationProgress>? progress, CancellationToken cancellationToken)
+	{
+		var directory = Path.GetDirectoryName(path) ?? throw new ArgumentException("The backup path must contain a directory.", nameof(path));
+		Directory.CreateDirectory(directory);
+		var temporaryPath = path + $".tmp-{Guid.NewGuid():N}";
 		try
 		{
-			for (var index = Tables.Length - 1; index >= 0; index--)
+			await using (var target = new FileStream(temporaryPath, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None, 81920, useAsync: true))
 			{
-				await ExecuteNonQueryAsync(
-					connection,
-					transaction,
-					$"DELETE FROM {Tables[index].Name};",
-					cancellationToken);
+				await DatabaseBackupArchive.WriteAsync(target, connection, transaction, schema, progress, cancellationToken);
+				await target.FlushAsync(cancellationToken);
+				target.Flush(flushToDisk: true);
 			}
-
-			using var archive = ZipFile.OpenRead(filePath);
-			for (var index = 0; index < Tables.Length; index++)
-			{
-				var table = Tables[index];
-				progress?.Report(new DatabaseOperationProgress(
-					35 + (index * 55 / Tables.Length),
-					$"Restoring {table.Name}..."));
-				await RestoreTableAsync(archive, connection, transaction, table, cancellationToken);
-			}
-
-			await transaction.CommitAsync(cancellationToken);
+			progress?.Report(new DatabaseOperationProgress(80, "Validating the complete backup..."));
+			DatabaseBackupInfo result;
+			using (var archive = await DatabaseBackupArchive.OpenValidatedAsync(temporaryPath, schema, cancellationToken))
+				result = BackupInfo(path, archive);
+			cancellationToken.ThrowIfCancellationRequested();
+			File.Move(temporaryPath, path, overwrite: true);
+			return result;
 		}
-		catch
+		finally
 		{
-			await transaction.RollbackAsync(CancellationToken.None);
-			throw;
+			DeleteTemporaryFile(temporaryPath);
 		}
+	}
 
-		progress?.Report(new DatabaseOperationProgress(100, "Restore completed."));
+	public Task<DatabaseBackupInfo> ValidateBackupAsync(string filePath, CancellationToken cancellationToken = default)
+	{
+		RequireView();
+		return ValidateBackupCoreAsync(filePath, cancellationToken);
+	}
+
+	private async Task<DatabaseBackupInfo> ValidateBackupCoreAsync(string filePath, CancellationToken cancellationToken)
+	{
+		try
+		{
+			var fullPath = Path.GetFullPath(filePath);
+			if (!File.Exists(fullPath)) return InvalidBackup(fullPath, "The backup file does not exist.");
+			await using var connection = _connectionFactory.CreateConnection();
+			await connection.OpenAsync(cancellationToken);
+			var schema = await DatabaseBackupSchema.ReadAsync(connection, null, _connectionFactory.Provider, cancellationToken);
+			using var archive = await DatabaseBackupArchive.OpenValidatedAsync(fullPath, schema, cancellationToken);
+			return BackupInfo(fullPath, archive);
+		}
+		catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or JsonException or InvalidDataException or FormatException or OverflowException)
+		{
+			return InvalidBackup(filePath, $"The backup is unreadable, incomplete, incompatible, or damaged: {exception.Message}");
+		}
+	}
+
+	public async Task<string> RestoreBackupAsync(string filePath, IProgress<DatabaseOperationProgress>? progress = null, CancellationToken cancellationToken = default)
+	{
+		RequireManage();
+		cancellationToken.ThrowIfCancellationRequested();
+		progress?.Report(new DatabaseOperationProgress(2, "Validating the complete selected backup..."));
+		await using var connection = _connectionFactory.CreateConnection();
+		await connection.OpenAsync(cancellationToken);
+		var initialSchema = await DatabaseBackupSchema.ReadAsync(connection, null, _connectionFactory.Provider, cancellationToken);
+		using var archive = await OpenForRestoreAsync(filePath, initialSchema, cancellationToken);
+		var safetyPath = Path.Combine(GetAbsoluteBackupDirectory(), $"Depot-Safety-{DateTime.UtcNow:yyyyMMdd-HHmmss-fff}-{Guid.NewGuid():N}{BackupExtension}");
+
+		// Foreign-key switches are connection-local. SQLite requires changing its switch
+		// before the transaction starts. Every relation is checked before the commit.
+		var previousForeignKeySetting = await GetForeignKeySettingAsync(connection, cancellationToken);
+		try
+		{
+			await SetForeignKeySettingAsync(connection, enabled: false, cancellationToken);
+			await using var transaction = await _connectionFactory.BeginWriteTransactionAsync(connection, cancellationToken);
+			try
+			{
+				var schema = await DatabaseBackupSchema.ReadAsync(connection, transaction, _connectionFactory.Provider, cancellationToken);
+				archive.RequireCompatible(schema);
+				progress?.Report(new DatabaseOperationProgress(8, "Creating a safety backup of the locked current database..."));
+				await WriteSnapshotAsync(safetyPath, connection, transaction, schema, null, cancellationToken);
+				await SuspendTransactionalObjectsAsync(connection, transaction, schema, cancellationToken);
+				foreach (var table in schema.Tables)
+					await DatabaseBackupArchive.ExecuteAsync(connection, transaction, $"DELETE FROM {schema.TableName(table.Name)};", cancellationToken);
+				for (var index = 0; index < schema.Tables.Length; index++)
+				{
+					var table = schema.Tables[index];
+					progress?.Report(new DatabaseOperationProgress(30 + index * 50 / schema.Tables.Length, $"Restoring {table.Name}..."));
+					await archive.RestoreTableAsync(connection, transaction, schema, table, cancellationToken);
+				}
+				await RestoreIdentityHighWaterMarksAsync(connection, transaction, schema, archive.Manifest, cancellationToken);
+				await ResumeTransactionalObjectsAsync(connection, transaction, schema, cancellationToken);
+				progress?.Report(new DatabaseOperationProgress(85, "Verifying restored values and foreign keys..."));
+				await schema.ValidateForeignKeysAsync(connection, transaction, cancellationToken);
+				await archive.VerifyRestoredRowsAsync(connection, transaction, schema, cancellationToken);
+				await transaction.CommitAsync(cancellationToken);
+			}
+			catch
+			{
+				await transaction.RollbackAsync(CancellationToken.None);
+				throw;
+			}
+		}
+		finally
+		{
+			await SetForeignKeySettingAsync(connection, previousForeignKeySetting, CancellationToken.None);
+		}
+		progress?.Report(new DatabaseOperationProgress(100, "Restore completed and verified."));
 		return safetyPath;
 	}
 
-	public async Task CompactAsync(
-		IProgress<DatabaseOperationProgress>? progress = null,
-		CancellationToken cancellationToken = default)
+	private static async Task<DatabaseBackupArchive> OpenForRestoreAsync(string filePath, DatabaseBackupSchema schema, CancellationToken cancellationToken)
+	{
+		try { return await DatabaseBackupArchive.OpenValidatedAsync(Path.GetFullPath(filePath), schema, cancellationToken); }
+		catch (Exception exception) when (exception is IOException or JsonException or FormatException or OverflowException)
+		{
+			throw new InvalidDataException($"The selected backup is unreadable or damaged: {exception.Message}", exception);
+		}
+	}
+
+	private async Task<bool> GetForeignKeySettingAsync(DbConnection connection, CancellationToken cancellationToken)
+	{
+		var sql = _connectionFactory.Provider switch
+		{
+			DatabaseProvider.Local => "PRAGMA foreign_keys;",
+			DatabaseProvider.MySql => "SELECT @@SESSION.FOREIGN_KEY_CHECKS;",
+			_ => null
+		};
+		return sql is null || Convert.ToInt32(await DatabaseBackupSchema.ScalarAsync(connection, null, sql, cancellationToken), CultureInfo.InvariantCulture) != 0;
+	}
+
+	private Task SetForeignKeySettingAsync(DbConnection connection, bool enabled, CancellationToken cancellationToken)
+	{
+		var sql = _connectionFactory.Provider switch
+		{
+			DatabaseProvider.Local => $"PRAGMA foreign_keys={(enabled ? 1 : 0)};",
+			DatabaseProvider.MySql => $"SET SESSION FOREIGN_KEY_CHECKS={(enabled ? 1 : 0)};",
+			_ => null
+		};
+		return sql is null ? Task.CompletedTask : DatabaseBackupArchive.ExecuteAsync(connection, null, sql, cancellationToken);
+	}
+
+	private static bool IsSqliteAfterTrigger(DatabaseBackupTrigger trigger) =>
+		Regex.IsMatch(trigger.Definition, @"\bAFTER\s+(INSERT|UPDATE|DELETE)\b", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
+	private static async Task SuspendTransactionalObjectsAsync(DbConnection connection, DbTransaction transaction, DatabaseBackupSchema schema, CancellationToken cancellationToken)
+	{
+		if (schema.Provider == DatabaseProvider.Local)
+		{
+			// BEFORE triggers enforce validation rules and remain enabled. AFTER triggers
+			// must not rewrite the archived CRM links during bulk insertion.
+			foreach (var trigger in schema.Triggers.Where(IsSqliteAfterTrigger))
+				await DatabaseBackupArchive.ExecuteAsync(connection, transaction, $"DROP TRIGGER {schema.Quote(trigger.Name)};", cancellationToken);
+		}
+		if (schema.Provider == DatabaseProvider.SqlServer)
+		{
+			foreach (var table in schema.Tables)
+				await DatabaseBackupArchive.ExecuteAsync(connection, transaction, $"ALTER TABLE {schema.TableName(table.Name)} NOCHECK CONSTRAINT ALL;", cancellationToken);
+			foreach (var trigger in schema.Triggers)
+				await DatabaseBackupArchive.ExecuteAsync(connection, transaction, $"DISABLE TRIGGER {schema.Quote(trigger.Name)} ON {schema.TableName(trigger.Table)};", cancellationToken);
+		}
+	}
+
+	private static async Task ResumeTransactionalObjectsAsync(DbConnection connection, DbTransaction transaction, DatabaseBackupSchema schema, CancellationToken cancellationToken)
+	{
+		if (schema.Provider == DatabaseProvider.Local)
+			foreach (var trigger in schema.Triggers.Where(IsSqliteAfterTrigger))
+				await DatabaseBackupArchive.ExecuteAsync(connection, transaction, trigger.Definition, cancellationToken);
+		if (schema.Provider == DatabaseProvider.SqlServer)
+		{
+			foreach (var table in schema.Tables)
+				await DatabaseBackupArchive.ExecuteAsync(connection, transaction, $"ALTER TABLE {schema.TableName(table.Name)} WITH CHECK CHECK CONSTRAINT ALL;", cancellationToken);
+			foreach (var trigger in schema.Triggers)
+				await DatabaseBackupArchive.ExecuteAsync(connection, transaction, $"ENABLE TRIGGER {schema.Quote(trigger.Name)} ON {schema.TableName(trigger.Table)};", cancellationToken);
+		}
+	}
+
+	private static async Task RestoreIdentityHighWaterMarksAsync(DbConnection connection, DbTransaction transaction, DatabaseBackupSchema schema, DatabaseBackupManifest manifest, CancellationToken cancellationToken)
+	{
+		if (schema.Provider == DatabaseProvider.SqlServer)
+		{
+			foreach (var table in schema.Tables.Where(table => table.HasIdentity))
+			{
+				var sourceHighWater = manifest.IdentityHighWaterMarks[table.Name];
+				var lastValue = await DatabaseBackupSchema.ScalarAsync(connection, transaction,
+					$"SELECT last_value FROM sys.identity_columns WHERE object_id=OBJECT_ID(N'dbo.{table.Name}');", cancellationToken);
+				var neverUsed = lastValue is null or DBNull;
+				var current = neverUsed ? 0 : Convert.ToInt64(lastValue, CultureInfo.InvariantCulture);
+				if (sourceHighWater > current)
+				{
+					// A never-populated or truncated table uses the reseed value itself
+					// for its next INSERT; an existing identity uses reseed + 1.
+					var reseed = neverUsed ? checked(sourceHighWater + 1) : sourceHighWater;
+					await DatabaseBackupArchive.ExecuteAsync(connection, transaction,
+						$"DBCC CHECKIDENT (N'dbo.{table.Name}', RESEED, {reseed.ToString(CultureInfo.InvariantCulture)}) WITH NO_INFOMSGS;", cancellationToken);
+				}
+			}
+			return;
+		}
+		if (schema.Provider != DatabaseProvider.Local) return;
+		foreach (var table in schema.Tables.Where(table => table.HasIdentity))
+		{
+			if (!manifest.IdentityHighWaterMarks.TryGetValue(table.Name, out var value)) continue;
+			await using var command = connection.CreateCommand();
+			command.Transaction = transaction;
+			command.CommandText = "UPDATE sqlite_sequence SET seq=MAX(seq,@Sequence) WHERE name=@Name; INSERT INTO sqlite_sequence(name,seq) SELECT @Name,@Sequence WHERE NOT EXISTS(SELECT 1 FROM sqlite_sequence WHERE name=@Name);";
+			var name = command.CreateParameter(); name.ParameterName = "@Name"; name.Value = table.Name; command.Parameters.Add(name);
+			var sequence = command.CreateParameter(); sequence.ParameterName = "@Sequence"; sequence.Value = value; command.Parameters.Add(sequence);
+			await command.ExecuteNonQueryAsync(cancellationToken);
+		}
+	}
+
+	public async Task CompactAsync(IProgress<DatabaseOperationProgress>? progress = null, CancellationToken cancellationToken = default)
 	{
 		RequireManage();
-		if (_connectionFactory.Provider != DatabaseProvider.Local)
-		{
-			throw new NotSupportedException("VACUUM is available only for the local SQLite database.");
-		}
-
-		progress?.Report(new DatabaseOperationProgress(10, "Checking database integrity before compacting..."));
+		if (_connectionFactory.Provider != DatabaseProvider.Local) throw new NotSupportedException("Compaction is available for local SQLite databases only.");
 		var integrity = await CheckIntegrityAsync(cancellationToken);
 		if (!integrity.IsValid) throw new InvalidOperationException(integrity.Message);
-		progress?.Report(new DatabaseOperationProgress(40, "Compacting the SQLite database..."));
+		progress?.Report(new DatabaseOperationProgress(20, "Compacting the local database..."));
 		await using var connection = _connectionFactory.CreateConnection();
 		await connection.OpenAsync(cancellationToken);
-		await ExecuteNonQueryAsync(connection, null, "VACUUM;", cancellationToken);
-		progress?.Report(new DatabaseOperationProgress(100, "Database compacted."));
+		await DatabaseBackupArchive.ExecuteAsync(connection, null, "VACUUM;", cancellationToken);
+		progress?.Report(new DatabaseOperationProgress(100, "Database compaction completed."));
 	}
 
 	public async Task<DatabaseIntegrityResult> CheckIntegrityAsync(CancellationToken cancellationToken = default)
@@ -274,36 +294,23 @@ public sealed partial class DatabaseManagementService
 		await connection.OpenAsync(cancellationToken);
 		if (_connectionFactory.Provider == DatabaseProvider.Local)
 		{
-			var result = Convert.ToString(
-				await ExecuteScalarAsync(connection, "PRAGMA integrity_check;", cancellationToken),
-				CultureInfo.InvariantCulture);
-			return string.Equals(result, "ok", StringComparison.OrdinalIgnoreCase)
-				? new DatabaseIntegrityResult(true, "SQLite integrity check completed successfully.")
-				: new DatabaseIntegrityResult(false, $"SQLite reported an integrity problem: {result}");
+			var rows = await DatabaseBackupSchema.QueryAsync(connection, null, "PRAGMA integrity_check;", cancellationToken);
+			if (rows.Count != 1 || !string.Equals(Convert.ToString(rows[0][0], CultureInfo.InvariantCulture), "ok", StringComparison.OrdinalIgnoreCase))
+				return new(false, "SQLite reported a database integrity problem.");
+			if ((await DatabaseBackupSchema.QueryAsync(connection, null, "PRAGMA foreign_key_check;", cancellationToken)).Count > 0)
+				return new(false, "SQLite reported a foreign key integrity problem.");
+			return new(true, "SQLite integrity check completed successfully.");
 		}
-
 		if (_connectionFactory.Provider == DatabaseProvider.SqlServer)
 		{
-			await ExecuteNonQueryAsync(connection, null, "DBCC CHECKDB WITH NO_INFOMSGS;", cancellationToken);
-			return new DatabaseIntegrityResult(true, "SQL Server integrity check completed successfully.");
+			await DatabaseBackupArchive.ExecuteAsync(connection, null, "DBCC CHECKDB WITH NO_INFOMSGS;", cancellationToken);
+			return new(true, "SQL Server integrity check completed successfully.");
 		}
-
-		await using var command = connection.CreateCommand();
-		command.CommandTimeout = 0;
-		command.CommandText = $"CHECK TABLE {string.Join(", ", Tables.Select(table => table.Name))};";
-		await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-		while (await reader.ReadAsync(cancellationToken))
-		{
-			var messageType = reader.GetString(2);
-			var message = reader.GetString(3);
-			if (string.Equals(messageType, "error", StringComparison.OrdinalIgnoreCase) ||
-				!string.Equals(message, "OK", StringComparison.OrdinalIgnoreCase))
-			{
-				return new DatabaseIntegrityResult(false, $"MySQL/MariaDB integrity problem: {message}");
-			}
-		}
-
-		return new DatabaseIntegrityResult(true, "MySQL/MariaDB integrity check completed successfully.");
+		var schema = await DatabaseBackupSchema.ReadAsync(connection, null, _connectionFactory.Provider, cancellationToken);
+		var result = await DatabaseBackupSchema.QueryAsync(connection, null, $"CHECK TABLE {string.Join(",", schema.Tables.Select(table => schema.TableName(table.Name)))};", cancellationToken);
+		return result.Any(row => !string.Equals(Convert.ToString(row[3], CultureInfo.InvariantCulture), "OK", StringComparison.OrdinalIgnoreCase))
+			? new(false, "MySQL/MariaDB reported a database integrity problem.")
+			: new(true, "MySQL/MariaDB integrity check completed successfully.");
 	}
 
 	public async Task<IReadOnlyList<DatabaseBackupInfo>> GetBackupsAsync(CancellationToken cancellationToken = default)
@@ -312,146 +319,15 @@ public sealed partial class DatabaseManagementService
 		var directory = GetAbsoluteBackupDirectory();
 		if (!Directory.Exists(directory)) return [];
 		var result = new List<DatabaseBackupInfo>();
-		foreach (var filePath in Directory.EnumerateFiles(directory, $"*{BackupExtension}"))
+		foreach (var path in Directory.EnumerateFiles(directory, $"*{BackupExtension}"))
 		{
 			cancellationToken.ThrowIfCancellationRequested();
-			result.Add(await ValidateBackupCoreAsync(filePath, requireCurrentProvider: false, cancellationToken));
+			result.Add(await ValidateBackupCoreAsync(path, cancellationToken));
 		}
-
 		return result.OrderByDescending(item => item.CreatedUtc).ToList();
 	}
 
-	public string GetAutomaticBackupPath() =>
-		Path.Combine(
-			GetAbsoluteBackupDirectory(),
-			$"Depot-Auto-{DateTime.Now:yyyyMMdd-HHmmss}{BackupExtension}");
-
-	private async Task<DatabaseBackupInfo> ValidateBackupCoreAsync(
-		string filePath,
-		bool requireCurrentProvider,
-		CancellationToken cancellationToken)
-	{
-		try
-		{
-			var fullPath = Path.GetFullPath(filePath);
-			if (!File.Exists(fullPath)) return InvalidBackup(fullPath, "The backup file does not exist.");
-			using var archive = ZipFile.OpenRead(fullPath);
-			var manifestEntry = archive.GetEntry("manifest.json");
-			if (manifestEntry is null) return InvalidBackup(fullPath, "The backup manifest is missing.");
-			await using var manifestStream = manifestEntry.Open();
-			var manifest = await JsonSerializer.DeserializeAsync<BackupManifest>(manifestStream, JsonOptions, cancellationToken);
-			if (manifest is null || manifest.FormatVersion != 1)
-				return InvalidBackup(fullPath, "The backup format is unsupported or damaged.");
-			if (manifest.SchemaVersion != DatabaseVersion.CurrentVersion)
-				return InvalidBackup(fullPath, $"Schema version {manifest.SchemaVersion} is not compatible with version {DatabaseVersion.CurrentVersion}.", manifest);
-			if (requireCurrentProvider && manifest.Provider != _connectionFactory.Provider)
-				return InvalidBackup(fullPath, $"The backup belongs to {GetProviderDisplayName(manifest.Provider)}, not the active provider.", manifest);
-
-			foreach (var table in Tables)
-			{
-				var entry = archive.GetEntry($"tables/{table.Name}.json");
-				if (entry is null || !manifest.RowCounts.TryGetValue(table.Name, out var expectedCount))
-					return InvalidBackup(fullPath, $"Backup data for {table.Name} is missing.", manifest);
-				await using var entryStream = entry.Open();
-				using var document = await JsonDocument.ParseAsync(entryStream, cancellationToken: cancellationToken);
-				if (document.RootElement.ValueKind != JsonValueKind.Array || document.RootElement.GetArrayLength() != expectedCount)
-					return InvalidBackup(fullPath, $"Backup data for {table.Name} is incomplete.", manifest);
-				foreach (var row in document.RootElement.EnumerateArray())
-				{
-					if (row.ValueKind != JsonValueKind.Array || row.GetArrayLength() != table.Columns.Length)
-						return InvalidBackup(fullPath, $"A record in {table.Name} is damaged.", manifest);
-				}
-			}
-
-			var info = new FileInfo(fullPath);
-			return new DatabaseBackupInfo(fullPath, manifest.CreatedUtc, info.Length, manifest.Provider, manifest.SchemaVersion, true, "Backup is valid.");
-		}
-		catch (OperationCanceledException)
-		{
-			throw;
-		}
-		catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidDataException or JsonException)
-		{
-			return InvalidBackup(filePath, $"The backup is unreadable or damaged: {exception.Message}");
-		}
-	}
-
-	private static async Task<long> WriteTableAsync(
-		ZipArchive archive,
-		DbConnection connection,
-		DbTransaction transaction,
-		TableDefinition table,
-		CancellationToken cancellationToken)
-	{
-		var entry = archive.CreateEntry($"tables/{table.Name}.json", CompressionLevel.Optimal);
-		await using var entryStream = entry.Open();
-		await using var writer = new Utf8JsonWriter(entryStream);
-		await using var command = connection.CreateCommand();
-		command.Transaction = transaction;
-		command.CommandTimeout = 0;
-		command.CommandText = $"SELECT {string.Join(", ", table.Columns)} FROM {table.Name} ORDER BY Id;";
-		await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-		long count = 0;
-		writer.WriteStartArray();
-		while (await reader.ReadAsync(cancellationToken))
-		{
-			writer.WriteStartArray();
-			for (var index = 0; index < reader.FieldCount; index++)
-			{
-				WriteValue(writer, reader.IsDBNull(index) ? null : reader.GetValue(index));
-			}
-			writer.WriteEndArray();
-			count++;
-			if (count % 500 == 0) await writer.FlushAsync(cancellationToken);
-		}
-		writer.WriteEndArray();
-		await writer.FlushAsync(cancellationToken);
-		return count;
-	}
-
-	private async Task RestoreTableAsync(
-		ZipArchive archive,
-		DbConnection connection,
-		DbTransaction transaction,
-		TableDefinition table,
-		CancellationToken cancellationToken)
-	{
-		var entry = archive.GetEntry($"tables/{table.Name}.json")
-			?? throw new InvalidDataException($"Backup data for {table.Name} is missing.");
-		await using var entryStream = entry.Open();
-		using var document = await JsonDocument.ParseAsync(entryStream, cancellationToken: cancellationToken);
-		if (_connectionFactory.Provider == DatabaseProvider.SqlServer)
-			await ExecuteNonQueryAsync(connection, transaction, $"SET IDENTITY_INSERT {table.Name} ON;", cancellationToken);
-
-		try
-		{
-			foreach (var row in document.RootElement.EnumerateArray())
-			{
-				cancellationToken.ThrowIfCancellationRequested();
-				await using var command = connection.CreateCommand();
-				command.Transaction = transaction;
-				command.CommandTimeout = 0;
-				command.CommandText = $"INSERT INTO {table.Name} ({string.Join(", ", table.Columns)}) VALUES ({string.Join(", ", table.Columns.Select((_, index) => $"$Value{index}"))});";
-				var index = 0;
-				foreach (var value in row.EnumerateArray())
-				{
-					var parameter = command.CreateParameter();
-					parameter.ParameterName = _connectionFactory.Provider == DatabaseProvider.Local
-						? $"$Value{index}"
-						: $"@Value{index}";
-					parameter.Value = ReadValue(value);
-					command.Parameters.Add(parameter);
-					index++;
-				}
-				await command.ExecuteNonQueryAsync(cancellationToken);
-			}
-		}
-		finally
-		{
-			if (_connectionFactory.Provider == DatabaseProvider.SqlServer)
-				await ExecuteNonQueryAsync(connection, transaction, $"SET IDENTITY_INSERT {table.Name} OFF;", CancellationToken.None);
-		}
-	}
+	public string GetAutomaticBackupPath() => Path.Combine(GetAbsoluteBackupDirectory(), $"Depot-Auto-{DateTime.UtcNow:yyyyMMdd-HHmmss-fff}-{Guid.NewGuid():N}{BackupExtension}");
 
 	private async Task<long> GetDatabaseSizeAsync(DbConnection connection, CancellationToken cancellationToken)
 	{
@@ -460,103 +336,40 @@ public sealed partial class DatabaseManagementService
 			var path = Path.GetFullPath(_settingsService.CurrentSettings.LocalDatabasePath);
 			return File.Exists(path) ? new FileInfo(path).Length : 0;
 		}
-
 		var sql = _connectionFactory.Provider == DatabaseProvider.SqlServer
 			? "SELECT COALESCE(SUM(size), 0) * 8192 FROM sys.database_files;"
 			: "SELECT COALESCE(SUM(DATA_LENGTH + INDEX_LENGTH), 0) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE();";
-		return Convert.ToInt64(await ExecuteScalarAsync(connection, sql, cancellationToken), CultureInfo.InvariantCulture);
+		return Convert.ToInt64(await DatabaseBackupSchema.ScalarAsync(connection, null, sql, cancellationToken), CultureInfo.InvariantCulture);
 	}
 
-	private string GetAbsoluteBackupDirectory() =>
-		Path.GetFullPath(_settingsService.CurrentSettings.BackupDirectory);
+	private string GetAbsoluteBackupDirectory() => Path.GetFullPath(_settingsService.CurrentSettings.BackupDirectory);
 
 	private static string NormalizeBackupPath(string filePath)
 	{
 		if (string.IsNullOrWhiteSpace(filePath)) throw new ArgumentException("A backup path is required.", nameof(filePath));
-		var fullPath = Path.GetFullPath(filePath.Trim());
-		return string.Equals(Path.GetExtension(fullPath), BackupExtension, StringComparison.OrdinalIgnoreCase)
-			? fullPath
-			: fullPath + BackupExtension;
+		var path = Path.GetFullPath(filePath.Trim());
+		return string.Equals(Path.GetExtension(path), BackupExtension, StringComparison.OrdinalIgnoreCase) ? path : path + BackupExtension;
 	}
 
 	private static string GetProviderDisplayName(DatabaseProvider provider) => provider switch
 	{
-		DatabaseProvider.Local => "SQLite",
-		DatabaseProvider.SqlServer => "Microsoft SQL Server",
-		DatabaseProvider.MySql => "MySQL / MariaDB",
-		_ => provider.ToString()
+		DatabaseProvider.Local => "SQLite", DatabaseProvider.SqlServer => "Microsoft SQL Server", DatabaseProvider.MySql => "MySQL / MariaDB", _ => provider.ToString()
 	};
 
 	private static string GetConnectionDisplayName(DatabaseConnectionSettings settings) => settings.Provider switch
 	{
 		DatabaseProvider.Local => Path.GetFullPath(settings.LocalDatabasePath),
 		DatabaseProvider.SqlServer => $"{settings.SqlServerHost}:{settings.SqlServerPort} / {settings.SqlServerDatabase}",
-		DatabaseProvider.MySql => $"{settings.MySqlHost}:{settings.MySqlPort} / {settings.MySqlDatabase}",
-		_ => "Unknown database"
+		DatabaseProvider.MySql => $"{settings.MySqlHost}:{settings.MySqlPort} / {settings.MySqlDatabase}", _ => "Unknown database"
 	};
 
-	private static void WriteValue(Utf8JsonWriter writer, object? value)
-	{
-		switch (value)
-		{
-			case null or DBNull: writer.WriteNullValue(); break;
-			case bool boolean: writer.WriteBooleanValue(boolean); break;
-			case byte number: writer.WriteNumberValue(number); break;
-			case short number: writer.WriteNumberValue(number); break;
-			case int number: writer.WriteNumberValue(number); break;
-			case long number: writer.WriteNumberValue(number); break;
-			case float number: writer.WriteNumberValue(number); break;
-			case double number: writer.WriteNumberValue(number); break;
-			case decimal number: writer.WriteNumberValue(number); break;
-			case DateTime dateTime: writer.WriteStringValue(dateTime.ToUniversalTime()); break;
-			case byte[] bytes: writer.WriteBase64StringValue(bytes); break;
-			default: writer.WriteStringValue(Convert.ToString(value, CultureInfo.InvariantCulture)); break;
-		}
-	}
+	private static DatabaseBackupInfo BackupInfo(string path, DatabaseBackupArchive archive) =>
+		new(path, archive.Manifest.CreatedUtc, archive.Length, archive.Manifest.Provider, archive.Manifest.SchemaVersion, true, "Complete backup is valid for the current schema.");
 
-	private static object ReadValue(JsonElement value) => value.ValueKind switch
+	private static DatabaseBackupInfo InvalidBackup(string path, string message)
 	{
-		JsonValueKind.Null => DBNull.Value,
-		JsonValueKind.True => true,
-		JsonValueKind.False => false,
-		JsonValueKind.Number when value.TryGetInt64(out var integer) => integer,
-		JsonValueKind.Number => value.GetDecimal(),
-		JsonValueKind.String => value.GetString() ?? string.Empty,
-		_ => throw new InvalidDataException("The backup contains an unsupported value.")
-	};
-
-	private static async Task<object?> ExecuteScalarAsync(DbConnection connection, string sql, CancellationToken cancellationToken) =>
-		await ExecuteScalarAsync(connection, null, sql, cancellationToken);
-
-	private static async Task<object?> ExecuteScalarAsync(DbConnection connection, DbTransaction? transaction, string sql, CancellationToken cancellationToken)
-	{
-		await using var command = connection.CreateCommand();
-		command.Transaction = transaction;
-		command.CommandTimeout = 0;
-		command.CommandText = sql;
-		return await command.ExecuteScalarAsync(cancellationToken);
-	}
-
-	private static async Task ExecuteNonQueryAsync(DbConnection connection, DbTransaction? transaction, string sql, CancellationToken cancellationToken)
-	{
-		await using var command = connection.CreateCommand();
-		command.Transaction = transaction;
-		command.CommandTimeout = 0;
-		command.CommandText = sql;
-		await command.ExecuteNonQueryAsync(cancellationToken);
-	}
-
-	private static DatabaseBackupInfo InvalidBackup(string filePath, string message, BackupManifest? manifest = null)
-	{
-		var info = File.Exists(filePath) ? new FileInfo(filePath) : null;
-		return new DatabaseBackupInfo(
-			filePath,
-			manifest?.CreatedUtc ?? info?.LastWriteTimeUtc ?? DateTime.MinValue,
-			info?.Length ?? 0,
-			manifest?.Provider ?? DatabaseProvider.Local,
-			manifest?.SchemaVersion ?? 0,
-			false,
-			message);
+		var info = File.Exists(path) ? new FileInfo(path) : null;
+		return new(path, info?.LastWriteTimeUtc ?? DateTime.MinValue, info?.Length ?? 0, DatabaseProvider.Local, 0, false, message);
 	}
 
 	private static void DeleteTemporaryFile(string path)
@@ -564,17 +377,6 @@ public sealed partial class DatabaseManagementService
 		try { if (File.Exists(path)) File.Delete(path); }
 		catch (IOException) { }
 		catch (UnauthorizedAccessException) { }
-	}
-
-	private sealed record TableDefinition(string Name, string[] Columns);
-
-	private sealed class BackupManifest
-	{
-		public int FormatVersion { get; set; } = 1;
-		public DateTime CreatedUtc { get; set; }
-		public DatabaseProvider Provider { get; set; }
-		public int SchemaVersion { get; set; }
-		public Dictionary<string, long> RowCounts { get; set; } = new(StringComparer.Ordinal);
 	}
 }
 

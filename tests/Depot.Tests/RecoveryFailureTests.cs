@@ -45,7 +45,24 @@ public sealed class RecoveryFailureTests : IDisposable
 
 		await Assert.ThrowsAnyAsync<OperationCanceledException>(() => _service.CreateBackupAsync(target, cancellationToken: cancellation.Token));
 		Assert.False(File.Exists(target));
-		Assert.False(File.Exists(target + ".tmp"));
+		AssertNoTemporaryArchives();
+	}
+
+	[Theory]
+	[InlineData(10)]
+	[InlineData(80)]
+	public async Task CancellationDuringBackupPreservesExistingArchiveAndRemovesTemporaryFiles(int cancelAtPercentage)
+	{
+		var target = Path.Combine(_directory, "existing.depotbackup");
+		var original = new byte[] { 1, 2, 3, 4 };
+		await File.WriteAllBytesAsync(target, original);
+		using var cancellation = new CancellationTokenSource();
+		var progress = new CancellingProgress(cancellation, cancelAtPercentage);
+
+		await Assert.ThrowsAnyAsync<OperationCanceledException>(() => _service.CreateBackupAsync(target, progress, cancellation.Token));
+
+		Assert.Equal(original, await File.ReadAllBytesAsync(target));
+		AssertNoTemporaryArchives();
 	}
 
 	[Fact]
@@ -57,7 +74,18 @@ public sealed class RecoveryFailureTests : IDisposable
 
 		await Assert.ThrowsAnyAsync<Exception>(() => _service.CreateBackupAsync(target));
 		Assert.False(File.Exists(target));
-		Assert.False(File.Exists(target + ".tmp"));
+		AssertNoTemporaryArchives();
+	}
+
+	private void AssertNoTemporaryArchives() =>
+		Assert.Empty(Directory.EnumerateFiles(_directory, "*.tmp*", SearchOption.AllDirectories));
+
+	private sealed class CancellingProgress(CancellationTokenSource cancellation, int cancelAtPercentage) : IProgress<DatabaseOperationProgress>
+	{
+		public void Report(DatabaseOperationProgress value)
+		{
+			if (value.Percentage >= cancelAtPercentage) cancellation.Cancel();
+		}
 	}
 
 	public void Dispose()
