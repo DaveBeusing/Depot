@@ -78,6 +78,13 @@ public sealed class MovementPostingProviderTests
 		}
 		finally
 		{
+			// MySQL checks self-references row by row during the fixture's bulk delete.
+			// Remove only this test's reversal links before the fixture removes its rows.
+			await context.Data.ExecuteAsync(
+				"UPDATE StockMovements SET ReversalOfMovementId = NULL WHERE InventoryId IN ($InventoryId, $InactiveInventoryId);",
+				CancellationToken.None,
+				new DatabaseParameter("$InventoryId", context.InventoryId),
+				new DatabaseParameter("$InactiveInventoryId", context.InactiveInventoryId));
 			// The shared procurement fixture does not own standalone movement audit entries.
 			await context.Data.ExecuteAsync(
 				"DELETE FROM AuditEntries WHERE EntityType = 'StockMovement' AND EntityId IN (SELECT Id FROM StockMovements WHERE InventoryId IN ($InventoryId, $InactiveInventoryId));",
