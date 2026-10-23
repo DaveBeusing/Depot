@@ -104,46 +104,37 @@ public sealed partial class RoleViewModel
 		SelectedPermissionGroup = PermissionGroups.FirstOrDefault();
 		foreach (var permission in Permissions)
 			permission.PropertyChanged += OnDesignerPermissionChanged;
-		SelectMatrixRoleCommand = new AsyncRelayCommand<Role>(SelectMatrixRoleAsync);
+		SelectMatrixRoleCommand = new AsyncRelayCommand<Role>(SelectMatrixRoleAsync, _ => !_disposed);
 	}
 
 	private async Task RefreshPermissionDesignerAsync(CancellationToken token)
 	{
-		var selectedRoleId = Id != 0 ? Id : SelectedRole?.Id;
-		var roles = await _service.ListDesignerRolesAsync(token);
-		CollectionSynchronizer.Replace(DesignerRoles, roles);
-		var projection = RolePermissionDesignerProjector.Project(DesignerRoles, _service.Permissions);
-		CollectionSynchronizer.Replace(PermissionMatrixRows, projection.MatrixRows);
-		if (selectedRoleId is > 0)
+		if (_disposed) return;
+		var request = _designerRequests.Begin(token);
+		try
 		{
-			var role = DesignerRoles.FirstOrDefault(value => value.Id == selectedRoleId.Value);
-			if (role is not null)
-			{
-				Apply(role);
-				await LoadEffectivePermissionImpactAsync(role.Id, token);
-			}
+			var roles = await _service.ListDesignerRolesAsync(request.Token);
+			if (!CanApply(request)) return;
+			CollectionSynchronizer.Replace(DesignerRoles, roles);
+			var projection = RolePermissionDesignerProjector.Project(DesignerRoles, _service.Permissions);
+			CollectionSynchronizer.Replace(PermissionMatrixRows, projection.MatrixRows);
 		}
-		else
-		{
-			EffectivePermissionUsers.Clear();
-			SelectedEffectivePermissionUser = null;
-		}
-		RefreshPermissionDesignerSelection();
+		catch (OperationCanceledException) when (request.Token.IsCancellationRequested) { }
+		catch (Exception) when (!CanApply(request)) { }
 	}
 
-	private async Task SelectMatrixRoleAsync(Role role, CancellationToken token)
+	private Task SelectMatrixRoleAsync(Role role, CancellationToken token)
 	{
-		var detailed = await _service.GetByIdAsync(role.Id, token) ?? throw new InvalidOperationException("The role was not found.");
-		_selectedRole = Roles.FirstOrDefault(value => value.Id == role.Id) ?? role;
-		OnPropertyChanged(nameof(SelectedRole));
-		Apply(detailed);
-		await LoadEffectivePermissionImpactAsync(detailed.Id, token);
+		// Selection owns the asynchronous request so the matrix remains navigable while details load.
+		if (!_disposed) _ = SelectRoleAsync(Roles.FirstOrDefault(value => value.Id == role.Id) ?? role);
+		return Task.CompletedTask;
 	}
 
-	private async Task LoadEffectivePermissionImpactAsync(long roleId, CancellationToken token)
+	private async Task LoadEffectivePermissionImpactAsync(long roleId, LatestRequestLease request)
 	{
 		var selectedUserId = SelectedEffectivePermissionUser?.UserId;
-		var users = await _service.GetEffectivePermissionUsersAsync(roleId, token);
+		var users = await _service.GetEffectivePermissionUsersAsync(roleId, request.Token);
+		if (!IsCurrentSelection(request, roleId) || Id != roleId) return;
 		CollectionSynchronizer.Replace(EffectivePermissionUsers, users);
 		SelectedEffectivePermissionUser = selectedUserId.HasValue
 			? EffectivePermissionUsers.FirstOrDefault(value => value.UserId == selectedUserId.Value) ?? EffectivePermissionUsers.FirstOrDefault()

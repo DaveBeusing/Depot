@@ -35,7 +35,8 @@ public sealed class RolePermissionDesignerContractTests
 
 		Assert.Contains("System:", view, StringComparison.Ordinal);
 		Assert.Contains("IsEnabled=\"{Binding DataContext.CanEdit", view, StringComparison.Ordinal);
-		Assert.Contains("SaveCommand = new AsyncRelayCommand(SaveAsync, () => !IsSystem)", viewModel, StringComparison.Ordinal);
+		Assert.Contains("SaveCommand = new AsyncRelayCommand(SaveAsync, () => CanEdit)", viewModel, StringComparison.Ordinal);
+		Assert.Contains("!IsSystem", viewModel, StringComparison.Ordinal);
 		Assert.Contains("Protected system roles cannot be changed.", service, StringComparison.Ordinal);
 		Assert.Contains("Protected system roles cannot be deactivated or reactivated manually.", service, StringComparison.Ordinal);
 	}
