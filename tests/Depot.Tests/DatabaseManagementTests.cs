@@ -140,10 +140,17 @@ public sealed class DatabaseManagementTests : IDisposable
 				Assert.Equal(liveColumns.Select(row => (string)row[1]).OrderBy(name => name, StringComparer.Ordinal), table.Schema.Columns.Select(column => column.Name));
 			}
 		}
-		foreach (var name in new[] { "BusinessAttachments", "BusinessAttachmentContents", "FinanceLegalEntities", "FinanceJournalEntries", "FinanceJournalEntryLines", "SalesInvoices", "SalesInvoiceLines", "Projects", "UserSessions", "UserWorkspaceFavorites", "DatabaseInfo", "DepotFeatureVersions" })
+		foreach (var name in new[] { "BusinessAttachments", "BusinessAttachmentContents", "FinanceLegalEntities", "FinanceJournalEntries", "FinanceJournalEntryLines", "SalesInvoices", "SalesInvoiceLines", "Projects", "UserSessions", "UserWorkspaceFavorites", "DatabaseInfo", "DepotFeatureVersions",
+			"SubscriptionContracts", "SubscriptionContractLines", "SubscriptionContractRevisions", "SubscriptionLifecycleEvents", "SubscriptionBillingInstances", "SubscriptionBillingPriceEvidence",
+			"SalesLeads", "SalesOpportunities", "ItemTrackingUnits", "StockMovementTracking" })
 			Assert.True(Assert.Single(before.Tables, table => table.Schema.Name == name).RowCount > 0, name);
 
 		await ExecuteAsync("UPDATE Items SET Gtin='changed',Revision='changed',NetWeightKg=99 WHERE Id=1001; UPDATE FinanceJournalEntryLines SET TransactionDebit=999 WHERE Id=1011; UPDATE BusinessAttachmentContents SET Content=X'00'; INSERT INTO Customers(CustomerNumber,Name) VALUES('AFTER-SNAPSHOT','Discard after restore');");
+		await ExecuteAsync("""
+			UPDATE SubscriptionContractRevisions SET TermsSnapshotJson='{}' WHERE ContractId=1101 AND TermsRevision=1;
+			UPDATE SubscriptionBillingInstances SET PeriodEnd='2026-10-20',SalesInvoiceId=NULL WHERE Id=1106;
+			UPDATE SubscriptionBillingPriceEvidence SET UnitPrice=999.9999,DiscountPercent=0 WHERE Id=1107;
+			""");
 		var safety = await _service.RestoreBackupAsync(original);
 		Assert.True((await _service.ValidateBackupAsync(safety)).IsValid);
 		Assert.Equal(0L, await ScalarAsync("SELECT COUNT(*) FROM Customers WHERE CustomerNumber='AFTER-SNAPSHOT';"));
@@ -153,6 +160,13 @@ public sealed class DatabaseManagementTests : IDisposable
 		Assert.Equal(AttachmentBytes, (byte[])(await ScalarAsync("SELECT Content FROM BusinessAttachmentContents;"))!);
 		Assert.Equal("blob", await ScalarAsync("SELECT typeof(Content) FROM BusinessAttachmentContents;"));
 		Assert.Equal(123.456789, Convert.ToDouble(await ScalarAsync("SELECT TransactionDebit FROM FinanceJournalEntryLines WHERE Id=1011;"), CultureInfo.InvariantCulture));
+		Assert.Equal(SubscriptionTermsSnapshot, await ScalarAsync("SELECT TermsSnapshotJson FROM SubscriptionContractRevisions WHERE ContractId=1101 AND TermsRevision=1;"));
+		Assert.Equal("2026-10-31", await ScalarAsync("SELECT PeriodEnd FROM SubscriptionBillingInstances WHERE Id=1106;"));
+		Assert.Equal(1104L, await ScalarAsync("SELECT SalesInvoiceId FROM SubscriptionBillingInstances WHERE Id=1106;"));
+		Assert.Equal(12.3456m, Convert.ToDecimal(await ScalarAsync("SELECT UnitPrice FROM SubscriptionBillingPriceEvidence WHERE Id=1107;"), CultureInfo.InvariantCulture));
+		Assert.Equal(5.4321m, Convert.ToDecimal(await ScalarAsync("SELECT DiscountPercent FROM SubscriptionBillingPriceEvidence WHERE Id=1107;"), CultureInfo.InvariantCulture));
+		Assert.Equal(1111L, await ScalarAsync("SELECT ConvertedOpportunityId FROM SalesLeads WHERE Id=1110;"));
+		Assert.Equal(2L, await ScalarAsync("SELECT SUM(Quantity) FROM StockMovementTracking WHERE StockMovementId=1120;"));
 		Assert.True((await _service.CheckIntegrityAsync()).IsValid);
 		var afterPath = Path.Combine(_directory, "after-restore.depotbackup");
 		await _service.CreateBackupAsync(afterPath);
@@ -320,6 +334,13 @@ public sealed class DatabaseManagementTests : IDisposable
 	}
 
 	private static readonly byte[] AttachmentBytes = [0, 1, 2, 127, 128, 255, 0, 13, 10, 42];
+	private const string SubscriptionTermsSnapshot = """
+		{"id":1101,"contractNumber":"SUB-COMPLETE","customerId":1001,"legalEntityId":"00000000-0000-0000-0000-000000000001",
+		"currency":"EUR","startDate":"2026-10-01","endDate":null,"cadence":1,"termsRevision":1,
+		"lines":[{"id":1102,"contractId":1101,"termsRevision":1,"lineNumber":1,"itemId":1001,"partNumber":"COMPLETE-ITEM",
+		"description":"Complete recurring line","quantity":2,"unitPrice":12.3456,"discountPercent":5.4321,"taxRate":19,"pricePolicy":1,
+		"priceSourceListId":null,"priceSourceName":"Contract snapshot","priceSourceScope":null,"priceSourceCurrency":"EUR"}]}
+		""";
 
 	private async Task SeedModernDataAsync()
 	{
@@ -343,6 +364,34 @@ public sealed class DatabaseManagementTests : IDisposable
 			INSERT INTO UserSessions(SessionId,UserId,StartedUtc,LastSeenUtc,ClientInstanceId,MachineName) VALUES('00000000-0000-0000-0000-000000000003',1,'2026-10-01T12:00:00Z','2026-10-01T12:30:00Z','00000000-0000-0000-0000-000000000004','Complete backup');
 			INSERT INTO UserWorkspaceFavorites(UserId,RouteId,PinnedUtc) VALUES(1,'finance.general-ledger','2026-10-01T12:00:00Z');
 			""");
+		await ExecuteAsync("""
+			INSERT INTO SubscriptionContracts(Id,Version,ContractNumber,CustomerId,LegalEntityId,Currency,StartDate,Cadence,NextBillingDate,Status,StatusEffectiveDate,OwnerUserId,CreatedAtUtc,CreatedByUserId,UpdatedAtUtc,UpdatedByUserId)
+			VALUES(1101,3,'SUB-COMPLETE',1001,'00000000-0000-0000-0000-000000000001','EUR','2026-10-01',1,'2026-11-01',2,'2026-10-01',1,'2026-10-01T12:00:00Z',1,'2026-10-01T12:00:00Z',1);
+			INSERT INTO SubscriptionContractLines(Id,ContractId,TermsRevision,LineNumber,ItemId,PartNumber,Description,Quantity,UnitPrice,DiscountPercent,TaxRate,PricePolicy,PriceSourceName,PriceSourceCurrency)
+			VALUES(1102,1101,1,1,1001,'COMPLETE-ITEM','Complete recurring line',2,12.3456,5.4321,19,1,'Contract snapshot','EUR');
+			INSERT INTO SubscriptionContractRevisions(ContractId,TermsRevision,EffectiveFrom,TermsSnapshotJson,CreatedAtUtc,CreatedByUserId)
+			VALUES(1101,1,'2026-10-01',@TermsSnapshot,'2026-10-01T12:00:00Z',1);
+			INSERT INTO SubscriptionLifecycleEvents(Id,ContractId,Action,EffectiveDate,PreviousStatus,NewStatus,Comment,CreatedAtUtc,CreatedByUserId)
+			VALUES(1103,1101,'Activated','2026-10-01',1,2,'Initial activation','2026-10-01T12:00:00Z',1);
+			INSERT INTO SalesInvoices(Id,InvoiceNumber,CustomerId,InvoiceDate,DueDate,Currency,CustomerReference,CreatedByUserId)
+			VALUES(1104,'INV-SUB-COMPLETE',1001,'2026-10-01','2026-10-31','EUR','SUB-COMPLETE 2026-10-01/2026-10-31',1);
+			INSERT INTO SalesInvoiceLines(Id,SalesInvoiceId,LineNumber,PartNumber,Description,Quantity,UnitPrice,DiscountPercent,TaxRate)
+			VALUES(1105,1104,1,'COMPLETE-ITEM','Complete recurring line',2,12.3456,5.4321,19);
+			INSERT INTO SubscriptionBillingInstances(Id,Version,ContractId,TermsRevision,PeriodStart,PeriodEnd,BillingDate,Status,SalesInvoiceId,CreatedAtUtc,GeneratedAtUtc,GeneratedByUserId)
+			VALUES(1106,3,1101,1,'2026-10-01','2026-10-31','2026-10-01',2,1104,'2026-10-01T12:00:00Z','2026-10-01T12:01:00Z',1);
+			INSERT INTO SubscriptionBillingPriceEvidence(Id,BillingInstanceId,ContractLineId,LineNumber,UnitPrice,DiscountPercent,PriceSourceName,PriceSourceCurrency,ResolvedAtUtc)
+			VALUES(1107,1106,1102,1,12.3456,5.4321,'Contract snapshot','EUR','2026-10-01T12:01:00Z');
+			INSERT INTO SalesLeads(Id,LeadNumber,CompanyName,OwnerUserId,Status,CreatedAtUtc,UpdatedAtUtc,ConvertedCustomerId,ConvertedAtUtc)
+			VALUES(1110,'LEAD-COMPLETE','Complete backup customer',1,4,'2026-10-01T12:00:00Z','2026-10-01T12:00:00Z',1001,'2026-10-01T12:00:00Z');
+			INSERT INTO SalesOpportunities(Id,OpportunityNumber,CustomerId,LeadId,OwnerUserId,StageId,Currency,ExpectedAmount,CreatedAtUtc,UpdatedAtUtc)
+			SELECT 1111,'OPP-COMPLETE',1001,1110,1,MIN(Id),'EUR',1234.56,'2026-10-01T12:00:00Z','2026-10-01T12:00:00Z' FROM SalesOpportunityStages;
+			UPDATE SalesLeads SET ConvertedOpportunityId=1111 WHERE Id=1110;
+			INSERT INTO StockMovements(Id,InventoryId,MovementType,TimestampUtc,Quantity,UnitPrice)
+			VALUES(1120,1004,@OpeningBalance,'2026-10-01T11:00:00Z',2,12.3456);
+			INSERT INTO ItemTrackingUnits(Id,ItemId,TrackingMode,Code,CreatedAtUtc)
+			VALUES(1121,1001,1,'COMPLETE-SERIAL-1','2026-10-01T11:00:00Z'),(1122,1001,1,'COMPLETE-SERIAL-2','2026-10-01T11:00:00Z');
+			INSERT INTO StockMovementTracking(StockMovementId,TrackingUnitId,Quantity) VALUES(1120,1121,1),(1120,1122,1);
+			""", ("@TermsSnapshot", SubscriptionTermsSnapshot), ("@OpeningBalance", (int)StockMovementType.OpeningBalance));
 		var digest = Convert.ToHexString(SHA256.HashData(AttachmentBytes));
 		await ExecuteAsync("""
 			INSERT INTO BusinessAttachments(Id,EntityKind,EntityId,FileName,MediaType,ByteLength,Sha256,CreatedByUserId,CreatedAtUtc,CurrentRevision,Status,Version)
