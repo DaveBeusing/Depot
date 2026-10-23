@@ -6,6 +6,7 @@ using System.Text.Json;
 
 using Depot.Data;
 using Depot.Models;
+using Depot.Services;
 
 using Microsoft.Data.Sqlite;
 
@@ -140,6 +141,26 @@ public sealed class DatabaseSchemaCompatibilityTests
 		Assert.All(ItemTraceabilitySchema.RequiredIndexes, index => Assert.Contains(contract.Indexes[index.Table], actual => actual.Name == index.Index));
 	}
 
+	[Fact]
+	[Trait("Provider", "SQLite")]
+	public async Task IndependentReferenceDoesNotReuseOrModifyAnExistingDatabase()
+	{
+		await using var target = new SqliteConnection("Data Source=:memory:;Pooling=False");
+		await target.OpenAsync();
+		await using var command = target.CreateCommand();
+		command.CommandText = "CREATE TABLE DatabaseInfo(Version INTEGER NOT NULL); INSERT INTO DatabaseInfo VALUES(999); CREATE TABLE TargetOnly(Value TEXT); INSERT INTO TargetOnly VALUES('preserved');";
+		await command.ExecuteNonQueryAsync();
+		var before = await DatabaseCompatibilityReader.ReadAsync(target, DatabaseProvider.Local, CancellationToken.None);
+
+		var reference = DatabaseBackupSchema.BuildRequiredTables();
+
+		Assert.Contains(reference, table => table.Name == "DepotFeatureVersions");
+		Assert.DoesNotContain(reference, table => table.Name == "TargetOnly");
+		Assert.True(before.HasSameState(await DatabaseCompatibilityReader.ReadAsync(target, DatabaseProvider.Local, CancellationToken.None)));
+		command.CommandText = "SELECT Value FROM TargetOnly;";
+		Assert.Equal("preserved", await command.ExecuteScalarAsync());
+	}
+
 	private static async Task VerifyProviderAsync(IDatabaseConnectionFactory factory)
 	{
 		DatabaseProvisioningService.Initialize(factory);
@@ -147,6 +168,13 @@ public sealed class DatabaseSchemaCompatibilityTests
 		await connection.OpenAsync();
 		var current = await DatabaseCompatibilityReader.ReadAsync(connection, factory.Provider, CancellationToken.None);
 		current.RequireCompatibleWith(DatabaseSchemaContract.Current);
+		if (factory.Provider == DatabaseProvider.Local)
+		{
+			Assert.Equal(current.Tables.Count, DatabaseSchemaContract.Current.Tables.Count);
+			Assert.All(current.Tables, table => Assert.Equal(
+				table.Value.OrderBy(column => column, StringComparer.Ordinal),
+				DatabaseSchemaContract.Current.Tables[table.Key].OrderBy(column => column, StringComparer.Ordinal)));
+		}
 		Assert.Equal(14, current.FeatureVersions.Count);
 		Assert.True(current.HasSameState(await DatabaseCompatibilityReader.ReadAsync(connection, factory.Provider, CancellationToken.None)));
 		var salesVersion = current.FeatureVersions["Sales"];
