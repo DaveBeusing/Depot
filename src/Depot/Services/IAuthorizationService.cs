@@ -7,6 +7,7 @@ namespace Depot.Services;
 
 public interface IAuthorizationService
 {
+	event EventHandler? AuthorizationChanged;
 	User? CurrentUser { get; }
 	bool IsLoggedIn { get; }
 	IReadOnlySet<ApplicationPermission> EffectivePermissions { get; }
@@ -15,3 +16,4 @@ public interface IAuthorizationService
 	bool HasAnyPermission(params ApplicationPermission[] permissions);
 	void RequirePermission(ApplicationPermission permission);
 }
+

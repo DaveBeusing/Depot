@@ -18,6 +18,9 @@ public sealed class DatabaseSettingsViewModel : BaseViewModel, IDisposable
 	private readonly DatabaseConnectionTester _connectionTester;
 	private readonly DatabaseManagementService _databaseManagementService;
 	private readonly IFileDialogService _dialogService;
+	private readonly IAuthorizationService _authorization;
+	private readonly SynchronizationContext? _synchronizationContext;
+	private bool _disposed;
 	private DatabaseProvider _provider;
 	private string _localDatabasePath = string.Empty;
 	private string _sqlServerHost = string.Empty;
@@ -52,22 +55,26 @@ public sealed class DatabaseSettingsViewModel : BaseViewModel, IDisposable
 		ConnectionStatusService connectionStatusService,
 		DatabaseConnectionTester connectionTester,
 		DatabaseManagementService databaseManagementService,
-		IFileDialogService dialogService)
+		IFileDialogService dialogService,
+		IAuthorizationService authorization)
 	{
 		_settingsService = settingsService;
 		_connectionStatusService = connectionStatusService;
 		_connectionTester = connectionTester;
 		_databaseManagementService = databaseManagementService;
 		_dialogService = dialogService;
-		SaveCommand = new AsyncRelayCommand(SaveAsync, CanRunOperation);
-		TestConnectionCommand = new AsyncRelayCommand(TestConnectionAsync, CanRunOperation);
-		CreateBackupCommand = new AsyncRelayCommand(CreateBackupAsync, CanRunOperation);
-		RestoreBackupCommand = new AsyncRelayCommand(RestoreBackupAsync, CanRunOperation);
-		CompactCommand = new AsyncRelayCommand(CompactAsync, () => CanRunOperation() && Provider == DatabaseProvider.Local);
-		CheckIntegrityCommand = new AsyncRelayCommand(CheckIntegrityAsync, CanRunOperation);
-		ValidateBackupCommand = new AsyncRelayCommand(ValidateBackupAsync, CanRunOperation);
-		RefreshCommand = new AsyncRelayCommand(LoadAsync, CanRunOperation);
+		_authorization = authorization ?? throw new ArgumentNullException(nameof(authorization));
+		_synchronizationContext = SynchronizationContext.Current;
+		SaveCommand = new AsyncRelayCommand(SaveAsync, CanRunManagementOperation);
+		TestConnectionCommand = new AsyncRelayCommand(TestConnectionAsync, CanRunManagementOperation);
+		CreateBackupCommand = new AsyncRelayCommand(CreateBackupAsync, CanRunManagementOperation);
+		RestoreBackupCommand = new AsyncRelayCommand(RestoreBackupAsync, CanRunManagementOperation);
+		CompactCommand = new AsyncRelayCommand(CompactAsync, () => CanRunManagementOperation() && Provider == DatabaseProvider.Local);
+		CheckIntegrityCommand = new AsyncRelayCommand(CheckIntegrityAsync, CanRunReadOperation);
+		ValidateBackupCommand = new AsyncRelayCommand(ValidateBackupAsync, CanRunReadOperation);
+		RefreshCommand = new AsyncRelayCommand(LoadAsync, CanRunReadOperation);
 		Load(settingsService.CurrentSettings);
+		_authorization.AuthorizationChanged += OnAuthorizationChanged;
 	}
 
 	public ObservableCollection<DatabaseBackupInfo> Backups { get; } = new();
@@ -86,7 +93,10 @@ public sealed class DatabaseSettingsViewModel : BaseViewModel, IDisposable
 	public bool UseMySql { get => Provider == DatabaseProvider.MySql; set { if (value) Provider = DatabaseProvider.MySql; } }
 	public bool IsSqlServerSelected => Provider == DatabaseProvider.SqlServer;
 	public bool IsMySqlSelected => Provider == DatabaseProvider.MySql;
-	public bool CanCompact => Provider == DatabaseProvider.Local;
+	public bool CanView => _databaseManagementService.CanView;
+	public bool CanManage => _databaseManagementService.CanManage;
+	public bool CanEditSettings => !_disposed && !IsBusy && CanManage;
+	public bool CanCompact => CanManage && Provider == DatabaseProvider.Local;
 
 	public DatabaseProvider Provider
 	{
@@ -189,10 +199,11 @@ public sealed class DatabaseSettingsViewModel : BaseViewModel, IDisposable
 		StartOperation("Verifying and saving database settings...");
 		try
 		{
+			_authorization.RequirePermission(ApplicationPermission.DatabaseManage);
 			var candidate = _settingsService.Validate(BuildSettings());
 			await Task.Run(() => _connectionTester.Test(candidate), cancellationToken);
 			var providerChanged = candidate.Provider != _settingsService.CurrentSettings.Provider;
-			var settings = _settingsService.Save(candidate);
+			var settings = _databaseManagementService.SaveSettings(candidate);
 			if (!providerChanged) _connectionStatusService.SetConnected(settings);
 			Load(settings);
 			Succeed(providerChanged
@@ -207,6 +218,7 @@ public sealed class DatabaseSettingsViewModel : BaseViewModel, IDisposable
 		StartOperation("Testing database connection...");
 		try
 		{
+			_authorization.RequirePermission(ApplicationPermission.DatabaseManage);
 			var candidate = _settingsService.Validate(BuildSettings());
 			await Task.Run(() => _connectionTester.Test(candidate), cancellationToken);
 			Succeed("Connection successful.");
@@ -418,7 +430,27 @@ public sealed class DatabaseSettingsViewModel : BaseViewModel, IDisposable
 		RaiseOperationCommands();
 	}
 
-	private bool CanRunOperation() => !IsBusy;
+	private bool CanRunReadOperation() => !_disposed && !IsBusy && CanView;
+	private bool CanRunManagementOperation() => !_disposed && !IsBusy && CanManage;
+
+	private void OnAuthorizationChanged(object? sender, EventArgs e)
+	{
+		if (_synchronizationContext is not null && !ReferenceEquals(SynchronizationContext.Current, _synchronizationContext))
+		{
+			_synchronizationContext.Post(_ => RefreshAuthorization(), null);
+			return;
+		}
+		RefreshAuthorization();
+	}
+
+	private void RefreshAuthorization()
+	{
+		if (_disposed) return;
+		OnPropertyChanged(nameof(CanView));
+		OnPropertyChanged(nameof(CanManage));
+		OnPropertyChanged(nameof(CanCompact));
+		RaiseOperationCommands();
+	}
 
 	private void StartOperation(string status)
 	{
@@ -429,6 +461,7 @@ public sealed class DatabaseSettingsViewModel : BaseViewModel, IDisposable
 
 	private void RaiseOperationCommands()
 	{
+		OnPropertyChanged(nameof(CanEditSettings));
 		SaveCommand.RaiseCanExecuteChanged();
 		TestConnectionCommand.RaiseCanExecuteChanged();
 		CreateBackupCommand.RaiseCanExecuteChanged();
@@ -468,6 +501,9 @@ public sealed class DatabaseSettingsViewModel : BaseViewModel, IDisposable
 
 	public void Dispose()
 	{
+		if (_disposed) return;
+		_disposed = true;
+		_authorization.AuthorizationChanged -= OnAuthorizationChanged;
 		SaveCommand.Dispose();
 		TestConnectionCommand.Dispose();
 		CreateBackupCommand.Dispose();
@@ -478,3 +514,4 @@ public sealed class DatabaseSettingsViewModel : BaseViewModel, IDisposable
 		RefreshCommand.Dispose();
 	}
 }
+

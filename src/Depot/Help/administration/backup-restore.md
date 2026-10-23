@@ -26,9 +26,13 @@ Restore validation happens before replacement and Depot can create a safety back
 - Clean/corrupt/interrupted/unavailable-target paths have automated baseline tests, but production SQL Server/MySQL/MariaDB recovery and real Windows ACL-denied scenarios must be validated in the actual environment.
 
 ## Required permissions
-`Database.View` and `Database.Manage`.
+
+`Database.View` allows the overview, backup list, backup validation, and integrity checks. `Database.Manage` is required for manual backup creation, restore, SQLite compaction, and changes to the automatic-backup schedule. A view-only user can inspect maintenance information while mutation commands and configuration fields remain disabled.
+
+An enabled automatic-backup schedule runs using its saved configuration even before login or while signed out. This does not grant manual maintenance access. Sign out and sign in again after role or permission changes to use the updated permissions.
 
 ## Related topics
 - [Database Configuration](topic:administration.database)
 - [Privacy Data](topic:administration.privacy-data)
 - [Database Connection Failures](topic:troubleshooting.database-connection-failures)
+

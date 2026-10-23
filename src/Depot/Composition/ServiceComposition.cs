@@ -10,10 +10,11 @@ namespace Depot.Composition;
 
 internal sealed class ServiceComposition
 {
-	public ServiceComposition(DatabaseComposition database, RepositoryComposition repositories)
+	public ServiceComposition(DatabaseComposition database, RepositoryComposition repositories, AuthorizationService authorization)
 	{
+		ArgumentNullException.ThrowIfNull(authorization);
 		DefaultDocumentTemplates.Runtime.AttachStore(repositories.DocumentTemplates);
-		Authorization = new AuthorizationService();
+		Authorization = authorization;
 		NotificationNavigation = new NotificationNavigationService(Authorization);
 		Notifications = new NotificationService(database.TransactionRunner, repositories.Notifications, Authorization);
 		database.ConfigureNotifications(Notifications);
@@ -235,3 +236,4 @@ internal sealed class ServiceComposition
 	public ReportService Reports { get; }
 	public ImportService Import { get; }
 }
+

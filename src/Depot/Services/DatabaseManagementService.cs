@@ -12,7 +12,7 @@ using Depot.Models;
 
 namespace Depot.Services;
 
-public sealed class DatabaseManagementService
+public sealed partial class DatabaseManagementService
 {
 	private const string BackupExtension = ".depotbackup";
 	private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
@@ -58,14 +58,17 @@ public sealed class DatabaseManagementService
 
 	public DatabaseManagementService(
 		IDatabaseConnectionFactory connectionFactory,
-		SettingsService settingsService)
+		SettingsService settingsService,
+		IAuthorizationService authorization)
 	{
-		_connectionFactory = connectionFactory;
-		_settingsService = settingsService;
+		_connectionFactory = connectionFactory ?? throw new ArgumentNullException(nameof(connectionFactory));
+		_settingsService = settingsService ?? throw new ArgumentNullException(nameof(settingsService));
+		_authorization = authorization ?? throw new ArgumentNullException(nameof(authorization));
 	}
 
 	public async Task<DatabaseOverview> GetOverviewAsync(CancellationToken cancellationToken = default)
 	{
+		RequireView();
 		await using var connection = _connectionFactory.CreateConnection();
 		await connection.OpenAsync(cancellationToken);
 		var version = Convert.ToInt32(
@@ -82,10 +85,26 @@ public sealed class DatabaseManagementService
 			settings.LastSuccessfulBackupUtc);
 	}
 
-	public async Task<DatabaseBackupInfo> CreateBackupAsync(
+	public Task<DatabaseBackupInfo> CreateBackupAsync(
 		string filePath,
 		IProgress<DatabaseOperationProgress>? progress = null,
 		CancellationToken cancellationToken = default)
+	{
+		RequireManage();
+		return CreateBackupCoreAsync(filePath, progress, cancellationToken);
+	}
+
+	internal Task<DatabaseBackupInfo> CreateScheduledBackupAsync(CancellationToken cancellationToken = default)
+	{
+		if (!_settingsService.CurrentSettings.AutomaticBackupsEnabled)
+			throw new InvalidOperationException("Automatic backups are disabled.");
+		return CreateBackupCoreAsync(GetAutomaticBackupPath(), null, cancellationToken);
+	}
+
+	private async Task<DatabaseBackupInfo> CreateBackupCoreAsync(
+		string filePath,
+		IProgress<DatabaseOperationProgress>? progress,
+		CancellationToken cancellationToken)
 	{
 		var normalizedPath = NormalizeBackupPath(filePath);
 		var directory = Path.GetDirectoryName(normalizedPath)
@@ -168,14 +187,18 @@ public sealed class DatabaseManagementService
 
 	public Task<DatabaseBackupInfo> ValidateBackupAsync(
 		string filePath,
-		CancellationToken cancellationToken = default) =>
-		ValidateBackupCoreAsync(filePath, requireCurrentProvider: true, cancellationToken);
+		CancellationToken cancellationToken = default)
+	{
+		RequireView();
+		return ValidateBackupCoreAsync(filePath, requireCurrentProvider: true, cancellationToken);
+	}
 
 	public async Task<string> RestoreBackupAsync(
 		string filePath,
 		IProgress<DatabaseOperationProgress>? progress = null,
 		CancellationToken cancellationToken = default)
 	{
+		RequireManage();
 		progress?.Report(new DatabaseOperationProgress(2, "Validating the selected backup..."));
 		var backup = await ValidateBackupCoreAsync(filePath, requireCurrentProvider: true, cancellationToken);
 		if (!backup.IsValid) throw new InvalidDataException(backup.ValidationMessage);
@@ -228,6 +251,7 @@ public sealed class DatabaseManagementService
 		IProgress<DatabaseOperationProgress>? progress = null,
 		CancellationToken cancellationToken = default)
 	{
+		RequireManage();
 		if (_connectionFactory.Provider != DatabaseProvider.Local)
 		{
 			throw new NotSupportedException("VACUUM is available only for the local SQLite database.");
@@ -245,6 +269,7 @@ public sealed class DatabaseManagementService
 
 	public async Task<DatabaseIntegrityResult> CheckIntegrityAsync(CancellationToken cancellationToken = default)
 	{
+		RequireView();
 		await using var connection = _connectionFactory.CreateConnection();
 		await connection.OpenAsync(cancellationToken);
 		if (_connectionFactory.Provider == DatabaseProvider.Local)
@@ -283,6 +308,7 @@ public sealed class DatabaseManagementService
 
 	public async Task<IReadOnlyList<DatabaseBackupInfo>> GetBackupsAsync(CancellationToken cancellationToken = default)
 	{
+		RequireView();
 		var directory = GetAbsoluteBackupDirectory();
 		if (!Directory.Exists(directory)) return [];
 		var result = new List<DatabaseBackupInfo>();
@@ -551,3 +577,4 @@ public sealed class DatabaseManagementService
 		public Dictionary<string, long> RowCounts { get; set; } = new(StringComparer.Ordinal);
 	}
 }
+

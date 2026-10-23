@@ -30,8 +30,10 @@ public sealed class RecoveryFailureTests : IDisposable
 			BackupDirectory = Path.Combine(_directory, "Backups")
 		});
 		var factory = new SqliteConnectionFactory(databasePath);
-		new DepotDatabase(factory).Initialize();
-		_service = new DatabaseManagementService(factory, settingsService);
+		DatabaseProvisioningService.Initialize(factory);
+		var authorization = new AuthorizationService();
+		authorization.SignIn(new User { Id = 1, Email = "recovery-tests@depot.local", IsActive = true }, [ApplicationPermission.DatabaseManage]);
+		_service = new DatabaseManagementService(factory, settingsService, authorization);
 	}
 
 	[Fact]
@@ -64,3 +66,4 @@ public sealed class RecoveryFailureTests : IDisposable
 		if (Directory.Exists(_directory)) Directory.Delete(_directory, recursive: true);
 	}
 }
+

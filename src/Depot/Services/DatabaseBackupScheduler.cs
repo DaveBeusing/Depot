@@ -6,7 +6,7 @@ using Depot.Models;
 
 namespace Depot.Services;
 
-public sealed class DatabaseBackupScheduler : IDisposable
+internal sealed class DatabaseBackupScheduler : IDisposable
 {
 	private readonly DatabaseManagementService _databaseManagementService;
 	private readonly SettingsService _settingsService;
@@ -38,7 +38,7 @@ public sealed class DatabaseBackupScheduler : IDisposable
 
 		try
 		{
-			var backup = await _databaseManagementService.CreateBackupAsync(_databaseManagementService.GetAutomaticBackupPath(), progress: null, cancellationToken);
+			var backup = await _databaseManagementService.CreateScheduledBackupAsync(cancellationToken);
 			var backupDirectory = Path.GetDirectoryName(backup.FilePath);
 			if (!string.IsNullOrWhiteSpace(backupDirectory))
 			{
@@ -71,3 +71,4 @@ public sealed class DatabaseBackupScheduler : IDisposable
 		_timer?.Dispose();
 	}
 }
+

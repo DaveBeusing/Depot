@@ -9,34 +9,36 @@ namespace Depot.Services;
 public sealed class SettingsService
 {
 	private readonly SettingsRepository _settingsRepository;
+	private DatabaseConnectionSettings _currentSettings = new();
 
 	public SettingsService(SettingsRepository settingsRepository) => _settingsRepository = settingsRepository;
-	public DatabaseConnectionSettings CurrentSettings { get; private set; } = new();
+	public DatabaseConnectionSettings CurrentSettings => Clone(_currentSettings);
 
 	public DatabaseConnectionSettings LoadOrCreate()
 	{
 		if (!_settingsRepository.Exists())
 		{
-			CurrentSettings = new DatabaseConnectionSettings();
-			_settingsRepository.Save(CurrentSettings);
-			return Clone(CurrentSettings);
+			_currentSettings = new DatabaseConnectionSettings();
+			_settingsRepository.Save(_currentSettings);
+			return Clone(_currentSettings);
 		}
-		CurrentSettings = NormalizeAndValidate(_settingsRepository.Load());
-		return Clone(CurrentSettings);
+		_currentSettings = NormalizeAndValidate(_settingsRepository.Load());
+		return Clone(_currentSettings);
 	}
 
-	public DatabaseConnectionSettings Save(DatabaseConnectionSettings settings)
+	internal DatabaseConnectionSettings Save(DatabaseConnectionSettings settings)
 	{
-		CurrentSettings = NormalizeAndValidate(settings);
-		_settingsRepository.Save(CurrentSettings);
-		return Clone(CurrentSettings);
+		var normalized = NormalizeAndValidate(settings);
+		_settingsRepository.Save(normalized);
+		_currentSettings = normalized;
+		return Clone(_currentSettings);
 	}
 
 	public DatabaseConnectionSettings Validate(DatabaseConnectionSettings settings) => NormalizeAndValidate(settings);
 
-	public DatabaseConnectionSettings RecordSuccessfulBackup(DateTime completedUtc)
+	internal DatabaseConnectionSettings RecordSuccessfulBackup(DateTime completedUtc)
 	{
-		var settings = Clone(CurrentSettings);
+		var settings = Clone(_currentSettings);
 		settings.LastSuccessfulBackupUtc = completedUtc;
 		return Save(settings);
 	}
@@ -97,3 +99,4 @@ public sealed class SettingsService
 		LastSuccessfulBackupUtc = settings.LastSuccessfulBackupUtc
 	};
 }
+

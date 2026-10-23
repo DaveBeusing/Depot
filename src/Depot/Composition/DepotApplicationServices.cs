@@ -52,9 +52,10 @@ internal sealed class DepotApplicationServices : IDisposable
 		DatabaseComposition? database = null;
 		try
 		{
-			database = DatabaseComposition.Create();
+			var authorization = new AuthorizationService();
+			database = DatabaseComposition.Create(authorization);
 			var repositories = new RepositoryComposition(database.DataAccess);
-			var services = new ServiceComposition(database, repositories);
+			var services = new ServiceComposition(database, repositories, authorization);
 			var workspaceViews = new WorkspaceViewService(database.TransactionRunner, new WorkspaceViewRepository(database.DataAccess), services.Authorization);
 			WorkspaceViewRuntime.Configure(workspaceViews);
 			var workspaceProductivity = new WorkspaceProductivityService(database.TransactionRunner, new WorkspaceProductivityRepository(database.DataAccess), services.Authorization);
@@ -126,3 +127,4 @@ internal sealed class DepotApplicationServices : IDisposable
 		Database.Dispose();
 	}
 }
+

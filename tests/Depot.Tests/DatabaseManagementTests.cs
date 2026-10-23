@@ -39,7 +39,9 @@ public sealed class DatabaseManagementTests : IDisposable
 		new DepotDatabase(factory).Initialize();
 		var access = new DatabaseAccess(factory);
 		_items = new ItemRepository(access);
-		_service = new DatabaseManagementService(factory, _settingsService);
+		var authorization = new AuthorizationService();
+		authorization.SignIn(new User { Id = 1, Email = "database-tests@depot.local", IsActive = true }, [ApplicationPermission.DatabaseManage]);
+		_service = new DatabaseManagementService(factory, _settingsService, authorization);
 	}
 
 	[Fact]
@@ -116,3 +118,4 @@ public sealed class DatabaseManagementTests : IDisposable
 		if (Directory.Exists(_directory)) Directory.Delete(_directory, recursive: true);
 	}
 }
+

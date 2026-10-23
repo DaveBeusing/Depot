@@ -23,8 +23,16 @@ Depot supports SQLite, Microsoft SQL Server, and MySQL/MariaDB through one provi
 - For timeouts, see [Database Connection Failures](topic:troubleshooting.database-connection-failures).
 
 ## Required permissions
-`Database.View`; testing or changing settings requires `Database.Manage`.
+
+`Database.View` opens the Database page and allows viewing the configuration, refreshing the overview and backup list, validating backups, and checking database integrity. Connection and schedule fields remain read-only.
+
+`Database.Manage` is additionally required to test a connection, save connection or automatic-backup settings, create a manual backup, restore a backup, or compact SQLite. These permissions are checked again by the maintenance service when a mutation is requested.
+
+Role and permission changes take effect when a new session starts: sign out and sign in again after access is changed. Available commands refresh when the current session signs in or out.
+
+A saved automatic-backup schedule continues to run before login and while signed out. It uses the previously saved directory and interval; changing or disabling that schedule requires `Database.Manage`.
 
 ## Related topics
 - [Backup and Restore](topic:administration.backup-restore)
 - [Database Connection Failures](topic:troubleshooting.database-connection-failures)
+
