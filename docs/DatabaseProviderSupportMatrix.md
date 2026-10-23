@@ -107,6 +107,8 @@ The automated provider acceptance proves the technical boundary required by Depo
 
 Depot's portable `.depotbackup` format is not advertised as a complete remote-provider disaster-recovery solution.
 
+Format 2 provides a complete logical snapshot of the current application tables, typed values, and schema metadata. It requires an already provisioned target with the same provider and matching schema. Legacy partial format 1 archives are rejected before replacement. See the [database backup contract](development/DatabaseBackupContract.md) for transactional restore, integrity checks, identity allocation, and provider-specific limits.
+
 ## Support policy
 
 - **Supported** — the exact accepted baseline has a green full provider acceptance run for the release candidate/release.
@@ -133,3 +135,4 @@ Provider acceptance includes `InventoryReplenishment` feature-schema provisionin
 Provider acceptance includes `Production` feature-schema provisioning and verifies the production BOM, order, requirement, movement-evidence and cost-evidence tables on SQLite, SQL Server, MariaDB and MySQL. Production business regression tests additionally exercise BOM revision history, issue/completion idempotency, Stock Movement authority, deterministic cost evidence and compensating reversal on SQLite.
 
 Remote-provider support remains conditional on the normal provider gate for the exact supported server baselines; provider-neutral DDL alone is not treated as acceptance evidence.
+
