@@ -68,7 +68,7 @@ public sealed class AdministrationViewModel : BaseViewModel, IDisposable
 		_masterDataViewModel = new MasterDataViewModel(purposeService, reasonCodeService, manufacturerService, categoryService, unitOfMeasureService, packagingService, supplierCategoryService, supplierService, supplierItemService, itemService, warehouseService, storageLocationService, warehouseLayoutVisualizerService, businessAttachmentService, fileDialogService);
 		_userViewModel = new UserViewModel(userService);
 		_roleViewModel = new RoleViewModel(roleService);
-		_databaseSettingsViewModel = new DatabaseSettingsViewModel(settingsService, connectionStatusService, databaseConnectionTester, databaseManagementService, fileDialogService);
+		_databaseSettingsViewModel = new DatabaseSettingsViewModel(settingsService, connectionStatusService, databaseConnectionTester, databaseManagementService, fileDialogService, authorization);
 		_aboutViewModel = new AboutViewModel(applicationInformationService);
 		_auditLogViewModel = new AuditLogViewModel(auditLogService, fileDialogService);
 
@@ -263,3 +263,4 @@ public sealed class AdministrationViewModel : BaseViewModel, IDisposable
 		_privacyDataViewModel.Dispose();
 	}
 }
+

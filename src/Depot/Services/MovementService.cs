@@ -104,13 +104,7 @@ public sealed class MovementService
 		{
 			var movementId = await _transactions.ExecuteAsync(async (transaction, token) =>
 			{
-				var policy = await _traceability.GetPolicyAsync(transaction, inventoryId, token);
-				ItemTraceabilityService.EnsurePhysicalStockItem(policy, "stock movement");
-				await ValidateReasonCodeAsync(transaction, reasonCodeId, token);
-				var movement = CreateMovement(inventoryId, movementType, quantity, unitPrice, reasonCodeId, reference, notes);
-				movement.Id = await _movements.CreateAsync(transaction, movement, token);
-				await _traceability.AttachMovementAsync(transaction, movement, trackingAllocations, token);
-				await _auditEntries.CreateAsync(transaction, _audit.CreateCreatedEntry(movement.Id, movement), token);
+				var movement = await CreateInTransactionAsync(transaction, inventoryId, movementType, quantity, unitPrice, reasonCodeId, reference, notes, trackingAllocations, token);
 				return movement.Id;
 			}, cancellationToken);
 			return await _movements.GetOverviewByIdAsync(movementId, cancellationToken) ?? throw new InvalidOperationException($"Movement with id '{movementId}' was not found.");
@@ -163,3 +157,4 @@ public sealed class MovementService
 	private async Task ValidateReasonCodeAsync(long? reasonCodeId, CancellationToken cancellationToken) { if (reasonCodeId is null) return; var reasonCode = await _reasonCodes.GetByIdAsync(reasonCodeId.Value, cancellationToken) ?? throw new InvalidOperationException($"Reason code with id '{reasonCodeId}' was not found."); if (!reasonCode.IsActive) throw new InvalidOperationException("The selected reason code is inactive."); }
 	private async Task ValidateReasonCodeAsync(DatabaseTransactionContext transaction, long? reasonCodeId, CancellationToken cancellationToken) { if (reasonCodeId is null) return; var reasonCode = await _reasonCodes.GetByIdAsync(transaction, reasonCodeId.Value, cancellationToken) ?? throw new InvalidOperationException($"Reason code with id '{reasonCodeId}' was not found."); if (!reasonCode.IsActive) throw new InvalidOperationException("The selected reason code is inactive."); }
 }
+

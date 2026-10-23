@@ -29,8 +29,9 @@ internal sealed class DatabaseComposition : IDisposable
 	public DatabaseManagementService Management { get; }
 	private DatabaseBackupScheduler BackupScheduler { get; }
 
-	public static DatabaseComposition Create()
+	public static DatabaseComposition Create(IAuthorizationService authorization)
 	{
+		ArgumentNullException.ThrowIfNull(authorization);
 		var settingsRepository = new SettingsRepository("depot.settings");
 		var settings = new SettingsService(settingsRepository);
 		var connectionStatus = new ConnectionStatusService();
@@ -43,7 +44,7 @@ internal sealed class DatabaseComposition : IDisposable
 		StartupPerformance.Mark(StartupPerformanceCheckpoint.SchemaProvisioningCheck);
 		var dataAccess = new DatabaseAccess(connectionFactory);
 		connectionStatus.SetConnected(connectionSettings);
-		var management = new DatabaseManagementService(connectionFactory, settings);
+		var management = new DatabaseManagementService(connectionFactory, settings, authorization);
 		return new DatabaseComposition(dataAccess, new DatabaseTransactionRunner(dataAccess), settings, connectionStatus, new DatabaseConnectionTester(), management, new DatabaseBackupScheduler(management, settings));
 	}
 
@@ -51,3 +52,4 @@ internal sealed class DatabaseComposition : IDisposable
 	public void ConfigureNotifications(NotificationService notifications) => BackupScheduler.ConfigureNotifications(notifications);
 	public void Dispose() => BackupScheduler.Dispose();
 }
+

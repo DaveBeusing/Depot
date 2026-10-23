@@ -9,6 +9,8 @@ public sealed class AuthorizationService : IAuthorizationService
 {
 	private IReadOnlySet<ApplicationPermission> _effectivePermissions = new HashSet<ApplicationPermission>();
 
+	public event EventHandler? AuthorizationChanged;
+
 	public User? CurrentUser { get; private set; }
 	public bool IsLoggedIn => CurrentUser is not null;
 	public IReadOnlySet<ApplicationPermission> EffectivePermissions => _effectivePermissions;
@@ -22,12 +24,14 @@ public sealed class AuthorizationService : IAuthorizationService
 			? permissions.ToHashSet()
 			: new HashSet<ApplicationPermission>();
 		user.EffectivePermissions = _effectivePermissions;
+		AuthorizationChanged?.Invoke(this, EventArgs.Empty);
 	}
 
 	public void SignOut()
 	{
 		CurrentUser = null;
 		_effectivePermissions = new HashSet<ApplicationPermission>();
+		AuthorizationChanged?.Invoke(this, EventArgs.Empty);
 	}
 
 	public bool IsInRole(string roleCode) =>
@@ -48,3 +52,4 @@ public sealed class AuthorizationService : IAuthorizationService
 	}
 
 }
+

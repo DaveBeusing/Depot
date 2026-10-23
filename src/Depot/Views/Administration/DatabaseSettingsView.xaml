@@ -36,7 +36,7 @@
 						<StackPanel HorizontalAlignment="Stretch">
 							<controls:ConnectionStatusIndicator Margin="0,0,0,16" State="{Binding ConnectionStatus.State}" Status="{Binding ConnectionStatus.Status}" Detail="{Binding ConnectionStatus.Detail}" />
 
-							<controls:FilterBar>
+							<controls:FilterBar IsEnabled="{Binding CanEditSettings}">
 								<WrapPanel>
 									<RadioButton Content="Local database" GroupName="DatabaseProvider" IsChecked="{Binding UseLocalDatabase}" Style="{StaticResource OptionRadioButtonStyle}" />
 									<RadioButton Margin="{DynamicResource Button.Margin}" Content="SQL Server" GroupName="DatabaseProvider" IsChecked="{Binding UseSqlServer}" Style="{StaticResource OptionRadioButtonStyle}" />
@@ -44,7 +44,7 @@
 								</WrapPanel>
 							</controls:FilterBar>
 
-							<Border Style="{StaticResource WorkspaceSectionStyle}" Visibility="{Binding UseLocalDatabase, Converter={StaticResource BooleanToVisibilityConverter}}">
+							<Border IsEnabled="{Binding CanEditSettings}" Style="{StaticResource WorkspaceSectionStyle}" Visibility="{Binding UseLocalDatabase, Converter={StaticResource BooleanToVisibilityConverter}}">
 								<StackPanel>
 									<TextBlock Text="Local SQLite database" Style="{StaticResource SectionTitleStyle}" />
 									<TextBlock Margin="{DynamicResource Control.Margin.Large}" Text="Database file" Style="{StaticResource FormLabelStyle}" />
@@ -53,7 +53,7 @@
 								</StackPanel>
 							</Border>
 
-							<Border Style="{StaticResource WorkspaceSectionStyle}" Visibility="{Binding IsMySqlSelected, Converter={StaticResource BooleanToVisibilityConverter}}">
+							<Border IsEnabled="{Binding CanEditSettings}" Style="{StaticResource WorkspaceSectionStyle}" Visibility="{Binding IsMySqlSelected, Converter={StaticResource BooleanToVisibilityConverter}}">
 								<StackPanel>
 									<TextBlock Text="MySQL / MariaDB connection" Style="{StaticResource SectionTitleStyle}" />
 									<Grid Margin="{DynamicResource Control.Margin.Large}">
@@ -70,7 +70,7 @@
 								</StackPanel>
 							</Border>
 
-							<Border Style="{StaticResource WorkspaceSectionStyle}" Visibility="{Binding IsSqlServerSelected, Converter={StaticResource BooleanToVisibilityConverter}}">
+							<Border IsEnabled="{Binding CanEditSettings}" Style="{StaticResource WorkspaceSectionStyle}" Visibility="{Binding IsSqlServerSelected, Converter={StaticResource BooleanToVisibilityConverter}}">
 								<StackPanel>
 									<TextBlock Text="SQL Server connection" Style="{StaticResource SectionTitleStyle}" />
 									<Grid Margin="{DynamicResource Control.Margin.Large}">
@@ -127,7 +127,7 @@
 
 						<Grid Margin="{DynamicResource Control.Margin.Large}">
 							<Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-							<controls:Card>
+							<controls:Card IsEnabled="{Binding CanEditSettings}">
 								<StackPanel>
 									<TextBlock Text="Automatic backups" Style="{StaticResource CardTitleStyle}" />
 									<controls:AppCheckBox Margin="{DynamicResource Control.Margin.Large}" Content="Create backups automatically" IsChecked="{Binding AutomaticBackupsEnabled}" />
@@ -173,3 +173,4 @@
 		</TabControl>
 	</Grid>
 </UserControl>
+

@@ -468,7 +468,7 @@ public sealed class StockMovementRepository : DatabaseRepository
 			Reference = reader.IsDBNull(13) ? null : reader.GetString(13),
 			Notes = reader.IsDBNull(14) ? null : reader.GetString(14),
 			ReversalOfMovementId = reader.IsDBNull(15) ? null : reader.GetInt64(15),
-			IsReversed = reader.GetBoolean(16)
+			IsReversed = Convert.ToBoolean(reader.GetValue(16), CultureInfo.InvariantCulture)
 		};
 
 	private static StockMovement ReadMovementWithReason(DbDataReader reader)
@@ -499,3 +499,4 @@ public sealed class StockMovementRepository : DatabaseRepository
 			Quantity = reader.GetInt32(9)
 		};
 }
+
