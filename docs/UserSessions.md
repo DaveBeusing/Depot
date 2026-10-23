@@ -29,6 +29,10 @@ Idle and maximum-age expiration remain independent. Maximum age is absolute even
 
 ## Credential changes and account state
 
+Session admission carries the immutable account ID and `Users.Version` observed during credential verification or enterprise identity resolution. In the admission transaction, Depot locks that user row and verifies that the account is still active at exactly that revision before checking the concurrent-session policy or replacing any session. Credential resets, deactivation and other versioned account changes therefore invalidate an in-flight authentication result, including a deactivate/reactivate cycle. The user lock is acquired before the policy lock and held through session insertion. Password/account updates use the same user row lock, so either admission commits first and the subsequent update revokes its session, or the update commits first and stale admission is rejected.
+
+The existing account version is a conservative admission revision: even a profile-only change may require the user to retry sign-in. Session creation never increments the account version. A missing account or unconfigured persistence fails closed. Both local password authentication and OIDC/Entra admission use this same boundary; session-scoped role-permission refresh behavior is unchanged.
+
 Changing a password invalidates other open sessions for the target account in the same transaction as the credential update and Audit evidence. A self-service change retains the current session and ends the other sessions as `CredentialsChanged`; an administrative reset invalidates all open sessions for the target user.
 
 Deactivating an account ends all open sessions as `Revoked` in the same transaction as the account-state change and Audit record. The currently authenticated administrator cannot deactivate their own account through this workflow.
@@ -62,3 +66,4 @@ Depot does not collect source IP, geolocation, MAC address, hardware fingerprint
 ## Extension boundary
 
 OIDC/SSO and external identity are implemented through the Enterprise Identity boundary, including provider-bound assurance checks while local Depot RBAC remains authoritative. Remaining extensions are additional provider/deployment-specific identity controls, optional alert routing, and any future IP/geolocation/device-trust design only after an explicit privacy and threat-model decision.
+

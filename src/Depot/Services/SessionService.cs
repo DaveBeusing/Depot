@@ -39,14 +39,15 @@ public sealed class SessionService : IDisposable
 	public Guid? CurrentClientInstanceId { get { lock (_stateGate) return _clientInfo?.ClientInstanceId; } }
 	public string? CurrentMachineName { get { lock (_stateGate) return _clientInfo?.MachineName; } }
 
-	internal void Configure(UserSessionRepository repository, UserSessionClientInfo clientInfo, TimeProvider? timeProvider = null, UserSessionPresenceOptions? options = null) => ConfigureCore(null, repository, null, clientInfo, timeProvider, options);
+	internal void Configure(IDatabaseTransactionRunner transactions, UserSessionRepository repository, UserSessionClientInfo clientInfo, TimeProvider? timeProvider = null, UserSessionPresenceOptions? options = null) => ConfigureCore(transactions, repository, null, clientInfo, timeProvider, options);
 
 	internal void Configure(IDatabaseTransactionRunner transactions, UserSessionRepository repository, SecurityEventService securityEvents, UserSessionClientInfo clientInfo, TimeProvider? timeProvider = null, UserSessionPresenceOptions? options = null) =>
 		ConfigureCore(transactions, repository, securityEvents, clientInfo, timeProvider, options);
 
-	private void ConfigureCore(IDatabaseTransactionRunner? transactions, UserSessionRepository repository, SecurityEventService? securityEvents, UserSessionClientInfo clientInfo, TimeProvider? timeProvider, UserSessionPresenceOptions? options)
+	private void ConfigureCore(IDatabaseTransactionRunner transactions, UserSessionRepository repository, SecurityEventService? securityEvents, UserSessionClientInfo clientInfo, TimeProvider? timeProvider, UserSessionPresenceOptions? options)
 	{
 		ObjectDisposedException.ThrowIf(_disposed, this);
+		ArgumentNullException.ThrowIfNull(transactions);
 		ArgumentNullException.ThrowIfNull(repository);
 		ArgumentNullException.ThrowIfNull(clientInfo);
 		lock (_stateGate)
@@ -57,56 +58,55 @@ public sealed class SessionService : IDisposable
 		}
 	}
 
-	public async Task StartAuthenticatedSessionAsync(long userId, CancellationToken cancellationToken)
+	public async Task StartAuthenticatedSessionAsync(long userId, long authenticatedVersion, CancellationToken cancellationToken)
 	{
 		ObjectDisposedException.ThrowIf(_disposed, this);
+		if (userId <= 0 || authenticatedVersion <= 0) throw new AuthenticationStateChangedException();
 		UserSessionRepository? repository; UserSessionClientInfo? clientInfo; IDatabaseTransactionRunner? transactions; SecurityEventService? securityEvents;
 		lock (_stateGate) { repository = _repository; clientInfo = _clientInfo; transactions = _transactions; securityEvents = _securityEvents; }
-		if (repository is null || clientInfo is null) return;
+		if (repository is null || clientInfo is null || transactions is null)
+			throw new InvalidOperationException("User session persistence is not configured.");
 		await _lifecycleGate.WaitAsync(cancellationToken);
 		try
 		{
 			lock (_stateGate) if (_currentSessionId is not null) throw new InvalidOperationException("An authenticated user session is already active.");
 			var now = _timeProvider.GetUtcNow().UtcDateTime;
 			var session = new UserSession { SessionId=Guid.NewGuid(), UserId=userId, StartedUtc=now, LastSeenUtc=now, LastActivityUtc=now, ClientInstanceId=clientInfo.ClientInstanceId, MachineName=clientInfo.MachineName, AppVersion=clientInfo.AppVersion };
-			SecurityEvent[] supersededEvents = [];
-			if (transactions is null)
+			var supersededEvents = await transactions.ExecuteAsync(async (transaction, token) =>
 			{
-				await repository.CreateAsync(session, cancellationToken);
-			}
-			else
-			{
-				supersededEvents = await transactions.ExecuteAsync(async (transaction, token) =>
+				if (!await UserRepository.TryLockAuthenticatedStateAsync(transaction, userId, authenticatedVersion, token))
+					throw new AuthenticationStateChangedException();
+				await UserSessionRepository.AcquirePolicyLockAsync(transaction, token);
+				var policy = await UserSessionRepository.GetPolicyAsync(transaction, token);
+				var openSessions = await UserSessionRepository.GetOpenSessionsForUserAsync(transaction, userId, token);
+				var events = new List<SecurityEvent>();
+				if (policy.ConcurrentSessionMode != ConcurrentSessionMode.Unlimited)
 				{
-					await UserSessionRepository.AcquirePolicyLockAsync(transaction, token);
-					var policy = await UserSessionRepository.GetPolicyAsync(transaction, token);
-					var openSessions = await UserSessionRepository.GetOpenSessionsForUserAsync(transaction, userId, token);
-					var events = new List<SecurityEvent>();
-					if (policy.ConcurrentSessionMode != ConcurrentSessionMode.Unlimited)
+					var maximum = policy.EffectiveMaximumConcurrentSessions;
+					if (openSessions.Count >= maximum)
 					{
-						var maximum = policy.EffectiveMaximumConcurrentSessions;
-						if (openSessions.Count >= maximum)
+						if (policy.ConcurrentSessionLimitAction == ConcurrentSessionLimitAction.RejectNewSession) throw new SessionLimitExceededException();
+						var toSupersede = openSessions.OrderBy(value => value.StartedUtc).ThenBy(value => value.Id).Take(openSessions.Count - maximum + 1).ToArray();
+						foreach (var existing in toSupersede)
 						{
-							if (policy.ConcurrentSessionLimitAction == ConcurrentSessionLimitAction.RejectNewSession) throw new SessionLimitExceededException();
-							var toSupersede = openSessions.OrderBy(value => value.StartedUtc).ThenBy(value => value.Id).Take(openSessions.Count - maximum + 1).ToArray();
-							foreach (var existing in toSupersede)
+							if (!await UserSessionRepository.EndAsync(transaction, existing.SessionId, now, UserSessionEndReason.Superseded, token)) throw new ConcurrencyConflictException("user session");
+							if (securityEvents is not null)
 							{
-								if (!await UserSessionRepository.EndAsync(transaction, existing.SessionId, now, UserSessionEndReason.Superseded, token)) throw new ConcurrencyConflictException("user session");
-								if (securityEvents is not null)
-								{
-									var securityEvent = securityEvents.CreateSessionEvent(existing, SecurityEventType.SessionSuperseded, SecurityEventSeverity.Warning, "Session superseded by concurrent-session policy", $"A new login exceeded the configured limit of {maximum} session(s).");
-									securityEvent.Id = await SecurityEventRepository.CreateAsync(transaction, securityEvent, token); events.Add(securityEvent);
-								}
+								var securityEvent = securityEvents.CreateSessionEvent(existing, SecurityEventType.SessionSuperseded, SecurityEventSeverity.Warning, "Session superseded by concurrent-session policy", $"A new login exceeded the configured limit of {maximum} session(s).");
+								securityEvent.Id = await SecurityEventRepository.CreateAsync(transaction, securityEvent, token); events.Add(securityEvent);
 							}
 						}
 					}
-					session.Id = await UserSessionRepository.CreateAsync(transaction, session, token);
-					return events.ToArray();
-				}, cancellationToken);
-			}
-			if (securityEvents is not null) foreach (var securityEvent in supersededEvents) await securityEvents.NotifyPersistedAsync(securityEvent, cancellationToken);
+				}
+				session.Id = await UserSessionRepository.CreateAsync(transaction, session, token);
+				return events.ToArray();
+			}, cancellationToken);
 			var heartbeatCancellation = new CancellationTokenSource();
 			lock (_stateGate) { _currentSessionId=session.SessionId; _lastActivityUtc=now; _heartbeatCancellation=heartbeatCancellation; _heartbeatTask=RunHeartbeatAsync(repository,session.SessionId,heartbeatCancellation.Token); }
+			if (securityEvents is not null)
+				foreach (var securityEvent in supersededEvents)
+					try { await securityEvents.NotifyPersistedAsync(securityEvent, cancellationToken); }
+					catch (Exception exception) { StartupDiagnostics.LogException(exception); }
 		}
 		finally { _lifecycleGate.Release(); }
 	}
@@ -173,3 +173,4 @@ public sealed class SessionService : IDisposable
 
 	public void Dispose(){if(_disposed)return;_disposed=true;CancellationTokenSource? cancellation;lock(_stateGate){cancellation=_heartbeatCancellation;_heartbeatCancellation=null;_heartbeatTask=null;_currentSessionId=null;_lastActivityUtc=null;}cancellation?.Cancel();cancellation?.Dispose();_lifecycleGate.Dispose();}
 }
+

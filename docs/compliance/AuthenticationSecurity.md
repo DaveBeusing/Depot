@@ -18,6 +18,8 @@ Throttle mutations serialize through the singleton policy row. Separate clients 
 
 Successful authentication creates a persistent session before authorization is published. Heartbeat is 30 seconds and presence timeout 90 seconds. The central session policy defaults to 30 minutes idle, 12 hours maximum age, Unlimited concurrent sessions, configured maximum 3, RejectNewSession, and 180-day ended-session retention.
 
+Local and enterprise sign-in carry the account version observed during authentication into the session transaction. Admission locks the user row, rechecks active state and exact `Users.Version`, then applies the concurrent-session policy and inserts the session before releasing that lock. A reset or deactivation committed before admission rejects the stale sign-in without creating or superseding sessions. If admission commits first, the administrative change revokes the newly admitted session through its existing transaction; the client observes revocation on heartbeat. This uses the existing account revision and does not introduce a schema migration.
+
 Finite limits support `MaximumSessions` or `SingleSession` and either reject the new login or atomically supersede the oldest open session. Policy-row serialization prevents competing clients from independently exceeding the finite limit.
 
 Password changes invalidate other target-user sessions as `CredentialsChanged`; administrative resets invalidate all target sessions. User deactivation atomically ends open sessions as `Revoked`. Administrative session termination remains separately permissioned through `UserSessions.Terminate`.
@@ -49,3 +51,4 @@ Depot does not collect source IP, geolocation, MAC address, hardware fingerprint
 ## Remaining roadmap
 
 OIDC/SSO and external identity are implemented. Remaining identity/security work is deployment/provider-specific trust configuration and authentication-strength policy, additional provider integrations when demanded, deployment-specific alert delivery/routing where required, and an explicit privacy/threat-model design before any IP/geolocation/device-trust signals are considered.
+

@@ -15,6 +15,7 @@ namespace Depot.Tests;
 public sealed class EnterpriseAuthenticationServiceTests : IDisposable
 {
 	private readonly string _path = Path.Combine(Path.GetTempPath(), $"depot-enterprise-auth-{Guid.NewGuid():N}.db");
+	private readonly List<SessionService> _sessions = [];
 
 	[Fact]
 	public async Task SuccessfulEnterpriseSignInUsesExistingLinkAndLocalRbac()
@@ -109,6 +110,7 @@ public sealed class EnterpriseAuthenticationServiceTests : IDisposable
 		new DepotDatabase(factory).Initialize();
 		EnterpriseIdentitySchemaMigration.Migrate(factory);
 		SecurityEventSchemaMigration.Migrate(factory);
+		UserSessionSchemaMigration.Migrate(factory);
 		var access = new DatabaseAccess(factory);
 		var transactions = new DatabaseTransactionRunner(access);
 		var users = new UserRepository(access);
@@ -130,11 +132,15 @@ public sealed class EnterpriseAuthenticationServiceTests : IDisposable
 		var identity = new EnterpriseIdentityService(transactions, identities, users, roles, auditEntries, audit, authorization);
 		var securityEventService = new SecurityEventService(securityEvents, authorization);
 		var session = new SessionService(authorization);
+		session.Configure(transactions, new UserSessionRepository(access), securityEventService,
+			new UserSessionClientInfo(Guid.NewGuid(), "ENTERPRISE-TEST", "test"));
+		_sessions.Add(session);
 		return new TestContext(access, transactions, users, roles, identities, securityEvents, authorization, identity, securityEventService, session);
 	}
 
 	public void Dispose()
 	{
+		foreach (var session in _sessions) session.Dispose();
 		SqliteConnection.ClearAllPools();
 		if (File.Exists(_path)) File.Delete(_path);
 	}
@@ -178,3 +184,4 @@ public sealed class EnterpriseAuthenticationServiceTests : IDisposable
 			});
 	}
 }
+
