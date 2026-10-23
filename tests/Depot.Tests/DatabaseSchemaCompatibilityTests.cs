@@ -64,7 +64,7 @@ public sealed class DatabaseSchemaCompatibilityTests
 			await command.ExecuteNonQueryAsync();
 			var after = await DatabaseCompatibilityReader.ReadAsync(connection, factory.Provider, CancellationToken.None);
 			Assert.False(before.HasSameState(after));
-			Assert.NotEqual(before.OtherDefinitions[$"check:{table}.{constraint}"], after.OtherDefinitions[$"check:{table}.{constraint}"]);
+			Assert.NotEqual(CheckDefinition(before, table, constraint), CheckDefinition(after, table, constraint));
 			command.CommandText = $"ALTER TABLE {table} ALTER CHECK {constraint} ENFORCED;";
 			await command.ExecuteNonQueryAsync();
 			before = await DatabaseCompatibilityReader.ReadAsync(connection, factory.Provider, CancellationToken.None);
@@ -113,8 +113,8 @@ public sealed class DatabaseSchemaCompatibilityTests
 			command.CommandText = $"CREATE TABLE {tableB}(ProbeValue INT,CONSTRAINT {constraint} CHECK(ProbeValue < 0));";
 			await command.ExecuteNonQueryAsync();
 			var actual = await DatabaseCompatibilityReader.ReadAsync(connection, factory.Provider, CancellationToken.None);
-			using var definitionsA = JsonDocument.Parse(actual.OtherDefinitions[$"check:{tableA}.{constraint}"]);
-			using var definitionsB = JsonDocument.Parse(actual.OtherDefinitions[$"check:{tableB}.{constraint}"]);
+			using var definitionsA = JsonDocument.Parse(CheckDefinition(actual, tableA, constraint));
+			using var definitionsB = JsonDocument.Parse(CheckDefinition(actual, tableB, constraint));
 			Assert.Equal(1, definitionsA.RootElement.GetArrayLength());
 			Assert.Equal(1, definitionsB.RootElement.GetArrayLength());
 			Assert.NotEqual(definitionsA.RootElement[0][2].GetString(), definitionsB.RootElement[0][2].GetString());
@@ -183,6 +183,10 @@ public sealed class DatabaseSchemaCompatibilityTests
 		}
 		Assert.True(current.HasSameState(await DatabaseCompatibilityReader.ReadAsync(connection, factory.Provider, CancellationToken.None)));
 	}
+
+	private static string CheckDefinition(DatabaseSchemaCompatibility compatibility, string table, string constraint) =>
+		Assert.Single(compatibility.OtherDefinitions.Where(pair =>
+			string.Equals(pair.Key, $"check:{table}.{constraint}", StringComparison.OrdinalIgnoreCase))).Value;
 
 	private static async Task SetSalesAsync(DbConnection connection, int version)
 	{
