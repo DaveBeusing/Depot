@@ -185,8 +185,8 @@ public sealed class DatabaseSchemaCompatibilityTests
 	}
 
 	private static string CheckDefinition(DatabaseSchemaCompatibility compatibility, string table, string constraint) =>
-		Assert.Single(compatibility.OtherDefinitions.Where(pair =>
-			string.Equals(pair.Key, $"check:{table}.{constraint}", StringComparison.OrdinalIgnoreCase))).Value;
+		Assert.Single(compatibility.OtherDefinitions, pair =>
+			string.Equals(pair.Key, $"check:{table}.{constraint}", StringComparison.OrdinalIgnoreCase)).Value;
 
 	private static async Task SetSalesAsync(DbConnection connection, int version)
 	{
