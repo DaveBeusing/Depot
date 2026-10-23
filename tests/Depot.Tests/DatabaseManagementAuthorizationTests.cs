@@ -106,7 +106,7 @@ public sealed class DatabaseManagementAuthorizationTests : IDisposable
 		Assert.Empty(backups);
 		Assert.False(missingBackup.IsValid);
 		Assert.Equal(originalSettings, await File.ReadAllBytesAsync(_settingsPath));
-		Assert.Contains(AdministrationViewModel.CreateNavigationItems(_authorization), item => item.Section == AdministrationSection.Database);
+		Assert.Contains(AdministrationViewModel.CreateNavigationItems(_authorization), item => item.Section is AdministrationSection.Database);
 	}
 
 	[Fact]
