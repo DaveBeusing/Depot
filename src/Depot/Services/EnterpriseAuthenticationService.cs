@@ -171,7 +171,12 @@ public sealed class EnterpriseAuthenticationService
 
 		try
 		{
-			await _sessions.StartAuthenticatedSessionAsync(resolution.User.Id, cancellationToken);
+			await _sessions.StartAuthenticatedSessionAsync(resolution.User.Id, resolution.User.Version, cancellationToken);
+		}
+		catch (AuthenticationStateChangedException)
+		{
+			await RecordFailureAsync(provider.Code, "account_state_changed", cancellationToken, resolution.User.Id);
+			return new EnterpriseSignInResult(EnterpriseSignInStatus.Failed, provider.Code, "account_state_changed");
 		}
 		catch (SessionLimitExceededException)
 		{
@@ -260,3 +265,4 @@ public sealed class EnterpriseAuthenticationService
 			: "protocol_failed";
 	}
 }
+

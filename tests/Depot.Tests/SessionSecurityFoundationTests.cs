@@ -44,8 +44,8 @@ public sealed class SessionSecurityFoundationTests : IDisposable
 	{
 		var context=CreateContext();var userId=await CreateUserAsync(context);
 		var policy=await context.Sessions.GetPolicyAsync(CancellationToken.None);policy.ConcurrentSessionMode=ConcurrentSessionMode.SingleSession;policy.ConcurrentSessionLimitAction=ConcurrentSessionLimitAction.SupersedeOldestSession;policy.UpdatedUtc=DateTime.UtcNow;Assert.True(await context.Sessions.UpdatePolicyAsync(policy,policy.Version,CancellationToken.None));
-		var first=CreateSessionService(context,"CLIENT-A");await first.StartAuthenticatedSessionAsync(userId,CancellationToken.None);var firstId=Assert.IsType<Guid>(first.CurrentSessionId);
-		var second=CreateSessionService(context,"CLIENT-B");await second.StartAuthenticatedSessionAsync(userId,CancellationToken.None);var secondId=Assert.IsType<Guid>(second.CurrentSessionId);
+		var first=CreateSessionService(context,"CLIENT-A");await first.StartAuthenticatedSessionAsync(userId,1,CancellationToken.None);var firstId=Assert.IsType<Guid>(first.CurrentSessionId);
+		var second=CreateSessionService(context,"CLIENT-B");await second.StartAuthenticatedSessionAsync(userId,1,CancellationToken.None);var secondId=Assert.IsType<Guid>(second.CurrentSessionId);
 		var oldSession=await context.Sessions.GetBySessionIdAsync(firstId,CancellationToken.None);var newSession=await context.Sessions.GetBySessionIdAsync(secondId,CancellationToken.None);
 		Assert.Equal(UserSessionEndReason.Superseded,oldSession!.EndReason);Assert.Null(newSession!.EndedUtc);first.Dispose();second.Dispose();
 	}
@@ -55,8 +55,8 @@ public sealed class SessionSecurityFoundationTests : IDisposable
 	{
 		var context=CreateContext();var userId=await CreateUserAsync(context);
 		var policy=await context.Sessions.GetPolicyAsync(CancellationToken.None);policy.ConcurrentSessionMode=ConcurrentSessionMode.SingleSession;policy.ConcurrentSessionLimitAction=ConcurrentSessionLimitAction.RejectNewSession;policy.UpdatedUtc=DateTime.UtcNow;Assert.True(await context.Sessions.UpdatePolicyAsync(policy,policy.Version,CancellationToken.None));
-		var first=CreateSessionService(context,"CLIENT-A");await first.StartAuthenticatedSessionAsync(userId,CancellationToken.None);
-		var second=CreateSessionService(context,"CLIENT-B");await Assert.ThrowsAsync<SessionLimitExceededException>(()=>second.StartAuthenticatedSessionAsync(userId,CancellationToken.None));
+		var first=CreateSessionService(context,"CLIENT-A");await first.StartAuthenticatedSessionAsync(userId,1,CancellationToken.None);
+		var second=CreateSessionService(context,"CLIENT-B");await Assert.ThrowsAsync<SessionLimitExceededException>(()=>second.StartAuthenticatedSessionAsync(userId,1,CancellationToken.None));
 		Assert.Null(second.CurrentSessionId);first.Dispose();second.Dispose();
 	}
 
@@ -73,3 +73,4 @@ public sealed class SessionSecurityFoundationTests : IDisposable
 	public void Dispose(){SqliteConnection.ClearAllPools();if(File.Exists(_path))File.Delete(_path);}
 	private sealed record TestContext(DatabaseAccess Access,DatabaseTransactionRunner Transactions,UserRepository Users,UserSessionRepository Sessions,AuthenticationSecurityRepository AuthenticationSecurity,AuditRepository Audit,AuthorizationService Authorization,SecurityEventService SecurityEvents);
 }
+

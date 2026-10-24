@@ -135,46 +135,31 @@ internal sealed class DatabaseBackupSchema
 		}
 	}
 
-	internal static IReadOnlyDictionary<string, int> CurrentFeatureVersions { get; } = new Dictionary<string, int>(StringComparer.Ordinal)
-	{
-		["Sales"] = SalesSchemaMigration.CurrentVersion,
-		["Finance"] = FinanceInventoryAccountingSchemaMigration.CurrentVersion,
-		["UserSessions"] = UserSessionSchemaMigration.CurrentVersion,
-		["SecurityEvents"] = SecurityEventSchemaMigration.CurrentVersion,
-		["UserPreferences"] = UserPreferenceSchemaMigration.CurrentVersion,
-		["DocumentTemplates"] = DocumentTemplateSchemaMigration.CurrentVersion,
-		["ApprovalPolicies"] = ApprovalPolicySchemaMigration.CurrentVersion,
-		["EnterpriseIdentity"] = EnterpriseIdentitySchemaMigration.CurrentVersion,
-		["BusinessAttachments"] = BusinessAttachmentSchemaMigration.CurrentVersion,
-		["ProcurementSourcing"] = ProcurementSourcingSchemaMigration.CurrentVersion,
-		["InventoryReplenishment"] = InventoryReplenishmentSchemaMigration.CurrentVersion,
-		["Production"] = ProductionSchemaMigration.CurrentVersion,
-		["ProjectAccounting"] = ProjectAccountingSchemaMigration.CurrentVersion,
-		["ServiceManagement"] = ServiceManagementSchemaMigration.CurrentVersion
-	};
+	internal static IReadOnlyDictionary<string, int> CurrentFeatureVersions => DatabaseSchemaRegistry.CurrentFeatureVersions;
+
+	internal static IReadOnlyList<DatabaseBackupTable> RequiredTableDefinitions => RequiredTables.Value;
 
 	internal static bool VersionsEqual(IReadOnlyDictionary<string, int> actual, IReadOnlyDictionary<string, int> expected) =>
 		actual.Count == expected.Count && expected.All(pair => actual.TryGetValue(pair.Key, out var version) && version == pair.Value);
 
-	private static DatabaseBackupTable[] BuildRequiredTables()
+	internal static DatabaseBackupTable[] BuildRequiredTables()
 	{
 		// A fresh reference database automatically includes every shipped migration, including
 		// unversioned item fields. This avoids another manually maintained partial table list.
-		var directory = Path.Combine(Path.GetTempPath(), $"depot-backup-contract-{Guid.NewGuid():N}");
-		Directory.CreateDirectory(directory);
-		var factory = new SqliteConnectionFactory(Path.Combine(directory, "contract.db"));
+		// Keep the independent reference in memory so packaged provisioning, migration and
+		// health commands do not repeat durable writes for disposable reference seed data.
+		var factory = new SqliteConnectionFactory($"file:depot-backup-contract-{Guid.NewGuid():N}?mode=memory&cache=shared");
+		using var keeper = factory.CreateConnection();
+		keeper.Open();
 		try
 		{
 			DatabaseProvisioningService.Initialize(factory);
-			using var connection = factory.CreateConnection();
-			connection.Open();
-			return ReadTablesAsync(connection, null, DatabaseProvider.Local, CancellationToken.None).GetAwaiter().GetResult();
+			return ReadTablesAsync(keeper, null, DatabaseProvider.Local, CancellationToken.None).GetAwaiter().GetResult();
 		}
 		finally
 		{
-			using var poolConnection = factory.CreateConnection();
-			SqliteConnection.ClearPool(poolConnection);
-			Directory.Delete(directory, recursive: true);
+			// Clear only this unique reference pool; the last keeper closes on method exit.
+			SqliteConnection.ClearPool(keeper);
 		}
 	}
 
@@ -384,3 +369,4 @@ internal sealed class DatabaseBackupSchema
 	private static int Integer(object value) => Convert.ToInt32(value, CultureInfo.InvariantCulture);
 	private static bool Boolean(object value) => Convert.ToBoolean(value, CultureInfo.InvariantCulture);
 }
+

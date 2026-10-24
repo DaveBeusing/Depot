@@ -73,6 +73,8 @@ public sealed class InstallationInspector
         var settingsReadable = false;
         var databaseReachable = false;
         int? schemaVersion = null;
+        DatabaseSchemaCompatibility? compatibility = null;
+        var requirements = depotValid ? InstalledSchemaContract.Read(installDirectory) : null;
         if (settingsPresent)
         {
             try
@@ -81,7 +83,8 @@ public sealed class InstallationInspector
                 settingsReadable = true;
                 await new ManagerDatabaseConnectionValidator().ValidateAsync(settings, cancellationToken);
                 databaseReachable = true;
-                schemaVersion = await new DatabaseSchemaInspector().ReadSchemaVersionAsync(settings, cancellationToken);
+                compatibility = await new DatabaseSchemaInspector().ReadCompatibilityAsync(settings, cancellationToken);
+                schemaVersion = compatibility.CoreVersion;
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
@@ -103,8 +106,24 @@ public sealed class InstallationInspector
             settingsReadable,
             databaseReachable,
             schemaVersion,
-            DatabaseVersion.CurrentVersion,
+            requirements?.CoreVersion ?? DatabaseVersion.CurrentVersion,
             windowsHealthy);
+
+        if (depotValid && settingsReadable && databaseReachable && compatibility is not null)
+        {
+            if (requirements is null) state = InstallationHealthState.CompatibilityUnknown;
+            else
+            {
+                try
+                {
+                    if (compatibility.RequiresMigrationTo(requirements)) state = InstallationHealthState.DatabaseMigrationRequired;
+                }
+                catch (Exception exception) when (exception is InvalidOperationException or InvalidDataException)
+                {
+                    state = InstallationHealthState.RecoveryRequired;
+                }
+            }
+        }
 
         return new InstallationSnapshot(
             state,
@@ -124,7 +143,7 @@ public sealed class InstallationInspector
             desktopExpected,
             desktopPresent,
             registrationConsistent,
-            DescribeState(state));
+            DescribeState(state)) { DatabaseCompatibility = compatibility };
     }
 
     private static bool IsRegistrationConsistent(RegistryKey? key, string installDirectory, string managerPath, string depotPath)
@@ -154,7 +173,8 @@ public sealed class InstallationInspector
         InstallationHealthState.ConfigurationDamaged => "Depot settings cannot be read or decrypted for the current Windows user.",
         InstallationHealthState.DatabaseUnavailable => "The configured Depot database is unavailable or its schema cannot be read.",
         InstallationHealthState.DatabaseMigrationRequired => "The database schema is older than this Depot version requires.",
-        InstallationHealthState.RecoveryRequired => "The database schema is newer than this Depot version supports. Recovery is required.",
+        InstallationHealthState.RecoveryRequired => "The core, feature or structural schema is unsupported. Recovery is required.",
+        InstallationHealthState.CompatibilityUnknown => "Complete compatibility evidence is unavailable for the installed executable. Run Repair/health validation or update to a release with Manager protocol 2.",
         _ => "Unknown installation state."
     };
 }

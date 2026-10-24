@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http;
 using System.Text;
+using System.Text.Json;
 using Depot.Models;
 using DepotManager;
 using Xunit;
@@ -100,9 +101,11 @@ public sealed class DepotManagerCoverageGapTests
     [Fact]
     public async Task DepotReleaseMetadataClient_ValidatesAndReadsManifestMetadata()
     {
-        var manifestBytes = Encoding.UTF8.GetBytes("""
-            {"DepotVersion":"0.15.143","DepotManagerVersion":"0.2.7","DatabaseSchemaVersion":30,"ManagerCommandProtocol":2}
-            """);
+        var manifestBytes = JsonSerializer.SerializeToUtf8Bytes(new
+        {
+            DepotVersion = "0.15.143", DepotManagerVersion = "0.2.7", DatabaseSchemaVersion = 30, ManagerCommandProtocol = 2,
+            SchemaCompatibility = SchemaCompatibilityFixture.Create()
+        });
         var releaseJson = $$"""
             {
               "draft":false,
@@ -129,6 +132,27 @@ public sealed class DepotManagerCoverageGapTests
         Assert.Equal("Depot 0.15.143", metadata.ReleaseName);
         Assert.Equal("Release notes", metadata.ReleaseNotes);
         Assert.Equal(2, handler.CallCount);
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    public async Task DepotReleaseMetadataClient_RejectsCoreOnlyContracts(int protocol)
+    {
+        var manifest = JsonSerializer.SerializeToUtf8Bytes(new
+        {
+            DepotVersion = "0.15.143", DatabaseSchemaVersion = 30, ManagerCommandProtocol = protocol
+        });
+        var releaseJson = JsonSerializer.Serialize(new
+        {
+            draft = false, prerelease = false,
+            assets = new[] { new { name = "Depot-0.15.143.manifest.json", size = manifest.Length, browser_download_url = "https://example.test/manifest" } }
+        });
+        using var http = new HttpClient(new StubHttpMessageHandler(request => request.RequestUri!.Host == "api.github.com"
+            ? JsonResponse(releaseJson) : new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent(manifest) }));
+        var selected = new ReleaseInfo(new Version(0, 15, 143), "0.15.143", "Depot-0.15.143.exe", new Uri("https://example.test/Depot.exe"), 1, null);
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() => new DepotReleaseMetadataClient(http).GetAsync(selected, CancellationToken.None));
+        Assert.Contains("protocol 2", error.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -226,13 +250,12 @@ public sealed class DepotManagerCoverageGapTests
     public void RollbackMetadataService_RejectsInvalidAndSchemaIncompatibleCandidates()
     {
         var invalid = new RollbackCandidate("missing.exe", new Version(0, 15, 142), 0, DateTimeOffset.MinValue, false, "Rollback metadata is invalid.");
-        var invalidException = Assert.Throws<InvalidOperationException>(() => RollbackMetadataService.EnsureCompatible(invalid, 30));
+        var invalidException = Assert.Throws<InvalidOperationException>(() => RollbackMetadataService.EnsureCompatible(invalid, SchemaCompatibilityFixture.Create()));
         Assert.Equal("Rollback metadata is invalid.", invalidException.Message);
 
-        var valid = new RollbackCandidate("Depot-0.15.142.exe", new Version(0, 15, 142), 29, DateTimeOffset.UtcNow, true, "Rollback is available.");
-        var schemaException = Assert.Throws<InvalidOperationException>(() => RollbackMetadataService.EnsureCompatible(valid, 30));
-        Assert.Contains("schema 30", schemaException.Message, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("schema 29", schemaException.Message, StringComparison.OrdinalIgnoreCase);
+        var valid = new RollbackCandidate("Depot-0.15.142.exe", new Version(0, 15, 142), 29, DateTimeOffset.UtcNow, true, "Rollback is available.", SchemaCompatibilityFixture.Create(29));
+        var schemaException = Assert.Throws<InvalidOperationException>(() => RollbackMetadataService.EnsureCompatible(valid, SchemaCompatibilityFixture.Create()));
+        Assert.Contains("schema differs", schemaException.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

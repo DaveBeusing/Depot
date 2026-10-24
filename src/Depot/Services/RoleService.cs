@@ -7,7 +7,7 @@ using Depot.Repositories;
 
 namespace Depot.Services;
 
-public sealed class RoleService
+public sealed class RoleService : IRoleEditorService
 {
 	private readonly IDatabaseTransactionRunner _transactions;
 	private readonly RoleRepository _roles;

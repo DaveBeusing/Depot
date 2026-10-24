@@ -124,8 +124,8 @@ public partial class MainWindow : Window
 	}
 
 	private async void Install_Click(object sender, RoutedEventArgs e) => await InstallOrUpdateAsync(false, false);
-	private async void Update_Click(object sender, RoutedEventArgs e) => await InstallOrUpdateAsync(true, false);
-	private async void Repair_Click(object sender, RoutedEventArgs e) => await InstallOrUpdateAsync(true, true);
+	private void Update_Click(object sender, RoutedEventArgs e) => UpdateWithRecovery_Click(sender, e);
+	private void Repair_Click(object sender, RoutedEventArgs e) => RepairHardening_Click(sender, e);
 
 	private async Task InstallOrUpdateAsync(bool existingRequired, bool repair)
 	{
@@ -135,6 +135,8 @@ public partial class MainWindow : Window
 			var service = Installation;
 			var installed = service.InstalledVersion;
 			if (existingRequired && installed is null) throw new InvalidOperationException("No existing Depot installation was found.");
+            if (installed is not null && !repair)
+                throw new InvalidOperationException("An existing installation must be changed using Update so complete schema compatibility and migration backup requirements are enforced.");
 
 			var client = new GitHubReleaseClient(_http);
 			var release = repair
@@ -396,6 +398,9 @@ public partial class MainWindow : Window
 			var success = document.RootElement.GetProperty("Success").GetBoolean();
 			var message = document.RootElement.GetProperty("Message").GetString() ?? "Unknown provisioning result.";
 			if (!success || process.ExitCode != 0) throw new InvalidOperationException(message);
+            if (mode == "--manager-provision" && document.RootElement.TryGetProperty("ManagerCommandProtocol", out var protocol) && protocol.GetInt32() == 2 &&
+                document.RootElement.TryGetProperty("SchemaCompatibility", out var compatibility) && compatibility.ValueKind == JsonValueKind.Object)
+                InstalledSchemaContract.Save(service.InstallDirectory, compatibility.Deserialize<DatabaseSchemaCompatibility>() ?? throw new InvalidDataException("Empty schema compatibility contract."));
 		}
 		finally
 		{

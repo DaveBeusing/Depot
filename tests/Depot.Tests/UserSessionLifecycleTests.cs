@@ -221,7 +221,7 @@ public sealed class UserSessionLifecycleTests : IDisposable
 		var authorization = new AuthorizationService();
 		var clock = new MutableTimeProvider { UtcNow = new DateTime(2026, 8, 31, 20, 0, 0, DateTimeKind.Utc) };
 		var session = new SessionService(authorization);
-		session.Configure(sessions, new UserSessionClientInfo(Guid.NewGuid(), "TEST-CLIENT", "0.15.93-preview"), clock);
+		session.Configure(new DatabaseTransactionRunner(access), sessions, new UserSessionClientInfo(Guid.NewGuid(), "TEST-CLIENT", "0.15.93-preview"), clock);
 		var authentication = new AuthenticationService(users, roles, passwordHasher, authorization);
 		authentication.ConfigureSession(session);
 		return new TestContext(email, authentication, session, sessions, clock);
@@ -261,3 +261,4 @@ public sealed class UserSessionLifecycleTests : IDisposable
 		}
 	}
 }
+

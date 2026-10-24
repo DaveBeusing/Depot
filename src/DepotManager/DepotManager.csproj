@@ -38,6 +38,9 @@
     <Compile Include="..\Depot\Models\DatabaseConnectionSettings.cs" Link="Shared\DatabaseConnectionSettings.cs" />
     <Compile Include="..\Depot\Repositories\SettingsRepository.cs" Link="Shared\SettingsRepository.cs" />
     <Compile Include="..\Depot\Diagnostics\DatabaseErrorMessages.cs" Link="Shared\DatabaseErrorMessages.cs" />
+    <Compile Include="..\Depot\Models\DatabaseSchemaCompatibility.cs" Link="Shared\DatabaseSchemaCompatibility.cs" />
+    <Compile Include="..\Depot\Data\DatabaseCompatibilityReader.cs" Link="Shared\DatabaseCompatibilityReader.cs" />
     <Compile Include="..\Depot\Data\DatabaseVersion.cs" Link="Shared\DatabaseVersion.cs" />
   </ItemGroup>
 </Project>
+

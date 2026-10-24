@@ -45,6 +45,7 @@ ConfigurationDamaged
 DatabaseUnavailable
 DatabaseMigrationRequired
 RecoveryRequired
+CompatibilityUnknown
 ```
 
 Inspection covers Depot and manager executables, protected settings, database connectivity, database schema, Windows uninstall registration, Start Menu integration, and the persisted Desktop shortcut preference. Database outages remain distinct from damaged application files.
@@ -59,7 +60,7 @@ Depot release metadata is carried by:
 Depot-<version>.manifest.json
 ```
 
-The manifest declares the target database schema and manager command protocol. A migration-sensitive update fails closed when compatibility cannot be proven.
+The manifest declares Manager protocol 2 and a complete, versioned compatibility contract covering Core, all fourteen registered feature schemas, generated table/column requirements and unversioned structural indexes. The release workflow exports this contract from the packaged executable. Core-only target manifests are rejected with upgrade/recovery guidance; see [Database schema compatibility](development/DatabaseSchemaCompatibility.md).
 
 ## Download and signature validation
 
@@ -94,16 +95,16 @@ Before updating Depot, the manager determines:
 ```text
 Installed Depot version
 Target Depot version
-Current database schema
-Target database schema
+Current Core, feature and structural schemas
+Target Core, feature and structural schemas
 Migration required: yes/no
 ```
 
-A target schema older than the current database is blocked.
+A newer Core or feature schema, or an unknown feature, blocks automatic update. A same-Core feature or structural difference requires migration and the same backup protection as a Core upgrade. The installed executable must first pass its existing health command; the full live pre-update state is then captured and checked again immediately before replacement.
 
-For SQLite, a required migration first creates a consistent snapshot beneath `Backups\Database`. The snapshot uses SQLite's backup API rather than copying only the main database file, so WAL state is included consistently. The backup is integrity-checked and retained after migration or health-check failures.
+For SQLite, a required migration first creates a consistent snapshot beneath `Backups\Database`. The snapshot uses SQLite's backup API rather than copying only the main database file, so WAL state is included consistently. The backup is integrity-checked, its complete schema observation must match the inspected source, and it is retained after migration or health-check failures.
 
-For SQL Server and MySQL/MariaDB, Depot Manager does not assume server backup privileges. A schema-changing update requires explicit confirmation that a current server-side backup exists. Declining the confirmation aborts the update. Remote databases are never deleted, restored, or downgraded automatically.
+For SQL Server and MySQL/MariaDB, Depot Manager does not assume server backup privileges. Any Core, feature or structural migration requires explicit confirmation that all Depot clients are stopped and a current verified server-side backup exists. Declining the confirmation aborts the update. Remote databases are never deleted, restored, or downgraded automatically.
 
 Schema migration runs only through Depot's authoritative `DatabaseProvisioningService` and existing provider/migration pipeline. Depot Manager contains no duplicate schema implementation.
 
@@ -114,21 +115,22 @@ Depot releases expose non-UI manager commands intercepted before WPF startup:
 ```text
 --manager-migrate
 --manager-health-check
+--manager-schema-contract
 ```
 
 An update is not reported as successful until the health command validates protected settings, database connectivity, exact schema compatibility, and completed administrator bootstrap.
 
-If a failure occurs after the new Depot executable has been deployed, Depot Manager inspects the database again before attempting executable recovery. The previous executable is restored automatically only when the current database schema is known and exactly matches the schema recorded for that previous executable. If migration already advanced the schema, database connectivity is unavailable, or compatibility cannot be proven, the new binary is left in place and recovery is reported instead of risking an incompatible binary downgrade. Database schema downgrade is never automatic.
+If a failure occurs after the new Depot executable has been deployed, Depot Manager inspects the database again before attempting executable recovery. The previous executable is restored automatically only when the current database schema is known and exactly matches the complete Core, feature and structural observation recorded for that previous executable. If migration already advanced the schema, database connectivity is unavailable, or compatibility cannot be proven, the new binary is left in place and recovery is reported instead of risking an incompatible binary downgrade. Database schema downgrade is never automatic.
 
 ## Repair
 
 Repair determines the intended installed version from a valid executable or Windows registration, downloads the exact stable release where possible, restores `Depot.exe`, ensures the canonical `DepotManager.exe` exists, repairs Windows Installed Apps registration, recreates the Start Menu shortcut, and recreates the Desktop shortcut when its persisted preference is enabled.
 
-Repair does not reset `depot.settings`, user accounts, or business data. After binary/Windows integration repair the installation is inspected again; unreadable settings, unavailable databases, incompatible schemas, and incomplete provisioning remain visible as separate health states.
+Repair requires a provable original version; it cannot substitute the latest release when the original version is unknown. Repair does not reset `depot.settings`, user accounts, or business data. After binary/Windows integration repair the installation is inspected again; unreadable settings, unavailable databases, incompatible schemas, and incomplete provisioning remain visible as separate health states.
 
 ## Rollback
 
-Before an update replaces Depot, the previous executable is kept under `Backup\Depot-<version>.exe` with rollback metadata recording the schema it supported. Manual rollback is offered only when the executable is valid, its version matches the metadata, and the current database schema exactly matches the recorded schema. No database downgrade is performed.
+Before an update replaces Depot, the previous executable is kept under `Backup\Depot-<version>.exe` with format-2 rollback metadata recording the complete pre-update database observation and executable SHA-256. Manual rollback is offered only when the executable is valid, its version/hash match the metadata, and the full live compatibility state exactly matches the recorded observation. The restoration service re-reads actual database compatibility after confirmation, immediately before replacing the executable. Core-only legacy rollback metadata is rejected. No database downgrade is performed.
 
 ## Diagnostics and support
 
@@ -163,8 +165,8 @@ DepotManager.exe
 DepotManager-<manager-version>.exe
 ```
 
-The manifest records Depot version, independently versioned manager version, database schema version, and manager command protocol. Tagged release executables remain Authenticode-signed and SHA-256 integrity evidence is generated by CI.
+The format-4 manifest records Depot version, independently versioned manager version, complete schema compatibility and Manager protocol 2. Its diagnostic schema map includes all fourteen features. Tagged release executables remain Authenticode-signed and SHA-256 integrity evidence is generated by CI.
 
 ## Schema authority
 
-This hardening work introduces no database schema change. `DatabaseVersion.CurrentVersion` remains the core schema authority, and Depot's existing initializers/migrations remain the only code allowed to advance it.
+The compatibility protocol introduces no persisted database schema change. `DatabaseVersion.CurrentVersion` remains the Core authority, `DatabaseSchemaRegistry` lists feature authorities, and existing initializers/migrations remain the only code allowed to advance them. Successful protocol-2 health validation stores executable-bound requirements in `depot.schema.json`; missing/stale evidence displays `CompatibilityUnknown` instead of assuming health from Core equality.

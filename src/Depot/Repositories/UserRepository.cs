@@ -87,6 +87,26 @@ public sealed class UserRepository : DatabaseRepository
 			cancellationToken,
 			Parameter("$Id", id));
 
+	internal static async Task<bool> TryLockAuthenticatedStateAsync(
+		DatabaseTransactionContext transaction,
+		long userId,
+		long authenticatedVersion,
+		CancellationToken cancellationToken)
+	{
+		// Credential and activation writes lock this same row and advance Version.
+		// Do not interpret a no-op update's affected-row count: providers can report it differently.
+		await transaction.Session.ExecuteAsync(
+			"UPDATE Users SET Version=Version WHERE Id=$Id;",
+			cancellationToken,
+			Parameter("$Id", userId));
+		var matches = await transaction.Session.ExecuteScalarAsync(
+			"SELECT COUNT(*) FROM Users WHERE Id=$Id AND IsActive=1 AND Version=$AuthenticatedVersion;",
+			cancellationToken,
+			Parameter("$Id", userId),
+			Parameter("$AuthenticatedVersion", authenticatedVersion));
+		return Convert.ToInt64(matches, CultureInfo.InvariantCulture) == 1;
+	}
+
 	public Task<long> CreateAsync(User user, string passwordHash, CancellationToken cancellationToken) =>
 		Database.InsertAsync(
 			"""
@@ -293,3 +313,4 @@ public sealed class UserRepository : DatabaseRepository
 		};
 	}
 }
+

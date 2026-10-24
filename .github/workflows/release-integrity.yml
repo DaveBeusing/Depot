@@ -362,23 +362,26 @@ jobs:
       - name: Stage manifest, hashes and release evidence
         shell: pwsh
         run: |
-          function Read-CurrentVersion([string]$Path) {
-            $match = Select-String -Path $Path -Pattern 'CurrentVersion\s*=\s*(\d+)' | Select-Object -First 1
-            if ($null -eq $match -or $match.Matches.Count -eq 0) {
-              throw "CurrentVersion could not be determined from $Path."
-            }
-            return [int]$match.Matches[0].Groups[1].Value
+          # Export the compatibility contract from the exact executable being released.
+          $contractPath = Join-Path $env:RUNNER_TEMP 'depot-schema-contract.json'
+          Remove-Item $contractPath -Force -ErrorAction SilentlyContinue
+          $contractProcess = Start-Process -FilePath (Resolve-Path 'artifacts/release/depot/Depot.exe').Path `
+            -ArgumentList @('--manager-schema-contract', "`"$contractPath`"") -Wait -PassThru
+          if ($contractProcess.ExitCode -ne 0 -or -not (Test-Path $contractPath)) {
+            throw 'The released executable did not export its complete database compatibility contract.'
           }
-
-          $schemas = [ordered]@{
-            core = Read-CurrentVersion 'src/Depot/Data/DatabaseVersion.cs'
-            sales = Read-CurrentVersion 'src/Depot/Data/SalesSchemaMigration.cs'
-            finance = Read-CurrentVersion 'src/Depot/Data/FinanceInventoryAccountingSchemaMigration.cs'
-            userSessions = Read-CurrentVersion 'src/Depot/Data/UserSessionSchemaMigration.cs'
-            securityEvents = Read-CurrentVersion 'src/Depot/Data/SecurityEventSchemaMigration.cs'
-            userPreferences = Read-CurrentVersion 'src/Depot/Data/UserPreferenceSchemaMigration.cs'
-            documentTemplates = Read-CurrentVersion 'src/Depot/Data/DocumentTemplateSchemaMigration.cs'
-            enterpriseIdentity = Read-CurrentVersion 'src/Depot/Data/EnterpriseIdentitySchemaMigration.cs'
+          $contractResponse = Get-Content $contractPath -Raw | ConvertFrom-Json
+          if (-not $contractResponse.Success -or $contractResponse.ManagerCommandProtocol -ne 2) {
+            throw 'The released executable does not support the required schema compatibility protocol.'
+          }
+          $compatibility = $contractResponse.SchemaCompatibility
+          if ($compatibility.ContractVersion -ne 1 -or @($compatibility.FeatureVersions.PSObject.Properties).Count -lt 14 -or
+              @($compatibility.Tables.PSObject.Properties).Count -lt 1) {
+            throw 'The released executable exported an incomplete schema compatibility contract.'
+          }
+          $schemas = [ordered]@{ core = $compatibility.CoreVersion }
+          foreach ($feature in $compatibility.FeatureVersions.PSObject.Properties) {
+            $schemas[$feature.Name] = $feature.Value
           }
 
           $assets = 'artifacts/release/assets'
@@ -401,7 +404,7 @@ jobs:
           $publisherSubject = if ($channelText -eq 'stable') { $env:DEPOT_SIGNING_PUBLISHER_SUBJECT } else { $null }
 
           $manifest = [ordered]@{
-            formatVersion = 3
+            formatVersion = 4
             releaseChannel = $channelText
             releaseTag = $env:DEPOT_RELEASE_TAG
             sourceSha = '${{ github.sha }}'
@@ -409,7 +412,8 @@ jobs:
             depotManagerVersion = $env:DEPOT_MANAGER_VERSION
             databaseSchemaVersion = $schemas.core
             schemaVersions = $schemas
-            managerCommandProtocol = 1
+            schemaCompatibility = $compatibility
+            managerCommandProtocol = 2
             productionSigningAcceptance = $env:DEPOT_PRODUCTION_SIGNING_ACCEPTANCE
             publisherSubject = $publisherSubject
             artifacts = [ordered]@{
@@ -427,7 +431,7 @@ jobs:
               }
             }
           }
-          $manifest | ConvertTo-Json -Depth 8 | Out-File (Join-Path $assets $manifestName) -Encoding utf8
+          $manifest | ConvertTo-Json -Depth 16 | Out-File (Join-Path $assets $manifestName) -Encoding utf8
 
           $evidence = [ordered]@{
             formatVersion = 2

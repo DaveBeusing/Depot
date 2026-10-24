@@ -155,7 +155,7 @@ Format version 3 records:
 - final executable file names, sizes and SHA-256 hashes;
 - whether Authenticode signing was applied.
 
-`databaseSchemaVersion` remains present as the Core-schema compatibility field consumed by the current DepotManager stable update path.
+`databaseSchemaVersion` remains a diagnostic Core-schema field. The stable DepotManager update path requires Manager protocol 2 and the full `schemaCompatibility` contract exported from the packaged executable, including every registered feature and structural requirement. Core equality alone cannot authorize update or rollback.
 
 ## Integrity and evidence
 

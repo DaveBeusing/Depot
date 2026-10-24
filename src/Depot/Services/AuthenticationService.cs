@@ -30,8 +30,9 @@ public sealed class AuthenticationService
 	{
 		var normalizedEmail=email.Trim().ToLowerInvariant();var blocked=await GetBlockStatusAsync(normalizedEmail,cancellationToken);if(blocked.IsBlocked){await TryRecordAsync(()=>_securityEvents?.RecordBlockedAttemptAsync(normalizedEmail,blocked.RetryAfter,cancellationToken));return false;}
 		var user=await _authenticationProvider.AuthenticateAsync(normalizedEmail,password,cancellationToken);if(user is null){var status=await RecordFailureAsync(normalizedEmail,cancellationToken);await TryRecordAsync(()=>_securityEvents?.RecordAuthenticationFailureAsync(normalizedEmail,null,status,cancellationToken));return false;}
+		var authenticatedUserId=user.Id;var authenticatedVersion=user.Version;
 		var priorFailures=await RecordSuccessAsync(normalizedEmail,cancellationToken);user.Roles=await _roleRepository.GetUserRolesAsync(user.Id,cancellationToken);user.EffectivePermissions=await _roleRepository.GetEffectivePermissionsAsync(user.Id,cancellationToken);
-		try{if(_sessionService is not null)await _sessionService.StartAuthenticatedSessionAsync(user.Id,cancellationToken);}catch(SessionLimitExceededException){return false;}
+		try{if(_sessionService is not null)await _sessionService.StartAuthenticatedSessionAsync(authenticatedUserId,authenticatedVersion,cancellationToken);}catch(SessionLimitExceededException){return false;}catch(AuthenticationStateChangedException){return false;}
 		_authorizationService.SignIn(user,user.EffectivePermissions);await TryRecordAsync(()=>_securityEvents?.RecordAuthenticationSuccessAsync(user,priorFailures,_sessionService?.CurrentSessionId,_sessionService?.CurrentClientInstanceId,_sessionService?.CurrentMachineName,cancellationToken));return true;
 	}
 
@@ -42,3 +43,9 @@ public sealed class AuthenticationService
 }
 
 public sealed class SessionLimitExceededException:InvalidOperationException{public SessionLimitExceededException():base("The active session limit for this account has been reached.") {}}
+
+public sealed class AuthenticationStateChangedException : InvalidOperationException
+{
+	public AuthenticationStateChangedException() : base("The account changed during authentication. Sign in again.") { }
+}
+

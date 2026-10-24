@@ -60,24 +60,7 @@ public static class DatabaseProvisioningService
 
 internal static class FeatureVersionMetadataRecovery
 {
-	private static readonly IReadOnlyDictionary<string, int> CurrentVersions =
-		new Dictionary<string, int>(StringComparer.Ordinal)
-		{
-			["Sales"] = SalesSchemaMigration.CurrentVersion,
-			["Finance"] = FinanceInventoryAccountingSchemaMigration.CurrentVersion,
-			["UserSessions"] = UserSessionSchemaMigration.CurrentVersion,
-			["SecurityEvents"] = SecurityEventSchemaMigration.CurrentVersion,
-			["UserPreferences"] = UserPreferenceSchemaMigration.CurrentVersion,
-			["DocumentTemplates"] = DocumentTemplateSchemaMigration.CurrentVersion,
-			["ApprovalPolicies"] = ApprovalPolicySchemaMigration.CurrentVersion,
-			["EnterpriseIdentity"] = EnterpriseIdentitySchemaMigration.CurrentVersion,
-			["BusinessAttachments"] = BusinessAttachmentSchemaMigration.CurrentVersion,
-			["ProcurementSourcing"] = ProcurementSourcingSchemaMigration.CurrentVersion,
-			["InventoryReplenishment"] = InventoryReplenishmentSchemaMigration.CurrentVersion,
-			["Production"] = ProductionSchemaMigration.CurrentVersion,
-			["ProjectAccounting"] = ProjectAccountingSchemaMigration.CurrentVersion,
-			["ServiceManagement"] = ServiceManagementSchemaMigration.CurrentVersion
-		};
+	private static IReadOnlyDictionary<string, int> CurrentVersions => DatabaseSchemaRegistry.CurrentFeatureVersions;
 
 	public static void RestoreIfCurrentSchemaDetected(IDatabaseConnectionFactory connectionFactory)
 	{
@@ -196,3 +179,4 @@ internal static class FeatureVersionMetadataRecovery
 		_ => throw new NotSupportedException($"Feature-version metadata recovery is not supported for provider '{provider}'.")
 	};
 }
+
