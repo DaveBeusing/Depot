@@ -170,7 +170,7 @@ public sealed class ServicePartWorkflowTests
 			if(sameOperation){Assert.Null(failure);Assert.Equal(first?.Id,second?.Id);Assert.NotNull(second);}
 			else Assert.IsType<InvalidOperationException>(failure);
 			Assert.Equal(6L,await QuantityAsync(context));
-			Assert.Single((await fixture.Service.ListPartEvidenceAsync(order.Id)).Where(value=>value.MovementKind==ServicePartMovementKind.Return));
+			Assert.Single(await fixture.Service.ListPartEvidenceAsync(order.Id),value=>value.MovementKind==ServicePartMovementKind.Return);
 		}
 	}
 

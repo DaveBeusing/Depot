@@ -131,7 +131,7 @@ public sealed class SalesSplitShipmentProviderAcceptanceTests
 			() => fixture.Shipments.PostAsync(second.Id, second.Version)));
 		var shipped = await AssertQuantitiesAsync(fixture, scenario, 0, 10, SalesOrderStatus.Shipped, 16, 14);
 		Assert.Equal(scenario.Order.Lines[0].Version + 2, shipped.Lines[0].Version);
-		Assert.Empty((await fixture.Orders.GetReservationsAsync(shipped.Id)).Where(reservation => reservation.Status == InventoryReservationStatus.Active));
+		Assert.DoesNotContain(await fixture.Orders.GetReservationsAsync(shipped.Id), reservation => reservation.Status == InventoryReservationStatus.Active);
 		first = await fixture.Shipments.GetByIdAsync(first.Id) ?? throw new InvalidOperationException("First shipment missing.");
 		second = await fixture.Shipments.GetByIdAsync(second.Id) ?? throw new InvalidOperationException("Second shipment missing.");
 		Assert.Null(await ProviderWriteOverlap.RunAsync(factory, gate,
