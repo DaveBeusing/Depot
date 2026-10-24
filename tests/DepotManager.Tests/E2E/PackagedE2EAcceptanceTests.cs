@@ -84,8 +84,12 @@ public sealed class PackagedE2EAcceptanceTests
         var settings = LocalSettings(database);
         var inspector = new DatabaseSchemaInspector();
         var previousCompatibility = await inspector.ReadStableCompatibilityAsync(settings, CancellationToken.None);
+        var candidateDirectory = Path.Combine(root, "candidate");
+        Directory.CreateDirectory(candidateDirectory);
+        var candidateExecutable = Path.Combine(candidateDirectory, "Depot.exe");
+        File.Copy(PackagedE2EEnvironment.CurrentDepot, candidateExecutable);
         var targetCompatibility = (await RunDepotCommandAsync(
-            PackagedE2EEnvironment.CurrentDepot, install, "--manager-schema-contract")).SchemaCompatibility
+            candidateExecutable, candidateDirectory, "--manager-schema-contract")).SchemaCompatibility
             ?? throw new InvalidOperationException("The current packaged Depot did not export its complete schema compatibility contract.");
         targetCompatibility.Validate(requirement: true);
         Assert.Equal(CurrentSchema, targetCompatibility.CoreVersion);
