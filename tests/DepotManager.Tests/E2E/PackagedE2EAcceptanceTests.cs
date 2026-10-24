@@ -311,9 +311,9 @@ public sealed class PackagedE2EAcceptanceTests
         migrated.RequireCompatibleWith(current);
     }
 
-    [PackagedE2EFullFact]
+    [PackagedE2EFact]
     [Trait("Category", "PackagedE2E")]
-    [Trait("Tier", "Full")]
+    [Trait("Tier", "Smoke")]
     public async Task ManagerSelfUpdate_UsesTrustedSignedArtifact_AndRevertsWhenUpdatedManagerCannotStart()
     {
         var root = PackagedE2EEnvironment.CreateScenarioRoot(nameof(ManagerSelfUpdate_UsesTrustedSignedArtifact_AndRevertsWhenUpdatedManagerCannotStart));
@@ -322,15 +322,21 @@ public sealed class PackagedE2EAcceptanceTests
         AuthenticodeVerifier.ValidateTrustedSignature(PackagedE2EEnvironment.CurrentManager);
         AuthenticodeVerifier.ValidateTrustedSignature(PackagedE2EEnvironment.PreviousManager);
 
-        await RunManagerUpdateHelperAsync(root, target, forceStartupFailure: false);
-        Assert.Equal(ReadVersion(PackagedE2EEnvironment.CurrentManager), ReadVersion(target));
-        await WaitUntilAsync(() => !File.Exists(ManagerSelfUpdatePaths.GetStagedPath(target)), TimeSpan.FromSeconds(15));
+        try
+        {
+            await RunManagerUpdateHelperAsync(root, target, forceStartupFailure: false);
+            Assert.Equal(ReadVersion(PackagedE2EEnvironment.CurrentManager), ReadVersion(target));
+            await WaitUntilAsync(() => !File.Exists(ManagerSelfUpdatePaths.GetStagedPath(target)), TimeSpan.FromSeconds(15));
 
-        await StopManagersAtPathAsync(target);
-        File.Copy(PackagedE2EEnvironment.PreviousManager, target, true);
-        await RunManagerUpdateHelperAsync(root, target, forceStartupFailure: true);
-        Assert.Equal(ReadVersion(PackagedE2EEnvironment.PreviousManager), ReadVersion(target));
-        await StopManagersAtPathAsync(target);
+            await StopManagersAtPathAsync(target);
+            File.Copy(PackagedE2EEnvironment.PreviousManager, target, true);
+            await RunManagerUpdateHelperAsync(root, target, forceStartupFailure: true);
+            Assert.Equal(ReadVersion(PackagedE2EEnvironment.PreviousManager), ReadVersion(target));
+        }
+        finally
+        {
+            await StopManagersAtPathAsync(target);
+        }
     }
 
     [PackagedE2EFullFact]
@@ -530,9 +536,80 @@ public sealed class PackagedE2EAcceptanceTests
         startInfo.Environment["DEPOT_PACKAGED_E2E_FORCE_STARTUP_FAILURE"] = forceStartupFailure ? "1" : "0";
 
         using var helper = Process.Start(startInfo) ?? throw new InvalidOperationException("Could not start the packaged Depot Manager update helper.");
-        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-        await helper.WaitForExitAsync(timeout.Token);
-        Assert.Equal(0, helper.ExitCode);
+        // The production helper allows 45 seconds for readiness, then may stop the child
+        // and restore the previous executable. Let that complete before timing out the test.
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(90));
+        Exception? updateFailure = null;
+        try
+        {
+            await helper.WaitForExitAsync(timeout.Token);
+            Assert.Equal(0, helper.ExitCode);
+        }
+        catch (OperationCanceledException exception) when (timeout.IsCancellationRequested)
+        {
+            var failure = new TimeoutException(
+                $"The packaged manager update helper did not exit within 90 seconds. " +
+                $"ForceStartupFailure={forceStartupFailure}; helper={DescribeProcess(helper)}; " +
+                $"target={target}; stagedExists={File.Exists(staged)}; " +
+                $"previousExists={File.Exists(ManagerSelfUpdatePaths.GetPreviousPath(target))}; " +
+                $"readyMarkerExists={File.Exists(marker)}; managers={DescribeManagersAtPath(target)}.",
+                exception);
+            updateFailure = failure;
+            throw failure;
+        }
+        catch (Exception exception)
+        {
+            updateFailure = exception;
+            throw;
+        }
+        finally
+        {
+            try
+            {
+                try
+                {
+                    if (!helper.HasExited) helper.Kill(entireProcessTree: true);
+                }
+                catch (InvalidOperationException) when (helper.HasExited) { }
+                using var cleanupTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                await helper.WaitForExitAsync(cleanupTimeout.Token);
+            }
+            catch (Exception cleanupFailure) when (updateFailure is not null)
+            {
+                throw new AggregateException("Manager update and process cleanup both failed.", updateFailure, cleanupFailure);
+            }
+        }
+    }
+
+    private static string DescribeProcess(Process process)
+    {
+        try
+        {
+            return process.HasExited
+                ? $"pid={process.Id}, exit={process.ExitCode}"
+                : $"pid={process.Id}, running, responding={process.Responding}, window='{process.MainWindowTitle}'";
+        }
+        catch (InvalidOperationException) { return "process no longer available"; }
+        catch (System.ComponentModel.Win32Exception exception) { return $"process details unavailable: {exception.NativeErrorCode}"; }
+    }
+
+    private static string DescribeManagersAtPath(string target)
+    {
+        var descriptions = new List<string>();
+        foreach (var process in Process.GetProcessesByName("DepotManager"))
+        {
+            using (process)
+            {
+                try
+                {
+                    if (string.Equals(process.MainModule?.FileName, target, StringComparison.OrdinalIgnoreCase))
+                        descriptions.Add(DescribeProcess(process));
+                }
+                catch (InvalidOperationException) { }
+                catch (System.ComponentModel.Win32Exception) { }
+            }
+        }
+        return descriptions.Count == 0 ? "none observed" : string.Join("; ", descriptions);
     }
 
     private static async Task StopManagersAtPathAsync(string target)
