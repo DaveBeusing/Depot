@@ -48,6 +48,16 @@ public sealed class ShipmentRepository : DatabaseRepository
 		var rows=await tx.Session.QueryAsync($"SELECT {Columns} {From} WHERE sh.Id=$Id;",Read,token,Parameter("$Id",id));
 		if(rows.Count==0)return null; var shipment=rows[0]; shipment.Lines=await ListLinesAsync(tx,id,token); return shipment;
 	}
+	public async Task<Shipment?> GetByIdForUpdateAsync(DatabaseTransactionContext tx, long id, CancellationToken token)
+	{
+		// Return posting and shipment reversal share this source lock until their transaction commits.
+		// A no-op write takes the provider's write lock without changing the optimistic version.
+		await tx.Session.ExecuteAsync("UPDATE Shipments SET Version=Version WHERE Id=$Id;", token, Parameter("$Id", id));
+		return await GetByIdAsync(tx, id, token);
+	}
+	public async Task<bool> HasPostedCustomerReturnsAsync(DatabaseTransactionContext tx, long id, CancellationToken token) =>
+		Convert.ToInt64(await tx.Session.ExecuteScalarAsync("SELECT COUNT(*) FROM CustomerReturns WHERE ShipmentId=$Id AND Status=$Posted;", token,
+			Parameter("$Id", id), Parameter("$Posted", (int)CustomerReturnStatus.Posted)), CultureInfo.InvariantCulture) > 0;
 	public Task<IReadOnlyList<ShipmentLine>> ListLinesAsync(long id,CancellationToken token)=>Database.QueryAsync(LineSql+" WHERE sl.ShipmentId=$Id ORDER BY sl.Id;",ReadLine,token,Parameter("$Id",id));
 	public Task<IReadOnlyList<ShipmentLine>> ListLinesAsync(DatabaseTransactionContext tx,long id,CancellationToken token)=>tx.Session.QueryAsync(LineSql+" WHERE sl.ShipmentId=$Id ORDER BY sl.Id;",ReadLine,token,Parameter("$Id",id));
 

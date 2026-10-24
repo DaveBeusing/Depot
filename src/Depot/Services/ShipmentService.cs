@@ -173,9 +173,10 @@ public sealed class ShipmentService
 		var user = RequireUser();
 		return await _transactions.ExecuteAsync(async (transaction, token) =>
 		{
-			var before = await _shipments.GetByIdAsync(transaction, id, token) ?? throw new InvalidOperationException("Shipment was not found.");
+			var before = await _shipments.GetByIdForUpdateAsync(transaction, id, token) ?? throw new InvalidOperationException("Shipment was not found.");
 			if (before.Version != version) throw new ConcurrencyConflictException("shipment");
 			if (before.Status != ShipmentStatus.Posted || before.ReversedAtUtc is not null) throw new InvalidOperationException("Only an unreversed posted shipment can be reversed.");
+			if (await _shipments.HasPostedCustomerReturnsAsync(transaction, id, token)) throw new InvalidOperationException("A shipment with posted customer returns cannot be reversed.");
 			var invoice = await _invoices.GetByShipmentIdAsync(transaction, id, token);
 			if (invoice is not null && invoice.Status != SalesInvoiceStatus.Cancelled) throw new InvalidOperationException("Cancel the draft invoice or use a customer return and credit note for an already invoiced shipment.");
 			var order = await _orders.GetByIdAsync(transaction, before.SalesOrderId, token) ?? throw new InvalidOperationException("Sales order was not found.");
