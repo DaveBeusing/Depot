@@ -130,7 +130,7 @@ public sealed class ServiceManagementTests
 		await fixture.Movements.AddCorrectionAsync(context.InventoryId,5,null,"SERVICE-TEST-STOCK","Service test stock",CancellationToken.None);
 
 		var consumed=await fixture.Service.ConsumePartAsync(order.Id,context.InventoryId,2,null,25m,true,19m);
-		var returned=await fixture.Service.ReturnPartAsync(order.Id,context.InventoryId,1,null,25m,19m);
+		var returned=await fixture.Service.ReturnPartAsync(order.Id,consumed.Id,1,null);
 		Assert.NotEqual(consumed.StockMovementId,returned.StockMovementId);
 		Assert.Equal(ServicePartMovementKind.Consumption,consumed.MovementKind);
 		Assert.Equal(ServicePartMovementKind.Return,returned.MovementKind);
@@ -180,8 +180,8 @@ public sealed class ServiceManagementTests
 		var view=File.ReadAllText(Path.Combine(root,"src","Depot","Views","ServiceManagementView.xaml"));
 		var providers=File.ReadAllText(Path.Combine(root,"src","Depot","Services","MyWorkProviders.cs"));
 
-		Assert.Contains("_movements.AddWithdrawalAsync",service,StringComparison.Ordinal);
-		Assert.Contains("_movements.AddCorrectionAsync",service,StringComparison.Ordinal);
+		Assert.Contains("_movements.AddWithdrawalInTransactionAsync",service,StringComparison.Ordinal);
+		Assert.Contains("_movements.AddCorrectionInTransactionAsync",service,StringComparison.Ordinal);
 		Assert.Contains("_invoices.CreateDirectDraftAsync",service,StringComparison.Ordinal);
 		Assert.DoesNotContain("UPDATE Inventories",service,StringComparison.OrdinalIgnoreCase);
 		Assert.DoesNotContain("ServiceManagementRepository",viewModel,StringComparison.Ordinal);
@@ -193,19 +193,20 @@ public sealed class ServiceManagementTests
 		Assert.Contains("MyWorkSectionKind.Exceptions",providers,StringComparison.Ordinal);
 	}
 
-	private static ServiceFixture CreateFixture(ProcurementTestContext context)
+	internal static ServiceFixture CreateFixture(ProcurementTestContext context,IDatabaseTransactionRunner? transactions=null)
 	{
 		var data=context.Data;
 		var authorization=context.Authorization;
-		var runner=new DatabaseTransactionRunner(data);
+		var runner=transactions??new DatabaseTransactionRunner(data);
 		var auditRepository=new AuditRepository(data);
 		var audit=new AuditService(auditRepository,authorization);
 		var notifications=new NotificationService(runner,new NotificationRepository(data),authorization);
 		var inventoryRepository=new InventoryRepository(data);
 		var movementRepository=new StockMovementRepository(data);
 		var reasonCodes=new ReasonCodeRepository(data);
-		var reversals=new StockMovementReversalService(runner,inventoryRepository,movementRepository,reasonCodes,auditRepository,audit);
-		var movements=new MovementService(new ItemRepository(data),inventoryRepository,reasonCodes,movementRepository,audit,reversals,runner,auditRepository);
+		var traceability=new ItemTraceabilityService(new ItemTraceabilityRepository(data),audit);
+		var reversals=new StockMovementReversalService(runner,inventoryRepository,movementRepository,reasonCodes,auditRepository,audit,traceability);
+		var movements=new MovementService(new ItemRepository(data),inventoryRepository,reasonCodes,movementRepository,audit,reversals,runner,auditRepository,traceability);
 		var customerRepository=new CustomerRepository(data);
 		var invoiceRepository=new SalesInvoiceRepository(data);
 		var credits=new SalesCreditNoteService(runner,new SalesCreditNoteRepository(data),invoiceRepository,auditRepository,audit,authorization,notifications);
@@ -224,5 +225,5 @@ public sealed class ServiceManagementTests
 		throw new DirectoryNotFoundException("Could not locate the Depot repository root.");
 	}
 
-	private sealed record ServiceFixture(ServiceManagementService Service,MovementService Movements);
+	internal sealed record ServiceFixture(ServiceManagementService Service,MovementService Movements);
 }

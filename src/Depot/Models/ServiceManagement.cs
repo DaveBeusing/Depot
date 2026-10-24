@@ -123,6 +123,9 @@ public sealed record ServiceWorkLine
 public sealed record ServicePartEvidence
 {
 	public long Id { get; init; }
+	public Guid? OperationId { get; init; }
+	public string? RequestHash { get; init; }
+	public long? OriginalConsumptionId { get; init; }
 	public long ServiceOrderId { get; init; }
 	public long StockMovementId { get; init; }
 	public ServicePartMovementKind MovementKind { get; init; }
@@ -137,6 +140,10 @@ public sealed record ServicePartEvidence
 	public DateTime CreatedAtUtc { get; init; } = DateTime.UtcNow;
 	public long CreatedByUserId { get; init; }
 }
+
+internal sealed record ServicePartInventoryContext(long ItemId, string PartNumber, string Description, ItemTrackingMode TrackingMode);
+
+internal sealed record ServicePartTrackingBalance(long TrackingUnitId, string Code, long IssuedQuantity, long ReturnedQuantity, DateTime? ExpiryDate, long ItemId, ItemTrackingMode TrackingMode);
 
 public sealed record ServiceCaseFilter(
 	string? SearchText = null,

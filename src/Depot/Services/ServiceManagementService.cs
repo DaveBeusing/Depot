@@ -1,6 +1,9 @@
 // Copyright (c) 2026 David Beusing
 // Licensed under the MIT License.
 
+using System.Security.Cryptography;
+using System.Text.Json;
+
 using Depot.Data;
 using Depot.Models;
 using Depot.Repositories;
@@ -140,7 +143,7 @@ public sealed class ServiceManagementService
 		_authorization.RequirePermission(ApplicationPermission.ServiceOrdersManage);var user=RequireUser();
 		return await _transactions.ExecuteAsync(async(tx,ct)=>
 		{
-			var before=await _service.GetOrderAsync(tx,input.Id,ct)??throw new InvalidOperationException("Service order was not found.");
+			var before=await _service.GetOrderForUpdateAsync(tx,input.Id,ct)??throw new InvalidOperationException("Service order was not found.");
 			if(before.Version!=input.Version)throw new ConcurrencyConflictException("service order");
 			if(before.Status is ServiceOrderStatus.Completed or ServiceOrderStatus.Cancelled)throw new InvalidOperationException("Completed or cancelled service orders are immutable.");
 			if(input.Status!=before.Status)throw new InvalidOperationException("Service-order status must be changed through lifecycle commands.");
@@ -173,7 +176,7 @@ public sealed class ServiceManagementService
 		if(string.IsNullOrWhiteSpace(description)||quantity<=0||unitPrice<0||taxRate<0)throw new ArgumentException("A valid description, positive quantity and non-negative commercial values are required.");
 		return await _transactions.ExecuteAsync(async(tx,ct)=>
 		{
-			var order=await _service.GetOrderAsync(tx,orderId,ct)??throw new InvalidOperationException("Service order was not found.");
+			var order=await _service.GetOrderForUpdateAsync(tx,orderId,ct)??throw new InvalidOperationException("Service order was not found.");
 			EnsureOrderMutable(order);
 			var line=await _service.CreateWorkLineAsync(tx,new ServiceWorkLine{ServiceOrderId=orderId,Description=description.Trim(),Quantity=quantity,UnitPrice=unitPrice,Billable=billable,TaxRate=taxRate,CreatedAtUtc=DateTime.UtcNow,CreatedByUserId=user.Id},ct);
 			await _auditEntries.CreateAsync(tx,_audit.CreateCreatedEntry(line.Id,line),ct);return line;
@@ -185,17 +188,17 @@ public sealed class ServiceManagementService
 		_authorization.RequirePermission(ApplicationPermission.ServiceOrdersManage);var user=RequireUser();
 		await _transactions.ExecuteAsync(async(tx,ct)=>
 		{
-			var order=await _service.GetOrderAsync(tx,orderId,ct)??throw new InvalidOperationException("Service order was not found.");EnsureOrderMutable(order);
+			var order=await _service.GetOrderForUpdateAsync(tx,orderId,ct)??throw new InvalidOperationException("Service order was not found.");EnsureOrderMutable(order);
 			if(await _service.DeleteWorkLineAsync(tx,lineId,orderId,version,ct)!=1)throw new ConcurrencyConflictException("service work line");
 			var beforeEvidence=new{ServiceOrderId=orderId,Version=version,DeletedBy=(long?)null};var afterEvidence=new{ServiceOrderId=orderId,Version=version,DeletedBy=(long?)user.Id};await _auditEntries.CreateAsync(tx,_audit.CreateActionEntry(lineId,"Deleted",beforeEvidence,afterEvidence),ct);
 		},token);
 	}
 
-	public Task<ServicePartEvidence> ConsumePartAsync(long orderId,long inventoryId,int quantity,long? reasonCodeId,decimal unitPrice,bool billable,decimal taxRate,IReadOnlyList<TrackingAllocationInput>? tracking=null,CancellationToken token=default)=>
-		PostPartMovementAsync(orderId,inventoryId,quantity,reasonCodeId,unitPrice,billable,taxRate,ServicePartMovementKind.Consumption,tracking??[],token);
+	public Task<ServicePartEvidence> ConsumePartAsync(long orderId,long inventoryId,int quantity,long? reasonCodeId,decimal unitPrice,bool billable,decimal taxRate,IReadOnlyList<TrackingAllocationInput>? tracking=null,Guid? operationId=null,CancellationToken token=default)=>
+		PostPartMovementAsync(orderId,inventoryId,quantity,reasonCodeId,unitPrice,billable,taxRate,ServicePartMovementKind.Consumption,null,tracking??[],operationId,token);
 
-	public Task<ServicePartEvidence> ReturnPartAsync(long orderId,long inventoryId,int quantity,long? reasonCodeId,decimal unitPrice,decimal taxRate,IReadOnlyList<TrackingAllocationInput>? tracking=null,CancellationToken token=default)=>
-		PostPartMovementAsync(orderId,inventoryId,quantity,reasonCodeId,unitPrice,false,taxRate,ServicePartMovementKind.Return,tracking??[],token);
+	public Task<ServicePartEvidence> ReturnPartAsync(long orderId,long originalConsumptionId,int quantity,long? reasonCodeId,IReadOnlyList<TrackingAllocationInput>? tracking=null,Guid? operationId=null,CancellationToken token=default)=>
+		PostPartMovementAsync(orderId,0,quantity,reasonCodeId,0m,false,0m,ServicePartMovementKind.Return,originalConsumptionId,tracking??[],operationId,token);
 
 	public async Task<ServiceOrder> CompleteServiceOrderAsync(long id,long version,string completionNotes,CancellationToken token=default)
 	{
@@ -203,7 +206,7 @@ public sealed class ServiceManagementService
 		if(string.IsNullOrWhiteSpace(completionNotes))throw new ArgumentException("Completion notes are required.",nameof(completionNotes));
 		return await _transactions.ExecuteAsync(async(tx,ct)=>
 		{
-			var before=await _service.GetOrderAsync(tx,id,ct)??throw new InvalidOperationException("Service order was not found.");
+			var before=await _service.GetOrderForUpdateAsync(tx,id,ct)??throw new InvalidOperationException("Service order was not found.");
 			if(before.Version!=version)throw new ConcurrencyConflictException("service order");
 			if(before.Status is ServiceOrderStatus.Completed or ServiceOrderStatus.Cancelled)throw new InvalidOperationException("The service order is already final.");
 			var work=await _service.ListWorkLinesAsync(tx,id,ct);var parts=await _service.ListPartEvidenceAsync(tx,id,ct);
@@ -238,7 +241,7 @@ public sealed class ServiceManagementService
 		if(billableWork.Length+billableParts.Length==0)throw new InvalidOperationException("The completed service order has no billable evidence.");
 		var draft=await _transactions.ExecuteAsync(async(tx,ct)=>
 		{
-			var current=await _service.GetOrderAsync(tx,orderId,ct)??throw new InvalidOperationException("Service order was not found.");
+			var current=await _service.GetOrderForUpdateAsync(tx,orderId,ct)??throw new InvalidOperationException("Service order was not found.");
 			if(current.SalesInvoiceId is not null)throw new ConcurrencyConflictException("service billing");
 			if(current.Status!=ServiceOrderStatus.Completed)throw new InvalidOperationException("Only completed service orders can be billed.");
 			var customer=await _customers.GetByIdAsync(tx,current.CustomerId,ct)??throw new InvalidOperationException("Customer was not found.");
@@ -290,7 +293,7 @@ public sealed class ServiceManagementService
 		_authorization.RequirePermission(ApplicationPermission.ServiceOrdersManage);var user=RequireUser();
 		return await _transactions.ExecuteAsync(async(tx,ct)=>
 		{
-			var before=await _service.GetOrderAsync(tx,id,ct)??throw new InvalidOperationException("Service order was not found.");
+			var before=await _service.GetOrderForUpdateAsync(tx,id,ct)??throw new InvalidOperationException("Service order was not found.");
 			if(before.Version!=version)throw new ConcurrencyConflictException("service order");
 			var allowed=(before.Status,target) switch{(ServiceOrderStatus.Planned,ServiceOrderStatus.InProgress)=>true,(ServiceOrderStatus.Planned or ServiceOrderStatus.InProgress,ServiceOrderStatus.Cancelled)=>true,_=>false};
 			if(!allowed)throw new InvalidOperationException($"Transition from {before.Status} to {target} is not allowed.");
@@ -301,27 +304,115 @@ public sealed class ServiceManagementService
 		},token);
 	}
 
-	private async Task<ServicePartEvidence> PostPartMovementAsync(long orderId,long inventoryId,int quantity,long? reasonCodeId,decimal unitPrice,bool billable,decimal taxRate,ServicePartMovementKind kind,IReadOnlyList<TrackingAllocationInput> tracking,CancellationToken token)
+	private async Task<ServicePartEvidence> PostPartMovementAsync(
+		long orderId,long inventoryId,int quantity,long? reasonCodeId,decimal unitPrice,bool billable,decimal taxRate,
+		ServicePartMovementKind kind,long? originalConsumptionId,IReadOnlyList<TrackingAllocationInput> tracking,Guid? operationId,CancellationToken token)
 	{
-		_authorization.RequirePermission(ApplicationPermission.ServiceOrdersManage);var user=RequireUser();
-		if(quantity<=0||inventoryId<=0||unitPrice<0||taxRate<0)throw new ArgumentException("A valid inventory, positive quantity and non-negative commercial values are required.");
-		var order=await _service.GetOrderAsync(orderId,token)??throw new InvalidOperationException("Service order was not found.");EnsureOrderMutable(order);
-		var reference=$"SERVICE:{order.OrderNumber}";
-		var movement=kind==ServicePartMovementKind.Consumption
-			?await _movements.AddWithdrawalAsync(inventoryId,quantity,reasonCodeId,reference,$"Parts consumed for service case {order.CaseNumber}.",tracking,token)
-			:await _movements.AddCorrectionAsync(inventoryId,quantity,reasonCodeId,reference,$"Parts returned from service case {order.CaseNumber}.",tracking,token);
+		_authorization.RequirePermission(ApplicationPermission.ServiceOrdersManage);
+		_authorization.RequirePermission(ApplicationPermission.StockMovementsPost);
+		var user=RequireUser();
+		if(orderId<=0||quantity<=0||unitPrice<0||taxRate<0)throw new ArgumentException("A valid service order, positive quantity and non-negative commercial values are required.");
+		if(kind==ServicePartMovementKind.Consumption&&inventoryId<=0)throw new ArgumentOutOfRangeException(nameof(inventoryId));
+		if(kind==ServicePartMovementKind.Return&&originalConsumptionId is not >0)throw new ArgumentOutOfRangeException(nameof(originalConsumptionId));
+		var key=operationId??Guid.NewGuid();
+		if(key==Guid.Empty)throw new ArgumentException("A non-empty operation identity is required.",nameof(operationId));
+		var allocations=NormalizePartTracking(tracking);
+		var requestHash=Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(new
+		{
+			orderId,inventoryId,quantity,reasonCodeId,unitPrice,billable,taxRate,kind,originalConsumptionId,
+			Tracking=allocations.Select(value=>new{value.Code,value.Quantity,ExpiryDate=value.ExpiryDate?.ToString("yyyy-MM-dd",System.Globalization.CultureInfo.InvariantCulture)})
+		})));
 		return await _transactions.ExecuteAsync(async(tx,ct)=>
 		{
-			var current=await _service.GetOrderAsync(tx,orderId,ct)??throw new InvalidOperationException("Service order was not found.");
-			var evidence=await _service.CreatePartEvidenceAsync(tx,new ServicePartEvidence{ServiceOrderId=orderId,StockMovementId=movement.MovementId,MovementKind=kind,InventoryId=movement.InventoryId,ItemId=movement.ItemId,PartNumber=movement.PartNumber,Description=movement.Description,Quantity=Math.Abs(movement.Quantity),UnitPrice=unitPrice,Billable=billable&&kind==ServicePartMovementKind.Consumption,TaxRate=taxRate,CreatedAtUtc=DateTime.UtcNow,CreatedByUserId=user.Id},ct);
-			await _auditEntries.CreateAsync(tx,_audit.CreateCreatedEntry(evidence.Id,evidence),ct);
-			if(current.Status==ServiceOrderStatus.Planned)
+			var current=await _service.GetOrderForUpdateAsync(tx,orderId,ct)??throw new InvalidOperationException("Service order was not found.");
+			var existing=await _service.GetPartByOperationIdAsync(tx,key,ct);
+			if(existing is not null)
 			{
-				var started=current with{Status=ServiceOrderStatus.InProgress,UpdatedAtUtc=DateTime.UtcNow,UpdatedByUserId=user.Id};
-				if(await _service.UpdateOrderAsync(tx,started,current.Version,ct)!=1)throw new ConcurrencyConflictException("service order");
+				if(!string.Equals(existing.RequestHash,requestHash,StringComparison.Ordinal))
+					throw new InvalidOperationException("The operation identity is already used for a different service-parts request.");
+				return existing;
 			}
+			EnsureOrderMutable(current);
+			var targetInventoryId=inventoryId;
+			var commercialUnitPrice=unitPrice;
+			var commercialTaxRate=taxRate;
+			ServicePartEvidence? consumption=null;
+			if(originalConsumptionId is long consumptionId)
+			{
+				consumption=await _service.GetPartEvidenceAsync(tx,consumptionId,ct)??throw new InvalidOperationException("The original service-parts consumption was not found.");
+				if(consumption.ServiceOrderId!=orderId||consumption.MovementKind!=ServicePartMovementKind.Consumption)
+					throw new InvalidOperationException("Select original consumption evidence from this service order.");
+				if(!await _service.IsUnreversedPartConsumptionAsync(tx,consumption,ct))
+					throw new InvalidOperationException("The original service consumption has been reversed or its stock evidence is inconsistent.");
+				if(await _service.HasUnlinkedPartReturnsAsync(tx,orderId,consumption.InventoryId,ct))
+					throw new InvalidOperationException("Historical returns at this service location have no consumption link. Reconcile the retained evidence before posting another return.");
+				var returned=await _service.GetReturnedPartQuantityAsync(tx,consumption.Id,ct);
+				if(returned<0||quantity>consumption.Quantity-returned)
+					throw new InvalidOperationException("The return quantity exceeds the remaining original service consumption.");
+				targetInventoryId=consumption.InventoryId;
+				commercialUnitPrice=consumption.UnitPrice;
+				commercialTaxRate=consumption.TaxRate;
+			}
+			var inventory=await _service.GetPartInventoryContextAsync(tx,targetInventoryId,ct)??throw new InvalidOperationException("The service-parts inventory was not found.");
+			IReadOnlyList<TrackingAllocationInput> postingAllocations=allocations;
+			if(consumption is not null)
+			{
+				if(inventory.ItemId!=consumption.ItemId)throw new InvalidOperationException("The original service inventory no longer contains the consumed item.");
+				postingAllocations=await ValidatePartReturnTrackingAsync(tx,consumption,inventory.TrackingMode,quantity,allocations,ct);
+			}
+			var reference=$"SERVICE:{current.OrderNumber}";
+			var movement=kind==ServicePartMovementKind.Consumption
+				?await _movements.AddWithdrawalInTransactionAsync(tx,targetInventoryId,quantity,reasonCodeId,reference,$"Parts consumed for service case {current.CaseNumber}.",postingAllocations,ct)
+				:await _movements.AddCorrectionInTransactionAsync(tx,targetInventoryId,quantity,reasonCodeId,reference,$"Parts returned from service consumption {originalConsumptionId}.",postingAllocations,ct);
+			var evidence=await _service.CreatePartEvidenceAsync(tx,new ServicePartEvidence
+			{
+				ServiceOrderId=orderId,StockMovementId=movement.Id,MovementKind=kind,InventoryId=targetInventoryId,
+				ItemId=inventory.ItemId,PartNumber=consumption?.PartNumber??inventory.PartNumber,Description=consumption?.Description??inventory.Description,
+				Quantity=quantity,UnitPrice=commercialUnitPrice,Billable=billable&&kind==ServicePartMovementKind.Consumption,TaxRate=commercialTaxRate,
+				CreatedAtUtc=movement.TimestampUtc,CreatedByUserId=user.Id,OperationId=key,RequestHash=requestHash,OriginalConsumptionId=originalConsumptionId
+			},ct);
+			await _auditEntries.CreateAsync(tx,_audit.CreateCreatedEntry(evidence.Id,evidence),ct);
+			var changed=current with{Status=ServiceOrderStatus.InProgress,UpdatedAtUtc=DateTime.UtcNow,UpdatedByUserId=user.Id};
+			if(await _service.UpdateOrderAsync(tx,changed,current.Version,ct)!=1)throw new ConcurrencyConflictException("service order");
+			var after=await _service.GetOrderAsync(tx,orderId,ct)??throw new InvalidOperationException("Service order could not be reloaded.");
+			await _auditEntries.CreateAsync(tx,_audit.CreateActionEntry(orderId,kind==ServicePartMovementKind.Consumption?"PartConsumed":"PartReturned",current,after),ct);
 			return evidence;
 		},token);
+	}
+
+	private async Task<IReadOnlyList<TrackingAllocationInput>> ValidatePartReturnTrackingAsync(
+		DatabaseTransactionContext tx,ServicePartEvidence consumption,ItemTrackingMode mode,int quantity,IReadOnlyList<TrackingAllocationInput> tracking,CancellationToken token)
+	{
+		var balances=await _service.GetPartTrackingBalancesAsync(tx,consumption,token);
+		if(mode==ItemTrackingMode.None)
+		{
+			if(balances.Count>0||tracking.Count>0)throw new InvalidOperationException("Untracked service consumption cannot accept serial or lot returns.");
+			return [];
+		}
+		if(balances.Any(value=>value.ItemId!=consumption.ItemId||value.TrackingMode!=mode))
+			throw new InvalidOperationException("The item's tracking policy no longer matches the original service consumption.");
+		if(balances.Count==0||balances.Any(value=>value.IssuedQuantity<=0||value.ReturnedQuantity<0)||balances.Sum(value=>value.IssuedQuantity)!=consumption.Quantity)
+			throw new InvalidOperationException("The original service consumption has incomplete serial or lot evidence.");
+		if(tracking.Sum(value=>(long)value.Quantity)!=quantity)throw new InvalidOperationException("Return tracking quantities must equal the requested return quantity.");
+		var result=new List<TrackingAllocationInput>(tracking.Count);
+		foreach(var allocation in tracking)
+		{
+			var source=balances.SingleOrDefault(value=>string.Equals(value.Code,allocation.Code,StringComparison.Ordinal));
+			if(source is null||allocation.Quantity>source.IssuedQuantity-source.ReturnedQuantity)
+				throw new InvalidOperationException($"Serial/lot '{allocation.Code}' exceeds the remaining original service consumption.");
+			if(allocation.ExpiryDate is DateTime expiry&&expiry.Date!=source.ExpiryDate?.Date)
+				throw new InvalidOperationException("A returned serial or lot must retain its original expiry date.");
+			result.Add(new TrackingAllocationInput{Code=source.Code,Quantity=allocation.Quantity,ExpiryDate=source.ExpiryDate});
+		}
+		return result;
+	}
+
+	private static IReadOnlyList<TrackingAllocationInput> NormalizePartTracking(IReadOnlyList<TrackingAllocationInput> tracking)
+	{
+		var result=tracking.Select(value=>new TrackingAllocationInput{Code=value.Code?.Trim().ToUpperInvariant()??string.Empty,Quantity=value.Quantity,ExpiryDate=value.ExpiryDate?.Date}).OrderBy(value=>value.Code,StringComparer.Ordinal).ToArray();
+		if(result.Any(value=>value.Code.Length is 0 or >128||value.Quantity<=0)||result.Select(value=>value.Code).Distinct(StringComparer.Ordinal).Count()!=result.Length)
+			throw new ArgumentException("Each serial or lot must have a distinct code and a positive quantity.",nameof(tracking));
+		return result;
 	}
 
 	private async Task ValidateCaseReferencesAsync(DatabaseTransactionContext tx,ServiceCase input,CancellationToken token)
