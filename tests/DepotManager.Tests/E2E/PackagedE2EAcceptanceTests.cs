@@ -80,13 +80,52 @@ public sealed class PackagedE2EAcceptanceTests
         Assert.Equal(CurrentSchema, await ReadSchemaAsync(database));
         Assert.Equal(1, await CountAdministratorAsync(database));
 
+        Assert.True((await RunDepotCommandAsync(service.DepotPath, install, "--manager-health-check")).Success);
+        var settings = LocalSettings(database);
+        var inspector = new DatabaseSchemaInspector();
+        var previousCompatibility = await inspector.ReadStableCompatibilityAsync(settings, CancellationToken.None);
+        var targetCompatibility = (await RunDepotCommandAsync(
+            PackagedE2EEnvironment.CurrentDepot, install, "--manager-schema-contract")).SchemaCompatibility
+            ?? throw new InvalidOperationException("The current packaged Depot did not export its complete schema compatibility contract.");
+        targetCompatibility.Validate(requirement: true);
+        Assert.Equal(CurrentSchema, targetCompatibility.CoreVersion);
+        var requiresMigration = previousCompatibility.RequiresMigrationTo(targetCompatibility);
+        DatabaseConnectionSettings? backupSettings = null;
+        if (requiresMigration)
+        {
+            var safetyBackup = await new MigrationSafetyService().CreateSqliteSafetyBackupAsync(
+                settings, install, previousVersion, previousCompatibility.CoreVersion, CancellationToken.None);
+            Assert.Equal(Path.GetFullPath(safetyBackup), MigrationBackupGate.EnsureVerifiedSqliteBackup(safetyBackup));
+            backupSettings = LocalSettings(safetyBackup);
+            Assert.True(previousCompatibility.HasSameState(
+                await inspector.ReadStableCompatibilityAsync(backupSettings, CancellationToken.None)));
+            Assert.Equal(1, await CountAdministratorAsync(safetyBackup));
+        }
+
         var settingsHash = await HashAsync(service.SettingsPath);
+        Assert.True(previousCompatibility.HasSameState(
+            await inspector.ReadStableCompatibilityAsync(settings, CancellationToken.None)));
         service.Deploy(PackagedE2EEnvironment.CurrentDepot, currentVersion, createBackup: true);
-        RollbackMetadataService.Write(service.BackupDirectory, previousVersion, await new DatabaseSchemaInspector().ReadStableCompatibilityAsync(
-            new DatabaseConnectionSettings { Provider = DatabaseProvider.Local, LocalDatabasePath = database }, CancellationToken.None));
+        RollbackMetadataService.Write(service.BackupDirectory, previousVersion, previousCompatibility);
         ExecutableDeployment.InstallManagerCopy(PackagedE2EEnvironment.CurrentManager, service.ManagerPath);
+        if (requiresMigration)
+        {
+            var migration = await RunDepotCommandAsync(service.DepotPath, install, "--manager-migrate");
+            Assert.True(migration.Success, migration.Message);
+            Assert.Equal(CurrentSchema, migration.DatabaseSchemaVersion);
+        }
         var health = await RunDepotCommandAsync(service.DepotPath, install, "--manager-health-check");
         Assert.True(health.Success, health.Message);
+        Assert.Equal(CurrentSchema, health.DatabaseSchemaVersion);
+        var migratedCompatibility = await inspector.ReadStableCompatibilityAsync(settings, CancellationToken.None);
+        migratedCompatibility.RequireCompatibleWith(targetCompatibility);
+        if (backupSettings is not null)
+        {
+            Assert.True(previousCompatibility.HasSameState(
+                await inspector.ReadStableCompatibilityAsync(backupSettings, CancellationToken.None)));
+            Assert.Equal(1, await CountAdministratorAsync(backupSettings.LocalDatabasePath));
+            Assert.False(RollbackCompatibility.IsCompatible(migratedCompatibility, previousCompatibility));
+        }
         Assert.Equal(currentVersion, service.InstalledVersion);
         Assert.Equal(1, await CountAdministratorAsync(database));
 
@@ -510,7 +549,10 @@ public sealed class PackagedE2EAcceptanceTests
             document.RootElement.GetProperty("Success").GetBoolean(),
             document.RootElement.GetProperty("Message").GetString() ?? string.Empty,
             document.RootElement.TryGetProperty("DatabaseSchemaVersion", out var schema) && schema.ValueKind == JsonValueKind.Number ? schema.GetInt32() : null,
-            process.ExitCode);
+            process.ExitCode,
+            document.RootElement.TryGetProperty("SchemaCompatibility", out var compatibility) && compatibility.ValueKind == JsonValueKind.Object
+                ? compatibility.Deserialize<DatabaseSchemaCompatibility>()
+                : null);
         if (!result.Success || result.ExitCode != 0)
             throw new InvalidOperationException($"Packaged Depot command {command} failed: {result.Message} (exit {result.ExitCode}).");
         return result;
@@ -707,7 +749,7 @@ public sealed class PackagedE2EAcceptanceTests
         });
     }
 
-    private sealed record ManagerCommandResult(bool Success, string Message, int? DatabaseSchemaVersion, int ExitCode);
+    private sealed record ManagerCommandResult(bool Success, string Message, int? DatabaseSchemaVersion, int ExitCode, DatabaseSchemaCompatibility? SchemaCompatibility);
 
     private sealed class StaticBytesHandler(byte[] bytes) : HttpMessageHandler
     {
