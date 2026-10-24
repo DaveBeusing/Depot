@@ -215,18 +215,76 @@ public sealed class FinanceGeneralLedgerTests
 		var service = context.CreateService(ApplicationPermission.FinanceGeneralLedgerPost, ApplicationPermission.FinanceManualJournalsPost, ApplicationPermission.FinanceGeneralLedgerReverse, ApplicationPermission.FinanceGeneralLedgerView);
 		var original = await service.PostAsync(context.Request(Guid.NewGuid(), FinanceJournalEntryKind.Manual, 75m, 75m));
 
-		var reversal = await service.ReverseAsync(original.Id, Guid.NewGuid(), context.PeriodId, context.PostingDate, "GL", "Correction");
+		var operationId = Guid.NewGuid();
+		var reversal = await service.ReverseAsync(original.Id, operationId, context.PeriodId, context.PostingDate, "GL", "Correction");
+		var retry = await service.ReverseAsync(original.Id, operationId, context.PeriodId, context.PostingDate, "GL", "Correction");
 		var reloadedOriginal = await service.GetByIdAsync(original.Id);
 
 		Assert.NotNull(reloadedOriginal);
+		Assert.Equal(reversal.Id, retry.Id);
 		Assert.Equal(FinanceJournalEntryKind.Reversal, reversal.EntryKind);
 		Assert.Equal(original.Id, reversal.ReversalOfEntryId);
 		Assert.Equal(original.Lines[0].TransactionDebit, reversal.Lines[0].TransactionCredit);
 		Assert.Equal(original.Lines[0].ReportingDebit, reversal.Lines[0].ReportingCredit);
 		Assert.Equal(original.RequestHash, reloadedOriginal.RequestHash);
 		Assert.Equal(2L, context.Scalar("SELECT COUNT(*) FROM FinanceJournalEntries;"));
+		Assert.Equal(3L, context.Scalar("SELECT NextNumber FROM FinanceNumberSequences WHERE Id = $Id;", new DatabaseParameter("$Id", context.SequenceId.ToString("D"))));
+		Assert.Equal(1L, context.Scalar("SELECT COUNT(*) FROM AuditEntries WHERE EntityType = 'FinanceJournalEntry' AND Action = 'Reversed';"));
 		Assert.Equal(reversal.Id, context.Scalar("SELECT ReversalEntryId FROM FinanceJournalReversals WHERE OriginalEntryId = $Id;", new DatabaseParameter("$Id", original.Id)));
 		await Assert.ThrowsAsync<InvalidOperationException>(() => service.ReverseAsync(original.Id, Guid.NewGuid(), context.PeriodId, context.PostingDate, "GL", "Second reversal"));
+		await Assert.ThrowsAsync<InvalidOperationException>(() => service.ReverseAsync(reversal.Id, Guid.NewGuid(), context.PeriodId, context.PostingDate, "GL", "Reverse the reversal"));
+	}
+
+	[Fact]
+	public async Task StandaloneReversalRejectsSourceOwnedJournalsWithoutChangingAccountingEvidence()
+	{
+		using var context = FinanceTestContext.Create();
+		var service = context.CreateService(ApplicationPermission.FinanceGeneralLedgerPost, ApplicationPermission.FinanceGeneralLedgerReverse, ApplicationPermission.FinanceGeneralLedgerView);
+		string[] sourceTypes =
+		[
+			FinancePayableSourceTypes.SupplierInvoice, FinancePayableSourceTypes.SupplierCreditNote, FinancePayableSourceTypes.SupplierPayment,
+			FinanceReceivableSourceTypes.SalesInvoice, FinanceReceivableSourceTypes.SalesCreditNote, FinanceReceivableSourceTypes.Payment, FinanceReceivableSourceTypes.WriteOff,
+			FinanceInventoryAccountingEvents.SourceType, FinanceFixedAssetService.SourceType, "ManualJournal", "FutureAccountingIntegration"
+		];
+		foreach (var sourceType in sourceTypes)
+		{
+			var original = await service.PostAsync(context.Request(Guid.NewGuid(), FinanceJournalEntryKind.Standard, 100m, 100m) with { SourceType = sourceType });
+			var journalCount = context.Scalar("SELECT COUNT(*) FROM FinanceJournalEntries;");
+			var lineCount = context.Scalar("SELECT COUNT(*) FROM FinanceJournalEntryLines;");
+			var nextNumber = context.Scalar("SELECT NextNumber FROM FinanceNumberSequences WHERE Id = $Id;", new DatabaseParameter("$Id", context.SequenceId.ToString("D")));
+			var auditCount = context.Scalar("SELECT COUNT(*) FROM AuditEntries;");
+
+			var error = await Assert.ThrowsAsync<InvalidOperationException>(() => service.ReverseAsync(original.Id, Guid.NewGuid(), context.PeriodId, context.PostingDate, "GL", "Direct correction"));
+
+			Assert.Contains("source workflow", error.Message);
+			Assert.Equal(journalCount, context.Scalar("SELECT COUNT(*) FROM FinanceJournalEntries;"));
+			Assert.Equal(lineCount, context.Scalar("SELECT COUNT(*) FROM FinanceJournalEntryLines;"));
+			Assert.Equal(0L, context.Scalar("SELECT COUNT(*) FROM FinanceJournalReversals;"));
+			Assert.Equal(nextNumber, context.Scalar("SELECT NextNumber FROM FinanceNumberSequences WHERE Id = $Id;", new DatabaseParameter("$Id", context.SequenceId.ToString("D"))));
+			Assert.Equal(auditCount, context.Scalar("SELECT COUNT(*) FROM AuditEntries;"));
+			var reloaded = await service.GetByIdAsync(original.Id);
+			Assert.NotNull(reloaded);
+			Assert.Equal(original.RequestHash, reloaded.RequestHash);
+		}
+	}
+
+	[Fact]
+	public async Task PostingRetryCannotReclassifySourceOwnedJournalAsManual()
+	{
+		using var context = FinanceTestContext.Create();
+		var service = context.CreateService(ApplicationPermission.FinanceGeneralLedgerPost, ApplicationPermission.FinanceManualJournalsPost, ApplicationPermission.FinanceGeneralLedgerReverse, ApplicationPermission.FinanceGeneralLedgerView);
+		var request = context.Request(Guid.NewGuid(), FinanceJournalEntryKind.Standard, 100m, 100m) with { SourceType = FinancePayableSourceTypes.SupplierPayment };
+		var original = await service.PostAsync(request);
+
+		await Assert.ThrowsAsync<InvalidOperationException>(() => service.PostAsync(request with { EntryKind = FinanceJournalEntryKind.Manual }));
+		await Assert.ThrowsAsync<InvalidOperationException>(() => service.PostAsync(request with { OperationId = Guid.NewGuid(), EntryKind = FinanceJournalEntryKind.Manual }));
+		await Assert.ThrowsAsync<InvalidOperationException>(() => service.ReverseAsync(original.Id, Guid.NewGuid(), context.PeriodId, context.PostingDate, "GL", "Manual correction"));
+
+		var reloaded = await service.GetByIdAsync(original.Id);
+		Assert.NotNull(reloaded);
+		Assert.Equal(FinanceJournalEntryKind.Standard, reloaded.EntryKind);
+		Assert.Equal(1L, context.Scalar("SELECT COUNT(*) FROM FinanceJournalEntries;"));
+		Assert.Equal(0L, context.Scalar("SELECT COUNT(*) FROM FinanceJournalReversals;"));
 	}
 
 	private sealed class FinanceTestContext : IDisposable

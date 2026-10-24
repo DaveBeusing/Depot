@@ -46,6 +46,21 @@ public sealed class CustomerReturnRepository : DatabaseRepository
 		return value;
 	}
 
+	public async Task<long?> GetShipmentIdAsync(long id, CancellationToken token)
+	{
+		var value = await Database.ExecuteScalarAsync("SELECT ShipmentId FROM CustomerReturns WHERE Id=$Id;", token, Parameter("$Id", id));
+		return value is null or DBNull ? null : Convert.ToInt64(value, CultureInfo.InvariantCulture);
+	}
+
+	public async Task<IReadOnlyDictionary<long, long>> GetPostedQuantitiesAsync(DatabaseTransactionContext tx, long shipmentId, CancellationToken token)
+	{
+		var rows = await tx.Session.QueryAsync(
+			$"SELECT crl.ShipmentLineId,SUM({Database.CastToInt64("crl.Quantity")}) FROM CustomerReturnLines crl INNER JOIN CustomerReturns cr ON cr.Id=crl.CustomerReturnId WHERE cr.ShipmentId=$ShipmentId AND cr.Status=$Posted GROUP BY crl.ShipmentLineId;",
+			reader => (ShipmentLineId: reader.GetInt64(0), Quantity: Convert.ToInt64(reader.GetValue(1), CultureInfo.InvariantCulture)), token,
+			Parameter("$ShipmentId", shipmentId), Parameter("$Posted", (int)CustomerReturnStatus.Posted));
+		return rows.ToDictionary(row => row.ShipmentLineId, row => row.Quantity);
+	}
+
 	public async Task<long> CreateAsync(DatabaseTransactionContext tx, CustomerReturn value, CancellationToken token)
 	{
 		value.ReturnNumber = $"PENDING-{Guid.NewGuid():N}";

@@ -1,12 +1,14 @@
 # Current project status
 
-Updated: 2026-10-23
+Updated: 2026-10-24
 
 Depot is on the `0.15.x-preview` development line. Finance includes the General Ledger, AR/AP, Banking, Inventory Accounting, Financial Reporting and the current Fixed Assets/depreciation subledger work; inventory, purchasing, sales including the ERP-native Lead/Opportunity CRM pipeline, localization, notifications, Audit, persistent user sessions, operational security monitoring, enterprise identity/authentication, persisted workspace productivity preferences and the current visual-designer set are integrated in the repository.
 
 ## Master audit remediation
 
 The 2026-10-23 audit and ranked correction queue are tracked in [issue #195](https://github.com/DaveBeusing/Depot/issues/195). The first correction batch restored complete logical database backups, enforced database-maintenance permissions and protected asynchronous stock posting. The second correction batch adds account revision checks during session admission, [role-editor selection consistency](development/RoleEditorConcurrency.md) and [complete database compatibility checks](development/DatabaseSchemaCompatibility.md) for Manager migration and rollback.
+
+The next correction batch protects the owning workflow when reversing financial and stock postings. Public General Ledger reversal accepts only standalone manual journals; source-owned entries must use their authoritative subledger correction. [Shipment and customer-return posting](development/ShipmentReturnIntegrity.md) share the source shipment lock, revalidate remaining quantities at posting, and prevent shipment reversal after any posted return. Competing or stale return drafts cannot credit the same shipped quantity twice.
 
 These corrections preserve the existing product-version boundary and database schema baselines. Release readiness still depends on the remaining audit findings and the exact-source validation and deployment acceptance requirements below. Historical completion statements describe their original review scope and do not supersede the current audit backlog.
 

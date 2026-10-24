@@ -24,9 +24,13 @@ Partial shipments are supported. The Sales Order remains **Partially Shipped** u
 
 Use **Reverse posting** only when the original shipment was posted incorrectly and has not entered an immutable invoicing path. Depot creates positive `SalesShipmentReversal` counter-movements and restores reservations instead of changing the original stock movement.
 
+A shipment with any posted Customer Return cannot be reversed, including when only part of the shipment was returned. Continue the Customer Return workflow for remaining goods and use a Credit Note for any required invoice correction. An unposted return draft does not prevent reversal, but that draft can no longer be posted after the shipment is reversed.
+
 ## Customer return
 
 Use **Create customer return** when goods were genuinely delivered and physically come back. Posting creates positive `CustomerReturn` stock movements and Depot prevents returned quantities from exceeding the shipment quantity already delivered and not previously returned.
+
+The remaining quantity is checked again when the return is posted. Creating several drafts does not reserve the right to return the same goods more than once. If another return has already consumed the remaining quantity, the stale draft stays unposted and stock is unchanged. Reload the shipment and create a return for any quantity that remains available. Return posting and shipment reversal are coordinated so simultaneous actions cannot credit the same goods twice.
 
 Use **Return receipt PDF** for the return document. If the shipment was invoiced, correct the commercial side separately with a Credit Note under **Sales > Invoices**.
 

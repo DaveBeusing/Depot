@@ -52,14 +52,15 @@ public sealed class CustomerReturnService
 		var user = RequireUser();
 		return await _transactions.ExecuteAsync(async (transaction, cancellationToken) =>
 		{
-			var shipment = await _shipments.GetByIdAsync(transaction, shipmentId, cancellationToken) ?? throw new InvalidOperationException("Shipment was not found.");
-			if (shipment.Status != ShipmentStatus.Posted) throw new InvalidOperationException("Only a posted shipment can be returned.");
+			var shipment = await _shipments.GetByIdForUpdateAsync(transaction, shipmentId, cancellationToken) ?? throw new InvalidOperationException("Shipment was not found.");
+			if (shipment.Status != ShipmentStatus.Posted || shipment.ReversedAtUtc is not null) throw new InvalidOperationException("Only an unreversed posted shipment can be returned.");
+			var postedQuantities = await _returns.GetPostedQuantitiesAsync(transaction, shipmentId, cancellationToken);
 			var lines = new List<CustomerReturnLine>();
 			foreach (var line in shipment.Lines)
 			{
-				var returned = Convert.ToInt32(await transaction.Session.ExecuteScalarAsync("SELECT COALESCE(SUM(crl.Quantity),0) FROM CustomerReturnLines crl INNER JOIN CustomerReturns cr ON cr.Id=crl.CustomerReturnId WHERE crl.ShipmentLineId=$LineId AND cr.Status=$Posted;", cancellationToken, new DatabaseParameter("$LineId", line.Id), new DatabaseParameter("$Posted", (int)CustomerReturnStatus.Posted)) ?? 0);
+				var returned = postedQuantities.GetValueOrDefault(line.Id);
 				var remaining = line.Quantity - returned;
-				if (remaining > 0) lines.Add(new CustomerReturnLine { ShipmentLineId = line.Id, InventoryId = line.InventoryId, ItemId = line.ItemId, PartNumber = line.PartNumber, Description = line.Description, Quantity = remaining });
+				if (remaining > 0) lines.Add(new CustomerReturnLine { ShipmentLineId = line.Id, InventoryId = line.InventoryId, ItemId = line.ItemId, PartNumber = line.PartNumber, Description = line.Description, Quantity = checked((int)remaining) });
 			}
 			if (lines.Count == 0) throw new InvalidOperationException("All quantities from this shipment have already been returned.");
 			var value = new CustomerReturn { ShipmentId = shipment.Id, SalesOrderId = shipment.SalesOrderId, CustomerId = shipment.CustomerId, ReturnDate = DateTime.Today, Reason = reason.Trim(), CreatedByUserId = user.Id, Lines = lines };
@@ -77,13 +78,27 @@ public sealed class CustomerReturnService
 		_authorization.RequirePermission(ApplicationPermission.CustomerReturnsPost);
 		ArgumentNullException.ThrowIfNull(trackingByLineId);
 		var user = RequireUser();
+		// Resolve only the source identity before the transaction; acquire its lock before reading
+		// the mutable return so competing posts and reversal always use the same lock order.
+		var shipmentId = await _returns.GetShipmentIdAsync(id, token) ?? throw new InvalidOperationException("Customer return was not found.");
 		var result = await _transactions.ExecuteAsync(async (transaction, cancellationToken) =>
 		{
+			var shipment = await _shipments.GetByIdForUpdateAsync(transaction, shipmentId, cancellationToken) ?? throw new InvalidOperationException("Shipment was not found.");
 			var before = await _returns.GetByIdAsync(transaction, id, cancellationToken) ?? throw new InvalidOperationException("Customer return was not found.");
+			if (before.ShipmentId != shipment.Id || before.SalesOrderId != shipment.SalesOrderId || before.CustomerId != shipment.CustomerId) throw new InvalidOperationException("The customer return does not match its source shipment.");
 			if (before.Version != version) throw new ConcurrencyConflictException("customer return");
 			if (before.Status != CustomerReturnStatus.Draft) throw new InvalidOperationException("Only a draft customer return can be posted.");
+			if (shipment.Status != ShipmentStatus.Posted || shipment.ReversedAtUtc is not null) throw new InvalidOperationException("Only an unreversed posted shipment can be returned.");
+			if (before.Lines.Count == 0) throw new InvalidOperationException("A customer return requires at least one line.");
 			var validLineIds = before.Lines.Select(line => line.Id).ToHashSet();
 			if (trackingByLineId.Keys.Any(lineId => !validLineIds.Contains(lineId))) throw new InvalidOperationException("Tracking data references a line outside this customer return.");
+			var shipmentLines = shipment.Lines.ToDictionary(line => line.Id);
+			var postedQuantities = await _returns.GetPostedQuantitiesAsync(transaction, shipment.Id, cancellationToken);
+			foreach (var group in before.Lines.GroupBy(line => line.ShipmentLineId))
+			{
+				if (!shipmentLines.TryGetValue(group.Key, out var source) || group.Any(line => line.InventoryId != source.InventoryId || line.Quantity <= 0)) throw new InvalidOperationException("A customer-return line must reference its shipment inventory and a positive quantity.");
+				if (group.Sum(line => (long)line.Quantity) > source.Quantity - postedQuantities.GetValueOrDefault(source.Id)) throw new InvalidOperationException("Customer-return quantity exceeds the remaining shipped quantity.");
+			}
 			var postedAt = DateTime.UtcNow;
 			foreach (var line in before.Lines.OrderBy(line => line.Id))
 			{

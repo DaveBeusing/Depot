@@ -1,6 +1,6 @@
 # Finance Architecture
 
-Updated: 2026-09-25
+Updated: 2026-10-24
 
 ## Purpose
 
@@ -37,6 +37,14 @@ Pack hierarchy + capability/configuration/procedure registry
 ```
 
 The General Ledger remains the single accounting authority. Receivables, Payables, Inventory Accounting, Banking and Fixed Assets create or reconcile financial consequences through existing boundaries. Financial Reporting is read/reporting plus immutable snapshot persistence. Localization is metadata/control infrastructure and never posts accounting entries.
+
+### Journal reversal ownership
+
+The public `FinanceGeneralLedgerService.ReverseAsync` owns the standalone lifecycle of journals persisted as `FinanceJournalEntryKind.Manual`. It locks and reads the original journal, then enforces that ownership before resolving an existing reversal or changing accounting evidence. Standard journals, unknown source integrations and reversal entries cannot be reversed directly through this API, even by a caller with General Ledger reversal permission.
+
+Controlled profile posting always persists `FinanceJournalEntryKind.Standard`; callers cannot override the kind through `FinanceProfilePostingRequest`. Manual posting requires its separate permission, and the posting fingerprint includes both entry kind and source identity. A replay cannot reclassify an existing source journal or attach a manual journal as a controlled profile posting. Source labels remain business evidence rather than an allowlist of names that would invalidate existing manual journals.
+
+`ReverseInTransactionAsync` remains internal to the owning AR/AP, inventory and fixed-asset workflows. These services authorize the source operation and commit the GL counter-entry, reversal link, source status, allocations, balances and Audit evidence in one transaction. Failures roll back every mutation; rejected standalone attempts leave the source workflow available for a later authorized reversal.
 
 ## Finance capability boundaries
 

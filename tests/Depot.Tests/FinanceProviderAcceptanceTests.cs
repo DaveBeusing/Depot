@@ -136,9 +136,19 @@ public sealed class FinanceProviderAcceptanceTests
 			Assert.Equal(0m, (await service.GetOpenItemAsync(openItem.Id))!.RemainingAmount);
 			var retry = await service.PostPaymentAsync(paymentRequest);
 			Assert.Equal(payment.Id, retry.Id);
+			await AssertStandaloneReversalRejectedAsync(payment.JournalEntryId);
+			var retainedPayment = await new FinanceAccountsReceivableRepository(_database).GetPaymentAsync(payment.Id) ?? throw new InvalidOperationException("AR payment missing.");
+			Assert.False(retainedPayment.IsReversed);
+			Assert.Equal(payment.Version, retainedPayment.Version);
+			Assert.Null(retainedPayment.ReversalJournalEntryId);
+			var retainedOpenItem = await service.GetOpenItemAsync(openItem.Id) ?? throw new InvalidOperationException("AR open item missing.");
+			Assert.Equal(0m, retainedOpenItem.RemainingAmount);
 			var reversed = await service.ReversePaymentAsync(payment.Id, new FinanceReceivableReversalRequest { OperationId = Guid.NewGuid(), PostingDate = _postingDate, Reason = "Provider reversal" });
 			Assert.True(reversed.IsReversed);
 			Assert.Equal(120m, (await service.GetOpenItemAsync(openItem.Id))!.RemainingAmount);
+			var reversalJournal = await new FinanceGeneralLedgerRepository(_database).GetByIdAsync(reversed.ReversalJournalEntryId ?? throw new InvalidOperationException("AR reversal has no journal."))
+				?? throw new InvalidOperationException("AR reversal journal missing.");
+			Assert.Equal(payment.JournalEntryId, reversalJournal.ReversalOfEntryId);
 		}
 
 		public async Task VerifyPayablesAsync()
@@ -183,9 +193,20 @@ public sealed class FinanceProviderAcceptanceTests
 				Allocations = [new FinancePayableAllocationRequest(posted.OpenItemId!.Value, 120m)]
 			});
 			Assert.Equal(0m, (await poster.GetOpenItemAsync(posted.OpenItemId.Value))!.RemainingAmount);
+			await AssertStandaloneReversalRejectedAsync(payment.JournalEntryId);
+			var retainedPayment = await new FinanceAccountsPayableRepository(_database).GetPaymentAsync(payment.Id) ?? throw new InvalidOperationException("AP payment missing.");
+			Assert.False(retainedPayment.IsReversed);
+			Assert.Equal(payment.Version, retainedPayment.Version);
+			Assert.Null(retainedPayment.ReversalJournalEntryId);
+			var retainedOpenItem = await poster.GetOpenItemAsync(posted.OpenItemId ?? throw new InvalidOperationException("AP document has no open item."))
+				?? throw new InvalidOperationException("AP open item missing.");
+			Assert.Equal(0m, retainedOpenItem.RemainingAmount);
 			var reversed = await poster.ReversePaymentAsync(payment.Id, new FinancePayableReversalRequest { OperationId = Guid.NewGuid(), PostingDate = _postingDate, Reason = "Provider reversal" });
 			Assert.True(reversed.IsReversed);
 			Assert.Equal(120m, (await poster.GetOpenItemAsync(posted.OpenItemId.Value))!.RemainingAmount);
+			var reversalJournal = await new FinanceGeneralLedgerRepository(_database).GetByIdAsync(reversed.ReversalJournalEntryId ?? throw new InvalidOperationException("AP reversal has no journal."))
+				?? throw new InvalidOperationException("AP reversal journal missing.");
+			Assert.Equal(payment.JournalEntryId, reversalJournal.ReversalOfEntryId);
 
 			var poLineId = await CreatePurchaseOrderLineAsync();
 			var matchDraft = await creator.SaveDraftAsync(new FinanceSupplierDocumentDraft
@@ -243,7 +264,9 @@ public sealed class FinanceProviderAcceptanceTests
 			var authorization=Authorization(_userId,[ApplicationPermission.FinanceFixedAssetsView,ApplicationPermission.FinanceFixedAssetsConfigure,ApplicationPermission.FinanceFixedAssetsManage,ApplicationPermission.FinanceFixedAssetsDepreciationPost]);
 			var auditRepository=new AuditRepository(_database);var audit=new AuditService(auditRepository,authorization);var generalLedger=new FinanceGeneralLedgerService(_transactions,new FinanceGeneralLedgerRepository(_database),new FinancePostingProfileRepository(_database),auditRepository,audit,authorization);var service=new FinanceFixedAssetService(_transactions,new FinanceFixedAssetRepository(_database),generalLedger,auditRepository,audit,authorization);
 			var capitalization=await service.CapitalizeAsync(assetId,Guid.NewGuid(),_periodId,_postingDate);Assert.NotNull(capitalization.JournalEntryId);
+			await AssertStandaloneReversalRejectedAsync(capitalization.JournalEntryId ?? throw new InvalidOperationException("Asset capitalization has no journal."));
 			var impairment=await service.ImpairAsync(assetId,Guid.NewGuid(),_periodId,_postingDate,100m,"Provider impairment");Assert.NotNull(impairment.JournalEntryId);
+			await AssertStandaloneReversalRejectedAsync(impairment.JournalEntryId ?? throw new InvalidOperationException("Asset impairment has no journal."));
 			var correction=await service.CorrectImpairmentAsync(impairment.Id,Guid.NewGuid(),_periodId,_postingDate,"Provider correction");Assert.Equal(FinanceAssetTransactionKind.Correction,correction.Kind);
 			var reconciliation=Assert.Single((await service.SearchReconciliationAsync(_legalEntityId,1,20)).Items);Assert.Equal(1000m,reconciliation.SubledgerCarryingValue);Assert.Equal(reconciliation.SubledgerCarryingValue,reconciliation.GeneralLedgerCarryingValue);Assert.Equal(0m,reconciliation.Difference);
 		}
@@ -287,6 +310,25 @@ public sealed class FinanceProviderAcceptanceTests
 			Assert.Equal(123.456789123m, summary.TotalBudget);
 			Assert.Equal(123.456789123m, Assert.Single(summary.Periods).BudgetAmount);
 			Assert.NotNull(await repository.GetVersionAsync(versionId));
+		}
+
+		private async Task AssertStandaloneReversalRejectedAsync(long journalEntryId)
+		{
+			var journal = await new FinanceGeneralLedgerRepository(_database).GetByIdAsync(journalEntryId) ?? throw new InvalidOperationException("Source journal missing.");
+			Assert.Equal(FinanceJournalEntryKind.Standard, journal.EntryKind);
+			var entries = Scalar("SELECT COUNT(*) FROM FinanceJournalEntries;");
+			var audits = Scalar("SELECT COUNT(*) FROM AuditEntries;");
+			var sequence = Scalar("SELECT NextNumber FROM FinanceNumberSequences WHERE LegalEntityId=$Entity AND Code=$Code;",
+				new DatabaseParameter("$Entity", _legalEntityId.ToString("D")), new DatabaseParameter("$Code", _sequenceCode));
+			var service = CreateGeneralLedgerService(_userId, ApplicationPermission.FinanceGeneralLedgerReverse);
+
+			await Assert.ThrowsAsync<InvalidOperationException>(() => service.ReverseAsync(journalEntryId, Guid.NewGuid(), _periodId, _postingDate, _sequenceCode, "Standalone reversal must use the source workflow"));
+
+			Assert.Equal(entries, Scalar("SELECT COUNT(*) FROM FinanceJournalEntries;"));
+			Assert.Equal(audits, Scalar("SELECT COUNT(*) FROM AuditEntries;"));
+			Assert.Equal(sequence, Scalar("SELECT NextNumber FROM FinanceNumberSequences WHERE LegalEntityId=$Entity AND Code=$Code;",
+				new DatabaseParameter("$Entity", _legalEntityId.ToString("D")), new DatabaseParameter("$Code", _sequenceCode)));
+			Assert.Equal(0L, Scalar("SELECT COUNT(*) FROM FinanceJournalEntries WHERE ReversalOfEntryId=$Id;", new DatabaseParameter("$Id", journalEntryId)));
 		}
 
 		private FinanceGeneralLedgerService CreateGeneralLedgerService(long userId, params ApplicationPermission[] permissions)

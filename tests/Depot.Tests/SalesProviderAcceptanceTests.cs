@@ -146,7 +146,7 @@ public sealed class SalesProviderAcceptanceTests
 		BillingCountryCode = "DE"
 	};
 
-	private sealed class SalesFixture
+	internal sealed class SalesFixture
 	{
 		private readonly DatabaseAccess _data;
 		private SalesFixture(DatabaseAccess data, CustomerService customers, SalesOrderService orders, ShipmentService shipments, ShipmentPackingService packing, SalesInvoiceService invoices, long itemId, long inventoryId)
@@ -160,8 +160,9 @@ public sealed class SalesProviderAcceptanceTests
 		public SalesInvoiceService Invoices { get; }
 		public long ItemId { get; }
 		public long InventoryId { get; }
+		public DatabaseAccess Database => _data;
 
-		public static async Task<SalesFixture> CreateAsync(IDatabaseConnectionFactory factory)
+		public static async Task<SalesFixture> CreateAsync(IDatabaseConnectionFactory factory, Func<DatabaseAccess, IDatabaseTransactionRunner>? createTransactions = null)
 		{
 			var data = new DatabaseAccess(factory);
 			var authorization = new AuthorizationService();
@@ -192,7 +193,7 @@ public sealed class SalesProviderAcceptanceTests
 				new DatabaseParameter("$InventoryId", inventoryId), new DatabaseParameter("$Type", (int)StockMovementType.OpeningBalance), new DatabaseParameter("$Timestamp", DateTime.UtcNow.ToString("O")), new DatabaseParameter("$Reference", "Provider opening stock"));
 			var auditRepository = new AuditRepository(data);
 			var audit = new AuditService(auditRepository, authorization);
-			var runner = new DatabaseTransactionRunner(data);
+			var runner = createTransactions?.Invoke(data) ?? new DatabaseTransactionRunner(data);
 			var notifications = new NotificationService(runner, new NotificationRepository(data), authorization);
 			var customerRepository = new CustomerRepository(data);
 			var orderRepository = new SalesOrderRepository(data);
@@ -221,6 +222,24 @@ public sealed class SalesProviderAcceptanceTests
 			var picking = await Packing.SetStatusAsync(shipment.Id, shipment.Version, ShipmentPackingStatus.Picking);
 			var packed = await Packing.SetStatusAsync(picking.Id, picking.Version, ShipmentPackingStatus.Packed);
 			return await Shipments.PostAsync(packed.Id, packed.Version);
+		}
+
+		public async Task<Shipment> CreatePostedShipmentAsync(int quantity)
+		{
+			var customer = await Customers.SaveAsync(InvoiceCustomer($"Return Customer {Guid.NewGuid():N}"));
+			var draft = await Orders.SaveDraftAsync(new SalesOrder
+			{
+				CustomerId = customer.Id,
+				Lines = [new SalesOrderLine { ItemId = ItemId, Quantity = quantity, UnitPrice = 15m, TaxRate = 19m }]
+			});
+			var submitted = await Orders.SubmitAsync(draft.Id, draft.Version);
+			var approved = await Orders.ApproveAsync(submitted.Id, submitted.Version);
+			var reserved = await Orders.SetReservationsAsync(approved.Id, approved.Version,
+				[new SalesReservationRequest(approved.Lines[0].Id, InventoryId, quantity)]);
+			var released = await Orders.ReleaseAsync(reserved.Id, reserved.Version);
+			var reservation = Assert.Single(await Orders.GetReservationsAsync(released.Id), value => value.Status == InventoryReservationStatus.Active);
+			var shipment = await Shipments.CreateAsync(released.Id, [new ShipmentLineRequest(reservation.Id, quantity)]);
+			return await PackAndPostAsync(shipment);
 		}
 	}
 }

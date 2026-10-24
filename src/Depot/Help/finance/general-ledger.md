@@ -65,7 +65,11 @@ Posted journal entries are never edited or deleted by the F1 workflow.
 
 A correction creates a new linked reversal entry that swaps the original transaction debit/credit and reporting debit/credit amounts exactly. The original journal remains unchanged, preserves its source/currency/rate evidence, and cannot be reversed a second time.
 
-F2 payment and write-off reversals call this same controlled reversal boundary inside their AR transaction, so the subledger and GL correction commit or roll back together.
+Direct General Ledger reversal is available only for standalone manual journals. Profile-based and other standard journals belong to their source workflow, including journals from an unknown or newly introduced source. Correct these through the owning Accounts Receivable, Accounts Payable, Inventory Accounting, Banking or Fixed Assets workflow so the journal and its source records remain consistent. General Ledger reversal permission does not grant independent reversal of source-owned journals.
+
+The ownership check uses the original journal's persisted entry kind. A source label alone does not make a journal manual. Retrying a source posting as a manual journal is rejected because its accounting fingerprint includes the entry kind. Existing manual journals retain their original source labels and remain reversible; an identical manual reversal retry returns the existing correction without consuming another number.
+
+Payment, write-off, inventory and fixed-asset reversals use the internal GL reversal boundary inside their owning service transaction, so the subledger and GL correction commit or roll back together. A rejected direct reversal does not consume the source journal's reversal or prevent a subsequent correction through its source workflow.
 
 Both creation of the reversal entry and the reversal action on the original are written to the central Audit Log in the same database transaction.
 
