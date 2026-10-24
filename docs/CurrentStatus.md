@@ -8,9 +8,11 @@ Depot is on the `0.15.x-preview` development line. Finance includes the General 
 
 The 2026-10-23 audit and ranked correction queue are tracked in [issue #195](https://github.com/DaveBeusing/Depot/issues/195). The first correction batch restored complete logical database backups, enforced database-maintenance permissions and protected asynchronous stock posting. The second correction batch adds account revision checks during session admission, [role-editor selection consistency](development/RoleEditorConcurrency.md) and [complete database compatibility checks](development/DatabaseSchemaCompatibility.md) for Manager migration and rollback.
 
-The next correction batch protects the owning workflow when reversing financial and stock postings. Public General Ledger reversal accepts only standalone manual journals; source-owned entries must use their authoritative subledger correction. [Shipment and customer-return posting](development/ShipmentReturnIntegrity.md) share the source shipment lock, revalidate remaining quantities at posting, and prevent shipment reversal after any posted return. Competing or stale return drafts cannot credit the same shipped quantity twice.
+The third correction batch protects the owning workflow when reversing financial and stock postings. Public General Ledger reversal accepts only standalone manual journals; source-owned entries must use their authoritative subledger correction. [Shipment and customer-return posting](development/ShipmentReturnIntegrity.md) share the source shipment lock, revalidate remaining quantities at posting, and prevent shipment reversal after any posted return. Competing or stale return drafts cannot credit the same shipped quantity twice.
 
-These corrections preserve the existing product-version boundary and database schema baselines. Release readiness still depends on the remaining audit findings and the exact-source validation and deployment acceptance requirements below. Historical completion statements describe their original review scope and do not supersede the current audit backlog.
+The fourth correction batch accumulates split-shipment quantities per order line, makes [service-parts posting](development/ServicePartPosting.md) atomic and replay-safe, and binds each return to the remaining original consumption. Production component corrections preserve their owning order and production issues respect active sales reservations under the same inventory lock used for posting.
+
+The product-version boundary remains unchanged. Service Management advances to feature schema **2** for durable operation and consumption links; the other schema baselines remain unchanged. Release readiness still depends on the remaining audit findings and the exact-source validation and deployment acceptance requirements below. Historical completion statements describe their original review scope and do not supersede the current audit backlog.
 
 ## Subscription and recurring billing
 
@@ -20,9 +22,9 @@ The Sales workspace includes subscription contract management, due billing, gene
 
 ## Service management
 
-Service Management feature schema **1** adds provider-neutral customer Service Cases and optional Service Orders with controlled lifecycle, ownership, due/overdue projection, work and parts evidence, completion evidence and optional idempotent Sales Invoice draft generation.
+Service Management provides provider-neutral customer Service Cases and optional Service Orders with controlled lifecycle, ownership, due/overdue projection, work and parts evidence, completion evidence and optional idempotent Sales Invoice draft generation.
 
-Parts consumption and returns remain under the existing stock-movement authority, generic customer interactions remain CRM Activity responsibilities, and billing remains under the existing Sales Invoice authority. The Service workspace integrates Business Attachments, My Work and contextual Help without introducing field routing, GPS tracking, payroll/timekeeping, warranty accounting or automatic invoice posting.
+Feature schema **2** retains durable parts-operation identities and concrete original-consumption links. Parts consumption and returns commit with service evidence and order state under the existing stock-movement authority, generic customer interactions remain CRM Activity responsibilities, and billing remains under the existing Sales Invoice authority. The Service workspace integrates Business Attachments, My Work and contextual Help without introducing field routing, GPS tracking, payroll/timekeeping, warranty accounting or automatic invoice posting.
 
 ## Light assembly and production
 

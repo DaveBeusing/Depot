@@ -79,6 +79,16 @@ internal sealed class ProcurementTestContext : IAsyncDisposable
 		return await CreateAsync(connectionFactory, null, true);
 	}
 
+	public static async Task<ProcurementTestContext> CreateProviderAcceptanceAsync(
+		IDatabaseConnectionFactory connectionFactory,
+		IDatabaseConnectionFactory? executionFactory = null)
+	{
+		DatabaseProvisioningService.Initialize(connectionFactory);
+		// Provider acceptance owns the disposable database. Keep unique workflow evidence
+		// for later recovery checks instead of applying procurement-only row cleanup.
+		return await CreateAsync(executionFactory ?? connectionFactory, null, false);
+	}
+
 	public PurchaseOrder NewOrder(
 		int quantity = 10,
 		decimal unitPrice = 12.50m,
