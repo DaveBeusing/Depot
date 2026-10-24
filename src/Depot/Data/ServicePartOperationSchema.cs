@@ -31,7 +31,11 @@ internal static class ServicePartOperationSchema
 				INNER JOIN sys.columns columnInfo ON columnInfo.object_id=indexColumn.object_id AND columnInfo.column_id=indexColumn.column_id
 				WHERE constraintInfo.parent_object_id=OBJECT_ID(N'ServiceOrders') AND constraintInfo.type=N'UQ' AND columnInfo.name=N'SalesInvoiceId'
 				AND (SELECT COUNT(*) FROM sys.index_columns keys WHERE keys.object_id=constraintInfo.parent_object_id AND keys.index_id=constraintInfo.unique_index_id AND keys.key_ordinal>0)=1;
-				IF @invoiceConstraint IS NOT NULL EXEC(N'ALTER TABLE ServiceOrders DROP CONSTRAINT '+QUOTENAME(@invoiceConstraint));
+				IF @invoiceConstraint IS NOT NULL
+				BEGIN
+					DECLARE @dropInvoiceConstraint nvarchar(max)=N'ALTER TABLE ServiceOrders DROP CONSTRAINT '+QUOTENAME(@invoiceConstraint);
+					EXEC sys.sp_executesql @dropInvoiceConstraint;
+				END;
 				IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name=N'UX_ServiceOrders_Invoice' AND object_id=OBJECT_ID(N'ServiceOrders'))
 					CREATE UNIQUE INDEX UX_ServiceOrders_Invoice ON ServiceOrders(SalesInvoiceId) WHERE SalesInvoiceId IS NOT NULL;
 				IF OBJECT_ID(N'ServicePartOperations',N'U') IS NULL CREATE TABLE ServicePartOperations (
