@@ -239,11 +239,11 @@ public sealed class FinanceGeneralLedgerService
 		_authorization.RequirePermission(ApplicationPermission.FinanceGeneralLedgerReverse);
 		var user = RequireUser();
 		return await _transactions.ExecuteAsync(
-			(transaction, token) => ReverseInTransactionAsync(transaction, originalEntryId, operationId, accountingPeriodId, postingDate, numberSequenceCode, reason, user.Id, token),
+			(transaction, token) => ReverseCoreAsync(transaction, originalEntryId, operationId, accountingPeriodId, postingDate, numberSequenceCode, reason, user.Id, requireManualJournal: true, token),
 			cancellationToken);
 	}
 
-	internal async Task<FinanceJournalEntry> ReverseInTransactionAsync(
+	internal Task<FinanceJournalEntry> ReverseInTransactionAsync(
 		DatabaseTransactionContext transaction,
 		long originalEntryId,
 		Guid operationId,
@@ -252,6 +252,19 @@ public sealed class FinanceGeneralLedgerService
 		string numberSequenceCode,
 		string reason,
 		long postedByUserId,
+		CancellationToken cancellationToken) =>
+		ReverseCoreAsync(transaction, originalEntryId, operationId, accountingPeriodId, postingDate, numberSequenceCode, reason, postedByUserId, requireManualJournal: false, cancellationToken);
+
+	private async Task<FinanceJournalEntry> ReverseCoreAsync(
+		DatabaseTransactionContext transaction,
+		long originalEntryId,
+		Guid operationId,
+		Guid accountingPeriodId,
+		DateOnly postingDate,
+		string numberSequenceCode,
+		string reason,
+		long postedByUserId,
+		bool requireManualJournal,
 		CancellationToken cancellationToken)
 	{
 		if (originalEntryId <= 0) throw new ArgumentOutOfRangeException(nameof(originalEntryId));
@@ -261,6 +274,10 @@ public sealed class FinanceGeneralLedgerService
 		var normalizedReason = Required(reason, nameof(reason), 500);
 
 		var original = await _ledger.LockEntryAsync(transaction, originalEntryId, cancellationToken) ?? throw new InvalidOperationException("Journal entry was not found.");
+		// Only explicitly manual entries have a standalone GL lifecycle. Profile postings
+		// belong to their source workflow, including sources introduced by future integrations.
+		if (requireManualJournal && original.EntryKind != FinanceJournalEntryKind.Manual)
+			throw new InvalidOperationException("Only standalone manual journals can be reversed directly. Reverse this journal through its source workflow.");
 		if (original.EntryKind == FinanceJournalEntryKind.Reversal) throw new InvalidOperationException("A reversal entry cannot itself be reversed. Reverse the original business correction through an explicit new workflow.");
 		var existingReversalId = await _ledger.GetReversalEntryIdAsync(transaction, originalEntryId, cancellationToken);
 		if (existingReversalId.HasValue)
