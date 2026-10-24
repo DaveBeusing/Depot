@@ -90,6 +90,191 @@ public sealed class SalesWorkflowIntegrationTests : IAsyncLifetime
 		Assert.Equal(0, order.Lines[0].ShippedQuantity);
 	}
 
+	[Theory]
+	[InlineData(false)]
+	[InlineData(true)]
+	public async Task SplitShipmentAccumulatesEveryReservationAndRestoresEveryOrderLine(bool mixedOrderLines)
+	{
+		var fixture = Fixture;
+		var scenario = await fixture.CreateSplitOrderAsync(mixedOrderLines);
+		var shipment = await fixture.CreateSplitShipmentAsync(scenario, 4, 6);
+		var posted = await fixture.PackAndPostAsync(shipment);
+		var shipped = await fixture.Orders.GetByIdAsync(scenario.Order.Id) ?? throw new InvalidOperationException("Sales order missing.");
+
+		Assert.Equal(SalesOrderStatus.Shipped, shipped.Status);
+		foreach (var line in shipped.Lines)
+		{
+			Assert.Equal(line.Quantity, line.ShippedQuantity);
+			Assert.Equal(0, line.ReservedQuantity);
+			Assert.Equal(0, line.BackorderedQuantity);
+			Assert.Equal(0, line.InvoicedQuantity);
+			Assert.Equal(scenario.Order.Lines.Single(source => source.Id == line.Id).Version + 1, line.Version);
+		}
+		Assert.Equal(mixedOrderLines ? 13L : 16L, await fixture.CurrentStockAsync());
+		Assert.Equal(14L, await fixture.CurrentStockAsync(scenario.SecondInventoryId));
+		Assert.All(await fixture.Orders.GetReservationsAsync(shipped.Id), reservation => Assert.Equal(InventoryReservationStatus.Consumed, reservation.Status));
+
+		var reversed = await fixture.Shipments.ReverseAsync(posted.Id, posted.Version, "Reverse split shipment");
+		var restored = await fixture.Orders.GetByIdAsync(shipped.Id) ?? throw new InvalidOperationException("Sales order missing.");
+		Assert.Equal(ShipmentStatus.Cancelled, reversed.Status);
+		Assert.Equal(SalesOrderStatus.Released, restored.Status);
+		Assert.Equal(20L, await fixture.CurrentStockAsync());
+		Assert.Equal(20L, await fixture.CurrentStockAsync(scenario.SecondInventoryId));
+		foreach (var line in restored.Lines)
+		{
+			Assert.Equal(line.Quantity, line.ReservedQuantity);
+			Assert.Equal(0, line.ShippedQuantity);
+			Assert.Equal(0, line.InvoicedQuantity);
+			Assert.Equal(scenario.Order.Lines.Single(source => source.Id == line.Id).Version + 2, line.Version);
+		}
+		var active = (await fixture.Orders.GetReservationsAsync(restored.Id)).Where(reservation => reservation.Status == InventoryReservationStatus.Active).ToArray();
+		Assert.Equal(scenario.Reservations.Count, active.Length);
+		foreach (var original in scenario.Reservations)
+			Assert.Equal(original.Quantity, Assert.Single(active, reservation => reservation.SalesOrderLineId == original.SalesOrderLineId && reservation.InventoryId == original.InventoryId).Quantity);
+	}
+
+	[Fact]
+	public async Task PartialSplitShipmentReversalMergesActiveReservationsAndPreservesPendingDraft()
+	{
+		var fixture = Fixture;
+		var scenario = await fixture.CreateSplitOrderAsync();
+		var first = await fixture.CreateSplitShipmentAsync(scenario, 2, 3);
+		var pending = await fixture.PackAsync(await fixture.CreateSplitShipmentAsync(scenario, 2, 3));
+		var posted = await fixture.PackAndPostAsync(first);
+		var partlyShipped = await fixture.Orders.GetByIdAsync(scenario.Order.Id) ?? throw new InvalidOperationException("Sales order missing.");
+		Assert.Equal(5, partlyShipped.Lines[0].ReservedQuantity);
+		Assert.Equal(5, partlyShipped.Lines[0].ShippedQuantity);
+
+		await fixture.Shipments.ReverseAsync(posted.Id, posted.Version, "Restore the partial split");
+		var active = (await fixture.Orders.GetReservationsAsync(scenario.Order.Id)).Where(reservation => reservation.Status == InventoryReservationStatus.Active).ToArray();
+		Assert.Equal(2, active.Length);
+		foreach (var original in scenario.Reservations)
+			Assert.Equal(original.Quantity, Assert.Single(active, reservation => reservation.Id == original.Id).Quantity);
+
+		await fixture.Shipments.PostAsync(pending.Id, pending.Version);
+		var after = await fixture.Orders.GetByIdAsync(scenario.Order.Id) ?? throw new InvalidOperationException("Sales order missing.");
+		Assert.Equal(SalesOrderStatus.PartiallyShipped, after.Status);
+		Assert.Equal(5, after.Lines[0].ReservedQuantity);
+		Assert.Equal(5, after.Lines[0].ShippedQuantity);
+		Assert.Equal(18L, await fixture.CurrentStockAsync());
+		Assert.Equal(17L, await fixture.CurrentStockAsync(scenario.SecondInventoryId));
+	}
+
+	[Fact]
+	public async Task PreexistingSplitShipmentDraftCannotExceedTheRemainingReservedQuantity()
+	{
+		var fixture = Fixture;
+		var scenario = await fixture.CreateSplitOrderAsync();
+		var first = await fixture.CreateSplitShipmentAsync(scenario, 2, 3);
+		var stale = await fixture.PackAsync(await fixture.CreateSplitShipmentAsync(scenario, 4, 6));
+		await fixture.PackAndPostAsync(first);
+		var before = await fixture.PersistenceSnapshotAsync();
+
+		await Assert.ThrowsAsync<InvalidOperationException>(() => fixture.Shipments.PostAsync(stale.Id, stale.Version));
+
+		Assert.Equal(before, await fixture.PersistenceSnapshotAsync());
+		var retained = await fixture.Shipments.GetByIdAsync(stale.Id) ?? throw new InvalidOperationException("Shipment missing.");
+		Assert.Equal(ShipmentStatus.Draft, retained.Status);
+		Assert.Equal(stale.Version, retained.Version);
+	}
+
+	[Theory]
+	[InlineData(false)]
+	[InlineData(true)]
+	public async Task FailedSplitShipmentAuditRollsBackEveryMovementReservationAndCounter(bool reversing)
+	{
+		var fixture = Fixture;
+		var scenario = await fixture.CreateSplitOrderAsync(mixedOrderLines: true);
+		var shipment = await fixture.PackAsync(await fixture.CreateSplitShipmentAsync(scenario, 4, 6));
+		if (reversing) shipment = await fixture.Shipments.PostAsync(shipment.Id, shipment.Version);
+		await fixture.SetRejectShipmentAuditAsync(true);
+		var before = await fixture.PersistenceSnapshotAsync();
+		Func<Task<Shipment>> operation = reversing
+			? () => fixture.Shipments.ReverseAsync(shipment.Id, shipment.Version, "Rollback split reversal")
+			: () => fixture.Shipments.PostAsync(shipment.Id, shipment.Version);
+
+		await Assert.ThrowsAsync<SqliteException>(operation);
+		Assert.Equal(before, await fixture.PersistenceSnapshotAsync());
+
+		await fixture.SetRejectShipmentAuditAsync(false);
+		await operation();
+		var after = await fixture.Orders.GetByIdAsync(scenario.Order.Id) ?? throw new InvalidOperationException("Sales order missing.");
+		Assert.Equal(reversing ? SalesOrderStatus.Released : SalesOrderStatus.Shipped, after.Status);
+		foreach (var line in after.Lines)
+		{
+			Assert.Equal(reversing ? line.Quantity : 0, line.ReservedQuantity);
+			Assert.Equal(reversing ? 0 : line.Quantity, line.ShippedQuantity);
+			Assert.Equal(scenario.Order.Lines.Single(source => source.Id == line.Id).Version + (reversing ? 2 : 1), line.Version);
+		}
+		Assert.Equal(reversing ? 20L : 13L, await fixture.CurrentStockAsync());
+		Assert.Equal(reversing ? 20L : 14L, await fixture.CurrentStockAsync(scenario.SecondInventoryId));
+	}
+
+	[Fact]
+	public async Task ConcurrentSplitShipmentsAndReversalsPreserveCumulativeOrderQuantities()
+	{
+		var fixture = Fixture;
+		var scenario = await fixture.CreateSplitOrderAsync();
+		var first = await fixture.PackAsync(await fixture.CreateSplitShipmentAsync(scenario, 2, 3));
+		var second = await fixture.PackAsync(await fixture.CreateSplitShipmentAsync(scenario, 2, 3));
+
+		Assert.Null(await fixture.RunCompetingWritesAsync(
+			() => fixture.Shipments.PostAsync(first.Id, first.Version),
+			() => fixture.Shipments.PostAsync(second.Id, second.Version)));
+
+		var shipped = await fixture.Orders.GetByIdAsync(scenario.Order.Id) ?? throw new InvalidOperationException("Sales order missing.");
+		Assert.Equal(SalesOrderStatus.Shipped, shipped.Status);
+		Assert.Equal(0, shipped.Lines[0].ReservedQuantity);
+		Assert.Equal(10, shipped.Lines[0].ShippedQuantity);
+		Assert.Equal(scenario.Order.Lines[0].Version + 2, shipped.Lines[0].Version);
+		Assert.Equal(16L, await fixture.CurrentStockAsync());
+		Assert.Equal(14L, await fixture.CurrentStockAsync(scenario.SecondInventoryId));
+		first = await fixture.Shipments.GetByIdAsync(first.Id) ?? throw new InvalidOperationException("First shipment missing.");
+		second = await fixture.Shipments.GetByIdAsync(second.Id) ?? throw new InvalidOperationException("Second shipment missing.");
+
+		Assert.Null(await fixture.RunCompetingWritesAsync(
+			() => fixture.Shipments.ReverseAsync(first.Id, first.Version, "First split reversal"),
+			() => fixture.Shipments.ReverseAsync(second.Id, second.Version, "Second split reversal")));
+
+		var restored = await fixture.Orders.GetByIdAsync(scenario.Order.Id) ?? throw new InvalidOperationException("Sales order missing.");
+		Assert.Equal(SalesOrderStatus.Released, restored.Status);
+		Assert.Equal(10, restored.Lines[0].ReservedQuantity);
+		Assert.Equal(0, restored.Lines[0].ShippedQuantity);
+		Assert.Equal(scenario.Order.Lines[0].Version + 4, restored.Lines[0].Version);
+		Assert.Equal(20L, await fixture.CurrentStockAsync());
+		Assert.Equal(20L, await fixture.CurrentStockAsync(scenario.SecondInventoryId));
+		var active = (await fixture.Orders.GetReservationsAsync(restored.Id)).Where(reservation => reservation.Status == InventoryReservationStatus.Active).ToArray();
+		Assert.Equal(2, active.Length);
+		Assert.Equal(4, Assert.Single(active, reservation => reservation.InventoryId == fixture.InventoryId).Quantity);
+		Assert.Equal(6, Assert.Single(active, reservation => reservation.InventoryId == scenario.SecondInventoryId).Quantity);
+	}
+
+	[Theory]
+	[InlineData(false)]
+	[InlineData(true)]
+	public async Task ConcurrentSplitPostingAndReversalKeepTheOtherShipmentContribution(bool reversalFirst)
+	{
+		var fixture = Fixture;
+		var scenario = await fixture.CreateSplitOrderAsync();
+		var first = await fixture.PackAndPostAsync(await fixture.CreateSplitShipmentAsync(scenario, 2, 3));
+		var second = await fixture.PackAsync(await fixture.CreateSplitShipmentAsync(scenario, 2, 3));
+		Func<Task> post = () => fixture.Shipments.PostAsync(second.Id, second.Version);
+		Func<Task> reverse = () => fixture.Shipments.ReverseAsync(first.Id, first.Version, "Overlapping split correction");
+
+		Assert.Null(await fixture.RunCompetingWritesAsync(reversalFirst ? reverse : post, reversalFirst ? post : reverse));
+
+		var after = await fixture.Orders.GetByIdAsync(scenario.Order.Id) ?? throw new InvalidOperationException("Sales order missing.");
+		Assert.Equal(SalesOrderStatus.PartiallyShipped, after.Status);
+		Assert.Equal(5, after.Lines[0].ReservedQuantity);
+		Assert.Equal(5, after.Lines[0].ShippedQuantity);
+		Assert.Equal(18L, await fixture.CurrentStockAsync());
+		Assert.Equal(17L, await fixture.CurrentStockAsync(scenario.SecondInventoryId));
+		var active = (await fixture.Orders.GetReservationsAsync(after.Id)).Where(reservation => reservation.Status == InventoryReservationStatus.Active).ToArray();
+		Assert.Equal(2, active.Length);
+		Assert.Equal(2, Assert.Single(active, reservation => reservation.InventoryId == fixture.InventoryId).Quantity);
+		Assert.Equal(3, Assert.Single(active, reservation => reservation.InventoryId == scenario.SecondInventoryId).Quantity);
+	}
+
 	[Fact]
 	public async Task CustomerReturnCannotExceedShippedQuantity()
 	{
@@ -298,6 +483,8 @@ public sealed class SalesWorkflowIntegrationTests : IAsyncLifetime
 		BillingCountryCode = "DE"
 	};
 
+	private sealed record SplitShipmentScenario(SalesOrder Order, long SecondInventoryId, IReadOnlyList<InventoryReservation> Reservations);
+
 	private sealed class SalesFixture
 	{
 		private readonly DatabaseAccess _data;
@@ -365,12 +552,16 @@ public sealed class SalesWorkflowIntegrationTests : IAsyncLifetime
 			return new SalesFixture(data, runner, customers, orders, shipments, packing, invoices, itemId, inventoryId);
 		}
 
-		public async Task<long> CurrentStockAsync() => Convert.ToInt64(await _data.ExecuteScalarAsync("SELECT COALESCE(SUM(Quantity),0) FROM StockMovements WHERE InventoryId=$InventoryId;", CancellationToken.None, new DatabaseParameter("$InventoryId", InventoryId)));
+		public Task<long> CurrentStockAsync() => CurrentStockAsync(InventoryId);
+		public async Task<long> CurrentStockAsync(long inventoryId) => Convert.ToInt64(await _data.ExecuteScalarAsync("SELECT COALESCE(SUM(Quantity),0) FROM StockMovements WHERE InventoryId=$InventoryId;", CancellationToken.None, new DatabaseParameter("$InventoryId", inventoryId)));
 		public async Task<long> CountReturnMovementsAsync() => Convert.ToInt64(await _data.ExecuteScalarAsync("SELECT COUNT(*) FROM StockMovements WHERE InventoryId=$InventoryId AND MovementType=$Type;", CancellationToken.None, new DatabaseParameter("$InventoryId", InventoryId), new DatabaseParameter("$Type", (int)StockMovementType.CustomerReturn)));
 		public Task SetReturnQuantityAsync(long lineId, int quantity) => _data.ExecuteAsync("UPDATE CustomerReturnLines SET Quantity=$Quantity WHERE Id=$Id;", CancellationToken.None, new DatabaseParameter("$Quantity", quantity), new DatabaseParameter("$Id", lineId));
 		public Task SetRejectReturnAuditAsync(bool reject) => _data.ExecuteAsync(reject
 			? "CREATE TRIGGER RejectCustomerReturnAudit BEFORE INSERT ON AuditEntries WHEN NEW.EntityType='CustomerReturn' BEGIN SELECT RAISE(ABORT, 'return audit rejected'); END;"
 			: "DROP TRIGGER RejectCustomerReturnAudit;", CancellationToken.None);
+		public Task SetRejectShipmentAuditAsync(bool reject) => _data.ExecuteAsync(reject
+			? "CREATE TRIGGER RejectShipmentAudit BEFORE INSERT ON AuditEntries WHEN NEW.EntityType='Shipment' BEGIN SELECT RAISE(ABORT, 'shipment audit rejected'); END;"
+			: "DROP TRIGGER RejectShipmentAudit;", CancellationToken.None);
 		public async Task<string> PersistenceSnapshotAsync()
 		{
 			var tables = new Dictionary<string, IReadOnlyList<object?[]>>();
@@ -410,12 +601,45 @@ public sealed class SalesWorkflowIntegrationTests : IAsyncLifetime
 			if (secondTask is null) throw new InvalidOperationException("The competing write did not start.");
 			return secondFailure;
 		}
-		public async Task<Shipment> PackAndPostAsync(Shipment shipment)
+		public async Task<Shipment> PackAsync(Shipment shipment)
 		{
 			var picking = await Packing.SetStatusAsync(shipment.Id, shipment.Version, ShipmentPackingStatus.Picking);
-			var packed = await Packing.SetStatusAsync(picking.Id, picking.Version, ShipmentPackingStatus.Packed);
+			return await Packing.SetStatusAsync(picking.Id, picking.Version, ShipmentPackingStatus.Packed);
+		}
+		public async Task<Shipment> PackAndPostAsync(Shipment shipment)
+		{
+			var packed = await PackAsync(shipment);
 			return await Shipments.PostAsync(packed.Id, packed.Version);
 		}
+		public async Task<SplitShipmentScenario> CreateSplitOrderAsync(bool mixedOrderLines = false)
+		{
+			var warehouseId = Convert.ToInt64(await _data.ExecuteScalarAsync("SELECT sl.WarehouseId FROM StorageLocations sl INNER JOIN Inventories inv ON inv.StorageLocationId=sl.Id WHERE inv.Id=$Id;", CancellationToken.None, new DatabaseParameter("$Id", InventoryId)));
+			var purposeId = Convert.ToInt64(await _data.ExecuteScalarAsync("SELECT PurposeId FROM Inventories WHERE Id=$Id;", CancellationToken.None, new DatabaseParameter("$Id", InventoryId)));
+			var locationId = await _data.InsertAsync("INSERT INTO StorageLocations (WarehouseId,Name,Description,IsActive) VALUES ($WarehouseId,$Name,'Split shipment bin',1);", CancellationToken.None,
+				new DatabaseParameter("$WarehouseId", warehouseId), new DatabaseParameter("$Name", $"Split-{Guid.NewGuid():N}"));
+			var secondInventoryId = await _data.InsertAsync("INSERT INTO Inventories (ItemId,PurposeId,StorageLocationId,IsActive) VALUES ($ItemId,$PurposeId,$LocationId,1);", CancellationToken.None,
+				new DatabaseParameter("$ItemId", ItemId), new DatabaseParameter("$PurposeId", purposeId), new DatabaseParameter("$LocationId", locationId));
+			await _data.InsertAsync("INSERT INTO StockMovements (InventoryId,MovementType,TimestampUtc,Quantity,UnitPrice,Reference) VALUES ($InventoryId,$Type,$Timestamp,20,0,'Split shipment opening stock');", CancellationToken.None,
+				new DatabaseParameter("$InventoryId", secondInventoryId), new DatabaseParameter("$Type", (int)StockMovementType.OpeningBalance), new DatabaseParameter("$Timestamp", DateTime.UtcNow.ToString("O")));
+			var customer = await Customers.SaveAsync(InvoiceCustomer($"Split Customer {Guid.NewGuid():N}"));
+			int[] quantities = mixedOrderLines ? [10, 3] : [10];
+			var draft = await Orders.SaveDraftAsync(new SalesOrder { CustomerId = customer.Id, Lines = quantities.Select(quantity => new SalesOrderLine { ItemId = ItemId, Quantity = quantity, UnitPrice = 15m, TaxRate = 19m }).ToArray() });
+			var submitted = await Orders.SubmitAsync(draft.Id, draft.Version);
+			var approved = await Orders.ApproveAsync(submitted.Id, submitted.Version);
+			var requests = new List<SalesReservationRequest>
+			{
+				new(approved.Lines[0].Id, InventoryId, 4),
+				new(approved.Lines[0].Id, secondInventoryId, 6)
+			};
+			if (mixedOrderLines) requests.Add(new(approved.Lines[1].Id, InventoryId, 3));
+			var reserved = await Orders.SetReservationsAsync(approved.Id, approved.Version, requests);
+			var released = await Orders.ReleaseAsync(reserved.Id, reserved.Version);
+			var reservations = (await Orders.GetReservationsAsync(released.Id)).Where(reservation => reservation.Status == InventoryReservationStatus.Active).ToArray();
+			return new SplitShipmentScenario(released, secondInventoryId, reservations);
+		}
+		public Task<Shipment> CreateSplitShipmentAsync(SplitShipmentScenario scenario, int firstQuantity, int secondQuantity) =>
+			Shipments.CreateAsync(scenario.Order.Id, scenario.Reservations.Select(reservation => new ShipmentLineRequest(reservation.Id,
+				reservation.SalesOrderLineId != scenario.Order.Lines[0].Id ? reservation.Quantity : reservation.InventoryId == InventoryId ? firstQuantity : secondQuantity)).ToArray());
 		public async Task<Shipment> CreatePostedShipmentAsync(params int[] quantities)
 		{
 			var customer = await Customers.SaveAsync(InvoiceCustomer($"Shipment Customer {Guid.NewGuid():N}"));

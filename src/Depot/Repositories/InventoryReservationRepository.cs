@@ -38,6 +38,20 @@ public sealed class InventoryReservationRepository : DatabaseRepository
 		await tx.Session.InsertAsync("INSERT INTO InventoryReservations (SalesOrderLineId,InventoryId,Quantity,Status,CreatedAtUtc,CreatedByUserId) VALUES ($SalesOrderLineId,$InventoryId,$Quantity,$Status,$CreatedAtUtc,$CreatedByUserId);", token,
 			Parameter("$SalesOrderLineId", reservation.SalesOrderLineId), Parameter("$InventoryId", reservation.InventoryId), Parameter("$Quantity", reservation.Quantity), Parameter("$Status", (int)reservation.Status), Parameter("$CreatedAtUtc", reservation.CreatedAtUtc.ToUniversalTime().ToString("O", CultureInfo.InvariantCulture)), Parameter("$CreatedByUserId", reservation.CreatedByUserId));
 
+	public async Task<long> RestoreAsync(DatabaseTransactionContext tx, InventoryReservation reservation, CancellationToken token)
+	{
+		var active = await tx.Session.QueryAsync("SELECT Id,Quantity,Version FROM InventoryReservations WHERE SalesOrderLineId=$LineId AND InventoryId=$InventoryId AND Status=$Active;",
+			r => new { Id = r.GetInt64(0), Quantity = r.GetInt32(1), Version = r.GetInt64(2) }, token,
+			Parameter("$LineId", reservation.SalesOrderLineId), Parameter("$InventoryId", reservation.InventoryId), Parameter("$Active", (int)InventoryReservationStatus.Active));
+		if (active.Count == 0) return await CreateAsync(tx, reservation, token);
+		var existing = active.Single();
+		var quantity = checked(existing.Quantity + reservation.Quantity);
+		var updated = await tx.Session.ExecuteAsync("UPDATE InventoryReservations SET Quantity=$Quantity,Version=Version+1 WHERE Id=$Id AND Version=$Version AND Status=$Active;", token,
+			Parameter("$Quantity", quantity), Parameter("$Id", existing.Id), Parameter("$Version", existing.Version), Parameter("$Active", (int)InventoryReservationStatus.Active));
+		if (updated != 1) throw new Services.ConcurrencyConflictException("inventory reservation");
+		return existing.Id;
+	}
+
 	public async Task ReleaseOrderAsync(DatabaseTransactionContext tx, long salesOrderId, long userId, CancellationToken token) =>
 		await tx.Session.ExecuteAsync("UPDATE InventoryReservations SET Status=$Released,ReleasedAtUtc=$ReleasedAtUtc,ReleasedByUserId=$UserId,Version=Version+1 WHERE Status=$Active AND SalesOrderLineId IN (SELECT Id FROM SalesOrderLines WHERE SalesOrderId=$OrderId);", token,
 			Parameter("$Released", (int)InventoryReservationStatus.Released), Parameter("$ReleasedAtUtc", DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture)), Parameter("$UserId", userId), Parameter("$Active", (int)InventoryReservationStatus.Active), Parameter("$OrderId", salesOrderId));

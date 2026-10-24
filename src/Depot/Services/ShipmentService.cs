@@ -118,24 +118,31 @@ public sealed class ShipmentService
 		var user = RequireUser();
 		var result = await _transactions.ExecuteAsync(async (transaction, token) =>
 		{
-			var before = await _shipments.GetByIdAsync(transaction, id, token) ?? throw new InvalidOperationException("Shipment was not found.");
+			var before = await _shipments.GetByIdForUpdateAsync(transaction, id, token) ?? throw new InvalidOperationException("Shipment was not found.");
 			if (before.Version != version) throw new ConcurrencyConflictException("shipment");
 			if (before.Status != ShipmentStatus.Draft) throw new InvalidOperationException("Only a draft shipment can be posted.");
 			if (before.PackingStatus != ShipmentPackingStatus.Packed) throw new InvalidOperationException("Only a packed shipment can be posted.");
 			if (before.Lines.Count == 0) throw new InvalidOperationException("A shipment requires at least one line.");
 			var validLineIds = before.Lines.Select(line => line.Id).ToHashSet();
 			if (trackingByLineId.Keys.Any(lineId => !validLineIds.Contains(lineId))) throw new InvalidOperationException("Tracking data references a line outside this shipment.");
-			var order = await _orders.GetByIdAsync(transaction, before.SalesOrderId, token) ?? throw new InvalidOperationException("Sales order was not found.");
+			var order = await _orders.GetByIdForUpdateAsync(transaction, before.SalesOrderId, token) ?? throw new InvalidOperationException("Sales order was not found.");
 			if (order.Status is not (SalesOrderStatus.Released or SalesOrderStatus.PartiallyShipped)) throw new InvalidOperationException("The sales order is not available for shipping.");
+			var quantityChanges = PrepareLineQuantityChanges(order, before.Lines, reversing: false);
 			var inventoryIds = before.Lines.Select(line => line.InventoryId).Distinct().OrderBy(value => value).ToArray();
 			await _inventories.GetByIdsForUpdateAsync(transaction, inventoryIds, token);
+			var activeReservations = (await _reservations.ListActiveByOrderAsync(transaction, order.Id, token)).ToDictionary(value => value.Id);
+			foreach (var group in before.Lines.GroupBy(line => line.InventoryReservationId))
+			{
+				if (!activeReservations.TryGetValue(group.Key, out var reservation)
+					|| group.Any(line => line.SalesOrderLineId != reservation.SalesOrderLineId || line.InventoryId != reservation.InventoryId)
+					|| group.Sum(line => (long)line.Quantity) > reservation.Quantity)
+					throw new InvalidOperationException("The shipment exceeds or no longer matches its active inventory reservations.");
+			}
 			var current = (await _movements.GetCurrentQuantitiesAsync(transaction, inventoryIds, token)).ToDictionary(value => value.InventoryId, value => value.Quantity);
-			foreach (var group in before.Lines.GroupBy(line => line.InventoryId)) if (current.GetValueOrDefault(group.Key) < group.Sum(line => line.Quantity)) throw new InsufficientStockException();
+			foreach (var group in before.Lines.GroupBy(line => line.InventoryId)) if (current.GetValueOrDefault(group.Key) < group.Sum(line => (long)line.Quantity)) throw new InsufficientStockException();
 			var postedAt = DateTime.UtcNow;
 			foreach (var line in before.Lines.OrderBy(value => value.Id))
 			{
-				var orderLine = order.Lines.Single(value => value.Id == line.SalesOrderLineId);
-				if (orderLine.ShippedQuantity + line.Quantity > orderLine.Quantity) throw new InvalidOperationException("Shipment quantity exceeds the sales-order quantity.");
 				if (_traceability is not null)
 				{
 					var policy = await _traceability.GetPolicyAsync(transaction, line.InventoryId, token);
@@ -146,8 +153,8 @@ public sealed class ShipmentService
 				if (_traceability is not null) await _traceability.AttachMovementAsync(transaction, movement, trackingByLineId.GetValueOrDefault(line.Id) ?? [], token);
 				if (_inventoryAccounting is not null) await _inventoryAccounting.RecordSalesShipmentAsync(transaction, movement, line.ItemId, DateOnly.FromDateTime(before.ShipmentDate), before.ShipmentNumber, user.Id, token);
 				await _reservations.ConsumeAsync(transaction, line.InventoryReservationId, line.Quantity, user.Id, token);
-				await _orders.UpdateLineQuantitiesAsync(transaction, orderLine.Id, Math.Max(0, orderLine.ReservedQuantity - line.Quantity), orderLine.ShippedQuantity + line.Quantity, orderLine.InvoicedQuantity, token);
 			}
+			await UpdateLineQuantitiesAsync(transaction, quantityChanges, token);
 			if (!await _shipments.PostAsync(transaction, id, version, user.Id, postedAt, token)) throw new ConcurrencyConflictException("shipment");
 			var reloadedOrder = await _orders.GetByIdAsync(transaction, order.Id, token) ?? throw new InvalidOperationException("Sales order could not be reloaded.");
 			var targetStatus = reloadedOrder.Lines.All(line => line.ShippedQuantity >= line.Quantity) ? SalesOrderStatus.Shipped : SalesOrderStatus.PartiallyShipped;
@@ -179,23 +186,32 @@ public sealed class ShipmentService
 			if (await _shipments.HasPostedCustomerReturnsAsync(transaction, id, token)) throw new InvalidOperationException("A shipment with posted customer returns cannot be reversed.");
 			var invoice = await _invoices.GetByShipmentIdAsync(transaction, id, token);
 			if (invoice is not null && invoice.Status != SalesInvoiceStatus.Cancelled) throw new InvalidOperationException("Cancel the draft invoice or use a customer return and credit note for an already invoiced shipment.");
-			var order = await _orders.GetByIdAsync(transaction, before.SalesOrderId, token) ?? throw new InvalidOperationException("Sales order was not found.");
+			var order = await _orders.GetByIdForUpdateAsync(transaction, before.SalesOrderId, token) ?? throw new InvalidOperationException("Sales order was not found.");
+			var quantityChanges = PrepareLineQuantityChanges(order, before.Lines, reversing: true);
+			await _inventories.GetByIdsForUpdateAsync(transaction, before.Lines.Select(line => line.InventoryId), token);
 			var originalMovements = (await _movements.ListOriginalsByReferenceAsync(transaction, $"Shipment {before.ShipmentNumber}", token)).Where(movement => movement.MovementType == StockMovementType.SalesShipment).ToList();
 			if (originalMovements.Count != before.Lines.Count) throw new InvalidOperationException("The shipment stock movements are incomplete or inconsistent.");
-			var reversedAt = DateTime.UtcNow;
+			var reversals = new List<(ShipmentLine Line, StockMovement Original)>();
 			foreach (var line in before.Lines.OrderBy(value => value.Id))
 			{
-				var orderLine = order.Lines.Single(value => value.Id == line.SalesOrderLineId);
 				var original = originalMovements.FirstOrDefault(value => value.InventoryId == line.InventoryId && value.Quantity == -line.Quantity) ?? throw new InvalidOperationException("The shipment movement for a line could not be resolved.");
 				originalMovements.Remove(original);
+				reversals.Add((line, original));
+			}
+			var reversedAt = DateTime.UtcNow;
+			foreach (var (line, original) in reversals)
+			{
 				var movement = new StockMovement { InventoryId = line.InventoryId, MovementType = StockMovementType.SalesShipmentReversal, TimestampUtc = reversedAt, Quantity = line.Quantity, Reference = $"Shipment reversal {before.ShipmentNumber}", Notes = reason.Trim(), ReversalOfMovementId = original.Id, ReversalReason = reason.Trim(), ReversedAtUtc = reversedAt, ReversedByUserId = user.Id };
 				movement.Id = await _movements.CreateAsync(transaction, movement, token);
 				if (_traceability is not null) await _traceability.AttachReversalAsync(transaction, original, movement, token);
 				if (_inventoryAccounting is not null) await _inventoryAccounting.ReverseMovementAsync(transaction, original, movement, DateOnly.FromDateTime(DateTime.Today), reason, user.Id, token);
-				var reservation = new InventoryReservation { SalesOrderLineId = line.SalesOrderLineId, InventoryId = line.InventoryId, Quantity = line.Quantity, Status = InventoryReservationStatus.Active, CreatedAtUtc = reversedAt, CreatedByUserId = user.Id };
-				reservation.Id = await _reservations.CreateAsync(transaction, reservation, token);
-				await _orders.UpdateLineQuantitiesAsync(transaction, orderLine.Id, orderLine.ReservedQuantity + line.Quantity, Math.Max(0, orderLine.ShippedQuantity - line.Quantity), orderLine.InvoicedQuantity, token);
 			}
+			foreach (var group in before.Lines.GroupBy(line => (line.SalesOrderLineId, line.InventoryId)))
+			{
+				var reservation = new InventoryReservation { SalesOrderLineId = group.Key.SalesOrderLineId, InventoryId = group.Key.InventoryId, Quantity = checked((int)group.Sum(line => (long)line.Quantity)), Status = InventoryReservationStatus.Active, CreatedAtUtc = reversedAt, CreatedByUserId = user.Id };
+				await _reservations.RestoreAsync(transaction, reservation, token);
+			}
+			await UpdateLineQuantitiesAsync(transaction, quantityChanges, token);
 			if (!await _shipments.ReverseAsync(transaction, id, version, user.Id, reversedAt, reason.Trim(), token)) throw new ConcurrencyConflictException("shipment");
 			var reloadedOrder = await _orders.GetByIdAsync(transaction, order.Id, token) ?? throw new InvalidOperationException("Sales order could not be reloaded.");
 			var targetStatus = reloadedOrder.Lines.Any(line => line.ShippedQuantity > 0) ? SalesOrderStatus.PartiallyShipped : SalesOrderStatus.Released;
@@ -209,6 +225,35 @@ public sealed class ShipmentService
 			return after;
 		}, cancellationToken);
 	}
+
+	private static IReadOnlyList<OrderLineQuantityChange> PrepareLineQuantityChanges(SalesOrder order, IReadOnlyList<ShipmentLine> shipmentLines, bool reversing)
+	{
+		var orderLines = order.Lines.ToDictionary(line => line.Id);
+		var changes = new List<OrderLineQuantityChange>();
+		foreach (var group in shipmentLines.GroupBy(line => line.SalesOrderLineId).OrderBy(group => group.Key))
+		{
+			if (!orderLines.TryGetValue(group.Key, out var orderLine) || group.Any(line => line.Quantity <= 0 || line.ItemId != orderLine.ItemId))
+				throw new InvalidOperationException("Every shipment line must match its sales-order item and have a positive quantity.");
+			var quantity = group.Sum(line => (long)line.Quantity);
+			var reserved = orderLine.ReservedQuantity + (reversing ? quantity : -quantity);
+			var shipped = orderLine.ShippedQuantity + (reversing ? -quantity : quantity);
+			if (shipped < 0 || shipped > orderLine.Quantity || reserved < 0 || reserved > orderLine.Quantity - shipped)
+				throw new InvalidOperationException("Shipment quantities exceed the current reserved or shipped sales-order quantities.");
+			changes.Add(new OrderLineQuantityChange(orderLine, checked((int)reserved), checked((int)shipped)));
+		}
+		return changes;
+	}
+
+	private async Task UpdateLineQuantitiesAsync(DatabaseTransactionContext transaction, IReadOnlyList<OrderLineQuantityChange> changes, CancellationToken token)
+	{
+		foreach (var change in changes)
+		{
+			if (!await _orders.TryUpdateLineQuantitiesAsync(transaction, change.Line.Id, change.Line.Version, change.ReservedQuantity, change.ShippedQuantity, change.Line.InvoicedQuantity, token))
+				throw new ConcurrencyConflictException("sales order line");
+		}
+	}
+
+	private sealed record OrderLineQuantityChange(SalesOrderLine Line, int ReservedQuantity, int ShippedQuantity);
 
 	private User RequireUser() => _authorization.CurrentUser is { IsActive: true } user ? user : throw new UnauthorizedAccessException("An active signed-in user is required for shipping.");
 	private static string? Normalize(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
