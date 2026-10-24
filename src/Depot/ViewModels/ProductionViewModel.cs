@@ -24,6 +24,7 @@ public sealed class ProductionViewModel : BaseViewModel, IDisposable
 	private ProductionOrder? _selectedOrder;
 	private ProductionOrder? _orderDetail;
 	private ProductionOrderRequirement? _selectedRequirement;
+	private ProductionComponentIssue? _selectedComponentIssue;
 	private InventoryLookupItem? _selectedIssueInventory;
 	private ReasonCode? _selectedReversalReasonCode;
 	private int _orderPlannedQuantity=1;
@@ -49,6 +50,7 @@ public sealed class ProductionViewModel : BaseViewModel, IDisposable
 		HandoffShortagesCommand=new AsyncRelayCommand(HandoffShortagesAsync,CanHandoffShortages);
 		IssueComponentCommand=new AsyncRelayCommand(IssueComponentAsync,CanIssueComponent);
 		CompleteOrderCommand=new AsyncRelayCommand(CompleteOrderAsync,CanCompleteOrder);
+		ReverseComponentIssueCommand=new AsyncRelayCommand(ReverseComponentIssueAsync,CanReverseComponentIssue);
 		ReverseOrderCommand=new AsyncRelayCommand(ReverseOrderAsync,CanReverseOrder);
 	}
 
@@ -61,6 +63,7 @@ public sealed class ProductionViewModel : BaseViewModel, IDisposable
 	public ObservableCollection<ProductionBomLineEditor> BomLines { get; }=[];
 	public ObservableCollection<ProductionRequirementAvailability> Availability { get; }=[];
 	public ObservableCollection<ProductionAssemblyCostEvidence> CostEvidence { get; }=[];
+	public ObservableCollection<ProductionComponentIssue> ReversibleComponentIssues { get; }=[];
 
 	public AsyncRelayCommand RefreshCommand { get; }
 	public RelayCommand NewBomCommand { get; }
@@ -73,6 +76,7 @@ public sealed class ProductionViewModel : BaseViewModel, IDisposable
 	public AsyncRelayCommand HandoffShortagesCommand { get; }
 	public AsyncRelayCommand IssueComponentCommand { get; }
 	public AsyncRelayCommand CompleteOrderCommand { get; }
+	public AsyncRelayCommand ReverseComponentIssueCommand { get; }
 	public AsyncRelayCommand ReverseOrderCommand { get; }
 
 	public bool CanManageBoms=>_service.CanManageBoms;
@@ -212,6 +216,12 @@ public sealed class ProductionViewModel : BaseViewModel, IDisposable
 	{
 		get=>_selectedIssueInventory;
 		set{if(ReferenceEquals(_selectedIssueInventory,value))return;_selectedIssueInventory=value;OnPropertyChanged();RaiseState();}
+	}
+
+	public ProductionComponentIssue? SelectedComponentIssue
+	{
+		get=>_selectedComponentIssue;
+		set{if(ReferenceEquals(_selectedComponentIssue,value))return;_selectedComponentIssue=value;OnPropertyChanged();RaiseState();}
 	}
 
 	public int IssueQuantity
@@ -437,6 +447,25 @@ public sealed class ProductionViewModel : BaseViewModel, IDisposable
 		RaiseState();
 	}
 
+	private async Task ReverseComponentIssueAsync(CancellationToken token)
+	{
+		var order=OrderDetail;
+		var issue=SelectedComponentIssue;
+		var reasonCode=SelectedReversalReasonCode;
+		if(order is null || issue is null || reasonCode is null || SelectedOrder?.Id!=order.Id)return;
+		BeginOperation("Correcting component issue");
+		try
+		{
+			var saved=await _service.ReverseComponentIssueAsync(order.Id,issue.StockMovementId,reasonCode.Id,ReversalReason,null,token);
+			ReversalReason=string.Empty;
+			await ReloadOrdersAsync(saved.Id,token);
+			CompleteOperation(false,"Component issue reversed; issue the required replacement before completing the assembly");
+		}
+		catch(OperationCanceledException) when(token.IsCancellationRequested){}
+		catch(Exception exception){FailOperation(exception,"Component issue could not be corrected");}
+		RaiseState();
+	}
+
 	private async Task ReverseOrderAsync(CancellationToken token)
 	{
 		if(OrderDetail is null || SelectedReversalReasonCode is null)return;
@@ -482,10 +511,14 @@ public sealed class ProductionViewModel : BaseViewModel, IDisposable
 		if(detail is null || SelectedOrder?.Id!=orderId)return;
 		var availabilityTask=_service.GetAvailabilityAsync(orderId,token);
 		var costTask=_service.GetCostEvidenceAsync(orderId,token);
-		await Task.WhenAll(availabilityTask,costTask);
+		var issuesTask=_service.GetReversibleComponentIssuesAsync(orderId,token);
+		await Task.WhenAll(availabilityTask,costTask,issuesTask);
+		if(SelectedOrder?.Id!=orderId)return;
 		OrderDetail=detail;
 		Replace(Availability,await availabilityTask);
 		Replace(CostEvidence,await costTask);
+		Replace(ReversibleComponentIssues,await issuesTask);
+		SelectedComponentIssue=ReversibleComponentIssues.FirstOrDefault();
 		SelectedRequirement=detail.Requirements.FirstOrDefault(value=>value.RemainingQuantity>0)??detail.Requirements.FirstOrDefault();
 		SelectedIssueInventory=IssueInventoryOptions.FirstOrDefault();
 		RaiseState();
@@ -496,6 +529,8 @@ public sealed class ProductionViewModel : BaseViewModel, IDisposable
 		OrderDetail=null;
 		Availability.Clear();
 		CostEvidence.Clear();
+		ReversibleComponentIssues.Clear();
+		SelectedComponentIssue=null;
 		SelectedRequirement=null;
 		SelectedIssueInventory=null;
 	}
@@ -516,12 +551,13 @@ public sealed class ProductionViewModel : BaseViewModel, IDisposable
 	private bool CanHandoffShortages()=>_service.CanHandoffShortages && OrderDetail?.Status is ProductionOrderStatus.Released or ProductionOrderStatus.InProgress && Availability.Any(value=>value.ShortageQuantity>0);
 	private bool CanIssueComponent()=>_service.CanIssue && OrderDetail?.Status is ProductionOrderStatus.Released or ProductionOrderStatus.InProgress && SelectedRequirement is {RemainingQuantity:>0} && SelectedIssueInventory is not null && IssueQuantity>0 && IssueQuantity<=SelectedRequirement.RemainingQuantity;
 	private bool CanCompleteOrder()=>_service.CanComplete && OrderDetail?.Status is ProductionOrderStatus.Released or ProductionOrderStatus.InProgress && OrderDetail.Requirements.Count>0 && OrderDetail.Requirements.All(value=>value.IssuedQuantity==value.RequiredQuantity);
+	private bool CanReverseComponentIssue()=>_service.CanReverse && OrderDetail is {Status:ProductionOrderStatus.Released or ProductionOrderStatus.InProgress} order && SelectedOrder?.Id==order.Id && SelectedComponentIssue is not null && SelectedReversalReasonCode is not null && !string.IsNullOrWhiteSpace(ReversalReason);
 	private bool CanReverseOrder()=>_service.CanReverse && OrderDetail?.Status==ProductionOrderStatus.Completed && SelectedReversalReasonCode is not null && !string.IsNullOrWhiteSpace(ReversalReason);
 
 	private void RaiseState()
 	{
 		OnPropertyChanged(nameof(CanManageBoms));OnPropertyChanged(nameof(CanManageOrders));OnPropertyChanged(nameof(CanIssue));OnPropertyChanged(nameof(CanComplete));OnPropertyChanged(nameof(CanReverse));OnPropertyChanged(nameof(CanHandoff));
-		SaveBomCommand.RaiseCanExecuteChanged();ActivateBomCommand.RaiseCanExecuteChanged();CreateOrderCommand.RaiseCanExecuteChanged();ReleaseOrderCommand.RaiseCanExecuteChanged();HandoffShortagesCommand.RaiseCanExecuteChanged();IssueComponentCommand.RaiseCanExecuteChanged();CompleteOrderCommand.RaiseCanExecuteChanged();ReverseOrderCommand.RaiseCanExecuteChanged();RemoveBomLineCommand.RaiseCanExecuteChanged();AddBomLineCommand.RaiseCanExecuteChanged();
+		SaveBomCommand.RaiseCanExecuteChanged();ActivateBomCommand.RaiseCanExecuteChanged();CreateOrderCommand.RaiseCanExecuteChanged();ReleaseOrderCommand.RaiseCanExecuteChanged();HandoffShortagesCommand.RaiseCanExecuteChanged();IssueComponentCommand.RaiseCanExecuteChanged();CompleteOrderCommand.RaiseCanExecuteChanged();ReverseComponentIssueCommand.RaiseCanExecuteChanged();ReverseOrderCommand.RaiseCanExecuteChanged();RemoveBomLineCommand.RaiseCanExecuteChanged();AddBomLineCommand.RaiseCanExecuteChanged();
 	}
 
 	private static IReadOnlyList<TrackingAllocationInput> BuildTrackingAllocations(string raw,int quantity)
@@ -540,7 +576,7 @@ public sealed class ProductionViewModel : BaseViewModel, IDisposable
 	public void Dispose()
 	{
 		if(_disposed)return;_disposed=true;
-		RefreshCommand.Dispose();SaveBomCommand.Dispose();ActivateBomCommand.Dispose();CreateOrderCommand.Dispose();ReleaseOrderCommand.Dispose();HandoffShortagesCommand.Dispose();IssueComponentCommand.Dispose();CompleteOrderCommand.Dispose();ReverseOrderCommand.Dispose();
+		RefreshCommand.Dispose();SaveBomCommand.Dispose();ActivateBomCommand.Dispose();CreateOrderCommand.Dispose();ReleaseOrderCommand.Dispose();HandoffShortagesCommand.Dispose();IssueComponentCommand.Dispose();CompleteOrderCommand.Dispose();ReverseComponentIssueCommand.Dispose();ReverseOrderCommand.Dispose();
 	}
 }
 

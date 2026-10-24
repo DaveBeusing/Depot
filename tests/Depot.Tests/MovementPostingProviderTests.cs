@@ -32,6 +32,7 @@ public sealed class MovementPostingProviderTests
 
 	private static async Task VerifyProviderContractAsync(IDatabaseConnectionFactory factory)
 	{
+		DatabaseProvisioningService.Initialize(factory);
 		await using var context = await ProcurementTestContext.CreateServerAsync(factory, DatabaseProviderFactory.CreateInitializer(factory));
 		try
 		{

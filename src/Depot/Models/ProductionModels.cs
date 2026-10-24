@@ -123,6 +123,14 @@ public sealed class ProductionMaterialMovement
 	public long CreatedByUserId { get; set; }
 }
 
+public sealed record ProductionComponentIssue(
+	long StockMovementId,
+	long RequirementId,
+	string ComponentPartNumber,
+	string InventoryDisplay,
+	int Quantity,
+	DateTime CreatedAtUtc);
+
 public sealed class ProductionAssemblyCostEvidence
 {
 	public long Id { get; set; }

@@ -129,6 +129,29 @@ public sealed class ProductionRepository : DatabaseRepository
 		return order;
 	}
 
+	internal async Task<ProductionOrder?> GetOrderForUpdateAsync(DatabaseTransactionContext transaction,long id,CancellationToken token)
+	{
+		await transaction.Session.ExecuteAsync("UPDATE ProductionOrders SET Version=Version WHERE Id=$Id;",token,Parameter("$Id",id));
+		return await GetOrderAsync(transaction,id,token);
+	}
+
+	public Task<IReadOnlyList<ProductionComponentIssue>> GetReversibleComponentIssuesAsync(long orderId,CancellationToken token) =>
+		Database.QuerySliceAsync(
+			"""
+			SELECT pm.StockMovementId,pm.RequirementId,r.ComponentPartNumber,w.Name,sl.Name,pm.Quantity,pm.CreatedAtUtc
+			FROM ProductionMaterialMovements pm
+			INNER JOIN ProductionOrderRequirements r ON r.Id=pm.RequirementId
+			INNER JOIN StockMovements sm ON sm.Id=pm.StockMovementId
+			INNER JOIN Inventories inv ON inv.Id=sm.InventoryId
+			INNER JOIN StorageLocations sl ON sl.Id=inv.StorageLocationId
+			INNER JOIN Warehouses w ON w.Id=sl.WarehouseId
+			WHERE pm.ProductionOrderId=$Order AND pm.Kind=$Issue
+			  AND NOT EXISTS (SELECT 1 FROM StockMovements reversal WHERE reversal.ReversalOfMovementId=sm.Id)
+			ORDER BY pm.Id
+			""",
+			reader=>new ProductionComponentIssue(reader.GetInt64(0),reader.GetInt64(1),reader.GetString(2),$"{reader.GetString(3)} / {reader.GetString(4)}",reader.GetInt32(5),ParseUtc(reader.GetString(6))),
+			0,10000,token,Parameter("$Order",orderId),Parameter("$Issue",(int)ProductionMovementKind.ComponentIssue));
+
 	internal async Task<ProductionOrder> CreateOrderAsync(DatabaseTransactionContext transaction,ProductionOrder value,CancellationToken token)
 	{
 		var temporary=$"PENDING-{Guid.NewGuid():N}";
@@ -197,6 +220,17 @@ public sealed class ProductionRepository : DatabaseRepository
 			reader=>new ProductionInventoryContext(reader.GetInt64(0),reader.GetInt64(1),reader.GetInt64(2),reader.GetBoolean(3),reader.GetBoolean(4),reader.GetBoolean(5)),
 			token,Parameter("$Id",inventoryId));
 
+	internal async Task<ProductionInventoryContext?> GetInventoryContextForUpdateAsync(DatabaseTransactionContext transaction,long inventoryId,CancellationToken token)
+	{
+		await transaction.Session.QueryAsync(Database.GetInventoryBatchLockSql("$InventoryId"),reader=>reader.GetInt64(0),token,Parameter("$InventoryId",inventoryId));
+		return await GetInventoryContextAsync(transaction,inventoryId,token);
+	}
+
+	internal async Task<long> GetReservedQuantityAsync(DatabaseTransactionContext transaction,long inventoryId,CancellationToken token) =>
+		Convert.ToInt64(await transaction.Session.ExecuteScalarAsync(
+			$"SELECT COALESCE(SUM({Database.CastToInt64("Quantity")}),0) FROM InventoryReservations WHERE InventoryId=$InventoryId AND Status=$Active;",
+			token,Parameter("$InventoryId",inventoryId),Parameter("$Active",(int)InventoryReservationStatus.Active)),CultureInfo.InvariantCulture);
+
 	internal Task<ProductionMaterialMovement?> GetMovementByOperationKeyAsync(DatabaseTransactionContext transaction,string operationKey,CancellationToken token)=>
 		transaction.Session.QuerySingleOrDefaultAsync(
 			"SELECT Id,ProductionOrderId,RequirementId,StockMovementId,Kind,Quantity,OperationKey,CreatedAtUtc,CreatedByUserId FROM ProductionMaterialMovements WHERE OperationKey=$Key;",
@@ -218,13 +252,17 @@ public sealed class ProductionRepository : DatabaseRepository
 		if(updated!=1) throw new ConcurrencyConflictException("production requirement");
 	}
 
-	internal Task MarkInProgressAsync(DatabaseTransactionContext transaction,long orderId,CancellationToken token)=>
-		transaction.Session.ExecuteAsync(
-			"UPDATE ProductionOrders SET Status=$InProgress,Version=Version+1 WHERE Id=$Id AND Status=$Released;",
+	internal async Task MarkInProgressAsync(DatabaseTransactionContext transaction,long orderId,long version,CancellationToken token)
+	{
+		var updated=await transaction.Session.ExecuteAsync(
+			"UPDATE ProductionOrders SET Status=$InProgress,Version=Version+1 WHERE Id=$Id AND Version=$Version AND Status IN ($Released,$InProgress);",
 			token,
 			Parameter("$InProgress",(int)ProductionOrderStatus.InProgress),
 			Parameter("$Released",(int)ProductionOrderStatus.Released),
+			Parameter("$Version",version),
 			Parameter("$Id",orderId));
+		if(updated!=1) throw new ConcurrencyConflictException("production order");
+	}
 
 	internal async Task SaveCostEvidenceAsync(DatabaseTransactionContext transaction,IReadOnlyList<ProductionAssemblyCostEvidence> evidence,CancellationToken token)
 	{
@@ -268,6 +306,19 @@ public sealed class ProductionRepository : DatabaseRepository
 		transaction.Session.QueryAsync(
 			"SELECT Id,ProductionOrderId,RequirementId,StockMovementId,Kind,Quantity,OperationKey,CreatedAtUtc,CreatedByUserId FROM ProductionMaterialMovements WHERE ProductionOrderId=$Order ORDER BY Id;",
 			ReadMovement,token,Parameter("$Order",orderId));
+
+	internal Task<IReadOnlyList<long>> ListCorrectedComponentIssueIdsAsync(DatabaseTransactionContext transaction,long orderId,CancellationToken token) =>
+		transaction.Session.QueryAsync(
+			"""
+			SELECT original.StockMovementId FROM ProductionMaterialMovements original
+			INNER JOIN StockMovements reversal ON reversal.ReversalOfMovementId=original.StockMovementId
+			INNER JOIN ProductionMaterialMovements correction ON correction.StockMovementId=reversal.Id
+			WHERE original.ProductionOrderId=$Order AND original.Kind=$Issue
+			  AND correction.ProductionOrderId=original.ProductionOrderId
+			  AND correction.RequirementId=original.RequirementId AND correction.Kind=$Correction
+			ORDER BY original.StockMovementId;
+			""",
+			reader=>reader.GetInt64(0),token,Parameter("$Order",orderId),Parameter("$Issue",(int)ProductionMovementKind.ComponentIssue),Parameter("$Correction",(int)ProductionMovementKind.ComponentIssueReversal));
 
 	private Task<IReadOnlyList<BillOfMaterialLine>> ListBomLinesAsync(long id,CancellationToken token)=>
 		Database.QuerySliceAsync(

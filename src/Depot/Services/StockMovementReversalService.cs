@@ -30,18 +30,20 @@ public sealed class StockMovementReversalService
 
 	public async Task<StockMovement> ReverseWithdrawalAsync(long movementId, long reasonCodeId, string reversalReason, CancellationToken cancellationToken = default)
 	{
+		_audit.RequirePermission(ApplicationPermission.StockMovementsReverse);
 		if (movementId <= 0) throw new ArgumentOutOfRangeException(nameof(movementId));
 		var userId = RequireUser();
 		var reversals = await _transactions.ExecuteAsync(async (transaction, token) =>
 		{
 			var original = await _movements.GetByIdAsync(transaction, movementId, token) ?? throw new InvalidOperationException("The stock movement was not found.");
 			if (original.MovementType != StockMovementType.Withdrawal) throw new InvalidOperationException("Only a material withdrawal can be reversed independently.");
+			if (await _movements.HasWorkflowOwnerAsync(transaction, movementId, token)) throw new InvalidOperationException("This movement belongs to a production or service order. Correct it through its owning workflow.");
 			return await CreateReversalsAsync(transaction, [original], reasonCodeId, reversalReason, userId, token);
 		}, cancellationToken);
 		return reversals[0];
 	}
 
-	public async Task<IReadOnlyList<StockMovement>> CreateReversalsAsync(DatabaseTransactionContext transaction, IReadOnlyList<StockMovement> originals, long reasonCodeId, string reversalReason, long userId, CancellationToken cancellationToken)
+	internal async Task<IReadOnlyList<StockMovement>> CreateReversalsAsync(DatabaseTransactionContext transaction, IReadOnlyList<StockMovement> originals, long reasonCodeId, string reversalReason, long userId, CancellationToken cancellationToken)
 	{
 		var normalizedReason = NormalizeReason(reasonCodeId, reversalReason);
 		if (originals.Select(movement => movement.Id).Distinct().Count() != originals.Count) throw new InvalidOperationException("A stock movement can occur only once in a reversal.");
@@ -71,7 +73,7 @@ public sealed class StockMovementReversalService
 
 	public long RequireUser() => _audit.CurrentUserId ?? throw new InvalidOperationException("A signed-in user is required to reverse stock movements.");
 
-	private static string NormalizeReason(long reasonCodeId, string reversalReason)
+	internal static string NormalizeReason(long reasonCodeId, string reversalReason)
 	{
 		if (reasonCodeId <= 0) throw new ArgumentOutOfRangeException(nameof(reasonCodeId));
 		var value = reversalReason?.Trim();
