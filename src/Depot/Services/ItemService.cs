@@ -1,6 +1,7 @@
 // Copyright (c) 2026 David Beusing
 // Licensed under the MIT License.
 
+using Depot.Data;
 using Depot.Models;
 using Depot.Repositories;
 
@@ -10,8 +11,8 @@ public sealed class ItemService
 {
 	private readonly ItemRepository _itemRepository;
 	private readonly AuditService _auditService;
-	private readonly IItemReferenceDataService _manufacturerService;
-	private readonly IItemReferenceDataService _categoryService;
+	private readonly ManufacturerService _manufacturerService;
+	private readonly CategoryService _categoryService;
 	private readonly IItemReferenceDataService _unitOfMeasureService;
 	private readonly IItemReferenceDataService _packagingService;
 	private readonly SupplierItemRepository _supplierItems;
@@ -117,6 +118,46 @@ public sealed class ItemService
 	{
 		_auditService.RequirePermission(ApplicationPermission.ItemsView);
 		return _itemRepository.GetActiveItemsAsync(cancellationToken);
+	}
+
+	internal async Task<(Item Item, bool Created)> GetOrCreateForImportAsync(
+		DatabaseTransactionContext transaction,
+		string partNumber,
+		string description,
+		string? manufacturer,
+		string? category,
+		CancellationToken cancellationToken)
+	{
+		_auditService.RequirePermission(ApplicationPermission.ImportManage);
+		(partNumber, description, manufacturer, category) = Normalize(partNumber, description, manufacturer, category);
+		Validate(partNumber, description);
+		var existing = await _itemRepository.GetByPartNumberForImportAsync(transaction, partNumber, cancellationToken);
+		if (existing is not null)
+		{
+			if (!existing.IsActive) throw new InvalidOperationException($"Item '{partNumber}' is inactive and cannot be imported.");
+			return (existing, false);
+		}
+
+		_auditService.RequirePermission(ApplicationPermission.ItemsCreate);
+		var manufacturerValue = await _manufacturerService.GetOrCreateInTransactionAsync(transaction, manufacturer, cancellationToken);
+		var categoryValue = await _categoryService.GetOrCreateInTransactionAsync(transaction, category, cancellationToken);
+		var item = new Item
+		{
+			PartNumber = partNumber,
+			Description = description,
+			ManufacturerId = manufacturerValue?.Id,
+			CategoryId = categoryValue?.Id,
+			IsActive = true
+		};
+		item.Id = await _itemRepository.CreateAsync(transaction, item, cancellationToken);
+		await _auditService.RecordCreatedAsync(transaction, item.Id, item, cancellationToken);
+		return (item, true);
+	}
+
+	internal void InvalidateImportCaches()
+	{
+		_manufacturerService.InvalidateImportCache();
+		_categoryService.InvalidateImportCache();
 	}
 
 	public async Task<Item> CreateItemAsync(string partNumber, string description, string? manufacturer, string? category, CancellationToken cancellationToken)
@@ -521,3 +562,4 @@ public sealed class ItemService
 			_packagingService.ValidateSelectionAsync(packagingId, cancellationToken));
 	}
 }
+

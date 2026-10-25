@@ -1,6 +1,7 @@
 // Copyright (c) 2026 David Beusing
 // Licensed under the MIT License.
 
+using Depot.Data;
 using Depot.Models;
 using Depot.Repositories;
 
@@ -59,10 +60,7 @@ public abstract class ItemReferenceDataService<T> : IItemReferenceDataService
 		_auditService.RequirePermission(ApplicationPermission.MasterDataManage);
 		name = name.Trim();
 		description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
-		if (string.IsNullOrWhiteSpace(name))
-			throw new ArgumentException($"{SingularName} name is required.", nameof(name));
-		if (name.Length > 200)
-			throw new ArgumentException($"{SingularName} name must not exceed 200 characters.", nameof(name));
+		ValidateName(name);
 		if (description?.Length > 500)
 			throw new ArgumentException("Description must not exceed 500 characters.", nameof(description));
 
@@ -114,6 +112,30 @@ public abstract class ItemReferenceDataService<T> : IItemReferenceDataService
 		return value;
 	}
 
+	internal async Task<T?> GetOrCreateInTransactionAsync(
+		DatabaseTransactionContext transaction,
+		string? name,
+		CancellationToken cancellationToken)
+	{
+		_auditService.RequirePermission(ApplicationPermission.MasterDataManage);
+		if (string.IsNullOrWhiteSpace(name)) return null;
+		name = name.Trim();
+		ValidateName(name);
+		var existing = await _repository.GetByNameAsync(transaction, name, cancellationToken);
+		if (existing is not null)
+		{
+			if (!existing.IsActive) throw new InvalidOperationException($"{SingularName} '{name}' is inactive and cannot be assigned.");
+			return existing;
+		}
+
+		var created = new T { Name = name, IsActive = true };
+		created.Id = await _repository.CreateAsync(transaction, created, cancellationToken);
+		await _auditService.RecordCreatedAsync(transaction, created.Id, created, cancellationToken);
+		return created;
+	}
+
+	internal void InvalidateImportCache() => _activeCache.Invalidate();
+
 	public async Task<ItemReferenceData?> GetOrCreateAsync(string? name, CancellationToken cancellationToken = default)
 	{
 		_auditService.RequirePermission(ApplicationPermission.MasterDataManage);
@@ -130,6 +152,14 @@ public abstract class ItemReferenceDataService<T> : IItemReferenceDataService
 			?? throw new InvalidOperationException($"Selected {SingularName.ToLowerInvariant()} was not found.");
 		if (!value.IsActive)
 			throw new InvalidOperationException($"{SingularName} '{value.Name}' is inactive and cannot be assigned.");
+	}
+
+	private void ValidateName(string name)
+	{
+		if (string.IsNullOrWhiteSpace(name))
+			throw new ArgumentException($"{SingularName} name is required.", nameof(name));
+		if (name.Length > 200)
+			throw new ArgumentException($"{SingularName} name must not exceed 200 characters.", nameof(name));
 	}
 
 	private static T Copy(T source) => new()
@@ -156,3 +186,4 @@ public sealed class PackagingService(PackagingRepository repository, AuditServic
 
 public sealed class SupplierCategoryService(SupplierCategoryRepository repository, AuditService auditService)
 	: ItemReferenceDataService<SupplierCategory>(repository, auditService, "Supplier Category", "Supplier Categories");
+

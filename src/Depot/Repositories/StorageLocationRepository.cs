@@ -14,6 +14,14 @@ public sealed class StorageLocationRepository : DatabaseRepository
 
 	public StorageLocationRepository(DatabaseAccess database) : base(database) { }
 
+	internal Task<StorageLocation?> GetByNameAsync(DatabaseTransactionContext transaction, long warehouseId, string name, CancellationToken cancellationToken) =>
+		transaction.Session.QuerySingleOrDefaultAsync($"SELECT {Columns} FROM StorageLocations WHERE WarehouseId=$WarehouseId AND Name=$Name;", Read, cancellationToken,
+			Parameter("$WarehouseId", warehouseId), Parameter("$Name", name));
+
+	internal Task<long> CreateAsync(DatabaseTransactionContext transaction, StorageLocation location, CancellationToken cancellationToken) =>
+		transaction.Session.InsertAsync("INSERT INTO StorageLocations (WarehouseId,Name,Description,IsActive) VALUES ($WarehouseId,$Name,$Description,$IsActive);", cancellationToken,
+			Parameter("$WarehouseId", location.WarehouseId), Parameter("$Name", location.Name), Parameter("$Description", location.Description), Parameter("$IsActive", location.IsActive));
+
 	public Task<IReadOnlyList<StorageLocation>> SearchAsync(
 		long? warehouseId,
 		string? searchText,
@@ -99,3 +107,4 @@ public sealed class StorageLocationRepository : DatabaseRepository
 		Version = reader.GetInt64(5)
 	};
 }
+

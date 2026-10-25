@@ -23,6 +23,20 @@ public sealed class ItemRepository : DatabaseRepository
 	{
 	}
 
+	internal Task<Item?> GetByPartNumberForImportAsync(DatabaseTransactionContext transaction, string partNumber, CancellationToken cancellationToken) =>
+		transaction.Session.QuerySingleOrDefaultAsync(
+			$"SELECT {MasterDataSelectColumns} {SelectFrom} WHERE i.PartNumber=$PartNumber;", ReadMasterDataItem, cancellationToken, Parameter("$PartNumber", partNumber));
+
+	internal Task<Item?> GetMasterDataByIdAsync(DatabaseTransactionContext transaction, long id, CancellationToken cancellationToken) =>
+		transaction.Session.QuerySingleOrDefaultAsync(
+			$"SELECT {MasterDataSelectColumns} {SelectFrom} WHERE i.Id=$Id;", ReadMasterDataItem, cancellationToken, Parameter("$Id", id));
+
+	internal Task<long> CreateAsync(DatabaseTransactionContext transaction, Item item, CancellationToken cancellationToken) =>
+		transaction.Session.InsertAsync(
+			"INSERT INTO Items (PartNumber,Description,ManufacturerId,CategoryId,UnitOfMeasureId,PackagingId,IsActive) VALUES ($PartNumber,$Description,$ManufacturerId,$CategoryId,$UnitOfMeasureId,$PackagingId,$IsActive);", cancellationToken,
+			Parameter("$PartNumber", item.PartNumber), Parameter("$Description", item.Description), Parameter("$ManufacturerId", item.ManufacturerId), Parameter("$CategoryId", item.CategoryId),
+			Parameter("$UnitOfMeasureId", item.UnitOfMeasureId), Parameter("$PackagingId", item.PackagingId), Parameter("$IsActive", item.IsActive));
+
 	public Task<long> CreateAsync(Item item, CancellationToken cancellationToken) =>
 		Database.InsertAsync(
 			"""
@@ -423,3 +437,4 @@ public sealed class ItemRepository : DatabaseRepository
 	private static DateTime? ReadNullableDate(DbDataReader reader, int ordinal) =>
 		reader.IsDBNull(ordinal) ? null : Convert.ToDateTime(reader.GetValue(ordinal), CultureInfo.InvariantCulture).Date;
 }
+

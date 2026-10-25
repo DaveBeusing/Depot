@@ -28,6 +28,13 @@ public abstract class ItemReferenceDataRepository<T> : DatabaseRepository
 		_additionalReferenceQuery = additionalReferenceQuery;
 	}
 
+	internal Task<T?> GetByNameAsync(DatabaseTransactionContext transaction, string name, CancellationToken cancellationToken) =>
+		transaction.Session.QuerySingleOrDefaultAsync($"SELECT {Columns} FROM {_tableName} WHERE Name=$Name;", Read, cancellationToken, Parameter("$Name", name));
+
+	internal Task<long> CreateAsync(DatabaseTransactionContext transaction, T value, CancellationToken cancellationToken) =>
+		transaction.Session.InsertAsync($"INSERT INTO {_tableName} (Name,Description,IsActive) VALUES ($Name,$Description,$IsActive);", cancellationToken,
+			Parameter("$Name", value.Name), Parameter("$Description", value.Description), Parameter("$IsActive", value.IsActive));
+
 	public Task<IReadOnlyList<T>> SearchAsync(string? searchText, CancellationToken cancellationToken)
 	{
 		var search = searchText?.Trim();
@@ -130,3 +137,4 @@ public sealed class PackagingRepository(DatabaseAccess database)
 
 public sealed class SupplierCategoryRepository(DatabaseAccess database)
 	: ItemReferenceDataRepository<SupplierCategory>(database, "SupplierCategories", null, "SELECT COUNT(*) FROM Suppliers WHERE SupplierCategoryId = $Id;");
+

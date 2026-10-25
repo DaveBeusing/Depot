@@ -1,6 +1,7 @@
 // Copyright (c) 2026 David Beusing
 // Licensed under the MIT License.
 
+using Depot.Data;
 using Depot.Models;
 using Depot.Repositories;
 
@@ -30,6 +31,27 @@ public sealed class WarehouseService
 
 	public Task<IReadOnlyList<Warehouse>> GetActiveOptionsAsync(int count = 200, CancellationToken cancellationToken = default) =>
 		_warehouses.ListActiveOptionsAsync(count, cancellationToken);
+
+	internal async Task<Warehouse> GetOrCreateForImportAsync(
+		DatabaseTransactionContext transaction,
+		string name,
+		CancellationToken cancellationToken)
+	{
+		_audit.RequirePermission(ApplicationPermission.MasterDataManage);
+		(name, _) = Normalize(name, null);
+		if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("Warehouse name is required.", nameof(name));
+		var existing = await _warehouses.GetByNameAsync(transaction, name, cancellationToken);
+		if (existing is not null)
+		{
+			if (!existing.IsActive) throw new InvalidOperationException($"Warehouse '{name}' is inactive and cannot be imported.");
+			return existing;
+		}
+
+		var warehouse = new Warehouse { Name = name, IsActive = true };
+		warehouse.Id = await _warehouses.CreateAsync(transaction, warehouse, cancellationToken);
+		await _audit.RecordCreatedAsync(transaction, warehouse.Id, warehouse, cancellationToken);
+		return warehouse;
+	}
 
 	public async Task<Warehouse> GetOrCreateAsync(string name, CancellationToken cancellationToken = default)
 	{
@@ -105,3 +127,4 @@ public sealed class WarehouseService
 	private static (string Name, string? Description) Normalize(string name, string? description) =>
 		(name.Trim(), string.IsNullOrWhiteSpace(description) ? null : description.Trim());
 }
+

@@ -17,6 +17,13 @@ public sealed class PurposeRepository : DatabaseRepository
 	{
 	}
 
+	internal Task<Purpose?> GetByNameAsync(DatabaseTransactionContext transaction, string name, CancellationToken cancellationToken) =>
+		transaction.Session.QuerySingleOrDefaultAsync($"SELECT {SelectColumns} FROM Purposes WHERE Name=$Name;", ReadPurpose, cancellationToken, Parameter("$Name", name));
+
+	internal Task<long> CreateAsync(DatabaseTransactionContext transaction, Purpose purpose, CancellationToken cancellationToken) =>
+		transaction.Session.InsertAsync("INSERT INTO Purposes (Name,Description,IsActive) VALUES ($Name,$Description,$IsActive);", cancellationToken,
+			Parameter("$Name", purpose.Name), Parameter("$Description", purpose.Description), Parameter("$IsActive", purpose.IsActive));
+
 	public Task<IReadOnlyList<Purpose>> ListActiveAsync(CancellationToken cancellationToken) =>
 		Database.QuerySliceAsync(
 			$"SELECT {SelectColumns} FROM Purposes WHERE IsActive = 1 ORDER BY Name, Id",
@@ -143,3 +150,4 @@ public sealed class PurposeRepository : DatabaseRepository
 			Version = reader.GetInt64(4)
 		};
 }
+

@@ -17,6 +17,19 @@ public sealed class InventoryRepository : DatabaseRepository
 	{
 	}
 
+	internal Task<Inventory?> GetByContextAsync(DatabaseTransactionContext transaction, long itemId, long purposeId, long storageLocationId, CancellationToken cancellationToken) =>
+		transaction.Session.QuerySingleOrDefaultAsync($"SELECT {SelectColumns} FROM Inventories WHERE ItemId=$ItemId AND PurposeId=$PurposeId AND StorageLocationId=$StorageLocationId;", ReadInventory, cancellationToken,
+			Parameter("$ItemId", itemId), Parameter("$PurposeId", purposeId), Parameter("$StorageLocationId", storageLocationId));
+
+	internal async Task<bool> IsImportContextActiveAsync(DatabaseTransactionContext transaction, long itemId, long purposeId, long storageLocationId, CancellationToken cancellationToken) =>
+		Convert.ToInt64(await transaction.Session.ExecuteScalarAsync(
+			"SELECT COUNT(*) FROM Items i CROSS JOIN Purposes p CROSS JOIN StorageLocations l INNER JOIN Warehouses w ON w.Id=l.WarehouseId WHERE i.Id=$ItemId AND p.Id=$PurposeId AND l.Id=$StorageLocationId AND i.IsActive=1 AND p.IsActive=1 AND l.IsActive=1 AND w.IsActive=1;",
+			cancellationToken, Parameter("$ItemId", itemId), Parameter("$PurposeId", purposeId), Parameter("$StorageLocationId", storageLocationId)), System.Globalization.CultureInfo.InvariantCulture) == 1;
+
+	internal Task<long> CreateAsync(DatabaseTransactionContext transaction, Inventory inventory, CancellationToken cancellationToken) =>
+		transaction.Session.InsertAsync("INSERT INTO Inventories (ItemId,PurposeId,StorageLocationId,IsActive) VALUES ($ItemId,$PurposeId,$StorageLocationId,$IsActive);", cancellationToken,
+			Parameter("$ItemId", inventory.ItemId), Parameter("$PurposeId", inventory.PurposeId), Parameter("$StorageLocationId", inventory.StorageLocationId), Parameter("$IsActive", inventory.IsActive));
+
 	public Task<Inventory?> GetByIdAsync(long id, CancellationToken cancellationToken) =>
 		Database.QuerySingleOrDefaultAsync(
 			$"SELECT {SelectColumns} FROM Inventories WHERE Id = $Id;",
@@ -630,3 +643,4 @@ public sealed class InventoryRepository : DatabaseRepository
 			InventoryValue = Convert.ToDecimal(reader.GetValue(4), System.Globalization.CultureInfo.InvariantCulture)
 		};
 }
+

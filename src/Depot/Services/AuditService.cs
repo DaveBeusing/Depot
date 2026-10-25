@@ -3,6 +3,7 @@
 
 using System.Text.Json;
 
+using Depot.Data;
 using Depot.Models;
 using Depot.Repositories;
 
@@ -34,6 +35,13 @@ public sealed class AuditService
 		T entity,
 		CancellationToken cancellationToken) where T : class =>
 		RecordAsync(typeof(T).Name, entityId, "Created", null, entity, cancellationToken);
+
+	internal Task RecordCreatedAsync<T>(
+		DatabaseTransactionContext transaction,
+		long entityId,
+		T entity,
+		CancellationToken cancellationToken) where T : class =>
+		_auditRepository.CreateAsync(transaction, CreateCreatedEntry(entityId, entity), cancellationToken);
 
 	public AuditEntry CreateCreatedEntry<T>(long entityId, T entity) where T : class =>
 		CreateEntry(typeof(T).Name, entityId, "Created", null, entity);
@@ -120,3 +128,4 @@ public sealed class AuditService
 			? null
 			: JsonSerializer.Serialize(value, SerializerOptions);
 }
+
