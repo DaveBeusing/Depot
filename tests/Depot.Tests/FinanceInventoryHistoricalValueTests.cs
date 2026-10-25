@@ -247,7 +247,7 @@ public sealed class FinanceInventoryHistoricalValueProviderAcceptanceTests
 internal sealed class FinanceInventoryHistoricalValueFixture : IAsyncDisposable
 {
 	private readonly string? _path;
-	private readonly string _suffix = Guid.NewGuid().ToString("N")[..12];
+	private readonly string _suffix = Guid.NewGuid().ToString("N")[..12].ToUpperInvariant();
 	private readonly Guid _entity = Guid.NewGuid(), _calendar = Guid.NewGuid(), _period = Guid.NewGuid(), _chart = Guid.NewGuid(), _book = Guid.NewGuid(), _journal = Guid.NewGuid();
 	private readonly Guid _inventoryAccount = Guid.NewGuid(), _offsetAccount = Guid.NewGuid(), _expenseAccount = Guid.NewGuid();
 	private readonly DatabaseTransactionRunner _transactions;

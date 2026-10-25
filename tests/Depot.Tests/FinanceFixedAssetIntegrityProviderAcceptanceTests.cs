@@ -164,7 +164,7 @@ internal sealed class FixedAssetProviderFixture
 		var audit = new AuditService(auditEntries, authorization);
 		var ledger = new FinanceGeneralLedgerService(transactions, new FinanceGeneralLedgerRepository(data), new FinancePostingProfileRepository(data), auditEntries, audit, authorization);
 		var service = new FinanceFixedAssetService(transactions, new FinanceFixedAssetRepository(data), ledger, auditEntries, audit, authorization);
-		var suffix = Guid.NewGuid().ToString("N")[..10];
+		var suffix = Guid.NewGuid().ToString("N")[..10].ToUpperInvariant();
 		var entity = Guid.NewGuid();
 		var calendar = Guid.NewGuid();
 		var book = Guid.NewGuid();
