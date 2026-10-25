@@ -40,7 +40,7 @@ Depot has two explicit release channels.
 
 Preview is the normal pre-1.0 engineering channel.
 
-- tag: `<DepotVersion>-preview`;
+- tag: `vX.Y.Z-preview.N`, where `N` is the next available positive preview sequence allocated from published matching tag refs;
 - Depot and DepotManager retain their configured `preview` version suffix;
 - GitHub Release is published with `prerelease=true`;
 - Authenticode is optional while no production signing identity is available;
@@ -52,7 +52,7 @@ An unsigned Preview is permitted only because its channel is explicitly non-stab
 
 Stable is the production release channel.
 
-- tag: exact numeric Depot version;
+- tag: `vX.Y.Z` (the numeric Depot product version prefixed with `v`);
 - preview suffixes are removed from packaged product versions;
 - GitHub Release is published with `prerelease=false`;
 - production Authenticode credentials are mandatory;
@@ -93,11 +93,13 @@ The GitHub Release is created with `--target <github.sha>`. `ReleaseEvidence.jso
 
 The release tag is derived by the workflow. It is not supplied independently by the operator.
 
+Pull-request release validation uses a non-published `validation-<PR number>-<run sequence>` tag identity and `-pr.` product-version suffix; it never reserves a published Preview or Stable tag. The Depot and DepotManager product versions remain independently configured, while a Preview publication uses its allocated preview sequence for both packaged prerelease versions. Historical unprefixed tags, if encountered, are not the canonical contract for new releases.
+
 Given Depot version `X.Y.Z`:
 
 ```text
-Preview → X.Y.Z-preview
-Stable  → X.Y.Z
+Preview → vX.Y.Z-preview.N
+Stable  → vX.Y.Z
 ```
 
 DepotManager keeps its independent version from `src/DepotManager/DepotManager.Version.props`. The release manifest records both versions.
