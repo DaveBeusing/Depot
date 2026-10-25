@@ -17,6 +17,12 @@ public partial class DocumentTemplateDesignerView : UserControl
 	private Point? _lastDragPoint;
 	private bool _dragTransactionActive;
 	private bool _resizeTransactionActive;
+	private double _resizeTotalX;
+	private double _resizeTotalY;
+	private double _resizeStartLeft;
+	private double _resizeStartTop;
+	private double _resizeStartRight;
+	private double _resizeStartBottom;
 
 	public DocumentTemplateDesignerView()
 	{
@@ -145,6 +151,11 @@ public partial class DocumentTemplateDesignerView : UserControl
 		}
 		viewModel.SetSelectedElements([element]);
 		viewModel.BeginEditTransaction();
+		_resizeTotalX = _resizeTotalY = 0;
+		_resizeStartLeft = element.X;
+		_resizeStartTop = element.Y;
+		_resizeStartRight = element.X + element.Width;
+		_resizeStartBottom = element.Y + element.Height;
 		_resizeTransactionActive = true;
 		e.Handled = true;
 	}
@@ -155,7 +166,14 @@ public partial class DocumentTemplateDesignerView : UserControl
 		if (viewModel?.IsEditing != true || sender is not Thumb { DataContext: DocumentDesignerElementViewModel element, Tag: string handle }) return;
 
 		var scale = Math.Max(0.01d, viewModel.ZoomScale);
-		viewModel.ResizeElement(element, handle, e.HorizontalChange / scale, e.VerticalChange / scale);
+		_resizeTotalX += e.HorizontalChange / scale;
+		_resizeTotalY += e.VerticalChange / scale;
+		var direction = handle.Trim().ToUpperInvariant();
+		var deltaX = direction.Contains('W') ? _resizeStartLeft + _resizeTotalX - element.X
+			: direction.Contains('E') ? _resizeStartRight + _resizeTotalX - (element.X + element.Width) : 0;
+		var deltaY = direction.Contains('N') ? _resizeStartTop + _resizeTotalY - element.Y
+			: direction.Contains('S') ? _resizeStartBottom + _resizeTotalY - (element.Y + element.Height) : 0;
+		viewModel.ResizeElement(element, handle, deltaX, deltaY);
 		e.Handled = true;
 	}
 
@@ -165,6 +183,7 @@ public partial class DocumentTemplateDesignerView : UserControl
 		{
 			ViewModel?.EndEditTransaction();
 			_resizeTransactionActive = false;
+			_resizeTotalX = _resizeTotalY = 0;
 		}
 		e.Handled = true;
 	}
