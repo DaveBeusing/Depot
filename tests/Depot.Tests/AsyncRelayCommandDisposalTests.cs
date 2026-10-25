@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 using Depot.Commands;
+using Xunit;
 
 namespace Depot.Tests;
 
