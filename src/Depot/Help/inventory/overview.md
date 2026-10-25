@@ -43,3 +43,10 @@ You see the current aggregated quantity for the selected inventory without loadi
 - [Serial and Lot Traceability](topic:inventory.traceability)
 - [Stock Movements](topic:inventory.movements)
 - [Inventory Counts](topic:warehouse.inventory-counts)
+
+## Retrying an Excel opening-balance import
+
+An import now commits all rows and their new reference data together. If a row fails, correct the cause and retry the retained preview. Cancellation or a lost completion response can also be retried safely: Depot recognizes a completed batch and reports that no balances were posted again. Regenerating the same workbook preview preserves its import identity.
+
+Serial- or lot-tracked stock still requires its normal tracking information. An import row without that information blocks the whole batch. Historical imports made before operation tracking was introduced must be reviewed before importing the source again.
+
