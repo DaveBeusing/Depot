@@ -86,13 +86,15 @@ public sealed class CustomersViewModel : SalesSectionPageViewModel
 		get => _selectedAddress;
 		set { if (_selectedAddress == value) return; _selectedAddress = value; AddressDraft = value is null ? NewAddressDraft() : Copy(value); OnPropertyChanged(); }
 	}
-	public CustomerAddress AddressDraft { get => _addressDraft; private set { _addressDraft = value; OnPropertyChanged(); SaveAddressCommand.RaiseCanExecuteChanged(); } }
+	public CustomerAddress AddressDraft { get => _addressDraft; private set { _addressDraft = value; OnPropertyChanged(); OnPropertyChanged(nameof(AddressText)); SaveAddressCommand.RaiseCanExecuteChanged(); } }
+	public string AddressText { get => AddressDraft.Address; set { if (AddressDraft.Address == value) return; AddressDraft.Address = value; OnPropertyChanged(); SaveAddressCommand.RaiseCanExecuteChanged(); } }
 	public CustomerContact? SelectedContact
 	{
 		get => _selectedContact;
 		set { if (_selectedContact == value) return; _selectedContact = value; ContactDraft = value is null ? NewContactDraft() : Copy(value); OnPropertyChanged(); }
 	}
-	public CustomerContact ContactDraft { get => _contactDraft; private set { _contactDraft = value; OnPropertyChanged(); SaveContactCommand.RaiseCanExecuteChanged(); } }
+	public CustomerContact ContactDraft { get => _contactDraft; private set { _contactDraft = value; OnPropertyChanged(); OnPropertyChanged(nameof(ContactName)); SaveContactCommand.RaiseCanExecuteChanged(); } }
+	public string ContactName { get => ContactDraft.Name; set { if (ContactDraft.Name == value) return; ContactDraft.Name = value; OnPropertyChanged(); SaveContactCommand.RaiseCanExecuteChanged(); } }
 	public SalesRegion? SelectedSalesRegion { get => _selectedSalesRegion; set { if (_selectedSalesRegion == value) return; _selectedSalesRegion = value; Workspace.CustomerDraft.SalesRegionId = value?.Id; Workspace.CustomerDraft.SalesRegionName = value?.Name; OnPropertyChanged(); UpdatePricingMode(); } }
 	public SalesPriceList? SelectedCustomerPriceList { get => _selectedCustomerPriceList; set { if (_selectedCustomerPriceList == value) return; _selectedCustomerPriceList = value; OnPropertyChanged(); AssignPriceListCommand.RaiseCanExecuteChanged(); } }
 	public string PricingModeText { get => _pricingModeText; private set { if (_pricingModeText == value) return; _pricingModeText = value; OnPropertyChanged(); } }
