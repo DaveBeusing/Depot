@@ -319,8 +319,10 @@ jobs:
         if: github.event_name == 'workflow_dispatch' && inputs.channel == 'Stable'
         shell: pwsh
         run: |
-          $previousRef = (git rev-parse HEAD^1).Trim()
-          if ([string]::IsNullOrWhiteSpace($previousRef)) { throw 'Previous source revision could not be determined.' }
+          $baseRef = (git rev-parse HEAD^1).Trim()
+          if ([string]::IsNullOrWhiteSpace($baseRef)) { throw 'Previous source revision could not be determined.' }
+          $previousRef = ./scripts/ci/Resolve-PackagedE2EBase.ps1 -BaseRef $baseRef
+          if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($previousRef)) { throw 'No eligible older packaged baseline could be resolved for Stable acceptance.' }
           $previousTree = Join-Path $env:RUNNER_TEMP 'DepotPreviousReleaseSource'
           $previousOutput = Join-Path $env:GITHUB_WORKSPACE 'artifacts\release-previous'
           if (Test-Path $previousTree) { Remove-Item $previousTree -Recurse -Force }
