@@ -83,7 +83,7 @@ public sealed class AsyncRelayCommand<T> : ICommand, IDisposable where T : class
 	}
 
 	public bool CanExecute(object? parameter) =>
-		!_isExecuting && parameter is T value && (_canExecute?.Invoke(value) ?? true);
+		!_disposed && !_isExecuting && parameter is T value && (_canExecute?.Invoke(value) ?? true);
 
 	public async void Execute(object? parameter)
 	{
@@ -95,13 +95,18 @@ public sealed class AsyncRelayCommand<T> : ICommand, IDisposable where T : class
 		ObjectDisposedException.ThrowIf(_disposed, this);
 		if (!CanExecute(parameter)) return;
 		_isExecuting = true;
-		_executionCancellation = new CancellationTokenSource();
+		var cancellation = new CancellationTokenSource();
+		_executionCancellation = cancellation;
 		RaiseCanExecuteChanged();
-		try { await _execute(parameter, _executionCancellation.Token); }
+		try { await _execute(parameter, cancellation.Token); }
+		catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+		{
+		}
 		finally
 		{
-			_executionCancellation.Dispose();
-			_executionCancellation = null;
+			if (ReferenceEquals(_executionCancellation, cancellation))
+				_executionCancellation = null;
+			cancellation.Dispose();
 			_isExecuting = false;
 			RaiseCanExecuteChanged();
 		}
@@ -118,7 +123,5 @@ public sealed class AsyncRelayCommand<T> : ICommand, IDisposable where T : class
 		if (_disposed) return;
 		_disposed = true;
 		_executionCancellation?.Cancel();
-		_executionCancellation?.Dispose();
-		_executionCancellation = null;
 	}
 }
