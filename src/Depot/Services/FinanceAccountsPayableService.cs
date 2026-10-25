@@ -375,13 +375,20 @@ public sealed class FinanceAccountsPayableService
 			var existing = await _payables.FindPaymentByOperationAsync(transaction,normalized.OperationId,token);
 			if (existing is not null)
 			{
-				if (!string.Equals(existing.RequestHash,requestHash,StringComparison.Ordinal)) throw new InvalidOperationException("The payment operation ID is already assigned to different payment content.");
+				if (!string.Equals(existing.RequestHash,requestHash,StringComparison.Ordinal))
+				{
+					var legacyHash = normalized.BankAccountId.HasValue ? HashPayment(normalized with { BankAccountId=null }) : null;
+					if (existing.IsReversed || legacyHash is null || !string.Equals(existing.RequestHash,legacyHash,StringComparison.Ordinal)
+						|| !await _payables.HasLegacyPaymentRunBankEvidenceAsync(transaction,existing,normalized.BankAccountId.GetValueOrDefault(),token))
+						throw new InvalidOperationException("The payment operation ID is already assigned to different payment content.");
+				}
 				return existing;
 			}
 			if (!await _payables.SupplierExistsAsync(transaction,normalized.SupplierId,token)) throw new InvalidOperationException("The payment supplier was not found or is inactive.");
 			var configuration = await RequireActiveConfigurationAsync(transaction,token);
 			var periodId = await ResolvePeriodAsync(transaction,configuration,normalized.PaymentDate,token);
 			var profile = await _generalLedger.GetPostingProfileInTransactionAsync(transaction,configuration.PaymentPostingProfileId,token) ?? throw new InvalidOperationException("Supplier payment posting profile was not found.");
+			if (normalized.BankAccountId.HasValue) profile = await ResolvePaymentBankProfileAsync(transaction, configuration, profile, normalized.BankAccountId.Value, normalized.Currency, token);
 			var rateId = normalized.ExchangeRateId ?? await _generalLedger.ResolveExchangeRateIdForProfileAsync(transaction,profile.Id,normalized.Currency,normalized.PaymentDate,token);
 			var journal = await _generalLedger.PostFromProfileInTransactionAsync(transaction,new FinanceProfilePostingRequest
 			{
@@ -476,28 +483,77 @@ public sealed class FinanceAccountsPayableService
 
 	private async Task<List<FinanceSupplierDocumentLine>> EvaluateLinesAsync(DatabaseTransactionContext transaction, long documentId, long supplierId, FinancePayableDocumentKind kind, IReadOnlyList<FinanceSupplierDocumentLineDraft> lines, CancellationToken cancellationToken)
 	{
-		var result = new List<FinanceSupplierDocumentLine>(lines.Count);
-		for (var index=0;index<lines.Count;index++)
+		var result = lines.Select((line, index) => new FinanceSupplierDocumentLine
 		{
-			var line=lines[index];
-			var matchStatus=FinancePayableMatchStatus.NotRequired;
-			decimal? orderedPrice=null,received=null,previous=null;
-			decimal quantityVariance=0m,priceVariance=0m;
-			if (kind==FinancePayableDocumentKind.Invoice && line.PurchaseOrderLineId.HasValue)
+			DocumentId=documentId,LineNumber=index+1,PurchaseOrderLineId=line.PurchaseOrderLineId,GoodsReceiptLineId=line.GoodsReceiptLineId,
+			Description=line.Description,Quantity=line.Quantity,UnitPrice=line.UnitPrice,NetAmount=line.NetAmount,TaxAmount=line.TaxAmount,GrossAmount=line.GrossAmount,
+			MatchStatus=FinancePayableMatchStatus.NotRequired
+		}).ToList();
+		if (kind != FinancePayableDocumentKind.Invoice) return result;
+
+		var groups = lines.Select((line, index) => (Line: line, Index: index))
+			.Where(value => value.Line.PurchaseOrderLineId.HasValue)
+			.GroupBy(value => value.Line.PurchaseOrderLineId.GetValueOrDefault())
+			.OrderBy(group => group.Key).ToArray();
+		foreach (var group in groups) await _payables.LockPurchaseMatchLineAsync(transaction, group.Key, cancellationToken);
+		foreach (var group in groups)
+		{
+			var reference = await _payables.GetPurchaseMatchReferenceAsync(transaction, group.Key, null, cancellationToken) ?? throw new InvalidOperationException($"Purchase-order match reference {group.Key} was not found.");
+			if (reference.SupplierId != supplierId) throw new InvalidOperationException($"Purchase-order line {group.Key} belongs to a different supplier.");
+			var receipts = await _payables.GetPurchaseReceiptQuantitiesAsync(transaction, group.Key, cancellationToken);
+			var previous = await _payables.GetPreviouslyInvoicedQuantitiesAsync(transaction, group.Key, documentId, cancellationToken);
+			var quantities = receipts.ToDictionary(receipt => receipt.GoodsReceiptLineId, receipt => receipt.Quantity);
+			var remaining = new SortedDictionary<long, decimal>(quantities);
+			foreach (var consumption in previous.Where(value => value.GoodsReceiptLineId.HasValue))
 			{
-				var reference=await _payables.GetPurchaseMatchReferenceAsync(transaction,line.PurchaseOrderLineId.Value,line.GoodsReceiptLineId,cancellationToken) ?? throw new InvalidOperationException($"Purchase-order match reference for line {index+1} was not found or points to a reversed goods receipt.");
-				if (reference.SupplierId!=supplierId) throw new InvalidOperationException($"Purchase-order line {line.PurchaseOrderLineId.Value} belongs to a different supplier.");
-				previous=await _payables.GetPreviouslyInvoicedQuantityAsync(transaction,line.PurchaseOrderLineId.Value,documentId,cancellationToken);
-				orderedPrice=reference.OrderedUnitPrice;
-				received=reference.ReceivedQuantity;
-				var available=Math.Max(0m,reference.ReceivedQuantity-previous.Value);
-				quantityVariance=Math.Max(0m,line.Quantity-available);
-				priceVariance=line.UnitPrice-reference.OrderedUnitPrice;
-				matchStatus=quantityVariance==0m && priceVariance==0m ? FinancePayableMatchStatus.Matched : FinancePayableMatchStatus.Exception;
+				var receiptId = consumption.GoodsReceiptLineId.GetValueOrDefault();
+				if (remaining.TryGetValue(receiptId, out var quantity)) remaining[receiptId] = Math.Max(0m, quantity - consumption.Quantity);
 			}
-			result.Add(new FinanceSupplierDocumentLine { DocumentId=documentId,LineNumber=index+1,PurchaseOrderLineId=line.PurchaseOrderLineId,GoodsReceiptLineId=line.GoodsReceiptLineId,Description=line.Description,Quantity=line.Quantity,UnitPrice=line.UnitPrice,NetAmount=line.NetAmount,TaxAmount=line.TaxAmount,GrossAmount=line.GrossAmount,MatchStatus=matchStatus,OrderedUnitPrice=orderedPrice,ReceivedQuantity=received,PreviouslyInvoicedQuantity=previous,QuantityVariance=quantityVariance,PriceVariance=priceVariance });
+			var totalReceived = receipts.Sum(receipt => receipt.Quantity);
+			var totalRemaining = Math.Max(0m, totalReceived - previous.Sum(value => value.Quantity));
+
+			// Explicit receipt claims have first use of their own capacity. Historical PO-only
+			// claims reduce the shared total without inventing a receipt attribution.
+			foreach (var entry in group.OrderBy(value => value.Line.GoodsReceiptLineId.HasValue ? 0 : 1).ThenBy(value => value.Index))
+			{
+				var line = entry.Line;
+				decimal received;
+				decimal available;
+				if (line.GoodsReceiptLineId is { } receiptId)
+				{
+					if (!quantities.TryGetValue(receiptId, out received)) throw new InvalidOperationException($"Goods-receipt match reference for line {entry.Index + 1} was not found or points to a reversed receipt.");
+					available = Math.Min(remaining[receiptId], totalRemaining);
+					remaining[receiptId] = Math.Max(0m, remaining[receiptId] - line.Quantity);
+				}
+				else
+				{
+					received = totalReceived;
+					available = Math.Min(remaining.Values.Sum(), totalRemaining);
+					ConsumeUnscopedReceipts(remaining, line.Quantity);
+				}
+				totalRemaining = Math.Max(0m, totalRemaining - line.Quantity);
+				var quantityVariance = Math.Max(0m, line.Quantity - available);
+				var priceVariance = line.UnitPrice - reference.OrderedUnitPrice;
+				result[entry.Index] = result[entry.Index] with
+				{
+					OrderedUnitPrice=reference.OrderedUnitPrice,ReceivedQuantity=received,PreviouslyInvoicedQuantity=received-available,
+					QuantityVariance=quantityVariance,PriceVariance=priceVariance,
+					MatchStatus=quantityVariance==0m && priceVariance==0m ? FinancePayableMatchStatus.Matched : FinancePayableMatchStatus.Exception
+				};
+			}
 		}
 		return result;
+	}
+
+	private static void ConsumeUnscopedReceipts(SortedDictionary<long, decimal> remaining, decimal quantity)
+	{
+		foreach (var receiptId in remaining.Keys.ToArray())
+		{
+			if (quantity <= 0m) break;
+			var consumed = Math.Min(quantity, remaining[receiptId]);
+			remaining[receiptId] -= consumed;
+			quantity -= consumed;
+		}
 	}
 
 	private async Task<FinancePayableOpenItem> ApplyAllocationsAsync(DatabaseTransactionContext transaction, Guid operationId, FinancePayableOpenItem debit, IReadOnlyList<FinancePayableAllocationRequest> allocations, DateOnly date, long userId, CancellationToken cancellationToken)
@@ -517,6 +573,34 @@ public sealed class FinanceAccountsPayableService
 		}
 		if (await _payables.UpdateOpenItemRemainingAsync(transaction,debit.Id,debit.Version,debit.RemainingAmount-total,false,cancellationToken)!=1) throw new ConcurrencyConflictException("payable open item");
 		return debit with { Version=debit.Version+1,RemainingAmount=debit.RemainingAmount-total };
+	}
+
+	private async Task<FinancePostingProfile> ResolvePaymentBankProfileAsync(DatabaseTransactionContext transaction, FinancePayablesConfiguration configuration, FinancePostingProfile configuredProfile, long bankAccountId, CurrencyCode currency, CancellationToken cancellationToken)
+	{
+		var bank = await _payables.LockPaymentBankAsync(transaction, bankAccountId, cancellationToken) ?? throw new InvalidOperationException("Selected payment bank account was not found.");
+		if (!bank.IsActive || bank.LegalEntityId != configuration.LegalEntityId || bank.AccountingBookId != configuredProfile.AccountingBookId || bank.Currency != currency)
+			throw new InvalidOperationException("Selected payment bank account is inactive or incompatible with Accounts Payable entity, book or payment currency.");
+		var bankAccounts = await _payables.GetBankGeneralLedgerAccountIdsAsync(transaction, bank.AccountingBookId, cancellationToken);
+		if (MatchesPaymentBank(configuredProfile, bank, bankAccounts)) return configuredProfile;
+		var profiles = new List<FinancePostingProfile>();
+		foreach (var profileId in await _payables.GetBankPaymentProfileIdsAsync(transaction, bank, cancellationToken))
+		{
+			var candidate = await _generalLedger.GetPostingProfileInTransactionAsync(transaction, profileId, cancellationToken);
+			if (candidate is not null && MatchesPaymentBank(candidate, bank, bankAccounts)) profiles.Add(candidate);
+		}
+		if (profiles.Count != 1)
+			throw new InvalidOperationException("Selected payment bank requires one unambiguous active SupplierPayment posting profile with the exact bank credit amount.");
+		return profiles[0];
+	}
+
+	private static bool MatchesPaymentBank(FinancePostingProfile profile, FinancePaymentBankContext bank, IReadOnlyList<Guid> bankAccounts)
+	{
+		if (!profile.IsActive || profile.LegalEntityId != bank.LegalEntityId || profile.AccountingBookId != bank.AccountingBookId || profile.SourceType != FinancePayableSourceTypes.SupplierPayment || profile.SourceEvent != "Posted") return false;
+		if (profile.Lines.Count == 0 || profile.Lines.Any(line => line.AmountKey != FinancePayablePostingAmountKeys.Payment || line.Multiplier < 0m)) return false;
+		var coefficients = profile.Lines.GroupBy(line => line.AccountId).ToDictionary(group => group.Key, group => group.Sum(line => line.Direction == FinancePostingDirection.Debit ? line.Multiplier : -line.Multiplier));
+		return coefficients.Values.Sum() == 0m
+			&& coefficients.GetValueOrDefault(bank.GeneralLedgerAccountId) == -1m
+			&& bankAccounts.Where(accountId => accountId != bank.GeneralLedgerAccountId).All(accountId => coefficients.GetValueOrDefault(accountId) == 0m);
 	}
 
 	private async Task ValidateConfigurationAsync(DatabaseTransactionContext transaction, FinancePayablesConfiguration configuration, CancellationToken cancellationToken)
@@ -590,7 +674,7 @@ public sealed class FinanceAccountsPayableService
 	private static FinancePayablePaymentRequest NormalizePayment(FinancePayablePaymentRequest request)
 	{
 		if (request.OperationId==Guid.Empty) throw new ArgumentException("An operation ID is required.",nameof(request));
-		if (request.SupplierId<=0 || request.Amount<=0m) throw new ArgumentOutOfRangeException(nameof(request),"Supplier and positive payment amount are required.");
+		if (request.SupplierId<=0 || request.Amount<=0m || request.BankAccountId is <= 0) throw new ArgumentOutOfRangeException(nameof(request),"Supplier, positive payment amount and a valid optional bank account are required.");
 		if (request.Allocations.Any(value=>value.Amount<=0m) || request.Allocations.Sum(value=>value.Amount)>request.Amount) throw new InvalidOperationException("Payment allocations must be positive and cannot exceed the payment amount.");
 		return request with { Description=FinanceValidation.Required(request.Description,nameof(request.Description),500),Reference=Optional(request.Reference,200),Allocations=request.Allocations.ToArray(),Dimensions=request.Dimensions.ToArray() };
 	}
@@ -607,6 +691,7 @@ public sealed class FinanceAccountsPayableService
 		Append(builder,request.SupplierId.ToString(CultureInfo.InvariantCulture));Append(builder,request.Currency.Value);Append(builder,request.PaymentDate.ToString("yyyy-MM-dd",CultureInfo.InvariantCulture));Append(builder,request.Amount.ToString("G29",CultureInfo.InvariantCulture));Append(builder,request.Reference);Append(builder,request.Description);Append(builder,request.ExchangeRateId?.ToString("D"));
 		foreach (var allocation in request.Allocations.OrderBy(value=>value.CreditOpenItemId)) { Append(builder,allocation.CreditOpenItemId.ToString(CultureInfo.InvariantCulture));Append(builder,allocation.Amount.ToString("G29",CultureInfo.InvariantCulture)); }
 		foreach (var dimension in request.Dimensions.OrderBy(value=>value.DimensionId)) { Append(builder,dimension.DimensionId.ToString("D"));Append(builder,dimension.DimensionValueId.ToString("D")); }
+		if (request.BankAccountId.HasValue) { Append(builder,"BankAccount");Append(builder,request.BankAccountId.Value.ToString(CultureInfo.InvariantCulture)); }
 		return Hash(builder);
 	}
 	private static string HashAllocations(long debitOpenItemId, DateOnly date, IReadOnlyList<FinancePayableAllocationRequest> allocations)
