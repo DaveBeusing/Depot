@@ -1,8 +1,16 @@
 # User-facing changes
 
-Updated: 2026-09-20
+Updated: 2026-10-25
 
 Depot's current `0.15.x-preview` line includes the integrated Finance platform, persistent session/security administration, user-scoped workspace productivity, productive visual designers, production-tested database-provider support, advanced commercial price generation and electronic-invoice issuance based on XRechnung CII.
+
+## Inventory and Finance integrity
+
+- Excel inventory imports commit their master data, opening balances and audit evidence as one batch. Retrying the same preview or reloading an already completed workbook reports the existing completion without posting duplicate opening balances.
+- Supplier invoice matching considers all lines claiming the same received quantity and already approved or posted invoices. Explicit receipt references retain their own quantity limits.
+- Payment runs post against their selected bank account. SEPA generation checks the current outstanding balance and other active instructions; bank reconciliation prevents the same journal bank side from being matched twice through different target types.
+- Fixed asset depreciation and impairments have distinct posting identities, use the remaining posted carrying value and validate the asset's legal entity throughout posting. Repeated requests return their retained evidence, while changed request details are rejected.
+- FIFO shipments and negative adjustments remove the historical reporting-currency carrying value, including landed costs and exact rounding remainders. Inventory Valuation and reconciliation use the same evidence. Missing or contradictory historical evidence requires investigation before another posting.
 
 ## Visual document templates
 
@@ -102,7 +110,7 @@ Advanced pricing uses existing Item and Sales Pricing permissions. FX-rate maint
 - Application: **0.15.x-preview**
 - Core database schema: **30**
 - Sales schema: **16**
-- Finance schema: **12**
+- Finance schema: **13**
 - User Sessions schema: **3**
 - Security Events schema: **3**
 - User Preferences schema: **2**
@@ -121,3 +129,4 @@ Database-provider technical acceptance is complete for the certified matrix. Org
 Purchasing now includes a Sourcing workspace for controlled purchase demand. Users can create and submit Purchase Requisitions, route eligible demand through requisition approval, prepare RFQs for one or more suppliers, record supplier quote responses and compare them side by side.
 
 Supplier selection is explicit. Depot does not automatically choose a quote or place a Purchase Order. An authorized user can convert the selected eligible quote into the existing Purchase Order draft workflow, with retained links back to the requisition, RFQ and selected supplier response. Relevant work appears in My Work and the Buyer Workbench.
+

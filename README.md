@@ -109,7 +109,7 @@ Current baseline:
 - Application: **0.15.x-preview**
 - Core database schema: **30**
 - Sales feature schema: **16**
-- Finance feature schema: **12**
+- Finance feature schema: **13**
 - User Sessions feature schema: **3**
 - Security Events feature schema: **3**
 - User Preferences feature schema: **2**
@@ -248,3 +248,4 @@ Depot includes a controlled [Procurement Sourcing](docs/ProcurementSourcing.md) 
 ## Inventory replenishment
 
 Depot includes deterministic [Inventory Replenishment](docs/InventoryReplenishment.md) with per-item/per-warehouse policies, explainable shortage snapshots, SupplierItem lead-time/MOQ evidence and explicit user conversion of accepted suggestions into Purchase Requisitions. The feature never awards suppliers or creates Purchase Orders automatically.
+
