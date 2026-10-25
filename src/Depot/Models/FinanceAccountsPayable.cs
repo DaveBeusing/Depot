@@ -244,6 +244,7 @@ public sealed record FinancePayableAllocationRequest(long CreditOpenItemId, deci
 public sealed record FinancePayablePaymentRequest
 {
 	public required Guid OperationId { get; init; }
+	public long? BankAccountId { get; init; }
 	public required long SupplierId { get; init; }
 	public required CurrencyCode Currency { get; init; }
 	public required DateOnly PaymentDate { get; init; }
