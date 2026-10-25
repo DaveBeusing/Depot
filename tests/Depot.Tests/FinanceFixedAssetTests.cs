@@ -117,6 +117,164 @@ public sealed class FinanceFixedAssetTests : IDisposable
 	}
 
 	[Fact]
+	public async Task ConsecutiveDepreciationPeriodsHaveDistinctSourcesAndReplayTheirOwnEvidence()
+	{
+		var classId = await InsertClassAsync(FinanceDepreciationMethod.StraightLine, 3);
+		var assetId = await InsertAssetAsync(classId, 900m, 0m, 3, FinanceDepreciationMethod.StraightLine);
+		var schedule = await _service.RecalculateScheduleAsync(assetId);
+		await _service.CapitalizeAsync(assetId, Guid.NewGuid(), _januaryPeriodId, new DateOnly(2026, 1, 5));
+		var results = new List<FinanceAssetTransaction>();
+		foreach (var period in schedule)
+		{
+			var operation = Guid.NewGuid();
+			var result = await _service.PostDepreciationAsync(period.Id, operation);
+			Assert.Equal(result.Id, (await _service.PostDepreciationAsync(period.Id, operation)).Id);
+			Assert.Equal(result.Id, (await _service.PostDepreciationAsync(period.Id, Guid.NewGuid())).Id);
+			results.Add(result);
+		}
+		Assert.Equal(3, results.Select(result => result.JournalEntryId).Distinct().Count());
+		Assert.Equal(900m, results.Sum(result => result.Amount));
+		Assert.Equal(4, (await _service.SearchTransactionsAsync(assetId)).TotalCount);
+		var row = Assert.Single((await _service.SearchReconciliationAsync(_legalEntityId)).Items);
+		Assert.Equal(0m, row.SubledgerCarryingValue);
+		Assert.Equal(0m, row.GeneralLedgerCarryingValue);
+		await Assert.ThrowsAsync<InvalidOperationException>(() => _service.PostDepreciationAsync(schedule[1].Id, results[0].OperationId));
+	}
+
+	[Fact]
+	public async Task IndependentImpairmentsKeepDistinctJournalsAndRejectChangedReplay()
+	{
+		var classId = await InsertClassAsync(FinanceDepreciationMethod.NoDepreciation, 1);
+		var assetId = await InsertAssetAsync(classId, 1000m, 0m, 1, FinanceDepreciationMethod.NoDepreciation);
+		await _service.CapitalizeAsync(assetId, Guid.NewGuid(), _januaryPeriodId, new DateOnly(2026, 1, 5));
+		var operation = Guid.NewGuid();
+		var first = await _service.ImpairAsync(assetId, operation, _januaryPeriodId, new DateOnly(2026, 1, 10), 100m, "Initial damage");
+		var second = await _service.ImpairAsync(assetId, Guid.NewGuid(), _januaryPeriodId, new DateOnly(2026, 1, 11), 150m, "Further damage");
+		Assert.NotEqual(first.JournalEntryId, second.JournalEntryId);
+		Assert.Equal(first.Id, (await _service.ImpairAsync(assetId, operation, _januaryPeriodId, new DateOnly(2026, 1, 10), 100m, "Initial damage")).Id);
+		await Assert.ThrowsAsync<InvalidOperationException>(() => _service.ImpairAsync(assetId, operation, _januaryPeriodId, new DateOnly(2026, 1, 10), 101m, "Initial damage"));
+		Assert.Equal(3, (await _service.SearchTransactionsAsync(assetId)).TotalCount);
+		var row = Assert.Single((await _service.SearchReconciliationAsync(_legalEntityId)).Items);
+		Assert.Equal(750m, row.SubledgerCarryingValue);
+		Assert.Equal(row.SubledgerCarryingValue, row.GeneralLedgerCarryingValue);
+	}
+
+	[Fact]
+	public async Task ImpairmentAboveRemainingValueLeavesNoJournalOrAssetEvidence()
+	{
+		var classId = await InsertClassAsync(FinanceDepreciationMethod.StraightLine, 2);
+		var assetId = await InsertAssetAsync(classId, 1000m, 0m, 2, FinanceDepreciationMethod.StraightLine);
+		var schedule = await _service.RecalculateScheduleAsync(assetId);
+		await _service.CapitalizeAsync(assetId, Guid.NewGuid(), _januaryPeriodId, new DateOnly(2026, 1, 5));
+		await _service.PostDepreciationAsync(schedule[0].Id, Guid.NewGuid());
+		var operation = Guid.NewGuid();
+		await Assert.ThrowsAsync<InvalidOperationException>(() => _service.ImpairAsync(assetId, operation, _februaryPeriodId, new DateOnly(2026, 2, 1), 501m, "Excess impairment"));
+		Assert.Equal(0L, Convert.ToInt64(await _database.ExecuteScalarAsync("SELECT COUNT(*) FROM FinanceJournalEntries WHERE OperationId=$Operation;", CancellationToken.None, new DatabaseParameter("$Operation", operation.ToString("D")))));
+		Assert.Equal(2, (await _service.SearchTransactionsAsync(assetId)).TotalCount);
+		await _service.ImpairAsync(assetId, Guid.NewGuid(), _februaryPeriodId, new DateOnly(2026, 2, 1), 500m, "Full impairment");
+		await Assert.ThrowsAsync<InvalidOperationException>(() => _service.PostDepreciationAsync(schedule[1].Id, Guid.NewGuid()));
+		var row = Assert.Single((await _service.SearchReconciliationAsync(_legalEntityId)).Items);
+		Assert.Equal(0m, row.SubledgerCarryingValue);
+		Assert.Equal(0m, row.GeneralLedgerCarryingValue);
+	}
+
+	[Fact]
+	public async Task ImpairmentAndCorrectionReallocateOnlyUnpostedDepreciationAboveSalvage()
+	{
+		var classId = await InsertClassAsync(FinanceDepreciationMethod.StraightLine, 3);
+		var assetId = await InsertAssetAsync(classId, 1000m, 100m, 3, FinanceDepreciationMethod.StraightLine);
+		var schedule = await _service.RecalculateScheduleAsync(assetId);
+		await _service.CapitalizeAsync(assetId, Guid.NewGuid(), _januaryPeriodId, new DateOnly(2026, 1, 5));
+		var impairment = await _service.ImpairAsync(assetId, Guid.NewGuid(), _januaryPeriodId, new DateOnly(2026, 1, 10), 600m, "Reduced useful value");
+		var first = await _service.PostDepreciationAsync(schedule[0].Id, Guid.NewGuid());
+		Assert.Equal(100m, first.Amount);
+		await _service.CorrectImpairmentAsync(impairment.Id, Guid.NewGuid(), _februaryPeriodId, new DateOnly(2026, 2, 1), "Inspection corrected value");
+		Assert.Equal(400m, (await _service.PostDepreciationAsync(schedule[1].Id, Guid.NewGuid())).Amount);
+		Assert.Equal(400m, (await _service.PostDepreciationAsync(schedule[2].Id, Guid.NewGuid())).Amount);
+		var persisted = await _service.GetScheduleAsync(assetId);
+		Assert.Equal(new[] { 300m, 300m, 300m }, persisted.Select(period => period.PlannedAmount));
+		Assert.Equal(new[] { 100m, 400m, 400m }, persisted.Select(period => period.PostedAmount));
+		Assert.Equal(first.Id, (await _service.PostDepreciationAsync(schedule[0].Id, Guid.NewGuid())).Id);
+		var row = Assert.Single((await _service.SearchReconciliationAsync(_legalEntityId)).Items);
+		Assert.Equal(100m, row.SubledgerCarryingValue);
+		Assert.Equal(100m, row.GeneralLedgerCarryingValue);
+	}
+
+	[Fact]
+	public async Task ReferencedClassCannotMoveEntityButAllowsDescriptiveEdits()
+	{
+		var classId = await InsertClassAsync(FinanceDepreciationMethod.NoDepreciation, 1);
+		await InsertAssetAsync(classId, 1000m, 0m, 1, FinanceDepreciationMethod.NoDepreciation);
+		var original = Assert.Single(await _service.GetClassesAsync(_legalEntityId));
+		var other = await CreateOtherEntityClassAsync(original);
+		var error = await Assert.ThrowsAsync<InvalidOperationException>(() => _service.SaveClassAsync(other with { Id = original.Id, Version = original.Version, Code = original.Code }));
+		Assert.Contains("referenced asset class", error.Message, StringComparison.Ordinal);
+		var edited = await _service.SaveClassAsync(original with { Name = "Updated description" });
+		Assert.Equal(_legalEntityId, edited.LegalEntityId);
+		Assert.Equal("Updated description", edited.Name);
+	}
+
+	[Theory]
+	[InlineData("Capitalization")]
+	[InlineData("Depreciation")]
+	[InlineData("Impairment")]
+	[InlineData("Correction")]
+	[InlineData("Disposal")]
+	public async Task PostingRejectsAssetClassOwnershipMismatchWithoutNewEvidence(string action)
+	{
+		var classId = await InsertClassAsync(FinanceDepreciationMethod.StraightLine, 3);
+		var assetId = await InsertAssetAsync(classId, 1000m, 0m, 3, FinanceDepreciationMethod.StraightLine);
+		var schedule = await _service.RecalculateScheduleAsync(assetId);
+		if (action != "Capitalization") await _service.CapitalizeAsync(assetId, Guid.NewGuid(), _januaryPeriodId, new DateOnly(2026, 1, 5));
+		FinanceAssetTransaction? impairment = null;
+		if (action == "Correction") impairment = await _service.ImpairAsync(assetId, Guid.NewGuid(), _januaryPeriodId, new DateOnly(2026, 1, 10), 100m, "Damage");
+		var original = Assert.Single(await _service.GetClassesAsync(_legalEntityId));
+		var other = await CreateOtherEntityClassAsync(original);
+		await _database.ExecuteAsync("UPDATE FinanceFixedAssets SET AssetClassId=$Class WHERE Id=$Asset;", CancellationToken.None, new DatabaseParameter("$Class", other.Id), new DatabaseParameter("$Asset", assetId));
+		var before = (await _service.SearchTransactionsAsync(assetId)).TotalCount;
+		var operation = Guid.NewGuid();
+		Func<Task> posting = action switch
+		{
+			"Capitalization" => () => _service.CapitalizeAsync(assetId, operation, _januaryPeriodId, new DateOnly(2026, 1, 12)),
+			"Depreciation" => () => _service.PostDepreciationAsync(schedule[0].Id, operation),
+			"Impairment" => () => _service.ImpairAsync(assetId, operation, _januaryPeriodId, new DateOnly(2026, 1, 12), 100m, "Damage"),
+			"Correction" => () => _service.CorrectImpairmentAsync((impairment ?? throw new InvalidOperationException()).Id, operation, _januaryPeriodId, new DateOnly(2026, 1, 12), "Correction"),
+			_ => () => _service.DisposeAsync(assetId, operation, _januaryPeriodId, new DateOnly(2026, 1, 12), 0m, "Retired")
+		};
+		await Assert.ThrowsAsync<InvalidOperationException>(posting);
+		Assert.Equal(before, (await _service.SearchTransactionsAsync(assetId)).TotalCount);
+		Assert.Equal(0L, Convert.ToInt64(await _database.ExecuteScalarAsync("SELECT COUNT(*) FROM FinanceJournalEntries WHERE OperationId=$Operation;", CancellationToken.None, new DatabaseParameter("$Operation", operation.ToString("D")))));
+	}
+
+	private async Task<FinanceAssetClass> CreateOtherEntityClassAsync(FinanceAssetClass source)
+	{
+		var entity = Guid.NewGuid();
+		var calendar = Guid.NewGuid();
+		var book = Guid.NewGuid();
+		var journal = Guid.NewGuid();
+		var suffix = Guid.NewGuid().ToString("N")[..8];
+		await _database.ExecuteAsync("INSERT INTO FinanceLegalEntities (Id,Code,Name,CountryCode,FunctionalCurrencyCode,IsActive) VALUES ($Id,$Code,'Other entity','DE','EUR',1);", CancellationToken.None, new DatabaseParameter("$Id", entity.ToString("D")), new DatabaseParameter("$Code", $"OTHER-{suffix}"));
+		await _database.ExecuteAsync("INSERT INTO FinanceFiscalCalendars (Id,LegalEntityId,Code,Name,IsActive) VALUES ($Id,$Entity,$Code,'Other calendar',1);", CancellationToken.None, new DatabaseParameter("$Id", calendar.ToString("D")), new DatabaseParameter("$Entity", entity.ToString("D")), new DatabaseParameter("$Code", $"OTHER-{suffix}"));
+		await _database.ExecuteAsync("INSERT INTO FinanceAccountingBooks (Id,LegalEntityId,ChartOfAccountsId,Code,Name,ReportingCurrencyCode,AccountingStandardCode,IsPrimary,IsActive) SELECT $Book,$Entity,b.ChartOfAccountsId,$Code,'Other book','EUR','TEST',1,1 FROM FinanceAccountingBooks b INNER JOIN FinancePostingProfiles p ON p.AccountingBookId=b.Id WHERE p.Id=$Profile;", CancellationToken.None, new DatabaseParameter("$Book", book.ToString("D")), new DatabaseParameter("$Entity", entity.ToString("D")), new DatabaseParameter("$Code", $"OTHER-{suffix}"), new DatabaseParameter("$Profile", source.CapitalizationPostingProfileId));
+		await _database.ExecuteAsync("INSERT INTO FinanceJournals (Id,AccountingBookId,Code,Name,IsActive) VALUES ($Id,$Book,$Code,'Other journal',1);", CancellationToken.None, new DatabaseParameter("$Id", journal.ToString("D")), new DatabaseParameter("$Book", book.ToString("D")), new DatabaseParameter("$Code", $"OTHER-{suffix}"));
+		await _database.ExecuteAsync("INSERT INTO FinanceNumberSequences (Id,LegalEntityId,Code,DocumentType,Prefix,NumericLength,NextNumber,IsActive) VALUES ($Id,$Entity,'FA-GL',$Type,'OTHER-',6,1,1);", CancellationToken.None, new DatabaseParameter("$Id", Guid.NewGuid().ToString("D")), new DatabaseParameter("$Entity", entity.ToString("D")), new DatabaseParameter("$Type", FinanceNumberSequenceDocumentTypes.GeneralLedger));
+		async Task<long> CopyProfileAsync(long sourceId)
+		{
+			var id = await _database.InsertAsync("INSERT INTO FinancePostingProfiles (Version,LegalEntityId,AccountingBookId,JournalId,Code,Name,SourceType,SourceEvent,NumberSequenceCode,IsActive) SELECT 1,$Entity,$Book,$Journal,Code,Name,SourceType,SourceEvent,NumberSequenceCode,IsActive FROM FinancePostingProfiles WHERE Id=$Source;", CancellationToken.None, new DatabaseParameter("$Entity", entity.ToString("D")), new DatabaseParameter("$Book", book.ToString("D")), new DatabaseParameter("$Journal", journal.ToString("D")), new DatabaseParameter("$Source", sourceId));
+			await _database.ExecuteAsync("INSERT INTO FinancePostingProfileLines (PostingProfileId,LineNumber,AccountId,Direction,AmountKey,Multiplier,Description) SELECT $Target,LineNumber,AccountId,Direction,AmountKey,Multiplier,Description FROM FinancePostingProfileLines WHERE PostingProfileId=$Source;", CancellationToken.None, new DatabaseParameter("$Target", id), new DatabaseParameter("$Source", sourceId));
+			return id;
+		}
+		return await _service.SaveClassAsync(source with
+		{
+			Id = 0, Version = 1, LegalEntityId = entity, FiscalCalendarId = calendar,
+			CapitalizationPostingProfileId = await CopyProfileAsync(source.CapitalizationPostingProfileId),
+			DepreciationPostingProfileId = await CopyProfileAsync(source.DepreciationPostingProfileId),
+			ImpairmentPostingProfileId = await CopyProfileAsync(source.ImpairmentPostingProfileId),
+			DisposalPostingProfileId = await CopyProfileAsync(source.DisposalPostingProfileId)
+		});
+	}
+
+	[Fact]
 	public async Task ClosedDepreciationPeriodFailsOrMovesToNextOpenPeriodExplicitly()
 	{
 		var classId=await InsertClassAsync(FinanceDepreciationMethod.StraightLine,2);
@@ -165,8 +323,13 @@ public sealed class FinanceFixedAssetTests : IDisposable
 		await _service.CapitalizeAsync(assetId,Guid.NewGuid(),_januaryPeriodId,new DateOnly(2026,1,5));
 		var impairment=await _service.ImpairAsync(assetId,Guid.NewGuid(),_januaryPeriodId,new DateOnly(2026,1,10),100m,"Temporary impairment");
 		await _service.CorrectImpairmentAsync(impairment.Id,Guid.NewGuid(),_januaryPeriodId,new DateOnly(2026,1,11),"Impairment no longer supported");
-		var disposal=await _service.DisposeAsync(assetId,Guid.NewGuid(),_januaryPeriodId,new DateOnly(2026,1,20),900m,"Asset sold");
+		var disposalOperation=Guid.NewGuid();
+		var disposal=await _service.DisposeAsync(assetId,disposalOperation,_januaryPeriodId,new DateOnly(2026,1,20),900m,"Asset sold");
 		AssertBalanced(disposal.JournalEntryId);
+		var replay=await _service.DisposeAsync(assetId,disposalOperation,_januaryPeriodId,new DateOnly(2026,1,20),900.00m,"Asset sold");
+		Assert.Equal(disposal.Id,replay.Id);
+		Assert.Equal(disposal.JournalEntryId,replay.JournalEntryId);
+		await Assert.ThrowsAsync<InvalidOperationException>(()=>_service.DisposeAsync(assetId,disposalOperation,_januaryPeriodId,new DateOnly(2026,1,20),901m,"Asset sold"));
 
 		var asset=await _service.GetAssetAsync(assetId);
 		Assert.NotNull(asset);
@@ -296,3 +459,4 @@ public sealed class FinanceFixedAssetTests : IDisposable
 
 	public void Dispose(){SqliteConnection.ClearAllPools();try{File.Delete(_path);}catch(IOException){}}
 }
+
