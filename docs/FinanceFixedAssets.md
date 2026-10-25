@@ -1,6 +1,6 @@
 # Finance Fixed Assets
 
-Updated: 2026-09-23
+Updated: 2026-10-25
 
 ## Purpose
 
@@ -47,7 +47,9 @@ An asset class belongs to one Legal Entity and configures:
 - impairment posting profile;
 - disposal posting profile.
 
-Posting profiles must be active, belong to the same Legal Entity and use the expected `FixedAssets` source/event contract.
+Posting profiles must be active, belong to the same Legal Entity and use the expected `FixedAssets` source/event contract. Their accounting books and the class fiscal calendar must belong to that same entity. Every accounting operation revalidates these relationships and requires a period in the class calendar.
+
+A class referenced by any asset cannot be reassigned to another Legal Entity. Descriptive and valid same-entity configuration updates remain available. Existing asset Legal Entity identities are also retained; moving financial ownership requires a separate, explicit migration workflow.
 
 ## Asset master
 
@@ -90,7 +92,7 @@ There is no implicit posting into a closed period.
 
 A period run selects bounded pending schedule rows for the requested accounting period. Each schedule row receives a deterministic child operation ID derived from the run operation ID and schedule identity. A partially completed run can therefore be retried without double-posting completed rows.
 
-Each individual accounting mutation remains transactional.
+Each individual accounting mutation remains transactional. Depreciation journals use the immutable schedule-row identity as their source; impairment journals use the immutable adjustment operation identity. A retry returns the existing event evidence, including a previously posted depreciation period submitted under a new operation ID, and cannot append a second subledger transaction for the same source journal. Reusing an impairment operation ID for a different asset, amount, period, date or reason is rejected.
 
 ## Accounting workflows
 
@@ -100,15 +102,17 @@ Only draft assets can be capitalized. The configured capitalization profile post
 
 ### Depreciation
 
-Only active assets can post depreciation. A schedule row can be posted once; optimistic/unique evidence and operation IDs protect retry behavior.
+Only active assets can post depreciation. A schedule row can be posted once; asset-row serialization, unique evidence and operation IDs protect retry behavior.
+
+Each posting calculates the remaining depreciable carrying value from committed capitalization, depreciation, impairment and correction evidence in the same transaction. Salvage value is the depreciation floor. The remaining basis is distributed proportionally across the original positive weights of unposted schedule rows; the final remaining weight consumes the exact remainder. This adjusts future charges after impairment or its correction while retaining the original planned amounts and all posted charges. A depleted or zero-rounding charge is rejected without creating a zero-value journal. Correcting an impairment restores only the remaining basis; it does not reopen posted schedule rows.
 
 ### Impairment
 
-Impairment requires an explicit positive amount and reason and posts through the configured impairment profile.
+Impairment requires an explicit positive amount and reason and posts through the configured impairment profile. The amount cannot exceed the current carrying value. The service locks the asset before reading posted valuation evidence, so concurrent impairments or depreciation cannot independently consume the same remaining value.
 
 ### Impairment correction
 
-A posted impairment can be corrected only through an explicit General Ledger reversal. The original impairment transaction and journal remain immutable; the correction creates its own operation ID, reversal journal reference, reason and Fixed Assets transaction evidence. Corrected impairment is added back when carrying value is calculated. Other transaction kinds are not silently repurposed as generic corrections.
+A posted impairment can be corrected only through an explicit General Ledger reversal. The original impairment transaction and journal remain immutable; the correction creates its own operation ID, reversal journal reference, reason and Fixed Assets transaction evidence. Corrected impairment is added back when carrying value is calculated. Other transaction kinds are not silently repurposed as generic corrections. Owning impairment corrections remain available to repair historical overdrawn carrying evidence; ordinary new charges and disposal reject inconsistent valuation evidence instead of clamping a negative value to zero.
 
 ### Transfer
 
@@ -116,7 +120,9 @@ Location/custodian transfers require a reason. They update current assignment da
 
 ### Disposal
 
-Only active assets can be disposed. Disposal computes carrying value from retained cost, depreciation and impairment evidence and sends cost, accumulated depreciation, impairment, proceeds, carrying value and gain/loss amounts to the configured disposal posting profile.
+Only active assets can be disposed. Disposal computes carrying value from retained capitalization, depreciation, impairment and correction evidence under the same asset lock and sends cost, accumulated depreciation, impairment, proceeds, carrying value and gain/loss amounts to the configured disposal posting profile.
+
+A disposal retry checks the original asset, period, date, reason and retained proceeds evidence before returning the existing transaction. Numerically equal proceeds such as `900` and `900.00` are the same request; changed proceeds are rejected independently of later posting-profile changes.
 
 ## Accounts Payable source linkage
 
@@ -184,3 +190,4 @@ Changes to this area require, where applicable:
 - CI gate review.
 
 See [Finance Architecture](FinanceArchitecture.md), [Finance Compliance](FinanceCompliance.md), [Finance Reporting](FinanceReporting.md), [Database Provider Production Support Matrix](DatabaseProviderSupportMatrix.md) and [Versioning](Versioning.md).
+

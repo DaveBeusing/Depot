@@ -100,6 +100,39 @@ public sealed class FinanceFixedAssetRepository : DatabaseRepository
 	internal Task<FinanceFixedAsset?> GetAssetAsync(DatabaseTransactionContext transaction,long id,CancellationToken token) =>
 		transaction.Session.QuerySingleOrDefaultAsync($"SELECT {AssetColumns} FROM FinanceFixedAssets WHERE Id=$Id;",ReadAsset,token,Parameter("$Id",id));
 
+	internal async Task<FinanceFixedAsset?> LockAssetAsync(DatabaseTransactionContext transaction, long id, CancellationToken token)
+	{
+		await transaction.Session.ExecuteAsync("UPDATE FinanceFixedAssets SET Version=Version WHERE Id=$Id;", token, Parameter("$Id", id));
+		return await GetAssetAsync(transaction, id, token);
+	}
+
+	internal async Task<FinanceAssetClass?> LockClassAsync(DatabaseTransactionContext transaction, long id, CancellationToken token)
+	{
+		await transaction.Session.ExecuteAsync("UPDATE FinanceAssetClasses SET Version=Version WHERE Id=$Id;", token, Parameter("$Id", id));
+		return await GetClassAsync(transaction, id, token);
+	}
+
+	internal async Task<bool> ClassHasAssetsAsync(DatabaseTransactionContext transaction, long id, CancellationToken token) =>
+		Convert.ToInt64(await transaction.Session.ExecuteScalarAsync("SELECT COUNT(*) FROM FinanceFixedAssets WHERE AssetClassId=$Id;", token, Parameter("$Id", id)), CultureInfo.InvariantCulture) > 0;
+
+	internal async Task<bool> BookMatchesEntityAsync(DatabaseTransactionContext transaction, Guid bookId, Guid entityId, CancellationToken token) =>
+		Convert.ToInt64(await transaction.Session.ExecuteScalarAsync("SELECT COUNT(*) FROM FinanceAccountingBooks WHERE Id=$Book AND LegalEntityId=$Entity AND IsActive=1;", token, Parameter("$Book", bookId.ToString("D")), Parameter("$Entity", entityId.ToString("D"))), CultureInfo.InvariantCulture) == 1;
+
+	internal async Task<bool> PeriodMatchesCalendarAsync(DatabaseTransactionContext transaction, Guid periodId, Guid calendarId, CancellationToken token) =>
+		Convert.ToInt64(await transaction.Session.ExecuteScalarAsync("SELECT COUNT(*) FROM FinanceAccountingPeriods WHERE Id=$Period AND FiscalCalendarId=$Calendar;", token, Parameter("$Period", periodId.ToString("D")), Parameter("$Calendar", calendarId.ToString("D"))), CultureInfo.InvariantCulture) == 1;
+
+	internal async Task<bool> JournalMatchesEntityAsync(DatabaseTransactionContext transaction, long journalId, Guid entityId, CancellationToken token) =>
+		Convert.ToInt64(await transaction.Session.ExecuteScalarAsync("SELECT COUNT(*) FROM FinanceJournalEntries j INNER JOIN FinanceAccountingBooks b ON b.Id=j.AccountingBookId WHERE j.Id=$Journal AND b.LegalEntityId=$Entity;", token, Parameter("$Journal", journalId), Parameter("$Entity", entityId.ToString("D"))), CultureInfo.InvariantCulture) == 1;
+
+	internal async Task<bool> JournalMatchesPeriodAsync(DatabaseTransactionContext transaction, long journalId, Guid periodId, CancellationToken token) =>
+		Convert.ToInt64(await transaction.Session.ExecuteScalarAsync("SELECT COUNT(*) FROM FinanceJournalEntries WHERE Id=$Journal AND AccountingPeriodId=$Period;", token, Parameter("$Journal", journalId), Parameter("$Period", periodId.ToString("D"))), CultureInfo.InvariantCulture) == 1;
+
+	internal async Task<bool> IsJournalReversalAsync(DatabaseTransactionContext transaction, long reversalId, long originalId, CancellationToken token) =>
+		Convert.ToInt64(await transaction.Session.ExecuteScalarAsync("SELECT COUNT(*) FROM FinanceJournalReversals WHERE OriginalEntryId=$Original AND ReversalEntryId=$Reversal;", token, Parameter("$Original", originalId), Parameter("$Reversal", reversalId)), CultureInfo.InvariantCulture) == 1;
+
+	internal Task<IReadOnlyList<FinanceAssetDepreciationPeriod>> GetUnpostedScheduleAsync(DatabaseTransactionContext transaction, long assetId, CancellationToken token) =>
+		transaction.Session.QueryAsync($"SELECT {ScheduleColumns} FROM FinanceAssetDepreciationPeriods WHERE AssetId=$Asset AND JournalEntryId IS NULL ORDER BY PeriodStart,Id;", ReadSchedule, token, Parameter("$Asset", assetId));
+
 	internal Task<FinanceAssetDepreciationPeriod?> GetSchedulePeriodAsync(DatabaseTransactionContext transaction,long id,CancellationToken token) =>
 		transaction.Session.QuerySingleOrDefaultAsync($"SELECT {ScheduleColumns} FROM FinanceAssetDepreciationPeriods WHERE Id=$Id;",ReadSchedule,token,Parameter("$Id",id));
 
@@ -177,3 +210,4 @@ public sealed class FinanceFixedAssetRepository : DatabaseRepository
 	private static decimal ReadDecimal(DbDataReader r,int i)=>Convert.ToDecimal(r.GetValue(i),CultureInfo.InvariantCulture);
 	private static bool ReadBool(DbDataReader r,int i)=>Convert.ToBoolean(r.GetValue(i),CultureInfo.InvariantCulture);
 }
+

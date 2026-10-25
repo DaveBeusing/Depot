@@ -70,7 +70,8 @@ public sealed class FinanceFixedAssetService
 			if(!await _assets.FiscalCalendarMatchesEntityAsync(tx,normalized.FiscalCalendarId,normalized.LegalEntityId,ct)) throw new InvalidOperationException("The fiscal calendar is not active for the selected legal entity.");
 			await ValidateProfilesAsync(tx,normalized,ct);
 			if(normalized.Id==0){var id=await _assets.CreateClassAsync(tx,normalized,ct);var created=await _assets.GetClassAsync(tx,id,ct)??throw new InvalidOperationException("Asset class could not be reloaded.");await _auditEntries.CreateAsync(tx,_audit.CreateCreatedEntry(id,created),ct);return created;}
-			var before=await _assets.GetClassAsync(tx,normalized.Id,ct)??throw new InvalidOperationException("Asset class was not found.");if(before.Version!=normalized.Version)throw new ConcurrencyConflictException("fixed asset class");
+			var before=await _assets.LockClassAsync(tx,normalized.Id,ct)??throw new InvalidOperationException("Asset class was not found.");if(before.Version!=normalized.Version)throw new ConcurrencyConflictException("fixed asset class");
+			if(before.LegalEntityId!=normalized.LegalEntityId&&await _assets.ClassHasAssetsAsync(tx,before.Id,ct))throw new InvalidOperationException("A referenced asset class cannot change legal entity.");
 			if(await _assets.UpdateClassAsync(tx,normalized,before.Version,ct)!=1)throw new ConcurrencyConflictException("fixed asset class");
 			var after=await _assets.GetClassAsync(tx,normalized.Id,ct)??throw new InvalidOperationException("Asset class could not be reloaded.");await _auditEntries.CreateAsync(tx,_audit.CreateUpdatedEntry(after.Id,before,after),ct);return after;
 		},token);
@@ -80,10 +81,10 @@ public sealed class FinanceFixedAssetService
 	{
 		ArgumentNullException.ThrowIfNull(value);_authorization.RequirePermission(ApplicationPermission.FinanceFixedAssetsManage);RequireUser();var normalized=NormalizeAsset(value);
 		return await _transactions.ExecuteAsync(async(tx,ct)=>{
-			var assetClass=await _assets.GetClassAsync(tx,normalized.AssetClassId,ct)??throw new InvalidOperationException("Asset class was not found.");if(!assetClass.IsActive||assetClass.LegalEntityId!=normalized.LegalEntityId)throw new InvalidOperationException("Asset class is inactive or belongs to a different legal entity.");
+			var assetClass=await _assets.LockClassAsync(tx,normalized.AssetClassId,ct)??throw new InvalidOperationException("Asset class was not found.");if(!assetClass.IsActive||assetClass.LegalEntityId!=normalized.LegalEntityId)throw new InvalidOperationException("Asset class is inactive or belongs to a different legal entity.");
 			if(normalized.SourceSupplierDocumentLineId is long sourceLine){var source=await _assets.GetCapitalizableSupplierLineAsync(tx,sourceLine,ct)??throw new InvalidOperationException("The linked supplier document line must belong to a posted supplier invoice.");if(source.Currency!=normalized.Currency)throw new InvalidOperationException("The linked supplier invoice line currency must match the asset currency.");}
 			if(normalized.Id==0){var id=await _assets.CreateAssetAsync(tx,normalized,ct);var created=await _assets.GetAssetAsync(tx,id,ct)??throw new InvalidOperationException("Asset could not be reloaded.");await _auditEntries.CreateAsync(tx,_audit.CreateCreatedEntry(id,created),ct);return created;}
-			var before=await _assets.GetAssetAsync(tx,normalized.Id,ct)??throw new InvalidOperationException("Asset was not found.");if(before.Version!=normalized.Version)throw new ConcurrencyConflictException("fixed asset");if(before.Status!=FinanceAssetStatus.Draft&&(before.OriginalCost!=normalized.OriginalCost||before.Currency!=normalized.Currency||before.LegalEntityId!=normalized.LegalEntityId))throw new InvalidOperationException("Capitalized asset cost, currency and legal entity cannot be rewritten.");
+			var before=await _assets.LockAssetAsync(tx,normalized.Id,ct)??throw new InvalidOperationException("Asset was not found.");if(before.Version!=normalized.Version)throw new ConcurrencyConflictException("fixed asset");if(before.LegalEntityId!=normalized.LegalEntityId)throw new InvalidOperationException("An existing asset cannot change legal entity.");if(before.Status!=FinanceAssetStatus.Draft&&(before.OriginalCost!=normalized.OriginalCost||before.Currency!=normalized.Currency||before.LegalEntityId!=normalized.LegalEntityId))throw new InvalidOperationException("Capitalized asset cost, currency and legal entity cannot be rewritten.");
 			if(await _assets.UpdateAssetAsync(tx,normalized,before.Version,ct)!=1)throw new ConcurrencyConflictException("fixed asset");var after=await _assets.GetAssetAsync(tx,normalized.Id,ct)??throw new InvalidOperationException("Asset could not be reloaded.");await _auditEntries.CreateAsync(tx,_audit.CreateUpdatedEntry(after.Id,before,after),ct);return after;
 		},token);
 	}
@@ -92,38 +93,97 @@ public sealed class FinanceFixedAssetService
 	{
 		_authorization.RequirePermission(ApplicationPermission.FinanceFixedAssetsManage);RequireUser();
 		return await _transactions.ExecuteAsync(async(tx,ct)=>{
-			var asset=await _assets.GetAssetAsync(tx,assetId,ct)??throw new InvalidOperationException("Asset was not found.");var cls=await _assets.GetClassAsync(tx,asset.AssetClassId,ct)??throw new InvalidOperationException("Asset class was not found.");
+			var asset=await _assets.LockAssetAsync(tx,assetId,ct)??throw new InvalidOperationException("Asset was not found.");var cls=await RequireAssetClassAsync(tx,asset,ct);
 			var schedule=await CalculateScheduleAsync(tx,asset,cls,ct);var persisted=await _assets.ReplaceScheduleAsync(tx,asset.Id,schedule,ct);await _auditEntries.CreateAsync(tx,_audit.CreateActionEntry(asset.Id,"DepreciationScheduleRecalculated",asset,asset),ct);return persisted;
 		},token);
 	}
 
 	public async Task<FinanceAssetTransaction> CapitalizeAsync(long assetId,Guid operationId,Guid accountingPeriodId,DateOnly postingDate,CancellationToken token=default)
 	{
-		_authorization.RequirePermission(ApplicationPermission.FinanceFixedAssetsManage);var user=RequireUser();RequireOperation(operationId);
-		return await _transactions.ExecuteAsync(async(tx,ct)=>{
-			var existing=await _assets.FindTransactionByOperationAsync(tx,operationId,ct);if(existing is not null)return existing;
-			var asset=await _assets.GetAssetAsync(tx,assetId,ct)??throw new InvalidOperationException("Asset was not found.");if(asset.Status!=FinanceAssetStatus.Draft)throw new InvalidOperationException("Only draft assets can be capitalized.");
-			var cls=await _assets.GetClassAsync(tx,asset.AssetClassId,ct)??throw new InvalidOperationException("Asset class was not found.");await RequireProfileAsync(tx,cls.CapitalizationPostingProfileId,cls.LegalEntityId,CapitalizationEvent,ct);
-			var exchange=await _ledger.ResolveExchangeRateIdForProfileAsync(tx,cls.CapitalizationPostingProfileId,asset.Currency,postingDate,ct);
-			var journal=await _ledger.PostFromProfileInTransactionAsync(tx,new FinanceProfilePostingRequest{OperationId=operationId,PostingProfileId=cls.CapitalizationPostingProfileId,AccountingPeriodId=accountingPeriodId,PostingDate=postingDate,Description=$"Capitalize asset {asset.AssetNumber}",SourceId=asset.Id.ToString(System.Globalization.CultureInfo.InvariantCulture),SourceReference=asset.AssetNumber,TransactionCurrency=asset.Currency,ExchangeRateId=exchange,Amounts=new Dictionary<string,decimal>(StringComparer.Ordinal){{"AssetCost",asset.OriginalCost}}},user.Id,ct);
-			var updated=asset with{CapitalizationDate=postingDate,Status=FinanceAssetStatus.Active};if(await _assets.UpdateAssetAsync(tx,updated,asset.Version,ct)!=1)throw new ConcurrencyConflictException("fixed asset");
-			var tr=NewTransaction(asset.Id,FinanceAssetTransactionKind.Capitalization,operationId,postingDate,asset.OriginalCost,journal.Id,null,$"GL {journal.EntryNumber}",user.Id);var id=await _assets.CreateTransactionAsync(tx,tr,ct);tr=tr with{Id=id};await _auditEntries.CreateAsync(tx,_audit.CreateActionEntry(asset.Id,"Capitalized",asset,updated),ct);return tr;
-		},token);
+		_authorization.RequirePermission(ApplicationPermission.FinanceFixedAssetsManage);
+		var user = RequireUser();
+		RequireOperation(operationId);
+		return await _transactions.ExecuteAsync(async (tx, ct) =>
+		{
+			var asset = await _assets.LockAssetAsync(tx, assetId, ct) ?? throw new InvalidOperationException("Asset was not found.");
+			var existing = await _assets.FindTransactionByOperationAsync(tx, operationId, ct);
+			if (existing is not null)
+				return await RequireReplayAsync(tx, existing, assetId, FinanceAssetTransactionKind.Capitalization, accountingPeriodId, postingDate, asset.OriginalCost, null, ct);
+			if (asset.Status != FinanceAssetStatus.Draft) throw new InvalidOperationException("Only draft assets can be capitalized.");
+			var cls = await RequireAssetClassAsync(tx, asset, ct);
+			await RequirePostingContextAsync(tx, asset, cls, cls.CapitalizationPostingProfileId, CapitalizationEvent, accountingPeriodId, ct);
+			var exchange = await _ledger.ResolveExchangeRateIdForProfileAsync(tx, cls.CapitalizationPostingProfileId, asset.Currency, postingDate, ct);
+			var journal = await _ledger.PostFromProfileInTransactionAsync(tx, new FinanceProfilePostingRequest
+			{
+				OperationId = operationId, PostingProfileId = cls.CapitalizationPostingProfileId, AccountingPeriodId = accountingPeriodId,
+				PostingDate = postingDate, Description = $"Capitalize asset {asset.AssetNumber}",
+				SourceId = asset.Id.ToString(System.Globalization.CultureInfo.InvariantCulture), SourceReference = asset.AssetNumber,
+				TransactionCurrency = asset.Currency, ExchangeRateId = exchange,
+				Amounts = new Dictionary<string, decimal>(StringComparer.Ordinal) { { "AssetCost", asset.OriginalCost } }
+			}, user.Id, ct);
+			RequireNewJournal(journal, operationId);
+			var updated = asset with { CapitalizationDate = postingDate, Status = FinanceAssetStatus.Active };
+			if (await _assets.UpdateAssetAsync(tx, updated, asset.Version, ct) != 1) throw new ConcurrencyConflictException("fixed asset");
+			var tr = NewTransaction(asset.Id, FinanceAssetTransactionKind.Capitalization, operationId, postingDate, asset.OriginalCost, journal.Id, null, $"GL {journal.EntryNumber}", user.Id);
+			tr = tr with { Id = await _assets.CreateTransactionAsync(tx, tr, ct) };
+			await _auditEntries.CreateAsync(tx, _audit.CreateActionEntry(asset.Id, "Capitalized", asset, updated), ct);
+			return tr;
+		}, token);
 	}
 
 	public async Task<FinanceAssetTransaction> PostDepreciationAsync(long schedulePeriodId,Guid operationId,FinanceClosedPeriodPolicy closedPeriodPolicy=FinanceClosedPeriodPolicy.Fail,CancellationToken token=default)
 	{
-		_authorization.RequirePermission(ApplicationPermission.FinanceFixedAssetsDepreciationPost);var user=RequireUser();RequireOperation(operationId);
-		return await _transactions.ExecuteAsync(async(tx,ct)=>{
-			var existing=await _assets.FindTransactionByOperationAsync(tx,operationId,ct);if(existing is not null)return existing;
-			var schedule=await _assets.GetSchedulePeriodAsync(tx,schedulePeriodId,ct)??throw new InvalidOperationException("Depreciation period was not found.");if(schedule.IsPosted)throw new InvalidOperationException("The depreciation period is already posted.");
-			var asset=await _assets.GetAssetAsync(tx,schedule.AssetId,ct)??throw new InvalidOperationException("Asset was not found.");if(asset.Status!=FinanceAssetStatus.Active)throw new InvalidOperationException("Only active assets can be depreciated.");var cls=await _assets.GetClassAsync(tx,asset.AssetClassId,ct)??throw new InvalidOperationException("Asset class was not found.");
-			var target=await ResolvePostingPeriodAsync(tx,cls.FiscalCalendarId,schedule.AccountingPeriodId,schedule.PeriodEnd,closedPeriodPolicy,ct);await RequireProfileAsync(tx,cls.DepreciationPostingProfileId,cls.LegalEntityId,DepreciationEvent,ct);
-			var amount=schedule.PlannedAmount-schedule.PostedAmount;if(amount<=0m)throw new InvalidOperationException("There is no depreciation amount remaining to post.");
-			var exchange=await _ledger.ResolveExchangeRateIdForProfileAsync(tx,cls.DepreciationPostingProfileId,asset.Currency,target.PostingDate,ct);
-			var journal=await _ledger.PostFromProfileInTransactionAsync(tx,new FinanceProfilePostingRequest{OperationId=operationId,PostingProfileId=cls.DepreciationPostingProfileId,AccountingPeriodId=target.PeriodId,PostingDate=target.PostingDate,Description=$"Depreciation {asset.AssetNumber} {schedule.PeriodStart:yyyy-MM-dd}..{schedule.PeriodEnd:yyyy-MM-dd}",SourceId=asset.Id.ToString(System.Globalization.CultureInfo.InvariantCulture),SourceReference=asset.AssetNumber,TransactionCurrency=asset.Currency,ExchangeRateId=exchange,Amounts=new Dictionary<string,decimal>(StringComparer.Ordinal){{"Depreciation",amount}}},user.Id,ct);
-			await _assets.MarkSchedulePostedAsync(tx,schedule.Id,amount,journal.Id,operationId,ct);var evidence=closedPeriodPolicy==FinanceClosedPeriodPolicy.NextOpenPeriod?$"ClosedPeriodPolicy=NextOpenPeriod; GL {journal.EntryNumber}":$"GL {journal.EntryNumber}";var tr=NewTransaction(asset.Id,FinanceAssetTransactionKind.Depreciation,operationId,target.PostingDate,amount,journal.Id,closedPeriodPolicy==FinanceClosedPeriodPolicy.NextOpenPeriod?"Explicit next-open-period policy":null,evidence,user.Id);var id=await _assets.CreateTransactionAsync(tx,tr,ct);tr=tr with{Id=id};await _auditEntries.CreateAsync(tx,_audit.CreateActionEntry(asset.Id,"DepreciationPosted",asset,asset),ct);return tr;
-		},token);
+		_authorization.RequirePermission(ApplicationPermission.FinanceFixedAssetsDepreciationPost);
+		var user = RequireUser();
+		RequireOperation(operationId);
+		if (!Enum.IsDefined(closedPeriodPolicy)) throw new ArgumentOutOfRangeException(nameof(closedPeriodPolicy));
+		return await _transactions.ExecuteAsync(async (tx, ct) =>
+		{
+			var candidate = await _assets.GetSchedulePeriodAsync(tx, schedulePeriodId, ct) ?? throw new InvalidOperationException("Depreciation period was not found.");
+			var asset = await _assets.LockAssetAsync(tx, candidate.AssetId, ct) ?? throw new InvalidOperationException("Asset was not found.");
+			var schedule = await _assets.GetSchedulePeriodAsync(tx, schedulePeriodId, ct) ?? throw new ConcurrencyConflictException("fixed asset depreciation period");
+			var existing = await _assets.FindTransactionByOperationAsync(tx, operationId, ct);
+			if (existing is not null && (!schedule.IsPosted || schedule.OperationId != operationId || existing.AssetId != asset.Id || existing.Kind != FinanceAssetTransactionKind.Depreciation || existing.JournalEntryId != schedule.JournalEntryId))
+				throw new InvalidOperationException("The operation ID is already assigned to another fixed asset event.");
+			if (schedule.IsPosted)
+			{
+				if (schedule.OperationId is not Guid postedOperation) throw new InvalidOperationException("The posted depreciation period has no operation evidence.");
+				var posted = existing ?? await _assets.FindTransactionByOperationAsync(tx, postedOperation, ct);
+				if (posted is null || posted.AssetId != asset.Id || posted.Kind != FinanceAssetTransactionKind.Depreciation || posted.JournalEntryId != schedule.JournalEntryId || posted.Amount != schedule.PostedAmount)
+					throw new InvalidOperationException("The posted depreciation period has inconsistent subledger evidence.");
+				return posted;
+			}
+			if (asset.Status != FinanceAssetStatus.Active) throw new InvalidOperationException("Only active assets can be depreciated.");
+			var cls = await RequireAssetClassAsync(tx, asset, ct);
+			var target = await ResolvePostingPeriodAsync(tx, cls.FiscalCalendarId, schedule.AccountingPeriodId, schedule.PeriodEnd, closedPeriodPolicy, ct);
+			await RequirePostingContextAsync(tx, asset, cls, cls.DepreciationPostingProfileId, DepreciationEvent, target.PeriodId, ct);
+			var value = await GetPostedValueAsync(tx, asset, ct);
+			var remainingBasis = Math.Max(0m, value.Carrying - asset.SalvageValue);
+			var pending = await _assets.GetUnpostedScheduleAsync(tx, asset.Id, ct);
+			var weight = schedule.PlannedAmount - schedule.PostedAmount;
+			var totalWeight = pending.Sum(period => Math.Max(0m, period.PlannedAmount - period.PostedAmount));
+			if (remainingBasis <= 0m || weight <= 0m || totalWeight <= 0m) throw new InvalidOperationException("There is no depreciation amount remaining to post.");
+			// Original schedule amounts remain planning evidence. Adjust only future charges;
+			// the final outstanding weight consumes the exact remaining depreciable basis.
+			var amount = weight == totalWeight ? remainingBasis : Math.Min(remainingBasis, Math.Round(remainingBasis * (weight / totalWeight), 2, MidpointRounding.AwayFromZero));
+			if (amount <= 0m) throw new InvalidOperationException("The remaining depreciation amount rounds to zero.");
+			var exchange = await _ledger.ResolveExchangeRateIdForProfileAsync(tx, cls.DepreciationPostingProfileId, asset.Currency, target.PostingDate, ct);
+			var journal = await _ledger.PostFromProfileInTransactionAsync(tx, new FinanceProfilePostingRequest
+			{
+				OperationId = operationId, PostingProfileId = cls.DepreciationPostingProfileId, AccountingPeriodId = target.PeriodId,
+				PostingDate = target.PostingDate, Description = $"Depreciation {asset.AssetNumber} {schedule.PeriodStart:yyyy-MM-dd}..{schedule.PeriodEnd:yyyy-MM-dd}",
+				SourceId = $"schedule:{schedule.Id.ToString(System.Globalization.CultureInfo.InvariantCulture)}", SourceReference = asset.AssetNumber,
+				TransactionCurrency = asset.Currency, ExchangeRateId = exchange,
+				Amounts = new Dictionary<string, decimal>(StringComparer.Ordinal) { { "Depreciation", amount } }
+			}, user.Id, ct);
+			RequireNewJournal(journal, operationId);
+			await _assets.MarkSchedulePostedAsync(tx, schedule.Id, amount, journal.Id, operationId, ct);
+			var evidence = closedPeriodPolicy == FinanceClosedPeriodPolicy.NextOpenPeriod ? $"ClosedPeriodPolicy=NextOpenPeriod; GL {journal.EntryNumber}" : $"GL {journal.EntryNumber}";
+			var tr = NewTransaction(asset.Id, FinanceAssetTransactionKind.Depreciation, operationId, target.PostingDate, amount, journal.Id, closedPeriodPolicy == FinanceClosedPeriodPolicy.NextOpenPeriod ? "Explicit next-open-period policy" : null, evidence, user.Id);
+			tr = tr with { Id = await _assets.CreateTransactionAsync(tx, tr, ct) };
+			await _auditEntries.CreateAsync(tx, _audit.CreateActionEntry(asset.Id, "DepreciationPosted", asset, asset), ct);
+			return tr;
+		}, token);
 	}
 
 	public Task<FinanceAssetTransaction> ImpairAsync(long assetId,Guid operationId,Guid accountingPeriodId,DateOnly postingDate,decimal amount,string reason,CancellationToken token=default) =>
@@ -131,15 +191,39 @@ public sealed class FinanceFixedAssetService
 
 	public async Task<FinanceAssetTransaction> CorrectImpairmentAsync(long transactionId,Guid operationId,Guid accountingPeriodId,DateOnly postingDate,string reason,CancellationToken token=default)
 	{
-		_authorization.RequirePermission(ApplicationPermission.FinanceFixedAssetsManage);var user=RequireUser();RequireOperation(operationId);if(transactionId<=0)throw new ArgumentOutOfRangeException(nameof(transactionId));if(accountingPeriodId==Guid.Empty)throw new ArgumentException("An accounting period is required.",nameof(accountingPeriodId));if(string.IsNullOrWhiteSpace(reason))throw new ArgumentException("A correction reason is required.",nameof(reason));
-		return await _transactions.ExecuteAsync(async(tx,ct)=>{
-			var existing=await _assets.FindTransactionByOperationAsync(tx,operationId,ct);if(existing is not null)return existing;
-			var original=await _assets.GetTransactionAsync(tx,transactionId,ct)??throw new InvalidOperationException("Asset transaction was not found.");if(original.Kind!=FinanceAssetTransactionKind.Impairment||!original.JournalEntryId.HasValue)throw new InvalidOperationException("Only a posted impairment can be corrected.");
-			var asset=await _assets.GetAssetAsync(tx,original.AssetId,ct)??throw new InvalidOperationException("Asset was not found.");if(asset.Status!=FinanceAssetStatus.Active)throw new InvalidOperationException("Only an active asset impairment can be corrected.");
-			var cls=await _assets.GetClassAsync(tx,asset.AssetClassId,ct)??throw new InvalidOperationException("Asset class was not found.");var profile=await RequireProfileAsync(tx,cls.ImpairmentPostingProfileId,cls.LegalEntityId,ImpairmentEvent,ct);
-			var normalizedReason=Required(reason,500);var journal=await _ledger.ReverseInTransactionAsync(tx,original.JournalEntryId.Value,operationId,accountingPeriodId,postingDate,profile.NumberSequenceCode,normalizedReason,user.Id,ct);
-			var tr=NewTransaction(asset.Id,FinanceAssetTransactionKind.Correction,operationId,postingDate,original.Amount,journal.Id,normalizedReason,$"Correction of asset transaction {original.Id}; GL {journal.EntryNumber}",user.Id);var id=await _assets.CreateTransactionAsync(tx,tr,ct);tr=tr with{Id=id};await _auditEntries.CreateAsync(tx,_audit.CreateActionEntry(asset.Id,"ImpairmentCorrected",original,tr),ct);return tr;
-		},token);
+		_authorization.RequirePermission(ApplicationPermission.FinanceFixedAssetsManage);
+		var user = RequireUser();
+		RequireOperation(operationId);
+		if (transactionId <= 0) throw new ArgumentOutOfRangeException(nameof(transactionId));
+		var normalizedReason = Required(reason, 500);
+		return await _transactions.ExecuteAsync(async (tx, ct) =>
+		{
+			var original = await _assets.GetTransactionAsync(tx, transactionId, ct) ?? throw new InvalidOperationException("Asset transaction was not found.");
+			if (original.Kind != FinanceAssetTransactionKind.Impairment || original.JournalEntryId is not long originalJournalId)
+				throw new InvalidOperationException("Only a posted impairment can be corrected.");
+			var asset = await _assets.LockAssetAsync(tx, original.AssetId, ct) ?? throw new InvalidOperationException("Asset was not found.");
+			var existing = await _assets.FindTransactionByOperationAsync(tx, operationId, ct);
+			if (existing is not null)
+			{
+				await RequireReplayAsync(tx, existing, asset.Id, FinanceAssetTransactionKind.Correction, accountingPeriodId, postingDate, original.Amount, normalizedReason, ct);
+				if (existing.JournalEntryId is not long reversalId || !await _assets.IsJournalReversalAsync(tx, reversalId, originalJournalId, ct))
+					throw new InvalidOperationException("The operation ID is already assigned to another impairment correction.");
+				return existing;
+			}
+			if (asset.Status != FinanceAssetStatus.Active) throw new InvalidOperationException("Only an active asset impairment can be corrected.");
+			var cls = await RequireAssetClassAsync(tx, asset, ct);
+			var profile = await RequirePostingContextAsync(tx, asset, cls, cls.ImpairmentPostingProfileId, ImpairmentEvent, accountingPeriodId, ct);
+			if (!await _assets.JournalMatchesEntityAsync(tx, originalJournalId, asset.LegalEntityId, ct))
+				throw new InvalidOperationException("The original impairment journal belongs to another legal entity.");
+			await GetPostedValueAsync(tx, asset, ct, allowNegativeCarrying: true);
+			var journal = await _ledger.ReverseInTransactionAsync(tx, originalJournalId, operationId, accountingPeriodId, postingDate, profile.NumberSequenceCode, normalizedReason, user.Id, ct);
+			RequireNewJournal(journal, operationId);
+			var tr = NewTransaction(asset.Id, FinanceAssetTransactionKind.Correction, operationId, postingDate, original.Amount, journal.Id, normalizedReason, $"Correction of asset transaction {original.Id}; GL {journal.EntryNumber}", user.Id);
+			tr = tr with { Id = await _assets.CreateTransactionAsync(tx, tr, ct) };
+			await GetPostedValueAsync(tx, asset, ct, allowNegativeCarrying: true);
+			await _auditEntries.CreateAsync(tx, _audit.CreateActionEntry(asset.Id, "ImpairmentCorrected", original, tr), ct);
+			return tr;
+		}, token);
 	}
 
 	public async Task<FinanceAssetTransaction> TransferAsync(long assetId,Guid operationId,DateOnly date,string? location,string? custodian,string reason,CancellationToken token=default)
@@ -150,14 +234,139 @@ public sealed class FinanceFixedAssetService
 
 	public async Task<FinanceAssetTransaction> DisposeAsync(long assetId,Guid operationId,Guid accountingPeriodId,DateOnly postingDate,decimal proceeds,string reason,CancellationToken token=default)
 	{
-		_authorization.RequirePermission(ApplicationPermission.FinanceFixedAssetsManage);var user=RequireUser();RequireOperation(operationId);if(proceeds<0m)throw new ArgumentOutOfRangeException(nameof(proceeds));if(string.IsNullOrWhiteSpace(reason))throw new ArgumentException("A disposal reason is required.",nameof(reason));
-		return await _transactions.ExecuteAsync(async(tx,ct)=>{var existing=await _assets.FindTransactionByOperationAsync(tx,operationId,ct);if(existing is not null)return existing;var asset=await _assets.GetAssetAsync(tx,assetId,ct)??throw new InvalidOperationException("Asset was not found.");if(asset.Status!=FinanceAssetStatus.Active)throw new InvalidOperationException("Only active assets can be disposed.");var cls=await _assets.GetClassAsync(tx,asset.AssetClassId,ct)??throw new InvalidOperationException("Asset class was not found.");await RequireProfileAsync(tx,cls.DisposalPostingProfileId,cls.LegalEntityId,DisposalEvent,ct);var depreciation=await _assets.SumPostedAsync(tx,asset.Id,FinanceAssetTransactionKind.Depreciation,ct);var impairment=await _assets.SumPostedAsync(tx,asset.Id,FinanceAssetTransactionKind.Impairment,ct);var impairmentCorrections=await _assets.SumPostedAsync(tx,asset.Id,FinanceAssetTransactionKind.Correction,ct);var netImpairment=Math.Max(0m,impairment-impairmentCorrections);var carrying=Math.Max(0m,asset.OriginalCost-depreciation-netImpairment);var exchange=await _ledger.ResolveExchangeRateIdForProfileAsync(tx,cls.DisposalPostingProfileId,asset.Currency,postingDate,ct);var journal=await _ledger.PostFromProfileInTransactionAsync(tx,new FinanceProfilePostingRequest{OperationId=operationId,PostingProfileId=cls.DisposalPostingProfileId,AccountingPeriodId=accountingPeriodId,PostingDate=postingDate,Description=$"Dispose asset {asset.AssetNumber}",SourceId=asset.Id.ToString(System.Globalization.CultureInfo.InvariantCulture),SourceReference=asset.AssetNumber,TransactionCurrency=asset.Currency,ExchangeRateId=exchange,Amounts=new Dictionary<string,decimal>(StringComparer.Ordinal){{"AssetCost",asset.OriginalCost},{"AccumulatedDepreciation",depreciation},{"Impairment",netImpairment},{"Proceeds",proceeds},{"CarryingValue",carrying},{"Gain",Math.Max(0m,proceeds-carrying)},{"Loss",Math.Max(0m,carrying-proceeds)}}},user.Id,ct);var after=asset with{Status=FinanceAssetStatus.Disposed};if(await _assets.UpdateAssetAsync(tx,after,asset.Version,ct)!=1)throw new ConcurrencyConflictException("fixed asset");var tr=NewTransaction(asset.Id,FinanceAssetTransactionKind.Disposal,operationId,postingDate,carrying,journal.Id,Required(reason,500),$"Proceeds {proceeds}; GL {journal.EntryNumber}",user.Id);var id=await _assets.CreateTransactionAsync(tx,tr,ct);tr=tr with{Id=id};await _auditEntries.CreateAsync(tx,_audit.CreateActionEntry(asset.Id,"Disposed",asset,after),ct);return tr;},token);
+		_authorization.RequirePermission(ApplicationPermission.FinanceFixedAssetsManage);
+		var user = RequireUser();
+		RequireOperation(operationId);
+		if (proceeds < 0m) throw new ArgumentOutOfRangeException(nameof(proceeds));
+		var normalizedReason = Required(reason, 500);
+		return await _transactions.ExecuteAsync(async (tx, ct) =>
+		{
+			var asset = await _assets.LockAssetAsync(tx, assetId, ct) ?? throw new InvalidOperationException("Asset was not found.");
+			var existing = await _assets.FindTransactionByOperationAsync(tx, operationId, ct);
+			if (existing is not null)
+			{
+				await RequireReplayAsync(tx, existing, assetId, FinanceAssetTransactionKind.Disposal, accountingPeriodId, postingDate, existing.Amount, normalizedReason, ct);
+				RequireDisposalProceeds(existing, proceeds);
+				return existing;
+			}
+			if (asset.Status != FinanceAssetStatus.Active) throw new InvalidOperationException("Only active assets can be disposed.");
+			var cls = await RequireAssetClassAsync(tx, asset, ct);
+			await RequirePostingContextAsync(tx, asset, cls, cls.DisposalPostingProfileId, DisposalEvent, accountingPeriodId, ct);
+			var value = await GetPostedValueAsync(tx, asset, ct);
+			var exchange = await _ledger.ResolveExchangeRateIdForProfileAsync(tx, cls.DisposalPostingProfileId, asset.Currency, postingDate, ct);
+			var journal = await _ledger.PostFromProfileInTransactionAsync(tx, new FinanceProfilePostingRequest
+			{
+				OperationId = operationId, PostingProfileId = cls.DisposalPostingProfileId, AccountingPeriodId = accountingPeriodId,
+				PostingDate = postingDate, Description = $"Dispose asset {asset.AssetNumber}",
+				SourceId = asset.Id.ToString(System.Globalization.CultureInfo.InvariantCulture), SourceReference = asset.AssetNumber,
+				TransactionCurrency = asset.Currency, ExchangeRateId = exchange,
+				Amounts = new Dictionary<string, decimal>(StringComparer.Ordinal)
+				{
+					{ "AssetCost", value.Capitalized }, { "AccumulatedDepreciation", value.Depreciation }, { "Impairment", value.Impairment },
+					{ "Proceeds", proceeds }, { "CarryingValue", value.Carrying }, { "Gain", Math.Max(0m, proceeds - value.Carrying) }, { "Loss", Math.Max(0m, value.Carrying - proceeds) }
+				}
+			}, user.Id, ct);
+			RequireNewJournal(journal, operationId);
+			var after = asset with { Status = FinanceAssetStatus.Disposed };
+			if (await _assets.UpdateAssetAsync(tx, after, asset.Version, ct) != 1) throw new ConcurrencyConflictException("fixed asset");
+			var tr = NewTransaction(asset.Id, FinanceAssetTransactionKind.Disposal, operationId, postingDate, value.Carrying, journal.Id, normalizedReason, $"Proceeds {proceeds.ToString(System.Globalization.CultureInfo.InvariantCulture)}; GL {journal.EntryNumber}", user.Id);
+			tr = tr with { Id = await _assets.CreateTransactionAsync(tx, tr, ct) };
+			await _auditEntries.CreateAsync(tx, _audit.CreateActionEntry(asset.Id, "Disposed", asset, after), ct);
+			return tr;
+		}, token);
 	}
 
 	private async Task<FinanceAssetTransaction> PostAdjustmentAsync(long assetId,Guid operationId,Guid accountingPeriodId,DateOnly postingDate,decimal amount,string reason,FinanceAssetTransactionKind kind,string expectedEvent,ApplicationPermission permission,CancellationToken token)
 	{
-		_authorization.RequirePermission(permission);var user=RequireUser();RequireOperation(operationId);if(amount<=0m)throw new ArgumentOutOfRangeException(nameof(amount));if(string.IsNullOrWhiteSpace(reason))throw new ArgumentException("A reason is required.",nameof(reason));
-		return await _transactions.ExecuteAsync(async(tx,ct)=>{var existing=await _assets.FindTransactionByOperationAsync(tx,operationId,ct);if(existing is not null)return existing;var asset=await _assets.GetAssetAsync(tx,assetId,ct)??throw new InvalidOperationException("Asset was not found.");if(asset.Status!=FinanceAssetStatus.Active)throw new InvalidOperationException("Only active assets can be adjusted.");var cls=await _assets.GetClassAsync(tx,asset.AssetClassId,ct)??throw new InvalidOperationException("Asset class was not found.");var profileId=cls.ImpairmentPostingProfileId;await RequireProfileAsync(tx,profileId,cls.LegalEntityId,expectedEvent,ct);var exchange=await _ledger.ResolveExchangeRateIdForProfileAsync(tx,profileId,asset.Currency,postingDate,ct);var journal=await _ledger.PostFromProfileInTransactionAsync(tx,new FinanceProfilePostingRequest{OperationId=operationId,PostingProfileId=profileId,AccountingPeriodId=accountingPeriodId,PostingDate=postingDate,Description=$"{kind} {asset.AssetNumber}: {reason.Trim()}",SourceId=asset.Id.ToString(System.Globalization.CultureInfo.InvariantCulture),SourceReference=asset.AssetNumber,TransactionCurrency=asset.Currency,ExchangeRateId=exchange,Amounts=new Dictionary<string,decimal>(StringComparer.Ordinal){{"Impairment",amount}}},user.Id,ct);var tr=NewTransaction(asset.Id,kind,operationId,postingDate,amount,journal.Id,Required(reason,500),$"GL {journal.EntryNumber}",user.Id);var id=await _assets.CreateTransactionAsync(tx,tr,ct);tr=tr with{Id=id};await _auditEntries.CreateAsync(tx,_audit.CreateActionEntry(asset.Id,kind.ToString(),asset,asset),ct);return tr;},token);
+		_authorization.RequirePermission(permission);
+		var user = RequireUser();
+		RequireOperation(operationId);
+		if (amount <= 0m) throw new ArgumentOutOfRangeException(nameof(amount));
+		var normalizedReason = Required(reason, 500);
+		return await _transactions.ExecuteAsync(async (tx, ct) =>
+		{
+			var asset = await _assets.LockAssetAsync(tx, assetId, ct) ?? throw new InvalidOperationException("Asset was not found.");
+			var existing = await _assets.FindTransactionByOperationAsync(tx, operationId, ct);
+			if (existing is not null)
+				return await RequireReplayAsync(tx, existing, assetId, kind, accountingPeriodId, postingDate, amount, normalizedReason, ct);
+			if (asset.Status != FinanceAssetStatus.Active) throw new InvalidOperationException("Only active assets can be adjusted.");
+			var cls = await RequireAssetClassAsync(tx, asset, ct);
+			var profileId = cls.ImpairmentPostingProfileId;
+			await RequirePostingContextAsync(tx, asset, cls, profileId, expectedEvent, accountingPeriodId, ct);
+			var value = await GetPostedValueAsync(tx, asset, ct);
+			if (amount > value.Carrying) throw new InvalidOperationException("Impairment cannot exceed the asset's remaining carrying value.");
+			var exchange = await _ledger.ResolveExchangeRateIdForProfileAsync(tx, profileId, asset.Currency, postingDate, ct);
+			var journal = await _ledger.PostFromProfileInTransactionAsync(tx, new FinanceProfilePostingRequest
+			{
+				OperationId = operationId, PostingProfileId = profileId, AccountingPeriodId = accountingPeriodId,
+				PostingDate = postingDate, Description = $"{kind} {asset.AssetNumber}: {normalizedReason}",
+				SourceId = $"impairment:{operationId:D}", SourceReference = asset.AssetNumber,
+				TransactionCurrency = asset.Currency, ExchangeRateId = exchange,
+				Amounts = new Dictionary<string, decimal>(StringComparer.Ordinal) { { "Impairment", amount } }
+			}, user.Id, ct);
+			RequireNewJournal(journal, operationId);
+			var tr = NewTransaction(asset.Id, kind, operationId, postingDate, amount, journal.Id, normalizedReason, $"GL {journal.EntryNumber}", user.Id);
+			tr = tr with { Id = await _assets.CreateTransactionAsync(tx, tr, ct) };
+			await _auditEntries.CreateAsync(tx, _audit.CreateActionEntry(asset.Id, kind.ToString(), asset, asset), ct);
+			return tr;
+		}, token);
+	}
+
+	private async Task<FinanceAssetClass> RequireAssetClassAsync(DatabaseTransactionContext tx, FinanceFixedAsset asset, CancellationToken ct)
+	{
+		var cls = await _assets.GetClassAsync(tx, asset.AssetClassId, ct) ?? throw new InvalidOperationException("Asset class was not found.");
+		if (!cls.IsActive || cls.LegalEntityId != asset.LegalEntityId)
+			throw new InvalidOperationException("Asset class is inactive or belongs to a different legal entity.");
+		if (!await _assets.FiscalCalendarMatchesEntityAsync(tx, cls.FiscalCalendarId, asset.LegalEntityId, ct))
+			throw new InvalidOperationException("The asset fiscal calendar is not active for its legal entity.");
+		return cls;
+	}
+
+	private async Task<FinancePostingProfile> RequirePostingContextAsync(DatabaseTransactionContext tx, FinanceFixedAsset asset, FinanceAssetClass cls, long profileId, string eventName, Guid periodId, CancellationToken ct)
+	{
+		if (!await _assets.PeriodMatchesCalendarAsync(tx, periodId, cls.FiscalCalendarId, ct))
+			throw new InvalidOperationException("The accounting period does not belong to the asset class fiscal calendar.");
+		return await RequireProfileAsync(tx, profileId, asset.LegalEntityId, eventName, ct);
+	}
+
+	private async Task<(decimal Capitalized, decimal Depreciation, decimal Impairment, decimal Carrying)> GetPostedValueAsync(DatabaseTransactionContext tx, FinanceFixedAsset asset, CancellationToken ct, bool allowNegativeCarrying = false)
+	{
+		var capitalized = await _assets.SumPostedAsync(tx, asset.Id, FinanceAssetTransactionKind.Capitalization, ct);
+		var depreciation = await _assets.SumPostedAsync(tx, asset.Id, FinanceAssetTransactionKind.Depreciation, ct);
+		var impairment = await _assets.SumPostedAsync(tx, asset.Id, FinanceAssetTransactionKind.Impairment, ct);
+		var corrected = await _assets.SumPostedAsync(tx, asset.Id, FinanceAssetTransactionKind.Correction, ct);
+		var netImpairment = impairment - corrected;
+		var carrying = capitalized - depreciation - netImpairment;
+		if (capitalized != asset.OriginalCost || netImpairment < 0m || depreciation < 0m || (!allowNegativeCarrying && carrying < 0m) || carrying > capitalized)
+			throw new InvalidOperationException("Fixed asset posted valuation evidence is inconsistent; correct the source evidence before further posting.");
+		return (capitalized, depreciation, netImpairment, carrying);
+	}
+
+	private async Task<FinanceAssetTransaction> RequireReplayAsync(DatabaseTransactionContext tx, FinanceAssetTransaction existing, long assetId, FinanceAssetTransactionKind kind, Guid periodId, DateOnly date, decimal amount, string? reason, CancellationToken ct)
+	{
+		if (existing.AssetId != assetId || existing.Kind != kind || existing.TransactionDate != date || existing.Amount != amount || !string.Equals(existing.Reason, reason, StringComparison.Ordinal) || existing.JournalEntryId is not long journalId || !await _assets.JournalMatchesPeriodAsync(tx, journalId, periodId, ct))
+			throw new InvalidOperationException("The operation ID is already assigned to a different fixed asset posting request.");
+		return existing;
+	}
+
+	private static void RequireNewJournal(FinanceJournalEntry journal, Guid operationId)
+	{
+		if (journal.OperationId != operationId)
+			throw new InvalidOperationException("The source posting already has a journal; it cannot create another fixed asset transaction.");
+	}
+
+	private static void RequireDisposalProceeds(FinanceAssetTransaction existing, decimal proceeds)
+	{
+		const string prefix = "Proceeds ";
+		var evidence = existing.Evidence;
+		var separator = evidence?.IndexOf("; GL ", StringComparison.Ordinal) ?? -1;
+		if (evidence is null || !evidence.StartsWith(prefix, StringComparison.Ordinal) || separator <= prefix.Length)
+			throw new InvalidOperationException("The disposal has no valid proceeds evidence.");
+		// Earlier evidence used the process culture. Default decimal formatting has no
+		// grouping separators, so a decimal comma can be read without an ambiguous group.
+		var recorded = evidence[prefix.Length..separator].Replace(',', '.');
+		if (!decimal.TryParse(recorded, System.Globalization.NumberStyles.AllowDecimalPoint, System.Globalization.CultureInfo.InvariantCulture, out var amount) || amount != proceeds)
+			throw new InvalidOperationException("The operation ID is already assigned to a different disposal proceeds amount.");
 	}
 
 	private async Task<List<FinanceAssetDepreciationPeriod>> CalculateScheduleAsync(DatabaseTransactionContext tx,FinanceFixedAsset asset,FinanceAssetClass cls,CancellationToken ct)
@@ -178,7 +387,7 @@ public sealed class FinanceFixedAssetService
 	{
 		await RequireProfileAsync(tx,cls.CapitalizationPostingProfileId,cls.LegalEntityId,CapitalizationEvent,ct);await RequireProfileAsync(tx,cls.DepreciationPostingProfileId,cls.LegalEntityId,DepreciationEvent,ct);await RequireProfileAsync(tx,cls.ImpairmentPostingProfileId,cls.LegalEntityId,ImpairmentEvent,ct);await RequireProfileAsync(tx,cls.DisposalPostingProfileId,cls.LegalEntityId,DisposalEvent,ct);
 	}
-	private async Task<FinancePostingProfile> RequireProfileAsync(DatabaseTransactionContext tx,long profileId,Guid entity,string eventName,CancellationToken ct){if(profileId<=0)throw new InvalidOperationException($"A {eventName} posting profile is required.");var p=await _ledger.GetPostingProfileInTransactionAsync(tx,profileId,ct)??throw new InvalidOperationException($"{eventName} posting profile was not found.");if(!p.IsActive||p.LegalEntityId!=entity||!string.Equals(p.SourceType,SourceType,StringComparison.Ordinal)||!string.Equals(p.SourceEvent,eventName,StringComparison.Ordinal))throw new InvalidOperationException($"{eventName} posting profile must be active and use source {SourceType}/{eventName} for the asset legal entity.");return p;}
+	private async Task<FinancePostingProfile> RequireProfileAsync(DatabaseTransactionContext tx,long profileId,Guid entity,string eventName,CancellationToken ct){if(profileId<=0)throw new InvalidOperationException($"A {eventName} posting profile is required.");var p=await _ledger.GetPostingProfileInTransactionAsync(tx,profileId,ct)??throw new InvalidOperationException($"{eventName} posting profile was not found.");if(!p.IsActive||p.LegalEntityId!=entity||!string.Equals(p.SourceType,SourceType,StringComparison.Ordinal)||!string.Equals(p.SourceEvent,eventName,StringComparison.Ordinal))throw new InvalidOperationException($"{eventName} posting profile must be active and use source {SourceType}/{eventName} for the asset legal entity.");if(!await _assets.BookMatchesEntityAsync(tx,p.AccountingBookId,entity,ct))throw new InvalidOperationException("The posting profile accounting book is inactive or belongs to a different legal entity.");return p;}
 	private static FinanceAssetClass NormalizeClass(FinanceAssetClass v){if(v.LegalEntityId==Guid.Empty||v.FiscalCalendarId==Guid.Empty)throw new ArgumentException("Legal entity and fiscal calendar are required.");if(v.DefaultUsefulLifeMonths<1||v.DefaultUsefulLifeMonths>1200)throw new ArgumentOutOfRangeException(nameof(v.DefaultUsefulLifeMonths));if(!Enum.IsDefined(v.DefaultMethod))throw new ArgumentOutOfRangeException(nameof(v.DefaultMethod));return v with{Code=Required(v.Code,50).ToUpperInvariant(),Name=Required(v.Name,200)};}
 	private static FinanceFixedAsset NormalizeAsset(FinanceFixedAsset v){if(v.LegalEntityId==Guid.Empty)throw new ArgumentException("Legal entity is required.");if(v.AssetClassId<=0)throw new ArgumentException("Asset class is required.");if(v.OriginalCost<0m||v.SalvageValue<0m||v.SalvageValue>v.OriginalCost)throw new ArgumentException("Cost and salvage value are invalid.");if(v.DepreciationMethod==FinanceDepreciationMethod.StraightLine&&v.UsefulLifeMonths<1)throw new ArgumentException("Straight-line depreciation requires a positive useful life.");if(!Enum.IsDefined(v.DepreciationMethod)||!Enum.IsDefined(v.Status))throw new ArgumentOutOfRangeException(nameof(v));return v with{AssetNumber=Required(v.AssetNumber,50).ToUpperInvariant(),Description=Required(v.Description,500),Location=Trim(v.Location,200),Custodian=Trim(v.Custodian,200)};}
 	private static FinanceAssetTransaction NewTransaction(long assetId,FinanceAssetTransactionKind kind,Guid op,DateOnly date,decimal amount,long? journal,string? reason,string? evidence,long user)=>new(){AssetId=assetId,Kind=kind,OperationId=op,TransactionDate=date,Amount=amount,JournalEntryId=journal,Reason=reason,Evidence=evidence,CreatedAtUtc=DateTime.UtcNow,CreatedByUserId=user};
@@ -191,3 +400,4 @@ public sealed class FinanceFixedAssetService
 	private static string Required(string? value,int max){var v=value?.Trim();if(string.IsNullOrWhiteSpace(v))throw new ArgumentException("A value is required.");if(v.Length>max)throw new ArgumentException($"Value cannot exceed {max} characters.");return v;}
 	private static string? Trim(string? value,int max){var v=value?.Trim();if(string.IsNullOrEmpty(v))return null;if(v.Length>max)throw new ArgumentException($"Value cannot exceed {max} characters.");return v;}
 }
+
