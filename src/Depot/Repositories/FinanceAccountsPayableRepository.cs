@@ -197,7 +197,7 @@ public sealed class FinanceAccountsPayableRepository : DatabaseRepository
 			  AND EXISTS (
 			      SELECT bankLine.AccountId FROM FinanceJournalEntryLines bankLine
 			      WHERE bankLine.JournalEntryId=journal.Id AND bankLine.AccountId=bank.GeneralLedgerAccountId
-			      GROUP BY bankLine.AccountId HAVING SUM(bankLine.TransactionCredit-bankLine.TransactionDebit)=$Amount)
+			      GROUP BY bankLine.AccountId HAVING SUM(bankLine.TransactionCredit-bankLine.TransactionDebit)=CAST($Amount AS DECIMAL(28,9)))
 			  AND NOT EXISTS (
 			      SELECT otherLine.AccountId FROM FinanceJournalEntryLines otherLine
 			      WHERE otherLine.JournalEntryId=journal.Id AND otherLine.AccountId<>bank.GeneralLedgerAccountId

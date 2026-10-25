@@ -160,16 +160,17 @@ public sealed class FinancePaymentIntegrityTests
 		await Assert.ThrowsAsync<InvalidOperationException>(() => fixture.Banking.ExecutePaymentRunLineAsync(nextRun.Id, Assert.Single(nextRun.Lines).Id, "Changed profile"));
 		Assert.Equal(100m, (await fixture.Payables.GetOpenItemAsync(nextInvoice.OpenItemId.GetValueOrDefault()))?.RemainingAmount);
 
-		var interruptedInvoice = await fixture.CreateInvoiceAsync();
-		var interruptedRun = await fixture.CreateRunAsync(bankA.Id,interruptedInvoice.OpenItemId.GetValueOrDefault());
+		var interruptedInvoice = await fixture.CreateInvoiceAsync(100.25m);
+		var interruptedRun = await fixture.CreateRunAsync(bankA.Id,interruptedInvoice.OpenItemId.GetValueOrDefault(),100.25m);
 		var interruptedLine = Assert.Single(interruptedRun.Lines);
 		var legacyPayment = await fixture.PostLegacyRunPaymentAsync(interruptedRun);
-		var resumed = await fixture.Banking.ExecutePaymentRunLineAsync(interruptedRun.Id,interruptedLine.Id,"Resume retained payment");
+		var resumed = await fixture.Banking.ExecutePaymentRunLineAsync(interruptedRun.Id,interruptedLine.Id,interruptedLine.Reference);
 		Assert.Equal(legacyPayment.Id,Assert.Single(resumed.Lines).PayablePaymentId);
 		Assert.Equal(1L,fixture.Scalar("SELECT COUNT(*) FROM FinancePayablePayments WHERE OperationId=$Operation;",P("$Operation",interruptedLine.ExecutionOperationId.ToString("D"))));
 		Assert.Equal(1L,fixture.Scalar("SELECT COUNT(*) FROM FinanceJournalEntries WHERE OperationId=$Operation;",P("$Operation",interruptedLine.ExecutionOperationId.ToString("D"))));
 		var wrongLegacyPayment = await fixture.PostLegacyRunPaymentAsync(nextRun);
-		await Assert.ThrowsAsync<InvalidOperationException>(() => fixture.Banking.ExecutePaymentRunLineAsync(nextRun.Id,Assert.Single(nextRun.Lines).Id,"Wrong retained bank"));
+		var wrongLegacyLine = Assert.Single(nextRun.Lines);
+		await Assert.ThrowsAsync<InvalidOperationException>(() => fixture.Banking.ExecutePaymentRunLineAsync(nextRun.Id,wrongLegacyLine.Id,wrongLegacyLine.Reference));
 		Assert.Null(Assert.Single((await fixture.Banking.GetPaymentRunAsync(nextRun.Id))?.Lines ?? []).PayablePaymentId);
 		Assert.Equal(1L,fixture.Scalar("SELECT COUNT(*) FROM FinanceJournalEntries WHERE OperationId=$Operation;",P("$Operation",wrongLegacyPayment.OperationId.ToString("D"))));
 	}
