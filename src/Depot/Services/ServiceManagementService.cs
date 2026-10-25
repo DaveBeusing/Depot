@@ -290,7 +290,7 @@ public sealed class ServiceManagementService
 
 	private async Task<ServiceOrder> TransitionOrderAsync(long id,long version,ServiceOrderStatus target,string? note,CancellationToken token)
 	{
-		_authorization.RequirePermission(ApplicationPermission.ServiceOrdersManage);var user=RequireUser();
+		_authorization.RequirePermission(target == ServiceOrderStatus.Cancelled ? ApplicationPermission.ServiceOrdersClose : ApplicationPermission.ServiceOrdersManage);var user=RequireUser();
 		return await _transactions.ExecuteAsync(async(tx,ct)=>
 		{
 			var before=await _service.GetOrderForUpdateAsync(tx,id,ct)??throw new InvalidOperationException("Service order was not found.");
