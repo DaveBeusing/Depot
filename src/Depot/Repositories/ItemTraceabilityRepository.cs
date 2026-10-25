@@ -47,7 +47,7 @@ public sealed class ItemTraceabilityRepository : DatabaseRepository
 			Parameter("$TrackingMode", (int)trackingMode),
 			Parameter("$Code", code),
 			Parameter("$ExpiryDate", expiryDate?.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)),
-			Parameter("$CreatedAtUtc", DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture)));
+			Parameter("$CreatedAtUtc", DateTime.UtcNow));
 
 	public Task<int> SetExpiryIfMissingAsync(DatabaseTransactionContext transaction, long trackingUnitId, DateTime expiryDate, CancellationToken cancellationToken) =>
 		transaction.Session.ExecuteAsync(

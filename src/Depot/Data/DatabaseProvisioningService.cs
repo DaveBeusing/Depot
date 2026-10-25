@@ -113,7 +113,8 @@ internal static class FeatureVersionMetadataRecovery
 		TableExists(connection, provider, "ServiceCases") &&
 		TableExists(connection, provider, "ServiceOrders") &&
 		TableExists(connection, provider, "ServiceWorkLines") &&
-		TableExists(connection, provider, "ServicePartEvidence");
+		TableExists(connection, provider, "ServicePartEvidence") &&
+		TableExists(connection, provider, "ServicePartOperations");
 
 	private static bool HasFutureFeatureVersion(DbConnection connection)
 	{

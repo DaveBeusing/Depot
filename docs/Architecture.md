@@ -225,7 +225,7 @@ Service Management preserves the standard dependency direction: `View -> ViewMod
 
 A Service Order is introduced only when operational work, parts or completion evidence is required. `MovementService` remains authoritative for parts consumption and return, including stock and serial/lot controls; Service Management does not mutate inventory balances directly. `SalesInvoiceService` remains authoritative for optional invoice-draft creation, and downstream posting, tax, electronic-invoice, AR and GL behavior remains unchanged. Business Attachments and My Work are reused through their existing platform boundaries.
 
-Service Management feature schema **1** is independent of Core schema 30. The persisted service contract contains cases, transition history, orders, work lines and references to authoritative stock-movement evidence.
+Service Management feature schema **2** is independent of Core schema 30. The persisted service contract contains cases, transition history, orders, work lines, references to authoritative stock-movement evidence and durable parts-operation identities. Parts posting takes the service-order write lock before validating lifecycle and return balances, then commits stock, traceability, evidence, audit and the next order version together. Completion and cancellation use the same order lock. Returns reference one original consumption and preserve its inventory, commercial snapshot and specific issued serial/lot identities. See [Service parts posting](development/ServicePartPosting.md).
 
 
 ## Light assembly and production authority

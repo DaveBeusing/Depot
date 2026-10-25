@@ -17,7 +17,7 @@ Updated: 2026-09-25
 - Business Attachments feature schema: **4**
 - Procurement Sourcing feature schema: **1**
 - Project Accounting feature schema: **1**
-- Service Management feature schema: **1**
+- Service Management feature schema: **2**
 - Production feature schema: **1**
 - Help manifest: **1.36**
 
@@ -204,6 +204,15 @@ Project budget links reference existing Finance Budgeting lines rather than dupl
 ### Service Management schema 1
 
 Service Management schema **1** adds provider-neutral Service Case, lifecycle-history, Service Order, work-line and parts-evidence persistence. Inventory quantities remain owned by the existing stock-movement subsystem and service billing remains owned by Sales Invoice services. Core schema remains **30**.
+
+
+### Service Management schema 2
+
+Service Management schema **2** adds `ServicePartOperations`, an additive companion to retained parts evidence. Each new consumption or return stores a unique operation identity and a canonical request hash. Returns also retain a foreign key to the original consumption. Existing evidence is preserved without inventing operation identities or matching historical returns by guesswork.
+
+The migration creates the table and its constraints before advancing `DepotFeatureVersions`. Re-running an interrupted migration is safe. Metadata recovery requires the new table before treating a database as current. SQL Server also replaces the former nullable invoice unique constraint on `ServiceOrders` with a filtered unique index: multiple uninvoiced orders are allowed while a non-null invoice remains exclusive to one order. SQLite and MySQL/MariaDB retain their existing nullable uniqueness behavior.
+
+The [service-parts posting contract](development/ServicePartPosting.md) defines atomicity, retries, return bounds and historical-evidence limits. Core remains **30**, Sales **16**, Finance **12** and Production **1**. This schema migration does not change the product release version.
 
 
 ### Production schema 1

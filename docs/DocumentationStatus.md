@@ -1,6 +1,6 @@
 # Documentation status
 
-Updated: 2026-09-20
+Updated: 2026-10-24
 
 This document identifies the documentation baseline for the current development state. Implemented technical controls must remain distinct from production/legal acceptance gates.
 
@@ -20,7 +20,7 @@ This document identifies the documentation baseline for the current development 
 - Business Attachments feature schema: `4`
 - Procurement Sourcing feature schema: `1`
 - Project Accounting feature schema: `1`
-- Service Management feature schema: `1`
+- Service Management feature schema: `2`
 
 `Directory.Build.props` is the authoritative source for the exact application patch/version. Canonical documentation records the moving preview line as `0.15.x-preview`; exact patch numbers belong in source/release evidence, not manually duplicated baseline text.
 

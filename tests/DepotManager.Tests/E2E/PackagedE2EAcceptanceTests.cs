@@ -80,13 +80,56 @@ public sealed class PackagedE2EAcceptanceTests
         Assert.Equal(CurrentSchema, await ReadSchemaAsync(database));
         Assert.Equal(1, await CountAdministratorAsync(database));
 
+        Assert.True((await RunDepotCommandAsync(service.DepotPath, install, "--manager-health-check")).Success);
+        var settings = LocalSettings(database);
+        var inspector = new DatabaseSchemaInspector();
+        var previousCompatibility = await inspector.ReadStableCompatibilityAsync(settings, CancellationToken.None);
+        var candidateDirectory = Path.Combine(root, "candidate");
+        Directory.CreateDirectory(candidateDirectory);
+        var candidateExecutable = Path.Combine(candidateDirectory, "Depot.exe");
+        File.Copy(PackagedE2EEnvironment.CurrentDepot, candidateExecutable);
+        var targetCompatibility = (await RunDepotCommandAsync(
+            candidateExecutable, candidateDirectory, "--manager-schema-contract")).SchemaCompatibility
+            ?? throw new InvalidOperationException("The current packaged Depot did not export its complete schema compatibility contract.");
+        targetCompatibility.Validate(requirement: true);
+        Assert.Equal(CurrentSchema, targetCompatibility.CoreVersion);
+        var requiresMigration = previousCompatibility.RequiresMigrationTo(targetCompatibility);
+        DatabaseConnectionSettings? backupSettings = null;
+        if (requiresMigration)
+        {
+            var safetyBackup = await new MigrationSafetyService().CreateSqliteSafetyBackupAsync(
+                settings, install, previousVersion, previousCompatibility.CoreVersion, CancellationToken.None);
+            Assert.Equal(Path.GetFullPath(safetyBackup), MigrationBackupGate.EnsureVerifiedSqliteBackup(safetyBackup));
+            backupSettings = LocalSettings(safetyBackup);
+            Assert.True(previousCompatibility.HasSameState(
+                await inspector.ReadStableCompatibilityAsync(backupSettings, CancellationToken.None)));
+            Assert.Equal(1, await CountAdministratorAsync(safetyBackup));
+        }
+
         var settingsHash = await HashAsync(service.SettingsPath);
+        Assert.True(previousCompatibility.HasSameState(
+            await inspector.ReadStableCompatibilityAsync(settings, CancellationToken.None)));
         service.Deploy(PackagedE2EEnvironment.CurrentDepot, currentVersion, createBackup: true);
-        RollbackMetadataService.Write(service.BackupDirectory, previousVersion, await new DatabaseSchemaInspector().ReadStableCompatibilityAsync(
-            new DatabaseConnectionSettings { Provider = DatabaseProvider.Local, LocalDatabasePath = database }, CancellationToken.None));
+        RollbackMetadataService.Write(service.BackupDirectory, previousVersion, previousCompatibility);
         ExecutableDeployment.InstallManagerCopy(PackagedE2EEnvironment.CurrentManager, service.ManagerPath);
+        if (requiresMigration)
+        {
+            var migration = await RunDepotCommandAsync(service.DepotPath, install, "--manager-migrate");
+            Assert.True(migration.Success, migration.Message);
+            Assert.Equal(CurrentSchema, migration.DatabaseSchemaVersion);
+        }
         var health = await RunDepotCommandAsync(service.DepotPath, install, "--manager-health-check");
         Assert.True(health.Success, health.Message);
+        Assert.Equal(CurrentSchema, health.DatabaseSchemaVersion);
+        var migratedCompatibility = await inspector.ReadStableCompatibilityAsync(settings, CancellationToken.None);
+        migratedCompatibility.RequireCompatibleWith(targetCompatibility);
+        if (backupSettings is not null)
+        {
+            Assert.True(previousCompatibility.HasSameState(
+                await inspector.ReadStableCompatibilityAsync(backupSettings, CancellationToken.None)));
+            Assert.Equal(1, await CountAdministratorAsync(backupSettings.LocalDatabasePath));
+            Assert.False(RollbackCompatibility.IsCompatible(migratedCompatibility, previousCompatibility));
+        }
         Assert.Equal(currentVersion, service.InstalledVersion);
         Assert.Equal(1, await CountAdministratorAsync(database));
 
@@ -311,9 +354,9 @@ public sealed class PackagedE2EAcceptanceTests
         migrated.RequireCompatibleWith(current);
     }
 
-    [PackagedE2EFullFact]
+    [PackagedE2EFact]
     [Trait("Category", "PackagedE2E")]
-    [Trait("Tier", "Full")]
+    [Trait("Tier", "Smoke")]
     public async Task ManagerSelfUpdate_UsesTrustedSignedArtifact_AndRevertsWhenUpdatedManagerCannotStart()
     {
         var root = PackagedE2EEnvironment.CreateScenarioRoot(nameof(ManagerSelfUpdate_UsesTrustedSignedArtifact_AndRevertsWhenUpdatedManagerCannotStart));
@@ -322,15 +365,21 @@ public sealed class PackagedE2EAcceptanceTests
         AuthenticodeVerifier.ValidateTrustedSignature(PackagedE2EEnvironment.CurrentManager);
         AuthenticodeVerifier.ValidateTrustedSignature(PackagedE2EEnvironment.PreviousManager);
 
-        await RunManagerUpdateHelperAsync(root, target, forceStartupFailure: false);
-        Assert.Equal(ReadVersion(PackagedE2EEnvironment.CurrentManager), ReadVersion(target));
-        await WaitUntilAsync(() => !File.Exists(ManagerSelfUpdatePaths.GetStagedPath(target)), TimeSpan.FromSeconds(15));
+        try
+        {
+            await RunManagerUpdateHelperAsync(root, target, forceStartupFailure: false);
+            Assert.Equal(ReadVersion(PackagedE2EEnvironment.CurrentManager), ReadVersion(target));
+            await WaitUntilAsync(() => !File.Exists(ManagerSelfUpdatePaths.GetStagedPath(target)), TimeSpan.FromSeconds(15));
 
-        await StopManagersAtPathAsync(target);
-        File.Copy(PackagedE2EEnvironment.PreviousManager, target, true);
-        await RunManagerUpdateHelperAsync(root, target, forceStartupFailure: true);
-        Assert.Equal(ReadVersion(PackagedE2EEnvironment.PreviousManager), ReadVersion(target));
-        await StopManagersAtPathAsync(target);
+            await StopManagersAtPathAsync(target);
+            File.Copy(PackagedE2EEnvironment.PreviousManager, target, true);
+            await RunManagerUpdateHelperAsync(root, target, forceStartupFailure: true);
+            Assert.Equal(ReadVersion(PackagedE2EEnvironment.PreviousManager), ReadVersion(target));
+        }
+        finally
+        {
+            await StopManagersAtPathAsync(target);
+        }
     }
 
     [PackagedE2EFullFact]
@@ -504,7 +553,10 @@ public sealed class PackagedE2EAcceptanceTests
             document.RootElement.GetProperty("Success").GetBoolean(),
             document.RootElement.GetProperty("Message").GetString() ?? string.Empty,
             document.RootElement.TryGetProperty("DatabaseSchemaVersion", out var schema) && schema.ValueKind == JsonValueKind.Number ? schema.GetInt32() : null,
-            process.ExitCode);
+            process.ExitCode,
+            document.RootElement.TryGetProperty("SchemaCompatibility", out var compatibility) && compatibility.ValueKind == JsonValueKind.Object
+                ? compatibility.Deserialize<DatabaseSchemaCompatibility>()
+                : null);
         if (!result.Success || result.ExitCode != 0)
             throw new InvalidOperationException($"Packaged Depot command {command} failed: {result.Message} (exit {result.ExitCode}).");
         return result;
@@ -530,9 +582,80 @@ public sealed class PackagedE2EAcceptanceTests
         startInfo.Environment["DEPOT_PACKAGED_E2E_FORCE_STARTUP_FAILURE"] = forceStartupFailure ? "1" : "0";
 
         using var helper = Process.Start(startInfo) ?? throw new InvalidOperationException("Could not start the packaged Depot Manager update helper.");
-        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-        await helper.WaitForExitAsync(timeout.Token);
-        Assert.Equal(0, helper.ExitCode);
+        // The production helper allows 45 seconds for readiness, then may stop the child
+        // and restore the previous executable. Let that complete before timing out the test.
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(90));
+        Exception? updateFailure = null;
+        try
+        {
+            await helper.WaitForExitAsync(timeout.Token);
+            Assert.Equal(0, helper.ExitCode);
+        }
+        catch (OperationCanceledException exception) when (timeout.IsCancellationRequested)
+        {
+            var failure = new TimeoutException(
+                $"The packaged manager update helper did not exit within 90 seconds. " +
+                $"ForceStartupFailure={forceStartupFailure}; helper={DescribeProcess(helper)}; " +
+                $"target={target}; stagedExists={File.Exists(staged)}; " +
+                $"previousExists={File.Exists(ManagerSelfUpdatePaths.GetPreviousPath(target))}; " +
+                $"readyMarkerExists={File.Exists(marker)}; managers={DescribeManagersAtPath(target)}.",
+                exception);
+            updateFailure = failure;
+            throw failure;
+        }
+        catch (Exception exception)
+        {
+            updateFailure = exception;
+            throw;
+        }
+        finally
+        {
+            try
+            {
+                try
+                {
+                    if (!helper.HasExited) helper.Kill(entireProcessTree: true);
+                }
+                catch (InvalidOperationException) when (helper.HasExited) { }
+                using var cleanupTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                await helper.WaitForExitAsync(cleanupTimeout.Token);
+            }
+            catch (Exception cleanupFailure) when (updateFailure is not null)
+            {
+                throw new AggregateException("Manager update and process cleanup both failed.", updateFailure, cleanupFailure);
+            }
+        }
+    }
+
+    private static string DescribeProcess(Process process)
+    {
+        try
+        {
+            return process.HasExited
+                ? $"pid={process.Id}, exit={process.ExitCode}"
+                : $"pid={process.Id}, running, responding={process.Responding}, window='{process.MainWindowTitle}'";
+        }
+        catch (InvalidOperationException) { return "process no longer available"; }
+        catch (System.ComponentModel.Win32Exception exception) { return $"process details unavailable: {exception.NativeErrorCode}"; }
+    }
+
+    private static string DescribeManagersAtPath(string target)
+    {
+        var descriptions = new List<string>();
+        foreach (var process in Process.GetProcessesByName("DepotManager"))
+        {
+            using (process)
+            {
+                try
+                {
+                    if (string.Equals(process.MainModule?.FileName, target, StringComparison.OrdinalIgnoreCase))
+                        descriptions.Add(DescribeProcess(process));
+                }
+                catch (InvalidOperationException) { }
+                catch (System.ComponentModel.Win32Exception) { }
+            }
+        }
+        return descriptions.Count == 0 ? "none observed" : string.Join("; ", descriptions);
     }
 
     private static async Task StopManagersAtPathAsync(string target)
@@ -630,7 +753,7 @@ public sealed class PackagedE2EAcceptanceTests
         });
     }
 
-    private sealed record ManagerCommandResult(bool Success, string Message, int? DatabaseSchemaVersion, int ExitCode);
+    private sealed record ManagerCommandResult(bool Success, string Message, int? DatabaseSchemaVersion, int ExitCode, DatabaseSchemaCompatibility? SchemaCompatibility);
 
     private sealed class StaticBytesHandler(byte[] bytes) : HttpMessageHandler
     {

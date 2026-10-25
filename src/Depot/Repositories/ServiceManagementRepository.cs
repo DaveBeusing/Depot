@@ -15,6 +15,8 @@ public sealed class ServiceManagementRepository : DatabaseRepository
 	private const string CaseFrom = " FROM ServiceCases c INNER JOIN Customers cu ON cu.Id=c.CustomerId LEFT JOIN CustomerContacts cc ON cc.Id=c.CustomerContactId LEFT JOIN Users u ON u.Id=c.OwnerUserId";
 	private const string OrderColumns = "o.Id,o.Version,o.OrderNumber,o.ServiceCaseId,c.CaseNumber,o.CustomerId,cu.Name,o.AssignedOwnerUserId,u.DisplayName,o.ServicedItemId,i.PartNumber,o.ServicedInventoryId,o.SerialLotReference,o.Status,o.PlannedStartAtUtc,o.PlannedEndAtUtc,o.CompletionNotes,o.CompletedAtUtc,o.CompletedByUserId,o.SalesInvoiceId,si.InvoiceNumber,o.CreatedAtUtc,o.CreatedByUserId,o.UpdatedAtUtc,o.UpdatedByUserId";
 	private const string OrderFrom = " FROM ServiceOrders o INNER JOIN ServiceCases c ON c.Id=o.ServiceCaseId INNER JOIN Customers cu ON cu.Id=o.CustomerId LEFT JOIN Users u ON u.Id=o.AssignedOwnerUserId LEFT JOIN Items i ON i.Id=o.ServicedItemId LEFT JOIN SalesInvoices si ON si.Id=o.SalesInvoiceId";
+	private const string PartColumns = "p.Id,p.ServiceOrderId,p.StockMovementId,p.MovementKind,p.InventoryId,p.ItemId,p.PartNumber,p.Description,p.Quantity,p.UnitPrice,p.Billable,p.TaxRate,p.CreatedAtUtc,p.CreatedByUserId,operation.OperationId,operation.RequestHash,operation.OriginalConsumptionId";
+	private const string PartFrom = " FROM ServicePartEvidence p LEFT JOIN ServicePartOperations operation ON operation.ServicePartEvidenceId=p.Id";
 
 	public ServiceManagementRepository(DatabaseAccess database) : base(database) { }
 
@@ -66,6 +68,13 @@ public sealed class ServiceManagementRepository : DatabaseRepository
 	internal Task<ServiceOrder?> GetOrderAsync(DatabaseTransactionContext tx,long id,CancellationToken token)=>tx.Session.QuerySingleOrDefaultAsync($"SELECT {OrderColumns}{OrderFrom} WHERE o.Id=$Id;",ReadOrder,token,Parameter("$Id",id));
 	internal Task<ServiceOrder?> GetOrderForCaseAsync(DatabaseTransactionContext tx,long caseId,CancellationToken token)=>tx.Session.QuerySingleOrDefaultAsync($"SELECT {OrderColumns}{OrderFrom} WHERE o.ServiceCaseId=$CaseId;",ReadOrder,token,Parameter("$CaseId",caseId));
 
+	internal async Task<ServiceOrder?> GetOrderForUpdateAsync(DatabaseTransactionContext tx, long id, CancellationToken token)
+	{
+		// Acquire write ownership before reading lifecycle or parts balances on every provider.
+		await tx.Session.ExecuteAsync("UPDATE ServiceOrders SET Version=Version WHERE Id=$Id;", token, Parameter("$Id", id));
+		return await GetOrderAsync(tx, id, token);
+	}
+
 	internal async Task<ServiceOrder> CreateOrderAsync(DatabaseTransactionContext tx,ServiceOrder value,CancellationToken token)
 	{
 		var id=await tx.Session.InsertAsync("""
@@ -99,15 +108,61 @@ public sealed class ServiceManagementRepository : DatabaseRepository
 		tx.Session.ExecuteAsync("DELETE FROM ServiceWorkLines WHERE Id=$Id AND ServiceOrderId=$OrderId AND Version=$Version;",token,Parameter("$Id",id),Parameter("$OrderId",orderId),Parameter("$Version",expectedVersion));
 
 	public Task<IReadOnlyList<ServicePartEvidence>> ListPartEvidenceAsync(long orderId,CancellationToken token=default)=>
-		Database.QueryAsync("SELECT Id,ServiceOrderId,StockMovementId,MovementKind,InventoryId,ItemId,PartNumber,Description,Quantity,UnitPrice,Billable,TaxRate,CreatedAtUtc,CreatedByUserId FROM ServicePartEvidence WHERE ServiceOrderId=$OrderId ORDER BY Id;",ReadPart,token,Parameter("$OrderId",orderId));
+		Database.QueryAsync($"SELECT {PartColumns}{PartFrom} WHERE p.ServiceOrderId=$OrderId ORDER BY p.Id;",ReadPart,token,Parameter("$OrderId",orderId));
 	internal Task<IReadOnlyList<ServicePartEvidence>> ListPartEvidenceAsync(DatabaseTransactionContext tx,long orderId,CancellationToken token)=>
-		tx.Session.QueryAsync("SELECT Id,ServiceOrderId,StockMovementId,MovementKind,InventoryId,ItemId,PartNumber,Description,Quantity,UnitPrice,Billable,TaxRate,CreatedAtUtc,CreatedByUserId FROM ServicePartEvidence WHERE ServiceOrderId=$OrderId ORDER BY Id;",ReadPart,token,Parameter("$OrderId",orderId));
+		tx.Session.QueryAsync($"SELECT {PartColumns}{PartFrom} WHERE p.ServiceOrderId=$OrderId ORDER BY p.Id;",ReadPart,token,Parameter("$OrderId",orderId));
+	internal Task<ServicePartEvidence?> GetPartEvidenceAsync(DatabaseTransactionContext tx,long id,CancellationToken token)=>
+		tx.Session.QuerySingleOrDefaultAsync($"SELECT {PartColumns}{PartFrom} WHERE p.Id=$Id;",ReadPart,token,Parameter("$Id",id));
+	internal Task<ServicePartEvidence?> GetPartByOperationIdAsync(DatabaseTransactionContext tx,Guid operationId,CancellationToken token)=>
+		tx.Session.QuerySingleOrDefaultAsync($"SELECT {PartColumns}{PartFrom} WHERE operation.OperationId=$OperationId;",ReadPart,token,Parameter("$OperationId",operationId.ToString("N")));
+
 	internal async Task<ServicePartEvidence> CreatePartEvidenceAsync(DatabaseTransactionContext tx,ServicePartEvidence value,CancellationToken token)
 	{
+		if (value.OperationId is not Guid operationId || string.IsNullOrWhiteSpace(value.RequestHash))
+			throw new ArgumentException("Service-parts evidence requires a durable operation identity and request hash.", nameof(value));
 		var id=await tx.Session.InsertAsync("INSERT INTO ServicePartEvidence(ServiceOrderId,StockMovementId,MovementKind,InventoryId,ItemId,PartNumber,Description,Quantity,UnitPrice,Billable,TaxRate,CreatedAtUtc,CreatedByUserId) VALUES($OrderId,$MovementId,$Kind,$InventoryId,$ItemId,$PartNumber,$Description,$Quantity,$UnitPrice,$Billable,$TaxRate,$CreatedAt,$CreatedBy);",token,
 			Parameter("$OrderId",value.ServiceOrderId),Parameter("$MovementId",value.StockMovementId),Parameter("$Kind",(int)value.MovementKind),Parameter("$InventoryId",value.InventoryId),Parameter("$ItemId",value.ItemId),Parameter("$PartNumber",value.PartNumber),Parameter("$Description",value.Description),Parameter("$Quantity",value.Quantity),Parameter("$UnitPrice",value.UnitPrice),Parameter("$Billable",value.Billable?1:0),Parameter("$TaxRate",value.TaxRate),Parameter("$CreatedAt",Utc(value.CreatedAtUtc)),Parameter("$CreatedBy",value.CreatedByUserId));
+		await tx.Session.ExecuteAsync("INSERT INTO ServicePartOperations(OperationId,RequestHash,ServicePartEvidenceId,OriginalConsumptionId) VALUES($OperationId,$RequestHash,$EvidenceId,$ConsumptionId);", token,
+			Parameter("$OperationId",operationId.ToString("N")),Parameter("$RequestHash",value.RequestHash),Parameter("$EvidenceId",id),Parameter("$ConsumptionId",value.OriginalConsumptionId));
 		return value with{Id=id};
 	}
+
+	internal Task<ServicePartInventoryContext?> GetPartInventoryContextAsync(DatabaseTransactionContext tx,long inventoryId,CancellationToken token)=>
+		tx.Session.QuerySingleOrDefaultAsync("SELECT i.Id,i.PartNumber,i.Description,i.TrackingMode FROM Inventories inventory INNER JOIN Items i ON i.Id=inventory.ItemId WHERE inventory.Id=$InventoryId;",
+			r=>new ServicePartInventoryContext(r.GetInt64(0),r.GetString(1),r.GetString(2),(ItemTrackingMode)Convert.ToInt32(r.GetValue(3),CultureInfo.InvariantCulture)),token,Parameter("$InventoryId",inventoryId));
+
+	internal Task<bool> HasUnlinkedPartReturnsAsync(DatabaseTransactionContext tx,long orderId,long inventoryId,CancellationToken token)=>
+		ExistsAsync(tx,$"SELECT COUNT(*){PartFrom} WHERE p.ServiceOrderId=$OrderId AND p.InventoryId=$InventoryId AND p.MovementKind=$Return AND operation.OriginalConsumptionId IS NULL;",token,
+			Parameter("$OrderId",orderId),Parameter("$InventoryId",inventoryId),Parameter("$Return",(int)ServicePartMovementKind.Return));
+
+	internal Task<bool> IsUnreversedPartConsumptionAsync(DatabaseTransactionContext tx,ServicePartEvidence consumption,CancellationToken token)=>
+		ExistsAsync(tx,"""
+			SELECT COUNT(*) FROM StockMovements movement
+			WHERE movement.Id=$MovementId AND movement.InventoryId=$InventoryId AND movement.MovementType=$Withdrawal
+			AND movement.Quantity=$Quantity AND movement.ReversalOfMovementId IS NULL
+			AND NOT EXISTS (SELECT 1 FROM StockMovements reversal WHERE reversal.ReversalOfMovementId=movement.Id);
+			""",token,Parameter("$MovementId",consumption.StockMovementId),Parameter("$InventoryId",consumption.InventoryId),
+			Parameter("$Withdrawal",(int)StockMovementType.Withdrawal),Parameter("$Quantity",-consumption.Quantity));
+
+	internal async Task<long> GetReturnedPartQuantityAsync(DatabaseTransactionContext tx,long consumptionId,CancellationToken token)
+	{
+		var value=await tx.Session.ExecuteScalarAsync($"SELECT COALESCE(SUM({Database.CastToInt64("p.Quantity")}),0){PartFrom} WHERE operation.OriginalConsumptionId=$ConsumptionId AND p.MovementKind=$Return;",token,
+			Parameter("$ConsumptionId",consumptionId),Parameter("$Return",(int)ServicePartMovementKind.Return));
+		return Convert.ToInt64(value,CultureInfo.InvariantCulture);
+	}
+
+	internal Task<IReadOnlyList<ServicePartTrackingBalance>> GetPartTrackingBalancesAsync(DatabaseTransactionContext tx,ServicePartEvidence consumption,CancellationToken token)=>
+		tx.Session.QueryAsync($"""
+			SELECT unit.Id,unit.Code,-{Database.CastToInt64("issued.Quantity")},
+			COALESCE((SELECT SUM({Database.CastToInt64("returnedTracking.Quantity")})
+				FROM ServicePartOperations returnOperation
+				INNER JOIN ServicePartEvidence returnedPart ON returnedPart.Id=returnOperation.ServicePartEvidenceId
+				INNER JOIN StockMovementTracking returnedTracking ON returnedTracking.StockMovementId=returnedPart.StockMovementId
+				WHERE returnOperation.OriginalConsumptionId=$ConsumptionId AND returnedTracking.TrackingUnitId=issued.TrackingUnitId),0),unit.ExpiryDate,unit.ItemId,unit.TrackingMode
+			FROM StockMovementTracking issued INNER JOIN ItemTrackingUnits unit ON unit.Id=issued.TrackingUnitId
+			WHERE issued.StockMovementId=$MovementId ORDER BY unit.Code,unit.Id;
+			""",r=>new ServicePartTrackingBalance(r.GetInt64(0),r.GetString(1),Convert.ToInt64(r.GetValue(2),CultureInfo.InvariantCulture),Convert.ToInt64(r.GetValue(3),CultureInfo.InvariantCulture),ReadNullableUtc(r,4),r.GetInt64(5),(ItemTrackingMode)Convert.ToInt32(r.GetValue(6),CultureInfo.InvariantCulture)),token,
+			Parameter("$ConsumptionId",consumption.Id),Parameter("$MovementId",consumption.StockMovementId));
 
 	internal Task<bool> CustomerExistsAsync(DatabaseTransactionContext tx,long id,CancellationToken token)=>ExistsAsync(tx,"SELECT COUNT(*) FROM Customers WHERE Id=$Id AND IsActive=1;",token,Parameter("$Id",id));
 	internal Task<bool> ContactBelongsToCustomerAsync(DatabaseTransactionContext tx,long contactId,long customerId,CancellationToken token)=>ExistsAsync(tx,"SELECT COUNT(*) FROM CustomerContacts WHERE Id=$ContactId AND CustomerId=$CustomerId AND IsActive=1;",token,Parameter("$ContactId",contactId),Parameter("$CustomerId",customerId));
@@ -177,7 +232,7 @@ public sealed class ServiceManagementRepository : DatabaseRepository
 		SalesInvoiceNumber=r.IsDBNull(20)?null:r.GetString(20),CreatedAtUtc=ReadUtc(r,21),CreatedByUserId=r.GetInt64(22),UpdatedAtUtc=ReadUtc(r,23),UpdatedByUserId=r.GetInt64(24)
 	};
 	private static ServiceWorkLine ReadWorkLine(DbDataReader r)=>new(){Id=r.GetInt64(0),Version=r.GetInt64(1),ServiceOrderId=r.GetInt64(2),Description=r.GetString(3),Quantity=Convert.ToDecimal(r.GetValue(4),CultureInfo.InvariantCulture),UnitPrice=Convert.ToDecimal(r.GetValue(5),CultureInfo.InvariantCulture),Billable=Convert.ToBoolean(r.GetValue(6),CultureInfo.InvariantCulture),TaxRate=Convert.ToDecimal(r.GetValue(7),CultureInfo.InvariantCulture),CreatedAtUtc=ReadUtc(r,8),CreatedByUserId=r.GetInt64(9)};
-	private static ServicePartEvidence ReadPart(DbDataReader r)=>new(){Id=r.GetInt64(0),ServiceOrderId=r.GetInt64(1),StockMovementId=r.GetInt64(2),MovementKind=(ServicePartMovementKind)Convert.ToInt32(r.GetValue(3),CultureInfo.InvariantCulture),InventoryId=r.GetInt64(4),ItemId=r.GetInt64(5),PartNumber=r.GetString(6),Description=r.GetString(7),Quantity=Convert.ToInt32(r.GetValue(8),CultureInfo.InvariantCulture),UnitPrice=Convert.ToDecimal(r.GetValue(9),CultureInfo.InvariantCulture),Billable=Convert.ToBoolean(r.GetValue(10),CultureInfo.InvariantCulture),TaxRate=Convert.ToDecimal(r.GetValue(11),CultureInfo.InvariantCulture),CreatedAtUtc=ReadUtc(r,12),CreatedByUserId=r.GetInt64(13)};
+	private static ServicePartEvidence ReadPart(DbDataReader r)=>new(){Id=r.GetInt64(0),ServiceOrderId=r.GetInt64(1),StockMovementId=r.GetInt64(2),MovementKind=(ServicePartMovementKind)Convert.ToInt32(r.GetValue(3),CultureInfo.InvariantCulture),InventoryId=r.GetInt64(4),ItemId=r.GetInt64(5),PartNumber=r.GetString(6),Description=r.GetString(7),Quantity=Convert.ToInt32(r.GetValue(8),CultureInfo.InvariantCulture),UnitPrice=Convert.ToDecimal(r.GetValue(9),CultureInfo.InvariantCulture),Billable=Convert.ToBoolean(r.GetValue(10),CultureInfo.InvariantCulture),TaxRate=Convert.ToDecimal(r.GetValue(11),CultureInfo.InvariantCulture),CreatedAtUtc=ReadUtc(r,12),CreatedByUserId=r.GetInt64(13),OperationId=r.IsDBNull(14)?null:Guid.ParseExact(r.GetString(14),"N"),RequestHash=r.IsDBNull(15)?null:r.GetString(15),OriginalConsumptionId=r.IsDBNull(16)?null:r.GetInt64(16)};
 	private static DateTime ReadUtc(DbDataReader r,int ordinal)=>r.GetValue(ordinal) is DateTime value?DateTime.SpecifyKind(value,DateTimeKind.Utc):DateTime.Parse(Convert.ToString(r.GetValue(ordinal),CultureInfo.InvariantCulture)!,CultureInfo.InvariantCulture,DateTimeStyles.AssumeUniversal|DateTimeStyles.AdjustToUniversal);
 	private static DateTime? ReadNullableUtc(DbDataReader r,int ordinal)=>r.IsDBNull(ordinal)?null:ReadUtc(r,ordinal);
 	private static DateTime Utc(DateTime value)=>value.Kind==DateTimeKind.Utc?value:value.ToUniversalTime();

@@ -4,6 +4,7 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Runtime.CompilerServices;
+using System.Text.Json;
 
 using Depot.Commands;
 using Depot.Models;
@@ -20,6 +21,11 @@ public sealed class ServiceManagementViewModel : BaseViewModel, IDisposable
 	private Customer? _selectedCustomer;
 	private CustomerContact? _selectedContact;
 	private ServiceWorkLine? _selectedWorkLine;
+	private ServicePartEvidence? _selectedPartEvidence;
+	private PartPostingRequest? _pendingPartRequest;
+	private Guid _pendingPartOperationId;
+	private bool _postingPart;
+	private sealed record PartPostingRequest(long OrderId,long InventoryId,long? ConsumptionId,int Quantity,long? ReasonCodeId,decimal UnitPrice,bool Billable,decimal TaxRate,string Tracking,bool IsReturn);
 	private InventoryLookupItem? _selectedPartInventory;
 	private string _subject=string.Empty;
 	private string _description=string.Empty;
@@ -71,8 +77,8 @@ public sealed class ServiceManagementViewModel : BaseViewModel, IDisposable
 		CompleteOrderCommand=new AsyncRelayCommand(CompleteOrderAsync,()=>CanCompleteOrders&&SelectedOrder is{Status:not ServiceOrderStatus.Completed and not ServiceOrderStatus.Cancelled}&&!string.IsNullOrWhiteSpace(CompletionNotes));
 		AddWorkLineCommand=new AsyncRelayCommand(AddWorkLineAsync,()=>CanManageOrders&&SelectedOrder is{Status:not ServiceOrderStatus.Completed and not ServiceOrderStatus.Cancelled}&&!string.IsNullOrWhiteSpace(WorkDescription));
 		RemoveWorkLineCommand=new AsyncRelayCommand(RemoveWorkLineAsync,()=>CanManageOrders&&SelectedOrder is{Status:not ServiceOrderStatus.Completed and not ServiceOrderStatus.Cancelled}&&SelectedWorkLine is not null);
-		ConsumePartCommand=new AsyncRelayCommand(token=>PostPartAsync(false,token),()=>CanManageOrders&&SelectedOrder is{Status:not ServiceOrderStatus.Completed and not ServiceOrderStatus.Cancelled}&&SelectedPartInventory is not null&&PartQuantity>0);
-		ReturnPartCommand=new AsyncRelayCommand(token=>PostPartAsync(true,token),()=>CanManageOrders&&SelectedOrder is{Status:not ServiceOrderStatus.Completed and not ServiceOrderStatus.Cancelled}&&SelectedPartInventory is not null&&PartQuantity>0);
+		ConsumePartCommand=new AsyncRelayCommand(token=>PostPartAsync(false,token),()=>!_postingPart&&CanManageOrders&&SelectedOrder is{Status:not ServiceOrderStatus.Completed and not ServiceOrderStatus.Cancelled}&&SelectedPartInventory is not null&&PartQuantity>0);
+		ReturnPartCommand=new AsyncRelayCommand(token=>PostPartAsync(true,token),()=>!_postingPart&&CanManageOrders&&SelectedOrder is{Status:not ServiceOrderStatus.Completed and not ServiceOrderStatus.Cancelled}&&SelectedPartEvidence is{MovementKind:ServicePartMovementKind.Consumption}&&SelectedPartEvidence.ServiceOrderId==SelectedOrder.Id&&PartQuantity>0&&PartQuantity<=SelectedPartReturnableQuantity);
 		GenerateInvoiceCommand=new AsyncRelayCommand(GenerateInvoiceAsync,()=>CanBill&&SelectedOrder?.Status==ServiceOrderStatus.Completed);
 	}
 
@@ -113,6 +119,21 @@ public sealed class ServiceManagementViewModel : BaseViewModel, IDisposable
 	}
 	public CustomerContact? SelectedContact{get=>_selectedContact;set=>Set(ref _selectedContact,value);}
 	public ServiceWorkLine? SelectedWorkLine{get=>_selectedWorkLine;set{if(Set(ref _selectedWorkLine,value))RemoveWorkLineCommand.RaiseCanExecuteChanged();}}
+	public ServicePartEvidence? SelectedPartEvidence
+	{
+		get=>_selectedPartEvidence;
+		set{if(Set(ref _selectedPartEvidence,value)){OnPropertyChanged(nameof(SelectedPartReturnableQuantity));ReturnPartCommand.RaiseCanExecuteChanged();}}
+	}
+	public long SelectedPartReturnableQuantity
+	{
+		get
+		{
+			var source=SelectedPartEvidence;
+			if(source is null||source.MovementKind!=ServicePartMovementKind.Consumption||source.ServiceOrderId!=SelectedOrder?.Id)return 0;
+			if(Parts.Any(part=>part.MovementKind==ServicePartMovementKind.Return&&part.InventoryId==source.InventoryId&&part.OriginalConsumptionId is null))return 0;
+			return Math.Max(0,source.Quantity-Parts.Where(part=>part.OriginalConsumptionId==source.Id).Sum(part=>(long)part.Quantity));
+		}
+	}
 	public InventoryLookupItem? SelectedPartInventory{get=>_selectedPartInventory;set{if(Set(ref _selectedPartInventory,value)){ConsumePartCommand.RaiseCanExecuteChanged();ReturnPartCommand.RaiseCanExecuteChanged();}}}
 	public InventoryLookupItem? ServicedInventory{get=>_servicedInventory;set=>Set(ref _servicedInventory,value);}
 	public string Subject{get=>_subject;set{if(Set(ref _subject,value))SaveCaseCommand.RaiseCanExecuteChanged();}} public string Description{get=>_description;set=>Set(ref _description,value);} public string Category{get=>_category;set=>Set(ref _category,value);}
@@ -220,16 +241,32 @@ public sealed class ServiceManagementViewModel : BaseViewModel, IDisposable
 	}
 	private async Task PostPartAsync(bool isReturn,CancellationToken token)
 	{
-		var order=SelectedOrder;var inventory=SelectedPartInventory;if(order is null||inventory is null)return;BeginOperation(isReturn?"Returning service part...":"Consuming service part...");
+		var order=SelectedOrder;var inventory=SelectedPartInventory;var consumption=SelectedPartEvidence;
+		if(_postingPart||order is null||(!isReturn&&inventory is null)||(isReturn&&consumption is not{MovementKind:ServicePartMovementKind.Consumption}))return;
+		_postingPart=true;RaiseCommands();BeginOperation(isReturn?"Returning service part...":"Consuming service part...");
+		var committed=false;
 		try
 		{
 			var reason=ParseOptionalId(PartReasonCodeId,"Reason code ID");var tracking=TrackingAllocationTextParser.ParseUnspecified(TrackingText);
-			if(isReturn)await _service.ReturnPartAsync(order.Id,inventory.Id,PartQuantity,reason,PartUnitPrice,PartTaxRate,tracking,token);
-			else await _service.ConsumePartAsync(order.Id,inventory.Id,PartQuantity,reason,PartUnitPrice,PartBillable,PartTaxRate,tracking,token);
-			TrackingText=string.Empty;await LoadOrderEvidenceAsync(order.Id,token);SelectedOrder=await _service.GetOrderAsync(order.Id,token);CompleteOperation(false,isReturn?"Part return posted.":"Part consumption posted.");
+			var trackingIdentity=JsonSerializer.Serialize(tracking.Select(value=>new{Code=value.Code.Trim().ToUpperInvariant(),value.Quantity,ExpiryDate=value.ExpiryDate?.ToString("yyyy-MM-dd",CultureInfo.InvariantCulture)}).OrderBy(value=>value.Code,StringComparer.Ordinal));
+			var request=new PartPostingRequest(order.Id,isReturn?0:inventory?.Id??0,isReturn?consumption?.Id:null,PartQuantity,reason,isReturn?0m:PartUnitPrice,!isReturn&&PartBillable,isReturn?0m:PartTaxRate,trackingIdentity,isReturn);
+			if(request!=_pendingPartRequest){_pendingPartRequest=request;_pendingPartOperationId=Guid.NewGuid();}
+			if(isReturn)await _service.ReturnPartAsync(request.OrderId,request.ConsumptionId??throw new InvalidOperationException("Select the original consumption."),request.Quantity,reason,tracking,_pendingPartOperationId,token);
+			else await _service.ConsumePartAsync(request.OrderId,request.InventoryId,request.Quantity,reason,request.UnitPrice,request.Billable,request.TaxRate,tracking,_pendingPartOperationId,token);
+			committed=true;_pendingPartRequest=null;
+			if(SelectedOrder?.Id==order.Id)
+			{
+				PartQuantity=0;TrackingText=string.Empty;
+				await LoadOrderEvidenceAsync(order.Id,token);
+				var refreshed=await _service.GetOrderAsync(order.Id,token);
+				if(SelectedOrder?.Id==order.Id)SelectedOrder=refreshed;
+			}
+			CompleteOperation(false,isReturn?"Part return posted.":"Part consumption posted.");
 		}
-		catch(Exception ex){FailOperation(ex,isReturn?"Part return could not be posted.":"Part consumption could not be posted.");}
+		catch(Exception ex){FailOperation(ex,committed?"The part movement was posted, but its refreshed evidence could not be loaded. Refresh the order.":isReturn?"Part return could not be confirmed. Retry the unchanged request to recover its result.":"Part consumption could not be confirmed. Retry the unchanged request to recover its result.");}
+		finally{_postingPart=false;RaiseCommands();}
 	}
+
 	private async Task GenerateInvoiceAsync(CancellationToken token)
 	{
 		var order=SelectedOrder;if(order is null)return;BeginOperation("Creating service invoice draft...");
@@ -238,7 +275,7 @@ public sealed class ServiceManagementViewModel : BaseViewModel, IDisposable
 	}
 	private async Task LoadSelectedCaseAsync(long? id,CancellationToken token)
 	{
-		History.Clear();WorkLines.Clear();Parts.Clear();SelectedOrder=null;if(id is null)return;
+		History.Clear();WorkLines.Clear();Parts.Clear();SelectedPartEvidence=null;SelectedOrder=null;if(id is null)return;
 		try
 		{
 			var current=SelectedCase;
@@ -254,7 +291,11 @@ public sealed class ServiceManagementViewModel : BaseViewModel, IDisposable
 	}
 	private async Task LoadOrderEvidenceAsync(long orderId,CancellationToken token)
 	{
-		var workTask=_service.ListWorkLinesAsync(orderId,token);var partsTask=_service.ListPartEvidenceAsync(orderId,token);await Task.WhenAll(workTask,partsTask);Replace(WorkLines,workTask.Result);Replace(Parts,partsTask.Result);
+		var selectedPart=SelectedPartEvidence?.Id;
+		var workTask=_service.ListWorkLinesAsync(orderId,token);var partsTask=_service.ListPartEvidenceAsync(orderId,token);await Task.WhenAll(workTask,partsTask);
+		if(SelectedOrder?.Id!=orderId)return;
+		Replace(WorkLines,workTask.Result);Replace(Parts,partsTask.Result);SelectedPartEvidence=Parts.FirstOrDefault(part=>part.Id==selectedPart);
+		OnPropertyChanged(nameof(SelectedPartReturnableQuantity));ReturnPartCommand.RaiseCanExecuteChanged();
 	}
 	private async Task LoadContactsAsync(long? customerId,CancellationToken token)
 	{

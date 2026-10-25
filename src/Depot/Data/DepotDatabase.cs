@@ -928,19 +928,28 @@ public sealed class DepotDatabase : IDatabaseInitializer
 
 	private static void SeedRbac(SqliteConnection connection, bool migrateLegacyUsers)
 	{
+		var hasUsers = TableExists(connection, "Users");
+		var hasAdministratorColumn = hasUsers && TableHasColumn(connection, "Users", "IsAdministrator");
+		var hasRoleColumn = hasUsers && TableHasColumn(connection, "Users", "Role");
+		var hasApprovalColumn = hasUsers && TableHasColumn(connection, "Users", "CanApprovePurchaseOrders");
+		var hasEmailColumn = hasUsers && TableHasColumn(connection, "Users", "Email");
+
+		// Publish a complete authorization catalog and avoid a durable commit for every grant.
+		using var transaction = connection.BeginTransaction();
 		using var command = connection.CreateCommand();
+		command.Transaction = transaction;
 		RbacCatalogSeeder.EnsureCatalog(command);
-		if (!TableExists(connection, "Users")) return;
-		if (migrateLegacyUsers)
+		if (hasUsers && migrateLegacyUsers)
 		{
 			RbacCatalogSeeder.MigrateLegacyUsers(
 				command,
-				TableHasColumn(connection, "Users", "IsAdministrator"),
-				TableHasColumn(connection, "Users", "Role"),
-				TableHasColumn(connection, "Users", "CanApprovePurchaseOrders"));
+				hasAdministratorColumn,
+				hasRoleColumn,
+				hasApprovalColumn);
 		}
-		if (TableHasColumn(connection, "Users", "Email"))
+		if (hasEmailColumn)
 			RbacCatalogSeeder.EnsureDefaultAdministratorAssignment(command);
+		transaction.Commit();
 	}
 
 	private static void CreateWorkflowOperationsTable(SqliteConnection connection)
@@ -2068,3 +2077,4 @@ public sealed class DepotDatabase : IDatabaseInitializer
 		""";
 	}
 }
+

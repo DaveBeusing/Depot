@@ -75,6 +75,12 @@ public sealed class ProductionService
 		return _production.ListCostEvidenceAsync(orderId,token);
 	}
 
+	public Task<IReadOnlyList<ProductionComponentIssue>> GetReversibleComponentIssuesAsync(long orderId,CancellationToken token=default)
+	{
+		_authorization.RequirePermission(ApplicationPermission.ProductionView);
+		return _production.GetReversibleComponentIssuesAsync(orderId,token);
+	}
+
 	public bool CanHandoffShortages=>CanManageOrders && _authorization.HasPermission(ApplicationPermission.ReplenishmentSuggestionsManage);
 
 	public Task<PageResult<BillOfMaterial>> SearchBomsAsync(string? searchText=null,int pageNumber=1,int pageSize=100,CancellationToken token=default)
@@ -228,24 +234,64 @@ public sealed class ProductionService
 		var user=CurrentUser();
 		return await _transactions.ExecuteAsync(async(transaction,ct)=>
 		{
+			var before=await _production.GetOrderForUpdateAsync(transaction,orderId,ct)??throw new InvalidOperationException("Production order was not found.");
 			var existing=await _production.GetMovementByOperationKeyAsync(transaction,key,ct);
 			if(existing is not null)
 			{
-				if(existing.ProductionOrderId!=orderId || existing.RequirementId!=requirementId || existing.Kind!=ProductionMovementKind.ComponentIssue) throw new InvalidOperationException("The operation key is already used by another production movement.");
-				return await _production.GetOrderAsync(transaction,orderId,ct)??throw new InvalidOperationException("Production order was not found.");
+				if(existing.ProductionOrderId!=orderId || existing.RequirementId!=requirementId || existing.Kind!=ProductionMovementKind.ComponentIssue || existing.Quantity!=quantity) throw new InvalidOperationException("The operation key is already used by another production movement.");
+				var original=await _stockMovements.GetByIdAsync(transaction,existing.StockMovementId,ct)??throw new InvalidOperationException("The original component issue was not found.");
+				if(original.InventoryId!=inventoryId) throw new InvalidOperationException("The operation key is already used by another production movement.");
+				return before;
 			}
-			var before=await _production.GetOrderAsync(transaction,orderId,ct)??throw new InvalidOperationException("Production order was not found.");
 			if(before.Status is not ProductionOrderStatus.Released and not ProductionOrderStatus.InProgress) throw new InvalidOperationException("Components can be issued only to a released or in-progress production order.");
 			var requirement=before.Requirements.SingleOrDefault(x=>x.Id==requirementId)??throw new InvalidOperationException("Production requirement was not found.");
 			if(quantity>requirement.RemainingQuantity) throw new InvalidOperationException("Component issue exceeds the remaining requirement quantity.");
-			var inventory=await _production.GetInventoryContextAsync(transaction,inventoryId,ct)??throw new InvalidOperationException("Component inventory was not found.");
+			var inventory=await _production.GetInventoryContextForUpdateAsync(transaction,inventoryId,ct)??throw new InvalidOperationException("Component inventory was not found.");
 			EnsureInventoryContext(inventory,requirement.ComponentItemId,before.WarehouseId,"component");
+			var onHand=(await _stockMovements.GetCurrentQuantitiesAsync(transaction,[inventoryId],ct)).SingleOrDefault()?.Quantity??0L;
+			var reserved=await _production.GetReservedQuantityAsync(transaction,inventoryId,ct);
+			if(onHand-reserved<quantity) throw new InsufficientStockException();
 			var movement=await _movements.AddWithdrawalInTransactionAsync(transaction,inventoryId,quantity,null,$"Assembly {before.OrderNumber} issue {key}",$"Component issue for {requirement.ComponentPartNumber}",trackingAllocations??[],ct);
 			await _production.AddMovementEvidenceAsync(transaction,new ProductionMaterialMovement{ProductionOrderId=before.Id,RequirementId=requirement.Id,StockMovementId=movement.Id,Kind=ProductionMovementKind.ComponentIssue,Quantity=quantity,OperationKey=key,CreatedAtUtc=DateTime.UtcNow,CreatedByUserId=user.Id},ct);
 			await _production.AdjustIssuedQuantityAsync(transaction,requirement.Id,quantity,ct);
-			await _production.MarkInProgressAsync(transaction,before.Id,ct);
+			await _production.MarkInProgressAsync(transaction,before.Id,before.Version,ct);
 			var after=await _production.GetOrderAsync(transaction,before.Id,ct)??throw new InvalidOperationException("Production order could not be reloaded.");
 			await _auditEntries.CreateAsync(transaction,_audit.CreateActionEntry(before.Id,"ComponentIssued",before,after),ct);
+			return after;
+		},token);
+	}
+
+	public async Task<ProductionOrder> ReverseComponentIssueAsync(long orderId,long stockMovementId,long reasonCodeId,string reversalReason,Guid? operationId=null,CancellationToken token=default)
+	{
+		_authorization.RequirePermission(ApplicationPermission.ProductionOrdersReverse);
+		_authorization.RequirePermission(ApplicationPermission.StockMovementsReverse);
+		if(stockMovementId<=0) throw new ArgumentOutOfRangeException(nameof(stockMovementId));
+		var reason=StockMovementReversalService.NormalizeReason(reasonCodeId,reversalReason);
+		var key=$"component-reverse:{(operationId??Guid.NewGuid()):N}";
+		var user=CurrentUser();
+		return await _transactions.ExecuteAsync(async(transaction,ct)=>
+		{
+			var before=await _production.GetOrderForUpdateAsync(transaction,orderId,ct)??throw new InvalidOperationException("Production order was not found.");
+			var existing=await _production.GetMovementByOperationKeyAsync(transaction,key,ct);
+			if(existing is not null)
+			{
+				if(existing.ProductionOrderId!=orderId || existing.Kind!=ProductionMovementKind.ComponentIssueReversal) throw new InvalidOperationException("The operation key is already used by another production movement.");
+				var recordedReversal=await _stockMovements.GetByIdAsync(transaction,existing.StockMovementId,ct)??throw new InvalidOperationException("The component correction movement was not found.");
+				if(recordedReversal.ReversalOfMovementId!=stockMovementId || recordedReversal.ReasonCodeId!=reasonCodeId || recordedReversal.ReversalReason!=reason) throw new InvalidOperationException("The operation key is already used by a different component correction.");
+				return before;
+			}
+			if(before.Status is not ProductionOrderStatus.Released and not ProductionOrderStatus.InProgress) throw new InvalidOperationException("Only a released or in-progress order can have a component issue corrected. Reverse a completed assembly as a whole.");
+			var source=(await _production.ListMovementEvidenceAsync(transaction,orderId,ct)).SingleOrDefault(value=>value.StockMovementId==stockMovementId && value.Kind==ProductionMovementKind.ComponentIssue)
+				??throw new InvalidOperationException("The component issue does not belong to this production order.");
+			var requirementId=source.RequirementId??throw new InvalidOperationException("The component issue has no production requirement.");
+			var original=await _stockMovements.GetByIdAsync(transaction,stockMovementId,ct)??throw new InvalidOperationException("The component stock movement was not found.");
+			if(original.MovementType!=StockMovementType.Withdrawal || original.Quantity!=-source.Quantity) throw new InvalidOperationException("The component movement and production evidence are inconsistent.");
+			var reversal=(await _movementReversals.CreateReversalsAsync(transaction,[original],reasonCodeId,reason,user.Id,ct)).Single();
+			await _production.AddMovementEvidenceAsync(transaction,new ProductionMaterialMovement{ProductionOrderId=orderId,RequirementId=requirementId,StockMovementId=reversal.Id,Kind=ProductionMovementKind.ComponentIssueReversal,Quantity=source.Quantity,OperationKey=key,CreatedAtUtc=reversal.TimestampUtc,CreatedByUserId=user.Id},ct);
+			await _production.AdjustIssuedQuantityAsync(transaction,requirementId,-source.Quantity,ct);
+			await _production.MarkInProgressAsync(transaction,orderId,before.Version,ct);
+			var after=await _production.GetOrderAsync(transaction,orderId,ct)??throw new InvalidOperationException("Production order could not be reloaded.");
+			await _auditEntries.CreateAsync(transaction,_audit.CreateActionEntry(orderId,"ComponentIssueReversed",before,after),ct);
 			return after;
 		},token);
 	}
@@ -258,15 +304,14 @@ public sealed class ProductionService
 		var user=CurrentUser();
 		return await _transactions.ExecuteAsync(async(transaction,ct)=>
 		{
+			var before=await _production.GetOrderForUpdateAsync(transaction,orderId,ct)??throw new InvalidOperationException("Production order was not found.");
 			var existing=await _production.GetMovementByOperationKeyAsync(transaction,key,ct);
 			if(existing is not null)
 			{
 				if(existing.ProductionOrderId!=orderId || existing.Kind!=ProductionMovementKind.FinishedGoodsReceipt) throw new InvalidOperationException("The operation key is already used by another production movement.");
-				var idempotentOrder=await _production.GetOrderAsync(transaction,orderId,ct)??throw new InvalidOperationException("Production order was not found.");
 				var idempotentEvidence=await _production.ListCostEvidenceAsync(transaction,orderId,ct);
-				return BuildCompletion(idempotentOrder,idempotentEvidence);
+				return BuildCompletion(before,idempotentEvidence);
 			}
-			var before=await _production.GetOrderAsync(transaction,orderId,ct)??throw new InvalidOperationException("Production order was not found.");
 			if(before.Status is not ProductionOrderStatus.Released and not ProductionOrderStatus.InProgress) throw new InvalidOperationException("Only released or in-progress production orders can be completed.");
 			if(before.Requirements.Count==0 || before.Requirements.Any(x=>x.IssuedQuantity!=x.RequiredQuantity)) throw new InvalidOperationException("All component requirements must be issued exactly before completion.");
 			var evidence=new List<ProductionAssemblyCostEvidence>(before.Requirements.Count);
@@ -301,14 +346,17 @@ public sealed class ProductionService
 		var user=CurrentUser();
 		return await _transactions.ExecuteAsync(async(transaction,ct)=>
 		{
-			var before=await _production.GetOrderAsync(transaction,orderId,ct)??throw new InvalidOperationException("Production order was not found.");
+			var before=await _production.GetOrderForUpdateAsync(transaction,orderId,ct)??throw new InvalidOperationException("Production order was not found.");
 			var productionMovements=(await _production.ListMovementEvidenceAsync(transaction,orderId,ct))
 				.Where(x=>x.Kind is ProductionMovementKind.ComponentIssue or ProductionMovementKind.FinishedGoodsReceipt).ToArray();
 			if(productionMovements.Length==0) throw new InvalidOperationException("Production order has no material movements to reverse.");
-			var firstKey=$"reverse:{operation}:{productionMovements[0].StockMovementId}";
-			var existing=await _production.GetMovementByOperationKeyAsync(transaction,firstKey,ct);
+			var receipt=productionMovements.SingleOrDefault(value=>value.Kind==ProductionMovementKind.FinishedGoodsReceipt)??throw new InvalidOperationException("Only a completed assembly with a finished-goods receipt can be reversed as a whole.");
+			var receiptKey=$"reverse:{operation}:{receipt.StockMovementId}";
+			var existing=await _production.GetMovementByOperationKeyAsync(transaction,receiptKey,ct);
 			if(existing is not null) return before;
 			if(before.Status!=ProductionOrderStatus.Completed) throw new InvalidOperationException("Only completed production orders can be reversed as a complete assembly transaction.");
+			var correctedIssues=(await _production.ListCorrectedComponentIssueIdsAsync(transaction,orderId,ct)).ToHashSet();
+			productionMovements=productionMovements.Where(value=>value.Kind!=ProductionMovementKind.ComponentIssue || !correctedIssues.Contains(value.StockMovementId)).ToArray();
 			var originals=new List<StockMovement>(productionMovements.Length);
 			foreach(var evidence in productionMovements)
 				originals.Add(await _stockMovements.GetByIdAsync(transaction,evidence.StockMovementId,ct)??throw new InvalidOperationException("A production stock movement was not found."));

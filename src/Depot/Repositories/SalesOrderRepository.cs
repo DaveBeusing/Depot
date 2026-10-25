@@ -53,6 +53,14 @@ public sealed class SalesOrderRepository : DatabaseRepository
 		var order = rows[0]; order.Lines = await ListLinesAsync(transaction, id, cancellationToken); return order;
 	}
 
+	public async Task<SalesOrder?> GetByIdForUpdateAsync(DatabaseTransactionContext transaction, long id, CancellationToken cancellationToken)
+	{
+		// Different shipments can change the same order lines. Serialize their counters and status
+		// before reading the current line state, without advancing the optimistic header version.
+		await transaction.Session.ExecuteAsync("UPDATE SalesOrders SET Version=Version WHERE Id=$Id;", cancellationToken, Parameter("$Id", id));
+		return await GetByIdAsync(transaction, id, cancellationToken);
+	}
+
 	public Task<IReadOnlyList<SalesOrderLine>> ListLinesAsync(long id, CancellationToken cancellationToken) => Database.QueryAsync(LineSql + " WHERE sol.SalesOrderId=$Id ORDER BY sol.LineNumber;", ReadLine, cancellationToken, Parameter("$Id", id));
 	public Task<IReadOnlyList<SalesOrderLine>> ListLinesAsync(DatabaseTransactionContext tx, long id, CancellationToken token) => tx.Session.QueryAsync(LineSql + " WHERE sol.SalesOrderId=$Id ORDER BY sol.LineNumber;", ReadLine, token, Parameter("$Id", id));
 
@@ -102,6 +110,10 @@ public sealed class SalesOrderRepository : DatabaseRepository
 
 	public async Task UpdateLineQuantitiesAsync(DatabaseTransactionContext tx, long lineId, int reserved, int shipped, int invoiced, CancellationToken token) =>
 		await tx.Session.ExecuteAsync("UPDATE SalesOrderLines SET ReservedQuantity=$Reserved, ShippedQuantity=$Shipped, InvoicedQuantity=$Invoiced, Version=Version+1 WHERE Id=$Id;", token, Parameter("$Reserved", reserved), Parameter("$Shipped", shipped), Parameter("$Invoiced", invoiced), Parameter("$Id", lineId));
+
+	public async Task<bool> TryUpdateLineQuantitiesAsync(DatabaseTransactionContext tx, long lineId, long expectedVersion, int reserved, int shipped, int invoiced, CancellationToken token) =>
+		await tx.Session.ExecuteAsync("UPDATE SalesOrderLines SET ReservedQuantity=$Reserved, ShippedQuantity=$Shipped, InvoicedQuantity=$Invoiced, Version=Version+1 WHERE Id=$Id AND Version=$Version;", token,
+			Parameter("$Reserved", reserved), Parameter("$Shipped", shipped), Parameter("$Invoiced", invoiced), Parameter("$Id", lineId), Parameter("$Version", expectedVersion)) == 1;
 
 	private static DatabaseParameter[] OrderParameters(SalesOrder o) =>
 	[

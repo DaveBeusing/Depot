@@ -58,6 +58,19 @@ public sealed class StockMovementRepository : DatabaseRepository
 			cancellationToken,
 			Parameter("$MovementId", movementId));
 
+	internal async Task<bool> HasWorkflowOwnerAsync(
+		DatabaseTransactionContext transaction,
+		long movementId,
+		CancellationToken cancellationToken) =>
+		Convert.ToInt32(await transaction.Session.ExecuteScalarAsync(
+			"""
+			SELECT CASE WHEN EXISTS (SELECT 1 FROM ProductionMaterialMovements WHERE StockMovementId=$MovementId)
+			              OR EXISTS (SELECT 1 FROM ServicePartEvidence WHERE StockMovementId=$MovementId)
+			            THEN 1 ELSE 0 END;
+			""",
+			cancellationToken,
+			Parameter("$MovementId", movementId)), CultureInfo.InvariantCulture) != 0;
+
 	public Task<IReadOnlyList<StockMovement>> ListOriginalsByReferenceAsync(
 		DatabaseTransactionContext transaction,
 		string reference,

@@ -18,6 +18,16 @@ The order can reference the serviced Item, Inventory record and an optional seri
 
 Work lines capture commercial service evidence such as hours or quantities, unit price, tax rate and whether the work is billable. They are not payroll or time-attendance records.
 
+## Parts consumption and returns
+
+Choose the part inventory and enter quantity, commercial values and any required serial/lot allocations, then choose **Consume part**. The stock movement, tracking, service evidence and order state are saved together. A failure before commit leaves all of them unchanged.
+
+To return a part, select its original **Consumption** row in **Parts evidence**, enter the return quantity and choose **Return part**. The displayed remaining quantity accounts for earlier linked returns. The service checks it again when posting, including requests from another session. A return uses the original location, price and tax snapshot; serial or lot allocations must identify the specific units originally consumed. Repeated or excessive returns are rejected.
+
+If a posting result cannot be confirmed, retry the unchanged request. The workspace retains its operation identity and recovers an already committed result without creating another movement. A confirmed success clears the quantity, so another posting requires a new quantity entry. Consumption and return evidence cannot be reversed independently in the Movements workspace; use the service return workflow.
+
+Historical returns saved before consumption links were introduced remain visible. If a location has such unmatched return evidence, further returns for that service order and location are blocked until the retained records have been reconciled. The application does not guess which consumption an older return belongs to.
+
 ## Completion
 
 Completing a Service Order requires completion notes plus work or parts evidence. Completed and cancelled orders are immutable through normal editing. Completion resolves the linked case when appropriate and retains links to work, stock-movement and attachment evidence.

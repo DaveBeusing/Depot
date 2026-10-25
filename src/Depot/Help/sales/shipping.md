@@ -20,9 +20,15 @@ Use **Pick list PDF** for warehouse picking and **Packing slip PDF** for the pac
 
 Partial shipments are supported. The Sales Order remains **Partially Shipped** until all ordered quantities are shipped.
 
+A shipment can combine reservations from several bins for the same Sales Order line. Depot adds all of those quantities when updating the line: shipping 4 units from one bin and 6 from another fulfills a 10-unit line and consumes all 10 reserved units. Other order lines in the same shipment retain their own totals.
+
+Draft shipments do not consume or set aside additional reserved quantities. Depot checks the current reservations and remaining order quantity again when posting. If another shipment has already consumed them or the reservations were replaced, the outdated draft remains unposted and stock is unchanged.
+
 ## Shipment reversal
 
 Use **Reverse posting** only when the original shipment was posted incorrectly and has not entered an immutable invoicing path. Depot creates positive `SalesShipmentReversal` counter-movements and restores reservations instead of changing the original stock movement.
+
+Reversal restores every bin contribution and reduces the Sales Order line's shipped total by the complete reversed quantity. For a partial shipment, restored quantities are added to any active reservation still present for the same order line and bin. Other posted shipments keep their quantities, and a prepared draft can still use a retained active reservation up to its current quantity.
 
 A shipment with any posted Customer Return cannot be reversed, including when only part of the shipment was returned. Continue the Customer Return workflow for remaining goods and use a Credit Note for any required invoice correction. An unposted return draft does not prevent reversal, but that draft can no longer be posted after the shipment is reversed.
 

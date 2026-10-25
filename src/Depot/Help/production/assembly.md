@@ -28,7 +28,7 @@ Select a remaining requirement and an inventory location in the production wareh
 
 For tracked items, enter one lot code for the moved lot quantity or one unique serial code per unit. Existing Item Traceability validation remains authoritative.
 
-Over-issue is rejected. Retrying the same production operation remains idempotent at the service boundary.
+Over-issue is rejected. Stock reserved for Sales is unavailable for production: only the unreserved quantity in the selected inventory location can be issued. Posting checks the current balance again, so a reservation added after opening the order can reduce the quantity available. Retrying the same production operation remains idempotent at the service boundary.
 
 ## Complete the assembly
 
@@ -36,9 +36,15 @@ Completion is available only after every released component requirement has been
 
 At completion, Depot resolves authoritative Item Costing evidence for every component, stores the unit/extended cost and evidence version, and shows the resulting total/unit component cost. Missing cost evidence or mixed component currencies fail closed.
 
+## Correct a component issue
+
+Before completion, open **Correction**, select the original component issue, choose a reason code, enter the reason and select **Reverse selected component issue**. Depot reverses the complete selected issue, returns its original serial/lot identities and reduces the issued requirement quantity together. Issue the required replacement components before completing the assembly.
+
+Production and Service withdrawals cannot be reversed independently from **Stock Movements**. Use the owning order workflow so stock and its execution evidence remain consistent.
+
 ## Correct a completed assembly
 
-Use **Correction** to reverse a completed assembly. Depot creates compensating Stock Movements and keeps the original component issues, finished receipt and cost evidence. Reversal is rejected when later stock or traceability state makes a safe compensation impossible.
+Use **Correction → Reverse completed assembly** to reverse a completed assembly. Depot creates compensating Stock Movements and keeps the original component issues, finished receipt and cost evidence. Issues already corrected before completion are retained without being returned a second time. Reversal is rejected when later stock or traceability state makes a safe compensation impossible.
 
 ## My Work
 
