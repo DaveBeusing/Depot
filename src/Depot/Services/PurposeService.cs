@@ -1,6 +1,7 @@
 // Copyright (c) 2026 David Beusing
 // Licensed under the MIT License.
 
+using Depot.Data;
 using Depot.Models;
 using Depot.Repositories;
 
@@ -242,6 +243,29 @@ public sealed class PurposeService
 		return purpose;
 	}
 
+	internal async Task<Purpose> GetOrCreateForImportAsync(
+		DatabaseTransactionContext transaction,
+		string name,
+		CancellationToken cancellationToken)
+	{
+		_auditService.RequirePermission(ApplicationPermission.MasterDataManage);
+		(name, _) = Normalize(name, null);
+		ValidateName(name);
+		var existing = await _purposeRepository.GetByNameAsync(transaction, name, cancellationToken);
+		if (existing is not null)
+		{
+			if (!existing.IsActive) throw new InvalidOperationException($"Purpose '{name}' is inactive and cannot be imported.");
+			return existing;
+		}
+
+		var purpose = new Purpose { Name = name, IsActive = true };
+		purpose.Id = await _purposeRepository.CreateAsync(transaction, purpose, cancellationToken);
+		await _auditService.RecordCreatedAsync(transaction, purpose.Id, purpose, cancellationToken);
+		return purpose;
+	}
+
+	internal void InvalidateImportCache() => _cache.Invalidate();
+
 	public async Task<Purpose> GetOrCreatePurposeAsync(
 		string name,
 		CancellationToken cancellationToken = default)
@@ -333,3 +357,4 @@ public sealed class PurposeService
 	}
 
 }
+

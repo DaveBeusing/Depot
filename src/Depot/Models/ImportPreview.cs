@@ -5,6 +5,8 @@ namespace Depot.Models;
 
 public sealed class ImportPreview
 {
+	public Guid OperationId { get; init; } = Guid.NewGuid();
+
 	public IReadOnlyList<ImportPreviewItem> Items { get; init; }
 		= [];
 

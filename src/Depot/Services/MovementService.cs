@@ -119,6 +119,13 @@ public sealed class MovementService
 		return await _movements.GetOverviewByIdAsync(fallback.Id, cancellationToken) ?? throw new InvalidOperationException($"Movement with id '{fallback.Id}' was not found.");
 	}
 
+	internal Task<StockMovement> AddOpeningBalanceInTransactionAsync(DatabaseTransactionContext transaction, long inventoryId, int quantity, decimal unitPrice, string reference, CancellationToken cancellationToken)
+	{
+		if (quantity <= 0) throw new ArgumentException("Quantity must be greater than zero.", nameof(quantity));
+		if (unitPrice < 0) throw new ArgumentOutOfRangeException(nameof(unitPrice));
+		return CreateInTransactionAsync(transaction, inventoryId, StockMovementType.OpeningBalance, quantity, unitPrice, null, reference, "Imported from Excel", [], cancellationToken);
+	}
+
 	internal Task<StockMovement> AddWithdrawalInTransactionAsync(DatabaseTransactionContext transaction,long inventoryId,int quantity,long? reasonCodeId,string? reference,string? notes,IReadOnlyList<TrackingAllocationInput> trackingAllocations,CancellationToken cancellationToken)
 	{
 		if(quantity<=0) throw new ArgumentException("Quantity must be greater than zero.",nameof(quantity));
@@ -157,4 +164,5 @@ public sealed class MovementService
 	private async Task ValidateReasonCodeAsync(long? reasonCodeId, CancellationToken cancellationToken) { if (reasonCodeId is null) return; var reasonCode = await _reasonCodes.GetByIdAsync(reasonCodeId.Value, cancellationToken) ?? throw new InvalidOperationException($"Reason code with id '{reasonCodeId}' was not found."); if (!reasonCode.IsActive) throw new InvalidOperationException("The selected reason code is inactive."); }
 	private async Task ValidateReasonCodeAsync(DatabaseTransactionContext transaction, long? reasonCodeId, CancellationToken cancellationToken) { if (reasonCodeId is null) return; var reasonCode = await _reasonCodes.GetByIdAsync(transaction, reasonCodeId.Value, cancellationToken) ?? throw new InvalidOperationException($"Reason code with id '{reasonCodeId}' was not found."); if (!reasonCode.IsActive) throw new InvalidOperationException("The selected reason code is inactive."); }
 }
+
 

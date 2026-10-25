@@ -137,17 +137,33 @@ public sealed class FinanceAccountsPayableRepository : DatabaseRepository
 	internal Task<int> CreateLineAsync(DatabaseTransactionContext transaction, FinanceSupplierDocumentLine line, CancellationToken cancellationToken) => transaction.Session.ExecuteAsync("INSERT INTO FinanceSupplierDocumentLines (DocumentId,LineNumber,PurchaseOrderLineId,GoodsReceiptLineId,Description,Quantity,UnitPrice,NetAmount,TaxAmount,GrossAmount,MatchStatus,OrderedUnitPrice,ReceivedQuantity,PreviouslyInvoicedQuantity,QuantityVariance,PriceVariance) VALUES ($DocumentId,$LineNumber,$PoLineId,$ReceiptLineId,$Description,$Quantity,$UnitPrice,$Net,$Tax,$Gross,$MatchStatus,$OrderedUnitPrice,$ReceivedQuantity,$PreviouslyInvoiced,$QuantityVariance,$PriceVariance);", cancellationToken, LineParameters(line));
 	internal Task<int> UpdateLineMatchAsync(DatabaseTransactionContext transaction, FinanceSupplierDocumentLine line, CancellationToken cancellationToken) => transaction.Session.ExecuteAsync("UPDATE FinanceSupplierDocumentLines SET MatchStatus=$MatchStatus,OrderedUnitPrice=$OrderedUnitPrice,ReceivedQuantity=$ReceivedQuantity,PreviouslyInvoicedQuantity=$PreviouslyInvoiced,QuantityVariance=$QuantityVariance,PriceVariance=$PriceVariance WHERE Id=$Id;", cancellationToken, Parameter("$MatchStatus", (int)line.MatchStatus), Parameter("$OrderedUnitPrice", line.OrderedUnitPrice), Parameter("$ReceivedQuantity", line.ReceivedQuantity), Parameter("$PreviouslyInvoiced", line.PreviouslyInvoicedQuantity), Parameter("$QuantityVariance", line.QuantityVariance), Parameter("$PriceVariance", line.PriceVariance), Parameter("$Id", line.Id));
 
+	internal async Task<FinancePaymentBankContext?> LockPaymentBankAsync(DatabaseTransactionContext transaction, long bankAccountId, CancellationToken cancellationToken)
+	{
+		await transaction.Session.ExecuteAsync("UPDATE FinanceBankAccounts SET Version=Version WHERE Id=$Id;", cancellationToken, Parameter("$Id", bankAccountId));
+		return await transaction.Session.QuerySingleOrDefaultAsync("SELECT Id,LegalEntityId,AccountingBookId,GeneralLedgerAccountId,CurrencyCode,IsActive FROM FinanceBankAccounts WHERE Id=$Id;", reader => new FinancePaymentBankContext(reader.GetInt64(0), Guid.Parse(reader.GetString(1)), Guid.Parse(reader.GetString(2)), Guid.Parse(reader.GetString(3)), new CurrencyCode(reader.GetString(4)), ReadBool(reader, 5)), cancellationToken, Parameter("$Id", bankAccountId));
+	}
+
+	internal Task<IReadOnlyList<long>> GetBankPaymentProfileIdsAsync(DatabaseTransactionContext transaction, FinancePaymentBankContext bank, CancellationToken cancellationToken) =>
+		transaction.Session.QueryAsync("SELECT p.Id FROM FinancePostingProfiles p WHERE p.LegalEntityId=$Entity AND p.AccountingBookId=$Book AND p.IsActive=1 AND p.SourceType=$Source AND p.SourceEvent='Posted' AND EXISTS (SELECT 1 FROM FinancePostingProfileLines l WHERE l.PostingProfileId=p.Id AND l.AccountId=$Account) ORDER BY p.Id;", reader => reader.GetInt64(0), cancellationToken, Parameter("$Entity", bank.LegalEntityId.ToString("D")), Parameter("$Book", bank.AccountingBookId.ToString("D")), Parameter("$Source", FinancePayableSourceTypes.SupplierPayment), Parameter("$Account", bank.GeneralLedgerAccountId.ToString("D")));
+
+	internal Task<IReadOnlyList<Guid>> GetBankGeneralLedgerAccountIdsAsync(DatabaseTransactionContext transaction, Guid accountingBookId, CancellationToken cancellationToken) =>
+		transaction.Session.QueryAsync("SELECT DISTINCT GeneralLedgerAccountId FROM FinanceBankAccounts WHERE AccountingBookId=$Book;", reader => Guid.Parse(reader.GetString(0)), cancellationToken, Parameter("$Book", accountingBookId.ToString("D")));
+
 	internal Task<FinancePurchaseMatchReference?> GetPurchaseMatchReferenceAsync(DatabaseTransactionContext transaction, long purchaseOrderLineId, long? goodsReceiptLineId, CancellationToken cancellationToken) => transaction.Session.QuerySingleOrDefaultAsync(
 		goodsReceiptLineId.HasValue
 			? "SELECT po.SupplierId,pol.UnitPrice,pol.Quantity,grl.Quantity FROM PurchaseOrderLines pol INNER JOIN PurchaseOrders po ON po.Id=pol.PurchaseOrderId INNER JOIN GoodsReceiptLines grl ON grl.PurchaseOrderLineId=pol.Id INNER JOIN GoodsReceipts gr ON gr.Id=grl.GoodsReceiptId WHERE pol.Id=$PoLineId AND grl.Id=$ReceiptLineId AND gr.ReversedAtUtc IS NULL;"
 			: "SELECT po.SupplierId,pol.UnitPrice,pol.Quantity,COALESCE(SUM(CASE WHEN gr.ReversedAtUtc IS NULL THEN grl.Quantity ELSE 0 END),0) FROM PurchaseOrderLines pol INNER JOIN PurchaseOrders po ON po.Id=pol.PurchaseOrderId LEFT JOIN GoodsReceiptLines grl ON grl.PurchaseOrderLineId=pol.Id LEFT JOIN GoodsReceipts gr ON gr.Id=grl.GoodsReceiptId WHERE pol.Id=$PoLineId GROUP BY po.SupplierId,pol.UnitPrice,pol.Quantity;",
 		reader => new FinancePurchaseMatchReference(reader.GetInt64(0), ReadDecimal(reader, 1), ReadDecimal(reader, 2), ReadDecimal(reader, 3)), cancellationToken, Parameter("$PoLineId", purchaseOrderLineId), Parameter("$ReceiptLineId", goodsReceiptLineId));
 
-	internal async Task<decimal> GetPreviouslyInvoicedQuantityAsync(DatabaseTransactionContext transaction, long purchaseOrderLineId, long excludeDocumentId, CancellationToken cancellationToken)
-	{
-		var value = await transaction.Session.ExecuteScalarAsync("SELECT COALESCE(SUM(l.Quantity),0) FROM FinanceSupplierDocumentLines l INNER JOIN FinanceSupplierDocuments d ON d.Id=l.DocumentId WHERE l.PurchaseOrderLineId=$PoLineId AND d.Id<>$DocumentId AND d.Kind=1 AND d.Status IN (2,4);", cancellationToken, Parameter("$PoLineId", purchaseOrderLineId), Parameter("$DocumentId", excludeDocumentId));
-		return Convert.ToDecimal(value ?? 0m, CultureInfo.InvariantCulture);
-	}
+
+	internal Task<int> LockPurchaseMatchLineAsync(DatabaseTransactionContext transaction, long purchaseOrderLineId, CancellationToken cancellationToken) =>
+		transaction.Session.ExecuteAsync("UPDATE PurchaseOrderLines SET Quantity=Quantity WHERE Id=$Id;", cancellationToken, Parameter("$Id", purchaseOrderLineId));
+
+	internal Task<IReadOnlyList<FinancePurchaseReceiptQuantity>> GetPurchaseReceiptQuantitiesAsync(DatabaseTransactionContext transaction, long purchaseOrderLineId, CancellationToken cancellationToken) =>
+		transaction.Session.QueryAsync("SELECT l.Id,l.Quantity FROM GoodsReceiptLines l INNER JOIN GoodsReceipts r ON r.Id=l.GoodsReceiptId WHERE l.PurchaseOrderLineId=$PoLine AND r.ReversedAtUtc IS NULL ORDER BY l.Id;", reader => new FinancePurchaseReceiptQuantity(reader.GetInt64(0), ReadDecimal(reader, 1)), cancellationToken, Parameter("$PoLine", purchaseOrderLineId));
+
+	internal Task<IReadOnlyList<FinancePurchaseInvoiceQuantity>> GetPreviouslyInvoicedQuantitiesAsync(DatabaseTransactionContext transaction, long purchaseOrderLineId, long excludeDocumentId, CancellationToken cancellationToken) =>
+		transaction.Session.QueryAsync("SELECT l.GoodsReceiptLineId,SUM(l.Quantity) FROM FinanceSupplierDocumentLines l INNER JOIN FinanceSupplierDocuments d ON d.Id=l.DocumentId WHERE l.PurchaseOrderLineId=$PoLine AND d.Id<>$Document AND d.Kind=1 AND d.Status IN (2,4) GROUP BY l.GoodsReceiptLineId;", reader => new FinancePurchaseInvoiceQuantity(reader.IsDBNull(0) ? null : reader.GetInt64(0), ReadDecimal(reader, 1)), cancellationToken, Parameter("$PoLine", purchaseOrderLineId), Parameter("$Document", excludeDocumentId));
 
 	internal async Task<FinancePayableOpenItem?> LockOpenItemAsync(DatabaseTransactionContext transaction, long id, CancellationToken cancellationToken)
 	{
@@ -163,6 +179,34 @@ public sealed class FinanceAccountsPayableRepository : DatabaseRepository
 	internal Task<FinancePayableAllocationOperationRecord?> FindAllocationOperationAsync(DatabaseTransactionContext transaction, Guid operationId, CancellationToken cancellationToken) => transaction.Session.QuerySingleOrDefaultAsync("SELECT OperationId,RequestHash,DebitOpenItemId FROM FinancePayableAllocationOperations WHERE OperationId=$OperationId;", reader => new FinancePayableAllocationOperationRecord(Guid.Parse(reader.GetString(0)), reader.GetString(1), reader.GetInt64(2)), cancellationToken, Parameter("$OperationId", operationId.ToString("D")));
 	internal Task<int> CreateAllocationOperationAsync(DatabaseTransactionContext transaction, Guid operationId, string hash, long debitOpenItemId, DateTime atUtc, long userId, CancellationToken cancellationToken) => transaction.Session.ExecuteAsync("INSERT INTO FinancePayableAllocationOperations (OperationId,RequestHash,DebitOpenItemId,CreatedAtUtc,CreatedByUserId) VALUES ($OperationId,$Hash,$DebitId,$At,$UserId);", cancellationToken, Parameter("$OperationId", operationId.ToString("D")), Parameter("$Hash", hash), Parameter("$DebitId", debitOpenItemId), Parameter("$At", atUtc.ToString("O", CultureInfo.InvariantCulture)), Parameter("$UserId", userId));
 	internal Task<FinancePayablePayment?> FindPaymentByOperationAsync(DatabaseTransactionContext transaction, Guid operationId, CancellationToken cancellationToken) => transaction.Session.QuerySingleOrDefaultAsync($"SELECT {PaymentColumns} FROM FinancePayablePayments WHERE OperationId=$OperationId;", ReadPayment, cancellationToken, Parameter("$OperationId", operationId.ToString("D")));
+
+	internal async Task<bool> HasLegacyPaymentRunBankEvidenceAsync(DatabaseTransactionContext transaction, FinancePayablePayment payment, long bankAccountId, CancellationToken cancellationToken)
+	{
+		var matches = await transaction.Session.ExecuteScalarAsync(
+			"""
+			SELECT COUNT(*)
+			FROM FinancePaymentRunLines line
+			INNER JOIN FinancePaymentRuns run ON run.Id=line.PaymentRunId
+			INNER JOIN FinanceBankAccounts bank ON bank.Id=run.BankAccountId
+			INNER JOIN FinanceAccountingBooks book ON book.Id=bank.AccountingBookId AND book.LegalEntityId=bank.LegalEntityId
+			INNER JOIN FinanceJournalEntries journal ON journal.Id=$Journal AND journal.AccountingBookId=book.Id
+			WHERE line.ExecutionOperationId=$Operation AND run.BankAccountId=$Bank
+			  AND line.SupplierId=$Supplier AND line.Amount=$Amount AND run.PaymentDate=$Date
+			  AND (line.PayablePaymentId IS NULL OR line.PayablePaymentId=$Payment)
+			  AND run.CurrencyCode=$Currency AND bank.CurrencyCode=$Currency AND journal.TransactionCurrencyCode=$Currency
+			  AND EXISTS (
+			      SELECT bankLine.AccountId FROM FinanceJournalEntryLines bankLine
+			      WHERE bankLine.JournalEntryId=journal.Id AND bankLine.AccountId=bank.GeneralLedgerAccountId
+			      GROUP BY bankLine.AccountId HAVING SUM(bankLine.TransactionCredit-bankLine.TransactionDebit)=CAST($Amount AS DECIMAL(28,9)))
+			  AND NOT EXISTS (
+			      SELECT otherLine.AccountId FROM FinanceJournalEntryLines otherLine
+			      WHERE otherLine.JournalEntryId=journal.Id AND otherLine.AccountId<>bank.GeneralLedgerAccountId
+			        AND EXISTS (SELECT 1 FROM FinanceBankAccounts otherBank WHERE otherBank.AccountingBookId=book.Id AND otherBank.GeneralLedgerAccountId=otherLine.AccountId)
+			      GROUP BY otherLine.AccountId HAVING SUM(otherLine.TransactionCredit-otherLine.TransactionDebit)<>0);
+			""", cancellationToken, Parameter("$Journal",payment.JournalEntryId),Parameter("$Operation",payment.OperationId.ToString("D")),Parameter("$Bank",bankAccountId),Parameter("$Supplier",payment.SupplierId),Parameter("$Amount",payment.Amount),Parameter("$Date",payment.PaymentDate.ToString("yyyy-MM-dd",CultureInfo.InvariantCulture)),Parameter("$Payment",payment.Id),Parameter("$Currency",payment.Currency.Value));
+		return Convert.ToInt64(matches ?? 0,CultureInfo.InvariantCulture)==1;
+	}
+
 	internal async Task<FinancePayablePayment?> LockPaymentAsync(DatabaseTransactionContext transaction, long id, CancellationToken cancellationToken) { await transaction.Session.ExecuteAsync("UPDATE FinancePayablePayments SET Version=Version WHERE Id=$Id;", cancellationToken, Parameter("$Id", id)); return await transaction.Session.QuerySingleOrDefaultAsync($"SELECT {PaymentColumns} FROM FinancePayablePayments WHERE Id=$Id;", ReadPayment, cancellationToken, Parameter("$Id", id)); }
 	internal Task<long> CreatePaymentAsync(DatabaseTransactionContext transaction, FinancePayablePayment value, CancellationToken cancellationToken) => transaction.Session.InsertAsync("INSERT INTO FinancePayablePayments (Version,OperationId,RequestHash,SupplierId,CurrencyCode,PaymentDate,Amount,Reference,Description,OpenItemId,JournalEntryId,CreatedAtUtc,CreatedByUserId,IsReversed) VALUES (1,$OperationId,$Hash,$SupplierId,$Currency,$Date,$Amount,$Reference,$Description,$OpenItemId,$JournalEntryId,$At,$UserId,0);", cancellationToken, Parameter("$OperationId", value.OperationId.ToString("D")), Parameter("$Hash", value.RequestHash), Parameter("$SupplierId", value.SupplierId), Parameter("$Currency", value.Currency.Value), Parameter("$Date", value.PaymentDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)), Parameter("$Amount", value.Amount), Parameter("$Reference", value.Reference), Parameter("$Description", value.Description), Parameter("$OpenItemId", value.OpenItemId), Parameter("$JournalEntryId", value.JournalEntryId), Parameter("$At", value.CreatedAtUtc.ToString("O", CultureInfo.InvariantCulture)), Parameter("$UserId", value.CreatedByUserId));
 	internal Task<int> MarkPaymentReversedAsync(DatabaseTransactionContext transaction, FinancePayablePayment value, long expectedVersion, Guid operationId, long reversalEntryId, DateTime atUtc, long userId, CancellationToken cancellationToken) => transaction.Session.ExecuteAsync("UPDATE FinancePayablePayments SET Version=Version+1,IsReversed=1,ReversalOperationId=$OperationId,ReversalJournalEntryId=$JournalEntryId,ReversedAtUtc=$At,ReversedByUserId=$UserId WHERE Id=$Id AND Version=$Version AND IsReversed=0;", cancellationToken, Parameter("$OperationId", operationId.ToString("D")), Parameter("$JournalEntryId", reversalEntryId), Parameter("$At", atUtc.ToString("O", CultureInfo.InvariantCulture)), Parameter("$UserId", userId), Parameter("$Id", value.Id), Parameter("$Version", expectedVersion));
@@ -200,5 +244,8 @@ public sealed class FinanceAccountsPayableRepository : DatabaseRepository
 }
 
 internal sealed record FinancePurchaseMatchReference(long SupplierId, decimal OrderedUnitPrice, decimal OrderedQuantity, decimal ReceivedQuantity);
+internal sealed record FinancePurchaseReceiptQuantity(long GoodsReceiptLineId, decimal Quantity);
+internal sealed record FinancePurchaseInvoiceQuantity(long? GoodsReceiptLineId, decimal Quantity);
+internal sealed record FinancePaymentBankContext(long Id, Guid LegalEntityId, Guid AccountingBookId, Guid GeneralLedgerAccountId, CurrencyCode Currency, bool IsActive);
 internal sealed record FinancePayableAllocationOperationRecord(Guid OperationId, string RequestHash, long DebitOpenItemId);
 public sealed record FinancePayableAgingRow(long SupplierId, string SupplierName, CurrencyCode Currency, DateOnly DueDate, decimal RemainingAmount, FinancePayableOpenItemKind Kind);

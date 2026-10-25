@@ -179,24 +179,80 @@ public sealed class FinanceGeneralLedgerService
 		return await _transactions.ExecuteAsync((transaction, token) => PostFromProfileInTransactionAsync(transaction, request, user.Id, token), cancellationToken);
 	}
 
-	internal async Task<FinanceJournalEntry> PostFromProfileInTransactionAsync(
+	internal Task<FinanceJournalEntry> PostFromProfileInTransactionAsync(
 		DatabaseTransactionContext transaction,
 		FinanceProfilePostingRequest request,
 		long postedByUserId,
-		CancellationToken cancellationToken)
+		CancellationToken cancellationToken) =>
+		PostFromProfileCoreAsync(transaction, request, postedByUserId, cancellationToken, null, null);
+
+	internal Task<FinanceJournalEntry> PostInventoryCarryingValueInTransactionAsync(
+		DatabaseTransactionContext transaction,
+		FinanceProfilePostingRequest request,
+		CurrencyCode reportingCurrency,
+		IReadOnlyDictionary<string, decimal> reportingAmounts,
+		long postedByUserId,
+		CancellationToken cancellationToken) =>
+		PostFromProfileCoreAsync(transaction, request, postedByUserId, cancellationToken, reportingCurrency, reportingAmounts);
+
+	private async Task<FinanceJournalEntry> PostFromProfileCoreAsync(
+		DatabaseTransactionContext transaction,
+		FinanceProfilePostingRequest request,
+		long postedByUserId,
+		CancellationToken cancellationToken,
+		CurrencyCode? historicalCurrency,
+		IReadOnlyDictionary<string, decimal>? historicalAmounts)
 	{
 		ArgumentNullException.ThrowIfNull(request);
 		if (request.OperationId == Guid.Empty) throw new ArgumentException("An operation ID is required.", nameof(request));
 		if (request.PostingProfileId <= 0) throw new ArgumentException("A posting profile is required.", nameof(request));
 		var profile = await _profiles.GetByIdAsync(transaction, request.PostingProfileId, cancellationToken) ?? throw new InvalidOperationException("Posting profile was not found.");
 		if (!profile.IsActive) throw new InvalidOperationException("The posting profile is inactive.");
+		var historical = historicalAmounts is not null;
+		var carryingAmounts = historicalAmounts ?? new Dictionary<string, decimal>(StringComparer.Ordinal);
+		var historicalLines = new List<FinanceReportingLine>();
+		var reportingMinorUnits = 0;
+		var transactionMinorUnits = 0;
+		if (historical)
+		{
+			if (profile.SourceType != FinanceInventoryAccountingEvents.SourceType ||
+				profile.SourceEvent is not (FinanceInventoryAccountingEvents.SalesShipment or FinanceInventoryAccountingEvents.InventoryAdjustment) ||
+				request.ExchangeRateId.HasValue || historicalCurrency is null)
+				throw new InvalidOperationException("Historical carrying values are reserved for inventory issues and adjustments.");
+			reportingMinorUnits = (await _ledger.GetCurrencyAsync(transaction, historicalCurrency, cancellationToken)
+				?? throw new InvalidOperationException("Reporting currency was not found.")).MinorUnits;
+			transactionMinorUnits = (await _ledger.GetCurrencyAsync(transaction, request.TransactionCurrency, cancellationToken)
+				?? throw new InvalidOperationException("Transaction currency was not found.")).MinorUnits;
+			foreach (var key in profile.Lines.Select(line => line.AmountKey).Distinct(StringComparer.Ordinal))
+				foreach (var direction in new[] { FinancePostingDirection.Debit, FinancePostingDirection.Credit })
+					if (profile.Lines.Where(line => line.AmountKey == key && line.Direction == direction).Sum(line => line.Multiplier) != 1m)
+						throw new InvalidOperationException("Inventory carrying-value profiles must allocate each amount fully to both debit and credit accounts.");
+		}
+		var cumulativeWeights = new Dictionary<(string, FinancePostingDirection), decimal>();
 		var lines = new List<FinancePostingLine>();
 		foreach (var profileLine in profile.Lines.OrderBy(value => value.LineNumber))
 		{
 			if (!request.Amounts.TryGetValue(profileLine.AmountKey, out var sourceAmount)) throw new InvalidOperationException($"Posting amount '{profileLine.AmountKey}' is required by profile '{profile.Code}'.");
 			if (sourceAmount < 0m) throw new InvalidOperationException($"Posting amount '{profileLine.AmountKey}' cannot be negative.");
+			if (historical && profileLine.Multiplier <= 0m) throw new InvalidOperationException("Inventory profile allocation weights must be positive.");
 			var amount = sourceAmount * profileLine.Multiplier;
-			if (amount == 0m) continue;
+			if (historical)
+			{
+				if (!carryingAmounts.TryGetValue(profileLine.AmountKey, out var sourceReporting) || sourceReporting < 0m)
+					throw new InvalidOperationException("A non-negative historical reporting amount is required for every inventory amount key.");
+				ValidateCurrencyPrecision(sourceAmount, transactionMinorUnits, "inventory transaction amount");
+				ValidateCurrencyPrecision(sourceReporting, reportingMinorUnits, "inventory reporting amount");
+				var key = (profileLine.AmountKey, profileLine.Direction);
+				var before = cumulativeWeights.GetValueOrDefault(key);
+				var after = before + profileLine.Multiplier;
+				amount = RoundCurrency(sourceAmount * after, transactionMinorUnits) - RoundCurrency(sourceAmount * before, transactionMinorUnits);
+				var reporting = RoundCurrency(sourceReporting * after, reportingMinorUnits) - RoundCurrency(sourceReporting * before, reportingMinorUnits);
+				cumulativeWeights[key] = after;
+				historicalLines.Add(new FinanceReportingLine(
+					profileLine.Direction == FinancePostingDirection.Debit ? reporting : 0m,
+					profileLine.Direction == FinancePostingDirection.Credit ? reporting : 0m));
+			}
+			else if (amount == 0m) continue;
 			lines.Add(new FinancePostingLine
 			{
 				AccountId = profileLine.AccountId,
@@ -223,8 +279,11 @@ public sealed class FinanceGeneralLedgerService
 			ExchangeRateId = request.ExchangeRateId,
 			EntryKind = FinanceJournalEntryKind.Standard,
 			Lines = lines
-		});
-		return await PostCoreAsync(transaction, resolved, postedByUserId, null, cancellationToken);
+		}, allowZeroAmounts: historical);
+		var historicalValues = historical && historicalCurrency is not null
+			? new FinanceHistoricalReporting(historicalCurrency, historicalLines)
+			: null;
+		return await PostCoreAsync(transaction, resolved, postedByUserId, null, cancellationToken, historicalValues);
 	}
 
 	public async Task<FinanceJournalEntry> ReverseAsync(
@@ -338,9 +397,9 @@ public sealed class FinanceGeneralLedgerService
 		return created;
 	}
 
-	private async Task<FinanceJournalEntry> PostCoreAsync(DatabaseTransactionContext transaction, FinancePostingRequest request, long postedByUserId, long? reversalOfEntryId, CancellationToken cancellationToken)
+	private async Task<FinanceJournalEntry> PostCoreAsync(DatabaseTransactionContext transaction, FinancePostingRequest request, long postedByUserId, long? reversalOfEntryId, CancellationToken cancellationToken, FinanceHistoricalReporting? historical = null)
 	{
-		var requestHash = HashRequest(request);
+		var requestHash = HashRequest(request, historical);
 		var operation = await _ledger.FindByOperationAsync(transaction, request.OperationId, cancellationToken);
 		if (operation is not null) return await ResolveExistingAsync(transaction, operation, requestHash, "operation ID", cancellationToken);
 		var source = await _ledger.FindBySourceAsync(transaction, request.AccountingBookId, request.SourceType, request.SourceId, request.SourceEvent, cancellationToken);
@@ -352,7 +411,11 @@ public sealed class FinanceGeneralLedgerService
 		var reportingCurrency = await _ledger.GetCurrencyAsync(transaction, book.ReportingCurrency, cancellationToken) ?? throw new InvalidOperationException($"Reporting currency '{book.ReportingCurrency}' is not configured.");
 		if (!transactionCurrency.IsActive || !reportingCurrency.IsActive) throw new InvalidOperationException("Both transaction and reporting currencies must be active.");
 
-		var rate = await ResolveExchangeRateAsync(transaction, request, book.ReportingCurrency, cancellationToken);
+		if (historical is not null && (historical.Currency != book.ReportingCurrency || historical.Lines.Count != request.Lines.Count))
+			throw new InvalidOperationException("Inventory carrying-value evidence does not match the accounting book and journal lines.");
+		var rate = historical is null
+			? await ResolveExchangeRateAsync(transaction, request, book.ReportingCurrency, cancellationToken)
+			: new FinanceResolvedRate(null, HistoricalSummaryRate(request.Lines.Sum(line => line.Debit), historical.Lines.Sum(line => line.Debit)));
 		var requiredDimensions = await _ledger.GetRequiredDimensionsAsync(transaction, cancellationToken);
 		var accountCache = new Dictionary<Guid, FinanceAccount>();
 		var dimensionCache = new Dictionary<(Guid DimensionId, Guid ValueId), FinanceDimensionValueRecord>();
@@ -376,8 +439,13 @@ public sealed class FinanceGeneralLedgerService
 			if (!account.AllowDirectPosting) throw new InvalidOperationException($"Account '{account.Number}' does not allow direct posting.");
 			if (account.ChartOfAccountsId != book.ChartOfAccountsId) throw new InvalidOperationException($"Account '{account.Number}' does not belong to the accounting book's chart of accounts.");
 			await ValidateDimensionsAsync(transaction, line, requiredDimensions, dimensionCache, cancellationToken);
-			var lineReportingDebit = RoundCurrency(line.Debit * rate.Rate, reportingCurrency.MinorUnits);
-			var lineReportingCredit = RoundCurrency(line.Credit * rate.Rate, reportingCurrency.MinorUnits);
+			var lineReportingDebit = historical?.Lines[index].Debit ?? RoundCurrency(line.Debit * rate.Rate, reportingCurrency.MinorUnits);
+			var lineReportingCredit = historical?.Lines[index].Credit ?? RoundCurrency(line.Credit * rate.Rate, reportingCurrency.MinorUnits);
+			if (lineReportingDebit < 0m || lineReportingCredit < 0m ||
+				(line.Debit > 0m && lineReportingCredit > 0m) || (line.Credit > 0m && lineReportingDebit > 0m))
+				throw new InvalidOperationException("Historical reporting line directions do not match their transaction lines.");
+			ValidateCurrencyPrecision(lineReportingDebit, reportingCurrency.MinorUnits, $"line {index + 1} reporting debit");
+			ValidateCurrencyPrecision(lineReportingCredit, reportingCurrency.MinorUnits, $"line {index + 1} reporting credit");
 			transactionDebit += line.Debit;
 			transactionCredit += line.Credit;
 			reportingDebit += lineReportingDebit;
@@ -394,8 +462,8 @@ public sealed class FinanceGeneralLedgerService
 				Dimensions = line.Dimensions
 			});
 		}
-		if (transactionDebit <= 0m || transactionDebit != transactionCredit) throw new InvalidOperationException("Journal entry is not balanced in transaction currency.");
-		if (reportingDebit <= 0m || reportingDebit != reportingCredit) throw new InvalidOperationException("Journal entry is not balanced in reporting currency after currency rounding. Add an explicit configured rounding line instead of relying on an implicit adjustment.");
+		if ((historical is null ? transactionDebit <= 0m : transactionDebit < 0m) || transactionDebit != transactionCredit) throw new InvalidOperationException("Journal entry is not balanced in transaction currency.");
+		if ((historical is null ? reportingDebit <= 0m : reportingDebit < 0m) || reportingDebit != reportingCredit) throw new InvalidOperationException("Journal entry is not balanced in reporting currency after currency rounding. Add an explicit configured rounding line instead of relying on an implicit adjustment.");
 
 		var sequence = await RequireNumberSequenceAsync(transaction, period.LegalEntityId, request.NumberSequenceCode, cancellationToken);
 		var entry = new FinanceJournalEntry
@@ -508,7 +576,7 @@ public sealed class FinanceGeneralLedgerService
 		return await _ledger.GetByIdAsync(transaction, existing.Id, cancellationToken) ?? throw new InvalidOperationException("The idempotency record references a missing journal entry.");
 	}
 
-	private static FinancePostingRequest NormalizeRequest(FinancePostingRequest request)
+	private static FinancePostingRequest NormalizeRequest(FinancePostingRequest request, bool allowZeroAmounts = false)
 	{
 		if (request.OperationId == Guid.Empty) throw new ArgumentException("An operation ID is required.", nameof(request));
 		if (request.AccountingBookId == Guid.Empty) throw new ArgumentException("An accounting book is required.", nameof(request));
@@ -521,7 +589,7 @@ public sealed class FinanceGeneralLedgerService
 		{
 			if (line.AccountId == Guid.Empty) throw new InvalidOperationException($"Journal line {index + 1} requires an account.");
 			if (line.Debit < 0m || line.Credit < 0m) throw new InvalidOperationException($"Journal line {index + 1} cannot contain a negative debit or credit amount.");
-			if ((line.Debit > 0m) == (line.Credit > 0m)) throw new InvalidOperationException($"Journal line {index + 1} must contain exactly one positive debit or credit amount.");
+			if ((line.Debit > 0m) == (line.Credit > 0m) && !(allowZeroAmounts && line.Debit == 0m && line.Credit == 0m)) throw new InvalidOperationException($"Journal line {index + 1} must contain exactly one positive debit or credit amount.");
 			var dimensions = line.Dimensions ?? [];
 			if (dimensions.Any(value => value.DimensionId == Guid.Empty || value.DimensionValueId == Guid.Empty)) throw new InvalidOperationException($"Journal line {index + 1} contains an empty accounting dimension identifier.");
 			if (dimensions.Select(value => value.DimensionId).Distinct().Count() != dimensions.Count) throw new InvalidOperationException($"Journal line {index + 1} assigns the same accounting dimension more than once.");
@@ -579,7 +647,7 @@ public sealed class FinanceGeneralLedgerService
 
 	private static decimal RoundCurrency(decimal amount, int minorUnits) => decimal.Round(amount, minorUnits, MidpointRounding.AwayFromZero);
 
-	private static string HashRequest(FinancePostingRequest request)
+	private static string HashRequest(FinancePostingRequest request, FinanceHistoricalReporting? historical = null)
 	{
 		var builder = new StringBuilder();
 		Append(builder, request.AccountingBookId.ToString("D"));
@@ -605,6 +673,16 @@ public sealed class FinanceGeneralLedgerService
 			{
 				Append(builder, dimension.DimensionId.ToString("D"));
 				Append(builder, dimension.DimensionValueId.ToString("D"));
+			}
+		}
+		if (historical is not null)
+		{
+			Append(builder, "inventory-carrying-value");
+			Append(builder, historical.Currency.Value);
+			foreach (var line in historical.Lines)
+			{
+				Append(builder, line.Debit.ToString("G29", CultureInfo.InvariantCulture));
+				Append(builder, line.Credit.ToString("G29", CultureInfo.InvariantCulture));
 			}
 		}
 		return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(builder.ToString()))).ToLowerInvariant();
@@ -634,6 +712,16 @@ public sealed class FinanceGeneralLedgerService
 	}
 
 	private User RequireUser() => _authorization.CurrentUser is { IsActive: true } user ? user : throw new UnauthorizedAccessException("An active signed-in user is required for Finance posting.");
+
+	private static decimal HistoricalSummaryRate(decimal transactionAmount, decimal reportingAmount)
+	{
+		if (transactionAmount <= 0m || reportingAmount <= 0m) return 1m;
+		var summary = decimal.Round(reportingAmount / transactionAmount, 12, MidpointRounding.ToEven);
+		return summary > 0m ? summary : 1m;
+	}
+
+	private sealed record FinanceReportingLine(decimal Debit, decimal Credit);
+	private sealed record FinanceHistoricalReporting(CurrencyCode Currency, IReadOnlyList<FinanceReportingLine> Lines);
 
 	private sealed record FinanceResolvedRate(Guid? ExchangeRateId, decimal Rate);
 }

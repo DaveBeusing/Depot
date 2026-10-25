@@ -79,6 +79,16 @@ public sealed class FinanceSepaPaymentExportRepository : DatabaseRepository
 	internal Task<FinanceSepaPaymentExport?> GetLatestExportForRunAsync(DatabaseTransactionContext transaction, long paymentRunId, CancellationToken cancellationToken) =>
 		transaction.Session.QuerySingleOrDefaultAsync(ExportSelect + " WHERE PaymentRunId=$Run ORDER BY ExportSequence DESC,Id DESC;", ReadExport, cancellationToken, Parameter("$Run", paymentRunId));
 
+	internal async Task<decimal> GetActiveInstructionAmountAsync(DatabaseTransactionContext transaction, long openItemId, long excludedRunId, CancellationToken cancellationToken)
+	{
+		var value = await transaction.Session.ExecuteScalarAsync(
+			"SELECT COALESCE(SUM(l.Amount),0) FROM FinancePaymentRunLines l WHERE l.PayableOpenItemId=$OpenItem AND l.PaymentRunId<>$Run AND l.Status=$Proposed AND EXISTS (SELECT 1 FROM FinanceSepaPaymentExports e WHERE e.PaymentRunId=l.PaymentRunId AND e.CurrentStatus IN ($Generated,$Downloaded,$Submitted,$Accepted));",
+			cancellationToken, Parameter("$OpenItem", openItemId), Parameter("$Run", excludedRunId), Parameter("$Proposed", (int)FinancePaymentRunLineStatus.Proposed),
+			Parameter("$Generated", (int)FinanceSepaPaymentExportStatus.Generated), Parameter("$Downloaded", (int)FinanceSepaPaymentExportStatus.Downloaded),
+			Parameter("$Submitted", (int)FinanceSepaPaymentExportStatus.SubmittedExternally), Parameter("$Accepted", (int)FinanceSepaPaymentExportStatus.Accepted));
+		return Convert.ToDecimal(value ?? 0m, CultureInfo.InvariantCulture);
+	}
+
 	internal async Task<int> GetNextSequenceAsync(DatabaseTransactionContext transaction, long paymentRunId, CancellationToken cancellationToken)
 	{
 		var value = await transaction.Session.ExecuteScalarAsync("SELECT COALESCE(MAX(ExportSequence),0) FROM FinanceSepaPaymentExports WHERE PaymentRunId=$Run;", cancellationToken, Parameter("$Run", paymentRunId));

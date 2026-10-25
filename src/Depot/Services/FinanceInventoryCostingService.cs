@@ -216,27 +216,16 @@ public sealed class FinanceInventoryCostingService
 			var policy = await RequirePolicyAsync(transaction, token);
 			var profile = await RequireProfileAsync(transaction, configuration.GoodsReceiptPostingProfileId, configuration, FinanceInventoryAccountingEvents.GoodsReceipt, [FinanceInventoryAccountingAmountKeys.Cost], token);
 			var reportingCurrency = await _costing.GetBookReportingCurrencyAsync(transaction, profile.AccountingBookId, token);
-			var rows = await _costing.GetValuationReportingRowsAsync(transaction, profile.AccountingBookId, request.AsOfDate, token);
-			var currentActiveLanded = await _costing.GetCurrentActiveLandedRowsAsync(transaction, profile.AccountingBookId, token);
-			var historicalLanded = await _costing.GetLandedReportingRowsAsync(transaction, profile.AccountingBookId, request.AsOfDate, token);
-			var currentByLayer = currentActiveLanded.GroupBy(value => value.LayerId).ToDictionary(group => group.Key, group => group.ToArray());
-			var historicalByLayer = historicalLanded.GroupBy(value => value.LayerId).ToDictionary(group => group.Key, group => group.ToArray());
-			var lines = new List<FinanceInventoryReconciliationLine>();
-			foreach (var group in rows.Where(row => row.Quantity > 0).GroupBy(row => row.ItemId))
-			{
-				decimal itemValue = 0m;
-				var quantity = 0;
-				foreach (var row in group)
+			var balances = await FinanceInventoryReportingRepository.GetBalancesAsync(transaction, profile.AccountingBookId, request.AsOfDate, token);
+			var lines = balances.Values
+				.Where(value => value.Quantity != 0 || value.ReportingAmount != 0m)
+				.GroupBy(value => value.ItemId)
+				.Select(group => new FinanceInventoryReconciliationLine
 				{
-					var activeNow = currentByLayer.GetValueOrDefault(row.LayerId) ?? [];
-					var activeAtDate = historicalByLayer.GetValueOrDefault(row.LayerId) ?? [];
-					var baseUnitCost = row.CurrentUnitCost - activeNow.Sum(value => value.UnitCostIncrease);
-					var reportingUnitCost = baseUnitCost * row.ReceiptExchangeRate + activeAtDate.Sum(value => value.UnitCostIncrease * value.ExchangeRate);
-					itemValue += row.Quantity * reportingUnitCost;
-					quantity += row.Quantity;
-				}
-				lines.Add(new FinanceInventoryReconciliationLine { ItemId = group.Key, Quantity = quantity, ReportingValue = decimal.Round(itemValue, 9, MidpointRounding.ToEven) });
-			}
+					ItemId = group.Key,
+					Quantity = group.Sum(value => value.Quantity),
+					ReportingValue = group.Sum(value => value.ReportingAmount)
+				}).OrderBy(value => value.ItemId).ToList();
 			var valuation = lines.Sum(line => line.ReportingValue);
 			var generalLedger = await _costing.GetGlBalanceAsync(transaction, profile.AccountingBookId, policy.InventoryControlAccountId, request.AsOfDate, token);
 			var value = new FinanceInventoryReconciliationRun { OperationId = request.OperationId, AccountingBookId = profile.AccountingBookId, InventoryControlAccountId = policy.InventoryControlAccountId, AsOfDate = request.AsOfDate, ReportingCurrency = reportingCurrency, ValuationAmount = valuation, GeneralLedgerAmount = generalLedger, Difference = valuation - generalLedger, CreatedAtUtc = DateTime.UtcNow, CreatedByUserId = user.Id, Lines = lines };
@@ -259,6 +248,8 @@ public sealed class FinanceInventoryCostingService
 		var profile = await RequireProfileAsync(transaction, policy.InventoryAdjustmentPostingProfileId, configuration, FinanceInventoryAccountingEvents.InventoryAdjustment, [FinanceInventoryAccountingAmountKeys.AdjustmentDebit, FinanceInventoryAccountingAmountKeys.AdjustmentCredit], cancellationToken);
 		var now = DateTime.UtcNow;
 		decimal amount;
+		decimal reportingAmount = 0m;
+		CurrencyCode? reportingCurrency = null;
 		if (movement.Quantity > 0)
 		{
 			var available = await _accounting.LockAvailableLayersAsync(transaction, profile.AccountingBookId, itemId, cancellationToken);
@@ -275,23 +266,30 @@ public sealed class FinanceInventoryCostingService
 			var layers = await _accounting.LockAvailableLayersAsync(transaction, profile.AccountingBookId, itemId, cancellationToken);
 			if (layers.Any(layer => layer.Currency != configuration.PurchaseOrderPriceCurrency)) throw new InvalidOperationException("Valuation layers use a currency outside the active Inventory Accounting configuration.");
 			if (layers.Sum(layer => (long)layer.RemainingQuantity) < required) throw new InvalidOperationException("Inventory correction would create a negative valued inventory quantity.");
+			var carryingBalances = await FinanceInventoryReportingRepository.GetBalancesAsync(transaction, profile.AccountingBookId, null, cancellationToken, itemId);
+			reportingCurrency = carryingBalances[layers[0].Id].ReportingCurrency;
 			var remaining = required;
 			amount = 0m;
 			foreach (var layer in layers)
 			{
 				if (remaining == 0) break;
 				var consumed = Math.Min(remaining, layer.RemainingQuantity);
-				var consumptionAmount = checked(consumed * layer.UnitCost);
+				var carrying = carryingBalances[layer.Id].Consume(consumed, postingDate);
+				var consumptionAmount = carrying.Transaction;
 				if (await _accounting.SetRemainingQuantityAsync(transaction, layer.Id, layer.RemainingQuantity, layer.RemainingQuantity - consumed, cancellationToken) != 1) throw new ConcurrencyConflictException("inventory valuation layer");
-				await _accounting.CreateConsumptionAsync(transaction, new FinanceInventoryValuationConsumption { MovementId = movement.Id, LayerId = layer.Id, Quantity = consumed, UnitCost = layer.UnitCost, Amount = consumptionAmount, CreatedAtUtc = now, CreatedByUserId = userId }, cancellationToken);
+				var consumptionId = await _accounting.CreateConsumptionAsync(transaction, new FinanceInventoryValuationConsumption { MovementId = movement.Id, LayerId = layer.Id, Quantity = consumed, UnitCost = layer.UnitCost, Amount = consumptionAmount, CreatedAtUtc = now, CreatedByUserId = userId }, cancellationToken);
+				await FinanceInventoryReportingRepository.RecordAsync(transaction, consumptionId, reportingCurrency, carrying.Reporting, cancellationToken);
 				amount += consumptionAmount;
+				reportingAmount += carrying.Reporting;
 				remaining -= consumed;
 			}
 		}
 		var periodId = await ResolvePeriodAsync(transaction, configuration.FiscalCalendarId, postingDate, cancellationToken);
-		var exchangeRateId = await _generalLedger.ResolveExchangeRateIdForProfileAsync(transaction, profile.Id, configuration.PurchaseOrderPriceCurrency, postingDate, cancellationToken);
+		var exchangeRateId = movement.Quantity > 0
+			? await _generalLedger.ResolveExchangeRateIdForProfileAsync(transaction, profile.Id, configuration.PurchaseOrderPriceCurrency, postingDate, cancellationToken)
+			: null;
 		var operationId = DeterministicGuid($"InventoryMovement:{movement.Id}:Adjustment");
-		var journal = await _generalLedger.PostFromProfileInTransactionAsync(transaction, new FinanceProfilePostingRequest
+		var request = new FinanceProfilePostingRequest
 		{
 			OperationId = operationId,
 			PostingProfileId = profile.Id,
@@ -307,7 +305,15 @@ public sealed class FinanceInventoryCostingService
 				[FinanceInventoryAccountingAmountKeys.AdjustmentDebit] = movement.Quantity > 0 ? amount : 0m,
 				[FinanceInventoryAccountingAmountKeys.AdjustmentCredit] = movement.Quantity < 0 ? amount : 0m
 			}
-		}, userId, cancellationToken);
+		};
+		var journal = movement.Quantity > 0
+			? await _generalLedger.PostFromProfileInTransactionAsync(transaction, request, userId, cancellationToken)
+			: await _generalLedger.PostInventoryCarryingValueInTransactionAsync(transaction, request, reportingCurrency ?? throw new InvalidOperationException("Inventory reporting currency evidence is missing."),
+				new Dictionary<string, decimal>(StringComparer.Ordinal)
+				{
+					[FinanceInventoryAccountingAmountKeys.AdjustmentDebit] = 0m,
+					[FinanceInventoryAccountingAmountKeys.AdjustmentCredit] = reportingAmount
+				}, userId, cancellationToken);
 		var value = new FinanceInventoryAccountingEvent { MovementId = movement.Id, Kind = FinanceInventoryAccountingEventKind.InventoryAdjustment, AccountingBookId = profile.AccountingBookId, ItemId = itemId, Quantity = movement.Quantity, Currency = configuration.PurchaseOrderPriceCurrency, Amount = amount, JournalEntryId = journal.Id, OperationId = operationId, CreatedAtUtc = now, CreatedByUserId = userId };
 		var id = await _accounting.CreateEventAsync(transaction, value, cancellationToken);
 		var created = value with { Id = id };

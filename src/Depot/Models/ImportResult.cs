@@ -5,6 +5,8 @@ namespace Depot.Models;
 
 public sealed class ImportResult
 {
+	public bool AlreadyCompleted { get; init; }
+
 	public int ImportedItems { get; init; }
 
 	public int ImportedMovements { get; init; }

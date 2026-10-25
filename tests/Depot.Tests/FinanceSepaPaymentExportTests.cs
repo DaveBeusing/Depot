@@ -224,16 +224,24 @@ public sealed class FinanceSepaPaymentExportTests
 		var suppliers=new SupplierRepository(database);
 		var supplier1=await suppliers.CreateAsync(new Supplier{Name=$"SEPA Supplier A {suffix[..6]}",IsActive=true},CancellationToken.None);
 		var supplier2=await suppliers.CreateAsync(new Supplier{Name=$"SEPA Supplier B {suffix[..6]}",IsActive=true},CancellationToken.None);
+		var legalEntityId=Guid.NewGuid();
+		var accountingBookId=Guid.NewGuid();
 		var bankId=database.Insert("INSERT INTO FinanceBankAccounts (Version,LegalEntityId,AccountingBookId,GeneralLedgerAccountId,CurrencyCode,Name,BankName,Iban,Bic,LocalAccountNumber,IsActive) VALUES (1,$Entity,$Book,$Gl,$Currency,$Name,'Test Bank','DE89370400440532013000','COBADEFFXXX',NULL,1);",
-			new DatabaseParameter("$Entity",Guid.NewGuid().ToString("D")),new DatabaseParameter("$Book",Guid.NewGuid().ToString("D")),new DatabaseParameter("$Gl",Guid.NewGuid().ToString("D")),new DatabaseParameter("$Currency",currency),new DatabaseParameter("$Name",$"SEPA Bank {suffix[..6]}"));
+			new DatabaseParameter("$Entity",legalEntityId.ToString("D")),new DatabaseParameter("$Book",accountingBookId.ToString("D")),new DatabaseParameter("$Gl",Guid.NewGuid().ToString("D")),new DatabaseParameter("$Currency",currency),new DatabaseParameter("$Name",$"SEPA Bank {suffix[..6]}"));
 		var operation=Guid.NewGuid();
 		var paymentDate=DateOnly.FromDateTime(DateTime.UtcNow).AddDays(2);
 		var runId=database.Insert("INSERT INTO FinancePaymentRuns (Version,OperationId,BankAccountId,PaymentDate,CurrencyCode,Description,Status,CreatedAtUtc,CreatedByUserId,ApprovedAtUtc,ApprovedByUserId,ApprovalComment,CompletedAtUtc) VALUES (1,$Operation,$Bank,$Date,$Currency,'SEPA export test',$Status,$Created,$User,$Approved,$User,'Approved for test',NULL);",
 			new DatabaseParameter("$Operation",operation.ToString("D")),new DatabaseParameter("$Bank",bankId),new DatabaseParameter("$Date",paymentDate.ToString("yyyy-MM-dd",System.Globalization.CultureInfo.InvariantCulture)),new DatabaseParameter("$Currency",currency),new DatabaseParameter("$Status",(int)FinancePaymentRunStatus.Approved),new DatabaseParameter("$Created","2026-09-23T10:00:00.0000000Z"),new DatabaseParameter("$Approved","2026-09-23T10:05:00.0000000Z"),new DatabaseParameter("$User",userId));
-		database.Insert("INSERT INTO FinancePaymentRunLines (PaymentRunId,PayableOpenItemId,SupplierId,Amount,Reference,Status,ExecutionOperationId,PayablePaymentId,ExecutedAtUtc,ExecutedByUserId,ExecutionReference) VALUES ($Run,1001,$Supplier,$Amount,'INV-1001',$Status,$Operation,NULL,NULL,NULL,NULL);",
-			new DatabaseParameter("$Run",runId),new DatabaseParameter("$Supplier",supplier1),new DatabaseParameter("$Amount",firstAmount),new DatabaseParameter("$Status",(int)FinancePaymentRunLineStatus.Proposed),new DatabaseParameter("$Operation",Guid.NewGuid().ToString("D")));
-		database.Insert("INSERT INTO FinancePaymentRunLines (PaymentRunId,PayableOpenItemId,SupplierId,Amount,Reference,Status,ExecutionOperationId,PayablePaymentId,ExecutedAtUtc,ExecutedByUserId,ExecutionReference) VALUES ($Run,1002,$Supplier,25.30,'INV-1002',$Status,$Operation,NULL,NULL,NULL,NULL);",
-			new DatabaseParameter("$Run",runId),new DatabaseParameter("$Supplier",supplier2),new DatabaseParameter("$Status",(int)FinancePaymentRunLineStatus.Proposed),new DatabaseParameter("$Operation",Guid.NewGuid().ToString("D")));
+		long CreateOpenItem(long supplierId,decimal amount) => database.Insert(
+			"INSERT INTO FinancePayableOpenItems (Version,LegalEntityId,AccountingBookId,SupplierId,Kind,SourceType,SourceId,DocumentDate,DueDate,CurrencyCode,OriginalAmount,RemainingAmount,JournalEntryId,OperationId,IsVoided,CreatedAtUtc,CreatedByUserId) VALUES (1,$Entity,$Book,$Supplier,1,'SupplierInvoice',$Source,$Date,$Date,$Currency,$Amount,$Amount,0,$Operation,0,$Created,$User);",
+			new DatabaseParameter("$Entity",legalEntityId.ToString("D")),new DatabaseParameter("$Book",accountingBookId.ToString("D")),new DatabaseParameter("$Supplier",supplierId),new DatabaseParameter("$Source",Guid.NewGuid().ToString("D")),
+			new DatabaseParameter("$Date",paymentDate.ToString("yyyy-MM-dd",System.Globalization.CultureInfo.InvariantCulture)),new DatabaseParameter("$Currency",currency),new DatabaseParameter("$Amount",amount),new DatabaseParameter("$Operation",Guid.NewGuid().ToString("D")),new DatabaseParameter("$Created",DateTime.UtcNow),new DatabaseParameter("$User",userId));
+		var firstOpenItemId=CreateOpenItem(supplier1,firstAmount);
+		var secondOpenItemId=CreateOpenItem(supplier2,25.30m);
+		database.Insert("INSERT INTO FinancePaymentRunLines (PaymentRunId,PayableOpenItemId,SupplierId,Amount,Reference,Status,ExecutionOperationId,PayablePaymentId,ExecutedAtUtc,ExecutedByUserId,ExecutionReference) VALUES ($Run,$OpenItem,$Supplier,$Amount,'INV-1001',$Status,$Operation,NULL,NULL,NULL,NULL);",
+			new DatabaseParameter("$Run",runId),new DatabaseParameter("$OpenItem",firstOpenItemId),new DatabaseParameter("$Supplier",supplier1),new DatabaseParameter("$Amount",firstAmount),new DatabaseParameter("$Status",(int)FinancePaymentRunLineStatus.Proposed),new DatabaseParameter("$Operation",Guid.NewGuid().ToString("D")));
+		database.Insert("INSERT INTO FinancePaymentRunLines (PaymentRunId,PayableOpenItemId,SupplierId,Amount,Reference,Status,ExecutionOperationId,PayablePaymentId,ExecutedAtUtc,ExecutedByUserId,ExecutionReference) VALUES ($Run,$OpenItem,$Supplier,25.30,'INV-1002',$Status,$Operation,NULL,NULL,NULL,NULL);",
+			new DatabaseParameter("$Run",runId),new DatabaseParameter("$OpenItem",secondOpenItemId),new DatabaseParameter("$Supplier",supplier2),new DatabaseParameter("$Status",(int)FinancePaymentRunLineStatus.Proposed),new DatabaseParameter("$Operation",Guid.NewGuid().ToString("D")));
 
 		var authorization=new AuthorizationService();
 		authorization.SignIn(new User{Id=userId,Email=$"sepa-{suffix}@depot.test",DisplayName="SEPA Test",IsActive=true},

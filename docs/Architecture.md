@@ -61,6 +61,7 @@ See [User Sessions and Online Presence](UserSessions.md), [Security Center and A
 - `FinanceAccountsReceivableService` — customer subledger/open-item/settlement truth.
 - `FinanceAccountsPayableService` — supplier subledger/document/matching/settlement truth.
 - `FinanceInventoryAccountingService` and costing services — FIFO valuation and inventory accounting evidence.
+- Historical FIFO reporting amounts are retained per consumption and shared by issue, reversal, reconciliation and valuation-report projections.
 - `FinanceBankingService` — bank statements, payment-run orchestration, reconciliation and cash-position evidence.
 - `FinanceFinancialReportingService` — reporting, mappings, exports and immutable report-snapshot boundary.
 - `FinanceLocalizationService` — effective-dated localization assignment, pack hierarchy and capability/configuration/procedure references.
@@ -136,7 +137,7 @@ Document-layout zoom, snap, resize, undo/redo and dirty-state behavior remain sp
 
 - Core database schema: **30**
 - Sales feature schema: **16**
-- Finance feature schema: **12**
+- Finance feature schema: **13**
 - User Sessions feature schema: **3**
 - Security Events feature schema: **3**
 - User Preferences feature schema: **2**
@@ -235,3 +236,4 @@ Production follows the standard `View -> ViewModel -> ProductionService -> Produ
 Inventory and Stock Movements remain authoritative for physical quantities. Item Traceability remains authoritative for serial/lot validation. Item Costing remains authoritative for component cost resolution. Finance Inventory Accounting and the General Ledger remain authoritative for accounting consequences. Production therefore records operational evidence and links; it does not introduce a second inventory, costing or accounting ledger.
 
 V1 intentionally uses a bounded single-level BOM explosion. Direct and graph cycles are rejected, and release fails closed if a decimal BOM quantity cannot be represented as a positive integral Inventory base-unit requirement. Component shortages are projections and reach Purchasing only through an explicit handoff to the existing Replenishment/Purchase Requisition path.
+

@@ -98,7 +98,7 @@ internal sealed class ServiceComposition
 		Dashboard = new DashboardService(Stock, repositories.Dashboard, Authorization);
 		Reports = new ReportService(Stock, Authorization);
 		var inventoryManagement = new InventoryManagementService(repositories.Inventories, audit);
-		Import = new ImportService(repositories.Items, Items, Purposes, Warehouses, StorageLocations, inventoryManagement, Movements, Authorization);
+		Import = new ImportService(repositories.Items, Items, Purposes, Warehouses, StorageLocations, inventoryManagement, Movements, Authorization, database.TransactionRunner);
 		Sales = new SalesServices(Customers, SalesPricing, SalesTimeline, SalesOrders, SalesQuotes, SalesCrm, Shipments, ShipmentPacking, SalesInvoices, SubscriptionBilling, CustomerReturns, SalesCreditNotes, Items, Authorization, SalesDocuments, SalesEmail, SalesInvoiceFinalizations, ItemCosts, PriceListGeneration);
 		MyWork = new MyWorkService(Authorization,
 		[
@@ -236,4 +236,5 @@ internal sealed class ServiceComposition
 	public ReportService Reports { get; }
 	public ImportService Import { get; }
 }
+
 

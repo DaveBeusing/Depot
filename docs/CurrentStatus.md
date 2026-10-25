@@ -139,7 +139,7 @@ PR #56 then repaired CI execution boundaries without changing runtime behavior o
 - DepotManager: **0.1.23-preview**
 - Core database schema: **30**
 - Sales feature schema: **16**
-- Finance feature schema: **12**
+- Finance feature schema: **13**
 - User Sessions feature schema: **3**
 - Security Events feature schema: **3**
 - User Preferences feature schema: **2**
@@ -205,3 +205,11 @@ The feature does not forecast demand, allocate suppliers automatically, create P
 Project Accounting feature schema **1** adds provider-neutral Project and Project Phase lifecycle persistence, controlled attribution of Purchase Orders, supplier documents, Sales Orders, Sales Invoices and manual journals, read-only GL actuals, open purchasing commitments, Finance Budget line links, Actual-vs-Budget variance, Business Attachments, Audit, optimistic concurrency, a Projects workspace and owned-project My Work projections.
 
 General Ledger, Finance subledgers, Financial Reporting and Finance Budgeting remain authoritative. Project Accounting does not maintain a second ledger or independent accounting-calculation engine. Real-provider smoke acceptance verifies the `ProjectAccounting` feature migration on SQLite, SQL Server, MariaDB and MySQL.
+
+
+
+## Inventory, payment and asset integrity
+
+The current correction scope makes complete Excel import batches atomic and replay-safe; accumulates supplier matching quantities across the correct PO and receipt scopes; validates current payable balances and live SEPA instructions; binds payment runs and reconciliations to actual bank journal evidence; preserves historical FIFO reporting values; and enforces fixed-asset valuation, event identity and legal-entity ownership.
+
+These controls retain the established service authorities and provider transaction paths. Finance feature schema 13 adds exact inventory reporting-consumption evidence; Core schema 30 and product release targets remain unchanged. The existing five aggregate validation gates and supported-provider acceptance remain required for integration.

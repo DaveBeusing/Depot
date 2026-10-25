@@ -95,6 +95,7 @@ internal static class FeatureVersionMetadataRecovery
 		TableExists(connection, provider, "FinanceSepaCreditorProfiles") &&
 		TableExists(connection, provider, "FinanceSepaPaymentExports") &&
 		TableExists(connection, provider, "FinanceSepaPaymentExportStatusHistory") &&
+		TableExists(connection, provider, "FinanceInventoryReportingConsumptions") &&
 		ColumnExists(connection, provider, "UserSessionPolicy", "ConcurrentSessionMode") &&
 		TableExists(connection, provider, "SecurityEventExportTargets") &&
 		TableExists(connection, provider, "UserWorkspacePreferences") &&
@@ -180,4 +181,5 @@ internal static class FeatureVersionMetadataRecovery
 		_ => throw new NotSupportedException($"Feature-version metadata recovery is not supported for provider '{provider}'.")
 	};
 }
+
 

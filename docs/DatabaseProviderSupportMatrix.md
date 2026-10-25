@@ -122,7 +122,7 @@ Database-provider acceptance is a technical data-integrity/runtime statement. It
 
 ### Finance budgeting
 
-Finance feature schema **12** includes the Finance Budgeting baseline plus structured SEPA debtor/creditor payment profiles, immutable `pain.001.001.09` export artifacts and append-only export-status history. Full provider acceptance migrates the schema on each supported server baseline and exercises persisted budget data as well as SEPA payment-export generation/readback. Provider-neutral SQL alone is not support evidence.
+Finance feature schema **13** includes the Finance Budgeting baseline plus structured SEPA debtor/creditor payment profiles, immutable `pain.001.001.09` export artifacts and append-only export-status history. Full provider acceptance migrates the schema on each supported server baseline and exercises persisted budget data as well as SEPA payment-export generation/readback. Provider-neutral SQL alone is not support evidence.
 
 ## Inventory Replenishment feature schema
 
@@ -136,3 +136,9 @@ Provider acceptance includes `Production` feature-schema provisioning and verifi
 
 Remote-provider support remains conditional on the normal provider gate for the exact supported server baselines; provider-neutral DDL alone is not treated as acceptance evidence.
 
+
+
+
+### Historical inventory carrying values
+
+Finance feature schema **13** retains exact reporting amounts for FIFO consumptions. Provider acceptance covers acquisition-rate changes, mixed receipts, landed-cost allocation, negative adjustments and exact reversal. Migration from the prior Finance baseline is additive and rerunnable; acceptance never rewrites immutable historical journals.

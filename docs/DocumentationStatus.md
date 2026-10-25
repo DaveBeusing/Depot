@@ -10,7 +10,7 @@ This document identifies the documentation baseline for the current development 
 - Help manifest: `1.36`
 - Core database schema: `30`
 - Sales feature schema: `16`
-- Finance feature schema: `12`
+- Finance feature schema: `13`
 - User Sessions feature schema: `3`
 - Security Events feature schema: `3`
 - User Preferences feature schema: `2`
@@ -119,3 +119,4 @@ Approval Policies feature schema 1 is documented as a bounded routing contract f
 ## Procurement sourcing documentation invariant
 
 Procurement Sourcing feature schema `1` is the current sourcing persistence contract. Documentation must preserve the explicit-decision boundary: quote comparison may order and present evidence deterministically, but it must not be described as autonomous supplier selection, recommendation or automatic Purchase Order placement. `PurchaseOrderService` remains the downstream Purchase Order authority and sourcing evidence remains traceable to the originating requisition, RFQ and selected quote.
+

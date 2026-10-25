@@ -119,6 +119,33 @@ public sealed class FinanceBankingRepository : DatabaseRepository
 	internal Task<FinanceBankStatementLineContext?> GetStatementLineContextAsync(DatabaseTransactionContext transaction, long lineId, CancellationToken cancellationToken) =>
 		transaction.Session.QuerySingleOrDefaultAsync("SELECT l.Id,l.StatementId,l.LineNumber,l.BookingDate,l.ValueDate,l.Amount,l.CurrencyCode,l.ExternalId,l.Reference,l.CounterpartyName,l.BankTransactionCode,s.BankAccountId,a.AccountingBookId,a.GeneralLedgerAccountId,a.CurrencyCode FROM FinanceBankStatementLines l INNER JOIN FinanceBankStatements s ON s.Id=l.StatementId INNER JOIN FinanceBankAccounts a ON a.Id=s.BankAccountId WHERE l.Id=$Id;", reader => new FinanceBankStatementLineContext(ReadLineBase(reader), reader.GetInt64(11), Guid.Parse(reader.GetString(12)), Guid.Parse(reader.GetString(13)), new CurrencyCode(reader.GetString(14))), cancellationToken, Parameter("$Id", lineId));
 
+	internal async Task<FinanceBankStatementLineContext?> LockStatementLineContextAsync(DatabaseTransactionContext transaction, long lineId, CancellationToken cancellationToken)
+	{
+		await transaction.Session.ExecuteAsync("UPDATE FinanceBankStatementLines SET Amount=Amount WHERE Id=$Id;", cancellationToken, Parameter("$Id", lineId));
+		return await GetStatementLineContextAsync(transaction, lineId, cancellationToken);
+	}
+
+	internal Task<int> LockJournalEvidenceAsync(DatabaseTransactionContext transaction, long journalEntryId, CancellationToken cancellationToken) =>
+		transaction.Session.ExecuteAsync("UPDATE FinanceJournalEntries SET EntryNumber=EntryNumber WHERE Id=$Id;", cancellationToken, Parameter("$Id", journalEntryId));
+
+	internal async Task<bool> HasActiveJournalBankReconciliationAsync(DatabaseTransactionContext transaction, long journalEntryId, Guid accountId, CancellationToken cancellationToken)
+	{
+		var count = await transaction.Session.ExecuteScalarAsync("SELECT COUNT(*) FROM FinanceBankReconciliations r INNER JOIN FinanceBankStatementLines l ON l.Id=r.StatementLineId INNER JOIN FinanceBankStatements s ON s.Id=l.StatementId INNER JOIN FinanceBankAccounts a ON a.Id=s.BankAccountId WHERE r.TargetJournalEntryId=$Journal AND a.GeneralLedgerAccountId=$Account AND r.ReversedAtUtc IS NULL;", cancellationToken, Parameter("$Journal", journalEntryId), Parameter("$Account", accountId.ToString("D")));
+		return Convert.ToInt64(count, CultureInfo.InvariantCulture) != 0;
+	}
+
+	internal async Task<FinanceBankAccount?> LockBankAccountAsync(DatabaseTransactionContext transaction, long bankAccountId, CancellationToken cancellationToken)
+	{
+		await transaction.Session.ExecuteAsync("UPDATE FinanceBankAccounts SET Version=Version WHERE Id=$Id;", cancellationToken, Parameter("$Id", bankAccountId));
+		return await GetBankAccountAsync(transaction, bankAccountId, cancellationToken);
+	}
+
+	internal async Task<bool> HasBankAccountEvidenceAsync(DatabaseTransactionContext transaction, long bankAccountId, CancellationToken cancellationToken)
+	{
+		var count = await transaction.Session.ExecuteScalarAsync("SELECT (SELECT COUNT(*) FROM FinanceBankStatements WHERE BankAccountId=$Id)+(SELECT COUNT(*) FROM FinancePaymentRuns WHERE BankAccountId=$Id);", cancellationToken, Parameter("$Id", bankAccountId));
+		return Convert.ToInt64(count, CultureInfo.InvariantCulture) != 0;
+	}
+
 	internal async Task<IReadOnlyList<FinanceBankReconciliationCandidate>> GetReconciliationCandidatesAsync(DatabaseTransactionContext transaction, long lineId, int maxResults, CancellationToken cancellationToken)
 	{
 		var context = await GetStatementLineContextAsync(transaction, lineId, cancellationToken) ?? throw new InvalidOperationException("Bank statement line was not found.");
@@ -126,21 +153,20 @@ public sealed class FinanceBankingRepository : DatabaseRepository
 		var book = Parameter("$Book", context.AccountingBookId.ToString("D"));
 		var currency = Parameter("$Currency", context.BankCurrency.Value);
 		var receivableAmount = Parameter("$Amount", context.Line.Amount);
-		var payableAmount = Parameter("$Amount", -context.Line.Amount);
 		var bankAccount = Parameter("$Account", context.GeneralLedgerAccountId.ToString("D"));
 
 		var receivables = await transaction.Session.QueryAsync(
-			"SELECT p.Id,p.Amount,p.CurrencyCode,p.PaymentDate,p.Reference,c.Name,p.Description,p.CustomerId FROM FinanceReceivablePayments p INNER JOIN FinanceReceivableOpenItems o ON o.Id=p.OpenItemId LEFT JOIN Customers c ON c.Id=p.CustomerId WHERE p.IsReversed=0 AND o.AccountingBookId=$Book AND p.CurrencyCode=$Currency AND p.Amount=$Amount ORDER BY p.PaymentDate DESC,p.Id DESC;",
+			"SELECT p.Id,(SELECT COALESCE(SUM(bl.TransactionDebit-bl.TransactionCredit),0) FROM FinanceJournalEntryLines bl WHERE bl.JournalEntryId=p.JournalEntryId AND bl.AccountId=$Account),p.CurrencyCode,p.PaymentDate,p.Reference,c.Name,p.Description,p.CustomerId FROM FinanceReceivablePayments p INNER JOIN FinanceReceivableOpenItems o ON o.Id=p.OpenItemId INNER JOIN FinanceJournalEntries e ON e.Id=p.JournalEntryId LEFT JOIN Customers c ON c.Id=p.CustomerId WHERE p.IsReversed=0 AND o.AccountingBookId=$Book AND e.AccountingBookId=$Book AND e.TransactionCurrencyCode=$Currency AND p.CurrencyCode=$Currency AND EXISTS (SELECT 1 FROM FinanceJournalEntryLines j WHERE j.JournalEntryId=p.JournalEntryId AND j.AccountId=$Account GROUP BY j.JournalEntryId HAVING SUM(j.TransactionDebit-j.TransactionCredit)=CAST($SignedAmount AS DECIMAL(18,6))) AND NOT EXISTS (SELECT 1 FROM FinanceBankReconciliations r INNER JOIN FinanceBankStatementLines rl ON rl.Id=r.StatementLineId INNER JOIN FinanceBankStatements rs ON rs.Id=rl.StatementId INNER JOIN FinanceBankAccounts ra ON ra.Id=rs.BankAccountId WHERE r.TargetJournalEntryId=p.JournalEntryId AND ra.GeneralLedgerAccountId=$Account AND r.ReversedAtUtc IS NULL) ORDER BY p.PaymentDate DESC,p.Id DESC;",
 			reader => new FinanceBankReconciliationCandidate { TargetKind=FinanceBankReconciliationTargetKind.ReceivablePayment,TargetId=reader.GetInt64(0),Amount=ReadDecimal(reader,1),Currency=new CurrencyCode(reader.GetString(2)),Date=ReadDate(reader,3),Reference=reader.IsDBNull(4)?null:reader.GetString(4),Counterparty=reader.IsDBNull(5)?$"Customer #{reader.GetInt64(7)}":reader.GetString(5),Evidence=reader.GetString(6) },
-			cancellationToken, book, currency, receivableAmount);
+			cancellationToken, book, currency, bankAccount, Parameter("$SignedAmount", context.Line.Amount));
 
 		var payables = await transaction.Session.QueryAsync(
-			"SELECT p.Id,-p.Amount,p.CurrencyCode,p.PaymentDate,p.Reference,s.Name,p.Description,p.SupplierId FROM FinancePayablePayments p INNER JOIN FinancePayableOpenItems o ON o.Id=p.OpenItemId LEFT JOIN Suppliers s ON s.Id=p.SupplierId WHERE p.IsReversed=0 AND o.AccountingBookId=$Book AND p.CurrencyCode=$Currency AND p.Amount=$Amount ORDER BY p.PaymentDate DESC,p.Id DESC;",
+			"SELECT p.Id,(SELECT COALESCE(SUM(bl.TransactionDebit-bl.TransactionCredit),0) FROM FinanceJournalEntryLines bl WHERE bl.JournalEntryId=p.JournalEntryId AND bl.AccountId=$Account),p.CurrencyCode,p.PaymentDate,p.Reference,s.Name,p.Description,p.SupplierId FROM FinancePayablePayments p INNER JOIN FinancePayableOpenItems o ON o.Id=p.OpenItemId INNER JOIN FinanceJournalEntries e ON e.Id=p.JournalEntryId LEFT JOIN Suppliers s ON s.Id=p.SupplierId WHERE p.IsReversed=0 AND o.AccountingBookId=$Book AND e.AccountingBookId=$Book AND e.TransactionCurrencyCode=$Currency AND p.CurrencyCode=$Currency AND EXISTS (SELECT 1 FROM FinanceJournalEntryLines j WHERE j.JournalEntryId=p.JournalEntryId AND j.AccountId=$Account GROUP BY j.JournalEntryId HAVING SUM(j.TransactionDebit-j.TransactionCredit)=CAST($SignedAmount AS DECIMAL(18,6))) AND NOT EXISTS (SELECT 1 FROM FinanceBankReconciliations r INNER JOIN FinanceBankStatementLines rl ON rl.Id=r.StatementLineId INNER JOIN FinanceBankStatements rs ON rs.Id=rl.StatementId INNER JOIN FinanceBankAccounts ra ON ra.Id=rs.BankAccountId WHERE r.TargetJournalEntryId=p.JournalEntryId AND ra.GeneralLedgerAccountId=$Account AND r.ReversedAtUtc IS NULL) ORDER BY p.PaymentDate DESC,p.Id DESC;",
 			reader => new FinanceBankReconciliationCandidate { TargetKind=FinanceBankReconciliationTargetKind.PayablePayment,TargetId=reader.GetInt64(0),Amount=ReadDecimal(reader,1),Currency=new CurrencyCode(reader.GetString(2)),Date=ReadDate(reader,3),Reference=reader.IsDBNull(4)?null:reader.GetString(4),Counterparty=reader.IsDBNull(5)?$"Supplier #{reader.GetInt64(7)}":reader.GetString(5),Evidence=reader.GetString(6) },
-			cancellationToken, book, currency, payableAmount);
+			cancellationToken, book, currency, bankAccount, Parameter("$SignedAmount", context.Line.Amount));
 
 		var generalLedger = await transaction.Session.QueryAsync(
-			"SELECT e.Id,COALESCE(SUM(l.TransactionDebit-l.TransactionCredit),0),e.TransactionCurrencyCode,e.PostingDate,COALESCE(e.SourceReference,e.EntryNumber),e.SourceType,e.Description FROM FinanceJournalEntries e INNER JOIN FinanceJournalEntryLines l ON l.JournalEntryId=e.Id WHERE e.AccountingBookId=$Book AND e.TransactionCurrencyCode=$Currency AND l.AccountId=$Account GROUP BY e.Id,e.TransactionCurrencyCode,e.PostingDate,e.SourceReference,e.EntryNumber,e.SourceType,e.Description HAVING COALESCE(SUM(l.TransactionDebit-l.TransactionCredit),0)=CAST($Amount AS DECIMAL(18,6)) ORDER BY e.PostingDate DESC,e.Id DESC;",
+			"SELECT e.Id,COALESCE(SUM(l.TransactionDebit-l.TransactionCredit),0),e.TransactionCurrencyCode,e.PostingDate,COALESCE(e.SourceReference,e.EntryNumber),e.SourceType,e.Description FROM FinanceJournalEntries e INNER JOIN FinanceJournalEntryLines l ON l.JournalEntryId=e.Id WHERE e.AccountingBookId=$Book AND e.TransactionCurrencyCode=$Currency AND l.AccountId=$Account AND NOT EXISTS (SELECT 1 FROM FinanceBankReconciliations r INNER JOIN FinanceBankStatementLines rl ON rl.Id=r.StatementLineId INNER JOIN FinanceBankStatements rs ON rs.Id=rl.StatementId INNER JOIN FinanceBankAccounts ra ON ra.Id=rs.BankAccountId WHERE r.TargetJournalEntryId=e.Id AND ra.GeneralLedgerAccountId=$Account AND r.ReversedAtUtc IS NULL) GROUP BY e.Id,e.TransactionCurrencyCode,e.PostingDate,e.SourceReference,e.EntryNumber,e.SourceType,e.Description HAVING COALESCE(SUM(l.TransactionDebit-l.TransactionCredit),0)=CAST($Amount AS DECIMAL(18,6)) ORDER BY e.PostingDate DESC,e.Id DESC;",
 			reader => new FinanceBankReconciliationCandidate { TargetKind=FinanceBankReconciliationTargetKind.GeneralLedgerEntry,TargetId=reader.GetInt64(0),Amount=ReadDecimal(reader,1),Currency=new CurrencyCode(reader.GetString(2)),Date=ReadDate(reader,3),Reference=reader.IsDBNull(4)?null:reader.GetString(4),Counterparty=reader.GetString(5),Evidence=reader.GetString(6) },
 			cancellationToken, book, currency, bankAccount, receivableAmount);
 
@@ -219,6 +245,12 @@ public sealed class FinanceBankingRepository : DatabaseRepository
 
 	internal Task<FinancePayableProposalItem?> GetPayableProposalItemAsync(DatabaseTransactionContext transaction, long openItemId, CancellationToken cancellationToken) =>
 		transaction.Session.QuerySingleOrDefaultAsync("SELECT Id,SupplierId,CurrencyCode,RemainingAmount,AccountingBookId,IsVoided,Kind FROM FinancePayableOpenItems WHERE Id=$Id;", reader => new FinancePayableProposalItem(reader.GetInt64(0), reader.GetInt64(1), new CurrencyCode(reader.GetString(2)), ReadDecimal(reader, 3), Guid.Parse(reader.GetString(4)), ReadBool(reader, 5), (FinancePayableOpenItemKind)Convert.ToInt32(reader.GetValue(6), CultureInfo.InvariantCulture)), cancellationToken, Parameter("$Id", openItemId));
+
+	internal async Task<FinancePayableProposalItem?> LockPayableProposalItemAsync(DatabaseTransactionContext transaction, long openItemId, CancellationToken cancellationToken)
+	{
+		await transaction.Session.ExecuteAsync("UPDATE FinancePayableOpenItems SET Version=Version WHERE Id=$Id;", cancellationToken, Parameter("$Id", openItemId));
+		return await GetPayableProposalItemAsync(transaction, openItemId, cancellationToken);
+	}
 
 	internal async Task<FinanceBankCashPositionRow> GetCashPositionAsync(DatabaseTransactionContext transaction, FinanceBankAccount account, CancellationToken cancellationToken)
 	{

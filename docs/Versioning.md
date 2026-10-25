@@ -7,7 +7,7 @@ Updated: 2026-09-25
 - Application: **0.15.x-preview**
 - Core database schema: **30**
 - Sales feature schema: **16**
-- Finance feature schema: **12**
+- Finance feature schema: **13**
 - User Sessions feature schema: **3**
 - Security Events feature schema: **3**
 - User Preferences feature schema: **2**
@@ -179,7 +179,7 @@ Finance schema **11** introduced provider-neutral `FinanceBudgetVersions` and `F
 
 ### Finance schema 12
 
-Finance schema **12** is the current Finance persistence baseline. It adds explicit structured SEPA debtor/creditor payment profiles plus immutable `pain.001.001.09` payment-export artifacts and append-only external-status history. Exact generated XML bytes and SHA-256 evidence are retained so re-download never regenerates historical instructions from mutable master data. Core schema remains **30**.
+Finance schema **12** introduced the structured SEPA persistence baseline. It adds explicit structured SEPA debtor/creditor payment profiles plus immutable `pain.001.001.09` payment-export artifacts and append-only external-status history. Exact generated XML bytes and SHA-256 evidence are retained so re-download never regenerates historical instructions from mutable master data. Core schema remains **30**.
 
 
 ### Procurement Sourcing schema 1
@@ -218,3 +218,11 @@ The [service-parts posting contract](development/ServicePartPosting.md) defines 
 ### Production schema 1
 
 Production feature schema **1** introduces revisioned BOM headers/lines, assembly orders, released requirement snapshots, links to authoritative Stock Movement records and retained component-cost evidence. It is independent of Core schema 30 and is provisioned through the standard provider-neutral initialization path.
+
+
+
+### Finance schema 13
+
+Finance schema **13** adds `FinanceInventoryReportingConsumptions`, retaining the exact reporting-currency carrying amount consumed from each FIFO layer. The migration is additive and repeatable on SQLite, SQL Server, MariaDB and MySQL. Existing receipt, landed-cost, consumption and General Ledger evidence remains unchanged. Legacy consumption reporting shares are reconstructed from the original immutable journal; incomplete or inconsistent evidence blocks further affected posting instead of using a current exchange rate.
+
+Shipment issues and negative adjustments consume historical values, including allocated landed costs and rounding. Reversals restore the exact recorded amount. The inventory valuation report and reconciliation use the same carrying-value authority. Core schema remains **30**, and the product SemVer is unchanged.

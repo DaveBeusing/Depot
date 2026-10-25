@@ -98,7 +98,7 @@ Current schema baseline:
 
 - Core database schema: **30**
 - Sales feature schema: **16**
-- Finance feature schema: **12**
+- Finance feature schema: **13**
 
 Finance schema evolution is sequential from foundation through General Ledger, subledgers, inventory accounting, banking, reporting and localization. Sales is listed because Finance/provider acceptance crosses order-to-cash and related feature migrations; its current persistence baseline is maintained independently from Finance.
 
@@ -136,7 +136,7 @@ Finance schema **12** extends Banking with a dedicated payment-export boundary. 
 
 Project Accounting is a consumer of Finance evidence, not a Finance posting authority. Project actuals are read-only projections over posted General Ledger lines reached through explicit project attribution. Project budget links reference existing `FinanceBudgetLines`; Finance Budgeting continues to own amounts, account/period granularity, version lifecycle and approval/locking semantics.
 
-Open Purchase Order commitments are intentionally not posted into Finance merely to support project analysis. They remain a separate operational projection until authoritative downstream accounting evidence exists. Project Accounting feature schema **1** is versioned independently from Finance schema **12**.
+Open Purchase Order commitments are intentionally not posted into Finance merely to support project analysis. They remain a separate operational projection until authoritative downstream accounting evidence exists. Project Accounting feature schema **1** is versioned independently from the current Finance schema.
 
 
 ## Production and assembly boundary
@@ -144,3 +144,9 @@ Open Purchase Order commitments are intentionally not posted into Finance merely
 Light Assembly creates operational stock movements and retained component-cost evidence, but it does not own accounting balances. Component issue and finished-goods receipt flow through the existing Inventory/Stock Movement authority; Finance Inventory Accounting and the General Ledger remain authoritative for any financial consequence of those movements.
 
 The Production feature does not create a parallel WIP or costing ledger in V1. Its retained component-cost evidence is operational traceability for the assembly completion and remains separate from posted Finance evidence.
+
+## Historical inventory carrying values
+
+Finance schema **13** adds immutable reporting-currency evidence for each FIFO consumption. Shipments and negative inventory adjustments consume the remaining receipt and landed-cost carrying values; later exchange rates never reprice those assets. The existing General Ledger authority validates a narrowly internal inventory posting path, records both original transaction-currency and exact historical reporting amounts, and retains the same atomic audit and reversal behavior. Inventory reconciliation and the Inventory Valuation report share the same source-journal and consumption evidence.
+
+See [Historical Inventory Valuation](FinanceInventoryHistoricalValuation.md) for rounding allocation, legacy evidence, migration and operational boundaries.

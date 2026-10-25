@@ -120,8 +120,10 @@ public sealed class FinanceBankingService
 				await _auditEntries.CreateAsync(transaction, _audit.CreateCreatedEntry(id, created), token);
 				return created;
 			}
-			var before = await _banking.GetBankAccountAsync(transaction, normalized.Id, token) ?? throw new InvalidOperationException("Bank account was not found.");
+			var before = await _banking.LockBankAccountAsync(transaction, normalized.Id, token) ?? throw new InvalidOperationException("Bank account was not found.");
 			if (before.Version != normalized.Version) throw new ConcurrencyConflictException("bank account");
+			if ((before.LegalEntityId != normalized.LegalEntityId || before.AccountingBookId != normalized.AccountingBookId || before.GeneralLedgerAccountId != normalized.GeneralLedgerAccountId || before.Currency != normalized.Currency || before.Iban != normalized.Iban || before.Bic != normalized.Bic || before.LocalAccountNumber != normalized.LocalAccountNumber) && await _banking.HasBankAccountEvidenceAsync(transaction, before.Id, token))
+				throw new InvalidOperationException("A bank account referenced by a statement or payment run cannot change its legal entity, accounting book, General Ledger account, currency or payment identifiers.");
 			if (await _banking.UpdateBankAccountAsync(transaction, normalized, before.Version, token) != 1) throw new ConcurrencyConflictException("bank account");
 			var after = normalized with { Version = before.Version + 1 };
 			await _auditEntries.CreateAsync(transaction, _audit.CreateUpdatedEntry(after.Id, before, after), token);
@@ -146,7 +148,7 @@ public sealed class FinanceBankingService
 			}
 			var duplicate = await _banking.FindStatementByHashAsync(transaction, importHash, token);
 			if (duplicate is not null) return (await _banking.GetStatementAsync(duplicate.Id, token)) ?? duplicate;
-			var bank = await _banking.GetBankAccountAsync(transaction, request.BankAccountId, token) ?? throw new InvalidOperationException("Bank account was not found.");
+			var bank = await _banking.LockBankAccountAsync(transaction, request.BankAccountId, token) ?? throw new InvalidOperationException("Bank account was not found.");
 			if (!bank.IsActive) throw new InvalidOperationException("Bank account is inactive.");
 			var parsed = FinanceBankStatementParser.Parse(request, bank.Currency);
 			if (parsed.ClosingBalance != parsed.OpeningBalance + parsed.Lines.Sum(line => line.Amount)) throw new InvalidDataException("Statement opening balance plus transaction amounts must equal closing balance. Depot does not apply an implicit reconciliation tolerance.");
@@ -189,8 +191,8 @@ public sealed class FinanceBankingService
 				if (previous.StatementLineId != request.StatementLineId || previous.TargetKind != request.TargetKind || previous.TargetId != request.TargetId) throw new InvalidOperationException("The reconciliation operation ID is already assigned to different content.");
 				return previous;
 			}
+			var context = await _banking.LockStatementLineContextAsync(transaction, request.StatementLineId, token) ?? throw new InvalidOperationException("Bank statement line was not found.");
 			if (await _banking.GetActiveReconciliationForLineAsync(transaction, request.StatementLineId, token) is not null) throw new InvalidOperationException("Bank statement line is already reconciled.");
-			var context = await _banking.GetStatementLineContextAsync(transaction, request.StatementLineId, token) ?? throw new InvalidOperationException("Bank statement line was not found.");
 			if (context.Line.Currency != context.BankCurrency) throw new InvalidOperationException("Statement line currency differs from bank-account currency.");
 			long journalEntryId;
 			switch (request.TargetKind)
@@ -199,7 +201,7 @@ public sealed class FinanceBankingService
 				{
 					var payment = await _banking.GetReceivablePaymentEvidenceAsync(transaction, request.TargetId, token) ?? throw new InvalidOperationException("Receivable payment was not found.");
 					if (payment.IsReversed) throw new InvalidOperationException("A reversed receivable payment cannot be reconciled.");
-					ValidatePaymentTarget(context, payment, payment.Amount);
+					ValidatePaymentTarget(context, payment);
 					journalEntryId = payment.JournalEntryId;
 					break;
 				}
@@ -207,19 +209,23 @@ public sealed class FinanceBankingService
 				{
 					var payment = await _banking.GetPayablePaymentEvidenceAsync(transaction, request.TargetId, token) ?? throw new InvalidOperationException("Payable payment was not found.");
 					if (payment.IsReversed) throw new InvalidOperationException("A reversed payable payment cannot be reconciled.");
-					ValidatePaymentTarget(context, payment, -payment.Amount);
+					ValidatePaymentTarget(context, payment);
 					journalEntryId = payment.JournalEntryId;
 					break;
 				}
 				case FinanceBankReconciliationTargetKind.GeneralLedgerEntry:
 				{
-					var journal = await _banking.GetGeneralLedgerBankEvidenceAsync(transaction, request.TargetId, context.GeneralLedgerAccountId, token) ?? throw new InvalidOperationException("General Ledger entry does not contain the configured bank account.");
-					if (journal.AccountingBookId != context.AccountingBookId || journal.Currency != context.BankCurrency || journal.BankSignedAmount != context.Line.Amount) throw new InvalidOperationException("General Ledger bank amount, accounting book or currency does not match the statement line exactly.");
-					journalEntryId = journal.JournalEntryId;
+					journalEntryId = request.TargetId;
 					break;
 				}
 				default: throw new ArgumentOutOfRangeException(nameof(request), "Unsupported reconciliation target kind.");
 			}
+			await _banking.LockJournalEvidenceAsync(transaction, journalEntryId, token);
+			var journal = await _banking.GetGeneralLedgerBankEvidenceAsync(transaction, journalEntryId, context.GeneralLedgerAccountId, token) ?? throw new InvalidOperationException("General Ledger entry does not contain the configured bank account.");
+			if (journal.AccountingBookId != context.AccountingBookId || journal.Currency != context.BankCurrency || journal.BankSignedAmount != context.Line.Amount)
+				throw new InvalidOperationException("General Ledger bank amount, accounting book or currency does not match the statement line exactly.");
+			if (await _banking.HasActiveJournalBankReconciliationAsync(transaction, journalEntryId, context.GeneralLedgerAccountId, token))
+				throw new InvalidOperationException("The journal evidence for this bank account is already reconciled.");
 			var value = new FinanceBankReconciliation { OperationId=request.OperationId,StatementLineId=request.StatementLineId,TargetKind=request.TargetKind,TargetId=request.TargetId,TargetJournalEntryId=journalEntryId,MatchedAmount=context.Line.Amount,CreatedAtUtc=DateTime.UtcNow,CreatedByUserId=user.Id };
 			var id = await _banking.CreateReconciliationAsync(transaction, value, token);
 			var created = value with { Id=id };
@@ -236,6 +242,8 @@ public sealed class FinanceBankingService
 		return await _transactions.ExecuteAsync(async (transaction, token) =>
 		{
 			var value = await _banking.GetReconciliationAsync(transaction, reconciliationId, token) ?? throw new InvalidOperationException("Reconciliation was not found.");
+			await _banking.LockJournalEvidenceAsync(transaction, value.TargetJournalEntryId, token);
+			value = await _banking.GetReconciliationAsync(transaction, reconciliationId, token) ?? throw new InvalidOperationException("Reconciliation was not found.");
 			if (value.IsReversed)
 			{
 				if (value.ReversalOperationId == operationId) return value;
@@ -260,7 +268,7 @@ public sealed class FinanceBankingService
 		{
 			var previous = await _banking.FindPaymentRunByOperationAsync(transaction, request.OperationId, token);
 			if (previous is not null) return previous;
-			var bank = await _banking.GetBankAccountAsync(transaction, request.BankAccountId, token) ?? throw new InvalidOperationException("Bank account was not found.");
+			var bank = await _banking.LockBankAccountAsync(transaction, request.BankAccountId, token) ?? throw new InvalidOperationException("Bank account was not found.");
 			if (!bank.IsActive || bank.Currency != request.Currency) throw new InvalidOperationException("Payment run bank account is inactive or uses a different currency.");
 			var proposed = new List<(FinancePayableProposalItem Item, FinancePaymentRunLineRequest Request)>();
 			foreach (var line in request.Lines)
@@ -338,13 +346,14 @@ public sealed class FinanceBankingService
 		_authorization.RequirePermission(ApplicationPermission.FinancePaymentRunsPost);
 		var user = RequireUser();
 		var snapshot = await _banking.GetPaymentRunAsync(runId, cancellationToken) ?? throw new InvalidOperationException("Payment run was not found.");
-		if (snapshot.Status is not (FinancePaymentRunStatus.Approved or FinancePaymentRunStatus.PartiallyExecuted)) throw new InvalidOperationException("Payment run must be approved before execution.");
 		var line = snapshot.Lines.SingleOrDefault(value => value.Id == lineId) ?? throw new InvalidOperationException("Payment run line was not found.");
 		if (line.Status == FinancePaymentRunLineStatus.Executed) return snapshot;
+		if (snapshot.Status is not (FinancePaymentRunStatus.Approved or FinancePaymentRunStatus.PartiallyExecuted)) throw new InvalidOperationException("Payment run must be approved before execution.");
 		if (line.Status != FinancePaymentRunLineStatus.Proposed) throw new InvalidOperationException("Only a proposed payment line can be executed.");
 		var payment = await _accountsPayable.PostPaymentAsync(new FinancePayablePaymentRequest
 		{
 			OperationId=line.ExecutionOperationId,
+			BankAccountId=snapshot.BankAccountId,
 			SupplierId=line.SupplierId,
 			Currency=snapshot.Currency,
 			PaymentDate=snapshot.PaymentDate,
@@ -391,9 +400,9 @@ public sealed class FinanceBankingService
 		}, cancellationToken);
 	}
 
-	private static void ValidatePaymentTarget(FinanceBankStatementLineContext context, FinancePaymentEvidence payment, decimal expectedSignedAmount)
+	private static void ValidatePaymentTarget(FinanceBankStatementLineContext context, FinancePaymentEvidence payment)
 	{
-		if (payment.AccountingBookId != context.AccountingBookId || payment.Currency != context.BankCurrency || expectedSignedAmount != context.Line.Amount) throw new InvalidOperationException("Payment amount, accounting book or currency does not match the statement line exactly.");
+		if (payment.AccountingBookId != context.AccountingBookId || payment.Currency != context.BankCurrency) throw new InvalidOperationException("Payment accounting book or currency does not match the statement line.");
 	}
 
 	private User RequireUser() => _authorization.CurrentUser ?? throw new UnauthorizedAccessException("An authenticated user is required.");

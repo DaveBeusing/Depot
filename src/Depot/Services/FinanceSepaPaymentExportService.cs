@@ -146,7 +146,12 @@ public sealed class FinanceSepaPaymentExportService
 			var profile = await _exports.GetCreditorProfileAsync(supplierId, cancellationToken);
 			if (profile is not null) creditors[supplierId] = profile;
 		}
-		return Validate(run, bank, debtor, creditors);
+		return await _transactions.ExecuteAsync(async (transaction, token) =>
+		{
+			var preview = Validate(run, bank, debtor, creditors);
+			var balanceErrors = await ValidateCurrentPaymentBalancesAsync(transaction, run, bank, token);
+			return preview with { Errors = preview.Errors.Concat(balanceErrors).Distinct(StringComparer.Ordinal).ToArray() };
+		}, cancellationToken);
 	}
 
 	public async Task<FinanceSepaPaymentExport> GenerateAsync(long paymentRunId, bool supersedeExisting = false, CancellationToken cancellationToken = default)
@@ -168,6 +173,8 @@ public sealed class FinanceSepaPaymentExportService
 			var debtor = bank is null ? null : await _exports.GetDebtorProfileAsync(transaction, bank.Id, token);
 			var creditors = await _exports.GetCreditorProfilesAsync(transaction, run.Lines.Select(value => value.SupplierId).Distinct().ToArray(), token);
 			var preview = Validate(run, bank, debtor, creditors);
+			var balanceErrors = await ValidateCurrentPaymentBalancesAsync(transaction, run, bank, token);
+			preview = preview with { Errors = preview.Errors.Concat(balanceErrors).Distinct(StringComparer.Ordinal).ToArray() };
 			if (!preview.IsValid) throw new InvalidOperationException("SEPA payment export validation failed: " + string.Join(" ", preview.Errors));
 
 			var sequence = await _exports.GetNextSequenceAsync(transaction, run.Id, token);
@@ -295,6 +302,29 @@ public sealed class FinanceSepaPaymentExportService
 		_authorization.RequirePermission(ApplicationPermission.FinanceSepaPaymentExportsExport);
 		if (exportId <= 0) throw new ArgumentOutOfRangeException(nameof(exportId));
 		return _exports.GetExportAsync(exportId, cancellationToken);
+	}
+
+	private async Task<IReadOnlyList<string>> ValidateCurrentPaymentBalancesAsync(DatabaseTransactionContext transaction, FinancePaymentRun run, FinanceBankAccount? bank, CancellationToken cancellationToken)
+	{
+		var errors = new List<string>();
+		foreach (var group in run.Lines.GroupBy(line => line.PayableOpenItemId).OrderBy(group => group.Key))
+		{
+			var item = await _bankingRepository.LockPayableProposalItemAsync(transaction, group.Key, cancellationToken);
+			if (item is null || item.IsVoided || item.Kind != FinancePayableOpenItemKind.Invoice || item.RemainingAmount <= 0m)
+			{
+				errors.Add($"Payable open item {group.Key} is no longer an active unpaid supplier invoice.");
+				continue;
+			}
+			if (bank is null || item.AccountingBookId != bank.AccountingBookId || item.Currency != run.Currency || group.Any(line => line.SupplierId != item.SupplierId))
+			{
+				errors.Add($"Payable open item {group.Key} no longer matches the selected supplier, bank accounting book and currency.");
+				continue;
+			}
+			var reserved = await _exports.GetActiveInstructionAmountAsync(transaction, item.OpenItemId, run.Id, cancellationToken);
+			if (group.Sum(line => line.Amount) > Math.Max(0m, item.RemainingAmount - reserved))
+				errors.Add($"Payable open item {group.Key} has insufficient unreserved balance for a new payment instruction.");
+		}
+		return errors;
 	}
 
 	private static FinanceSepaPaymentExportPreview Validate(

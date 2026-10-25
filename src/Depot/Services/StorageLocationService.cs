@@ -1,6 +1,7 @@
 // Copyright (c) 2026 David Beusing
 // Licensed under the MIT License.
 
+using Depot.Data;
 using Depot.Models;
 using Depot.Repositories;
 
@@ -34,6 +35,34 @@ public sealed class StorageLocationService
 
 	public Task<IReadOnlyList<StorageLocation>> GetActiveAsync(CancellationToken cancellationToken = default) =>
 		_activeCache.GetAsync(_locations.ListActiveAsync, cancellationToken);
+
+	internal async Task<StorageLocation> GetOrCreateForImportAsync(
+		DatabaseTransactionContext transaction,
+		long warehouseId,
+		string name,
+		CancellationToken cancellationToken)
+	{
+		_audit.RequirePermission(ApplicationPermission.MasterDataManage);
+		name = name.Trim();
+		if (warehouseId <= 0) throw new ArgumentException("Warehouse is required.", nameof(warehouseId));
+		if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("Storage location name is required.", nameof(name));
+		var warehouse = await _warehouses.GetByIdAsync(transaction, warehouseId, cancellationToken)
+			?? throw new InvalidOperationException($"Warehouse with id '{warehouseId}' was not found.");
+		if (!warehouse.IsActive) throw new InvalidOperationException("Storage locations can be imported only into an active warehouse.");
+		var existing = await _locations.GetByNameAsync(transaction, warehouseId, name, cancellationToken);
+		if (existing is not null)
+		{
+			if (!existing.IsActive) throw new InvalidOperationException($"Storage location '{name}' is inactive and cannot be imported.");
+			return existing;
+		}
+
+		var location = new StorageLocation { WarehouseId = warehouseId, Name = name, IsActive = true };
+		location.Id = await _locations.CreateAsync(transaction, location, cancellationToken);
+		await _audit.RecordCreatedAsync(transaction, location.Id, location, cancellationToken);
+		return location;
+	}
+
+	internal void InvalidateImportCache() => _activeCache.Invalidate();
 
 	public async Task<StorageLocation> GetOrCreateAsync(
 		long warehouseId,
@@ -130,3 +159,4 @@ public sealed class StorageLocationService
 		Version = source.Version
 	};
 }
+

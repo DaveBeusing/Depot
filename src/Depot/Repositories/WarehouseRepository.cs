@@ -14,6 +14,13 @@ public sealed class WarehouseRepository : DatabaseRepository
 
 	public WarehouseRepository(DatabaseAccess database) : base(database) { }
 
+	internal Task<Warehouse?> GetByNameAsync(DatabaseTransactionContext transaction, string name, CancellationToken cancellationToken) =>
+		transaction.Session.QuerySingleOrDefaultAsync($"SELECT {Columns} FROM Warehouses WHERE Name=$Name;", Read, cancellationToken, Parameter("$Name", name));
+
+	internal Task<long> CreateAsync(DatabaseTransactionContext transaction, Warehouse warehouse, CancellationToken cancellationToken) =>
+		transaction.Session.InsertAsync("INSERT INTO Warehouses (Name,Description,IsActive) VALUES ($Name,$Description,$IsActive);", cancellationToken,
+			Parameter("$Name", warehouse.Name), Parameter("$Description", warehouse.Description), Parameter("$IsActive", warehouse.IsActive));
+
 	public Task<IReadOnlyList<Warehouse>> SearchAsync(string? searchText, CancellationToken cancellationToken)
 	{
 		var search = searchText?.Trim();
@@ -92,3 +99,4 @@ public sealed class WarehouseRepository : DatabaseRepository
 		Version = reader.GetInt64(4)
 	};
 }
+

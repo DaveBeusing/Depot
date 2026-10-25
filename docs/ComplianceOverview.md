@@ -21,7 +21,7 @@ Localization requires explicit effective-dated assignment. The built-in `GENERIC
 - Application: **0.15.x-preview**
 - Core database schema: **30**
 - Sales feature schema: **16**
-- Finance feature schema: **12**
+- Finance feature schema: **13**
 - User Sessions feature schema: **3**
 - Security Events feature schema: **3**
 - User Preferences feature schema: **2**
@@ -65,3 +65,4 @@ This document is engineering evidence and not a certification statement.
 ## Business attachments
 
 User-supplied Business Attachments are separate from immutable generated/electronic-invoice evidence. Attachment mutations are audited, revisions are retained, and attachments associated with personal-data Customer/Supplier records are represented by the data-subject export boundary. File retention, legal hold, erasure/restriction procedures and external malware scanning remain deployment-policy responsibilities. See [Business Attachments](BusinessAttachments.md).
+
