@@ -3,6 +3,12 @@
 
 using ClosedXML.Excel;
 
+using System.Globalization;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
+
+using Depot.Data;
 using Depot.Models;
 using Depot.Repositories;
 using Depot.Services;
@@ -19,6 +25,7 @@ public sealed class ImportService
 	private readonly InventoryManagementService _inventoryManagementService;
 	private readonly MovementService _movementService;
 	private readonly IAuthorizationService _authorization;
+	private readonly IDatabaseTransactionRunner _transactions;
 
 	public ImportService(
 		ItemRepository itemRepository,
@@ -28,7 +35,8 @@ public sealed class ImportService
 		StorageLocationService storageLocationService,
 		InventoryManagementService inventoryManagementService,
 		MovementService movementService,
-		IAuthorizationService authorization)
+		IAuthorizationService authorization,
+		IDatabaseTransactionRunner transactions)
 	{
 		_itemRepository = itemRepository;
 		_itemService = itemService;
@@ -38,6 +46,7 @@ public sealed class ImportService
 		_inventoryManagementService = inventoryManagementService;
 		_movementService = movementService;
 		_authorization = authorization;
+		_transactions = transactions;
 	}
 
 	public ImportMapping InspectMapping(
@@ -247,128 +256,94 @@ public sealed class ImportService
 
 		return new ImportPreview
 		{
+			OperationId = OperationIdFor(GetRequestHash(items)),
 			Items = items,
 			Warnings = warnings
 		};
 	}
 
-	public ImportResult ExecuteImport(
-		ImportPreview preview)
-	{
-		_authorization.RequirePermission(ApplicationPermission.ImportManage);
-		var importedItems = 0;
-		var importedMovements = 0;
-		var skippedItems = 0;
-
-		foreach (var previewItem in preview.Items)
-		{
-			var item = _itemRepository.GetByPartNumber(previewItem.PartNumber);
-
-			if (item is null)
-			{
-				item = _itemService.CreateItem(
-					previewItem.PartNumber,
-					previewItem.Description,
-					previewItem.Manufacturer,
-					previewItem.Category);
-				importedItems++;
-			}
-
-			var purpose = _purposeService.GetOrCreatePurpose(previewItem.Purpose);
-			var warehouse = _warehouseService.GetOrCreateAsync(previewItem.Warehouse).GetAwaiter().GetResult();
-			var location = _storageLocationService.GetOrCreateAsync(warehouse.Id, previewItem.Location).GetAwaiter().GetResult();
-			var inventory = _inventoryManagementService.GetOrCreateInventory(
-				item.Id,
-				purpose.Id,
-				location.Id);
-
-			if (previewItem.Quantity <= 0)
-			{
-				skippedItems++;
-				continue;
-			}
-
-			_movementService.AddOpeningBalance(
-				inventory.Id,
-				previewItem.Quantity,
-				previewItem.UnitPrice,
-				"Imported from Excel");
-			importedMovements++;
-		}
-
-		return new ImportResult
-		{
-			ImportedItems = importedItems,
-			ImportedMovements = importedMovements,
-			SkippedItems = skippedItems
-		};
-	}
+	public ImportResult ExecuteImport(ImportPreview preview) =>
+		Task.Run(() => ExecuteImportAsync(preview)).GetAwaiter().GetResult();
 
 	public async Task<ImportResult> ExecuteImportAsync(
 		ImportPreview preview,
 		CancellationToken cancellationToken = default)
 	{
 		_authorization.RequirePermission(ApplicationPermission.ImportManage);
-		var importedItems = 0;
-		var importedMovements = 0;
-		var skippedItems = 0;
-
-		foreach (var previewItem in preview.Items)
+		ArgumentNullException.ThrowIfNull(preview);
+		if (preview.OperationId == Guid.Empty) throw new ArgumentException("An import operation ID is required.", nameof(preview));
+		if (preview.Items.Count == 0) throw new InvalidOperationException("The import preview is empty.");
+		if (preview.Warnings.Any(warning => warning.BlocksImport))
+			throw new InvalidOperationException("Resolve the blocking preview errors before importing.");
+		var items = preview.Items.ToArray();
+		if (items.Any(item => item.UnitPrice < 0))
+			throw new InvalidOperationException("Opening balance prices cannot be negative.");
+		var requestHash = GetRequestHash(items);
+		var result = await _transactions.ExecuteAsync(async (transaction, token) =>
 		{
-			cancellationToken.ThrowIfCancellationRequested();
-			var item = await _itemRepository.GetByPartNumberAsync(
-				previewItem.PartNumber,
-				cancellationToken);
+			if (await InventoryImportOperationRepository.IsCompletedAsync(transaction, preview.OperationId, requestHash, token))
+				return new ImportResult { AlreadyCompleted = true, SkippedItems = items.Length };
 
-			if (item is null)
+			var importedItems = 0;
+			var importedMovements = 0;
+			var skippedItems = 0;
+			long firstInventoryId = 0;
+			foreach (var row in items)
 			{
-				item = await _itemService.CreateItemAsync(
-					previewItem.PartNumber,
-					previewItem.Description,
-					previewItem.Manufacturer,
-					previewItem.Category,
-					cancellationToken);
-				importedItems++;
+				token.ThrowIfCancellationRequested();
+				var (item, created) = await _itemService.GetOrCreateForImportAsync(transaction,
+					row.PartNumber, row.Description, row.Manufacturer, row.Category, token);
+				if (created) importedItems++;
+				var purpose = await _purposeService.GetOrCreateForImportAsync(transaction, row.Purpose, token);
+				var warehouse = await _warehouseService.GetOrCreateForImportAsync(transaction, row.Warehouse, token);
+				var location = await _storageLocationService.GetOrCreateForImportAsync(transaction, warehouse.Id, row.Location, token);
+				var inventory = await _inventoryManagementService.GetOrCreateForImportAsync(transaction,
+					item.Id, purpose.Id, location.Id, token);
+				if (firstInventoryId == 0) firstInventoryId = inventory.Id;
+				if (row.Quantity <= 0)
+				{
+					skippedItems++;
+					continue;
+				}
+				await _movementService.AddOpeningBalanceInTransactionAsync(transaction, inventory.Id,
+					row.Quantity, row.UnitPrice, $"IMPORT:{preview.OperationId:D}", token);
+				importedMovements++;
 			}
-
-			var purpose = await _purposeService.GetOrCreatePurposeAsync(
-				previewItem.Purpose,
-				cancellationToken);
-			var warehouse = await _warehouseService.GetOrCreateAsync(
-				previewItem.Warehouse,
-				cancellationToken);
-			var location = await _storageLocationService.GetOrCreateAsync(
-				warehouse.Id,
-				previewItem.Location,
-				cancellationToken);
-			var inventory = await _inventoryManagementService.GetOrCreateInventoryAsync(
-				item.Id,
-				purpose.Id,
-				location.Id,
-				cancellationToken);
-
-			if (previewItem.Quantity <= 0)
+			token.ThrowIfCancellationRequested();
+			await InventoryImportOperationRepository.CompleteAsync(transaction, preview.OperationId,
+				requestHash, firstInventoryId, token);
+			return new ImportResult
 			{
-				skippedItems++;
-				continue;
-			}
-
-			await _movementService.AddOpeningBalanceAsync(
-				inventory.Id,
-				previewItem.Quantity,
-				previewItem.UnitPrice,
-				"Imported from Excel",
-				cancellationToken);
-			importedMovements++;
-		}
-
-		return new ImportResult
-		{
-			ImportedItems = importedItems,
-			ImportedMovements = importedMovements,
-			SkippedItems = skippedItems
-		};
+				ImportedItems = importedItems,
+				ImportedMovements = importedMovements,
+				SkippedItems = skippedItems
+			};
+		}, cancellationToken).ConfigureAwait(false);
+		_itemService.InvalidateImportCaches();
+		_purposeService.InvalidateImportCache();
+		_storageLocationService.InvalidateImportCache();
+		return result;
 	}
+
+	private static string GetRequestHash(IEnumerable<ImportPreviewItem> items)
+	{
+		var content = items.Select(item => new
+		{
+			PartNumber = item.PartNumber.Trim(),
+			Description = item.Description.Trim(),
+			Manufacturer = string.IsNullOrWhiteSpace(item.Manufacturer) ? null : item.Manufacturer.Trim(),
+			Category = string.IsNullOrWhiteSpace(item.Category) ? null : item.Category.Trim(),
+			Purpose = item.Purpose.Trim(),
+			Warehouse = item.Warehouse.Trim(),
+			Location = item.Location.Trim(),
+			item.Quantity,
+			UnitPrice = item.UnitPrice.ToString("G29", CultureInfo.InvariantCulture)
+		}).OrderBy(item => JsonSerializer.Serialize(item), StringComparer.Ordinal).ToArray();
+		return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(
+			"Depot.InventoryImport.v1\n" + JsonSerializer.Serialize(content))));
+	}
+
+	private static Guid OperationIdFor(string requestHash) => new(Convert.FromHexString(requestHash).AsSpan(0, 16));
 
 	private static IReadOnlyList<(int ColumnNumber, string Header)> ReadSourceColumns(
 		IXLWorksheet worksheet,
@@ -527,3 +502,4 @@ public sealed class ImportService
 		public decimal TotalValue { get; set; }
 	}
 }
+

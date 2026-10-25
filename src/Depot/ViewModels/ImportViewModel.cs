@@ -439,15 +439,18 @@ public sealed class ImportViewModel
 			_currentPreview = null;
 			OnPropertyChanged(nameof(HasPreview));
 			ImportCommand.RaiseCanExecuteChanged();
-			CompleteOperation(statusText: "Import completed.");
+			CompleteOperation(statusText: result.AlreadyCompleted
+				? "This import was already completed. No opening balances were posted again."
+				: "Import completed.");
 		}
 		catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
 		{
-			CompleteOperation(statusText: "Import cancelled.");
+			CompleteOperation(statusText: "Import cancelled. Retry this preview to confirm or complete the whole batch safely.");
 		}
 		catch (Exception ex)
 		{
-			FailOperation(ex, "The import could not be completed.");
+			FailOperation(ex, "The import could not be confirmed. Retry this preview safely; completed batches are recognized.");
 		}
 	}
 }
+
