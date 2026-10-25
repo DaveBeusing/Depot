@@ -327,7 +327,7 @@ public sealed class ProcurementViewModel : BaseViewModel, IDisposable
 	private async Task SaveOrderAsync(CancellationToken cancellationToken)
 	{
 		BeginOperation("Saving purchase order");
-		try { Draft.Lines = Lines.Select(Copy).ToArray(); var saved = await _orders.SaveDraftAsync(Copy(Draft), cancellationToken); ApplyChangedOrder(saved); await LoadStatusHistoryAsync(saved.Id, cancellationToken); _purchaseOrderChanged?.Invoke(); CompleteOperation(false, "Purchase order saved"); }
+		try { var request = Copy(Draft); request.Lines = Lines.Select(Copy).ToArray(); var saved = await _orders.SaveDraftAsync(request, cancellationToken); ApplyChangedOrder(saved); await LoadStatusHistoryAsync(saved.Id, cancellationToken); _purchaseOrderChanged?.Invoke(); CompleteOperation(false, "Purchase order saved"); }
 		catch (Exception exception) when (exception is not OperationCanceledException) { FailOperation(exception, "Purchase order could not be saved"); }
 	}
 	private async Task PlaceOrderAsync(CancellationToken cancellationToken) { var operationId = Guid.NewGuid(); await ChangeStatusAsync(() => _orders.PlaceOrderAsync(Draft.Id, Draft.Version, operationId, cancellationToken), "Purchase order placed", PurchaseOrderStatus.Ordered, cancellationToken); }
